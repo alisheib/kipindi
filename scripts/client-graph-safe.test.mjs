@@ -189,6 +189,13 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // verified setter runs the same functions before it writes. It imports only consent-basis.ts, campaign-template.ts
     // and contact-fields.ts, all pinned above; the persisted half lives in lib/server/marketing/wordings.ts and must stay there.
     "lib/marketing/marketing-wordings.ts",
+    // ⭐ ADDED 2026-10-04 (marketing U33p, decision M3). The public policy lines' keys, today's text as defaults, the rules,
+    // the page versions, and the promises the code keeps: the "use client" Public policy lines card validates every box
+    // live with them, and the server's verified setter runs the same functions before it writes. They import only each
+    // other, contact-fields.ts (pinned above) and eat-day.ts (which imports nothing); the persisted half and the pages'
+    // wrapper live in lib/server/legal/policy-lines.ts and must stay there.
+    "lib/legal/policy-lines.ts",
+    "lib/legal/kept-promises.ts",
     // ⭐ ADDED 2026-10-03 (marketing validation batch 8). The staff screen's ONE reason and phone rules: the "use client"
     // staff forms check a role change's reason and an add-by-phone number in the browser with them, and the server
     // actions refuse with the same functions. It lives under lib/server for history and must stay pure: it imports only

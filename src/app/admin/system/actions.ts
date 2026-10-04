@@ -22,6 +22,9 @@ import { requireStaff } from "@/lib/server/rbac-guard";
 // U33w · the Marketing wordings card: the verified setter, the form's one reading, and the ONE spelling of each box's address.
 import { saveMarketingWordings, WORDINGS_REFUSAL_SENTENCE } from "@/lib/server/marketing/wordings";
 import { WORDING_KEYS, patchFromForm, wordingFieldName, type WordingKey } from "@/lib/marketing/marketing-wordings";
+// U33p · the Public policy lines card: the verified setter, and the ONE spelling of each language box's address.
+import { savePolicyLines, POLICY_LINES_REFUSAL_SENTENCE } from "@/lib/server/legal/policy-lines";
+import { POLICY_LINE_KEYS, POLICY_LOCALES, policyLineFieldName, type PolicyLineKey, type PolicyLocale } from "@/lib/legal/policy-lines";
 
 // RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
 // domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
@@ -256,5 +259,69 @@ export async function saveMarketingWordingsAction(formData: FormData): Promise<M
     return { ok: true as const, changed: res.changed.length };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Saving the wordings failed — nothing may have changed. Reload the page to check before trying again.") };
+  }
+}
+
+/** What the Public policy lines card's save answers: how many lines got a version, how many of them moved the printed words
+ *  (only those move a page's version), and the version each page prints now — or a refusal that names the first box to fix
+ *  (`field`) and carries every problem of every line, by language. */
+export type PolicyLinesActionResult =
+  | { ok: true; changed: number; moved: number; versions: { rg: string; privacy: string } }
+  | (ActionFailure & { problems?: { [K in PolicyLineKey]?: Partial<Record<PolicyLocale, string[]>> } });
+
+/**
+ * U33p · SAVE THE PUBLIC POLICY LINES — the "Public policy lines" card's ONE action (spec §5.2 · §6 U33p; OD58 · S15).
+ *
+ * ⛔ `requireAdmin` FIRST, then the VERIFIED setter, `savePolicyLines`: it reads the request as hostile (three texts per line
+ * with the revision it was edited from, and the review tick — a saved-line object, a version or an unknown field is not
+ * understood), runs every rule (a promise the code does not keep is refused by name; the gateway's facts and the Consent
+ * bullet's words must stay), refuses a page that is out of date, appends a version only when a line changes — new words,
+ * or a review marker with the line's tick — stamps a page's version only for NEW WORDS (a review moves nothing), checks
+ * the history is a clean append, persists, reads the row back, and only then caches and writes the
+ * `config.policy_lines_updated` audit row. Every refusal writes nothing.
+ * ⭐ The author and the time are the server's: the session's officer, and its clock — nothing in the request names them.
+ * ⭐ DG-S-05 · a refusal about words names the first box to fix (`policyLineFieldName`, the ONE spelling the card renders
+ * too) and carries every problem of every line, so the card shows each one under its own box at once.
+ * ⭐ The two legal pages print these lines, so both are revalidated; so is the profile's notifications page, where U33a-P
+ * prints the outreach note once licence outreach exists (nothing prints it yet).
+ */
+export async function savePolicyLinesAction(formData: FormData): Promise<PolicyLinesActionResult> {
+  const session = await requireAdmin();
+  /* ⛔ EACH NAME ONCE (`patchFromForm`, the wordings card's reading). A name posted twice is a request no card sends, and
+     reading either value would be a guess. Every other check — which names, what values — is the setter's. */
+  const form = patchFromForm(formData.entries());
+  if (!form.ok) return { ok: false as const, error: POLICY_LINES_REFUSAL_SENTENCE.not_understood };
+  try {
+    const res = await savePolicyLines(form.patch, session.userId);
+    if (!res.ok) {
+      const problems: { [K in PolicyLineKey]?: Partial<Record<PolicyLocale, string[]>> } = {};
+      let first: string | null = null;
+      for (const key of POLICY_LINE_KEYS) {
+        const found = res.problems[key];
+        if (!found) continue;
+        const byLocale: Partial<Record<PolicyLocale, string[]>> = {};
+        for (const l of POLICY_LOCALES) {
+          if (found[l].length === 0) continue;
+          byLocale[l] = found[l].map((p) => p.sentence);
+          if (first === null) first = policyLineFieldName(key, l);
+        }
+        problems[key] = byLocale;
+      }
+      return first !== null
+        ? { ...fieldError(first, res.error), problems }
+        : { ok: false as const, error: res.error };
+    }
+    revalidatePath("/admin/system");
+    revalidatePath("/legal/responsible-gambling");
+    revalidatePath("/legal/privacy");
+    revalidatePath("/profile/notifications");
+    return {
+      ok: true as const,
+      changed: res.changed.length,
+      moved: res.moved.length,
+      versions: { rg: res.versions.rg, privacy: res.versions.privacy },
+    };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Saving the policy lines failed — nothing may have changed. Reload the page to check before trying again.") };
   }
 }

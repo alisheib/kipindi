@@ -4,6 +4,9 @@ import { getServerT, type Locale } from "@/lib/i18n-server";
 // ⭐ The referee clock is the service's constant — §9 states the number the purge actually runs on.
 import { AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { AnalyticsChoice } from "@/components/analytics/analytics-choice";
+// ⭐ U33p · three bullets are admin-edited lines (Admin → System → Public policy lines): `PolicyLine` prints the words an
+// admin saved, and the literal bullet inside it until then (a review keeps the literal); `policyMeta` prints the version.
+import { PolicyLine, policyMeta } from "@/lib/server/legal/policy-lines";
 
 export async function generateMetadata() {
   const { locale } = await getServerT();
@@ -42,6 +45,16 @@ const TITLE: Record<Locale, string> = {
 // 2026-10-01: §2 "Journey counts" and §5 their 400 days, §7 the tab-storage key `kp-utm` — the Vodacom plan S3b journey
 // funnel (`src/lib/server/journey-funnel.ts`, `src/lib/journey/funnel-beacon.ts`), daily totals that identify no one, on the
 // visit counts' own basis. See COMPLIANCE-DECISIONS.md "Privacy v2026-10-01"; `test:privacy-notice` §4h ties each clause to the code.
+// ⭐ U33p (2026-10-04): the §3 Consent bullet, a NEW §3 licence bullet (blank, so not printed, until saved) and the §4
+// Blackball bullet are admin-edited lines (`legal.policy_lines`, the "Public policy lines" card on /admin/system — OD58,
+// S15). NEW WORDS saved for any of them stamp this notice's version with that day's EAT date (`.2` for a second that day),
+// recorded with the label below as the stamp's base; a review of today's words stamps nothing. The header prints the version
+// `printedPolicyVersion` decides from that stamp, its base and the label below (`policyMeta`); the factory's audit row
+// `config.policy_lines_updated` is the decision record, and COMPLIANCE-DECISIONS ("The public policy lines are editable")
+// says how a saved line is kept true. ⛔ The literal bullets inside each PolicyLine wrapper are what prints until a save, byte for
+// byte; `test:privacy-notice` reads them with the wrapper's tags stripped, so this label and its English hash still move
+// only with the code's own English (`POLICY_PAGES.privacy.codeVersion` in `src/lib/legal/policy-lines.ts` moves with it —
+// test:policy-lines L0).
 const META: Record<Locale, string> = {
   en: "Version 2026-10-01 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
   sw: "Toleo 2026-10-01 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
@@ -88,7 +101,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Performance of contract</strong>: account, wallet, bet placement, settlement</li>
           <li><strong className="text-text">Legal obligation</strong>: identity verification (KYC) and AML/CFT under the Anti-Money Laundering Act and POCA, tax under the Income Tax Act</li>
           <li><strong className="text-text">Legitimate interest</strong>: fraud prevention, market-integrity monitoring, security alerting</li>
-          <li><strong className="text-text">Consent</strong>: marketing communications — you can withdraw it at any time under Profile → Notifications; and Google Analytics — only if you allow it when first asked, and you can change that at any time in §7 of this policy</li>
+          <PolicyLine line="privacy.lawfulConsent" locale="en" /* ⛔ prints only until saved */><li><strong className="text-text">Consent</strong>: marketing communications — you can withdraw it at any time under Profile → Notifications; and Google Analytics — only if you allow it when first asked, and you can change that at any time in §7 of this policy</li></PolicyLine>
+          <PolicyLine line="privacy.lawfulLicence" locale="en" /* ⛔ prints nothing until saved */ />
         </ul>
       </LegalSection>
 
@@ -100,7 +114,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Cloud hosting providers: Railway, in the United States (region us-west2), which runs the app, holds its databases and keeps backups of them; and Cloudflare R2, in Western Europe, which stores identity documents, selfies and encrypted database backups; and GitHub Actions, in the United States, which creates the nightly database backup and test-restores it before it is encrypted and stored</li>
           <li>Cloudflare&apos;s network, which carries every connection to www.50pick.tz: each request is decrypted at the Cloudflare data centre nearest to you and encrypted again on its way to our servers</li>
           <li>Postmark, in the United States, which sends our emails: it keeps a record of each email, and records when an email is opened and which link in it is clicked</li>
-          <li>Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and, only if you agree to receive them, offers and news: it receives your phone number and the text of each message, and tells us whether each message was delivered</li>
+          <PolicyLine line="privacy.smsGateway" locale="en" /* ⛔ prints only until saved */><li>Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and, only if you agree to receive them, offers and news: it receives your phone number and the text of each message, and tells us whether each message was delivered</li></PolicyLine>
           <li>Anthropic, which writes the answers in the 50pick Help chat: it receives the messages of that conversation, not your account details; it stores data in the United States and may process a request in the United States, Europe, Asia or Australia</li>
           <li>Sentry, in the European Union, which receives error reports from our servers: Tanzanian phone numbers, email addresses and long numbers such as a NIDA number are removed from a report before it is sent</li>
           <li>Google Analytics, run by Google, only if you allow analytics, which measures how the website is used: it receives the address and title of each page you open, with any part that could identify you removed; your browser and device type; an approximate location derived from your IP address; and a random identifier kept in a cookie. It does not receive your name, phone number, email address or account details, and it is not used for advertising. It does not run on staff pages or on a page opened from a password-reset, email-verification or agent-invitation link. Google may process this data in the United States and other countries</li>
@@ -198,7 +212,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Utekelezaji wa mkataba</strong>: akaunti, pochi, uwekaji wa dau, utatuzi wa masoko</li>
           <li><strong className="text-text">Wajibu wa kisheria</strong>: uthibitisho wa utambulisho (KYC) na AML/CFT chini ya Anti-Money Laundering Act na POCA, kodi chini ya Income Tax Act</li>
           <li><strong className="text-text">Maslahi halali</strong>: kuzuia udanganyifu, ufuatiliaji wa uadilifu wa soko, tahadhari za usalama</li>
-          <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo — unaweza kuiondoa wakati wowote kwenye Wasifu → Arifa; na Google Analytics — ikiwa tu utairuhusu unapoulizwa mara ya kwanza, na unaweza kubadilisha uamuzi huo wakati wowote katika §7 ya sera hii</li>
+          <PolicyLine line="privacy.lawfulConsent" locale="sw" /* ⛔ prints only until saved */><li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo — unaweza kuiondoa wakati wowote kwenye Wasifu → Arifa; na Google Analytics — ikiwa tu utairuhusu unapoulizwa mara ya kwanza, na unaweza kubadilisha uamuzi huo wakati wowote katika §7 ya sera hii</li></PolicyLine>
+          <PolicyLine line="privacy.lawfulLicence" locale="sw" /* ⛔ prints nothing until saved */ />
         </ul>
       </LegalSection>
 
@@ -210,7 +225,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Watoa huduma za wingu: Railway, nchini Marekani (kanda us-west2), inayoendesha programu, kuhifadhi hifadhidata zake na nakala rudufu zake; na Cloudflare R2, barani Ulaya Magharibi, inayohifadhi nyaraka za utambulisho, selfie na nakala rudufu za hifadhidata zilizosimbwa; na GitHub Actions, nchini Marekani, inayotengeneza nakala rudufu ya kila usiku ya hifadhidata na kuijaribu kabla ya kusimbwa na kuhifadhiwa</li>
           <li>Mtandao wa Cloudflare, unaopitisha kila muunganisho wa www.50pick.tz: kila ombi husimbuliwa katika kituo cha data cha Cloudflare kilicho karibu nawe na kusimbwa tena linapoelekea kwenye seva zetu</li>
           <li>Postmark, nchini Marekani, inayotuma barua pepe zetu: huhifadhi kumbukumbu ya kila barua pepe, na hurekodi barua pepe inapofunguliwa na kiungo kinachobofywa ndani yake</li>
-          <li>Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika</li>
+          <PolicyLine line="privacy.smsGateway" locale="sw" /* ⛔ prints only until saved */><li>Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika</li></PolicyLine>
           <li>Anthropic, inayoandika majibu katika gumzo la Msaada wa 50pick: hupokea ujumbe wa mazungumzo hayo, si taarifa za akaunti yako; huhifadhi data nchini Marekani na inaweza kuchakata ombi nchini Marekani, Ulaya, Asia au Australia</li>
           <li>Sentry, katika Umoja wa Ulaya, inayopokea ripoti za hitilafu kutoka kwenye seva zetu: namba za simu za Tanzania, anwani za barua pepe na namba ndefu kama namba ya NIDA huondolewa kwenye ripoti kabla haijatumwa</li>
           <li>Google Analytics, inayoendeshwa na Google, ikiwa tu utaruhusu takwimu, inayopima jinsi tovuti inavyotumika: hupokea anwani na kichwa cha kila ukurasa unaofungua, sehemu yoyote inayoweza kukutambulisha ikiwa imeondolewa; aina ya kivinjari na kifaa chako; eneo la takriban linalotokana na anwani yako ya IP; na kitambulisho cha nasibu kinachohifadhiwa kwenye kidakuzi. Haipokei jina lako, namba ya simu, anwani ya barua pepe wala taarifa za akaunti yako, na haitumiki kwa matangazo. Haiendeshwi kwenye kurasa za wafanyakazi wala kwenye ukurasa uliofunguliwa kutoka kiungo cha kubadilisha nenosiri, cha kuthibitisha barua pepe au cha mwaliko wa wakala. Google inaweza kuchakata data hii nchini Marekani na nchi nyingine</li>
@@ -308,7 +323,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">合同履行</strong>：账户、钱包、下注、结算</li>
           <li><strong className="text-text">法律义务</strong>：依据 Anti-Money Laundering Act 与 POCA 的身份验证（KYC）及 AML/CFT、依据 Income Tax Act 的税务</li>
           <li><strong className="text-text">合法利益</strong>：欺诈防范、市场完整性监控、安全告警</li>
-          <li><strong className="text-text">同意</strong>：营销通讯——您可随时在“个人资料 → 通知”中撤回；以及 Google Analytics——仅在首次询问时您同意后才会开启，您可随时在本政策第 7 条中更改</li>
+          <PolicyLine line="privacy.lawfulConsent" locale="zh" /* ⛔ prints only until saved */><li><strong className="text-text">同意</strong>：营销通讯——您可随时在“个人资料 → 通知”中撤回；以及 Google Analytics——仅在首次询问时您同意后才会开启，您可随时在本政策第 7 条中更改</li></PolicyLine>
+          <PolicyLine line="privacy.lawfulLicence" locale="zh" /* ⛔ prints nothing until saved */ />
         </ul>
       </LegalSection>
 
@@ -320,7 +336,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>云托管服务商：Railway（美国，us-west2 区域），运行本应用、存放其数据库并保存数据库备份；Cloudflare R2（西欧），存放身份证件、自拍照及加密的数据库备份；以及 GitHub Actions（美国），负责生成每晚的数据库备份，并在加密存储前进行恢复验证</li>
           <li>Cloudflare 网络：承载所有访问 www.50pick.tz 的连接；每个请求在离您最近的 Cloudflare 数据中心解密，并在发往我们服务器的途中重新加密</li>
           <li>Postmark（美国）：发送我们的电子邮件；保存每封邮件的记录，并记录邮件何时被打开以及其中哪个链接被点击</li>
-          <li>Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达</li>
+          <PolicyLine line="privacy.smsGateway" locale="zh" /* ⛔ prints only until saved */><li>Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达</li></PolicyLine>
           <li>Anthropic：为“50pick 帮助”聊天撰写回答；接收该对话中的消息，不含您的账户信息；数据存储于美国，请求可能在美国、欧洲、亚洲或澳大利亚处理</li>
           <li>Sentry（欧盟）：接收我们服务器的错误报告；报告发送前，会删除其中的坦桑尼亚电话号码、电子邮箱地址以及 NIDA 号码等长数字</li>
           <li>Google Analytics（由 Google 运营，仅在您允许分析时启用）：衡量网站的使用情况；接收您打开的每个页面的地址与标题（已删除任何可能识别您身份的部分）、您的浏览器与设备类型、根据您的 IP 地址推断的大致位置，以及保存在 cookie 中的随机标识符。不接收您的姓名、电话号码、电子邮箱地址或账户信息，也不用于广告。不在员工页面上运行，也不在通过重置密码、验证邮箱或代理邀请链接打开的页面上运行。Google 可能在美国及其他国家处理这些数据</li>
@@ -381,7 +397,7 @@ export default async function PrivacyPage() {
       <LegalHeader
         eyebrow={EYEBROW[locale]}
         title={TITLE[locale]}
-        meta={META[locale]}
+        meta={policyMeta(META[locale], "privacy")}
         glyph="lock"
       />
       <p className="text-body-sm italic text-text-subtle">{BINDING[locale]}</p>

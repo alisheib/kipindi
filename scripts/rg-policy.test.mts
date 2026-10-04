@@ -23,6 +23,19 @@
  *        3.4 (2026-09-27 final visual review, local-rg-s3-zh-360.png): the zh §2 settings link is whitespace-nowrap —
  *        it broke "负责任博彩设" / "置", the underlined label split mid-term.
  *        Translations only, so the binding-English hash does not move.
+ *   §4 · KEPT_PROMISES (marketing U33p, 2026-10-04) — §4's first bullet is an ADMIN-EDITED line now (`legal.policy_lines`),
+ *        and the save refuses a promise the code does not keep by reading `src/lib/legal/kept-promises.ts`. So that map
+ *        is held here, against the same source the controls above read:
+ *        K1 · every `KEPT_PROMISES` value equals its control's presence in the code (a map that says "kept" for a window
+ *             nobody built would let the save publish it) — the two age promises held APART (review F13): "anyone whose
+ *             age we cannot confirm" by the gate's PLAYER branch, "a non-player only after staff confirm in writing" by
+ *             its CONTACT branch; the frequency cap (F2) by U14's module or the gate's own refusal;
+ *        K2 · the save's validator, run on every promise word — the English phrases, a clock time, a frequency, and the
+ *             Swahili and Chinese words in their own boxes (F3): refused when the promise is unkept, accepted when kept.
+ *   ⭐ The page is read with its `PolicyLine` tags stripped (`scripts/lib/policy-line-source.mts`): the wrapper prints a
+ *      SAVED line, and its children — the literal bullet, byte for byte the page before U33p — until then. So §1-§3 read
+ *      exactly the text the page prints while nothing is saved, and the English hash pin holds untouched; a SAVED line is
+ *      held at the save by K1's map and the validator K2 exercises.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: `--prove-red` plants every defect IN MEMORY; this file makes no file-writing call.
  *
@@ -33,6 +46,9 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
+import { stripPolicyLineTags } from "./lib/policy-line-source.mts";
+import { KEPT_PROMISES, PROMISE_KEYS, type KeptPromise, type PromiseKey } from "../src/lib/legal/kept-promises.ts";
+import { POLICY_LINE_DEFAULTS, policyLineProblems } from "../src/lib/legal/policy-lines.ts";
 
 process.exitCode = 1;
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -46,15 +62,24 @@ export const RG_EN_SHA = "f16606e75d46";
 type World = {
   page: string; consent: string; rg: string; featureState: string; footer: string; compliance: string;
   windowExists: boolean;
+  /** U33p (F2) · U14's per-person frequency cap — its module, when it exists. */
+  capExists: boolean;
+  /** U33p · the map the policy-line save reads, and the save's validator — each swappable, so a red case plants one. */
+  kept: Readonly<Record<PromiseKey, KeptPromise>>;
+  validate: typeof policyLineProblems;
 };
 const REAL: World = {
-  page: read("src/app/legal/responsible-gambling/page.tsx"),
+  // ⭐ U33p · read with the `PolicyLine` tags stripped — today's text, byte for byte (see the header's §4 note).
+  page: stripPolicyLineTags(read("src/app/legal/responsible-gambling/page.tsx")),
   consent: decomment(read("src/lib/server/marketing/consent.ts")),
   rg: decomment(read("src/lib/server/marketing/rg.ts")),
   featureState: decomment(read("src/lib/feature-state.ts")),
   footer: read("src/components/layout/public-footer.tsx"),
   compliance: read("docs/COMPLIANCE-DECISIONS.md"),
   windowExists: existsSync(join(ROOT, "src/lib/marketing/window.ts")),
+  capExists: existsSync(join(ROOT, "src/lib/server/marketing/frequency-cap.ts")),
+  kept: KEPT_PROMISES,
+  validate: policyLineProblems,
 };
 
 /* ══ THE CONTROLS — each §4 promise, found by its words, and what must exist in code for it to be true ══ */
@@ -90,6 +115,51 @@ const section4 = (block: string) => {
 };
 const bullets = (sec: string) => [...sec.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1].replace(/\s+/g, " ").trim());
 const enSha = (en: string) => createHash("sha256").update(en.replace(/\s+/g, " ").trim()).digest("hex").slice(0, 12);
+
+/* ══ §4 · KEPT_PROMISES, HELD TO THE CODE (U33p) ════════════════════════════════════════════════════ */
+const LF = String.fromCharCode(10);
+/** A named control above holds in this world. */
+const controlHolds = (id: string, w: World): boolean => CONTROLS.find((c) => c.id === id)?.holds(w) === true;
+/** The gate's contact branch — everything in `mayReceiveMarketingSms` from its LAST ledger read (the branch for a number no
+ *  account holds) to the function's end. Today it ends `refuse("age_unknown", …)`; U33a-G keeps that line's refusal. */
+function contactBranch(consent: string): string {
+  const at = consent.indexOf("export async function mayReceiveMarketingSms(");
+  if (at < 0) return "";
+  const end = consent.indexOf(`${LF}}${LF}`, at);
+  const body = consent.slice(at, end < 0 ? consent.length : end);
+  const from = body.lastIndexOf("const latest = await Promise.resolve(reads.latestConsent(key));");
+  return from < 0 ? "" : body.slice(from);
+}
+/** The gate's PLAYER branch — everything in `mayReceiveMarketingSms` BEFORE its contact branch: an account's own checks.
+ *  Today it refuses `age_unknown` when the identity record or the date of birth cannot be read (review F13). */
+function playerBranch(consent: string): string {
+  const at = consent.indexOf("export async function mayReceiveMarketingSms(");
+  if (at < 0) return "";
+  const end = consent.indexOf(`${LF}}${LF}`, at);
+  const body = consent.slice(at, end < 0 ? consent.length : end);
+  const from = body.lastIndexOf("const latest = await Promise.resolve(reads.latestConsent(key));");
+  return from < 0 ? "" : body.slice(0, from);
+}
+/** ⛔ What each promise's control IS in the code — the same reads as §2's controls, split where one control holds two. */
+const KEPT_CONTROL: Record<PromiseKey, (w: World) => boolean> = {
+  selfExcluded: (w) => controlHolds("self-excluded", w),
+  onBreak: (w) => controlHolds("break", w),
+  harmSign: (w) => controlHolds("harm", w),
+  under18: (w) => w.consent.includes('refuse("age_minor"'),
+  // ⭐ F13 · two promises, two controls: the player branch's age refusal, and the contact branch's.
+  ageUnconfirmed: (w) => playerBranch(w.consent).includes('refuse("age_unknown"'),
+  staffConfirmedAge: (w) => contactBranch(w.consent).includes('refuse("age_unknown"'),
+  under25: (w) => controlHolds("under-25", w),
+  lateNight: (w) => controlHolds("late-night", w),
+  // F2 · U14 builds it: its module, or the gate refusing on it.
+  frequencyCap: (w) => w.capExists || w.consent.includes('refuse("frequency_cap"'),
+};
+/** A clock time stands for a window too (the late-night promise's other spelling) — read in every language. */
+const CLOCK_SAMPLE = "between 22:00 and 06:00";
+/** A frequency is the cap's own spelling of its promise — in English, Swahili and Chinese. */
+const FREQUENCY_SAMPLE = "at most two messages a week";
+const SW_FREQUENCY_SAMPLE = "mara 2 kwa wiki";
+const ZH_FREQUENCY_SAMPLE = "每周最多两条";
 
 type Result = { label: string; ok: boolean; extra?: string };
 function check(w: World): Result[] {
@@ -146,6 +216,45 @@ function check(w: World): Result[] {
   out.push({ label: "3.4 · zh: the Responsible Gambling settings link stays on one line (whitespace-nowrap)",
     ok: zhLink !== undefined && zhLink.split(/\s+/).includes("whitespace-nowrap"),
     extra: zhLink === undefined ? "the zh settings link was not found" : `className="${zhLink}"` });
+  // §4 · KEPT_PROMISES (U33p) — the map the policy-line save trusts, held to the code it describes
+  const drift = PROMISE_KEYS.filter((k) => w.kept[k].kept !== KEPT_CONTROL[k](w));
+  out.push({ label: "4.0 · ⚠️ CONTROL — every promise has a control reader, and the player and contact branches of the gate were found",
+    ok: PROMISE_KEYS.every((k) => typeof KEPT_CONTROL[k] === "function") && contactBranch(w.consent).length > 0
+      && playerBranch(w.consent).includes("mayReceiveMarketingSms"),
+    extra: `player branch ${playerBranch(w.consent).length} · contact branch ${contactBranch(w.consent).length} characters` });
+  out.push({ label: "4.1 · K1 · ⛔ every KEPT_PROMISES value equals its control's presence in the code — the policy-line save never trusts a promise nothing enforces",
+    ok: drift.length === 0,
+    extra: drift.map((k) => `${k}: the map says ${w.kept[k].kept}, the code says ${KEPT_CONTROL[k](w)}`).join(" | ") });
+  const misjudged: string[] = [];
+  let judged = 0;
+  const RG_TODAY = POLICY_LINE_DEFAULTS["rg.marketing"];
+  for (const k of PROMISE_KEYS) {
+    const p = w.kept[k];
+    // Every word of the promise, in the box of the language it is written in (F3: Swahili and Chinese too).
+    const samples: Array<{ locale: "en" | "sw" | "zh"; word: string }> = [
+      ...p.phrases.map((word) => ({ locale: "en" as const, word })),
+      ...(p.anyLanguage.length > 0 ? [{ locale: "en" as const, word: CLOCK_SAMPLE }] : []),
+      ...(p.patterns.length > 0 ? [{ locale: "en" as const, word: FREQUENCY_SAMPLE }] : []),
+      ...p.sw.map((word) => ({ locale: "sw" as const, word })),
+      ...p.zh.map((word) => ({ locale: "zh" as const, word })),
+      ...(p.swPatterns.length > 0 ? [{ locale: "sw" as const, word: SW_FREQUENCY_SAMPLE }] : []),
+      ...(p.zhPatterns.length > 0 ? [{ locale: "zh" as const, word: ZH_FREQUENCY_SAMPLE }] : []),
+    ];
+    for (const { locale, word } of samples) {
+      judged++;
+      const texts = {
+        en: locale === "en" ? `No marketing messages to ${word}, at any time.` : RG_TODAY.en,
+        sw: locale === "sw" ? `${RG_TODAY.sw} ${word}` : RG_TODAY.sw,
+        zh: locale === "zh" ? `${RG_TODAY.zh}${word}` : RG_TODAY.zh,
+      };
+      const verdict = w.validate("rg.marketing", texts);
+      const refused = verdict.problems[locale].some((x) => x.code === "promise_unkept");
+      if (refused === p.kept) misjudged.push(`"${word}" (${k}, ${locale}, ${p.kept ? "kept" : "unkept"}) was ${refused ? "refused" : "accepted"}`);
+    }
+  }
+  out.push({ label: "4.2 · K2 · the policy-line save refuses every word of an unkept promise and accepts every word of a kept one",
+    ok: misjudged.length === 0 && judged >= PROMISE_KEYS.length,
+    extra: misjudged.length > 0 ? misjudged.join(" | ") : `only ${judged} words judged` });
   return out;
 }
 
@@ -166,6 +275,19 @@ if (!PROVE_RED) {
   const enBlock = blocks(REAL.page).en;
   const withEn = (en: string): string => REAL.page.replace(enBlock, en);
   const firstLi = "<li>No bonus offers tied to deposit increases</li>";
+  // U33p · K1's plants: the age clause for a number no account holds removed from the gate (its LAST age_unknown refusal).
+  const lastAgeUnknown = REAL.consent.lastIndexOf('refuse("age_unknown"');
+  const contactAgeDropped = lastAgeUnknown < 0 ? REAL.consent
+    : `${REAL.consent.slice(0, lastAgeUnknown)}refuse("account_status"${REAL.consent.slice(lastAgeUnknown + 'refuse("age_unknown"'.length)}`;
+  if (contactAgeDropped === REAL.consent) problems.push("K1 plant: the contact branch's age refusal was not found");
+  // F13 · the PLAYER branch's age refusals removed (every age_unknown in the gate before its contact branch), the contact
+  // branch's kept — so the "whose age we cannot confirm" promise loses its control while the staff promise keeps its own.
+  const gateAt = REAL.consent.indexOf("export async function mayReceiveMarketingSms(");
+  const contactAt = REAL.consent.lastIndexOf("const latest = await Promise.resolve(reads.latestConsent(key));");
+  const playerAgeDropped = gateAt < 0 || contactAt < gateAt ? REAL.consent
+    : REAL.consent.slice(0, gateAt) + REAL.consent.slice(gateAt, contactAt).split('refuse("age_unknown"').join('refuse("account_status"')
+      + REAL.consent.slice(contactAt);
+  if (playerAgeDropped === REAL.consent) problems.push("K1 plant: the player branch's age refusals were not found");
   const CASES: Array<{ name: string; world: World; expect: RegExp }> = [
     { name: "a new §4 promise with NO control behind it (the D12 shape)",
       world: { ...REAL, page: withEn(enBlock.replace(firstLi, `${firstLi}\n          <li>No marketing messages between 22:00 and 06:00 EAT</li>`)) }, expect: /^2\.1 /},
@@ -193,6 +315,26 @@ if (!PROVE_RED) {
       world: { ...REAL, page: REAL.page.replace('<span className="whitespace-nowrap">dakika&nbsp;5–120</span>', "dakika&nbsp;5–120") }, expect: /^3\.3 / },
     { name: "zh: the settings link can break mid-term again ('负责任博彩设' / '置' at 360)",
       world: { ...REAL, page: REAL.page.replace('className="whitespace-nowrap text-gold-300 hover:text-gold-200', 'className="text-gold-300 hover:text-gold-200') }, expect: /^3\.4 / },
+    { name: "K1 · KEPT_PROMISES says the late-night window is kept while src/lib/marketing/window.ts does not exist",
+      world: { ...REAL, kept: { ...REAL.kept, lateNight: { ...REAL.kept.lateNight, kept: true } } }, expect: /^4[.]1 / },
+    { name: "K1 · the gate stops refusing a number no account holds on age, while KEPT_PROMISES still says the promise is kept",
+      world: { ...REAL, consent: contactAgeDropped }, expect: /^4[.]1 / },
+    { name: "K1 · F13 · the gate stops refusing a player whose age cannot be read, while KEPT_PROMISES still says that promise is kept",
+      world: { ...REAL, consent: playerAgeDropped }, expect: /^4[.]1 / },
+    { name: "K1 · F2 · KEPT_PROMISES says the frequency cap is kept while no cap exists in code",
+      world: { ...REAL, kept: { ...REAL.kept, frequencyCap: { ...REAL.kept.frequencyCap, kept: true } } }, expect: /^4[.]1 / },
+    { name: "K1 · F2 · U14 builds the cap while KEPT_PROMISES still says it is unkept (the map must flip in the same commit)",
+      world: { ...REAL, capExists: true }, expect: /^4[.]1 / },
+    { name: "K2 · F3 · the policy-line save reads only the English — a Swahili or Chinese late-night promise is published",
+      world: { ...REAL, validate: (key, raw) => {
+        const v = policyLineProblems(key, raw);
+        return { ...v, problems: { ...v.problems, sw: v.problems.sw.filter((x) => x.code !== "promise_unkept"), zh: v.problems.zh.filter((x) => x.code !== "promise_unkept") } };
+      } }, expect: /^4[.]2 / },
+    { name: "K2 · the policy-line save lets a late-night promise through (its unkept-promise rule removed)",
+      world: { ...REAL, validate: (key, raw) => {
+        const v = policyLineProblems(key, raw);
+        return { ...v, problems: { ...v.problems, en: v.problems.en.filter((p) => p.code !== "promise_unkept") } };
+      } }, expect: /^4[.]2 / },
   ];
   let caught = 0;
   for (const [i, c] of CASES.entries()) {

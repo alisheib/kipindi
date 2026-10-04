@@ -589,7 +589,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   {
     const src = impl.src;
     const at = src.actions.indexOf("export async function saveMarketingWordingsAction(");
-    const action = at < 0 ? "" : src.actions.slice(at);
+    // ⛔ ENDS AT THE NEXT TOP-LEVEL EXPORT (U33p, 2026-10-04): `savePolicyLinesAction` follows this action in the same
+    // file and reads its form with the same `patchFromForm(formData.entries())` — a slice to the end of the file let THAT
+    // call satisfy W8, and the plant that removes this action's own call stayed green (red:marketing-wordings 35/36).
+    const end = at < 0 ? -1 : src.actions.indexOf(String.fromCharCode(10) + "export ", at + 1);
+    const action = at < 0 ? "" : src.actions.slice(at, end < 0 ? undefined : end);
     const actionOk = squash(action).startsWith(squash("export async function saveMarketingWordingsAction(formData: FormData): Promise<MarketingWordingsActionResult> {") + squash("const session = await requireAdmin();"))
       && action.includes("patchFromForm(formData.entries())") && action.includes("saveMarketingWordings(form.patch, session.userId)")
       && action.includes("fieldError(wordingFieldName(first), res.error)")

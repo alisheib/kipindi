@@ -9,6 +9,50 @@
 ---
 
 
+## 2026-10-04 · The public policy lines are editable on Admin → System, and how a saved line is kept true (decided under Ali's delegation; G4 · G10)
+
+**Authority.** Ali's owner rule of 2026-10-03 ("all changeable" — § "2026-10-03 · Every public fact is editable by
+admins"), his rulings OD57 and OD58 (outreach under the Gaming Board licence), and his standing delegation of technical
+calls. G4 and G10 — approving what the public pages say — stay HIS act, performed by saving the lines on the card.
+
+**What changed.** Five lines the public reads are saved, validated and audited on Admin → System's "Public policy lines"
+tab (`legal.policy_lines`; audit `config.policy_lines_updated`): the Responsible Gambling page's §4 marketing promise; the
+Privacy Notice's §3 Consent bullet, a NEW §3 licence bullet (blank — not printed — until saved) and its §4 Blackball (SMS
+gateway) bullet; and the note under the profile's offers switch, which is stored only: nothing prints it until licence
+outreach exists (U33a-P). Each line has English, Swahili and Chinese; the English is the binding text.
+
+**Nothing prints differently until a save.** Each page prints its own literal text until its line is saved — byte for byte
+what it printed before — so the page's text and DOM, both versions (RG Policy v2026-09-26, the Privacy Notice v2026-10-01)
+and both English hash pins are unchanged (React's inline payload gains one empty slot per wrapper; `test:rg-policy` and
+`test:privacy-notice` read the pages with the wrapper's tags stripped). NEW WORDS publish at once and move their page's
+version to that day's EAT date (a second that day `.2`); a review of today's words is recorded as a marker and moves
+nothing. Each stamp records the code version it was made against, and the page prints the version `printedPolicyVersion`
+derives from the two, so no version label is ever reused over different text. For a SAVED line the audit row — `before`, `after` and
+`changes`, naming the line and the version it moved — is the decision record, as a dated entry here is for a change made in
+code.
+
+**What the rules keep true.** Every language: 20–600 characters (the note 10–200; the licence bullet and the note may be
+blank in all three languages, never in one), plain text, no run of seven digits, no unbroken run over 30 characters
+(English, Swahili). Every language's line is read against `KEPT_PROMISES` (`src/lib/legal/kept-promises.ts`): a promise
+the code does not keep — today a late-night window (until U13) and a frequency cap (until U14) — is REFUSED, naming it;
+the two age promises are held to the gate's player and contact branches; dropping a promise the code still keeps is a note, never a refusal. `test:rg-policy` K1 holds every
+`KEPT_PROMISES` value to the code (true if and only if its control exists), so the save can never trust a promise nothing
+enforces. The Blackball line must keep the gateway's facts (who it is, its role, what it receives), and the Consent line
+where consent is withdrawn and that analytics runs only with it — one table, shared with `test:privacy-notice`. A page
+left open is refused if someone saved since; today's words are kept unchanged only with the line's own review tick,
+stored as a marker the page does not print.
+Enforced by `npm run test:policy-lines`, `npm run test:rg-policy` and `npm run test:privacy-notice`; proved by
+`npm run red:policy-lines` and `npm run red:rg-policy`.
+
+**Nothing turns on.** No line is saved by this change, and licence outreach stays closed. Opening it (U33a-R) requires the
+saved lines to stop contradicting it: the Blackball line saved with no consent-only clause in any language, the licence
+bullet saved and the Consent bullet reviewed, and the RG line saying how a non-member's age is confirmed (it names staff
+and 18) — `policyOpeningProblems`.
+⛔ Do not restore: a public line changed only in code while its card holds a saved one (the page prints the saved one), a
+save that skips `KEPT_PROMISES`, or a consent-only Blackball clause printed while licence outreach is open.
+
+---
+
 ## 2026-10-04 · The marketing consent wordings are approved by saving them on Admin → System, every version kept (decided under Ali's delegation; G4)
 
 **Authority.** Ali's owner rule of 2026-10-03 ("all changeable"), his rulings OD57 and OD58 (outreach under the Gaming

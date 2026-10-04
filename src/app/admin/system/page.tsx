@@ -8,6 +8,9 @@ import { MarketingWordingsForm, type WordingRowView } from "./marketing-wordings
 import { getSupportConfig } from "@/lib/server/support-config";
 import { wordingHistory } from "@/lib/server/marketing/wordings";
 import { WORDING_KEYS } from "@/lib/marketing/marketing-wordings";
+import { PolicyLinesForm, type PolicyLineRowView, type PolicyPageVersionView } from "./policy-lines-form";
+import { savedPolicyHistory, policyVersion } from "@/lib/server/legal/policy-lines";
+import { POLICY_LINE_KEYS, POLICY_PAGE_KEYS, POLICY_PAGES, isReviewVersion } from "@/lib/legal/policy-lines";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
@@ -150,6 +153,39 @@ async function marketingWordingRows(): Promise<WordingRowView[]> {
 }
 
 /**
+ * U33p · every public policy line's saved history for the card — new words and review markers, the admin's NAME (never
+ * their id) and the save's time already in words, one user read per author — and each page's version: the code's, and the
+ * one the page prints now. Read from this process's cache, so ⛔ it cannot fail the page: a name that cannot be read says
+ * "an admin", and a process that never loaded the record shows every line as not saved, which is what its pages print too
+ * (their own words).
+ */
+async function policyLineRows(): Promise<{ rows: PolicyLineRowView[]; pages: PolicyPageVersionView[] }> {
+  const histories = POLICY_LINE_KEYS.map((key) => ({ key, versions: savedPolicyHistory(key) }));
+  const names = new Map<string, string>();
+  for (const id of new Set(histories.flatMap((h) => h.versions.map((v) => v.savedBy)))) {
+    // ⛔ try/await, never `.catch` on the call: the in-memory store answers synchronously (the tax page's lesson).
+    let u: { displayName?: string | null } | null = null;
+    try { u = await db.user.findById(id); } catch { u = null; }
+    names.set(id, u?.displayName?.trim() || "an admin");
+  }
+  const rows: PolicyLineRowView[] = histories.map(({ key, versions }) => ({
+    key,
+    versions: versions.map((v): PolicyLineRowView["versions"][number] => ({
+      rev: v.rev,
+      kind: isReviewVersion(v) ? "review" : "words",
+      texts: isReviewVersion(v) ? null : { en: v.en, sw: v.sw, zh: v.zh },
+      fingerprint: isReviewVersion(v) ? v.reviewedDefault : v.codeDefault,
+      savedAtLabel: formatDateTimeSafe(v.savedAt),
+      savedByName: names.get(v.savedBy) ?? "an admin",
+    })),
+  }));
+  const pages: PolicyPageVersionView[] = POLICY_PAGE_KEYS.map((page) => ({
+    page, title: POLICY_PAGES[page].title, code: POLICY_PAGES[page].codeVersion, printed: policyVersion(page),
+  }));
+  return { rows, pages };
+}
+
+/**
  * ⭐ THE SECTION RAIL (DG-S-08, 2026-08-31) — §K rule 7, and this page was chosen by
  * MEASUREMENT rather than by the plan's nomination.
  *
@@ -168,6 +204,8 @@ async function marketingWordingRows(): Promise<WordingRowView[]> {
  * ⭐ U33w (2026-10-04) · approving the words evidence carries is a task of its own, so the Marketing wordings card is a
  * THIRD tab (`?tab=wordings`), read only there — never a Platform card, which would also have made the figures recorded
  * above untrue for the Platform tab.
+ * ⭐ U33p (2026-10-04) · editing what the public Responsible Gambling and Privacy pages say is a task of its own too, so the
+ * Public policy lines card is a FOURTH tab (`?tab=policy`), read only there — never a Platform card, for the same reason.
  */
 type SystemProps = { searchParams: Promise<{ tab?: string }> };
 
@@ -186,7 +224,8 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   /* ⛔ The tab is READ, never trusted: an unknown `?tab=` falls back to the landing rather than
      rendering an empty page. §K rule 7f — the tab set's home is this page's own definition. */
   const sp = await searchParams;
-  const tab: "platform" | "wordings" | "diagnostics" = sp.tab === "diagnostics" ? "diagnostics" : sp.tab === "wordings" ? "wordings" : "platform";
+  const tab: "platform" | "wordings" | "policy" | "diagnostics" =
+    sp.tab === "diagnostics" ? "diagnostics" : sp.tab === "wordings" ? "wordings" : sp.tab === "policy" ? "policy" : "platform";
   const platform = await getPlatformConfig().catch(() => ({ timezone: "Africa/Dar_es_Salaam" } as Awaited<ReturnType<typeof getPlatformConfig>>));
   const chain = verifyChain();
   const session = await currentSession().catch(() => null);
@@ -246,6 +285,8 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   });
   // U33w · the Marketing wordings card has its own tab (m7); its rows are read only there.
   const wordingRows = tab === "wordings" ? await marketingWordingRows() : null;
+  // U33p · the Public policy lines card has its own tab too; its rows are read only there.
+  const policyRows = tab === "policy" ? await policyLineRows() : null;
 
   return (
     <>
@@ -466,6 +507,7 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
             tabs={[
               { value: "platform", labelEn: "Platform", href: "/admin/system?tab=platform" },
               { value: "wordings", labelEn: "Marketing wordings", href: "/admin/system?tab=wordings" },
+              { value: "policy", labelEn: "Public policy lines", href: "/admin/system?tab=policy" },
               { value: "diagnostics", labelEn: "Diagnostics", href: "/admin/system?tab=diagnostics" },
             ]}
           />
@@ -554,6 +596,27 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
               save, new records use these words; records already made keep the words they were made with.
             </p>
             <MarketingWordingsForm key={wordingRows.map((r) => r.versions.length).join(".")} rows={wordingRows} />
+          </AdminCard>
+        )}
+        </>)}
+
+        {tab === "policy" && (<>
+        {/* ⭐ U33p · THE PUBLIC POLICY LINES (OD58 · S15 — the owner rule of 2026-10-03), on a tab of their own: the RG
+            page's marketing promise, the Privacy Notice's Consent, licence and SMS-gateway bullets, and the profile's outreach
+            note, each in three languages. ⛔ A line with no saved words shows TODAY's words and the page prints them
+            unchanged; new words publish at once, move the page's version and are audited; a review is audited and moves
+            nothing. The `key` is every line's version count, so a save that lands remounts the card from the row — the
+            Support contacts lesson on the Platform tab. */}
+        {policyRows && (
+          <AdminCard title="Public policy lines" sw="Mistari ya sera kwa umma">
+            <p className="text-body-sm text-text-subtle mb-3">
+              The lines the public Responsible Gambling and Privacy pages print from these settings. Until a line has
+              saved words here its page prints today&apos;s words, shown in its boxes. New words are published at once and
+              move that page&apos;s version; marking a line reviewed records the review and changes nothing on the page.
+              Every save is kept in the line&apos;s history and the audit log, and a line that promises something the code
+              does not do is refused.
+            </p>
+            <PolicyLinesForm key={policyRows.rows.map((r) => r.versions.length).join(".")} rows={policyRows.rows} pages={policyRows.pages} />
           </AdminCard>
         )}
         </>)}

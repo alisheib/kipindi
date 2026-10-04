@@ -20,6 +20,15 @@
  *        code, not retyped.
  *   §4h · zh typography: no space after full-width punctuation (a {" "} after "：" printed a gap in §1).
  *
+ * ⭐ U33p (2026-10-04) · THREE BULLETS ARE ADMIN-EDITED LINES NOW (`legal.policy_lines`): the §3 Consent bullet, a new §3
+ * licence bullet, and the §4 Blackball bullet. The page wraps each in a `PolicyLine` element whose children are today's
+ * literal bullet, printed until an admin saves the line. This suite reads the page with those tags stripped
+ * (`scripts/lib/policy-line-source.mts`), so every check, every plant and the English hash pin read exactly the text the
+ * page prints while nothing is saved — the pin holds untouched. A SAVED line is held to the same words at the save: the
+ * §2e gateway facts (`SMS_GATEWAY_WORDS`), the §4d withdrawal path (`CONSENT_WITHDRAW_PATH`) and the §4f analytics words
+ * (`ANALYTICS_CONSENT_WORDS`) are ONE table, exported by `src/lib/legal/policy-lines.ts` and imported here — the
+ * validator and this guard can never be retyped apart (`test:policy-lines` L7 holds the imports).
+ *
  * ⛔ The privacy page is inline JSX in one file, not dictionary-driven, so `test:i18n` sees none of it (the
  * 2026-08-20 COMPLIANCE-DECISIONS entry). `test:cert-d1` §2b keeps its older negatives; this suite is the gate.
  * ⛔ EVERY CHECK HAS A PLANTED CONTROL (§5): the defect it exists for, re-planted into a copy of today's files.
@@ -28,6 +37,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import { stripPolicyLineTags } from "./lib/policy-line-source.mts";
+import { ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, SMS_GATEWAY_WORDS } from "../src/lib/legal/policy-lines.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
@@ -51,7 +62,8 @@ const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-loc
 // withdrawn (`google-tag.tsx` expireCookie) — a deletion is a write, so the census must see it; it is never spelled to dodge it.
 
 const PAGE = "src/app/legal/privacy/page.tsx";
-const pageSrc = read(PAGE);
+/** ⭐ U33p · read with the `PolicyLine` tags stripped — the text the page prints while no line is saved, byte for byte. */
+const pageSrc = stripPolicyLineTags(read(PAGE));
 
 type Loc = "en" | "sw" | "zh";
 const LOCS: Loc[] = ["en", "sw", "zh"];
@@ -166,10 +178,13 @@ console.log("\n§2e · every SMS provider the code can select is named in §4, w
 const SMS_STUBS = new Set(["console"]);
 /** provider id → the words §4 must carry in EACH locale: the name, the role, what it receives, and that marketing needs consent. */
 const SMS_WORDS: Record<string, Record<Loc, string[]>> = {
+  // ⭐ U33p · the gateway's facts are the policy-line validator's own table (a SAVED Blackball line must keep them); the
+  // consent-only clause is today's promise — required of the page as it prints until a save, and the very words licence
+  // outreach may not open beside (spec §5.3). Same strings as before, read from one home.
   blackball: {
-    en: ["Blackball", "SMS gateway", "your phone number and the text of each message", "only if you agree to receive them"],
-    sw: ["Blackball", "lango letu la SMS", "namba yako ya simu na maandishi ya kila ujumbe", "ikiwa tu umekubali kuzipokea"],
-    zh: ["Blackball", "短信网关", "您的电话号码和每条短信的内容", "仅在您同意接收时"],
+    en: [...SMS_GATEWAY_WORDS.en, CONSENT_ONLY_CLAUSE.en],
+    sw: [...SMS_GATEWAY_WORDS.sw, CONSENT_ONLY_CLAUSE.sw],
+    zh: [...SMS_GATEWAY_WORDS.zh, CONSENT_ONLY_CLAUSE.zh],
   },
 };
 const smsProviders = (sms: string) =>
@@ -340,7 +355,8 @@ const RETIRED_FACTS: Record<Loc, string[]> = {
   sw: ["Washirika wa rejista za chanzo", "miaka 2 ya kutokuwa na shughuli", "kujitoa kwenye uchambuzi wa wasifu kwa ajili ya matangazo", "(yanaweza kufutwa wakati wowote)"],
   zh: ["来源登记合作方", "连续 2 年无活动", "选择退出用于营销的画像分析", "（可随时撤回）"],
 };
-const CONSENT_PATH: Record<Loc, string> = { en: "Profile → Notifications", sw: "Wasifu → Arifa", zh: "个人资料 → 通知" };
+/** ⭐ U33p · the policy-line validator's own table — a SAVED Consent bullet must keep it too. */
+const CONSENT_PATH: Record<Loc, string> = { ...CONSENT_WITHDRAW_PATH };
 function factDefects(src: string, payments: string, consent: string): string[] {
   const d: string[] = [];
   const bl = blocks(src);
@@ -528,9 +544,9 @@ const grantDays = (lib: string) => Number(lib.match(/export const CONSENT_GRANT_
 function consentWords(lib: string): Record<Loc, { s3: string[]; s4: string[]; s7: string[]; lawful: RegExp }> {
   const d = denyDays(lib);
   return {
-    en: { s3: ["Google Analytics — only if you allow it", "§7"], s4: ["only if you allow analytics"], s7: ["Only if you allow analytics", "Analytics is off until you", `${d} days if you decline`, "<AnalyticsChoice />"], lawful: /measuring how the website is used/ },
-    sw: { s3: ["Google Analytics — ikiwa tu utairuhusu", "§7"], s4: ["ikiwa tu utaruhusu takwimu"], s7: ["Ikiwa tu utaruhusu takwimu", "Takwimu zimezimwa hadi", `siku ${d} ukikataa`, "<AnalyticsChoice />"], lawful: /kupima jinsi tovuti inavyotumika/ },
-    zh: { s3: ["Google Analytics——仅在首次询问时您同意", "第 7 条"], s4: ["仅在您允许分析时启用"], s7: ["仅在您允许分析时", "在您作出选择之前，分析处于关闭状态", `拒绝则保存 ${d} 天`, "<AnalyticsChoice />"], lawful: /衡量网站的使用情况/ },
+    en: { s3: [...ANALYTICS_CONSENT_WORDS.en], s4: ["only if you allow analytics"], s7: ["Only if you allow analytics", "Analytics is off until you", `${d} days if you decline`, "<AnalyticsChoice />"], lawful: /measuring how the website is used/ },
+    sw: { s3: [...ANALYTICS_CONSENT_WORDS.sw], s4: ["ikiwa tu utaruhusu takwimu"], s7: ["Ikiwa tu utaruhusu takwimu", "Takwimu zimezimwa hadi", `siku ${d} ukikataa`, "<AnalyticsChoice />"], lawful: /kupima jinsi tovuti inavyotumika/ },
+    zh: { s3: [...ANALYTICS_CONSENT_WORDS.zh], s4: ["仅在您允许分析时启用"], s7: ["仅在您允许分析时", "在您作出选择之前，分析处于关闭状态", `拒绝则保存 ${d} 天`, "<AnalyticsChoice />"], lawful: /衡量网站的使用情况/ },
   };
 }
 function consentDefects(page: string, component: string, prompt: string, shell: string, lib: string): string[] {
