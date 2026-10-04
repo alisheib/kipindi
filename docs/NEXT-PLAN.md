@@ -81,7 +81,7 @@ Ali, 2026-09-29: *"no matter what we need to cut off we need perfection and alig
 | **Next** | Read it from the tracker's §0 **Next:**, never from this cell |
 | **Rule** | Every session rewrites §0 and ticks §1 in its own commits, and **updates this row's count in the same commit** — `npm run test:vodacom-plan` asserts the two agree |
 
-## ▶ 0d · GOVERNMENT TAX REPORT — `TAX-REPORT` · 🟢 **LIVE 2026-10-03 `d1b82f9a` · `/admin/tax`** · status and proof in [`TAX-REPORT.md`](TAX-REPORT.md) §0
+## ▶ 0d · GOVERNMENT TAX REPORT — `TAX-REPORT` · 🟢 **LIVE 2026-10-03 `d1b82f9a` · day by day LIVE 2026-10-04 `d4db96bb` · `/admin/tax`** · status and proof in [`TAX-REPORT.md`](TAX-REPORT.md) §0
 
 Ali, 2026-10-03: *"create and push live this report … as mentioned in the pdf"* — the plan *"Government Tax Reporting
 System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLIANCE-DECISIONS.md`, same date).
