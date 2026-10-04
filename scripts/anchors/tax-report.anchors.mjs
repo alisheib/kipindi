@@ -213,8 +213,8 @@ export const MUTATIONS = [
   {
     name: "tax-report-view.ts — the books moving under a lock goes unsaid",
     file: "src/lib/server/tax-report-view.ts",
-    from: "return lines.filter((l) => l.locked !== l.live);",
-    to: "return [];",
+    from: "const out = lines.filter((l) => l.locked !== l.live);",
+    to: "const out: DriftLine[] = [];",
     expect: "13.6",
   },
 
@@ -335,5 +335,114 @@ export const MUTATIONS = [
     from: "cutoffMs: Math.max(p.startMs, nowMs - RUNNING_MARGIN_MS)",
     to: "cutoffMs: nowMs",
     expect: "6.12",
+  },
+  // ── day by day: each day its own report, the days adding up to the period ─────────────────────
+  {
+    // An edge AT the window's end is pushed twice: an empty last day, and a month of 31 slices for 30 days.
+    name: "tax-report.ts — the day edges run one past the window's end",
+    file: "src/lib/tax-report.ts",
+    from: "; next < endMs; next += DAY_MS) edges.push(next);",
+    to: "; next <= endMs; next += DAY_MS) edges.push(next);",
+    expect: "14.1",
+  },
+  {
+    // A row's link must open exactly its day — not the rest of the window from that day on.
+    name: "tax-report.ts — a day's link opens the rest of the window, not the day",
+    file: "src/lib/tax-report.ts",
+    from: "  const endMs = Math.min(dayEnd, windowEndMs);",
+    to: "  const endMs = windowEndMs;",
+    expect: "14.4",
+  },
+  {
+    // Measured on the cut-off, a month on its first morning has "one day" and shows no days at all.
+    name: "tax-report-data.ts — whether a window has days is measured on the cut-off, not the window",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "  if (dayEdges(period.startMs, period.endMs).length <= 2) return null;",
+    to: "  if (dayEdges(L.S, L.E).length <= 2) return null;",
+    expect: "14.26",
+  },
+  {
+    // A stake placed on the stroke of midnight belongs to the NEW day; strictly-less files it under the old one.
+    name: "tax-report-data.ts — an instant exactly at midnight is filed under the day before",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "if (edges[mid] <= t) lo = mid; else hi = mid - 1;",
+    to: "if (edges[mid] < t) lo = mid; else hi = mid - 1;",
+    expect: "14.9",
+  },
+  {
+    // A stake placed before the window and still waiting is brought forward into its first day.
+    name: "tax-report-data.ts — a day forgets the stakes placed before the window",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "    if (!(placed < L.E)) continue;",
+    to: "    if (!(placed >= L.S && placed < L.E)) continue;",
+    expect: "14.21",
+  },
+  {
+    // A losing bet leaves no money record: dropped from the day it resulted on, its round no longer closes.
+    name: "tax-report-data.ts — a bet is dropped from the day it left on hold",
+    file: "src/lib/server/tax-report-data.ts",
+    from: ": sliceOf(left);",
+    to: ": sliceOf(left) - 1;",
+    expect: "14.8",
+  },
+  {
+    // A payout on a bet that left the day before: the Day view finds its bet by id, and so must the row.
+    name: "tax-report-data.ts — a day drops the bets its own money records name",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "      if (p) bets[i].set(p.id, p);",
+    to: "      void p;",
+    expect: "14.27",
+  },
+  {
+    name: "tax-report-doc.ts — the day note never says when the days' tax differs from Report 2's",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '(dayTax === f.tax.total ? "" :',
+    to: '(true ? "" :',
+    expect: "14.30",
+  },
+  {
+    // A filing locked before daily figures existed must say it holds none, not print as if days were empty.
+    name: "tax-report-doc.ts — an old filing's missing day table goes unsaid",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '    if (d.byDay === undefined && d.period.kind !== "day") notes.push(NO_DAYS_IN_LOCK);',
+    to: "    void NO_DAYS_IN_LOCK;",
+    expect: "14.41",
+  },
+  {
+    // Two days of .50 make a whole period: rounded to shillings, the printed days no longer add up.
+    name: "tax-report-doc.ts — a day's cents are rounded away when the period's are whole",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: "|| (d.byDay ?? []).some((x) => Object.values(x.report1).some(cents) || cents(x.differenceCents));",
+    to: "|| false;",
+    expect: "14.40",
+  },
+  {
+    name: "tax-report-doc.ts — the workbook adds the stakes brought forward instead of subtracting them",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: "bf: money(-x.report1.broughtForwardCents || 0),",
+    to: "bf: money(x.report1.broughtForwardCents),",
+    expect: "14.36",
+  },
+  {
+    // A day that closed seconds ago read to its end disagrees with the running month that cuts a minute back.
+    name: "tax-report.ts — a period that ended seconds ago is read to its end, not a minute back",
+    file: "src/lib/tax-report.ts",
+    from: "if (p.endMs > nowMs - RUNNING_MARGIN_MS) return",
+    to: "if (p.endMs > nowMs) return",
+    expect: "14.26b",
+  },
+  {
+    name: "tax-report-view.ts — money moved between days goes unnamed while the period lines agree",
+    file: "src/lib/server/tax-report-view.ts",
+    from: "  if (locked.byDay && live.byDay) {",
+    to: "  if (false) {",
+    expect: "14.48",
+  },
+  {
+    name: "tax-report-doc.ts — the printed page hides a day that is out of balance",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: 'o.print && !x.balanced ? "out of balance" : null',
+    to: "null",
+    expect: "14.34",
   },
 ];

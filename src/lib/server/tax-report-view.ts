@@ -10,7 +10,7 @@
  */
 import { buildTaxReportData, type TaxReportData } from "./tax-report-data";
 import { locksForPeriod, type TaxLock } from "./tax-locks";
-import type { ProductFilter, TaxPeriod } from "@/lib/tax-report";
+import { daySlice, type ProductFilter, type TaxPeriod } from "@/lib/tax-report";
 
 export type DriftLine = { line: string; locked: number; live: number; unit: "cents" | "tzs" };
 
@@ -41,7 +41,27 @@ export function driftBetween(locked: TaxReportData, live: TaxReportData): DriftL
     { line: "GBT tax", locked: a.tax.gbt, live: b.tax.gbt, unit: "tzs" },
     { line: "Total Tax payable", locked: a.tax.total, live: b.tax.total, unit: "tzs" },
   ];
-  return lines.filter((l) => l.locked !== l.live);
+  const out = lines.filter((l) => l.locked !== l.live);
+  // ⭐ THE DAYS TOO (2026-10-04): a correction that moves money from one day to another leaves every period line equal,
+  // and the locked day table would read as agreeing with books that moved under it. Compared only when both carry days
+  // (a filing locked before daily figures were recorded holds none to compare).
+  if (locked.byDay && live.byDay) {
+    const now = new Map(live.byDay.map((x) => [x.dayKey, x]));
+    for (const x of locked.byDay) {
+      const y = now.get(x.dayKey);
+      if (!y) continue;
+      const day = daySlice(x.startMs, locked.period.endMs).label;
+      const pairs: Array<[string, number, number, DriftLine["unit"]]> = [
+        ["Sales", x.report1.salesCents, y.report1.salesCents, "cents"],
+        ["Payout", x.report1.payoutCents, y.report1.payoutCents, "cents"],
+        ["On hold", x.report1.onHoldCents, y.report1.onHoldCents, "cents"],
+        ["Refunds", x.report1.refundsCents, y.report1.refundsCents, "cents"],
+        ["Total tax", x.tax.total, y.tax.total, "tzs"],
+      ];
+      for (const [name, was, is, unit] of pairs) if (was !== is) out.push({ line: `${name} on ${day}`, locked: was, live: is, unit });
+    }
+  }
+  return out;
 }
 
 export async function loadTaxReportView(opts: { period: TaxPeriod; product: ProductFilter; nowMs: number }): Promise<

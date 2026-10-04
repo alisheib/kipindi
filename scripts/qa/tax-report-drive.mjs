@@ -9,7 +9,8 @@
  * It seeds real books with `POST /api/dev-test/seed-tax-books` (the real money services, timestamps
  * moved into a finished month), then: every period type × every product · the arrows · the custom
  * window · a balanced month, an out-of-balance month and a running month · Lock → drift → Reopen ·
- * a rate change that splits a month · all three downloads — asserting the figures on the page add up
+ * a rate change that splits a month · all three downloads · day by day (every day its own report: the days
+ * add up to Report 1, a day opens equal to its row, part-days, paging, phone blocks, the files' day tables) — asserting the figures on the page add up
  * (Report 1's check, Polls + Up & Down = All, refunds = Refunds), then photographs VIEWPORT TILES at
  * six widths (never full-page: fixed layers paint at their first-viewport position in a full shot).
  * ⛔ Every wait is for CONTENT — the console polls forever, so `networkidle` never settles.
@@ -339,6 +340,208 @@ for (const [fmt, magic] of [["pdf", "%PDF-"], ["xlsx", "PK"], ["csv", "﻿"]]) {
 }
 await page.waitForTimeout(500);
 
+// ── 13 · day by day — every day its own report, the days adding up to the period ─────────────────
+{
+  const num = (s) => { const t = String(s ?? "").trim(); const neg = /^[−-]/.test(t); return Math.round(Number(t.replace(/[^0-9.]/g, "")) * 100) * (neg ? -1 : 1); };
+  const plus = (day, n) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+  /** The day table as the page prints it (the xl table): one object per day row. */
+  const dayRows = () => page.evaluate(() => [...document.querySelectorAll('[data-testid="tax-days"] tbody tr[data-day]')].map((tr) => {
+    const td = [...tr.querySelectorAll("td")];
+    const txt = (i) => td[i]?.textContent?.trim() ?? "";
+    return {
+      key: tr.getAttribute("data-day"), quiet: tr.className.includes("text-text-tertiary"),
+      label: td[0]?.querySelector("a")?.textContent?.trim() ?? "", hint: td[0]?.querySelector("span.block")?.textContent?.trim() ?? "",
+      href: decodeURIComponent(td[0]?.querySelector("a")?.getAttribute("href") ?? ""),
+      sales: txt(1), payout: txt(2), onHold: txt(3), refunds: txt(4), tax: txt(5), check: txt(6),
+    };
+  }));
+  const openDays = async (path) => { await open(path, true); await page.locator('[data-testid="tax-days-card"]').first().waitFor({ timeout: 60_000 }); };
+  /** Photograph the day card itself at each width: viewport tiles from its top to its end, never a full-page shot. */
+  async function cardShots(name, widths) {
+    for (const w of widths) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(250);
+      await page.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok(`${name} @${w}: no sideways page scroll`, overflow <= 0, `scrollWidth exceeds by ${overflow}px`);
+      const box = await page.evaluate(() => { const r = document.querySelector('[data-testid="tax-days-card"]').getBoundingClientRect(); return { top: r.top + window.scrollY, bottom: r.bottom + window.scrollY }; });
+      for (let i = 0, y = Math.max(0, box.top - 24); i < 8 && y < box.bottom; i++, y += 900 - 96) {
+        await page.evaluate((yy) => window.scrollTo(0, yy), y);
+        await page.waitForTimeout(120);
+        await page.screenshot({ path: resolve(OUT, `${name}-w${w}-t${i + 1}.png`), caret: "initial" });
+      }
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+  }
+
+  // The last complete month, at desktop width: the table.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openDays(`/admin/tax?period=month&month=${LAST}`);
+  const rows = await dayRows();
+  const [lyN, lmN] = LAST.split("-").map(Number);
+  const daysInLast = new Date(Date.UTC(lyN, lmN, 0)).getUTCDate();
+  ok(`13.1 the month lists all ${daysInLast} of its days, oldest first`, rows.length === daysInLast && rows[0]?.key === `${LAST}-01` && rows[rows.length - 1]?.key === `${LAST}-${String(daysInLast).padStart(2, "0")}`, `${rows.length} rows`);
+  const r = await report1();
+  const sum = (list, k) => list.reduce((t, x) => t + num(x[k]), 0);
+  ok("13.2 the days' Sales, Payout and Refunds add up to Report 1's, to the cent",
+    sum(rows, "sales") === r["Sales"] && sum(rows, "payout") === r["Payout"] && sum(rows, "refunds") === r["Refunds"],
+    JSON.stringify({ sales: [sum(rows, "sales"), r["Sales"]], payout: [sum(rows, "payout"), r["Payout"]], refunds: [sum(rows, "refunds"), r["Refunds"]] }));
+  ok("13.3 the last day closes with Report 1's On hold", num(rows[rows.length - 1]?.onHold) === r["On hold"], `${rows[rows.length - 1]?.onHold} vs ${r["On hold"]}`);
+  const whole = await page.evaluate(() => [...document.querySelectorAll('[data-testid="tax-days-total"] td')].map((td) => td.textContent.trim()));
+  ok("13.4 the whole-period row is Report 1's own figures", whole[0] === "Whole period" && num(whole[1]) === r["Sales"] && num(whole[2]) === r["Payout"] && num(whole[3]) === r["On hold"] && num(whole[4]) === r["Refunds"], JSON.stringify(whole));
+  ok("13.5 every day of a balanced month balances (✓)", rows.length > 0 && rows.every((x) => x.check === "✓"), JSON.stringify(rows.filter((x) => x.check !== "✓").map((x) => [x.key, x.check])));
+  const seeded = rows.find((x) => x.key === s1b.day);
+  ok(`13.6 the seeded day (${s1b.day}) carries its sales; a day with nothing placed, paid or refunded is drawn quiet`,
+    !!seeded && num(seeded.sales) > 0 && !seeded.quiet && rows[0]?.quiet === true, JSON.stringify({ seeded, first: rows[0] }));
+  await cardShots("13-days-month", [1280, 1920]);
+
+  // A day's link: a loading mark while it opens, then THAT day, equal to its row.
+  await openDays(`/admin/tax?period=month&month=${LAST}`);
+  const holdDay = async (route) => {
+    if (route.request().headers()["rsc"] !== "1") return route.continue();
+    const resp = await route.fetch();
+    await page.waitForTimeout(2500);
+    await route.fulfill({ response: resp }).catch(() => {});
+  };
+  const isTaxPath = (u) => u.pathname === "/admin/tax";
+  await page.route(isTaxPath, holdDay);
+  const link = page.locator(`[data-testid="tax-days"] tr[data-day="${s1b.day}"] [data-testid="tax-day-link"]`);
+  await link.scrollIntoViewIfNeeded();
+  await link.click();
+  await page.waitForTimeout(700);
+  ok("13.7 while a day opens, its link shows it is working", (await link.locator("[data-link-pending]").count()) === 1);
+  await page.screenshot({ path: resolve(OUT, "13-day-link-loading-w1280.png"), caret: "initial" });
+  await page.waitForURL((u) => u.toString().includes(`day=${s1b.day}`) && u.toString().includes("period=day"), { timeout: 60_000 });
+  await page.locator('[data-testid="tax-window"]').first().waitFor({ timeout: 60_000 });
+  await page.unroute(isTaxPath, holdDay);
+  await page.waitForTimeout(400);
+  const rd = await report1();
+  ok("13.8 …then THAT day opens, and its Report 1 is exactly its row", !!seeded && num(seeded.sales) === rd["Sales"] && num(seeded.payout) === rd["Payout"] && num(seeded.onHold) === rd["On hold"] && num(seeded.refunds) === rd["Refunds"], JSON.stringify({ row: seeded, day: rd }));
+  ok("13.9 …and a day has no day-by-day card of its own — it IS the day", (await page.locator('[data-testid="tax-days-card"]').count()) === 0);
+
+  // One product: its own days, and every link keeps it.
+  await openDays(`/admin/tax?period=month&month=${LAST}&product=UPDOWN`);
+  const ru = await dayRows();
+  const rU = await report1();
+  ok("13.10 Up & Down alone: its days add up to its own Sales, and each day's link keeps the product",
+    ru.length === daysInLast && sum(ru, "sales") === rU["Sales"] && ru.every((x) => x.href.includes("product=UPDOWN")), `${sum(ru, "sales")} vs ${rU["Sales"]}`);
+
+  // A week: seven days, Monday first.
+  await openDays(`/admin/tax?period=week&week=${seededWeek}`);
+  const rw = await dayRows();
+  ok("13.11 a week lists its seven days, Monday to Sunday", rw.length === 7 && rw[0].label.startsWith("Mon ") && rw[6].label.startsWith("Sun "), rw.map((x) => x.label).join(" | "));
+
+  // A custom window that opens and closes mid-day keeps its part-days, each opening exactly its hours.
+  const d0 = s1b.day, d2 = plus(s1b.day, 2);
+  await openDays(`/admin/tax?period=custom&from=${d0}T08:00&to=${d2}T18:00`);
+  const rc = await dayRows();
+  ok("13.12 a custom window keeps its part-days: 'from 08:00', a whole day, 'to 18:00'", rc.length === 3 && rc[0].hint === "from 08:00" && rc[1].hint === "" && rc[2].hint === "to 18:00", JSON.stringify(rc.map((x) => [x.label, x.hint])));
+  ok("13.13 …a part-day opens the custom window of exactly its hours; a whole day opens the day",
+    rc[0]?.href.includes(`from=${d0}T08:00`) && rc[0]?.href.includes(`to=${plus(d0, 1)}T00:00`) && rc[1]?.href.includes(`day=${plus(d0, 1)}`), rc.map((x) => x.href).join(" | "));
+  await cardShots("13-days-custom", [360, 1280]);
+
+  // A long window pages, 31 days at a time; the pager keeps the window.
+  const from40 = plus(`${LAST}-01`, -10), to40 = plus(`${LAST}-01`, 30);
+  await openDays(`/admin/tax?period=custom&from=${from40}T00:00&to=${to40}T00:00`);
+  const p1 = await dayRows();
+  const card = page.locator('[data-testid="tax-days-card"]');
+  await card.getByRole("link", { name: "Next page" }).first().click();
+  await page.waitForURL((u) => u.toString().includes("dpage=2"), { timeout: 60_000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="tax-days"] tbody tr[data-day]').length === 9, null, { timeout: 60_000 }).catch(() => {});
+  const p2 = await dayRows();
+  ok("13.14 a 40-day window pages 31 days, then 9 — the window kept, nothing repeated or lost",
+    p1.length === 31 && p2.length === 9 && p1[0].key === from40 && p2[8].key === plus(to40, -1) && page.url().includes(`from=${from40}`) && new Set([...p1, ...p2].map((x) => x.key)).size === 40,
+    `${p1.length} + ${p2.length}`);
+
+  // The running month: its days so far, today last, "so far", opening today.
+  await openDays(`/admin/tax?period=month&month=${cur}`);
+  const rr = await dayRows();
+  const todayKey = new Date(Date.now() + EAT).toISOString().slice(0, 10);
+  const lastRow = rr[rr.length - 1];
+  ok("13.15 a running month lists its days so far — today last, marked 'so far', opening today",
+    !!lastRow && lastRow.key === todayKey && lastRow.hint === "so far" && lastRow.href.includes(`day=${todayKey}`) && rr.length === Number(todayKey.slice(8, 10)), JSON.stringify(lastRow));
+  const rCurNow = await report1();
+  ok("13.16 …and its days add up to its Sales so far", sum(rr, "sales") === rCurNow["Sales"], `${sum(rr, "sales")} vs ${rCurNow["Sales"]}`);
+
+  // A month not started: an empty state in words.
+  const FUT = (() => { const [y, m] = cur.split("-").map(Number); const i = y * 12 + m; return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`; })();
+  await openDays(`/admin/tax?period=month&month=${FUT}`);
+  ok("13.17 a month not started says it has no days yet", /No days yet/.test(await page.locator('[data-testid="tax-days-empty"]').innerText()));
+
+  // A phone and a tablet: each day a block, the whole block its link.
+  await openDays(`/admin/tax?period=month&month=${LAST}`);
+  for (const w of [360, 768, 1024]) {
+    await page.setViewportSize({ width: w, height: 900 });
+    await page.waitForTimeout(300);
+    const blocks = await page.locator('[data-testid="tax-days-stacked"] li[data-day]').count();
+    ok(`13.18 @${w} each day is a block (the table hidden), the whole period last`,
+      blocks === daysInLast && !(await page.locator('[data-testid="tax-days"]').isVisible()) && (await page.locator('[data-testid="tax-days-total-stacked"]').isVisible()), `${blocks} blocks`);
+  }
+  await page.setViewportSize({ width: 360, height: 900 });
+  const block = page.locator(`[data-testid="tax-days-stacked"] li[data-day="${s1b.day}"] [data-testid="tax-day-link"]`);
+  const blockBox = await block.boundingBox();
+  ok("13.19 @360 a day block is a full-width tap target at least 44px tall", !!blockBox && blockBox.height >= 44 && blockBox.width >= 270, JSON.stringify(blockBox));
+  const quietBlock = page.locator(`[data-testid="tax-days-stacked"] li[data-day="${LAST}-01"] [data-testid="tax-day-link"]`);
+  const quietBox = await quietBlock.boundingBox();
+  ok("13.19b @360 a day with no activity is one compact line — 'No activity · on hold …' — still a 44px+ target, shorter than an active day",
+    /No activity · on hold/.test(await quietBlock.innerText()) && !!quietBox && !!blockBox && quietBox.height >= 44 && quietBox.height < blockBox.height,
+    JSON.stringify({ quietBox, blockBox }));
+  await cardShots("13-days-month-stacked", [360, 768, 1024]);
+  // `cardShots` ends at desktop width, where the blocks are hidden: the tap is a phone's.
+  await page.setViewportSize({ width: 360, height: 900 });
+  await page.waitForTimeout(300);
+  await block.scrollIntoViewIfNeeded();
+  await block.click();
+  await page.waitForURL((u) => u.toString().includes(`day=${s1b.day}`), { timeout: 60_000 });
+  await page.locator('[data-testid="tax-window"]').first().waitFor({ timeout: 60_000 });
+  ok("13.20 @360 tapping a day's block opens that day", (await page.locator('[data-testid="tax-period-label"]').innerText()).includes(String(Number(s1b.day.slice(8, 10)))));
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  // The files: the CSV's day rows and the workbook's day table are the page's figures.
+  await openDays(`/admin/tax?period=month&month=${LAST}`);
+  const pageRows = await dayRows();
+  const pageSeeded = pageRows.find((x) => x.key === s1b.day);
+  const rFiles = await report1();
+  {
+    const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.locator('[data-testid="tax-export-csv"]').click()]);
+    const file = resolve(OUT, `days-${dl.suggestedFilename()}`);
+    await dl.saveAs(file);
+    const csv = readFileSync(file, "utf8");
+    const line = csv.split("\r\n").find((l) => l.startsWith(`"Day by day — ${s1b.day}","Sales"`));
+    const daySales = Number(line?.split(",")[3]);
+    ok("13.21 the CSV has the seeded day's Sales as a number — the page's row", !!line && Math.round(daySales * 100) === num(pageSeeded?.sales), `${line} vs ${pageSeeded?.sales}`);
+    const dayLines = csv.split("\r\n").filter((l) => l.startsWith('"Day by day — ')).length;
+    ok(`13.22 …eleven lines for each of the ${daysInLast} days`, dayLines === daysInLast * 11, `${dayLines} lines`);
+    await page.getByRole("button", { name: /Done/ }).first().click().catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  {
+    const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.locator('[data-testid="tax-export-xlsx"]').click()]);
+    const file = resolve(OUT, `days-${dl.suggestedFilename()}`);
+    await dl.saveAs(file);
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(file);
+    const ws = wb.worksheets[0];
+    let header = null, sumRow = null;
+    ws.eachRow((row) => {
+      const vals = row.values.slice(1).map((v) => (v && typeof v === "object" && "richText" in v ? v.richText.map((t) => t.text).join("") : v));
+      // A header cell with a unit line is "Sales" + a line break + "TZS": the name is its first line.
+      const names = vals.map((v) => String(v ?? "").split(String.fromCharCode(10))[0]);
+      if (names.includes("Less: on hold brought forward") && names.includes("Bets placed")) header = names;
+      if (vals.includes("Sum of the days")) sumRow = vals;
+    });
+    const col = (name) => header ? header.indexOf(name) : -1;
+    const cell = (name) => (sumRow && col(name) >= 0 ? sumRow[col(name)] : undefined);
+    const asCents = (v) => (typeof v === "number" ? Math.round(v * 100) : num(v));
+    ok("13.23 the workbook's day table carries every daily column, and its sum row adds up to Report 1",
+      !!header && !!sumRow && asCents(cell("Sales")) === rFiles["Sales"] && asCents(cell("Payout")) === rFiles["Payout"] && asCents(cell("Refunds")) === rFiles["Refunds"],
+      JSON.stringify({ header, sumRow }).slice(0, 400));
+    await page.getByRole("button", { name: /Done/ }).first().click().catch(() => {});
+    await page.waitForTimeout(400);
+  }
+}
+
 // ── 10 · loading, progress and failure — what an officer sees while the page works ───────────────
 {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -429,6 +632,9 @@ await page.waitForTimeout(500);
   await page.waitForFunction(() => /Locked/.test(document.querySelector('[data-testid="tax-status"]')?.textContent ?? ""), null, { timeout: 60_000 }).catch(() => {});
   await page.unroute(isTaxPage, holdAction);
   ok("10.6 …and then the period is locked", /Locked/.test(await page.locator('[data-testid="tax-status"]').innerText()));
+  // A month locked now records its days: the card shows the filing's own, with no "holds no daily figures" note.
+  ok("10.7 the locked month's day-by-day is the filing's own — every day listed, no 'no daily figures' note",
+    (await page.locator('[data-testid="tax-days"] tbody tr[data-day]').count()) >= 28 && !(await page.locator("body").innerText()).includes("This filing holds no daily figures"));
 }
 
 // ── 11 · empty, not-started and wrong input ─────────────────────────────────────────────────────

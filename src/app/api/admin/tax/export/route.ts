@@ -84,7 +84,7 @@ export async function GET(req: Request) {
   try {
     if (format === "csv") body = Buffer.from(buildTaxCsv(data, { generatorName, generatedAtMs: nowMs, lock, reference, drift }), "utf8");
     else {
-      const doc = buildTaxDocument(data, { generatorId: session.userId, generatorName, generatedAtMs: nowMs, lock, drift });
+      const doc = buildTaxDocument(data, { generatorId: session.userId, generatorName, generatedAtMs: nowMs, lock, drift, layout: format });
       body = format === "pdf" ? await renderPdf(doc) : await renderXlsx(doc);
     }
   } catch (err) {

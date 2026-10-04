@@ -167,6 +167,32 @@ try { await prisma.$executeRawUnsafe(`INSERT INTO "TaxPeriodLock" ("id","periodK
 ok("3.6 the CHECK constraint refuses a custom period lock", checkRefused);
 if (l3.ok) await L.releaseLock(l3.lock.id, `${RUN}_oa`, "e2e cleanup");
 
+// ── 4 · day by day on Postgres: the days add up, and a lock carries them through jsonb ──────────
+// A window from a day before the run to its end crosses at least one EAT midnight, so it has days. Its edges are on
+// the minute, as every window the page can name is: a day's link opens a window of whole minutes.
+const MIN = 60_000;
+const W = await read(Math.floor((tA0 - 86_400_000) / MIN) * MIN, Math.ceil(tB1 / MIN) * MIN + MIN);
+const days = W.byDay ?? [];
+const sumOf = (k: "salesCents" | "payoutCents" | "refundsCents" | "feeKeptCents") => days.reduce((t, x) => t + x.report1[k], 0);
+ok("4.1 a window across midnight has its days, and their flows add up to it on Postgres",
+  days.length >= 2 && sumOf("salesCents") === W.main.report1.salesCents && sumOf("payoutCents") === W.main.report1.payoutCents
+    && sumOf("refundsCents") === W.main.report1.refundsCents && sumOf("feeKeptCents") === W.main.report1.feeKeptCents
+    && days[days.length - 1].report1.onHoldCents === W.main.report1.onHoldCents,
+  `${days.length} days`);
+const last = days[days.length - 1];
+const own = last ? await buildTaxReportData({ period: E.daySlice(last.startMs, W.period.endMs).period, product: "ALL", nowMs: FAR }) : null;
+ok("4.2 the run's day, opened on its own through every Prisma twin, is exactly its row",
+  !!own?.ok && JSON.stringify(own.data.main.report1) === JSON.stringify(last.report1), own?.ok ? JSON.stringify([own.data.main.report1, last.report1]) : "no row");
+const dayKeyed = { periodKind: "day" as const, periodKey: `2031-02-${String((Date.now() % 27) + 1).padStart(2, "0")}`, product: "ALL" as const };
+await prisma.taxPeriodLock.updateMany({ where: { ...dayKeyed, unlockedAt: null }, data: { unlockedAt: new Date(), unlockedBy: "e2e-cleanup", unlockReason: "previous e2e run" } });
+const l4 = await L.insertLock({ ...dayKeyed, periodStartMs: W.period.startMs, periodEndMs: W.period.endMs, snapshot: W, balanced: true, lockedBy: `${RUN}_oa`, note: `e2e days ${key}`, exceptionsAcknowledged: null });
+const row4 = l4.ok ? await prisma.taxPeriodLock.findUnique({ where: { id: l4.lock.id } }) : null;
+const back = row4?.snapshot as { byDay?: unknown } | undefined;
+ok("4.3 a lock's snapshot keeps its days through jsonb — the same days, the same sha256",
+  // Compared CANONICALLY: jsonb keeps its own key order (tax-locks.ts), so a plain stringify of the read-back differs.
+  !!row4 && L.snapshotHash(row4.snapshot as never) === row4.sha256 && L.canonicalJson(back?.byDay ?? null) === L.canonicalJson(W.byDay ?? null), l4.ok ? "" : JSON.stringify(l4).slice(0, 160));
+if (l4.ok) await L.releaseLock(l4.lock.id, `${RUN}_oa`, "e2e cleanup");
+
 await prisma.$disconnect();
 console.log(`\ne2e:tax-report: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

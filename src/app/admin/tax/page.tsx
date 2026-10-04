@@ -17,8 +17,8 @@ import { db } from "@/lib/server/store";
 import { loadTaxReportView } from "@/lib/server/tax-report-view";
 import { recentLocks, seenFingerprint, type TaxLock } from "@/lib/server/tax-locks";
 import { readTaxRates } from "@/lib/server/tax-config";
-import { report1Rows, report2Rows, windowStatement } from "@/lib/server/tax-report-doc";
-import type { ProductFigures } from "@/lib/server/tax-report-data";
+import { dayByDayNote, report1Rows, report2Rows, windowStatement } from "@/lib/server/tax-report-doc";
+import type { DayFigures, ProductFigures, TaxReportData } from "@/lib/server/tax-report-data";
 import { adminCount, formatTzsCompact } from "@/lib/utils";
 import { eatDayKey } from "@/lib/eat-day";
 import {
@@ -28,6 +28,7 @@ import {
   PRODUCT_LABEL,
   REFUND_REASONS,
   cutoffOf,
+  daySlice,
   eatDateTimeLabel,
   formatCents,
   formatWhole,
@@ -66,11 +67,13 @@ import { TaxRatesForm } from "./rates-form";
 export const metadata = { title: "Admin · Tax report" };
 export const dynamic = "force-dynamic";
 
-type TaxSearch = { period?: string; month?: string; week?: string; day?: string; from?: string; to?: string; product?: string; xpage?: string };
+type TaxSearch = { period?: string; month?: string; week?: string; day?: string; from?: string; to?: string; product?: string; xpage?: string; dpage?: string };
 
 const KINDS: readonly PeriodKind[] = ["month", "week", "day", "custom"];
 const KIND_LABEL: Record<PeriodKind, string> = { month: "Month", week: "Week", day: "Day", custom: "Custom" };
 const PRODUCTS: readonly ProductFilter[] = ["ALL", "MARKET", "UPDOWN"];
+/** A month's days on one page; only a longer custom window pages. */
+const DAYS_PER_PAGE = 31;
 
 /** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render. */
 export default async function AdminTaxPage(props: { searchParams: Promise<TaxSearch> }) {
@@ -221,9 +224,17 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
   const blockingCents = !rec.balanced || data.wholeBook === null ? rec.differenceCents : data.wholeBook.differenceCents;
   const lockFields: Record<string, string> = { ...periodQuery(period), product };
   const seen = seenFingerprint(data);
+  // Day by day: the report's own days. A lock taken before daily figures were recorded holds none — then the live
+  // books' days are shown, and the card says so (null: the window is one day, and IS its day).
+  const daysRecorded = data.byDay !== undefined;
+  const days = (daysRecorded ? data.byDay : loaded.view.live.byDay) ?? null;
   const xPage = parsePage(sp.xpage, data.exceptions.length);
   const xRows = data.exceptions.slice((xPage - 1) * PER_PAGE, xPage * PER_PAGE);
-  const xBase = buildBaseHref("/admin/tax", { ...periodQuery(period), product: product === "ALL" ? undefined : product }, "xpage");
+  const dPage = days ? parsePage(sp.dpage, days.length, DAYS_PER_PAGE) : 1;
+  // Two lists page on this page; each pager keeps the other's page (`buildBaseHref`'s multi-list rule).
+  const listParams = { ...periodQuery(period), product: product === "ALL" ? undefined : product, xpage: xPage > 1 ? String(xPage) : undefined, dpage: dPage > 1 ? String(dPage) : undefined };
+  const xBase = buildBaseHref("/admin/tax", listParams, "xpage");
+  const dBase = buildBaseHref("/admin/tax", listParams, "dpage");
   const segments = f.tax.segments;
   const commissionCaption = segments.length === 0 ? "nothing yet" : segments.length === 1 ? `${percentLabel(segments[0].rates.commissionBp)} × Payout` : `${segments.length} rates`;
   const nowVersion = rates && rates.ok ? versionAt(nowMs, rates.versions) : null;
@@ -235,7 +246,7 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
   } else if (lock) {
     status = drift.length > 0 ? (
       <Callout tone="warning" size="md" title={`Locked ${eatDateTimeLabel(lock.lockedAtMs)} EAT by ${who(lock.lockedBy)} — and the live books have moved since.`}>
-        The figures below are the locked snapshot, exactly as filed. {adminCount(drift.length, "line")} now read differently from the live books: {drift.map((d) => d.line).join(", ")}. See the Lock card for both figures.
+        The figures below are the locked snapshot, exactly as filed. {adminCount(drift.length, "line")} now read differently from the live books: {drift.length > 6 ? `${drift.slice(0, 6).map((d) => d.line).join(", ")} and ${drift.length - 6} more` : drift.map((d) => d.line).join(", ")}. See the Lock card for both figures.
       </Callout>
     ) : (
       <Callout tone="success" size="md" title={`Locked ${eatDateTimeLabel(lock.lockedAtMs)} EAT by ${who(lock.lockedBy)}.`}>
@@ -386,6 +397,19 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
 
           {data.byProduct && <ByProductCard all={f} parts={data.byProduct} unattributed={data.unattributedRecords} />}
         </div>
+
+        {days && (
+          <DayByDayCard
+            data={data}
+            days={days}
+            total={daysRecorded ? f : loaded.view.live.main}
+            product={product}
+            recorded={daysRecorded}
+            drifted={drift.length > 0}
+            page={dPage}
+            baseHref={dBase}
+          />
+        )}
 
         {data.exceptionCount > 0 && (
           <AdminCard title={`Exceptions — ${adminCount(data.exceptionCount, "item")}`} className="border-danger-border">
@@ -547,6 +571,150 @@ function ByProductCard({ all, parts, unattributed }: { all: ProductFigures; part
           </tbody>
         </table>
       </ScrollX>
+    </AdminCard>
+  );
+}
+
+/**
+ * DAY BY DAY — every day of a week, a month or a custom window, each the day's own report (`DayFigures`), each opening
+ * that day in full. ⭐ BELOW 1280px EACH DAY IS A BLOCK of labelled figures, the whole block its link: seven columns
+ * need ~770px of a 1024px console's 727px card (the 216px sidebar), and a figure scrolled out of a card reads as one
+ * that is missing (the By product lesson, 2026-10-03). The table takes over at xl, where they fit. The last row is the
+ * whole period — Report 1's and Report 2's own figures, never a sum made here.
+ */
+function DayByDayCard({ data, days, total, product, recorded, drifted, page, baseHref }: {
+  data: TaxReportData;
+  days: DayFigures[];
+  total: ProductFigures;
+  product: ProductFilter;
+  recorded: boolean;
+  drifted: boolean;
+  page: number;
+  baseHref: string;
+}) {
+  const rows = days.slice((page - 1) * DAYS_PER_PAGE, page * DAYS_PER_PAGE);
+  const lastKey = days.length > 0 ? days[days.length - 1].dayKey : null;
+  const shape = (x: DayFigures) => {
+    const s = daySlice(x.startMs, data.period.endMs);
+    return {
+      s,
+      href: taxPageHref(s.period, product),
+      hint: [s.hours, data.inProgress && x.dayKey === lastKey ? "so far" : null].filter(Boolean).join(" · "),
+      // Nothing placed, paid, refunded or kept that day: its figures recede, so the days that moved stand out.
+      quiet: x.report1.salesCents === 0 && x.report1.payoutCents === 0 && x.report1.refundsCents === 0 && x.report1.feeKeptCents === 0,
+    };
+  };
+  const check = (balanced: boolean, cents: number) => (balanced
+    ? <span className="text-success" aria-label="balanced">✓</span>
+    : <span className="whitespace-nowrap text-danger"><span className="mr-1.5" aria-label="out of balance">✗</span><Amt cents={cents} /></span>);
+  const figures = (r1: ProductFigures["report1"], taxTotal: number) => [
+    { label: "Sales", node: <Amt cents={r1.salesCents} /> },
+    { label: "Payout", node: <Amt cents={r1.payoutCents} /> },
+    { label: "On hold", node: <Amt cents={r1.onHoldCents} /> },
+    { label: "Refunds", node: <Amt cents={r1.refundsCents} /> },
+    { label: "Total tax", node: <span className="amount">{formatWhole(taxTotal)}</span> },
+  ];
+  const grid = (r1: ProductFigures["report1"], taxTotal: number, tone: string) => (
+    <span className="mt-1.5 grid grid-cols-3 gap-x-2 gap-y-1.5 sm:grid-cols-5">
+      {figures(r1, taxTotal).map((g) => (
+        <span key={g.label} className="min-w-0">
+          <span className="block font-mono text-micro uppercase eyebrow text-text-tertiary">{g.label}</span>
+          <span className={`block tabular text-body-sm ${tone}`}>{g.node}</span>
+        </span>
+      ))}
+    </span>
+  );
+  return (
+    <AdminCard title="Day by day" sw="Siku kwa siku" id="day-by-day" data-testid="tax-days-card">
+      <p className="mb-3 text-body-sm text-text-subtle">
+        {dayByDayNote(days, total)} Select a day to open its full report.
+      </p>
+      {!recorded && (
+        <div className="mb-3">
+          <Callout tone="neutral" title="This filing holds no daily figures.">
+            It was locked before daily figures were recorded, so the days below are read from the live books now{drifted ? " — which have moved since the lock, so they add up to the live figures, not the locked ones" : ""}. Reopening and locking the period again records them.
+          </Callout>
+        </div>
+      )}
+      {days.length === 0 ? (
+        <p className="text-body-sm text-text-tertiary" data-testid="tax-days-empty">
+          {data.notStarted ? "No days yet — the period has not started." : "No days yet — the period opened moments ago; its first day appears within a minute."}
+        </p>
+      ) : (
+        <>
+          <ul className="space-y-2 xl:hidden" data-testid="tax-days-stacked">
+            {rows.map((x) => {
+              const { s, href, hint, quiet } = shape(x);
+              return (
+                <li key={x.dayKey} data-day={x.dayKey}>
+                  <Link href={href as Route} className="block min-h-[var(--tap-min)] rounded-md border border-border-subtle px-3 py-2 transition-colors hover:border-border-strong hover:bg-bg-overlay/30" data-testid="tax-day-link">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 text-body-sm">
+                        <span className="font-semibold text-text">{s.label}</span>
+                        {hint ? <>{" "}<span className="whitespace-nowrap text-text-tertiary">· {hint}</span></> : null}
+                      </span>
+                      <span className="shrink-0 tabular text-body-sm">{check(x.balanced, x.differenceCents)}</span>
+                    </span>
+                    {/* ⭐ A DAY WITH NOTHING PLACED, PAID OR REFUNDED IS ONE LINE: a month of identical zero blocks was a 4,000px
+                        scroll at 360 with its three active days lost in it (measured 2026-10-04). Out of balance, it keeps
+                        every figure — then it is the day to look at. */}
+                    {quiet && x.balanced ? (
+                      <span className="mt-0.5 block text-body-sm text-text-tertiary" data-quiet="">
+                        No activity · on hold <Amt cents={x.report1.onHoldCents} />
+                      </span>
+                    ) : grid(x.report1, x.tax.total, "text-text")}
+                    <LinkPending />
+                  </Link>
+                </li>
+              );
+            })}
+            <li className="rounded-md border border-border bg-bg-elevated px-3 py-2" data-testid="tax-days-total-stacked">
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="text-body-sm font-semibold text-text">Whole period</span>
+                <span className="shrink-0 tabular text-body-sm font-semibold">{check(total.reconciliation.balanced, total.reconciliation.differenceCents)}</span>
+              </span>
+              {grid(total.report1, total.tax.total, "font-semibold text-text")}
+            </li>
+          </ul>
+          <ScrollX label="Day by day" className="-mx-4 hidden px-4 xl:block">
+            <table className="admin-tbl" data-testid="tax-days">
+              <thead>
+                <tr>
+                  <th className="text-left">Day</th>
+                  <th className="text-right">Sales<br />(TZS)</th>
+                  <th className="text-right">Payout<br />(TZS)</th>
+                  <th className="text-right">On hold<br />(TZS)</th>
+                  <th className="text-right">Refunds<br />(TZS)</th>
+                  <th className="text-right">Total tax<br />(TZS)</th>
+                  <th className="text-right">Check</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((x) => {
+                  const { s, href, hint, quiet } = shape(x);
+                  return (
+                    <tr key={x.dayKey} data-day={x.dayKey} className={quiet && x.balanced ? "text-text-tertiary" : undefined}>
+                      <td className="text-left">
+                        {/* `-my-3`: the 44px tap target spends the cell's own 12px padding, so a row stays one line tall. */}
+                        <Link href={href as Route} className="-my-3 inline-flex min-h-[var(--tap-min)] items-center text-text underline-offset-2 hover:underline" data-testid="tax-day-link">{s.label}<LinkPending /></Link>
+                        {hint && <span className="block text-body-sm text-text-tertiary">{hint}</span>}
+                      </td>
+                      {figures(x.report1, x.tax.total).map((g) => <td key={g.label} className="tabular text-right">{g.node}</td>)}
+                      <td className="tabular text-right">{check(x.balanced, x.differenceCents)}</td>
+                    </tr>
+                  );
+                })}
+                <tr className="font-semibold" data-testid="tax-days-total">
+                  <td className="text-left">Whole period</td>
+                  {figures(total.report1, total.tax.total).map((g) => <td key={g.label} className="tabular text-right">{g.node}</td>)}
+                  <td className="tabular text-right">{check(total.reconciliation.balanced, total.reconciliation.differenceCents)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </ScrollX>
+          <AdminPagination total={days.length} page={page} perPage={DAYS_PER_PAGE} baseHref={baseHref} param="dpage" />
+        </>
+      )}
     </AdminCard>
   );
 }

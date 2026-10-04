@@ -126,16 +126,51 @@ function drawBand(ctx: DocCtx) {
 
 /* ── Footer ───────────────────────────────────────────────────────── */
 
+/** The narrowest the footer's reference may be drawn before the page is said not to fit (`findPdfOverflows`). */
+const FOOTER_MIN = 6;
+const FOOTER_GAP = 12;
+
+/**
+ * Where the footer's three parts go, so they never overprint.
+ * 🔴 THEY DID (2026-10-04): a custom-window tax report's reference ("TAX-CUSTOM-" + both 12-digit edges + product + id)
+ * ran under the centred "Page 2 of 3", and "Internal" printed on top of it. ⭐ The page number stays centred while the
+ * reference stops short of it — every report as it always was; a reference long enough to reach it sends the page
+ * number to the right, beside the date; and one that would reach even that is drawn smaller, to `FOOTER_MIN`.
+ */
+function footerLayout(doc: InstanceType<typeof PDFDocument>, pageW: number, left: string, pageLabel: string, date: string): {
+  leftSize: number; centred: boolean; right: string; fits: boolean; needPt: number; havePt: number;
+} {
+  doc.font(FN.regular).fontSize(S.footer);
+  const contentW = pageW - PAD * 2;
+  const pageLabelW = doc.widthOfString(pageLabel);
+  if (PAD + doc.widthOfString(left) + FOOTER_GAP <= pageW / 2 - pageLabelW / 2) {
+    return { leftSize: S.footer, centred: true, right: date, fits: true, needPt: 0, havePt: 0 };
+  }
+  const right = `${pageLabel}  ·  ${date}`;
+  const rightW = doc.widthOfString(right);
+  const room = contentW - rightW - FOOTER_GAP;
+  let size = S.footer;
+  while (size > FOOTER_MIN && doc.fontSize(size).widthOfString(left) > room) size -= 0.5;
+  const need = doc.fontSize(size).widthOfString(left);
+  doc.fontSize(S.footer);
+  return { leftSize: size, centred: false, right, fits: need <= room, needPt: need, havePt: room };
+}
+
 function drawFooter(ctx: DocCtx, pageNum: number, pageCount: number) {
   const { doc, pageW, pageH, reference, classification, generatedAt } = ctx;
   const y = pageH - FOOTER_H;
+  const left = toAnsiSafe(`${reference}  ·  ${classification}`);
+  const pageLabel = `Page ${pageNum} of ${pageCount}`;
+  const lay = footerLayout(doc, pageW, left, pageLabel, fmtDateTime(generatedAt));
   doc.save();
   doc.lineWidth(0.5).strokeColor(BRAND.rule)
      .moveTo(PAD, y).lineTo(pageW - PAD, y).stroke();
-  doc.fillColor(BRAND.inkSubtle).font(FN.regular).fontSize(S.footer);
-  doc.text(toAnsiSafe(`${reference}  ·  ${classification}`), PAD, y + 9, { lineBreak: false });
-  doc.text(`Page ${pageNum} of ${pageCount}`, pageW / 2 - 60, y + 9, { width: 120, align: "center", lineBreak: false });
-  doc.text(fmtDateTime(generatedAt), pageW - PAD - 180, y + 9, { width: 180, align: "right", lineBreak: false });
+  // A smaller reference keeps the line's baseline: its top moves down by the ascent it lost (Inter's ascender ≈ 0.97 em).
+  doc.fillColor(BRAND.inkSubtle).font(FN.regular).fontSize(lay.leftSize);
+  doc.text(left, PAD, y + 9 + (S.footer - lay.leftSize) * 0.97, { lineBreak: false });
+  doc.fontSize(S.footer);
+  if (lay.centred) doc.text(pageLabel, pageW / 2 - 60, y + 9, { width: 120, align: "center", lineBreak: false });
+  doc.text(lay.right, PAD, y + 9, { width: pageW - PAD * 2, align: "right", lineBreak: false });
   doc.restore();
 }
 
@@ -684,7 +719,9 @@ export function findPdfOverflows(report: Report): PdfOverflow[] {
       if (w > havePt) out.push({ where, text, needPt: pt(w), havePt: pt(havePt) });
       return;
     }
-    for (const tok of text.split(" ")) {
+    // Words split at ANY whitespace: a cell that breaks its lines itself ("Sat 26 Sep" + a line break + "out of balance")
+    // is two words there, not one run measured across the break.
+    for (const tok of text.split(/\s+/)) {
       const w = doc.widthOfString(tok);
       if (w > havePt) out.push({ where, text: tok, needPt: pt(w), havePt: pt(havePt) });
     }
@@ -701,6 +738,12 @@ export function findPdfOverflows(report: Report): PdfOverflow[] {
       fits(`summary "${k.label}" · label`, k.label.toUpperCase(), FN.bold, S.kpiLabel, cardW - 24, "two-lines");
       fits(`summary "${k.label}" · value`, summaryText(k), FN.bold, S.kpiValue, cardW - 20, "two-lines");
     }
+  }
+  {
+    // The footer, measured as `drawFooter` lays it out for the widest page number this report could print.
+    const left = toAnsiSafe(`${report.reference}  ·  ${report.meta.classification ?? "Internal"}`);
+    const lay = footerLayout(doc, doc.page.width, left, "Page 999 of 999", fmtDateTime(report.meta.generatedAt));
+    if (!lay.fits) out.push({ where: "footer · reference", text: left, needPt: pt(lay.needPt), havePt: pt(lay.havePt) });
   }
   if (report.signatures && report.signatures.length > 0) {
     // A name or id that does not fit even at its floor size is CUT (ellipsis) — a signatory's name half-printed.

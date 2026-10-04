@@ -11,6 +11,7 @@
  *   §3 every server action gates BEFORE any read, recomputes the figures it locks (and refuses if they
  *      differ from what the officer saw), and the Owner-only acts gate on the STORED ADMIN role;
  *   §4 the dev seeder is dead in production before its first await.
+ *   §5 the day-by-day card reads the view's own days, opens each through the engine, and lays out where it fits.
  * ⭐ EVERY CHECK HAS A CONTROL: the same predicate is run over a planted bad snippet and must REFUSE it, so
  * no check here can pass by matching nothing.
  *
@@ -114,6 +115,30 @@ guard("4.1 seed-tax-books is a 404 in production BEFORE its first await",
   seeder, seeder.replace('if (process.env.NODE_ENV === "production") {', 'const body0 = await req.text();\n  if (process.env.NODE_ENV === "production") {'));
 guard("4.2 …and refuses to run against a database",
   (s) => /if \(hasDatabase\(\) && process\.env\.USE_PRISMA_DAL !== "false"\)/.test(s), seeder, seeder.replace("if (hasDatabase()", "if (false && hasDatabase()"));
+
+console.log("§5 · the day-by-day card");
+guard("5.1 the days come from the view — the report's own, or the live view's for a lock taken before they were recorded; the page computes no day figure",
+  (s) => s.includes("const daysRecorded = data.byDay !== undefined;") && s.includes("const days = (daysRecorded ? data.byDay : loaded.view.live.byDay) ?? null;") && !s.includes("dayBreakdown("),
+  page, page.replace("const days = (daysRecorded ? data.byDay : loaded.view.live.byDay) ?? null;", "const days = data.byDay ?? [];"));
+guard("5.2 each day opens the engine's own period for it — daySlice against the window's end, never a period built here",
+  (s) => s.includes("const s = daySlice(x.startMs, data.period.endMs);") && s.includes("href: taxPageHref(s.period, product),"),
+  page, page.replace("href: taxPageHref(s.period, product),", "href: taxPageHref(dayPeriod(x.dayKey)!, product),"));
+guard("5.3 the words under the days are the documents' own (dayByDayNote), so the page and the files explain alike",
+  (s) => s.includes("{dayByDayNote(days, total)}"),
+  page, page.replace("{dayByDayNote(days, total)}", '{"The days add up."}'));
+guard("5.4 the table only where it fits (xl, beside the 216px sidebar); every narrower screen reads each day as a block",
+  (s) => s.includes('className="space-y-2 xl:hidden" data-testid="tax-days-stacked"') && s.includes('<ScrollX label="Day by day" className="-mx-4 hidden px-4 xl:block">'),
+  page, page.replace('className="space-y-2 xl:hidden" data-testid="tax-days-stacked"', 'className="hidden" data-testid="tax-days-stacked"'));
+guard("5.5 the whole-period row is Report 1's and Report 2's own figures, never a sum made on the page",
+  (s) => s.includes("total={daysRecorded ? f : loaded.view.live.main}") && s.includes("figures(total.report1, total.tax.total)") && !s.includes("days.reduce("),
+  page, page.replace("figures(total.report1, total.tax.total)", "figures(days.reduce((a) => a, total.report1), total.tax.total)"));
+guard("5.6 the two pagers keep each other's page — the exceptions' and the days'",
+  (s) => s.includes('const xBase = buildBaseHref("/admin/tax", listParams, "xpage");') && s.includes('const dBase = buildBaseHref("/admin/tax", listParams, "dpage");')
+    && s.includes("xpage: xPage > 1 ? String(xPage) : undefined, dpage: dPage > 1 ? String(dPage) : undefined"),
+  page, page.replace("xpage: xPage > 1 ? String(xPage) : undefined, dpage: dPage > 1 ? String(dPage) : undefined", "xpage: undefined, dpage: undefined"));
+guard("5.7 the workbook gets every daily column: the route passes the format as the document's layout",
+  (s) => s.includes("lock, drift, layout: format });"),
+  route, route.replace("lock, drift, layout: format });", "lock, drift });"));
 
 console.log(`\ntax-report-page: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log("\nFAILED:"); for (const f of fails) console.log(`  - ${f}`); }

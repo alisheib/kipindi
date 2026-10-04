@@ -88,7 +88,7 @@ System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLI
 
 | | |
 |---|---|
-| **What** | Report 1 (Sales · Payout · On hold · Refunds + the check) and Report 2 (Commission 13% × Payout · TRA 10% · GBT 5%) for any day, week, month or custom window, all products or one; PDF · Excel · CSV; period locks with drift; admin-editable, effective-dated rates |
+| **What** | Report 1 (Sales · Payout · On hold · Refunds + the check) and Report 2 (Commission 13% × Payout · TRA 10% · GBT 5%) for any day, week, month or custom window, all products or one; **day by day** for any period longer than a day (each day its own report, opening in full); PDF · Excel · CSV; period locks with drift; admin-editable, effective-dated rates |
 | **Where** | Worktree `C:\kipindi-tax`, branch `tax-report` → `main` |
 | **Next** | Read [`TAX-REPORT.md`](TAX-REPORT.md) §0 — never this cell |
 

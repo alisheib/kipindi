@@ -12,8 +12,8 @@
  * (`catalogue.ts` `buildGbtMonthly`): any one of them left in filing dress is enough for a
  * part-period to be filed.
  */
-import type { ColumnFormat, Report, Row, Section, SignatureRow, SummaryItem } from "./reports/types";
-import type { ProductFigures, TaxReportData } from "./tax-report-data";
+import type { Column, ColumnFormat, Report, Row, Section, SignatureRow, SummaryItem } from "./reports/types";
+import type { DayFigures, ProductFigures, TaxReportData } from "./tax-report-data";
 import type { TaxLock } from "./tax-locks";
 import { CSV_BOM, CSV_EOL, csvCell } from "@/lib/contacts/csv-write";
 import {
@@ -21,7 +21,9 @@ import {
   PRODUCT_LABEL,
   REFUND_REASONS,
   LOCK_GRACE_MS,
+  daySlice,
   eatDateTimeLabel,
+  toEatLocal,
   formatCents,
   formatWhole,
   percentLabel,
@@ -36,7 +38,9 @@ function hasCents(d: TaxReportData): boolean {
   const figs = [d.main, ...(d.byProduct ?? [])];
   const cents = (c: number) => c % 100 !== 0;
   return figs.some((f) => Object.values(f.report1).some(cents) || cents(f.reconciliation.differenceCents) || f.refundsByReason.some((r) => cents(r.cents)))
-    || d.exceptions.some((e) => cents(e.contributionCents));
+    || d.exceptions.some((e) => cents(e.contributionCents))
+    // Two days of .50 make a whole period: the days carry cents the period does not, and they print exactly too.
+    || (d.byDay ?? []).some((x) => Object.values(x.report1).some(cents) || cents(x.differenceCents));
 }
 
 /** The document's state, decided once and read by the title, the classification and the notes. */
@@ -190,6 +194,40 @@ export function report2Rows(f: ProductFigures): Report2Row[] {
   return rows;
 }
 
+/**
+ * The words under every day-by-day table — the page's, the PDF's and the workbook's — so all three explain alike.
+ * The tax clause appears only when the days' own rounding makes their tax differ from Report 2's.
+ */
+export function dayByDayNote(days: readonly DayFigures[], f: ProductFigures): string {
+  const dayTax = days.reduce((t, x) => t + x.tax.total, 0);
+  return "Each day is computed exactly as that day opened on its own. The days' Sales, Payout and Refunds add up to the period's; "
+    + "On hold is each day's closing balance, brought forward into the next."
+    + (dayTax === f.tax.total ? "" : ` Each day's tax is rounded on that day's own Payout, so the days' tax adds to TZS ${formatWhole(dayTax)} against Report 2's TZS ${formatWhole(f.tax.total)} on the whole period's Payout.`);
+}
+
+/**
+ * A day-by-day row's first cell: its day, its hours when it is part of one, "so far" while it runs — and on the printed
+ * page (`print`), where no Difference column stands beside it, "out of balance" when its check does not close. The
+ * amount is not printed there: a nine-digit difference does not fit the day's column (`findPdfOverflows`); the
+ * workbook's Difference column, the CSV and the day's own report carry it. `withYear: false` prints "Sun 20 Sep" — one
+ * line in the portrait page's narrow day column, where "Sun 20 Sep 2026" took two on every row.
+ * ⭐ ON THE PRINTED PAGE EACH PART TAKES ITS OWN LINE: joined with " · ", the column's width left a "·" hanging at a
+ * line's end ("Sat 26 Sep ·" / "out of" / "balance", measured 2026-10-04).
+ */
+export function dayRowLabel(d: TaxReportData, x: DayFigures, o: { running: boolean; print: boolean; withYear: boolean }): string {
+  const s = daySlice(x.startMs, d.period.endMs);
+  const parts = [o.withYear ? s.label : s.short, s.hours, o.running ? "so far" : null, o.print && !x.balanced ? "out of balance" : null].filter(Boolean);
+  return parts.join(o.print ? "\n" : " · ");
+}
+
+/** Does the window sit inside one EAT calendar year? Then its period line already states the year every day shares. */
+function oneYear(d: TaxReportData): boolean {
+  return toEatLocal(d.period.startMs).slice(0, 4) === toEatLocal(d.period.endMs - 1).slice(0, 4);
+}
+
+/** A lock taken before daily figures were recorded holds none — the documents say so rather than print a table it never filed. */
+const NO_DAYS_IN_LOCK = "This filing was locked before daily figures were recorded, so it holds no day-by-day table. Reopening and locking the period again records them.";
+
 function productColumns(d: TaxReportData): Array<{ key: string; label: string; f: ProductFigures }> {
   if (!d.byProduct) return [];
   // All first — the answer, then its parts (the page's order, so the screen and the document read alike).
@@ -207,6 +245,8 @@ export function buildTaxDocument(d: TaxReportData, opts: {
   lock: TaxLock | null;
   /** Lines where the live books have moved since the lock — printed, never hidden (`tax-report-view.ts`). */
   drift?: ReadonlyArray<{ line: string; locked: number; live: number; unit: "cents" | "tzs" }>;
+  /** The workbook carries every daily figure as its own column; a portrait page carries the five that fit. Default pdf. */
+  layout?: "pdf" | "xlsx";
 }): Report {
   const state = documentState(d, opts.lock);
   const exact = hasCents(d);
@@ -306,6 +346,79 @@ export function buildTaxDocument(d: TaxReportData, opts: {
     });
   }
 
+  // ── Day by day: the window's days, each its own report. After the period's composition, before its exceptions —
+  // an out-of-balance day says so in its first cell, and the exceptions below name what makes it.
+  if (d.byDay && d.byDay.length > 0) {
+    const days = d.byDay;
+    const wide = opts.layout === "xlsx";
+    const taxFmt: ColumnFormat = exact ? "text" : "tzs";
+    const whole = (n: number): number | string => (exact ? formatWhole(n) : n);
+    const sum = (get: (x: DayFigures) => number) => days.reduce((t, x) => t + get(x), 0);
+    const money5: Column[] = [
+      { header: "Sales", sub: "TZS", key: "sales", format: moneyFmt, align: "right", width: wide ? 16 : 21 },
+      { header: "Payout", sub: "TZS", key: "payout", format: moneyFmt, align: "right", width: wide ? 16 : 21 },
+      { header: "On hold", sub: "TZS", key: "onHold", format: moneyFmt, align: "right", width: wide ? 16 : 21 },
+      { header: "Refunds", sub: "TZS", key: "refunds", format: moneyFmt, align: "right", width: wide ? 16 : 21 },
+    ];
+    const columns: Column[] = wide
+      ? [
+          { header: "Day", key: "day", width: 26 },
+          ...money5,
+          { header: "Platform fee kept", sub: "TZS", key: "fee", format: moneyFmt, align: "right", width: 16 },
+          { header: "Less: on hold brought forward", sub: "TZS", key: "bf", format: moneyFmt, align: "right", width: 18 },
+          { header: "Difference (must be 0)", sub: "TZS", key: "diff", format: moneyFmt, align: "right", width: 16 },
+          { header: "Commission", sub: "TZS", key: "commission", format: taxFmt, align: "right", width: 14 },
+          { header: "TRA tax", sub: "TZS", key: "tra", format: taxFmt, align: "right", width: 12 },
+          { header: "GBT tax", sub: "TZS", key: "gbt", format: taxFmt, align: "right", width: 12 },
+          { header: "Total tax", sub: "TZS", key: "tax", format: taxFmt, align: "right", width: 12 },
+          { header: "Bets placed", key: "bets", format: "integer", align: "right", width: 12 },
+        ]
+      : [{ header: "Day", key: "day", width: 18 }, ...money5, { header: "Total tax", sub: "TZS", key: "tax", format: taxFmt, align: "right", width: 21 }];
+    sections.push({
+      title: "Day by day",
+      description: dayByDayNote(days, f) + (wide ? "" : " The workbook carries every daily figure — the fee kept, the stakes brought forward, the check and each tax line."),
+      columns,
+      rows: days.map((x, i) => ({
+        day: dayRowLabel(d, x, { running: d.inProgress && i === days.length - 1, print: !wide, withYear: wide || !oneYear(d) }),
+        sales: money(x.report1.salesCents),
+        payout: money(x.report1.payoutCents),
+        onHold: money(x.report1.onHoldCents),
+        refunds: money(x.report1.refundsCents),
+        ...(wide ? {
+          fee: money(x.report1.feeKeptCents),
+          // Subtracted, as Report 1 prints it. `|| 0`: never "-0".
+          bf: money(-x.report1.broughtForwardCents || 0),
+          diff: money(x.differenceCents),
+          commission: whole(x.tax.commission),
+          tra: whole(x.tax.tra),
+          gbt: whole(x.tax.gbt),
+          bets: x.counts.betsPlaced,
+        } : {}),
+        tax: whole(x.tax.total),
+      })),
+      // ⭐ A SUM ROW THAT IS A SUM — the workbook only. On hold and brought forward are balances, not flows, so they
+      // are left blank rather than given a total SUM() would contradict; the tax lines are the days' own sums. A
+      // portrait page has no room for a ten-digit total in bold, and Report 1 above it is the period's own figures.
+      ...(wide ? {
+        totals: {
+          day: "Sum of the days",
+          sales: money(sum((x) => x.report1.salesCents)),
+          payout: money(sum((x) => x.report1.payoutCents)),
+          onHold: "",
+          refunds: money(sum((x) => x.report1.refundsCents)),
+          fee: money(sum((x) => x.report1.feeKeptCents)),
+          bf: "",
+          diff: money(sum((x) => x.differenceCents)),
+          commission: whole(sum((x) => x.tax.commission)),
+          tra: whole(sum((x) => x.tax.tra)),
+          gbt: whole(sum((x) => x.tax.gbt)),
+          tax: whole(sum((x) => x.tax.total)),
+          bets: sum((x) => x.counts.betsPlaced),
+        },
+      } : {}),
+    });
+  }
+
   if (d.exceptionCount > 0) {
     const shown = d.exceptions.length;
     sections.push({
@@ -357,6 +470,7 @@ export function buildTaxDocument(d: TaxReportData, opts: {
         + ". The figures above stay as filed; reopen the period to refile.",
       );
     }
+    if (d.byDay === undefined && d.period.kind !== "day") notes.push(NO_DAYS_IN_LOCK);
   }
   notes.push(
     "Sales = every stake placed in the period. Payout = winnings paid on rounds resulted in the period. On hold = stakes still awaiting a result at the cut-off. Refunds = stakes returned (one-sided bets, cancelled rounds, players' early exits). Withdrawals are wallet movements: they are never part of Payout or of any tax line.",
@@ -450,6 +564,25 @@ export function buildTaxCsv(d: TaxReportData, opts: { generatorName: string; gen
       [S(sec), S("Total Tax payable"), null, W(x.tax.total), null],
     );
   }
+  // Day by day: ONE ROW PER DAY PER LINE — a long table a spreadsheet pivots (rows: the Section's date; columns: the Line).
+  for (const [i, x] of (d.byDay ?? []).entries()) {
+    const sec = `Day by day — ${x.dayKey}`;
+    const day = dayRowLabel(d, x, { running: d.inProgress && i === (d.byDay ?? []).length - 1, print: false, withYear: true });
+    rows.push(
+      [S(sec), S("Sales"), S(day), N(x.report1.salesCents), W(x.counts.betsPlaced)],
+      [S(sec), S("Payout"), S(day), N(x.report1.payoutCents), W(x.counts.payoutRecords)],
+      [S(sec), S("On hold"), S(day), N(x.report1.onHoldCents), W(x.counts.betsOnHold)],
+      [S(sec), S("Refunds"), S(day), N(x.report1.refundsCents), W(x.counts.refundRecords)],
+      [S(sec), S("Platform fee kept"), S(day), N(x.report1.feeKeptCents), null],
+      [S(sec), S("Less: on hold brought forward"), S(day), N(-x.report1.broughtForwardCents || 0), null],
+      [S(sec), S("Check difference (must be 0)"), S(day), N(x.differenceCents), null],
+      [S(sec), S("Commission"), S(day), W(x.tax.commission), null],
+      [S(sec), S("TRA tax"), S(day), W(x.tax.tra), null],
+      [S(sec), S("GBT tax"), S(day), W(x.tax.gbt), null],
+      [S(sec), S("Total Tax payable"), S(day), W(x.tax.total), null],
+    );
+  }
+  if (opts.lock && d.byDay === undefined && d.period.kind !== "day") rows.push([S("Day by day"), S("Not recorded"), S(NO_DAYS_IN_LOCK), null, null]);
   for (const e of d.exceptions) rows.push([S("Exception"), S(EXCEPTION_LABEL[e.kind]), S(`${e.ref}${e.roundId && e.roundId !== e.ref ? ` · round ${e.roundId}` : ""} · ${e.note}`), N(e.contributionCents), null]);
   if (d.exceptionCount > d.exceptions.length) rows.push([S("Exception"), S(`Showing the ${d.exceptions.length} largest of ${d.exceptionCount}`), S(`All ${d.exceptionCount} explain TZS ${formatCents(d.explainedCents)}`), null, null]);
   for (const v of d.rateVersions) rows.push([S("Rates applied"), S(`In force from ${v.effectiveFrom}`), S(`Commission ${percentLabel(v.rates.commissionBp)} · TRA ${percentLabel(v.rates.traBp)} · GBT ${percentLabel(v.rates.gbtBp)}${v.note ? ` · ${v.note}` : ""}`), null, null]);

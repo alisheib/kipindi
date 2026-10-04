@@ -10,6 +10,8 @@
  *
  * The plan's acceptance tests (§8 of the owner's PDF) are §2 (the worked example), §10 (a withdrawal
  * changes nothing) and §11 (a round resulted after the cut-off stays On hold, then reclassifies).
+ * §14 is the day-by-day breakdown: real bets placed and settled across three EAT days (one across midnight, one
+ * on its stroke), every day read back as its own report and as that day opened on its own, the days adding up.
  *
  * ⛔ NO DATABASE, EVER: the URL is deleted before any server module loads, so this suite cannot
  * write to a real database even when one is configured in the shell. TZ is forced to Honolulu so a
@@ -563,6 +565,295 @@ console.log("§13 · a lock freezes the filed figures; the documents print the s
   await wbk.xlsx.load(await renderXlsx(hugeDoc));
   ok("13.29 the workbook's tab is the title's head — 'Government Tax Report' — never the title cut mid-phrase at Excel's 31 characters",
     hugeDoc.title.length > 31 && wbk.worksheets[0]?.name === "Government Tax Report", `${hugeDoc.title} → ${wbk.worksheets[0]?.name}`);
+}
+
+/* ═══ §14 · DAY BY DAY ════════════════════════════════════════════════════════════════════════════ */
+console.log("§14 · day by day: each day is its own report, and the days add up to the period");
+{
+  const D = (await load("src/lib/server/tax-report-doc.ts")) as typeof import("../src/lib/server/tax-report-doc.ts");
+  const L = (await load("src/lib/server/tax-locks.ts")) as typeof import("../src/lib/server/tax-locks.ts");
+  const { findPdfOverflows } = (await load("src/lib/server/reports/pdf.ts")) as typeof import("../src/lib/server/reports/pdf.ts");
+  const at = (day: string, hhmm: string) => E.parseEatLocal(`${day}T${hhmm}`)!;
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const gen = { generatorId: "usr_tx_gen", generatorName: "Test Officer", generatedAtMs: FAR };
+
+  // ── The edges, pure ──────────────────────────────────────────────────────────────────────────
+  const sepP = E.monthPeriod("2026-09")!;
+  const sepEdges = E.dayEdges(sepP.startMs, sepP.endMs);
+  ok("14.1 September cuts into its 30 EAT days, every inner edge at 00:00 EAT",
+    sepEdges.length === 31 && sepEdges.every((t) => E.toEatLocal(t).endsWith("T00:00")) && sepEdges[1] - sepEdges[0] === 86_400_000,
+    `${sepEdges.length} edges`);
+  eq("14.2 a window from 08:00 to 18:00 two days later keeps its part-days: 08:00 → 00:00 → 00:00 → 18:00",
+    E.dayEdges(at("2026-09-20", "08:00"), at("2026-09-22", "18:00")).map(E.toEatLocal),
+    ["2026-09-20T08:00", "2026-09-21T00:00", "2026-09-22T00:00", "2026-09-22T18:00"]);
+  eq("14.3 a window inside one day is one slice; an empty one is none",
+    [E.dayEdges(at("2026-09-20", "08:00"), at("2026-09-20", "18:00")).length, E.dayEdges(at("2026-09-20", "08:00"), at("2026-09-20", "08:00")).length], [2, 1]);
+  const whole = E.daySlice(at("2026-09-20", "00:00"), sepP.endMs);
+  ok("14.4 a whole day opens as that DAY", whole.hours === null && whole.period.kind === "day" && whole.period.key === "2026-09-20" && whole.label === "Sun 20 Sep 2026" && whole.short === "Sun 20 Sep", JSON.stringify(whole));
+  const head = E.daySlice(at("2026-09-20", "08:00"), at("2026-09-22", "18:00"));
+  const tail = E.daySlice(at("2026-09-22", "00:00"), at("2026-09-22", "18:00"));
+  ok("14.5 a part-day reads 'from 08:00' / 'to 18:00' and opens as the custom window of exactly those hours",
+    head.hours === "from 08:00" && head.period.kind === "custom" && head.period.key === "2026-09-20T08:00~2026-09-21T00:00"
+      && tail.hours === "to 18:00" && tail.period.key === "2026-09-22T00:00~2026-09-22T18:00",
+    JSON.stringify([head.hours, head.period.key, tail.hours, tail.period.key]));
+
+  // ── Real books on 20–22 Sep 2026: placed and settled by the real services, then stamped onto their days ────────
+  /** Move a market's bets and their money records onto chosen instants — the stake records to `placedAt`, the
+   *  settlement's records to `settledAt` — exactly as the services would have stamped them then. */
+  async function stamp(marketId: string, placedAt: number, settledAt: number | null) {
+    const ids = new Set<string>();
+    for (const p of await svc.listPositionsForMarket(marketId)) {
+      ids.add(p.id);
+      const cur = (await positionStore.get(p.id))!;
+      await positionStore.set({ ...cur, placedAt: iso(placedAt), settledAt: cur.settledAt && settledAt !== null ? iso(settledAt) : cur.settledAt } as never);
+    }
+    for (const t of await db.txn.listAll()) {
+      if (t.positionId && ids.has(t.positionId)) await db.txn.update(t.id, { createdAt: iso(t.type === "BET_PLACED" ? placedAt : settledAt!) });
+    }
+  }
+  const updown = async (id: string) => { const m = await marketStore.get(id); await marketStore.set({ ...m!, productLine: "UPDOWN" } as never); };
+  const ma = await market("days-two-sided");        // YES 5,000 v NO 5,000 → YES paid 9,350, fee 650
+  await bet("ma", ma.id, "YES", 5_000); await bet("ma", ma.id, "NO", 5_000);
+  await resolveAndSettle(ma.id, "YES");
+  await stamp(ma.id, at("2026-09-20", "10:00"), at("2026-09-21", "09:00"));
+  const mb = await market("days-one-sided");        // YES 4,000 alone → refunded
+  await bet("mb", mb.id, "YES", 4_000);
+  await resolveAndSettle(mb.id, "YES");
+  await stamp(mb.id, at("2026-09-21", "11:00"), at("2026-09-21", "15:00"));
+  const mc = await market("days-midnight");         // Up & Down, placed 23:59 and settled 00:01: NO paid 1,870, fee 130
+  await bet("mc", mc.id, "YES", 1_000); await bet("mc", mc.id, "NO", 1_000);
+  await updown(mc.id);
+  await resolveAndSettle(mc.id, "NO");
+  await stamp(mc.id, at("2026-09-20", "23:59"), at("2026-09-21", "00:01"));
+  const md = await market("days-open");              // YES 3,000, never settled — on hold through every day
+  await bet("md", md.id, "YES", 3_000);
+  await stamp(md.id, at("2026-09-20", "12:00"), null);
+  const mf = await market("days-early");             // YES 1,000 at 07:00, never settled — brought forward into an 08:00 window
+  await bet("mf", mf.id, "YES", 1_000);
+  await stamp(mf.id, at("2026-09-20", "07:00"), null);
+  const me = await market("days-stroke");            // Up & Down placed ON THE STROKE of Tuesday's midnight: YES paid 3,740, fee 260
+  await bet("me", me.id, "YES", 2_000); await bet("me", me.id, "NO", 2_000);
+  await updown(me.id);
+  await resolveAndSettle(me.id, "YES");
+  await stamp(me.id, at("2026-09-22", "00:00"), at("2026-09-22", "10:05"));
+
+  const w0 = at("2026-09-20", "00:00"), w3 = at("2026-09-23", "00:00");
+  const W = await read(w0, w3);
+  const days = W.byDay ?? [];
+  type Day = (typeof days)[number];
+  const r1 = (x: Day["report1"]) => [x.salesCents, x.payoutCents, x.onHoldCents, x.refundsCents, x.feeKeptCents, x.broughtForwardCents].map((c) => c / 100);
+  eq("14.6 three days, oldest first", days.map((x) => x.dayKey), ["2026-09-20", "2026-09-21", "2026-09-22"]);
+  // Sales · Payout · On hold · Refunds · fee kept · brought forward
+  eq("14.7 Sun 20: Sales 16,000 · nothing paid · all 16,000 on hold at midnight", days[0] ? r1(days[0].report1) : null, [16_000, 0, 16_000, 0, 0, 0]);
+  eq("14.8 Mon 21: Sales 4,000 · Payout 9,350 + 1,870 · On hold 4,000 · Refund 4,000 · fee 780 · 16,000 brought forward", days[1] ? r1(days[1].report1) : null, [4_000, 11_220, 4_000, 4_000, 780, 16_000]);
+  eq("14.9 Tue 22: a bet placed on the stroke of midnight is Tuesday's — Sales 4,000 · Payout 3,740 · fee 260 · 4,000 held throughout", days[2] ? r1(days[2].report1) : null, [4_000, 3_740, 4_000, 0, 260, 4_000]);
+  ok("14.10 every day balances on its own", days.length === 3 && days.every((x) => x.balanced && x.differenceCents === 0), JSON.stringify(days.map((x) => x.differenceCents)));
+  eq("14.11 each day is taxed on its own Payout: Mon 1,459 · 146 · 73 = 219 · Tue 486 · 49 · 24 = 73",
+    days.map((x) => [x.tax.commission, x.tax.tra, x.tax.gbt, x.tax.total]), [[0, 0, 0, 0], [1_459, 146, 73, 219], [486, 49, 24, 73]]);
+  const sum = (get: (x: Day) => number) => days.reduce((t, x) => t + get(x), 0);
+  eq("14.12 the days' flows add up to the period's exactly (Sales · Payout · Refunds · fee kept)",
+    [sum((x) => x.report1.salesCents), sum((x) => x.report1.payoutCents), sum((x) => x.report1.refundsCents), sum((x) => x.report1.feeKeptCents)],
+    [W.main.report1.salesCents, W.main.report1.payoutCents, W.main.report1.refundsCents, W.main.report1.feeKeptCents]);
+  ok("14.13 On hold is a balance: each day closes on what the next opens with; the first opens with the period, the last closes with it",
+    days.length === 3 && days.every((x, i) => i === 0 || days[i - 1].report1.onHoldCents === x.report1.broughtForwardCents)
+      && days[0].report1.broughtForwardCents === W.main.report1.broughtForwardCents && days[2].report1.onHoldCents === W.main.report1.onHoldCents);
+  eq("14.14 the period: Sales 24,000 · Payout 14,960 · On hold 4,000 · Refunds 4,000 · fee 1,040 · nothing brought forward — balanced",
+    [...r1(W.main.report1), W.main.reconciliation.balanced], [24_000, 14_960, 4_000, 4_000, 1_040, 0, true]);
+  eq("14.15 the days' differences add up to the period's", sum((x) => x.differenceCents), W.main.reconciliation.differenceCents);
+  eq("14.16 bets placed, day by day: 6 · 1 · 2", days.map((x) => x.counts.betsPlaced), [6, 1, 2]);
+  for (const x of days) {
+    const own = await buildTaxReportData({ period: E.daySlice(x.startMs, W.period.endMs).period, product: "ALL", nowMs: FAR });
+    ok(`14.17 ${x.dayKey} is exactly that day opened on its own (Report 1, the check, the counts, the tax)`,
+      own.ok && own.data.period.kind === "day" && JSON.stringify(own.data.main.report1) === JSON.stringify(x.report1)
+        && own.data.main.reconciliation.differenceCents === x.differenceCents && own.data.main.counts.betsPlaced === x.counts.betsPlaced
+        && own.data.main.counts.betsOnHold === x.counts.betsOnHold && own.data.main.counts.payoutRecords === x.counts.payoutRecords
+        && JSON.stringify([own.data.main.tax.commission, own.data.main.tax.tra, own.data.main.tax.gbt, own.data.main.tax.total]) === JSON.stringify([x.tax.commission, x.tax.tra, x.tax.gbt, x.tax.total]),
+      own.ok ? JSON.stringify([own.data.main.report1, x.report1]) : own.error);
+  }
+
+  // ── The product filter, day by day ───────────────────────────────────────────────────────────
+  const WM = await read(w0, w3, "MARKET");
+  const WU = await read(w0, w3, "UPDOWN");
+  ok("14.18 Polls + Up & Down = All, every day, for every flow and both balances",
+    days.length === 3 && days.every((x, i) => (["salesCents", "payoutCents", "onHoldCents", "refundsCents", "feeKeptCents", "broughtForwardCents"] as const)
+      .every((k) => (WM.byDay ?? [])[i]?.report1[k] + (WU.byDay ?? [])[i]?.report1[k] === x.report1[k])));
+  eq("14.19 Up & Down alone: Sun 2,000 placed and held · Mon 1,870 paid with 2,000 brought forward · Tue 4,000 placed, 3,740 paid",
+    (WU.byDay ?? []).map((x) => [x.report1.salesCents / 100, x.report1.payoutCents / 100, x.report1.onHoldCents / 100, x.report1.broughtForwardCents / 100]),
+    [[2_000, 0, 2_000, 0], [0, 1_870, 0, 2_000], [4_000, 3_740, 0, 0]]);
+
+  // ── A custom window that opens and closes mid-day ────────────────────────────────────────────
+  const part = E.customPeriod("2026-09-20T08:00", "2026-09-22T18:00")!;
+  const P = await buildTaxReportData({ period: part, product: "ALL", nowMs: FAR });
+  const pd = P.ok ? P.data.byDay ?? [] : [];
+  eq("14.20 a custom window keeps its part-days: Sunday from 08:00, the whole Monday, Tuesday to 18:00",
+    pd.map((x) => E.daySlice(x.startMs, part.endMs).period.key), ["2026-09-20T08:00~2026-09-21T00:00", "2026-09-21", "2026-09-22T00:00~2026-09-22T18:00"]);
+  eq("14.21 the 07:00 bet is brought forward into the 08:00 part-day, which closes with 16,000 on hold",
+    pd[0] ? [pd[0].report1.salesCents / 100, pd[0].report1.broughtForwardCents / 100, pd[0].report1.onHoldCents / 100, pd[0].balanced] : null, [15_000, 1_000, 16_000, true]);
+  for (const x of pd) {
+    const own = await buildTaxReportData({ period: E.daySlice(x.startMs, part.endMs).period, product: "ALL", nowMs: FAR });
+    ok(`14.22 the slice from ${E.toEatLocal(x.startMs)} is its own window opened`,
+      own.ok && JSON.stringify(own.data.main.report1) === JSON.stringify(x.report1) && own.data.main.tax.total === x.tax.total,
+      own.ok ? JSON.stringify([own.data.main.report1, x.report1]) : own.error);
+  }
+
+  // ── A running month, its first morning, a month not started, a single day ──────────────────
+  const noon = at("2026-09-21", "12:00");
+  const run = await buildTaxReportData({ period: sepP, product: "ALL", nowMs: noon });
+  const rd = run.ok ? run.data.byDay ?? [] : [];
+  const lastRow = rd[rd.length - 1];
+  ok("14.23 a running month lists its days so far — 1 to 21 Sep, the last cut a minute before now",
+    rd.length === 21 && rd[0].dayKey === "2026-09-01" && lastRow.dayKey === "2026-09-21" && lastRow.endMs === noon - E.RUNNING_MARGIN_MS,
+    `${rd.length} rows, last ${lastRow?.dayKey} to ${lastRow ? E.toEatLocal(lastRow.endMs) : ""}`);
+  const today = lastRow ? E.daySlice(lastRow.startMs, sepP.endMs).period : null;
+  const todayOwn = today ? await buildTaxReportData({ period: today, product: "ALL", nowMs: noon }) : null;
+  ok("14.24 …and today's row opens TODAY, which read at the same moment shows the same figures",
+    today?.kind === "day" && today.key === "2026-09-21" && !!todayOwn?.ok && JSON.stringify(todayOwn.data.main.report1) === JSON.stringify(lastRow.report1),
+    todayOwn?.ok ? JSON.stringify([todayOwn.data.main.report1, lastRow?.report1]) : "no row");
+  eq("14.25 at noon on Monday the one-sided 4,000 is still on hold — its 15:00 refund is after the cut",
+    lastRow ? [lastRow.report1.salesCents / 100, lastRow.report1.onHoldCents / 100, lastRow.report1.refundsCents / 100, lastRow.balanced] : null, [4_000, 8_000, 0, true]);
+  const firstMorning = await buildTaxReportData({ period: sepP, product: "ALL", nowMs: at("2026-09-01", "10:00") });
+  const notYet = await buildTaxReportData({ period: E.monthPeriod("2026-10")!, product: "ALL", nowMs: noon });
+  const oneDay = await buildTaxReportData({ period: E.dayPeriod("2026-09-21")!, product: "ALL", nowMs: FAR });
+  eq("14.26 a month on its first morning shows its one day so far; a month not started, none; a day is its own day (no breakdown)",
+    [firstMorning.ok ? firstMorning.data.byDay?.length : "err", notYet.ok ? notYet.data.byDay : "err", oneDay.ok ? oneDay.data.byDay : "err"], [1, [], null]);
+
+  // The first minute after midnight: a day that closed less than a minute ago is still read a minute back, so the running
+  // month's last row — yesterday, cut there — is exactly the day its link opens (the review's finding, 2026-10-04).
+  const mn = await market("days-closing-minute");
+  await bet("mn", mn.id, "YES", 1_000); await bet("mn", mn.id, "NO", 1_000);
+  await stamp(mn.id, at("2026-09-27", "23:59") + 45_000, null);
+  const justAfter = at("2026-09-28", "00:00") + 30_000;
+  const early = await buildTaxReportData({ period: sepP, product: "ALL", nowMs: justAfter });
+  const er = early.ok ? early.data.byDay ?? [] : [];
+  const yRow = er[er.length - 1];
+  const yOwn = yRow ? await buildTaxReportData({ period: E.daySlice(yRow.startMs, sepP.endMs).period, product: "ALL", nowMs: justAfter }) : null;
+  ok("14.26b thirty seconds after midnight the running month ends at yesterday, cut a minute back — and yesterday opened then is exactly that row",
+    er.length === 27 && yRow?.dayKey === "2026-09-27" && yRow.endMs === justAfter - E.RUNNING_MARGIN_MS && !!yOwn?.ok && yOwn.data.inProgress
+      && JSON.stringify(yOwn.data.main.report1) === JSON.stringify(yRow.report1) && yRow.report1.salesCents === 0,
+    JSON.stringify({ rows: er.length, last: yRow?.dayKey, end: yRow ? E.toEatLocal(yRow.endMs) : null, own: yOwn?.ok ? yOwn.data.main.report1 : null, row: yRow?.report1 }));
+  const settledDay = await buildTaxReportData({ period: E.dayPeriod("2026-09-27")!, product: "ALL", nowMs: at("2026-09-28", "00:01") });
+  ok("14.26c …and once that minute has passed the day is finished, read to its end: the 23:59:45 stakes are in it",
+    settledDay.ok && !settledDay.data.inProgress && settledDay.data.main.report1.salesCents === 2_000_00, settledDay.ok ? JSON.stringify(settledDay.data.main.report1) : settledDay.error);
+
+  // ── A day out of balance: a second payout, a day after its round settled ─────────────────────
+  const mg = await market("days-late-payout");      // Up & Down settled Friday; 500 more paid on Saturday names its winner
+  await bet("mg", mg.id, "YES", 1_000); await bet("mg", mg.id, "NO", 1_000);
+  await updown(mg.id);
+  await resolveAndSettle(mg.id, "NO");
+  await stamp(mg.id, at("2026-09-25", "10:00"), at("2026-09-25", "11:00"));
+  const winner = (await svc.listPositionsForMarket(mg.id)).find((p) => p.status === "WIN")!;
+  await db.txn.create({
+    id: `txn_tx_late_${seq}`, walletId: "wal_tx_officer_b", userId: "tx_officer_b", type: "BET_PAYOUT", status: "CONFIRMED",
+    amount: 500, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "INTERNAL", providerRef: null,
+    msisdn: null, description: "planted", positionId: winner.id, amlReason: null,
+    createdAt: iso(at("2026-09-26", "09:00")), updatedAt: iso(at("2026-09-26", "09:00")), completedAt: iso(at("2026-09-26", "09:00")),
+  } as never);
+  const late = await read(at("2026-09-25", "00:00"), at("2026-09-27", "00:00"), "UPDOWN");
+  const sat = (late.byDay ?? [])[1];
+  const satOwn = await buildTaxReportData({ period: E.dayPeriod("2026-09-26")!, product: "UPDOWN", nowMs: FAR });
+  ok("14.27 Saturday's 500 is Up & Down's — its record names the bet, as the Day view reads it — and Saturday is out by −500",
+    !!sat && sat.report1.payoutCents === 500_00 && !sat.balanced && sat.differenceCents === -500_00 && satOwn.ok && JSON.stringify(satOwn.data.main.report1) === JSON.stringify(sat.report1),
+    JSON.stringify([sat?.report1, sat?.differenceCents, satOwn.ok ? satOwn.data.main.report1 : null]));
+  ok("14.28 …while Friday still balances: a day's difference stays on its day — and the days' differences add up to the window's (−500)",
+    (late.byDay ?? [])[0]?.balanced === true && (late.byDay ?? []).reduce((t, x) => t + x.differenceCents, 0) === late.main.reconciliation.differenceCents && late.main.reconciliation.differenceCents === -500_00);
+
+  // ── The words, and the documents ─────────────────────────────────────────────────────────────
+  ok("14.29 the note says what adds up, with no tax clause while the days' tax equals Report 2's", D.dayByDayNote(days, W.main).includes("add up to the period's") && !D.dayByDayNote(days, W.main).includes("tax adds to"));
+  const day999 = (x: Day) => ({ ...x, tax: { ...E.taxOnPayout(999_00, E.APPROVED_RATES) } });
+  const note = D.dayByDayNote([day999(days[1]), day999(days[2])], { ...W.main, tax: { ...W.main.tax, total: E.taxOnPayout(1_998_00, E.APPROVED_RATES).total } });
+  ok("14.30 …and names both figures when each day's own rounding makes them differ (40 against 39)", note.includes("TZS 40 against Report 2's TZS 39"), note);
+  const pdfDoc = D.buildTaxDocument(W, { ...gen, lock: null });
+  const ds = pdfDoc.sections.find((s) => s.title === "Day by day");
+  eq("14.31 the PDF prints the five figures that fit a portrait page, beside the day", ds?.columns.map((c) => c.header), ["Day", "Sales", "Payout", "On hold", "Refunds", "Total tax"]);
+  eq("14.32 …one row per day, the reader's figures — the day without its year, which the period line states once",
+    ds?.rows.map((r) => [r.day, r.sales, r.payout, r.onHold, r.refunds, r.tax]),
+    [["Sun 20 Sep", 16_000, 0, 16_000, 0, 0], ["Mon 21 Sep", 4_000, 11_220, 4_000, 4_000, 219], ["Tue 22 Sep", 4_000, 3_740, 4_000, 0, 73]]);
+  const titles = pdfDoc.sections.map((s) => s.title);
+  ok("14.33 …after By product, before the exceptions and the rates", titles.indexOf("Day by day") === titles.indexOf("By product") + 1 && titles.indexOf("Rates applied") > titles.indexOf("Day by day"), titles.join(" | "));
+  const lateDoc = D.buildTaxDocument({ ...late, period: E.customPeriod("2026-09-25T00:00", "2026-09-27T00:00")! }, { ...gen, lock: null });
+  eq("14.34 an out-of-balance day says so in its first cell on the printed page — on a line of its own", lateDoc.sections.find((s) => s.title === "Day by day")?.rows.map((r) => r.day), ["Fri 25 Sep", ["Sat 26 Sep", "out of balance"].join(String.fromCharCode(10))]);
+  const xDoc = D.buildTaxDocument(W, { ...gen, lock: null, layout: "xlsx" });
+  const xs = xDoc.sections.find((s) => s.title === "Day by day");
+  eq("14.35 the workbook carries every daily figure as its own column", xs?.columns.map((c) => c.header),
+    ["Day", "Sales", "Payout", "On hold", "Refunds", "Platform fee kept", "Less: on hold brought forward", "Difference (must be 0)", "Commission", "TRA tax", "GBT tax", "Total tax", "Bets placed"]);
+  eq("14.36 …Monday's row in full: the stakes brought forward subtracted, as Report 1 prints them", xs?.rows[1],
+    { day: "Mon 21 Sep 2026", sales: 4_000, payout: 11_220, onHold: 4_000, refunds: 4_000, fee: 780, bf: -16_000, diff: 0, commission: 1_459, tra: 146, gbt: 73, bets: 1, tax: 219 });
+  eq("14.37 …and a sum row that IS the sum: the balances left blank, the tax lines the days' own", xs?.totals,
+    { day: "Sum of the days", sales: 24_000, payout: 14_960, onHold: "", refunds: 4_000, fee: 1_040, bf: "", diff: 0, commission: 1_945, tra: 195, gbt: 97, tax: 292, bets: 9 });
+  ok("14.38 a day's own document has no day table — the day IS the report",
+    !D.buildTaxDocument({ ...W, period: E.dayPeriod("2026-09-21")!, byDay: null }, { ...gen, lock: null }).sections.some((s) => s.title === "Day by day"));
+  const csv = D.buildTaxCsv(W, { ...gen, lock: null, reference: "TAX-TEST" });
+  ok("14.39 the CSV has one row per day per line, the day's date in its section, figures and counts as numbers",
+    csv.includes('"Day by day — 2026-09-20","Sales","Sun 20 Sep 2026",16000,6') && csv.includes('"Day by day — 2026-09-21","Payout","Mon 21 Sep 2026",11220,2')
+      && csv.includes('"Day by day — 2026-09-21","Less: on hold brought forward","Mon 21 Sep 2026",-16000,') && csv.includes('"Day by day — 2026-09-22","Total Tax payable","Tue 22 Sep 2026",73,'),
+    csv.split(String.fromCharCode(10)).filter((l) => l.startsWith('"Day by day')).slice(0, 3).join(" | "));
+  const cents = { ...W, byDay: days.map((x, i) => (i === 0 ? { ...x, report1: { ...x.report1, salesCents: x.report1.salesCents + 50 } } : x)) };
+  eq("14.40 a day with cents prints exactly even when the period's own figures are whole", D.buildTaxDocument(cents, { ...gen, lock: null }).sections.find((s) => s.title === "Day by day")?.rows[0]?.sales, "16,000.50");
+
+  // ── A lock taken before daily figures were recorded ──────────────────────────────────────────
+  const may = E.monthPeriod("2026-05")!;
+  const { byDay: _none, ...oldSnap } = { ...W, period: may };
+  void _none;
+  const oldLock = await L.insertLock({ periodKind: "month", periodKey: "2026-05", product: "ALL", periodStartMs: may.startMs, periodEndMs: may.endMs, snapshot: oldSnap as never, balanced: true, lockedBy: "tx_officer_a", note: null, exceptionsAcknowledged: null });
+  if (oldLock.ok) {
+    const od = D.buildTaxDocument(oldLock.lock.snapshot, { ...gen, lock: oldLock.lock });
+    const oc = D.buildTaxCsv(oldLock.lock.snapshot, { ...gen, lock: oldLock.lock, reference: "TAX-TEST" });
+    ok("14.41 a filing locked before daily figures existed prints no day table and SAYS it holds none — the PDF and the CSV",
+      oldLock.lock.snapshot.byDay === undefined && !od.sections.some((s) => s.title === "Day by day") && (od.notes ?? []).some((n) => n.includes("holds no day-by-day table")) && oc.includes('"Day by day","Not recorded"'));
+  } else ok("14.41 (fixture) the old-style lock was recorded", false, JSON.stringify(oldLock));
+  const newDoc = D.buildTaxDocument({ ...W, period: sepP }, { ...gen, lock: null });
+  ok("14.42 control — a report that carries its days never prints that note", !(newDoc.notes ?? []).some((n) => n.includes("holds no day-by-day table")));
+
+  // ── The printed day table, measured with the renderer's own fonts ─────────────────────────────
+  // 999,999,999.99 — a billion shillings in a day, with cents. A figure with cents prints as exact TEXT, in Inter (whole
+  // shillings print in JetBrains Mono): measured, it is the widest that fits a 21-wide money column.
+  const BIG_DAY = 999_999_999_99;
+  const bigDay = (i: number): Day => ({
+    ...days[0],
+    dayKey: E.toEatLocal(sepP.startMs + i * 86_400_000).slice(0, 10),
+    // The first a part-day ("08:00–24:00"): the longest word the day cell must hold.
+    startMs: sepP.startMs + i * 86_400_000 + (i === 0 ? 8 * 3_600_000 : 0),
+    endMs: sepP.startMs + (i + 1) * 86_400_000,
+    report1: { salesCents: BIG_DAY, payoutCents: BIG_DAY, onHoldCents: BIG_DAY, refundsCents: BIG_DAY, feeKeptCents: BIG_DAY, broughtForwardCents: BIG_DAY },
+    differenceCents: -BIG_DAY,
+    balanced: false,
+    tax: { commission: 9_999_999_999, tra: 9_999_999_999, gbt: 9_999_999_999, total: 9_999_999_999 },
+  });
+  const bigW = { ...W, period: sepP, inProgress: true, byDay: Array.from({ length: 30 }, (_, i) => bigDay(i)) };
+  const bigDoc = D.buildTaxDocument(bigW, { ...gen, lock: null });
+  const bigRows = bigDoc.sections.find((s) => s.title === "Day by day")?.rows ?? [];
+  const bigOver = findPdfOverflows(bigDoc).filter((o) => o.where.startsWith("Day by day"));
+  ok("14.43 a billion shillings a day with cents, a part-day, 'so far' and 'out of balance' fit every printed day cell",
+    bigOver.length === 0 && bigRows.length === 30 && String(bigRows[0].day).split(String.fromCharCode(10)).join("|") === "Tue 1 Sep|from 08:00|out of balance"
+      && String(bigRows[29].day).split(String.fromCharCode(10)).join("|") === "Wed 30 Sep|so far|out of balance",
+    JSON.stringify(bigOver.slice(0, 4)));
+  const tooBig = { ...bigW, byDay: bigW.byDay.map((x) => ({ ...x, report1: { ...x.report1, salesCents: 9_999_999_999_99 } })) };
+  ok("14.44 CONTROL — ten billion with cents (sixteen characters) IS caught splitting in the Sales column",
+    findPdfOverflows(D.buildTaxDocument(tooBig, { ...gen, lock: null })).some((o) => o.where === "Day by day · Sales"));
+  // A lock's days drift too: money moved between two days leaves every period line equal.
+  const Vw = (await load("src/lib/server/tax-report-view.ts")) as typeof import("../src/lib/server/tax-report-view.ts");
+  const shifted = { ...W, byDay: days.map((x, i) => (i === 1 ? { ...x, report1: { ...x.report1, salesCents: x.report1.salesCents - 1_000_00 } } : i === 2 ? { ...x, report1: { ...x.report1, salesCents: x.report1.salesCents + 1_000_00 } } : x)) };
+  eq("14.48 money moved between two days, with every period line equal, is named as drift — day by day",
+    Vw.driftBetween(W, shifted).map((l) => [l.line, l.locked / 100, l.live / 100]), [["Sales on Mon 21 Sep 2026", 4_000, 3_000], ["Sales on Tue 22 Sep 2026", 4_000, 5_000]]);
+  ok("14.49 control — a filing that holds no days drifts on its period lines alone", Vw.driftBetween({ ...W, byDay: undefined }, shifted).length === 0);
+  // A window across New Year prints each day's year — the period line no longer states one year for all.
+  const nye = E.customPeriod("2026-12-31T00:00", "2027-01-02T00:00")!;
+  const nyeDays = [0, 1].map((i): Day => ({ ...days[0], dayKey: E.toEatLocal(nye.startMs + i * 86_400_000).slice(0, 10), startMs: nye.startMs + i * 86_400_000, endMs: nye.startMs + (i + 1) * 86_400_000 }));
+  eq("14.45 a window across New Year prints each day with its year",
+    D.buildTaxDocument({ ...W, period: nye, byDay: nyeDays }, { ...gen, lock: null }).sections.find((s) => s.title === "Day by day")?.rows.map((r) => r.day), ["Thu 31 Dec 2026", "Fri 1 Jan 2027"]);
+  // ⭐ THE FOOTER, MEASURED: a custom window's reference is the longest this report prints, and it ran under the page number.
+  const footerOver = findPdfOverflows(lateDoc).filter((o) => o.where.startsWith("footer"));
+  ok("14.46 a custom window's long reference leaves the footer's page number and date clear", footerOver.length === 0 && lateDoc.reference.length > 40, JSON.stringify(footerOver));
+  ok("14.47 CONTROL — a reference no footer could hold IS caught", findPdfOverflows({ ...lateDoc, reference: "TAX-".padEnd(400, "X") }).some((o) => o.where.startsWith("footer")));
+  // To LOOK at the day tables: TAX_PDF_OUT=<dir> writes the three-day window as PDF and workbook, and the billion-a-day page.
+  if (process.env.TAX_PDF_OUT) {
+    const { renderPdf, renderXlsx } = (await load("src/lib/server/reports/pdf.ts").then(async (pdfMod) => ({ ...pdfMod, ...(await load("src/lib/server/reports/xlsx.ts")) }))) as typeof import("../src/lib/server/reports/pdf.ts") & typeof import("../src/lib/server/reports/xlsx.ts");
+    mkdirSync(process.env.TAX_PDF_OUT, { recursive: true });
+    writeFileSync(join(process.env.TAX_PDF_OUT, "tax-days.pdf"), await renderPdf(D.buildTaxDocument({ ...W, period: E.customPeriod("2026-09-20T00:00", "2026-09-23T00:00")! }, { ...gen, lock: null })));
+    writeFileSync(join(process.env.TAX_PDF_OUT, "tax-days.xlsx"), await renderXlsx(D.buildTaxDocument({ ...W, period: E.customPeriod("2026-09-20T00:00", "2026-09-23T00:00")! }, { ...gen, lock: null, layout: "xlsx" })));
+    writeFileSync(join(process.env.TAX_PDF_OUT, "tax-days-billion.pdf"), await renderPdf(bigDoc));
+    writeFileSync(join(process.env.TAX_PDF_OUT, "tax-days-out.pdf"), await renderPdf(lateDoc));
+  }
 }
 
 console.log(`\ntax-report: ${pass} passed, ${fails.length} failed`);

@@ -12,6 +12,7 @@
 |---|---|
 | Live | 🟢 **LIVE 2026-10-03, `d1b82f9a`** on https://50pick.tz/admin/tax (deploy read back from `?dpl=`; the export route answers an anonymous request with 401) |
 | Page | `/admin/tax` — Money → **Tax report** in the sidebar |
+| Day by day | 🟡 **Built 2026-10-04, going live** — every week, month or custom window lists its days, each that day's own report (§6b) |
 | Who sees it | Owner (ADMIN), Finance, Compliance, Auditor — accounting VIEW (`roles.ts` `ROUTE_DOMAINS`) |
 | Who locks a period | Finance or the Owner (accounting ACT). The Owner alone (the stored ADMIN role) reopens one, records new rates, or locks a period out of balance — including one product while the whole book behind it is out |
 | Proof | `npm run test:tax-report` (engine + reader on real bets/settlements) · `npm run red:tax-report` (every declared mutation caught) |
@@ -115,8 +116,8 @@ total of **20** step by step, against 19 rounded once (§3.3).
   whole book, the exceptions, the rates), and a recompute with any other fingerprint is refused (the books moved since
   the page loaded — refresh first). It stores the WHOLE report as a snapshot with its canonical sha256 (`TaxPeriodLock` table, migration
   `20261003180000_tax_period_lock`), and audits `tax_report.period.locked`. One live lock per period and product —
-  enforced by a partial unique index. A running period is read to a minute before now (`RUNNING_MARGIN_MS`), so a
-  bet still committing can never show as a false exception.
+  enforced by a partial unique index. A running period — or one that ended less than a minute ago — is read to a
+  minute before now (`RUNNING_MARGIN_MS`), so a bet still committing can never show as a false exception.
 - **A locked period shows its snapshot** — on screen and in every export — and names every line where the live books
   have moved since (the drift table), so a late correction is never silent.
 - **Out of balance:** sign-off is blocked. The Owner can lock it with the exceptions acknowledged — on its own
@@ -126,6 +127,55 @@ total of **20** step by step, against 19 rounded once (§3.3).
 - **Reopen:** the Owner, with a written reason (typed `REOPEN`); the lock's row stays, a re-lock is a new row, audited
   `tax_report.period.unlocked`. "The Owner" is the STORED ADMIN role (`requireOwner`) — reopening, rates and an
   out-of-balance lock can never be handed to another role through the grant table.
+
+## §6b · Day by day
+
+Ali, 2026-10-04: *"lets add an option day by day breakdown please … make it perfectly made … full perfect flexibility
+and usability of the reports"*.
+
+- **Where:** every period that crosses an EAT midnight — a week, a month, a custom window over more than one day —
+  carries a **Day by day** card after
+  *By product* and before the exceptions (the PDF and the workbook print it in the same place). A Day is its own day:
+  it has no card.
+- **One row per EAT day:** Sales · Payout · On hold · Refunds · Total tax · the check (✓, or ✗ and the day's
+  difference). The last row is the **whole period** — Report 1's and Report 2's own figures, never a sum made on the
+  page.
+- **Each row IS that day's report.** `dayBreakdown` (`tax-report-data.ts`) cuts the SAME reader at the day's edges: the
+  day's money records, the bets live in it by `listLiveDuring`'s own rule, and every bet its records name — exactly what
+  the Day view reads. So a row equals the Day view of that day (`test:tax-report` §14.17), a custom window's first and
+  last part-days read **"from 08:00"** / **"to 18:00"** and equal the custom window of exactly those hours (§14.22), and
+  a running period's last row reads **"so far"** and opens today (§14.24). A stake placed on the stroke of midnight is
+  the new day's (§14.9). In the minute after midnight a day that closed less than a minute ago is still read a minute
+  back — as a running period always is, since a stake stamped in that minute may still be committing — so the running
+  month's last row and the day it opens agree then too (§14.26b–c); today's row appears a minute in.
+- **What adds up:** the days' Sales, Payout, Refunds and fee kept add up to the period's exactly (§14.12); **On hold is
+  each day's closing balance** and the next day's brought-forward (§14.13). Each day's tax is computed on that day's own
+  Payout and rounded at each step, as the plan rounds any period — so the days' tax can differ from Report 2's by a few
+  shillings; the card and the files say so, with both figures, whenever it does (§14.30). Report 2 is the period's
+  figure and the one filed. A round settles at one instant, so its fee is kept on one day; a round whose bets carry
+  settle stamps on both sides of a midnight (repaired data only) shows ✗ on both days — exactly as each day's own
+  report does — while the period balances.
+- **Use it:** select a day (desktop) or tap its block (phone) to open its full report — the product filter is kept, so
+  *Polls* or *Up & Down* by day is one pill away. Below 1280px each day is a block of labelled figures (seven columns
+  do not fit beside the 216px sidebar); from 1280px, a table. A day with nothing placed, paid or refunded is drawn
+  quiet in the table, and on a phone is one compact line — *No activity · on hold …* — so a month's three active days
+  are not lost in thirty identical blocks (a quiet day that is out of balance keeps every figure). A long custom
+  window pages 31 days at a time (`dpage`); the exceptions keep their own page alongside. While a day opens, its link
+  carries the pending bar and the rows dim, as every console link does.
+- **Files:** the **PDF** prints Day · Sales · Payout · On hold · Refunds · Total tax — the five figures a portrait page
+  holds — with the date short ("Sun 20 Sep") when the window sits in one year, and each qualifier on a line of its
+  own under the date: *from 08:00*, *so far*, and **out of balance** for a day whose check does not close. The **workbook** carries every daily figure as its own column (fee kept,
+  brought forward, the difference, Commission, TRA, GBT, total tax, bets placed) and a **"Sum of the days"** row that IS
+  the sum (On hold and brought forward are balances, so their cells are left blank). The **CSV** has one row per day per
+  line — Section `Day by day — 2026-09-20`, Line `Sales` — so a spreadsheet pivots it straight into a day × line table.
+- **Locks:** a lock freezes the days with everything else, and the lock fingerprint covers them. The drift compares
+  them too: money that moved between days is named day by day ("Sales on Mon 21 Sep 2026", §14.48) even when every
+  period line still agrees. ⚠️ A lock taken before
+  2026-10-04 holds **no** daily figures: its page shows the live books' days and says so (and that they add up to the
+  live figures if the books moved since); its files say the filing holds no day table. Reopening and locking again
+  records them. Nothing is invented for a filing that never held it (§14.41).
+- **Measured:** a day of TZS 999,999,999.99 (with cents) or 9,999,999,999 (whole) prints every figure on one line
+  (§14.43; control §14.44 — ten billion with cents is caught).
 
 ## §7 · Exports
 
@@ -151,6 +201,11 @@ total of **20** step by step, against 19 rounded once (§3.3).
   "(continued)". The workbook's tab is the title's head, never the title cut at Excel's 31 characters.
 - A locked period's export carries the lock reference and, if the live books have moved since, a note naming every
   line that moved (locked → live).
+- **The footer never overprints** (fixed 2026-10-04, in the shared renderer): a custom window's reference
+  (`TAX-CUSTOM-` + both edges + product + id) ran under the centred "Page 2 of 3" and printed "Internal" on top of it.
+  The page number now stays centred while the reference leaves it room, moves beside the date when it does not, and a
+  reference too long even for that is drawn smaller — `findPdfOverflows` measures the footer of every report
+  (§14.46, control §14.47; `test:report-cells` runs it over the catalogue).
 - Gate: accounting VIEW or Owner + admin 2FA + same-origin request. **The audit row (`tax_report.exported`) is written
   and confirmed before the first byte**; a download whose record did not land is refused.
 - Its own route, not `/api/admin/reports/[id]`: that route carries no product filter, no calendar week and is pinned to
@@ -168,11 +223,11 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
 
 | Instrument | What it proves |
 |---|---|
-| `npm run test:tax-report` | §1 purity · §2 the worked example · §3 rounding · §4 rate input · §5 effective dates · §6 EAT periods · §7 cents · §8 reasons · §9 the reader on REAL bets, settlements, a one-sided refund, an emergency void, a free exit and an Up & Down round, read back to the cent · §10 a withdrawal changes nothing · §11 a round resulted after the cut-off · §12 products, rounding residue, planted defects, and the whole-book check a single product carries · §13 locks, drift, the PDF/Excel/CSV documents, and their states: custom window, PARTIAL, SETTLING (closed less than the lock grace ago), WHOLE BOOK OUT OF BALANCE; the period type in every file name and reference; drift rows in a locked CSV; the Owner's acknowledged filings (title + first note); the lock fingerprint (stable across reads, sensitive to a TRA/GBT re-split and to the whole book); the printed PDF measured at ten-digit figures (§13.27, control §13.28) and the workbook's tab (§13.29) |
-| `npm run red:tax-report` | Mutates a COPY of `src/` with each declared defect (`scripts/anchors/tax-report.anchors.mjs`) and proves `test:tax-report` goes red on the named check — the plan's formula and rounding, every line of the check, the products, the locks, and each protection the 2026-10-03 adversarial review added (the whole-book loophole, the settling copy, a week's file overwriting its Monday's, merged rate segments, link inference, the running period's one-minute margin), and those of the second review (an acknowledged filing printed bare, the lock fingerprint, four-across tiles, a narrow id column, the window printed to "now") |
-| `npm run test:tax-report-page` | The surfaces at source level, every check with a planted-violation control: the page computes nothing and has no `?? 0`; the export gates on the stored role + 2FA + same-origin and audits before the first byte; every action gates first (reopen and rates on the stored ADMIN role, `requireOwner`); a lock recomputes from the books, refuses unless its fingerprint is the one the page showed, and treats a whole-book difference as its own; the lock panel is rebuilt per period and product; the dev seeder is dead in production |
+| `npm run test:tax-report` | §1 purity · §2 the worked example · §3 rounding · §4 rate input · §5 effective dates · §6 EAT periods · §7 cents · §8 reasons · §9 the reader on REAL bets, settlements, a one-sided refund, an emergency void, a free exit and an Up & Down round, read back to the cent · §10 a withdrawal changes nothing · §11 a round resulted after the cut-off · §12 products, rounding residue, planted defects, and the whole-book check a single product carries · §13 locks, drift, the PDF/Excel/CSV documents, and their states: custom window, PARTIAL, SETTLING (closed less than the lock grace ago), WHOLE BOOK OUT OF BALANCE; the period type in every file name and reference; drift rows in a locked CSV; the Owner's acknowledged filings (title + first note); the lock fingerprint (stable across reads, sensitive to a TRA/GBT re-split and to the whole book); the printed PDF measured at ten-digit figures (§13.27, control §13.28) and the workbook's tab (§13.29) · §14 **day by day**: real bets placed and settled across three EAT days (one across midnight, one on its stroke, one brought forward into an 08:00 window), every day read back to the cent AND as that day opened on its own; the days adding up; a running month's days so far; a payout a day late kept on its product's day; the PDF, workbook and CSV day tables; the New Year label; an old lock that holds no days; the billion-a-day fit and the footer |
+| `npm run red:tax-report` | Mutates a COPY of `src/` with each declared defect (`scripts/anchors/tax-report.anchors.mjs`) and proves `test:tax-report` goes red on the named check — the plan's formula and rounding, every line of the check, the products, the locks, and each protection the 2026-10-03 adversarial review added (the whole-book loophole, the settling copy, a week's file overwriting its Monday's, merged rate segments, link inference, the running period's one-minute margin), and those of the second review (an acknowledged filing printed bare, the lock fingerprint, four-across tiles, a narrow id column, the window printed to "now"), and the day-by-day's twelve (an edge past the window, a day link opening the rest of the window, days measured on the cut-off, midnight filed under the day before, a forgotten brought-forward, a bet dropped from the day it left, a day dropping the bets its records name, the silent tax clause, an old filing's missing days unsaid, cents rounded away, a sign flipped in the workbook, an out-of-balance day hidden in print) |
+| `npm run test:tax-report-page` | The surfaces at source level, every check with a planted-violation control: the page computes nothing and has no `?? 0`; the export gates on the stored role + 2FA + same-origin and audits before the first byte; every action gates first (reopen and rates on the stored ADMIN role, `requireOwner`); a lock recomputes from the books, refuses unless its fingerprint is the one the page showed, and treats a whole-book difference as its own; the lock panel is rebuilt per period and product; the dev seeder is dead in production; §5 the day card reads the view's own days (the live view's for an old lock), opens each through the engine's `daySlice`, uses the documents' own words, lays out a table only from 1280px, prints the whole period from Report 1/2, keeps both pagers' pages, and the route hands the workbook its wide layout |
 | `npm run e2e:tax-report` | The same real flows on a LOOPBACK Postgres (`DATABASE_URL=…127.0.0.1…`): every Prisma twin the reader uses, the migration applied from empty, and the partial unique index refusing a second live lock |
-| `npm run qa:tax-report` | The browser drive on a local dev server: every period type × product, the arrows, the week/day pickers (typing moves nothing until **Go**), a link naming only a day, a balanced, an out-of-balance and a running month, one product balancing while the whole book is out, Lock → drift → Reopen, a lock refused because the books moved after the page loaded, a rate change that splits a month, all three downloads; then every state an officer can meet — the arrow's pending mark while a period loads, a download's progress, done and failed cards (with Try again), the Lock button working, an empty month (every line 0), a month not started (downloads and the next arrow disabled, the month list still naming it), a custom window that ends before it starts and an impossible date refused, a view-only Auditor (read-only banner, no Lock) and a role without the report (no figures, no menu item); six widths, no console errors |
+| `npm run qa:tax-report` | The browser drive on a local dev server: every period type × product, the arrows, the week/day pickers (typing moves nothing until **Go**), a link naming only a day, a balanced, an out-of-balance and a running month, one product balancing while the whole book is out, Lock → drift → Reopen, a lock refused because the books moved after the page loaded, a rate change that splits a month, all three downloads; then every state an officer can meet — the arrow's pending mark while a period loads, a download's progress, done and failed cards (with Try again), the Lock button working, an empty month (every line 0), a month not started (downloads and the next arrow disabled, the month list still naming it), a custom window that ends before it starts and an impossible date refused, a view-only Auditor (read-only banner, no Lock) and a role without the report (no figures, no menu item); §13 day by day — a month lists every day and they add up to Report 1, the last day closes with its On hold, a balanced month's every day ✓, a day's link shows its pending mark and opens that day equal to its row, Up & Down by day keeps its product, a week's seven days, a custom window's part-days and their links, a 40-day window paging 31 + 9, a running month to today "so far", a month not started, the phone/tablet blocks (44px+ tap targets, a tap opens the day), and the CSV's and workbook's day tables equal to the page; six widths, no console errors |
 
 `test:tax-report` and `test:tax-report-page` run in `predeploy` and `test:all`.
 
@@ -204,6 +259,7 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
      fix the books (or, if the Owner decides to file anyway, the Owner locks with a written reason).
    - **amber "Period in progress"** — the month has not finished; come back after it closes.
 3. Check **Report 1** (the plan's four lines and the check, *Difference from Sales* = 0 ✓) and **Report 2** (the tax).
+   *Day by day* lists every day of the month — select a day to open it; a day with ✗ is where an exception sits.
    *By product* shows Polls and Up & Down separately if the filing needs them apart (use the product pills on top) —
    their money lines add up to All; each product's tax is rounded on its own Payout, so it can differ by a shilling.
 4. Press **Lock period**, type `LOCK`, confirm. The lock freezes exactly the figures on screen — if the books moved
@@ -236,6 +292,11 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
    signature rule; an officer with no display name now signs as "Generator" over their id). `test:report-cells` runs
    the same measurement over every catalogue report — it found and fixed three: the SX register's hash tile, the match-
    integrity "Predictors" header and the finance window's "Outcome" header.
+11. **Day by day is the same reader, never a daily aggregate** (2026-10-04): a row is the day opened on its own, so it
+   can never drift from the Day view, and a custom window's part-days are their own windows. Each day's tax is the
+   plan's rounding applied to that day; Report 2 stays the period's figure and the card says when the two differ. The
+   PDF carries the five figures a portrait page holds, the workbook every figure, the CSV a pivot-ready long table; an
+   old lock is never back-filled with days it did not hold.
 10. **The page passed a full visual inspection** (2026-10-03): every state the drive reaches, photographed at six widths
    (360 → 1920, viewport tiles), read by independent inspectors with a second look per finding — 63 confirmed, all
    fixed: no table wider than its card at any width (By product stacks per line on a phone and goes full width below

@@ -534,6 +534,45 @@ export function dayPeriod(dayKey: string): TaxPeriod | null {
   return { kind: "day", key: dayKey, startMs, endMs: startMs + DAY_MS, label: `${WEEKDAY3[eatParts(startMs).wd]} ${dayLabel(dayKey)}` };
 }
 
+/* ── Day by day ───────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The day boundaries inside a window, in East Africa Time: `[start, every 00:00 EAT strictly inside, end]`. A window
+ * that opens or closes mid-day keeps that part-day as its own first or last slice, so the slices tile the window
+ * exactly — no instant in two days, none in neither. Two edges: the window is one day, or part of one.
+ */
+export function dayEdges(startMs: number, endMs: number): number[] {
+  if (!(endMs > startMs)) return [startMs];
+  const edges = [startMs];
+  for (let next = eatDayStartMs(eatDayKey(startMs)) + DAY_MS; next < endMs; next += DAY_MS) edges.push(next);
+  edges.push(endMs);
+  return edges;
+}
+
+/**
+ * A day-by-day row's identity, from where it starts and where its WINDOW ends: the EAT day it falls on, its label
+ * ("Sun 20 Sep 2026", and `short` without the year for a page that states it once), its hours when it is only part of
+ * the day — "from 08:00" for a window's first day, "to 18:00" for its last — and the PERIOD that opens it on its own:
+ * the whole day, or the custom window of exactly those hours. `windowEndMs` is the window's own end, never a running
+ * cut-off, so today's row opens today (read to its own cut-off), and a row opened on its own reproduces the row
+ * (`test:tax-report` §14).
+ */
+export function daySlice(startMs: number, windowEndMs: number): { dayKey: string; label: string; short: string; hours: string | null; period: TaxPeriod } {
+  const dayKey = eatDayKey(startMs);
+  const dayStart = eatDayStartMs(dayKey);
+  const dayEnd = dayStart + DAY_MS;
+  const endMs = Math.min(dayEnd, windowEndMs);
+  const [, m, d] = dayKey.split("-").map(Number);
+  const short = `${WEEKDAY3[eatParts(dayStart).wd]} ${d} ${MON3[m - 1]}`;
+  const label = `${short} ${dayKey.slice(0, 4)}`;
+  const whole = dayPeriod(dayKey)!;
+  if (startMs === dayStart && endMs === dayEnd) return { dayKey, label, short, hours: null, period: whole };
+  const hhmm = (ms: number) => toEatLocal(ms).slice(11, 16);
+  // Only a window inside ONE day both opens and closes mid-day — and that window is its day, never broken down.
+  const hours = startMs !== dayStart && endMs !== dayEnd ? `${hhmm(startMs)}–${hhmm(endMs)}` : startMs !== dayStart ? `from ${hhmm(startMs)}` : `to ${hhmm(endMs)}`;
+  return { dayKey, label, short, hours, period: customPeriod(toEatLocal(startMs), toEatLocal(endMs)) ?? whole };
+}
+
 /** The longest custom window the report will read — a year and a day, so a typo cannot ask for a decade. */
 export const CUSTOM_MAX_DAYS = 366;
 
@@ -610,7 +649,10 @@ export function cutoffOf(p: TaxPeriod, nowMs: number): { cutoffMs: number; inPro
   // moments may still be committing (up to a lock transaction's 30 s), and the money records and the bets are two
   // reads — cut at the very edge, one could see a row the other has not, and a correct book would show a false
   // exception. Floored at the period's start.
-  if (p.endMs > nowMs) return { cutoffMs: Math.max(p.startMs, nowMs - RUNNING_MARGIN_MS), inProgress: true, notStarted: false };
+  // ⭐ AND SO IS A PERIOD THAT ENDED LESS THAN THAT MINUTE AGO (2026-10-04): read to its end, a day that closed 30 s ago
+  // counted a stake its running month — read a minute back — did not, so the month's last day-by-day row and the day it
+  // opens disagreed for the first minute of every day; and a stake stamped in that closing minute may still be committing.
+  if (p.endMs > nowMs - RUNNING_MARGIN_MS) return { cutoffMs: Math.max(p.startMs, nowMs - RUNNING_MARGIN_MS), inProgress: true, notStarted: false };
   return { cutoffMs: p.endMs, inProgress: false, notStarted: false };
 }
 

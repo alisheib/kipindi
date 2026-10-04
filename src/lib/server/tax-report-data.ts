@@ -41,10 +41,12 @@ import type { StoredPosition } from "./market-service";
 import { snapshotOrLegacy } from "./market-config";
 import { readTaxRates } from "./tax-config";
 import { chargedFee } from "@/lib/payout";
+import { eatDayKey } from "@/lib/eat-day";
 import {
   REFUND_REASON_ORDER,
   classifyRefund,
   cutoffOf,
+  dayEdges,
   formatCents,
   rateSegments,
   reconcile,
@@ -102,6 +104,24 @@ export type ProductFigures = {
   bonus: { placedCents: number; refundedCents: number };
 };
 
+/**
+ * One day of a window longer than a day — that day's OWN report: the same reader, cut at the day's edges, so a row is
+ * the day opened on its own (`daySlice(...).period`), never a second arithmetic. Its flows (Sales, Payout, Refunds,
+ * the fee kept) add up to the window's; On hold is the day's closing balance and the next day's opening one; its tax
+ * is computed on its own Payout and rounded at each step, as the plan rounds any period.
+ */
+export type DayFigures = {
+  dayKey: string;
+  /** The slice: the EAT day, or the part of it inside the window (and, for a running window, before its cut-off). */
+  startMs: number;
+  endMs: number;
+  report1: Report1;
+  differenceCents: number;
+  balanced: boolean;
+  counts: { betsPlaced: number; payoutRecords: number; refundRecords: number; betsOnHold: number };
+  tax: { commission: number; tra: number; gbt: number; total: number };
+};
+
 export type TaxReportData = {
   version: 1;
   period: TaxPeriod;
@@ -126,6 +146,14 @@ export type TaxReportData = {
    * locked product by product around a difference the plan says must block it.
    */
   wholeBook: { differenceCents: number; balanced: boolean } | null;
+  /**
+   * Day by day, oldest first, for a window that crosses an EAT midnight: `[]` before it has read anything (not started,
+   * or opened less than a minute ago), each day so far while it runs. null when the window lies inside one EAT day —
+   * the period IS the day.
+   * ⚠️ OPTIONAL BECAUSE A LOCK IS DATA: a snapshot locked before 2026-10-04 holds no such field. Absent means "this
+   * filing recorded no daily figures", never "no days" — every reader says so rather than printing an empty table.
+   */
+  byDay?: DayFigures[] | null;
   /** The largest exceptions first, at most `EXCEPTION_LIST_CAP`. */
   exceptions: ReconException[];
   exceptionCount: number;
@@ -392,6 +420,64 @@ function figuresFor(L: Loaded, filter: ProductFilter): { fig: ProductFigures; ex
   };
 }
 
+/**
+ * DAY BY DAY — every EAT day of the window as its own report, from what `load` already read.
+ * ⭐ THE SAME READER, CUT AT THE DAY'S EDGES: a day gets the money records stamped inside it, the bets live in it by
+ * `listLiveDuring`'s own rule (placed before the day ended; open, unstamped, or left at or after the day began), and
+ * every bet its records name — exactly what `load` reads for that day opened on its own, so a row equals the Day view
+ * of the same day. `load`'s read of the whole window holds all of it: each day's bets are a subset of the window's.
+ * Records are dealt by a binary search over the edges, and a bet only to the days it was live in — a year-long window
+ * costs the bets' live days, never days × bets.
+ */
+function dayBreakdown(L: Loaded, period: TaxPeriod, filter: ProductFilter, versions: RateVersion[]): DayFigures[] | null {
+  // Measured on the WINDOW, not the cut-off: a month on its first morning shows its one day so far, one not started none.
+  // A window crossing a midnight has days even when it is shorter than one (23:00 → 01:00 is two part-days).
+  if (dayEdges(period.startMs, period.endMs).length <= 2) return null;
+  if (!(L.E > L.S)) return [];
+  const edges = dayEdges(L.S, L.E);
+  const n = edges.length - 1;
+  const sliceOf = (t: number): number => {
+    let lo = 0, hi = n - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (edges[mid] <= t) lo = mid; else hi = mid - 1; }
+    return lo;
+  };
+  const records: StoredTxn[][] = Array.from({ length: n }, () => []);
+  for (const r of L.records) {
+    const t = Date.parse(r.createdAt);
+    if (t >= L.S && t < L.E) records[sliceOf(t)].push(r);
+  }
+  const bets: Array<Map<string, StoredPosition>> = Array.from({ length: n }, () => new Map());
+  for (const p of L.bets.values()) {
+    const placed = Date.parse(p.placedAt);
+    if (!(placed < L.E)) continue;
+    const left = leftOpenAt(p);
+    if (left !== null && !(left >= L.S)) continue;
+    const first = placed < L.S ? 0 : sliceOf(placed);
+    const last = left === null || left >= L.E ? n - 1 : sliceOf(left);
+    for (let i = first; i <= last; i++) bets[i].set(p.id, p);
+  }
+  for (let i = 0; i < n; i++) {
+    for (const r of records[i]) {
+      const p = r.positionId ? L.bets.get(r.positionId) : undefined;
+      if (p) bets[i].set(p.id, p);
+    }
+  }
+  return edges.slice(0, n).map((a, i) => {
+    const b = edges[i + 1];
+    const { fig } = figuresFor({ S: a, E: b, records: records[i], bets: bets[i], books: L.books, segments: rateSegments(a, b, versions) }, filter);
+    return {
+      dayKey: eatDayKey(a),
+      startMs: a,
+      endMs: b,
+      report1: fig.report1,
+      differenceCents: fig.reconciliation.differenceCents,
+      balanced: fig.reconciliation.balanced,
+      counts: { betsPlaced: fig.counts.betsPlaced, payoutRecords: fig.counts.payoutRecords, refundRecords: fig.counts.refundRecords, betsOnHold: fig.counts.betsOnHold },
+      tax: { commission: fig.tax.commission, tra: fig.tax.tra, gbt: fig.tax.gbt, total: fig.tax.total },
+    };
+  });
+}
+
 /** "TZS 1,234" / "TZS −1,110.60" — the engine's formatter, so a note and a table cell never disagree. */
 function fmt(cents: number): string {
   return `TZS ${formatCents(cents)}`;
@@ -435,6 +521,7 @@ export async function buildTaxReportData(opts: {
       byProduct,
       unattributedRecords,
       wholeBook: whole ? { differenceCents: whole.differenceCents, balanced: whole.balanced } : null,
+      byDay: dayBreakdown(L, opts.period, opts.product, rates.versions),
       exceptions: sorted.slice(0, EXCEPTION_LIST_CAP),
       exceptionCount: all.length,
       explainedCents,
