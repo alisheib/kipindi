@@ -66,11 +66,25 @@ async function shoot(page, id) {
 }
 /** v1.1 · the contact dialog is taller than an 800-high window, so its Save — and, since batch 7, the reason beside a
  *  waiting Save — fell below the picture while the step said to press it. Shoot the dialog in a taller window, whole. */
+/** v1.2 · the DIALOG ALONE — a whole 1280-wide frame printed its form's words at about five points, most of the picture
+ *  the dimmed page behind it. The dialog is shot by itself (in the tall window, so all of it is laid out) and printed
+ *  tall, so its words read at a normal size; the step before it shows the page and the button that opens it. */
+const DIALOG_SHOTS = new Set();
 async function shootTall(page, id) {
   const vp = page.viewportSize();
   await page.setViewportSize({ width: vp.width, height: 1240 });
   await wait(350);
-  await shoot(page, id);
+  // The PANEL (`.mat-modal`, the kit Modal's box) — `[role=dialog]` itself is the full-screen layer with its scrim.
+  const panel = page.locator(`${DIALOG} .mat-modal`).first();
+  const dialog = (await panel.count()) > 0 ? panel : page.locator(DIALOG).first();
+  if ((await dialog.count()) > 0) {
+    const path = join(SHOTS, `${id}.png`);
+    await dialog.screenshot({ path });
+    shots.set(id, path);
+    DIALOG_SHOTS.add(id);
+  } else {
+    await shoot(page, id);
+  }
   await page.setViewportSize(vp);
   await wait(200);
 }
@@ -351,15 +365,26 @@ await step("27-phone", async () => {
 import { SECTIONS, INTRO, BALANCE_STATES } from "./admin-guide-messages.mjs";
 const img = (id) => (shots.has(id) ? `<img src="data:image/png;base64,${readFileSync(shots.get(id)).toString("base64")}" alt="">` : `<div class="missing">Screenshot ${id} could not be taken</div>`);
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const stepHtml = (s, n) => `
+const figureHtml = (id) => `<figure${DIALOG_SHOTS.has(id) ? ' class="dialog"' : ""}>${img(id)}</figure>`;
+/** v1.2 · a step's title, its "Where", its list and its FIRST picture are one block that never splits — the words always
+ *  sit with the page they describe; the rest of the step flows. */
+const stepHtml = (s, n) => {
+  const shotsHtml = (s.shots ?? []).map(figureHtml);
+  const phones = s.phoneShots ? `<figure class="phones">${s.phoneShots.map((id) => img(id)).join("")}</figure>` : "";
+  const first = shotsHtml.length > 0 ? shotsHtml[0] : phones;
+  const rest = shotsHtml.length > 0 ? shotsHtml.slice(1).join("") + phones : "";
+  return `
   <section class="step">
-    <h3><span class="n">${n}</span>${esc(s.title)}</h3>
-    <p class="where"><b>Where:</b> ${esc(s.where)}</p>
-    ${s.do.length ? `<ol>${s.do.map((d) => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}
-    ${(s.shots ?? []).map((id) => `<figure>${img(id)}</figure>`).join("")}
-    ${s.phoneShots ? `<figure class="phones">${s.phoneShots.map((id) => img(id)).join("")}</figure>` : ""}
+    <div class="lead-block">
+      <h3><span class="n">${n}</span>${esc(s.title)}</h3>
+      <p class="where"><b>Where:</b> ${esc(s.where)}</p>
+      ${s.do.length ? `<ol>${s.do.map((d) => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}
+      ${first}
+    </div>
+    ${rest}
     ${(s.notes ?? []).map((t) => `<p class="note">${esc(t)}</p>`).join("")}
   </section>`;
+};
 let n = 0;
 const body = SECTIONS.map((sec) => `<h2>${esc(sec.title)}</h2>${sec.lead ? `<p class="lead">${esc(sec.lead)}</p>` : ""}${sec.steps.map((s) => stepHtml(s, ++n)).join("")}`).join("");
 const messages = `<h2>Messages you may see</h2><p class="lead">Every message below is copied from the platform as it is today. Find the message, then do what the last column says.</p>
@@ -376,9 +401,14 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><title>50pick adm
   .cover .meta { margin-top: 12mm; color: #6b7280; font-size: 10pt; }
   h2 { font-size: 16pt; margin: 9mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #c9a227; page-break-after: avoid; }
   h3 { font-size: 12pt; margin: 0 0 2mm; } h3 .n { display: inline-block; min-width: 7mm; color: #c9a227; }
-  .step { page-break-inside: avoid; margin: 0 0 7mm; }
+  /* v1.2 · a step FLOWS across a page break instead of jumping whole to a fresh page and splitting anyway (which left
+     pages holding one picture); its title, its list and each picture stay whole. */
+  .step { margin: 0 0 6mm; } h3 { break-after: avoid; page-break-after: avoid; }
+  .where, ol, figure, .note, .lead-block { break-inside: avoid; page-break-inside: avoid; }
   .where { margin: 0 0 2mm; color: #374151; } ol { margin: 0 0 3mm 5mm; padding-left: 4mm; }
-  figure { margin: 2mm 0; text-align: center; } figure img { width: 84%; border: 1px solid #d1d5db; border-radius: 2mm; }
+  figure { margin: 2mm 0; text-align: center; }
+  figure img { max-width: 72%; max-height: 104mm; border: 1px solid #d1d5db; border-radius: 2mm; }
+  figure.dialog img { max-width: 62%; max-height: 205mm; }
   figure.phones img { width: 38%; margin: 0 2%; vertical-align: top; }
   .note { background: #fdf8e7; border-left: 3px solid #c9a227; padding: 2mm 3mm; margin: 2mm 0; }
   .lead { color: #374151; } .missing { padding: 8mm; border: 1px dashed #b91c1c; color: #b91c1c; }

@@ -549,7 +549,9 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   tiebreak orders alike in both twins; `coveredCount` answers `{ live, covered }` from one pass (an account's number is
   never a list's to cover — the player branch). Nothing reads or writes the table outside the data layer yet: U33b-L
   records, U33a-G reads. Verified: prisma generate; typecheck; `test:dal-parity` 2114 (§27's 48 lines) with `red:dal-parity` 176/176, the working tree untouched; the Postgres probe 22/22 (every migration from empty, no drift against the schema, RESTRICT refusing a list delete, the same-millisecond boundary, 2,000 keys, the newest recording revoked covering nobody, 21 rule refusals alike in both twins, the memory twin answering identically); migration-ownership; dead-schema; next build. ⚖️ THE WHOLE PREDEPLOY CHAIN ONCE (the shared data layer is platform-wide): all 205 commands green but the two known Vodacom reds (stacking, kyc-copy-truth); its build failed once fetching Google Fonts (network) and passed on the re-run, with verify:house-bot-bundle. The adversarial review — 0 blockers, 1 major, 3 minors, 6 nits — was fixed before the push: the major (revoking a list's newest recording revived the previous one, so the reads failed open on the very act meant to stop outreach) is now the rule above; ids are pinned; neither twin's `contactList` may gain a delete; `coveredCount` returns both numbers; both twins refuse the same bad input (blank words, malformed instants and versions, NULs); the retention row says exactly what is held.
-✅ STEP 32 · U33p · THE PUBLIC POLICY LINES, EDITABLE — Admin → System gains a "Public policy lines" tab: the
+✅ STEP 32 · U33p · THE PUBLIC POLICY LINES, EDITABLE — LIVE (`31777791`, live 2026-10-04 09:55:18 UTC; production
+  still prints both code versions, RG 2026-09-26 and Privacy 2026-10-01 — nothing saved). Admin → System gains a
+  "Public policy lines" tab: the
   Responsible Gambling page's §4 marketing promise, the Privacy Notice's §3 Consent bullet, a NEW §3 licence bullet
   (blank — not printed — until saved) and its §4 Blackball (SMS gateway) bullet, and the note under the profile's offers
   switch (stored only; U33a-P prints it) — each in English, Swahili and Chinese, the English binding — in
@@ -571,6 +573,13 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   box is checked as you type, Save waits with its reason (outlined in red), an unchanged edit can't be saved and Cancel
   asks before discarding; eleven new messages (the long paste, the discard question, the lapsed 2-step, the lookup
   and save fallbacks, the bulk and export refusals). Copied to Ali's Desktop.
+  ✅ v1.2 BUILT 2026-10-04 (Ali: "no extra info, no unneeded data — perfect and well made"): 20 pages (27 before),
+  22 steps, 25 screenshots, 27 warnings (one row stands for every "something failed" message), the balance's six states.
+  Cut: the intro to four lines, notes the warnings table already holds, a "coming next" promise, a test-server caveat,
+  three redundant screenshots. Made well: a dialog is shot by itself and printed tall, so its words read at a normal
+  size; a step's title, list and first picture never split across a page; the SMS credit tile shows an ordinary
+  balance (a loopback stand-in answers the guide boot's balance read). Every quoted message checked against the source
+  before the PDF may build. The final version adds "Send a campaign" and "Watch it send" when the engine ships.
 🔎 THE VALIDATION AUDIT (2026-10-03, Ali: "full input form validation and field validation everywhere — clean, perfect,
   working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
   disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24, batches 5 + 8 =
