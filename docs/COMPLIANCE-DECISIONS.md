@@ -9,6 +9,28 @@
 ---
 
 
+## 2026-10-04 · Marketing campaigns are authorised by one officer's typed confirmation (U41; under the 2026-07-24 single-admin ruling)
+
+**Authority.** § "2026-07-24 · Single-admin resolution by default; two-admin authorization optional; officer-conflict
+block removed": single-admin is the permanent default in every money mode, and a two-admin step is only ever an optional
+toggle, never a hard lock (`test:two-admin` asserts the lock's absence). That ruling covers this; no new owner decision.
+
+**What is decided.** A marketing SMS campaign is authorised by ONE officer's typed confirmation on the composer (U40),
+whatever its size. There is no second officer, no 60-minute grant and no re-check of an authorisation while it sends. The
+marketing plan's earlier design (OD18: two officers above 50 recipients or TZS 10,000) is withdrawn; nothing of it was
+built.
+
+**The owner's control over sending** is the live switch `marketing.sms.live` (absent = closed): while it is closed no
+campaign sends, and a confirmed campaign never sends by itself — Start is a separate act (the plan's G1 and G2).
+
+**Not built:** a two-officer toggle for campaigns. If the owner asks for one it follows `resolution-policy.ts`'s
+optional-toggle precedent — never a hard lock.
+
+**Guard (lands with U40a):** `test:campaign-gates` G7.1 — nothing under `src/lib/server/marketing/` or
+`src/app/admin/campaigns/` calls `twoOfficerGate(` or reads a second approver — with its in-process plant.
+
+---
+
 ## 2026-10-04 · The public policy lines are editable on Admin → System, and how a saved line is kept true (decided under Ali's delegation; G4 · G10)
 
 **Authority.** Ali's owner rule of 2026-10-03 ("all changeable" — § "2026-10-03 · Every public fact is editable by

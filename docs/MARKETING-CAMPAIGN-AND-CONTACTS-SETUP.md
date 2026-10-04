@@ -635,6 +635,11 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   `test:red-anchors` red only for its two known rotted anchors (another lane's files). Not run, by the verification
   policy: the whole predeploy chain (the twins gained a union member and one cast — typecheck and the build reach every
   caller) and a separate adversarial review (no writer, no screen; the probe proves the migration on Postgres).
+✅ STEP 34 · U41 · ONE OFFICER AUTHORISES A CAMPAIGN — DECIDED (docs only; OD60). Under Ali's 2026-07-24 single-admin
+  ruling, a campaign is authorised by one officer's typed confirmation (U40) at any size; OD18's two officers, grant and
+  in-loop re-check are withdrawn (nothing of them was built); the owner's control is the live switch and Start as a
+  separate act. Recorded in COMPLIANCE-DECISIONS; its guard (`test:campaign-gates` G7.1, no `twoOfficerGate(` in the
+  campaign path) lands with U40a, which turns the U41 row ✅.
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
   step shows the page the admin opens for it (and the menu path to it); none is a step without its page. ✅ v1 BUILT
   2026-10-03 on the live code (batches 1–6): `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf` — 23 pages,
@@ -1268,7 +1273,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U38 | visual | 🟡 | S10 | bd097333 | the campaign could only target the book → U38a: ONE resolver with a population axis, the player arm, ONE walk, and the will-receive split asked of the real gate, over §25's bulk reads | `test:campaign-audience` · `test:dal-parity` §21 §25 | yes — `red:campaign-audience` (in-process) · `red:dal-parity` §21 §25 | audience. U38a + §25 landed (§0 STEP 22); U38b (the card on the composer) follows. |
 | U39 | visual | 🟡 | S10 | 0dc25b98 | — | `test:read-tiers` | — | estimate. U39a landed (`0dc25b98`): the price from the difference of two delivered reads, the model, the server loader; `test:campaign-estimate`. U39b (the card) follows. |
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
-| U41 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | officer authorisation (reconcile with the single-admin ruling first, §9 U41) |
+| U41 | guard | 🟡 | S10 | — | — | `test:campaign-gates` | — | officer authorisation — DECIDED (OD60, 2026-10-04): one officer's typed confirmation at any size, under the 2026-07-24 single-admin ruling; ✅ when U40a's push carries the guard (G7.1). |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
 | U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43a (the doors), U43y and U43b (the slice) follow. |
 | U44 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the pump |
@@ -1683,11 +1688,11 @@ is decided, with what it rules out. They are not questions.
   2026-09-26 on Ali's ruling (OQ1): the Board says marketing SMS is not part of its approval.** No approval
   record is built or required. What stays checked at Start and in the loop is the gate itself (consent,
   suppression, RG, age) and, when U41 lands, the officer authorisation.
-- **OD18 · Two officers above 50 recipients or TZS 10,000**, reusing `twoOfficerGate`; the approver may
-  not be the composer; the authorisation carries an id, expires in 60 minutes, and is re-checked in the
-  loop. ⛔ Not sixteen TOTP prompts for sixteen slices. ⚠️ Reconcile before U41 builds it (§9 U41): Ali's
-  2026-07-24 single-admin ruling (`test:two-admin` asserts there is no two-officer hard-lock) may make this
-  one officer's typed confirmation.
+- **OD18 · ~~Two officers above 50 recipients or TZS 10,000~~** — ⛔ **WITHDRAWN 2026-10-04 (U41, OD60): one
+  officer's typed confirmation authorises a campaign at any size**, under Ali's 2026-07-24 single-admin ruling
+  (`test:two-admin` asserts there is no two-officer hard-lock). ~~Reusing `twoOfficerGate`; the approver may not be
+  the composer; the authorisation carries an id, expires in 60 minutes, and is re-checked in the loop.~~ Nothing of it
+  is built.
 
 **Engine**
 
@@ -1824,6 +1829,16 @@ is decided, with what it rules out. They are not questions.
   an officer's compare-and-set then moves only on officers' edits (the edit patch carries no cache field, so nothing
   is overwritten). One line in `contact-cache.ts`, with an executed assertion and its plant; the suites pinning the
   mirror's stamp (dal-parity §20, `test:contacts-audience` 6.6) are re-read first.
+- **OD60 · A campaign is authorised by ONE officer's typed confirmation, at any size — decided (U41, S10 2026-10-04)**,
+  under Ali's 2026-07-24 single-admin ruling (COMPLIANCE-DECISIONS § "2026-07-24 · Single-admin resolution by default;
+  two-admin authorization optional; officer-conflict block removed"; `test:two-admin` asserts there is no two-officer
+  hard-lock). OD18 is withdrawn: no second officer, no 60-minute grant, no in-loop re-check of an authorisation. The
+  owner's control over sending is the live switch (G1) and Start as a separate act (G2) — a confirmed campaign never
+  sends by itself. A two-officer toggle for campaigns is not built; if Ali asks for one it follows
+  `resolution-policy.ts`'s optional-toggle precedent, never a hard lock. Guard (lands with U40a): `test:campaign-gates`
+  G7.1 — nothing under `src/lib/server/marketing/` or `src/app/admin/campaigns/` calls `twoOfficerGate(` or reads a
+  second approver — with its in-process plant. Recorded in COMPLIANCE-DECISIONS § "2026-10-04 · Marketing campaigns
+  are authorised by one officer's typed confirmation".
 
 ### §4a — The eleven legal questions (each with the safe default that is BUILT)
 
@@ -3691,17 +3706,19 @@ number) · confirmed (a toast: nothing has been sent) · error (the typed text k
 **Accept:** a view taken at 7, then one matching contact added, then "7" typed with the old fence → `audience_moved` at
 8 and nothing confirmed; "8" on the fresh view confirms; the SmsMessage, token and recipient counts never move.
 
-**U41 · Authorisation** — the officer authorisation (OD18) — ⚠️ RE-SCOPED 2026-09-26
+**U41 · Authorisation** — the officer authorisation — ✅ DECIDED 2026-10-04 (OD60; docs only, its guard lands with U40a)
 ~~`SystemConfig` `gbt.advertising_approval` {reference, grantedAt, expiresAt, scope, documentUrl} — absent or
 expired ⇒ dispatch refuses~~ — ⛔ **withdrawn on Ali's OQ1 ruling (the Board says marketing SMS is not part of
-its approval); nothing of it is built.** What remains: `twoOfficerGate` above 50 recipients or TZS 10,000; the
-approver may not be the composer; the grant expires in 60 minutes and is **re-checked in the loop**.
-⚠️ **Reconcile before building:** Ali ruled against a two-officer hard-lock for market resolution
-(`test:two-admin` asserts its ABSENCE) — U41 must decide, citing that ruling, whether a campaign above the
-threshold needs a second officer or a single officer's typed confirmation.
-**Guard:** `test:campaign-gates`. **RED:** remove the in-loop re-check → a grant that expires mid-send must
-stop the campaign, and the suite must fail; and let the composer approve their own campaign → refusal
-required.
+its approval); nothing of it is built.** ~~`twoOfficerGate` above 50 recipients or TZS 10,000; the approver may not
+be the composer; the grant expires in 60 minutes and is re-checked in the loop~~ — ⛔ **withdrawn too (OD60):** a
+campaign is authorised by ONE officer's typed confirmation (U40) at any size, under Ali's 2026-07-24 single-admin
+ruling (`test:two-admin` asserts there is no two-officer hard-lock). No second officer, no grant, no in-loop
+re-check of an authorisation; the owner's control is the live switch (G1) and Start as a separate act (G2). A
+two-officer toggle waits until Ali asks for one (then `resolution-policy.ts`'s optional-toggle precedent, never a
+hard lock). Recorded in COMPLIANCE-DECISIONS § "2026-10-04 · Marketing campaigns are authorised by one officer's
+typed confirmation".
+**Guard:** `test:campaign-gates` G7.1 (U40a). **RED:** its in-process plant — a call to `twoOfficerGate(` or a read of a
+second approver under `src/lib/server/marketing/` or `src/app/admin/campaigns/` must fail the suite.
 
 **U42 · Enqueue** — `src/lib/server/marketing/enqueue.ts`
 U38a's ONE walk (X8: the book by `id`, then players by user `id` — no phone number ever forms a cursor), its prefixed cursor carrying the phase,
