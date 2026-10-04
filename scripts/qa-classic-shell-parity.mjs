@@ -24,7 +24,9 @@
  * 10-second quote hold, and never confirmed: only Enter or its gold button sells, and neither is touched. The strip's
  * ticking clock is read as "m:ss" and a ticket's id as "pos_~"; the rest is compared as the matrix is, against
  * SELL_EXPECTED_DIFFS (A8: a default poll with an hour to run compares equal; S6 A8b names the one change it makes, the
- * classic button's free note gaining its narrow-phone classes). The capture runs inside a default poll's
+ * classic button's free note gaining its narrow-phone classes; S6 A8d names the holder block's stacked phone row: the
+ * class on its button at every width, and that button's measured layout at 360, which §4.6 holds to the class that
+ * causes it). The capture runs inside a default poll's
  * five-minute free window, and §S fails a run whose cells missed it. The matrix gained the capture, so this is v2: a v1
  * baseline is refused, and the v2 baseline is captured at the commit just before A8's live half (VODACOM-PLAN §0i names
  * it), so the Sell cells measure A8's own claim as well as S6's.
@@ -43,6 +45,15 @@
  * each named Sell difference was seen in: A8f's seen in 0 of 2 means the server is not serving A8f. The result a sale
  * opens is never captured here (no Sell cell confirms a sale), so its title's figures, now amounts, are a classic
  * change only the tiles show (VODACOM-PLAN §0i).
+ * ⭐ S6 A8g — AND THE FREE STRIP AND /positions' WRAP. The strip above the Sell button keeps each of its parts whole and
+ * wraps only between them: its one class string moves in every Sell cell (sell-strip-whole) and with it its signature,
+ * and in the holder block at 360 its Swahili parts now take two lines whole where they broke inside — the boxes and
+ * styles predicted from the baseline's own capture and named beside the class (sell-strip-whole-layout), so a compare
+ * that draws any other is a failure, read from its capture. Every host that does not stack is drawn the wrap class:
+ * /positions' button carries it at every width beside A8b's free-note classes (sell-positions-wrap, which A8b's
+ * sell-narrow-phone pairs now ride in), and at 360 its figure is a wrapping row whose styles move while every glyph
+ * stays (sell-positions-wrap-layout-en and -sw, measured first, as A8d's are). P.5g holds the strip's two entries in a
+ * capture and in a first paint; P.5s, P.5L and P.6s hold the rest.
  *
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity                  (the control: --prove-red is the default)
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-<sha8>.json
@@ -267,24 +278,114 @@ const SELL_FIRST_PAINT = {
 const partialExpected = (hits, list = EXPECTED_DIFFS) => list
   .filter((e) => { const n = hits.get(e.id) ?? 0; return n !== 0 && n !== e.cells; })
   .map((e) => `${e.id} in ${hits.get(e.id)} of its ${e.cells} cells`);
+/** S6 A8b's two substitutions — the free note's span gains its narrow-phone classes — which every Sell place's entry
+ *  carries, because each entry is matched alone against the baseline. */
+const SELL_NOTE_PAIRS = [
+  ['<span class="ml-1.5 opacity-80 text-[11px]">full refund</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">full refund</span>'],
+  ['<span class="ml-1.5 opacity-80 text-[11px]">pesa yote</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">pesa yote</span>'],
+];
+/** S6 A8d and A8g · a measured transition's `to` before it is measured: it matches no capture, so the first compare
+ *  after A8d and A8g fails on exactly its cells, and the measured text is then copied in from that compare's
+ *  `.current.json` (A3) — never written by hand, never a re-baseline. Four entries read it: A8d's two holder-block
+ *  layouts and A8g's two /positions layouts, all four measured by one compare on the tree that carries both. ⛔ Delete
+ *  this constant and this comment in the edit that copies all four measured texts in, never before: from then on
+ *  nothing reads it, and until then each of the four still does.
+ */
+const SELL_MEASURED_FIRST = "(A3: this cell's regions.button.layout, copied whole from the first compare's .current.json after A8d and A8g)";
 /**
- * ⭐ WP10 · THE NAMED DIFFERENCES FOR THE SELL CELLS — one, S6 A8b's. A8: a classic holder's Sell button on a default poll
- * with an hour to run compares equal with the baseline captured before A8's live half; any other difference is a named
- * entry here (with its field, its routes and its `cells`), never a re-baseline.
+ * ⭐ WP10 · THE NAMED DIFFERENCES FOR THE SELL CELLS — S6 A8b's, A8d's and A8g's here (S6 A8f's two are pushed after this literal). A8: a classic holder's Sell button on a
+ * default poll with an hour to run compares equal with the baseline captured before A8's live half; any other difference
+ * is a named entry here (with its field, its routes and its `cells`), never a re-baseline. An entry `alongside` another
+ * is a layout that other entry's served change causes: whenever that entry is seen, this one must be seen in all of
+ * its cells (§4.6).
  */
 const SELL_EXPECTED_DIFFS = [
   {
-    id: "sell-narrow-phone",
+    id: "sell-positions-wrap",
     field: "regions.button.html",
+    routes: [SELL_PLACES[0]],
+    replace: [...SELL_NOTE_PAIRS, ['class="btn btn-primary btn-md w-full whitespace-normal"', 'class="btn btn-primary btn-md w-full whitespace-normal kp-sell-wrap"']],
+    cells: SELL.locales.length * SELL.widths.length,
+    reason: "S6 A8g, carrying S6 A8b's two pairs (named sell-narrow-phone until A8d and A8g split them by place): every host that does not ask for the stack is drawn the wrap class, so /positions' Sell button carries kp-sell-wrap at every width beside A8b's free-note classes (below 360 the free note is left out — the strip above already says there is no fee — so the free row fits a 320 phone; each entry is matched alone against the baseline, so this one carries those pairs too). The rule is phone-only (globals.css, below 640): at 1280 every box and computed style is as before (regions.button.layout, compared there); at 360 the figure becomes a wrapping row whose note sits the same 8px from the figure while the row fits — its styles move, which sell-positions-wrap-layout-en and -sw name, measured — and goes under the figure where one line cannot hold both (the Swahili free row for TZS 1,000,000 from 360px — to 376px with the label as this baseline measured it, to 383px by the static model, whose label is an upper bound and which also runs a six-figure stake over to 366px — and a Chinese legacy paid row with a six-figure fee at 320 to 324px; the seeded TZS 1,500 row fits, so no captured cell wraps). Served but captured by no field: the stylesheet's second phone block (two rules, matching only .kp-sell-wrap), and on a phone, for those big rows, the note under the figure (VODACOM-PLAN §0i A8g).",
+  },
+  {
+    id: "sell-holder-stack",
+    field: "regions.button.html",
+    routes: [SELL_PLACES[1]],
+    replace: [...SELL_NOTE_PAIRS, ['class="btn btn-primary btn-md w-full whitespace-normal"', 'class="btn btn-primary btn-md w-full whitespace-normal kp-sell-stack"']],
+    cells: SELL.locales.length * SELL.widths.length,
+    reason: "S6 A8d: the question page's holder block asks for the stacked phone row (stackOnPhone), so its Sell button carries the class kp-sell-stack at every width, beside A8b's two free-note pairs (each entry is matched alone against the baseline, so this one carries them too). The rule is phone-only (globals.css, below 640): at 1280 every box and computed style is as before (regions.button.layout, compared there), and at 360 the layout change is named and measured in sell-holder-stack-layout-en and -sw. Served but captured by no field: stackOnPhone in the holder block's RSC props, the stylesheet's phone block (four rules, matching only .kp-sell-stack) and, below 640, each open ticket's row 12px taller, so what sits below it moves down by that (VODACOM-PLAN §0i A8d).",
+  },
+  {
+    id: "sell-holder-stack-layout-en",
+    field: "regions.button.layout",
+    routes: [SELL_PLACES[1]],
+    from: ["button 0,0,244x44 37d8523472ca", "button>span0 17,11.5,58.5x21 45460ad82491", "button>span1 83.5,11.5,157.5x21 26d4736268fd", "button>span1>span0 167.5,15.5,73.5x14 eaada7832e2a"].join(NL),
+    to: SELL_MEASURED_FIRST,
+    cells: 1,
+    alongside: "sell-holder-stack",
+    reason: "S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 14px past the button's content in English (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
+  },
+  {
+    id: "sell-holder-stack-layout-sw",
+    field: "regions.button.layout",
+    routes: [SELL_PLACES[1]],
+    from: ["button 0,0,244x44 37d8523472ca", "button>span0 17,11.5,124.5x21 45460ad82491", "button>span1 149.5,11.5,144.5x21 26d4736268fd", "button>span1>span0 234,15.5,60x14 eaada7832e2a"].join(NL),
+    to: SELL_MEASURED_FIRST,
+    cells: 1,
+    alongside: "sell-holder-stack",
+    reason: "S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 67px past the button's content and 50px past its edge in Swahili (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
+  },
+  {
+    id: "sell-positions-wrap-layout-en",
+    field: "regions.button.layout",
+    routes: [SELL_PLACES[0]],
+    from: ["button 0,0,328x44 37d8523472ca", "button>span0 17,11.5,58.5x21 45460ad82491", "button>span1 153.5,11.5,157.5x21 26d4736268fd", "button>span1>span0 237.5,15.5,73.5x14 eaada7832e2a"].join(NL),
+    to: SELL_MEASURED_FIRST,
+    cells: 1,
+    alongside: "sell-positions-wrap",
+    reason: "S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line, so nothing wraps in this cell (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
+  },
+  {
+    id: "sell-positions-wrap-layout-sw",
+    field: "regions.button.layout",
+    routes: [SELL_PLACES[0]],
+    from: ["button 0,0,328x44 37d8523472ca", "button>span0 17,11.5,124.5x21 45460ad82491", "button>span1 166.5,11.5,144.5x21 26d4736268fd", "button>span1>span0 251,15.5,60x14 eaada7832e2a"].join(NL),
+    to: SELL_MEASURED_FIRST,
+    cells: 1,
+    alongside: "sell-positions-wrap",
+    reason: "S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line in Swahili too, so nothing wraps in this cell (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
+  },
+  {
+    id: "sell-strip-whole",
+    field: "regions.strip.html",
+    routes: SELL_PLACES,
+    replace: [['<div class="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">', '<div class="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">']],
+    cells: SELL.locales.length * SELL.widths.length * SELL.places.length,
+    reason: "S6 A8g: the free strip above the Sell button keeps each of its three parts whole and wraps only between them — it becomes a wrapping row (flex-wrap: a part that cannot share a line moves to the next one whole), its one gap split into 8px between parts and 2px between lines — on both hosts, in every Sell cell. Its words, figures and look are as before; in the holder block at 360 in Swahili, where its parts broke inside (TOKA BILA over GHARAMA, · Hakuna over ada), they now read TOKA BILA GHARAMA m:ss over · Hakuna ada, each whole (sell-strip-whole-layout). Served but captured by no field: in the holder block in Swahili the strip takes those two whole lines from 320 to 376px, and to 382px while its countdown reads ten minutes or more — 42px tall, where the squeezed strip it replaces measured 40 at 360 — so its ticket row there is 2px taller (VODACOM-PLAN §0i A8g).",
+  },
+  {
+    id: "sell-strip-whole-layout",
+    field: "regions.strip.layout",
     routes: SELL_PLACES,
     replace: [
-      ['<span class="ml-1.5 opacity-80 text-[11px]">full refund</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">full refund</span>'],
-      ['<span class="ml-1.5 opacity-80 text-[11px]">pesa yote</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">pesa yote</span>'],
+      // The one signature the strip's classes move, in every Sell cell: the strip's own (flex-wrap, gap); its parts' are untouched.
+      ["e13135b54c89", "611525a567fa"],
+      // The one cell whose Swahili parts no longer share a line, the holder block at 360: the free word and the countdown whole on the first line, the note whole on the second, 2px below.
+      ["div 0,0,244x40 ", "div 0,0,244x42 "], ["div>span0 13,6,112x28 ", "div>span0 13,5.5,122.5x14 "], ["div>span1 133,12.5,24x15 ", "div>span1 143.5,5,24x15 "], ["div>span2 165,5,66x30 ", "div>span2 13,22,72x15 "],
     ],
     cells: SELL.locales.length * SELL.widths.length * SELL.places.length,
-    reason: "S6 A8b: below 360px (Tailwind's xs) the classic Sell button leaves out its free note — the strip above it already says there is no fee — so its free row fits a 320px phone on /positions in every language (test:sell-grace-truth §5). The Sell cells are captured at 360 and 1280, where the note is inline as before: the free note's span carries two classes it did not, in every Sell cell, and nothing else moves — the computed styles and boxes are their own field (regions.button.layout), compared in every cell, and must still be equal.",
+    alongside: "sell-strip-whole",
+    reason: "S6 A8g: the boxes and computed styles the strip's classes draw, predicted from the v2 baseline's own capture: in every Sell cell the strip's signature moves by flex-wrap (wrap) and gap (2px 8px), its parts' not at all — the new id re-derived as the harness writes one, the first 12 hex digits of the sha1 of the signature text, the method checked against every id the baseline holds; and in the one cell whose Swahili parts no longer share a line (the holder block at 360) the strip grows 2px (40 to 42), the free word and the countdown sit whole on its first line and the note whole on its second, 2px below. Any other box or style is still a failure, read from its capture and never re-baselined (A3).",
   },
 ];
+/** S6 A8d · the measured Sell differences missing beside the served change that causes them: an entry `alongside` another
+ *  must be seen in all of its cells whenever that other is seen at all (§4.6). A compare where neither is seen — a null
+ *  compare at the baseline's own commit — passes; the stack's class served while its rule no longer applies (the holder
+ *  block's layout back to the baseline's one line, so its layout entries are never hit) does not. */
+const missingAlongside = (hits, list) => list
+  .filter((e) => e.alongside && (hits.get(e.alongside) ?? 0) > 0 && (hits.get(e.id) ?? 0) !== e.cells)
+  .map((e) => `${e.id} in ${hits.get(e.id) ?? 0} of its ${e.cells} cell(s), beside ${e.alongside} in ${hits.get(e.alongside)}`);
 
 /**
  * ⭐ S6 A8f · THE CLASSIC CONFIRM'S RECEIVE ROW — two more named Sell differences, pushed after the list's literal (whose
@@ -1225,27 +1326,104 @@ async function proveRed() {
         && dialogRuns.markupElsewhere.unexpected.length === 1 && dialogRuns.boxesElsewhere.unexpected.length === 1,
       JSON.stringify(dialogRuns).slice(0, 400));
   }
-  // ①b S6 A8b · the one named Sell difference, held the same way: the classic button's free row as a capture serialises it,
-  // before and after its free note gains the narrow-phone classes. The transition passes at both Sell places in en and in
-  // sw; a second change beside it, or the same change off the Sell places, stays a failure.
+  // ①b S6 A8b, A8d and A8g · the named Sell differences, held the same way: the classic button's free row as a capture
+  // serialises it — at the v2 baseline (`was`), with A8b's free-note classes and A8g's wrap class (`list`, the markup
+  // /positions is served) and with A8b's classes and A8d's stack class (`holder`, the holder block's). Each passes at its
+  // own Sell place, in en and in sw, as exactly its own entry; a second change beside it, either markup at the other
+  // place, A8b's markup alone, or either off the Sell places, stays a failure.
   const sellStore = {};
   const sellCell = (html) => {
     const id = `b${Object.keys(sellStore).length}`;
     sellStore[id] = html;
     return { ...cell(200, "f1"), landed: SELL_PLACES[0], regions: { button: { count: 1, html: id, layout: null } } };
   };
-  const sellButtonHtml = (label, note, narrow, figure = "TZS 3,600") => `<button type="button" class="btn btn-primary btn-md w-full whitespace-normal"><span>${label}</span><span class="font-mono tabular-nums">${figure}<span class="${narrow ? "ml-1.5 hidden opacity-80 text-[11px] xs:inline" : "ml-1.5 opacity-80 text-[11px]"}">${note}</span></span></button>`;
+  const sellButtonHtml = (label, note, narrow, figure = "TZS 3,600", extra = "") => `<button type="button" class="btn btn-primary btn-md w-full whitespace-normal${extra}"><span>${label}</span><span class="font-mono tabular-nums">${figure}<span class="${narrow ? "ml-1.5 hidden opacity-80 text-[11px] xs:inline" : "ml-1.5 opacity-80 text-[11px]"}">${note}</span></span></button>`;
   const sellRuns = [["en", "Free exit", "full refund"], ["sw", "Toka bila gharama", "pesa yote"]].map(([l, label, note]) => {
     const was = sellCell(sellButtonHtml(label, note, false));
-    const now = sellCell(sellButtonHtml(label, note, true));
-    const plus = sellCell(sellButtonHtml(label, note, true, "TZS 3,601"));
+    const list = sellCell(sellButtonHtml(label, note, true, "TZS 3,600", " kp-sell-wrap"));
+    const holder = sellCell(sellButtonHtml(label, note, true, "TZS 3,600", " kp-sell-stack"));
+    const a8bOnly = sellCell(sellButtonHtml(label, note, true));
+    const listPlus = sellCell(sellButtonHtml(label, note, true, "TZS 3,601", " kp-sell-wrap"));
+    const holderPlus = sellCell(sellButtonHtml(label, note, true, "TZS 3,601", " kp-sell-stack"));
     const diff = (place, a, b) => diffCells(place, a, b, sellStore, sellStore, SELL_EXPECTED_DIFFS);
-    return { l, named: SELL_PLACES.map((p) => diff(p, was, now)), plus: diff(SELL_PLACES[0], was, plus), elsewhere: diff("/", was, now) };
+    return {
+      l, positions: diff(SELL_PLACES[0], was, list), holder: diff(SELL_PLACES[1], was, holder),
+      strays: [diff(SELL_PLACES[0], was, listPlus), diff(SELL_PLACES[1], was, holderPlus), diff(SELL_PLACES[0], was, holder), diff(SELL_PLACES[1], was, list),
+        diff(SELL_PLACES[0], was, a8bOnly), diff(SELL_PLACES[1], was, a8bOnly), diff("/", was, list), diff("/", was, holder)],
+    };
   });
-  ok("P.5s S6 A8b's named Sell difference — the classic button's free note gaining its narrow-phone classes — passes at both Sell places in en and in sw, while a second change beside it, or the same change off the Sell places, stays a failure",
-    sellRuns.every((r) => r.named.every((d) => d.unexpected.length === 0 && d.expected.map((e) => e.id).join() === "sell-narrow-phone")
-      && r.plus.unexpected.length === 1 && r.elsewhere.unexpected.length === 1),
+  const onlyEntry = (d, id) => d.unexpected.length === 0 && d.expected.map((e) => e.id).join() === id;
+  ok("P.5s S6 A8b's, A8d's and A8g's named Sell differences each pass at their own Sell place in en and in sw — A8b's free-note classes with the wrap class on /positions (sell-positions-wrap), and with the stack class on the holder block's button (sell-holder-stack) — while a second change beside either, either markup at the other place, A8b's markup alone, or either off the Sell places, stays a failure",
+    sellRuns.every((r) => onlyEntry(r.positions, "sell-positions-wrap") && onlyEntry(r.holder, "sell-holder-stack") && r.strays.every((d) => d.unexpected.length === 1)),
     JSON.stringify(sellRuns).slice(0, 400));
+  // ①c S6 A8d and A8g · the measured layout entries, held to their own transition: a cell at the entry's Sell place whose
+  // button layout goes from the entry's baseline text to its `to` passes as exactly that entry; anything beside the `to`,
+  // or the same change at the other Sell place, stays a failure. Synthetic, so it holds before a `to` is measured (its
+  // placeholder) as after.
+  const layoutRuns = SELL_EXPECTED_DIFFS.filter((e) => e.field === "regions.button.layout" && "from" in e).map((e) => {
+    const place = e.routes[0];
+    const other = SELL_PLACES.find((p) => p !== place);
+    const layoutStore = { h: "<button></button>" };
+    const cellWith = (text) => {
+      const id = `l${Object.keys(layoutStore).length}`;
+      layoutStore[id] = text;
+      return { ...cell(200, "f1"), landed: place, regions: { button: { count: 1, html: "h", layout: id } } };
+    };
+    const fromCell = cellWith(String(e.from));
+    const toCell = cellWith(String(e.to));
+    const besideCell = cellWith(`${String(e.to)}${NL}button>span9 0,0,1x1 000000000000`);
+    const diff = (p, a, b) => diffCells(p, a, b, layoutStore, layoutStore, SELL_EXPECTED_DIFFS);
+    return { id: e.id, named: diff(place, fromCell, toCell), beside: diff(place, fromCell, besideCell), elsewhere: diff(other, fromCell, toCell) };
+  });
+  ok("P.5L S6 A8d's and A8g's measured Sell layouts — the holder block's stack and /positions' wrap at 360, in en and in sw — each pass as exactly their own entry at their own Sell place, while anything beside the measured text, or the same change at the other Sell place, stays a failure",
+    layoutRuns.length === 4 && layoutRuns.every((r) => onlyEntry(r.named, r.id) && r.beside.unexpected.length === 1 && r.elsewhere.unexpected.length === 1),
+    JSON.stringify(layoutRuns).slice(0, 400));
+  // ①d S6 A8d · §4.6 held the same way: a layout `alongside` the served change that causes it must be seen in all of its
+  // cells whenever that change is seen — each one missing is reported, one by one; neither seen (a null compare at the
+  // baseline's own commit), or both in all of their cells, is not. Since S6 A8g five: the four measured button layouts and
+  // the strip's predicted one.
+  const along = SELL_EXPECTED_DIFFS.filter((e) => e.alongside);
+  const alongHits = (k) => new Map([...along.map((e) => [e.alongside, 1]), ...along.slice(0, k).map((e) => [e.id, e.cells])]);
+  ok("P.6s a Sell layout missing beside the served change that causes it is reported (§4.6), each one, and neither, or both in all of their cells, is not",
+    along.length === 5 && missingAlongside(alongHits(0), SELL_EXPECTED_DIFFS).length === along.length && missingAlongside(alongHits(1), SELL_EXPECTED_DIFFS).length === along.length - 1
+      && missingAlongside(alongHits(along.length), SELL_EXPECTED_DIFFS).length === 0 && missingAlongside(new Map(), SELL_EXPECTED_DIFFS).length === 0,
+    JSON.stringify(along.map((e) => [e.id, e.alongside])));
+  // ①g S6 A8g · the free strip's two named differences, held as the Sell button's are: its markup (the strip's one class
+  // string) and its boxes and styles (the one signature its classes move, the strip's own, and the one cell whose Swahili
+  // parts now wrap between them), at both Sell places in en and in sw — in a capture, and in a first paint against the v2
+  // file's drawn strip (firstPaintOf) — while a second change beside them, a note the server writes as two texts, or the
+  // same change off the Sell places stays a failure. A block of its own, so its names are its own.
+  {
+    const stripStore = {};
+    const keep = (text) => { const id = `s${Object.keys(stripStore).length}`; stripStore[id] = text; return id; };
+    const htmlEntry = SELL_EXPECTED_DIFFS.find((e) => e.id === "sell-strip-whole");
+    const boxesEntry = SELL_EXPECTED_DIFFS.find((e) => e.id === "sell-strip-whole-layout");
+    const opens = htmlEntry ? htmlEntry.replace[0] : ["", ""];
+    const markup = (side, label, noFee, split = false) => `${opens[side]}<span class="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">${label}</span><span class="font-mono text-[10px] text-brand-300 tabular-nums">m:ss</span><span class="font-mono text-[10px] text-text-subtle">· ${split ? "<!-- -->" : ""}${noFee}</span></div>`;
+    const was = ["div 0,0,244x40 e13135b54c89", "div>span0 13,6,112x28 4b17f0b3e45c", "div>span1 133,12.5,24x15 cb686f62b174", "div>span2 165,5,66x30 58177f2eea8a"].join(NL);
+    const boxes = boxesEntry ? boxesEntry.replace.reduce((s, [x, y]) => s.split(x).join(y), was) : was;
+    const button = keep('<button type="button" class="btn btn-primary btn-md w-full whitespace-normal"></button>');
+    const stripCell = (html, layout, served) => ({ ...cell(200, "f1"), landed: SELL_PLACES[1],
+      regions: { strip: { count: 1, html: keep(html), layout: keep(layout) }, button: { count: 1, html: button, layout: null } },
+      ...(served ? { served: { hydrated: false, regions: { strip: { count: 1, html: keep(served[0]), layout: keep(served[1]) }, button: { count: 1, html: button, layout: null } } } } : {}) });
+    const diff = (place, a, b) => diffCells(place, a, b, stripStore, stripStore, SELL_EXPECTED_DIFFS);
+    const stripRuns = [["en", "Free exit", "No fee"], ["sw", "Toka bila gharama", "Hakuna ada"]].flatMap(([l, label, noFee]) => SELL_PLACES.map((place) => {
+      const before = stripCell(markup(0, label, noFee), was, null);
+      const after = stripCell(markup(1, label, noFee), boxes, null);
+      return {
+        l, place, named: diff(place, before, after),
+        plus: diff(place, before, stripCell(markup(1, label, noFee), `${boxes}${NL}div>span9 0,0,1x1 000000000000`, null)),
+        split: diff(place, before, stripCell(markup(1, label, noFee, true), boxes, null)),
+        elsewhere: diff("/", before, after),
+        paint: firstPaintOf(place, before, stripCell(markup(1, label, noFee), boxes, [markup(1, label, noFee), boxes]), stripStore, stripStore).verdict,
+      };
+    }));
+    const named = (d) => d.unexpected.length === 0 && d.expected.map((e) => e.id).sort().join() === "sell-strip-whole,sell-strip-whole-layout";
+    ok("P.5g S6 A8g's two named strip differences — the strip's class string, and the signatures and boxes it draws — pass together at both Sell places in en and in sw, in a capture and in a first paint, while a second change beside them, a note the server writes as two texts, or the same change off the Sell places stays a failure",
+      !!htmlEntry && !!boxesEntry && stripRuns.length === 4 && stripRuns.every((r) => named(r.named) && r.plus.unexpected.length === 1 && r.split.unexpected.length === 1
+        && r.elsewhere.unexpected.length === 2 && r.paint === SELL_FIRST_PAINT.id),
+      JSON.stringify(stripRuns.map((r) => [r.l, r.place, r.named.expected.map((e) => e.id), r.plus.unexpected.length, r.split.unexpected.length, r.elsewhere.unexpected.length, r.paint])).slice(0, 400));
+  }
 
   // ①e S6 A8e · the first paint, held the same way (SELL_FIRST_PAINT, 4.4f), on the markup a capture records — the marker
   // React's server writes between two texts side by side (`TZS <!-- -->3,600`), the button's spoken name and its style — at
@@ -1550,6 +1728,11 @@ if (!PROVE_RED) {
     for (const e of SELL_EXPECTED_DIFFS) console.log(`  EXPECTED ${e.id} — seen in ${sellHits.get(e.id) ?? 0} of ${e.cells} Sell cell(s). ${e.reason}`);
     ok("4.5 each named Sell difference is seen in all of its cells or in none", partialExpected(sellHits, SELL_EXPECTED_DIFFS).length === 0,
       partialExpected(sellHits, SELL_EXPECTED_DIFFS).join(" · "));
+    // S6 A8d · and a measured layout is seen wherever the served change that causes it is: the stack's class served with
+    // the holder block's layout back to the baseline's one line (its rule no longer applying) fails, never passes.
+    const sellMissing = missingAlongside(sellHits, SELL_EXPECTED_DIFFS);
+    ok("4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen", sellMissing.length === 0,
+      sellMissing.join(" · "));
     if (differing || sellDiffering) {
       const side = `${COMPARE}.current.json`;
       writeFileSync(side, `${JSON.stringify({ kind: KIND, version: VERSION, role: "compare-capture", base: { sha: HEAD.out, tree: TREE, dirty: DIRTY }, matrix: MATRIX, cells, sell: sellCells, blobs })}${NL}`, "utf8");

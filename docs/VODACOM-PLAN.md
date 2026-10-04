@@ -26,8 +26,11 @@ and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an office
 point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Ali is away: every call made
 meanwhile is a numbered point in §0h.
 
-**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": A8b and A8c (live fixes to the classic Sell button found
-while proving WP9 and WP10), then WP12 (proof, records, merge); the build plan is
+**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
+`/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
+52) committed, owing their checks; A8h (a sale's result stays on screen; no popup for a refusal one tap fixes) staged
+— then WP12 (proof, records, merge); the build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
@@ -213,12 +216,24 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   to end the session while its full `test:all` re-run (after a rebase over 42 marketing commits) was still running:
   the next session reads `scratchpad/s6/testall-a8b.log` (session 0cb4430f) or re-runs `test:all`, and confirms the
   deploy (`?dpl=`) and the served bundle.
-- **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP0–WP11 are pushed behind the flag, WP6c, WP9 and WP10 included
-  (their bullets below, each with what was verified and what is still owed). Next: **A8c**, a live fix for every player,
-  drafted and reviewed by a workflow into `s6/A8c.json` on top of **A8b** (committed as `2d0f56e7`; its bullet lists what
-  it still owes): the server sells only at the figure the player confirmed, and otherwise refuses — a money-path change,
-  under the four transaction rules. A8c owes its battery, its red twins and its drives before its own commit (its bullet
-  below); then WP12 (S6-PLAN.md).
+- **⏸ S6 STOPPED HERE (2026-10-04) — resume:** WP0–WP11 are pushed behind the flag, WP6c, WP9 and WP10 included
+  (their bullets below, each with what was verified and what is still owed). The classic Sell button's live fixes:
+  **A8b** (`1be05fbf`), **A8c**, **A8e** and **A8f** (`c6373d4b`, 2026-10-04) are LIVE and verified (each bullet below
+  says how); **A8d** and **A8g** — the question page's Sell button stacks on a phone, `/positions`' big rows put their
+  note under the figure, and the free strip never breaks a phrase — are committed and owe what their bullet lists;
+  **A8h** — a sale's result stays on screen (a host above the row that sold), and a refusal one tap fixes gets no popup —
+  is staged on them in `s6/A8h.json`. Then WP12 (S6-PLAN.md).
+- **Found on the way (2026-10-04):** `test:house-bot-reports` 0.232 was red on main for three reasons, and while it was,
+  `red:house-bot-money`, `-c5`, `-chatbot` and `-console` refused to run for every lane. This lane's S3b had made
+  `Transaction.origin` create-only in both txn twins and so broken 0.232.4's exact-text pin — re-pinned (`50552c40`); the
+  tax report's dev seeder planted a positioned payout with no house marker (0.232.0/0.232.1) — fixed by its lane on report
+  (`5bda3c1b`), as were its `unsaved-changes` and `wallet-status-writers` reds (`f9054c70`). The four reds run again:
+  money, c5 and chatbot pass; console caught 234 of its 484 with none missed before it was stopped to free the lock.
+  Recorded for their owners, not changed: `red:updown-digest`'s two `/updown/history` anchors are gone since `4f9abedc`;
+  `red:ticker-honesty`'s cases 9 and 10 anchor on a line `platform-stats.ts` holds twice; `red:bonus-one-side` misses its
+  house-position mutation (A8c touches nothing it reads); `test:stacking` 6.1 is red on main since `2ab8830e` (the LIVE
+  strip's focus ring, `.ticker-viewport:focus-visible`, takes z 11, a root-plane rung no table names). Drive lesson:
+  `/positions` keeps its closed filter sheet in the DOM with `aria-modal="true"` — a dialog locator asks `:visible`.
 - **Found and fixed on the way (2026-10-03):** the S3b funnel panel painted "house stakes" on `/admin/insights` (owner
   ruling D19 keeps house words off admin surfaces outside the house console) — `test:house-bot-surfaces`, red since
   2026-10-01 and carried on the baseline list as another lane's, is green; three red twins had gone blind for reasons
@@ -631,7 +646,9 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   stylesheet and pages: on `/positions` at 320 the free row holds one line inside the button's content in en, sw and
   zh to TZS 1,000,000, and every other row one line inside the button; in the holder block no label grows taller than
   the button), 25 plants; `test:journey-tickets` §12 re-pinned in the open; `qa:classic-shell-parity`'s named Sell
-  difference `sell-narrow-phone` (the free note's class string, 8 of 8 Sell cells), with a synthetic P.5s. **Served bytes
+  difference `sell-narrow-phone` (the free note's class string, 8 of 8 Sell cells; since A8d and A8g its two pairs ride
+  inside `sell-holder-stack`, the holder block's four, and `sell-positions-wrap`, `/positions`' four), with a synthetic
+  P.5s. **Served bytes
   for a classic viewer:** two classes on the free note's span (computed styles equal from 360), `pricedFree` in each
   Sell button's RSC props, one `xs` rule in the stylesheet, the lapse and `shutNow` in the Sell button's client code.
   **Verified 2026-10-04 and LIVE `1be05fbf` (22:32 UTC):** the gates (the §0i baseline's reds only, each failing on
@@ -645,8 +662,9 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   (a): its fix is A8e); tiles at 320, 360, 390 and 1280 in sw, en and zh on both hosts — every `/positions` row on one
   line inside its button, the holder block measured for A8d; the battery 433/451, every red on the baseline list;
   production read back (`?dpl=`, the `xs:inline` rule served, no journey chrome in a classic first load). ⚠️ Not fixed
-  here, and the next step for today's button: the holder block's own overflow, which the v2 baseline already measures
-  (§0h point 37 (h)).
+  here: the holder block's own overflow, which the v2 baseline already measures (§0h point 37 (h)) — A8d's, below — and
+  `/positions`' rows for big stakes and six-figure fees, which those tiles' TZS 1,500 tickets did not draw — A8g's,
+  below.
 - **A8c — the server sells only at the figure the player confirmed (drafted 2026-10-03 on top of A8b, revised 2026-10-04
   after its review; its own commit, for every player, not flagged).** The Sell button's `submit()` — the one sale both
   looks share — sends the figure its confirm showed (`value`, as `expectedValue`, written `String(value)`), and
@@ -718,6 +736,15 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   transaction must move those six calls after the outer lock in the same change. And today's Sell button still paints
   every other refusal with the red `danger` toast whatever the registry's severity (an `info` shut exit included) and
   opens the ✗ result for each, and A8b's in-flight lapse still reads "Inauza…" until its own refresh is drawn.
+  **Verified 2026-10-04 and LIVE `c6373d4b`:** the gates (the §0i baseline's reds only, each failing on the same
+  checks); `test:cashout-price-guard` on both stores and `e2e:money` 64/64 on a migrated scratch Postgres;
+  `red:cashout-price-guard` 9/9 and the file-mutating reds alone (those that fail do so on the base, for their own
+  reasons — "Found on the way (2026-10-04)"); the drive `scratchpad/s6/a8c-drive/price-guard-drive.mjs`, paid and current,
+  all passed — broken figures refused with nothing moved, a page sending no figure sold as before, a sale held across 0:00
+  refused as `price_changed` in both looks ("Inauza…" across 0:00, then "Inapakia…", the result naming the new price, its
+  calm toast once the result closes — toast.tsx §F1 holds toasts behind a result — nothing moved, one more tap selling at
+  the new price), and on a current poll the shut exit exactly as before; the battery (no new red of this lane's); the
+  deploy read back (`?dpl=`). The result's red dress for a moved price is A8h's to remove (§F2).
 - **A8e — the Sell button never draws a picture it does not mean: its first render is the server's, a price with a fee
   is never shown free, and a page brought back by Back or Forward shows no old price (drafted 2026-10-04 and revised
   after its review the same day; its own commit, for every player, not flagged).** Three defects the A8b drive measured
@@ -779,7 +806,11 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   (the strip and the free price from the first picture, no "−0 ada", no ask) and a first paint with every script held
   (the free row and its strip; a shut row's "Kuuza kumefungwa"), with no hydration warning; tiles at 320, 390 and 1280
   in sw, en and zh. ⚠️ Not closed here: point 37 (a)'s late start (its money half is A8c's), (b), (d), (e) and the
-  confirm's last frame of (f).
+  confirm's last frame of (f). **Verified 2026-10-04 and LIVE `c6373d4b`:** parity `--prove-red` 76/76 and `--compare`
+  37/37 (`sell-first-paint` in 8 of 8 Sell cells, nothing else new); the lapse drive with A8e's checks, both modes — after
+  Back "Inapakia…" from the first picture and the server's answer 0.27 s later (it was a stale free offer for 20.2 s), and
+  a soft navigation into `/positions` whose first commit is the free offer; the server's first paint read with scripts
+  off: "Toka bila gharama · TZS 3,600 · pesa yote"; `red:timer-date` 12/12.
 - **A8f — every money figure in the Sell confirm and in its result stays whole, and the confirm's receive row reflows
   (drafted 2026-10-04 on `2d0f56e7`, revised after its review; its own commit, for every player, not flagged; it lands
   last of A8c to A8f).** Found in a real browser (2026-10-03, a question page in Swahili at 390): the confirm drew "TZS"
@@ -816,7 +847,164 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   staff result whose title does — opting them into `wholeFigures`, with their own tiles (the Up & Down receipt's and the
   wallet results' titles name no figure; their figures are detail rows, which wrap whole). ⚠️ Not fixed here: the sale's
   toast is not a dialog; and the confirm's heading keeps no clear space for its ✕ (not a figure — the tiles show whether
-  a long one reaches it).
+  a long one reaches it). **Verified 2026-10-04 and LIVE `c6373d4b`:** parity — `sell-confirm-whole-figure` and
+  `sell-confirm-receive-boxes` each in 2 of 2 confirm cells, the predicted boxes matching the capture; `red:motion-ladder`
+  6/6 and `red:timer-date` 12/12; the confirm drawn at 280–1280 in sw, en and zh in both looks with no figure split and no
+  overflow.
+- **A8d — the question page's Sell button stacks on a phone (drafted 2026-10-04 on `2d0f56e7`, reviewed and revised;
+  re-based on `a2ce1762` — A8c, A8e and A8f under it — into `s6/A8dg.json`; its own commit, for every player, not
+  flagged).** In a question's holder block ("Nafasi zako") today's Sell button sits inside its section's and its ticket
+  row's border and padding, 84px narrower than on `/positions`, and its one-line row ran past it on the most common phones
+  (§0h point 37 (h): the v2 baseline measured the Swahili free row 67px past the button's content at 360, and by the
+  static model some row ran over below 468px in Swahili, 411 in English and 409 in Chinese). The holder block now passes
+  `stackOnPhone`; today's button then carries one class, `kp-sell-stack`, and below 640px (`globals.css`, one phone block
+  beside the button sizes, opened by its `density: general` reason) that button takes the `--h-control-xl` rung, 56px, as
+  tall as the journey's own two-line Sell button: its words on one centred line, the figure and its note centred on the
+  next, and the note under the figure when one line cannot hold both (only below 345px, for a long fee). Every piece keeps
+  the button's nowrap, so no word and no figure breaks, and the button is 56px tall there in every state — free, selling,
+  paid, shut, "Inapakia…", and the server's paint, which since A8e is the free row or "Kuuza kumefungwa" — so it never
+  changes height between them (the free strip above it still comes and goes). Each open ticket's row is 12px taller than
+  before, and what sits below it moves down by that from the first paint. Every word, figure and state is today's; the
+  journey's look is untouched (an early return), and from 640px nothing changes (§0h point 45). Static model (the repo's
+  own fonts; every printed length a stake of TZS 1,000 to 1,000,000 can draw at any fee from 0 to 30%, every state,
+  en/sw/zh, at the default text size; `s6/a8dg/sweep.py`): in the holder block no row runs past the button's content at
+  any width from 320 — the least room is 0.26px at 338 (a Chinese paid row deciding between two lines and three; either
+  fits), three lines only below 345px — and no stack is taller than 50.75 of the 54px inside; today's one line ran 80 to
+  89px past it at 320. **Large text** is the Mobile Visual Plan's U24, and this stack is a fixed rung like every
+  button's: as page zoom (130% lays a 360 phone out at 277 CSS px and a 320 phone at 246) it still holds every English and
+  Chinese row at 277, five Swahili rows run up to 12.7px into the button's padding there ("Kuuza kumefungwa" the widest),
+  and at 246 four to eight rows in each language run into the padding and five Swahili ones past the button's edge —
+  where today's one line overflows in 46 or 47 of every 49 rows; as text-only scaling, if it reaches the button (a tile
+  settles that), from about 1.1× (1.07× at 320) a row's lines outgrow the rung — a two-line row becomes three and the
+  block passes the 54px inside it (58px at 1.15×, 65px at 1.3×), out of both edges, its lines being centred; U24 moves
+  this rule with the other rungs. Gates: `test:sell-grace-truth` 5.model reads the ask, the class and the rule — each
+  value from its own declaration, by exact property (a `max-height` is no rung), its phone block the house query alone (a
+  pointer or a lower bound would switch the stack off on a touch phone) — and pins the holder block as the only host that
+  asks; 5.stack replaces 5.holder (the stack laid out at 320, 340, 360, 390, 412, 430, 600 and 639 — least room 2.1px at
+  320 in en and sw, 2.3 in zh — and one line at 640 and 768); 5.control gains the holder block's one-line defect at 360
+  (the model reads sw −73.5, en −16.0px; the v2 baseline measured 67 and 14 past); the grid gains TZS 110,000 and a 0.5%
+  fee (which §6 measures too: 6,912 receive rows, every check green); 20 new plants (133 in all), and the two label plants
+  now expect 5.paid and 5.classes (5.holder is gone). `test:journey-tickets` §12 is re-pinned on its one changed line.
+  `qa:classic-shell-parity` names: `sell-narrow-phone` now covers `/positions` alone (since A8g as `sell-positions-wrap`,
+  with the wrap class; 4 cells — the holder block's four carry A8b's two pairs inside its own entry, because each entry is
+  matched alone against the baseline, so no coverage is lost), `sell-holder-stack` (the class on the holder block's button, 4 cells), and `sell-holder-stack-layout-en` / `-sw`
+  (that button's layout at 360, 1 cell each, whose `to` is measured on the first compare after A8d and copied in, never
+  re-baselined); a new §4.6 fails a compare where the class is seen and its measured layouts are not (the rule no longer
+  applying, which §4.5's all-or-none would pass); P.5s holds both places, a new P.5L the two measured layouts and a new
+  P.6s §4.6. **Served bytes for a classic viewer:** the class on the holder block's Sell button at every width (inert from
+  640); its stacked layout below 640; the stylesheet's phone block (four rules); `stackOnPhone` in the holder block's Sell
+  button RSC props; the prop and its
+  class in the Sell button's client code. **Owed:** with A8g's, in one list in its bullet below (the two land as one change).
+- **A8g — the free strip never breaks a phrase, and `/positions` puts a note under its figure where one line cannot hold
+  both (drafted 2026-10-04 on `a2ce1762` with A8d, into `s6/A8dg.json`, reviewed and revised; one commit with A8d, or
+  its own after A8d's, for every player, not flagged).** Two defects A8d's review recorded as the next step, closed
+  platform-wide under Ali's standing rule. (1) The free strip above today's Sell button
+  ("TOKA BILA GHARAMA · 4:59 · Hakuna ada": an upper-case mono eyebrow, the countdown and the note) was a row that could
+  not wrap, so where its three parts did not fit — the question page's holder block in Swahili below 377px (383px when
+  the free window is ten minutes or more; a browser measured it at 360: "TOKA BILA / GHARAMA 4:20 · Hakuna / ada") — the
+  browser squeezed them until two broke inside. The strip is now a wrapping row (`flex-wrap`, its gap split into 8px
+  between parts and 2px between lines, `gap-x-1.5 gap-y-0.5`, utilities `src/` already uses): a part that cannot share a
+  line moves to the next one whole, so there it reads "TOKA BILA GHARAMA 4:59" over "· Hakuna ada", 42px tall where it
+  was 40, and everywhere else it keeps its one line, as today; only a part wider than the whole strip could still break,
+  and none is from 320px at the default text size (§0h point 51). It is one markup for both hosts; the journey's look
+  draws a sentence instead, whose time and countdown are already whole, and is untouched. (2) On `/positions` a few rows
+  ran past the Sell button's content on a phone (§0h point 37 (h), its second half, re-derived by A8d's reviser). By the
+  static model, a Swahili free row for a stake of TZS 100,000 or more from 360 to 366px, and for TZS 1,000,000 to 383px
+  — its note "pesa yote" beside a six- or seven-figure stake — and a legacy paid row with a six-figure fee at 320 to
+  324px (zh "TZS 700,000 −300,000 手续费" 4.7px into the padding; sw "Uza sasa" 0.04px, inside the model's own margin).
+  That model is an upper bound for a Latin label: it takes each glyph at the larger of Inter's Medium and Bold, where
+  the button draws 600, and the v2 baseline measured "Toka bila gharama" 124.5px against its 131.28 ("Free exit" 58.5
+  against 60.38). With the label as measured, the Swahili free row that ran over is TZS 1,000,000's alone, from 360 to
+  376px (17px over at 360, where the model reads 23; a six-figure stake held its one line at 360, by under a pixel); the
+  Swahili paid row's label was never measured; and the Chinese rows are exact (CJK words at 1em and the mono figures,
+  which the model reproduces to the half pixel), so 320 to 324px stands. Every host that does not ask for A8d's stack —
+  `/positions` today, and any later one — is now drawn the wrap class, `kp-sell-wrap` (the className's other arm), and
+  below 640px (`globals.css`, a second phone block beside A8d's, opened by its own `density: general` reason) its figure
+  is a wrapping row: where the label, the figure and its note fit on one line nothing moves (the note sits the same 8px
+  from the figure, the rule's gap where its margin was); where they do not, the label keeps its line and the note goes
+  under the figure, both at the button's right end, inside the same 44px (a 21px and a 16.5px line in the 42px inside) —
+  so `/positions` keeps its one line wherever it already fitted (§0h point 52). Static model (`s6/a8dg/sweep.py`, the
+  same exhaustive population as A8d's): on `/positions` no row runs past the content at any width from 320 to 639 in any
+  language — least room 0.28px at 325 (zh paid·selling "TZS 700,000 −300,000 手续费", a row that still fits its one line),
+  1.95px at 320 (zh), 1.99 at 360 (sw) — the note going under the figure only for the five row kinds above, each with
+  44.6px or more to spare once it has (with the label as measured: the Swahili TZS 1,000,000 free row at 360 to 376px
+  and the two Chinese paid rows at 320 to 324px, and by the model alone the Swahili paid row at 320); no row that fitted
+  before changes (the sweep counts 0 such cells); from 640 one line (8.6px to spare in each of md's two columns); and
+  the strip holds its parts whole on both hosts at every width from 320 (least room 0.6px, at its one-line threshold).
+  Under page zoom (U24's) the wrap fits every English and Chinese row on `/positions` at 313, 277 and 246 CSS px, where
+  today's one line overflows in up to 38 of every 49 rows; a few Swahili rows still overflow there (its free row, whose
+  note is already left out below 360 CSS px, so nothing can move — TZS 1,000,000 at 313, every stake at 277 and 246 —
+  and at 246 one paid row), as they did, and at 246 the holder block's Swahili free word is wider than the strip and
+  breaks inside it, as before A8g. Gates: `test:sell-grace-truth` §5 — 5.model reads the wrap whole (the className's two
+  arms, each once; the rule's own phone block, the house query alone and its density reason, ending below `sm`; the
+  figure's lines at the right end on one baseline; the note's margin given way to a column gap from the spacing scale)
+  and the strip from today's markup (a flex row, its edge, padding and gaps on the spacing scale, its three parts in the
+  mono face at the sizes the type ladder or the markup states); since the review it reads every token those rules read —
+  the rungs and the spacing scale — from its one declaration outside the stylesheet's comments (a second declaration, a
+  later phone block's rung, now reads as none, where the model had read the first), and the free window's bound from
+  market-config's own refusal (0 to 60 minutes), whose longest countdown must be the 60:00 5.strip lays out; new 5.list
+  lays every `/positions` row out at eleven widths from 320 to 639 (one line where it fits, else the note under its
+  figure, inside the content and the button's height) and on one line at 640 and in md's two columns; 5.paid holds 320
+  to the same layout, inside the content now (it allowed the padding); new 5.strip lays the strip out on both hosts at
+  ten widths from 320 to 639 with its countdown at its longest, 60:00; 5.control gains both defects (today's one line on
+  `/positions`: the model reads −23.4px at 360 and −4.7 at 320; and the strip's classes before A8g, which the model
+  squeezes in the holder block at 360 to 112.1 and 65.9px wide, its free word and note broken — the v2 baseline measured
+  112 and 66); 19 new plants (152 in all: a later phone block re-declaring the stack's rung, the button's rung dropped
+  to 36px and a 120-minute free window among them), A8d's className plant re-derived for the two arms.
+  `test:journey-tickets` §12 is re-pinned on the strip's and the className's lines. `qa:classic-shell-parity` names:
+  `sell-positions-wrap` (A8b's two pairs, which A8b named `sell-narrow-phone` and A8d scoped to `/positions`, now with
+  the wrap class, 4 cells), `sell-positions-wrap-layout-en` / `-sw` (`/positions`' button layout at 360, 1 cell each,
+  `alongside` it, measured first like A8d's: the figure's and the note's styles move and the note's box becomes a flex
+  item's, while no glyph moves and the seeded TZS 1,500 row does not wrap), `sell-strip-whole` (the strip's class
+  string, all 8 Sell cells) and `sell-strip-whole-layout` (its boxes and styles, predicted from the baseline's own
+  capture: the strip's one signature moves by flex-wrap and gap in every cell, its parts' not at all, and in the Swahili
+  holder-block cell at 360 the parts sit whole on two lines, 2px apart, the strip 42px tall; `alongside` the class, so
+  §4.6 holds it); the placeholder the four measured layouts read, `SELL_MEASURED_FIRST`, now names all four, and A8g's
+  edit to it refuses to apply if A8d's copy step ever ran alone; P.5s holds both places with A8g's class, P.5L and P.6s
+  all four measured layouts and the strip's, and a new P.5g the strip's two entries in a capture and in a first paint.
+  **Served bytes for a classic viewer:** on both hosts every Sell row in its free window serves the strip's new class
+  string (its parts' markup and words unchanged); `/positions`' Sell button carries `kp-sell-wrap` at every width and in
+  every state; the stylesheet gains the wrap's phone block (two rules, matching only that class); no new utility (each
+  strip class is already in `src/`) and no RSC prop; the Sell button's client code carries the two class strings. Below
+  640 a `/positions` row that cannot hold one line draws its note under its figure; the holder block's Swahili strip
+  below 377px (383px with ten minutes or more left) is two whole lines, 2px taller. **Owed** (A8d's and A8g's, once, on
+  the combined tree): (1) before they are applied, the head's own parity compare against `parity-v2-7c859cdf.json` on a
+  fresh in-memory server at `a2ce1762` — A8e's and A8f's owed compare — green with their named entries; (2) the battery,
+  read red by red against that head's reds (type-scale, tap-target, eyebrow-roles, red-anchors and failure-reasons were
+  red before, each on the same checks); `red:sell-grace-truth` (152 plants) and `red:journey-tickets` in process;
+  `red:vodacom-plan`, `red:journey-shell`, `red:density-contract` and `red:sell-price-guard`; `red:timer-date` alone and
+  detached; then every other red twin whose harness rewrites a file A8dg edits or reads one, through `red:all` (its
+  `--filter` naming exactly them and its `--skip` dropping the two keys the filter would also match; sequential,
+  detached, under the heavy-node lock — its fingerprint names any harness that leaves the tree changed), each read
+  against its result at the head: `red:card-share`, `red:chain-purge`, `red:chat-focus-ring`, `red:chip-one-home`,
+  `red:contrast`, `red:failure-reasons`, `red:filter-language`, `red:house-bot-console`, `red:journey-account`,
+  `red:journey-estimate`, `red:landing-ten-plan`, `red:m1-light`, `red:market-columns`, `red:marketing-setup-plan`,
+  `red:mobile-visual-plan`, `red:money-format`, `red:motion-ladder`, `red:one-sided`, `red:payout-view`,
+  `red:position-permalink`, `red:share-preview`, `red:short-title-ai`, `red:short-title-edit`,
+  `red:simple-journey-flag`, `red:tap-rung`, `red:ticker-honesty`, `red:updown-filter-sheet`, `red:wallet-reach`; and
+  `red:journey-header-fit` alone (`--alone`, on its own in-memory server); (3) parity `--prove-red` (P.5s, P.5L and P.6s
+  rewritten, P.5g new), then the two-step compare: measure — `--compare` at the combined tree must fail §4.4 and §4.4f
+  on exactly `regions.button.layout` in the four 360 cells (the holder block's and `/positions`', en and sw: the
+  browser's layout and the server's first paint) and §4.6 on exactly their four entries, and nothing else —
+  `sell-strip-whole-layout` seen in 8 of 8 (if not, its prediction is read against the capture and its pairs corrected,
+  never re-baselined), `sell-strip-whole` 8 of 8, `sell-positions-wrap` and `sell-holder-stack` 4 of 4 each, A8f's two 2
+  of 2, `sell-first-paint` in the other four, the matrix as before; copy — each of the four cells' four measured lines
+  into its entry's `to`, then `SELL_MEASURED_FIRST` and its comment deleted in the same edit, never before all four are
+  copied (each reads it until then); compare — green, every named Sell entry in all of its cells or none and every
+  layout beside its class; (4) the tiles, read one by one with every text box measured against its button and its strip
+  — the holder block and `/positions` at 320, 338, 340, 360, 366, 383, 390, 412, 430, 768 and 1280 in sw, en and zh: a
+  free ticket (and selling) at TZS 1,500, TZS 100,000 and TZS 1,000,000; `/positions` in Swahili also at 376, 377 and
+  384 with the TZS 1,000,000 free ticket, the browser's threshold against the model's (one line from 377 with the label
+  as measured, from 384 by the model), and the TZS 100,000 one at 360 (one line as measured, by under a pixel; its note
+  under its figure by the model); legacy paid windows printing "TZS 700,000 −300,000" (TZS 1,000,000 at 30%: its fee
+  under its figure on `/positions` at 320–324 in Chinese, and at 320 in Swahili by the model; three lines in the holder
+  block's stack at 320), "TZS 995,000 −5,000", "TZS 109,450 −550" and "TZS 180,000 −20,000"; a lapsed one, a shut one; a
+  free window of ten minutes or more beside a five-minute one, so the strip's two-line threshold is drawn at 376, 377,
+  382 and 383, and at 377 to 382 across the 10:00 tick (there the strip drops to one line and the button under it moves
+  up 17px, as it moved 15 before A8g); both server paints with every script held; the confirm opened from each host; and
+  the large-text tiles (page zoom at 313, 278, 277 and 246 CSS px with a TZS 1,000,000 free ticket and a shut one on
+  both hosts; Android's text-only scaling on a device that can draw it); (5) commit, push, and read the deploy back
+  (`?dpl=`, the served stylesheet carrying both phone blocks).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1060,10 +1248,23 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     TZS 1,000,000 until about 384px; at 320 a Chinese legacy paid row with a six-figure fee runs about 5px into the
     button's padding, inside its edge, as it does today. The holder block is the next step for today's button: a layout
     drawn for that width, measured first, then named in SELL_EXPECTED_DIFFS from a compare (A3), never re-baselined.
+    ✅ (h)'s holder block is resolved by A8d as built (2026-10-04; §0i A8d, point 45; its compare and tiles are owed
+    there): below 640 its Sell button stacks — its words on one line, the figure and its note on the next, on the 56px
+    rung — so no state, stake, fee or language runs past its content from 320 up at the default text size (static model:
+    the least room is 0.26px at 338; three lines only below 345px, for a long fee).
+    ✅ (h)'s `/positions` half is resolved by A8g as built (2026-10-04; §0i A8g, points 51 and 52; its compare and tiles
+    are owed there): below 640 a row that cannot hold one line there puts its note under the figure inside the same
+    button, and every row that fits keeps its one line (static model: no row runs past the content at any width from
+    320; least room 0.28px at 325, a Chinese paid row that still fits on one line). By that model — whose ranges (h)
+    gives above, and whose label is an upper bound — the rows it moves are a Swahili free row for a six-figure stake at
+    360 to 366px and for TZS 1,000,000 to 383px, and a legacy paid row with a six-figure fee at 320 to 324px; with the
+    Swahili label as the v2 baseline measured it (124.5px, the model's 131.28) the free row that moves is TZS
+    1,000,000's alone, to 376px, and the Chinese paid rows' 320 to 324px are exact. And the free strip above the button,
+    whose Swahili parts broke inside in the holder block below 377px, now wraps only between them. (h) is closed.
     (a) is the money-truth one left (A8b closed (f)'s stale free offer): the server decides every sale, but for the
     seconds the countdown runs late (A8e closed the Back/Forward half), an old paid-window question can show
-    "no fee" and charge one. Overrule: say which comes first; otherwise (h) next, measured first (the default
-    language's question page overflows at the most common phone widths), then (a), then (d).
+    "no fee" and charge one. Overrule: say which comes first; otherwise (a) next, then (d) — (h) is closed (points 45,
+    51 and 52).
     Since A8c (§0i; points 38 to 44), the money half of (a) and the last frame of (f) are closed: a sale confirmed at a
     figure the server no longer pays is refused and the new price named, so a screen that said "no fee" is never followed
     by a fee; what (a) still leaves is the stale free offer itself, for those seconds.
@@ -1134,6 +1335,22 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     button a wrong figure, would be seen only by the player. The cost, named: the row also appears in the player's own
     activity list (`/profile/account`), filed under "Madau". Overrule: say so, and refusals are not recorded at all (the
     other option first left open), or only the short pool is.
+45. **On a phone, a question page's Sell button takes two lines (S6 A8d, for every player).** In "Nafasi zako" on a
+    question's page, below 640px the Sell button is 56px tall instead of 44 and centres its words: "Toka bila gharama"
+    over "TZS 1,500 pesa yote" in the free window ("pesa yote" from 360px, as since A8b); "Uza sasa" over "TZS 3,240
+    −360 ada" on an old question with a paid window (below 345px a long fee goes on a third line, under its figure);
+    "Inapakia…" or "Kuuza kumefungwa" alone on one centred line, in the same 56px. Every word and figure is today's. Why:
+    that block draws the button 84px narrower than `/positions`, and its one line ran past the button on the most common
+    phones (the Swahili free row 67px past its content at 360, measured). Each open ticket's row is 12px taller, so what
+    sits below it moves down by that; `/positions` does not ask for it, and from 640px nothing changes. With large system
+    text (U24's) the stack holds more than today's one line, but not everything: zoomed to 130%, a 360 phone keeps every
+    English and Chinese row inside the button while five Swahili rows ("Kuuza kumefungwa" the widest) run up to 13px into
+    its padding, and a 320 phone runs five Swahili rows past its edge (§0i A8d has the rest). Overrule: say which — (a)
+    `/positions` stacks too: its Sell button passes the same prop, and with it §5's one-host pin and its plant change, and
+    parity's `/positions` entries take the stack class for the wrap class and re-measure their two layouts (point 52 (a)); (b) one 44px line that says what its confirm says
+    ("Uza · TZS 1,500", the fee under the figure), leaving the free word to the strip above; (c) "Nafasi zako" drawn as a
+    heading over ticket cards on a phone, as on `/positions` (a look change for every signed-in phone reader of a
+    question page).
 46. **The Sell button's first picture is the server's own (S6 A8e, for every player, both looks).** The countdown starts
     at the time the free window had left when the server drew the page — the server's clock, carried in the page — not
     at 0. So the first picture a phone shows, before the page has started on it, is the one the button then keeps:
@@ -1192,6 +1409,37 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     title can keep Sora and set only a refusal's figures as amounts (`wholeFigures` on the refused result alone; the
     success title's fit is then unproven); or below 320 the receive figure can step down a rung of the type ladder (a
     design call, with its own proof).
+51. **The free strip above the Sell button never breaks a phrase (S6 A8g, for every player, on both hosts).** The strip
+    ("TOKA BILA GHARAMA · 4:59 · Hakuna ada"; en "FREE EXIT 4:59 · No fee") is now a row that wraps between its three
+    parts, so a part that cannot share a line moves to the next one whole. Where it mattered — the question page's
+    holder block in Swahili below 377px (below 383px when the free window is ten minutes or more), where the browser had
+    squeezed the parts until "TOKA BILA" sat over "GHARAMA" and "· Hakuna" over "ada" — it now reads
+    "TOKA BILA GHARAMA 4:59" over "· Hakuna ada", 2px between the lines (the strip 42px tall where it was 40);
+    everywhere else it keeps its one line, as today. Its words, figures, sizes and colours are today's, and the second
+    line starts with the note's own dot. With a free window of ten minutes or more, at 377 to 382px the strip there
+    drops from two lines to one as its countdown passes 10:00 (five characters to four), and the button under it moves
+    up 17px — as it did before A8g, when the squeezed strip fell from 40px to 25. Only a part wider than the whole strip
+    could still break inside, and none is from 320px at the default text size (with the browser zoomed to 130% on a 320
+    phone the Swahili free word is, and breaks as it does today). Overrule: say which — (a) the countdown goes with the
+    note ("TOKA BILA GHARAMA" over "4:59 · Hakuna ada", so the dot always sits between two things; it needs one more
+    element around the two — the reviewers' pick if the leading dot should go); (b) the dot leaves the note's text, so
+    no line starts with it (a markup change the server's paint then carries); (c) the parts held whole even under zoom
+    (a nowrap: a part wider than the strip would then run past it instead of breaking). Either (a) or (b) changes the
+    strip's served markup, so its two parity entries are re-predicted in the same edit.
+52. **On `/positions`, a row that cannot hold one line puts its note under its figure (S6 A8g, for every player).**
+    Below 640px today's Sell button keeps its one line wherever it fits — every English row at every phone width, and
+    every Swahili and Chinese row but the ones below — and where it does not, the label keeps its line and the note goes
+    under the figure, both at the button's right end, inside the same 44px: the Swahili free row for TZS 1,000,000 from
+    360px ("Toka bila gharama" beside "TZS 1,000,000" over "pesa yote") — to 376px with the label as a browser measured
+    it, to 383px by the static model, whose label is an upper bound and which also moves a six-figure stake, to 366px,
+    and a Swahili paid row at 320 — and a Chinese legacy paid row with a six-figure fee at 320 to 324px ("立即出售" beside
+    "TZS 700,000" over "−300,000 手续费"). Those rows ran past the button's content before (the Swahili TZS 1,000,000 row
+    17px at 360 with the label as measured, 23px by the model; the Chinese paid row 5px into the padding at 320). No row
+    that fits changes, every word, figure and state is today's, and from 640px nothing changes. The rule is the button's
+    own: every host that does not ask for the stack (point 45) is drawn it, so a later host is covered without asking.
+    Overrule: say which — (a) `/positions` stacks too, like the question page (every ticket's Sell button there two
+    lines and 56px tall below 640px); (b) the free note on `/positions` shows only from 640px (its big free rows then
+    fit without it; the paid rows still need (a) or this); (c) the host asks for the wrap, as for the stack.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

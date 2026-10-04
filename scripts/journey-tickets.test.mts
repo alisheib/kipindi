@@ -610,14 +610,14 @@ function g11Wiring(W: World, ok: Ok) {
 /* ══ §12 · THE SELL LOOK (WP10) ═════════════════════════════════════════════════════════════════════════════ */
 /** Where the button's classic markup begins: from here to the end of the file is what a reader without the look is drawn. */
 const SELL_CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
-/** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button (since S6 A8b, with its lapse, the server's shut verdict from its first commit and its free note's narrow-phone classes; since S6 A8c, the wait on a moved price), and the shared dialogs. */
+/** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button (since S6 A8b, with its lapse, the server's shut verdict from its first commit and its free note's narrow-phone classes; since S6 A8c, the wait on a moved price; since S6 A8d, the stack class a host may ask for; since S6 A8g, the strip's whole parts and the wrap class every other host is drawn), and the shared dialogs. */
 const SELL_CLASSIC = [
   'const btnVariant = "btn-primary";',
   'const shutNow = closedNow || alreadyClosed === true;',
   'return (',
   '<>',
   '{inGrace && !shutNow && !repricing && (',
-  '<div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">',
+  '<div className="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">',
   '<span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>',
   '<span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>',
   '<span className="font-mono text-[10px] text-text-subtle">{`· ${t.dialog.noFee}`}</span>',
@@ -638,7 +638,7 @@ const SELL_CLASSIC = [
   '? `${t.common.freeExitLabel} — ${formatTzs(value)}`',
   ': `${t.common.cashOut} ${formatTzs(value)}`',
   '}',
-  'className={`btn ${shutNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}',
+  'className={`btn ${shutNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal${stackOnPhone ? " kp-sell-stack" : " kp-sell-wrap"}`}',
   'style={{ justifyContent: "space-between" }}',
   '>',
   '<span>',

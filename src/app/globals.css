@@ -1178,6 +1178,48 @@ body {
    override repeated across ~14 CTAs (auth, kyc, wallet, profile, market sign-in). */
 .btn-pill { border-radius: var(--r-pill); }
 
+/* ⭐ S6 A8d · THE SELL BUTTON THAT STACKS ON A PHONE (VODACOM-PLAN §0h point 37 (h), §0i A8d). Today's Sell button
+   draws its row on one line: the label, then the figure and its note. The question page's holder block draws the
+   button inside its section's and its ticket row's border and padding, 84px narrower than /positions (a 170px content
+   box on a 320 phone, 210px at 360), and there that line ran past the button on the most common phones: the v2 parity
+   baseline measured the Swahili free row 67px past its content at 360, and by the static model some row ran over below
+   about 468px in Swahili (411 in English, 409 in Chinese). A host that asks (the holder block alone) gets this rule
+   below 640: the button takes the --h-control-xl rung (56px, the height of the journey's own two-line Sell button),
+   the label takes one line and the figure the next, both centred, with the note beside the figure, or under it when
+   that line cannot hold both. Every piece keeps the button's nowrap, so no word and no figure ever breaks; at the
+   default text size nothing runs past the content box and nothing is taller than the rung, in any state
+   (test:sell-grace-truth §5 lays out every word and state, over a grid of stakes and fees to the platform's maximum,
+   against this rule, and holds this block to the house phone query alone). Every word, figure and state is today's
+   and the token still owns the height; /positions does not ask for it, and from 640 nothing here applies. Like every
+   button rung this is a fixed height: large system text is the Mobile Visual Plan's U24 (§0i A8d records where this
+   rule stops holding under it), and when U24 moves the rungs to a minimum, this rule moves with them. */
+@media (max-width: 639.98px) {
+  /* density: general — the question page's Sell button in its holder block, not card spacing; both card-spacing settings. */
+  .btn-md.kp-sell-stack { height: var(--h-control-xl); flex-wrap: wrap; align-content: center; row-gap: 2px; line-height: 1.25; }
+  .kp-sell-stack > span:first-child { flex-basis: 100%; text-align: center; }
+  .kp-sell-stack > span + span { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: var(--sp-2); margin-left: auto; margin-right: auto; }
+  .kp-sell-stack > span + span > span { margin-left: 0; }
+}
+
+/* ⭐ S6 A8g · TODAY'S SELL BUTTON WHERE ITS HOST DOES NOT STACK (/positions): ITS NOTE GOES UNDER ITS FIGURE WHEN ONE
+   LINE CANNOT HOLD BOTH (VODACOM-PLAN §0h point 37 (h), §0i A8g). On /positions the button keeps today's one-line row,
+   and on a phone a few rows ran past its content: the Swahili free row for TZS 1,000,000 from 360px, its note
+   "pesa yote" beside a seven-figure stake — to 376px with the label as a browser measured it, to 383px by the static
+   model, whose label is an upper bound and which also runs a six-figure stake over to 366px — and a Chinese legacy
+   paid row with a six-figure fee at 320 to 324px. Below 640 every button that does not stack carries this class, and
+   its figure becomes a wrapping row: where the label, the figure and its note fit on one line nothing moves (the
+   note sits the same 8px from the figure, the gap now where its margin was); where they do not, the label keeps its
+   line and the note goes under the figure, both at the button's right end, inside the same 44px (a 21px and a 16.5px
+   line in the 42px inside). Every piece keeps the button's nowrap, so no word and no figure breaks
+   (test:sell-grace-truth §5 lays every row out on /positions at eleven widths from 320 to 639, and on one line from
+   640). Every word, figure and state is today's, the token still owns the height, the question page's holder block
+   stacks instead (the block above), and from 640 nothing here applies. */
+@media (max-width: 639.98px) {
+  /* density: general — today's Sell button where its host does not stack (/positions), not card spacing; both card-spacing settings. */
+  .kp-sell-wrap > span + span { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; column-gap: var(--sp-2); }
+  .kp-sell-wrap > span + span > span { margin-left: 0; }
+}
+
 /* 🔴 E-119 — THE LIGHT STOP WAS 60% AND THE WHITE LABEL READ 4.0:1 AGAINST IT.
    Measured on production, not modelled (`.qa-design/btn-pixels.mjs` samples the
    rendered raster): at `btn-sm` — 13px/600, which is NOT WCAG-large, so the bar

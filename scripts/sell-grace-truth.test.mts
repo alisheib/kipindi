@@ -47,12 +47,17 @@
  *      lapse effect; and the answer that ends a restore re-arms the ask.
  *   §4 THE WIRING — this suite is in predeploy and its red twin is declared; and (S6 A8e) the router premise the restore
  *      read rests on: next.config.ts turns on no cacheComponents, so Back or Forward mounts a page again (4.premise).
- *   §5 THE FIT (S6 A8b) — a static model of today's button row, from the repo's own font files (the body's alternates
- *      included), stylesheet, pages and words: on a 320 phone (below Tailwind's `xs`) the free row on /positions holds
- *      one line inside the button's content and every other row one line inside the button, in en, sw and zh, for every
- *      stake and fee rate on a grid to the platform's maximum; in the question page's holder block no label grows taller
- *      than the button; and the model sees the defect it was written for (the Swahili free row a browser measured too
- *      wide at 320 before A8b) and the measured fit from 360.
+ *   §5 THE FIT (S6 A8b, A8d, A8g) — a static model of today's button row, from the repo's own font files (the body's
+ *      alternates included), stylesheet, pages and words: on a 320 phone (below Tailwind's `xs`) the free row on
+ *      /positions holds one line inside the button's content and every other row fits inside it, in en, sw and zh, for
+ *      every stake and fee rate on a grid to the platform's maximum; on /positions (S6 A8g) every row fits at eleven
+ *      widths from 320 to 639 — today's one line where it fits, its note under its figure where it does not — and on one
+ *      line from 640; in the question page's holder block (S6 A8d) the button stacks below 640 — its label on one line,
+ *      its figure and note on the next — and every row fits inside it at eight widths from 320 to 639, and on one line
+ *      from 640; the free strip above the button (S6 A8g) keeps each of its parts whole on both hosts and wraps only
+ *      between them; and the model sees the defects it was written for (the Swahili free row a browser measured too wide
+ *      on /positions at 320 before A8b, in the holder block at 360 before A8d, and before A8g the big stakes' rows on
+ *      /positions and the strip's parts broken in the holder block at 360) and the measured fit from 360 on /positions.
  *   §6 THE DIALOGS' FIT (S6 A8f) — the same model, given the Sell confirm's and the result's geometry from their own
  *      markup and the Modal's: every money figure in either dialog stays whole and each row reflows. The confirm's figure is
  *      an amount, and its receive row shares a line or wraps, the fee column moving below the figure; every button holds its
@@ -845,12 +850,29 @@ function g4Wiring(W: World) {
  *     a few pixels WIDE (5.control prints its reading).
  * Two hosts draw this button, each one column below 768, inside the page's gutter: /positions' classic list directly, and
  * the question page's holder block inside its section's and its row's border and padding, each read from the page. On
- * /positions at 320 the free row holds one line inside the button's content (5.free), and every other row — drawn as
- * today — one line inside the button (5.paid; a Chinese legacy paid row with a six-figure fee runs into its padding, as it
- * does today). In the holder block no label takes more lines than the button holds (5.holder): letting the label wrap
- * there stacks Chinese one glyph a line, and that block's row overflows at 320 and, in Swahili, from 360 to about 430px,
- * today and after A8b — VODACOM-PLAN §0h point 37 (h), its own measured step. From 360 the row is today's, which
- * `qa:classic-shell-parity`'s Sell cells hold to the pixel.
+ * /positions at 320 the free row holds one line inside the button's content (5.free), and every other row fits inside it
+ * (5.paid: since S6 A8g a legacy paid row with a six-figure fee, which ran into the button's padding, puts its fee under
+ * its figure). The label carries no class and keeps today's one line at every width (5.classes).
+ * ⭐ S6 A8d · in the question page's holder block the host asks for the stacked phone row (`stackOnPhone`). Below the
+ * stylesheet's phone bound the button takes the rung that rule names, its label on one line and its figure on the next,
+ * the note beside the figure or, when that line cannot hold both, under it — every piece kept whole — so every row sits
+ * inside the button's content and nothing is taller than the rung (5.stack); from 640 the row is today's one line, and
+ * it fits there too. Every value of the rule is read from its own declaration, by exact property, and its phone block
+ * must open with the house phone query alone: a second condition (a pointer, a lower bound) would switch the stack off
+ * on a phone the model lays it out for, so 5.model fails it and 5.stack lays that row out on one line. 5.control keeps
+ * that block's one-line defect in view: without the stack, the Swahili free row at 360 runs past the button, as the v2
+ * baseline measured (VODACOM-PLAN §0h point 37 (h)).
+ * ⭐ S6 A8g · every host that does not ask for the stack (/positions) is drawn the wrap class, and below the wrap rule's
+ * phone bound its figure is a wrapping row: a row whose label, figure and note fit on one line keeps that line (the
+ * rule's column gap where the note's own margin was), and one that does not keeps its label on the line and puts the
+ * note under the figure, at the right end, the two lines inside the button (5.list, at eleven widths from 320 to 639;
+ * 5.paid holds 320 to the same layout). And the free strip above the button keeps each of its three parts whole — the
+ * free word, the countdown (laid out at 60:00, the longest a poll's free window can draw) and the note — and wraps
+ * between them when they cannot share a line, on both hosts (5.strip). 5.control keeps both defects in view: on today's
+ * one line the Swahili free row for TZS 1,000,000 at 360 and the Chinese legacy paid row at 320 run past the content;
+ * and with the strip's classes before A8g the browser shrinks its Swahili parts in the holder block at 360 until the
+ * free word and the note break inside (the v2 baseline measured them 112 and 66px wide). On /positions from 360 a row
+ * that fits is today's, which `qa:classic-shell-parity`'s Sell cells hold to the pixel but for the wrap's own styles.
  */
 const FIT_FONTS = "src/lib/server/reports/fonts/";
 const CJK_FROM = 0x2e80;
@@ -990,9 +1012,12 @@ function wrapped(s: string, avail: number, keep: boolean, w: (t: string) => numb
   return { lines, room };
 }
 /** Stakes on every digit-length boundary to the platform's maximum (the measured ticket's among them), and the fee rates a
- *  frozen poll can carry — `cashOutValue` clamps its rate to [0, 0.30]. */
-const FIT_STAKES = [PLATFORM_MIN_STAKE, 3_600, 9_999, 10_000, 99_999, 100_000, 999_999, PLATFORM_MAX_STAKE];
-const FIT_RATES = [0, 0.01, 0.1, 0.25, 0.3];
+ *  frozen poll can carry — `cashOutValue` clamps its rate to [0, 0.30]. S6 A8d adds TZS 110,000 and 0.5%: at 0.5%,
+ *  TZS 110,000 sells for TZS 109,450 −550 and TZS 1,000,000 for TZS 995,000 −5,000, the widest rows that still keep their
+ *  note beside the figure in the holder block's stack at 320 (in Chinese, and in English and Swahili), so the least room
+ *  5.stack prints there is the least that any stake and fee can leave. */
+const FIT_STAKES = [PLATFORM_MIN_STAKE, 3_600, 9_999, 10_000, 99_999, 100_000, 110_000, 999_999, PLATFORM_MAX_STAKE];
+const FIT_RATES = [0, 0.005, 0.01, 0.1, 0.25, 0.3];
 const FIT_WORDS = ["freeExitLabel", "selling", "sellNow", "fee", "fullRefund", "sellLocked", "loading"];
 /** Today's markup for the spans the narrow-phone rule touches or leaves (S6 A8b), as `test:journey-tickets` §12 pins them. */
 const FIT_NOTE = `<span className="ml-1.5 hidden opacity-80 text-[11px] xs:inline">{t.common.fullRefund}</span>`;
@@ -1004,6 +1029,51 @@ const HOLDER_SECTION = `<section className="rounded-xl border border-border bg-b
 const HOLDER_ROW = `<div key={p.id} id={p.id} className="ticket-target scroll-mt-24 rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">`;
 /** Tailwind's own `border` is 1px: the config overrides no border width (5.model pins that). */
 const HOLDER_EDGE = 1;
+/**
+ * S6 A8d · THE HOLDER BLOCK ASKS FOR THE STACKED PHONE ROW, and §5 reads both halves of it from source: the host's ask
+ * (`stackOnPhone`, a bare attribute on the holder block's Sell button and on no other host), the class today's markup
+ * adds for it, and the stylesheet's rule for that class — its phone bound, the rung it takes, its line height and row
+ * gap, the label's own line, the figure's line (its column gap, and whether its note may go under it) and the note's
+ * margin. 5.stack lays every row out at these widths with what it reads.
+ */
+const FIT_STACK_FLAG = `${NL}                        stackOnPhone${NL}`;
+/** The stacked rule's phone block as the stylesheet opens it: the house phone query alone, then its density reason. */
+const FIT_STACK_OPENER = `@media (max-width: 639.98px) {${NL}  /* density: general — the question page's Sell button`;
+const FIT_STACK_CLASSNAME = 'className={`btn ${shutNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal${stackOnPhone ? " kp-sell-stack" : " kp-sell-wrap"}`}';
+const FIT_STACK_RULE = ".btn-md.kp-sell-stack {";
+const FIT_STACK_LABEL = ".kp-sell-stack > span:first-child {";
+const FIT_STACK_FIGURE = ".kp-sell-stack > span + span {";
+const FIT_STACK_NOTE = ".kp-sell-stack > span + span > span {";
+const STACK_WIDTHS = [320, 340, 360, 390, 412, 430, 600, 639];
+/**
+ * S6 A8g · WHERE ITS HOST DOES NOT STACK, TODAY'S BUTTON PUTS ITS NOTE UNDER ITS FIGURE WHEN ONE LINE CANNOT HOLD BOTH, and
+ * §5 reads that from source too: the className's two arms (the stack for the host that asks, the wrap for every other
+ * host) and the stylesheet's rule for the wrap — its own phone block (the house phone query alone, then its density
+ * reason), the figure a wrapping flex row whose column gap is a spacing token, its lines at the right end on one baseline,
+ * and the note's own margin given way to that gap. 5.list lays every row out on /positions at these widths with it.
+ */
+const FIT_STACK_ARM = 'whitespace-normal${stackOnPhone ? " kp-sell-stack" : ';
+const FIT_WRAP_ARM = ' : " kp-sell-wrap"}`}';
+const FIT_WRAP_OPENER = `@media (max-width: 639.98px) {${NL}  /* density: general — today's Sell button where its host does not stack`;
+const FIT_WRAP_FIGURE = ".kp-sell-wrap > span + span {";
+const FIT_WRAP_NOTE = ".kp-sell-wrap > span + span > span {";
+const LIST_WIDTHS = [320, 324, 340, 360, 366, 383, 390, 412, 430, 600, 639];
+/**
+ * S6 A8g · THE FREE STRIP ABOVE THE BUTTON KEEPS EACH OF ITS PARTS WHOLE — the free word, the countdown and the note — and
+ * wraps between them when they cannot share a line. §5 reads the strip from today's markup (its classes; each part's
+ * face, size, tracking and case) and lays it out on both hosts (5.strip), with the countdown at its longest: a poll's free
+ * window runs 0 to 60 minutes, so "60:00" — and 5.model reads that bound from market-config's own refusal
+ * (FIT_GRACE_GUARD, `g > 60`) and holds FIT_STRIP_CLOCK to it, so a longer window is laid out and recorded before it
+ * ships. FIT_STRIP_BEFORE is its class string before A8g, which 5.control lays out where a browser measured its parts
+ * broken.
+ */
+const FIT_STRIP_OPEN = "{inGrace && !shutNow && !repricing && (";
+const FIT_STRIP_DIV = '<div className="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">';
+const FIT_STRIP_BEFORE = "mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30";
+const FIT_STRIP_CLOCK = "60:00";
+const FIT_CONFIG = "src/lib/server/market-config.ts";
+const FIT_GRACE_GUARD = "const g = updates.freeExitGraceMinutes;";
+const STRIP_WIDTHS = [320, 340, 360, 376, 383, 390, 412, 430, 600, 639];
 /** What `cashOutValue` prices a stake at — in its free window, or in a paid one at `rate` — the oracle, never re-implemented. */
 async function fitPrice(stake: number, rate: number, free: boolean) {
   const position = { side: "YES" as const, stake, placedAt: new Date(T0).toISOString(), bonusStakeTzs: 0 };
@@ -1028,7 +1098,7 @@ async function fitPrice(stake: number, rate: number, free: boolean) {
 type FitRow = { loc: string; state: string; stake: number; label: string; figure: string; note: string; free: boolean };
 
 async function g5Fit(W: World) {
-  say(`${NL}§5 · the fit — today's free row holds one line on a 320 phone on /positions, and nothing in the row grows taller than the button on either host (S6 A8b)`);
+  say(`${NL}§5 · the fit — today's free row holds one line on a 320 phone on /positions, and nothing in the row grows taller than the button on either host (S6 A8b); in the question page's holder block the button stacks on a phone, and every row fits it (S6 A8d); on /positions a row that cannot hold one line puts its note under its figure, and the free strip keeps each of its parts whole (S6 A8g)`);
   const css = W.css;
   const cssLine = (head: string) => {
     const a = css.indexOf(NL + head);
@@ -1045,6 +1115,17 @@ async function g5Fit(W: World) {
   const numAfter = (s: string, head: string) => {
     const a = s.indexOf(head);
     return a < 0 ? Number.NaN : Number.parseFloat(s.slice(a + head.length));
+  };
+  // ⭐ S6 A8g · A TOKEN THE RULES READ COUNTS ONLY WHEN THE STYLESHEET DECLARES IT ONCE, outside its comments: a rung or
+  // a gap is read from its one declaration, and a second one anywhere — a phone block's :root, a setting's — would re-set
+  // what the browser draws while the model read the first, so a token declared twice (or never) reads NaN, which 5.model
+  // refuses and every layout that needs it fails on.
+  const cssBare = css.split("/*").map((part, i) => (i === 0 ? part : part.includes("*/") ? part.slice(part.indexOf("*/") + 2) : "")).join("");
+  const nameChar = (c: string) => c === "-" || c === "_" || (c >= "0" && c <= "9") || c.toLowerCase() !== c.toUpperCase();
+  const tokenPx = (name: string) => {
+    const at: number[] = [];
+    for (let a = cssBare.indexOf(`${name}:`); a >= 0; a = cssBare.indexOf(`${name}:`, a + 1)) if (!nameChar(cssBare.charAt(a - 1))) at.push(a);
+    return at.length === 1 ? Number.parseFloat(cssBare.slice(at[0] + name.length + 1)) : Number.NaN;
   };
   const md = cssLine(".btn-md {");
   const btn = cssRule(".btn {");
@@ -1077,7 +1158,7 @@ async function g5Fit(W: World) {
   const M = {
     font: numAfter(md, "font-size: "),
     padding: numAfter(md, "padding: 0 "),
-    height: numAfter(css, "--h-control-md: "),
+    height: tokenPx("--h-control-md"),
     border: numAfter(btn, "border: "),
     gap: numAfter(btn, "gap: "),
     tracking: numAfter(primary, "letter-spacing: "),
@@ -1088,6 +1169,9 @@ async function g5Fit(W: World) {
     sectionPad: numAfter(spacing, `"5": "`),
     rowPad: numAfter(spacing, `"3": "`),
     xs: numAfter(screens, `xs: "`),
+    // S6 A8d · the stacked phone row's rule must end below `sm`; from `sm` (and at `md`) the holder block's row is one line.
+    sm: numAfter(screens, `sm: "`),
+    md: numAfter(screens, `md: "`),
   };
   const list = W.files.get(POSITIONS) ?? "";
   const page = W.files.get(MARKET) ?? "";
@@ -1098,7 +1182,113 @@ async function g5Fit(W: World) {
     borders: !W.tw.includes("borderWidth"),
     fonts: FIT_INTER.every((f) => f !== null) && FIT_MONO !== null,
     mono: monoEm(0x30) === 0.6,
+    // S6 A8d · the holder block asks for the stacked phone row — once, as a bare attribute — today's markup adds its one
+    // class for that ask, and no other file asks.
+    stackAsked: occurrences(page, "stackOnPhone") === 1 && page.includes(FIT_STACK_FLAG),
+    // S6 A8g · the className's two arms, each once: the stack for the host that asks, and the wrap for every other host.
+    stackClassed: occurrences(classic, FIT_STACK_ARM) === 1,
+    wrapClassed: occurrences(classic, FIT_WRAP_ARM) === 1,
+    stackOnHolderOnly: [...W.files].every(([rel, text]) => rel === MARKET || rel === SELL_BUTTON || !text.includes("stackOnPhone")),
   };
+  // S6 A8d · THE STACKED PHONE ROW, as the stylesheet writes it: the phone block that holds the rule (its bound; its
+  // opener, the house phone query alone, so no second condition — a pointer, a lower bound — can switch the stack off on
+  // a phone the model lays it out for; and the density contract's opening reason), the rung the rule takes, its line
+  // height and row gap, the figure's column gap, and its shape — the rule sits inside that block, the button wraps its
+  // lines, the label takes a line of its own, the note's margin gives way to the gap — and, read apart for 5.stack,
+  // whether the figure's line is a wrapping flex row that lets its note go under it. Every value is read from its own
+  // declaration, by its exact property: a `max-height` or a `min-height` is not the rule's height.
+  const stackAt = css.indexOf(`${NL}  ${FIT_STACK_RULE}`);
+  const mediaAt = stackAt < 0 ? -1 : css.lastIndexOf(`${NL}@media (`, stackAt);
+  const [mediaLine = "", mediaFirst = ""] = mediaAt < 0 ? [] : css.slice(mediaAt + 1, stackAt).split(NL);
+  const stackLine = cssLine(`  ${FIT_STACK_RULE}`);
+  const figureLine = cssLine(`  ${FIT_STACK_FIGURE}`);
+  /** One declaration of a one-line rule, found by its exact property ("" when the rule does not declare it). */
+  const decl = (line: string, prop: string) =>
+    line.slice(line.indexOf("{") + 1).split(";").map((d) => d.trim()).find((d) => d.startsWith(`${prop}: `)) ?? "";
+  /** The custom property a declaration reads through var(), or "" when it reads none. */
+  const declVar = (line: string, prop: string) => {
+    const d = decl(line, prop);
+    const a = d.indexOf("var(");
+    return a < 0 ? "" : d.slice(a + 4, d.indexOf(")", a + 4));
+  };
+  const heightVar = declVar(stackLine, "height");
+  const gapVar = declVar(figureLine, "column-gap");
+  const S = {
+    bound: numAfter(mediaLine, "max-width: "),
+    height: heightVar.startsWith("--h-control-") ? tokenPx(heightVar) : Number.NaN,
+    lineHeight: numAfter(decl(stackLine, "line-height"), ": "),
+    rowGap: numAfter(decl(stackLine, "row-gap"), ": "),
+    colGap: gapVar.startsWith("--sp-") ? tokenPx(gapVar) : Number.NaN,
+  };
+  const stackShape = {
+    block: stackAt >= 0 && mediaAt >= 0 && !css.slice(mediaAt, stackAt).includes(`${NL}}`),
+    phone: mediaLine === `@media (max-width: ${S.bound}px) {`,
+    general: mediaFirst.trim().startsWith("/* density: general"),
+    lines: decl(stackLine, "flex-wrap") === "flex-wrap: wrap",
+    label: decl(cssLine(`  ${FIT_STACK_LABEL}`), "flex-basis") === "flex-basis: 100%",
+    note: decl(cssLine(`  ${FIT_STACK_NOTE}`), "margin-left") === "margin-left: 0",
+  };
+  const figureWraps = decl(figureLine, "display") === "display: flex" && decl(figureLine, "flex-wrap") === "flex-wrap: wrap";
+  // ⭐ S6 A8g · THE WRAP WHERE A HOST DOES NOT STACK, as the stylesheet writes it: its own phone block (the house phone query
+  // alone, then its density reason), the figure's lines at the right end on one baseline, a column gap from the spacing
+  // scale, the note's margin given way to it — and, read apart for 5.list, whether the figure is a wrapping flex row that
+  // lets its note go under it. Each value from its own declaration, by exact property, as the stack's are.
+  const wrapAt = css.indexOf(`${NL}  ${FIT_WRAP_FIGURE}`);
+  const wrapMediaAt = wrapAt < 0 ? -1 : css.lastIndexOf(`${NL}@media (`, wrapAt);
+  const [wrapMediaLine = "", wrapMediaFirst = ""] = wrapMediaAt < 0 ? [] : css.slice(wrapMediaAt + 1, wrapAt).split(NL);
+  const wrapLine = cssLine(`  ${FIT_WRAP_FIGURE}`);
+  const wrapGapVar = declVar(wrapLine, "column-gap");
+  const L = {
+    bound: numAfter(wrapMediaLine, "max-width: "),
+    colGap: wrapGapVar.startsWith("--sp-") ? tokenPx(wrapGapVar) : Number.NaN,
+  };
+  const wrapShape = {
+    block: wrapAt >= 0 && wrapMediaAt >= 0 && !css.slice(wrapMediaAt, wrapAt).includes(`${NL}}`),
+    phone: wrapMediaLine === `@media (max-width: ${L.bound}px) {`,
+    general: wrapMediaFirst.trim().startsWith("/* density: general"),
+    end: decl(wrapLine, "justify-content") === "justify-content: flex-end",
+    baseline: decl(wrapLine, "align-items") === "align-items: baseline",
+    note: decl(cssLine(`  ${FIT_WRAP_NOTE}`), "margin-left") === "margin-left: 0",
+  };
+  const wrapFigure = decl(wrapLine, "display") === "display: flex" && decl(wrapLine, "flex-wrap") === "flex-wrap: wrap";
+  // ⭐ S6 A8g · THE FREE STRIP, as today's markup draws it: its own classes (a flex row, its edge, its padding and its gaps
+  // on the spacing scale) and each part's — the free word, the countdown and the note — in the mono face, its size (the
+  // type ladder's micro rung, or the size the markup states), its tracking and its case; and, read apart for 5.strip,
+  // whether it wraps between its parts and whether a nowrap keeps them whole even where one alone cannot fit.
+  const stripCls = classesAt(classic, classic.indexOf("<div", Math.max(0, classic.indexOf(FIT_STRIP_OPEN)))) ?? [];
+  const stripParts = ["{t.common.freeExitLabel}</span>", "{graceLabel}</span>", "{`· ${t.dialog.noFee}`}</span>"].map((content) => spanClass(content) ?? []);
+  const fontSizes = W.tw.slice(Math.max(0, W.tw.indexOf("fontSize: {")));
+  const microRung = fontSizes.slice(Math.max(0, fontSizes.indexOf("micro:")));
+  /** A spacing class's value from the Tailwind config's scale, or NaN when the list holds none with that head. */
+  const space = (cls: string[], head: string) => {
+    const c = cls.find((x) => x.startsWith(head));
+    return c ? numAfter(spacing, `"${c.slice(head.length)}": "`) : Number.NaN;
+  };
+  /** A strip's gap on one axis: its own (gap-x-, gap-y-), or the one both axes share. */
+  const stripGap = (cls: string[], axis: string) => {
+    const own = space(cls, `gap-${axis}-`);
+    return Number.isFinite(own) ? own : space(cls.filter((x) => !x.startsWith("gap-x-") && !x.startsWith("gap-y-")), "gap-");
+  };
+  const ST = {
+    padX: space(stripCls, "px-"), padY: space(stripCls, "py-"), gapX: stripGap(stripCls, "x"), gapY: stripGap(stripCls, "y"),
+    micro: numAfter(microRung, `["`), microLine: numAfter(microRung, `lineHeight: "`),
+  };
+  const stripShape = {
+    flex: stripCls.includes("flex"), edge: stripCls.includes("border"), parts: stripParts.every((c) => c.length > 0),
+    mono: stripParts.every((c) => c.includes("font-mono")),
+  };
+  /** Whether a strip with these classes wraps between its parts, and whether a nowrap (its own, or every part's) holds them whole. */
+  const stripRules = (cls: string[]) => ({
+    whole: cls.includes("whitespace-nowrap") || stripParts.every((c) => c.includes("whitespace-nowrap")),
+    wraps: cls.includes("flex-wrap"),
+  });
+  // S6 A8g · the free window's bound, from market-config's own refusal (`g > 60`, in minutes): the strip's countdown at its
+  // longest is `${bound}:00`, which 5.strip lays out and 5.model holds to FIT_STRIP_CLOCK, the longest the records quote.
+  const configCode = W.files.get(FIT_CONFIG) ?? "";
+  const guardAt = configCode.indexOf(FIT_GRACE_GUARD);
+  const graceMax = guardAt < 0 ? Number.NaN : numAfter(configCode.slice(guardAt, configCode.indexOf("return", guardAt)), "g > ");
+  const graceClock = Number.isFinite(graceMax) ? `${graceMax}:00` : "";
+  const stripClock = graceClock || FIT_STRIP_CLOCK;
   // The prices the rows draw, from the oracle: each stake in its free window, and in a paid one at every rate.
   const priced: Array<{ stake: number; free: boolean; value: number; fee: number }> = [];
   for (const stake of FIT_STAKES) {
@@ -1157,38 +1347,248 @@ async function g5Fit(W: World) {
   const rows = rowsFor(!noteHidden);
   const glyphless = rows.filter((r) => !Number.isFinite(labelPx(r.label) + restPx(r))).map((r) => `${r.loc} ${r.state} ${r.stake}`);
   const values = Object.entries(M).filter(([, v]) => !Number.isFinite(v)).map(([k]) => k);
-  say(`     the model: ${j(M)} · the body's features: ${j(features)} · the button's content at ${PHONE}: ${C320}px on /positions, ${H320}px in the holder block · below ${M.xs} the free note is ${noteHidden ? "left out" : "drawn"} and the label ${wraps ? (keep ? "may wrap, CJK kept whole" : "may wrap") : "keeps one line"}`);
-  ok("5.model · the model reads its facts from source — the button's type, padding, gap, border, letter-spacing and height and the body's font features from the stylesheet, the note's size and margin from today's markup, the page's gutter, `xs` and the holder block's paddings from the Tailwind config and the two pages — and its glyphs and their alternates from the repo's own font files (JetBrains Mono at 0.6em); every word the row draws exists in en, sw and zh, and every glyph is in the fonts",
-    values.length === 0 && Object.values(pinned).every(Boolean) && unworded.length === 0 && glyphless.length === 0 && M.xs > PHONE && H320 > 0,
-    j({ values, pinned, unworded, glyphless: glyphless.slice(0, 3) }));
-  ok("5.classes · today's markup carries one narrow-phone rule, below `xs` only: the free note is hidden there and inline from it; the label carries no class, so it keeps today's one line at every width (a label let wrap stacks taller than the button in the holder block, 5.holder); and the fee beside a paid price is drawn at every width",
+  say(`     the model: ${j(M)} · the body's features: ${j(features)} · the button's content at ${PHONE}: ${C320}px on /positions, ${H320}px in the holder block · below ${M.xs} the free note is ${noteHidden ? "left out" : "drawn"} and the label ${wraps ? (keep ? "may wrap, CJK kept whole" : "may wrap") : "keeps one line"} · the holder block's stacked row (S6 A8d): ${j(S)}${figureWraps ? ", its note may go under the figure" : ""} · the wrap where a host does not stack (S6 A8g): ${j(L)}${wrapFigure ? ", its note may go under the figure" : ""} · the free strip (S6 A8g): ${j(ST)}, ${j(stripRules(stripCls))}, its countdown at its longest ${graceClock || "unread"} (the free window's bound, ${graceMax} minutes)`);
+  const stackValues = Object.entries(S).filter(([, v]) => !Number.isFinite(v)).map(([k]) => k);
+  const listValues = Object.entries(L).filter(([, v]) => !Number.isFinite(v)).map(([k]) => k);
+  const stripValues = Object.entries(ST).filter(([, v]) => !Number.isFinite(v)).map(([k]) => k);
+  ok("5.model · the model reads its facts from source — the button's type, padding, gap, border, letter-spacing and height and the body's font features from the stylesheet, the note's size and margin from today's markup, the page's gutter, `xs` and the holder block's paddings from the Tailwind config and the two pages — and its glyphs and their alternates from the repo's own font files (JetBrains Mono at 0.6em); every word the row draws exists in en, sw and zh, and every glyph is in the fonts; and (S6 A8d) the stacked phone row is read whole: the holder block alone asks for it, today's markup carries its class once, and the stylesheet writes its rule in a phone block opened by the house phone query alone and its density reason, ending below `sm`, each value from its own declaration — its rung (a control-height token), line height, row gap and column gap (a spacing token) — and its shape; and (S6 A8g) the wrap where a host does not stack is read whole: today's markup gives every host that does not ask for the stack the wrap class, and the stylesheet writes its rule in a phone block of its own, opened by the house phone query alone and its density reason, ending below `sm` — the figure's lines at the right end on one baseline, the note's margin given way to a column gap from the spacing scale; and the free strip is read from today's markup: a flex row with its edge, its padding and its gaps on the spacing scale, its three parts in the mono face at sizes the type ladder or the markup states, its countdown at its longest the free window's bound as market-config's own refusal states it, which must be the longest §5 and the records lay out (FIT_STRIP_CLOCK); and every token these rules read (the rungs and the spacing scale) from its one declaration outside the stylesheet's comments — declared twice it reads as none",
+    values.length === 0 && Object.values(pinned).every(Boolean) && unworded.length === 0 && glyphless.length === 0 && M.xs > PHONE && H320 > 0
+      && stackValues.length === 0 && S.bound < M.sm && Object.values(stackShape).every(Boolean)
+      && listValues.length === 0 && L.bound < M.sm && Object.values(wrapShape).every(Boolean) && stripValues.length === 0 && Object.values(stripShape).every(Boolean)
+      && graceClock === FIT_STRIP_CLOCK,
+    j({ values, pinned, unworded, glyphless: glyphless.slice(0, 3), stackValues, S, stackShape, listValues, L, wrapShape, stripValues, ST, stripShape, graceMax }));
+  ok("5.classes · today's markup carries one narrow-phone rule, below `xs` only: the free note is hidden there and inline from it; the label carries no class, so it keeps today's one line at every width (in the holder block's stacked phone row it has a line of its own, 5.stack); and the fee beside a paid price is drawn at every width",
     noteHidden && label !== null && label.length === 0 && feeNote.length > 0 && !feeNote.includes("hidden"), j({ note, label, feeNote }));
   const rowAt = (r: FitRow, C: number) => layout(r, C, wraps, keep);
+  // ⭐ S6 A8g · TODAY'S ROW WHERE ITS HOST DOES NOT STACK. Below the wrap rule's phone bound every such host's figure is a
+  // wrapping row: a row whose label, figure and note fit on one line keeps that line (the rule's column gap where the
+  // note's own margin was), and one that does not keeps its label on the line and puts the note under the figure, at the
+  // right end, the two lines (the figure's and the note's, each at its own line height) inside the button. Without the
+  // class or the rule, with a second condition on its block, or from the bound up, the row is today's one line.
+  const wrapOn = pinned.wrapClassed && wrapShape.block && wrapShape.phone;
+  const listLayout = (r: FitRow, C: number, vw: number): { wrapped: boolean; room: number; block: number } => {
+    const on = wrapOn && vw <= L.bound;
+    const figure = r.figure ? runPx(r.figure, monoEm, M.font, track) : 0;
+    const noteWidth = r.figure && r.note ? runPx(r.note, monoEm, M.notePx, track) : 0;
+    const label = labelPx(r.label);
+    const one = label + (r.figure ? M.gap + figure + (noteWidth ? (on ? L.colGap : M.noteMargin) + noteWidth : 0) : 0);
+    if (one <= C || !on || !noteWidth || !wrapFigure) return { wrapped: false, room: C - one, block: M.font * M.lineHeight };
+    return { wrapped: true, room: C - (label + M.gap + Math.max(figure, noteWidth)), block: M.font * M.lineHeight + M.notePx * M.lineHeight };
+  };
   const freeAt = rows.filter((r) => r.free).map((r) => ({ r, f: rowAt(r, C320) }));
   const freeBad = freeAt.filter(({ f }) => f.lines !== 1 || f.spare < 0).map(({ r }) => `${r.loc} ${r.state} TZS ${r.stake}`);
   const leastFree = Math.min(...freeAt.map(({ f }) => f.spare));
   ok(`5.free · on /positions at ${PHONE} the free row — the free word or the selling word, then the whole stake, its note left out — holds ONE line inside the button's content in en, sw and zh for every stake on the grid, to the platform's maximum (least room left: ${leastFree.toFixed(1)}px)`,
     freeAt.length > 0 && freeBad.length === 0, freeBad.slice(0, 3).join(" | "));
-  const otherAt = rows.filter((r) => !r.free).map((r) => ({ r, f: rowAt(r, C320) }));
-  const otherBad = otherAt.filter(({ f }) => f.lines !== 1 || f.spare < -M.padding)
-    .map(({ r, f }) => `${r.loc} ${r.state} TZS ${r.stake}: ${r.figure} ${r.note} (${f.lines} lines, ${f.spare.toFixed(1)}px)`);
-  const leastBy = (loc: string) => Math.min(...otherAt.filter(({ r }) => r.loc === loc).map(({ f }) => f.spare)).toFixed(1);
-  ok(`5.paid · on /positions at ${PHONE} every other row — a price with its fee (selling or not; a legacy poll's paid window can charge 0), shut, and a lapsed free price — is drawn as today, on ONE line inside the button: the least room left at its content's end is en ${leastBy("en")}, sw ${leastBy("sw")} and zh ${leastBy("zh")}px, where below 0 runs into the button's ${M.padding}px padding and never past its edge`,
+  // S6 A8g · …each inside the button's CONTENT now: a row that cannot hold one line there puts its fee under its figure.
+  const otherAt = rows.filter((r) => !r.free).map((r) => ({ r, f: rowAt(r, C320), g: listLayout(r, C320, PHONE) }));
+  const otherBad = otherAt.filter(({ f, g }) => f.lines !== 1 || !(g.room >= 0))
+    .map(({ r, f, g }) => `${r.loc} ${r.state} TZS ${r.stake}: ${r.figure} ${r.note} (${f.lines} lines, ${g.wrapped ? "its fee under its figure, " : ""}${g.room.toFixed(1)}px)`);
+  const leastBy = (loc: string) => Math.min(...otherAt.filter(({ r }) => r.loc === loc).map(({ g }) => g.room)).toFixed(1);
+  const under320 = otherAt.filter(({ g }) => g.wrapped).length;
+  ok(`5.paid · on /positions at ${PHONE} every other row — a price with its fee (selling or not; a legacy poll's paid window can charge 0), shut, and a lapsed free price — keeps its label on one line and sits inside the button's content: today's one line where it fits, and (S6 A8g) its fee under its figure where it does not (${under320} of them on the grid); the least room left is en ${leastBy("en")}, sw ${leastBy("sw")} and zh ${leastBy("zh")}px`,
     otherAt.length > 0 && otherBad.length === 0, otherBad.slice(0, 3).join(" | "));
-  const holderAt = rows.map((r) => ({ r, f: rowAt(r, H320) }));
-  const tall = holderAt.filter(({ f }) => f.lines * M.font * M.lineHeight > M.height - 2 * M.border)
-    .map(({ r, f }) => `${r.loc} ${r.state} TZS ${r.stake}: ${f.lines} lines`);
-  const worstBy = (loc: string) => Math.min(...holderAt.filter(({ r }) => r.loc === loc).map(({ f }) => f.spare)).toFixed(1);
-  ok(`5.holder · in the question page's holder block at ${PHONE} (a ${H320}px content box: its section's and its row's border and padding, read from the page) no label takes more lines than the button's ${M.height}px holds, so nothing in the row is taller than the button; the row's overflow at its content's end (at the worst en ${worstBy("en")}, sw ${worstBy("sw")}, zh ${worstBy("zh")}px) is VODACOM-PLAN §0h point 37 (h), its own step`,
-    holderAt.length > 0 && H320 > 0 && tall.length === 0, tall.slice(0, 3).join(" | "));
+  // ⭐ S6 A8d · THE HOLDER BLOCK'S STACKED PHONE ROW (5.stack). The holder block asks for it, so below the stylesheet's
+  // phone bound its button takes the rung the rule names and lays the row out in lines, each piece kept whole by the
+  // button's nowrap: the label on a line of its own; the figure on the next, with its note beside it when that line holds
+  // both (the figure's column gap between them), or under it, on a line of the note's own size, when the figure's line
+  // may wrap. Every piece must sit inside the button's content, and the lines, with the row gap between the label's and
+  // the figure's, inside the rung less its border. Where nothing asks, where the phone block carries a second condition,
+  // or above the bound, the row is today's one line and must fit there; from `sm` (and at `md`) every row is one
+  // line inside the content.
+  const stackOn = pinned.stackAsked && pinned.stackClassed && stackShape.block && stackShape.phone;
+  const limit = S.height - 2 * M.border;
+  const monoPx = (s: string, px: number) => runPx(s, monoEm, px, track);
+  const stackBad: string[] = [];
+  const stackLeast: Array<{ vw: number; loc: string; least: number }> = [];
+  let threeLines = 0;
+  let tallest = 0;
+  for (const vw of STACK_WIDTHS) {
+    const C = contentAt(vw, holderInset);
+    const atWidth = rowsFor(!noteHidden || vw >= M.xs);
+    for (const loc of LOCS) {
+      let least = Number.POSITIVE_INFINITY;
+      for (const r of atWidth.filter((x) => x.loc === loc)) {
+        let room: number;
+        if (stackOn && vw <= S.bound) {
+          const figureWidth = r.figure ? monoPx(r.figure, M.font) : 0;
+          const noteWidth = r.figure && r.note ? monoPx(r.note, M.notePx) : 0;
+          let lines = 1;
+          let block = M.font * S.lineHeight;
+          room = C - Math.max(labelPx(r.label), figureWidth, noteWidth);
+          if (r.figure) {
+            lines = 2;
+            block += S.rowGap + M.font * S.lineHeight;
+            if (r.note) {
+              const two = figureWidth + S.colGap + noteWidth;
+              if (two <= C) room = Math.min(room, C - two);
+              else if (figureWraps) { lines = 3; block += M.notePx * S.lineHeight; }
+              else room = Math.min(room, C - two);
+            }
+          }
+          if (lines === 3) threeLines++;
+          tallest = Math.max(tallest, block);
+          if (!(room >= 0) || !(block <= limit)) stackBad.push(`${vw}px ${r.loc} ${r.state} ${r.label} ${r.figure} ${r.note}: ${lines} line(s), ${block}px of ${limit}, ${room.toFixed(1)}px left`);
+        } else {
+          room = layout(r, C, false, false).spare;
+          if (!(room >= 0)) stackBad.push(`${vw}px ${r.loc} ${r.state} ${r.label} ${r.figure} ${r.note}: one line, ${room.toFixed(1)}px left`);
+        }
+        least = Math.min(least, room);
+      }
+      stackLeast.push({ vw, loc, least });
+    }
+  }
+  for (const vw of [M.sm, M.md]) {
+    const C = contentAt(vw, holderInset);
+    for (const r of rowsFor(true)) {
+      const spare = layout(r, C, false, false).spare;
+      if (!(spare >= 0)) stackBad.push(`${vw}px ${r.loc} ${r.state} ${r.label} ${r.figure} ${r.note}: one line, ${spare.toFixed(1)}px left`);
+    }
+  }
+  const leastAt = (width: number) => LOCS.map((loc) => `${loc} ${(stackLeast.find((c) => c.vw === width && c.loc === loc)?.least ?? Number.NaN).toFixed(1)}`).join(", ");
+  ok(`5.stack · in the question page's holder block (S6 A8d) below ${S.bound}px the button takes the ${S.height}px rung and stacks — the label on one line, the figure on the next with its note beside it or under it, every piece whole — and at ${STACK_WIDTHS.join(", ")}px every row on the grid, in en, sw and zh, sits inside the button's content (least room left: at 320 ${leastAt(320)}; at 360 ${leastAt(360)}; at 412 ${leastAt(412)}px), ${threeLines} of them on three lines and none taller than ${tallest.toFixed(2)} of the ${limit}px inside the rung; from ${M.sm} every row is one line inside the content`,
+    stackBad.length === 0 && Number.isFinite(limit) && stackLeast.length === STACK_WIDTHS.length * LOCS.length && stackLeast.every((c) => Number.isFinite(c.least)),
+    stackBad.slice(0, 3).join(" | "));
+  // ⭐ S6 A8g · TODAY'S ROW ON /positions (5.list). Below the wrap rule's bound a row keeps its one line where its label,
+  // figure and note fit, and otherwise its note goes under its figure, at the right end; every row must sit inside the
+  // button's content and its lines inside the button less its border. From `sm` every row is one line inside the content
+  // (one column), and from `md` in each of the page's two columns.
+  const listBad: string[] = [];
+  const listLeast: Array<{ vw: number; loc: string; least: number }> = [];
+  let listUnder = 0;
+  let listTallest = 0;
+  for (const vw of LIST_WIDTHS) {
+    const C = contentAt(vw, 0);
+    const atWidth = rowsFor(!noteHidden || vw >= M.xs);
+    for (const loc of LOCS) {
+      let least = Number.POSITIVE_INFINITY;
+      for (const r of atWidth.filter((x) => x.loc === loc)) {
+        const f = listLayout(r, C, vw);
+        if (f.wrapped) listUnder++;
+        listTallest = Math.max(listTallest, f.block);
+        if (!(f.room >= 0) || !(f.block <= M.height - 2 * M.border)) listBad.push(`${vw}px ${r.loc} ${r.state} ${r.label} ${r.figure} ${r.note}: ${f.wrapped ? "its note under its figure" : "one line"}, ${f.room.toFixed(1)}px left`);
+        least = Math.min(least, f.room);
+      }
+      listLeast.push({ vw, loc, least });
+    }
+  }
+  for (const vw of [M.sm, M.md]) {
+    // From `md` the list is two columns, with the grid's own gap (gap-3, pinned in 5.model) between them.
+    const C = vw < M.md ? contentAt(vw, 0) : (vw - 2 * M.gutter - M.gutter) / 2 - 2 * M.border - 2 * M.padding;
+    for (const r of rowsFor(true)) {
+      const spare = layout(r, C, false, false).spare;
+      if (!(spare >= 0)) listBad.push(`${vw}px ${r.loc} ${r.state} ${r.label} ${r.figure} ${r.note}: one line, ${spare.toFixed(1)}px left`);
+    }
+  }
+  const listAt = (width: number) => LOCS.map((loc) => `${loc} ${(listLeast.find((c) => c.vw === width && c.loc === loc)?.least ?? Number.NaN).toFixed(1)}`).join(", ");
+  ok(`5.list · on /positions (S6 A8g) below ${L.bound}px a row keeps today's one line where its label, figure and note fit, and where they do not its note goes under its figure, at the right end, inside the button — and at ${LIST_WIDTHS.join(", ")}px every row on the grid, in en, sw and zh, sits inside the button's content (least room left: at 320 ${listAt(320)}; at 360 ${listAt(360)}; at 383 ${listAt(383)}px), ${listUnder} of them with the note under the figure and none taller than ${listTallest.toFixed(2)} of the ${M.height - 2 * M.border}px inside the button; from ${M.sm} every row is one line inside the content, and from ${M.md} in each of the two columns`,
+    listBad.length === 0 && listLeast.length === LIST_WIDTHS.length * LOCS.length && listLeast.every((c) => Number.isFinite(c.least)),
+    listBad.slice(0, 3).join(" | "));
+  // ⭐ S6 A8g · THE FREE STRIP (5.strip), above the button on both hosts and as wide as the button's column. Each of its parts
+  // must stay whole, and the strip wraps between them when they cannot share a line, so no part ever breaks inside and
+  // every part fits the strip's content. Laid out with the countdown at its longest.
+  const stripWord = (loc: string, section: string, key: string): string => {
+    const v = (((W.words[loc] ?? {}) as Record<string, Record<string, unknown> | undefined>)[section] ?? {})[key];
+    return typeof v === "string" ? v : "";
+  };
+  /** One language's three parts as the strip draws them: each one's width, the narrowest it can be drawn and its line. */
+  const stripRun = (loc: string, clock: string) => [stripWord(loc, "common", "freeExitLabel"), clock, `· ${stripWord(loc, "dialog", "noFee")}`]
+    .map((text, i) => {
+      const cls = stripParts[i] ?? [];
+      const px = cls.includes("text-micro") ? ST.micro : numAfter(cls.find((c) => c.startsWith("text-[")) ?? "", "text-[");
+      const trackClass = cls.find((c) => c.startsWith("tracking-["));
+      const tracking = trackClass ? numAfter(trackClass, "tracking-[") * px : 0;
+      const shown = cls.includes("uppercase") ? text.toUpperCase() : text;
+      const run = (s: string) => runPx(s, monoEm, px, tracking);
+      return { width: run(shown), min: longestPiece(shown, run), line: cls.includes("text-micro") ? ST.microLine : px * M.lineHeight };
+    });
+  /** The strip at a viewport, `inset` inside the page's gutter, its parts laid out as the classes `cls` draw them. */
+  const stripAt = (vw: number, inset: number, run: Array<{ width: number; min: number; line: number }>, cls: string[]) => {
+    const { whole, wraps: wrapsBetween } = stripRules(cls);
+    const gapX = stripGap(cls, "x");
+    const gapY = stripGap(cls, "y");
+    const C = vw - 2 * M.gutter - inset - 2 * HOLDER_EDGE - 2 * space(cls, "px-");
+    const total = run.reduce((s, p) => s + p.width, 0) + gapX * (run.length - 1);
+    const line = Math.max(...run.map((p) => p.line));
+    const tall = (lines: number) => lines * line + (lines - 1) * gapY + 2 * space(cls, "py-") + 2 * HOLDER_EDGE;
+    if (total <= C) return { lines: 1, room: C - total, broken: [] as number[], sizes: run.map((p) => p.width), height: tall(1) };
+    if (wrapsBetween) {
+      // A row that wraps: a part that cannot share a line moves to the next one whole (the browser collects each line by its
+      // parts' own widths); a part wider than the whole strip has a line of its own, where it breaks inside, unless a
+      // nowrap holds it whole, and then it runs past the strip.
+      let lines = 1;
+      let cur = -1;
+      let room = Number.POSITIVE_INFINITY;
+      const broken: number[] = [];
+      run.forEach((p, i) => {
+        const breaks = !whole && p.width > C;
+        if (breaks) broken.push(i);
+        const w = breaks ? Math.max(p.min, C) : p.width;
+        if (cur >= 0 && cur + gapX + w <= C) cur += gapX + w;
+        else {
+          if (cur >= 0) { room = Math.min(room, C - cur); lines++; }
+          cur = w;
+        }
+      });
+      room = Math.min(room, C - cur);
+      return { lines, room, broken, sizes: run.map((p) => p.width), height: tall(lines) };
+    }
+    if (!whole) {
+      // A row that does not wrap: the browser shrinks its parts, each down to its widest word, and a part drawn narrower
+      // than itself breaks inside.
+      const sizes = flexShrink(run.map((p) => p.width), run.map((p) => p.min), C - gapX * (run.length - 1));
+      const broken = sizes.map((x, i) => (x < run[i].width - 1e-9 ? i : -1)).filter((i) => i >= 0);
+      return { lines: broken.length ? 2 : 1, room: C - (sizes.reduce((t, x) => t + x, 0) + gapX * (run.length - 1)), broken, sizes, height: tall(broken.length ? 2 : 1) };
+    }
+    // Whole parts on one line that does not wrap: they run past the strip.
+    return { lines: 1, room: C - total, broken: [] as number[], sizes: run.map((p) => p.width), height: tall(1) };
+  };
+  const stripBad: string[] = [];
+  const stripTwo: string[] = [];
+  let stripLeast = Number.POSITIVE_INFINITY;
+  let stripTallest = 0;
+  for (const [host, inset] of [["/positions", 0], ["the holder block", holderInset]] as const) {
+    for (const loc of LOCS) {
+      const run = stripRun(loc, stripClock);
+      const two: number[] = [];
+      for (const vw of STRIP_WIDTHS) {
+        const s = stripAt(vw, inset, run, stripCls);
+        stripLeast = Math.min(stripLeast, s.room);
+        stripTallest = Math.max(stripTallest, s.height);
+        if (s.lines > 1) two.push(vw);
+        if (s.broken.length > 0 || !(s.room >= 0)) stripBad.push(`${host} ${vw}px ${loc}: ${s.broken.length ? `part ${s.broken.join(" and ")} breaks inside` : `${s.room.toFixed(1)}px left`}`);
+      }
+      if (two.length > 0) stripTwo.push(`${loc} in ${host} at ${two.join(", ")}px`);
+    }
+  }
+  ok(`5.strip · the free strip above the button (S6 A8g) keeps each of its parts whole — the free word, the countdown (at its longest, ${stripClock}) and the note — and wraps only between them: at ${STRIP_WIDTHS.join(", ")}px on /positions and in the question page's holder block, in en, sw and zh, no part breaks inside and every part fits the strip's content (least room left ${stripLeast.toFixed(1)}px); it takes two lines only ${stripTwo.join("; ") || "nowhere"}, at most ${stripTallest.toFixed(1)}px tall`,
+    stripRules(stripCls).wraps && stripBad.length === 0 && Number.isFinite(stripLeast), stripBad.slice(0, 3).join(" | "));
   // CONTROL — today's rules from 360 applied at 320 (the note drawn), as the browser measured them.
   const measured = rowsFor(true).filter((r) => r.state === "free" && r.stake === 3_600);
   const at320 = Object.fromEntries(measured.map((r) => [r.loc, layout(r, C320, false, false)]));
   const at360 = Object.fromEntries(measured.map((r) => [r.loc, layout(r, contentAt(M.xs, 0), false, false)]));
-  ok(`5.control · CONTROL · with today's rules at ${PHONE} (the note drawn) the model sees what the browser measured: the Swahili free row for TZS 3,600 is wider than the button's ${C320}px content (the model reads ${at320.sw ? (C320 - at320.sw.spare).toFixed(1) : "?"}px of row; the browser measured 277px), the English and Chinese rows fit, and from ${M.xs} all three fit — so 5.free can see the defect it was written for`,
+  // S6 A8d · and the holder block's half: the same rows on today's one line in the holder block at 360, where the v2
+  // baseline (a TZS 1,500 ticket, the same printed width) measured the Swahili row 67px past the button's content and the
+  // English row 14px into its padding.
+  const H360 = contentAt(M.xs, holderInset);
+  const holder360 = Object.fromEntries(measured.map((r) => [r.loc, layout(r, H360, false, false)]));
+  // S6 A8g · and the two defects A8g closes: on today's one line on /positions the Swahili free row for TZS 1,000,000 at
+  // 360 and the Chinese legacy paid row for TZS 1,000,000 at 30% (TZS 700,000 −300,000) at 320 run past the button's
+  // content (VODACOM-PLAN §0h point 37 (h)); and the free strip with the classes it had before A8g (a row that does not
+  // wrap), whose Swahili parts the browser shrinks in the holder block at 360 until the free word and the note break
+  // inside — the v2 baseline measured them 112 and 66px wide (its countdown four characters, 4:59).
+  const bigFree = rowsFor(true).find((r) => r.loc === "sw" && r.state === "free" && r.stake === PLATFORM_MAX_STAKE);
+  const bigPaid = rows.find((r) => r.loc === "zh" && r.state === "paid" && r.stake === PLATFORM_MAX_STAKE && r.figure === `TZS ${formatNumber(700_000)}`);
+  const bigFree360 = bigFree ? layout(bigFree, contentAt(M.xs, 0), false, false).spare : Number.NaN;
+  const bigPaid320 = bigPaid ? layout(bigPaid, C320, false, false).spare : Number.NaN;
+  const stripBefore = stripAt(M.xs, holderInset, stripRun("sw", "4:59"), FIT_STRIP_BEFORE.split(" "));
+  ok(`5.control · CONTROL · with today's rules at ${PHONE} (the note drawn) the model sees what the browser measured: the Swahili free row for TZS 3,600 is wider than the button's ${C320}px content (the model reads ${at320.sw ? (C320 - at320.sw.spare).toFixed(1) : "?"}px of row; the browser measured 277px), the English and Chinese rows fit, and from ${M.xs} all three fit — so 5.free can see the defect it was written for; and on today's one line in the holder block at ${M.xs} (S6 A8d) the Swahili and English rows run past the button's ${H360}px content (the model reads sw ${holder360.sw ? holder360.sw.spare.toFixed(1) : "?"}px and en ${holder360.en ? holder360.en.spare.toFixed(1) : "?"}px left; the v2 baseline measured 67 and 14px past it) — so 5.stack can see the defect it was written for; and (S6 A8g) on today's one line on /positions the Swahili free row for TZS 1,000,000 at ${M.xs} and the Chinese legacy paid row for TZS 1,000,000 at 30% at ${PHONE} run past the button's content (the model reads ${bigFree360.toFixed(1)} and ${bigPaid320.toFixed(1)}px left) — so 5.list and 5.paid can see the defects they were written for — and the free strip with its classes before A8g, in the holder block at ${M.xs} in Swahili, is squeezed until its free word and its note break inside (the model draws them ${(stripBefore.sizes[0] ?? Number.NaN).toFixed(1)} and ${(stripBefore.sizes[2] ?? Number.NaN).toFixed(1)}px wide; the v2 baseline measured 112 and 66) — so 5.strip can see the defect it was written for`,
     measured.length === 3 && (at320.sw?.spare ?? 0) < 0 && (at320.en?.spare ?? -1) >= 0 && (at320.zh?.spare ?? -1) >= 0
-      && LOCS.every((l) => (at360[l]?.spare ?? -1) >= 0),
-    j({ at320, at360 }));
+      && LOCS.every((l) => (at360[l]?.spare ?? -1) >= 0)
+      && (holder360.sw?.spare ?? 0) < 0 && (holder360.en?.spare ?? 0) < 0
+      && bigFree360 < 0 && bigPaid320 < 0 && stripBefore.broken.join() === "0,2"
+      && Math.abs((stripBefore.sizes[0] ?? 0) - 112) < 0.5 && Math.abs((stripBefore.sizes[2] ?? 0) - 66) < 0.5,
+    j({ at320, at360, holder360, bigFree360, bigPaid320, stripBefore }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -1906,9 +2306,9 @@ const PLANTS: Plant[] = [
   // §5 — S6 A8b: the fit
   { name: "the free note is drawn below 360 again (the Swahili free row overflows a 320 phone on /positions, as measured)", expect: ["5.free", "5.classes"],
     world: (w) => inFile(w, SELL_BUTTON, FIT_NOTE, FIT_NOTE.replace("ml-1.5 hidden opacity-80 text-[11px] xs:inline", "ml-1.5 opacity-80 text-[11px]")) },
-  { name: "the label may wrap below 360 (in the holder block Chinese stacks one glyph a line, taller than the button)", expect: ["5.holder", "5.classes"],
+  { name: "the label may wrap below 360 (a legacy paid row on /positions at 320 breaks its label over two lines, the Chinese one between its glyphs)", expect: ["5.paid", "5.classes"],
     world: (w) => inFile(w, SELL_BUTTON, FIT_LABEL, FIT_LABEL.replace("<span>", `<span className="whitespace-normal xs:whitespace-nowrap">`)) },
-  { name: "the label may wrap below 360 with Chinese kept whole (in the holder block Swahili's three words stack taller than the button)", expect: ["5.holder", "5.classes"],
+  { name: "the label may wrap below 360 with Chinese kept whole (a Swahili legacy paid row on /positions at 320 breaks `Uza sasa` over two lines)", expect: ["5.paid", "5.classes"],
     world: (w) => inFile(w, SELL_BUTTON, FIT_LABEL, FIT_LABEL.replace("<span>", `<span className="whitespace-normal break-keep xs:whitespace-nowrap">`)) },
   { name: "the fee beside a paid price is hidden below 360 too (a price shown without its fee)", expect: ["5.classes"],
     world: (w) => inFile(w, SELL_BUTTON, FIT_FEE, FIT_FEE.replace("ml-1.5 opacity-80 text-[11px]", "ml-1.5 hidden opacity-80 text-[11px] xs:inline")) },
@@ -1920,6 +2320,96 @@ const PLANTS: Plant[] = [
     world: (w) => withWord(w, "zh", "loading", "") },
   { name: "the holder block's row changes its padding (the model would measure a button that is not there)", expect: ["5.model"],
     world: (w) => inFile(w, MARKET, HOLDER_ROW, HOLDER_ROW.replace(" p-3 ", " p-4 ")) },
+  // §5 — S6 A8d: the question page's holder block stacks its Sell button on a phone
+  { name: "the question page stops asking for the stacked phone row (its one-line row runs past the button again)", expect: ["5.model", "5.stack"],
+    world: (w) => inFile(w, MARKET, FIT_STACK_FLAG, NL) },
+  { name: "/positions asks for the stacked phone row too (only the holder block may)", expect: ["5.model"],
+    world: (w) => inFile(w, POSITIONS, "pricedFree={price?.free === true}", `pricedFree={price?.free === true}${NL}                      stackOnPhone`) },
+  { name: "the classic button ignores the host's ask (the holder block's button is drawn the wrap and never stacks)", expect: ["5.model", "5.stack"],
+    world: (w) => inFile(w, SELL_BUTTON, FIT_STACK_CLASSNAME, FIT_STACK_CLASSNAME.split("${stackOnPhone ? ").join("${false ? ")) },
+  { name: "the stacked rule takes the 48px rung (a three-line row is taller than the button)", expect: ["5.stack"],
+    world: (w) => ({ ...w, css: w.css.split("height: var(--h-control-xl); flex-wrap").join("height: var(--h-control-lg); flex-wrap") }) },
+  { name: "the stacked rule caps its height instead of taking the rung (a max-height: the button stays 44px and a three-line row runs out of it)", expect: ["5.model", "5.stack"],
+    world: (w) => ({ ...w, css: w.css.split("{ height: var(--h-control-xl); flex-wrap").join("{ max-height: var(--h-control-xl); flex-wrap") }) },
+  { name: "the stacked rule hand-types its height (56px: no rung, so the token no longer owns it)", expect: ["5.model", "5.stack"],
+    world: (w) => ({ ...w, css: w.css.split("height: var(--h-control-xl); flex-wrap").join("height: 56px; flex-wrap") }) },
+  { name: "the stacked button no longer wraps its lines (its label and figure squeeze onto one)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split("var(--h-control-xl); flex-wrap: wrap; align-content").join("var(--h-control-xl); align-content") }) },
+  { name: "the stacked rule's phone block ends at 360 (from 360 the holder block's one-line row runs past the button again)", expect: ["5.stack"],
+    world: (w) => ({ ...w, css: w.css.split(FIT_STACK_OPENER).join(FIT_STACK_OPENER.split("639.98px").join("359.98px")) }) },
+  { name: "the stacked rule's phone block reaches 768 (past `sm`, where the holder block's row is one line)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split(FIT_STACK_OPENER).join(FIT_STACK_OPENER.split("639.98px").join("767.98px")) }) },
+  { name: "the stacked rule's phone block also asks for a hovering pointer (no touch phone stacks: its one-line row runs past the button again)", expect: ["5.model", "5.stack"],
+    world: (w) => ({ ...w, css: w.css.split(FIT_STACK_OPENER).join(FIT_STACK_OPENER.split("639.98px) {").join("639.98px) and (hover: hover) {")) }) },
+  { name: "the stacked rule's phone block starts at 400 (from 320 to 399 the holder block's one-line row runs past the button again)", expect: ["5.model", "5.stack"],
+    world: (w) => ({ ...w, css: w.css.split(FIT_STACK_OPENER).join(FIT_STACK_OPENER.split("@media (max-width").join("@media (min-width: 400px) and (max-width")) }) },
+  { name: "the stacked rule leaves its phone block (the holder block's button would stack at every width)", expect: ["5.model", "5.stack"],
+    world: (w) => {
+      const at = w.css.indexOf(`${NL}  ${FIT_STACK_RULE}`);
+      const end = w.css.indexOf(NL, at + 1);
+      const rule = w.css.slice(at + 1, end);
+      return { ...w, css: (w.css.slice(0, at) + w.css.slice(end)).split(FIT_STACK_OPENER).join(`${rule}${NL}${FIT_STACK_OPENER}`) };
+    } },
+  { name: "the stacked lines take line-height 1.5 (a three-line row is taller than the button)", expect: ["5.stack"],
+    world: (w) => ({ ...w, css: w.css.split("row-gap: 2px; line-height: 1.25; }").join("row-gap: 2px; line-height: 1.5; }") }) },
+  { name: "the stacked lines take a 12px row gap (a three-line row is taller than the button)", expect: ["5.stack"],
+    world: (w) => ({ ...w, css: w.css.split("row-gap: 2px; line-height: 1.25; }").join("row-gap: 12px; line-height: 1.25; }") }) },
+  { name: "the figure's line cannot let its note go under it (a long fee beside its figure runs past the button at 320)", expect: ["5.stack"],
+    world: (w) => ({ ...w, css: w.css.split(`${FIT_STACK_FIGURE} display: flex; flex-wrap: wrap;`).join(`${FIT_STACK_FIGURE} display: flex;`) }) },
+  { name: "the figure's line is no flex row (its wrap and gap never apply: a long fee stays beside its figure, past the button at 320)", expect: ["5.stack"],
+    world: (w) => ({ ...w, css: w.css.split(`${FIT_STACK_FIGURE} display: flex; flex-wrap: wrap;`).join(`${FIT_STACK_FIGURE} flex-wrap: wrap;`) }) },
+  { name: "the figure's gap is hand-typed (8px, not the spacing token)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split("justify-content: center; column-gap: var(--sp-2); margin-left: auto").join("justify-content: center; column-gap: 8px; margin-left: auto") }) },
+  { name: "the stacked label no longer takes a line of its own (the figure could ride up beside it, off the line the model lays out)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split("{ flex-basis: 100%; text-align: center; }").join("{ text-align: center; }") }) },
+  { name: "the note keeps its own margin beside the figure's gap (its line runs 8px wider than the model lays out)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split(`${FIT_STACK_NOTE} margin-left: 0; }`).join(`${FIT_STACK_NOTE} margin-right: 0; }`) }) },
+  { name: "the stacked rule's phone block loses its density reason (the card-spacing fence would refuse it)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split("  /* density: general — the question page's Sell button").join("  /* the question page's Sell button") }) },
+  // §5 — S6 A8g: where its host does not stack, a row's note goes under its figure when one line cannot hold both; the free strip keeps its parts whole
+  { name: "every host that does not stack draws today's one line again (the className's wrap arm dropped: the Swahili free row for TZS 1,000,000 runs past the button at 360 on /positions, the Chinese legacy paid row at 320)", expect: ["5.model", "5.paid", "5.list"],
+    world: (w) => inFile(w, SELL_BUTTON, FIT_WRAP_ARM, ' : ""}`}') },
+  { name: "the wrap rule's figure no longer wraps (its note stays beside a seven-figure stake, past the button on /positions)", expect: ["5.paid", "5.list"],
+    world: (w) => ({ ...w, css: w.css.split(`${FIT_WRAP_FIGURE} display: flex; flex-wrap: wrap;`).join(`${FIT_WRAP_FIGURE} display: flex;`) }) },
+  { name: "the wrap rule's figure is no flex row (its wrap and gap never apply: a long fee stays beside its figure, past the button at 320)", expect: ["5.paid", "5.list"],
+    world: (w) => ({ ...w, css: w.css.split(`${FIT_WRAP_FIGURE} display: flex; flex-wrap: wrap;`).join(`${FIT_WRAP_FIGURE} flex-wrap: wrap;`) }) },
+  { name: "the wrap rule's note keeps its own margin beside the gap (its one line runs 8px wider than the model lays out)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split(`${FIT_WRAP_NOTE} margin-left: 0; }`).join(`${FIT_WRAP_NOTE} margin-right: 0; }`) }) },
+  { name: "the wrap rule's lines go to the left (a note under its figure no longer ends where the one-line row does)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split("justify-content: flex-end; column-gap").join("justify-content: flex-start; column-gap") }) },
+  { name: "the wrap rule's gap is hand-typed (8px, not the spacing token)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split("justify-content: flex-end; column-gap: var(--sp-2); }").join("justify-content: flex-end; column-gap: 8px; }") }) },
+  { name: "the wrap rule's phone block also asks for a hovering pointer (no touch phone wraps: its big rows run past the button again)", expect: ["5.model", "5.paid", "5.list"],
+    world: (w) => ({ ...w, css: w.css.split(FIT_WRAP_OPENER).join(FIT_WRAP_OPENER.split("639.98px) {").join("639.98px) and (hover: hover) {")) }) },
+  { name: "the wrap rule's phone block ends at 360 (from 360 to 383 the Swahili free row for a big stake runs past the button again)", expect: ["5.list"],
+    world: (w) => ({ ...w, css: w.css.split(FIT_WRAP_OPENER).join(FIT_WRAP_OPENER.split("639.98px").join("359.98px")) }) },
+  { name: "the wrap rule's phone block reaches 768 (past `sm`)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split(FIT_WRAP_OPENER).join(FIT_WRAP_OPENER.split("639.98px").join("767.98px")) }) },
+  { name: "the wrap rule leaves its phone block (it would apply at every width)", expect: ["5.model", "5.paid", "5.list"],
+    world: (w) => {
+      const at = w.css.indexOf(`${NL}  ${FIT_WRAP_FIGURE}`);
+      const end = w.css.indexOf(NL, at + 1);
+      const rule = w.css.slice(at + 1, end);
+      return { ...w, css: (w.css.slice(0, at) + w.css.slice(end)).split(FIT_WRAP_OPENER).join(`${rule}${NL}${FIT_WRAP_OPENER}`) };
+    } },
+  { name: "the wrap rule's phone block loses its density reason (the card-spacing fence would refuse it)", expect: ["5.model"],
+    world: (w) => ({ ...w, css: w.css.split("  /* density: general — today's Sell button where its host does not stack").join("  /* today's Sell button where its host does not stack") }) },
+  { name: "the free strip no longer wraps between its parts (the browser shrinks its Swahili parts in the holder block below 383px until the free word and the note break inside, TOKA BILA over GHARAMA)", expect: ["5.strip"],
+    world: (w) => inFile(w, SELL_BUTTON, '<div className="mb-1.5 flex flex-wrap items-center', '<div className="mb-1.5 flex items-center') },
+  { name: "the free strip's classes go back to before A8g (the browser shrinks its Swahili parts until the free word and the note break inside)", expect: ["5.strip"],
+    world: (w) => inFile(w, SELL_BUTTON, FIT_STRIP_DIV, `<div className="${FIT_STRIP_BEFORE}">`) },
+  { name: "the free strip pads 64px each side (its Swahili free word, alone on its line, breaks inside in the holder block at 320)", expect: ["5.strip"],
+    world: (w) => inFile(w, SELL_BUTTON, "gap-y-0.5 px-2 py-1 rounded-md", "gap-y-0.5 px-9 py-1 rounded-md") },
+  { name: "the free strip's line gap is hand-typed (2px, off the spacing scale)", expect: ["5.model"],
+    world: (w) => inFile(w, SELL_BUTTON, "gap-x-1.5 gap-y-0.5 px-2", "gap-x-1.5 gap-y-[2px] px-2") },
+  { name: "the free strip's free word leaves the mono face (the model would measure a face it cannot read)", expect: ["5.model"],
+    world: (w) => inFile(w, SELL_BUTTON, '<span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>', '<span className="font-display text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>') },
+  { name: "a phone block re-declares the stack's rung (--h-control-xl: 48px below 640: the browser draws the second declaration, a model that read the first would lay out 56)", expect: ["5.model", "5.stack"],
+    world: (w) => ({ ...w, css: `${w.css}${NL}@media (max-width: 639.98px) {${NL}  /* density: general — a planted rung. */${NL}  :root { --h-control-xl: 48px; }${NL}}${NL}` }) },
+  { name: "the classic button's rung drops to 36px (a note under its figure no longer fits inside the button on /positions)", expect: ["5.list"],
+    world: (w) => ({ ...w, css: w.css.split("--h-control-md: 44px;").join("--h-control-md: 36px;") }) },
+  { name: "the free window may run 120 minutes (the strip's countdown can read 120:00, longer than the 60:00 §5 and the records lay out)", expect: ["5.model"],
+    world: (w) => inFile(w, FIT_CONFIG, "g < 0 || g > 60)", "g < 0 || g > 120)") },
   // §4 — the wiring
   { name: "the suite drops out of predeploy", expect: ["4.wired"],
     world: (w) => ({ ...w, scripts: { ...w.scripts, predeploy: (w.scripts.predeploy ?? "").split("npm run test:sell-grace-truth && ").join("") } }) },
