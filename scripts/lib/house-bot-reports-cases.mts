@@ -1067,14 +1067,18 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
      */
     const storeTwin = decomment(read("src/lib/server/store.ts"));
     const prismaTwin = decomment(read(DAL));
-    const MEMORY_DROP = `const { houseBotId: _marker, positionId: _positioned, ...rest } = patch;`;
-    const PRISMA_DROP = `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId") continue;`;
+    // ⭐ RE-PINNED 2026-10-04: the Vodacom plan's S3b (`64a63b7c`) made `Transaction.origin` create-only in both twins, so
+    //    each drop line gained `origin` and this exact-text pin went red on main (and every red that checks reports-mem
+    //    first refused to run). The two keys this pin is about are still dropped; the plants below still take away
+    //    `positionId` alone, so the control still proves each spelling is read.
+    const MEMORY_DROP = `const { houseBotId: _marker, positionId: _positioned, origin: _origin, ...rest } = patch;`;
+    const PRISMA_DROP = `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId" || k === "origin") continue;`;
     ok("0.232.4 · ⛔ both txn store twins drop houseBotId AND positionId from an update patch — a ledger row cannot be re-marked, un-marked, or POSITIONED after the fact, which is the one way a positioned row could exist that ruling 232's create-site scan can never see",
       storeTwin.includes(MEMORY_DROP) && prismaTwin.includes(PRISMA_DROP),
       j({ memory: storeTwin.includes(MEMORY_DROP), prisma: prismaTwin.includes(PRISMA_DROP) }));
     ok("0.232.4.control · CONTROL · the pin REPORTS each twin the moment its own spelling stops dropping the key — so the two greens above are measurements of those two lines and not of strings that match nothing",
-      !storeTwin.replace(MEMORY_DROP, `const { houseBotId: _marker, ...rest } = patch;`).includes(MEMORY_DROP)
-      && !prismaTwin.replace(PRISMA_DROP, `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId") continue;`).includes(PRISMA_DROP),
+      !storeTwin.replace(MEMORY_DROP, `const { houseBotId: _marker, origin: _origin, ...rest } = patch;`).includes(MEMORY_DROP)
+      && !prismaTwin.replace(PRISMA_DROP, `if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "origin") continue;`).includes(PRISMA_DROP),
       "both plants change their file");
 
     /**
