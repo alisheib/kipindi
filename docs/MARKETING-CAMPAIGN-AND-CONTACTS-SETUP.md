@@ -494,7 +494,7 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   (rbac-guard.ts is platform-wide — the policy's own trigger): 199 of 203 green; the four reds are other lanes' —
   `test:stacking` and `test:kyc-copy-truth` (Vodacom), `test:wallet-status-writers` 37 against its pin of 36 (the tax
   report's dev fixture `seed-tax-books`, d1b82f9a — batch 7 adds no wallet write), and `qa:live` (STEP 28b).
-🔧 STEP 28b · qa:live's MARKET-CARD BLOCK RUNS AGAIN (`the commit that carries this entry`, harness only). Since 8fc9c638 (2026-09-23, the cards
+🔧 STEP 28b · qa:live's MARKET-CARD BLOCK RUNS AGAIN (`78f65958`, harness only). Since 8fc9c638 (2026-09-23, the cards
   lane) a market card opens through a stretched link laid over its body, so qa:live's element click on the question
   was refused and the script stopped there whenever the board had a market — the authed betting checks after it (the
   YES button's locked dial, the drag lock, the typed stake) never ran; on a fresh in-memory boot it said "no live card
@@ -513,7 +513,8 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   61,251 audit rows (10,629 COMPLIANCE) and NOT ONE `privacy.*` action: the profile switch and its audit action arrived
   together (`6f0495ef`, 2026-09-14, the E-409 window's first day) and no player ever changed it on production. So U33a-R
   ships `PRE_LEDGER_OFFS = "reconciled"`, citing this count; no backfill and no `preledger-withdrawals.ts` are needed.
-✅ STEP 30 · U33w · THE CONSENT WORDINGS, EDITABLE — Admin → System gains a "Marketing wordings" tab: the ten
+✅ STEP 30 · U33w · THE CONSENT WORDINGS, EDITABLE — LIVE (`bdd02bb1`, live 2026-10-04 01:13:44 UTC). Admin → System
+  gains a "Marketing wordings" tab: the ten
   wordings marketing evidence is recorded under — the five bases' per-person sentences (OWN_FORM, OWN_EVENT, AGENT_ROSTER,
   THIRD_PARTY, and LICENCE_OUTREACH, new under OD57/OD58), the three 18+ sentences (with a consent, confirming a list,
   for a typed test), the bought-list notice and the campaign source line. The code's words are SUGGESTIONS: nothing is
