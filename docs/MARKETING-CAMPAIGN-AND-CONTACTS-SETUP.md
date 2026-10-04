@@ -49,6 +49,11 @@ erasure now withdraws the consent and empties the book, and both data exports ca
      `C:/Users/Ali/AppData/Local/Temp/claude/C--Users-Ali/83bc643c-a332-4527-ac4c-d62e1711c811/scratchpad/`. A complete
      `MANIFEST.md` ending in a summary is the sign one finished; otherwise re-launch it from its spec section. Nothing
      of theirs is merged or committed.
+     ✔ U37s + U33a-R FINISHED after the pause (complete `u33r/MANIFEST.md`, base `31777791`, none of its files changed
+     since): MERGE → adversarial review → battery — do not re-run it. Its open calls for the lead: close = any admin
+     (recommended, so outreach stops at once) vs owner-only like U49s; apply its three-line `reloadRow` fix (a deleted
+     malformed row left "couldn't be read" until the next write) to U33p's and U33w's stores too; its spec-vs-code items
+     1–11; package.json — re-add `&& npm run test:outreach-record` after `npm run test:policy-lines` by hand.
   3. THE PATTERN THAT WORKED (STEPS 30–32): a static builder agent (spec → complete files in scratch, no Node) → merge
      into the worktree (3-way `git merge-file` for package.json and shared docs) → ONE detached battery under the
      heavy-node lock (+ the drive, its tiles READ) → an adversarial reviewer agent on the SCRATCH copies → resume the
