@@ -54,6 +54,12 @@ erasure now withdraws the consent and empties the book, and both data exports ca
      (recommended, so outreach stops at once) vs owner-only like U49s; apply its three-line `reloadRow` fix (a deleted
      malformed row left "couldn't be read" until the next write) to U33p's and U33w's stores too; its spec-vs-code items
      1–11; package.json — re-add `&& npm run test:outreach-record` after `npm run test:policy-lines` by hand.
+     ✔ U43-0 FINISHED after the pause too (complete `u430/MANIFEST.md`; migration
+     `20261004140000_sms_recipient_unconfirmed`, one `ALTER TYPE … ADD VALUE IF NOT EXISTS 'UNCONFIRMED'`; no package.json
+     change — it extends `db:probe-campaign-models`): MERGE → adversarial review → `prisma generate` first → its battery +
+     the whole chain (store.ts / prisma-dal.ts) → PUSH IT ALONE (check `git diff --stat origin/main..HEAD --
+     prisma/migrations` shows only its folder; re-check its stamp sorts last) → prove it on production (the deploy log,
+     `?dpl=`, and a READ ONLY read of the `_prisma_migrations` row and the enum ending in UNCONFIRMED) BEFORE U43b ships.
   3. THE PATTERN THAT WORKED (STEPS 30–32): a static builder agent (spec → complete files in scratch, no Node) → merge
      into the worktree (3-way `git merge-file` for package.json and shared docs) → ONE detached battery under the
      heavy-node lock (+ the drive, its tiles READ) → an adversarial reviewer agent on the SCRATCH copies → resume the
