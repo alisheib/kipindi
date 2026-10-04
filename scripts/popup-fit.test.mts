@@ -189,6 +189,17 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  *     row wraps. The `h2` carries `pr-8`; the footer is `flex-col-reverse sm:flex-row`; `maxWidth` 440/520 is a MAX.
  *     PASSES.
  */
+/*
+ * ── 2026-10-04 · ±0: `markets/sell-result.tsx` in, `markets/sell-button.tsx` out (the Vodacom plan S6, A8h). The result a
+ * sale opens moved, unchanged, out of the Sell button into its own module, `SellResultModal`, which the shell's host
+ * (`sell-result-host.tsx`, no popup primitive of its own) and the button's fallback both draw. The button now renders no
+ * popup primitive itself (its confirm is `sell-confirm-modal.tsx`, on the record), so its name leaves. The new module
+ * was opened and judged like the record above: it is the shared `OperationResultModal` with props only, no class of its
+ * own, so no `truncate`, no `line-clamp-*`, no `whitespace-nowrap`, no `text-ellipsis`, no `max-h-*`, no
+ * `overflow-hidden`, no fixed height on any text; the money figures in its title are amounts that move whole
+ * (`wholeFigures`, S6 A8f), its detail rows wrap, and the Modal scrolls. `test:sell-grace-truth` §6 measures it from
+ * 320 in en, sw and zh. PASSES.
+ */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
@@ -252,8 +263,8 @@ const REVIEWED: readonly string[] = [
   "src/components/markets/market-card.tsx",
   "src/components/markets/objection-dialog.tsx",
   "src/components/markets/operation-result-modal.tsx",
-  "src/components/markets/sell-button.tsx",
   "src/components/markets/sell-confirm-modal.tsx",
+  "src/components/markets/sell-result.tsx",   // reviewed 2026-10-04 (S6 A8h)
   "src/components/markets/share-button.tsx",
   "src/components/markets/win-celebration.tsx",
   "src/components/onboarding/first-visit-primer.tsx",

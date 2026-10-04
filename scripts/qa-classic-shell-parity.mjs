@@ -54,6 +54,13 @@
  * sell-narrow-phone pairs now ride in), and at 360 its figure is a wrapping row whose styles move while every glyph
  * stays (sell-positions-wrap-layout-en and -sw, measured first, as A8d's are). P.5g holds the strip's two entries in a
  * capture and in a first paint; P.5s, P.5L and P.6s hold the rest.
+ * ⭐ S6 A8h — AND THE SHELL'S HOST FOR A SALE'S RESULT, WHICH NAMES NO ENTRY. AppShell mounts it for a signed-in viewer
+ * through the shell's lazy module: a signed-in cell's HTML gains one more Suspense boundary's markers beside the win
+ * celebration's, its head the preload of the host's chunk and its inline RSC data the part's client reference, all
+ * outside every region and field captured here; and the host draws nothing until a sale, so no overlay, region or Sell
+ * cell changes (no Sell cell confirms a sale, and none is refused). A guest's page changes only by the name of the
+ * shell's lazy chunk, which this harness normalises. The result it keeps on screen, and a refused sale's toast routed
+ * by the registry, are classic changes only the drives and the tiles show (VODACOM-PLAN §0i).
  *
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity                  (the control: --prove-red is the default)
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-<sha8>.json

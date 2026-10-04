@@ -1605,7 +1605,8 @@ async function g5Fit(W: World) {
  *   · the confirm's figure is `.amount`, one object, and its row wraps: the fee column moves below the figure and grows to
  *     the box's width, its words still at the right edge; beside the figure the fee keeps a clear space before it, so two
  *     figures never run together; the fee and its note were `.amount` already;
- *   · the result sets every money figure in its title as one amount (`wholeFigures`, which the Sell button passes), in the
+ *   · the result sets every money figure in its title as one amount (`wholeFigures`, which the sale's result asks for, from
+ *     its own module since S6 A8h), in the
  *     mono face the model reads — the title's own face, Sora, is not among the repo's fonts; its detail rows already wrap.
  * Over en, sw and zh × 320, 340, 360, 390, 412, 430, 768 and 1280 × §5's stakes to the platform's maximum, free and paid at
  * every whole percent to 30 (`cashOutValue`, the oracle), in both looks (their words differ, never their figures): each
@@ -1615,6 +1616,8 @@ async function g5Fit(W: World) {
  */
 const SELL_MODAL = "src/components/markets/sell-confirm-modal.tsx";
 const RESULT_MODAL = "src/components/markets/operation-result-modal.tsx";
+/** S6 A8h — the result a sale opens, out of the Sell button into its own module (`SellResultModal`): what asks for whole figures. */
+const SELL_RESULT = "src/components/markets/sell-result.tsx";
 const DIALOG_SHELL = "src/components/ui/modal.tsx";
 /** The panel's edge is its material's (`.mat-modal`, motion.css): read from source, outside the plantable world. */
 const DIALOG_MATERIAL = readRaw("src/app/motion.css");
@@ -1791,11 +1794,12 @@ function dialogFacts(W: World): DialogFacts {
     label: classesAt(rq, label), value: classesAt(rq, openBefore(rq, ">{d.value}<", "p")),
     detailRow: column > 0 ? classesAt(rq, rq.lastIndexOf("<div", column - 1)) : null,
   };
-  // The Sell button's one result asks for whole figures: a bare `wholeFigures`, or `={true}`.
-  const button = squash(W.files.get(SELL_BUTTON) ?? "");
-  const resultAt = button.indexOf("<OperationResultModal");
-  const element = resultAt < 0 ? "" : button.slice(resultAt, button.indexOf("/>", resultAt) + 2);
-  const asks = occurrences(button, "<OperationResultModal") === 1 && !element.includes("wholeFigures={false}")
+  // The sale's one result asks for whole figures: a bare `wholeFigures`, or `={true}`. Since S6 A8h it is drawn from its own
+  // module (`SellResultModal`, which the shell's host and the Sell button's fallback both draw), so that is where it is read.
+  const sale = squash(W.files.get(SELL_RESULT) ?? "");
+  const resultAt = sale.indexOf("<OperationResultModal");
+  const element = resultAt < 0 ? "" : sale.slice(resultAt, sale.indexOf("/>", resultAt) + 2);
+  const asks = occurrences(sale, "<OperationResultModal") === 1 && !element.includes("wholeFigures={false}")
     && (element.includes("wholeFigures/>") || element.includes("wholeFigures ") || element.includes("wholeFigures={true}"));
   return {
     sp, lg: dialogNum(screens, `lg: "`),
@@ -2020,7 +2024,7 @@ async function g6Dialogs(W: World) {
   const resultBad = resultCells.filter(({ f }) => f.split || f.over || !Number.isFinite(f.room))
     .map(({ loc, vw, p, f }) => `${loc} ${vw} TZS ${p.stake} ${f.row}: ${f.split ? "can split" : `${f.room.toFixed(1)}px`}`);
   const leastResult = (name: string) => Math.min(...resultCells.filter((x) => x.f.row === name && x.vw === 320).map((x) => x.f.room)).toFixed(1);
-  ok(`6.result · the result a sale opens sets every money figure in its title as one amount — the Sell button asks (wholeFigures), and the pinned helper wraps each figure its pattern finds, a minus before it included — and at every width the title's widest figure, TZS 1,000,000, fits the title's line (least room left at 320: ${leastResult("result.title")}px); each detail row holds its figure whole, its line wrapping before break-all could break it (least room left at 320: ${leastResult("result.returned")} and ${leastResult("result.fee")}px)`,
+  ok(`6.result · the result a sale opens sets every money figure in its title as one amount — the sale's result asks (wholeFigures, in its own module, sell-result.tsx, since S6 A8h), and the pinned helper wraps each figure its pattern finds, a minus before it included — and at every width the title's widest figure, TZS 1,000,000, fits the title's line (least room left at 320: ${leastResult("result.title")}px); each detail row holds its figure whole, its line wrapping before break-all could break it (least room left at 320: ${leastResult("result.returned")} and ${leastResult("result.fee")}px)`,
     resultCells.length > 0 && resultBad.length === 0, resultBad.slice(0, 3).join(" | "));
   // CONTROL — today's rules (the row not wrapping, the figure no amount, the fee keeping no space) on the ticket the v2 parity
   // baseline sells in its confirm cells, a free TZS 1,500, at 360 and 390.
@@ -2440,8 +2444,8 @@ const PLANTS: Plant[] = [
     world: (w) => withEntry(w, "sw", "dialog", "sellLabel", "Uza tiketi yako yote sasa hivi") },
   { name: "a longer Swahili keep word in the journey's look (its keep button overflows at 320)", expect: ["6.button"],
     world: (w) => withEntry(w, "sw", "journey", "sellKeep", "Baki na tiketi yako hii hadi matokeo yatoke") },
-  { name: "the Sell button stops asking for whole figures (a refusal's 'TZS' can end a line again, and the title's figure is drawn in a face the model cannot read)", expect: ["6.result"],
-    world: (w) => inFile(w, SELL_BUTTON, `${NL}          wholeFigures${NL}`, NL) },
+  { name: "the sale's result stops asking for whole figures (a refusal's 'TZS' can end a line again, and the title's figure is drawn in a face the model cannot read)", expect: ["6.result"],
+    world: (w) => inFile(w, SELL_RESULT, `${NL}      wholeFigures${NL}`, NL) },
   { name: "the result draws its title as given (no amount around its figure)", expect: ["6.result"],
     world: (w) => inFile(w, RESULT_MODAL, "{wholeFigures ? withWholeFigures(title) : title}", "{title}") },
   { name: "the result's helper sets its figures in the body's face, not as amounts", expect: ["6.result"],

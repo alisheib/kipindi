@@ -115,6 +115,9 @@ const SCAN_FILES = [
   "src/components/layout/notifications-panel.tsx",
   "src/components/markets/conviction-dial.tsx",
   "src/components/markets/sell-button.tsx",
+  // S6 A8h — the result of a sale and the shell's host that draws it, out of the Sell button.
+  "src/components/markets/sell-result.tsx",
+  "src/components/markets/sell-result-host.tsx",
 ];
 for (const f of SCAN_FILES) {
   const src = read(f);

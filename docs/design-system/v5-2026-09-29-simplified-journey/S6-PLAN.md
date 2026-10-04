@@ -1627,7 +1627,8 @@ moved price or a short pool (and, above, a broken figure) is recorded as one fir
 audit row through `recordRefusedSale`. The registry gains two rows (`price_changed`: warning, toast, `failPriceChanged`,
 needs `value`; `cashout_pool_short`: error, toast, `failCashoutPoolShort`), `FailureDetail` gains `value` and `fee`,
 `renderFailure` interpolates `{value}` through the surface's money formatter, and the dictionary gains both keys in en, sw
-and zh. On `price_changed` the button's refusal branch toasts `factual` instead of `danger`, and after the result sets
+and zh. On `price_changed` the button's refusal branch toasts `factual` instead of `danger`, and after the result (none since
+A8h, below) sets
 `repricing` and dispatches `50pick:refresh` once; `repricing` (cleared when `pending` falls, so once the refreshed page is
 drawn) puts "Inapakia…" ahead of "Inauza…" and withdraws the figure, the free strip or line and the press in both looks.
 Pinned in the open: `test:sell-price-guard` (42 checks, in predeploy) with `red:sell-price-guard` (46 in-process plants:
@@ -1742,6 +1743,33 @@ wrap class), with `sell-positions-wrap-layout-en` / `-sw` (measured first), `sel
 `sell-strip-whole-layout` (predicted from the baseline's capture, `alongside` the class); the placeholder
 `SELL_MEASURED_FIRST` names the four measured layouts that read it and goes only once all four are copied; P.5s, P.5L and
 P.6s rewritten for them and P.5g new. Records: VODACOM-PLAN §0i (A8g) and §0h points 37 (h), 51 and 52.
+
+*As built (A8h, drafted 2026-10-04 on `a2ce1762`, revised the same day after three reviews; applied after A8d and A8g
+(`cb83746b`) — its own commit, for every player):* a sale's result outlives the row it was sold from, a moved price is told by its toast
+alone, and every refused sale is as loud as the registry ranks its reason. `sell-result.tsx` (new, client) holds the
+result's one definition, `SellResultModal`, the `OperationResultModal` SellButton drew, moved unchanged (its words, its
+figures, `stripTone="brand"`, `wholeFigures`; the journey's look still changes the line under a refusal); the hand-off,
+`SELL_RESULT_EVENT` (`50pick:sell-result`) and `handSellResult`, which dispatches `{ resultData, positionId, journey,
+from, ack }` and returns `ack.accepted` (the win celebration's synchronous ack); and `keepFiguresWhole`, which joins
+"TZS" to its number with a no-break space for a toast. `sell-result-host.tsx` (new, client): `SellResultHost` listens,
+takes the result, marks it taken, reads the main region's controls around `from` while the ticket is still on the page,
+and draws `SellResultModal` until it closes or the pathname changes; then, when focus is nowhere or still in the closing
+dialog (`NOWHERE`; never out of another open dialog, a win seal over the result among them), it puts focus on `from`, else the first control after it, else the nearest before it, never a field, never
+scrolling. `shell-lazy.tsx` gains its eleventh part, `LazySellResultHost`, and AppShell renders `{session && <Suspense
+fallback={null}><LazySellResultHost /></Suspense>}` after the win celebration. SellButton: `openConfirm` remembers the
+control that opened the confirm (`openedFrom`); `showResult` hands the result over first and sets the button's own state
+only when no host took it; `submit()` shows a sale's result before asking the page to refresh; a refusal is ranked by
+the registry (`said`, `fault`: an `error`, a reason it cannot rank, or BUSY, the request that threw), its toast `danger`
+for a fault and `factual` otherwise, kept until read (`durationMs: 0`) and dismissed by the next sale from any button
+(`lastRefusalToast`, one slot for the tab at the module's top level);
+then the moved price's ask, `if (fault) showResult(…)`, and else `refocus`, which an effect turns into focus on the
+button once it can be pressed; its dialogs draw `SellResultModal` for the fallback. Pinned in the open:
+`test:sell-price-guard` §7 (7.handed, 7.calls, 7.moved, 7.loud, 7.stays, 7.whole, 7.fallback, 7.ack, 7.host, 7.draw,
+7.away, 7.focus — the host's helpers whole since the review before the commit) and 4.moved and 4.calm, with 37 plants; `test:journey-tickets` §12's `SELL_DIALOGS`, the new
+`SELL_RESULT_MARKUP`, 12.dialogs and 12.words, one plant re-pointed and 4 new; `test:sell-grace-truth` §6's `asks`
+and its plant; `test:journey-shell` §12's table; `test:popup-fit`'s record; `test:failure-reasons` 9e;
+`test:feedback-law` §1.1's scan. No word of the dictionary changes. Records: VODACOM-PLAN §0i (A8h) and §0h points 43
+(resolved), 53 to 56.
 
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,

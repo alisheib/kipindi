@@ -13,7 +13,7 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 // they named rode in the scripts every page loads first, for every visitor. `test:journey-shell` §12 holds this.
 import {
   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
-  LazyJourneyFlag, LazyWinCelebration, LazyJourneyTopBar, LazyJourneyTabs,
+  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs,
 } from "./shell-lazy";
 // ⛔ THE OFFLINE BANNER IS NOT ONE OF THEM, ON PURPOSE (WP6c): its one job is a connection that fails, so its code comes
 // with the page's own scripts, as it always did, and never by a fetch of its own that the same failure could stop. It
@@ -496,6 +496,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* E-381 §6 item 4 — the signed-in shell notices, on the next navigation, that the session ended. */}
       {session && <SessionPresence />}
       <Suspense fallback={null}><LazyWinCelebration /></Suspense>
+      {/* ⭐ THE RESULT OF A SALE (S6 A8h), signed in only, like the poller and the event stream above. A Sell button hands
+          its result to this host, so a redrawn page no longer takes it away: a sold ticket leaves the open lens, and before
+          A8h its result left with it. It stays until the player closes it (a sale that went through also closes at §F2's
+          shared 5 s), and a move to another page closes it. It draws nothing until a sale, and a lost chunk leaves each
+          button drawing its own result, as before. */}
+      {session && <Suspense fallback={null}><LazySellResultHost /></Suspense>}
       <Suspense fallback={null}>
         <AuthFlash />
       </Suspense>

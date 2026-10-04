@@ -16,7 +16,8 @@
  *   · poll bet          `conviction-dial.tsx`
  *   · Up & Down bet     `updown-bet-receipt-modal.tsx`  (UD-22)
  *   · Up & Down refusal `updown-bet-blocked-modal.tsx`
- *   · sell / cash-out   `sell-button.tsx`
+ *   · sell / cash-out   `sell-result.tsx` (S6 A8h: drawn by the shell's `sell-result-host.tsx`, by the Sell button
+ *                       only when no host takes it)
  *   · deposit/withdraw  `wallet-result-modal.tsx`  (redirect-driven)
  *   · proposal created  `create-form.tsx`
  *   · every admin action via `action-overlay.tsx`

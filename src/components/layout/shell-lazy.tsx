@@ -76,6 +76,11 @@ function nothingIfLost(error: unknown): typeof Nothing {
 // `away-summary-bar.tsx`, which imports `dispatchWinCelebration` from it, so for that one only the mount moves here.
 export const LazyPullToRefresh = dynamic(() => import("@/components/ui/pull-to-refresh").then((m) => m.PullToRefresh).catch(nothingIfLost));
 export const LazyWinCelebration = dynamic(() => import("@/components/markets/win-celebration").then((m) => m.WinCelebrationHost).catch(nothingIfLost));
+// The result of a sale (S6 A8h): signed in only (AppShell gates it on the session). It draws nothing until a Sell button
+// hands it a result, then keeps that result on screen whatever happens to the row it came from, until the player closes
+// it (a sale that went through also closes at DESIGN_AUTHORITY §F2's shared 5 s). Its module is loaded from here alone:
+// the Sell buttons reach it through an event, never an import.
+export const LazySellResultHost = dynamic(() => import("@/components/markets/sell-result-host").then((m) => m.SellResultHost).catch(nothingIfLost));
 // Signed in only (AppShell gates both on the session): the settled-position poller and the server-sent events.
 export const LazyNotifyPoller = dynamic(() => import("@/components/markets/notify-poller").then((m) => m.NotifyPoller).catch(nothingIfLost));
 export const LazyEventStream = dynamic(() => import("@/components/layout/event-stream-provider").then((m) => m.EventStreamProvider).catch(nothingIfLost));

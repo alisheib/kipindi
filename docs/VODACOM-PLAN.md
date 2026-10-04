@@ -29,8 +29,8 @@ meanwhile is a numbered point in §0h.
 **Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
-52) committed, owing their checks; A8h (a sale's result stays on screen; no popup for a refusal one tap fixes) staged
-— then WP12 (proof, records, merge); the build plan is
+52) committed (`cb83746b`), and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53
+to 56) its own commit on them, both owing their checks — then WP12 (proof, records, merge); the build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
@@ -220,9 +220,9 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   (their bullets below, each with what was verified and what is still owed). The classic Sell button's live fixes:
   **A8b** (`1be05fbf`), **A8c**, **A8e** and **A8f** (`c6373d4b`, 2026-10-04) are LIVE and verified (each bullet below
   says how); **A8d** and **A8g** — the question page's Sell button stacks on a phone, `/positions`' big rows put their
-  note under the figure, and the free strip never breaks a phrase — are committed and owe what their bullet lists;
-  **A8h** — a sale's result stays on screen (a host above the row that sold), and a refusal one tap fixes gets no popup —
-  is staged on them in `s6/A8h.json`. Then WP12 (S6-PLAN.md).
+  note under the figure, and the free strip never breaks a phrase — are committed (`cb83746b`) and owe what their
+  bullet lists; **A8h** — a sale's result stays on screen (a host above the row that sold), and a refusal one tap fixes
+  gets no popup — is its own commit on them and owes what its bullet lists. Then WP12 (S6-PLAN.md).
 - **Found on the way (2026-10-04):** `test:house-bot-reports` 0.232 was red on main for three reasons, and while it was,
   `red:house-bot-money`, `-c5`, `-chatbot` and `-console` refused to run for every lane. This lane's S3b had made
   `Transaction.origin` create-only in both txn twins and so broken 0.232.4's exact-text pin — re-pinned (`50552c40`); the
@@ -691,7 +691,8 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   after a screen that said "no fee"; now it is refused, the toast (the calm `factual` one, with no error buzz) and the
   result say "Bei imebadilika kuwa TZS 9,000. Dau lako halijauzwa — unaweza kuliuza kwa bei mpya.", the page asks the
   server once, and until the new price is drawn both looks say "Inapakia…" with no figure — never "Inauza…" under a
-  result that says nothing was sold — so one more tap sells at it (§0h points 38 to 44). Why nothing moves on a refusal:
+  result that says nothing was sold — so one more tap sells at it (§0h points 38 to 44; since A8h a moved price opens no
+  result, its toast alone, at once and until it is read: point 55). Why nothing moves on a refusal:
   between the lock and the check there are five reads (the position twice, the market, the wallet, `cashOutValue`), the
   second lock, refusals and arithmetic, and no write — so on Postgres the lock's transaction has run only its two
   advisory locks and commits nothing, and on the memory store no object read under the lock has been touched. Gates:
@@ -1005,6 +1006,69 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   the large-text tiles (page zoom at 313, 278, 277 and 246 CSS px with a TZS 1,000,000 free ticket and a shut one on
   both hosts; Android's text-only scaling on a device that can draw it); (5) commit, push, and read the deploy back
   (`?dpl=`, the served stylesheet carrying both phone blocks).
+- **A8h — a sale's result is no longer taken away with its ticket, a moved price is told by its toast alone, and every
+  refused sale is as loud as the registry ranks it (drafted 2026-10-04 on `a2ce1762`, revised the same day after three
+  reviews; applied after A8d and A8g (`cb83746b`), its own commit, for every player, not flagged).** Two defects the A8c drive
+  measured in a real browser (2026-10-04, today's `/positions` on its open lens, sw, 390): (1) the result of a sale,
+  "Imeuzwa · TZS 3,600 …", was on screen for 388 ms (418 ms on a second sale): the Sell button drew it inside the
+  ticket's row, and the sale's own refresh took the sold ticket off the open lens with its row, button and result (the
+  page's 20-second poller would have too; Tiketi zangu's open lens is the same, and the question page's holder block
+  draws no Sell button for a ticket that is no longer open); (2) a moved price (`price_changed`) opened the result in its
+  failure dress (a red ✕, "HAIKUFANIKIWA KUTOA", a red "Funga") and the calm toast that names the new price waited behind
+  it (§F1). Now `submit()` hands a sale that went through, and a refused sale that is a hard block or a fault, to
+  `SellResultHost` (`sell-result-host.tsx`, new), which AppShell mounts for a signed-in visitor through the shell's lazy
+  module (`LazySellResultHost`, its own Suspense boundary, after the win celebration's): `handSellResult`
+  (`sell-result.tsx`, new) dispatches `50pick:sell-result` with an ack object, and the host takes the result and marks it
+  taken before the dispatch returns (the win celebration's handshake), then draws it until the player closes it (a sale
+  that went through also closes at §F2's shared 5 s, held while read, as before) or moves to another page (§0h point 53).
+  The result's markup moved, unchanged, into `SellResultModal`, the one definition the host and the button share; the
+  button draws it itself only when no host took it (the host's chunk never arrived, or a page without the shell), as
+  before A8h. Focus (point 54): the button remembers the control that opened its confirm (`openedFrom`) and hands it
+  over; the host reads the main region's controls around it while the ticket is still on the page (a sale's result is
+  handed over before the page is asked to refresh) and, when the result closes with focus nowhere or still in the
+  closing dialog, puts focus on that control if it is still there, else the first control after where it stood, else
+  the nearest before it (never a field), without scrolling; a refusal with no result gives focus back to the Sell button
+  once it can be pressed again. A refused sale is routed by the registry's rank of its reason (DESIGN_AUTHORITY
+  §F2/§F3; points 55 and 56): an `error` (not the player's ticket, a missing wallet, a pool short of its price), a
+  request that threw and a refusal the registry cannot rank keep the red toast and the ✗ result; a `warning` or an
+  `info` (a moved price, too many tries, selling shut, the ticket already sold or settled …) gets the calm `factual`
+  toast alone. Every refusal's toast stays until it is read (`durationMs: 0`) and the next sale, from any button on any
+  page, dismisses it (`lastRefusalToast`, one slot for the tab); its
+  figures are kept whole (`keepFiguresWhole`: a no-break space after "TZS"). A moved price keeps A8c's wait
+  ("Inapakia…", one refresh, then the new price). The sale, every figure, every word and every refusal reason are
+  unchanged, and no client arithmetic is added. Gates: `test:sell-price-guard` §7 (7.handed, 7.calls, 7.moved, 7.loud,
+  7.stays, 7.whole, 7.fallback, 7.ack, 7.host, 7.draw, 7.away and 7.focus; 7.loud runs the registry over every answer a
+  sale can be refused with) and 4.moved and 4.calm re-pinned in the open, with 37 new plants in
+  `red:sell-price-guard`; `test:journey-tickets` §12 re-pinned in the open (`SELL_DIALOGS` draws `SellResultModal`, the
+  result's markup pinned line for line in its own module as `SELL_RESULT_MARKUP`, 12.dialogs counting where the one
+  result is drawn and the look the host hands it, 12.words reading the result's module), its shared-result plant
+  re-pointed and 4 new; `test:sell-grace-truth` 6.result reads the whole figures in the result's module, its plant
+  re-pointed; `test:journey-shell` §12's table gains `LazySellResultHost` (eleven parts); `test:popup-fit`'s record
+  trades `sell-button.tsx` (no popup primitive of its own now) for `sell-result.tsx`, reviewed; `test:failure-reasons`
+  9e reads the result's module; `test:feedback-law` §1.1 scans the two new modules. **Reviewed before its commit**
+  (2026-10-04, a static adversarial review of the applied change: three lenses — runtime, what the player is told, the
+  guards — and every finding attacked by a refuter; 4 of 7 kept, two of them one defect), and fixed in the commit:
+  (1) when a result closed, the host took focus out of any open dialog, so a win seal that opened over the result lost
+  its focus to a control behind its scrim, where the next Enter could open another ticket's sale unseen — now focus
+  moves only from nowhere (`NOWHERE`: the closing result, or withheld content), the Sell button's own test; (2) each
+  Sell button kept its own last refusal, so a refusal on one ticket stayed beside another ticket's sale and refusals
+  across tickets (too many tries, closed selections) stacked — now one slot for the tab (`lastRefusalToast`), which any
+  next sale dismisses; (3) 7.focus read only the host's call sites — now `wayBackFrom`, `canTakeFocus` and
+  `giveFocusBack` whole, with `NOWHERE`, `NOT_THE_PAGE`, `FOCUSABLE` and `NEAR`, and 7.stays the slot at the module's
+  top level, 9 new plants (37 of A8h's). Two refuters held the per-button toast to be intended (a refusal on one ticket
+  stays true after another sells); the call here goes with the kept finding, since the toast never names its ticket
+  and §F6 coalesces a burst into the latest. The third refuted finding, BUSY's "unchanged" sentence, predates A8h
+  (point 56's ⚠️). **Served bytes for a classic
+  viewer:** a guest's page changes only by the name of the shell's lazy chunk (every viewer's script tags and client
+  references name it); a signed-in viewer's HTML gains one Suspense boundary's markers after the win celebration's (the
+  host draws nothing until a sale), its head the preload of the host's chunk, and its inline RSC data the part's client
+  reference; no markup, prop or class changes in any region `qa:classic-shell-parity` captures and no overlay appears,
+  so it names no entry (its header says why, as WP6c recorded for the other parts). **Owed:** typecheck and the battery,
+  read red by red against the same run on the A8dg head; the in-process reds; `red:timer-date`, `red:install-invite`,
+  `red:measure` and `red:ticker-honesty` each alone and detached; parity `--prove-red`, then `--compare`; a production
+  build read by `first-load-parts` (the host's chunk off every first load, its bytes recorded) and the served skeletons
+  compared (`shell-skeleton.py`, a null pair first); the lost-chunk drive with its control; the price-guard drive and the
+  result drive (`scratchpad/s6/a8h/drive/`, written for A8h and not yet run); and the tiles.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1324,6 +1388,10 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     error) and asks nothing. Overrule: say so (a confirm that reopens itself at the new price was not built: a money
     confirm should never open on its own; and the other refusals' toasts keep `danger` whatever their severity — routing
     them all by the registry, as the bet card does, is its own change, for every refusal).
+    ✅ Resolved by A8h (2026-10-04, points 55 and 56). A moved price opens no result, so decision 6 of A8c's brief is
+    overruled, after the A8c drive saw that result in its failure dress over a refusal one tap fixes, with the calm toast
+    held behind it; the toast now shows at once and stays until it is read. The routing left open above is done in the
+    same change: every refused sale is now as loud as the registry ranks its reason (point 56).
 44. **A refused price is recorded, outside the locks.** `cashOutPositionFromForm` writes one `market.position.sell_refused`
     audit row (category `BET`, the player as actor, the ticket as target; the reason, the figure sent, the server's
     `value` and `fee`) for a moved price, a short pool and a broken figure — fire-and-forget, once `cashOutPosition` has
@@ -1440,6 +1508,72 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     Overrule: say which — (a) `/positions` stacks too, like the question page (every ticket's Sell button there two
     lines and 56px tall below 640px); (b) the free note on `/positions` shows only from 640px (its big free rows then
     fit without it; the paid rows still need (a) or this); (c) the host asks for the wrap, as for the stack.
+53. **A sale's result is no longer taken away with its ticket (S6 A8h, for every player, both looks).** Measured in a
+    real browser (the A8c drive, 2026-10-04, today's `/positions` on its open lens, in Swahili at 390px): the result of a
+    sale, "Imeuzwa · TZS 3,600 …", was on screen for 388 ms (418 ms on a second sale) and then gone. The Sell button drew
+    it, inside the ticket's row, and the sale's own refresh took the sold ticket off the open lens, row, button and result
+    together (the page's 20-second poller would have done the same). Tiketi zangu's open lens loses it the same way, and
+    so does a question page: its holder block keeps the ticket's row but draws no Sell button once the ticket is no longer
+    open. Now the button hands the result to a host the shell mounts for a signed-in visitor (`SellResultHost`, loaded on
+    its own, never part of a page's first download; owed: measured on a production build), and the host keeps it until
+    the player closes it. A sale that went through still also closes by itself after DESIGN_AUTHORITY §F2's shared 5
+    seconds (held while the player points at it or tabs into it), as every money result does; a refused sale's result
+    never closes by itself. A move to another page closes it, as leaving the page did before (a phone's own Back among
+    them), and a result that arrives after the player has left the page now shows on the page they are on, where before
+    it was lost. Its words, figures and colours are unchanged, in both looks, and its toast still waits behind it and
+    shows once it closes (§F1). When no host takes the result (its code never arrived, or a page without the shell), the
+    button draws it itself, as before. Overrule: say which — the result goes back into the ticket's row (and leaves with
+    it); a sale that went through stays until closed too (no 5-second close: a departure from §F2 for the sale alone); or
+    the result follows the player to the next page, as the win celebration does.
+54. **When a result closes, or a refusal opens none, focus goes back to something still on the page (S6 A8h).** Before
+    A8h focus fell to the start of the page after every result of a sale: the Sell button is disabled while its sale is
+    in flight, so the confirm could not hand focus back to it as it closed, and the result handed it back to the confirm's
+    own button, gone by the time the result closed. Now, once a result closes, the shell's host puts focus on the Sell
+    button that opened the sale if it is still there and can take it; otherwise on the first control after where it
+    stood (the next ticket, or the list's pager); otherwise on the nearest one before it (the list's filters). A field is
+    never chosen (on a phone it would raise the keyboard), the page does not scroll, and when none of them can take it,
+    focus stays where it is. A refusal that opens no result (points 55 and 56) gives focus back to the Sell button once it
+    can be pressed again — for a moved price, once the new price is drawn, so the button's name says it. Focus is moved
+    only when it is nowhere (on the page itself, or in a dialog as it leaves), never out of another open dialog: a win
+    seal that opened over the result keeps it (the review before A8h's commit found the host taking it from there, onto
+    a control behind the seal's scrim). Overrule: say so, and focus is left where the dialogs leave it (the start of
+    the page, as before).
+55. **A moved price opens no result: its calm toast says it, at once, and stays until it is read (S6 A8h, for every
+    player, both looks; resolves point 43's departure).** Measured (the A8c drive, the same day): the refusal opened the
+    result in its failure dress (a red ✕, "HAIKUFANIKIWA KUTOA", a red "Funga") over a refusal the next tap fixes, and the
+    calm toast naming the new price waited behind it until it was closed (§F1 holds toasts behind a result). Now the toast
+    is the whole answer, "Imeshindikana kutoa · Bei imebadilika kuwa TZS 9,000. Dau lako halijauzwa — unaweza kuliuza kwa
+    bei mpya.", on screen the moment the confirm closes, since no result holds it, and it stays until the player dismisses
+    it or sells again, any ticket on any page (`durationMs: 0`, as DESIGN_AUTHORITY §F8 and the registry's toast channel keep a money refusal until
+    it is read; left to itself it would go after 4.5 seconds, where the result used to hold the sentence until it was
+    closed). Its figure is kept whole: "TZS" never ends a line without its number (A8f's promise for this sentence, which
+    only the toast draws now). The button says "Inapakia…" until the new price is drawn and then offers it, with one page
+    refresh, as A8c built it, and focus comes back to it (point 54). This is §F2's rule for a refusal the player can fix
+    (no popup, the `factual` toast), and it overrules decision 6 of A8c's brief (the result kept for a moved price).
+    Overrule: say so, and the result comes back for a moved price (in its failure dress, the toast behind it), or its
+    toast leaves after 4.5 seconds again.
+56. **Every other refused sale is as loud as the registry ranks its reason (S6 A8h, for every player, both looks).**
+    DESIGN_AUTHORITY §F2 gives a refusal the player can fix no popup and the calm `factual` toast, and a hard block or a
+    real fault the red `danger` toast, kept until it is dismissed on a money path, with a popup when it must be
+    acknowledged; §F3 takes the ranks from FAILURE-INVENTORY §0, which the failure registry (`failure-reasons.ts`) writes
+    down for each reason. Before A8h every refused sale opened the ✗ result over a red toast, whatever its rank (point 43
+    left the routing as its own change). Now the three the registry ranks `error` — a ticket that is not the player's, a
+    missing wallet, a pool short of its price (`cashout_pool_short`: our fault, and it sends the player to support) — keep
+    the ✗ result and the red toast, and so do a request that threw and any refusal the registry cannot rank. A request
+    that threw is reported as BUSY, which the registry ranks a warning for a request the server turned away; on this path
+    it only means the answer never came, so the sale's outcome is unknown (⚠️ its result still says the ticket is
+    unchanged, as before A8h, which that request cannot know: changing the sentence is a copy change, kept out of A8h).
+    The five the registry ranks `warning` (a moved price, too many tries, a bonus-funded bet, nothing on the other side, a
+    broken figure) and the five it ranks `info` (selling has shut, the ticket already sold, the question settled, not live,
+    or its selections closed) get the calm `factual` toast alone: no ✗ result, no red, no error buzz, and focus back on
+    the Sell button (point 54). Every refusal's toast now stays until it is read (§F2's "sticky on a money path", §F8,
+    the registry's toast channel), and the next sale dismisses it, from any Sell button on any page — one refusal toast
+    for the tab, the latest, never a stack (§F6; the review before A8h's commit found refusals across tickets piling up
+    while each button kept its own); behind a ✗ result it shows once the result is closed
+    (§F1), so a hard block is dismissed twice, which §F6 allows for a toast that is deliberately the secondary signal. No
+    word, reason or figure changes. Overrule: say which — every refusal opens the ✗ result again (red for all, as before
+    A8h); only the toasts are routed and the ✗ result stays for every refusal (as the bet card does); the toasts leave
+    after 4.5 seconds again; or a hard block's toast leaves with its result.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

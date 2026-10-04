@@ -114,11 +114,14 @@ const TW_CONFIG = "tailwind.config.ts";
 /** S6 WP10 — the Sell button and its confirm dialog, which draw the journey's look, and the question page, a classic host. */
 const SELL_BUTTON = "src/components/markets/sell-button.tsx";
 const SELL_MODAL = "src/components/markets/sell-confirm-modal.tsx";
+/** S6 A8h — the result a sale opens, one definition, and the shell's host that draws it (the button only when no host takes it). */
+const SELL_RESULT = "src/components/markets/sell-result.tsx";
+const SELL_HOST = "src/components/markets/sell-result-host.tsx";
 const MARKET_PAGE = "src/app/markets/[id]/page.tsx";
 /** The journey's own Tiketi files, each held whole. */
 const JOURNEY_FILES = [VIEW, CARD, SWITCH, RAIL, GHOST, RULE];
 const SOURCES = [PAGE, BAR, LOADING, ERROR, HISTORY, HISTORY_LOADING, HISTORY_ERROR, ...JOURNEY_FILES,
-  CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG, SELL_BUTTON, SELL_MODAL, MARKET_PAGE];
+  CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG, SELL_BUTTON, SELL_MODAL, SELL_RESULT, SELL_HOST, MARKET_PAGE];
 
 type World = {
   files: Readonly<Record<string, string>>;
@@ -664,7 +667,7 @@ const SELL_CLASSIC = [
   ');',
   '}',
 ].join("");
-/** The dialogs both looks share, line by line: today's two, with the journey's three words only under the look — and, since S6 A8f, the result asking for the money figures in its title whole (`wholeFigures`, `test:sell-grace-truth` §6), in both looks. */
+/** The dialogs both looks share, line by line: the confirm, with the journey's two words only under the look, and since S6 A8h the result a sale opens as `SellResultModal`, the button's own only when no host took the result (its markup is pinned in its module, below, `SELL_RESULT_MARKUP`). */
 const SELL_DIALOGS = [
   'const dialogs = (',
   '<>',
@@ -680,8 +683,21 @@ const SELL_DIALOGS = [
   'keepLabel={journey ? t.journey.sellKeep : undefined}',
   '/>',
   '{resultData && (',
-  '<OperationResultModal',
+  '<SellResultModal',
   'open={resultOpen}',
+  'resultData={resultData}',
+  'positionId={positionId}',
+  'journey={journey}',
+  'onClose={() => setResultOpen(false)}',
+  '/>',
+  ')}',
+  '</>',
+  ');',
+].join("");
+/** S6 A8h — the result a sale opens, as its one module draws it (`SellResultModal`, for the shell's host and the button's fallback alike): today's words and figures, moved unchanged out of the button, the journey's word only under the look, and the money figures in its title whole since S6 A8f (`wholeFigures`, `test:sell-grace-truth` §6). Read from its tag up to the tag's close. */
+const SELL_RESULT_MARKUP = [
+  '<OperationResultModal',
+  'open={open}',
   'variant={resultData.variant}',
   'eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}',
   'title={',
@@ -706,13 +722,9 @@ const SELL_DIALOGS = [
   '},',
   '] : undefined}',
   'primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}',
-  'onClose={() => setResultOpen(false)}',
+  'onClose={onClose}',
   'stripTone="brand"',
   'wholeFigures',
-  '/>',
-  ')}',
-  '</>',
-  ');',
 ].join("");
 /** The dialogs' three words: the journey's under the look, today's (the dialog's own defaults) without it. */
 const DIALOG_ARMS = ["titleLabel={journey ? t.journey.sellConfirmTitle : undefined}", "keepLabel={journey ? t.journey.sellKeep : undefined}",
@@ -788,15 +800,18 @@ const TOA = /(?:^|[^a-z])(?:ku)?toa(?:[^a-z]|$)/i;
 /** `journey ? a : b`, read as a journey reader is drawn it: `a`. */
 const JOURNEY_PAIR = /journey [?] (t[.][A-Za-z]+[.][A-Za-z0-9]+|undefined) : (t[.][A-Za-z]+[.][A-Za-z0-9]+|undefined)/g;
 
-/** The words a journey reader's sell path reads: the button before its classic markup, each `journey ? a : b` as `a`, and the confirm without the defaults the look replaces. */
+/** The words a journey reader's sell path reads: the button before its classic markup and, since S6 A8h, the result's own module, each `journey ? a : b` as `a`, and the confirm without the defaults the look replaces. */
 function sellPathWords(W: World): string[] {
   const button = text(W, SELL_BUTTON);
   const at = button.indexOf(SELL_CLASSIC_HEAD);
   const path = (at < 0 ? button : button.slice(0, at)).replace(JOURNEY_PAIR, (_m, a: string) => a);
+  // S6 A8h — the result a sale opens is drawn from its own module (by the shell's host, or by the button), read the same way;
+  // the host hands it the look the button handed over (12.dialogs counts that), so a journey reader is drawn `a`.
+  const result = text(W, SELL_RESULT).replace(JOURNEY_PAIR, (_m, a: string) => a);
   let modal = text(W, SELL_MODAL);
   if (button.includes(DIALOG_ARMS[0])) modal = modal.split(" ?? t.dialog.sellPositionNow").join("");
   if (button.includes(DIALOG_ARMS[1])) modal = modal.split(" ?? t.dialog.keepPosition").join("");
-  return [...new Set([...`${path}${LF}${modal}`.matchAll(WORD)].map((m) => `${m[1]}.${m[2]}`))].sort();
+  return [...new Set([...`${path}${LF}${result}${LF}${modal}`.matchAll(WORD)].map((m) => `${m[1]}.${m[2]}`))].sort();
 }
 
 function g12SellLook(W: World, ok: Ok) {
@@ -811,14 +826,29 @@ function g12SellLook(W: World, ok: Ok) {
       && askers.length === 0 && count(text(W, CARD), `look="journey"`) === 1,
     show({ hosts: hosts.map(([f, els]) => `${f} ×${els.length}`), askers }));
   const dialogs = squash(between(button, "const dialogs = (", "if (journey) {"));
-  ok("12.default · without the look the button draws today's markup: its classic return, from the variant to the end of the file, is today's line for line, and the dialogs it shares are today's two but for the journey's three words under the look",
-    squash(after(button, SELL_CLASSIC_HEAD)) === SELL_CLASSIC && count(button, SELL_CLASSIC_HEAD) === 1 && dialogs === SELL_DIALOGS,
-    squash(after(button, SELL_CLASSIC_HEAD)) === SELL_CLASSIC ? dialogs.slice(0, 200) : squash(after(button, SELL_CLASSIC_HEAD)).slice(0, 200));
-  ok("12.dialogs · one pair of dialogs for both looks, drawn by both returns: the journey's three words only under the look, and the confirm's own defaults are today's question and keep button",
-    DIALOG_ARMS.every((a) => count(button, a) === 1) && DIALOG_DEFAULTS.every((d) => count(modal, d) === 1)
-      && count(button, "{dialogs}") === 2 && count(button, "<SellConfirmModal") === 1 && count(button, "<OperationResultModal") === 1
+  // S6 A8h — and the result a sale opens, from its own module: today's words and figures, line for line.
+  const resultMarkup = squash(between(text(W, SELL_RESULT), "<OperationResultModal", "/>"));
+  ok("12.default · without the look the button draws today's markup: its classic return, from the variant to the end of the file, is today's line for line, and the dialogs it shares are today's two but for the journey's three words under the look; since S6 A8h the result a sale opens is drawn from its own module, today's words and figures line for line",
+    squash(after(button, SELL_CLASSIC_HEAD)) === SELL_CLASSIC && count(button, SELL_CLASSIC_HEAD) === 1 && dialogs === SELL_DIALOGS && resultMarkup === SELL_RESULT_MARKUP,
+    squash(after(button, SELL_CLASSIC_HEAD)) !== SELL_CLASSIC ? squash(after(button, SELL_CLASSIC_HEAD)).slice(0, 200) : dialogs !== SELL_DIALOGS ? dialogs.slice(0, 200) : resultMarkup.slice(0, 200));
+  // S6 A8h — the result a sale opens is one module's (`SellResultModal`): the shell's host draws it, and the button only when
+  // no host took the result. The journey's word under a refusal (the third arm) is written there, neither the button nor the
+  // host writes a result of its own, and the host hands the result the look the button handed it (12.words reads the
+  // result's module as a journey reader is drawn it, so it rests on that).
+  const result = text(W, SELL_RESULT);
+  const host = text(W, SELL_HOST);
+  const resultDrawn = {
+    button: count(button, "<SellResultModal"), host: count(host, "<SellResultModal"),
+    own: count(button, "<OperationResultModal") + count(host, "<OperationResultModal"), module: count(result, "<OperationResultModal"),
+    look: count(host, "journey={shown.journey}"),
+  };
+  ok("12.dialogs · one pair of dialogs for both looks, drawn by both returns: the journey's three words only under the look, and the confirm's own defaults are today's question and keep button; since S6 A8h the result is one module's, `SellResultModal`, which the shell's host draws in the look the button handed it and the button draws only as its fallback, the journey's word under a refusal written there",
+    DIALOG_ARMS.slice(0, 2).every((a) => count(button, a) === 1) && count(result, DIALOG_ARMS[2]) === 1 && count(button, DIALOG_ARMS[2]) === 0
+      && DIALOG_DEFAULTS.every((d) => count(modal, d) === 1)
+      && count(button, "{dialogs}") === 2 && count(button, "<SellConfirmModal") === 1
+      && resultDrawn.button === 1 && resultDrawn.host === 1 && resultDrawn.own === 0 && resultDrawn.module === 1 && resultDrawn.look === 1
       && count(modal, "t.dialog.sellPositionNow") === 1 && count(modal, "t.dialog.keepPosition") === 1,
-    show({ arms: DIALOG_ARMS.map((a) => count(button, a)), defaults: DIALOG_DEFAULTS.map((d) => count(modal, d)), dialogs: count(button, "{dialogs}") }));
+    show({ arms: [...DIALOG_ARMS.slice(0, 2).map((a) => count(button, a)), count(result, DIALOG_ARMS[2])], defaults: DIALOG_DEFAULTS.map((d) => count(modal, d)), dialogs: count(button, "{dialogs}"), resultDrawn }));
   const sale = fnBody(button, "const submit = ");
   ok("12.sale · the sale is one code path for both looks: in submit, one action call, one latch, one deferred toast, the notifications refresh once and the page refresh twice — the sale's own and, since S6 A8c, the one a refusal for a moved price asks, inside the refusal branch only, with the button waiting on it — the action, the latch, the toast and the notifications refresh nowhere else, and the journey's one button opens the same confirm",
     SALE.every((s, i) => count(sale, s) === (i === SALE_REFRESH ? 2 : 1)) && count(sale, PRICE_ASK) === 1 && count(button, PRICE_ASK) === 1
@@ -1018,7 +1048,13 @@ const holderLabel = swap(MARKET_PAGE, "alreadyClosed={sellShut}", "alreadyClosed
 const thirdHostAsks = withFile(PLANTED_HOST, () => [`import { SellButton } from "@/components/markets/sell-button";`,
   `export function PlantedHost() {`, `  return <SellButton positionId="x" stake={1} value={1} pricedFree look="journey" />;`, `}`].join(LF));
 const classicMoved = swap(SELL_BUTTON, "px-2 py-1 rounded-md", "px-3 py-1 rounded-md");
-const sharedMoved = swap(SELL_BUTTON, "eyebrow={resultData.variant === ", "eyebrow={resultData.variant !== ");
+const sharedMoved = swap(SELL_RESULT, "eyebrow={resultData.variant === ", "eyebrow={resultData.variant !== ");
+// S6 A8h — the result is one module's: a second definition of it in the button or in the host, its journey word for every
+// reader, or the host dropping the look the button handed it
+const resultInButton = swap(SELL_BUTTON, "<SellResultModal", "<OperationResultModal");
+const resultInHost = swap(SELL_HOST, "<SellResultModal", "<OperationResultModal");
+const resultWordForAll = swap(SELL_RESULT, ": journey ? t.journey.sellUnchanged : t.common.positionUnchanged", ": t.journey.sellUnchanged");
+const hostDropsLook = swap(SELL_HOST, "journey={shown.journey}", "journey={false}");
 const defaultWordMoved = swap(SELL_MODAL, "{titleLabel ?? t.dialog.sellPositionNow}", "{titleLabel ?? t.journey.sellConfirmTitle}");
 const keepUnlabelled = swap(SELL_BUTTON, "keepLabel={journey ? t.journey.sellKeep : undefined}", "keepLabel={undefined}");
 const secondConfirm = swap(SELL_BUTTON, "{t.journey.sellClosedBody}",
@@ -1120,7 +1156,11 @@ const plants: Plant[] = [
   { name: "the question page's holder block hands a clock label", expect: ["12.opt-in"], world: holderLabel, landed: changed(holderLabel, MARKET_PAGE) },
   { name: "a third host, found nowhere in a list, asks for the journey look", expect: ["12.opt-in"], world: thirdHostAsks, landed: changed(thirdHostAsks, PLANTED_HOST) },
   { name: "the classic free strip changes its padding", expect: ["12.default"], world: classicMoved, landed: changed(classicMoved, SELL_BUTTON) },
-  { name: "the shared result dialog changes for every reader", expect: ["12.default"], world: sharedMoved, landed: changed(sharedMoved, SELL_BUTTON) },
+  { name: "the shared result dialog changes for every reader", expect: ["12.default"], world: sharedMoved, landed: changed(sharedMoved, SELL_RESULT) },
+  { name: "the button writes the result's words a second time, its own result in place of the shared one (S6 A8h)", expect: ["12.dialogs"], world: resultInButton, landed: changed(resultInButton, SELL_BUTTON) },
+  { name: "the shell's host writes a result of its own: two definitions of one result (S6 A8h)", expect: ["12.dialogs"], world: resultInHost, landed: changed(resultInHost, SELL_HOST) },
+  { name: "the result's journey word is drawn for every reader (S6 A8h)", expect: ["12.dialogs"], world: resultWordForAll, landed: changed(resultWordForAll, SELL_RESULT) },
+  { name: "the host drops the look the button handed it: a journey reader is told today's line under a refusal (S6 A8h)", expect: ["12.dialogs"], world: hostDropsLook, landed: changed(hostDropsLook, SELL_HOST) },
   { name: "the confirm's own default becomes the journey's question (every reader would see it)", expect: ["12.dialogs"], world: defaultWordMoved, landed: changed(defaultWordMoved, SELL_MODAL) },
   { name: "the look stops handing the keep button its word (Hifadhi nafasi again)", expect: ["12.words", "12.dialogs"], world: keepUnlabelled, landed: changed(keepUnlabelled, SELL_BUTTON) },
   { name: "the look draws a confirm dialog of its own", expect: ["12.dialogs"], world: secondConfirm, landed: changed(secondConfirm, SELL_BUTTON) },

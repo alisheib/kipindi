@@ -28,6 +28,19 @@
  *      player to support; a broken figure's refusal renders the generic line in every language.
  *   §6 THE WIRING — this suite in predeploy, its red twin declared, the two-store suite declared through db-scratch with its
  *      own red, and the same cases run in memory by `test:cashout`.
+ *   §7 THE RESULT AND THE REFUSAL (S6 A8h) — the result of a sale outlives the row it was sold from, and a refused sale is
+ *      as loud as the failure registry ranks its reason: `submit()` hands a sale's result (a sale that went through, or a
+ *      refusal that is a hard block or a fault) to the shell's host first (`handSellResult`, `sell-result.tsx`), and the
+ *      button keeps its own result only as the fallback, for when no host took it (7.handed, 7.fallback, 7.calls); a
+ *      warning or an info, a moved price among them, gets the calm toast alone, since DESIGN_AUTHORITY §F2 gives a refusal
+ *      the player can fix no popup (7.moved, 7.loud, the registry run over every answer a sale can be refused with); every
+ *      refusal's toast stays until it is read, the next sale (from any button: one slot for the tab) dismisses it, and its
+ *      figures stay whole (7.stays, 7.whole);
+ *      the hand-off is answered before `dispatchEvent` returns, on an ack object, as the win celebration's is (7.ack);
+ *      AppShell mounts the host for a signed-in visitor through the shell's lazy module, and nothing else names its module
+ *      (7.host); the host draws the result as it was handed and nothing before (7.draw), closes it on another page
+ *      (7.away), and when it closes focus goes back near the control that opened the sale, never to a field and never out
+ *      of another open dialog, its helpers read whole, as it does after a refusal with no result (7.focus).
  *
  * What this suite cannot see, and what does: the money itself moving or not is `test:cashout-price-guard` (the real
  * money path on the memory store and on a scratch Postgres), whose every "nothing moved" is paired with a sale that moves
@@ -47,7 +60,7 @@ import { decomment } from "./lib/decomment.mts";
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 process.env.MARKET_SCHEDULER ??= "false";
 const { readExpectedSaleValue } = await import("../src/lib/server/market-service.ts");
-const { REASONS } = await import("../src/lib/failure-reasons.ts");
+const { REASONS, reasonForCode } = await import("../src/lib/failure-reasons.ts");
 const { errorCopy } = await import("../src/lib/error-copy.ts");
 const { dict } = await import("../src/lib/i18n-dict.ts");
 const { formatTzs, formatNumber } = await import("../src/lib/utils.ts");
@@ -141,7 +154,12 @@ const POSITIONS = "src/app/positions/page.tsx";
 const MARKET_PAGE = "src/app/markets/[id]/page.tsx";
 const CARD = "src/components/journey/tickets/ticket-card.tsx";
 const VIEW = "src/components/journey/tickets/tickets-view.tsx";
-const SOURCES = [SVC, ACTIONS, BUTTON, CASHOUT_SUITE, POSITIONS, MARKET_PAGE, CARD, VIEW];
+/** S6 A8h — the result of a sale (its one definition and the hand-off), the shell's host that draws it, and the shell that mounts the host. */
+const RESULT = "src/components/markets/sell-result.tsx";
+const HOST = "src/components/markets/sell-result-host.tsx";
+const SHELL = "src/components/layout/app-shell.tsx";
+const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+const SOURCES = [SVC, ACTIONS, BUTTON, CASHOUT_SUITE, POSITIONS, MARKET_PAGE, CARD, VIEW, RESULT, HOST, SHELL, SHELL_LAZY];
 const REGISTRY = "src/lib/failure-reasons.ts";
 
 function walkSrc(dir: string, out: string[] = []): string[] {
@@ -156,6 +174,8 @@ function walkSrc(dir: string, out: string[] = []): string[] {
 const SRC_FILES = walkSrc("src");
 const otherNamers = (token: string) => SRC_FILES.filter((f) => !SOURCES.includes(f) && decomment(read(f)).includes(`"${token}"`));
 const OTHER_NAMERS = { price_changed: otherNamers("price_changed"), cashout_pool_short: otherNamers("cashout_pool_short") };
+/** S6 A8h — every other src file that names the shell's host module, read once from disk: none may (7.host). */
+const HOST_NAMERS = SRC_FILES.filter((f) => !SOURCES.includes(f) && decomment(read(f)).includes("/sell-result-host"));
 
 type World = { files: Readonly<Record<string, string>>; dicts: Readonly<Record<string, Any>>; scripts: Readonly<Record<string, string>> };
 const WORLD: World = {
@@ -326,8 +346,10 @@ const ACTION_FROM_BUTTON = "r = await cashOutPositionAction(fd);";
 const REFUSAL_OPEN = "if (!r.ok) {";
 const MESSAGE = "const msg = errorCopy(t, r);";
 const MOVED = `const moved = r.reason === "price_changed";`;
-const TOAST_CALM = `toast({ title: t.toast.couldntCashOut, description: msg, variant: moved ? "factual" : "danger" });`;
-const SHOWN = "setResultOpen(true);";
+/** S6 A8h — every refused sale's toast: `factual` unless the refusal is a fault (§7.loud), kept until it is read, its figures whole. */
+const TOAST_CALM = 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: fault ? "danger" : "factual", durationMs: 0 });';
+/** S6 A8h — a refused sale shows its result only when it is a hard block or a fault (§7). */
+const REFUSAL_SHOWN = 'if (fault) showResult({ variant: "danger", value: value, net, error: msg });';
 const REFRESH = `window.dispatchEvent(new Event("50pick:refresh"));`;
 const PRICE_ASK = `if (moved) { setRepricing(true); ${REFRESH} }`;
 const STATE = "const [repricing, setRepricing] = useState(false);";
@@ -354,12 +376,12 @@ function g4Client(W: World, ok: Ok) {
       && between(button, "const dialogs = (", "if (journey) {").includes("onConfirm={submit}") && count(button, "{dialogs}") === 2,
     show({ submit: count(button, "const submit = "), confirm: count(button, "onConfirm={submit}"), dialogs: count(button, "{dialogs}") }));
   const refusal = blockAt(submit, REFUSAL_OPEN);
-  const order = [MESSAGE, MOVED, TOAST_CALM, SHOWN, PRICE_ASK].map((x) => refusal.indexOf(x));
-  ok("4.moved · a refusal for a moved price asks the page for the server's new price once — inside the refusal branch, after the message (the registry's, with the figures) is shown — with the button waiting on it, and no other refusal does",
+  const order = [MESSAGE, MOVED, TOAST_CALM, PRICE_ASK, REFUSAL_SHOWN].map((x) => refusal.indexOf(x));
+  ok("4.moved · a refusal for a moved price asks the page for the server's new price once — inside the refusal branch, after the message (the registry's, with the figures) is toasted — with the button waiting on it, and no other refusal does; since S6 A8h a refused sale that is a fault shows its result after that ask (§7)",
     count(refusal, MOVED) === 1 && count(refusal, PRICE_ASK) === 1 && count(refusal, REFRESH) === 1 && count(button, PRICE_ASK) === 1
       && order.every((x, i) => x >= 0 && (i === 0 || order[i - 1] < x)) && order[4] < refusal.lastIndexOf("return;"),
     show({ order, ask: count(button, PRICE_ASK) }));
-  ok("4.calm · the moved price is a refusal the player fixes with one more tap, and their money did not move: its toast is `factual` (no red, no error buzz — DESIGN_AUTHORITY §F3), every other refusal keeps today's `danger`",
+  ok("4.calm · the moved price is a refusal the player fixes with one more tap, and their money did not move: its toast is `factual` (no red, no error buzz — DESIGN_AUTHORITY §F3); since S6 A8h every refused sale's toast is `factual` unless the refusal is a fault (7.loud), and stays until it is read (7.stays)",
     count(refusal, TOAST_CALM) === 1 && count(refusal, "toast({") === 1 && !refusal.includes(`variant: "danger" }`), refusal.slice(0, 300));
   const classic = squash(button.slice(Math.max(0, button.indexOf(CLASSIC_HEAD))));
   const look = between(button, "if (journey) {", CLASSIC_HEAD);
@@ -449,6 +471,256 @@ function g6Wiring(W: World, ok: Ok) {
     count(suite, "await runPriceGuardCases(ok);") === 1 && count(suite, `from "./lib/cashout-price-guard-cases.mts"`) === 1, "");
 }
 
+/* ══ §7 · THE RESULT AND THE REFUSAL (S6 A8h) ══════════════════════════════════════════════════════════════════ */
+/*
+ * Measured in a real browser (the A8c drive, 2026-10-04, today's /positions on its open lens, sw, 390): a sale's result was on
+ * screen for 388 ms (the Sell button drew it, and the sale's own refresh took the sold ticket's row, the button and the
+ * result off the page), and a moved price opened the result in its failure dress, with the calm toast held behind it
+ * (toast.tsx §F1). Since A8h a sale's result is handed to the shell's host, and a refused sale is as loud as the failure
+ * registry ranks its reason (DESIGN_AUTHORITY §F2/§F3). VODACOM-PLAN §0i (A8h) and §0h points 53 to 56.
+ */
+const SHOW_HEAD = 'const showResult = (data: SellResultData) => {';
+/** The hand-off, handed the control that opened the sale; a host that took the result ends `showResult` here. */
+const HAND = 'if (handSellResult({ resultData: data, positionId, journey: look === "journey", from: openedFrom.current })) return;';
+/** `showResult`, squashed whole: the hand-off first, the button's own result only when no host took it. */
+const SHOW = `${SHOW_HEAD}${HAND}setResultData(data);setResultOpen(true);}`;
+const SUCCESS_SHOWN = 'showResult({ variant: "success", value: realisedValue, net: -realisedFee });';
+/** How loud a refused sale is: the reason the registry ranks (the service's own, else its code's), and whether it is a fault. */
+const SAID = 'const said = hasReason(r) ? r.reason : reasonForCode(r.code);';
+const FAULT = 'const fault = r.code === "BUSY" || said === null || REASONS[said].severity === "error";';
+/** A refused sale that is no fault gives focus back to the button once it can be pressed again (REFOCUS). */
+const REFOCUS_ARM = 'else refocus.current = true;';
+/** A new sale, from any button, dismisses the last refusal's toast, which stays until it is read. */
+const DISMISS = 'if (lastRefusalToast) { dismiss(lastRefusalToast); lastRefusalToast = null; }';
+/** The last refusal's toast: ONE slot for every Sell button in the tab, declared at the module's top level, before the component. */
+const SLOT = 'let lastRefusalToast: string | null = null;';
+const COMPONENT_HEAD = 'export function SellButton({';
+/** The button's way back after a refusal with no result, squashed whole: once it can be pressed, and only from nowhere. */
+const REFOCUS = [
+  'useEffect(() => {',
+  'if (pending || repricing || !refocus.current) return;',
+  'refocus.current = false;',
+  'const opener = openedFrom.current;',
+  'const now = document.activeElement;',
+  `if (now && now !== document.body && !now.closest("[aria-hidden='true'], [inert]")) return;`,
+  'if (!opener || !opener.isConnected || opener.matches(":disabled")) return;',
+  'opener.focus({ preventScroll: true });',
+  '}, [pending, repricing]);',
+].join("");
+/** The routing `submit()` writes (SAID, FAULT), run here on the registry this suite holds (a plant hands it another). */
+const isFault = (reasons: Record<string, Any>, r: { reason?: string; code?: string }) => {
+  const said = r.reason && Object.prototype.hasOwnProperty.call(reasons, r.reason) ? r.reason : reasonForCode(r.code);
+  return r.code === "BUSY" || said === null || reasons[said]?.severity === "error";
+};
+/**
+ * Every answer a sale can be refused with — the service's reasons, its rate limit, the form's broken figure, the request
+ * that threw before the refusal branch, a refusal nobody ranks — and whether it is a fault (the ✗ result and the red toast).
+ */
+const LOUDNESS: ReadonlyArray<readonly [string, { reason?: string; code?: string }, boolean]> = [
+  ["a ticket that is not the player's", { code: "INVALID", reason: "not_your_position" }, true],
+  ['a missing wallet', { code: "NOT_FOUND", reason: "wallet_missing" }, true],
+  ['a pool short of the price', { code: "CONFLICT", reason: "cashout_pool_short" }, true],
+  ['the request that threw (BUSY)', { code: "BUSY" }, true],
+  ['a refusal the registry cannot rank', { code: "INVALID" }, true],
+  ['a moved price', { code: "CONFLICT", reason: "price_changed" }, false],
+  ['too many tries', { code: "RATE_LIMITED" }, false],
+  ['a bonus-funded bet', { code: "INVALID", reason: "bonus_funded_no_exit" }, false],
+  ['nothing on the other side', { code: "INVALID", reason: "cashout_value_zero" }, false],
+  ['a broken figure', { code: "INVALID", reason: "unknown_failure" }, false],
+  ['the ticket no longer open', { code: "INVALID", reason: "position_not_open" }, false],
+  ['selling shut', { code: "SELECTION_CLOSED", reason: "exit_window_closed" }, false],
+  ['the question settled', { code: "INVALID", reason: "market_settled" }, false],
+  ['the question not live', { code: "NOT_FOUND", reason: "market_not_live" }, false],
+  ['its selections closed', { code: "SELECTION_CLOSED", reason: "selection_closed" }, false],
+];
+/** A reason the cash-out path returns, as the service writes it. */
+const EMITS = /reason: "([a-z_]+)"/g;
+/** The button's dialogs draw the one result from the button's own state: the fallback, squashed. */
+const FALLBACK = [
+  '{resultData && (',
+  '<SellResultModal',
+  'open={resultOpen}',
+  'resultData={resultData}',
+  'positionId={positionId}',
+  'journey={journey}',
+  'onClose={() => setResultOpen(false)}',
+  '/>',
+  ')}',
+].join("");
+/** The hand-off in the result's module, squashed whole: the one event, an ack object, the answer read after the dispatch. */
+const HAND_OFF = [
+  'export function handSellResult(handOff: Omit<SellResultHandOff, "ack">): boolean {',
+  'if (typeof window === "undefined") return false;',
+  'const ack = { accepted: false };',
+  'window.dispatchEvent(new CustomEvent<SellResultHandOff>(SELL_RESULT_EVENT, { detail: { ...handOff, ack } }));',
+  'return ack.accepted;',
+  '}',
+].join("");
+const EVENT_LINE = 'export const SELL_RESULT_EVENT = "50pick:sell-result";';
+/** The no-break space a refused sale's toast joins each figure with, and the helper that joins them. */
+const NO_BREAK_LINE = 'const NO_BREAK = String.fromCharCode(160);';
+const WHOLE = 'export const keepFiguresWhole = (sentence: string) => sentence.split("TZS ").join("TZS" + NO_BREAK);';
+/** The host's listener, squashed whole: it takes the result, marks the hand-off taken, then reads the way focus goes back. */
+const LISTENER = [
+  'useEffect(() => {',
+  'const onResult = (e: Event) => {',
+  'const handOff = (e as CustomEvent<SellResultHandOff>).detail;',
+  'if (!handOff) return;',
+  'setShown(handOff);',
+  'setOpen(true);',
+  'if (handOff.ack) handOff.ack.accepted = true;',
+  'way.current = wayBackFrom(handOff.from);',
+  '};',
+  'window.addEventListener(SELL_RESULT_EVENT, onResult);',
+  'return () => window.removeEventListener(SELL_RESULT_EVENT, onResult);',
+  '}, []);',
+].join("");
+/** When the result closes: focus back near the control that opened the sale, once. */
+const GIVE_BACK = [
+  'useEffect(() => {',
+  'if (open || !way.current) return;',
+  'const back = way.current;',
+  'way.current = null;',
+  'giveFocusBack(back);',
+  '}, [open]);',
+].join("");
+/** How the host draws the result, squashed whole: nothing until a result arrives, then the one result, open while it is open, in the look it was handed, with a close that closes it. */
+const DRAW = [
+  'if (!shown) return null;',
+  'return (',
+  '<SellResultModal',
+  'open={open}',
+  'resultData={shown.resultData}',
+  'positionId={shown.positionId}',
+  'journey={shown.journey}',
+  'onClose={() => setOpen(false)}',
+  '/>',
+  ');',
+].join("");
+/** Another page closes the result, and the way back read on the page left behind is dropped. */
+const AWAY = [
+  'useEffect(() => {',
+  'if (page.current === pathname) return;',
+  'page.current = pathname;',
+  'way.current = null;',
+  'setOpen(false);',
+  '}, [pathname]);',
+].join("");
+/** A field is never a place the host gives focus back to. */
+const FIELD_LINE = 'const FIELD = "input, select, textarea, [contenteditable]";';
+const REFUSE_FIELD = 'if (!el || !el.isConnected || el.closest(NOT_THE_PAGE) || el.matches(FIELD)) return false;';
+/**
+ * The host's way back, each helper squashed whole (the review of 2026-10-04 found only their names and call sites read):
+ * the controls it may choose and where it reads them, NEAR on each side, the candidates' tests, and the one test for
+ * "focus is nowhere" — never inside another open dialog, so a win seal opened over the result keeps its focus.
+ */
+const FOCUSABLE_LINE = `const FOCUSABLE = "a[href], button, summary, [tabindex]:not([tabindex='-1'])";`;
+const NOT_THE_PAGE_LINE = `const NOT_THE_PAGE = "[role='dialog'], [role='alertdialog'], [aria-hidden='true'], [inert]";`;
+const NOWHERE_LINE = `const NOWHERE = "[aria-hidden='true'], [inert]";`;
+const NEAR_LINE = "const NEAR = 24;";
+const WAY_BACK_FROM = [
+  "function wayBackFrom(from: HTMLElement | null): WayBack {",
+  'const region = document.getElementById("main-content");',
+  "if (!from || !region || !region.contains(from)) return { from, after: [], before: [] };",
+  "const all = Array.from(region.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest(NOT_THE_PAGE) && !el.matches(FIELD));",
+  "const at = all.indexOf(from);",
+  "if (at < 0) return { from, after: [], before: [] };",
+  "return { from, after: all.slice(at + 1, at + 1 + NEAR), before: all.slice(Math.max(0, at - NEAR), at).reverse() };",
+  "}",
+].join("");
+const CAN_TAKE_FOCUS = [
+  "function canTakeFocus(el: HTMLElement | null): el is HTMLElement {",
+  REFUSE_FIELD,
+  'if (el.matches(":disabled")) return false;',
+  "return el.getClientRects().length > 0;",
+  "}",
+].join("");
+const GIVE_FOCUS_BACK = [
+  "function giveFocusBack(way: WayBack) {",
+  "const now = document.activeElement;",
+  "if (now && now !== document.body && !now.closest(NOWHERE)) return;",
+  "const next = [way.from, ...way.after, ...way.before].find(canTakeFocus);",
+  "if (next) next.focus({ preventScroll: true });",
+  "}",
+].join("");
+const OPEN_HEAD = 'const openConfirm = (e?: { currentTarget: HTMLElement }) => {';
+const OPENED_FROM = 'openedFrom.current = e?.currentTarget ?? null;';
+/** The host's one line in the shell's lazy module, and its one mount in AppShell (signed in only). */
+const PART = 'export const LazySellResultHost = dynamic(() => import("@/components/markets/sell-result-host").then((m) => m.SellResultHost).catch(nothingIfLost));';
+const MOUNT = '{session && <Suspense fallback={null}><LazySellResultHost /></Suspense>}';
+
+function g7Result(I: Impl, W: World, ok: Ok) {
+  const button = text(W, BUTTON);
+  const submit = blockAt(button, SUBMIT_HEAD);
+  const refusal = blockAt(submit, REFUSAL_OPEN);
+  const showFn = blockAt(button, SHOW_HEAD);
+  const result = text(W, RESULT);
+  const host = text(W, HOST);
+  const shell = text(W, SHELL);
+  const lazy = text(W, SHELL_LAZY);
+  const svc = text(W, SVC);
+  ok("7.handed · a sale's result goes to the shell's host first: `showResult` hands it over (`handSellResult`, with the control that opened the sale) and sets the button's own result only when no host took it, the one place that result is set",
+    squash(showFn) === SHOW && count(button, SHOW_HEAD) === 1 && count(button, "handSellResult(") === 1 && count(button, "setResultOpen(true);") === 1
+      && count(button, "setResultData(") === 1 && button.indexOf(SHOW_HEAD) >= 0 && button.indexOf(SHOW_HEAD) < button.indexOf(SUBMIT_HEAD),
+    squash(showFn).slice(0, 300));
+  const rest = refusal ? submit.slice(submit.indexOf(refusal) + refusal.length) : "";
+  ok("7.calls · submit() shows a result twice and no more: a sale that went through, handed over before the page is asked to refresh (so the host reads the page while the ticket is on it), and a refused sale that is a hard block or a fault",
+    count(submit, "showResult(") === 2 && count(rest, SUCCESS_SHOWN) === 1 && rest.indexOf(SUCCESS_SHOWN) >= 0 && rest.indexOf(SUCCESS_SHOWN) < rest.indexOf(REFRESH)
+      && count(refusal, REFUSAL_SHOWN) === 1,
+    show({ shown: count(submit, "showResult("), success: rest.indexOf(SUCCESS_SHOWN), refresh: rest.indexOf(REFRESH) }));
+  const moved = LOUDNESS.find(([, r]) => r.reason === "price_changed");
+  ok("7.moved · a moved price opens no result: the refusal shows one only for a fault, and the registry ranks a moved price a warning, so its calm toast is the whole answer (DESIGN_AUTHORITY §F2), at once, with no result to hold it back (toast.tsx §F1); the ask is followed by the fault's result and, else, the way focus comes back",
+    squash(refusal).includes(`${PRICE_ASK}${REFUSAL_SHOWN}${REFOCUS_ARM}`) && count(refusal, "showResult(") === 1
+      && count(refusal, "setResultOpen(") === 0 && count(refusal, "setResultData(") === 0 && count(refusal, "handSellResult(") === 0
+      && !!moved && isFault(I.reasons, moved[1]) === false,
+    squash(refusal).slice(0, 400));
+  const misrouted = LOUDNESS.filter(([, r, f]) => isFault(I.reasons, r) !== f).map(([what]) => what);
+  const path = `${topLevel(svc, SVC_HEAD)}${topLevel(svc, FORM_HEAD)}`;
+  const emitted = [...new Set([...path.matchAll(EMITS)].map((m) => m[1]))];
+  const unranked = emitted.filter((x) => !LOUDNESS.some(([, r]) => r.reason === x));
+  const order = [MOVED, SAID, FAULT, TOAST_CALM, PRICE_ASK, REFUSAL_SHOWN].map((x) => refusal.indexOf(x));
+  ok("7.loud · a refused sale is as loud as the registry ranks its reason (DESIGN_AUTHORITY §F2/§F3, FAILURE-INVENTORY §0): the red toast and the ✗ result only for a hard block or a fault — the registry's error, a refusal it cannot rank, and BUSY, which on this path is only the request that threw (the cash-out path never answers with it) — and the calm toast alone for a warning or an info; run over every answer a sale can be refused with, every reason the cash-out path emits among them",
+    count(refusal, SAID) === 1 && count(refusal, FAULT) === 1 && count(button, FAULT) === 1 && order.every((x, i) => x >= 0 && (i === 0 || order[i - 1] < x))
+      && misrouted.length === 0 && emitted.length >= 10 && unranked.length === 0 && !path.includes(`"BUSY"`),
+    show({ misrouted, unranked, emitted: emitted.length, order }));
+  ok("7.stays · every refused sale's toast stays until it is read (DESIGN_AUTHORITY §F2, §F8: durationMs 0), and the next sale, from any button on any page, dismisses it before it starts — one slot for the tab, at the module's top level — so one answer stands, the latest, never a stack (§F6)",
+    TOAST_CALM.includes("durationMs: 0") && count(refusal, TOAST_CALM) === 1 && count(button, "lastRefusalToast = toast(") === 1
+      && count(submit, DISMISS) === 1 && submit.indexOf("inFlight.current = true;") < submit.indexOf(DISMISS) && submit.indexOf(DISMISS) < submit.indexOf("start(async")
+      && count(button, SLOT) === 1 && button.includes(`${LF}${SLOT}`) && button.indexOf(SLOT) < button.indexOf(COMPONENT_HEAD) && count(button, COMPONENT_HEAD) === 1,
+    show({ dismiss: count(submit, DISMISS), toast: count(refusal, TOAST_CALM), slot: count(button, SLOT), topLevel: button.includes(`${LF}${SLOT}`), beforeComponent: button.indexOf(SLOT) < button.indexOf(COMPONENT_HEAD) }));
+  ok("7.whole · a refused sale's toast keeps each money figure whole: its sentence goes through keepFiguresWhole, which joins TZS to its number with a no-break space (a toast draws plain text; S6 A8f's promise for the moved price's sentence, which only the toast draws since A8h)",
+    TOAST_CALM.includes("description: keepFiguresWhole(msg)") && count(refusal, "keepFiguresWhole(msg)") === 1 && count(result, NO_BREAK_LINE) === 1 && count(result, WHOLE) === 1,
+    show({ helper: count(result, WHOLE), space: count(result, NO_BREAK_LINE) }));
+  const dialogs = squash(between(button, "const dialogs = (", "if (journey) {"));
+  ok("7.fallback · the button keeps its own result only as the fallback: its dialogs draw the one definition (`SellResultModal`) from the button's own state, which only `showResult` sets once no host took the result, and the button writes no result of its own",
+    count(dialogs, FALLBACK) === 1 && count(button, "<SellResultModal") === 1 && count(button, "<OperationResultModal") === 0
+      && count(result, "<OperationResultModal") === 1 && count(result, "export function SellResultModal(") === 1,
+    show({ fallback: count(dialogs, FALLBACK), own: count(button, "<OperationResultModal"), module: count(result, "<OperationResultModal") }));
+  ok("7.ack · the hand-off is answered before it returns: `handSellResult` dispatches the one event with an ack object and returns what the host set on it, and the host's listener takes the result, then marks it taken: the win celebration's handshake (dispatchEvent runs every listener before it returns)",
+    count(squash(result), HAND_OFF) === 1 && count(result, EVENT_LINE) === 1 && count(result, "SELL_RESULT_EVENT") === 2
+      && count(squash(host), LISTENER) === 1 && count(host, "accepted = true") === 1,
+    show({ handOff: count(squash(result), HAND_OFF), listener: count(squash(host), LISTENER) }));
+  const fromModule = shell.split(";").filter((stmt) => stmt.includes(`from "./shell-lazy"`)).join(" ");
+  const loaders = [...Object.entries(W.files).filter(([rel, s]) => rel !== SHELL_LAZY && s.includes("/sell-result-host")).map(([rel]) => rel), ...HOST_NAMERS];
+  ok("7.host · the host outlives every row and costs no first download: AppShell mounts it once, for a signed-in visitor, in its own Suspense boundary, as a part of the shell's lazy module, whose one line loads it with next/dynamic (its server render on, a lost chunk left out); the host's module is client code, and nothing else names it",
+    count(lazy, PART) === 1 && count(squash(shell), MOUNT) === 1 && count(shell, "<LazySellResultHost") === 1 && fromModule.includes("LazySellResultHost")
+      && host.trimStart().startsWith(`"use client"`) && count(host, "export function SellResultHost()") === 1 && loaders.length === 0,
+    show({ part: count(lazy, PART), mount: count(squash(shell), MOUNT), imported: fromModule.includes("LazySellResultHost"), loaders }));
+  const drawAt = Math.max(0, squash(host).indexOf("if (!shown)"));
+  ok("7.draw · the host draws the result it took, as it was handed: nothing at all until a result arrives (so no served byte changes), then the one result, open while it is open, in the look the button handed over, with a close that closes it",
+    count(squash(host), DRAW) === 1, squash(host).slice(drawAt, drawAt + 300));
+  ok("7.away · a move to another page closes the result, as leaving the page did before A8h (a phone's own Back among them), and drops the way back read on the page left behind",
+    count(squash(host), AWAY) === 1 && count(host, "usePathname()") === 1 && count(host, `from "next/navigation"`) === 1,
+    show({ away: count(squash(host), AWAY) }));
+  ok("7.focus · when the result closes, focus goes back near the control that opened the sale, never to a field: the button remembers that control when its confirm opens and hands it over (7.handed), the host reads the page's controls around it when the result arrives (7.ack) and gives focus back once, when the result closes, and only from nowhere (never out of another open dialog, such as a win seal over the result) — to the opener if it can take it, else the nearest of 24 controls after it, else before it, in the page's main region, drawn, enabled, never a field, without scrolling; and a refused sale that opens no result gives focus back to the button once it can be pressed again",
+    count(blockAt(button, OPEN_HEAD), OPENED_FROM) === 1 && count(button, OPENED_FROM) === 1
+      && count(squash(host), GIVE_BACK) === 1 && count(host, "function giveFocusBack(") === 1 && count(host, FIELD_LINE) === 1 && count(host, REFUSE_FIELD) === 1
+      && count(squash(host), WAY_BACK_FROM) === 1 && count(squash(host), CAN_TAKE_FOCUS) === 1 && count(squash(host), GIVE_FOCUS_BACK) === 1
+      && count(host, FOCUSABLE_LINE) === 1 && count(host, NOT_THE_PAGE_LINE) === 1 && count(host, NOWHERE_LINE) === 1 && count(host, NEAR_LINE) === 1
+      && count(squash(button), REFOCUS) === 1 && count(refusal, REFOCUS_ARM) === 1 && count(button, "refocus.current = true") === 1,
+    show({ opened: count(button, OPENED_FROM), giveBack: count(squash(host), GIVE_BACK), wayBack: count(squash(host), WAY_BACK_FROM), canTake: count(squash(host), CAN_TAKE_FOCUS), give: count(squash(host), GIVE_FOCUS_BACK), nowhere: count(host, NOWHERE_LINE), refocus: count(squash(button), REFOCUS), arm: count(refusal, REFOCUS_ARM) }));
+}
+
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════ */
 function run(I: Impl, W: World, log: (l: string) => void): { failed: string[]; total: number } {
   const failed: string[] = [];
@@ -470,6 +742,8 @@ function run(I: Impl, W: World, log: (l: string) => void): { failed: string[]; t
   g5Words(I, W, ok);
   log(""); log("§6 · the wiring");
   g6Wiring(W, ok);
+  log(""); log("§7 · the result and the refusal (S6 A8h) — handed to the shell's host, the button's own only as the fallback, a refused sale as loud as the registry ranks it, its toast kept until read and whole, the host's mount, how it draws, and the way back");
+  g7Result(I, W, ok);
   return { failed, total };
 }
 
@@ -547,7 +821,7 @@ const sendsNet = swap(BUTTON, SEND, `fd.set("expectedValue", String(net));`);
 const sendsNothing = swap(BUTTON, SEND, "");
 const priceUnasked = swap(BUTTON, PRICE_ASK, "");
 const everyRefusalAsks = swap(BUTTON, PRICE_ASK, `setRepricing(true); ${REFRESH}`);
-const movedAlarmed = swap(BUTTON, TOAST_CALM, `toast({ title: t.toast.couldntCashOut, description: msg, variant: "danger" });`);
+const movedAlarmed = swap(BUTTON, TOAST_CALM, 'lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: "danger", durationMs: 0 });');
 const classicSaysSelling = swap(BUTTON, `${LF}            : repricing ? t.common.loading`, "");
 const journeyKeepsFigure = swap(BUTTON, JOURNEY_WAIT[3], "{lapsed ? null : (");
 const waitNeverEnds = swap(BUTTON, CLEAR, "");
@@ -567,6 +841,45 @@ const poolRowFixable: Impl["reasons"] = { ...REAL.reasons, cashout_pool_short: {
 // §6 — the wiring
 const unwired: World = { ...WORLD, scripts: { ...WORLD.scripts, predeploy: (WORLD.scripts.predeploy ?? "").split("npm run test:sell-price-guard && ").join("") } };
 const memoryDropped = swap(CASHOUT_SUITE, "await runPriceGuardCases(ok);", "");
+// §7 — the result and the refusal (S6 A8h)
+const resultNeverHanded = swap(BUTTON, HAND, "");
+const resultDrawnTwice = swap(BUTTON, HAND, 'handSellResult({ resultData: data, positionId, journey: look === "journey", from: openedFrom.current });');
+const handedAfterRefresh = withFile(BUTTON, (s) => s.split(`${SUCCESS_SHOWN}${LF}        ${REFRESH}`).join(`${REFRESH}${LF}        ${SUCCESS_SHOWN}`));
+const movedShowsResult = swap(BUTTON, REFUSAL_SHOWN, 'showResult({ variant: "danger", value: value, net, error: msg });');
+const everyRefusalFault = swap(BUTTON, FAULT, "const fault = true;");
+const busyCalm = swap(BUTTON, FAULT, FAULT.replace('r.code === "BUSY" || ', ""));
+const shutExitLoud: Impl["reasons"] = { ...REAL.reasons, exit_window_closed: { ...REAL.reasons.exit_window_closed, severity: "error" } };
+const toastLeaves = swap(BUTTON, TOAST_CALM, TOAST_CALM.replace(", durationMs: 0 });", " });"));
+const staleToastKept = swap(BUTTON, DISMISS, "");
+const figureSplits = swap(RESULT, WHOLE, 'export const keepFiguresWhole = (sentence: string) => sentence;');
+const toastRawFigure = swap(BUTTON, "description: keepFiguresWhole(msg)", "description: msg");
+const ownResultMarkup = swap(BUTTON, "<SellResultModal", "<OperationResultModal");
+const hostNeverAnswers = swap(HOST, "if (handOff.ack) handOff.ack.accepted = true;", "");
+const handOffAlwaysTaken = swap(RESULT, "return ack.accepted;", "return true;");
+const hostDeaf = swap(HOST, "window.addEventListener(SELL_RESULT_EVENT, onResult);", `window.addEventListener("50pick:celebrate", onResult);`);
+const hostUnmounted = swap(SHELL, MOUNT, "");
+const hostStatic = withFile(SHELL, (s) => `${s}${LF}import { SellResultHost } from "@/components/markets/sell-result-host";${LF}`);
+const hostNoServerRender = swap(SHELL_LAZY, PART, PART.replace(".catch(nothingIfLost));", ".catch(nothingIfLost), { ssr: false });"));
+const hostDrawsClosed = swap(HOST, "open={open}", "open={false}");
+const hostDropsLook = swap(HOST, "journey={shown.journey}", "journey={false}");
+const hostCannotClose = swap(HOST, "onClose={() => setOpen(false)}", "onClose={() => {}}");
+const hostServesMarkup = swap(HOST, "if (!shown) return null;", "if (!shown) return <div hidden />;");
+const resultFollowsPage = swap(HOST, `way.current = null;${LF}    setOpen(false);${LF}  }, [pathname]);`, `way.current = null;${LF}  }, [pathname]);`);
+const focusNeverGiven = swap(HOST, "giveFocusBack(back);", "");
+const fieldChosen = swap(HOST, REFUSE_FIELD, REFUSE_FIELD.replace(" || el.matches(FIELD)", ""));
+const openerForgotten = swap(BUTTON, OPENED_FROM, "");
+const refusalFocusLost = swap(BUTTON, REFOCUS_ARM, "");
+const refocusNever = swap(BUTTON, "opener.focus({ preventScroll: true });", "");
+// §7 — the review of 2026-10-04: the host's way back read whole, and one refusal slot for the tab
+const takenFromDialog = swap(HOST, "!now.closest(NOWHERE)", "!now.closest(NOT_THE_PAGE)");
+const openerOnly = swap(HOST, "[way.from, ...way.after, ...way.before]", "[way.from]");
+const focusScrolls = swap(HOST, "next.focus({ preventScroll: true })", "next.focus()");
+const wrongRegion = swap(HOST, 'getElementById("main-content")', 'getElementById("main")');
+const noNeighbours = swap(HOST, "return { from, after: all.slice(at + 1, at + 1 + NEAR), before: all.slice(Math.max(0, at - NEAR), at).reverse() };", "return { from, after: [], before: [] };");
+const hiddenChosen = swap(HOST, "return el.getClientRects().length > 0;", "return true;");
+const disabledChosen = swap(HOST, 'if (el.matches(":disabled")) return false;', "");
+const nearNone = swap(HOST, NEAR_LINE, "const NEAR = 0;");
+const slotPerButton = withFile(BUTTON, (s) => s.split(SLOT).join("").split("const refocus = useRef(false);").join(`${SLOT}${LF}  const refocus = useRef(false);`));
 
 type Plant = { name: string; expect: string[]; impl?: Partial<Impl>; world?: World; landed: boolean };
 const plants: Plant[] = [
@@ -599,7 +912,7 @@ const plants: Plant[] = [
   { name: "a refusal for a moved price never asks the page for the new price", expect: ["4.moved"], world: priceUnasked, landed: changed(priceUnasked, BUTTON) },
   { name: "every refusal asks the page to refresh and waits on it, not only a moved price", expect: ["4.moved"], world: everyRefusalAsks, landed: changed(everyRefusalAsks, BUTTON) },
   { name: "the moved price is toasted as an alarm (red, role=alert, the error buzz) for a refusal one tap fixes", expect: ["4.calm"], world: movedAlarmed, landed: changed(movedAlarmed, BUTTON) },
-  { name: "today's button says 'Inauza…' while the server's new price is fetched (under a result that says nothing was sold)", expect: ["4.waiting"], world: classicSaysSelling, landed: changed(classicSaysSelling, BUTTON) },
+  { name: "today's button says 'Inauza…' while the server's new price is fetched (beside a toast that says nothing was sold)", expect: ["4.waiting"], world: classicSaysSelling, landed: changed(classicSaysSelling, BUTTON) },
   { name: "the journey's button keeps the refused figure while the server's new price is fetched", expect: ["4.waiting"], world: journeyKeepsFigure, landed: changed(journeyKeepsFigure, BUTTON) },
   { name: "the wait never ends (nothing clears it once the refreshed page is drawn)", expect: ["4.waiting"], world: waitNeverEnds, landed: changed(waitNeverEnds, BUTTON) },
   { name: "/positions hands its buttons the stake's gross, not the price (every sale there refused for good)", expect: ["4.hosts.positions"], world: positionsPricesGross, landed: changed(positionsPricesGross, POSITIONS) },
@@ -616,6 +929,43 @@ const plants: Plant[] = [
   { name: "the short pool's row calls our fault one the player can fix", expect: ["5.row.pool"], impl: { reasons: poolRowFixable }, landed: poolRowFixable.cashout_pool_short.severity === "warning" },
   { name: "the suite drops out of predeploy", expect: ["6.wired"], world: unwired, landed: unwired.scripts.predeploy !== WORLD.scripts.predeploy },
   { name: "test:cashout stops running the cases in memory", expect: ["6.memory"], world: memoryDropped, landed: changed(memoryDropped, CASHOUT_SUITE) },
+  { name: "the button never hands its result over (it draws its own in the ticket's row, and a sold ticket's result leaves with the row again)", expect: ["7.handed"], world: resultNeverHanded, landed: changed(resultNeverHanded, BUTTON) },
+  { name: "the button hands its result over AND draws its own (two results for one sale)", expect: ["7.handed"], world: resultDrawnTwice, landed: changed(resultDrawnTwice, BUTTON) },
+  { name: "a sale's result is handed over after the refresh is asked (the host reads a page the sold ticket may already have left)", expect: ["7.calls"], world: handedAfterRefresh, landed: changed(handedAfterRefresh, BUTTON) },
+  { name: "every refused sale opens its result again, a moved price's too (painted as a failure, its calm toast held behind it)", expect: ["7.moved"], world: movedShowsResult, landed: changed(movedShowsResult, BUTTON) },
+  { name: "every refused sale is ranked a fault (the ✗ result and the red toast for selling shut, too many tries or a moved price)", expect: ["7.loud"], world: everyRefusalFault, landed: changed(everyRefusalFault, BUTTON) },
+  { name: "the request that threw is told calmly (an unknown outcome, with no result to acknowledge)", expect: ["7.loud"], world: busyCalm, landed: changed(busyCalm, BUTTON) },
+  { name: "the registry ranks a shut exit an error (its refusal turns red, with a result)", expect: ["7.loud"], impl: { reasons: shutExitLoud }, landed: shutExitLoud.exit_window_closed.severity === "error" },
+  { name: "a refused sale's toast leaves after 4.5 s again (a moved price, told by its toast alone, is gone before it is read)", expect: ["7.stays"], world: toastLeaves, landed: changed(toastLeaves, BUTTON) },
+  { name: "the next sale leaves the last refusal's toast up (a stale 'couldn't cash out' beside the sale's own answer)", expect: ["7.stays"], world: staleToastKept, landed: changed(staleToastKept, BUTTON) },
+  { name: "the toast's figures can split again (the helper hands the sentence back as it was)", expect: ["7.whole"], world: figureSplits, landed: changed(figureSplits, RESULT) },
+  { name: "the toast draws the raw sentence ('TZS' can end a line without its number)", expect: ["7.whole"], world: toastRawFigure, landed: changed(toastRawFigure, BUTTON) },
+  { name: "the button writes a result of its own again instead of the shared one", expect: ["7.fallback"], world: ownResultMarkup, landed: changed(ownResultMarkup, BUTTON) },
+  { name: "the host never answers the hand-off (every button draws its own result as well)", expect: ["7.ack"], world: hostNeverAnswers, landed: changed(hostNeverAnswers, HOST) },
+  { name: "the hand-off claims a host took the result whether or not one did (with no host, the result is lost)", expect: ["7.ack"], world: handOffAlwaysTaken, landed: changed(handOffAlwaysTaken, RESULT) },
+  { name: "the host listens to another event (nothing ever reaches it)", expect: ["7.ack"], world: hostDeaf, landed: changed(hostDeaf, HOST) },
+  { name: "the shell stops mounting the host (every result falls back to its row, and leaves with it)", expect: ["7.host"], world: hostUnmounted, landed: changed(hostUnmounted, SHELL) },
+  { name: "AppShell imports the host straight from its module (its code back in every page's first download)", expect: ["7.host"], world: hostStatic, landed: changed(hostStatic, SHELL) },
+  { name: "the host's part turns its server render off", expect: ["7.host"], world: hostNoServerRender, landed: changed(hostNoServerRender, SHELL_LAZY) },
+  { name: "the host takes the result and never shows it (answered, so no button draws one: every result lost)", expect: ["7.draw"], world: hostDrawsClosed, landed: changed(hostDrawsClosed, HOST) },
+  { name: "the host drops the look the button handed it (a journey reader is told today's line under a refusal)", expect: ["7.draw"], world: hostDropsLook, landed: changed(hostDropsLook, HOST) },
+  { name: "the host's close does nothing (a result that never closes, its scroll lock and focus trap stuck on)", expect: ["7.draw"], world: hostCannotClose, landed: changed(hostCannotClose, HOST) },
+  { name: "the host serves markup before any sale (a served byte for every signed-in viewer)", expect: ["7.draw"], world: hostServesMarkup, landed: changed(hostServesMarkup, HOST) },
+  { name: "a move to another page leaves the result up (its scrim and scroll lock over the page before, after a phone's Back)", expect: ["7.away"], world: resultFollowsPage, landed: changed(resultFollowsPage, HOST) },
+  { name: "focus is never given back when the result closes (the sold row gone, focus falls to the start of the page)", expect: ["7.focus"], world: focusNeverGiven, landed: changed(focusNeverGiven, HOST) },
+  { name: "the way back may choose a field (on a phone the keyboard rises as the result closes)", expect: ["7.focus"], world: fieldChosen, landed: changed(fieldChosen, HOST) },
+  { name: "the button forgets which control opened the sale (focus has nowhere near to go back to)", expect: ["7.focus"], world: openerForgotten, landed: changed(openerForgotten, BUTTON) },
+  { name: "a refused sale with no result leaves focus at the start of the page (the moved price's new figure is never announced)", expect: ["7.focus"], world: refusalFocusLost, landed: changed(refusalFocusLost, BUTTON) },
+  { name: "the button never takes focus back after a refusal with no result", expect: ["7.focus"], world: refocusNever, landed: changed(refocusNever, BUTTON) },
+  { name: "the host takes focus out of another open dialog when the result closes (a win seal over the result: focus lands behind its scrim, where the next Enter can open another ticket's sale unseen)", expect: ["7.focus"], world: takenFromDialog, landed: changed(takenFromDialog, HOST) },
+  { name: "the way back tries the opener alone (the sold row gone, focus falls to the start of the page)", expect: ["7.focus"], world: openerOnly, landed: changed(openerOnly, HOST) },
+  { name: "giving focus back scrolls the page (the list jumps as the result closes)", expect: ["7.focus"], world: focusScrolls, landed: changed(focusScrolls, HOST) },
+  { name: "the way back reads a region the shell does not draw (no neighbour is ever found)", expect: ["7.focus"], world: wrongRegion, landed: changed(wrongRegion, HOST) },
+  { name: "the way back remembers no neighbours (the sold row gone, focus falls to the start of the page)", expect: ["7.focus"], world: noNeighbours, landed: changed(noNeighbours, HOST) },
+  { name: "the way back may choose a control that is not drawn (focus is refused, and falls to the start of the page)", expect: ["7.focus"], world: hiddenChosen, landed: changed(hiddenChosen, HOST) },
+  { name: "the way back may choose a disabled control (focus is refused, and falls to the start of the page)", expect: ["7.focus"], world: disabledChosen, landed: changed(disabledChosen, HOST) },
+  { name: "the way back remembers no control on either side (NEAR 0)", expect: ["7.focus"], world: nearNone, landed: changed(nearNone, HOST) },
+  { name: "each Sell button keeps its own last refusal again (a refusal on one ticket stays beside another ticket's sale, and refusals across tickets stack)", expect: ["7.stays"], world: slotPerButton, landed: changed(slotPerButton, BUTTON) },
 ];
 
 let caught = 0;

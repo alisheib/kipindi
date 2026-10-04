@@ -57,11 +57,26 @@
  * line at every width. `test:sell-grace-truth` holds every host to the flag (2.priced), the withdrawal and the shut
  * verdict (3.classic), and the fit (§5).
  *
+ * ⭐ A SALE'S RESULT OUTLIVES THE ROW IT WAS SOLD FROM, AND A REFUSED SALE IS AS LOUD AS THE REGISTRY RANKS IT (S6 A8h,
+ * for every player, both looks). The result used to be drawn here, so it lived as long as this button's row: on
+ * /positions' open lens the sale's own refresh takes the sold ticket off the list, and the A8c drive measured the result
+ * on screen for 388 ms (the question page's holder block and Tiketi zangu draw no Sell button for a ticket that is no
+ * longer open, so they lose it alike). `submit()` now hands it to the shell's host (`showResult`, below;
+ * `sell-result.tsx`), which keeps it until the player closes it (a sale that went through also closes at
+ * DESIGN_AUTHORITY §F2's shared 5 s, held while it is read), and the button draws the same result itself only when no
+ * host took it: the host's code never arrived, or a page without the shell. A refused sale is answered as the failure
+ * registry ranks its reason (§F2/§F3): a hard block or a fault (the registry's `error`, a refusal it cannot rank, the
+ * request that threw) gets the red toast and the ✗ result; every other refusal, a moved price among them, gets the calm
+ * `factual` toast alone, and focus comes back to this button. Every refusal's toast stays until it is read, its figures
+ * whole, and the next sale, from any button on any page, dismisses it. `test:sell-price-guard` §7 holds the hand-off,
+ * the fallback, the routing, the host's mount, how it draws the result and how focus goes back.
+ *
  * ⭐ THE SALE CARRIES THE FIGURE THE PLAYER CONFIRMED (S6 A8c, for every player). `submit()` — the one sale both looks share —
  * sends `value`, the figure the confirm showed, as `expectedValue`, and the server sells at exactly that figure or not at
  * all. If the price has moved since this button drew it (a free window ending a moment before the tap, on a poll with a
  * paid window), the server refuses with its new figure (`price_changed`) and nothing moves: the toast — the calm
- * `factual` one, as a refusal one tap fixes is — and the result name the new price, the page is asked once for it, and
+ * `factual` one, as a refusal one tap fixes is — names the new price (alone since S6 A8h, and until it is read: no result
+ * opens, so nothing holds it back), the page is asked once for it, and
  * until it is drawn both looks say "Inapakia…" with no figure (`repricing`), so the next tap sells at it. A pool short of
  * the price (`cashout_pool_short`) is refused as unavailable, with today's red toast and no refresh: no page could show
  * what that sale would pay. `test:sell-price-guard` §4 holds the figure sent, the toast, the one refresh and the wait;
@@ -93,9 +108,10 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { cashOutPositionAction } from "@/app/markets/actions";
 import { SellConfirmModal } from "./sell-confirm-modal";
-import { OperationResultModal } from "./operation-result-modal";
+import { SellResultModal, handSellResult, keepFiguresWhole, type SellResultData } from "./sell-result";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
+import { REASONS, hasReason, reasonForCode } from "@/lib/failure-reasons";
 import { I } from "@/components/ui/glyphs";
 
 /**
@@ -124,6 +140,14 @@ const restoredOf = (positionId: string, serverNow: number | undefined) =>
   serverNow != null && drawnRenders.get(renderKey(positionId, serverNow)) === 0 ? serverNow : null;
 /** The button that asks the server about the restore on screen: one ask per restore, whatever each ticket's `serverNow`. */
 let restoreAsker: object | null = null;
+/**
+ * ⭐ S6 A8h — THE LAST REFUSED SALE'S TOAST, ONE FOR EVERY SELL BUTTON IN THIS TAB. A refusal's toast stays until it is
+ * read (DESIGN_AUTHORITY §F2, §F8), and its sentence never names the ticket, so the next sale, from any button on any
+ * page, dismisses it before it starts: one answer stands, the latest, never a stack (§F6: a burst coalesces). Kept per
+ * button, a refusal on one ticket stayed beside another ticket's sale, and refusals across tickets (too many tries, a
+ * question whose selections closed) piled up (the review of 2026-10-04). Never written on the server: only a sale writes it.
+ */
+let lastRefusalToast: string | null = null;
 
 export function SellButton({
   positionId,
@@ -246,11 +270,11 @@ export function SellButton({
   }, [closesAt, alreadyClosed]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
-  const [resultData, setResultData] = useState<{ variant: "success" | "danger"; value: number; net: number; error?: string } | null>(null);
+  const [resultData, setResultData] = useState<SellResultData | null>(null);
   const router = useRouter();
   // B-16 — the success toast rides the transition's falling edge (the wallet
   // figure it announces is then actually on screen); errors stay immediate.
-  const { toast, deferToast } = useDeferredToast(pending);
+  const { toast, deferToast, dismiss } = useDeferredToast(pending);
   const { t } = useT();
 
   // ⭐ S6 A8e — A RENDER BROUGHT BACK BY BACK OR FORWARD IS NO OFFER. A button's first render reads whether its render was
@@ -290,8 +314,12 @@ export function SellButton({
   const graceSec = Math.floor((graceRemainMs % 60_000) / 1000);
   const graceLabel = `${graceMin}:${String(graceSec).padStart(2, "0")}`;
 
-  const openConfirm = () => {
+  // ⭐ S6 A8h — the control that opened this sale's confirm, handed over with its result: when the result closes and the
+  // row this button sat in has gone with a sold ticket, the shell's host gives focus to a control near where it stood.
+  const openedFrom = useRef<HTMLElement | null>(null);
+  const openConfirm = (e?: { currentTarget: HTMLElement }) => {
     if (pending || closedNow) return;
+    openedFrom.current = e?.currentTarget ?? null;
     setConfirmOpen(true);
   };
 
@@ -318,15 +346,49 @@ export function SellButton({
   // ⭐ S6 A8c · WAITING FOR THE SERVER'S NEW PRICE. When a sale is refused because its price moved after this button drew
   // it, the page is asked once for the server's figure (in `submit`), and until that answer has been drawn the button
   // offers nothing: in either look it says "Inapakia…", draws no figure and has nothing to press. Without this it would
-  // read "Inauza…" under a result that says nothing was sold, beside the refused figure: the page's refresh starts inside
+  // read "Inauza…" beside a toast that says nothing was sold, over the refused figure: the page's refresh starts inside
   // the sale's transition, so `pending` stays true until the refreshed page is drawn. The wait ends exactly then, when
   // `pending` falls. It is false on the server's paint, so no served byte changes.
   const [repricing, setRepricing] = useState(false);
   useEffect(() => { if (!pending) setRepricing(false); }, [pending]);
 
+  // ⭐ S6 A8h · A REFUSAL THAT OPENS NO RESULT GIVES FOCUS BACK TO THIS BUTTON. The confirm closes while the sale is in
+  // flight, when this button is disabled, so the confirm cannot hand focus back to it and focus falls to the page; a
+  // result would take it, and only a hard block or a fault opens one now (`submit`, below). So once this button can be
+  // pressed again (the sale settled, and a moved price's new figure drawn), focus comes back to it if it is still nowhere
+  // (on the page itself, or in the confirm as it leaves), and its name then says what it offers. Nothing scrolls.
+  // The last refusal's toast stays until it is read, and the next sale, from any button, dismisses it (`lastRefusalToast`).
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (pending || repricing || !refocus.current) return;
+    refocus.current = false;
+    const opener = openedFrom.current;
+    const now = document.activeElement;
+    if (now && now !== document.body && !now.closest("[aria-hidden='true'], [inert]")) return;
+    if (!opener || !opener.isConnected || opener.matches(":disabled")) return;
+    opener.focus({ preventScroll: true });
+  }, [pending, repricing]);
+
+  // ⭐ S6 A8h · THE RESULT GOES TO THE SHELL'S HOST, WHICH OUTLIVES THIS ROW. A sale's result (a sale that went through,
+  // or a refused sale that is a hard block or a fault) is handed to `SellResultHost` first (`handSellResult`, with the
+  // control that opened the sale, so focus can go back near it), and the host keeps it on screen until the player
+  // closes it (a sale that went through also closes at DESIGN_AUTHORITY §F2's shared 5 s, held while it is read). Drawn
+  // here it lived only as long as this button's row: a sold ticket leaves /positions' open lens with the sale's own
+  // refresh, and the A8c drive measured its result on screen for 388 ms. Only when no host took it (the host's code
+  // never arrived, or a page without the shell) does this button draw the same result itself, as before A8h.
+  // `test:sell-price-guard` 7.handed pins this function whole.
+  const showResult = (data: SellResultData) => {
+    if (handSellResult({ resultData: data, positionId, journey: look === "journey", from: openedFrom.current })) return;
+    setResultData(data);
+    setResultOpen(true);
+  };
+
   const submit = () => {
     if (inFlight.current || pending) return;
     inFlight.current = true;
+    // ⭐ S6 A8h — a new sale, from any button, supersedes the last refusal's toast, which stays until it is read
+    // (`lastRefusalToast`, at the top of this module).
+    if (lastRefusalToast) { dismiss(lastRefusalToast); lastRefusalToast = null; }
     start(async () => {
       try {
         const fd = new FormData();
@@ -360,13 +422,25 @@ export function SellButton({
           // ⭐ S6 A8c — a price that moved after this button drew it (`price_changed`): the sentence names the server's new
           // figure (the refusal's `detail`, never the figure this button held). It is a refusal one more tap fixes, and the
           // player's money did not move, so its toast is the calm `factual` one with no error buzz (DESIGN_AUTHORITY §F3);
-          // every other refusal keeps today's. The page is then asked once for the server's price, as a sale asks, and the
-          // button waits on it (`repricing`), so the next tap sells at it.
+          // since S6 A8h every refusal is ranked so, below. The page is then asked once for the server's price, as a sale
+          // asks, and the button waits on it (`repricing`), so the next tap sells at it.
+          // ⭐ S6 A8h · A REFUSED SALE IS AS LOUD AS THE REGISTRY RANKS ITS REASON (DESIGN_AUTHORITY §F2/§F3, which take
+          // the ranks from FAILURE-INVENTORY §0, written for each reason in `failure-reasons.ts`). Only a hard block or a
+          // real fault gets the red toast and the ✗ result: the registry's `error` (a ticket that is not the player's, a
+          // missing wallet, a pool short of the price), a refusal it cannot rank, and BUSY, which on this path is only the
+          // request that threw above (the cash-out path never answers with it), whose outcome is unknown. Every other
+          // refusal, a warning or an info (a moved price, too many tries, selling shut, the ticket already sold or settled),
+          // gets the calm `factual` toast alone, since §F2 gives a refusal the player can fix no popup, and focus comes back
+          // to this button (`refocus`, above). Every refusal's toast stays until it is read (§F2, §F8: `durationMs: 0`),
+          // each figure in it whole (`keepFiguresWhole`), and the next sale, from any button, dismisses it. Before A8h every refusal opened
+          // the ✗ result over a red toast, a moved price's too, its calm toast held behind it (toast.tsx §F1).
           const moved = r.reason === "price_changed";
-          toast({ title: t.toast.couldntCashOut, description: msg, variant: moved ? "factual" : "danger" });
-          setResultData({ variant: "danger", value: value, net, error: msg });
-          setResultOpen(true);
+          const said = hasReason(r) ? r.reason : reasonForCode(r.code);
+          const fault = r.code === "BUSY" || said === null || REASONS[said].severity === "error";
+          lastRefusalToast = toast({ title: t.toast.couldntCashOut, description: keepFiguresWhole(msg), variant: fault ? "danger" : "factual", durationMs: 0 });
           if (moved) { setRepricing(true); window.dispatchEvent(new Event("50pick:refresh")); }
+          if (fault) showResult({ variant: "danger", value: value, net, error: msg });
+          else refocus.current = true;
           return;
         }
         const realisedValue = r.data!.value;
@@ -379,8 +453,9 @@ export function SellButton({
           variant: "success",
         });
         // net is stored as −fee so the result modal can surface the fee row.
-        setResultData({ variant: "success", value: realisedValue, net: -realisedFee });
-        setResultOpen(true);
+        // ⭐ S6 A8h — handed to the shell's host BEFORE the page is asked to refresh: the host reads the controls around
+        // this ticket while it is still on the page, for where focus goes when the result closes.
+        showResult({ variant: "success", value: realisedValue, net: -realisedFee });
         window.dispatchEvent(new Event("50pick:refresh"));
         window.dispatchEvent(new Event("50pick:refresh-notifications"));
         // B-16 — both SellButton hosts (/markets/[id], /positions) mount a
@@ -453,7 +528,9 @@ export function SellButton({
   // journey's look changes three of their words, each a ticket where today's says a position (S6 A7): the question, the
   // keep button, and the line under a sale that failed. Without the look they are today's words. Since S6 A8f the result
   // sets each money figure in its title as one amount (`wholeFigures`), and the confirm keeps its own figures whole and
-  // reflows its receive row (`test:sell-grace-truth` §6).
+  // reflows its receive row (`test:sell-grace-truth` §6). Since S6 A8h the result is `SellResultModal` (`sell-result.tsx`),
+  // the one place its words are written: the shell's host draws it, and this button only when no host took the result
+  // (`showResult`, above).
   const dialogs = (
     <>
       <SellConfirmModal
@@ -468,35 +545,12 @@ export function SellButton({
         keepLabel={journey ? t.journey.sellKeep : undefined}
       />
       {resultData && (
-        <OperationResultModal
+        <SellResultModal
           open={resultOpen}
-          variant={resultData.variant}
-          eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}
-          title={
-            resultData.variant === "success"
-              ? `${formatTzs(resultData.value)} ${t.common.returned}`
-              : (resultData.error ?? t.error.tryAgain)
-          }
-          subtitle={
-            resultData.variant === "success"
-              ? (resultData.net >= 0
-                  ? t.common.fullStakeReturned
-                  : t.common.stakeReturnedMinusFee)
-              : journey ? t.journey.sellUnchanged : t.common.positionUnchanged
-          }
-          details={resultData.variant === "success" ? [
-            { label: t.common.ticket, value: positionId },
-            { label: t.common.returned, value: formatTzs(resultData.value) },
-            {
-              label: t.common.earlyExitFee,
-              value: resultData.net >= 0 ? t.common.none : formatTzs(Math.abs(resultData.net)),
-              tone: "default",
-            },
-          ] : undefined}
-          primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
+          resultData={resultData}
+          positionId={positionId}
+          journey={journey}
           onClose={() => setResultOpen(false)}
-          stripTone="brand"
-          wholeFigures
         />
       )}
     </>

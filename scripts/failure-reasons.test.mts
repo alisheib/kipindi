@@ -1050,14 +1050,15 @@ console.log("\n§9d · every reason in the registry is emitted by something");
 // we cannot always support.
 //
 // ⭐ THE THREE FAILURE SURFACES ARE CHECKED TOGETHER because two of them were already right —
-// `sell-button.tsx` renders the reason as its TITLE and `updown-bet-blocked-modal.tsx` renders it
+// `sell-result.tsx` (the cash-out's result, out of `sell-button.tsx` since S6 A8h) renders the reason as its TITLE and
+// `updown-bet-blocked-modal.tsx` renders it
 // as its SUBTITLE. The bet card was the odd one out, which is exactly why nothing caught it: the
 // contract was honoured everywhere a reader was likely to look.
 console.log("\n§9e · the chosen reason actually reaches the player's screen");
 {
   const SURFACES = [
     ["src/components/markets/conviction-dial.tsx", "the poll bet card", /subtitle=\{[\s\S]{0,2600}?resultData\.error/],
-    ["src/components/markets/sell-button.tsx", "the cash-out button", /title=\{[\s\S]{0,400}?resultData\.error/],
+    ["src/components/markets/sell-result.tsx", "the cash-out result", /title=\{[\s\S]{0,400}?resultData\.error/],
     ["src/components/updown/updown-bet-blocked-modal.tsx", "the Up & Down blocked modal", /subtitle=\{blocked\?\.body\}/],
   ] as const;
   for (const [file, what, re] of SURFACES) {
