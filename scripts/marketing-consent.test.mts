@@ -1074,7 +1074,7 @@ if (!PROVE_RED) {
   assertConsentCard(REAL_CARD, "");
   console.log("\n── consent-01 · the held date, in the page's language (formatHeldUntil, fixed clock)\n");
   assertHeldDate(REAL_HELD, "");
-  console.log("\n── U33a · the consent-basis catalogue (pure; the wordings are G4 DRAFTS, and nothing in production reaches them)\n");
+  console.log("\n── U33a · the consent-basis catalogue (pure; its wordings are suggestions, and no basis writer records one an admin never saved)\n");
   assertConsentBasis(REAL_BASIS, "", ok);
   console.log(`\nmarketing-consent: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;

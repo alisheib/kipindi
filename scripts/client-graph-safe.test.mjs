@@ -184,6 +184,11 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // outstanding/settled split, progress, attention, the stop-reason words and the screen flags. It imports nothing at
     // runtime (types only, from the store); U37's composer and U47's live page will import it into the browser.
     "lib/marketing/campaign-status.ts",
+    // ⭐ ADDED 2026-10-04 (marketing U33w, decision M3). The marketing wordings' keys, suggestions and rules: the
+    // "use client" Marketing wordings card on /admin/system validates every box live with them, and the server's
+    // verified setter runs the same functions before it writes. It imports only consent-basis.ts, campaign-template.ts
+    // and contact-fields.ts, all pinned above; the persisted half lives in lib/server/marketing/wordings.ts and must stay there.
+    "lib/marketing/marketing-wordings.ts",
     // ⭐ ADDED 2026-10-03 (marketing validation batch 8). The staff screen's ONE reason and phone rules: the "use client"
     // staff forms check a role change's reason and an add-by-phone number in the browser with them, and the server
     // actions refuse with the same functions. It lives under lib/server for history and must stay pure: it imports only

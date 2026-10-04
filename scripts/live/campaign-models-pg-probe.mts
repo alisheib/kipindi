@@ -9,7 +9,7 @@
  * each fact against numbers written here by hand — an oracle independent of either twin.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database):
- *   npx tsx scripts/db-scratch.mts --reset --run bash -c 'DATABASE_URL="$VERIFY_DATABASE_URL" npx prisma migrate deploy && DATABASE_URL="$VERIFY_DATABASE_URL" npx tsx scripts/live/campaign-models-pg-probe.mts'
+ *   npm run db:probe-campaign-models   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
 import type { StoredSmsCampaign, SmsCampaignRecipientSeed, SmsCampaignTransitionPatch, StoredUser } from "../../src/lib/server/store.ts";
 

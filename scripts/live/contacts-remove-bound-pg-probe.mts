@@ -11,7 +11,7 @@
  *   C · an empty id list writes nothing.
  *
  * Run inside a scratch cluster only (it writes and deletes rows):
- *   npx tsx scripts/db-scratch.mts --reset --run bash -c 'export DATABASE_URL="$VERIFY_DATABASE_URL"; npx prisma migrate deploy && npx tsx scripts/live/contacts-remove-bound-pg-probe.mts'
+ *   npm run db:probe-contacts-remove-bound   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
 import type { StoredMarketingContact } from "../../src/lib/server/store.ts";
 

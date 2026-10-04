@@ -9,6 +9,33 @@
 ---
 
 
+## 2026-10-04 · The marketing consent wordings are approved by saving them on Admin → System, every version kept (decided under Ali's delegation; G4)
+
+**Authority.** Ali's owner rule of 2026-10-03 ("all changeable"), his rulings OD57 and OD58 (outreach under the Gaming
+Board licence), and his standing delegation of technical calls. G4 — approving the words — stays HIS act, performed by
+saving them on the card.
+
+**What changed.** The ten wordings marketing evidence is recorded under — the per-person sentences of the five bases
+(OWN_FORM, OWN_EVENT, AGENT_ROSTER, THIRD_PARTY and, new under OD57/OD58, LICENCE_OUTREACH), the three 18+ sentences, the
+bought-list notice and the campaign source line — are saved, validated and audited on Admin → System's
+"Marketing wordings" tab (`config.marketing_wordings_updated`). The code's wordings are SUGGESTIONS only: nothing is recorded,
+composed or recognised under a wording until an admin saves it, and an unsaved suggestion is saved only when its own
+"Approve and save this wording" box is ticked (or it is edited) — one Save never approves the rest. Each save APPENDS a
+version; earlier versions are never rewritten, so evidence recorded under them stays recognisable. The DRAFT flag in
+code (`CONSENT_BASIS_G4`) is removed.
+
+**What the rules keep true.** A consent basis must say the person agreed; the licence and bought-list bases must say
+plainly that the person did NOT agree ("never agreed", "has not agreed" or "did not agree") and claim agreement nowhere;
+no wording may hold a phone number or markup. The licence basis is never a person's consent: the import door refuses it,
+and it is recorded per LIST (U33b-L). Enforced by `npm run test:marketing-wordings` and `npm run test:marketing-consent`,
+proved by `npm run red:marketing-wordings` and `npm run red:marketing-consent`.
+
+**Nothing turns on.** No writer records a basis yet; the licence-outreach record stays closed until Ali opens it (spec
+§11, the owner's acts 1–5).
+⛔ Do not restore: a DRAFT flag in code, a default treated as approved, or one save that approves every suggestion.
+
+---
+
 ## 2026-10-03 · The Government Tax Report files the plan's model, coordinated with the Gaming Board (owner ruling)
 
 **Authority.** Ali, 2026-10-03, handing over the *"Government Tax Reporting System — Project Plan v1.0"*: *"create and

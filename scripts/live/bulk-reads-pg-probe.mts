@@ -11,7 +11,7 @@
  * read, element by element, against the single read it mirrors, and against answers written here by hand.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database):
- *   npx tsx scripts/db-scratch.mts --reset --run bash -c 'DATABASE_URL="$VERIFY_DATABASE_URL" npx prisma migrate deploy && DATABASE_URL="$VERIFY_DATABASE_URL" npx tsx scripts/live/bulk-reads-pg-probe.mts'
+ *   npm run db:probe-bulk-reads   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
 import type { StoredUser, StoredMarketingContact, MessagingKey } from "../../src/lib/server/store.ts";
 

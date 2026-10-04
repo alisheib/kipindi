@@ -19,6 +19,9 @@ import { toDialTarget, toHelplineDial, licenceProblem } from "@/lib/support-conf
 // than left to inference so the client can read `r.field` without an `in` guard.
 import { setPlatformConfig, type PlatformConfig } from "@/lib/server/platform-config";
 import { requireStaff } from "@/lib/server/rbac-guard";
+// U33w · the Marketing wordings card: the verified setter, the form's one reading, and the ONE spelling of each box's address.
+import { saveMarketingWordings, WORDINGS_REFUSAL_SENTENCE } from "@/lib/server/marketing/wordings";
+import { WORDING_KEYS, patchFromForm, wordingFieldName, type WordingKey } from "@/lib/marketing/marketing-wordings";
 
 // RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
 // domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
@@ -202,5 +205,56 @@ export async function setMaintenanceModeAction(formData: FormData) {
     return r;
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Maintenance update failed") };
+  }
+}
+
+/** What the Marketing wordings card's save answers: how many wordings got a new version — or a refusal that names the
+ *  first box to fix (`field`) and carries every problem of every wording, each the sentence shown under its own box. */
+export type MarketingWordingsActionResult =
+  | { ok: true; changed: number }
+  | (ActionFailure & { problems?: { [K in WordingKey]?: string[] } });
+
+/**
+ * U33w · SAVE THE MARKETING WORDINGS — the "Marketing wordings" card's ONE action (spec §5.1 · §6; OD57 · OD58 · S14).
+ *
+ * ⛔ `requireAdmin` FIRST, then the VERIFIED setter, `saveMarketingWordings`: it reads the request as hostile (text per
+ * wording with the version count it was edited from and, for a suggestion, its approval — a posted history, a version or
+ * an unknown field is not understood), runs every rule, refuses a suggestion nobody approved and a page that is out of
+ * date, appends a version only where the words changed, checks the whole record is a clean append, persists, reads the
+ * row back, and only then caches and writes the `config.marketing_wordings_updated` audit row. Every refusal writes
+ * nothing.
+ * ⭐ The author and the time are the server's: the session's officer, and its clock — nothing in the request names them.
+ * ⭐ DG-S-05 · a refusal about words names the first box to fix (`wordingFieldName`, the ONE spelling the card renders
+ * too) and carries every problem of every wording, so the card shows each one under its own box at once.
+ * ⭐ Three pages read these words, and each is revalidated: this one; the composer (the source line, once U37s stamps
+ * it into drafts); and the contacts page (a list's basis and its 18+ confirmation, U33b-L).
+ */
+export async function saveMarketingWordingsAction(formData: FormData): Promise<MarketingWordingsActionResult> {
+  const session = await requireAdmin();
+  /* ⛔ EACH NAME ONCE (`patchFromForm`, tested by `test:marketing-wordings` W14). A name posted twice is a request no card
+     sends, and reading either value would be a guess. Every other check — which names, what values — is the setter's, so
+     this action cannot drift from it. React's own `$ACTION_…` fields (a form posted without JavaScript) are not the
+     card's, and are left out; a file is passed on, for the setter to refuse. */
+  const form = patchFromForm(formData.entries());
+  if (!form.ok) return { ok: false as const, error: WORDINGS_REFUSAL_SENTENCE.not_understood };
+  try {
+    const res = await saveMarketingWordings(form.patch, session.userId);
+    if (!res.ok) {
+      const problems: { [K in WordingKey]?: string[] } = {};
+      for (const key of WORDING_KEYS) {
+        const found = res.problems[key];
+        if (found && found.length > 0) problems[key] = found.map((p) => p.sentence);
+      }
+      const first = WORDING_KEYS.find((key) => problems[key] !== undefined);
+      return first !== undefined
+        ? { ...fieldError(wordingFieldName(first), res.error), problems }
+        : { ok: false as const, error: res.error };
+    }
+    revalidatePath("/admin/system");
+    revalidatePath("/admin/campaigns/new");
+    revalidatePath("/admin/contacts");
+    return { ok: true as const, changed: res.changed.length };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Saving the wordings failed — nothing may have changed. Reload the page to check before trying again.") };
   }
 }

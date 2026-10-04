@@ -4,7 +4,10 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, AnnouncementForm } from "./system-client";
+import { MarketingWordingsForm, type WordingRowView } from "./marketing-wordings-form";
 import { getSupportConfig } from "@/lib/server/support-config";
+import { wordingHistory } from "@/lib/server/marketing/wordings";
+import { WORDING_KEYS } from "@/lib/marketing/marketing-wordings";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
@@ -16,7 +19,7 @@ import { retrySnapshot } from "@/lib/server/retry";
 import { redisHealth } from "@/lib/server/redis";
 import { listMarkets, getSettlementHealth, type SettlementHealth } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
-import { formatDateTime, formatTime, formatTzs } from "@/lib/utils";
+import { formatDateTime, formatDateTimeSafe, formatTime, formatTzs } from "@/lib/utils";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseEngineHealthFor, type HouseEngineHealthView } from "@/lib/server/house-bot/engine-health";
 import type { EngineRefusal } from "@/lib/server/house-bot/engine";
@@ -121,6 +124,32 @@ function bootstrapPhones(): string[] {
 }
 
 /**
+ * U33w · every marketing wording's saved versions for the card — the admin's NAME (never their id) and the save's time
+ * already in words, one user read per author, never per version. Read from this process's cache, so ⛔ it cannot fail
+ * the page: a name that cannot be read says "an admin", and a process that never loaded the record shows every wording
+ * as not saved, which is the truth there and the safe direction (nothing can be recorded from it).
+ */
+async function marketingWordingRows(): Promise<WordingRowView[]> {
+  const histories = WORDING_KEYS.map((key) => ({ key, versions: wordingHistory(key) }));
+  const names = new Map<string, string>();
+  for (const id of new Set(histories.flatMap((h) => h.versions.map((v) => v.savedBy)))) {
+    // ⛔ try/await, never `.catch` on the call: the in-memory store answers synchronously (the tax page's lesson).
+    let u: { displayName?: string | null } | null = null;
+    try { u = await db.user.findById(id); } catch { u = null; }
+    names.set(id, u?.displayName?.trim() || "an admin");
+  }
+  return histories.map(({ key, versions }) => ({
+    key,
+    versions: versions.map((v) => ({
+      v: v.v,
+      text: v.text,
+      savedAtLabel: formatDateTimeSafe(v.savedAt),
+      savedByName: names.get(v.savedBy) ?? "an admin",
+    })),
+  }));
+}
+
+/**
  * ⭐ THE SECTION RAIL (DG-S-08, 2026-08-31) — §K rule 7, and this page was chosen by
  * MEASUREMENT rather than by the plan's nomination.
  *
@@ -136,6 +165,9 @@ function bootstrapPhones(): string[] {
  * across 23 panels whose tallest is 384px — **12%** — reproducing 7a's recorded 3,327/401/12%.
  * Its bands are alternative TASKS (nobody reads the rate limiter *against* the timezone), and
  * nothing load-bearing goes behind a click — see the block above the rail.
+ * ⭐ U33w (2026-10-04) · approving the words evidence carries is a task of its own, so the Marketing wordings card is a
+ * THIRD tab (`?tab=wordings`), read only there — never a Platform card, which would also have made the figures recorded
+ * above untrue for the Platform tab.
  */
 type SystemProps = { searchParams: Promise<{ tab?: string }> };
 
@@ -154,7 +186,7 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   /* ⛔ The tab is READ, never trusted: an unknown `?tab=` falls back to the landing rather than
      rendering an empty page. §K rule 7f — the tab set's home is this page's own definition. */
   const sp = await searchParams;
-  const tab: "platform" | "diagnostics" = sp.tab === "diagnostics" ? "diagnostics" : "platform";
+  const tab: "platform" | "wordings" | "diagnostics" = sp.tab === "diagnostics" ? "diagnostics" : sp.tab === "wordings" ? "wordings" : "platform";
   const platform = await getPlatformConfig().catch(() => ({ timezone: "Africa/Dar_es_Salaam" } as Awaited<ReturnType<typeof getPlatformConfig>>));
   const chain = verifyChain();
   const session = await currentSession().catch(() => null);
@@ -212,6 +244,8 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
     rail: smsRailProblem(),
     thresholds: smsBalanceThresholds(),
   });
+  // U33w · the Marketing wordings card has its own tab (m7); its rows are read only there.
+  const wordingRows = tab === "wordings" ? await marketingWordingRows() : null;
 
   return (
     <>
@@ -431,6 +465,7 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
             value={tab}
             tabs={[
               { value: "platform", labelEn: "Platform", href: "/admin/system?tab=platform" },
+              { value: "wordings", labelEn: "Marketing wordings", href: "/admin/system?tab=wordings" },
               { value: "diagnostics", labelEn: "Diagnostics", href: "/admin/system?tab=diagnostics" },
             ]}
           />
@@ -502,6 +537,25 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
             config={getSupportConfig()}
           />
         </AdminCard>
+        </>)}
+
+        {tab === "wordings" && (<>
+        {/* ⭐ U33w · THE MARKETING WORDINGS (OD57 · OD58 · S14 — the owner rule of 2026-10-03, "admins can change
+            everything"), on a tab of their own (m7). The words that say why 50pick may message a person, the 18+
+            confirmations, the bought-list notice and the source line, each with its saved history. ⛔ A box nobody saved
+            holds a SUGGESTION and nothing is recorded under it (W1); a save appends a version and never rewrites one. The
+            `key` is every wording's version count, so a save that lands remounts the card from the row — the Support
+            contacts lesson on the Platform tab. */}
+        {wordingRows && (
+          <AdminCard title="Marketing wordings" sw="Maneno ya matangazo">
+            <p className="text-body-sm text-text-subtle mb-3">
+              The words that say why 50pick may message a person, and the 18+ confirmations staff tick. Nothing is
+              recorded with a wording until it is saved here — a box that was never saved holds a suggestion. From your
+              save, new records use these words; records already made keep the words they were made with.
+            </p>
+            <MarketingWordingsForm key={wordingRows.map((r) => r.versions.length).join(".")} rows={wordingRows} />
+          </AdminCard>
+        )}
         </>)}
 
         {tab === "diagnostics" && (<>

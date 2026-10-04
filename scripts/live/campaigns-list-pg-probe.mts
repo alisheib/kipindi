@@ -12,7 +12,7 @@
  * ⛔ Recipient states are set by raw SQL HERE, in a script (no DAL door settles a row before U43) — never in src.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database):
- *   npx tsx scripts/db-scratch.mts --reset --run bash -c 'DATABASE_URL="$VERIFY_DATABASE_URL" npx prisma migrate deploy && DATABASE_URL="$VERIFY_DATABASE_URL" npx tsx scripts/live/campaigns-list-pg-probe.mts'
+ *   npm run db:probe-campaigns-list   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
 import type { StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignTransitionPatch } from "../../src/lib/server/store.ts";
 

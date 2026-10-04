@@ -87,19 +87,23 @@ type Registered = {
 
 /** Where the section modules live, repo-relative, as `scriptFiles()` spells paths. */
 const SECTION_DIR = "scripts/contacts-import/";
+/** ⭐ A registry entry names its module `scripts/`-relative (`contacts-import/fields.mts`): the orphan gate
+ *  (`test:orphans`) follows only a LITERAL path in code, so a bare `fields.mts` left all six sections reading as scripts
+ *  nothing runs, while this runner ran them on every pass. */
+const SCRIPTS_DIR = "scripts/";
 
 /**
- * ⭐ THE REGISTRY — a fixed list of module FILE NAMES, in landing order. A unit adds ONE line here. A module on disk
+ * ⭐ THE REGISTRY — a fixed list of module paths (`scripts/`-relative), in landing order. A unit adds ONE line here. A module on disk
  * that is missing from this list fails the run; a module listed here that is missing from disk fails it too.
  */
 const REGISTRY: readonly Registered[] = [
-  { file: "fields.mts", owner: "U28a", covers: "src/lib/contacts/{contact-fields,csv-write,sample-sheet}.ts" },
-  { file: "decide.mts", owner: "U31", covers: "src/lib/contacts/import-decide.ts — the import decision" },
-  { file: "vcard.mts", owner: "U26", covers: "src/lib/contacts/vcard.ts — the vCard reader" },
-  { file: "csv.mts", owner: "U25", covers: "src/lib/contacts/import-parse.ts — the CSV reader" },
-  { file: "xlsx.mts", owner: "U27b", covers: "src/lib/server/contacts/{import-xlsx,import-xlsx-run}.ts — the XLSX reader and its officer wrapper" },
-  { file: "field-rules.mts", owner: "vb5", covers: "src/lib/contacts/contact-fields.ts — the shared field rules: phone runs, the email rule, the form's problems, the filter's tag reader" },
-  // U32  · commit.mts, preflight.mts
+  { file: "contacts-import/fields.mts", owner: "U28a", covers: "src/lib/contacts/{contact-fields,csv-write,sample-sheet}.ts" },
+  { file: "contacts-import/decide.mts", owner: "U31", covers: "src/lib/contacts/import-decide.ts — the import decision" },
+  { file: "contacts-import/vcard.mts", owner: "U26", covers: "src/lib/contacts/vcard.ts — the vCard reader" },
+  { file: "contacts-import/csv.mts", owner: "U25", covers: "src/lib/contacts/import-parse.ts — the CSV reader" },
+  { file: "contacts-import/xlsx.mts", owner: "U27b", covers: "src/lib/server/contacts/{import-xlsx,import-xlsx-run}.ts — the XLSX reader and its officer wrapper" },
+  { file: "contacts-import/field-rules.mts", owner: "vb5", covers: "src/lib/contacts/contact-fields.ts — the shared field rules: phone runs, the email rule, the form's problems, the filter's tag reader" },
+  // U32  · contacts-import/commit.mts, contacts-import/preflight.mts
 ];
 
 /* ══ THE HARNESS ════════════════════════════════════════════════════════════════════════════════ */
@@ -141,7 +145,7 @@ type Loaded = { readonly file: string; readonly sections: readonly AnySection[];
 /** Loads one module and picks out its section(s). A module that throws on load is a recorded problem, never a crash. */
 async function load(file: string): Promise<Loaded> {
   try {
-    const mod = (await import(pathToFileURL(join(REPO_ROOT, SECTION_DIR, file)).href)) as Record<string, unknown>;
+    const mod = (await import(pathToFileURL(join(REPO_ROOT, SCRIPTS_DIR, file)).href)) as Record<string, unknown>;
     const sections = [...new Set(Object.values(mod).filter(isSection))];
     return {
       file,
@@ -170,7 +174,7 @@ async function runSection(section: AnySection, impl: unknown, tag: string): Prom
 
 const onDisk = scriptFiles()
   .filter((p) => p.startsWith(SECTION_DIR))
-  .map((p) => p.slice(SECTION_DIR.length))
+  .map((p) => p.slice(SCRIPTS_DIR.length))
   .sort();
 const registeredFiles = REGISTRY.map((r) => r.file);
 const duplicateFiles = [...new Set(registeredFiles.filter((f, i) => registeredFiles.indexOf(f) !== i))];

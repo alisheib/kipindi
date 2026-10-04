@@ -9,7 +9,7 @@
  * written HERE BY HAND — an oracle independent of either twin.
  *
  * Run (through the heavy-node lock; it needs a migrated empty database):
- *   npx tsx scripts/db-scratch.mts --reset --run bash -c 'DATABASE_URL="$VERIFY_DATABASE_URL" npx prisma migrate deploy && DATABASE_URL="$VERIFY_DATABASE_URL" npx tsx scripts/live/contacts-audience-pg-probe.mts'
+ *   npm run db:probe-contacts-audience   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
 process.exitCode = 1;
 if (!process.env.DATABASE_URL) {
