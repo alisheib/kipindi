@@ -32,6 +32,12 @@ import { holdsDocumentNumber } from "@/lib/kyc-refusal";
 import type { ColumnMapping, FieldProblem } from "@/lib/contacts/contact-fields";
 import type { ImportChoice, ImportOutcome, RowOverrides } from "@/lib/contacts/import-decide";
 import type { ContactsFileFormat } from "@/lib/contacts/parsed-file";
+// U33a-L · THE ONE ERASURE MARK — the list-basis reads tell an emptied tombstone from a live book row by it, exactly as the
+// Prisma twin does (`test:dal-parity` §27). Its module is pure and imports nothing, so there is no cycle.
+import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+// U33a-L · the list basis's ONE rule set — this twin asks it before every read or write of the table, exactly as the
+// Prisma twin does (`test:dal-parity` §27.model). It takes only TYPES back from this file, so there is no cycle.
+import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";
 
 export type StoredUser = {
   id: string;
@@ -710,6 +716,90 @@ export type StoredContactListMember = {
 
 /** A DAL parameter, named for the same reason `MessagingKey` is. */
 export type ContactListKey = { listId: string; contactId: string };
+
+/* ═══ U33a-L · THE LIST BASIS — `ContactListBasis` (OD57 · OD58; docs/marketing-specs/U33a-U37c-OD58.md §4.2) ═══════════
+ * ⛔ NEVER A CONSENT. An officer recorded, for a whole list at one instant, why 50pick may message its members under its
+ * Gaming Board licence without their consent, that every member is 18 or older, and where the numbers came from. The
+ * consent ledger stays the person's own word, and nothing here is ever written to it (S1).
+ * ⛔ APPEND-ONLY, IN BOTH TWINS: recording again is a NEW row; `revoke` sets the three revocation fields ONCE and never
+ * moves them; there is no update member and no delete member (`test:dal-parity` §27.3 asserts their ABSENCE).
+ * ⭐ A LIST'S ONE STANDING IS ITS NEWEST RECORDING (`recordedAt desc, id desc`), revoked or not (the lead's ruling M1,
+ * 2026-10-04). Revoking the newest recording ends the list's coverage; an older recording NEVER comes back into force;
+ * recording again starts it anew. COVERAGE (S8): a list covers a number when the number's LIVE book row — never the
+ * erasure tombstone (S9) — is a member of it, was ADDED at or before its newest recording (compared as instants), and that
+ * recording is not revoked. Across a number's lists the newest such recording is the ref. ONE definition per twin —
+ * `bookStandings`, asked by both `standingFor` and `standingAmong` — so the single read and the bulk read cannot disagree.
+ * Every DAL signature below is NAMED: dal-parity's `region()` would read an inline literal as the body. */
+
+/** ONE RECORDED BASIS. ⛔ `wording` and `adultWording` are VERBATIM — the saved versions in force at the recording — and
+ *  are never re-rendered. ⛔ `proofNote` and `revokedReason` are officer free text, screened for phone numbers by the
+ *  service (§5.14), never for names — they are the one place a person could be typed in. */
+export type StoredContactListBasis = {
+  /** `lb_` and twenty lower-case letters, minted by the service, and both creates refuse any other
+   *  (`list-basis-model.ts`) — no digit run a log could read as a phone number, and an alphabet in which code-unit order
+   *  and every Postgres collation agree (the id breaks a `recordedAt` tie). */
+  id: string;
+  listId: string;
+  /** The catalogue key — today only "LICENCE_OUTREACH". TEXT, never a Postgres enum (a new kind would be a 55P04 two-step). */
+  basisKey: string;
+  wording: string;
+  wordingVersion: number;
+  adultWording: string;
+  adultVersion: number;
+  proofNote: string;
+  recordedBy: string;
+  recordedAt: string;
+  /** ⭐ NULL means IN FORCE. Set once, by `revoke`; ⛔ a second revoke must not move it. */
+  revokedAt: string | null;
+  revokedBy: string | null;
+  revokedReason: string | null;
+};
+/** What `create` takes — a basis is BORN UNREVOKED. ⛔ No revocation key: both twins write the three as null, so the only
+ *  way to revoke a basis is `revoke`, once. */
+export type ContactListBasisSeed = {
+  id: string;
+  listId: string;
+  basisKey: string;
+  wording: string;
+  wordingVersion: number;
+  adultWording: string;
+  adultVersion: number;
+  proofNote: string;
+  recordedBy: string;
+  recordedAt: string;
+};
+/** One revocation: who, why (screened by the service — never a phone number) and when. */
+export type ContactListBasisRevocation = {
+  id: string;
+  by: string;
+  reason: string;
+  at: string;
+};
+/** The basis that covers a number — ids and the recording instant only, never a number. */
+export type OutreachBasisCover = {
+  basisId: string;
+  listId: string;
+  recordedAt: string;
+};
+/** A number's book standing — the gate's `bookStanding` read (U33a-G): no book row · a LIVE row and its covering basis,
+ *  if any · the ERASED tombstone, which covers nothing whatever its memberships say (S9). */
+export type BookStanding = {
+  row: "none" | "live" | "erased";
+  cover: OutreachBasisCover | null;
+};
+/** One number's standing in a bulk answer — EVERY number asked about gets one, a number with no book row included. */
+export type BookStandingEntry = {
+  msisdn: string;
+  standing: BookStanding;
+};
+/** A list's coverage, counted in ONE pass over its members — the Lists card's "covers 412 of 420" (U33b-L). `live`: the
+ *  members whose book row is live (not the tombstone) and linked to NO account — a list basis never reaches an account's
+ *  number, which the player branch governs (S3). `covered`: those of them the list's newest recording covers — 0 when it
+ *  is revoked, or when the list was never recorded. */
+export type ListBasisCoverage = {
+  live: number;
+  covered: number;
+};
 
 /** ⛔ `id`, `msisdn`, `createdAt` and `createdBy` are NOT patchable: the key and the
  *  provenance of a row are not editable facts. A number that changed is a different person's
@@ -1592,6 +1682,8 @@ declare global {
     smsCampaignRecipients: Map<string, StoredSmsCampaignRecipient>;
     /** ⭐ THE @@unique([campaignId, msisdn]), FAKED — `${campaignId}|${msisdn}` -> recipient id. */
     recipientsByCampaignMsisdn: Map<string, string>;
+    /** U33a-L · the recorded list bases, by id. ⛔ Append-only: never deleted, revoked once. */
+    contactListBases: Map<string, StoredContactListBasis>;
   } | undefined;
 }
 
@@ -1633,6 +1725,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   smsCampaigns: new Map(),
   smsCampaignRecipients: new Map(),
   recipientsByCampaignMsisdn: new Map(),
+  contactListBases: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -1668,6 +1761,7 @@ if (!store.contactImportRows)  store.contactImportRows = new Map();
 if (!store.smsCampaigns)               store.smsCampaigns = new Map();
 if (!store.smsCampaignRecipients)      store.smsCampaignRecipients = new Map();
 if (!store.recipientsByCampaignMsisdn) store.recipientsByCampaignMsisdn = new Map();
+if (!store.contactListBases)           store.contactListBases = new Map();
 
 /* ═══ U24 · THE MEMORY TWIN'S ONE AUDIENCE TRANSLATION ═════════════════════════════════════
  * ⭐ The Prisma twin's `toPrismaContactWhere` predicate for predicate, so a count on the suites' backend is
@@ -1709,6 +1803,70 @@ function bulkKeys(keys: readonly string[], read: string): string[] {
     throw new Error(`${read}: at most ${BULK_KEYED_READ_MAX} keys a call (got ${unique.length}) — refused, never cut off`);
   }
   return unique;
+}
+
+/** U33a-L · NEWEST FIRST — the Prisma twin's `orderBy: [{ recordedAt: "desc" }, { id: "desc" }]`. ⛔ Compared as INSTANTS
+ *  (`Date.parse`), never as strings: two spellings of one millisecond are one instant. The tie breaks on the id in plain
+ *  code-unit order — both creates refuse any id but `lb_` and twenty lower-case letters (`list-basis-model.ts`), and in
+ *  that alphabet code-unit order and every Postgres collation agree. */
+function newestBasisFirst(a: StoredContactListBasis, b: StoredContactListBasis): number {
+  return Date.parse(b.recordedAt) - Date.parse(a.recordedAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+}
+
+/**
+ * U33a-L · THE ONE DEFINITION OF A NUMBER'S BOOK STANDING IN THIS TWIN — `standingFor` and `standingAmong` both ask it, so
+ * the single read and the bulk read cannot disagree, and the Prisma twin's `bookStandings` takes the same three steps in
+ * the same order (`test:dal-parity` §27). Keys in (already deduplicated by the caller, and checked by the rule set), one
+ * entry per key out — a number with no book row included — ordered by key.
+ *   1 · the book rows by number, through the faked unique index, exactly as `findByMsisdn` reads them;
+ *   2 · the memberships of the LIVE rows — ⛔ an erased tombstone's memberships are never read: it covers nothing (S9);
+ *   3 · EVERY recording of those lists, revoked ones included, newest first — and of each list only its FIRST, its NEWEST
+ *       recording, is its standing (M1): dropped when revoked, so revoking the newest ends the list's coverage and an older
+ *       recording never comes back. ⛔ `revokedAt === null`, STRICTLY — the reverse of the stop list's falsy lift (§17):
+ *       there a row refuses unless it was explicitly lifted, here a recording is in force only while it is DEFINITELY
+ *       unrevoked, so a row of any other shape covers nobody. Both read the safe direction.
+ * A live row's cover is the FIRST in-force recording in that order on a list it joined at or before the recording
+ * (`addedAt <= recordedAt`, as instants): the newest covering recording across its lists (S8). So recording again moves
+ * the ref, and a member added after a recording is not covered until the next one.
+ */
+function bookStandings(keys: readonly string[]): BookStandingEntry[] {
+  if (keys.length === 0) return [];
+  assertListBasisKeys("contactListBasis.standing", keys);
+  const rows = new Map<string, StoredMarketingContact>();
+  for (const msisdn of keys) {
+    const id = store.contactsByMsisdn.get(msisdn);
+    const c = id ? store.marketingContacts.get(id) : undefined;
+    if (c) rows.set(msisdn, c);
+  }
+  const liveIds = new Set<string>();
+  for (const c of rows.values()) if (c.sourceRef !== ERASURE_EVIDENCE) liveIds.add(c.id);
+  const joined = new Map<string, Map<string, number>>();
+  for (const m of store.contactListMembers.values()) {
+    if (!liveIds.has(m.contactId)) continue;
+    const lists = joined.get(m.contactId) ?? new Map<string, number>();
+    lists.set(m.listId, Date.parse(m.addedAt));
+    joined.set(m.contactId, lists);
+  }
+  const listIds = new Set<string>();
+  for (const lists of joined.values()) for (const listId of lists.keys()) listIds.add(listId);
+  const bases = Array.from(store.contactListBases.values())
+    .filter((b) => listIds.has(b.listId))
+    .sort(newestBasisFirst);
+  const newest = new Map<string, StoredContactListBasis>();
+  for (const b of bases) if (!newest.has(b.listId)) newest.set(b.listId, b);
+  const inForce = [...newest.values()].filter((b) => b.revokedAt === null);
+  return [...keys].sort().map((msisdn): BookStandingEntry => {
+    const row = rows.get(msisdn);
+    if (row === undefined) return { msisdn, standing: { row: "none", cover: null } };
+    if (row.sourceRef === ERASURE_EVIDENCE) return { msisdn, standing: { row: "erased", cover: null } };
+    const lists = joined.get(row.id);
+    const found = lists === undefined ? undefined : inForce.find((b) => {
+      const joinedAt = lists.get(b.listId);
+      return joinedAt !== undefined && joinedAt <= Date.parse(b.recordedAt);
+    });
+    const cover: OutreachBasisCover | null = found === undefined ? null : { basisId: found.id, listId: found.listId, recordedAt: found.recordedAt };
+    return { msisdn, standing: { row: "live", cover } };
+  });
 }
 
 /** U38a · THE MEMORY TWIN'S PLAYER ARM — the Prisma twin's `playerWalk` where, predicate for predicate. Every key is
@@ -3409,6 +3567,93 @@ const memoryDb = {
       Array.from(store.contactListMembers.values())
         .filter((m) => m.contactId === contactId)
         .sort((a, b) => b.addedAt.localeCompare(a.addedAt) || b.listId.localeCompare(a.listId)),
+  },
+
+  /* ═══ U33a-L · THE LIST BASIS (OD57 · OD58) ══════════════════════════════════════════════════════════════════════════
+   * ⭐ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not (M1): revoking it ends the list's coverage, an older
+   * recording never comes back, and recording again starts it anew — in `bookStandings` and in `coveredCount` alike.
+   * ⛔ APPEND-ONLY: `create` never upserts (a held id is refused with null — Postgres's P2002 in the other twin), `revoke`
+   * sets the revocation ONCE, and there is NO update member and NO delete member (`test:dal-parity` §27.3). ⛔ EVERY member
+   * asks the ONE rule set (`list-basis-model.ts`) before it reads or writes, as the Prisma twin does, so an input Postgres
+   * would refuse is refused here too. Rows come out as COPIES, as Postgres hands back fresh rows, and every instant is
+   * compared as an instant. `test:dal-parity` §27 holds the pairs; the Prisma half runs on a real Postgres, beside this
+   * twin, in `scripts/live/list-basis-pg-probe.mts`. ⛔ Nothing outside the data layer and its tests reads or writes these
+   * rows until U33a-G (the gate) and U33b-L (the Lists card, the ONE writer). */
+  contactListBasis: {
+    /** ⛔ NEVER AN UPSERT. The rule set first; then an id already held is refused with null; then a list that does not
+     *  exist is refused as the foreign key refuses it — the memory twin of P2003, carrying its code — in Postgres's own
+     *  order. Written by NAME, never a spread, so no key outside the seed can reach the row; born UNREVOKED. */
+    create: (row: ContactListBasisSeed): StoredContactListBasis | null => {
+      assertListBasisSeed(row);
+      if (store.contactListBases.has(row.id)) return null;
+      if (!store.contactLists.has(row.listId)) throw Object.assign(new Error(`foreign key: no ContactList ${row.listId} (memory twin of P2003) — nothing was written`), { code: "P2003" });
+      const stored: StoredContactListBasis = {
+        id: row.id,
+        listId: row.listId,
+        basisKey: row.basisKey,
+        wording: row.wording,
+        wordingVersion: row.wordingVersion,
+        adultWording: row.adultWording,
+        adultVersion: row.adultVersion,
+        proofNote: row.proofNote,
+        recordedBy: row.recordedBy,
+        recordedAt: new Date(row.recordedAt).toISOString(),
+        revokedAt: null,
+        revokedBy: null,
+        revokedReason: null,
+      };
+      store.contactListBases.set(row.id, stored);
+      return { ...stored };
+    },
+    /** ⭐ SET ONCE. An unknown id is null; a basis already revoked comes back AS IT IS — its first revocation is the
+     *  evidence and is never moved — and only an unrevoked one is written, all three fields in one step. */
+    revoke: (r: ContactListBasisRevocation): StoredContactListBasis | null => {
+      assertListBasisRevocation(r);
+      const row = store.contactListBases.get(r.id);
+      if (row === undefined) return null;
+      if (row.revokedAt !== null) return { ...row };
+      const next: StoredContactListBasis = { ...row, revokedAt: new Date(r.at).toISOString(), revokedBy: r.by, revokedReason: r.reason };
+      store.contactListBases.set(r.id, next);
+      return { ...next };
+    },
+    /** Every basis recorded on one list, revoked ones included, NEWEST FIRST (`recordedAt desc, id desc`) — the first is
+     *  the list's standing. */
+    listForList: (listId: string): StoredContactListBasis[] => {
+      assertListBasisKeys("contactListBasis.listForList", [listId]);
+      return Array.from(store.contactListBases.values())
+        .filter((b) => b.listId === listId)
+        .sort(newestBasisFirst)
+        .map((b) => ({ ...b }));
+    },
+    /** One number's book standing — the ONE definition, asked of one key. */
+    standingFor: (msisdn: string): BookStanding => bookStandings([msisdn])[0].standing,
+    /** §25's bound and shape: at most `BULK_KEYED_READ_MAX` distinct keys, REFUSED above — never cut off — duplicates
+     *  folded, an empty set answered with nothing; then the ONE definition, one entry per key. */
+    standingAmong: (msisdns: string[]): BookStandingEntry[] => {
+      const keys = bulkKeys(msisdns, "contactListBasis.standingAmong");
+      if (keys.length === 0) return [];
+      return bookStandings(keys);
+    },
+    /** The list's coverage in ONE pass over its members (`ListBasisCoverage`) — the Lists card's "covers 412 of 420"
+     *  (U33b-L). `live`: members whose book row is live and linked to no account; `covered`: those of them added at or
+     *  before the list's NEWEST recording — none when it is revoked (M1), or when the list was never recorded. ⛔ Coverage
+     *  through ANOTHER list's recording is that list's, not this one's. */
+    coveredCount: (listId: string): ListBasisCoverage => {
+      assertListBasisKeys("contactListBasis.coveredCount", [listId]);
+      const newest: StoredContactListBasis | undefined = Array.from(store.contactListBases.values())
+        .filter((b) => b.listId === listId)
+        .sort(newestBasisFirst)[0];
+      const bound = newest !== undefined && newest.revokedAt === null ? Date.parse(newest.recordedAt) : null;
+      const out: ListBasisCoverage = { live: 0, covered: 0 };
+      for (const m of store.contactListMembers.values()) {
+        if (m.listId !== listId) continue;
+        const c = store.marketingContacts.get(m.contactId);
+        if (c === undefined || c.userId !== null || c.sourceRef === ERASURE_EVIDENCE) continue;
+        out.live++;
+        if (bound !== null && Date.parse(m.addedAt) <= bound) out.covered++;
+      }
+      return out;
+    },
   },
 
   /* ═══ CONTACT IMPORT STAGING (marketing U29) ═══════════════════════════════════════════════

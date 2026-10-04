@@ -135,6 +135,7 @@
     "db:probe-campaigns-list": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/campaigns-list-pg-probe.mts",
     "db:probe-bulk-reads": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/bulk-reads-pg-probe.mts",
     "db:probe-contacts-remove-bound": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/contacts-remove-bound-pg-probe.mts",
+    "db:probe-list-basis": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/list-basis-pg-probe.mts",
     "ops:mint-qa-mobile": "node scripts/live/mint-qa-mobile.mjs",
     "qa:agent-drive": "node scripts/live/agent-programme-drive.mjs",
     "qa:agent-visual": "node scripts/live/agent-v1-visual.mjs",

@@ -349,6 +349,12 @@ for ADMIN and COMPLIANCE it is masked-at-rest and costs a click. That is faithfu
 prove to be more friction than the field is worth — **a cell to flip in `/admin/roles`, not a
 special case to code.**
 
+**Recorded 2026-10-04 (marketing U33a-L): `ContactListBasis` adds NO personal-data column.** A row is a contact
+LIST's basis: the list's id, the basis key, the saved wording and 18+ sentence it was recorded under (and their
+versions), the officer's proof note, staff ids, times, and a revocation. No person's number or name is a column, so no
+read cell governs it. ⚠️ The proof note and the revocation reason are officer free text, screened for phone numbers by
+the input check (U33b-L), not for names — keep it that way, or give them a cell.
+
 **Wired 2026-10-01 (marketing U39a): the SMS campaign estimate — a PLATFORM AGGREGATE, not a
 player's figure.** A campaign's cost, the account's SMS credit and what that credit covers are
 decided by `campaignMoneyVisible(role)` in `src/lib/server/marketing/estimate.ts`: `canView(role,

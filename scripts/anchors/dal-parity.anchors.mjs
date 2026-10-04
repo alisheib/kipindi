@@ -1403,4 +1403,317 @@ export const MUTATIONS = [
     to: "memoryDb.marketingContact.removeWhere({ ...w, msisdn: null, name: null, tags: null, ids: [...ids] })",
     expect: "23.bound.memory · ⛔ vb7 · the memory bound remove goes THROUGH removeWhere — the twin's one contact delete, with its cascade, freed index and SET NULL — over the audience narrowed to the given ids (∩ any ids it already holds), never deleting a row itself",
   },
+  /* ── §27 · the list basis — ContactListBasis (U33a-L, S10 2026-10-04; OD57 · OD58; round 2 after the review) ────── */
+  {
+    // ⭐ THE SPEC'S OWN RED (§9: the tombstone exclusion dropped in one twin). An erased number's book row answers "live" on
+    // Postgres, so U33a-G's licence path — a test attestation, or a list the tombstone still belongs to — reaches a number
+    // whose holder was erased, while every memory suite refuses it (S9).
+    name: "prisma-dal.ts — the standing read loses the erased tombstone's answer",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    if (row.sourceRef === ERASURE_EVIDENCE) return { msisdn, standing: { row: "erased", cover: null } };`,
+    to: `    // (the tombstone falls through to a live answer)`,
+    expect: "27.5 · ⭐ standingFor's FOUR answers, in both twins' ONE definition — no book row → none; the erased tombstone → erased with NO cover, asked BEFORE any cover (S9: its memberships cover nothing, and the Prisma twin never even reads them); a live row → live, with its cover or null — the mark read through the ONE binding (imported from erasure-mark, never a quoted literal)",
+  },
+  {
+    // …and in the twin every behavioural suite runs on.
+    name: "store.ts — the memory standing read loses the erased tombstone's answer",
+    file: "src/lib/server/store.ts",
+    from: `    if (row.sourceRef === ERASURE_EVIDENCE) return { msisdn, standing: { row: "erased", cover: null } };`,
+    to: `    // (the tombstone falls through to a live answer)`,
+    expect: "27.5 · ⭐ standingFor's FOUR answers, in both twins' ONE definition — no book row → none; the erased tombstone → erased with NO cover, asked BEFORE any cover (S9: its memberships cover nothing, and the Prisma twin never even reads them); a live row → live, with its cover or null — the mark read through the ONE binding (imported from erasure-mark, never a quoted literal)",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (§9: `<` written for `<=`). A member added in the very millisecond of the recording is left
+    // uncovered in memory only — the boundary every recording has, wrong on the twin the suites trust.
+    name: "store.ts — the memory standing read covers only members added strictly before the recording",
+    file: "src/lib/server/store.ts",
+    from: `      return joinedAt !== undefined && joinedAt <= Date.parse(b.recordedAt);`,
+    to: `      return joinedAt !== undefined && joinedAt < Date.parse(b.recordedAt);`,
+    expect: "27.6 · ⭐ THE BOUNDARY — a member added AT the recording is covered, one added a millisecond later is not: `<=` on INSTANTS in both twins (Prisma: the Dates' getTime(); memory: Date.parse on both sides, never string order), and coveredCount's bound is the same `<=` (Prisma in its one statement; memory Date.parse <=)",
+  },
+  {
+    // …and on Postgres.
+    name: "prisma-dal.ts — the standing read covers only members added strictly before the recording",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      return joinedAt !== undefined && joinedAt <= b.recordedAt.getTime();`,
+    to: `      return joinedAt !== undefined && joinedAt < b.recordedAt.getTime();`,
+    expect: "27.6 · ⭐ THE BOUNDARY — a member added AT the recording is covered, one added a millisecond later is not: `<=` on INSTANTS in both twins (Prisma: the Dates' getTime(); memory: Date.parse on both sides, never string order), and coveredCount's bound is the same `<=` (Prisma in its one statement; memory Date.parse <=)",
+  },
+  {
+    // The Lists card's "covers N of M" one short on production: the member added at the recording's instant uncounted.
+    // ⚠️ A quoted string, not a template: the anchor holds the SQL's own `${bound}`, which a template would evaluate.
+    name: "prisma-dal.ts — coveredCount's statement bounds the members with < instead of <=",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'm."addedAt" <= ${bound}::timestamptz))::int as covered',
+    to: 'm."addedAt" < ${bound}::timestamptz))::int as covered',
+    expect: "27.6 · ⭐ THE BOUNDARY — a member added AT the recording is covered, one added a millisecond later is not: `<=` on INSTANTS in both twins (Prisma: the Dates' getTime(); memory: Date.parse on both sides, never string order), and coveredCount's bound is the same `<=` (Prisma in its one statement; memory Date.parse <=)",
+  },
+  {
+    // ⭐ THE OLD RULE (the review's M1): revocation filtered BEFORE the newest is taken, so revoking a list's newest
+    // recording lets an OLDER one quietly come back into force — on Postgres only.
+    name: "prisma-dal.ts — the standing read filters revoked recordings before taking each list's newest (the old rule)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    where: { listId: { in: listIds } },`,
+    to: `    where: { listId: { in: listIds }, revokedAt: null },`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // …and the same old rule in memory.
+    name: "store.ts — the memory standing read filters revoked recordings before taking each list's newest (the old rule)",
+    file: "src/lib/server/store.ts",
+    from: `    .filter((b) => listIds.has(b.listId))`,
+    to: `    .filter((b) => listIds.has(b.listId) && b.revokedAt === null)`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // 🔴 THE EVIDENCE MOVED: without `revokedAt: null` in its where, a second revoke rewrites the first one's instant, its
+    // officer and its reason — on Postgres only.
+    name: "prisma-dal.ts — revoke's where loses revokedAt: null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id: r.id, revokedAt: null },`,
+    to: `        where: { id: r.id },`,
+    expect: "27.2.prisma · ⭐ revoke is ONE conditional updateMany — where { id: r.id, revokedAt: null } — writing all three revocation fields (the instant as a Date), then the row read back by id: an unknown id is null, and a second or a racing revoke matches nothing and hands back the FIRST revocation unmoved",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (§9: the ordering dropped). Postgres hands the recordings back in heap order, so "a list's newest
+    // recording" is whichever row it met first — a revoked newest could hide behind an older one, or the reverse.
+    name: "prisma-dal.ts — the standing read's recordings query loses its orderBy",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    select: { id: true, listId: true, recordedAt: true, revokedAt: true },
+    orderBy: [{ recordedAt: "desc" }, { id: "desc" }],`,
+    to: `    select: { id: true, listId: true, recordedAt: true, revokedAt: true },`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // Two recordings in one millisecond tie-broken by insertion order in memory and by id on Postgres: the twins name
+    // different newest recordings for the same list.
+    name: "store.ts — the memory newest-first order loses its id tiebreak",
+    file: "src/lib/server/store.ts",
+    from: `  return Date.parse(b.recordedAt) - Date.parse(a.recordedAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);`,
+    to: `  return Date.parse(b.recordedAt) - Date.parse(a.recordedAt);`,
+    expect: "27.4 · listForList is NEWEST FIRST in both twins — the Prisma where { listId } ordered recordedAt DESC then id DESC in its OWN text; the memory twin filtered to the list and sorted by newestBasisFirst, which compares the INSTANTS (Date.parse) descending, then the id descending — and hands back copies",
+  },
+  {
+    // The Lists card's history out of order on production alone. ⚠️ Four lines: coveredCount's findFirst begins with the
+    // same two, so the anchor runs on to listForList's own return to stay unique.
+    name: "prisma-dal.ts — listForList loses its id tiebreak",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { listId },
+        orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredContactListBasis);`,
+    to: `        where: { listId },
+        orderBy: { recordedAt: "desc" },
+      });
+      return rows.map(toStoredContactListBasis);`,
+    expect: "27.4 · listForList is NEWEST FIRST in both twins — the Prisma where { listId } ordered recordedAt DESC then id DESC in its OWN text; the memory twin filtered to the list and sorted by newestBasisFirst, which compares the INSTANTS (Date.parse) descending, then the id descending — and hands back copies",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (§9: standingAmong truncating at 2,000). The 2,001st number is silently dropped: the split
+    // answers for numbers nobody asked about and stays silent on the rest — on Postgres only.
+    name: "prisma-dal.ts — standingAmong cuts its keys at the bound instead of refusing",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const keys = bulkKeys(msisdns, "contactListBasis.standingAmong");`,
+    to: `      const keys = Array.from(new Set(msisdns)).slice(0, BULK_KEYED_READ_MAX);`,
+    expect: "27.8 · ⭐ standingAmong is §25's shape in both twins — its keys through bulkKeys (deduplicated, REFUSED above BULK_KEYED_READ_MAX, never cut off), an empty set answered with nothing BEFORE the definition is asked, then the ONE definition, which answers one entry per key, ordered by key; and standingFor asks the SAME definition of one key, so the two agree element by element by construction",
+  },
+  {
+    // …and in memory.
+    name: "store.ts — the memory standingAmong cuts its keys at the bound instead of refusing",
+    file: "src/lib/server/store.ts",
+    from: `      const keys = bulkKeys(msisdns, "contactListBasis.standingAmong");`,
+    to: `      const keys = Array.from(new Set(msisdns)).slice(0, BULK_KEYED_READ_MAX);`,
+    expect: "27.8 · ⭐ standingAmong is §25's shape in both twins — its keys through bulkKeys (deduplicated, REFUSED above BULK_KEYED_READ_MAX, never cut off), an empty set answered with nothing BEFORE the definition is asked, then the ONE definition, which answers one entry per key, ordered by key; and standingFor asks the SAME definition of one key, so the two agree element by element by construction",
+  },
+  {
+    // 🔴 A recording made twice under one id OVERWRITES the first in memory, while Postgres refuses the second — the
+    // evidence of the first recording gone on the suites' twin.
+    name: "store.ts — the memory create overwrites a held id",
+    file: "src/lib/server/store.ts",
+    from: `      if (store.contactListBases.has(row.id)) return null;`,
+    to: `      // (a held id overwritten)`,
+    expect: "27.1.memory · ⭐ the memory create refuses an id already held with null BEFORE anything is written, then a list that does not exist (the foreign key — carrying P2003's code, as Prisma's error does), writes every seed key from the row BY NAME — never a spread — the revocation as null and the instant as Postgres stores it, and hands back a copy",
+  },
+  {
+    // ⭐ THE READ HALF OF THE NO-OP (this file's founding defect): a revocation written to Postgres and read back as
+    // nothing, so every reader of the row — the Lists card, the DSAR — calls a revoked basis in force.
+    name: "prisma-dal.ts — toStoredContactListBasis reads revokedAt as null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    revokedAt: iso(b.revokedAt),`,
+    to: `    revokedAt: null,`,
+    expect: `27.read · toStoredContactListBasis maps "revokedAt" from the row`,
+  },
+  {
+    // ⛔ AN APPEND-ONLY TABLE THAT GROWS AN UPDATE PATH: the words of a recording rewritten after the fact, in the twin
+    // every suite runs on (§17's lesson — evidence that can be edited is an opinion).
+    name: "store.ts — the memory list-basis namespace gains an update member",
+    file: "src/lib/server/store.ts",
+    from: `  contactListBasis: {`,
+    to: `  contactListBasis: {
+    updateWording: (id: string, wording: string): null => null,`,
+    expect: "27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong and coveredCount: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
+  },
+  {
+    // 🔴 THE NULL TRAP, AGAIN: a bare `<>` is NULL for every row with no mark — so the statement drops nearly the whole list
+    // on Postgres while the memory twin counts it. (A quoted string: the anchor holds the SQL's own placeholder.)
+    name: "prisma-dal.ts — coveredCount's statement compares the erasure mark with <> instead of is distinct from",
+    file: "src/lib/server/prisma-dal.ts",
+    from: '           and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text',
+    to: '           and c."sourceRef" <> ${ERASURE_EVIDENCE}::text',
+    expect: "27.count · coveredCount is { live, covered } from ONE pass in both twins (m3) — Prisma: ONE findFirst of the list's newest recording, then ONE statement over the list's members joined to the book: live = the rows not the tombstone (the mark left out NULL-SAFELY, `is distinct from`) and linked to NO account (a list basis never reaches an account's number, S3), covered = those of them FILTERed to the bound, both cast ::int; memory: one loop that skips a missing, linked or erased row, counts it live, and covered when it joined at or before the bound",
+  },
+  {
+    // An empty chunk of numbers — every one a stranger with no book row — still asks Postgres for memberships of nobody.
+    name: "prisma-dal.ts — the standing read asks for memberships with an empty in",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  const members: BookMemberRow[] = liveIds.length === 0 ? [] : await pc().contactListMember.findMany({`,
+    to: `  const members: BookMemberRow[] = await pc().contactListMember.findMany({`,
+    expect: "27.9 · ⛔ THE PRISMA TWIN NEVER SENDS AN EMPTY `in` — the definition's three queries are each guarded: an empty key set returns [] before the first pc(), the memberships are read only when a live row exists, the bases only when a membership does — exactly three `in` lists, and no OR built from a list anywhere in the definition (a nested OR: [] reads as NO condition on Postgres here)",
+  },
+  {
+    // ⭐ M1's other half: the newest recording is taken, but a REVOKED one is kept as the list's standing — an officer's
+    // revocation reports success and the list goes on covering its members, on Postgres only.
+    name: "prisma-dal.ts — the standing read keeps a revoked newest recording in force",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  const inForce = [...newest.values()].filter((b) => b.revokedAt === null);`,
+    to: `  const inForce = [...newest.values()];`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // …and in memory.
+    name: "store.ts — the memory standing read keeps a revoked newest recording in force",
+    file: "src/lib/server/store.ts",
+    from: `  const inForce = [...newest.values()].filter((b) => b.revokedAt === null);`,
+    to: `  const inForce = [...newest.values()];`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // ⭐ THE REVIEW'S m1/NIT2/NIT3: the memory create stops asking the rule set — a malformed id, a blank wording, a NUL or
+    // an out-of-range version is kept by the suites' twin while Postgres (and the Prisma twin's rules) refuse it.
+    name: "store.ts — the memory create stops asking the rule set",
+    file: "src/lib/server/store.ts",
+    from: `      assertListBasisSeed(row);
+      if (store.contactListBases.has(row.id)) return null;`,
+    to: `      if (store.contactListBases.has(row.id)) return null;`,
+    expect: "27.model · ⭐ ONE RULE SET, ASKED FIRST, IN BOTH TWINS (m1 · NIT2 · NIT3) — list-basis-model.ts refuses an id that is not lb_ and exactly twenty lower-case letters, a blank list, key, wording, 18+ confirmation, proof note or officer, a version outside 1 to 2,147,483,647, an instant not in toISOString's spelling, and a NUL in any text or key — and imports TYPES only; both twins import it and ask it BEFORE their first read or write: assertListBasisSeed in create, assertListBasisRevocation in revoke, assertListBasisKeys in the definition, listForList and coveredCount",
+  },
+  {
+    // …and on Postgres: the id stops being held to lb_ and twenty lower-case letters, so an upper-case or digit-bearing id
+    // breaks a same-instant tie one way in memory and another under Postgres' collation.
+    name: "prisma-dal.ts — the Prisma create stops asking the rule set",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      assertListBasisSeed(row);
+      try {`,
+    to: `      try {`,
+    expect: "27.model · ⭐ ONE RULE SET, ASKED FIRST, IN BOTH TWINS (m1 · NIT2 · NIT3) — list-basis-model.ts refuses an id that is not lb_ and exactly twenty lower-case letters, a blank list, key, wording, 18+ confirmation, proof note or officer, a version outside 1 to 2,147,483,647, an instant not in toISOString's spelling, and a NUL in any text or key — and imports TYPES only; both twins import it and ask it BEFORE their first read or write: assertListBasisSeed in create, assertListBasisRevocation in revoke, assertListBasisKeys in the definition, listForList and coveredCount",
+  },
+  {
+    // ⭐ THE REVIEW'S m1, in the rule itself: the id pattern loosened to upper case, digits and any length — a digit run in
+    // an id is a phone-shaped string in a log, and mixed case sorts differently under Postgres' collation.
+    name: "list-basis-model.ts — the id pattern loosened",
+    file: "src/lib/server/marketing/list-basis-model.ts",
+    from: "export const LIST_BASIS_ID = /^lb_[a-z]{20}$/;",
+    to: "export const LIST_BASIS_ID = /^lb_[A-Za-z0-9]{1,40}$/;",
+    expect: "27.model · ⭐ ONE RULE SET, ASKED FIRST, IN BOTH TWINS (m1 · NIT2 · NIT3) — list-basis-model.ts refuses an id that is not lb_ and exactly twenty lower-case letters, a blank list, key, wording, 18+ confirmation, proof note or officer, a version outside 1 to 2,147,483,647, an instant not in toISOString's spelling, and a NUL in any text or key — and imports TYPES only; both twins import it and ask it BEFORE their first read or write: assertListBasisSeed in create, assertListBasisRevocation in revoke, assertListBasisKeys in the definition, listForList and coveredCount",
+  },
+  {
+    // ⭐ THE REVIEW'S NIT2, in the rule itself: the NUL refusal dropped — Postgres refuses the text (22021) and the memory
+    // twin keeps it, so the twins disagree on the one input the rule set exists to refuse alike.
+    name: "list-basis-model.ts — the text check forgets the NUL",
+    file: "src/lib/server/marketing/list-basis-model.ts",
+    from: 'const isText = (v: unknown): v is string => typeof v === "string" && !v.includes(NUL);',
+    to: 'const isText = (v: unknown): v is string => typeof v === "string";',
+    expect: "27.model · ⭐ ONE RULE SET, ASKED FIRST, IN BOTH TWINS (m1 · NIT2 · NIT3) — list-basis-model.ts refuses an id that is not lb_ and exactly twenty lower-case letters, a blank list, key, wording, 18+ confirmation, proof note or officer, a version outside 1 to 2,147,483,647, an instant not in toISOString's spelling, and a NUL in any text or key — and imports TYPES only; both twins import it and ask it BEFORE their first read or write: assertListBasisSeed in create, assertListBasisRevocation in revoke, assertListBasisKeys in the definition, listForList and coveredCount",
+  },
+  {
+    // ⭐ THE REVIEW'S m2: a list delete added to the memory twin — RESTRICT has no memory twin, so the suites would delete a
+    // list that carries a basis while Postgres refuses it.
+    name: "store.ts — the memory contactList namespace gains a delete member",
+    file: "src/lib/server/store.ts",
+    from: `  contactList: {`,
+    to: `  contactList: {
+    delete: (id: string): boolean => store.contactLists.delete(id),`,
+    expect: "27.listnodelete · ⛔ RESTRICT HAS NO MEMORY TWIN — neither twin's contactList namespace has a delete member or deletes a list: a delete added to both would pass every memory suite (no foreign key there to refuse it) and fail on Postgres the day the list carries a basis",
+  },
+  {
+    // ⭐ THE REVIEW'S test gap: coveredCount's revoked filter dropped — a revoked newest recording still counts its members
+    // covered on the Lists card, on Postgres only.
+    name: "prisma-dal.ts — coveredCount keeps covering under a revoked newest recording",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const bound = newest !== null && newest.revokedAt === null ? newest.recordedAt.toISOString() : null;`,
+    to: `      const bound = newest !== null ? newest.recordedAt.toISOString() : null;`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // …and in memory.
+    name: "store.ts — the memory coveredCount keeps covering under a revoked newest recording",
+    file: "src/lib/server/store.ts",
+    from: `      const bound = newest !== undefined && newest.revokedAt === null ? Date.parse(newest.recordedAt) : null;`,
+    to: `      const bound = newest !== undefined ? Date.parse(newest.recordedAt) : null;`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // ⭐ THE REVIEW'S test gap: coveredCount's ordering dropped — "the newest recording" is whichever Postgres met first.
+    name: "prisma-dal.ts — coveredCount's newest-recording read loses its orderBy",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { listId },
+        orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
+        select: { recordedAt: true, revokedAt: true },`,
+    to: `        where: { listId },
+        select: { recordedAt: true, revokedAt: true },`,
+    expect: "27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+  },
+  {
+    // ⭐ THE REVIEW'S test gap: the recordings query's empty guard dropped — a chunk of members on no list still asks
+    // Postgres for the recordings of nothing.
+    name: "prisma-dal.ts — the standing read asks for recordings with an empty in",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  const bases: BookBasisRow[] = listIds.length === 0 ? [] : await pc().contactListBasis.findMany({`,
+    to: `  const bases: BookBasisRow[] = await pc().contactListBasis.findMany({`,
+    expect: "27.9 · ⛔ THE PRISMA TWIN NEVER SENDS AN EMPTY `in` — the definition's three queries are each guarded: an empty key set returns [] before the first pc(), the memberships are read only when a live row exists, the bases only when a membership does — exactly three `in` lists, and no OR built from a list anywhere in the definition (a nested OR: [] reads as NO condition on Postgres here)",
+  },
+  {
+    // ⭐ THE REVIEW'S test gap: the definition's early return dropped — an empty set still costs a query asking for nothing.
+    name: "prisma-dal.ts — the standing definition queries for an empty key set",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `async function bookStandings(keys: readonly string[]): Promise<BookStandingEntry[]> {
+  if (keys.length === 0) return [];`,
+    to: `async function bookStandings(keys: readonly string[]): Promise<BookStandingEntry[]> {`,
+    expect: "27.9 · ⛔ THE PRISMA TWIN NEVER SENDS AN EMPTY `in` — the definition's three queries are each guarded: an empty key set returns [] before the first pc(), the memberships are read only when a live row exists, the bases only when a membership does — exactly three `in` lists, and no OR built from a list anywhere in the definition (a nested OR: [] reads as NO condition on Postgres here)",
+  },
+  {
+    // ⭐ THE REVIEW'S m3: an account's number counted as a list member the basis can reach — the player branch governs it
+    // (S3), so the Lists card would overstate who a recording covers, on Postgres only.
+    name: "prisma-dal.ts — coveredCount counts members linked to an account",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `           and c."userId" is null`,
+    to: `           and true`,
+    expect: "27.count · coveredCount is { live, covered } from ONE pass in both twins (m3) — Prisma: ONE findFirst of the list's newest recording, then ONE statement over the list's members joined to the book: live = the rows not the tombstone (the mark left out NULL-SAFELY, `is distinct from`) and linked to NO account (a list basis never reaches an account's number, S3), covered = those of them FILTERed to the bound, both cast ::int; memory: one loop that skips a missing, linked or erased row, counts it live, and covered when it joined at or before the bound",
+  },
+  {
+    // …and in memory.
+    name: "store.ts — the memory coveredCount counts members linked to an account",
+    file: "src/lib/server/store.ts",
+    from: `        if (c === undefined || c.userId !== null || c.sourceRef === ERASURE_EVIDENCE) continue;`,
+    to: `        if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;`,
+    expect: "27.count · coveredCount is { live, covered } from ONE pass in both twins (m3) — Prisma: ONE findFirst of the list's newest recording, then ONE statement over the list's members joined to the book: live = the rows not the tombstone (the mark left out NULL-SAFELY, `is distinct from`) and linked to NO account (a list basis never reaches an account's number, S3), covered = those of them FILTERed to the bound, both cast ::int; memory: one loop that skips a missing, linked or erased row, counts it live, and covered when it joined at or before the bound",
+  },
+  {
+    // ⭐ THE REVIEW'S NIT1: the memory foreign-key refusal loses P2003's code, so a caller that branches on the code sees
+    // a different error in every suite than on production. (A quoted string: the anchor holds a backtick.)
+    name: "store.ts — the memory missing-list refusal loses P2003's code",
+    file: "src/lib/server/store.ts",
+    from: '(memory twin of P2003) — nothing was written`), { code: "P2003" });',
+    to: '(memory twin of P2003) — nothing was written`), {});',
+    expect: "27.1.memory · ⭐ the memory create refuses an id already held with null BEFORE anything is written, then a list that does not exist (the foreign key — carrying P2003's code, as Prisma's error does), writes every seed key from the row BY NAME — never a spread — the revocation as null and the instant as Postgres stores it, and hands back a copy",
+  },
+  {
+    // ⭐ THE REVIEW'S test gap (wiring only the probe executes): the book rows keyed by id instead of number — every number
+    // the chunk asks about then reads "none" on Postgres, and the gate refuses the whole licence population.
+    name: "prisma-dal.ts — the standing read keys the book rows by id instead of number",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  for (const r of rows) byKey.set(r.msisdn, r);`,
+    to: `  for (const r of rows) byKey.set(r.id, r);`,
+    expect: "27.wire · the wiring ONLY the probe executes, pinned in both twins — the book rows keyed by NUMBER (Prisma byKey.set(r.msisdn, r); memory rows.set(msisdn, c)) and read back by the asked key; the memberships grouped by CONTACT id and read back by the row's id; the list ids derived from those memberships alone",
+  },
 ];

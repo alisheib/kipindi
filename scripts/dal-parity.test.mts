@@ -2814,5 +2814,399 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   }
 }
 
+/* ═══ §27 · The list basis — ContactListBasis in both twins (U33a-L, S10 2026-10-04; OD57 · OD58) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. A ContactListBasis row is the record behind every message U33a-G will let through under
+  // the licence: a list, the instant an officer recorded it, the words then in force, and who revoked it. Its coverage
+  // read decides whether a stranger is ALLOWED, so a twin that loses its half is a person messaged on production while
+  // every test refuses them, or the reverse: a tombstone read as live, a member added after the recording counted by a
+  // `<`, a revoked recording still covering, a tie broken the other way, a bulk read cut off at 2,000. Every behavioural
+  // suite runs on the MEMORY twin, so this section holds the TWO twins to one shape, plantable through KP_SRC
+  // (`red:dal-parity`, whose §27 cases live in scripts/anchors/dal-parity.anchors.mjs). The behaviour itself is EXECUTED
+  // by `scripts/live/list-basis-pg-probe.mts`: one scenario on PostgreSQL 18.3 and again on the memory twin, every answer
+  // equal between the two and to answers written there by hand.
+  // ⭐ ROUND 2 (the adversarial review, 2026-10-04): a list's ONE standing is its NEWEST recording, revoked or not (M1,
+  // 27.7); both twins ask ONE rule set before they read or write (27.model); coveredCount is { live, covered } from one
+  // pass (27.count); neither twin's contactList namespace can delete a list (27.listnodelete); and the wiring only the
+  // probe executes is pinned here too (27.wire).
+  // ⚠️ BLIND SPOTS, stated rather than implied: this section reads TEXT. 27.writers sees `db.contactListBasis.create(` and
+  // `.revoke(`, the namespace handed on bare (`const b = db.contactListBasis`) and a destructure from `db` — but not
+  // `db["contactListBasis"]` or `db` passed on under another name; a call through another client name is still a raw
+  // delegate to 27.onedoor. And the src walk is this section's own (a third, after §20's and §26's): theirs are
+  // block-scoped on lines that hold a backslash, which must stay byte-identical, so this one reads only the files that
+  // name the table.
+  // ⛔ No backslash anywhere in this section: every line break and quote a matcher needs is built with String.fromCharCode
+  // or a character class, because the tools this file is edited with decode escapes (`test:source-bytes`).
+  const NL27 = String.fromCharCode(10);
+  const CR27 = String.fromCharCode(13);
+  const BS27 = String.fromCharCode(92);
+  const lf27 = (s: string) => s.split(CR27).join("");
+  const NEXT_MEMBER27 = new RegExp(NL27 + " {4}[A-Za-z0-9_]+ *:");
+  /** One member's text in a twin's namespace: from the line break before `    <name>: ` to the next member at that indent. */
+  const memberOf27 = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL27}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER27);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  /** `first` sits in `body` and BEFORE `then` — an order, not a presence: a check after the write is no check. */
+  const before27 = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const count27 = (body: string, needle: string): number => body.split(needle).length - 1;
+  const membersOf27 = (block: string): string[] => Array.from(block.matchAll(/^ {4}([A-Za-z0-9_]+) *:/gm)).map((m) => m[1]).sort();
+  const priNs = region(dalSrc, `${NL27}  contactListBasis: {`);
+  const memNs = region(storeSrc, `${NL27}  contactListBasis: {`);
+  const NAMES27 = ["create", "revoke", "listForList", "standingFor", "standingAmong", "coveredCount"] as const;
+  type Member27 = (typeof NAMES27)[number];
+  const pri27 = Object.fromEntries(NAMES27.map((n) => [n, memberOf27(priNs, n)])) as Record<Member27, string>;
+  const mem27 = Object.fromEntries(NAMES27.map((n) => [n, memberOf27(memNs, n)])) as Record<Member27, string>;
+  /** The ONE definition of a number's book standing, in each twin, and the memory twin's newest-first order. */
+  const priDef = region(dalSrc, "async function bookStandings(");
+  const memDef = region(storeSrc, "function bookStandings(");
+  const memOrder = region(storeSrc, "function newestBasisFirst(");
+  const bRead = region(dalSrc, "function toStoredContactListBasis(");
+  /** The ONE rule set both twins ask — read through SRC, so `red:dal-parity` can plant in it (it is in that harness's FILES). */
+  const modelSrc = decomment(readFileSync(join(SRC, "lib/server/marketing/list-basis-model.ts"), "utf8"));
+
+  // ── 27.0 · THE PARSER, AND EVERY KEY READ FROM THE ROW ──
+  const BASIS_KEYS27 = ["id", "listId", "basisKey", "wording", "wordingVersion", "adultWording", "adultVersion", "proofNote",
+    "recordedBy", "recordedAt", "revokedAt", "revokedBy", "revokedReason"];
+  const REVOKE_KEYS27 = ["revokedAt", "revokedBy", "revokedReason"];
+  const SEED_KEYS27 = BASIS_KEYS27.filter((k) => !REVOKE_KEYS27.includes(k));
+  const bKeys = storedKeys("StoredContactListBasis");
+  const sKeys = storedKeys("ContactListBasisSeed");
+  ok("27.0 · the parser sees StoredContactListBasis's 13 keys and ContactListBasisSeed's 10 — the stored keys less the three revocation keys — and the read mapper, both namespaces, both definitions, the memory order and the rule set all resolve",
+    sameSet(bKeys, BASIS_KEYS27) && sameSet(sKeys, SEED_KEYS27) && bRead.length > 300 && priNs.length > 1500 && memNs.length > 1500
+      && priDef.length > 1000 && memDef.length > 1000 && memOrder.length > 80 && modelSrc.length > 800
+      && NAMES27.every((n) => pri27[n].length > 60 && mem27[n].length > 60),
+    `stored [${setDiff(BASIS_KEYS27, bKeys) || bKeys.length}] · seed [${setDiff(SEED_KEYS27, sKeys) || sKeys.length}] · regions ${[bRead, priNs, memNs, priDef, memDef, memOrder, modelSrc].map((r) => r.length).join("/")}`);
+  for (const k of bKeys) ok(`27.read · toStoredContactListBasis maps "${k}" from the row`, readsFrom(bRead, k, "b"));
+  const mapperKeys27 = (body: string): string[] => Array.from(body.matchAll(/^ {4}([A-Za-z0-9_]+) *:/gm)).map((m) => m[1]);
+  ok("27.exact · ⛔ toStoredContactListBasis writes EXACTLY the stored keys — a key planted in the mapper alone is reported",
+    bKeys.length === 13 && sameSet(mapperKeys27(bRead), bKeys), setDiff(bKeys, mapperKeys27(bRead)) || `${bKeys.length} keys`);
+
+  // ── 27.1 · create: every seed key FROM the row, born unrevoked, a held id null, never an upsert ──
+  /** `key: row.key,` — or the instant built from it: a value taken FROM the row, never a constant under the key's name. */
+  const fromRow27 = (body: string, k: string): boolean =>
+    body.includes(`${k}: row.${k},`) || body.includes(`${k}: new Date(row.${k}),`) || body.includes(`${k}: new Date(row.${k}).toISOString(),`);
+  const unwritten27 = (body: string): string[] => SEED_KEYS27.filter((k) => !fromRow27(body, k));
+  const bornNull27 = (body: string): boolean => REVOKE_KEYS27.every((k) => body.includes(`${k}: null,`));
+  const MISSING_LIST27 = "if (!store.contactLists.has(row.listId)) throw Object.assign(new Error(";
+  ok("27.1.prisma · ⭐ contactListBasis.create writes EVERY seed key FROM the row (recordedAt as a Date), the three revocation keys as null — a basis is born unrevoked — turns P2002 into null, lets every other failure (P2003, a missing list) throw, and NEVER upserts",
+    unwritten27(pri27.create).length === 0 && bornNull27(pri27.create)
+      && pri27.create.includes('if ((err as { code?: string })?.code === "P2002") return null;') && pri27.create.includes("throw err;")
+      && !mentions(pri27.create, "upsert"),
+    unwritten27(pri27.create).join(",") || `${pri27.create.length} chars`);
+  ok("27.1.memory · ⭐ the memory create refuses an id already held with null BEFORE anything is written, then a list that does not exist (the foreign key — carrying P2003's code, as Prisma's error does), writes every seed key from the row BY NAME — never a spread — the revocation as null and the instant as Postgres stores it, and hands back a copy",
+    before27(mem27.create, "if (store.contactListBases.has(row.id)) return null;", MISSING_LIST27)
+      && before27(mem27.create, MISSING_LIST27, "store.contactListBases.set(row.id, stored);")
+      && mem27.create.includes('(memory twin of P2003) — nothing was written`), { code: "P2003" });')
+      && unwritten27(mem27.create).length === 0 && bornNull27(mem27.create) && mem27.create.includes("recordedAt: new Date(row.recordedAt).toISOString(),")
+      && !mem27.create.includes("...row") && mem27.create.includes("return { ...stored };"),
+    unwritten27(mem27.create).join(",") || `${mem27.create.length} chars`);
+
+  // ── 27.2 · revoke: set ONCE ──
+  ok("27.2.prisma · ⭐ revoke is ONE conditional updateMany — where { id: r.id, revokedAt: null } — writing all three revocation fields (the instant as a Date), then the row read back by id: an unknown id is null, and a second or a racing revoke matches nothing and hands back the FIRST revocation unmoved",
+    pri27.revoke.includes("where: { id: r.id, revokedAt: null },") && pri27.revoke.includes("data: { revokedAt: new Date(r.at), revokedBy: r.by, revokedReason: r.reason },")
+      && before27(pri27.revoke, ".updateMany(", ".findUnique(") && pri27.revoke.includes("const row = await pc().contactListBasis.findUnique({ where: { id: r.id } });")
+      && pri27.revoke.includes("return row ? toStoredContactListBasis(row) : null;") && (pri27.revoke.match(/[.]update/g) ?? []).length === 1,
+    `${pri27.revoke.length} chars`);
+  ok("27.2.memory · ⭐ the memory revoke answers null for an unknown id and hands back a revoked basis AS IT IS — both asked BEFORE it writes, so the first revocation is never moved — and writes all three fields in one step on an unrevoked one",
+    before27(mem27.revoke, "if (row === undefined) return null;", "store.contactListBases.set(")
+      && before27(mem27.revoke, "if (row.revokedAt !== null) return { ...row };", "store.contactListBases.set(")
+      && mem27.revoke.includes("const next: StoredContactListBasis = { ...row, revokedAt: new Date(r.at).toISOString(), revokedBy: r.by, revokedReason: r.reason };"),
+    `${mem27.revoke.length} chars`);
+
+  // ── 27.3 · ⛔ NO UPDATE MEMBER AND NO DELETE MEMBER, IN EITHER TWIN ──
+  const MEMBERS27 = [...NAMES27].sort();
+  const forbidden27 = (block: string): string[] => membersOf27(block).filter((m) => /^(update|delete|upsert|remove|set|clear)/i.test(m));
+  ok("27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong and coveredCount: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
+    sameSet(membersOf27(priNs), MEMBERS27) && sameSet(membersOf27(memNs), MEMBERS27) && forbidden27(priNs).length === 0 && forbidden27(memNs).length === 0
+      && !/delete|upsert|destroy|[.]clear[(]/i.test(priNs + memNs),
+    `prisma=[${membersOf27(priNs)}] memory=[${membersOf27(memNs)}]`);
+
+  // ── 27.4 · listForList, newest first ──
+  const PRI_ORDER27 = 'orderBy: [{ recordedAt: "desc" }, { id: "desc" }],';
+  const MEM_ORDER27 = "return Date.parse(b.recordedAt) - Date.parse(a.recordedAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);";
+  ok("27.4 · listForList is NEWEST FIRST in both twins — the Prisma where { listId } ordered recordedAt DESC then id DESC in its OWN text; the memory twin filtered to the list and sorted by newestBasisFirst, which compares the INSTANTS (Date.parse) descending, then the id descending — and hands back copies",
+    pri27.listForList.includes("where: { listId },") && pri27.listForList.includes(PRI_ORDER27) && pri27.listForList.includes("return rows.map(toStoredContactListBasis);")
+      && mem27.listForList.includes(".filter((b) => b.listId === listId)") && mem27.listForList.includes(".sort(newestBasisFirst)")
+      && mem27.listForList.includes(".map((b) => ({ ...b }))") && memOrder.includes(MEM_ORDER27) && !/localeCompare/.test(memOrder),
+    `${pri27.listForList.length}/${mem27.listForList.length} chars`);
+
+  // ── 27.5 · the four answers of the ONE definition ──
+  const NONE27 = 'if (row === undefined) return { msisdn, standing: { row: "none", cover: null } };';
+  const ERASED27 = 'if (row.sourceRef === ERASURE_EVIDENCE) return { msisdn, standing: { row: "erased", cover: null } };';
+  const LIVE27 = 'return { msisdn, standing: { row: "live", cover } };';
+  const MARK_IMPORT27 = 'import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";';
+  const Q27 = ['"', "'", String.fromCharCode(96)].join("");
+  const QUOTED27 = new RegExp("[" + Q27 + "]erasure[" + Q27 + "]");
+  ok("27.5 · ⭐ standingFor's FOUR answers, in both twins' ONE definition — no book row → none; the erased tombstone → erased with NO cover, asked BEFORE any cover (S9: its memberships cover nothing, and the Prisma twin never even reads them); a live row → live, with its cover or null — the mark read through the ONE binding (imported from erasure-mark, never a quoted literal)",
+    [priDef, memDef].every((d) => before27(d, NONE27, ERASED27) && before27(d, ERASED27, LIVE27))
+      && priDef.includes("const liveIds = rows.filter((r) => r.sourceRef !== ERASURE_EVIDENCE).map((r) => r.id);") && priDef.includes("where: { contactId: { in: liveIds } },")
+      && memDef.includes("for (const c of rows.values()) if (c.sourceRef !== ERASURE_EVIDENCE) liveIds.add(c.id);") && memDef.includes("if (!liveIds.has(m.contactId)) continue;")
+      && priDef.includes("where: { msisdn: { in: [...keys] } },") && memDef.includes("const id = store.contactsByMsisdn.get(msisdn);")
+      && dalSrc.includes(MARK_IMPORT27) && storeSrc.includes(MARK_IMPORT27) && !QUOTED27.test(priDef + memDef + priNs + memNs),
+    `${priDef.length}/${memDef.length} chars`);
+
+  // ── 27.6 · THE BOUNDARY ──
+  ok("27.6 · ⭐ THE BOUNDARY — a member added AT the recording is covered, one added a millisecond later is not: `<=` on INSTANTS in both twins (Prisma: the Dates' getTime(); memory: Date.parse on both sides, never string order), and coveredCount's bound is the same `<=` (Prisma in its one statement; memory Date.parse <=)",
+    priDef.includes("lists.set(m.listId, m.addedAt.getTime());") && priDef.includes("return joinedAt !== undefined && joinedAt <= b.recordedAt.getTime();")
+      && memDef.includes("lists.set(m.listId, Date.parse(m.addedAt));") && memDef.includes("return joinedAt !== undefined && joinedAt <= Date.parse(b.recordedAt);")
+      && pri27.coveredCount.includes('m."addedAt" <= ${bound}::timestamptz')
+      && mem27.coveredCount.includes("if (bound !== null && Date.parse(m.addedAt) <= bound) out.covered++;"),
+    `${priDef.length}/${memDef.length} chars`);
+
+  // ── 27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING (M1) ──
+  const NEWEST27 = "for (const b of bases) if (!newest.has(b.listId)) newest.set(b.listId, b);";
+  const IN_FORCE27 = "const inForce = [...newest.values()].filter((b) => b.revokedAt === null);";
+  const FIND27 = "const found = lists === undefined ? undefined : inForce.find((b) => {";
+  ok("27.7 · ⛔ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not, in both twins (M1) — the definition reads EVERY recording of the lists, with no revocation filter (Prisma selects revokedAt and its where names only the lists), newest first in its own text; keeps the FIRST per list and drops it when revoked, so revoking the newest ends the list's coverage and an older recording never comes back; then takes the FIRST in-force recording a member joined before; and coveredCount bounds by the NEWEST recording, null when it is revoked",
+    priDef.includes("where: { listId: { in: listIds } },") && priDef.includes("select: { id: true, listId: true, recordedAt: true, revokedAt: true },")
+      && priDef.includes(PRI_ORDER27) && !priDef.includes("revokedAt: null")
+      && memDef.includes(".filter((b) => listIds.has(b.listId))") && memDef.includes(".sort(newestBasisFirst);")
+      && [priDef, memDef].every((d) => d.includes(NEWEST27) && d.includes(IN_FORCE27) && d.includes(FIND27) && before27(d, NEWEST27, IN_FORCE27)
+        && count27(d, "revokedAt === null") === 1)
+      && pri27.coveredCount.includes("where: { listId },") && pri27.coveredCount.includes(PRI_ORDER27)
+      && pri27.coveredCount.includes("select: { recordedAt: true, revokedAt: true },") && !pri27.coveredCount.includes("revokedAt: null")
+      && pri27.coveredCount.includes("const bound = newest !== null && newest.revokedAt === null ? newest.recordedAt.toISOString() : null;")
+      && mem27.coveredCount.includes(".filter((b) => b.listId === listId)") && mem27.coveredCount.includes(".sort(newestBasisFirst)[0];")
+      && mem27.coveredCount.includes("const bound = newest !== undefined && newest.revokedAt === null ? Date.parse(newest.recordedAt) : null;"),
+    `${priDef.length}/${memDef.length} chars · revocation tests ${count27(priDef, "revokedAt === null")}/${count27(memDef, "revokedAt === null")}`);
+
+  // ── 27.8 · standingAmong: §25's shape, and equal to standingFor by construction ──
+  const KEYS27 = 'const keys = bulkKeys(msisdns, "contactListBasis.standingAmong");';
+  const EMPTY27 = "if (keys.length === 0) return [];";
+  ok("27.8 · ⭐ standingAmong is §25's shape in both twins — its keys through bulkKeys (deduplicated, REFUSED above BULK_KEYED_READ_MAX, never cut off), an empty set answered with nothing BEFORE the definition is asked, then the ONE definition, which answers one entry per key, ordered by key; and standingFor asks the SAME definition of one key, so the two agree element by element by construction",
+    [pri27.standingAmong, mem27.standingAmong].every((s) => before27(s, KEYS27, EMPTY27) && before27(s, EMPTY27, "return bookStandings(keys);"))
+      && pri27.standingFor.includes("standingFor: async (msisdn: string): Promise<BookStanding> => (await bookStandings([msisdn]))[0].standing,")
+      && mem27.standingFor.includes("standingFor: (msisdn: string): BookStanding => bookStandings([msisdn])[0].standing,")
+      && [priDef, memDef].every((d) => d.includes("return [...keys].sort().map((msisdn): BookStandingEntry => {"))
+      && !/[.]slice[(]|[.]splice[(]/.test(pri27.standingAmong + mem27.standingAmong + priDef + memDef),
+    `${pri27.standingAmong.length}/${mem27.standingAmong.length} chars`);
+
+  // ── 27.9 · ⛔ never an empty `in` ──
+  ok("27.9 · ⛔ THE PRISMA TWIN NEVER SENDS AN EMPTY `in` — the definition's three queries are each guarded: an empty key set returns [] before the first pc(), the memberships are read only when a live row exists, the bases only when a membership does — exactly three `in` lists, and no OR built from a list anywhere in the definition (a nested OR: [] reads as NO condition on Postgres here)",
+    before27(priDef, EMPTY27, "pc()")
+      && priDef.includes("const members: BookMemberRow[] = liveIds.length === 0 ? [] : await pc().contactListMember.findMany({")
+      && priDef.includes("const bases: BookBasisRow[] = listIds.length === 0 ? [] : await pc().contactListBasis.findMany({")
+      && priDef.split("{ in: ").length - 1 === 3 && !priDef.includes("OR:"),
+    `in-lists ${priDef.split("{ in: ").length - 1}`);
+
+  // ── 27.count · coveredCount is { live, covered } from ONE pass (m3) ──
+  const COUNT_SQL27 = [
+    "select count(*)::int as live,",
+    '(count(*) filter (where ${bound}::timestamptz is not null and m."addedAt" <= ${bound}::timestamptz))::int as covered',
+    'from "ContactListMember" m',
+    'join "MarketingContact" c on c."id" = m."contactId"',
+    'where m."listId" = ${listId}',
+    'and c."userId" is null',
+    'and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text`;',
+  ];
+  const LIVE_SKIP27 = "if (c === undefined || c.userId !== null || c.sourceRef === ERASURE_EVIDENCE) continue;";
+  ok("27.count · coveredCount is { live, covered } from ONE pass in both twins (m3) — Prisma: ONE findFirst of the list's newest recording, then ONE statement over the list's members joined to the book: live = the rows not the tombstone (the mark left out NULL-SAFELY, `is distinct from`) and linked to NO account (a list basis never reaches an account's number, S3), covered = those of them FILTERed to the bound, both cast ::int; memory: one loop that skips a missing, linked or erased row, counts it live, and covered when it joined at or before the bound",
+    COUNT_SQL27.every((l) => pri27.coveredCount.includes(l)) && before27(pri27.coveredCount, ".findFirst(", "$queryRaw")
+      && pri27.coveredCount.includes("return { live: Number(rows[0]?.live ?? 0), covered: Number(rows[0]?.covered ?? 0) };")
+      && (pri27.coveredCount.match(/[.]count[(]|[.]findMany[(]/g) ?? []).length === 0
+      && mem27.coveredCount.includes("const out: ListBasisCoverage = { live: 0, covered: 0 };")
+      && before27(mem27.coveredCount, LIVE_SKIP27, "out.live++;")
+      && before27(mem27.coveredCount, "out.live++;", "if (bound !== null && Date.parse(m.addedAt) <= bound) out.covered++;")
+      && mem27.coveredCount.includes("return out;"),
+    `sql lines missing [${COUNT_SQL27.filter((l) => !pri27.coveredCount.includes(l)).map((l) => l.slice(0, 30))}]`);
+
+  // ── 27.model · ONE rule set, asked first, in both twins (m1 · NIT2 · NIT3) ──
+  const RULES_IMPORT27 = 'import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";';
+  const MODEL_NEEDLES27 = [
+    "export const LIST_BASIS_ID = /^lb_[a-z]{20}$/;",
+    "export const LIST_BASIS_VERSION_MAX = 2147483647;",
+    "const NUL = String.fromCharCode(0);",
+    'const isText = (v: unknown): v is string => typeof v === "string" && !v.includes(NUL);',
+    "const isFilled = (v: unknown): v is string => isText(v) && v.trim().length > 0;",
+    "new Date(v).toISOString() === v",
+    'typeof v === "number" && Number.isSafeInteger(v) && v >= 1 && v <= LIST_BASIS_VERSION_MAX;',
+    'if (typeof row.id !== "string" || !LIST_BASIS_ID.test(row.id))',
+    "if (!isVersion(row.wordingVersion))", "if (!isVersion(row.adultVersion))", "if (!isInstant(row.recordedAt))",
+    "if (!isText(r.id))", "if (!isFilled(r.by))", "if (!isFilled(r.reason))", "if (!isInstant(r.at))",
+    "for (const k of keys) if (!isText(k))",
+  ];
+  const FILLED27 = ["listId", "basisKey", "wording", "adultWording", "proofNote", "recordedBy"];
+  const modelImports27 = Array.from(modelSrc.matchAll(/^import .*$/gm)).map((m) => m[0]);
+  const STANDING_KEYS27 = 'assertListBasisKeys("contactListBasis.standing", keys);';
+  const LIST_KEYS27 = 'assertListBasisKeys("contactListBasis.listForList", [listId]);';
+  const COUNT_KEYS27 = 'assertListBasisKeys("contactListBasis.coveredCount", [listId]);';
+  ok("27.model · ⭐ ONE RULE SET, ASKED FIRST, IN BOTH TWINS (m1 · NIT2 · NIT3) — list-basis-model.ts refuses an id that is not lb_ and exactly twenty lower-case letters, a blank list, key, wording, 18+ confirmation, proof note or officer, a version outside 1 to 2,147,483,647, an instant not in toISOString's spelling, and a NUL in any text or key — and imports TYPES only; both twins import it and ask it BEFORE their first read or write: assertListBasisSeed in create, assertListBasisRevocation in revoke, assertListBasisKeys in the definition, listForList and coveredCount",
+    MODEL_NEEDLES27.every((n) => modelSrc.includes(n)) && FILLED27.every((k) => modelSrc.includes(`if (!isFilled(row.${k}))`))
+      && modelImports27.length >= 1 && modelImports27.every((l) => l.startsWith("import type "))
+      && storeSrc.includes(RULES_IMPORT27) && dalSrc.includes(RULES_IMPORT27)
+      && before27(mem27.create, "assertListBasisSeed(row);", "if (store.contactListBases.has(row.id)) return null;")
+      && before27(pri27.create, "assertListBasisSeed(row);", "pc().contactListBasis.create(")
+      && before27(mem27.revoke, "assertListBasisRevocation(r);", "store.contactListBases.get(r.id)")
+      && before27(pri27.revoke, "assertListBasisRevocation(r);", ".updateMany(")
+      && before27(mem27.listForList, LIST_KEYS27, "store.contactListBases") && before27(pri27.listForList, LIST_KEYS27, "pc()")
+      && before27(mem27.coveredCount, COUNT_KEYS27, "store.contactListBases") && before27(pri27.coveredCount, COUNT_KEYS27, "pc()")
+      && [memDef, priDef].every((d) => before27(d, EMPTY27, STANDING_KEYS27))
+      && before27(memDef, STANDING_KEYS27, "store.contactsByMsisdn") && before27(priDef, STANDING_KEYS27, "pc()"),
+    `rule lines missing [${MODEL_NEEDLES27.filter((n) => !modelSrc.includes(n)).map((n) => n.slice(0, 40))}] · imports [${modelImports27.map((l) => l.slice(0, 24))}]`);
+
+  // ── 27.listnodelete · ⛔ RESTRICT HAS NO MEMORY TWIN (m2) ──
+  const listPri27 = region(dalSrc, `${NL27}  contactList: {`);
+  const listMem27 = region(storeSrc, `${NL27}  contactList: {`);
+  const LIST_DELETE27 = /^(delete|remove|destroy|purge|drop|clear)/i;
+  ok("27.listnodelete · ⛔ RESTRICT HAS NO MEMORY TWIN — neither twin's contactList namespace has a delete member or deletes a list: a delete added to both would pass every memory suite (no foreign key there to refuse it) and fail on Postgres the day the list carries a basis",
+    listPri27.length > 200 && listMem27.length > 200
+      && membersOf27(listPri27).every((m) => !LIST_DELETE27.test(m)) && membersOf27(listMem27).every((m) => !LIST_DELETE27.test(m))
+      && !/[.]delete(Many)?[(]|[.]clear[(]/.test(listPri27 + listMem27),
+    `prisma=[${membersOf27(listPri27)}] memory=[${membersOf27(listMem27)}]`);
+
+  // ── 27.wire · the wiring only the probe executes ──
+  ok("27.wire · the wiring ONLY the probe executes, pinned in both twins — the book rows keyed by NUMBER (Prisma byKey.set(r.msisdn, r); memory rows.set(msisdn, c)) and read back by the asked key; the memberships grouped by CONTACT id and read back by the row's id; the list ids derived from those memberships alone",
+    priDef.includes("for (const r of rows) byKey.set(r.msisdn, r);") && priDef.includes("const row = byKey.get(msisdn);")
+      && memDef.includes("if (c) rows.set(msisdn, c);") && memDef.includes("const row = rows.get(msisdn);")
+      && [priDef, memDef].every((d) => d.includes("const lists = joined.get(row.id);") && d.includes("joined.set(m.contactId, lists);"))
+      && priDef.includes("const listIds = Array.from(new Set(members.map((m) => m.listId)));")
+      && memDef.includes("for (const lists of joined.values()) for (const listId of lists.keys()) listIds.add(listId);"),
+    `${priDef.length}/${memDef.length} chars`);
+
+  // ── 27.named · 27.store · 27.keyonly ──
+  const SIGS27: Array<[Member27, string, string]> = [
+    ["create", "create: (row: ContactListBasisSeed): StoredContactListBasis | null =>", "create: async (row: ContactListBasisSeed): Promise<StoredContactListBasis | null> =>"],
+    ["revoke", "revoke: (r: ContactListBasisRevocation): StoredContactListBasis | null =>", "revoke: async (r: ContactListBasisRevocation): Promise<StoredContactListBasis | null> =>"],
+    ["listForList", "listForList: (listId: string): StoredContactListBasis[] =>", "listForList: async (listId: string): Promise<StoredContactListBasis[]> =>"],
+    ["standingFor", "standingFor: (msisdn: string): BookStanding =>", "standingFor: async (msisdn: string): Promise<BookStanding> =>"],
+    ["standingAmong", "standingAmong: (msisdns: string[]): BookStandingEntry[] =>", "standingAmong: async (msisdns: string[]): Promise<BookStandingEntry[]> =>"],
+    ["coveredCount", "coveredCount: (listId: string): ListBasisCoverage =>", "coveredCount: async (listId: string): Promise<ListBasisCoverage> =>"],
+  ];
+  const offSigs27 = SIGS27.filter(([n, m, p]) => !mem27[n].includes(m) || !pri27[n].includes(p)).map(([n]) => n);
+  const NAMED27 = ["StoredContactListBasis", "ContactListBasisSeed", "ContactListBasisRevocation", "OutreachBasisCover", "BookStanding", "BookStandingEntry",
+    "ListBasisCoverage"];
+  const flatDal27 = lf27(dalSrc).split(NL27).map((l) => l.trim()).join(" ");
+  const TYPE_IMPORT27 = 'import type { StoredContactListBasis, ContactListBasisSeed, ContactListBasisRevocation, OutreachBasisCover, BookStanding, BookStandingEntry, ListBasisCoverage, } from "./store";';
+  ok("27.named · every member names its types in BOTH twins (never an inline literal), and so does the definition — the seven types exported by store.ts and imported by prisma-dal.ts; ContactListBasisRevocation is EXACTLY id, by, reason, at; OutreachBasisCover EXACTLY basisId, listId, recordedAt; BookStanding EXACTLY row, cover; BookStandingEntry EXACTLY msisdn, standing; ListBasisCoverage EXACTLY live, covered",
+    offSigs27.length === 0 && NAMED27.every((t) => storeSrc.includes(`export type ${t} = {`)) && flatDal27.includes(TYPE_IMPORT27)
+      && sameSet(storedKeys("ContactListBasisRevocation"), ["id", "by", "reason", "at"]) && sameSet(storedKeys("OutreachBasisCover"), ["basisId", "listId", "recordedAt"])
+      && sameSet(storedKeys("BookStanding"), ["row", "cover"]) && sameSet(storedKeys("BookStandingEntry"), ["msisdn", "standing"])
+      && sameSet(storedKeys("ListBasisCoverage"), ["live", "covered"])
+      && memDef.includes("function bookStandings(keys: readonly string[]): BookStandingEntry[] {")
+      && priDef.includes("async function bookStandings(keys: readonly string[]): Promise<BookStandingEntry[]> {"),
+    `signatures off [${offSigs27}] · type import ${flatDal27.includes(TYPE_IMPORT27)}`);
+  ok("27.store · the memory map contactListBases is in the global store's type, its initializer and its hot-reload guard — so a store left by an older build gains it, as every other map does",
+    storeSrc.includes("    contactListBases: Map<string, StoredContactListBasis>;") && storeSrc.includes("  contactListBases: new Map(),")
+      && storeSrc.includes("if (!store.contactListBases)") && storeSrc.includes("store.contactListBases = new Map();"));
+  ok("27.keyonly · the definition reads KEYS, never a person — the book rows by select { id, msisdn, sourceRef } (no name, e-mail or note leaves Postgres), the memberships by { listId, contactId, addedAt }, the recordings by { id, listId, recordedAt, revokedAt } — and a cover carries ids and the instant, never a number",
+    priDef.includes("select: { id: true, msisdn: true, sourceRef: true },") && priDef.includes("select: { listId: true, contactId: true, addedAt: true },")
+      && priDef.includes("select: { id: true, listId: true, recordedAt: true, revokedAt: true },")
+      && priDef.includes("const cover: OutreachBasisCover | null = found === undefined ? null : { basisId: found.id, listId: found.listId, recordedAt: found.recordedAt.toISOString() };")
+      && memDef.includes("const cover: OutreachBasisCover | null = found === undefined ? null : { basisId: found.id, listId: found.listId, recordedAt: found.recordedAt };"));
+
+  // ── 27.onedoor · 27.writers · read over the REAL src (ROOT, as 26.onedoor does) ──
+  const walk27 = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk27(join(dir, e.name)) : /[.](ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
+  const src27 = join(ROOT, "src");
+  const rel27 = (f: string) => f.slice(src27.length + 1).split(BS27).join("/");
+  /** A delegate call on the table by anything but the DAL door (`db.` is the door, so it is not one). */
+  const RAW_DELEGATE27 = /(?<!db)[.]contactListBasis *[.] *(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany|findMany|findFirst|findFirstOrThrow|findUnique|findUniqueOrThrow|groupBy|count|aggregate) *[(]/;
+  /** Raw SQL naming the table — the other way round the door. */
+  const RAW_SQL27 = /[$](queryRaw|executeRaw)(Unsafe)?[^;]*?"ContactListBasis"/;
+  /** A call of the DAL's two writers. */
+  const WRITE27 = /db[.]contactListBasis[.](create|revoke) *[(]/;
+  /** The namespace handed on bare, or taken by a destructure from `db` — either lets any member be called past WRITE27. */
+  const ALIAS27 = [/db[.]contactListBasis(?![.A-Za-z0-9_])/, /[{][^{}]*contactListBasis[^{}]*[}] *= *db(?![.A-Za-z0-9_])/];
+  /** ⛔ THE WRITERS, BY NAME — none today. U33b-L's `lib/server/marketing/list-basis.ts` is the ONE writer (spec §6) and
+   *  joins this list in its own commit; any other caller is a second door to evidence. */
+  const WRITERS27: string[] = [];
+  const walked27 = walk27(src27);
+  /** Only the files that name the table at all are decommented and scanned — a file that never spells it cannot call it. */
+  const texts27 = walked27.map((f) => [rel27(f), readFileSync(f, "utf8")] as const)
+    .filter(([, raw]) => raw.includes("ontactListBasis"))
+    .map(([f, raw]) => [f, decomment(raw)] as const);
+  const doors27 = texts27.filter(([, t]) => RAW_DELEGATE27.test(t) || RAW_SQL27.test(t)).map(([f]) => f).sort();
+  const writers27 = texts27.filter(([, t]) => WRITE27.test(t)).map(([f]) => f).sort();
+  const aliases27 = texts27.filter(([, t]) => ALIAS27.some((re) => re.test(t))).map(([f]) => f).sort();
+  ok("27.onedoor · ⛔ no src file but prisma-dal.ts calls a contactListBasis delegate or names the table in raw SQL — the append-only rule and the ONE definition of coverage cannot be walked round",
+    walked27.length > 300 && doors27.join(",") === "lib/server/prisma-dal.ts" && !RAW_SQL27.test(dalSrc), `callers=[${doors27}] · ${walked27.length} files walked, ${texts27.length} name the table`);
+  ok("27.writers · ⛔ the DAL's two writers (create, revoke) are called by EXACTLY the files named in WRITERS27 — none until U33b-L's list-basis.ts, the one writer, joins it by name — and no file hands the namespace on bare or destructures it from db, so no other surface records or revokes a basis",
+    sameSet(writers27, WRITERS27) && aliases27.length === 0, `writers=[${writers27}] · aliases=[${aliases27}]`);
+
+  // ── 27.schema · the model, the migration and the stored shape name ONE column set (read from ROOT) ──
+  const model27 = schemaModel(prismaSchemaSrc, "ContactListBasis");
+  const scalars27 = schemaScalars(model27);
+  const collapsed27 = lf27(model27).split(NL27).map((l) => l.trim().split(" ").filter(Boolean).join(" "));
+  const MIG_DIR27 = join(ROOT, "prisma", "migrations");
+  const migDirs27 = readdirSync(MIG_DIR27).filter((d) => d.endsWith("_contact_list_basis"));
+  const migSql27 = migDirs27.length === 1 ? lf27(readFileSync(join(MIG_DIR27, migDirs27[0], "migration.sql"), "utf8")) : "";
+  /** The quoted column names of a `CREATE TABLE "<table>" (` block, one per line, up to its `);` — the CONSTRAINT line skipped. */
+  const createdColumns27 = (sql: string, table: string): string[] => {
+    const lines = sql.split(NL27);
+    const at = lines.findIndex((l) => l.startsWith(`CREATE TABLE "${table}" (`));
+    const out: string[] = [];
+    for (let i = at + 1; at >= 0 && i < lines.length && !lines[i].startsWith(");"); i++) {
+      const t = lines[i].trim();
+      if (t.startsWith('"')) out.push(t.slice(1, t.indexOf('"', 1)));
+    }
+    return out;
+  };
+  /** A migration's statements — comment lines out, each statement's whitespace collapsed. */
+  const statements27 = (sql: string): string[] => sql.split(NL27).filter((l) => !l.trim().startsWith("--")).join(NL27)
+    .split(";").map((s) => s.split(NL27).map((l) => l.trim()).filter(Boolean).join(" ")).filter((s) => s.length > 0);
+  const migStatements27 = statements27(migSql27);
+  const KINDS27: Record<string, string> = { wordingVersion: "int", adultVersion: "int", recordedAt: "ts", revokedAt: "ts" };
+  ok("27.schema · ONE column set — ContactListBasis's scalar fields in schema.prisma are exactly StoredContactListBasis's keys (two Int, two Timestamptz(3), the rest String; the id minted by the service, no default), exactly one migration folder ends _contact_list_basis, its CREATE TABLE names exactly those columns, and its four statements create the table, its two indexes and its RESTRICT foreign key and touch nothing else; ContactList carries the back-relation",
+    sameSet([...scalars27.keys()], BASIS_KEYS27) && BASIS_KEYS27.every((k) => scalars27.get(k) === (KINDS27[k] ?? "text"))
+      && collapsed27.includes("id String @id") && collapsed27.includes("recordedAt DateTime @db.Timestamptz(3)") && collapsed27.includes("revokedAt DateTime? @db.Timestamptz(3)")
+      && model27.includes("@relation(fields: [listId], references: [id], onDelete: Restrict)") && model27.includes("@@index([listId, recordedAt])") && model27.includes("@@index([recordedAt])")
+      && schemaModel(prismaSchemaSrc, "ContactList").includes("ContactListBasis[]")
+      && migDirs27.length === 1 && sameSet(createdColumns27(migSql27, "ContactListBasis"), BASIS_KEYS27)
+      && migStatements27.length === 4 && migStatements27.every((s) => s.includes('"ContactListBasis"'))
+      && migSql27.includes('CREATE INDEX "ContactListBasis_listId_recordedAt_idx" ON "ContactListBasis"("listId", "recordedAt");')
+      && migSql27.includes('CREATE INDEX "ContactListBasis_recordedAt_idx" ON "ContactListBasis"("recordedAt");')
+      && migSql27.includes('ALTER TABLE "ContactListBasis" ADD CONSTRAINT "ContactListBasis_listId_fkey" FOREIGN KEY ("listId") REFERENCES "ContactList"("id") ON DELETE RESTRICT ON UPDATE CASCADE;'),
+    `fields [${setDiff(BASIS_KEYS27, [...scalars27.keys()]) || scalars27.size}] · folders ${migDirs27.length} · columns [${setDiff(BASIS_KEYS27, createdColumns27(migSql27, "ContactListBasis")) || "13"}] · statements ${migStatements27.length}`);
+
+  // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+  const planted27 = storeSrc.replace("export type StoredContactListBasis = {", "export type StoredContactListBasis = {" + NL27 + "  plantedKey: string;");
+  ok("27.c1 · CONTROL · a key PLANTED in StoredContactListBasis is seen by the parser, breaks 27.0's exact set and is reported unmapped by the read mapper and by both creates (as §0)",
+    storedKeys("StoredContactListBasis", planted27).includes("plantedKey") && !sameSet(storedKeys("StoredContactListBasis", planted27), BASIS_KEYS27)
+      && !readsFrom(bRead, "plantedKey", "b") && !fromRow27(pri27.create, "plantedKey") && !fromRow27(mem27.create, "plantedKey"));
+  ok("27.c2 · CONTROL · `revokedAt: null,` in the read mapper does NOT count as reading revokedAt from the row, and a create that writes a constant under a seed key is reported",
+    !readsFrom("    revokedBy: b.revokedBy," + NL27 + "    revokedAt: null,", "revokedAt", "b") && !fromRow27('            wording: "a constant",', "wording"));
+  ok("27.c3 · CONTROL · the strict `<` and a string comparison each FAIL 27.6's needles",
+    !"return joinedAt !== undefined && joinedAt < Date.parse(b.recordedAt);".includes("return joinedAt !== undefined && joinedAt <= Date.parse(b.recordedAt);")
+      && !"if (bound !== null && m.addedAt <= newest.recordedAt) out.covered++;".includes("if (bound !== null && Date.parse(m.addedAt) <= bound) out.covered++;"));
+  ok("27.c4 · CONTROL · the OLD rule — revocation filtered before the newest is taken — an order without the id leg, and a standing that keeps a revoked newest recording each FAIL 27.7's needles",
+    !"where: { listId: { in: listIds }, revokedAt: null },".includes("where: { listId: { in: listIds } },")
+      && count27(".filter((b) => listIds.has(b.listId) && b.revokedAt === null) " + IN_FORCE27, "revokedAt === null") === 2
+      && !'orderBy: [{ recordedAt: "desc" }],'.includes(PRI_ORDER27)
+      && !"const inForce = [...newest.values()];".includes(IN_FORCE27));
+  ok("27.c5 · CONTROL · a standingAmong that CUTS its keys at the bound FAILS 27.8 — it never takes them through bulkKeys, and its slice is seen",
+    !before27("const keys = Array.from(new Set(msisdns)).slice(0, BULK_KEYED_READ_MAX); if (keys.length === 0) return []; return bookStandings(keys);", KEYS27, EMPTY27)
+      && /[.]slice[(]|[.]splice[(]/.test("const keys = Array.from(new Set(msisdns)).slice(0, BULK_KEYED_READ_MAX);"));
+  ok("27.c6 · CONTROL · an update member IS seen by 27.3, both by the member set and by its name",
+    membersOf27("  contactListBasis: {" + NL27 + "    update: (id: string): null => null," + NL27 + "  },").includes("update")
+      && forbidden27("    updateWords: async () => null,").length === 1);
+  ok("27.c7 · CONTROL · a raw delegate call and raw SQL naming the table ARE caught by 27.onedoor and the DAL door is not; a writer call IS caught by 27.writers and a read is not",
+    RAW_DELEGATE27.test("await pc().contactListBasis.update({ where: { id }, data });") && RAW_DELEGATE27.test("await tx.contactListBasis.deleteMany({});")
+      && RAW_SQL27.test('await pc().$executeRawUnsafe(`delete from "ContactListBasis"`);')
+      && !RAW_DELEGATE27.test("await db.contactListBasis.revoke(r);") && !RAW_DELEGATE27.test("store.contactListBases.get(id);")
+      && WRITE27.test("await db.contactListBasis.create(seed);") && WRITE27.test("await db.contactListBasis.revoke(r);") && !WRITE27.test("await db.contactListBasis.standingFor(m);"));
+  ok("27.c8 · CONTROL · the column reader reads every quoted column of a CREATE TABLE and skips its CONSTRAINT line, and the statement splitter drops comments, semicolons in them included",
+    sameSet(createdColumns27(['CREATE TABLE "T" (', '    "a" TEXT NOT NULL,', '    "b" INTEGER,', "", '    CONSTRAINT "T_pkey" PRIMARY KEY ("a")', ");"].join(NL27), "T"), ["a", "b"])
+      && statements27(["-- CreateTable; with a semicolon", "CREATE INDEX x ON y(z);", "-- AddForeignKey", "ALTER TABLE y ADD z;"].join(NL27)).length === 2);
+  const ID27 = /^lb_[a-z]{20}$/;
+  ok("27.c9 · CONTROL · the id pattern 27.model pins means what it says — lb_ and twenty lower-case letters pass; upper case, nineteen or twenty-one letters, a digit and a missing prefix are refused",
+    ID27.test(`lb_${"a".repeat(20)}`) && !ID27.test(`lb_${"A".repeat(20)}`) && !ID27.test(`lb_${"a".repeat(19)}`) && !ID27.test(`lb_${"a".repeat(21)}`)
+      && !ID27.test(`lb_${"a".repeat(19)}1`) && !ID27.test("a".repeat(23)) && String(ID27) === "/^lb_[a-z]{20}$/");
+  ok("27.c10 · CONTROL · the alias shapes ARE caught by 27.writers — the namespace bound bare and a destructure from db — and an ordinary member call is not",
+    ALIAS27[0].test("const b = db.contactListBasis;") && ALIAS27[1].test("const { contactListBasis } = db;")
+      && !ALIAS27.some((re) => re.test("await db.contactListBasis.standingFor(m);")));
+  ok("27.c11 · CONTROL · a delete member on contactList IS seen by 27.listnodelete, and so is a delete call",
+    membersOf27("  contactList: {" + NL27 + "    delete: (id: string): boolean => true," + NL27 + "  },").some((m) => LIST_DELETE27.test(m))
+      && /[.]delete(Many)?[(]|[.]clear[(]/.test("store.contactLists.delete(id)"));
+  ok("27.c12 · CONTROL · a rule set whose text check forgets the NUL FAILS 27.model's needles, and a twin that asks the rules AFTER its write fails the order",
+    !MODEL_NEEDLES27.every((n) => modelSrc.replace('typeof v === "string" && !v.includes(NUL);', 'typeof v === "string";').includes(n))
+      && !before27("store.contactListBases.set(row.id, stored); assertListBasisSeed(row);", "assertListBasisSeed(row);", "store.contactListBases.set("));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

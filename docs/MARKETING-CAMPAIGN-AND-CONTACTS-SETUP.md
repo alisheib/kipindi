@@ -4,7 +4,7 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
 U17 🔵 (`7bef9f97`, live since 2026-09-28) and U18's first half (U18a, `fb194038`, live) were shipped by S9, which closed no docs.
 S10 (2026-10-01) fixed the consent-ledger tie, which had been picking the latest row at random, and shipped U18b (`0e68d59e`):
-erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35 the campaign tables and U29 import staging are ✅ (both migrations live); U34a, the export, shipped (U34 🟡). U36, the campaign list, is LIVE (🔵, `db4a11a7`). Verification is focused from 2026-10-02 (§0 ⚖️, Ali). On 2026-10-03 U37b the composer (🔵, STEP 21) and U38a the player audience (STEP 22) went LIVE with the live switch CLOSED; Ali ruled OD57 + OD58 (licence outreach — the contact book is in the first release); the validation audit's 49 fixes went LIVE in eight batches (STEPS 23–28, the last `ad0e7549`); and the admin guide PDF reached v1.1; then U33a-0 (the census = 0) and U33w (the consent wordings, edited and approved on Admin → System) landed. NEXT: U33p, the rest of U33a, then U37c — the critical path in §0 ▶ NEXT.**
+erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35 the campaign tables and U29 import staging are ✅ (both migrations live); U34a, the export, shipped (U34 🟡). U36, the campaign list, is LIVE (🔵, `db4a11a7`). Verification is focused from 2026-10-02 (§0 ⚖️, Ali). On 2026-10-03 U37b the composer (🔵, STEP 21) and U38a the player audience (STEP 22) went LIVE with the live switch CLOSED; Ali ruled OD57 + OD58 (licence outreach — the contact book is in the first release); the validation audit's 49 fixes went LIVE in eight batches (STEPS 23–28, the last `ad0e7549`); and the admin guide PDF reached v1.1; then U33a-0 (the census = 0) U33w (the consent wordings, edited and approved on Admin → System) and U33a-L (the list-basis table, in both twins) landed. NEXT: U33p, the rest of U33a, then U37c — the critical path in §0 ▶ NEXT.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -535,6 +535,18 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   import suite's six sections are named by path, so the gate sees the runner reach them. Owed: the five Postgres probes
   need a portable runner before they can be keyed (each expects its caller to export DATABASE_URL and migrate, in a bash
   wrapper npm cannot run on Windows). The other twelve orphans are the landing lane's.
+✅ STEP 31 · U33a-L · THE LIST-BASIS TABLE — `ContactListBasis`: the basis 50pick reaches a contact LIST's numbers
+  on (a person's consent, or outreach under the Gaming Board licence — OD57/OD58), recorded per list, with the saved
+  wording and 18+ sentence (and their versions) it was recorded under, the officer's proof note, who and when, and a
+  one-way revocation. A hand-written, additive migration (`20261004120000_contact_list_basis`: one table, two indexes,
+  a foreign key to ContactList with RESTRICT), applied by `prisma migrate deploy` at the container start — the old build
+  ignores the new table through the 60-second overlap. `db.contactListBasis` in BOTH twins: `create`, `revoke`,
+  `listForList`, `standingFor`, `standingAmong` and `coveredCount` — no update and no delete. A list's ONE standing is
+  its NEWEST recording: revoking it stops the list's coverage, and an older recording never comes back into force
+  (the review's major — the first draft let it). Ids are `lb_` and twenty lower-case letters, so the same-millisecond
+  tiebreak orders alike in both twins; `coveredCount` answers `{ live, covered }` from one pass (an account's number is
+  never a list's to cover — the player branch). Nothing reads or writes the table outside the data layer yet: U33b-L
+  records, U33a-G reads. Verified: prisma generate; typecheck; `test:dal-parity` 2114 (§27's 48 lines) with `red:dal-parity` 176/176, the working tree untouched; the Postgres probe 22/22 (every migration from empty, no drift against the schema, RESTRICT refusing a list delete, the same-millisecond boundary, 2,000 keys, the newest recording revoked covering nobody, 21 rule refusals alike in both twins, the memory twin answering identically); migration-ownership; dead-schema; next build. ⚖️ THE WHOLE PREDEPLOY CHAIN ONCE (the shared data layer is platform-wide): all 205 commands green but the two known Vodacom reds (stacking, kyc-copy-truth); its build failed once fetching Google Fonts (network) and passed on the re-run, with verify:house-bot-bundle. The adversarial review — 0 blockers, 1 major, 3 minors, 6 nits — was fixed before the push: the major (revoking a list's newest recording revived the previous one, so the reads failed open on the very act meant to stop outreach) is now the rule above; ids are pinned; neither twin's `contactList` may gain a delete; `coveredCount` returns both numbers; both twins refuse the same bad input (blank words, malformed instants and versions, NULs); the retention row says exactly what is held.
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
   step shows the page the admin opens for it (and the menu path to it); none is a step without its page. ✅ v1 BUILT
   2026-10-03 on the live code (batches 1–6): `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf` — 23 pages,
@@ -668,8 +680,8 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   (replying STOP needs a Blackball reply number); production `/api/health` reports `adminTotp: DISABLED` — turn the
   admin 2-step login back on before the first campaign; G2 the go-ahead, with the Swahili message (it starts with
   "50pick", at most 80 characters) and the day. G4 (the consent wordings) is needed only for contact import.
-▶ NEXT: U33a — in its build order (spec §11): U33a-0 and U33w are done (STEPS 29–30); then U33p the policy lines (an editable card
-  on /admin/system), U37s, U33a-L, U33a-R and U33a-G, the gate under OD58 (never-ticked players and non-members on the
+▶ NEXT: U33a — in its build order (spec §11): U33a-0, U33w and U33a-L are done (STEPS 29–31); then U33p the policy lines (a tab of its
+  own on /admin/system), U37s, U33a-R and U33a-G, the gate under OD58 (never-ticked players and non-members on the
   licence basis, recorded per list; a person's own stop, self-exclusion and under-18 kept) — then U37c, THE TEST SEND TO
   ANY TYPED NUMBER (Ali, 2026-10-03: "don't hardcode my number"; through the same gate, the officer's own number a
   one-tap default; ⚠️ campaign-compose's red "a typed test number honoured" is then inverted on purpose, never deleted),
@@ -1153,7 +1165,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U30 | visual | ⬜ | — | — | — | `test:contacts-import` | — | pre-flight |
 | U31 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | decide(). U31-A landed (`0dc25b98`): the pure rule, the erasure disguise (OD47). U31-B (the facts loader) and the UI come with U30. |
 | U32 | visual | ⬜ | — | — | — | `test:contacts-import` | — | progress = rows |
-| U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` · `test:marketing-wordings` | `red:marketing-consent` · `red:marketing-wordings` (in-process) | basis at import. U33a-catalog landed (`0dc25b98`); U33a-0, the pre-ledger census = 0 (§0 STEP 29); U33w, the wordings editable and approved on Admin → System, every saved version kept (§0 STEP 30) — G4 is now "saved on the card". The engine and the panel follow. |
+| U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` · `test:marketing-wordings` · `test:dal-parity` §27 | `red:marketing-consent` · `red:marketing-wordings` (in-process) · `red:dal-parity` §27 | basis at import. U33a-catalog landed (`0dc25b98`); U33a-0, the pre-ledger census = 0 (§0 STEP 29); U33w, the wordings editable and approved on Admin → System, every saved version kept (§0 STEP 30) — G4 is now "saved on the card"; U33a-L, the list-basis table in both twins, a list's one standing its newest recording (§0 STEP 31). The engine and the panel follow. |
 | U34 | guard | 🟡 | S10 | d8fce713 | — | `test:contacts-export` | — | export. U34a landed (`d8fce713` + review `95a48ae6`): the masked/full CSV, audited before the first byte, the cross-site gate; `test:contacts-export`. U34b (the round trip through the importer) follows U30/U31. |
 | U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
 | U36 | visual | 🔵 | S10 | 06c21ac4 | /admin/campaigns did not exist → the campaign list behind six doors (nav item "SMS campaigns", ROUTE_KEYS, ROUTE_DOMAINS growth, the section gate, loading.tsx, the page gate), the status rail over the WHOLE table, server-counted progress (HELD outstanding), the nav badge only for a growth viewer | `test:campaigns-page` · `test:admin-nav` · `test:rbac` · `test:dal-parity` §26 | yes — `red:campaigns-page` (in-process) · `red:rbac` 4/4 · `red:dal-parity` §26 | list + badge. Pushed and serving (`db4a11a7`, §0 STEP 20) — its live check needs an admin session on production (G7 / G11). |
@@ -3260,6 +3272,15 @@ fixture is rewritten in the same commit (its labels 1 and 12). ⚠️ Corrected 
 row — `MessagingConsentStatus` stays GIVEN/WITHDRAWN, UNKNOWN lives only on the book row's cache, and OD9's "UNKNOWN …
 its own migration ONE COMMIT before U33" is void (no enum migration; U33a corrects OD9's text); an imported row's
 `sourceRef` is the run id (X6), never a basis key.
+**U33a-L · the list-basis table** (§0 STEP 31; spec §4 and §6): `ContactListBasis` (`prisma/schema.prisma`; migration
+`20261004120000_contact_list_basis`, hand-written and additive) and `db.contactListBasis` in both twins — `create`,
+`revoke`, `listForList`, `standingFor`, `standingAmong` (three keyed queries on Postgres, each empty `in` answered before
+the query, more than `BULK_KEYED_READ_MAX` keys refused, never cut) and `coveredCount` (`{ live, covered }`). No update or
+delete member, and neither twin's `contactList` may gain a delete (RESTRICT has no memory twin). A list's ONE standing is
+its NEWEST recording — revoked, it covers nothing, and an older one never returns. Ids `lb_` + twenty lower-case letters;
+`recordedAt` is stamped by the SERVER (owed to U33b-L, which writes the first row). **Guard:** `test:dal-parity` §27 ·
+**RED:** `red:dal-parity` §27 · **Probe:** `npm run db:probe-list-basis` (every migration from empty, no drift, RESTRICT,
+the boundary, 2,000 keys, the memory twin answering alike).
 **U33b · the panel** (production-reachable, so G4-gated): the picker in U30b's pre-flighted state — radio cards each
 showing its FULL wording, a preview rendered from the catalogue (never a hand copy), the proof note with a live count, the
 18+ box hidden for THIRD_PARTY, a neutral THIRD_PARTY callout before Apply ("stored and never sent a marketing SMS") —

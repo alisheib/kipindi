@@ -3428,6 +3428,9 @@ model ContactList {
   updatedBy   String?
 
   members     ContactListMember[]
+  /// U33a · the outreach bases recorded on this list (OD57 · OD58) — the back-relation only, so no SQL. ⛔ The link is
+  /// RESTRICT on the basis side: a list that carries a basis cannot be deleted, because the basis is evidence.
+  bases       ContactListBasis[]
 
   @@index([createdAt])
 }
@@ -3448,6 +3451,50 @@ model ContactListMember {
   /// and text them twice.
   @@id([listId, contactId])
   @@index([contactId])
+}
+
+/// U33a · A RECORDED OUTREACH BASIS ON A LIST — "acquisition outreach under 50pick's Gaming Board of Tanzania licence"
+/// (OD57 · OD58). ⛔ NEVER A CONSENT: nobody agreed to anything. An officer recorded, for a whole list at one instant, why
+/// 50pick may message its members without their consent, that every member is 18 or older, and where the numbers came
+/// from. It covers a member only when the member was ADDED at or before `recordedAt` and the member's book row is live
+/// (never the erasure tombstone). ⭐ A list's ONE standing is its NEWEST recording, revoked or not: revoking it ends the
+/// list's coverage, and an older recording never comes back into force. ⛔ APPEND-ONLY: recording again is a NEW row;
+/// `revokedAt` is set once and never moved; no update of the words and no delete, in either twin. The list link is
+/// RESTRICT: evidence outlives a list.
+///
+/// ⭐ U33a-L ships this table, its migration (`…_contact_list_basis`, hand-written and expand-only) and the two twins'
+/// `contactListBasis` namespace ALONE: nothing writes a row until U33b-L's Lists card and nothing reads one until U33a-G's
+/// gate. `test:dal-parity` §27 holds the twins to one shape, and `scripts/live/list-basis-pg-probe.mts` runs them on
+/// PostgreSQL 18.3. ⛔ No personal data beyond staff ids (docs/DATA-RETENTION.md): a number lives only in the book, and a
+/// membership only in `ContactListMember`.
+model ContactListBasis {
+  /// `lb_` and twenty lower-case letters, minted by the service, and both twins refuse any other — no digit run a log or a
+  /// scrubber could read as a phone number, and an alphabet in which code-unit order and every Postgres collation agree
+  /// (the id breaks a `recordedAt` tie).
+  id             String      @id
+  listId         String
+  list           ContactList @relation(fields: [listId], references: [id], onDelete: Restrict)
+  /// The catalogue key — today only "LICENCE_OUTREACH". ⛔ TEXT validated against the code catalogue, never a Postgres
+  /// enum (a new kind would be a 55P04 two-step).
+  basisKey       String
+  /// ⛔ VERBATIM: the saved wording version in force at the recording, and its version number (`marketing.wordings`).
+  wording        String
+  wordingVersion Int
+  /// ⛔ VERBATIM: the officer's 18+ confirmation as saved, and its version.
+  adultWording   String
+  adultVersion   Int
+  /// Where the numbers came from, in the officer's words — 10 to 500 characters, screened by the ONE phone-run rule.
+  proofNote      String
+  recordedBy     String
+  recordedAt     DateTime    @db.Timestamptz(3)
+  revokedAt      DateTime?   @db.Timestamptz(3)
+  revokedBy      String?
+  /// Screened like the proof note. ⛔ Never a phone number (§5.14).
+  revokedReason  String?
+
+  /// A list's bases, newest first — the Lists card's history and the standing read's unrevoked bases of a set of lists.
+  @@index([listId, recordedAt])
+  @@index([recordedAt])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════

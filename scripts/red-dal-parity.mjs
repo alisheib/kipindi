@@ -41,6 +41,8 @@ const FILES = [
   "src/app/api/dev-test/marketing-contacts-seed/route.ts",
   // §20 · U23 (S10, 2026-10-02): the bulk bar's officer withdrawal, the fourth ledger writer — §20.stamp reads it here.
   "src/lib/server/marketing/contact-bulk.ts",
+  // §27 · U33a-L (S10, 2026-10-04): the list basis's ONE rule set — §27.model reads it here, and two cases plant in it.
+  "src/lib/server/marketing/list-basis-model.ts",
 ];
 
 const runGate = (srcDir) => {

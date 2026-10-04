@@ -369,6 +369,106 @@ function toStoredContactListMember(m: ContactListMemberRow): StoredContactListMe
   };
 }
 
+// U33a-L · the list-basis types — an import from the store beside the code that reads them (type-only, so the store's
+// import of this module is no cycle) — the ONE erasure mark, from its pure module, which imports nothing, and the ONE
+// rule set both twins ask before every read or write (pure, types only from the store: no cycle either).
+import type {
+  StoredContactListBasis, ContactListBasisSeed, ContactListBasisRevocation, OutreachBasisCover, BookStanding, BookStandingEntry,
+  ListBasisCoverage,
+} from "./store";
+import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";
+
+/** ContactListBasis row -> StoredContactListBasis (marketing U33a-L). ⛔ No update member and no delete member in either
+ *  twin: the row is evidence, and `revoke` sets its three revocation columns ONCE. */
+type ContactListBasisRow = {
+  id: string; listId: string; basisKey: string; wording: string; wordingVersion: number; adultWording: string;
+  adultVersion: number; proofNote: string; recordedBy: string; recordedAt: Date; revokedAt: Date | null;
+  revokedBy: string | null; revokedReason: string | null;
+};
+function toStoredContactListBasis(b: ContactListBasisRow): StoredContactListBasis {
+  return {
+    id: b.id,
+    listId: b.listId,
+    basisKey: b.basisKey,
+    wording: b.wording,
+    wordingVersion: b.wordingVersion,
+    adultWording: b.adultWording,
+    adultVersion: b.adultVersion,
+    proofNote: b.proofNote,
+    recordedBy: b.recordedBy,
+    recordedAt: iso(b.recordedAt),
+    revokedAt: iso(b.revokedAt),
+    revokedBy: b.revokedBy,
+    revokedReason: b.revokedReason,
+  };
+}
+
+/** U33a-L · the three KEY-ONLY rows `bookStandings` reads — named, so each query's result is checked against them. */
+type BookKeyRow = { id: string; msisdn: string; sourceRef: string | null };
+type BookMemberRow = { listId: string; contactId: string; addedAt: Date };
+type BookBasisRow = { id: string; listId: string; recordedAt: Date; revokedAt: Date | null };
+
+/**
+ * U33a-L · THE ONE DEFINITION OF A NUMBER'S BOOK STANDING ON POSTGRES — `standingFor` and `standingAmong` both ask it, so
+ * the single read and the bulk read cannot disagree; the memory twin's `bookStandings` takes the same three steps in the
+ * same order (`test:dal-parity` §27). Keys in (already deduplicated by the caller, and checked by the rule set), one entry
+ * per key out — a number with no book row included — ordered by key.
+ * ⛔ THREE QUERIES, AND EACH `in` IS ANSWERED EARLY WHEN IT WOULD BE EMPTY. No list is ever built into an `OR` — Prisma
+ * reads a nested `OR: []` as NO condition at all on Postgres here (bulk-reads-pg-probe 7 measured every player coming
+ * back for []), and an empty `in` would be a round trip asking for nothing:
+ *   1 · the book rows by number — KEY-ONLY: the id, the number and the erasure mark, never a name, an e-mail or a note;
+ *   2 · the memberships of the LIVE rows — ⛔ an erased tombstone's memberships are never read: it covers nothing (S9);
+ *   3 · EVERY recording of those lists, revoked ones included (⛔ no revocation filter in the QUESTION: filtering first
+ *       would let an older recording stand in for a revoked newest one), newest first.
+ * ⭐ A LIST'S ONE STANDING IS ITS NEWEST RECORDING (M1): the first per list in that order, dropped when revoked — so
+ * revoking the newest ends the list's coverage and an older recording never comes back. A live row's cover is the FIRST
+ * in-force recording on a list it joined at or before the recording (`addedAt <= recordedAt`, compared as instants — the
+ * Dates' milliseconds, never their spelling): the newest covering recording across its lists (S8).
+ */
+async function bookStandings(keys: readonly string[]): Promise<BookStandingEntry[]> {
+  if (keys.length === 0) return [];
+  assertListBasisKeys("contactListBasis.standing", keys);
+  const rows: BookKeyRow[] = await pc().marketingContact.findMany({
+    where: { msisdn: { in: [...keys] } },
+    select: { id: true, msisdn: true, sourceRef: true },
+  });
+  const liveIds = rows.filter((r) => r.sourceRef !== ERASURE_EVIDENCE).map((r) => r.id);
+  const members: BookMemberRow[] = liveIds.length === 0 ? [] : await pc().contactListMember.findMany({
+    where: { contactId: { in: liveIds } },
+    select: { listId: true, contactId: true, addedAt: true },
+  });
+  const joined = new Map<string, Map<string, number>>();
+  for (const m of members) {
+    const lists = joined.get(m.contactId) ?? new Map<string, number>();
+    lists.set(m.listId, m.addedAt.getTime());
+    joined.set(m.contactId, lists);
+  }
+  const listIds = Array.from(new Set(members.map((m) => m.listId)));
+  const bases: BookBasisRow[] = listIds.length === 0 ? [] : await pc().contactListBasis.findMany({
+    where: { listId: { in: listIds } },
+    select: { id: true, listId: true, recordedAt: true, revokedAt: true },
+    orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
+  });
+  const newest = new Map<string, BookBasisRow>();
+  for (const b of bases) if (!newest.has(b.listId)) newest.set(b.listId, b);
+  const inForce = [...newest.values()].filter((b) => b.revokedAt === null);
+  const byKey = new Map<string, BookKeyRow>();
+  for (const r of rows) byKey.set(r.msisdn, r);
+  return [...keys].sort().map((msisdn): BookStandingEntry => {
+    const row = byKey.get(msisdn);
+    if (row === undefined) return { msisdn, standing: { row: "none", cover: null } };
+    if (row.sourceRef === ERASURE_EVIDENCE) return { msisdn, standing: { row: "erased", cover: null } };
+    const lists = joined.get(row.id);
+    const found = lists === undefined ? undefined : inForce.find((b) => {
+      const joinedAt = lists.get(b.listId);
+      return joinedAt !== undefined && joinedAt <= b.recordedAt.getTime();
+    });
+    const cover: OutreachBasisCover | null = found === undefined ? null : { basisId: found.id, listId: found.listId, recordedAt: found.recordedAt.toISOString() };
+    return { msisdn, standing: { row: "live", cover } };
+  });
+}
+
 // U29 · the staging types — a second import from the store, kept beside the code that reads them (type-only, so the
 // store's import of this module is no cycle).
 import type {
@@ -4337,6 +4437,103 @@ export const prismaDb = {
         orderBy: [{ addedAt: "desc" }, { listId: "desc" }],
       });
       return rows.map(toStoredContactListMember);
+    },
+  },
+
+  /* ═══ U33a-L · THE LIST BASIS (OD57 · OD58) ══════════════════════════════════════════════════════════════════════════
+   * ⭐ A LIST'S ONE STANDING IS ITS NEWEST RECORDING, revoked or not (M1): revoking it ends the list's coverage, an older
+   * recording never comes back, and recording again starts it anew — in `bookStandings` and in `coveredCount` alike.
+   * ⛔ APPEND-ONLY: `create` turns the P2002 of a held id into null and NEVER upserts; `revoke` is ONE conditional update —
+   * `revokedAt: null` in its where — so a second revoke, or one racing it, matches nothing and moves nothing; there is NO
+   * update member and NO delete member (`test:dal-parity` §27.3), and the list link is RESTRICT, so a list carrying a basis
+   * cannot be deleted under it. ⛔ EVERY member asks the ONE rule set (`list-basis-model.ts`) before its first query, as the
+   * memory twin does, so both twins refuse one input alike. `test:dal-parity` §27 holds the pairs;
+   * `scripts/live/list-basis-pg-probe.mts` runs them on PostgreSQL 18.3, beside the memory twin. ⛔ Nothing outside the data
+   * layer and its tests reads or writes these rows until U33a-G (the gate) and U33b-L (the Lists card, the ONE writer). */
+  contactListBasis: {
+    /** ⛔ NEVER AN UPSERT — an upsert would rewrite the evidence of a recording already made. The rule set first; a held id
+     *  is P2002, answered null; a list that does not exist is P2003 and THROWS, as the memory twin's foreign key does,
+     *  carrying the same code. Born UNREVOKED. */
+    create: async (row: ContactListBasisSeed): Promise<StoredContactListBasis | null> => {
+      assertListBasisSeed(row);
+      try {
+        const created = await pc().contactListBasis.create({
+          data: {
+            id: row.id,
+            listId: row.listId,
+            basisKey: row.basisKey,
+            wording: row.wording,
+            wordingVersion: row.wordingVersion,
+            adultWording: row.adultWording,
+            adultVersion: row.adultVersion,
+            proofNote: row.proofNote,
+            recordedBy: row.recordedBy,
+            recordedAt: new Date(row.recordedAt),
+            revokedAt: null,
+            revokedBy: null,
+            revokedReason: null,
+          },
+        });
+        return toStoredContactListBasis(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;
+        throw err;
+      }
+    },
+    /** ⭐ SET ONCE, BY ONE STATEMENT: the update counts 1 only while the basis is unrevoked — Postgres re-checks the where
+     *  after a racing commit, so the loser writes nothing — and the row is read back by id either way: an unknown id is
+     *  null, and a basis already revoked comes back with its FIRST revocation unmoved. */
+    revoke: async (r: ContactListBasisRevocation): Promise<StoredContactListBasis | null> => {
+      assertListBasisRevocation(r);
+      await pc().contactListBasis.updateMany({
+        where: { id: r.id, revokedAt: null },
+        data: { revokedAt: new Date(r.at), revokedBy: r.by, revokedReason: r.reason },
+      });
+      const row = await pc().contactListBasis.findUnique({ where: { id: r.id } });
+      return row ? toStoredContactListBasis(row) : null;
+    },
+    /** Every basis recorded on one list, revoked ones included, NEWEST FIRST — served by the [listId, recordedAt] index;
+     *  the first is the list's standing. */
+    listForList: async (listId: string): Promise<StoredContactListBasis[]> => {
+      assertListBasisKeys("contactListBasis.listForList", [listId]);
+      const rows = await pc().contactListBasis.findMany({
+        where: { listId },
+        orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredContactListBasis);
+    },
+    /** One number's book standing — the ONE definition, asked of one key (one to three indexed queries). */
+    standingFor: async (msisdn: string): Promise<BookStanding> => (await bookStandings([msisdn]))[0].standing,
+    /** §25's bound and shape: at most `BULK_KEYED_READ_MAX` distinct keys, REFUSED above — never cut off — duplicates
+     *  folded, an empty set answered with nothing and no query; then the ONE definition, one entry per key. */
+    standingAmong: async (msisdns: string[]): Promise<BookStandingEntry[]> => {
+      const keys = bulkKeys(msisdns, "contactListBasis.standingAmong");
+      if (keys.length === 0) return [];
+      return bookStandings(keys);
+    },
+    /** The list's coverage in ONE statement, so `covered` can never exceed `live` (`ListBasisCoverage`) — the Lists card's
+     *  "covers 412 of 420" (U33b-L). The list's NEWEST recording first (M1): none, or a revoked one, and the bound is null
+     *  and nothing is covered. Then ONE pass over the list's members: `live` counts those whose book row is live and linked
+     *  to no account (a list basis never reaches an account's number — the player branch governs it, S3), `covered` those
+     *  of them added at or before the bound. 🔴 The mark is left out NULL-SAFELY (`is distinct from`): a bare `<>` is NULL —
+     *  so false — for every row with no mark, nearly the whole book. ⚠️ `::int`, not bigint: `count` is int8 in Postgres. */
+    coveredCount: async (listId: string): Promise<ListBasisCoverage> => {
+      assertListBasisKeys("contactListBasis.coveredCount", [listId]);
+      const newest = await pc().contactListBasis.findFirst({
+        where: { listId },
+        orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
+        select: { recordedAt: true, revokedAt: true },
+      });
+      const bound = newest !== null && newest.revokedAt === null ? newest.recordedAt.toISOString() : null;
+      const rows = await pc().$queryRaw<Array<{ live: number; covered: number }>>`
+        select count(*)::int as live,
+               (count(*) filter (where ${bound}::timestamptz is not null and m."addedAt" <= ${bound}::timestamptz))::int as covered
+          from "ContactListMember" m
+          join "MarketingContact" c on c."id" = m."contactId"
+         where m."listId" = ${listId}
+           and c."userId" is null
+           and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text`;
+      return { live: Number(rows[0]?.live ?? 0), covered: Number(rows[0]?.covered ?? 0) };
     },
   },
 
