@@ -60,6 +60,14 @@ erasure now withdraws the consent and empties the book, and both data exports ca
      the whole chain (store.ts / prisma-dal.ts) → PUSH IT ALONE (check `git diff --stat origin/main..HEAD --
      prisma/migrations` shows only its folder; re-check its stamp sorts last) → prove it on production (the deploy log,
      `?dpl=`, and a READ ONLY read of the `_prisma_migrations` row and the enum ending in UNCONFIRMED) BEFORE U43b ships.
+     ✔ U16a FINISHED after the pause too (complete `u16a/MANIFEST.md`, base `2a0c311f`; its merge hunks do not overlap
+     U43-0's): erasure UNLINKS campaign recipient rows (nothing deleted, tokens kept), the access export gains three
+     campaign sections, retention two rows (7 years, policy only). MERGE → review → its battery (MANIFEST §9; `red:erasure`
+     detached and alone) + the whole chain → push BEFORE U42. Add in the same commit: `test:campaign-privacy` (predeploy,
+     after `test:erasure`), `red:campaign-privacy`, `db:probe-campaign-privacy` (via `pg-probe-run.mts`) and
+     `qa:marketing-retention` — DATA-RETENTION names them and `test:docs` checks. Its D1–D9 become ODs. ⚖️ OWNER (G10,
+     before the first real campaign): `/legal/privacy` §5 and the DSAR erasure sentence must say campaign records are
+     kept 7 years — the suggested line is in its MANIFEST §6, not applied.
   3. THE PATTERN THAT WORKED (STEPS 30–32): a static builder agent (spec → complete files in scratch, no Node) → merge
      into the worktree (3-way `git merge-file` for package.json and shared docs) → ONE detached battery under the
      heavy-node lock (+ the drive, its tiles READ) → an adversarial reviewer agent on the SCRATCH copies → resume the
