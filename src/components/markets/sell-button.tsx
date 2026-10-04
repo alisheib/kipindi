@@ -66,6 +66,26 @@
  * the price (`cashout_pool_short`) is refused as unavailable, with today's red toast and no refresh: no page could show
  * what that sale would pay. `test:sell-price-guard` §4 holds the figure sent, the toast, the one refresh and the wait;
  * `test:journey-tickets` §12 and `test:sell-grace-truth` §3 count them beside the lapse.
+ *
+ * ⭐ ON A PHONE, THE QUESTION PAGE'S HOLDER BLOCK STACKS TODAY'S ROW (S6 A8d; VODACOM-PLAN §0h point 37 (h), §0i A8d).
+ * There this button sits 84px narrower than on /positions, and its one-line row ran past it on the most common phones
+ * (the Swahili free row 67px past its content at 360). A host that asks (`stackOnPhone`, the holder block alone) gets
+ * the stacked rule in globals.css below 640: the control takes the --h-control-xl rung (56px), the label takes one line
+ * and the figure the next, centred, its note beside it or under it. The words, the figures, the states and the sale
+ * are today's, the markup gains only that class, and the journey's look is drawn as before. `test:sell-grace-truth` §5
+ * holds the fit.
+ *
+ * ⭐ WHERE ONE LINE CANNOT HOLD THE ROW, ITS NOTE GOES UNDER ITS FIGURE, AND THE FREE STRIP NEVER BREAKS A PART (S6 A8g;
+ * VODACOM-PLAN §0h point 37 (h), §0i A8g). Every host that does not ask for the stack (/positions) is drawn the wrap
+ * class, and below 640 globals.css makes the figure a wrapping row: a row that fits keeps its one line, untouched, and
+ * one that does not (the Swahili free row for TZS 1,000,000 from 360px — to 376px with the label a browser measured,
+ * to 383px by the static model, an upper bound — and a Chinese legacy paid row with a six-figure fee at 320 to 324px)
+ * keeps its label on the line and puts the note under the figure, at the right end, in the same 44px. The free strip
+ * above the button keeps each of its parts whole (the free word, the countdown, the note): it is a wrapping row, so a
+ * part that cannot share a line moves to the next one whole (only a part wider than the whole strip, which none is
+ * from 320px at the default text size, could break), and in the holder block's narrow column Swahili reads
+ * "TOKA BILA GHARAMA 4:59" over "· Hakuna ada" where it broke "TOKA BILA" over "GHARAMA" and "· Hakuna" over "ada".
+ * Every word, figure and state is today's. `test:sell-grace-truth` §5 holds both (5.list, 5.paid and 5.strip).
  */
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -116,6 +136,7 @@ export function SellButton({
   look,
   freeUntilLabel,
   pricedFree,
+  stackOnPhone,
 }: {
   positionId: string;
   /** Stake at place-time. */
@@ -173,6 +194,15 @@ export function SellButton({
    * exit, and a paid window charges its fee (`test:sell-grace-truth` 3.journey, 3.classic and 2.priced).
    */
   pricedFree?: boolean;
+  /**
+   * ⭐ S6 A8d — the host's column cannot hold today's one-line row on a phone: the question page's holder block, 84px
+   * narrower than /positions. Below 640 today's look then stacks (globals.css, beside the button sizes): the label on one
+   * line and the figure on the next, on the --h-control-xl rung. Nothing else changes, and from 640 nothing at all. The
+   * journey's look ignores it; only the holder block passes it (`test:sell-grace-truth` 5.model and 5.stack). A host
+   * that does not ask is drawn the wrap class instead (S6 A8g): below 640 its figure lets its note go under it where
+   * one line cannot hold both (5.list).
+   */
+  stackOnPhone?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [closedNow, setClosedNow] = useState(false);
@@ -551,6 +581,12 @@ export function SellButton({
   // holder block, Chinese would stack one glyph a line, taller than the button.
   // ⭐ S6 A8c — a price the server refused because it moved (`repricing`, above) is withdrawn the same way, strip and all:
   // "Inapakia…" ahead of "Inauza…", no figure, nothing to press, until the refreshed page brings the server's price.
+  // ⭐ S6 A8d — the question page's holder block passes `stackOnPhone`, and below 640 its button stacks instead: the label
+  // takes a line of its own and the figure the next, on the --h-control-xl rung (the stacked rule in globals.css), so
+  // neither wraps and nothing runs past the button. The markup below is every host's but for one class: the stack for
+  // the host that asks, and (S6 A8g) the wrap for every other, whose figure lets its note go under it below 640 where
+  // one line cannot hold both. And the free strip is a wrapping row, so each of its parts moves to the next line whole
+  // when it cannot share one (S6 A8g).
   const btnVariant = "btn-primary";
   // Shut: this phone's clock (`closedNow`), and the server's verdict as it arrives, so a refresh that brings
   // `alreadyClosed` is drawn shut in that very render, never as one pressable "Uza sasa · TZS 0 −3,600 ada" while the
@@ -564,7 +600,7 @@ export function SellButton({
   return (
     <>
       {inGrace && !shutNow && !repricing && (
-        <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
+        <div className="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
           <span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>
           <span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>
           <span className="font-mono text-[10px] text-text-subtle">{`· ${t.dialog.noFee}`}</span>
@@ -585,12 +621,13 @@ export function SellButton({
             ? `${t.common.freeExitLabel} — ${formatTzs(value)}`
             : `${t.common.cashOut} ${formatTzs(value)}`
         }
-        // Height is `.btn-md` (--h-control-md = 44px, globals.css) and nothing else.
+        // Height is `.btn-md` (--h-control-md = 44px, globals.css) and nothing else — or, in a host that asks for the
+        // stacked phone row (`stackOnPhone`, below 640), the stacked rule's --h-control-xl (56px), in globals.css too.
         // The inline `minHeight: 44` that used to sit here existed only because
         // btn-md capped at 38px; `h-auto` beside it was always inert (no cascade
         // layers — `.btn-md`'s `height` wins on source order). ⛔ Do not re-add
         // a per-call height: the token owns it.
-        className={`btn ${shutNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}
+        className={`btn ${shutNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal${stackOnPhone ? " kp-sell-stack" : " kp-sell-wrap"}`}
         style={{ justifyContent: "space-between" }}
       >
         <span>

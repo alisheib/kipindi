@@ -1701,6 +1701,48 @@ en, sw and zh, 320 to 1280, §5's stakes, free and every whole-percent fee to 30
 literal, with a synthetic P.5c, and a compare prints each named Sell difference's count. No word of the dictionary
 changes. Records: VODACOM-PLAN §0i (A8f) and §0h point 50.
 
+*As built (A8d, drafted 2026-10-04 on `2d0f56e7`, re-based on `a2ce1762` — its own commit, for every player):* the
+question page's holder block passes `stackOnPhone` to its Sell button (a bare attribute; no other host does), today's look
+appends one class for it (`kp-sell-stack`), and `globals.css` gives that class one phone block beside the button sizes
+(`@media (max-width: 639.98px)`, opened by its `density: general` reason): the button takes `--h-control-xl` (56px), wraps
+its lines and centres them with a 2px row gap at line-height 1.25; the label (`> span:first-child`) takes a line of its
+own; the figure (`> span + span`) becomes a centred, wrapping, baseline-aligned row with `--sp-2` between the figure and
+its note; and the note's own margin gives way to that gap. Every piece keeps `.btn`'s nowrap. No token, colour, word,
+figure, state or sale changes; the journey's look is drawn as before, and from 640 nothing applies. Pinned in the open:
+`test:sell-grace-truth` §5 — 5.model reads the ask, the class and the rule (bound, rung, line height, row and column gaps,
+shape; each value from its own declaration, the phone block's opener the house query alone) and pins the holder block as
+the only host that asks; 5.stack replaces 5.holder and lays every row out in the stack at eight widths from 320 to 639,
+and on one line at 640 and 768; 5.control gains the holder block's one-line defect at 360; the grid gains TZS 110,000 and
+a 0.5% fee (A8e had already removed §5's first-paint rows, so the shut ticket's server paint, A8d's first draft added, is
+the shut row); twenty plants (133 in all). `test:journey-tickets` §12's classic pin changes on its className line alone.
+`qa:classic-shell-parity`'s `SELL_EXPECTED_DIFFS` scopes `sell-narrow-phone` to `/positions` and adds `sell-holder-stack`
+(html, the holder block's four cells) and `sell-holder-stack-layout-en` / `-sw` (the measured layout at 360, `alongside`
+the class), with a new §4.6 (a measured layout seen wherever its class is), P.5s rewritten and P.5L and P.6s added; A8f's
+own print of each Sell entry's count serves A8d's too. Records: VODACOM-PLAN §0i (A8d) and §0h points 37 (h) and 45.
+
+*As built (A8g, drafted 2026-10-04 on `a2ce1762` with A8d — one commit with A8d, or its own after it, for every player):*
+the free strip's row takes `flex-wrap` and splits its `gap-1.5` into `gap-x-1.5 gap-y-0.5` (8px between parts, 2px
+between lines); its three spans are untouched. Today's look's className gives every host that does not ask for the stack
+the class `kp-sell-wrap` (`whitespace-normal${stackOnPhone ? " kp-sell-stack" : " kp-sell-wrap"}`), and `globals.css`
+gains a second phone block beside A8d's (`@media (max-width: 639.98px)`, opened by its own `density: general` reason):
+`.kp-sell-wrap > span + span { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end;
+column-gap: var(--sp-2); }` and `.kp-sell-wrap > span + span > span { margin-left: 0; }`. No token, colour, word, figure,
+state or sale changes; the button keeps `.btn-md`'s 44px; the question page's holder block keeps A8d's stack; the
+journey's look is untouched; from 640 nothing applies. Pinned in the open: `test:sell-grace-truth` §5 — 5.model reads the
+className's two arms, the wrap rule (bound, gap; its block, phone query, density reason, end, baseline and note margin)
+and the strip (its classes, and each part's face, size, tracking and case), every token those rules read from its one
+declaration outside the stylesheet's comments (a token declared twice reads as none), and the free window's bound from
+market-config's own refusal (its longest countdown must be the 60:00 5.strip lays out); new 5.list (every `/positions`
+row at eleven widths from 320 to 639, and one line at 640 and at md in two columns); 5.paid inside the content; new
+5.strip (both hosts, ten widths, the countdown at 60:00); 5.control gains both defects; nineteen plants (152 in all),
+A8d's className plant re-derived. `test:journey-tickets` §12's classic pin changes on the strip's and the className's
+lines.
+`qa:classic-shell-parity`'s `SELL_EXPECTED_DIFFS`: `sell-narrow-phone` becomes `sell-positions-wrap` (A8b's pairs and the
+wrap class), with `sell-positions-wrap-layout-en` / `-sw` (measured first), `sell-strip-whole` and
+`sell-strip-whole-layout` (predicted from the baseline's capture, `alongside` the class); the placeholder
+`SELL_MEASURED_FIRST` names the four measured layouts that read it and goes only once all four are copied; P.5s, P.5L and
+P.6s rewritten for them and P.5g new. Records: VODACOM-PLAN §0i (A8g) and §0h points 37 (h), 51 and 52.
+
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan

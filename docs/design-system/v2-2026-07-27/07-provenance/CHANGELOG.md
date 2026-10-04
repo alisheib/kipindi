@@ -1,5 +1,29 @@
 # Changelog (reconstructed)
 
+## 2026-10-04 (design-system · Sell button) — the free strip keeps its parts whole, and a row that cannot hold one line puts its note under its figure
+
+**The free strip above today's Sell button wraps between its parts** (`src/components/markets/sell-button.tsx`): its row
+takes `flex-wrap` and its one gap splits into `gap-x-1.5 gap-y-0.5` (8px between parts, as before, and 2px between
+lines), so a part that cannot share a line moves to the next one whole instead of breaking inside. **And the Sell button
+gains its second phone rule, the wrap** (`kp-sell-wrap`, drawn for every host that does not ask for the stack — a state
+on the existing component, never a fork, §K5 / §B9): `globals.css` gives that class one phone block beside the stack's
+(below 640px, `density: general`), where the figure becomes a wrapping row whose note goes under it, at the right end,
+only when one line cannot hold both; the button keeps the `--h-control-md` rung. No new token, colour, radius, shadow,
+utility or component; the one literal is `margin-left: 0`. The Sell button has no spec page of its own, so this entry and
+VODACOM-PLAN §0i (A8g) are its record; `test:sell-grace-truth` §5 (5.list, 5.paid and 5.strip) holds the fit.
+
+## 2026-10-04 (design-system · Sell button) — the question page's Sell button stacks on a phone
+
+**Today's Sell button gains a prop, `stackOnPhone`** (`src/components/markets/sell-button.tsx`), passed by the
+question page's holder block alone — a state on the existing component, never a fork (§K5 / §B9). It appends one
+class, `kp-sell-stack`, and `globals.css` gives that class one phone block beside the button sizes (below 640px,
+`density: general`): the button takes the existing `--h-control-xl` rung (56px), its label on one centred line and
+its figure and note centred on the next, every piece kept whole by the button's nowrap, the gap between the figure and
+its note the `--sp-2` token. No new token, colour, radius, shadow or component; the rule's two literals
+(`row-gap: 2px`, `line-height: 1.25`) are values `globals.css` already writes. The Sell button has no spec page of
+its own (it wears the kit's `.btn` classes), so this entry and VODACOM-PLAN §0i (A8d) are its record;
+`test:sell-grace-truth` §5 holds the fit.
+
 ## 2026-09-18 (design-system · progress-bar) — a bar that can name what it is measuring, in two props not one
 
 **`ProgressBar` gains `caption` and `captionText`** (`src/components/ui/progress-bar.tsx`), added together as a

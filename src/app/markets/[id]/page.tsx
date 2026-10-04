@@ -918,6 +918,8 @@ export default async function MarketDetail({
                         serverNow={Date.now()}
                         // S6 A8b: the page priced this exit inside its free window, so a lapsed free price is withdrawn.
                         pricedFree={positionPricedFree.get(p.id) === true}
+                        // S6 A8d: this row leaves the button 84px narrower than /positions, so below 640 it stacks its label and figure.
+                        stackOnPhone
                       />
                     )}
                   </div>
