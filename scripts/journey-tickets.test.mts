@@ -664,7 +664,7 @@ const SELL_CLASSIC = [
   ');',
   '}',
 ].join("");
-/** The dialogs both looks share, line by line: today's two, with the journey's three words only under the look. */
+/** The dialogs both looks share, line by line: today's two, with the journey's three words only under the look — and, since S6 A8f, the result asking for the money figures in its title whole (`wholeFigures`, `test:sell-grace-truth` §6), in both looks. */
 const SELL_DIALOGS = [
   'const dialogs = (',
   '<>',
@@ -708,6 +708,7 @@ const SELL_DIALOGS = [
   'primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}',
   'onClose={() => setResultOpen(false)}',
   'stripTone="brand"',
+  'wholeFigures',
   '/>',
   ')}',
   '</>',

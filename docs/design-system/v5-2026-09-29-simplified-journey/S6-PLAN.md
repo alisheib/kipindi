@@ -1686,6 +1686,21 @@ the baseline's own first paint or, the named transition `SELL_FIRST_PAINT`, to t
 the real markup and two S.4 plants. Records: VODACOM-PLAN §0i (A8e), §0h points 35 and 37 ((a)'s Back/Forward half and
 (f) resolved as built) and the new points 46 to 49.
 
+*As built (A8f, drafted 2026-10-04 — its own commit, for every player):* every money figure in the Sell confirm and in
+the result a sale opens stays whole, and the confirm's receive row reflows. In `sell-confirm-modal.tsx` the receive
+figure is `.amount` (it was `font-mono` with tabular figures, which `.amount` sets too, adding nowrap and no tracking);
+its row gains `flex-wrap` and a 12px row gap (`gap-y-2`); the fee column gains `grow`, so alone on its line it takes the
+box's width with its words at the right edge; and the fee gains a 16px clear space before it (`pl-3`).
+`operation-result-modal.tsx` gains an opt-in `wholeFigures` prop: `withWholeFigures` splits the title on `FIGURE` (the
+shape `formatTzs` writes, a minus before it included) and sets each figure as an `.amount` span; only the Sell button's
+result passes it. Pinned in the open: `test:sell-grace-truth` §6 (6.model, 6.classes, 6.confirm, 6.button, 6.result and
+6.control — §5's font model given both dialogs' geometry from their own markup, `ui/modal.tsx` and `.mat-modal`, over
+en, sw and zh, 320 to 1280, §5's stakes, free and every whole-percent fee to 30), 21 plants; `test:journey-tickets`
+§12's `SELL_DIALOGS` (`wholeFigures`); `qa:classic-shell-parity`'s `SELL_EXPECTED_DIFFS` gains
+`sell-confirm-whole-figure` and `sell-confirm-receive-boxes` (the classic confirm's two cells), pushed after the list's
+literal, with a synthetic P.5c, and a compare prints each named Sell difference's count. No word of the dictionary
+changes. Records: VODACOM-PLAN §0i (A8f) and §0h point 50.
+
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan

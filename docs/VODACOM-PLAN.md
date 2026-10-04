@@ -780,6 +780,43 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   (the free row and its strip; a shut row's "Kuuza kumefungwa"), with no hydration warning; tiles at 320, 390 and 1280
   in sw, en and zh. ⚠️ Not closed here: point 37 (a)'s late start (its money half is A8c's), (b), (d), (e) and the
   confirm's last frame of (f).
+- **A8f — every money figure in the Sell confirm and in its result stays whole, and the confirm's receive row reflows
+  (drafted 2026-10-04 on `2d0f56e7`, revised after its review; its own commit, for every player, not flagged; it lands
+  last of A8c to A8f).** Found in a real browser (2026-10-03, a question page in Swahili at 390): the confirm drew "TZS"
+  over "1,500". In `sell-confirm-modal.tsx` the receive figure is `.amount` (DESIGN_AUTHORITY §M4: one object); its row
+  wraps, with a 12px row gap, so the fee column moves below the figure when the two cannot share a line; alone on its
+  line the fee column grows to the box's width, its words at the right edge; and the fee keeps a 16px clear space before
+  it, so two figures never run together (the fee and its note were `.amount` already). `operation-result-modal.tsx`
+  gains `wholeFigures`: every money figure in the title — the shape `formatTzs` writes, a minus before it included — is
+  set as one `.amount`. The Sell button's result passes it: its success title's figure ("TZS 1,500 Imerudishwa") is
+  drawn in the mono face like every other amount (it was Sora, letter-spaced; it leads the title and was not seen to
+  split), and a refusal that names a price mid-sentence (A8c's) keeps that figure whole; every other result is
+  untouched. The sale, every figure and every word are untouched, and both looks share both dialogs. By the model (§0h
+  point 50): the figure split in 2,564 of 6,144 cells before and in none after; least room at 320 after: the receive row
+  en 8.8 / sw 8.8 / zh 3.6px, the result's title 50.4px; proved from 320 (below 311px a free TZS 1,000,000 figure runs
+  into the box's padding). Gates: `test:sell-grace-truth` §6 (new: 6.model, 6.classes, 6.confirm, 6.button, 6.result,
+  and 6.control, which draws the 104px Swahili column the v2 baseline holds), 21 plants; `test:journey-tickets` §12's
+  dialogs re-pinned in the open (`wholeFigures`); `qa:classic-shell-parity`'s named Sell differences
+  `sell-confirm-whole-figure` (four class strings) and `sell-confirm-receive-boxes` (the boxes they draw: English keeps
+  its one line, Swahili wraps), 2 of 2 confirm cells each, pushed after the list's literal, with a synthetic P.5c, and a
+  compare now prints how many cells each named Sell difference was seen in. **Served bytes for a classic viewer:** no
+  markup, RSC prop or stylesheet change — both dialogs are client-only and closed at paint, and every class they gain is
+  already in the stylesheet; in the client JS, four class strings in the confirm, `wholeFigures` and its helper in the
+  result modal, and `wholeFigures` on the Sell button's result, so those chunks' hashed names move too. The result's
+  figure face is a classic change parity cannot see (no Sell cell confirms a sale): the tiles are its evidence.
+  **Owed:** the battery; `red:sell-grace-truth` (its 21 new plants) and `red:journey-tickets`; `red:timer-date` and
+  `red:motion-ladder` (they rewrite the tree: each alone and detached, never beside the battery or a parity run); parity
+  `--prove-red` (P.5c) and `--compare` against `parity-v2-7c859cdf.json` — both A8f entries seen in 2 of 2 confirm cells
+  (0 means the server is not serving A8f), the two cells matching the named boxes exactly, any other box read from the
+  capture and never re-baselined; tiles of both dialogs at 280, 320, 360, 390, 412 and 1280 in sw, en and zh, in both
+  looks — the confirm free and paid, side by side and wrapped, and the result after a free and a paid sale (with A8c, a
+  moved price's refusal too); and, under Ali's standing rule that a defect found in one place is fixed everywhere, a
+  follow-up package for the other results whose titles name money — the bet receipt ("NDIO · TZS 1,000,000" is, by an
+  estimate, Sora not being in the repo, wider than a 320 phone's 222px title line, so it can break after "TZS"), and any
+  staff result whose title does — opting them into `wholeFigures`, with their own tiles (the Up & Down receipt's and the
+  wallet results' titles name no figure; their figures are detail rows, which wrap whole). ⚠️ Not fixed here: the sale's
+  toast is not a dialog; and the confirm's heading keeps no clear space for its ✕ (not a figure — the tiles show whether
+  a long one reaches it).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1127,6 +1164,34 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     clock plays no part. Measured before A8e (the A8b drive, page E): the old free offer showed for 20.3 s. Overrule:
     say so, and either only free prices wait (a price with a fee shows as it was until the page's poller refreshes, up
     to 20 s), or each ticket asks on its own (one request per ticket).
+50. **No money figure in the Sell dialogs splits, and the confirm's receive row reflows (S6 A8f, for every player, both
+    looks).** Seen on a phone (2026-10-03, a question page in Swahili at 390px): the confirm drew "Utapokea" over "TZS"
+    over "1,500". Its receive row sets the figure beside the fee column, and when the two did not fit side by side the
+    browser squeezed the figure's column until the figure broke at its space; the v2 parity baseline (`7c859cdf`) holds
+    the same at 360 in Swahili (the figure's column 104px, the figure on two lines). Measured by `test:sell-grace-truth`
+    §6 — the repo's own fonts; en, sw and zh; 320 to 1280px; §5's eight stakes to TZS 1,000,000 (as at `2d0f56e7`), free
+    and paid at every whole percent to 30: 6,144 cells — before A8f the figure split in 2,564 of them: in Swahili at
+    every width to 430px and, for TZS 1,000,000, even at 1280; in English to 412px; in Chinese to 390px. In 100 more, a
+    paid figure and its fee met on one line with under 1px between them (at 412 in English and Chinese, and at 340 in
+    Chinese: "TZS 700,000" against "−TZS 300,000"). Now the figure is an amount (DESIGN_AUTHORITY §M4: one object, never
+    split); when the fee column cannot share its line the row wraps, the fee column moving below the figure and staying
+    at the right edge; and beside the figure the fee keeps 16px of clear space, so two figures never run together — 295
+    rows of that grid that did not split now wrap for that reason (their figure and fee sat 0 to 14.4px apart). Where
+    the two fit with that space, nothing moves: English at 360 keeps its one line, 2.8px to spare. The result after a
+    sale sets the money figures in its title as amounts, in the mono face (`wholeFigures`; §M4 again: the title is Sora
+    and letter-spaced, and Sora is not among the repo's fonts, so a figure set in it could not be proven to fit). Its
+    success title leads with its figure ("TZS 1,500 Imerudishwa"), which was not seen to split, so for a sale that went
+    through the change is the figure's face, on every result; a refusal that names a price mid-sentence (A8c's) keeps
+    that figure whole however its words wrap. Parity never confirms a sale, so this is a classic change only the tiles
+    show. Least room left at 320 after A8f: the receive row en 8.8, sw 8.8, zh 3.6px; the gold button 36.6px; the
+    result's title 50.4px; its detail rows 3.6 and 0.2px with figure and label on one line (past that, the figure takes
+    its own line, whole). The proof's floor is 320px: below 311px a free TZS 1,000,000 sale's figure runs into the
+    receive box's padding and below 290px past its edge (a phone narrower than 320, or a 360 phone with the browser's
+    page zoom at 125%), and the next to give is the gold button's label, below 283px. Overrule: say so — the fee column
+    can wrap under the figure aligned left instead; the clear space can be smaller (8px wraps fewer rows); the result's
+    title can keep Sora and set only a refusal's figures as amounts (`wholeFigures` on the refused result alone; the
+    success title's fit is then unproven); or below 320 the receive figure can step down a rung of the type ladder (a
+    design call, with its own proof).
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

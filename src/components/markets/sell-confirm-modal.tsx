@@ -10,6 +10,12 @@
  *
  * S6 WP10: two optional words, the journey's question and keep button (`titleLabel`, `keepLabel`), which only
  * SellButton's journey look passes. Without them every word here is today's.
+ *
+ * S6 A8f: every money figure here is one object, and the receive row reflows (for every player, in both looks). The
+ * figure under "Utapokea" is an amount (DESIGN_AUTHORITY §M4), so "TZS 1,500" never breaks between its currency and its
+ * number; when the fee column cannot share its line, the row wraps and the fee column moves below the figure, kept at the
+ * right edge. Until A8f the row squeezed the figure's column instead, and a phone drew "TZS" over "1,500" (Swahili, at
+ * 360 and at 390). `test:sell-grace-truth` §6 models both dialogs over every width, language, stake and fee.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -116,17 +122,21 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
           background:  isFree ? "color-mix(in oklab, var(--yes-500) 18%, transparent)" : "color-mix(in oklab, var(--royal-500) 16%, transparent)",
         }}
       >
-        <div className="flex items-baseline justify-between">
+        {/* S6 A8f · the figure is one amount and never splits. When the fee column cannot share its line, the row wraps:
+            the fee column moves below the figure and takes the box's width, so its words stay at the right edge. Beside
+            the figure the fee keeps a clear space before it, so two figures never run together. Where the two columns
+            fit side by side with that space, nothing moves. */}
+        <div className="flex flex-wrap items-baseline justify-between gap-y-2">
           <div>
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.youReceive}</p>
-            <p className="font-mono font-bold text-[24px] tabular-nums leading-none text-text">
+            <p className="amount font-bold text-[24px] leading-none text-text">
               TZS {formatNumber(value)}
             </p>
           </div>
-          <div className="text-right">
+          <div className="grow text-right">
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
             <p
-              className="font-bold text-title-sm amount leading-none"
+              className="pl-3 font-bold text-title-sm amount leading-none"
               style={{ color: isFree ? "var(--yes-300)" : "var(--text)" }}
             >
               {isFree ? t.dialog.noFee : `−${formatTzs(fee)}`}

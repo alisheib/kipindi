@@ -92,6 +92,12 @@ type Props = {
    *  - "no"    — NO-side bet placed
    *  Defaults to "brand". Ignored for non-success variants. */
   stripTone?: "gold" | "brand" | "yes" | "no";
+  /**
+   * S6 A8f · every money figure in `title` is set as one amount (`.amount`: mono and never split, DESIGN_AUTHORITY §M4),
+   * however the words around it wrap. The Sell button's result asks for it: its figure is drawn as every other amount
+   * is, and a refusal's sentence that names a price keeps that figure whole. Without it the title is drawn as given.
+   */
+  wholeFigures?: boolean;
 };
 /* `celebrate`/`celebrateGlyph` (the A5 reward-burst swap) were DELETED 2026-08-08:
    zero call sites ever passed them, and the win moment they anticipated is the
@@ -151,10 +157,20 @@ const STRIP_GRADIENTS: Record<string, string> = {
   no:    "linear-gradient(90deg, var(--no-700), var(--no-400))",
 };
 
+/** S6 A8f · a money figure as `formatTzs` writes one ("TZS 1,500", "TZS −360"), with a minus written before it. */
+const FIGURE = /(−?TZS −?[0-9][0-9,]*)/;
+/**
+ * The title with every money figure in it set as one amount: the words around a figure still wrap, and the figure moves to
+ * the next line whole. A split on a group keeps each figure at an odd place.
+ */
+function withWholeFigures(title: string) {
+  return title.split(FIGURE).map((part, i) => (i % 2 === 1 ? <span key={i} className="amount">{part}</span> : part));
+}
+
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand",
+  autoCloseMs, stripTone = "brand", wholeFigures,
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -449,7 +465,7 @@ export function OperationResultModal({
           {eyebrow}
         </p>
         <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
-          {title}
+          {wholeFigures ? withWholeFigures(title) : title}
         </h2>
         {subtitle && (
           <p className="mt-1.5 text-[13px] text-text-muted leading-snug">

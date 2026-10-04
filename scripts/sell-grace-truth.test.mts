@@ -53,6 +53,12 @@
  *      stake and fee rate on a grid to the platform's maximum; in the question page's holder block no label grows taller
  *      than the button; and the model sees the defect it was written for (the Swahili free row a browser measured too
  *      wide at 320 before A8b) and the measured fit from 360.
+ *   §6 THE DIALOGS' FIT (S6 A8f) — the same model, given the Sell confirm's and the result's geometry from their own
+ *      markup and the Modal's: every money figure in either dialog stays whole and each row reflows. The confirm's figure is
+ *      an amount, and its receive row shares a line or wraps, the fee column moving below the figure; every button holds its
+ *      label; the result sets the figures in its title as amounts that fit its line, and its detail rows hold theirs — in
+ *      en, sw and zh, from 320 to 1280, for every stake and every whole-percent fee on the grid, in both looks — and the
+ *      model draws the split a browser drew before A8f (6.control).
  *
  * ⛔ DISPLAY TRUTH ONLY. `cashOutValue` is not edited and its golden grid stays `test:house-bot-seam`'s; this suite
  * calls it as the oracle and never re-implements it.
@@ -1185,12 +1191,462 @@ async function g5Fit(W: World) {
     j({ at320, at360 }));
 }
 
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+// §6 · THE DIALOGS' FIT (S6 A8f)
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+/**
+ * ⭐ EVERY MONEY FIGURE IN THE SELL CONFIRM, AND IN THE RESULT A SALE OPENS, STAYS WHOLE, AND EACH ROW REFLOWS — §5's model of
+ * the repo's own fonts, given the two dialogs' geometry from their own markup and the Modal's. Seen in a real browser first
+ * (2026-10-03, a question page in Swahili at 390): the confirm drew "Utapokea" over "TZS" over "1,500". Its receive row is the
+ * figure's column beside the fee column, and when the two could not share the line the browser shrank both: the fee column
+ * stopped at its whole fee and note, and the figure's column broke the figure at its space. The v2 parity baseline
+ * (`7c859cdf`) holds the same at 360 — the Swahili figure's column 104px, the figure on two lines; the English one whole,
+ * 2.8px to spare — and 6.control reads both. Since A8f (DESIGN_AUTHORITY §M4: money is mono, and it never reflows):
+ *   · the confirm's figure is `.amount`, one object, and its row wraps: the fee column moves below the figure and grows to
+ *     the box's width, its words still at the right edge; beside the figure the fee keeps a clear space before it, so two
+ *     figures never run together; the fee and its note were `.amount` already;
+ *   · the result sets every money figure in its title as one amount (`wholeFigures`, which the Sell button passes), in the
+ *     mono face the model reads — the title's own face, Sora, is not among the repo's fonts; its detail rows already wrap.
+ * Over en, sw and zh × 320, 340, 360, 390, 412, 430, 768 and 1280 × §5's stakes to the platform's maximum, free and paid at
+ * every whole percent to 30 (`cashOutValue`, the oracle), in both looks (their words differ, never their figures): each
+ * line of the receive row holds its unbreakable pieces (6.confirm), each button its label (6.button), and the result's title
+ * and detail rows their figures (6.result). The Modal's gutter and padding are read from `ui/modal.tsx`, its panel's edge
+ * from the material layer (`.mat-modal`, motion.css), and each dialog's width, padding and classes from its own file.
+ */
+const SELL_MODAL = "src/components/markets/sell-confirm-modal.tsx";
+const RESULT_MODAL = "src/components/markets/operation-result-modal.tsx";
+const DIALOG_SHELL = "src/components/ui/modal.tsx";
+/** The panel's edge is its material's (`.mat-modal`, motion.css): read from source, outside the plantable world. */
+const DIALOG_MATERIAL = readRaw("src/app/motion.css");
+const { formatTzs } = await import("../src/lib/utils.ts");
+const DIALOG_WIDTHS = [320, 340, 360, 390, 412, 430, 768, 1280];
+/** Every whole percent a frozen poll's exit fee can be: `cashOutValue` clamps the rate to [0, 0.30]. */
+const DIALOG_RATES = Array.from({ length: 31 }, (_, i) => i / 100);
+const DIALOG_LOCS = ["en", "sw", "zh"];
+/** The words the two dialogs draw, by section: `journey.sellKeep` is the journey look's keep button. */
+const DIALOG_WORDS: Record<string, string[]> = {
+  dialog: ["youReceive", "earlyExitFee", "noFee", "freeExitWindow", "sellLabel", "selling", "keepPosition"],
+  journey: ["sellKeep"],
+  common: ["returned", "ticket", "earlyExitFee", "none", "doneSawa", "close"],
+};
+const DIALOG_MINUS = String.fromCharCode(0x2212);
+const DIALOG_DOT = String.fromCharCode(0xb7);
+/** The confirm's receive row as A8f writes it — the row, the figure, the fee column, the fee, its note — which §6's plants move. */
+const RECEIVE_ROW = `className="flex flex-wrap items-baseline justify-between gap-y-2"`;
+const RECEIVE_FIGURE = `className="amount font-bold text-[24px] leading-none text-text"`;
+const FEE_COLUMN = `className="grow text-right"`;
+const FEE_FIGURE = `className="pl-3 font-bold text-title-sm amount leading-none"`;
+const FEE_NOTE = `className="mt-1 amount text-micro text-text-subtle"`;
+/** The result's figure pattern and helper, pinned whole as the suite squashes them, so nothing can be added to either. */
+const FIGURE_LINE = `const FIGURE = /(${DIALOG_MINUS}?TZS ${DIALOG_MINUS}?[0-9][0-9,]*)/;`;
+const WHOLE_FIGURES = `function withWholeFigures(title: string) {return title.split(FIGURE).map((part, i) => (i % 2 === 1 ? <span key={i} className="amount">{part}</span> : part));}`;
+const WHOLE_TITLE = ">{wholeFigures ? withWholeFigures(title) : title}<";
+/** The confirm's two buttons as today's markup draws them, each with its label: the gold sell and the ghost keep. */
+const GOLD_BUTTON = `className="btn btn-gold btn-lg w-full"`;
+const GOLD_LABEL = "{pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}";
+const KEEP_BUTTON = `className="btn btn-ghost btn-lg w-full"`;
+const KEEP_LABEL = "{keepLabel ?? t.dialog.keepPosition}";
+type DialogPrice = { stake: number; free: boolean; value: number; rate: number | null };
+let DIALOG_PRICED: DialogPrice[] | null = null;
+/** What `cashOutValue` prices each of §5's stakes at — in its free window, and in a paid one at every whole percent to 30. */
+async function dialogPrices(): Promise<DialogPrice[]> {
+  if (DIALOG_PRICED) return DIALOG_PRICED;
+  const out: DialogPrice[] = [];
+  for (const stake of FIT_STAKES) {
+    out.push({ stake, free: true, value: (await fitPrice(stake, 0.1, true)).value, rate: null });
+    for (const rate of DIALOG_RATES) out.push({ stake, free: false, value: (await fitPrice(stake, rate, false)).value, rate });
+  }
+  DIALOG_PRICED = out;
+  return out;
+}
+/** Widths measured once per text, size, tracking and face: the grid draws the same words and figures many times over. */
+const DIALOG_WIDTH_MEMO = new Map<string, number>();
+const memoRun = (face: string, s: string, em: (cp: number) => number, px: number, track: number): number => {
+  const key = `${face}|${px}|${track}|${s}`;
+  const had = DIALOG_WIDTH_MEMO.get(key);
+  if (had !== undefined) return had;
+  const w = runPx(s, em, px, track);
+  DIALOG_WIDTH_MEMO.set(key, w);
+  return w;
+};
+const monoRun = (s: string, px: number, track: number) => memoRun("mono", s, monoEm, px, track);
+/** The class tokens of the tag that opens at `open`: [] for a bare tag, null when there is none. */
+function classesAt(markup: string, open: number): string[] | null {
+  if (open < 0) return null;
+  const head = markup.slice(open, markup.indexOf(">", open) + 1);
+  const q = head.indexOf(`className="`);
+  return q < 0 ? [] : head.slice(q + 11, head.indexOf(`"`, q + 11)).split(" ").filter(Boolean);
+}
+/** Where the tag that holds `content` opens: the last `<tag` before it, or -1. */
+const openBefore = (markup: string, content: string, tag: string): number => {
+  const found = markup.indexOf(content);
+  return found < 0 ? -1 : markup.lastIndexOf(`<${tag}`, found);
+};
+/**
+ * CSS flexbox's resolution of a line that overflows — every item flex-shrink 1, each held at its min-content by
+ * `min-width: auto` — so the sizes a browser gives the figure's column and the fee column when they must share a line.
+ */
+function flexShrink(bases: number[], mins: number[], room: number): number[] {
+  const n = bases.length;
+  const sizes = [...bases];
+  const frozen = bases.map(() => false);
+  for (let pass = 0; pass <= n && !frozen.every(Boolean); pass++) {
+    const free = room - bases.reduce((s, b, i) => s + (frozen[i] ? sizes[i] : b), 0);
+    const scaled = bases.reduce((s, b, i) => s + (frozen[i] ? 0 : b), 0);
+    const target = bases.map((b, i) => (frozen[i] ? sizes[i] : b + (scaled > 0 ? (free * b) / scaled : 0)));
+    const clamped = target.map((x, i) => (frozen[i] ? sizes[i] : Math.max(x, mins[i])));
+    const violation = clamped.reduce((s, c, i) => s + (frozen[i] ? 0 : c - target[i]), 0);
+    for (let i = 0; i < n; i++) {
+      if (frozen[i]) continue;
+      if (violation <= 0 || clamped[i] > target[i]) frozen[i] = true;
+      sizes[i] = clamped[i];
+    }
+  }
+  return sizes;
+}
+type Classes = string[] | null;
+type DialogFacts = {
+  sp: (key: string) => number;
+  lg: number; micro: number; microTrack: number; titleSm: number; titleSmTrack: number;
+  btnBorder: number; btnNowrap: boolean; btnBody: boolean; btnPad: number; btnFont: number;
+  goldTrack: number; primaryTrack: number; noTrack: number; ghostTrack: number;
+  eyebrowEm: number; amountWhole: boolean; material: number; features: string[];
+  gutter: number; pad: number; padLg: number; confirmMax: number;
+  confirm: { eyeL: Classes; eyeR: Classes; figure: Classes; fee: Classes; note: Classes; left: Classes; row: Classes; box: Classes; right: Classes; gold: boolean; keep: boolean };
+  result: {
+    max: number; flush: boolean; inner: Classes; pad: number; padLg: number; title: Classes; titleWhole: boolean;
+    figureRe: boolean; helper: boolean; label: Classes; value: Classes; detailRow: Classes;
+  };
+  asks: boolean;
+  words: Record<string, unknown>;
+};
+const dialogFrom = (s: string, head: string) => { const a = s.indexOf(head); return a < 0 ? "" : s.slice(a); };
+const dialogNum = (s: string, head: string) => { const a = s.indexOf(head); return a < 0 ? Number.NaN : Number.parseFloat(s.slice(a + head.length)); };
+const dialogLine = (css: string, head: string) => {
+  const a = css.indexOf(NL + head);
+  if (a < 0) return "";
+  const b = css.indexOf(NL, a + 1);
+  return css.slice(a + 1, b < 0 ? css.length : b);
+};
+const dialogRule = (css: string, head: string) => {
+  const a = css.indexOf(NL + head);
+  if (a < 0) return "";
+  const b = css.indexOf(`${NL}}`, a + 1);
+  return b < 0 ? "" : css.slice(a + 1, b + 2);
+};
+/** Everything §6 reads, from the world handed in: the stylesheet, the Tailwind config, the Modal, both dialogs, the Sell button. */
+function dialogFacts(W: World): DialogFacts {
+  const css = W.css;
+  const spacing = dialogFrom(W.tw, "spacing: {");
+  const screens = dialogFrom(W.tw, "screens: {");
+  const sizes = dialogFrom(W.tw, "fontSize: {");
+  const sp = (key: string) => dialogNum(spacing, `"${key}": "`);
+  const btn = dialogRule(css, ".btn {");
+  const lgLine = dialogLine(css, ".btn-lg {");
+  const amount = dialogLine(css, ".amount.amount {");
+  const body = dialogRule(css, "body {");
+  const featAt = body.indexOf("font-feature-settings:");
+  const features = featAt < 0 ? [] : body.slice(featAt, body.indexOf(";", featAt)).split(`"`).filter((_, i) => i % 2 === 1);
+  // The Modal: the centred dialog's gutter, and its panel's padding below and from lg.
+  const shell = squash(W.files.get(DIALOG_SHELL) ?? "");
+  const wrapAt = shell.indexOf(`sm:py-4" : "`);
+  const wrap = wrapAt < 0 ? [] : shell.slice(wrapAt + 12, shell.indexOf(`"`, wrapAt + 12)).split(" ");
+  const gutters = wrap.filter((c) => c.startsWith("px-"));
+  const panelAt = shell.indexOf("mat-modal relative w-full ");
+  const panel = panelAt < 0 ? [] : shell.slice(panelAt + 26, shell.indexOf("$", panelAt)).split(" ");
+  const pads = panel.filter((c) => c.startsWith("p-"));
+  const lgPads = panel.filter((c) => c.startsWith("lg:p-"));
+  // The confirm: its receive row read outward from the two eyebrows, and its two buttons.
+  const sq = squash(W.files.get(SELL_MODAL) ?? "");
+  const eyeL = openBefore(sq, ">{t.dialog.youReceive}<", "p");
+  const eyeR = openBefore(sq, ">{t.dialog.earlyExitFee}<", "p");
+  const left = eyeL < 0 ? -1 : sq.lastIndexOf("<div", eyeL);
+  const row = left > 0 ? sq.lastIndexOf("<div", left - 1) : -1;
+  const box = row > 0 ? sq.lastIndexOf("<div", row - 1) : -1;
+  const right = eyeR < 0 ? -1 : sq.lastIndexOf("<div", eyeR);
+  const confirm = {
+    eyeL: classesAt(sq, eyeL), eyeR: classesAt(sq, eyeR),
+    figure: classesAt(sq, openBefore(sq, ">TZS {formatNumber(value)}<", "p")),
+    fee: classesAt(sq, openBefore(sq, ">{isFree ? t.dialog.noFee : ", "p")),
+    note: classesAt(sq, openBefore(sq, ">{isFree ? t.dialog.freeExitWindow : ", "p")),
+    left: classesAt(sq, left), row: classesAt(sq, row), box: classesAt(sq, box), right: classesAt(sq, right),
+    gold: sq.includes(GOLD_BUTTON) && sq.includes(GOLD_LABEL),
+    keep: sq.includes(KEEP_BUTTON) && sq.includes(KEEP_LABEL),
+  };
+  // The result: its own padding (the panel's is none), its title and the helper behind it, and a detail row.
+  const rq = squash(W.files.get(RESULT_MODAL) ?? "");
+  const hold = rq.indexOf("onPointerMove={onPointerMoveHold}");
+  const inner = hold < 0 ? null : classesAt(rq, rq.lastIndexOf("<div", hold));
+  const innerPads = (inner ?? []).filter((c) => c.startsWith("p-"));
+  const innerLg = (inner ?? []).filter((c) => c.startsWith("lg:p-"));
+  const titleWhole = rq.includes(WHOLE_TITLE);
+  const label = openBefore(rq, ">{d.label}<", "p");
+  const column = label < 0 ? -1 : rq.lastIndexOf("<div", label);
+  const result = {
+    max: dialogNum(rq, "maxWidth={"), flush: rq.includes(`panelClassName="overflow-hidden !p-0"`), inner,
+    pad: innerPads.length === 1 ? sp(innerPads[0].slice(2)) : Number.NaN,
+    padLg: innerLg.length === 1 ? sp(innerLg[0].slice(5)) : Number.NaN,
+    title: classesAt(rq, openBefore(rq, titleWhole ? WHOLE_TITLE : ">{title}<", "h2")), titleWhole,
+    figureRe: occurrences(rq, FIGURE_LINE) === 1, helper: occurrences(rq, WHOLE_FIGURES) === 1,
+    label: classesAt(rq, label), value: classesAt(rq, openBefore(rq, ">{d.value}<", "p")),
+    detailRow: column > 0 ? classesAt(rq, rq.lastIndexOf("<div", column - 1)) : null,
+  };
+  // The Sell button's one result asks for whole figures: a bare `wholeFigures`, or `={true}`.
+  const button = squash(W.files.get(SELL_BUTTON) ?? "");
+  const resultAt = button.indexOf("<OperationResultModal");
+  const element = resultAt < 0 ? "" : button.slice(resultAt, button.indexOf("/>", resultAt) + 2);
+  const asks = occurrences(button, "<OperationResultModal") === 1 && !element.includes("wholeFigures={false}")
+    && (element.includes("wholeFigures/>") || element.includes("wholeFigures ") || element.includes("wholeFigures={true}"));
+  return {
+    sp, lg: dialogNum(screens, `lg: "`),
+    micro: dialogNum(dialogFrom(sizes, "micro:"), `["`), microTrack: dialogNum(dialogFrom(sizes, "micro:"), `letterSpacing: "`),
+    titleSm: dialogNum(dialogFrom(sizes, `"title-sm":`), `["`), titleSmTrack: dialogNum(dialogFrom(sizes, `"title-sm":`), `letterSpacing: "`),
+    btnBorder: dialogNum(btn, "border: "), btnNowrap: btn.includes("white-space: nowrap;"), btnBody: btn.includes("font-family: var(--font-body);"),
+    btnPad: dialogNum(lgLine, "padding: 0 "), btnFont: dialogNum(lgLine, "font-size: "),
+    goldTrack: dialogNum(dialogRule(css, ".btn-gold {"), "letter-spacing: "),
+    primaryTrack: dialogNum(dialogRule(css, ".btn-primary {"), "letter-spacing: "),
+    noTrack: dialogNum(dialogRule(css, ".btn-no {"), "letter-spacing: "),
+    ghostTrack: dialogRule(css, ".btn-ghost {").includes("letter-spacing") ? Number.NaN : 0,
+    eyebrowEm: dialogNum(dialogFrom(css, ".eyebrow.eyebrow,"), "{ letter-spacing: "),
+    amountWhole: amount.includes("white-space: nowrap;") && amount.includes("letter-spacing: 0;"),
+    material: dialogNum(dialogLine(DIALOG_MATERIAL, ".mat-modal "), "border: "), features,
+    gutter: gutters.length === 1 ? sp(gutters[0].slice(3)) : Number.NaN,
+    pad: pads.length === 1 ? sp(pads[0].slice(2)) : Number.NaN,
+    padLg: lgPads.length === 1 ? sp(lgPads[0].slice(5)) : Number.NaN,
+    confirmMax: dialogNum(sq, "maxWidth={"),
+    confirm, result, asks, words: W.words,
+  };
+}
+const dialogWord = (F: DialogFacts, loc: string, section: string, key: string): string => {
+  const v = (((F.words[loc] ?? {}) as Record<string, Record<string, unknown> | undefined>)[section] ?? {})[key];
+  return typeof v === "string" ? v : "";
+};
+/** A size from the class list: a hand-typed one, or the type ladder's rung. */
+const dialogPx = (tokens: string[], F: DialogFacts): number => {
+  for (const c of tokens) if (c.startsWith("text-[") && c.endsWith("px]")) return Number.parseFloat(c.slice(6, -3));
+  return tokens.includes("text-micro") ? F.micro : tokens.includes("text-title-sm") ? F.titleSm : Number.NaN;
+};
+/** A run's letter-spacing: `.eyebrow.eyebrow` follows `.amount.amount` in the stylesheet at the same specificity, so it wins
+ *  where both sit; then `.amount`'s none; then the rung's own (each rung of the type ladder is a tuple with its tracking). */
+const dialogTrack = (tokens: string[], px: number, F: DialogFacts): number =>
+  tokens.includes("eyebrow") ? F.eyebrowEm * px : tokens.includes("amount") ? 0
+    : tokens.includes("text-micro") ? F.microTrack : tokens.includes("text-title-sm") ? F.titleSmTrack : 0;
+const isWhole = (tokens: string[]) => tokens.includes("amount") || tokens.includes("whitespace-nowrap");
+const isMono = (tokens: Classes) => !!tokens && (tokens.includes("font-mono") || tokens.includes("amount"));
+const textPx = (s: string, tokens: string[], F: DialogFacts) => {
+  const px = dialogPx(tokens, F);
+  return monoRun(tokens.includes("uppercase") ? s.toUpperCase() : s, px, dialogTrack(tokens, px, F));
+};
+const longestPiece = (s: string, w: (t: string) => number): number => {
+  let best = 0;
+  for (const piece of s.split(" ")) {
+    const chars = [...piece];
+    if (chars.some((ch) => (ch.codePointAt(0) ?? 0) >= CJK_FROM)) {
+      for (const ch of chars) best = Math.max(best, w(ch));
+    } else best = Math.max(best, w(piece));
+  }
+  return best;
+};
+/** The widest piece of `s` no line can split: all of it when its element is whole, else its longest word (a CJK glyph alone). */
+const unbreakable = (s: string, tokens: string[], F: DialogFacts) => {
+  if (isWhole(tokens)) return textPx(s, tokens, F);
+  const px = dialogPx(tokens, F);
+  const track = dialogTrack(tokens, px, F);
+  return longestPiece(tokens.includes("uppercase") ? s.toUpperCase() : s, (x) => monoRun(x, px, track));
+};
+/** The space a class list sets before its element's text — a left padding or margin, from the spacing scale. */
+const leadOf = (tokens: string[], F: DialogFacts) =>
+  tokens.filter((c) => c.startsWith("pl-") || c.startsWith("ml-")).reduce((s, c) => s + F.sp(c.slice(c.indexOf("-") + 1)), 0);
+const panelContent = (F: DialogFacts, vw: number, max: number, pad: number, padLg: number) =>
+  Math.min(max, vw - 2 * F.gutter) - 2 * F.material - 2 * (vw >= F.lg ? padLg : pad);
+/** The confirm's receive row's width at a viewport: the panel's content less the box's edge and padding. */
+const receiveWidth = (F: DialogFacts, vw: number) => {
+  const box = F.confirm.box ?? [];
+  return panelContent(F, vw, F.confirmMax, F.pad, F.padLg) - 2 * (box.includes("border") ? 1 : 0)
+    - 2 * F.sp((box.find((x) => x.startsWith("p-")) ?? "p-?").slice(2));
+};
+type ReceiveRules = { row: string[]; figure: string[]; fee: string[] };
+type ReceiveFit = { mode: string; room: number; split: boolean; over: boolean; left: number; right: number };
+/**
+ * The receive row at a viewport: how it is arranged, the least room left on its lines (below 0: a piece runs out of the box),
+ * and whether the figure splits. `rules` stands in for the row's, the figure's and the fee's classes (6.control).
+ */
+function confirmRow(F: DialogFacts, vw: number, loc: string, p: DialogPrice, rules?: ReceiveRules): ReceiveFit {
+  const c = F.confirm;
+  const C = receiveWidth(F, vw);
+  const row = rules ? rules.row : (c.row ?? []);
+  const fig = rules ? rules.figure : (c.figure ?? []);
+  const feeT = rules ? rules.fee : (c.fee ?? []);
+  const eyeL = c.eyeL ?? [];
+  const eyeR = c.eyeR ?? [];
+  const noteT = c.note ?? [];
+  const fee = Math.max(0, p.stake - p.value);
+  const free = fee <= 0;
+  const pct = p.stake > 0 ? Math.round((fee / p.stake) * 100) : 0;
+  const figure = `TZS ${formatNumber(p.value)}`;
+  const feeText = free ? dialogWord(F, loc, "dialog", "noFee") : `${DIALOG_MINUS}${formatTzs(fee)}`;
+  const note = free ? dialogWord(F, loc, "dialog", "freeExitWindow") : `${pct}% ${DIALOG_DOT} ${formatTzs(p.stake)}`;
+  const youReceive = dialogWord(F, loc, "dialog", "youReceive");
+  const feeWord = dialogWord(F, loc, "dialog", "earlyExitFee");
+  const lmax = Math.max(leadOf(eyeL, F) + textPx(youReceive, eyeL, F), leadOf(fig, F) + textPx(figure, fig, F));
+  const rmax = Math.max(leadOf(eyeR, F) + textPx(feeWord, eyeR, F), leadOf(feeT, F) + textPx(feeText, feeT, F),
+    leadOf(noteT, F) + textPx(note, noteT, F));
+  const lmin = Math.max(leadOf(eyeL, F) + unbreakable(youReceive, eyeL, F), leadOf(fig, F) + unbreakable(figure, fig, F));
+  const rmin = Math.max(leadOf(eyeR, F) + unbreakable(feeWord, eyeR, F), leadOf(feeT, F) + unbreakable(feeText, feeT, F),
+    leadOf(noteT, F) + unbreakable(note, noteT, F));
+  const figW = textPx(figure, fig, F);
+  if (lmax + rmax <= C) return { mode: "shared", room: C - (lmax + rmax), split: false, over: false, left: lmax, right: rmax };
+  if (row.includes("flex-wrap")) {
+    const room = Math.min(C - lmin, C - rmin);
+    return { mode: "wrapped", room, split: !isWhole(fig) && figW > C, over: room < 0, left: Math.min(lmax, C), right: C };
+  }
+  const [left, right] = flexShrink([lmax, rmax], [lmin, rmin], C);
+  return { mode: "squeezed", room: C - (lmax + rmax), split: !isWhole(fig) && left < figW - 1e-9, over: lmin + rmin > C, left, right };
+}
+type ButtonFit = { row: string; room: number };
+/** The confirm's two buttons and the result's one: the room left inside each button's content, every label on one line. */
+function dialogButtons(F: DialogFacts, vw: number, loc: string, value: number): ButtonFit[] {
+  const content = panelContent(F, vw, F.confirmMax, F.pad, F.padLg) - 2 * F.btnBorder - 2 * F.btnPad;
+  const resultContent = panelContent(F, vw, F.result.max, F.result.pad, F.result.padLg) - 2 * F.btnBorder - 2 * F.btnPad;
+  const px = F.btnFont;
+  const face = `inter:${F.features.join(",")}`;
+  const em = labelEmOf(F.features);
+  const inside = (row: string, room: number, label: string, track: number) => ({ row, room: room - memoRun(face, label, em, px, track) });
+  return [
+    inside("confirm.gold", content, `${dialogWord(F, loc, "dialog", "sellLabel")} ${DIALOG_DOT} ${formatTzs(value)}`, F.goldTrack * px),
+    inside("confirm.gold.selling", content, dialogWord(F, loc, "dialog", "selling"), F.goldTrack * px),
+    inside("confirm.keep", content, dialogWord(F, loc, "dialog", "keepPosition"), F.ghostTrack * px),
+    inside("confirm.keep.journey", content, dialogWord(F, loc, "journey", "sellKeep"), F.ghostTrack * px),
+    inside("result.primary", resultContent, dialogWord(F, loc, "common", "doneSawa"), F.primaryTrack * px),
+    inside("result.primary.refused", resultContent, dialogWord(F, loc, "common", "close"), F.noTrack * px),
+  ];
+}
+type ResultFit = { row: string; room: number; split: boolean; over: boolean };
+/** The result a sale opens: the title's figure on the title's line, and each detail row's figure in its row. */
+function resultRows(F: DialogFacts, vw: number, loc: string, p: DialogPrice): ResultFit[] {
+  const R = F.result;
+  const L = panelContent(F, vw, R.max, R.pad, R.padLg);
+  const fee = Math.max(0, p.stake - p.value);
+  const whole = R.titleWhole && F.asks && R.figureRe && R.helper && F.amountWhole;
+  const figW = monoRun(formatTzs(p.value), dialogPx(R.title ?? [], F), 0);
+  const out: ResultFit[] = [{ row: "result.title", room: whole ? L - figW : Number.NaN, split: !whole, over: whole && figW > L }];
+  const row = R.detailRow ?? [];
+  const padX = row.find((c) => c.startsWith("px-"));
+  const gapX = row.find((c) => c.startsWith("gap-x-"));
+  const RW = L - 2 * (row.includes("border") ? 1 : 0) - 2 * (padX ? F.sp(padX.slice(3)) : Number.NaN);
+  const gx = gapX ? F.sp(gapX.slice(6)) : 0;
+  const labelT = R.label ?? [];
+  const valueT = R.value ?? [];
+  const vpx = dialogPx(valueT, F);
+  const details: Array<[string, string, string]> = [
+    ["result.returned", dialogWord(F, loc, "common", "returned"), formatTzs(p.value)],
+    ["result.fee", dialogWord(F, loc, "common", "earlyExitFee"), fee <= 0 ? dialogWord(F, loc, "common", "none") : formatTzs(fee)],
+  ];
+  for (const [name, label, value] of details) {
+    const lw = textPx(label, labelT, F);
+    const vw2 = monoRun(value, vpx, dialogTrack(valueT, vpx, F));
+    if (lw + gx + vw2 <= RW) out.push({ row: name, room: RW - (lw + gx + vw2), split: false, over: false });
+    else if (row.includes("flex-wrap")) out.push({ row: name, room: RW - vw2, split: vw2 > RW && !isWhole(valueT), over: vw2 > RW && isWhole(valueT) });
+    else out.push({ row: name, room: RW - (lw + gx + vw2), split: !isWhole(valueT), over: isWhole(valueT) });
+  }
+  return out;
+}
+/** S6 A8f · one word of one language and section replaced, for §6's copy plants. */
+const withEntry = (w: World, loc: string, section: string, key: string, value: string): World => {
+  const lang = (w.words[loc] ?? {}) as Record<string, Record<string, unknown> | undefined>;
+  return { ...w, words: { ...w.words, [loc]: { ...lang, [section]: { ...(lang[section] ?? {}), [key]: value } } } };
+};
+
+async function g6Dialogs(W: World) {
+  say(`${NL}§6 · the dialogs' fit — every money figure in the Sell confirm and in the result a sale opens stays whole, and each row reflows (S6 A8f)`);
+  const F = dialogFacts(W);
+  const priced = await dialogPrices();
+  const c = F.confirm;
+  const numbers: Record<string, number> = {
+    lg: F.lg, micro: F.micro, microTrack: F.microTrack, titleSm: F.titleSm, titleSmTrack: F.titleSmTrack, btnBorder: F.btnBorder,
+    btnPad: F.btnPad, btnFont: F.btnFont, goldTrack: F.goldTrack, primaryTrack: F.primaryTrack, noTrack: F.noTrack,
+    ghostTrack: F.ghostTrack, eyebrowEm: F.eyebrowEm, material: F.material, gutter: F.gutter, pad: F.pad, padLg: F.padLg,
+    confirmMax: F.confirmMax, resultMax: F.result.max, resultPad: F.result.pad, resultPadLg: F.result.padLg,
+  };
+  const unread = Object.entries(numbers).filter(([, v]) => !Number.isFinite(v)).map(([k]) => k);
+  const missing = [
+    ...Object.entries(c).filter(([, v]) => v === null || v === false).map(([k]) => `confirm.${k}`),
+    ...(["inner", "title", "label", "value", "detailRow"] as const).filter((k) => F.result[k] === null).map((k) => `result.${k}`),
+    ...(F.result.flush ? [] : ["result.flush"]), ...(F.btnNowrap ? [] : ["btn.nowrap"]), ...(F.btnBody ? [] : ["btn.face"]),
+    ...(F.amountWhole ? [] : [".amount"]),
+  ];
+  // The model measures these in the mono face, so each must be set in it.
+  const faces = [["confirm.eyeL", c.eyeL], ["confirm.eyeR", c.eyeR], ["confirm.figure", c.figure], ["confirm.fee", c.fee], ["confirm.note", c.note],
+    ["result.label", F.result.label], ["result.value", F.result.value]].filter(([, t]) => !isMono(t as Classes)).map(([k]) => k);
+  const unworded = DIALOG_LOCS.flatMap((loc) => Object.entries(DIALOG_WORDS).flatMap(([section, keys]) =>
+    keys.filter((k) => !dialogWord(F, loc, section, k)).map((k) => `${loc}.${section}.${k}`)));
+  // Every cell of the grid, measured once: the receive row, the buttons, and the result.
+  const receive: Array<{ loc: string; vw: number; p: DialogPrice; f: ReceiveFit }> = [];
+  const pressed: Array<{ loc: string; vw: number; f: ButtonFit }> = [];
+  const resultCells: Array<{ loc: string; vw: number; p: DialogPrice; f: ResultFit }> = [];
+  for (const loc of DIALOG_LOCS) {
+    for (const vw of DIALOG_WIDTHS) {
+      for (const p of priced) {
+        receive.push({ loc, vw, p, f: confirmRow(F, vw, loc, p) });
+        for (const f of dialogButtons(F, vw, loc, p.value)) pressed.push({ loc, vw, f });
+        for (const f of resultRows(F, vw, loc, p)) resultCells.push({ loc, vw, p, f });
+      }
+    }
+  }
+  const glyphless = [...receive.filter((x) => !Number.isFinite(x.f.room)).map((x) => `${x.loc} ${x.vw} receive`),
+    ...pressed.filter((x) => !Number.isFinite(x.f.room)).map((x) => `${x.loc} ${x.vw} ${x.f.row}`),
+    ...resultCells.filter((x) => !Number.isFinite(x.f.room) && !x.f.split).map((x) => `${x.loc} ${x.vw} ${x.f.row}`)];
+  say(`     the model: ${j(numbers)} · the receive row's width: ${receiveWidth(F, 320)}px at 320, ${receiveWidth(F, 1280)}px at 1280 · the result's line: ${panelContent(F, 320, F.result.max, F.result.pad, F.result.padLg)}px at 320 · cells: ${receive.length} rows, ${pressed.length} buttons, ${resultCells.length} result rows`);
+  ok("6.model · the model reads its facts from source — the Modal's gutter and panel padding from ui/modal.tsx, the panel's edge from .mat-modal (motion.css), each dialog's width, padding and classes from its own markup, the buttons', the eyebrow's and .amount's metrics from the stylesheet, the type ladder and the spacing scale from the Tailwind config — every element it measures in the mono face is set in it, every word both dialogs draw exists in en, sw and zh (the journey's keep word included), and every glyph is in the fonts",
+    unread.length === 0 && missing.length === 0 && faces.length === 0 && unworded.length === 0 && glyphless.length === 0 && receive.length > 0,
+    j({ unread, missing, faces, unworded, glyphless: glyphless.slice(0, 3) }));
+  const fig = c.figure ?? [];
+  const row = c.row ?? [];
+  const right = c.right ?? [];
+  const fee = c.fee ?? [];
+  const note = c.note ?? [];
+  ok("6.classes · the confirm's receive figure is an amount (one object, DESIGN_AUTHORITY §M4), and so are its fee and the fee's note; its row wraps; the fee column grows to the box's width when it is alone on its line (its words at the right edge); and beside the figure the fee keeps a clear space before it, so two figures never run together",
+    isWhole(fig) && row.includes("flex-wrap") && right.includes("grow") && right.includes("text-right") && isWhole(fee) && isWhole(note) && leadOf(fee, F) > 0,
+    j({ figure: fig, row, right, fee, note }));
+  const receiveBad = receive.filter(({ f }) => f.split || f.over || !Number.isFinite(f.room))
+    .map(({ loc, vw, p, f }) => `${loc} ${vw} TZS ${p.stake}${p.free ? " free" : ` at ${p.rate}`}: ${f.mode}, ${f.room.toFixed(1)}px${f.split ? ", split" : ""}`);
+  const leastReceive = (loc: string) => Math.min(...receive.filter((x) => x.loc === loc && x.vw === 320).map((x) => x.f.room)).toFixed(1);
+  ok(`6.confirm · at every width, in en, sw and zh, for every stake to the platform's maximum, free and paid at every whole percent to 30, the confirm's receive row holds its figure whole: it shares a line where the figure's column and the fee column fit side by side, and wraps where they do not — the figure's column on its own line, the fee column below it — and no unbreakable piece (the whole figure, the fee, its note, an eyebrow's longest word) runs out of its line (least room left at 320: en ${leastReceive("en")}, sw ${leastReceive("sw")}, zh ${leastReceive("zh")}px)`,
+    receive.length > 0 && receiveBad.length === 0, receiveBad.slice(0, 3).join(" | "));
+  const pressedBad = pressed.filter(({ f }) => !(f.room >= 0)).map(({ loc, vw, f }) => `${loc} ${vw} ${f.row}: ${f.room.toFixed(1)}px`);
+  const leastButton = (loc: string) => Math.min(...pressed.filter((x) => x.loc === loc && x.vw === 320).map((x) => x.f.room)).toFixed(1);
+  ok(`6.button · every button in both dialogs holds its one-line label inside its padding at every width, in both looks — the gold "Uza · TZS 1,000,000" and "Inauza…", the keep button's words today and the journey's, and the result's own (least room left at 320: en ${leastButton("en")}, sw ${leastButton("sw")}, zh ${leastButton("zh")}px)`,
+    F.btnNowrap && pressed.length > 0 && pressedBad.length === 0, pressedBad.slice(0, 3).join(" | "));
+  const resultBad = resultCells.filter(({ f }) => f.split || f.over || !Number.isFinite(f.room))
+    .map(({ loc, vw, p, f }) => `${loc} ${vw} TZS ${p.stake} ${f.row}: ${f.split ? "can split" : `${f.room.toFixed(1)}px`}`);
+  const leastResult = (name: string) => Math.min(...resultCells.filter((x) => x.f.row === name && x.vw === 320).map((x) => x.f.room)).toFixed(1);
+  ok(`6.result · the result a sale opens sets every money figure in its title as one amount — the Sell button asks (wholeFigures), and the pinned helper wraps each figure its pattern finds, a minus before it included — and at every width the title's widest figure, TZS 1,000,000, fits the title's line (least room left at 320: ${leastResult("result.title")}px); each detail row holds its figure whole, its line wrapping before break-all could break it (least room left at 320: ${leastResult("result.returned")} and ${leastResult("result.fee")}px)`,
+    resultCells.length > 0 && resultBad.length === 0, resultBad.slice(0, 3).join(" | "));
+  // CONTROL — today's rules (the row not wrapping, the figure no amount, the fee keeping no space) on the ticket the v2 parity
+  // baseline sells in its confirm cells, a free TZS 1,500, at 360 and 390.
+  const ticket: DialogPrice = { stake: 1_500, free: true, value: (await fitPrice(1_500, 0.1, true)).value, rate: null };
+  const today: ReceiveRules = {
+    row: row.filter((x) => x !== "flex-wrap"),
+    figure: fig.filter((x) => x !== "amount" && x !== "whitespace-nowrap"),
+    fee: fee.filter((x) => !x.startsWith("pl-") && !x.startsWith("ml-")),
+  };
+  const en360 = confirmRow(F, 360, "en", ticket, today);
+  const sw360 = confirmRow(F, 360, "sw", ticket, today);
+  const sw390 = confirmRow(F, 390, "sw", ticket, today);
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
+  ok(`6.control · CONTROL · with today's rules (the row not wrapping, the figure no amount) the model draws what the v2 parity baseline (7c859cdf) captured of the classic confirm for a free TZS 1,500 at 360 — the English row on one line, the figure's column ${en360.left.toFixed(1)}px beside a ${en360.right.toFixed(1)}px fee column, ${en360.room.toFixed(1)}px to spare (captured: 129.5 and 103.5), and the Swahili figure's column squeezed to ${sw360.left.toFixed(1)}px beside ${sw360.right.toFixed(1)}px (captured: 104 and 132), its figure on two lines — and the Swahili figure split at 390, as a browser drew it: so 6.confirm can see the defect it was written for`,
+    en360.mode === "shared" && near(en360.left, 129.6) && near(en360.right, 103.6) && en360.room > 2 && en360.room < 4
+      && sw360.mode === "squeezed" && sw360.split && near(sw360.left, 104) && near(sw360.right, 132) && sw390.split,
+    j({ en360, sw360, sw390 }));
+}
+
 async function runAll(I: Impl, W: World) {
   await g1Server(I);
   g2Hosts(W);
   g3Button(W);
   g4Wiring(W);
   await g5Fit(W);
+  await g6Dialogs(W);
 }
 
 if (!PROVE_RED) {
@@ -1467,6 +1923,51 @@ const PLANTS: Plant[] = [
   // §4 — the wiring
   { name: "the suite drops out of predeploy", expect: ["4.wired"],
     world: (w) => ({ ...w, scripts: { ...w.scripts, predeploy: (w.scripts.predeploy ?? "").split("npm run test:sell-grace-truth && ").join("") } }) },
+  // §6 — S6 A8f: the dialogs' fit
+  { name: "the confirm's receive row is today's again — no wrap, the figure no amount, the fee no clear space (the Swahili figure splits at 360 and 390, as a browser drew it)", expect: ["6.confirm", "6.classes"],
+    world: (w) => inFile(inFile(inFile(w, SELL_MODAL, RECEIVE_ROW, `className="flex items-baseline justify-between"`),
+      SELL_MODAL, RECEIVE_FIGURE, `className="font-mono font-bold text-[24px] tabular-nums leading-none text-text"`),
+      SELL_MODAL, FEE_FIGURE, `className="font-bold text-title-sm amount leading-none"`) },
+  { name: "the receive row stops wrapping (the whole figure runs out of the box on a phone, beside the fee column)", expect: ["6.confirm", "6.classes"],
+    world: (w) => inFile(w, SELL_MODAL, RECEIVE_ROW, RECEIVE_ROW.replace("flex flex-wrap ", "flex ")) },
+  { name: "the receive figure is no amount again (its 'TZS' could end a line, held only by the wrap)", expect: ["6.classes"],
+    world: (w) => inFile(w, SELL_MODAL, RECEIVE_FIGURE, RECEIVE_FIGURE.replace("amount font-bold", "font-mono font-bold")) },
+  { name: "the receive figure is set in the display face (the model would measure a face it cannot read)", expect: ["6.model"],
+    world: (w) => inFile(w, SELL_MODAL, RECEIVE_FIGURE, RECEIVE_FIGURE.replace("amount font-bold", "font-display font-bold")) },
+  { name: "the fee column does not grow (alone on its line it would sit at the box's left, its words ragged)", expect: ["6.classes"],
+    world: (w) => inFile(w, SELL_MODAL, FEE_COLUMN, FEE_COLUMN.replace("grow ", "")) },
+  { name: "the fee keeps no clear space before it (beside the figure, two figures can run together)", expect: ["6.classes"],
+    world: (w) => inFile(w, SELL_MODAL, FEE_FIGURE, FEE_FIGURE.replace("pl-3 ", "")) },
+  { name: "the fee is no amount ('−TZS' could end a line)", expect: ["6.classes"],
+    world: (w) => inFile(w, SELL_MODAL, FEE_FIGURE, FEE_FIGURE.replace(" amount", "")) },
+  { name: "the fee's note is no amount (its figure could end a line)", expect: ["6.classes"],
+    world: (w) => inFile(w, SELL_MODAL, FEE_NOTE, FEE_NOTE.replace(" amount", "")) },
+  { name: "the confirm's box pads wider (its content narrows past the whole figure on a 320 phone)", expect: ["6.confirm"],
+    world: (w) => inFile(w, SELL_MODAL, `className="rounded-lg border p-4"`, `className="rounded-lg border p-6"`) },
+  { name: "the Modal's gutter widens (the confirm's box narrows past the whole figure on a 320 phone)", expect: ["6.confirm"],
+    world: (w) => inFile(w, DIALOG_SHELL, `: "px-3 py-4"`, `: "px-5 py-4"`) },
+  { name: "a longer Swahili sell word (the gold button's label, with TZS 1,000,000, runs out of its button at 320)", expect: ["6.button"],
+    world: (w) => withEntry(w, "sw", "dialog", "sellLabel", "Uza tiketi yako yote sasa hivi") },
+  { name: "a longer Swahili keep word in the journey's look (its keep button overflows at 320)", expect: ["6.button"],
+    world: (w) => withEntry(w, "sw", "journey", "sellKeep", "Baki na tiketi yako hii hadi matokeo yatoke") },
+  { name: "the Sell button stops asking for whole figures (a refusal's 'TZS' can end a line again, and the title's figure is drawn in a face the model cannot read)", expect: ["6.result"],
+    world: (w) => inFile(w, SELL_BUTTON, `${NL}          wholeFigures${NL}`, NL) },
+  { name: "the result draws its title as given (no amount around its figure)", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, "{wholeFigures ? withWholeFigures(title) : title}", "{title}") },
+  { name: "the result's helper sets its figures in the body's face, not as amounts", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, `<span key={i} className="amount">`, `<span key={i} className="font-semibold">`) },
+  { name: "the figure pattern misses a minus written before the currency", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, `/(${DIALOG_MINUS}?TZS `, "/(TZS ") },
+  { name: "a detail row of the result stops wrapping (a long Swahili label squeezes the figure, and break-all breaks it)", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, "px-3 py-2 flex flex-wrap items-baseline", "px-3 py-2 flex items-baseline") },
+  { name: "the result's title grows to 34px (its widest figure no longer fits a 320 phone's line)", expect: ["6.result"],
+    world: (w) => inFile(w, RESULT_MODAL, "font-display text-[22px] font-bold", "font-display text-[34px] font-bold") },
+  { name: "a word the dialogs draw is missing in Chinese (the model would measure an empty eyebrow)", expect: ["6.model"],
+    world: (w) => withEntry(w, "zh", "dialog", "earlyExitFee", "") },
+  { name: "the eyebrow's tracking is misread in the stylesheet (the model no longer draws the boxes the browser drew)", expect: ["6.control"],
+    world: (w) => ({ ...w, css: w.css.split(".mcardp-pctcap { letter-spacing: 0.14em; }").join(".mcardp-pctcap { letter-spacing: 0.10em; }") }) },
+  { name: "the Modal's panel pads narrower below lg (the model reads a panel the browser did not draw)", expect: ["6.control"],
+    world: (w) => inFile(w, DIALOG_SHELL, "mat-modal relative w-full p-5 lg:p-6", "mat-modal relative w-full p-4 lg:p-6") },
 ];
 
 {
