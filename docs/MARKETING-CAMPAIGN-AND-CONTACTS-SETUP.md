@@ -36,6 +36,37 @@ erasure now withdraws the consent and empties the book, and both data exports ca
 4. Work per §11. Close per §0a step 6.
 
 ```
+⏸ S10 PAUSED — 2026-10-04 ~10:50 UTC (Ali: "push now what you finished, we continue in a new session later").
+  EVERYTHING FINISHED IS LIVE — last `2a0c311f`, live 10:45:49 UTC: validation batch 7 (STEP 28) · qa:live's market-card
+  block (28b) · U33a-0, the pre-ledger census = 0 (29) · U33w, the consent wordings tab (30) · U33a-L, the list-basis
+  table (31) · U33p, the public policy lines tab (32) · the admin guide v1.2 (20 pages; on Ali's Desktop).
+  ▶ RESUME HERE, in order:
+  1. Read `docs/marketing-specs/ENGINE-SPEC.md` §0 — the send engine and its monitoring, 18 units (~119–196 h), the
+     parallel sets and the deploy order — and `docs/marketing-specs/U33a-U37c-OD58.md` §11 for the gate track still to
+     build (U37s, U33a-R, U33a-G, U33a-P, U33b-L, U37c).
+  2. THREE BUILDERS WERE IN FLIGHT when S10 paused; their outputs are UNREVIEWED DRAFTS and may be partial (the
+     session's teardown stops them): U37s + U33a-R (`u33r/`), U43-0 (`u430/`), U16a (`u16a/`), under the scratch root
+     `C:/Users/Ali/AppData/Local/Temp/claude/C--Users-Ali/83bc643c-a332-4527-ac4c-d62e1711c811/scratchpad/`. A complete
+     `MANIFEST.md` ending in a summary is the sign one finished; otherwise re-launch it from its spec section. Nothing
+     of theirs is merged or committed.
+  3. THE PATTERN THAT WORKED (STEPS 30–32): a static builder agent (spec → complete files in scratch, no Node) → merge
+     into the worktree (3-way `git merge-file` for package.json and shared docs) → ONE detached battery under the
+     heavy-node lock (+ the drive, its tiles READ) → an adversarial reviewer agent on the SCRATCH copies → resume the
+     SAME builder with the rulings → the final battery (the whole chain when a platform-wide file changes) → docs
+     (STEP n, the §1 row, the §9 body, NEXT-PLAN) → `git commit --only` → push → watch `?dpl=` → smoke (a migration:
+     read back on production in ONE `SET TRANSACTION READ ONLY` transaction).
+  4. OWNER ACTS waiting on Ali (none blocks building): save the consent wordings (Admin → System → Marketing wordings)
+     and the policy lines (→ Public policy lines) — G4/G10; the 13 OD59 questions and ENGINE-SPEC's 8 (each with its
+     built default); "my authenticator works" (2-step back on before G2); G2's message, audience and day.
+  ESTIMATE told to Ali 2026-10-04 (corrected the same morning): the first real campaign realistically 18–25 October.
+  ⚠ TRAPS THIS STRETCH: a `timeout` around a lock WAIT made a battery run lockless and delete another session's lock —
+  every wait gets a DEADLINE THAT EXITS, never one that proceeds; a detached battery lives at most two hours and a hard
+  kill skips its trap — after a kill or a session restart, kill survivors by command line, remove the lock only while
+  its owner still names the job, and `cmp` every file against its source (a red killed mid-run leaves its plant); the
+  build can fail fetching Google Fonts (network — re-run); the dev server died once on a V8 heap check (this laptop's
+  RAM — re-run); Git Bash heredocs mangle backslashes (build them with chr(92)); `test:house-bot-disclosure` §5.1 is red
+  for ANY uncommitted edit to a legal page until it is pushed (by design).
+
 🟡 S10 IN FLIGHT — 2026-10-01, Ali-Blade15, worktree `C:/kipindi-marketing`, branch `marketing-s10` (pushed
   `HEAD:main` step by step). Ali: "proceed with other sessions in parallel, push live, prove it".
   ✅ STEP 1 · THE CONSENT TIE IS FIXED (◐ HALF-DONE item 1 below, the S8 finding). Decided on Ali's standing
