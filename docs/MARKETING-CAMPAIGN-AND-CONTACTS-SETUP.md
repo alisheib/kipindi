@@ -40,6 +40,8 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   EVERYTHING FINISHED IS LIVE — last `2a0c311f`, live 10:45:49 UTC: validation batch 7 (STEP 28) · qa:live's market-card
   block (28b) · U33a-0, the pre-ledger census = 0 (29) · U33w, the consent wordings tab (30) · U33a-L, the list-basis
   table (31) · U33p, the public policy lines tab (32) · the admin guide v1.2 (20 pages; on Ali's Desktop).
+  ▶ RESUMED the same afternoon (Ali: "proceed with the plan, end to end until live, generate the instructions PDF"):
+  STEP 33 · U43-0 pushed ALONE (the one migration of the engine track) — below.
   ▶ RESUME HERE, in order:
   1. Read `docs/marketing-specs/ENGINE-SPEC.md` §0 — the send engine and its monitoring, 18 units (~119–196 h), the
      parallel sets and the deploy order — and `docs/marketing-specs/U33a-U37c-OD58.md` §11 for the gate track still to
@@ -53,13 +55,14 @@ erasure now withdraws the consent and empties the book, and both data exports ca
      since): MERGE → adversarial review → battery — do not re-run it. Its open calls for the lead: close = any admin
      (recommended, so outreach stops at once) vs owner-only like U49s; apply its three-line `reloadRow` fix (a deleted
      malformed row left "couldn't be read" until the next write) to U33p's and U33w's stores too; its spec-vs-code items
-     1–11; package.json — re-add `&& npm run test:outreach-record` after `npm run test:policy-lines` by hand.
+     1–11; package.json — chain its outreach-record suite into predeploy right after the policy-lines suite, by hand.
      ✔ U43-0 FINISHED after the pause too (complete `u430/MANIFEST.md`; migration
      `20261004140000_sms_recipient_unconfirmed`, one `ALTER TYPE … ADD VALUE IF NOT EXISTS 'UNCONFIRMED'`; no package.json
      change — it extends `db:probe-campaign-models`): MERGE → adversarial review → `prisma generate` first → its battery +
      the whole chain (store.ts / prisma-dal.ts) → PUSH IT ALONE (check `git diff --stat origin/main..HEAD --
      prisma/migrations` shows only its folder; re-check its stamp sorts last) → prove it on production (the deploy log,
      `?dpl=`, and a READ ONLY read of the `_prisma_migrations` row and the enum ending in UNCONFIRMED) BEFORE U43b ships.
+     ⇒ DONE: merged, battery green, pushed alone — STEP 33.
      ✔ U16a FINISHED after the pause too (complete `u16a/MANIFEST.md`, base `2a0c311f`; its merge hunks do not overlap
      U43-0's): erasure UNLINKS campaign recipient rows (nothing deleted, tokens kept), the access export gains three
      campaign sections, retention two rows (7 years, policy only). MERGE → review → its battery (MANIFEST §9; `red:erasure`
@@ -613,6 +616,24 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   version (the stamp records the code version it was made against, so no label is reused over different text); a
   review of today's words — the tick opening check 2 needs — is a marker that moves nothing and prints nothing. The card
   re-checks every saved line against today's rules and flags one whose code default changed since. Verified: the whole predeploy chain once (the public legal pages are platform-wide): all 206 commands green but the two known Vodacom reds and `test:house-bot-disclosure` §5.1 — the house-bot lane's pin of the legal pages' source bytes against origin/main, red for any uncommitted edit to those files and green once pushed (re-run after the push); `test:policy-lines` 10 (L0–L9) with `red:policy-lines` 40/40; `test:rg-policy` 25 with `red:rg-policy` 20/20; `test:privacy-notice` 67; `red:marketing-wordings` 36/36 (W8 now judges only its own action); the repo unchanged by the reds; the policy-lines drive 89/89 (before a save every page and version identical in three languages; a review moves nothing; new words move the version once; after, the saved lines print and the consent-only clause is gone; no sideways scroll at 360) and the wordings drive 42/42, tiles read; next build. The adversarial review — 6 majors, 7 minors — was fixed before the push (a review no longer moves the public version; late-night and frequency promises are caught in English, Swahili and Chinese; a review is a marker and saved lines are re-checked against today's rules; the printed version cannot collide with a code version; the suite cannot touch a real database), and so was a second static audit's one finding. Found on the tiles: an admin-facing refusal named a source file — the card now speaks in plain words.
+🚀 STEP 33 · U43-0 · UNCONFIRMED, THE STATUS OF A SEND WITHOUT AN ANSWER — PUSHED ALONE (the live stamp and the
+  production read-back follow). ENGINE-SPEC E4: a message handed to the gateway whose answer never came (a stranded claim
+  the reaper finds, a reply lost mid-read) is neither SENT nor FAILED — it is UNCONFIRMED: settled for progress, never
+  sent again by itself (a second send could be a second charge and a second message), and a late receipt may still
+  settle it. One hand-written migration, `20261004140000_sms_recipient_unconfirmed` — a single `ALTER TYPE … ADD VALUE IF
+  NOT EXISTS 'UNCONFIRMED'`, deployed one deploy BEFORE any writer, because Postgres refuses a value used in the
+  transaction that added it (55P04) — and the code that knows the value: both twins' unions, the counts' status set
+  (which refuses a status it does not know, so the knowledge ships first), and the campaign list's split (UNCONFIRMED is
+  settled: 4 SENT, 1 UNCONFIRMED and 5 PENDING read 5 of 10). Nothing writes it until U43b's slice (`test:campaign-models`
+  3.2 pins every writer). Built by a static builder from ENGINE-SPEC §4.2, merged on `9b782dab`. Verified: prisma
+  generate; typecheck; `test:campaign-models` 33 with its red 41/41; `test:campaigns-page` 38 with its red 20/20;
+  `test:dal-parity` 2118 with its red 179/179, the repo unchanged by the reds; the Postgres probe 22/22 (every migration
+  from an empty cluster, the enum's seven values in Postgres' own order with UNCONFIRMED last, a write of it in a later
+  transaction accepted and read back by the generated client, the drift diff naming only the new value, 55P04 shown real
+  on Postgres 18) and the campaign-list probe 10/10; migration-ownership; dead-schema; client-graph-safe; next build;
+  `test:red-anchors` red only for its two known rotted anchors (another lane's files). Not run, by the verification
+  policy: the whole predeploy chain (the twins gained a union member and one cast — typecheck and the build reach every
+  caller) and a separate adversarial review (no writer, no screen; the probe proves the migration on Postgres).
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
   step shows the page the admin opens for it (and the menu path to it); none is a step without its page. ✅ v1 BUILT
   2026-10-03 on the live code (batches 1–6): `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf` — 23 pages,
@@ -1248,7 +1269,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
 | U41 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | officer authorisation (reconcile with the single-admin ruling first, §9 U41) |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
-| U43 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the slice |
+| U43 | engine | 🟡 | S10 | — | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43a (the doors), U43y and U43b (the slice) follow. |
 | U44 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the pump |
 | U45 | engine | ⬜ | — | — | — | `test:dal-parity` | — | D20 scale |
 | U46 | engine | ⬜ | — | — | — | `test:sms-dlr` | — | D21 receipts · also owns inbound STOP (NOT built, §9 U46) |
@@ -3709,6 +3730,9 @@ is concurrent; and removing the unique index must fail it.
 do not rewrite it — and the engine joins `test:marketing-consent`'s U9 section as a second DRIVER, passing
 the same assertions (an opt-out, a self-exclusion and a break between two slices never reach the wire).
 It supplies the real `send`, with `purpose: "MARKETING"` from U35.
+⭐ **U43-0 (STEP 33) — the reaper's state exists:** `UNCONFIRMED`, added by its own one-statement migration
+(`20261004140000_sms_recipient_unconfirmed`) one deploy before any writer (55P04). Settled for progress, never retried by
+itself, a late receipt may still settle it (ENGINE-SPEC E4). The counts know it; nothing writes it before U43b.
 
 **U44 · The pump** — `src/lib/server/marketing/pump.ts` (OD19, OD20)
 Its own timer and its own leader lease, started from `instrumentation.register()`, yielding whenever the

@@ -1098,8 +1098,9 @@ export const MUTATIONS = [
     expect: `26.unique.prisma · the Prisma batch is ONE createMany with skipDuplicates: true, and never an upsert`,
   },
   {
-    // 🔴 The batch names the seed's key and drops its value: every recipient written on Postgres has no opt-out link, and
-    // U42's "a row without a token is never sent" quietly holds the whole campaign.
+    // 🔴 The batch names the seed's key and drops its value: a token handed in with a seed is lost on Postgres alone. (Since
+    // E1, U43-0, U42's seeds carry null and the token is ensured at send — but a seed key the batch ignores is still a
+    // value one twin keeps and the other drops.)
     name: "prisma-dal.ts — the recipient batch writes optOutToken as null",
     file: "src/lib/server/prisma-dal.ts",
     from: `        optOutToken: s.optOutToken,`,
@@ -1383,6 +1384,33 @@ export const MUTATIONS = [
     from: "page: async (q: SmsCampaignPageQuery): Promise<SmsCampaignPage> =>",
     to: 'page: async (q: { statuses: SmsCampaignStatus[] | null; sort: "created" | "name" | "updated"; dir: "asc" | "desc"; offset: number; limit: number }): Promise<SmsCampaignPage> =>',
     expect: "26.u36.named · the four list reads name their parameter and return types in BOTH twins (never an inline literal) — exported by store.ts, imported by prisma-dal.ts",
+  },
+  /* ── §26 · U43-0 · the recipient status set, ONE in both twins (S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4) ── */
+  {
+    // 🔴 The memory twin's union loses the value the schema and the migrations carry: every suite types a recipient row
+    // with six statuses while Postgres holds seven — and U43b's first UNCONFIRMED row is a status the suites cannot name.
+    name: "store.ts — the recipient status union forgets UNCONFIRMED",
+    file: "src/lib/server/store.ts",
+    from: `| "FAILED" | "SKIPPED" | "UNCONFIRMED";`,
+    to: `| "FAILED" | "SKIPPED";`,
+    expect: "26.status.union · ⭐ ONE RECIPIENT STATUS SET IN BOTH TWINS — store.ts's union (the memory twin's type, and the one the Prisma twin imports) and schema.prisma's enum (the Prisma client's) are the same SEVEN values in one order, UNCONFIRMED last where its ADD VALUE appends it (U43-0)",
+  },
+  {
+    // 🔴 The Prisma twin's read mapper casts to an inline list of the old six: a second vocabulary on the production path,
+    // which the next status added to the union silently skips.
+    name: "prisma-dal.ts — the recipient mapper casts the status to an inline list of the six old values",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    status: rcp.status as SmsCampaignRecipientStatus,`,
+    to: `    status: rcp.status as "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED",`,
+    expect: "26.status.prisma · ⛔ the Prisma twin names that ONE union at both of its reads — the recipient mapper and countByStatus cast each status to SmsCampaignRecipientStatus, imported from store.ts — and neither read spells a recipient status of its own (no inline list, no literal)",
+  },
+  {
+    // …and the same in countByStatus, the one-campaign count the live page (U47) and the engine's finish check will read.
+    name: "prisma-dal.ts — countByStatus casts the status to an inline list of the six old values",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `status: g.status as SmsCampaignRecipientStatus, count: g._count._all`,
+    to: `status: g.status as "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED", count: g._count._all`,
+    expect: "26.status.prisma · ⛔ the Prisma twin names that ONE union at both of its reads — the recipient mapper and countByStatus cast each status to SmsCampaignRecipientStatus, imported from store.ts — and neither read spells a recipient status of its own (no inline list, no literal)",
   },
   /* ── §23 · vb7 (review m1) · the bound Remove, all or nothing ─────────────────────────────────────────────────── */
   {

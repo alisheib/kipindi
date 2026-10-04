@@ -2486,7 +2486,8 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // texts somebody twice on production alone. `test:campaign-models` §2 EXECUTES the rules on the memory twin; this
   // section holds both twins' SHAPE, plantable through KP_SRC. ⛔ The unique key itself lives in schema.prisma, read
   // from ROOT — so it is held here as the two BEHAVIOURS that implement it (skipDuplicates; the memory index), and as
-  // TEXT by `test:campaign-models` §2.1. U36 and U40 extend this section (decision X1).
+  // TEXT by `test:campaign-models` §2.1. U36 and U40 extend this section (decision X1), and U43-0 adds 26.status: the
+  // recipient status set, ONE in both twins, UNCONFIRMED in it.
   const cKeys = storedKeys("StoredSmsCampaign");
   const rKeys = storedKeys("StoredSmsCampaignRecipient");
   const cRead = region(dalSrc, "function toStoredSmsCampaign(");
@@ -2811,6 +2812,57 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       !"orderBy: [first], skip: q.offset, take: q.limit".includes("orderBy: [first, { id: q.dir }], skip: q.offset, take: q.limit")
         && /findMany/.test("const rows = await pc().smsCampaign.findMany({}); return rows.filter(wants).length;")
         && !'groupBy({ by: ["campaignId", "status"], _count: { _all: true } })'.includes("where: { campaignId: { in: [...ids] } }"));
+  }
+
+  // ══ 26.status · THE RECIPIENT STATUS SET, ONE IN BOTH TWINS (U43-0, S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4) ═══
+  // ⭐ WHY IT IS HELD HERE. UNCONFIRMED reaches Postgres through its own ADD VALUE migration, one deploy before any writer
+  // (55P04). The memory twin types its rows with store.ts's union; the Prisma twin reads Postgres' enum through the
+  // generated client and casts each status it reads to a TypeScript type. Were that type an inline list, or the union and
+  // the schema's enum apart, a row U43b settles UNCONFIRMED would be a status one backend names and the other cannot —
+  // and the counts both twins answer through (fillRecipientCounts, tallyRecipientsByCampaign) REFUSE a status they do not
+  // know, so the list and the live page would fail on production alone. So the union and the enum are ONE set of seven
+  // in ONE order, and the Prisma twin names that ONE union at both of its reads. The migration's text, the sets in
+  // campaign-model.ts and campaign-status.ts and the writer pin are `test:campaign-models` §1.8c, §1.12 and §3.2's; the
+  // value on a real Postgres is `db:probe-campaign-models` §9's.
+  // ⛔ No backslash anywhere in this block: a line break is String.fromCharCode(10), and every pattern is a class.
+  {
+    const RS = "SmsCampaignRecipientStatus";
+    const SEVEN = ["PENDING", "HELD", "SENT", "DELIVERED", "FAILED", "SKIPPED", "UNCONFIRMED"];
+    /** The members of `export type <name> = "A" | "B";`, in written order. */
+    const unionOf = (src: string, name: string): string[] => {
+      const at = src.indexOf(`export type ${name} =`);
+      const end = at < 0 ? -1 : src.indexOf(";", at);
+      return end < 0 ? [] : Array.from(src.slice(at, end).matchAll(/"([A-Z][A-Z0-9_]*)"/g), (m) => m[1]);
+    };
+    /** The values of `enum <name> { … }`, in declared order — a `//` or `///` line is no value. */
+    const enumOf = (schema: string, name: string): string[] => {
+      const at = schema.indexOf(`enum ${name} {`);
+      const end = at < 0 ? -1 : schema.indexOf("}", at);
+      if (end < 0) return [];
+      return schema.slice(schema.indexOf("{", at) + 1, end).split(String.fromCharCode(10))
+        .map((l) => { const c = l.indexOf("//"); return (c < 0 ? l : l.slice(0, c)).trim(); })
+        .filter((l) => /^[A-Z][A-Z0-9_]*$/.test(l));
+    };
+    const union = unionOf(storeSrc, RS);
+    const prismaEnum = enumOf(prismaSchemaSrc, RS);
+    ok("26.status.union · ⭐ ONE RECIPIENT STATUS SET IN BOTH TWINS — store.ts's union (the memory twin's type, and the one the Prisma twin imports) and schema.prisma's enum (the Prisma client's) are the same SEVEN values in one order, UNCONFIRMED last where its ADD VALUE appends it (U43-0)",
+      union.join(",") === SEVEN.join(",") && prismaEnum.join(",") === SEVEN.join(","),
+      `store [${union}] · schema [${prismaEnum}]`);
+    const READ_CAST = `status: rcp.status as ${RS},`;
+    const COUNT_CAST = `status: g.status as ${RS}, count: g._count._all`;
+    /** A recipient status spelled as a string — what an inline list or a second vocabulary looks like. */
+    const STATUS_LITERAL = /"(PENDING|HELD|SENT|DELIVERED|FAILED|SKIPPED|UNCONFIRMED)"/;
+    const imported = storeImport.includes(`  ${RS},`);
+    ok("26.status.prisma · ⛔ the Prisma twin names that ONE union at both of its reads — the recipient mapper and countByStatus cast each status to SmsCampaignRecipientStatus, imported from store.ts — and neither read spells a recipient status of its own (no inline list, no literal)",
+      rRead.includes(READ_CAST) && pCount.includes(COUNT_CAST) && imported && !STATUS_LITERAL.test(rRead) && !STATUS_LITERAL.test(pCount),
+      `mapper cast ${rRead.includes(READ_CAST)} · count cast ${pCount.includes(COUNT_CAST)} · imported ${imported} · a literal in the mapper ${STATUS_LITERAL.test(rRead)} / the count ${STATUS_LITERAL.test(pCount)}`);
+    // ── CONTROLS — each proves the reader above it can reject, on a literal that would otherwise pass ──
+    ok("26.status.c1 · CONTROL · the union reader sees the six-value union of a build before U43-0 as six — so a union that forgot UNCONFIRMED IS reported — and the enum reader skips a /// line and stops at its own enum's brace",
+      unionOf('export type SmsCampaignRecipientStatus = "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";', RS).join(",") === SEVEN.slice(0, 6).join(",")
+        && enumOf(["enum SmsCampaignRecipientStatus {", "  PENDING", "  /// UNCONFIRMED is only named in this note", "  HELD", "}", "enum Other {", "  UNCONFIRMED", "}"].join(String.fromCharCode(10)), RS).join(",") === "PENDING,HELD");
+    ok("26.status.c2 · CONTROL · an inline-list cast is NOT the named cast 26.status.prisma looks for, and its literals ARE seen",
+      !'    status: rcp.status as "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED",'.includes(READ_CAST)
+        && STATUS_LITERAL.test('    status: rcp.status as "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED",'));
   }
 }
 

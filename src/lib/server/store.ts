@@ -408,8 +408,12 @@ export type SmsDlrResult = { changed: boolean; row: StoredSmsMessage | null };
 
 /** Mirrors `SmsCampaignStatus` (X12). DONE and CANCELLED are terminal; nothing returns to DRAFT. */
 export type SmsCampaignStatus = "DRAFT" | "CONFIRMED" | "PREPARING" | "RUNNING" | "PAUSED" | "DONE" | "CANCELLED";
-/** Mirrors `SmsCampaignRecipientStatus` (X12). ⚠️ HELD is OUTSTANDING — a held row still owes somebody a message. */
-export type SmsCampaignRecipientStatus = "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+/** Mirrors `SmsCampaignRecipientStatus` (X12), in the schema's order. ⚠️ HELD is OUTSTANDING — a held row still owes
+ *  somebody a message. ⭐ UNCONFIRMED (U43-0, ENGINE-SPEC E4) is SETTLED: handed to the wire, and the network's answer
+ *  never came — never retried automatically, and a late receipt may still settle it. Its own ADD VALUE migration ships
+ *  one deploy before its first writer, U43b (`test:campaign-models` 1.12 and the writer pin 3.2); the Prisma twin
+ *  types every status it reads with THIS union (`test:dal-parity` 26.status). */
+export type SmsCampaignRecipientStatus = "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED" | "UNCONFIRMED";
 
 /** ⭐ ONE CAMPAIGN. ⛔ No counter among these keys (OD26): progress is `countByStatus`, a groupBy over the recipient
  *  rows. The frozen keys (`SMS_CAMPAIGN_FROZEN`, `campaign-model.ts`) change only in DRAFT. */
@@ -474,7 +478,9 @@ export type StoredSmsCampaignRecipient = {
   status: SmsCampaignRecipientStatus;
   /** The reference handed to the gateway. Nullable-unique. */
   smsReference: string | null;
-  /** U8's token in this person's footer, minted at enqueue (U42). ⛔ A row without one is never sent. */
+  /** U8's token in this person's footer — ensured at SEND, only after the gate clears (E1): reused, else minted, so a
+   *  person the gate refuses gets no permanent link. The seed carries none; the settle writes it. ⛔ A message is never
+   *  rendered without one. */
   optOutToken: string | null;
   /** Which OD42 variant went out — written at send time. */
   locale: MessagingLocale | null;

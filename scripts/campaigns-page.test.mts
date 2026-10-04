@@ -5,10 +5,11 @@
  * door (`db.smsCampaign.create` and its conditional `transition`s, `db.smsCampaignRecipient.createMany`) on the memory
  * twin, and the REAL loader (`campaigns-loader.ts`, the one the page calls), the REAL rail builder, the REAL badge
  * reader and the pure vocabulary (`campaign-status.ts`) run over them — the order and its id tiebreak, the rail's
- * filters, the clamp, the whole-table counts, the failed read, the single recipient read, HELD as outstanding, the
- * empty campaign with no bar, attention, the badge refused to a viewer without growth, and the sync throw. Then the
- * source, for what only the source can show: the doors' literal titles, no money, no timer, no pulse, the links behind
- * their flags, the rail file's shape and its declaration, the shell's two callers, the dev seed's refusal.
+ * filters, the clamp, the whole-table counts, the failed read, the single recipient read, HELD as outstanding,
+ * UNCONFIRMED as settled (U43-0, §3f), the empty campaign with no bar, attention, the badge refused to a viewer without
+ * growth, and the sync throw. Then the source, for what only the source can show: the doors' literal titles, no money,
+ * no timer, no pulse, the links behind their flags, the rail file's shape and its declaration, the shell's two callers,
+ * the dev seed's refusal.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY (a nav copy, a crumb builder, a progress
  * function, a badge reader, a loader, a source string, a flag) and requires the MATCHING assertion to fail — each plant
@@ -198,6 +199,9 @@ type Impl = {
   sortOf: typeof campaignsSort;
   /** The memory twin's attention count — §4b holds it to the pure predicate. */
   twinAttention: () => number | Promise<number>;
+  /** The per-campaign recipient tally both twins' list read answers through — §3f holds it knowing UNCONFIRMED and
+   *  still refusing a status nobody knows (U43-0, P8). */
+  tally: typeof CS.tallyRecipientsByCampaign;
   sources: Sources;
 };
 const REAL: Impl = {
@@ -210,6 +214,7 @@ const REAL: Impl = {
   load: (sp) => loadCampaigns(sp),
   sortOf: campaignsSort,
   twinAttention: () => db.smsCampaign.attentionCount(),
+  tally: CS.tallyRecipientsByCampaign,
   sources: REAL_SOURCES,
 };
 
@@ -245,11 +250,12 @@ const L = {
   s2e: "2e · ⛔ EXECUTED · under the read fault the loader REJECTS — the page renders AdminLoadError, never a zero",
   s2f: "2f · EXECUTED · countsByCampaign is called exactly ONCE per load, with exactly the page's ids — no N+1, never the whole table",
   s2g: "2g · ⛔ ONE PARSE (U36 review F2): every address — a padded value, a repeated key, a case variant, a sort it does not offer — reads from its OWN links the order the page read, and a padded 'asc ' reads ascending",
-  s3a: "3a · OUTSTANDING (PENDING + HELD) and SETTLED (SENT + DELIVERED + FAILED + SKIPPED) are disjoint and cover every recipient status; the rail partitions every campaign status exactly once",
+  s3a: "3a · OUTSTANDING (PENDING + HELD) and SETTLED (SENT + DELIVERED + FAILED + SKIPPED + UNCONFIRMED) are disjoint and cover every recipient status; the rail partitions every campaign status exactly once",
   s3b: "3b · ⭐ HELD IS OUTSTANDING: a RUNNING campaign with 4 SENT and 6 HELD rows reads 4 of 10 — never 10 of 10 (a campaign that still owes people a message must not read as complete)",
   s3c: "3c · an empty campaign has NO progress — null for no rows, before its first row is written (confirmed then cancelled, paused, or preparing with none yet: U36 review F1), and for a list with no confirmed audience — so no 0 % bar is ever painted",
   s3d: "3d · PREPARING progress is rows written over the confirmed audience; a campaign paused or cancelled before its list finished stays in that phase once it has rows; after the list, rows settled over rows written",
   s3e: "3e · stopReasonLabel puts a known key in words and an unknown one as 'Engine reason: <key>' — never the raw key alone, never blank",
+  s3f: "3f · ⭐ UNCONFIRMED IS SETTLED (U43-0, E4): a RUNNING campaign with 4 SENT, 1 UNCONFIRMED and 5 PENDING reads 5 of 10; a PAUSED one whose rows are SENT and UNCONFIRMED wants no officer (an unanswered message never keeps a campaign open) while one with a PENDING row still does; the tally counts UNCONFIRMED — and a recipient status this code does not know still REFUSES",
   s4a: "4a · wantsAttention: PREPARING and RUNNING yes; PAUSED with a PENDING or HELD row, or with its list unfinished, yes; PAUSED with every row settled, DRAFT, CONFIRMED, DONE and CANCELLED no",
   s4b: "4b · ⭐ ONE DEFINITION: the memory twin's attentionCount is exactly the fixtures wantsAttention accepts (5)",
   s4c: "4c · ⛔ the badge is read ONLY for a viewer who may see growth: campaignAttentionBadge(true) says '5'; campaignAttentionBadge(false) is undefined AND reads nothing (0 attentionCount calls)",
@@ -418,12 +424,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   await check(p(L.s3a), () => {
     const out = [...CS.OUTSTANDING_RECIPIENT_STATUSES];
     const settled = [...CS.SETTLED_RECIPIENT_STATUSES];
-    const ALL: SmsCampaignRecipientStatus[] = ["PENDING", "HELD", "SENT", "DELIVERED", "FAILED", "SKIPPED"];
+    const ALL: SmsCampaignRecipientStatus[] = ["PENDING", "HELD", "SENT", "DELIVERED", "FAILED", "SKIPPED", "UNCONFIRMED"];
     const disjoint = out.every((s) => !settled.includes(s));
     const covers = ALL.every((s) => out.includes(s) || settled.includes(s)) && out.length + settled.length === ALL.length;
     const keys = ["drafts", "sending", "paused", "finished"];
     const homes = CS.CAMPAIGN_STATUSES.map((s) => keys.filter((k) => (CS.statusesForRail(k) ?? []).includes(s)).length);
-    return [disjoint && covers && out.join(",") === "PENDING,HELD" && settled.join(",") === "SENT,DELIVERED,FAILED,SKIPPED"
+    return [disjoint && covers && out.join(",") === "PENDING,HELD" && settled.join(",") === "SENT,DELIVERED,FAILED,SKIPPED,UNCONFIRMED"
       && CS.CAMPAIGN_STATUSES.length === 7 && homes.every((n) => n === 1),
       `outstanding [${out}] · settled [${settled}] · rail homes [${homes}]`];
   });
@@ -473,6 +479,22 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     return [known.length > 20 && !known.includes("Engine reason") && !known.includes("BALANCE_FLOOR")
       && unknown === "Engine reason: mystery_key" && blank === "Engine reason: not recorded",
       `${known} · ${unknown} · ${blank}`];
+  });
+  // ⭐ U43-0 · E4: a message handed to the wire whose answer never came is SETTLED — never sent again by itself — so it
+  // counts toward progress, and a campaign holding one is not left wanting an officer for ever.
+  await check(p(L.s3f), () => {
+    const z = CS.zeroRecipientStatusCounts();
+    const ENQ = "2026-09-30T08:00:00.000Z";
+    const pr = impl.progress({ status: "RUNNING", audienceCount: 10, enqueuedAt: ENQ }, { ...z, SENT: 4, UNCONFIRMED: 1, PENDING: 5 });
+    const answered = impl.attention({ status: "PAUSED", enqueuedAt: ENQ }, { ...z, SENT: 4, UNCONFIRMED: 1 });
+    const owed = impl.attention({ status: "PAUSED", enqueuedAt: ENQ }, { ...z, UNCONFIRMED: 1, PENDING: 1 });
+    const tallied = impl.tally(["cmp_u"], [{ campaignId: "cmp_u", status: "UNCONFIRMED", count: 2 }, { campaignId: "cmp_u", status: "SENT", count: 3 }]);
+    let unknownRefused = false;
+    try { impl.tally(["cmp_u"], [{ campaignId: "cmp_u", status: "ACCEPTED", count: 1 }]); } catch { unknownRefused = true; }
+    const zeroKnows = Object.keys(z).join(",") === "PENDING,HELD,SENT,DELIVERED,FAILED,SKIPPED,UNCONFIRMED" && z.UNCONFIRMED === 0;
+    return [!!pr && pr.phase === "sending" && pr.value === 5 && pr.max === 10 && answered === false && owed === true
+        && tallied.cmp_u?.UNCONFIRMED === 2 && tallied.cmp_u?.SENT === 3 && unknownRefused && zeroKnows,
+      JSON.stringify({ pr, answered, owed, tallied: tallied.cmp_u ?? null, unknownRefused, zeroKnows })];
   });
 
   /* ══ 4 · THE BADGE ══════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -692,6 +714,19 @@ if (!PROVE_RED) {
     return pr !== null && pr.phase === "sending" ? { ...pr, value: pr.value + counts.HELD } : pr;
   };
   const zeroForEmpty: typeof CS.campaignProgress = (c, counts) => CS.campaignProgress(c, counts) ?? { phase: "sending", value: 0, max: 0 };
+  /** U43-0 · E4 undone in the bar: UNCONFIRMED counted outstanding — a campaign with an unanswered message never finishes. */
+  const unconfirmedOutstanding: typeof CS.campaignProgress = (c, counts) => {
+    const pr = CS.campaignProgress(c, counts);
+    return pr !== null && pr.phase === "sending" ? { ...pr, value: pr.value - counts.UNCONFIRMED } : pr;
+  };
+  /** …and in the badge: a paused campaign holding an unanswered message wants an officer for ever. */
+  const unconfirmedOwed: typeof CS.wantsAttention = (c, counts) => CS.wantsAttention(c, counts) || (c.status === "PAUSED" && counts.UNCONFIRMED > 0);
+  /** P8 undone: a status this code does not know is DROPPED instead of refused — the list would read a campaign as
+   *  further along than it is, and a value shipped with its writer would count as nothing. */
+  const dropsUnknown: typeof CS.tallyRecipientsByCampaign = (ids, raw) => {
+    const known = new Set<string>(Object.keys(CS.zeroRecipientStatusCounts()));
+    return CS.tallyRecipientsByCampaign(ids, raw.filter((r) => known.has(r.status)));
+  };
   /** U36 review F1, undone: the preparing phase asks only the audience, so a campaign with no row yet paints 0 of N. */
   const preparedFromNothing: typeof CS.campaignProgress = (c, counts) => {
     const pr = CS.campaignProgress(c, counts);
@@ -757,6 +792,10 @@ if (!PROVE_RED) {
     { name: "one shell caller drops the growth answer", expect: L.s4e, impl: { ...REAL, sources: { ...REAL_SOURCES, shell: oneArgShell } } },
     { name: "the rail gated on the page's rows — a filter that matches nothing takes its own undo with it", expect: L.s5e, impl: { ...REAL, sources: { ...REAL_SOURCES, page: railOnRows } } },
     { name: "a draft link drawn without the compose flag", expect: L.s5k, impl: { ...REAL, sources: { ...REAL_SOURCES, page: draftUnflagged } } },
+    /* ── U43-0 · UNCONFIRMED is settled (E4), and an unknown status still refuses (P8) ── */
+    { name: "UNCONFIRMED counted outstanding in the bar — 'a campaign with an unanswered message never finishes'", expect: L.s3f, impl: { ...REAL, progress: unconfirmedOutstanding } },
+    { name: "UNCONFIRMED counted outstanding by the badge — a paused campaign with an unanswered message wants an officer for ever", expect: L.s3f, impl: { ...REAL, attention: unconfirmedOwed } },
+    { name: "a recipient status this code does not know dropped instead of refused (P8 undone)", expect: L.s3f, impl: { ...REAL, tally: dropsUnknown } },
   ];
 
   for (const [i, c] of CASES.entries()) {

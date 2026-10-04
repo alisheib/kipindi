@@ -40,6 +40,8 @@
  * carries nothing that settles a row — no status, no `smsReference` — because the Prisma twin writes with
  * `skipDuplicates`, whose ON CONFLICT DO NOTHING has no target: a settle key colliding would drop a person silently.
  * Counts are a groupBy, zero-filled here into every status in the schema's order (OD26: no counters).
+ * ⭐ UNCONFIRMED (U43-0, ENGINE-SPEC E4) is in that order — last, where its ADD VALUE puts it — one deploy BEFORE anything
+ * writes it: the counts REFUSE a status this code does not know (P8), so the knowledge ships first and alone.
  *
  * ⛔ PURE, AND NOTHING AT RUNTIME COMES FROM THE STORE OR THE CONSOLE'S UI LIBRARIES. `store.ts` and `prisma-dal.ts`
  * both import this file, so a runtime import back into `store.ts` would be a cycle through the DAL switch: types only
@@ -66,9 +68,11 @@ const CAMPAIGN_STATUS_SET: Readonly<Record<SmsCampaignStatus, true>> = {
 };
 export const SMS_CAMPAIGN_STATUSES = Object.freeze(Object.keys(CAMPAIGN_STATUS_SET)) as readonly SmsCampaignStatus[];
 
-/** Every recipient status, in the schema's order — the order `fillRecipientCounts` returns them in. */
+/** Every recipient status, in the schema's order — the order `fillRecipientCounts` returns them in, and the order
+ *  Postgres holds after every migration (UNCONFIRMED appended last by its own ADD VALUE, U43-0). A Record, so a status
+ *  added to the union and forgotten here is a compile error rather than a count that refuses it. */
 const RECIPIENT_STATUS_SET: Readonly<Record<SmsCampaignRecipientStatus, true>> = {
-  PENDING: true, HELD: true, SENT: true, DELIVERED: true, FAILED: true, SKIPPED: true,
+  PENDING: true, HELD: true, SENT: true, DELIVERED: true, FAILED: true, SKIPPED: true, UNCONFIRMED: true,
 };
 export const SMS_CAMPAIGN_RECIPIENT_STATUSES = Object.freeze(Object.keys(RECIPIENT_STATUS_SET)) as readonly SmsCampaignRecipientStatus[];
 

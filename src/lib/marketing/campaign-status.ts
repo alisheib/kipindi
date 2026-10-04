@@ -11,8 +11,13 @@
  * ── THE RECIPIENT SPLIT ─────────────────────────────────────────────────────────────────────────────────────────
  * OUTSTANDING = PENDING + HELD — ⛔ HELD STILL OWES SOMEBODY A MESSAGE: a shop-wide refusal (the credit floor, the
  * rail not configured) returns a claimed row to wait, it does not settle it. SETTLED = SENT + DELIVERED + FAILED +
- * SKIPPED — the four answers a row can end on. Counted as settled, a held row would make a campaign that still owes
- * people a message read as complete.
+ * SKIPPED + UNCONFIRMED — the five places a row can end. Counted as settled, a held row would make a campaign that
+ * still owes people a message read as complete.
+ * ⭐ UNCONFIRMED IS SETTLED (U43-0, ENGINE-SPEC E4): the message was handed to the wire and the network's answer never
+ * came, so it is never sent again by itself — a second send could be a second charge and a second message. A late
+ * receipt may still move it to DELIVERED or FAILED. Counted as outstanding, one unanswered message would keep a
+ * campaign from ever finishing and its badge from ever clearing. (Its words on a screen are U48's; today the list
+ * shows it only inside "N of M processed".)
  *
  * ── PROGRESS ─────────────────────────────────────────────────────────────────────────────────────────────────────
  * Two phases, never shown at once (the plan's U47 line): PREPARING is rows WRITTEN over the confirmed audience;
@@ -102,7 +107,8 @@ export function campaignTotal(counts: SmsCampaignStatusCounts): number {
 
 /* ══ THE RECIPIENT SPLIT ═══════════════════════════════════════════════════════════════════════════════════════ */
 
-/** ⛔ The split, as a total Record: a recipient status added later must be given a side here or nothing compiles. */
+/** ⛔ The split, as a total Record: a recipient status added later must be given a side here or nothing compiles.
+ *  In the schema's order — UNCONFIRMED last, where its ADD VALUE migration put it (U43-0). */
 const RECIPIENT_SIDE: Readonly<Record<SmsCampaignRecipientStatus, "outstanding" | "settled">> = {
   PENDING: "outstanding",
   HELD: "outstanding",
@@ -110,12 +116,14 @@ const RECIPIENT_SIDE: Readonly<Record<SmsCampaignRecipientStatus, "outstanding" 
   DELIVERED: "settled",
   FAILED: "settled",
   SKIPPED: "settled",
+  UNCONFIRMED: "settled",
 };
 const RECIPIENT_STATUSES = Object.keys(RECIPIENT_SIDE) as SmsCampaignRecipientStatus[];
 
 /** Rows that still owe somebody a message: PENDING and HELD. */
 export const OUTSTANDING_RECIPIENT_STATUSES = Object.freeze(RECIPIENT_STATUSES.filter((s) => RECIPIENT_SIDE[s] === "outstanding")) as readonly SmsCampaignRecipientStatus[];
-/** Rows that have their answer: SENT, DELIVERED, FAILED and SKIPPED. */
+/** Rows the engine is done with: SENT, DELIVERED, FAILED and SKIPPED — and UNCONFIRMED, whose answer may never come and
+ *  which is never sent again by itself (E4). */
 export const SETTLED_RECIPIENT_STATUSES = Object.freeze(RECIPIENT_STATUSES.filter((s) => RECIPIENT_SIDE[s] === "settled")) as readonly SmsCampaignRecipientStatus[];
 
 const sum = (counts: SmsCampaignRecipientStatusCounts, statuses: readonly SmsCampaignRecipientStatus[]): number =>
@@ -131,7 +139,7 @@ export function zeroCampaignStatusCounts(): SmsCampaignStatusCounts {
   return { DRAFT: 0, CONFIRMED: 0, PREPARING: 0, RUNNING: 0, PAUSED: 0, DONE: 0, CANCELLED: 0 };
 }
 export function zeroRecipientStatusCounts(): SmsCampaignRecipientStatusCounts {
-  return { PENDING: 0, HELD: 0, SENT: 0, DELIVERED: 0, FAILED: 0, SKIPPED: 0 };
+  return { PENDING: 0, HELD: 0, SENT: 0, DELIVERED: 0, FAILED: 0, SKIPPED: 0, UNCONFIRMED: 0 };
 }
 
 const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
@@ -179,6 +187,7 @@ export type CampaignProgress = { phase: "preparing" | "sending"; value: number; 
  *   · RUNNING, DONE, and a PAUSED or CANCELLED campaign after its list finished — rows SETTLED over rows written;
  *     null with no rows (⛔ never "0 of 0", never a 0 % bar for an empty campaign).
  * ⛔ HELD is outstanding: 4 SENT and 6 HELD read 4 of 10, never 10 of 10.
+ * ⭐ UNCONFIRMED is settled (U43-0): 4 SENT, 1 UNCONFIRMED and 5 PENDING read 5 of 10.
  */
 export function campaignProgress(
   c: Pick<StoredSmsCampaign, "status" | "enqueuedAt" | "audienceCount">,

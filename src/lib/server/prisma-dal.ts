@@ -635,6 +635,10 @@ function toStoredSmsCampaign(cmp: SmsCampaignRow): StoredSmsCampaign {
  * ⛔ THERE IS NO COLUMN MAP BESIDE IT YET, AND THAT IS DELIBERATE: U35b writes recipients only through `createMany`,
  * from the seed. The writers that settle a row (U43's claim, U45's settle, U46's receipt) bring the map with their
  * update — map-driven, never a hand-written allow-list.
+ * ⭐ THE STATUS IS CAST TO THE ONE NAMED UNION (`SmsCampaignRecipientStatus`, store.ts) — never an inline list — so the
+ * value U43-0 added, UNCONFIRMED, is a status this twin names the moment the union does (`test:dal-parity`
+ * 26.status). The cast checks nothing by itself: the generated client rejects a label it was not built with, and the
+ * counts (`fillRecipientCounts`, `tallyRecipientsByCampaign`) refuse a status this code does not know.
  */
 type SmsCampaignRecipientRow = {
   id: string; campaignId: string; msisdn: string; contactId: string | null; userId: string | null; status: string;
@@ -651,7 +655,7 @@ function toStoredSmsCampaignRecipient(rcp: SmsCampaignRecipientRow): StoredSmsCa
     msisdn: rcp.msisdn,
     contactId: rcp.contactId,
     userId: rcp.userId,
-    status: rcp.status as StoredSmsCampaignRecipient["status"],
+    status: rcp.status as SmsCampaignRecipientStatus,
     smsReference: rcp.smsReference,
     optOutToken: rcp.optOutToken,
     locale: rcp.locale as StoredSmsCampaignRecipient["locale"],

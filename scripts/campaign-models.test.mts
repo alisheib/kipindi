@@ -3,6 +3,11 @@
  * MARKETING purpose, alone in its own migration, in the schema and the store's union — and nobody writing it yet.
  * COMMIT B (U35b, S10 2026-10-02): the campaign tables — §1 the migration and the schema read as TEXT, §2 the rules
  * EXECUTED on the memory twin (the plan's Accept among them), §3 the MARKETING writer pin.
+ * COMMIT C (U43-0, S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4): UNCONFIRMED joins the recipient status in its OWN
+ * one-statement ADD VALUE migration, deployed one push before any writer (55P04). §1.8c holds the schema, the store
+ * and campaign-model to the order Postgres holds after EVERY migration; §1.12 and §1.13 hold the ADD VALUE alone and
+ * after the tables; §2.13 executes the counts knowing the value and still refusing a status nobody knows (P8); §3.2
+ * pins its writers — none in this commit.
  *
  * ⭐ WHY A SUITE OF ITS OWN: `red:dal-parity` can never plant a defect in schema.prisma or a migration (it reads them
  * from ROOT, not KP_SRC), so a shape that lives in SQL needs an in-process suite that is HANDED the text and can be
@@ -44,6 +49,18 @@ const lf = (s: string) => s.replace(/\r\n/g, "\n");
 /** SQL with its `--` comments and blank lines removed — what Postgres actually runs. */
 const sqlStatements = (sql: string) => lf(sql).split("\n").filter((l) => !/^\s*--/.test(l) && l.trim() !== "").join("\n");
 
+// ⛔ U43-0 added the lines below WITHOUT A BACKSLASH (the tools that write this file decode escapes): line breaks are
+// built with String.fromCharCode, and every pattern uses a character class instead of an escape.
+const NL = String.fromCharCode(10);
+const CR = String.fromCharCode(13);
+const TAB = String.fromCharCode(9);
+/** Every run of whitespace one space — so a statement split over lines still meets a one-line pattern. */
+function squash(s: string): string {
+  let out = s.split(CR).join(" ").split(NL).join(" ").split(TAB).join(" ");
+  while (out.includes("  ")) out = out.split("  ").join(" ");
+  return out.trim();
+}
+
 type Migration = { folder: string; sql: string };
 function readMigrations(): Migration[] {
   const dir = join(ROOT, "prisma", "migrations");
@@ -75,6 +92,17 @@ function srcTexts(): Array<{ path: string; text: string }> {
 export const MARKETING_WRITERS: readonly string[] = [
   "src/lib/server/marketing/campaign-test-send.ts",
 ];
+
+/**
+ * ⛔ THE FILES ALLOWED TO WRITE A RECIPIENT'S STATUS AS `UNCONFIRMED` (U43-0 · ENGINE-SPEC §3.2, decision E4). EMPTY ON
+ * PURPOSE: the value ships ONE DEPLOY BEFORE its first writer (55P04), so in U43-0 nothing may write it. U43b's slice
+ * (its settle and its reaper) declares itself here in its own commit; U46a's receipt arm only moves a row OUT of the
+ * value, so it joins only if that ever changes.
+ * ⚠️ A TEXT PIN, like MARKETING_WRITERS (§3.2's controls prove what it sees): an object key `status: "UNCONFIRMED"`, an
+ * assignment `.status = "UNCONFIRMED"` and SQL's `"status" = 'UNCONFIRMED'` (which a WHERE also spells — declare it,
+ * or say it is a read). It does NOT see a status passed through a variable or a generated enum member.
+ */
+export const UNCONFIRMED_WRITERS: readonly string[] = [];
 
 /* ═══ THE WORLD — the texts §1 reads and the twin §2 drives, each swappable by a red case ═══════════════════════ */
 
@@ -147,11 +175,13 @@ const L = {
   s17: "1.7 ⛔ expand-only: the tables migration only CREATEs types, tables and indexes and ADDs the recipient's foreign keys — no DROP, RENAME, ALTER TYPE, CONCURRENTLY or MARKETING",
   s18: "1.8 the schema's enum SmsPurpose and the store's SmsPurpose union are the same set, and both carry MARKETING",
   s18b: "1.8b SmsCampaignStatus is ONE set in the schema, the migration and the store, in the schema's order in campaign-model.ts — and holds no approval status (OQ1)",
-  s18c: "1.8c SmsCampaignRecipientStatus is ONE set in the schema, the migration and the store, in the schema's order in campaign-model.ts — HELD included (X12)",
+  s18c: "1.8c SmsCampaignRecipientStatus is ONE set in the schema, the migrations and the store — the schema and campaign-model.ts in the order Postgres holds after EVERY migration (the tables' CREATE TYPE of six, then each ADD VALUE as it places it) — HELD (X12) and UNCONFIRMED (E4) included",
   s18d: "1.8d SmsEncoding is ONE set in the schema, the migration and sms-compose.ts, and the store types both codings with sms-compose's union",
   s19: "1.9 every timestamp in both models is TIMESTAMPTZ(3) — @db.Timestamptz(3) in the schema, never a naive TIMESTAMP(3) in the migration",
   s110: "1.10 ⛔ no stored counter (OD26): SmsCampaign's only numeric columns are the saved segments, the revision, the confirmed population and the frozen estimate and budget",
   s111: "1.11 ⛔ a recipient holds LINKS, never copies: no name, e-mail or account-phone column on SmsCampaignRecipient, and both back-relations are declared",
+  s112: "1.12 ⛔ exactly ONE migration adds UNCONFIRMED to SmsCampaignRecipientStatus, and that file holds NO other statement (55P04 — U43-0 deploys alone, one push before its first writer)",
+  s113: "1.13 that ADD VALUE migration sorts AFTER the campaign tables' migration — the type exists before it is extended",
   s20: "2.0 CONTROL · §2 runs on the MEMORY twin: DATABASE_URL is absent and a campaign written lands in the memory map",
   s21: "2.1 ⭐ the dedupe fixture: 1,000 seeds, then the same 1,000 people (ids re-minted) shuffled among 200 new ones, give 1,200 rows, all PENDING — on the key the database enforces (the schema's @@unique([campaignId, msisdn]) and the migration's unique index)",
   s22: "2.2 the key is PER CAMPAIGN: one number on two campaigns is two rows",
@@ -165,7 +195,9 @@ const L = {
   s210: "2.10 ⭐ the confirmation is ONE move: its fields only with DRAFT → CONFIRMED, on a revision, and all of them — who, when, a population of at least one, the tier and its watermark, the frozen estimates — every gap refused",
   s211: "2.11 the draft-save and birth rules refuse a body without its saved verdict, a half-removed English variant, an emptied column and a value its column cannot take — and the watermark width is U40's MEMBERS_KEY_HEX_CHARS",
   s212: "2.12 a contact removed from the book leaves its campaign recipient row in place with the link set to null — Postgres' SET NULL, mirrored by the memory twin",
+  s213: "2.13 ⭐ the counts KNOW UNCONFIRMED (U43-0): a campaign with 2 UNCONFIRMED and 2 PENDING rows counts both, UNCONFIRMED last — and a status this code does not know is still REFUSED, never dropped (P8)",
   s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (U37b's test send; U43's slice next)",
+  s32: "3.2 ⛔ no src file writes a recipient's status as UNCONFIRMED unless it is a declared UNCONFIRMED_WRITER (none in U43-0: the value ships one deploy before U43b, its first writer) — and the pin sees a key, an assignment and SQL, and not a comparison or a read",
 };
 
 /* ═══ THE TEXT READERS (§1) ═══════════════════════════════════════════════════════════════════════════════════ */
@@ -205,6 +237,44 @@ function tsUnion(src: string, name: string): string[] {
 }
 const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
 const sameSet = (a: readonly string[], b: readonly string[]) => same([...a].sort(), [...b].sort());
+
+/* ── U43-0 · the enum Postgres holds after EVERY migration, the one ADD VALUE, and its writers ── */
+
+/** ⭐ The values Postgres holds for an enum after EVERY migration, in Postgres' own order: the one CREATE TYPE, then each
+ *  later `ALTER TYPE … ADD VALUE` in folder order — appended, or placed BEFORE / AFTER a neighbour when it says so; an
+ *  IF NOT EXISTS on a value already there adds nothing. null when an ADD VALUE names the type before any migration
+ *  created it, or a neighbour the type does not hold — Postgres would refuse that file. */
+function migratedEnum(migrations: readonly Migration[], name: string): string[] | null {
+  const addValue = new RegExp(`ALTER TYPE "${name}" ADD VALUE (?:IF NOT EXISTS )?'([^']+)'(?: (BEFORE|AFTER) '([^']+)')?`, "g");
+  let values: string[] | null = null;
+  for (const m of migrations) {
+    const created = migrationEnum(m.sql, name);
+    if (created.length > 0) values = [...created];
+    for (const a of squash(sqlStatements(m.sql)).matchAll(addValue)) {
+      if (values === null) return null;
+      const value: string = a[1];
+      const where: string | undefined = a[2];
+      const neighbour: string | undefined = a[3];
+      if (values.includes(value)) continue;
+      if (where === undefined || neighbour === undefined) { values.push(value); continue; }
+      const at = values.indexOf(neighbour);
+      if (at < 0) return null;
+      values.splice(where === "AFTER" ? at + 1 : at, 0, value);
+    }
+  }
+  return values;
+}
+/** U43-0's one statement, whitespace squashed: `ALTER TYPE "SmsCampaignRecipientStatus" ADD VALUE [IF NOT EXISTS] 'UNCONFIRMED'`. */
+const ADD_UNCONFIRMED = /ALTER TYPE "SmsCampaignRecipientStatus" ADD VALUE (IF NOT EXISTS )?'UNCONFIRMED'/;
+/** The migrations that add UNCONFIRMED — read from what Postgres RUNS (comments out), so a header that quotes the
+ *  statement is never counted as a second one. */
+const unconfirmedAdds = (w: World): Migration[] => w.migrations.filter((m) => ADD_UNCONFIRMED.test(squash(sqlStatements(m.sql))));
+/** A migration's statements — comments and blank lines out, split on the semicolon. */
+const statementsOf = (m: Migration): string[] => sqlStatements(m.sql).split(";").map((x) => x.trim()).filter(Boolean);
+/** §3.2's pin: a LITERAL write of the value — an object key, an assignment (never a comparison) or SQL's
+ *  `"status" = '…'`. The status word in either case (SQL), the value in Postgres' own spelling only: the dispatch
+ *  outcome "unconfirmed" is another word for another thing. */
+const WRITES_UNCONFIRMED = /[Ss][Tt][Aa][Tt][Uu][Ss]"?[ ]*(?::|=(?!=))[ ]*["'`]UNCONFIRMED["'`]/;
 
 type Col = { type: string; notNull: boolean; def: string | null };
 const colText = (c: Col | undefined) => (c ? `${c.type}${c.notNull ? " NOT NULL" : ""}${c.def !== null ? ` DEFAULT ${c.def}` : ""}` : "absent");
@@ -459,10 +529,14 @@ async function run(w: World, tag: string): Promise<void> {
       `schema [${s}] · migration [${m}] · store [${t}] · campaign-model [${c}]`];
   });
   await check(p(L.s18c), () => {
+    // U43-0: the tables migration's CREATE TYPE is applied history (six values, X12) and stays so; the set Postgres
+    // holds is that, then every later ADD VALUE — and THAT is what the schema, the store and campaign-model must equal.
     const s = schemaEnum(w.schema, "SmsCampaignRecipientStatus"), m = migrationEnum(tsql, "SmsCampaignRecipientStatus");
+    const pg = migratedEnum(w.migrations, "SmsCampaignRecipientStatus");
     const t = tsUnion(w.store, "SmsCampaignRecipientStatus"), c = [...CM.SMS_CAMPAIGN_RECIPIENT_STATUSES];
-    return [s.length === 6 && s.includes("HELD") && same(s, m) && sameSet(s, t) && same(s, c),
-      `schema [${s}] · migration [${m}] · store [${t}] · campaign-model [${c}]`];
+    return [s.length === 7 && s.includes("HELD") && s.includes("UNCONFIRMED") && m.length === 6 && pg !== null && same(s, pg)
+        && sameSet(s, t) && same(s, c),
+      `schema [${s}] · after every migration [${pg ?? "an ADD VALUE before its type"}] (created [${m}]) · store [${t}] · campaign-model [${c}]`];
   });
   await check(p(L.s18d), () => {
     const s = schemaEnum(w.schema, "SmsEncoding"), m = migrationEnum(tsql, "SmsEncoding"), c = tsUnion(w.smsCompose, "SmsEncoding");
@@ -508,6 +582,15 @@ async function run(w: World, tag: string): Promise<void> {
     return [cols.includes("msisdn") && cols.includes("contactId") && cols.includes("userId") && copies.length === 0 && back("User") && back("MarketingContact"),
       `copied columns [${copies}] · back-relations User ${back("User")} / MarketingContact ${back("MarketingContact")}`];
   });
+
+  // ── §1.12 · the UNCONFIRMED ADD VALUE stands alone (U43-0) ─────────────────────────────────
+  const uAdds = unconfirmedAdds(w);
+  ok(p(L.s112), uAdds.length === 1 && statementsOf(uAdds[0]).length === 1,
+    uAdds.map((m) => `${m.folder} (${statementsOf(m).length} statement(s))`).join(", ") || "none");
+
+  // ── §1.13 · …and only after the type exists ────────────────────────────────────────────────
+  await check(p(L.s113), () => [uAdds.length === 1 && tables !== null && tables.folder < uAdds[0].folder,
+    `${tables?.folder ?? "no tables migration"} < ${uAdds[0]?.folder ?? "no UNCONFIRMED migration"}`]);
 
   // ── §2 · the rules, EXECUTED on the memory twin ────────────────────────────────────────────
   const maps = mem();
@@ -642,7 +725,7 @@ async function run(w: World, tag: string): Promise<void> {
     const some = await R.countByStatus("cmp_counts");
     const none = await R.countByStatus("cmp_nobody");
     const order = schemaEnum(w.schema, "SmsCampaignRecipientStatus");
-    return [order.length === 6 && same(some.map((c) => c.status), order) && same(none.map((c) => c.status), order)
+    return [order.length === 7 && order[6] === "UNCONFIRMED" && same(some.map((c) => c.status), order) && same(none.map((c) => c.status), order)
         && some[0]?.status === "PENDING" && some[0]?.count === 3 && some.slice(1).every((c) => c.count === 0) && none.every((c) => c.count === 0),
       `[${some.map((c) => `${c.status} ${c.count}`).join(", ")}] · empty campaign [${none.map((c) => c.count).join(",")}]`];
   });
@@ -784,10 +867,53 @@ async function run(w: World, tag: string): Promise<void> {
       `linked ${linked} · removed ${removed.changed} · the recipient ${after === null ? "ROW GONE" : `kept, link ${after.contactId}`}`];
   });
 
+  // ── §2.13 · the counts know UNCONFIRMED, and still refuse what nobody knows (U43-0, P8) ──────
+  await check(p(L.s213), async () => {
+    await C.create(draft("cmp_unconfirmed"));
+    await R.createMany([0, 1, 2, 3].map((i) => seed(`rcp_u_${i}`, "cmp_unconfirmed", keyOf(9500 + i))));
+    // ⛔ No DAL door writes UNCONFIRMED before U43b (§3.2), so the state a slice would leave is set in the memory map —
+    // here, in a script, as test:campaigns-page sets its fixtures' states.
+    const rows = mem().smsCampaignRecipients;
+    for (const id of ["rcp_u_0", "rcp_u_1"]) { const r = rows.get(id); if (r) r.status = "UNCONFIRMED"; }
+    const counts = await R.countByStatus("cmp_unconfirmed");
+    const last = counts[counts.length - 1];
+    const known = last?.status === "UNCONFIRMED" && last.count === 2 && counts.find((c) => c.status === "PENDING")?.count === 2 && total(counts) === 4;
+    const odd = rows.get("rcp_u_2");
+    let refused = false;
+    try {
+      if (odd) odd.status = "ACCEPTED" as unknown as SmsCampaignRecipientStatus;
+      await R.countByStatus("cmp_unconfirmed");
+    } catch {
+      refused = true;
+    } finally {
+      if (odd) odd.status = "PENDING";
+    }
+    return [known && refused,
+      `[${counts.map((c) => `${c.status} ${c.count}`).join(", ")}] · a status this code does not know ${refused ? "refused" : "COUNTED (or dropped)"}`];
+  });
+
   // ── §3.1 · the MARKETING writer population ─────────────────────────────────────────────────
   const writers = w.src.filter((f) => /purpose\s*:\s*["']MARKETING["']/.test(f.text)).map((f) => f.path);
   const undeclared = writers.filter((f) => !MARKETING_WRITERS.includes(f));
   ok(p(L.s31), undeclared.length === 0, undeclared.join(", ") || `${w.src.length} files scanned`);
+
+  // ── §3.2 · the UNCONFIRMED writer population (U43-0) ───────────────────────────────────────
+  // ⭐ The pin's own controls ride in the same assertion: a pin that matched nothing would pass every src tree.
+  const pinSees = [
+    'await pc().smsCampaignRecipient.updateMany({ where: { id }, data: { status: "UNCONFIRMED" } });',
+    "row.status = 'UNCONFIRMED';",
+    `update "SmsCampaignRecipient" set "status" = 'UNCONFIRMED' where "id" = $1`,
+  ].every((t) => WRITES_UNCONFIRMED.test(t));
+  const pinIgnores = [
+    'if (row.status === "UNCONFIRMED") return;',
+    'where: { status: { in: ["SENT", "UNCONFIRMED"] } }',
+    'UNCONFIRMED: "settled",',
+    'return { ref, outcome: "unconfirmed" };',
+  ].every((t) => !WRITES_UNCONFIRMED.test(t));
+  const uWriters = w.src.filter((f) => WRITES_UNCONFIRMED.test(f.text)).map((f) => f.path);
+  const uUndeclared = uWriters.filter((f) => !UNCONFIRMED_WRITERS.includes(f));
+  ok(p(L.s32), uUndeclared.length === 0 && pinSees && pinIgnores,
+    `undeclared [${uUndeclared.join(", ")}] of ${w.src.length} files · the pin sees a key, an assignment and SQL ${pinSees} · ignores a comparison, a read and a word ${pinIgnores}`);
 }
 
 if (!PROVE_RED) {
@@ -833,6 +959,30 @@ if (!PROVE_RED) {
     gateTrail: null, updatedAt: s.createdAt, sentAt: null, deliveredAt: null, failedAt: null,
   });
   const writeCampaign = (row: StoredSmsCampaign): StoredSmsCampaign => { mem().smsCampaigns.set(row.id, row); return { ...row }; };
+
+  /* ── U43-0's plant helpers ── */
+  const unconfirmedFile: Migration | undefined = unconfirmedAdds(REAL)[0];
+  /** The migrations with U43-0's file edited (its folder, its text) or dropped (null) — re-sorted, as readMigrations
+   *  sorts them, so a renamed folder lands where Postgres would meet it. */
+  const withUnconfirmedFile = (edit: (m: Migration) => Migration | null): World => {
+    if (unconfirmedFile === undefined) throw new Error("no migration adds UNCONFIRMED — U43-0's file is missing");
+    const next = REAL.migrations.flatMap((m) => {
+      if (m !== unconfirmedFile) return [m];
+      const e = edit({ ...m, sql: lf(m.sql) });
+      return e === null ? [] : [e];
+    });
+    return { ...REAL, migrations: next.sort((a, b) => a.folder.localeCompare(b.folder)) };
+  };
+  /** One edit INSIDE one enum's block, so a value spelled the same in another enum is never the one planted. */
+  const withEnum = (name: string, edit: (block: string) => string): World => {
+    const at = REAL.schema.indexOf(`enum ${name} {`);
+    const end = at < 0 ? -1 : REAL.schema.indexOf("}", at);
+    if (end < 0) throw new Error(`the schema has no enum ${name}`);
+    const block = REAL.schema.slice(at, end + 1);
+    return { ...REAL, schema: REAL.schema.slice(0, at) + edit(block) + REAL.schema.slice(end + 1) };
+  };
+  /** The six statuses a build before U43-0 knows. */
+  const SIX: readonly string[] = ["PENDING", "HELD", "SENT", "DELIVERED", "FAILED", "SKIPPED"];
 
   const CASES: Array<{ name: string; expect: string; build: () => World }> = [
     /* ── U35a's three, unchanged ── */
@@ -976,9 +1126,10 @@ if (!PROVE_RED) {
     },
     /* ── U35b · the rest of §1, each assertion seen red ── */
     {
-      name: "enum drift — the store's recipient-status union gains UNCONFIRMED that neither the schema nor the migration has",
+      // (U43-0 re-anchored it: UNCONFIRMED is now a real value, so the invented one is F7's ACCEPTED.)
+      name: "enum drift — the store's recipient-status union gains ACCEPTED, which neither the schema nor any migration has",
       expect: L.s18c,
-      build: () => ({ ...REAL, store: plant(REAL.store, `"FAILED" | "SKIPPED";`, `"FAILED" | "SKIPPED" | "UNCONFIRMED";`) }),
+      build: () => ({ ...REAL, store: plant(REAL.store, `| "SKIPPED" | "UNCONFIRMED";`, `| "SKIPPED" | "UNCONFIRMED" | "ACCEPTED";`) }),
     },
     {
       name: "a naive timestamp — SmsCampaign.pausedAt loses @db.Timestamptz(3) (the consent-tie lesson)",
@@ -1050,6 +1201,68 @@ if (!PROVE_RED) {
       name: "the rule set takes a half-removed English variant",
       expect: L.s211,
       build: () => withRules({ assertDraftPatch: lets(CM.assertDraftPatch, (patch) => patch.bodyEn === null && patch.codingEn !== null && patch.codingEn !== undefined) }),
+    },
+    /* ── U43-0 · UNCONFIRMED: its ADD VALUE alone and after the tables, one order, counts that know it, no writer ── */
+    {
+      name: "R1.12 · ⭐ the UNCONFIRMED ADD VALUE file also moves rows into the value — Postgres refuses it inside that transaction (55P04) and the container stops at boot",
+      expect: L.s112,
+      build: () => withUnconfirmedFile((m) => ({ ...m, sql: `${m.sql}${NL}UPDATE "SmsCampaignRecipient" SET "status" = 'UNCONFIRMED' WHERE "status" = 'PENDING' AND "claimToken" IS NOT NULL;${NL}` })),
+    },
+    {
+      name: "a SECOND migration adds UNCONFIRMED again — an idempotent re-add riding a later deploy beside a writer",
+      expect: L.s112,
+      build: () => ({ ...REAL, migrations: [...REAL.migrations, { folder: "20261009120000_sms_recipient_unconfirmed_again", sql: `ALTER TYPE "SmsCampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'UNCONFIRMED';${NL}` }] }),
+    },
+    {
+      name: "the ADD VALUE migration lost — the schema and the store name a value no migration gives Postgres (prisma generate knows it; production's database never would)",
+      expect: L.s18c,
+      build: () => withUnconfirmedFile(() => null),
+    },
+    {
+      name: "R1.13 · the ADD VALUE migration renamed to sort BEFORE the campaign tables — it would extend a type that does not exist yet",
+      expect: L.s113,
+      build: () => withUnconfirmedFile((m) => ({ ...m, folder: "20261002110000_sms_recipient_unconfirmed" })),
+    },
+    {
+      name: "the schema lists UNCONFIRMED after SENT while its ADD VALUE appends it last — the schema's order and Postgres' disagree",
+      expect: L.s18c,
+      build: () => withEnum("SmsCampaignRecipientStatus", (b) => plant(plant(b, `  UNCONFIRMED${NL}`, ""), `  SENT${NL}`, `  SENT${NL}  UNCONFIRMED${NL}`)),
+    },
+    {
+      name: "enum drift — the store's recipient-status union forgets UNCONFIRMED, which the schema and the migrations carry",
+      expect: L.s18c,
+      build: () => ({ ...REAL, store: plant(REAL.store, `| "SKIPPED" | "UNCONFIRMED";`, `| "SKIPPED";`) }),
+    },
+    {
+      name: "⭐ the old build's six-status count meets an UNCONFIRMED row and refuses the whole campaign — why U43-0 ships a deploy before any writer",
+      expect: L.s213,
+      build: () => withRecipient({
+        countByStatus: async (campaignId) => {
+          const counts = await REAL.twin.recipient.countByStatus(campaignId);
+          const unknown = counts.find((c) => !SIX.includes(c.status) && c.count > 0);
+          if (unknown) throw new Error(`[campaign-model] countByStatus: "${unknown.status}" is a recipient status this code does not know`);
+          return counts.filter((c) => SIX.includes(c.status));
+        },
+      }),
+    },
+    {
+      name: "a count that DROPS a status it does not know instead of refusing it — a campaign read as further along than it is (P8 undone)",
+      expect: L.s213,
+      build: () => withRecipient({
+        countByStatus: async (campaignId) => {
+          const known = new Set<string>(CM.SMS_CAMPAIGN_RECIPIENT_STATUSES);
+          const raw = new Map<SmsCampaignRecipientStatus, number>();
+          for (const r of mem().smsCampaignRecipients.values()) {
+            if (r.campaignId === campaignId && known.has(r.status)) raw.set(r.status, (raw.get(r.status) ?? 0) + 1);
+          }
+          return CM.fillRecipientCounts(Array.from(raw, ([status, count]) => ({ status, count })));
+        },
+      }),
+    },
+    {
+      name: "R3.2 · ⭐ a src file writes a recipient's status as UNCONFIRMED while UNCONFIRMED_WRITERS is empty — a writer in the deploy that adds its value",
+      expect: L.s32,
+      build: () => ({ ...REAL, src: [...REAL.src, { path: "src/lib/server/marketing/rogue-settle.ts", text: 'await db.smsCampaignRecipient.settle(id, { status: "UNCONFIRMED", smsReference: ref });' }] }),
     },
   ];
 

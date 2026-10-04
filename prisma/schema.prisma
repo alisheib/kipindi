@@ -3656,6 +3656,9 @@ model ContactImportRow {
 // ⭐ TWO TABLES AND THREE NEW TYPES, IN ONE HAND-WRITTEN EXPAND-ONLY MIGRATION
 // (20261002120000_sms_campaign_models). `test:campaign-models` §1 holds that file and these models
 // equal — column by column, index by index, link by link — and §2 runs the rules on the memory twin.
+// ⚠️ The recipient status gained UNCONFIRMED later, in its OWN one-statement ADD VALUE migration
+// (20261004140000_sms_recipient_unconfirmed, U43-0): a value added to an enum is a 55P04 two-step, so the
+// tables migration's CREATE TYPE stays the six X12 named, and §1.8c and §1.12 hold the two files together.
 //
 // ⛔ NO STORED COUNTERS (OD26) and NO DELETE in either twin. A campaign's progress is a groupBy over its
 // recipient rows, and a recipient row is the record that we messaged somebody (GN 478T reg 51(1)): the
@@ -3681,8 +3684,10 @@ enum SmsCampaignStatus {
 }
 
 /// One recipient's place in the send (X12). ⚠️ HELD is OUTSTANDING, not settled: a held row still owes
-/// somebody a message (U36, U47). SKIPPED is the gate refusing — ⛔ never FAILED (§5.6, OD40). ⚠️ U43's
-/// reaper and U46's late receipt name a state this set does not carry: reconcile at U43 (a 55P04 two-step).
+/// somebody a message (U36, U47). SKIPPED is the gate refusing — ⛔ never FAILED (§5.6, OD40).
+/// ⭐ RECONCILED AT U43-0 (ENGINE-SPEC E4, E5): the reaper's "a claim may have reached the wire" and a send
+/// whose answer was lost are UNCONFIRMED, a status of its own; "the network took it, no receipt yet" is a
+/// SENT row with a derived age on the results, never a status. A status added later is a 55P04 two-step.
 enum SmsCampaignRecipientStatus {
   PENDING
   HELD
@@ -3690,6 +3695,11 @@ enum SmsCampaignRecipientStatus {
   DELIVERED
   FAILED
   SKIPPED
+  /// U43-0 · E4 — handed to the wire, and the network's answer never came. SETTLED for progress, never
+  /// retried automatically, and a late receipt may still settle it as DELIVERED or FAILED. Nothing writes it
+  /// before U43b's slice (`test:campaign-models` 3.2). Appended at the end to match its ADD VALUE migration,
+  /// 20261004140000_sms_recipient_unconfirmed (Postgres appends), so this order is Postgres' order.
+  UNCONFIRMED
 }
 
 /// The character set of one variant's body — the `SmsEncoding` union of `src/lib/sms-compose.ts`, which
@@ -3792,7 +3802,9 @@ model SmsCampaignRecipient {
   status       SmsCampaignRecipientStatus @default(PENDING)
   /// The reference handed to the gateway (`SmsMessage.reference`). Nullable-unique: NULLs are distinct.
   smsReference String?                    @unique
-  /// U8's opt-out token in this person's footer, minted at enqueue (U42). ⛔ A row without one is never sent.
+  /// U8's opt-out token in this person's footer — ensured at SEND, only after the gate clears (E1): the
+  /// number's newest token reused, else one minted, so a person the gate refuses gets no permanent link. The
+  /// seed carries none (U42 writes null) and the settle writes it. ⛔ A message is never rendered without one.
   optOutToken  String?
   /// Which OD42 variant went out — written at send time.
   locale       Locale?

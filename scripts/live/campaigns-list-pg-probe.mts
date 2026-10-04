@@ -149,9 +149,9 @@ ok("5 · ⭐ HELD is outstanding in SQL too: one of g's rows put back to HELD ma
 const by = await db.smsCampaignRecipient.countsByCampaign([idOf("d"), idOf("e"), idOf("g")]);
 ok("6 · countsByCampaign answers exactly the ids asked — d's 4 SENT and 6 HELD, e zero-filled with no rows, g's split — and nothing else",
   JSON.stringify(Object.keys(by).sort()) === JSON.stringify([idOf("d"), idOf("e"), idOf("g")].sort())
-    && JSON.stringify(by[idOf("d")]) === JSON.stringify({ PENDING: 0, HELD: 6, SENT: 4, DELIVERED: 0, FAILED: 0, SKIPPED: 0 })
+    && JSON.stringify(by[idOf("d")]) === JSON.stringify({ PENDING: 0, HELD: 6, SENT: 4, DELIVERED: 0, FAILED: 0, SKIPPED: 0, UNCONFIRMED: 0 })
     && JSON.stringify(by[idOf("e")]) === JSON.stringify(CS.zeroRecipientStatusCounts())
-    && JSON.stringify(by[idOf("g")]) === JSON.stringify({ PENDING: 0, HELD: 0, SENT: 2, DELIVERED: 0, FAILED: 1, SKIPPED: 1 }),
+    && JSON.stringify(by[idOf("g")]) === JSON.stringify({ PENDING: 0, HELD: 0, SENT: 2, DELIVERED: 0, FAILED: 1, SKIPPED: 1, UNCONFIRMED: 0 }),
   JSON.stringify(by));
 ok("7 · countsByCampaign of no ids is {} (and asks nothing)", JSON.stringify(await db.smsCampaignRecipient.countsByCampaign([])) === "{}");
 const d = (await page(CS.statusesForRail("sending"), "created", "desc")).rows.find((c) => c.id === idOf("d"));

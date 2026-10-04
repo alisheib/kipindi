@@ -1,0 +1,26 @@
+-- U43-0 · UNCONFIRMED, a recipient status of its own (docs/marketing-specs/ENGINE-SPEC.md §4.2, decision E4): the
+-- message was handed to the wire and the network's answer never came. SETTLED for progress, never retried
+-- automatically, and a late delivery receipt may still settle it (DELIVERED or FAILED).
+--
+-- ⛔ ALONE IN ITS OWN MIGRATION, AND IT DEPLOYS ALONE, ONE PUSH BEFORE ANYTHING WRITES IT. Postgres refuses to USE an
+-- enum value inside the transaction that added it (55P04 "unsafe use of new value", measured at S3b), and
+-- `prisma migrate deploy` runs each migration file in ONE transaction. So this file holds the one statement and nothing
+-- else, and the first writer (U43b's slice) is pushed only after production's deploy log shows this file applied.
+-- Precedents: 20261001160000_sms_purpose_marketing (the MARKETING purpose, one commit before its first writer) and
+-- 20260701120000_bonus_queued_status.
+--
+-- ⭐ SAFE WHILE THE OLD BUILD RUNS (the 60-second overlap). ADD VALUE inserts one label into the type's catalogue: it
+-- rewrites no table and changes no row. The old build's Prisma client and code never name the value, and no row can
+-- hold it until U43b writes one, so the old build — whose counts REFUSE a status they do not know
+-- (fillRecipientCounts, tallyRecipientsByCampaign) — never meets it. The new build learns the value in this same
+-- commit: the store's union, RECIPIENT_STATUS_SET, and RECIPIENT_SIDE, where it is SETTLED.
+--
+-- ⭐ APPENDED, NOT PLACED. No BEFORE or AFTER, so Postgres sorts the value LAST — and schema.prisma lists it last, so
+-- the database, the schema and SMS_CAMPAIGN_RECIPIENT_STATUSES hold ONE order (`test:campaign-models` 1.8c).
+-- IF NOT EXISTS lets a hand-applied run and the recorded one both succeed.
+--
+-- ⛔ HAND-WRITTEN: `prisma migrate diff` sweeps in the trigram indexes and other lanes' objects (plan §0 TRAPS). The
+-- evidence for this file is `test:campaign-models` 1.12 and 1.13, and `db:probe-campaign-models` §9 — every migration
+-- from EMPTY, the value present in Postgres' own order, a write of it accepted in a LATER transaction, the same write
+-- refused inside the transaction that adds a value (55P04), and the drift diff naming this one statement and nothing else.
+ALTER TYPE "SmsCampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'UNCONFIRMED';

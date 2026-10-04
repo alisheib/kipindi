@@ -8,10 +8,28 @@
  * about the database. This writes to a scratch Postgres (embedded 18.3, `db-scratch`) through the REAL `db`, and checks
  * each fact against numbers written here by hand — an oracle independent of either twin.
  *
- * Run (through the heavy-node lock; it needs a migrated EMPTY database):
+ * ⭐ §9 · U43-0 (S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4): the UNCONFIRMED recipient status on the same cluster.
+ * Every migration on disk applied from EMPTY (the runner resets and migrates); Postgres' own enum order equal to the
+ * code's, UNCONFIRMED last; a write of the value in a LATER transaction accepted — an UPDATE and an INSERT — and read back
+ * by the generated client, the count and the list's tally; the drift diff naming exactly the one ADD VALUE and nothing
+ * else (the list-basis probe's method); and 55P04 itself, on a throwaway type, as the control that makes "later" mean
+ * something. ⛔ No backslash in §9: line breaks are String.fromCharCode (the tools that write this file decode escapes).
+ *
+ * Run (through the heavy-node lock; it needs a migrated EMPTY database, runs the Prisma CLI three times and creates and
+ * drops a shadow database and a throwaway type — loopback only):
  *   npm run db:probe-campaign-models   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
-import type { StoredSmsCampaign, SmsCampaignRecipientSeed, SmsCampaignTransitionPatch, StoredUser } from "../../src/lib/server/store.ts";
+import type {
+  StoredSmsCampaign, StoredSmsCampaignRecipient, SmsCampaignRecipientSeed, SmsCampaignRecipientCount, SmsCampaignRecipientCountsById,
+  SmsCampaignTransitionPatch, StoredUser,
+} from "../../src/lib/server/store.ts";
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import pgLib from "pg";
 
 process.exitCode = 1;
 if (!process.env.DATABASE_URL) {
@@ -20,8 +38,9 @@ if (!process.env.DATABASE_URL) {
 }
 {
   // ⛔ A LOOPBACK CLUSTER ONLY (house-bot-migrations' rule): this probe WRITES campaigns, recipients, a contact and an
-  // account, and deletes the last two by raw SQL — so a URL whose host is not 127.0.0.1, localhost or ::1 (production's,
-  // a hosted scratch) is refused before the store is even loaded.
+  // account, and deletes the last two by raw SQL — and §9 creates and drops a shadow database and a throwaway enum type —
+  // so a URL whose host is not 127.0.0.1, localhost or ::1 (production's, a hosted scratch) is refused before the store
+  // is even loaded.
   let host = "";
   try { host = new URL(process.env.DATABASE_URL).hostname; } catch { /* refused below */ }
   if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(host)) {
@@ -225,6 +244,161 @@ async function toRunning(id: string): Promise<void> {
   ok("8b · countByStatus is every status in the schema's order, zeros included, from ONE groupBy over Postgres' enum",
     shape && byStatus.PENDING === 1198 && byStatus.HELD === 1 && byStatus.SENT === 1 && byStatus.DELIVERED === 0 && total(counts) === 1200,
     counts.map((c) => `${c.status} ${c.count}`).join(", "));
+}
+
+// ── 9 · U43-0 · UNCONFIRMED: every migration from EMPTY, the value in Postgres' order, a write of it in a LATER
+//        transaction, the drift diff naming the one statement, and 55P04 itself ──────────────────────────────────
+{
+  const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const MIGRATIONS = join(ROOT, "prisma", "migrations");
+  const SCHEMA = join(ROOT, "prisma", "schema.prisma");
+  const NL = String.fromCharCode(10);
+  const CR = String.fromCharCode(13);
+  const URL_RAW = process.env.DATABASE_URL ?? "";
+  const json = (v: unknown) => JSON.stringify(v);
+  const firstLine = (e: unknown) => String((e as Error)?.message ?? e).split(NL)[0].slice(0, 200);
+
+  // 9 · every migration on disk is applied — the runner reset the cluster and ran `prisma migrate deploy` on it
+  const folders = readdirSync(MIGRATIONS, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  const MIGRATION = folders.find((f) => f.endsWith("_sms_recipient_unconfirmed")) ?? "";
+  const TABLES_MIGRATION = folders.find((f) => f.endsWith("_sms_campaign_models")) ?? "";
+  const applied = await pg.$queryRawUnsafe<Array<{ name: string; finished: boolean; rolled: boolean }>>(
+    `select migration_name as name, finished_at is not null as finished, rolled_back_at is not null as rolled from "_prisma_migrations"`);
+  const appliedOk = applied.filter((m) => m.finished && !m.rolled).map((m) => m.name).sort();
+  ok("9 · U43-0 · CONTROL · every migration on disk is applied — finished, none rolled back, none extra — UNCONFIRMED's own among them and after the campaign tables' (the runner applied them all to an EMPTY cluster)",
+    MIGRATION !== "" && TABLES_MIGRATION !== "" && TABLES_MIGRATION < MIGRATION && json(appliedOk) === json(folders) && applied.length === folders.length,
+    `${appliedOk.length} applied of ${folders.length} on disk · ${MIGRATION || "no _sms_recipient_unconfirmed folder"}`);
+
+  // 9a · the value is there, in Postgres' OWN order — which must be the schema's and the code's
+  const labels = (await pg.$queryRawUnsafe<Array<{ label: string }>>(
+    `select e.enumlabel as label from pg_enum e join pg_type t on t.oid = e.enumtypid join pg_namespace n on n.oid = t.typnamespace
+      where t.typname = $1 and n.nspname = current_schema() order by e.enumsortorder`, "SmsCampaignRecipientStatus")).map((r) => r.label);
+  ok("9a · ⭐ AFTER EVERY MIGRATION FROM EMPTY, Postgres' SmsCampaignRecipientStatus holds SEVEN values in its own sort order — UNCONFIRMED last, where ADD VALUE appends it — equal, in order, to SMS_CAMPAIGN_RECIPIENT_STATUSES (the schema's order, test:campaign-models 1.8c)",
+    labels.length === 7 && labels[6] === "UNCONFIRMED" && json(labels) === json([...SMS_CAMPAIGN_RECIPIENT_STATUSES]),
+    `[${labels.join(", ")}]`);
+
+  // 9b · a write of the value in a LATER transaction — an UPDATE and an INSERT, each its own transaction, run long after
+  //      the migration's committed — then every read of it: the generated client, the count, the list's tally
+  await db.smsCampaign.create(draft("probe_unconfirmed"));
+  await db.smsCampaignRecipient.createMany([0, 1, 2].map((i) => seed(`probe_u_${i}`, "probe_unconfirmed", keyOf(9500 + i))));
+  let updated = -1, inserted = -1, writeError = "";
+  try {
+    updated = await pg.$executeRawUnsafe(`update "SmsCampaignRecipient" set status = 'UNCONFIRMED' where id = $1`, "probe_u_0");
+    inserted = await pg.$executeRawUnsafe(
+      `insert into "SmsCampaignRecipient" ("id", "campaignId", "msisdn", "status") values ($1, $2, $3, 'UNCONFIRMED'::"SmsCampaignRecipientStatus")`,
+      "probe_u_raw", "probe_unconfirmed", keyOf(9503));
+  } catch (e) {
+    writeError = firstLine(e);
+  }
+  ok("9b · ⭐ A WRITE OF UNCONFIRMED IN A LATER TRANSACTION IS ACCEPTED — an UPDATE of a seeded row and an INSERT naming the value, each its own transaction after the migration's had committed",
+    writeError === "" && updated === 1 && inserted === 1, writeError || `updated ${updated} · inserted ${inserted}`);
+  let readBack: StoredSmsCampaignRecipient | null = null, readRaw: StoredSmsCampaignRecipient | null = null;
+  let unconfirmedCounts: SmsCampaignRecipientCount[] = [], listed: SmsCampaignRecipientCountsById = {}, readError = "";
+  try {
+    readBack = await db.smsCampaignRecipient.find("probe_u_0");
+    readRaw = await db.smsCampaignRecipient.find("probe_u_raw");
+    unconfirmedCounts = await db.smsCampaignRecipient.countByStatus("probe_unconfirmed");
+    listed = await db.smsCampaignRecipient.countsByCampaign(["probe_unconfirmed"]);
+  } catch (e) {
+    readError = firstLine(e);
+  }
+  const by = Object.fromEntries(unconfirmedCounts.map((c) => [c.status, c.count]));
+  ok("9c · …and every read knows it: the generated client hands both rows back as UNCONFIRMED (a stale client, `prisma generate` not run, refuses here), countByStatus counts 2 in the seventh place beside 2 PENDING, and the list's per-campaign tally answers the same — nothing refused",
+    readError === "" && readBack?.status === "UNCONFIRMED" && readRaw?.status === "UNCONFIRMED" && unconfirmedCounts[6]?.status === "UNCONFIRMED"
+      && by.UNCONFIRMED === 2 && by.PENDING === 2 && total(unconfirmedCounts) === 4
+      && listed.probe_unconfirmed?.UNCONFIRMED === 2 && listed.probe_unconfirmed?.PENDING === 2,
+    readError || `${readBack?.status}/${readRaw?.status} · ${unconfirmedCounts.map((c) => `${c.status} ${c.count}`).join(", ")} · list ${json(listed.probe_unconfirmed ?? null)}`);
+
+  // 9d–9g · the drift diff names ONLY the new value (decision 4 — list-basis-pg-probe's method, read there first)
+  const require_ = createRequire(import.meta.url);
+  // ⭐ The CLI through node itself, as list-basis-pg-probe and db-backup.mts do: `npx.cmd` fails with EINVAL on Windows since Node 20.
+  const PRISMA_CLI = require_.resolve("prisma/build/index.js", { paths: [ROOT] });
+  const migrateDiff = (args: string[]): { status: number; out: string; err: string } => {
+    const r = spawnSync(process.execPath, [PRISMA_CLI, "migrate", "diff", ...args, "--script"], {
+      cwd: ROOT, env: process.env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 15 * 60_000,
+    });
+    return { status: r.status ?? 1, out: r.stdout ?? "", err: r.stderr ?? "" };
+  };
+  /** A script's statements — comment lines and the CLI's own notices out, each statement's whitespace collapsed. */
+  const statements = (sql: string): string[] => sql.split(CR).join("").split(NL)
+    .filter((l) => !l.trim().startsWith("--") && !l.startsWith("Environment variables loaded") && !l.startsWith("Prisma schema loaded"))
+    .join(NL).split(";").map((s) => s.split(NL).map((l) => l.trim()).filter(Boolean).join(" ")).filter((s) => s.length > 0);
+  const admin = async (sql: string): Promise<void> => {
+    const client = new pgLib.Client({ connectionString: URL_RAW });
+    await client.connect();
+    try { await client.query(sql); } finally { await client.end().catch(() => {}); }
+  };
+  const SHADOW_DB = "campaign_models_probe_shadow";
+  const shadow = new URL(URL_RAW);
+  shadow.pathname = `/${SHADOW_DB}`;
+  const tmp = mkdtempSync(join(tmpdir(), "kp-campaign-models-probe-"));
+  try {
+    await admin(`DROP DATABASE IF EXISTS "${SHADOW_DB}" WITH (FORCE)`);
+    await admin(`CREATE DATABASE "${SHADOW_DB}"`);
+    const without = join(tmp, "migrations");
+    mkdirSync(without);
+    for (const e of readdirSync(MIGRATIONS, { withFileTypes: true })) {
+      if (e.name !== MIGRATION) cpSync(join(MIGRATIONS, e.name), join(without, e.name), { recursive: true });
+    }
+    const liveDiff = migrateDiff(["--from-url", URL_RAW, "--to-schema-datamodel", SCHEMA]);
+    const fullDiff = migrateDiff(["--from-migrations", MIGRATIONS, "--to-schema-datamodel", SCHEMA, "--shadow-database-url", shadow.toString()]);
+    const beforeDiff = migrateDiff(["--from-migrations", without, "--to-schema-datamodel", SCHEMA, "--shadow-database-url", shadow.toString()]);
+    const ran = MIGRATION !== "" && liveDiff.status === 0 && fullDiff.status === 0 && beforeDiff.status === 0;
+    const tail = (s: string) => s.trim().split(NL).slice(-3).join(" | ");
+    ok("9d · CONTROL · the Prisma CLI ran all three diffs — the migrated database, every migration, and every migration but UNCONFIRMED's — each to schema.prisma",
+      ran, ran ? `${statements(beforeDiff.out).length} / ${statements(fullDiff.out).length} statements`
+        : `exits ${liveDiff.status}/${fullDiff.status}/${beforeDiff.status} · ${tail(liveDiff.err)} · ${tail(fullDiff.err)} · ${tail(beforeDiff.err)}`);
+    const full = statements(fullDiff.out);
+    const before = statements(beforeDiff.out);
+    const added = before.filter((s) => !full.includes(s));
+    const lost = full.filter((s) => !before.includes(s));
+    const mig = MIGRATION === "" ? [] : statements(readFileSync(join(MIGRATIONS, MIGRATION, "migration.sql"), "utf8"));
+    ok("9e · ⭐ THE DRIFT DIFF NAMES ONLY THE NEW VALUE — from every migration but UNCONFIRMED's to schema.prisma, exactly ONE statement goes beyond the full set's, an ALTER TYPE adding UNCONFIRMED to SmsCampaignRecipientStatus; none goes missing; and the full set names UNCONFIRMED nowhere",
+      ran && added.length === 1 && lost.length === 0 && added[0].startsWith(`ALTER TYPE "SmsCampaignRecipientStatus" ADD VALUE`)
+        && added[0].includes("'UNCONFIRMED'") && !fullDiff.out.includes("UNCONFIRMED"),
+      `added ${added.length}: ${added.map((s) => s.slice(0, 90)).join(" | ")} · lost ${lost.length}`);
+    ok("9f · …and that statement IS the hand-written file's one statement, IF NOT EXISTS aside (Prisma renders the bare ADD VALUE) — the file adds the value and nothing more",
+      ran && mig.length === 1 && added.length === 1 && mig[0].split(" IF NOT EXISTS").join("") === added[0],
+      `prisma: ${added.join(" ;; ")} · file: ${mig.join(" ;; ")}`);
+    ok("9g · the MIGRATED database differs from schema.prisma in nothing that names UNCONFIRMED — the migration built exactly the value the enum declares",
+      liveDiff.status === 0 && !liveDiff.out.includes("UNCONFIRMED"), `${statements(liveDiff.out).length} statements of known drift, none of them ours`);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+    await admin(`DROP DATABASE IF EXISTS "${SHADOW_DB}" WITH (FORCE)`).catch(() => {});
+  }
+
+  // 9h · CONTROL · 55P04 itself, on a throwaway type — the reason the value ships alone, one deploy before any writer.
+  //      (Last on purpose: the diffs above must never see the throwaway type.)
+  const SCRATCH_TYPE = "probe_u430_scratch";
+  let sameTx = "not run", nextTx = "not run";
+  const client = new pgLib.Client({ connectionString: URL_RAW });
+  await client.connect();
+  try {
+    await client.query(`DROP TYPE IF EXISTS "${SCRATCH_TYPE}"`);
+    await client.query(`CREATE TYPE "${SCRATCH_TYPE}" AS ENUM ('A')`);
+    await client.query("BEGIN");
+    try {
+      await client.query(`ALTER TYPE "${SCRATCH_TYPE}" ADD VALUE 'B'`);
+      await client.query(`SELECT 'B'::"${SCRATCH_TYPE}" AS v`);
+      sameTx = "accepted";
+    } catch (e) {
+      sameTx = String((e as { code?: unknown } | null)?.code ?? "no code");
+    } finally {
+      await client.query("ROLLBACK").catch(() => {});
+    }
+    await client.query(`ALTER TYPE "${SCRATCH_TYPE}" ADD VALUE IF NOT EXISTS 'B'`);
+    const r = await client.query(`SELECT 'B'::"${SCRATCH_TYPE}" AS v`);
+    nextTx = r.rows[0]?.v === "B" ? "accepted" : `answered ${json(r.rows[0] ?? null)}`;
+  } catch (e) {
+    nextTx = `threw ${String((e as { code?: unknown } | null)?.code ?? firstLine(e))}`;
+  } finally {
+    await client.query(`DROP TYPE IF EXISTS "${SCRATCH_TYPE}"`).catch(() => {});
+    await client.end().catch(() => {});
+  }
+  ok("9h · CONTROL · 55P04 IS REAL ON THIS POSTGRES — a value added and used inside ONE transaction is refused (unsafe use of new value) while the same use in the next transaction is accepted: why the ADD VALUE ships alone, a deploy before its first writer",
+    sameTx === "55P04" && nextTx === "accepted", `same transaction: ${sameTx} · next transaction: ${nextTx}`);
+
+  await pg.$disconnect().catch(() => {});
 }
 
 console.log(`\ncampaign-models-pg-probe: ${pass} passed, ${fail} failed`);
