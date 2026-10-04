@@ -339,6 +339,181 @@ for (const [fmt, magic] of [["pdf", "%PDF-"], ["xlsx", "PK"], ["csv", "﻿"]]) {
 }
 await page.waitForTimeout(500);
 
+// ── 10 · loading, progress and failure — what an officer sees while the page works ───────────────
+{
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(`/admin/tax?period=month&month=${LAST}`, true);
+  // Every hold keeps the REQUEST and delays the RESPONSE (a paused request aborts Next's RSC body).
+  const holdNav = async (route) => {
+    if (route.request().headers()["rsc"] !== "1") return route.continue();
+    const resp = await route.fetch();
+    await page.waitForTimeout(2500);
+    await route.fulfill({ response: resp }).catch(() => {});
+  };
+  const isTaxPage = (u) => u.pathname === "/admin/tax";
+  for (const w of [1280, 360]) {
+    await page.setViewportSize({ width: w, height: 900 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.route(isTaxPage, holdNav);
+    const from = page.url();
+    await page.locator('[data-testid="tax-prev"]').first().click();
+    await page.waitForTimeout(700);
+    const marks = await page.locator('[data-testid="tax-prev"] [data-link-pending]').count();
+    ok(`10.1 @${w} while the previous period loads, its arrow shows it is working`, marks === 1, `pending marks ${marks}`);
+    await page.screenshot({ path: resolve(OUT, `10-loading-navigation-w${w}.png`), caret: "initial" });
+    await page.waitForURL((u) => u.toString() !== from, { timeout: 60_000 });
+    await page.locator('[data-testid="tax-window"]').first().waitFor({ timeout: 60_000 });
+    await page.unroute(isTaxPage, holdNav);
+    await page.waitForTimeout(300);
+    ok(`10.1b @${w} …and once it has loaded the mark is gone`, (await page.locator("[data-link-pending]").count()) === 0);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(`/admin/tax?period=month&month=${LAST}`, true);
+
+  // A download: its progress card, then its result.
+  const holdExport = async (route) => {
+    const resp = await route.fetch();
+    await page.waitForTimeout(2500);
+    await route.fulfill({ response: resp }).catch(() => {});
+  };
+  await page.route("**/api/admin/tax/export**", holdExport);
+  const dl = page.waitForEvent("download", { timeout: 90_000 }).catch(() => null);
+  await page.locator('[data-testid="tax-export-pdf"]').click();
+  const working = await page.getByText("Generating the PDF file").first().waitFor({ timeout: 15_000 }).then(() => true, () => false);
+  ok("10.2 a download shows its progress card while the file is built", working && (await page.locator('[data-testid="tax-export-pdf"]').getAttribute("aria-busy")) === "true");
+  await page.screenshot({ path: resolve(OUT, "10-export-progress-w1280.png"), caret: "initial" });
+  const done = await page.getByText("PDF downloaded").first().waitFor({ timeout: 90_000 }).then(() => true, () => false);
+  await dl;
+  ok("10.3 …then says the file is downloaded, and names it", done && (await page.getByText(/50pick-government-tax-report-month-/).count()) > 0);
+  await page.screenshot({ path: resolve(OUT, "10-export-done-w1280.png"), caret: "initial" });
+  await page.getByRole("button", { name: /Done/ }).first().click().catch(() => {});
+  await page.unroute("**/api/admin/tax/export**", holdExport);
+  await page.waitForTimeout(500);
+
+  // A download that fails: the server's words, and a way to try again. (The 503 below is planted by this drive.)
+  const failExport = (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "The download could not be recorded in the audit log, so it was not released. Try again." }) });
+  await page.route("**/api/admin/tax/export**", failExport);
+  const before = consoleErrors.length;
+  await page.locator('[data-testid="tax-export-csv"]').click();
+  const failed = await page.getByText("CSV download failed").first().waitFor({ timeout: 15_000 }).then(() => true, () => false);
+  ok("10.4 a failed download says so, with the server's reason and a way to try again",
+    failed && (await page.getByText(/could not be recorded in the audit log/).count()) > 0 && (await page.getByRole("button", { name: /Try again/ }).count()) > 0);
+  await page.screenshot({ path: resolve(OUT, "10-export-failed-w1280.png"), caret: "initial" });
+  await page.unroute("**/api/admin/tax/export**", failExport);
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.getByRole("button", { name: /Close|Dismiss|Done|OK/ }).first().click({ timeout: 3000 }).catch(() => {});
+  // The browser logs the planted 503 as a console error; it is this drive's own doing, not the page's.
+  for (let i = consoleErrors.length - 1; i >= before; i--) if (/status of 503/.test(consoleErrors[i])) consoleErrors.splice(i, 1);
+  await page.waitForTimeout(500);
+
+  // The lock: the button says it is working while the server records it.
+  await open(`/admin/tax?period=month&month=${LAST}`, true);
+  const holdAction = async (route) => {
+    const req = route.request();
+    if (req.method() !== "POST" || !req.headers()["next-action"]) return route.continue();
+    const resp = await route.fetch();
+    await page.waitForTimeout(2500);
+    await route.fulfill({ response: resp }).catch(() => {});
+  };
+  await page.route(isTaxPage, holdAction);
+  await page.locator('[data-testid="tax-lock"]').first().click();
+  const dlg5 = page.locator('[role="alertdialog"], [role="dialog"]').last();
+  await dlg5.waitFor({ timeout: 30_000 });
+  await dlg5.locator("input").first().fill("LOCK");
+  await dlg5.getByRole("button", { name: /^Lock$/ }).click();
+  await page.waitForTimeout(600);
+  ok("10.5 while the lock is recorded, the Lock button shows it is working", (await page.locator('[data-testid="tax-lock"]').first().getAttribute("aria-busy")) === "true");
+  await page.locator('[data-testid="tax-lock"]').first().scrollIntoViewIfNeeded().catch(() => {});
+  await page.screenshot({ path: resolve(OUT, "10-lock-working-w1280.png"), caret: "initial" });
+  // ⛔ Wait on the STATUS line: "Locked …" also opens every row of Recent locks, so a page-wide text wait returns at once.
+  await page.waitForFunction(() => /Locked/.test(document.querySelector('[data-testid="tax-status"]')?.textContent ?? ""), null, { timeout: 60_000 }).catch(() => {});
+  await page.unroute(isTaxPage, holdAction);
+  ok("10.6 …and then the period is locked", /Locked/.test(await page.locator('[data-testid="tax-status"]').innerText()));
+}
+
+// ── 11 · empty, not-started and wrong input ─────────────────────────────────────────────────────
+{
+  const EMPTY = prevKey(cur, 4);
+  await open(`/admin/tax?period=month&month=${EMPTY}`, true);
+  const rE = await report1();
+  const allZero = Object.values(rE).every((v) => v === 0);
+  ok(`11.1 a month with no activity (${EMPTY}) prints every Report 1 line as 0, and its check closes`, allZero && Object.keys(rE).length >= 8, JSON.stringify(rE));
+  const statusE = await page.locator('[data-testid="tax-status"]').innerText();
+  ok("11.2 …says it balances (nothing in, nothing out)", /Balanced/.test(statusE), statusE.slice(0, 120));
+  ok("11.3 …shows no Exceptions card", (await page.locator('[data-testid="tax-exceptions"]').count()) === 0);
+  const r2E = await page.locator('[data-testid="tax-report-2"]').innerText();
+  ok("11.4 …and taxes nothing: Total Tax payable 0", /Total Tax payable[^0-9]*0(?![0-9,])/.test(r2E.replace(/\s+/g, " ")), r2E.slice(0, 200));
+  await tiles("11-empty-month", [360, 1280]);
+
+  const nextKey = (k) => { const [y, m] = k.split("-").map(Number); const i = y * 12 + m; return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`; };
+  const FUTURE = nextKey(cur);
+  await open(`/admin/tax?period=month&month=${FUTURE}`, true);
+  const statusF = await page.locator('[data-testid="tax-status"]').innerText();
+  ok(`11.5 a month that has not started (${FUTURE}) says so`, /has not started yet/.test(statusF), statusF.slice(0, 120));
+  const shownF = (await page.locator('[data-testid="tax-period-label"]').innerText()).trim();
+  const listF = (await page.getByLabel("Jump to month").first().innerText()).trim();
+  ok("11.5b …and its month list names that month, not a placeholder", listF === shownF, `list "${listF}" · page "${shownF}"`);
+  const bodyF = await page.locator("body").innerText();
+  ok("11.6 …its Lock card says it cannot be locked yet", /has not started yet\. It can be locked once it has closed/.test(bodyF));
+  ok("11.7 …its downloads are disabled, saying why", await page.locator('[data-testid="tax-export-pdf"]').isDisabled());
+  ok("11.8 …and its 'next' arrow is the dimmed, disabled one", (await page.locator('[data-testid="tax-next"]').count()) === 0
+    && (await page.locator('[aria-disabled="true"][title="The next period has not started"]').count()) === 1);
+  await tiles("11-not-started", [360, 1280]);
+
+  await open(`/admin/tax?period=custom&from=${s1b.day}T00:00&to=${s1b.day}T23:59`, true);
+  await page.setViewportSize({ width: 360, height: 900 });
+  const toGroup = page.locator('[role="group"][aria-label="End date and time (East Africa Time)"]');
+  await typeSeg(toGroup.locator('input[inputmode="numeric"]').nth(0), "01");
+  await page.locator('[data-testid="tax-custom-apply"]').click();
+  const alertShown = await page.locator('[role="alert"]', { hasText: "Choose a start before the end" }).first().waitFor({ timeout: 10_000 }).then(() => true, () => false);
+  ok("11.9 a custom window that ends before it starts is refused in words, and the page does not move", alertShown && page.url().includes(`to=${s1b.day}T23`));
+  await page.locator('[data-testid="tax-custom-apply"]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: resolve(OUT, "11-custom-refused-w360.png"), caret: "initial" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  await open(`/admin/tax?period=week&week=${seededWeek}`, true);
+  const wkJ = page.locator('[role="group"][aria-label="Jump to the week of a day"]');
+  const wkS = wkJ.locator('input[inputmode="numeric"]');
+  await typeSeg(wkS.nth(0), "31"); await typeSeg(wkS.nth(1), "02"); await typeSeg(wkS.nth(2), sy);
+  await page.waitForTimeout(300);
+  ok("11.10 an impossible date (31 February) leaves Go disabled", await wkJ.locator('[data-testid="tax-jump-go"]').isDisabled());
+}
+
+// ── 12 · who sees what — a view-only officer, and a role without the report ─────────────────────
+{
+  const as = async (role, phone, name) => {
+    const c = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await c.newPage();
+    const r = await p.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { role, phone, name } });
+    if (!r.ok()) throw new Error(`seed-admin ${role} failed: ${r.status()}`);
+    return { c, p };
+  };
+  const ro = await as("AUDITOR", "+255700000521", "Audit Officer");
+  await ro.p.goto(`${BASE}/admin/tax?period=month&month=${LAST}`, { waitUntil: "domcontentloaded" });
+  await ro.p.getByRole("heading", { name: "Tax report" }).first().waitFor({ timeout: 120_000 });
+  await ro.p.locator('[data-testid="tax-window"]').first().waitFor({ timeout: 60_000 });
+  ok("12.1 a view-only officer (Auditor) reads the report", (await ro.p.locator('[data-testid="tax-report-1"]').count()) === 1);
+  const roBody = await ro.p.locator("body").innerText();
+  // The platform's read-only shape: the page-wide banner, and a READ-ONLY chip where the control would be (its reason in the title).
+  ok("12.2 …is offered no Lock or Reopen: the read-only banner says why, and the Lock card carries the read-only mark",
+    (await ro.p.locator('[data-testid="tax-lock"], [data-testid="tax-unlock"], [data-testid="tax-lock-ack"]').count()) === 0
+      && /can view Accounting & money but not change it/.test(roBody)
+      && (await ro.p.locator('[title="Locking a period needs Finance or the Owner."]').count()) === 1);
+  ok("12.3 …is not offered the rates form", (await ro.p.locator('[data-testid="tax-rates-form"]').count()) === 0);
+  ok("12.4 …and can still download", await ro.p.locator('[data-testid="tax-export-pdf"]').isEnabled());
+  await ro.p.locator('[title="Locking a period needs Finance or the Owner."]').first().scrollIntoViewIfNeeded().catch(() => {});
+  await ro.p.screenshot({ path: resolve(OUT, "12-view-only-w1280.png"), caret: "initial" });
+  await ro.c.close();
+
+  const no = await as("SUPPORT", "+255700000522", "Support Agent");
+  await no.p.goto(`${BASE}/admin/tax`, { waitUntil: "domcontentloaded" });
+  await no.p.waitForTimeout(4000);
+  ok("12.5 a role without the report (Support) sees no figures at /admin/tax", (await no.p.locator('[data-testid="tax-report-1"]').count()) === 0);
+  ok("12.6 …and has no Tax report in its menu", (await no.p.locator('a[href="/admin/tax"]:visible').count()) === 0);
+  await no.p.screenshot({ path: resolve(OUT, "12-no-access-w1280.png"), caret: "initial" });
+  await no.c.close();
+}
+
 ok("9 · no console errors across the drive", consoleErrors.length === 0, consoleErrors.slice(0, 5).map((e) => e.slice(0, 300)).join(" | "));
 writeFileSync(resolve(OUT, "drive-summary.txt"), `failures=${bad}\nconsole errors:\n${consoleErrors.join("\n")}\n`);
 await browser.close();

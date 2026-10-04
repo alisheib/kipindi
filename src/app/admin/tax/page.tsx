@@ -104,6 +104,9 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
     const [y, m] = k.split("-").map(Number);
     k = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
   }
+  // A month opened by its link that the list does not offer (one not started yet) is still the month on screen:
+  // without it the month list read "Select…" beside "November 2026" (measured 2026-10-04).
+  if (period.kind === "month" && !monthKeys.includes(period.key)) monthKeys.unshift(period.key);
   const prev = shiftPeriod(period, -1);
   const next = shiftPeriod(period, 1);
   const nextAllowed = next !== null && next.startMs < nowMs;
@@ -222,7 +225,7 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
   const xRows = data.exceptions.slice((xPage - 1) * PER_PAGE, xPage * PER_PAGE);
   const xBase = buildBaseHref("/admin/tax", { ...periodQuery(period), product: product === "ALL" ? undefined : product }, "xpage");
   const segments = f.tax.segments;
-  const commissionCaption = segments.length === 0 ? "nothing to tax yet" : segments.length === 1 ? `${percentLabel(segments[0].rates.commissionBp)} × Payout` : `${segments.length} rates`;
+  const commissionCaption = segments.length === 0 ? "nothing yet" : segments.length === 1 ? `${percentLabel(segments[0].rates.commissionBp)} × Payout` : `${segments.length} rates`;
   const nowVersion = rates && rates.ok ? versionAt(nowMs, rates.versions) : null;
 
   // ── The status line: what this page is, before any figure. ──────────────────────────────────
