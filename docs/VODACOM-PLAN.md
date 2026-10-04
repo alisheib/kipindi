@@ -179,8 +179,8 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   it still offered "Sell now", which the server refused; on a legacy poll with a paid window it kept showing the free
   price ("−0 fee", and "No fee" in its confirm) while the server charged the fee. Since A8b the button withdraws that
   price the moment its countdown runs out and asks the server at once. A page brought back by Back or Forward restarts
-  its countdown from that old render, so it can still show the free offer for up to one poll (§0h point 37 (a)), and
-  flipping the button at the paid window's own end (§0h point 37 (e)) is still a follow-up.
+  its countdown from that old render, and until A8e (its bullet below) it could show the free offer for up to one poll
+  (§0h point 37 (a)); flipping the button at the paid window's own end (§0h point 37 (e)) is still a follow-up.
 - **WP0 baseline — today's reds, re-derived 2026-10-01 at `5a820b9c` + A0** (`test:all --skip responsive,motion`,
   1,550 s): **409/431 green.** The 22 reds are pre-existing on main and none touches S6's files — S6 is neither blamed
   nor credited for them: live-target-safe (§1b ratchet 13 > 5), marketing-consent-ledger, type-scale (§6 tracking
@@ -718,6 +718,68 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   transaction must move those six calls after the outer lock in the same change. And today's Sell button still paints
   every other refusal with the red `danger` toast whatever the registry's severity (an `info` shut exit included) and
   opens the ✗ result for each, and A8b's in-flight lapse still reads "Inauza…" until its own refresh is drawn.
+- **A8e — the Sell button never draws a picture it does not mean: its first render is the server's, a price with a fee
+  is never shown free, and a page brought back by Back or Forward shows no old price (drafted 2026-10-04 and revised
+  after its review the same day; its own commit, for every player, not flagged).** Three defects the A8b drive measured
+  in a real browser, closed in the button alone (`sell-button.tsx`; no host, word, class or figure changes, and the sale
+  is untouched): (1) the countdown started at 0, so the first picture of every mount — the server's paint, a soft
+  navigation, a restore — drew today's paid arm, "Uza sasa · TZS 3,600 −0 ada", until an effect ran (on a Back restore:
+  0.08 s "Uza sasa", 0.10 s "Toka bila gharama"); its first value is now the time the instant had left at the server's
+  own render, `max(0, freeEnd - serverNow)` from the props alone (one memoised parse, read by that value and by the
+  clock), so the server's HTML and the hydrating render read one value and draw one arm; a shut exit is drawn shut from
+  the server's paint (`shutNow = closedNow || alreadyClosed === true`); the `mounted` flag is gone; and the strip's note
+  is one text, so the strip the server now paints is the markup a classic holder was shown once the page had started
+  (two texts side by side are served with a marker between them that the browser keeps) — §0h points 46 and 47,
+  resolving 37 (f); (2) a refresh that brought a price with a fee while the countdown still ran drew one picture of the
+  free words over the paid figure ("Toka bila gharama · TZS 3,240 · pesa yote" before "Uza sasa · TZS 3,240 −360 ada");
+  the free state now needs the server's verdict too, `graceRemainMs > 0 && pricedFree !== false && !stale` (a host that
+  passes no flag reads the countdown alone) — point 48; (3) a page brought back by Back or Forward offered its old
+  prices until the poller's next beat (page E: 20.3 s). Next 16 redraws its back/forward cache with the old props,
+  `serverNow` included, unless a refresh or a revalidating server action has cleared it, and a fresh render always
+  brings a new `serverNow`; so a module-level record of the renders this tab's Sell buttons have drawn
+  (`position@serverNow`, counted by an effect while a button draws it and kept, uncounted, after — up to 512 uncounted
+  keys) tells a button that the render it is handed was brought back: at its first render when the page is mounted
+  again, and in the render that brings it when only the address's query differs (Back between two pages of `/positions`,
+  or from the bare page to a lens, keeps the buttons mounted; the review found that case). Its prices lapse (`lapsed =
+  (pricedFree === true && !inGrace) || stale`): either look draws "Inapakia…", no figure, nothing to press; one ask per
+  restore whatever each ticket's `serverNow` (one module-level owner, claimed by the first of the buttons that can sell,
+  which arms its ask for that restore) brings the server's answer; a fresh render ends the restore in the commit that
+  recalibrates the countdown and re-arms every button once, so an answer that is itself no offer is asked about too —
+  point 49, resolving 37 (a)'s Back/Forward half. A page loaded afresh holds no record, so a first load, however slow,
+  never reads as a restore, and a second button drawing a render already on screen is not one either. Gates:
+  `test:sell-grace-truth` extended in the open — 2.now (every Sell button is handed `serverNow`), 2.poller (each page
+  that draws them draws its RefreshPoller first, since the restore's ask is made as the page mounts), 3.source (the
+  memoised parse), 3.state (the server's verdicts), 3.journey and 3.classic (no mount flag; the lapse effect's guard is
+  the shut verdicts, the price it withdraws `lapsed`, and it runs again when a restore begins or ends), new 3.first and
+  3.restore (the record and the owner declared once at module level, read off the syntax tree; each name the restore
+  rests on written exactly as often as the code writes it; the claim above the lapse effect) and new 4.premise (no
+  `cacheComponents`, so Back mounts a page again) — with 29 new plants, 3 replaced (the mount-flag plants, and the shut
+  plant A8e makes the intended code) and 3 re-pointed (90 in all), and §5's first-paint row removed (the server's paint
+  is the free row now; a fee of 0 is a legacy poll's rate-0 paid row, already modelled); `test:journey-tickets` §12
+  re-pinned in the open (`SELL_CLASSIC`'s `shutNow` and strip note, `LAPSE_ASK` and `LAPSE_DEPS`) and WP10's timer plant
+  made a real defect again (A8e makes "0:00 on the server's paint" impossible); `qa:classic-shell-parity` captures each
+  Sell cell's first paint in a page whose scripts are all held (S.4; it fails within 50 s, and the cells after a failure
+  skip theirs) and, in a compare, holds it to the baseline's own first paint when the baseline has one and otherwise to
+  the baseline's Sell button as the browser drew it (4.4f, the named transition `sell-first-paint`); `--prove-red` holds
+  the capture to itself — two first paints agree at both Sell places, and a first-paint plant is seen in its own field —
+  never to a claim about the tree, so it still calibrates a tree before A8e, with a synthetic P.5f on the real markup
+  and two S.4 plants. **Served bytes for a classic viewer:** the HTML of a Sell row inside its free window (the strip,
+  its countdown the server's m:ss, its note one text, and "Toka bila gharama · TZS {stake} · pesa yote" where "Uza sasa
+  · TZS {stake} −0 ada" was served) and of a shut row ("Kuuza kumefungwa", dimmed and disabled, where an enabled "Uza
+  sasa · TZS 0 −{stake} ada" was served); on a question page, a free price whose window ended between its pricing and
+  its drawing is served as "Inapakia…"; no RSC prop and no class (no CSS); JS: the Sell button's chunk (the record, the
+  restore state and its re-read, three effects more, the mount flag gone). **Owed:** the battery; `red:sell-grace-truth`
+  and `red:journey-tickets` (in process); `qa:classic-shell-parity --prove-red` (75 checks), then `--compare` against
+  `parity-v2-7c859cdf.json` (4.4 and the new 4.4f equal: `sell-first-paint` in 8 of 8 cells, the matrix as before); the
+  drive — `a8b-drive/lapse-drive.mjs` pages A–E in both modes (E: after Back, "Inapakia…" from the first picture, one
+  ask, then the server's answer — "Uza sasa · TZS 3,240 −360 ada" in the paid mode, "Kuuza kumefungwa" in the current
+  one — within one round trip, and no free offer in any picture), the same after a Back between two addresses of
+  `/positions` (a lens, then the bottom bar's Positions, then Back inside one poll; and page 2 of the list, then Back),
+  a question page with two open tickets after Back (one ask), a soft navigation into `/positions` inside a free window
+  (the strip and the free price from the first picture, no "−0 ada", no ask) and a first paint with every script held
+  (the free row and its strip; a shut row's "Kuuza kumefungwa"), with no hydration warning; tiles at 320, 390 and 1280
+  in sw, en and zh. ⚠️ Not closed here: point 37 (a)'s late start (its money half is A8c's), (b), (d), (e) and the
+  confirm's last frame of (f).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -884,7 +946,8 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     in the platform's clock, and 3:42 counts down to it. Under it, an outlined button: "Uza bila ada" above "Rudishiwa
     TZS 1,000 kamili", the amount the server would pay for a free sale (the whole stake), never one worked out on the
     phone. That offer stands only while the server priced the ticket inside its free window and the countdown runs.
-    Until the page has started on the phone (a moment on a fast phone), the same words show without the countdown. The
+    From the server's paint on, the countdown shows the time the server's own render had left (A8e, point 46), and it
+    runs once the page has started on the phone. The
     moment the countdown reaches 0:00 the offer goes: the button dims to "Inapakia…" with no figure and nothing to
     press, an open confirm closes, and the page asks the server straight away, so today's questions show "Kuuza
     kumefungwa" within a moment (selling locks when the free window ends) and an old question that froze a paid window
@@ -898,8 +961,9 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     One departure from the canvas: "Kuuza kumefungwa" sits on its own line above the sentence instead of running into
     it with a full stop (the dictionary's word has none, and Chinese would need its own). Since A8b (2026-10-03)
     today's button outside Tiketi zangu withdraws a lapsed free price the same way, in its own look — dimmed,
-    "Inapakia…", no figure — so neither look offers a free price its countdown has outlived (point 37 (f); a page
-    brought back by Back or Forward is point 37 (a)). Overrule: say which part.
+    "Inapakia…", no figure — so neither look offers a free price its countdown has outlived (point 37 (f)); since A8e
+    both looks withdraw every price of a page brought back by Back or Forward the same way until the server answers
+    (point 49, which resolves 37 (a)'s Back/Forward half). Overrule: say which part.
 36. **The classic words that stay on the journey's Sell path, none of them "nafasi".** WP10 gives journey words only to
     the three lines that said "nafasi" and mints no new word, so these stay today's until the S15 rename (§3): the
     confirm's small heading "Toa sasa" (en "Cash out", zh 兑现), which is also the confirm's spoken name; a failed
@@ -918,22 +982,31 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     shared Sell code (the countdown, the confirm, the sale) and does not touch today's button, so these stay: (a) the
     countdown takes the server's time once the page has started on the phone, so it runs late by the time the page took
     to start (under a second on a fast phone, several on a slow one), and for those seconds a ticket still offers a
-    free sale the server has stopped granting free: the server refuses it, or on an old paid-window question charges
-    the fee after a screen that said none. A page brought back by the browser's Back or Forward is the page as it was
-    rendered, however old (Next serves it from its own back/forward cache), so its countdown restarts from the time
-    that render had left, and a free offer the server ended while the player was elsewhere shows again, in both looks,
-    until the page's poller next refreshes (up to 20 seconds on `/positions`, 15 on a question page); A8b's withdrawal
-    cannot see it, because the restarted countdown is still running; (b) "Kuuza kumefungwa" at selection close is
+    free sale the server has stopped granting free: the server refuses it, or on an old paid-window question charges the
+    fee after a screen that said none — still open (since A8e the page is served with the strip and the free price, its
+    countdown showing the server's own value until the page starts and then running on from it, late by the same
+    seconds). ✅ Its other half is resolved by A8e as built (2026-10-04, point 49; the drive's page E and a Back between
+    two addresses of one page owe the measurement): a page brought back by the browser's Back or Forward is the page as
+    it was rendered, however old (Next serves it from its own back/forward cache), so until A8e its countdown restarted
+    from the time that render had left and a free offer the server had ended showed again, in both looks, until the
+    page's poller next refreshed (the A8b drive measured 20.3 s on `/positions`; up to 15 s on a question page). Now
+    each Sell button recognises a render the tab has already drawn — whether the page is mounted again or only its
+    address's query differs, as between two pages of `/positions` — withdraws its price in either look (dimmed,
+    "Inapakia…", no figure) from the first picture, and the page asks the server once, so a restored page shows the
+    server's answer within one round trip and never an old offer; (b) "Kuuza kumefungwa" at selection close is
     timed by the phone's own clock,
     so a phone that runs fast shuts early and one that runs slow keeps the button past the cutoff (the server refuses);
     (c) if the connection drops after the server has completed a sale, the result says it failed and that the ticket is
     unchanged, though the next refresh shows it sold; (d) holding Enter on the Sell button for about half a second
     opens the confirm and sells before it can be read; (e) on an old question with a paid window, the button keeps
     offering its paid price after the paid window ends, until the page refreshes (within 20 seconds; the server
-    refuses); (f) today's button outside Tiketi zangu still shows "Uza sasa · TZS 0 −1,000 ada" on a ticket whose
-    selling has shut, and "Uza sasa · TZS {stake} −0 ada" on a ticket in its free window, until the page has started:
-    that is its server paint, kept by A8b on purpose, so on a page served in the free window's last seconds the "−0 ada"
-    outlives the server's window until the page starts. Its stale free offer once the countdown has run out ("−0 ada",
+    refuses); (f) ✅ resolved by A8e as built (2026-10-04, points 46 and 47): until A8e today's button outside Tiketi
+    zangu showed "Uza sasa · TZS 0 −1,000 ada" on a ticket whose selling had shut, and "Uza sasa · TZS {stake} −0 ada"
+    on a ticket in its free window, until the page had started — its server paint, kept by A8b on purpose. It is now
+    served as the page then keeps it: "Kuuza kumefungwa", dimmed, on a shut ticket, and the strip with "Toka bila
+    gharama · TZS {stake} · pesa yote" in the free window (on a page served in the window's last seconds that free
+    price, its countdown frozen at the server's value, outlives the window until the page starts: (a)'s late start,
+    still open). Its stale free offer once the countdown has run out ("−0 ada",
     and "Hakuna ada" in its confirm, for up to 20 seconds) is closed by A8b (2026-10-03, §0i), which gives today's
     button WP10's withdrawal. Left in both looks, for the journey look's owner: the confirm closes one render after the
     button withdraws the price, so for about a frame it still shows the free price with its sell button live (the
@@ -951,7 +1024,7 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     button's padding, inside its edge, as it does today. The holder block is the next step for today's button: a layout
     drawn for that width, measured first, then named in SELL_EXPECTED_DIFFS from a compare (A3), never re-baselined.
     (a) is the money-truth one left (A8b closed (f)'s stale free offer): the server decides every sale, but for the
-    seconds the countdown runs late, or for up to one poll after Back or Forward, an old paid-window question can show
+    seconds the countdown runs late (A8e closed the Back/Forward half), an old paid-window question can show
     "no fee" and charge one. Overrule: say which comes first; otherwise (h) next, measured first (the default
     language's question page overflows at the most common phone widths), then (a), then (d).
     Since A8c (§0i; points 38 to 44), the money half of (a) and the last frame of (f) are closed: a sale confirmed at a
@@ -1024,6 +1097,36 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     button a wrong figure, would be seen only by the player. The cost, named: the row also appears in the player's own
     activity list (`/profile/account`), filed under "Madau". Overrule: say so, and refusals are not recorded at all (the
     other option first left open), or only the short pool is.
+46. **The Sell button's first picture is the server's own (S6 A8e, for every player, both looks).** The countdown starts
+    at the time the free window had left when the server drew the page — the server's clock, carried in the page — not
+    at 0. So the first picture a phone shows, before the page has started on it, is the one the button then keeps:
+    inside the free window today's button shows the "Toka bila gharama · 4:59 · Hakuna ada" strip and "Toka bila gharama
+    · TZS 3,600 · pesa yote" from the server's paint, where it showed "Uza sasa · TZS 3,600 −0 ada" with no strip until
+    the page had started (seconds on a slow phone, and the strip then pushed the button down); a journey ticket's line
+    shows its countdown beside "Uza bila ada hadi 11:23" from the first paint too. Until the page starts the countdown
+    shows the server's value, then runs on from it (late by the time the page took to start: point 37 (a)). Every later
+    first picture of a fresh page, a soft navigation included, is drawn the same way. Overrule: say so, and the first
+    paint goes back to "Uza sasa · TZS {stake} −0 ada", the strip arriving once the page starts.
+47. **A ticket whose selling has shut says so from the server's paint (S6 A8e, today's button).** "Kuuza kumefungwa",
+    dimmed, with nothing to press, where today's button showed "Uza sasa · TZS 0 −1,000 ada" until the page had started
+    (A8b kept that, to change nothing the server sends). The journey's look already did this. Overrule: say so, and
+    today's server paint goes back to "Uza sasa · TZS 0" until the page starts.
+48. **A price the page priced with a fee is never shown free (S6 A8e, both looks).** When a refresh brings a price with
+    a fee while the countdown still shows time left (a countdown running late), the button shows "Uza sasa · TZS 3,240
+    −360 ada" in that very picture; before A8e one picture showed "Toka bila gharama · TZS 3,240 · pesa yote", the free
+    words over the paid figure, until the countdown caught up (the A8b drive saw it after Back). A page that does not
+    say whether its price is free (none does today) reads the countdown alone, as before. Overrule: say so, and the
+    countdown alone decides again.
+49. **A page brought back by Back or Forward shows no old price (S6 A8e, both looks).** The browser's Back and Forward
+    redraw a page as it was, however old — a page shown again, or the same page at its other address (two pages of
+    `/positions`, or a lens and the bare page). Each Sell button now recognises such a page — the same ticket, drawn
+    from the same server moment, shown before in this tab and not on screen now — and until the server answers it shows
+    "Inapakia…", dimmed, with no figure and nothing to press, for every price, free or with a fee (a shut ticket stays
+    "Kuuza kumefungwa"); the page asks the server once for the whole restore, however many tickets it holds, and the
+    answer is drawn as it arrives. A page opened afresh is never taken for one, however slowly it loads, and the phone's
+    clock plays no part. Measured before A8e (the A8b drive, page E): the old free offer showed for 20.3 s. Overrule:
+    say so, and either only free prices wait (a price with a fee shows as it was until the page's poller refreshes, up
+    to 20 s), or each ticket asks on its own (one request per ticket).
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

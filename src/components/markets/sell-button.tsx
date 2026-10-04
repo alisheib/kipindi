@@ -17,6 +17,20 @@
  * minutes it could still sell free after the server had locked the exit, and cut a 10-minute
  * poll's free window in half on screen (S6 A8). `test:sell-grace-truth` holds both halves.
  *
+ * ⭐ THE FIRST RENDER DRAWS WHAT THE COUNTDOWN WILL KEEP, AND A RENDER BROUGHT BACK IS NO OFFER (S6 A8e, for every
+ * player, both looks). The countdown's first value is the time its instant had left at the server's own render
+ * (`serverNow`), read from the props alone, so the server's paint, the browser's hydrating render and every later
+ * mount draw the arm the countdown then keeps: inside the free window the strip and the free price, never
+ * "Uza sasa · TZS 3,600 −0 ada" until an effect has run; and a shut exit says "Kuuza kumefungwa" from the server's
+ * paint on. A price the server priced with a fee (`pricedFree === false`) is never drawn free, not even for the one
+ * commit before the countdown catches up. A render the router brings back for Back or Forward — a page it mounts
+ * again, or new props for buttons already on the page when only the address's query differs — is recognised by its
+ * position and `serverNow`, which a button in this tab has drawn and no button draws now (the record below the
+ * imports): until a fresh render arrives either look withdraws its price ("Inapakia…", no figure, nothing to press),
+ * and the page is asked once for the server's answer. A first load, however slow, is never one.
+ * `test:sell-grace-truth` holds it: 3.first, 3.state and 3.restore the button, 2.now and 2.poller its hosts, and
+ * 4.premise the router it reads.
+ *
  * ⭐ TWO LOOKS, ONE SALE (the Vodacom plan S6, WP10). With no `look` this draws today's markup and words, byte for byte,
  * for every host. The journey's ticket card alone asks for `look="journey"`, the S4 frame s4-9-tiketi-open in the kit's
  * tokens. In the free window: "Uza bila ada hadi 11:23 · 3:42" (the clock time the host read on the server from
@@ -53,7 +67,7 @@
  * what that sale would pay. `test:sell-price-guard` §4 holds the figure sent, the toast, the one refresh and the wait;
  * `test:journey-tickets` §12 and `test:sell-grace-truth` §3 count them beside the lapse.
  */
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -63,6 +77,33 @@ import { OperationResultModal } from "./operation-result-modal";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
 import { I } from "@/components/ui/glyphs";
+
+/**
+ * ⭐ S6 A8e — THE RENDERS THE SELL BUTTONS IN THIS TAB HAVE DRAWN, so a button can tell a render the router brought back
+ * for Back or Forward from a fresh one. Next keeps each page it has shown as the server sent it and, on Back or
+ * Forward, draws it again with those props, `serverNow` among them, however long ago (unless a refresh, or a server
+ * action that revalidates, has cleared that cache since); a fresh render always carries a new `serverNow` (every host
+ * renders per request). So a render whose position and `serverNow` a button in this tab has drawn, while no button
+ * draws it now, is a render brought back, and its prices are as old as it is. Each button counts the render it draws
+ * once its commit is done, and uncounts it when it moves on or unmounts; the key stays, uncounted, so Back or Forward
+ * can still find it (beyond DRAWN_KEPT keys the oldest uncounted ones go). A button reads the record at its first
+ * render and in every render that hands it a new `serverNow`. A page loaded afresh starts with no record, so a first
+ * load is never read as a restore however slowly it arrives; nothing is counted on the server, where effects never run,
+ * so the server's paint and the hydrating render read the same; and a second button drawing a render that one already
+ * draws is not a restore. ⚠️ It holds while Back or Forward mounts a page again or hands its mounted buttons the old
+ * props — not if Next kept earlier pages mounted and hidden (`cacheComponents`: `test:sell-grace-truth` 4.premise) —
+ * and while no host unmounts and remounts a ticket's button inside one render: a sheet or a tab that did would be read
+ * as brought back ("Inapakia…" and one ask, never an old price).
+ */
+const drawnRenders = new Map<string, number>();
+/** The uncounted renders the record keeps: far more than the pages of one poll (each refresh clears Next's own cache). */
+const DRAWN_KEPT = 512;
+const renderKey = (positionId: string, serverNow: number) => `${positionId}@${serverNow}`;
+/** The `serverNow` of a render brought back — drawn in this tab, and drawn by no button now — or null. */
+const restoredOf = (positionId: string, serverNow: number | undefined) =>
+  serverNow != null && drawnRenders.get(renderKey(positionId, serverNow)) === 0 ? serverNow : null;
+/** The button that asks the server about the restore on screen: one ask per restore, whatever each ticket's `serverNow`. */
+let restoreAsker: object | null = null;
 
 export function SellButton({
   positionId,
@@ -137,13 +178,18 @@ export function SellButton({
   const [closedNow, setClosedNow] = useState(false);
   // The free window — ticks once per second to update the countdown label. It counts down to
   // the server's instant, so a poll frozen at any grace shows its own window.
-  const [graceRemainMs, setGraceRemainMs] = useState<number>(0);
+  // NaN when no free window is offered, and when one is WITHDRAWN while this button is mounted
+  // (a cutoff moved earlier, so the bet no longer had its runway): the countdown then reads 0,
+  // never the last value it showed. Both hosts also lock the button then (`alreadyClosed`);
+  // the free state must not lean on that. Parsed once (S6 A8e), and read by the countdown's first value and by its clock.
+  const freeEndTs = useMemo(() => (freeUntil ? Date.parse(freeUntil) : NaN), [freeUntil]);
+  // ⭐ S6 A8e — THE COUNTDOWN'S FIRST VALUE IS THE SERVER'S: the time its instant had left at the server's own render
+  // (`serverNow`), from the props alone and never from this device's clock. So the server's paint and the browser's
+  // hydrating render read one value and draw one arm, and every mount starts on the arm the clock below then keeps:
+  // inside the free window the strip and the free price, where it drew "Uza sasa · TZS 3,600 −0 ada" until that clock
+  // had first run. The clock recalibrates it from there, as before.
+  const [graceRemainMs, setGraceRemainMs] = useState<number>(() => (Number.isFinite(freeEndTs) && serverNow != null ? Math.max(0, freeEndTs - serverNow) : 0));
   useEffect(() => {
-    // NaN when no free window is offered, and when one is WITHDRAWN while this button is mounted
-    // (a cutoff moved earlier, so the bet no longer had its runway): the countdown then reads 0,
-    // never the last value it showed. Both hosts also lock the button then (`alreadyClosed`);
-    // the free state must not lean on that.
-    const freeEndTs = freeUntil ? Date.parse(freeUntil) : NaN;
     // Compute clock offset once: server ahead → positive offset.
     // Applying it keeps the countdown aligned to server time so a device
     // clock that's 1 min behind doesn't show 6:00 instead of 5:00.
@@ -153,7 +199,7 @@ export function SellButton({
     if (!Number.isFinite(freeEndTs)) return;
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [freeUntil, serverNow]);
+  }, [freeEndTs, serverNow]);
   // closedNow flips client-side the moment the wall clock crosses
   // resolutionAt. Tick once per second.
   useEffect(() => {
@@ -177,13 +223,32 @@ export function SellButton({
   const { toast, deferToast } = useDeferredToast(pending);
   const { t } = useT();
 
+  // ⭐ S6 A8e — A RENDER BROUGHT BACK BY BACK OR FORWARD IS NO OFFER. A button's first render reads whether its render was
+  // brought back (the record above the component), and so does every render that hands a button already on the page a
+  // new `serverNow` — Back or Forward between two addresses of one page keeps its buttons — in that very render, so no
+  // commit draws the old prices. Until a fresh render arrives the button withdraws them in either look ("Inapakia…", no
+  // figure, nothing to press), and the lapse below asks the page for the server's answer, once for the whole restore.
+  // `restoredAt` is the restored render's `serverNow`; a fresh render clears it in the commit that recalibrates the
+  // countdown, so the countdown drawn next is never the old render's.
+  const [restoredAt, setRestoredAt] = useState<number | null>(() => restoredOf(positionId, serverNow));
+  const [drawnNow, setDrawnNow] = useState(serverNow);
+  if (serverNow !== drawnNow) {
+    setDrawnNow(serverNow);
+    const back = restoredOf(positionId, serverNow);
+    if (back !== null) setRestoredAt(back);
+  }
+  const stale = restoredAt !== null;
   // Free exit is exactly the server's free window: open while its instant is still ahead of the
   // server-calibrated clock, and no other clock is read. The last-second guard that sat here
   // ("closes in more than five minutes", on the device clock) was not the server's rule: the
   // server offers no free window to a bet placed with less than the grace left before selection
   // close, so the instant never runs past the cutoff — and that guard took the free label off
   // sales the server still granted free.
-  const inGrace = graceRemainMs > 0;
+  // ⭐ S6 A8e — and never against the server's own verdicts: not once the page has priced the exit with a fee
+  // (`pricedFree === false`), so a refresh that brings a paid price draws it paid in that very commit, never the free
+  // words over the paid figure while the countdown catches up (a host that passes no flag reads the countdown alone, as
+  // before); and not for a restored render.
+  const inGrace = graceRemainMs > 0 && pricedFree !== false && !stale;
   // Cash-out is an EARLY EXIT, never a profit. `value` is the stake returned:
   // the full stake inside the free-exit window, or stake − fee outside it.
   // `net` is therefore always ≤ 0 (0 when free, −fee otherwise).
@@ -300,30 +365,59 @@ export function SellButton({
     });
   };
 
-  // ⭐ THE LAPSE, BOTH LOOKS' (S6 WP10 for the journey's look, A8b for today's) — above every return, as hooks must be.
-  // `mounted` turns true at the browser's first commit: until then the countdown above has not run, so the server's
-  // paint is drawn from the page's own price (the journey's look offers it free; today's draws its markup as it always
-  // has). When the countdown runs out while the page's free price (`pricedFree`) is drawn, the price is no longer the
-  // offer — a default poll has locked the exit, and a paid window charges its fee — so the button withdraws it
-  // (`lapsed`, in either look), closes a confirm still showing it (unless a sale is already in flight: the server
-  // decides that one), and asks the page for the server's answer at once rather than at its poller's next beat (up to
-  // 20 s). It asks once per run of the countdown: an answer that is still free restarts the countdown, which re-arms the
-  // ask, so no answer can set off another ask by itself. The sale's own refresh events stay in `submit` above.
+  // ⭐ THE LAPSE, BOTH LOOKS' (S6 WP10 for the journey's look, A8b for today's, A8e for a restored render) — above every
+  // return, as hooks must be. A price drawn has LAPSED once it is no longer known to be the offer: a free price
+  // (`pricedFree`) whose countdown has run out — a default poll has locked the exit, and a paid window charges its fee —
+  // or any price of a restored render (`stale`). Then either look withdraws it, closes a confirm still showing it (unless
+  // a sale is already in flight: the server decides that one), and asks the page for the server's answer at once rather
+  // than at its poller's next beat (up to 20 s). It asks once per run of the countdown: an answer that is still free
+  // restarts the countdown, which re-arms the ask, so no answer can set off another ask by itself. A restore asks once
+  // for all its buttons: the first of them that can sell claims the ask and arms it, the rest wait for that answer, and
+  // the answer that ends the restore re-arms every button once, so an answer that is itself no offer is asked about too.
+  // The countdown has its value from the first render (S6 A8e), so nothing holds the verdict back until a commit: the
+  // server's paint and every first render draw what the lapse then keeps. The sale's own refresh events stay in `submit`.
   const journey = look === "journey";
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
   const lapseArmed = useRef(true);
+  // The record (S6 A8e, above the component): this button's render, counted while it draws it.
   useEffect(() => {
-    if (pricedFree !== true || closedNow || alreadyClosed) return;
+    if (serverNow == null) return;
+    const key = renderKey(positionId, serverNow);
+    drawnRenders.set(key, (drawnRenders.get(key) ?? 0) + 1);
+    for (const [k, live] of drawnRenders) {
+      if (drawnRenders.size <= DRAWN_KEPT) break;
+      if (live === 0) drawnRenders.delete(k);
+    }
+    return () => { drawnRenders.set(key, (drawnRenders.get(key) ?? 1) - 1); };
+  }, [positionId, serverNow]);
+  // A fresh render ends a restore, in the same commit as the countdown's recalibration (both run on the fresh props), and
+  // re-arms the ask.
+  useEffect(() => {
+    if (restoredAt === null || serverNow === restoredAt) return;
+    lapseArmed.current = true;
+    setRestoredAt(null);
+  }, [serverNow, restoredAt]);
+  // Lapsed: the price drawn is no longer known to be the offer (both looks).
+  const lapsed = (pricedFree === true && !inGrace) || stale;
+  // One ask for a whole restore, above the lapse that makes it: the first of its buttons that can sell (shut by neither the
+  // server's verdict nor this phone's clock, as the lapse asks) claims it and arms it, once for that restore (an answer to
+  // an earlier ask may have spent it); the others are disarmed until the answer.
+  const restoreAsk = useRef<number | null>(null);
+  useEffect(() => {
+    if (restoredAt === null || closedNow || alreadyClosed) return;
+    if (restoreAsker !== null && restoreAsker !== restoreAsk) { lapseArmed.current = false; return; }
+    restoreAsker = restoreAsk;
+    if (restoreAsk.current !== restoredAt) { restoreAsk.current = restoredAt; lapseArmed.current = true; }
+    return () => { if (restoreAsker === restoreAsk) restoreAsker = null; };
+  }, [restoredAt, closedNow, alreadyClosed]);
+  useEffect(() => {
+    if (closedNow || alreadyClosed) return;
     if (inGrace) { lapseArmed.current = true; return; }
-    if (!mounted) return;
+    if (!lapsed) return;
     if (!pending) setConfirmOpen(false);
     if (!lapseArmed.current) return;
     lapseArmed.current = false;
     window.dispatchEvent(new Event("50pick:refresh"));
-  }, [mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);
-  // Lapsed: the countdown has run out while the page's free price is drawn, so it is no longer the offer (both looks).
-  const lapsed = pricedFree === true && mounted && !inGrace;
+  }, [lapsed, inGrace, restoredAt, closedNow, alreadyClosed, pending]);
 
   // ⭐ THE TWO DIALOGS ARE ONE PAIR FOR BOTH LOOKS — the confirm and the result, wired to the one `submit` above. The
   // journey's look changes three of their words, each a ticket where today's says a position (S6 A7): the question, the
@@ -380,8 +474,9 @@ export function SellButton({
   // the very instant the countdown runs to, then an outlined button, "Uza bila ada" over "Rudishiwa {amount} kamili",
   // whose amount is `value`: the server's own figure for this exit, the whole stake inside the free window
   // (`cashOutValue`), never one worked out here. A price with a fee: today's "Uza sasa", figure and fee (a fee of 0 is not
-  // printed). A free price whose countdown has run out: "Inapakia…", no figure and nothing to press, until the server's
-  // answer arrives. Once selling has shut: "Kuuza kumefungwa" and the journey's sentence, in words, with nothing to press
+  // printed). A free price whose countdown has run out, or any price of a render brought back by Back or Forward (S6
+  // A8e): "Inapakia…", no figure and nothing to press, until the server's answer arrives. Once selling has shut: "Kuuza
+  // kumefungwa" and the journey's sentence, in words, with nothing to press
   // — from the server's own paint, because `alreadyClosed` is the server's verdict and arrives as a prop. The button's
   // edge is the kit's token for a control's edge, the canvas's own colour: an outlined button's edge is its only
   // boundary, so it is held to the floor a money control's edge is held to (DESIGN_AUTHORITY's accessibility floor).
@@ -394,8 +489,9 @@ export function SellButton({
     const [refundBefore, refundAfter] = t.journey.sellFullRefund.split("{amount}");
     // Shut: the server's verdict first (a prop, so the server's paint and the browser's first render agree), then this clock.
     const shut = closedNow || alreadyClosed === true;
-    // The free offer: the page priced the exit free, and the countdown runs — or has not yet run (the server's paint).
-    const offerFree = pricedFree === true && (inGrace || !mounted);
+    // The free offer: the page priced the exit free, and the countdown runs, from the server's paint on (S6 A8e: its first
+    // value is the server's own).
+    const offerFree = pricedFree === true && inGrace;
     return (
       <>
         {shut ? (
@@ -453,11 +549,14 @@ export function SellButton({
   // ⭐ S6 A8c — a price the server refused because it moved (`repricing`, above) is withdrawn the same way, strip and all:
   // "Inapakia…" ahead of "Inauza…", no figure, nothing to press, until the refreshed page brings the server's price.
   const btnVariant = "btn-primary";
-  // Shut: this phone's clock (`closedNow`), and — from the first commit — the server's verdict as it arrives, so a
-  // refresh that brings `alreadyClosed` is drawn shut in that very render, never as one pressable "Uza sasa · TZS 0
-  // −3,600 ada" while the effect above copies the verdict into `closedNow`. Before the first commit it is `closedNow`
-  // alone, so the server's paint and the browser's first render are today's.
-  const shutNow = closedNow || (mounted && alreadyClosed === true);
+  // Shut: this phone's clock (`closedNow`), and the server's verdict as it arrives, so a refresh that brings
+  // `alreadyClosed` is drawn shut in that very render, never as one pressable "Uza sasa · TZS 0 −3,600 ada" while the
+  // effect above copies the verdict into `closedNow`. Since S6 A8e that holds from the server's paint on, as the journey's
+  // look draws it: the verdict is a prop, so the server's paint and the browser's first render agree, and a shut ticket
+  // is no longer served as "Uza sasa · TZS 0 −1,000 ada" until the page has started. The free strip is served since A8e
+  // too, so its note is one text: the server writes two texts side by side with a marker between them that the browser
+  // keeps, and the strip would no longer be the markup a classic holder was shown (`qa:classic-shell-parity` 4.4).
+  const shutNow = closedNow || alreadyClosed === true;
 
   return (
     <>
@@ -465,7 +564,7 @@ export function SellButton({
         <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
           <span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>
           <span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>
-          <span className="font-mono text-[10px] text-text-subtle">· {t.dialog.noFee}</span>
+          <span className="font-mono text-[10px] text-text-subtle">{`· ${t.dialog.noFee}`}</span>
         </div>
       )}
       <button

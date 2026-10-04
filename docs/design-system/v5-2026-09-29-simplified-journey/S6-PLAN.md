@@ -1646,6 +1646,46 @@ re-derived (the page refresh twice in `submit`, three times in the file; both lo
 `test:failure-reasons`' figure fixture gains `value`; `test:house-bot-reports` 0.232.2 and its controls re-pinned.
 Records: VODACOM-PLAN §0i (A8c) and §0h points 37 (what A8c closes) and 38 to 44.
 
+*As built (A8e, drafted 2026-10-04 and revised after its review — its own commit, for every player):* SellButton never
+draws a commit it does not mean. (1) The countdown's first value is the server's: `useState(() =>
+Number.isFinite(freeEndTs) && serverNow != null ? Math.max(0, freeEndTs - serverNow) : 0)`, where `freeEndTs =
+useMemo(() => (freeUntil ? Date.parse(freeUntil) : NaN), [freeUntil])` is the one parse, read by that value and by the
+clock effect (now keyed on `[freeEndTs, serverNow]`): a pure function of the props, so the server's HTML and the
+hydrating render agree, and every mount starts on the arm the clock keeps. With it the `mounted` flag goes: `offerFree =
+pricedFree === true && inGrace`, `lapsed` waits for no commit, and today's `shutNow = closedNow || alreadyClosed ===
+true` draws the server's shut verdict from the server's paint, as the journey's look does; the strip's note is one text
+(``{`· ${t.dialog.noFee}`}``), so the server writes no marker inside it. (2) `inGrace = graceRemainMs > 0 && pricedFree
+!== false && !stale`: a price the server priced with a fee is never drawn free (a host passing no flag reads the
+countdown alone). (3) A module-level record, `drawnRenders` (a `Map` of `position@serverNow` to the number of buttons
+drawing it, counted by one effect after each commit and uncounted in its cleanup; the key is kept, and beyond
+`DRAWN_KEPT` (512) the oldest uncounted keys go), and `restoredOf`, which reads a render drawn in this tab and drawn by
+no button now as brought back: by a `useState` initializer at the first render (Next 16.2.4 mounts a page again for Back
+or Forward and restores its back/forward cache with the old props unless a refresh or a revalidating action has cleared
+it; a fresh render always carries a new `serverNow`), and — the review's finding — in the render that hands a mounted
+button a new `serverNow` (`drawnNow`, the derived-state pattern), because Back or Forward between two addresses of one
+page keeps its buttons mounted. `stale` makes `lapsed = (pricedFree === true && !inGrace) || stale`, so either look
+withdraws every price until a fresh render arrives, which an effect turns into the end of the restore in the commit that
+recalibrates the countdown, re-arming the ask; a claim effect above the lapse effect keeps one ask per restore whatever
+each ticket's `serverNow` (`restoreAsker`, one module-level owner: the first button that can sell claims it and arms its
+ask once for that restore, the others are disarmed; the claim is released when the restore ends or the button unmounts).
+The lapse effect's guard is now the shut verdicts alone, its second guard `if (!lapsed) return;`, and its dependencies
+`[lapsed, inGrace, restoredAt, closedNow, alreadyClosed, pending]`; its ask is the same one line, so the file still
+holds the page refresh twice. Pinned in the open: `test:sell-grace-truth` 2.now (every SellButton handed `serverNow`:
+`Date.now()`, the const bound to it, or a required number prop), 2.poller (`/positions`, the question page and Tiketi
+zangu draw their RefreshPoller before their buttons), §3 — 3.source accepts the memoised parse (only `useMemo(() =>
+(<the guard>), [freeUntil])`), 3.state pins the new free state, 3.journey and 3.classic drop the mount flag, 3.first
+pins the first value and the clock's keys, 3.restore pins the record and the owner at module level off the syntax tree,
+the count of every name the restore rests on, `restoredOf`, the re-read, the record's effect, the restore's end and the
+claim above the lapse effect — and 4.premise (no `cacheComponents` in next.config.ts), with 29 new plants, 3 replaced
+and 3 re-pointed, and §5's first-paint row removed; `test:journey-tickets` §12's `SELL_CLASSIC` `shutNow` and strip
+note, `LAPSE_ASK` [0] and [2] and `LAPSE_DEPS`, and its timer plant made a real defect; `qa:classic-shell-parity`'s
+first paint (`servedSellOf`: a page of the cell's context whose scripts are held, so the server's inline instructions
+alone put the streamed markup in place; it fails within 50 s and the later cells skip theirs; S.4), held in a compare to
+the baseline's own first paint or, the named transition `SELL_FIRST_PAINT`, to the baseline's Sell button
+(`firstPaintOf`, 4.4f), and in `--prove-red` to itself only (two first paints agree; a first-paint plant), with P.5f on
+the real markup and two S.4 plants. Records: VODACOM-PLAN §0i (A8e), §0h points 35 and 37 ((a)'s Back/Forward half and
+(f) resolved as built) and the new points 46 to 49.
+
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan

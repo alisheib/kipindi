@@ -28,15 +28,25 @@
  *      time built beside it — and the journey's card hands one (2.label). Every SellButton is handed `pricedFree`, read
  *      strictly (`=== true`), and the two pages that price an exit hand `cashOutValue`'s own `inGracePeriod` for an open
  *      exit on a LIVE question, off the very `co` that priced it, each expression pinned whole (S6 A8b, 2.priced).
+ *      Since S6 A8e every SellButton is handed `serverNow`, the server's instant of its render — `Date.now()`, the one
+ *      const the file binds to it, or a required number prop (2.now) — and each page that draws them draws its
+ *      RefreshPoller before them, so the one ask a restored page makes as it mounts finds the poller listening (2.poller).
  *   §3 THE BUTTON — `sell-button.tsx` as a syntax tree: no `GRACE_MS`, no five-minute constant, nothing multiplied
- *      out of minutes; the countdown's one time source is `Date.parse(freeUntil)`, an instant that is withdrawn
- *      zeroes it, and the free/fee state and the m:ss label both read that countdown and nothing else. In the journey's
- *      look (S6 WP10) the free offer is that countdown narrowed by the server's own pricing (`pricedFree`): drawn on the
- *      server's paint before the countdown first runs, and lapsed the moment it has run out (3.journey). Since S6 A8b
+ *      out of minutes; the countdown's one time source is `Date.parse(freeUntil)`, parsed once (memoised since S6 A8e),
+ *      an instant that is withdrawn zeroes it, and the free/fee state and the m:ss label both read that countdown and
+ *      nothing else but the server's own verdicts. In the journey's look (S6 WP10) the free offer is that countdown
+ *      narrowed by the server's own pricing (`pricedFree`), lapsed the moment it has run out (3.journey). Since S6 A8b
  *      the lapse is both looks': one effect, pinned whole, that names no look; the verdict declared once above the
  *      journey's look; and today's button reading it — nothing to press, 'Inapakia…' for its words and its spoken name,
- *      no figure — and reading the server's shut verdict from its first commit, never the phone's clock alone (3.classic).
- *   §4 THE WIRING — this suite is in predeploy and its red twin is declared.
+ *      no figure — and reading the server's shut verdict, never the phone's clock alone (3.classic). Since S6 A8e the
+ *      countdown's first value is the server's, from the props alone, so the server's paint and every first render draw
+ *      the arm the countdown then keeps (3.first); a price the page priced with a fee is never drawn free (3.state); and a
+ *      render brought back by Back or Forward is no offer until a fresh one arrives (3.restore): the record of the renders
+ *      this tab has drawn lives at module level, declared once and counted by one effect; a button reads it at its first
+ *      render and in every render that hands it a new serverNow; one owner makes the restore's one ask, claimed above the
+ *      lapse effect; and the answer that ends a restore re-arms the ask.
+ *   §4 THE WIRING — this suite is in predeploy and its red twin is declared; and (S6 A8e) the router premise the restore
+ *      read rests on: next.config.ts turns on no cacheComponents, so Back or Forward mounts a page again (4.premise).
  *   §5 THE FIT (S6 A8b) — a static model of today's button row, from the repo's own font files (the body's alternates
  *      included), stylesheet, pages and words: on a 320 phone (below Tailwind's `xs`) the free row on /positions holds
  *      one line inside the button's content and every other row one line inside the button, in en, sw and zh, for every
@@ -101,6 +111,10 @@ const MARKET = "src/app/markets/[id]/page.tsx";
 const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
 /** S6 A8b — the page gutter both classic hosts sit in, which §5 reads. */
 const PAGE_CONTAINER = "src/components/layout/page-container.tsx";
+/** S6 A8e — Tiketi zangu's page body, which draws the journey's ticket cards and its RefreshPoller (2.poller). */
+const TICKETS_VIEW = "src/components/journey/tickets/tickets-view.tsx";
+/** S6 A8e — read beside src for the router premise the restore read rests on (4.premise). */
+const NEXT_CONFIG = "next.config.ts";
 const readRaw = (rel: string) => readFileSync(join(REPO_ROOT, rel), "utf8").split(CR).join("");
 /** S6 A8b · §5 also reads the stylesheet, the Tailwind config and the three languages' words, so a plant can move each. */
 type World = {
@@ -108,7 +122,7 @@ type World = {
   css: string; tw: string; words: Record<string, unknown>;
 };
 const WORLD: World = {
-  files: new Map(srcFiles().map((rel) => [rel, decomment(readRaw(rel))])),
+  files: new Map([...srcFiles(), NEXT_CONFIG].map((rel) => [rel, decomment(readRaw(rel))])),
   rawSellButton: readRaw(SELL_BUTTON),
   scripts: (JSON.parse(readRaw("package.json")) as { scripts: Record<string, string> }).scripts,
   css: readRaw("src/app/globals.css"),
@@ -294,8 +308,10 @@ async function g1Server(I: Impl) {
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 type Host = {
   rel: string; client: boolean; importsHelper: boolean; importsClock: boolean;
-  els: Array<{ line: number; passes: boolean; placed: boolean; spread: boolean; label: "none" | "ok" | "bad"; priced: boolean }>;
+  els: Array<{ line: number; passes: boolean; placed: boolean; spread: boolean; label: "none" | "ok" | "bad"; priced: boolean; now: "ok" | "missing" | "bad" }>;
 };
+/** S6 A8e — each page that draws Sell buttons, and the element they sit in there: its RefreshPoller must come first. */
+const POLLER_FIRST: ReadonlyArray<readonly [string, string]> = [[POSITIONS, "<SellButton"], [MARKET, "<SellButton"], [TICKETS_VIEW, "<TicketCard"]];
 /**
  * S6 A8b — the two pages that price an exit, each handing its Sell button the verdict `cashOutValue` priced it with, for
  * an open exit on a LIVE question: [the file, the flag as its element reads it, the flag's own expression, whole — so no
@@ -358,6 +374,24 @@ const isClockOf = (sf: ts.SourceFile, e: ts.Expression | undefined, name: string
     && ts.isCallExpression(e.whenTrue) && e.whenTrue.expression.getText(sf) === "formatClock" && e.whenTrue.arguments.length === 1
     && ts.isIdentifier(e.whenTrue.arguments[0]) && e.whenTrue.arguments[0].text === name
     && e.whenFalse.kind === ts.SyntaxKind.NullKeyword;
+/**
+ * S6 A8e — the server's instant of a render, as a host hands it: a name the file binds once, to `Date.now()` in a const,
+ * or as a prop its component is handed as a REQUIRED number (so every page that draws the component must hand one).
+ */
+function nowBinding(sf: ts.SourceFile, name: string): "ok" | "bad" {
+  const sites = bindingSites(sf, name);
+  const only = sites.length === 1 ? sites[0] : undefined;
+  if (only && ts.isVariableDeclaration(only)) {
+    const list = only.parent;
+    return ts.isVariableDeclarationList(list) && (list.flags & ts.NodeFlags.Const) !== 0 && only.initializer?.getText(sf) === "Date.now()" ? "ok" : "bad";
+  }
+  if (only && ts.isBindingElement(only) && ts.isObjectBindingPattern(only.parent) && ts.isParameter(only.parent.parent)) {
+    const type = only.parent.parent.type;
+    const member = type && ts.isTypeLiteralNode(type) ? type.members.find((m) => ts.isPropertySignature(m) && m.name.getText(sf) === name) : undefined;
+    return !!member && ts.isPropertySignature(member) && !member.questionToken && member.type?.getText(sf) === "number" ? "ok" : "bad";
+  }
+  return "bad";
+}
 function hostOf(rel: string, code: string): Host {
   const sf = parse(rel, code);
   const locals = new Set<string>();
@@ -386,6 +420,7 @@ function hostOf(rel: string, code: string): Host {
     let labelled = false;
     let labelExpr: ts.Expression | undefined;
     let priced = false;
+    let now: "ok" | "missing" | "bad" = "missing";
     for (const a of n.attributes.properties) {
       if (!ts.isJsxAttribute(a)) { spread = true; continue; }
       const name = a.name.getText(sf);
@@ -411,9 +446,15 @@ function hostOf(rel: string, code: string): Host {
         priced = !!expr && ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
           && expr.right.kind === ts.SyntaxKind.TrueKeyword;
       }
+      // S6 A8e · the server's instant of the render: `Date.now()` in the attribute, or a name bound to it (nowBinding).
+      if (name === "serverNow") {
+        const init = a.initializer;
+        const expr = init && ts.isJsxExpression(init) ? init.expression : undefined;
+        now = !expr ? "bad" : expr.getText(sf) === "Date.now()" ? "ok" : ts.isIdentifier(expr) ? nowBinding(sf, expr.text) : "bad";
+      }
     }
     const label = !labelled ? "none" : bound !== null && isClockOf(sf, labelExpr, bound) ? "ok" : "bad";
-    els.push({ line: lineOf(sf, n), passes, placed, spread, label, priced });
+    els.push({ line: lineOf(sf, n), passes, placed, spread, label, priced, now });
   });
   return { rel, client: isDirective(code, "use client"), importsHelper, importsClock, els };
 }
@@ -451,6 +492,22 @@ function g2Hosts(W: World) {
   }).map(([rel]) => rel);
   ok("2.priced · every SellButton is handed pricedFree, read strictly (=== true), so a free price its countdown has outlived is withdrawn on every host (S6 A8b) — and the two pages that price an exit hand cashOutValue's own inGracePeriod for an open exit on a LIVE question, off the very `co` that priced it, each expression whole",
     hosts.length > 0 && unpriced.length === 0 && unsourced.length === 0, j({ unpriced, unsourced }));
+  // ⭐ S6 A8e · the countdown's first value and the record of the renders a tab has drawn both read the server's instant
+  // of the render: a button handed none would serve a free price as 'Inapakia…', ask at every mount, and never see a
+  // render brought back by Back or Forward.
+  const nowless = hosts.flatMap((h) => h.els.filter((e) => e.now !== "ok").map((e) => `${h.rel}:${e.line} (${e.now})`));
+  ok("2.now · every SellButton is handed serverNow, the server's instant of its render — `Date.now()` in the attribute, the one const the file binds to it, or a required number prop the host is itself handed — which the countdown's first value and the record of drawn renders read (S6 A8e)",
+    hosts.length > 0 && nowless.length === 0, j(nowless));
+  // ⭐ S6 A8e · a restored page's one ask is made by a Sell button's effect in the flush that mounts the page, so the
+  // page's RefreshPoller must already be listening: React runs a page's effects in its order, so the poller is drawn
+  // before the buttons (or the cards that hold them).
+  const pollerLate = POLLER_FIRST.filter(([rel, list]) => {
+    const file = W.files.get(rel) ?? "";
+    const at = file.indexOf("<RefreshPoller");
+    return at < 0 || file.indexOf(list) < 0 || at > file.indexOf(list);
+  }).map(([rel]) => rel);
+  ok("2.poller · each page that draws Sell buttons — /positions, the question page and Tiketi zangu — draws its RefreshPoller before them, so the one ask a restored page makes as it mounts finds the poller listening (S6 A8e)",
+    pollerLate.length === 0, j(pollerLate));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -458,15 +515,90 @@ function g2Hosts(W: World) {
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 /**
  * S6 WP10 — the journey look's free offer and its lapse: each the countdown, narrowed by the server's own pricing
- * (`pricedFree`, cashOutValue's `inGracePeriod` as the page priced the exit). `mounted` turns true at the browser's first
- * commit, in the journey's look only, and is set nowhere else: before it the countdown has not run, so the server's
- * pricing alone draws the offer (the server's paint).
+ * (`pricedFree`, cashOutValue's `inGracePeriod` as the page priced the exit). Since S6 A8e the countdown has its value from
+ * the first render, the server's own (3.first), so no mount flag holds anything back until a commit: the server's paint
+ * draws the offer the countdown then keeps, and a restored render (`stale`, 3.restore) lapses as a run-out one does.
  */
-const OFFER_FREE = "const offerFree = pricedFree === true && (inGrace || !mounted);";
-const LAPSED = "const lapsed = pricedFree === true && mounted && !inGrace;";
-const MOUNTED = "const [mounted, setMounted] = useState(false);";
-/** S6 A8b — the flag turns true at the button's first commit in either look, since both read the lapse. */
-const MOUNT_EFFECT = "useEffect(() => { setMounted(true); }, []);";
+const OFFER_FREE = "const offerFree = pricedFree === true && inGrace;";
+const LAPSED = "const lapsed = (pricedFree === true && !inGrace) || stale;";
+/**
+ * S6 A8e — the countdown's first value is the server's: the time the instant had left at the server's own render, from
+ * the props alone (the one parse and `serverNow`), never a clock of this device, so the server's paint and the hydrating
+ * render read one value and draw one arm. The clock that recalibrates it re-runs on that parse and on `serverNow`.
+ */
+const FIRST_VALUE = "const [graceRemainMs, setGraceRemainMs] = useState<number>(() => (Number.isFinite(freeEndTs) && serverNow != null ? Math.max(0, freeEndTs - serverNow) : 0));";
+const CLOCK_DEPS = "}, [freeEndTs, serverNow]);";
+/**
+ * S6 A8e — the free/fee state: the countdown, never against the server's own verdicts — not once the page has priced the
+ * exit with a fee (`pricedFree !== false`: a host that passes no flag reads the countdown alone), and not for a restored
+ * render (`!stale`).
+ */
+const IN_GRACE = "const inGrace = graceRemainMs > 0 && pricedFree !== false && !stale;";
+/**
+ * S6 A8e — a render brought back by Back or Forward is no offer until a fresh one arrives. The record of the renders this
+ * tab's Sell buttons have drawn (`position@serverNow`, each counted while a button draws it, kept uncounted after) lives
+ * at module level, declared once (MODULE_STATE, read off the syntax tree: a record made inside the component would be a
+ * new, empty one every render); only its one effect writes it, after a commit (never on the server, never by a first
+ * load's own renders); a button reads it at its first render and in every render that hands it a new serverNow, so a
+ * Back or Forward that keeps the page's buttons mounted is read too (REREAD); a fresh render ends the restore in an effect
+ * and re-arms the ask; and one owner, claimed above the lapse effect by the first of the buttons that can sell, makes the
+ * restore's one ask (CLAIM).
+ */
+const RESTORE = [
+  "const drawnRenders = new Map<string, number>();",
+  "const DRAWN_KEPT = 512;",
+  "const renderKey = (positionId: string, serverNow: number) => `${positionId}@${serverNow}`;",
+  "let restoreAsker: object | null = null;",
+  "const [restoredAt, setRestoredAt] = useState<number | null>(() => restoredOf(positionId, serverNow));",
+  "const [drawnNow, setDrawnNow] = useState(serverNow);",
+  "const stale = restoredAt !== null;",
+  "const restoreAsk = useRef<number | null>(null);",
+];
+/** [name, how the file declares it directly in its body, its initializer]: the module-level state the restore reads. */
+const MODULE_STATE: ReadonlyArray<readonly [string, string, string]> = [
+  ["drawnRenders", "const", "new Map<string, number>()"], ["DRAWN_KEPT", "const", "512"], ["restoreAsker", "let", "null"],
+];
+/** How often each name the restore rests on is written in the code, declarations included: a second writer shows here. */
+const RESTORE_NAMES: ReadonlyArray<readonly [string, number]> = [["drawnRenders", 9], ["restoreAsker", 6], ["restoredOf", 3], ["setRestoredAt", 3]];
+const RESTORED_OF = [
+  "const restoredOf = (positionId: string, serverNow: number | undefined) =>",
+  "serverNow != null && drawnRenders.get(renderKey(positionId, serverNow)) === 0 ? serverNow : null;",
+].join("");
+const REREAD = [
+  "if (serverNow !== drawnNow) {",
+  "setDrawnNow(serverNow);",
+  "const back = restoredOf(positionId, serverNow);",
+  "if (back !== null) setRestoredAt(back);",
+  "}",
+].join("");
+const RECORD = [
+  "useEffect(() => {",
+  "if (serverNow == null) return;",
+  "const key = renderKey(positionId, serverNow);",
+  "drawnRenders.set(key, (drawnRenders.get(key) ?? 0) + 1);",
+  "for (const [k, live] of drawnRenders) {",
+  "if (drawnRenders.size <= DRAWN_KEPT) break;",
+  "if (live === 0) drawnRenders.delete(k);",
+  "}",
+  "return () => { drawnRenders.set(key, (drawnRenders.get(key) ?? 1) - 1); };",
+  "}, [positionId, serverNow]);",
+].join("");
+const RESTORE_ENDS = [
+  "useEffect(() => {",
+  "if (restoredAt === null || serverNow === restoredAt) return;",
+  "lapseArmed.current = true;",
+  "setRestoredAt(null);",
+  "}, [serverNow, restoredAt]);",
+].join("");
+const CLAIM = [
+  "useEffect(() => {",
+  "if (restoredAt === null || closedNow || alreadyClosed) return;",
+  "if (restoreAsker !== null && restoreAsker !== restoreAsk) { lapseArmed.current = false; return; }",
+  "restoreAsker = restoreAsk;",
+  "if (restoreAsk.current !== restoredAt) { restoreAsk.current = restoredAt; lapseArmed.current = true; }",
+  "return () => { if (restoreAsker === restoreAsk) restoreAsker = null; };",
+  "}, [restoredAt, closedNow, alreadyClosed]);",
+].join("");
 const occurrences = (s: string, x: string) => s.split(x).length - 1;
 /** Each line trimmed and the lines joined, so a check reads the code and not its layout (`test:journey-tickets`' own). */
 const squash = (s: string) => s.split(NL).map((l) => l.trim()).join("");
@@ -475,16 +607,18 @@ const squash = (s: string) => s.split(NL).map((l) => l.trim()).join("");
  * by line, its dependencies — so it names no look and nothing can be added before, inside or after the ask; the verdict is
  * declared once ABOVE the journey's look, so both returns read it; today's return reads it four times (nothing to press,
  * 'Inapakia…' for its words and its spoken name — 'Inauza…' while a sale is in flight — and no figure); and today's return
- * reads the server's shut verdict from its first commit (`shutNow`), so a refresh that brings it is never drawn as one
- * pressable 'Uza sasa · TZS 0' render, and reads the phone's clock nowhere else.
+ * reads the server's shut verdict from its first render (`shutNow`; since S6 A8e the server's paint draws it too), so a
+ * refresh that brings it is never drawn as one pressable 'Uza sasa · TZS 0' render, and reads the phone's clock nowhere
+ * else. Since S6 A8e the effect's guard is the shut verdicts alone, the price it withdraws is `lapsed` (a run-out free
+ * price, or any price of a restored render), and it runs again whenever a restore begins or ends (`restoredAt`).
  */
-const LAPSE_GUARD = "if (pricedFree !== true || closedNow || alreadyClosed) return;";
-const LAPSE_DEPS = "}, [mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);";
+const LAPSE_GUARD = "if (closedNow || alreadyClosed) return;";
+const LAPSE_DEPS = "}, [lapsed, inGrace, restoredAt, closedNow, alreadyClosed, pending]);";
 const LAPSE_EFFECT = [
   "useEffect(() => {",
   LAPSE_GUARD,
   "if (inGrace) { lapseArmed.current = true; return; }",
-  "if (!mounted) return;",
+  "if (!lapsed) return;",
   "if (!pending) setConfirmOpen(false);",
   "if (!lapseArmed.current) return;",
   "lapseArmed.current = false;",
@@ -492,7 +626,7 @@ const LAPSE_EFFECT = [
   LAPSE_DEPS,
 ].join("");
 const CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
-const SHUT_NOW = "const shutNow = closedNow || (mounted && alreadyClosed === true);";
+const SHUT_NOW = "const shutNow = closedNow || alreadyClosed === true;";
 /**
  * ⭐ S6 A8c — and a price the server refused because it moved waits the same way, ahead of a sale in flight (`repricing`,
  * set by that refusal and cleared when the refreshed page is drawn): nothing to press, 'Inapakia…' for its words and its
@@ -541,14 +675,21 @@ function g3Button(W: World) {
   const guard = fromServer.length === 1 ? fromServer[0].parent : undefined;
   const guarded = !!guard && ts.isConditionalExpression(guard) && guard.whenTrue === fromServer[0]
     && guard.condition.getText(sf) === "freeUntil" && guard.whenFalse.getText(sf) === "NaN";
-  const decl = guarded && guard ? guard.parent : undefined;
-  const holder = decl && ts.isVariableDeclaration(decl) && decl.initializer === guard && ts.isIdentifier(decl.name) ? decl.name.text : null;
+  // S6 A8e · …bound to a const directly, or memoised once, `useMemo(() => (<it>), [freeUntil])`, so the countdown's first
+  // value and its clock read one parse, made again only when the instant itself changes.
+  const outOf = (n: ts.Node | undefined): ts.Node | undefined => (n && ts.isParenthesizedExpression(n) ? outOf(n.parent) : n);
+  const lambda = guarded && guard ? outOf(guard.parent) : undefined;
+  const memo = lambda && ts.isArrowFunction(lambda) && lambda.parent && ts.isCallExpression(lambda.parent)
+    && lambda.parent.expression.getText(sf) === "useMemo" && lambda.parent.arguments.length === 2 && lambda.parent.arguments[0] === lambda
+    && lambda.parent.arguments[1].getText(sf) === "[freeUntil]" ? lambda.parent : undefined;
+  const decl = memo ? memo.parent : guarded && guard ? guard.parent : undefined;
+  const holder = decl && ts.isVariableDeclaration(decl) && (decl.initializer === guard || (!!memo && decl.initializer === memo)) && ts.isIdentifier(decl.name) ? decl.name.text : null;
   const setters = calls("setGraceRemainMs");
   const setter = setters.length === 1 && setters[0].arguments.length === 1 ? setters[0] : undefined;
   const setArg = setter ? setter.arguments[0].getText(sf) : "";
   const props: string[] = [];
   walkTree(sf, (n) => { if (ts.isPropertySignature(n)) props.push(n.name.getText(sf)); });
-  ok("3.source · the countdown's ONE time source is the server's instant: freeUntil is a prop, parsed exactly once (no instant is NaN) into the value the one setGraceRemainMs call counts down to (server-calibrated); the placement is not read, and nothing is parsed but freeUntil and the selection cutoff",
+  ok("3.source · the countdown's ONE time source is the server's instant: freeUntil is a prop, parsed exactly once (no instant is NaN; memoised since S6 A8e, so the countdown's first value and its clock read one parse) into the value the one setGraceRemainMs call counts down to (server-calibrated); the placement is not read, and nothing is parsed but freeUntil and the selection cutoff",
     props.includes("freeUntil") && fromServer.length === 1 && holder !== null && setters.length === 1
       && setArg.includes(holder) && setArg.includes("clockOffset") && !setArg.includes("Date.parse")
       && !ids.has("placedAt") && strayParses.length === 0,
@@ -586,8 +727,8 @@ function g3Button(W: World) {
     return out;
   };
   const inGrace = initOf("inGrace");
-  ok("3.state · the free/fee state is that countdown and nothing else — inGrace is `graceRemainMs > 0`, with no second clock beside it",
-    inGrace.length === 1 && inGrace[0] === "graceRemainMs > 0", j(inGrace));
+  ok("3.state · the free/fee state is that countdown and, since S6 A8e, the server's own verdicts — inGrace is `graceRemainMs > 0`, never once the page has priced the exit with a fee (`pricedFree !== false`, so a refresh bringing a paid price is drawn paid in that commit; a host passing no flag reads the countdown alone) and never for a restored render (`!stale`) — with no second clock beside it",
+    inGrace.length === 1 && inGrace[0] === IN_GRACE.slice("const inGrace = ".length, -1) && occurrences(code, IN_GRACE) === 1, j(inGrace));
   const gMin = initOf("graceMin");
   const gSec = initOf("graceSec");
   const gLabel = initOf("graceLabel");
@@ -598,16 +739,16 @@ function g3Button(W: World) {
   ok("3.render · the strip draws that label only while the state holds and the exit is not shut (S6 A8b: by the shut verdict today's button reads, shutNow), nor while a price the server refused because it moved waits for the server (S6 A8c, repricing), and the button's free label reads the same state",
     code.includes("{inGrace && !shutNow && !repricing && (") && code.includes("{graceLabel}") && code.includes(": inGrace ? t.common.freeExitLabel"));
   // ⭐ S6 WP10 · THE JOURNEY'S FREE OFFER is that countdown, narrowed by the server's own pricing — never the instant
-  // alone, never the fee, never a clock of its own. Offered while the page priced the exit free and the countdown runs
-  // (or has not yet run: the server's paint); lapsed the moment it has run out, so a default poll's locked exit and a paid
-  // window's fee are never sold as free. `test:journey-tickets` §12 holds what the look draws under each.
+  // alone, never the fee, never a clock of its own. Offered while the page priced the exit free and the countdown runs,
+  // from the server's paint on (S6 A8e: the countdown's first value is the server's, so no mount flag is left); lapsed
+  // the moment it has run out, so a default poll's locked exit and a paid window's fee are never sold as free.
+  // `test:journey-tickets` §12 holds what the look draws under each.
   const offer = initOf("offerFree");
   const lapse = initOf("lapsed");
-  ok("3.journey · the journey look's free offer is the countdown narrowed by the server's own pricing: offered while the page priced the exit free and the countdown runs — or has not yet run, on the server's paint — and lapsed the moment it has run out; nothing else decides it, and `mounted` is set once, by the button's own first commit (in either look since S6 A8b)",
+  ok("3.journey · the journey look's free offer is the countdown narrowed by the server's own pricing: offered while the page priced the exit free and the countdown runs, from the server's paint on — the countdown's first value is the server's, so no mount flag holds anything back (S6 A8e) — and lapsed the moment it has run out, or while a restored render waits for a fresh one; nothing else decides it",
     occurrences(code, OFFER_FREE) === 1 && occurrences(code, LAPSED) === 1 && offer.length === 1 && lapse.length === 1
-      && occurrences(code, MOUNTED) === 1 && occurrences(code, MOUNT_EFFECT) === 1 && occurrences(code, "setMounted(") === 1
-      && props.includes("pricedFree"),
-    j({ offer, lapse, mounted: occurrences(code, MOUNTED), mountEffect: occurrences(code, MOUNT_EFFECT), setMounted: occurrences(code, "setMounted(") }));
+      && !ids.has("mounted") && !ids.has("setMounted") && props.includes("pricedFree"),
+    j({ offer, lapse, mountFlag: ids.has("mounted") || ids.has("setMounted") }));
   // ⭐ S6 A8b · TODAY'S LOOK WITHDRAWS A LAPSED FREE PRICE TOO, AND DRAWS THE SERVER'S SHUT VERDICT FROM ITS FIRST COMMIT.
   // Until A8b it turned that price into 'Uza sasa · TZS 3,600 −0 ada' until the page's next refresh, its confirm said
   // 'Hakuna ada' while the server charged the fee, and the server's 'shut' answer was first drawn as one pressable
@@ -617,11 +758,44 @@ function g3Button(W: World) {
   const lapseAt = code.indexOf(LAPSED);
   const lookAt = code.indexOf("if (journey) {");
   const missing = CLASSIC_LAPSE.filter((x) => occurrences(classic, x) !== 1);
-  ok("3.classic · today's look withdraws a lapsed free price too (S6 A8b): the one lapse effect is exactly the ask — no look named, nothing added — the verdict is declared once, above the journey's look, and today's button reads it (nothing to press, 'Inapakia…' for its words and its spoken name, no figure); and it draws the server's shut verdict from its first commit (shutNow), reading the phone's clock nowhere else",
+  ok("3.classic · today's look withdraws a lapsed free price too (S6 A8b): the one lapse effect is exactly the ask — no look named, nothing added — the verdict is declared once, above the journey's look, and today's button reads it (nothing to press, 'Inapakia…' for its words and its spoken name, no figure); and it draws the server's shut verdict from its first render (shutNow: a prop, so since S6 A8e the server's paint says it too), reading the phone's clock nowhere else",
     code.includes(CLASSIC_HEAD) && occurrences(flat, LAPSE_EFFECT) === 1 && occurrences(code, LAPSED) === 1 && lapseAt >= 0 && lookAt > lapseAt
-      && occurrences(code, MOUNT_EFFECT) === 1 && occurrences(classic, SHUT_NOW) === 1 && occurrences(classic, "closedNow") === 1
+      && occurrences(classic, SHUT_NOW) === 1 && occurrences(classic, "closedNow") === 1
       && missing.length === 0,
     j({ effect: occurrences(flat, LAPSE_EFFECT), lapseAt, lookAt, shutNow: occurrences(classic, SHUT_NOW), clock: occurrences(classic, "closedNow"), missing }));
+  // ⭐ S6 A8e · THE COUNTDOWN'S FIRST VALUE IS THE SERVER'S. Before A8e it started at 0, so inside the free window the
+  // server's paint, the hydrating render and every later mount drew 'Uza sasa · TZS 3,600 −0 ada' with no strip, and the
+  // strip arrived a commit later, pushing the button down (on a slow phone, seconds later). It now starts at the time the
+  // instant had left at the server's own render, from the props alone — no clock of this device, which would make the
+  // server's paint and the hydrating render disagree.
+  ok("3.first · the countdown's first value is the server's (S6 A8e): useState starts from the time the instant had left at the server's own render — the one parse and serverNow, from the props alone, no clock of this device — so the server's paint and the browser's hydrating render read one value and draw one arm, and every mount starts on the arm the clock then keeps; that clock re-runs on the parse and on serverNow",
+    occurrences(flat, FIRST_VALUE) === 1 && occurrences(code, "useState<number>(") === 1 && occurrences(flat, CLOCK_DEPS) === 1 && holder === "freeEndTs",
+    j({ first: occurrences(flat, FIRST_VALUE), countdownStates: occurrences(code, "useState<number>("), clockDeps: occurrences(flat, CLOCK_DEPS), holder }));
+  // ⭐ S6 A8e · A RENDER BROUGHT BACK BY BACK OR FORWARD IS NO OFFER. Next draws such a render again with its old props, so
+  // its countdown ran from the old serverNow and its prices were as old as that render — a free offer the server had
+  // ended was shown for up to one poll (the A8b drive measured 20.3 s on /positions). The record is read off the syntax
+  // tree as well as the text: declared once, directly in the file's body (a record made in the component would be a new,
+  // empty one at every render, and Back would never be read), and each name it rests on written exactly as often as the
+  // code above writes it (a second writer — a cleanup that clears the record, say — shows in the count).
+  const declaredAt = (name: string): string | null => {
+    const sites = bindingSites(sf, name);
+    const only = sites.length === 1 ? sites[0] : undefined;
+    const list = only && ts.isVariableDeclaration(only) ? only.parent : undefined;
+    const statement = list && ts.isVariableDeclarationList(list) ? list.parent : undefined;
+    if (!only || !ts.isVariableDeclaration(only) || !only.initializer || !list || !statement || !ts.isVariableStatement(statement) || statement.parent !== sf) return null;
+    return `${(list.flags & ts.NodeFlags.Const) !== 0 ? "const" : (list.flags & ts.NodeFlags.Let) !== 0 ? "let" : "var"} ${only.initializer.getText(sf)}`;
+  };
+  const written = (name: string) => { let n = 0; walkTree(sf, (x) => { if (ts.isIdentifier(x) && x.text === name) n++; }); return n; };
+  const restore = RESTORE.filter((x) => occurrences(code, x) !== 1);
+  const modular = MODULE_STATE.filter(([name, kind, init]) => declaredAt(name) !== `${kind} ${init}`).map(([name]) => `${name}: ${declaredAt(name)}`);
+  const counts = RESTORE_NAMES.filter(([name, n]) => written(name) !== n).map(([name, n]) => `${name} ${written(name)}/${n}`);
+  const claimAt = flat.indexOf(CLAIM);
+  ok("3.restore · a render brought back by Back or Forward is no offer until a fresh one arrives (S6 A8e): the record of the renders this tab's Sell buttons have drawn (position@serverNow, counted while drawn, kept after) is declared once at module level and written only by its one effect — after a commit, so never on the server and never by a first load's own renders; a button reads it at its first render and in every render that hands it a new serverNow, so a Back between two addresses of one page is read too; a fresh render ends the restore and re-arms the ask; the restored render narrows the free state (3.state) and lapses (3.journey, 3.classic); and one owner, claimed above the lapse effect by the first of its buttons that can sell, makes the restore's one ask",
+    restore.length === 0 && modular.length === 0 && counts.length === 0
+      && occurrences(flat, RESTORED_OF) === 1 && occurrences(flat, REREAD) === 1 && occurrences(flat, RECORD) === 1
+      && occurrences(flat, RESTORE_ENDS) === 1 && occurrences(flat, CLAIM) === 1 && claimAt >= 0 && claimAt < flat.indexOf(LAPSE_EFFECT),
+    j({ restore, modular, counts, restoredOf: occurrences(flat, RESTORED_OF), reread: occurrences(flat, REREAD), record: occurrences(flat, RECORD),
+      ends: occurrences(flat, RESTORE_ENDS), claim: occurrences(flat, CLAIM), claimAt, lapseAt: flat.indexOf(LAPSE_EFFECT) }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -634,6 +808,13 @@ function g4Wiring(W: World) {
       && W.scripts["red:sell-grace-truth"] === "tsx scripts/sell-grace-truth.test.mts --prove-red"
       && (W.scripts.predeploy ?? "").includes("npm run test:sell-grace-truth && "),
     j({ test: W.scripts["test:sell-grace-truth"], red: W.scripts["red:sell-grace-truth"] }));
+  // ⭐ S6 A8e · the Sell button reads a render brought back by Back or Forward when the page mounts again (and when only the
+  // address's query differs, in the render that brings it). With cacheComponents Next keeps earlier pages mounted and
+  // hidden, and Back would show one with its old props and no render to read them in.
+  const config = W.files.get(NEXT_CONFIG) ?? "";
+  ok("4.premise · next.config.ts turns on no cacheComponents (nor its earlier name, dynamicIO), so Back or Forward mounts a page again and the Sell button reads a render brought back (S6 A8e)",
+    config.includes("const config: NextConfig = {") && !config.includes("cacheComponents") && !config.includes("dynamicIO"),
+    j({ read: config.length, cacheComponents: config.includes("cacheComponents"), dynamicIO: config.includes("dynamicIO") }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -936,8 +1117,8 @@ async function g5Fit(W: World) {
         const freeNote = noteDrawn ? word(loc, "fullRefund") : "";
         out.push({ loc, state: "free", stake: p.stake, label: word(loc, "freeExitLabel"), figure, note: freeNote, free: true });
         out.push({ loc, state: "free, selling", stake: p.stake, label: word(loc, "selling"), figure, note: freeNote, free: true });
-        // The server's paint draws the free price with a fee of 0, before the countdown first runs (VODACOM-PLAN §0h point 37 (f)).
-        out.push({ loc, state: "first paint", stake: p.stake, label: word(loc, "sellNow"), figure, note: `−${formatNumber(0)} ${word(loc, "fee")}`, free: false });
+        // Since S6 A8e the server's paint draws the free row itself; a price with no fee, "−0 ada", is a legacy poll's paid
+        // window at a rate of 0, a paid row below (VODACOM-PLAN §0h point 37 (f)).
       } else {
         const feeLine = `−${formatNumber(p.fee)} ${word(loc, "fee")}`;
         out.push({ loc, state: "paid", stake: p.stake, label: word(loc, "sellNow"), figure, note: feeLine, free: false });
@@ -986,7 +1167,7 @@ async function g5Fit(W: World) {
   const otherBad = otherAt.filter(({ f }) => f.lines !== 1 || f.spare < -M.padding)
     .map(({ r, f }) => `${r.loc} ${r.state} TZS ${r.stake}: ${r.figure} ${r.note} (${f.lines} lines, ${f.spare.toFixed(1)}px)`);
   const leastBy = (loc: string) => Math.min(...otherAt.filter(({ r }) => r.loc === loc).map(({ f }) => f.spare)).toFixed(1);
-  ok(`5.paid · on /positions at ${PHONE} every other row — a price with its fee (selling or not), the server's first paint, shut, and a lapsed free price — is drawn as today, on ONE line inside the button: the least room left at its content's end is en ${leastBy("en")}, sw ${leastBy("sw")} and zh ${leastBy("zh")}px, where below 0 runs into the button's ${M.padding}px padding and never past its edge`,
+  ok(`5.paid · on /positions at ${PHONE} every other row — a price with its fee (selling or not; a legacy poll's paid window can charge 0), shut, and a lapsed free price — is drawn as today, on ONE line inside the button: the least room left at its content's end is en ${leastBy("en")}, sw ${leastBy("sw")} and zh ${leastBy("zh")}px, where below 0 runs into the button's ${M.padding}px padding and never past its edge`,
     otherAt.length > 0 && otherBad.length === 0, otherBad.slice(0, 3).join(" | "));
   const holderAt = rows.map((r) => ({ r, f: rowAt(r, H320) }));
   const tall = holderAt.filter(({ f }) => f.lines * M.font * M.lineHeight > M.height - 2 * M.border)
@@ -1065,7 +1246,7 @@ const HOST_CALL = "freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}";
 /** S6 WP10 — the journey card binds the instant once, and hands its clock reading beside it. */
 const CARD_BINDING = "const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);";
 const CARD_LABEL = "freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}";
-const FREE_END = "const freeEndTs = freeUntil ? Date.parse(freeUntil) : NaN;";
+const FREE_END = "const freeEndTs = useMemo(() => (freeUntil ? Date.parse(freeUntil) : NaN), [freeUntil]);";
 const FREE_END_GUARD = "    if (!Number.isFinite(freeEndTs)) return;";
 const PLANTS: Plant[] = [
   // §1 — the server's instant
@@ -1128,7 +1309,7 @@ const PLANTS: Plant[] = [
   { name: "GRACE_MS comes back and gates the free state again", expect: ["3.grace-ms"],
     world: (w) => inFile(
       inFile(w, SELL_BUTTON, "export function SellButton({", `const GRACE_MS = 5 * 60_000;${NL}export function SellButton({`),
-      SELL_BUTTON, "const inGrace = graceRemainMs > 0;", "const inGrace = graceRemainMs > 0 && (closesAt ? Date.parse(closesAt) - Date.now() : Infinity) > GRACE_MS;") },
+      SELL_BUTTON, IN_GRACE, `${IN_GRACE.slice(0, -1)} && (closesAt ? Date.parse(closesAt) - Date.now() : Infinity) > GRACE_MS;`) },
   { name: "the instant is computed client-side (the placement plus a grace the button picks)", expect: ["3.source"],
     world: (w) => inFile(w, SELL_BUTTON, FREE_END, `const freeEndTs = Date.parse(placedAt ?? "") + graceMinutes * 60_000;`) },
   { name: "the countdown runs from the server's render time plus a window the button keeps", expect: ["3.source"],
@@ -1140,7 +1321,7 @@ const PLANTS: Plant[] = [
   { name: "an instant withdrawn while the button is mounted freezes the strip (the effect returns before zeroing it)", expect: ["3.withdrawn"],
     world: (w) => inFile(w, SELL_BUTTON, `    update();${NL}${FREE_END_GUARD}`, `${FREE_END_GUARD}${NL}    update();`) },
   { name: "the free/fee state consults a second clock (the device's, against the cutoff)", expect: ["3.state"],
-    world: (w) => inFile(w, SELL_BUTTON, "const inGrace = graceRemainMs > 0;", `const inGrace = graceRemainMs > 0 && Date.now() < Date.parse(closesAt ?? "");`) },
+    world: (w) => inFile(w, SELL_BUTTON, IN_GRACE, `${IN_GRACE.slice(0, -1)} && Date.now() < Date.parse(closesAt ?? "");`) },
   { name: "the m:ss label reads a clock of its own", expect: ["3.label"],
     world: (w) => inFile(w, SELL_BUTTON, "const graceMin = Math.floor(graceRemainMs / 60_000);", `const graceMin = Math.floor((Date.parse(freeUntil ?? "") - Date.now()) / 60_000);`) },
   // §3 — S6 WP10: the journey's free offer is the countdown narrowed by the server's own pricing, and nothing else
@@ -1152,8 +1333,8 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, SELL_BUTTON, OFFER_FREE, "const offerFree = pricedFree === true;") },
   { name: "the journey's lapse is read off the fee (a no-fee paid window would never come back)", expect: ["3.journey"],
     world: (w) => inFile(w, SELL_BUTTON, LAPSED, "const lapsed = fee <= 0 && !inGrace;") },
-  { name: "the journey's mount flag waits on a timer, not the first commit (the server's paint outstays the countdown)", expect: ["3.journey"],
-    world: (w) => inFile(w, SELL_BUTTON, MOUNT_EFFECT, "useEffect(() => { setTimeout(() => setMounted(true), 5_000); }, []);") },
+  { name: "a mount flag comes back to the journey's free offer (the server's paint offers it whatever the countdown says)", expect: ["3.journey"],
+    world: (w) => inFile(w, SELL_BUTTON, OFFER_FREE, "const offerFree = pricedFree === true && (inGrace || !mounted);") },
   // §3 — S6 A8b: today's look withdraws a lapsed free price too, and draws the server's shut verdict from its first commit
   { name: "today's button can still be pressed over a lapsed free price", expect: ["3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, "disabled={pending || shutNow || lapsed || repricing}", "disabled={pending || shutNow || repricing}") },
@@ -1164,19 +1345,19 @@ const PLANTS: Plant[] = [
   { name: "today's button names the stale figure to a screen reader while it waits", expect: ["3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, `            : lapsed${NL}            ? (pending ? t.common.selling : t.common.loading)${NL}`, "") },
   { name: "the lapse is the journey's alone again (today's button keeps a stale free price until the next refresh)", expect: ["3.classic"],
-    world: (w) => inFile(w, SELL_BUTTON, LAPSE_GUARD, `if (look !== "journey" || pricedFree !== true || closedNow || alreadyClosed) return;`) },
+    world: (w) => inFile(w, SELL_BUTTON, LAPSE_GUARD, `if (look !== "journey" || closedNow || alreadyClosed) return;`) },
   { name: "the lapse effect skips today's look through the look prop, after its guard (its confirm stays open on the free price, and nothing asks the server)", expect: ["3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, LAPSE_GUARD, `${LAPSE_GUARD}${NL}    if (!look) return;`) },
   { name: "the lapse effect skips today's look before its guard", expect: ["3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, `    ${LAPSE_GUARD}`, `    if (look !== "journey") return;${NL}    ${LAPSE_GUARD}`) },
-  { name: "the mount flag is the journey's alone again (today's button can never lapse)", expect: ["3.journey", "3.classic"],
-    world: (w) => inFile(w, SELL_BUTTON, MOUNT_EFFECT, `useEffect(() => { if (look === "journey") setMounted(true); }, [look]);`) },
+  { name: "a mount flag holds the lapse back until a commit again (the server's paint draws a lapsed free price as 'Uza sasa · TZS 3,600 −0 ada')", expect: ["3.journey", "3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, LAPSED, "const lapsed = (pricedFree === true && mounted && !inGrace) || stale;") },
   { name: "the lapse verdict moves inside the journey's look (today's return can no longer read it)", expect: ["3.classic"],
     world: (w) => inFile(inFile(w, SELL_BUTTON, LAPSED, ""), SELL_BUTTON, "if (journey) {", `if (journey) {${NL}    ${LAPSED}`) },
   { name: "today's button waits an effect for the server's shut verdict (a bright, pressable 'Uza sasa · TZS 0' between 'Inapakia…' and 'Kuuza kumefungwa')", expect: ["3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, SHUT_NOW, "const shutNow = closedNow;") },
-  { name: "today's button draws the server's shut verdict before the page has started (the markup it is served moves)", expect: ["3.classic"],
-    world: (w) => inFile(w, SELL_BUTTON, SHUT_NOW, "const shutNow = closedNow || alreadyClosed === true;") },
+  { name: "today's button waits for its first commit for the server's shut verdict again (its server paint offers 'Uza sasa · TZS 0 −1,000 ada')", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, SHUT_NOW, "const shutNow = closedNow || (mounted && alreadyClosed === true);") },
   { name: "today's free strip reads the phone's clock alone (it outlives the server's shut verdict for a render)", expect: ["3.render", "3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, "{inGrace && !shutNow && !repricing && (", "{inGrace && !closedNow && !repricing && (") },
   // §3 — S6 A8c: a price the server refused because it moved waits the same way, ahead of a sale in flight
@@ -1184,6 +1365,77 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, SELL_BUTTON, `            : repricing ? t.common.loading${NL}`, "") },
   { name: "today's free strip keeps counting down over a price the server refused because it moved", expect: ["3.render"],
     world: (w) => inFile(w, SELL_BUTTON, "{inGrace && !shutNow && !repricing && (", "{inGrace && !shutNow && (") },
+  // §3 — S6 A8e: the countdown's first value is the server's, a price with a fee is never drawn free, and a render brought
+  // back by Back or Forward is no offer until a fresh one arrives
+  { name: "the countdown starts at 0 again (inside the free window the server paints 'Uza sasa · TZS 3,600 −0 ada', and the strip pushes the button down once the page has started)", expect: ["3.first"],
+    world: (w) => inFile(w, SELL_BUTTON, FIRST_VALUE, "const [graceRemainMs, setGraceRemainMs] = useState<number>(0);") },
+  { name: "the countdown's first value reads this device's clock (the server's paint and the hydrating render disagree)", expect: ["3.first"],
+    world: (w) => inFile(w, SELL_BUTTON, FIRST_VALUE, FIRST_VALUE.replace("freeEndTs - serverNow", "freeEndTs - Date.now()")) },
+  { name: "the countdown's first value parses the instant again on its own (two parses that can disagree)", expect: ["3.source", "3.first"],
+    world: (w) => inFile(w, SELL_BUTTON, FIRST_VALUE, FIRST_VALUE.replace("Number.isFinite(freeEndTs) && serverNow != null ? Math.max(0, freeEndTs - serverNow)", "freeUntil && serverNow != null ? Math.max(0, Date.parse(freeUntil) - serverNow)")) },
+  { name: "the clock no longer re-runs on a new serverNow (a refresh's own instant never recalibrates the countdown)", expect: ["3.first"],
+    world: (w) => inFile(w, SELL_BUTTON, CLOCK_DEPS, "}, [freeEndTs]);") },
+  { name: "a price the server priced with a fee is drawn free while the countdown catches up (the free words over the paid figure, for a commit)", expect: ["3.state"],
+    world: (w) => inFile(w, SELL_BUTTON, IN_GRACE, IN_GRACE.replace(" && pricedFree !== false", "")) },
+  { name: "a host that passes no flag loses its free offer (the flag read strictly where the countdown should stand alone)", expect: ["3.state"],
+    world: (w) => inFile(w, SELL_BUTTON, IN_GRACE, IN_GRACE.replace("pricedFree !== false", "pricedFree === true")) },
+  { name: "a restored render keeps its free offer (Back to /positions offers its old free price until the poller's next beat)", expect: ["3.state"],
+    world: (w) => inFile(w, SELL_BUTTON, IN_GRACE, IN_GRACE.replace(" && !stale", "")) },
+  { name: "a restored render's price with a fee is offered (only a free one waits for the server's answer)", expect: ["3.journey", "3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, LAPSED, "const lapsed = pricedFree === true && !inGrace;") },
+  { name: "the record is keyed by the position alone (every fresh visit to a ticket reads as a restore: 'Inapakia…' and an ask each time)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, RESTORE[2], RESTORE[2].replace("@${serverNow}", "")) },
+  { name: "the record is written during render (a first load's own render counts itself and can read as a restore)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, RESTORE[4], "const [restoredAt, setRestoredAt] = useState<number | null>(() => { const k = renderKey(positionId, serverNow ?? 0); const was = drawnRenders.get(k); drawnRenders.set(k, 0); return was === 0 ? serverNow ?? null : null; });") },
+  { name: "the record moves inside the component (a new, empty record at every render: Back is never read)", expect: ["3.restore"],
+    world: (w) => inFile(inFile(w, SELL_BUTTON, `${RESTORE[0]}${NL}`, ""), SELL_BUTTON, `  const [pending, start] = useTransition();${NL}`, `  const [pending, start] = useTransition();${NL}  ${RESTORE[0]}${NL}`) },
+  { name: "the record is cleared when a button unmounts (the page Back returns to finds nothing: its old prices are offered)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, `  }, [positionId, serverNow]);${NL}`, `  }, [positionId, serverNow]);${NL}  useEffect(() => () => { drawnRenders.clear(); }, []);${NL}`) },
+  { name: "the record forgets a render its button moves on from (a Back between two addresses of one page is never read)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, "return () => { drawnRenders.set(key, (drawnRenders.get(key) ?? 1) - 1); };", "return () => { drawnRenders.delete(key); };") },
+  { name: "the record no longer counts who draws a render (a second button drawing a render on screen reads as brought back)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, "drawnRenders.get(renderKey(positionId, serverNow)) === 0", "drawnRenders.has(renderKey(positionId, serverNow))") },
+  { name: "the record keeps every render for as long as the tab is open (it grows with every refresh of every ticket)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, `    for (const [k, live] of drawnRenders) {${NL}      if (drawnRenders.size <= DRAWN_KEPT) break;${NL}      if (live === 0) drawnRenders.delete(k);${NL}    }${NL}`, "") },
+  { name: "a render that hands a button already on the page an old serverNow is not read (a Back between two addresses of one page offers its old prices)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, `    const back = restoredOf(positionId, serverNow);${NL}    if (back !== null) setRestoredAt(back);${NL}`, "") },
+  { name: "a fresh render never ends a restore (the button says 'Inapakia…' for good)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, `    setRestoredAt(null);${NL}`, "") },
+  { name: "the answer that ends a restore re-arms nothing (an answer that is itself no offer waits for the poller)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, `    lapseArmed.current = true;${NL}    setRestoredAt(null);${NL}`, `    setRestoredAt(null);${NL}`) },
+  { name: "a restore asks once per button (four tickets, four refreshes queued on a 2G phone)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, `    if (restoreAsker !== null && restoreAsker !== restoreAsk) { lapseArmed.current = false; return; }${NL}`, "") },
+  { name: "the button that claims a restore's ask is not armed for it (after an earlier ask was answered, a Back between two addresses of one page never asks)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, `    if (restoreAsk.current !== restoredAt) { restoreAsk.current = restoredAt; lapseArmed.current = true; }${NL}`, "") },
+  { name: "a shut ticket claims a restore's ask and never makes it (the restore is never asked about)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, "if (restoredAt === null || closedNow || alreadyClosed) return;", "if (restoredAt === null || alreadyClosed) return;") },
+  { name: "a ticket this phone's clock has shut claims a restore's ask and never makes it (after a Back between two addresses of one page)", expect: ["3.restore"],
+    world: (w) => inFile(w, SELL_BUTTON, "if (restoredAt === null || closedNow || alreadyClosed) return;", "if (restoredAt === null || closedNow) return;") },
+  { name: "the claim moves below the lapse effect (each button's lapse asks before its claim can disarm it: one ask per button)", expect: ["3.restore"],
+    world: (w) => {
+      const raw = w.files.get(SELL_BUTTON) ?? "";
+      const head = `  useEffect(() => {${NL}    if (restoredAt === null || closedNow || alreadyClosed) return;`;
+      const at = raw.indexOf(head);
+      const end = raw.indexOf(`  }, [restoredAt, closedNow, alreadyClosed]);${NL}`, at);
+      if (at < 0 || end < 0) return w;
+      const claim = raw.slice(at, end + `  }, [restoredAt, closedNow, alreadyClosed]);${NL}`.length);
+      const lifted = raw.slice(0, at) + raw.slice(at + claim.length);
+      return withFile(w, SELL_BUTTON, lifted.split(`${LAPSE_DEPS}${NL}`).join(`${LAPSE_DEPS}${NL}${claim}`));
+    } },
+  { name: "the lapse no longer runs when a restore ends (an answer that is itself no offer is not asked about)", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, LAPSE_DEPS, "}, [lapsed, inGrace, closedNow, alreadyClosed, pending]);") },
+  // §2 — S6 A8e: every host hands the server's instant of its render, and draws its RefreshPoller before its buttons
+  { name: "/positions stops handing its classic Sell button serverNow (its countdown starts at 0, and the record never sees its renders)", expect: ["2.now"],
+    world: (w) => inFile(w, POSITIONS, `alreadyClosed={sellShut}${NL}                      serverNow={serverNow}`, "alreadyClosed={sellShut}") },
+  { name: "the journey's ticket card takes serverNow as an optional prop (a page could hand it none)", expect: ["2.now"],
+    world: (w) => inFile(w, JOURNEY_CARD, `  serverNow: number;${NL}}) {`, `  serverNow?: number;${NL}}) {`) },
+  { name: "/positions draws its RefreshPoller after its tickets (a restored page's one ask, made as it mounts, finds nothing listening)", expect: ["2.poller"],
+    world: (w) => inFile(inFile(w, POSITIONS, `      <RefreshPoller intervalMs={20_000} />${NL}`, ""), POSITIONS, "    </PageContainer>", `      <RefreshPoller intervalMs={20_000} />${NL}    </PageContainer>`) },
+  { name: "Tiketi zangu draws its RefreshPoller after its cards", expect: ["2.poller"],
+    world: (w) => inFile(inFile(w, TICKETS_VIEW, `      <RefreshPoller intervalMs={20_000} />${NL}`, ""), TICKETS_VIEW, "    </PageContainer>", `      <RefreshPoller intervalMs={20_000} />${NL}    </PageContainer>`) },
+  // §4 — S6 A8e: the router premise
+  { name: "next.config.ts turns on cacheComponents (Back shows a kept page with its old props, and no render reads them)", expect: ["4.premise"],
+    world: (w) => inFile(w, NEXT_CONFIG, "reactStrictMode: true,", `reactStrictMode: true,${NL}  cacheComponents: true,`) },
   // §2 — S6 A8b: every host hands the free-price flag, from cashOutValue's own verdict
   { name: "the question page stops telling its Sell button whether the price is the free window's (a lapsed free price is offered until the next refresh)", expect: ["2.priced"],
     world: (w) => inFile(w, MARKET, "pricedFree={positionPricedFree.get(p.id) === true}", "") },

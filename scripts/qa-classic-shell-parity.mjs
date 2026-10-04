@@ -28,6 +28,14 @@
  * five-minute free window, and §S fails a run whose cells missed it. The matrix gained the capture, so this is v2: a v1
  * baseline is refused, and the v2 baseline is captured at the commit just before A8's live half (VODACOM-PLAN §0i names
  * it), so the Sell cells measure A8's own claim as well as S6's.
+ * ⭐ S6 A8e — AND THE SELL BUTTON'S FIRST PAINT. Each Sell cell also captures the strip and the button as the server paints
+ * them, in a page of its own whose scripts are all held so that nothing hydrates (`served`, S.4): what a slow phone shows
+ * until the page has started. A compare holds that first paint to the baseline's own first paint when the baseline has
+ * one, and otherwise to the baseline's Sell button as the browser drew it once the page had started — the transition A8e
+ * makes, named SELL_FIRST_PAINT (4.4f). --prove-red holds the capture to itself — two first paints agree, and a change
+ * planted in one is seen — and never to a claim about the tree, so it calibrates any tree, the baseline's included; P.5f
+ * proves the matcher on the markup a capture records. A first paint that cannot be captured fails within 50 s, and the
+ * cells after it skip theirs (S.4 says so), so the hydrated cells stay inside the free window.
  *
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity                  (the control: --prove-red is the default)
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-<sha8>.json
@@ -235,6 +243,19 @@ const EXPECTED_DIFFS = [
     reason: "S6 WP11: the footer's rail reserve names the token --rail-h (88px, globals.css) instead of the literal, so its class string moves in every cell while what it computes does not — footerPaddingBottom and scrollPaddingBottom are their own fields, compared in every cell, and must still be equal (88px below 1024; the footer 0px from 1024).",
   },
 ];
+/**
+ * ⭐ S6 A8e · THE SELL BUTTON'S FIRST PAINT, NAMED. Not a field of the Sell cells: each cell captures its first paint beside
+ * them (`served`: every script held, nothing hydrated, S.4). A compare holds it to the baseline's own first paint when the
+ * baseline has one (under SELL_EXPECTED_DIFFS: a null compare passes on any tree), and otherwise to this transition: the
+ * first paint is the baseline's Sell button as the browser drew it once the page had started, strip and button, markup
+ * and every box and style, under SELL_EXPECTED_DIFFS (firstPaintOf, 4.4f) — in all of its cells or in none.
+ */
+const SELL_FIRST_PAINT = {
+  id: "sell-first-paint",
+  cells: SELL.locales.length * SELL.widths.length * SELL.places.length,
+  reason: "S6 A8e: the Sell button's countdown starts at the time its instant had left at the server's own render, so the server paints the arm the browser then draws. Inside the free window that is the strip (its countdown the server's m:ss) and the free button, 'Toka bila gharama · TZS {stake} · pesa yote', where the server painted 'Uza sasa · TZS {stake} −0 ada' with no strip until the page had started on the phone (the A8b drive saw that picture on a Back restore; on a slow phone it lasts seconds, and the strip then pushed the button down). Every Sell cell captures its first paint with the page's scripts held (S.4). Against a baseline captured before first paints were (the v2 file), each first paint must be the baseline's Sell button as the browser drew it; against a baseline with first paints of its own, the same first paint is the same, and A8e's change is this transition. The first paint before A8e, and a strip whose note the server writes as two texts, differ (P.5f).",
+};
+
 /** The named differences seen in some of their cells but not all. */
 const partialExpected = (hits, list = EXPECTED_DIFFS) => list
   .filter((e) => { const n = hits.get(e.id) ?? 0; return n !== 0 && n !== e.cells; })
@@ -500,6 +521,24 @@ function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS)
   }
   return { unexpected, expected };
 }
+/**
+ * ⭐ S6 A8e · one Sell cell's first paint (`served`) against the baseline's cell: "same" when the baseline has a first paint
+ * of its own and this is it (under SELL_EXPECTED_DIFFS); else SELL_FIRST_PAINT's id when this is the baseline's Sell
+ * button as the browser drew it once the page had started (strip and button; every other field the current cell's, so
+ * only those two regions are compared); else "differs", with what differs from each; "uncaptured" with no first paint.
+ */
+function firstPaintOf(route, was, now, baseStore, curStore) {
+  if (!now.served || now.served.error || !now.served.regions) {
+    return { verdict: "uncaptured", own: null, drawn: [{ field: "served", detail: now.served?.error ?? "no first paint captured" }] };
+  }
+  const asPaint = (regions) => ({ ...now, regions: { strip: regions.strip, button: regions.button } });
+  const cur = asPaint(now.served.regions);
+  const own = was.served && !was.served.error && was.served.regions
+    ? diffCells(route, asPaint(was.served.regions), cur, baseStore, curStore, SELL_EXPECTED_DIFFS).unexpected : null;
+  if (own && own.length === 0) return { verdict: "same", own, drawn: [] };
+  const drawn = diffCells(route, asPaint(was.regions), cur, baseStore, curStore, SELL_EXPECTED_DIFFS).unexpected;
+  return { verdict: drawn.length === 0 ? SELL_FIRST_PAINT.id : "differs", own, drawn };
+}
 
 // ── the checks every capture must pass, as pure functions so --prove-red can break each one ────────────────
 /** §2 — the population is what it claims. Each check returns the cells (or facts) that fail it. */
@@ -599,6 +638,8 @@ function sellChecks(sell, seed, store) {
       fails: bad((k, c) => c.regions?.strip?.count !== 1 || c.regions?.button?.count !== 1 || !html(c, "strip").includes(">m:ss<") || !confirmed(k, c)) },
     { id: "S.3", name: "no journey test id, flag or class in a Sell cell, in the page or in the bytes the server sent",
       fails: bad((k, c) => (c.journey ?? []).length > 0 || !c.raw || !c.raw.shell || c.raw.trace.length > 0) },
+    { id: "S.4", name: "every Sell cell's first paint was captured in a page whose scripts were all held — nothing hydrated — and it holds the page's Sell button (S6 A8e)",
+      fails: bad((k, c) => !c.served || !!c.served.error || c.served.hydrated !== false || c.served.regions?.button?.count !== 1) },
   ];
 }
 
@@ -617,6 +658,7 @@ function syntheticSell() {
         ...(confirmCell(w, place) ? { confirm: { count: 1, html: "confirm", layout: null } } : {}),
       },
       ...(confirmCell(w, place) ? { confirmLive: true } : {}),
+      served: { hydrated: false, regions: { strip: { count: 1, html: "strip", layout: null }, button: { count: 1, html: "button", layout: null } } },
     };
   }
   return { sell, seed: { held: "mkt_planted", open: 4, refusals: [] }, store };
@@ -826,20 +868,77 @@ async function seedHolder(jar, beforeSeed = null) {
   }
 }
 
+/** S6 A8e · what SNAPSHOT is asked for a Sell cell, and a Sell snapshot's regions as a cell records them (each a blob). */
+const sellArgsOf = (held, place) => ({ crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, sell: { held, place } });
+const sellRegionsOf = (sell) => Object.fromEntries(Object.entries(sell).map(([name, r]) => [name, r.count === 0 ? { count: 0, html: null, layout: null } : {
+  count: r.count,
+  html: put(norm(r.html)),
+  layout: put(r.lines.map(([path, geo, sig]) => `${path} ${geo} ${put(norm(sig))}`).join(NL)),
+}]));
+/** S6 A8e · the first failure of a first-paint capture: every first paint after it is skipped (S.4 names it), so a page that
+ *  cannot paint with its scripts held costs one wait, not one per cell, and the cells stay inside the free window. */
+let servedBroken = null;
+/**
+ * ⭐ S6 A8e · one Sell cell's FIRST PAINT, in a page of the cell's own context: every script the page asks for is held,
+ * never answered, so nothing hydrates, while the server's own inline instructions put the streamed markup in place and the
+ * stylesheets and fonts load — what a slow phone shows until the page has started. Returns the strip and the button as the
+ * cell records them, and whether anything had hydrated (S.4 requires that nothing had). Fails within 50 s. ⛔ A read only:
+ * nothing is pressed.
+ */
+async function servedSellOf(ctx, route, args, plant = null) {
+  if (servedBroken) return { error: `not captured: an earlier first paint failed (${servedBroken})` };
+  const page = await ctx.newPage();
+  try {
+    await page.route("**/*", (r) => {
+      if (r.request().resourceType() === "script") return;
+      r.continue().catch(() => {});
+    });
+    await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await page.waitForFunction(({ held, place }) => (place === "/positions"
+      ? !!document.querySelector(`#main-content a[data-row-id][href="/markets/${held}"]`)
+      : !!document.querySelector("#main-content .ticket-target > button")), args.sell, { timeout: 20_000 });
+    await page.evaluate(() => document.fonts.ready.then(() => true));
+    await applyPlant(page, plant);
+    const hydrated = await page.evaluate(() => [...document.querySelectorAll("header, main, button")]
+      .some((el) => Object.keys(el).some((k) => k.startsWith("__reactFiber$"))));
+    const snap = await page.evaluate(SNAPSHOT, args);
+    return { hydrated, regions: sellRegionsOf(snap.sell) };
+  } catch (e) {
+    servedBroken = msg(e);
+    return { error: servedBroken };
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+/** S6 A8e · a Sell cell's first paint alone, in a FRESH context: --prove-red's first-paint plant. */
+async function captureServedCell(jar, locale, width, place, held, plant) {
+  const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
+  try {
+    await ctx.addCookies([...jar, localeCookie(locale)]);
+    return await servedSellOf(ctx, routeOfPlace(place, held), sellArgsOf(held, place), plant);
+  } catch (e) {
+    return { error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
 /**
  * WP10 · one Sell cell, in a FRESH context: the open ticket's strip and button where a classic holder meets them — and,
  * in a confirm cell, the classic confirm the button opens. ⛔ It is never confirmed: only Enter or the gold button sells,
- * and neither is touched; the context closes with the dialog open.
+ * and neither is touched; the context closes with the dialog open. S6 A8e: first, in a page of its own, the cell's first
+ * paint (`served`) — unless the caller needs none (--prove-red's plants on the hydrated page).
  */
-async function captureSellCell(jar, locale, width, place, held, plant = null) {
+async function captureSellCell(jar, locale, width, place, held, plant = null, withServed = true) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
   const pageErrors = [];
   try {
     await ctx.addCookies([...jar, localeCookie(locale)]);
+    const args = sellArgsOf(held, place);
+    const served = withServed ? await servedSellOf(ctx, routeOfPlace(place, held), args).catch((e) => ({ error: msg(e) })) : undefined;
     const page = await ctx.newPage();
     page.on("pageerror", (e) => pageErrors.push(norm(msg(e)).slice(0, 160)));
     const { status, body } = await open(page, routeOfPlace(place, held), plant);
-    const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, sell: { held, place } };
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
@@ -878,6 +977,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null) {
     return {
       status, stable, landed: snap.url.split(held).join(":held"), regions, journey: snap.journey, raw: rawOf(body),
       ...(confirmLive === undefined ? {} : { confirmLive }),
+      ...(served === undefined ? {} : { served }),
       pageErrors: [...new Set(pageErrors)].sort(),
     };
   } catch (e) {
@@ -1032,6 +1132,52 @@ async function proveRed() {
       && r.plus.unexpected.length === 1 && r.elsewhere.unexpected.length === 1),
     JSON.stringify(sellRuns).slice(0, 400));
 
+  // ①e S6 A8e · the first paint, held the same way (SELL_FIRST_PAINT, 4.4f), on the markup a capture records — the marker
+  // React's server writes between two texts side by side (`TZS <!-- -->3,600`), the button's spoken name and its style — at
+  // both Sell places, in en and in sw. Against a baseline with no first paint of its own (the v2 file): A8e's first paint,
+  // the strip and the free button, is the baseline's Sell button as today's tree draws it (SELL_EXPECTED_DIFFS' own markup
+  // transition for that place applied), so it is the named transition; a strip whose note the server writes as two texts
+  // (`· <!-- -->Hakuna ada`), the first paint before A8e (no strip, 'Uza sasa · TZS 3,600 −0 ada') and a second change
+  // beside A8e's stay failures. Against a baseline that has a first paint of its own, the same first paint is the same (a
+  // null compare passes on any tree), and A8e's is the named transition.
+  {
+    const paintStore = {};
+    const blob = (html) => { const id = `p${Object.keys(paintStore).length}`; paintStore[id] = html; return id; };
+    const region = (html) => (html ? { count: 1, html: blob(html), layout: null } : { count: 0, html: null, layout: null });
+    const strip = (label, note, split) => `<div class="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30"><span class="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">${label}</span><span class="font-mono text-[10px] text-brand-300 tabular-nums">m:ss</span><span class="font-mono text-[10px] text-text-subtle">· ${split ? "<!-- -->" : ""}${note}</span></div>`;
+    const button = (aria, label, noteClass, note) => `<button type="button" aria-label="${aria}" class="btn btn-primary btn-md w-full whitespace-normal" style="justify-content:space-between"><span>${label}</span><span class="font-mono tabular-nums">TZS <!-- -->3,600<span class="${noteClass}">${note}</span></span></button>`;
+    const drawnBy = (place, html) => {
+      const e = SELL_EXPECTED_DIFFS.find((x) => x.field === "regions.button.html" && x.replace && (!x.routes || x.routes.includes(place)));
+      return e ? e.replace.reduce((s, [from, to]) => s.split(from).join(to), html) : html;
+    };
+    const cellOf = (stripHtml, buttonHtml, served) => ({ ...cell(200, "f1"), landed: SELL_PLACES[1], regions: { strip: region(stripHtml), button: region(buttonHtml) },
+      ...(served ? { served: { hydrated: false, regions: { strip: region(served[0]), button: region(served[1]) } } } : {}) });
+    const WORDS = [
+      ["en", "Free exit", "No fee", "full refund", "Sell now", "Cash out", "fee"],
+      ["sw", "Toka bila gharama", "Hakuna ada", "pesa yote", "Uza sasa", "Toa sasa", "ada"],
+    ];
+    const paintRuns = WORDS.flatMap(([l, free, noFee, refund, sellNow, cashOut, fee]) => SELL_PLACES.map((place) => {
+      const was = button(`${free} — TZS 3,600`, free, "ml-1.5 opacity-80 text-[11px]", refund);
+      const a8e = [strip(free, noFee, false), drawnBy(place, was)];
+      const before = [null, button(`${cashOut} TZS 3,600`, sellNow, "ml-1.5 opacity-80 text-[11px]", `−<!-- -->0<!-- --> <!-- -->${fee}`)];
+      const v2 = cellOf(strip(free, noFee, false), was, null);
+      const own = cellOf(strip(free, noFee, false), was, before);
+      const verdict = (base, served) => firstPaintOf(place, base, cellOf(null, null, served), paintStore, paintStore);
+      return {
+        l, place, kept: verdict(v2, a8e), split: verdict(v2, [strip(free, noFee, true), a8e[1]]), before: verdict(v2, before),
+        plus: verdict(v2, [a8e[0], a8e[1].split("3,600<").join("3,601<")]), same: verdict(own, before), moved: verdict(own, a8e),
+      };
+    }));
+    const fields = (v) => v.drawn.map((d) => d.field);
+    ok("P.5f S6 A8e's first paint — the strip and the free button, on the markup a capture records — is the baseline's Sell button as today's tree draws it (sell-first-paint) at both Sell places in en and in sw, while a strip whose note the server writes as two texts, the first paint before A8e (no strip, 'Uza sasa · TZS 3,600 −0 ada') and a second change beside it stay failures; and against a baseline with a first paint of its own, the same first paint is the same and A8e's is the named transition",
+      paintRuns.length === 4 && paintRuns.every((r) => r.kept.verdict === SELL_FIRST_PAINT.id
+        && r.split.verdict === "differs" && fields(r.split).join() === "regions.strip.html"
+        && r.before.verdict === "differs" && fields(r.before).includes("regions.strip.count") && fields(r.before).includes("regions.button.html")
+        && r.plus.verdict === "differs" && fields(r.plus).join() === "regions.button.html"
+        && r.same.verdict === "same" && r.moved.verdict === SELL_FIRST_PAINT.id),
+      JSON.stringify(paintRuns.map((r) => [r.l, r.place, r.kept.verdict, fields(r.split), fields(r.before), fields(r.plus), r.same.verdict, r.moved.verdict])).slice(0, 400));
+  }
+
   // ② The checks of §2 and §3: a clean synthetic capture passes them all, and each plant turns exactly its own one red.
   const S = syntheticCapture();
   const red = (m, loaders = []) => ({
@@ -1095,6 +1241,8 @@ async function proveRed() {
     ["S.2", "a confirm cell whose dialog never opened", (m) => { atSell(m, "en", 360, SELL_PLACES[1]).regions.confirm = { count: 0, html: null, layout: null }; }],
     ["S.2", "a confirm captured after its quote hold ran out (its gold button disabled)", (m) => { atSell(m, "sw", 360, SELL_PLACES[1]).confirmLive = false; }],
     ["S.3", "a journey trace in a Sell cell", (m) => { atSell(m, "en", 1280, SELL_PLACES[1]).journey = ["testid:journey-tabs"]; }],
+    ["S.4", "a Sell cell whose first paint was never captured", (m) => { delete atSell(m, "en", 360, SELL_PLACES[0]).served; }],
+    ["S.4", "a first paint read after the page had hydrated (its scripts not held)", (m) => { atSell(m, "sw", 1280, SELL_PLACES[1]).served.hydrated = true; }],
   ];
   for (const [id, what, plant] of SELL_FLOOR_PLANTS) {
     const m = structuredClone(SS);
@@ -1160,13 +1308,13 @@ async function proveRed() {
         { id: "sell-button", css: "#main-content .ticket-target > button { letter-spacing: 2px !important; }", what: "the holder block's Sell button letters spaced out", need: "regions.button.layout", within: ["regions.button."] },
         { id: "sell-strip", css: '#main-content .ticket-target > div[class~="mb-1.5"] { color: rgb(255, 0, 0) !important; }', what: "the holder block's free strip re-inked", need: "regions.strip.layout", within: ["regions.strip."] },
         { id: "sell-confirm", css: '[role="dialog"] p { letter-spacing: 2px !important; }', what: "the classic confirm's words spaced out", need: "regions.confirm.layout", within: ["regions.confirm."] },
-      ] },
+      ], servedPlant: { id: "first-paint", css: "#main-content .ticket-target > button { letter-spacing: 2px !important; }", what: "the holder block's first paint, its letters spaced out (S6 A8e)", need: "regions.button.layout", within: ["regions.button."] } },
       { l: "en", w: 1280, place: SELL_PLACES[0], plants: [
         { id: "positions-button", css: "#main-content div:has(> a[data-row-id]) > button { letter-spacing: 2px !important; }", what: "the /positions card's Sell button letters spaced out", need: "regions.button.layout", within: ["regions.button."] },
         { id: "positions-strip", css: '#main-content div:has(> a[data-row-id]) > div[class~="mb-1.5"] { color: rgb(255, 0, 0) !important; }', what: "the /positions card's free strip re-inked", need: "regions.strip.layout", within: ["regions.strip."] },
       ] },
     ];
-    for (const { l, w, place, plants } of SELL_PROVE) {
+    for (const { l, w, place, plants, servedPlant } of SELL_PROVE) {
       const k = keyOf("sell", l, w, place);
       const clean = await captureSellCell(holder, l, w, place, seeded.held);
       const again = await captureSellCell(holder, l, w, place, seeded.held);
@@ -1176,8 +1324,30 @@ async function proveRed() {
       ok(`P.${k} two clean captures of a Sell cell agree, inside the free window (the strip's clock read as m:ss)${confirmCell(w, place) ? ", the classic confirm captured inside its quote hold" : ""}`,
         noise.length === 0 && clean.regions.strip.count === 1 && clean.regions.button.count === 1 && confirmOk,
         noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ") : `strip ${clean.regions.strip.count} · button ${clean.regions.button.count} · confirm ${clean.regions.confirm?.count ?? "-"}`);
+      // S6 A8e · the first paint: two of them agree — every script held, nothing hydrated, the page's Sell button in both —
+      // and a change planted in it alone is seen. Held to the first paint itself, never to the button the browser then
+      // drew: that is A8e's claim about the tree (4.4f, in a compare), and the calibration must hold on any tree, the one
+      // the baseline is captured from included.
+      const paintOf = (served) => ({ ...clean, regions: { strip: served.regions.strip, button: served.regions.button } });
+      const painted = (s) => !!s && !s.error && s.hydrated === false && s.regions?.button?.count === 1;
+      const paintNoise = painted(clean.served) && painted(again.served)
+        ? diffCells(place, paintOf(clean.served), paintOf(again.served), blobs, blobs, SELL_EXPECTED_DIFFS).unexpected : null;
+      ok(`P.${k} two first paints of a Sell cell agree — every script held, nothing hydrated, the page's Sell button in both (S6 A8e)`,
+        paintNoise !== null && paintNoise.length === 0,
+        paintNoise === null
+          ? (clean.served?.error ?? again.served?.error ?? `hydrated ${clean.served?.hydrated} / ${again.served?.hydrated} · button ${clean.served?.regions?.button?.count} / ${again.served?.regions?.button?.count}`)
+          : paintNoise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400));
+      if (servedPlant) {
+        const planted = await captureServedCell(holder, l, w, place, seeded.held, servedPlant);
+        const seen = painted(clean.served) && painted(planted)
+          ? diffCells(place, paintOf(clean.served), paintOf(planted), blobs, blobs, SELL_EXPECTED_DIFFS).unexpected : null;
+        ok(`P.${k} ⭐ ${servedPlant.what} is reported in ${servedPlant.need}, and nowhere outside ${servedPlant.within.join(" / ")}`,
+          seen !== null && seen.some((d) => inside(d.field, [servedPlant.need])) && seen.every((d) => inside(d.field, servedPlant.within)),
+          seen === null ? (planted?.error ?? clean.served?.error ?? "no first paint captured")
+            : seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a first-paint compare with this harness proves nothing");
+      }
       for (const plant of plants) {
-        const planted = await captureSellCell(holder, l, w, place, seeded.held, plant);
+        const planted = await captureSellCell(holder, l, w, place, seeded.held, plant, false);
         if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
         const seen = diffCells(place, clean, planted, blobs, blobs, SELL_EXPECTED_DIFFS).unexpected;
         ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
@@ -1239,6 +1409,27 @@ if (!PROVE_RED) {
     }
     ok(`4.4 ⭐ no unexpected difference in the ${sellCompared} Sell cells: a classic holder is sold to by today's Sell button and confirm`,
       sellCompared > 0 && sellCompared === sellCurKeys.length && sellDiffering === 0, sellDiffering ? `${sellDiffering} Sell cell(s) differ` : "");
+    // ⭐ S6 A8e · every Sell cell's first paint against the baseline (firstPaintOf): the baseline's own first paint when it
+    // has one, and otherwise — SELL_FIRST_PAINT, the named transition — its Sell button as the browser drew it.
+    const paints = new Map();
+    let paintCompared = 0;
+    for (const k of sellCurKeys) {
+      const was = sellBase[k], now = sellCells[k];
+      if (!was || was.error || now.error) continue;
+      paintCompared++;
+      const v = firstPaintOf(partsOf(k).r, was, now, baseline.blobs, blobs);
+      paints.set(v.verdict, (paints.get(v.verdict) ?? 0) + 1);
+      if (v.verdict === "same" || v.verdict === SELL_FIRST_PAINT.id) continue;
+      for (const d of [...(v.own ?? []), ...v.drawn].slice(0, 3)) console.log(`  ✗ ${k} first paint — ${d.field}: ${d.detail}`.slice(0, 600));
+    }
+    const paintNamed = paints.get(SELL_FIRST_PAINT.id) ?? 0;
+    const paintDiffering = paintCompared - paintNamed - (paints.get("same") ?? 0);
+    ok(`4.4f ⭐ every Sell cell's first paint (every script held, nothing hydrated) is the baseline's own first paint or — in all of its cells or none — ${SELL_FIRST_PAINT.id}, the baseline's Sell button as the browser drew it`,
+      paintCompared === SELL_FIRST_PAINT.cells && paintDiffering === 0 && (paintNamed === 0 || paintNamed === SELL_FIRST_PAINT.cells),
+      `${paintCompared} of ${SELL_FIRST_PAINT.cells} compared · ${[...paints].map(([v, n]) => `${v} ${n}`).join(" · ")}`);
+    console.log(`  NAMED ${SELL_FIRST_PAINT.id} — seen in ${paintNamed} of ${SELL_FIRST_PAINT.cells} Sell cell(s). ${SELL_FIRST_PAINT.reason}`);
+    // A Sell cell whose first paint differs is written beside the baseline too, as one that differs otherwise is (below).
+    sellDiffering += paintDiffering;
     ok("4.5 each named Sell difference is seen in all of its cells or in none", partialExpected(sellHits, SELL_EXPECTED_DIFFS).length === 0,
       partialExpected(sellHits, SELL_EXPECTED_DIFFS).join(" · "));
     if (differing || sellDiffering) {

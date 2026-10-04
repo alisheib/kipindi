@@ -613,14 +613,14 @@ const SELL_CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
 /** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button (since S6 A8b, with its lapse, the server's shut verdict from its first commit and its free note's narrow-phone classes; since S6 A8c, the wait on a moved price), and the shared dialogs. */
 const SELL_CLASSIC = [
   'const btnVariant = "btn-primary";',
-  'const shutNow = closedNow || (mounted && alreadyClosed === true);',
+  'const shutNow = closedNow || alreadyClosed === true;',
   'return (',
   '<>',
   '{inGrace && !shutNow && !repricing && (',
   '<div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">',
   '<span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>',
   '<span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>',
-  '<span className="font-mono text-[10px] text-text-subtle">· {t.dialog.noFee}</span>',
+  '<span className="font-mono text-[10px] text-text-subtle">{`· ${t.dialog.noFee}`}</span>',
   '</div>',
   ')}',
   '<button',
@@ -746,17 +746,17 @@ const FEE_RULE = "const fee = Math.max(0, stake - value);";
 const BUTTON_OPEN = `<button type="button" onClick={openConfirm} disabled={pending || lapsed || repricing}`;
 /** Its edge: the kit's outlined class, its only boundary drawn in the kit's token for a control's edge (the canvas's own colour). */
 const EDGE = `className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>`;
-/** A lapsed free price closes a confirm still showing it and asks the page for the server's answer at once — once per run of the countdown, re-armed only when the countdown runs again, so no answer can set off another ask by itself. One effect for both looks since S6 A8b, so its guard and its dependencies name no look. */
+/** A lapsed free price closes a confirm still showing it and asks the page for the server's answer at once — once per run of the countdown, re-armed only when the countdown runs again, so no answer can set off another ask by itself. One effect for both looks since S6 A8b, so its guard and its dependencies name no look; since S6 A8e its guard is the shut verdicts alone, the price it withdraws is `lapsed` (a run-out free price, or any price of a render brought back by Back or Forward), no mount flag holds it back, and it runs again whenever a restore begins or ends (`restoredAt`). */
 const LAPSE_ASK = [
-  "if (pricedFree !== true || closedNow || alreadyClosed) return;",
+  "if (closedNow || alreadyClosed) return;",
   "if (inGrace) { lapseArmed.current = true; return; }",
-  "if (!mounted) return;",
+  "if (!lapsed) return;",
   "if (!pending) setConfirmOpen(false);",
   "if (!lapseArmed.current) return;",
   "lapseArmed.current = false;",
   `window.dispatchEvent(new Event("50pick:refresh"));`,
 ];
-const LAPSE_DEPS = "}, [mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);";
+const LAPSE_DEPS = "}, [lapsed, inGrace, restoredAt, closedNow, alreadyClosed, pending]);";
 const LAPSE_REFRESH = LAPSE_ASK.length - 1;
 /** What the look never does itself: build or format a time, or read the stake (its figures are the server's). */
 const LOOK_NEVER = ["Date", "toLocale", "Intl.", "formatClock(", "formatDeadline(", "formatDayTime(", "formatDateTime(", "formatTime(", "stake"];
@@ -1030,7 +1030,7 @@ const freeWordByInstant = withFile(SELL_BUTTON, (s) => s.split(WORD_FREE).join("
   .split(FREE_FIGURE_OPEN).join("{freeUntil ? ("));
 const refundAlways = swap(SELL_BUTTON, FREE_FIGURE_OPEN, "{true ? (");
 const freeLineByLabel = swap(SELL_BUTTON, FREE_LINE_OPEN, "{freeUntilLabel ? (");
-const timerBeforeCountdown = swap(SELL_BUTTON, TIMER_OPEN, FREE_FIGURE_OPEN);
+const timerInverted = swap(SELL_BUTTON, TIMER_OPEN, "{!inGrace ? (");
 const lapseOffered = swap(SELL_BUTTON, "disabled={pending || lapsed || repricing}", "disabled={pending || repricing}");
 const lapseFigure = swap(SELL_BUTTON, FIGURE_OPEN, "{false ? null : (");
 const lapseWordless = swap(SELL_BUTTON, "lapsed ? t.common.loading : ", "");
@@ -1130,7 +1130,7 @@ const plants: Plant[] = [
   { name: "the free word and the refund are keyed on the free instant, not the offer (they outlive the free window)", expect: ["12.free"], world: freeWordByInstant, landed: changed(freeWordByInstant, SELL_BUTTON) },
   { name: "the refund line is drawn whatever the offer ('kamili' over a figure with a fee)", expect: ["12.free"], world: refundAlways, landed: changed(refundAlways, SELL_BUTTON) },
   { name: "the free line is drawn on the label alone (it outlives the countdown)", expect: ["12.free"], world: freeLineByLabel, landed: changed(freeLineByLabel, SELL_BUTTON) },
-  { name: "the countdown is drawn before it has run (0:00 on the server's paint)", expect: ["12.free"], world: timerBeforeCountdown, landed: changed(timerBeforeCountdown, SELL_BUTTON) },
+  { name: "the countdown is keyed the wrong way round (the free line never shows the time left; S6 A8e made the old plant, 0:00 on the server's paint, impossible)", expect: ["12.free"], world: timerInverted, landed: changed(timerInverted, SELL_BUTTON) },
   { name: "a lapsed free price can still be pressed", expect: ["12.lapse"], world: lapseOffered, landed: changed(lapseOffered, SELL_BUTTON) },
   { name: "a lapsed free price keeps its figure", expect: ["12.lapse"], world: lapseFigure, landed: changed(lapseFigure, SELL_BUTTON) },
   { name: "a lapsed free price keeps the free word (nothing says the button is waiting)", expect: ["12.lapse"], world: lapseWordless, landed: changed(lapseWordless, SELL_BUTTON) },
