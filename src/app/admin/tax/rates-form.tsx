@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { Button } from "@/components/ui/button";
 import { useDeferredToast } from "@/components/ui/toast";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -35,6 +36,11 @@ export function TaxRatesForm({ current, todayKey }: {
   const [tra, setTra] = useState(percentLabel(current.traBp).replace("%", ""));
   const [gbt, setGbt] = useState(percentLabel(current.gbtBp).replace("%", ""));
   const [note, setNote] = useState("");
+  /* What the form last held when it was clean — the opening values, then whatever was last RECORDED. Compared with
+     this, not with `current`: a version recorded for a later day leaves today's rates as they were, and the form would
+     otherwise read as unsaved work it no longer holds. */
+  const [base, setBase] = useState(() => ({ from: todayKey, commission, tra, gbt }));
+  const dirty = !pending && (from !== base.from || commission !== base.commission || tra !== base.tra || gbt !== base.gbt || note.trim() !== "");
 
   const c = parsePercentToBp(commission);
   const t = parsePercentToBp(tra);
@@ -54,6 +60,7 @@ export function TaxRatesForm({ current, todayKey }: {
         return;
       }
       setNote("");
+      setBase({ from, commission, tra, gbt });
       router.refresh();
       const unrecorded = "recorded" in r && r.recorded === false;
       deferToast({
@@ -69,6 +76,7 @@ export function TaxRatesForm({ current, todayKey }: {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-3" data-testid="tax-rates-form">
+      <UnsavedChangesGuard dirty={dirty} body="New rates have been entered but not recorded. Leaving now discards them." />
       <Field label="In force from" hint="00:00 East Africa Time on this day. Recording the same day again replaces that day's rates." dataField="tax-rate-from">
         <DateSelect size="sm" min={GENESIS_DAY} value={from} onChange={setFrom} />
       </Field>

@@ -184,6 +184,10 @@ const EXEMPT: Record<string, string> = {
   "app/admin/agents/page.tsx": "② application + roster search, submitted as searchParams",
   "app/admin/resolver-queue/page.tsx": "② window/category filter, submitted as searchParams",
   "app/admin/transactions/page.tsx": "② range/from/to filter, submitted as searchParams",
+  /* The tax report's period picker (2026-10-04): a month navigates on selection, a typed day or custom window on Go /
+     Apply — the destination is built by the page's own link builder, so the period lives in the URL and comes back
+     with Back. A date typed and not applied is a picker position, not work. */
+  "app/admin/tax/period-jump.tsx": "② the period picker navigates — the period is in the URL (month on selection, day or window on Go/Apply)",
   // ③ flipping is the save
   "app/admin/markets/recategorise-control.tsx": "③ a <Select> that commits on change",
   "app/admin/roles/read-tiers-matrix.tsx": "③ a tier matrix that commits per cell",

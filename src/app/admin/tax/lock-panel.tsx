@@ -8,6 +8,7 @@ import { I } from "@/components/ui/glyphs";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/ui/input";
 import { useDeferredToast } from "@/components/ui/toast";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -98,6 +99,7 @@ export function TaxLockPanel({
     if (!isOwner) return <p className="text-body-sm text-text-subtle">Only the Owner can reopen a locked period.</p>;
     return (
       <div className="space-y-3">
+        <UnsavedChangesGuard dirty={!pending && reason.trim() !== ""} body="A reason to reopen this period has been typed, but the period has not been reopened. Leaving now discards it." />
         <Field label="Why reopen it?" hint="Kept with the lock's history and in the audit log. At least 10 characters." dataField="tax-unlock-reason">
           <Textarea value={reason} onChange={(e) => setReason(e.currentTarget.value)} rows={2} maxLength={500} placeholder="e.g. A late settlement correction changed the figures; refiling." />
         </Field>
@@ -127,6 +129,7 @@ export function TaxLockPanel({
     if (!isOwner) return <p className="text-body-sm text-text-subtle">Sign-off is blocked until the exceptions are resolved. The Owner can lock the period with the exceptions acknowledged.</p>;
     return (
       <div className="space-y-3">
+        <UnsavedChangesGuard dirty={!pending && ack.trim() !== ""} body="A reason to lock this period out of balance has been typed, but the period has not been locked. Leaving now discards it." />
         <Field label="Why lock it out of balance?" hint={<>The difference is <span className="amount">TZS {formatCents(differenceCents)}</span>{differenceIsWholeBook ? " (the whole book)" : ""}. Printed on every export of this period. At least 10 characters.</>} dataField="tax-acknowledge">
           <Textarea value={ack} onChange={(e) => setAck(e.currentTarget.value)} rows={3} maxLength={500} placeholder="e.g. A test round from before launch; filed with it noted." />
         </Field>
@@ -154,6 +157,7 @@ export function TaxLockPanel({
 
   return (
     <div className="space-y-3">
+      <UnsavedChangesGuard dirty={!pending && note.trim() !== ""} body="A note has been typed, but the period has not been locked. Leaving now discards it." />
       <Field label="Note (optional)" hint="Kept with the lock — e.g. the filing reference you receive from TRA or GBT.">
         <Textarea value={note} onChange={(e) => setNote(e.currentTarget.value)} rows={2} maxLength={500} />
       </Field>

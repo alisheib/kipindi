@@ -383,7 +383,9 @@ for (const abs of files) {
 const FILE_FLOOR = 800;
 // 36 since 2026-09-14 (visual pass 2): `auth/demo/route.ts` ensureDemoWallet empties the balance for `deposit=0`
 // — a balance-only write in a dev-only fixture, not a status writer.
-const SITE_COUNT = 36;
+// 37 since 2026-10-04: `dev-test/seed-tax-books/route.ts` (POST) creates its drive's players ACTIVE, as every
+// dev-test seeder does — judged `fixture` (proven dev-only), read from §1's list before the pin moved.
+const SITE_COUNT = 37;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);
