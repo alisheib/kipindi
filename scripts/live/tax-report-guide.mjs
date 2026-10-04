@@ -1,7 +1,8 @@
 /**
  * THE MANAGERS' GUIDE · how to download the Government Tax Report, as a PDF (2026-10-04).
- * Ali: "a pdf guide how to download it … no extra comments or internal info … straightforward". So: one title, six
- * steps, one picture of the real screen per step (the control to press outlined in red) — and nothing else. The
+ * Ali: "a pdf guide how to download it … no extra comments or internal info … straightforward". So: one title, eight
+ * steps — the month's filing, then the daily report (Ali, same day: "the same doc … with the daily instruction added")
+ * — one picture of the real screen per step (the control to press outlined in red) — and nothing else. The
  * pictures are cropped to the part of the screen the step is about: no session, e-mail or role chip is ever in one.
  * Taken on a local in-memory server (zero production risk) with seeded books, signed in as a FINANCE officer — what the
  * managers who file it see. ⛔ Every word the guide quotes from the screen is checked against the source first: a guide
@@ -41,6 +42,9 @@ const QUOTED = [
   { file: "src/app/admin/tax/lock-panel.tsx", text: 'typedWord="LOCK"' },
   { file: "src/app/admin/tax/lock-panel.tsx", text: 'confirmLabel="Lock"' },
   { file: "src/app/admin/tax/export-buttons.tsx", text: 'pdf: "PDF", xlsx: "Excel", csv: "CSV"' },
+  { file: "src/app/admin/tax/page.tsx", text: 'AdminCard title="Day by day"' },
+  { file: "src/app/admin/tax/page.tsx", text: 'day: "Day"' },
+  { file: "src/app/admin/tax/period-jump.tsx", text: '">Go</span>' },
   { file: "src/lib/server/tax-report-doc.ts", text: '{ role: "Prepared by", name:' },
   { file: "src/lib/server/tax-report-doc.ts", text: '{ role: "Reviewed by", name: "" }' },
   { file: "src/lib/server/tax-report-doc.ts", text: '{ role: "Approved by", name: "" }' },
@@ -80,6 +84,8 @@ if (!BUILD_ONLY) {
   if (!seeded.ok()) throw new Error(`seed-admin failed: ${seeded.status()}`);
   const books = await page.request.post(BASE + "/api/dev-test/seed-tax-books", { data: {} });
   if (!books.ok()) throw new Error(`seed-tax-books failed: ${books.status()}`);
+  /** The day the books were placed on — the day the daily steps point at. */
+  const seededDay = (await books.json()).day;
 
   /** Outline the elements matched by `selector` (or the glass card around them with `card`). */
   const mark = (selector, card = false) => page.evaluate(([sel, c]) => {
@@ -184,6 +190,40 @@ if (!BUILD_ONLY) {
     const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.locator('[data-testid="tax-export-pdf"]').click()]);
     await dl.saveAs(join(SHOTS, "tax.pdf"));
   });
+  await step("7-days", async () => {
+    await page.goto(BASE + "/admin/tax", { waitUntil: "domcontentloaded" });
+    await page.locator('[data-testid="tax-days"]').first().waitFor({ timeout: 60_000 });
+    for (const b of await page.locator("button[data-toast-dismiss]").all()) await b.click({ timeout: 2000 }).catch(() => {});
+    // The card's title at the top of the screen: its columns and the outlined day fit one picture.
+    await page.evaluate(() => { const c = document.querySelector('[data-testid="tax-days-card"]'); window.scrollBy(0, c.getBoundingClientRect().top - 16); });
+    await page.mouse.move(0, 0);
+    await wait(500);
+    await mark(`[data-testid="tax-days"] tr[data-day="${seededDay}"] [data-testid="tax-day-link"]`);
+    const card = await boxOf('[data-testid="tax-days-card"]', 0);
+    const row = await boxOf(`[data-testid="tax-days"] tr[data-day="${seededDay}"]`, 0);
+    // From the card's title to two rows below the day to click.
+    const top = card.y - 12;
+    await take("7-days", { x: card.x - 12, y: top, width: card.width + 24, height: row.y + row.height * 3 + 12 - top });
+  });
+  await step("8-day", async () => {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator('[data-chip="tax-kind:day"]').first().click();
+    await page.waitForURL(/period=day/, { timeout: 60_000 });
+    await page.locator('[data-testid="tax-window"]').first().waitFor({ timeout: 60_000 });
+    await wait(600);
+    // The date typed the way a person types it (click, select, type): the kit's date segments ignore a programmatic fill.
+    const [y, m, d] = seededDay.split("-");
+    const jump = page.locator('[role="group"][aria-label="Jump to a day"]').first();
+    const segs = jump.locator('input[inputmode="numeric"]');
+    for (const [i, v] of [[0, d], [1, m], [2, y]]) { await segs.nth(i).click(); await segs.nth(i).press("Control+a"); await segs.nth(i).pressSequentially(v); }
+    // The typing focus off the year box: its outline in the picture read as a second thing to press.
+    await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+    await page.mouse.move(0, 0);
+    await wait(400);
+    await mark('[data-chip="tax-kind:day"]');
+    await jump.evaluate((el) => el.classList.add("kp-guide-mark"));
+    await take("8-day", await boxOf('[data-testid="tax-window"]', 18, true));
+  });
   await ctx.close();
 }
 
@@ -191,7 +231,7 @@ if (!BUILD_ONLY) {
 
 /** A PNG's width in pixels (its IHDR). */
 const pxWidth = (id) => readFileSync(shot(id)).readUInt32BE(16);
-const SCREENS = ["1-menu", "2-period", "3-status", "4-lock", "5-confirm", "6-download"].filter((id) => existsSync(shot(id)));
+const SCREENS = ["1-menu", "2-period", "3-status", "4-lock", "5-confirm", "6-download", "7-days", "8-day"].filter((id) => existsSync(shot(id)));
 /** ONE print scale for every screen picture, set by the widest (CSS px = device px / 2), so the screen text is the same
  *  size in every step; 680 CSS px is the A4 text width at the page margins below. */
 const SCALE = Math.min(0.62, 680 / Math.max(...SCREENS.map((id) => pxWidth(id) / 2)));
@@ -207,6 +247,8 @@ const STEPS = [
   { title: "Lock the month", text: "Scroll down to <b>Lock &amp; filing</b> and click <b>Lock period</b>. Type <b>LOCK</b> and click <b>Lock</b>.", shots: ["4-lock", "5-confirm"] },
   { title: "Download", text: "At the top right, click <b>PDF</b> for the copy to sign. Click <b>Excel</b> or <b>CSV</b> when a spreadsheet is asked for.", shots: ["6-download"] },
   { title: "Sign the PDF", text: "On the last page, sign under <b>Prepared by</b>. Your reviewer and approver sign under <b>Reviewed by</b> and <b>Approved by</b>.", shots: ["tax-sign"] },
+  { title: "See each day", text: "Scroll down to <b>Day by day</b>: one line for every day of the month — Sales, Payout, On hold, Refunds and Total tax. Click a day to open that day's report.", shots: ["7-days"] },
+  { title: "Download a day", text: "With the day open, click <b>PDF</b>, <b>Excel</b> or <b>CSV</b> at the top right, as in step 5. To open any day directly, click <b>Day</b> at the top, type the date and click <b>Go</b>.", shots: ["8-day"] },
 ];
 const body = STEPS.map((s, i) => `
   <section class="step">

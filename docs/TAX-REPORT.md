@@ -250,7 +250,9 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
 ## §11 · How Finance files a month — step by step
 
 > The managers' guide, with a picture of every step: [`guides/50pick-how-to-download-the-tax-report.pdf`](guides/50pick-how-to-download-the-tax-report.pdf)
-> (rebuilt from the real screens by `scripts/live/tax-report-guide.mjs`, which refuses to build if a label it quotes changed).
+> — steps 1–6 file the month, steps 7–8 the daily report (Day by day, a day's own download, **Day** + **Go** for any date;
+> Ali 2026-10-04) — rebuilt from the real screens by `scripts/live/tax-report-guide.mjs`, which refuses to build if a
+> label it quotes changed.
 
 1. Sidebar → **Money → Tax report**. It opens on the last complete month, all products.
 2. Read the coloured line under the filters:
