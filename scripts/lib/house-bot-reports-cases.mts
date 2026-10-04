@@ -874,8 +874,14 @@ if (STORE === "memory") {
     }
     const exempt = all.filter((s) => s.pid?.kind === "null");
     const positioned = all.filter((s) => s.pid?.kind !== "null");
+    /* ⭐ EXEMPT 11 → 12 (2026-10-04), and the new site is EXEMPT BY THIS RULE'S OWN TEST, not by a list: the tax report's
+       dev seeder (`src/app/api/dev-test/seed-tax-books/route.ts`, a 404 in production before its first await) plants
+       one payout that names NO bet — `positionId: null` — for its out-of-balance drive. It first shipped with a made-up
+       positionId, an eighth POSITIONED site with no marker, and held this section red for every lane until the
+       Vodacom session reported it; a fixture has no position to copy a marker from, so it now positions nothing.
+       Positioned stays 7. */
     ok("0.232.0 · the population is real: every .txn.create( in tracked src/ is read from the tree — wider than src/lib/server, so a route that writes a money row cannot escape by living somewhere else",
-      all.length >= 18 && files.length > 500 && positioned.length === 7 && exempt.length === 11,
+      all.length >= 18 && files.length > 500 && positioned.length === 7 && exempt.length === 12,
       `${all.length} txn.create sites in ${new Set(all.map((s) => s.file)).size} files, over ${files.length} src files · ${positioned.length} positioned · ${exempt.length} exempt (positionId: null)`);
 
     const offenders = positioned.map((s) => ({ at: `${s.file}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);

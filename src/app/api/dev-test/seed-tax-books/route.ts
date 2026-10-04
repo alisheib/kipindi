@@ -113,10 +113,15 @@ export async function POST(req: Request) {
     const tLate = Date.now();
 
     if (body.defect) {
+      // ⛔ `positionId: null` — a payout that names NO bet, which the tax reader treats exactly as one naming a missing
+      // bet (unattributed, an exception, the whole book out). A made-up id here was an eighth POSITIONED txn write in
+      // src/ with no house marker, and turned test:house-bot-reports' ruling 232 red for every lane (2026-10-04); a dev
+      // fixture has no position to copy a marker from, so it writes none. The dangling-id branch is covered by
+      // test:tax-report §12, which plants its row from scripts/.
       await db.txn.create({
         id: `txn_tax_defect_${tag}`, walletId: `wal_${officerA}`, userId: officerA, type: "BET_PAYOUT", status: "CONFIRMED",
         amount: 19_999, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "INTERNAL", providerRef: null,
-        msisdn: null, description: "Planted by the tax drive: winnings with no bet", positionId: `pos_missing_${tag}`, amlReason: null,
+        msisdn: null, description: "Planted by the tax drive: winnings naming no bet", positionId: null, amlReason: null,
         createdAt: new Date(tMain - 1).toISOString(), updatedAt: iso(), completedAt: iso(),
       } as StoredTxn);
     }
