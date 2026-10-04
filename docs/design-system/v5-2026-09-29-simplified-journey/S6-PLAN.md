@@ -1745,7 +1745,7 @@ wrap class), with `sell-positions-wrap-layout-en` / `-sw` (measured first), `sel
 P.6s rewritten for them and P.5g new. Records: VODACOM-PLAN §0i (A8g) and §0h points 37 (h), 51 and 52.
 
 *As built (A8h, drafted 2026-10-04 on `a2ce1762`, revised the same day after three reviews; applied after A8d and A8g
-(`cb83746b`) — its own commit, for every player):* a sale's result outlives the row it was sold from, a moved price is told by its toast
+(`315a3ae5`) — its own commit, `2e3ea161`, for every player):* a sale's result outlives the row it was sold from, a moved price is told by its toast
 alone, and every refused sale is as loud as the registry ranks its reason. `sell-result.tsx` (new, client) holds the
 result's one definition, `SellResultModal`, the `OperationResultModal` SellButton drew, moved unchanged (its words, its
 figures, `stripTone="brand"`, `wholeFigures`; the journey's look still changes the line under a refusal); the hand-off,

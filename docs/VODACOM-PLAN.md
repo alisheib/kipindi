@@ -29,8 +29,10 @@ meanwhile is a numbered point in §0h.
 **Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
-52) committed (`cb83746b`), and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53
-to 56) its own commit on them, both owing their checks — then WP12 (proof, records, merge); the build plan is
+52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
+2026-10-04 at Ali's request (`315a3ae5`, `2e3ea161`) with their proof part-run — §0i "S6 STOPPED HERE" lists what is
+proven and what is owed; then A8i (Enter acts only where it is pressed — a live defect found on the way), then WP12
+(proof, records, merge); the build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
@@ -220,9 +222,24 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   (their bullets below, each with what was verified and what is still owed). The classic Sell button's live fixes:
   **A8b** (`1be05fbf`), **A8c**, **A8e** and **A8f** (`c6373d4b`, 2026-10-04) are LIVE and verified (each bullet below
   says how); **A8d** and **A8g** — the question page's Sell button stacks on a phone, `/positions`' big rows put their
-  note under the figure, and the free strip never breaks a phrase — are committed (`cb83746b`) and owe what their
-  bullet lists; **A8h** — a sale's result stays on screen (a host above the row that sold), and a refusal one tap fixes
-  gets no popup — is its own commit on them and owes what its bullet lists. Then WP12 (S6-PLAN.md).
+  note under the figure, and the free strip never breaks a phrase — and **A8h** — a sale's result stays on screen (a
+  host above the row that sold), and a refusal one tap fixes gets no popup — were PUSHED to main on 2026-10-04 at Ali's
+  request (`315a3ae5`, `2e3ea161`, rebased over main's marketing commits) while their proof was part-run. **Proven at
+  `55cb61e3`** (the same two commits on the base before main's last three marketing commits, which touch none of their
+  files): every gate (only the baseline reds, check for check); `red:sell-price-guard` 83/83; the file-mutating reds
+  alone, 9 of 10 clean (the tenth below); `red:journey-header-fit` 9/9; parity `--prove-red` 79/79; parity `--compare`
+  1: every A8 difference is a named one, the four measured layouts exactly as designed (the holder block's button 56px,
+  its label line and its figure line centred inside the padding; `/positions` with every glyph where it was) — to be
+  copied in (`scratchpad/s6/a8/copy-measured.py`), with React's DEV-only measure error on 16 `/account` cells and one
+  crashed tab beside them (harness patch staged: `a8/parity-devonly.py`); the A8h price-guard drive, paid: 27 of 28 —
+  a sale's result outlives its row (D.0, A.7), a moved price is a calm toast with no dialog in both looks, the wait,
+  the new price, focus back on the button, the toast still up 6 s on, nothing moved, the next sale dismissing it, a
+  broken figure calm — and D.3 failed on the drive's own clock (it started timing after D.0's 2.5 s watch; its recorder
+  has the result closing 5.0 s after it opened, then its toast, focus on the next row). **Owed, in this order:** the
+  rest of the detached chain (`scratchpad/s6/a8-chain.sh`: the price-guard drive in the current mode, the result
+  drives `main`, `extra` and `lost`, the lost-chunk control, the tiles), parity compare 2 after the copy, the
+  battery, a production build's first-load reading, and the production check (`?dpl=`, the stylesheet's two phone
+  blocks); then **A8i** and **WP12** (S6-PLAN.md).
 - **Found on the way (2026-10-04):** `test:house-bot-reports` 0.232 was red on main for three reasons, and while it was,
   `red:house-bot-money`, `-c5`, `-chatbot` and `-console` refused to run for every lane. This lane's S3b had made
   `Transaction.origin` create-only in both txn twins and so broken 0.232.4's exact-text pin — re-pinned (`50552c40`); the
@@ -234,6 +251,14 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   house-position mutation (A8c touches nothing it reads); `test:stacking` 6.1 is red on main since `2ab8830e` (the LIVE
   strip's focus ring, `.ticker-viewport:focus-visible`, takes z 11, a root-plane rung no table names). Drive lesson:
   `/positions` keeps its closed filter sheet in the DOM with `aria-modal="true"` — a dialog locator asks `:visible`.
+  Later the same day: ⚠️ `red:ticker-honesty`'s two refusals hid a BLIND gate — since `03cf7df9` (V12,
+  `settledNoFigureReason`) the file holds the VOID guard and the fee call twice, so `test:ticker-honesty` 9.8 and 9.9
+  stay green with `settledAmount`'s own copies gone (a VOID handed a money figure; a fee priced from live config).
+  The fix is staged (`scratchpad/s6/ticker-rearm.py`: 9.8 reads the function, 9.9 every fee call, the anchors made
+  unique), to land with its red at 28/28. ⛔ **A live money defect, every player (→ A8i):** the bet confirm, the Sell
+  confirm and the result dialog act on Enter pressed ANYWHERE — a keyboard player who tabs to "Ghairi" and presses Enter
+  places the bet or sells (the window listener cancels the button's own click), and Enter meant for a win seal opened
+  on top sells in the confirm underneath. A8i (drafting: a dialog acts on Enter only where it is pressed) is next.
 - **Found and fixed on the way (2026-10-03):** the S3b funnel panel painted "house stakes" on `/admin/insights` (owner
   ruling D19 keeps house words off admin surfaces outside the house console) — `test:house-bot-surfaces`, red since
   2026-10-01 and carried on the baseline list as another lane's, is green; three red twins had gone blind for reasons
@@ -1008,7 +1033,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   (`?dpl=`, the served stylesheet carrying both phone blocks).
 - **A8h — a sale's result is no longer taken away with its ticket, a moved price is told by its toast alone, and every
   refused sale is as loud as the registry ranks it (drafted 2026-10-04 on `a2ce1762`, revised the same day after three
-  reviews; applied after A8d and A8g (`cb83746b`), its own commit, for every player, not flagged).** Two defects the A8c drive
+  reviews; applied after A8d and A8g (`315a3ae5`), its own commit (`2e3ea161`), for every player, not flagged).** Two defects the A8c drive
   measured in a real browser (2026-10-04, today's `/positions` on its open lens, sw, 390): (1) the result of a sale,
   "Imeuzwa · TZS 3,600 …", was on screen for 388 ms (418 ms on a second sale): the Sell button drew it inside the
   ticket's row, and the sale's own refresh took the sold ticket off the open lens with its row, button and result (the
