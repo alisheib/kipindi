@@ -30,7 +30,11 @@ import {
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
-import { TEST_OWN_NUMBER_UNUSABLE } from "@/lib/server/marketing/campaign-test-send";
+import {
+  TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TYPED_NEEDS_SOURCE_LINE,
+} from "@/lib/server/marketing/campaign-test-send";
+import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
+import { currentWording } from "@/lib/server/marketing/wordings";
 import { renderForRecipient, firstNameFor } from "@/lib/marketing/campaign-template";
 import type { CampaignDraftFields, CampaignTemplate } from "@/lib/marketing/campaign-template";
 import { CAMPAIGN_SCREEN_ROUTES, campaignDraftHref } from "@/lib/marketing/campaign-status";
@@ -92,6 +96,21 @@ export type ComposeTestView = {
   preview: { SW: string; EN: string | null; revision: number } | null;
   /** Said up front when the live switch would refuse a test (a real carrier, the switch closed). */
   liveNote: string | null;
+  /** U37c · a test to ANOTHER number — offered only once its three number-independent checks pass. */
+  typed: ComposeTypedView;
+};
+
+/** U37c · what the Test card needs to offer a test to a TYPED number — ⛔ the loader takes no number. */
+export type ComposeTypedView = {
+  /** Typed tests may be offered: licence outreach open, `adult.test` saved, and this draft carrying a source line. */
+  allowed: boolean;
+  /** The first number-independent refusal, in the test send's own words (§3.7 step 6) — null when allowed. */
+  why: string | null;
+  /** The SAVED draft as a CONTACT-BOOK recipient gets it — the `{jina}` fallback, its stored source line, the measurement
+   *  token for the stop link — the same for every number. Null while it cannot render (no source line). */
+  preview: { SW: string; EN: string | null; revision: number } | null;
+  /** The saved `adult.test` confirmation — the tick's label, verbatim — and its version; null while unsaved. */
+  attestation: { text: string; version: number } | null;
 };
 
 export type ComposeView =
@@ -149,6 +168,31 @@ export function composerSourceLineStale(draft: StoredSmsCampaign | null, saved: 
 function templateOf(c: StoredSmsCampaign): CampaignTemplate {
   const f = fieldsOf(c);
   return { bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase: c.sourcePhrase ?? "" };
+}
+
+/**
+ * ⭐ U37c · THE TYPED TEST'S VIEW, decided from the same three facts the test send checks first (§3.7 step 6), in its
+ * order and in its words: licence outreach open, `adult.test` saved, and the draft's STORED source line (the ROW's —
+ * U37s: a draft saved before the line existed carries none until it is saved again). ⛔ It takes no number: the preview
+ * is the book-origin render of the saved draft with the measurement token, the same for every number, and the stop link
+ * made for a real number is never shown.
+ */
+export function composeTypedView(
+  draft: StoredSmsCampaign | null,
+  facts: { outreachOpen: boolean; adult: { text: string; v: number } | null },
+): ComposeTypedView {
+  const attestation = facts.adult === null ? null : { text: facts.adult.text, version: facts.adult.v };
+  if (draft === null || draft.status !== "DRAFT") return { allowed: false, why: null, preview: null, attestation };
+  const template = templateOf(draft);
+  const why = !facts.outreachOpen ? TEST_TYPED_OUTREACH_CLOSED
+    : attestation === null ? TEST_TYPED_NO_ATTESTATION_WORDING
+      : template.sourcePhrase.trim() === "" ? TEST_TYPED_NEEDS_SOURCE_LINE
+        : null;
+  const render = (variant: "SW" | "EN") => renderForRecipient(template, { variant, name: null, token: footerMeasurementToken(), origin: "book" });
+  const sw = render("SW");
+  const en = template.bodyEn.trim() === "" ? null : render("EN");
+  const preview = sw.ok ? { SW: sw.text, EN: en !== null && en.ok ? en.text : null, revision: draft.draftRevision } : null;
+  return { allowed: why === null, why, preview, attestation };
 }
 
 /**
@@ -269,6 +313,7 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       tokenReady: token !== null,
       preview,
       liveNote: live.ok ? null : COMPOSE_TEST_LIVE_NOTE,
+      typed: composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") }),
     },
   };
 }

@@ -1148,16 +1148,20 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
       && inputType.length > 50 && !/sender|segments|coding|sourcePhrase/i.test(inputType),
     `${tags.length} controls · sender controls [${senderTags.map((x) => x.rel).join(", ")}] · input type ${inputType.length} chars`);
 
-  /* §16.4 · no number control, and the test action's own signature */
+  /* §16.4 · no number control on the screen yet (U37c-1 — U37c-2 adds the Test card's ONE kit PhoneInput), and the test
+     action's own signature: (campaignId, variant, recipient), the recipient exactly own, or typed with its confirmation */
   const numberTags = tags.filter((x) => /type=["']tel["']|inputMode=["']tel["']|(?:name|id)=["'](?:phone|msisdn|number|to)["']|^<PhoneInput/i.test(x.t));
   const phoneImport = [...src.files.values()].some((t) => /PhoneInput|phone-input/.test(t));
   const sig = /export\s+async\s+function\s+sendCampaignTestAction\s*\(([^)]*)\)/.exec(actions)?.[1] ?? null;
   const params = sig === null ? [] : sig.split(",").map((p) => p.trim().split(/[\s:?=]/)[0]).filter((p) => p !== "");
   const testInput = blockAfter(src.testService, "export type CampaignTestInput");
   const testKeys = [...testInput.matchAll(/([A-Za-z_$][A-Za-z0-9_$]*)\s*\??:/g)].map((m) => m[1]);
-  ok("§16.4 ⛔ NO NUMBER CONTROL — no tel input, no PhoneInput, no field named phone, msisdn, number or to — and sendCampaignTestAction takes exactly (campaignId, variant), its input type no other key",
-    numberTags.length === 0 && !phoneImport && params.join(",") === "campaignId,variant" && testKeys.join(",") === "campaignId,variant",
-    `number controls [${numberTags.map((x) => x.rel).join(", ")}] · PhoneInput ${phoneImport} · params (${params.join(", ")}) · input keys {${testKeys.join(", ")}}`);
+  const recipientUnion = (/export type TestRecipient\s*=\s*([\s\S]+?\});/.exec(src.testService)?.[1] ?? "").replace(/\s+/g, " ").trim();
+  const RECIPIENT_UNION = '{ kind: "own" } | { kind: "typed"; number: string; adultAttested: boolean }';
+  ok("§16.4 ⛔ NO NUMBER CONTROL ON THE SCREEN YET (U37c-1) — no tel input, no PhoneInput, no field named phone, msisdn, number or to — and sendCampaignTestAction takes exactly (campaignId, variant, recipient), its input type exactly campaignId, variant and recipient, and TestRecipient is exactly own, or typed with number and adultAttested",
+    numberTags.length === 0 && !phoneImport && params.join(",") === "campaignId,variant,recipient" && testKeys.join(",") === "campaignId,variant,recipient"
+      && recipientUnion === RECIPIENT_UNION,
+    `number controls [${numberTags.map((x) => x.rel).join(", ")}] · PhoneInput ${phoneImport} · params (${params.join(", ")}) · input keys {${testKeys.join(", ")}} · recipient ${recipientUnion || "(none)"}`);
 
   /* §16.5 · OD24 — no money */
   const money = [...src.files].filter(([, text]) => /TZS|formatTzs/.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
@@ -1255,9 +1259,11 @@ const { db } = await import("../src/lib/server/store.ts");
 const DRAFT = await import("../src/lib/server/marketing/campaign-draft.ts");
 const TEST = await import("../src/lib/server/marketing/campaign-test-send.ts");
 const LIVE = await import("../src/lib/server/marketing/live-switch.ts");
-const { dispatchSlice } = await import("../src/lib/server/marketing/dispatch.ts");
-const { recordPlayerMarketingChoice, mayReceiveMarketingSms } = await import("../src/lib/server/marketing/consent.ts");
-const { ensureOptOutToken, mintOptOutToken } = await import("../src/lib/server/marketing/optout-service.ts");
+const { dispatchSlice, auditRgRefusal } = await import("../src/lib/server/marketing/dispatch.ts");
+const { recordPlayerMarketingChoice, mayReceiveMarketingSms, DB_GATE_READS } = await import("../src/lib/server/marketing/consent.ts");
+const { ensureOptOutToken, mintOptOutToken, stopMarketing } = await import("../src/lib/server/marketing/optout-service.ts");
+/** U37c · §18.19's self-excluded player is made by the platform's own writer, never a hand-built row. */
+const { selfExclude } = await import("../src/lib/server/responsible-gambling.ts");
 const { getAuditPage, auditFlush } = await import("../src/lib/server/audit.ts");
 const { maskPhone } = await import("../src/lib/phone-normalize.ts");
 /** The validation audit's sections (2026-10-03) read the campaign door's sentences, the composer's words and its card. */
@@ -1389,6 +1395,8 @@ type ComposeImpl = {
   sourceLine: typeof LOADER.composerSourcePhrase;
   /** U37s · the composer's stale-stamp flag (`composerSourceLineStale`) — §17.19. */
   staleLine: typeof LOADER.composerSourceLineStale;
+  /** U37c · the Test card's typed view (`composeTypedView`) — §18.22. */
+  typedView: typeof LOADER.composeTypedView;
   /** U37s · the three files whose wiring §17.20 reads: the save, the loader and the screen. */
   draftSource: string;
   loaderSource: string;
@@ -1402,6 +1410,7 @@ const REAL_COMPOSE: ComposeImpl = {
   audienceView: LOADER.composeAudienceView,
   sourceLine: LOADER.composerSourcePhrase,
   staleLine: LOADER.composerSourceLineStale,
+  typedView: LOADER.composeTypedView,
   draftSource: readFileSync(new URL("../src/lib/server/marketing/campaign-draft.ts", import.meta.url), "utf8"),
   loaderSource: readFileSync(new URL("../src/app/admin/campaigns/new/composer-loader.ts", import.meta.url), "utf8"),
   clientSource: readFileSync(new URL("../src/app/admin/campaigns/new/composer-client.tsx", import.meta.url), "utf8"),
@@ -1836,6 +1845,44 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     return o;
   };
 
+  /* ── U37c · a TYPED test's world (spec Appendix A §A.7): licence outreach OPEN through an injected reads record (the
+   *    real record stays closed), `adult.test` saved (an injected wording), the typed budgets open, no wait for the
+   *    floor (§18.27 drives it on a clock), and each claim's own fresh numbers — so a red run never meets the baseline's
+   *    buckets or tokens. ── */
+  const OPEN_OUTREACH = { state: "open" as const, recordedBy: "usr_u37c_owner", recordedAt: "2026-10-05T09:00:00.000Z" };
+  const ADULT_TEST = { v: 3, text: "I confirm the person who uses this number is 18 or older." } as unknown as NonNullable<ReturnType<TestDeps["adultTestWording"]>>;
+  const OPEN_READS = { ...DB_GATE_READS, outreach: () => OPEN_OUTREACH } as TestDeps["gateReads"];
+  const NO_WAIT = async () => {};
+  const typedOver = (over: Partial<TestDeps> = {}): Partial<TestDeps> => ({
+    gateReads: OPEN_READS, adultTestWording: () => ADULT_TEST, rateTyped: ALLOW, rateTo: ALLOW, sleep: NO_WAIT, ...over,
+  });
+  type TypedOpts = { attested?: unknown; reads?: boolean; over?: Partial<TestDeps> };
+  /** A test to a TYPED number, confirmed 18+ unless `attested` says otherwise (`{ attested: undefined }` omits the field). */
+  const sendTyped = (campaignId: string, number: string, officerId: string, opts: TypedOpts = {}) => {
+    const recipient: Record<string, unknown> = { kind: "typed", number };
+    if (!("attested" in opts)) recipient.adultAttested = true;
+    else if (opts.attested !== undefined) recipient.adultAttested = opts.attested;
+    return impl.test({ campaignId, variant: "SW", recipient } as unknown as TestInput, officerId, deps(typedOver(opts.over)), { viewerReads: opts.reads === true });
+  };
+  /** A key's two other spellings — national with spaces, and international with spaces. */
+  const spellings = (key: string) => {
+    const n = key.slice(3);
+    return { local: `0${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}`, intl: `+255 ${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}` };
+  };
+  /** A saved DRAFT carrying a source line (§10's fixture phrase), as U37s stamps one. */
+  const phrasedDraft = async (): Promise<string> => {
+    const id = await u37bDraft();
+    const set = await db.smsCampaign.update(id, { sourcePhrase: PHRASE }, { draftRevision: 0 }, new Date().toISOString());
+    if (set === null) throw new Error(`fixture ${id}: the source line could not be stored`);
+    return id;
+  };
+  /** Reads where ONE number's latest ledger row is a withdrawal, or its book row was erased — a case no writer in this
+   *  suite can make — asked of the REAL gate, so the decision under test is still the gate's own. */
+  const withdrawnReads = (key: string) => ({ ...OPEN_READS, latestConsent: (k: { identifier: string }) => (k.identifier === key
+    ? { id: "mc_u37c_withdrawn", status: "WITHDRAWN", createdAt: "2026-10-01T09:00:00.000Z", channel: "SMS", identifier: key, category: "MARKETING" }
+    : OPEN_READS.latestConsent(k as never)) }) as unknown as TestDeps["gateReads"];
+  const erasedReads = (key: string) => ({ ...OPEN_READS, bookStanding: (m: string) => (m === key ? { row: "erased", cover: null } : OPEN_READS.bookStanding(m)) }) as unknown as TestDeps["gateReads"];
+
   let o: OfficerFixture;
   let cmp = "";
   let cmp2 = "";
@@ -1870,14 +1917,16 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(r)}${r.ok ? ` via ${r.via}` : `: ${r.error}`} · rows ${rows.length} [${rows.map((m) => `${m.purpose}/${m.targetType}`).join(",")}] · tokens ${before} → ${tokens.length}`];
   });
 
-  await claim("§18.2 ⛔ ACCEPT · AN INPUT CAST WITH A NUMBER STILL REACHES ONLY THE OFFICER'S OWN KEY — {to, msisdn, phone, number} posted beside (campaignId, variant) are never read: the one message goes to the officer's key, nothing to the injected number", async () => {
+  await claim("§18.2 ⛔ ACCEPT · A NUMBER POSTED ANYWHERE BUT recipient.number IS NEVER READ — to, msisdn, phone and number beside (campaignId, variant) with no recipient, or beside recipient own, reach only the officer's own key", async () => {
     const injected = "255754000001";
     const before = smsRowsTo(injected).length;
     const { send: spy, spy: seen } = u37bSpy();
-    const r = await send({ campaignId: cmp2, variant: "SW", to: "+255754000001", msisdn: injected, phone: "0754000001", number: "754000001" }, o.id, { send: spy });
-    return [r.ok && seen.messages.length === 1 && seen.messages[0].to === o.key && seen.messages.every((m) => !m.to.includes("754000001"))
+    const stray = { to: "+255754000001", msisdn: injected, phone: "0754000001", number: "754000001" };
+    const a = await send({ campaignId: cmp2, variant: "SW", ...stray }, o.id, { send: spy });
+    const b = await send({ campaignId: cmp2, variant: "SW", recipient: { kind: "own", ...stray }, ...stray }, o.id, { send: spy });
+    return [a.ok && b.ok && seen.messages.length === 2 && seen.messages.every((m) => m.to === o.key && !m.to.includes("754000001"))
       && smsRowsTo(injected).length === before,
-      `${reasonOf(r)} · sent to [${seen.messages.map((m) => maskPhone(m.to)).join(", ")}]`];
+      `${reasonOf(a)} · ${reasonOf(b)} · sent to [${seen.messages.map((m) => maskPhone(m.to)).join(", ")}]`];
   });
 
   await claim("§18.3 ⛔ a posted body is never read — the STORED draft's text is the one handed over", async () => {
@@ -2034,7 +2083,8 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       return keys.some((k) => json.includes(k) || json.includes(k.slice(3))) || /(?<![0-9])255[0-9]{9}(?![0-9])/.test(json);
     });
     const shaped = rows.every((a) => a.payload !== undefined && typeof a.payload.outcome === "string" && "reason" in a.payload);
-    return [rows.length >= 10 && officerRows.length === 3 && shaped && leaks.length === 0
+    // ⭐ The officer's own rows so far: §18.1, §18.2's two sends (no recipient, and recipient own — U37c) and §18.3.
+    return [rows.length >= 10 && officerRows.length === 4 && shaped && leaks.length === 0
       && officerRows.every((a) => a.payload?.outcome === "handed_over" && a.targetId !== null && String(a.payload?.to ?? "").includes(MASK_DOTS)),
       `${rows.length} rows · the officer's ${officerRows.length} · shaped ${shaped} · leaking ${leaks.length}`];
   });
@@ -2093,7 +2143,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${sends} sends · ${over.length} over: ${over.slice(0, 3).join(" | ")} · ${reached} at the account bound exactly`];
   });
 
-  await claim("§18.13 ⭐ THE ORIGIN IS CHOSEN — the officer's number is their own account's, so the test renders as an ACCOUNT recipient: with no source line yet it is sent (a contact-book origin is refused), greeting the officer by their own first name — and once a source line is stored, the officer's test still carries none", async () => {
+  await claim("§18.13 ⭐ THE ORIGIN IS CHOSEN — the officer's own number renders as an ACCOUNT recipient (their first name; no source line, even once one is stored) — and a TYPED number renders as a CONTACT-BOOK recipient: the {jina} fallback, never the holder's own first name, and the stored source line", async () => {
     const o13 = await officer({ displayName: "Juma Mkuu" });
     const blankId = await u37bDraft();
     const phraseId = await u37bDraft();
@@ -2101,21 +2151,34 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const { send: spy } = u37bSpy();
     const blank = await send({ campaignId: blankId, variant: "SW" }, o13.id, { send: spy });
     const phrased = await send({ campaignId: phraseId, variant: "SW" }, o13.id, { send: spy });
-    return [set !== null && blank.ok && blank.text.startsWith("50pick: Habari Juma,") && phrased.ok && !phrased.text.includes(PHRASE),
-      `blank ${blank.ok ? JSON.stringify(blank.text.slice(0, 30)) : `${reasonOf(blank)}: ${blank.error}`} · phrased ${phrased.ok ? (phrased.text.includes(PHRASE) ? "CARRIES THE PHRASE" : "no phrase") : reasonOf(phrased)}`];
+    // U37c · another officer types Juma's number, the record open and the line stored: a book recipient, never "Juma".
+    const typed = await sendTyped(phraseId, `+${o13.key}`, o.id, { over: { send: spy } });
+    return [set !== null && blank.ok && blank.text.startsWith("50pick: Habari Juma,") && phrased.ok && !phrased.text.includes(PHRASE)
+      && typed.ok && typed.target === "typed" && typed.text.includes(`Habari ${FB},`) && !typed.text.includes("Juma") && typed.text.includes(PHRASE),
+      `blank ${blank.ok ? JSON.stringify(blank.text.slice(0, 30)) : `${reasonOf(blank)}: ${blank.error}`} · phrased ${phrased.ok ? (phrased.text.includes(PHRASE) ? "CARRIES THE PHRASE" : "no phrase") : reasonOf(phrased)} · typed ${typed.ok ? JSON.stringify(typed.text.slice(0, 30)) : `${reasonOf(typed)}: ${typed.error}`}`];
   });
 
   /* ── §18.14–§18.16 · THE SHIPPED WIRING (U37b review M1). Everything above runs the suite's stand-ins for the switch,
    *    the token rule and the audit — which is how each plant swaps one of them — so a regression inside
    *    CAMPAIGN_TEST_DEPS itself (a switch hard-coded open, a mint on every test, an audit that writes nothing) stayed
    *    green. These three read the wire as it ships. ── */
-  await claim("§18.14 ⛔ THE SHIPPED WIRING IS THE REAL ONE — CAMPAIGN_TEST_DEPS reads the switch through readMarketingLiveSwitch, keeps a token through ensureOptOutToken, audits through audit, sends through dispatchSlice and passes no gate of its own (the one gate inside dispatchSlice)", async () => {
+  await claim("§18.14 ⛔ THE SHIPPED WIRING IS THE REAL ONE — CAMPAIGN_TEST_DEPS reads the switch through readMarketingLiveSwitch, keeps a token through ensureOptOutToken, audits through audit, sends through dispatchSlice and passes no gate of its own (the one gate inside dispatchSlice); U37c · the typed budgets call their literal rules (marketing.testSendTyped on the officer, marketing.testSendTo on testToBucket's salted hash), the typed gate is the ONE gate asked with the gate's own reads (DB_GATE_READS), the 18+ wording is the saved adult.test, an RG refusal goes through dispatch's one helper, and sendCampaignTest names no gate but mayReceiveMarketingSms", async () => {
     const src = impl.testSendSource.split(String.fromCharCode(13)).join("");
     const at = src.indexOf("export const CAMPAIGN_TEST_DEPS: CampaignTestDeps = {");
     const block = at < 0 ? "" : src.slice(at, src.indexOf("};", at));
-    const wires = ["liveSwitch: () => readMarketingLiveSwitch(),", "ensureToken: (raw) => ensureOptOutToken(raw),", "  audit,", "dispatch: dispatchSlice,", "gate: undefined,"];
+    const wires = ["liveSwitch: () => readMarketingLiveSwitch(),", "ensureToken: (raw) => ensureOptOutToken(raw),", "  audit,", "dispatch: dispatchSlice,", "gate: undefined,",
+      'rateTyped: (officerId) => rateCheckAsync(officerId, "marketing.testSendTyped"),', 'rateTo: (key) => rateCheckAsync(testToBucket(key), "marketing.testSendTo"),',
+      "gateReads: DB_GATE_READS,", 'adultTestWording: () => currentWording("adult.test"),'];
     const missing = wires.filter((w) => !block.includes(w));
-    return [block !== "" && missing.length === 0, block === "" ? "no CAMPAIGN_TEST_DEPS block" : missing.length ? `not wired: ${missing.join(" | ")}` : "the five wires are the real ones"];
+    const fnAt = src.indexOf("export async function sendCampaignTest(");
+    const fn = fnAt < 0 ? "" : src.slice(fnAt);
+    const bucket = /export function testToBucket\(key: string\): string \{[\s\S]{0,120}?pepperedLetters\("marketing-test-to", key\)/.test(src);
+    const oneGate = fn.includes("mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })")
+      && !/playerConsentRefusal|gateWithDefect|usableTestAttestation|\bgateReads\.(suppression|userByPhone|latestConsent|bookStanding)\b/.test(fn);
+    // ⛔ OD61 · the typed path writes no RG line: dispatch is handed the no-op, and the file never names the helper.
+    const noRgLine = fn.includes('...(target === "typed" ? { rgAudit: NO_RG_LINE } : {})') && !src.includes("auditRgRefusal");
+    return [block !== "" && missing.length === 0 && bucket && oneGate && noRgLine,
+      block === "" ? "no CAMPAIGN_TEST_DEPS block" : missing.length ? `not wired: ${missing.join(" | ")}` : `the wires are the real ones · bucket keyed ${bucket} · one gate ${oneGate} · no RG line ${noRgLine}`];
   });
   await claim("§18.15 the SHIPPED token rule reuses — CAMPAIGN_TEST_DEPS.ensureToken asked twice for one number returns the same token and leaves ONE row (§18.9 runs the suite's rule; this runs the wire)", async () => {
     const key = u37bKey();
@@ -2134,6 +2197,342 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const json = JSON.stringify(rows);
     return [r.ok && rows.length === 1 && json.includes(MASK_DOTS) && !json.includes(o16.key) && !json.includes(o16.key.slice(3)),
       `${reasonOf(r)} · ring rows ${rows.length}`];
+  });
+
+  /* ══ §18.5′ · §18.17–§18.28 · U37c-1 · THE TEST SEND TO A TYPED NUMBER (spec Appendix A §A.6–§A.7) ══ */
+  await claim("§18.5′ ⭐ U37c · X14 · …AND NOTHING TO A TYPED NUMBER EITHER — Blackball selected (dummy keys) and the switch absent: a typed test is refused live_sends_closed with ZERO transport calls, ZERO rows and ZERO token mints for that number", async () => {
+    const id = await phrasedDraft();
+    const k = u37bKey();
+    const m = await realCarrier(k, id, () => sendTyped(id, `+${k}`, o.id, { over: { send: TEST.CAMPAIGN_TEST_DEPS.send, liveSwitch: impl.testDeps.liveSwitch } }));
+    return [!m.result.ok && m.result.outcome === "refused" && m.result.reason === "live_sends_closed" && m.fetches === 0 && m.rows === 0 && m.tokens === 0,
+      `${reasonOf(m.result)} · fetches ${m.fetches} · rows ${m.rows} · tokens ${m.tokens}`];
+  });
+
+  await claim("§18.17 ⭐ U37c · A TYPED NUMBER REACHES EXACTLY ITS KEY, WHATEVER THE SPELLING — its national and international spellings give ONE key; each test is ONE SmsMessage row (MARKETING, SmsCampaignTest) to that key, rendered as a CONTACT-BOOK recipient (the {jina} fallback and the stored source line); its audit row says target typed, the number masked, basis LICENCE_TEST with its test: ref, the 18+ wording's version and a ta_ attempt ref of letters only — and no digit run of the key", async () => {
+    const id = await phrasedDraft();
+    const k = u37bKey();
+    const sp = spellings(k);
+    const before = smsRowsTo(k).length;
+    const real = { send: TEST.CAMPAIGN_TEST_DEPS.send };
+    const a = await sendTyped(id, sp.local, o.id, { over: real });
+    const b = await sendTyped(id, sp.intl, o.id, { over: real });
+    const rows = smsRowsTo(k).slice(before);
+    const mine = audits.filter((e) => e.targetId === id && e.payload?.target === "typed");
+    const p = mine[mine.length - 1]?.payload ?? {};
+    const att = p.attestation as { key?: string; version?: number } | undefined;
+    const json = JSON.stringify(mine);
+    return [a.ok && b.ok && a.target === "typed" && b.target === "typed" && a.maskedTo === maskPhone(k) && b.maskedTo === maskPhone(k)
+      && rows.length === 2 && rows.every((m) => m.msisdn === k && m.purpose === "MARKETING" && m.targetType === TEST.CAMPAIGN_TEST_TARGET_TYPE && m.targetId === id)
+      && a.text.includes(`Habari ${FB},`) && a.text.includes(PHRASE)
+      && mine.length === 2 && p.basis === "LICENCE_TEST" && /^test:ta_[a-z]{16}$/.test(String(p.basisRef)) && /^ta_[a-z]{16}$/.test(String(p.attemptRef))
+      && att?.key === "adult.test" && att?.version === 3 && p.to === maskPhone(k) && !json.includes(k) && !json.includes(k.slice(3)),
+      JSON.stringify({ a: reasonOf(a), b: reasonOf(b), rows: rows.length, audited: mine.length, payload: p })];
+  });
+
+  await claim("§18.18 ⛔ U37c · NO 18+ CONFIRMATION, NO TEST — adultAttested false, absent, the string 'true' or 1 is refused attestation_missing with its sentence; nothing reaches the rail or the gate, no token is made, no row is written, and each attempt's audit row carries the reason", async () => {
+    const id = await phrasedDraft();
+    const k = u37bKey();
+    let rails = 0;
+    let gates = 0;
+    const over: Partial<TestDeps> = {
+      rail: () => { rails++; return null; },
+      gate: async () => { gates++; return { ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:fixture" }; },
+    };
+    const results: TestResult[] = [];
+    for (const attested of [false, undefined, "true", 1]) results.push(await sendTyped(id, `+${k}`, o.id, { attested, over }));
+    const audited = audits.filter((e) => e.targetId === id && e.payload?.reason === "attestation_missing").length;
+    return [results.every((r) => !r.ok && r.outcome === "refused" && r.reason === "attestation_missing" && r.error === TEST.TEST_ATTESTATION_MISSING)
+      && rails === 0 && gates === 0 && (await tokenCount(k)) === 0 && smsRowsTo(k).length === 0 && audited === 4,
+      `reasons ${results.map(reasonOf).join(",")} · rail ${rails} · gate ${gates} · audited ${audited}`];
+  });
+
+  /** §18.19–§18.20's five numbers the confirmation must never reach — made by the platform's own writers where this suite
+   *  has one (consent, self-exclusion, a stop link), and through injected reads of the REAL gate where it has none. */
+  type Refusable = { name: string; number: string; key: string; over: Partial<TestDeps>; reader: string };
+  let refusing: Refusable[] = [];
+  try {
+    const minor = await officer({ dob: "2012-06-01" });
+    const excluded = await officer();
+    await selfExclude(excluded.id, "24h");
+    const stoppedKey = u37bKey();
+    const stopToken = await mintOptOutToken(stoppedKey);
+    if (stopToken === null) throw new Error("the stop fixture's token was not minted");
+    await stopMarketing(stopToken, "SW");
+    const withdrawnKey = u37bKey();
+    const erasedKey = u37bKey();
+    refusing = [
+      { name: "a player under 18", number: `+${minor.key}`, key: minor.key, over: {}, reader: "protected" },
+      { name: "a self-excluded player", number: `+${excluded.key}`, key: excluded.key, over: {}, reader: "protected" },
+      { name: "a stopped number", number: `+${stoppedKey}`, key: stoppedKey, over: {}, reader: "suppressed" },
+      { name: "a withdrawn number", number: `+${withdrawnKey}`, key: withdrawnKey, over: { gateReads: withdrawnReads(withdrawnKey) }, reader: "consent_withdrawn" },
+      { name: "an erased book record", number: `+${erasedKey}`, key: erasedKey, over: { gateReads: erasedReads(erasedKey) }, reader: "no_basis" },
+    ];
+  } catch (err) {
+    ok("§18.19 fixtures · the five protected numbers were built", false, (err as Error)?.message ?? String(err));
+  }
+
+  await claim("§18.19 ⛔ U37c · THE CONFIRMATION IS NOT A BYPASS — a player under 18, a self-excluded player, a stopped number, a withdrawn number and an erased book record are each refused through the ONE gate, with ZERO transport calls and ZERO new token rows", async () => {
+    if (refusing.length !== 5) return [false, "no fixtures"];
+    const id = await phrasedDraft();
+    const { send: spy, spy: seen } = u37bSpy();
+    const said: string[] = [];
+    let minted = 0;
+    let allRefused = true;
+    for (const c of refusing) {
+      const before = await tokenCount(c.key);
+      const r = await sendTyped(id, c.number, o.id, { over: { ...c.over, send: spy } });
+      minted += (await tokenCount(c.key)) - before;
+      said.push(`${c.name} → ${reasonOf(r)}`);
+      if (r.ok || r.outcome !== "refused") allRefused = false;
+    }
+    return [allRefused && seen.calls === 0 && minted === 0, `${said.join(" · ")} · transport ${seen.calls} · minted ${minted}`];
+  });
+
+  await claim("§18.20 ⛔ U37c · D19 — a viewer who may not read numbers gets ONE reason (typed_refused) and ONE sentence for all five; a reader gets the reason with the protected ones collapsed (under 18 and self-excluded → protected; stopped → suppressed; withdrawn → consent_withdrawn; erased → no_basis); and no typed result, refused or handed over, for either viewer, carries a basis key, a basisRef key, a LICENCE_* token or a ledger: ref", async () => {
+    if (refusing.length !== 5) return [false, "no fixtures"];
+    const id = await phrasedDraft();
+    const { send: spy } = u37bSpy();
+    const masked: TestResult[] = [];
+    const reader: TestResult[] = [];
+    for (const c of refusing) {
+      masked.push(await sendTyped(id, c.number, o.id, { over: { ...c.over, send: spy } }));
+      reader.push(await sendTyped(id, c.number, o.id, { reads: true, over: { ...c.over, send: spy } }));
+    }
+    const fresh = u37bKey();
+    const handed = [await sendTyped(id, `+${fresh}`, o.id, { over: { send: spy } }), await sendTyped(id, `+${fresh}`, o.id, { reads: true, over: { send: spy } })];
+    const all = [...masked, ...reader, ...handed];
+    const leaks = all.filter((r) => "basis" in r || "basisRef" in r || /LICENCE_PLAYER|LICENCE_LIST|LICENCE_TEST|ledger:/.test(JSON.stringify(r)));
+    const maskedOk = masked.every((r) => !r.ok && r.outcome === "refused" && r.reason === "typed_refused" && r.error === TEST.TEST_TYPED_REFUSED);
+    const readerOk = reader.every((r, i) => !r.ok && r.outcome === "refused" && r.reason === refusing[i].reader);
+    return [maskedOk && readerOk && handed.every((r) => r.ok) && leaks.length === 0,
+      JSON.stringify({ masked: masked.map(reasonOf), reader: reader.map(reasonOf), handed: handed.map(reasonOf), leaks: leaks.length })];
+  });
+
+  await claim("§18.21 ⛔ U37c · THE STOP LINK IS NEVER SHOWN — a typed test hands the officer the text with the MEASUREMENT token while the wire carries the number's REAL token, and that number's token row exists", async () => {
+    const id = await phrasedDraft();
+    const k = u37bKey();
+    const { send: spy, spy: seen } = u37bSpy();
+    const r = await sendTyped(id, `+${k}`, o.id, { over: { send: spy } });
+    const token = (await db.marketingOptOutToken.listFor(k))[0]?.token ?? "";
+    const row = await db.smsCampaign.find(id);
+    const shown = row === null ? null : renderForRecipient(u37bTemplate(row), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
+    const wire = row === null || token === "" ? null : renderForRecipient(u37bTemplate(row), { variant: "SW", name: null, token, origin: "book" });
+    return [r.ok && token.length === 8 && shown !== null && shown.ok && wire !== null && wire.ok && r.text === shown.text
+      && seen.messages.length === 1 && seen.messages[0].body === wire.text && !r.text.includes(token) && seen.messages[0].body.includes(token),
+      `${reasonOf(r)} · token ${token.length ? "made" : "none"} · shown is the measurement render ${r.ok && shown !== null && shown.ok ? r.text === shown.text : false}`];
+  });
+
+  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (with no preview)", async () => {
+    const id = await phrasedDraft();
+    const blankId = await u37bDraft();
+    const row = await db.smsCampaign.find(id);
+    const blank = await db.smsCampaign.find(blankId);
+    if (row === null || blank === null) return [false, "no fixture rows"];
+    const v = impl.typedView;
+    const ready = v(row, { outreachOpen: true, adult: ADULT_TEST });
+    const expected = renderForRecipient(u37bTemplate(row), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
+    const closed = v(row, { outreachOpen: false, adult: ADULT_TEST });
+    const unsaved = v(row, { outreachOpen: true, adult: null });
+    const noLine = v(blank, { outreachOpen: true, adult: ADULT_TEST });
+    // ⛔ The parameter NAMES, depth-aware: exactly `draft` and `facts` — a third parameter of any name (number, to, key) fails.
+    const sigTyped = /export function composeTypedView\(([\s\S]*?)\): ComposeTypedView/.exec(impl.loaderSource)?.[1] ?? "";
+    const paramNames: string[] = [];
+    {
+      let depth = 0;
+      let part = "";
+      for (const ch of `${sigTyped},`) {
+        if (ch === "{" || ch === "(" || ch === "[" || ch === "<") depth++;
+        else if (ch === "}" || ch === ")" || ch === "]" || ch === ">") depth--;
+        if (ch === "," && depth === 0) {
+          const name = /^\s*([A-Za-z_$][\w$]*)\s*\??\s*:/.exec(part)?.[1];
+          if (part.trim() !== "") paramNames.push(name ?? "?");
+          part = "";
+        } else part += ch;
+      }
+    }
+    const takesNoNumber = paramNames.join(",") === "draft,facts" && LOADER.composeTypedView.length === 2;
+    return [ready.allowed && ready.why === null && expected.ok && ready.preview?.SW === expected.text && ready.attestation?.version === 3
+      && !closed.allowed && closed.why === TEST.TEST_TYPED_OUTREACH_CLOSED && !unsaved.allowed && unsaved.why === TEST.TEST_TYPED_NO_ATTESTATION_WORDING
+      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview === null && takesNoNumber,
+      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: noLine.why, takesNoNumber })];
+  });
+
+  await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
+    const id = await phrasedDraft();
+    const k = u37bKey();
+    const three = [await officer(), await officer(), await officer()];
+    const { send: spy } = u37bSpy();
+    const real = { rateTyped: impl.testDeps.rateTyped, rateTo: impl.testDeps.rateTo, send: spy };
+    const toOne: TestResult[] = [];
+    for (let i = 0; i < 6; i++) toOne.push(await sendTyped(id, `+${k}`, three[i % 3].id, { over: real }));
+    const other = await sendTyped(id, `+${u37bKey()}`, three[0].id, { over: real });
+    const bucket = TEST.testToBucket(k);
+    const busy = await officer();
+    const many: TestResult[] = [];
+    for (let i = 0; i < 11; i++) many.push(await sendTyped(id, `+${u37bKey()}`, busy.id, { over: real }));
+    const own = await send({ campaignId: id, variant: "SW" }, busy.id, { send: spy });
+    let spent = 0;
+    const counted = { rateTyped: async () => { spent++; return ALLOW(); }, rateTo: async () => { spent++; return ALLOW(); } };
+    const early = await sendTyped(id, `+${u37bKey()}`, busy.id, { over: { ...counted, gateReads: DB_GATE_READS, send: spy } });
+    const sixth = toOne[5];
+    const eleventh = many[10];
+    return [toOne.slice(0, 5).every((r) => r.ok) && !sixth.ok && sixth.outcome === "refused" && sixth.reason === "typed_rate_limited" && sixth.error.startsWith("That number has had as many tests")
+      && other.ok && /^testTo:[a-p]{16}$/.test(bucket) && !bucket.includes(k) && !bucket.includes(k.slice(3))
+      && many.slice(0, 10).every((r) => r.ok) && !eleventh.ok && eleventh.outcome === "refused" && eleventh.reason === "typed_rate_limited"
+      && eleventh.error.startsWith("That is your limit of tests to other numbers")
+      && own.ok && !early.ok && early.outcome === "refused" && early.reason === "typed_outreach_closed" && spent === 0,
+      JSON.stringify({ toOne: toOne.map(reasonOf), other: reasonOf(other), last: many.slice(9).map(reasonOf), own: reasonOf(own), early: reasonOf(early), spent })];
+  });
+
+  await claim("§18.24 ⭐ U37c · THE OFFICER'S OWN NUMBER, TYPED IN ANOTHER SPELLING, IS THEIR OWN — the own path: an ACCOUNT recipient greeted by their own first name, no source line, target own, and no 18+ confirmation asked", async () => {
+    const id = await phrasedDraft();
+    const { send: spy, spy: seen } = u37bSpy();
+    const r = await sendTyped(id, spellings(o.key).local, o.id, { attested: false, over: { send: spy } });
+    return [r.ok && r.target === "own" && r.text.startsWith("50pick: Habari Asha,") && !r.text.includes(PHRASE) && seen.messages.length === 1 && seen.messages[0].to === o.key,
+      `${reasonOf(r)}${r.ok ? ` · ${r.target} · ${JSON.stringify(r.text.slice(0, 24))}` : `: ${r.error}`}`];
+  });
+
+  await claim("§18.25 ⛔ U37c · TYPED TESTS ARE REFUSED UP FRONT — the same answer for a player's number and a stranger's, with ZERO gate calls: licence outreach closed (typed_outreach_closed), the 18+ wording unsaved (typed_no_attestation_wording), and a draft with no source line (typed_needs_source_line)", async () => {
+    const id = await phrasedDraft();
+    const blankId = await u37bDraft();
+    const player = await officer();
+    const stranger = u37bKey();
+    let gates = 0;
+    const spyGate = async () => { gates++; return { ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:fixture" }; };
+    const cases: { want: string; campaign: string; over: Partial<TestDeps> }[] = [
+      { want: "typed_outreach_closed", campaign: id, over: { gateReads: DB_GATE_READS } },
+      { want: "typed_no_attestation_wording", campaign: id, over: { adultTestWording: () => null } },
+      { want: "typed_needs_source_line", campaign: blankId, over: {} },
+    ];
+    const got: string[] = [];
+    let same = true;
+    for (const c of cases) {
+      const a = await sendTyped(c.campaign, `+${player.key}`, o.id, { over: { ...c.over, gate: spyGate } });
+      const b = await sendTyped(c.campaign, `+${stranger}`, o.id, { over: { ...c.over, gate: spyGate } });
+      got.push(`${reasonOf(a)} | ${reasonOf(b)}`);
+      if (reasonOf(a) !== c.want || reasonOf(b) !== c.want || a.ok || b.ok || a.error !== b.error) same = false;
+    }
+    return [same && gates === 0, `${got.join(" · ")} · gate calls ${gates}`];
+  });
+
+  await claim("§18.26 ⛔ U37c · A REFUSED TYPED NUMBER GETS NO TOKEN — the pre-check refuses before a stop link is minted: a withdrawn number has no token row after its refused test", async () => {
+    const id = await phrasedDraft();
+    const k = u37bKey();
+    const r = await sendTyped(id, `+${k}`, o.id, { over: { gateReads: withdrawnReads(k) } });
+    const n = await tokenCount(k);
+    return [!r.ok && r.outcome === "refused" && n === 0, `${reasonOf(r)} · tokens ${n}`];
+  });
+
+  await claim("§18.27 ⛔ U37c · S25 · THE FLOOR — on an injected clock, EVERY typed outcome decided at the gate or after it waits until TYPED_TEST_MIN_MS has passed since the request began — a hand-over, a refusal at the gate, a gate that could not answer, a send held by the credit floor, a send the network refused, a lost reply (unconfirmed) and a throw after the gate — while a refusal before the gate (no 18+ confirmation) does not wait at all", async () => {
+    const id = await phrasedDraft();
+    const clock = () => {
+      let at = Date.now();
+      const waits: number[] = [];
+      return { waits, over: { now: () => new Date(at), sleep: async (ms: number) => { waits.push(ms); at += ms; } } as Partial<TestDeps> };
+    };
+    const total = (x: number[]) => x.reduce((s, n) => s + n, 0);
+    const refusedKey = u37bKey();
+    /** A gateway that refuses outright — a failed send that is not a lost reply. */
+    const refusing = (async (ms: Outbound[]) => ({
+      results: ms.map((m) => ({ to: m.to, targetType: m.targetType ?? null, targetId: m.targetId ?? null, reference: "", ok: false, code: "INVALID_NUMBER", error: "refused (fixture)" })),
+      balanceTzs: null,
+    })) as unknown as TestDeps["send"];
+    type Case = { name: string; want: string; over: Partial<TestDeps>; throws?: boolean };
+    const cases: Case[] = [
+      { name: "handed over", want: "HANDED OVER", over: { send: u37bSpy().send } },
+      { name: "refused at the gate", want: "typed_refused", over: { gateReads: withdrawnReads(refusedKey), send: u37bSpy().send } },
+      { name: "gate unanswered", want: "held", over: { gate: async () => { throw new Error("gate down (fixture)"); }, send: u37bSpy().send } },
+      { name: "held by the floor", want: "held", over: { send: u37bSpy("floor").send } },
+      { name: "network refused", want: "failed", over: { send: refusing } },
+      { name: "lost reply", want: "unconfirmed", over: { send: u37bSpy("transport").send } },
+      { name: "throw after the gate", want: "threw", over: { ensureToken: async () => { throw new Error("token store down (fixture)"); } }, throws: true },
+    ];
+    const got: string[] = [];
+    let held = true;
+    for (const c of cases) {
+      const ck = clock();
+      const n = c.name === "refused at the gate" ? refusedKey : u37bKey();
+      let said = "";
+      try { said = reasonOf(await sendTyped(id, `+${n}`, o.id, { over: { ...c.over, ...ck.over } })); } catch { said = "threw"; }
+      got.push(`${c.name}: ${said} waited ${total(ck.waits)}`);
+      if (said !== c.want || total(ck.waits) !== TEST.TYPED_TEST_MIN_MS) held = false;
+    }
+    const c0 = clock();
+    const early = await sendTyped(id, `+${u37bKey()}`, o.id, { attested: false, over: { ...c0.over, send: u37bSpy().send } });
+    return [held && !early.ok && early.outcome === "refused" && early.reason === "attestation_missing" && c0.waits.length === 0,
+      `${got.join(" · ")} · before the gate: ${reasonOf(early)} waited ${total(c0.waits)}`];
+  });
+
+  await claim("§18.29 ⛔ U37c · A RECIPIENT IS RE-TYPED, NEVER TRUSTED — an array, a bare string, a number that is not a string, a number over 40 characters and an unknown kind are each refused bad_recipient (reported as a typed attempt); a string the numbering plan refuses is bad_number with THE PARSER'S OWN sentence; and none of them reaches the rail, the gate or the token store", async () => {
+    const id = await phrasedDraft();
+    let rails = 0;
+    let gates = 0;
+    let tokens = 0;
+    const over: Partial<TestDeps> = {
+      rail: () => { rails++; return null; },
+      gate: async () => { gates++; return { ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:fixture" }; },
+      ensureToken: async () => { tokens++; return "abcdefgh"; },
+    };
+    const shapes: unknown[] = [
+      [{ kind: "typed", number: "+255712000000", adultAttested: true }],
+      "+255712000000",
+      { kind: "typed", number: 255712000000, adultAttested: true },
+      { kind: "typed", number: `+255 712 000 000${" ".repeat(30)}`, adultAttested: true },
+      { kind: "someone", number: "+255712000000", adultAttested: true },
+    ];
+    const bad: TestResult[] = [];
+    for (const recipient of shapes) {
+      bad.push(await impl.test({ campaignId: id, variant: "SW", recipient } as unknown as TestInput, o.id, deps(typedOver(over)), { viewerReads: false }));
+    }
+    const numbers = ["12345", "0222 123 456"];
+    const parsed: TestResult[] = [];
+    for (const n of numbers) parsed.push(await sendTyped(id, n, o.id, { over }));
+    return [bad.every((r) => !r.ok && r.outcome === "refused" && r.reason === "bad_recipient" && r.error === TEST.TEST_BAD_RECIPIENT && r.target === "typed")
+      && parsed.every((r, i) => !r.ok && r.outcome === "refused" && r.reason === "bad_number" && r.error === parseTzNumber(numbers[i]).reason)
+      && rails === 0 && gates === 0 && tokens === 0,
+      JSON.stringify({ bad: bad.map(reasonOf), parsed: parsed.map((r) => (r.ok ? "SENT" : `${r.reason}: ${r.error}`)), rails, gates, tokens })];
+  });
+
+  await claim("§18.30 ⛔ U37c · OD61 · A TYPED TEST WRITES NO RG COMPLIANCE ROW — a typed test to a self-excluded player is refused and leaves NO marketing.suppressed.rg row for that account (a row that appeared the moment one typed number was refused would tell the console's activity feed the number is a protected player); the control: the campaign send loop refusing the same number DOES write one", async () => {
+    const excluded = refusing.find((c) => c.name === "a self-excluded player");
+    if (excluded === undefined) return [false, "no fixture"];
+    const id = await phrasedDraft();
+    const rgRows = async () => {
+      await auditFlush();
+      const user = await db.user.findByPhone(`+${excluded.key}`);
+      return getAuditPage({ category: "COMPLIANCE", limit: 5000 }).filter((e) => e.action === "marketing.suppressed.rg" && e.targetId === user?.id).length;
+    };
+    const before = await rgRows();
+    const r = await sendTyped(id, excluded.number, o.id, { reads: true, over: { send: u37bSpy().send } });
+    const afterTyped = await rgRows();
+    const { send: spy } = u37bSpy();
+    await dispatchSlice([{ ref: `cmp_u37c_loop_${u37bSeq}`, msisdn: excluded.key, body: "50pick: fixture" }], { send: spy });
+    const afterLoop = await rgRows();
+    return [!r.ok && r.outcome === "refused" && r.reason === "protected" && afterTyped === before && afterLoop === before + 1,
+      `typed ${reasonOf(r)} · RG rows ${before} → ${afterTyped} (typed) → ${afterLoop} (the loop)`];
+  });
+
+  await claim("§18.31 ⛔ U37c · THE GATE IS ASKED AGAIN AT THE SEND — a typed hand-over asks the ONE gate twice, the pre-check and dispatch's own ask immediately before the wire, while a refusal at the pre-check asks it once and never reaches the send", async () => {
+    const id = await phrasedDraft();
+    let asked = 0;
+    const counting = async (m: string) => { asked++; return mayReceiveMarketingSms(m, new Date(), OPEN_READS, { testAttestation: { officerId: o.id, at: new Date().toISOString(), attemptRef: "ta_countingcounting", wordingVersion: 3 } }); };
+    const { send: spy, spy: seen } = u37bSpy();
+    const handed = await sendTyped(id, `+${u37bKey()}`, o.id, { over: { gate: counting, send: spy } });
+    const handedAsks = asked;
+    asked = 0;
+    const k = u37bKey();
+    const refusedGate = async (m: string) => { asked++; return mayReceiveMarketingSms(m, new Date(), withdrawnReads(k)); };
+    const refused = await sendTyped(id, `+${k}`, o.id, { over: { gate: refusedGate, send: spy } });
+    return [handed.ok && handedAsks === 2 && !refused.ok && asked === 1 && seen.calls === 1,
+      `handed ${reasonOf(handed)} asked ${handedAsks} · refused ${reasonOf(refused)} asked ${asked} · sends ${seen.calls}`];
+  });
+
+  await claim("§18.28 ⭐ U37c · DEPLOY SKEW — a two-argument post from an old page (no recipient at all) still tests the officer's OWN number: target own, the message to their key", async () => {
+    const id = await phrasedDraft();
+    const { send: spy, spy: seen } = u37bSpy();
+    const r = await send({ campaignId: id, variant: "SW" }, o.id, { send: spy });
+    return [r.ok && r.target === "own" && seen.messages.length === 1 && seen.messages[0].to === o.key,
+      `${reasonOf(r)}${r.ok ? ` · ${r.target}` : `: ${r.error}`}`];
   });
   return failed;
 }
@@ -2921,13 +3320,15 @@ if (!PROVE_RED) {
     const CLIENT = `${SCREEN_DIR}composer-client.tsx`;
     const ACTIONS = `${SCREEN_DIR}actions.ts`;
     const COPY = `${SCREEN_DIR}composer-copy.ts`;
-    const SIG = "sendCampaignTestAction(campaignId: string, variant: CampaignVariant)";
+    const SIG = "sendCampaignTestAction(campaignId: string, variant: CampaignVariant, recipient?: unknown)";
     const withFile = (rel: string, edit: (text: string) => string): ScreenSources =>
       ({ ...S, files: new Map([...S.files].map(([k, v]) => [k, k === rel ? edit(v) : v])) });
     const sizingClient = withFile(CLIENT, (t) => `import { sizeSms } from "@/lib/sms-compose";${NL15}${t}${NL15}export const ownCount = (b: string) => sizeSms(b).segments;`);
     const senderClient = withFile(CLIENT, (t) => `${t}${NL15}export const SenderField = () => <Input name="senderId" aria-label="Sender ID" />;`);
     const telClient = withFile(CLIENT, (t) => `${t}${NL15}export const ToField = () => <Input type="tel" name="to" />;`);
     const typedActions = withFile(ACTIONS, (t) => t.replace(SIG, "sendCampaignTestAction(campaignId: string, variant: CampaignVariant, to: string)"));
+    /** U37c · a typed recipient's union widened to a bare string — a number with no confirmation in the contract. */
+    const looseRecipient = { ...S, testService: S.testService.replace('| { kind: "typed"; number: string; adultAttested: boolean };', '| { kind: "typed"; number: string; adultAttested: boolean } | string;') };
     const moneyCopy = withFile(COPY, (t) => `${t}${NL15}export const COMPOSE_TEST_COST = "Each test costs TZS 6.";`);
     const secondDoor: ScreenSources = { ...S, draftService: `${S.draftService}${NL15}export const later = (id: string, p: object, base: string) => db.smsCampaign.updateDraft(id, p, base);` };
     const COUNTER_REL = `${SCREEN_DIR}composer-counter.tsx`;
@@ -2974,10 +3375,16 @@ if (!PROVE_RED) {
         landedAs: "a tel Input named to is rendered",
       },
       {
-        name: "P10 · the test action takes a typed number — sendCampaignTestAction(campaignId, variant, to)",
+        name: "P10′ · the test action takes a bare number — sendCampaignTestAction(campaignId, variant, to: string)",
         expect: /^§16\.4 ⛔/, sources: typedActions,
         landed: () => (S.files.get(ACTIONS) ?? "").includes(SIG) && (typedActions.files.get(ACTIONS) ?? "").includes("variant: CampaignVariant, to: string)"),
-        landedAs: "the action's signature gains a third parameter",
+        landedAs: "the action's third parameter becomes a bare number, outside the recipient contract",
+      },
+      {
+        name: "U37c · the recipient union widened to a bare string",
+        expect: /^§16\.4 ⛔/, sources: looseRecipient,
+        landed: () => looseRecipient.testService !== S.testService,
+        landedAs: "TestRecipient gains `| string` in memory",
       },
       {
         name: "OD24 · a price on the composer",
@@ -3595,10 +4002,129 @@ if (!PROVE_RED) {
       });
     };
 
+    /* ── U37c · the typed test's plants (spec Appendix A §A.3–§A.8): each lands on its own, then must fire its claim ── */
+    const P_OPEN = { state: "open" as const, recordedBy: "usr_u37c_owner", recordedAt: "2026-10-05T09:00:00.000Z" };
+    const P_READS = { ...DB_GATE_READS, outreach: () => P_OPEN } as TestDeps["gateReads"];
+    const P_ADULT = { v: 3, text: "I confirm the person who uses this number is 18 or older." } as unknown as NonNullable<ReturnType<TestDeps["adultTestWording"]>>;
+    const typedLanded = (over: Partial<TestDeps> = {}) =>
+      landedDeps({ gateReads: P_READS, adultTestWording: () => P_ADULT, rateTyped: ALLOW, rateTo: ALLOW, sleep: async () => {}, ...over });
+    const typedInput = (campaignId: string, number: string, adultAttested: unknown = true) =>
+      ({ campaignId, variant: "SW", recipient: { kind: "typed", number, adultAttested } }) as unknown as TestInput;
+    const phrased = async () => {
+      const id = await u37bDraft();
+      await db.smsCampaign.update(id, { sourcePhrase: PHRASE }, { draftRevision: 0 }, new Date().toISOString());
+      return id;
+    };
+    const P_WITHDRAWN = (key: string) => ({ ...P_READS, latestConsent: (k: { identifier: string }) => (k.identifier === key
+      ? { id: "mc_u37c_planted", status: "WITHDRAWN", createdAt: "2026-10-01T09:00:00.000Z", channel: "SMS", identifier: key, category: "MARKETING" }
+      : P_READS.latestConsent(k as never)) }) as unknown as TestDeps["gateReads"];
+    const recipientOf = (input: unknown) => TEST.testRecipientOf((input as { recipient?: unknown } | null)?.recipient);
+    /** A.3 · a typed recipient honoured without the officer's 18+ confirmation. */
+    const noAttestation: typeof realTest = (input, officerId, deps, options) => {
+      const r = (input as unknown as { recipient?: Record<string, unknown> })?.recipient;
+      const forced = r && r.kind === "typed" ? { ...input, recipient: { ...r, adultAttested: true } } : input;
+      return realTest(forced as TestInput, officerId, deps, options);
+    };
+    /** A.4 · a typed number rendered as an ACCOUNT recipient — no source line, and a holder's own name could print. */
+    const typedAsAccount: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
+      realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "account" }) }, options);
+    /** A.8 · the confirmation honoured for a player — the gate's player branch skipped on a typed test. */
+    const playerSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
+      realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, userByPhone: () => null } }, options);
+    /** A.8 · a typed refusal itemised for a masked viewer. */
+    const itemised: typeof realTest = (input, officerId, deps) => realTest(input, officerId, deps, { viewerReads: true });
+    /** A.8 · the real token returned to the screen. */
+    const realTokenShown: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      let wire = "";
+      const r = await realTest(input, officerId, { ...deps, dispatch: (rows, d) => { wire = rows[0]?.body ?? ""; return deps.dispatch(rows, d); } }, options);
+      return r.ok && r.target === "typed" && wire !== "" ? { ...r, text: wire } : r;
+    };
+    /** A.8 · no per-recipient budget. */
+    const noRecipientBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, { ...deps, rateTo: ALLOW }, options);
+    /** A.8 · no officer typed budget — a back-door campaign through tests. */
+    const noTypedBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, { ...deps, rateTyped: ALLOW }, options);
+    /** A.8 · the basis returned to the client (LICENCE_TEST on the result). */
+    const basisReturned: typeof realTest = async (input, officerId, deps, options) => {
+      const r = await realTest(input, officerId, deps, options);
+      return r.ok && r.target === "typed" ? ({ ...r, basis: "LICENCE_TEST" } as typeof r) : r;
+    };
+    /** A.8 · a typed budget spent before the number-independent checks. */
+    const spentEarly: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      if (rec?.kind === "typed") {
+        await deps.rateTyped(officerId);
+        const p = parseTzNumber(rec.number);
+        if (p.msisdn) await deps.rateTo(p.msisdn);
+      }
+      return realTest(input, officerId, deps, options);
+    };
+    /** A.8 · the floor skipped. */
+    const noFloor: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, { ...deps, sleep: async () => {} }, options);
+    /** A.8 · typed tests skip the live switch (read as open for a typed number only). */
+    const typedSkipsSwitch: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
+      realTest(input, officerId, recipientOf(input)?.kind === "typed"
+        ? { ...deps, liveSwitch: async () => ({ state: "open", enabledBy: "nobody", enabledAt: "1970-01-01T00:00:00.000Z" }) as never }
+        : deps, options);
+    /** A.8 · a token minted before the pre-check. */
+    const tokenFirst: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      if (rec?.kind === "typed") {
+        const p = parseTzNumber(rec.number);
+        if (p.msisdn) await deps.ensureToken(p.msisdn);
+      }
+      return realTest(input, officerId, deps, options);
+    };
+    /** A.8 · typed allowed while the record is closed — the up-front check and the gate read a record that is always open. */
+    const closedIgnored: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
+      realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, outreach: () => P_OPEN } }, options);
+    /** A.8 · the officer's own number, typed, required a confirmation. */
+    const ownNeedsTick: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      if (rec?.kind === "typed" && !rec.adultAttested) {
+        return { ok: false, outcome: "refused", reason: "attestation_missing", error: TEST.TEST_ATTESTATION_MISSING, target: "typed" };
+      }
+      return realTest(input, officerId, deps, options);
+    };
+    /** A.8 · the typed preview built for a number — a holder's name printed and a real-looking token shown. */
+    const previewFromNumber: typeof LOADER.composeTypedView = (draft, facts) => {
+      const v = LOADER.composeTypedView(draft, facts);
+      if (draft === null || v.preview === null) return v;
+      const r = renderForRecipient(u37bTemplate(draft), { variant: "SW", name: "Juma", token: "ab12cd34", origin: "account" });
+      return { ...v, preview: { ...v.preview, SW: r.ok ? r.text : v.preview.SW } };
+    };
+    /** Review · a 41-character number let through — the cap gone, the extra text trimmed off before the re-typing. */
+    const uncappedNumber: typeof realTest = (input, officerId, deps, options) => {
+      const r = (input as unknown as { recipient?: Record<string, unknown> })?.recipient;
+      const trimmed = r && r.kind === "typed" && typeof r.number === "string" ? { ...input, recipient: { ...r, number: r.number.trim() } } : input;
+      return realTest(trimmed as TestInput, officerId, deps, options);
+    };
+    /** Review · a number the plan refuses answered with a generic sentence, never the parser's own. */
+    const genericNumber: typeof realTest = async (input, officerId, deps, options) => {
+      const r = await realTest(input, officerId, deps, options);
+      return !r.ok && r.outcome === "refused" && r.reason === "bad_number" ? { ...r, error: "That number is invalid." } : r;
+    };
+    /** Review · OD61 undone — the typed path writes the RG COMPLIANCE row after all. */
+    const rgLineWritten: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const r = await realTest(input, officerId, deps, options);
+      const rec = recipientOf(input);
+      if (!r.ok && r.target === "typed" && rec?.kind === "typed") {
+        const p = parseTzNumber(rec.number);
+        if (p.msisdn) await auditRgRefusal(await mayReceiveMarketingSms(p.msisdn, new Date(), deps.gateReads));
+      }
+      return r;
+    };
+    /** Review · dispatch handed the pre-check's answer instead of asking the gate again. */
+    const noReask: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
+      realTest(input, officerId, { ...deps, dispatch: (rows, d) => dispatchSlice(rows, { ...d, gate: async () => ({ ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:remembered" }) }) }, options);
+
+    /** A.5 · the typed gate built from a stand-in — the source no longer asks the ONE gate. */
+    const GATE_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
+    const standInGate = R.testSendSource.split(GATE_CALL).join("allowTypedTest(m, testAttestation)");
+
     type TestPlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
     const testPlants: TestPlant[] = [
       {
-        name: "the plan's own RED · a typed test number honoured",
+        name: "the plan's own RED, inverted on purpose · a number read from a stray key (to), outside the recipient contract — no 18+ confirmation, no per-recipient budget, no book origin",
         expect: [/^§18\.2 ⛔/], impl: { ...R, test: typedNumber },
         landed: async () => {
           const o = await u37bOfficer();
@@ -3791,6 +4317,258 @@ if (!PROVE_RED) {
           return real.ok && !planted.ok;
         },
         landedAs: "with no source line, the real test is sent and the book-origin one refused",
+      },
+      /* ── U37c ── */
+      {
+        name: "U37c · a typed recipient honoured without the officer's 18+ confirmation",
+        expect: [/^§18\.18 ⛔/], impl: { ...R, test: noAttestation },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, `+${u37bKey()}`, false), o.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await noAttestation(typedInput(id, `+${u37bKey()}`, false), o.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "attestation_missing" && planted.ok;
+        },
+        landedAs: "unticked, the real test is refused and the plant's is handed over",
+      },
+      {
+        name: "U37c · a typed number rendered as an ACCOUNT recipient",
+        expect: [/^§18\.13 ⭐/, /^§18\.17 ⭐/], impl: { ...R, test: typedAsAccount },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await typedAsAccount(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
+          return real.ok && real.text.includes(PHRASE) && planted.ok && !planted.text.includes(PHRASE);
+        },
+        landedAs: "the real typed test carries the source line; the plant's carries none",
+      },
+      {
+        name: "U37c · the confirmation honoured for a player — the gate's player branch skipped on a typed test",
+        expect: [/^§18\.19 ⛔/], impl: { ...R, test: playerSkipped },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const minor = await u37bOfficer({ dob: "2012-06-01" });
+          const id = await phrased();
+          const real = await realTest(typedInput(id, `+${minor.key}`), o.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await playerSkipped(typedInput(id, `+${minor.key}`), o.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && planted.ok;
+        },
+        landedAs: "a player under 18: refused by the real test, handed over by the plant",
+      },
+      {
+        name: "U37c · a typed refusal itemised for a masked viewer",
+        expect: [/^§18\.20 ⛔/], impl: { ...R, test: itemised },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const k = u37bKey();
+          const real = await realTest(typedInput(id, `+${k}`), o.id, typedLanded({ gateReads: P_WITHDRAWN(k) }));
+          const planted = await itemised(typedInput(id, `+${k}`), o.id, typedLanded({ gateReads: P_WITHDRAWN(k) }));
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_refused" && !planted.ok && planted.outcome === "refused" && planted.reason === "consent_withdrawn";
+        },
+        landedAs: "for a masked viewer the real refusal is typed_refused; the plant names consent_withdrawn",
+      },
+      {
+        name: "U37c · the real token returned to the screen",
+        expect: [/^§18\.21 ⛔/], impl: { ...R, test: realTokenShown },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const k = u37bKey();
+          const planted = await realTokenShown(typedInput(id, `+${k}`), o.id, typedLanded({ send: u37bSpy().send }));
+          const token = (await db.marketingOptOutToken.listFor(k))[0]?.token ?? "";
+          return planted.ok && token !== "" && planted.text.includes(token);
+        },
+        landedAs: "the plant hands the officer the text carrying the number's real stop link",
+      },
+      {
+        name: "U37c · the typed preview built for a number",
+        expect: [/^§18\.22 ⭐/], impl: { ...R, typedView: previewFromNumber },
+        landed: async () => {
+          const id = await phrased();
+          const row = await db.smsCampaign.find(id);
+          if (row === null) return false;
+          const facts = { outreachOpen: true, adult: P_ADULT };
+          return previewFromNumber(row, facts).preview?.SW !== LOADER.composeTypedView(row, facts).preview?.SW;
+        },
+        landedAs: "the plant's preview greets Juma with a real-looking token; the real one is the book render",
+      },
+      {
+        name: "U37c · no per-recipient budget",
+        expect: [/^§18\.23 ⛔/], impl: { ...R, test: noRecipientBudget },
+        landed: async () => {
+          const id = await phrased();
+          const k = u37bKey();
+          const officers = [await u37bOfficer(), await u37bOfficer()];
+          const over = { rateTo: TEST.CAMPAIGN_TEST_DEPS.rateTo, send: u37bSpy().send };
+          const results = [];
+          for (let i = 0; i < 6; i++) results.push(await noRecipientBudget(typedInput(id, `+${k}`), officers[i % 2].id, typedLanded(over)));
+          return results.every((r) => r.ok);
+        },
+        landedAs: "six typed tests to one number all go through the plant",
+      },
+      {
+        name: "U37c · no officer typed budget — a back-door campaign through tests",
+        expect: [/^§18\.23 ⛔/], impl: { ...R, test: noTypedBudget },
+        landed: async () => {
+          const id = await phrased();
+          const o = await u37bOfficer();
+          const over = { rateTyped: TEST.CAMPAIGN_TEST_DEPS.rateTyped, send: u37bSpy().send };
+          const results = [];
+          for (let i = 0; i < 11; i++) results.push(await noTypedBudget(typedInput(id, `+${u37bKey()}`), o.id, typedLanded(over)));
+          return results.every((r) => r.ok);
+        },
+        landedAs: "one officer's eleven typed tests all go through the plant",
+      },
+      {
+        name: "U37c · the basis returned to the client",
+        expect: [/^§18\.20 ⛔/], impl: { ...R, test: basisReturned },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const planted = await basisReturned(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
+          return planted.ok && "basis" in planted;
+        },
+        landedAs: "the plant's handed-over result carries a basis",
+      },
+      {
+        name: "U37c · a typed budget spent before the number-independent checks",
+        expect: [/^§18\.23 ⛔/], impl: { ...R, test: spentEarly },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          let real = 0;
+          let planted = 0;
+          await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, rateTyped: async () => { real++; return ALLOW(); }, rateTo: async () => { real++; return ALLOW(); } }));
+          await spentEarly(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, rateTyped: async () => { planted++; return ALLOW(); }, rateTo: async () => { planted++; return ALLOW(); } }));
+          return real === 0 && planted === 2;
+        },
+        landedAs: "with the record closed the real test spends nothing; the plant spends both budgets",
+      },
+      {
+        name: "U37c · the response floor skipped",
+        expect: [/^§18\.27 ⛔/], impl: { ...R, test: noFloor },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const waits = (n: number[]) => ({ now: () => new Date(), sleep: async (ms: number) => { n.push(ms); } });
+          const real: number[] = [];
+          const planted: number[] = [];
+          await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ ...waits(real), send: u37bSpy().send }));
+          await noFloor(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ ...waits(planted), send: u37bSpy().send }));
+          return real.length === 1 && planted.length === 0;
+        },
+        landedAs: "the real typed test waits for the floor once; the plant never waits",
+      },
+      {
+        name: "U37c · typed tests skip the live switch",
+        expect: [/^§18\.5′/], impl: { ...R, test: typedSkipsSwitch },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          let realAsked = 0;
+          let plantAsked = 0;
+          const closed = async () => ({ state: "closed", why: "absent" }) as never;
+          await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ liveSwitch: async () => { realAsked++; return closed(); }, send: u37bSpy().send }));
+          await typedSkipsSwitch(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ liveSwitch: async () => { plantAsked++; return closed(); }, send: u37bSpy().send }));
+          return realAsked === 1 && plantAsked === 0;
+        },
+        landedAs: "the real typed test reads the switch; the plant never asks it",
+      },
+      {
+        name: "U37c · a token minted before the pre-check",
+        expect: [/^§18\.26 ⛔/], impl: { ...R, test: tokenFirst },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const k = u37bKey();
+          await tokenFirst(typedInput(id, `+${k}`), o.id, typedLanded({ gateReads: P_WITHDRAWN(k) }));
+          return (await tokenCount(k)) === 1;
+        },
+        landedAs: "a withdrawn number gets a stop link minted by the plant",
+      },
+      {
+        name: "U37c · typed allowed while the record is closed",
+        expect: [/^§18\.25 ⛔/], impl: { ...R, test: closedIgnored },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, send: u37bSpy().send }));
+          const planted = await closedIgnored(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_outreach_closed" && planted.ok;
+        },
+        landedAs: "with the real record closed the real test is refused up front; the plant's is handed over",
+      },
+      {
+        name: "U37c · the officer's own number, typed, required a confirmation",
+        expect: [/^§18\.24 ⭐/], impl: { ...R, test: ownNeedsTick },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, `+${o.key}`, false), o.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await ownNeedsTick(typedInput(id, `+${o.key}`, false), o.id, typedLanded({ send: u37bSpy().send }));
+          return real.ok && !planted.ok;
+        },
+        landedAs: "the own number typed unticked: sent by the real test, refused by the plant",
+      },
+      {
+        name: "U37c · the typed gate built from a stand-in",
+        expect: [/^§18\.14 ⛔/], impl: { ...R, testSendSource: standInGate },
+        landed: async () => R.testSendSource.split(GATE_CALL).length === 2 && standInGate !== R.testSendSource,
+        landedAs: "the ONE gate's call resolves exactly once in the real source and is swapped in memory",
+      },
+      {
+        name: "U37c review · a number over 40 characters let through",
+        expect: [/^§18\.29 ⛔/], impl: { ...R, test: uncappedNumber },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const long = `+${u37bKey()}${" ".repeat(30)}`;
+          const real = await realTest(typedInput(id, long), o.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await uncappedNumber(typedInput(id, long), o.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "bad_recipient" && planted.ok;
+        },
+        landedAs: "a 42-character number is refused by the real test and sent by the plant",
+      },
+      {
+        name: "U37c review · a bad number answered with a generic sentence",
+        expect: [/^§18\.29 ⛔/], impl: { ...R, test: genericNumber },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const r = await genericNumber(typedInput(id, "12345"), o.id, typedLanded());
+          return !r.ok && r.outcome === "refused" && r.reason === "bad_number" && r.error !== parseTzNumber("12345").reason;
+        },
+        landedAs: "the plant's bad_number sentence is not the parser's",
+      },
+      {
+        name: "U37c review · OD61 undone — the typed path writes the RG COMPLIANCE row",
+        expect: [/^§18\.30 ⛔/], impl: { ...R, test: rgLineWritten },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const p = await u37bOfficer();
+          await selfExclude(p.id, "24h");
+          const id = await phrased();
+          const count = async () => { await auditFlush(); return getAuditPage({ category: "COMPLIANCE", limit: 5000 }).filter((e) => e.action === "marketing.suppressed.rg" && e.targetId === p.id).length; };
+          const before = await count();
+          await rgLineWritten(typedInput(id, `+${p.key}`), o.id, typedLanded({ send: u37bSpy().send }));
+          return (await count()) === before + 1;
+        },
+        landedAs: "a typed test to a self-excluded player leaves an RG row under the plant",
+      },
+      {
+        name: "U37c review · dispatch handed the pre-check's answer instead of asking again",
+        expect: [/^§18\.31 ⛔/], impl: { ...R, test: noReask },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          let asked = 0;
+          const counting = async (m: string) => { asked++; return mayReceiveMarketingSms(m, new Date(), P_READS, { testAttestation: { officerId: o.id, at: new Date().toISOString(), attemptRef: "ta_landedlandedland", wordingVersion: 3 } }); };
+          await noReask(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gate: counting, send: u37bSpy().send }));
+          return asked === 1;
+        },
+        landedAs: "the plant's hand-over asks the gate once — the send step never asks",
       },
     ];
     for (const p of testPlants) {

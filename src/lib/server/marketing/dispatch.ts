@@ -67,16 +67,39 @@ export type SliceOutcome =
 export type SliceDeps = {
   send: (messages: SmsOutbound[]) => Promise<SmsBatchOutcome>;
   gate?: (msisdn: string) => Promise<MarketingGateVerdict>;
+  /** The RG audit line for a refusal acted on — `auditRgRefusal` unless a caller says otherwise. ⛔ ONLY a typed test
+   *  passes its own (a no-op, U37c · OD61): one person an officer typed in must not leave a COMPLIANCE row naming the
+   *  account, which a console feed would turn into a membership oracle (D19). A campaign never passes one. */
+  rgAudit?: (verdict: MarketingGateVerdict) => Promise<void>;
 };
 
 /** The DLR route's recipient arm keys on this (U46), so the reference a receipt echoes finds its row. */
 export const DISPATCH_TARGET_TYPE = "SmsCampaignRecipient";
 export const MARKETING_RG_SUPPRESSED_ACTION = "marketing.suppressed.rg";
 
+/**
+ * ⭐ THE ONE RG AUDIT LINE (U10), written when the send loop below ACTS on a refusal. One COMPLIANCE row against the
+ * ACCOUNT, never a phone number (§5.14), `actorId` null: the system acted, not the player. Anything but an RG refusal
+ * of a known account writes nothing. ⛔ A typed test writes NONE (U37c · OD61, `SliceDeps.rgAudit`): its masked
+ * `marketing.campaign_test` row records the collapsed `protected` reason instead.
+ */
+export async function auditRgRefusal(verdict: MarketingGateVerdict): Promise<void> {
+  if (verdict.ok || !verdict.skipReason.startsWith("rg_") || !verdict.userId) return;
+  await audit({
+    category: "COMPLIANCE",
+    action: MARKETING_RG_SUPPRESSED_ACTION,
+    actorId: null,
+    targetType: "User",
+    targetId: verdict.userId,
+    payload: { reason: verdict.skipReason, detail: verdict.detail },
+  });
+}
+
 export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Promise<SliceOutcome[]> {
   const refs = new Set(rows.map((r) => r.ref));
   if (refs.size !== rows.length) throw new Error("dispatchSlice: every row needs a distinct ref — outcomes are settled by it");
   const ask = deps.gate ?? mayReceiveMarketingSms;
+  const rgLine = deps.rgAudit ?? auditRgRefusal;
   const outcomes = new Map<string, SliceOutcome>();
   /* U33a-G · a cleared row carries the basis the gate gave it, so the outcome can name it without asking twice. */
   const cleared: (SliceRecipient & { basis: MarketingBasisKind; basisRef: string })[] = [];
@@ -92,16 +115,7 @@ export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Pr
     }
     if (!verdict.ok) {
       outcomes.set(row.ref, { ref: row.ref, outcome: "skipped", skipReason: verdict.skipReason, detail: verdict.detail });
-      if (verdict.skipReason.startsWith("rg_") && verdict.userId) {
-        await audit({
-          category: "COMPLIANCE",
-          action: MARKETING_RG_SUPPRESSED_ACTION,
-          actorId: null,
-          targetType: "User",
-          targetId: verdict.userId,
-          payload: { reason: verdict.skipReason, detail: verdict.detail },
-        });
-      }
+      await rgLine(verdict);
       continue;
     }
     // ⭐ vb3 · the gate's key, not the row's spelling (see the header). Only an injected gate can clear a number the

@@ -9,8 +9,11 @@
  * ⛔ EVERY FIELD IS RE-TYPED, NAMED ONE BY ONE. The browser can post anything; a key the save does not name (segments, a
  * coding, a sender, a source line) is never read, and a value that is not a string becomes "". The service then
  * re-validates on the server and stores ITS OWN figures.
- * ⛔ THE TEST TAKES EXACTLY (campaignId, variant) — no number and no body, by its signature
- * (`test:campaign-compose` §16.4 reads this parameter list). The recipient is the officer's own account number.
+ * ⛔ THE TEST TAKES EXACTLY (campaignId, variant, recipient) — no body, by its signature (`test:campaign-compose` §16.4
+ * reads this parameter list). The recipient is the officer's own account number by default; U37c adds a TYPED number
+ * with the officer's 18+ confirmation, re-typed here by `testRecipientOf` whatever was posted (absent = their own — an
+ * old page's two-argument post), and judged by the ONE gate like any campaign recipient. The viewer's read grant decides
+ * how a typed refusal is worded (D19) — it comes from the session, never from the request.
  * ⛔ A REFUSAL IS NOT A REVALIDATION: only a save that landed invalidates the list.
  * ⭐ EVERY REFUSAL CARRIES ITS REASON (validation audit, 2026-10-03), so the screen prints the sentence alone and offers
  * only the next step that can work: `role` (no retry can win it), `rate_limited` (the sentence says when), and
@@ -23,7 +26,7 @@ import { safeError } from "@/lib/server/safe-error";
 import { saveCampaignDraft } from "@/lib/server/marketing/campaign-draft";
 import type { CampaignDraftInput, CampaignDraftResult } from "@/lib/server/marketing/campaign-draft";
 import { SMS_CAMPAIGN_VALUE } from "@/lib/server/marketing/campaign-model";
-import { sendCampaignTest } from "@/lib/server/marketing/campaign-test-send";
+import { sendCampaignTest, testRecipientOf, CAMPAIGN_TEST_DEPS } from "@/lib/server/marketing/campaign-test-send";
 import type { CampaignTestResult } from "@/lib/server/marketing/campaign-test-send";
 import type { CampaignVariant } from "@/lib/marketing/campaign-template";
 import { CONTACT_AUDIENCE_URL_KEYS } from "@/lib/server/marketing/audience";
@@ -86,12 +89,20 @@ export async function saveCampaignDraftAction(request: unknown): Promise<Campaig
   return result;
 }
 
-/** ⛔ Test the SAVED draft on the officer's OWN number. Two parameters, and neither is a number or a body. */
-export async function sendCampaignTestAction(campaignId: string, variant: CampaignVariant): Promise<CampaignTestResult | Refused> {
+/** ⛔ Test the SAVED draft — on the officer's OWN number, or (U37c) a typed one with their 18+ confirmation. Three
+ *  parameters, and none is a body: `recipient` is re-typed by `testRecipientOf`, whatever was posted. */
+export async function sendCampaignTestAction(campaignId: string, variant: CampaignVariant, recipient?: unknown): Promise<CampaignTestResult | Refused> {
   const g = await softRequireStaff("growth", "marketing.campaign.test", COMPOSE_ROLE_REFUSAL);
   if (!g.ok) return { ok: false, reason: "role", error: g.error };
   try {
-    return await sendCampaignTest({ campaignId: text(campaignId), variant: variant === "EN" ? "EN" : "SW" }, g.userId);
+    // ⛔ D19 · the grant is the session's, read on the server — a masked viewer gets the one neutral sentence.
+    const viewerReads = await viewerReadsContacts().catch(() => false);
+    return await sendCampaignTest(
+      { campaignId: text(campaignId), variant: variant === "EN" ? "EN" : "SW", recipient: testRecipientOf(recipient) },
+      g.userId,
+      CAMPAIGN_TEST_DEPS,
+      { viewerReads },
+    );
   } catch (err) {
     // ⛔ The throw may come after the message reached the wire — never "nothing was sent", never a blind resend (OD23).
     return { ok: false, reason: "unfinished", error: safeError(err, COMPOSE_TEST_UNFINISHED) };

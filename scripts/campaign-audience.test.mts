@@ -381,7 +381,7 @@ const L = {
   l46: "4.6 · ⭐ the gate's three single reads are never asked per row — suppression, account and latest word come from §25's bulk reads, each asked once per walk page that holds a sendable number (RG's own break check still reads the ledger directly; the RG, identity and harm-marker reads stay the gate's own, per player)",
   l47: "4.7 · ⛔ THE BUDGET — past it the gate is asked with no reads: an unsendable number is still unsendable, every other is unchecked (never will receive), the figures still add up, and no bulk read is made for a page that starts past it",
   l48: "4.8 · ⭐ the sample is the walk's FIRST FIVE REACHABLE rows, in the walk's own order, each with its gate slot, masked number and operator by prefix",
-  l49: "4.9 · ⛔ the send loop is untouched — no src file calls the gate BY NAME with a third argument, dispatch still asks with ONE (its exact text pinned), the split's gate IS the send gate, and the split names no send path or audit",
+  l49: "4.9 · ⛔ the send loop is untouched — no src file calls the gate BY NAME with a third argument but the typed test's ONE pinned call (campaign-test-send.ts, its own 18+ attestation as the context — U37c), dispatch still asks with ONE (its exact text pinned), the split's gate IS the send gate, and the split names no send path or audit",
   l410a: "4.10a · ⭐ ONE split per filter key — two askers at once, a reader and a masked viewer, share ONE walk (each §25 read made once) and each gets it shaped for their own role",
   l410b: "4.10b · ⛔ at most TWO splits run at once — a third waits for a slot, then runs; nothing is left running",
   l411: "4.11 · consent.ts's DEFAULTED reads — the gate's three single reads go through `reads` (the store's own by default, answering what the store answers), the profile switch keeps the default, the defaults are FROZEN (the send loop's reads, the split's and the walk's dependencies), and the rg-doors anchor line is byte-identical, once",
@@ -705,7 +705,14 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       }
       return out;
     };
-    const thirdArg = [...impl.sources.srcFiles].filter(([, s]) => argCounts(s).some((x) => x >= 3)).map(([rel]) => rel);
+    // ⭐ U37c · THE ONE EXCEPTION, PINNED: the typed test asks the ONE gate with its OWN 18+ attestation as the context
+    // (`consent.ts`: only campaign-test-send.ts may construct one) — exactly that call, in exactly that file, once. Any
+    // other call there, a second copy of it, or the same call in any other file is still a third argument.
+    const TYPED_TEST_FILE = "lib/server/marketing/campaign-test-send.ts";
+    const TYPED_TEST_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
+    const exempt = (rel: string, s: string) =>
+      (rel === TYPED_TEST_FILE && s.split(TYPED_TEST_CALL).length === 2 ? s.split(TYPED_TEST_CALL).join("mayReceiveMarketingSms(m)") : s);
+    const thirdArg = [...impl.sources.srcFiles].filter(([rel, s]) => argCounts(exempt(rel, s)).some((x) => x >= 3)).map(([rel]) => rel);
     const disp = impl.sources.dispatch;
     const splitSrc = impl.sources.split;
     ok(p(L.l49),
@@ -1023,6 +1030,16 @@ if (!PROVE_RED) {
       name: "R25 · the send loop handed reads — dispatch asks the gate with a third argument",
       expect: [L.l49],
       impl: { ...REAL, sources: { ...REAL_SOURCES, dispatch: REAL_SOURCES.dispatch.split("verdict = await ask(row.msisdn);").join("verdict = await ask(row.msisdn, new Date(), reads);") } },
+    },
+    {
+      name: "U37c · the typed test's pinned gate call copied into the send loop's own file — the exception is ONE file",
+      expect: [L.l49],
+      impl: { ...REAL, sources: { ...REAL_SOURCES, srcFiles: new Map([...SRC_FILES].map(([k, v]) => [k, k === "lib/server/marketing/dispatch.ts" ? `${v}${NL}const widened = mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation });` : v])) } },
+    },
+    {
+      name: "U37c · the typed test's pinned gate call made twice in its own file — the exception is ONE call",
+      expect: [L.l49],
+      impl: { ...REAL, sources: { ...REAL_SOURCES, srcFiles: new Map([...SRC_FILES].map(([k, v]) => [k, k === "lib/server/marketing/campaign-test-send.ts" ? `${v}${NL}const again = mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation });` : v])) } },
     },
     {
       name: "R26 · the rg-doors anchor line moved — the gate's RG call rewritten",

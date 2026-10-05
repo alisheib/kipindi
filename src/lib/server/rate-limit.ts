@@ -149,6 +149,13 @@ export const RATE_RULES: Record<string, RateRule> = {
   // number (a real charge), so the budget is small: 3 at once, then one every 10 minutes. ⛔ Spent BEFORE anything else is
   // decided, so a refused test spends it too — and a test this budget refuses writes no audit row.
   "marketing.testSend": { capacity: 3, refillPerMin: 0.1 },
+  // U37c · S24 · a test to a TYPED number spends two more budgets, both AFTER the number-independent checks (so a closed
+  // record or an unsaved wording drains neither). Per RECIPIENT, keyed `testTo:` + a salted hash of the gate's key (no
+  // digit of the number in the store): 5 at once, then one every two hours — a person cannot be flooded by tests from
+  // several officers. Per OFFICER, typed tests only: 10 at once, refilling 10 a day — without it an officer could run a
+  // quiet campaign of ~150 messages a day to strangers through "tests", outside the confirmation and U14's cap (A33).
+  "marketing.testSendTo": { capacity: 5, refillPerMin: 1 / 120 },
+  "marketing.testSendTyped": { capacity: 10, refillPerMin: 10 / 1440 },
   // The composer's save, per officer (U37b review m5): every create is a campaign row that is never deleted and an audit
   // row that is never pruned — the case `contacts.write` bounds on the contacts form. 30 at once and 10 a minute cover
   // real editing; the steady rate is what stops a script.

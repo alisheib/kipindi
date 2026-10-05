@@ -267,3 +267,17 @@ export function identityFingerprint(idType: string, idNumber: string): string {
     .update(`idfp:v1:${idType}:${idNumber}`, "utf8")
     .digest("hex");
 }
+
+/**
+ * U37c · A KEYED, LETTERS-ONLY REFERENCE TO A VALUE — for a store key that must hold neither the value nor any run of
+ * digits from it (a rate bucket kept per phone number, `marketing.testSendTo`). HMAC-SHA256 under the same pepper as
+ * `identityFingerprint` (one key, for the reasons above), domain-separated in the message, and spelled in the letters
+ * a–p, one per hex nibble — so no digit run a scrubber or a reader could take for a phone number can ever appear, and
+ * nobody without the pepper can enumerate Tanzanian numbers back to it. Rotating the pepper only resets such buckets.
+ */
+export function pepperedLetters(domain: string, value: string, length = 16): string {
+  const hex = createHmac("sha256", otpPepper()).update(`${domain}:v1:${value}`, "utf8").digest("hex");
+  let out = "";
+  for (const ch of hex.slice(0, Math.max(1, Math.min(64, length)))) out += String.fromCharCode(97 + parseInt(ch, 16));
+  return out;
+}
