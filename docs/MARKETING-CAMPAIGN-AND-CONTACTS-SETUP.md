@@ -5,7 +5,7 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
 switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 42, U37c-2 —
-the Test card, the gate track's last unit (STEP 41, its server path). NEXT: the send engine (§0 ▶ NEXT). First real
+the Test card, the gate track's last unit, LIVE `0d3f08d7` (STEP 41, its server path). NEXT: the send engine (§0 ▶ NEXT). First real
 campaign: realistic window 18–25 October.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
@@ -78,8 +78,9 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   `red:campaign-compose` 288/288; `test:campaign-audience` 4.9 now allows exactly the typed test's ONE pinned gate call
   (two new plants). Owed from the review, none reachable until licence outreach opens: OD61's feed restriction (before
   U43), the erasure marker for an account erased with no book row (U16a), and U33r (agent referees).
-  STEP 42 · U37c-2 — THE TEST CARD (the gate track's last unit; its server path is STEP 41): "Send the test to" — my
-  own number (masked, the default) or another number, offered only while licence outreach is open, `adult.test` is
+  STEP 42 · U37c-2 LIVE `0d3f08d7` (served from 16:48 UTC, proved by discrimination — `a92c3be8` before it; the new
+  container's `/api/health` ok, the database reachable and migrated; the dev seed route answers 404 on production) —
+  THE TEST CARD (the gate track's last unit; its server path is STEP 41): "Send the test to" — my own number (masked, the default) or another number, offered only while licence outreach is open, `adult.test` is
   saved and the draft carries the source line, and otherwise disabled with the reason beside it. Another number: the
   kit's number field (the plan's own sentence under it, said ONCE — the line beside Send is a way back to the field),
   the 18+ tick labelled with the SAVED words, the contact-book preview (the `{jina}` fallback, the source line, the stop

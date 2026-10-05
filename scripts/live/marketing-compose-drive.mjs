@@ -60,16 +60,23 @@
  * remedy step gives it the way a person does). Officer numbers are unique per run, so a re-run needs no new boot —
  * but run U36's drive on its OWN fresh server: this one seeds campaigns, and U36's EMPTY state needs none.
  *
- * Run (three boots, one per pass, each in-memory, zero prod risk; stop the last server and remove .next before each —
+ * Run (four boots, one per pass, each in-memory, zero prod risk; stop the last server and remove .next before each —
  * a stale .next 404s every /api/dev-test route):
- *   SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars> DISABLE_ADMIN_TOTP=true npx next dev -p 3010
+ *   SMS_PROVIDER=console SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars> DISABLE_ADMIN_TOTP=true npx next dev -p 3010
  *   BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
+ *   (the same console boot, FRESH, for PASS=typed — it moves the server's licence-outreach record)
+ *   PASS=typed BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
  *   SMS_PROVIDER=blackball BLACKBALL_CLIENT_ID=dummy-not-a-key BLACKBALL_CLIENT_SECRET=dummy-not-a-key
  *     SMS_SENDER_ID=50pick BLACKBALL_API_URL=http://127.0.0.1:9/ SESSION_SECRET=… OTP_PEPPER=… DISABLE_ADMIN_TOTP=true
  *     npx next dev -p 3010
  *   PASS=live-closed BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
  *   SMS_PROVIDER=blackball SESSION_SECRET=… OTP_PEPPER=… DISABLE_ADMIN_TOTP=true npx next dev -p 3010
  *   PASS=dead-rail BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
+ * ⛔ A PC whose `.env.local` holds REAL Blackball keys (the office PC does): pin `SMS_PROVIDER=console` on the console
+ *   boots — never trust a default — and on the dead-rail boot pass each key as ONE SPACE (`"BLACKBALL_CLIENT_ID= "`,
+ *   `"BLACKBALL_CLIENT_SECRET= "`) with `BLACKBALL_API_URL=http://127.0.0.1:9/`: a variable already set beats the file
+ *   (Next's env loader keeps it), the rail trims a space to nothing, and an EMPTY value can be dropped when Windows starts
+ *   the process — which would load the real keys. The dead port is the second lock: nothing can leave the machine.
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
