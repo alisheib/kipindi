@@ -42,6 +42,25 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   table (31) · U33p, the public policy lines tab (32) · the admin guide v1.2 (20 pages; on Ali's Desktop).
   ▶ RESUMED the same afternoon (Ali: "proceed with the plan, end to end until live, generate the instructions PDF"):
   STEP 33 · U43-0 LIVE `bf166ff3` (the one migration of the engine track, pushed alone, read back on production).
+  STEP 34 · U41 decided — a campaign is authorised by one officer's typed confirmation, at any size (OD60).
+  STEP 35 · U33a-R, the licence-outreach record — the four opening checks, the two audited writers and the
+  "Licence outreach" card under the policy lines on /admin/system (`?tab=policy`). R1–R6 green, 5/5 red plants caught.
+  ⛔ THE THREE BUILDERS' SCRATCH OUTPUTS ARE NOT REACHABLE FROM EVERY MACHINE, AND ONE SESSION HAS ALREADY HAD TO
+  REBUILD FROM SPEC. STEP 35 was built on **OMEGA-DEV072** (`C:\kipindi-main`, a THIRD machine — not Ali-Blade15, not
+  OMEGA-COMPILE01), where `C:/Users/Ali/AppData/Local/Temp/...` does not exist: `u33r/`, `u430/` and `u16a/` could not
+  be read at all. U43-0 was already live, so only U33a-R was needed and it was built FRESH from spec §5.3 · §6 · §7.7 ·
+  §8 · §9. ⚠️ **U37s and U16a are still owed, and their drafts should be treated as LOST** unless Ali-Blade15 still
+  holds that scratch root — a session scratchpad is pruned without warning (the ZAMEL lesson, same week). Rebuild them
+  from spec rather than hunting for them.
+  ⚖️ A TECHNICAL CALL TAKEN ON ALI'S STANDING DELEGATION (2026-10-02), recorded because §0 asked the lead to decide it:
+  **closing licence outreach is ANY admin's, not owner-only** — a stop that waits for one person is not a stop. Opening
+  is the guarded act; closing is never refused for a failing check.
+  ⚠️ `main` WAS ALREADY RED WHEN THIS SESSION OPENED, on gates nothing here touches — `test:type-scale` (+4 arbitrary
+  `tracking-[…]` over its ratchet), `test:live-target-safe` (13 standalone scripts defaulting to production, ceiling 5),
+  `test:red-anchors`, `test:decomment`, `test:kyc-copy-truth`, `test:stacking`, `test:updown-digest`,
+  `test:updown-source-class`, `test:payout-view`, `test:eyebrow-roles`, `test:failure-reasons` and `test:orphans`. Each
+  was re-run against a STASHED tree and fails on pristine `main` too, so they are somebody's unrun ratchets, not this
+  unit's. Whoever picks the programme up next should clear them or they will keep masking real breakage.
   ▶ RESUME HERE, in order:
   1. Read `docs/marketing-specs/ENGINE-SPEC.md` §0 — the send engine and its monitoring, 18 units (~119–196 h), the
      parallel sets and the deploy order — and `docs/marketing-specs/U33a-U37c-OD58.md` §11 for the gate track still to
@@ -1265,7 +1284,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U30 | visual | ⬜ | — | — | — | `test:contacts-import` | — | pre-flight |
 | U31 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | decide(). U31-A landed (`0dc25b98`): the pure rule, the erasure disguise (OD47). U31-B (the facts loader) and the UI come with U30. |
 | U32 | visual | ⬜ | — | — | — | `test:contacts-import` | — | progress = rows |
-| U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` · `test:marketing-wordings` · `test:dal-parity` §27 · `test:policy-lines` | `red:marketing-consent` · `red:marketing-wordings` (in-process) · `red:dal-parity` §27 · `red:policy-lines` | basis at import. U33a-catalog landed (`0dc25b98`); U33a-0, the pre-ledger census = 0 (§0 STEP 29); U33w, the wordings editable and approved on Admin → System, every saved version kept (§0 STEP 30) — G4 is now "saved on the card"; U33a-L, the list-basis table in both twins, a list's one standing its newest recording (§0 STEP 31); U33p, the public policy lines editable on their own tab, today's words printed until a save (§0 STEP 32) — G4/G10 are "saved on the card". The engine and the panel follow. |
+| U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` · `test:marketing-wordings` · `test:dal-parity` §27 · `test:policy-lines` · `test:licence-outreach` | `red:marketing-consent` · `red:marketing-wordings` (in-process) · `red:dal-parity` §27 · `red:policy-lines` · `red:licence-outreach` | basis at import. U33a-catalog landed (`0dc25b98`); U33a-0, the pre-ledger census = 0 (§0 STEP 29); U33w, the wordings editable and approved on Admin → System, every saved version kept (§0 STEP 30) — G4 is now "saved on the card"; U33a-L, the list-basis table in both twins, a list's one standing its newest recording (§0 STEP 31); U33p, the public policy lines editable on their own tab, today's words printed until a save (§0 STEP 32) — G4/G10 are "saved on the card"; U33a-R, the licence-outreach record — the four opening checks, the two audited writers and the card under the policy lines, the row replaced whole so a close leaves nothing behind (§0 STEP 35). ⛔ Still owed on the gate track: U37s, U33a-G, U33a-P, U33b-L, U37c. The engine and the panel follow. |
 | U34 | guard | 🟡 | S10 | d8fce713 | — | `test:contacts-export` | — | export. U34a landed (`d8fce713` + review `95a48ae6`): the masked/full CSV, audited before the first byte, the cross-site gate; `test:contacts-export`. U34b (the round trip through the importer) follows U30/U31. |
 | U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
 | U36 | visual | 🔵 | S10 | 06c21ac4 | /admin/campaigns did not exist → the campaign list behind six doors (nav item "SMS campaigns", ROUTE_KEYS, ROUTE_DOMAINS growth, the section gate, loading.tsx, the page gate), the status rail over the WHOLE table, server-counted progress (HELD outstanding), the nav badge only for a growth viewer | `test:campaigns-page` · `test:admin-nav` · `test:rbac` · `test:dal-parity` §26 | yes — `red:campaigns-page` (in-process) · `red:rbac` 4/4 · `red:dal-parity` §26 | list + badge. Pushed and serving (`db4a11a7`, §0 STEP 20) — its live check needs an admin session on production (G7 / G11). |

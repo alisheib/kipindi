@@ -9,6 +9,9 @@ import { getSupportConfig } from "@/lib/server/support-config";
 import { wordingHistory } from "@/lib/server/marketing/wordings";
 import { WORDING_KEYS } from "@/lib/marketing/marketing-wordings";
 import { PolicyLinesForm, type PolicyLineRowView, type PolicyPageVersionView } from "./policy-lines-form";
+// U33a-R · the Licence outreach card, and the two readers that tell it where the record stands.
+import { LicenceOutreachCard } from "./licence-outreach-card";
+import { licenceOutreach, licenceOutreachBlockers } from "@/lib/server/marketing/outreach-record";
 import { savedPolicyHistory, policyVersion } from "@/lib/server/legal/policy-lines";
 import { POLICY_LINE_KEYS, POLICY_PAGE_KEYS, POLICY_PAGES, isReviewVersion } from "@/lib/legal/policy-lines";
 import { db } from "@/lib/server/store";
@@ -287,6 +290,19 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   const wordingRows = tab === "wordings" ? await marketingWordingRows() : null;
   // U33p · the Public policy lines card has its own tab too; its rows are read only there.
   const policyRows = tab === "policy" ? await policyLineRows() : null;
+  /* U33a-R · the Licence outreach record, read on the SAME tab as the lines its checks are satisfied by. ⛔ Read here
+     rather than in the card: the checks must be re-read on every render, and the card is a client component. The
+     writer re-runs them anyway — this is what the officer is SHOWN, never what decides. */
+  const outreach = tab === "policy"
+    ? (() => {
+      const state = licenceOutreach();
+      return {
+        state: state.state,
+        ...(state.state === "open" ? { recordedBy: state.recordedBy, recordedAt: state.recordedAt } : {}),
+        blockers: licenceOutreachBlockers(),
+      } as const;
+    })()
+    : null;
 
   return (
     <>
@@ -617,6 +633,14 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
               does not do is refused.
             </p>
             <PolicyLinesForm key={policyRows.rows.map((r) => r.versions.length).join(".")} rows={policyRows.rows} pages={policyRows.pages} />
+          </AdminCard>
+        )}
+        {/* ⭐ U33a-R · LICENCE OUTREACH (OD57 · OD58), directly under the lines three of its four checks are satisfied by
+            — an officer clears a named check above and watches a row disappear here. ⛔ The card shows the state and the
+            reasons; the WRITER re-runs every check server-side over the record as it is at that instant. */}
+        {outreach && (
+          <AdminCard title="Licence outreach" sw="Ufikiaji kwa leseni">
+            <LicenceOutreachCard view={outreach} />
           </AdminCard>
         )}
         </>)}

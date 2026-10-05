@@ -22,6 +22,9 @@ import { requireStaff } from "@/lib/server/rbac-guard";
 // U33w · the Marketing wordings card: the verified setter, the form's one reading, and the ONE spelling of each box's address.
 import { saveMarketingWordings, WORDINGS_REFUSAL_SENTENCE } from "@/lib/server/marketing/wordings";
 import { WORDING_KEYS, patchFromForm, wordingFieldName, type WordingKey } from "@/lib/marketing/marketing-wordings";
+// U33a-R · the Licence outreach card: the two writers — the only door the record is opened or closed through.
+import { closeLicenceOutreach, openLicenceOutreach } from "@/lib/server/marketing/outreach-record";
+import { OUTREACH_CHECK_SENTENCE } from "@/lib/marketing/outreach-open-checks";
 // U33p · the Public policy lines card: the verified setter, and the ONE spelling of each language box's address.
 import { savePolicyLines, POLICY_LINES_REFUSAL_SENTENCE } from "@/lib/server/legal/policy-lines";
 import { POLICY_LINE_KEYS, POLICY_LOCALES, policyLineFieldName, type PolicyLineKey, type PolicyLocale } from "@/lib/legal/policy-lines";
@@ -323,5 +326,50 @@ export async function savePolicyLinesAction(formData: FormData): Promise<PolicyL
     };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Saving the policy lines failed — nothing may have changed. Reload the page to check before trying again.") };
+  }
+}
+
+/* ══ U33a-R · LICENCE OUTREACH ══════════════════════════════════════════════════════════════════════════════════════ */
+
+/** What the card is handed back. A refusal carries the reason it can show; nothing was written either way. */
+export type LicenceOutreachActionResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * ⛔ `requireAdmin` FIRST, then the VERIFIED writer, `openLicenceOutreach`: it re-runs all four checks over the policy
+ * record AS IT IS NOW (never over what the card last rendered), refuses while any fails — naming each — refuses while
+ * the record is not readable at all, writes the row whole, reads it back, and only then records the COMPLIANCE row with
+ * the checks as they passed. Every refusal writes nothing and makes no audit row.
+ * ⭐ The author and the instant are the server's: the session's officer, and its clock.
+ * ⭐ The failing checks are appended to the refusal, so the officer who pressed it is told what to fix without hunting
+ * — the card lists them too, but a toast is what a refused press puts in front of them.
+ */
+export async function openLicenceOutreachAction(): Promise<LicenceOutreachActionResult> {
+  const session = await requireAdmin();
+  try {
+    const res = await openLicenceOutreach(session.userId);
+    if (!res.ok) {
+      const named = res.failing.map((c) => OUTREACH_CHECK_SENTENCE[c]).join(" ");
+      return { ok: false as const, error: named === "" ? res.error : `${res.error} ${named}` };
+    }
+    revalidatePath("/admin/system");
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Opening licence outreach failed — nothing may have changed. Reload the page to check before trying again.") };
+  }
+}
+
+/**
+ * ⛔ The other writer. ⭐ A CLOSE IS NEVER REFUSED FOR A FAILING CHECK — outreach must be able to stop at once; the
+ * checks guard the start of it, never the stop (the reason is in `outreach-record.ts`).
+ */
+export async function closeLicenceOutreachAction(): Promise<LicenceOutreachActionResult> {
+  const session = await requireAdmin();
+  try {
+    const res = await closeLicenceOutreach(session.userId);
+    if (!res.ok) return { ok: false as const, error: res.error };
+    revalidatePath("/admin/system");
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Closing licence outreach failed — nothing may have changed. Reload the page to check before trying again.") };
   }
 }
