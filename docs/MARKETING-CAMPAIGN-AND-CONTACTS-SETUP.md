@@ -69,8 +69,8 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   registration box is reworded** · Q6/OQ11 an old-wording yes is NOT consent · Q7 no basis expiry (recycled-number risk
   accepted) · Q8 **the agent-referee exclusion IS to be built** · Q9 a lapse is not reached · Q11 typed tests only while
   open · Q12 growth officers record a basis · G12 Suppress is permanent · G3 stay inside the ledger cap and ask first ·
-  G8 still NO real numbers on production · G5 the source line is "Umepokea hii kwa sababu namba yako ipo kwenye orodha
-  yetu." · G9 the price is TZS 6 · G10 the DSAR sentence APPROVED (it corrects a published inaccuracy) · G4 the wordings
+  G8 still NO real numbers on production · G5 the source line is "Namba yako ipo orodhani kwetu." (30 septets — the 58-character line first proposed was
+  refused by the cap, corrected before anything was saved) · G9 the price is TZS 6 · G10 the DSAR sentence APPROVED (it corrects a published inaccuracy) · G4 the wordings
   to be drafted for him to paste and save.
   ⚠️ **THREE THINGS THE ANSWERS CREATED, none of them built yet:** (1) the registration box rewording (Q2); (2) the
   agent-referee exclusion (Q8) — until it exists a referee can be reached, against a written promise; (3) setting
