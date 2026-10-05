@@ -904,6 +904,78 @@ async function runToggleAssertions(impl: ToggleImpl, run: number, tag: string): 
   const f2 = await afterWritesThrow(2, () => impl.choose({ userId: g10.id, marketingOptIn: false, locale: "SW" }));
   ok(p("T9b · when the fresh read fails too the answer is UNKNOWN (null) — still never a guess"),
     f2.thrown === 2 && f2.result.on === null && f2.result.ok === false, `thrown ${f2.thrown} · ${JSON.stringify(f2.result)}`);
+
+  /* ══ U33a-P · THE SWITCH UNDER OD58 — ON can now mean "offers reach you on the LICENCE basis" ══════════════
+     ⛔ The record is flipped through the config factory's OWN registry (`__50PICK_CONFIGS`, a declared global), not
+     through a second reader: `marketingToggleState` asks the live `licenceOutreach()`, so a test that stubbed its own
+     record would be proving something about the stub. Hydration is marked so the factory does not re-read over it. */
+  const OUTREACH_KEY = "marketing.outreach.licence";
+  const RECORDED_AT = "2026-10-05T09:00:00.000Z";
+  const setRecord = (open: boolean): void => {
+    const g = globalThis as unknown as { __50PICK_CONFIGS?: Map<string, unknown>; __50PICK_CONFIGS_HYDRATED?: Set<string> };
+    g.__50PICK_CONFIGS?.set(OUTREACH_KEY, open ? { state: "open", recordedBy: "usr_officer_p", recordedAt: RECORDED_AT } : { state: "closed" });
+    g.__50PICK_CONFIGS_HYDRATED?.add(OUTREACH_KEY);
+  };
+  /** A player who was never asked: the toggle off, and no ledger row at all. */
+  const mkNever = async (i: number, over: Partial<StoredUser> = {}, rg?: Partial<StoredResponsibleGambling>) => {
+    const id = `tgo${run}-${i}`;
+    const msisdn = toMsisdn255(phoneFor(run, 40 + i));
+    await Promise.resolve(db.user.create(makeUser(id, `+${msisdn}`, { marketingOptIn: false, ...over })));
+    if (rg) await Promise.resolve(db.responsible.upsert(rgRow(id, null, rg)));
+    return { id, msisdn, key: { channel: "SMS" as const, identifier: msisdn, category: "MARKETING" as const } };
+  };
+
+  setRecord(false);
+  const o1 = await mkNever(1);
+  const o1closed = await impl.state(await user(o1.id));
+  setRecord(true);
+  const o1open = await impl.state(await user(o1.id));
+  ok(p("T-O1 · ⭐ U33a-P · a never-asked player reads OFF while the record is CLOSED, and ON with outreach:true once it is OPEN — the switch follows the basis that actually reaches them"),
+    o1closed.on === false && o1closed.outreach === false && o1open.on === true && o1open.outreach === true,
+    `closed ${JSON.stringify(o1closed)} · open ${JSON.stringify(o1open)}`);
+
+  const o2 = await mkNever(2);
+  await Promise.resolve(db.suppression.create({
+    id: `tgos${run}-2`, channel: "SMS", identifier: o2.msisdn, category: "MARKETING",
+    reason: "OPERATOR", evidence: "fixture", recordedBy: null, createdAt: "2026-01-01T00:00:00.000Z",
+    liftedAt: null, liftedReason: null,
+  }));
+  const o2state = await impl.state(await user(o2.id));
+  ok(p("T-O2 · ⛔ ANY active stop reads OFF here, an OPERATOR stop included — stricter than the consent path on purpose: nobody said yes, so the switch must never read ON while the gate refuses"),
+    o2state.on === false && o2state.outreach === false, JSON.stringify(o2state));
+
+  const o3 = await mkNever(3);
+  const o3before = await impl.state(await user(o3.id));
+  const r3 = await impl.choose({ userId: o3.id, marketingOptIn: false, locale: "SW" });
+  const o3row = await Promise.resolve(db.messagingConsent.latestFor(o3.key));
+  const o3after = await impl.state(await user(o3.id));
+  ok(p("T-O3 · ⭐ an OFF tapped from an outreach ON records the person's stop — a WITHDRAWN PROFILE row in the sentence shown — and the switch reads OFF after"),
+    o3before.on === true && r3.ok && o3row?.status === "WITHDRAWN" && o3row.source === "PROFILE" && o3after.on === false,
+    `before ${o3before.on} · row ${o3row?.status}/${o3row?.source} · after ${o3after.on}`);
+
+  const o4 = await mkNever(4);
+  const o4before = await impl.state(await user(o4.id));
+  const r4 = await impl.choose({ userId: o4.id, marketingOptIn: true, locale: "SW" });
+  const o4row = await Promise.resolve(db.messagingConsent.latestFor(o4.key));
+  ok(p("T-O4 · ⛔ an ON tapped while the switch ALREADY reads ON (outreach) writes NOTHING — a consent is never invented out of a tap that changed nothing"),
+    o4before.on === true && o4row === null && r4.changed === false,
+    `before ${o4before.on} · row ${JSON.stringify(o4row)} · changed ${r4.changed}`);
+
+  const o5 = await mkNever(5, {}, { coolingOffUntil: new Date(Date.now() - 86400_000).toISOString() });
+  const o5state = await impl.state(await user(o5.id));
+  ok(p("T-O5 · a never-asked player whose break ENDED with no yes since reads PAUSED, not ON — the one refusal their own tap can lift, said in the same word as on the consent path"),
+    o5state.on === false && o5state.paused === true, JSON.stringify(o5state));
+
+  const o6 = await mkp(46);
+  await Promise.resolve(db.suppression.create({
+    id: `tgos${run}-6`, channel: "SMS", identifier: o6.msisdn, category: "MARKETING",
+    reason: "OPERATOR", evidence: "fixture", recordedBy: null, createdAt: "2026-01-01T00:00:00.000Z",
+    liftedAt: null, liftedReason: null,
+  }));
+  const o6state = await impl.state(await user(o6.id));
+  ok(p("T-O6 · ⚠️ CONTROL — the CONSENT path is unchanged: an OPERATOR stop leaves a consenting player's switch ON, exactly as before U33a-P (the platform's decision is not the player's consent)"),
+    o6state.on === true && o6state.outreach === false, JSON.stringify(o6state));
+  setRecord(false);
 }
 
 /* ══ THE CONSENT CARD — what the player SEES when a save fails, a read fails, or a break is running ══════
@@ -1005,6 +1077,10 @@ type ToggleDefect = {
   heldReadsOn?: boolean;    // pre-D4b: a break still running falls through to ON (only a LAPSED refusal read OFF)
   heldWrites?: boolean;     // pre-D4b: an ON mid-break is written as a GIVEN row certain to lapse
   guessOnThrow?: boolean;   // the old catch: `on: !want` whatever the writes did
+  // ── U33a-P (2026-10-05) ──
+  outreachOverStop?: boolean;   // an outreach ON survives an active OPERATOR stop (the switch lies about the gate)
+  outreachWhileClosed?: boolean; // outreach ON although the licence record is closed
+  outreachWritesGiven?: boolean; // "nothing to do" writes a GIVEN anyway — a consent invented from a tap
 };
 /**
  * ⛔ `liftsAnyReason` IS PLANTED ACROSS BOTH LAYERS (2026-09-27). The store's own `suppression.lift` now refuses
@@ -1022,9 +1098,18 @@ function liftIgnoringReason(row: StoredSuppression, reason: string): boolean {
 }
 function toggleModel(d: ToggleDefect): ToggleImpl {
   const state = async (u: StoredUser): Promise<MarketingToggleState> => {
-    if (d.booleanState) return { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null };
+    if (d.booleanState) return { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null, outreach: false };
     const s = await marketingToggleState(u);
-    return d.heldReadsOn && s.held ? { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null } : s;
+    /* U33a-P plants. ⛔ Both act only on a NON-consenting player (the licence path), so the consent path's own
+       assertions stay green and each plant turns red the line that names it. */
+    if ((d.outreachWhileClosed || d.outreachOverStop) && u.marketingOptIn !== true && !s.on && !s.held) {
+      const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
+      const stop = await Promise.resolve(db.suppression.find(key));
+      if (d.outreachOverStop ? stop !== null : stop === null) {
+        return { on: true, paused: false, held: false, heldUntil: null, outreach: true };
+      }
+    }
+    return d.heldReadsOn && s.held ? { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null, outreach: false } : s;
   };
   const choose: ToggleImpl["choose"] = async ({ userId, marketingOptIn, locale }) => {
     const want = marketingOptIn === true;
@@ -1035,7 +1120,7 @@ function toggleModel(d: ToggleDefect): ToggleImpl {
       const before = await state(u);
       if (want && before.held && !d.heldWrites) return { ok: false, on: false, changed, liftedStop, held: true };
       const nothing = d.booleanOnlyWrite ? u.marketingOptIn === want : (want ? before.on : (!before.on && u.marketingOptIn !== true));
-      if (nothing) return { ok: true, on: want, changed, liftedStop };
+      if (nothing && !(d.outreachWritesGiven && want)) return { ok: true, on: want, changed, liftedStop };
       const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
       if (want && !d.noLift) {
         const stop = await Promise.resolve(db.suppression.find(key));
@@ -1290,6 +1375,21 @@ if (!PROVE_RED) {
   console.log(`§0b toggle model · no defect set: ${pass} passed, ${fail} failed\n`);
 
   const TOGGLE_CASES: Array<{ name: string; defect: ToggleDefect; expect: string }> = [
+    {
+      name: "U33a-P · an outreach ON survives an active OPERATOR stop",
+      defect: { outreachOverStop: true },
+      expect: "T-O2 · ⛔ ANY active stop reads OFF here, an OPERATOR stop included — stricter than the consent path on purpose: nobody said yes, so the switch must never read ON while the gate refuses",
+    },
+    {
+      name: "U33a-P · outreach ON while the licence record is CLOSED",
+      defect: { outreachWhileClosed: true },
+      expect: "T-O1 · ⭐ U33a-P · a never-asked player reads OFF while the record is CLOSED, and ON with outreach:true once it is OPEN — the switch follows the basis that actually reaches them",
+    },
+    {
+      name: "U33a-P · \"nothing to do\" writes a GIVEN anyway — a consent invented from a tap",
+      defect: { outreachWritesGiven: true },
+      expect: "T-O4 · ⛔ an ON tapped while the switch ALREADY reads ON (outreach) writes NOTHING — a consent is never invented out of a tap that changed nothing",
+    },
     {
       name: "🔴 the pre-D4 switch — ON never lifts the player's own stop, so it reads ON and is refused for ever",
       defect: { noLift: true },

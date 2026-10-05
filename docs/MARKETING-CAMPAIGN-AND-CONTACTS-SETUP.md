@@ -63,6 +63,20 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   ANY GIVEN row). Labels 1 and 12 still read `age_unknown`.
   ▶ NEXT on the gate track: U33a-P (the profile switch under OD58), U33b-L (recording a basis on a list), U37c (the typed
   test), and U37s. Then ENGINE-SPEC's order.
+  STEP 37 · U33a-P — **the profile switch under OD58**. `MarketingToggleState` gains `outreach`, and a non-consenting
+  player's switch can now read ON because licence outreach reaches them. ⛔ THE LICENCE PATH IS STRICTER THAN THE
+  CONSENT PATH, deliberately: ANY active stop turns it OFF — an OPERATOR stop that a consenting player's switch rightly
+  ignores — because nobody said yes here, and a switch that reads ON while the gate refuses is the D4 defect in a new
+  place. A WITHDRAWN row, a lapse, and a closed record each read OFF; a break that ENDED with no yes since reads PAUSED.
+  The screen prints the admin-edited `profile.outreachNote` beside it, and ONLY while the switch is ON by outreach — a
+  line explaining why offers reach you is a lie beside an OFF switch. The DSAR export gains `outreach: { basis, since }`,
+  computed FROM THE SWITCH rather than recomputed, so the screen and the export cannot disagree: a person asking what we
+  hold is entitled to be told we message them without their consent, and under what.
+  Guard: `test:marketing-consent` T-O1–T-O6 (161 green) with three plants in the toggle model — an outreach ON over an
+  OPERATOR stop, outreach ON while the record is closed, and a GIVEN written by "nothing to do". `red:marketing-consent`
+  **93/93**. ⚠️ Two fixture facts worth keeping: the RG break column is `coolingOffUntil`, not `breakUntil` (a fixture on
+  the wrong column reads as a passing player), and `scripts/` is NOT typechecked — `npm run typecheck` does not cover it,
+  so a model literal missing a new field fails only at runtime.
   ✅ **OWNER ANSWERS, 2026-10-05 — Ali took twelve questions and three gates one at a time; eleven CONFIRM the built
   default.** Full record: `COMPLIANCE-DECISIONS.md` § "2026-10-05 · Marketing outreach rulings". In one line each:
   Q1 never-asked players ARE reached under the licence · Q2 the unticked-since-09-28 cohort IS reached, **after the

@@ -446,9 +446,13 @@ export type MarketingToggleState = {
   held: boolean;
   /** When the hold ends, if a real future date is on record — null for a permanent or diverged one. */
   heldUntil: string | null;
+  /** ⭐ U33a-P · ON, but on the LICENCE basis rather than a consent: the person never said yes, and offers reach them
+   *  because licence outreach is open. The screen says so in its own line, because a switch that reads ON identically
+   *  in both cases would be telling a person they agreed to something they never agreed to. */
+  outreach: boolean;
 };
 
-const TOGGLE_OFF: MarketingToggleState = { on: false, paused: false, held: false, heldUntil: null };
+const TOGGLE_OFF: MarketingToggleState = { on: false, paused: false, held: false, heldUntil: null, outreach: false };
 /** `selfExclusionStandingOf` stores "permanent" as now + 100 years and reads anything past ten as permanent. */
 const PERMANENT_AFTER_MS = 10 * 365 * 86400_000;
 
@@ -458,7 +462,7 @@ function holdOf(rg: MarketingRgStanding, now: Date): MarketingToggleState | null
   if (rg.ok || rg.consentLapsed || rg.skipReason === "rg_harm_marker") return null;
   const ms = rg.until ? Date.parse(rg.until) : NaN;
   const dated = Number.isFinite(ms) && ms > now.getTime() && ms - now.getTime() < PERMANENT_AFTER_MS;
-  return { on: false, paused: false, held: true, heldUntil: dated ? new Date(ms).toISOString() : null };
+  return { on: false, paused: false, held: true, heldUntil: dated ? new Date(ms).toISOString() : null, outreach: false };
 }
 
 export async function marketingToggleState(
@@ -471,8 +475,28 @@ export async function marketingToggleState(
   const rg = await marketingRgStanding(user, identifier, now.getTime(), { ...MARKETING_RG_DEPS, harmFlags: async () => [] });
   const held = holdOf(rg, now);
   if (held) return held;
-  if (await playerConsentRefusal(user, key)) return TOGGLE_OFF;
+  /* ⭐ U33a-P · `seen` so the licence path below costs no second ledger read for a consenting player (§3.6). */
+  const seen: { latest?: StoredMessagingConsent | null } = {};
+  const noConsent = await playerConsentRefusal(user, key, DB_GATE_READS, seen);
   const suppressed = await Promise.resolve(db.suppression.find(key));
+  if (noConsent) {
+    /* ── NOT CONSENTED · ON here would mean "offers reach you" on the LICENCE basis, so every check is strict ──
+       ⛔ STRICTER THAN THE CONSENT PATH BELOW, deliberately. A consenting person's own ON is their decision and only
+       a stop THEY made turns it off; here nobody ever said yes, so ANY active stop counts — an OPERATOR stop that a
+       consenting player's switch rightly ignores turns this one OFF. The switch must never read ON while the gate
+       would refuse: that is the D4 defect in a new place. */
+    if (suppressed) return TOGGLE_OFF;
+    const latest = seen.latest !== undefined ? seen.latest : await Promise.resolve(db.messagingConsent.latestFor(key));
+    if (latest?.status === "WITHDRAWN") return TOGGLE_OFF;
+    if (user.marketingOptIn === false && latest?.status === "GIVEN") return TOGGLE_OFF;
+    const record = await Promise.resolve(licenceOutreach());
+    if (record.state !== "open") return TOGGLE_OFF;
+    // A break that ENDED with no yes since is the one refusal the person's own tap can lift — it reads PAUSED, as
+    // it does on the consent path. Any other RG refusal is not theirs to lift, so it is a plain OFF.
+    if (!rg.ok) return rg.consentLapsed ? { ...TOGGLE_OFF, paused: true } : TOGGLE_OFF;
+    return { ...TOGGLE_OFF, on: true, outreach: true };
+  }
+  // ── CONSENTED · today's logic, unchanged ──
   if (suppressed && isPersonCreatedSuppression(suppressed.reason)) return TOGGLE_OFF;
   if (!rg.ok && rg.consentLapsed) return { ...TOGGLE_OFF, paused: true };
   return { ...TOGGLE_OFF, on: true };

@@ -60,11 +60,16 @@ export function MarketingConsent({
   initialPaused = false,
   held = false,
   heldUntil = null,
+  outreachNote = null,
 }: {
   initialOn: boolean;
   initialPaused?: boolean;
   held?: boolean;
   heldUntil?: string | null;
+  /** U33a-P · the line that says offers reach this person on the LICENCE basis, not on a consent they gave. The
+   *  SERVER passes the words (an admin edits them on Admin → System), and passes null when the switch is ON because
+   *  the person actually consented — so the note appears only where it is true. */
+  outreachNote?: string | null;
 }) {
   const { t, locale } = useT();
   const { toast } = useToast();
@@ -130,6 +135,12 @@ export function MarketingConsent({
             )}
             {paused && !on && !held && (
               <p className={NOTE} data-testid="marketing-consent-paused">{t.push.marketingPaused}</p>
+            )}
+            {/* ⭐ U33a-P · ON for a person who never agreed. ⛔ Only while the switch actually reads ON and nothing
+                else is being said: a note explaining why offers reach you is a lie beside an OFF switch. `break-keep`
+                and `anywhere` for the same reason the held note has them — Chinese has no spaces to break at. */}
+            {outreachNote && on && !held && !paused && (
+              <p className={`${NOTE} break-keep [overflow-wrap:anywhere]`} data-testid="marketing-consent-outreach">{outreachNote}</p>
             )}
             {/* A plain <a>: sign-in renders under the auth shell, and it brings the player back here. */}
             {signedOut && (

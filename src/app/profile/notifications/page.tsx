@@ -14,6 +14,9 @@ import type { MarketingToggleState } from "@/lib/server/marketing/consent";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
 import type { Dict } from "@/lib/i18n-server";
 import { formatHeldUntil } from "./held-until";
+// U33a-P · the outreach note is an admin-edited policy line (U33p), never a string in this file.
+import { policyLine } from "@/lib/server/legal/policy-lines";
+import { isPolicyLocale, type PolicyLocale } from "@/lib/legal/policy-lines";
 import { MarketingConsent, MarketingTitle } from "./marketing-consent";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
@@ -71,6 +74,9 @@ export default async function NotificationSettingsPage({
           initialPaused={marketing.paused}
           held={marketing.held}
           heldUntil={marketing.heldUntil ? formatHeldUntil(marketing.heldUntil, locale, t.common.monthsShort) : null}
+          /* U33a-P · the admin-edited line, read per request, and only when this switch is ON on the LICENCE basis.
+             A blank line (the default, until an admin saves one) passes null and nothing is printed. */
+          outreachNote={marketing.outreach ? (policyLine("profile.outreachNote", policyLocaleOf(locale)) || null) : null}
         />
       ) : (
         <MarketingConsentUnavailable t={t} />
@@ -137,4 +143,11 @@ function MarketingConsentUnavailable({ t }: { t: Dict }) {
       </div>
     </section>
   );
+}
+
+/** U33a-P · the page's locale narrowed to the three the policy lines carry. ⛔ A locale the lines do not have falls back
+ *  to English rather than printing nothing: the note explains why a switch reads ON, and silence there is worse than a
+ *  second language. */
+function policyLocaleOf(locale: string): PolicyLocale {
+  return isPolicyLocale(locale) ? locale : "en";
 }

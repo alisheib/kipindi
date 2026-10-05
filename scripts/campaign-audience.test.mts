@@ -784,7 +784,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && gateBody.includes("const standing = await Promise.resolve(reads.bookStanding(identifier));")
         && !gateBody.includes("db.suppression.find(") && !gateBody.includes("db.user.findByPhone(") && !gateBody.includes("db.messagingConsent.latestFor(")
         && !gateBody.includes("db.contactListBasis.") && !gateBody.includes("licenceOutreach()")
-        && cons.includes("reads: MarketingGateReads = DB_GATE_READS,") && cons.includes("if (await playerConsentRefusal(user, key)) return TOGGLE_OFF;")
+        && cons.includes("reads: MarketingGateReads = DB_GATE_READS,") && cons.includes("const noConsent = await playerConsentRefusal(user, key, DB_GATE_READS, seen);")
         && cons.split(RG_LINE).length - 1 === 1 && defaults.every(Boolean)
         && Object.isFrozen(DB_GATE_READS) && Object.isFrozen(AUDIENCE_SPLIT_DEPS) && Object.isFrozen(CAMPAIGN_WALK_DEPS),
       `gate body ${gateBody.length} chars · rg line ×${cons.split(RG_LINE).length - 1} · defaults ${defaults.join(",")} · frozen ${[DB_GATE_READS, AUDIENCE_SPLIT_DEPS, CAMPAIGN_WALK_DEPS].map((o) => Object.isFrozen(o)).join(",")}`);

@@ -1,6 +1,9 @@
 import { db } from "@/lib/server/store";
 import type { MessagingKey, StoredMarketingContact, StoredUser } from "@/lib/server/store";
 import { marketingKeyOf } from "@/lib/server/marketing/erase";
+// U33a-P · the export answers from the SWITCH and the record, never from its own reading of either.
+import { marketingToggleState } from "@/lib/server/marketing/consent";
+import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
 
 /**
  * U18b · THE MARKETING ARM OF A DATA EXPORT — what the platform holds about a person's marketing, for
@@ -43,6 +46,11 @@ export type MarketingDsarSection = {
   suppression: Array<{ reason: string; createdAt: string | null; liftedAt: string | null }>;
   /** U29b · staged import rows holding the person's numbers, staged since the account's creation. */
   staged: Array<{ msisdn: string; displayName: string | null; email: string | null; tags: string[]; outcome: string | null; stagedAt: string }>;
+  /** ⭐ U33a-P · non-null ONLY when offers reach this person on the LICENCE basis rather than on a consent they gave.
+   *  ⛔ A person asking what we hold about them is entitled to be told that we message them WITHOUT their consent, and
+   *  under what. A consenting person gets `null` — their basis is the consent rows already listed above — and so does
+   *  anyone the switch does not reach. `since` is the instant the record was opened, which is when it became true. */
+  outreach: { basis: "LICENCE_PLAYER"; since: string } | null;
 };
 
 export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164" | "createdAt">): Promise<MarketingDsarSection> {
@@ -80,6 +88,13 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
     }
   }
 
+  /* ⭐ U33a-P · READ FROM THE SWITCH, never recomputed here. The screen and this export answer the same question —
+     "do offers reach you without your consent?" — and two readings of one fact is how they come to disagree. */
+  const toggle = await marketingToggleState(user as Parameters<typeof marketingToggleState>[0]).catch(() => null);
+  const record = toggle?.outreach === true ? await Promise.resolve(licenceOutreach()) : null;
+  const outreach: MarketingDsarSection["outreach"] =
+    record !== null && record.state === "open" ? { basis: "LICENCE_PLAYER", since: record.recordedAt } : null;
+
   // U29b · the staged import rows holding the person's numbers, from the account's creation — through the same allowlist.
   const staged: MarketingDsarSection["staged"] = [];
   for (const identifier of numbers) {
@@ -101,5 +116,6 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
     consent,
     suppression,
     staged,
+    outreach,
   };
 }
