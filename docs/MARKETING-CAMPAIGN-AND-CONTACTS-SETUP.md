@@ -2,10 +2,10 @@
 
 **STATUS — 🟢 BUILDING. 17/52 units ✅ LIVE, 13/25 defects ✅ · 52 units · defects D1–D25 · owner decisions OD1–OD60, taken on
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
-(/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (the own-number
-test, behind the CLOSED live switch), and the consent wordings, policy lines and licence-outreach record on Admin → System.
-Latest: STEP 41, U37c-1 — the test to a typed number, the server path (STEP 40, U37s, the source line on every draft,
-`549f1ba4`). NEXT: U37c-2, the Test card — the gate track's last — then the send engine (§0 ▶ NEXT). First real
+(/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
+officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
+switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 42, U37c-2 —
+the Test card, the gate track's last unit (STEP 41, its server path). NEXT: the send engine (§0 ▶ NEXT). First real
 campaign: realistic window 18–25 October.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
@@ -38,22 +38,17 @@ campaign: realistic window 18–25 October.**
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U37c-2 — the Test card, the second half of U37c (the gate track's LAST unit; U37c-1, the server path, is
-  STEP 41): the choice "Send the test to" (own by default, or another number — disabled with its reason), the kit
-  PhoneInput, the 18+ tick labelled from the saved `adult.test` text, the typed preview (`view.test.typed`), the typed
-  outcomes and sentences, the consent link only when the target is own, §16.4 flipped to exactly ONE PhoneInput inside
-  the Test card, and Appendix A §A.9's 13 states driven at 1280 and 360 as GROWTH and as ADMIN (plus U37s's stale-line
-  note). Spec: `docs/marketing-specs/U33a-U37c-OD58.md` §6 U37c · §7.5 · Appendix A §A.1–§A.2, §A.9.
-  THEN THE SEND ENGINE, in `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order (its parallel sets are §0.2):
-  U49s ∥ U38b → U40a → U40b → U16a → U13 → U42 → U43a → U43y → U49a → U43b → U46a → U47b → U48a → (U48b) → U52a,
-  the live drive on production. ⛔ Before licence outreach is opened, two things Ali's 2026-10-05 answers created:
-  U33r, the agent-referee exclusion (Q8 — until it exists a referee can be reached, against a written promise), and
-  the registration box reworded (Q2).
+▶ NEXT: THE SEND ENGINE — U49s ∥ U38b first, then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order (its parallel
+  sets are §0.2): U40a → U40b → U16a → U13 → U42 → U43a → U43y → U49a → U43b → U46a → U47b → U48a → (U48b) → U52a,
+  the live drive on production. The gate track is built — U37c-2, the Test card, was its last unit (STEP 42).
+  ⛔ Before licence outreach is opened, the owed items in ◐ HALF-DONE 3a–4: U33r, the agent-referee exclusion (Q8 —
+  until it exists a referee can be reached, against a written promise), the registration box reworded (Q2), OD61's
+  feed restriction, the erasure marker (U16a), and the Lists card's 18+ words checked against the version on screen.
 
 WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ · 13/25 defects ✅. LIVE and usable on
   www.50pick.tz today: the contacts book on /admin/contacts (the list, the filters, add and edit, bulk actions, the
-  Lists card with its recorded basis), the campaign list and the composer (the own-number test, behind the CLOSED live
-  switch), and Admin → System's marketing wordings, public policy lines and licence-outreach record (closed). ⛔ Nothing
+  Lists card with its recorded basis), the campaign list and the composer (a test to the officer's own number, or —
+  once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live switch), and Admin → System's marketing wordings, public policy lines and licence-outreach record (closed). ⛔ Nothing
   can send a marketing SMS yet: the engine is not built and the live switch is closed. Realistic window for the first
   real campaign: 18–25 October (told to Ali 2026-10-04, re-stated 2026-10-05).
 
@@ -83,7 +78,29 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   `red:campaign-compose` 288/288; `test:campaign-audience` 4.9 now allows exactly the typed test's ONE pinned gate call
   (two new plants). Owed from the review, none reachable until licence outreach opens: OD61's feed restriction (before
   U43), the erasure marker for an account erased with no book row (U16a), and U33r (agent referees).
-  Then this §0 was rewritten (Ali: "remove the stales that confuse developers, keep a clean plan"): the session diaries
+  STEP 42 · U37c-2 — THE TEST CARD (the gate track's last unit; its server path is STEP 41): "Send the test to" — my
+  own number (masked, the default) or another number, offered only while licence outreach is open, `adult.test` is
+  saved and the draft carries the source line, and otherwise disabled with the reason beside it. Another number: the
+  kit's number field (the plan's own sentence under it, said ONCE — the line beside Send is a way back to the field),
+  the 18+ tick labelled with the SAVED words, the contact-book preview (the `{jina}` fallback, the source line, the stop
+  link never shown) and the typed outcomes; the consent link only for an OWN refusal. 🔎 The adversarial review said FIX
+  FIRST — one BLOCKER, fixed before the push: the 18+ tick outlived an edited number, so a confirmation given for one
+  number was posted for another. The tick is now bound to this draft, these words and this number; any edit or switch
+  unticks it; every Send spends it; and the post names the words' version, so the server refuses a tick given for words
+  reworded since the page opened (`attestation_stale`, §18.32 — the page re-reads and shows the new words). Its minors
+  too: the reason order (a typed test refused up front no longer says "Updating…" for ever), a reason beside "Another
+  number" on a new composer, the kit field honouring `autoComplete="off"`, the explanation no longer dimmed, and claims
+  that could not see a log or a second consent link. A second review of the fixes found no blocker; its minors were
+  closed too (the loader offers a typed test only with a preview, the card re-reads on every out-of-date refusal, each
+  pinned by a claim and a plant). Visual drive `PASS=typed` (its
+  own fresh server; the world stepped through `/api/dev-test/marketing-typed-test-seed`, 404 in production, which calls
+  only the platform's own writers): Appendix A §A.9's 13 states plus 8b (an edit unticks), 13b (outreach open: the
+  licence basis hands the own test over) and 14 (words reworded while open), at 1280 and 360 as GROWTH and as ADMIN —
+  179/179, every capture opened and read — and the console (198), live-closed (18) and dead-rail (10) passes re-run on
+  the new card, each on its own fresh server. Guard `test:campaign-compose` §16.4, §16.17–§16.20, §18.22, §18.32;
+  `red:campaign-compose` 322/322. ⚖️ §A.9's state 13 (own refused, with the consent link) is a CLOSED-outreach state:
+  once the record opens, U33a-G's licence basis reaches an adult account that never said no.
+  Then (between STEPS 41 and 42) this §0 was rewritten (Ali: "remove the stales that confuse developers, keep a clean plan"): the session diaries
   it had grown — S7c to S10, and the STEP log 1–39 — are in `MARKETING-CAMPAIGN-HISTORY.md`, verbatim. ⭐ The diaries
   are a RECORD: nothing in them decides what is done or what is next.
   Before it, the same day on OMEGA-DEV072 (S10′): STEPS 35–39, all live — U33a-R the licence-outreach record
@@ -98,14 +115,15 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
      GROWTH officer on www.50pick.tz (G7/G11 — a TOTP-enrolled GROWTH account, never Ali's own login: an owner account
      bypasses the very role checks those looks exist to prove); the readers (U25–U28) a real file through the import
      entrance, which is U30/U32.
-  3. U37s owes its screen drive — the stale-line note at 1280 and 360 — which rides with U37c-2's Test-card drive.
-     U37c is half-built BY DESIGN: U37c-1 (the server path, STEP 41) is in; U37c-2 (the Test card) is ▶ NEXT. Until it
-     ships, nothing on the page sends a recipient, so no typed test can happen.
+  3. (closed in STEP 42: U37s's stale-line note was driven with U37c-2's Test card, and U37c is whole.)
   3a. Owed from U37c-1's review, each unreachable while licence outreach is closed, each to land BEFORE it is opened:
      (i) OD61 — the /admin activity feed shows COMPLIANCE rows to non-compliance viewers (restrict it before U43 writes RG
      lines in bulk); (ii) an account erased before it ever had a book row leaves no erased marker, so the gate reads it
      as a stranger (`erase.ts` should always append the erasure WITHDRAWN row — U16a); (iii) U33r, the agent-referee
      exclusion — typed tests reach any number no account holds.
+  3b. Owed from U37c-2's review, same rule (before licence outreach is opened): the Lists card's 18+ confirmation
+     (U33b-L, `list-basis.ts`) records the `adult.list` words CURRENT at the save, not the version the officer read —
+     post the version and refuse a mismatch, as the typed test now does (§18.32).
   4. Three things Ali's 2026-10-05 answers created, none built yet: the registration box reworded (Q2); the
      agent-referee exclusion (Q8 → U33r); `SMS_PRICE_PER_SEGMENT_TZS` = 6 (G9 — U49s's Marketing SMS card carries TZS 6
      as its default, so the variable is set on Railway only if U49s slips).
@@ -298,11 +316,11 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U30 | visual | ⬜ | — | — | — | `test:contacts-import` | — | pre-flight |
 | U31 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | decide(). U31-A landed (`0dc25b98`): the pure rule, the erasure disguise (OD47). U31-B (the facts loader) and the UI come with U30. |
 | U32 | visual | ⬜ | — | — | — | `test:contacts-import` | — | progress = rows |
-| U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` · `test:marketing-wordings` · `test:dal-parity` §27 · `test:policy-lines` · `test:licence-outreach` · `test:marketing-consent` §licence-basis | `red:marketing-consent` · `red:marketing-wordings` (in-process) · `red:dal-parity` §27 · `red:policy-lines` · `red:licence-outreach` | basis at import. U33a-catalog landed (`0dc25b98`); U33a-0, the pre-ledger census = 0 (§0 STEP 29); U33w, the wordings editable and approved on Admin → System, every saved version kept (§0 STEP 30) — G4 is now "saved on the card"; U33a-L, the list-basis table in both twins, a list's one standing its newest recording (§0 STEP 31); U33p, the public policy lines editable on their own tab, today's words printed until a save (§0 STEP 32) — G4/G10 are "saved on the card"; U33a-R, the licence-outreach record — the four opening checks, the two audited writers and the card under the policy lines, the row replaced whole so a close leaves nothing behind (§0 STEP 35); U33a-G, the gate that READS it — a basis on every ALLOWED, `no_basis` its own reason, the protections untouched by it, the decision table executed closed and open (§0 STEP 36, 🟡: G0 and the source plants still owed). U33a-P, the switch and the export (§0 STEP 37); U33b-L, recording a basis on a list — the writer and the Lists card (§0 STEPS 38–39); U37s, the source line stamped on every draft save (§0 STEP 40); U37c-1, the typed test's server path (§0 STEP 41). ⛔ Still owed on the gate track: U37c-2, the Test card. The engine and the panel follow. |
+| U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` · `test:marketing-wordings` · `test:dal-parity` §27 · `test:policy-lines` · `test:licence-outreach` · `test:marketing-consent` §licence-basis | `red:marketing-consent` · `red:marketing-wordings` (in-process) · `red:dal-parity` §27 · `red:policy-lines` · `red:licence-outreach` | basis at import. U33a-catalog landed (`0dc25b98`); U33a-0, the pre-ledger census = 0 (§0 STEP 29); U33w, the wordings editable and approved on Admin → System, every saved version kept (§0 STEP 30) — G4 is now "saved on the card"; U33a-L, the list-basis table in both twins, a list's one standing its newest recording (§0 STEP 31); U33p, the public policy lines editable on their own tab, today's words printed until a save (§0 STEP 32) — G4/G10 are "saved on the card"; U33a-R, the licence-outreach record — the four opening checks, the two audited writers and the card under the policy lines, the row replaced whole so a close leaves nothing behind (§0 STEP 35); U33a-G, the gate that READS it — a basis on every ALLOWED, `no_basis` its own reason, the protections untouched by it, the decision table executed closed and open (§0 STEP 36, 🟡: G0 and the source plants still owed). U33a-P, the switch and the export (§0 STEP 37); U33b-L, recording a basis on a list — the writer and the Lists card (§0 STEPS 38–39); U37s, the source line stamped on every draft save (§0 STEP 40); U37c-1, the typed test's server path (§0 STEP 41); U37c-2, the Test card (§0 STEP 42) — the gate track is built. The engine and the panel follow. |
 | U34 | guard | 🟡 | S10 | d8fce713 | — | `test:contacts-export` | — | export. U34a landed (`d8fce713` + review `95a48ae6`): the masked/full CSV, audited before the first byte, the cross-site gate; `test:contacts-export`. U34b (the round trip through the importer) follows U30/U31. |
 | U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
 | U36 | visual | 🔵 | S10 | 06c21ac4 | /admin/campaigns did not exist → the campaign list behind six doors (nav item "SMS campaigns", ROUTE_KEYS, ROUTE_DOMAINS growth, the section gate, loading.tsx, the page gate), the status rail over the WHOLE table, server-counted progress (HELD outstanding), the nav badge only for a growth viewer | `test:campaigns-page` · `test:admin-nav` · `test:rbac` · `test:dal-parity` §26 | yes — `red:campaigns-page` (in-process) · `red:rbac` 4/4 · `red:dal-parity` §26 | list + badge. Pushed and serving (`db4a11a7`, §0 STEP 20) — its live check needs an admin session on production (G7 / G11). |
-| U37 | visual | 🔵 | S10 | fb6cca81 | /admin/campaigns/new did not exist → the composer: one Message card with a worst-case counter per language, the save re-validated on the server (its own segments, compare-and-set, OD55 in every field), and the test send to the officer's own number only, through the one gate and behind the closed live switch | `test:campaign-compose` | yes — `red:campaign-compose` (in-process) · `red:campaign-models` | composer. U37a `0dc25b98` + U37b (§0 STEP 21) + U37s, the saved source line stamped on every draft save (§0 STEP 40) + U37c-1, the test to a typed number — the server path (§0 STEP 41; the Test card is U37c-2). Pushed and serving — its live check needs an admin session on production (G7 / G11), and its first real test send needs G1. |
+| U37 | visual | 🔵 | S10 | fb6cca81 | /admin/campaigns/new did not exist → the composer: one Message card with a worst-case counter per language, the save re-validated on the server (its own segments, compare-and-set, OD55 in every field), and the test send to the officer's own number only, through the one gate and behind the closed live switch | `test:campaign-compose` | yes — `red:campaign-compose` (in-process) · `red:campaign-models` | composer. U37a `0dc25b98` + U37b (§0 STEP 21) + U37s, the saved source line stamped on every draft save (§0 STEP 40) + U37c-1, the test to a typed number — the server path (§0 STEP 41) + U37c-2, the Test card: my own number or another, the 18+ tick bound to the number and its words, the typed preview and outcomes (§0 STEP 42). Pushed and serving — its live check needs an admin session on production (G7 / G11), and its first real test send needs G1. |
 | U38 | visual | 🟡 | S10 | bd097333 | the campaign could only target the book → U38a: ONE resolver with a population axis, the player arm, ONE walk, and the will-receive split asked of the real gate, over §25's bulk reads | `test:campaign-audience` · `test:dal-parity` §21 §25 | yes — `red:campaign-audience` (in-process) · `red:dal-parity` §21 §25 | audience. U38a + §25 landed (§0 STEP 22); U38b (the card on the composer) follows. |
 | U39 | visual | 🟡 | S10 | 0dc25b98 | — | `test:read-tiers` | — | estimate. U39a landed (`0dc25b98`): the price from the difference of two delivered reads, the model, the server loader; `test:campaign-estimate`. U39b (the card) follows. |
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
@@ -367,7 +385,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
-| S11 | 2026-10-05 | **STEP 40 · U37s LIVE `549f1ba4`, and §0 made clean.** OMEGA-COMPILE01, a freshly set-up PC (`F:\kipindi-main` on `main`), taking the programme over from OMEGA-DEV072 the same afternoon. U37s: every DRAFT save stamps the SAVED source line, read fresh from the row, and the verdict prices it; a draft whose stamp differs is flagged and can be re-saved. The adversarial review said SHIP with four findings, all fixed before the push (§0 ✔ LAST SESSION). Guard `test:campaign-compose` §17.13–§17.20, `red:campaign-compose` 245/245 — verification focused on what the change reaches (Ali: "ignore previous fails, focus on ourselves"). Then, on Ali's instruction ("remove the stales that confuse developers, keep a clean plan"), §0 was rewritten to the current truth and its diaries — S7c to S10′, STEPS 1–39 — moved VERBATIM to `MARKETING-CAMPAIGN-HISTORY.md`, with §10's superseded S1–S27 pairing. U37c was split into U37c-1 (the server path) and U37c-2 (the Test card) before it was started. STEP 41 · U37c-1 the server path: its review said FIX FIRST — a typed test's RG COMPLIANCE row would have been a membership oracle on /admin's activity feed — fixed before the push (OD61), with its gaps closed; `red:campaign-compose` 288/288. |
+| S11 | 2026-10-05 | **STEP 40 · U37s LIVE `549f1ba4`, and §0 made clean.** OMEGA-COMPILE01, a freshly set-up PC (`F:\kipindi-main` on `main`), taking the programme over from OMEGA-DEV072 the same afternoon. U37s: every DRAFT save stamps the SAVED source line, read fresh from the row, and the verdict prices it; a draft whose stamp differs is flagged and can be re-saved. The adversarial review said SHIP with four findings, all fixed before the push (§0 ✔ LAST SESSION). Guard `test:campaign-compose` §17.13–§17.20, `red:campaign-compose` 245/245 — verification focused on what the change reaches (Ali: "ignore previous fails, focus on ourselves"). Then, on Ali's instruction ("remove the stales that confuse developers, keep a clean plan"), §0 was rewritten to the current truth and its diaries — S7c to S10′, STEPS 1–39 — moved VERBATIM to `MARKETING-CAMPAIGN-HISTORY.md`, with §10's superseded S1–S27 pairing. U37c was split into U37c-1 (the server path) and U37c-2 (the Test card) before it was started. STEP 41 · U37c-1 the server path: its review said FIX FIRST — a typed test's RG COMPLIANCE row would have been a membership oracle on /admin's activity feed — fixed before the push (OD61), with its gaps closed; `red:campaign-compose` 288/288. STEP 42 · U37c-2 the Test card: its review said FIX FIRST — a BLOCKER, the 18+ tick outliving an edited number — fixed, and a second review of the fixes found no blocker (its minors closed too) before the push (§0 ✔ LAST SESSION); the typed drive 179/179 at 1280 and 360 as GROWTH and ADMIN, `red:campaign-compose` 322/322. |
 | S10′ | 2026-10-04 → 05 | **STEPS 33–39 on OMEGA-DEV072 (`C:\kipindi-main`) — the S10 lane resumed after its pause.** U43-0 LIVE `bf166ff3` (the UNCONFIRMED migration, pushed alone); U41 decided (OD60); U33a-R LIVE `ec02e993`; U33a-G LIVE `b5680d5d`; U33a-P; U33b-L (the writer, then the Lists card); the admin guide v1.3; and Ali's twelve answers and three gates (COMPLIANCE-DECISIONS § "2026-10-05 · Marketing outreach rulings"). It wrote no row of its own: this one is reconstructed from its commits and its STEP log, which is in the history file. |
 | S10 | 2026-10-01 | **PAUSED 2026-10-04 and continued as S10′ (the row above) — Ali-Blade15, `marketing-s10`. U18b SHIPPED `0e68d59e` + review rework** — erasure withdraws the consent for every number the person is known by (no stop: a recycled number's next owner can consent) and empties the book (by link AND by number); both exports carry marketing from the account's creation (`test:erasure` 226 → 335; §8's sweep gained the bare-key needle). Before it: Ali: *"proceed with other sessions in parallel, push live, prove it"*. Found §0 three days stale: S9 had shipped U17 + U18a and closed no docs — the board was rebuilt from the two commits (🔎 S9 in §0). ✅ **The consent tie FIXED** on Ali's standing delegation of technical calls: one ledger clock (`ledger-stamp.ts`), both writers stamped; 400 back-to-back appends, 390 sharing a millisecond — the pre-fix writer wrong 249 times, the fix 0; `test:marketing-consent-ledger` §9/§10 (16/16 red) and `test:dal-parity` §20 (`red:dal-parity` 56/56). U18b's first cut was then REFUTED by a review agent before the push (an unliftable stop on recycled numbers; an export that leaked a previous holder's history; two sweep buckets that could not fail; a tombstone read as a stranger's number) and reworked — §0 STEP 2. U19 shipped (`addf5351`, ✅), `red:rbac` (`be0a82ac`). U18 ✅ (`aa2767e9`, round 2 of the review). U20 shipped (`733522d3`): the list, with D19 fixed before it shipped. A design workflow then specced U21–U28 (8 spec agents + a critic: 26 conflicts to resolve first), a second one U29–U40 (29 more); all decided into §9, and the calls taken while building are OD47–OD52. Then the first build tranche, `0dc25b98` (+ `006c31bb`, merged in `f40b804e`): U24 commit 1 (the ONE resolver), U27a, U28a, U31-A, U33a, U35a, U37a, U39a, U40-pure — every unit reviewed adversarially before the push, every fix run here. The merged-tree battery: typecheck, 38 suites, every red proof, the three repo-mutating harnesses, Postgres from empty, the pages rendered and driven, `next build`. All 🟡 — first parts. LIVE `ea87308f` (the live stylesheet carries the new rule). Then U24 commit 2 `c792901e` — every writer of the ledger or the stop list mirrors the book's cache (`test:contacts-audience` 45/45, red 21/21, Postgres probe 24/24); U24 🔵, then ✅ LIVE in `0e60952a`; the whole predeploy chain (186) green on that tree. Then U26 the vCard reader `b4faac34` and U21 the filter rail `c0cce85a` (both 🔵), U21's review follow-up `bb83acf9` and the lane's five sub-floor type sites lifted (type-scale §3 754 → 749). Ali, mid-session: "take any decision needed as per architecture and keep pushing live". U25 the CSV reader `928265b9` (🔵), U28b's CSV/vCard half, U22 the add/edit form `e4f04528` (🔵); predeploy red one hour (ui-consistency read U25's markup list as a table) — fixed `b7bdc7db`, and every push now runs the whole chain first. U22's review fixes `03919fa2`; U27b the XLSX reader `2438d66a`; U27 and U28 🔵. |
 | S9 | 2026-09-28 | **RECONSTRUCTED BY S10 from `7bef9f97` and `fb194038` — the session wrote no row.** U17 shipped (six doors, `test:rbac` §7b, `test:admin-nav` into `predeploy`, the skeleton equal by construction) and U18a shipped (three tables, both DALs, `test:dal-parity` §19, 8 red cases, the migration proven from EMPTY on PostgreSQL 18.3). Both LIVE that day. U18b (erasure / retention / export) was named as owed, and §1 deliberately left unticked. |
@@ -2666,6 +2684,27 @@ number rendered as an account, the player branch skipped, a masked refusal itemi
 built from a number, either budget missing or spent early, the floor skipped, the switch skipped, a token minted early,
 typed allowed while closed, the own number made to need a tick, a stand-in gate, an uncapped number, a generic number
 sentence, the RG row written, no re-ask) — each fires its own claim.
+**U37c-2 · the Test card** (as built 2026-10-05, §0 STEP 42; spec `U33a-U37c-OD58.md` §6 U37c, §7.5, Appendix A §A.1–§A.2,
+§A.9): "Send the test to" — a fieldset of two radio cards, my own number (masked, the default) or another number,
+disabled with the loader's reason beside it while licence outreach is closed, `adult.test` is unsaved, the draft carries
+no source line or its text cannot render for a book recipient (a new composer says "save first"). Another number: the
+kit `PhoneInput` (`autoComplete="off"`, which the kit now honours) in a `Field` that shows the numbering plan's own
+sentence once — the line beside Send is then a way back to the field (`COMPOSE_TEST_FIX_NUMBER`, the Save reason's
+pattern); the kit `Checkbox` labelled with the SAVED `adult.test` words; the contact-book preview and its note; the typed
+outcomes; and the consent link only when the target is own. ⛔ THE 18+ TICK IS BOUND (the review's BLOCKER): held as the
+key it was given for — this draft, the words' version, the digits — so any edit of the number, a switch of target, a
+rewording or another draft unticks it, and every Send spends it; the post carries `attestedVersion`, and the server
+refuses a confirmation given for words since reworded (`attestation_stale`, step 6, number-independent) — the page
+re-reads (as it does for every refusal that means the page is out of date) so the box shows the new words. The digits live in the card's state alone (never the address, storage, a log
+or the router). ⚖️ §A.9 state 13 (own refused, with the consent link) exists only while licence outreach is CLOSED: once
+it opens, U33a-G's licence basis reaches an adult account that never said no, and the own test is handed over.
+**Guard:** `test:campaign-compose` §16.4 · §16.17 · §16.18 · §16.19 · §16.20 · §18.22 · §18.32. **RED:** `red:campaign-compose` — a second
+number control, the number in the address or a log, a typed refusal drawn as own, a second unguarded consent link, the
+number's problem said twice, the tick outliving its number or never spent, an edit keeping it, the version not posted,
+the server honouring a tick for old words, an unrenderable text offered, "updating" for ever, a disabled choice with no
+reason, the choice switchable mid-send, and a rewording not re-read — each fires its own claim.
+**Drive:** `scripts/live/marketing-compose-drive.mjs` `PASS=typed` (its own fresh console server; the world stepped
+through `/api/dev-test/marketing-typed-test-seed`, 404 in production, which calls only the platform's writers).
 **States:** loading (skeleton = the real blocks) · blank · typing (the counter announced only on a change) · `{jina}` in
 use · over-cap · refused (no Swahili body; not starting "50pick"; UCS-2 with the fix; a placeholder or fallback; no
 source phrase; not a draft; edited elsewhere) · saved · test idle (the masked own number, the verbatim text) · test

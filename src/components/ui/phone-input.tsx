@@ -120,7 +120,10 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, Props>(function Pho
         id={id}
         type="tel"
         inputMode="numeric"
-        autoComplete="tel-national"
+        /* ⭐ "off" is honoured — a field for a number that is NOT the user's own (the composer's test number) passes it, so
+           the browser neither offers the officer's saved number nor keeps typed ones in its history. ⛔ Any other value
+           stays "tel-national": a "tel" fill is the whole international number, not this box's nine digits. */
+        autoComplete={visibleRest.autoComplete === "off" ? "off" : "tel-national"}
         /* 🔴 THE LEADING-DIGIT RULE LIVES HERE NOW, ON THE VISIBLE FIELD.
            It used to sit on the hidden input below as `pattern="[67]\d{8}"` — and
            a hidden input is *barred from constraint validation* per spec, so that

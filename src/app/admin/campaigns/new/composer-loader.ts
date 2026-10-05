@@ -32,6 +32,7 @@ import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
 import {
   TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TYPED_NEEDS_SOURCE_LINE,
+  TEST_TEMPLATE_INVALID,
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { currentWording } from "@/lib/server/marketing/wordings";
@@ -171,9 +172,10 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
 }
 
 /**
- * ⭐ U37c · THE TYPED TEST'S VIEW, decided from the same three facts the test send checks first (§3.7 step 6), in its
+ * ⭐ U37c · THE TYPED TEST'S VIEW, decided from the same facts the test send checks first (§3.7 step 6), in its
  * order and in its words: licence outreach open, `adult.test` saved, and the draft's STORED source line (the ROW's —
- * U37s: a draft saved before the line existed carries none until it is saved again). ⛔ It takes no number: the preview
+ * U37s: a draft saved before the line existed carries none until it is saved again) — and "allowed" only with a preview,
+ * so a saved text that cannot render for a book recipient is refused in the render's words. ⛔ It takes no number: the preview
  * is the book-origin render of the saved draft with the measurement token, the same for every number, and the stop link
  * made for a real number is never shown.
  */
@@ -192,7 +194,10 @@ export function composeTypedView(
   const sw = render("SW");
   const en = template.bodyEn.trim() === "" ? null : render("EN");
   const preview = sw.ok ? { SW: sw.text, EN: en !== null && en.ok ? en.text : null, revision: draft.draftRevision } : null;
-  return { allowed: why === null, why, preview, attestation };
+  // ⛔ "Allowed" always comes with a preview: a saved text that cannot render for a book recipient is refused here in the
+  // render's own words (the send's step 7), never offered and then stuck on "updating" (U37c-2's review).
+  const unrenderable = why === null && !sw.ok ? (sw.problems[0] ?? TEST_TEMPLATE_INVALID) : null;
+  return { allowed: why === null && unrenderable === null, why: why ?? unrenderable, preview, attestation };
 }
 
 /**

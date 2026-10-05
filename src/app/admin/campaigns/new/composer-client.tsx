@@ -34,6 +34,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Field, Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmModal } from "@/components/ui/modal";
 import { FormColumn } from "@/components/ui/form-column";
@@ -45,6 +47,7 @@ import { validateCampaignTemplate, scanPlaceholders } from "@/lib/marketing/camp
 import type { CampaignDraftFields, CampaignVariant, TemplateVerdict } from "@/lib/marketing/campaign-template";
 import { campaignDraftHref } from "@/lib/marketing/campaign-status";
 import { foldToGsm7 } from "@/lib/sms-compose";
+import { parseTzNumber } from "@/lib/tz-msisdn";
 import type { CampaignDraftField } from "@/lib/server/marketing/campaign-draft";
 import type { CampaignTestResult } from "@/lib/server/marketing/campaign-test-send";
 import { saveCampaignDraftAction, sendCampaignTestAction } from "./actions";
@@ -57,7 +60,10 @@ import {
   COMPOSE_SOURCE_LINE_STALE,
   COMPOSE_SAVE_AS_NEW_AUDIENCE, COMPOSE_SAVE_FAILED, COMPOSE_TEST_BUDGET, COMPOSE_TEST_CONSENT_LINK, COMPOSE_TEST_EXACT,
   COMPOSE_TEST_NOT_DRAFT, COMPOSE_TEST_PREVIEW, COMPOSE_TEST_SAVE_FIRST, COMPOSE_TEST_SEND, COMPOSE_TEST_TOKEN_NOTE,
-  COMPOSE_TEST_UPDATING, COMPOSE_TRY_AGAIN, composeSaveBlocked, composeSaved, composeTestHandedOver, composeTestTo,
+  COMPOSE_TEST_UPDATING, COMPOSE_TRY_AGAIN, composeSaveBlocked, composeSaved, composeTestHandedOver,
+  COMPOSE_TEST_TO_LEGEND, COMPOSE_TEST_TO_OWN_UNUSABLE, COMPOSE_TEST_TO_TYPED, COMPOSE_TEST_NUMBER_LABEL, COMPOSE_TEST_NUMBER_HINT,
+  COMPOSE_TEST_TYPED_PREVIEW, COMPOSE_TEST_TYPED_NOTE, COMPOSE_TEST_NEED_NUMBER, COMPOSE_TEST_FIX_NUMBER, COMPOSE_TEST_NEED_TICK, composeTestToOwn,
+  composeTypedHandedOver,
 } from "./composer-copy";
 
 type ReadyView = Extract<ComposeView, { kind: "ready" }>;
@@ -76,12 +82,16 @@ type Refusal = {
   kind: "invalid" | "not_found" | "not_draft" | "stale" | "source_unreadable" | "failed" | "role" | "rate_limited" | "unfinished";
   message: string;
 };
+/** U37c-2 · who a test went to — a typed number the officer's own is `own` (the server decides it, never the screen). */
+type TestTarget = "own" | "typed";
 type TestState =
   | { kind: "idle" }
-  | { kind: "handed_over"; via: "stub" | "open"; at: string; text: string }
-  | { kind: "refused"; reason: string; error: string }
-  | { kind: "unconfirmed"; error: string; text: string }
+  | { kind: "handed_over"; via: "stub" | "open"; at: string; text: string; target: TestTarget }
+  | { kind: "refused"; reason: string; error: string; target: TestTarget }
+  | { kind: "unconfirmed"; error: string; text: string; target: TestTarget }
   | { kind: "error"; error: string };
+/** U37c-2 · a test to ANOTHER number, as the Test card posts it — the server re-types it (`testRecipientOf`). */
+type TypedTestRecipient = { kind: "typed"; number: string; adultAttested: boolean; attestedVersion: number | null };
 
 const EMPTY: Fields = { name: "", bodySw: "", bodyEn: "", nameFallbackSw: "", nameFallbackEn: "" };
 const FIELD_ORDER: CampaignDraftField[] = ["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "sourcePhrase", "audience"];
@@ -89,6 +99,9 @@ const FIELD_ORDER: CampaignDraftField[] = ["name", "bodySw", "nameFallbackSw", "
 const ON_PAGE: ReadonlySet<CampaignDraftField> = new Set(["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "audience"]);
 /** The refusals whose remedy is the officer's own consent switch, on their own profile. */
 const CONSENT_REASONS = ["no_consent", "consent_withdrawn", "suppressed"];
+/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words, the record or the line changed since it
+ *  loaded): the page re-reads, so the card shows the world the server just answered from. */
+const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];
 
 const trimmed = (f: Fields): Fields => ({
   name: f.name.trim(), bodySw: f.bodySw.trim(), bodyEn: f.bodyEn.trim(), nameFallbackSw: f.nameFallbackSw.trim(), nameFallbackEn: f.nameFallbackEn.trim(),
@@ -106,11 +119,13 @@ const firstKeyOf = (problems: Problems): CampaignDraftField | null => {
   return null;
 };
 
+/** ⛔ D19 · the state is the RESULT's, field for field — the reason, the sentence and the target come back from the server
+ *  and the screen decides none of them. */
 function testStateOf(r: CampaignTestResult | { ok: false; error: string }): TestState {
   if (!("outcome" in r)) return { kind: "error", error: r.error };
-  if (r.outcome === "handed_over") return { kind: "handed_over", via: r.via, at: r.at, text: r.text };
-  if (r.outcome === "unconfirmed") return { kind: "unconfirmed", error: r.error, text: r.text };
-  return { kind: "refused", reason: r.reason, error: r.error };
+  if (r.outcome === "handed_over") return { kind: "handed_over", via: r.via, at: r.at, text: r.text, target: r.target };
+  if (r.outcome === "unconfirmed") return { kind: "unconfirmed", error: r.error, text: r.text, target: r.target };
+  return { kind: "refused", reason: r.reason, error: r.error, target: r.target };
 }
 
 /* ═══ THE SHARED STATE ═══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -129,6 +144,8 @@ type Composer = {
   /** The field the Save reason names, when this page renders it — the reason is then a button that goes there. */
   blockedField: CampaignDraftField | null;
   goToBlocked: () => void;
+  /** Focus the first of these fields this page draws (`[data-field]`) — the Save reason's way there, and the Test card's. */
+  goToField: (keys: string[]) => void;
   save: () => void;
   /** After `stale`, `not_draft` or `not_found`: the same text, saved as a NEW draft (no id) with the audience on screen. */
   saveAsNew: () => void;
@@ -145,7 +162,8 @@ type Composer = {
   actReason: string | undefined;
   test: TestState;
   testing: CampaignVariant | null;
-  sendTest: (v: CampaignVariant) => void;
+  /** Test the saved draft — on the officer's own number, or (U37c-2) the typed one the Test card holds. */
+  sendTest: (v: CampaignVariant, recipient?: TypedTestRecipient) => void;
   formRef: RefObject<HTMLFormElement | null>;
 };
 
@@ -315,22 +333,26 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
     router.refresh();
   };
 
-  const sendTest = (variant: CampaignVariant) => {
+  const sendTest = (variant: CampaignVariant, recipient?: TypedTestRecipient) => {
     const s = saved;
     if (s === null || dirty || testing !== null || !mayAct || view.readOnly) return;
     setTesting(variant);
     setTest({ kind: "idle" });
     startTest(async () => {
-      const r = await runAdminAction(() => sendCampaignTestAction(s.id, variant));
+      const r = await runAdminAction(() => sendCampaignTestAction(s.id, variant, recipient ?? { kind: "own" }));
       setTest(testStateOf(r));
       setTesting(null);
-      // The preview now carries the officer's real stop link (minted by the first test).
-      if ("outcome" in r && r.outcome === "handed_over") router.refresh();
+      // The own preview now carries the officer's real stop link (minted by their first test). A typed test's link is
+      // that person's, and is never shown.
+      if ("outcome" in r && r.outcome === "handed_over" && r.target === "own") router.refresh();
+      // ⛔ §18.32 · the 18+ words (or the record, or the line) changed since this page opened: read again, so the box shows
+      // the words a tick confirms and "Another number" is offered only as the server now answers.
+      if ("outcome" in r && r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();
     });
   };
 
   const value: Composer = {
-    view, fields, setField, verdict, problemAt, saved, dirty, saving, canSave, saveBlocked, blockedField, goToBlocked, save,
+    view, fields, setField, verdict, problemAt, saved, dirty, saving, canSave, saveBlocked, blockedField, goToBlocked, goToField, save,
     saveAsNew, canSaveAsNew, saveAsNewBlocked, askDiscard: setDiscardAsked, refusal, mayAct, actReason, test, testing,
     sendTest, formRef,
   };
@@ -610,8 +632,10 @@ function TestOutcome({ state }: { state: TestState }) {
   if (state.kind === "idle") return null;
   if (state.kind === "handed_over") {
     return (
-      <div className="space-y-1.5" role="status" data-test-outcome="handed_over">
-        <p className="text-body-sm text-success-fg">{composeTestHandedOver(state.at, state.via)}</p>
+      <div className="space-y-1.5" role="status" data-test-outcome="handed_over" data-test-target={state.target}>
+        <p className="text-body-sm text-success-fg">
+          {state.target === "typed" ? composeTypedHandedOver(state.at, state.via) : composeTestHandedOver(state.at, state.via)}
+        </p>
         <p className="text-body-sm text-text-secondary">{COMPOSE_TEST_EXACT}</p>
         <pre className={PRE} data-operator-text="message" data-test-sent>{state.text}</pre>
       </div>
@@ -619,7 +643,7 @@ function TestOutcome({ state }: { state: TestState }) {
   }
   if (state.kind === "unconfirmed") {
     return (
-      <div className="space-y-1.5" role="status" data-test-outcome="unconfirmed">
+      <div className="space-y-1.5" role="status" data-test-outcome="unconfirmed" data-test-target={state.target}>
         <Callout tone="warning" role="status">
           <span className="block">{state.error}</span>
         </Callout>
@@ -630,9 +654,10 @@ function TestOutcome({ state }: { state: TestState }) {
   if (state.kind === "refused") {
     return (
       <Callout tone="danger" role="alert">
-        <span className="block" data-test-outcome="refused" data-test-reason={state.reason}>{state.error}</span>
-        {/* ⛔ A plain <a>: /profile is the player shell, and crossing shells is a hard navigation (test:shell-boundary). */}
-        {CONSENT_REASONS.includes(state.reason) && (
+        <span className="block" data-test-outcome="refused" data-test-reason={state.reason} data-test-target={state.target}>{state.error}</span>
+        {/* ⛔ A plain <a>: /profile is the player shell, and crossing shells is a hard navigation (test:shell-boundary).
+            ⛔ U37c-2 · only for the officer's OWN number: a typed refusal's remedy is never their own consent switch. */}
+        {state.target === "own" && CONSENT_REASONS.includes(state.reason) && (
           <a href="/profile/notifications" className="mt-1 inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline" data-test-consent-link>
             {COMPOSE_TEST_CONSENT_LINK}
           </a>
@@ -647,11 +672,65 @@ function TestOutcome({ state }: { state: TestState }) {
   );
 }
 
+/** U37c-2 · one answer to "Send the test to": a native radio inside a bordered card — the console's radio-card shape
+ *  (`/admin/affiliate`'s Choice), with no value of its own. A disabled choice says why beside it, never hidden. */
+function TestToChoice({
+  value, checked, disabled, onPick, label, why,
+}: {
+  value: TestTarget;
+  checked: boolean;
+  disabled: boolean;
+  onPick: (v: TestTarget) => void;
+  label: string;
+  why: string | null;
+}) {
+  return (
+    <label
+      className={`flex min-h-[var(--tap-min)] items-start gap-[10px] rounded-md border px-3 py-[10px] text-body-sm transition-colors ${
+        disabled ? "cursor-not-allowed border-border-subtle" : "cursor-pointer"
+      } ${checked ? "border-royal-700 bg-royal-500/10" : disabled ? "" : "border-border hover:border-border-strong"}`}
+      data-test-choice={value}
+    >
+      <input
+        type="radio"
+        name="test-to"
+        value={value}
+        checked={checked}
+        disabled={disabled}
+        onChange={() => onPick(value)}
+        className={`mt-0.5 shrink-0 accent-[var(--royal-500)] ${disabled ? "opacity-70" : ""}`}
+      />
+      <span className="min-w-0">
+        <span className={`block font-semibold ${disabled ? "text-text-tertiary" : "text-text"}`}>{label}</span>
+        {why !== null && <span className="mt-0.5 block text-body-sm text-text-secondary" data-test-choice-why={value}>{why}</span>}
+      </span>
+    </label>
+  );
+}
+
 export function ComposerTest() {
   const c = useComposer();
   const { view, saved } = c;
   const t = view.test;
-  const preview = t.preview;
+  const typedView = t.typed;
+  // ⛔ U37c-2 · THE TYPED NUMBER LIVES HERE, AND NOWHERE ELSE — never the address, never storage, never the provider:
+  // this card holds the digits, posts them once with the test, and the server re-types them.
+  const [target, setTarget] = useState<TestTarget>(t.ownNumberMasked !== null ? "own" : "typed");
+  const [digits, setDigits] = useState("");
+  // ⛔ THE 18+ TICK CONFIRMS ONE THING: this draft, these words, this number, this send. It is held as the key it was
+  // given for — so a changed number, a reworded `adult.test`, another draft or a switch of target unticks it — and every
+  // Send spends it (the server records a confirmation for one attempt only, §18.32).
+  const [tickedFor, setTickedFor] = useState<string | null>(null);
+  const typed = target === "typed";
+  const tickKey = `${saved?.id ?? ""}|${typedView.attestation?.version ?? ""}|${digits}`;
+  const ticked = tickedFor === tickKey;
+  const pick = (v: TestTarget) => { setTarget(v); setTickedFor(null); };
+  // A typed test the server would refuse up front, said BEFORE "updating": its preview is null, so it never freshens.
+  const typedOff = typed && !typedView.allowed;
+  // A view with no reason of its own has no draft yet: read-only, "save first" — or, just saved and not yet re-read, "updating".
+  const typedWhy = typedView.why ?? (view.readOnly ? COMPOSE_TEST_NOT_DRAFT : saved !== null && !c.dirty ? COMPOSE_TEST_UPDATING : COMPOSE_TEST_SAVE_FIRST);
+
+  const preview = typed ? (typedView.allowed ? typedView.preview : null) : t.preview;
   const fresh = preview !== null && saved !== null && preview.revision === saved.draftRevision;
   const blocked: string | null = view.readOnly
     ? COMPOSE_TEST_NOT_DRAFT
@@ -659,28 +738,101 @@ export function ComposerTest() {
       ? c.actReason ?? COMPOSE_TEST_NOT_DRAFT
       : saved === null || c.dirty
         ? COMPOSE_TEST_SAVE_FIRST
-        : !fresh
-          ? COMPOSE_TEST_UPDATING
-          : null;
-  const ready = blocked === null && t.ownNumberMasked !== null && c.testing === null;
+        : typedOff
+          ? typedWhy
+          : !fresh
+            ? COMPOSE_TEST_UPDATING
+            : null;
+  // The typed number as the server will parse it — `+255` and the nine digits the kit's field holds.
+  const parsed = digits.length === 9 ? parseTzNumber(`+255${digits}`) : null;
+  const numberProblem = parsed !== null && parsed.verdict !== "ok" ? parsed.reason : null;
+  const typedBlocked: string | null = !typed
+    ? null
+    : !typedView.allowed
+      ? typedWhy
+      : parsed === null
+        ? COMPOSE_TEST_NEED_NUMBER
+        : numberProblem !== null
+          ? numberProblem
+          : !ticked
+            ? COMPOSE_TEST_NEED_TICK
+            : null;
+  const reason = blocked ?? typedBlocked;
+  // ⭐ The plan's sentence is already under the number field: beside Send it is not said twice — a button goes back to it.
+  const backToNumber = blocked === null && numberProblem !== null && typedBlocked === numberProblem;
+  const ready = reason === null && (typed || t.ownNumberMasked !== null) && c.testing === null;
   const variants: CampaignVariant[] = fresh && preview !== null && preview.EN !== null ? ["SW", "EN"] : ["SW"];
+  const headings = typed ? COMPOSE_TEST_TYPED_PREVIEW : COMPOSE_TEST_PREVIEW;
+  const recipient = (): TypedTestRecipient | undefined =>
+    (typed ? { kind: "typed", number: `+255${digits}`, adultAttested: ticked, attestedVersion: typedView.attestation?.version ?? null } : undefined);
+  /** One click, one confirmation: the recipient is read, THEN the tick is spent, then the test goes. */
+  const send = (v: CampaignVariant) => {
+    const r = recipient();
+    setTickedFor(null);
+    c.sendTest(v, r);
+  };
 
   return (
-    <div className="space-y-3" data-test-card={ready ? "ready" : "blocked"}>
-      {t.ownNumberMasked !== null ? (
-        <p className="text-body-sm text-text" data-test-to>{composeTestTo(t.ownNumberMasked)}</p>
-      ) : (
-        <p className="text-body-sm text-danger-fg" data-test-to="unusable">{t.ownNumberProblem}</p>
+    <div className="space-y-3" data-test-card={ready ? "ready" : "blocked"} data-test-target={target}>
+      <fieldset className="space-y-2" data-test-to-choice>
+        <legend className="mb-1 text-body-sm font-semibold text-text">{COMPOSE_TEST_TO_LEGEND}</legend>
+        <TestToChoice
+          value="own"
+          checked={!typed}
+          disabled={t.ownNumberMasked === null || c.testing !== null}
+          onPick={pick}
+          label={t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
+          why={t.ownNumberMasked !== null ? null : t.ownNumberProblem}
+        />
+        <TestToChoice
+          value="typed"
+          checked={typed}
+          disabled={!typedView.allowed || c.testing !== null}
+          onPick={pick}
+          label={COMPOSE_TEST_TO_TYPED}
+          why={typedView.allowed ? null : typedWhy}
+        />
+      </fieldset>
+
+      {typed && typedView.allowed && (
+        <div className="space-y-3" data-test-typed>
+          <Field label={COMPOSE_TEST_NUMBER_LABEL} hint={COMPOSE_TEST_NUMBER_HINT} error={numberProblem ?? undefined} dataField="testNumber">
+            <PhoneInput
+              value={digits}
+              onChange={(e) => { setDigits(e.target.value); setTickedFor(null); }}
+              autoComplete="off"
+              disabled={c.testing !== null}
+              error={numberProblem !== null}
+              title={COMPOSE_TEST_NUMBER_HINT}
+              data-test-recipient="typed"
+            />
+          </Field>
+          {typedView.attestation !== null && (
+            <Checkbox checked={ticked} onChange={(on) => setTickedFor(on ? tickKey : null)} label={typedView.attestation.text} />
+          )}
+        </div>
       )}
+
       {t.liveNote !== null && <p className="text-body-sm text-text-secondary" data-test-live-note>{t.liveNote}</p>}
       {fresh && preview !== null && variants.map((v) => (
         <div key={v} className="space-y-1.5">
-          <p className="text-body-sm text-text-secondary">{COMPOSE_TEST_PREVIEW[v]}</p>
+          <p className="text-body-sm text-text-secondary">{headings[v]}</p>
           <pre className={PRE} data-operator-text="message" data-test-preview={v}>{v === "EN" ? preview.EN : preview.SW}</pre>
         </div>
       ))}
-      {fresh && !t.tokenReady && <p className="text-body-sm text-text-tertiary">{COMPOSE_TEST_TOKEN_NOTE}</p>}
-      {blocked !== null && <p className="text-body-sm text-text-secondary" data-test-blocked>{blocked}</p>}
+      {fresh && typed && <p className="text-body-sm text-text-tertiary" data-test-typed-note>{COMPOSE_TEST_TYPED_NOTE}</p>}
+      {fresh && !typed && !t.tokenReady && <p className="text-body-sm text-text-tertiary">{COMPOSE_TEST_TOKEN_NOTE}</p>}
+      {reason !== null && backToNumber && (
+        <button
+          type="button"
+          onClick={() => c.goToField(["testNumber"])}
+          className="inline-flex items-center min-h-[var(--tap-min)] text-left text-body-sm text-text-secondary underline underline-offset-2 hover:text-text"
+          data-test-blocked="testNumber"
+        >
+          {COMPOSE_TEST_FIX_NUMBER}
+        </button>
+      )}
+      {reason !== null && !backToNumber && <p className="text-body-sm text-text-secondary" data-test-blocked>{reason}</p>}
       <div className="flex flex-wrap gap-2">
         {variants.map((v) => (
           <Button
@@ -690,8 +842,8 @@ export function ComposerTest() {
             variant="ghost"
             disabled={!ready}
             loading={c.testing === v}
-            title={blocked ?? undefined}
-            onClick={() => c.sendTest(v)}
+            title={reason ?? undefined}
+            onClick={() => send(v)}
             data-test-send={v}
           >
             {COMPOSE_TEST_SEND[v]}

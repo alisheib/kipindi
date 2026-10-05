@@ -169,9 +169,6 @@ export const COMPOSE_AUDIENCE_HIDDEN = "This draft's audience uses a filter your
 export const COMPOSE_AUDIENCE_CLEAR = "Remove the filter";
 
 /* ── the test card ── */
-export function composeTestTo(masked: string): string {
-  return `To ${masked} (your own number)`;
-}
 export const COMPOSE_TEST_SAVE_FIRST = "Save first — the test sends the saved text.";
 export const COMPOSE_TEST_UPDATING = "Updating to the saved text…";
 export const COMPOSE_TEST_NOT_DRAFT = "Only a draft can be tested.";
@@ -188,4 +185,34 @@ export function composeTestHandedOver(at: string, via: "stub" | "open"): string 
   return via === "stub"
     ? `Handed to this server's console stub at ${formatClock(at)} — it went to the server log, not to a phone.`
     : `Handed to the network at ${formatClock(at)} — check your phone.`;
+}
+
+/* ── U37c-2 · THE TEST TO ANOTHER NUMBER (spec §7.5 · §7.3 — English console copy) ── */
+export const COMPOSE_TEST_TO_LEGEND = "Send the test to";
+export function composeTestToOwn(masked: string): string {
+  return `My own number — ${masked}`;
+}
+export const COMPOSE_TEST_TO_OWN_UNUSABLE = "My own number";
+export const COMPOSE_TEST_TO_TYPED = "Another number";
+export const COMPOSE_TEST_NUMBER_LABEL = "Number to test on";
+export const COMPOSE_TEST_NUMBER_HINT =
+  "Any Tanzanian mobile number. The test goes through the same checks as a campaign — use a phone whose owner expects it.";
+export const COMPOSE_TEST_TYPED_PREVIEW = {
+  SW: "Swahili, as it will be sent to that number",
+  EN: "English, as it will be sent to that number",
+} as const;
+export const COMPOSE_TEST_TYPED_NOTE =
+  `The name is your word for ${JINA}, never the person's own, and their stop link is made for them and isn't shown here.`;
+/** Send's reason while no whole number has been typed. */
+export const COMPOSE_TEST_NEED_NUMBER = "Type the number to test on.";
+/** Send's reason while the typed number is one the plan refuses — the plan's own sentence is already under the field, so
+ *  this line says it once more only as a way back to it (a button that goes to the field, as the Save reason does). */
+export const COMPOSE_TEST_FIX_NUMBER = "Correct the number above to send the test.";
+/** Send's reason while the 18+ box is unticked — the test send's own sentence (`TEST_ATTESTATION_MISSING`), word for word. */
+export const COMPOSE_TEST_NEED_TICK = "Tick the box to confirm the person who uses this number is 18 or older.";
+/** A typed test the gateway took — about THAT person's phone, never "yours". */
+export function composeTypedHandedOver(at: string, via: "stub" | "open"): string {
+  return via === "stub"
+    ? `Handed to this server's console stub at ${formatClock(at)} — it went to the server log, not to a phone.`
+    : `Handed to the network at ${formatClock(at)} — ask the person to check their phone.`;
 }

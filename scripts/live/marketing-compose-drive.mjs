@@ -42,6 +42,16 @@
  *   PASS=dead-rail (SMS_PROVIDER=blackball and NO keys):
  *   · the sender line speaks Admin → System's dead-rail words with both Railway names; a draft still saves, its saved line
  *     inviting no test; a test is refused rail_dead, pointing at that line.
+ *   PASS=typed (U37c-2 · its OWN fresh console server — it opens the server's licence-outreach record and saves
+ *   wordings and policy lines through /api/dev-test/marketing-typed-test-seed, the platform's own writers):
+ *   · spec Appendix A §A.9's thirteen Test-card states, as GROWTH (masked) and as ADMIN (a reader), at 1280 and 360 —
+ *     own by default, "Another number" disabled while outreach is closed / adult.test unsaved / the draft has no source
+ *     line, the empty field, a landline refused in the parser's words, unticked, ready (the contact-book preview),
+ *     handed over to the stub, refused (one neutral sentence masked; the reason for a reader), the number's budget,
+ *     and own refused with the consent link (while outreach is closed — once it opens, U33a-G's licence basis hands the same
+ *     test over) beside a typed refusal with none; plus U37s's stale-line note and re-save; and the 18+ tick BOUND
+ *     (§16.19): an edited number unticks it (8b), every Send spends it, and words reworded while the page is open are
+ *     refused and re-read (14, §18.32).
  *   NOT DRIVEN: the test's "unconfirmed" state — it needs a carrier that took the request and lost the reply, which only a
  *   recorded switch could reach; `test:campaign-compose` §18.11 and §18.5's control hold it.
  *
@@ -66,7 +76,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const BASE = process.env.BASE || "http://localhost:3010";
-const PASS = process.env.PASS === "live-closed" || process.env.PASS === "dead-rail" ? process.env.PASS : "console";
+const PASS = ["live-closed", "dead-rail", "typed"].includes(process.env.PASS ?? "") ? process.env.PASS : "console";
 const SHOTS = join(".qa-shots", "marketing-setup", "u37b", PASS);
 mkdirSync(SHOTS, { recursive: true });
 
@@ -444,13 +454,16 @@ async function consolePass() {
       (await attr(page, "[data-audience]", "data-audience")) === "everyone" && (await textOf(page, "[data-audience-line]")) === EVERYONE
         && (await textOf(page, SEL.audience)).includes(AUDIENCE_NOTE));
     ok(`${vp.name} · BLANK · the test card names the officer's OWN number, masked, says "Save first", and its button is off`,
-      (await textOf(page, "[data-test-to]")) === `To ${maskedFor(phone)} (your own number)` && (await textOf(page, "[data-test-blocked]")) === SAVE_FIRST
+      (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(phone)}` && (await textOf(page, "[data-test-blocked]")) === SAVE_FIRST
         && (await attr(page, "[data-test-card]", "data-test-card")) === "blocked" && (await isDisabled(page, '[data-test-send="SW"]')) === true
         && !(await has(page, "[data-test-live-note]")),
-      `${await textOf(page, "[data-test-to]")} · ${await textOf(page, "[data-test-blocked]")}`);
-    ok(`${vp.name} · BLANK · ⛔ no number control — no tel input, nothing named phone, msisdn, number or to — and ⛔ OD24 no TZS on the page`,
+      `${await textOf(page, '[data-test-choice="own"]')} · ${await textOf(page, "[data-test-blocked]")}`);
+    ok(`${vp.name} · BLANK · ⛔ no number field while "Another number" is off — no tel input, nothing named phone, msisdn, number or to — "Another number" says why it is off (save first), and ⛔ OD24 no TZS on the page`,
       (await page.locator('main#main-content input[type="tel"], main#main-content [inputmode="tel"], main#main-content input[name="phone"], main#main-content input[name="msisdn"], main#main-content input[name="number"], main#main-content input[name="to"]').count()) === 0
-        && !/TZS/.test(await mainText(page)));
+        && (await isDisabled(page, '[data-test-choice="typed"] input')) === true
+        && (await textOf(page, '[data-test-choice-why="typed"]')) === SAVE_FIRST
+        && !/TZS/.test(await mainText(page)),
+      await textOf(page, '[data-test-choice-why="typed"]'));
     await fitCheck(page, vp.name, "blank");
     await stateShot(page, vp.name, "blank", BLOCKED + NAME_PROBLEM);
     // ⭐ Validation takes the officer to the field: the reason is a button, and focus lands in the name's own input.
@@ -935,9 +948,359 @@ async function deadRailPass() {
   }
 }
 
+/* ═══ PASS · typed — U37c-2: the Test card's test to ANOTHER number, spec Appendix A §A.9 (+ U37s's stale line) ═══════
+ * A FRESH console server (the console pass's boot line) — this pass moves the server's ONE licence-outreach record and
+ * saves wordings and policy lines, which no other pass may meet. The world is stepped forward only through
+ * /api/dev-test/marketing-typed-test-seed, which calls the platform's own writers. Four seats — GROWTH (masked) and ADMIN
+ * (a reader), each at 1280 and 360 — walk the states in the order the world allows: closed → lines saved and outreach
+ * opened → `adult.test` saved → the source line saved. Every capture asserts its sentence first (`stateShot`). */
+const TYPED = {
+  legend: "Send the test to",
+  closed: "Tests to another number open once licence outreach is switched on (Admin → System → Licence outreach). Send yourself a test for now.",
+  noAdult: "Tests to another number need the 18+ confirmation wording saved first (Admin → System → Marketing wordings).",
+  noSource: "A test to another number needs the campaign's source line, and this draft has none — it is added when the draft is saved after the owner sets it (gate G5). Send yourself a test for now.",
+  needNumber: "Type the number to test on.",
+  needTick: "Tick the box to confirm the person who uses this number is 18 or older.",
+  fixNumber: "Correct the number above to send the test.",
+  reworded: "The 18+ confirmation was reworded while this page was open — read the new words and tick the box again.",
+  adultReworded: "I confirm that the person who uses this number is aged 18 or older.",
+  refusedMasked: "No test was sent: this number can't receive this campaign's messages. Choose another number, or test on your own.",
+  refusedReader: "No test was sent: this number is on the stop list, and a stop is kept for good.",
+  rateTo: /^That number has had as many tests as it may for now — choose another, or try again in [0-9]+ min\.$/,
+  handedStub: /^Handed to this server's console stub at [0-9]{2}:[0-9]{2} — it went to the server log, not to a phone\.$/,
+  previewHead: "Swahili, as it will be sent to that number",
+  note: "The name is your word for {jina}, never the person's own, and their stop link is made for them and isn't shown here.",
+  stale: "This draft's source line isn't the one saved now on Admin → System → Marketing wordings — save the draft to bring it up to date.",
+  adultLabel: "I confirm that the person who uses this number is 18 or older.",
+  source: "Namba yako ipo orodhani kwetu.",
+};
+const T = {
+  choice: "[data-test-to-choice]",
+  own: '[data-test-choice="own"] input',
+  typed: '[data-test-choice="typed"] input',
+  typedWhy: '[data-test-choice-why="typed"]',
+  number: '[data-test-recipient="typed"]',
+  tick: '[data-test-typed] label:has(input[type="checkbox"])',
+  tickInput: '[data-test-typed] input[type="checkbox"]',
+  blocked: "[data-test-blocked]",
+  send: '[data-test-send="SW"]',
+  stale: "[data-compose-source-stale]",
+};
+/** Where an outcome capture starts: the card's top at 1280 (all of it fits), the Send button at 360 (so the result does). */
+const outcomeAnchor = (key) => (key.startsWith("360") ? T.send : SEL.test);
+const typedSeed = async (page, query) => {
+  const r = await page.request.post(`${BASE}/api/dev-test/marketing-typed-test-seed?${query}`);
+  if (!r.ok()) throw new Error(`typed seed ${query} failed: ${r.status()} ${await r.text()}`);
+  return r.json();
+};
+/** ⚖️ Every attempt — own or typed — first spends the officer's general test budget (`marketing.testSend`: 3, then one
+ *  back every 10 minutes), so a seat that walks states 9–13 empties the buckets between its runs of sends. */
+const resetBudgets = async (page) => {
+  const r = await page.request.post(`${BASE}/api/dev-test/reset-rate-limits`);
+  if (!r.ok()) throw new Error(`reset-rate-limits failed: ${r.status()}`);
+};
+/** Nine national digits for a typed number: NDC 75 (sendable), the run, and a slot — no run meets another's numbers. */
+const typedDigits = (slot) => `75${RUN}${String(slot).padStart(2, "0")}`;
+async function typeNumber(page, digits) {
+  const f = page.locator(T.number).first();
+  await f.fill("");
+  await f.pressSequentially(digits, { delay: 15 });
+  await wait(300);
+}
+/** One typed or own test: the old outcome leaves first (the card goes idle), then the new one arrives — so two outcomes
+ *  with the same words (the same minute) are never mistaken for one. The 3-second floor sits inside the wait. */
+async function sendOne(page) {
+  await page.locator(T.send).first().click();
+  await page.waitForSelector("[data-test-outcome]", { state: "detached", timeout: 5000 }).catch(() => {});
+  await page.waitForSelector("[data-test-outcome]", { timeout: 30000 }).catch(() => {});
+  await wait(400);
+  const o = await outcomeOf(page);
+  return o === null ? null : { ...o, target: await attr(page, "[data-test-outcome]", "data-test-target") };
+}
+
+/** Tick the 18+ box if it is not ticked. ⛔ Every Send spends the tick (§16.19), so each typed test ticks first. */
+async function tickBox(page) {
+  if (!(await page.locator(T.tickInput).first().isChecked())) await page.locator(T.tick).first().click();
+  await wait(250);
+}
+/** One typed test as an officer makes it: tick, send — and whether the send spent the tick (it must). */
+async function sendTypedOne(page) {
+  await tickBox(page);
+  const o = await sendOne(page);
+  return o === null ? null : { ...o, spent: !(await page.locator(T.tickInput).first().isChecked()) };
+}
+
+async function typedPass() {
+  const roles = [{ role: "GROWTH", tag: "growth", reads: false }, { role: "ADMIN", tag: "admin", reads: true }];
+  const seats = [];
+  for (const [i, vp] of VIEWPORTS.entries()) {
+    for (const [j, r] of roles.entries()) {
+      const phone = phoneFor(70 + i * 2 + j);
+      const { ctx, page } = await staffCtx(r.role, phone, { width: vp.width, height: vp.height }, "no-preference", OFFICER);
+      seats.push({ vp, r, phone, ctx, page, draft: "", key: `${vp.name}-${r.tag}`, slot: 20 * (i * 2 + j) });
+    }
+  }
+  // ⭐ STATE 12's helper — another GROWTH officer. The number's budget (`marketing.testSendTo`, 5) is the recipient's,
+  // whoever sends: three tests by this officer and two by the seat spend it, and the seat's sixth is refused.
+  const helper = { ...(await staffCtx("GROWTH", phoneFor(78), { width: 1280, height: 800 }, "no-preference", "Neema Kweka")), draft: "" };
+  try {
+    const start = await typedSeed(seats[0].page, "");
+    if (start.outreach !== "closed") {
+      ok("PASS=typed needs a FRESH console server — licence outreach must start CLOSED", false, JSON.stringify(start));
+      return;
+    }
+
+    // ── PHASE A · the record CLOSED and nothing saved: each officer saves a draft, which therefore carries no source line ──
+    for (const s of seats) {
+      const { page, key } = s;
+      console.log(`${NL}[u37c] typed · ${key} · licence outreach closed`);
+      await openComposer(page);
+      await page.locator(SEL.name).fill(`${NAME} ${s.r.tag}`);
+      await page.locator(SEL.bodySw).fill(BODY_JINA);
+      await wait(250);
+      await page.locator(SEL.fallbackSw).fill(FALLBACK_SW);
+      await wait(250);
+      await save(page);
+      await waitReady(page);
+      s.draft = new URL(page.url()).searchParams.get("draft") ?? "";
+      const ownChecked = await page.locator(T.own).first().isChecked().catch(() => null);
+      ok(`${key} · STATE 1 · "Send the test to": my own number, masked, is chosen by default, with "Another number" beside it`,
+        /^cmp_/.test(s.draft) && ownChecked === true && (await textOf(page, `${T.choice} legend`)) === TYPED.legend
+          && (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(s.phone)}` && (await has(page, T.typed)),
+        `${await textOf(page, T.choice)}`);
+      ok(`${key} · STATE 2 · "Another number" is DISABLED with its reason beside it — licence outreach is closed — and no number field is drawn`,
+        (await isDisabled(page, T.typed)) === true && (await textOf(page, T.typedWhy)) === TYPED.closed && !(await has(page, T.number)),
+        await textOf(page, T.typedWhy));
+      await fitCheck(page, key, "typed-01-02-own-default-closed");
+      await stateShot(page, key, "typed-01-02-own-default-closed", TYPED.closed, SEL.test);
+
+      // STATE 13 · own refused — this officer has no SMS consent and, while licence outreach is CLOSED, no other basis —
+      // WITH the link to their own consent switch. (Once outreach opens, U33a-G's licence basis reaches an adult account
+      // that never said no: phase D sees the same test handed over.)
+      const own = await sendOne(page);
+      s.ownRefused = own;
+      ok(`${key} · STATE 13 · my own number refused no_consent WITH the link to my own consent switch`,
+        own?.outcome === "refused" && own.reason === "no_consent" && own.target === "own" && own.sentence === NO_CONSENT
+          && own.consentLink === "/profile/notifications", JSON.stringify(own).slice(0, 300));
+      await fitCheck(page, key, "typed-13-own-refused");
+      await stateShot(page, key, "typed-13-own-refused", NO_CONSENT, outcomeAnchor(key));
+    }
+
+    // ── PHASE B · the policy lines saved and licence outreach OPENED — but `adult.test` not saved ──
+    const opened = await typedSeed(seats[0].page, "lines=1&open=1");
+    ok("THE WORLD · the four policy lines saved through the shipped writer, and licence outreach OPENED (its four checks pass)",
+      opened.outreach === "open", JSON.stringify(opened).slice(0, 300));
+    for (const s of seats) {
+      await openComposer(s.page, `?draft=${s.draft}`);
+      await waitReady(s.page);
+      ok(`${s.key} · STATE 4 · "Another number" still DISABLED — the 18+ confirmation wording is not saved yet`,
+        (await isDisabled(s.page, T.typed)) === true && (await textOf(s.page, T.typedWhy)) === TYPED.noAdult, await textOf(s.page, T.typedWhy));
+      await stateShot(s.page, s.key, "typed-04-no-adult-wording", TYPED.noAdult, SEL.test);
+    }
+
+    // ── PHASE C · `adult.test` saved — but this draft was saved before any source line existed ──
+    const adult = await typedSeed(seats[0].page, "adult=1");
+    ok("THE WORLD · adult.test saved through the shipped wordings writer", adult.adult?.ok === true, JSON.stringify(adult).slice(0, 200));
+    for (const s of seats) {
+      await openComposer(s.page, `?draft=${s.draft}`);
+      await waitReady(s.page);
+      ok(`${s.key} · STATE 3 · "Another number" still DISABLED — this draft carries no source line (G5)`,
+        (await isDisabled(s.page, T.typed)) === true && (await textOf(s.page, T.typedWhy)) === TYPED.noSource, await textOf(s.page, T.typedWhy));
+      await stateShot(s.page, s.key, "typed-03-no-source-line", TYPED.noSource, SEL.test);
+    }
+
+    // ── PHASE D · the source line saved (G5's words) — and a stopped number for the refusals ──
+    const source = await typedSeed(seats[0].page, "source=1");
+    ok("THE WORLD · the source line saved through the shipped wordings writer", source.source?.ok === true, JSON.stringify(source).slice(0, 200));
+    for (const s of seats) {
+      s.stopped = typedDigits(s.slot + 1);
+      const stop = await typedSeed(s.page, `stop=0${s.stopped}`);
+      if (stop.stop?.ok !== true) ok(`${s.key} · fixture · a real stop on the refusal number`, false, JSON.stringify(stop));
+    }
+    // The helper's draft is saved AFTER the line exists, so it carries it: "Another number" is offered at once.
+    await openComposer(helper.page);
+    await helper.page.locator(SEL.name).fill(`${NAME} helper`);
+    await helper.page.locator(SEL.bodySw).fill(BODY_JINA);
+    await wait(250);
+    await helper.page.locator(SEL.fallbackSw).fill(FALLBACK_SW);
+    await wait(250);
+    await save(helper.page);
+    await waitReady(helper.page);
+    await helper.page.locator(T.typed).first().check();
+    await wait(400);
+    ok("helper · a draft saved after the line exists offers \"Another number\" at once, with no stale-line note",
+      !(await has(helper.page, T.stale)) && (await has(helper.page, T.number)));
+    for (const s of seats) {
+      const { page, key } = s;
+      console.log(`${NL}[u37c] typed · ${key} · licence outreach open, the line saved`);
+      await openComposer(page, `?draft=${s.draft}`);
+      await waitReady(page);
+      // U37s · the draft predates the line: said, and Save offered with nothing typed.
+      ok(`${key} · U37s · a draft saved before the line existed SAYS so, and Save is offered with nothing typed`,
+        (await textOf(page, T.stale)) === TYPED.stale && (await isDisabled(page, SEL.save)) === false, await textOf(page, T.stale));
+      await fitCheck(page, key, "u37s-stale-line");
+      await stateShot(page, key, "u37s-stale-line", TYPED.stale, T.stale);
+      await save(page);
+      await waitReady(page);
+      ok(`${key} · U37s · re-saved: the note is gone, Save is quiet again, and "Another number" is now offered`,
+        !(await has(page, T.stale)) && (await isDisabled(page, SEL.save)) === true && (await isDisabled(page, T.typed)) === false);
+
+      // STATE 5 · typed selected, the field empty
+      await page.locator(T.typed).first().check();
+      await wait(400);
+      ok(`${key} · STATE 5 · "Another number" chosen: the kit's number field (+255) appears empty, the 18+ box beside it, and Send says what it needs`,
+        (await has(page, T.number)) && (await page.locator(T.number).first().inputValue()) === "" && (await has(page, T.tickInput))
+          && !(await page.locator(T.tickInput).first().isChecked()) && (await textOf(page, T.blocked)) === TYPED.needNumber
+          && (await isDisabled(page, T.send)) === true && (await attr(page, "[data-test-card]", "data-test-target")) === "typed",
+        await textOf(page, T.blocked));
+      await fitCheck(page, key, "typed-05-empty");
+      await stateShot(page, key, "typed-05-empty", TYPED.needNumber, SEL.test);
+
+      // STATE 6 · a number the plan refuses (a Dar es Salaam landline) — the plan's own sentence, ONCE, under the field;
+      // beside Send a way back to it, not the sentence again (§16.18)
+      await typeNumber(page, "222123456");
+      const said6 = await page.evaluate(() => {
+        const f = document.querySelector('[data-field="testNumber"]');
+        const err = f?.querySelector('[id$="-error"]') ?? f?.parentElement?.querySelector('[id$="-error"]');
+        return (err?.textContent || "").trim();
+      });
+      const card6 = await textOf(page, SEL.test);
+      ok(`${key} · STATE 6 · a landline is refused under the field in the numbering plan's own words — said ONCE — and the line beside Send is the way back to the field, with Send off`,
+        /landline/i.test(said6) && card6.split(said6).length - 1 === 1 && (await attr(page, T.blocked, "data-test-blocked")) === "testNumber"
+          && (await textOf(page, T.blocked)) === TYPED.fixNumber && (await isDisabled(page, T.send)) === true,
+        `error "${said6}" · beside Send "${await textOf(page, T.blocked)}" · said ${card6.split(said6).length - 1}×`);
+      await fitCheck(page, key, "typed-06-invalid-number");
+      await stateShot(page, key, "typed-06-invalid-number", said6, SEL.test);
+      await page.locator(T.number).first().blur();
+      await page.locator(T.blocked).first().click();
+      await wait(300);
+      ok(`${key} · STATE 6 · the way back lands: the number field has focus`,
+        await page.evaluate(() => document.activeElement?.getAttribute("data-test-recipient") === "typed"));
+
+      // STATE 7 · a valid number, the box unticked
+      await typeNumber(page, typedDigits(s.slot));
+      ok(`${key} · STATE 7 · a valid number, unticked: Send is off with the test send's own sentence, and the tick reads the SAVED 18+ wording`,
+        (await textOf(page, T.blocked)) === TYPED.needTick && (await isDisabled(page, T.send)) === true
+          && (await textOf(page, T.tick)) === TYPED.adultLabel, `${await textOf(page, T.blocked)} · tick "${await textOf(page, T.tick)}"`);
+      await stateShot(page, key, "typed-07-unticked", TYPED.needTick, SEL.test);
+
+      // STATE 8 · ticked and ready: the typed preview — a contact-book recipient, the fallback, the line, the link unshown
+      await page.locator(T.tick).first().click();
+      await wait(400);
+      const card8 = await textOf(page, SEL.test);
+      const preview8 = await previewOf(page, "SW");
+      ok(`${key} · STATE 8 · ticked: Send is on, and the preview is the CONTACT-BOOK message — the fallback name, the source line, the stop link as xxxxxxxx — with the note that the person's own link is never shown`,
+        (await page.locator(T.tickInput).first().isChecked()) && (await isDisabled(page, T.send)) === false && !(await has(page, T.blocked))
+          && card8.includes(TYPED.previewHead) && card8.includes(TYPED.note) && preview8.includes(`Habari ${FALLBACK_SW},`)
+          && preview8.includes(TYPED.source) && preview8.endsWith("/s/xxxxxxxx"),
+        preview8.slice(0, 200));
+      await fitCheck(page, key, "typed-08-ready");
+      await stateShot(page, key, "typed-08-ready", TYPED.note, SEL.test);
+
+      // STATE 8b · the tick is for THIS number (§16.19): editing it unticks the box, and typing the old digits back does
+      // not bring the tick back — and the number is in no address
+      const urlClean8 = !page.url().includes(typedDigits(s.slot));
+      await typeNumber(page, typedDigits(s.slot + 3));
+      const afterEdit = await page.locator(T.tickInput).first().isChecked();
+      const reasonEdit = await textOf(page, T.blocked);
+      await typeNumber(page, typedDigits(s.slot));
+      const afterBack = await page.locator(T.tickInput).first().isChecked();
+      ok(`${key} · STATE 8b · editing the number UNTICKS the 18+ box — Send off, asking for the tick — typing the old number back does not re-tick it, and the number is in no address`,
+        afterEdit === false && reasonEdit === TYPED.needTick && afterBack === false && (await isDisabled(page, T.send)) === true && urlClean8,
+        `after edit ${afterEdit} "${reasonEdit}" · after back ${afterBack} · url ${page.url()}`);
+      await fitCheck(page, key, "typed-08b-edit-unticks");
+      await stateShot(page, key, "typed-08b-edit-unticks", TYPED.needTick, SEL.test);
+
+      // ⚖️ Three attempts on one budget: states 9, 10/11 and the licence-basis own test. A reset, then state 12 with the helper.
+      await resetBudgets(page);
+
+      // STATE 9 · handed over to the console stub — the measurement text, never "delivered", no consent link
+      const handed = await sendTypedOne(page);
+      ok(`${key} · STATE 9 · handed to the console stub — "the server log, not a phone" — the exact text with the stop link as xxxxxxxx, no consent link, the tick SPENT by the send, and the number in no address`,
+        handed?.outcome === "handed_over" && handed.target === "typed" && TYPED.handedStub.test(handed.sentence)
+          && (handed.sent ?? "").endsWith("/s/xxxxxxxx") && (handed.sent ?? "").includes(TYPED.source) && handed.consentLink === null
+          && handed.spent === true && !page.url().includes(typedDigits(s.slot)),
+        JSON.stringify(handed).slice(0, 300));
+      await fitCheck(page, key, "typed-09-handed-over");
+      await stateShot(page, key, "typed-09-handed-over", "it went to the server log, not to a phone.", outcomeAnchor(key));
+
+      // STATES 10–11 · refused at the gate: a stopped number — ONE neutral sentence for GROWTH, the reason for a reader
+      await typeNumber(page, s.stopped);
+      const refused = await sendTypedOne(page);
+      const want = s.r.reads ? { reason: "suppressed", sentence: TYPED.refusedReader } : { reason: "typed_refused", sentence: TYPED.refusedMasked };
+      ok(`${key} · STATE ${s.r.reads ? "11" : "10"} · a stopped number refused — ${s.r.reads ? "a reader is told the reason" : "a masked officer gets ONE neutral sentence"} — and no consent link`,
+        refused?.outcome === "refused" && refused.reason === want.reason && refused.sentence === want.sentence && refused.target === "typed"
+          && refused.consentLink === null, JSON.stringify(refused).slice(0, 300));
+      await fitCheck(page, key, `typed-${s.r.reads ? "11" : "10"}-refused`);
+      await stateShot(page, key, `typed-${s.r.reads ? "11" : "10"}-refused-${s.r.tag}`, want.sentence, outcomeAnchor(key));
+
+      // U33a-G · back to my own number, outreach OPEN: the licence basis reaches an adult account with no consent and no
+      // stop, so the test phase A refused is handed over now — in my own name, with my own stop link, and no consent link
+      await page.locator(T.own).first().check();
+      await wait(400);
+      const own = await sendOne(page);
+      ok(`${key} · U33a-G · my own number, licence outreach OPEN: the test refused in phase A is handed over on the licence basis — my own name, a real stop link, no consent link — and the typed refusal above carried none`,
+        own?.outcome === "handed_over" && own.target === "own" && TYPED.handedStub.test(own.sentence) && (own.sent ?? "").includes("Habari Asha,")
+          && /\/s\/[A-Z0-9]{8}$/.test(own.sent ?? "") && own.consentLink === null && refused?.consentLink === null
+          && s.ownRefused?.reason === "no_consent", JSON.stringify(own).slice(0, 300));
+      await fitCheck(page, key, "typed-13b-own-licence-basis");
+      await stateShot(page, key, "typed-13b-own-licence-basis", "it went to the server log, not to a phone.", outcomeAnchor(key));
+
+      // STATE 12 · the number's own budget — the RECIPIENT's, whoever sends: three by the helper, two by this seat, and the
+      // seat's sixth is refused in that number's words (not the officer's)
+      await resetBudgets(page);
+      const target12 = typedDigits(s.slot + 2);
+      await typeNumber(helper.page, target12);
+      const theirs = [];
+      for (let k = 0; k < 3; k++) theirs.push(await sendTypedOne(helper.page));
+      await page.locator(T.typed).first().check();
+      await wait(400);
+      await typeNumber(page, target12);
+      const mine = [];
+      for (let k = 0; k < 2; k++) mine.push(await sendTypedOne(page));
+      const sixth = await sendTypedOne(page);
+      ok(`${key} · STATE 12 · five tests to one number go through — three by another officer, two by me — and my sixth is refused with that NUMBER's budget sentence`,
+        [...theirs, ...mine].every((o) => o?.outcome === "handed_over") && sixth?.outcome === "refused" && sixth.reason === "typed_rate_limited"
+          && TYPED.rateTo.test(sixth.sentence) && sixth.target === "typed" && sixth.consentLink === null,
+        `${[...theirs, ...mine].map((o) => o?.outcome).join(",")} · ${JSON.stringify(sixth).slice(0, 200)}`);
+      await fitCheck(page, key, "typed-12-rate-limited");
+      await stateShot(page, key, "typed-12-rate-limited", "That number has had as many tests as it may for now", outcomeAnchor(key));
+    }
+
+    // ── PHASE E · the 18+ words REWORDED while two pages are open (§18.32) — 1280 GROWTH and 360 ADMIN each tick under the
+    //    old words; the owner's save lands; each Send is refused, the page re-reads, and the box shows the new words, unticked ──
+    const late = [seats[0], seats[seats.length - 1]];
+    await resetBudgets(late[0].page);
+    for (const s of late) {
+      await typeNumber(s.page, typedDigits(s.slot + 4));
+      await tickBox(s.page);
+    }
+    const reworded = await typedSeed(late[0].page, "adult=2");
+    ok("THE WORLD · adult.test reworded through the shipped wordings writer — a new version, saved while the pages are open",
+      reworded.adult?.ok === true, JSON.stringify(reworded).slice(0, 200));
+    for (const s of late) {
+      const ticked = await s.page.locator(T.tickInput).first().isChecked();
+      const r = await sendOne(s.page);
+      await s.page.waitForFunction((want) => (document.querySelector('[data-test-typed] label:has(input[type="checkbox"])')?.textContent || "").includes(want),
+        TYPED.adultReworded, { timeout: 30000 }).catch(() => {});
+      await wait(400);
+      ok(`${s.key} · STATE 14 · the 18+ words changed while the page was open: the ticked test is refused in its own words, the page re-reads, and the box shows the NEW words, unticked`,
+        ticked && r?.outcome === "refused" && r.reason === "attestation_stale" && r.sentence === TYPED.reworded && r.target === "typed" && r.consentLink === null
+          && (await textOf(s.page, T.tick)) === TYPED.adultReworded && !(await s.page.locator(T.tickInput).first().isChecked()),
+        `${JSON.stringify(r).slice(0, 240)} · tick "${await textOf(s.page, T.tick)}"`);
+      await fitCheck(s.page, s.key, "typed-14-reworded");
+      await stateShot(s.page, s.key, "typed-14-reworded", TYPED.reworded, outcomeAnchor(s.key));
+    }
+  } finally {
+    for (const s of seats) await s.ctx.close().catch(() => {});
+    await helper.ctx.close().catch(() => {});
+  }
+}
+
 try {
   if (PASS === "console") await consolePass();
   else if (PASS === "live-closed") await liveClosedPass();
+  else if (PASS === "typed") await typedPass();
   else await deadRailPass();
 } finally {
   await browser.close();

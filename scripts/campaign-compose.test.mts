@@ -1053,7 +1053,7 @@ const COMPOSER_SOURCES = loadComposerSources();
 
 /* ══ §16.2–§16.5 · §17.6 — THE COMPOSER'S OWN FILES, READ (U37b, 2026-10-02) ══════════════════════════════
  * The page layer of U37a's rules: the screen sizes nothing itself (its counter is the renderer's), offers no sender
- * control (OD45) and no number control (a test reaches the officer's own number only), and names no money (OD24) —
+ * control (OD45) and ONE number control — the Test card's kit PhoneInput (U37c-2) — and names no money (OD24) —
  * and the save writes through the campaign door's ONE draft writer (X12). Read from the real tree; every plant below
  * swaps one source string IN MEMORY. */
 
@@ -1120,7 +1120,7 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     if (cond) log(`  ok   ${label}`);
     else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
   };
-  log(`${NL15}§16.2–§16.5 · §17.6 · THE COMPOSER'S OWN FILES — it sizes nothing, offers no sender and no number, names no money`);
+  log(`${NL15}§16.2–§16.5 · §17.6 · THE COMPOSER'S OWN FILES — it sizes nothing, offers no sender and one number field (the Test card's), names no money`);
   const client = src.files.get(`${SCREEN_DIR}composer-client.tsx`) ?? "";
   const counter = src.files.get(`${SCREEN_DIR}composer-counter.tsx`) ?? "";
   const actions = src.files.get(`${SCREEN_DIR}actions.ts`) ?? "";
@@ -1148,20 +1148,80 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
       && inputType.length > 50 && !/sender|segments|coding|sourcePhrase/i.test(inputType),
     `${tags.length} controls · sender controls [${senderTags.map((x) => x.rel).join(", ")}] · input type ${inputType.length} chars`);
 
-  /* §16.4 · no number control on the screen yet (U37c-1 — U37c-2 adds the Test card's ONE kit PhoneInput), and the test
-     action's own signature: (campaignId, variant, recipient), the recipient exactly own, or typed with its confirmation */
-  const numberTags = tags.filter((x) => /type=["']tel["']|inputMode=["']tel["']|(?:name|id)=["'](?:phone|msisdn|number|to)["']|^<PhoneInput/i.test(x.t));
-  const phoneImport = [...src.files.values()].some((t) => /PhoneInput|phone-input/.test(t));
+  /* §16.4 · U37c-2 · ONE number control, the kit's, in the Test card — and the test action's own signature: (campaignId,
+     variant, recipient), the recipient exactly own, or typed with its confirmation; the typed number in no address or store */
+  const phoneTags = tags.filter((x) => /^<PhoneInput\b/.test(x.t));
+  const numberTags = tags.filter((x) => !/^<PhoneInput\b/.test(x.t)
+    && /type=["']tel["']|inputMode=["']tel["']|(?:name|id)=["'](?:phone|msisdn|number|to)["']/i.test(x.t));
+  const testCard = blockAfter(client, "export function ComposerTest(");
+  const phoneInCard = phoneTags.length === 1 && phoneTags[0].rel === "composer-client.tsx" && testCard.includes(phoneTags[0].t)
+    && /data-test-recipient="typed"/.test(phoneTags[0].t);
+  const sendBlock = blockAfter(client, "const sendTest = (variant: CampaignVariant, recipient?: TypedTestRecipient) => {");
+  const LEAKS = /router\.(push|replace)|useRouter|searchParams|useSearchParams|localStorage|sessionStorage|history\.(push|replace)State|location\.|document\.cookie|indexedDB|console\./;
+  const typedLeaks = LEAKS.test(testCard) || sendBlock === "" || LEAKS.test(sendBlock);
   const sig = /export\s+async\s+function\s+sendCampaignTestAction\s*\(([^)]*)\)/.exec(actions)?.[1] ?? null;
   const params = sig === null ? [] : sig.split(",").map((p) => p.trim().split(/[\s:?=]/)[0]).filter((p) => p !== "");
   const testInput = blockAfter(src.testService, "export type CampaignTestInput");
   const testKeys = [...testInput.matchAll(/([A-Za-z_$][A-Za-z0-9_$]*)\s*\??:/g)].map((m) => m[1]);
   const recipientUnion = (/export type TestRecipient\s*=\s*([\s\S]+?\});/.exec(src.testService)?.[1] ?? "").replace(/\s+/g, " ").trim();
-  const RECIPIENT_UNION = '{ kind: "own" } | { kind: "typed"; number: string; adultAttested: boolean }';
-  ok("§16.4 ⛔ NO NUMBER CONTROL ON THE SCREEN YET (U37c-1) — no tel input, no PhoneInput, no field named phone, msisdn, number or to — and sendCampaignTestAction takes exactly (campaignId, variant, recipient), its input type exactly campaignId, variant and recipient, and TestRecipient is exactly own, or typed with number and adultAttested",
-    numberTags.length === 0 && !phoneImport && params.join(",") === "campaignId,variant,recipient" && testKeys.join(",") === "campaignId,variant,recipient"
-      && recipientUnion === RECIPIENT_UNION,
-    `number controls [${numberTags.map((x) => x.rel).join(", ")}] · PhoneInput ${phoneImport} · params (${params.join(", ")}) · input keys {${testKeys.join(", ")}} · recipient ${recipientUnion || "(none)"}`);
+  const RECIPIENT_UNION = '{ kind: "own" } | { kind: "typed"; number: string; adultAttested: boolean; attestedVersion: number | null }';
+  ok("§16.4 ⛔ ONE NUMBER CONTROL, THE KIT'S, IN THE TEST CARD — exactly one PhoneInput in the composer's sources, inside ComposerTest and marked data-test-recipient=typed; no raw tel input and no other field named phone, msisdn, number or to; sendCampaignTestAction takes exactly (campaignId, variant, recipient); CampaignTestInput's keys are exactly campaignId, variant and recipient; TestRecipient is exactly own or typed with number and adultAttested; and the typed number reaches no address or storage",
+    phoneInCard && numberTags.length === 0 && !typedLeaks && params.join(",") === "campaignId,variant,recipient"
+      && testKeys.join(",") === "campaignId,variant,recipient" && recipientUnion === RECIPIENT_UNION,
+    `PhoneInputs [${phoneTags.map((x) => x.rel).join(", ")}] in the Test card ${phoneInCard} · other number controls [${numberTags.map((x) => x.rel).join(", ")}] · address/storage in the card ${typedLeaks} · params (${params.join(", ")}) · input keys {${testKeys.join(", ")}} · recipient ${recipientUnion || "(none)"}`);
+
+  /* §16.17 · U37c-2 · D19 on the screen, and the remedy that fits the target */
+  const stillTick = /export const COMPOSE_TEST_NEED_TICK = "([^"]+)";/.exec(copy)?.[1] ?? "";
+  const serverTick = /export const TEST_ATTESTATION_MISSING = "([^"]+)";/.exec(src.testService)?.[1] ?? "";
+  ok("§16.17 ⛔ U37c-2 · THE REFUSAL ON THE SCREEN IS THE SERVER'S — the reason and the sentence are the result's, field for field (testStateOf copies r.reason, r.error and r.target; the card prints data-test-reason={state.reason}); the officer's own consent link shows ONLY when the target is own; and Send's unticked reason is the test send's own sentence, word for word",
+    client.includes("data-test-reason={state.reason}") && /reason: r\.reason, error: r\.error, target: r\.target/.test(client)
+      && client.includes('state.target === "own" && CONSENT_REASONS.includes(state.reason)')
+      && occurrences(client, "data-test-consent-link") === 1
+      && branchOf(client, 'state.target === "own" && CONSENT_REASONS.includes(state.reason) && (', "</a>").includes("data-test-consent-link")
+      && stillTick !== "" && stillTick === serverTick,
+    JSON.stringify({ reason: client.includes("data-test-reason={state.reason}"), copied: /reason: r\.reason, error: r\.error, target: r\.target/.test(client), ownOnly: client.includes('state.target === "own" && CONSENT_REASONS.includes(state.reason)'), tick: stillTick === serverTick }));
+
+  /* §16.18 · U37c-2 · the number's problem is said once — under the field — and the line beside Send goes back to it */
+  const fixNumber = /export const COMPOSE_TEST_FIX_NUMBER = "([^"]+)";/.exec(copy)?.[1] ?? "";
+  const backBranch = branchOf(client, "reason !== null && backToNumber && (", "</button>");
+  ok("§16.18 ⭐ U37c-2 · THE NUMBER'S PROBLEM IS SAID ONCE — the plan's sentence is the field's error, and while it is the reason Send is off the line beside Send is COMPOSE_TEST_FIX_NUMBER as a button that goes to the testNumber field (the Save reason's pattern), never the sentence again",
+    fixNumber !== "" && client.includes("error={numberProblem ?? undefined}") && client.includes('dataField="testNumber"')
+      && client.includes("const backToNumber = blocked === null && numberProblem !== null && typedBlocked === numberProblem;")
+      && backBranch.includes("<button") && backBranch.includes('onClick={() => c.goToField(["testNumber"])}')
+      && backBranch.includes("{COMPOSE_TEST_FIX_NUMBER}") && !backBranch.includes("{reason}")
+      && client.includes("{reason !== null && !backToNumber && <p"),
+    JSON.stringify({ fixNumber, backBranch: backBranch.length }));
+
+  /* §16.19 · U37c-2 · the 18+ tick is bound — to this draft, these words, this number, and one send (the review's BLOCKER) */
+  const TICK_KEY = 'const tickKey = `${saved?.id ?? ""}|${typedView.attestation?.version ?? ""}|${digits}`;';
+  const bound = {
+    key: testCard.includes(TICK_KEY) && testCard.includes("const ticked = tickedFor === tickKey;"),
+    pick: testCard.includes("const pick = (v: TestTarget) => { setTarget(v); setTickedFor(null); };")
+      && occurrences(testCard, "onPick={pick}") === 2 && !testCard.includes("onPick={setTarget}"),
+    box: testCard.includes("<Checkbox checked={ticked} onChange={(on) => setTickedFor(on ? tickKey : null)}"),
+    edit: testCard.includes("onChange={(e) => { setDigits(e.target.value); setTickedFor(null); }}"),
+    spent: /const r = recipient\(\);\s*setTickedFor\(null\);\s*c\.sendTest\(v, r\);/.test(testCard)
+      && testCard.includes("onClick={() => send(v)}") && !/c\.sendTest\(v, recipient\(\)\)/.test(testCard),
+    posted: testCard.includes("adultAttested: ticked, attestedVersion: typedView.attestation?.version ?? null"),
+  };
+  ok("§16.19 ⛔ U37c-2 · THE 18+ TICK IS BOUND — held as the key it was given for (this draft's id, the adult.test version, the digits), so a rewording or another draft unticks it; any edit of the number and a switch of target untick it; each Send reads the recipient and THEN spends the tick; and the post carries the tick with the version it was given for",
+    Object.values(bound).every(Boolean), JSON.stringify(bound));
+
+  /* §16.20 · U37c-2 · the card says the true reason and stays in step with the server (the reviews' minors) */
+  const inStep = {
+    // a typed test refused up front is said BEFORE "updating" — its preview is null, so it would never freshen
+    order: /: typedOff\s*\?\s*typedWhy\s*:\s*!fresh\s*\?\s*COMPOSE_TEST_UPDATING/.test(testCard),
+    // a disabled "Another number" always has a reason beside it
+    why: testCard.includes("const typedWhy = typedView.why ?? (view.readOnly ? COMPOSE_TEST_NOT_DRAFT : saved !== null && !c.dirty ? COMPOSE_TEST_UPDATING : COMPOSE_TEST_SAVE_FIRST);")
+      && testCard.includes("why={typedView.allowed ? null : typedWhy}"),
+    // the choice is still while a test is in flight
+    still: testCard.includes("disabled={!typedView.allowed || c.testing !== null}") && testCard.includes("disabled={t.ownNumberMasked === null || c.testing !== null}"),
+    // a refusal that means "this page is out of date" re-reads the page
+    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];')
+      && sendBlock.includes('r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();'),
+  };
+  ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record, the line) re-reads it",
+    Object.values(inStep).every(Boolean), JSON.stringify(inStep));
 
   /* §16.5 · OD24 — no money */
   const money = [...src.files].filter(([, text]) => /TZS|formatTzs/.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
@@ -1856,12 +1916,15 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   const typedOver = (over: Partial<TestDeps> = {}): Partial<TestDeps> => ({
     gateReads: OPEN_READS, adultTestWording: () => ADULT_TEST, rateTyped: ALLOW, rateTo: ALLOW, sleep: NO_WAIT, ...over,
   });
-  type TypedOpts = { attested?: unknown; reads?: boolean; over?: Partial<TestDeps> };
+  type TypedOpts = { attested?: unknown; version?: unknown; reads?: boolean; over?: Partial<TestDeps> };
   /** A test to a TYPED number, confirmed 18+ unless `attested` says otherwise (`{ attested: undefined }` omits the field). */
   const sendTyped = (campaignId: string, number: string, officerId: string, opts: TypedOpts = {}) => {
     const recipient: Record<string, unknown> = { kind: "typed", number };
     if (!("attested" in opts)) recipient.adultAttested = true;
     else if (opts.attested !== undefined) recipient.adultAttested = opts.attested;
+    // §18.32 · the version of the 18+ words the tick was given for — the saved one unless a claim says otherwise.
+    if (!("version" in opts)) recipient.attestedVersion = ADULT_TEST.v;
+    else if (opts.version !== undefined) recipient.attestedVersion = opts.version;
     return impl.test({ campaignId, variant: "SW", recipient } as unknown as TestInput, officerId, deps(typedOver(opts.over)), { viewerReads: opts.reads === true });
   };
   /** A key's two other spellings — national with spaces, and international with spaces. */
@@ -2246,6 +2309,24 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `reasons ${results.map(reasonOf).join(",")} · rail ${rails} · gate ${gates} · audited ${audited}`];
   });
 
+  await claim("§18.32 ⛔ U37c-2 · THE TICK COUNTS ONLY FOR THE WORDS IT WAS GIVEN FOR — a version older or newer than the saved adult.test, none posted, a string or a fraction is refused attestation_stale with its sentence, before the gate is asked or a token made; the saved version itself is handed over", async () => {
+    const id = await phrasedDraft();
+    const k = u37bKey();
+    let gates = 0;
+    const over: Partial<TestDeps> = {
+      gate: async () => { gates++; return { ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:fixture" }; },
+    };
+    const results: TestResult[] = [];
+    for (const version of [ADULT_TEST.v - 1, ADULT_TEST.v + 1, undefined, String(ADULT_TEST.v), ADULT_TEST.v + 0.5]) {
+      results.push(await sendTyped(id, `+${k}`, o.id, { version, over }));
+    }
+    const { send: spy, spy: seen } = u37bSpy();
+    const current = await sendTyped(id, `+${u37bKey()}`, o.id, { over: { send: spy } });
+    return [results.every((r) => !r.ok && r.outcome === "refused" && r.reason === "attestation_stale" && r.error === TEST.TEST_ATTESTATION_STALE && r.target === "typed")
+      && gates === 0 && (await tokenCount(k)) === 0 && current.ok && seen.calls === 1,
+      `stale ${results.map(reasonOf).join(",")} · gate ${gates} · current ${reasonOf(current)}`];
+  });
+
   /** §18.19–§18.20's five numbers the confirmation must never reach — made by the platform's own writers where this suite
    *  has one (consent, self-exclusion, a stop link), and through injected reads of the REAL gate where it has none. */
   type Refusable = { name: string; number: string; key: string; over: Partial<TestDeps>; reader: string };
@@ -2322,7 +2403,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(r)} · token ${token.length ? "made" : "none"} · shown is the measurement render ${r.ok && shown !== null && shown.ok ? r.text === shown.text : false}`];
   });
 
-  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (with no preview)", async () => {
+  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (with no preview), and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const row = await db.smsCampaign.find(id);
@@ -2334,6 +2415,11 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const closed = v(row, { outreachOpen: false, adult: ADULT_TEST });
     const unsaved = v(row, { outreachOpen: true, adult: null });
     const noLine = v(blank, { outreachOpen: true, adult: ADULT_TEST });
+    // U37c-2 · "allowed" implies a preview: {jina} with no fallback cannot render for a book recipient.
+    const broken = { ...row, bodySw: "50pick: Habari {jina}, karibu.", nameFallbackSw: null } as typeof row;
+    const brokenRender = renderForRecipient(u37bTemplate(broken), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
+    const unrenderable = v(broken, { outreachOpen: true, adult: ADULT_TEST });
+    const refusedInItsWords = !brokenRender.ok && !unrenderable.allowed && unrenderable.why === (brokenRender.problems[0] ?? TEST.TEST_TEMPLATE_INVALID);
     // ⛔ The parameter NAMES, depth-aware: exactly `draft` and `facts` — a third parameter of any name (number, to, key) fails.
     const sigTyped = /export function composeTypedView\(([\s\S]*?)\): ComposeTypedView/.exec(impl.loaderSource)?.[1] ?? "";
     const paramNames: string[] = [];
@@ -2353,8 +2439,8 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const takesNoNumber = paramNames.join(",") === "draft,facts" && LOADER.composeTypedView.length === 2;
     return [ready.allowed && ready.why === null && expected.ok && ready.preview?.SW === expected.text && ready.attestation?.version === 3
       && !closed.allowed && closed.why === TEST.TEST_TYPED_OUTREACH_CLOSED && !unsaved.allowed && unsaved.why === TEST.TEST_TYPED_NO_ATTESTATION_WORDING
-      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview === null && takesNoNumber,
-      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: noLine.why, takesNoNumber })];
+      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview === null && takesNoNumber && refusedInItsWords,
+      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: noLine.why, takesNoNumber, unrenderable: unrenderable.why })];
   });
 
   await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
@@ -3328,13 +3414,57 @@ if (!PROVE_RED) {
     const telClient = withFile(CLIENT, (t) => `${t}${NL15}export const ToField = () => <Input type="tel" name="to" />;`);
     const typedActions = withFile(ACTIONS, (t) => t.replace(SIG, "sendCampaignTestAction(campaignId: string, variant: CampaignVariant, to: string)"));
     /** U37c · a typed recipient's union widened to a bare string — a number with no confirmation in the contract. */
-    const looseRecipient = { ...S, testService: S.testService.replace('| { kind: "typed"; number: string; adultAttested: boolean };', '| { kind: "typed"; number: string; adultAttested: boolean } | string;') };
+    const looseRecipient = { ...S, testService: S.testService.replace('| { kind: "typed"; number: string; adultAttested: boolean; attestedVersion: number | null };', '| { kind: "typed"; number: string; adultAttested: boolean; attestedVersion: number | null } | string;') };
     const moneyCopy = withFile(COPY, (t) => `${t}${NL15}export const COMPOSE_TEST_COST = "Each test costs TZS 6.";`);
     const secondDoor: ScreenSources = { ...S, draftService: `${S.draftService}${NL15}export const later = (id: string, p: object, base: string) => db.smsCampaign.updateDraft(id, p, base);` };
     const COUNTER_REL = `${SCREEN_DIR}composer-counter.tsx`;
     /** ⛔ Every anchor below resolves EXACTLY ONCE in the real source — each plant's `landed` proves it before it is read. */
     const once = (rel: string, anchor: string) => occurrences(S.files.get(rel) ?? "", anchor) === 1;
     const swapOnce = (rel: string, anchor: string, planted: string) => withFile(rel, (t) => t.replace(anchor, planted));
+    /** U37c-2 · A.2 · a second PhoneInput, outside the Test card. */
+    const secondPhone = withFile(CLIENT, (t) => `${t}${NL15}export const AnotherNumber = () => <PhoneInput value="" data-test-recipient="typed" />;`);
+    /** U37c-2 · A.2 · the typed number written to the address — router.replace carrying a `to` query, inside the card. */
+    const TICK_STATE = "const [tickedFor, setTickedFor] = useState<string | null>(null);";
+    const numberInAddress = swapOnce(CLIENT, TICK_STATE, `${TICK_STATE}${NL15}  const router = useRouter();${NL15}  const keep = () => router.replace(\`?to=\${digits}\`);`);
+    /** U37c-2 · the officer's own consent link offered for a typed refusal too. */
+    const OWN_ONLY = 'state.target === "own" && CONSENT_REASONS.includes(state.reason)';
+    const linkAnyTarget = swapOnce(CLIENT, OWN_ONLY, "CONSENT_REASONS.includes(state.reason)");
+    /** U37c-2 · the number's problem said twice — the line beside Send prints the plan's sentence again. */
+    const BACK_LABEL = "{COMPOSE_TEST_FIX_NUMBER}";
+    const saidTwice = swapOnce(CLIENT, BACK_LABEL, "{reason}");
+    /** U37c-2 · the screen's copy of a refusal re-targeted — a typed refusal drawn as the officer's own. */
+    const COPIED = "reason: r.reason, error: r.error, target: r.target";
+    const targetForced = swapOnce(CLIENT, COPIED, 'reason: r.reason, error: r.error, target: "own" as TestTarget');
+    /** U37c-2 · a second consent link, outside the target guard. */
+    const ERROR_LINE = '<span className="block" data-test-outcome="error">{state.error}</span>';
+    const unguardedLink = swapOnce(CLIENT, ERROR_LINE, `${ERROR_LINE}<a href="/profile/notifications" data-test-consent-link>{COMPOSE_TEST_CONSENT_LINK}</a>`);
+    /** U37c-2 · the tick outlives its number — the key forgets the digits. */
+    const TICK_KEY_SRC = 'const tickKey = `${saved?.id ?? ""}|${typedView.attestation?.version ?? ""}|${digits}`;';
+    const tickForgetsNumber = swapOnce(CLIENT, TICK_KEY_SRC, 'const tickKey = `${saved?.id ?? ""}|${typedView.attestation?.version ?? ""}`;');
+    /** U37c-2 · editing the number keeps the tick (it would come back with the old digits). */
+    const EDIT_CLEARS = "onChange={(e) => { setDigits(e.target.value); setTickedFor(null); }}";
+    const editKeepsTick = swapOnce(CLIENT, EDIT_CLEARS, "onChange={(e) => setDigits(e.target.value)}");
+    /** U37c-2 · "updating" said for ever for a typed test the server refuses up front. */
+    const TYPED_OFF = ": typedOff\n          ? typedWhy";
+    const updatingForever = swapOnce(CLIENT, TYPED_OFF, ": false\n          ? typedWhy");
+    /** U37c-2 · "Another number" disabled with no reason beside it. */
+    const WHY_BESIDE = "why={typedView.allowed ? null : typedWhy}";
+    const silentChoice = swapOnce(CLIENT, WHY_BESIDE, "why={typedView.allowed ? null : typedView.why}");
+    /** U37c-2 · the choice switchable while a test is in flight. */
+    const STILL = "disabled={!typedView.allowed || c.testing !== null}";
+    const restless = swapOnce(CLIENT, STILL, "disabled={!typedView.allowed}");
+    /** U37c-2 · a rewording refused, and the page left showing the old words. */
+    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]';
+    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
+    /** U37c-2 · Send no longer spends the tick. */
+    const SPEND = "    const r = recipient();\n    setTickedFor(null);\n    c.sendTest(v, r);";
+    const tickNeverSpent = swapOnce(CLIENT, SPEND, "    const r = recipient();\n    c.sendTest(v, r);");
+    /** U37c-2 · the post stops naming the words the tick was given for. */
+    const POSTED = "adultAttested: ticked, attestedVersion: typedView.attestation?.version ?? null";
+    const versionDropped = swapOnce(CLIENT, POSTED, "adultAttested: ticked, attestedVersion: null");
+    /** U37c-2 · the typed number logged from the provider's send. */
+    const SEND_OPEN = "    setTesting(variant);\n    setTest({ kind: \"idle\" });";
+    const numberLogged = swapOnce(CLIENT, SEND_OPEN, `${SEND_OPEN}\n    console.info("test to", recipient);`);
     const SAVE_ROLE = `"marketing.campaign.save", COMPOSE_ROLE_REFUSAL);${NL15}  if (!g.ok) return { ok: false, reason: "role", error: g.error };`;
     const NAME_ONCHANGE = 'onChange={(e) => c.setField("name", e.target.value)}';
     const ASK_FIRST = "onClick={() => c.askDiscard(true)}";
@@ -3369,10 +3499,100 @@ if (!PROVE_RED) {
         landedAs: "an Input named senderId is rendered",
       },
       {
-        name: "a typed-number field on the composer",
+        name: "a SECOND, raw number field on the composer (an Input type tel beside the kit PhoneInput)",
         expect: /^§16\.4 ⛔/, sources: telClient,
         landed: () => (telClient.files.get(CLIENT) ?? "").includes('type="tel"'),
         landedAs: "a tel Input named to is rendered",
+      },
+      {
+        name: "U37c-2 · a second PhoneInput outside the Test card",
+        expect: /^§16\.4 ⛔/, sources: secondPhone,
+        landed: () => (secondPhone.files.get(CLIENT) ?? "").includes("export const AnotherNumber"),
+        landedAs: "a second kit PhoneInput is rendered outside ComposerTest",
+      },
+      {
+        name: "U37c-2 · the typed number written to the address",
+        expect: /^§16\.4 ⛔/, sources: numberInAddress,
+        landed: () => once(CLIENT, TICK_STATE) && (numberInAddress.files.get(CLIENT) ?? "").includes("router.replace(`?to="),
+        landedAs: "the Test card replaces the address with ?to=<digits>",
+      },
+      {
+        name: "U37c-2 · the officer's own consent link offered for a typed refusal",
+        expect: /^§16\.17 ⛔/, sources: linkAnyTarget,
+        landed: () => once(CLIENT, OWN_ONLY) && !(linkAnyTarget.files.get(CLIENT) ?? "").includes(OWN_ONLY),
+        landedAs: "the consent link's target guard is gone",
+      },
+      {
+        name: "U37c-2 · a typed refusal re-targeted as the officer's own on the screen",
+        expect: /^§16\.17 ⛔/, sources: targetForced,
+        landed: () => once(CLIENT, COPIED) && (targetForced.files.get(CLIENT) ?? "").includes('target: "own" as TestTarget'),
+        landedAs: "testStateOf copies every refusal as target own",
+      },
+      {
+        name: "U37c-2 · a second consent link, outside the target guard",
+        expect: /^§16\.17 ⛔/, sources: unguardedLink,
+        landed: () => once(CLIENT, ERROR_LINE) && occurrences(unguardedLink.files.get(CLIENT) ?? "", "data-test-consent-link") === 2,
+        landedAs: "an unguarded consent link renders after the error outcome",
+      },
+      {
+        name: "U37c-2 · the 18+ tick outlives the number it was given for",
+        expect: /^§16\.19 ⛔/, sources: tickForgetsNumber,
+        landed: () => once(CLIENT, TICK_KEY_SRC) && !(tickForgetsNumber.files.get(CLIENT) ?? "").includes(TICK_KEY_SRC),
+        landedAs: "the tick's key drops the digits",
+      },
+      {
+        name: "U37c-2 · editing the number keeps the 18+ tick",
+        expect: /^§16\.19 ⛔/, sources: editKeepsTick,
+        landed: () => once(CLIENT, EDIT_CLEARS) && !(editKeepsTick.files.get(CLIENT) ?? "").includes(EDIT_CLEARS),
+        landedAs: "the number field no longer clears the tick",
+      },
+      {
+        name: "U37c-2 · Send does not spend the 18+ tick",
+        expect: /^§16\.19 ⛔/, sources: tickNeverSpent,
+        landed: () => once(CLIENT, SPEND) && !(tickNeverSpent.files.get(CLIENT) ?? "").includes(SPEND),
+        landedAs: "the send keeps the tick for the next test",
+      },
+      {
+        name: "U37c-2 · the post stops naming the 18+ words' version",
+        expect: /^§16\.19 ⛔/, sources: versionDropped,
+        landed: () => once(CLIENT, POSTED) && (versionDropped.files.get(CLIENT) ?? "").includes("attestedVersion: null"),
+        landedAs: "the typed recipient posts attestedVersion null",
+      },
+      {
+        name: "U37c-2 · the typed number logged from the provider's send",
+        expect: /^§16\.4 ⛔/, sources: numberLogged,
+        landed: () => once(CLIENT, SEND_OPEN) && (numberLogged.files.get(CLIENT) ?? "").includes('console.info("test to", recipient)'),
+        landedAs: "sendTest logs the recipient to the console",
+      },
+      {
+        name: "U37c-2 · \"updating\" for ever for a typed test refused up front",
+        expect: /^§16\.20 ⭐/, sources: updatingForever,
+        landed: () => once(CLIENT, TYPED_OFF) && !(updatingForever.files.get(CLIENT) ?? "").includes(TYPED_OFF),
+        landedAs: "the typed-off reason never comes before \"updating\"",
+      },
+      {
+        name: "U37c-2 · \"Another number\" disabled with no reason beside it",
+        expect: /^§16\.20 ⭐/, sources: silentChoice,
+        landed: () => once(CLIENT, WHY_BESIDE) && !(silentChoice.files.get(CLIENT) ?? "").includes(WHY_BESIDE),
+        landedAs: "the choice shows the loader's why alone — null for a new composer",
+      },
+      {
+        name: "U37c-2 · the choice switchable while a test is in flight",
+        expect: /^§16\.20 ⭐/, sources: restless,
+        landed: () => once(CLIENT, STILL) && !(restless.files.get(CLIENT) ?? "").includes(STILL),
+        landedAs: "\"Another number\" stays enabled during a send",
+      },
+      {
+        name: "U37c-2 · a rewording refused, and the page not re-read",
+        expect: /^§16\.20 ⭐/, sources: noReread,
+        landed: () => once(CLIENT, STALE_LIST) && !(noReread.files.get(CLIENT) ?? "").includes(STALE_LIST),
+        landedAs: "attestation_stale is no longer a page-stale reason",
+      },
+      {
+        name: "U37c-2 · the number's problem said twice — under the field and again beside Send",
+        expect: /^§16\.18 ⭐/, sources: saidTwice,
+        landed: () => once(CLIENT, BACK_LABEL) && !(saidTwice.files.get(CLIENT) ?? "").includes(BACK_LABEL),
+        landedAs: "the button beside Send prints {reason} — the plan's sentence — instead of the way back",
       },
       {
         name: "P10′ · the test action takes a bare number — sendCampaignTestAction(campaignId, variant, to: string)",
@@ -4009,7 +4229,7 @@ if (!PROVE_RED) {
     const typedLanded = (over: Partial<TestDeps> = {}) =>
       landedDeps({ gateReads: P_READS, adultTestWording: () => P_ADULT, rateTyped: ALLOW, rateTo: ALLOW, sleep: async () => {}, ...over });
     const typedInput = (campaignId: string, number: string, adultAttested: unknown = true) =>
-      ({ campaignId, variant: "SW", recipient: { kind: "typed", number, adultAttested } }) as unknown as TestInput;
+      ({ campaignId, variant: "SW", recipient: { kind: "typed", number, adultAttested, attestedVersion: P_ADULT.v } }) as unknown as TestInput;
     const phrased = async () => {
       const id = await u37bDraft();
       await db.smsCampaign.update(id, { sourcePhrase: PHRASE }, { draftRevision: 0 }, new Date().toISOString());
@@ -4023,6 +4243,13 @@ if (!PROVE_RED) {
     const noAttestation: typeof realTest = (input, officerId, deps, options) => {
       const r = (input as unknown as { recipient?: Record<string, unknown> })?.recipient;
       const forced = r && r.kind === "typed" ? { ...input, recipient: { ...r, adultAttested: true } } : input;
+      return realTest(forced as TestInput, officerId, deps, options);
+    };
+    /** §18.32 · a confirmation recorded against words the officer never saw — the version check skipped. */
+    const staleHonoured: typeof realTest = (input, officerId, deps, options) => {
+      const r = (input as unknown as { recipient?: Record<string, unknown> })?.recipient;
+      const v = (deps ?? TEST.CAMPAIGN_TEST_DEPS).adultTestWording()?.v ?? null;
+      const forced = r && r.kind === "typed" ? { ...input, recipient: { ...r, attestedVersion: v } } : input;
       return realTest(forced as TestInput, officerId, deps, options);
     };
     /** A.4 · a typed number rendered as an ACCOUNT recipient — no source line, and a holder's own name could print. */
@@ -4091,6 +4318,12 @@ if (!PROVE_RED) {
       if (draft === null || v.preview === null) return v;
       const r = renderForRecipient(u37bTemplate(draft), { variant: "SW", name: "Juma", token: "ab12cd34", origin: "account" });
       return { ...v, preview: { ...v.preview, SW: r.ok ? r.text : v.preview.SW } };
+    };
+    /** U37c-2 · "allowed" without a preview — a text that cannot render for a book recipient offered anyway. */
+    const renderIgnored: typeof LOADER.composeTypedView = (draft, facts) => {
+      const v = LOADER.composeTypedView(draft, facts);
+      const upFront: Array<string | null> = [TEST.TEST_TYPED_OUTREACH_CLOSED, TEST.TEST_TYPED_NO_ATTESTATION_WORDING, TEST.TEST_TYPED_NEEDS_SOURCE_LINE];
+      return draft !== null && !v.allowed && v.why !== null && !upFront.includes(v.why) ? { ...v, allowed: true, why: null } : v;
     };
     /** Review · a 41-character number let through — the cap gone, the extra text trimmed off before the re-typing. */
     const uncappedNumber: typeof realTest = (input, officerId, deps, options) => {
@@ -4332,6 +4565,19 @@ if (!PROVE_RED) {
         landedAs: "unticked, the real test is refused and the plant's is handed over",
       },
       {
+        name: "U37c-2 · a tick recorded against words the officer never saw (the version check skipped)",
+        expect: [/^§18\.32 ⛔/], impl: { ...R, test: staleHonoured },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const old = (cid: string) => ({ campaignId: cid, variant: "SW", recipient: { kind: "typed", number: `+${u37bKey()}`, adultAttested: true, attestedVersion: P_ADULT.v - 1 } }) as unknown as TestInput;
+          const real = await realTest(old(id), o.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await staleHonoured(old(id), o.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "attestation_stale" && planted.ok;
+        },
+        landedAs: "with an old version, the real test is refused and the plant's is handed over",
+      },
+      {
         name: "U37c · a typed number rendered as an ACCOUNT recipient",
         expect: [/^§18\.13 ⭐/, /^§18\.17 ⭐/], impl: { ...R, test: typedAsAccount },
         landed: async () => {
@@ -4381,6 +4627,19 @@ if (!PROVE_RED) {
           return planted.ok && token !== "" && planted.text.includes(token);
         },
         landedAs: "the plant hands the officer the text carrying the number's real stop link",
+      },
+      {
+        name: "U37c-2 · a typed test offered for a text that cannot render for a book recipient",
+        expect: [/^§18\.22 ⭐/], impl: { ...R, typedView: renderIgnored },
+        landed: async () => {
+          const id = await phrased();
+          const row = await db.smsCampaign.find(id);
+          if (row === null) return false;
+          const broken = { ...row, bodySw: "50pick: Habari {jina}, karibu.", nameFallbackSw: null } as typeof row;
+          const facts = { outreachOpen: true, adult: P_ADULT };
+          return !LOADER.composeTypedView(broken, facts).allowed && renderIgnored(broken, facts).allowed;
+        },
+        landedAs: "the real view refuses the unrenderable text; the plant offers it",
       },
       {
         name: "U37c · the typed preview built for a number",

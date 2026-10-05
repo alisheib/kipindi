@@ -94,8 +94,10 @@ export const TYPED_TEST_MIN_MS = 3000;
 /** U37c · a typed number is at most this many characters as posted — the field's own cap. Longer is a malformed request. */
 export const TYPED_NUMBER_MAX_CHARS = 40;
 
-/** U37c · who the test goes to: the officer's own number, or a typed one with the officer's 18+ confirmation. */
-export type TestRecipient = { kind: "own" } | { kind: "typed"; number: string; adultAttested: boolean };
+/** U37c · who the test goes to: the officer's own number, or a typed one with the officer's 18+ confirmation — and the
+ *  VERSION of the `adult.test` words the officer read when they ticked (null when none was posted), so a confirmation is
+ *  recorded against the words that were on the screen and never against a rewording they never saw. */
+export type TestRecipient = { kind: "own" } | { kind: "typed"; number: string; adultAttested: boolean; attestedVersion: number | null };
 
 /** ⛔ THE WHOLE INPUT — which saved campaign, which language, and who. No body. `recipient: null` is a recipient that was
  *  posted and not understood (`bad_recipient`); absent is the officer's own number. */
@@ -115,7 +117,7 @@ export type CampaignTestRefusalReason =
   | "live_sends_closed" | "template_invalid" | "token_unavailable" | MarketingSkipReason | "held" | "failed"
   /* U37c · a typed test's own refusals */
   | "bad_recipient" | "bad_number" | "attestation_missing" | "typed_outreach_closed" | "typed_no_attestation_wording"
-  | "typed_needs_source_line" | "typed_rate_limited" | "typed_refused" | "protected";
+  | "typed_needs_source_line" | "typed_rate_limited" | "typed_refused" | "protected" | "attestation_stale";
 
 /** `handed_over` is the gateway TAKING it — never "delivered" (OD41); only a receipt is delivery. ⛔ No result carries a
  *  basis (S7, A32): what made a typed number reachable is never told to the screen. */
@@ -152,6 +154,9 @@ export const TEST_TYPED_REFUSED =
   "No test was sent: this number can't receive this campaign's messages. Choose another number, or test on your own.";
 export const TEST_BAD_RECIPIENT = "That test request wasn't understood — reload the page and try again.";
 export const TEST_ATTESTATION_MISSING = "Tick the box to confirm the person who uses this number is 18 or older.";
+/** ⛔ The tick was given for words the owner has since changed — the confirmation is not recorded against new words. */
+export const TEST_ATTESTATION_STALE =
+  "The 18+ confirmation was reworded while this page was open — read the new words and tick the box again.";
 export const TEST_TYPED_OUTREACH_CLOSED =
   "Tests to another number open once licence outreach is switched on (Admin → System → Licence outreach). Send yourself a test for now.";
 export const TEST_TYPED_NO_ATTESTATION_WORDING =
@@ -236,9 +241,10 @@ function heldSentence(reason: string): string {
 
 /**
  * ⭐ U37c · THE POSTED RECIPIENT, RE-TYPED — never trusted to be the shape the form meant to send. Absent (or null) is the
- * officer's own number; `{ kind: "own" }` is too; `{ kind: "typed", number, adultAttested }` is a typed number, the
- * number a string of at most `TYPED_NUMBER_MAX_CHARS` and the confirmation the BOOLEAN `true` and nothing else ("true",
- * 1 or an absent field confirm nothing, §18.18). Any other shape is `null` — `bad_recipient`.
+ * officer's own number; `{ kind: "own" }` is too; `{ kind: "typed", number, adultAttested, attestedVersion }` is a typed
+ * number, the number a string of at most `TYPED_NUMBER_MAX_CHARS`, the confirmation the BOOLEAN `true` and nothing else
+ * ("true", 1 or an absent field confirm nothing, §18.18), and the version a positive whole number or null (anything else
+ * is null — refused `attestation_stale` at step 6, §18.32). Any other shape is `null` — `bad_recipient`.
  */
 export function testRecipientOf(raw: unknown): TestRecipient | null {
   if (raw === undefined || raw === null) return { kind: "own" };
@@ -246,7 +252,9 @@ export function testRecipientOf(raw: unknown): TestRecipient | null {
   const r = raw as Record<string, unknown>;
   if (r.kind === "own") return { kind: "own" };
   if (r.kind !== "typed" || typeof r.number !== "string" || r.number.length > TYPED_NUMBER_MAX_CHARS) return null;
-  return { kind: "typed", number: r.number, adultAttested: r.adultAttested === true };
+  const v = r.attestedVersion;
+  const attestedVersion = typeof v === "number" && Number.isSafeInteger(v) && v > 0 ? v : null;
+  return { kind: "typed", number: r.number, adultAttested: r.adultAttested === true, attestedVersion };
 }
 
 /** ⛔ S24 · the recipient's budget key: `testTo:` and sixteen LETTERS of a keyed hash of the gate's key (`pepperedLetters`,
@@ -452,7 +460,7 @@ export async function sendCampaignTest(
   const live = marketingLiveGate(deps.provider(), await deps.liveSwitch());
   if (!live.ok) return refuse("live_sends_closed", TEST_LIVE_SENDS_CLOSED);
 
-  // ── 6 · U37c · a TYPED test's three checks that do not depend on who holds the number — the same answer for a player's
+  // ── 6 · U37c · a TYPED test's four checks that do not depend on who holds the number — the same answer for a player's
   //    number and a stranger's, before any read about the number (§18.25) ──
   let adultWording: WordingVersion | null = null;
   if (target === "typed") {
@@ -462,6 +470,11 @@ export async function sendCampaignTest(
     adultWording = deps.adultTestWording();
     if (adultWording === null) return refuse("typed_no_attestation_wording", TEST_TYPED_NO_ATTESTATION_WORDING);
     if (template.sourcePhrase.trim() === "") return refuse("typed_needs_source_line", TEST_TYPED_NEEDS_SOURCE_LINE);
+    // ⛔ §18.32 · the tick counts only for the words it was given for — the same answer for any number, before any read
+    // about it (§18.25). A rewording since the page opened, or no version posted at all, is asked again.
+    if (recipient.kind !== "typed" || recipient.attestedVersion !== adultWording.v) {
+      return refuse("attestation_stale", TEST_ATTESTATION_STALE);
+    }
   }
 
   // ── 7 · the stored template's own verdict (one campaign, one verdict, OD48) — before any budget or token is spent ──
