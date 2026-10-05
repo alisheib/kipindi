@@ -349,6 +349,22 @@ await step("26-sms-credit", async () => {
   await shoot(page, "26-sms-credit");
   await unmark(page);
 });
+/* U33a-R · the Licence outreach card, on the SAME tab as the policy lines its checks are satisfied by. The guide shoots
+   it CLOSED with its remaining steps listed, because that is what an admin opening this page today actually sees. */
+await step("29-licence-outreach", async () => {
+  await page.goto(`${BASE}/admin/system?tab=policy`, { waitUntil: "networkidle" });
+  /* ⛔ EXACT, AND SCOPED TO main. `getByText("Licence outreach")` matches on a SUBSTRING, and the policy-lines card
+     above carries the hint "…once licence outreach is built (a later update)" — so the loose locator scrolled to that
+     paragraph and the first build of this step photographed the wrong card while reporting 0 failures. The guide said
+     30 screenshots and one of them was of something else: a count is not a picture. */
+  const card = page.locator("main").getByText("Licence outreach", { exact: true }).first();
+  if ((await card.count()) === 0) throw new Error("the Licence outreach card is not on this page");
+  await card.evaluate((n) => n.scrollIntoView({ block: "center" }));
+  await wait(400);
+  await markCardByLabel(page, "Licence outreach");
+  await shoot(page, "29-licence-outreach");
+  await unmark(page);
+});
 await ctx.close();
 
 await step("27-phone", async () => {

@@ -43,7 +43,9 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   ▶ RESUMED the same afternoon (Ali: "proceed with the plan, end to end until live, generate the instructions PDF"):
   STEP 33 · U43-0 LIVE `bf166ff3` (the one migration of the engine track, pushed alone, read back on production).
   STEP 34 · U41 decided — a campaign is authorised by one officer's typed confirmation, at any size (OD60).
-  STEP 35 · U33a-R, the licence-outreach record — the four opening checks, the two audited writers and the
+  STEP 35 · U33a-R **LIVE `ec02e993`** (pushed 08:47 UTC, serving 08:50 — the new container booted clean, `ok:true`,
+  database reachable and migrated; no migration in this unit, so the smoke is the boot and the card itself) — the
+  licence-outreach record: the four opening checks, the two audited writers and the
   "Licence outreach" card under the policy lines on /admin/system (`?tab=policy`). R1–R6 green, 5/5 red plants caught.
   ⛔ THE THREE BUILDERS' SCRATCH OUTPUTS ARE NOT REACHABLE FROM EVERY MACHINE, AND ONE SESSION HAS ALREADY HAD TO
   REBUILD FROM SPEC. STEP 35 was built on **OMEGA-DEV072** (`C:\kipindi-main`, a THIRD machine — not Ali-Blade15, not
@@ -52,6 +54,13 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   §8 · §9. ⚠️ **U37s and U16a are still owed, and their drafts should be treated as LOST** unless Ali-Blade15 still
   holds that scratch root — a session scratchpad is pruned without warning (the ZAMEL lesson, same week). Rebuild them
   from spec rather than hunting for them.
+  THE ADMIN GUIDE IS v1.3 (22 pages, was 20): a new section 7, "Licence outreach — who a campaign may reach", with the
+  card photographed as an admin meets it today (Closed, its three remaining steps listed, Open not pressable), and six
+  new rows in "Messages you may see". ⛔ ITS FIRST BUILD PHOTOGRAPHED THE WRONG CARD AND REPORTED 0 FAILURES: the step
+  scrolled with `getByText("Licence outreach")`, which matches a SUBSTRING, and the policy-lines card above carries the
+  hint "…once licence outreach is built". The locator is exact and scoped to `main` now, and it THROWS when the card is
+  absent rather than shooting whatever is on screen. A screenshot count is not a screenshot — look at every one.
+
   ⚖️ A TECHNICAL CALL TAKEN ON ALI'S STANDING DELEGATION (2026-10-02), recorded because §0 asked the lead to decide it:
   **closing licence outreach is ANY admin's, not owner-only** — a stop that waits for one person is not a stop. Opening
   is the guarded act; closing is never refused for a failing check.

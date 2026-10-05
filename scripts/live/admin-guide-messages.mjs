@@ -226,7 +226,44 @@ export const SECTIONS = [
     ],
   },
   {
-    title: "7 · On a phone",
+    title: "7 · Licence outreach — who a campaign may reach",
+    lead: "A campaign reaches only people who agreed to receive messages, until the owner opens licence outreach. Opening it is a decision, not a setting: it is refused until four things are true, and both opening and closing are recorded with your name and the time.",
+    steps: [
+      {
+        title: "See where licence outreach stands",
+        where: "The menu → System → the “Public policy lines” tab → the “Licence outreach” card",
+        do: [
+          "The card says Open or Closed.",
+          "Closed is the normal state: campaigns go only to people who agreed to receive them.",
+          "Open means a campaign may ALSO reach players who have not stopped 50pick offers, and contacts on lists recorded under the licence. A stop is always kept, whatever the state.",
+        ],
+        shots: ["29-licence-outreach"],
+      },
+      {
+        title: "The steps the card asks for first",
+        where: "The menu → System → Public policy lines",
+        do: [
+          "While anything is still missing, the card lists it and the Open button cannot be pressed.",
+          "Each line tells you which policy bullet to fix — they are on the same tab, just above the card.",
+          "Fix the lines, save them, then come back to the card: a step that is done disappears from the list.",
+        ],
+        notes: [
+          "The checks are made again when you press Open, over the lines as they are at that moment — so a line someone changed in another tab is still caught.",
+        ],
+      },
+      {
+        title: "Open it, or close it",
+        where: "The menu → System → Public policy lines → Licence outreach",
+        do: [
+          "Press Open licence outreach. A box explains exactly what changes and asks you to confirm.",
+          "Press Close licence outreach to stop it. Closing takes effect at once and is never refused — if in doubt, close it.",
+          "Both are recorded in the audit log with your name, the time, and the four steps as they stood.",
+        ],
+      },
+    ],
+  },
+  {
+    title: "8 · On a phone",
     steps: [
       {
         title: "The same screens on a phone",
@@ -248,6 +285,13 @@ export const BALANCE_STATES = [
 ];
 
 export const MESSAGES = [
+  // ── licence outreach (the card on System → Public policy lines)
+  { area: "Licence outreach", message: "The Privacy Notice still says offers go only to people who agree. Update it first (Public policy lines → Privacy §4).", meaning: "The public Privacy Notice still promises that only people who agreed are messaged.", action: "Change that line on this same tab, save it, then come back." },
+  { area: "Licence outreach", message: "Add the Privacy Notice's licence line and review its consent line first (Public policy lines → Privacy §3).", meaning: "The Privacy Notice does not yet say 50pick also contacts people under its licence.", action: "Write the licence line in all three languages and tick the consent line as reviewed." },
+  { area: "Licence outreach", message: "The Responsible Gambling line must say how a non-player's age is confirmed before outreach can reach non-players. Update it first.", meaning: "The page does not say how staff confirm a non-member is 18 or over.", action: "Say it in the English line — it must name staff and 18." },
+  { area: "Licence outreach", message: "The switch-offs recorded before the consent ledger existed haven't been reconciled yet (an engineering step).", meaning: "An engineering step is outstanding. Nothing you can do on the page fixes it.", action: "Ask the developer — it is not an admin task." },
+  { area: "Licence outreach", message: "Licence outreach can't be opened yet — each remaining step is listed below.", meaning: "One or more of the four steps is still missing.", action: "Do what each listed line says, then press Open again." },
+  { area: "Licence outreach", message: "Sign in again to change licence outreach.", meaning: "Your session no longer names you.", action: "Sign in again, then repeat the change." },
   // ── the contact form
   { area: "Add / edit contact", message: "This number is already in the book.", meaning: "The number is a contact already.", action: "Press “Open the existing contact →” and edit that one." },
   { area: "Add / edit contact", message: "This number can't be added to the book.", meaning: "This number was erased from 50pick at the person's request.", action: "Do not add it again." },
