@@ -64,15 +64,22 @@ jobs:
       # browser — a green unit suite cannot see a dead var(), which is how the B5 outage
       # killed all motion silently). Both are exercised by the pre-deploy/visual sweep.
       # Only `responsive` was skipped here, so test:motion failed on EVERY push — and since
-      # this aggregator is the only place all 265 suites run, that is why CI had not been
+      # this aggregator is the only place every suite runs, that is why CI had not been
       # green in 200 runs. This is the invocation scripts/test-all.mjs's own header has
       # recommended all along.
       #
       # ⛔ THE MATCH IS EXACT (scripts/test-all.mjs). It must NOT catch test:motion-ladder,
       # test:glyph-motion or test:reduce-motion — three serverless gates a substring skip
       # would have silently disabled while still printing a clean pass.
+      # ⚠️ `--no-tsc`, and `integrity` in the skip list, because BOTH already ran as their
+      # own steps above and the aggregator runs them again by default. That was a whole
+      # extra typecheck of this tree on every push and every PR, buying nothing: a second
+      # identical run of a deterministic check over the same commit cannot tell you
+      # anything the first did not. The steps are kept separate (rather than dropped in
+      # favour of the aggregator) because they are the fast-fail pair — a tree that does
+      # not compile should not wait for 457 suites to say so.
       - name: Test suite (in-memory)
-        run: node scripts/test-all.mjs --skip responsive,motion
+        run: node scripts/test-all.mjs --no-tsc --skip responsive,motion,integrity
 
       - name: Build
         run: npm run build
