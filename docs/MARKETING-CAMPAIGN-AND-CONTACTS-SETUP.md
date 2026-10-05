@@ -104,6 +104,11 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   `marketing.listBasis` 10 at once then one a minute, spent BEFORE the writer so a refused recording spends it too; the
   act gate is `softRequireStaff("growth", …)` — Ali's Q12 ruling of 2026-10-05.
   ⭐ D19 · nothing on this card is maskable: a list row is counts, names and instants, never a phone number.
+  🔴 **`test:unsaved-changes` CAUGHT THE FIRST CUT OF THIS CARD**: it let an officer type a proof note and navigate
+  away with it silently lost. ⭐ The fix is not just "add the guard" — the card now WARNS on exit and deliberately
+  keeps NO draft: a half-written attestation resurrected on a later visit and submitted without being re-read is worse
+  than retyping it. ⚠️ It was visible only because the battery's FAILURE SET was diffed against the previous run —
+  428→427 green with a list that looked the same length. Compare the set, never the count.
   Guard: `test:contacts-lists` B1–B8, 9 green, red 3/3. **B8 is the card's own contract** — both actions ask the gate
   FIRST and spend the budget before the writer, the card decides nothing itself (no `currentWording`, no `db.`), it
   labels the tick from the saved text, and the loader reads coverage from the DAL rather than counting members again.
