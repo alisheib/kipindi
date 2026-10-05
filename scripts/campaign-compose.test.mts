@@ -64,6 +64,10 @@
  * either refusal can keep the officer's text as a NEW draft, which carries the audience on screen (`carry`) or is not
  * offered — never the whole book by omission; the saved line invites a test only when the page can send one; and the
  * Audience card takes focus only while it shows a problem.
+ * ⭐ §17.13–§17.16 (U37s, 2026-10-05) · THE SOURCE LINE IS STAMPED. A DRAFT save stamps the SAVED `source.phrase` wording
+ * and the server's verdict prices exactly that line; blank (null) while nothing is saved, a line of spaces included; an
+ * edit re-stamps — never a stale line — while a confirmed campaign keeps its own; and the composer's counter prices the
+ * line the next save will stamp (a campaign past DRAFT, its frozen one).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
@@ -1381,6 +1385,14 @@ type ComposeImpl = {
   testSendSource: string;
   /** The composer's Audience card (`composeAudienceView`) — §17.8 asks it for a masked viewer, the save's own rule. */
   audienceView: typeof LOADER.composeAudienceView;
+  /** U37s · the line the composer's counter prices (`composerSourcePhrase`) — §17.16. */
+  sourceLine: typeof LOADER.composerSourcePhrase;
+  /** U37s · the composer's stale-stamp flag (`composerSourceLineStale`) — §17.19. */
+  staleLine: typeof LOADER.composerSourceLineStale;
+  /** U37s · the three files whose wiring §17.20 reads: the save, the loader and the screen. */
+  draftSource: string;
+  loaderSource: string;
+  clientSource: string;
 };
 const REAL_COMPOSE: ComposeImpl = {
   save: DRAFT.saveCampaignDraft, test: TEST.sendCampaignTest, readSwitch: LIVE.readMarketingLiveSwitch,
@@ -1388,7 +1400,17 @@ const REAL_COMPOSE: ComposeImpl = {
   testDeps: TEST.CAMPAIGN_TEST_DEPS,
   testSendSource: readFileSync(new URL("../src/lib/server/marketing/campaign-test-send.ts", import.meta.url), "utf8"),
   audienceView: LOADER.composeAudienceView,
+  sourceLine: LOADER.composerSourcePhrase,
+  staleLine: LOADER.composerSourceLineStale,
+  draftSource: readFileSync(new URL("../src/lib/server/marketing/campaign-draft.ts", import.meta.url), "utf8"),
+  loaderSource: readFileSync(new URL("../src/app/admin/campaigns/new/composer-loader.ts", import.meta.url), "utf8"),
+  clientSource: readFileSync(new URL("../src/app/admin/campaigns/new/composer-client.tsx", import.meta.url), "utf8"),
 };
+/** U37s · §17.18 saves the source line through the SHIPPED setter — the store the save reads. */
+const WORDINGS = await import("../src/lib/server/marketing/wordings.ts");
+/** U37s · Ali's approved source line (G5, 2026-10-05 — 30 septets, the limit) and a shorter line, as saved wordings would read. */
+const LINE37S_A = "Namba yako ipo orodhani kwetu.";
+const LINE37S_B = "Orodha yetu.";
 
 /* ══ §16.11–§16.13 — THE COMPOSER'S WORDS, EXECUTED (the validation audit, 2026-10-03) ══════════════════════════════════
  * What the counter row offers, what its line says while Unicode leaves no room, and the sentences a save, a refusal and
@@ -1643,6 +1665,141 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
     return [row.audienceFilter === '{"tags":["vip"]}' && copied !== null && copied.audienceFilter === row.audienceFilter
       && book.carry !== null && Object.keys(book.carry).length === 0 && hidden.carry === null && refused.carry === null,
       JSON.stringify({ stored: row.audienceFilter, carry: kept.carry, copied: copied?.audienceFilter ?? (copy === null ? "nothing carried" : copy.ok ? "no row" : copy.error), book: book.carry, hidden: hidden.carry, refused: refused.carry })];
+  });
+
+  /* ── §17.13–§17.16 · U37s, the source line stamped (2026-10-05) ── */
+  /** The save as it runs while the saved `source.phrase` wording reads `line` (null: nothing saved). */
+  const saveUnder = (line: string | null, input: DraftInput) =>
+    impl.save(input, officerId, { viewerReads: true }, { ...deps, sourcePhrase: () => ({ ok: true, phrase: line }) } as typeof DRAFT.CAMPAIGN_DRAFT_DEPS);
+  const phraseOf = (r: Awaited<ReturnType<typeof saveUnder>>, row: StoredRow | null) =>
+    row === null ? (r.ok ? "no row" : r.error) : JSON.stringify(row.sourcePhrase);
+
+  await claim("§17.13 ⭐ U37s · A DRAFT SAVE STAMPS THE SAVED SOURCE LINE — saved while the line reads 'Namba yako ipo orodhani kwetu.', a new draft stores exactly that line; and the server's verdict PRICES the stamped line: a body sized to a 12-character line's room is saved under that line with its own counter's segments, and refused on the body under the 30-character reserve a blank line holds", async () => {
+    const stamped = await saveUnder(LINE37S_A, draftInput({ name: "Stamped line" }));
+    const row = stamped.ok ? await db.smsCampaign.find(stamped.id) : null;
+    const sized = draftInput({ name: "Priced line", bodySw: fillTo(HEAD, operatorBudget("SW", LINE37S_B)) });
+    const priced = await saveUnder(LINE37S_B, sized);
+    const pricedRow = priced.ok ? await db.smsCampaign.find(priced.id) : null;
+    const reserved = await saveUnder(null, sized);
+    const own = counterFor(sized.bodySw, "SW", FB, LINE37S_B);
+    return [row !== null && row.sourcePhrase === LINE37S_A
+      && pricedRow !== null && pricedRow.sourcePhrase === LINE37S_B && pricedRow.segmentsSw === own.segments && own.budget >= 0
+      && !reserved.ok && reserved.reason === "invalid" && (reserved.problems.bodySw?.length ?? 0) > 0,
+      `stamped ${phraseOf(stamped, row)} · priced ${phraseOf(priced, pricedRow)} (${pricedRow?.segmentsSw}/${own.segments}, room ${own.budget}) · under the reserve ${reserved.ok ? "SAVED" : reserved.reason}`];
+  });
+
+  await claim("§17.14 ⛔ U37s · BLANK WHILE UNSAVED — with no line saved a draft stores NO source line (null, never the reserve's placeholder), and so does a line saved as spaces only; and the ONE reader answers null on a store where no line was ever saved", async () => {
+    const none = await saveUnder(null, draftInput({ name: "Unsaved line" }));
+    const spaces = await saveUnder("   ", draftInput({ name: "Spaces line" }));
+    const noneRow = none.ok ? await db.smsCampaign.find(none.id) : null;
+    const spacesRow = spaces.ok ? await db.smsCampaign.find(spaces.id) : null;
+    const reader = DRAFT.savedSourcePhrase();
+    return [noneRow !== null && noneRow.sourcePhrase === null && spacesRow !== null && spacesRow.sourcePhrase === null && reader === null,
+      `unsaved ${phraseOf(none, noneRow)} · spaces ${phraseOf(spaces, spacesRow)} · reader ${JSON.stringify(reader)}`];
+  });
+
+  await claim("§17.15 ⛔ U37s · AN EDIT RE-STAMPS; A CONFIRMED CAMPAIGN KEEPS ITS OWN — a draft stamped under line A and edited after the saved line became B stores B, never the stale A, and edited after the line was cleared stores none; a campaign confirmed under A keeps A when the line changes, and a save of it is refused 'not_draft' with A untouched", async () => {
+    const made = await saveUnder(LINE37S_A, draftInput({ name: "Re-stamped line" }));
+    if (!made.ok) return [false, `fixture refused: ${made.error}`];
+    const edited = await saveUnder(LINE37S_B, draftInput({ id: made.id, draftRevision: 0, name: "Re-stamped line" }));
+    const row = await db.smsCampaign.find(made.id);
+    const cleared = await saveUnder(null, draftInput({ id: made.id, draftRevision: 1, name: "Re-stamped line" }));
+    const clearedRow = await db.smsCampaign.find(made.id);
+    const frozen = await saveUnder(LINE37S_A, draftInput({ name: "Frozen line" }));
+    if (!frozen.ok) return [false, `fixture refused: ${frozen.error}`];
+    await u37bConfirm(frozen.id);
+    const late = await saveUnder(LINE37S_B, draftInput({ id: frozen.id, draftRevision: 0, name: "Frozen line" }));
+    const frozenRow = await db.smsCampaign.find(frozen.id);
+    return [edited.ok && row !== null && row.sourcePhrase === LINE37S_B
+      && cleared.ok && clearedRow !== null && clearedRow.sourcePhrase === null
+      && !late.ok && late.reason === "not_draft" && frozenRow !== null && frozenRow.status === "CONFIRMED" && frozenRow.sourcePhrase === LINE37S_A,
+      `edited ${edited.ok ? JSON.stringify(row?.sourcePhrase) : edited.reason} · cleared ${cleared.ok ? JSON.stringify(clearedRow?.sourcePhrase) : cleared.reason} · confirmed ${late.ok ? "SAVED" : late.reason}, keeps ${JSON.stringify(frozenRow?.sourcePhrase)}`];
+  });
+
+  await claim("§17.16 ⭐ U37s · THE COUNTER PRICES THE LINE THE SAVE STAMPS — a new composer and a DRAFT stamped under an older line are priced with the SAVED line (the next save re-stamps it), and with the reserve (blank) once the saved line is cleared or while none was ever saved; a campaign past DRAFT is priced with its own frozen line, whatever is saved now", async () => {
+    const draftA = { status: "DRAFT", sourcePhrase: LINE37S_A } as unknown as StoredRow;
+    const confirmedA = { status: "CONFIRMED", sourcePhrase: LINE37S_A } as unknown as StoredRow;
+    const confirmedNone = { status: "CONFIRMED", sourcePhrase: null } as unknown as StoredRow;
+    const v = impl.sourceLine;
+    const got = {
+      fresh: v(null, LINE37S_B), draft: v(draftA, LINE37S_B), never: v(null, null), cleared: v(draftA, null),
+      confirmed: v(confirmedA, LINE37S_B), confirmedNone: v(confirmedNone, LINE37S_B),
+    };
+    return [got.fresh === LINE37S_B && got.draft === LINE37S_B && got.never === "" && got.cleared === ""
+      && got.confirmed === LINE37S_A && got.confirmedNone === "", JSON.stringify(got)];
+  });
+
+  /* ── §17.17–§17.20 · U37s review (2026-10-05): the fresh read, the real wiring, the stale draft ── */
+  await claim("§17.17 ⛔ U37s · A SOURCE LINE THAT COULD NOT BE READ IS NO SAVE — with the fresh read answering no answer, a new draft is refused 'source_unreadable' with its sentence and writes no row, and an edit of a draft stamped A is refused with A and its revision untouched — never a guessed or blank stamp over a good line", async () => {
+    const unread = { ...deps, sourcePhrase: () => ({ ok: false as const }) } as typeof DRAFT.CAMPAIGN_DRAFT_DEPS;
+    const before = campaignCount();
+    const fresh = await impl.save(draftInput({ name: "Unread line" }), officerId, { viewerReads: true }, unread);
+    const written = campaignCount() - before;
+    const made = await saveUnder(LINE37S_A, draftInput({ name: "Unread edit" }));
+    if (!made.ok) return [false, `fixture refused: ${made.error}`];
+    const edit = await impl.save(draftInput({ id: made.id, draftRevision: 0, name: "Unread edit", bodySw: "50pick: Toleo jipya." }), officerId, { viewerReads: true }, unread);
+    const row = await db.smsCampaign.find(made.id);
+    return [!fresh.ok && fresh.reason === "source_unreadable" && fresh.error === DRAFT.CAMPAIGN_SOURCE_LINE_UNREADABLE && written === 0
+      && !edit.ok && edit.reason === "source_unreadable" && row !== null && row.sourcePhrase === LINE37S_A && row.draftRevision === 0,
+      `new ${fresh.ok ? "SAVED" : fresh.reason} (rows written ${written}) · edit ${edit.ok ? "SAVED" : edit.reason} · stamp ${JSON.stringify(row?.sourcePhrase)} rev ${row?.draftRevision}`];
+  });
+
+  await claim("§17.18 ⭐ U37s · THE REAL WIRING — the line saved through the SHIPPED setter (`saveMarketingWordings`) is stamped by a draft saved through the SHIPPED deps, the composer's reader agrees, the stale flag reads true for a draft stamped before the line existed and false once it is re-saved; the line is then cleared through the setter, and a new draft stamps none again", async () => {
+    const quiet = { ...DRAFT.CAMPAIGN_DRAFT_DEPS, audit: async () => ({}) };
+    const saveLine = async (text: string) => {
+      const base = WORDINGS.wordingHistory("source.phrase").length;
+      const res = await WORDINGS.saveMarketingWordings({ "source.phrase": text, "approve.source.phrase": "1", "base.source.phrase": String(base) }, "usr_u37s_owner");
+      return res.ok === true;
+    };
+    const early = await impl.save(draftInput({ name: "Before the line" }), officerId, { viewerReads: true }, quiet);
+    let saved = false;
+    let cleared = false;
+    try {
+      saved = await saveLine(LINE37S_A);
+      const shown = DRAFT.savedSourcePhrase();
+      const earlyRow = early.ok ? await db.smsCampaign.find(early.id) : null;
+      const staleBefore = impl.staleLine(earlyRow, shown);
+      const resaved = early.ok ? await impl.save(draftInput({ id: early.id, draftRevision: 0, name: "Before the line" }), officerId, { viewerReads: true }, quiet) : null;
+      const resavedRow = early.ok ? await db.smsCampaign.find(early.id) : null;
+      const staleAfter = impl.staleLine(resavedRow, DRAFT.savedSourcePhrase());
+      cleared = await saveLine("");
+      const after = await impl.save(draftInput({ name: "After the clear" }), officerId, { viewerReads: true }, quiet);
+      const afterRow = after.ok ? await db.smsCampaign.find(after.id) : null;
+      return [saved && shown === LINE37S_A && impl.sourceLine(null, shown) === LINE37S_A
+        && earlyRow !== null && earlyRow.sourcePhrase === null && staleBefore === true
+        && resaved !== null && resaved.ok && resavedRow !== null && resavedRow.sourcePhrase === LINE37S_A && staleAfter === false
+        && cleared && DRAFT.savedSourcePhrase() === null && afterRow !== null && afterRow.sourcePhrase === null,
+        JSON.stringify({ saved, shown, early: earlyRow?.sourcePhrase ?? (early.ok ? "no row" : early.error), staleBefore, resaved: resavedRow?.sourcePhrase, staleAfter, cleared, after: afterRow?.sourcePhrase ?? (after.ok ? "no row" : after.error) })];
+    } finally {
+      // ⛔ The store is left as it was found — no line — whatever failed above, so no later section reads one.
+      if (saved && !cleared) await saveLine("");
+    }
+  });
+
+  await claim("§17.19 ⭐ U37s · THE STALE FLAG — a DRAFT stamped with no line, an older line, or a line since cleared reads stale against the saved one; a DRAFT carrying the saved line, or none while none is saved, does not; a new composer and a campaign past DRAFT never do", async () => {
+    const d = (status: string, sourcePhrase: string | null) => ({ status, sourcePhrase }) as unknown as StoredRow;
+    const s = impl.staleLine;
+    const got = {
+      none_vs_A: s(d("DRAFT", null), LINE37S_A), A_vs_B: s(d("DRAFT", LINE37S_A), LINE37S_B), A_vs_cleared: s(d("DRAFT", LINE37S_A), null),
+      A_vs_A: s(d("DRAFT", LINE37S_A), LINE37S_A), none_vs_none: s(d("DRAFT", null), null),
+      fresh: s(null, LINE37S_A), confirmed: s(d("CONFIRMED", LINE37S_A), LINE37S_B),
+    };
+    return [got.none_vs_A && got.A_vs_B && got.A_vs_cleared && !got.A_vs_A && !got.none_vs_none && !got.fresh && !got.confirmed,
+      JSON.stringify(got)];
+  });
+
+  await claim("§17.20 ⛔ U37s · THE WIRES, READ — the save's shipped deps stamp `readSavedSourcePhrase`, which reads `freshWording(\"source.phrase\")`; the loader prices and flags from ONE `savedSourcePhrase()` read (`composerSourcePhrase(draft, savedLine)`, `composerSourceLineStale(draft, savedLine)`); and the screen's no-changes rule gives way to `view.sourceLineStale` and says so (`data-compose-source-stale`)", async () => {
+    const deps37 = impl.draftSource.slice(impl.draftSource.indexOf("export const CAMPAIGN_DRAFT_DEPS"));
+    const wires = {
+      depsStampFresh: /sourcePhrase:\s*readSavedSourcePhrase,/.test(deps37.slice(0, deps37.indexOf("};"))),
+      readsFresh: /export async function readSavedSourcePhrase\(\)[\s\S]{0,200}freshWording\("source\.phrase"\)/.test(impl.draftSource),
+      oneRead: /const savedLine = savedSourcePhrase\(\);/.test(impl.loaderSource),
+      prices: /sourcePhrase: composerSourcePhrase\(draft, savedLine\),/.test(impl.loaderSource),
+      flags: /sourceLineStale: composerSourceLineStale\(draft, savedLine\),/.test(impl.loaderSource),
+      screenRule: /!dirty && !view\.sourceLineStale/.test(impl.clientSource),
+      screenSays: impl.clientSource.includes("data-compose-source-stale") && impl.clientSource.includes("COMPOSE_SOURCE_LINE_STALE"),
+    };
+    return [Object.values(wires).every(Boolean), JSON.stringify(wires)];
   });
   return failed;
 }
@@ -3063,6 +3220,44 @@ if (!PROVE_RED) {
       return realSave(input, officerId, opts, deps);
     };
 
+    /** U37s · the save never stamps the line — every draft born with no source line, whatever is saved. */
+    const neverStamps: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, { ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create({ ...row, sourcePhrase: null }) } });
+    /** U37s · THE SPEC'S PLANT — the save keeps a stale line: an edit's patch leaves the line stamped on it earlier. */
+    const staleLine: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, {
+        ...deps,
+        campaigns: {
+          ...deps.campaigns,
+          update: (id, patch, guard, at) => {
+            const { sourcePhrase: _stamped, ...kept } = patch;
+            return deps.campaigns.update(id, kept, guard, at);
+          },
+        },
+      });
+    /** U37s · a line read as spaces stored as it was read — blank kept as text, not as no line. */
+    const rawLine: typeof realSave = async (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) => {
+      const read = await deps.sourcePhrase();
+      const raw = read.ok ? read.phrase : null;
+      return realSave(input, officerId, opts, { ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create({ ...row, sourcePhrase: raw }) } });
+    };
+    /** U37s · the counter prices the line stamped on the draft earlier, not the one its next save stamps. */
+    const stampCounter: typeof LOADER.composerSourcePhrase = (draft) => draft?.sourcePhrase ?? "";
+    /** U37s review · a read that could not answer taken as "no line" — a good stamp replaced by none. */
+    const guessesBlank: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, {
+        ...deps,
+        sourcePhrase: async () => {
+          const r = await deps.sourcePhrase();
+          return r.ok ? r : { ok: true, phrase: null };
+        },
+      });
+    /** U37s review · the stale flag never raised — an old draft reads "no changes" and can't be re-stamped. */
+    const neverStale: typeof LOADER.composerSourceLineStale = () => false;
+    /** U37s review · one source string swapped in memory — each anchor resolves exactly once in the real source. */
+    const swapIn = (src: string, anchor: string, planted: string) => (src.split(anchor).length === 2 ? src.replace(anchor, planted) : src);
+    const UNREAD_37S = { ok: false as const };
+
     type SavePlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
     const savePlants: SavePlant[] = [
       {
@@ -3198,6 +3393,94 @@ if (!PROVE_RED) {
           return real !== null && real.tag === "vip" && planted !== null && Object.keys(planted).length === 0;
         },
         landedAs: "a stored tag filter carries as tag=vip on the real card and as no filter on the plant's",
+      },
+      {
+        name: "U37s · the save never stamps the saved source line",
+        expect: [/^§17[.]13 ⭐/], impl: { ...R, save: neverStamps },
+        landed: async () => {
+          const under = { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_A }) };
+          const real = await realSave(draftInput({ name: "Landed stamp" }), LANDED, reads, under);
+          const planted = await neverStamps(draftInput({ name: "Landed no stamp" }), LANDED, reads, under);
+          const a = real.ok ? await db.smsCampaign.find(real.id) : null;
+          const b = planted.ok ? await db.smsCampaign.find(planted.id) : null;
+          return a !== null && a.sourcePhrase === LINE37S_A && b !== null && b.sourcePhrase === null;
+        },
+        landedAs: "under a saved line the real save stamps it and the plant stores none",
+      },
+      {
+        name: "U37s · the save keeps a stale source line on an edit",
+        expect: [/^§17[.]15 ⛔/], impl: { ...R, save: staleLine },
+        landed: async () => {
+          const made = await realSave(draftInput({ name: "Landed stale line" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_A }) });
+          if (!made.ok) return false;
+          const edit = await staleLine(draftInput({ id: made.id, draftRevision: 0, name: "Landed stale line" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_B }) });
+          const row = await db.smsCampaign.find(made.id);
+          return edit.ok && row !== null && row.draftRevision === 1 && row.sourcePhrase === LINE37S_A;
+        },
+        landedAs: "an edit saved after the line became B still carries A",
+      },
+      {
+        name: "U37s · a line of spaces stored as text",
+        expect: [/^§17[.]14 ⛔/], impl: { ...R, save: rawLine },
+        landed: async () => {
+          const r = await rawLine(draftInput({ name: "Landed spaces" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: "   " }) });
+          const row = r.ok ? await db.smsCampaign.find(r.id) : null;
+          return row !== null && row.sourcePhrase === "   ";
+        },
+        landedAs: "a line of three spaces is stored as three spaces",
+      },
+      {
+        name: "U37s · the counter prices the draft's earlier stamp",
+        expect: [/^§17[.]16 ⭐/], impl: { ...R, sourceLine: stampCounter },
+        landed: async () => {
+          const draftA = { status: "DRAFT", sourcePhrase: LINE37S_A } as unknown as StoredRow;
+          return stampCounter(draftA, LINE37S_B) === LINE37S_A && LOADER.composerSourcePhrase(draftA, LINE37S_B) === LINE37S_B;
+        },
+        landedAs: "a DRAFT stamped A under a saved B: the real counter prices B, the plant A",
+      },
+      {
+        name: "U37s review · a source line that could not be read stamped as none",
+        expect: [/^§17[.]17 ⛔/], impl: { ...R, save: guessesBlank },
+        landed: async () => {
+          const made = await realSave(draftInput({ name: "Landed unread" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_A }) });
+          if (!made.ok) return false;
+          const unread = { ...QUIET_DRAFT_DEPS, sourcePhrase: () => UNREAD_37S };
+          const real = await realSave(draftInput({ id: made.id, draftRevision: 0, name: "Landed unread" }), LANDED, reads, unread);
+          const planted = await guessesBlank(draftInput({ id: made.id, draftRevision: 0, name: "Landed unread" }), LANDED, reads, unread);
+          const row = await db.smsCampaign.find(made.id);
+          return !real.ok && real.reason === "source_unreadable" && planted.ok && row !== null && row.sourcePhrase === null;
+        },
+        landedAs: "the real save refuses an unread line; the plant saves and wipes the stamp",
+      },
+      {
+        name: "U37s review · the stale flag never raised",
+        expect: [/^§17[.]19 ⭐/], impl: { ...R, staleLine: neverStale },
+        landed: async () => {
+          const old = { status: "DRAFT", sourcePhrase: null } as unknown as StoredRow;
+          return LOADER.composerSourceLineStale(old, LINE37S_A) && !neverStale(old, LINE37S_A);
+        },
+        landedAs: "a draft stamped before the line existed: the real flag is raised, the plant's is not",
+      },
+      {
+        name: "U37s review · the shipped deps stamp no line",
+        expect: [/^§17[.]20 ⛔/],
+        impl: { ...R, draftSource: swapIn(R.draftSource, "sourcePhrase: readSavedSourcePhrase,", "sourcePhrase: () => ({ ok: true, phrase: null }),") },
+        landed: async () => R.draftSource.split("sourcePhrase: readSavedSourcePhrase,").length === 2,
+        landedAs: "the deps line resolves exactly once in the real save and is swapped in memory",
+      },
+      {
+        name: "U37s review · the loader prices the draft's own stamp",
+        expect: [/^§17[.]20 ⛔/],
+        impl: { ...R, loaderSource: swapIn(R.loaderSource, "sourcePhrase: composerSourcePhrase(draft, savedLine),", 'sourcePhrase: draft?.sourcePhrase ?? "",') },
+        landed: async () => R.loaderSource.split("sourcePhrase: composerSourcePhrase(draft, savedLine),").length === 2,
+        landedAs: "the loader's pricing line resolves exactly once and is swapped in memory",
+      },
+      {
+        name: "U37s review · the screen keeps 'no changes' for a stale draft",
+        expect: [/^§17[.]20 ⛔/],
+        impl: { ...R, clientSource: swapIn(R.clientSource, "!dirty && !view.sourceLineStale", "!dirty") },
+        landed: async () => R.clientSource.split("!dirty && !view.sourceLineStale").length === 2,
+        landedAs: "the screen's no-changes rule resolves exactly once and is swapped in memory",
       },
     ];
     for (const p of savePlants) {

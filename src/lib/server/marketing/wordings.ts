@@ -87,6 +87,10 @@ export const WORDINGS_REFUSAL_SENTENCE: Readonly<Record<Exclude<WordingsRefusal,
   history: "That save would change or remove a version already saved, so nothing was saved. Reload the page and try again.",
 };
 
+/** A fresh read of one wording: the row's newest saved version (or null — never saved, or cleared), or a read that could
+ *  not answer. ⛔ `{ ok: false }` is never "nothing saved": a caller that stamps the wording refuses on it. */
+export type FreshWording = { readonly ok: true; readonly version: WordingVersion | null } | { readonly ok: false };
+
 /** What this file reads and writes — every reader and the setter, over ONE factory instance. */
 export type WordingsStore = {
   /** ⭐ The NEWEST SAVED version of a wording, or `null` when it was never saved — ⛔ never a suggestion. */
@@ -97,6 +101,8 @@ export type WordingsStore = {
   readonly savedBasisWordings: () => SavedBasisWordings;
   /** ⭐ Is this ledger row a first-party import attestation under SAVED words (any saved pair)? */
   readonly isImportAttestationSaved: (row: ImportAttestationRow | null | undefined) => boolean;
+  /** ⭐ U37s · the newest SAVED version AS THE ROW HOLDS IT NOW — re-read (`reload`), never this process's cache alone. */
+  readonly freshWording: (key: WordingKey) => Promise<FreshWording>;
   /** ⛔ THE ONLY WRITER. */
   readonly saveMarketingWordings: (patch: unknown, officerId: string, nowIso?: string) => Promise<WordingsSaveResult>;
 };
@@ -223,7 +229,21 @@ function storeOver(cfg: WordingsConfig, seen: RowSeen, rules: WordingRules, merg
     return run;
   };
 
-  return { currentWording, wordingHistory, savedBasisWordings, isImportAttestationSaved, saveMarketingWordings };
+  /**
+   * ⭐ U37s · A FRESH READ, for a writer that STAMPS a wording onto another record (the draft save's source line). The
+   * cache is this process's: it answers "nothing saved" until the boot read lands, and the version it booted with during
+   * a deploy's overlap — and a stamp written from either would quietly replace a good line with a stale one or none. So
+   * the row is re-read here (`reload` replaces the cache with what it read). ⛔ FAILS CLOSED: a read that could not
+   * answer is `{ ok: false }`, and the caller refuses — never the cached value. With no database the cache IS the store.
+   */
+  const freshWording = async (key: WordingKey): Promise<FreshWording> => {
+    if (!isWordingKey(key)) return { ok: true, version: null };
+    const read = await cfg.reload().catch(() => ({ ok: false as const }));
+    if (!read.ok) return { ok: false };
+    return { ok: true, version: currentWording(key) };
+  };
+
+  return { currentWording, wordingHistory, savedBasisWordings, isImportAttestationSaved, freshWording, saveMarketingWordings };
 }
 
 type StoreOptions = {
@@ -264,6 +284,11 @@ const live = makeStore({ key: MARKETING_WORDINGS_KEY, rules: WORDING_RULES, merg
 /** ⭐ The newest SAVED version of a wording, or `null` — ⛔ a basis writer records nothing on `null` (W1). */
 export function currentWording(key: WordingKey): WordingVersion | null {
   return live.currentWording(key);
+}
+
+/** ⭐ U37s · the newest SAVED version as the ROW holds it now (re-read) — ⛔ `{ ok: false }` when the read cannot answer. */
+export function freshWording(key: WordingKey): Promise<FreshWording> {
+  return live.freshWording(key);
 }
 
 /** Every saved version of a wording, oldest first — the card's history. */

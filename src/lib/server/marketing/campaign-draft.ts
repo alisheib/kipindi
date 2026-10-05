@@ -6,7 +6,16 @@
  * and the coding and segment count saved beside each body (`codingSw`/`segmentsSw`, `codingEn`/`segmentsEn`) are the
  * SERVER's counter's. The confirmation's estimate is priced from these stored figures (X15, M16), so a posted
  * "1 segment" for a two-segment body would price a campaign nobody will send. ⛔ The input type carries no segments,
- * coding, sender or source line, and nothing here reads one.
+ * coding, sender or source line, and nothing here reads one from the post.
+ *
+ * ⭐ U37s · THE SOURCE LINE IS STAMPED, NEVER POSTED (G5). Every DRAFT save stamps the SAVED `source.phrase` wording
+ * (Admin → System → Marketing wordings) onto the row — on the first save and on every edit, so a draft never keeps a
+ * line that has since been changed or cleared — and the server's verdict prices exactly that line. Blank while nothing is
+ * saved: the row stores null, the counter reserves the longest line allowed, and a contact-book recipient is refused,
+ * as before G5. A campaign past DRAFT keeps the line frozen on it (a save of it is refused `not_draft`).
+ * ⛔ The line is READ FRESH for the stamp (`readSavedSourcePhrase` — the row, re-read), never from this process's cache
+ * alone: a container that has not loaded the row yet, or still holds the version it booted with, would stamp none or a
+ * stale one over a good line. A read that cannot answer refuses the save (`source_unreadable`) and writes nothing.
  *
  * ⭐ ONE OPTIMISTIC MECHANISM (X12): an edit is a compare-and-set on `draftRevision` through the campaign door's one
  * draft writer (`db.smsCampaign.update`), which writes only while the row is still a DRAFT on the revision the form was
@@ -31,7 +40,7 @@
  *
  * `marketing.campaign_created` is written once, when the draft is born. Owed: U50 registers it.
  *
- * Guard: `npm run test:campaign-compose` §17.
+ * Guard: `npm run test:campaign-compose` §17 (the source line: §17.13–§17.16).
  */
 import { db } from "@/lib/server/store";
 import type { SmsCampaignDraftGuard, SmsCampaignDraftPatch, StoredSmsCampaign } from "@/lib/server/store";
@@ -48,6 +57,7 @@ import {
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { holdsPhoneRun } from "@/lib/contacts/contact-fields";
 import { SMS_CAMPAIGN_VALUE } from "@/lib/server/marketing/campaign-model";
+import { currentWording, freshWording } from "@/lib/server/marketing/wordings";
 import { formatClock } from "@/lib/utils";
 
 /* ══ THE SENTENCES — the server's, shown as they are ═══════════════════════════════════════════════════════════════ */
@@ -62,6 +72,9 @@ export const CAMPAIGN_AUDIENCE_ONE_NUMBER =
 /** ⭐ The sentence lives in `audience.ts` (U38a's campaign door refuses a selection with it too) — ONE copy. */
 export { CAMPAIGN_AUDIENCE_SELECTION };
 export const CAMPAIGN_AUDIENCE_UNREADABLE = "The saved audience could not be read — choose it again.";
+/** U37s · the source line's fresh read could not answer — nothing was saved, and nothing the officer typed is wrong. */
+export const CAMPAIGN_SOURCE_LINE_UNREADABLE =
+  "The campaign's source line couldn't be read just now, so the draft wasn't saved — try again in a moment.";
 
 /** Someone saved since this form was rendered — when, on the console's clock. */
 export function campaignDraftStale(updatedAt: string): string {
@@ -109,7 +122,7 @@ export type CampaignDraftSaved = {
 };
 export type CampaignDraftRefusal =
   | { ok: false; reason: "invalid"; error: string; problems: Partial<Record<CampaignDraftField, string[]>> }
-  | { ok: false; reason: "not_found" | "not_draft" | "stale"; error: string };
+  | { ok: false; reason: "not_found" | "not_draft" | "stale" | "source_unreadable"; error: string };
 export type CampaignDraftResult = CampaignDraftSaved | CampaignDraftRefusal;
 
 /** The ONE campaign door's draft members, and the rest of what a save touches — swappable for in-process red plants. */
@@ -120,6 +133,8 @@ export type CampaignDraftDeps = {
     update: (id: string, patch: SmsCampaignDraftPatch, guard: SmsCampaignDraftGuard, at: string) => Promise<StoredSmsCampaign | null>;
   };
   validate: typeof validateCampaignTemplate;
+  /** U37s · the saved source line, read FRESH (`readSavedSourcePhrase`) — or a read that could not answer. */
+  sourcePhrase: () => Promise<SourcePhraseRead> | SourcePhraseRead;
   /** OD55's rule (`wholeNumberAudienceProblem`). */
   audienceRule: (f: ContactAudienceFilter) => string | null;
   audit: (entry: Parameters<typeof audit>[0]) => unknown;
@@ -195,6 +210,33 @@ const text = (v: unknown): string => (typeof v === "string" ? v : "");
  *  a revision past 2,147,483,647 is "no revision" (stale), not a value the door then throws on. */
 const isRevision = SMS_CAMPAIGN_VALUE.draftRevision;
 const orNull = (s: string): string | null => (s === "" ? null : s);
+/** A source line as it is stamped: trimmed, and null when blank — a line of spaces is no line. */
+const phraseOrNull = (v: unknown): string | null => {
+  const t = typeof v === "string" ? v.trim() : "";
+  return t === "" ? null : t;
+};
+
+/** U37s · the source line as a draft save reads it: the line (null — never saved, or cleared), or no answer. */
+export type SourcePhraseRead = { ok: true; phrase: string | null } | { ok: false };
+
+/**
+ * ⭐ U37s · THE SOURCE LINE A DRAFT SAVE STAMPS — the newest SAVED `source.phrase` wording as the ROW holds it now
+ * (`freshWording`, re-read), trimmed; null while nothing is saved or the saved line was cleared (W1: never a suggestion).
+ * ⛔ `{ ok: false }` when the read cannot answer — the save then refuses, so a good stamp is never replaced by a guess.
+ * The wording's own rules are the renderer's (`sourcePhraseProblems`, 30 septets as printed), checked when it is saved.
+ */
+export async function readSavedSourcePhrase(): Promise<SourcePhraseRead> {
+  const read = await freshWording("source.phrase");
+  return read.ok ? { ok: true, phrase: phraseOrNull(read.version?.text) } : { ok: false };
+}
+
+/**
+ * The same line from this process's cache — for the composer's DISPLAY only (its counter and its stale note), which
+ * acts on nothing: the save re-reads the row itself (`readSavedSourcePhrase`) and re-judges what it stores.
+ */
+export function savedSourcePhrase(): string | null {
+  return phraseOrNull(currentWording("source.phrase")?.text);
+}
 
 /** The figures stored beside each body — the SERVER's counter's, from the verdict it just computed (X15). */
 function storedFigures(verdict: TemplateVerdict, fields: CampaignDraftFields): Pick<StoredSmsCampaign,
@@ -240,6 +282,7 @@ export const CAMPAIGN_DRAFT_DEPS: CampaignDraftDeps = {
     update: (id, patch, guard, at) => db.smsCampaign.update(id, patch, guard, at),
   },
   validate: validateCampaignTemplate,
+  sourcePhrase: readSavedSourcePhrase,
   audienceRule: wholeNumberAudienceProblem,
   audit,
   now: () => new Date(),
@@ -277,13 +320,19 @@ export async function saveCampaignDraft(
     if (!isRevision(input?.draftRevision)) return { ok: false, reason: "stale", error: campaignDraftStale(current.updatedAt) };
   }
 
+  // ── U37s · the source line this save will stamp, read fresh — ⛔ no answer, no save (never a guessed or blank stamp) ──
+  const read = await deps.sourcePhrase();
+  if (!read || read.ok !== true) return { ok: false, reason: "source_unreadable", error: CAMPAIGN_SOURCE_LINE_UNREADABLE };
+  const phrase = phraseOrNull(read.phrase);
+
   // ── the audience, and the template — the server's verdict on both ──
   const problems: Partial<Record<CampaignDraftField, string[]>> = {};
   const audience = audienceOf(input?.audience ?? null, current, options.viewerReads, deps.audienceRule);
   if (!audience.ok) problems.audience = [audience.reason];
-  // M5 · the source line is the campaign's own (OQ3's wording, owner gate G5) — blank on a new draft — never posted.
+  // M5 · U37s · the source line is the SAVED wording (owner gate G5), stamped on every draft save — never posted — and
+  // the verdict prices exactly the line the row will carry (blank: the longest line allowed is reserved).
   // ⭐ The ONE verdict refuses a name holding a phone number too, exactly as the screen did before Save was pressed.
-  const verdict = deps.validate(fields, current?.sourcePhrase ?? "");
+  const verdict = deps.validate(fields, phrase ?? "");
   Object.assign(problems, verdict.problems);
   if (!audience.ok || !verdict.ok || Object.keys(problems).length > 0) {
     return { ok: false, reason: "invalid", error: firstProblem(problems), problems };
@@ -297,7 +346,7 @@ export async function saveCampaignDraft(
     const row: StoredSmsCampaign = {
       id: deps.newId(), name: fields.name, status: "DRAFT", bodySw: fields.bodySw, bodyEn: figures.bodyEn,
       codingSw: figures.codingSw, segmentsSw: figures.segmentsSw, codingEn: figures.codingEn, segmentsEn: figures.segmentsEn,
-      nameFallbackSw: fallbacks.nameFallbackSw, nameFallbackEn: fallbacks.nameFallbackEn, sourcePhrase: null,
+      nameFallbackSw: fallbacks.nameFallbackSw, nameFallbackEn: fallbacks.nameFallbackEn, sourcePhrase: phrase,
       draftRevision: 0, confirmTier: null, audienceFilter: audience.key, audienceCount: null, audienceWatermark: null,
       estimateSegments: null, estimateTzs: null, budgetTzs: null, enqueueCursor: null, enqueuedAt: null, stopReason: null,
       createdBy: officerId, confirmedBy: null, confirmedAt: null, startedAt: null, pausedAt: null, finishedAt: null,
@@ -330,6 +379,8 @@ export async function saveCampaignDraft(
     bodySw: fields.bodySw, codingSw: figures.codingSw, segmentsSw: figures.segmentsSw,
     bodyEn: figures.bodyEn, codingEn: figures.codingEn, segmentsEn: figures.segmentsEn,
     nameFallbackSw: fallbacks.nameFallbackSw, nameFallbackEn: fallbacks.nameFallbackEn,
+    // ⛔ U37s · re-stamped on EVERY edit: a draft never keeps a line that was changed or cleared since it was stamped.
+    sourcePhrase: phrase,
     ...(audience.write ? { audienceFilter: audience.key } : {}),
   };
   const revision = input.draftRevision as number;

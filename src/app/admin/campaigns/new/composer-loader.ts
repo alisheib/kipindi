@@ -29,7 +29,7 @@ import {
   campaignAudienceRefusal, contactAudienceParams,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
-import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";
+import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
 import { TEST_OWN_NUMBER_UNUSABLE } from "@/lib/server/marketing/campaign-test-send";
 import { renderForRecipient, firstNameFor } from "@/lib/marketing/campaign-template";
 import type { CampaignDraftFields, CampaignTemplate } from "@/lib/marketing/campaign-template";
@@ -100,8 +100,11 @@ export type ComposeView =
       kind: "ready";
       draft: ComposeDraftView | null;
       readOnly: boolean;
-      /** M5 · the campaign's source line (blank until G5) — the live counter prices it, or its reserve. */
+      /** M5 · U37s · the source line the counter prices (`composerSourcePhrase`) — blank: it prices the reserve. */
       sourcePhrase: string;
+      /** U37s · this DRAFT carries a different line than the one saved now (none, an older one, or one since cleared) —
+       *  so Save is offered even with nothing typed, and the screen says why (`composerSourceLineStale`). */
+      sourceLineStale: boolean;
       audience: ComposeAudienceView;
       sender: ComposeSenderView;
       test: ComposeTestView;
@@ -119,6 +122,28 @@ function fieldsOf(c: StoredSmsCampaign): CampaignDraftFields {
     nameFallbackSw: c.nameFallbackSw ?? "",
     nameFallbackEn: c.nameFallbackEn ?? "",
   };
+}
+
+/**
+ * ⭐ U37s · THE LINE THE COUNTER PRICES IS THE LINE THE SAVE WILL STAMP. A new composer and a DRAFT are priced with the
+ * SAVED line (`savedSourcePhrase`) — a draft's next save re-stamps it, so pricing the line stamped on it earlier would
+ * let the counter pass a body the save then refuses. A campaign past DRAFT is priced with the line frozen on it. Blank
+ * ("") while nothing is saved: the counter then reserves the longest line allowed.
+ */
+export function composerSourcePhrase(draft: StoredSmsCampaign | null, saved: string | null): string {
+  if (draft !== null && draft.status !== "DRAFT") return draft.sourcePhrase ?? "";
+  return saved ?? "";
+}
+
+/**
+ * ⭐ U37s · A DRAFT WHOSE STAMP IS NOT THE SAVED LINE — saved before the line existed (every draft before U37s stores
+ * none), stamped with a line changed since, or carrying a line since cleared. Only a save re-stamps it, and with nothing
+ * typed the screen would otherwise refuse that save as "no changes" while its counter, which prices the saved line, reads
+ * "set". ⛔ Never true past DRAFT: a confirmed campaign keeps its own line by design.
+ */
+export function composerSourceLineStale(draft: StoredSmsCampaign | null, saved: string | null): boolean {
+  if (draft === null || draft.status !== "DRAFT") return false;
+  return (draft.sourcePhrase ?? null) !== (saved ?? null);
 }
 
 function templateOf(c: StoredSmsCampaign): CampaignTemplate {
@@ -226,6 +251,7 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
   }
 
   const live = marketingLiveGate(smsProviderResolution(), await readMarketingLiveSwitch());
+  const savedLine = savedSourcePhrase();
 
   return {
     kind: "ready",
@@ -233,7 +259,8 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       id: draft.id, draftRevision: draft.draftRevision, status: draft.status, updatedAt: draft.updatedAt, fields: fieldsOf(draft),
     },
     readOnly: draft !== null && draft.status !== "DRAFT",
-    sourcePhrase: draft?.sourcePhrase ?? "",
+    sourcePhrase: composerSourcePhrase(draft, savedLine),
+    sourceLineStale: composerSourceLineStale(draft, savedLine),
     audience: composeAudienceView(sp, draft, await viewerReadsContacts()),
     sender: senderView(),
     test: {

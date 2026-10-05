@@ -54,6 +54,7 @@ import {
   COMPOSE_AUDIENCE_CLEAR, COMPOSE_AUDIENCE_EVERYONE, COMPOSE_AUDIENCE_LEAD, COMPOSE_AUDIENCE_NOTE, COMPOSE_BODY_SW_HINT,
   COMPOSE_DISCARD_BODY, COMPOSE_DISCARD_CANCEL, COMPOSE_DISCARD_CONFIRM, COMPOSE_DISCARD_TITLE, COMPOSE_EN_NONE,
   COMPOSE_EN_RULE, COMPOSE_FIELD, COMPOSE_NO_CHANGES, COMPOSE_READ_ONLY, COMPOSE_RELOAD, COMPOSE_SAVE, COMPOSE_SAVE_AS_NEW,
+  COMPOSE_SOURCE_LINE_STALE,
   COMPOSE_SAVE_AS_NEW_AUDIENCE, COMPOSE_SAVE_FAILED, COMPOSE_TEST_BUDGET, COMPOSE_TEST_CONSENT_LINK, COMPOSE_TEST_EXACT,
   COMPOSE_TEST_NOT_DRAFT, COMPOSE_TEST_PREVIEW, COMPOSE_TEST_SAVE_FIRST, COMPOSE_TEST_SEND, COMPOSE_TEST_TOKEN_NOTE,
   COMPOSE_TEST_UPDATING, COMPOSE_TRY_AGAIN, composeSaveBlocked, composeSaved, composeTestHandedOver, composeTestTo,
@@ -68,10 +69,11 @@ type Problems = Partial<Record<CampaignDraftField, string[]>>;
 type Saved = { id: string; draftRevision: number; savedAt: string | null; fields: Fields };
 /**
  * A refusal, by its reason. `failed` is a save lost in transit (no reason came back): the text is kept and Try again
- * offered. `role`, `rate_limited` and `unfinished` are the actions' own — printed alone, with no retry that cannot work.
+ * offered — and so for `source_unreadable` (U37s: the source line's fresh read did not answer; nothing was saved).
+ * `role`, `rate_limited` and `unfinished` are the actions' own — printed alone, with no retry that cannot work.
  */
 type Refusal = {
-  kind: "invalid" | "not_found" | "not_draft" | "stale" | "failed" | "role" | "rate_limited" | "unfinished";
+  kind: "invalid" | "not_found" | "not_draft" | "stale" | "source_unreadable" | "failed" | "role" | "rate_limited" | "unfinished";
   message: string;
 };
 type TestState =
@@ -225,7 +227,8 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
               field: firstKey !== null && ON_PAGE.has(firstKey) ? firstKey : null,
             }
           : null;
-  const blocked = shared ?? (saved !== null && !dirty ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
+  // ⭐ U37s · a draft carrying another line than the one saved now is never "no changes": only a save re-stamps it.
+  const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
   const saveBlocked: string | null = blocked?.reason ?? null;
   const blockedField: CampaignDraftField | null = blocked?.field ?? null;
   const canSave = saveBlocked === null && !saving;
@@ -503,7 +506,7 @@ export function ComposerMessage() {
             && c.saveAsNewBlocked !== null && c.saveAsNewBlocked !== c.saveBlocked && (
             <span className="mt-1 block text-body-sm" data-compose-save-new-reason>{c.saveAsNewBlocked}</span>
           )}
-          {c.refusal.kind === "failed" && (
+          {(c.refusal.kind === "failed" || c.refusal.kind === "source_unreadable") && (
             <span className="mt-2 block">
               <Button type="button" size="sm" variant="ghost" onClick={c.save} disabled={!c.canSave}>{COMPOSE_TRY_AGAIN}</Button>
             </span>
@@ -512,6 +515,9 @@ export function ComposerMessage() {
       )}
       {c.refusal !== null && c.refusal.kind === "invalid" && (
         <p className="text-body-sm text-danger-fg" role="alert" data-compose-refusal="invalid">{c.refusal.message}</p>
+      )}
+      {view.sourceLineStale && !view.readOnly && (
+        <p className="text-body-sm text-text-secondary" data-compose-source-stale>{COMPOSE_SOURCE_LINE_STALE}</p>
       )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
