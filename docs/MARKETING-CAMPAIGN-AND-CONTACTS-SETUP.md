@@ -93,6 +93,20 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   3/3. ⭐ `test:dal-parity` 27.writers CAUGHT the new writer before the suite did: it refuses any caller of the DAL's
   two writers that is not named in `WRITERS27`, so the file had to declare itself. That is the guard working, not an
   obstacle — a second surface learning to record a basis is now a failure rather than a discovery.
+  STEP 39 · U33b-L COMPLETE — **the Lists card**, the entrance STEP 38's writer was missing. /admin/contacts gains a
+  "Lists" card: each list with its member count, its basis standing, and the coverage line that matters —
+  "covers 412 of 420 — 8 added since, record again to cover them". ⛔ THE GAP IS SAID IN WORDS, not left as arithmetic:
+  an officer who adds people to a recorded list and assumes they are covered is the mistake that line exists to prevent.
+  The 18+ tick is labelled with the SAVED sentence, so the officer attests to the words that will be stored on the row
+  and never to a paraphrase. The card shows no Record button at all while the wordings are unsaved — the writer would
+  refuse, and a control that always fails is worse than none. The revoke asks for its REASON BEFORE the confirmation
+  (a dialog that fires on a reason nobody has written yet asks the wrong question first). Rate rule
+  `marketing.listBasis` 10 at once then one a minute, spent BEFORE the writer so a refused recording spends it too; the
+  act gate is `softRequireStaff("growth", …)` — Ali's Q12 ruling of 2026-10-05.
+  ⭐ D19 · nothing on this card is maskable: a list row is counts, names and instants, never a phone number.
+  Guard: `test:contacts-lists` B1–B8, 9 green, red 3/3. **B8 is the card's own contract** — both actions ask the gate
+  FIRST and spend the budget before the writer, the card decides nothing itself (no `currentWording`, no `db.`), it
+  labels the tick from the saved text, and the loader reads coverage from the DAL rather than counting members again.
   ✅ **OWNER ANSWERS, 2026-10-05 — Ali took twelve questions and three gates one at a time; eleven CONFIRM the built
   default.** Full record: `COMPLIANCE-DECISIONS.md` § "2026-10-05 · Marketing outreach rulings". In one line each:
   Q1 never-asked players ARE reached under the licence · Q2 the unticked-since-09-28 cohort IS reached, **after the

@@ -153,6 +153,10 @@ export const RATE_RULES: Record<string, RateRule> = {
   // row that is never pruned — the case `contacts.write` bounds on the contacts form. 30 at once and 10 a minute cover
   // real editing; the steady rate is what stops a script.
   "marketing.campaignSave": { capacity: 30, refillPerMin: 10 },
+  // U33b-L · recording or revoking a LIST BASIS, keyed on the OFFICER. Each recording is a row kept as seven-year
+  // evidence and a COMPLIANCE audit row that is never pruned, and it widens who the platform may lawfully message —
+  // so the budget is deliberately small and its steady rate is slow: 10 at once, then one a minute.
+  "marketing.listBasis": { capacity: 10, refillPerMin: 1 },
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };

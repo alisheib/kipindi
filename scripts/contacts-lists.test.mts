@@ -40,6 +40,7 @@ const L = {
   b5: "B5 · ⭐ it covers the members present when it was made and NOT one added after; recording again covers that one",
   b6: "B6 · a revoke covers nothing from then on, is audited, and a second revoke does not move the first one's stamp",
   b7: "B7 · a revoke is refused when no basis is in force, and its reason is held to the phone and length rules — but never to a rule about the WORDS: stopping outreach must not wait on a wording",
+  b8: "B8 · the wiring — both actions ask softRequireStaff(\"growth\") FIRST and spend `marketing.listBasis` before the writer; the card decides nothing itself, holds no phone number, labels the tick with the SAVED sentence, and the loader reads coverage from the DAL rather than counting it again",
 } as const;
 
 /* ══ THE WORLD ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -198,6 +199,38 @@ async function runAssertions(impl: ListBasisImpl, tag: string): Promise<void> {
         && !shortReason.ok && shortReason.reason === "reason_too_short"
         && !phoneReason.ok && phoneReason.reason === "reason_has_phone",
       `${none.ok ? "ok" : none.reason} · ${shortReason.ok ? "ok" : shortReason.reason} · ${phoneReason.ok ? "ok" : phoneReason.reason}`);
+  }
+
+  // ── B8 · the wiring, read from the source ──────────────────────────────────────────────────────────────────────
+  {
+    const { readFileSync } = await import("node:fs");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+    const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
+    const actions = read("src/app/admin/contacts/list-basis-actions.ts");
+    const card = read("src/app/admin/contacts/lists-card.tsx");
+    const loader = read("src/app/admin/contacts/lists-loader.ts");
+    const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
+    /* ⛔ THE GATE IS THE FIRST STATEMENT of each action (ruling 523), and the budget is spent BEFORE the writer — a
+       refused recording spends it too, because the budget bounds attempts and not successes. */
+    const gateFirst = actions.split("export async function").slice(1).every((body) => {
+      const gateAt = body.indexOf("softRequireStaff(\"growth\"");
+      const rateAt = body.indexOf("rateCheckAsync(gate.userId, \"marketing.listBasis\")");
+      const writeAt = Math.max(body.indexOf("recordListBasis("), body.indexOf("revokeListBasis("));
+      return gateAt > 0 && rateAt > gateAt && writeAt > rateAt;
+    });
+    // ⛔ The card decides nothing: no rule of its own, and no phone number anywhere in it.
+    const cardDecides = /currentWording\(|db\.|messagingConsent/.test(card);
+    const cardLabelsFromSaved = card.includes("view.adultLabel");
+    // ⛔ The loader asks the DAL for coverage — it never counts members itself.
+    const loaderAsksDal = loader.includes("db.contactListBasis.coveredCount(") && !/for \(const m of/.test(loader);
+    const wired = pkg.scripts["test:contacts-lists"] === "tsx scripts/contacts-lists.test.mts"
+      && pkg.scripts["red:contacts-lists"] === "tsx scripts/contacts-lists.test.mts --prove-red"
+      && (pkg.scripts.predeploy ?? "").includes("npm run test:contacts-lists")
+      && /"marketing.listBasis": {/.test(read("src/lib/server/rate-limit.ts"));
+    ok(p(L.b8), gateFirst && !cardDecides && cardLabelsFromSaved && loaderAsksDal && wired,
+      `gate first ${gateFirst} · card decides ${cardDecides} · labels from saved ${cardLabelsFromSaved} · loader asks dal ${loaderAsksDal} · wired ${wired}`);
   }
 }
 

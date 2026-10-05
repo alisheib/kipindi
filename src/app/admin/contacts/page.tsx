@@ -82,6 +82,9 @@ import {
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
 import { loadContacts, loadContactEdit, viewerReadsContacts } from "./contacts-loader";
+// U33b-L · the Lists card and what it is handed.
+import { ListsCard } from "./lists-card";
+import { listsCardView } from "./lists-loader";
 import type { ContactsParams, ContactsView } from "./contacts-loader";
 import { contactRail } from "./contacts-rail";
 import { ContactFilters } from "./contact-filters";
@@ -190,6 +193,8 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   // 🔴 D19 · the read cell, from the loader — and when the read FAILED, asked on its own and failing closed: the
   // rail is role-shaped in the error state too, so a masked viewer's rail never grows a Consent axis on an error.
   const reads = view !== null ? view.viewerReads : await viewerReadsContacts().catch(() => false);
+  /* U33b-L · read soft: a Lists card that cannot load must not take the contact book down with it. */
+  const listsCard = await listsCardView().catch(() => null);
   // D19 + A1.1: a masked viewer sees Name, Number, Operator, Lists · Tags and Added — no per-row consent, reach,
   // source or player signal. U23 · plus the select column, first, for every viewer (ticking is a read affordance).
   const cols = reads ? 9 : 6;
@@ -440,6 +445,15 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
         </AdminCard></div>
 
         {result !== null && result.total > PER_PAGE && <AdminPagination total={result.total} page={page} baseHref={baseHref} />}
+
+        {/* ⭐ U33b-L · THE LISTS CARD — where a licence basis is recorded on a list, under the list of contacts it is
+            about. ⛔ Its figures are the DAL's own (`coveredCount`), the same read the gate decides from, so the screen
+            cannot promise a reach the gate will not honour. D19 · nothing here is maskable: counts, names and instants. */}
+        {listsCard !== null && (
+          <AdminCard title="Lists" sw="Orodha">
+            <ListsCard view={listsCard} />
+          </AdminCard>
+        )}
       </AdminBody>
 
       {/* ⭐ U22 · THE DIALOG OVER THE LIST. Keyed by the row and its stamp, so the reload after a refused (stale) save
