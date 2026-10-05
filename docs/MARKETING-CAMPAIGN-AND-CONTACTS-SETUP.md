@@ -63,6 +63,21 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   ANY GIVEN row). Labels 1 and 12 still read `age_unknown`.
   ▶ NEXT on the gate track: U33a-P (the profile switch under OD58), U33b-L (recording a basis on a list), U37c (the typed
   test), and U37s. Then ENGINE-SPEC's order.
+  ✅ **OWNER ANSWERS, 2026-10-05 — Ali took twelve questions and three gates one at a time; eleven CONFIRM the built
+  default.** Full record: `COMPLIANCE-DECISIONS.md` § "2026-10-05 · Marketing outreach rulings". In one line each:
+  Q1 never-asked players ARE reached under the licence · Q2 the unticked-since-09-28 cohort IS reached, **after the
+  registration box is reworded** · Q6/OQ11 an old-wording yes is NOT consent · Q7 no basis expiry (recycled-number risk
+  accepted) · Q8 **the agent-referee exclusion IS to be built** · Q9 a lapse is not reached · Q11 typed tests only while
+  open · Q12 growth officers record a basis · G12 Suppress is permanent · G3 stay inside the ledger cap and ask first ·
+  G8 still NO real numbers on production · G5 the source line is "Umepokea hii kwa sababu namba yako ipo kwenye orodha
+  yetu." · G9 the price is TZS 6 · G10 the DSAR sentence APPROVED (it corrects a published inaccuracy) · G4 the wordings
+  to be drafted for him to paste and save.
+  ⚠️ **THREE THINGS THE ANSWERS CREATED, none of them built yet:** (1) the registration box rewording (Q2); (2) the
+  agent-referee exclusion (Q8) — until it exists a referee can be reached, against a written promise; (3) setting
+  `SMS_PRICE_PER_SEGMENT_TZS=6` on Railway (G9).
+  ⛔ **G7/G11 STAY OPEN — his own admin login was offered and refused.** An ADMIN/owner account bypasses role checks, so
+  it cannot prove the role gating those gates exist to prove, and it would attribute every action to him. The 🔵 units
+  stay 🔵 until a TOTP-enrolled GROWTH account exists.
   ⛔ THE THREE BUILDERS' SCRATCH OUTPUTS ARE NOT REACHABLE FROM EVERY MACHINE, AND ONE SESSION HAS ALREADY HAD TO
   REBUILD FROM SPEC. STEP 35 was built on **OMEGA-DEV072** (`C:\kipindi-main`, a THIRD machine — not Ali-Blade15, not
   OMEGA-COMPILE01), where `C:/Users/Ali/AppData/Local/Temp/...` does not exist: `u33r/`, `u430/` and `u16a/` could not

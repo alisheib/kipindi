@@ -9,6 +9,71 @@
 ---
 
 
+## 2026-10-05 · Marketing outreach rulings — Ali answered twelve questions and three gates, put to him one at a time
+
+**Authority.** Ali, 2026-10-05, asked for the owner points to be put to him directly and answered each in the session.
+Eleven of the twelve questions CONFIRM the default the plan had already built, so most of this entry changes no code —
+it converts "a default we chose for him" into "a decision he took", which is the whole reason the defaults were built
+rather than guessed at.
+
+### The audience — who a campaign may lawfully reach
+
+- **Q1 · A player who never ticked the SMS box MAY be reached under the licence**, with no list needed (built default).
+  Their stop, their withdrawal, their RG standing, age and account status all still refuse — this reaches only people
+  who were never asked. Enforced at `consent.ts` as `LICENCE_PLAYER`, and only while the record is open.
+- **Q2 · Sign-ups since 2026-09-28 who left the new SMS box unticked MAY be reached** — they are treated as never-asked
+  — **and the registration box is to be reworded first** so it no longer reads as the only route to being messaged.
+  ⚠️ OWED: the rewording. Until it ships, this cohort is reached under a box that implies the opposite.
+- **G6 / OQ11 · A "yes" under the OLD wording does NOT count as SMS consent** (built default). Those sentences named no
+  SMS, no sender and no number. Such a person is reached only under the licence (per Q1), never recorded as consented.
+- **Q9 · A LAPSED consent is NOT reached by the licence** (built default, and shipped in U33a-G today): somebody who
+  switched off after once saying yes is nearer a stop than to never having been asked.
+- **Q8 · The promise made to agent referees IS to be enforced in code.** ⚠️ OWED — the exclusion is NOT built. Until it
+  is, a referee can be reached, which contradicts a promise 50pick made them in writing.
+- **Q7 · A list's recorded basis does NOT expire** (built default). ⚠️ Accepted residual risk, stated plainly: Tanzanian
+  operators recycle numbers, so a basis recorded for a previous holder can authorise a message to a new one. The stop
+  list remains the protection.
+
+### The controls
+
+- **Q11 · A typed test's attestation is honoured ONLY while licence outreach is open** (built default, shipped in
+  U33a-G): with the record closed it is ignored entirely, so the typed test can never be a side door to numbers a
+  campaign could not reach.
+- **Q12 · GROWTH OFFICERS record a licence basis on a list** (built default). The act is audited with the officer's name.
+- **G12 · An officer's "Suppress" is PERMANENT — nobody can lift it** (built). A staff decision recorded against the
+  officer, not the person's to undo, and U23's confirmation says so in words.
+- **G3 · Spend stays inside the §11.4 ledger cap**, and the session stops and asks before anything would exceed it or
+  need a Blackball top-up.
+- **G8 · NO real phone numbers may be imported to production yet** (the standing answer, unchanged). Import work
+  continues against seeded data.
+
+### The words
+
+- **G5 / Q6 · The source line is `"Umepokea hii kwa sababu namba yako ipo kwenye orodha yetu."`** — "You received this
+  because your number is on our list." ~58 characters of the per-message budget. It names no third party. It becomes
+  editable on Admin → System once G4 is saved; until a source line exists, every contact-book recipient is refused.
+- **G10 · APPROVED, and it corrects a published inaccuracy:** the DSAR/erasure sentence becomes **"We keep your phone
+  number only in our record of your marketing choices, so that we never send you marketing again."** The page said
+  "we erase your contact details" while, since U18b, the number is deliberately KEPT — in the consent ledger and the
+  emptied book row — precisely so the person is never messaged again. The old sentence described something the code
+  does not do.
+- **G9 · `SMS_PRICE_PER_SEGMENT_TZS` = 6.** ⚠️ OWED: the variable is not set on Railway yet, so officers still see no
+  money figure on an estimate.
+- **G4 · The four consent-basis wordings and the 18+ sentence are to be DRAFTED for Ali to paste and save** on
+  Admin → System → Marketing wordings. ⛔ The save is the approval and it is append-only evidence, so it is his act and
+  not the session's; nothing live imports a wording until it is saved.
+
+### ⛔ What was NOT accepted, and why
+
+**G7/G11 — the production login.** Ali offered his OWN admin credentials for the live checks. They are not used. The
+plan's rule is "a GROWTH staff account, TOTP-enrolled, never his login", and that is not ceremony: G7 and G11 exist to
+prove ROLE GATING — that a Growth officer sees the contacts and campaigns screens and a FINANCE login does not — and an
+ADMIN/owner account BYPASSES role checks, so it cannot prove the thing the check is for. It would also attribute every
+action to him in the audit chain. The 🔵 units stay 🔵 until a GROWTH account exists. ⚠️ Those credentials were typed
+into a session transcript: the password should be changed.
+
+---
+
 ## 2026-10-04 · Marketing campaigns are authorised by one officer's typed confirmation (U41; under the 2026-07-24 single-admin ruling)
 
 **Authority.** § "2026-07-24 · Single-admin resolution by default; two-admin authorization optional; officer-conflict
