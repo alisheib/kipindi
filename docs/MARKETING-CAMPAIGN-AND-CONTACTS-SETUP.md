@@ -77,6 +77,22 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   **93/93**. ⚠️ Two fixture facts worth keeping: the RG break column is `coolingOffUntil`, not `breakUntil` (a fixture on
   the wrong column reads as a passing player), and `scripts/` is NOT typechecked — `npm run typecheck` does not cover it,
   so a model literal missing a new field fails only at runtime.
+  STEP 38 · U33b-L (the WRITER half) — `list-basis.ts`, `recordListBasis` and `revokeListBasis`: the only writer of
+  `ContactListBasis`, and so the only thing in the platform that can make a person reachable WITHOUT their consent.
+  Until it existed the gate's `LICENCE_LIST` branch was a branch nothing could reach. It refuses while the licence
+  wording or its 18+ sentence is unsaved (a default nobody approved is not evidence), stores the SAVED texts and both
+  versions as seven-year evidence, audits COMPLIANCE with COUNTS AND IDS ONLY — never the note's text — and ⛔ never
+  touches `messagingConsent`, `marketingOptIn`, `suppression.lift` or `mirrorContactCache`: a licence basis is not a
+  consent, and a file that could write one would eventually be asked to. A revoke is never refused for a rule about the
+  WORDS — stopping outreach must not wait on a wording, as closing the record is never refused for a failing check.
+  ⚠️ **THE ENTRANCE IS NOT BUILT: there is still no way for a human to record a basis.** The Lists card on
+  /admin/contacts (its actions, loader, copy, the `marketing.listBasis` rate limit and the masked-viewer rule) is owed,
+  and until it ships `LICENCE_LIST` is reachable only from a test. The writer landed first on purpose — it is the half
+  with the rules and the evidence — but the unit is NOT done.
+  Guard: `test:contacts-lists` (new, in predeploy after `test:licence-outreach`) — B1–B7, 8 green; `red:contacts-lists`
+  3/3. ⭐ `test:dal-parity` 27.writers CAUGHT the new writer before the suite did: it refuses any caller of the DAL's
+  two writers that is not named in `WRITERS27`, so the file had to declare itself. That is the guard working, not an
+  obstacle — a second surface learning to record a basis is now a failure rather than a discovery.
   ✅ **OWNER ANSWERS, 2026-10-05 — Ali took twelve questions and three gates one at a time; eleven CONFIRM the built
   default.** Full record: `COMPLIANCE-DECISIONS.md` § "2026-10-05 · Marketing outreach rulings". In one line each:
   Q1 never-asked players ARE reached under the licence · Q2 the unticked-since-09-28 cohort IS reached, **after the

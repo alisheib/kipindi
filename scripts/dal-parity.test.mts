@@ -3167,7 +3167,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const ALIAS27 = [/db[.]contactListBasis(?![.A-Za-z0-9_])/, /[{][^{}]*contactListBasis[^{}]*[}] *= *db(?![.A-Za-z0-9_])/];
   /** ⛔ THE WRITERS, BY NAME — none today. U33b-L's `lib/server/marketing/list-basis.ts` is the ONE writer (spec §6) and
    *  joins this list in its own commit; any other caller is a second door to evidence. */
-  const WRITERS27: string[] = [];
+  /* U33b-L · the ONE writer, named here so any second surface that learns to record or revoke a basis is a failure
+     rather than a discovery. ⛔ Add to this list only with the unit that adds the caller. */
+  const WRITERS27: string[] = ["lib/server/marketing/list-basis.ts"];
   const walked27 = walk27(src27);
   /** Only the files that name the table at all are decommented and scanned — a file that never spells it cannot call it. */
   const texts27 = walked27.map((f) => [rel27(f), readFileSync(f, "utf8")] as const)
