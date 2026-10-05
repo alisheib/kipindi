@@ -96,6 +96,10 @@ const GATE_SENTENCE: Readonly<Record<MarketingSkipReason, string>> = {
   bad_msisdn: TEST_OWN_NUMBER_UNUSABLE,
   suppressed: "Your number is on the stop list, so no marketing SMS can reach it — start them again from your own SMS link or your profile first.",
   no_consent: "Your number has no SMS offers consent on record — turn on SMS offers on your own profile, then test again.",
+  /* U33a-G · forced by the compiler and UNREACHABLE for the officer's own number, which always belongs to an account —
+     so it takes the player branch, which never answers `no_basis`. Written plainly anyway rather than left to a cast:
+     an unreachable branch that someone later makes reachable must not be the one with no sentence. */
+  no_basis: "Nothing on record authorises a marketing SMS to your number — turn on SMS offers on your own profile, then test again.",
   consent_withdrawn: "You withdrew SMS offers consent for your number — turn it back on from your own profile, then test again.",
   rg_self_excluded: "Your own account's responsible-gambling standing stops marketing SMS to your number, so no test can be sent to it.",
   rg_cooling_off: "Your own account's responsible-gambling standing stops marketing SMS to your number, so no test can be sent to it.",

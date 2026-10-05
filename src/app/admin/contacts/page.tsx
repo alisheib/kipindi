@@ -112,6 +112,9 @@ export default async function AdminContactsPage(props: { searchParams: Promise<C
 const REACH: Record<MarketingSkipReason, string> = {
   suppressed: "Suppressed",
   no_consent: "No consent",
+  // U33a-G · its own words, not "No consent": while licence outreach is open, consent is no longer the only thing that
+  // could have reached this number, so saying "no consent" would send an officer looking for the wrong remedy.
+  no_basis: "No recorded basis",
   consent_withdrawn: "Withdrawn",
   age_unknown: "Age not confirmed",
   bad_msisdn: "Not a sendable number",

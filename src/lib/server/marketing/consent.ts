@@ -1,7 +1,11 @@
 import { db } from "@/lib/server/store";
 import type {
-  MessagingKey, MessagingLocale, StoredKyc, StoredMessagingConsent, StoredSuppression, StoredUser, SuppressionReason,
+  BookStanding, MessagingKey, MessagingLocale, StoredKyc, StoredMessagingConsent, StoredSuppression, StoredUser,
+  SuppressionReason,
 } from "@/lib/server/store";
+// U33a-G · the licence-outreach record this gate asks before any licence basis. ⛔ The TYPE and the reader come from the
+// record's own module — the gate never restates what "open" means.
+import { licenceOutreach, type LicenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { toMsisdn255 } from "@/lib/phone-normalize";
@@ -11,6 +15,9 @@ import type { MarketingRgStanding } from "@/lib/server/marketing/rg";
 import { ageOnPlatformDate, MIN_AGE_YEARS } from "@/lib/id-documents";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { isSmsConsentWording } from "@/lib/marketing/consent-wording";
+// U33w · an import attestation is recognised against the SAVED wording history (S14), never against today's code
+// default — a row made under last month's words is still the attestation it was.
+import { isImportAttestationSaved } from "@/lib/server/marketing/wordings";
 
 /**
  * U7 · THE ONE GATE. Nothing sends a marketing SMS without asking this first.
@@ -56,16 +63,38 @@ export type MarketingSkipReason =
   | "rg_under25_history"
   | "age_minor"
   | "age_unknown"
-  | "account_status";
+  | "account_status"
+  /** U33a-G · the record is OPEN and still nothing reaches this number: no consent, and no list basis covers it. ⛔ Its
+   *  own reason, never folded into `no_consent` — "nobody ever said yes" and "we looked for a licence basis and there
+   *  is none" are different facts about the platform, and an officer reading the second as the first would go looking
+   *  for a consent that was never the point. */
+  | "no_basis";
+
+/**
+ * U33a-G · WHAT MADE THE SEND LAWFUL, carried out of the gate so the audit row can say it (OD57 · OD58).
+ * ⛔ A basis is never a preference ranking: CONSENT is asked first and wins wherever it exists, and the three LICENCE_*
+ * kinds are reachable only while the licence-outreach record is open.
+ */
+export type MarketingBasisKind = "CONSENT" | "LICENCE_PLAYER" | "LICENCE_LIST" | "LICENCE_TEST";
 
 /** `userId` is set on every refusal the PLAYER branch makes, so the loop can write the RG audit line
  *  against the account (§5.14 — never against a phone number). */
 export type MarketingGateVerdict =
-  | { ok: true }
+  | { ok: true; basis: MarketingBasisKind; basisRef: string }
   | { ok: false; skipReason: MarketingSkipReason; detail: string; userId?: string };
 
 const refuse = (skipReason: MarketingSkipReason, detail: string, userId?: string): MarketingGateVerdict =>
   (userId ? { ok: false, skipReason, detail, userId } : { ok: false, skipReason, detail });
+
+/* The three refusals the open record introduces, each written once so the gate and its suite cannot drift. */
+const LAPSE_DETAIL =
+  "the player's offers are switched off after a consent with no withdrawal recorded (a lapse) — the licence basis does not reach it";
+const ERASED_DETAIL =
+  "this number's book record was erased — no licence basis reaches it; only a new consent does";
+const NO_BASIS_DETAIL =
+  "no consent, and no list recorded under the licence outreach basis covers this number";
+const NO_ADULT_DETAIL =
+  "no 18+ confirmation is on record for this number — no covering list basis, no import attestation, no test attestation";
 
 /**
  * 🔴 THE TWO PHONE FORMATS THIS PLATFORM ACTUALLY HAS, AND WHY THIS FUNCTION EXISTS.
@@ -142,6 +171,11 @@ export type MarketingGateReads = {
   suppression: (key: MessagingKey) => Promise<StoredSuppression | null> | StoredSuppression | null;
   userByPhone: (phone: string) => Promise<StoredUser | null> | StoredUser | null;
   latestConsent: (key: MessagingKey) => Promise<StoredMessagingConsent | null> | StoredMessagingConsent | null;
+  /** U33a-G · the licence-outreach record (this process's `defineConfig` cache — no query). ⛔ FAILS CLOSED, so a record
+   *  that cannot be read sends nothing new. */
+  outreach: () => Promise<LicenceOutreach> | LicenceOutreach;
+  /** U33a-G · the number's standing in the book: none · live (with its covering list basis, if any) · erased. */
+  bookStanding: (msisdn: string) => Promise<BookStanding> | BookStanding;
 };
 
 /** The default — the store's own single-key reads, asked AT CALL TIME, so the twin `db` resolves to is the one read.
@@ -150,7 +184,39 @@ export const DB_GATE_READS: Readonly<MarketingGateReads> = Object.freeze({
   suppression: (key: MessagingKey) => db.suppression.find(key),
   userByPhone: (phone: string) => db.user.findByPhone(phone),
   latestConsent: (key: MessagingKey) => db.messagingConsent.latestFor(key),
+  outreach: () => licenceOutreach(),
+  bookStanding: (msisdn: string) => db.contactListBasis.standingFor(msisdn),
 });
+
+/**
+ * U37c · ONE TYPED TEST'S 18+ CONFIRMATION — the officer's own word, for THIS call only, never stored as consent.
+ * ⛔ Only `campaign-test-send.ts` constructs one (a structural guard): no campaign send path may pass a context, so an
+ * attestation can never widen a real campaign's audience by one number.
+ */
+export type TestAttestation = { officerId: string; at: string; attemptRef: string; wordingVersion: number };
+export type MarketingGateContext = { readonly testAttestation?: TestAttestation };
+const NO_CONTEXT: Readonly<MarketingGateContext> = Object.freeze({});
+
+const ATTEMPT_REF = /^[A-Za-z0-9_-]{8,64}$/;
+/** 120 seconds either way: an attestation is a person pressing a button now, not a token somebody kept. */
+const ATTESTATION_WINDOW_MS = 120_000;
+
+/**
+ * ⭐ THE ATTESTATION, OR NOTHING — and "nothing" is never an error. A malformed, stale or future-dated attestation is
+ * IGNORED, so the gate simply decides as though none were offered and the officer gets the ordinary refusal. ⛔ It is
+ * never a reason of its own: treating a bad attestation as a failure would let a clock skew turn "no basis" into a
+ * different sentence, and the officer would chase the wrong thing.
+ */
+export function usableTestAttestation(att: TestAttestation | undefined, now: Date): TestAttestation | null {
+  if (!att || typeof att !== "object") return null;
+  if (typeof att.officerId !== "string" || att.officerId.trim() === "") return null;
+  if (typeof att.attemptRef !== "string" || !ATTEMPT_REF.test(att.attemptRef)) return null;
+  if (!Number.isInteger(att.wordingVersion) || att.wordingVersion < 1) return null;
+  if (typeof att.at !== "string") return null;
+  const at = Date.parse(att.at);
+  if (!Number.isFinite(at) || Math.abs(at - now.getTime()) > ATTESTATION_WINDOW_MS) return null;
+  return att;
+}
 
 /**
  * 2a · A PLAYER'S CONSENT (OD8 as corrected by OQ11's built default, D3 2026-09-26). ⛔ The toggle
@@ -164,11 +230,17 @@ async function playerConsentRefusal(
   user: Pick<StoredUser, "id" | "marketingOptIn">,
   key: MessagingKey,
   reads: MarketingGateReads = DB_GATE_READS,
+  /** U33a-G · an OUT-parameter, filled only on the path that actually reads the ledger. ⛔ It must stay that way: the
+   *  toggle-off check comes FIRST and returns without a read (8.18a's regex pins that order), so `seen.latest` being
+   *  `undefined` means "not read", which is different from "read and found nothing". The licence path below reads it
+   *  itself in that case, and a CONSENTING player costs no second read. */
+  seen?: { latest?: StoredMessagingConsent | null },
 ): Promise<MarketingGateVerdict | null> {
   if (user.marketingOptIn !== true) {
     return refuse("no_consent", "the player's own marketing toggle is off", user.id);
   }
   const latest = await Promise.resolve(reads.latestConsent(key));
+  if (seen) seen.latest = latest;
   if (!latest) return refuse("no_consent", "no consent row in the ledger — the consent predates the SMS wording", user.id);
   if (latest.status !== "GIVEN") return refuse("consent_withdrawn", `consent withdrawn on ${latest.createdAt}`, user.id);
   if (!isSmsConsentWording(latest.wording)) return refuse("no_consent", "consent predates the SMS wording", user.id);
@@ -193,7 +265,14 @@ async function readKyc(userId: string): Promise<KycRead> {
  *   existing caller — the send loop above all — is unchanged and reads fresh; only the audience split passes the
  *   chunk's bulk answers, and the decision below is the same code either way.
  */
-export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Date(), reads: MarketingGateReads = DB_GATE_READS): Promise<MarketingGateVerdict> {
+export async function mayReceiveMarketingSms(
+  msisdn: string,
+  now: Date = new Date(),
+  reads: MarketingGateReads = DB_GATE_READS,
+  /** U37c · a typed test's own 18+ confirmation. ⛔ DEFAULTED TO EMPTY and never passed by a campaign: `dispatchSlice`
+   *  calls the gate with the recipient's number alone, so nothing a campaign sends can be widened by an attestation. */
+  context: MarketingGateContext = NO_CONTEXT,
+): Promise<MarketingGateVerdict> {
   // ⛔ An unusable number is refused here rather than at the wire, so it never becomes a
   // billed send attempt (D2, U1). ⭐ Judged by the numbering plan (`tz-msisdn.ts`), not by length:
   // a Kenyan +254…, a landline and a dead NDC 064 are all twelve-plus digits and all undeliverable.
@@ -229,8 +308,29 @@ export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Dat
     // ── 2a · CONSENT — the toggle AND an SMS-naming GIVEN row as the latest ledger entry (D3, see
     // `playerConsentRefusal`). Asked before RG because it is two cheap reads, and the RG step below
     // is the costly one.
-    const noConsent = await playerConsentRefusal(user, key, reads);
-    if (noConsent) return noConsent;
+    /* ⭐ `seen` is filled ONLY when the ledger was actually read (the toggle was on). While the record is CLOSED the
+       reads below never run, so a closed record costs exactly today's reads and answers exactly today's answers (S5). */
+    const seen: { latest?: StoredMessagingConsent | null } = {};
+    const noConsent = await playerConsentRefusal(user, key, reads, seen);
+    let basis: MarketingBasisKind = "CONSENT";
+    let basisRef = seen.latest ? `ledger:${seen.latest.id}` : "ledger:none";
+    if (noConsent) {
+      // ── 2a′ · U33a-G · THE LICENCE BASIS FOR A PLAYER, and ONLY after consent has already refused.
+      const outreach = await Promise.resolve(reads.outreach());
+      if (outreach.state !== "open") return noConsent;
+      // ⛔ A STOP IS A STOP. The licence basis never overrides a withdrawal — it is the one thing on this path that is
+      // the person's own decision about us, and OD58 widened who may be reached, not whose "no" counts.
+      const latest = seen.latest !== undefined ? seen.latest : await Promise.resolve(reads.latestConsent(key));
+      if (latest?.status === "WITHDRAWN") {
+        return refuse("consent_withdrawn", `consent withdrawn on ${latest.createdAt} — the licence basis never overrides a stop`, user.id);
+      }
+      // ⛔ A LAPSE IS NOT SILENCE EITHER. The switch is off after a consent that was never withdrawn (the two-year
+      // lapse): the person did once say yes and then turned it off, which is nearer a stop than to never having been
+      // asked. The licence basis does not reach it.
+      if (user.marketingOptIn === false && latest?.status === "GIVEN") return refuse("no_consent", LAPSE_DETAIL, user.id);
+      basis = "LICENCE_PLAYER";
+      basisRef = `outreach:${outreach.recordedAt}`;
+    }
     // ── 2b · RG STANDING — self-exclusion → cooling-off → harm markers (U10, `rg.ts`).
     // ⛔ NEVER `isLockedOut` (OD12, D9): it LIFTS ITSELF when the chosen period elapses, so a 24-hour
     // self-exclusion would be marketable 25 hours later. The period ending is not the person asking.
@@ -270,25 +370,52 @@ export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Dat
     if (!statusOk) {
       return refuse("account_status", `account is ${user.status}`, user.id);
     }
-    return { ok: true };
+    // ⭐ RG, age, under-25 and status ran EXACTLY as they do for a consent, whatever the basis. A licence basis widens
+    // who may be asked; it never lowers the bar a player is protected by (S11).
+    return { ok: true, basis, basisRef };
   }
 
-  // ── 3 · OTHERWISE THE LEDGER GOVERNS ────────────────────────────────────────────────────
-  // ⛔ No row is not "not yet decided" — it is NO. There is no lawful basis but consent in
-  // Tanzania (OD7), so silence can never be treated as permission.
+  // ── 3 · THE CONTACT BRANCH — no account holds this number ────────────────────────────────
+  // ⛔ A stop first, always: a WITHDRAWN row refuses whatever the record says, and a list basis never overrides it.
   const latest = await Promise.resolve(reads.latestConsent(key));
-  if (!latest) {
-    return refuse("no_consent", "no consent has ever been recorded for this number");
-  }
-  if (latest.status === "WITHDRAWN") {
+  if (latest?.status === "WITHDRAWN") {
     return refuse("consent_withdrawn", `consent withdrawn on ${latest.createdAt}`);
   }
-  // ── 3b · AGE, FOR A CONTACT (U11, OD14): marketable only when the import recorded an explicit 18+
-  // attestation with the consent. That attestation is U33's to record and NO field carries it yet, so
-  // today every contact-only number is `age_unknown`. ⛔ Not inferred from `source`, `evidence` or
-  // anything else on the row: reading an 18+ out of a free-text field would be inventing the
-  // attestation. The contact path therefore stays shut until U33 builds the thing it waits on.
-  return refuse("age_unknown", "no 18+ attestation is on record for this contact (U33 records one at import)");
+  const attestation = usableTestAttestation(context.testAttestation, now);
+  /* 3b · CONSENT FIRST, and it is the row SAYING SO: a GIVEN that is either an import attestation or one of the pinned
+     SMS-naming sentences. Anything else — an /s/ resume, a pre-U6 tick — is not a consent to SMS marketing. */
+  const consented = latest?.status === "GIVEN" && (isImportAttestationSaved(latest) || isSmsConsentWording(latest.wording));
+  if (!consented) {
+    const outreach = await Promise.resolve(reads.outreach());
+    if (outreach.state !== "open") {
+      // ⛔ CLOSED: refused BEFORE the book is read, so a closed record costs exactly today's reads (S5) and says
+      // exactly today's sentence. OD7's "there is no lawful basis but consent" is retired as a universal, but it is
+      // still the whole truth while the record is closed.
+      return refuse("no_consent", latest
+        ? "the latest consent row does not name SMS marketing"
+        : "no consent has ever been recorded for this number");
+    }
+  }
+  const standing = await Promise.resolve(reads.bookStanding(identifier));
+  let basis: MarketingBasisKind;
+  let basisRef: string;
+  if (consented) {
+    basis = "CONSENT";
+    basisRef = `ledger:${(latest as StoredMessagingConsent).id}`;
+  } else {
+    // ⛔ AN ERASED RECORD IS NOT A BLANK ONE. The person asked to be forgotten; a licence basis must not quietly bring
+    // them back, and a test attestation does not override it either. Only a NEW consent reaches this number again.
+    if (standing.row === "erased") return refuse("no_basis", ERASED_DETAIL);
+    if (standing.cover) { basis = "LICENCE_LIST"; basisRef = `list-basis:${standing.cover.basisId}`; }
+    else if (attestation) { basis = "LICENCE_TEST"; basisRef = `test:${attestation.attemptRef}`; }
+    else return refuse("no_basis", NO_BASIS_DETAIL);
+  }
+  /* ── 3c · THE 18+ EVIDENCE (U11, OD14). ⛔ It is EVIDENCE, never an inference: a covering list basis (whose recording
+     carried the 18+ wording), an import attestation on the row itself, or this one typed test's attestation. A consented
+     contact with none of the three is still refused — consent to be messaged is not a statement of age. */
+  const adult = isImportAttestationSaved(latest) || standing.cover !== null || attestation !== null;
+  if (!adult) return refuse("age_unknown", NO_ADULT_DETAIL);
+  return { ok: true, basis, basisRef };
 }
 
 /**

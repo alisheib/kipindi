@@ -763,14 +763,27 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       ((await DB_GATE_READS.suppression(mkey(k("+255751000002")))) ?? null)?.id === ((await db.suppression.find(mkey(k("+255751000002")))) ?? null)?.id,
       ((await DB_GATE_READS.userByPhone("+255751000001")) ?? null)?.id === "pa01",
       ((await DB_GATE_READS.latestConsent(mkey(k("+255751000006")))) ?? null)?.id === "lc_pa06_2",
+      /* U33a-G · the two new reads are defaulted exactly like the three above — the book standing answers what the
+         store answers, and the record answers the record. ⛔ Both must come from `reads`, never from `db` inside the
+         gate, or the split could not hand in a chunk's answers. */
+      JSON.stringify(await DB_GATE_READS.bookStanding(k("+255751000006"))) === JSON.stringify(db.contactListBasis.standingFor(k("+255751000006"))),
+      ((await DB_GATE_READS.outreach()) as { state: string }).state === "closed",
     ];
     ok(p(L.l411),
-      gateBody.includes("export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Date(), reads: MarketingGateReads = DB_GATE_READS)")
+      /* ⚠️ The signature is MULTI-LINE since U33a-G (it gained `context`), so it is pinned piece by piece rather than as
+         one string — the thing being protected is that every read is DEFAULTED and reached through `reads`, not the
+         formatting of the line they sit on. */
+      gateBody.includes("export async function mayReceiveMarketingSms(")
+        && gateBody.includes("reads: MarketingGateReads = DB_GATE_READS,")
+        && gateBody.includes("context: MarketingGateContext = NO_CONTEXT,")
         && gateBody.includes("const suppressed = await Promise.resolve(reads.suppression(key));")
         && gateBody.includes("const user = await Promise.resolve(reads.userByPhone(userPhoneKeyFor(identifier)));")
-        && gateBody.includes("const noConsent = await playerConsentRefusal(user, key, reads);")
+        && gateBody.includes("const noConsent = await playerConsentRefusal(user, key, reads, seen);")
         && gateBody.includes("const latest = await Promise.resolve(reads.latestConsent(key));")
+        && gateBody.includes("const outreach = await Promise.resolve(reads.outreach());")
+        && gateBody.includes("const standing = await Promise.resolve(reads.bookStanding(identifier));")
         && !gateBody.includes("db.suppression.find(") && !gateBody.includes("db.user.findByPhone(") && !gateBody.includes("db.messagingConsent.latestFor(")
+        && !gateBody.includes("db.contactListBasis.") && !gateBody.includes("licenceOutreach()")
         && cons.includes("reads: MarketingGateReads = DB_GATE_READS,") && cons.includes("if (await playerConsentRefusal(user, key)) return TOGGLE_OFF;")
         && cons.split(RG_LINE).length - 1 === 1 && defaults.every(Boolean)
         && Object.isFrozen(DB_GATE_READS) && Object.isFrozen(AUDIENCE_SPLIT_DEPS) && Object.isFrozen(CAMPAIGN_WALK_DEPS),

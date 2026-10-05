@@ -43,6 +43,8 @@ import { EAT_OFFSET_MS } from "../src/lib/eat-day.ts";
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 import { REAL_BASIS, assertConsentBasis, basisModel, basisCases } from "./marketing-consent/consent-basis.mts";
+// U33a-G · the licence decision table, run over one seeded world with the record closed and open.
+import { REAL_LICENCE, assertLicenceBasis, licenceGateWithDefect, licenceCases } from "./marketing-consent/licence-basis.mts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
  * at the end scores GREEN when a promise never settles or the process exits early. */
@@ -1076,6 +1078,8 @@ if (!PROVE_RED) {
   assertHeldDate(REAL_HELD, "");
   console.log("\n── U33a · the consent-basis catalogue (pure; its wordings are suggestions, and no basis writer records one an admin never saved)\n");
   assertConsentBasis(REAL_BASIS, "", ok);
+  console.log("\n── U33a-G · the licence decision table (§3.2), executed with the record CLOSED and OPEN\n");
+  await assertLicenceBasis(REAL_LICENCE, "", ok);
   console.log(`\nmarketing-consent: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;
 } else {
@@ -1466,6 +1470,24 @@ if (!PROVE_RED) {
     if (fail === 0) problems.push(`basis case ${i + 1} (${c.name}): stayed GREEN`);
     else if (!failed.includes(wanted)) problems.push(`basis case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failed.join(" | ")}`);
     else console.log(`   caught → ${c.expect}\n`);
+  }
+
+  // ── U33a-G · the licence table: the shipped gate green, then one wrongly-answering gate at a time ──
+  pass = 0; fail = 0; failed.length = 0;
+  await assertLicenceBasis(REAL_LICENCE, "licbase:", ok);
+  if (fail !== 0) problems.push(`LICENCE BASELINE: the shipped gate is already red (${failed.join(" | ")})`);
+  console.log(`\n§0 licence baseline · the shipped gate: ${pass} passed, ${fail} failed\n`);
+  const LICENCE_CASES = licenceCases();
+  for (const [i, c] of LICENCE_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    const tag = `licred${i + 1}:`;
+    console.log(`── licence case ${i + 1}: ${c.name}`);
+    await assertLicenceBasis(licenceGateWithDefect(c.defect), tag, ok);
+    const wanted = `${tag}${c.expect}`;
+    if (fail === 0) problems.push(`licence case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(wanted)) problems.push(`licence case ${i + 1} (${c.name}): red, but not on its own row — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect.slice(0, 70)}…
+`);
   }
 
   const caughtGate = CASES.length - problems.filter((x) => x.startsWith("case")).length;

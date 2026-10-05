@@ -1,6 +1,6 @@
 import { audit } from "@/lib/server/audit";
 import { mayReceiveMarketingSms } from "@/lib/server/marketing/consent";
-import type { MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
+import type { MarketingBasisKind, MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
 import type { SmsBatchOutcome, SmsOutbound } from "@/lib/server/sms";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 
@@ -78,7 +78,8 @@ export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Pr
   if (refs.size !== rows.length) throw new Error("dispatchSlice: every row needs a distinct ref — outcomes are settled by it");
   const ask = deps.gate ?? mayReceiveMarketingSms;
   const outcomes = new Map<string, SliceOutcome>();
-  const cleared: SliceRecipient[] = [];
+  /* U33a-G · a cleared row carries the basis the gate gave it, so the outcome can name it without asking twice. */
+  const cleared: (SliceRecipient & { basis: MarketingBasisKind; basisRef: string })[] = [];
 
   for (const row of rows) {
     // ── THE GATE, PER RECIPIENT, IMMEDIATELY BEFORE DISPATCH ────────────────────────────────
@@ -110,7 +111,7 @@ export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Pr
       outcomes.set(row.ref, { ref: row.ref, outcome: "skipped", skipReason: "bad_msisdn", detail: "no sendable key" });
       continue;
     }
-    cleared.push({ ...row, msisdn: key });
+    cleared.push({ ...row, msisdn: key, basis: verdict.basis, basisRef: verdict.basisRef });
   }
 
   if (cleared.length > 0) {

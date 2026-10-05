@@ -52,6 +52,9 @@ import {
 } from "../src/lib/server/marketing/optout-service.ts";
 import type { OptOutActResult, OptOutPageResolution } from "../src/lib/server/marketing/optout-service.ts";
 import { OPTOUT_TOKEN_CHARS, OPTOUT_PATH } from "../src/lib/marketing/footer.ts";
+// U33a-G · the fixture consents under a sentence that REALLY names SMS, read from the pinned list rather than typed
+// here — a hand-copied sentence would drift from the list the gate matches against.
+import { SMS_CONSENT_WORDINGS } from "../src/lib/marketing/consent-wording.ts";
 import {
   OPTOUT_TOKEN_ALPHABET, isOptOutTokenShape, normalizeOptOutToken, optOutTokenRef, isOptOutPath,
 } from "../src/lib/marketing/optout.ts";
@@ -234,13 +237,29 @@ type Fixtures = {
   plusPhone: string;
 };
 
+/** The registration checkbox's Swahili sentence, found by what it IS — the list is append-only but its order is not a promise. */
+const PINNED_SW_REGISTRATION = (() => {
+  const found = SMS_CONSENT_WORDINGS.find((w) => w.site === "REGISTRATION" && w.locale === "SW");
+  if (!found) throw new Error("no pinned SW registration wording — the fixture cannot plant a real consent");
+  return found.wording;
+})();
+
 async function seed(run: number): Promise<Fixtures> {
   const p = (i: number) => phoneFor(run, i);
 
   const consent = async (phone: string, when: string) =>
     Promise.resolve(db.messagingConsent.create({
       id: `oc${run}-${seq++}`, channel: "SMS", identifier: toMsisdn255(phone), category: "MARKETING",
-      status: "GIVEN", source: "IMPORT", wording: "Ninakubali kupokea matangazo kwa SMS.",
+      /* ⛔ A PINNED SENTENCE, AND IT HAD TO BECOME ONE AT U33a-G. This fixture used to be `source: "IMPORT"` with a
+         hand-written Swahili sentence and `recordedBy: null` — a row that CANNOT EXIST on production: it is not one of
+         the pinned SMS wordings (`consent-wording.ts`), and it is not an import attestation either, which needs a
+         recorder and a SAVED basis wording (S14). It passed only because the old contact branch answered `age_unknown`
+         to ANY GIVEN row, so the fixture never had to be a real consent to stand in for one. The gate now asks what the
+         row actually SAYS, and an unpinned sentence is correctly not a consent to SMS marketing — so the fixture says
+         something real instead. Labels 1 and 12 are unchanged by this: both still read `age_unknown`.
+         ⚠️ If this line ever needs a non-pinned wording again, the assertion it feeds is about AGE, not consent — plant
+         18+ evidence instead of weakening what consent means. */
+      status: "GIVEN", source: "REGISTRATION", wording: PINNED_SW_REGISTRATION,
       locale: "SW", evidence: "fixture", recordedBy: null, createdAt: when,
     }));
 

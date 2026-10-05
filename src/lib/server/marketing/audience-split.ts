@@ -31,7 +31,11 @@
  * Guard: `test:campaign-audience` (in `predeploy`, in-process `--prove-red`).
  */
 import { db } from "@/lib/server/store";
-import type { MessagingKey, MessagingKeyBatch, StoredMessagingConsent, StoredSuppression, StoredUser } from "@/lib/server/store";
+import type {
+  BookStandingEntry, MessagingKey, MessagingKeyBatch, StoredMessagingConsent, StoredSuppression, StoredUser,
+} from "@/lib/server/store";
+// U33a-G · the record the split prices ONCE per chunk, and its type.
+import { licenceOutreach, type LicenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { mayReceiveMarketingSms, userPhoneKeyFor, DB_GATE_READS } from "@/lib/server/marketing/consent";
 import type { MarketingGateReads, MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { walkCampaignAudience, contactAudienceKey, campaignAudienceRefusal, CAMPAIGN_WALK_MAX } from "@/lib/server/marketing/audience";
@@ -64,6 +68,10 @@ export const AUDIENCE_BUCKET_OF: Readonly<Record<MarketingSkipReason, "unsendabl
   bad_msisdn: "unsendable",
   suppressed: "suppressed",
   no_consent: "no_consent",
+  /* U33a-G · "no basis" lands in the SAME line as "no consent". They are different facts for an officer reading one
+     number's refusal, but the split is a count of who will not be reached and why in one word — and to the person
+     holding the phone the two are the same thing: nothing authorises a message to them. */
+  no_basis: "no_consent",
   consent_withdrawn: "withdrawn",
   age_unknown: "age_unknown",
   rg_self_excluded: "protected",
@@ -197,6 +205,10 @@ export type AudienceSplitDeps = {
   suppressions: (b: MessagingKeyBatch) => Promise<StoredSuppression[]>;
   users: (phones: string[]) => Promise<StoredUser[]>;
   consents: (b: MessagingKeyBatch) => Promise<StoredMessagingConsent[]>;
+  /** U33a-G · the book standing of the chunk's ACCOUNTLESS keys, one query (§27's `standingAmong`). */
+  standings: (msisdns: string[]) => Promise<BookStandingEntry[]>;
+  /** U33a-G · the licence-outreach record, read once per chunk. No query — this process's config cache. */
+  outreach: () => Promise<LicenceOutreach> | LicenceOutreach;
   slotOf: typeof audienceSlotOf;
   figures: typeof audienceSplitFigures;
   shape: typeof audienceSplitForViewer;
@@ -209,6 +221,8 @@ export const AUDIENCE_SPLIT_DEPS: Readonly<AudienceSplitDeps> = Object.freeze({
   suppressions: async (b: MessagingKeyBatch) => db.suppression.findActiveAmong(b),
   users: async (phones: string[]) => db.user.findByPhones(phones),
   consents: async (b: MessagingKeyBatch) => db.messagingConsent.latestAmong(b),
+  standings: async (msisdns: string[]) => db.contactListBasis.standingAmong(msisdns),
+  outreach: () => licenceOutreach(),
   slotOf: audienceSlotOf,
   figures: audienceSplitFigures,
   shape: audienceSplitForViewer,
@@ -223,7 +237,7 @@ export const AUDIENCE_SPLIT_DEPS: Readonly<AudienceSplitDeps> = Object.freeze({
  * ⛔ The keys are the gate's own (`parseTzNumber(...).msisdn`, and `+` that for the account); an unsendable number is
  * not asked about — the gate refuses it before any read.
  */
-export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<AudienceSplitDeps, "suppressions" | "users" | "consents"> = AUDIENCE_SPLIT_DEPS): Promise<MarketingGateReads> {
+export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<AudienceSplitDeps, "suppressions" | "users" | "consents" | "standings" | "outreach"> = AUDIENCE_SPLIT_DEPS): Promise<MarketingGateReads> {
   const keys: string[] = [];
   for (const m of msisdns) {
     const parsed = parseTzNumber(m);
@@ -240,11 +254,22 @@ export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<A
   const stopOf = new Map(stops.map((s) => [s.identifier, s] as const));
   const accountOf = new Map(accounts.map((u) => [u.phoneE164, u] as const));
   const latestOf = new Map(consents.map((c) => [c.identifier, c] as const));
+  /* ⭐ U33a-G · THE RECORD IS READ ONCE PER CHUNK, not once per number. It is this process's config cache, so the read
+     is free — but it must also be CONSISTENT across a chunk: a split whose first half priced an open record and whose
+     second half priced a closed one would report a count that was never true at any instant. */
+  const outreachOnce = await Promise.resolve(deps.outreach());
+  /* ⭐ And the book is asked ONLY about the keys with no account — the player branch never reaches the book, so asking
+     about a number an account holds would be a query bought for an answer nobody reads. */
+  const accountless = unique.filter((m) => !accountOf.has(userPhoneKeyFor(m)));
+  const standingOf = new Map((accountless.length > 0 ? await deps.standings(accountless) : []).map((e) => [e.msisdn, e.standing] as const));
   const ours = (k: MessagingKey) => k.channel === "SMS" && k.category === "MARKETING" && known.has(k.identifier);
   return {
     suppression: (k) => (ours(k) ? stopOf.get(k.identifier) ?? null : DB_GATE_READS.suppression(k)),
     userByPhone: (phone) => (phones.has(phone) ? accountOf.get(phone) ?? null : DB_GATE_READS.userByPhone(phone)),
     latestConsent: (k) => (ours(k) ? latestOf.get(k.identifier) ?? null : DB_GATE_READS.latestConsent(k)),
+    outreach: () => outreachOnce,
+    // ⛔ A key missing from the map falls back to the single read: it costs a query and can never give a wrong answer.
+    bookStanding: (m) => standingOf.get(m) ?? DB_GATE_READS.bookStanding(m),
   };
 }
 
@@ -254,7 +279,13 @@ const BUDGET_SPENT = new Error("audience split: past the time budget — not che
 const refuseRead = (): never => {
   throw BUDGET_SPENT;
 };
-const BUDGET_READS: MarketingGateReads = { suppression: refuseRead, userByPhone: refuseRead, latestConsent: refuseRead };
+/* ⛔ `outreach` DOES NOT THROW (S13), and that is deliberate: it is this process's config cache, so it costs no database
+   read, and the budget exists to stop READS — not to stop thinking. The gate asks it only after consent has already
+   refused, so a number past the budget still lands in `unchecked` through the first read that does throw. */
+const BUDGET_READS: MarketingGateReads = {
+  suppression: refuseRead, userByPhone: refuseRead, latestConsent: refuseRead,
+  outreach: () => licenceOutreach(), bookStanding: refuseRead,
+};
 
 async function askGate(row: CampaignAudienceRow, now: Date, reads: MarketingGateReads, deps: AudienceSplitDeps): Promise<AudienceGateOutcome> {
   try {
