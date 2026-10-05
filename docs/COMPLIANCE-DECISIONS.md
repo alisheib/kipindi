@@ -49,9 +49,15 @@ rather than guessed at.
 
 ### The words
 
-- **G5 / Q6 · The source line is `"Umepokea hii kwa sababu namba yako ipo kwenye orodha yetu."`** — "You received this
+- **G5 / Q6 · The source line is `"Namba yako ipo orodhani kwetu."`** — "You received this
   because your number is on our list." ~58 characters of the per-message budget. It names no third party. It becomes
   editable on Admin → System once G4 is saved; until a source line exists, every contact-book recipient is refused.
+  🔴 **CORRECTED THE SAME DAY, BEFORE ANYTHING WAS SAVED.** The line first put to Ali — "Umepokea hii kwa sababu namba
+  yako ipo kwenye orodha yetu." — was 58 characters, and `source.phrase` is capped at **30 septets as printed**
+  (`SOURCE_PHRASE_MAX_CHARS`): the card would have refused it, and it is paid for on EVERY message to a contact. The
+  session proposed an over-long line and the product's own rule caught it. Ali chose the 30-character replacement
+  above, and it was then run through the REAL validator (`validateCampaignTemplate`) — 0 problems — rather than
+  counted by hand, because at exactly the limit a miscount is a refusal.
 - **G10 · APPROVED, and it corrects a published inaccuracy:** the DSAR/erasure sentence becomes **"We keep your phone
   number only in our record of your marketing choices, so that we never send you marketing again."** The page said
   "we erase your contact details" while, since U18b, the number is deliberately KEPT — in the consent ledger and the
