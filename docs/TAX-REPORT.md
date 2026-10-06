@@ -14,6 +14,7 @@
 | Page | `/admin/tax` — Money → **Tax report** in the sidebar |
 | Day by day | 🟢 **LIVE 2026-10-04, `d4db96bb`** (served from 11:45 UTC, read back from `?dpl=`) — every week, month or custom window lists its days, each that day's own report (§6b) |
 | Finance's filing lines | 🟢 **LIVE 2026-10-06, `9d1550da`** (served from 11:57 UTC, read back from `?dpl=`; `/admin/tax` still redirects to sign-in, the export route answers an anonymous request with 401, clean boot) (Jaykishan, Finance — §6c): Report 2 opens with **Sales less refunds** and its **tickets** and closes with **Net commission revenue**, as Finance's monthly sheet files them; the report names deposits and withdrawals once, in a note, and nowhere beside a figure |
+| GBT levy | 🟢 **LIVE 2026-10-06, `17e9e335`** (served from 13:43 UTC, read back from `?dpl=`, clean boot) — the Gaming Board's line reads "GBT levy" on every surface (Ali: "change gbt tax to gbt levy"; §12 item 13) |
 | Who sees it | Owner (ADMIN), Finance, Compliance, Auditor — accounting VIEW (`roles.ts` `ROUTE_DOMAINS`) |
 | Who locks a period | Finance or the Owner (accounting ACT). The Owner alone (the stored ADMIN role) reopens one, records new rates, or locks a period out of balance — including one product while the whole book behind it is out |
 | Proof | `npm run test:tax-report` (engine + reader on real bets/settlements) · `npm run red:tax-report` (every declared mutation caught) |
