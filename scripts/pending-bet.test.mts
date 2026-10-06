@@ -16,6 +16,12 @@
  *      file under src/ keeps a private copy of the rule (6.one-rule).
  *   7. THE DOORS KEEP INTENT - boundedNext, returnPathFrom, withWelcome, authDoorHrefs, landingAfterAuth,
  *      accountRefusalPath (route audit 2026-10-06).
+ *      The census, src only (route audit B2/B6/B-E1/F2; each check runs its own control, none is planted by --prove-red):
+ *      7.no-bare-door - no Server Action under src/app sends a lost session to a bare /auth/login;
+ *      7.action-door - the seven action files ask signInPathForAction, markets/actions.ts at least 8 times;
+ *      7.deposit-door - the deposit action's email-door hop keeps the player's choices and drops the number;
+ *      7.auth-code - every no-session refusal in markets/actions.ts carries code AUTH;
+ *      7.rg-landing - a permanent self-exclusion lands on excluded=permanent, asked through selfExclusionStandingOf.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written.
  */
@@ -24,6 +30,8 @@ import { join } from "node:path";
 import * as PB from "../src/lib/journey/pending-bet.ts";
 import * as SN from "../src/lib/safe-next.ts";
 import * as AL from "../src/lib/auth-landing.ts";
+import { decomment } from "./lib/decomment.mts";
+import { isDirective } from "./lib/is-directive.mts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 type Impl = {
@@ -219,6 +227,117 @@ if (!PROVE_RED) {
     const line = (cond: boolean, label: string, extra = "") => { console.log(`  ${cond ? "PASS" : "FAIL"} ${label}${extra ? ` — ${extra}` : ""}`); if (!cond) failed.push(label); };
     line(control, "6.one-rule · control: the scanner finds the rule in safe-next.ts itself");
     line(strays.length === 0, "6.one-rule · no other file keeps a private copy — every door imports isSafePath / sanitizeNext", strays.join(", "));
+  }
+
+  // 7 · THE CENSUS · THE ACTION DOORS (route audit 2026-10-06: B2, B6, B-E1, F2). Reads src/ only; writes nothing. Not
+  // planted by --prove-red: each check runs its own control here, beside it, and prints the population it read.
+  {
+    const LF = String.fromCharCode(10);
+    const BT = String.fromCharCode(96);
+    const read = (f: string) => decomment(readFileSync(f, "utf8"));
+    const check = (cond: boolean, label: string, extra = "") => {
+      console.log(`  ${cond ? "PASS" : "FAIL"} ${label}${extra ? ` — ${extra}` : ""}`);
+      if (!cond) failed.push(label);
+    };
+    // Directory entries carry their own type, so a file another process renames mid-walk is never stat-ed.
+    const tsUnder = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+      d.isDirectory() ? tsUnder(`${dir}/${d.name}`) : d.name.endsWith(".ts") ? [`${dir}/${d.name}`] : []);
+
+    // 7.no-bare-door · a Server Action is POSTed to its page's address, so a lost session signs in back to THAT page
+    // (signInPathForAction). A bare /auth/login, in any quote and with or without a cast, signs a bet on a stale tab in to
+    // the board instead (B2).
+    const bareDoor = (s: string) => ['"', "'", BT].some((q) => s.includes(`redirect(${q}/auth/login${q}`));
+    const serverFiles = tsUnder("src/app").filter((f) => isDirective(readFileSync(f, "utf8"), "use server"));
+    const bare = serverFiles.filter((f) => bareDoor(read(f)));
+    console.log(`     "use server" files under src/app: ${serverFiles.length}`);
+    check(bareDoor(`if (!session) redirect("/auth/login");`) && bareDoor(`if (!s) redirect('/auth/login' as never);`)
+        && !bareDoor("if (!session) redirect((await signInPathForAction()) as never);") && !bareDoor(`redirect("/auth/login?closed=1");`),
+      "7.no-bare-door · control: the matcher fires on the pre-fix guard (either quote, with a cast), not on the named door or a door with a query");
+    check(serverFiles.length >= 10 && bare.length === 0,
+      "7.no-bare-door · no Server Action under src/app sends a lost session to a bare /auth/login",
+      `${serverFiles.length} files${bare.length > 0 ? `; bare: ${bare.join(", ")}` : ""}`);
+
+    // 7.action-door · the seven files B2 moved import the ONE helper, markets/actions.ts asks it at each of its 8 doors, and
+    // the wallet actions no longer hard-code their own path (which dropped the page's query).
+    const DOOR_FILES = ["markets", "profile/account", "profile/kyc", "profile/responsible-gambling", "profile/source-of-funds",
+      "wallet/deposit", "wallet/withdraw"].map((d) => `src/app/${d}/actions.ts`);
+    const importsDoor = (s: string) => s.split(LF).some((l) => l.startsWith("import ") && l.includes("signInPathForAction")
+      && l.includes(`from "@/lib/server/sign-in-path"`));
+    const calls = (s: string) => s.split("signInPathForAction()").length - 1;
+    const WALLET_NEXT = "/auth/login?next=/wallet/";
+    const MARKETS = read("src/app/markets/actions.ts");
+    const notImporting = DOOR_FILES.filter((f) => !importsDoor(read(f)));
+    const walletLiteral = DOOR_FILES.filter((f) => f.startsWith("src/app/wallet/") && read(f).includes(WALLET_NEXT));
+    console.log(`     signInPathForAction() calls in markets/actions.ts: ${calls(MARKETS)} · files importing it: ${DOOR_FILES.length - notImporting.length}/${DOOR_FILES.length}`);
+    check(calls(`import { signInPathForAction } from "@/lib/server/sign-in-path";`) === 0 && calls(`if (!session) redirect("/auth/login");`) === 0
+        && calls("if (!session) redirect((await signInPathForAction()) as never);") === 1
+        && importsDoor(`import { signInPathForAction } from "@/lib/server/sign-in-path";`) && !importsDoor(`import { currentSession } from "@/lib/server/auth-service";`)
+        && `if (!session) redirect("/auth/login?next=/wallet/deposit");`.includes(WALLET_NEXT),
+      "7.action-door · control: the counter counts calls, never the import; the import reader tells the helper from another module; the old wallet door carries the literal");
+    check(calls(MARKETS) >= 8 && notImporting.length === 0 && walletLiteral.length === 0,
+      "7.action-door · markets/actions.ts asks signInPathForAction at least 8 times; all seven action files import it from @/lib/server/sign-in-path; no wallet action hard-codes /auth/login?next=/wallet/",
+      JSON.stringify({ calls: calls(MARKETS), notImporting, walletLiteral }));
+
+    // 7.deposit-door · the email-door hop goes back to the page WITH the player's choices, never with the number (B6).
+    const DEPOSIT = read("src/app/wallet/deposit/actions.ts");
+    const OLD_HOP = `redirect("/wallet/deposit" as never)`;
+    const NEW_HOP = "redirect(" + BT + "/wallet/deposit?${";
+    /** The email gate's consequent: its braced block, or its one statement up to the ";". */
+    const emailHop = (s: string): string => {
+      const at = s.indexOf(`result.code === "EMAIL_UNVERIFIED"`);
+      if (at < 0) return "";
+      let i = s.indexOf(")", at) + 1;
+      while (s[i] === " ") i++;
+      if (s[i] !== "{") return s.slice(at, s.indexOf(";", i) + 1);
+      for (let depth = 0, k = i; k < s.length; k++) {
+        if (s[k] === "{") depth++;
+        else if (s[k] === "}" && --depth === 0) return s.slice(at, k + 1);
+      }
+      return "";
+    };
+    const keepsChoices = (s: string) => {
+      const hop = emailHop(s);
+      const drop = hop.indexOf(`.delete("msisdn")`);
+      return hop.includes("new URLSearchParams(carry)") && drop > 0 && drop < hop.indexOf(NEW_HOP) && !s.includes(OLD_HOP);
+    };
+    console.log(`     the email gate's hop: ${emailHop(DEPOSIT).split(LF).map((l) => l.trim()).join(" ") || "(not found)"}`);
+    check(!keepsChoices(`    if (result.code === "EMAIL_UNVERIFIED") redirect("/wallet/deposit" as never);`)
+        && !keepsChoices(DEPOSIT.split(`.delete("msisdn")`).join("")),
+      "7.deposit-door · control: the pre-fix hop (the bare page, every choice lost) is flagged, and so is a hop that keeps the number");
+    check(keepsChoices(DEPOSIT),
+      "7.deposit-door · on EMAIL_UNVERIFIED the deposit action goes back to /wallet/deposit with new URLSearchParams(carry), less the msisdn, and the bare hop is gone");
+
+    // 7.auth-code · a lost session on a comment, a report, a deletion, a restore or an objection answers with code AUTH, so
+    // errorCopy renders t.error.errSignIn in the player's own language rather than the English prose (B-E1).
+    const GUARD = "if (!session) return { ok: false";
+    const AUTH_CODE = `code: "AUTH"`;
+    const unlabelled = (s: string) => s.split(LF).filter((l) => l.includes(GUARD) && !l.includes(AUTH_CODE));
+    const refusals = MARKETS.split(LF).filter((l) => l.includes(GUARD));
+    console.log(`     no-session refusals in markets/actions.ts: ${refusals.length}`);
+    check(unlabelled(`  if (!session) return { ok: false as const, error: "Sign in first." };`).length === 1
+        && unlabelled(`  if (!session) return { ok: false as const, error: "Sign in first.", code: "AUTH" as const };`).length === 0,
+      "7.auth-code · control: the pre-fix refusal (prose, no code) is flagged; the fixed one is not");
+    check(refusals.length >= 5 && unlabelled(MARKETS).length === 0,
+      "7.auth-code · every no-session refusal in markets/actions.ts carries code AUTH",
+      JSON.stringify({ refusals: refusals.length, unlabelled: unlabelled(MARKETS).map((l) => l.trim()) }));
+
+    // 7.rg-landing · choosing a PERMANENT self-exclusion lands on the permanent panel every later sign-in shows, asked through
+    // selfExclusionStandingOf (the one definition of permanent), never by the period's name (F2). Every other period still
+    // lands on excluded=serving with its until= date (test:rg-doors 6.9 reads those two).
+    const RG = read("src/app/profile/responsible-gambling/actions.ts");
+    const from = RG.indexOf("export async function selfExcludeAction(");
+    const to = from < 0 ? -1 : RG.indexOf(LF + "export ", from + 1);
+    const SELF_EXCLUDE = from < 0 ? "" : RG.slice(from, to < 0 ? RG.length : to);
+    const landsRight = (b: string) => b.includes("selfExclusionStandingOf(") && !b.includes(`"perm"`)
+      && b.includes("excluded=permanent") && b.includes("excluded=serving") && b.includes("until=")
+      && b.indexOf("excluded=permanent") < b.indexOf("excluded=serving");
+    const servingOnly = SELF_EXCLUDE.split(LF).filter((l) => !l.includes("excluded=permanent") && !l.includes("selfExclusionStandingOf(")).join(LF);
+    console.log(`     selfExcludeAction lands on: ${["excluded=permanent", "excluded=serving"].filter((x) => SELF_EXCLUDE.includes(x)).join(" · ") || "(nothing found)"}`);
+    check(!landsRight(servingOnly) && !landsRight(SELF_EXCLUDE + LF + `if (period === "perm") redirect("/auth/login?excluded=permanent");`),
+      "7.rg-landing · control: the pre-fix landing (serving for every period) is flagged, and so is one that asks the period's name");
+    check(landsRight(SELF_EXCLUDE),
+      "7.rg-landing · a PERMANENT self-exclusion lands on excluded=permanent through selfExclusionStandingOf, before the serving landing, which keeps until=",
+      SELF_EXCLUDE ? "" : "selfExcludeAction not found");
   }
   console.log(`\nPENDING BET — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
   process.exitCode = failed.length === 0 ? 0 : 1;

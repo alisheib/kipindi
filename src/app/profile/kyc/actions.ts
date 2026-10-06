@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { startKyc, submitIdentityStep, attachDocument, attachExtraDocument, submitForReview } from "@/lib/server/kyc-service";
 import { getServerT } from "@/lib/i18n-server";
 import { reasonKeyFor } from "@/lib/failure-banner";
@@ -21,7 +22,7 @@ import { ALL_DOC_SLOTS, isIdDocType, type KycDocSlot } from "@/lib/id-documents"
  */
 export async function restartKycAction() {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   await startKyc(session.userId);
   revalidatePath("/profile/kyc");
   redirect("/profile/kyc");
@@ -29,7 +30,7 @@ export async function restartKycAction() {
 
 export async function submitIdentityAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
 
   const rawEmail = formData.get("email");
   const emailStr = rawEmail ? String(rawEmail).trim() : "";
@@ -121,7 +122,7 @@ export async function attachExtraDocumentAction(formData: FormData): Promise<{ o
 
 export async function submitKycForReviewAction() {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const result = await submitForReview(session.userId);
   revalidatePath("/profile/kyc");
   if (!result.ok) {

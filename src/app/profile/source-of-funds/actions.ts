@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { notify } from "@/lib/server/notification-service";
@@ -11,7 +12,7 @@ import type { StoredSourceOfFunds } from "@/lib/server/store";
 
 export async function submitSourceOfFundsAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
 
   const declaredSource = String(formData.get("declaredSource") ?? "") as StoredSourceOfFunds["declaredSource"];
   const declaredOccupation = String(formData.get("declaredOccupation") ?? "").trim().slice(0, 200);

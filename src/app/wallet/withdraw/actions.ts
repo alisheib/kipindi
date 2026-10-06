@@ -6,6 +6,7 @@ import { signFlash } from "@/lib/server/flash-message";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { withdraw } from "@/lib/server/wallet-service";
 import { lookupPayeeName, type PaymentProvider } from "@/lib/server/payments";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
@@ -53,7 +54,7 @@ export async function lookupWithdrawPayeeAction(input: { provider: string; msisd
 
 export async function withdrawAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet/withdraw");
+  if (!session) redirect((await signInPathForAction()) as never);
 
   const { t } = await getServerT();
 
