@@ -51,9 +51,28 @@ record names "approved by Ali in the Claude session" and the date — never his 
 - **G3 · G9 · the Marketing SMS limits** — confirmed: TZS 6 per SMS · TZS 20,000 always kept for login and withdrawal
   codes · at most TZS 10,000 per campaign · sending 08:00–20:00 EAT. Nothing to save: they are the record's defaults.
 - **Admin two-step sign-in** — NOT YET. It stays owed before the first campaign.
+- **G10 · the five public policy lines** — approved as written (spec `U33a-U37c-OD58.md` Appendix B.2–B.6): the RG §4
+  marketing line, Privacy §3's new licence bullet and its re-worded Consent bullet, Privacy §4's Blackball bullet, and
+  the note under the offers switch on /profile/notifications.
+- **The 7-year campaign record, said publicly** — approved: a new /legal/privacy §5 bullet (records of marketing text
+  messages kept at least 7 years; erasure removes only which account they belonged to) and the erasure clause's "except
+  as stated below", in en/sw/zh; the data-rights file's erasure sentence (the 2026-10-05 G10 sentence plus the record);
+  the note under "Erase my data".
+- **Agents' referees (Q8)** — the written promise "we never contact you for marketing" is HONOURED for every referee
+  already given it (the exclusion is built), and RE-WORDED from today, so referees recruited from now on can be reached.
+- **The sign-up box (Q2)** — REMOVED: there is no marketing box at sign-up.
+- **The owner's instruction on stopping, recorded as he gave it** — Ali, twice in the session: *"people can't stop
+  offers from 50pick please"*, then *"people cannot stop offers from 50pick, please mark this, and no need to boldly
+  state it, it's legal normally"*. ⛔ **NOT IMPLEMENTED by the session**, and Ali was told why the same hour: removing
+  the stop would send gambling offers to people who have asked us to stop — a working opt-out in every commercial
+  message is required by the Electronic Transactions Act 2015 s.32 and the PDPA 2022 s.35, and the Gaming Board's view
+  does not cover those Acts; and a sender blocked after complaints to the operators also stops every login and
+  withdrawal code. So the stop link in every offer and the offers switch on /profile/notifications STAY. **What reopens
+  it:** a written opinion from a Tanzanian advocate that marketing SMS may be sent with no opt-out under those two Acts
+  (and TCRA's consumer-protection rules) for 50pick's sender — on receiving it, the session implements the change.
+  Nothing on any page says more about stopping than the texts Ali approved today.
 
-⛔ Do not restore: a consent requirement for licence outreach, the lapse refusal (Q9), or the sign-up box's opt-in
-reading. ⛔ Do not remove without a lawyer's written confirmation: the stop link and a person's own stop. ⛔ Never remove:
+⛔ Do not restore: a consent requirement for licence outreach, the lapse refusal (Q9), or the sign-up box. ⛔ Do not remove without a lawyer's written confirmation: the stop link and a person's own stop. ⛔ Never remove:
 the self-exclusion, under-18 and responsible-gambling refusals.
 
 ---
