@@ -264,15 +264,22 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
      native Swahili (and Chinese) read of the consent sentences and the `/s/<token>` copy; where Blackball stores SMS
      data (BLACKBALL-SMS.md §8).
 
-OWNER ACTS — Ali's, in the order the path needs them (none of them blocks building):
-  1. Save the consent-basis wordings and the 18+ sentences (G4), and the public policy lines (G10), on Admin → System.
-     The session drafts the texts for him to paste; ⛔ the save IS the approval, so it is his act, never the session's.
-  2. Save the source line (G5): "Namba yako ipo orodhani kwetu." — then re-save any draft made before it (the composer
-     says so on each one).
-  3. A GROWTH staff account with 2-step sign-in (G7/G11), and the admin 2-step sign-in back on before the first campaign
-     (`/api/health` reports it off).
-  4. Once U49s ships, read the Marketing SMS card's defaults: TZS 6 per SMS (G9), TZS 20,000 kept for login codes and
-     TZS 10,000 per campaign (G3) — change any by saving the card.
+⭐ THE FINAL RULE (Ali, 2026-10-07 — COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
+  consent is not a condition"): anyone with a Tanzanian mobile number may be sent offers under the licence; consent is
+  recorded when given but decides nothing; the lapse refusal (Q9) is reversed; licence outreach opens as soon as its
+  checks hold; the sign-up box becomes a box to STOP offers. KEPT, not consent rules: a person's own stop and the stop
+  link (ETA 2015 s.32, PDPA 2022 s.35; revisited only on a lawyer's written confirmation), and never the self-excluded,
+  under-18s or players in RG standing.
+OWNER ACTS — Ali's, in the order the path needs them (none of them blocks building). Since 2026-10-07 he approves each
+  in the session and Claude saves it through the audited `ops:marketing-owner-save` door (being built) — never his login:
+  1. G4 · the nine wordings — ✅ APPROVED 2026-10-07 as written (saved once the door ships). G10 · the five public policy
+     lines — to be put to him in the session.
+  2. G5 · the source line "Namba yako ipo orodhani kwetu." — ✅ APPROVED 2026-10-07 (saved once the door ships); then any
+     draft made before it is re-saved (the composer says so on each one).
+  3. A GROWTH staff account with 2-step sign-in (G7/G11) — to be put to him. The admin 2-step sign-in back on before the
+     first campaign — ⏸ "not yet" (Ali, 2026-10-07); still owed (`/api/health` reports it off).
+  4. ✅ CONFIRMED 2026-10-07: the Marketing SMS defaults — TZS 6 per SMS (G9), TZS 20,000 kept for login and withdrawal
+     codes, TZS 10,000 per campaign (G3), 08:00–20:00 EAT — nothing to save, they are the record's defaults.
   5. The approved test phone is Jay's (G7, ENGINE-SPEC §0.3) — confirmed by Ali 2026-10-05 ("we have already sent Jay a
      test SMS"). The live switch is opened for U52a's drive window only (G1), within the §11.4 ledger cap.
   6. G2 — the first real campaign: the Swahili message (it starts "50pick"), the audience, the day.
