@@ -189,6 +189,11 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // verified setter runs the same functions before it writes. It imports only consent-basis.ts, campaign-template.ts
     // and contact-fields.ts, all pinned above; the persisted half lives in lib/server/marketing/wordings.ts and must stay there.
     "lib/marketing/marketing-wordings.ts",
+    // ⭐ ADDED 2026-10-06 (marketing U49s, decision E14). The Marketing SMS settings' shape, defaults, bounds and the ONE
+    // rule: the "use client" Marketing SMS tab on /admin/system validates every box live with it, and the server's verified
+    // setter refuses with the same function. It imports nothing; the persisted half lives in
+    // lib/server/marketing/sms-settings.ts and must stay there.
+    "lib/marketing/sms-settings.ts",
     // ⭐ ADDED 2026-10-04 (marketing U33p, decision M3). The public policy lines' keys, today's text as defaults, the rules,
     // the page versions, and the promises the code keeps: the "use client" Public policy lines card validates every box
     // live with them, and the server's verified setter runs the same functions before it writes. They import only each

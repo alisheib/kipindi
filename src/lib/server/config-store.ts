@@ -85,6 +85,105 @@ export async function deleteConfig(key: string): Promise<boolean> {
   }
 }
 
+/**
+ * Delete a persisted config value ONLY WHILE IT STILL HOLDS EXACTLY `value` (Postgres jsonb equality — key order does not
+ * matter). No-op without a DB; never throws; `true` when a row was deleted.
+ *
+ * ⛔ FOR A ROLLBACK THAT MUST NOT TAKE BACK SOMEBODY ELSE'S WRITE (U49s review, 2026-10-06). The marketing live switch's
+ * open path puts its own row back off when it cannot stand behind it (a read-back that failed, an audit that was not
+ * recorded). An unconditional `deleteConfig` there would also delete a second owner's opening written in between — telling
+ * them "on" while the switch is off, with no record of the close. This deletes only the row this call wrote.
+ */
+export async function deleteConfigIfValue(key: string, value: unknown): Promise<boolean> {
+  // ⛔ Prisma DROPS an `undefined` filter (and a JSON null needs its own sentinel), so either would turn this into an
+  // UNCONDITIONAL delete of the key — the exact thing this function exists not to do (the U49s re-review's m3).
+  if (value === undefined || value === null) return false;
+  if (!hasDatabase()) return false;
+  const client = prisma();
+  if (!client) return false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const json = value as any;
+    const res = await client.systemConfig.deleteMany({ where: { key, value: { equals: json } } });
+    return res.count > 0;
+  } catch (err) {
+    console.error(`[config] conditional delete "${key}" failed:`, (err as Error)?.message ?? err);
+    return false;
+  }
+}
+
+/**
+ * Delete a persisted config value AND SAY WHAT WAS DELETED (`DELETE … RETURNING`): `deleted` is the removed row's value,
+ * or null when there was no row at that instant (P2025). ⛔ `ok: false` means THE OUTCOME IS UNKNOWN — the delete may not
+ * have been asked, or may have committed and lost its reply; a caller must find out from what is there now, never assume
+ * either. No DB → nothing to delete.
+ *
+ * With `expected`, it deletes ONLY while the row still holds exactly that value (jsonb equality, key order ignored):
+ * `deleted` is then that value, or null when the row holds anything else (or none). A null `expected` takes nothing.
+ *
+ * ⛔ FOR A CLOSE THAT MUST RECORD THE ROW IT ACTUALLY REMOVED (the U49s re-review's m2): a close that recorded what it
+ * read FIRST could name a row that was already gone, or miss one that landed between its read and its delete. And a close
+ * that tries again after a delete whose reply was lost passes `expected` (the U49s fourth review's m2): that delete may
+ * have worked, so a blind second one could take an opening that landed after it.
+ */
+export async function takeConfig(key: string, expected?: unknown): Promise<{ ok: true; deleted: unknown } | { ok: false; error: string }> {
+  if (!hasDatabase()) return { ok: true, deleted: null };
+  const client = prisma();
+  if (!client) return { ok: true, deleted: null };
+  try {
+    if (expected !== undefined) {
+      // ⛔ Prisma would DROP a null filter and delete whatever is there: a null `expected` takes nothing.
+      if (expected === null) return { ok: true, deleted: null };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const res = await client.systemConfig.deleteMany({ where: { key, value: { equals: expected as any } } });
+      return { ok: true, deleted: res.count > 0 ? expected : null };
+    }
+    const row = await client.systemConfig.delete({ where: { key } });
+    return { ok: true, deleted: row.value };
+  } catch (err) {
+    // P2025 — no row to delete: nothing was taken.
+    if ((err as { code?: unknown })?.code === "P2025") return { ok: true, deleted: null };
+    const error = String((err as Error)?.message ?? err);
+    console.error(`[config] take "${key}" failed:`, error);
+    return { ok: false, error };
+  }
+}
+
+/**
+ * Create a config row ONLY IF THE KEY HAS NONE: "created", or "exists" when the key is already taken (P2002). Any other
+ * failure THROWS (the outcome is unknown — it may have committed). ⛔ Throws without a database: a caller that needs this
+ * has already refused to run without one.
+ *
+ * ⛔ FOR A WRITER THAT MUST NEVER LAY A ROW OVER SOMEBODY ELSE'S (the U49s third review's MAJOR-2): an upsert lets the
+ * second of two concurrent openings replace the first after the first was told "on until 09:30".
+ */
+export async function createConfigIfAbsent(key: string, value: unknown): Promise<"created" | "exists"> {
+  const client = hasDatabase() ? prisma() : null;
+  if (!client) throw new Error(`[config] create "${key}": no database`);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await client.systemConfig.create({ data: { key, value: value as any } });
+    return "created";
+  } catch (err) {
+    if ((err as { code?: unknown })?.code === "P2002") return "exists";
+    throw err;
+  }
+}
+
+/**
+ * Replace a config row's value ONLY WHILE IT STILL HOLDS EXACTLY `expected` (jsonb equality, key order ignored): true when
+ * it was replaced, false when the row holds something else (or none). Any other failure THROWS (outcome unknown).
+ * ⛔ An undefined or null `expected` replaces nothing — Prisma would drop the filter and replace whatever is there.
+ */
+export async function replaceConfigIfValue(key: string, expected: unknown, value: unknown): Promise<boolean> {
+  if (expected === undefined || expected === null) return false;
+  const client = hasDatabase() ? prisma() : null;
+  if (!client) throw new Error(`[config] replace "${key}": no database`);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await client.systemConfig.updateMany({ where: { key, value: { equals: expected as any } }, data: { value: value as any } });
+  return res.count === 1;
+}
+
 /** Persist a config value (write-through upsert). No-op without a DB; never throws. */
 export async function saveConfig(key: string, value: unknown): Promise<void> {
   if (!hasDatabase()) return;

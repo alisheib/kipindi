@@ -60,7 +60,7 @@ process.env.SMS_PROVIDER = "blackball";
 process.env.SMS_SENDER_ID = "50pick";
 process.env.BLACKBALL_CLIENT_ID = "cid";
 process.env.BLACKBALL_CLIENT_SECRET = "csec";
-for (const k of ["SMS_PRICE_PER_SEGMENT_TZS", "SMS_BALANCE_FLOOR_TZS", "SMS_BALANCE_ALERT_TZS", "SMS_BALANCE_TTL_MS", "SMS_BALANCE_RETRY_MS", "BLACKBALL_API_URL"]) {
+for (const k of ["SMS_BALANCE_FLOOR_TZS", "SMS_BALANCE_ALERT_TZS", "SMS_BALANCE_TTL_MS", "SMS_BALANCE_RETRY_MS", "BLACKBALL_API_URL"]) {
   delete process.env[k];
 }
 
@@ -269,7 +269,7 @@ const L = {
   vendor: "2.2 ⭐ ADMIN through the REAL default deps · a kept 10-minute-old TZS 517 is not reused — the vendor is asked, and its 196 is the live credit",
   unreadable: "2.3 ⛔ a refused, an unanswered, a hanging, a keyless and a console read each give an UNREADABLE credit with its reason and NO figure — though a kept TZS 517 exists",
   noAudienceImport: "2.4 ⛔ estimate.ts imports no audience or contacts module — the counts arrive from the caller",
-  history: "2.5 a send history that cannot be read never throws · cost unknown(history-unreadable) and no pace; with SMS_PRICE_PER_SEGMENT_TZS=6 the configured price stands",
+  history: "2.5 a send history that cannot be read never throws · with no price configured the cost is unknown(history-unreadable) and there is no pace; through the REAL default deps the Marketing SMS settings record is RE-READ and its saved price (TZS 7.50 here — U49s) stands as configured",
   cleanWalk: "3.1 ⭐ a clean walk of 7 delivered single-segment chunks (300, 294 … 264) measures exactly TZS 6, from 6 sends over 6 pairs",
   delivered: "3.2 🔴 a chunk holding a delivered row and a never-delivered one (charged 6 for 2) is NOT measured — billing is per DELIVERED message",
   median: "3.3 ⭐ a top-up (negative) and a late charge (0, then 12) beside 4 clean pairs still measure 6 — the median, not a mean or the last pair",
@@ -303,7 +303,6 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   __resetReadGrantsForTest();
   seedKept();
   balanceReply = balanceIs(196);
-  delete process.env.SMS_PRICE_PER_SEGMENT_TZS;
 
   /* ══ §1 · THE ONE DECIDER ════════════════════════════════════════════════════════════════════════════════════ */
   const yesRoles: Role[] = ["ADMIN", "COMPLIANCE", "FINANCE", "AUDITOR"];
@@ -365,13 +364,20 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     impl.sources.estimate.length > 2000
       && !/^[ \t]*import[^;]*?from\s*["'][^"']*(?:audience|contacts)[^"']*["']/m.test(impl.sources.estimate));
 
-  const broken = await impl.loadFor("ADMIN", AUD, { ...MONEY_DEPS, recentSends: async () => { throw new Error("history down"); } });
-  process.env.SMS_PRICE_PER_SEGMENT_TZS = "6";
+  const broken = await impl.loadFor("ADMIN", AUD, { ...MONEY_DEPS, configuredTzs: () => null, recentSends: async () => { throw new Error("history down"); } });
+  // ⭐ U49s · no price injected: the REAL default dep RE-READS the Marketing SMS settings record. TZS 7.50 is saved through
+  //    the shipped setter first (no database: the record is this process's), so a hard-coded 6 cannot pass for the record.
+  const SET = await import("../src/lib/server/marketing/sms-settings.ts");
+  const SETPURE = await import("../src/lib/marketing/sms-settings.ts");
+  const cur = SET.marketingSmsSettings();
+  const seeded = await SET.saveMarketingSmsSettings({
+    pricePerSegmentTzs: "7.50", codesReserveTzs: String(cur.codesReserveTzs), campaignLimitTzs: String(cur.campaignLimitTzs),
+    windowStartMinute: String(cur.windowStartMinute), windowEndMinute: String(cur.windowEndMinute), base: SETPURE.settingsFingerprint(cur),
+  }, "usr_estimate_suite");
   const brokenPriced = await impl.loadFor("ADMIN", AUD, { ...MONEY_DEPS, recentSends: async () => { throw new Error("history down"); } });
-  delete process.env.SMS_PRICE_PER_SEGMENT_TZS;
   ok(p(L.history),
-    label(broken.money?.cost) === "unknown:history-unreadable" && broken.pace === null && label(brokenPriced.money?.cost) === "configured:6",
-    `${label(broken.money?.cost)} · pace ${broken.pace === null ? "null" : "PRESENT"} · ${label(brokenPriced.money?.cost)}`);
+    label(broken.money?.cost) === "unknown:history-unreadable" && broken.pace === null && seeded.ok && label(brokenPriced.money?.cost) === "configured:7.5",
+    `${label(broken.money?.cost)} · pace ${broken.pace === null ? "null" : "PRESENT"} · seeded ${seeded.ok ? "7.50" : seeded.reason} · ${label(brokenPriced.money?.cost)}`);
 
   /* ══ §3 · THE WALK ═══════════════════════════════════════════════════════════════════════════════════════════ */
   const m1 = impl.measure(walk(clean(7)), W);

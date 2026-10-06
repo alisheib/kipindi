@@ -483,6 +483,32 @@ compiler finds every one.
 **Kind:** engine + visual · **Hours:** 9–15 · **Review:** yes (it opens real sends and sets money) · **Set:** B, after
 U37c (both edit `test:campaign-compose` §18).
 
+> **As built — U49s-1, the server half (2026-10-06, the plan's §0 STEP 43; OD62 · OD63).** Split before it was started,
+> like U37c: U49s-1 is the reader, the two writers, the ops door, the settings record and the estimate's price; U49s-2 is
+> the card, the tab, the three actions (S6, S11) and the drive. Recorded departures: (1) ⛔ the reviews' MAJORs — OPEN
+> reads first (never over an opening or an unreadable switch), RECORDS FIRST (`marketing.live_switch_opening`, before
+> the row exists) and writes CONDITIONALLY (`createConfigIfAbsent` where there is no row, `replaceConfigIfValue` for the
+> exact stale row read — never an upsert, so of two openings in one instant exactly one stands); every path that cannot
+> stand behind an opening goes through ONE rollback that deletes only the row this call wrote (`deleteConfigIfValue`, a
+> jsonb compare-and-delete, proven on PostgreSQL 18.3 by `db:probe-marketing-settings`) and says "off" only on a read
+> that proves it, recording the ending (`marketing.live_switch_open_failed`); new refusals `already_open`,
+> `cannot_read`, `record_failed`, `changed_meanwhile`, `other_open`, `unconfirmed_off`, `reopened_meanwhile` and
+> `close_unconfirmed` replace a false "it stays off"; (2) CLOSE removes the row with DELETE … RETURNING (`takeConfig`) and records exactly
+> the row it removed — an expired or malformed row included (`was`); a delete that loses its reply is looked at before
+> any retry and recorded as `was: unknown` once a readable read proves the row gone (stored values compared, against a
+> first read that succeeded), never "already off"; a retry takes only the row first read, so an opening that lands after
+> it stands (`reopened`); only a switch with nothing to remove is `already_closed`; (3) the reader takes "now" after the
+> read lands and refuses a date that does not round-trip, and an `enabledAt` over a minute in the future reads
+> malformed — and is never replaced as stale (another writer's opening, stamped by a clock ahead); the gate checks
+> `closesAt` itself; (4) the ops door screens `by`/`reason` with NFKC, no hidden,
+> default-ignorable or lone-surrogate characters and at most six numerals of any kind across the two, and refuses a write
+> outside production's Railway environment and its own `AUDIT_CHAIN_SECRET`, or — for an open — from a PC whose clock
+> is over 20 s off the database's (`readDatabaseClockMs`, `opsClockProblem`; a close only warns), and rewrites Railway's
+> private database host to the public proxy as every ops script does; (5)
+> `reloadMarketingSmsSettings()` answers `{ ok, settings, stored, readable }` instead of a bare record, and the estimate
+> re-reads it for every estimate, pricing nothing from a half-read row; (6) S7 scans every source extension in `src/` and
+> `scripts/` (tests aside; the loopback probe allowed by name).
+
 **Premises checked.** P12 (the reader, no writer, the two-key rule; `saveConfigOrThrow`/`deleteConfig`), P16 (owner guard,
 kill-switch above the rail, the tab rail), P11 (the price env read and the reserve), `defineConfig` (validate, audit
 `{before, after, changes}`, verified setter, reload — `define-config.ts:1-120`), the readers of the switch

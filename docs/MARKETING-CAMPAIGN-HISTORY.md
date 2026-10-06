@@ -10,7 +10,12 @@ Ali's instruction: "remove the stales that confuse developers, keep a clean plan
 > why a thing is the way it is. Read it for the WHY; never act on a "▶ NEXT", a "RESUME HERE" or a builder named in it:
 > each of those was true on the day it was written and has since been done, superseded or abandoned.
 
-What it holds, newest first, exactly as §0 carried it on 2026-10-05:
+What it holds, newest first, exactly as §0 carried it:
+
+- S11's ✔ LAST SESSION block (2026-10-05, OMEGA-COMPILE01 — STEPS 40–42, the gate track finished), moved on 2026-10-06
+  when S12 began;
+
+And, as §0 carried it on 2026-10-05:
 
 - the S10 pause and its afternoon resumption on OMEGA-DEV072 (S10′): STEPS 33–39, Ali's twelve answers, the three
   builders that were in flight and what became of them;
@@ -20,6 +25,67 @@ What it holds, newest first, exactly as §0 carried it on 2026-10-05:
 - the S8-era ▶ NEXT, ✔ LAST SESSION and ◐ HALF-DONE blocks, the rulings taken on Ali's delegation of 2026-09-26, and the
   full ⚠ TRAPS list with each trap's story;
 - after the §0 diaries: the tracker's old §10, the design-time S1–S27 session order (superseded 2026-10-03).
+
+## The tracker's §0 ✔ LAST SESSION block for S11, as it stood on 2026-10-06 (verbatim)
+
+```
+✔ LAST SESSION: S11 — 2026-10-05, OMEGA-COMPILE01 (`F:\kipindi-main`, on `main`): the session that took the programme
+  over from OMEGA-DEV072 the same day, on a freshly set-up PC.
+  STEP 40 · U37s LIVE `549f1ba4` (served from 14:16:40 UTC, proved by discrimination — `68c176e8` before it; the new
+  container's `/api/health` ok, the database reachable and migrated). Every DRAFT save stamps the SAVED source line,
+  read FRESH from the row (a read that cannot answer refuses the save, `source_unreadable`), and the server's verdict
+  prices it; a draft whose stamp differs from the saved line is flagged, Save is offered and the screen says why. The
+  adversarial review said SHIP and found four things, all fixed before the push. Guard `test:campaign-compose`
+  §17.13–§17.20; `red:campaign-compose` 245/245. Nothing visible changes until Ali saves the line (G5).
+  STEP 41 · U37c-1 — THE TEST SEND TO A TYPED NUMBER, THE SERVER PATH (inert: no screen sends a recipient until U37c-2).
+  The action takes (campaignId, variant, recipient), re-typed on the server (`testRecipientOf`: own, or typed with a
+  number of at most 40 characters and the BOOLEAN true as the 18+ tick; anything else `bad_recipient`). A typed number is
+  a CONTACT-BOOK recipient (the `{jina}` fallback, the stored source line) and is decided by the ONE gate with this
+  attempt's attestation as its context — so a number an account holds is governed by that account, and the tick counts
+  only for a number nobody holds, only while licence outreach is open, never over a stop, a withdrawal or an erased
+  record. Refused UP FRONT, the same for any number: outreach closed, `adult.test` unsaved, no source line on the draft.
+  Two more budgets spent only after those checks (`marketing.testSendTyped` per officer, `marketing.testSendTo` per
+  number under a keyed letters-only bucket); a 3-second floor on every typed outcome at the gate or after it (a throw
+  included); D19's one sentence for a masked viewer and the collapsed reason for a reader; the measurement token shown,
+  never the number's real stop link; the gate asked again at the send. The officer's own number typed in another
+  spelling is the own path. 🔎 The adversarial review said FIX FIRST — one MAJOR, fixed before the push: a typed test's
+  RG COMPLIANCE row would have appeared on /admin's activity feed the moment a protected player's number was refused (a
+  membership oracle) — OD61, typed tests write none; and its gaps closed (shapes, the floor on every path, the re-ask,
+  a keyed bucket). Guard `test:campaign-compose` §16.4, §18.2, §18.5′, §18.13–§18.14, §18.17–§18.31;
+  `red:campaign-compose` 288/288; `test:campaign-audience` 4.9 now allows exactly the typed test's ONE pinned gate call
+  (two new plants). Owed from the review, none reachable until licence outreach opens: OD61's feed restriction (before
+  U43), the erasure marker for an account erased with no book row (U16a), and U33r (agent referees).
+  STEP 42 · U37c-2 LIVE `0d3f08d7` (served from 16:48 UTC, proved by discrimination — `a92c3be8` before it; the new
+  container's `/api/health` ok, the database reachable and migrated; the dev seed route answers 404 on production) —
+  THE TEST CARD (the gate track's last unit; its server path is STEP 41): "Send the test to" — my own number (masked, the default) or another number, offered only while licence outreach is open, `adult.test` is
+  saved and the draft carries the source line, and otherwise disabled with the reason beside it. Another number: the
+  kit's number field (the plan's own sentence under it, said ONCE — the line beside Send is a way back to the field),
+  the 18+ tick labelled with the SAVED words, the contact-book preview (the `{jina}` fallback, the source line, the stop
+  link never shown) and the typed outcomes; the consent link only for an OWN refusal. 🔎 The adversarial review said FIX
+  FIRST — one BLOCKER, fixed before the push: the 18+ tick outlived an edited number, so a confirmation given for one
+  number was posted for another. The tick is now bound to this draft, these words and this number; any edit or switch
+  unticks it; every Send spends it; and the post names the words' version, so the server refuses a tick given for words
+  reworded since the page opened (`attestation_stale`, §18.32 — the page re-reads and shows the new words). Its minors
+  too: the reason order (a typed test refused up front no longer says "Updating…" for ever), a reason beside "Another
+  number" on a new composer, the kit field honouring `autoComplete="off"`, the explanation no longer dimmed, and claims
+  that could not see a log or a second consent link. A second review of the fixes found no blocker; its minors were
+  closed too (the loader offers a typed test only with a preview, the card re-reads on every out-of-date refusal, each
+  pinned by a claim and a plant). Visual drive `PASS=typed` (its
+  own fresh server; the world stepped through `/api/dev-test/marketing-typed-test-seed`, 404 in production, which calls
+  only the platform's own writers): Appendix A §A.9's 13 states plus 8b (an edit unticks), 13b (outreach open: the
+  licence basis hands the own test over) and 14 (words reworded while open), at 1280 and 360 as GROWTH and as ADMIN —
+  179/179, every capture opened and read — and the console (198), live-closed (18) and dead-rail (10) passes re-run on
+  the new card, each on its own fresh server. Guard `test:campaign-compose` §16.4, §16.17–§16.20, §18.22, §18.32;
+  `red:campaign-compose` 322/322. ⚖️ §A.9's state 13 (own refused, with the consent link) is a CLOSED-outreach state:
+  once the record opens, U33a-G's licence basis reaches an adult account that never said no.
+  Then (between STEPS 41 and 42) this §0 was rewritten (Ali: "remove the stales that confuse developers, keep a clean plan"): the session diaries
+  it had grown — S7c to S10, and the STEP log 1–39 — are in `MARKETING-CAMPAIGN-HISTORY.md`, verbatim. ⭐ The diaries
+  are a RECORD: nothing in them decides what is done or what is next.
+  Before it, the same day on OMEGA-DEV072 (S10′): STEPS 35–39, all live — U33a-R the licence-outreach record
+  (`ec02e993`), U33a-G the gate that reads it (`b5680d5d`), U33a-P the profile switch, U33b-L the list-basis writer and
+  the Lists card — and Ali's twelve answers, recorded in COMPLIANCE-DECISIONS § "2026-10-05 · Marketing outreach
+  rulings".
+```
 
 ## The tracker's §0, as it stood on 2026-10-05 before the clean-up
 

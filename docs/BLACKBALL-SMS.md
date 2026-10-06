@@ -454,9 +454,9 @@ action, and "the remaining fault is entirely inside their platform". Both were o
 when every message of that chunk was DELIVERED and nothing else was sent or delivered in between.
 `measureSegmentCost` (`src/lib/marketing/segment-cost.ts`) walks exactly those pairs over the last 500 rows and 30
 days, counts only bodies of ≤ 70 characters (one segment in either coding — `SmsMessage` stores no segment count),
-voids top-ups and late charges, and takes the MEDIAN of at least 3 clean pairs. Fewer than that: the configured
-`SMS_PRICE_PER_SEGMENT_TZS` (§6), captioned *"configured, not yet measured"*; neither: *"not yet measured"*, never
-TZS 0. Every figure says "estimated". The portal stays the authority the walk is checked against (U52's capped
+voids top-ups and late charges, and takes the MEDIAN of at least 3 clean pairs. Fewer than that: the owner's price on
+Admin → System → Marketing SMS (TZS 6 until saved — G9; marketing U49s, 2026-10-06, which replaced the old
+`SMS_PRICE_PER_SEGMENT_TZS` variable), captioned *"configured, not yet measured"*; never TZS 0. Every figure says "estimated". The portal stays the authority the walk is checked against (U52's capped
 drive).
 
 The cost floor holds every non-OTP purpose — `INVITE`, `OPS` and, since marketing U35a (2026-10-02),
@@ -592,7 +592,8 @@ the 15-minute TTL.
 | `SMS_BALANCE_TTL_MS` | default 900000 (15 minutes) |
 | `SMS_BALANCE_RETRY_MS` | default 30000 — after a failed balance read, no new read is attempted for this long (a dead endpoint is not hammered by page renders or `/api/health`) |
 | *(not variables)* | the read's waits are code constants in `sms.ts`: `SMS_BALANCE_RENDER_BUDGET_MS` 2500 (Admin → System) and `SMS_BALANCE_HEALTH_BUDGET_MS` 1000 (`/api/health`); a reading older than 60 s is re-read before the floor refuses on it; a restart that finds the balance already low alarms at most once per low episode in 24 h (§5) |
-| `SMS_PRICE_PER_SEGMENT_TZS` | **optional, unset by default** (owner gate G9 — it puts a money figure in front of officers). A positive number is the campaign estimate's price per segment *until* the walk has ≥ 3 clean delivered pairs (§5), shown as *"configured, not yet measured"*; unset, the cost reads *"not yet measured"* and no TZS total is shown. Read by `src/lib/server/marketing/estimate.ts` only |
+| *(no longer a variable)* | **The marketing price per SMS, the credit kept for login and withdrawal codes, the most one campaign may spend and the send window** are the owner's, saved on Admin → System → Marketing SMS (the tab arrives with U49s-2; until then the defaults apply) (`marketing.sms.settings`; defaults TZS 6 · TZS 20,000 · TZS 10,000 · 08:00–20:00 EAT). `SMS_PRICE_PER_SEGMENT_TZS` is gone (marketing U49s, 2026-10-06 — it was never set on Railway), and nothing reads it |
+| *(not a variable either)* | **The marketing live switch** (`marketing.sms.live` = `{ enabledBy, enabledAt, closesAt }`): ABSENT is off, and every real marketing SMS — a test send included — is refused while it is off. It is opened for 30 minutes to 24 hours (2 hours by default) and switches itself off at `closesAt`. Two audited doors only: the owner's card on Admin → System (it arrives with U49s-2, the screens), and the ops door `npm run ops:marketing-live-switch -- status | open | close` (run through `railway run`; it writes the same COMPLIANCE rows) |
 | `INVITE_SMS_MAX_PER_SEND` | default 500 |
 | `OTP_ENABLED` | `1` un-hides `/auth/otp`; ⚠️ no login/register UI links to it yet (§7, step 6) |
 

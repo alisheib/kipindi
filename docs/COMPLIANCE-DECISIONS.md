@@ -99,8 +99,9 @@ rather than guessed at.
   "we erase your contact details" while, since U18b, the number is deliberately KEPT — in the consent ledger and the
   emptied book row — precisely so the person is never messaged again. The old sentence described something the code
   does not do.
-- **G9 · `SMS_PRICE_PER_SEGMENT_TZS` = 6.** ⚠️ OWED: the variable is not set on Railway yet, so officers still see no
-  money figure on an estimate.
+- **G9 · `SMS_PRICE_PER_SEGMENT_TZS` = 6.** ✅ IN FORCE since marketing U49s-1 (2026-10-06): TZS 6 is the default price of
+  the Marketing SMS settings record (owner-editable on Admin → System → Marketing SMS once U49s-2 ships), and the
+  variable it replaced — never set on Railway — is gone; nothing is owed on Railway.
 - **G4 · The four consent-basis wordings and the 18+ sentence are to be DRAFTED for Ali to paste and save** on
   Admin → System → Marketing wordings. ⛔ The save is the approval and it is append-only evidence, so it is his act and
   not the session's; nothing live imports a wording until it is saved.

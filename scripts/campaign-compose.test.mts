@@ -2039,7 +2039,8 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       }
     }
   };
-  const OPEN_ROW = { state: "open", enabledBy: "usr_u37b_owner", enabledAt: "2026-10-02T09:00:00.000Z" } as const;
+  // ⭐ U49s · the gate checks the closing time itself, so a recorded-open state must close in the FUTURE to read open.
+  const OPEN_ROW = { state: "open", enabledBy: "usr_u37b_owner", enabledAt: "2026-10-02T09:00:00.000Z", closesAt: "9999-12-31T00:00:00.000Z" } as const;
   let carrier: OfficerFixture | null = null;
   let cmp5 = "";
   try {
@@ -2063,28 +2064,49 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(m.result)} · transport calls ${m.fetches} · rows ${m.rows} · tokens ${m.tokens}`];
   });
 
-  await claim("§18.6 ⛔ X14 · THE READER FAILS CLOSED — no row, a failed read, a read that threw, a value that is not a row, a blank enabledBy and an enabledAt that is not an instant all read CLOSED; only a recorded { enabledBy, enabledAt } under marketing.sms.live reads open", async () => {
+  await claim("§18.6 ⛔ X14 · E13 · THE READER FAILS CLOSED — no row, a failed read, a read that threw, a value that is not a row, a blank enabledBy, an instant that is not one, the old two-key row, a key beside the three and an EXPIRED row all read CLOSED; only a recorded { enabledBy, enabledAt, closesAt } before its closesAt, under marketing.sms.live, reads open — and a real carrier's test on an expired switch is refused live_sends_closed with nothing sent", async () => {
     const asked: string[] = [];
     const load = (answer: () => unknown) => async (key: string) => {
       asked.push(key);
       return answer();
     };
+    const NOW = Date.now();
+    const at = (ms: number) => new Date(ms).toISOString();
+    const row = { enabledBy: "usr_owner", enabledAt: at(NOW - 3_600_000), closesAt: at(NOW + 3_600_000) };
+    const expired = { enabledBy: "usr_owner", enabledAt: at(NOW - 3 * 3_600_000), closesAt: at(NOW - 3_600_000) };
     const cases: Array<[string, (key: string) => Promise<unknown>]> = [
       ["absent", load(() => ({ ok: true, value: null }))],
       ["failed", load(() => ({ ok: false, error: "connection refused" }))],
       ["threw", load(() => { throw new Error("boom"); })],
       ["not a row", load(() => ({ ok: true, value: "on" }))],
-      ["blank enabledBy", load(() => ({ ok: true, value: { enabledBy: "  ", enabledAt: "2026-10-02T09:00:00.000Z" } }))],
-      ["enabledAt not an instant", load(() => ({ ok: true, value: { enabledBy: "usr_owner", enabledAt: "yesterday" } }))],
-      // U37b review m3: a CLOSE recorded in the only shape there is still carries the two fields — it must read closed.
-      ["a key beside the two", load(() => ({ ok: true, value: { enabledBy: "usr_owner", enabledAt: "2026-10-02T09:00:00.000Z", enabled: false } }))],
+      ["blank enabledBy", load(() => ({ ok: true, value: { ...row, enabledBy: "  " } }))],
+      ["enabledAt not an instant", load(() => ({ ok: true, value: { ...row, enabledAt: "yesterday" } }))],
+      // E13: the old { enabledBy, enabledAt } row has no closing time — it is not a shape this version reads open.
+      ["the old two-key row", load(() => ({ ok: true, value: { enabledBy: row.enabledBy, enabledAt: row.enabledAt } }))],
+      // U37b review m3: a CLOSE recorded in the only shape there is still carries the three fields — it must read closed.
+      ["a key beside the three", load(() => ({ ok: true, value: { ...row, enabled: false } }))],
+      ["expired", load(() => ({ ok: true, value: expired }))],
     ];
     const states: string[] = [];
     for (const [name, l] of cases) states.push(`${name}=${(await impl.readSwitch(l as never)).state}`);
-    const open = await impl.readSwitch(load(() => ({ ok: true, value: { enabledBy: "usr_owner", enabledAt: "2026-10-02T09:00:00.000Z" } })) as never);
-    return [states.every((s) => s.endsWith("=closed")) && open.state === "open" && asked.length === cases.length + 1
+    const open = await impl.readSwitch(load(() => ({ ok: true, value: row })) as never);
+    const expiredRead = await impl.readSwitch(load(() => ({ ok: true, value: expired })) as never);
+    // ⭐ The test send reads THIS reader: on an expired switch a real carrier is refused before the wire.
+    let refusedExpired = false;
+    let detail = "no fixture";
+    if (carrier !== null) {
+      const who = carrier;
+      const m = await realCarrier(who.key, cmp5, () => send({ campaignId: cmp5, variant: "SW" }, who.id, {
+        send: TEST.CAMPAIGN_TEST_DEPS.send,
+        liveSwitch: () => impl.readSwitch((async () => ({ ok: true, value: expired })) as never),
+      }));
+      refusedExpired = !m.result.ok && m.result.outcome === "refused" && m.result.reason === "live_sends_closed" && m.fetches === 0 && m.rows === 0;
+      detail = `${reasonOf(m.result)} · transport calls ${m.fetches} · rows ${m.rows}`;
+    }
+    return [states.every((s) => s.endsWith("=closed")) && open.state === "open" && open.closesAt === row.closesAt && asked.length === cases.length + 2
+      && expiredRead.state === "closed" && expiredRead.why === "expired" && refusedExpired
       && asked.every((k) => k === "marketing.sms.live") && LIVE.MARKETING_LIVE_SWITCH_KEY === "marketing.sms.live",
-      `${states.join(" · ")} · recorded=${open.state} · keys [${[...new Set(asked)].join(",")}]`];
+      `${states.join(" · ")} · recorded=${open.state} · expired test ${detail} · keys [${[...new Set(asked)].join(",")}]`];
   });
   await claim("§18.6 the gate — the console stub passes open or closed (no handset, no money), Blackball ONLY when the switch is recorded open, an unrecognised provider never", async () => {
     const CLOSED = { state: "closed", why: "absent" } as const;
@@ -4154,18 +4176,32 @@ if (!PROVE_RED) {
     /** P14 · X14 · the switch read as OPEN when no row exists. */
     const absentIsOpen: typeof LIVE.readMarketingLiveSwitch = async (load) => {
       const r = await LIVE.readMarketingLiveSwitch(load);
-      return r.state === "closed" && r.why === "absent" ? { state: "open", enabledBy: "nobody", enabledAt: "1970-01-01T00:00:00.000Z" } : r;
+      return r.state === "closed" && r.why === "absent" ? { state: "open", enabledBy: "nobody", enabledAt: "1970-01-01T00:00:00.000Z", closesAt: "9999-12-31T00:00:00.000Z" } : r;
     };
-    /** U37b review m3, undone: keys beside the two are stripped before the real reader asks, so a recorded CLOSE that
-     *  still carries { enabledBy, enabledAt } reads open. */
+    /** U37b review m3, undone: keys beside the three are stripped before the real reader asks, so a recorded CLOSE that
+     *  still carries { enabledBy, enabledAt, closesAt } reads open. */
     const extraKeysOpen: typeof LIVE.readMarketingLiveSwitch = (load) => (load === undefined ? LIVE.readMarketingLiveSwitch() : LIVE.readMarketingLiveSwitch(async (key) => {
       const r = await load(key);
       if (r.ok && r.value !== null && typeof r.value === "object" && !Array.isArray(r.value)) {
         const v = r.value as Record<string, unknown>;
-        return { ok: true as const, value: { enabledBy: v.enabledBy, enabledAt: v.enabledAt } };
+        return { ok: true as const, value: { enabledBy: v.enabledBy, enabledAt: v.enabledAt, closesAt: v.closesAt } };
       }
       return r;
     }));
+    /** E13, undone: the old { enabledBy, enabledAt } row — no closing time — read open, as the pre-U49s reader did. */
+    const twoKeyOpen: typeof LIVE.readMarketingLiveSwitch = async (load = async () => ({ ok: true as const, value: null }), now = Date.now()) => {
+      const got = await load("marketing.sms.live").catch(() => ({ ok: false as const, error: "x" }));
+      const v = got.ok ? (got.value as Record<string, unknown> | null) : null;
+      if (v !== null && typeof v === "object" && Object.keys(v).sort().join(",") === "enabledAt,enabledBy") {
+        return { state: "open", enabledBy: String(v.enabledBy), enabledAt: String(v.enabledAt), closesAt: "9999-12-31T00:00:00.000Z" };
+      }
+      return LIVE.readMarketingLiveSwitch(load, now);
+    };
+    /** E13, undone: the closing time ignored — an expired row read open. */
+    const expiredOpen: typeof LIVE.readMarketingLiveSwitch = async (load = async () => ({ ok: true as const, value: null }), now = Date.now()) => {
+      const r = await LIVE.readMarketingLiveSwitch(load, now);
+      return r.state === "closed" && r.why === "expired" && r.closedAt ? LIVE.readMarketingLiveSwitch(load, Date.parse(r.closedAt) - 1) : r;
+    };
     /** U37b review m2, undone: the audit row names the campaign id as POSTED — an all-digit "id" is a whole number. */
     const rawIdAudited: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, {
       ...deps,
@@ -4290,7 +4326,7 @@ if (!PROVE_RED) {
     /** A.8 · typed tests skip the live switch (read as open for a typed number only). */
     const typedSkipsSwitch: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, recipientOf(input)?.kind === "typed"
-        ? { ...deps, liveSwitch: async () => ({ state: "open", enabledBy: "nobody", enabledAt: "1970-01-01T00:00:00.000Z" }) as never }
+        ? { ...deps, liveSwitch: async () => ({ state: "open", enabledBy: "nobody", enabledAt: "1970-01-01T00:00:00.000Z", closesAt: "9999-12-31T00:00:00.000Z" }) as never }
         : deps, options);
     /** A.8 · a token minted before the pre-check. */
     const tokenFirst: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
@@ -4406,18 +4442,38 @@ if (!PROVE_RED) {
         // U37b review M1 — the mutation that used to survive: the SHIPPED wiring hard-codes the switch open.
         name: "P14b · X14 · the shipped wiring reads the switch as open — a real carrier sends with no row",
         expect: [/^§18\.5 ⭐/],
-        impl: { ...R, testDeps: { ...TEST.CAMPAIGN_TEST_DEPS, liveSwitch: async () => ({ state: "open" as const, enabledBy: "code", enabledAt: "2026-10-02T00:00:00.000Z" }) } },
+        impl: { ...R, testDeps: { ...TEST.CAMPAIGN_TEST_DEPS, liveSwitch: async () => ({ state: "open" as const, enabledBy: "code", enabledAt: "2026-10-02T00:00:00.000Z", closesAt: "9999-12-31T00:00:00.000Z" }) } },
         landed: async () => (await TEST.CAMPAIGN_TEST_DEPS.liveSwitch()).state === "closed",
         landedAs: "in this run the shipped reader reads closed (no row), and the plant's wiring reads open",
       },
       {
-        name: "the switch reader reads a row with a key beside the two as open (U37b review m3)",
+        name: "the switch reader reads a row with a key beside the three as open (U37b review m3)",
         expect: [/^§18\.6 ⛔/], impl: { ...R, readSwitch: extraKeysOpen },
         landed: async () => {
-          const closeRecorded = async () => ({ ok: true as const, value: { enabledBy: "usr_owner", enabledAt: "2026-10-02T09:00:00.000Z", enabled: false } });
+          const at = (ms: number) => new Date(ms).toISOString();
+          const closeRecorded = async () => ({ ok: true as const, value: { enabledBy: "usr_owner", enabledAt: at(Date.now() - 60_000), closesAt: at(Date.now() + 3_600_000), enabled: false } });
           return (await LIVE.readMarketingLiveSwitch(closeRecorded)).state === "closed" && (await extraKeysOpen(closeRecorded)).state === "open";
         },
         landedAs: "a row recording a close reads closed for the real reader and open for the plant",
+      },
+      {
+        name: "E13 · the old two-key row (no closing time) read open",
+        expect: [/^§18\.6 ⛔/], impl: { ...R, readSwitch: twoKeyOpen },
+        landed: async () => {
+          const old = async () => ({ ok: true as const, value: { enabledBy: "usr_owner", enabledAt: new Date(Date.now() - 60_000).toISOString() } });
+          return (await LIVE.readMarketingLiveSwitch(old)).state === "closed" && (await twoKeyOpen(old)).state === "open";
+        },
+        landedAs: "a { enabledBy, enabledAt } row reads closed for the real reader and open for the plant",
+      },
+      {
+        name: "E13 · an expired switch read open",
+        expect: [/^§18\.6 ⛔/], impl: { ...R, readSwitch: expiredOpen },
+        landed: async () => {
+          const at = (ms: number) => new Date(ms).toISOString();
+          const past = async () => ({ ok: true as const, value: { enabledBy: "usr_owner", enabledAt: at(Date.now() - 3 * 3_600_000), closesAt: at(Date.now() - 3_600_000) } });
+          return (await LIVE.readMarketingLiveSwitch(past)).state === "closed" && (await expiredOpen(past)).state === "open";
+        },
+        landedAs: "a row past its closesAt reads closed for the real reader and open for the plant",
       },
       {
         name: "an all-digit campaign id written into the audit row (U37b review m2)",

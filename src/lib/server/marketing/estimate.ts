@@ -12,6 +12,7 @@ import { BATCH_MAX } from "@/lib/server/sms-blackball";
 import { COST_WALK, measureChunkPace, measureSegmentCost } from "@/lib/marketing/segment-cost";
 import type { CostWalkRow, SegmentCostMeasure } from "@/lib/marketing/segment-cost";
 import type { BalanceFigure, EstimateAudience, EstimateInputs } from "@/lib/marketing/campaign-estimate";
+import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings";
 
 /**
  * U39 · WHAT THE CAMPAIGN ESTIMATE READS ON THE SERVER — the money decider, the balance read and the send history.
@@ -39,6 +40,13 @@ import type { BalanceFigure, EstimateAudience, EstimateInputs } from "@/lib/mark
  * ⛔ The audience counts arrive from the CALLER — U38's campaign-audience count (the population this prices, X15/X9)
  * and its "will receive" forecast. This file imports no audience or contacts module, so it cannot count a second,
  * different audience behind the card's back.
+ * ⭐ THE PRICE (U49s, E14) is the owner's, from the Marketing SMS settings record, RE-READ for every estimate
+ * (`reloadMarketingSmsSettings()` — a save on another container, or during a deploy's overlap, is never priced from a stale
+ * cache; TZS 6 until saved — G9); the walk still prefers a price MEASURED from our own delivered sends. ⛔ A read that could
+ * not answer, or a stored record it could not read in full, gives NO configured price — never the default standing in for
+ * the owner's value (the U49s review). ⛔ The `SMS_PRICE_PER_SEGMENT_TZS`
+ * environment read it replaces is gone — one source of truth (`test:marketing-settings` S10 holds that nothing in
+ * `src/` reads it again).
  * ⛔ Only `loadEstimateInputs` (which resolves the viewer's STORED role itself) may be called from `src/app`;
  * `loadEstimateInputsFor` takes a role and exists for the suite (`test:campaign-estimate` §6.2 holds it).
  *
@@ -85,8 +93,8 @@ export type EstimateDeps = {
   moneyVisible(role: Role): Promise<boolean>;
   readBalance(): Promise<SmsBalanceRead>;
   recentSends(): Promise<CostWalkRow[]>;
-  /** `SMS_PRICE_PER_SEGMENT_TZS` when set to a positive number, else null. */
-  configuredTzs(): number | null;
+  /** The owner's price per SMS from the Marketing SMS settings, read fresh (U49s); null when it cannot be read in full. */
+  configuredTzs(): Promise<number | null> | number | null;
   /** The credit kept back for login codes. U49 swaps in its marketing floor. */
   reserveTzs(): number;
   /** Whose sends the walk prices — the provider that would carry the campaign. */
@@ -98,9 +106,9 @@ const DEFAULT_DEPS: EstimateDeps = {
   moneyVisible: campaignMoneyVisible,
   readBalance: () => refreshSmsBalance({ maxAgeMs: ESTIMATE_BALANCE_MAX_AGE_MS, budgetMs: SMS_BALANCE_RENDER_BUDGET_MS }),
   recentSends: async () => (await db.smsMessage.listRecent(COST_WALK.windowRows)).map(toCostWalkRow),
-  configuredTzs: () => {
-    const n = Number(process.env.SMS_PRICE_PER_SEGMENT_TZS);
-    return Number.isFinite(n) && n > 0 ? n : null;
+  configuredTzs: async () => {
+    const r = await reloadMarketingSmsSettings();
+    return r.ok && r.readable ? r.settings.pricePerSegmentTzs : null;
   },
   reserveTzs: () => smsBalanceThresholds().floorTzs,
   provider: () => smsProviderResolution(),
@@ -132,7 +140,7 @@ export async function loadEstimateInputsFor(
   const pace = rows === null ? null : measureChunkPace(rows, { provider, now, batchMax: BATCH_MAX });
   if (!visible) return { audience, pace, money: null };
 
-  const configured = d.configuredTzs();
+  const configured = await Promise.resolve().then(() => d.configuredTzs()).catch((): null => null);
   const cost: SegmentCostMeasure =
     rows !== null
       ? measureSegmentCost(rows, { provider, now, configuredTzs: configured })

@@ -151,7 +151,8 @@ function medianOf(xs: readonly number[]): number {
 
 /**
  * ⭐ THE PRICE OF ONE SEGMENT, AND WHERE IT CAME FROM. Measured (the median of ≥ 3 clean pairs) wins; otherwise the
- * configured `SMS_PRICE_PER_SEGMENT_TZS`, captioned "configured, not yet measured"; otherwise unknown.
+ * configured price (the owner's, from the Marketing SMS settings — U49s), captioned "configured, not yet measured";
+ * otherwise unknown.
  * ⛔ AN EMPTY HISTORY IS `unknown("no-sends")`, NEVER A PRICE OF 0 — a zero here would print "TZS 0" as a campaign cost.
  */
 export function measureSegmentCost(
