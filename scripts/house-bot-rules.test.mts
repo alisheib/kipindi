@@ -2259,6 +2259,9 @@ section("§14 · F1 typecheck");
         noEmit: true,
       },
       include: ["bad.ts", "good.ts"],
+      // U43y (U43Y-MPS-1) · both fixtures reach market-scheduler.ts through market-service.ts, and its money-busy mirror
+      // writes a global whose type lives in money-chores.d.ts, which nothing imports — so this program holds it itself.
+      files: [slash(join(ROOT, "src", "lib", "server", "money-chores.d.ts"))],
     }, null, 2));
     const run = existsSync(tsc)
       ? spawnSync(process.execPath, [tsc, "-p", join(dir, "tsconfig.json"), "--pretty", "false"], {

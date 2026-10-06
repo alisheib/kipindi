@@ -31,6 +31,11 @@
     "scripts/db-scratch.mts",
     "scripts/backup.test.mts",
     "scripts/backup-schema-gate.mts",
+    // U43y (U43Y-MPS-1) · the TYPE of the money-busy signal. The watchdog's imports reach market-scheduler.ts
+    // (watchdog, notification-service, kyc-service, email-verification, house-bot/constants, market-service), and its
+    // one-line mirror writes a global that nothing else in this program declares — the mirrors import nothing, by
+    // design. Declarations only, no import: this adds that one global to the program and nothing else.
+    "src/lib/server/money-chores.d.ts",
     "src/lib/server/backup/**/*.ts"
   ],
   "exclude": ["node_modules", ".next"]

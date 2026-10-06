@@ -175,11 +175,14 @@ async function acquire(): Promise<() => void> {
     await new Promise<void>((r) => waiters.push(r));
   }
   inFlight++;
+  // U43y · money first: every Up & Down chain fire in flight is mirrored on globalThis for money-busy.ts (its own start).
+  let firedAt = 0; try { firedAt = Date.now(); ((globalThis.__50PICK_MONEY_CHORES ??= {}).updownFires ??= []).push(firedAt); } catch { /* U43y mirror — never leaks a slot */ }
   let released = false;
   return () => {
     if (released) return; // idempotent — a double release would corrupt the count
     released = true;
     inFlight--;
+    try { const fires = globalThis.__50PICK_MONEY_CHORES?.updownFires; const own = fires ? fires.indexOf(firedAt) : -1; if (fires && own >= 0) fires.splice(own, 1); } catch { /* U43y mirror — never strands a waiter */ }
     waiters.shift()?.();
   };
 }

@@ -565,6 +565,8 @@ export async function runLifecyclePass(): Promise<void> {
   }
 
   running = true;
+  // U43y · money first: `running` and `depositPolling` are mirrored on globalThis, the one signal money-busy.ts reads.
+  try { (globalThis.__50PICK_MONEY_CHORES ??= {}).lifecycleSince = Date.now(); } catch { /* U43y mirror — never stops the pass */ }
   passStartedAt = Date.now();
   try {
     // Heal any pending market that lost its per-market timer (idempotent — every
@@ -627,6 +629,7 @@ export async function runLifecyclePass(): Promise<void> {
     overrunAlerted = false;
     passStartedAt = 0;
     running = false;
+    try { (globalThis.__50PICK_MONEY_CHORES ??= {}).lifecycleSince = 0; } catch { /* U43y mirror */ }
   }
 }
 
@@ -671,6 +674,7 @@ let depositPolling = false;
 async function runDepositPoll(): Promise<void> {
   if (depositPolling) return;
   depositPolling = true;
+  try { (globalThis.__50PICK_MONEY_CHORES ??= {}).depositsSince = Date.now(); } catch { /* U43y mirror — never stops the poll */ }
   try {
     await fastCreditInFlightDeposits();
     // Payouts run in the SAME guarded pass, sequentially — not on a second timer.
@@ -685,5 +689,6 @@ async function runDepositPoll(): Promise<void> {
     await fastSettleInFlightPayouts().catch((err) => console.error("[lifecycle] payout poll:", err));
   } finally {
     depositPolling = false;
+    try { (globalThis.__50PICK_MONEY_CHORES ??= {}).depositsSince = 0; } catch { /* U43y mirror */ }
   }
 }
