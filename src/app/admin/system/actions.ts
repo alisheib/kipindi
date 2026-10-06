@@ -18,7 +18,7 @@ import { toSupportDial, toHelplineDial, licenceProblem } from "@/lib/support-con
 // two platform writers is whatever `setPlatformConfig` hands back — spelled out here rather
 // than left to inference so the client can read `r.field` without an `in` guard.
 import { setPlatformConfig, type PlatformConfig } from "@/lib/server/platform-config";
-import { requireStaff } from "@/lib/server/rbac-guard";
+import { requireOwner, requireStaff } from "@/lib/server/rbac-guard";
 // U33w · the Marketing wordings card: the verified setter, the form's one reading, and the ONE spelling of each box's address.
 import { saveMarketingWordings, WORDINGS_REFUSAL_SENTENCE } from "@/lib/server/marketing/wordings";
 import { WORDING_KEYS, patchFromForm, wordingFieldName, type WordingKey } from "@/lib/marketing/marketing-wordings";
@@ -28,6 +28,14 @@ import { OUTREACH_CHECK_SENTENCE } from "@/lib/marketing/outreach-open-checks";
 // U33p · the Public policy lines card: the verified setter, and the ONE spelling of each language box's address.
 import { savePolicyLines, POLICY_LINES_REFUSAL_SENTENCE } from "@/lib/server/legal/policy-lines";
 import { POLICY_LINE_KEYS, POLICY_LOCALES, policyLineFieldName, type PolicyLineKey, type PolicyLocale } from "@/lib/legal/policy-lines";
+// U49s-2 · the Marketing SMS card and tab: the live switch's two writers, and the settings record's verified setter.
+import {
+  closeMarketingLiveSwitch, openMarketingLiveSwitch, readMarketingLiveSwitch, LIVE_SWITCH_REFUSAL_SENTENCE, type LiveSwitchRefusal,
+} from "@/lib/server/marketing/live-switch";
+import { saveMarketingSmsSettings, SETTINGS_REFUSAL_SENTENCE } from "@/lib/server/marketing/sms-settings";
+import { SETTINGS_FIELDS, type SettingsField } from "@/lib/marketing/sms-settings";
+import { eatLabel } from "./marketing-sms-view";
+import type { AlreadyOffRemains, AlreadyOpenReadsAs } from "./marketing-sms-words";
 
 // RBAC: authorization is data-driven — requireStaff checks this role's canAct for the
 // domain (Owner/ADMIN bypasses), audits a blocked attempt, then enforces step-up 2FA.
@@ -369,4 +377,151 @@ export async function closeLicenceOutreachAction(): Promise<LicenceOutreachActio
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Closing licence outreach failed — nothing may have changed. Reload the page to check before trying again.") };
   }
+}
+
+/* ══ U49s-2 · MARKETING SMS — THE LIVE SWITCH AND THE SETTINGS (owner only) ═════════════════════════════════════════ */
+
+/** What the "Marketing SMS sending" card is handed back. A refusal carries the writer's sentence and its reason, so the
+ *  card can say whether the switch may be ON — never "it stays off" unless the writer proved it. */
+export type MarketingLiveSwitchActionResult =
+  | { ok: true; closesAtLabel: string }
+  /** `readsAs` — with `already_open` only: how the switch reads right after it (the card words the refusal from it). */
+  | { ok: false; reason: LiveSwitchRefusal | "failed"; error: string; readsAs?: AlreadyOpenReadsAs };
+/** A close: `already` — the writer removed nothing (so nothing was recorded, and nothing was owed), with what a read after
+ *  it found (`remains`: nothing stored · a stale row three deletes could not remove · somebody's opening · no read).
+ *  Otherwise `recorded` — its COMPLIANCE row was written; `reopened` — somebody's opening stands after it; `unreadAfter` —
+ *  the switch could not be read back afterwards (the card says to reload and check). */
+export type MarketingLiveSwitchCloseActionResult =
+  | { ok: true; already: true; remains: AlreadyOffRemains }
+  | { ok: true; already: false; recorded: boolean; reopened: boolean; unreadAfter: boolean }
+  | { ok: false; reason: LiveSwitchRefusal | "failed"; error: string };
+
+/** How the switch reads right after an `already_open` refusal — what the refreshed card is about to show. */
+async function readsAsAfterAlreadyOpen(): Promise<AlreadyOpenReadsAs> {
+  try {
+    const s = await readMarketingLiveSwitch();
+    return s.state === "open" ? "open" : s.why === "malformed" ? "malformed" : "other";
+  } catch {
+    return "other";
+  }
+}
+
+/** What a switch-off that removed nothing left, as a read after it finds the switch. */
+async function remainsAfterAlreadyClosed(): Promise<AlreadyOffRemains> {
+  try {
+    const s = await readMarketingLiveSwitch();
+    if (s.state === "open") return "open";
+    return s.why === "absent" ? "none" : s.why === "unreadable" ? "unread" : "stale";
+  } catch {
+    return "unread";
+  }
+}
+
+/** The owner's duration, in whole minutes, as the card posts it. Anything that is not one whole number is not a duration
+ *  (the writer refuses one out of bounds). */
+function minutesOf(formData: FormData): number | null {
+  const all = formData.getAll("minutes");
+  if (all.length !== 1 || typeof all[0] !== "string" || !/^[0-9]{1,4}$/.test(all[0].trim())) return null;
+  return Number(all[0].trim());
+}
+
+/** Drop the cached renders of the two pages the switch and the settings show on. ⛔ Its own try: a render cache that
+ *  cannot be dropped must never turn a write that landed into "failed". */
+function revalidateMarketingSms(): void {
+  try {
+    revalidatePath("/admin/system");
+    revalidatePath("/admin/campaigns/new");
+  } catch { /* the write stands; the next render reads it */ }
+}
+
+/**
+ * U49s-2 · SWITCH MARKETING SMS ON — the owner's G1, from the card above the rail (spec §4.3 decision 2; E13; OD62).
+ *
+ * ⛔ `requireOwner` FIRST — before any other await (S6): an owner account (ADMIN) and its step-up, never a grant. Then the
+ * ONE writer, `openMarketingLiveSwitch` (read first, record first, a conditional write, read back, confirm — or take its
+ * own row back). ⛔ ONLY THE DURATION IS READ FROM THE FORM: who switched it on is the session's officer and when is the
+ * server's clock; a posted `enabledBy` or instant is never read.
+ */
+export async function openMarketingLiveSwitchAction(formData: FormData): Promise<MarketingLiveSwitchActionResult> {
+  const session = await requireOwner("marketingLiveSwitch");
+  const minutes = minutesOf(formData);
+  if (minutes === null) return { ok: false as const, reason: "bad_duration", error: LIVE_SWITCH_REFUSAL_SENTENCE.bad_duration };
+  let res: Awaited<ReturnType<typeof openMarketingLiveSwitch>>;
+  try {
+    res = await openMarketingLiveSwitch({ actorId: session.userId, via: "card", forMs: minutes * 60_000 });
+  } catch (err) {
+    return { ok: false as const, reason: "failed", error: safeError(err, "Switching marketing SMS on failed — reload the page to see whether it is on before trying again.") };
+  }
+  revalidateMarketingSms();
+  if (!res.ok) {
+    // ⭐ `already_open` is worded from the read AFTER it — the state the refreshed card is about to show — never from the
+    // page as it was before the click (an opening stamped by a clock ahead of this one reads malformed here).
+    if (res.reason === "already_open") return { ok: false as const, reason: res.reason, error: res.error, readsAs: await readsAsAfterAlreadyOpen() };
+    return { ok: false as const, reason: res.reason, error: res.error };
+  }
+  return { ok: true as const, closesAtLabel: eatLabel(Date.parse(res.state.closesAt), Date.now()) };
+}
+
+/**
+ * U49s-2 · SWITCH MARKETING SMS OFF — never refused for a missing record (a stop that waits for its paperwork is not a
+ * stop). `requireOwner` FIRST; then `closeMarketingLiveSwitch` (DELETE … RETURNING, recording the row it removed).
+ * ⛔ It reads no form at all: nothing a request says can change what a stop does.
+ */
+export async function closeMarketingLiveSwitchAction(): Promise<MarketingLiveSwitchCloseActionResult> {
+  // Its own label, so a refused attempt's SECURITY row says it was a stop, not a start.
+  const session = await requireOwner("marketingLiveSwitchClose");
+  let res: Awaited<ReturnType<typeof closeMarketingLiveSwitch>>;
+  try {
+    res = await closeMarketingLiveSwitch({ actorId: session.userId, via: "card" });
+  } catch (err) {
+    return { ok: false as const, reason: "failed", error: safeError(err, "Switching marketing SMS off failed — reload the page to see whether it is still on, and try again.") };
+  }
+  revalidateMarketingSms();
+  if (!res.ok) {
+    // ⭐ "Nothing to remove" is said as the read after it finds the switch: "It was already off." only when nothing is
+    // stored — a stale row three deletes could not remove (it reads off, but the owner meant to clear it), somebody's
+    // opening, or no read at all are each said as such.
+    return res.reason === "already_closed"
+      ? { ok: true as const, already: true as const, remains: await remainsAfterAlreadyClosed() }
+      : { ok: false as const, reason: res.reason, error: res.error };
+  }
+  const unreadAfter = res.state.state === "closed" && res.state.why === "unreadable";
+  return { ok: true as const, already: false as const, recorded: res.recorded, reopened: res.reopened, unreadAfter };
+}
+
+/** What the Marketing SMS tab's save answers: how many settings moved — or a refusal naming the first box to fix (`field`)
+ *  with every problem, by box. */
+export type MarketingSmsSettingsActionResult =
+  | { ok: true; changed: number }
+  | (ActionFailure & { problems?: Partial<Record<SettingsField, string>> });
+
+/**
+ * U49s-2 · SAVE THE MARKETING SMS SETTINGS — the tab's ONE action (spec §4.3 decisions 4–6; E14; OD63).
+ *
+ * ⛔ `requireOwner` FIRST (S6), then the VERIFIED setter, `saveMarketingSmsSettings`: it reads the request as hostile (the
+ * five boxes and the page's `base`, each once — anything else is not understood), judges every value with the same rule the
+ * tab ran, refuses a page that is out of date and a stored record it cannot read in full, replaces the record whole, reads
+ * it back, and only then caches and writes the `config.marketing_sms_settings_updated` ADMIN row. Every refusal writes
+ * nothing. ⭐ The author is the session's officer.
+ * ⭐ DG-S-05 · a refusal about a value names the first box to fix and carries every problem, so the tab shows each one
+ * under its own box at once.
+ */
+export async function saveMarketingSmsSettingsAction(formData: FormData): Promise<MarketingSmsSettingsActionResult> {
+  const session = await requireOwner("marketingSmsSettings");
+  /* ⛔ EACH NAME ONCE (`patchFromForm`, the wordings card's reading): a name posted twice is a request no tab sends. */
+  const form = patchFromForm(formData.entries());
+  if (!form.ok) return { ok: false as const, error: SETTINGS_REFUSAL_SENTENCE.not_understood };
+  let res: Awaited<ReturnType<typeof saveMarketingSmsSettings>>;
+  try {
+    res = await saveMarketingSmsSettings(form.patch, session.userId);
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Saving the Marketing SMS settings failed — nothing may have changed. Reload the page to check before trying again.") };
+  }
+  if (!res.ok) {
+    const problems = res.problems ?? {};
+    const first = SETTINGS_FIELDS.find((f) => problems[f] !== undefined);
+    return first !== undefined ? { ...fieldError(first, res.error), problems } : { ok: false as const, error: res.error };
+  }
+  revalidateMarketingSms();
+  return { ok: true as const, changed: res.changed.length };
 }

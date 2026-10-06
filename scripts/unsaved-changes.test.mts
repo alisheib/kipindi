@@ -176,6 +176,7 @@ const EXEMPT: Record<string, string> = {
   "app/admin/players/[id]/suspend-controls.tsx": "① fields open inside <Modal>",
   "app/admin/updown/rounds/void-round-control.tsx": "① fields open inside <Modal>",
   "app/admin/privacy/dsar-controls.tsx": "① the ERASURE/CORRECTION radio is in a <ConfirmDialog> body",
+  "app/admin/system/marketing-sms-card.tsx": "① the duration radios exist only inside the switch-on <ConfirmModal> — a pick of six durations, nothing typed, reset to 2 hours every time it opens; Cancel, ✕, Escape or a scrim click loses nothing",
   // ② a GET filter — the state is in the URL
   "app/admin/ai-usage/page.tsx": "② range filter, submitted as searchParams",
   "app/admin/markets/page.tsx": "② status/category filter, submitted as searchParams",

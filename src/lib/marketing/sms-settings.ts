@@ -74,7 +74,8 @@ export const SETTINGS_SENTENCE = Object.freeze({
   price: "Enter the price per SMS in TZS — from 1 to 1,000, at most two decimals.",
   reserve: (floorTzs: number): string =>
     `Enter the credit to keep for codes in TZS — at least ${grouped.format(floorTzs)} and at most 10,000,000.`,
-  limit: "Enter a campaign limit from TZS 100 to TZS 10,000,000.",
+  // A no-break space binds "TZS" to its amount, so a phone never wraps the figure away from its currency.
+  limit: "Enter a campaign limit from TZS\u00a0100 to TZS\u00a010,000,000.",
   start: "The window must start between 07:00 and 19:00, on the quarter hour.",
   end: "The window must end between 09:00 and 21:00, on the quarter hour.",
   length: "The window must be at least 2 hours long.",
@@ -196,3 +197,15 @@ export function formatPriceTzs(value: number): string {
 export function settingsFingerprint(s: MarketingSmsSettings): string {
   return [s.v, s.pricePerSegmentTzs, s.codesReserveTzs, s.campaignLimitTzs, s.windowStartMinute, s.windowEndMinute].join("|");
 }
+
+/* ══ THE LIVE SWITCH'S DURATIONS (E13) — here, in the pure module, so the owner's card offers exactly what the writer
+ * (`src/lib/server/marketing/live-switch.ts`, which re-exports them) accepts. ══ */
+
+/** E13 · how long one opening may last: at least 30 minutes, at most 24 hours, 2 hours unless the owner chooses. */
+export const LIVE_SWITCH_MIN_OPEN_MS = 30 * 60_000;
+export const LIVE_SWITCH_MAX_OPEN_MS = 24 * 60 * 60_000;
+export const LIVE_SWITCH_DEFAULT_OPEN_MS = 2 * 60 * 60_000;
+/** The durations the card offers (30 min · 1 h · 2 h · 4 h · 8 h · 24 h); the writer accepts any whole ms in bounds. */
+export const LIVE_SWITCH_DURATIONS_MS: readonly number[] = Object.freeze([
+  30 * 60_000, 60 * 60_000, 2 * 60 * 60_000, 4 * 60 * 60_000, 8 * 60 * 60_000, 24 * 60 * 60_000,
+]);

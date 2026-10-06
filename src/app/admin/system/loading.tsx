@@ -15,6 +15,28 @@ export default function Loading() {
         {/* Maintenance mode */}
         <SkFormCard fields={2} titleW="w-36" />
 
+        {/* Marketing SMS sending (U49s-2) — the live switch, above the rail: its title (no Swahili line — the card carries
+            none), the state sentence, the limits line and its one button. ⛔ LITERAL sizes only (`theme.extend.spacing` is
+            overridden, so a scale class here reads roughly double), and the heights are MEASURED by qa:marketing-settings
+            against the page's own card at 1280 and 360 — the lines that only wrap on a phone are phone-only bars. */}
+        <div className="glass-panel p-4" data-ghost="marketing-sms-card">
+          <SkTitle titleW="w-[152px]" sw={false} className="mb-3" />
+          {/* The state sentence: one 18px line at 1280, three at 360 (measured 2026-10-06). */}
+          <div className="mb-2">
+            <SkBar className="h-[18px] w-full" />
+            <SkBar className="h-[18px] w-full sm:hidden" />
+            <SkBar className="h-[18px] w-4/5 sm:hidden" />
+          </div>
+          {/* The limits line: two lines at 1280, four at 360. */}
+          <div className="mb-3">
+            <SkBar className="h-[18px] w-full" />
+            <SkBar className="h-[18px] w-full sm:hidden" />
+            <SkBar className="h-[18px] w-full sm:hidden" />
+            <SkBar className="h-[18px] w-3/5" />
+          </div>
+          <SkBar className="h-[44px] w-[112px] rounded-md" />
+        </div>
+
         {/* Bet queue — a titled card holding an INNER KPI band (SkCard takes no children,
             so the equivalent card is composed by hand).
             ⛔ The inner band's ladder is the PAGE's, `grid-cols-2 sm:grid-cols-4 gap-2`
@@ -45,7 +67,7 @@ export default function Loading() {
             border — the same literal `roles/loading.tsx` and `players/[id]/loading.tsx` carry.
             ⚠️ A LITERAL, not `h-11`: `theme.extend.spacing` is overridden, so a scale class here
             is roughly double what it reads as. */}
-        <div className="glass-panel p-0">
+        <div className="glass-panel p-0" data-ghost="system-rail">
           <div className="h-[45px] border-b border-border" />
         </div>
 

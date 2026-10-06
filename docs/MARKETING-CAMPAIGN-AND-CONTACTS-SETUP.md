@@ -38,18 +38,28 @@ engine's first step; the card and the tab are U49s-2, ▶ NEXT). First real camp
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U49s-2 — the "Marketing SMS sending" card ABOVE the rail on Admin → System (the switch's state, Switch on… with
-  its duration and closing time, Switch off now; owner only, the reason on every disabled control) and the fifth tab
-  "Marketing SMS" (the settings form), the three `requireOwner` actions, S6 and S11, and the drive at 1280 and 360 as
-  the owner and as a non-owner viewer — on a local server backed by the scratch Postgres (`db:scratch`), so the switch
-  is opened, photographed and closed for REAL (no injected reader). ⚠️ Two carry-overs from U49s-1's reviews: "Switch
-  off now" is offered for a stored row that reads MALFORMED too (an opening stamped by a clock ahead blocks "Switch on…"
-  as `already_open`, so the owner must be able to clear it); and every refusal's title says what is true — "weren't
-  switched on" only where nothing of the click is on (`other_open`, `unconfirmed_off`, `reopened_meanwhile`,
-  `close_unconfirmed` and a close whose state could not be read back each say it may be ON). Then U38b, and
-  `docs/marketing-specs/ENGINE-SPEC.md`
-  §0.1's order (its parallel sets are §0.2): U40a → U40b → U16a → U13 → U42 → U43a → U43y → U49a → U43b → U46a → U47b →
-  U48a → (U48b) → U52a, the live drive on production.
+▶ NEXT: U38b — the audience card on the composer (ENGINE-SPEC §4.4: the campaign rail incl. "who": book / players /
+  both, the keyed split, the D19 floor, words on the list rows), then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order
+  (its parallel sets are §0.2): U40a → U40b → U16a → U13 → U42 → U43a → U43y → U49a → U43b → U46a → U47b → U48a →
+  (U48b) → U52a, the live drive on production.
+  WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates):
+     1. U38b  who a campaign goes to: the audience card, its counts and the D19 floor ................. 9–15 h
+     2. U40a  the confirmation on the server: the typed count, the frozen estimate and budget .......... 7–11 h
+     3. U40b  the confirmation on screen: the modal on the composer ...................................  6–10 h
+     4. U16a  erasure, the access export and retention reach the campaign records .................... 7–11 h
+     5. U13   the 08:00–20:00 EAT send window, enforced where messages are sent .......................  4–7 h
+     6. U42   enqueue: the recipient rows, capped at the confirmed count .............................. 6–10 h
+     7. U43a  the recipient doors: claim, settle, find the stranded, requeue .......................... 9–14 h
+     8. U43y  money first: a campaign yields to bets and payouts ......................................  3–6 h
+     9. U49a  the credit kept for login codes, and the refusal at Start ............................... 6–10 h
+    10. U43b  the send engine itself (built as U43b-1 then U43b-2) .................................... 14–22 h
+    11. U46a  delivery receipts on the recipients ..................................................... 5–8 h
+    12. U47b  the live campaign page: Start · Pause · Resume · Stop · Make a copy (U47b-1, U47b-2) .... 14–22 h
+    13. U48a  results on the live page (U48b — the recipients table and its CSV — may follow) ........... 5–8 h
+    14. U52a  the live drive on PRODUCTION: at most 6 real SMS to the approved test number ............. 4–8 h
+  ⛔ Tell Ali BEFORE the first real SMS (U52a), and send it only to the approved test number, within the ledger cap.
+  Then: the admin guide v1.4 (the switch, the Marketing SMS settings, a test to another number) as a PDF, with a copy
+  on Ali's Desktop.
   ⛔ Before licence outreach is opened, the owed items in ◐ HALF-DONE 3a–4: U33r, the agent-referee exclusion (Q8 —
   until it exists a referee can be reached, against a written promise), the registration box reworded (Q2), OD61's
   feed restriction, the erasure marker (U16a), and the Lists card's 18+ words checked against the version on screen.
@@ -135,10 +145,87 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   clean checkout of `main` too (a raw server string in the agent application's toast); `red:social-panel` held 8/8 (it
   exits 1 by design); `red:house-bot-c5` refuses a tree whose COMPLIANCE-DECISIONS differs from HEAD, so it ran on the
   commit itself, beside the push: 99 caught, 0 wrong-assertion, 0 missed, 0 stale, 0 files left dirty.
+  STEP 44 · U49s-2 — THE "MARKETING SMS SENDING" CARD ABOVE THE RAIL AND THE "MARKETING SMS" TAB (OD64; ENGINE-SPEC
+  §4.3) — the screens over U49s-1's writers, so U49s is whole. On Admin → System the card stands above the rail beside
+  Maintenance mode (a kill-switch, §K 7d): the switch's state in words (off; on until HH:MM EAT, by whom; switched
+  itself off at; a stored row this version does not read; a switch that could not be read), the limits line (TZS 6 per
+  SMS · TZS 20,000 kept for login and withdrawal codes · at most TZS 10,000 per campaign · sends 08:00–20:00 EAT — for a
+  viewer who may not read money, the window only), "Switch on…" — six durations as radios, 2 hours every time it opens,
+  the closing time in EAT read out as the choice changes — and "Switch off now", offered while it is on and for a
+  malformed or unreadable switch too (an opening stamped ahead of this clock blocks a switch-on as `already_open`, so the
+  owner must be able to clear it). The fifth tab "Marketing SMS" holds the settings form (every problem at once under
+  its own box, the window as two quarter-hour selects, the measured price beside the price box, Save off with its
+  reason, the pending bar, the leave guard). Three `requireOwner` actions (the switch-off under its own label); both
+  writers and the setter decide again; the dialog stays up, its Confirm spinning, until the server answers, and focus
+  then lands on the state sentence. ⭐ No money is handed to a viewer who may not read it — the owner included: an owner
+  whose own money.figures cell hides money (D3) reads text, never a form whose money boxes are blank and can never save;
+  a record that cannot be read in full shows no value to anyone; what only the form prints (a save ever made, the
+  floor, the measured price) goes with the form only; and the page asks ONE loader, `loadSmsMoneyForViewer` — one read
+  of the stored role answers the owner and the money — never the decider itself. ⛔ A refused switch-on says "weren't
+  switched on" only for a refusal made before this click wrote anything; one that wrote and was taken back "didn't
+  complete"; anything else is "Couldn't confirm whether marketing SMS are on" — the words live in a pure module that S14
+  runs against every writer path; no title repeats its body or contradicts the card, and a refusal stays until
+  dismissed.
+  ⚠️ By default only the owner may open Admin → System (no other role holds the ops view): another role sees the card —
+  the buttons disabled with the reason beside them — only once the owner grants it on Roles.
+  🔎 FOUR REVIEWS BEFORE THE PUSH. A read-only review of the drafts (four lenses, every finding put to three skeptics;
+  40 upheld) found two build breakers and a drive that could never have passed (the kit dialog is `alertdialog`, danger
+  toasts are `role="alert"`, the loading hold caught the section layout that wraps the ghost) — all fixed before the
+  code entered the repo. A visual review of every capture (19 findings) — fixed: the stamped-ahead refusal said "already
+  on" over a card that says Off (now "Clear the stored switch first"; one that lands behind a loaded page is "Switched
+  on since this page loaded"), a title that repeated its body, "TZS" wrapping away from its amount on a phone, the
+  read-only settings ungrouped on a phone, and four captures that did not frame what they were about. A last review of
+  the code as applied (five lenses, each finding put to three skeptics) upheld four, all fixed: a phone number written
+  in groups could be named as who switched it on (now four numerals in a row, or more than six in all — the ops door's
+  own limit); no suite ran the money loader itself (S11 now drives it, its reads injected: no role, a no, a decider
+  that throws — no money and no walk; the history walked for the owner's form only); the page read the role twice; and
+  — older than this unit, owed (◐ 0) — the SMS credit tile shows its amounts to every viewer. Twenty of its checkers
+  were cut off by a session limit, so its five accessibility findings were checked by hand against the kit, and fixed:
+  the durations became radios inside the dialog (the kit Select's list is portalled outside the aria-modal dialog,
+  hidden from VoiceOver, and the dialog's Escape closed it whole — kit-wide, owed), the dialog holds until the answer,
+  focus lands on the new state, refusals stay, and the closing time is a polite live region. A last review of those
+  fixes found no blocker or MAJOR; its five minors and five nits were fixed: the durations locked while the server
+  works; a switch-on that wrote and was taken back now "didn't complete" (it was never "weren't switched on");
+  `already_open` and "already off" are worded from the server's read AFTER the answer (a stale row three deletes could
+  not remove is said as such, never "It was already off."); the card's words moved into a pure module and run against
+  every writer path in memory (S14); the drive now holds the action's reply to prove the dialog holds, finds a refusal
+  still there after 6 s, drives "already off" and fails on any browser exception; a role read that fails is said as
+  such, never as "only an owner can"; the ops door's `by` is screened again as it is read; and two titles that echoed
+  their bodies were reworded.
+  ⭐ DRIVEN FOR REAL: `qa:marketing-settings` on a local server backed by a scratch PostgreSQL 18.3 — the switch opened
+  and closed through the card, every change read back IN SQL (the row's three keys, the "opening"/"opened"/"closed"
+  COMPLIANCE rows, `was: open` and `was: malformed`), a malformed, an expired and a stamped-ahead row, an opening that
+  lands behind a loaded page, the durations chosen by the arrow keys, the dialog held — busy, its durations locked,
+  Escape refused — while the action's reply is held 2.5 s, "already off", a refusal still on screen after 6 s, every
+  settings refusal at once, a save, a stale save refused, a half-read record, GROWTH (no money) and COMPLIANCE (money,
+  not the owner) viewers granted the ops view in the scratch cluster, the loading ghost, and no uncaught exception in any
+  page — 184/184 at 1280 and 360 (+ reduced motion), every capture opened and read. The card's ghost is the card's height at both widths (200/200.25 · 272/272.25); ⚠️ the System page's older
+  ghosts above it no longer match today's page — about 192 px at 1280 and 231 px at 360 — recorded as owed (◐ 0). Guard
+  `test:marketing-settings` 20 claims (S6, S11 and S14 new), `red:marketing-settings` 72/72 against a proven-green
+  baseline (29 new plants); the 140 light guards that read a touched file, on the final code: 122 green, and the same
+  18 red that are red on a clean `main` too (red:decomment, red:icon-sizes(-slack), red:policy-lines,
+  red:simple-journey-flag, red:social-home/-panel/-promo/-rel/-token, test:decomment, test:failure-reasons,
+  test:house-bot-holder-lifecycle, test:kyc-copy-truth, test:orphans, test:red-anchors, test:stacking,
+  test:type-scale) — none new; the slower ones one at a time: every red that plants into real files caught each of its
+  defects and restored its files (chart-one-home 9/9, dal-parity 179/179, read-tiers 37/37, sms-cost-guard 53/53,
+  support-contact 10/10, tax-report, unsaved-changes); the scratch-database suites green (cashout-price-guard,
+  contacts-staging-db, house-bot caps · comms · console · engine · info-edge · migrations 661/661) but two that read
+  none of this unit's code — test:house-bot-designation (one Postgres check of a self-exclusion dated today, refused in
+  other words than it expects) and test:house-bot-money (hung starting its database) — re-run on a clean `main` beside
+  the push, with red:house-bot-console alone (it needs over 15 minutes) and red:house-bot-c5 on the commit.
 
 ◐ HALF-DONE — started and not finished:
-  0. U49s is half-built BY DESIGN: U49s-1 (the server half, STEP 43) is in; U49s-2 (the card and the tab) is ▶ NEXT.
-     Until it ships, the switch has no card — the ops door is its only writer, and it stays CLOSED.
+  0. U49s is WHOLE (STEP 43 + STEP 44). Owed from STEP 44 — each older than this unit's code, none of it reachable by
+     default: (i) the System page's loading skeleton above the new card (the KPI row, Maintenance mode — written before
+     the SMS credit tile grew its provenance and note lines) no longer matches the page, which drops about 192 px at
+     1280 and 231 px at 360 when it swaps in: re-measure those ghosts against today's tiles (`loading.tsx`; the card's
+     own ghost matches); (ii) the SMS credit tile (D7, widened by U39) shows the credit and its floor and alert amounts
+     to every viewer of Admin → System, money.figures or not — reachable only once the owner grants another role the ops
+     view: hand `smsCreditTile` the money answer (`loadSmsMoneyForViewer`) and drop every amount without it; (iii) the
+     kit `<Select>` inside a `<Modal>` (hold-button, the contacts bulk bar, proposals) portals its list outside the
+     aria-modal dialog, where VoiceOver cannot reach the options, and the dialog's Escape closes the whole dialog over an
+     open list: portal into the enclosing dialog and let an open combobox take its own Escape (the switch's dialog
+     avoids it with radios).
   1. U33a-G is 🟡, not ✅: G0 parity against the pre-change model and the twelve SOURCE-level plants in
      `gateWithDefect` are owed (§9 U33a-G).
   2. The 🔵 units owe their live proof, and none of it is code: the screens (U17, U20–U23, U36, U37) one look each as a
@@ -368,7 +455,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U46 | engine | ⬜ | — | — | — | `test:sms-dlr` | — | D21 receipts · also owns inbound STOP (NOT built, §9 U46) |
 | U47 | visual | ⬜ | — | — | — | `test:campaign-visuals` | — | live page |
 | U48 | visual | ⬜ | — | — | — | `test:campaign-visuals` | — | results |
-| U49 | engine | 🟡 | S12 | — | — | `test:marketing-settings` · `test:sms-cost-guard` | yes — `red:marketing-settings` (in-process) | D24 budget. U49s-1 LIVE `34c1ea7f` (§0 STEP 43): the live switch's closing time and its two audited writers, the Marketing SMS settings record, the estimate's price from it (OD62 · OD63). U49s-2 (the card above the rail and the Marketing SMS tab) follows; U49a (the credit kept for codes, the refusal at Start) and U49b (the 90 % pause) later. |
+| U49 | engine | 🟡 | S12 | — | — | `test:marketing-settings` · `test:sms-cost-guard` | yes — `red:marketing-settings` (in-process) | D24 budget. U49s WHOLE: U49s-1 LIVE `34c1ea7f` (§0 STEP 43) — the live switch's closing time and its two audited writers, the Marketing SMS settings record, the estimate's price from it (OD62 · OD63); U49s-2 (§0 STEP 44) — the card above the rail and the Marketing SMS tab (OD64). U49a (the credit kept for codes, the refusal at Start) and U49b (the 90 % pause) later. |
 | U50 | guard | ⬜ | — | — | — | `test:cert-c1` | — | registry + boot |
 | U51 | docs | ⬜ | — | — | — | `test:docs` | — | the operator's guide |
 | U52 | live | ⬜ | — | — | — | `test:marketing-engine` | — | live drive + Seal |
@@ -421,7 +508,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
-| S12 | 2026-10-06 | **STEP 43 · U49s-1 LIVE `34c1ea7f` — the live switch's closing time and its two audited writers, and the Marketing SMS settings record** (OMEGA-COMPILE01; Ali: "proceed please, next steps until we go live, fully done and perfect"). The send engine's first step, split like U37c; inert. Its review said FIX FIRST — a MAJOR: opening could leave the switch ON with no COMPLIANCE row while telling the owner it was off, on a database fault in the wrong millisecond — fixed with one rollback that takes back only its own row and says "off" only on proof; a second review found the record still written after the row and an opening laid over another — fixed (record first, read first, a close that records the row it removed); a third review found two more MAJORs — a close whose delete committed and lost its reply told "already off" with no record, and two openings in one instant both told "on" — fixed (a close that looks before it retries and records `was: unknown`; a conditional write, so exactly one opening stands); a fourth review found a close that could record a close that never happened when its first read and its delete both failed — fixed ("gone" only by comparing stored values against a readable first read; no retry without a readable look showing that very row; `close_unconfirmed` when nothing can be read), with its minors (an opening stamped by a clock ahead never replaced; the ops door's clock checked against the database's); a fifth review found nothing at MAJOR level — its minors fixed (a readable proof of "gone" never thrown away; never OFF from a read that never landed; one rule for an opening; the clock gates only an open); and the ops door's public-proxy rewrite, found before the push, proven read-only against production (`status` → OFF (absent)). Proven on a scratch PostgreSQL 18.3 (`db:probe-marketing-settings` 17/17 — real concurrency included, after the fresh-PC runtime trap in §0 ⚠ TRAPS). `red:marketing-settings` 43/43 against a proven-green baseline (OD62 · OD63). |
+| S12 | 2026-10-06 | **STEPS 43–44 · U49s-1 LIVE `34c1ea7f` — the live switch's closing time and its two audited writers, and the Marketing SMS settings record — then U49s-2, its card and its tab, so U49s is whole** (OMEGA-COMPILE01; Ali: "proceed please, next steps until we go live, fully done and perfect"). The send engine's first step, split like U37c; inert. Its review said FIX FIRST — a MAJOR: opening could leave the switch ON with no COMPLIANCE row while telling the owner it was off, on a database fault in the wrong millisecond — fixed with one rollback that takes back only its own row and says "off" only on proof; a second review found the record still written after the row and an opening laid over another — fixed (record first, read first, a close that records the row it removed); a third review found two more MAJORs — a close whose delete committed and lost its reply told "already off" with no record, and two openings in one instant both told "on" — fixed (a close that looks before it retries and records `was: unknown`; a conditional write, so exactly one opening stands); a fourth review found a close that could record a close that never happened when its first read and its delete both failed — fixed ("gone" only by comparing stored values against a readable first read; no retry without a readable look showing that very row; `close_unconfirmed` when nothing can be read), with its minors (an opening stamped by a clock ahead never replaced; the ops door's clock checked against the database's); a fifth review found nothing at MAJOR level — its minors fixed (a readable proof of "gone" never thrown away; never OFF from a read that never landed; one rule for an opening; the clock gates only an open); and the ops door's public-proxy rewrite, found before the push, proven read-only against production (`status` → OFF (absent)). Proven on a scratch PostgreSQL 18.3 (`db:probe-marketing-settings` 17/17 — real concurrency included, after the fresh-PC runtime trap in §0 ⚠ TRAPS). `red:marketing-settings` 43/43 against a proven-green baseline (OD62 · OD63). ⭐ STEP 44 · U49s-2 (Ali: "kepe going untul we finish the sms campaign") — the "Marketing SMS sending" card above Admin → System's rail and the "Marketing SMS" tab (OD64): owner-only acts, a stop never withheld, no money handed to a viewer who may not read it (the owner included), one loader answering the owner and the money. Four reviews before the push — the drafts (40 upheld), every capture (19), the code as applied (4 upheld, all fixed; twenty of its checkers cut off by a session limit, so its accessibility findings were checked by hand and fixed: radios inside the dialog, the dialog held until the answer, focus on the new state, refusals that stay), and those fixes (no MAJOR; five minors and five nits fixed — the switch's words moved into a pure module and run against every writer path, S14). Driven for real on a scratch PostgreSQL 18.3 at 1280 and 360 — 184/184; `red:marketing-settings` 72/72. Owed, each older than this unit (◐ 0): the System page's older ghosts, the SMS credit tile's amounts for every viewer, the kit select inside a dialog. |
 | S11 | 2026-10-05 | **STEP 40 · U37s LIVE `549f1ba4`, and §0 made clean.** OMEGA-COMPILE01, a freshly set-up PC (`F:\kipindi-main` on `main`), taking the programme over from OMEGA-DEV072 the same afternoon. U37s: every DRAFT save stamps the SAVED source line, read fresh from the row, and the verdict prices it; a draft whose stamp differs is flagged and can be re-saved. The adversarial review said SHIP with four findings, all fixed before the push (§0 ✔ LAST SESSION). Guard `test:campaign-compose` §17.13–§17.20, `red:campaign-compose` 245/245 — verification focused on what the change reaches (Ali: "ignore previous fails, focus on ourselves"). Then, on Ali's instruction ("remove the stales that confuse developers, keep a clean plan"), §0 was rewritten to the current truth and its diaries — S7c to S10′, STEPS 1–39 — moved VERBATIM to `MARKETING-CAMPAIGN-HISTORY.md`, with §10's superseded S1–S27 pairing. U37c was split into U37c-1 (the server path) and U37c-2 (the Test card) before it was started. STEP 41 · U37c-1 the server path: its review said FIX FIRST — a typed test's RG COMPLIANCE row would have been a membership oracle on /admin's activity feed — fixed before the push (OD61), with its gaps closed; `red:campaign-compose` 288/288. STEP 42 · U37c-2 the Test card: its review said FIX FIRST — a BLOCKER, the 18+ tick outliving an edited number — fixed, and a second review of the fixes found no blocker (its minors closed too) before the push (§0 ✔ LAST SESSION); the typed drive 179/179 at 1280 and 360 as GROWTH and ADMIN, `red:campaign-compose` 322/322. |
 | S10′ | 2026-10-04 → 05 | **STEPS 33–39 on OMEGA-DEV072 (`C:\kipindi-main`) — the S10 lane resumed after its pause.** U43-0 LIVE `bf166ff3` (the UNCONFIRMED migration, pushed alone); U41 decided (OD60); U33a-R LIVE `ec02e993`; U33a-G LIVE `b5680d5d`; U33a-P; U33b-L (the writer, then the Lists card); the admin guide v1.3; and Ali's twelve answers and three gates (COMPLIANCE-DECISIONS § "2026-10-05 · Marketing outreach rulings"). It wrote no row of its own: this one is reconstructed from its commits and its STEP log, which is in the history file. |
 | S10 | 2026-10-01 | **PAUSED 2026-10-04 and continued as S10′ (the row above) — Ali-Blade15, `marketing-s10`. U18b SHIPPED `0e68d59e` + review rework** — erasure withdraws the consent for every number the person is known by (no stop: a recycled number's next owner can consent) and empties the book (by link AND by number); both exports carry marketing from the account's creation (`test:erasure` 226 → 335; §8's sweep gained the bare-key needle). Before it: Ali: *"proceed with other sessions in parallel, push live, prove it"*. Found §0 three days stale: S9 had shipped U17 + U18a and closed no docs — the board was rebuilt from the two commits (🔎 S9 in §0). ✅ **The consent tie FIXED** on Ali's standing delegation of technical calls: one ledger clock (`ledger-stamp.ts`), both writers stamped; 400 back-to-back appends, 390 sharing a millisecond — the pre-fix writer wrong 249 times, the fix 0; `test:marketing-consent-ledger` §9/§10 (16/16 red) and `test:dal-parity` §20 (`red:dal-parity` 56/56). U18b's first cut was then REFUTED by a review agent before the push (an unliftable stop on recycled numbers; an export that leaked a previous holder's history; two sweep buckets that could not fail; a tombstone read as a stranger's number) and reworked — §0 STEP 2. U19 shipped (`addf5351`, ✅), `red:rbac` (`be0a82ac`). U18 ✅ (`aa2767e9`, round 2 of the review). U20 shipped (`733522d3`): the list, with D19 fixed before it shipped. A design workflow then specced U21–U28 (8 spec agents + a critic: 26 conflicts to resolve first), a second one U29–U40 (29 more); all decided into §9, and the calls taken while building are OD47–OD52. Then the first build tranche, `0dc25b98` (+ `006c31bb`, merged in `f40b804e`): U24 commit 1 (the ONE resolver), U27a, U28a, U31-A, U33a, U35a, U37a, U39a, U40-pure — every unit reviewed adversarially before the push, every fix run here. The merged-tree battery: typecheck, 38 suites, every red proof, the three repo-mutating harnesses, Postgres from empty, the pages rendered and driven, `next build`. All 🟡 — first parts. LIVE `ea87308f` (the live stylesheet carries the new rule). Then U24 commit 2 `c792901e` — every writer of the ledger or the stop list mirrors the book's cache (`test:contacts-audience` 45/45, red 21/21, Postgres probe 24/24); U24 🔵, then ✅ LIVE in `0e60952a`; the whole predeploy chain (186) green on that tree. Then U26 the vCard reader `b4faac34` and U21 the filter rail `c0cce85a` (both 🔵), U21's review follow-up `bb83acf9` and the lane's five sub-floor type sites lifted (type-scale §3 754 → 749). Ali, mid-session: "take any decision needed as per architecture and keep pushing live". U25 the CSV reader `928265b9` (🔵), U28b's CSV/vCard half, U22 the add/edit form `e4f04528` (🔵); predeploy red one hour (ui-consistency read U25's markup list as a table) — fixed `b7bdc7db`, and every push now runs the whole chain first. U22's review fixes `03919fa2`; U27b the XLSX reader `2438d66a`; U27 and U28 🔵. |
@@ -988,6 +1075,24 @@ is decided, with what it rules out. They are not questions.
   half-read row. Known gaps, recorded in the module: the factory's ADMIN row is fire-and-forget (U33w m5); two owners
   saving in the same instant can both pass the stale check. Guards: `test:marketing-settings` S8–S10 ·
   `test:campaign-estimate` 2.5 · `db:probe-marketing-settings`.
+- **OD64 · The Marketing SMS card and tab: owner-only acts, nothing withheld from a stop, no money to a viewer who may not
+  read it — decided (U49s-2, S12 2026-10-06; ENGINE-SPEC §4.3 decision 8).** The "Marketing SMS sending" card stands
+  above Admin → System's rail (a kill-switch, §K 7d) and the settings are a fifth tab. Taken on Ali's standing delegation
+  of technical calls, beyond the spec: (1) "Switch off now" is offered while the switch reads malformed or unreadable,
+  not only while it is on — a stop is never withheld, and an opening stamped by a clock ahead of this one would
+  otherwise block "Switch on…" with no way to clear it; (2) a refused switch-on is titled "weren't switched on" only for
+  a refusal made before the click wrote anything; one that wrote and was taken back (proven off) "didn't complete"; any
+  other (a reply lost after the server opened it, a read that failed, a write that lost a race) is "Couldn't confirm
+  whether marketing SMS are on"; `already_open` and "already off" are worded from the server's read after the answer,
+  never from the page as it was before the click; no title repeats its body or contradicts the card's state, and a
+  refusal stays on screen until it is dismissed; (3) the owner's own
+  money.figures cell is honoured: an owner who hid money reads the settings as text, with the sentence why (D3); (4) a
+  settings record that cannot be read in full shows no value — its gaps hold defaults nobody chose; (5) whether a viewer
+  is the owner and may read money is asked of ONE loader in `estimate.ts` (`loadSmsMoneyForViewer`, one read of the
+  stored role), never of the decider from a page; (6) another role sees the card only once the owner grants it the ops
+  view on Roles (only ADMIN holds it by default), and then with the buttons disabled and the reason beside them; (7) the
+  duration is six radios inside the dialog, not the kit select (whose list VoiceOver cannot reach inside an aria-modal
+  dialog). Guards: `test:marketing-settings` S6 · S11 · S14 · `qa:marketing-settings`.
 
 ### §4a — The eleven legal questions (each with the safe default that is BUILT)
 
@@ -3060,6 +3165,41 @@ a number split across the ops door's two fields, its text screened for decimal d
 environment read restored, the estimate priced from the per-container cache, and the ops door writing SystemConfig
 itself, outside production's environment, without its clock check (or with its sign flipped, or gating a close) or on
 Railway's private host — 43/43.
+
+**U49s-2 · the "Marketing SMS sending" card above the rail and the "Marketing SMS" tab** (as built 2026-10-06, §0 STEP
+44; spec `docs/marketing-specs/ENGINE-SPEC.md` §4.3; OD64): `src/app/admin/system/marketing-sms-card.tsx` (the card:
+the state sentence, the limits line, Switch on… with its duration dialog — six radios, 2 hours every time it opens, the
+closing time in EAT following the choice in a polite live region; the dialog held until the server answers, then focus
+on the state sentence — and Switch off now, offered for a malformed or unreadable switch too; refusals and caveats kept
+until dismissed; success toasts deferred to the refresh), `marketing-sms-words.ts` (pure: the words a refused or
+answered switch is said in — "weren't switched on" only before any write, "didn't complete" for a switch-on taken back,
+never "off" unread; `already_open` and "already off" worded from the server's read after the answer; no title repeating
+its body), `marketing-sms-form.tsx` (the tab: live validation with the server's rule, every problem under its box,
+the window as quarter-hour selects, numbers compared as numbers, the pending bar and the leave guard; text for everyone
+the server did not hand the form, with the reason in words, each label over its value on a phone),
+`marketing-sms-view.ts` (the props, built on the server: S11 — no money to a viewer who may not read it, owner
+included; no value from a half-read record; what only the form prints handed with the form only; who switched it on
+never a number), the three `requireOwner` actions in `actions.ts` (switch-on reads only the duration; switch-off reads no
+form, under its own label, and an "already off" answer carries no `recorded`; the page refresh in its own try),
+`page.tsx` (the card above the rail on every tab, the fifth tab, the owner and the money from `loadSmsMoneyForViewer`),
+`loading.tsx` (the card's ghost, measured), `estimate.ts`'s `loadSmsMoneyForViewer` and its role-taking twin for the
+suite, the switch's durations moved into the pure module (re-exported by `live-switch.ts`), a no-break space binding
+"TZS" to its amount in the limits line and the limit's refusal, the unsaved-changes exemption for the dialog's radios.
+**Guard:** `test:marketing-settings` (S6 · S11 · S14 added — S14 runs the card's words against every path the real
+writers take in memory; S7 lets the drive name the keys by exact path, only while it refuses a non-loopback database
+before it connects; S13 the `qa:marketing-settings` key). **RED:** the settings action
+guarded by a staff grant, who switched it on read from the form, the switch-off reading a form, an await above
+requireOwner, the switch-on reading the whole form, the switch's key named in another drive, the drive's loopback
+refusal removed, the money line for every viewer, the fingerprint, the measured price and an owner's form handed
+without money, a half-read record shown with values, the page asking the decider itself, what only the form prints
+handed to a text viewer, a phone number in groups named as who switched it on, the money loader failing open on a
+decider that throws, the price walked for every money viewer, the owner read apart from the loader, the loader's twin
+called from a page, "TZS" left free to wrap in the limits line and in the limit's refusal, a role read that failed said
+as "not the owner" (in the view and in the loader), the ops door's `by` shown unscreened, a lost race or a switch-on
+taken back said as "weren't switched on", `already_open` worded from the page as it was before the click, "It was
+already off." over a stale row, an unconfirmed switch-off said as off — 72/72. **Drive:** `qa:marketing-settings` (scratch Postgres, the switch opened and closed for
+real) — 184/184 at 1280 and 360 (+ reduced motion).
+
 **U49 · Budget** — `budgetTzs` and the floor (D24)
 A budget authorised at approval, decremented by **segments accepted**, auto-pausing at 90 % with a named
 reason; a second, higher marketing floor enforced in the one place `sms.ts` already decides whether a batch

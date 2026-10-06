@@ -48,7 +48,11 @@ import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings"
  * environment read it replaces is gone — one source of truth (`test:marketing-settings` S10 holds that nothing in
  * `src/` reads it again).
  * ⛔ Only `loadEstimateInputs` (which resolves the viewer's STORED role itself) may be called from `src/app`;
- * `loadEstimateInputsFor` takes a role and exists for the suite (`test:campaign-estimate` §6.2 holds it).
+ * `loadEstimateInputsFor` takes a role and exists for the suite (`test:campaign-estimate` §6.2 holds it). ⭐ U49s-2 adds
+ * ONE more entry of the same kind, `loadSmsMoneyForViewer` — Admin → System's Marketing SMS card and tab ask it whether
+ * the viewer is the owner, whether they may read money and, for the owner's form only, what our own sends measure the
+ * price at; its role-taking twin `loadSmsMoneyForViewerAs` exists for the suite (`test:marketing-settings` S11 drives it,
+ * and holds that the page asks nothing else and that nothing in `src/app` calls the twin).
  *
  * Guard: `npm run test:campaign-estimate` §1/§2/§6 · `npm run test:read-tiers` §9.
  */
@@ -167,4 +171,49 @@ export async function loadEstimateInputs(audience: EstimateAudience): Promise<Es
   let role: Role | null = null;
   try { role = await viewerRole(); } catch { role = null; }
   return loadEstimateInputsFor(role, audience);
+}
+
+/**
+ * U49s-2 · WHO IS LOOKING AT ADMIN → SYSTEM'S MARKETING SMS CARD AND TAB: the owner? may they read money? and — only for
+ * the owner's form (the owner, a yes, and `measure`) — what our own delivered sends measure the price at now. It resolves
+ * the viewer's STORED role itself, ONCE, like `loadEstimateInputs`, so a page never hands one in, never asks the decider
+ * itself, and never reads the role twice (two reads could disagree, and give the owner a false reason).
+ * ⛔ Fails CLOSED and never throws: no role, a role read that fails, a decider that says no or throws — `visible:
+ * false`, no walk. A role read that FAILED is said as such (`roleUnread`), never as "not the owner". A history that
+ * cannot be read measures `unknown("history-unreadable")`, never "not measured yet".
+ */
+export async function loadSmsMoneyForViewer(o: { measure: boolean }): Promise<SmsMoneyForViewer> {
+  let role: Role | null | "unread";
+  try { role = await viewerRole(); } catch { role = "unread"; }
+  return loadSmsMoneyForViewerAs(role, o);
+}
+
+/** What `loadSmsMoneyForViewer` answers. `measured` is for the owner's form only; `roleUnread` — the role read failed. */
+export type SmsMoneyForViewer = { isOwner: boolean; visible: boolean; measured: SegmentCostMeasure | null; roleUnread: boolean };
+
+/**
+ * `loadSmsMoneyForViewer` for a given role (or `"unread"`: its read failed), its reads injectable — it exists for the
+ * suite (`test:marketing-settings` S11 drives it, and holds that nothing in `src/app` calls it).
+ */
+export async function loadSmsMoneyForViewerAs(
+  role: Role | null | "unread",
+  o: { measure: boolean },
+  deps: Partial<Pick<EstimateDeps, "moneyVisible" | "recentSends" | "provider" | "now">> = {},
+): Promise<SmsMoneyForViewer> {
+  if (role === "unread") return { isOwner: false, visible: false, measured: null, roleUnread: true };
+  const d = { ...DEFAULT_DEPS, ...deps };
+  const isOwner = role === "ADMIN";
+  let visible = false;
+  if (role) {
+    try { visible = await d.moneyVisible(role); } catch { visible = false; }
+  }
+  // ⭐ Only the owner's form shows the measured price, so nobody else's render walks the history.
+  if (!visible || !isOwner || !o.measure) return { isOwner, visible, measured: null, roleUnread: false };
+  try {
+    // Through `.then`, so a dep that throws synchronously is caught like one that rejects.
+    const rows = await Promise.resolve().then(() => d.recentSends());
+    return { isOwner, visible, measured: measureSegmentCost(rows, { provider: d.provider(), now: d.now(), configuredTzs: null }), roleUnread: false };
+  } catch {
+    return { isOwner, visible, measured: { kind: "unknown", reason: "history-unreadable" }, roleUnread: false };
+  }
 }

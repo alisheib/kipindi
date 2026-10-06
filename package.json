@@ -121,6 +121,7 @@
     "qa:card-spacing": "node scripts/live/card-spacing-drive.mjs",
     "qa:marketing-wordings": "node scripts/live/marketing-u33w-wordings-drive.mjs",
     "qa:marketing-policy-lines": "node scripts/live/marketing-u33p-policy-lines-drive.mjs",
+    "qa:marketing-settings": "node scripts/live/marketing-u49s-settings-drive.mjs",
     "qa:marketing-contacts": "node scripts/live/marketing-u20-contacts-drive.mjs",
     "qa:marketing-contacts-menu": "node scripts/live/marketing-u17-contacts-drive.mjs",
     "qa:marketing-campaigns": "node scripts/live/marketing-campaigns-drive.mjs",

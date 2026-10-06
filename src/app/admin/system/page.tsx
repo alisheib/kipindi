@@ -14,6 +14,13 @@ import { LicenceOutreachCard } from "./licence-outreach-card";
 import { licenceOutreach, licenceOutreachBlockers } from "@/lib/server/marketing/outreach-record";
 import { savedPolicyHistory, policyVersion } from "@/lib/server/legal/policy-lines";
 import { POLICY_LINE_KEYS, POLICY_PAGE_KEYS, POLICY_PAGES, isReviewVersion } from "@/lib/legal/policy-lines";
+// U49s-2 · the Marketing SMS sending card (the live switch, above the rail) and the Marketing SMS tab (its settings).
+import { MarketingSmsCard } from "./marketing-sms-card";
+import { MarketingSmsForm } from "./marketing-sms-form";
+import { marketingSmsCardView, marketingSmsFormView } from "./marketing-sms-view";
+import { readMarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
+import { reloadMarketingSmsSettings, type SettingsReload } from "@/lib/server/marketing/sms-settings";
+import { loadSmsMoneyForViewer } from "@/lib/server/marketing/estimate";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
@@ -209,6 +216,9 @@ async function policyLineRows(): Promise<{ rows: PolicyLineRowView[]; pages: Pol
  * above untrue for the Platform tab.
  * ⭐ U33p (2026-10-04) · editing what the public Responsible Gambling and Privacy pages say is a task of its own too, so the
  * Public policy lines card is a FOURTH tab (`?tab=policy`), read only there — never a Platform card, for the same reason.
+ * ⭐ U49s-2 (2026-10-06) · the owner's Marketing SMS settings — the price, the credit kept for codes, the campaign limit and
+ * the send window — are a task of their own too: a FIFTH tab (`?tab=marketing-sms`), read only there. The live switch is
+ * NOT on it: it is a kill-switch, so its card stands ABOVE the rail with Maintenance mode (§K rule 7d).
  */
 type SystemProps = { searchParams: Promise<{ tab?: string }> };
 
@@ -227,8 +237,9 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   /* ⛔ The tab is READ, never trusted: an unknown `?tab=` falls back to the landing rather than
      rendering an empty page. §K rule 7f — the tab set's home is this page's own definition. */
   const sp = await searchParams;
-  const tab: "platform" | "wordings" | "policy" | "diagnostics" =
-    sp.tab === "diagnostics" ? "diagnostics" : sp.tab === "wordings" ? "wordings" : sp.tab === "policy" ? "policy" : "platform";
+  const tab: "platform" | "wordings" | "marketing-sms" | "policy" | "diagnostics" =
+    sp.tab === "diagnostics" ? "diagnostics" : sp.tab === "wordings" ? "wordings" : sp.tab === "marketing-sms" ? "marketing-sms"
+      : sp.tab === "policy" ? "policy" : "platform";
   const platform = await getPlatformConfig().catch(() => ({ timezone: "Africa/Dar_es_Salaam" } as Awaited<ReturnType<typeof getPlatformConfig>>));
   const chain = verifyChain();
   const session = await currentSession().catch(() => null);
@@ -303,6 +314,30 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
       } as const;
     })()
     : null;
+  /* U49s-2 · THE LIVE SWITCH AND THE MARKETING SMS SETTINGS, read on EVERY tab — the card above the rail is a STATE, and
+     §K rule 7d gives a state no tab to hide behind. ⛔ Each read fails CLOSED and none can 500 the page: the switch reads
+     `unreadable`, the settings `{ ok: false }`, and a viewer whose role cannot be read is neither the owner nor shown money.
+     ⛔ Whether this viewer is the owner and may read money is `loadSmsMoneyForViewer`'s answer, from ONE read of the
+     STORED role (two reads could disagree, and give the owner a false reason); this page never asks the decider, and the
+     price walk runs for the owner's form only. */
+  const [smsMoney, liveSwitch, smsSettingsRead] = await Promise.all([
+    loadSmsMoneyForViewer({ measure: tab === "marketing-sms" }),
+    readMarketingLiveSwitch(),
+    reloadMarketingSmsSettings().catch((err): SettingsReload => ({ ok: false, error: String((err as Error)?.message ?? err) })),
+  ]);
+  const liveCard = await marketingSmsCardView({
+    live: liveSwitch, settings: smsSettingsRead, moneyVisible: smsMoney.visible, isOwner: smsMoney.isOwner, roleUnread: smsMoney.roleUnread, now: Date.now(),
+    nameOf: async (id) => {
+      try { return (await db.user.findById(id))?.displayName ?? null; } catch { return null; }
+    },
+  });
+  // U49s-2 · the Marketing SMS tab's form, read only there.
+  const smsForm = tab === "marketing-sms"
+    ? marketingSmsFormView({
+      settings: smsSettingsRead, moneyVisible: smsMoney.visible, isOwner: smsMoney.isOwner, roleUnread: smsMoney.roleUnread, floorTzs: smsBalanceThresholds().floorTzs,
+      measured: smsMoney.measured,
+    })
+    : null;
 
   return (
     <>
@@ -336,6 +371,17 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
             Takes effect <strong>immediately</strong> — no redeploy — and every flip is written to the audit chain.
           </p>
           <MaintenanceModeForm enabled={platform.maintenanceMode ?? false} note={platform.maintenanceNote ?? ""} />
+        </AdminCard>
+
+        {/* ⭐ U49s-2 · MARKETING SMS SENDING — the live switch (OD62; E13). A KILL-SWITCH, so it stands above the rail with
+            Maintenance mode (§K rule 7d): off, no marketing SMS reaches a phone; on, every started campaign sends and every
+            test costs real credit — until it switches itself off. Tinted while on, as Maintenance mode is. ⛔ The buttons are
+            the owner's only, and the writers decide again on the server. */}
+        <AdminCard
+          title="Marketing SMS sending"
+          className={liveCard.state === "open" ? "border-claret-edge bg-claret-soft" : undefined}
+        >
+          <MarketingSmsCard view={liveCard} />
         </AdminCard>
 
         {/* Bet queue — admission converts saturation from errors into latency,
@@ -515,7 +561,9 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
             · Settlement carries the OVERDUE alarm with the money still in the pool:
               "markets are OVERDUE — players are not being paid." That is 7d's "money figure an
               officer acts on" exactly.
-            ⛔ Do not move any of the three behind this rail, whatever a future tidy-up suggests. */}
+            · Marketing SMS sending (U49s-2) is the second KILL-SWITCH: off, no marketing SMS reaches a
+              phone; on, real SMS credit is spent until it switches itself off.
+            ⛔ Do not move any of the four behind this rail, whatever a future tidy-up suggests. */}
         <AdminCard padding="p-0">
           <Tabs
             ariaLabel="System sections"
@@ -523,6 +571,7 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
             tabs={[
               { value: "platform", labelEn: "Platform", href: "/admin/system?tab=platform" },
               { value: "wordings", labelEn: "Marketing wordings", href: "/admin/system?tab=wordings" },
+              { value: "marketing-sms", labelEn: "Marketing SMS", href: "/admin/system?tab=marketing-sms" },
               { value: "policy", labelEn: "Public policy lines", href: "/admin/system?tab=policy" },
               { value: "diagnostics", labelEn: "Diagnostics", href: "/admin/system?tab=diagnostics" },
             ]}
@@ -613,6 +662,22 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
               save, new records use these words; records already made keep the words they were made with.
             </p>
             <MarketingWordingsForm key={wordingRows.map((r) => r.versions.length).join(".")} rows={wordingRows} />
+          </AdminCard>
+        )}
+        </>)}
+
+        {tab === "marketing-sms" && (<>
+        {/* ⭐ U49s-2 · THE MARKETING SMS SETTINGS (OD63; E14), on a tab of their own: the price per SMS, the credit kept
+            for login and withdrawal codes, the most one campaign may spend, and the send window. ⛔ A viewer who may not
+            read money figures is handed none (S11). The `key` is the record's fingerprint, so a save that lands remounts
+            the form from the row — the Support contacts lesson on the Platform tab. */}
+        {smsForm && (
+          <AdminCard title="Marketing SMS">
+            <p className="text-body-sm text-text-subtle mb-3">
+              What a marketing SMS costs, the credit kept back so login and withdrawal codes always send, the most one
+              campaign may spend, and the hours campaigns send in. Every save is recorded in the audit log.
+            </p>
+            <MarketingSmsForm key={smsForm.base ?? "read-only"} view={smsForm} />
           </AdminCard>
         )}
         </>)}

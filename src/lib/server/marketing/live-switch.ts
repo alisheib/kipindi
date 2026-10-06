@@ -69,18 +69,16 @@ import {
 import { hasDatabase, prisma } from "@/lib/server/prisma";
 import { audit } from "@/lib/server/audit";
 import type { SmsProviderResolution } from "@/lib/server/sms";
+import { LIVE_SWITCH_MAX_OPEN_MS, LIVE_SWITCH_MIN_OPEN_MS } from "@/lib/marketing/sms-settings";
+
+/** E13 · how long one opening may last (30 min – 24 h, 2 h unless chosen). The durations live in the PURE module so the
+ *  owner's card offers exactly what this writer accepts; they are re-exported here for the ops door and the suite. */
+export {
+  LIVE_SWITCH_DEFAULT_OPEN_MS, LIVE_SWITCH_DURATIONS_MS, LIVE_SWITCH_MAX_OPEN_MS, LIVE_SWITCH_MIN_OPEN_MS,
+} from "@/lib/marketing/sms-settings";
 
 /** The SystemConfig key. ⛔ Never a phone number or an id in it — a key is not data anybody can erase. */
 export const MARKETING_LIVE_SWITCH_KEY = "marketing.sms.live";
-
-/** E13 · how long one opening may last: at least 30 minutes, at most 24 hours, 2 hours unless the owner chooses. */
-export const LIVE_SWITCH_MIN_OPEN_MS = 30 * 60_000;
-export const LIVE_SWITCH_MAX_OPEN_MS = 24 * 60 * 60_000;
-export const LIVE_SWITCH_DEFAULT_OPEN_MS = 2 * 60 * 60_000;
-/** The durations the card offers (30 min · 1 h · 2 h · 4 h · 8 h · 24 h); the writer accepts any whole ms in bounds. */
-export const LIVE_SWITCH_DURATIONS_MS: readonly number[] = Object.freeze([
-  30 * 60_000, 60 * 60_000, 2 * 60 * 60_000, 4 * 60 * 60_000, 8 * 60 * 60_000, 24 * 60 * 60_000,
-]);
 
 /** ⛔ How far ahead of this server's clock a recorded `enabledAt` may sit (another container's clock) before the row is
  *  read as malformed: a row "enabled" in the future is not a decision anybody has taken yet. */

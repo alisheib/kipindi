@@ -507,7 +507,37 @@ U37c (both edit `test:campaign-compose` §18).
 > private database host to the public proxy as every ops script does; (5)
 > `reloadMarketingSmsSettings()` answers `{ ok, settings, stored, readable }` instead of a bare record, and the estimate
 > re-reads it for every estimate, pricing nothing from a half-read row; (6) S7 scans every source extension in `src/` and
-> `scripts/` (tests aside; the loopback probe allowed by name).
+> `scripts/` (tests aside; the loopback probe allowed by name, and U49s-2's drive by exact path while it refuses any
+> other database before it connects).
+
+> **As built — U49s-2, the screens (2026-10-06, the plan's §0 STEP 44; OD64).** Recorded departures: (1) "Switch off
+> now" is offered while the switch reads malformed or unreadable as well as while it is on (a stop is never withheld,
+> and an opening stamped by a clock ahead blocks "Switch on…" as `already_open`), and the malformed sentence adds "Switch
+> it off now to clear it." for a viewer who can; the open sentence repeats the closing time with its "EAT"; (2) the
+> card's words live in a pure `marketing-sms-words.ts` that `test:marketing-settings` S14 runs against every writer path:
+> a refused switch-on says "weren't switched on" only for a refusal made before the click wrote anything (not
+> `cannot_read` or `changed_meanwhile`, which cannot know what is on — "Couldn't confirm whether marketing SMS are on"),
+> one that wrote and was taken back "didn't complete"; `already_open` and "already off" are worded from the server's read
+> AFTER the answer (the actions hand it back): an opening stamped ahead of this clock (malformed here) is "Clear the
+> stored switch first", one that reads on "Switched on since this page loaded", and "It was already off." only when
+> nothing is stored — a stale row three deletes could not remove is said as such; no title repeats its body; refusals
+> and caveats stay until dismissed; a role read that fails is said as such, never as "not the owner"; (3) the
+> limits line tells a viewer who is not the owner "they are set on the Marketing SMS tab", binds each "TZS" to its
+> amount with a no-break space, and an owner whose own money.figures cell hides money reads the settings as text; a
+> record that cannot be read in full shows no value; what only the form prints (a save ever made, the floor, the
+> measured price) is handed with the form only; (4) the page asks `loadSmsMoneyForViewer` (estimate.ts) — one read of the
+> stored role answers whether the viewer is the owner AND may read money — never `campaignMoneyVisible` itself; its
+> role-taking twin `loadSmsMoneyForViewerAs` exists for the suite; (5) the switch's durations live in the pure
+> `src/lib/marketing/sms-settings.ts` (re-exported by live-switch.ts) so the card offers exactly what the writer accepts,
+> and the dialog offers them as six RADIOS, not a select (the kit Select's list is portalled outside the aria-modal
+> dialog, hidden from VoiceOver, and the dialog's Escape closed it whole); the dialog stays up until the server answers,
+> and focus then lands on the state sentence; (6) who switched it on is "an owner" for a name with four numerals in a
+> row or more than six in all (the ops door's own limit for that slot), and the ops door's `by` is screened again as it
+> is read; (7) the Drive runs on a scratch PostgreSQL 18.3
+> with no injected reader — the switch is opened and closed for real — so the no-database refusal is held by S5b, not
+> driven; its viewers are GROWTH (no money) and COMPLIANCE (money), each granted the ops view in the scratch cluster,
+> because only ADMIN holds it by default; (8) `test:marketing-settings` S7 lets the drive name the switch's keys by exact
+> path only while it refuses a non-loopback database (a `host` or `hostaddr` parameter included) before it connects.
 
 **Premises checked.** P12 (the reader, no writer, the two-key rule; `saveConfigOrThrow`/`deleteConfig`), P16 (owner guard,
 kill-switch above the rail, the tab rail), P11 (the price env read and the reserve), `defineConfig` (validate, audit

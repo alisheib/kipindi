@@ -34,9 +34,17 @@
  *       is reported (F3); and ONE rule says what an opening is — one stamped ahead of this clock included (F6);
  *   S5b no database → `no_database`; the ops door's `by`/`reason` screened (NFKC; no hidden, default-ignorable or lone
  *       surrogate characters; at most six numerals of any kind — in each field AND across the two);
- *   S7  the writer population; S8 the settings bounds; S9 the store; S10 one price source; S12 the ops door (the public
- *       proxy; its clock checked against the database's for an open, a close only warned — the rule itself run); S13 wiring.
- * S6 (the actions call `requireOwner` first) and S11 (the card's money line) arrive with U49s-2, the screens.
+ *   S6  (U49s-2) the three actions call `requireOwner` FIRST; switch-on reads only the duration, switch-off no form at all;
+ *   S7  the writer population (the loopback probe and the U49s-2 drive name the keys by exact path — the drive only while
+ *       it refuses any other database before it connects); S8 the settings bounds; S9 the store; S10 one price source;
+ *   S11 (U49s-2) ⭐ no money handed to a viewer who may not read it — the owner included — nothing shown for a record that
+ *       cannot be read in full, what only the form prints handed with the form only, no number named as who switched it
+ *       on, driven through `marketing-sms-view.ts`; the loader itself (`loadSmsMoneyForViewerAs`, its reads injected)
+ *       failing closed and walking for the owner's form only; and the page asks only `loadSmsMoneyForViewer`;
+ *   S12 the ops door (the public proxy; its clock checked against the database's for an open, a close only warned — the
+ *       rule itself run); S13 wiring;
+ *   S14 (U49s-2) ⭐ the card's words (`marketing-sms-words.ts`) true for EVERY path the real writers take in memory —
+ *       "weren't switched on" only where no write was attempted and the switch was read; "off" never unread.
  *
  * ⛔ `--prove-red` FIRST PROVES THE BASELINE GREEN, then PLANTS EACH DEFECT IN MEMORY and requires the claim that NAMES it
  * to turn red. No file is written. No database is touched.
@@ -55,6 +63,9 @@ const PROVE_RED = process.argv.includes("--prove-red");
 const LIVE = await import("../src/lib/server/marketing/live-switch.ts");
 const PURE = await import("../src/lib/marketing/sms-settings.ts");
 const STORE = await import("../src/lib/server/marketing/sms-settings.ts");
+const VIEW = await import("../src/app/admin/system/marketing-sms-view.ts");
+const ESTIMATE = await import("../src/lib/server/marketing/estimate.ts");
+const WORDS = await import("../src/app/admin/system/marketing-sms-words.ts");
 const { auditFlush, getAuditPage } = await import("../src/lib/server/audit.ts");
 
 type LiveSwitch = Awaited<ReturnType<typeof LIVE.readMarketingLiveSwitch>>;
@@ -81,12 +92,15 @@ const L = {
   s5c: "S5c · ⭐ STACKED FAULTS — a close says only what a READABLE read proved (the fourth review): a failed first read and a delete that fails without effect is still_open_after_close — nothing recorded, nothing retried, the opening stands (M1); a lost-reply delete whose look proved the row gone is RECORDED (was:unknown) though every read after fails (m1); with no readable look it never deletes again, and a later opening stands (m2); a stale row kept through three failed deletes is already_closed with nothing recorded (m3); a clean 'no row' with no read after it is close_unconfirmed, never 'already off' (n1); a failed first read whose delete landed is recorded once the switch reads absent; an opening that expires between the read and the delete is recorded was:expired",
   s5d: "S5d · ⭐ THE FIFTH REVIEW — a readable proof is never thrown away, and one rule says what an opening is: a look that finds no row proves the row gone though the first read failed, and the close is recorded though every read after fails (F1) — and with somebody's opening landing after that look, recorded and reopened; a retry's compare-and-delete that finds nothing proves it gone (F2); with no final read, whether an opening stands comes from the look that proved the row gone — reopened, never off (F3); an opening stamped ahead of this clock kept through failed deletes is still_open_after_close, and one landing after a clean 'no row' is reopened_meanwhile (F6)",
   s5b: "S5b · no database answers no_database before anything is written; the ops door's by and reason are screened — a phone number in brackets, dots, slashes, dashes, full-width, Arabic-Indic, circled or Ethiopic numerals, a blank, 121 characters, a line break, a bidi override, a line separator, a combining grapheme joiner, the Hangul filler and a lone surrogate are refused; six numerals pass and seven do not, in one field AND across the two; NFKC is applied; named in the row and the payload with no actor; the card needs its officer",
-  s7: "S7 · the writer population, across every source extension in src/ and scripts/ (tests aside; the loopback Postgres probe allowed by name) — MARKETING_LIVE_SWITCH_KEY and sms.live appear only in live-switch.ts; only the card's actions and the ops door call the two writers; marketing.sms.settings appears only in its own module, and only the card's action calls saveMarketingSmsSettings",
-  s8: "S8 · the settings bounds — every boundary accepted and its neighbour refused under its own field (price 1–1,000 with at most two decimals, the reserve from the platform floor to 10,000,000, the limit 100–10,000,000, start 07:00–19:00 and end 09:00–21:00 on the quarter hour); every problem at once; the reserve's minimum follows the floor; under 2 h is refused under the end",
+  s6: "S6 · the three actions call requireOwner FIRST — before any other await, in the decommented source — the switch-on action reads only the duration from the form (the form is named only as its parameter and in minutesOf, which reads getAll(\"minutes\") alone; who switched it on is the session's officer), and the switch-off action takes and reads no form at all",
+  s7: "S7 · the writer population, across every source extension in src/ and scripts/ (tests aside; the loopback Postgres probe and the U49s-2 drive allowed by name — the drive only while it refuses a non-loopback database before it connects) — MARKETING_LIVE_SWITCH_KEY and sms.live appear only in live-switch.ts; only the card's actions and the ops door call the two writers; marketing.sms.settings appears only in its own module, and only the card's action calls saveMarketingSmsSettings",
+  s8: "S8 · the settings bounds — every boundary accepted and its neighbour refused under its own field (price 1–1,000 with at most two decimals, the reserve from the platform floor to 10,000,000, the limit 100–10,000,000, start 07:00–19:00 and end 09:00–21:00 on the quarter hour); every problem at once; the reserve's minimum follows the floor; under 2 h is refused under the end; the limit's refusal binds each 'TZS' to its amount (a no-break space)",
   s9: "S9 · the store — a partial post, an unknown key and a blank officer are refused with nothing written; a good save writes exactly the record and its ADMIN row; a stale page is refused; a no-change save writes nothing; a row it cannot read in full (a bad field, another shape, a window under 2 h) reads defaults where it failed — the window as a pair — answers readable:false and refuses every save",
   s10: "S10 · ONE PRICE SOURCE — nothing in src/ reads SMS_PRICE_PER_SEGMENT_TZS (decommented); the estimate RE-READS the record for every estimate and gives no price for a read that failed or a row it cannot read in full; .env.example sets no price",
   s12: "S12 · the ops door imports the two writers (and hasDatabase) and nothing that writes SystemConfig itself, rewrites Railway's private database host to the public proxy before its first read, refuses without a database, outside production's own Railway environment (with its audit secret) and — for an OPEN only — from a PC whose clock is over 20 s off the database's (the fourth review's m4; a close only warns, the fifth's F5) before any write, with that clock rule itself run (the round trip's midpoint, the 20 s edge, the direction named), and calls the writers as via ops with no actor",
-  s13: "S13 · the wiring — test:/red:marketing-settings, ops:marketing-live-switch and db:probe-marketing-settings resolve, predeploy runs the suite after test:marketing-wordings, and client-graph-safe pins the pure settings module",
+  s11: "S11 · a viewer who may not read money figures is handed NO money — the card's props and the tab's props hold no TZS, no price, credit kept for codes or campaign limit, no platform floor, no measured price and no fingerprint spelling them, for a non-owner AND for an owner whose own money.figures cell hides money (who gets text, never a form); a record that cannot be read in full shows no value to anyone; a money viewer is handed the line in money ('TZS 6 per SMS · …', each TZS bound to its amount), and only the owner's form its fingerprint, the floor, the measured price and whether a save was ever made; who switched it on is never a number — in any grouping or separator, a foreign one included, the ops door's `by` too — and a name still shows; a role that could not be read is neither the owner nor shown money, and is said as such, never as 'not the owner'; the loader, driven with its reads injected, answers the owner and the money from ONE role read, fails closed (no role, a role read that failed, a no, a decider that throws) and walks the send history for the owner's form only (a history that cannot be read said so); and the page asks nothing itself — loadSmsMoneyForViewer answers, for both views, and nothing in src/app calls its role-taking twin",
+  s13: "S13 · the wiring — test:/red:marketing-settings, ops:marketing-live-switch, db:probe-marketing-settings and qa:marketing-settings resolve, predeploy runs the suite after test:marketing-wordings, and client-graph-safe pins the pure settings module",
+  s14: "S14 · ⭐ THE CARD'S WORDS ARE TRUE FOR EVERY PATH THE WRITER CAN TAKE (marketing-sms-words.ts, run against the real writers in memory) — a refused switch-on says 'weren't switched on' ONLY where this click attempted no write and the switch was read; a switch-on that wrote and was taken back (proven off) 'didn't complete'; a failed read or a lost race 'couldn't confirm'; one that may be on, or another's that stands, says so; already_open is worded from the read AFTER it (an opening stamped ahead of this clock is cleared first, one that no longer reads as an opening is a change, never 'already on'); a switch-off's refusals never say off; a switch-off that removed nothing says 'It was already off.' only when the read after it finds nothing stored; and no title repeats the sentence beneath it",
 } as const;
 
 let pass = 0;
@@ -318,6 +332,10 @@ type Impl = {
   readonly close: typeof LIVE.closeMarketingLiveSwitch;
   readonly screen: typeof LIVE.screenOpsText;
   readonly clockProblem: typeof LIVE.opsClockProblem;
+  readonly cardView: typeof VIEW.marketingSmsCardView;
+  readonly formView: typeof VIEW.marketingSmsFormView;
+  readonly moneyFor: typeof ESTIMATE.loadSmsMoneyForViewerAs;
+  readonly words: typeof WORDS;
   readonly problems: typeof PURE.marketingSmsSettingsProblems;
   readonly store: (o: StoreOpts) => SettingsStore;
   readonly sources: Map<string, string>;
@@ -334,6 +352,10 @@ const REAL: Impl = {
   close: LIVE.closeMarketingLiveSwitch,
   screen: LIVE.screenOpsText,
   clockProblem: LIVE.opsClockProblem,
+  cardView: VIEW.marketingSmsCardView,
+  formView: VIEW.marketingSmsFormView,
+  moneyFor: ESTIMATE.loadSmsMoneyForViewerAs,
+  words: WORDS,
   problems: PURE.marketingSmsSettingsProblems,
   store: (o) => STORE.__marketingSmsSettingsForTest(o),
   sources: SOURCES,
@@ -347,6 +369,10 @@ const SETTINGS_SRC = "src/lib/server/marketing/sms-settings.ts";
 const ACTIONS_SRC = "src/app/admin/system/actions.ts";
 const OPS_SRC = "scripts/ops/marketing-live-switch.mts";
 const PROBE_SRC = "scripts/live/marketing-settings-pg-probe.mts";
+const DRIVE_SRC = "scripts/live/marketing-u49s-settings-drive.mjs";
+const PAGE_SRC = "src/app/admin/system/page.tsx";
+/** The drive's refusal of any database that is not this machine's — the reason it may name the switch's keys at all. */
+const DRIVE_GUARD = 'if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(dbHost)) {';
 const ESTIMATE_SRC = "src/lib/server/marketing/estimate.ts";
 const ESTIMATE_PRICE = "    const r = await reloadMarketingSmsSettings();\n    return r.ok && r.readable ? r.settings.pricePerSegmentTzs : null;";
 
@@ -705,15 +731,50 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       `no db ${why(rNoDb)} · ops ${why(rOps)} by "${String(opsRow?.enabledBy)}" · let through [${pureRefuses.map((t) => JSON.stringify(t)).join(", ")}] · keeps ${pureKeeps} · writer ${writerRefused.join(",")} · officer ${why(noOfficer)}`);
   }
 
+  /* ── S6 · the actions call requireOwner first, and read only what they must ── */
+  {
+    const src = impl.sources.get(ACTIONS_SRC) ?? "";
+    const bodyOf = (name: string): string => {
+      const at = src.indexOf(`export async function ${name}(`);
+      if (at < 0) return "";
+      const next = src.indexOf("\nexport ", at + 1);
+      return src.slice(at, next < 0 ? src.length : next);
+    };
+    const names = ["openMarketingLiveSwitchAction", "closeMarketingLiveSwitchAction", "saveMarketingSmsSettingsAction"];
+    const firsts = names.map((n) => {
+      const b = bodyOf(n);
+      const at = b.indexOf("await ");
+      return at < 0 ? "" : b.slice(at, at + 40);
+    });
+    const ownerFirst = firsts.every((f) => f.startsWith("await requireOwner("));
+    const count = (s: string, re: RegExp): number => (s.match(re) ?? []).length;
+    const open = bodyOf("openMarketingLiveSwitchAction");
+    const minutesAt = src.indexOf("function minutesOf(formData: FormData): number | null {");
+    const minutesFn = minutesAt < 0 ? "" : src.slice(minutesAt, src.indexOf("\n}", minutesAt) + 2);
+    // The form is named twice in the switch-on action — its parameter and `minutesOf(formData)` — and twice in minutesOf —
+    // its parameter and `getAll("minutes")`: nothing else of the request is read, however it is spelled.
+    const readsOnlyMinutes = count(open, /\bformData\b/g) === 2 && open.includes("minutesOf(formData)")
+      && count(minutesFn, /\bformData\b/g) === 2 && minutesFn.includes('formData.getAll("minutes")')
+      && /openMarketingLiveSwitch\(\{ actorId: session\.userId, via: "card", forMs: minutes \* 60_000 \}\)/.test(open);
+    const close = bodyOf("closeMarketingLiveSwitchAction");
+    const closeNoForm = close.includes("closeMarketingLiveSwitchAction(): Promise") && !/\bformData\b/.test(close)
+      && /closeMarketingLiveSwitch\(\{ actorId: session\.userId, via: "card" \}\)/.test(close);
+    ok(p(L.s6), ownerFirst && readsOnlyMinutes && closeNoForm,
+      `first awaits [${firsts.map((f) => f.slice(0, 26)).join(" | ")}] · switch-on reads only minutes ${readsOnlyMinutes} (formData ×${count(open, /\bformData\b/g)} / minutesOf ×${count(minutesFn, /\bformData\b/g)}) · switch-off reads no form ${closeNoForm}`);
+  }
+
   /* ── S7 · the writer population ── */
   {
     const keyNamed: string[] = [];
     const settingsKeyNamed: string[] = [];
     const callers: string[] = [];
     const setterCallers: string[] = [];
+    // The loopback probe and the U49s-2 drive may NAME the keys (they seed and read rows on a scratch cluster) — by exact
+    // path, and the drive only while it refuses any other database before it connects. Neither may call a writer.
+    const byName = (rel: string): boolean => rel === PROBE_SRC || rel === DRIVE_SRC;
     for (const [rel, text] of impl.sources) {
-      if (rel !== LIVE_SRC && rel !== PROBE_SRC && (/\bMARKETING_LIVE_SWITCH_KEY\b/.test(text) || text.includes("sms.live"))) keyNamed.push(rel);
-      if (rel !== SETTINGS_SRC && rel !== PROBE_SRC && (/\bMARKETING_SMS_SETTINGS_KEY\b/.test(text) || text.includes("sms.settings"))) settingsKeyNamed.push(rel);
+      if (rel !== LIVE_SRC && !byName(rel) && (/\bMARKETING_LIVE_SWITCH_KEY\b/.test(text) || text.includes("sms.live"))) keyNamed.push(rel);
+      if (rel !== SETTINGS_SRC && !byName(rel) && (/\bMARKETING_SMS_SETTINGS_KEY\b/.test(text) || text.includes("sms.settings"))) settingsKeyNamed.push(rel);
       if (rel !== LIVE_SRC && /\b(?:openMarketingLiveSwitch|closeMarketingLiveSwitch)\s*\(/.test(text)) callers.push(rel);
       if (rel !== SETTINGS_SRC && /\bsaveMarketingSmsSettings\s*\(/.test(text)) setterCallers.push(rel);
     }
@@ -721,11 +782,15 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const liveSrc = impl.sources.get(LIVE_SRC) ?? "";
     const wired = ["load: loadConfigResult,", "create: createConfigIfAbsent,", "replace: replaceConfigIfValue,", "take: takeConfig,", "takeBack: deleteConfigIfValue,"]
       .every((x) => liveSrc.includes(x));
+    const drive = impl.sources.get(DRIVE_SRC) ?? "";
+    const guardAt = drive.indexOf(DRIVE_GUARD);
+    const exitAt = guardAt < 0 ? -1 : drive.indexOf("process.exit(2)", guardAt);
+    const driveLoopback = guardAt > 0 && exitAt > guardAt && drive.indexOf("await sql.connect()") > exitAt;
     ok(p(L.s7),
       keyNamed.length === 0 && settingsKeyNamed.length === 0 && callers.every((c) => allowed.has(c)) && callers.includes(OPS_SRC)
         && setterCallers.every((c) => c === ACTIONS_SRC || c === PROBE_SRC)
-        && /export const MARKETING_LIVE_SWITCH_KEY = "marketing\.sms\.live";/.test(liveSrc) && wired,
-      `switch key named in [${keyNamed.join(", ")}] · settings key in [${settingsKeyNamed.join(", ")}] · writer callers [${callers.join(", ")}] · setter callers [${setterCallers.join(", ")}] · shipped deps wired ${wired}`);
+        && /export const MARKETING_LIVE_SWITCH_KEY = "marketing\.sms\.live";/.test(liveSrc) && wired && driveLoopback,
+      `switch key named in [${keyNamed.join(", ")}] · settings key in [${settingsKeyNamed.join(", ")}] · writer callers [${callers.join(", ")}] · setter callers [${setterCallers.join(", ")}] · shipped deps wired ${wired} · the drive refuses a non-loopback database before it connects ${driveLoopback}`);
   }
 
   /* ── S8 · the settings bounds ── */
@@ -764,8 +829,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const allFive = !all.ok && Object.keys(all.problems).length === 5;
     const floored = field(judge({ codesReserveTzs: 499 }, 500), "codesReserveTzs") === PURE.SETTINGS_SENTENCE.reserve(500)
       && judge({ codesReserveTzs: 500 }, 500).ok && PURE.SETTINGS_SENTENCE.reserve(500).includes("at least 500");
-    ok(p(L.s8), badAccepted.length === 0 && badRefused.length === 0 && allFive && floored,
-      `wrongly refused [${badAccepted.join(", ")}] · wrongly accepted [${badRefused.join(", ")}] · all five ${allFive} · floor ${floored}`);
+    // The limit's refusal binds each "TZS" to its amount — pinned in its exact words, so the sentence itself is held too.
+    const NB = String.fromCharCode(160);
+    const limitWords = field(judge({ campaignLimitTzs: 99 }), "campaignLimitTzs") ?? "";
+    const limitBound = limitWords === `Enter a campaign limit from TZS${NB}100 to TZS${NB}10,000,000.`;
+    ok(p(L.s8), badAccepted.length === 0 && badRefused.length === 0 && allFive && floored && limitBound,
+      `wrongly refused [${badAccepted.join(", ")}] · wrongly accepted [${badRefused.join(", ")}] · all five ${allFive} · floor ${floored} · limit's TZS bound ${limitBound}`);
   }
 
   /* ── S9 · the store ── */
@@ -829,6 +898,99 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       `env reads in [${envReads.join(", ")}] · estimate re-reads ${est.includes(ESTIMATE_PRICE)} · cached read ${/\bmarketingSmsSettings\(\)/.test(est)} · .env.example sets it ${envExampleSets}`);
   }
 
+  /* ── S11 · no money for a viewer who may not read it — the owner included ── */
+  {
+    const settings = { ok: true as const, settings: { ...D }, stored: false, readable: true };
+    const half = { ok: true as const, settings: { ...D }, stored: true, readable: false };
+    const live = { state: "closed" as const, why: "absent" as const };
+    const nameOf = async () => "QA Owner";
+    const MEASURED = { kind: "measured" as const, tzsPerSegment: 6, sends: 7, pairs: 6, spread: { min: 6, max: 6 }, since: iso(T0 - 24 * HOUR) };
+    // Handed to viewers who may NOT read money — a non-owner, and an owner whose own money.figures cell hides it (D3).
+    const hidden = {
+      card: await impl.cardView({ live, settings, moneyVisible: false, isOwner: false, now: T0, nameOf }),
+      form: impl.formView({ settings, moneyVisible: false, isOwner: false, floorTzs: 50, measured: MEASURED }),
+      ownerForm: impl.formView({ settings, moneyVisible: false, isOwner: true, floorTzs: 50, measured: MEASURED }),
+    };
+    const MONEY = /TZS|20,?000|10,?000|pricePerSegmentTzs|codesReserveTzs|campaignLimitTzs|"floorTzs":\s*50|\|6\||Measured now/;
+    const leaks = Object.entries(hidden).filter(([, v]) => MONEY.test(JSON.stringify(v))).map(([k]) => k);
+    const ownerHiddenRight = !hidden.ownerForm.editable && hidden.ownerForm.base === null && hidden.ownerForm.money === null;
+    // A record that cannot be read in full shows NO value — to anyone.
+    const halfCard = await impl.cardView({ live, settings: half, moneyVisible: true, isOwner: true, now: T0, nameOf });
+    const halfForm = impl.formView({ settings: half, moneyVisible: true, isOwner: true, floorTzs: 50, measured: MEASURED });
+    const halfRight = !/TZS|EAT/.test(halfCard.limits) && !halfForm.editable && !halfForm.readable
+      && halfForm.window === null && halfForm.money === null && halfForm.base === null && halfForm.measuredHint === null;
+    // A viewer who may read money is handed the line in money — and only the owner's form its fingerprint.
+    const cardShown = await impl.cardView({ live, settings, moneyVisible: true, isOwner: true, now: T0, nameOf });
+    const formOwner = impl.formView({ settings, moneyVisible: true, isOwner: true, floorTzs: 50, measured: MEASURED });
+    const formViewer = impl.formView({ settings, moneyVisible: true, isOwner: false, floorTzs: 50, measured: MEASURED });
+    // Each "TZS" is bound to its amount by a no-break space, so a phone never wraps a figure away from its currency.
+    const NBSP = String.fromCharCode(160);
+    const shownRight = cardShown.limits.startsWith(`TZS${NBSP}6 per SMS · TZS${NBSP}20,000 kept for login and withdrawal codes · at most TZS${NBSP}10,000 per campaign`)
+      && formOwner.editable && formOwner.money !== null && formOwner.base === PURE.settingsFingerprint({ ...D })
+      && formOwner.measuredHint === "Measured now: TZS 6 from 7 delivered messages."
+      && !formViewer.editable && formViewer.money !== null && formViewer.base === null;
+    // ⛔ What only the form prints — whether a save was ever made, the floor, the measured price — goes with the form only.
+    const formOnlyRight = formOwner.stored === false && formOwner.floorTzs === 50
+      && [formViewer, hidden.form, hidden.ownerForm, halfForm].every((v) => v.stored === null && v.floorTzs === null && v.measuredHint === null);
+    // ⛔ Who switched it on is never a number — in any grouping or separator, a foreign one included — and a name stays.
+    const liveOpen = { state: "open" as const, enabledBy: "usr_owner", enabledAt: iso(T0 - HOUR), closesAt: iso(T0 + HOUR) };
+    const whoFor = async (n: string) =>
+      (await impl.cardView({ live: liveOpen, settings, moneyVisible: true, isOwner: true, now: T0, nameOf: async () => n })).enabledByName;
+    const grouped = await Promise.all(["+255 712 345 678", "0 712-345-678", "255/712/345/678", "0·712·345·678", "+1 (415) 555-0132"].map(whoFor));
+    const named = await Promise.all(["QA Owner", "Tax officer 12"].map(whoFor));
+    // The ops door's `by` is screened again as it is read: a name shows, a number never does.
+    const opsWho = async (by: string) =>
+      (await impl.cardView({ live: { ...liveOpen, enabledBy: `ops: ${by}` }, settings, moneyVisible: true, isOwner: true, now: T0, nameOf })).enabledByName;
+    const opsNamed = await opsWho("Claude for Ali (G1)");
+    const opsNumber = await opsWho("0712 345 678");
+    const nameRight = grouped.every((x) => x === "an owner") && named[0] === "QA Owner" && named[1] === "Tax officer 12"
+      && opsNamed === "the ops door (Claude for Ali (G1))" && opsNumber === "the ops door";
+    // ⭐ THE LOADER ITSELF, its reads injected: ONE role read answers the owner and the money; it fails CLOSED (no role, a
+    // no, a decider that throws); and only the owner's form walks the history — one that cannot be read is said so.
+    let walks = 0;
+    const yes = async (): Promise<boolean> => true;
+    const no = async (): Promise<boolean> => false;
+    const throws = async (): Promise<boolean> => { throw new Error("decider down"); };
+    const depsOf = (moneyVisible: () => Promise<boolean>, recentSends: () => Promise<never[]> = async () => { walks++; return []; }) =>
+      ({ moneyVisible, recentSends, provider: () => "console", now: () => T0 });
+    const m = {
+      unread: await impl.moneyFor("unread", { measure: true }, depsOf(yes)),
+      noRole: await impl.moneyFor(null, { measure: true }, depsOf(yes)),
+      ownerNo: await impl.moneyFor("ADMIN", { measure: true }, depsOf(no)),
+      ownerThrows: await impl.moneyFor("ADMIN", { measure: true }, depsOf(throws)),
+      viewerYes: await impl.moneyFor("COMPLIANCE", { measure: true }, depsOf(yes)),
+      ownerOtherTab: await impl.moneyFor("ADMIN", { measure: false }, depsOf(yes)),
+    };
+    const walksBefore = walks;
+    const ownerTab = await impl.moneyFor("ADMIN", { measure: true }, depsOf(yes));
+    const historyDown = await impl.moneyFor("ADMIN", { measure: true }, depsOf(yes, () => { throw new Error("history down"); }));
+    const loaderRight = walksBefore === 0
+      && m.unread.roleUnread && !m.unread.isOwner && !m.unread.visible && m.unread.measured === null
+      && !m.noRole.roleUnread && !m.ownerNo.roleUnread && !ownerTab.roleUnread
+      && !m.noRole.isOwner && !m.noRole.visible && m.noRole.measured === null
+      && m.ownerNo.isOwner && !m.ownerNo.visible && m.ownerNo.measured === null
+      && m.ownerThrows.isOwner && !m.ownerThrows.visible && m.ownerThrows.measured === null
+      && !m.viewerYes.isOwner && m.viewerYes.visible && m.viewerYes.measured === null
+      && m.ownerOtherTab.isOwner && m.ownerOtherTab.visible && m.ownerOtherTab.measured === null
+      && walks === 1 && ownerTab.isOwner && ownerTab.visible && ownerTab.measured !== null
+      && historyDown.measured !== null && historyDown.measured.kind === "unknown" && historyDown.measured.reason === "history-unreadable";
+    // ⛔ A role that could not be read: no money anywhere, and the card and the tab say why — never "not the owner".
+    const unreadCard = await impl.cardView({ live, settings, moneyVisible: m.unread.visible, isOwner: m.unread.isOwner, roleUnread: m.unread.roleUnread, now: T0, nameOf });
+    const unreadForm = impl.formView({ settings, moneyVisible: m.unread.visible, isOwner: m.unread.isOwner, roleUnread: m.unread.roleUnread, floorTzs: 50, measured: MEASURED });
+    const unreadRight = unreadCard.roleUnread && unreadCard.limits.includes("Your role couldn't be checked just now")
+      && !MONEY.test(JSON.stringify(unreadCard)) && unreadForm.roleUnread && !unreadForm.editable && !MONEY.test(JSON.stringify(unreadForm))
+      && !hidden.card.roleUnread && !hidden.form.roleUnread;
+    // ⛔ The page asks nothing itself: `loadSmsMoneyForViewer` (ONE read of the stored role, the one decider) answers the
+    // owner and the money, for both views — and nothing in src/app calls its role-taking twin.
+    const page = impl.sources.get(PAGE_SRC) ?? "";
+    const twinCallers = [...impl.sources].filter(([rel, text]) => rel.startsWith("src/app/") && /\bloadSmsMoneyForViewerAs\b/.test(text)).map(([rel]) => rel);
+    const wiring = !/\bcampaignMoneyVisible\b/.test(page) && page.includes('loadSmsMoneyForViewer({ measure: tab === "marketing-sms" })')
+      && (page.match(/moneyVisible: smsMoney\.visible, isOwner: smsMoney\.isOwner, roleUnread: smsMoney\.roleUnread,/g) ?? []).length === 2
+      && page.includes("measured: smsMoney.measured") && twinCallers.length === 0;
+    ok(p(L.s11), leaks.length === 0 && ownerHiddenRight && halfRight && shownRight && formOnlyRight && nameRight && unreadRight && loaderRight && wiring,
+      `money handed to [${leaks.join(", ")}] · owner without money read-only ${ownerHiddenRight} · half-read shows nothing ${halfRight} · money viewers right ${shownRight} (owner's line "${cardShown.limits.slice(0, 40)}…", hint "${formOwner.measuredHint}") · form-only facts with the form only ${formOnlyRight} · grouped numbers named [${grouped.join(", ")}], names [${named.join(", ")}], the ops door "${opsNamed}" / "${opsNumber}" · a role unread said so ${unreadRight} · the loader fails closed and walks for the owner's form only ${loaderRight} (walks ${walks}) · page asks only the loader ${wiring}${twinCallers.length > 0 ? ` (the twin called in ${twinCallers.join(", ")})` : ""}`);
+  }
+
   /* ── S12 · the ops door ── */
   {
     const ops = impl.sources.get(OPS_SRC) ?? "";
@@ -873,9 +1035,105 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && scripts["red:marketing-settings"] === "tsx scripts/marketing-settings.test.mts --prove-red"
         && scripts["ops:marketing-live-switch"] === "tsx scripts/ops/marketing-live-switch.mts"
         && scripts["db:probe-marketing-settings"] === `tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts ${PROBE_SRC}`
+        && scripts["qa:marketing-settings"] === `node ${DRIVE_SRC}`
         && predeploy.includes("npm run test:marketing-wordings && npm run test:marketing-settings &&")
         && impl.graphSafe.includes('"lib/marketing/sms-settings.ts"'),
-      `test ${scripts["test:marketing-settings"]} · red ${scripts["red:marketing-settings"]} · ops ${scripts["ops:marketing-live-switch"]} · probe ${scripts["db:probe-marketing-settings"]} · predeploy ${predeploy.includes("test:marketing-settings")} · pinned ${impl.graphSafe.includes('"lib/marketing/sms-settings.ts"')}`);
+      `test ${scripts["test:marketing-settings"]} · red ${scripts["red:marketing-settings"]} · ops ${scripts["ops:marketing-live-switch"]} · probe ${scripts["db:probe-marketing-settings"]} · qa ${scripts["qa:marketing-settings"]} · predeploy ${predeploy.includes("test:marketing-settings")} · pinned ${impl.graphSafe.includes('"lib/marketing/sms-settings.ts"')}`);
+  }
+
+  /* ── S14 · the card's words, true for every path the writer can take ── */
+  {
+    const W = impl.words;
+    // ⛔ The expected words are spelled HERE, never read from the module under test — a plant cannot agree with itself.
+    const NOT_ON = "Marketing SMS weren't switched on";
+    const TAKEN_BACK = "The switch-on didn't complete";
+    const UNSURE = "Couldn't confirm whether marketing SMS are on";
+    const repeats = (title: string, body: string): boolean => body.toLowerCase().startsWith(title.toLowerCase().replace(/[.…]+$/, ""));
+    // How the read after an `already_open` sees the switch — exactly as the action reads it (`readsAsAfterAlreadyOpen`).
+    const readsAsOf = async (w: World): Promise<"open" | "malformed" | "other"> => {
+      const s = await w.readNow();
+      return s.state === "open" ? "open" : s.why === "malformed" ? "malformed" : "other";
+    };
+    const third = { enabledBy: "usr_third_owner", enabledAt: iso(T0), closesAt: iso(T0 + 3 * HOUR) };
+    const openCases: { name: string; opts: WorldOpts; forMs?: number; expect: string }[] = [
+      { name: "a bad duration", opts: {}, forMs: 29 * MIN, expect: NOT_ON },
+      { name: "no database", opts: { noDb: true }, expect: NOT_ON },
+      { name: "the opening record lost", opts: { unrecordedAuditOf: [OPENING] }, expect: NOT_ON },
+      { name: "the first read failed", opts: { failFirstRead: true }, expect: UNSURE },
+      { name: "a lost race whose re-read failed", opts: { changeBeforeWrite: THEIRS, failReadsAt: [2] }, expect: UNSURE },
+      { name: "a lost race to another opening", opts: { changeBeforeWrite: THEIRS }, expect: "Two switch-ons at once" },
+      { name: "a write that threw", opts: { saveThrows: true }, expect: TAKEN_BACK },
+      { name: "a write that landed then threw", opts: { saveLandsThenThrows: true }, expect: TAKEN_BACK },
+      { name: "a write that landed another shape", opts: { saveShape: { enabledBy: OWNER, enabledAt: iso(T0) } }, expect: TAKEN_BACK },
+      { name: "a confirmation that failed", opts: { throwAuditOf: [OPENED] }, expect: TAKEN_BACK },
+      { name: "a take-back that could not be proven", opts: { throwAuditOf: [OPENED], takeBackNoop: true }, expect: "Marketing SMS may still be on" },
+    ];
+    const openWrong: string[] = [];
+    for (const c of openCases) {
+      const w = switchWorld(c.opts);
+      const r = await openIt(impl, w, c.forMs ?? 2 * HOUR);
+      const reason = r.ok ? "OPEN" : r.reason;
+      const title = W.openRefusalTitle(r.ok ? undefined : r.reason);
+      const toast = r.ok ? null : W.openRefusalToast(r.reason, r.error);
+      const after = await w.readNow();
+      const oursReadsOn = after.state === "open" && after.enabledBy === OWNER;
+      // ⭐ GROUND TRUTH, not the case list: "weren't switched on" only where no write was attempted AND the switch was read;
+      // "didn't complete" only where a write was attempted and nothing of ours reads as on.
+      const truthful = (title !== NOT_ON || (w.calls.save === 0 && !c.opts.failFirstRead))
+        && (title !== TAKEN_BACK || (w.calls.save > 0 && !oursReadsOn));
+      if (r.ok || title !== c.expect || !truthful || toast === null || repeats(toast.title, toast.description)) {
+        openWrong.push(`${c.name}: ${reason} → "${title}"`);
+      }
+    }
+    // already_open — worded from the read AFTER it: another's opening; one stamped ahead of this clock (malformed here).
+    const alreadyCases = [
+      { name: "an opening", seed: THEIRS, title: "Switched on since this page loaded" },
+      { name: "an opening stamped ahead", seed: AHEAD, title: "Clear the stored switch first" },
+    ];
+    for (const c of alreadyCases) {
+      const w = switchWorld({ seed: c.seed });
+      const r = await openIt(impl, w);
+      const t = r.ok ? null : W.openRefusalToast(r.reason, r.error, await readsAsOf(w));
+      const sane = t !== null && t.title === c.title && !repeats(t.title, t.description)
+        && (c.seed === AHEAD ? !/already on/i.test(`${t.title} ${t.description}`) : t.description === (r.ok ? "" : r.error));
+      if (r.ok || r.reason !== "already_open" || !sane) openWrong.push(`already open (${c.name}): "${t?.title}" / "${t?.description}"`);
+    }
+    // …and one that no longer reads as an opening is a change, never "already on".
+    const gone = W.openRefusalToast("already_open", LIVE.LIVE_SWITCH_REFUSAL_SENTENCE.already_open, "other");
+    if (gone.title !== UNSURE || /already on/i.test(gone.description)) openWrong.push(`already open, gone since: "${gone.title}" / "${gone.description}"`);
+    // A switch-off's refusals never say off; and "nothing to remove" is said as the read after it found the switch.
+    const closeCases: { name: string; opts: WorldOpts; reason: string; expect: string }[] = [
+      { name: "a delete that never answers", opts: { seed: THEIRS, takeFails: 99 }, reason: "still_open_after_close", expect: "Marketing SMS are still on" },
+      { name: "beaten to it, then another opening", opts: { seed: THEIRS, takeFindsNothingThenRow: third }, reason: "reopened_meanwhile", expect: "Your switch-off didn't hold" },
+      { name: "a clean 'no row' with no read after it", opts: { seed: THEIRS, takeFindsNothingThenRow: third, failReadsAt: [2, 3, 4] }, reason: "close_unconfirmed", expect: "Couldn't confirm marketing SMS are off" },
+    ];
+    const closeWrong: string[] = [];
+    for (const c of closeCases) {
+      const w = switchWorld(c.opts);
+      const r = await closeIt(impl, w);
+      const title = W.closeRefusalTitle(r.ok ? undefined : r.reason);
+      if (r.ok || r.reason !== c.reason || title !== c.expect || /^(it was )?already off|^marketing sms are off/i.test(title) || repeats(title, r.error)) {
+        closeWrong.push(`${c.name}: ${why(r)} → "${title}"`);
+      }
+    }
+    const offCases: { name: string; opts: WorldOpts; remains: string; success: boolean }[] = [
+      { name: "nothing stored", opts: {}, remains: "none", success: true },
+      { name: "a stale row three deletes could not remove (m3)", opts: { seed: EXPIRED, takeFails: 3 }, remains: "stale", success: false },
+    ];
+    for (const c of offCases) {
+      const w = switchWorld(c.opts);
+      const r = await closeIt(impl, w);
+      const s = await w.readNow();
+      const remains = s.state === "open" ? "open" : s.why === "absent" ? "none" : s.why === "unreadable" ? "unread" : "stale";
+      const t = W.alreadyOffToast(remains);
+      const right = !r.ok && r.reason === "already_closed" && remains === c.remains && (t.variant === "success") === c.success
+        && (t.title === "It was already off.") === c.success;
+      if (!right) closeWrong.push(`already off (${c.name}): ${why(r)} · ${remains} → "${t.title}"`);
+    }
+    const unsure = (["open", "unread"] as const).map((x) => W.alreadyOffToast(x)).filter((t) => /already off/i.test(t.title) || t.variant === "success");
+    if (unsure.length > 0) closeWrong.push(`already off said over an opening or no read: ${unsure.map((t) => t.title).join(" · ")}`);
+    ok(p(L.s14), openWrong.length === 0 && closeWrong.length === 0,
+      `switch-on [${openWrong.join(" | ")}] · switch-off [${closeWrong.join(" | ")}]`);
   }
 }
 
@@ -1154,6 +1412,88 @@ if (!PROVE_RED) {
   const notesNothing = (o: StoreOpts): SettingsStore =>
     STORE.__marketingSmsSettingsForTest({ ...o, readRow: (persisted) => ({ settings: STORE.readSettingsRow(persisted).settings, dropped: [] }) });
 
+  /* ── S11's plants: each a view that hands money where it must not ── */
+  const SETTINGS_OK = { ok: true as const, settings: { ...D }, stored: false, readable: true };
+  const SETTINGS_HALF = { ok: true as const, settings: { ...D }, stored: true, readable: false };
+  const MEASURED_7 = { kind: "measured" as const, tzsPerSegment: 6, sends: 7, pairs: 6, spread: { min: 6, max: 6 }, since: iso(T0 - 24 * HOUR) };
+  /** R-S11 · the money line built for every viewer. */
+  const cardMoneyForAll: typeof VIEW.marketingSmsCardView = (i) => VIEW.marketingSmsCardView({ ...i, moneyVisible: true });
+  /** R-S11b · the form's fingerprint (which spells the money) handed to every viewer. */
+  const baseForAll: typeof VIEW.marketingSmsFormView = (i) =>
+    ({ ...VIEW.marketingSmsFormView(i), base: i.settings.ok ? PURE.settingsFingerprint(i.settings.settings) : null });
+  /** R-S11c · the measured price handed to every viewer. */
+  const measuredForAll: typeof VIEW.marketingSmsFormView = (i) => ({ ...VIEW.marketingSmsFormView(i), measuredHint: VIEW.measuredHintOf(i.measured) });
+  /** R-S11d · an owner whose own money.figures cell hides money handed the form anyway (blank boxes, never savable). */
+  const ownerAlwaysEdits: typeof VIEW.marketingSmsFormView = (i) => {
+    const v = VIEW.marketingSmsFormView(i);
+    return i.isOwner && i.settings.ok && i.settings.readable ? { ...v, editable: true, base: PURE.settingsFingerprint(i.settings.settings) } : v;
+  };
+  /** R-S11e · a record that could not be read in full shown with its values — defaults nobody chose. */
+  const halfShowsValues: typeof VIEW.marketingSmsFormView = (i) => {
+    const v = VIEW.marketingSmsFormView(i);
+    if (!i.settings.ok || i.settings.readable) return v;
+    const s = i.settings.settings;
+    return {
+      ...v, window: { startMinute: s.windowStartMinute, endMinute: s.windowEndMinute },
+      money: i.moneyVisible ? { pricePerSegmentTzs: s.pricePerSegmentTzs, codesReserveTzs: s.codesReserveTzs, campaignLimitTzs: s.campaignLimitTzs } : null,
+    };
+  };
+  /** R-S11g · what only the form prints (a save ever made, the floor) handed to a viewer who reads text. */
+  const formFactsForAll: typeof VIEW.marketingSmsFormView = (i) => {
+    const v = VIEW.marketingSmsFormView(i);
+    return i.settings.ok ? { ...v, stored: i.settings.stored, floorTzs: i.floorTzs } : v;
+  };
+  /** R-S11h · who switched it on judged by the four-digit rule alone — a phone number written in groups is shown. */
+  const groupedNumberShown: typeof VIEW.marketingSmsCardView = async (i) => {
+    const v = await VIEW.marketingSmsCardView(i);
+    if (i.live.state !== "open") return v;
+    const name = ((await i.nameOf(i.live.enabledBy)) ?? "").trim();
+    return name !== "" && !/\p{N}{4,}/u.test(name) ? { ...v, enabledByName: name } : v;
+  };
+  /** R-S11i · the money loader fails OPEN: a decider that throws is taken as a yes. */
+  const moneyFailsOpen: typeof ESTIMATE.loadSmsMoneyForViewerAs = (role, o, deps = {}) => {
+    const asked = deps.moneyVisible ?? (async () => false);
+    return ESTIMATE.loadSmsMoneyForViewerAs(role, o, { ...deps, moneyVisible: async (r) => { try { return await asked(r); } catch { return true; } } });
+  };
+  /** R-S11j · the price walked for every viewer who may read money, not only for the owner's form. */
+  const walksForEveryMoneyViewer: typeof ESTIMATE.loadSmsMoneyForViewerAs = async (role, o, deps = {}) => {
+    const r = await ESTIMATE.loadSmsMoneyForViewerAs(role, o, deps);
+    return r.visible && o.measure && !r.isOwner ? { ...r, measured: (await ESTIMATE.loadSmsMoneyForViewerAs("ADMIN", o, deps)).measured } : r;
+  };
+  const NB = String.fromCharCode(160);
+  /** R-S11m · the limits line's "TZS" no longer bound to its amount. */
+  const limitsUnbound: typeof VIEW.marketingSmsCardView = async (i) => {
+    const v = await VIEW.marketingSmsCardView(i);
+    return { ...v, limits: v.limits.split(NB).join(" ") };
+  };
+  /** R-S11n · a role that could not be read said as "not the owner". */
+  const unreadAsNotOwner: typeof VIEW.marketingSmsCardView = (i) => VIEW.marketingSmsCardView({ ...i, roleUnread: false });
+  /** R-S11o · the ops door's `by` shown as it was stored — a number included. */
+  const opsUnscreened: typeof VIEW.marketingSmsCardView = async (i) => {
+    const v = await VIEW.marketingSmsCardView(i);
+    return i.live.state === "open" && i.live.enabledBy.startsWith("ops: ") ? { ...v, enabledByName: `the ops door (${i.live.enabledBy.slice(5)})` } : v;
+  };
+  /** R-S11p · the loader forgetting that its role read failed (the owner told "only an owner can"). */
+  const unreadForgotten: typeof ESTIMATE.loadSmsMoneyForViewerAs = (role, o, deps) =>
+    ESTIMATE.loadSmsMoneyForViewerAs(role === "unread" ? null : role, o, deps);
+  /** R-S8b · the limit's refusal with "TZS" free to wrap away from its amount. */
+  const limitSentenceUnbound: typeof PURE.marketingSmsSettingsProblems = (raw, floor) => {
+    const r = PURE.marketingSmsSettingsProblems(raw, floor);
+    if (r.ok || r.problems.campaignLimitTzs === undefined) return r;
+    return { ...r, problems: { ...r.problems, campaignLimitTzs: r.problems.campaignLimitTzs.split(NB).join(" ") } };
+  };
+  /** R-S14 · a lost race said as "weren't switched on" — while another opening may stand. */
+  const raceSaidNotOn: typeof WORDS = { ...WORDS, openRefusalTitle: (r) => (r === "changed_meanwhile" ? "Marketing SMS weren't switched on" : WORDS.openRefusalTitle(r)) };
+  /** R-S14b · a switch-on that wrote and was taken back said as "weren't switched on". */
+  const takenBackSaidNotOn: typeof WORDS = { ...WORDS, openRefusalTitle: (r) => (r === "audit_failed" ? "Marketing SMS weren't switched on" : WORDS.openRefusalTitle(r)) };
+  /** R-S14c · already_open worded from the page as it was before the click — the writer's "already on" over a card that
+   *  reads it malformed, and over one that no longer reads as an opening. */
+  const alreadyFromThePage: typeof WORDS = { ...WORDS, openRefusalToast: (r, e) => ({ title: WORDS.openRefusalTitle(r), description: e }) };
+  /** R-S14d · "It was already off." over a stale row three deletes could not remove. */
+  const alreadyOffAlways: typeof WORDS = { ...WORDS, alreadyOffToast: () => ({ title: "It was already off.", variant: "success" as const }) };
+  /** R-S14e · a switch-off that could not be confirmed said as off. */
+  const closeSaidOff: typeof WORDS = { ...WORDS, closeRefusalTitle: (r) => (r === "close_unconfirmed" ? "Marketing SMS are off" : WORDS.closeRefusalTitle(r)) };
+
   const withSource = (rel: string, edit: (text: string) => string): Map<string, string> => {
     const m = new Map(SOURCES);
     m.set(rel, edit(m.get(rel) ?? ""));
@@ -1258,6 +1598,101 @@ if (!PROVE_RED) {
     { name: "R-S7c · a second caller of the settings setter", expect: /^S7 ·/,
       impl: { ...REAL, sources: withSource("scripts/live/sneak.mjs", () => `export const x = () => saveMarketingSmsSettings({}, "x");\n`) },
       landed: () => true, landedAs: "a script saves the settings" },
+    { name: "R-S7d · the switch's key named in another scripts/live drive (the exemption is by exact path, not by folder)", expect: /^S7 ·/,
+      impl: { ...REAL, sources: withSource("scripts/live/sneak-drive.mjs", () => 'const KEY = "marketing.sms.live";\n') },
+      landed: () => true, landedAs: "another drive names marketing.sms.live" },
+    { name: "R-S7e · the U49s-2 drive's loopback refusal removed", expect: /^S7 ·/,
+      impl: { ...REAL, sources: withSource(DRIVE_SRC, (t) => t.replace(DRIVE_GUARD, "if (false) {")) },
+      landed: () => (SOURCES.get(DRIVE_SRC) ?? "").includes(DRIVE_GUARD), landedAs: "the drive would write into any database" },
+    { name: "R-S6 · the settings action guarded by a staff grant, not requireOwner", expect: /^S6 ·/,
+      impl: { ...REAL, sources: withSource(ACTIONS_SRC, (t) => t.replace('await requireOwner("marketingSmsSettings")', 'await requireStaff("ops")')) },
+      landed: () => (SOURCES.get(ACTIONS_SRC) ?? "").includes('await requireOwner("marketingSmsSettings")'), landedAs: "a staff grant can save the settings" },
+    { name: "R-S6b · the switch-on action reads who switched it on from the form", expect: /^S6 ·/,
+      impl: { ...REAL, sources: withSource(ACTIONS_SRC, (t) => t.replace('openMarketingLiveSwitch({ actorId: session.userId, via: "card"', 'openMarketingLiveSwitch({ actorId: String(formData.get("enabledBy") ?? session.userId), via: "card"')) },
+      landed: () => (SOURCES.get(ACTIONS_SRC) ?? "").includes('openMarketingLiveSwitch({ actorId: session.userId, via: "card"'), landedAs: "a posted enabledBy names the opener" },
+    { name: "R-S6c · the switch-off action takes and reads a form", expect: /^S6 ·/,
+      impl: { ...REAL, sources: withSource(ACTIONS_SRC, (t) => t
+        .replace("closeMarketingLiveSwitchAction(): Promise", "closeMarketingLiveSwitchAction(formData?: FormData): Promise")
+        .replace('closeMarketingLiveSwitch({ actorId: session.userId, via: "card" })', 'closeMarketingLiveSwitch({ actorId: session.userId, via: "card", by: String(formData?.get("by") ?? "") })')) },
+      landed: () => (SOURCES.get(ACTIONS_SRC) ?? "").includes("closeMarketingLiveSwitchAction(): Promise"), landedAs: "a posted field reaches the stop" },
+    { name: "R-S6d · an await hoisted above requireOwner in the switch-on action", expect: /^S6 ·/,
+      impl: { ...REAL, sources: withSource(ACTIONS_SRC, (t) => t.replace(
+        'const session = await requireOwner("marketingLiveSwitch");\n  const minutes = minutesOf(formData);',
+        'await Promise.resolve();\n  const session = await requireOwner("marketingLiveSwitch");\n  const minutes = minutesOf(formData);')) },
+      landed: () => (SOURCES.get(ACTIONS_SRC) ?? "").includes('const session = await requireOwner("marketingLiveSwitch");\n  const minutes = minutesOf(formData);'),
+      landedAs: "something runs before the owner is checked" },
+    { name: "R-S6e · the switch-on action reads the whole form", expect: /^S6 ·/,
+      impl: { ...REAL, sources: withSource(ACTIONS_SRC, (t) => t.replace("const minutes = minutesOf(formData);", "const minutes = minutesOf(formData);\n  const posted = Object.fromEntries(formData);")) },
+      landed: () => (SOURCES.get(ACTIONS_SRC) ?? "").includes("const minutes = minutesOf(formData);"), landedAs: "every posted field is read" },
+    { name: "R-S11 · the money line rendered for every viewer", expect: /^S11 ·/, impl: { ...REAL, cardView: cardMoneyForAll },
+      landed: async () => (await cardMoneyForAll({ live: { state: "closed", why: "absent" }, settings: SETTINGS_OK, moneyVisible: false, isOwner: false, now: T0, nameOf: async () => null })).limits.includes("TZS"),
+      landedAs: "a viewer without money is shown TZS" },
+    { name: "R-S11b · the form's fingerprint handed to every viewer", expect: /^S11 ·/, impl: { ...REAL, formView: baseForAll },
+      landed: () => (baseForAll({ settings: SETTINGS_OK, moneyVisible: false, isOwner: false, floorTzs: 50, measured: null }).base ?? "").includes("20000"),
+      landedAs: "the fingerprint spells the reserve to a viewer without money" },
+    { name: "R-S11c · the measured price handed to every viewer", expect: /^S11 ·/, impl: { ...REAL, formView: measuredForAll },
+      landed: () => (measuredForAll({ settings: SETTINGS_OK, moneyVisible: false, isOwner: false, floorTzs: 50, measured: MEASURED_7 }).measuredHint ?? "").includes("TZS 6"),
+      landedAs: "a viewer without money reads the measured price" },
+    { name: "R-S11d · an owner whose money.figures cell hides money handed the form anyway", expect: /^S11 ·/, impl: { ...REAL, formView: ownerAlwaysEdits },
+      landed: () => ownerAlwaysEdits({ settings: SETTINGS_OK, moneyVisible: false, isOwner: true, floorTzs: 50, measured: null }).editable,
+      landedAs: "a form with blank money boxes that can never save" },
+    { name: "R-S11e · a record that could not be read in full shown with its values", expect: /^S11 ·/, impl: { ...REAL, formView: halfShowsValues },
+      landed: () => halfShowsValues({ settings: SETTINGS_HALF, moneyVisible: true, isOwner: true, floorTzs: 50, measured: null }).money !== null,
+      landedAs: "defaults nobody chose shown as the owner's values" },
+    { name: "R-S11f · the page asks the money decider itself", expect: /^S11 ·/,
+      impl: { ...REAL, sources: withSource(PAGE_SRC, (t) => t.replace('loadSmsMoneyForViewer({ measure: tab === "marketing-sms" })', '(async () => ({ visible: await campaignMoneyVisible("ADMIN"), measured: null }))()')) },
+      landed: () => (SOURCES.get(PAGE_SRC) ?? "").includes('loadSmsMoneyForViewer({ measure: tab === "marketing-sms" })'), landedAs: "the page decides money on its own" },
+    { name: "R-S11g · what only the form prints handed to a viewer who reads text", expect: /^S11 ·/, impl: { ...REAL, formView: formFactsForAll },
+      landed: () => formFactsForAll({ settings: SETTINGS_OK, moneyVisible: true, isOwner: false, floorTzs: 50, measured: null }).stored !== null,
+      landedAs: "a text viewer is told whether the documented defaults are in force" },
+    { name: "R-S11h · a phone number written in groups shown as who switched it on", expect: /^S11 ·/, impl: { ...REAL, cardView: groupedNumberShown },
+      landed: async () => (await groupedNumberShown({
+        live: { state: "open", enabledBy: "usr_owner", enabledAt: iso(T0 - HOUR), closesAt: iso(T0 + HOUR) }, settings: SETTINGS_OK,
+        moneyVisible: true, isOwner: true, now: T0, nameOf: async () => "+255 712 345 678",
+      })).enabledByName === "+255 712 345 678",
+      landedAs: "every viewer of the card reads an owner's phone number" },
+    { name: "R-S11i · the money loader fails open on a decider that throws", expect: /^S11 ·/, impl: { ...REAL, moneyFor: moneyFailsOpen },
+      landed: async () => (await moneyFailsOpen("GROWTH", { measure: false }, { moneyVisible: async () => { throw new Error("down"); } })).visible,
+      landedAs: "a decider that is down shows money to anyone" },
+    { name: "R-S11j · the price walked for every viewer who may read money", expect: /^S11 ·/, impl: { ...REAL, moneyFor: walksForEveryMoneyViewer },
+      landed: async () => (await walksForEveryMoneyViewer("COMPLIANCE", { measure: true }, {
+        moneyVisible: async () => true, recentSends: async () => [], provider: () => "console", now: () => T0,
+      })).measured !== null,
+      landedAs: "a money viewer's render walks the send history for a figure it never shows" },
+    { name: "R-S11k · the owner read by the page apart from the loader's answer", expect: /^S11 ·/,
+      impl: { ...REAL, sources: withSource(PAGE_SRC, (t) => t.split("isOwner: smsMoney.isOwner,").join("isOwner: pageReadsOwner,")) },
+      landed: () => (SOURCES.get(PAGE_SRC) ?? "").split("isOwner: smsMoney.isOwner,").length === 3, landedAs: "two role reads that can disagree" },
+    { name: "R-S11l · a file in src/app calls the loader's role-taking twin", expect: /^S11 ·/,
+      impl: { ...REAL, sources: withSource(ACTIONS_SRC, (t) => `${t}\nexport const ownersMoney = () => loadSmsMoneyForViewerAs("ADMIN", { measure: true });\n`) },
+      landed: () => (SOURCES.get(ACTIONS_SRC) ?? "") !== "", landedAs: "a role handed in by a page" },
+    { name: "R-S11m · the limits line's TZS free to wrap away from its amount", expect: /^S11 ·/, impl: { ...REAL, cardView: limitsUnbound },
+      landed: async () => (await limitsUnbound({ live: { state: "closed", why: "absent" }, settings: SETTINGS_OK, moneyVisible: true, isOwner: true, now: T0, nameOf: async () => null })).limits.startsWith("TZS 6 per SMS"),
+      landedAs: "a phone wraps 'TZS' away from 6" },
+    { name: "R-S11n · a role that could not be read said as not the owner", expect: /^S11 ·/, impl: { ...REAL, cardView: unreadAsNotOwner },
+      landed: async () => !(await unreadAsNotOwner({ live: { state: "closed", why: "absent" }, settings: SETTINGS_OK, moneyVisible: false, isOwner: false, roleUnread: true, now: T0, nameOf: async () => null })).roleUnread,
+      landedAs: "the owner told only an owner can, on a blip" },
+    { name: "R-S11o · the ops door's by shown unscreened", expect: /^S11 ·/, impl: { ...REAL, cardView: opsUnscreened },
+      landed: async () => (await opsUnscreened({
+        live: { state: "open", enabledBy: "ops: 0712 345 678", enabledAt: iso(T0 - HOUR), closesAt: iso(T0 + HOUR) }, settings: SETTINGS_OK,
+        moneyVisible: true, isOwner: true, now: T0, nameOf: async () => null,
+      })).enabledByName === "the ops door (0712 345 678)",
+      landedAs: "a number named as who switched it on" },
+    { name: "R-S11p · the loader forgetting its role read failed", expect: /^S11 ·/, impl: { ...REAL, moneyFor: unreadForgotten },
+      landed: async () => !(await unreadForgotten("unread", { measure: false }, {})).roleUnread, landedAs: "a blip said as not the owner" },
+    { name: "R-S8b · the limit's refusal with TZS free to wrap", expect: /^S8 ·/, impl: { ...REAL, problems: limitSentenceUnbound },
+      landed: () => { const r = limitSentenceUnbound({ pricePerSegmentTzs: 6, codesReserveTzs: 20_000, campaignLimitTzs: 99, windowStartMinute: 480, windowEndMinute: 1200 }, 50); return !r.ok && (r.problems.campaignLimitTzs ?? "").includes("TZS 100"); },
+      landedAs: "the limit's refusal wraps 'TZS' away from 100" },
+    { name: "R-S14 · a lost race said as weren't switched on", expect: /^S14 ·/, impl: { ...REAL, words: raceSaidNotOn },
+      landed: () => raceSaidNotOn.openRefusalTitle("changed_meanwhile") === "Marketing SMS weren't switched on", landedAs: "'not on' while another opening may stand" },
+    { name: "R-S14b · a switch-on taken back said as weren't switched on", expect: /^S14 ·/, impl: { ...REAL, words: takenBackSaidNotOn },
+      landed: () => takenBackSaidNotOn.openRefusalTitle("audit_failed") === "Marketing SMS weren't switched on", landedAs: "'never on' for a switch that read on" },
+    { name: "R-S14c · already_open worded from the page, not the read after it", expect: /^S14 ·/, impl: { ...REAL, words: alreadyFromThePage },
+      landed: () => /already on/i.test(alreadyFromThePage.openRefusalToast("already_open", LIVE.LIVE_SWITCH_REFUSAL_SENTENCE.already_open, "malformed").description),
+      landedAs: "'already on' over a card that says Off" },
+    { name: "R-S14d · It was already off. over a stale row", expect: /^S14 ·/, impl: { ...REAL, words: alreadyOffAlways },
+      landed: () => alreadyOffAlways.alreadyOffToast("stale").title === "It was already off.", landedAs: "a stored switch the owner meant to clear said gone" },
+    { name: "R-S14e · a switch-off that could not be confirmed said as off", expect: /^S14 ·/, impl: { ...REAL, words: closeSaidOff },
+      landed: () => closeSaidOff.closeRefusalTitle("close_unconfirmed") === "Marketing SMS are off", landedAs: "'off' unread" },
     { name: "R-S8 · the window's 2-hour rule removed", expect: /^S8 ·/, impl: { ...REAL, problems: noTwoHours },
       landed: () => noTwoHours({ pricePerSegmentTzs: 6, codesReserveTzs: 20_000, campaignLimitTzs: 10_000, windowStartMinute: 480, windowEndMinute: 585 }, 50).ok,
       landedAs: "a 1 h 45 window is accepted" },
