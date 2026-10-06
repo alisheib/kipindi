@@ -38,7 +38,7 @@ export function driftBetween(locked: TaxReportData, live: TaxReportData): DriftL
     { line: "On hold brought forward", locked: a.report1.broughtForwardCents, live: b.report1.broughtForwardCents, unit: "cents" },
     { line: "Commission", locked: a.tax.commission, live: b.tax.commission, unit: "tzs" },
     { line: "TRA tax", locked: a.tax.tra, live: b.tax.tra, unit: "tzs" },
-    { line: "GBT tax", locked: a.tax.gbt, live: b.tax.gbt, unit: "tzs" },
+    { line: "GBT levy", locked: a.tax.gbt, live: b.tax.gbt, unit: "tzs" },
     { line: "Total Tax payable", locked: a.tax.total, live: b.tax.total, unit: "tzs" },
   ];
   const out = lines.filter((l) => l.locked !== l.live);

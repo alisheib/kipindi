@@ -66,7 +66,7 @@ export type RateSet = {
   commissionBp: number;
   /** TRA tax as a share of Commission. The plan: 10%. */
   traBp: number;
-  /** GBT tax as a share of Commission. The plan: 5%. */
+  /** The GBT levy as a share of Commission. The plan: 5%. (Named a levy, not a tax: Ali, 2026-10-06.) */
   gbtBp: number;
 };
 

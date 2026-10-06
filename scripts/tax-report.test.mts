@@ -443,7 +443,7 @@ console.log("§13 · a lock freezes the filed figures; the documents print the s
   ok('13.10b nothing brought forward prints 0, never "-0"', Object.is(r1?.rows.find((r) => r.line === "Less: on hold brought forward")?.amount, 0));
   // Framed by Finance's two filing lines (§15): Sales less refunds 49,000 − 17,000 with its 12 − 5 tickets (§9.12), and
   // Net commission revenue 2,674 − 401.
-  eq("13.11 Report 2's lines and amounts", r2?.rows.map((r) => [r.line, r.basis, r.amount]), [["Sales less refunds · 7 tickets", "Sales − Refunds", 32_000], ["Payout (taxable reference)", "From Report 1", 20_570], ["Commission", "13% × Payout", 2_674], ["TRA tax", "10% × Commission", 267], ["GBT tax", "5% × Commission", 134], ["Total Tax payable", "TRA + GBT", 401], ["Net commission revenue", "Commission − Total Tax", 2_273]]);
+  eq("13.11 Report 2's lines and amounts", r2?.rows.map((r) => [r.line, r.basis, r.amount]), [["Sales less refunds · 7 tickets", "Sales − Refunds", 32_000], ["Payout (taxable reference)", "From Report 1", 20_570], ["Commission", "13% × Payout", 2_674], ["TRA tax", "10% × Commission", 267], ["GBT levy", "5% × Commission", 134], ["Total Tax payable", "TRA + GBT", 401], ["Net commission revenue", "Commission − Total Tax", 2_273]]);
   ok("13.12 a custom window is never filing-grade: Internal, no signature block", doc.meta.classification === "Internal" && doc.signatures === undefined, `${doc.meta.classification} · signatures ${doc.signatures?.length ?? 0}`);
   const monthDoc = D.buildTaxDocument({ ...A, period: E.monthPeriod("2026-09")! }, { generatorId: "usr_tx_gen", generatorName: "Test Officer", generatedAtMs: FAR, lock: null });
   ok("13.12b a finished, balanced month IS filing-grade: a regulator hand-off with the three-role attestation", monthDoc.meta.classification === "Regulator hand-off" && monthDoc.signatures?.length === 3 && monthDoc.signatures[0].name === "Test Officer");
@@ -777,7 +777,7 @@ console.log("§14 · day by day: each day is its own report, and the days add up
   const xDoc = D.buildTaxDocument(W, { ...gen, lock: null, layout: "xlsx" });
   const xs = xDoc.sections.find((s) => s.title === "Day by day");
   eq("14.35 the workbook carries every daily figure as its own column", xs?.columns.map((c) => c.header),
-    ["Day", "Sales", "Payout", "On hold", "Refunds", "Platform fee kept", "Less: on hold brought forward", "Difference (must be 0)", "Commission", "TRA tax", "GBT tax", "Total tax", "Bets placed"]);
+    ["Day", "Sales", "Payout", "On hold", "Refunds", "Platform fee kept", "Less: on hold brought forward", "Difference (must be 0)", "Commission", "TRA tax", "GBT levy", "Total tax", "Bets placed"]);
   eq("14.36 …Monday's row in full: the stakes brought forward subtracted, as Report 1 prints them", xs?.rows[1],
     { day: "Mon 21 Sep 2026", sales: 4_000, payout: 11_220, onHold: 4_000, refunds: 4_000, fee: 780, bf: -16_000, diff: 0, commission: 1_459, tra: 146, gbt: 73, bets: 1, tax: 219 });
   eq("14.37 …and a sum row that IS the sum: the balances left blank, the tax lines the days' own", xs?.totals,
@@ -988,11 +988,31 @@ console.log("§15 · Sales less refunds with its tickets, and Net commission rev
   ok("15.17 a month split by a rate change: Net commission revenue = Σ Commission − Σ Total tax (187,133), last, after Total Tax payable and the all-segments sums; Sales less refunds first, once",
     segs.length === 2 && segs[1].version.id === "v_mid" && names[0] === "Sales less refunds" && names.filter((n) => n === "Sales less refunds").length === 1
       && rs.at(-1)?.line === "Net commission revenue" && rs.at(-1)?.amount === 187_133 && rs.at(-1)?.amount === split.commission - split.total
-      && names.at(-2) === "Total Tax payable" && names.at(-3) === "GBT tax — all segments",
+      && names.at(-2) === "Total Tax payable" && names.at(-3) === "GBT levy — all segments",
     JSON.stringify({ names, net: rs.at(-1)?.amount, split: [split.commission, split.total] }));
 
   eq("15.18 the count's words: grouped, singular for one, and signed with U+2212 like every figure here",
     [1_074, 1, 0, -1, -37].map(D.ticketsLabel), ["1,074 tickets", "1 ticket", "0 tickets", "−1 ticket", "−37 tickets"]);
+
+  // ── The Gaming Board's line is a LEVY (Ali, 2026-10-06: "change GBT tax to GBT levy") — on every surface ──
+  const V = (await load("src/lib/server/tax-report-view.ts")) as typeof import("../src/lib/server/tax-report-view.ts");
+  type DayRow = NonNullable<typeof A.byDay>[number];
+  const dayOf = (k: string): DayRow => {
+    const s0 = at(k, "00:00"); const m = A.main;
+    return { dayKey: k, startMs: s0, endMs: s0 + 86_400_000, report1: m.report1, differenceCents: 0, balanced: true,
+      counts: { betsPlaced: m.counts.betsPlaced, payoutRecords: m.counts.payoutRecords, refundRecords: m.counts.refundRecords, betsOnHold: m.counts.betsOnHold },
+      tax: { commission: m.tax.commission, tra: m.tax.tra, gbt: m.tax.gbt, total: m.tax.total } };
+  };
+  const levyView = { ...A, period: sepW, byDay: [dayOf("2026-09-20"), dayOf("2026-09-21")] };
+  const levySurfaces: Array<[string, string]> = [
+    ["the PDF", JSON.stringify(D.buildTaxDocument(levyView, { ...gen, lock: null }))],
+    ["the workbook", JSON.stringify(D.buildTaxDocument(levyView, { ...gen, lock: null, layout: "xlsx" }))],
+    ["the CSV", D.buildTaxCsv(levyView, { generatorName: "Test Officer", generatedAtMs: FAR, lock: null, reference: "TAX-TEST" })],
+    ["the drift", JSON.stringify(V.driftBetween(A, { ...A, main: { ...A.main, tax: { ...A.main.tax, gbt: A.main.tax.gbt + 1 } } }))],
+  ];
+  ok("15.19 the Gaming Board's line reads 'GBT levy' on every surface — Report 2, By product, the workbook's day columns, the CSV's day and product rows, the drift — and 'GBT tax' nowhere",
+    levySurfaces.every(([, s]) => s.includes("GBT levy") && !/GBT tax/i.test(s)),
+    levySurfaces.map(([n, s]) => `${n}: levy ${s.includes("GBT levy")}, tax ${/GBT tax/i.test(s)}`).join(" | "));
   // To LOOK at the September sheet's lines as printed: TAX_PDF_OUT=<dir> writes the fixture's month with them.
   if (process.env.TAX_PDF_OUT) {
     const { renderPdf } = (await load("src/lib/server/reports/pdf.ts")) as typeof import("../src/lib/server/reports/pdf.ts");

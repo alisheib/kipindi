@@ -541,4 +541,47 @@ export const MUTATIONS = [
     to: "const sp = o.keepTogether ? String.fromCharCode(32) : ",
     expect: "15.7b",
   },
+  // ── The Gaming Board's line is a LEVY (Ali, 2026-10-06: "change GBT tax to GBT levy") — every surface that names it ──
+  {
+    name: "tax-report-doc.ts — Report 2 calls the GBT line a tax again",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '{ line: `GBT levy${tag}`, label: "GBT levy",',
+    to: '{ line: `GBT tax${tag}`, label: "GBT tax",',
+    expect: "15.19",
+  },
+  {
+    name: "tax-report-doc.ts — the printed By product table calls the GBT line a tax again",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: 'line("GBT levy", (x) => x.tax.gbt, false),',
+    to: 'line("GBT tax", (x) => x.tax.gbt, false),',
+    expect: "15.19",
+  },
+  {
+    name: "tax-report-doc.ts — the workbook's day columns call the GBT line a tax again",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '{ header: "GBT levy", sub: "TZS", key: "gbt"',
+    to: '{ header: "GBT tax", sub: "TZS", key: "gbt"',
+    expect: "15.19",
+  },
+  {
+    name: "tax-report-doc.ts — the CSV's product rows call the GBT line a tax again",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '[S(sec), S("GBT levy"), null, W(x.tax.gbt), null],',
+    to: '[S(sec), S("GBT tax"), null, W(x.tax.gbt), null],',
+    expect: "15.19",
+  },
+  {
+    name: "tax-report-doc.ts — the CSV's day rows call the GBT line a tax again",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: '[S(sec), S("GBT levy"), S(day), W(x.tax.gbt), null],',
+    to: '[S(sec), S("GBT tax"), S(day), W(x.tax.gbt), null],',
+    expect: "15.19",
+  },
+  {
+    name: "tax-report-view.ts — the drift calls the GBT line a tax again",
+    file: "src/lib/server/tax-report-view.ts",
+    from: '{ line: "GBT levy", locked: a.tax.gbt',
+    to: '{ line: "GBT tax", locked: a.tax.gbt',
+    expect: "15.19",
+  },
 ];

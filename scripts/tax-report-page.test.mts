@@ -12,7 +12,8 @@
  *      differ from what the officer saw), and the Owner-only acts gate on the STORED ADMIN role;
  *   §4 the dev seeder is dead in production before its first await.
  *   §5 the day-by-day card reads the view's own days, opens each through the engine, and lays out where it fits.
- *   §6 Finance's filing lines are Report 2's own rows, and withdrawals are named once, in their own definition.
+ *   §6 Finance's filing lines are Report 2's own rows, withdrawals are named once, in their own definition, and the
+ *      Rates form names the GBT levy so.
  * ⭐ EVERY CHECK HAS A CONTROL: the same predicate is run over a planted bad snippet and must REFUSE it, so
  * no check here can pass by matching nothing.
  *
@@ -45,6 +46,7 @@ const page = read("src/app/admin/tax/page.tsx");
 const route = read("src/app/api/admin/tax/export/route.ts");
 const actions = read("src/app/admin/tax/actions.ts");
 const seeder = read("src/app/api/dev-test/seed-tax-books/route.ts");
+const ratesForm = read("src/app/admin/tax/rates-form.tsx");
 
 console.log("\ntax-report-page — the surfaces of the Government Tax Report\n");
 
@@ -157,6 +159,9 @@ guard("6.2 withdrawals are never named beside Payout — deposits and withdrawal
   (s) => (s.match(/withdraw/gi) ?? []).length === 1 && s.includes('<dt className="font-semibold text-text">Deposits and withdrawals</dt>'),
   page, page.replace("Winnings paid on rounds resulted in the period.</dd>", "Winnings paid on rounds resulted in the period. Withdrawals are never included.</dd>"));
 
+guard("6.3 the rates form names the Gaming Board's rate a levy — 'GBT levy', never 'GBT tax' (Ali, 2026-10-06)",
+  (s) => s.includes('<Field label="GBT levy"') && !/GBT tax/i.test(s),
+  ratesForm, ratesForm.replace('<Field label="GBT levy"', '<Field label="GBT tax"'));
 console.log(`\ntax-report-page: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log("\nFAILED:"); for (const f of fails) console.log(`  - ${f}`); }
 process.exitCode = fails.length === 0 ? 0 : 1;

@@ -87,7 +87,7 @@ export function TaxRatesForm({ current, todayKey }: {
         <Field label="TRA tax" hint="% of Commission" dataField="tax-rate-tra">
           <Input name="tra" inputMode="decimal" size="sm" mono value={tra} onChange={(e) => setTra(e.currentTarget.value)} trailing="%" required />
         </Field>
-        <Field label="GBT tax" hint="% of Commission" dataField="tax-rate-gbt">
+        <Field label="GBT levy" hint="% of Commission" dataField="tax-rate-gbt">
           <Input name="gbt" inputMode="decimal" size="sm" mono value={gbt} onChange={(e) => setGbt(e.currentTarget.value)} trailing="%" required />
         </Field>
       </div>

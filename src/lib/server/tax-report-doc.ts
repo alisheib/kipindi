@@ -231,14 +231,14 @@ export function report2Rows(f: ProductFigures): Report2Row[] {
       { line: `Payout (taxable reference)${tag}`, label: "Payout (taxable reference)", segment, basis: "From Report 1", amount: s.payoutCents, cents: true, kind: "line" },
       { line: `Commission${tag}`, label: "Commission", segment, basis: rateLine(s.rates.commissionBp, "Payout"), amount: s.commission, cents: false, kind: "line" },
       { line: `TRA tax${tag}`, label: "TRA tax", segment, basis: rateLine(s.rates.traBp, "Commission"), amount: s.tra, cents: false, kind: "line" },
-      { line: `GBT tax${tag}`, label: "GBT tax", segment, basis: rateLine(s.rates.gbtBp, "Commission"), amount: s.gbt, cents: false, kind: "line" },
+      { line: `GBT levy${tag}`, label: "GBT levy", segment, basis: rateLine(s.rates.gbtBp, "Commission"), amount: s.gbt, cents: false, kind: "line" },
     );
   }
   if (multi) {
     rows.push(
       { line: "Commission — all segments", label: "Commission — all segments", segment: null, basis: "Sum of the lines above", amount: t.commission, cents: false, kind: "total" },
       { line: "TRA tax — all segments", label: "TRA tax — all segments", segment: null, basis: "Sum of the lines above", amount: t.tra, cents: false, kind: "total" },
-      { line: "GBT tax — all segments", label: "GBT tax — all segments", segment: null, basis: "Sum of the lines above", amount: t.gbt, cents: false, kind: "total" },
+      { line: "GBT levy — all segments", label: "GBT levy — all segments", segment: null, basis: "Sum of the lines above", amount: t.gbt, cents: false, kind: "total" },
     );
   }
   rows.push(
@@ -400,7 +400,7 @@ export function buildTaxDocument(d: TaxReportData, opts: {
         line("Check difference (must be 0)", (x) => x.reconciliation.differenceCents),
         line("Commission", (x) => x.tax.commission, false),
         line("TRA tax", (x) => x.tax.tra, false),
-        line("GBT tax", (x) => x.tax.gbt, false),
+        line("GBT levy", (x) => x.tax.gbt, false),
         line("Total Tax payable", (x) => x.tax.total, false),
       ],
     });
@@ -429,7 +429,7 @@ export function buildTaxDocument(d: TaxReportData, opts: {
           { header: "Difference (must be 0)", sub: "TZS", key: "diff", format: moneyFmt, align: "right", width: 16 },
           { header: "Commission", sub: "TZS", key: "commission", format: taxFmt, align: "right", width: 14 },
           { header: "TRA tax", sub: "TZS", key: "tra", format: taxFmt, align: "right", width: 12 },
-          { header: "GBT tax", sub: "TZS", key: "gbt", format: taxFmt, align: "right", width: 12 },
+          { header: "GBT levy", sub: "TZS", key: "gbt", format: taxFmt, align: "right", width: 12 },
           { header: "Total tax", sub: "TZS", key: "tax", format: taxFmt, align: "right", width: 12 },
           { header: "Bets placed", key: "bets", format: "integer", align: "right", width: 12 },
         ]
@@ -624,7 +624,7 @@ export function buildTaxCsv(d: TaxReportData, opts: { generatorName: string; gen
       [S(sec), S("Check difference (must be 0)"), null, N(x.reconciliation.differenceCents), null],
       [S(sec), S("Commission"), null, W(x.tax.commission), null],
       [S(sec), S("TRA tax"), null, W(x.tax.tra), null],
-      [S(sec), S("GBT tax"), null, W(x.tax.gbt), null],
+      [S(sec), S("GBT levy"), null, W(x.tax.gbt), null],
       [S(sec), S("Total Tax payable"), null, W(x.tax.total), null],
     );
   }
@@ -642,7 +642,7 @@ export function buildTaxCsv(d: TaxReportData, opts: { generatorName: string; gen
       [S(sec), S("Check difference (must be 0)"), S(day), N(x.differenceCents), null],
       [S(sec), S("Commission"), S(day), W(x.tax.commission), null],
       [S(sec), S("TRA tax"), S(day), W(x.tax.tra), null],
-      [S(sec), S("GBT tax"), S(day), W(x.tax.gbt), null],
+      [S(sec), S("GBT levy"), S(day), W(x.tax.gbt), null],
       [S(sec), S("Total Tax payable"), S(day), W(x.tax.total), null],
     );
   }

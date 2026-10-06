@@ -178,6 +178,7 @@ const refunds = await page.evaluate(() => {
 ok("1.6 the refunds-by-reason total equals Report 1's Refunds", Math.round(Number(refunds.replace(/[^0-9.]/g, "")) * 100) === rSep["Refunds"], `${refunds} vs ${rSep["Refunds"]}`);
 const r2 = await page.locator('[data-testid="tax-report-2"]').innerText();
 ok("1.7 Report 2 shows the plan's five lines and rates", /Commission/.test(r2) && /13% × Payout/.test(r2) && /10% × Commission/.test(r2) && /5% × Commission/.test(r2) && /Total Tax payable/.test(r2), r2.slice(0, 200));
+ok("1.7b the Gaming Board's line reads 'GBT levy', never 'GBT tax' (Ali, 2026-10-06)", /GBT levy/.test(r2) && !/GBT tax/i.test(r2), r2.slice(0, 300));
 await filingLinesAddUp("1.8", rSep);
 await tiles("01-month-balanced");
 
