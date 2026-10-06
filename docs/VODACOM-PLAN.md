@@ -16,17 +16,34 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-03):** S6 (the flagged shell) is in progress (§0i): WP0–WP11 are live behind the flag — the shell
+**State (2026-10-06):** S6 (the flagged shell) is in progress (§0i): WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
 the whole plan is done; production proves only that nothing changed for players. S3b (the measures baseline) is ✅: the
 old journey's funnel counts daily since 2026-10-01, and the 14-day baseline runs to 2026-10-15 (§0f). S3 (the engine)
 and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an officer approving the short titles (§0d, §0h
-point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Ali is away: every call made
-meanwhile is a numbered point in §0h.
+point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Every call made under Ali's
+delegation is a numbered point in §0h. Nothing moved here 2026-10-04 → 10-06 except main's sign-up change (`9b21bae9`),
+which rewrote §3.7: a new account now lands home on the classic site too.
 
-**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+**⏳ IN FLIGHT (2026-10-06) — A8i, taken FIRST because it is a live money defect.** PC OMEGA-COMPILE01, worktree
+`F:\kipindi-journey`, branch `vodacom-a8i` (cut from `origin/main` at `7a5bfa8a`). Another session must not start A8i.
+- **The defect (every player):** the bet confirm, the Sell confirm and the result dialog each listen for Enter on the
+  whole window, so Enter does their primary act whatever has focus — "Ghairi" included — and Enter on a dialog opened on
+  top of one (the win seal, the reality check) acts in the one underneath (§0i "Found on the way (2026-10-04)").
+- **Found while reading it, same family:** a HELD Enter or Space on the dial opens the bet confirm, whose Confirm takes
+  focus 30 ms later, and the key's auto-repeat then presses it: holding the key about half a second places the bet unseen.
+- **The fix being built:** the three window listeners go, so Enter is the focused button's own press (each dialog still
+  opens with focus on its primary, so Enter still confirms where it is pressed); `Modal` swallows a key's auto-repeat on
+  a button, link, checkbox or radio, and a repeated Enter anywhere but a textarea — one rule, `src/lib/held-key.ts`.
+  Guard `test:enter-where-pressed` with its in-process twin `red:enter-where-pressed`, and a real-browser drive.
+- **Left:** build → guards → drive (bet, Sell, the seal over a Sell confirm, held keys) → review → `test:all` → push →
+  read the deploy back → tick §0i and the board row. Then the owed A8d/A8g/A8h proof items (§0i), then WP12.
+- ⚠️ **This PC has none of the old PC's scratchpad** (`scratchpad/s6/a8-chain.sh`, `a8/copy-measured.py`,
+  `a8/parity-devonly.py`, `ticker-rearm.py`): the owed proof items in §0i must be re-derived, not resumed.
+
+**Next:** (1) S6 — A8i (⏳ above), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
