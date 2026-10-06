@@ -4,9 +4,10 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
-switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 43, U49s-1
-LIVE `34c1ea7f` — the live switch's closing time and its audited writers, and the Marketing SMS settings record (the send
-engine's first step; the card and the tab are U49s-2, ▶ NEXT). First real campaign: realistic window 18–25 October.**
+switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 44, U49s-2
+LIVE `4093dc54` — the Marketing SMS card above Admin → System's rail and the Marketing SMS tab, so U49s is whole (after
+STEP 43, U49s-1 LIVE `34c1ea7f`: the live switch's closing time, its audited writers and the settings record). ⏳ S13 in
+flight on ALI-BLADE15 (§0). First real campaign: realistic window 18–25 October.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -38,19 +39,21 @@ engine's first step; the card and the tab are U49s-2, ▶ NEXT). First real camp
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U38b — the audience card on the composer (ENGINE-SPEC §4.4: the campaign rail incl. "who": book / players /
-  both, the keyed split, the D19 floor, words on the list rows), then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order
-  (its parallel sets are §0.2): U40a → U40b → U16a → U13 → U42 → U43a → U43y → U49a → U43b → U46a → U47b → U48a →
-  (U48b) → U52a, the live drive on production.
+▶ NEXT: U16a → U43y → U43a (S13, in flight) — the three units ALI-BLADE15 built on 2026-10-04 and never pushed,
+  ported onto `main` (each re-reviewed, batteried and pushed as its own STEP) — then U38b, the audience card on the
+  composer (ENGINE-SPEC §4.4: the campaign rail incl. "who": book / players / both, the keyed split, the D19 floor,
+  words on the list rows; its builder is running), then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order (its
+  parallel sets are §0.2; its dependency column allows the three first): U40a → U40b → U13 → U42 → U49a → U43b → U46a →
+  U47b → U48a → (U48b) → U52a, the live drive on production.
   WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates):
-     1. U38b  who a campaign goes to: the audience card, its counts and the D19 floor ................. 9–15 h
-     2. U40a  the confirmation on the server: the typed count, the frozen estimate and budget .......... 7–11 h
-     3. U40b  the confirmation on screen: the modal on the composer ...................................  6–10 h
-     4. U16a  erasure, the access export and retention reach the campaign records .................... 7–11 h
-     5. U13   the 08:00–20:00 EAT send window, enforced where messages are sent .......................  4–7 h
-     6. U42   enqueue: the recipient rows, capped at the confirmed count .............................. 6–10 h
-     7. U43a  the recipient doors: claim, settle, find the stranded, requeue .......................... 9–14 h
-     8. U43y  money first: a campaign yields to bets and payouts ......................................  3–6 h
+     1. U16a  erasure, the access export and retention reach the campaign records .................... 7–11 h
+     2. U43y  money first: a campaign yields to bets and payouts ......................................  3–6 h
+     3. U43a  the recipient doors: claim, settle, find the stranded, requeue .......................... 9–14 h
+     4. U38b  who a campaign goes to: the audience card, its counts and the D19 floor ................. 9–15 h
+     5. U40a  the confirmation on the server: the typed count, the frozen estimate and budget .......... 7–11 h
+     6. U40b  the confirmation on screen: the modal on the composer ...................................  6–10 h
+     7. U13   the 08:00–20:00 EAT send window, enforced where messages are sent .......................  4–7 h
+     8. U42   enqueue: the recipient rows, capped at the confirmed count .............................. 6–10 h
      9. U49a  the credit kept for login codes, and the refusal at Start ............................... 6–10 h
     10. U43b  the send engine itself (built as U43b-1 then U43b-2) .................................... 14–22 h
     11. U46a  delivery receipts on the recipients ..................................................... 5–8 h
@@ -70,6 +73,19 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live switch), and Admin → System's marketing wordings, public policy lines and licence-outreach record (closed). ⛔ Nothing
   can send a marketing SMS yet: the engine is not built and the live switch is closed. Realistic window for the first
   real campaign: 18–25 October (told to Ali 2026-10-04, re-stated 2026-10-05).
+
+⏳ IN FLIGHT: S13 — 2026-10-06, ALI-BLADE15 (`C:\kipindi-marketing`, branch `marketing-s13` cut from `origin/main` at
+  `85866b36`; docs-only commits from `C:\kipindi-s13-docs`). Taken over ~21:50 EAT: OMEGA-COMPILE01's S12 stopped after
+  STEP 44's push — no read-back and no closing commit followed for over three hours — and Ali asked this PC to continue
+  ("if omega compile 01 is still working … let it finish, then continue; I think it stopped already"). ⛔ Another
+  session must not start or push U16a, U43y, U43a or U38b. STEP 44 READ BACK LIVE by S13: `?dpl=4093dc54` on 50pick.tz
+  and on www (18:38 UTC; the container up since ~15:35 UTC, `/api/health` ok, the database reachable and migrated).
+  S13's first three units were BUILT on this PC on 2026-10-04 (S10) and never pushed: U16a (reviewed once; its round-2
+  fixes are D10 — the 5,000 cap, read one past and said in words; D11 — another number is another person's until
+  linked; D12 — created OR sent since the account), U43y (batteried green that day, never reviewed) and U43a (static,
+  never run). All three are ported onto `main` by a three-way merge — one conflict, `dsar.ts`, where U33a-P's
+  `outreach` field sat beside U16a's fields (both kept) — and re-reviewed before each push. S10's merged worktree is
+  parked on the LOCAL branch `wip/marketing-s10-unshipped-2026-10-04` (`10b457f4`, never pushed).
 
 ✔ LAST SESSION: S12 — 2026-10-06, OMEGA-COMPILE01 (`F:\kipindi-main`, on `main`): the send engine begins (Ali: "proceed
   please, next steps until we go live, fully done and perfect"). S11's block (STEPS 40–42 — the gate track finished,
