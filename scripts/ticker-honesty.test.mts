@@ -212,15 +212,26 @@ const row = (over: Partial<TickerRow> & { id: string }): TickerRow => ({
   ok(/settledAtMs/.test(stats) && /m\.settledAt/.test(stats), "9.7 the rows carry settledAt, not just RESOLVED");
   // A VOID must not be given a netPool figure on the way out of the server module either — the
   // rule is enforced in TWO places on purpose, because this is the one that computes money.
-  ok(/resolvedOutcome\s*!==\s*"YES"\s*&&\s*m\.resolvedOutcome\s*!==\s*"NO"\)\s*return null/.test(stats),
+  // ⭐ READ THE FUNCTION, NOT THE FILE (re-armed 2026-10-04). Since 2026-09-28 (`settledNoFigureReason`, V12's
+  // fix) this file holds the guard line and the fee call TWICE, so a file-wide match stayed green with
+  // `settledAmount`'s own copy gone, and red:ticker-honesty refused cases 9 and 10 as ambiguous anchors
+  // instead of reporting them missed. 9.8 reads `settledAmount` itself; 9.9 holds every fee call in the file, and
+  // `settledAmount`'s own, to the frozen snapshot.
+  const amountAt = stats.indexOf("function settledAmount(");
+  const amountFn = amountAt < 0 ? "" : stats.slice(amountAt, stats.indexOf(String.fromCharCode(10) + "}", amountAt) + 2);
+  ok(/resolvedOutcome\s*!==\s*"YES"\s*&&\s*m\.resolvedOutcome\s*!==\s*"NO"\)\s*return null/.test(amountFn),
     "9.8 settledAmount returns null for anything that is not a YES/NO settlement");
   // ⭐ ASSERT THE VALUE THE CALL CARRIES, NOT THE SYMBOL. `chargedFee(..., ratesFor(m))` is the
   // whole rule: a bare `ratesFor(m)` anywhere in the file passed while the fee call had been
   // rewritten to `{}` (live config). `red:ticker-honesty` case 10 is the proof of this assertion.
   // ⚠️ landing v3 C1: the call is `chargedFee` (payout.ts), which mirrors settlement's refund branches —
   // `poolFee(…, resolvedOutcome)` subtracted a phantom loser-share fee from a one-sided refund.
-  ok(/chargedFee\s*\([^)]*ratesFor\s*\(\s*m\s*\)[^)]*\)/.test(stats),
-    "9.9 the fee chargedFee is GIVEN is the poll's FROZEN snapshot, never live config");
+  const FROZEN_FEE = /chargedFee\s*\([^)]*ratesFor\s*\(\s*m\s*\)[^)]*\)/g;
+  const feeCalls = stats.match(/chargedFee\s*\(/g) ?? [];
+  const frozenCalls = stats.match(FROZEN_FEE) ?? [];
+  ok(feeCalls.length >= 1 && frozenCalls.length === feeCalls.length && (amountFn.match(FROZEN_FEE) ?? []).length === 1,
+    "9.9 the fee chargedFee is GIVEN is the poll's FROZEN snapshot, never live config — every call in the file, settledAmount's own among them",
+    `${frozenCalls.length} of ${feeCalls.length} calls carry ratesFor(m); settledAmount's: ${(amountFn.match(FROZEN_FEE) ?? []).length}`);
 }
 
 /* ══════════════ 10 · THE TYPE HAS EXACTLY ONE DECLARATION ══════════════
