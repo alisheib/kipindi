@@ -7,7 +7,8 @@
  * used `useModalLock` — so several money-critical confirms (settle, kill-
  * switch, emergency-void) shipped WITHOUT the Android scroll/zoom lock, a
  * focus trap, or focus-return. This is the one source of truth: portal +
- * useModalLock + Esc + focus-trap + focus-return + kit scrim/animation.
+ * useModalLock + Esc + focus-trap + focus-return + the held-key rule (a key
+ * held down from before presses nothing, S6 A8i) + kit scrim/animation.
  *
  *   <Modal open onClose ariaLabel="…"> …custom panel content… </Modal>
  *
@@ -31,6 +32,7 @@ import { I } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
+import { swallowsHeldKey, keyTargetOf } from "@/lib/held-key";
 import { useT } from "@/lib/i18n";
 import { parseTypedCount } from "@/lib/marketing/campaign-confirm";
 
@@ -282,6 +284,11 @@ export function Modal({
       target?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
+      /* ⭐ S6 A8i · A KEY HELD DOWN FROM BEFORE PRESSES NOTHING HERE (`held-key.ts`). The focus this effect moves onto
+         `initialFocus` 30 ms after opening is where a still-held key's repeats land, so without this a held Enter or
+         Space on the bet dial opened the confirm and then pressed Confirm. A dialog acts on Enter only where it is
+         pressed: the first keydown of a press is the button's own, as everywhere else in the product. */
+      if (swallowsHeldKey(e.key, e.repeat, keyTargetOf(e.target))) { e.preventDefault(); return; }
       /* ⛔ Escape obeys the same condition the scrim does when a caller sets one. It is still
          swallowed either way: a refused Escape that bubbled would close the dialog's own parent
          surface instead, which is a worse answer than nothing happening. */
