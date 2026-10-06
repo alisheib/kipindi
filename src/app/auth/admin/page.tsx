@@ -12,6 +12,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { startLoginAction } from "@/app/auth/login/actions";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { isStaffRole } from "@/lib/server/roles";
+import { isAdminPath, sanitizeNext } from "@/lib/safe-next";
 
 export const metadata = { title: "Admin sign in · Kuingia" };
 export const dynamic = "force-dynamic";
@@ -19,9 +20,11 @@ export const dynamic = "force-dynamic";
 // RBAC: any staff role may open the console (see isStaffRole).
 
 export default async function AdminLoginPage({ searchParams }: { searchParams?: Promise<{ next?: string }> }) {
-  const nextRaw = (await searchParams)?.next ?? "";
-  // Open-redirect safety: only /admin paths may round-trip.
-  const next = nextRaw.startsWith("/admin") && !nextRaw.startsWith("//") && !nextRaw.startsWith("/auth") ? nextRaw : "";
+  // Open-redirect safety: only an /admin path may round-trip — the platform's one same-origin rule (safe-next.ts), then the
+  // console's own (isAdminPath), never a hand-written prefix test.
+  const nextRaw = ((await searchParams)?.next ?? "").trim();
+  const nextSafe = sanitizeNext(nextRaw);
+  const next = isAdminPath(nextSafe) ? nextSafe : "";
 
   const session = await currentSession();
   if (session) {
@@ -79,7 +82,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
               <p className="font-display font-semibold text-text">
                 For 50pick staff accounts only
               </p>
-              <p>Step 1: phone OTP. Step 2: 6-digit authenticator code (RFC 6238). Both events audited.</p>
+              <p>Step 1: phone and password. Step 2: 6-digit authenticator code (RFC 6238). Both events audited.</p>
             </div>
           </div>
 

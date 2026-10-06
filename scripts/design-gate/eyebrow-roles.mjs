@@ -218,7 +218,6 @@ export const NOT_EYEBROW = new Map([
   ["app/auth/admin/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap\"> ↵ Staff · Confidential", "STATUS_CHIP"],
   ["app/auth/forgot-password/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
   ["app/auth/login/page.tsx :: className=\"font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
-  ["app/auth/otp/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors\" ↵ >", "CONTROL_LABEL"],
   ["app/auth/otp/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors\" ↵ >", "CONTROL_LABEL"],
   ["app/auth/reset-password/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
   ["app/global-error.tsx :: textTransform: \"uppercase\", ↵ letterSpacing: \"0.20em\",", "CELEBRATION"],

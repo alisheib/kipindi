@@ -241,10 +241,10 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   // Swahili tick was stored as the English sentence. ⭐ Each form now posts the language it was drawn
   // in, the action validates it (`renderedLocaleOf`), and the cookie is only the fallback.
   const s = impl.sources;
-  ok(p("7 · the register actions record the language the form posts as DRAWN (validated), the cookie only as fallback, on BOTH paths"),
+  // (2026-10-06: the one-time-code sign-up was deleted — registerWithPassword is the one sign-up door.)
+  ok(p("7 · the register action records the language the form posts as DRAWN (validated), the cookie only as fallback - the one sign-up door"),
     /renderedLocaleOf\(formData\.get\("shownLocale"\)\)\s*\?\?\s*messagingLocaleOf\(\(await getServerT\(\)\)\.locale\)/.test(s.registerActions)
-      && /registerWithPassword\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions)
-      && /requestRegisterOtp\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions));
+      && /registerWithPassword\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions));
   ok(p("7a · ⭐ the sign-up form posts the language it was drawn in — a hidden shownLocale from the same getServerT() that drew its label"),
     /const \{ t, locale \} = await getServerT\(\)/.test(s.registerPage)
       && /<input type="hidden" name="shownLocale" value=\{locale\} \/>/.test(s.registerPage));
@@ -266,7 +266,7 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   ok(p("7e · ⛔ EXECUTED · a posted language counts only as exactly en / sw / zh — case, padding and free text are refused"),
     wrongRendered.length === 0, wrongRendered.join(" | "));
   ok(p("7c · ⛔ no registration site in auth-service writes a literal \"SW\" locale any more"),
-    !/\blocale:\s*"SW"\s*,/.test(s.authService) && (s.authService.match(/messagingLocaleOf\(/g) ?? []).length >= 5,
+    !/\blocale:\s*"SW"\s*,/.test(s.authService) && (s.authService.match(/messagingLocaleOf\(/g) ?? []).length >= 2,
     `${(s.authService.match(/messagingLocaleOf\(/g) ?? []).length} messagingLocaleOf call(s)`);
 
   // ── 8 · OQ11 · THE SENTENCES THE GATE COUNTS ───────────────────────────────────────────────
@@ -457,7 +457,7 @@ if (!PROVE_RED) {
     {
       name: "🔴 D2 · the register action reads only the cookie at submit again — a Swahili tick stored as English once the provider rewrote it",
       phone: "0712345611",
-      expect: "7 · the register actions record the language the form posts as DRAWN (validated), the cookie only as fallback, on BOTH paths",
+      expect: "7 · the register action records the language the form posts as DRAWN (validated), the cookie only as fallback - the one sign-up door",
       impl: { ...REAL, sources: { ...REAL_SOURCES, registerActions: REAL_SOURCES.registerActions.replace('renderedLocaleOf(formData.get("shownLocale")) ?? ', "") } },
     },
     {

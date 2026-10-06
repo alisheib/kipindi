@@ -121,6 +121,43 @@ ok(
   );
 }
 
+// ── 2b. A CLOSED account is told it is CLOSED — and only after the password ─
+// B4 (route audit 2026-10-06): the gate answered CLOSED exactly like SUSPENDED, so sign-in showed "blocked" to a player
+// who had closed their own account, while every other surface says "closed". The `accountClosed` token rides only on
+// the refusal that FOLLOWS the password — a stranger with a wrong password learns nothing, exactly as in §2.
+const register = async (phone: string, email: string) => {
+  try {
+    await registerWithPassword({
+      phone, email, password: PW, passwordConfirm: PW, dob: "1990-01-01", acceptTerms: true, acceptAge: true,
+    } as never);
+  } catch { /* reached session creation ⇒ the account exists */ }
+  return db.user.findByPhone(phone);
+};
+const CLOSED = "+255700900202";
+const closedUser = await register(CLOSED, "enum.closed@50pick.tz");
+ok("2b fixture: the account to close was registered", !!closedUser);
+const closedOf = (r: unknown) => (r as { detail?: { accountClosed?: boolean } }).detail?.accountClosed === true;
+await db.user.update(closedUser!.id, { status: "CLOSED", closedAt: new Date().toISOString() } as never);
+const closedWrongPw = await loginWithPassword({ identifier: CLOSED, password: "still-wrong-closed" });
+ok(
+  "2b a CLOSED account with the WRONG password looks like any other wrong password — not SUSPENDED, no accountClosed (no oracle)",
+  !closedWrongPw.ok && (closedWrongPw as { code?: string }).code !== "SUSPENDED" && !closedOf(closedWrongPw),
+  JSON.stringify(closedWrongPw),
+);
+const closedRightPw = await loginWithPassword({ identifier: CLOSED, password: PW });
+ok(
+  "2b …with the CORRECT password it is refused SUSPENDED and told it is CLOSED (detail.accountClosed)",
+  !closedRightPw.ok && (closedRightPw as { code?: string }).code === "SUSPENDED" && closedOf(closedRightPw),
+  JSON.stringify(closedRightPw),
+);
+await db.user.update(closedUser!.id, { status: "SUSPENDED", closedAt: null } as never);
+const suspendedRightPw = await loginWithPassword({ identifier: CLOSED, password: PW });
+ok(
+  "2b control: a SUSPENDED account with the correct password is refused SUSPENDED and NOT told it is closed",
+  !suspendedRightPw.ok && (suspendedRightPw as { code?: string }).code === "SUSPENDED" && !closedOf(suspendedRightPw),
+  JSON.stringify(suspendedRightPw),
+);
+
 // ── 3. Timing: an unknown identifier must still cost a password verify ─────
 const t = async (fn: () => Promise<unknown>) => {
   const s = process.hrtime.bigint();

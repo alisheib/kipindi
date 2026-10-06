@@ -1770,7 +1770,6 @@ const EXTERNAL: ReadonlyArray<{ route: string; file: string; cite: string; why: 
   { route: "/agent/invite/[token]", file: "src/lib/server/agent-application-service.ts", cite: "/agent/invite/${token}", why: "an officer's invitation, sent by email" },
   { route: "/auth/reset-password", file: "src/lib/server/password-reset.ts", cite: "/auth/reset-password?token=", why: "the reset link, sent by email" },
   { route: "/auth/verify-email", file: "src/lib/server/email-verification.ts", cite: "/auth/verify-email?token=", why: "the confirmation link, sent by email" },
-  { route: "/auth/admin", file: PROXY_FILE, cite: '"/auth/admin"', why: "the staff sign-in the edge sends the console's visitors to" },
   { route: "/s", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "a marketing SMS's opt-out link that lost its token" },
   { route: "/s/[token]", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "the opt-out link in every marketing SMS" },
   { route: "/offline", file: "public/sw.js", cite: 'OFFLINE_URL = "/offline"', why: "the service worker's offline fallback" },

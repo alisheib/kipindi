@@ -1,11 +1,8 @@
 /**
- * Auth service — phone + OTP only (no passwords initially per TZ market norms).
- * Compliance:
- *  - OTP is 6 digits, hashed at rest, 5-minute TTL, 5-attempt cap, single-use.
- *  - Rate limited per phone + per IP.
- *  - Every event audited (AUTH category).
- *  - Age gate enforced at registration (Gaming Act 2003).
- *  - Terms version recorded with timestamp.
+ * Auth service - phone + password sign-up and sign-in (every form) and a dormant one-time-code SIGN-IN (otp-door.ts; no
+ * form offers it). Compliance: codes are 6 digits, hashed at rest, 5-minute TTL, 5-attempt cap, single-use; rate limited
+ * per phone and per IP; every event audited; age gate at registration (Gaming Act 2003); terms version recorded with
+ * timestamp.
  */
 import { headers } from "next/headers";
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
@@ -149,7 +146,7 @@ type SignInRefusal = { ok: false; error: string; code: "SUSPENDED"; detail?: Fai
 
 async function assertSignInAllowed(user: { id: string; status: string }): Promise<SignInRefusal | null> {
   if (user.status === "SUSPENDED" || user.status === "CLOSED") {
-    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED" };
+    return { ok: false, error: "Account unavailable. Contact support.", code: "SUSPENDED", ...(user.status === "CLOSED" ? { detail: { accountClosed: true } } : {}) };
   }
   if (user.status !== "SELF_EXCLUDED") return null;
 
@@ -221,11 +218,8 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
 
   const user = await db.user.findByPhone(phone);
   if (!user) {
-    // Surface the missing-account state so the login page can offer a
-    // direct "Create account" path. Anti-enumeration is not load-bearing
-    // for this product — phone numbers aren't private and registration
-    // is one-step OTP, so revealing whether a phone is signed up trades
-    // off acceptably for usability.
+    // Existence is still answered here (NOT_FOUND); the password door is enumeration-neutral, and this door must become
+    // so before any form offers it (docs/BLACKBALL-SMS.md section 7 step 6; docs/FLOWS.md section 8a).
     audit({ category: "SECURITY", action: "otp.send_to_unknown_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip, userAgent: meta.ua });
     return { ok: false, error: "No account with that phone. Create one to get started.", code: "NOT_FOUND" };
   }
@@ -258,43 +252,6 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
   // Both buckets were spent above; a send that never happens must return them.
   return await issueOtp(phone, "login", meta, ["otp.send", "otp.resend"]);
 }
-
-/** Register a new account — OTP-driven. Returns OTP id. */
-export async function requestRegisterOtp(
-  // D2 · `locale` — the language the form was SHOWN in (the action reads the form's own `shownLocale` field, the cookie as fallback). Carried
-  // to verification so the ledger row and `User.locale` say what the person actually read.
-  input: z.input<typeof RegisterSchema> & { locale?: MessagingLocale },
-): Promise<ServiceResult<{ otpId: string; phone: string; expiresAt: string }>> {
-  const parse = RegisterSchema.safeParse(input);
-  if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
-  const meta = await clientMeta();
-  const phone = parse.data.phone;
-
-  const rl = await rateCheckAsync(phone, "auth.register");
-  if (!rl.allowed) return { ok: false, error: "Too many attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
-
-  const existing = await db.user.findByPhone(phone);
-  if (existing) {
-    audit({ category: "AUTH", action: "register.duplicate_phone", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), ip: meta.ip });
-    return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
-  }
-
-  const issued = await issueOtp(phone, "register", meta, ["auth.register"]);
-  if (!issued.ok) return issued;
-  // Stash registration intent (DOB, terms) so OTP verify can finalize
-  pendingRegistration.set(phone, { dob: parse.data.dob, marketingOptIn: parse.data.marketingOptIn ?? false, locale: messagingLocaleOf(input.locale) });
-  return { ok: true, data: { otpId: issued.data!.otpId, phone, expiresAt: issued.data!.expiresAt } };
-}
-
-// Stash registration intent (DOB, terms) between requestRegisterOtp and the
-// follow-up verifyOtpAndAuth call. Persisted on globalThis so Next.js dev-mode
-// HMR doesn't wipe the entry between the two requests.
-declare global {
-  // eslint-disable-next-line no-var
-  var __50PICK_PENDING_REG: Map<string, { dob: string; marketingOptIn: boolean; locale?: MessagingLocale }> | undefined;
-}
-const pendingRegistration: Map<string, { dob: string; marketingOptIn: boolean; locale?: MessagingLocale }> =
-  globalThis.__50PICK_PENDING_REG ?? (globalThis.__50PICK_PENDING_REG = new Map());
 
 /**
  * Mint an OTP and get it to the handset.
@@ -442,7 +399,7 @@ async function applyTestFloat(userId: string): Promise<void> {
 }
 
 /**
- * ⛔ THE LIVE-MONEY STARTER-BALANCE CLAMP — ONE definition, used by BOTH registration paths.
+ * ⛔ THE LIVE-MONEY STARTER-BALANCE CLAMP — ONE definition, used by the registration door.
  *
  * A starter balance is written straight onto the wallet with NO ledger entry, so every shilling
  * it creates is money minted from nothing and the wallet↔ledger trial balance breaks by exactly
@@ -460,11 +417,19 @@ async function applyTestFloat(userId: string): Promise<void> {
 function clampStarterBalanceForLiveMoney(requestedTzs: number): number {
   return isLiveMoneyMode() ? 0 : requestedTzs;
 }
-/** Step 2: verify OTP, create or sign in user, set session cookie. */
-export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): Promise<ServiceResult<{ userId: string; isNew: boolean }>> {
+/**
+ * Step 2 of the one-time-code SIGN-IN. Sign-in only: a code never creates an account (registerWithPassword is the one place a
+ * player account is born, since 2026-10-06). The purpose is the server's: this mints a session, so it consumes a LOGIN code
+ * and nothing else. The code stands in for the PASSWORD only: a two-step account still answers its authenticator, and a
+ * staff account still gives its password.
+ */
+export async function verifyOtpAndAuth(
+  input: z.input<typeof OtpVerifySchema>,
+): Promise<ServiceResult<{ userId: string; role: string; twoFactorRequired?: boolean; passwordRequired?: boolean }>> {
   const parse = OtpVerifySchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
-  const { phone, code, purpose } = parse.data;
+  const { phone, code } = parse.data;
+  const purpose = "login" as const;
   const meta = await clientMeta();
 
   const rl = await rateCheckAsync(phone, "otp.verify");
@@ -505,148 +470,43 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
   // Consume the matched OTP (and all others for this phone+purpose to prevent reuse)
   for (const o of allActive) await db.otp.consume(o.id);
 
-  // Find or create user
-  let user = await db.user.findByPhone(phone);
-  let isNew = false;
-  if (!user) {
-    if (purpose !== "register") {
-      return { ok: false, error: "Account not found.", code: "NOT_FOUND" };
-    }
-    const reg = pendingRegistration.get(phone);
-    if (!reg) return { ok: false, error: "Registration session expired.", code: "EXPIRED" };
-    pendingRegistration.delete(phone);
-
-    user = await db.user.create({
-      id: `usr_${randomId(12)}`,
-      phoneE164: phone,
-      email: null,
-      passwordHash: null,
-      passwordSalt: null,
-      failedLoginCount: 0,
-      lockedUntil: null,
-      role: "PLAYER",
-      // ACTIVE, not PENDING_KYC (2026-09-13) — see the password path below for why.
-      status: "ACTIVE",
-      // D2 · the language the sign-up form was shown in (SW when unknown), not a literal.
-      locale: messagingLocaleOf(reg.locale),
-      displayName: null,
-      dob: reg.dob,
-      region: null,
-      acceptedTermsVersion: TERMS_VERSION,
-      acceptedTermsAt: new Date().toISOString(),
-      marketingOptIn: reg.marketingOptIn,
-      twoFactorEnabled: false,
-      avatarDataUrl: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastLoginAt: new Date().toISOString(),
-      closedAt: null,
-    });
-    // U6 · THE CONSENT LEDGER ROW FOR A TICKED BOX (D8).
-    // ⛔ ONLY WHEN THEY TICKED IT. An unticked box is not a withdrawal — it is the absence
-    // of consent, and writing a WITHDRAWN row for it would invent a decision this person
-    // never made. U7's gate reads "no row" as "no consent" — the same answer, without the
-    // fiction. ⛔ Zero backfill (OD8): nothing here reaches back over existing accounts.
-    if (reg.marketingOptIn === true) {
-      await appendMarketingConsent({
-        phoneE164: phone,
-        // ⛔ D2 · the language the form was SHOWN in. A literal "SW" here recorded every EN/ZH
-        // registrant as having read the Swahili sentence (2026-09-25 → the fix).
-        locale: messagingLocaleOf(reg.locale),
-        status: "GIVEN",
-        source: "REGISTRATION",
-        site: "REGISTRATION",
-        evidence: TERMS_VERSION,
-        recordedBy: null,
-      });
-    }
-
-    // Auto-create wallet — starter balance is the admin-tunable
-    // `starterBalanceTzs` config knob; defaults to 0 (no free funds).
-    //
-    // 🔴 THE LIVE-MONEY CLAMP WAS MISSING HERE, ON ONE OF TWO REGISTRATION PATHS (fixed
-    // 2026-09-07). `registerWithPassword` states the rule as absolute — *"In LIVE money mode
-    // BOTH sources are forced to 0 … so no env var or config row can mint"* — and explains the
-    // cost: a starter balance has no ledger entry, so every shilling it creates is money minted
-    // from nothing and the wallet↔ledger trial balance breaks by exactly that amount,
-    // permanently. This path read the same config knob and applied no clamp, so an operator who
-    // set `starterBalanceTzs` would mint free funds on live money for every OTP registration
-    // while the password path correctly refused. ⛔ A money rule enforced on one of two doors is
-    // not a rule; it is a coin flip on which door the player used.
-    const { db: dbRef } = await import("./store");
-    const { getEffectiveConfig } = await import("./market-config");
-    const starterBalance = clampStarterBalanceForLiveMoney((await getEffectiveConfig()).starterBalanceTzs ?? 0);
-    // MUST await: under the Prisma DAL this is a real INSERT. Un-awaited, the
-    // wallet row races the redirect — a brand-new user could land on /wallet or
-    // place a first bet before the row exists and hit "Wallet not found".
-    await dbRef.wallet.create({
-      id: `wlt_${randomId(12)}`,
-      userId: user.id,
-      balance: starterBalance, pending: 0, hold: 0,
-      currency: "TZS", status: "ACTIVE",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    if (starterBalance > 0) {
-      const { audit: auditFn } = await import("./audit");
-      auditFn({
-        category: "WALLET",
-        action: "wallet.starter_credit",
-        actorId: user.id,
-        targetType: "Wallet",
-        targetId: user.id,
-        payload: { amount: starterBalance },
-      });
-    }
-
-    // ⭐ EVERY CLIENT IS A CONTACT (owner, 2026-10-03): the number joins the marketing book, linked to this account —
-    // AFTER the account row and the ledger row above, so the book's consent cache mirrors the tick (a ticked box reads
-    // GIVEN, an unticked one UNKNOWN; `marketing/registration-contact.ts`), and after the wallet, so the money comes
-    // first. ⛔ It never fails and never holds the sign-up: outside any lock, bounded, and a failure is logged with no
-    // number — `scripts/live/backfill-registration-contacts.mts` repairs a miss. It writes no ledger row: OD8 stands.
-    await registrationContactAtSignup(user);
-
-    audit({ category: "AUTH", action: "user.registered", actorId: user.id, targetType: "User", targetId: user.id, payload: { phone: maskPhoneForAudit(phone) } });
-    isNew = true;
-    // Welcome email — parity with the password registration path. Best-effort;
-    // no-ops cleanly when an OTP-only user has no email on file yet.
-    sendEmailToUser(user.id, (email) => ({
-      to: email,
-      subject: "Welcome to 50pick · Karibu",
-      html: welcomeHtml({ name: displayLabel(user!) }),
-      tag: "welcome",
-    })).catch(() => {});
-  } else {
-    // 🔴 E-240 — THIS IS THE PATH THAT HAD NO GATE AT ALL. Everything below mints a session
-    // for an EXISTING user, and until now it never read `status`, so the OTP door readmitted a
-    // self-excluded player that the password door refused. Nothing above this line has minted
-    // anything; refusing here is refusing before the session exists.
-    const otpGate = await assertSignInAllowed(user);
-    if (otpGate) return otpGate;
-    await db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
-    audit({ category: "AUTH", action: "user.login", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
-    // New sign-in security email — parity with the password login path.
-    sendEmailToUser(user.id, (email) => ({
-      to: email,
-      subject: "New sign-in to your 50pick account",
-      html: loginNotificationHtml({
-        name: displayLabel(user!),
-        time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }),
-        ip: meta.ip ?? "unknown",
-      }),
-      tag: "login-otp",
-    })).catch(() => {});
+  const user = await db.user.findByPhone(phone);
+  if (!user) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };
+  // 🔴 E-240 — THIS IS THE PATH THAT HAD NO GATE AT ALL. Everything below mints a session
+  // for an EXISTING user, and until now it never read `status`, so the OTP door readmitted a
+  // self-excluded player that the password door refused. Nothing above this line has minted
+  // anything; refusing here is refusing before the session exists.
+  const otpGate = await assertSignInAllowed(user);
+  if (otpGate) return otpGate;
+  // A staff account never gets a session from a code. Production runs DISABLE_ADMIN_TOTP=true, so the console sits behind the
+  // password alone; possession is already proven, so saying so discloses nothing. Fail closed: anything that is not PLAYER
+  // or AGENT counts as staff, the same test the sign-in actions use.
+  if (user.role !== "PLAYER" && user.role !== "AGENT") {
+    audit({ category: "SECURITY", action: "auth.otp.staff_password_required", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
+    return { ok: true, data: { userId: user.id, role: user.role, passwordRequired: true } };
   }
-
-  await createSession({
-    userId: user.id,
-    phoneE164: user.phoneE164,
-    role: user.role,
-    kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED",
-  });
+  await db.user.update(user.id, { lastLoginAt: new Date().toISOString() });
+  audit({ category: "AUTH", action: "user.login", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, userAgent: meta.ua });
+  // The code replaces the password, never the second factor: the same gate, in the same place, as the password door;
+  // completeTwoFactorLogin creates the session after the authenticator code.
+  if (await is2faEnabled(user.id)) {
+    audit({ category: "SECURITY", action: "user.login.2fa_challenge", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, payload: { via: "otp" } });
+    return { ok: true, data: { userId: user.id, role: user.role, twoFactorRequired: true } };
+  }
+  // New sign-in security email — parity with the password login path.
+  sendEmailToUser(user.id, (email) => ({
+    to: email,
+    subject: "New sign-in to your 50pick account",
+    html: loginNotificationHtml({
+      name: displayLabel(user!),
+      time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }),
+      ip: meta.ip ?? "unknown",
+    }),
+    tag: "login-otp",
+  })).catch(() => {});
+  await createSession({ userId: user.id, phoneE164: user.phoneE164, role: user.role, kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED" });
   await applyTestFloat(user.id);
-
-  return { ok: true, data: { userId: user.id, isNew } };
+  return { ok: true, data: { userId: user.id, role: user.role } };
 }
 
 export async function logout(): Promise<void> {
@@ -658,9 +518,8 @@ export async function currentSession(): Promise<SessionData | null> {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Password-based auth — interim path while SMS provider is unsigned.
-// OTP code above is preserved verbatim; flip back by routing the auth
-// pages to startLoginAction / startRegisterAction instead of these.
+// Password sign-up and sign-in - the only doors any form offers. The OTP functions above are the dormant phone-code
+// SIGN-IN, wired to no form (OTP_ENABLED unset; docs/BLACKBALL-SMS.md section 7 step 6).
 // ─────────────────────────────────────────────────────────────────────
 
 export type PasswordRegisterInput = {
@@ -693,11 +552,14 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     acceptAge: input.acceptAge,
     marketingOptIn: input.marketingOptIn ?? false,
   });
-  if (!baseParse.success) return { ok: false, error: baseParse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
+  if (!baseParse.success) {
+    const first = baseParse.error.errors[0];
+    return { ok: false, error: first?.message ?? "Invalid input", code: "INVALID", ...(first?.path?.[0] === "email" ? { reason: "email_invalid" as const } : {}) };
+  }
   const pwError = validatePasswordStrength(input.password);
-  if (pwError) return { ok: false, error: pwError, code: "INVALID" };
+  if (pwError) return { ok: false, error: pwError, code: "INVALID", reason: "password_weak" };
   if (input.password !== input.passwordConfirm) {
-    return { ok: false, error: "Passwords do not match. · Nenosiri hazilingani.", code: "INVALID" };
+    return { ok: false, error: "Passwords do not match. · Nenosiri hazilingani.", code: "INVALID", reason: "password_mismatch" };
   }
 
   const phone = baseParse.data.phone;
@@ -850,7 +712,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     });
   }
 
-  // ⭐ EVERY CLIENT IS A CONTACT (owner, 2026-10-03) — the OTP door's one line, at the same point: after the account
+  // ⭐ EVERY CLIENT IS A CONTACT (owner, 2026-10-03) — one line: after the account
   // row, the ledger row and the wallet. A bootstrap admin is created ADMIN above and is never a contact. ⛔ It never
   // fails and never holds the sign-up — it runs outside this `register:` lock, bounded — and the backfill repairs a miss.
   await registrationContactAtSignup(user);
@@ -1153,8 +1015,8 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   }
 
   // ── Account-status gates — deliberately AFTER the password is proven ──────
-  // These same three checks also run before the password is read (further up);
-  // running them here is what lets the earlier copy become enumeration-neutral,
+  // They run ONLY here, after the password (and again in completeTwoFactorLogin and
+  // verifyOtpAndAuth), never before it (see the note above the lockout check);
   // because only someone who has proven they own the account may learn that it
   // is self-excluded, suspended or closed. Self-exclusion especially: it is a
   // gambling-harm status, and answering it to an unauthenticated prober would

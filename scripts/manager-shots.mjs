@@ -29,7 +29,7 @@ const PAGES = [
   // Auth
   { slug: "02-login",                 url: "/auth/login" },
   { slug: "03-register",              url: "/auth/register" },
-  { slug: "04-otp",                   url: "/auth/otp?purpose=register&phone=%2B255712345678" },
+  { slug: "04-otp",                   url: "/auth/otp?phone=%2B255712345678" },
   // Markets
   { slug: "05-markets",               url: "/markets",                        auth: true },
   { slug: "06-market-detail",         url: null,            dynamic: "first", auth: true },

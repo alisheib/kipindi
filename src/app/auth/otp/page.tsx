@@ -11,31 +11,27 @@ import { ResendOtpButton } from "@/components/auth/resend-otp-button";
 import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
 import { getServerT } from "@/lib/i18n-server";
 import { sanitizeNext } from "@/lib/safe-next";
+import { phoneCodeSignInEnabled } from "@/lib/server/otp-door";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
   return { title: t.common.verification };
 }
 
-export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string; retry?: string; exp?: string }> }) {
-  // Phone-code login is deliberately NOT offered: the live auth flow is password-based.
-  // SMS itself is live (Blackball, since 2026-09-16); keeping this off is a product
-  // decision, not a missing provider (docs/BLACKBALL-SMS.md §7 step 6; corrected 2026-09-25).
-  // Without OTP_ENABLED=1 this page is dormant and would only confuse a player who lands
-  // here via a stale link, so bounce to login. ⛔ Setting OTP_ENABLED=1 alone only exposes
-  // an orphan page, because no login or register form links here. ⚠️ The flag gates this
-  // PAGE only; requestLoginOtp itself is not gated (BLACKBALL-SMS.md §4.8).
-  if (process.env.OTP_ENABLED !== "1") redirect("/auth/login");
-
-  const { t } = await getServerT();
+export default async function OtpPage({ searchParams }: { searchParams: Promise<{ phone?: string; error?: string; sent?: string; next?: string; retry?: string; exp?: string }> }) {
+  // Phone-code SIGN-IN is dormant unless OTP_ENABLED=1 (`otp-door.ts`, the one read of the flag): the live auth flow is
+  // password-based, and no form links here. SMS itself is live (Blackball, since 2026-09-16); keeping this off is a product
+  // decision, not a missing provider (docs/BLACKBALL-SMS.md §7 step 6). A stale link bounces to sign-in, and the bounce
+  // keeps the destination. ⭐ The same flag closes the code actions too (login/actions.ts), so the door is shut, not only
+  // this page. A code signs an EXISTING account in only; nothing here creates one.
   const sp = await searchParams;
-  const purpose = (sp.purpose ?? "login") as "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
+  const nextSafe = sanitizeNext((sp.next ?? "").trim());
+  if (!phoneCodeSignInEnabled()) redirect((nextSafe ? `/auth/login?next=${encodeURIComponent(nextSafe)}` : "/auth/login") as never);
+  const { t } = await getServerT();
   const phone = sp.phone ?? "";
   const error = sp.error ?? "";
   const sent = sp.sent === "1";
   const retrySec = Math.min(300, Math.max(0, parseInt(sp.retry ?? "0", 10) || 0));
-  const nextRaw = (sp.next ?? "").trim();
-  const nextSafe = sanitizeNext(nextRaw);
   // B-27 — remaining life computed on the SERVER clock from the code's real
   // expiry (`?exp=` from the issue/resend hop). undefined → component's TTL default.
   const expTs = sp.exp ? Date.parse(sp.exp) : NaN;
@@ -77,7 +73,6 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
 
           <form action={verifyLoginOtpAction} className="space-y-3">
             <input type="hidden" name="phone" value={phone} />
-            <input type="hidden" name="purpose" value={purpose} />
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
             {/* B-27 — a failed verify round-trips the real expiry too. */}
             {sp.exp && Number.isFinite(expTs) && <input type="hidden" name="exp" value={sp.exp} />}
@@ -98,29 +93,17 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
 
           <div className="flex items-center justify-between border-t border-border pt-3">
             <Link
-              href={`${purpose === "register" ? "/auth/register" : "/auth/login"}${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
+              href={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
               className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
             >
               ← {t.common.changeNumber}
             </Link>
-            {purpose === "register" ? (
-              // A register OTP can't be re-issued without the original sign-up
-              // payload, so send the user back to start over (phone prefilled).
-              <Link
-                href={`/auth/register?${new URLSearchParams({ ...(phone ? { phone } : {}), ...(nextSafe ? { next: nextSafe } : {}) }).toString()}` as never}
-                className="font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
-              >
-                {t.common.startOver}
-              </Link>
-            ) : (
-              <form action={resendOtpAction}>
-                <input type="hidden" name="phone" value={phone} />
-                <input type="hidden" name="purpose" value={purpose} />
-                {/* B-14 — the resend hop keeps the destination too. */}
-                {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
-                <ResendOtpButton />
-              </form>
-            )}
+            <form action={resendOtpAction}>
+              <input type="hidden" name="phone" value={phone} />
+              {/* B-14 — the resend hop keeps the destination too. */}
+              {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
+              <ResendOtpButton />
+            </form>
           </div>
         </AuthPanel>
 

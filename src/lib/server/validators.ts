@@ -131,11 +131,8 @@ export const LoginRequestSchema = z.object({
 });
 export type LoginRequestInput = z.infer<typeof LoginRequestSchema>;
 
-export const OtpVerifySchema = z.object({
-  phone: tzPhone,
-  code: otpCode,
-  purpose: z.enum(["login", "register", "withdraw", "reauth", "self_exclusion"]),
-});
+// no purpose field: the server decides (verifyOtpAndAuth consumes a login code only)
+export const OtpVerifySchema = z.object({ phone: tzPhone, code: otpCode });
 export type OtpVerifyInput = z.infer<typeof OtpVerifySchema>;
 
 /**
