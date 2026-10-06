@@ -832,6 +832,7 @@
     "test:save-cycle": "tsx scripts/save-cycle.test.mts",
     "test:select-keyboard": "tsx scripts/select-keyboard.test.mts",
     "qa:select-keyboard": "node scripts/qa-select-keyboard.mjs",
+    "qa:enter-where-pressed": "node scripts/qa-enter-where-pressed.mjs",
     "red:single-save": "node scripts/red-single-save.mjs",
     "qa:single-save": "node scripts/qa-single-save.mjs",
     "test:validation-focus": "tsx scripts/validation-focus.test.mts",
