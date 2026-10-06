@@ -564,6 +564,9 @@ export interface FailureDetail {
    * until the period ends"* — about a period that ended an hour earlier.
    */
   standing?: "serving" | "minimum_served" | "permanent" | "diverged";
+  /** A sign-in refusal for a CLOSED account (route audit B4, 2026-10-06): the doors show the login page's own closed=1 panel,
+   *  the words /auth/session-ended already gives it. Set only by assertSignInAllowed, after ownership is proven. */
+  accountClosed?: boolean;
   /** `E-235` · the session time limit the player set for themselves, in minutes. */
   limitMin?: number;
   /** `E-235` · how long this play session has actually run, in minutes. */

@@ -76,8 +76,10 @@ const OTP_TTL_MS = 5 * 60 * 1000;
  * hard crash of whatever called it, which is the wrong trade: this is metadata,
  * not a control. Fail open to nulls and let the caller proceed; the audit entry
  * is still written, just without a source IP.
+ *
+ * Exported 2026-10-06 so the forgot-password action reads the client IP the one way sign-in does.
  */
-async function clientMeta(): Promise<{ ip: string | null; ua: string | null }> {
+export async function clientMeta(): Promise<{ ip: string | null; ua: string | null }> {
   try {
     const h = await headers();
     return {

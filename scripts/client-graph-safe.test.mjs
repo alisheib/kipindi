@@ -120,6 +120,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // `pending-bet.ts` imports only it.
     "lib/safe-next.ts",
     "lib/journey/pending-bet.ts",
+    // The referral-code rule (route audit 2026-10-06): imported by the client header and by server modules; imports nothing.
+    "lib/referral-code.ts",
+    // The doors' landing and header rules (2026-10-06): imported by the client header; imports only safe-next, referral-code and a type.
+    "lib/auth-landing.ts",
     // The bet sheet's low-balance plan: imports only the deposit bounds from `validators.ts` (zod + id-documents),
     // which the deposit form already ships to the browser.
     "lib/journey/shortfall.ts",

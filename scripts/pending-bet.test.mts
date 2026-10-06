@@ -14,6 +14,8 @@
  *   6. THE SAME-ORIGIN RULE — `sanitizeNext` refuses "//evil", "/" + backslash + "evil", absolute URLs and `/auth/` pages;
  *      since 2026-10-06 also a control character anywhere ("/\t/evil" is read as "//evil") and a bare `/auth` — and no
  *      file under src/ keeps a private copy of the rule (6.one-rule).
+ *   7. THE DOORS KEEP INTENT - boundedNext, returnPathFrom, withWelcome, authDoorHrefs, landingAfterAuth,
+ *      accountRefusalPath (route audit 2026-10-06).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written.
  */
@@ -21,16 +23,21 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import * as PB from "../src/lib/journey/pending-bet.ts";
 import * as SN from "../src/lib/safe-next.ts";
+import * as AL from "../src/lib/auth-landing.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 type Impl = {
   parse: typeof PB.parseBetParam; format: typeof PB.formatBetParam; from: typeof PB.pendingBetFrom; url: typeof PB.pendingBetUrl;
   stake: typeof PB.stakeFromUrl; write: typeof PB.writeMarker; read: typeof PB.readMarker; attribution: typeof PB.attributionFrom;
   sanitize: typeof SN.sanitizeNext;
+  bounded: typeof SN.boundedNext; returnPath: typeof SN.returnPathFrom; welcome: typeof SN.withWelcome;
+  doors: typeof AL.authDoorHrefs; landing: typeof AL.landingAfterAuth; refusal: typeof AL.accountRefusalPath;
 };
 const REAL: Impl = {
   parse: PB.parseBetParam, format: PB.formatBetParam, from: PB.pendingBetFrom, url: PB.pendingBetUrl, stake: PB.stakeFromUrl,
   write: PB.writeMarker, read: PB.readMarker, attribution: PB.attributionFrom, sanitize: SN.sanitizeNext,
+  bounded: SN.boundedNext, returnPath: SN.returnPathFrom, welcome: SN.withWelcome,
+  doors: AL.authDoorHrefs, landing: AL.landingAfterAuth, refusal: AL.accountRefusalPath,
 };
 const BS = String.fromCharCode(92);
 const NOW = Date.UTC(2026, 9, 1, 9, 0);
@@ -126,6 +133,70 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     tricks.slice(0, 3).every((v) => new URL(v, "https://www.50pick.tz/auth/login").host === "evil.example"));
   const bare = ["/auth", "/auth?x=1", "/auth#top"].map((v) => safe(() => impl.sanitize(v)));
   ok("6.auth-bare · /auth with no slash, a query or a fragment is an /auth page too", bare.every((o) => o === ""), j(bare));
+
+  /* 7 · THE DOORS KEEP INTENT (route audit 2026-10-06) — where every door sends someone, as pure tables. Each row is
+   *     [input, wanted]; a failure prints [input, wanted, got] with long strings shortened. */
+  const TAB = String.fromCharCode(9);
+  const as = (n: number) => "a".repeat(n);
+  const brief = (v: unknown): unknown =>
+    Array.isArray(v) ? v.map(brief) : typeof v === "string" && v.length > 48 ? `${v.slice(0, 24)}...(${v.length} chars)` : v;
+  const table = <I,>(label: string, rows: Array<[I, string]>, f: (i: I) => string) => {
+    const got = rows.map(([i]) => safe(() => f(i)));
+    const bad = rows.flatMap(([i, want], k) => (got[k] === want ? [] : [[brief(i), want, brief(got[k])]]));
+    ok(label, bad.length === 0, `[input, wanted, got]: ${j(bad)}`);
+  };
+
+  table<string>("7.bounded · boundedNext keeps a safe path; one longer than 512 characters is REFUSED, never cut (512 pass, 513 do not); an /auth page and //evil are refused",
+    [["/markets/mkt_x?side=YES", "/markets/mkt_x?side=YES"], ["/" + as(600), ""], ["/auth/login", ""], ["//evil.example", ""],
+      ["/" + as(511), "/" + as(511)], ["/" + as(512), ""]],
+    (i) => impl.bounded(i));
+
+  table<string>("7.return · returnPathFrom drops welcome and the #fragment; an /auth page, //evil, a tab trick or nothing gives \"\"; an over-long query falls back to the bare path",
+    [["/markets/mkt_a1?side=YES&welcome=back", "/markets/mkt_a1?side=YES"], ["/auth/login?next=/x", ""], ["//evil.example", ""],
+      ["/" + TAB + "/evil.example", ""], ["/markets?q=" + as(600), "/markets"], ["", ""],
+      ["/updown/udr_1?side=UP", "/updown/udr_1?side=UP"], ["/positions#pos_1", "/positions"]],
+    (i) => impl.returnPath(i));
+
+  table<[string, "new" | "back"]>("7.welcome · withWelcome sets the greeting in the QUERY, before any #fragment, replacing an old one in place",
+    [[["/", "new"], "/?welcome=new"], [["/markets/mkt_a1?side=YES", "new"], "/markets/mkt_a1?side=YES&welcome=new"],
+      [["/positions#pos_q1", "back"], "/positions?welcome=back#pos_q1"], [["/x?welcome=new&a=1#h", "back"], "/x?welcome=back&a=1#h"]],
+    ([p, k]) => impl.welcome(p, k));
+
+  // Both hrefs, compared exactly, as "<sign in> | <sign up>".
+  const both = (tail: string) => `/auth/login${tail} | /auth/register${tail}`;
+  const doorsOf = ([p, q]: [string, string]) => { const d = impl.doors(p, new URLSearchParams(q)); return `${d.signIn} | ${d.signUp}`; };
+  table<[string, string]>("7.doors · the guest header's doors: this page (less ref and welcome) is the next and a bare / is none; on an /auth page only its own next and ref travel; ref is normalised or dropped",
+    [[["/", ""], both("")],
+      [["/", "ref=ab12cd"], both("?ref=AB12CD")],
+      [["/markets/mkt_x", "ref=50pick-ag-abc123&side=YES"], both("?next=%2Fmarkets%2Fmkt_x%3Fside%3DYES&ref=50PICK-AG-ABC123")],
+      [["/auth/login", "next=/markets/mkt_x&ref=AB12CD"], both("?next=%2Fmarkets%2Fmkt_x&ref=AB12CD")],
+      [["/auth/reset-password", "token=SECRET"], both("")],
+      [["/markets", "ref=<script>"], both("?next=%2Fmarkets")],
+      [["/markets", "welcome=back&topic=sports"], both("?next=%2Fmarkets%3Ftopic%3Dsports")],
+      [["/", "bet=mkt_x.YES"], both("?next=%2F%3Fbet%3Dmkt_x.YES")]],
+    doorsOf);
+  const resetDoors = safe(() => doorsOf(["/auth/reset-password", "token=SECRET"]));
+  ok("7.doors · a reset link's token never leaves its page: SECRET is in neither door", resetDoors !== "threw" && !resetDoors.includes("SECRET"), j(resetDoors));
+
+  table<[string | undefined, string, "new" | "back"]>("7.landing · a player or agent lands on the safe next (never an /admin one) or home, greeted before any #fragment; staff land on an /admin next, else /admin",
+    [[["PLAYER", "", "new"], "/?welcome=new"], [["PLAYER", "", "back"], "/?welcome=back"],
+      [["PLAYER", "/markets/mkt_a1?side=YES", "back"], "/markets/mkt_a1?side=YES&welcome=back"],
+      [["PLAYER", "/positions#pos_q1", "back"], "/positions?welcome=back#pos_q1"],
+      [["AGENT", "/agent", "new"], "/agent?welcome=new"],
+      [[undefined, "/wallet/deposit?from=low-balance", "new"], "/wallet/deposit?from=low-balance&welcome=new"],
+      [["PLAYER", "/admin/kyc", "back"], "/?welcome=back"], [["ADMIN", "/admin/kyc", "back"], "/admin/kyc"],
+      [["COMPLIANCE", "/markets/mkt_a1", "back"], "/admin"], [["SUPPORT", "", "new"], "/admin"]],
+    ([role, next, kind]) => impl.landing({ role, next, kind }));
+
+  table<[Parameters<Impl["refusal"]>[0], string]>("7.refusal · a CLOSED account gets the closed=1 panel; the three exclusion standings their own (serving carries its date); anything else error=blocked; only a safe next is kept",
+    [[[{ accountClosed: true }, "/markets/mkt_a1"], "/auth/login?closed=1&next=%2Fmarkets%2Fmkt_a1"],
+      [[{ standing: "serving", until: "2026-12-01T09:00:00.000Z" }, ""], "/auth/login?excluded=serving&until=2026-12-01"],
+      [[{ standing: "minimum_served", until: "2026-01-01T00:00:00.000Z" }, ""], "/auth/login?excluded=minimum_served"],
+      [[{ standing: "permanent" }, ""], "/auth/login?excluded=permanent"],
+      [[{ standing: "diverged" }, ""], "/auth/login?error=blocked"],
+      [[undefined, "/wallet"], "/auth/login?error=blocked&next=%2Fwallet"],
+      [[undefined, "//evil.example"], "/auth/login?error=blocked"]],
+    ([d, n]) => impl.refusal(d, n));
   return failed;
 }
 
@@ -179,6 +250,32 @@ if (!PROVE_RED) {
       impl: { ...REAL, sanitize: (r) => (typeof r === "string" && /^\/(?![/\\])/.test(r) && !r.startsWith("/auth/") ? r : "") } },
     { name: "the rule forgets that a bare /auth is an /auth page", expect: /^6\.auth-bare /,
       impl: { ...REAL, sanitize: (r) => (SN.isSafePath(r) && !r.startsWith("/auth/") ? r : "") } },
+    // 7 · the doors keep intent (route audit 2026-10-06)
+    { name: "returnPathFrom keeps welcome", expect: /^7\.return /,
+      impl: { ...REAL, returnPath: (h) => SN.boundedNext(String(h).split("#")[0]) } },
+    { name: "boundedNext cuts instead of refusing", expect: /^7\.bounded /,
+      impl: { ...REAL, bounded: (r) => SN.sanitizeNext(r).slice(0, 512) } },
+    { name: "the greeting is appended after the #fragment", expect: /^7\.welcome /,
+      impl: { ...REAL, welcome: (p, k) => p + (p.includes("?") ? "&" : "?") + "welcome=" + k } },
+    { name: "the header copies an /auth page's whole query", expect: /^7\.doors /,
+      impl: { ...REAL, doors: (_p, s) => ({ signIn: "/auth/login?" + s, signUp: "/auth/register?" + s }) } },
+    { name: "the header passes ref un-normalised", expect: /^7\.doors /,
+      impl: { ...REAL, doors: (p, s) => {
+        const real = AL.authDoorHrefs(p, s);
+        const raw = s.get("ref");
+        if (raw === null) return real;
+        const swap = (href: string) => {
+          const at = href.indexOf("?");
+          const qs = new URLSearchParams(at < 0 ? "" : href.slice(at + 1));
+          qs.set("ref", raw);
+          return `${at < 0 ? href : href.slice(0, at)}?${qs.toString()}`;
+        };
+        return { signIn: swap(real.signIn), signUp: swap(real.signUp) };
+      } } },
+    { name: "a player keeps an /admin next", expect: /^7\.landing /,
+      impl: { ...REAL, landing: (o) => SN.withWelcome(o.next || "/", o.kind) } },
+    { name: "a CLOSED account is told it is blocked", expect: /^7\.refusal /,
+      impl: { ...REAL, refusal: (d, n) => AL.accountRefusalPath(d?.accountClosed ? undefined : d, n) } },
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
