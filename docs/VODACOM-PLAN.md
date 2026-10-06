@@ -38,8 +38,15 @@ which rewrote §3.7: a new account now lands home on the classic site too.
   opens with focus on its primary, so Enter still confirms where it is pressed); `Modal` swallows a key's auto-repeat on
   a button, link, checkbox or radio, and a repeated Enter anywhere but a textarea — one rule, `src/lib/held-key.ts`.
   Guard `test:enter-where-pressed` with its in-process twin `red:enter-where-pressed`, and a real-browser drive.
-- **Left:** build → guards → drive (bet, Sell, the seal over a Sell confirm, held keys) → review → `test:all` → push →
-  read the deploy back → tick §0i and the board row. Then the owed A8d/A8g/A8h proof items (§0i), then WP12.
+- **Built 2026-10-06, not yet on `main`** — the work in progress is on the branch `origin/vodacom-a8i`: `held-key.ts`,
+  `modal.tsx`, the three dialogs, `sell-button.tsx`'s note, and `select.tsx` (found by the guard's census: the dropdown's
+  list took Enter pressed anywhere while open, so a seal opened over it lost its Enter — it now takes only a key pressed
+  in the dropdown or on the page). `test:enter-where-pressed` all green; `red:enter-where-pressed` 20/20 caught;
+  typecheck clean; `test:feedback-law` 7.5 re-pinned (its Enter half named the removed handler); the neighbouring
+  suites green apart from the §0i baseline reds (`red-anchors` ×2, `orphans`, `decomment` 24 > 20, `stacking` 6.1).
+- **Left:** the real-browser drive (bet, Sell, the seal over a Sell confirm, held keys — and the same drive red on the
+  old tree) → review → `test:all` → push → read the deploy back → tick §0i and the board row. Then the owed A8d/A8g/A8h
+  proof items (§0i), then WP12.
 - ⚠️ **This PC has none of the old PC's scratchpad** (`scratchpad/s6/a8-chain.sh`, `a8/copy-measured.py`,
   `a8/parity-devonly.py`, `ticker-rearm.py`): the owed proof items in §0i must be re-derived, not resumed.
 
