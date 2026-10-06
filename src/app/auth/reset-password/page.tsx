@@ -7,9 +7,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
-import { verifySession } from "@/lib/server/crypto";
-import { db } from "@/lib/server/store";
-import { passwordFingerprint } from "@/lib/server/password-reset";
+import { validateResetToken } from "@/lib/server/password-reset";
 import { resetPasswordAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
@@ -21,21 +19,6 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 type TokenState = "valid" | "expired" | "invalid" | "email_changed";
-
-/** Pre-validate the token WITHOUT consuming it — just check HMAC, expiry, email match. */
-async function checkToken(token: string): Promise<TokenState> {
-  const payload = verifySession<{ purpose: string; userId: string; email: string; pwh?: string; exp: number }>(token);
-  if (!payload) return "expired"; // HMAC fail or exp passed
-  if (payload.purpose !== "password-reset" || !payload.userId || !payload.email) return "invalid";
-  const user = await db.user.findById(payload.userId);
-  if (!user) return "invalid";
-  const currentEmail = (user.email ?? "").trim().toLowerCase();
-  if (currentEmail !== payload.email.trim().toLowerCase()) return "email_changed";
-  // Single-use: a completed reset rotates the password hash, so an already-used
-  // link no longer matches the fingerprint baked into the token.
-  if (payload.pwh !== undefined && passwordFingerprint(user.passwordHash) !== payload.pwh) return "invalid";
-  return "valid";
-}
 
 export default async function ResetPasswordPage({ searchParams }: { searchParams?: Promise<{ token?: string; reason?: string }> }) {
   const { t } = await getServerT();
@@ -62,7 +45,16 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   const token = sp.token ?? "";
   if (!token) redirect("/auth/forgot-password");
 
-  const state = await checkToken(token);
+  // 🔴 A5 (2026-10-06) · ONE token check, the one the action spends the link with. This page kept its own copy, and the
+  // two disagreed on a link with no fingerprint: the form was drawn, then the action refused it. A used link shows the
+  // invalid panel, whose body already says the link "may be damaged or was already used".
+  const v = await validateResetToken(token);
+  const state: TokenState = v.ok ? "valid" : v.state === "used" ? "invalid" : v.state;
+  // B1 · where the player was going, read from INSIDE the signed token (the validator re-checks it): every way off this
+  // page keeps it - back to sign in, or a new link.
+  const tokenNext = v.next;
+  const loginHref = tokenNext ? `/auth/login?next=${encodeURIComponent(tokenNext)}` : "/auth/login";
+  const forgotHref = tokenNext ? `/auth/forgot-password?next=${encodeURIComponent(tokenNext)}` : "/auth/forgot-password";
 
   // Bad token — show error state, NOT the form
   if (state !== "valid") {
@@ -90,10 +82,10 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
             />
 
             <div className="flex flex-col gap-2.5">
-              <Link href="/auth/forgot-password" className="btn btn-primary btn-lg btn-pill w-full">
+              <Link href={forgotHref as never} className="btn btn-primary btn-lg btn-pill w-full">
                 {t.common.requestNewLink}
               </Link>
-              <Link href="/auth/login" className="btn btn-ghost btn-lg btn-pill w-full">
+              <Link href={loginHref as never} className="btn btn-ghost btn-lg btn-pill w-full">
                 {t.common.backToSignIn}
               </Link>
             </div>
@@ -116,7 +108,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
 
         <AuthPanel>
           <Link
-            href="/auth/login"
+            href={loginHref as never}
             className="inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text"
           >
             <I.chevronLeft s={14} />
@@ -179,7 +171,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
             {t.common.linkExpired}{" "}
             <Link
-              href="/auth/forgot-password"
+              href={forgotHref as never}
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               {t.common.requestNewOne}

@@ -22,5 +22,7 @@ export async function resetPasswordAction(formData: FormData) {
     }
     redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&reason=reset_link_invalid` as never);
   }
-  redirect("/auth/login?reset=1" as never);
+  // B1 · the destination bound inside the token (re-checked by the validator) rides on to sign-in, so the player ends
+  // up where they were going. The failure redirects above carry the token, which carries it.
+  redirect(`/auth/login?reset=1${result.next ? `&next=${encodeURIComponent(result.next)}` : ""}` as never);
 }

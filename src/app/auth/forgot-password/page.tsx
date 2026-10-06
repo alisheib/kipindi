@@ -4,16 +4,18 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { LoginIdentifier } from "@/components/auth/login-identifier";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
 import { requestResetAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
+import { boundedNext } from "@/lib/safe-next";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
   return { title: t.auth.forgotPassword };
 }
 
-export default async function ForgotPasswordPage({ searchParams }: { searchParams?: Promise<{ sent?: string; identifier?: string; phone?: string; error?: string }> }) {
+export default async function ForgotPasswordPage({ searchParams }: { searchParams?: Promise<{ sent?: string; identifier?: string; phone?: string; error?: string; retry?: string; next?: string }> }) {
   const { t } = await getServerT();
   const sp = (await searchParams) ?? {};
   const sent = sp.sent === "1";
@@ -22,6 +24,17 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
   // cached page (or a bookmarked link) refills correctly — the same allowance
   // the action makes for the legacy field name.
   const typed = (sp.identifier ?? sp.phone ?? "").trim().slice(0, 254);
+
+  // B1 · where the player was going, carried on every link off this page and into the form, so recovery ends there.
+  const nextSafe = boundedNext((sp.next ?? "").trim());
+  const loginHref = nextSafe ? `/auth/login?next=${encodeURIComponent(nextSafe)}` : "/auth/login";
+  // A6 · the seconds the bucket really needs (the action's `retry=`), capped: a hand-made link cannot show an hour-plus
+  // countdown. When it runs out the banner returns here with only what the player typed and where they were going.
+  const retrySec = Math.min(3600, Math.max(0, Number.parseInt(sp.retry ?? "", 10) || 0));
+  const clearQs = new URLSearchParams();
+  if (typed) clearQs.set("identifier", typed);
+  if (nextSafe) clearQs.set("next", nextSafe);
+  const clearHref = clearQs.toString() ? `/auth/forgot-password?${clearQs.toString()}` : "/auth/forgot-password";
 
   // ⭐ THE DISTINCTION ALI ASKED FOR, AND IT IS A REAL ONE RATHER THAN A STYLE.
   // The two entry paths do not carry the same guarantee, so they must not make
@@ -41,7 +54,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
 
         <AuthPanel>
           <Link
-            href="/auth/login"
+            href={loginHref as never}
             className="inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text"
           >
             <I.chevronLeft s={14} />
@@ -70,29 +83,30 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
           )}
           {sp.error === "rate_limited" && (
             <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-gold-300">
-              {t.common.tooManyAttempts}
+              {retrySec > 0 ? <RateLimitBanner seconds={retrySec} clearHref={clearHref} /> : t.common.tooManyAttempts}
             </div>
           )}
 
-          {!sent && (
-            <form action={requestResetAction} className="space-y-4">
-              {/* ⭐ THE SAME CONTROL THE SIGN-IN PAGE USES, not a second one built
-                  to look like it. `LoginIdentifier` already owns the segmented
-                  Phone/Email switcher, the morphing field, the label and hint
-                  swap, the 44px height that matches --h-input, radiogroup
-                  keyboard semantics, and all three locales — and it already
-                  submits under `identifier`, which is exactly what the action
-                  reads. Recovery asking for a credential in a different shape
-                  from the page that asks for the same credential one click away
-                  is the inconsistency this removes. */}
-              <LoginIdentifier
-                defaultMethod={defaultMethod}
-                defaultValue={typed}
-                invalid={sp.error === "identifier_required"}
-              />
-              <SubmitButton label={t.common.sendResetLink} pendingLabel={t.common.sending} />
-            </form>
-          )}
+          {/* A6 · the form stays under "sent" as well, its button now Resend, refilled with what was typed: a mistyped
+              number or address is corrected here instead of stranding the player behind the success box. */}
+          <form action={requestResetAction} className="space-y-4">
+            {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
+            {/* ⭐ THE SAME CONTROL THE SIGN-IN PAGE USES, not a second one built
+                to look like it. `LoginIdentifier` already owns the segmented
+                Phone/Email switcher, the morphing field, the label and hint
+                swap, the 44px height that matches --h-input, radiogroup
+                keyboard semantics, and all three locales — and it already
+                submits under `identifier`, which is exactly what the action
+                reads. Recovery asking for a credential in a different shape
+                from the page that asks for the same credential one click away
+                is the inconsistency this removes. */}
+            <LoginIdentifier
+              defaultMethod={defaultMethod}
+              defaultValue={typed}
+              invalid={sp.error === "identifier_required"}
+            />
+            <SubmitButton label={sent ? t.common.resendLink : t.common.sendResetLink} pendingLabel={t.common.sending} />
+          </form>
 
           {/* Fallback — users without email */}
           <div className="rounded-xl border border-border bg-bg-overlay/40 p-4 space-y-3">
@@ -182,7 +196,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
             {t.common.rememberedIt}{" "}
             <Link
-              href="/auth/login"
+              href={loginHref as never}
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               {t.common.signIn}
