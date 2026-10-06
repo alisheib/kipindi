@@ -24,13 +24,13 @@ const mk=`<img src="https://kipindi-production.up.railway.app/icons/mark-color-5
  * ⛔ This file is plain `.mjs` and cannot import the TypeScript source of truth, so the honest
  * answer is not a NEWER literal — that is how it got wrong in the first place — but to state
  * nothing it cannot source. Set `SAMPLE_SUPPORT_EMAIL` to render a contact line; leave it unset
- * and the sample simply omits one. The helpline below is the DEFAULT (`SUPPORT_DEFAULTS` in
- * `support-config.ts`); since 2026-10-03 an admin can change the live one, so a sample may lag it.
+ * and the sample simply omits one. ⛔ No helpline: the owner's ruling of 2026-10-06 took it out of
+ * every email (`server/email.ts`), so the sample carries none either.
  */
 const SAMPLE_SUPPORT_EMAIL = process.env.SAMPLE_SUPPORT_EMAIL || "";
 const FOOTER_CONTACT = SAMPLE_SUPPORT_EMAIL
-  ? `<br>Helpline 0800 11 0011 &middot; <a href="mailto:${SAMPLE_SUPPORT_EMAIL}" style="color:${TS};text-decoration:none">${SAMPLE_SUPPORT_EMAIL}</a>`
-  : `<br>Helpline 0800 11 0011`;
+  ? `<br><a href="mailto:${SAMPLE_SUPPORT_EMAIL}" style="color:${TS};text-decoration:none">${SAMPLE_SUPPORT_EMAIL}</a>`
+  : ``;
 
 const wrap=(body)=>`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:${BG};font-family:Segoe UI,Helvetica,Arial,sans-serif"><table cellpadding="0" cellspacing="0" width="100%" style="background:${BG}"><tr><td align="center" style="padding:32px 16px"><table cellpadding="0" cellspacing="0" width="100%" style="max-width:560px"><tr><td align="center" style="padding:0 0 24px">${mk}<div style="margin-top:10px;font-size:20px;font-weight:800"><span style="color:${T}">50pick</span><span style="color:${TM};font-weight:500;font-size:14px">.tz</span></div></td></tr><tr><td><div style="height:3px;background:linear-gradient(90deg,${GM},${G},${GM});border-radius:3px 3px 0 0"></div></td></tr><tr><td style="background:${C};border:1px solid ${B};border-top:none;border-radius:0 0 12px 12px;padding:32px 28px 28px">${body}</td></tr><tr><td style="padding:28px 0 0;text-align:center"><div style="width:42px;height:2px;background:${G};border-radius:2px;margin:0 auto 16px"></div><p style="margin:0;font-family:monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GM}">50pick.tz <span style="color:${R}">&middot;</span> <span style="color:${TS}">Soko la Utabiri</span></p><p style="margin:12px 0 0;font-size:11px;color:${TF};line-height:1.7">18+ &middot; Licensed by Gaming Board of Tanzania${FOOTER_CONTACT}</p></td></tr></table></td></tr></table></body></html>`;
 

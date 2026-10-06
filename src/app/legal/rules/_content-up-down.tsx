@@ -235,8 +235,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>
               <strong className="text-text">Responsible play.</strong>{" "}Up &amp; Down is entertainment, not an income
               source, and its short rounds make it easy to play for longer than intended. Deposit limits, time limits,
-              cooling-off and self-exclusion are on your profile; the national problem-gambling helpline is in the
-              footer of every page. If play stops being fun, stop. 18+.
+              cooling-off and self-exclusion are on your profile. If play stops being fun, stop. 18+.
             </li>
             <li><strong className="text-text">Acceptance.</strong> Entering a round is full acceptance of these rules as published at lock time.</li>
           </ul>
@@ -415,7 +414,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>
               <strong className="text-text">Mchezo salama.</strong>{" "}Juu na Chini ni burudani, si chanzo cha mapato, na
               raundi zake fupi hurahisisha kucheza muda mrefu kuliko ulivyokusudia. Vikomo vya amana, vikomo vya muda,
-              mapumziko na kujitenga vipo kwenye wasifu wako; simu ya msaada ya kitaifa ipo chini ya kila ukurasa.
+              mapumziko na kujitenga vipo kwenye wasifu wako.
               Mchezo ukiacha kuwa wa kufurahisha, acha. Miaka 18+.
             </li>
             <li><strong className="text-text">Kukubali.</strong> Kuingia kwenye raundi ni kukubali kanuni hizi kama zilivyochapishwa wakati wa kufunga.</li>
@@ -565,7 +564,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li><strong className="text-text">修订。</strong>重大变更在生效前公告，且绝不追溯适用于已锁定的回合。</li>
             <li>
-              <strong className="text-text">理性游戏。</strong>涨跌是娱乐而非收入来源，且其回合短促，容易让人玩得比原本打算的更久。个人资料页提供充值限额、时间限额、冷静期与自我排除工具；每页页脚载有国家问题赌博求助热线。若游戏不再令人愉快，请停止。18+。
+              <strong className="text-text">理性游戏。</strong>涨跌是娱乐而非收入来源，且其回合短促，容易让人玩得比原本打算的更久。个人资料页提供充值限额、时间限额、冷静期与自我排除工具。若游戏不再令人愉快，请停止。18+。
             </li>
             <li><strong className="text-text">接受。</strong>进入回合即表示完全接受锁定时所公布的本规则。</li>
           </ul>

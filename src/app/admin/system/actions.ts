@@ -12,7 +12,7 @@ import { setSupportConfigVerified } from "@/lib/server/support-config";
 // ⭐ The dial-target derivation lives beside the defaults, in the client-safe half, so the admin
 // FORM can preview exactly what this action will store rather than the operator finding out from
 // a dead tel: link on the public site.
-import { toDialTarget, toHelplineDial, licenceProblem } from "@/lib/support-config";
+import { toSupportDial, toHelplineDial, licenceProblem } from "@/lib/support-config";
 // `PlatformConfig` is imported for the RETURN TYPES below only (DG-S-05 rule 4): naming the
 // failure side `ActionFailure` means naming the success side too, and the success side of the
 // two platform writers is whatever `setPlatformConfig` hands back — spelled out here rather
@@ -92,32 +92,29 @@ export async function updateSupportConfigAction(
      Before 2026-09-10 this action validated the email and nothing else: clearing the phone saved
      `""`, so `/help` rendered an empty <p> inside a live `<a href="tel:">`, and the refusal a
      permanently self-excluded player receives read "Support: " with nothing after it. Free text
-     produced dial targets like `tel:+255222115811ext204`. ⭐ `toDialTarget` decides dialability —
-     the same function the form previews — so the console cannot save a number it could not call. */
-  if (!phone) return fieldError("support-phone", "Phone is required — it is published on /help and in the self-exclusion refusal.");
-  const phoneTel = toDialTarget(phone);
+     produced dial targets like `tel:+255222115811ext204`. ⭐ `toSupportDial` decides dialability —
+     the same function the form previews — so the console cannot save a number it could not call.
+     ⭐ Since the owner's ruling of 2026-10-06 it takes ANY number ("let the admin put any numbers he
+     wants"): a Tanzanian one still becomes E.164, and a short code, toll-free or foreign line is
+     dialled as typed. Only a value with letters, or under 3 / over 15 digits, is refused. */
+  if (!phone) return fieldError("support-phone", "Phone is required — it is published on /help and in the footer.");
+  const phoneTel = toSupportDial(phone);
   if (!phoneTel) {
-    /* ⚠️ THE EXAMPLES ARE SPECIMENS, NOT THE REAL DESK NUMBER. Naming the live number here would
-       plant a fourth copy of a value that has exactly one home, and it would go stale the day the
-       owner changes it — `test:support-contact` §8 caught this line doing precisely that. */
-    return fieldError("support-phone", `"${phone}" is not a dialable number. Use the local form 0712 345 678, or the international form +255 712 345 678.`);
+    return fieldError("support-phone", `"${phone}" is not a phone number. Type digits (3 to 15) with no letters.`);
   }
   /* ⭐ THE HELPLINE AND THE LICENCE ARE EDITABLE (owner's rule, 2026-10-03: "everything should be
      changeable"). Until then this form read neither — they were pinned constants — and an admin read the
      greyed boxes as a broken console. ⚠️ Each is read only when the form POSTS it, so a page still open
      from the previous deploy (which has no such inputs) saves its email and phone without blanking them.
-     🔴 E-328 survives as a refusal, not a lock: the form field is `nationalHelpline`, never `helpline` —
-     the stale `helpline` key in the live row holds our own desk number — and a helpline that dials the
-     Support phone is refused below. */
+     ⭐ Owner's ruling, 2026-10-06: the helpline is any number the admin saves, our own Support phone
+     included — the E-328 refusal is gone. The form field stays `nationalHelpline`, never `helpline`: the
+     stale `helpline` key in the live row is a leftover of an old form. */
   const patch: { email: string; phone: string; phoneTel: string; nationalHelpline?: string; licenceNumber?: string } = { email, phone, phoneTel };
   if (formData.has("nationalHelpline")) {
     const nationalHelpline = String(formData.get("nationalHelpline") ?? "").trim();
-    if (!nationalHelpline) return fieldError("support-helpline", "The national helpline is required — it is printed on every page as \"Helpline\".");
+    if (!nationalHelpline) return fieldError("support-helpline", "The helpline is required — the footer of every marketing SMS carries it.");
     if (!toHelplineDial(nationalHelpline)) {
-      return fieldError("support-helpline", `"${nationalHelpline}" is not a dialable number. Use digits only, e.g. 0800 11 0011.`);
-    }
-    if (toDialTarget(nationalHelpline) && toDialTarget(nationalHelpline) === phoneTel) {
-      return fieldError("support-helpline", "This is 50pick's own Support phone. The helpline must be the independent national problem-gambling line a player is sent to for help.");
+      return fieldError("support-helpline", `"${nationalHelpline}" is not a phone number. Type digits (3 to 15) with no letters.`);
     }
     patch.nationalHelpline = nationalHelpline;
   }
@@ -140,7 +137,7 @@ export async function updateSupportConfigAction(
     const res = await setSupportConfigVerified(patch, session.userId);
     if (!res.ok) return { ok: false as const, error: res.error };
     revalidatePath("/admin/system");
-    /* The helpline and licence print on every public page, so drop any cached render of any of them. */
+    /* The desk line and the licence print on every public page, so drop any cached render of any of them. */
     revalidatePath("/", "layout");
     return { ok: true as const };
   } catch (err) {

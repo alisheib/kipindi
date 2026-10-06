@@ -1,8 +1,9 @@
 /**
  * Unified public footer. Visible on every player-facing page.
  * Carries the regulator-required disclosures: 18+ badge, license stub,
- * problem-gambling helpline, GDPR/PDPA rights links, and a link to the
- * resolution attestation page.
+ * GDPR/PDPA rights links, and a link to the resolution attestation page.
+ * ⛔ No problem-gambling helpline — the owner's ruling of 2026-10-06 took it off every player
+ * surface (`docs/COMPLIANCE-DECISIONS.md`); `test:support-contact` §15 keeps it off.
  *
  * LCCP §SR Code 5.1.5 (visible age + RG messaging on every page).
  */
@@ -13,9 +14,9 @@ import { FiftyMark } from "@/components/brand";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 /* ⛔ THE CLIENT-SAFE MODULE, and it must stay that way — this file is `"use client"` (below).
    `@/lib/server/support-config` reaches `defineConfig` → prisma, which cannot be pulled into a
-   browser bundle. Only the PINNED constants live here; the operator-editable address arrives
-   as a prop, for the reason `agentDoorVisible` already documents. */
-import { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER } from "@/lib/support-config";
+   browser bundle. `LICENCE_NUMBER()` reads what the root layout publishes on <html>; the
+   operator-editable desk line arrives as a prop, for the reason `agentDoorVisible` documents. */
+import { LICENCE_NUMBER } from "@/lib/support-config";
 /* ⭐ IMPORTED DIRECTLY, AND THAT IS THE POINT OF PINNING IT. Every other operator-facing
    value in this file is a prop because a `defineConfig` read in a `"use client"` bundle
    returns the module default (E-226). `SOCIAL` has no persisted row to disagree with, so
@@ -85,9 +86,8 @@ export function PublicFooter({
    * which is a fabricated licence reference presented as this operator's own.
    *
    * ⭐ A LICENCE NUMBER IS NOT DEPLOYMENT CONFIG. It does not vary by environment, it is not
-   * an operator preference, and there is no correct value for it to fall back to — so it is a
-   * pinned constant beside the statutory helpline, where nothing can unset it and no default
-   * can invent one. Ali supplied the real number 2026-09-10.
+   * an operator preference, and there is no correct value for it to fall back to. Ali supplied
+   * the real number 2026-09-10; since 2026-10-03 it is saved in /admin/system.
    */
   const license = LICENCE_NUMBER();
   /**
@@ -182,19 +182,13 @@ export function PublicFooter({
         <FooterCol heading={t.footer.playSafe}>
           <FooterLink href="/profile/responsible-gambling">{t.footer.setLimits}</FooterLink>
           <FooterLink href="/legal/responsible-gambling">{t.footer.takeABreak} / {t.footer.selfExclude}</FooterLink>
-          {/* ⭐ OUR OWN DESK COMES FIRST, AND IT IS LABELLED AS OURS — Ali, 2026-09-11.
-              The footer published the statutory helpline and our EMAIL, and no phone at
-              all: a player who wanted to CALL us had to find `/help` first. It is on
-              every page now.
-              ⛔ IT SITS ABOVE THE HELPLINE AND IS NAMED "Contact us", NOT "Helpline",
-              and that separation is the whole point. `HELPLINE()` is the INDEPENDENT
-              problem-gambling line — free, not ours (editable in /admin/system since 2026-10-03,
-              and a save that makes it our own desk number is refused).
-              `supportPhone` is 50pick's own desk. Unit 2 exists because those two were
-              conflated: `/help` showed our number under "Free helpline · 24/7", and the
-              chatbot was instructed to hand it to a self-identifying problem gambler.
-              ⚠️ So this line carries NO tariff and NO "free" claim — we publish no tariff
-              for the desk, and any figure here would be invented (A-5). */}
+          {/* ⭐ OUR OWN DESK, LABELLED AS OURS — Ali, 2026-09-11. The footer published our EMAIL
+              and no phone at all: a player who wanted to CALL us had to find `/help` first. It is
+              on every page now, named "Contact us".
+              ⛔ No helpline row beside it since the owner's ruling of 2026-10-06
+              (`docs/COMPLIANCE-DECISIONS.md`).
+              ⚠️ This line carries NO tariff and NO "free" claim — we publish no tariff for the
+              desk, and any figure here would be invented (A-5). */}
           {/* 🔴 U20 · `inline-flex` IS NOT TIDYING — WITHOUT IT THE MIN-HEIGHT DOES NOTHING.
               These three were 15px AND `display: inline`, and **`min-height` does not apply to a non-replaced
               inline element**. So the unit’s own prescription — give the footer’s list links a min-height —
@@ -215,20 +209,15 @@ export function PublicFooter({
               overflow. Without it, `inline-flex` would trade a short target for a clipped phone number. */}
           <li>
             <a href={`tel:${supportPhoneTel}`} className="text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
-              {/* 2026-09-14 — the value never splits (at 768 the sw column broke "0800 11" / "0011"), and the separator
-                  stays with its LABEL, so a wrapped row reads "Simu ya msaada ·" / "0800 11 0011" (visual pass 2b). */}
+              {/* 2026-09-14 — the value never splits (at 768 the sw column broke a number in two), and the separator
+                  stays with its LABEL, so a wrapped row reads "Wasiliana nasi ·" / the number (visual pass 2b). */}
               <span className="whitespace-nowrap">{t.footer.contactUs} ·</span>{" "}<span className="whitespace-nowrap">{supportPhone}</span>
             </a>
           </li>
           <li>
-            <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
-              <span className="whitespace-nowrap">{t.footer.helpline} ·</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>
-            </a>
-          </li>
-          <li>
             <a href={`mailto:${supportEmail}`} className="text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
-              {/* ⛔ WAS A HARDCODED ENGLISH LITERAL, one line below the translated
-                  `t.footer.helpline`, rendering on EVERY page in all three locales.
+              {/* ⛔ WAS A HARDCODED ENGLISH LITERAL, beside the translated footer
+                  labels, rendering on EVERY page in all three locales.
                   ⭐ `test:i18n` could not see it and never could: it walks the DICTIONARY
                   for missing or untranslated keys, and a string that was never a key is
                   outside its population by construction. An absent key is invisible to a

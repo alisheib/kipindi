@@ -215,7 +215,7 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
 
   // ── §6.2 · the absence, channel by channel ───────────────────────────────────────────────────────
   const hPrompt = assuranceHits(prompt);
-  ok("6.2 · ⛔ no D19d assurance in the LIVE SYSTEM PROMPT, in any locale — 'independent' matched subject-scoped, so the two helpline lines are not swept in", hPrompt.length === 0, `${prompt.length} chars scanned · ${show(hPrompt)}`);
+  ok("6.2 · ⛔ no D19d assurance in the LIVE SYSTEM PROMPT, in any locale — 'independent' matched subject-scoped, so a line calling something independent OF us is not swept in", hPrompt.length === 0, `${prompt.length} chars scanned · ${show(hPrompt)}`);
   const hOther = assuranceHits(chatOther);
   ok("6.2b · ⛔ nor in the live channel's other player-read text (the capacity, empty-reply and trouble fallbacks a player is handed verbatim)", hOther.length === 0, `${chatOther.length} chars scanned · ${show(hOther)}`);
   const hStub = assuranceHits(stubText);
@@ -296,12 +296,13 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
   );
 
   // ── §6.7 / §6.8 · POSITIVE CONTROLS · what must still be ALLOWED and PRESENT ─────────────────────
-  const HELPLINE_LINE = "It is free, it is independent of 50pick, and it is the number to give anyone who asks for help with gambling.";
-  const RULE_2 = "must be pointed to the independent national service.";
+  // ⭐ Since the owner's ruling of 2026-10-06 the prompt carries no helpline sentence; RULE 2 points a player at risk to
+  // the responsible-gambling tools, and it is that line which must stay.
+  const RULE_2 = "is pointed to the tools that stop the play.";
   ok(
-    "6.7 · ⭐ POSITIVE CONTROL · both helpline lines are still PRESENT in the prompt — 6.2 cannot be made green by deleting RULE 2, the at-risk path test:chat-safety exists to protect",
-    prompt.includes(HELPLINE_LINE) && prompt.includes(RULE_2),
-    `helpline sentence ${prompt.includes(HELPLINE_LINE) ? "present" : "GONE"} · RULE 2 ${prompt.includes(RULE_2) ? "present" : "GONE"}`,
+    "6.7 · ⭐ POSITIVE CONTROL · RULE 2 is still PRESENT in the prompt — 6.2 cannot be made green by deleting RULE 2, the at-risk path test:chat-safety exists to protect",
+    prompt.includes(RULE_2),
+    `RULE 2 ${prompt.includes(RULE_2) ? "present" : "GONE"}`,
   );
   const SIDE_REFUSAL = "I can explain how a market resolves";
   const RG_REDIRECT = 'kind: "rg_redirect"';
@@ -314,13 +315,13 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
   // ── §6.9 · THE ONE LIVE CHANNEL — operator-writable text that reaches the model ──────────────────
   /**
    * ⭐ THIS CASE IS NOT IN THE BUILD PLAN; THE TRUTH-FINDING PRODUCED IT. 6.4 proves the prompt's `${...}`
-   * set is CLOSED. It does not ask what those six holes CARRY, and that is the whole live question: the
+   * set is CLOSED. It does not ask what those five holes CARRY, and that is the whole live question: the
    * model is never told house accounts exist, so the only way unreviewed text reaches it is through a hole
    * somebody can WRITE INTO.
    *
    * Re-derived from the tree, hole by hole: `objectionHours` and `formatTzs(WITHDRAW_MAX_TZS)` are numbers,
-   * `langLine` is derived from the locale, and `HELPLINE()` is a PINNED constant — `src/lib/support-config.ts`
-   * says in terms that "no persisted row and no admin form can move it". That leaves exactly TWO holes
+   * and `langLine` is derived from the locale. (`HELPLINE()` was a sixth hole until 2026-10-06, when the owner's
+   * ruling took the helpline out of the prompt — it had become admin-editable on 2026-10-03.) That leaves exactly TWO holes
    * carrying operator-writable text: `SUPPORT_EMAIL()` and `SUPPORT_PHONE()`, both read per-request from the
    * `support_config` row an officer saves at `/admin/system`.
    *
@@ -430,7 +431,7 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
   {
     const fired = D19D_ALLOWED.map((a) => ({ a, hits: assuranceHits(a.text) })).filter((x) => x.hits.length > 0);
     ok(
-      "6.c3 · ⭐ POSITIVE CONTROL · every real line that must stay ALLOWED is fed to the same matcher and is NOT reported — the helpline's 'independent of 50pick', RULE 2's independent national service, 'No officer reviews a withdrawal', 'an officer seals the outcome', the side refusal, the real faq8a and the prompt's own account sentences",
+      "6.c3 · ⭐ POSITIVE CONTROL · every real line that must stay ALLOWED is fed to the same matcher and is NOT reported — a helpline called 'independent of 50pick', RULE 2's at-risk redirect, 'No officer reviews a withdrawal', 'an officer seals the outcome', the side refusal, the real faq8a and the prompt's own account sentences",
       fired.length === 0,
       `${D19D_ALLOWED.length} allowed lines · swept in: ${fired.map((x) => `${x.hits[0].label} on "${x.a.text.slice(0, 40)}…" (${x.a.why})`).join(" · ") || "none"}`,
     );
@@ -507,8 +508,8 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
   }
   {
     // 6.c9 · the PRESENCE assertions can fail (6.7/6.8 are not vacuous).
-    const stripped = prompt.replace(HELPLINE_LINE, "").replace(RULE_2, "");
-    ok("6.c9 · CONTROL · 6.7's presence check run against a COPY with the helpline sentence and RULE 2 removed reports them GONE — a positive control that could not fail would be worth nothing", !stripped.includes(HELPLINE_LINE) && !stripped.includes(RULE_2) && prompt.includes(HELPLINE_LINE), `copy ${stripped.length} chars · original ${prompt.length} chars`);
+    const stripped = prompt.replace(RULE_2, "");
+    ok("6.c9 · CONTROL · 6.7's presence check run against a COPY with RULE 2 removed reports it GONE — a positive control that could not fail would be worth nothing", !stripped.includes(RULE_2) && prompt.includes(RULE_2), `copy ${stripped.length} chars · original ${prompt.length} chars`);
   }
   {
     // 6.c10 · the byte-identity measure separates a clean tree from a blind one.

@@ -121,7 +121,7 @@ export type PolicyPageSpec = {
 /* Typed before it is frozen, so each `versionKey` is checked as the literal key it is (a frozen inline literal would
    widen it to a string). */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
-  rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-09-26", versionKey: "version.rg" },
+  rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
   privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-01", versionKey: "version.privacy" },
 };
 

@@ -23,9 +23,11 @@
  * ⭐ THE HELPLINE AND THE LICENCE ARE HERE TOO since the owner's rule of 2026-10-03 ("everything
  * should be changeable"). They were pinned constants; they are now persisted, validated and audited
  * by the same factory. `@/lib/support-config` explains how a saved value reaches a client component.
+ * ⭐ AND SINCE THE OWNER'S RULING OF 2026-10-06 EVERY NUMBER SAVES AS TYPED — the helpline may be our own
+ * desk, and the desk may be any number (`toSupportDial`). Validation refuses only what is no number at all.
  */
 import { defineConfig } from "./define-config";
-import { SUPPORT_CONFIG_KEY, SUPPORT_DEFAULTS, toDialTarget, toHelplineDial, licenceProblem, type SupportConfig } from "../support-config";
+import { SUPPORT_CONFIG_KEY, SUPPORT_DEFAULTS, toSupportDial, toHelplineDial, licenceProblem, type SupportConfig } from "../support-config";
 
 export { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER, SUPPORT_CONFIG_KEY, type SupportConfig } from "../support-config";
 
@@ -33,9 +35,9 @@ export { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER, SUPPORT_CONFIG_KEY, type Suppor
  * 🔴 The persisted row predates the split and still carries `helpline` / `helplineTel` — and what
  * they hold is `+255769777877`, 50pick's OWN desk (E-328). `defineConfig` merges
  * `{ ...defaults, ...restored }`, so without this those keys would ride back into the live config
- * object, and a later `set()` would write them out again. ⛔ AND THEY MUST NEVER BECOME THE
- * HELPLINE: that is why the editable helpline lives under NEW keys (`nationalHelpline`,
- * `nationalHelplineTel`). Hydration takes the fields it owns, by name, and nothing else.
+ * object, and a later `set()` would write them out again. ⛔ A leftover of an old form must never
+ * silently replace what an admin saved: that is why the editable helpline lives under its own keys
+ * (`nationalHelpline`, `nationalHelplineTel`). Hydration takes the fields it owns, by name, and nothing else.
  */
 const migrate = (persisted: Record<string, unknown>): Partial<SupportConfig> => {
   const out: Partial<SupportConfig> = {};
@@ -69,21 +71,15 @@ const validate = (c: SupportConfig): { ok: true } | { ok: false; reason: string 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, reason: `"${c.email}" is not a usable email address — it is the ReplyTo on every message we send.` };
   }
-  if (!(c.phone ?? "").trim()) return { ok: false, reason: "The support phone is published on /help and in the self-exclusion refusal; it cannot be blank." };
-  if (!toDialTarget(c.phoneTel || c.phone)) {
-    return { ok: false, reason: `"${c.phone}" does not yield a dialable number, so the tel: link would be dead.` };
+  if (!(c.phone ?? "").trim()) return { ok: false, reason: "The support phone is published on /help and in the footer; it cannot be blank." };
+  // ⭐ Any number the admin types (owner's ruling, 2026-10-06) — `toSupportDial` refuses only a value that is no number at all.
+  if (!toSupportDial(c.phoneTel || c.phone)) {
+    return { ok: false, reason: `"${c.phone}" is not a phone number (3 to 15 digits, no letters), so the tel: link would be dead.` };
   }
-  // ── The national helpline (editable since 2026-10-03). ──
-  if (!(c.nationalHelpline ?? "").trim()) return { ok: false, reason: "The national helpline cannot be blank — it is printed on every page as \"Helpline\"." };
+  // ── The helpline (editable since 2026-10-03; any number since 2026-10-06, our own desk included). ──
+  if (!(c.nationalHelpline ?? "").trim()) return { ok: false, reason: "The helpline cannot be blank — the footer of every marketing SMS carries it." };
   if (!toHelplineDial(c.nationalHelpline) || c.nationalHelplineTel !== toHelplineDial(c.nationalHelpline)) {
-    return { ok: false, reason: `"${c.nationalHelpline}" does not yield a dialable helpline, so its tel: link would be dead.` };
-  }
-  /* 🔴 E-328, KEPT WITHOUT THE LOCK. The one value this field must never hold is our own desk:
-     published under "Helpline", it routes a player who is excluding themselves back to 50pick.
-     Compared as dial targets, so `0769 777 877` and `+255769777877` are the same number. */
-  const desk = toDialTarget(c.phoneTel || c.phone);
-  if (desk && toDialTarget(c.nationalHelpline) === desk) {
-    return { ok: false, reason: "The national helpline cannot be 50pick's own support number. It is the independent problem-gambling line a player is sent to for help; our desk is the Support phone." };
+    return { ok: false, reason: `"${c.nationalHelpline}" is not a phone number (3 to 15 digits, no letters), so its tel: link would be dead.` };
   }
   // ── The licence number (editable since 2026-10-03). ──
   const lp = licenceProblem(c.licenceNumber);

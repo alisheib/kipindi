@@ -35,8 +35,9 @@
    `defineConfig`. The operator-editable getters moved to `lib/server/support-config.ts`, where
    they hydrate from `SystemConfig`. ⛔ This suite kept importing `SUPPORT_PHONE` from the client
    half and died at load with "does not provide an export named 'SUPPORT_PHONE'" — a red that
-   `tsc` cannot see, because a `.mts` fixture's imports are outside the typechecker's include. */
-import { HELPLINE } from "../src/lib/support-config.ts";
+   `tsc` cannot see, because a `.mts` fixture's imports are outside the typechecker's include.
+   ⭐ The helpline readers are imported to prove NO email carries the helpline (owner's ruling, 2026-10-06). */
+import { HELPLINE, SUPPORT_DEFAULTS } from "../src/lib/support-config.ts";
 import { SUPPORT_PHONE } from "../src/lib/server/support-config.ts";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -406,15 +407,10 @@ for (const r of RENDERS) {
   // and the licence footer; a fragment renders as a wall of text in some clients.
   ok(`${r.template}: is a complete HTML document`, r.benign.startsWith("<!DOCTYPE html>") && r.benign.trimEnd().endsWith("</html>"));
   ok(`${r.template}: carries the 18+ / GBT licence footer`, r.benign.includes("18+") && r.benign.includes("Gaming Board of Tanzania"));
-  // 🔴 THIS ASSERTED THE WRONG NUMBER, AND SO ENFORCED THE DEFECT (fixed 2026-09-07).
-  // It pinned the literal `+255 22 211 5811` — **50pick's own support desk** — as "the
-  // helpline". The national gambling helpline is `0800 11 0011`. `selfExcludeHtml` printed
-  // the operator's number under the words *"Tanzania Gambling Helpline"*, and this guard
-  // made that mandatory: correcting the number alone would have turned the suite RED.
-  // ⛔ A guard asserting the wrong answer is worse than no guard — it converts a defect
-  // into a requirement. ⭐ It now reads the value from the single source of truth instead
-  // of a literal, so the two cannot disagree again and an admin override travels with it.
-  ok(`${r.template}: carries the helpline`, r.benign.includes(HELPLINE()), HELPLINE());
+  // ⭐ THE OWNER'S RULING OF 2026-10-06: no email carries the helpline — not its number, not the word. Until that
+  // day this line asserted every template DID carry it (and before 2026-09-07 it pinned our own desk as "the
+  // helpline"). §3g below proves the detector can fire.
+  ok(`${r.template}: carries no helpline`, !carriesHelpline(r.benign), HELPLINE());
 
   // 3e — LINKS. A relative href is dead in an inbox.
   const hrefs = [...r.benign.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
@@ -629,22 +625,15 @@ ok("an address-less user is reported as 'no-address'", none.reason === "no-addre
 ok("sendEmail never throws for any input",
   (await E.sendEmail({ to: "", subject: "", html: "" }).then(() => true, () => false)));
 
-// ── §3g · THE HELPLINE MUST BE INDEPENDENT OF THE OPERATOR ──────────────────────────
+// ── §3g · NO HELPLINE IN ANY EMAIL (the owner's ruling, 2026-10-06) ──────────────────────────
 //
-// 🔴 §3d above now reads the helpline from `support-config.ts` instead of a literal, which stops
-// it ENFORCING a wrong number — but it only proves the email agrees with the config. Move both
-// together and it still passes. So the property that actually matters is asserted here, once:
-// **the number printed under the words "Tanzania Gambling Helpline" must not be our own support
-// desk.** That is the entire point of an independent helpline, and it is exactly what was wrong
-// until 2026-09-07 — `selfExcludeHtml` routed a person self-excluding because gambling was
-// harming them back to the operator they were excluding themselves from.
-//
-// ⛔ CONSISTENCY AND CORRECTNESS ARE DIFFERENT ASSERTIONS. A guard that checks only the first is
-// satisfied by two wrong values that happen to match.
-ok("§3g the gambling helpline is not the operator's own support phone",
-   HELPLINE().replace(/\D/g, "") !== SUPPORT_PHONE().replace(/\D/g, ""),
-   `helpline=${HELPLINE()} support=${SUPPORT_PHONE()}`);
-ok("§3g …and it is a real, non-empty number", /\d{6,}/.test(HELPLINE().replace(/\D/g, "")), HELPLINE());
+// ⚠️ CONTROL — §3d's "carries no helpline" passes over a detector that can never fire, so the detector is
+// proved here: it flags the saved number, the default and the word, and it passes a footer that carries only
+// our own desk. (Until 2026-10-06 this section asserted the helpline was NOT our desk; since that ruling the
+// admin may save any number as the helpline, and no email prints it at all.)
+ok("§3g ⚠️ CONTROL — the helpline detector fires on the number and the word, and passes a desk-only footer",
+   carriesHelpline(`<p>Helpline ${HELPLINE()}</p>`) && carriesHelpline("<p>Need help? Contact the Tanzania Gambling Helpline.</p>")
+   && !carriesHelpline(`<p>18+ · Licensed by Gaming Board of Tanzania · ${SUPPORT_PHONE()}</p>`));
 
 console.log(`\ncert-c1 (email truth): ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
@@ -654,6 +643,12 @@ if (fail > 0) process.exit(1);
 /** Drop <style> and inline style="…" so CSS braces never read as placeholders. */
 function stripStyle(html: string): string {
   return html.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/style="[^"]*"/g, "");
+}
+
+/** A body that prints the helpline — its saved number, its default, or the word (owner's ruling, 2026-10-06). */
+function carriesHelpline(html: string): boolean {
+  const text = stripStyle(html);
+  return text.includes(HELPLINE()) || text.includes(SUPPORT_DEFAULTS.nationalHelpline) || /helpline|hotline/i.test(text);
 }
 
 /** What Postmark sends as the text part — the same transform `sendEmail` uses. */

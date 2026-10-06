@@ -3,9 +3,6 @@ import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
-// ⭐ The national helpline — editable in /admin/system since 2026-10-03, read through the
-// client-safe half. It is what an at-risk question must return.
-import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { isChatbotEnabled } from "@/lib/server/ai-controls";
@@ -32,7 +29,7 @@ const FAQ_ITEMS = [
 ] as const;
 
 // zh: the answers that break only at spaces and punctuation (`break-keep`), so a word is never split across two
-// lines. faq5 is two short clauses and the helpline, and at 360 it split 充值 (2026-09-27 visual review). The
+// lines. faq5 is two short clauses, and at 360 it split 充值 (2026-09-27 visual review). The
 // longer answers keep ordinary Chinese line breaking: keep-all on a paragraph ends each line at the next comma and
 // leaves it half empty, which is the rule `trust-band.tsx` measured.
 const WHOLE_WORD_ANSWERS: ReadonlySet<string> = new Set(["faq5"]);
@@ -144,24 +141,9 @@ export default async function HelpPage() {
                   {key === "faq1" && cfg.feeModel === "loser-share"
                     ? fill(t.help.faq1aLoser, { pct: pctNum((cfg.platformFeeRate ?? 0) + (cfg.operatorFeeRate ?? 0)) })
                     : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate), hours: durationHours(locale, cfg.objectionWindowHours) })}
-                  {/* 🔴 faq5 IS "I think I have a problem with gambling. What can I do?" — and
-                      this line used to append the OPERATOR'S desk number labelled `t.common.free`
-                      ("free" / "bure" / "免费"). Two wrongs at once: the number was not the free
-                      line, and the free line is exactly what this question should return. It is
-                      now the pinned statutory helpline, which IS free — so the label is true for
-                      the first time, and a player who asks the house for help is given the
-                      independent national number rather than the house's own.
-                      🔴 AND IT WAS BARE TEXT — no label, no tel: — so on a phone the one answer written for a
-                      player at risk could not be tapped (MOBILE-VISUAL-FINDINGS S08-05 / S08-info-H02). Now the
-                      footer's label and a tel: link, the shape `test:support-contact` §14.5–§14.7 pins; zh takes
-                      full-width brackets and no space after "。". */}
-                  {key === "faq5" && (
-                    <>
-                      {locale === "zh" ? "" : " "}{t.footer.helpline}{" "}
-                      <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a>
-                      {locale === "zh" ? `（${t.common.free}）。` : ` (${t.common.free}).`}
-                    </>
-                  )}
+                  {/* ⭐ faq5 ("I think I have a problem with gambling") answers with the limits, the break and
+                      self-exclusion — and no helpline: the owner's ruling of 2026-10-06 took the helpline off every
+                      player surface (`docs/COMPLIANCE-DECISIONS.md`). */}
                 </p>
               </details>
             );

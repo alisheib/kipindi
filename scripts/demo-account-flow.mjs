@@ -229,7 +229,8 @@ await reset();
     await p.locator('a[href="/auth/forgot-password"]').first().click();
     await p.waitForURL(/\/auth\/forgot-password/, { timeout: 5_000 }).catch(() => null);
     const txt = (await p.locator("body").textContent()) ?? "";
-    log("5.2 page renders helpline + email", /0800\s*11\s*0011/.test(txt) && /support@/.test(txt));
+    // The support card dials our own desk since 2026-10-06 (no helpline on any player page — the owner's ruling).
+    log("5.2 page renders the support email and no helpline", /@50pick\.tz/.test(txt) && !/0800\s*11\s*0011|helpline/i.test(txt));
   }
   await ctx.close();
 }

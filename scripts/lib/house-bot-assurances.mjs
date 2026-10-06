@@ -25,10 +25,14 @@
  * `lib/chat/send-message.ts`, and `faq8a` in all three locales). They are therefore matched FLAT, which is
  * the strictest form and costs nothing.
  *
- * The eighth, "independent", occurs TWICE today, and both occurrences must never move:
+ * The eighth, "independent", occurred TWICE when this was measured, and both occurrences were not to move:
  *   `chat.ts` · "The national problem-gambling helpline is ${HELPLINE()}. It is free, it is independent of
  *               50pick, and it is the number to give anyone who asks for help with gambling."
  *   `chat.ts` · RULE 2 · "... must be pointed to the independent national service."
+ * ⚠️ 2026-10-06 — the owner's ruling took the helpline out of the prompt, and RULE 2 now points a player at risk
+ * to the responsible-gambling tools; neither line carries "independent" any more. The scoping is KEPT: it is
+ * no weaker than it was, and `D19D_ALLOWED` still feeds the matcher a sentence calling a helpline independent
+ * OF us, so a flat pattern is still caught as wrong (`the-independent-pattern-goes-flat`).
  * A flat /independent/i goes red on day one on those two lines, and the cheapest way to green it is to
  * delete RULE 2 — the at-risk path `test:chat-safety` exists to protect. So "independent" alone is bound to
  * a PLATFORM SUBJECT in predicate position ("50pick is independent", "we are independent", "the platform is
@@ -196,14 +200,14 @@ export const D19D_PLANTS = Object.freeze({
 });
 
 /**
- * ⛔ THE ACCEPT SIDE. Real, load-bearing lines that must stay ALLOWED — and, for the first two, must stay
- * PRESENT. A guard that has never been shown what it must NOT refuse is a guard whose scope is unmeasured,
+ * ⛔ THE ACCEPT SIDE. Real, load-bearing lines that must stay ALLOWED — and, for RULE 2, must stay PRESENT
+ * (6.7). The first is no longer in the prompt (the owner's ruling, 2026-10-06) and stays as a matcher case. A guard that has never been shown what it must NOT refuse is a guard whose scope is unmeasured,
  * and this lane has twice shipped one: a protection sweep that refused its own cleanup, and thirteen
  * "this is refused" assertions that passed harder while the feature was broken.
  */
 export const D19D_ALLOWED = Object.freeze([
-  { why: "the statutory helpline is independent OF us — the opposite claim, and D19d's own subject word", text: "The national problem-gambling helpline is 0800 11 0011. It is free, it is independent of 50pick, and it is the number to give anyone who asks for help with gambling." },
-  { why: "RULE 2 — the at-risk path test:chat-safety exists to protect; deleting it is the cheapest way to green a flat /independent/i", text: "Never give our own support desk number in answer to this — it is the operator's line, and a person asking for help getting away from gambling must be pointed to the independent national service." },
+  { why: "a helpline called independent OF us — the opposite claim, and D19d's own subject word (the prompt's own line until 2026-10-06)", text: "The national problem-gambling helpline is 0800 11 0011. It is free, it is independent of 50pick, and it is the number to give anyone who asks for help with gambling." },
+  { why: "RULE 2 — the at-risk path test:chat-safety exists to protect; deleting it is the cheapest way to green a guard", text: "Never give our own support desk number in answer to this — it is the operator's line, and a person asking for help getting away from gambling is pointed to the tools that stop the play." },
   { why: "a real negation about officers that a careless /no (one|person|officer)/ would sweep in", text: "No officer reviews a withdrawal before it is sent, whatever its size." },
   { why: "the platform says a PERSON decides resolution — the opposite of 'no person decides'", text: "Resolution: an officer seals the outcome against a public source URL." },
   { why: "the stub's proposals answer, which also says a person decides", text: "3. Other players upvote it, but an officer makes the final listing call" },
@@ -265,9 +269,9 @@ export function promptInterpolations(slice) {
  * SUPPORT_EMAIL(), WITHDRAW_MAX_TZS}` — wrong twice: it omits `langLine` entirely (the three LANGUAGE
  * lines) and the cap enters through `formatTzs(WITHDRAW_MAX_TZS)`, not bare. A pin typed from that list
  * would have gone red on a file nobody had touched.
+ * ⭐ 2026-10-06: `HELPLINE()` left the prompt with the helpline (the owner's ruling) — one hole fewer.
  */
 export const PROMPT_INTERPOLATIONS = Object.freeze([
-  "HELPLINE()",
   "SUPPORT_EMAIL()",
   "SUPPORT_PHONE()",
   "formatTzs(WITHDRAW_MAX_TZS)",

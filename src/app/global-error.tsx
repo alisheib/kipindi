@@ -45,7 +45,6 @@ const MINI_DICT = {
     reference: "Reference",
     help: "Gambling should stay fun. If it stops, take a break or set limits.",
     rg: "Responsible gaming",
-    helpline: "Helpline 0800 11 0011",
     gbt: "18+ \u00b7 Licensed by the Gaming Board of Tanzania",
   },
   sw: {
@@ -57,7 +56,6 @@ const MINI_DICT = {
     reference: "Rejea",
     help: "Kucheza kuwe raha. Kikiacha kuwa raha, pumzika au weka mipaka.",
     rg: "Uchezaji wa busara",
-    helpline: "Simu ya msaada 0800 11 0011",
     gbt: "18+ \u00b7 Imepewa leseni na Bodi ya Michezo ya Kubahatisha Tanzania",
   },
   zh: {
@@ -69,7 +67,6 @@ const MINI_DICT = {
     reference: "\u53c2\u8003\u7f16\u53f7",
     help: "\u535a\u5f69\u5e94\u4fdd\u6301\u4e50\u8da3\u3002\u5982\u679c\u4e0d\u518d\u5feb\u4e50\uff0c\u8bf7\u4f11\u606f\u6216\u8bbe\u7f6e\u9650\u989d\u3002",
     rg: "\u8d1f\u8d23\u4efb\u535a\u5f69",
-    helpline: "\u5e2e\u52a9\u70ed\u7ebf 0800 11 0011",
     gbt: "18+ \u00b7 \u7531\u5766\u6851\u5c3c\u4e9a\u535a\u5f69\u59d4\u5458\u4f1a\u53d1\u7167",
   },
 } as const;
@@ -85,30 +82,6 @@ function readLocale(): "en" | "sw" | "zh" {
   const v = decodeURIComponent(m[1]);
   return v === "en" || v === "sw" || v === "zh" ? v : "sw";
 }
-
-/**
- * ⭐ THE SAVED HELPLINE, WHEN THE ROOT LAYOUT PUBLISHED ONE (owner's rule 2026-10-03: the helpline is
- * editable in /admin/system). The layout writes it onto <html> as `data-kp-helpline` /
- * `data-kp-helpline-tel`; on a crash AFTER the page loaded those attributes are still on the document,
- * so this page prints the number the admin saved. On a server-side crash the layout never ran, and the
- * copies in MINI_DICT above — the default — are the answer.
- * ⛔ The names are spelled here, not imported, because this file imports nothing but React;
- * `test:support-contact` §15 holds them in step with `PUBLIC_FACT_ATTRS` in `@/lib/support-config`.
- */
-function readPublishedHelpline(): { text: string; tel: string } | null {
-  if (typeof document === "undefined") return null;
-  try {
-    const el = document.documentElement;
-    const text = el.getAttribute("data-kp-helpline");
-    const tel = el.getAttribute("data-kp-helpline-tel");
-    return text && tel ? { text, tel } : null;
-  } catch {
-    return null;
-  }
-}
-
-/** The default helpline's dial form — the fallback when no saved value was published. */
-const HELPLINE_FALLBACK_TEL = "0800110011";
 
 export default function GlobalError({
   error,
@@ -150,10 +123,6 @@ export default function GlobalError({
 
   const lang = useMemo(() => readLocale(), []);
   const t = MINI_DICT[lang];
-  /* Read once per mount, like the locale: the attributes may be gone from <html> after this page commits. */
-  const published = useMemo(() => readPublishedHelpline(), []);
-  const helplineText = published ? t.helpline.replace(/0800[\d\s]*$/, published.text) : t.helpline;
-  const helplineTel = published ? published.tel : HELPLINE_FALLBACK_TEL;
 
   // Inline OKLCH so the page is readable even with no stylesheet.
   const BG = "oklch(15% 0.130 268)";
@@ -332,8 +301,9 @@ export default function GlobalError({
           </div>
 
           {/* Responsible-gambling footer — required on EVERY surface incl. this
-              root-error boundary (GLI-19 / LCCP). Helpline + RG link are always
-              reachable even when the whole app failed to boot. */}
+              root-error boundary (GLI-19 / LCCP). The RG link is always reachable
+              even when the whole app failed to boot. ⛔ No helpline since the owner's
+              ruling of 2026-10-06 (docs/COMPLIANCE-DECISIONS.md). */}
           <div
             style={{
               marginTop: 18,
@@ -352,10 +322,6 @@ export default function GlobalError({
             <span>
               <a href="/legal/responsible-gambling" style={{ color: GOLD, textDecoration: "none", fontWeight: 700 }}>
                 {t.rg}
-              </a>
-              <span style={{ color: BORDER }}>{"   ·   "}</span>
-              <a href={`tel:${helplineTel}`} style={{ color: TEXT_MUTED, textDecoration: "none" }}>
-                {helplineText}
               </a>
             </span>
             <span>{t.gbt}</span>

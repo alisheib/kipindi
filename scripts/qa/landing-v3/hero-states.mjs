@@ -1,8 +1,9 @@
 // Landing v3 · hero v3 — the hero's interaction and text-size states as viewport tiles (spec hero-v3 §11.4):
 //   · 360 sw with the root text at 130% (an approximation of Android's font scale — the DEV row's real handsets
 //     stay Ali's), the first screen and the next;
-//   · keyboard focus on the primary CTA, the secondary CTA and the helpline link (focus-visible rings);
-//   · pointer hover on the same three (1280 en — a hover-capable pointer).
+//   · keyboard focus on the primary CTA and the secondary CTA (focus-visible rings) — the hero's helpline link left
+//     with the owner's ruling of 2026-10-06;
+//   · pointer hover on the same two (1280 en — a hover-capable pointer).
 //   BASE=http://localhost:3057 OUT=<dir> node scripts/qa/landing-v3/hero-states.mjs
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
@@ -41,11 +42,10 @@ try {
     console.log(`${ov > 0 ? "FAIL" : "PASS"} 130% text: no horizontal overflow (${ov}px)`);
     await ctx.close();
   }
-  // focus on the CTAs and the helpline, by keyboard, at 360 sw and 1280 en
+  // focus on the CTAs, by keyboard, at 360 sw and 1280 en
   for (const [w, h, loc] of [[360, 780, "sw"], [1280, 800, "en"]]) {
     const { ctx, page } = await open(w, h, loc);
     const targets = [
-      ["tel", '[data-band="hero"] a.kp-hero__tel'],
       ["cta1", '[data-band="hero"] .kp-hero__ctas a >> nth=0'],
       ["cta2", '[data-band="hero"] .kp-hero__ctas a >> nth=1'],
     ];

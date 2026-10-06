@@ -35,9 +35,9 @@
  * ── HERO v3 (2026-09-27, specs/hero-v3.md §9) ─────────────────────────────────────────────────
  * · 360 × 740 cells (sw/en/zh): the delivery's own phone frame. V15's line there is the real
  *   bottom-rail top (≈675), not the 740 the 780-tall cells can afford.
- * · V21 — below 640, the hero's trust rows 1–2 and its helpline `tel:` link end above V15's line
- *   (ACCEPTANCE K29 + placement map P15: 18+, the licence, the helpline and the wallets on the
- *   first screen). RED: move the trust list after the card.
+ * · V21 — below 640, the hero's trust rows 1–2 end above V15's line (ACCEPTANCE K29 + placement
+ *   map P15: 18+, the licence and the wallets on the first screen), and the hero carries no helpline
+ *   `tel:` link (the owner's ruling, 2026-10-06). RED: move the trust list after the card.
  * · V26 — the bottom rail and its centre Deposit coin (UPDATE-2026-09-28 §2 / WP1b): centred ±1px, a
  *   14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's
  *   reserve still clearing it, no English rail label ellipsised. Not applicable at ≥ 1024 (`lg:hidden`)
@@ -837,11 +837,11 @@ const CHECKS = /* js */ `(() => {
   } else push("V15", []);
 
   /* ── V21 the trust rows reach the first screen (hero v3 · K29 + P15) ─────────────────────────
-     Below 640 the hero's trust rows — 18+ · the licence · the helpline, then the wallets — and the
-     helpline's own tel: link must END above V15's line. They sit above the card since R7 precisely
-     so that they do; before it, on a phone, they began under the bottom rail. Row 1 and the link
-     must exist; row 2 is measured when present (a rail an officer paused is not named, R8(6), so a
-     hero with every rail paused has no row 2 — true, not a defect). */
+     Below 640 the hero's trust rows — 18+ · the licence, then the wallets — must END above V15's
+     line. They sit above the card since R7 precisely so that they do; before it, on a phone, they
+     began under the bottom rail. Row 1 must exist; row 2 is measured when present (a rail an officer
+     paused is not named, R8(6), so a hero with every rail paused has no row 2 — true, not a defect).
+     ⛔ Since the owner's ruling of 2026-10-06 the hero carries NO helpline tel: link, and one is a defect. */
   if (vw >= 360 && vw < 640) {
     const bad = [];
     const line = firstScreenLine();
@@ -852,11 +852,7 @@ const CHECKS = /* js */ `(() => {
       if (b > line) bad.push({ what: "trust row " + (i + 1) + " ends below the first screen", measured: b + "px > " + line + (line < 740 ? " (the bottom rail)" : ""), where: sel(li) + ' "' + textOf(li) + '"' });
     });
     const tel = [...document.querySelectorAll('.kp-hero a[href^="tel:"]')].find(vis);
-    if (!tel) bad.push({ what: "no helpline tel: link in the hero", measured: "0 visible .kp-hero a[href^=tel:]", where: "hero" });
-    else {
-      const b = Math.round(tel.getBoundingClientRect().bottom + scrollY);
-      if (b > line) bad.push({ what: "the helpline link ends below the first screen", measured: b + "px > " + line, where: sel(tel) + ' "' + textOf(tel) + '"' });
-    }
+    if (tel) bad.push({ what: "a helpline tel: link is back in the hero (owner's ruling 2026-10-06)", measured: "1+ visible .kp-hero a[href^=tel:]", where: sel(tel) + ' "' + textOf(tel) + '"' });
     push("V21", bad);
   } else push("V21", []);
 

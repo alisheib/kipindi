@@ -6,8 +6,8 @@
  *
  *   • the SHAPE and DEFAULTS of every operator-editable public fact: the support desk
  *     (email, phone), Tanzania's national problem-gambling helpline, and the licence number;
- *   • the derivations (`toDialTarget`, `toHelplineDial`, `licenceProblem`) that the admin form
- *     previews and the server action stores, so what the console shows is what gets saved;
+ *   • the derivations (`toDialTarget`, `toHelplineDial`, `toSupportDial`, `licenceProblem`) that the
+ *     admin form previews and the server action stores, so what the console shows is what gets saved;
  *   • the readers `HELPLINE()`, `HELPLINE_TEL()` and `LICENCE_NUMBER()`, which return the SAVED
  *     value on the server AND in a browser bundle — see "HOW A SAVED VALUE REACHES A CLIENT
  *     COMPONENT" below.
@@ -23,15 +23,14 @@
  * constants shown as greyed-out boxes in /admin/system, and an admin read the console as broken.
  * They are now persisted, audited and validated exactly like the desk line.
  *
- * 🔴 WHAT THE PINNING PROTECTED, AND WHERE THAT PROTECTION LIVES NOW (E-328).
- * The persisted `support_config` row on production carries `helpline: "+255769777877"` —
- * 50pick's OWN desk — because an old admin form offered the field and somebody filled it in.
- * Published as the "Tanzania Helpline", that walks a player who is excluding themselves straight
- * back to the operator. Two things keep that from happening without a lock:
- *   1. the helpline is stored under NEW keys (`nationalHelpline`, `nationalHelplineTel`), so the
- *      stale `helpline` value in that row is never read — `server/support-config.ts` `migrate`
- *      drops it on the way in;
- *   2. validation REFUSES a helpline that dials the same number as the support phone.
+ * ⭐ OWNER'S RULING, 2026-10-06 (`docs/COMPLIANCE-DECISIONS.md`): the Gaming Board confirmed nothing
+ * obliges 50pick to show a helpline or to use a particular one — "let the admin put any numbers he
+ * wants". So (1) no player surface shows the helpline any more (`test:support-contact` §15 keeps it
+ * off); it stays editable here because the marketing SMS footer still carries it; and (2) every number
+ * on the card saves as typed: the E-328 refusal of a helpline equal to our own desk is gone, and the
+ * desk phone takes any number too (`toSupportDial`). The editable helpline keeps its own keys
+ * (`nationalHelpline`, `nationalHelplineTel`): the stale `helpline` key in the live row is a leftover
+ * of an old form, and `server/support-config.ts` `migrate` still drops it on the way in.
  */
 
 /** The operator-editable public facts — the only part persisted in `SystemConfig`. */
@@ -39,8 +38,9 @@ export type SupportConfig = {
   email: string;
   phone: string;
   phoneTel: string;
-  /** Tanzania's national problem-gambling helpline as a player READS it, e.g. `0800 11 0011`.
-   *  ⛔ Never the key `helpline`: that key in the live row holds our own desk number (E-328). */
+  /** The helpline as it is printed, e.g. `0800 11 0011` — any number the admin saves (2026-10-06). Shown
+   *  on no player page; the marketing SMS footer carries it.
+   *  ⛔ Never the key `helpline`: that key in the live row is a stale leftover of an old form (E-328). */
   nationalHelpline: string;
   /** …and as a tap DIALS it. Always `toHelplineDial(nationalHelpline)` — derived, never typed. */
   nationalHelplineTel: string;
@@ -147,17 +147,28 @@ export function toHelplineDial(input: string): string {
 }
 
 /**
+ * ⭐ THE SUPPORT PHONE'S DIAL TARGET — ANY NUMBER THE ADMIN TYPES (owner's ruling, 2026-10-06: "let the admin
+ * put any numbers he wants"). A Tanzanian number in any spelling still becomes E.164 through `toDialTarget`, so
+ * a tap works from abroad; anything else — a short code, a toll-free line, a foreign number — is dialled as
+ * typed, through `toHelplineDial`. `""` only for a value carrying a letter, or fewer than 3 / more than 15 digits:
+ * that is not a number at all, and a `tel:` link around it would be dead.
+ */
+export function toSupportDial(input: string): string {
+  return toDialTarget(input) || toHelplineDial(input);
+}
+
+/**
  * Why a licence number cannot be saved, or `null` when it can. Shape-only, deliberately: the
- * Gaming Board's format may change, which is the whole reason the field is editable. What must
- * not pass is a blank (every footer would print "Licence:" and nothing), a paragraph, or markup.
+ * Gaming Board's format may change, which is the whole reason the field is editable — and since the
+ * owner's ruling of 2026-10-06 ("any numbers he wants") any characters a licence could carry are
+ * accepted. What must not pass is a blank (every footer would print "Licence:" and nothing), a
+ * paragraph (more than one line, or longer than 80 characters), or markup.
  */
 export function licenceProblem(input: string): string | null {
   const v = (input ?? "").trim();
   if (!v) return "The licence number cannot be blank — it is printed in every footer, the terms and the game rules.";
-  if (v.length > 40) return "That is too long for a licence number (40 characters at most).";
-  if (!/^[A-Za-z0-9][A-Za-z0-9 ./-]*$/.test(v)) {
-    return `"${v}" has characters a licence number does not carry. Use letters, digits, spaces, dots, dashes or slashes.`;
-  }
+  if (v.length > 80) return "That is too long for a licence number (80 characters at most).";
+  if (/[<>\r\n]/.test(v)) return `"${v}" carries markup or a line break. Type the licence number as one line of text.`;
   return null;
 }
 

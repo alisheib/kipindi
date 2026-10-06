@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
-import { toDialTarget, toHelplineDial, type SupportConfig } from "@/lib/support-config";
+import { toSupportDial, toHelplineDial, type SupportConfig } from "@/lib/support-config";
 
 type AnnouncementTone = "info" | "warning" | "success";
 
@@ -100,7 +100,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
      `dirty` — these mirror the values rather than driving them. */
   const [phone, setPhone] = useState(config.phone);
   const [helpline, setHelpline] = useState(config.nationalHelpline);
-  const dialPreview = toDialTarget(phone);
+  const dialPreview = toSupportDial(phone);
   const helplineDialPreview = toHelplineDial(helpline);
   const { dirty, markSaved, formProps } = useFormDirty(cfgFormRef);
   const [pending, start] = useTransition();
@@ -159,8 +159,8 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
           <Input name="email" defaultValue={config.email} required />
         </Field>
         {/* 🔴 THE HINT USED TO READ "E.g. +255 22 211 5811" — a landline that appears nowhere in
-            the live row. ⭐ The dial line under it is the SAME `toDialTarget` the server action
-            stores, so what you see is what gets saved. */}
+            the live row. ⭐ The dial line under it is the SAME `toSupportDial` the server action
+            stores, so what you see is what gets saved — any number (owner's ruling, 2026-10-06). */}
         <Field
           label="Support phone"
           hint={<>50pick&apos;s own desk, shown as &ldquo;Contact us&rdquo;. {dialsLine(dialPreview)}</>}
@@ -168,11 +168,11 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         >
           <Input name="phone" defaultValue={config.phone} onChange={(e) => setPhone(e.currentTarget.value)} required />
         </Field>
-        {/* ⭐ E-328 lives in this hint and in the action's refusal now, not in a lock: this is the
-            national line, and saving our own desk number here is refused. */}
+        {/* ⭐ Owner's ruling, 2026-10-06: any number, our own desk included, and no player page shows it —
+            the one place it still goes out is the footer of a marketing SMS. */}
         <Field
-          label="National helpline"
-          hint={<>Tanzania&apos;s problem-gambling helpline, shown as &ldquo;Helpline&rdquo; on every page. Not our desk number. {dialsLine(helplineDialPreview)}</>}
+          label="Helpline"
+          hint={<>Any number. Not shown on the website; printed in the footer of every marketing SMS. {dialsLine(helplineDialPreview)}</>}
           dataField="support-helpline"
         >
           <Input name="nationalHelpline" defaultValue={config.nationalHelpline} onChange={(e) => setHelpline(e.currentTarget.value)} required />
@@ -197,7 +197,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
       <PendingChangesBar
         dirty={dirty}
         saving={pending}
-        detail="Support contacts, the helpline and the licence are shown on public pages."
+        detail="Support contacts and the licence are shown on public pages; the helpline goes out in marketing SMS."
         saveAnchor={saveRef}
         onSave={() => cfgFormRef.current?.requestSubmit()}
         /* ⛔ `reset()` fires no event, so the dial previews' mirrors are put back by hand — or

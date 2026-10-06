@@ -9,6 +9,42 @@
 ---
 
 
+## 2026-10-06 · No helpline on any player surface, and every number on the Support contacts card saves as typed — RG Policy v2026-10-06 (owner ruling)
+
+**Authority.** Ali, 2026-10-06 (spelling normalised): *"remove any rules that prevent us from changing the helpline number
+or set it to a certain value, and remove the helpline line from the website — keep it in admin if you want, but we don't
+want to display it anymore on the user side … make all numbers changeable"*; then *"we got the licence from GBT — they said
+nothing forces us to show a helpline or to use a certain helpline, so remove any rules that enforce this"*; and *"let the
+admin put any numbers he wants, as much as he wants."*
+
+**What changed.**
+1. **No player surface shows the helpline.** Gone from: the footer on every page and the opt-out page's footer; the
+   landing hero's trust row; the sign-in rail and its phone strip; `/help`'s at-risk answer (faq5); `/legal/responsible-gambling`
+   §4 and §5 in en, sw and zh; the limits page's support callout; the reality-check modal; the account hub's play-safe card;
+   the root error page; every email (the footer of all templates and the self-exclusion confirmation); and the Help chat's
+   instructions — an at-risk player is pointed to the limits, the break and self-exclusion, and still never to our desk.
+   The forgot-password "no email? contact support" card now dials our own Support phone: it sits beside our business hours,
+   and the desk is what a locked-out player needs. The game rules no longer say the helpline is "in the footer of every page".
+2. **The helpline stays editable on Admin → System** (the box is now labelled "Helpline"), because the marketing SMS footer
+   still carries it (OQ4, 2026-09-26: "the right helpline is ours"). It is any number the admin saves — our own desk
+   included: the E-328 refusal is gone. The marketing lane's footer was left exactly as it was.
+3. **Every number on the card saves as typed.** The support phone takes any number — a Tanzanian one still becomes E.164 for
+   the tap, and a short code, toll-free or foreign line is dialled as typed (`toSupportDial`); the licence number takes any
+   characters on one line, up to 80. Only what is no number at all is refused: a blank, letters, fewer than 3 or more than 15
+   digits, markup.
+4. **RG Policy v2026-10-06.** §4's "Free helpline displayed on every page footer" and §5's national-helpline line are removed
+   in all three languages; nothing else in the policy moved.
+
+**Where it is enforced.** `npm run test:support-contact` §15 (no player-facing file reads or labels a helpline; the error
+page prints none) and §10 (our own desk as the helpline, a short-code support phone and a licence with brackets are all
+ACCEPTED); `test:journey-account` 4.helpline; `test:cert-c1` (no email carries a helpline); `test:rg-policy` (a helpline
+promise put back on the policy has no control behind it, and is refused).
+
+**Supersedes** the 2026-10-03 entry's E-328 refusal ("a save whose helpline dials the same number as the Support phone is
+refused") and every rule that published the helpline to players: RG Policy v2026-09-26's footer bullet, the 2026-09-27 hero
+trust row's helpline, and the 2026-10-01 account hub's helpline row.
+⛔ Do not restore: putting the helpline back on a player page, or refusing a number an admin types, reverses this ruling.
+
 ## 2026-10-05 · Marketing outreach rulings — Ali answered twelve questions and three gates, put to him one at a time
 
 **Authority.** Ali, 2026-10-05, asked for the owner points to be put to him directly and answered each in the session.

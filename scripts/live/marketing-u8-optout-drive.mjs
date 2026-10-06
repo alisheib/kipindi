@@ -171,14 +171,15 @@ async function noSalesChrome(page, tag, state, C) {
   ok(`[${tag}] ${state} · ⛔ NO sign-in/sign-up link, NO nav or bottom rail, NO chat bubble, NO "propose markets" — somebody who came to leave is not sold to`,
     auth === 0 && navs === 0 && chat === 0 && invite === 0, `auth=${auth} nav=${navs} chat=${chat} propose=${invite}`);
   const lang = await page.locator("summary").locator("visible=true").count();
+  // ⭐ 2026-10-06 · the owner's ruling took the helpline off every player surface — this footer's included.
   const helpline = await page.locator('[data-testid="optout-footer"] a[href^="tel:"]').count();
-  ok(`[${tag}] ${state} · …and the language menu and the helpline line ARE there`, lang >= 1 && helpline >= 1,
+  ok(`[${tag}] ${state} · …and the language menu IS there, and no helpline line`, lang >= 1 && helpline === 0,
     `summary=${lang} tel=${helpline}`);
-  // ⭐ 2026-09-27 · the independent helpline keeps its responsible-gambling line (alone it read as our own
-  // number), and the 18+ roundel carries no aria-label (ARIA prohibits one on a generic span).
+  // ⭐ 2026-09-27 · the responsible-gambling line stays, and the 18+ roundel carries no aria-label (ARIA prohibits
+  // one on a generic span).
   const footer = norm(await page.locator('[data-testid="optout-footer"]').innerText().catch(() => ""));
   const labelled18 = await page.locator('[data-testid="optout-footer"] .kp-rg__18[aria-label]').count();
-  ok(`[${tag}] ${state} · ⭐ the helpline sits under its responsible-gambling line, and the 18+ has no aria-label`,
+  ok(`[${tag}] ${state} · ⭐ the responsible-gambling line is there, and the 18+ has no aria-label`,
     footer.includes(norm(C.footer.stopGambling)) && labelled18 === 0, `rg line ${footer.includes(norm(C.footer.stopGambling))} · labelled 18+ ${labelled18}`);
 }
 

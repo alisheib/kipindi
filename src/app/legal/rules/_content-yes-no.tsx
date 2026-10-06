@@ -227,8 +227,8 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
           <p>
             50pick is entertainment built on knowledge and conviction, not a source of income. Stake only what you
             can comfortably afford to lose, take breaks, and use the deposit limits, time limits, cooling-off and
-            self-exclusion tools on your profile. If play stops being fun, stop. Help is available on the platform
-            and through the national problem-gambling helpline shown in the footer of every page. 18+.
+            self-exclusion tools on your profile. If play stops being fun, stop. Help is available on the platform.
+            18+.
           </p>
         </LegalSection>
 
@@ -400,8 +400,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
           <p>
             50pick ni burudani inayojengwa kwa maarifa na msimamo, si chanzo cha mapato. Weka dau unaloweza kumudu
             kupoteza tu, pumzika, na tumia vikomo vya amana, vikomo vya muda, mapumziko na kujitenga vilivyopo kwenye
-            wasifu wako. Mchezo ukiacha kuwa wa kufurahisha, acha. Msaada unapatikana kwenye jukwaa na kwa simu ya
-            msaada ya kitaifa inayoonyeshwa chini ya kila ukurasa. Miaka 18+.
+            wasifu wako. Mchezo ukiacha kuwa wa kufurahisha, acha. Msaada unapatikana kwenye jukwaa. Miaka 18+.
           </p>
         </LegalSection>
 
@@ -542,7 +541,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="9" title="理性游戏">
           <p>
-            50pick 是建立在知识与判断之上的娱乐，而非收入来源。请只投入您能够承受损失的金额，注意休息，并使用个人资料页中的充值限额、时间限额、冷静期与自我排除工具。若游戏不再令人愉快，请停止。平台内提供帮助，每页页脚亦载有国家问题赌博求助热线。18+。
+            50pick 是建立在知识与判断之上的娱乐，而非收入来源。请只投入您能够承受损失的金额，注意休息，并使用个人资料页中的充值限额、时间限额、冷静期与自我排除工具。若游戏不再令人愉快，请停止。平台内提供帮助。18+。
           </p>
         </LegalSection>
 

@@ -210,7 +210,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
        editable). Client components cannot read the server config (E-226), so the saved helpline and
        licence are published here, from the live row, and `HELPLINE()` / `LICENCE_NUMBER()` read them back
        in the browser. The start tag is parsed before any script runs, so the first client render already
-       agrees with the server HTML. See `@/lib/support-config` "HOW A SAVED VALUE REACHES A CLIENT COMPONENT". */
+       agrees with the server HTML. See `@/lib/support-config` "HOW A SAVED VALUE REACHES A CLIENT COMPONENT".
+       ⚠️ The helpline is an ATTRIBUTE here, never rendered text — no player page shows it since the owner's
+       ruling of 2026-10-06; the admin SMS composer reads it in the browser to size the marketing footer. */
     <html lang={lang} translate="no" data-density={density} {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
         {/* ⛔ FIRST IN THE BODY, DELIBERATELY. Makes `removeChild`/`insertBefore` tolerant of a

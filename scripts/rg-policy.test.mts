@@ -6,7 +6,8 @@
  * vulnerability segments" (no age band, no segment) and "no sign-up nudges in the late-night window" (no window).
  * The page had no version pin and no text hash, so it could be edited — or left promising — without anyone
  * noticing. Re-versioned 2026-09-26 on Ali's delegation (docs/COMPLIANCE-DECISIONS.md § "2026-09-26 · RG Policy v2026-09-26"): the under-25
- * promise BUILT, the late-night bullet CUT.
+ * promise BUILT, the late-night bullet CUT. Re-versioned 2026-10-06 on the owner's ruling (§ "… RG Policy v2026-10-06"): the
+ * "free helpline displayed on every page footer" bullet CUT with the helpline itself, and §5's national helpline line with it.
  *
  * WHAT IT HOLDS:
  *   §1 · the version: the same date on all three META labels, a hash of the binding ENGLISH block (so a change to
@@ -56,8 +57,8 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n");
 
 /** Move BOTH in the same commit as any change to the binding English text, with a COMPLIANCE-DECISIONS entry. */
-export const RG_POLICY_VERSION = "2026-09-26";
-export const RG_EN_SHA = "f16606e75d46";
+export const RG_POLICY_VERSION = "2026-10-06";
+export const RG_EN_SHA = "b9897a0ebf5d";
 
 type World = {
   page: string; consent: string; rg: string; featureState: string; footer: string; compliance: string;
@@ -97,6 +98,8 @@ const CONTROLS: Control[] = [
     holds: (w) => /MARKETING_YOUNG_ADULT_AGE\s*=\s*25\b/.test(w.consent) && /refuse\("rg_under25_history"/.test(w.consent) },
   { id: "bonus", when: /bonus/i, where: "feature-state.ts: bonus WITHDRAWN (if the bonus returns, re-check this promise)",
     holds: (w) => /bonus:\s*"WITHDRAWN"/.test(w.featureState) },
+  // ⛔ Since the owner's ruling of 2026-10-06 the footer renders no helpline, so this control does NOT hold — a helpline
+  // promise put back on the page is a promise with nothing behind it, and §2.2 refuses it.
   { id: "helpline", when: /helpline/i, where: "public-footer.tsx renders {HELPLINE()}",
     holds: (w) => /\{HELPLINE\(\)\}/.test(w.footer) },
   { id: "late-night", when: /late[- ]night/i, where: "src/lib/marketing/window.ts (U13) — it does not exist, so the promise may not either",
@@ -302,7 +305,9 @@ if (!PROVE_RED) {
     { name: "a translation drops a §4 bullet",
       world: { ...REAL, page: REAL.page.replace("<li>Hakuna ofa za bonasi zinazohusishwa na ongezeko la fedha zinazowekwa</li>", "") }, expect: /^2\.3 / },
     { name: "the version bumped with no COMPLIANCE-DECISIONS record",
-      world: { ...REAL, compliance: REAL.compliance.replace(/RG Policy v2026-09-26/g, "RG Policy vXXXX") }, expect: /^1\.3 / },
+      world: { ...REAL, compliance: REAL.compliance.replace(/RG Policy v2026-10-06/g, "RG Policy vXXXX") }, expect: /^1\.3 / },
+    { name: "the helpline bullet restored while no page footer shows a helpline (the owner's ruling, 2026-10-06)",
+      world: { ...REAL, page: withEn(enBlock.replace(firstLi, `${firstLi}\n          <li>Free helpline displayed on every page footer</li>`)) }, expect: /"helpline" control holds/ },
     { name: "zh: an age split from its unit again ('低于 25' / '岁' at 360)",
       world: { ...REAL, page: REAL.page.replace("低于 25&nbsp;岁", "低于 25 岁") }, expect: /^3\.1 / },
     { name: "sw: 'miaka 18' back to a plain space",

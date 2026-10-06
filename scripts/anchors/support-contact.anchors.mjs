@@ -1,7 +1,8 @@
 /**
  * Anchors for red:support-contact — each reintroduces, on the real files, one way a public fact (the
- * helpline, the licence, the desk line) stops being the one value the admin saved. DATA, so `test:red-anchors` §3 can audit that every `from` still
- * resolves exactly once without running the harness.
+ * helpline, the licence, the desk line) stops being the one value the admin saved, a number the admin
+ * types is refused again, or the helpline comes back to a player surface (the owner's ruling, 2026-10-06).
+ * DATA, so `test:red-anchors` §3 can audit that every `from` still resolves exactly once without running the harness.
  *
  * ⛔ A red anchor quotes SOURCE. Editing any of these lines must be paired with re-anchoring here, or
  * the audit reports ANCHOR FAIL — loudly, by design. This lane learned that twice in one day.
@@ -22,40 +23,41 @@
  */
 export const MUTATIONS = [
   {
-    // 🔴 THE DEFECT D6 IS ABOUT, IN ITS SMALLEST FORM. The root error boundary carries four
-    // hand-written copies of the helpline and keeps them BY DESIGN — it must import nothing, because
-    // it renders when the root layout itself has failed. The copies are fine; a copy that has
-    // drifted is not, and before §15 existed nothing compared them to anything.
-    name: "global-error.tsx — one hand-written helpline copy drifts from the default",
+    // ⭐ THE OWNER'S RULING OF 2026-10-06, AT THE LAST RESORT. The root error page imports nothing, so a
+    // helpline there is a hand-typed copy — which is exactly what it carried, in all three languages,
+    // until that day.
+    name: "global-error.tsx — a hand-written helpline comes back to the error page",
     file: "src/app/global-error.tsx",
-    from: `    helpline: "Helpline 0800 11 0011",`,
-    to: `    helpline: "Helpline 0800 11 9999",`,
-    expect: `§15.1 ★ every helpline copy in the root error boundary matches the default helpline`,
+    from: `    rg: "Responsible gaming",`,
+    to: `    rg: "Responsible gaming",\n    helpline: "Helpline 0800 11 0011",`,
+    expect: `§15.3 ★ the root error page prints no helpline and reads no published one`,
   },
   {
-    // ⭐ THE CONTROL'S OWN CONTROL. §15.1 passes beautifully over a file that has stopped printing
-    // the helpline at all — every surviving copy still matches. The error page is where a player
-    // lands when everything else is broken, so losing the statutory number there silently is the
-    // outcome §15.2 exists to make loud. This proves §15.2 is not decoration.
-    name: "global-error.tsx — a helpline copy disappears rather than drifting",
-    file: "src/app/global-error.tsx",
-    from: `    helpline: "Simu ya msaada 0800 11 0011",`,
-    to: `    helpline: "Simu ya msaada",`,
+    // ⭐ THE RULING ON EVERY PAGE: the footer is on all of them, and it is where the helpline sat.
     // ⚠️ THE EXPECTED LABEL STOPS AT THE EM-DASH, BECAUSE THAT IS WHERE THE RUNNER STOPS. It reads
-    // the gate's `FAIL <label> — <detail>` line and matches on the label half, so an `expect`
-    // carrying the detail half can never match and the harness reports WRONG REASON — which is
-    // exactly what it did here, on a mutation that was in fact caught correctly.
-    expect: `§15.2 ⚠️ CONTROL`,
+    // the gate's `FAIL <label> — <detail>` line and matches on the label half.
+    name: "public-footer.tsx — the helpline comes back to the footer of every page",
+    file: "src/components/layout/public-footer.tsx",
+    from: `<span className="whitespace-nowrap">{supportPhone}</span>`,
+    to: `<span className="whitespace-nowrap">{supportPhone}</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>`,
+    expect: `§15.1 ★ no player-facing file reads the helpline`,
   },
   {
-    // 🔴 THE SHAPE §14.1 COULD NOT SEE (MOBILE-VISUAL-FINDINGS S08-05 / S08-info-H02): /help's at-risk answer printing
-    // the helpline from a STRING — no tel:, nothing to tap — which is how it shipped until 2026-09-26. Single-quoted
-    // so the backticks and `${` in the source are literal.
-    name: "help/page.tsx — the at-risk answer's helpline goes back to untappable text",
-    file: "src/app/help/page.tsx",
-    from: '                      <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a>',
-    to: '                      {`${HELPLINE()}`}',
-    expect: `§14.5 ★ no support contact is rendered as bare text from a string or after a label expression`,
+    // …and in the inbox: the footer of every email carried "Helpline <number>" until 2026-10-06. Single-quoted
+    // so the `${` in the source is literal.
+    name: "email.ts — the helpline comes back to the footer of every email",
+    file: "src/lib/server/email.ts",
+    from: '      <a href="mailto:${REPLY_TO()}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO()}</a>',
+    to: '      Helpline ${HELPLINE()} · <a href="mailto:${REPLY_TO()}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO()}</a>',
+    expect: `§15.1 ★ no player-facing file reads the helpline`,
+  },
+  {
+    // …and in the Help chat's instructions, a prompt string a player receives through the model.
+    name: "chat.ts — the Help chat is told to hand out the helpline again",
+    file: "src/app/_actions/chat.ts",
+    from: '- 18+ only, licensed by the Gaming Board of Tanzania. Our own support desk is ${SUPPORT_PHONE()}, ${SUPPORT_EMAIL()}.',
+    to: '- 18+ only, licensed by the Gaming Board of Tanzania. Our own support desk is ${SUPPORT_PHONE()}, ${SUPPORT_EMAIL()}.\n- The helpline is ${HELPLINE()}.',
+    expect: `§15.1 ★ no player-facing file reads the helpline`,
   },
   {
     // 🔴 E-328 IN ITS 2026-10-03 FORM. The helpline is editable now, so the defect is no longer "the
@@ -69,13 +71,21 @@ export const MUTATIONS = [
     expect: "§2.1 the stale `helpline` key in the saved row does NOT become the helpline",
   },
   {
-    // 🔴 THE LOCK'S REPLACEMENT, REMOVED. With the field editable, the only thing standing between an
-    // admin and publishing our own desk as the "Helpline" is this refusal.
-    name: "server/support-config.ts — the refusal of our own desk number as the helpline is switched off",
+    // 🔴 THE RULE THE OWNER REMOVED, PUT BACK (2026-10-06). E-328's refusal of our own desk as the helpline is
+    // the one rule he named; a validator that grows it again is what §10's ★ rows exist to catch.
+    name: "server/support-config.ts — the refusal of our own desk number as the helpline comes back",
     file: "src/lib/server/support-config.ts",
-    from: `  if (desk && toDialTarget(c.nationalHelpline) === desk) {`,
-    to: `  if (false && desk && toDialTarget(c.nationalHelpline) === desk) {`,
-    expect: "§10 refuses the helpline set to our OWN support number (E-328)",
+    from: `  // ── The licence number (editable since 2026-10-03). ──`,
+    to: `  if (toSupportDial(c.nationalHelpline) === toSupportDial(c.phoneTel || c.phone)) return { ok: false, reason: "That is our own support number." };\n  // ── The licence number (editable since 2026-10-03). ──`,
+    expect: "§10 ★ accepts the helpline set to our OWN support number (E-328's refusal is gone)",
+  },
+  {
+    // ⭐ "ANY NUMBERS HE WANTS" (2026-10-06): the support phone narrowed back to Tanzanian formats only.
+    name: "support-config.ts — the support phone takes Tanzanian formats only again",
+    file: "src/lib/support-config.ts",
+    from: `  return toDialTarget(input) || toHelplineDial(input);`,
+    to: `  return toDialTarget(input);`,
+    expect: "§10 ★ accepts a support phone that is a short code",
   },
   {
     // The browser half of the reader: a client component that stops reading <html> prints the default
@@ -101,14 +111,5 @@ export const MUTATIONS = [
     from: `<Input name="licenceNumber" defaultValue={config.licenceNumber} required mono />`,
     to: `<Input name="licenceNumber" defaultValue={config.licenceNumber} readOnly disabled mono />`,
     expect: "§16.1 ★ the Support contacts card has no read-only or disabled box",
-  },
-  {
-    // The error page's dial fallback is the copy a player TAPS when nothing was published. A drifted
-    // display string is a bad number to read out; a drifted href dials one.
-    name: "global-error.tsx — the fallback tel: target drifts while the printed text stays right",
-    file: "src/app/global-error.tsx",
-    from: `const HELPLINE_FALLBACK_TEL = "0800110011";`,
-    to: `const HELPLINE_FALLBACK_TEL = "0800119999";`,
-    expect: "§15.1 ★ every helpline copy in the root error boundary matches the default helpline",
   },
 ];

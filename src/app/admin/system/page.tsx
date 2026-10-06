@@ -571,15 +571,16 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
               not save. Measured 2026-09-10, surface by surface:
                 · `register` — renders NO support contact at all. `auth/register/page.tsx:17`
                   imports `HELPLINE` and never uses it, which is what made it look covered.
-                · `reality-check` — renders `HELPLINE()`. Since 2026-10-03 this form DOES move it (the
-                  helpline is editable), and the sentence below now says where it prints.
+                · `reality-check` — rendered `HELPLINE()`. Since the owner's ruling of 2026-10-06 no
+                  player surface shows the helpline, and the sentence below says where it still goes.
               The remaining eight were verified to render a value this form DOES move. `chatbot` is
               on the list only because Unit 5.1 unfroze it — until then it captured the getters once
               at module import and disagreed with every other surface. */}
           <p className="text-body-sm text-text-subtle mb-3">
             Changes here propagate to every page that shows them: the support email and phone on help,
-            chatbot, login, legal, KYC, account, forgot-password and the footer; the helpline and the
-            licence on every page footer, the home page, sign-in, the terms and the game rules.
+            chatbot, login, legal, KYC, account, forgot-password and the footer; the licence on every
+            page footer, the terms and the game rules. The helpline is not shown on the website — it
+            goes out only in the footer of marketing SMS.
           </p>
           {/* 🔴 THE `key` IS THE FIX FOR "I SAVED IT AND IT DID NOT CHANGE", AND IT IS LOAD-BEARING.
               The inputs below are UNCONTROLLED (`defaultValue`), which React reads exactly once per

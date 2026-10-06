@@ -55,7 +55,7 @@ import { Needle } from "./needle";
 import { HeaderScrollCast } from "./scroll-cast";
 import { LanguageMenu } from "@/components/ui/language-menu";
 import { FiftyLockup } from "@/components/brand";
-import { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER } from "@/lib/support-config";
+import { LICENCE_NUMBER } from "@/lib/support-config";
 import { isOptOutPath } from "@/lib/marketing/optout";
 import type { Dict } from "@/lib/i18n-server";
 
@@ -584,8 +584,8 @@ function MainLandmark({ children }: { children: React.ReactNode }) {
  * tap: a filled "Jisajili" in the page's own button colour, the market nav, the bottom rail, the chat
  * bubble and "Pendekeza masoko upate pesa" — and on the invalid-link state, sign-in and sign-up were the
  * ONLY actions on the page. Ruling 5: no upsell here. So this renders the brand, the language menu, the
- * page, and the footer's regulator lines (18+, the Gaming Board licence, the independent helpline) —
- * nothing that sells, and nothing that navigates.
+ * page, and the footer's regulator lines (18+, the Gaming Board licence, the responsible-gambling
+ * sentence) — nothing that sells, and nothing that navigates.
  *
  * ⛔ THE LOGO IS NOT A LINK, AND NOTHING HERE IS A `<Link>`. This branch is decided in the ROOT layout,
  * which a soft navigation does not re-run (E-70): a `<Link href="/">` from here would render the landing
@@ -593,9 +593,8 @@ function MainLandmark({ children }: { children: React.ReactNode }) {
  * ⛔ The chat bubble and the first-visit primer are mounted from the root layout, outside this shell, so
  * they stay off `/s` through their own `HIDE_ON` (`ChatRoot.tsx`, `first-visit-primer.tsx`);
  * `test:marketing-optout` reads all three together.
- * ⭐ 2026-09-27 · THE HELPLINE KEEPS ITS CONTEXT. Alone, "Simu ya msaada · 0800 11 0011" ("help phone") read
- * as 50pick's own line — on a page for stopping marketing, often the only number on screen. The full
- * footer's responsible-gambling line now sits above it, as it does there, so it reads as what it is.
+ * ⛔ No helpline line since the owner's ruling of 2026-10-06 (`docs/COMPLIANCE-DECISIONS.md`) — the
+ * same rule as the full footer.
  */
 function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
   return (
@@ -621,12 +620,7 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
           </div>
           {/* 13px, not the full footer's 11px: a licence line is read, and 11px is under the reading floor (type-scale §3). */}
           <p className="font-mono text-body-sm text-text-subtle tabular-nums">{t.footer.license}: {LICENCE_NUMBER()}</p>
-          {/* The INDEPENDENT problem-gambling helpline (a pinned constant, not ours) — the regulator line,
-              under the same responsible-gambling sentence that introduces it in the full footer. */}
           <p className="italic text-text-subtle text-body-sm text-balance break-keep">{t.footer.stopGambling}</p>
-          <a href={`tel:${HELPLINE_TEL()}`} className="text-body-sm text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
-            <span className="whitespace-nowrap">{t.footer.helpline} ·</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>
-          </a>
         </div>
       </footer>
     </div>

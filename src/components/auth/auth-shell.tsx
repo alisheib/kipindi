@@ -2,7 +2,6 @@ import Link from "next/link";
 import { FiftyLockup, TippingBar } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { getServerT } from "@/lib/i18n-server";
-import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 
 /**
  * Shared shell for the six /auth/* routes (login, register, otp,
@@ -60,7 +59,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="relative font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
-            {t.auth.licensedByGbt} <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap underline-offset-2 hover:underline">{HELPLINE()}</a>
+            {t.auth.licensedByGbt}
             {/* 2026-09-14 — the language list is its own unbreakable line: inline it split as "EN ·" / "SW · 中文" (en) and left 中文 alone (sw). */}
             <span className="mt-1 block whitespace-nowrap">EN · SW · 中文</span>
           </div>
@@ -78,9 +77,9 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
               <FiftyLockup size={22} />
             </Link>
             {children}
-            {/* Mobile trust strip — the rail carries it on lg. The helpline number never splits across lines (2026-09-13; it broke at 360). */}
+            {/* Mobile trust strip — the rail carries it on lg. No helpline (the owner's ruling of 2026-10-06). */}
             <p className="mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle lg:hidden">
-              {t.auth.licensedByGbt} <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap underline-offset-2 hover:underline">{HELPLINE()}</a>
+              {t.auth.licensedByGbt}
             </p>
           </div>
         </div>

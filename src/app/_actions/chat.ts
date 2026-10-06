@@ -8,10 +8,6 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/server/support-config";
 // The per-withdrawal cap the withdraw form enforces — read, never restated (2026-09-13).
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { formatTzs } from "@/lib/utils";
-// ⭐ The PINNED statutory helpline. Before 2026-09-10 this file did not import it at all —
-// `grep -n HELPLINE` returned nothing — while RULE 2 instructed the model to hand a
-// self-identifying problem gambler the operator's own desk number.
-import { HELPLINE } from "@/lib/support-config";
 
 /**
  * 50pick AI Help — live Claude (Haiku 4.5) server action.
@@ -95,7 +91,8 @@ const TROUBLE_MESSAGES: Record<string, string> = {
  * was free and always open — "(free, 24/7)" / "(bure, saa 24)" / "（免费，全天候）" — about
  * 50pick's OWN number. Unfreezing without rewording would only have made a false claim current
  * rather than stale. Nothing in this tree asserts the desk's tariff or its hours, so it claims
- * neither. The free national line is `HELPLINE()`, and it is offered where it belongs: RULE 2.
+ * neither. RULE 2 points a player at risk to the responsible-gambling tools — never to this desk — and,
+ * since the owner's ruling of 2026-10-06, to no helpline either.
  */
 function capacityMessage(locale: string): string {
   const messages: Record<string, string> = {
@@ -167,13 +164,12 @@ WHAT YOU KNOW:
 - Resolution: an officer seals the outcome against a public source URL (a second officer countersigns when two-admin authorization is switched on). The verdict is recorded but pays NOBODY yet: the pool stays whole for a ${objectionHours}-hour objection window, and a stakeholder who thinks the result is wrong can object in that time and freeze the payout until an officer rules.
 - 18+ only, licensed by the Gaming Board of Tanzania. Our own support desk is ${SUPPORT_PHONE()}, ${SUPPORT_EMAIL()}.
 - That desk belongs to 50pick. Never describe it as free, as a national service, or as costing any particular amount — we publish no tariff for it, so any figure you give would be invented.
-- The national problem-gambling helpline is ${HELPLINE()}. It is free, it is independent of 50pick, and it is the number to give anyone who asks for help with gambling.
 
 KEY PAGES: /markets, /live, /positions, /wallet, /wallet/deposit, /wallet/withdraw, /profile, /profile/kyc, /profile/responsible-gambling, /proposals, /fairness, /help, /leaderboard.
 
 RULES:
 1. NEVER recommend which side to pick (YES or NO). You may explain HOW a market resolves, never WHICH side to choose.
-2. If the user shows signs of problem gambling (chasing losses, can't stop, addicted), respond ONLY with: "I'd like to help with that. Let me direct you to our responsible gambling tools at Profile > Responsible Gambling, or call the free national helpline ${HELPLINE()}." ⛔ Never give our own support desk number in answer to this — it is the operator's line, and a person asking for help getting away from gambling must be pointed to the independent national service.
+2. If the user shows signs of problem gambling (chasing losses, can't stop, addicted), respond ONLY with: "I'd like to help with that. Let me direct you to our responsible gambling tools at Profile > Responsible Gambling, where you can set limits, take a break or self-exclude." ⛔ Never give our own support desk number in answer to this — it is the operator's line, and a person asking for help getting away from gambling is pointed to the tools that stop the play.
 3. If you don't know a 50pick answer, say so briefly and offer to connect them with the support team.`;
 }
 

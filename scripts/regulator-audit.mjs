@@ -546,7 +546,8 @@ console.log("\n=== J · REGULATOR-REQUIRED UI ===");
   await p.goto(`${BASE}/`, { waitUntil: "networkidle" });
   const text = (await p.locator("body").textContent()) ?? "";
   log("J1 18+ badge is on every page (footer)", /18\+/.test(text));
-  log("J2 Helpline number on every page", /0800\s*11\s*0011|helpline/i.test(text));
+  // ⭐ Inverted 2026-10-06 — the owner's ruling took the helpline off every player page (docs/COMPLIANCE-DECISIONS.md).
+  log("J2 No helpline on the page (owner's ruling 2026-10-06)", !/0800\s*11\s*0011|helpline/i.test(text));
   log("J3 GBT / Tanzania license reference visible", /Gaming Board|GBT|Tanzania/i.test(text));
   log("J4 Responsible-gambling link reachable from footer",
       /responsible[-\s]?gambling|self[-\s]?exclu|cheza salama/i.test(text));

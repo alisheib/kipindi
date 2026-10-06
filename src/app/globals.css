@@ -4115,7 +4115,7 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-hero__inner--solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "act"; }
 }
 /* The trust lines come BEFORE the CTAs in the SOURCE (landing-hero.tsx), not by `order`: the delivery
-   wants licence, 18+, mobile money and the helpline on a phone's first screen, and a CSS reorder would
+   wants licence, 18+ and mobile money on a phone's first screen, and a CSS reorder would
    make keyboard order disagree with the screen (WCAG 1.3.2 — v3 review). INHERIT-MANIFEST L18. */
 
 /* ⛔ `.kp-hero__sub` (the sw/zh reading under the English h1, MOBILE-VISUAL ruling 12) was DELETED
@@ -4159,7 +4159,7 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-hero__claim-rule { display: none; }
 }
 
-/* The trust rows (hero v3, 2026-09-27): 18+ · the licence line · the helpline, then the wallets that
+/* The trust rows (hero v3, 2026-09-27): 18+ · the licence line, then the wallets that
    pay out — in the intro, above the card (spec §4, R7(2)). Each row is a 28px marker column (the 18+
    roundel is 28 — `.kp-rg__18`) and the words, so the rows share one left edge whatever marks them.
    Two quiet 13px rows: nothing in them is louder than the claim. 4px of their own above them, so the
@@ -4179,35 +4179,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */
 .kp-hero__rail { color: var(--text); font-weight: 500; }
-/* The helpline is a call a player can make from here, at the tap floor (§A2). ⭐ The REACH is an
-   out-of-flow `::after` (13px above and below the ~16px CONTENT box of an inline link — not its line
-   height, which V4 caught measuring 36px at ±10 — reaching 42px, over the 40px `--tap-min`), the platform's
-   own pattern for a small link (see `.mcardp-share`): a 40px line box made the last trust line
-   visibly taller than the three above it, which read as a stray gap. */
-/* ⭐ QUIET SINCE HERO v3 (spec §5): Inter 400 (was 600 white) with tabular figures and a 1px
-   `--border-strong` underline — a call a player can make, not the loudest thing on the screen. */
-.kp-hero__tel {
-  position: relative;
-  display: inline-block;
-  max-width: 100%;
-  color: var(--text);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  text-decoration: underline;
-  text-decoration-color: var(--border-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-/* Label and number are each unbreakable, the space between them is not: under large text the line
-   breaks BETWEEN them and never inside "0800 11 0011". */
-.kp-hero__tel > span { white-space: nowrap; }
-/* The hover answers on the underline, the link's own mark: it takes the text's ink. */
-.kp-hero__tel:hover { text-decoration-color: currentColor; }
-/* inline-block: the link is ONE box of its own line height (19.5px at --type-small), so ±13px reaches
-   45.5px — past the preferred 44, since this platform allows exactly 40 or 44+ and "41, 42 and 43 are
-   not nearly 44" (V4, tap-target §1) — whether it sits on one line or, under large text, wraps between
-   label and number (v3 review: an ::after on a plain inline measured from the ~16px content box). */
-.kp-hero__tel::after { content: ""; position: absolute; left: 0; right: 0; top: -13px; bottom: -13px; }
+/* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
+   the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 
 /* 11px: the kit sets the minimum for NEW work at `--type-micro`, and this is new work. (This
    note used to justify itself against `.board-section-eyebrow`'s 10px — a rule nothing had
@@ -6010,7 +5983,6 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__value { flex-shrink: 0; font-size: var(--type-small); white-space: nowrap; color: var(--text-subtle); }
 /* A balance in a list of doors is neutral ink: gold marks money that was earned (§M3). */
 .kp-hub__money { flex-shrink: 0; font-family: var(--font-mono); font-weight: 600; font-size: var(--type-body); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }
-.kp-hub__num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kp-hub__chev { flex-shrink: 0; color: var(--text-subtle); }
 /* The language row is a disclosure: its summary is the row, and the three languages open beneath it, in the flow. */
 .kp-hub__lang > summary { list-style: none; }

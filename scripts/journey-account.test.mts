@@ -15,8 +15,8 @@
  *      and Jizuie are two rows landing on #break and #exclude, and both sections exist on the page they land on; every
  *      door names a route on disk.
  *   §4 THE WORDS — every word in the rows data, and every word the page and its islands read by path, resolves in en,
- *      sw and zh; Msaada's second line names no number (§0h point 10); the helpline's number and dial target come from
- *      `support-config.ts`, and no phone number is typed into the hub.
+ *      sw and zh; Msaada's second line names no number (§0h point 10); the hub carries no helpline row (the owner's
+ *      ruling of 2026-10-06), and no phone number is typed into the hub.
  *   §5 THE CONSOLE — no console href in the rows data, and the page's one plain console link is drawn only behind the
  *      staff door (E-70; `test:shell-boundary` §2b holds its tag).
  *   §6 THE READER, IN MEMORY — `loadHubViewer` over the in-memory store for each reader: a guest is read nothing, every
@@ -395,7 +395,7 @@ function member(o: Facts = {}): HubMember {
   };
 }
 const GUEST: HubViewer = { signedIn: false };
-const GUEST_LAYOUT = "play:language,results,live,leaderboard | fairnessHelp:fairness,help | safety:limits,break,exclude,helpline | legal:privacy,aml,terms,rules";
+const GUEST_LAYOUT = "play:language,results,live,leaderboard | fairnessHelp:fairness,help | safety:limits,break,exclude | legal:privacy,aml,terms,rules";
 type Shape = { invite: boolean; proposals: boolean; kyc: boolean; held: boolean; agent: boolean };
 /** The canvas's signed-in cards, in A17's order, for a reader of this shape. */
 function memberLayout(s: Shape): string {
@@ -403,7 +403,7 @@ function memberLayout(s: Shape): string {
   return [
     `money:${s.held ? "wallet" : "wallet,withdraw"}`,
     "play:results,live,leaderboard",
-    "safety:limits,break,exclude,helpline",
+    "safety:limits,break,exclude",
     ...(share.length > 0 ? [`invite:${share.join(",")}`] : []),
     `profile:${s.kyc ? "profile,kyc,fairness" : "profile,fairness"}`,
     "help:help,notifications",
@@ -507,10 +507,11 @@ function g4Words(I: Impl, W: World, ok: Ok) {
   const numbered = Object.entries(W.dicts)
     .map(([locale, t]) => [locale, ROWS.hubWord(t, "journey.hubHelpSub")] as const)
     .filter(([, s]) => s.length === 0 || [...s].some((c) => c >= "0" && c <= "9"));
-  ok("4.nonumber · Msaada's second line names no number in any language — the national helpline is not our help desk (§0h point 10)",
+  ok("4.nonumber · Msaada's second line names no number in any language (§0h point 10)",
     numbered.length === 0, show(numbered));
-  ok("4.helpline · the helpline row's number and dial target come from support-config, the one home of that number",
-    W.hubRow.includes('import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";') && W.hubRow.includes("tel:${HELPLINE_TEL()}") && W.hubRow.includes("{HELPLINE()}"));
+  // ⭐ The owner's ruling of 2026-10-06: no player surface shows the helpline — the hub's play-safe card included.
+  ok("4.helpline · the hub carries no helpline row and reads no helpline (the owner's ruling, 2026-10-06)",
+    !/\bHELPLINE(?:_TEL)?\b/.test(W.hubRow) && !/kind:\s*"helpline"/.test(W.rows) && !W.rows.includes('"footer.helpline"'));
   const files: Array<[string, string]> = [["page", W.page], ["rows", W.rows], ["hubRow", W.hubRow], ["viewer", W.viewer], ["unread", W.unread], ["language", W.language], ["signOut", W.signOut], ["cardSize", W.cardSize]];
   const typed = files.filter(([, s]) => phoneLike(s)).map(([k]) => k);
   ok("4.literal · no phone number is typed into any hub file", typed.length === 0, typed.join(", "));
@@ -650,7 +651,7 @@ async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ faile
   g2Title(W, ok);
   log(""); log("§3 · the rows — hubRowsFor for every kind of reader, A17's order and the two play-safe rows");
   g3Rows(I, W, ok);
-  log(""); log("§4 · the words — three languages, no number under Msaada, the helpline from support-config");
+  log(""); log("§4 · the words — three languages, no number under Msaada, no helpline row");
   g4Words(I, W, ok);
   log(""); log("§5 · the console — never data, one plain link behind the staff door");
   g5Console(W, ok);
@@ -742,7 +743,8 @@ const zhMissing: World = { ...WORLD, dicts: { ...WORLD.dicts, zh: patchWord(WORL
 const zhDirect: World = { ...WORLD, dicts: { ...WORLD.dicts, zh: patchWord(WORLD.dicts.zh, "profile", "signOutConfirmYes", "") } };
 const scanBlind = withText("cardSize", (s) => s.split("t.nav.").join("words.nav."));
 const wordGone = (w: World, locale: string, path: string) => wordAt(WORLD.dicts[locale], path) !== "" && wordAt(w.dicts[locale], path) !== wordAt(WORLD.dicts[locale], path);
-const helplineTyped = withText("hubRow", (s) => s.replace("{HELPLINE()}", "0800 11 0011"));
+const numberTyped = withText("hubRow", (s) => s.replace("const Glyph = I[row.glyph];", 'const typed = "0800 11 0011";\n  const Glyph = I[row.glyph];'));
+const helplineBack = withText("hubRow", (s) => s.replace("const Glyph = I[row.glyph];", 'if (row.id === "help") return <li><a href={`tel:${HELPLINE_TEL()}`}>{HELPLINE()}</a></li>;\n  const Glyph = I[row.glyph];'));
 // §5 — the console
 const consoleInRows = withText("rows", (s) => s + LF + 'const desk = "/admin";');
 const consoleForAll = withText("page", (s) => s.replace("viewer.doors.staffConsole && (", "("));
@@ -842,7 +844,8 @@ const plants: Plant[] = [
   { name: "a hub card's name is missing in Chinese", expect: ["4.words ·"], world: zhMissing, landed: wordGone(zhMissing, "zh", "journey.hubGroupSafety") },
   { name: "the sign-out dialog's Yes is missing in Chinese (a word outside the rows data)", expect: ["4.words.direct"], world: zhDirect, landed: wordGone(zhDirect, "zh", "profile.signOutConfirmYes") },
   { name: "the card-size row reads its words through a name the scan does not see", expect: ["4.words.direct"], world: scanBlind, landed: changed(scanBlind, "cardSize") },
-  { name: "the helpline's number is typed into the row", expect: ["4.helpline", "4.literal"], world: helplineTyped, landed: changed(helplineTyped, "hubRow") },
+  { name: "a phone number is typed into the row file", expect: ["4.literal"], world: numberTyped, landed: changed(numberTyped, "hubRow") },
+  { name: "a helpline row comes back to the hub", expect: ["4.helpline"], world: helplineBack, landed: changed(helplineBack, "hubRow") },
   { name: "the console is put into the rows data", expect: ["5.rows"], world: consoleInRows, landed: changed(consoleInRows, "rows") },
   { name: "the console link is drawn for every signed-in reader", expect: ["5.page.gate"], world: consoleForAll, landed: changed(consoleForAll, "page") },
   { name: "the Arifa row polls like the tab's dot", expect: ["8.unread"], world: unreadPolls, landed: changed(unreadPolls, "unread") },

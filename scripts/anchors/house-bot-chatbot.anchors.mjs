@@ -179,12 +179,12 @@ export const MUTATIONS = [
 
   // ── the positive controls: what must stay PRESENT ────────────────────────────────────────────────
   {
-    name: "rule-2-loses-the-independent-service",
+    name: "rule-2-loses-its-redirect",
     file: CHAT,
-    expect: "both helpline lines are still PRESENT",
-    why: "⭐ THE CHEAPEST WAY TO GREEN A FLAT /independent/i, AND THE REASON 'independent' IS SUBJECT-SCOPED. RULE 2 is the at-risk path test:chat-safety exists to protect; a guard that pressured anyone into rewording it would be trading a player in trouble for a clean run",
-    from: "must be pointed to the independent national service.",
-    to: "must be pointed to a free national service.",
+    expect: "RULE 2 is still PRESENT in the prompt",
+    why: "⭐ THE CHEAPEST WAY TO GREEN A GUARD OVER THE PROMPT IS TO REWORD RULE 2 — the at-risk path test:chat-safety exists to protect; a guard that pressured anyone into rewording it would be trading a player in trouble for a clean run. (Until 2026-10-06 RULE 2 named an independent national service; the owner's ruling took the helpline out, and it now points to the tools that stop the play.)",
+    from: "is pointed to the tools that stop the play.",
+    to: "is pointed to a free national service.",
     stillGreen: ["no D19d assurance in the LIVE SYSTEM PROMPT", "nor in the STUB corpus"],
     alsoRed: ["byte-identical to origin/main"],
   },
@@ -285,10 +285,9 @@ export const MUTATIONS = [
     name: "the-independent-pattern-goes-flat",
     file: LEXICON,
     expect: "every real line that must stay ALLOWED is fed to the same matcher",
-    why: "⭐ THE MOST VALUABLE MUTATION IN THIS REGISTER. A flat /independent/i looks stricter and is the obvious thing to write — and it goes red on day one on the helpline sentence and on RULE 2, whose cheapest fix is to delete the at-risk path. The positive control is the only thing that reports the difference between a guard that is strict and a guard that is wrong",
+    why: "⭐ THE MOST VALUABLE MUTATION IN THIS REGISTER. A flat /independent/i looks stricter and is the obvious thing to write — and it went red on day one on the helpline sentence and on RULE 2, whose cheapest fix was to delete the at-risk path. The positive control is the only thing that reports the difference between a guard that is strict and a guard that is wrong. (Since 2026-10-06 neither line is in the prompt, so only the ALLOWED set's matcher case goes red — the live prompt no longer carries the word.)",
     from: '  { phrase: "independent", locale: "en", scoped: "predicate of a platform subject", re: new RegExp(String.raw`\\b${PLATFORM_SUBJECT}\\s+${COPULA}\\s+${DEGREE}independent\\b`, "i") },',
     to: '  { phrase: "independent", locale: "en", re: /\\bindependent\\b/i },',
-    alsoRed: ["no D19d assurance in the LIVE SYSTEM PROMPT"],
   },
   {
     name: "the-lexicon-loses-a-locale-pattern",

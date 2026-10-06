@@ -1,6 +1,6 @@
 /**
- * SUPPORT CONTACT — the saved value must REACH a player, and the statutory helpline
- * must never be something an operator can retype.
+ * SUPPORT CONTACT — the saved value must REACH a player; every number on the admin card saves as
+ * typed; and no player surface shows the helpline (the owner's ruling, 2026-10-06).
  *
  *   npx tsx scripts/support-contact.test.mts   (npm run test:support-contact)
  *
@@ -24,15 +24,19 @@
  * "Msaada wa Tanzania" / "坦桑尼亚热线" — beside `SUPPORT_PHONE()`.
  *
  * ⭐ THE RULE, SINCE 2026-10-03 (Ali: "everything should be changeable"): every public value —
- * the desk line, the national helpline, the licence — is the admins' to change. Until that day
- * the helpline and licence were PINNED, and that was overruled. What the pinning protected is
- * kept by other means: the editable helpline lives under NEW keys so the stale `helpline` value
- * (our desk) is never read back (§2.1), and a save that makes the helpline our own desk number
- * is refused (§10).
+ * the desk line, the helpline, the licence — is the admins' to change. Until that day the helpline
+ * and licence were PINNED, and that was overruled. The editable helpline lives under its own keys
+ * so the stale `helpline` value of an old form is never read back (§2.1).
+ * ⭐ AND SINCE 2026-10-06 (Ali: the Gaming Board confirmed nothing obliges us to show a helpline or
+ * to use a particular one — "let the admin put any numbers he wants"): every number saves as typed,
+ * our own desk as the helpline included (§10), and NO player surface shows the helpline (§15). It is
+ * still read in one place — the marketing SMS footer — and the admin card still edits it.
  *
  *   §1 a saved row REACHES the readers            (E-226 — the missing reader)
  *   §2 the stale `helpline` key never becomes the helpline (E-328), and a SAVED helpline and
  *      licence reach the readers on the server and in a browser (owner's rule, 2026-10-03)
+ *   §10 the writer refuses only what is no number at all, and accepts any number (2026-10-06)
+ *   §15 no player surface reads, labels or prints the helpline   (owner's ruling, 2026-10-06)
  *   §16 every box on the admin card is editable, and the layout publishes what is saved
  *   §3 POPULATION: label says helpline => renders the helpline
  *   §4 POPULATION: no client bundle reads an operator-editable contact value
@@ -185,9 +189,6 @@ const { SUPPORT_DEFAULTS: DEFAULTS, publicFactAttrs, PUBLIC_FACT_ATTRS } = await
   // ── the fields the owner unlocked on 2026-10-03 — editable, never unvalidated ──
   refuses("a blank helpline", { nationalHelpline: "  ", nationalHelplineTel: "" });
   refuses("a helpline with words in it", { nationalHelpline: "call us", nationalHelplineTel: "" });
-  // 🔴 E-328 AS A REFUSAL: the one value the helpline must never hold is our own desk.
-  refuses("the helpline set to our OWN support number (E-328)",
-    { nationalHelpline: "0769 777 877", nationalHelplineTel: "0769777877" }, /own support number/);
   refuses("a blank licence", { licenceNumber: "   " });
   refuses("a licence carrying markup", { licenceNumber: "<b>OUS</b>" });
 
@@ -198,6 +199,19 @@ const { SUPPORT_DEFAULTS: DEFAULTS, publicFactAttrs, PUBLIC_FACT_ATTRS } = await
     nationalHelpline: "0800 11 0011", nationalHelplineTel: "0800110011", licenceNumber: "GBT/2026/77",
   } as never, "officer_test");
   ok("§10 ⚠️ CONTROL — a well-formed save, helpline and licence included, is ACCEPTED", good.ok === true, JSON.stringify(good));
+
+  // ⭐ ANY NUMBER (the owner's ruling, 2026-10-06: "let the admin put any numbers he wants"). Each is driven
+  // through the REAL factory and must be accepted — a refusal here is a rule the owner removed coming back.
+  const accepts = (label: string, patch: Record<string, string>) => {
+    const res = cfg.set({ ...cfg.get(), ...patch } as never, "officer_test");
+    ok(`§10 ★ accepts ${label}`, res.ok === true, JSON.stringify(res));
+  };
+  // 🔴 E-328's refusal, REMOVED: the helpline may be our own desk number now.
+  accepts("the helpline set to our OWN support number (E-328's refusal is gone)",
+    { phone: "0769777877", phoneTel: "+255769777877", nationalHelpline: "0769 777 877", nationalHelplineTel: "0769777877" });
+  accepts("a support phone that is a short code", { phone: "15000", phoneTel: "15000" });
+  accepts("a support phone that is a toll-free line", { phone: "0800 75 1234", phoneTel: "+255800751234" });
+  accepts("a licence number with brackets and a colon", { licenceNumber: "GBT (OL) No: 2026/77" });
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -886,13 +900,13 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
     bareStrings("probe", "<p>{t.footer.helpline}{\" \"}\n  <a href={`tel:${HELPLINE_TEL()}`} className=\"x\">{HELPLINE()}</a></p>").length === 0 &&
     bareStrings("probe", "<a href={`mailto:${SUPPORT_EMAIL()}`}>{SUPPORT_EMAIL()}</a>").length === 0 &&
     bareStrings("probe", "<Input value={HELPLINE()} readOnly />").length === 0);
-  // ★ The surface itself: the one answer written for a player at risk names the line AND dials it.
+  // ★ The surface itself: the one answer written for a player at risk is still there, and answers with the limits,
+  // the break and self-exclusion — and, since the owner's ruling of 2026-10-06, no helpline (§15 holds every player
+  // surface to that). Until that day this asserted faq5 gave the helpline, labelled and tappable.
   const help = decomment(readFileSync(join(SRC, "app/help/page.tsx"), "utf8"));
-  const faq5At = help.indexOf('key === "faq5"');
-  const faq5 = faq5At < 0 ? "" : help.slice(faq5At, help.indexOf("</p>", faq5At));
-  ok("§14.7 ★ /help's at-risk answer (faq5) gives the helpline labelled and tappable",
-    faq5.includes("href={`tel:${HELPLINE_TEL()}`}") && />\s*\{HELPLINE\(\)\}\s*<\/a>/.test(faq5) && /helpline/i.test(labelsIn(faq5)),
-    faq5 ? `labels: ${labelsIn(faq5) || "none"}` : "the faq5 branch was not found in src/app/help/page.tsx");
+  ok("§14.7 ★ /help still carries its at-risk answer (faq5), and the page reads no helpline",
+    /\{\s*key:\s*"faq5"/.test(help) && !/\bHELPLINE(?:_TEL)?\s*\(/.test(help),
+    "faq5 is missing from FAQ_ITEMS, or /help reads the helpline");
   // ★ …and the answer is set to be read (2026-09-27 final visual review, local-help-faq5-*-360): every open answer
   // carries the summary's own bottom padding (pb-3), where the last line sat about 6px above the next row's divider;
   // and in zh the at-risk answer breaks only at spaces and punctuation, where it split 充值 across two lines.
@@ -909,58 +923,66 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// §15 — the last-resort error page duplicates the helpline ON PURPOSE   (Unit 10.6)
+// §15 — NO PLAYER SURFACE SHOWS THE HELPLINE   (the owner's ruling, 2026-10-06)
 // ────────────────────────────────────────────────────────────────────────────
 /**
- * ⭐ THIS IS THE ONE PLACE IN THE CAMPAIGN WHERE THE ANSWER IS *NOT* "READ THE CONSTANT",
- * and the reasoning is worth keeping because the obvious fix is the wrong one.
+ * ⭐ Ali, 2026-10-06: the Gaming Board confirmed nothing obliges 50pick to show a helpline or to use a
+ * particular one — "remove the helpline line from the website … we don't want to display it anymore on
+ * the user side". Until that day this section held the OPPOSITE: the root error page's four hand-written
+ * copies of the helpline had to exist and to match the default.
  *
- * `global-error.tsx` carries FOUR hardcoded copies of the statutory helpline — three
- * locale strings and one `tel:` href. The tempting fix is to import `HELPLINE()`, and it
- * is safe on the import graph: `src/lib/support-config.ts` imports NOTHING, and
- * `HELPLINE()` returns a module-scope const with no config read, no DB, no env.
- *
- * ⛔ BUT THE FILE CARRIES AN EXPLICIT, REASONED RULE AGAINST IT — *"Reach for ZERO
- * imports beyond React + next/link"*, *"this file deliberately imports nothing"*. It is
- * the root error boundary: it renders when the root layout itself has failed, which is
- * exactly the moment a module resolution is least trustworthy. Overriding a documented
- * ⛔ to save a duplication is how a robustness decision gets quietly undone by someone
- * who did not know it was one.
- *
- * ⭐ SO THE DUPLICATION STAYS AND THE DRIFT IS MADE IMPOSSIBLE INSTEAD. That is the same
- * trade the pinned constants already make: a value with no setter, held in one place,
- * and a gate that fails if a second place disagrees. What was actually wrong was never
- * the copies — it was that nothing compared them to anything.
+ * ⛔ THE HELPLINE IS STILL READ IN EXACTLY ONE PLACE THAT REACHES A PLAYER: the marketing SMS footer
+ * (`src/lib/marketing/footer.ts`), which the marketing lane owns and the ruling left alone. The admin card
+ * still edits it. Everything else under src/ — every page, component, email and the Help chat's prompt —
+ * may not read it, may not render a dictionary label that names one, and the error page may not print one.
  */
 {
-  const ge = readFileSync(join(SRC, "app/global-error.tsx"), "utf8");
-  // ⭐ Compared to the DEFAULT, not to `HELPLINE()`: since 2026-10-03 the live helpline is editable,
-  // and these copies are the page's FALLBACK for a crash in which nothing was published.
-  const helpline = DEFAULTS.nationalHelpline;
-  const helplineTel = DEFAULTS.nationalHelplineTel;
+  /** The files that may read the helpline: its two definitions and the SMS footer — and the admin console. */
+  const MAY_READ = ["src/lib/support-config.ts", "src/lib/server/support-config.ts", "src/lib/marketing/footer.ts"];
+  const isAdmin = (rel: string) => rel.startsWith("src/app/admin/");
+  const READS = /\bHELPLINE(?:_TEL)?\s*\(/;
+  const readers = (rel: string, src: string) => !MAY_READ.includes(rel) && !isAdmin(rel) && READS.test(src);
+  /** Every `t.*` label in a source whose English names a helpline — the shape `t.footer.helpline` had. */
+  const labelled = (src: string, resolve: (path: string) => string | null = resolveEn) =>
+    [...src.matchAll(/\b(t{1,2}(?:\.[A-Za-z0-9_]+)+)/g)]
+      .map((m) => [m[1], resolve(m[1])] as const)
+      .filter(([, en]) => en !== null && LOOKS_LIKE_HELPLINE.test(en));
+  /** The error page imports nothing, so a helpline there is a hand-typed number, the word, or a read of the attribute. */
+  const PRINTED = /0800[\d\s]{6,12}|helpline|simu ya msaada|热线|\\u70ed\\u7ebf|data-kp-helpline/gi;
 
-  // Population DISCOVERED: every Tanzanian-helpline-shaped run of digits in the file,
-  // spaced or unspaced. A hand-typed list of four line numbers would go blind the moment
-  // a fifth copy appeared — which is the whole failure mode this campaign keeps meeting.
-  const shaped = [...ge.matchAll(/0800[\d\s]{6,12}/g)].map((m) => m[0].trim());
-  const wrong = shaped.filter((s) => s !== helpline && s.replace(/\s/g, "") !== helplineTel.replace(/\s/g, ""));
+  const v15a: string[] = [];
+  const v15b: string[] = [];
+  for (const f of files) {
+    const rel = relative(ROOT, f).replace(/\\/g, "/");
+    const src = decomment(readFileSync(f, "utf8"));
+    if (readers(rel, src)) v15a.push(`${rel} reads the helpline`);
+    if (!isAdmin(rel) && rel.endsWith(".tsx")) for (const [path, en] of labelled(src)) v15b.push(`${rel} renders ${path} = "${en}"`);
+  }
+  ok("§15.1 ★ no player-facing file reads the helpline — pages, components, emails, the Help chat (only the SMS footer and the admin card may)",
+    v15a.length === 0, v15a.join(" | "));
+  ok("§15.2 ★ no player-facing component renders a label that names a helpline",
+    v15b.length === 0, uniq(v15b).join(" | "));
+  const ge = decomment(readFileSync(join(SRC, "app/global-error.tsx"), "utf8"));
+  const printed = [...ge.matchAll(PRINTED)].map((m) => m[0]);
+  ok("§15.3 ★ the root error page prints no helpline and reads no published one", printed.length === 0, printed.join(" | "));
 
-  ok("§15.1 ★ every helpline copy in the root error boundary matches the default helpline",
-    wrong.length === 0, wrong.join(" | "));
-  // ⭐ CONTROL — 15.1 passes beautifully over a file that stopped showing the helpline at
-  // all. The error page is where a player lands when everything else is broken; it losing
-  // the statutory number silently is the outcome this control exists to make loud.
-  ok("§15.2 ⚠️ CONTROL — the error boundary still publishes the helpline, and all four copies were found",
-    shaped.length >= 4, `found ${shaped.length}`);
-  // ⭐ CONTROL — the detector must reject a drifted copy, constructed rather than trusted.
-  ok("§15.3 ⚠️ CONTROL — the detector rejects a drifted copy",
-    [...("Helpline 0800 11 9999").matchAll(/0800[\d\s]{6,12}/g)]
-      .map((m) => m[0].trim()).some((s) => s !== helpline));
-  // ⭐ §15.4 — the error page READS the saved helpline by spelling the attribute names itself (it imports
-  // nothing). A name that drifts from `PUBLIC_FACT_ATTRS` makes it silently print the default for ever.
-  ok("§15.4 ★ the error boundary reads the saved helpline under the SAME attribute names the layout publishes",
-    ge.includes(`getAttribute("${PUBLIC_FACT_ATTRS.nationalHelpline}")`) && ge.includes(`getAttribute("${PUBLIC_FACT_ATTRS.nationalHelplineTel}")`),
-    `expected ${PUBLIC_FACT_ATTRS.nationalHelpline} and ${PUBLIC_FACT_ATTRS.nationalHelplineTel}`);
+  // ⚠️ CONTROLS — each detector must fire on the shape it exists for, and pass what it must pass.
+  ok("§15.4 ⚠️ CONTROL — the readers detector flags a player file that reads the helpline, and passes the SMS footer and the admin card",
+    readers("src/components/layout/public-footer.tsx", "<a href={`tel:${HELPLINE_TEL()}`}>{HELPLINE()}</a>")
+      && readers("src/lib/server/email.ts", "Helpline ${HELPLINE()}")
+      && !readers("src/lib/marketing/footer.ts", "return HELPLINE_TEL();")
+      && !readers("src/app/admin/system/page.tsx", "{HELPLINE()}"));
+  ok("§15.5 ⚠️ CONTROL — the label detector flags a label that reads \"Helpline\", and passes one that does not",
+    labelled("<span>{t.footer.helpline}</span>", () => "Helpline").length === 1
+      && labelled("<span>{t.rg.intlSupport}</span>").length === 0);
+  ok("§15.6 ⚠️ CONTROL — the error-page detector flags the old copies and the old attribute read",
+    ["helpline: \"Helpline 0800 11 0011\",", "helpline: \"\\u5e2e\\u52a9\\u70ed\\u7ebf\",", "getAttribute(\"data-kp-helpline\")"]
+      .every((s) => [...s.matchAll(PRINTED)].length > 0));
+  // ⭐ The exemptions are not dead letters: each named file exists, and the SMS footer — the one place the helpline
+  // still goes out — still reads it, so an exemption that outlived its reason would show here.
+  ok("§15.7 ⚠️ CONTROL — every exempted file exists, and the SMS footer still reads the helpline",
+    MAY_READ.every((p) => files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === p))
+      && READS.test(decomment(readFileSync(join(SRC, "lib/marketing/footer.ts"), "utf8"))));
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -994,11 +1016,13 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
 }
 
 // ── The population itself must not be empty, or §3 and §4 would pass by finding nothing.
-// This is the check that separates "no violations" from "no search". ──
-const helplineSurfaces = files.filter((f) =>
-  HELPLINE_GETTERS.some((g) => new RegExp(`\\b${g}\\s*\\(`).test(readFileSync(f, "utf8"))),
+// This is the check that separates "no violations" from "no search". ⭐ Since the owner's ruling of
+// 2026-10-06 the helpline has no player surface left to count (§15), so the population counted is the
+// operator contact's — the getters §3 and §4 actually scan for, read with comments removed. ──
+const contactSurfaces = files.filter((f) =>
+  OPERATOR_GETTERS.some((g) => new RegExp(`\\b${g}\\s*\\(`).test(decomment(readFileSync(f, "utf8")))),
 );
-ok("§0 the population is non-empty", helplineSurfaces.length >= 3, `found ${helplineSurfaces.length} helpline surfaces`);
+ok("§0 the population is non-empty", contactSurfaces.length >= 3, `found ${contactSurfaces.length} contact surfaces`);
 ok("§0 the file sweep found src", files.length > 200, `found ${files.length} files`);
 
 console.log(`\n${pass} passed, ${fail} failed`);

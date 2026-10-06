@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { LoginIdentifier } from "@/components/auth/login-identifier";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/server/support-config";
+import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
 import { requestResetAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 
@@ -144,15 +144,18 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 render improves twice over: `saa 2 asubuhi – saa 2 usiku` (~135px) stopped
                 wrapping to two lines in the card beside it. */}
             {/* 2026-09-13: the whole card is the link. The value inside it was a second link, which
-                is invalid HTML (a link inside a link) and threw a hydration error on every visit. */}
+                is invalid HTML (a link inside a link) and threw a hydration error on every visit.
+                ⭐ 2026-10-06: the phone card is OUR support desk, the line a locked-out player needs (it sits
+                under "contact support", beside our business hours). It used to dial the problem-gambling
+                helpline, which the owner's ruling of that day took off every player surface. */}
             <div className="grid grid-cols-1 gap-2">
               <a
-                href={`tel:${HELPLINE_TEL()}`}
+                href={`tel:${SUPPORT_PHONE_TEL()}`}
                 className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
               >
                 <I.phone s={14} className="text-gold-300 shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-mono text-[11px] font-bold text-text"><span className="underline underline-offset-2">{HELPLINE()}</span></p>
+                  <p className="font-mono text-[11px] font-bold text-text"><span className="underline underline-offset-2">{SUPPORT_PHONE()}</span></p>
                   <p className="text-[10px] text-text-subtle">{t.common.businessHours}</p>
                 </div>
               </a>

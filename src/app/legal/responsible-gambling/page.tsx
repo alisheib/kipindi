@@ -1,5 +1,5 @@
 import { LegalHeader, LegalSection, LEGAL_BINDING_LANGUAGE as BINDING } from "../_components";
-import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/server/support-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 // ⭐ U33p · §4's first bullet is an admin-edited line (Admin → System → Public policy lines): `PolicyLine` prints the saved
 // words once an admin saves new words, and the literal bullet below until then; `policyMeta` prints the page's version.
@@ -36,11 +36,13 @@ const TITLE: Record<Locale, string> = {
  * the code's own English (test:rg-policy pins it with the English hash; `POLICY_PAGES.rg.codeVersion` in
  * `src/lib/legal/policy-lines.ts` moves with it — test:policy-lines L0). A saved line is held to `KEPT_PROMISES` at the
  * save, so it can no more promise an uncontrolled exclusion than a commit can.
+ * ⭐ 2026-10-06 — no helpline: §4's "free helpline on every page footer" and §5's national helpline line are gone with the
+ * helpline itself (COMPLIANCE-DECISIONS § "2026-10-06 · … RG Policy v2026-10-06", the owner's ruling).
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-26 · Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
-  sw: "Toleo 2026-09-26 · Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
-  zh: "版本 2026-09-26 · 符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
+  en: "Version 2026-10-06 · Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
+  sw: "Toleo 2026-10-06 · Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
+  zh: "版本 2026-10-06 · 符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
 };
 
 /**
@@ -102,13 +104,11 @@ export function content(): Record<Locale, React.ReactNode> { return {
           <PolicyLine line="rg.marketing" locale="en" /* ⛔ prints only until saved */><li>No marketing messages to a self-excluded player, to a player on a break until they opt in again after it ends, to a player showing a sign of harm (section 3), or to anyone under 18 or whose age we cannot confirm</li></PolicyLine>
           <li>No marketing messages, ever, to a player under 25 who has self-excluded or taken a break</li>
           <li>No bonus offers tied to deposit increases</li>
-          <li>Free helpline displayed on every page footer</li>
         </ul>
       </LegalSection>
 
       <LegalSection n="5" title="Get help">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (free)</li>
           <li><strong className="text-text">International</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">Email us</strong>: <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>
@@ -157,13 +157,11 @@ export function content(): Record<Locale, React.ReactNode> { return {
           <PolicyLine line="rg.marketing" locale="sw" /* ⛔ prints only until saved */><li>Hakuna matangazo kwa mchezaji aliyejizuia, kwa mchezaji aliye kwenye mapumziko hadi atakapokubali tena baada ya mapumziko kuisha, kwa mchezaji anayeonyesha dalili ya madhara (sehemu ya&nbsp;3), wala kwa mtu yeyote aliye chini ya umri wa miaka&nbsp;18 au ambaye umri wake hatuwezi kuuthibitisha</li></PolicyLine>
           <li>Kamwe hakuna matangazo kwa mchezaji aliye chini ya umri wa miaka&nbsp;25 aliyewahi kujizuia au kuchukua mapumziko</li>
           <li>Hakuna ofa za bonasi zinazohusishwa na ongezeko la fedha zinazowekwa</li>
-          <li>Namba ya msaada ya bure inaonyeshwa kwenye sehemu ya chini ya kila ukurasa</li>
         </ul>
       </LegalSection>
 
       <LegalSection n="5" title="Pata msaada">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: Namba ya Msaada ya Taifa <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (bure)</li>
           <li><strong className="text-text">Kimataifa</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">Tutumie barua pepe</strong>: <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>
@@ -212,13 +210,11 @@ export function content(): Record<Locale, React.ReactNode> { return {
           <PolicyLine line="rg.marketing" locale="zh" /* ⛔ prints only until saved */><li>不向已自我排除的玩家、处于冷静期的玩家（直至其在冷静期结束后重新同意）、出现伤害迹象的玩家（见第&nbsp;3&nbsp;节），以及未满 18&nbsp;岁或无法确认年龄的人发送营销信息</li></PolicyLine>
           <li>绝不向曾经自我排除或进入冷静期、且年龄低于 25&nbsp;岁的玩家发送营销信息</li>
           <li>不提供与提高充值挂钩的奖金优惠</li>
-          <li>在每个页面的页脚显示免费求助热线</li>
         </ul>
       </LegalSection>
 
       <LegalSection n="5" title="获取帮助">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">坦桑尼亚</strong>：全国求助热线 <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a>（免费）</li>
           <li><strong className="text-text">国际</strong>：<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>、<a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">发送邮件给我们</strong>：<a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>

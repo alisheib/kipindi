@@ -6,7 +6,7 @@
  * claim → h1 → lede → trust rows → featured card → CTAs → sign-off. What 50pick is (the claim,
  * "Tanzania's first licensed prediction market"), the question it asks in the reader's own
  * language (the h1, "NDIO au HAPANA?"), what you do and what happens (the lede, two designed
- * lines), why to trust it (18+ · the Board's licence · the helpline; the wallets that pay out),
+ * lines), why to trust it (18+ · the Board's licence; the wallets that pay out),
  * then a live market, then what to press, then the brand line as a sign-off. The trust rows sit
  * ABOVE the card since R7: after the card and the CTAs they never reached a phone's first screen
  * (ACCEPTANCE K29). They are the same rows for a visitor and a player. The proof rail and the
@@ -20,8 +20,9 @@
  * a declared surface that has stopped emitting one.
  *
  * ⛔ THE GAMBLING-WARNING SENTENCE IS NOT IN THE HERO (R7(2)). The footer carries it, with the
- * helpline and the limit links, on every page; the hero keeps one quiet row — 18+, the licence line,
- * the helpline number. `npm run test:hero-copy` §4 fails if `stopGambling` comes back in here.
+ * limit links, on every page; the hero keeps one quiet row — 18+ and the licence line (no helpline
+ * since the owner's ruling of 2026-10-06). `npm run test:hero-copy` §4 fails if `stopGambling` comes
+ * back in here.
  *
  * ⛔ "FIRST" IS GATED. The claim reads `home.heroClaimFirst` only while `FIRST_LICENSED_EVIDENCE()`
  * (support-config.ts, its one home) returns a record — set 2026-09-27 by R9, the owner's attestation.
@@ -65,7 +66,7 @@ import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { formatEatDate } from "@/lib/eat-day";
-import { FIRST_LICENSED_EVIDENCE, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
+import { FIRST_LICENSED_EVIDENCE } from "@/lib/support-config";
 import { railListParts } from "@/lib/rail-list";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { boardLenses, QUESTION_BOARD_SIZE } from "@/lib/markets/hero";
@@ -199,22 +200,20 @@ function Ask({ t }: { t: Dict }) {
 /**
  * The trust rows — ONE list, the same for a visitor and a player, above the featured card.
  *
- *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania." · the helpline, a `tel:` link
+ *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania."
  *   row 2 · "Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas."
  *
- * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus`, `footer.licensedByGbt` and
- * `footer.helpline` are assessed keys, reused verbatim, and the number is `HELPLINE()` from
- * `support-config.ts`, its one home. The gambling-warning SENTENCE is not here (R7(2)): the footer
- * keeps it on every page. The licence NUMBER stays in the footer too (K39).
+ * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus` and `footer.licensedByGbt` are assessed
+ * keys, reused verbatim. ⛔ No helpline (the owner's ruling of 2026-10-06). The gambling-warning
+ * SENTENCE is not here (R7(2)): the footer keeps it on every page. The licence NUMBER stays in the
+ * footer too (K39).
  * ⭐ ROW 2 NAMES ONLY WALLETS THAT PAY OUT (R8(6)). `rails` is computed on the server from the money
  * path's own definitions (`server/payout-rails.ts`) and joined by `Intl.ListFormat` in the reader's
  * language (`rail-list.ts`): the names are never typed into the dictionary, and a rail an officer has
  * paused is not named while it is paused. No rails → no row, never "Deposit and withdraw with ."
  * ⭐ WHY ABOVE THE CARD: on a phone the rows after the card and the CTAs began below the first screen,
- * so 18+, the licence and the helpline never reached it (K29, P15). In the SOURCE, not by CSS
+ * so 18+ and the licence never reached it (K29, P15). In the SOURCE, not by CSS
  * `order` — keyboard and screen-reader order must match the screen (WCAG 1.3.2).
- * ⚠️ Label and number are separate unbreakable runs, so under large text the line breaks BETWEEN
- * them and never inside "0800 11 0011" (the footer's own shape).
  * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
  * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
  * ⚠️ `ul.kp-hero__trust` is read by the landing gate (V8's text map, V21) and by capture.mjs.
@@ -228,12 +227,7 @@ function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rails: read
     <ul className="kp-hero__trust" role="list">
       <li>
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
-        <span>
-          {t.footer.licensedByGbt}{" "}
-          <a className="kp-hero__tel" href={`tel:${HELPLINE_TEL()}`}>
-            <span>{t.footer.helpline}</span>{" "}<span>{HELPLINE()}</span>
-          </a>
-        </span>
+        <span>{t.footer.licensedByGbt}</span>
       </li>
       {parts.length > 0 && (
         <li>

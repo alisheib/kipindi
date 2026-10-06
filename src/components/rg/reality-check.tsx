@@ -18,11 +18,6 @@ import * as React from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
-// ⛔ THE CLIENT-SAFE HALF ONLY. This is a `"use client"` module, so it reads `HELPLINE()` — which in a
-// browser takes the SAVED helpline from the attributes the root layout publishes on <html> — but never
-// the desk getters: `test:support-contact` §4/§5 fail on a client component that reads one, because a
-// browser bundle's module cache can never be hydrated server-side.
-import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 import { isModalDialogOpen } from "@/lib/modal-open";
 
@@ -186,10 +181,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
             {t.rg.selfExclude}
           </Link>
         </div>
-
-        <p className="text-center font-mono text-micro uppercase eyebrow text-text-subtle pt-1">
-          {t.rg.helpline} · <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted underline underline-offset-2">{HELPLINE()}</a>
-        </p>
+        {/* ⛔ No helpline line under the doors since the owner's ruling of 2026-10-06 (docs/COMPLIANCE-DECISIONS.md). */}
       </div>
     </Modal>
   );

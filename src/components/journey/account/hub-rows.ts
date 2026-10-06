@@ -50,7 +50,7 @@ export const HUB_WORDS = [
   "journey.hubGroupFairnessHelp", "journey.hubGroupLegal",
   "common.wallet", "common.balanceFrozen", "journey.withdrawAction",
   "common.results", "common.live", "common.leaderboard",
-  "footer.setLimits", "journey.hubLimitsSub", "footer.takeABreak", "footer.selfExclude", "footer.helpline",
+  "footer.setLimits", "journey.hubLimitsSub", "footer.takeABreak", "footer.selfExclude",
   "profile.inviteFriends", "agent.dashTitle", "common.proposeEarn",
   "common.profile", "common.verifyId", "profile.verifyIdSub", "footer.resolutionAttestation",
   "common.help", "journey.hubHelpSub", "common.notifications", "common.search", "agent.footerLink",
@@ -81,8 +81,6 @@ export type HubLink = {
 
 export type HubRow =
   | HubLink
-  /** The national problem-gambling helpline, as its own labelled row; its number comes from `support-config.ts`. */
-  | { id: "helpline"; kind: "helpline"; label: "footer.helpline" }
   /** Arifa: a door that also carries the reader's unread count (the journey's own counter, read once — A1). */
   | { id: "notifications"; kind: "unread"; href: "/notifications"; label: "common.notifications" }
   /** The controls that are not doors: the language, the phone board's card size, the Needle's drawer. */
@@ -100,9 +98,8 @@ const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: 
 const LIVE: HubRow = { id: "live", kind: "link", href: "/live", label: "common.live", glyph: "radio" };
 const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "common.leaderboard", glyph: "podium" };
 const FAIRNESS: HubRow = { id: "fairness", kind: "link", href: "/fairness", label: "footer.resolutionAttestation", glyph: "sealCheck" };
-/** ⛔ Msaada's second line names no phone number: the national helpline is not 50pick's help desk (§0h point 10). */
+/** ⛔ Msaada's second line names no phone number (§0h point 10). */
 const HELP: HubRow = { id: "help", kind: "link", href: "/help", label: "common.help", sub: "journey.hubHelpSub", glyph: "headset" };
-const HELPLINE_ROW: HubRow = { id: "helpline", kind: "helpline", label: "footer.helpline" };
 const NOTIFICATIONS: HubRow = { id: "notifications", kind: "unread", href: "/notifications", label: "common.notifications" };
 /** Shown below 1024 only (the row hides itself): from there the journey header carries the language menu. */
 const LANGUAGE: HubRow = { id: "language", kind: "language" };
@@ -112,9 +109,9 @@ const NEEDLE: HubRow = { id: "needle", kind: "needle" };
 const SEARCH: HubRow = { id: "search", kind: "link", href: "/markets", label: "common.search", glyph: "search" };
 
 /**
- * Weka mipaka, Pumzika, Jizuie and the helpline. A17: Pumzika and Jizuie are two rows, each landing on its own section
- * of the limits page — the reality check's own two doors. Signed out, all three land on the public policy page, because
- * the limits page is behind a sign-in (VODACOM-PLAN §3.8).
+ * Weka mipaka, Pumzika, Jizuie. A17: Pumzika and Jizuie are two rows, each landing on its own section of the limits
+ * page — the reality check's own two doors. Signed out, all three land on the public policy page, because the limits
+ * page is behind a sign-in (VODACOM-PLAN §3.8). ⛔ No helpline row since the owner's ruling of 2026-10-06.
  */
 function safetyRows(signedIn: boolean): HubRow[] {
   if (!signedIn) {
@@ -122,14 +119,12 @@ function safetyRows(signedIn: boolean): HubRow[] {
       { id: "limits", kind: "link", href: "/legal/responsible-gambling", label: "footer.setLimits", glyph: "shield" },
       { id: "break", kind: "link", href: "/legal/responsible-gambling", label: "footer.takeABreak", glyph: "pause" },
       { id: "exclude", kind: "link", href: "/legal/responsible-gambling", label: "footer.selfExclude", glyph: "circleStop" },
-      HELPLINE_ROW,
     ];
   }
   return [
     { id: "limits", kind: "link", href: "/profile/responsible-gambling", label: "footer.setLimits", sub: "journey.hubLimitsSub", glyph: "shield" },
     { id: "break", kind: "link", href: "/profile/responsible-gambling#break", label: "footer.takeABreak", glyph: "pause" },
     { id: "exclude", kind: "link", href: "/profile/responsible-gambling#exclude", label: "footer.selfExclude", glyph: "circleStop" },
-    HELPLINE_ROW,
   ];
 }
 

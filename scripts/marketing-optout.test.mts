@@ -26,8 +26,8 @@
  * capable of failing.
  * ⭐ 2026-09-27 added: a dry budget reads as BUSY, never "this link does not work" (37c); a retry on the
  * busy and failed refusals (S5d); our desk under a failed tap (S18h); a skeleton built from the page's
- * own parts, visible, with its read-aloud line last (S6b–d); the helpline under its responsible-gambling
- * line and a label-free 18+ (S20d); the shell matching bare `/s` and one segment only (S21b); and bare
+ * own parts, visible, with its read-aloud line last (S6b–d); the responsible-gambling line with no helpline
+ * (owner's ruling 2026-10-06) and a label-free 18+ (S20d); the shell matching bare `/s` and one segment only (S21b); and bare
  * `/s` as the refusal rather than a 404 inside the stripped shell (S23) — each with its own plant.
  * ⭐ And from the final visual review: a failed tap moves nothing under the thumb (S18i), the pending label
  * stays readable (S18j), zh keeps its words whole on the headings and notices (S18k, S7h: break hints
@@ -166,7 +166,7 @@ const SL = {
   shellFirst: "S20 · ⭐ D6 — `/s` gets its own shell, decided BEFORE the session read (an ended session's redirect would put the opt-out behind a login)",
   noUpsell: "S20b · ⛔ D6 — the opt-out shell carries NO sign-in/up, nav, rail, footer menus, invitations or soft links",
   shellCarries: "S20c · ⭐ …and it DOES carry the logo, the language menu, the landmark, the skip link and the regulator lines",
-  rgContext: "S20d · ⭐ 2026-09-27 — the helpline sits UNDER its responsible-gambling sentence (alone it read as our own line), and the 18+ roundel carries no aria-label (ARIA prohibits one on a generic span)",
+  rgContext: "S20d · ⭐ the responsible-gambling sentence stays and no helpline comes back (the owner's ruling, 2026-10-06), and the 18+ roundel carries no aria-label (ARIA prohibits one on a generic span)",
   overlay: (file: string) => `S21 · ⛔ D6 — ${file} stays off the opt-out page, and only off it`,
   shellMatch: "S21b · the shell's own test is a SEGMENT match built from `OPTOUT_PATH` — bare `/s` and `/s/<one segment>` only; a deeper path gets the FULL shell, so its 404 never renders inside the stripped one",
   bare: "S23 · 🔴 2026-09-27 — bare `/s` (a link that lost its token) is the opt-out REFUSAL, not the root 404 inside the stripped shell — noindex and force-dynamic",
@@ -982,13 +982,13 @@ async function runSurface(f: Fixtures): Promise<void> {
   ok(SL.noUpsell,
     shellBody.length > 200 && upsell.length === 0, upsell.join(", ") || "none");
   ok(SL.shellCarries,
-    ["<FiftyLockup", "<LanguageMenu", "<MainLandmark>", "<SkipToContent", "LICENCE_NUMBER()", "HELPLINE()", "t.footer.eighteenPlus", "t.footer.stopGambling"]
+    ["<FiftyLockup", "<LanguageMenu", "<MainLandmark>", "<SkipToContent", "LICENCE_NUMBER()", "t.footer.eighteenPlus", "t.footer.stopGambling"]
       .every((s) => shellBody.includes(s)));
   {
     const rgAt = shellBody.indexOf("{t.footer.stopGambling}");
-    const helplineAt = shellBody.indexOf("{HELPLINE()}");
+    const helplineAt = shellBody.search(/\bHELPLINE(?:_TEL)?\(\)/);
     ok(SL.rgContext,
-      rgAt > 0 && helplineAt > rgAt && !/aria-label=\{t\.footer\.eighteenPlus\}/.test(shellBody)
+      rgAt > 0 && helplineAt < 0 && !/aria-label=\{t\.footer\.eighteenPlus\}/.test(shellBody)
         && /<span className="kp-rg__18">\{t\.footer\.eighteenPlus\}<\/span>/.test(shellBody),
       `rg line at ${rgAt} · helpline at ${helplineAt}`);
   }
@@ -1450,8 +1450,11 @@ if (!PROVE_RED) {
       copy: setCopy("sw", "stoppedTitle", () => "Ofa na habari kwa SMS zimesimamishwa") },
     { name: "2026-09-27 · a break hint goes into ledger evidence (the stop sentence)", expect: SL.hints("zh"),
       copy: setCopy("zh", "body", () => dict.zh.optout.body.replace("。", `。${String.fromCharCode(0x200b)}`)) },
-    { name: "2026-09-27 · the helpline loses its responsible-gambling line and reads as our own", expect: SL.rgContext,
+    { name: "the opt-out footer loses its responsible-gambling sentence", expect: SL.rgContext,
       plant: { file: SHELL, from: `<p className="italic text-text-subtle text-body-sm text-balance break-keep">{t.footer.stopGambling}</p>`, to: "" } },
+    { name: "2026-10-06 · the helpline comes back to the opt-out footer", expect: SL.rgContext,
+      plant: { file: SHELL, from: `<p className="italic text-text-subtle text-body-sm text-balance break-keep">{t.footer.stopGambling}</p>`,
+        to: "<p className=\"italic text-text-subtle text-body-sm text-balance break-keep\">{t.footer.stopGambling}</p>\n          <a href={`tel:${HELPLINE_TEL()}`}>{HELPLINE()}</a>" } },
     { name: "2026-09-27 · the 18+ roundel gets its prohibited aria-label back", expect: SL.rgContext,
       plant: { file: SHELL, from: `<span className="kp-rg__18">`, to: `<span aria-label={t.footer.eighteenPlus} className="kp-rg__18">` } },
     { name: "2026-09-27 · the shell takes any /s/… path again — a deeper 404 renders inside the stripped shell", expect: SL.shellMatch,
