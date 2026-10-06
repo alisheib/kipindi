@@ -28,7 +28,7 @@ delegation is a numbered point in §0h. Nothing moved here 2026-10-04 → 10-06 
 which rewrote §3.7: a new account now lands home on the classic site too.
 
 **⏳ IN FLIGHT (2026-10-06) — A8i, taken FIRST because it is a live money defect.** PC OMEGA-COMPILE01, worktree
-`F:\kipindi-journey`, branch `vodacom-a8i` (cut from `origin/main` at `7a5bfa8a`). Another session must not start A8i.
+`F:\kipindi-journey`, branch `vodacom-a8i` (cut from `origin/main` at `7a5bfa8a`). **Taken over 2026-10-06 ~21:40 EAT by ALI-BLADE15** (`C:\kipindi-journey`, the same branch rebased on `4093dc54`): OMEGA's session stopped after its drive commit `51c6f319` (17:59 EAT), and Ali asked this PC to continue. Another session must not start or push A8i.
 - **The defect (every player):** the bet confirm, the Sell confirm and the result dialog each listen for Enter on the
   whole window, so Enter does their primary act whatever has focus — "Ghairi" included — and Enter on a dialog opened on
   top of one (the win seal, the reality check) acts in the one underneath (§0i "Found on the way (2026-10-04)").
