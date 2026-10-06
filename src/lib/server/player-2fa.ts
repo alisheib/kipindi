@@ -10,6 +10,13 @@
  *    (verifies a live code); backup codes are minted at that same moment.
  *  - Disable requires proof again (a current TOTP code or an unused backup code)
  *    so a hijacked live session cannot silently strip 2FA.
+ *  - Enrolment is refused while 2FA is ON (A-X2): re-provisioning REPLACES the secret,
+ *    so a hijacked session could swap the owner's authenticator for its own and then
+ *    strip 2FA or void the backup codes for good. A flag with no secret is not "on",
+ *    so an abandoned enrolment stays repairable.
+ *  - Turning 2FA on asks for the current password first (A-X3,
+ *    `startPlayer2faEnrolment`), so a session alone cannot enrol a stranger's
+ *    authenticator and lock the owner out.
  *
  * Every transition is audited under SECURITY (mirrors the admin TOTP audit set).
  */
@@ -18,12 +25,48 @@ import { provisionTotp, verifyTotp, removeTotp, hasTotp } from "./totp";
 import { generateBackupCodes, remainingBackupCodes, consumeBackupCode, clearBackupCodes } from "./backup-codes";
 import { db } from "./store";
 import { audit } from "./audit";
+import { verifyCurrentPassword } from "./reauth";
 
-/** Begin enrollment: provision a fresh secret and return the otpauth URI (QR). */
-export async function enrollPlayer2fa(userId: string): Promise<{ secretBase32: string; otpauthUrl: string }> {
+/**
+ * Begin enrollment: provision a fresh secret and return the otpauth URI (QR).
+ * Refused while 2FA is already ON: provisioning REPLACES the stored secret, so this
+ * on a session alone would swap a live authenticator (the staff door already refuses
+ * a rotation without a current code, `admin/2fa/setup/actions.ts`).
+ */
+export async function enrollPlayer2fa(userId: string): Promise<{ ok: true; secretBase32: string; otpauthUrl: string } | { ok: false; error: "already_enabled" }> {
+  if (await is2faEnabled(userId)) {
+    audit({ category: "SECURITY", action: "player.2fa.reenroll_refused", actorId: userId, targetType: "User", targetId: userId });
+    return { ok: false, error: "already_enabled" };
+  }
   const user = await db.user.findById(userId);
   const label = user?.phoneE164 || user?.displayName || userId;
-  return provisionTotp(userId, label);
+  const provisioned = await provisionTotp(userId, label);
+  return { ok: true, ...provisioned };
+}
+
+/**
+ * The player's door into enrolment (A-X3): the current password first, then
+ * `enrollPlayer2fa`. Already ON is answered before a re-auth token is spent. A
+ * password-less account (the dormant OTP era) passes with no proof: it can already
+ * set a first password with none, so asking here would add no protection (a
+ * recorded residual).
+ */
+export async function startPlayer2faEnrolment(
+  userId: string,
+  currentPassword: unknown,
+): Promise<{ ok: true; secretBase32: string; otpauthUrl: string } | { ok: false; error: "already_enabled" | "password_wrong" | "reauth_rate_limited"; retryAfterSec?: number }> {
+  if (await is2faEnabled(userId)) {
+    audit({ category: "SECURITY", action: "player.2fa.reenroll_refused", actorId: userId, targetType: "User", targetId: userId });
+    return { ok: false, error: "already_enabled" };
+  }
+  const re = await verifyCurrentPassword(userId, currentPassword, "two_factor_enable");
+  if (!re.ok) {
+    if (re.code === "RATE_LIMITED") return { ok: false, error: "reauth_rate_limited", retryAfterSec: re.retryAfterSec };
+    if (re.code !== "PW_NOT_SET") return { ok: false, error: "password_wrong" };
+  }
+  const e = await enrollPlayer2fa(userId);
+  if (!e.ok) return { ok: false, error: "already_enabled" };
+  return { ok: true, secretBase32: e.secretBase32, otpauthUrl: e.otpauthUrl };
 }
 
 /**
