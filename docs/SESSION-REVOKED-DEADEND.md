@@ -462,16 +462,16 @@ rather than as a follow-up.
 
 ### Things the audit says NOT to do
 - ⛔ Do **not** move the authed-bounce into `src/proxy.ts`, or key any bounce off
-  `isSessionCookieValid`. A revoked device carries an HMAC-valid cookie; that ships the infinite
+  the proxy's cookie check (`readVerifiedSession`, named `isSessionCookieValid` before W25). A revoked device carries an HMAC-valid cookie; that ships the infinite
   loop `bounce-authed.ts` already documents.
 - ⛔ Do **not** re-add a pathname check to `auth/layout.tsx`. It is a deliberate pass-through.
 - ⛔ Do **not** reach for `export const dynamic = "force-dynamic"` — inert, because a layout is not
   re-executed on a soft navigation at all, so there is no dynamism for it to act on.
-- ⛔ Do **not** introduce a second `requireSession`; `session.ts:255` already exports one that
+- ⛔ Do **not** introduce a second `requireSession`; `session.ts` already exports one (`requireSession()`) that
   *throws*.
 - ⚠️ `src/proxy.ts:1` calls itself an "Edge proxy" and that is **wrong for this build** — Next 16.2.4
   always runs the proxy on the Node.js runtime (the edge middleware manifest is empty). Correct the
-  comment; do not act on it in the same diff.
+  comment; do not act on it in the same diff. Corrected 2026-10-06: the proxy's header and its runtime comments now say Node.js.
 
 ## 7. Notes for whoever picks this up
 

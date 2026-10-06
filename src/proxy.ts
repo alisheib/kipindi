@@ -1,5 +1,7 @@
 /**
- * Edge proxy — security headers + path-forward + auth gate.
+ * Request proxy — security headers + path-forward + auth gate.
+ * Next 16.2 runs proxy.ts on the Node.js runtime (never the Edge runtime); the docs call it
+ * the edge for its place in front of every route.
  * Renamed from `middleware.ts` per Next 16 file-convention change.
  *
  * Compliance:
@@ -13,13 +15,16 @@
  *  - Audit logging happens in route handlers (request body required)
  *
  * Auth gate (defence in depth):
- *  - 307s unauthenticated requests for /wallet, /positions, /profile,
- *    /admin to /auth/login?next=<original> at the edge so no protected
- *    body ever leaves Next. Pages still call currentSession() and
- *    re-redirect — the edge guarantee is on top of, not instead of.
+ *  - 307s a request for a PROTECTED_PREFIXES path whose cookie is missing,
+ *    forged or past its 7-day exp to /auth/login?next=<path+query>
+ *    (/admin… to /auth/admin), and an /admin… request whose cookie names a
+ *    non-staff role to /auth/admin (W25 belt 1); idle time and the session
+ *    registry are NOT checked here - pages call currentSession(), and an
+ *    ended session is told why through /auth/session-ended; the edge is on
+ *    top of the page's gate, never instead of it.
  */
 import { NextResponse, type NextRequest } from "next/server";
-// Pure + client-safe by its own header (no DB, no server-only imports), so the Edge runtime can use it.
+// Pure + client-safe by its own header (no DB, no server-only imports), so the proxy can import it without pulling server code in.
 // Importing it rather than re-listing the staff roles here keeps ONE source of truth for "who is staff".
 import { isStaffRole } from "@/lib/server/roles";
 
@@ -45,7 +50,7 @@ function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + "/"));
 }
 
-// Edge-runtime HMAC verifier. The session cookie format is "payload.mac"
+// The proxy's HMAC verifier (Web Crypto). The session cookie format is "payload.mac"
 // where payload is base64url-encoded JSON of SessionData and mac is
 // base64url HMAC-SHA-256 of payload using SESSION_SECRET.
 //
@@ -86,7 +91,7 @@ function timingSafeEq(a: Uint8Array, b: Uint8Array): boolean {
  * `kycStatus`, and it is just as true of `role`: a demotion never reaches an already-minted cookie. So this belt is
  * deliberately COARSE and SUBTRACTIVE — it refuses an account whose own cookie admits it is not staff, and it is not,
  * and must never be described as, a replacement for the live-row check. Belt 2 (the per-page stored-row gate) answers
- * the demoted-cookie question; the Edge runtime cannot reach the database to answer it here.
+ * the demoted-cookie question; the proxy reads no database (it runs in front of every request), so it does not answer it here.
  */
 async function readVerifiedSession(token: string | undefined): Promise<{ role?: string } | null> {
   if (!token) return null;
@@ -245,7 +250,7 @@ export async function proxy(req: NextRequest) {
     // ⚠️ Coarse and subtractive only: it refuses an account whose own cookie says it is not staff. A demoted
     // account's stale cookie still passes here and is caught by the per-page stored-row gate (belt 2).
     // ⚠️ A KNOWN GAP IN THIS BELT, STATED RATHER THAN GLOSSED, and the reason belt 2 is not redundant.
-    // `config.matcher` (:285) excludes `_next/static`, `_next/image`, `favicon.ico` and ANY path ending in an image
+    // `config.matcher` (the last lines of this file) excludes `_next/static`, `_next/image`, `favicon.ico` and ANY path ending in an image
     // extension — so this function never runs for `/admin/players/<anything>.png`, which a dynamic `[id]` segment
     // happily matches. The edge is therefore skippable by URL shape alone, without any router-state trickery.
     // ⭐ It is not exploitable for disclosure today, and the reason is worth writing down: the id must resolve, and

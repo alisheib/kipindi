@@ -23,14 +23,15 @@ import { sanitizeNext } from "@/lib/safe-next";
  *
  * 🔴 AND THE OBVIOUS FIX — MOVE IT TO THE MIDDLEWARE, WHERE THE PATHNAME IS ALWAYS RIGHT —
  * WOULD HAVE SHIPPED AN INFINITE REDIRECT LOOP. `proxy.ts` already redirects on auth and its
- * gate is `isSessionCookieValid`, which verifies the cookie's **HMAC** and nothing else. A
- * REVOKED device (B-13: another login displaced its session row) still carries a
- * cryptographically valid cookie, and `AppShell` deliberately routes that device TO
- * `/auth/login?revoked=1` so it gets an explanation. A middleware bounce keyed on cookie
- * validity would send it straight back to `/`, where the shell would send it to the login page
- * again — forever, with no page ever rendering. **The layout's `getSession()` is what made it
- * safe, because a revoked session resolves to `null`.** That is why this helper keeps
- * `getSession()` and only the PATHNAME decision moved.
+ * gate is `readVerifiedSession` (named `isSessionCookieValid` before W25, 2026-09-19), which
+ * verifies the cookie's HMAC and its 7-day exp (and, on /admin, the role the cookie names),
+ * never the session registry. A REVOKED device (B-13: another login displaced its session row)
+ * still carries a cryptographically valid cookie, and `AppShell` deliberately routes that
+ * device, through /auth/session-ended, TO `/auth/login?revoked=1` so it gets an explanation. A
+ * middleware bounce keyed on cookie validity would send it straight back to `/`, where the
+ * shell would send it to the login page again — forever, with no page ever rendering. **The
+ * layout's `getSession()` is what made it safe, because a revoked session resolves to `null`.**
+ * That is why this helper keeps `getSession()` and only the PATHNAME decision moved.
  *
  * ⚠️ The pages' old comments said the guard sat in the layout to avoid a Next.js 16 **dev-mode**
  * hook-count mismatch when `redirect()` is called inside a page during hot reload. That is a

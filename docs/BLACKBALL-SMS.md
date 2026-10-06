@@ -396,7 +396,8 @@ product depends on: **a receipt settling a row production itself created.**
 
 Production has exactly two senders and both were shut: invite campaigns refuse while the bonus is
 withdrawn, and phone-code login is dormant behind `OTP_ENABLED`. ⭐ But that flag gates only the PAGE
-(`src/app/auth/otp/page.tsx` — the single `redirect()` in the file); `requestLoginOtp` is not gated. So:
+(`src/app/auth/otp/page.tsx` — the single `redirect()` in the file); `requestLoginOtp` is not gated
+(corrected 2026-10-06: the flag now closes the code actions too - `otp-door.ts`). So:
 `OTP_ENABLED=1` for four minutes, the live page driven in a real browser (`HeadlessChrome` in the UA),
 its **TUMA MSIMBO TENA** control pressed once — a genuine product path, not a script calling a library —
 and the flag returned to `0` immediately after.
@@ -595,7 +596,7 @@ the 15-minute TTL.
 | *(no longer a variable)* | **The marketing price per SMS, the credit kept for login and withdrawal codes, the most one campaign may spend and the send window** are the owner's, saved on Admin → System → Marketing SMS (the tab arrives with U49s-2; until then the defaults apply) (`marketing.sms.settings`; defaults TZS 6 · TZS 20,000 · TZS 10,000 · 08:00–20:00 EAT). `SMS_PRICE_PER_SEGMENT_TZS` is gone (marketing U49s, 2026-10-06 — it was never set on Railway), and nothing reads it |
 | *(not a variable either)* | **The marketing live switch** (`marketing.sms.live` = `{ enabledBy, enabledAt, closesAt }`): ABSENT is off, and every real marketing SMS — a test send included — is refused while it is off. It is opened for 30 minutes to 24 hours (2 hours by default) and switches itself off at `closesAt`. Two audited doors only: the owner's card on Admin → System (it arrives with U49s-2, the screens), and the ops door `npm run ops:marketing-live-switch -- status | open | close` (run through `railway run`; it writes the same COMPLIANCE rows) |
 | `INVITE_SMS_MAX_PER_SEND` | default 500 |
-| `OTP_ENABLED` | `1` un-hides `/auth/otp`; ⚠️ no login/register UI links to it yet (§7, step 6) |
+| `OTP_ENABLED` | `1` opens phone-code SIGN-IN: the `/auth/otp` page and the code actions (`otp-door.ts`); no login UI links to it yet (section 7 step 6) |
 
 Boot warns in production (fail-open) on: an unrecognised provider, a selected Blackball with no
 credentials, a sender ID over the cap, an unusable DLR secret, and — loudest — `OTP_ENABLED=1`
@@ -626,7 +627,7 @@ Each step is independently reversible, and none of the later ones is safe withou
      here). `/api/health` refreshes the same reading with a short budget and shows `balanceAt` beside it.
 
    **Offering phone-code login is a product change, not a variable:** a "send me a code" option on
-   `/auth/login` (and register), inside the frozen design system, in EN + SW + ZH, with the visual
+   `/auth/login` (sign-in only: a code never creates an account since 2026-10-06), inside the frozen design system, in EN + SW + ZH, with the visual
    and live drives that surface requires. Then `OTP_ENABLED=1`.
 
 ### Preconditions for step 6 — measured, none assumed
@@ -637,6 +638,8 @@ Each step is independently reversible, and none of the later ones is safe withou
   that Cloudflare, the token and the URL registration are all right, and it cannot be simulated.
 - The production boot log prints no `[sms]` warning.
 - Password sign-in is still reachable from `/auth/login`.
+- `test:otp-delivery` and `red:otp-delivery` green.
+- The code request no longer answers 'no account' for an unknown number ([FLOWS.md](FLOWS.md) section 8a).
 
 ### Rollback, cheapest first
 

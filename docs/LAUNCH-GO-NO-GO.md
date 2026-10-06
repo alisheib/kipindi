@@ -90,7 +90,8 @@
        `user.email` is absent, so a live QA persona or an admin who has never set an email
        may depend on it to receive mail. Removing it blind turns those into silent
        no-address sends. Grep first, confirm nobody live is resolved through it, then unset
-       and redeploy.
+       and redeploy. Since 2026-10-06 password reset no longer reads the map; only receipts,
+       the sign-in notice and staff-recipient lists still fall back to it.
 6. [ ] **Format / rebaseline the DB** → clean genesis (ledger, audit chain, wallets
        from zero; clears the test float + pre-audit rows). *This is the point where
        "clean" becomes real — after it, ANY trial-balance drift = a real defect.*

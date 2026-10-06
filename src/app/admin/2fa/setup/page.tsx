@@ -62,7 +62,7 @@ export default async function TotpSetupPage({ searchParams }: { searchParams?: P
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">How this works in production</p>
             <p>
-              On admin login, after the OTP step succeeds, you&apos;ll be required to enter a 6-digit code from your
+              On admin login, after your password is accepted, you&apos;ll be required to enter a 6-digit code from your
               authenticator app. Lost device? Recovery is via documented identity verification with the AML lead —
               there is no self-service reset.
             </p>
