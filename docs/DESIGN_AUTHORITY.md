@@ -1453,6 +1453,16 @@ them, never dip under.
      a `2981` gate. It opens the numeric keypad, and Enter confirms once the gate is armed. A word gate is unchanged.
 
    Guarded by `npm run test:ui-consistency` (its KIT PINS), `npm run test:numeric` and `npm run test:unsaved-changes`.
+8. **Enter acts only where it is pressed, and a key held down from before presses nothing in a dialog.** ⭐ Added
+   2026-10-07 (S6 A8i, VODACOM-PLAN §0h point 57; there was no rule before, and three money dialogs' Enter acted wherever
+   focus was). No component listens for Enter on the window or the document to do a dialog's act: Enter is the focused
+   control's own press, so Enter on Cancel cancels and Enter inside a dialog opened over another is that dialog's. A dialog
+   that confirms money opens with focus on its primary (`initialFocus`), so Enter still confirms where it is pressed,
+   through the click a mouse makes and its `disabled` latches. While a kit `<Modal>` is open, a key's auto-repeat that
+   would press something is swallowed (`src/lib/held-key.ts`), so a key held down before the dialog opened, or through its
+   focus move, presses nothing in it. The kit `Select`'s open list takes only keys pressed in it or on the page itself.
+   Guarded by `npm run test:enter-where-pressed`; proved red by `npm run red:enter-where-pressed`; the real keys are
+   `npm run qa:enter-where-pressed` (local).
 
 ---
 

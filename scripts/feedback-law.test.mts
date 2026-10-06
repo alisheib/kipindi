@@ -416,12 +416,14 @@ ok("7.3 · the ghost CTA owns its own dismissal (it used to fight the primary's 
   /if \(onSecondary\) onSecondary\(\); else onClose\(\)/.test(ORM));
 ok("7.4 · the receipt's ghost CTA is omitted when it would navigate to the current page",
   /onWatchRound \? t\.market\.udRcWatchRound : undefined/.test(RECEIPT));
-// The twin of 7.3. The primary had the SAME defect the ghost CTA was fixed for — and the
-// Enter handler had always been `(onPrimary ?? closeRef.current)()`, so click and keyboard
-// disagreed on what "Keep predicting" does. Both halves are ratcheted here.
-ok("7.5 · the primary CTA owns its own dismissal, and click agrees with Enter",
+// The twin of 7.3. The primary had the SAME defect the ghost CTA was fixed for. Its Enter half
+// changed shape on 2026-10-06 (Vodacom S6 A8i): the window handler that ran
+// `(onPrimary ?? closeRef.current)()` fired whatever had focus, so it is gone, and Enter on the
+// primary IS its click — one definition of what "Keep predicting" does, ratcheted here.
+// `test:enter-where-pressed` holds every dialog to the no-window-Enter rule.
+ok("7.5 · the primary CTA owns its own dismissal, and Enter is that same press (no window Enter handler)",
   /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ORM) &&
-  /\(onPrimary \?\? closeRef\.current\)\(\)/.test(ORM));
+  !/\(onPrimary \?\? closeRef\.current\)\(\)/.test(stripComments(ORM)));
 
 // ───────────────────────────────────────────────────────────────────────────────
 console.log("\n§8 · The OTHER raw-server-string channel — a ratchet on the banners");

@@ -97,6 +97,19 @@ import { fileURLToPath } from "node:url";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
+/**
+ * ⭐ REACT'S DEV-ONLY PERFORMANCE-TRACK ERROR IS FILED, NEVER COMPARED (2026-10-04: it hit 6 /account cells on one run
+ * of 2d0f56e7 and 16 on one of 55cb61e3, trees that do not touch /account). In a development build React 19 measures
+ * each component's render on the browser's Performance timeline, and a render it dates before the page's own time
+ * origin throws "Failed to execute 'measure' on 'Performance': '<zero-width space>Name' cannot have a negative time
+ * stamp." A production build has no such measure, so no player can meet it; this harness runs against a local dev
+ * server only. That exact sentence, and nothing else, goes to the cell's `devOnly` list (printed beside §4.1, never a
+ * difference); §2.13 holds that nothing else is ever set aside, its plant proves it, and P.7d tries the filter itself.
+ */
+const DEV_MEASURE = new RegExp("^Failed to execute 'measure' on 'Performance': '" + String.fromCharCode(0x200b) + "?[A-Za-z0-9_$]+' cannot have a negative time stamp[.]$");
+const isDevMeasure = (m) => DEV_MEASURE.test(m);
+/** A page error, filed: React's DEV measure sentence to `devOnly`, everything else to `pageErrors`, which is compared. */
+const fileError = (pageErrors, devOnly) => (e) => { const m = norm(msg(e)).slice(0, 160); (isDevMeasure(m) ? devOnly : pageErrors).push(m); };
 const short = (sha) => String(sha ?? "").slice(0, 8);
 const refuse = (text) => { console.error(`REFUSED — ${text}`); process.exit(2); };
 const argv = process.argv.slice(2);
@@ -291,14 +304,6 @@ const SELL_NOTE_PAIRS = [
   ['<span class="ml-1.5 opacity-80 text-[11px]">full refund</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">full refund</span>'],
   ['<span class="ml-1.5 opacity-80 text-[11px]">pesa yote</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">pesa yote</span>'],
 ];
-/** S6 A8d and A8g · a measured transition's `to` before it is measured: it matches no capture, so the first compare
- *  after A8d and A8g fails on exactly its cells, and the measured text is then copied in from that compare's
- *  `.current.json` (A3) — never written by hand, never a re-baseline. Four entries read it: A8d's two holder-block
- *  layouts and A8g's two /positions layouts, all four measured by one compare on the tree that carries both. ⛔ Delete
- *  this constant and this comment in the edit that copies all four measured texts in, never before: from then on
- *  nothing reads it, and until then each of the four still does.
- */
-const SELL_MEASURED_FIRST = "(A3: this cell's regions.button.layout, copied whole from the first compare's .current.json after A8d and A8g)";
 /**
  * ⭐ WP10 · THE NAMED DIFFERENCES FOR THE SELL CELLS — S6 A8b's, A8d's and A8g's here (S6 A8f's two are pushed after this literal). A8: a classic holder's Sell button on a
  * default poll with an hour to run compares equal with the baseline captured before A8's live half; any other difference
@@ -328,7 +333,7 @@ const SELL_EXPECTED_DIFFS = [
     field: "regions.button.layout",
     routes: [SELL_PLACES[1]],
     from: ["button 0,0,244x44 37d8523472ca", "button>span0 17,11.5,58.5x21 45460ad82491", "button>span1 83.5,11.5,157.5x21 26d4736268fd", "button>span1>span0 167.5,15.5,73.5x14 eaada7832e2a"].join(NL),
-    to: SELL_MEASURED_FIRST,
+    to: ["button 0,0,244x56 4d14f648b0ca", "button>span0 17,9.5,210x17.5 4c6c729da7e2", "button>span1 43,29,157.5x17.5 b31d22835d05", "button>span1>span0 127.5,32,73.5x14 ddccd0e4e23f"].join(NL),
     cells: 1,
     alongside: "sell-holder-stack",
     reason: "S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 14px past the button's content in English (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
@@ -338,7 +343,7 @@ const SELL_EXPECTED_DIFFS = [
     field: "regions.button.layout",
     routes: [SELL_PLACES[1]],
     from: ["button 0,0,244x44 37d8523472ca", "button>span0 17,11.5,124.5x21 45460ad82491", "button>span1 149.5,11.5,144.5x21 26d4736268fd", "button>span1>span0 234,15.5,60x14 eaada7832e2a"].join(NL),
-    to: SELL_MEASURED_FIRST,
+    to: ["button 0,0,244x56 4d14f648b0ca", "button>span0 17,9.5,210x17.5 4c6c729da7e2", "button>span1 50,29,144.5x17.5 10ccfd5d433e", "button>span1>span0 134,32,60x14 ddccd0e4e23f"].join(NL),
     cells: 1,
     alongside: "sell-holder-stack",
     reason: "S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 67px past the button's content and 50px past its edge in Swahili (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
@@ -348,7 +353,7 @@ const SELL_EXPECTED_DIFFS = [
     field: "regions.button.layout",
     routes: [SELL_PLACES[0]],
     from: ["button 0,0,328x44 37d8523472ca", "button>span0 17,11.5,58.5x21 45460ad82491", "button>span1 153.5,11.5,157.5x21 26d4736268fd", "button>span1>span0 237.5,15.5,73.5x14 eaada7832e2a"].join(NL),
-    to: SELL_MEASURED_FIRST,
+    to: ["button 0,0,328x44 37d8523472ca", "button>span0 17,11.5,58.5x21 45460ad82491", "button>span1 153.5,11.5,157.5x21 859d7521d520", "button>span1>span0 237.5,14.5,73.5x16.5 d3ac43da1926"].join(NL),
     cells: 1,
     alongside: "sell-positions-wrap",
     reason: "S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line, so nothing wraps in this cell (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
@@ -358,7 +363,7 @@ const SELL_EXPECTED_DIFFS = [
     field: "regions.button.layout",
     routes: [SELL_PLACES[0]],
     from: ["button 0,0,328x44 37d8523472ca", "button>span0 17,11.5,124.5x21 45460ad82491", "button>span1 166.5,11.5,144.5x21 26d4736268fd", "button>span1>span0 251,15.5,60x14 eaada7832e2a"].join(NL),
-    to: SELL_MEASURED_FIRST,
+    to: ["button 0,0,328x44 37d8523472ca", "button>span0 17,11.5,124.5x21 45460ad82491", "button>span1 166.5,11.5,144.5x21 859d7521d520", "button>span1>span0 251,14.5,60x16.5 d3ac43da1926"].join(NL),
     cells: 1,
     alongside: "sell-positions-wrap",
     reason: "S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line in Swahili too, so nothing wraps in this cell (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.",
@@ -762,6 +767,8 @@ function populationChecks(cells, store) {
       fails: bad((k, c) => partsOf(k).w < 1024 && !c.overlays.some((o) => RAIL_OVERLAY.test(o))) },
     { id: "2.11", name: `the signed-in viewers' ${BODY_ROUTE} captured its page body`,
       fails: bad((k, c) => partsOf(k).r === BODY_ROUTE && partsOf(k).v !== "guest" && c.regions.main?.count !== 1) },
+    { id: "2.13", name: "only React's DEV performance-track sentence is ever filed as DEV-only — every other page error is compared",
+      fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (${c.devOnly.find((x) => !isDevMeasure(x))})`) },
   ];
 }
 
@@ -965,11 +972,11 @@ const localeCookie = (locale) => ({ name: "kp-locale", value: locale, domain: HO
 /** One cell, in a FRESH context — a context carried across cells accumulates visits, and the overlays count visits. */
 async function capture(jar, locale, width, route, plant = null) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
-  const pageErrors = [];
+  const pageErrors = [], devOnly = [];
   try {
     await ctx.addCookies([...jar, localeCookie(locale)]);
     const page = await ctx.newPage();
-    page.on("pageerror", (e) => pageErrors.push(norm(msg(e)).slice(0, 160)));
+    page.on("pageerror", fileError(pageErrors, devOnly));
     const { status, body } = await open(page, route, plant);
     const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE };
     let snap = await page.evaluate(SNAPSHOT, args);
@@ -987,7 +994,7 @@ async function capture(jar, locale, width, route, plant = null) {
       snap = { ...snap, notFound: { ...snap.notFound, robots: [...body.matchAll(/<meta name="robots" content="([^"]*)"/g)].map((m) => m[1]).sort() } };
     }
     const pass = (await ctx.cookies(BASE)).some((c) => c.name === "kp_preview");
-    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort() });
+    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort() });
   } catch (e) {
     return { error: msg(e) };
   } finally {
@@ -1117,13 +1124,13 @@ async function captureServedCell(jar, locale, width, place, held, plant) {
  */
 async function captureSellCell(jar, locale, width, place, held, plant = null, withServed = true) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
-  const pageErrors = [];
+  const pageErrors = [], devOnly = [];
   try {
     await ctx.addCookies([...jar, localeCookie(locale)]);
     const args = sellArgsOf(held, place);
     const served = withServed ? await servedSellOf(ctx, routeOfPlace(place, held), args).catch((e) => ({ error: msg(e) })) : undefined;
     const page = await ctx.newPage();
-    page.on("pageerror", (e) => pageErrors.push(norm(msg(e)).slice(0, 160)));
+    page.on("pageerror", fileError(pageErrors, devOnly));
     const { status, body } = await open(page, routeOfPlace(place, held), plant);
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
@@ -1165,6 +1172,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null, wi
       ...(confirmLive === undefined ? {} : { confirmLive }),
       ...(served === undefined ? {} : { served }),
       pageErrors: [...new Set(pageErrors)].sort(),
+      devOnly: [...new Set(devOnly)].sort(),
     };
   } catch (e) {
     return { error: msg(e) };
@@ -1486,6 +1494,13 @@ async function proveRed() {
   });
   const base = red(S);
   ok("P.7 a clean synthetic capture passes every check in §2 and §3", !base[2].length && !base[3].length, JSON.stringify(base));
+  {
+    const zw = String.fromCharCode(0x200b);
+    const takes = [`Failed to execute 'measure' on 'Performance': '${zw}AccountHubPage' cannot have a negative time stamp.`, `Failed to execute 'measure' on 'Performance': 'Page' cannot have a negative time stamp.`];
+    const leaves = ["TypeError: x is not a function", "Hydration failed because the server rendered HTML didn't match the client.", `Failed to execute 'measure' on 'Performance': 'Page' cannot have a negative time stamp. And then a crash`, "Failed to execute 'mark' on 'Performance': bad", ""];
+    ok("P.7d the DEV-only filter takes React's DEV measure sentence, and nothing else (another error, a longer sentence, a mark, nothing)",
+      takes.every(isDevMeasure) && !leaves.some(isDevMeasure), JSON.stringify({ takes: takes.map(isDevMeasure), leaves: leaves.map(isDevMeasure) }));
+  }
   const at = (m, v, l, w, r) => m.cells[keyOf(v, l, w, r)];
   const nothing = () => ({ count: 0, html: null, layout: null });
   const FLOOR_PLANTS = [
@@ -1508,6 +1523,7 @@ async function proveRed() {
     ["2.9", "the player shown the email bar", (m) => { at(m, "player", "en", 360, "/").regions.emailBar.count = 1; }],
     ["2.10", "no rail among the overlays at 360", (m) => { at(m, "guest", "sw", 360, "/markets").overlays = []; }],
     ["2.11", "a signed-in /positions without its body", (m) => { delete at(m, "player", "en", 768, "/positions").regions.main; }],
+    ["2.13", "a real page error filed as DEV-only (it would never be compared)", (m) => { at(m, "player", "en", 360, "/").devOnly = ["TypeError: Cannot read properties of undefined (reading 'balance')"]; }],
     ["3.0", "a control path answering 200", (m) => { at(m, "guest", "en", 360, NOT_FOUND).status = 200; }],
     ["3.0", "a not-found body too short to be one, on both paths", (m) => { at(m, "held", "sw", 1024, NOT_FOUND).notFound.main = "x"; at(m, "held", "sw", 1024, "/account").notFound.main = "x"; }],
     ["3.1", "/account with a body of its own", (m) => { at(m, "player", "sw", 1280, "/account").notFound.main = "Akaunti · Salio · Arifa · Msaada · Pumzika · Jizuie"; }],
@@ -1688,6 +1704,8 @@ if (!PROVE_RED) {
     }
     if (shown > 40) console.log(`  … and ${shown - 40} more cell(s)`);
     ok(`4.1 ⭐ no unexpected difference in ${compared} cells`, compared === curKeys.length && differing === 0, differing ? `${differing} cell(s) differ` : "");
+    const devCells = curKeys.filter((k) => (cells[k]?.devOnly ?? []).length);
+    if (devCells.length) console.log(`  DEV-ONLY, filed and not compared (React's DEV performance track; a production build has none) in ${devCells.length} cell(s): ${devCells.slice(0, 8).join(", ")}${devCells.length > 8 ? " …" : ""}`);
     ok("4.2 each named difference is seen in all of its cells or in none", partialExpected(hits).length === 0, partialExpected(hits).join(" · "));
     for (const e of EXPECTED_DIFFS) console.log(`  EXPECTED ${e.id} — seen in ${hits.get(e.id) ?? 0} of ${e.cells} cell(s). ${e.reason}`);
     // ⭐ WP10 · the Sell cells against the baseline's (A8: a default poll with an hour to run compares equal; any other

@@ -281,6 +281,12 @@ export function Select({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      /* ⭐ S6 A8i · ONLY A KEY PRESSED HERE. Focus stays on the trigger while the list is open, so a key meant for this
+         control comes from the trigger or the list — or from no control at all, when a click left focus on the page. A
+         key pressed in anything else is that thing's: a dialog opened on top (the win seal, the reality check) used to
+         lose its Enter to this listener, which picked an option here and cancelled the press of the dialog's button. */
+      const at = e.target as Node | null;
+      if (at !== document.body && !triggerRef.current?.contains(at) && !listRef.current?.contains(at)) return;
       if (e.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
       // ⛔ ARROW KEYS SKIP DISABLED OPTIONS. Landing focus on something Enter refuses to select
       // is a dead end that reads as a broken dropdown — and it is only reachable by keyboard, so

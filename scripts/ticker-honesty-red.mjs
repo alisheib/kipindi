@@ -87,16 +87,19 @@ const CASES = [
   {
     name: "the server module hands a VOID a money figure before the pure filter ever sees it",
     file: STATS,
-    from: `  if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") return null;`,
-    to: `  if (m.resolvedOutcome === null) return null;`,
+    // ⚠️ RE-ANCHORED 2026-10-04: `settledNoFigureReason` (V12, 2026-09-28) holds this guard line too, so the anchor
+    // carries `settledAmount`'s own head (and test:ticker-honesty 9.8 now reads that function, not the file).
+    from: ["function settledAmount(m: StoredMarket): number | null {", `  if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") return null;`].join(String.fromCharCode(10)),
+    to: ["function settledAmount(m: StoredMarket): number | null {", `  if (m.resolvedOutcome === null) return null;`].join(String.fromCharCode(10)),
     expect: "9.8",
   },
   {
     name: "the fee is priced from LIVE admin config instead of the poll's frozen snapshot",
     file: STATS,
     // ⚠️ RE-PINNED 2026-09-27 (landing v3 C1): the fee call is `chargedFee` now.
-    from: `  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));`,
-    to: `  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, {});`,
+    // ⚠️ RE-ANCHORED 2026-10-04: the fee call is held twice too; the line after it is `settledAmount`'s alone.
+    from: [`  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));`, "  return c.refunded ? null : c.netPool;"].join(String.fromCharCode(10)),
+    to: [`  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, {});`, "  return c.refunded ? null : c.netPool;"].join(String.fromCharCode(10)),
     expect: "9.9",
   },
   {
