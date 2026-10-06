@@ -118,7 +118,7 @@ try {
 
   // Fill the identity form. Date of birth is NO LONGER asked here — it's collected
   // (and 18+ gated) at sign-up and shown read-only on this step, submitted via a
-  // hidden field. So the form only needs NIDA + name + email. (Regression guard
+  // hidden field. So the form only needs NIDA + name (the email is no longer asked here). (Regression guard
   // for commit fc5bdde — re-typing DOB was redundant friction.)
   await pp.fill("#idNumber", NIDA);
   // ⛔ ASKED FOR ONLY WHERE THE DOCUMENT HAS ONE — a NIDA and a voter's card do not
@@ -143,7 +143,10 @@ try {
   }
   await pp.fill("#fullName", "Asha Mwamba Juma");
   ok("DOB pre-filled read-only from sign-up (not re-asked)", /From sign-up/i.test(await pp.locator("body").innerText()));
-  await pp.fill("#email", `newuser${String(Date.now()).slice(-6)}@example.com`);
+  // ⚠️ FILLED ONLY WHERE IT EXISTS (route audit 2026-10-06, A1): the identity step no longer writes the contact email
+  // and renders no `#email` field — the account page is the one door. The same guard `kyc-gate-e2e.mjs` uses.
+  const emailField = pp.locator("#email");
+  if (await emailField.count() > 0 && !(await emailField.inputValue())) await emailField.fill(`newuser${String(Date.now()).slice(-6)}@example.com`);
   await pp.getByRole("button", { name: /Continue verification/ }).click();
   await pp.waitForFunction(() => /Upload documents|Document details saved/i.test(document.body.innerText), null, { timeout: 12000 }).catch(() => {});
   const afterNida = await pp.locator("body").innerText();

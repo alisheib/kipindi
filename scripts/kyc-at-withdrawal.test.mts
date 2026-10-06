@@ -41,7 +41,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../src/lib/server/store.ts";
 import { registerWithPassword } from "../src/lib/server/auth-service.ts";
-import { verifyEmailToken } from "../src/lib/server/email-verification.ts";
+import { confirmEmailWithProof } from "../src/lib/server/email-verification.ts";
 import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { startKyc, submitIdentityStep, attachDocument, submitForReview, reviewKyc, forceReverifyKyc } from "../src/lib/server/kyc-service.ts";
@@ -118,7 +118,8 @@ section("§A · register → confirm email → deposit and play → verify ident
   const mail = emailOutbox().find((m) => m.to === EMAIL && /Confirm your email/i.test(m.subject));
   const token = mail ? decodeURIComponent((/token=([^"'&\s<]+)/.exec(mail.html) ?? [])[1] ?? "") : "";
   ok("A.6 fixture · registration sent the confirmation link", !!mail && token.length > 20, mail?.subject ?? "no mail");
-  const v = await verifyEmailToken(token);
+  // The link opened in the account's own session (route audit 2026-10-06, A3: anywhere else it asks for the password).
+  const v = await confirmEmailWithProof(token, { sessionUserId: id, password: null });
   ok("A.6b confirming the email through the real token", v.status === "verified" && !!(await db.user.findById(id))?.emailVerifiedAt, J(v));
 
   const walletBefore = (await db.wallet.findByUserId(id))!.balance;

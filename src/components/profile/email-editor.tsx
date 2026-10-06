@@ -3,24 +3,28 @@
 /**
  * Contact-email editor for the account page. Lets any player add/update/clear
  * the email that receipts (deposit, withdraw, win, KYC, etc.) are sent to.
- * Backed by updateProfileBasicsAction (passes the unchanged display name so
- * the single basics action handles both fields).
+ * Backed by changeEmailAction (route audit 2026-10-06, A1): the address also
+ * receives password-reset links, so adding, changing or removing it asks for the
+ * current password. An account with no password (`hasPassword` false — the
+ * dormant code-sign-in era) is not asked; the server records that.
  */
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
-import { updateProfileBasicsAction, resendEmailVerificationAction } from "@/app/profile/actions";
+import { changeEmailAction, resendEmailVerificationAction } from "@/app/profile/actions";
 import { errorCopy } from "@/lib/error-copy";
 import { verifyErrorMessage } from "@/lib/verify-error";
 import { FieldLegend } from "@/components/ui/field-legend";
 
-export function EmailEditor({ currentEmail, verified }: { currentEmail: string | null; verified?: boolean }) {
+export function EmailEditor({ currentEmail, verified, hasPassword }: { currentEmail: string | null; verified?: boolean; hasPassword: boolean }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentEmail ?? "");
+  const [pw, setPw] = useState("");
   const [pending, start] = useTransition();
   const triggerRef = useRef<HTMLButtonElement>(null);
   // Enter and the Save button both reach `save()`, and only the button is
@@ -40,13 +44,19 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
   const open = () => {
     savingRef.current = false;
     setValue(currentEmail ?? "");
+    setPw("");
     setEditing(true);
   };
 
   const close = () => {
     returnFocusRef.current = true;
+    setPw("");
     setEditing(false);
   };
+
+  const cancel = () => { setValue(currentEmail ?? ""); setPw(""); close(); };
+  // The password is asked only for a real change: saving the address already on file is a no-op that closes.
+  const changing = value.trim().toLowerCase() !== (currentEmail ?? "");
 
   useEffect(() => {
     if (editing || !returnFocusRef.current) return;
@@ -58,32 +68,50 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
     if (savingRef.current) return;
     const v = value.trim().toLowerCase();
     if (v === (currentEmail ?? "")) { close(); return; }
+    if (hasPassword && !pw) return;
     // Stays true through the success path: `currentEmail` only refreshes on the
     // next server render. `open()` clears it, and so does the refusal below.
     savingRef.current = true;
     start(async () => {
       const fd = new FormData();
-      // Deliberately do NOT send displayName — this editor changes an email and
-      // nothing else. It used to send `currentName || "Player"`, which wrote the
-      // literal string "Player" over the name of anyone who hadn't set one.
+      // This editor changes an email and nothing else — never the display name.
       fd.set("email", v); // "" clears it
+      if (hasPassword) fd.set("currentPassword", pw);
       // B-12 — a flaky network mid-action throws inside the transition; uncaught,
       // React swaps the whole page for error.tsx. Same handling as a refusal.
-      let r: Awaited<ReturnType<typeof updateProfileBasicsAction>>;
+      let r: Awaited<ReturnType<typeof changeEmailAction>>;
       try {
-        r = await updateProfileBasicsAction(fd);
+        r = await changeEmailAction(fd);
       } catch {
         r = { ok: false, error: t.error.somethingDidntWork };
       }
-      if (!r.ok) { savingRef.current = false; toast({ title: t.toast.emailFailed, description: errorCopy(t, r), variant: "danger" }); return; }
-      toast({
-        title: v ? t.toast.emailSaved : t.common.emailRemoved,
-        description: v ? (r.emailVerificationSent ? t.toast.checkInbox : t.toast.receiptsHere) : undefined,
-        variant: "success",
-      });
+      // A refusal keeps the editor open with the address as typed; the password is cleared, never kept.
+      if (!r.ok) { savingRef.current = false; setPw(""); toast({ title: t.toast.emailFailed, description: errorCopy(t, r), variant: "danger" }); return; }
+      // A7 (route audit 2026-10-06) · THE ADDRESS SAVED, THE LINK DID NOT GO. "Check your inbox" over a send that failed
+      // (or an address that bounced before) sent the player to wait for mail that was never coming. Say what is true and
+      // name the way on — `factual`, a settled outcome: never success, and never the gold `warning`.
+      if (v && !r.emailVerificationSent && r.deliveryIssue) {
+        toast({
+          title: t.toast.emailSaved,
+          description: r.deliveryIssue === "suppressed" ? t.wallet.verifyErrSuppressed : t.wallet.verifyErrSendFailed,
+          variant: "factual",
+        });
+      } else {
+        toast({
+          title: v ? t.toast.emailSaved : t.common.emailRemoved,
+          description: v ? (r.emailVerificationSent ? t.toast.checkInbox : t.toast.receiptsHere) : undefined,
+          variant: "success",
+        });
+      }
       close();
       router.refresh();
     });
+  };
+
+  // One handler for both fields: Enter saves, Escape cancels.
+  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); save(); }
+    if (e.key === "Escape") { e.preventDefault(); cancel(); }
   };
 
   const resend = () => {
@@ -101,6 +129,9 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
       // printed literally, machine token and all, and dropped `retryAfterSec`.
       // `verifyErrorMessage` is the existing mapper for exactly these codes.
       if (!r.ok) { toast({ title: t.toast.couldntResend, description: verifyErrorMessage(t, r.error, r.retryAfterSec), variant: "danger" }); return; }
+      // A7 / D-X4 (route audit 2026-10-06) · `sent: false` means the address is ALREADY CONFIRMED (in another tab, say)
+      // and nothing was sent. This said "Confirmation sent" anyway. The deposit gate and the bar handle it the same way.
+      if (!r.sent) { toast({ title: t.common.alreadyConfirmed, description: t.common.emailAlreadyConfirmedBody, variant: "success" }); router.refresh(); return; }
       toast({ title: t.toast.confirmationSent, description: t.toast.checkInbox, variant: "success" });
       router.refresh();
     });
@@ -110,7 +141,7 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
     <div className="rounded-lg border border-border bg-bg-inset/40 px-3.5 py-2.5">
       <FieldLegend as="p">{t.common.contactEmail}</FieldLegend>
       {editing ? (
-        <div className="mt-1.5 flex items-center gap-2">
+        <div className="mt-1.5 space-y-2.5">
           {/* §A3 — this field carried `focus:outline-none` with NO replacement, and a
               Tailwind `:focus` rule outranks the `:where(…)` catch-all in globals.css,
               so a keyboard user got NO focus change at all on the address every receipt
@@ -128,14 +159,22 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
             autoFocus
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } if (e.key === "Escape") { e.preventDefault(); setValue(currentEmail ?? ""); close(); } }}
+            onKeyDown={onKey}
             placeholder="you@example.com"
             aria-label={t.common.contactEmail}
-            className="flex-1 min-w-0 bg-transparent border-b border-border-control transition-colors focus:border-brand-500 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] text-[14px] text-text px-0 py-0.5"
+            className="w-full min-w-0 bg-transparent border-b border-border-control transition-colors focus:border-brand-500 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--brand-500)] focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--brand-500)_25%,transparent)] text-[14px] text-text px-0 py-0.5"
           />
-          <button type="button" onClick={save} disabled={pending} className="btn btn-primary btn-sm shrink-0">
-            {pending ? <Spinner size={14} /> : t.common.save}
-          </button>
+          {hasPassword && (
+            <div>
+              <FieldLegend as="label" htmlFor="email-current-pw" className="block mb-1.5">{t.common.currentPassword}</FieldLegend>
+              <PasswordInput id="email-current-pw" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" placeholder="••••••••" onKeyDown={onKey} />
+              <p className="mt-1.5 text-body-sm text-text-subtle">{t.common.reauthHint}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="primary" size="sm" onClick={save} loading={pending} disabled={changing && hasPassword && !pw}>{t.common.save}</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={cancel} disabled={pending}>{t.common.cancel}</Button>
+          </div>
         </div>
       ) : (
         <div className="mt-1 space-y-1.5">

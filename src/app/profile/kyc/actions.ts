@@ -32,9 +32,6 @@ export async function submitIdentityAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect((await signInPathForAction()) as never);
 
-  const rawEmail = formData.get("email");
-  const emailStr = rawEmail ? String(rawEmail).trim() : "";
-
   // ⛔ THE TYPE COMES FROM THE FORM, NOT FROM THE URL. The chooser writes it into
   // the URL so a refused submit round-trips and the right fields render — but the
   // form carries its own hidden copy, so what is VALIDATED is what was on screen
@@ -54,7 +51,6 @@ export async function submitIdentityAction(formData: FormData) {
     idExpiry,
     fullName,
     dob,
-    ...(emailStr ? { email: emailStr } : {}),
   });
 
   revalidatePath("/profile/kyc");
@@ -71,8 +67,7 @@ export async function submitIdentityAction(formData: FormData) {
       `&idNumber=${encodeURIComponent(idNumber)}` +
       `&fullName=${encodeURIComponent(fullName)}` +
       `&dob=${encodeURIComponent(dob)}` +
-      (idExpiry ? `&idExpiry=${encodeURIComponent(idExpiry)}` : "") +
-      (emailStr ? `&email=${encodeURIComponent(emailStr)}` : "");
+      (idExpiry ? `&idExpiry=${encodeURIComponent(idExpiry)}` : "");
     redirect(`/profile/kyc?reason=${encodeURIComponent(reasonKeyFor(result))}${carry}`);
   }
   // A document that FAILS the identity check (mismatch / sanctioned / underage /
