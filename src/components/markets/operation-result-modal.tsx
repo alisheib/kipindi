@@ -37,7 +37,8 @@
  *   • Single primary CTA (defaults to "Done · Sawa") + optional ghost
  *   • Auto-dismiss countdown for success; failures stay open until
  *     dismissed (so the user can read the reason)
- *   • Enter fires the primary action (bespoke); Esc closes via <Modal>.
+ *   • Enter acts only where it is pressed (S6 A8i, 2026-10-06): the primary takes
+ *     focus on open, so Enter there is the primary's own press; Esc closes via <Modal>.
  *
  * Why one shared component for every flow: the result modal is a
  * category, not a single screen — every mutation pipes through it.
@@ -312,17 +313,14 @@ export function OperationResultModal({
     }
   }, [open, variant, closeMs]);
 
+  /* ⛔ S6 A8i · NO ENTER LISTENER ON THE WINDOW. Two stood in this effect, one per branch, and each fired the PRIMARY on
+     Enter pressed ANYWHERE: it cancelled the press of whatever had focus, so Enter on "View positions" or on the ✕ did the
+     primary instead, and Enter meant for a dialog opened on top acted here. Enter is now the focused button's own press —
+     the primary takes focus on open (`initialFocus`), so Enter there does exactly what a click on it does. */
   useEffect(() => {
     if (!open) return;
-    // Errors / warnings / info don't auto-close (LCCP informed-consent).
-    // Enter fires the primary action; Esc closes via <Modal>.
-    if (variant !== "success") {
-      const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Enter") { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
-      };
-      window.addEventListener("keydown", onKey);
-      return () => window.removeEventListener("keydown", onKey);
-    }
+    // Errors / warnings / info don't auto-close (LCCP informed-consent); Esc closes via <Modal>.
+    if (variant !== "success") return;
 
     // Success path — RAF-driven countdown anchored to the absolute
     // close target. The strip width pct = remaining/closeMs, so the
@@ -370,16 +368,11 @@ export function OperationResultModal({
       backstopRef.current = setTimeout(() => closeRef.current(), remainingForBackstop);
     }
 
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter") { e.preventDefault(); (onPrimary ?? closeRef.current)(); }
-    };
-    window.addEventListener("keydown", onKey);
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       if (backstopRef.current) { clearTimeout(backstopRef.current); backstopRef.current = null; }
-      window.removeEventListener("keydown", onKey);
     };
-  }, [open, variant, onPrimary, closeMs]);
+  }, [open, variant, closeMs]);
 
   const tone = TONE[variant];
   // For success, override the primary button and crest tones based on stripTone.
@@ -524,9 +517,9 @@ export function OperationResultModal({
             // 🔴 THE PRIMARY OWNS ITS OWN DISMISSAL — the same defect the ghost CTA below
             // was fixed for, in the same component, on the same modal. This was
             // `onPrimary?.(); onClose();`, and on the dial's bet receipt BOTH push the
-            // board, so "Keep predicting" pushed /markets twice on every click. The Enter
-            // handler above has always been `(onPrimary ?? closeRef.current)()`; click and
-            // keyboard now agree. Callers that pass no `onPrimary` still get plain dismissal.
+            // board, so "Keep predicting" pushed /markets twice on every click. Since S6 A8i
+            // Enter on this button IS this click, so click and keyboard cannot disagree.
+            // Callers that pass no `onPrimary` still get plain dismissal.
             onClick={() => { if (onPrimary) onPrimary(); else onClose(); }}
             className={`btn ${effectiveBtn} btn-lg w-full`}
           >

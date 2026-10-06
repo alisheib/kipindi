@@ -5,8 +5,12 @@
  *
  * A11: the dialog chrome (portal, scrim, Android scroll/zoom lock, focus-trap,
  * focus-return, Esc, kit scrim/rise animation, ✕) is now the shared <Modal>
- * primitive. This component owns only the cash-out content and the bespoke
- * Enter-to-confirm keybind — the sell logic and money math are unchanged.
+ * primitive. This component owns only the cash-out content — the sell logic and
+ * money math are unchanged.
+ *
+ * S6 A8i (2026-10-06): Enter acts only where it is pressed. The dialog opens with focus on the sell button, so Enter
+ * there sells — the button's own press; Enter on the keep button keeps the ticket, and Enter in a dialog opened on top
+ * acts in that dialog. Its window Enter listener is gone (see the note at its old place).
  *
  * S6 WP10: two optional words, the journey's question and keep button (`titleLabel`, `keepLabel`), which only
  * SellButton's journey look passes. Without them every word here is today's.
@@ -62,23 +66,13 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
     const id = window.setTimeout(() => setQuoteExpired(true), QUOTE_HOLD_MS);
     return () => window.clearTimeout(id);
   }, [open, value]);
-  const quoteExpiredRef = useRef(quoteExpired);
-  useEffect(() => { quoteExpiredRef.current = quoteExpired; }, [quoteExpired]);
 
-  // Enter-to-confirm is bespoke to this flow; Esc / focus-trap / scroll-lock all
-  // live in <Modal>. Refs keep the keybind stable without re-subscribing.
-  const onConfirmRef = useRef(onConfirm);
-  const pendingRef = useRef(pending);
-  useEffect(() => { onConfirmRef.current = onConfirm; }, [onConfirm]);
-  useEffect(() => { pendingRef.current = pending; }, [pending]);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && !pendingRef.current && !quoteExpiredRef.current) { e.preventDefault(); onConfirmRef.current(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  // ⛔ S6 A8i · NO ENTER LISTENER ON THE WINDOW. One stood here, and it sold on Enter pressed ANYWHERE: it cancelled the
+  // press of whatever had focus, so Enter on the keep button sold the ticket, and Enter on the win seal — opened on top
+  // when another ticket wins — sold in this dialog underneath. Enter is now the focused button's own press: the dialog
+  // opens with focus on the sell button (`initialFocus`), so Enter there still sells, through the same click a mouse
+  // makes, which refuses a lapsed quote and is `disabled` while a sale is in flight. A key held down from before presses
+  // nothing (`modal.tsx`, `held-key.ts`). `test:enter-where-pressed` holds every dialog to this.
 
   // Cash-out is an early exit, never a profit. `value` is the stake returned —
   // full inside the free-exit window, stake − fee outside it.

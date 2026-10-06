@@ -324,23 +324,24 @@ export function SellButton({
   };
 
   // ONE SALE PER CONFIRM. `openConfirm` guards on `pending` and the confirm button is
-  // `disabled={pending}` — but the modal's Enter-to-confirm is a WINDOW keydown listener
-  // reading a `pendingRef` that an effect syncs one commit late (sell-confirm-modal.tsx:55-65),
-  // so two fast Enters both pass it and both land here. No money can move twice — the
+  // `disabled={pending}` — but until S6 A8i (2026-10-06) the modal's Enter-to-confirm was a
+  // WINDOW keydown listener reading a `pendingRef` that an effect synced one commit late,
+  // so two fast Enters both passed it and both landed here. No money can move twice — the
   // server re-reads the position inside `withLock(wallet:{userId})` and refuses the second
   // with `position_not_open` — but that refusal writes the SAME `resultData` as the success,
   // and whichever reply lands last wins. So the player can be told "Couldn't cash out"
   // after their money has correctly moved. That is a truthfulness defect on a money
   // control, which is the one thing a cash-out screen must never be.
   //
-  // BOTH latches below are needed, because they close different windows. `pending` is
-  // `useTransition` state read from the closure of the render that built this `submit`,
-  // and the modal invokes it through its own one-commit-late `onConfirmRef` — so in the
-  // same tick, before React has flushed passive effects, `pending` is still false and the
-  // second call walks straight through. `inFlight` is set SYNCHRONOUSLY on the first call,
-  // so it is the only one that closes that tick. `pending` stays because it is the
-  // in-repo precedent (`conviction-dial.tsx`'s `submit` opens with exactly it) and it
-  // refuses a repeat arriving from any surface that never armed the ref.
+  // BOTH latches below stay, because they close different windows. `pending` is
+  // `useTransition` state read from the closure of the render that built this `submit`, so
+  // a second call in the same tick — before React has re-rendered — still reads it false and
+  // walks straight through. Since A8i Enter is the sell button's own press, which React
+  // re-renders after, but a double press from any surface (two fast clicks, a script) is the
+  // same window. `inFlight` is set SYNCHRONOUSLY on the first call, so it is the only one
+  // that closes that tick. `pending` stays because it is the in-repo precedent
+  // (`conviction-dial.tsx`'s `submit` opens with exactly it) and it refuses a repeat
+  // arriving from any surface that never armed the ref.
   const inFlight = useRef(false);
 
   // ⭐ S6 A8c · WAITING FOR THE SERVER'S NEW PRICE. When a sale is refused because its price moved after this button drew

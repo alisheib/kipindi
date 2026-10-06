@@ -14,8 +14,12 @@
  *   • A11: the dialog chrome (portal, scrim, Android scroll/zoom lock, focus
  *     trap, focus-return, Esc, kit rise/fade) is the shared <Modal> primitive;
  *     the panel is `overflow-hidden !p-0` so the gilt quote-hold strip still
- *     clips flush to the rounded corners. Enter-to-confirm stays bespoke here.
- *     The 10 s quote-hold RAF loop and all bet logic are UNCHANGED.
+ *     clips flush to the rounded corners. The 10 s quote-hold RAF loop and all
+ *     bet logic are UNCHANGED.
+ *   • S6 A8i (2026-10-06): Enter acts only where it is pressed. The dialog opens
+ *     with focus on Confirm, so Enter there confirms — the button's own press;
+ *     Enter on Cancel cancels and Enter in a dialog opened on top acts in that
+ *     dialog. There is no window listener any more (see the note at its old place).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -111,10 +115,8 @@ export function BetConfirmModal({
   // its onCancel arrow each render would restart the countdown forever
   // and the quote would never auto-expire.
   const onCancelRef = useRef(onCancel);
-  const onConfirmRef = useRef(onConfirm);
   const pendingRef = useRef(pending);
   useEffect(() => { onCancelRef.current = onCancel; }, [onCancel]);
-  useEffect(() => { onConfirmRef.current = onConfirm; }, [onConfirm]);
   useEffect(() => { pendingRef.current = pending; }, [pending]);
 
   // Quote-hold timer — runs while the modal is open.
@@ -190,16 +192,14 @@ export function BetConfirmModal({
     };
   }, [open]);
 
-  // Enter-to-confirm is bespoke to this flow; Esc / focus / scroll-lock all live
-  // in <Modal>. Enter cannot fire while a submit is in flight.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && !pendingRef.current) { e.preventDefault(); onConfirmRef.current(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  // ⛔ S6 A8i · NO ENTER LISTENER ON THE WINDOW. One stood here, and it confirmed the bet on Enter pressed ANYWHERE:
+  // it cancelled the press of whatever had focus, so a keyboard player who tabbed to "Ghairi" and pressed Enter placed
+  // the bet, and Enter on a dialog opened on top (the win seal, the reality check) placed it underneath. Enter is now the
+  // focused button's own press: the dialog opens with focus on Confirm (`initialFocus`), so Enter there still confirms,
+  // through the same click a mouse makes — and that button is `disabled` while a bet is in flight or its quote has run
+  // out, where the listener checked only the first. A key held down from before presses nothing (`modal.tsx`,
+  // `held-key.ts`).
+  // `test:enter-where-pressed` holds every dialog to this.
 
   // DS-5 — composed from the YES/NO semantic families (the same lit-glass
   // recipe as the ORM crest), not hand-typed oklch triples that drift the
