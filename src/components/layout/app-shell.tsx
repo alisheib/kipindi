@@ -263,9 +263,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     // deposit form the player may not reach for days. `u` is null only if the
     // user fetch failed above, in which case we stay silent rather than accuse a
     // player of being unverified on the strength of a failed query.
-    emailVerifyState = u
-      ? (u.emailVerifiedAt ? null : { email: u.email ?? null })
-      : null;
+    // ⛔ NOT OVER A HELD WALLET (2026-10-06). The bar says "confirm your email to add money", and a held wallet takes no
+    // deposit whatever the address — confirming would open nothing. A failed wallet read leaves `walletHeld` false, so the
+    // bar shows: the safe direction for a reminder. (The break half is the mount line's `promoSuppressed`, below.)
+    emailVerifyState = u && !topUser.walletHeld ? (u.emailVerifiedAt ? null : { email: u.email ?? null }) : null;
   }
 
   // The live ticker's REAL settlements. Batched with the config read rather than awaited at its

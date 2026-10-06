@@ -13,15 +13,25 @@
  *     and 1,500,000 are sent at once, the TZS 5,000,000 per-withdrawal cap is the only ceiling, and
  *     a row held BEFORE the ruling (seeded, because withdraw() can no longer write one) is still
  *     paid out by the officer path, or kept under review when the rail refuses it
+ *   - RESULT (R.1-R.12, 2026-10-06): what the wallet's result modal may say about each STORED status —
+ *     only CONFIRMED is done; a webhook-FAILED deposit, a failed payout and a replayed FAILED
+ *     idempotency key are notDone; the modal is drawn only for the player's own DEPOSIT or WITHDRAWAL;
+ *     and the money forms take a new idempotency key per signed refusal
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { db } from "../src/lib/server/store.ts";
 import { deposit, withdraw, settlePaymentWebhook, reconcileStalePayments, dispatchApprovedWithdrawal } from "../src/lib/server/wallet-service.ts";
 import { WITHDRAWAL_AML_HOLD } from "../src/lib/server/payments.ts";
 import { WITHDRAW_MAX_TZS } from "../src/lib/server/validators.ts";
 import { getEffectiveConfig } from "../src/lib/server/market-config.ts";
 import { computeWithdrawalFee } from "../src/lib/payout.ts";
+import { resultPhase, RESULT_TXN_STATUSES } from "../src/lib/wallet/result-phase.ts";
+import { decomment } from "./lib/decomment.mts";
 
 import "./lib/verified-fixtures.mts";
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}`); }
@@ -165,6 +175,10 @@ ok("2nd withdrawal holds again", await bal("usr_wd") === 60_000 && await hold("u
 await settlePaymentWebhook({ providerRef: await ref(wd2Txn), status: "FAILED" });
 ok("failed payout returns funds + releases hold", await bal("usr_wd") === 80_000 && await hold("usr_wd") === 0);
 ok("withdrawal txn FAILED", await st(wd2Txn) === "FAILED");
+// ⭐ What the wallet's result modal says about these two rows (see the RESULT block below). Until 2026-10-06 anything
+// not PROCESSING was a success, so both read "Funds added" / "payout sent".
+ok("R.5 · a deposit the webhook FAILED is notDone in the wallet's result — never 'Funds added'", resultPhase(await st(d2Txn)) === "notDone");
+ok("R.6 · a payout the webhook FAILED is notDone in the wallet's result — never 'payout sent'", resultPhase(await st(wd2Txn)) === "notDone");
 
 // ── RECONCILE: sweep a stuck pending deposit ───────────────────────────────
 await makePlayer("usr_rec");
@@ -342,6 +356,78 @@ ok("deposit credited exactly-once via order-status re-query", await st(selDepTxn
 
 globalThis.fetch = realFetch;
 for (const k of ["PAYMENT_AGGREGATOR", "PAYMENT_API_URL", "PAYMENT_API_KEY", "PAYMENT_API_SECRET", "PAYMENT_VENDOR_ID", "PAYMENT_VENDOR_PIN"]) delete process.env[k];
+
+// ── RESULT: what the wallet says about each stored outcome (2026-10-06) ──────────────────────────
+// 🔴 The result modal used to treat PROCESSING as the one not-yet state and call every other status a success, so a
+// webhook-FAILED deposit, a failed payout and a replayed FAILED idempotency key all read "Funds added" / "payout sent".
+// `lib/wallet/result-phase.ts` is the one map from a STORED status to what the modal may say; the modal, the page that
+// mounts it, and the two money forms are read from source below.
+{
+  // R.1 · the map covers the schema's enum exactly — a status added to the schema and not here would read as "moving"
+  //       forever, so the two lists are compared, not assumed.
+  const schema = readFileSync(join(ROOT, "prisma/schema.prisma"), "utf8");
+  const enumBody = /enum\s+TxnStatus\s*\{([^}]*)\}/.exec(schema)?.[1] ?? "";
+  const members = enumBody.split(/\r?\n/).map((l) => l.replace(/\/\/.*$/, "").trim()).filter((l) => /^[A-Z_]+$/.test(l));
+  const mapped = new Set<string>(RESULT_TXN_STATUSES);
+  ok(`R.1 · RESULT_TXN_STATUSES is the schema's TxnStatus, as a set (schema: ${members.join(",")})`,
+    members.length >= 7 && members.length === mapped.size && members.every((m) => mapped.has(m)));
+  // R.2 · ⛔ only CONFIRMED is done — the success variant, and the only one that auto-closes.
+  const done = RESULT_TXN_STATUSES.filter((s) => resultPhase(s) === "done");
+  ok("R.2 · only CONFIRMED is done", done.length === 1 && done[0] === "CONFIRMED");
+  // R.3 · the three outcomes that moved nothing are notDone.
+  ok("R.3 · FAILED, REVERSED and CANCELLED are notDone",
+    resultPhase("FAILED") === "notDone" && resultPhase("REVERSED") === "notDone" && resultPhase("CANCELLED") === "notDone");
+  // R.4 · in flight reads as moving, a held row as review, and a status nobody mapped as moving — never done or failed.
+  ok("R.4 · PENDING/PROCESSING moving, AML_REVIEW review, an unknown or missing status moving",
+    resultPhase("PENDING") === "moving" && resultPhase("PROCESSING") === "moving" && resultPhase("AML_REVIEW") === "review"
+    && resultPhase("SOMETHING_NEW") === "moving" && resultPhase(undefined) === "moving");
+
+  // R.7 · THE REPLAY THE PAGE MUST SURVIVE (wallet-service unchanged): a used idempotency key returns its row, ok, even
+  //       when that row FAILED. A retry that re-sent the same key got this answer — and the modal called it a success.
+  process.env.PAYMENTS_DEMO_ASYNC = "true";
+  await makePlayer("usr_result");
+  const first = await deposit("usr_result", { provider: "MPESA", amount: 8_000 }, "idem_result_1");
+  const firstTxn = first.ok ? first.data!.txnId : "";
+  await settlePaymentWebhook({ providerRef: await ref(firstTxn), status: "FAILED" });
+  const replay = await deposit("usr_result", { provider: "MPESA", amount: 8_000 }, "idem_result_1");
+  ok("R.7 · the same key after a webhook FAILED replays the row: ok, the same txnId, status FAILED",
+    !!firstTxn && await st(firstTxn) === "FAILED" && replay.ok === true && replay.data!.txnId === firstTxn && replay.data!.status === "FAILED");
+  // R.8 · …and the wallet's result for that replay is notDone, not "Funds added".
+  ok("R.8 · the replayed FAILED row reads notDone", replay.ok === true && resultPhase(replay.data!.status) === "notDone");
+  // R.9 · control · a NEW key is a new attempt — which is what the forms now send after a signed refusal (R.12).
+  const fresh = await deposit("usr_result", { provider: "MPESA", amount: 8_000 }, "idem_result_2");
+  ok("R.9 · control · a new key makes a new attempt (a different txnId)",
+    fresh.ok === true && !!fresh.data!.txnId && fresh.data!.txnId !== firstTxn);
+  delete process.env.PAYMENTS_DEMO_ASYNC;
+
+  // R.10 · the modal reads the phase, not the old one-status test.
+  const flat = (s: string) => s.replace(/\s+/g, " ");
+  const modal = flat(decomment(readFileSync(join(ROOT, "src/app/wallet/wallet-result-modal.tsx"), "utf8")));
+  const OLD_PENDING = 'const pending = status === "PROCESSING";';
+  const modalReadsPhase = (s: string) => s.includes("resultPhase(status)") && !s.includes(OLD_PENDING);
+  ok("R.10 · the result modal derives its state from resultPhase(status), not `status === \"PROCESSING\"`", modalReadsPhase(modal));
+  const plantedModal = modal.replace('const pending = phase === "moving";', OLD_PENDING);
+  ok("R.10c · control · the planted pre-fix line fails R.10", plantedModal !== modal && !modalReadsPhase(plantedModal));
+
+  // R.11 · the page mounts the modal for the STORED type — a bet id typed into ?deposited= gets no modal.
+  const walletPage = flat(decomment(readFileSync(join(ROOT, "src/app/wallet/page.tsx"), "utf8")));
+  ok("R.11 · /wallet passes the modal its id by the stored type (DEPOSIT → deposited, WITHDRAWAL → withdrawal)",
+    walletPage.includes('resultOwned.type === "DEPOSIT"') && walletPage.includes('resultOwned.type === "WITHDRAWAL"'));
+  ok("R.11b · …and only an owned DEPOSIT or WITHDRAWAL row is a result at all",
+    walletPage.includes('resultTxn.userId === session.userId && (resultTxn.type === "DEPOSIT" || resultTxn.type === "WITHDRAWAL")'));
+
+  // R.12 · each money form takes a new key per signed refusal: exactly one key field, keyed on `sp.error`.
+  const keyedOnce = (s: string) => {
+    const tags = s.match(/<IdempotencyKeyField[^>]*>/g) ?? [];
+    return tags.length === 1 && tags[0].includes("key={sp.error");
+  };
+  for (const rel of ["src/app/wallet/deposit/page.tsx", "src/app/wallet/withdraw/page.tsx"]) {
+    const page = flat(decomment(readFileSync(join(ROOT, rel), "utf8")));
+    ok(`R.12 · ${rel} has exactly one <IdempotencyKeyField, keyed on the signed refusal (key={sp.error …})`, keyedOnce(page));
+    const plantedPage = page.replace(/<IdempotencyKeyField[^>]*>/, "<IdempotencyKeyField />");
+    ok(`R.12c · control · ${rel} with a planted unkeyed <IdempotencyKeyField /> fails R.12`, plantedPage !== page && !keyedOnce(plantedPage));
+  }
+}
 
 console.log(`\npayment-webhook: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

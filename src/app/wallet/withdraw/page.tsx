@@ -223,7 +223,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         action={withdrawAction}
         className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${canSubmit ? "" : "opacity-60"}`}
       >
-        <IdempotencyKeyField />
+        {/* 🔴 A refusal ends the attempt, so each signed `?error=` is a new key (2026-10-06) — the deposit page's note
+            says why: this page stays mounted across its own redirect, and a used key replays its row. */}
+        <IdempotencyKeyField key={sp.error ?? ""} />
         <fieldset disabled={!canSubmit}>
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.destination}

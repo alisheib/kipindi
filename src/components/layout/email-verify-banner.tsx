@@ -2,7 +2,8 @@
 
 /**
  * Persistent "confirm your email" bar — app-wide, for every signed-in player
- * whose address is still unconfirmed.
+ * whose address is unconfirmed and whose wallet can take a deposit (not during
+ * a break, not over a hold - app-shell.tsx).
  *
  * Why it exists: confirming your email is what unlocks depositing — the ladder is register →
  * confirm email → deposit and play → verify identity → withdraw (2026-09-13; from 2026-09-05 to
