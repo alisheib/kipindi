@@ -57,7 +57,8 @@
  *      from 640; the free strip above the button (S6 A8g) keeps each of its parts whole on both hosts and wraps only
  *      between them; and the model sees the defects it was written for (the Swahili free row a browser measured too wide
  *      on /positions at 320 before A8b, in the holder block at 360 before A8d, and before A8g the big stakes' rows on
- *      /positions and the strip's parts broken in the holder block at 360) and the measured fit from 360 on /positions.
+ *      /positions and the strip's parts broken in the holder block at 360) and the measured fit from 360 on /positions;
+ *      and (2026-10-06) the ticket's "opened" line on both hosts keeps its date one unit after its word (5.opened).
  *   §6 THE DIALOGS' FIT (S6 A8f) — the same model, given the Sell confirm's and the result's geometry from their own
  *      markup and the Modal's: every money figure in either dialog stays whole and each row reflows. The confirm's figure is
  *      an amount, and its receive row shares a line or wraps, the fee column moving below the figure; every button holds its
@@ -118,6 +119,8 @@ const REAL: Impl = { freeExitEndsAt: SVC.freeExitEndsAt };
 const SELL_BUTTON = "src/components/markets/sell-button.tsx";
 const POSITIONS = "src/app/positions/page.tsx";
 const MARKET = "src/app/markets/[id]/page.tsx";
+/** 2026-10-06 · /positions' card, whose "opened" line 5.opened reads beside the holder block's. */
+const POSITION_CARD = "src/components/markets/position-card.tsx";
 /** S6 WP9 — the journey's ticket card renders the button on Tiketi zangu: a host like the two above, held to the same call. */
 const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
 /** S6 A8b — the page gutter both classic hosts sit in, which §5 reads. */
@@ -1589,6 +1592,28 @@ async function g5Fit(W: World) {
       && bigFree360 < 0 && bigPaid320 < 0 && stripBefore.broken.join() === "0,2"
       && Math.abs((stripBefore.sizes[0] ?? 0) - 112) < 0.5 && Math.abs((stripBefore.sizes[2] ?? 0) - 66) < 0.5,
     j({ at320, at360, holder360, bigFree360, bigPaid320, stripBefore }));
+
+  // ⭐ 2026-10-06 · THE TICKET'S "OPENED" LINE KEEPS ITS DATE WHOLE (5.opened), on both hosts' rows: the question page's
+  // holder block and /positions' card. The A8d/A8g tiles measured the holder block's date broken over two lines at 320 in
+  // Swahili: the word and the date were one run of text. Now the date is one nowrap unit after the word, joined by a
+  // written space OUTSIDE it (a leading space inside a nowrap unit is no break opportunity), so a narrow phone breaks the
+  // line before the date and never inside it. Read from source, both hosts, decommented.
+  {
+    const OPENED_RUN = "{t.market.opened} {";
+    const rows: { rel: string; want: string }[] = [
+      { rel: MARKET, want: `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{fmtTime(p.placedAt)}</span></span>` },
+      { rel: POSITION_CARD, want: `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{formatDateTime(placedAt)}</span></span>` },
+    ];
+    const bad: string[] = [];
+    for (const r of rows) {
+      const src = W.files.get(r.rel) ?? "";
+      const n = src.split(r.want).length - 1;
+      if (n !== 1) bad.push(`${r.rel}: the word-then-whole-date units occur ${n} times (want 1)`);
+      if (src.includes(OPENED_RUN)) bad.push(`${r.rel}: the word and the date run as one text again`);
+    }
+    ok("5.opened · the ticket's opened line keeps its date whole on both hosts (the question page's holder block and /positions' card): the date is one nowrap unit after the word, joined by a written space outside it, so a narrow phone breaks the line before the date and never inside it (the A8d/A8g tiles measured the holder block's date broken over two lines at 320 in Swahili)",
+      bad.length === 0, bad.join("; "));
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -2414,6 +2439,13 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, css: w.css.split("--h-control-md: 44px;").join("--h-control-md: 36px;") }) },
   { name: "the free window may run 120 minutes (the strip's countdown can read 120:00, longer than the 60:00 §5 and the records lay out)", expect: ["5.model"],
     world: (w) => inFile(w, FIT_CONFIG, "g < 0 || g > 60)", "g < 0 || g > 120)") },
+  // §5 — 2026-10-06: the ticket's opened line keeps its date whole
+  { name: "the holder block's opened line runs its word and date as one text again (its date breaks inside at 320 in Swahili, as the tiles measured)", expect: ["5.opened"],
+    world: (w) => inFile(w, MARKET, `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{fmtTime(p.placedAt)}</span></span>`, "{t.market.opened} {fmtTime(p.placedAt)}") },
+  { name: "/positions' card loses the date's nowrap (its date may break inside on a narrow card)", expect: ["5.opened"],
+    world: (w) => inFile(w, POSITION_CARD, `<span className="whitespace-nowrap">{formatDateTime(placedAt)}</span>`, "<span>{formatDateTime(placedAt)}</span>") },
+  { name: "the holder block's word and date become ONE nowrap unit (the line can no longer break at all and runs past the card at 320)", expect: ["5.opened"],
+    world: (w) => inFile(w, MARKET, `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{fmtTime(p.placedAt)}</span></span>`, `<span className="whitespace-nowrap">{t.market.opened}{" "}{fmtTime(p.placedAt)}</span>`) },
   // §4 — the wiring
   { name: "the suite drops out of predeploy", expect: ["4.wired"],
     world: (w) => ({ ...w, scripts: { ...w.scripts, predeploy: (w.scripts.predeploy ?? "").split("npm run test:sell-grace-truth && ").join("") } }) },

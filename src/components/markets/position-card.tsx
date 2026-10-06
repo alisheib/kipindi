@@ -133,7 +133,8 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
           {placedAt && (
             <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
               <I.clock s={10} className="opacity-70 shrink-0" />
-              {t.market.opened} {formatDateTime(placedAt)}
+              {/* The date is one unit after the word, as in the question page's holder block (5.opened). */}
+              <span>{t.market.opened}{" "}<span className="whitespace-nowrap">{formatDateTime(placedAt)}</span></span>
             </p>
           )}
         </div>
