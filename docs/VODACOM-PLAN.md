@@ -16,7 +16,7 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-06):** S6 (the flagged shell) is in progress (§0i): WP0–WP11 are live behind the flag — the shell
+**State (2026-10-07):** S6 (the flagged shell) is in progress (§0i): WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -25,37 +25,27 @@ old journey's funnel counts daily since 2026-10-01, and the 14-day baseline runs
 and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an officer approving the short titles (§0d, §0h
 point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Every call made under Ali's
 delegation is a numbered point in §0h. Nothing moved here 2026-10-04 → 10-06 except main's sign-up change (`9b21bae9`),
-which rewrote §3.7: a new account now lands home on the classic site too.
+which rewrote §3.7: a new account now lands home on the classic site too. On 2026-10-07 S6 A8i went live (`23f762f4`):
+a dialog acts on Enter only where it is pressed, and a key held down from before presses nothing in it (below).
 
-**⏳ IN FLIGHT (2026-10-06) — A8i, taken FIRST because it is a live money defect.** PC OMEGA-COMPILE01, worktree
-`F:\kipindi-journey`, branch `vodacom-a8i` (cut from `origin/main` at `7a5bfa8a`). **Taken over 2026-10-06 ~21:40 EAT by ALI-BLADE15** (`C:\kipindi-journey`, the same branch rebased on `4093dc54`): OMEGA's session stopped after its drive commit `51c6f319` (17:59 EAT), and Ali asked this PC to continue. Another session must not start or push A8i.
-- **The defect (every player):** the bet confirm, the Sell confirm and the result dialog each listen for Enter on the
-  whole window, so Enter does their primary act whatever has focus — "Ghairi" included — and Enter on a dialog opened on
-  top of one (the win seal, the reality check) acts in the one underneath (§0i "Found on the way (2026-10-04)").
-- **Found while reading it, same family:** a HELD Enter or Space on the dial opens the bet confirm, whose Confirm takes
-  focus 30 ms later, and the key's auto-repeat then presses it: holding the key about half a second places the bet unseen.
-- **The fix being built:** the three window listeners go, so Enter is the focused button's own press (each dialog still
-  opens with focus on its primary, so Enter still confirms where it is pressed); `Modal` swallows a key's auto-repeat on
-  a button, link, checkbox or radio, and a repeated Enter anywhere but a textarea — one rule, `src/lib/held-key.ts`.
-  Guard `test:enter-where-pressed` with its in-process twin `red:enter-where-pressed`, and a real-browser drive.
-- **Built 2026-10-06, not yet on `main`** — the work in progress is on the branch `origin/vodacom-a8i`: `held-key.ts`,
-  `modal.tsx`, the three dialogs, `sell-button.tsx`'s note, and `select.tsx` (found by the guard's census: the dropdown's
-  list took Enter pressed anywhere while open, so a seal opened over it lost its Enter — it now takes only a key pressed
-  in the dropdown or on the page). `test:enter-where-pressed` all green; `red:enter-where-pressed` 20/20 caught;
-  typecheck clean; `test:feedback-law` 7.5 re-pinned (its Enter half named the removed handler); the neighbouring
-  suites green apart from the §0i baseline reds (`red-anchors` ×2, `orphans`, `decomment` 24 > 20, `stacking` 6.1).
-- **Left:** the real-browser drive (bet, Sell, the seal over a Sell confirm, held keys — and the same drive red on the
-  old tree) → review → `test:all` → push → read the deploy back → tick §0i and the board row. Then the owed A8d/A8g/A8h
-  proof items (§0i), then WP12.
-- ⚠️ **This PC has none of the old PC's scratchpad** (`scratchpad/s6/a8-chain.sh`, `a8/copy-measured.py`,
-  `a8/parity-devonly.py`, `ticker-rearm.py`): the owed proof items in §0i must be re-derived, not resumed.
+**✅ A8i LIVE `23f762f4` (2026-10-07) — a dialog acts on Enter only where it is pressed.** Built on OMEGA-COMPILE01
+(branch `vodacom-a8i`), taken over on ALI-BLADE15 when that session stopped (Ali, 2026-10-06), re-reviewed there in five
+lenses and proven — §0i "A8i". **It leaves two holes in its own family, proven by the 2026-10-04 draft's drive run
+against it:** W2 — two Enters about 60 ms apart on the win seal over a Sell confirm: the first closed the seal and the
+second, landing on "Uza · TZS …" while the seal was still leaving, SOLD the ticket (a real sale; before A8i the first
+Enter sold); K — Enter held on "Hifadhi nafasi" closed the confirm and its repeats opened it again under the finger
+(no money). They lead **A8i-2**, with every finding of the review that its skeptics confirm (reported: a held Enter on
+an Up & Down bet button bets on every repeat; a dialog that closes or opens under the win seal hands focus to the page
+behind it; one Escape closes every open dialog; the bet confirm can reopen with Confirm disabled). **A8j** (reported,
+pre-existing, money): Enter in the withdraw amount box submits the withdrawal without its confirm, and Enter in the
+close-account phrase box closes the account without its final dialog.
 
-**Next:** (1) S6 — A8i (⏳ above), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+**Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above and §0i "A8i"), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
 2026-10-04 at Ali's request (`315a3ae5`, `2e3ea161`) with their proof part-run — §0i "S6 STOPPED HERE" lists what is
-proven and what is owed; then A8i (Enter acts only where it is pressed — a live defect found on the way), then WP12
+proven and what is owed; then WP12
 (proof, records, merge); the build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
@@ -263,7 +253,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   rest of the detached chain (`scratchpad/s6/a8-chain.sh`: the price-guard drive in the current mode, the result
   drives `main`, `extra` and `lost`, the lost-chunk control, the tiles), parity compare 2 after the copy, the
   battery, a production build's first-load reading, and the production check (`?dpl=`, the stylesheet's two phone
-  blocks); then **A8i** and **WP12** (S6-PLAN.md).
+  blocks); then **WP12** (S6-PLAN.md). **A8i** is LIVE (`23f762f4`, its bullet at the end of this list); A8i-2 and A8j go first (§0).
 - **Found on the way (2026-10-04):** `test:house-bot-reports` 0.232 was red on main for three reasons, and while it was,
   `red:house-bot-money`, `-c5`, `-chatbot` and `-console` refused to run for every lane. This lane's S3b had made
   `Transaction.origin` create-only in both txn twins and so broken 0.232.4's exact-text pin — re-pinned (`50552c40`); the
@@ -282,7 +272,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   unique), to land with its red at 28/28. ⛔ **A live money defect, every player (→ A8i):** the bet confirm, the Sell
   confirm and the result dialog act on Enter pressed ANYWHERE — a keyboard player who tabs to "Ghairi" and presses Enter
   places the bet or sells (the window listener cancels the button's own click), and Enter meant for a win seal opened
-  on top sells in the confirm underneath. A8i (drafting: a dialog acts on Enter only where it is pressed) is next.
+  on top sells in the confirm underneath. → A8i, LIVE `23f762f4` 2026-10-07 (its bullet at the end of this list).
 - **Found and fixed on the way (2026-10-03):** the S3b funnel panel painted "house stakes" on `/admin/insights` (owner
   ruling D19 keeps house words off admin surfaces outside the house console) — `test:house-bot-surfaces`, red since
   2026-10-01 and carried on the baseline list as another lane's, is green; three red twins had gone blind for reasons
@@ -1118,6 +1108,44 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   build read by `first-load-parts` (the host's chunk off every first load, its bytes recorded) and the served skeletons
   compared (`shell-skeleton.py`, a null pair first); the lost-chunk drive with its control; the price-guard drive and the
   result drive (`scratchpad/s6/a8h/drive/`, written for A8h and not yet run); and the tiles.
+- **A8i — a dialog acts on Enter only where it is pressed, and a key held down from before presses nothing in it (LIVE
+  `23f762f4`, 2026-10-07, for every player, both looks).** The bet confirm, the Sell confirm and the result dialog each
+  listened for Enter on the whole window and did their primary act whatever had focus, cancelling the focused button's own
+  press: Enter on "Ghairi" or "Hifadhi nafasi" placed the bet or sold, and Enter on the win seal opened over a Sell confirm
+  sold underneath ("Found on the way (2026-10-04)" above). The three window listeners are gone: each dialog opens with
+  focus on its primary (`initialFocus`), so Enter there is that button's own press, through the click a mouse makes and its
+  `disabled` latches (the Sell confirm's lapsed quote included). `Modal` swallows a key's auto-repeat that would press
+  something — Enter anywhere but a textarea or an editable region, Space on a control Space presses (`src/lib/held-key.ts`,
+  pure; `keyTargetOf` is the one place that reads an element) — so a key held on the bet dial or the Sell button opens the
+  confirm and presses nothing in it. The dropdown's open list (`select.tsx`) took Enter pressed anywhere, so a seal opened
+  over it lost its Enter: it now takes only a key pressed in the dropdown or on the page itself (found by the guard's
+  census). Enter with focus on no control (the page itself, after a click on a dialog's words) now does nothing; it
+  confirmed before (§0h point 57). **Guard:** `test:enter-where-pressed` (in predeploy: §1 the held-key rule, run; §2 no
+  window or document Enter listener in `src/`, by a census with each handler resolved; each money dialog opens on its
+  primary; each way out a real button; `Modal` runs the rule first; §3 the dial only opens the confirm) and its in-process
+  red twin `red:enter-where-pressed` (20 plants, 20 caught); `test:feedback-law` 7.5 re-pinned (its Enter half named the
+  removed handler). **Proof:** built and drive-proven on OMEGA-COMPILE01 (12/12; A B C D F G H I red on the old tree);
+  taken over on ALI-BLADE15 when that session stopped and proven again on `4093dc54`: `test:all` 444/461 — the 17 reds
+  every one on the §0i baseline list (five of its 22 are green now), `test:red-anchors` only its two known anchors,
+  `decomment`'s 24 carriers main's own; `qa:enter-where-pressed` 12/12 on the rebased tree; `qa:select-keyboard` (the
+  kit `Select` whose keys A8i scoped) 24/26 — every keyboard check held in both passes (open, move, choose, Escape, Home,
+  the form never submitted), and its one failure, twice, is a page error that is not A8i's: a hydration mismatch of the
+  reality-check field on `/profile/responsible-gambling` (the kit `Input` draws its hint and `aria-describedby` on the
+  client only), recorded for its owner and examined next;
+  and the 2026-10-04 draft's own 12-case drive against it (real keys, Swahili, 390 px, local in-memory server): S, J (the
+  journey look), W, R, B, F, BE and E hold, P is the design difference above. **Still open, proven by that drive (→
+  A8i-2):** W2 — the Sell confirm open, the win seal over it, two Enters about 60 ms apart: the first closed the seal and
+  the second, landing on "Uza · TZS …" while the seal was still leaving, SOLD the ticket (one sale request, the balance up
+  TZS 2,200; before A8i the FIRST Enter sold, so A8i is a strict improvement); K — Enter held on "Hifadhi nafasi": the
+  confirm closed and the repeats pressed the Sell button it had given focus back to, so the confirm opened again under the
+  finger (no sale: the reopened confirm swallowed the rest). The five-lens review (`a8i-takeover-review`) also reported,
+  for its skeptics to confirm before A8i-2 takes them: a held Enter on an Up & Down bet button places a bet on every
+  repeat (no dialog is open, and the board card stops Enter before `Modal` can see it); a dialog that closes or opens
+  under the win seal hands focus to the page behind it; one Escape closes every open dialog; the bet confirm can reopen
+  with Confirm disabled; blind spots in the guard's census; and, outside the family, Enter in the withdraw amount box and
+  in the close-account phrase box submits without the confirm (A8j). **Served bytes for a classic viewer:** no markup,
+  word, class or prop changes; the client code of the three dialogs, `Modal`, `Select` and the Sell button changes
+  (behaviour only), so `qa:classic-shell-parity` names no entry.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1623,6 +1651,16 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     word, reason or figure changes. Overrule: say which — every refusal opens the ✗ result again (red for all, as before
     A8h); only the toasts are routed and the ✗ result stays for every refusal (as the bet card does); the toasts leave
     after 4.5 seconds again; or a hard block's toast leaves with its result.
+57. **Enter acts only where it is pressed; a key held down presses nothing in a dialog (S6 A8i, for every player, both
+    looks).** The calls taken: (a) Enter with focus on no control — the page itself, after a click on a dialog's words —
+    now does nothing; before A8i it confirmed (the bet, the sale, the result's primary), and the 2026-10-04 draft would have
+    kept that for a single dialog on screen. Taken because every dialog opens with focus on its primary, so a keyboard
+    player's Enter is on a control, and a press that lands nowhere confirms nothing. (b) The held-key rule lives in `Modal`
+    (every kit dialog, the admin's included), not in each money dialog. (c) The dropdown's open list takes only keys
+    pressed in it or on the page itself. (d) The money confirms keep opening with focus on their money button, so Enter,
+    Enter still bets and sells, where the kit's A5 rule opens the admin's money confirms on Cancel; the double press this
+    leaves (W2, §0i "A8i") is A8i-2's. Overrule: say which — Enter on the page itself confirms again when one dialog is on
+    screen; or both money confirms open on "Ghairi" and "Hifadhi nafasi", as A5 does.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

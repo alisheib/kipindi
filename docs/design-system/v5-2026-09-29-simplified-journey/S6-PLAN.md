@@ -1771,6 +1771,15 @@ and its plant; `test:journey-shell` §12's table; `test:popup-fit`'s record; `te
 `test:feedback-law` §1.1's scan. No word of the dictionary changes. Records: VODACOM-PLAN §0i (A8h) and §0h points 43
 (resolved), 53 to 56.
 
+*As built (A8i, LIVE `23f762f4` 2026-10-07, for every player — built on OMEGA-COMPILE01, taken over on ALI-BLADE15):*
+Enter acts only where it is pressed (DESIGN_AUTHORITY §A8). The window Enter listeners of the bet confirm, the Sell confirm
+and the result dialog are gone; each opens with focus on its primary, so Enter there is that button's own press. `Modal`
+swallows a key's auto-repeat that would press something (`src/lib/held-key.ts`); the kit `Select`'s open list takes only
+keys pressed in it or on the page itself. Pinned by `test:enter-where-pressed` (predeploy) and its in-process red; the real
+keys are `qa:enter-where-pressed`. Left to A8i-2: a second fresh Enter while a dialog drawn over another leaves (W2, a
+sale), a held key outside an open dialog and on a way out (K), and the dialog stack (focus never behind the top dialog,
+one Escape for the top one only). Records: VODACOM-PLAN §0i (A8i) and §0h point 57.
+
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan

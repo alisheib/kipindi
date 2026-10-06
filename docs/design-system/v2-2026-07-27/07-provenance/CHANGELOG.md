@@ -1,5 +1,17 @@
 # Changelog (reconstructed)
 
+## 2026-10-07 (design-system · dialogs) — Enter acts only where it is pressed
+
+**The money dialogs act on Enter only where it is pressed** (DESIGN_AUTHORITY §A8, S6 A8i, for every player in both looks):
+the bet confirm (`bet-confirm-modal.tsx`), the Sell confirm (`sell-confirm-modal.tsx`) and the shared result
+(`operation-result-modal.tsx`) no longer listen for Enter on the window. Until 2026-10-07 each acted on an Enter pressed
+anywhere and cancelled the focused button's own press: Enter on Cancel confirmed, and the Enter meant for the win seal
+confirmed the dialog beneath it. Each opens with focus on its primary, so Enter there is that button's press. The kit
+`<Modal>` gains one rule — a key's auto-repeat that would press something presses nothing (`src/lib/held-key.ts`) — and the
+kit `Select`'s open list takes only keys pressed in it or on the page itself. No token, colour, class, word or markup
+changes. These dialogs have no spec page of their own, so this entry and VODACOM-PLAN §0h point 57 are their record;
+`test:enter-where-pressed` holds it.
+
 ## 2026-10-04 (design-system · Sell button) — the free strip keeps its parts whole, and a row that cannot hold one line puts its note under its figure
 
 **The free strip above today's Sell button wraps between its parts** (`src/components/markets/sell-button.tsx`): its row
