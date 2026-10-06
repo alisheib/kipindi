@@ -14,7 +14,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { bounceIfAuthed } from "../bounce-authed";
 import { sessionEndedThisRequest } from "@/lib/server/session";
 import { cookies } from "next/headers";
-import { isSafePath } from "@/lib/safe-next";
+import { isSafePath, sanitizeNext } from "@/lib/safe-next";
+import { normalizeReferralCode } from "@/lib/referral-code";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -24,7 +25,7 @@ export async function generateMetadata() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; until?: string; cooled?: string; reset?: string; revoked?: string; ended?: string }>;
+  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; ref?: string; closed?: string; excluded?: string; until?: string; cooled?: string; reset?: string; revoked?: string; ended?: string }>;
 }) {
   // ⛔ THE BOUNCE RUNS HERE, IN THE PAGE, AND IT MOVED OUT OF `auth/layout.tsx` BECAUSE A
   // LAYOUT IS NOT RE-EXECUTED ON A CLIENT-SIDE SOFT NAVIGATION. The layout compared the
@@ -67,6 +68,23 @@ export default async function LoginPage({
   // path-only string before redirecting.
   const nextRaw = (sp.next ?? "").trim();
   const nextSafe = isSafePath(nextRaw) ? nextRaw : "";
+  // ⭐ B3 (route audit 2026-10-06) · THE REFERRAL CODE SURVIVES THIS PAGE. An invited player who taps "Sign in" by
+  // mistake, or fails a sign-in, used to reach "Create one" with the code gone, and the inviter was never credited
+  // (`recruitedBy` is written once, at sign-up). The code rides the hidden field to the action's failure hop and every
+  // link to sign-up or back here; normalised by the one rule, so a malformed code is dropped, never cut.
+  const refCode = normalizeReferralCode(sp.ref) ?? "";
+  const keepQs = new URLSearchParams();
+  if (nextSafe) keepQs.set("next", nextSafe);
+  if (refCode) keepQs.set("ref", refCode);
+  const keep = keepQs.toString() ? `?${keepQs.toString()}` : "";
+  const registerHref = `/auth/register${keep}`;
+  const loginSelfHref = `/auth/login${keep}`;
+  // B1 · recovery keeps what was typed and where they were going: the reset page returns the player there
+  // (forgot-password reads `identifier` and `next`). An /auth page is never a destination.
+  const forgotQs = new URLSearchParams();
+  if (identifierDefault) forgotQs.set("identifier", identifierDefault);
+  if (sanitizeNext(nextSafe)) forgotQs.set("next", nextSafe);
+  const forgotHref = `/auth/forgot-password${forgotQs.toString() ? `?${forgotQs.toString()}` : ""}`;
   // Default the sign-in method to whatever the round-tripped value looks like
   // (an "@" → email, otherwise phone — Tanzania is phone-first).
   const defaultMethod: "email" | "phone" = identifierDefault.includes("@") ? "email" : "phone";
@@ -78,11 +96,14 @@ export default async function LoginPage({
       body: t.auth.passwordResetBody,
       cta: null,
     };
+    // B4 · a CLOSED account lands here now (it used to share `error=blocked`, whose body named the support email), so
+    // it carries the same support row the exclusion panels use: the way back is to ask us.
     if (sp.closed === "1") return {
       tone: "warning" as const,
       title: t.auth.accountClosed,
       body: t.auth.accountClosedBody,
       cta: null,
+      contact: true,
     };
     // 🔴 THREE STATES, NOT ONE (`E-240`). `?excluded=1` said the same thing to every
     // self-excluded player, and after Ali's 2026-08-27 ruling that sentence is FALSE for two of
@@ -126,7 +147,7 @@ export default async function LoginPage({
           tone: "warning" as const,
           title: t.auth.noAccountYet,
           body: t.auth.noAccountYetBody,
-          cta: { href: `/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`, label: t.auth.createOne },
+          cta: { href: registerHref, label: t.auth.createOne },
         };
       case "wrong_credentials":
         return {
@@ -140,7 +161,7 @@ export default async function LoginPage({
           tone: "warning" as const,
           title: t.auth.tooManyTries,
           body: Number.isFinite(retrySec) && retrySec > 0
-            ? <RateLimitBanner seconds={retrySec} clearHref={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`} />
+            ? <RateLimitBanner seconds={retrySec} clearHref={loginSelfHref} />
             : t.auth.tooManyTriesBody,
           cta: null,
         };
@@ -178,11 +199,11 @@ export default async function LoginPage({
             <>
               {t.auth.accountLockedBody}
               {Number.isFinite(retrySec) && retrySec > 0 && (
-                <RateLimitBanner seconds={retrySec} clearHref={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}`} />
+                <RateLimitBanner seconds={retrySec} clearHref={loginSelfHref} />
               )}
             </>
           ),
-          cta: { href: `/auth/forgot-password`, label: t.common.resetPassword },
+          cta: { href: forgotHref, label: t.common.resetPassword },
         };
       default:
         break;
@@ -271,7 +292,7 @@ export default async function LoginPage({
                     href={errorPanel.cta.href as never}
                     /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
                        so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min.
-                       Twin of auth/register/page.tsx — keep the two in step. */
+                       Twin of auth/register/register-form.tsx — keep the two in step. */
                     className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
                   >
                     {errorPanel.cta.label} →
@@ -283,6 +304,7 @@ export default async function LoginPage({
 
           <form action={startLoginAction} className="space-y-4">
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
+            {refCode && <input type="hidden" name="ref" value={refCode} />}
             <NextHashField />
             {/* Phone/Email switcher. Both methods submit under `identifier`; the
                 server discriminates on a literal `@` (email) vs `tzPhone`
@@ -318,7 +340,7 @@ export default async function LoginPage({
 
             <div className="flex items-center justify-end -mt-2">
               <Link
-                href="/auth/forgot-password"
+                href={forgotHref as never}
                 className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text"
               >
                 {t.auth.forgotPassword}
@@ -331,7 +353,7 @@ export default async function LoginPage({
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
             {t.auth.noAccount}{" "}
             <Link
-              href={`/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
+              href={registerHref as never}
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               {t.auth.createOne}

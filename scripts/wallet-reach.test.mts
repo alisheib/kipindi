@@ -182,13 +182,20 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
    * re-measured 2026-09-05, `pastRight` is 0 at 360/390/414, and 0 at 320 once `.kp-auth-cta`
    * tightens the pair below `sm`.
    */
-  const authAt = bar.indexOf('href={"/auth/login" as never}');
+  // ⚠️ B3 (route audit 2026-10-06): the pills' hrefs come from `authDoorHrefs` now (this page as `next`, the
+  // referral code kept), so `Sign in` is found by its NAME — which it keeps at every width — not by a literal href.
+  const authAt = bar.indexOf("aria-label={t.common.signIn}");
   const auth = bar.slice(Math.max(0, authAt - 300), authAt + 300);
   ok("4: 🔴 `Sign in` is NOT wrapped in a width hide — it is the only way back into an account",
-     authAt > 0 && !/<span className="hidden sm:inline-flex">\s*<Link\s+href=\{"\/auth\/login"/.test(auth));
+     authAt > 0 && !/<span className="hidden[^"]*">\s*<Link\s[^>]*aria-label=\{t\.common\.signIn\}/.test(auth));
+  ok("4: control: that check fires on a planted width-hidden `Sign in`",
+     /<span className="hidden[^"]*">\s*<Link\s[^>]*aria-label=\{t\.common\.signIn\}/.test(
+       `<span className="hidden sm:inline-flex">\n      <Link\n        href={signIn as never}\n        aria-label={t.common.signIn}`));
   ok("4: …and both account actions carry `.kp-auth-cta`, which is what makes 320 fit",
      (bar.match(/btn-pill kp-auth-cta/g) ?? []).length === 2,
      `${(bar.match(/kp-auth-cta/g) ?? []).length} occurrence(s)`);
+  ok("4: B3 · the guest doors take their hrefs from authDoorHrefs — this page as next, the invite's code kept",
+     bar.includes("authDoorHrefs("));
 
   /* U5 · THE PAIR SITS ON THE sm RUNG BELOW 640, AND IT MUST BE THE TOKEN, NOT THE NUMBER.
      40 is also --tap-min, so a literal 40px here would read as correct while silently

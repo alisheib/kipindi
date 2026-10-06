@@ -40,6 +40,10 @@ type Props = {
   /** Inline style pass-through — for the claret text on destructive ghosts,
    *  where a class cannot beat `.btn-ghost`'s own `color: var(--text)`. */
   style?: React.CSSProperties;
+  /** In flight, as the caller knows it. `useFormStatus()` sees only a submission made through the form's
+   *  own `action`; a form submitted through `onSubmit` + `startTransition` (the sign-up form, so React's
+   *  form reset never runs) passes its `useActionState` `isPending` here. Either one makes it pending. */
+  pending?: boolean;
 };
 
 export function SubmitButton({
@@ -52,8 +56,10 @@ export function SubmitButton({
   icon,
   fullWidth = true,
   style,
+  pending: pendingProp,
 }: Props) {
-  const { pending } = useFormStatus();
+  const { pending: formPending } = useFormStatus();
+  const pending = formPending || pendingProp === true;
   const { t } = useT();
   return (
     <button

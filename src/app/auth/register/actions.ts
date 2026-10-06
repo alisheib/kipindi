@@ -7,7 +7,7 @@ import { normalizeReferralCode } from "@/lib/server/affiliate-service";
 import { getServerT } from "@/lib/i18n-server";
 import { messagingLocaleOf, renderedLocaleOf } from "@/lib/server/marketing/consent-ledger";
 import { sanitizeNext } from "@/lib/safe-next";
-import { signFlash } from "@/lib/server/flash-message";
+import { registerRefusalOf, type RegisterRefusal } from "./refusal";
 
 /**
  * D2 · THE LANGUAGE THE FORM WAS SHOWN IN — it decides which sentence the consent ledger stores as
@@ -30,8 +30,12 @@ async function shownLocale(formData: FormData) {
  * it was deleted on 2026-10-06: it made accounts with no email and no password, never bound ref/invite, skipped the
  * per-network cap and kept its state in process memory. If the number ever needs proving at sign-up, add a code step to
  * THIS door (docs/FLOWS.md section 8a).
+ *
+ * A refusal is RETURNED, never redirected (route audit C1, 2026-10-06): the form that posted is still mounted
+ * (`register-form.tsx`, `useActionState`), so it shows the refusal over everything the player typed. `_prev` is the
+ * previous refusal React hands back; nothing here reads it.
  */
-export async function startRegisterAction(formData: FormData) {
+export async function startRegisterAction(_prev: RegisterRefusal | null, formData: FormData): Promise<RegisterRefusal | null> {
   const phone = String(formData.get("phone") ?? "");
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -55,38 +59,15 @@ export async function startRegisterAction(formData: FormData) {
     locale: await shownLocale(formData),
   });
 
-  if (!result.ok) {
-    const params = new URLSearchParams({
-      phone,
-      // Carry the email back so a failed sign-up doesn't make the player retype it.
-      email,
-      error: result.code === "ALREADY_EXISTS" ? "exists"
-        : result.code === "EMAIL_EXISTS" ? "email_exists"
-        : result.code === "RATE_LIMITED" ? "rate_limited"
-        : "invalid",
-    });
-    if (result.error && result.code !== "ALREADY_EXISTS" && result.code !== "EMAIL_EXISTS" && result.code !== "RATE_LIMITED") {
-      // ⛔ SIGNED (2026-10-06) — the page shows only words THIS server wrote (`flash-message.ts`); a hand-made
-      // `?message=` put an attacker's sentence on 50pick.tz's own sign-up page.
-      params.set("message", signFlash("register-error", result.error));
-    }
-    if (safeNext) params.set("next", safeNext); // don't lose intent on a retry
-    /**
-     * 🔴 AND DON'T LOSE THE INVITER ON A RETRY EITHER. This redirect carried the phone, the email
-     * and the destination back — everything except the referral code — so the FIRST failed attempt
-     * (a mistyped password, a rate limit, an email already in use) silently orphaned the
-     * attribution: the hidden `ref` field re-rendered empty, the player corrected one character,
-     * succeeded, and nobody was ever credited with bringing them. A validation failure is the most
-     * common event on this form, so this was not an edge case; it was the common path.
-     * ⛔ Nothing is logged when it happens, either — an attribution that never existed leaves no
-     * trace to notice, which is why this survived unseen.
-     * ⭐ Already NORMALISED above (`normalizeReferralCode`), so a malformed code stays dropped and
-     * only a well-formed one is carried; the same value the successful branch would have used.
-     */
-    if (referralCode) params.set("ref", referralCode);
-    if (inviteCode) params.set("invite", inviteCode);
-    redirect(`/auth/register?${params.toString()}`);
-  }
+  /**
+   * ⭐ A REFUSAL RETURNS TO THE MOUNTED FORM (route audit C1, 2026-10-06), so the hidden ref / invite / next fields and
+   * everything typed never leave the page. It used to be a redirect back to `/auth/register?…`, which remounted the
+   * page: the date of birth, both passwords and the three ticks came back empty, and the redirect had to carry the
+   * phone, email, next, ref and invite in the URL one by one (the ref was once forgotten, orphaning every inviter whose
+   * recruit mistyped a password). Nothing needs carrying now. The refusal holds a code, a registry reason and a wait,
+   * never the server's English sentence (`refusal.ts`; the form words it in the page's language).
+   */
+  if (!result.ok) return registerRefusalOf(result, { phone, email });
 
   // ⭐ A NEW PLAYER GOES WHERE THEY WERE GOING, OR HOME — owner ruling 2026-10-06.
   //
