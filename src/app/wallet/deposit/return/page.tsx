@@ -27,6 +27,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { pathWithQuery } from "@/lib/safe-next";
 import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
@@ -56,7 +57,8 @@ export default async function DepositReturnPage({
   searchParams: Promise<{ order_id?: string; payment_status?: string; transid?: string; cancelled?: string }>;
 }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet");
+  // Back to THIS return, `order_id` and all, after signing in — the wallet alone could not say what happened (2026-10-06).
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit/return", await searchParams))}`);
   const { t } = await getServerT();
   const sp = await searchParams;
 

@@ -2,7 +2,7 @@
  * Demo dry-run — account-creation + login flow as a real player.
  *
  *   Walks every visible/invisible thing the manager will touch:
- *     register success → lands on /wallet/deposit?welcome=new → wallet shows TZS 10,000
+ *     register success → lands on /?welcome=new → wallet shows TZS 10,000
  *     register fail (mismatched password)
  *     register fail (under 18 DOB)
  *     register fail (common password)
@@ -76,10 +76,10 @@ let me;
   await fillRegister(p, { tail: me.tail, password: me.password });
   p.off("framenavigated", onNav);
   const landing = seen.map((u) => new URL(u)).find((u) => !u.pathname.startsWith("/auth/register"));
-  // ⭐ 2026-09-13: a new account lands on /wallet/deposit (its safe `next`, else there) — identity is
-  // asked before a withdrawal only, so sign-up no longer ends on /profile/kyc.
-  log("1.1 register success → /wallet/deposit (not the identity form)",
-      landing?.pathname === "/wallet/deposit", landing?.href ?? p.url());
+  // ⭐ 2026-10-06: a new account lands on the market board (its safe `next`, else there) — not on
+  // /profile/kyc (until 2026-09-13) and not on /wallet/deposit and its email door (until 2026-10-06).
+  log("1.1 register success → / (not a gate)",
+      landing?.pathname === "/", landing?.href ?? p.url());
   // 1.2 — toast is wired via AuthFlash + ?welcome=new query param.
   // The query reaching the landing is the load-bearing signal; the
   // toast itself has been visually verified in manual + screenshot

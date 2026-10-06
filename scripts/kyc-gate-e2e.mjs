@@ -14,7 +14,8 @@
  * the player is TOLD on the way: identity on the withdraw screen, and in ONE dismissible notice after
  * the first confirmed deposit; nowhere else.
  *
- *   ① register → lands on /wallet/deposit, not on the identity form
+ *   ① register → lands on the market board (/), not on a gate — the email asked by the app-wide bar
+ *      (2026-10-06; from 2026-09-13 it landed on /wallet/deposit, whose email door stood in place of the form)
  *   ② a new account: TZS 0, the email door on the deposit screen, the stake control on a market,
  *      the payout panel on the withdraw screen — and no identity prompt anywhere else
  *   ③ confirm the email through the real link → the deposit form
@@ -70,6 +71,7 @@ const sel = {
   noticeDismiss: '[data-testid="kyc-first-deposit-notice-dismiss"]',
   sidePicker: '[data-testid="side-picker"]',
   emailGate: '[data-testid="email-verify-gate"]',
+  emailBar: '[data-testid="email-verify-banner"]',
   depositForm: "#provider-MPESA",
   withdrawForm: 'form input[name="amount"]',
   walletBalance: '[data-testid="wallet-balance"]',
@@ -94,6 +96,9 @@ const NIDA = `19900101${suffix.padStart(12, "0")}`;
 
 const browser = await chromium.launch();
 const player = await browser.newPage({ viewport: { width: 390, height: 900 } });
+// ⚠️ THE DEFAULT LANGUAGE IS SWAHILI, AND THIS DRIVE READS ENGLISH WORDS ("Month", "verify id", …), so it
+// chooses English the way a player does — the language cookie. Without it ① stalls on a field labelled "Mwezi".
+await player.context().addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
 
 async function noBar(page, label) {
   ok(`${label} · ⛔ no app-wide identity bar`, await page.locator(sel.banner).count() === 0);
@@ -117,6 +122,12 @@ async function cleanBrowserAs(page) {
 step("① register — the real sign-up form, no fixture");
 {
   await go(player, `${BASE}/auth/register`);
+  // ⚠️ LET THE FORM WAKE UP FIRST (2026-10-06). `go` returns as soon as the server's HTML has text, and this drive
+  // then fills AND submits faster than a cold dev compile hydrates the page: the phone box's grouping is script, so the
+  // browser's own pattern check refused the ungrouped digits and the submit silently never happened — ① failed with the
+  // form still on screen. A typed-early value is kept since 2026-10-06 (`PhoneInput`/`DateSelect`/`Checkbox` adopt it
+  // on mount), but a submit before any script has run is a browser-native POST this drive does not mean to test.
+  await player.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {});
   // ⚠️ THE VISIBLE FIELD, NOT THE HIDDEN MIRROR, and the 9-digit LOCAL part. The form keeps
   // a hidden `input[name=phone]` that the visible `#phone` writes into; filling the hidden
   // one directly skips the normalisation and the account is created on a number the login
@@ -146,12 +157,13 @@ step("① register — the real sign-up form, no fixture");
   await settle(player);
   player.off("framenavigated", onNav);
   const landing = seen.map((u) => new URL(u)).find((u) => !u.pathname.startsWith("/auth/register"));
-  ok("1.1 · ★ registration lands the new account on /wallet/deposit — not on the identity form",
-    landing?.pathname === "/wallet/deposit", landing?.href ?? player.url());
+  ok("1.1 · ★ registration lands the new account on the market board (/) — not on a gate",
+    landing?.pathname === "/", landing?.href ?? player.url());
   ok("1.2 · …carrying `welcome=new`, so the greeting meets them there",
     landing?.searchParams.get("welcome") === "new", landing?.href ?? "(no landing recorded)");
-  ok("1.3 · ⛔ …and never passing through /profile/kyc on the way",
-    seen.length > 0 && !seen.some((u) => new URL(u).pathname.startsWith("/profile/kyc")), seen.join(" → "));
+  ok("1.3 · ⛔ …and never passing through /profile/kyc or /wallet/deposit on the way",
+    seen.length > 0 && !seen.some((u) => /^\/(profile\/kyc|wallet\/deposit)(\/|$)/.test(new URL(u).pathname)), seen.join(" → "));
+  ok("1.4 · …where the email is still asked, by the app-wide bar", await player.locator(sel.emailBar).count() > 0);
 }
 
 // ── ② A NEW ACCOUNT: NOTHING HELD, IDENTITY ASKED ONLY AT THE WITHDRAWAL ────
@@ -379,6 +391,7 @@ step("⑦ the officer approves — the real queue, the real confirm dialog");
   // `DATABASE_URL`, while this drive runs against the in-memory store. The dev-test route
   // creates the officer in the SAME store the app is serving from, and mints their session.
   const admin = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await admin.context().addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
   const seeded = await admin.request.post(`${BASE}/api/dev-test/seed-admin`);
   ok("7.0 · an officer account exists", seeded.ok(), `${seeded.status()}`);
   await go(admin, `${BASE}/admin/approvals`);

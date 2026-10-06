@@ -1,5 +1,8 @@
 "use server";
 
+// ⛔ Every refusal below travels SIGNED (2026-10-06) — the page prints only a sentence this server wrote.
+import { signFlash } from "@/lib/server/flash-message";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -50,7 +53,7 @@ export async function lookupWithdrawPayeeAction(input: { provider: string; msisd
 
 export async function withdrawAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/wallet/withdraw");
 
   const { t } = await getServerT();
 
@@ -69,7 +72,7 @@ export async function withdrawAction(formData: FormData) {
   if (!payoutsAcceptingRequests(payouts.status)) {
     // B-7 — `payouts.note` is operator diagnostics ("N stuck payouts…"), not
     // player copy; the localized body says everything the player can act on.
-    redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.payoutsUnavailableBody)) as never);
+    redirect(("/wallet/withdraw?error=" + encodeURIComponent(signFlash("withdraw-error", t.wallet.payoutsUnavailableBody))) as never);
   }
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
@@ -97,7 +100,7 @@ export async function withdrawAction(formData: FormData) {
   // saw an English validation error. `amountHint` already states the same bounds in all three
   // locales, so it is the honest thing to echo rather than a fourth phrasing of the same rule.
   if (!Number.isFinite(amount) || amount < WITHDRAW_MIN_TZS || amount > WITHDRAW_MAX_TZS) {
-    redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.amountHint) + carryParams) as never);
+    redirect(("/wallet/withdraw?error=" + encodeURIComponent(signFlash("withdraw-error", t.wallet.amountHint)) + carryParams) as never);
   }
   // The payee mobile number is where the money is sent — required for every
   // (mobile-money) payout. The exact format is validated by the WithdrawSchema
@@ -107,7 +110,7 @@ export async function withdrawAction(formData: FormData) {
   // and a next step. Now that `WithdrawConfirm.validate()` refuses the same input on
   // the client, the two surfaces would have stated one rule two ways: a player who
   // beat the client guard would read a different sentence than the one who did not.
-  if (!msisdn) redirect(("/wallet/withdraw?error=" + encodeURIComponent(t.wallet.payeeMsisdnRequired) + carryParams) as never);
+  if (!msisdn) redirect(("/wallet/withdraw?error=" + encodeURIComponent(signFlash("withdraw-error", t.wallet.payeeMsisdnRequired)) + carryParams) as never);
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
   const result = await withdraw(session.userId, {
     provider,
@@ -117,6 +120,6 @@ export async function withdrawAction(formData: FormData) {
   revalidatePath("/wallet");
   // B-7 — mint the refusal in the player's language; the English service string
   // stays in the audit record, not on the screen.
-  if (!result.ok) redirect(("/wallet/withdraw?error=" + encodeURIComponent(errorCopy(t, result)) + carryParams) as never);
+  if (!result.ok) redirect(("/wallet/withdraw?error=" + encodeURIComponent(signFlash("withdraw-error", errorCopy(t, result))) + carryParams) as never);
   redirect(`/wallet?withdrawal=${result.data!.txnId}&status=${result.data!.status}&amount=${amount}` as never);
 }

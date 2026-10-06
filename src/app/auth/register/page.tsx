@@ -19,6 +19,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { ROOT_OPEN_GRAPH } from "../../layout";
+import { isSafePath } from "@/lib/safe-next";
+import { readFlash } from "@/lib/server/flash-message";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string }> }) {
   const { t } = await getServerT();
@@ -73,7 +75,7 @@ export default async function RegisterPage({
   // (`clampStarterBalanceForLiveMoney`), and from 2026-09-05 to 2026-09-13 an unverified
   // account could not bet at all.
   const nextRaw = (sp.next ?? "").trim();
-  const nextOk = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
+  const nextOk = isSafePath(nextRaw) ? nextRaw : "";
   // B-1 — no swallow: the hidden ref/invite form inputs render only when these
   // previews resolve, so a FAILED read silently dropped the player's referral
   // binding (and its bonus). Throw to auth/error.tsx instead; a genuinely
@@ -89,7 +91,7 @@ export default async function RegisterPage({
         tone: "warning" as const,
         title: t.auth.accountExists,
         body: t.auth.accountExistsBody,
-        cta: { href: `/auth/login?phone=${encodeURIComponent(phoneDefault)}`, label: t.auth.signInTitle },
+        cta: { href: `/auth/login?phone=${encodeURIComponent(phoneDefault)}${nextOk ? `&next=${encodeURIComponent(nextOk)}` : ""}`, label: t.auth.signInTitle },
       };
     }
     // A duplicate EMAIL is a different problem with a different remedy from a
@@ -101,7 +103,7 @@ export default async function RegisterPage({
         tone: "warning" as const,
         title: t.auth.emailExists,
         body: t.auth.emailExistsBody,
-        cta: { href: `/auth/login?identifier=${encodeURIComponent(emailDefault)}`, label: t.auth.signInTitle },
+        cta: { href: `/auth/login?identifier=${encodeURIComponent(emailDefault)}${nextOk ? `&next=${encodeURIComponent(nextOk)}` : ""}`, label: t.auth.signInTitle },
       };
     }
     if (sp.error === "rate_limited") {
@@ -112,11 +114,12 @@ export default async function RegisterPage({
         cta: null,
       };
     }
-    const msg = (sp as { message?: string }).message;
+    // ⛔ Only a sentence this server signed (`flash-message.ts`) — never raw text from the address bar.
+    const msg = readFlash("register-error", (sp as { message?: string }).message);
     return {
       tone: "danger" as const,
       title: t.auth.couldNotCreate,
-      body: msg ? decodeURIComponent(msg) : t.auth.checkFormFields,
+      body: msg ?? t.auth.checkFormFields,
       cta: null,
     };
   })();
@@ -317,7 +320,7 @@ export default async function RegisterPage({
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
             {t.auth.alreadyHaveAccount}{" "}
             <Link
-              href={"/auth/login" as never}
+              href={(nextOk ? `/auth/login?next=${encodeURIComponent(nextOk)}` : "/auth/login") as never}
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               {t.auth.signInTitle}

@@ -35,7 +35,7 @@
  * fail in.
  */
 import { useEffect, useState, useTransition } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
 import { useT } from "@/lib/i18n";
 import { resendEmailVerificationAction } from "@/app/profile/actions";
@@ -45,6 +45,7 @@ const COLLAPSE_KEY = "50pick:email-banner-collapsed";
 
 export function EmailVerifyBanner({ email }: { email: string | null }) {
   const { t } = useT();
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ tone: "ok" | "err"; message: string } | null>(null);
   // Start EXPANDED and read the stored preference after mount. Reading
@@ -82,6 +83,9 @@ export function EmailVerifyBanner({ email }: { email: string | null }) {
           setResult(r.sent
             ? { tone: "ok", message: t.wallet.verifyResent }
             : { tone: "ok", message: t.wallet.verifyAlreadyDone });
+          // ⭐ 2026-10-06 · …and do the reload for them. This bar lives in the root layout, which a soft navigation
+          // never re-renders, so it would have stood on every page after the address was already confirmed.
+          if (!r.sent) router.refresh();
         } else {
           setResult({ tone: "err", message: verifyErrorMessage(t, r.error, r.retryAfterSec) });
         }

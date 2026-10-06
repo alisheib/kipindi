@@ -1,5 +1,7 @@
 "use server";
 
+import { signFlash } from "@/lib/server/flash-message";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
@@ -17,7 +19,7 @@ const BASE_URL = () => (process.env.NEXT_PUBLIC_APP_URL || "https://www.50pick.t
 
 export async function depositAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect("/auth/login?next=/wallet/deposit");
 
   // B-7 — every refusal this action redirects with is rendered verbatim by the
   // deposit page, so it must be minted in the player's own language, here.
@@ -56,7 +58,8 @@ export async function depositAction(formData: FormData) {
     if (billing.postcode) carry.set("bPost", billing.postcode);
   }
   const fail = (message: string): never =>
-    redirect((`/wallet/deposit?error=${encodeURIComponent(message)}&${carry.toString()}`) as never);
+    // ⛔ SIGNED (2026-10-06): the page prints only a sentence this server wrote (`flash-message.ts`).
+    redirect((`/wallet/deposit?error=${encodeURIComponent(signFlash("deposit-error", message))}&${carry.toString()}`) as never);
 
   // B-23 — the bounds are IMPORTED from validators.ts (the schema's own
   // constants), not restated. The old literals here were a second definition

@@ -11,10 +11,14 @@
  *   3. THE REBUILT URL — path + bet only; a path that is not same-origin becomes "/".
  *   4. ⭐ A SHARED LINK NEVER SETS A STAKE — the URL's stake is used only with a matching marker under 24 hours old.
  *   5. THE MARKER'S ATTRIBUTION — `ref`, `invite` and the five `utm_*` survive, in their safe shapes; nothing else does.
- *   6. THE SAME-ORIGIN RULE — `sanitizeNext` refuses "//evil", "/" + backslash + "evil", absolute URLs and `/auth/` pages.
+ *   6. THE SAME-ORIGIN RULE — `sanitizeNext` refuses "//evil", "/" + backslash + "evil", absolute URLs and `/auth/` pages;
+ *      since 2026-10-06 also a control character anywhere ("/\t/evil" is read as "//evil") and a bare `/auth` — and no
+ *      file under src/ keeps a private copy of the rule (6.one-rule).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written.
  */
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import * as PB from "../src/lib/journey/pending-bet.ts";
 import * as SN from "../src/lib/safe-next.ts";
 
@@ -112,12 +116,39 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   const outs = cases.map(([i]) => safe(() => impl.sanitize(i)));
   ok("6.next · a same-origin path passes; //evil, a backslash path, an absolute or javascript: URL, an /auth/ page, a relative or empty value do not",
     cases.every(([, want], i) => outs[i] === want), j(cases.map(([i], k) => [i, outs[k]])));
+
+  // 🔴 2026-10-06 · the browser's URL parser STRIPS tab, CR and LF, so "/\t/evil.example" is read as "//evil.example".
+  // The old one-regex rule passed it (its second character is a tab, not "/"), on every sign-in and sign-up door.
+  const tricks = ["/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "/\u0000/evil.example", "/\u007f/x", `/markets${BS}x`];
+  const tricksOut = tricks.map((v) => safe(() => impl.sanitize(v)));
+  ok("6.control-chars · a tab, CR, LF, NUL, DEL or a backslash anywhere is refused", tricksOut.every((o) => o === ""), j(tricks.map((v, k) => [v, tricksOut[k]])));
+  ok("6.control-chars · control: the tab, LF and CR forms really are read as another site by the URL parser",
+    tricks.slice(0, 3).every((v) => new URL(v, "https://www.50pick.tz/auth/login").host === "evil.example"));
+  const bare = ["/auth", "/auth?x=1", "/auth#top"].map((v) => safe(() => impl.sanitize(v)));
+  ok("6.auth-bare · /auth with no slash, a query or a fragment is an /auth page too", bare.every((o) => o === ""), j(bare));
   return failed;
 }
 
 if (!PROVE_RED) {
   console.log("pending-bet — the Vodacom plan S3 (pure)");
   const failed = run(REAL, (l) => console.log(l));
+
+  // 6.one-rule · EVERY DOOR ASKS safe-next.ts. Thirteen private copies of the regex are how the tab hole reached every
+  // sign-in and sign-up door at once (2026-10-06). Reads src/ only; writes nothing.
+  {
+    const walk = (dir: string): string[] => readdirSync(dir).flatMap((n) => {
+      const p = join(dir, n);
+      return statSync(p).isDirectory() ? walk(p) : /\.(ts|tsx)$/.test(n) ? [p] : [];
+    });
+    const COPY = /\/\^\\\/\(\?!/; // the text `/^\/(?!` — a hand-rolled leading-slash rule
+    const hits = walk("src").map((f) => f.replace(/\\/g, "/")).filter((f) => COPY.test(readFileSync(f, "utf8")));
+    const control = hits.includes("src/lib/safe-next.ts");
+    const strays = hits.filter((f) => f !== "src/lib/safe-next.ts");
+    console.log(`     hand-rolled leading-slash rules: ${hits.join(" · ") || "(none)"}`);
+    const line = (cond: boolean, label: string, extra = "") => { console.log(`  ${cond ? "PASS" : "FAIL"} ${label}${extra ? ` — ${extra}` : ""}`); if (!cond) failed.push(label); };
+    line(control, "6.one-rule · control: the scanner finds the rule in safe-next.ts itself");
+    line(strays.length === 0, "6.one-rule · no other file keeps a private copy — every door imports isSafePath / sanitizeNext", strays.join(", "));
+  }
   console.log(`\nPENDING BET — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
   process.exitCode = failed.length === 0 ? 0 : 1;
 } else {
@@ -144,6 +175,10 @@ if (!PROVE_RED) {
       impl: { ...REAL, sanitize: (r) => (typeof r === "string" && r.startsWith("/") && !r.startsWith("//") && !r.startsWith("/auth/") ? r : "") } },
     { name: "the same-origin rule lets a sign-in land on /auth/", expect: /^6\.next /,
       impl: { ...REAL, sanitize: (r) => (SN.isSafePath(r) ? r : "") } },
+    { name: "the pre-2026-10-06 one-regex rule — a tab after the first slash passes", expect: /^6\.control-chars /,
+      impl: { ...REAL, sanitize: (r) => (typeof r === "string" && /^\/(?![/\\])/.test(r) && !r.startsWith("/auth/") ? r : "") } },
+    { name: "the rule forgets that a bare /auth is an /auth page", expect: /^6\.auth-bare /,
+      impl: { ...REAL, sanitize: (r) => (SN.isSafePath(r) && !r.startsWith("/auth/") ? r : "") } },
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };

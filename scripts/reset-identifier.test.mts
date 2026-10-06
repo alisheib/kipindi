@@ -21,6 +21,10 @@
  *      input and a real account with no email all return ok and send NOTHING.
  *      If any of them threw, or returned a different shape, one unauthenticated
  *      request would reveal whether a Tanzanian mobile has a gambling account.
+ *   §6 ⭐ A COMPLETED RESET (2026-10-06): a weak new password is reported as weak
+ *      (it used to read as a dead link, and every new link said the same), the
+ *      wrong-password lock is lifted, and every device is signed out — a reset is
+ *      what an owner does when they fear someone else is in.
  *
  * ⚠️ WHO an email went to is read from the OUTBOX (`EMAIL_OUTBOX_CAPTURE=1`), never
  * from stdout — the log lines mask the recipient (audit F-06), so a stdout assertion
@@ -30,9 +34,10 @@
 process.env.EMAIL_OUTBOX_CAPTURE = "1";
 
 import { db } from "../src/lib/server/store.ts";
-import { requestPasswordReset } from "../src/lib/server/password-reset.ts";
+import { requestPasswordReset, consumeResetToken } from "../src/lib/server/password-reset.ts";
 import { resolveLoginIdentifier } from "../src/lib/server/auth-service.ts";
 import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
+import { getActiveSessionId, setActiveSessionId } from "../src/lib/server/session-registry.ts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -125,6 +130,28 @@ const linksIn = () => sent().map((m) => (m.html.match(/token=([^"&\s]+)/) ?? [])
   await requestPasswordReset("control@example.com");
   ok("§5 CONTROL — the outbox still captures, so the empties above mean something",
     sent().length === 1, `sent ${sent().length}`);
+}
+
+// ── §6 · ⭐ a COMPLETED reset: weak says weak, the lock lifts, every device signs out ─
+{
+  clearEmailOutbox();
+  const id = await seed("locked.out@example.com");
+  await db.user.update(id, { lockedUntil: new Date(Date.now() + 30 * 60_000).toISOString(), failedLoginCount: 5 } as never);
+  await setActiveSessionId(id, "sess_somebody_else");
+  ok("§6 CONTROL — the account starts locked, with a session live on some device",
+    !!(await db.user.findById(id))?.lockedUntil && (await getActiveSessionId(id)) === "sess_somebody_else");
+  await requestPasswordReset("locked.out@example.com");
+  const token = decodeURIComponent(linksIn()[0] ?? "");
+  const weak = await consumeResetToken(token, "password123");
+  ok("§6 a weak new password is reported as WEAK — not as a dead link", !weak.ok && weak.code === "PW_WEAK", JSON.stringify(weak));
+  const done = await consumeResetToken(token, "Kipindi!Reset2026x");
+  const after = await db.user.findById(id);
+  ok("§6 a strong one completes the reset", done.ok === true, JSON.stringify(done));
+  ok("§6 ⭐ …and lifts the wrong-password lock, so the NEW password works at once",
+    !after?.lockedUntil && after?.failedLoginCount === 0, `${String(after?.lockedUntil)} · ${String(after?.failedLoginCount)}`);
+  ok("§6 ⭐ …and signs out every device — the live session is gone", (await getActiveSessionId(id)) === null);
+  const again = await consumeResetToken(token, "Kipindi!Reset2026y");
+  ok("§6 the spent link is dead now (LINK_INVALID) — single-use, as before", !again.ok && again.code === "LINK_INVALID", JSON.stringify(again));
 }
 
 console.log(`\nreset-identifier: ${pass} passed, ${fail} failed`);

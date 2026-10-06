@@ -54,6 +54,26 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, Props>(function Pho
 ) {
   const { t } = useT();
   const [v, setV] = React.useState<string>(() => stripDigits(String(defaultValue ?? "")));
+  // The visible box, for the catch-up below. The caller's ref still receives it (U22).
+  const boxRef = React.useRef<HTMLInputElement | null>(null);
+  const setBoxRef = React.useCallback((el: HTMLInputElement | null) => {
+    boxRef.current = el;
+    if (typeof ref === "function") ref(el);
+    else if (ref) ref.current = el;
+  }, [ref]);
+
+  /* ⭐ WHAT WAS TYPED BEFORE THE PAGE WOKE UP IS KEPT (2026-10-06). The server draws this box before its script
+     arrives, and on a slow connection a player types into it in that gap — or the browser autofills it. The box
+     showed the digits, but this component never heard them: the hidden field the form posts stayed EMPTY, and the
+     ungrouped "712345678" failed the box's own pattern, so the browser refused the submit over a number that was
+     right. Measured with the page's scripts held back: sign-up blocked with the number in plain sight. So on mount the
+     box's own value is adopted as a keystroke would be. Uncontrolled only — a controlled caller owns its value. */
+  React.useEffect(() => {
+    if (value !== undefined) return;
+    const typed = boxRef.current?.value ?? "";
+    if (typed) setV(stripDigits(typed));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Keep controlled mode honoured when caller passes `value`.
   React.useEffect(() => {
@@ -116,7 +136,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, Props>(function Pho
     <>
       <Input
         {...visibleRest}
-        ref={ref}
+        ref={setBoxRef}
         id={id}
         type="tel"
         inputMode="numeric"

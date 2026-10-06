@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
   emptyState, applyInput, applyBackspace, focusPrev, focusNext, blurSegment,
   deriveIso, resolveSegment, sanitize, padOnBlur, SEGMENTS, type MaskState,
@@ -105,6 +106,29 @@ const view = (s: MaskState) => `${s.dd || "DD"}/${s.mm || "MM"}/${s.yyyy || "YYY
 {
   let s = applyInput(emptyState(), "10/05/1990"); // paste; sanitize keeps first 2 of dd
   eq("paste into dd keeps 10, advances", [s.dd, s.focus], ["10", 1]);
+}
+
+// 11. ⭐ 2026-10-06 — the component keeps a date typed before its script arrived. The boxes are controlled by state that
+// never heard keystrokes made before hydration, so the first re-render after mount WIPED them and the form posted no
+// date (measured on the sign-up form with the page's scripts held back). Source: the mount catch-up must read the
+// boxes' own values and emit them; the browser half is a drive.
+{
+  const SRC = readFileSync(new URL("../src/components/ui/date-select.tsx", import.meta.url), "utf8");
+  const adopts = (s: string) => /const typed = refs\.map\(\(r\) => r\.current\?\.value \?\? ""\);/.test(s)
+    && /setDd\(next\.dd\); setMm\(next\.mm\); setYyyy\(next\.yyyy\);\s*emit\(next\.dd, next\.mm, next\.yyyy\);/.test(s);
+  eq("DateSelect adopts a date typed before hydration (reads its boxes on mount, then emits)", adopts(SRC), true);
+  eq("control · without the emit the check fails", adopts(SRC.replace("emit(next.dd, next.mm, next.yyyy);", "")), false);
+}
+
+// 12. ⭐ 2026-10-06 — the same rule for the kit Checkbox, the sign-up form's 18+ and terms boxes (no suite of its own; it
+// sits beside the date control's). A tick made before hydration checked the real input, but the painted square — drawn
+// from state that starts at `defaultChecked` — showed it EMPTY, so a player tapped again and un-ticked it. The
+// uncontrolled box must read its input once on mount (measured with the scripts held back: real checked, painted empty).
+{
+  const SRC = readFileSync(new URL("../src/components/ui/checkbox.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const reads =(s: string) => /const follow = \(\) => setInternal\(el\.checked\);[\s\S]{0,600}?\n\s*follow\(\);\n\s*el\.addEventListener\("input", follow\);/.test(s);
+  eq("Checkbox paints a tick made before hydration (follows its input once on mount)", reads(SRC), true);
+  eq("control · without the mount read the check fails", reads(SRC.replace(/\n\s*follow\(\);\n/, "\n")), false);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "SOME FAILED"} — ${pass} passed, ${fail} failed`);

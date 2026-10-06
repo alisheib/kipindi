@@ -887,7 +887,8 @@ const asWritten = (s: string) => s.split("~").join(String.fromCharCode(92));
 /** The flag's one line in the shell's lazy module (WP6c): `next/dynamic`, server render on, no option object. */
 const FLAG_BINDING = partLineOf("LazyJourneyFlag");
 /** The email-verify bar's mount: today's condition, and never for a journey request. */
-const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}";
+// 2026-10-06: and never during a break (`promoSuppressed`) — the bar invites a deposit (docs/FLOWS.md §2).
+const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}";
 
 function g11Overlays(W: World, G: Graph, ok: Ok) {
   for (const j of OVERLAY_JOINS) {

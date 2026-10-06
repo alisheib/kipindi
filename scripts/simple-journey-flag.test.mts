@@ -621,7 +621,8 @@ function g10Wiring(W: World) {
   // per-request answer as the marker: a classic request renders it on today's condition, a journey request never does,
   // and nothing else renders it. No gate held this bar before WP7. (A block, so its names cannot meet the chrome's.)
   {
-    const EMAIL_BAR = "{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}";
+    // 2026-10-06: and never during a break (`promoSuppressed`) — the bar invites a deposit (docs/FLOWS.md §2).
+    const EMAIL_BAR = "{emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}";
     const tallyIn = (s: string, needle: string) => s.split(needle).length - 1;
     const barElsewhere = [...W.files].filter(([p, s]) => p !== "src/components/layout/app-shell.tsx" && s.includes("<EmailVerifyBanner")).map(([p]) => p);
     ok("10.shell.emailbar · the email-verify bar renders for a classic request on today's condition and never for a journey request (S6 WP7)",

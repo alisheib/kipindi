@@ -162,8 +162,8 @@ async function register(page, { phone9, email, next, ref }) {
   await segs.nth(1).fill("05"); await segs.nth(2).fill("05"); await segs.nth(3).fill("1995");
   for (const n of ["acceptAge", "acceptTerms"]) { const c = page.locator(`input[name="${n}"]`); if (!(await c.isChecked())) await c.check({ force: true }); }
   await page.locator('form button[type="submit"]').first().click();
-  // Registration lands on /profile/kyc?welcome=new (the OTP-driven register flow is legacy and
-  // only re-enabled with a live SMS provider) — accept either landing and answer the OTP if asked.
+  // Registration lands on its safe `next`, else /?welcome=new (2026-10-06; the OTP-driven register flow
+  // is wired to no form) — accept any landing and answer the OTP if asked.
   await page.waitForURL((u) => !/\/auth\/register/i.test(u.toString()), { timeout: 120_000 });
   if (/\/auth\/otp/i.test(page.url())) {
     await sleep(800);

@@ -25,6 +25,7 @@ import { getSessionState } from "@/lib/server/session";
 import { verifySession } from "@/lib/server/crypto";
 import { db } from "@/lib/server/store";
 import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
+import { sanitizeNext } from "@/lib/safe-next";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ const COOKIE_NAME = "kp_session";
 /** Same-origin path only, never back into /auth/*. The login page applies the same rule. */
 function safeNextPath(raw: string | null | undefined): string {
   const v = (raw ?? "").trim();
-  return /^\/(?![/\\])/.test(v) && !v.startsWith("/auth/") && !v.startsWith("/auth?") && v !== "/auth" ? v : "";
+  return sanitizeNext(v);
 }
 
 async function publicBase(req: NextRequest): Promise<string> {

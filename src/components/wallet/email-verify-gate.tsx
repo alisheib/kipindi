@@ -18,6 +18,7 @@
  */
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
@@ -27,6 +28,7 @@ import { verifyErrorMessage } from "@/lib/verify-error";
 
 export function EmailVerifyGate({ email }: { email: string | null }) {
   const { t } = useT();
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ tone: "ok" | "err"; message: string } | null>(null);
 
@@ -42,6 +44,9 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
           setResult(r.sent
             ? { tone: "ok", message: t.wallet.verifyResent }
             : { tone: "ok", message: t.wallet.verifyAlreadyDone });
+          // ⭐ 2026-10-06 · …and do the reload for them: the page re-renders without this gate, the form appears,
+          // and the app-wide bar goes with it. It used to tell the player to reload and then wait for them to.
+          if (!r.sent) router.refresh();
         } else {
           // `r.error` is a CODE — never render it raw at a player.
           setResult({ tone: "err", message: verifyErrorMessage(t, r.error, r.retryAfterSec) });

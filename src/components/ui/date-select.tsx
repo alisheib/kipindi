@@ -117,6 +117,27 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     lastEmit.current = value ?? "";
   }, [controlled, value]);
 
+  /* ⭐ WHAT WAS TYPED BEFORE THE PAGE WOKE UP IS KEPT (2026-10-06) — `PhoneInput`'s note, here for the date. The
+     server draws the three boxes before their script arrives, and a date typed (or autofilled) in that gap was WIPED
+     by the first re-render after mount: the boxes are controlled by state that never heard it, so the form posted no
+     date. Measured with the page's scripts held back: the sign-up form's birthday emptied itself. On mount the boxes'
+     own values are adopted as typing would have taken them, and a box already left is padded as its blur would have
+     padded it. Uncontrolled and empty only — a held value is never second-guessed. */
+  useEffect(() => {
+    if (controlled || isoValue) return;
+    const typed = refs.map((r) => r.current?.value ?? "");
+    if (!typed.some(Boolean)) return;
+    const next: Record<SegKey, string> = { dd, mm, yyyy };
+    SEGMENTS.forEach((seg, i) => {
+      if (!typed[i]) return;
+      const v = resolveSegment(seg.key, sanitize(typed[i], seg.max), seg.max).value;
+      next[seg.key] = refs[i].current === document.activeElement ? v : padOnBlur(seg.key, v, seg.max);
+    });
+    setDd(next.dd); setMm(next.mm); setYyyy(next.yyyy);
+    emit(next.dd, next.mm, next.yyyy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // The browser's own "please fill this in" is in the BROWSER's language, which on
   // a Dar es Salaam handset is very often not the language the player chose here.
   // A custom message keeps the bubble in the app's locale. ⛔ It must be cleared

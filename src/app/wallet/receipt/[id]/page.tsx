@@ -70,7 +70,8 @@ const STATUS_TONE: Record<StoredTxn["status"], {
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet");
+  // Back to THIS receipt after signing in, not the wallet (2026-10-06).
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(`/wallet/receipt/${encodeURIComponent((await params).id)}`)}`);
   const { t } = await getServerT();
   const { id } = await params;
 

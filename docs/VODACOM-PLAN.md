@@ -2830,7 +2830,9 @@ Polling: every 3s for the first minute, then every 10s.
 **After registering**
 - Land on the origin page with `?bet=` and `welcome=new`.
 - Balance 0 → low-balance → deposit (shortfall = stake) → code → PIN → waiting → back → confirm.
-- With no `next` under the journey: `/?welcome=new`, not `/wallet/deposit`.
+- With no `next` under the journey: `/?welcome=new`, not `/wallet/deposit`. ✅ Classic does this too since
+  2026-10-06 (owner ruling, `docs/FLOWS.md` §1), so `test:post-register-landing` expects `/?welcome=new` in both
+  flag states.
 
 **Other rules**
 - The deposit page's signed-out redirect keeps its full query.

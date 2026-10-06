@@ -8,6 +8,7 @@ import { FieldLegend } from "@/components/ui/field-legend";
 import { I } from "@/components/ui/glyphs";
 import { verifyLogin2faAction } from "../login/actions";
 import { getServerT } from "@/lib/i18n-server";
+import { sanitizeNext } from "@/lib/safe-next";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -20,7 +21,7 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
   const error = sp.error ?? "";
   const backup = sp.mode === "backup";
   const nextRaw = (sp.next ?? "").trim();
-  const nextSafe = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const nextSafe = sanitizeNext(nextRaw);
   const nextQuery = nextSafe ? `&next=${encodeURIComponent(nextSafe)}` : "";
   const errorMsg: Record<string, string> = {
     invalid: t.security.challengeInvalid,
@@ -43,7 +44,8 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
             The border alpha holds the old opaque `border-no-700` weight (2.37 vs 2.38). */}
         {error && (
           <div id="tfa-error" role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3 py-2.5 text-[13px] text-danger-fg">
-            {errorMsg[error] ?? error}
+            {/* ⛔ An unknown code is never echoed — that printed any `?error=` text on our own page (2026-10-06). */}
+            {errorMsg[error] ?? t.error.somethingDidntWork}
           </div>
         )}
 

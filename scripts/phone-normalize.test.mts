@@ -398,6 +398,20 @@ function checkWiring(src: string, log: (line: string) => void): string[] {
   return wired ? [] : [WIRING];
 }
 
+/* ══ §7c · 2026-10-06 · A NUMBER TYPED BEFORE THE SCRIPT ARRIVED IS KEPT ═══════
+ * On a slow connection a player types — or the browser autofills — the box before React wakes up. The box showed the
+ * digits, but the hidden field the form posts stayed EMPTY and the ungrouped digits failed the box's own pattern, so
+ * sign-up and sign-in were refused over a number in plain sight (measured with the page's scripts held back). Source,
+ * like §7: the box must read its own value on mount (uncontrolled only), and the box must carry the ref that reads it. */
+const CATCH_UP = "§7c · PhoneInput adopts a number typed before its script arrived — it reads its own box on mount, and the box holds the ref";
+function checkCatchUp(src: string, log: (line: string) => void): string[] {
+  const effect = /React\.useEffect\(\(\) => \{\s*if \(value !== undefined\) return;\s*const typed = boxRef\.current\?\.value \?\? "";\s*if \(typed\) setV\(stripDigits\(typed\)\);\s*\}, \[\]\);/.test(src);
+  const wired = /ref=\{setBoxRef\}/.test(src) && /boxRef\.current = el;/.test(src);
+  const ok = effect && wired;
+  log(`  ${ok ? "ok  " : "FAIL"} ${CATCH_UP}`);
+  return ok ? [] : [CATCH_UP];
+}
+
 /* ══ §7b · vb3 · ONE DIGIT TABLE ════════════════════════════════════════════
  * Every keyboard's digits are read through ONE table, `toAsciiDigits` in `phone-normalize.ts`. House-bot's whole-number
  * parser kept a private copy until vb3, and two copies drift. Source, like §7: a deleted copy cannot be driven. */
@@ -497,6 +511,8 @@ if (!PROVE_RED) {
   /* ── §7 · the component reads the rule ───────────────────────────────────── */
   log("\n§7 · vb3 · THE COMPONENT READS THE RULE");
   failed.push(...checkWiring(PHONE_INPUT, log));
+  log("\n§7c · A NUMBER TYPED BEFORE THE SCRIPT ARRIVED IS KEPT");
+  failed.push(...checkCatchUp(PHONE_INPUT, log));
   log("\n§7b · vb3 · ONE DIGIT TABLE");
   failed.push(...checkOneTable(RULES_SRC, log));
 
@@ -719,6 +735,22 @@ if (!PROVE_RED) {
       ok(`PLANT LANDED · ${name}`, PHONE_INPUT.split(from).length === 2, "the anchor must match the shipped source exactly once");
       ok(`  └─ fires: ${WIRING.slice(0, 60)}`, checkWiring(PHONE_INPUT.replace(from, to), quiet).includes(WIRING),
         "the wiring check did not see the planted component");
+    }
+  }
+
+  // §7c reads the SOURCE too: each half of the catch-up removed must fire — in memory, and nothing is written.
+  {
+    ok("§0 baseline · the shipped PhoneInput keeps a number typed before its script arrived", checkCatchUp(PHONE_INPUT, quiet).length === 0);
+    const CATCH_PLANTS = [
+      ["2026-10-06 · the catch-up dropped — a number typed before hydration is lost again",
+        "if (typed) setV(stripDigits(typed));", ""],
+      ["2026-10-06 · the box loses its ref — the catch-up reads nothing",
+        "ref={setBoxRef}", "ref={ref}"],
+    ] as const;
+    for (const [name, from, to] of CATCH_PLANTS) {
+      ok(`PLANT LANDED · ${name}`, PHONE_INPUT.split(from).length === 2, "the anchor must match the shipped source exactly once");
+      ok(`  └─ fires: ${CATCH_UP.slice(0, 60)}`, checkCatchUp(PHONE_INPUT.replace(from, to), quiet).includes(CATCH_UP),
+        "the catch-up check did not see the planted component");
     }
   }
 

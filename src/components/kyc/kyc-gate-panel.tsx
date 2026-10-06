@@ -47,6 +47,7 @@ import { fill } from "@/lib/utils";
 import type { KycPanelState } from "@/lib/kyc-gate-state";
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { durationHours } from "@/lib/duration-phrase";
+import { isSafePath } from "@/lib/safe-next";
 
 const TONE = {
   /** Nothing has gone wrong; there is simply a step to take. Brand blue, not red. */
@@ -119,8 +120,9 @@ export function KycGatePanel({
 
   // ⛔ Only a same-site absolute path may round-trip, and it is re-checked HERE as well as on the KYC
   // page. A `next` that leaves the site is an open redirect, and this panel is rendered on a money
-  // surface where the URL is the most attacker-visible thing there is.
-  const safeNext = returnTo && /^\/(?!\/)/.test(returnTo) ? returnTo : null;
+  // surface where the URL is the most attacker-visible thing there is. The one shared rule — this private copy let
+  // "/\evil.example" and control characters through until 2026-10-06.
+  const safeNext = isSafePath(returnTo) ? returnTo : null;
   const verifyHref = safeNext ? `/profile/kyc?next=${encodeURIComponent(safeNext)}` : "/profile/kyc";
   const href = spec.cta === "support" ? "/help" : verifyHref;
 

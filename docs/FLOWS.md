@@ -15,8 +15,13 @@ Updated 2026-05-17 (Sprint 59.6 — flow-architecture pass).
 | Unauth visits `/wallet`, `/positions`, `/profile`, `/admin/*` | 307 → `/auth/login?next=<path>` at the edge | `src/proxy.ts:85-89` |
 | `/auth/login` form OK | `safeNext` from `?next=` (validated same-origin) OR `/admin` for admin role OR `/` | `src/app/auth/login/actions.ts:38-44` |
 | `/auth/login` form fails (wrong creds, rate-limited) | `/auth/login?error=<code>&phone=<phone>&next=<next>` (preserve return-to) | `src/app/auth/login/actions.ts:24-36` |
-| Authed user on `/auth/login` or `/auth/register` | **Not currently bounced** — the page renders and the user can manually navigate away. A layout-level bouncer was prototyped but caused a Next.js 16 dev-mode hook-count mismatch that destabilised other tests. Deferred until a production build cycle confirms the redirect-from-server-component path is stable. Impact: minimal — authed users rarely visit these pages, and the underlying auth gate on `/wallet`, `/positions`, `/admin/*` is unaffected. | follow-up |
-| Register form OK | The safe `?next=` with `welcome=new` added, else **`/wallet/deposit?welcome=new`** (or `/admin` for ADMIN_BOOTSTRAP_PHONES). ⛔ **Not `/profile/kyc`** — from 2026-09-05 to 2026-09-13 every new player was sent to the ID-upload form, which was the old ladder made literal; the one-time-code path (`login/actions.ts`, `isNew`) follows the same rule | `src/app/auth/register/actions.ts` |
+| Authed user on `/auth/login` or `/auth/register` | Bounced to the safe `?next=`, else `/` (`bounceIfAuthed`). ⚠️ Corrected 2026-10-06: this row said "Not currently bounced", which stopped being true when `bounce-authed.ts` landed | `src/app/auth/bounce-authed.ts` |
+| **Every `next` / return-to, on every door** | ⭐ ONE rule: `src/lib/safe-next.ts` (`isSafePath` / `sanitizeNext`). A same-origin path only: no `//`, no backslash anywhere, **no control character** (tab/CR/LF — the browser strips them, so `/\t/evil.example` is read as `//evil.example`), it must resolve to this origin, and a sign-in never lands on an `/auth` page (bare `/auth` included). 🔴 2026-10-06: fifteen private copies of a one-regex rule had the tab hole on every sign-in, sign-up, 2FA, OTP, session-ended and identity door; all now import this file, and `test:pending-bet` 6.one-rule fails if a private copy returns | `src/lib/safe-next.ts` |
+| **A message carried by a redirect** (`?message=` on sign-up, `?error=` on deposit/withdraw) | ⛔ Signed (`src/lib/server/flash-message.ts`): bound to its page, 15 minutes. The pages print only a sentence the server wrote — a hand-made link used to put any text under "Deposit failed" on the real domain. 2FA/OTP never echo an unknown `?error=` code | `src/lib/server/flash-message.ts` |
+| A money page interrupted by sign-in | Returns to the same address with its query (`pathWithQuery`): `/wallet/deposit?from=low-balance`, the receipt, the card return's `order_id` (2026-10-06 — they returned to a bare `/wallet`) | `src/app/wallet/**` |
+| Register form OK | The safe `?next=` with `welcome=new` added, else **`/?welcome=new`** — the market board, the same front door a returning login gets (`/?welcome=back`) — or `/admin` for ADMIN_BOOTSTRAP_PHONES. ⛔ **Never a gate** (owner ruling 2026-10-06): not `/profile/kyc` (the ID-upload form, 2026-09-05 → 09-13) and not `/wallet/deposit` (2026-09-13 → 10-06), which for an account this new renders its email door in place of the form. The email is still asked — the welcome toast, the app-wide `EmailVerifyBanner` with Resend — and still enforced where money goes in (the deposit page's door + `wallet-service.deposit()`). A `next` that is `/wallet/deposit` still lands there. The one-time-code path (`login/actions.ts`, `isNew`) follows the same rule; `test:kyc-at-withdrawal` §A pins both | `src/app/auth/register/actions.ts` |
+| Forgot → reset password | Success → `/auth/login?reset=1`. ⭐ 2026-10-06: the reset **signs out every device** (`revokeUserSessions` — a reset is what an owner does when they fear someone else is in; the intruder's session used to survive it) and **lifts the wrong-password lock** (the lockout screen offers the reset as the way out, and the lock kept refusing the new password). A weak new password returns `reason=password_weak`, not "dead link". An officer's temporary password does the same two things | `src/lib/server/password-reset.ts` |
+| Email confirmation link | Confirmed / already confirmed → **Add funds** (`/wallet/deposit`) first, Browse markets second (2026-10-06). A link that did not confirm keeps Browse markets + Go to account. "Already confirmed in another tab" on Resend now refreshes the page by itself | `src/app/auth/verify-email/page.tsx` |
 | Session idle for 24h | Dropped, next request unauth → 307 to `/auth/login` | `src/lib/server/session.ts:64-82` |
 | Session absolute lifetime 7d | Drop + force re-auth | `src/lib/server/session.ts:25` |
 
@@ -26,6 +31,7 @@ Updated 2026-05-17 (Sprint 59.6 — flow-architecture pass).
 
 | Trigger | Behaviour | Source |
 |---|---|---|
+| **The deposit screen's doors** | ⭐ The SERVER's order, drawn in the same order (2026-10-06): a **break** (cooling-off / self-exclusion — its own sentence and end date, no button) → a **held wallet** → the **email door** → the form. Until 2026-10-06 the page never asked about a break, so a player on one was shown the email door, confirmed, and was then refused. The app-wide "confirm your email to add money" bar is not shown during a break (`promoSuppressed`), nor is any cashback promo | `src/app/wallet/deposit/page.tsx` · `app-shell.tsx` |
 | **Deposit without identity verification** | ✅ **NOT GATED** (2026-09-13). Depositing asks no identity question. The doors, in order: RG lockout → **confirmed email** → (lock) caps + Source of Funds. ⭐ RECORDED, not refused: `kycStatus` + `everApproved` ride on the deposit's existing `deposit.initiated` row, from `readIdentityStanding` (never throws; a failed read is stamped `UNREADABLE`) | `wallet-service.deposit()` · `src/lib/server/kyc-gate.ts` |
 | **Bet placement without identity verification** | ✅ **NOT GATED** (2026-09-13). One deletion covers polls AND Up & Down (both stake through `buyPosition`). ⭐ RECORDED as two FIELDS on the `market.position.opened` row every bet already writes — ⛔ never a second audit row: the audit chain is one database-global serialised writer | `src/lib/server/market-service.ts` in `buyPositionInner()` |
 | **Withdraw without identity verification** | ⛔ **REFUSED** — the only identity gate on any money path. `assertIdentityForPayout(userId)` asks **`approvedEver`**: `approvedAt` is set, or the row is `APPROVED` — *has this account EVER been approved?* — the ONE predicate the withdraw page also asks (`src/lib/kyc-approval.ts`). Audit `withdraw.kyc_blocked`, instruction citing 2026-09-13. 🔴 **Ever, not now, is the money-safety rule**: a player under re-verification HOLDS REAL MONEY earned under an identity we accepted. An officer who must stop money moving freezes the wallet | `src/lib/server/kyc-gate.ts` + `wallet-service.withdraw()` |
@@ -74,7 +80,7 @@ Updated 2026-05-17 (Sprint 59.6 — flow-architecture pass).
 |---|---|---|
 | Login success | `redirect()` to safeNext / `/admin` / `/` (clean GET) | `src/app/auth/login/actions.ts:38-44` |
 | Login failure | `redirect()` back to `/auth/login?error=...` with phone + next preserved | `src/app/auth/login/actions.ts:24-36` |
-| Register success | `redirect()` to the safe `next` with `welcome=new`, else `/wallet/deposit?welcome=new`, or `/admin` (2026-09-13 — was `/profile/kyc?welcome=new`) | `src/app/auth/register/actions.ts` |
+| Register success | `redirect()` to the safe `next` with `welcome=new`, else `/?welcome=new`, or `/admin` (2026-10-06 — was `/wallet/deposit?welcome=new` from 2026-09-13, `/profile/kyc?welcome=new` before) | `src/app/auth/register/actions.ts` |
 | Deposit / withdraw / bet placement / cash-out | Server action returns `{ ok, error }` — client component renders the result. `revalidatePath()` invalidates `/wallet`, `/positions`, etc. so the next GET reflects the new state. | `src/app/wallet/deposit/actions.ts`, `src/app/wallet/withdraw/actions.ts`, `src/app/markets/actions.ts:32-59` |
 
 Both patterns are acceptable for App Router. The first (PRG) is used where a fresh GET tells a clean story (auth flows). The second (server-action result + revalidatePath) is used where the client form benefits from showing the error inline and the destination is the same page (wallet flows).
@@ -117,7 +123,7 @@ For RG (responsible-gambling) gates, the check lives in the **service layer** (`
 
 | Issue | Severity | Status |
 |---|---|---|
-| Authed-user bouncer on `/auth/login` and `/auth/register` not active | Low | Prototyped via layout-level guard but destabilised the test suite in Next.js 16 dev mode (hook-count mismatch). Pre-existing `/auth/admin` bouncer has the same dev-mode behaviour. Revisit after a production-build smoke pass confirms the redirect-from-server-component path is stable. |
+| ~~Authed-user bouncer on `/auth/login` and `/auth/register` not active~~ | — | ✅ Active (`bounce-authed.ts`); row struck 2026-10-06. |
 | Sportradar match-integrity adapter is a stub | Medium | Labeled "stub adapter" on `/admin` and `/admin/compliance`. Will be wired in the data-feed integration sprint. |
 | Document upload on `/profile/kyc` is stubbed | Medium | Object-storage integration sprint. |
 | Mock payments adapter | High (blocks live) | Selcom / Azampay aggregator contract sprint. |
@@ -125,6 +131,23 @@ For RG (responsible-gambling) gates, the check lives in the **service layer** (`
 Every item above is a contract-pending integration — the platform code is ready to receive each adapter via the existing service interface.
 
 SMS: resolved 2026-09-16 (its "Mock SMS provider" row removed 2026-09-25) — Blackball is the live provider, delivery receipts proven end to end 2026-09-23 ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md)).
+
+### 8a. Route audit 2026-10-06 — found, NOT yet fixed
+
+Two read-only audits of every sign-up, sign-in, recovery, email and money-page redirect. What they found and was fixed the
+same day is in §1/§2 above. These were found and deliberately left, each for the reason given — none is a regression:
+
+| Finding | Why it waits |
+|---|---|
+| **The email address can be changed with a session and no password**, and recovery sends the reset link to whatever address is on file, confirmed or not (`profile/actions.ts`, `password-reset.ts`). Someone holding a signed-in phone for a minute can set their own address, then take the account by "forgot password" | 🔴 Owner decision: require the current password to change the address (a UI change in EN/SW/ZH), and/or send reset links only to a confirmed address (which strands players who never confirmed). Highest priority of this list |
+| Forgot-password answers an unknown identifier at once and a known one only after the email provider accepts the mail — the time difference can reveal which numbers have an account (unmeasured) | Make the send fire-and-forget or pad the response; needs a measurement first |
+| Opening the confirmation link confirms the address (GET), so a corporate mail scanner can confirm an address its owner never opened | A "Confirm my email" button (POST) on the page — product + copy change |
+| `next` is lost through forgot/reset, and a market bet/cash-out action that finds the session gone signs in to `/` instead of the market (`markets/actions.ts`, 8 sites) | Lost intent, not lost money; the link in the reset email needs a signed `next` (Vodacom plan S9 already plans one for the confirmation link) |
+| A failed sign-up loses the date of birth and the marketing tick; the sign-up rate-limit panel has no countdown | Carrying the birth date in the address puts more personal data in URLs; better fixed by keeping the form client-side on a refusal |
+| The referral code (`ref`) is lost between sign-in and sign-up (the login page never reads it; the header's Sign up carries neither `ref` nor `next`) | Attribution loss for agents/sharers — a small, separate change to the login page and both headers |
+| Accounts reached through `PHONE_EMAIL_MAP` can never complete a reset (the link binds the mapped address, the page compares `user.email`) | The map is a pre-KYC test mapping; retire it rather than patch it |
+| Staff sign-in errors land on the player login page; a player whose `next` is `/admin…` loops to the staff form; the 2FA step's refusal drops `next` | Low; staff-only paths |
+| The one-time-code sign-up path (wired to no form) returns instead of redirecting on failure, never passes `ref`/`invite`, and creates `email: null` | Latent — fix before ANY form offers it (`docs/BLACKBALL-SMS.md` §7 step 6) |
 
 ---
 

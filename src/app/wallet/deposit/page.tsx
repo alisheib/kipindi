@@ -27,6 +27,10 @@ import { getPayoutStatus } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
 import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { fill, formatDate } from "@/lib/utils";
+import { readFlash } from "@/lib/server/flash-message";
+import { pathWithQuery } from "@/lib/safe-next";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -53,14 +57,17 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   bFirst?: string; bLast?: string; bAddr?: string; bCity?: string; bRegion?: string; bPost?: string;
 }> }) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet/deposit");
+  // The whole address survives the sign-in — `?from=low-balance` (the funnel's source tag) and anything carried.
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit", await searchParams))}`);
   const { t } = await getServerT();
 
   // A player about to put money IN has the most right to know we cannot get it out.
   const payouts = await getPayoutStatus();
 
   const sp = await searchParams;
-  const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
+  // ⛔ Only a sentence the deposit action signed (`flash-message.ts`) — a hand-made `?error=` used to print
+  // whatever it said under "Deposit failed", on a money page, on the real domain (2026-10-06).
+  const errorMsg = readFlash("deposit-error", sp.error);
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
   // ⭐ Jay item #8 — see the note in `moneyFormMsisdn`. Same rule, same reason: this action
@@ -97,6 +104,18 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   try {
     const w = await db.wallet.findByUserId(session.userId);
     walletHeld = !!w && w.status !== "ACTIVE";
+  } catch { /* graceful — the server is the enforcement */ }
+  // ⭐ A BREAK OUTRANKS EVERY OTHER DOOR, HERE AS ON THE SERVER (2026-10-06). `wallet-service.deposit()` asks the
+  // self-exclusion / cooling-off lockout FIRST and says the UI must render its gates in the same order — this page
+  // never asked it. A player on a cooling-off break with an unconfirmed address was shown the email door ("adding money
+  // opens as soon as your email is confirmed"), confirmed it, and was then refused for the break: two contradictory
+  // stories on one screen, and a nudge to deposit during a break the player chose. The break's own sentence now
+  // stands in place of the door and the form, with its end date.
+  // ⚠️ A failed read keeps the page as it was — the server still refuses a deposit during a break.
+  let breakUntil: string | null = null;
+  try {
+    const lock = await isLockedOut(session.userId);
+    if (lock.locked && lock.until) breakUntil = lock.until;
   } catch { /* graceful — the server is the enforcement */ }
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
@@ -151,7 +170,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         }}
       />
 
-      {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
+      {/* …and never an incentive to a player on a break (2026-10-06). */}
+      {showCashback && !breakUntil && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
       {/* ── THE ONE DOOR ────────────────────────────────────────────────────────
           The ladder is: register → confirm email → deposit and play → verify identity →
@@ -163,8 +183,17 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           ⛔ The identity panel that stood here from 2026-09-05 to 2026-09-13 is deleted with the
           deposit gate it mirrored. Do not restore it by reading the older ruling. */}
       {/* 🔴 A HELD WALLET OUTRANKS THE EMAIL DOOR (2026-09-14): confirming an address would open nothing.
-          ⛔ Not `KycGatePanel` — the deposit screen draws no identity panel (`test:kyc-at-withdrawal` B1.1). */}
-      {walletHeld ? (
+          ⛔ Not `KycGatePanel` — the deposit screen draws no identity panel (`test:kyc-at-withdrawal` B1.1).
+          ⭐ AND A BREAK OUTRANKS BOTH (2026-10-06) — the server's own first door. Its sentence is the RG page's
+          (`rg.breakActive`): the end date, that it cannot be shortened, and that withdrawals are not stopped. No button:
+          there is nothing to do here until the date, and nothing on this page may invite a deposit before it. */}
+      {breakUntil ? (
+        <div data-testid="deposit-break">
+          <Callout tone="warning" layout="stack" glyph="lock" role="status" titleAs="h2" title={t.wallet.depositPausedTitle}>
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(t.rg.breakActive, { date: formatDate(breakUntil) })}</p>
+          </Callout>
+        </div>
+      ) : walletHeld ? (
         <div data-testid="deposit-paused">
           <Callout
             tone="warning"
@@ -262,8 +291,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);
           this slot is a deliberately-labeled placeholder, never a fabricated mark. */}
       {/* 2026-09-14 — how a deposit is credited means nothing to a wallet that cannot take one: pass 2 of the visual
-          audit found it under the "Deposits paused" notice. */}
-      {!walletHeld && (
+          audit found it under the "Deposits paused" notice. The same holds during a break (2026-10-06). */}
+      {!walletHeld && !breakUntil && (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3">
         <span
           aria-hidden

@@ -15,6 +15,11 @@ export async function resetPasswordAction(formData: FormData) {
 
   const result = await consumeResetToken(token, password);
   if (!result.ok) {
+    // A weak password is not a dead link (2026-10-06): the form stays usable and says what to change. Each reason is
+    // written out literally — `test:failure-reasons` §9d proves every reason row is reachable by finding it emitted.
+    if (result.code === "PW_WEAK") {
+      redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&reason=password_weak` as never);
+    }
     redirect(`/auth/reset-password?token=${encodeURIComponent(token)}&reason=reset_link_invalid` as never);
   }
   redirect("/auth/login?reset=1" as never);

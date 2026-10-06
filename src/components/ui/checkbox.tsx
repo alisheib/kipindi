@@ -124,6 +124,10 @@ export function Checkbox({
     const el = inputRef.current;
     if (!el) return undefined;
     const follow = () => setInternal(el.checked);
+    // ⭐ 2026-10-06 · …AND A TICK MADE BEFORE THE SCRIPT ARRIVED. On a slow connection the sign-up form's 18+ and terms
+    // boxes can be ticked before hydration: the real input is checked, but the painted square — drawn from `internal`,
+    // which starts at `defaultChecked` — showed it EMPTY, so a player tapped again and un-ticked it. Read once on mount.
+    follow();
     el.addEventListener("input", follow);
     el.addEventListener("change", follow);
     return () => {

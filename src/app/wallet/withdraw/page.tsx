@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { pathWithQuery } from "@/lib/safe-next";
+import { readFlash } from "@/lib/server/flash-message";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
@@ -55,10 +57,11 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // withdrawal, including money they had deposited and never bet. That is gone.
   const wcfg = await getEffectiveConfig();
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet/withdraw");
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/withdraw", await searchParams))}`);
 
   const sp = await searchParams;
-  const errorMsg = sp.error ? decodeURIComponent(sp.error) : null;
+  // ⛔ Only a sentence the withdraw action signed (`flash-message.ts`) — never raw text from the address bar (2026-10-06).
+  const errorMsg = readFlash("withdraw-error", sp.error);
   // Restore form values on error redirect so the player doesn't re-enter everything
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";

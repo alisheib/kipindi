@@ -20,6 +20,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { checkAdminTotp, type AdminTotpStatus } from "@/lib/server/admin-guard";
 import { JOURNEY_PREVIEW_COOKIE } from "@/lib/server/journey-preview";
 import { previewLinkDoor, previewOffDoor, previewOnDoor, type DoorAnswer } from "@/lib/server/journey-preview-doors";
+import { isSafePath } from "@/lib/safe-next";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,7 +33,7 @@ async function publicBase(req: NextRequest): Promise<string> {
 }
 
 async function answer(req: NextRequest, door: DoorAnswer): Promise<NextResponse> {
-  const to = /^\/(?![/\\])/.test(door.to) ? door.to : "/";
+  const to = isSafePath(door.to) ? door.to : "/";
   const res = NextResponse.redirect(`${await publicBase(req)}${to}`, 303);
   res.headers.set("Cache-Control", "private, no-store, max-age=0");
   if (door.set) {

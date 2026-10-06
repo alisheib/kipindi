@@ -12,6 +12,7 @@
  *      (for support requests from users without email).
  */
 import { runOutsideLock } from "./locks";
+import { revokeUserSessions } from "./session-registry";
 import { appUrl } from "@/lib/app-url";
 import { createHash } from "node:crypto";
 import { db } from "./store";
@@ -230,19 +231,33 @@ export async function validateResetToken(
 export async function consumeResetToken(
   token: string,
   newPassword: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true } | { ok: false; error: string; code: "PW_WEAK" | "LINK_INVALID" }> {
+  // ⭐ THE CODE TELLS THE PAGE WHICH IT WAS (2026-10-06). The action turned every failure into "that reset link is no
+  // longer valid", and the strength check runs FIRST — so a password like "password123" was reported as a dead link,
+  // above a form that still worked, and every new link said the same.
   const pwError = validatePasswordStrength(newPassword);
-  if (pwError) return { ok: false, error: pwError };
+  if (pwError) return { ok: false, error: pwError, code: "PW_WEAK" };
 
   const check = await validateResetToken(token);
-  if (!check.ok) return check;
+  if (!check.ok) return { ...check, code: "LINK_INVALID" };
   const user = check.user;
 
   const salt = randomId(32);
   const hash = await hashPassword(newPassword, salt);
   // ⛔ The history columns ride in the SAME update as the hash (04 A4): the audit below is not awaited, and
   // a house-bot consent check that read it instead would wave through a password it never saw set.
-  await db.user.update(user.id, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "RESET_LINK" });
+  // ⭐ 2026-10-06 · THE RESET ALSO LIFTS THE WRONG-PASSWORD LOCK. The lockout screen offers exactly this way out
+  // ("…or reset your password now"), and the lock — checked before the password — went on refusing the NEW password
+  // for the rest of its 30 minutes. Proving the inbox is a stronger proof than the lock was waiting for.
+  await db.user.update(user.id, {
+    passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "RESET_LINK",
+    lockedUntil: null, failedLoginCount: 0,
+  });
+  // ⭐ 2026-10-06 · AND IT SIGNS OUT EVERY DEVICE. A reset is what an owner does when they fear someone else is in. It
+  // used to rotate the password and leave the one live session — possibly the intruder's — betting the balance until
+  // the owner's next sign-in displaced it (up to seven days). A missing registry row is a signed-out session
+  // (`session.ts`, case c), so this ends it on its next request.
+  await revokeUserSessions(user.id);
   // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
   runOutsideLock(() => {
     void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(user.id, "PASSWORD_RESET_LINK")).catch(() => {});
@@ -277,7 +292,13 @@ export async function adminResetPassword(
   const hash = await hashPassword(tempPassword, salt);
   // OFFICER_TEMP in the same update (04 A4): support's password is not the holder's consent, and the
   // audit below is fire-and-forget.
-  await db.user.update(userId, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "OFFICER_TEMP" });
+  await db.user.update(userId, {
+    passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "OFFICER_TEMP",
+    lockedUntil: null, failedLoginCount: 0,
+  });
+  // ⭐ 2026-10-06 · the same as a reset link: the wrong-password lock is lifted so the temporary password works, and
+  // whoever held the old password's session is signed out.
+  await revokeUserSessions(userId);
   // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
   runOutsideLock(() => {
     void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "PASSWORD_OFFICER_TEMP")).catch(() => {});

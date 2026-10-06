@@ -7,7 +7,7 @@ import { signSession, verifySession } from "@/lib/server/crypto";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { verifyPlayer2faChallenge } from "@/lib/server/player-2fa";
 // The same-origin rule for `next`, shared with the journey's pending-bet link (Vodacom plan S3).
-import { sanitizeNext } from "@/lib/safe-next";
+import { isAuthPath, isSafePath, sanitizeNext } from "@/lib/safe-next";
 
 /** Short-lived, HMAC-signed pre-session token proving the password step passed. */
 const PENDING_2FA_COOKIE = "kp_pending_2fa";
@@ -31,13 +31,13 @@ export async function startLoginAction(formData: FormData) {
   // protocol-relative ("//evil.com"), absolute URL, or empty value.
   // Also keep the user on the auth surface forwarded by the proxy
   // ONLY when it points at an in-app destination.
-  const next = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
+  const next = isSafePath(nextRaw) ? nextRaw : "";
   // And never let `next` send the user back to the auth pages themselves.
   // E-381 §6 item 14 — a position permalink's `#pos_…` fragment, read by `NextHashField` (a fragment never reaches the
   // server), re-attached after its shape is checked, so every redirect below that carries `next` carries it too.
   const hashRaw = String(formData.get("nextHash") ?? "");
   const safeHash = /^#[A-Za-z0-9_-]{1,80}$/.test(hashRaw) ? hashRaw : "";
-  const safeNext = next && !next.startsWith("/auth/") ? (next.includes("#") ? next : next + safeHash) : "";
+  const safeNext = next && !isAuthPath(next) ? (next.includes("#") ? next : next + safeHash) : "";
 
   const result = await loginWithPassword({ identifier, password });
   if (!result.ok) {
@@ -140,7 +140,7 @@ export async function verifyLogin2faAction(formData: FormData) {
 export async function startLoginOtpAction(formData: FormData) {
   const phoneRaw = String(formData.get("phone") ?? "");
   const nextRaw = String(formData.get("next") ?? "").trim();
-  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const safeNext = sanitizeNext(nextRaw);
   const result = await requestLoginOtp({ phone: phoneRaw });
   if (!result.ok) {
     const params = new URLSearchParams({
@@ -192,7 +192,7 @@ export async function verifyLoginOtpAction(formData: FormData) {
   // B-14 — read `next` up front: the FAILURE hop used to drop it, so one wrong
   // code cost the player their destination for the rest of the funnel.
   const nextRaw = String(formData.get("next") ?? "").trim();
-  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const safeNext = sanitizeNext(nextRaw);
   const result = await verifyOtpAndAuth({ phone, code, purpose });
   if (!result.ok) {
     // 🔴 `E-244` · AN ACCOUNT-STATUS REFUSAL IS NOT AN OTP ERROR, AND THIS HOP USED TO FLATTEN
@@ -233,9 +233,10 @@ export async function verifyLoginOtpAction(formData: FormData) {
   // gets clear confirmation that the auth completed.
   // Honor a safe ?next= (same rules as the password path) so a gated OTP login
   // lands back where the player intended, not always home.
-  // ⭐ A NEW ACCOUNT (one-time-code path) lands where it was going, or on adding money — never on the
-  // ID-upload form. Identity is asked before a withdrawal only (2026-09-13); `register/actions.ts`
-  // carries the same rule and its reasoning.
+  // ⭐ A NEW ACCOUNT (one-time-code path) lands where it was going, or home — never on a gate: not the
+  // ID-upload form, and not the deposit page, whose email door stands in place of its form for an
+  // account this new (owner ruling 2026-10-06). `register/actions.ts` carries the same rule and its
+  // reasoning.
   if (result.data?.isNew) {
     if (safeNext) {
       const [path, query = ""] = safeNext.split("?");
@@ -243,7 +244,7 @@ export async function verifyLoginOtpAction(formData: FormData) {
       qs.set("welcome", "new");
       redirect(`${path}?${qs.toString()}` as never);
     }
-    redirect("/wallet/deposit?welcome=new" as never);
+    redirect("/?welcome=new" as never);
   }
   redirect((safeNext || "/?welcome=back") as never);
 }

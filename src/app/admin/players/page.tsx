@@ -144,7 +144,7 @@ async function AdminPlayersContent({ searchParams }: { searchParams: Promise<Pla
    * ⚠️ WHICH IS WHY THE WORD IS "Nothing yet" AND NEVER "never opened KYC". From
    * 2026-09-05 to 2026-09-13 both sign-up doors redirected a new account straight to
    * /profile/kyc — this comment said so, and the ruling of 2026-09-13 ended it. A new
-   * player now lands on their safe `next`, else on the deposit page with `welcome=new`
+   * player now lands on their safe `next`, else on the market board with `welcome=new` (2026-10-06)
    * (auth/register/actions.ts, auth/login/actions.ts), because identity is asked before a
    * withdrawal and before nothing else. So a missing row is now the NORMAL state of a
    * brand-new player who deposits and plays — besides an abandon, a SWALLOWED `startKyc`

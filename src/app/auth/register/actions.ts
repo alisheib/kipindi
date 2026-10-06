@@ -5,6 +5,8 @@ import { registerWithPassword, requestRegisterOtp } from "@/lib/server/auth-serv
 import { normalizeReferralCode } from "@/lib/server/affiliate-service";
 import { getServerT } from "@/lib/i18n-server";
 import { messagingLocaleOf, renderedLocaleOf } from "@/lib/server/marketing/consent-ledger";
+import { sanitizeNext } from "@/lib/safe-next";
+import { signFlash } from "@/lib/server/flash-message";
 
 /**
  * D2 · THE LANGUAGE THE FORM WAS SHOWN IN — it decides which sentence the consent ledger stores as
@@ -45,7 +47,7 @@ export async function startRegisterAction(formData: FormData) {
   // Safe post-auth destination (the market the player tapped, etc.). Validated
   // same-origin relative, never an /auth/* loop.
   const nextRaw = String(formData.get("next") ?? "").trim();
-  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const safeNext = sanitizeNext(nextRaw);
 
   const result = await registerWithPassword({
     phone, email, password, passwordConfirm, dob,
@@ -64,7 +66,9 @@ export async function startRegisterAction(formData: FormData) {
         : "invalid",
     });
     if (result.error && result.code !== "ALREADY_EXISTS" && result.code !== "EMAIL_EXISTS" && result.code !== "RATE_LIMITED") {
-      params.set("message", result.error);
+      // ⛔ SIGNED (2026-10-06) — the page shows only words THIS server wrote (`flash-message.ts`); a hand-made
+      // `?message=` put an attacker's sentence on 50pick.tz's own sign-up page.
+      params.set("message", signFlash("register-error", result.error));
     }
     if (safeNext) params.set("next", safeNext); // don't lose intent on a retry
     /**
@@ -89,24 +93,28 @@ export async function startRegisterAction(formData: FormData) {
   if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
     redirect("/admin");
   }
-  // ⭐ A NEW PLAYER GOES WHERE THEY WERE GOING, OR TO ADD MONEY — 2026-09-13.
+  // ⭐ A NEW PLAYER GOES WHERE THEY WERE GOING, OR HOME — owner ruling 2026-10-06.
   //
-  // ⛔ NOT TO VERIFICATION. From 2026-09-05 to 2026-09-13 every new player was sent to
-  // `/profile/kyc?welcome=new`, because identity then gated depositing and staking and the market
-  // they wanted would have greeted them with a wall. That was the old ladder made literal — the
-  // ID-upload form as the first screen of a brand-new account — and it is precisely the friction the
-  // 2026-09-13 ruling removed: identity is now asked before a WITHDRAWAL and before nothing else.
+  // ⛔ NOT TO A GATE. From 2026-09-05 to 2026-09-13 every new player was sent to
+  // `/profile/kyc?welcome=new` (the ID-upload form), and from 2026-09-13 to 2026-10-06 to
+  // `/wallet/deposit?welcome=new` — which, for an account created seconds ago, renders NO form: its
+  // email door (`EmailVerifyGate`) stands in the form's place until the address is confirmed. Both
+  // made a locked door the first screen of a brand-new account.
   //
-  // ⭐ SO THEIR INTENT IS HONOURED AGAIN. With a safe `next`, they land on the market they came from;
-  // without one, on `/wallet/deposit`, whose only remaining errand is confirming the email we just
-  // sent. `welcome=new` rides along either way so `AuthFlash` greets them wherever they land.
+  // ⭐ SO: with a safe `next`, they land on the market they came from; without one, on the market
+  // board — the same front door a returning player gets (`/?welcome=back`, login). The email is still
+  // asked: the welcome toast names it, the app-wide bar (`EmailVerifyBanner`) carries Resend, and the
+  // deposit page + `wallet-service.deposit()` still refuse money until it is confirmed — asked when
+  // the player reaches for the deposit, not before they have seen a market. A `next` that IS
+  // `/wallet/deposit` still lands there: then the deposit was their intent. `login/actions.ts`
+  // (`isNew`, the one-time-code door) follows the same rule; `test:kyc-at-withdrawal` §A pins both.
   if (safeNext) {
     const [path, query = ""] = safeNext.split("?");
     const qs = new URLSearchParams(query);
     qs.set("welcome", "new");
     redirect(`${path}?${qs.toString()}` as never);
   }
-  redirect("/wallet/deposit?welcome=new" as never);
+  redirect("/?welcome=new" as never);
 }
 
 /** OTP-driven registration: built, and the SMS rail is live (Blackball), but wired to no form. Offering it is a product change (docs/BLACKBALL-SMS.md §7 step 6). */
@@ -117,7 +125,7 @@ export async function startRegisterOtpAction(formData: FormData) {
   const acceptAge = formData.get("acceptAge") === "on" || formData.get("acceptAge") === "true";
   const marketingOptIn = formData.get("marketingOptIn") === "on";
   const nextRaw = String(formData.get("next") ?? "").trim();
-  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const safeNext = sanitizeNext(nextRaw);
 
   const result = await requestRegisterOtp({
     phone, email: String(formData.get("email") ?? "").trim(), dob,

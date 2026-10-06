@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getSession } from "@/lib/server/session";
+import { sanitizeNext } from "@/lib/safe-next";
 
 /**
  * Bounce an already-authenticated visitor off the page that CALLS this.
@@ -47,6 +48,6 @@ export async function bounceIfAuthed(): Promise<void> {
   const href = h.get("x-href") ?? "";
   const qs = href.includes("?") ? href.slice(href.indexOf("?") + 1) : "";
   const nextRaw = new URLSearchParams(qs).get("next") ?? "";
-  const safeNext = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const safeNext = sanitizeNext(nextRaw);
   redirect((safeNext || "/") as never);
 }

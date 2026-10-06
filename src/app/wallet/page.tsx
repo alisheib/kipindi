@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { pathWithQuery } from "@/lib/safe-next";
 import { WalletPageClient } from "./wallet-client";
 import { WalletBar, type LedgerCounts } from "./wallet-bar";
 import { WalletResultModal } from "./wallet-result-modal";
@@ -131,7 +132,7 @@ function windowBounds(when: string, nowMs: number): { fromMs: number; toMs: numb
 export default async function WalletPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t } = await getServerT();
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet");
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet", await searchParams))}`);
 
   const sp = await searchParams;
   /**

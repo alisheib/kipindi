@@ -14,6 +14,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { bounceIfAuthed } from "../bounce-authed";
 import { sessionEndedThisRequest } from "@/lib/server/session";
 import { cookies } from "next/headers";
+import { isSafePath } from "@/lib/safe-next";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -65,7 +66,7 @@ export default async function LoginPage({
   // Open-redirect safety: the action validates this is a same-origin,
   // path-only string before redirecting.
   const nextRaw = (sp.next ?? "").trim();
-  const nextSafe = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
+  const nextSafe = isSafePath(nextRaw) ? nextRaw : "";
   // Default the sign-in method to whatever the round-tripped value looks like
   // (an "@" → email, otherwise phone — Tanzania is phone-first).
   const defaultMethod: "email" | "phone" = identifierDefault.includes("@") ? "email" : "phone";

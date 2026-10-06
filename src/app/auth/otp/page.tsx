@@ -10,6 +10,7 @@ import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 import { ResendOtpButton } from "@/components/auth/resend-otp-button";
 import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
 import { getServerT } from "@/lib/i18n-server";
+import { sanitizeNext } from "@/lib/safe-next";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -34,7 +35,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
   const sent = sp.sent === "1";
   const retrySec = Math.min(300, Math.max(0, parseInt(sp.retry ?? "0", 10) || 0));
   const nextRaw = (sp.next ?? "").trim();
-  const nextSafe = /^\/(?![/\\])/.test(nextRaw) && !nextRaw.startsWith("/auth/") ? nextRaw : "";
+  const nextSafe = sanitizeNext(nextRaw);
   // B-27 — remaining life computed on the SERVER clock from the code's real
   // expiry (`?exp=` from the issue/resend hop). undefined → component's TTL default.
   const expTs = sp.exp ? Date.parse(sp.exp) : NaN;
@@ -60,7 +61,8 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
 
           {error && (
             <div id="otp-error" role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3 py-2.5 text-[13px] text-danger-fg">
-              {errorMsg[error] ?? error}
+              {/* ⛔ An unknown code is never echoed — that printed any `?error=` text on our own page (2026-10-06). */}
+              {errorMsg[error] ?? t.error.somethingDidntWork}
               {error === "rate_limited" && retrySec > 0 && (
                 <> {t.auth.requestCodeIn} <CountdownPill seconds={retrySec} />.</>
               )}

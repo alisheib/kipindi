@@ -58,6 +58,7 @@ import { FiftyLockup } from "@/components/brand";
 import { LICENCE_NUMBER } from "@/lib/support-config";
 import { isOptOutPath } from "@/lib/marketing/optout";
 import type { Dict } from "@/lib/i18n-server";
+import { isSafePath } from "@/lib/safe-next";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t, locale } = await getServerT();
@@ -130,7 +131,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let endedNotice: { reason: SessionEndReason; href: string } | null = null;
   if (endedReason && pathname && !pathname.startsWith("/auth")) {
     const raw = h.get("x-href") ?? pathname;
-    const safe = /^\/(?![/\\])/.test(raw) && !raw.startsWith("/auth") ? raw : "";
+    const safe = isSafePath(raw) && !raw.startsWith("/auth") ? raw : "";
     const href = `/auth/session-ended${safe ? `?next=${encodeURIComponent(safe)}` : ""}`;
     // ⛔ `as never` is required by `typedRoutes: true` (next.config.ts), as in `admin/layout.tsx`.
     if (h.get("x-kp-document") === "1") redirect(href as never);
@@ -431,7 +432,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           journey"). Decided here, per request, on the resolver's own answer, so no soft navigation changes it. The
           deposit page's own email gate still stands between an unconfirmed address and a deposit; what a journey viewer
           goes without is this reminder on every other page, until S9 asks for the code in the flow itself. */}
-      {emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}
+      {/* ⭐ NOT DURING A BREAK (2026-10-06). The bar's whole message is "confirm your email to add money" — an invitation
+          to deposit, shown to a player whose break pauses deposits. `promoSuppressed` is exactly "do not solicit": it fails
+          OPEN (a failed RG read shows the bar), which is the right direction for a reminder. */}
+      {emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}
       {/* ⭐ BELOW THE EMAIL GATE, ON PURPOSE. That bar names a COMPLIANCE condition blocking
           the player's first deposit; this one is a courtesy summary of results they already
           hold. If both are up, the one that costs them something must read first.

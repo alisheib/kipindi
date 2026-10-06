@@ -672,14 +672,15 @@ Already shipped (was on this list before):
   **Never use the native browser `confirm()`** — always portal a kit-
   styled modal. The toast at the corner is a *secondary* signal only.
 - **Bootstrap admin** registers / logs in → redirected to `/admin`,
-  not `/profile/kyc`. Player → the safe `?next=` or `/wallet/deposit?welcome=new`.
-  ⚠️ Corrected 2026-09-13: this said new players land on `/profile/kyc?welcome=new`. That was
-  true from 2026-09-05 to 2026-09-13, while identity gated depositing and play; identity is now
-  asked before withdrawal only (`docs/COMPLIANCE-DECISIONS.md` 2026-09-13), and the welcome block
-  on `/profile/kyc` is deleted.
-  ⚠️ **Changes at the Vodacom plan's S15 flip (`docs/VODACOM-PLAN.md` §3.7):** a player with no safe
-  `?next=` lands on `/?welcome=new` (the question list), not `/wallet/deposit?welcome=new`. A player who signed up
-  from the bet sheet lands back on that sheet (`?bet=`).
+  not `/profile/kyc`. Player → the safe `?next=` or `/?welcome=new` (the market board).
+  ⚠️ Corrected 2026-10-06 (owner ruling): new players with no safe `?next=` landed on
+  `/wallet/deposit?welcome=new` from 2026-09-13, and for an account that new that page shows only its
+  email door in place of the form — a locked door as the first screen. Before that (2026-09-05 →
+  09-13) they landed on `/profile/kyc?welcome=new`. Never route a new account to a gate: the email
+  is asked by the app-wide bar and enforced at deposit (`docs/FLOWS.md` §1).
+  ⚠️ **At the Vodacom plan's S15 flip (`docs/VODACOM-PLAN.md` §3.7)** the no-`next` landing is already
+  `/?welcome=new`; what still changes is that a player who signed up from the bet sheet lands back on
+  that sheet (`?bet=`).
 - **Profile page** displays a yellow `ADMIN` (or `COMPLIANCE` /
   `MODERATOR`) pill so the operator can see at a glance that
   `ADMIN_BOOTSTRAP_PHONES` wired up.

@@ -30,6 +30,7 @@ import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-s
 import { getServerT, type Dict, type Locale } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
+import { isSafePath } from "@/lib/safe-next";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Verify identity", which a Swahili player saw in their browser tab and history.
@@ -73,8 +74,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
   // Safe internal return target (IA review R6) — a gated action (e.g. Withdraw)
   // sends `?next=/wallet/withdraw`; on approval we offer a "Continue" CTA back
-  // to it. Reject anything that isn't a same-site absolute path (no open redirect).
-  const nextHref = sp.next && /^\/(?!\/)/.test(sp.next) ? sp.next : null;
+  // to it. Reject anything that isn't a same-site absolute path (no open redirect) — the one shared rule, which also
+  // refuses "/\evil.example" and control characters (this private copy refused neither until 2026-10-06).
+  const nextHref = isSafePath(sp.next) ? sp.next : null;
   const idDone = !!kyc?.idVerifiedAt;
 
   /**

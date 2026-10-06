@@ -78,16 +78,34 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             subtitleLead="relaxed"
           />
 
+          {/* ⭐ 2026-10-06 · A CONFIRMED ADDRESS IS ONE TAP FROM THE DEPOSIT IT UNLOCKS. The player confirmed because
+              every screen said "confirm your email to add money"; this page then offered only "Browse markets" and
+              "Go to account", so the money step had to be found again. Signed out (a link opened in the mail app's own
+              browser), `/wallet/deposit` asks them to sign in and keeps the destination. A link that did NOT confirm
+              keeps its two doors: the markets, and the account page where a new link is sent. */}
           <div className="flex flex-col gap-2.5">
-            <Link href="/markets" className="btn btn-primary btn-lg btn-pill w-full">
-              {t.home.heroCta}
-            </Link>
-            <Link
-              href="/profile/account"
-              className="btn btn-ghost btn-lg btn-pill w-full"
-            >
-              {t.common.goToAccount}
-            </Link>
+            {good ? (
+              <>
+                <Link href="/wallet/deposit" className="btn btn-primary btn-lg btn-pill w-full">
+                  {t.common.addFunds}
+                </Link>
+                <Link href="/markets" className="btn btn-ghost btn-lg btn-pill w-full">
+                  {t.home.heroCta}
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/markets" className="btn btn-primary btn-lg btn-pill w-full">
+                  {t.home.heroCta}
+                </Link>
+                <Link
+                  href="/profile/account"
+                  className="btn btn-ghost btn-lg btn-pill w-full"
+                >
+                  {t.common.goToAccount}
+                </Link>
+              </>
+            )}
           </div>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">

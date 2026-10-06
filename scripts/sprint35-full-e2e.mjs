@@ -80,10 +80,10 @@ await Promise.all([
 p.off("framenavigated", onNav);
 const landing = seen.map((u) => new URL(u)).find((u) => !u.pathname.startsWith("/auth/register"));
 log("1a register form posts → out of /auth/register", !/\/auth\/register/.test(p.url()), p.url());
-// ⭐ 2026-09-13: a new account lands on /wallet/deposit with `welcome=new` — identity is asked before a
-// withdrawal only, so sign-up no longer ends on /profile/kyc (and this check no longer accepts it).
-log("1b session created → lands on /wallet/deposit?welcome=new (not the identity form)",
-  landing?.pathname === "/wallet/deposit" && landing.searchParams.get("welcome") === "new", landing?.href ?? p.url());
+// ⭐ 2026-10-06: a new account lands on the market board with `welcome=new` — not on /profile/kyc (until
+// 2026-09-13) and not on /wallet/deposit, whose email door stood in place of its form (until 2026-10-06).
+log("1b session created → lands on /?welcome=new (not a gate)",
+  landing?.pathname === "/" && landing.searchParams.get("welcome") === "new", landing?.href ?? p.url());
 // 1c is a no-op for password flow; keep numbering stable for downstream code.
 log("1c registration complete", !/\/auth\//.test(p.url()) || /welcome=/.test(p.url()), p.url());
 

@@ -286,7 +286,7 @@ function nothingSent(facts: KycStageFacts | null, money: KycMoney): "nothing_yet
  * NORMAL state of a new player. No registration path writes a KycSubmission; the row
  * is created LAZILY on the first render of /profile/kyc, inside a `try {} catch {}`
  * that swallows failure, and since 2026-09-13 no sign-up door routes there (a new
- * player lands on their safe `next`, else `/wallet/deposit?welcome=new`). A player who
+ * player lands on their safe `next`, else `/?welcome=new` since 2026-10-06). A player who
  * deposits and plays and never opens that page has NO ROW — "nothing sent" is the
  * truest possible reading, and their wallet decides which of the two words it gets.
  * ⛔ A FAILED READ IS NOT THIS. The caller renders "unreadable" — see the page.

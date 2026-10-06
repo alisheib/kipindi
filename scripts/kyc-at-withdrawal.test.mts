@@ -178,10 +178,39 @@ section("§A · register → confirm email → deposit and play → verify ident
   const targets = redirects(body);
   console.log(`     sign-up redirect targets: ${targets.join(" · ")}`);
   ok("A.18 control · the sign-up action and its redirects were found", body.length > 500 && targets.length >= 3, `${targets.length} redirect(s)`);
-  ok("A.19 a new player with nowhere to go lands on /wallet/deposit?welcome=new", targets.includes('"/wallet/deposit?welcome=new"'));
+  // ⭐ OWNER RULING 2026-10-06: home, not the deposit page. For an account created seconds ago that page renders no
+  // form — its email door stands in the form's place — so it made a locked door the first screen of a new account.
+  ok("A.19 a new player with nowhere to go lands on the market board, /?welcome=new", targets.includes('"/?welcome=new"'));
+  ok("A.19b ⛔ …and no sign-up redirect sends a new player to /wallet/deposit and its email door", !targets.some((t) => /\/wallet\/deposit/.test(t)));
   ok("A.20 a new player with a safe destination lands THERE, greeted", /qs\.set\(\s*"welcome",\s*"new"\s*\)/.test(body) && targets.some((t) => t.startsWith("`${path}?")));
   ok("A.21 ⛔ no sign-up redirect sends a new player to identity verification", !targets.some((t) => /\/profile\/kyc/.test(t)));
   ok("A.21b control · the extractor catches the old destination", redirects(`redirect("/profile/kyc?welcome=new");`).some((t) => /\/profile\/kyc/.test(t)));
+  ok("A.21c control · …and the 2026-09-13 one", redirects(`redirect("/wallet/deposit?welcome=new" as never);`).some((t) => /\/wallet\/deposit/.test(t)));
+
+  // The one-time-code door (`login/actions.ts`, `isNew`) follows the same rule. Sliced to the new-account block
+  // alone, so the returning player's `/?welcome=back` beneath it cannot answer for it.
+  const LOGIN = decomment(read("src/app/auth/login/actions.ts"));
+  const nb = LOGIN.indexOf("if (result.data?.isNew)");
+  const ne = nb < 0 ? -1 : LOGIN.indexOf("/?welcome=back", nb);
+  const newBlock = ne < 0 ? "" : LOGIN.slice(nb, ne);
+  const codeTargets = redirects(newBlock);
+  console.log(`     one-time-code new-account redirect targets: ${codeTargets.join(" · ")}`);
+  ok("A.22 control · the one-time-code door's new-account block and its redirects were found", newBlock.length > 100 && codeTargets.length >= 2, `${codeTargets.length} redirect(s)`);
+  ok("A.23 a new account through that door with nowhere to go lands on /?welcome=new too", codeTargets.includes('"/?welcome=new"'));
+  ok("A.24 ⛔ …never on /wallet/deposit or the identity form", !codeTargets.some((t) => /\/wallet\/deposit|\/profile\/kyc/.test(t)));
+
+  // ⭐ THE GREETING MUST FIRE ON THE LANDING (2026-10-06). `AuthFlash` is mounted on the /auth form too, and both
+  // doors land by a server-action redirect — a soft navigation that keeps it mounted — so an effect keyed on mount
+  // (`[]`) ran on the form and never on the landing: no greeting, and `welcome=` left in the address bar.
+  const FLASH = decomment(read("src/components/layout/auth-flash.tsx"));
+  const effectDeps = [...FLASH.matchAll(/useEffect\([\s\S]*?\},\s*(\[[^\]]*\])\s*\)/g)].map((m) => m[1]);
+  const mountOnly = (deps: string[]) => deps.some((d) => /^\[\s*\]$/.test(d));
+  console.log(`     AuthFlash effect deps: ${effectDeps.join(" · ") || "(none found)"}`);
+  ok("A.25 control · AuthFlash's effect and its dependency list were found", effectDeps.length > 0, `${effectDeps.length} effect(s)`);
+  ok("A.26 the greeting runs when the landing's `welcome` arrives, not once on mount", effectDeps.some((d) => /\bwelcome\b/.test(d)) && !mountOnly(effectDeps), effectDeps.join(" · "));
+  ok("A.26b control · the matcher catches the mount-only shape", mountOnly(["[]"]) && mountOnly(["[ ]"]));
+  ok("A.27 the param is cleared in place (history.replaceState) — never by a router navigation that re-requests the landing",
+    /window\.history\.replaceState\(/.test(FLASH) && !/router\.(replace|push)\(/.test(FLASH));
 }
 
 // ═══ §B · THE QUIET RULE ════════════════════════════════════════════════════════════════════════

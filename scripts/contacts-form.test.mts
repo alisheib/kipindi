@@ -885,7 +885,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     return [/export const PhoneInput = React\.forwardRef<HTMLInputElement, Props>\(function PhoneInput\(/.test(phone)
       && /onPasteRaw\?: \(text: string\) => void;/.test(phone)
       && paste.indexOf("onPasteRaw?.(text);") > 0 && paste.indexOf("onPasteRaw?.(text);") < paste.indexOf("if (text === stripDigits(text)) return;")
-      && /\bref=\{ref\}/.test(phone) && /title=\{visibleRest\.title \?\? t\.common\.phoneInputTitle\}/.test(phone)
+      // The caller's ref reaches the visible input — directly, or (since 2026-10-06, the hydration catch-up) through
+      // `setBoxRef`, which keeps the box for itself AND hands it to the caller's ref, function or object.
+      && (/\bref=\{ref\}/.test(phone) || (/\bref=\{setBoxRef\}/.test(phone)
+        && /if \(typeof ref === "function"\) ref\(el\);\s*else if \(ref\) ref\.current = el;/.test(phone)))
+      && /title=\{visibleRest\.title \?\? t\.common\.phoneInputTitle\}/.test(phone)
       && /\{name && <input type="hidden" name=\{name\} value=\{v\} \/>\}/.test(phone)
       && src.phoneRaw.includes("import { formatTzPhone } from \"@/lib/tz-msisdn\";"),
       `${paste.length} chars of handlePaste`];
