@@ -317,6 +317,44 @@ export function reconcile(r: Report1): Reconciliation {
 }
 
 /**
+ * ⭐ THE FILING SUMMARY — the two lines Finance's monthly tax sheet prints around Report 2 (Jaykishan, 2026-10-06:
+ * "We pay tax on what we earn. That is 13% on winnings … I need number of tickets on sales … only ones which are not
+ * refunded"). Pure arithmetic on lines the report already holds, so a lock taken before these lines existed prints them
+ * too, from its own snapshot, and the lock fingerprint (which hashes those lines) already covers them.
+ *   Sales less refunds = Sales − Refunds — Report 1's own lines, as Finance files it (Sep 2026: 7,210,500 − 4,147,500).
+ *   Its tickets        = tickets placed in the period − tickets refunded in it, the two counts Report 1 prints beside
+ *                        Sales and Refunds (each refunded ticket once: its refund record, or a bonus-staked bet voided
+ *                        with none). Both sides are the period's own flows, as the amount is: a refund in this period
+ *                        of a ticket placed before it is deducted here.
+ *   Net commission     = Commission − Total tax — Report 2's own whole-shilling lines.
+ * ⛔ Never a separate read of the books: a summary that read its own figures could disagree with the reports above it.
+ */
+export type FilingSummary = {
+  salesLessRefundsCents: number;
+  ticketsPlaced: number;
+  ticketsRefunded: number;
+  /** Placed − refunded. Negative when the period's refunds of tickets placed before it outnumber its own tickets left
+   *  unrefunded (a quiet day after a big void) — printed as it is, never clamped (§15.14). */
+  ticketsNotRefunded: number;
+  /** Whole TZS. */
+  netCommission: number;
+};
+
+export function filingSummary(f: {
+  report1: Pick<Report1, "salesCents" | "refundsCents">;
+  counts: { betsPlaced: number; refundRecords: number };
+  tax: Pick<TaxTotals, "commission" | "total">;
+}): FilingSummary {
+  return {
+    salesLessRefundsCents: f.report1.salesCents - f.report1.refundsCents,
+    ticketsPlaced: f.counts.betsPlaced,
+    ticketsRefunded: f.counts.refundRecords,
+    ticketsNotRefunded: f.counts.betsPlaced - f.counts.refundRecords,
+    netCommission: f.tax.commission - f.tax.total,
+  };
+}
+
+/**
  * ⭐ WHERE A DIFFERENCE COMES FROM — the exact decomposition the exception list is built on.
  *
  * With `B` brought forward, `C` on hold at the cut-off and `S_pos` the stakes of bets placed in the

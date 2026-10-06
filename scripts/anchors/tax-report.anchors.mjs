@@ -445,4 +445,100 @@ export const MUTATIONS = [
     to: "null",
     expect: "14.34",
   },
+  // ── Finance's filing lines (Jaykishan, 2026-10-06): Sales less refunds with its tickets, Net commission revenue ──
+  {
+    name: "tax-report.ts — Sales less refunds forgets the refunds",
+    file: "src/lib/tax-report.ts",
+    from: "salesLessRefundsCents: f.report1.salesCents - f.report1.refundsCents,",
+    to: "salesLessRefundsCents: f.report1.salesCents,",
+    expect: "15.1",
+  },
+  {
+    // The sheet asks for the tickets of the sales NOT refunded: every ticket placed overstates it by the refunded ones.
+    name: "tax-report.ts — the tickets count the refunded ones too",
+    file: "src/lib/tax-report.ts",
+    from: "ticketsNotRefunded: f.counts.betsPlaced - f.counts.refundRecords,",
+    to: "ticketsNotRefunded: f.counts.betsPlaced,",
+    expect: "15.2",
+  },
+  {
+    name: "tax-report.ts — net commission adds the tax instead of taking it away",
+    file: "src/lib/tax-report.ts",
+    from: "netCommission: f.tax.commission - f.tax.total,",
+    to: "netCommission: f.tax.commission + f.tax.total,",
+    expect: "15.4",
+  },
+  {
+    name: "tax-report-doc.ts — Report 2 closes on the commission before tax, not after it",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: 'basis: "Commission − Total Tax", amount: fs.netCommission,',
+    to: 'basis: "Commission − Total Tax", amount: t.commission,',
+    expect: "15.5",
+  },
+  {
+    name: "tax-report-doc.ts — the printed Sales less refunds line drops its tickets",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: "line: r.tickets ? `${r.line} · ${ticketsLabel(r.tickets.net)}` : r.line,",
+    to: "line: r.line,",
+    expect: "13.11",
+  },
+  {
+    name: "tax-report-doc.ts — the CSV leaves the tickets out of its Count column",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: "r.tickets ? W(r.tickets.net) : null]);",
+    to: "null]);",
+    expect: "15.6",
+  },
+  {
+    // Management read "withdrawals are never included" on the Payout line as withdrawals being IN Payout (2026-10-06).
+    name: "tax-report-doc.ts — the Payout line names withdrawals again",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: 'n(c.payoutRecords, "payment", "payments")})`, kind: "line" },',
+    to: 'n(c.payoutRecords, "payment", "payments")}); withdrawals are never included`, kind: "line" },',
+    expect: "15.10",
+  },
+  {
+    name: "tax-report-doc.ts — the note that deposits and withdrawals are not part of the report is dropped",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: "Deposits and withdrawals are not part of this report: they are",
+    to: "Wallet movements are not part of this report: they are",
+    expect: "15.10",
+  },
+  {
+    // A refund of a ticket placed before the period makes a quiet period's count negative; a clamp would hide it.
+    name: "tax-report.ts — the tickets are clamped at zero",
+    file: "src/lib/tax-report.ts",
+    from: "ticketsNotRefunded: f.counts.betsPlaced - f.counts.refundRecords,",
+    to: "ticketsNotRefunded: Math.max(0, f.counts.betsPlaced - f.counts.refundRecords),",
+    expect: "15.14",
+  },
+  {
+    name: "tax-report-data.ts — a ticket staked wholly from bonus and voided is not counted as refunded",
+    file: "src/lib/server/tax-report-data.ts",
+    from: "if (money.refund === 0) { slot.count++; counts.refundRecords++; }",
+    to: "if (money.refund === 0) slot.count++;",
+    expect: "15.16",
+  },
+  {
+    name: "tax-report-doc.ts — net commission is taken from the first rate period only",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: 'basis: "Commission − Total Tax", amount: fs.netCommission,',
+    to: 'basis: "Commission − Total Tax", amount: t.segments[0] ? t.segments[0].commission - t.segments[0].total : 0,',
+    expect: "15.17",
+  },
+  {
+    name: "tax-report-doc.ts — a negative count prints a hyphen and says '-1 tickets'",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: 'return `${formatWhole(n)} ${Math.abs(n) === 1 ? "ticket" : "tickets"}`;',
+    to: 'return `${n.toLocaleString("en-US")} ${n === 1 ? "ticket" : "tickets"}`;',
+    expect: "15.18",
+  },
+  {
+    // At 360px the page broke the tickets line as "… − 5" / "refunded" until each number was tied to its word.
+    name: "tax-report-doc.ts — the page's tickets line loses its no-break spaces",
+    file: "src/lib/server/tax-report-doc.ts",
+    from: "const sp = o.keepTogether ? String.fromCharCode(160) : ",
+    to: "const sp = o.keepTogether ? String.fromCharCode(32) : ",
+    expect: "15.7b",
+  },
 ];

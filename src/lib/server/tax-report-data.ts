@@ -97,6 +97,8 @@ export type ProductFigures = {
     betsOnHold: number;
     stakeRecords: number;
     payoutRecords: number;
+    /** Refunded tickets: one per refund money record (BET_REFUND, CASHOUT), plus a bet staked wholly from bonus and
+     *  voided, which has none. The name predates that second case; it is stored in every lock, so it stays. */
     refundRecords: number;
     roundsResulted: number;
   };
@@ -309,7 +311,11 @@ function figuresFor(L: Loaded, filter: ProductFilter): { fig: ProductFigures; ex
       bonusRefunded += bonus; refundsCents += bonus;
       const b = books.get(p.marketId); const v = b?.resolvedOutcome;
       const code = classifyRefund({ type: "BET_REFUND", roundFound: !!b, verdict: v === "YES" || v === "NO" || v === "VOID" ? v : null });
-      const slot = reasons.get(code)!; slot.cents += bonus; if (money.refund === 0) slot.count++;
+      const slot = reasons.get(code)!; slot.cents += bonus;
+      // A bet staked wholly from bonus is refunded with no money record (every refund writer books only a real-money
+      // part above zero): it is still ONE refunded ticket — counted once, here, as the reasons count it, so Report 1's
+      // refunds, the reasons' total and Report 2's tickets agree (`test:tax-report` §15.16).
+      if (money.refund === 0) { slot.count++; counts.refundRecords++; }
     }
 
     // (1) The stake: what the wallet was debited (+ the bonus-funded part) against the bet's stake.

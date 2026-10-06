@@ -2,11 +2,13 @@
  * GOVERNMENT TAX REPORT — the document: ONE `Report` for the PDF and the workbook, and ONE row list
  * for the CSV, both built from the same `TaxReportData` the page renders (`docs/TAX-REPORT.md` §7).
  * Nothing here computes a figure; it lays out figures `tax-report-data.ts` already computed, so the
- * screen, the PDF, the workbook and the CSV cannot disagree.
+ * screen, the PDF, the workbook and the CSV cannot disagree. The one exception is called, not written:
+ * Finance's two filing lines come from the engine's `filingSummary`, so every surface prints the same two.
  *
  * ⭐ THE PLAN'S OWN SHAPE. Report 1 prints the plan's four lines first, in the plan's order, then
  * the two reconciling items, then the check. Report 2 prints the plan's five lines, with the plan's
- * "Basis / Rate" column, each rate read from the version in force.
+ * "Basis / Rate" column, each rate read from the version in force — framed by Finance's two filing
+ * lines (2026-10-06): Sales less refunds with its tickets first, Net commission revenue last.
  * ⛔ A PERIOD THAT IS NOT FINISHED, OR NOT BALANCED, IS NOT DRESSED AS A FILING. Its title, its
  * classification and its notes all say so first — the discipline the statutory monthly pack set
  * (`catalogue.ts` `buildGbtMonthly`): any one of them left in filing dress is enough for a
@@ -23,6 +25,7 @@ import {
   LOCK_GRACE_MS,
   daySlice,
   eatDateTimeLabel,
+  filingSummary,
   toEatLocal,
   formatCents,
   formatWhole,
@@ -136,7 +139,9 @@ export function report1Rows(f: ProductFigures): Array<{ line: string; cents: num
   const n = (k: number, one: string, many: string) => `${k.toLocaleString("en-US")} ${k === 1 ? one : many}`;
   return [
     { line: "Sales", cents: r.salesCents, basis: `Every stake placed in the period (${n(c.betsPlaced, "bet", "bets")})`, kind: "line" },
-    { line: "Payout", cents: r.payoutCents, basis: `Winnings paid on rounds resulted in the period (${n(c.payoutRecords, "payment", "payments")}); withdrawals are never included`, kind: "line" },
+    // ⭐ NO WORD OF WITHDRAWALS ON THE LINE (management, 2026-10-06): "withdrawals are never included" here was read as
+    // withdrawals being IN Payout. The report states once, in its notes, that deposits and withdrawals are not part of it.
+    { line: "Payout", cents: r.payoutCents, basis: `Winnings paid on rounds resulted in the period (${n(c.payoutRecords, "payment", "payments")})`, kind: "line" },
     { line: "On hold", cents: r.onHoldCents, basis: `Stakes still awaiting a result at the cut-off (${n(c.betsOnHold, "bet", "bets")})`, kind: "line" },
     { line: "Refunds", cents: r.refundsCents, basis: `Returned to customers: one-sided bets, cancelled rounds, early exits (${n(c.refundRecords, "refund", "refunds")})`, kind: "line" },
     {
@@ -164,14 +169,60 @@ export function report1Rows(f: ProductFigures): Array<{ line: string; cents: num
   ];
 }
 
-/** Report 2's rows, in the plan's order, with its "Basis / Rate" column. One block per rate segment. */
 /** One Report 2 row. `line` is the whole label (the documents print it); the page prints `label` and, under it, the
- *  rate period `segment` — two timestamps that must never break across lines. */
-export type Report2Row = { line: string; label: string; segment: { startMs: number; endMs: number } | null; basis: string; amount: number; cents: boolean; kind: "line" | "total" };
+ *  rate period `segment` — two timestamps that must never break across lines. `tickets` rides the Sales-less-refunds
+ *  line only: the tickets behind it, which the page, the PDF and the CSV each print in their own place. */
+export type Report2Row = {
+  line: string;
+  label: string;
+  segment: { startMs: number; endMs: number } | null;
+  basis: string;
+  amount: number;
+  cents: boolean;
+  kind: "line" | "total";
+  tickets?: { placed: number; refunded: number; net: number };
+};
 
+const count = (n: number) => n.toLocaleString("en-US");
+
+/** "1,074 tickets" · "1 ticket" · "−1 ticket" — one word for every surface that prints the count. A negative count (a
+ *  period that refunds more earlier tickets than it sells) signs as every figure in this report does, with U+2212. */
+export function ticketsLabel(n: number): string {
+  return `${formatWhole(n)} ${Math.abs(n) === 1 ? "ticket" : "tickets"}`;
+}
+
+/** "3,353 placed − 2,279 refunded" — how the count is made, from the two counts Report 1 prints. `keepTogether` joins
+ *  each number to its word, and the minus to the number after it, with no-break spaces — for the page, where at 360px
+ *  the line broke as "… − 5" / "refunded"; now it can break only as "3,353 placed" / "− 2,279 refunded". */
+export function ticketsDetail(t: { placed: number; refunded: number }, o: { keepTogether?: boolean } = {}): string {
+  const sp = o.keepTogether ? String.fromCharCode(160) : " ";
+  return `${count(t.placed)}${sp}placed −${sp}${count(t.refunded)}${sp}refunded`;
+}
+
+/** The page's own line under the basis of Sales less refunds: "Tickets: 3,353 placed − 2,279 refunded". */
+export function ticketsLine(t: { placed: number; refunded: number }): string {
+  return `Tickets: ${ticketsDetail(t, { keepTogether: true })}`;
+}
+
+/** A Report 2 row's basis as the CSV prints it — with how its tickets are made, where it has them. Plain text: no
+ *  no-break space goes into a file a spreadsheet reads. The PDF's narrow Basis column keeps the rule alone (`r.basis`)
+ *  and carries the count on the line; the page prints the rule, then `ticketsLine` on a line of its own. */
+export function report2BasisText(r: Report2Row): string {
+  return r.tickets ? `${r.basis} · tickets: ${ticketsDetail(r.tickets)}` : r.basis;
+}
+
+/**
+ * Report 2's rows: the plan's five lines, one block per rate segment, with its "Basis / Rate" column — framed by the
+ * two lines of Finance's filing sheet (2026-10-06): Sales less refunds, with its tickets, first; Net commission revenue
+ * last. Both are `filingSummary` of lines printed above them, so they can never disagree with the reports.
+ */
 export function report2Rows(f: ProductFigures): Report2Row[] {
   const t = f.tax;
-  const rows: Report2Row[] = [];
+  const fs = filingSummary(f);
+  const rows: Report2Row[] = [{
+    line: "Sales less refunds", label: "Sales less refunds", segment: null, basis: "Sales − Refunds", amount: fs.salesLessRefundsCents, cents: true, kind: "line",
+    tickets: { placed: fs.ticketsPlaced, refunded: fs.ticketsRefunded, net: fs.ticketsNotRefunded },
+  }];
   const multi = t.segments.length > 1;
   for (const s of t.segments) {
     const tag = multi ? ` · ${segmentLabel(s)}` : "";
@@ -190,7 +241,10 @@ export function report2Rows(f: ProductFigures): Report2Row[] {
       { line: "GBT tax — all segments", label: "GBT tax — all segments", segment: null, basis: "Sum of the lines above", amount: t.gbt, cents: false, kind: "total" },
     );
   }
-  rows.push({ line: "Total Tax payable", label: "Total Tax payable", segment: null, basis: "TRA + GBT", amount: t.total, cents: false, kind: "total" });
+  rows.push(
+    { line: "Total Tax payable", label: "Total Tax payable", segment: null, basis: "TRA + GBT", amount: t.total, cents: false, kind: "total" },
+    { line: "Net commission revenue", label: "Net commission revenue", segment: null, basis: "Commission − Total Tax", amount: fs.netCommission, cents: false, kind: "total" },
+  );
   return rows;
 }
 
@@ -279,13 +333,19 @@ export function buildTaxDocument(d: TaxReportData, opts: {
   });
   sections.push({
     title: "Report 2 — Taxation",
-    description: "The approved model, each line rounded to the nearest shilling at each step: Commission on Payout, then TRA and GBT on the rounded Commission.",
+    description: "The approved model, each line rounded to the nearest shilling at each step: Commission on Payout, then TRA and GBT on the rounded Commission. It opens with the sales filed and their tickets, and closes with the commission left after tax.",
     columns: [
       { header: "Line", key: "line", width: 40 },
       { header: "Basis / Rate", key: "basis", width: 26 },
       { header: "Amount", sub: "TZS", key: "amount", format: moneyFmt, align: "right", width: 18 },
     ],
-    rows: report2Rows(f).map((r) => ({ line: r.line, basis: r.basis, amount: r.cents ? money(r.amount) : (exact ? formatWhole(r.amount) : r.amount) })),
+    // The tickets ride the line's own cell ("Sales less refunds · 1,074 tickets"): the Amount column is shillings, and
+    // the narrow Basis column keeps the rule. Report 1 above prints the two counts they are made of.
+    rows: report2Rows(f).map((r) => ({
+      line: r.tickets ? `${r.line} · ${ticketsLabel(r.tickets.net)}` : r.line,
+      basis: r.basis,
+      amount: r.cents ? money(r.amount) : (exact ? formatWhole(r.amount) : r.amount),
+    })),
   });
   sections.push({
     title: "Refunds by reason",
@@ -473,7 +533,8 @@ export function buildTaxDocument(d: TaxReportData, opts: {
     if (d.byDay === undefined && d.period.kind !== "day") notes.push(NO_DAYS_IN_LOCK);
   }
   notes.push(
-    "Sales = every stake placed in the period. Payout = winnings paid on rounds resulted in the period. On hold = stakes still awaiting a result at the cut-off. Refunds = stakes returned (one-sided bets, cancelled rounds, players' early exits). Withdrawals are wallet movements: they are never part of Payout or of any tax line.",
+    "Sales = every stake placed in the period. Payout = winnings paid on rounds resulted in the period. On hold = stakes still awaiting a result at the cut-off. Refunds = stakes returned (one-sided bets, cancelled rounds, players' early exits). Sales less refunds = Sales − Refunds: the stakes placed in the period less every stake returned in it, including refunds of tickets placed before the period, so a short period can print a negative figure; its tickets are the tickets placed in the period less the tickets refunded in it (one ticket is one bet). Net commission revenue = Commission − Total tax.",
+    "Deposits and withdrawals are not part of this report: they are players' own money moving into and out of their wallets, never Sales, Payout, Refunds or any tax line.",
     "The plan's rule — Sales = Payout + On hold + Refunds — holds exactly for a period that starts with nothing on hold and whose resulted pools go wholly to the winners. On 50pick a period opens holding stakes placed before it, and our fee (a share of the losing side, at each resulted round's own frozen rate; a legacy round keeps the model it froze) leaves each resulted pool with the winnings; those are the two reconciling items, and with them the check closes to the shilling.",
     `Cut-off: ${windowStatement(d)}. A round resulted after the cut-off stays On hold for this period and is reclassified in the period in which it results. All day, week and month boundaries are East Africa Time (UTC+3).`,
     "Tax is computed by the approved model of the Government Tax Reporting System plan (v1.0, 03 Oct 2026, §3.3): Commission = commission rate × Payout; TRA = TRA rate × Commission; GBT = GBT rate × Commission; Total tax = TRA + GBT. Each line is rounded to the nearest shilling (halves away from zero) at each step. The rates are admin settings with effective dates — see Rates applied.",
@@ -545,7 +606,10 @@ export function buildTaxCsv(d: TaxReportData, opts: { generatorName: string; gen
 
   const f = d.main;
   for (const r of report1Rows(f)) rows.push([S("Report 1 — Total Reporting System"), S(r.line), S(r.basis), N(r.cents), null]);
-  for (const r of report2Rows(f)) rows.push([S("Report 2 — Taxation"), S(r.line), S(r.basis), r.cents ? N(r.amount) : W(r.amount), null]);
+  // The tickets behind Sales less refunds go in the Count column, a plain number; how they are made, in the basis.
+  for (const r of report2Rows(f)) {
+    rows.push([S("Report 2 — Taxation"), S(r.line), S(report2BasisText(r)), r.cents ? N(r.amount) : W(r.amount), r.tickets ? W(r.tickets.net) : null]);
+  }
   for (const r of f.refundsByReason) rows.push([S("Refunds by reason"), S(REFUND_REASONS[r.code].label), S(`${REFUND_REASONS[r.code].planCode} · ${REFUND_REASONS[r.code].approval}`), N(r.cents), W(r.count)]);
   for (const c of productColumns(d)) {
     const x = c.f;

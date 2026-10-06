@@ -12,6 +12,7 @@
  *      differ from what the officer saw), and the Owner-only acts gate on the STORED ADMIN role;
  *   §4 the dev seeder is dead in production before its first await.
  *   §5 the day-by-day card reads the view's own days, opens each through the engine, and lays out where it fits.
+ *   §6 Finance's filing lines are Report 2's own rows, and withdrawals are named once, in their own definition.
  * ⭐ EVERY CHECK HAS A CONTROL: the same predicate is run over a planted bad snippet and must REFUSE it, so
  * no check here can pass by matching nothing.
  *
@@ -32,10 +33,12 @@ const ok = (n: string, c: boolean, d = "") => {
   if (c) { pass++; console.log(`  ok   ${n}`); }
   else { fails.push(`${n}${d ? ` — ${d}` : ""}`); console.log(`  FAIL ${n}${d ? `\n         ${d}` : ""}`); }
 };
-/** A check and its control: the predicate must accept the real source and REFUSE the planted one. */
-function guard(n: string, pred: (src: string) => boolean, src: string, planted: string) {
+/** A check and its control: the predicate must accept the real source and REFUSE the planted one. A check with
+ *  several clauses takes one planted violation per clause, so each clause is proven able to refuse on its own. */
+function guard(n: string, pred: (src: string) => boolean, src: string, planted: string | string[]) {
   ok(n, pred(src));
-  ok(`${n} · CONTROL — a planted violation is refused`, !pred(planted));
+  const list = Array.isArray(planted) ? planted : [planted];
+  list.forEach((p, i) => ok(`${n} · CONTROL${list.length > 1 ? ` ${i + 1}/${list.length}` : ""} — a planted violation is refused`, !pred(p)));
 }
 
 const page = read("src/app/admin/tax/page.tsx");
@@ -139,6 +142,20 @@ guard("5.6 the two pagers keep each other's page — the exceptions' and the day
 guard("5.7 the workbook gets every daily column: the route passes the format as the document's layout",
   (s) => s.includes("lock, drift, layout: format });"),
   route, route.replace("lock, drift, layout: format });", "lock, drift });"));
+
+console.log("§6 · Finance's filing lines (2026-10-06)");
+guard("6.1 Sales less refunds, its tickets and Net commission revenue are Report 2's own rows — the page prints them and makes no sum of its own",
+  (s) => s.includes("const r2 = report2Rows(f);") && s.includes("{ticketsLabel(r.tickets.net)}") && s.includes("{ticketsLine(r.tickets)}")
+    && !/salesCents\s*-\s*[\w.]*refundsCents/.test(s) && !/commission\s*-\s*[\w.]*\.total\b/.test(s) && !s.includes("filingSummary("),
+  page, [
+    `${page}\nconst salesLessRefunds = f.report1.salesCents - f.report1.refundsCents;`,
+    `${page}\nconst netCommission = f.tax.commission - f.tax.total;`,
+    `${page}\nconst fs = filingSummary(f);`,
+    page.replace("{ticketsLine(r.tickets)}", "{`Tickets: ${r.tickets.placed} placed`}"),
+  ]);
+guard("6.2 withdrawals are never named beside Payout — deposits and withdrawals are named once, in their own definition",
+  (s) => (s.match(/withdraw/gi) ?? []).length === 1 && s.includes('<dt className="font-semibold text-text">Deposits and withdrawals</dt>'),
+  page, page.replace("Winnings paid on rounds resulted in the period.</dd>", "Winnings paid on rounds resulted in the period. Withdrawals are never included.</dd>"));
 
 console.log(`\ntax-report-page: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log("\nFAILED:"); for (const f of fails) console.log(`  - ${f}`); }

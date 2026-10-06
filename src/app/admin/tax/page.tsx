@@ -17,7 +17,7 @@ import { db } from "@/lib/server/store";
 import { loadTaxReportView } from "@/lib/server/tax-report-view";
 import { recentLocks, seenFingerprint, type TaxLock } from "@/lib/server/tax-locks";
 import { readTaxRates } from "@/lib/server/tax-config";
-import { dayByDayNote, report1Rows, report2Rows, windowStatement } from "@/lib/server/tax-report-doc";
+import { dayByDayNote, report1Rows, report2Rows, ticketsLabel, ticketsLine, windowStatement } from "@/lib/server/tax-report-doc";
 import type { DayFigures, ProductFigures, TaxReportData } from "@/lib/server/tax-report-data";
 import { adminCount, formatTzsCompact } from "@/lib/utils";
 import { eatDayKey } from "@/lib/eat-day";
@@ -336,21 +336,26 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
           </AdminCard>
 
           <AdminCard title="Report 2 — Taxation">
-            <p className="mb-3 text-body-sm text-text-subtle">The approved model: each line rounded to the nearest shilling at each step — Commission on Payout, then TRA and GBT on the rounded Commission.</p>
+            <p className="mb-3 text-body-sm text-text-subtle">The approved model: each line rounded to the nearest shilling at each step — Commission on Payout, then TRA and GBT on the rounded Commission. It opens with the sales filed and their tickets, and closes with the commission left after tax.</p>
             <ScrollX label="Report 2" className="-mx-4 px-4">
               <table className="admin-tbl" data-testid="tax-report-2">
                 <thead><tr><th className="text-left">Line</th><th className="text-right">Amount<br />(TZS)</th></tr></thead>
                 <tbody>
                   {r2.map((r) => (
-                    <tr key={r.line} className={r.kind === "total" ? "font-semibold" : undefined}>
+                    <tr key={r.line} className={r.kind === "total" ? "font-semibold" : undefined} data-line={r.tickets ? "sales-less-refunds" : undefined}>
                       <td className="text-left align-top">
                         <span className="block text-text">{r.label}</span>
+                        {/* The tickets Finance files with the sales — the count first, as the refunds' card prints its count. */}
+                        {r.tickets && <span className="block font-mono text-micro font-normal uppercase eyebrow text-text-tertiary" data-testid="tax-tickets">{ticketsLabel(r.tickets.net)}</span>}
                         {r.segment && (
                           <span className="block text-body-sm font-normal text-text-subtle">
                             <span className="whitespace-nowrap">{eatDateTimeLabel(r.segment.startMs)}</span> → <span className="whitespace-nowrap">{eatDateTimeLabel(r.segment.endMs)}</span>
                           </span>
                         )}
                         <span className="block text-body-sm font-normal text-text-tertiary">{r.basis}</span>
+                        {/* How the count is made, on a line of its own: joined to the rule with " · " it broke with a "·" and
+                            a "−" left hanging at the line's end at 360px and in the half-width card (2026-10-06). */}
+                        {r.tickets && <span className="block text-body-sm font-normal text-text-tertiary">{ticketsLine(r.tickets)}</span>}
                       </td>
                       <td className="tabular text-right align-top">{r.cents ? <Amt cents={r.amount} /> : <span className="amount">{formatWhole(r.amount)}</span>}</td>
                     </tr>
@@ -500,13 +505,16 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
         <AdminCard title="How these figures are made">
           <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-body-sm md:grid-cols-2">
             <div><dt className="font-semibold text-text">Sales</dt><dd className="text-text-subtle">Every stake placed in the period — the confirmed stake records, plus any bonus-funded part of a stake.</dd></div>
-            <div><dt className="font-semibold text-text">Payout</dt><dd className="text-text-subtle">Winnings paid on rounds resulted in the period. Withdrawals are wallet movements and are never part of Payout or of any tax line.</dd></div>
+            <div><dt className="font-semibold text-text">Payout</dt><dd className="text-text-subtle">Winnings paid on rounds resulted in the period.</dd></div>
             <div><dt className="font-semibold text-text">On hold</dt><dd className="text-text-subtle">Stakes still waiting for a result at the cut-off. A round resulted after the cut-off stays on hold for this period and is reclassified in the period it results in.</dd></div>
             <div><dt className="font-semibold text-text">Refunds</dt><dd className="text-text-subtle">Stakes returned: one-sided bets, cancelled or voided rounds, and players&apos; early exits — each with the reason its round records.</dd></div>
             <div><dt className="font-semibold text-text">Platform fee kept</dt><dd className="text-text-subtle">Our fee on each resulted round (a share of the losing side, at the round&apos;s own frozen rate; an older round keeps the fee model it froze), recomputed from the round&apos;s own frozen rates exactly as settlement took it, with the shilling of rounding a fractional fee leaves in the pool.</dd></div>
             <div><dt className="font-semibold text-text">On hold brought forward</dt><dd className="text-text-subtle">Stakes placed before the period that were still waiting for a result when it opened. Their results land in this period&apos;s Payout and Refunds.</dd></div>
             <div><dt className="font-semibold text-text">The check</dt><dd className="text-text-subtle">Sales + brought forward = Payout + Refunds + Platform fee kept + On hold, to the shilling. With nothing brought forward and no fee it is exactly the plan&apos;s rule, Sales = Payout + On hold + Refunds.</dd></div>
             <div><dt className="font-semibold text-text">Tax</dt><dd className="text-text-subtle">Commission = rate × Payout; TRA and GBT = their rates × the rounded Commission; Total = TRA + GBT. Every line rounded to the nearest shilling at each step. All times East Africa Time.</dd></div>
+            <div><dt className="font-semibold text-text">Sales less refunds</dt><dd className="text-text-subtle">Sales − Refunds, as Finance files it: the stakes placed in the period less every stake returned in it — including refunds, in this period, of tickets placed before it, so a short period can show a negative figure. Its tickets are the tickets placed in the period less the tickets refunded in it; one ticket is one bet.</dd></div>
+            <div><dt className="font-semibold text-text">Net commission revenue</dt><dd className="text-text-subtle">Commission − Total tax: the commission left once TRA and GBT are paid.</dd></div>
+            <div className="md:col-span-2"><dt className="font-semibold text-text">Deposits and withdrawals</dt><dd className="text-text-subtle">Not part of this report. They are players&apos; own money moving into and out of their wallets — never Sales, Payout, Refunds or any tax line.</dd></div>
           </dl>
           <p className="mt-3 text-body-sm text-text-tertiary">Generated {eatDateTimeLabel(data.generatedAtMs)} EAT · {windowStatement(data)}</p>
         </AdminCard>

@@ -11,7 +11,8 @@
  * window · a balanced month, an out-of-balance month and a running month · Lock → drift → Reopen ·
  * a rate change that splits a month · all three downloads · day by day (every day its own report: the days
  * add up to Report 1, a day opens equal to its row, part-days, paging, phone blocks, the files' day tables) — asserting the figures on the page add up
- * (Report 1's check, Polls + Up & Down = All, refunds = Refunds), then photographs VIEWPORT TILES at
+ * (Report 1's check, Polls + Up & Down = All, refunds = Refunds, Finance's filing lines: Sales less refunds and its
+ * tickets against Report 1, Net commission revenue against Report 2), then photographs VIEWPORT TILES at
  * six widths (never full-page: fixed layers paint at their first-viewport position in a full shot).
  * ⛔ Every wait is for CONTENT — the console polls forever, so `networkidle` never settles.
  */
@@ -87,6 +88,39 @@ async function typeSeg(seg, value) {
   await seg.press("Control+a");
   await seg.pressSequentially(value);
 }
+/** Read Report 2's rows: { label → amount ×100 } as printed, and the tickets under Sales less refunds. */
+async function report2() {
+  return page.evaluate(() => {
+    const out = {};
+    for (const tr of document.querySelectorAll('[data-testid="tax-report-2"] tbody tr')) {
+      const line = tr.querySelector("td span")?.textContent?.trim() ?? "";
+      const amt = tr.querySelector(".amount")?.textContent?.trim() ?? "";
+      const neg = /^[−-]/.test(amt);
+      out[line] = Math.round(Number(amt.replace(/[^0-9.]/g, "")) * 100) * (neg ? -1 : 1);
+    }
+    // textContent, not innerText: the count is printed in capitals by CSS, and innerText returns the capitals.
+    out.__tickets = document.querySelector('[data-testid="tax-tickets"]')?.textContent?.trim() ?? "";
+    return out;
+  });
+}
+/** Finance's filing lines against Report 1 on the screen: Sales − Refunds, bets placed − refunds, Commission − Total tax. */
+async function filingLinesAddUp(tag, r1) {
+  const r2v = await report2();
+  const r1Text = await page.locator('[data-testid="tax-report-1"]').innerText();
+  const r2Text = await page.locator('[data-testid="tax-report-2"]').innerText();
+  const count = (re) => Number((r1Text.match(re) ?? [])[1]?.replace(/,/g, "") ?? Number.NaN);
+  // The first "(N bets)" in Report 1 is the Sales row's — it is the first line printed.
+  const net = count(/\(([\d,]+) bets?\)/) - count(/\(([\d,]+) refunds?\)/);
+  // The page's own words: grouped, U+2212 for a negative count, singular for one.
+  const label = `${net < 0 ? "−" : ""}${Math.abs(net).toLocaleString("en-US")} ${Math.abs(net) === 1 ? "ticket" : "tickets"}`;
+  // A month split by a rate change prints one Commission per period, then "Commission — all segments": Net is on the sum.
+  const commission = r2v["Commission — all segments"] ?? r2v["Commission"];
+  ok(`${tag} Report 2 opens with Sales less refunds = Report 1's Sales − Refunds`, r2v["Sales less refunds"] === r1["Sales"] - r1["Refunds"], `${r2v["Sales less refunds"]} vs ${r1["Sales"]} − ${r1["Refunds"]}`);
+  // `\s` matches the no-break spaces the page ties each number to its word with.
+  ok(`${tag} …with its tickets = Report 1's bets placed − refunds (${net})`, Number.isFinite(net) && r2v.__tickets === label && /Tickets: [\d,]+\splaced\s−\s[\d,]+\srefunded/.test(r2Text), `${r2v.__tickets} | ${r2Text.slice(0, 200)}`);
+  ok(`${tag} Report 2 closes with Net commission revenue = Commission − Total Tax payable`, r2v["Net commission revenue"] === commission - r2v["Total Tax payable"], JSON.stringify(r2v));
+  ok(`${tag} withdrawals are named nowhere beside a figure`, !/withdraw/i.test(r1Text) && !/withdraw/i.test(r2Text));
+}
 function checkCloses(r, tag) {
   const accounted = r["Payout"] + r["On hold"] + r["Refunds"] + r["Platform fee kept"] + r["Less: on hold brought forward"];
   ok(`${tag}: the printed lines add up — Payout + On hold + Refunds + fee − b/f = ${accounted / 100}`, accounted === r["Check: accounted total"], JSON.stringify(r));
@@ -144,6 +178,7 @@ const refunds = await page.evaluate(() => {
 ok("1.6 the refunds-by-reason total equals Report 1's Refunds", Math.round(Number(refunds.replace(/[^0-9.]/g, "")) * 100) === rSep["Refunds"], `${refunds} vs ${rSep["Refunds"]}`);
 const r2 = await page.locator('[data-testid="tax-report-2"]').innerText();
 ok("1.7 Report 2 shows the plan's five lines and rates", /Commission/.test(r2) && /13% × Payout/.test(r2) && /10% × Commission/.test(r2) && /5% × Commission/.test(r2) && /Total Tax payable/.test(r2), r2.slice(0, 200));
+await filingLinesAddUp("1.8", rSep);
 await tiles("01-month-balanced");
 
 // ── 2 · products ─────────────────────────────────────────────────────────────────────────────
@@ -155,6 +190,7 @@ for (const [testId, prod] of [["tax-product:UPDOWN", "UPDOWN"], ["tax-product:MA
   await page.waitForTimeout(400);
   const r = await report1();
   ok(`2 · ${prod ?? "ALL"}: the check closes`, checkCloses(r, `2 · ${prod ?? "ALL"}`) === 0);
+  await filingLinesAddUp(`2 · ${prod ?? "ALL"}:`, r);
 }
 await page.locator('[data-chip="tax-product:UPDOWN"]').first().click();
 await page.waitForURL(/product=UPDOWN/, { timeout: 60_000 });
@@ -320,6 +356,7 @@ await page.getByText(/Rates recorded/).first().waitFor({ timeout: 60_000 }).catc
 await open(`/admin/tax?period=month&month=${LAST}`, true);
 const r2Split = await page.locator('[data-testid="tax-report-2"]').innerText();
 ok("7.1 Report 2 now taxes the month in two segments, at 13% and at 12%", /13% × Payout/.test(r2Split) && /12% × Payout/.test(r2Split) && /all segments/.test(r2Split), r2Split.slice(0, 300));
+await filingLinesAddUp("7.2", await report1());
 await tiles("09-rates-split", [360, 1280]);
 
 // ── 8 · the downloads ───────────────────────────────────────────────────────────────────────

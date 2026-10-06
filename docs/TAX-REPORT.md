@@ -13,6 +13,7 @@
 | Live | 🟢 **LIVE 2026-10-03, `d1b82f9a`** on https://50pick.tz/admin/tax (deploy read back from `?dpl=`; the export route answers an anonymous request with 401) |
 | Page | `/admin/tax` — Money → **Tax report** in the sidebar |
 | Day by day | 🟢 **LIVE 2026-10-04, `d4db96bb`** (served from 11:45 UTC, read back from `?dpl=`) — every week, month or custom window lists its days, each that day's own report (§6b) |
+| Finance's filing lines | 🟡 **BUILT 2026-10-06** (Jaykishan, Finance — §6c): Report 2 opens with **Sales less refunds** and its **tickets** and closes with **Net commission revenue**, as Finance's monthly sheet files them; the report names deposits and withdrawals once, in a note, and nowhere beside a figure |
 | Who sees it | Owner (ADMIN), Finance, Compliance, Auditor — accounting VIEW (`roles.ts` `ROUTE_DOMAINS`) |
 | Who locks a period | Finance or the Owner (accounting ACT). The Owner alone (the stored ADMIN role) reopens one, records new rates, or locks a period out of balance — including one product while the whole book behind it is out |
 | Proof | `npm run test:tax-report` (engine + reader on real bets/settlements) · `npm run red:tax-report` (every declared mutation caught) |
@@ -24,7 +25,9 @@
   *Payout + On hold + Refunds = Sales*. A check that does not balance **blocks sign-off** and raises an
   exception listing the offending records (plan FR-6).
 - **Report 2 — Taxation:** Commission = **13% × Payout** · TRA = **10% × Commission** · GBT = **5% × Commission** ·
-  Total tax = TRA + GBT. **Each line rounded to the nearest whole shilling, at each step** (plan §3.3).
+  Total tax = TRA + GBT. **Each line rounded to the nearest whole shilling, at each step** (plan §3.3). Framed, since
+  2026-10-06, by the two lines of Finance's filing sheet: Sales less refunds with its tickets first, Net commission
+  revenue last (§6c).
 - The plan's acceptance tests (§8): the worked example to the shilling; a 50,000 withdrawal changes nothing;
   a round resulted after the cut-off stays On hold for the closed period and reclassifies in the next.
 
@@ -38,6 +41,13 @@
 | **Refunds** | Stakes returned in the period: one-sided bets, cancelled/voided rounds, players' early exits — each with its reason (§8). |
 | **Platform fee kept** *(reconciling item)* | Our fee on each resulted round — a share of the losing side at the round's own frozen rate (an admin setting, `docs/RULES.md` §1; no document pins the number); an older round keeps the fee model it froze — plus any early-exit fee and the shilling of rounding a fractional fee leaves in the pool. |
 | **On hold brought forward** *(reconciling item)* | Stakes placed before the period that were still waiting when it opened. |
+| **Sales less refunds** *(Report 2, Finance's filing line)* | Sales − Refunds: the stakes placed in the period less every stake returned in it — including refunds, in this period, of tickets placed before it, so a short period can print a negative figure. Its **tickets** = tickets placed in the period − tickets refunded in it (one ticket is one bet; each refunded ticket counts once — its refund record, or a bet staked wholly from bonus and voided, which has none). |
+| **Net commission revenue** *(Report 2, Finance's filing line)* | Commission − Total tax: the commission left once TRA and GBT are paid. |
+
+⛔ **Deposits and withdrawals are not lines of this report** — players' own money moving into and out of their wallets.
+The report says so once, in its notes and in the page's *How these figures are made*, and never beside a figure: the
+Payout line used to add "withdrawals are never included", and management read it as withdrawals being IN Payout
+(2026-10-06). `test:tax-report` §15.10–§15.11 and `test:tax-report-page` §6.2 hold it.
 
 ### Why two reconciling items
 
@@ -177,6 +187,38 @@ and usability of the reports"*.
 - **Measured:** a day of TZS 999,999,999.99 (with cents) or 9,999,999,999 (whole) prints every figure on one line
   (§14.43; control §14.44 — ten billion with cents is caught).
 
+## §6c · Finance's filing lines — Sales less refunds, its tickets, Net commission revenue
+
+Jaykishan (Finance), 2026-10-06, with Finance's sheet *"Ocean Entertainment Limited (50pick) — Tax for the month of
+September 2026"*: *"We pay tax on what we earn. That is 13% on winnings … This is what I will have to show them … but in
+this I need number of tickets on sales which is 3,063,000 — only ones which are not refunded."* The plan's tax model is
+confirmed unchanged; the sheet's lines are added around it.
+
+- **Report 2 opens with Sales less refunds** (Sales − Refunds, Report 1's own lines) and its **tickets** (tickets placed
+  − tickets refunded, the two counts Report 1 prints beside Sales and Refunds), and **closes with Net commission revenue**
+  (Commission − Total tax). Report 1 and its check are untouched: the check needs the gross Sales.
+- **One arithmetic:** `filingSummary` in `src/lib/tax-report.ts`, laid out by `report2Rows` — the page, the PDF, the
+  workbook and the CSV print the same rows. The page computes nothing (`test:tax-report-page` §6.1).
+- **Where the tickets go:** the page prints the count under the line ("1,074 TICKETS") and, under the rule, how it is
+  made on a line of its own ("Tickets: 3,353 placed − 2,279 refunded", each number tied to its word and the minus to the
+  number after it by no-break spaces, so a phone breaks it only as "3,353 placed" / "− 2,279 refunded"); the PDF and
+  workbook carry it on the line ("Sales less refunds · 1,074 tickets") — their Basis column is narrow and Amount is
+  shillings; the CSV puts it in the **Count** column as a plain number, with "tickets: 3,353 placed − 2,279 refunded"
+  in its basis (plain spaces: no no-break space goes into a file a spreadsheet reads).
+- **Both sides are the period's flows**, as the amount is: a refund in this period of a ticket placed before it is
+  deducted here (the amount and the count stay one subtraction of Report 1's lines). A period that refunds more earlier
+  tickets than it sells prints a negative amount and count — as it is, never clamped, signed with U+2212 like every
+  figure here ("−1 ticket"; §15.14–§15.15, §15.18). A ticket staked wholly from bonus and voided is refunded with no
+  money record; the reader counts it once as refunded, as the reasons' card always did (§15.16).
+- **September 2026, to the shilling** (`test:tax-report` §15.1–§15.4): Sales 7,210,500 − Refunds 4,147,500 =
+  **3,063,000**, tickets 3,353 − 2,279 = **1,074**; Payout 1,751,305 → Commission **227,670** · TRA **22,767** · GBT
+  **11,384** · Total **34,151** · Net commission revenue **193,519** — the sheet's own figures, except that the sheet
+  rounds once at the end (TRA 22,766.97 · GBT 11,383.48 · Total **34,150**) where the plan rounds at each step (§4).
+  The report files the plan's 34,151.
+- **Locks:** the lines are made from figures every snapshot holds, so a period locked before 2026-10-06 prints them
+  from its own snapshot, and the lock fingerprint (which hashes those figures) already covers them (§15.9). The drift
+  table names the lines they are made of (Sales, Refunds, Commission, Total tax).
+
 ## §7 · Exports
 
 `GET /api/admin/tax/export?format=pdf|xlsx|csv&<the page's own period query>&product=…`
@@ -223,11 +265,11 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
 
 | Instrument | What it proves |
 |---|---|
-| `npm run test:tax-report` | §1 purity · §2 the worked example · §3 rounding · §4 rate input · §5 effective dates · §6 EAT periods · §7 cents · §8 reasons · §9 the reader on REAL bets, settlements, a one-sided refund, an emergency void, a free exit and an Up & Down round, read back to the cent · §10 a withdrawal changes nothing · §11 a round resulted after the cut-off · §12 products, rounding residue, planted defects, and the whole-book check a single product carries · §13 locks, drift, the PDF/Excel/CSV documents, and their states: custom window, PARTIAL, SETTLING (closed less than the lock grace ago), WHOLE BOOK OUT OF BALANCE; the period type in every file name and reference; drift rows in a locked CSV; the Owner's acknowledged filings (title + first note); the lock fingerprint (stable across reads, sensitive to a TRA/GBT re-split and to the whole book); the printed PDF measured at ten-digit figures (§13.27, control §13.28) and the workbook's tab (§13.29) · §14 **day by day**: real bets placed and settled across three EAT days (one across midnight, one on its stroke, one brought forward into an 08:00 window), every day read back to the cent AND as that day opened on its own; the days adding up; a running month's days so far; a payout a day late kept on its product's day; the PDF, workbook and CSV day tables; the New Year label; an old lock that holds no days; the billion-a-day fit and the footer |
-| `npm run red:tax-report` | Mutates a COPY of `src/` with each declared defect (`scripts/anchors/tax-report.anchors.mjs`) and proves `test:tax-report` goes red on the named check — the plan's formula and rounding, every line of the check, the products, the locks, and each protection the 2026-10-03 adversarial review added (the whole-book loophole, the settling copy, a week's file overwriting its Monday's, merged rate segments, link inference, the running period's one-minute margin), and those of the second review (an acknowledged filing printed bare, the lock fingerprint, four-across tiles, a narrow id column, the window printed to "now"), and the day-by-day's twelve (an edge past the window, a day link opening the rest of the window, days measured on the cut-off, midnight filed under the day before, a forgotten brought-forward, a bet dropped from the day it left, a day dropping the bets its records name, the silent tax clause, an old filing's missing days unsaid, cents rounded away, a sign flipped in the workbook, an out-of-balance day hidden in print) |
-| `npm run test:tax-report-page` | The surfaces at source level, every check with a planted-violation control: the page computes nothing and has no `?? 0`; the export gates on the stored role + 2FA + same-origin and audits before the first byte; every action gates first (reopen and rates on the stored ADMIN role, `requireOwner`); a lock recomputes from the books, refuses unless its fingerprint is the one the page showed, and treats a whole-book difference as its own; the lock panel is rebuilt per period and product; the dev seeder is dead in production; §5 the day card reads the view's own days (the live view's for an old lock), opens each through the engine's `daySlice`, uses the documents' own words, lays out a table only from 1280px, prints the whole period from Report 1/2, keeps both pagers' pages, and the route hands the workbook its wide layout |
+| `npm run test:tax-report` | §1 purity · §2 the worked example · §3 rounding · §4 rate input · §5 effective dates · §6 EAT periods · §7 cents · §8 reasons · §9 the reader on REAL bets, settlements, a one-sided refund, an emergency void, a free exit and an Up & Down round, read back to the cent · §10 a withdrawal changes nothing · §11 a round resulted after the cut-off · §12 products, rounding residue, planted defects, and the whole-book check a single product carries · §13 locks, drift, the PDF/Excel/CSV documents, and their states: custom window, PARTIAL, SETTLING (closed less than the lock grace ago), WHOLE BOOK OUT OF BALANCE; the period type in every file name and reference; drift rows in a locked CSV; the Owner's acknowledged filings (title + first note); the lock fingerprint (stable across reads, sensitive to a TRA/GBT re-split and to the whole book); the printed PDF measured at ten-digit figures (§13.27, control §13.28) and the workbook's tab (§13.29) · §14 **day by day**: real bets placed and settled across three EAT days (one across midnight, one on its stroke, one brought forward into an 08:00 window), every day read back to the cent AND as that day opened on its own; the days adding up; a running month's days so far; a payout a day late kept on its product's day; the PDF, workbook and CSV day tables; the New Year label; an old lock that holds no days; the billion-a-day fit and the footer · §15 **Finance's filing lines**: the September 2026 sheet to the shilling (3,063,000 · 1,074 tickets · 227,670 · 22,767 · 11,384 · 34,151 · 193,519), the lines on the reader's own books, the CSV's Count column, Polls + Up & Down adding up, a locked snapshot printing them, deposits and withdrawals named once and beside no figure, the widest figures measured in print (§15.12, control §15.13), a refund of a ticket placed before the window printing −1 ticket on every surface (§15.14–§15.15), a bonus-staked ticket voided with no record (§15.16), a month split by a rate change (§15.17), the count's words (§15.18) |
+| `npm run red:tax-report` | Mutates a COPY of `src/` with each declared defect (`scripts/anchors/tax-report.anchors.mjs`) and proves `test:tax-report` goes red on the named check — the plan's formula and rounding, every line of the check, the products, the locks, and each protection the 2026-10-03 adversarial review added (the whole-book loophole, the settling copy, a week's file overwriting its Monday's, merged rate segments, link inference, the running period's one-minute margin), and those of the second review (an acknowledged filing printed bare, the lock fingerprint, four-across tiles, a narrow id column, the window printed to "now"), and the day-by-day's twelve (an edge past the window, a day link opening the rest of the window, days measured on the cut-off, midnight filed under the day before, a forgotten brought-forward, a bet dropped from the day it left, a day dropping the bets its records name, the silent tax clause, an old filing's missing days unsaid, cents rounded away, a sign flipped in the workbook, an out-of-balance day hidden in print), and Finance's filing lines' eight (the refunds forgotten, the refunded tickets counted, the tax added to the commission, the commission before tax printed as net, the printed line's tickets dropped, the CSV's Count left blank, withdrawals named on the Payout line again, the deposits-and-withdrawals note dropped, the count clamped at zero, the bonus-staked ticket left unrefunded, net commission from the first rate period only, a hyphen for the minus, the page's line losing its no-break spaces) |
+| `npm run test:tax-report-page` | The surfaces at source level, every check with a planted-violation control: the page computes nothing and has no `?? 0`; the export gates on the stored role + 2FA + same-origin and audits before the first byte; every action gates first (reopen and rates on the stored ADMIN role, `requireOwner`); a lock recomputes from the books, refuses unless its fingerprint is the one the page showed, and treats a whole-book difference as its own; the lock panel is rebuilt per period and product; the dev seeder is dead in production; §5 the day card reads the view's own days (the live view's for an old lock), opens each through the engine's `daySlice`, uses the documents' own words, lays out a table only from 1280px, prints the whole period from Report 1/2, keeps both pagers' pages, and the route hands the workbook its wide layout; §6 Finance's filing lines are Report 2's own rows — the page makes no sum of its own, each of the four ways it could proven refused — and withdrawals are named once, in their own definition |
 | `npm run e2e:tax-report` | The same real flows on a LOOPBACK Postgres (`DATABASE_URL=…127.0.0.1…`): every Prisma twin the reader uses, the migration applied from empty, and the partial unique index refusing a second live lock |
-| `npm run qa:tax-report` | The browser drive on a local dev server: every period type × product, the arrows, the week/day pickers (typing moves nothing until **Go**), a link naming only a day, a balanced, an out-of-balance and a running month, one product balancing while the whole book is out, Lock → drift → Reopen, a lock refused because the books moved after the page loaded, a rate change that splits a month, all three downloads; then every state an officer can meet — the arrow's pending mark while a period loads, a download's progress, done and failed cards (with Try again), the Lock button working, an empty month (every line 0), a month not started (downloads and the next arrow disabled, the month list still naming it), a custom window that ends before it starts and an impossible date refused, a view-only Auditor (read-only banner, no Lock) and a role without the report (no figures, no menu item); §13 day by day — a month lists every day and they add up to Report 1, the last day closes with its On hold, a balanced month's every day ✓, a day's link shows its pending mark and opens that day equal to its row, Up & Down by day keeps its product, a week's seven days, a custom window's part-days and their links, a 40-day window paging 31 + 9, a running month to today "so far", a month not started, the phone/tablet blocks (44px+ tap targets, a tap opens the day), and the CSV's and workbook's day tables equal to the page; six widths, no console errors |
+| `npm run qa:tax-report` | The browser drive on a local dev server: every period type × product, the arrows, the week/day pickers (typing moves nothing until **Go**), a link naming only a day, a balanced, an out-of-balance and a running month, one product balancing while the whole book is out, Lock → drift → Reopen, a lock refused because the books moved after the page loaded, a rate change that splits a month, all three downloads; then every state an officer can meet — the arrow's pending mark while a period loads, a download's progress, done and failed cards (with Try again), the Lock button working, an empty month (every line 0), a month not started (downloads and the next arrow disabled, the month list still naming it), a custom window that ends before it starts and an impossible date refused, a view-only Auditor (read-only banner, no Lock) and a role without the report (no figures, no menu item); §13 day by day — a month lists every day and they add up to Report 1, the last day closes with its On hold, a balanced month's every day ✓, a day's link shows its pending mark and opens that day equal to its row, Up & Down by day keeps its product, a week's seven days, a custom window's part-days and their links, a 40-day window paging 31 + 9, a running month to today "so far", a month not started, the phone/tablet blocks (44px+ tap targets, a tap opens the day), and the CSV's and workbook's day tables equal to the page; Finance's filing lines on every product view and on the month split by a rate change (Sales less refunds = Sales − Refunds, its tickets = bets placed − refunds, Net commission revenue = Commission − Total tax on the summed commission, no withdrawal named beside a figure); six widths, no console errors |
 
 `test:tax-report` and `test:tax-report-page` run in `predeploy` and `test:all`.
 
@@ -261,6 +303,8 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
      fix the books (or, if the Owner decides to file anyway, the Owner locks with a written reason).
    - **amber "Period in progress"** — the month has not finished; come back after it closes.
 3. Check **Report 1** (the plan's four lines and the check, *Difference from Sales* = 0 ✓) and **Report 2** (the tax).
+   Report 2's first line, **Sales less refunds**, is the sales Finance's sheet files, with its **tickets**; its last,
+   **Net commission revenue**, is Commission − Total tax (§6c).
    *Day by day* lists every day of the month — select a day to open it; a day with ✗ is where an exception sits.
    *By product* shows Polls and Up & Down separately if the filing needs them apart (use the product pills on top) —
    their money lines add up to All; each product's tax is rounded on its own Payout, so it can differ by a shilling.
@@ -307,3 +351,8 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
    everywhere, no gold on a figure that is not earned money. Two fixes went platform-wide: `.admin-tbl` honours
    `align-top` (the unlayered `vertical-align: middle` had silently beaten it on every admin table) and divider rows no
    longer take the data-row hover; the admin staff strip shows its session half from 1024px (it collided at 640–1023).
+12. **Finance's filing lines frame Report 2; the tax model stays the plan's** (Jaykishan, 2026-10-06 — §6c): "We pay
+   tax on what we earn. That is 13% on winnings." Sales less refunds and its tickets open Report 2 and Net commission
+   revenue closes it, each one subtraction of lines printed above it — never a second read of the books. The plan's
+   rounding at each step stands where Finance's sheet rounds once (34,151 against the sheet's 34,150 for September).
+   Deposits and withdrawals are named once, in the notes, never beside a figure.

@@ -29,7 +29,8 @@ export default function Loading() {
         <SkKpiRow count={6} cols="grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <SkTableCard cols={2} rows={8} minWidth={280} />
-          <SkTableCard cols={2} rows={5} minWidth={280} />
+          {/* Report 2: the plan's five lines and Finance's two filing lines (2026-10-06), one rate period. */}
+          <SkTableCard cols={2} rows={7} minWidth={280} />
         </div>
       </SkBody>
     </>

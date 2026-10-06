@@ -441,7 +441,9 @@ console.log("§13 · a lock freezes the filed figures; the documents print the s
   eq("13.9 Report 1's lines in the plan's order, then the reconciling items and the check", r1?.rows.map((r) => r.line), ["Sales", "Payout", "On hold", "Refunds", "Platform fee kept", "Less: on hold brought forward", "Check: accounted total", "Difference from Sales (must be 0)"]);
   eq("13.10 Report 1's amounts are the reader's, in shillings", r1?.rows.map((r) => r.amount), [49_000, 20_570, 10_000, 17_000, 1_430, 0, 49_000, 0]);
   ok('13.10b nothing brought forward prints 0, never "-0"', Object.is(r1?.rows.find((r) => r.line === "Less: on hold brought forward")?.amount, 0));
-  eq("13.11 Report 2's lines and amounts", r2?.rows.map((r) => [r.line, r.basis, r.amount]), [["Payout (taxable reference)", "From Report 1", 20_570], ["Commission", "13% × Payout", 2_674], ["TRA tax", "10% × Commission", 267], ["GBT tax", "5% × Commission", 134], ["Total Tax payable", "TRA + GBT", 401]]);
+  // Framed by Finance's two filing lines (§15): Sales less refunds 49,000 − 17,000 with its 12 − 5 tickets (§9.12), and
+  // Net commission revenue 2,674 − 401.
+  eq("13.11 Report 2's lines and amounts", r2?.rows.map((r) => [r.line, r.basis, r.amount]), [["Sales less refunds · 7 tickets", "Sales − Refunds", 32_000], ["Payout (taxable reference)", "From Report 1", 20_570], ["Commission", "13% × Payout", 2_674], ["TRA tax", "10% × Commission", 267], ["GBT tax", "5% × Commission", 134], ["Total Tax payable", "TRA + GBT", 401], ["Net commission revenue", "Commission − Total Tax", 2_273]]);
   ok("13.12 a custom window is never filing-grade: Internal, no signature block", doc.meta.classification === "Internal" && doc.signatures === undefined, `${doc.meta.classification} · signatures ${doc.signatures?.length ?? 0}`);
   const monthDoc = D.buildTaxDocument({ ...A, period: E.monthPeriod("2026-09")! }, { generatorId: "usr_tx_gen", generatorName: "Test Officer", generatedAtMs: FAR, lock: null });
   ok("13.12b a finished, balanced month IS filing-grade: a regulator hand-off with the three-role attestation", monthDoc.meta.classification === "Regulator hand-off" && monthDoc.signatures?.length === 3 && monthDoc.signatures[0].name === "Test Officer");
@@ -853,6 +855,149 @@ console.log("§14 · day by day: each day is its own report, and the days add up
     writeFileSync(join(process.env.TAX_PDF_OUT, "tax-days.xlsx"), await renderXlsx(D.buildTaxDocument({ ...W, period: E.customPeriod("2026-09-20T00:00", "2026-09-23T00:00")! }, { ...gen, lock: null, layout: "xlsx" })));
     writeFileSync(join(process.env.TAX_PDF_OUT, "tax-days-billion.pdf"), await renderPdf(bigDoc));
     writeFileSync(join(process.env.TAX_PDF_OUT, "tax-days-out.pdf"), await renderPdf(lateDoc));
+  }
+}
+
+/* ═══ §15 · FINANCE'S FILING LINES ════════════════════════════════════════════════════════════════ */
+// Jaykishan, 2026-10-06, with Finance's sheet "Ocean Entertainment Limited (50pick) — Tax for the month of September
+// 2026": "We pay tax on what we earn. That is 13% on winnings … I need number of tickets on sales which is 3,063,000 —
+// only ones which are not refunded". This report's September: Sales 7,210,500 (3,353 bets) · Refunds 4,147,500 (2,279
+// refunds) · Payout 1,751,305.
+console.log("§15 · Sales less refunds with its tickets, and Net commission revenue — Finance's September 2026 sheet");
+{
+  const D = (await load("src/lib/server/tax-report-doc.ts")) as typeof import("../src/lib/server/tax-report-doc.ts");
+  const { findPdfOverflows } = (await load("src/lib/server/reports/pdf.ts")) as typeof import("../src/lib/server/reports/pdf.ts");
+  const gen = { generatorId: "usr_tx_gen", generatorName: "Test Officer", generatedAtMs: FAR };
+
+  // ── The sheet, to the shilling (pure) ─────────────────────────────────────────────────────────
+  const t = E.taxOnPayout(1_751_305_00, E.APPROVED_RATES);
+  const fs = E.filingSummary({ report1: { salesCents: 7_210_500_00, refundsCents: 4_147_500_00 }, counts: { betsPlaced: 3_353, refundRecords: 2_279 }, tax: t });
+  eq("15.1 Sales less refunds = Sales − Refunds: 7,210,500 − 4,147,500 = 3,063,000, the sales on Finance's sheet", fs.salesLessRefundsCents, 3_063_000_00);
+  eq("15.2 its tickets: 3,353 placed − 2,279 refunded = 1,074", [fs.ticketsPlaced, fs.ticketsRefunded, fs.ticketsNotRefunded], [3_353, 2_279, 1_074]);
+  // The sheet rounds once, at the end (TRA 22,766.97 · GBT 11,383.48 · Total 34,150); the plan rounds at each step (§3).
+  eq("15.3 the sheet's Winnings 1,751,305 taxed by the plan: Commission 227,670 · TRA 22,767 · GBT 11,384 · Total 34,151", [t.commission, t.tra, t.gbt, t.total], [227_670, 22_767, 11_384, 34_151]);
+  eq("15.4 Net commission revenue = Commission − Total tax = 193,519 — the sheet's own last line", fs.netCommission, 193_519);
+
+  // ── On the reader's own books (fixture A: Sales 49,000 · Refunds 17,000 · 12 bets placed · 5 refund records) ──
+  const ra = D.report2Rows(A.main);
+  ok("15.5 Report 2 opens with Sales less refunds, carrying its tickets, and closes with Net commission revenue",
+    ra[0]?.line === "Sales less refunds" && ra[0].amount === 32_000_00 && ra[0].tickets?.net === 7 && ra[0].tickets.placed === 12 && ra[0].tickets.refunded === 5
+      && ra.at(-1)?.line === "Net commission revenue" && ra.at(-1)?.amount === A.main.tax.commission - A.main.tax.total && ra.at(-1)?.kind === "total",
+    JSON.stringify([ra[0], ra.at(-1)]));
+  const csv = D.buildTaxCsv(A, { generatorName: "Test Officer", generatedAtMs: FAR, lock: null, reference: "TAX-TEST" });
+  const csvLine = (s: string) => csv.split(String.fromCharCode(10)).find((l) => l.includes(s)) ?? `no line with ${s}`;
+  ok("15.6 the CSV: the tickets in the Count column as a plain number, how they are made in the basis",
+    csv.includes('"Report 2 — Taxation","Sales less refunds","Sales − Refunds · tickets: 12 placed − 5 refunded",32000,7'), csvLine("Sales less refunds"));
+  ok("15.7 …and Net commission revenue as a whole-shilling number", csv.includes('"Report 2 — Taxation","Net commission revenue","Commission − Total Tax",2273,'), csvLine("Net commission revenue"));
+  const nb = String.fromCharCode(160);
+  ok("15.7b the page's tickets line keeps each number with its word and the minus with the number after it (no-break spaces: it broke as '… − 5' / 'refunded' at 360px); the CSV is plain text",
+    D.ticketsLine(ra[0].tickets!) === `Tickets: 12${nb}placed −${nb}5${nb}refunded` && D.report2BasisText(ra[0]) === "Sales − Refunds · tickets: 12 placed − 5 refunded" && !csv.includes(nb),
+    JSON.stringify(D.ticketsLine(ra[0].tickets!)));
+  const parts = (A.byProduct ?? []).map((p) => E.filingSummary(p));
+  const all = E.filingSummary(A.main);
+  ok("15.8 Polls + Up & Down add up to All products — Sales less refunds and its tickets",
+    parts.length === 2 && parts.reduce((s, p) => s + p.salesLessRefundsCents, 0) === all.salesLessRefundsCents && parts.reduce((s, p) => s + p.ticketsNotRefunded, 0) === all.ticketsNotRefunded,
+    JSON.stringify({ parts, all }));
+  // A lock stores the report as JSON. The lines are made from figures every snapshot holds, so a filing locked before
+  // they existed prints them too — and the lock fingerprint, which hashes those figures, already covers them.
+  eq("15.9 a locked snapshot (a JSON round trip) prints the same Report 2 rows", D.report2Rows(JSON.parse(JSON.stringify(A.main))), ra);
+
+  // ── Deposits and withdrawals: said once, plainly, and nowhere a figure stands (management, 2026-10-06) ──
+  const docA = D.buildTaxDocument(A, { ...gen, lock: null });
+  const payoutBasis = D.report1Rows(A.main).find((r) => r.line === "Payout")?.basis ?? "";
+  const notes = docA.notes ?? [];
+  ok("15.10 the Payout line no longer names withdrawals; the notes say ONCE that deposits and withdrawals are not part of the report",
+    !/withdraw/i.test(payoutBasis) && notes.filter((n) => /withdraw/i.test(n)).length === 1 && notes.some((n) => n.startsWith("Deposits and withdrawals are not part of this report")),
+    `${payoutBasis} | ${notes.filter((n) => /withdraw/i.test(n)).join(" | ")}`);
+  ok("15.11 …and no table cell and no CSV line mentions a deposit or a withdrawal",
+    !docA.sections.some((s) => s.rows.some((r) => Object.values(r).some((v) => typeof v === "string" && /withdraw|deposit/i.test(v)))) && !/withdraw|deposit/i.test(csv));
+
+  // ── The printed page, measured: the widest the new lines can be ───────────────────────────────
+  const BIGC = 9_999_999_999_00;
+  const wide = {
+    ...A,
+    period: E.monthPeriod("2026-09")!,
+    main: {
+      ...A.main,
+      report1: { ...A.main.report1, salesCents: 0, refundsCents: BIGC },
+      counts: { ...A.main.counts, betsPlaced: 0, refundRecords: 9_999_999 },
+      tax: { ...A.main.tax, commission: 0, total: 9_999_999_999 },
+    },
+  };
+  const wideDoc = D.buildTaxDocument(wide, { ...gen, lock: null });
+  const wideOver = findPdfOverflows(wideDoc).filter((o) => o.where.startsWith("Report 2"));
+  const wideRows = wideDoc.sections.find((s) => s.title === "Report 2 — Taxation")?.rows ?? [];
+  ok("15.12 the printed Report 2 holds −9,999,999,999 Sales less refunds with −9,999,999 tickets, and −9,999,999,999 net commission, each on its line",
+    wideOver.length === 0 && wideRows[0]?.line === "Sales less refunds · −9,999,999 tickets" && wideRows.at(-1)?.amount === -9_999_999_999,
+    JSON.stringify({ over: wideOver.slice(0, 4), first: wideRows[0], last: wideRows.at(-1) }));
+  const cramped = { ...wideDoc, sections: wideDoc.sections.map((s) => (s.title.startsWith("Report 2") ? { ...s, columns: s.columns.map((c) => (c.key === "amount" ? { ...c, width: 12 } : c)) } : s)) };
+  ok("15.13 CONTROL — the same figures in a 12-wide Amount column ARE caught splitting", findPdfOverflows(cramped).some((o) => o.where.startsWith("Report 2")));
+
+  // ── Real books: a refund of a ticket placed BEFORE the window is deducted here — printed as it is, never clamped ──
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const at = (day: string, hhmm: string) => E.parseEatLocal(`${day}T${hhmm}`)!;
+  /** §14's stamp: move a market's bets and their money records onto chosen instants, as the services would have stamped them. */
+  async function stampAt(marketId: string, placedAt: number, settledAt: number) {
+    const ids = new Set<string>();
+    for (const p of await svc.listPositionsForMarket(marketId)) {
+      ids.add(p.id);
+      const cur = (await positionStore.get(p.id))!;
+      await positionStore.set({ ...cur, placedAt: iso(placedAt), settledAt: cur.settledAt ? iso(settledAt) : cur.settledAt } as never);
+    }
+    for (const t of await db.txn.listAll()) {
+      if (t.positionId && ids.has(t.positionId)) await db.txn.update(t.id, { createdAt: iso(t.type === "BET_PLACED" ? placedAt : settledAt) });
+    }
+  }
+  const mbf = await market("filing-brought-forward");   // YES 4,000 alone: placed 10 Aug, refunded one-sided on 12 Aug
+  await bet("mbf", mbf.id, "YES", 4_000);
+  await resolveAndSettle(mbf.id, "YES");
+  await stampAt(mbf.id, at("2026-08-10", "10:00"), at("2026-08-12", "15:00"));
+  const BFW = await read(at("2026-08-11", "00:00"), at("2026-08-13", "00:00"));
+  const bfs = E.filingSummary(BFW.main);
+  ok("15.14 a window that only refunds a ticket placed before it: Sales less refunds −4,000 and −1 ticket (0 placed − 1 refunded), its own check balanced",
+    BFW.main.reconciliation.balanced && BFW.main.report1.broughtForwardCents === 4_000_00 && BFW.main.report1.refundsCents === 4_000_00
+      && bfs.salesLessRefundsCents === -4_000_00 && bfs.ticketsPlaced === 0 && bfs.ticketsRefunded === 1 && bfs.ticketsNotRefunded === -1,
+    JSON.stringify({ r1: BFW.main.report1, rec: BFW.main.reconciliation, bfs }));
+  const bfLine = D.buildTaxDocument(BFW, { ...gen, lock: null }).sections.find((s) => s.title === "Report 2 — Taxation")?.rows[0]?.line;
+  const bfCsv = D.buildTaxCsv(BFW, { generatorName: "Test Officer", generatedAtMs: FAR, lock: null, reference: "TAX-TEST" });
+  ok("15.15 …and every surface prints it as it is: '−1 ticket' on the page and on the printed line, −1 in the CSV's Count, −4,000 its amount",
+    D.ticketsLabel(D.report2Rows(BFW.main)[0].tickets!.net) === "−1 ticket" && bfLine === "Sales less refunds · −1 ticket"
+      && bfCsv.includes('"Report 2 — Taxation","Sales less refunds","Sales − Refunds · tickets: 0 placed − 1 refunded",-4000,-1'),
+    `${bfLine} | ${bfCsv.split(String.fromCharCode(10)).find((l) => l.includes("Sales less refunds")) ?? "no CSV line"}`);
+
+  // ── A ticket staked wholly from bonus and voided: refunded with NO money record, still one refunded ticket ──
+  const mbo = await market("filing-bonus-void");
+  const placedBo = at("2026-08-20", "10:00");
+  await positionStore.set({ id: "pos_tx_bonus_void", userId: "tx_officer_b", marketId: mbo.id, side: "YES", stake: 2_500, bonusStakeTzs: 2_500, potentialPayout: 2_500, status: "VOID", finalPayout: null, placedAt: iso(placedBo), settledAt: iso(placedBo + 3_600_000) } as never);
+  const BOW = await read(at("2026-08-20", "00:00"), at("2026-08-21", "00:00"));
+  const bos = E.filingSummary(BOW.main);
+  const reasonsTotal = BOW.main.refundsByReason.reduce((s, r) => s + r.count, 0);
+  ok("15.16 a ticket staked wholly from bonus and voided is one refunded ticket: 1 placed − 1 refunded = 0, Sales less refunds 0, Report 1's refunds count = the reasons' total",
+    BOW.main.reconciliation.balanced && BOW.main.report1.salesCents === 2_500_00 && BOW.main.report1.refundsCents === 2_500_00
+      && bos.salesLessRefundsCents === 0 && bos.ticketsNotRefunded === 0 && BOW.main.counts.refundRecords === 1 && reasonsTotal === 1,
+    JSON.stringify({ r1: BOW.main.report1, counts: BOW.main.counts, reasonsTotal, bos }));
+
+  // ── A month split by a rate change: the filing lines frame the segments, once each ─────────────
+  const vMid: import("../src/lib/tax-report.ts").RateVersion = { id: "v_mid", effectiveFrom: "2026-09-15", rates: { commissionBp: 1200, traBp: 1000, gbtBp: 500 }, recordedBy: "usr_t", recordedAt: "2026-10-03T10:00:00Z", note: "test" };
+  const sepW = E.monthPeriod("2026-09")!;
+  const segs = E.rateSegments(sepW.startMs, sepW.endMs, E.normaliseVersions([vMid]));
+  // 13% × 1,000,000 = 130,000 · 13,000 · 6,500 and 12% × 751,305 = 90,157 · 9,016 · 4,508 → 220,157 − 33,024 = 187,133.
+  const split = E.taxForSegments([{ segment: segs[0], payoutCents: 1_000_000_00 }, { segment: segs[1], payoutCents: 751_305_00 }]);
+  const rs = D.report2Rows({ ...A.main, tax: split });
+  const names = rs.map((r) => r.line);
+  ok("15.17 a month split by a rate change: Net commission revenue = Σ Commission − Σ Total tax (187,133), last, after Total Tax payable and the all-segments sums; Sales less refunds first, once",
+    segs.length === 2 && segs[1].version.id === "v_mid" && names[0] === "Sales less refunds" && names.filter((n) => n === "Sales less refunds").length === 1
+      && rs.at(-1)?.line === "Net commission revenue" && rs.at(-1)?.amount === 187_133 && rs.at(-1)?.amount === split.commission - split.total
+      && names.at(-2) === "Total Tax payable" && names.at(-3) === "GBT tax — all segments",
+    JSON.stringify({ names, net: rs.at(-1)?.amount, split: [split.commission, split.total] }));
+
+  eq("15.18 the count's words: grouped, singular for one, and signed with U+2212 like every figure here",
+    [1_074, 1, 0, -1, -37].map(D.ticketsLabel), ["1,074 tickets", "1 ticket", "0 tickets", "−1 ticket", "−37 tickets"]);
+  // To LOOK at the September sheet's lines as printed: TAX_PDF_OUT=<dir> writes the fixture's month with them.
+  if (process.env.TAX_PDF_OUT) {
+    const { renderPdf } = (await load("src/lib/server/reports/pdf.ts")) as typeof import("../src/lib/server/reports/pdf.ts");
+    mkdirSync(process.env.TAX_PDF_OUT, { recursive: true });
+    writeFileSync(join(process.env.TAX_PDF_OUT, "tax-filing-lines-widest.pdf"), await renderPdf(wideDoc));
   }
 }
 
