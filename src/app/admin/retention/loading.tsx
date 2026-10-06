@@ -15,10 +15,11 @@ export default function Loading() {
       <SkBody>
         <SkKpiRow count={4} />
         {/* Schedule — a titled `p-0` card whose table is `min-w-[720px]` and whose cells
-            are `p-3` (16px), not `.admin-tbl`'s 12: rows are 52.5px, not 44.5. Ten rows,
-            because `SCHEDULE` (retention/page.tsx:33) has ten entries and they are all
-            rendered unconditionally. */}
-        <SkTableCard cols={5} rows={10} minWidth={720} cellPy={16} />
+            are `p-3` (16px), not `.admin-tbl`'s 12: rows are 52.5px, not 44.5. Fifteen
+            rows, because `SCHEDULE` (retention/page.tsx) has fifteen entries — the agent rows
+            and U16a's two campaign rows joined after this ghost was drawn at ten — and they are
+            all rendered unconditionally. ⚠️ Count the array when a row is added. */}
+        <SkTableCard cols={5} rows={15} minWidth={720} cellPy={16} />
         {/* ⛔ `lg:grid-cols-2`, NOT `md:` — retention/page.tsx's own band steps at `lg`,
             so between 768 and 1023 this ghost was 2-up while the page was 1-up. Both
             cards are UNTITLED (the info and the AML-conflict warning). */}

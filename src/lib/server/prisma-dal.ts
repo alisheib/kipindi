@@ -29,7 +29,11 @@ import {
 import { sniffBase64ImageMime } from "./image-signature";
 // U35b · the campaign tables' ONE rule set — asked before every campaign or recipient write, exactly as the memory
 // twin asks it (`test:dal-parity` §26). Pure: it takes only types from the store, so there is no cycle.
-import { assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
+// U16a · and before erasure's unlink and the access export's read — with the ONE bound that read shares with the memory twin.
+import {
+  assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
+  assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
+} from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary: the attention count spreads its statuses (never a retyped list) and every
 // count is zero-filled through its tallies, exactly as the memory twin's are (`test:dal-parity` §26).
 import {
@@ -4893,6 +4897,33 @@ export const prismaDb = {
       const groups = await pc().smsCampaignRecipient.groupBy({ by: ["campaignId", "status"], where: { campaignId: { in: [...ids] } }, _count: { _all: true } });
       return tallyRecipientsByCampaign(ids, (groups as Array<{ campaignId: string; status: string; _count: { _all: number } }>)
         .map((g) => ({ campaignId: g.campaignId, status: g.status, count: g._count._all })));
+    },
+    /** U16a · THE ACCESS EXPORT'S READ — the rows about ONE number CREATED OR SENT on or after `sinceIso`, NEWEST first,
+     *  ties broken on `id` the same way, at most `SMS_RECIPIENTS_BY_NUMBER_MAX` + 1 — the one past the cap only tells the
+     *  export that it cut (D10) — `msisdn` is indexed. The rule set is asked first. ⛔ The bound is IN THE WHERE, never a
+     *  filter after the read: a recycled number's older rows — a previous holder's — are never read, so they cannot crowd
+     *  this person's rows out of the cap; a row put on a campaign before the number passed to this person but SENT after
+     *  it is theirs, so the OR takes it (D12). The OR always has its two arms — an EMPTY `OR` nested in a where is no
+     *  condition at all on Postgres (every row), the trap `playerWalk` answers before it queries. */
+    listByMsisdn: async (msisdn: string, sinceIso: string): Promise<StoredSmsCampaignRecipient[]> => {
+      assertRecipientNumberRead(msisdn, sinceIso);
+      const bound = new Date(sinceIso);
+      const rows = await pc().smsCampaignRecipient.findMany({
+        where: { msisdn, OR: [{ createdAt: { gte: bound } }, { sentAt: { gte: bound } }] },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: SMS_RECIPIENTS_BY_NUMBER_MAX + 1,
+      });
+      return rows.map(toStoredSmsCampaignRecipient);
+    },
+    /** U16a · ERASURE'S REACH — ONE statement: every row linked to the account loses the link, and the only other column
+     *  written is the caller's stamp (C25: `updatedAt` is `@updatedAt`, and leaving it to Prisma would stamp another
+     *  instant than the memory twin's). The number, the status, the stamps and the gate trail stay — the record of what
+     *  was sent (GN 478T reg 51(1)). The rule set is asked first: a missing id here would be NO CONDITION, every row
+     *  unlinked. ⛔ Never a delete. `userId` is indexed. */
+    unlinkUser: async (userId: string, at: string): Promise<number> => {
+      assertRecipientUnlink(userId, at);
+      const unlinked = await pc().smsCampaignRecipient.updateMany({ where: { userId }, data: { userId: null, updatedAt: new Date(at) } });
+      return unlinked.count;
     },
   },
 };

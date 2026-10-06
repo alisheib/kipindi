@@ -336,7 +336,8 @@ model User {
   marketingContacts       MarketingContact[]
   /// ⛔ THE BACK-REFERENCE OF A LINK (U35b). A campaign recipient may point at this account; deleting the
   /// account sets that pointer NULL (`onDelete: SetNull`) and KEEPS the row — it is the record that we
-  /// messaged somebody. Erasure, retention and the DSAR export reach these rows from U16, before U42 writes one.
+  /// messaged somebody. Erasure (the link cleared, the row kept), retention and both access exports reach these rows
+  /// since U16a — before U42 writes one.
   smsCampaignRecipients   SmsCampaignRecipient[]
 
   @@index([role, status])
@@ -3187,7 +3188,7 @@ enum MessagingConsentSource {
   IMPORT
   /// Recorded by a member of staff, who is named in `recordedBy`.
   OPERATOR
-  /// The 730-day inactivity lapse in `retention.ts`. ⚠️ Nothing writes this yet — U16 owns
+  /// The 730-day inactivity lapse in `retention.ts`. ⚠️ Nothing writes this yet — U16b owns
   /// making the lapse append its row. The value ships here because adding a value to an
   /// EXISTING enum later costs its own migration one commit ahead (measured: Postgres 18.3
   /// refuses `55P04 unsafe use of new value` in the transaction that adds it).
@@ -3787,7 +3788,8 @@ model SmsCampaign {
 ///
 /// ⛔ NEVER DELETED, in either twin. The campaign link is RESTRICT; `contactId` and `userId` are LINKS, never
 /// copies, and SET NULL — a deleted contact or account breaks the pointer and keeps the record.
-/// ⚠️ M9: U16 brings this model inside erasure, retention and the DSAR export BEFORE U42 writes a row.
+/// ✅ M9 (U16a): inside erasure (the account link cleared, the row kept), retention (7 years from the campaign's
+/// finish, docs/DATA-RETENTION.md) and both access exports — BEFORE U42 writes a row.
 model SmsCampaignRecipient {
   id           String                     @id @default(cuid())
   campaignId   String

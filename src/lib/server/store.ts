@@ -11,7 +11,11 @@ import { randomId } from "./crypto";
 import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type TxnSearchResult } from "./txn-filters";
 // U35b · the campaign tables' ONE rule set — this twin asks it before every campaign or recipient write, exactly as
 // the Prisma twin does (`test:dal-parity` §26). It takes only TYPES back from this file, so there is no cycle.
-import { assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
+// U16a · and before erasure's unlink and the access export's read — with the ONE bound that read shares with Postgres.
+import {
+  assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
+  assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
+} from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
 // statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
 // back from this file, so there is no cycle.
@@ -467,7 +471,9 @@ export type SmsCampaignGateCheck = { check: string; verdict: string; wording: st
 export type SmsCampaignGateTrail = SmsCampaignGateCheck[];
 
 /** ⭐ ONE PERSON ON ONE CAMPAIGN — the record that we messaged them, or why we did not. Its `id` is the slice ref and
- *  `SmsMessage.targetId`. ⛔ `contactId` and `userId` are LINKS, never copies, and the row is never deleted. */
+ *  `SmsMessage.targetId`. ⛔ `contactId` and `userId` are LINKS, never copies, and the row is never deleted — erasure
+ *  clears `userId` and keeps everything else (U16a, `unlinkUser`): the record that we messaged a NUMBER outlives the
+ *  record of which account held it. */
 export type StoredSmsCampaignRecipient = {
   id: string;
   campaignId: string;
@@ -3967,6 +3973,38 @@ const memoryDb = {
       return tallyRecipientsByCampaign(ids, recipients
         .filter((r) => wanted.has(r.campaignId))
         .map((r) => ({ campaignId: r.campaignId, status: r.status, count: 1 })));
+    },
+    /** U16a · THE ACCESS EXPORT'S READ — the rows about ONE number CREATED OR SENT on or after `sinceIso`, NEWEST first
+     *  (`createdAt`, then `id`, both descending: the Prisma twin's `orderBy`), at most `SMS_RECIPIENTS_BY_NUMBER_MAX` + 1 —
+     *  the one past the cap only tells the export that it cut (D10). The rule set is asked first
+     *  (`assertRecipientNumberRead`). ⛔ The bound is part of the QUESTION, as it is the Prisma twin's WHERE: a recycled
+     *  number's older rows — a previous holder's — are never in the answer, so they can never crowd this person's rows out
+     *  of the cap; and a row put on a campaign before the number passed to this person but SENT after it is theirs, so it
+     *  is in (D12, the review's MINOR-3). Instants compared as instants, never as text. Copies all the way down, as `find`. */
+    listByMsisdn: (msisdn: string, sinceIso: string): StoredSmsCampaignRecipient[] => {
+      assertRecipientNumberRead(msisdn, sinceIso);
+      const since = Date.parse(sinceIso);
+      const held: StoredSmsCampaignRecipient[] = Array.from(store.smsCampaignRecipients.values());
+      return held
+        .filter((r) => r.msisdn === msisdn && (Date.parse(r.createdAt) >= since || (r.sentAt !== null && Date.parse(r.sentAt) >= since)))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id))
+        .slice(0, SMS_RECIPIENTS_BY_NUMBER_MAX + 1)
+        .map((r) => ({ ...r, gateTrail: r.gateTrail === null ? null : r.gateTrail.map((g) => ({ ...g })) }));
+    },
+    /** U16a · ERASURE'S REACH — every row LINKED to the account loses the link, and nothing else changes but the caller's
+     *  stamp: the number, the status, the stamps and the gate trail stay, because the row is the record of what was sent
+     *  (GN 478T reg 51(1)) and is kept for its own period. The rule set is asked first (`assertRecipientUnlink` — never a
+     *  missing id). ⛔ Never a delete, and never a row linked to another account. Answers how many rows lost the link. */
+    unlinkUser: (userId: string, at: string): number => {
+      assertRecipientUnlink(userId, at);
+      let unlinked = 0;
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.userId !== userId) continue;
+        r.userId = null;
+        r.updatedAt = at;
+        unlinked++;
+      }
+      return unlinked;
     },
   },
 };

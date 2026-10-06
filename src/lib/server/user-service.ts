@@ -78,8 +78,13 @@ function withoutHouseAuditKeys<T extends { entries: AuditEntry[] }>(page: T): T 
  * privacy.ts had always field-picked correctly; only this door was wrong, which is exactly
  * why the projection now lives in ONE place that both doors call. See dsarUserView's own
  * comment for why it is an allowlist and must stay one.
+ *
+ * U16a · `marketing: false` leaves the marketing section out (null) — for a caller that shows none of it: the officer's
+ * player page reads only the money rows, so it never runs the campaign read (up to 5,001 rows per number, one campaign
+ * read each) and a failure in that read can never blank its money figures. ⛔ Both access doors — the player's own
+ * download and the officer's DSAR bundle — take the default, the whole section.
  */
-export async function exportUserData(userId: string) {
+export async function exportUserData(userId: string, opts: { marketing?: boolean } = {}) {
   const user = await db.user.findById(userId);
   return {
     generatedAt: new Date().toISOString(),
@@ -92,7 +97,7 @@ export async function exportUserData(userId: string) {
     // never the raw row (whose `houseBotId` key names the feature) and never a house exclusion (which would leave gaps).
     transactions: (await db.txn.findByUser(userId, 1000)).map(dsarTxnView),
     // U18b · the consent ledger, the stop list and the contact book — the SAME allowlist the officer's bundle uses.
-    marketing: user ? await marketingDsarView(user) : null,
+    marketing: user && opts.marketing !== false ? await marketingDsarView(user) : null,
     /**
      * 🔴 THIS READ WAS THE RING, ON THE GDPR ART. 15 DOOR. The file a player downloads to
      * exercise a statutory right of access contained only whatever of their events happened to

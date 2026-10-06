@@ -38,7 +38,9 @@
  *
  *   ① IMMEDIATE — everything that is not a customer-due-diligence or money record.
  *      Contact details, credentials, avatar, in-app notifications, push endpoints, the
- *      comment thread's frozen author masks, the identity NUMBER and NAME.
+ *      comment thread's frozen author masks, the identity NUMBER and NAME — and the
+ *      account LINK on every campaign recipient row (U16a), whose number, status and
+ *      trail stay as the 7-year record that we messaged that number.
  *
  *   ② HELD FOR 7 YEARS FROM CLOSURE — the identity IMAGES and the extra documents an
  *      officer asked for, plus the source-of-funds declaration.
@@ -76,7 +78,7 @@ import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./age
 import { houseBotAlertOnceStore, houseBotStore } from "./house-bot-dal";
 import { withLock } from "./locks";
 import { ALERT_KEY } from "@/lib/house-bot/constants";
-import { eraseMarketingFor } from "./marketing/erase";
+import { eraseMarketingFor, unlinkCampaignRecipients } from "./marketing/erase";
 import type { MarketingErasureCounts } from "./marketing/erase";
 
 /**
@@ -120,7 +122,10 @@ export type AnonymizeOutcome =
   | { ok: false; error: string; reason: "not_found" | "not_closed" | "house_bot_live" | "error" }
   | {
       ok: true;
-      /** Already-erased input: every counter is 0 and nothing was written. */
+      /** Already-erased input: only the steps keyed on the account id run again — step 4c's campaign unlink among
+       *  them, and tier ② once its hold has run — so their counters say what a re-run still found
+       *  (`campaignRecipientsUnlinked` above 0 is a row an enqueue linked after the first pass). A step keyed on the
+       *  number finds nothing: the tombstone holds no number. */
       alreadyErased: boolean;
       /** Tier ② ran (the 7-year hold had expired). */
       documentsReleased: boolean;
@@ -232,7 +237,7 @@ export async function anonymizeClosedAccount(
     agentApplicationsRedacted: 0, agentDocumentsDeleted: 0, agentDocumentObjectsFailed: 0,
     extraRequestsCleared: 0, comments: 0, notificationsDeleted: 0, notificationsRedacted: 0,
     otps: 0, pushSubscriptions: 0, watchlistEntries: 0, houseBots: 0, houseBotNotificationsRedacted: 0,
-    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0,
+    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0, campaignRecipientsUnlinked: 0,
   };
 
   // The clock runs from closure. A CLOSED row with no `closedAt` predates that column being
@@ -450,8 +455,14 @@ export async function anonymizeClosedAccount(
   // tombstones the phone — the number is the only key the ledger and the book share — so a re-run (phone
   // already tombstoned) has nothing to key on and skips it; every write in it is idempotent, so a first
   // pass that died part-way is finished by the next. ⛔ No stop-list row: `marketing/erase.ts` says why.
+  // ⭐ U16a · ITS LAST STEP KEYS ON THE ACCOUNT ID, which the tombstone does not touch — so a RE-RUN still reaches the
+  // campaign records: a recipient row linked to this account since the first pass (an enqueue that walked the account
+  // before its number was tombstoned) loses its link now, through the same helper, and a re-run with nothing new
+  // reports 0 (the AnonymizeOutcome contract above).
   if (!wasErased) {
     Object.assign(counts, await eraseMarketingFor({ userId, phoneE164: user.phoneE164, officerId: opts?.officerId ?? null }));
+  } else {
+    counts.campaignRecipientsUnlinked = await unlinkCampaignRecipients(userId);
   }
 
   // ── 5 · CREDENTIALS AND DEVICE STATE ────────────────────────────────────────────────

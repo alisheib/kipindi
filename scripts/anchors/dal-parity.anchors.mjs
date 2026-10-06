@@ -1412,6 +1412,80 @@ export const MUTATIONS = [
     to: `status: g.status as "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED", count: g._count._all`,
     expect: "26.status.prisma · ⛔ the Prisma twin names that ONE union at both of its reads — the recipient mapper and countByStatus cast each status to SmsCampaignRecipientStatus, imported from store.ts — and neither read spells a recipient status of its own (no inline list, no literal)",
   },
+  /* ── §26 · U16a · erasure's unlink and the access export's read (S10 2026-10-04) ──────────────────────────────── */
+  {
+    // ⭐ THE SPEC'S OWN RED (a member in one twin only): erasure's unlink works in every suite and throws on production —
+    // the erasure stops part-way, the request stays open, and every recipient row keeps the erased account's link.
+    name: "prisma-dal.ts — the Prisma recipient namespace loses unlinkUser (a member in one twin only)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    unlinkUser: async (userId: string, at: string): Promise<number> => {`,
+    to: `    unlinkAccount: async (userId: string, at: string): Promise<number> => {`,
+    expect: "26.u16a.parity · ⭐ BOTH twins define listByMsisdn AND unlinkUser — a member in one twin only works in every suite and throws on production",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (unlinkUser writing another column): the erasure takes the contact link with it on Postgres
+    // only — the record that we messaged a number loses the book row it was sent through, and no memory suite notices.
+    name: "prisma-dal.ts — unlinkUser also clears the contact link (writes another column)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `data: { userId: null, updatedAt: new Date(at) }`,
+    to: `data: { userId: null, contactId: null, updatedAt: new Date(at) }`,
+    expect: "26.u16a.unlink.prisma · ⛔ the Prisma unlinkUser asks assertRecipientUnlink FIRST, then is ONE updateMany WHERE exactly { userId } whose data is exactly the link cleared and the caller's stamp — { userId: null, updatedAt: new Date(at) } — with no other statement",
+  },
+  {
+    // 🔴 THE EXPORT'S BOUND LEAVES THE WHERE, on Postgres only: a recycled number's new holder downloads the last holder's
+    // campaign messages, and enough of them crowd the newest 5,000 that the person's own drop out of the cap.
+    name: "prisma-dal.ts — the export's read drops the creation bound from its WHERE",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { msisdn, OR: [{ createdAt: { gte: bound } }, { sentAt: { gte: bound } }] },`,
+    to: `        where: { msisdn },`,
+    expect: "26.u16a.list.prisma · ⛔ the Prisma listByMsisdn asks assertRecipientNumberRead FIRST, then ONE findMany whose WHERE holds the number AND the bound — created OR sent at or after the instant, both arms — never a filter after the fetch — ordered createdAt desc THEN id desc, taking ONE row past SMS_RECIPIENTS_BY_NUMBER_MAX, read back through the one mapper",
+  },
+  {
+    // 🔴 D12 · THE SENT ARM DROPPED, on Postgres only: a message queued for a number's previous holder but sent after the
+    // number passed to this person reached THEIR phone — and leaves their file (the review's MINOR-3).
+    name: "prisma-dal.ts — the export's read bounds by createdAt alone (the sentAt arm dropped)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { msisdn, OR: [{ createdAt: { gte: bound } }, { sentAt: { gte: bound } }] },`,
+    to: `        where: { msisdn, createdAt: { gte: bound } },`,
+    expect: "26.u16a.list.prisma · ⛔ the Prisma listByMsisdn asks assertRecipientNumberRead FIRST, then ONE findMany whose WHERE holds the number AND the bound — created OR sent at or after the instant, both arms — never a filter after the fetch — ordered createdAt desc THEN id desc, taking ONE row past SMS_RECIPIENTS_BY_NUMBER_MAX, read back through the one mapper",
+  },
+  {
+    // 🔴 D10 · THE READ STOPS AT THE CAP, on Postgres only: the export can no longer tell that a number held more, and a
+    // person's oldest campaign messages leave their file in silence (the review's MINOR-2).
+    name: "prisma-dal.ts — the export's read takes exactly the cap (no row past it to tell the export it cut)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        take: SMS_RECIPIENTS_BY_NUMBER_MAX + 1,`,
+    to: `        take: SMS_RECIPIENTS_BY_NUMBER_MAX,`,
+    expect: "26.u16a.list.prisma · ⛔ the Prisma listByMsisdn asks assertRecipientNumberRead FIRST, then ONE findMany whose WHERE holds the number AND the bound — created OR sent at or after the instant, both arms — never a filter after the fetch — ordered createdAt desc THEN id desc, taking ONE row past SMS_RECIPIENTS_BY_NUMBER_MAX, read back through the one mapper",
+  },
+  {
+    // 🔴 ERASURE DELETES THE RECORD, in the twin every suite runs on: the proof that a number was messaged is gone, and
+    // with it the 7-year record GN 478T reg 51(1) asks for.
+    name: "store.ts — the memory unlinkUser deletes the row instead of clearing its link",
+    file: "src/lib/server/store.ts",
+    from: `        r.userId = null;`,
+    to: `        store.smsCampaignRecipients.delete(r.id);`,
+    expect: "26.u16a.unlink.memory · ⛔ the memory unlinkUser asks assertRecipientUnlink FIRST, skips every row whose userId is not the account, writes exactly the link (null) and the stamp (at) — two assignments, no more — and never removes or replaces a row",
+  },
+  {
+    // 🔴 THE NO-CONDITION TRAP REOPENED, on Postgres only (U16a review TGT-6): the Prisma unlink stops asking the rule set,
+    // so a caller that lost its account id sends `where: { userId: undefined }` — no condition — and every recipient row
+    // on the table loses its account link, while the memory twin (which matches nobody) stays green in every suite.
+    name: "prisma-dal.ts — the Prisma unlinkUser stops asking the rule set first (the undefined-id trap reopened)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      assertRecipientUnlink(userId, at);`,
+    to: `      // (the rule set not asked)`,
+    expect: "26.u16a.unlink.prisma · ⛔ the Prisma unlinkUser asks assertRecipientUnlink FIRST, then is ONE updateMany WHERE exactly { userId } whose data is exactly the link cleared and the caller's stamp — { userId: null, updatedAt: new Date(at) } — with no other statement",
+  },
+  {
+    // 🔴 THE SAME TRAP ON THE EXPORT'S READ, on Postgres only: a missing number is `where: { msisdn: undefined }`, and one
+    // person's access file is handed every number's campaign rows.
+    name: "prisma-dal.ts — the Prisma listByMsisdn stops asking the rule set first (the undefined-number trap reopened)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      assertRecipientNumberRead(msisdn, sinceIso);`,
+    to: `      // (the rule set not asked)`,
+    expect: "26.u16a.list.prisma · ⛔ the Prisma listByMsisdn asks assertRecipientNumberRead FIRST, then ONE findMany whose WHERE holds the number AND the bound — created OR sent at or after the instant, both arms — never a filter after the fetch — ordered createdAt desc THEN id desc, taking ONE row past SMS_RECIPIENTS_BY_NUMBER_MAX, read back through the one mapper",
+  },
   /* ── §23 · vb7 (review m1) · the bound Remove, all or nothing ─────────────────────────────────────────────────── */
   {
     // 🔴 THE CHUNKS OUT OF THEIR TRANSACTION: each delete commits on its own, so a fault at chunk 37 leaves 36 removed.

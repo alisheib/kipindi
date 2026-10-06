@@ -42,6 +42,10 @@
  * Counts are a groupBy, zero-filled here into every status in the schema's order (OD26: no counters).
  * ⭐ UNCONFIRMED (U43-0, ENGINE-SPEC E4) is in that order — last, where its ADD VALUE puts it — one deploy BEFORE anything
  * writes it: the counts REFUSE a status this code does not know (P8), so the knowledge ships first and alone.
+ * ⭐ U16a · erasure's ONE recipient write (`unlinkUser`, the account link and only the link) and the access export's ONE
+ * recipient read (`listByMsisdn`, one number from a date) ask this file first too: Prisma reads a `where` key holding
+ * `undefined` as NO CONDITION, so a caller that lost its account id or its number would unlink — or export — every row
+ * in the table on Postgres while the memory twin matched nobody. Both refuse that before either twin is asked.
  *
  * ⛔ PURE, AND NOTHING AT RUNTIME COMES FROM THE STORE OR THE CONSOLE'S UI LIBRARIES. `store.ts` and `prisma-dal.ts`
  * both import this file, so a runtime import back into `store.ts` would be a cycle through the DAL switch: types only
@@ -454,6 +458,41 @@ export function assertSeeds(seeds: readonly SmsCampaignRecipientSeed[]): void {
     if (s.optOutToken !== null && !isNonEmpty(s.optOutToken)) refuse(where, `${at}'s optOutToken is a token or null`);
     if (!isInstant(s.createdAt)) refuse(where, `${at}'s createdAt is not an instant in toISOString's spelling`);
   });
+}
+
+/**
+ * U16a · the most recipient rows the access export LISTS for ONE number — one row per campaign that number was on.
+ * ⭐ D10 (the review's MINOR-2): 5,000, and both twins read ONE ROW MORE (`SMS_RECIPIENTS_BY_NUMBER_MAX + 1`), so a
+ * person whose number holds more is told so in words in their file — never a silent cut of their oldest messages.
+ * ONE constant: both twins and the export import it, so the three cannot drift apart.
+ */
+export const SMS_RECIPIENTS_BY_NUMBER_MAX = 5000;
+
+/**
+ * U16a · `unlinkUser` · ERASURE'S ONE WRITE TO A RECIPIENT ROW: the account link is cleared, and nothing else is.
+ * ⛔ The account id must be a non-empty string. Prisma reads `where: { userId: undefined }` as NO CONDITION, so a caller
+ * that lost its id would strip the account link from every recipient row in the table on Postgres — while the memory
+ * twin, comparing against `undefined`, unlinked nobody and every suite stayed green. `at` is the instant both twins stamp
+ * as `updatedAt` (decision C25: never left to `@updatedAt`, which would stamp another instant than the memory twin's).
+ */
+export function assertRecipientUnlink(userId: string, at: string): void {
+  const where = "smsCampaignRecipient.unlinkUser";
+  if (!isNonEmpty(userId)) refuse(where, "an account id is required — a missing one would match every row on Postgres");
+  if (!isInstant(at)) refuse(where, "at is an instant in toISOString's spelling");
+}
+
+/**
+ * U16a · `listByMsisdn` · THE ACCESS EXPORT'S ONE READ OF RECIPIENT ROWS: one number, from one instant. ⛔ The number must
+ * be the ONE bare key (`isGatewayMsisdn`) — the only spelling a recipient row holds, so any other matches nothing and
+ * would hand back an export silently missing its rows; and `undefined` would be NO CONDITION on Postgres, every number's
+ * rows in one person's file. ⛔ The bound is an instant in `toISOString()`'s spelling, never another spelling of it: the
+ * memory twin compares instants and Postgres compares timestamps, and a text that only one of them could read would be
+ * a bound that holds in one twin. A refusal never repeats the number (§5.14).
+ */
+export function assertRecipientNumberRead(msisdn: string, sinceIso: string): void {
+  const where = "smsCampaignRecipient.listByMsisdn";
+  if (typeof msisdn !== "string" || !isGatewayMsisdn(msisdn)) refuse(where, "the number is not the bare 255 key a recipient row holds");
+  if (!isInstant(sinceIso)) refuse(where, "the lower bound is an instant in toISOString's spelling");
 }
 
 /**

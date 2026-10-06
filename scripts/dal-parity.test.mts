@@ -2864,6 +2864,102 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       !'    status: rcp.status as "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED",'.includes(READ_CAST)
         && STATUS_LITERAL.test('    status: rcp.status as "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED",'));
   }
+
+  // ══ 26.u16a · ERASURE'S UNLINK AND THE ACCESS EXPORT'S READ (U16a, S10 2026-10-04 — the twins' half of M9) ═══════════
+  // ⭐ WHY THEY ARE HELD HERE. Erasure clears a recipient's account link through `unlinkUser`, and both access exports read
+  // a number's rows through `listByMsisdn`; every behavioural suite (`test:campaign-privacy` among them) drives the MEMORY
+  // twin. A Prisma twin that loses its half is green in memory and wrong live: an unlink that writes another column (the
+  // record erased along with the link), that matches by number (a previous holder's record unlinked) or that skips the
+  // rule set (a lost id is NO CONDITION on Postgres: every row unlinked); a read whose bound is a filter after the fetch
+  // (a previous holder's rows crowding the cap) or whose ties break the other way. Plantable through KP_SRC
+  // (`red:dal-parity`; the cases are in scripts/anchors/dal-parity.anchors.mjs). The behaviour on Postgres is EXECUTED by
+  // `scripts/live/campaign-privacy-pg-probe.mts`, against answers written there by hand.
+  // ⛔ No backslash anywhere in this block (§27's rule): every matcher is an `includes`, a `before` or a character class.
+  {
+    const flat16 = (s: string) => s.split(String.fromCharCode(13)).join("").split(String.fromCharCode(10)).map((l) => l.trim()).join(" ");
+    const pList = delegateMethod("smsCampaignRecipient", "listByMsisdn");
+    const pUnlink = delegateMethod("smsCampaignRecipient", "unlinkUser");
+    const mList = memberText(rMem, "listByMsisdn");
+    const mUnlink = memberText(rMem, "unlinkUser");
+    const U16A_SIGS: Array<[string, string]> = [
+      [rMem, "listByMsisdn: (msisdn: string, sinceIso: string): StoredSmsCampaignRecipient[] =>"],
+      [rMem, "unlinkUser: (userId: string, at: string): number =>"],
+      [rPri, "listByMsisdn: async (msisdn: string, sinceIso: string): Promise<StoredSmsCampaignRecipient[]> =>"],
+      [rPri, "unlinkUser: async (userId: string, at: string): Promise<number> =>"],
+    ];
+    const offSigs16 = U16A_SIGS.filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+    const both16 = (b: string) => members(b).includes("listByMsisdn") && members(b).includes("unlinkUser");
+    ok("26.u16a.parity · ⭐ BOTH twins define listByMsisdn AND unlinkUser — a member in one twin only works in every suite and throws on production",
+      both16(rPri) && both16(rMem), `prisma=[${members(rPri)}] memory=[${members(rMem)}]`);
+    ok("26.u16a.named · the two members name their parameter and return types in BOTH twins (never an inline literal)",
+      offSigs16.length === 0, `signatures off: [${offSigs16}]`);
+
+    // ── the unlink: the rule set first, then ONE statement writing the link and the stamp, and nothing else ──
+    const UNLINK_ONE = "updateMany({ where: { userId }, data: { userId: null, updatedAt: new Date(at) } })";
+    const pUnlinkFlat = flat16(pUnlink);
+    ok("26.u16a.unlink.prisma · ⛔ the Prisma unlinkUser asks assertRecipientUnlink FIRST, then is ONE updateMany WHERE exactly { userId } whose data is exactly the link cleared and the caller's stamp — { userId: null, updatedAt: new Date(at) } — with no other statement",
+      before(pUnlink, "assertRecipientUnlink(userId, at)", ".updateMany(")
+        && (pUnlink.match(/[.]updateMany[(]/g) ?? []).length === 1
+        && pUnlinkFlat.includes(UNLINK_ONE)
+        && !/[.](delete|deleteMany|findMany|findFirst|upsert|create|createMany|update)[(]|[$](executeRaw|queryRaw)/.test(pUnlink),
+      pUnlinkFlat.slice(0, 260));
+    ok("26.u16a.unlink.memory · ⛔ the memory unlinkUser asks assertRecipientUnlink FIRST, skips every row whose userId is not the account, writes exactly the link (null) and the stamp (at) — two assignments, no more — and never removes or replaces a row",
+      before(mUnlink, "assertRecipientUnlink(userId, at)", "for (const r of store.smsCampaignRecipients.values())")
+        && mUnlink.includes("if (r.userId !== userId) continue;")
+        && mUnlink.includes("r.userId = null;") && mUnlink.includes("r.updatedAt = at;")
+        && (mUnlink.match(/r[.][A-Za-z]+ = /g) ?? []).length === 2
+        && !/[.]delete[(]|[.]clear[(]|[.]set[(]/.test(mUnlink),
+      flat16(mUnlink).slice(0, 260));
+
+    // ── the read: the rule set first, the bound IN the question (created OR sent since it — D12), newest first, ties on
+    // the id, and ONE row past the cap so the export can say it cut (D10) ──
+    const pListFlat = flat16(pList);
+    const WHERE16 = "where: { msisdn, OR: [{ createdAt: { gte: bound } }, { sentAt: { gte: bound } }] },";
+    ok("26.u16a.list.prisma · ⛔ the Prisma listByMsisdn asks assertRecipientNumberRead FIRST, then ONE findMany whose WHERE holds the number AND the bound — created OR sent at or after the instant, both arms — never a filter after the fetch — ordered createdAt desc THEN id desc, taking ONE row past SMS_RECIPIENTS_BY_NUMBER_MAX, read back through the one mapper",
+      before(pList, "assertRecipientNumberRead(msisdn, sinceIso)", ".findMany(")
+        && (pList.match(/[.]findMany[(]/g) ?? []).length === 1
+        && pListFlat.includes("const bound = new Date(sinceIso);")
+        && pListFlat.includes(WHERE16)
+        && pListFlat.includes(`orderBy: [{ createdAt: "desc" }, { id: "desc" }],`)
+        && pListFlat.includes("take: SMS_RECIPIENTS_BY_NUMBER_MAX + 1,")
+        && pListFlat.includes("return rows.map(toStoredSmsCampaignRecipient);")
+        && !/[.]filter[(]/.test(pList),
+      pListFlat.slice(0, 320));
+    ok("26.u16a.list.memory · the memory listByMsisdn asks assertRecipientNumberRead FIRST, keeps only the number's rows CREATED OR SENT at or after the bound (instants, never text) BEFORE it sorts and cuts, sorts createdAt desc THEN id desc, cuts ONE row past the same SMS_RECIPIENTS_BY_NUMBER_MAX, and hands back copies — the gate trail copied too",
+      before(mList, "assertRecipientNumberRead(msisdn, sinceIso)", ".filter(")
+        && mList.includes(".filter((r) => r.msisdn === msisdn && (Date.parse(r.createdAt) >= since || (r.sentAt !== null && Date.parse(r.sentAt) >= since)))")
+        && before(mList, ".filter(", ".sort(") && before(mList, ".sort(", ".slice(")
+        && mList.includes(".sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id))")
+        && mList.includes(".slice(0, SMS_RECIPIENTS_BY_NUMBER_MAX + 1)")
+        && mList.includes("gateTrail: r.gateTrail === null ? null : r.gateTrail.map((g) => ({ ...g }))"),
+      flat16(mList).slice(0, 320));
+
+    // ── ONE rule set and ONE bound for both twins ──
+    const RULES16 = "@/lib/server/marketing/campaign-model";
+    const importOf16 = (src: string): string => {
+      const end = src.indexOf(`} from "${RULES16}";`);
+      return end < 0 ? "" : src.slice(src.lastIndexOf("import {", end), end);
+    };
+    const ruleImports16 = [importOf16(storeSrc), importOf16(dalSrc)];
+    ok("26.u16a.bound · ONE rule set and ONE bound for both twins: store.ts and prisma-dal.ts each import assertRecipientUnlink, assertRecipientNumberRead and SMS_RECIPIENTS_BY_NUMBER_MAX from campaign-model.ts, and neither declares the bound itself",
+      ruleImports16.every((t) => ["assertRecipientUnlink", "assertRecipientNumberRead", "SMS_RECIPIENTS_BY_NUMBER_MAX"].every((n) => t.includes(n)))
+        && ![storeSrc, dalSrc].some((t) => t.includes("const SMS_RECIPIENTS_BY_NUMBER_MAX")),
+      ruleImports16.map((t) => flat16(t).slice(0, 180)).join(" | "));
+
+    // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+    ok("26.u16a.c1 · CONTROL · an unlink whose data also clears the contact link, and one that matches by the number, each FAIL 26.u16a.unlink.prisma's matcher",
+      !"updateMany({ where: { userId }, data: { userId: null, contactId: null, updatedAt: new Date(at) } })".includes(UNLINK_ONE)
+        && !"updateMany({ where: { msisdn }, data: { userId: null, updatedAt: new Date(at) } })".includes(UNLINK_ONE));
+    ok("26.u16a.c2 · CONTROL · a read that bounds AFTER the fetch, one ordered by createdAt alone, one whose WHERE lost the sentAt arm and one that takes only the cap each FAIL 26.u16a.list.prisma's matcher",
+      /[.]filter[(]/.test("const rows = (await pc().smsCampaignRecipient.findMany({ where: { msisdn } })).filter((r) => r.createdAt >= new Date(sinceIso));")
+        && !`orderBy: [{ createdAt: "desc" }],`.includes(`orderBy: [{ createdAt: "desc" }, { id: "desc" }],`)
+        && !"where: { msisdn, createdAt: { gte: bound } },".includes(WHERE16)
+        && !"take: SMS_RECIPIENTS_BY_NUMBER_MAX,".includes("take: SMS_RECIPIENTS_BY_NUMBER_MAX + 1,"));
+    ok("26.u16a.c3 · CONTROL · a member in one twin only IS seen: with unlinkUser renamed in the Prisma block, the parity check's member list no longer holds it while the memory block's does",
+      !both16(rPri.split("unlinkUser: async").join("unlinkAccount: async")) && both16(rMem));
+    ok("26.u16a.c4 · CONTROL · a memory unlink that also rewrites the status IS counted as a third assignment",
+      (["        r.userId = null;", "        r.updatedAt = at;", '        r.status = "SKIPPED";'].join(String.fromCharCode(10)).match(/r[.][A-Za-z]+ = /g) ?? []).length === 3);
+  }
 }
 
 /* ═══ §27 · The list basis — ContactListBasis in both twins (U33a-L, S10 2026-10-04; OD57 · OD58) ═══ */

@@ -16,10 +16,19 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * an erased player, left with its name and its link, is the D16 defect itself.
  *
  * ⭐ WHAT IT DOES:
- *   1. THE LEDGER'S LAST WORD — for every number the person is known by (the account's, and each linked
- *      book row's; a player who changed number has the old one in the book) whose latest row is GIVEN,
- *      a WITHDRAWN row recorded by the officer. Append-only: the erasure is the person's last word, not
- *      an edit of their history. Nothing is written for a number with no consent to withdraw.
+ *   1. THE LEDGER'S LAST WORD — a WITHDRAWN row recorded by the officer. Append-only: the erasure is the person's
+ *      last word, not an edit of their history.
+ *      · ⭐ THE ERASURE MARKER (U16a, 3a(ii)) — on the account's OWN number WHATEVER came before (a consent, a lapse
+ *        or nothing at all), unless its latest row is already WITHDRAWN, so a second pass appends nothing. 🔴 Without
+ *        it, an account that never consented and had no book row left no trace once its number was tombstoned: the
+ *        gate's contact branch (`consent.ts`, 3) read the number as a stranger's, and a licence basis or a typed
+ *        test's attestation could reach the person who asked to be forgotten. It is a LEDGER row, never a stop: a
+ *        later GIVEN lifts it, so a recycled number's next holder can still say yes (`test:campaign-privacy` P11).
+ *        The importer's ERASED collapse reads it too (`import-decide.ts`: no book row, and the ledger's last word
+ *        the erasure's), so an old spreadsheet cannot write the person's name back under that number.
+ *      · on every OTHER number they are known by (each linked book row's; a player who changed number has the old
+ *        one in the book) only when its latest row is GIVEN. Nothing is written for a number with no consent to
+ *        withdraw: it may be somebody else's by now, and nothing of this person's stands on it.
  *   2. EMPTY every book row for the person — found by the account LINK and by the account NUMBER (a
  *      contact imported before they signed up carries no link): link, name, e-mail, notes, tags and import
  *      reference cleared, `rawInput` reduced to the key, the cache (consent AND stop) mirrored from the truth,
@@ -32,6 +41,21 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  *      officer's run, a number another live account now holds included: a staged row is a transient copy of somebody's
  *      file, never evidence, and ⚖️ when in doubt, erase. A row whose number never parsed carries no key and cannot be
  *      found by number; it leaves with its run (the 14-day idle sweep, or retention 90 days after the run finishes).
+ *   4. UNLINK every CAMPAIGN RECIPIENT row linked to the account (U16a, `SmsCampaignRecipient`): its `userId` is cleared
+ *      by ONE statement and nothing else is written. The number, the status, the stamps and the gate's trail STAY —
+ *      the row is the record that we messaged a number (GN 478T reg 51(1)), kept for its own period (DATA-RETENTION);
+ *      what erasure removes is which ACCOUNT held that number. ⛔ Nothing is deleted. Found by the LINK alone, never by
+ *      the number: a row about the same number that is linked to another account (a previous holder's) is that
+ *      account's record and is not touched.
+ *      ⛔ A row still waiting in a live campaign is NOT rewritten: it stays PENDING, and the ONE gate refuses the number
+ *      when the slice reaches it — step 1's WITHDRAWN row, which the account's own number carries whatever came before
+ *      (`test:campaign-privacy` P5 runs it for a consent withdrawn, P11 for an account that never consented).
+ *      ⛔ OPT-OUT TOKENS ARE KEPT: a token holds the number and nothing about a person, and it is a link somebody may
+ *      still hold in an old SMS — it can only stop or restart marketing for that number (OD43). Since the engine's E1 a
+ *      token exists only for a number that was actually messaged or sent a test.
+ *      ⭐ `erasure.ts` calls the SAME helper on a RE-RUN (`unlinkCampaignRecipients`): the number is gone by then, but
+ *      the account id is not, so a row linked to the account after the first pass — an enqueue that walked the account
+ *      before its number was tombstoned — still loses its link when the officer runs the erasure again.
  *
  * ⛔ NO STOP-LIST ROW, ON PURPOSE (the S10 review). An OPERATOR suppression can be lifted by nobody —
  * `lift` refuses every reason but WITHDRAWN — and a Tanzanian number outlives its holder: the operator
@@ -45,26 +69,37 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * the number's ledger alone. A row found by number that is linked to a different account is not this
  * person's and is not touched.
  *
- * WHAT IS KEPT: the number, in the ledger rows and in the emptied book row's `msisdn`. Nothing written
- * here names the account (the evidence is the bare word `erasure`). ⚠️ Not unlinkable in the strong sense:
- * a row's timestamp lines up with the erasure's own audit row, which the 7-year chain keeps by statute.
+ * WHAT IS KEPT: the number, in the ledger rows, in the emptied book row's `msisdn` and in every campaign recipient
+ * row. Nothing written here names the account (the evidence is the bare word `erasure`). ⚠️ Not unlinkable in the
+ * strong sense: a row's timestamp — an unlinked recipient row's `updatedAt` included — lines up with the erasure's own
+ * audit row, which the 7-year chain keeps by statute.
  *
  * ⚠️ Runs only on the FIRST pass of an erasure: a re-run finds the tombstone where the number was and has
- * nothing to key on. Every step is idempotent (`test:erasure` 12.15 runs it twice), so a first pass that
- * died part-way is finished by calling it again before the tombstone is written.
- * ⚠️ Accounts erased BEFORE this shipped are not reached — their number is gone from `User`. Owned by U16.
+ * nothing to key on — except step 4, which keys on the account id and which `erasure.ts` runs again on a re-run
+ * through the same helper. Every step is idempotent (`test:erasure` 12.15 runs it twice; `test:campaign-privacy` P7
+ * for step 4, P11c for step 1's marker), so a first pass that died part-way is finished by calling it again before the
+ * tombstone is written.
+ * ⚠️ Accounts erased BEFORE this shipped (U18b, 2026-10-01) are not reached — their number is gone from `User`, so
+ * neither their ledger nor an unlinked book row found by that number can be. Owned by U16b. (A book row LINKED to such an
+ * account cannot exist: the one link writer, `registration-contact.ts`, shipped after U18b — so an erasure re-run has no
+ * linked book row left to empty, and none is reached here.)
  */
 export type MarketingErasureCounts = {
-  /** WITHDRAWN rows appended to the consent ledger (one per number whose latest row was GIVEN). */
+  /** WITHDRAWN rows appended to the consent ledger: the account's own number unless it already stood withdrawn (the
+   *  erasure marker), and each other number of theirs whose latest row was GIVEN. */
   marketingConsentWithdrawn: number;
   /** Book rows emptied (by link or by number). */
   marketingContactsEmptied: number;
   /** U29b · staged import rows deleted — by every number the person is known by, in every run. */
   marketingStagedRowsDeleted: number;
+  /** U16a · campaign recipient rows that lost the account link — kept, with their number, status and trail. */
+  campaignRecipientsUnlinked: number;
 };
 
 /** The ledger's `wording` for an erasure: what the record SAYS happened. Not a sentence any person was
- *  shown — the source is OPERATOR, and `recordedBy` names the officer. English, like the console. */
+ *  shown — the source is OPERATOR, and `recordedBy` names the officer. English, like the console. The SAME
+ *  words on the erasure marker (an account's own number that never consented): marketing is withdrawn from the
+ *  number either way, which is the one fact the gate and the importer read. */
 export const ERASURE_LEDGER_WORDING = "Erasure request fulfilled — marketing consent withdrawn.";
 
 /** The evidence on the ledger row, and the `sourceRef` an emptied book row carries. ⭐ Declared in the pure
@@ -84,13 +119,27 @@ export function marketingKeyOf(phone: string | null | undefined): string | null 
 
 const keyFor = (identifier: string): MessagingKey => ({ channel: "SMS", identifier, category: "MARKETING" });
 
+/**
+ * U16a · step 4, and the ONE caller of `smsCampaignRecipient.unlinkUser` (`test:campaign-privacy` S1 pins it): every
+ * campaign recipient row linked to the account loses the link, by ONE statement, and is otherwise kept as it was.
+ * Keyed on the account id alone — never on a number — so it reaches the account on a re-run too, after the tombstone
+ * (`erasure.ts`), and never touches a row linked to anybody else. Answers how many rows lost the link: 0 on a re-run
+ * with nothing new, which is what makes the re-run visible as a no-op. `at` is the pass's one instant, stamped as
+ * each row's `updatedAt` by both twins (C25).
+ */
+export async function unlinkCampaignRecipients(userId: string, at: string = new Date().toISOString()): Promise<number> {
+  return Promise.resolve(db.smsCampaignRecipient.unlinkUser(userId, at));
+}
+
 export async function eraseMarketingFor(input: {
   userId: string;
   /** The account's number BEFORE the tombstone — `+255…`. */
   phoneE164: string;
   officerId: string | null;
 }): Promise<MarketingErasureCounts> {
-  const counts: MarketingErasureCounts = { marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0 };
+  const counts: MarketingErasureCounts = {
+    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0, campaignRecipientsUnlinked: 0,
+  };
   const at = new Date().toISOString();
   const accountNumber = marketingKeyOf(input.phoneE164);
 
@@ -113,7 +162,16 @@ export async function eraseMarketingFor(input: {
       if (holder && holder.id !== input.userId) continue;
     }
     const latest = await Promise.resolve(db.messagingConsent.latestFor(keyFor(identifier)));
-    if (latest?.status !== "GIVEN") continue;
+    if (identifier === accountNumber) {
+      // ⭐ THE ERASURE MARKER (U16a, 3a(ii)) — the account's OWN number is marked whatever came before, a consent or
+      // nothing at all, so its tombstoned number never reads as a stranger's at the gate. Only a number that already
+      // stands withdrawn is skipped, which is what makes a second pass append nothing.
+      if (latest?.status === "WITHDRAWN") continue;
+    } else {
+      // Every other number of theirs keeps U18b's rule: only a consent is withdrawn — the number may be somebody
+      // else's by now, and nothing of this person's stands on it.
+      if (latest?.status !== "GIVEN") continue;
+    }
     await Promise.resolve(db.messagingConsent.create({
       // ⛔ The ledger's clock (`ledger-stamp.ts`), never `randomUUID()` + `new Date()`.
       ...ledgerStamp(),
@@ -161,5 +219,10 @@ export async function eraseMarketingFor(input: {
   // may have written for is mirrored, so a row about the account's number that is linked to somebody else (a
   // previous holder's) stops reading a consent the number no longer has.
   for (const identifier of numbers) await mirrorContactCache(identifier, at);
+
+  // ── 4 · THE CAMPAIGN RECORDS (U16a) — the account link goes, the record that we messaged the number stays ─────────
+  // ⛔ By the LINK, never by a number (see the header): a row about one of these numbers that is linked to somebody else
+  // is theirs. A pending row of a live campaign is left PENDING — the gate refuses the number at send.
+  counts.campaignRecipientsUnlinked = await unlinkCampaignRecipients(input.userId, at);
   return counts;
 }

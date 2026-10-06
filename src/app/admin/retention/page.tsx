@@ -56,11 +56,26 @@ const SCHEDULE: Row[] = [
   // `User.marketingOptIn`, a boolean, plus the audit trail of consent changes.
   // ⚠️ NO LONGER THE WHOLE PICTURE (corrected 2026-09-25). Since marketing U6/U8 went live on
   // 2026-09-25, registration and /profile/notifications also append to the MessagingConsent
-  // ledger (the exact wording shown, locale, evidence), and Suppression and
-  // MarketingOptOutToken hold opt-outs. Those rows are append-only and sit outside this row
-  // until U16 (D16) brings them under the schedule; account closure, erasure and the 730-day
-  // lapse still clear only the boolean (docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md, U6).
+  // ledger (the exact wording shown, locale, evidence), and Suppression holds opt-outs. Those
+  // two are append-only and still sit outside this row: their periods are owed by U16b, with
+  // the 730-day lapse's ledger row (docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md, U16b).
+  // Erasure appends the ledger's WITHDRAWN row (U18b); account closure and the 730-day lapse
+  // still clear only the boolean. ✅ The opt-out links (MarketingOptOutToken) have their own
+  // row below since U16a (2026-10-04).
   { category: "Marketing-consent records", swahili: "Idhini ya matangazo", retentionYears: 2, legalBasis: "Tanzania PDPA §15", trigger: "From last sign-in — cleared by the daily retention pass; withdrawable by the player at any time", storage: "Postgres (flag cleared nightly)" },
+  // ⭐ U16a (2026-10-04) — THE CAMPAIGN RECORDS AND THE OPT-OUT LINKS, scheduled BEFORE the first recipient row is
+  // written (M9). A recipient row is the record that we messaged a number — the wording, the checks, the result —
+  // which GN 478T reg 51(1) asks us to keep (plan §5.8); seven years is our published audit retention. Both periods
+  // are POLICY: nothing deletes either table, and none could be owed before the first period ends (2033). Erasure
+  // clears a recipient's account link and keeps the row; a link is kept (it holds a number, never a person).
+  // ⛔ The campaign's period runs from SEND FACTS, never `updatedAt`: its finish (`finishedAt`), or — for one that never
+  // finished — its last send or receipt (the latest `sentAt`, `deliveredAt` or `failedAt` of its rows). Erasure's unlink
+  // stamps `updatedAt` and so does not move it: erasing one person never extends anybody's period.
+  // ⛔ These two rows and docs/DATA-RETENTION.md name the same classes with the same periods, triggers and bases —
+  // `test:campaign-privacy` P6 reads both. The glosses are COPIED (plan §5.13): "Kampeni" is /admin/campaigns' own,
+  // and the link's is the stop page's own button (i18n-dict.ts, sw optout.stopButton).
+  { category: "SMS campaigns and their recipients", swahili: "Kampeni", retentionYears: 7, legalBasis: "GN 478T reg 51(1)", trigger: "From the campaign's finish (for one that never finished: its last send or receipt)", storage: "Postgres (policy — no purge before 2033)" },
+  { category: "Marketing opt-out links", swahili: "Acha ofa na habari kwa SMS", retentionYears: 7, legalBasis: "GN 478T reg 51(1); PDPA 2022 §15", trigger: "From the last message that carried the link", storage: "Postgres (policy — no purge before 2033)" },
   { category: "OTP code hashes", swahili: "Misimbo ya OTP", retentionYears: "30 days", legalBasis: "Operational only", trigger: "From issue", storage: "Postgres (purged nightly)" },
   { category: "Session cookies", swahili: "Vidakuzi vya kikao", retentionYears: "7 days max TTL", legalBasis: "Operational only", trigger: "Per cookie expiry", storage: "Browser only (HMAC-signed)" },
   // ⚠️ MARKED N/A 2026-08-21 (Ali's decision, audit F-01). This published a 3-year retention

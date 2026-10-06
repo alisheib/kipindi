@@ -307,8 +307,11 @@ export const MUTATIONS = [
     from: `  const accountNumber = marketingKeyOf(user.phoneE164);`,
     to: `  const accountNumber = user.phoneE164.replace(/[^0-9]/g, "").replace(/^7/, "2557");`,
   },  {
-    // A number that never consented gets a WITHDRAWN row anyway — "consent withdrawn" for consent never given.
-    name: "erasure-withdraws-what-was-never-given (a WITHDRAWN row on a number with no consent)",
+    // ANOTHER number of the person's (a linked book row's old number) that never consented gets a WITHDRAWN row anyway —
+    // "consent withdrawn" for consent never given, on a number that may be somebody else's by now. ⚠️ Since U16a the
+    // account's OWN number IS marked whatever came before (the erasure marker, `marketing/erase.ts` step 1): that is the
+    // rule, not this defect — the plant lands in the other-number branch, and test:erasure 12.1 / 12.5c / 12.6b catch it.
+    name: "erasure-withdraws-what-was-never-given (a WITHDRAWN row on another number of theirs with no consent)",
     file: MKT_ERASE,
     suite: "erasure",
     from: `    if (latest?.status !== "GIVEN") continue;`,
