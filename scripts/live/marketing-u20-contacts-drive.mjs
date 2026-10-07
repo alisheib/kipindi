@@ -729,8 +729,12 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · ADMIN · the role that may read a number sees Will receive (never "Reachable" — U38b) and Source`,
     /will receive/i.test(headAdmin) && !/reachable/i.test(headAdmin) && /source/i.test(headAdmin));
   const reach = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.reach})`).allInnerTexts();
-  ok(`${vp.name} · ADMIN · Will receive names the gate's real reasons (age, suppressed, no consent)`,
-    reach.some((t) => /age not confirmed/i.test(t)) && reach.some((t) => /suppressed/i.test(t)) && reach.some((t) => /no consent/i.test(t)),
+  // ⚠️ Corrected 2026-10-07 (S14, U38b's drives): this asked for "Age not confirmed" too. Since U33a-G (b5680d5d) an
+  // IMPORT consent counts only against a SAVED wording (consent.ts's 3b), and a fresh dev server has none saved, so every
+  // seeded GIVEN row reads "No consent" and none reaches the 18+ check. The reasons asked are the ones this seed CAN
+  // produce; age_unknown is held by test:marketing-consent (the gate) and qa:marketing-audience (its reason drawn).
+  ok(`${vp.name} · ADMIN · Will receive names the gate's real reasons (suppressed, no consent, withdrawn)`,
+    reach.some((t) => /suppressed/i.test(t)) && reach.some((t) => /no consent/i.test(t)) && reach.some((t) => /withdrawn/i.test(t)),
     [...new Set(reach.map((t) => t.trim()))].join(" | "));
   const adminChips = await adm.page.$$eval("[data-contact-row] span.whitespace-nowrap", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
   ok(`${vp.name} · ADMIN · Consent and Will receive chips each sit on ONE line`, adminChips.length === 40 && Math.max(...adminChips) <= 18, `${adminChips.length} chips, max ${Math.max(...adminChips)}px`);

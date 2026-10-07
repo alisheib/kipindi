@@ -118,9 +118,11 @@ export type ComposeAudienceView = {
    */
   canonicalHref: string | null;
   /**
-   * ⭐ U40b · the audience ON SCREEN is not the one this DRAFT stores: its address names another (a rail pick not saved yet),
-   * or one that cannot be read. A confirmation freezes the STORED audience, so the Confirm card will not open on it ("Save
-   * first"), and Save counts it as a change. False with no saved draft, past DRAFT, or with no audience in the address.
+   * ⭐ The audience ON SCREEN is not the one this saved DRAFT stores: its address names another (a rail pick not saved yet),
+   * or one that cannot be read — so Save counts it as a change, never "Nothing to save" (the gap U40b found, 2026-10-07:
+   * a saved draft whose only change was its audience could not be saved), and (U40b) the Confirm card will not open on it
+   * ("Save first"): a confirmation freezes the STORED audience. False with no saved draft, past DRAFT, or with no audience
+   * in the address (the stored one is kept).
    */
   unsaved: boolean;
 };
@@ -281,8 +283,8 @@ export function composeAudienceView(
   // holds a filter). A NEW draft with neither has chosen nothing, and nothing is counted (decision 3).
   const chosen = fromAddress || draft !== null;
   const nothing = { chosen, who: null, countKey: null, canonicalHref: null } as const;
-  // ⭐ U40b · is the audience on screen the one this DRAFT stores? Asked by the ONE key of each (`contactAudienceKey`), the
-  // stored one read at the campaign scope — only while the address names an audience and the draft can still change.
+  // ⭐ Is the audience on screen the one this DRAFT stores? Asked by the ONE key of each (`contactAudienceKey`), the stored
+  // one read at the campaign scope — only while the address names an audience and the draft can still change.
   const storedKey = draft !== null && draft.status === "DRAFT" && fromAddress ? storedAudienceKey(draft.audienceFilter, doors) : null;
   const unsavedFor = (shownKey: string | null): boolean =>
     draft !== null && draft.status === "DRAFT" && fromAddress && (shownKey === null || shownKey !== storedKey);
@@ -319,6 +321,7 @@ export function composeAudienceView(
   const door = campaignAudienceRefusal(filter, fromAddress ? reads : true);
   const problem = door?.reason ?? wholeNumberAudienceProblem(filter);
   const clear = problem !== null ? clearHref : null;
+  const unsaved = unsavedFor(contactAudienceKey(filter));
   // ⭐ A NEW draft is a POSTED filter, so it meets this viewer's own rule: the address's (already asked above), or the
   // stored one re-asked for this viewer and written as an address — never a filter the new draft could not save. Nothing
   // chosen carries nothing (`{}`): the new draft is then the whole book, as a save of an unchosen draft is.
@@ -332,7 +335,6 @@ export function composeAudienceView(
   // phrase naming a consent, source, player or stop predicate, or a search. A POSTED one the role may not use is refused
   // above, as the save refuses it; a STORED one is only left undescribed — the save keeps it as it is, so blocking Save
   // here would refuse a save the server accepts. ⛔ U38b · and neither is counted: no key, so no split is ever asked.
-  const unsaved = unsavedFor(contactAudienceKey(filter));
   if (campaignAudienceRefusal({ ...filter, ids: null }, reads) !== null) {
     return fromAddress
       ? { lines: [], everyone: false, problem, note: null, params, clearHref: clear, carry, ...nothing, unsaved }
@@ -363,7 +365,7 @@ export function composeAudienceView(
   };
 }
 
-/** U40b · a stored filter's ONE key, read at the campaign scope — null when it cannot be read (then nothing on screen is it). */
+/** A stored filter's ONE key, read at the campaign scope — null when it cannot be read (then nothing on screen is it). */
 function storedAudienceKey(stored: string, doors: ComposeAudienceDoors): string | null {
   try {
     const parsed = doors.json(JSON.parse(stored));

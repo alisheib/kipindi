@@ -288,8 +288,8 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
             }
           : null;
   // ⭐ U37s · a draft carrying another line than the one saved now is never "no changes": only a save re-stamps it.
-  // ⭐ U40b · nor is an audience on screen that the draft does not store (a rail pick): only a save keeps it — and the
-  // Confirm card will not open on it, since a confirmation freezes the STORED audience.
+  // ⭐ Nor is an audience on screen that the draft does not store (a rail pick): only a save keeps it (`audience.unsaved`) —
+  // and the Confirm card (U40b) will not open on it, since a confirmation freezes the STORED audience.
   const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
   const saveBlocked: string | null = blocked?.reason ?? null;
   const blockedField: CampaignDraftField | null = blocked?.field ?? null;
@@ -346,10 +346,12 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
         setSaved({ id: r.id, draftRevision: r.draftRevision, savedAt: r.savedAt, fields: submitted });
         setServerProblems({});
         setTest({ kind: "idle" });
-        // ⭐ A new draft gets its address — the composer's own canonical one, built by the server (STD-1: a bare ?draft=<id>
-        // would meet the page's redirect inside this mounted page and unmount the composer) — so a reload reopens it; an
-        // edit re-reads the saved preview.
-        if (r.created) router.replace(r.href as never, { scroll: false });
+        // ⭐ Every save goes to the draft's own address — the composer's canonical one, built by the server (STD-1: a bare
+        // ?draft=<id> would meet the page's redirect inside this mounted page and unmount the composer) — so a reload reopens
+        // it, and an address that named its window by a preset becomes the window the save stored (else the next minute
+        // would read the saved draft as unsaved). Already there: re-read the saved preview.
+        const here = window.location.pathname + window.location.search;
+        if (r.href && r.href !== here) router.replace(r.href as never, { scroll: false });
         else router.refresh();
         return;
       }

@@ -427,6 +427,7 @@ const L = {
   b1: "B1 · ⭐ U38b · `pop` is read ONLY at the campaign's door — book · players · both, any case, ONE value (an unknown one or two of them REFUSE, naming pop); the contact book's address REFUSES it by name; CAMPAIGN_AUDIENCE_URL_KEYS is the book's keys and pop; isUnfilteredCampaignAudience is the whole of each population; and campaignAudienceParams(parse(x)) round-trips book, players and both with an operator and a window — the address and the filter alike",
   b2: "B2 · ⭐ U38b · the composer's action posts the campaign keys (pop among them), and a population SAVED through the composer is read back by BOTH campaign doors — the composer's card (described, chosen, counted, sent to its canonical address) and the save (an edit keeps it, never 'unreadable') — while the contact book's door still refuses it by name",
   b2c: "B2c · ⭐ U38b · STD-1 · no in-app navigation meets the page's redirect — a saved draft's address for its viewer is the page's own canonical address (draftAddressFor; the bare ?draft= for a filter no address holds), the save answers it, the client replaces straight to it and the list's DRAFT rows link to it (a redirect thrown inside the mounted page unmounts the composer: the saved line gone)",
+  b2u: "B2u · ⭐ an audience-only change to a saved draft is a change Save takes — the composer's loader says `unsaved` for a saved DRAFT whose address names another audience (a reader and a masked viewer alike), never for its own stored audience, a draft opened with no audience in its address, a new draft or one past DRAFT; and Save and the saved line follow it (never \"Nothing to save\"); and EVERY save goes to the draft's own address, where a draft saved with a date window reads saved (a preset like \"Last 7 days\" in the address would read unsaved the next minute)",
   b3: "B3 · ⛔ U38b · a book-only axis beside pop=players|both is REFUSED at the campaign's address with POPULATION_BOOK_ONLY_REASON, naming its address key — and the rail hides List, Tag and a reader's four for players and both, draws them for the contact book, draws no Consent, Stop list, Source or Player for a masked viewer, and is Who alone while nothing is chosen",
   b3m: "B3m · ⛔ U38b · OD66 · a masked viewer never counts BOTH populations at once — the campaign door refuses pop=both to them (naming pop, in its own words) while a reader is refused nothing and the players alone stay theirs, and their Who pills offer the contact book and player accounts only (a reader's offer all three)",
   b4: "B4 · ⛔ U38b · the card's figures are exactly the view-model's — audience-split-card.tsx reads THIS viewer's read cell (failing closed) and hands that cell to the card's ONE read (D19-2), renders its view's fields, never the split's, and no .tsx under campaigns/new does + or − arithmetic on a figure",
@@ -926,7 +927,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const savedAt = stored === null ? null : draftAddressFor(stored, true);
     const bareAt = stored === null ? null : draftAddressFor({ ...stored, audienceFilter: '{"ids":["mc_u38b_one"]}' }, true);
     const clientGoes = NEW_SRC("new/composer-client.tsx").includes("router.replace(r.href as never");
-    const actionAnswers = NEW_SRC("new/actions.ts").includes("href: result.created ? await savedDraftAddress(result.id, reads)")
+    const actionAnswers = NEW_SRC("new/actions.ts").includes("return { ...result, href: await savedDraftAddress(result.id, reads) };")
       && NEW_SRC("new/actions.ts").includes("Promise.resolve().then(() => db.smsCampaign.find(id))");
     // ...and "Remove the filter" too: a refused ADDRESS filter on a saved draft clears to the draft's own address.
     const refusedAt = stored === null ? null : impl.audienceView({ draft: stored.id, q: "asha" }, stored, false);
@@ -945,6 +946,30 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       stored !== null && card !== null && card.canonicalHref !== null && savedAt === card.canonicalHref
         && bareAt === `/admin/campaigns/new?draft=${encodeURIComponent(stored.id)}` && clientGoes && actionAnswers && listLinks && clearsHome && railKeeps && staleGoesHome,
       `saved at ${savedAt} (the page's own ${card?.canonicalHref ?? "-"}) · a filter no address holds → ${bareAt} · the client replaces to the answer ${clientGoes} · the action answers it ${actionAnswers} · the list links it ${listLinks} · 'Remove the filter' goes home ${clearsHome} (${refusedAt?.clearHref ?? "-"}) · the rail keeps the form ${railKeeps} · Reload after a stale save goes to the stored audience ${staleGoesHome}`);
+
+    // B2u · an audience-only change to a saved draft is a change Save takes (the gap U40b found: "Nothing to save")
+    const ownView = stored === null ? null : impl.audienceView({ draft: stored.id, op: "VODACOM", pop: "players" }, stored, true);
+    const movedView = stored === null ? null : impl.audienceView({ draft: stored.id, op: "AIRTEL", pop: "players" }, stored, true);
+    const movedMasked = stored === null ? null : impl.audienceView({ draft: stored.id, op: "AIRTEL", pop: "players" }, stored, false);
+    const bareView = stored === null ? null : impl.audienceView({ draft: stored.id }, stored, true);
+    const freshView = impl.audienceView({ op: "AIRTEL", pop: "players" }, null, true);
+    const pastView = stored === null ? null : impl.audienceView({ draft: stored.id, op: "AIRTEL", pop: "players" }, { ...stored, status: "CONFIRMED" }, true);
+    // ...and a draft saved with a DATE WINDOW reads saved at its own canonical address (absolute from/to), where EVERY save
+    // now goes (an address naming a preset such as "Last 7 days" is resolved again each minute, so it would read unsaved).
+    const windowParsed = COMPOSE_AUDIENCE_DOORS.params({ pop: "book", from: "2026-09-30T18:29", to: "2026-10-07T18:30" });
+    const windowed = stored === null || !windowParsed.ok ? null : { ...stored, audienceFilter: JSON.stringify(windowParsed.filter) };
+    const windowHome = windowed === null ? null : new URL(draftAddressFor(windowed, true), "http://x");
+    const windowView = windowed === null || windowHome === null ? null
+      : impl.audienceView(Object.fromEntries(windowHome.searchParams.entries()), windowed, true);
+    const everySaveGoesHome = NEW_SRC("new/actions.ts").includes("return { ...result, href: await savedDraftAddress(result.id, reads) };")
+      && NEW_SRC("new/composer-client.tsx").includes("if (r.href && r.href !== here) router.replace(r.href as never, { scroll: false });");
+    const saveTakes = NEW_SRC("new/composer-client.tsx").includes("!dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES")
+      && NEW_SRC("new/composer-client.tsx").includes("!c.dirty && !view.audience.unsaved ? composeSaved(");
+    ok(p(L.b2u),
+      ownView?.unsaved === false && movedView?.unsaved === true && movedMasked?.unsaved === true && bareView?.unsaved === false
+        && freshView.unsaved === false && pastView?.unsaved === false && saveTakes
+        && windowView !== null && windowView.unsaved === false && windowHome !== null && windowHome.searchParams.has("from") && everySaveGoesHome,
+      json({ own: ownView?.unsaved, moved: movedView?.unsaved, movedMasked: movedMasked?.unsaved, bare: bareView?.unsaved, fresh: freshView.unsaved, past: pastView?.unsaved, saveTakes, windowHome: windowHome?.search ?? null, windowUnsaved: windowView?.unsaved ?? null, everySaveGoesHome }));
 
     // B3 · a book-only axis beside a population: refused at the address, hidden on the rail
     const BOOK_ONLY_ADDRESS: Array<[string, string]> = [
@@ -1427,6 +1452,21 @@ if (!PROVE_RED) {
       name: "R-B2c · STD-1 · the save sends the client to the BARE ?draft= address — the page's redirect fires inside the mounted composer and the saved line vanishes",
       expect: [L.b2c],
       impl: { ...REAL, sources: withSource("app/admin/campaigns/new/composer-client.tsx", "router.replace(r.href as never", "router.replace(campaignDraftHref(r.id) as never") },
+    },
+    {
+      name: "R-B2u · the loader never says an audience on screen is unsaved — an audience-only change on a saved draft reads \"Nothing to save\"",
+      expect: [L.b2u],
+      impl: { ...REAL, audienceView: (sp, d, r) => ({ ...composeAudienceView(sp, d, r), unsaved: false }) },
+    },
+    {
+      name: "R-B2u3 · an EDIT save stays where it is — an address naming \"Last 7 days\" reads the saved draft as unsaved the next minute",
+      expect: [L.b2u, L.b2c],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/actions.ts", "return { ...result, href: await savedDraftAddress(result.id, reads) };", "return { ...result, href: result.created ? await savedDraftAddress(result.id, reads) : \"\" };") },
+    },
+    {
+      name: "R-B2u2 · Save ignores an unsaved audience — the loader says it, the button still says \"Nothing to save\"",
+      expect: [L.b2u],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/composer-client.tsx", " && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES", " ? { reason: COMPOSE_NO_CHANGES") },
     },
     {
       name: "R-B2d · STD-1 · 'Remove the filter' back to the BARE ?draft= — the redirect fires inside the mounted composer and the typed text is lost",
