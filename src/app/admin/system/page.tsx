@@ -12,8 +12,8 @@ import { PolicyLinesForm, type PolicyLineRowView, type PolicyPageVersionView } f
 // U33a-R · the Licence outreach card, and the two readers that tell it where the record stands.
 import { LicenceOutreachCard } from "./licence-outreach-card";
 import { licenceOutreach, licenceOutreachBlockers } from "@/lib/server/marketing/outreach-record";
-import { savedPolicyHistory, policyVersion } from "@/lib/server/legal/policy-lines";
-import { POLICY_LINE_KEYS, POLICY_PAGE_KEYS, POLICY_PAGES, isReviewVersion } from "@/lib/legal/policy-lines";
+import { savedPolicyHistory, policyVersion, policySendWindow } from "@/lib/server/legal/policy-lines";
+import { POLICY_LINE_KEYS, POLICY_PAGE_KEYS, POLICY_PAGES, isReviewVersion, type PolicySendWindow } from "@/lib/legal/policy-lines";
 // U49s-2 · the Marketing SMS sending card (the live switch, above the rail) and the Marketing SMS tab (its settings).
 import { MarketingSmsCard } from "./marketing-sms-card";
 import { MarketingSmsForm } from "./marketing-sms-form";
@@ -167,9 +167,11 @@ async function marketingWordingRows(): Promise<WordingRowView[]> {
  * their id) and the save's time already in words, one user read per author — and each page's version: the code's, and the
  * one the page prints now. Read from this process's cache, so ⛔ it cannot fail the page: a name that cannot be read says
  * "an admin", and a process that never loaded the record shows every line as not saved, which is what its pages print too
- * (their own words).
+ * (their own words). ⭐ U13 · and the send window's hours, read FRESH as the save reads them (`policySendWindow`, which
+ * never throws), so the card judges a named time as the server will — null when they could not be read, and the card then
+ * refuses any time a line names.
  */
-async function policyLineRows(): Promise<{ rows: PolicyLineRowView[]; pages: PolicyPageVersionView[] }> {
+async function policyLineRows(): Promise<{ rows: PolicyLineRowView[]; pages: PolicyPageVersionView[]; sendWindow: PolicySendWindow | null }> {
   const histories = POLICY_LINE_KEYS.map((key) => ({ key, versions: savedPolicyHistory(key) }));
   const names = new Map<string, string>();
   for (const id of new Set(histories.flatMap((h) => h.versions.map((v) => v.savedBy)))) {
@@ -192,7 +194,8 @@ async function policyLineRows(): Promise<{ rows: PolicyLineRowView[]; pages: Pol
   const pages: PolicyPageVersionView[] = POLICY_PAGE_KEYS.map((page) => ({
     page, title: POLICY_PAGES[page].title, code: POLICY_PAGES[page].codeVersion, printed: policyVersion(page),
   }));
-  return { rows, pages };
+  const windowRead = await policySendWindow();
+  return { rows, pages, sendWindow: windowRead.ok ? windowRead.hours : null };
 }
 
 /**
@@ -698,7 +701,7 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
               Every save is kept in the line&apos;s history and the audit log, and a line that promises something the code
               does not do is refused.
             </p>
-            <PolicyLinesForm key={policyRows.rows.map((r) => r.versions.length).join(".")} rows={policyRows.rows} pages={policyRows.pages} />
+            <PolicyLinesForm key={policyRows.rows.map((r) => r.versions.length).join(".")} rows={policyRows.rows} pages={policyRows.pages} sendWindow={policyRows.sendWindow} />
           </AdminCard>
         )}
         {/* ⭐ U33a-R · LICENCE OUTREACH (OD57 · OD58), directly under the lines three of its four checks are satisfied by

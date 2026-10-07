@@ -15,7 +15,9 @@
  *
  * ⭐ EVERY BOX IS VALIDATED LIVE WITH THE SERVER'S OWN RULE (`policyLineProblems`, against the words the page prints now),
  * every problem at once, under its box: a blank language, the length, plain text, a phone number, an unbroken run, the words
- * a line must keep, and — for the RG promise, in any language — a promise the code does not keep, refused by name. Notes
+ * a line must keep, and — for the RG promise, in any language — a promise the code does not keep, refused by name, and
+ * (U13) a time it names that is not the send window's opening or closing time, judged against the hours the page read
+ * (`sendWindow`, the same fresh read the save makes; null while they could not be read, which refuses any time). Notes
  * under the line never block: a kept promise the new words drop, a language left saying the old thing. A refusal from the
  * server lands under the box it names (`policyLineFieldName`, one spelling on both sides) and the cursor is taken there
  * (DG-S-06). Save is off, with its reason beside it, while nothing is to be saved or a box has a problem — and a save asked
@@ -49,7 +51,7 @@ import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import {
   POLICY_LINE_DEFAULTS, POLICY_LINE_KEYS, POLICY_LINE_SENTENCE, POLICY_LINE_SPEC, POLICY_LOCALES, normalizedPolicyTexts,
   policyDefaultFingerprint, policyLineFieldName, policyLineProblems, policyLinesPostEntries, policyLinesToSave,
-  samePolicyTexts, type PolicyCardState, type PolicyLineKey, type PolicyLocale, type PolicyTexts,
+  samePolicyTexts, type PolicyCardState, type PolicyLineKey, type PolicyLocale, type PolicySendWindow, type PolicyTexts,
 } from "@/lib/legal/policy-lines";
 import { savePolicyLinesAction } from "./actions";
 
@@ -79,7 +81,7 @@ type ServerProblems = Partial<Record<PolicyLineKey, Partial<Record<PolicyLocale,
 const LINE_COPY: Readonly<Record<PolicyLineKey, { label: string; hint: string }>> = {
   "rg.marketing": {
     label: "Responsible Gambling · §4, the marketing promise",
-    hint: "The first bullet of §4 on /legal/responsible-gambling. Every language is checked against what the platform does: a promise it does not keep yet (a late-night window, a limit on how many messages) is refused, and dropping one it still keeps gets a note.",
+    hint: "The first bullet of §4 on /legal/responsible-gambling. Every language is checked against what the platform does: a promise it does not keep (such as a limit on how many messages a person receives, or no messages in the evening) is refused, a time it names must be the send window's opening or closing time (Admin → System → Marketing SMS), and dropping a promise it still keeps gets a note.",
   },
   "privacy.lawfulConsent": {
     label: "Privacy · §3, the Consent bullet",
@@ -172,7 +174,7 @@ function lineNow(key: PolicyLineKey, versions: PolicyLineVersionView[]): LineNow
   return { latest, words: latest.texts, printed: latest.texts, reviewedCurrent: false, defaultChanged: latest.fingerprint !== fingerprint };
 }
 
-export function PolicyLinesForm({ rows, pages }: { rows: PolicyLineRowView[]; pages: PolicyPageVersionView[] }) {
+export function PolicyLinesForm({ rows, pages, sendWindow }: { rows: PolicyLineRowView[]; pages: PolicyPageVersionView[]; sendWindow: PolicySendWindow | null }) {
   const mayAct = useMayAct();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -209,7 +211,7 @@ export function PolicyLinesForm({ rows, pages }: { rows: PolicyLineRowView[]; pa
   const toSave = sending.map((line) => line.key);
   const included = (key: PolicyLineKey): boolean => toSave.includes(key);
   const verdicts = Object.fromEntries(
-    POLICY_LINE_KEYS.map((key) => [key, policyLineProblems(key, text[key], now[key].printed)]),
+    POLICY_LINE_KEYS.map((key) => [key, policyLineProblems(key, text[key], now[key].printed, sendWindow)]),
   ) as Record<PolicyLineKey, ReturnType<typeof policyLineProblems>>;
   const hasProblem = (key: PolicyLineKey, l: PolicyLocale): boolean => verdicts[key].problems[l].length > 0;
   const shownError = (key: PolicyLineKey, l: PolicyLocale): string | undefined => {
@@ -226,7 +228,7 @@ export function PolicyLinesForm({ rows, pages }: { rows: PolicyLineRowView[]; pa
     if (line.latest === null) return [];
     if (line.words === null) return line.defaultChanged ? [POLICY_LINE_SENTENCE.reviewStale] : [];
     const out: string[] = [];
-    const judged = policyLineProblems(key, line.words, line.words);
+    const judged = policyLineProblems(key, line.words, line.words, sendWindow);
     const failing = POLICY_LOCALES.flatMap((l) => judged.problems[l].map((p) => p.sentence));
     if (failing.length > 0) out.push(POLICY_LINE_SENTENCE.savedNowFails([...new Set(failing)]));
     if (line.defaultChanged) out.push(POLICY_LINE_SENTENCE.defaultChanged);

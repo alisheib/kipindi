@@ -3,6 +3,11 @@ import { mayReceiveMarketingSms } from "@/lib/server/marketing/consent";
 import type { MarketingBasisKind, MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
 import type { SmsBatchOutcome, SmsOutbound } from "@/lib/server/sms";
 import { parseTzNumber } from "@/lib/tz-msisdn";
+import { sendWindowState, sendWindowUnreadable } from "@/lib/marketing/window";
+import type { SendWindowHours, SendWindowState } from "@/lib/marketing/window";
+import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings";
+import type { SettingsReload } from "@/lib/server/marketing/sms-settings";
+import { sendWindowNow } from "@/lib/server/marketing/send-window-clock";
 
 /**
  * U9 · THE GATE RUNS IN THE LOOP — the one dispatch step every marketing send loop must use.
@@ -24,7 +29,8 @@ import { parseTzNumber } from "@/lib/tz-msisdn";
  *   · `handed_over`  — the gateway ACCEPTED it. ⛔ Not "sent", not "delivered" (OD41): only a receipt is.
  *   · `failed`       — the wire refused THIS message (e.g. `BAD_MSISDN`).
  *   · `held`         — nothing was attempted for a reason that is not about this person: a shop-wide
- *                      refusal (balance floor, not configured) or a gate that could not answer. U43
+ *                      refusal (balance floor, not configured), the send window (U13: `quiet_hours`, or
+ *                      `window_unreadable` for hours that could not be read) or a gate that could not answer. U43
  *                      returns these to PENDING (§9 U43) — ⛔ never N failed rows for one shop-wide fact,
  *                      and ⛔ never a send on a question the gate could not answer.
  *   · `unconfirmed`  — handed to the wire with no result back (a thrown transport, a result missing its
@@ -53,6 +59,16 @@ import { parseTzNumber } from "@/lib/tz-msisdn";
  * `sms.refused` row written. A cleared row is therefore sent under `parseTzNumber`'s key, the one its stop and its
  * consent were read under, never under the text the row was written in. A caller that mints the row's opt-out link
  * mints it under that same key (`campaign-test-send.ts` does). Guard: `test:marketing-consent` U9.13.
+ *
+ * ⭐ U13 · THE SEND WINDOW IS ASKED FIRST, ONCE PER SLICE (E2c · E9 · D13). Outside the hours the owner saved on Admin →
+ * System → Marketing SMS (08:00–20:00 EAT unless changed — `SEND_WINDOW_EAT`), EVERY row is `held` with reason
+ * `quiet_hours` before any gate is asked, and nothing is sent: a slice is one moment, so the window is one answer for all
+ * of it (§5.6). The window never changes a campaign's status (E9) — the engine waits outside it; this step is the defence
+ * in depth, and the officer's test send obeys it too (M12, `campaign-test-send.ts`). ⛔ IT FAILS CLOSED (`liveSendWindow`):
+ * hours that cannot be read — a read that failed, a row this build cannot read in full, a window that throws or answers
+ * anything but open — hold every row `window_unreadable`. A default standing in for the owner's hours is never obeyed: a
+ * hold costs only time (the rows stay outstanding), while a message sent outside the owner's hours breaks 50pick's own
+ * rule. Guards: `test:marketing-window` (W3 · W5), and `test:rg-policy` K1 holds the published promise to this very read.
  */
 
 export type SliceRecipient = { ref: string; msisdn: string; body: string };
@@ -66,11 +82,19 @@ export type SliceOutcome =
 
 export type SliceDeps = {
   send: (messages: SmsOutbound[]) => Promise<SmsBatchOutcome>;
+  /** U13 review SP-1 · the slice's own elapsed-time clock (milliseconds) — `Date.now` unless a suite passes one: the wire
+   *  re-check adds the slice's elapsed time to the instant its window was judged at, so a FIXED window in a suite and the
+   *  live one in production are checked alike. */
+  clock?: () => number;
   gate?: (msisdn: string) => Promise<MarketingGateVerdict>;
   /** The RG audit line for a refusal acted on — `auditRgRefusal` unless a caller says otherwise. ⛔ ONLY a typed test
    *  passes its own (a no-op, U37c · OD61): one person an officer typed in must not leave a COMPLIANCE row naming the
    *  account, which a console feed would turn into a membership oracle (D19). A campaign never passes one. */
   rgAudit?: (verdict: MarketingGateVerdict) => Promise<void>;
+  /** U13 · THE SEND WINDOW, read ONCE for the slice and FIRST — `liveSendWindow` unless a caller says otherwise: the test
+   *  send passes its own (`CampaignTestDeps.window`, the same live one in production), and every suite passes a FIXED one
+   *  (ENGINE-SPEC §5 rule 9: a battery run at night must not see every send held). */
+  window?: () => SendWindowState | Promise<SendWindowState>;
 };
 
 /** The DLR route's recipient arm keys on this (U46), so the reference a receipt echoes finds its row. */
@@ -95,9 +119,48 @@ export async function auditRgRefusal(verdict: MarketingGateVerdict): Promise<voi
   });
 }
 
+/**
+ * ⭐ U13 · THE WINDOW THE SEND PATH OBEYS — `dispatchSlice`'s default, the officer's test send's and the composer's note:
+ * the owner's saved hours (E14) read FRESH, judged at this instant (`sendWindowNow`, `./send-window-clock` — where the one
+ * dev-only clock pin lives; this file holds none). ⛔ IT FAILS CLOSED, as U49s requires of every caller that ACTS on a
+ * setting: a read that could not answer, a row this build could not read in full (`readable: false`) or a read that throws
+ * is a CLOSED window (`window_unreadable`) — the default standing in for the owner's hours is never obeyed. No row stored
+ * is the default hours, `SEND_WINDOW_EAT`: OQ5's documented rule, not a stand-in for a saved one. `read` and `now` are the
+ * reader's dependencies, injectable by `test:marketing-window`; production passes neither.
+ */
+export async function liveSendWindow(
+  read: () => Promise<SettingsReload> = reloadMarketingSmsSettings,
+  now: () => number = sendWindowNow,
+): Promise<SendWindowState> {
+  let hours: SendWindowHours | null = null;
+  try {
+    const r = await read();
+    if (r.ok && r.readable) hours = { windowStartMinute: r.settings.windowStartMinute, windowEndMinute: r.settings.windowEndMinute };
+  } catch {
+    hours = null;
+  }
+  return hours === null ? sendWindowUnreadable() : sendWindowState(now(), hours);
+}
+
 export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Promise<SliceOutcome[]> {
   const refs = new Set(rows.map((r) => r.ref));
   if (refs.size !== rows.length) throw new Error("dispatchSlice: every row needs a distinct ref — outcomes are settled by it");
+  // ── U13 · THE SEND WINDOW, FIRST — read once for the slice, before any gate is asked (E2c · E9) ──────────────────────
+  // ⛔ Fails closed: a window that throws, or answers anything but open, holds the whole slice — and only a plain
+  // quiet-hours answer is called quiet hours; everything else is a window that could not be read.
+  // Monotonic by default (a wall clock stepped back would shorten the elapsed time).
+  const clock = deps.clock ?? (() => performance.now());
+  const sliceStart = clock();
+  let sendWindow: SendWindowState | undefined;
+  try {
+    sendWindow = await (deps.window ?? liveSendWindow)();
+  } catch {
+    sendWindow = sendWindowUnreadable();
+  }
+  if (sendWindow?.open !== true) {
+    const reason = sendWindow?.reason === "quiet_hours" ? "quiet_hours" : "window_unreadable";
+    return rows.map((r): SliceOutcome => ({ ref: r.ref, outcome: "held", reason }));
+  }
   const ask = deps.gate ?? mayReceiveMarketingSms;
   const rgLine = deps.rgAudit ?? auditRgRefusal;
   const outcomes = new Map<string, SliceOutcome>();
@@ -129,6 +192,15 @@ export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Pr
   }
 
   if (cleared.length > 0) {
+    // ⛔ U13 review SP-1 · THE WINDOW AGAIN, AT THE WIRE. The gate loop takes time (up to the slice's gate budget), so a
+    // slice judged open at 19:59:58 could reach the network after 20:00. The window is still read ONCE (W5): its own
+    // closing instant is set against the instant it was judged at PLUS the slice's elapsed time, and a slice that has
+    // crossed it holds every cleared row `quiet_hours` — nothing leaves outside the hours. An unparsable instant holds too.
+    const atWire = Date.parse(sendWindow.judgedAt) + (clock() - sliceStart);
+    if (!(atWire < Date.parse(sendWindow.closesAt))) {
+      for (const r of cleared) outcomes.set(r.ref, { ref: r.ref, outcome: "held", reason: "quiet_hours" });
+      return rows.map((r) => outcomes.get(r.ref) as SliceOutcome);
+    }
     // ── ONE SEND FOR THE SLICE ───────────────────────────────────────────────────────────────
     let batch: SmsBatchOutcome | null = null;
     try {

@@ -8,7 +8,8 @@
  *            from them by the stamp rule (`nextStamp`, `nextPolicyVersion`'s rule — test:policy-lines holds the rule).
  *   1280   — the card on its own tab (not on Platform): "0 of 5 lines saved.", every line unsaved and prefilled with
  *            today's words, Save held WITH its reason, the outreach note's hint saying it prints nowhere yet. A refusal
- *            with every problem at once: the RG English given a late-night promise, a phone number and an angle bracket,
+ *            with every problem at once: the RG English given a promise the code does not keep (a frequency cap — the
+ *            late-night window is kept since U13), a phone number and an angle bracket,
  *            and the Swahili emptied — each problem under its own box in its own words, Save waiting, and the pending bar's
  *            Save taking the admin to the first problem (never a silent no-op). A save: Appendix B.2 in three languages —
  *            no problem, and ONE note (the page would stop naming the age control for players, review F13); "Saved … by
@@ -210,12 +211,12 @@ for (const l of LOCALES) {
   await tile(page, "1280-02-card-nothing-saved");
 
   // A refusal with EVERY problem at once, each under its own box.
-  await page.locator(boxSel("rg.marketing", "en")).fill(`${B2.en} We send no late-night messages. Call 0712 345 678 <b>`);
+  await page.locator(boxSel("rg.marketing", "en")).fill(`${B2.en} We send at most two messages a week. Call 0712 345 678 <b>`);
   await page.locator(boxSel("rg.marketing", "sw")).fill("");
   await wait(400);
   const enAlert = await textOf(page, alertSel("rg.marketing", "en"));
   const swAlert = await textOf(page, alertSel("rg.marketing", "sw"));
-  ok("1280 · the English names the late-night promise nothing enforces yet", enAlert.includes("late-night window") && enAlert.includes("the platform does not do this yet") && !enAlert.includes(".ts"), enAlert);
+  ok("1280 · the English names the frequency promise nothing enforces yet", enAlert.includes("a limit on how many marketing messages") && enAlert.includes("the platform does not do this yet") && !enAlert.includes(".ts"), enAlert);
   ok("1280 · …the phone number", enAlert.includes("Remove the phone number"), enAlert);
   ok("1280 · …and the markup, in the same breath", enAlert.includes("Plain text only"), enAlert);
   ok("1280 · the emptied Swahili says every language needs the line", swAlert.includes("Every language needs this line"), swAlert);

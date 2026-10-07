@@ -53,6 +53,13 @@
  *     test over) beside a typed refusal with none; plus U37s's stale-line note and re-save; and the 18+ tick BOUND
  *     (§16.19): an edited number unticks it (8b), every Send spends it, and words reworded while the page is open are
  *     refused and re-read (14, §18.32).
+ *   PASS=window-closed (U13 · the console boot — a draft saves and the test reaches the window, the stub passing the switch):
+ *   · the send window's clock pinned at 03:00 EAT through /api/dev-test/marketing-send-window (dev only, 404 in production;
+ *     it moves nothing but that clock): the Test card says UP FRONT that it is outside the send window, with its hours and
+ *     when a test can be sent; the saved line invites no test; a test is refused held in the window's own sentence; and
+ *     the preview still shows xxxxxxxx after a reload — no token was minted. At 1280 and 360.
+ *   ⭐ U13 · EVERY OTHER PASS pins the window's clock at NOON EAT, so a test is handed over whatever hour this drive runs
+ *   (the laptop's batteries often run at night); the real clock is put back when the drive ends.
  *   NOT DRIVEN: the test's "unconfirmed" state — it needs a carrier that took the request and lost the reply, which only a
  *   recorded switch could reach; `test:campaign-compose` §18.11 and §18.5's control hold it.
  *
@@ -67,6 +74,8 @@
  *   BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
  *   (the same console boot, FRESH, for PASS=typed — it moves the server's licence-outreach record)
  *   PASS=typed BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
+ *   (the console boot again — any, fresh or not — for U13's closed window)
+ *   PASS=window-closed BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
  *   SMS_PROVIDER=blackball BLACKBALL_CLIENT_ID=dummy-not-a-key BLACKBALL_CLIENT_SECRET=dummy-not-a-key
  *     SMS_SENDER_ID=50pick BLACKBALL_API_URL=http://127.0.0.1:9/ SESSION_SECRET=… OTP_PEPPER=… DISABLE_ADMIN_TOTP=true
  *     npx next dev -p 3010
@@ -84,7 +93,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const BASE = process.env.BASE || "http://localhost:3010";
-const PASS = ["live-closed", "dead-rail", "typed"].includes(process.env.PASS ?? "") ? process.env.PASS : "console";
+const PASS = ["live-closed", "dead-rail", "typed", "window-closed"].includes(process.env.PASS ?? "") ? process.env.PASS : "console";
 const SHOTS = join(".qa-shots", "marketing-setup", "u37b", PASS);
 mkdirSync(SHOTS, { recursive: true });
 
@@ -128,6 +137,12 @@ const TOKEN_NOTE = "Your stop link is made the first time you send a test; until
 const LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.";
 const NO_CONSENT = "Your number has no SMS offers consent on record — turn on SMS offers on your own profile, then test again.";
 const LIVE_CLOSED = "Marketing SMS are not switched on yet. The owner switches them on before the first send.";
+/** U13 · the Test card's window note and the test send's quiet-hours refusal, word for word (the default hours). */
+const WINDOW_NOTE = "Outside the send window (08:00–20:00 EAT) — a test can be sent from 08:00.";
+const QUIET_HOURS = "It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
+/** U13 · the instants the send window's clock is pinned at: 03:00 EAT (closed) and noon EAT (open), 7 October 2026. */
+const NIGHT_EAT = "2026-10-07T00:00:00.000Z";
+const NOON_EAT = "2026-10-07T09:00:00.000Z";
 const HANDED_STUB = "Handed to this server's console stub at ";
 const STUB_TAIL = " — it went to the server log, not to a phone.";
 const STALE = "Someone else saved this draft at ";
@@ -223,6 +238,19 @@ const seed = async (page, query) => {
   if (!r.ok()) throw new Error(`campaign seed ${query} failed: ${r.status()} ${await r.text()}`);
   return r.json();
 };
+
+/** U13 · the send window's clock on this server (`/api/dev-test/marketing-send-window`): an ISO instant, or "now" for the
+ *  real clock. Answers the window as the send path then reads it. */
+async function pinWindow(at) {
+  const ctx = await browser.newContext();
+  try {
+    const r = await ctx.request.post(`${BASE}/api/dev-test/marketing-send-window?at=${encodeURIComponent(at)}`);
+    if (!r.ok()) throw new Error(`send-window clock ${at} failed: ${r.status()} ${await r.text()}`);
+    return await r.json();
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
 
 const boxOf = (page, selector) => page.evaluate((sel) => {
   const el = document.querySelector(sel);
@@ -958,6 +986,54 @@ async function deadRailPass() {
   }
 }
 
+/* ═══ PASS · window-closed — U13: the send window's clock pinned at 03:00 EAT, on the console boot ════════════════════ */
+async function windowClosedPass() {
+  const pinned = await pinWindow(NIGHT_EAT);
+  ok("WINDOW CLOSED · the server judges the send window at 03:00 EAT — closed for quiet hours, its hours 08:00–20:00 EAT, opening at 08:00",
+    pinned?.window?.open === false && pinned.window.reason === "quiet_hours" && pinned.window.label === "08:00–20:00 EAT"
+      && pinned.window.opensAtTime === "08:00", JSON.stringify(pinned).slice(0, 300));
+  for (const [i, vp] of VIEWPORTS.entries()) {
+    console.log(`${NL}[u13] the send window closed · ${vp.name}`);
+    const { ctx, page } = await staffCtx("GROWTH", phoneFor(61 + i), { width: vp.width, height: vp.height }, "no-preference", OFFICER);
+    await openComposer(page);
+    const sender = await textOf(page, "[data-sender-line]");
+    if (i === 0 && sender !== SENDER_STUB) {
+      ok(`PASS=window-closed needs the CONSOLE boot — the sender line must be the stub's sentence`, false,
+        `sender line "${sender}" — boot with SMS_PROVIDER=console, as the console pass does`);
+      await ctx.close();
+      return;
+    }
+    ok(`${vp.name} · WINDOW CLOSED · the test card says UP FRONT that it is outside the send window, with its hours and when a test can be sent — and the live switch says nothing (the stub passes it)`,
+      (await textOf(page, "[data-test-window-note]")) === WINDOW_NOTE && !(await has(page, "[data-test-live-note]")),
+      await textOf(page, "[data-test-window-note]"));
+    await page.locator(SEL.name).fill(NAME);
+    await page.locator(SEL.bodySw).fill(BODY_JINA);
+    await wait(250);
+    await page.locator(SEL.fallbackSw).fill(FALLBACK_SW);
+    await wait(250);
+    await save(page);
+    await waitReady(page);
+    const draftId = new URL(page.url()).searchParams.get("draft") ?? "";
+    ok(`${vp.name} · WINDOW CLOSED · saved; the preview's stop link is still xxxxxxxx`,
+      /^cmp_/.test(draftId) && (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx"));
+    ok(`${vp.name} · WINDOW CLOSED · the saved line says nothing was sent and does NOT invite the test this card would refuse`,
+      SAVED_NO_TEST_RE.test(await textOf(page, SEL.saved)), await textOf(page, SEL.saved));
+    await stateShot(page, vp.name, "window-closed-saved", WINDOW_NOTE, SEL.test);
+    const refused = await sendTest(page, "SW");
+    ok(`${vp.name} · WINDOW CLOSED · ⛔ M12 · the test is refused held, in the window's own sentence — never handed over, and no consent link`,
+      refused?.outcome === "refused" && refused.reason === "held" && refused.sentence === QUIET_HOURS && refused.consentLink === null,
+      JSON.stringify(refused));
+    await fitCheck(page, vp.name, "test-refused-window-closed");
+    await stateShot(page, vp.name, "test-refused-window-closed", QUIET_HOURS, SEL.test);
+    await openComposer(page, `?draft=${draftId}`);
+    await waitReady(page);
+    ok(`${vp.name} · WINDOW CLOSED · after a reload the stop link is STILL xxxxxxxx — the refusal minted no token — and the note still stands`,
+      (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx") && (await textOf(page, SEL.test)).includes(TOKEN_NOTE)
+        && (await textOf(page, "[data-test-window-note]")) === WINDOW_NOTE);
+    await ctx.close();
+  }
+}
+
 /* ═══ PASS · typed — U37c-2: the Test card's test to ANOTHER number, spec Appendix A §A.9 (+ U37s's stale line) ═══════
  * A FRESH console server (the console pass's boot line) — this pass moves the server's ONE licence-outreach record and
  * saves wordings and policy lines, which no other pass may meet. The world is stepped forward only through
@@ -1308,11 +1384,16 @@ async function typedPass() {
 }
 
 try {
+  // ⭐ U13 · the send window's clock pinned for the whole pass — noon EAT (open) for every pass but window-closed, which
+  // pins 03:00 itself — so what a pass sees never depends on the hour it runs at. The real clock goes back after.
+  if (PASS !== "window-closed") await pinWindow(NOON_EAT);
   if (PASS === "console") await consolePass();
   else if (PASS === "live-closed") await liveClosedPass();
   else if (PASS === "typed") await typedPass();
+  else if (PASS === "window-closed") await windowClosedPass();
   else await deadRailPass();
 } finally {
+  await pinWindow("now").catch(() => {});
   await browser.close();
 }
 console.log(`${NL}MEASURED ${JSON.stringify(measured)}`);

@@ -32,7 +32,11 @@ import { isFinalRefusal } from "../src/lib/kyc-refusal.ts";
 import { SMS_CONSENT_WORDINGS, isSmsConsentWording } from "../src/lib/marketing/consent-wording.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { selfExclusionStanding, selfExclusionStandingOf, selfExclude, coolOff } from "../src/lib/server/responsible-gambling.ts";
-import { dispatchSlice, MARKETING_RG_SUPPRESSED_ACTION } from "../src/lib/server/marketing/dispatch.ts";
+import { dispatchSlice, liveSendWindow, MARKETING_RG_SUPPRESSED_ACTION } from "../src/lib/server/marketing/dispatch.ts";
+import { sendWindowUnreadable } from "../src/lib/marketing/window.ts";
+import type { SendWindowState } from "../src/lib/marketing/window.ts";
+// U13 · every slice this suite drives is handed a FIXED window (ENGINE-SPEC §5 rule 9) — green at any clock.
+import { ALWAYS_OPEN, ALWAYS_CLOSED } from "./lib/send-window.mts";
 import type { SliceRecipient, SliceOutcome, SliceDeps } from "../src/lib/server/marketing/dispatch.ts";
 import { mintOptOutToken, stopMarketing } from "../src/lib/server/marketing/optout-service.ts";
 import * as optoutService from "../src/lib/server/marketing/optout-service.ts";
@@ -534,7 +538,9 @@ function gateWithDefect(d: Defect): Gate {
  * DRIVER and must pass the same assertions; today the driver is `dispatchSlice` called once per slice.
  * The fake wire returns its results in REVERSED order, so a loop that settles by position cannot pass.
  * ⭐ vb3 · one row is WRITTEN '+255 0712…': the wire must be given the gate's own key for it (U9.13), never the row's
- * spelling. */
+ * spelling.
+ * ⭐ U13 · every slice here is handed a FIXED window (`scripts/lib/send-window.mts`), so the contract is green at any clock
+ * (ENGINE-SPEC §5 rule 9) — and U9.14 is the window's own clause: outside it the slice is held whole, no gate asked. */
 type Driver = (slices: SliceRecipient[][], between: () => Promise<void>, deps: SliceDeps) => Promise<SliceOutcome[]>;
 type Dispatch = (rows: SliceRecipient[], deps: SliceDeps) => Promise<SliceOutcome[]>;
 
@@ -598,7 +604,7 @@ async function runLoopContract(driver: Driver, run: number, tag: string): Promis
     await selfExclude(w.Y.id, "24h");
     await coolOff(w.Z.id, "1h");
   };
-  const outcomes = await driver(slices, between, { send: wire.send });
+  const outcomes = await driver(slices, between, { send: wire.send, window: ALWAYS_OPEN });
   const of = (ref: string) => outcomes.find((o) => o.ref === ref);
   const onWire = (msisdn: string) => wire.sent.some((m) => m.to === msisdn);
   const show = (ref: string) => JSON.stringify(of(ref) ?? null);
@@ -633,23 +639,51 @@ async function runLoopContract(driver: Driver, run: number, tag: string): Promis
   // ── the three ways a slice ends without a verdict about the PERSON ────────────────────────
   const G = row(w.G, "rG");
   const shut = fakeWire(new Set(), "BALANCE_FLOOR");
-  const [held] = await driver([[G]], async () => {}, { send: shut.send });
+  const [held] = await driver([[G]], async () => {}, { send: shut.send, window: ALWAYS_OPEN });
   ok(p("U9.9 · a SHOP-WIDE refusal (balance floor) holds the row — not failed, not skipped: nothing about this person was decided"),
     held?.outcome === "held" && (held as { reason?: string }).reason === "BALANCE_FLOOR", JSON.stringify(held ?? null));
   const blind = fakeWire(new Set());
-  const [unanswered] = await driver([[G]], async () => {}, { send: blind.send, gate: async () => { throw new Error("db down"); } });
+  const [unanswered] = await driver([[G]], async () => {}, { send: blind.send, gate: async () => { throw new Error("db down"); }, window: ALWAYS_OPEN });
   ok(p("U9.10 · ⛔ a gate that cannot ANSWER holds the row and sends NOTHING — never a send on an unanswered question"),
     unanswered?.outcome === "held" && blind.sent.length === 0, `${JSON.stringify(unanswered ?? null)} · sent ${blind.sent.length}`);
-  const [lost] = await driver([[G]], async () => {}, { send: async () => { throw new Error("socket hang up"); } });
+  const [lost] = await driver([[G]], async () => {}, { send: async () => { throw new Error("socket hang up"); }, window: ALWAYS_OPEN });
   ok(p("U9.11 · a send that THROWS leaves the row `unconfirmed` — the gateway may have taken it, so it is never retried by itself (OD23)"),
     lost?.outcome === "unconfirmed", JSON.stringify(lost ?? null));
+
+  // ── U13 · the send window: outside it the slice is held WHOLE, before any gate is asked (E2c · E9) ──────────────
+  let asked = 0;
+  let reads = 0;
+  const counting: SliceDeps["gate"] = async (m) => { asked++; return mayReceiveMarketingSms(m); };
+  const night = fakeWire(new Set());
+  const quiet = await driver([[row(w.A, "qA"), row(w.B, "qB"), G]], async () => {}, {
+    send: night.send, gate: counting, window: () => { reads++; return ALWAYS_CLOSED(); },
+  });
+  ok(p(U9_14),
+    quiet.length === 3 && quiet.every((o) => o.outcome === "held" && (o as { reason?: string }).reason === "quiet_hours")
+      && asked === 0 && night.calls === 0 && reads === 1,
+    `${quiet.map((o) => `${o.ref}:${o.outcome}:${(o as { reason?: string }).reason ?? "-"}`).join(" ")} · gate asked ${asked} · wire calls ${night.calls} · window read ${reads}`);
 }
+
+/** U13 · the contract's closed-window clause — named once, so its red case expects exactly what the run says. */
+const U9_14 = "U9.14 · ⭐ U13 · OUTSIDE THE SEND WINDOW the slice is held WHOLE — every row held quiet_hours, the gate asked ZERO times, the wire never called, the window read ONCE";
 
 /** The dispatch step written out so one step at a time can be made wrong. Never ships; with no flag set it
  *  is asserted to agree with `dispatchSlice` on the whole contract before any plant is trusted. */
-type LoopDefect = { hoisted?: boolean; settleByIndex?: boolean; skipAsFailed?: boolean; gateErrorSends?: boolean; noRgAudit?: boolean; rawOnWire?: boolean };
+type LoopDefect = { hoisted?: boolean; settleByIndex?: boolean; skipAsFailed?: boolean; gateErrorSends?: boolean; noRgAudit?: boolean; rawOnWire?: boolean; windowAfterGate?: boolean };
 function dispatchModel(d: LoopDefect): Dispatch {
   return async (rows, deps) => {
+    /** U13 · the send window as dispatchSlice reads it — once, failing closed — FIRST, or (planted) after every gate. */
+    const windowHold = async (): Promise<SliceOutcome[] | null> => {
+      let win: SendWindowState | undefined;
+      try { win = await (deps.window ?? liveSendWindow)(); } catch { win = sendWindowUnreadable(); }
+      if (win?.open === true) return null;
+      const reason = win?.reason === "quiet_hours" ? "quiet_hours" : "window_unreadable";
+      return rows.map((r): SliceOutcome => ({ ref: r.ref, outcome: "held", reason }));
+    };
+    if (!d.windowAfterGate) {
+      const first = await windowHold();
+      if (first !== null) return first;
+    }
     const ask = deps.gate ?? mayReceiveMarketingSms;
     const out = new Map<string, SliceOutcome>();
     const cleared: SliceRecipient[] = [];
@@ -673,6 +707,10 @@ function dispatchModel(d: LoopDefect): Dispatch {
       const key = parseTzNumber(r.msisdn).msisdn;
       if (key === null) { out.set(r.ref, { ref: r.ref, outcome: "skipped", skipReason: "bad_msisdn", detail: "no sendable key" }); continue; }
       cleared.push(d.rawOnWire ? r : { ...r, msisdn: key });
+    }
+    if (d.windowAfterGate) {
+      const late = await windowHold();
+      if (late !== null) return late;
     }
     if (cleared.length) {
       let b: SmsBatchOutcome | null = null;
@@ -1351,6 +1389,11 @@ if (!PROVE_RED) {
       name: "🔴 pre-vb3 dispatch — the row's own spelling put on the wire: '+255 0712…' handed to sendBatch, whose toMsisdn255 keeps the zero, so a consenting player the gate cleared is refused BAD_MSISDN",
       driver: loopOver(dispatchModel({ rawOnWire: true })),
       expect: "U9.13 · ⭐ vb3 · a consenting player whose row is written '+255 0712…' is handed over under the GATE'S key — the wire is given 255712…, never the row's own spelling (sendBatch would rewrite that to 2550712… and refuse it BAD_MSISDN)",
+    },
+    {
+      name: "U13 · the send window asked AFTER the gate — every recipient's gate asked, then the slice held for the window",
+      driver: loopOver(dispatchModel({ windowAfterGate: true })),
+      expect: U9_14,
     },
   ];
   for (const [i, c] of LOOP_CASES.entries()) {

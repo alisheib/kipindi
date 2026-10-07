@@ -96,6 +96,7 @@ const L = {
   s7: "S7 · the writer population, across every source extension in src/ and scripts/ (tests aside; the loopback Postgres probe and the U49s-2 drive allowed by name — the drive only while it refuses a non-loopback database before it connects) — MARKETING_LIVE_SWITCH_KEY and sms.live appear only in live-switch.ts; only the card's actions and the ops door call the two writers; marketing.sms.settings appears only in its own module, and only the card's action calls saveMarketingSmsSettings",
   s8: "S8 · the settings bounds — every boundary accepted and its neighbour refused under its own field (price 1–1,000 with at most two decimals, the reserve from the platform floor to 10,000,000, the limit 100–10,000,000, start 07:00–19:00 and end 09:00–21:00 on the quarter hour); every problem at once; the reserve's minimum follows the floor; under 2 h is refused under the end; the limit's refusal binds each 'TZS' to its amount (a no-break space)",
   s9: "S9 · the store — a partial post, an unknown key and a blank officer are refused with nothing written; a good save writes exactly the record and its ADMIN row; a stale page is refused; a no-change save writes nothing; a row it cannot read in full (a bad field, another shape, a window under 2 h) reads defaults where it failed — the window as a pair — answers readable:false and refuses every save",
+  s9r: "S9r · ⛔ U13 · R1 · A PUBLISHED PROMISE HOLDS THE HOURS — new send hours are refused (published_hours, naming the time, nothing written) while a public policy line names a time they would drop: 09:00–18:00 or 08:00–21:00 under a line naming 08:00 and 20:00, and any new hours under a line naming 9 o'clock; hours that keep every named time save; a change that leaves the hours as they are is never held; lines that cannot be read refuse new hours (published_unread) but no other change",
   s10: "S10 · ONE PRICE SOURCE — nothing in src/ reads SMS_PRICE_PER_SEGMENT_TZS (decommented); the estimate RE-READS the record for every estimate and gives no price for a read that failed or a row it cannot read in full; .env.example sets no price",
   s12: "S12 · the ops door imports the two writers (and hasDatabase) and nothing that writes SystemConfig itself, rewrites Railway's private database host to the public proxy before its first read, refuses without a database, outside production's own Railway environment (with its audit secret) and — for an OPEN only — from a PC whose clock is over 20 s off the database's (the fourth review's m4; a close only warns, the fifth's F5) before any write, with that clock rule itself run (the round trip's midpoint, the 20 s edge, the direction named), and calls the writers as via ops with no actor",
   s11: "S11 · a viewer who may not read money figures is handed NO money — the card's props and the tab's props hold no TZS, no price, credit kept for codes or campaign limit, no platform floor, no measured price and no fingerprint spelling them, for a non-owner AND for an owner whose own money.figures cell hides money (who gets text, never a form); a record that cannot be read in full shows no value to anyone; a money viewer is handed the line in money ('TZS 6 per SMS · …', each TZS bound to its amount), and only the owner's form its fingerprint, the floor, the measured price and whether a save was ever made; who switched it on is never a number — in any grouping or separator, a foreign one included, the ops door's `by` too — and a name still shows; a role that could not be read is neither the owner nor shown money, and is said as such, never as 'not the owner'; the loader, driven with its reads injected, answers the owner and the money from ONE role read, fails closed (no role, a role read that failed, a no, a decider that throws) and walks the send history for the owner's form only (a history that cannot be read said so); and the page asks nothing itself — loadSmsMoneyForViewer answers, for both views, and nothing in src/app calls its role-taking twin",
@@ -886,6 +887,38 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       `partial ${partial.ok ? "SAVED" : partial.reason} · unknown ${unknown.ok ? "SAVED" : unknown.reason} · good ${good.ok ? good.changed.length : good.reason} · row ${JSON.stringify(row)} · stale ${stale.ok ? "SAVED" : stale.reason} · same ${same.ok ? same.changed.length : same.reason} · writes ${writesAfter} · audits ${audits.length} · unreadable ${[badField, otherShape, shortWindow].map((x) => (x.saved.ok ? "SAVED" : x.saved.reason)).join(",")} · defaults ${readsDefaults}`);
   }
 
+  /* ── S9r · U13 · R1 · a published promise holds the hours ── */
+  {
+    const said = (texts: string[] | null) => async () => (texts === null ? { ok: false as const } : { ok: true as const, texts });
+    const NAMES_BOTH = "Hakuna matangazo kabla ya 08:00 wala baada ya 20:00 EAT.";
+    const NAMES_OPEN = "No offers before 08:00 EAT.";
+    const NAMES_ODD = "No offers after 9 o'clock at night.";
+    const attempt = async (texts: string[] | null, over: Record<string, unknown>) => {
+      const w = settingsWorld();
+      const s = impl.store({ floorTzs: () => 50, factoryDeps: w.deps, published: said(texts) });
+      const r = await s.save(post(over), OWNER);
+      return { r, writes: w.writes() };
+    };
+    const KEEP = { windowStartMinute: "480", windowEndMinute: "1200" };
+    const drops = await attempt([NAMES_BOTH], { windowStartMinute: "540", windowEndMinute: "1080" });
+    const keepsOpening = await attempt([NAMES_OPEN], { windowStartMinute: "480", windowEndMinute: "1140" });
+    const dropsClose = await attempt([NAMES_BOTH], { windowStartMinute: "480", windowEndMinute: "1260" });
+    const oddHour = await attempt([NAMES_ODD], { windowStartMinute: "480", windowEndMinute: "1140" });
+    const sameHours = await attempt([NAMES_ODD], KEEP);
+    const unread = await attempt(null, { windowStartMinute: "540", windowEndMinute: "1080" });
+    const unreadSameHours = await attempt(null, KEEP);
+    const nothingNamed = await attempt(["No offers to a self-excluded player."], { windowStartMinute: "540", windowEndMinute: "1080" });
+    const refusedFor = (x: typeof drops, reason: string) => !x.r.ok && x.r.reason === reason && x.writes === 0;
+    ok(p(L.s9r),
+      refusedFor(drops, "published_hours") && !drops.r.ok && drops.r.error.includes("08:00") && drops.r.error.includes("20:00")
+        && keepsOpening.r.ok && keepsOpening.writes === 1
+        && refusedFor(dropsClose, "published_hours") && !dropsClose.r.ok && dropsClose.r.error.includes("20:00") && !dropsClose.r.error.includes("08:00,")
+        && refusedFor(oddHour, "published_hours")
+        && sameHours.r.ok && refusedFor(unread, "published_unread") && unreadSameHours.r.ok && nothingNamed.r.ok
+        && STORE.hoursDroppedByPublished([NAMES_BOTH], { windowStartMinute: 480, windowEndMinute: 1200 }) === null,
+      `09:00–18:00 under a line naming 08:00 and 20:00 → ${drops.r.ok ? "SAVED" : drops.r.error} · 08:00–19:00 under "before 08:00" → ${keepsOpening.r.ok ? "saved" : keepsOpening.r.reason} · 08:00–21:00 → ${dropsClose.r.ok ? "SAVED" : dropsClose.r.reason} · "9 o'clock" → ${oddHour.r.ok ? "SAVED" : oddHour.r.reason} · the same hours, a price change → ${sameHours.r.ok ? "saved" : sameHours.r.reason} · lines unreadable → ${unread.r.ok ? "SAVED" : unread.r.reason}, same hours ${unreadSameHours.r.ok ? "saved" : unreadSameHours.r.reason} · nothing named → ${nothingNamed.r.ok ? "saved" : nothingNamed.r.reason}`);
+  }
+
   /* ── S10 · one price source ── */
   {
     const envReads = [...impl.sources].filter(([rel, text]) => rel.startsWith("src/") && /SMS_PRICE_PER_SEGMENT_TZS/.test(text)).map(([rel]) => rel);
@@ -1408,6 +1441,9 @@ if (!PROVE_RED) {
       return real.save({ ...(input as Record<string, unknown>), base }, officer);
     } };
   };
+  /** R-S9r · U13 · R1 · new hours saved without asking the published lines — a printed "after 20:00" left unkept. */
+  const ignoresPublished = (o: StoreOpts): SettingsStore =>
+    STORE.__marketingSmsSettingsForTest({ ...o, published: async () => ({ ok: true as const, texts: [] }) });
   /** R-S9c · a row reader that reads what it can and notes nothing — a half-read row is saved over. */
   const notesNothing = (o: StoreOpts): SettingsStore =>
     STORE.__marketingSmsSettingsForTest({ ...o, readRow: (persisted) => ({ settings: STORE.readSettingsRow(persisted).settings, dropped: [] }) });
@@ -1705,6 +1741,9 @@ if (!PROVE_RED) {
     { name: "R-S9c · a half-read row saved over", expect: /^S9 ·/, impl: { ...REAL, store: notesNothing },
       landed: async () => { const w = settingsWorld({ v: 1, pricePerSegmentTzs: "x", codesReserveTzs: 25_000, campaignLimitTzs: 12_000, windowStartMinute: 510, windowEndMinute: 1140 }); const s = notesNothing({ floorTzs: () => 50, factoryDeps: w.deps }); const r = await s.reload(); return (await s.save(post({}, PURE.settingsFingerprint(r.ok ? r.settings : D)), OWNER)).ok; },
       landedAs: "a row with an unreadable price is saved over" },
+    { name: "R-S9r · U13 · R1 · new hours saved without asking the published lines", expect: /^S9r ·/, impl: { ...REAL, store: ignoresPublished },
+      landed: async () => { const w = settingsWorld(); const s = ignoresPublished({ floorTzs: () => 50, factoryDeps: w.deps, published: async () => ({ ok: true as const, texts: ["No offers after 20:00 EAT."] }) }); return (await s.save(post({ windowStartMinute: "480", windowEndMinute: "1260" }), OWNER)).ok; },
+      landedAs: "08:00–21:00 is saved under a line promising nothing after 20:00" },
     { name: "R-S10 · the environment read restored", expect: /^S10 ·/,
       impl: { ...REAL, sources: withSource(ESTIMATE_SRC, (t) => t.split(CR).join("").replace(ESTIMATE_PRICE, "    return Number(process.env.SMS_PRICE_PER_SEGMENT_TZS) || null;")) },
       landed: () => (SOURCES.get(ESTIMATE_SRC) ?? "").split(CR).join("").includes(ESTIMATE_PRICE),

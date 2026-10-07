@@ -17,6 +17,7 @@ import { SMS_MAX_SEGMENTS } from "@/lib/sms-compose";
 import { JINA } from "@/lib/marketing/campaign-template";
 import type { VariantCounter } from "@/lib/marketing/campaign-template";
 import { SENDER_IDENTITY } from "@/lib/marketing/footer";
+import type { SendWindowState } from "@/lib/marketing/window";
 import { formatClock, formatNumber } from "@/lib/utils";
 
 export const COMPOSE_TITLE = "New SMS campaign";
@@ -89,8 +90,8 @@ export function composeSourceLine(sourceUnits: number, phraseSet: boolean): stri
 
 /**
  * "Draft saved 14:02 — nothing was sent." — the console's clock and what a save is NOT. ⛔ The test below is named as the
- * next step ONLY when this page can send one (`canTest`: the live switch open, the officer's own number reachable, the
- * rail up) — never an invitation the test card beside it would refuse.
+ * next step ONLY when this page can send one (`canTest`: the live switch open, the send window open, the officer's own
+ * number reachable, the rail up) — never an invitation the test card beside it would refuse.
  */
 export function composeSaved(at: string, canTest: boolean): string {
   const said = `Draft saved ${formatClock(at)} — nothing was sent.`;
@@ -177,6 +178,19 @@ export const COMPOSE_TEST_PREVIEW = { SW: "Swahili, as it will be sent to you", 
 export const COMPOSE_TEST_EXACT = "The exact text sent:";
 export const COMPOSE_TEST_CONSENT_LINK = "Turn on SMS offers for your own number";
 export const COMPOSE_TEST_LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.";
+/** U13 · the send window's hours could not be read: a CLOSED window (fail closed), said as such — never as quiet hours. */
+export const COMPOSE_TEST_WINDOW_UNREADABLE =
+  "The Marketing SMS settings couldn't be read, so the send window is treated as closed — no test can be sent until they can.";
+/**
+ * U13 · M12 · the Test card's window note — said UP FRONT while the send window is closed, in the hours the test send obeys
+ * (the same window, `liveSendWindow`): "Outside the send window (08:00–20:00 EAT) — a test can be sent from 08:00." Null
+ * while it is open. ⛔ Hours that could not be read are said as unreadable, never as quiet hours.
+ */
+export function composeTestWindowNote(w: SendWindowState): string | null {
+  if (w.open === true) return null;
+  if (w.reason !== "quiet_hours" || w.label === "") return COMPOSE_TEST_WINDOW_UNREADABLE;
+  return `Outside the send window (${w.label}) — a test can be sent from ${w.opensAtTime}.`;
+}
 
 /** A test the gateway took — "handed to the network", never "delivered". */
 export function composeTestHandedOver(at: string, via: "stub" | "open"): string {

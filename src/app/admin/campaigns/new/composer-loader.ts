@@ -46,6 +46,8 @@ import {
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { currentWording } from "@/lib/server/marketing/wordings";
+import { liveSendWindow } from "@/lib/server/marketing/dispatch";
+import { composeTestWindowNote } from "./composer-copy";
 import { renderForRecipient, firstNameFor } from "@/lib/marketing/campaign-template";
 import type { CampaignDraftFields, CampaignTemplate } from "@/lib/marketing/campaign-template";
 import { CAMPAIGN_SCREEN_ROUTES, campaignDraftHref } from "@/lib/marketing/campaign-status";
@@ -125,6 +127,8 @@ export type ComposeTestView = {
   preview: { SW: string; EN: string | null; revision: number } | null;
   /** Said up front when the live switch would refuse a test (a real carrier, the switch closed). */
   liveNote: string | null;
+  /** U13 · M12 · said up front while the send window is closed — read as the test send reads it (`liveSendWindow`). */
+  windowNote: string | null;
   /** U37c · a test to ANOTHER number — offered only once its three number-independent checks pass. */
   typed: ComposeTypedView;
 };
@@ -517,6 +521,7 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       tokenReady: token !== null,
       preview,
       liveNote: live.ok ? null : COMPOSE_TEST_LIVE_NOTE,
+      windowNote: composeTestWindowNote(await liveSendWindow()),
       typed: composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") }),
     },
   };
