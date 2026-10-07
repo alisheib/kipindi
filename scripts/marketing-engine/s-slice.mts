@@ -607,7 +607,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const rB = await stepWith(impl, b.cid, engineDeps(freshState(), wire2));
     const cB = await campaignOf(b.cid);
     const pausedB = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, b.cid);
-    const words = impl.stopLabel("list_over_confirmed_sending").includes("confirm a new copy") && impl.stopLabel("audience_unreadable").includes("confirm a new copy");
+    const words = impl.stopLabel("list_over_confirmed_sending").includes("a copy would message them again") && !impl.stopLabel("list_over_confirmed_sending").includes("confirm a new copy") && impl.stopLabel("audience_unreadable").includes("confirm a new copy");
     return [rA.kind === "paused" && rA.reason === "list_over_confirmed_sending" && cA?.stopReason === "list_over_confirmed_sending" && claimedNone(a.cid) && wire.calls === 0
       && pausedA.length === 1 && rB.kind === "paused" && rB.reason === "audience_unreadable" && cB?.stopReason === "audience_unreadable" && claimedNone(b.cid)
       && wire2.calls === 0 && pausedB.length === 1 && words,

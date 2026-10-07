@@ -47,13 +47,17 @@
  *       The same or fewer go ahead, reporting how many fewer (`shrunkBy`).
  *
  * ── RESUME — what only a new copy can fix, ② · ③, then the credit for what is left ──────────────────────────────────────
- *   ⛔ FIRST, WITH NO READ — WHAT ONLY A NEW COPY CAN FIX (U42's review; ENGINE-SPEC §4.15 decision 1 as amended, built at
- *   the U42 + U49a merge — `copyOnlyRefusal`):
- *     · list_over_confirmed — a list LONGER than its confirmed count, read off the counts themselves and WHATEVER the stop
- *       reason: an officer's Pause can land before the enqueue's own (`enqueue.ts` fails closed), and a Resume of a list
- *       that already ran goes back to RUNNING and would send to the extra rows;
- *     · audience_moved · audience_unreadable · list_over_confirmed — a campaign the enqueue PAUSED for `audience_moved`,
- *       `audience_unreadable`, `list_over_confirmed` or `list_over_confirmed_sending`, even with its list within its count.
+ *   ⛔ FIRST, WITH NO READ:
+ *     · confirmation_unreadable — a confirmed count that is not one, for ANY campaign (as Start reads it): the list's length
+ *       cannot be judged against it (U49a's re-review closed the module's one fail-open path here).
+ *     · WHAT ONLY A NEW COPY CAN FIX (U42's review; ENGINE-SPEC §4.15 decision 1 as amended, built at the U42 + U49a merge —
+ *       `copyOnlyRefusal`): list_over_confirmed — a list LONGER than its confirmed count, read off the counts themselves and
+ *       WHATEVER the stop reason (an officer's Pause can land before the enqueue's own, and a Resume of a list that already
+ *       ran goes back to RUNNING and would send to the extra rows); then audience_moved · audience_unreadable ·
+ *       list_over_confirmed — a campaign the enqueue PAUSED for one of its `EnqueuePauseReason`s, even with its list within
+ *       its count. ⭐ Each carries `reached` — whether anyone on the list was already handed a message (SENT, DELIVERED,
+ *       UNCONFIRMED): a copy has the same filter and nothing de-duplicates across campaigns, so it would message them
+ *       AGAIN, and the sentence says so and leaves the choice honest (U42's re-review).
  *   Neither the switch nor the credit is read for them, so neither can hide them, and the console stub is refused them too.
  *   ⭐ WHAT IS LEFT (`resumeOutstanding` — the ONE definition; Resume takes the recipient COUNTS, so no caller can hand it
  *   another figure):
@@ -61,10 +65,11 @@
  *     · the list never finished (`enqueuedAt` null — paused while PREPARING; Resume returns it to PREPARING, §3.1): the
  *       confirmed count (`audienceCount`) minus the rows already settled — everyone confirmed who has no answer yet,
  *       written or not. Never the rows written so far alone, which would price a 1,604-person campaign at nothing.
- *   Then: confirmation_unreadable (no confirmed count to start from) → sizes_unreadable (the saved sizes cannot be read, so
- *   what is left cannot be priced) → ⑥ settings → ⑦ price → ⑨ the credit. ⛔ NOTHING IS SKIPPED BECAUSE NOTHING IS LEFT: a
- *   cost of 0 still reads the settings and the credit, and still keeps the line. The console stub has no credit and spends
- *   none: after ② · ③ it resumes.
+ *   Then ② · ③; then NOTHING LEFT (`resumeOutstanding` 0 — every row settled, say paused just after the last slice)
+ *   resumes with no price and no credit read: the step finds nothing owed and finishes DONE, and a refusal "up to TZS 0 …
+ *   Top up" would be false (U49a's re-review). Otherwise sizes_unreadable (the saved sizes cannot be read, so what is left
+ *   cannot be priced) → ⑥ settings → ⑦ price → ⑨ the credit — nothing skipped while anything is left. The console stub
+ *   has no credit and spends none: after ② · ③ it resumes.
  *
  * ── WHO MAY READ WHAT ───────────────────────────────────────────────────────────────────────────────────────────────────
  * ⛔ A REFUSAL OBJECT (`StartRefusal`, `ResumeRefusal`) CARRIES MONEY AND COUNT FIGURES FOR EVERY ROLE — for the caller's
@@ -84,6 +89,7 @@
  * Guard: `npm run test:marketing-engine` §F (F0–F16) · Red: `npm run red:marketing-engine` (in memory).
  */
 import type { SmsCampaignRecipientStatusCounts, StoredSmsCampaign } from "@/lib/server/store";
+import type { EnqueuePauseReason } from "@/lib/server/marketing/enqueue";
 import { refreshSmsBalance, smsProviderResolution, smsRailProblem } from "@/lib/server/sms";
 import type { SmsBalanceRead, SmsProviderResolution, SmsRailProblem } from "@/lib/server/sms";
 import { marketingLiveGate, readMarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
@@ -126,10 +132,12 @@ export type StartRefusal =
 export type ResumeRefusal =
   | {
       reason:
-        | "list_over_confirmed" | "audience_moved" | "audience_unreadable"
         | "switch_closed" | "confirmation_unreadable" | "sizes_unreadable" | "settings_unreadable" | "settings_incomplete"
         | "price_unknown" | "credit_unreadable";
     }
+  /** What only a new copy can fix (`copyOnlyRefusal`). `reached` — was anyone on the list already handed a message? Then a
+   *  copy (the same filter, nothing de-duplicated across campaigns) would message them AGAIN, and the sentence says so. */
+  | { reason: CopyOnlyReason; reached: boolean }
   | { reason: "rail_dead"; rail: SmsRailProblem }
   | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number };
 
@@ -397,35 +405,47 @@ export function resumeOutstanding(
   return Math.max(owed, c.audienceCount - settledRows(counts));
 }
 
-/** The stop reasons U42's enqueue pauses a campaign for, and the Resume refusal each one is: a new copy is the only remedy. */
-const COPY_ONLY_STOP_REASONS: Readonly<Record<string, "audience_moved" | "audience_unreadable" | "list_over_confirmed">> = {
+/** The Resume refusals only a new copy can fix. */
+export type CopyOnlyReason = "audience_moved" | "audience_unreadable" | "list_over_confirmed";
+
+/** ⭐ EVERY stop reason U42's enqueue pauses a campaign for, and the Resume refusal each one is — a Record over the enqueue's
+ *  own type, so a reason added to it without a refusal here is a compile error, never a campaign Resume does not know. */
+const COPY_ONLY_STOP_REASONS: Readonly<Record<EnqueuePauseReason, CopyOnlyReason>> = {
   audience_moved: "audience_moved",
   audience_unreadable: "audience_unreadable",
   list_over_confirmed: "list_over_confirmed",
   list_over_confirmed_sending: "list_over_confirmed",
 };
 
+/** Rows HANDED to the network — SENT, DELIVERED, UNCONFIRMED: people a copy would message AGAIN. (A SKIPPED person was
+ *  never messaged; a FAILED message never reached its person.) */
+const messagedRows = (counts: SmsCampaignRecipientStatusCounts): number => counts.SENT + counts.DELIVERED + counts.UNCONFIRMED;
+
 /**
  * ⛔ WHAT ONLY A NEW COPY CAN FIX (the header; U42's review, ENGINE-SPEC §4.15 decision 1 as amended) — asked with no read:
  * a list LONGER than its confirmed count, by the counts themselves and whatever the stop reason; then a campaign the enqueue
- * paused for a reason whose remedy is a new copy. null for anything else. `counts` must already have been read whole
- * (`resumeOutstanding` throws first on counts that are not counts).
+ * paused for one of its reasons. Each says whether anyone on the list was already messaged (`reached`). null for anything
+ * else. `counts` must already have been read whole (`resumeOutstanding` throws first on counts that are not counts).
  */
 export function copyOnlyRefusal(
   c: Pick<StoredSmsCampaign, "audienceCount" | "stopReason">,
   counts: SmsCampaignRecipientStatusCounts,
 ): ResumeRefusal | null {
-  if (isCount(c.audienceCount) && recipientRows(counts) > c.audienceCount) return { reason: "list_over_confirmed" };
+  const reached = messagedRows(counts) > 0;
+  if (isCount(c.audienceCount) && recipientRows(counts) > c.audienceCount) return { reason: "list_over_confirmed", reached };
   const k = typeof c.stopReason === "string" ? c.stopReason : "";
-  return Object.prototype.hasOwnProperty.call(COPY_ONLY_STOP_REASONS, k) ? { reason: COPY_ONLY_STOP_REASONS[k] } : null;
+  return Object.prototype.hasOwnProperty.call(COPY_ONLY_STOP_REASONS, k)
+    ? { reason: COPY_ONLY_STOP_REASONS[k as EnqueuePauseReason], reached }
+    : null;
 }
 
 /**
- * ⭐ MAY THIS PAUSED CAMPAIGN SEND AGAIN? — FIRST what only a new copy can fix (`copyOnlyRefusal`, no read), then ② the
- * switch, ③ the rail, then what is left (`resumeOutstanding`), its sizes, ⑥ the settings, ⑦ the price and ⑨ the credit for
- * it. `counts` are the campaign's recipient rows by status, as stored now. ⛔ Nothing is skipped because nothing is left;
- * the console stub, which has no credit, resumes after ② · ③. ⛔ The status is the caller's conditional transition, not
- * this check's. Counts that are not counts THROW.
+ * ⭐ MAY THIS PAUSED CAMPAIGN SEND AGAIN? — FIRST, with no read, a confirmed count that is not one and what only a new copy
+ * can fix (`copyOnlyRefusal`); then ② the switch, ③ the rail; then NOTHING LEFT resumes (the step finds nothing owed and
+ * finishes); then what is left (`resumeOutstanding`), its sizes, ⑥ the settings, ⑦ the price and ⑨ the credit for it.
+ * `counts` are the campaign's recipient rows by status, as stored now. ⛔ While anything is left, nothing is skipped; the
+ * console stub, which has no credit, resumes after ② · ③. ⛔ The status is the caller's conditional transition, not this
+ * check's. Counts that are not counts THROW.
  */
 export async function resumeRefusal(
   c: StoredSmsCampaign,
@@ -433,12 +453,15 @@ export async function resumeRefusal(
   deps: StartCheckDeps = START_CHECK_DEPS,
 ): Promise<ResumeRefusal | null> {
   const left = resumeOutstanding(c, counts);
+  // ⛔ A confirmed count that is not one, for ANY campaign — as Start reads it: the list's length cannot be judged against it.
+  if (!isCount(c.audienceCount) || c.audienceCount < 1) return { reason: "confirmation_unreadable" };
   const forGood = copyOnlyRefusal(c, counts);
   if (forGood !== null) return forGood;
   const provider = deps.provider();
   const shut = await shutOf(provider, deps);
   if (shut !== null) return shut;
-  if (provider === "console") return null;
+  // Nothing left — every row settled: nothing to price and no credit to keep; the step finds nothing owed and finishes.
+  if (provider === "console" || left === 0) return null;
   if (left === null) return { reason: "confirmation_unreadable" };
   const variants = savedVariantSizes(c);
   if (variants === null) return { reason: "sizes_unreadable" };
@@ -470,7 +493,8 @@ export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): st
     case "needs_source_line":
       return "This campaign can reach people from the contact book, and its message has no source line. Stop it and confirm a copy once the owner has set the source line. Nothing was sent.";
     case "audience_unreadable":
-      return "The saved audience can't be read any more. Stop this campaign and confirm a new copy. Nothing was sent.";
+      // A copy carries the same stored filter, and U47b's copy refuses one it cannot read: the other way out is said too.
+      return "The saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused. Nothing was sent.";
     case "settings_unreadable":
       return "The Marketing SMS settings couldn't be read just now, so this campaign can't be checked before it starts. Try again in a moment. Nothing was sent.";
     case "settings_incomplete":
@@ -502,6 +526,10 @@ export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): st
   return `Engine reason: ${(r as { reason: string }).reason}`;
 }
 
+/** What a Resume refusal says once anyone on the list was messaged: a copy would reach them again, and the choice is theirs. */
+const REACHED_AGAIN =
+  "Some people on it have already been messaged, and a copy would message them again: stop it, and confirm a copy only if that is what you want.";
+
 /**
  * ONE sentence per Resume refusal — its own words: a paused campaign's audience is frozen, it may already have sent, and
  * it resumes rather than starts. ⛔ Money only for `viewer.money`.
@@ -509,18 +537,29 @@ export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): st
 export function resumeRefusalSentence(r: ResumeRefusal, viewer: RefusalViewer): string {
   const money = viewer?.money === true;
   switch (r.reason) {
+    // ⭐ What only a new copy can fix. A copy has the same filter and nothing de-duplicates across campaigns, so once anyone
+    // on the list has been messaged (`reached`) the sentence says a copy would message them AGAIN, and leaves the choice
+    // honest — never "confirm a new copy" as if it reached nobody twice (U42's re-review).
     case "list_over_confirmed":
-      return "More people are on this campaign's list than were confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged.";
+      return r.reached
+        ? `More people are on this campaign's list than were confirmed, so it can't resume. ${REACHED_AGAIN} Nobody more was messaged.`
+        : "More people are on this campaign's list than were confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged.";
     case "audience_moved":
-      return "The people on this campaign changed after it was confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged.";
+      return r.reached
+        ? `The people on this campaign changed after it was confirmed, so it can't resume. ${REACHED_AGAIN} Nobody more was messaged.`
+        : "The people on this campaign changed after it was confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged.";
     case "audience_unreadable":
-      return "The saved audience can't be read any more, so this campaign can't resume. Stop it and confirm a new copy. Nobody more was messaged.";
+      return r.reached
+        ? "The saved audience can't be read any more, so this campaign can't resume. Some people on it have already been messaged, and a new campaign to the same people would message them again: stop it, and send another only if that is what you want. Nobody more was messaged."
+        : "The saved audience can't be read any more, so this campaign can't resume. Stop it and confirm a new copy — or write a new campaign if the copy is refused. Nobody more was messaged.";
     case "switch_closed":
       return "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged.";
     case "rail_dead":
       return "No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more was messaged.";
     case "confirmation_unreadable":
-      return "This campaign's confirmation can't be read in full, so what is left to send can't be counted, and it can't resume. Stop it, or ask the developer. Nobody more was messaged.";
+      // Before the list finished, what is left cannot be counted without the confirmed count; after, the list's length
+      // cannot be judged without it — "checked" is true of both.
+      return "This campaign's confirmation can't be read in full, so what is left to send can't be checked, and it can't resume. Stop it, or ask the developer. Nobody more was messaged.";
     case "sizes_unreadable":
       return "This campaign's saved message size can't be read, so what is left to send can't be priced, and it can't resume. Stop it, or ask the developer. Nobody more was messaged.";
     case "settings_unreadable":

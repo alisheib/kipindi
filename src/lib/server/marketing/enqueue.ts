@@ -28,13 +28,16 @@
  * The rows on the campaign (`countByStatus`, a groupBy — OD26) never exceed the confirmed `audienceCount`. ⭐ The cap is
  * spent by rows ADDED, never by people walked: a page walked again after an interruption holds people already on the list,
  * and counting them again would end the enqueue early and leave out everyone after that page. So a chunk that could cross
- * the cap is written a room at a time — the room counted once before the chunk, then moved down by each write's own
- * `inserted` (exact for one writer), at most that many seeds per write — and a person already on the list costs no room.
- * Whoever the cap leaves out is reported as `overflow`, and the enqueue finishes.
+ * the cap is written a room at a time, at most the room in seeds per write — the room counted before the chunk; after a
+ * write that found people ALREADY on the list (a page walked again, or another step's writes landing first) counted AGAIN
+ * from the store, since that room may already have been spent; after a write that found none, moved down by the write's
+ * own `inserted` — so a person already on the list costs no room, and two steps over the SAME view never write past the
+ * cap (U42's re-review). Whoever the cap leaves out is reported as `overflow`, and the enqueue finishes.
  * ⛔ AND IT FAILS CLOSED. After a step's writes the list is counted ONCE more; a list LONGER than the confirmed count (two
- * steps that wrote at once, each inside its own room) never moves to RUNNING — the campaign is PAUSED `list_over_confirmed`
- * (nothing was sent: it never ran), or, when another step had already moved it to RUNNING, `list_over_confirmed_sending`.
- * The same holds for a step that finds the list already longer than confirmed before it walks.
+ * steps at once over views that DIFFER — people joined or left between their reads — each writing new people while its
+ * count was stale) never moves to RUNNING — the campaign is PAUSED `list_over_confirmed` (nothing was sent: it never ran),
+ * or, when another step had already moved it to RUNNING, `list_over_confirmed_sending`. The same holds for a step that
+ * finds the list already longer than confirmed before it walks.
  * ⚠️ A step that finds the cap already MET — an earlier step met it and its finish never landed — finishes without walking.
  *
  * ── A LISTED CONFIRMATION (decision 4, X13, OD67) ────────────────────────────────────────────────────────────────────
@@ -77,8 +80,9 @@
  * ⚠️ RESIDUALS.
  *   · Two steps of ONE campaign at once. `campaignStep` single-flights PREPARING steps per campaign IN-PROCESS (ENGINE-SPEC
  *     §4.15 decision 1, as amended by U42's review — E10's globalThis gate widened); across processes (a deploy's overlap —
- *     §5 rule 8 pauses every campaign before a push) two steps could each write inside their own room, and the step above
- *     fails closed instead of running a list longer than was confirmed. Should an officer's Pause land first, the campaign
+ *     §5 rule 8 pauses every campaign before a push) two steps whose views differ could each write new people while their
+ *     counts were stale, and the step above fails closed instead of running a list longer than was confirmed (two steps
+ *     over the same view write nobody twice, and no room twice). Should an officer's Pause land first, the campaign
  *     keeps the officer's reason — so `resumeRefusal` refuses by the COUNT itself, whatever the reason (§4.15 decision 1,
  *     as amended).
  *   · An erasure racing a step. A step reads a person, an erasure unlinks them, then the step writes a PENDING row linking
@@ -434,8 +438,10 @@ async function typedStep(row: StoredSmsCampaign, frozen: FrozenAudience, at: str
     }
     tried = seeds.length;
   } else {
-    // ⭐ THE CAP'S PAGE — a room at a time: never more seeds in one write than the room left, the room moved down by each
-    // write's own `inserted`, so a person already on the list costs none of it.
+    // ⭐ THE CAP'S PAGE — a room at a time: never more seeds in one write than the room left. A write that found people
+    // ALREADY on the list counts the list again — that room may have been spent by another step's writes (U42's re-review:
+    // two steps over the same view must never write past the cap); one that found none moves the room down by its own
+    // `inserted`, so the first pass costs no count.
     let room = limit - rows;
     while (room > 0 && tried < seeds.length) {
       const take = seeds.slice(tried, tried + room);
@@ -443,7 +449,7 @@ async function typedStep(row: StoredSmsCampaign, frozen: FrozenAudience, at: str
       inserted += wrote.inserted;
       duplicates += wrote.duplicates;
       tried += take.length;
-      room -= wrote.inserted;
+      room = wrote.duplicates > 0 ? limit - (await rowsOn(row.id, deps)) : room - wrote.inserted;
     }
   }
   if (tried > 0) {
