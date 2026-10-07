@@ -61,9 +61,10 @@ import { isPromisedReferee, isRefereeKeyable } from "@/lib/server/marketing/refe
  *     lapse, `retention.ts`) is reached under the licence like a player never asked (2a′); while the record is CLOSED they
  *     are refused exactly as before. A lapse is the platform clearing a flag, never the person's "no" — their own stop
  *     (a WITHDRAWN row, a stop link) is still a stop.
- *   · U33r (Q8) — a number given as an agent applicant's referee, who was promised "we never contact you for marketing",
- *     is refused `agent_referee` right after the stop list (1b): before any basis is asked, consent and an open record
- *     included. ⚠️ Step 1b is one keyed read in EVERY state, so a closed record now costs that one read more than before,
+ *   · U33r (Q8) — a number given as an agent applicant's referee who was promised "we never contact you for marketing"
+ *     (/legal/privacy §9 made it to every referee until version `REFEREE_PROMISE_REWORDED_IN`, and keeps it for every
+ *     referee named before that version) is refused `agent_referee` right after the stop list (1b): before any basis is
+ *     asked, consent and an open record included. ⚠️ Step 1b is one keyed read in EVERY state, so a closed record now costs that one read more than before,
  *     and a promised referee is refused `agent_referee` rather than `no_consent` while it is closed.
  *     ⛔ And what the rule does NOT change: the stop, self-exclusion, under-18s and RG standing still refuse.
  */
@@ -88,7 +89,8 @@ export type MarketingSkipReason =
    *  for a consent that was never the point. */
   | "no_basis"
   /** U33r · the number was given to 50pick as an agent applicant's referee, and that referee was promised "we never
-   *  contact you for marketing" (/legal/privacy §9, Q8). Refused like a stop — right after the stop list, before any basis,
+   *  contact you for marketing" (/legal/privacy §9, Q8 — kept since v2026-10-07 for every referee named before that version).
+   *  Refused like a stop — right after the stop list, before any basis,
    *  consent included. ⛔ Its own reason, never folded into a stop: no stop row exists and nobody can lift this one.
    *  ⛔ D19, AND THE U33r REVIEW'S MINOR-5 · NO VIEWER SEES IT APART: the split counts it in its ONE protected line
    *  (`audience-split.ts`), the contacts page says "Not reachable", a typed test says `protected` to a reader and

@@ -5,8 +5,11 @@ import { parseTzNumber, readAsciiDigits } from "@/lib/tz-msisdn";
 import type { RefereeKeyCounts } from "@/lib/marketing/outreach-open-checks";
 
 /**
- * U33r · THE AGENT-REFEREE EXCLUSION — the promise /legal/privacy §9 made to every agent applicant's referee, "we never
- * contact you for marketing", kept by the send gate (Q8 of 2026-10-05; the owner's FINAL rule of 2026-10-07, COMPLIANCE-
+ * U33r · THE AGENT-REFEREE EXCLUSION — the promise /legal/privacy §9 made to EVERY agent applicant's referee until version
+ * `REFEREE_PROMISE_REWORDED_IN` (Privacy v2026-10-07, `src/lib/legal/privacy-referees.ts`), "we never contact you for
+ * marketing" — which §9 KEEPS, from that version on, for every referee named before it (and §5 says why a coded form of
+ * each such number is kept), while a referee named after it is told "50pick may send you offers by SMS." — kept by the
+ * send gate (Q8 of 2026-10-05; the owner's FINAL rule of 2026-10-07, COMPLIANCE-
  * DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule),
  * and his approvals given in the session": "HONOURED for every referee already given it (the exclusion is built), and
  * RE-WORDED from today, so referees recruited from now on can be reached"; § "2026-10-07 · Management's answers for the
@@ -21,9 +24,14 @@ import type { RefereeKeyCounts } from "@/lib/marketing/outreach-open-checks";
  * number of every account and every contact-book row holding that address (case-insensitive). A referee named only by
  * e-mail is still excluded wherever 50pick holds their number.
  *
- * ⛔ WHO IS EXCLUDED, AND WHO DECIDES (the U33r review's MAJOR-1): every referee named BEFORE the re-worded §9 went live.
- * That moment is ONE constant, `REFEREE_NEW_WORDS_LIVE_AT`, `null` until the public-texts unit ships the new words (en, sw
- * and zh) and sets it in the same commit — so today EVERY referee ever named is excluded. The WRITER asks it, when it
+ * ⛔ WHO IS EXCLUDED, AND WHO DECIDES (the U33r review's MAJOR-1): every referee named BEFORE the re-worded §9 went live —
+ * the instant version `REFEREE_PROMISE_REWORDED_IN` first went live, so the keys are exactly the "coded form of the phone
+ * number of each agent referee named before version {V}" §5 states. That moment is ONE constant, `REFEREE_NEW_WORDS_LIVE_AT`,
+ * `null` until production's backfill is recorded and then set, in the commit that records it, to that instant — so today
+ * EVERY referee ever named is excluded. ⚠️ THE WINDOW, WRITTEN DOWN: a referee named after the new words go live but before
+ * that commit is deployed is keyed too (the code cannot know the go-live instant before it happens), and the table is
+ * append-only, so they stay excluded — never sent offers, their coded form kept like a promised referee's. Keep the window
+ * short: record the backfill and set the cutoff in one commit, at once. The WRITER asks it, when it
  * writes, and writes a key ONLY for a referee given the old promise: `setReferees` while no cutoff is set or before it;
  * the backfill and the applicant's erasure for an application named before it (`refereeNamedAtOf`). The table holds no
  * instant at all — an applicant's `refereeConsentAt` beside a key would link the referee back to them — so the gate asks
@@ -64,13 +72,15 @@ import type { RefereeKeyCounts } from "@/lib/marketing/outreach-open-checks";
  * door, with their plants) · `npm run test:dal-parity` §28 (the two twins and the migration).
  */
 
-/** ⛔ THE MOMENT THE RE-WORDED /legal/privacy §9 WENT LIVE — the words "50pick may send you offers by SMS." (management's
- *  answers of 2026-10-07, item 4), in en, sw and zh. ⭐ `null` TODAY, and that means EVERY referee is excluded: no new words
- *  are live, so every referee ever named was given the old promise. The public-texts unit sets it, in the commit that
- *  publishes the new words, to the instant they went live (an ISO instant) — and only once the backfill is recorded
- *  (`test:privacy-notice` §4i). ⚠️ An applicant may have shown a referee the OLD notice before that instant and named
- *  them after it — set it later than the deploy if that window matters; a later instant only keeps more referees
- *  excluded, never fewer. */
+/** ⛔ THE MOMENT THE RE-WORDED /legal/privacy §9 WENT LIVE — the instant version `REFEREE_PROMISE_REWORDED_IN` (Privacy
+ *  v2026-10-07: the old promise kept for every referee named before it, "50pick may send you offers by SMS." told to those
+ *  named after it — management's answers of 2026-10-07, item 4) was first served, in en, sw and zh. ⭐ `null` TODAY, and
+ *  that means EVERY referee is excluded. ⛔ It is set ONLY AFTER production's backfill is recorded
+ *  (`REFEREE_KEYS_ON_PRODUCTION`, `outreach-record.ts`) — `test:privacy-notice` §4i refuses it before then, and refuses it
+ *  for good while any locale's §9 still makes the promise to EVERY referee (the old, unconditional words) — and then, in
+ *  the commit that records the backfill, to that go-live instant (an ISO instant). ⚠️ An applicant may have shown a
+ *  referee the OLD notice before that instant and named them after it — set it later than the deploy if that window
+ *  matters; a later instant only keeps more referees excluded, never fewer. */
 export const REFEREE_NEW_WORDS_LIVE_AT: string | null = null;
 
 /** The instant an application whose referees carry no readable date was named at: the beginning of time, so it is always

@@ -1,7 +1,7 @@
 /**
  * ops:marketing-referee-keys — U33r's ONE ops step: key every EXISTING agent application's promised referees, so the send
  * gate keeps the promise /legal/privacy §9 made them, "we never contact you for marketing" (Q8; the owner's FINAL rule of
- * 2026-10-07).
+ * 2026-10-07) — made to every referee until v2026-10-07, and kept since for every referee named before that version.
  *
  * ⭐ WHY THE MIGRATION COULD NOT DO THIS. A referee key is an HMAC of the number under `OTP_PEPPER`, and the pepper lives in
  * the application, never in Postgres — writing it into `20261007150000_agent_referee_key/migration.sql` would commit a

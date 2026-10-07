@@ -887,8 +887,9 @@ export type ListBasisCoverage = {
 
 /* ═══ U33r · THE AGENT-REFEREE EXCLUSION — `AgentRefereeKey` (Q8; COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to
  * anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session") ═══
- * ⭐ WHY IT EXISTS. /legal/privacy §9 promised every agent applicant's referee "we never contact you for marketing", and the
- * owner ruled that promise HONOURED for every referee already given it. A referee's contact is free text on
+ * ⭐ WHY IT EXISTS. /legal/privacy §9 promised every agent applicant's referee "we never contact you for marketing" until
+ * version `REFEREE_PROMISE_REWORDED_IN` (v2026-10-07), and the owner ruled that promise HONOURED for every referee already
+ * given it — §9 keeps it for every referee named before that version, and §5 says a coded form of each such number is kept. A referee's contact is free text on
  * `AgentApplication` — no gate can ask a spreadsheet of free text about a number — so each Tanzanian mobile number a
  * PROMISED referee's contact leads to is kept here as a KEYED HASH (`refereeKeyOf`, `referee-exclusion.ts`), and the send
  * gate asks this table by key (`consent.ts`, step 1b): a key held is a refusal.

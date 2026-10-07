@@ -3500,8 +3500,8 @@ model ContactListBasis {
 
 /// U33r · THE AGENT-REFEREE EXCLUSION (Q8; COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
 /// consent is not a condition (the owner's FINAL rule), and his approvals given in the session"). /legal/privacy §9
-/// promised every agent applicant's referee "we never contact you for marketing", and the owner ruled the promise HONOURED
-/// for every referee already given it. A referee's contact is free text on `AgentApplication`, so each Tanzanian mobile
+/// promised every agent applicant's referee "we never contact you for marketing" until v2026-10-07, and the owner ruled the
+/// promise HONOURED for every referee already given it — §9 keeps it for every referee named before that version. A referee's contact is free text on `AgentApplication`, so each Tanzanian mobile
 /// number a PROMISED referee's contact leads to is kept here as a keyed hash, and the send gate refuses a number whose key
 /// is held, before any basis (consent.ts 1b).
 ///

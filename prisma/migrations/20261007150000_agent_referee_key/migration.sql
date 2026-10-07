@@ -1,6 +1,7 @@
 -- U33r · AgentRefereeKey — the agent-referee exclusion (Q8; COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone
 -- with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session"). Every
--- referee already promised "we never contact you for marketing" (/legal/privacy §9) stays excluded: each Tanzanian mobile
+-- referee already promised "we never contact you for marketing" (/legal/privacy §9, until v2026-10-07, and kept since for
+-- every referee named before that version) stays excluded: each Tanzanian mobile
 -- number a promised referee's contact leads to is kept here as a KEYED HASH, and the send gate refuses a number whose key
 -- is held (consent.ts, step 1b, reason `agent_referee`).
 --

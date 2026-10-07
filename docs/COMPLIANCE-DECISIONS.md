@@ -105,7 +105,10 @@ links", GN 478T reg 51(1)). For §9: nothing can send a marketing SMS while lice
 unbuilt, and the final-rule gate's referee exclusion — which keeps a coded form of the number of every referee named
 before its cutoff, and refuses them — lands before licence outreach opens, its cutoff the instant the re-worded §9 first
 went live. ⚠️ The coded-form sentences describe that gate's keys: they are true once it is merged, not on this branch
-alone.
+alone. ⟶ MERGED 2026-10-07 (`marketing-s14-final`: the gate, its review fixes and these texts in one branch): the keys
+are the coded form and nothing else, and `test:privacy-notice` §4i now tells §9's OLD unconditional promise from these
+NEW conditional words — the old words in any language hold the cutoff at null; the new words in every language let it
+be set, but only once production's referee-key backfill is recorded (the U33r review's MAJOR-2).
 
 **The sign-up box (Q2), removed.** `/auth/register` asks nothing about offers: no `marketingOptIn` box, field, schema
 key or ledger append, and no `auth.optionalUpdates` key in any language. A new account starts with the offers switch off
@@ -326,11 +329,16 @@ rather than guessed at.
   U33r): every promised referee's number is kept as a coded form, not the number itself — without the server's pepper it
   cannot be turned back — and NOTHING else: no instant, no name, no application id (`AgentRefereeKey`); the gate refuses it
   `agent_referee` before any
-  basis; only a referee named before the re-worded §9 goes live is ever keyed (`REFEREE_NEW_WORDS_LIVE_AT`, null until
-  the public-texts unit sets it: today every referee). ⚠️ The referees named before the deploy are keyed by `npm run
+  basis; only a referee named before the re-worded §9 goes live is ever keyed — §9 (Privacy v2026-10-07) keeps the
+  promise for every referee named before version `REFEREE_PROMISE_REWORDED_IN`, and §5 states their coded numbers — so
+  the cutoff (`REFEREE_NEW_WORDS_LIVE_AT`, null today: every referee) is the instant that version first went live, set in
+  the commit that records the backfill. ⚠️ The referees named before the deploy are keyed by `npm run
   ops:marketing-referee-keys -- backfill` — after the deploy, BEFORE licence outreach or the live-send switch opens
   (both refuse until its counts are recorded in the code, the fifth opening check `referee_keys`), BEFORE the cutoff is
-  set, and again after any rollback to a build without U33r and the redeploy that follows.
+  set, and again after any rollback to a build without U33r and the redeploy that follows. ⚠️ A referee named after the
+  new words go live but before that commit is deployed is keyed too (the go-live instant cannot be known in advance; the
+  table is append-only): they are never sent offers, and keep a coded form like a promised referee's — keep the window
+  short.
 - **Q7 · A list's recorded basis does NOT expire** (built default). ⚠️ Accepted residual risk, stated plainly: Tanzanian
   operators recycle numbers, so a basis recorded for a previous holder can authorise a message to a new one. The stop
   list remains the protection.

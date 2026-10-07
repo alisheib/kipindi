@@ -1814,7 +1814,7 @@ export const dict = {
       marketingHeldNoDate: "Off during your break or self-exclusion. It stays off after that unless you switch it on.",
       // U33r — under the LOCKED off switch when the number is a promised agent referee's: off for good, with no date and
       // no remedy (the promise "we never contact you for marketing" is kept). A statement, never a nudge.
-      marketingReferee: "Off for good: this number was given to 50pick as a referee in an agent application, and we promised referees never to send them offers.",
+      marketingReferee: "Off for good: this number was given to 50pick as a referee in an agent application, and we promised never to send it offers.",
       // The card when the setting could not be read: never a switch showing a guessed state.
       marketingUnavailable: "We couldn’t load this setting. Reload the page, or contact us to stop offers.",
       marketingOnToast: "Offers and news by SMS turned on",
@@ -4404,7 +4404,7 @@ export const dict = {
       marketingPaused: "Ilizimwa baada ya mapumziko yako au kipindi chako cha kujitenga kuisha. Itabaki imezimwa usipoiwasha.",
       marketingHeld: "Imezimwa wakati wa mapumziko yako au kipindi chako cha kujitenga, hadi {date}. Baada ya hapo itabaki imezimwa usipoiwasha.",
       marketingHeldNoDate: "Imezimwa wakati wa mapumziko yako au kipindi chako cha kujitenga. Baada ya hapo itabaki imezimwa usipoiwasha.",
-      marketingReferee: "Imezimwa kabisa: namba hii ilitolewa kwa 50pick kama namba ya mdhamini katika maombi ya uwakala, na tuliwaahidi wadhamini kwamba hatutawatumia ofa kamwe.",
+      marketingReferee: "Imezimwa kabisa: namba hii ilitolewa kwa 50pick kama namba ya mdhamini katika maombi ya uwakala, na tuliahidi kutoitumia ofa kamwe.",
       marketingUnavailable: "Hatukuweza kupakia mpangilio huu. Pakia upya ukurasa, au wasiliana nasi ili kuacha ofa.",
       marketingOnToast: "Ofa na habari kwa SMS zimewashwa",
       marketingOffToast: "Ofa na habari kwa SMS zimezimwa",

@@ -737,69 +737,127 @@ ok("§4h zh puts no space after a full-width colon, stop, comma or closing brack
 const plantZhGap = pageSrc.replace("达累斯萨拉姆。联系方式：", '达累斯萨拉姆。联系方式：{" "}');
 ok("§5am control · the §1 {\" \"} after \"联系方式：\" put back is reported", plantZhGap !== pageSrc && zhGaps(plantZhGap).length > 0);
 
-/* ═══ §4i · U33r · §9's PROMISE TO REFEREES IS KEPT BY THE GATE (2026-10-07) ═══
- * §9 tells every agent applicant's referee "we never contact you for marketing", and the owner ruled it HONOURED for every
- * referee already given it. While ANY locale's §9 still says it, no new words are live — so the gate's cut-off
- * (`REFEREE_NEW_WORDS_LIVE_AT`) must still be null, or a referee named after it would be messaged while the page promises
- * "never"; and the gate must still refuse a promised referee (`agent_referee`, step 1b). The public-texts unit re-words §9
- * and sets the cut-off in ONE commit; this holds that the two move together. ⛔ AND THE CUT-OFF WAITS FOR THE BACKFILL (the
- * U33r review's MAJOR-2): while production's referee-key backfill is not recorded with nothing missing and nothing
- * unreadable (`REFEREE_KEYS_ON_PRODUCTION`, the fifth licence-outreach check), the cut-off must stay null whatever §9 says
- * — a referee saved again after it is re-stamped past it, and a backfill run then would read them as never promised.
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4i · U33r · §9's PROMISE TO REFEREES IS KEPT BY THE GATE (2026-10-07) — the final-rule gate's own section.
+ * §9 says "we never contact you for marketing" in TWO ways, and they bind the gate's cut-off (`REFEREE_NEW_WORDS_LIVE_AT`)
+ * differently:
+ *   · THE OLD WORDS (v2026-10-01 and before) made the promise to EVERY referee, unconditionally. While ANY locale's §9
+ *     still says it outside the conditional paragraph, the re-wording is not live there, so the cut-off must be null — a
+ *     referee named after it would be messaged while that page promises "never";
+ *   · THE NEW WORDS (Privacy v2026-10-07, §4k's) keep the same sentence ON PURPOSE, for the referees named before
+ *     `REFEREE_PROMISE_REWORDED_IN` — inside ONE paragraph that opens with the version marker, the constant as each
+ *     locale renders it ("Until version {V} of this policy" · "Hadi toleo la {V} la sera hii" · "在本政策 {V} 版之前"),
+ *     read here as §4k reads it. Once EVERY locale says it that way, the cut-off MAY be set — but only once production's
+ *     referee-key backfill is recorded with nothing missing and nothing unreadable (`REFEREE_KEYS_ON_PRODUCTION`, the
+ *     fifth licence-outreach check; the U33r review's MAJOR-2): an old referee saved again after the cut-off is
+ *     re-stamped past it, and a backfill run then would read them as never promised.
+ * And whatever §9 says, the gate must still refuse a promised referee (`agent_referee`, step 1b).
+ * ⛔ BLOCK-SCOPED, as §4j and §4k are: nothing here is a module-level name another section could collide with.
  * ⛔ No backslash in this section. */
-console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees is kept by the gate");
-const WS4I = new RegExp("[ " + String.fromCharCode(9, 10, 13) + "]+", "g");
-const refereeExclusionSrc = code(read("src/lib/server/marketing/referee-exclusion.ts"));
-// The two constants themselves, and the ONE rule that judges the record — read as the code reads them, never re-parsed.
-const { REFEREE_NEW_WORDS_LIVE_AT } = await import("../src/lib/server/marketing/referee-exclusion.ts");
-const { REFEREE_KEYS_ON_PRODUCTION } = await import("../src/lib/server/marketing/outreach-record.ts");
-const { refereeKeysState } = await import("../src/lib/marketing/outreach-open-checks.ts");
-const consentGateSrc = code(read("src/lib/server/marketing/consent.ts"));
-/** The promise as each locale's §9 words it — read with its whitespace collapsed. */
-const NEVER_MARKET: Record<Loc, string> = {
-  en: "we never contact you for marketing",
-  sw: "hatuwasiliani nawe kamwe kwa matangazo",
-  zh: "我们绝不会为营销目的联系您",
-};
-const CUT_NULL = "export const REFEREE_NEW_WORDS_LIVE_AT: string | null = null;";
-const GATE_REFUSES = 'return refuse("agent_referee", REFEREE_DETAIL);';
-const GATE_ASKS = "if (await Promise.resolve(reads.refereeHeld(identifier))) {";
-function refereeDefects(page: string, referee: string, gate: string, cutoff: string | null, backfill: string): string[] {
-  const d: string[] = [];
-  const bl = blocks(page);
-  const promising = LOCS.filter((l) => section(bl[l], "9").replace(WS4I, " ").includes(NEVER_MARKET[l]));
-  if (promising.length > 0 && !referee.includes(CUT_NULL)) {
-    d.push(`§9 still promises referees "never" (${promising.join(", ")}) while REFEREE_NEW_WORDS_LIVE_AT is set — a referee named after it would be messaged`);
-  }
-  if (!gate.includes(GATE_REFUSES) || !gate.includes(GATE_ASKS)) {
-    d.push("consent.ts no longer refuses a promised referee (agent_referee, step 1b)");
-  }
-  if ((cutoff !== null || !referee.includes(CUT_NULL)) && backfill !== "reconciled") {
-    d.push("REFEREE_NEW_WORDS_LIVE_AT is set while production's referee-key backfill is not recorded (REFEREE_KEYS_ON_PRODUCTION) — an old referee saved again after the cut-off would never be keyed");
-  }
-  return d;
+console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees is kept by the gate — old words hold the cut-off at null, new words let it wait for the backfill");
+{
+  const WS4I = new RegExp("[ " + String.fromCharCode(9, 10, 13) + "]+", "g");
+  const refereeExclusionSrc = code(read("src/lib/server/marketing/referee-exclusion.ts"));
+  const consentGateSrc = code(read("src/lib/server/marketing/consent.ts"));
+  // The two constants themselves, and the ONE rule that judges the record — read as the code reads them, never re-parsed.
+  const { REFEREE_NEW_WORDS_LIVE_AT } = await import("../src/lib/server/marketing/referee-exclusion.ts");
+  const { REFEREE_KEYS_ON_PRODUCTION } = await import("../src/lib/server/marketing/outreach-record.ts");
+  const { refereeKeysState } = await import("../src/lib/marketing/outreach-open-checks.ts");
+  /** The promise as each locale's §9 words it — read with its whitespace collapsed. */
+  const NEVER_MARKET: Record<Loc, string> = {
+    en: "we never contact you for marketing",
+    sw: "hatuwasiliani nawe kamwe kwa matangazo",
+    zh: "我们绝不会为营销目的联系您",
+  };
+  /** ⭐ What makes the promise CONDITIONAL — the version constant as each locale renders it, in the source as §4k reads it
+   *  (the JSX expression, never a typed label). The promise counts as the new words only AFTER this, in the same paragraph. */
+  const CONDITIONAL_MARKER: Record<Loc, string> = {
+    en: "Until version {REFEREE_PROMISE_REWORDED_IN} of this policy",
+    sw: "Hadi toleo la {REFEREE_PROMISE_REWORDED_IN} la sera hii",
+    zh: "在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前",
+  };
+  const CUT_NULL = "export const REFEREE_NEW_WORDS_LIVE_AT: string | null = null;";
+  const GATE_REFUSES = 'return refuse("agent_referee", REFEREE_DETAIL);';
+  const GATE_ASKS = "if (await Promise.resolve(reads.refereeHeld(identifier))) {";
+  /** §9's paragraphs in one locale, whitespace collapsed — split on the tags, so no pattern needs an escape. */
+  const paragraphs9 = (block: string): string[] =>
+    section(block, "9").split("<p>").slice(1).map((p) => p.split("</p>")[0].replace(WS4I, " "));
+  /** ⭐ WHICH WORDS A LOCALE'S §9 SAYS: "old" — the promise anywhere outside the conditional paragraph (made to everyone);
+   *  "new" — the promise only after the marker, in the marker's own paragraph (kept for the referees named before the
+   *  version); "none" — neither (the referee words are gone). */
+  const wordsOf = (page: string, l: Loc): "old" | "new" | "none" => {
+    const paras = paragraphs9(blocks(page)[l]);
+    const unconditional = paras.some((p) => {
+      const at = p.indexOf(CONDITIONAL_MARKER[l]);
+      return at < 0 ? p.includes(NEVER_MARKET[l]) : p.slice(0, at).includes(NEVER_MARKET[l]);
+    });
+    if (unconditional) return "old";
+    const conditional = paras.some((p) => {
+      const at = p.indexOf(CONDITIONAL_MARKER[l]);
+      return at >= 0 && p.slice(at).includes(NEVER_MARKET[l]);
+    });
+    return conditional ? "new" : "none";
+  };
+  const refereeDefects = (page: string, referee: string, gate: string, cutoff: string | null, backfill: string): string[] => {
+    const d: string[] = [];
+    const words = LOCS.map((l) => [l, wordsOf(page, l)] as const);
+    const cutSet = cutoff !== null || !referee.includes(CUT_NULL);
+    const old = words.filter(([, w]) => w === "old").map(([l]) => l);
+    const none = words.filter(([, w]) => w === "none").map(([l]) => l);
+    if (cutSet && old.length > 0) {
+      d.push(`§9 still promises EVERY referee "never" (${old.join(", ")}) while REFEREE_NEW_WORDS_LIVE_AT is set — a referee named after it would be messaged`);
+    }
+    if (cutSet && none.length > 0) {
+      d.push(`REFEREE_NEW_WORDS_LIVE_AT is set but §9 does not keep the promise, conditionally, in ${none.join(", ")} — the cut-off names a re-wording that locale does not print`);
+    }
+    if (!gate.includes(GATE_REFUSES) || !gate.includes(GATE_ASKS)) {
+      d.push("consent.ts no longer refuses a promised referee (agent_referee, step 1b)");
+    }
+    if (cutSet && backfill !== "reconciled") {
+      d.push("REFEREE_NEW_WORDS_LIVE_AT is set while production's referee-key backfill is not recorded (REFEREE_KEYS_ON_PRODUCTION) — an old referee saved again after the cut-off would never be keyed");
+    }
+    return d;
+  };
+  const BACKFILL_NOW = refereeKeysState(REFEREE_KEYS_ON_PRODUCTION);
+  const today = LOCS.map((l) => `${l}:${wordsOf(pageSrc, l)}`);
+  ok("§4i every locale's §9 keeps the promise CONDITIONALLY (the new words, for the referees named before the version) — and with the cut-off null the gate still refuses a promised referee",
+    refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).length === 0
+      && LOCS.every((l) => wordsOf(pageSrc, l) === "new"),
+    `${today.join(" · ")} · ${refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).join("; ")}`);
+  ok("§4i.b ⛔ U33r · MAJOR-2 · the referee cut-off waits for the backfill — today the backfill is not recorded (outstanding), and the cut-off is null",
+    BACKFILL_NOW === "outstanding" && REFEREE_NEW_WORDS_LIVE_AT === null
+      && !refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).some((x) => x.includes("not recorded")),
+    `backfill ${BACKFILL_NOW} · cut-off ${String(REFEREE_NEW_WORDS_LIVE_AT)}`);
+  // ── the controls ──
+  const CUT = "2026-10-20T00:00:00.000Z";
+  const plantCut = refereeExclusionSrc.replace(CUT_NULL, `export const REFEREE_NEW_WORDS_LIVE_AT: string | null = "${CUT}";`);
+  // The OLD words put back into ONE locale (en): the promise in §9's first paragraph, to everyone, with no marker.
+  const plantOldEn = pageSrc.replace("immediately if the application is refused; and you may ask us to", "immediately if the application is refused; we never contact you for marketing; and you may ask us to");
+  // The marker typed away in ONE locale (zh): the same sentence, but nothing says it holds only before the version.
+  const plantNoMarkerZh = pageSrc.replace("在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，", "");
+  // The conditional paragraph dropped from ONE locale (sw): no promise at all.
+  const swSecond = paragraphs9(blocks(pageSrc).sw)[1] ?? "";
+  const plantNoneSw = pageSrc.replace("Hadi toleo la {REFEREE_PROMISE_REWORDED_IN} la sera hii", "Hadi sasa").replace("hatuwasiliani nawe kamwe kwa matangazo", "hatukutumii matangazo");
+  const plantNoRefusal = consentGateSrc.replace(GATE_REFUSES, "return null;");
+  ok("§5ap control · planted §4i copies found their targets",
+    [plantCut !== refereeExclusionSrc, plantOldEn !== pageSrc, plantNoMarkerZh !== pageSrc, plantNoneSw !== pageSrc, plantNoRefusal !== consentGateSrc, swSecond.length > 100].every(Boolean));
+  ok("§5aq control · the gate's referee refusal removed is reported",
+    refereeDefects(pageSrc, refereeExclusionSrc, plantNoRefusal, null, "reconciled").some((x) => x.includes("no longer refuses")));
+  ok("§5ar control · the OLD words in ONE locale (en) with the cut-off set are reported — even with the backfill recorded — and the same words with the cut-off null are not, on that count",
+    wordsOf(plantOldEn, "en") === "old"
+      && refereeDefects(plantOldEn, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("still promises EVERY referee") && x.includes("en"))
+      && !refereeDefects(plantOldEn, refereeExclusionSrc, consentGateSrc, null, "outstanding").some((x) => x.includes("still promises")));
+  ok("§5as control · the NEW words with the cut-off set and the backfill RECORDED are not reported at all",
+    refereeDefects(pageSrc, plantCut, consentGateSrc, CUT, "reconciled").length === 0);
+  ok("§5at control · the NEW words with the cut-off set and the backfill OUTSTANDING are reported — and only on that count",
+    JSON.stringify(refereeDefects(pageSrc, plantCut, consentGateSrc, CUT, "outstanding").map((x) => x.includes("not recorded"))) === JSON.stringify([true]));
+  ok("§5au control · the marker typed away in ONE locale (zh) reads as the OLD words, and with the cut-off set is reported",
+    wordsOf(plantNoMarkerZh, "zh") === "old"
+      && refereeDefects(plantNoMarkerZh, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("still promises EVERY referee") && x.includes("zh")));
+  ok("§5av control · the promise dropped from ONE locale (sw) with the cut-off set is reported — the cut-off names a re-wording sw does not print",
+    wordsOf(plantNoneSw, "sw") === "none"
+      && refereeDefects(plantNoneSw, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("does not keep the promise") && x.includes("sw")));
 }
-const BACKFILL_NOW = refereeKeysState(REFEREE_KEYS_ON_PRODUCTION);
-ok("§4i while §9 promises referees no marketing (today: all three locales), the cut-off is null and the gate refuses a promised referee",
-  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).length === 0
-    && LOCS.every((l) => section(blocks(pageSrc)[l], "9").replace(WS4I, " ").includes(NEVER_MARKET[l])),
-  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).join("; "));
-const plantCut = refereeExclusionSrc.replace(CUT_NULL, 'export const REFEREE_NEW_WORDS_LIVE_AT: string | null = "2026-10-20T00:00:00.000Z";');
-ok("§5ap control · the cut-off set while §9 still promises 'never' is reported",
-  plantCut !== refereeExclusionSrc && refereeDefects(pageSrc, plantCut, consentGateSrc, null, "reconciled").some((x) => x.includes("still promises")));
-const plantNoRefusal = consentGateSrc.replace(GATE_REFUSES, "return null;");
-ok("§5aq control · the gate's referee refusal removed is reported",
-  plantNoRefusal !== consentGateSrc && refereeDefects(pageSrc, refereeExclusionSrc, plantNoRefusal, null, "reconciled").some((x) => x.includes("no longer refuses")));
-ok("§4i.b ⛔ U33r · MAJOR-2 · the referee cut-off waits for the backfill — today the backfill is not recorded (outstanding), and the cut-off is null",
-  BACKFILL_NOW === "outstanding" && REFEREE_NEW_WORDS_LIVE_AT === null
-    && !refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).some((x) => x.includes("not recorded")),
-  `backfill ${BACKFILL_NOW} · cut-off ${String(REFEREE_NEW_WORDS_LIVE_AT)}`);
-ok("§5ar control · a cut-off set while the backfill is outstanding is reported — even once §9 no longer promises 'never'",
-  refereeDefects("", plantCut, consentGateSrc, "2026-10-20T00:00:00.000Z", "outstanding").some((x) => x.includes("not recorded"))
-    && refereeDefects("", refereeExclusionSrc, consentGateSrc, "2026-10-20T00:00:00.000Z", "outstanding").some((x) => x.includes("not recorded")));
-ok("§5as control · a cut-off set once the backfill is RECORDED is not reported on that count",
-  !refereeDefects("", plantCut, consentGateSrc, "2026-10-20T00:00:00.000Z", "reconciled").some((x) => x.includes("not recorded")));
-
 
 /* ════════════════════════════════════════════════════════════════════════════
  * §4j · WHAT ERASURE KEEPS, SAID PUBLICLY — v2026-10-07 (COMPLIANCE-DECISIONS "Privacy v2026-10-07"). The words are
