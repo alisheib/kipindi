@@ -53,8 +53,14 @@ import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings"
  * the viewer is the owner, whether they may read money and, for the owner's form only, what our own sends measure the
  * price at; its role-taking twin `loadSmsMoneyForViewerAs` exists for the suite (`test:marketing-settings` S11 drives it,
  * and holds that the page asks nothing else and that nothing in `src/app` calls the twin).
+ * ⭐ U40a · THE PRICE ALONE, ROLE-FREE: `loadSegmentCost` — for a server ACT that must price whoever acts (the confirmation
+ * freezes its estimate for GROWTH exactly as for the owner, E15). It walks our own delivered sends and prices with the SAME
+ * rule as the estimate's loader (`segmentCostOf` — measured, else the configured price the caller read, else unknown), so
+ * the figure an officer is shown and the figure a confirmation freezes cannot be priced two ways. ⛔ It reads no balance
+ * and asks no decider: it answers a price, and the CALLER decides whom it may tell (`test:campaign-gates` G5.4 drives it
+ * over a seeded send history, and 6.9 holds the confirmation to it).
  *
- * Guard: `npm run test:campaign-estimate` §1/§2/§6 · `npm run test:read-tiers` §9.
+ * Guard: `npm run test:campaign-estimate` §1/§2/§6 · `npm run test:read-tiers` §9 · `npm run test:campaign-gates` G5.4.
  */
 
 /**
@@ -145,13 +151,34 @@ export async function loadEstimateInputsFor(
   if (!visible) return { audience, pace, money: null };
 
   const configured = await Promise.resolve().then(() => d.configuredTzs()).catch((): null => null);
-  const cost: SegmentCostMeasure =
-    rows !== null
-      ? measureSegmentCost(rows, { provider, now, configuredTzs: configured })
-      : configured !== null
-        ? { kind: "configured", tzsPerSegment: configured }
-        : { kind: "unknown", reason: "history-unreadable" };
+  const cost = segmentCostOf(rows, { provider, now, configuredTzs: configured });
   return { audience, pace, money: { cost, balance: balanceFigureOf(balance), reserveTzs: d.reserveTzs() } };
+}
+
+/**
+ * ⭐ ONE PRICING RULE for both loaders: a history that was read is walked (`measureSegmentCost` — measured from ≥ 3 clean
+ * pairs, else the configured price, else unknown); a history that could NOT be read (null) gives the configured price
+ * when one is set (it is "configured, not yet measured" either way), else `unknown("history-unreadable")`.
+ */
+function segmentCostOf(rows: CostWalkRow[] | null, o: { provider: string; now: number; configuredTzs: number | null }): SegmentCostMeasure {
+  if (rows !== null) return measureSegmentCost(rows, o);
+  return o.configuredTzs !== null ? { kind: "configured", tzsPerSegment: o.configuredTzs } : { kind: "unknown", reason: "history-unreadable" };
+}
+
+/**
+ * ⭐ U40a · THE PRICE OF ONE SEGMENT, ROLE-FREE (see the header): our own delivered sends read and walked, beside the
+ * configured price the CALLER read (it reads the settings once, for the price and the limit together). The history, the
+ * provider and the clock are this file's own defaults — the same as the estimate's — and injectable for the suite.
+ * ⛔ Never throws: a history that cannot be read prices as `segmentCostOf` says. ⛔ No balance read, no decider.
+ */
+export async function loadSegmentCost(
+  configuredTzs: number | null,
+  deps: Partial<Pick<EstimateDeps, "recentSends" | "provider" | "now">> = {},
+): Promise<SegmentCostMeasure> {
+  const d = { ...DEFAULT_DEPS, ...deps };
+  // Through `.then`, so a dep that throws synchronously is caught like one that rejects.
+  const rows = await Promise.resolve().then(() => d.recentSends()).catch((): null => null);
+  return segmentCostOf(rows, { provider: d.provider(), now: d.now(), configuredTzs });
 }
 
 /** The viewer's role from the STORED user row (never the cookie's claim), once per render pass. */

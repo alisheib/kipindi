@@ -1,6 +1,6 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
-**STATUS — 🟢 BUILDING. 17/52 units ✅ LIVE, 13/25 defects ✅ · 52 units · defects D1–D25 · owner decisions OD1–OD63, taken on
+**STATUS — 🟢 BUILDING. 17/52 units ✅ LIVE, 13/25 defects ✅ · 52 units · defects D1–D25 · owner decisions OD1–OD67, taken on
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
@@ -1326,6 +1326,17 @@ is decided, with what it rules out. They are not questions.
   accounts — not both together."), and their Who pills offer the two alone; the card's read, the save and U40 inherit
   it; a draft a reader saved with both is "hidden for your role" to them, as any filter their role may not use. A
   reader keeps all three. Guards: `test:campaign-audience` B3m (R-B3m · R-B3n), B6.
+- **OD67 · Before a campaign sends, a viewer who may not read a number confirms by typing the count, never by a list —
+  decided (U40a, S14 2026-10-07, on Ali's delegation; the U40a review's finding beside its MAJOR; extends OD65).** The
+  confirmation's list — a masked number and an operator for each person — went to every role, beside a members key
+  that named the same people alike on every draft holding them, so a GROWTH officer could set a one-contact tag beside a
+  one-minute window of player accounts and read "is this contact a player?" off two equal keys, the question OD66
+  closed. So U40's confirmation shows such a viewer the COUNT ALONE at EVERY size — no sample and no list — and always
+  uses the TYPED tier: they type the number, because a list of numbers they may not read is not one they can check.
+  Their watermark carries no members key, and the confirmation holds its fresh claim to the same tier, so a list
+  watermark they post is refused as a typed tier is refused without its number (`typed_required`), and what they confirm
+  is frozen TYPED. A reader keeps both tiers and the list, as built; the members key is bound to its draft (its id and
+  revision inside the HMAC), so no two drafts share one. Guards: `test:campaign-gates` G6c (R-OD67), 2.2b (R-2.2b), 4.18.
 
 ### §4a — The eleven legal questions (each with the safe default that is BUILT)
 
