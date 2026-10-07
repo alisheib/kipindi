@@ -987,8 +987,9 @@ VODACOM-PLAN §0i's):*
   and door words, the two loading pictures, the classic empty state, the Utendaji link's place). The error pages'
   words keep their one fate in VODACOM-PLAN §3's S15 rename list. Open, for a ruling before the flip: the sign-out
   confirm's claret tone (rule 8c).
-- **Not done here:** WP6b step 5's tile drive (the plan's qa:journey-shell, which has no package key) was never written, and
-  `scripts/qa-journey-preview.mjs`'s step 7 (pass-holder tiles, a trace regex of test ids) is still owed.
+- **The tile drive:** WP6b step 5's drive, the plan's `qa:journey-shell`, is written in WP12's second commit
+  (`scripts/qa-journey-shell.mjs`; its run is VODACOM-PLAN §0i's). **Not done here:** `scripts/qa-journey-preview.mjs`'s
+  step 7 (pass-holder tiles, a trace regex of test ids) is still owed.
 
 ## New dictionary keys (journey.*)
 

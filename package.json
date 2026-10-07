@@ -601,6 +601,7 @@
     "qa:classic-shell-parity": "node scripts/qa-classic-shell-parity.mjs",
     "qa:journey-header-fit": "node scripts/qa-journey-header-fit.mjs",
     "red:journey-header-fit": "node scripts/journey-header-fit-red.mjs",
+    "qa:journey-shell": "node scripts/qa-journey-shell.mjs",
     "test:short-title-fit": "tsx scripts/short-title-fit.test.mts",
     "red:short-title-fit": "tsx scripts/short-title-fit.test.mts --prove-red",
     "qa:short-title-fit": "tsx scripts/qa-short-title-fit.mjs",
