@@ -48,6 +48,16 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 (the change-set applier, the in-memory server runners, the drives and the chains). The A8d/A8g/A8h close-out ran on
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
+
+**⏳ IN FLIGHT (2026-10-07 ~10:20 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other session on that PC
+holds marketing S14 only, by agreement). **A8i-2** is being taken from the handover's draft in `F:\kipindi-a8i2`, branch
+`vodacom-a8i2` (cut from `9352de7c`); nothing applied or committed yet. Its remaining steps, in order: the three
+reviews (correctness and money, change-set mechanics, gates and proof) → apply → typecheck, its suites,
+`red:enter-where-pressed` and `test:red-anchors` → `qa:enter-where-pressed` (its new A8i-2 section, and the control run
+on the tree before it) and `tools/a8i/drive.mjs main` (W2 and K must pass) → `test:all` → push → production read-back →
+records (§0i, §0h points from its calls). Then **A8j** (`F:\kipindi-a8j`, its 19 review problems first), then the
+close-out's three owed items, then **WP12**: the handover README's order. (Left alone on that PC: `F:\kipindi-journey`
+keeps uncommitted edits from 2026-10-06, an early start on the 400 ms arming beat that the handover draft supersedes.)
 **Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above, §0i "A8i" and the handover's drafts), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
