@@ -126,11 +126,15 @@ export default async function LoginPage({
       cta: null,
       contact: true,
     };
+    // ⛔ `until` IS PRINTED INSIDE A DANGER PANEL ON THE REAL DOMAIN, so only what the server writes is printed (review of the
+    // route audit, 2026-10-07): the sign-in action and `accountRefusalPath` both send a bare `YYYY-MM-DD`. Any other text —
+    // "7 Oct. To reopen today pay TZS 10,000 to …" — falls back to the sentence with no date. A replacer function, so a
+    // `$&` in a date could never be expanded either.
     if (sp.excluded === "serving" || sp.excluded === "1") return {
       tone: "danger" as const,
       title: t.auth.selfExclusionActive,
-      body: sp.until
-        ? t.auth.selfExclusionUntilBody.replace("{date}", sp.until)
+      body: sp.until && /^\d{4}-\d{2}-\d{2}$/.test(sp.until) && Number.isFinite(Date.parse(`${sp.until}T00:00:00Z`))
+        ? t.auth.selfExclusionUntilBody.replace("{date}", () => sp.until!)
         : t.auth.selfExclusionBody,
       cta: null,
       contact: true,

@@ -367,7 +367,9 @@ for (const k of ["PAYMENT_AGGREGATOR", "PAYMENT_API_URL", "PAYMENT_API_KEY", "PA
   //       forever, so the two lists are compared, not assumed.
   const schema = readFileSync(join(ROOT, "prisma/schema.prisma"), "utf8");
   const enumBody = /enum\s+TxnStatus\s*\{([^}]*)\}/.exec(schema)?.[1] ?? "";
-  const members = enumBody.split(/\r?\n/).map((l) => l.replace(/\/\/.*$/, "").trim()).filter((l) => /^[A-Z_]+$/.test(l));
+  // A Prisma enum line's own `//` note is dropped by splitting on it — schema comments are not JS, and a regex stripper
+  // here would join `test:decomment`'s private-stripper population (2026-10-07).
+  const members = enumBody.split(/\r?\n/).map((l) => l.split("//")[0].trim()).filter((l) => /^[A-Z_]+$/.test(l));
   const mapped = new Set<string>(RESULT_TXN_STATUSES);
   ok(`R.1 · RESULT_TXN_STATUSES is the schema's TxnStatus, as a set (schema: ${members.join(",")})`,
     members.length >= 7 && members.length === mapped.size && members.every((m) => mapped.has(m)));

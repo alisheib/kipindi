@@ -66,8 +66,11 @@ export function WalletResultModal({
 
   const close = () => { setOpen(false); router.replace("/wallet"); };
 
+  // ⭐ A DEPOSIT HELD FOR RETURN READS "REVERSED" (review of the route audit, 2026-10-07): its in-app notice and its email
+  // both say the deposit was reversed, and "In review" over "Deposit didn't go through" told the player the opposite of
+  // both — a wait for money that will never be added.
   const eyebrow = notDone
-    ? (STATUS_WORD[status as ResultTxnStatus] ?? t.wallet.txnStatusFailed)
+    ? (!isWithdraw && status === "AML_REVIEW" ? t.wallet.txnStatusReversed : (STATUS_WORD[status as ResultTxnStatus] ?? t.wallet.txnStatusFailed))
     : isWithdraw
       ? (amlHeld ? t.common.underReviewEyebrow : pending ? t.common.payoutStarted : t.common.withdrawalSent)
       : (pending ? t.common.depositStarted : t.common.depositConfirmed);

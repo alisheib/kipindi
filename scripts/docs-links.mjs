@@ -126,8 +126,12 @@ let flowsAnchors = 0;
   const flows = readFileSync(join(DOCS, "FLOWS.md"), "utf8").split(/\r?\n/);
   flows.forEach((line, i) => {
     for (const m of line.matchAll(/[\w./[\]-]+\.(?:ts|tsx|mts|mjs|js):\d+/g)) report("line anchor", "FLOWS.md", m[0], i + 1);
-    if (documentsARemoval(line)) return;
+    // ⛔ ONLY A STRUCK ANCHOR IS EXEMPT (review of the route audit, 2026-10-07). This used to skip the WHOLE row whenever
+    // its prose said "deleted", "gone" or "removed" — eight live rows went unchecked because a sentence about something
+    // else happened to use one of those words. A deleted file is named as `~~src/…~~`; every other anchor must exist.
+    const struck = [...line.matchAll(/~~[\s\S]*?~~/g)].map((s) => [s.index, s.index + s[0].length]);
     for (const m of line.matchAll(/`(src\/[^`\s]+)`/g)) {
+      if (struck.some(([a, b]) => m.index >= a && m.index < b)) continue;
       flowsAnchors++;
       const star = m[1].indexOf("*");
       const target = (star >= 0 ? m[1].slice(0, star) : m[1]).replace(/\/$/, "");

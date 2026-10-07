@@ -141,7 +141,7 @@ export function EmailEditor({ currentEmail, verified, hasPassword }: { currentEm
     <div className="rounded-lg border border-border bg-bg-inset/40 px-3.5 py-2.5">
       <FieldLegend as="p">{t.common.contactEmail}</FieldLegend>
       {editing ? (
-        <div className="mt-1.5 space-y-2.5">
+        <div className="mt-1.5 space-y-[10px]">
           {/* §A3 — this field carried `focus:outline-none` with NO replacement, and a
               Tailwind `:focus` rule outranks the `:where(…)` catch-all in globals.css,
               so a keyboard user got NO focus change at all on the address every receipt

@@ -53,7 +53,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             />
 
             {banner && (
-              <div role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-3.5 py-3 text-[13px] text-danger-fg">
+              <div role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-[14px] py-3 text-[13px] text-danger-fg">
                 {banner.body}
               </div>
             )}
