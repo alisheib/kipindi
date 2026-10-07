@@ -86,6 +86,32 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   never run). All three are ported onto `main` by a three-way merge — one conflict, `dsar.ts`, where U33a-P's
   `outreach` field sat beside U16a's fields (both kept) — and re-reviewed before each push. S10's merged worktree is
   parked on the LOCAL branch `wip/marketing-s10-unshipped-2026-10-04` (`10b457f4`, never pushed).
+  ▶ HANDOVER — where everything is, for ANY machine (state 2026-10-07 ~01:00 EAT; Ali: "push any progress so we can
+  later proceed from another machine"):
+  · Branch `marketing-s13` on origin (`18e6192b`, NOT on main): U16a committed `d2fe9731` (STEP 45: both review rounds'
+    fixes + the erasure marker, ◐ 3a(ii)), main merged `e0d70fad`, U43y committed `18e6192b` (STEP 46: the BLOCKER fixed
+    with `src/lib/server/money-chores.d.ts`; a third mirror on the Up & Down chain gate). Owed before it goes to main: ONE
+    battery — the whole predeploy chain once (U43y is platform-wide) + U16a's reach, the planting reds alone with a
+    byte-compare, `db:probe-campaign-privacy`, `next build`, `qa:live` and `qa:marketing-retention`; its exact lists
+    and runner are in the backup branch below (`battery.sh`, `gen-lists.mjs`, `b2-extra-keys.txt`). A first run on
+    U16a's earlier version reached ~170 suites with NO failure that clean main does not have (2026-10-06, before a
+    reboot). Then STEP 45 + 46 are recorded here and pushed `HEAD:main`, and the deploy read back from `?dpl=`.
+  · Branch `backup/marketing-s13-wip` on origin (`87acfd20`, never for main): `wip-s13/` holds every unfinished draft as
+    complete files at their repo paths — `u43a/` (the recipient doors, ported + reviewed + fixed; three-way merge onto
+    `marketing-s13`, then route `test:campaign-privacy` P10's hand settle through the real `settle` door), `u38b/` (the
+    audience card, 28 files; its adversarial pre-review was running), `u13/` (the send window, 24 files; review round
+    running), `owner-door/` (`ops:marketing-owner-save` — the audited door that saves Ali's chat-approved texts; being
+    built) — and `notes/README.md` with the approved texts (`owner-acts-packet.json`) and the review findings.
+  · Recorded on main (`e41a42d9`, `eae30f0f`): Ali's FINAL rule and every approval of 2026-10-07 —
+    COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition".
+  · Being built from that rule (static, ALI-BLADE15 scratch; pushed to the backup branch as they land): the gate (the
+    lapse reversal Q9 + the referee exclusion U33r — its new promise wording goes to Ali before it ships), the public
+    texts (the sign-up box removed + the 7-year campaign record on /legal/privacy, the data-rights file and "Erase my
+    data"), OD61 (the activity feed's COMPLIANCE rows for compliance viewers only), and ◐ 3b (the Lists card's 18+
+    words checked against the version on screen).
+  · Order to live: the `marketing-s13` battery → push (STEPS 45-46) → U43a → U38b → U13 → the owner door, then apply
+    Ali's approved texts (G4, G5, G10) and redeploy once → the final-rule units → open licence outreach → the engine
+    (U40a → U40b → U42 → U49a → U43b → U46a → U47b → U48a → U52a).
 
 ✔ LAST SESSION: S12 — 2026-10-06, OMEGA-COMPILE01 (`F:\kipindi-main`, on `main`): the send engine begins (Ali: "proceed
   please, next steps until we go live, fully done and perfect"). S11's block (STEPS 40–42 — the gate track finished,
@@ -264,15 +290,22 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
      native Swahili (and Chinese) read of the consent sentences and the `/s/<token>` copy; where Blackball stores SMS
      data (BLACKBALL-SMS.md §8).
 
-OWNER ACTS — Ali's, in the order the path needs them (none of them blocks building):
-  1. Save the consent-basis wordings and the 18+ sentences (G4), and the public policy lines (G10), on Admin → System.
-     The session drafts the texts for him to paste; ⛔ the save IS the approval, so it is his act, never the session's.
-  2. Save the source line (G5): "Namba yako ipo orodhani kwetu." — then re-save any draft made before it (the composer
-     says so on each one).
-  3. A GROWTH staff account with 2-step sign-in (G7/G11), and the admin 2-step sign-in back on before the first campaign
-     (`/api/health` reports it off).
-  4. Once U49s ships, read the Marketing SMS card's defaults: TZS 6 per SMS (G9), TZS 20,000 kept for login codes and
-     TZS 10,000 per campaign (G3) — change any by saving the card.
+⭐ THE FINAL RULE (Ali, 2026-10-07 — COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
+  consent is not a condition"): anyone with a Tanzanian mobile number may be sent offers under the licence; consent is
+  recorded when given but decides nothing; the lapse refusal (Q9) is reversed; licence outreach opens as soon as its
+  checks hold; the sign-up box becomes a box to STOP offers. KEPT, not consent rules: a person's own stop and the stop
+  link (ETA 2015 s.32, PDPA 2022 s.35; revisited only on a lawyer's written confirmation), and never the self-excluded,
+  under-18s or players in RG standing.
+OWNER ACTS — Ali's, in the order the path needs them (none of them blocks building). Since 2026-10-07 he approves each
+  in the session and Claude saves it through the audited `ops:marketing-owner-save` door (being built) — never his login:
+  1. G4 · the nine wordings — ✅ APPROVED 2026-10-07 as written (saved once the door ships). G10 · the five public policy
+     lines — to be put to him in the session.
+  2. G5 · the source line "Namba yako ipo orodhani kwetu." — ✅ APPROVED 2026-10-07 (saved once the door ships); then any
+     draft made before it is re-saved (the composer says so on each one).
+  3. A GROWTH staff account with 2-step sign-in (G7/G11) — to be put to him. The admin 2-step sign-in back on before the
+     first campaign — ⏸ "not yet" (Ali, 2026-10-07); still owed (`/api/health` reports it off).
+  4. ✅ CONFIRMED 2026-10-07: the Marketing SMS defaults — TZS 6 per SMS (G9), TZS 20,000 kept for login and withdrawal
+     codes, TZS 10,000 per campaign (G3), 08:00–20:00 EAT — nothing to save, they are the record's defaults.
   5. The approved test phone is Jay's (G7, ENGINE-SPEC §0.3) — confirmed by Ali 2026-10-05 ("we have already sent Jay a
      test SMS"). The live switch is opened for U52a's drive window only (G1), within the §11.4 ledger cap.
   6. G2 — the first real campaign: the Swahili message (it starts "50pick"), the audience, the day.

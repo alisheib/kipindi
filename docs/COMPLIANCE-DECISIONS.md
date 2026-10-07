@@ -9,6 +9,75 @@
 ---
 
 
+## 2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session
+
+**Authority.** Ali, 2026-10-07, in the Claude session (marketing S13, ALI-BLADE15): *"let us send to anyone, don't care
+consent, no consent. GBT said it's not our business, so we can just send. And if a user is annoyed he can contact his
+service provider"* — then *"save this as the final rule and change what has to be changed and keep pushing until live"*.
+It confirms and widens his rulings OD57 and OD58 of 2026-10-03 (outreach under the Gaming Board licence).
+
+**What it rules.**
+- **Consent is not a condition for a marketing SMS.** Anyone with a Tanzanian mobile number may be sent 50pick offers and
+  news under the Gaming Board licence: a player who never ticked the box, a player whose consent LAPSED (the two-year
+  lapse — **Q9 of 2026-10-05 is reversed**), and a non-member on a list. Consent is still recorded when somebody gives
+  it; it no longer decides who may be reached.
+- **Licence outreach (`marketing.outreach.licence`) is to be OPENED** as soon as its opening checks hold — the session
+  builds what stands between it and opening, saves the owner's approved texts, then opens it.
+- **The sign-up box (Q2) is reworded** so it no longer reads as the only route to being messaged: it becomes a box to
+  STOP offers, its sentence APPENDED to the consent-wording ledger like every consent sentence.
+
+**What it does NOT change, and why** (recorded so that no session removes either by reading "anyone" literally):
+1. **A person's own STOP is honoured, and every message keeps its stop link.** This is not a consent rule: the
+   Electronic Transactions Act 2015 s.32 requires a way to opt out of every commercial message and the PDPA 2022 s.35
+   gives the right to stop direct marketing — the Gaming Board's view does not cover those Acts. And the complaint Ali
+   expects ("he can contact his service provider") is exactly what gets a sender name blocked: the `50pick` sender also
+   carries the login and withdrawal codes, on the same Blackball rail. As OD58 recorded on 2026-10-03, the stop is
+   revisited only on a lawyer's written confirmation.
+2. **Never a self-excluded person, never anyone under 18, never a player in responsible-gambling standing** (a break,
+   a sign of harm, under 25 with a self-exclusion or break on record) — GN 478T reg 49(3) and 50pick's own published
+   promise (`/legal/responsible-gambling` §4). For a non-member, an officer's written 18+ confirmation per list stays the
+   age evidence.
+
+**The owner's approvals given in the session the same day.** Ali chose to approve each text in the session and have
+Claude save it — **this AMENDS the "his act on the card" wording** of § "2026-10-04 · The marketing consent wordings are
+approved by saving them on Admin → System, every version kept", of § "2026-10-04 · The public policy lines are editable
+on Admin → System, and how a saved line is kept true" and of § "2026-10-05 · Marketing outreach rulings": the approval is
+his answer in the session; Claude saves it through an audited ops door (`ops:marketing-owner-save`, being built) whose
+record names "approved by Ali in the Claude session" and the date — never his login.
+- **G5 · the source line** "Namba yako ipo orodhani kwetu." — approved as written.
+- **G4 · all nine wordings** — approved as written: `basis.OWN_FORM`, `basis.OWN_EVENT`, `basis.AGENT_ROSTER`,
+  `adult.consent`, `basis.LICENCE_OUTREACH`, `adult.list`, `adult.test`, `basis.THIRD_PARTY`, `notice.thirdParty`
+  (the texts the code offers as suggestions today, word for word).
+- **G3 · G9 · the Marketing SMS limits** — confirmed: TZS 6 per SMS · TZS 20,000 always kept for login and withdrawal
+  codes · at most TZS 10,000 per campaign · sending 08:00–20:00 EAT. Nothing to save: they are the record's defaults.
+- **Admin two-step sign-in** — NOT YET. It stays owed before the first campaign.
+- **G10 · the five public policy lines** — approved as written (spec `U33a-U37c-OD58.md` Appendix B.2–B.6): the RG §4
+  marketing line, Privacy §3's new licence bullet and its re-worded Consent bullet, Privacy §4's Blackball bullet, and
+  the note under the offers switch on /profile/notifications.
+- **The 7-year campaign record, said publicly** — approved: a new /legal/privacy §5 bullet (records of marketing text
+  messages kept at least 7 years; erasure removes only which account they belonged to) and the erasure clause's "except
+  as stated below", in en/sw/zh; the data-rights file's erasure sentence (the 2026-10-05 G10 sentence plus the record);
+  the note under "Erase my data".
+- **Agents' referees (Q8)** — the written promise "we never contact you for marketing" is HONOURED for every referee
+  already given it (the exclusion is built), and RE-WORDED from today, so referees recruited from now on can be reached.
+- **The sign-up box (Q2)** — REMOVED: there is no marketing box at sign-up.
+- **The owner's instruction on stopping, recorded as he gave it** — Ali, twice in the session: *"people can't stop
+  offers from 50pick please"*, then *"people cannot stop offers from 50pick, please mark this, and no need to boldly
+  state it, it's legal normally"*. ⛔ **NOT IMPLEMENTED by the session**, and Ali was told why the same hour: removing
+  the stop would send gambling offers to people who have asked us to stop — a working opt-out in every commercial
+  message is required by the Electronic Transactions Act 2015 s.32 and the PDPA 2022 s.35, and the Gaming Board's view
+  does not cover those Acts; and a sender blocked after complaints to the operators also stops every login and
+  withdrawal code. So the stop link in every offer and the offers switch on /profile/notifications STAY. **What reopens
+  it:** a written opinion from a Tanzanian advocate that marketing SMS may be sent with no opt-out under those two Acts
+  (and TCRA's consumer-protection rules) for 50pick's sender — on receiving it, the session implements the change.
+  Nothing on any page says more about stopping than the texts Ali approved today.
+
+⛔ Do not restore: a consent requirement for licence outreach, the lapse refusal (Q9), or the sign-up box. ⛔ Do not remove without a lawyer's written confirmation: the stop link and a person's own stop. ⛔ Never remove:
+the self-exclusion, under-18 and responsible-gambling refusals.
+
+---
+
+
 ## 2026-10-06 · No helpline on any player surface, and every number on the Support contacts card saves as typed — RG Policy v2026-10-06 (owner ruling)
 
 **Authority.** Ali, 2026-10-06 (spelling normalised): *"remove any rules that prevent us from changing the helpline number

@@ -47,7 +47,7 @@ and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question 
 2026-10-04 at Ali's request (`315a3ae5`, `2e3ea161`) with their proof part-run — §0i "S6 STOPPED HERE" lists what is
 proven and what is owed; then WP12
 (proof, records, merge); the build plan is
-`docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
+`docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. S7's plan is filed ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), 2026-10-07, §0h point 58); it starts only when S6 has closed, as its Amendments' start line says. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
 
@@ -1661,6 +1661,19 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     Enter still bets and sells, where the kit's A5 rule opens the admin's money confirms on Cancel; the double press this
     leaves (W2, §0i "A8i") is A8i-2's. Overrule: say which — Enter on the page itself confirms again when one dialog is on
     screen; or both money confirms open on "Ghairi" and "Hifadhi nafasi", as A5 does.
+58. **S7's plan — the calls taken under delegation (filed 2026-10-07, `S7-PLAN.md`).** All twenty, each with the overrule
+    Ali may choose, are its "Points for Ali". The ones that change what players get or what Ali must do: (a) S7 starts only
+    when S6 has closed — A8i-2 and A8j live and read back, the owed A8d/A8g/A8h proof run, WP12 done — on a branch from
+    main at that close (overrule: start once A8i-2 and A8j are live, with WP0 only). (b) The How-to sheet's foot is "Weka
+    mipaka" alone: no helpline, under Ali's ruling of 2026-10-06 (the deck's helpline link is dropped). (c) The live odds
+    update for the cards on screen moves to S8, with the bet sheet's own listener, and needs no change to what the server
+    broadcasts. (d) The lost-chunk guard moves into one shared module, and the chat bubble and the first-visit primer adopt
+    it in S7's own live fix (L1) for every player, with its census, plants and a drive that fails on the parent commit
+    (overrule: leave them as they are). (e) The How-to card's royal plate reads the primary button's material as tokens:
+    every page receives the stylesheet change with its computed values unchanged, proven by parity and `test:contrast`.
+    (f) Tafuta keeps the Akaunti board's row and opens a search field in place, submitting to the journey home. (g) When
+    asked, S7's production check also signs in once as the unfunded QA player mobile01, reading pages only, so
+    signed-in players are covered too (overrule: signed out only).
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -2131,7 +2144,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | 🔨 | Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | ⬜ | Staff see the deck's home on production. `test:journey-above-fold` is green. |
+| S7 | Home and cards (flagged) | ⬜ | Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, email code, waiting and return (flagged) | ⬜ | `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and `test:email-code` are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
