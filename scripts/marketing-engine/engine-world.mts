@@ -193,8 +193,10 @@ export async function auditFor(targetId: string): Promise<AuditEntry[]> {
 /* ══ THE WIRE ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** How the stub wire answers one message: accepted, the reply lost (TRANSPORT — sms.ts's ambiguous), refused by the
- *  gateway's own `status:false` (REJECTED), a number it cannot dial (BAD_MSISDN), or no result at all for it. */
-export type WireAnswer = "ok" | "transport" | "rejected" | "bad_msisdn" | "missing";
+ *  gateway's own `status:false` (REJECTED), a number it cannot dial (BAD_MSISDN), no result at all for it — or, as
+ *  `sendBatch`'s chunk catch answers a transport that threw BEFORE its request, UNKNOWN (any throw) or NOT_CONFIGURED (an
+ *  `SmsError` the transport raised on purpose). */
+export type WireAnswer = "ok" | "transport" | "rejected" | "bad_msisdn" | "missing" | "unknown" | "not_configured";
 
 export type Wire = {
   calls: number;
@@ -205,9 +207,25 @@ export type Wire = {
   send: (messages: SmsOutbound[], opts: SmsBatchOptions) => Promise<SmsBatchOutcome>;
 };
 
+let EVIDENCE = 0;
+/** ⭐ P2 · what `sendBatch` writes BEFORE its wire: one QUEUED message row per message, naming the recipient row. A stub that
+ *  stands for `sendBatch` and is to throw AFTER that point writes them, so the engine's evidence read sees the truth. */
+export async function queuedEvidence(messages: readonly SmsOutbound[]): Promise<void> {
+  for (const m of messages) {
+    await Promise.resolve(db.smsMessage.create({
+      reference: `sms_stub_${String(++EVIDENCE).padStart(8, "0")}_queued`, msisdn: m.to, purpose: "MARKETING", provider: "console",
+      senderId: "50PICK", bodyLen: m.body.length, status: "QUEUED", providerMsg: null, dlrStatus: null, dlrDesc: null, balanceTzs: null,
+      attempts: 1, targetType: m.targetType ?? null, targetId: m.targetId ?? null, createdAt: new Date().toISOString(),
+      sentAt: null, deliveredAt: null, failedAt: null,
+    } as StoredSmsMessage));
+  }
+}
+
 /**
  * ⭐ A STUB WIRE that answers like `sendBatch`: results keyed by the caller's target (in REVERSE order, so nothing settled
- * by place can pass), references `ref_<target id>`; or a whole-batch refusal (`refused`, nothing sent); or a throw.
+ * by place can pass), references `ref_<target id>`; or a whole-batch refusal (`refused`, nothing sent); or a throw —
+ * `throws`: AFTER its message rows were written and the batch handed over (the reply lost: P2's evidence is there);
+ * `throwsBefore`: before anything was written or handed over (a failure on our side before the request).
  * `during` runs inside the send, before it answers (a receipt landing between the wire and the settle, S16). `delayMs`
  * yields, so concurrent drivers interleave (§C).
  */
@@ -215,6 +233,7 @@ export function stubWire(o: {
   answer?: (m: SmsOutbound) => WireAnswer;
   refused?: SmsFailureCode;
   throws?: boolean;
+  throwsBefore?: boolean;
   delayMs?: number;
   during?: (messages: SmsOutbound[]) => Promise<void>;
 } = {}): Wire {
@@ -224,6 +243,8 @@ export function stubWire(o: {
     w.opts.push(opts);
     if (o.delayMs !== undefined) await new Promise((r) => setTimeout(r, o.delayMs));
     if (o.refused !== undefined) return { results: [], balanceTzs: null, refused: o.refused };
+    if (o.throwsBefore) throw new Error("the message rows could not be written (stub)");
+    if (o.throws) await queuedEvidence(messages);
     w.sent.push(...messages);
     if (o.throws) throw new Error("socket hang up (stub)");
     if (o.during) await o.during(messages);
@@ -236,6 +257,8 @@ export function stubWire(o: {
       if (a === "ok") results.push({ ...base, reference, ok: true });
       else if (a === "transport") results.push({ ...base, reference, ok: false, code: "TRANSPORT", error: "transport failure" });
       else if (a === "rejected") results.push({ ...base, reference, ok: false, code: "REJECTED", error: "Invalid credentials" });
+      else if (a === "unknown") results.push({ ...base, reference, ok: false, code: "UNKNOWN", error: "a fault before the request (stub)" });
+      else if (a === "not_configured") results.push({ ...base, reference, ok: false, code: "NOT_CONFIGURED", error: "blackball: sender ID not set" });
       else results.push({ ...base, reference: "", ok: false, code: "BAD_MSISDN", error: "not a number this gateway can dial" });
     }
     return { results: results.reverse(), balanceTzs: 100 };

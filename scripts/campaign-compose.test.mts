@@ -1424,7 +1424,7 @@ function u37bTemplate(row: StoredRow): CampaignTemplate {
 type Outbound = { to: string; body: string; targetType?: string; targetId?: string };
 type SendSpy = { calls: number; messages: Outbound[] };
 /** A transport stand-in: it records the batch and answers as told — taken, held by the credit floor, a lost reply, or a throw. */
-function u37bSpy(answer: "accept" | "floor" | "transport" | "throw" = "accept"): { send: TestDeps["send"]; spy: SendSpy } {
+function u37bSpy(answer: "accept" | "floor" | "transport" | "throw" | "rejected" | "unknown" = "accept"): { send: TestDeps["send"]; spy: SendSpy } {
   const spy: SendSpy = { calls: 0, messages: [] };
   const send = async (ms: Outbound[]) => {
     spy.calls++;
@@ -1436,6 +1436,13 @@ function u37bSpy(answer: "accept" | "floor" | "transport" | "throw" = "accept"):
     }
     if (answer === "transport") {
       return { results: ms.map((m) => ({ ...keyed(m), reference: `sms_lost_${spy.calls}`, ok: false, code: "TRANSPORT", error: "reply lost" })), balanceTzs: null };
+    }
+    // U43b-2 review · the gateway's own "no", and sendBatch's chunk catch for a transport that threw before its request
+    if (answer === "rejected") {
+      return { results: ms.map((m) => ({ ...keyed(m), reference: `sms_refused_${spy.calls}`, ok: false, code: "REJECTED", error: "Invalid credentials" })), balanceTzs: null };
+    }
+    if (answer === "unknown") {
+      return { results: ms.map((m) => ({ ...keyed(m), reference: `sms_prewire_${spy.calls}`, ok: false, code: "UNKNOWN", error: "a fault before the request (fixture)" })), balanceTzs: null };
     }
     return { results: ms.map((m, i) => ({ ...keyed(m), reference: `sms_fixture_${spy.calls}_${i}`, ok: true })), balanceTzs: null };
   };
@@ -2706,6 +2713,20 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       && rows.length === 2 && rows[0].payload?.outcome === "unconfirmed" && rows[0].payload?.reason === "TRANSPORT"
       && rows[1].payload?.outcome === "unconfirmed" && rows[1].payload?.reason === "no_answer",
       `the step ${String(s?.outcome ?? "none")}${s?.code ? ` ${String(s.code)}` : ""} ref ${String(s?.reference ?? "none")} · under the test ${seen.map((o) => `${String(o.outcome)}:${String(o.reference ?? "-")}`).join(" ")} · lost ${reasonOf(lost)} · threw ${reasonOf(threw)} · audit ${JSON.stringify(rows.map((a) => a.payload?.reason ?? null))}`];
+  });
+
+  /* ── U43b-2 review · only the network's own "no" (REJECTED) says the network refused; a failure sendBatch met BEFORE its
+   *    request (UNKNOWN — its chunk catch) never claims the network was asked. Nothing reached the phone either way. ── */
+  await claim("§18.35 U43b-2 review · ONLY THE NETWORK'S OWN NO SAYS IT REFUSED — a REJECTED answer is refused 'failed' saying the network refused the message; an UNKNOWN one (a failure before the request) is refused 'failed' saying it couldn't be handed to the SMS network, never that the network refused; and each says nothing reached the phone", async () => {
+    const o35 = await officer();
+    const id = await u37bDraft();
+    const refused = await send({ campaignId: id, variant: "SW" }, o35.id, { send: u37bSpy("rejected").send });
+    const prewire = await send({ campaignId: id, variant: "SW" }, o35.id, { send: u37bSpy("unknown").send });
+    const words = (r: TestResult): string => (r.ok ? "" : r.error);
+    return [!refused.ok && refused.outcome === "refused" && reasonOf(refused) === "failed" && words(refused).startsWith("The network refused the message (REJECTED)")
+      && !prewire.ok && prewire.outcome === "refused" && reasonOf(prewire) === "failed" && words(prewire).includes("couldn't be handed to the SMS network")
+      && !words(prewire).includes("refused") && words(refused).includes("nothing reached your phone") && words(prewire).includes("nothing reached your phone"),
+      `REJECTED: ${reasonOf(refused)} "${words(refused)}" · UNKNOWN: ${reasonOf(prewire)} "${words(prewire)}"`];
   });
   return failed;
 }
@@ -4289,6 +4310,14 @@ if (!PROVE_RED) {
       const r = await realTest(input, officerId, deps);
       return r.outcome === "unconfirmed" ? { ok: true, outcome: "handed_over", via: "open", text: r.text, maskedTo: r.maskedTo, at: r.at, reference: "sms_assumed" } : r;
     };
+    /** U43b-2 review · the sentence before the review: every failed code said as the network's refusal — a failure before the
+     *  request (UNKNOWN) claims the network was asked. */
+    const everyCodeRefused: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => {
+      const r = await realTest(input, officerId, deps);
+      if (r.ok || r.outcome !== "refused" || r.reason !== "failed") return r;
+      const code = /[(]([A-Z_]+)/.exec(r.error)?.[1] ?? "UNKNOWN";
+      return { ...r, error: `The network refused the message (${code}) — nothing reached your phone.` };
+    };
     /** No budget — every test allowed. */
     const noBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, { ...deps, rate: ALLOW });
     /** A confirmed campaign tested anyway — the draft check gone. */
@@ -4983,6 +5012,18 @@ if (!PROVE_RED) {
           return real[0]?.outcome === "unconfirmed" && planted[0]?.outcome === "failed";
         },
         landedAs: "the real step answers a lost reply unconfirmed, and the plant's answers it failed",
+      },
+      {
+        name: "U43b-2 review · every failed code said as the network's refusal — a failure before the request claims the network was asked",
+        expect: [/^§18[.]35 /], impl: { ...R, test: everyCodeRefused },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const real = await realTest({ campaignId: id, variant: "SW" } as TestInput, o.id, landedDeps({ send: u37bSpy("unknown").send }));
+          const planted = await everyCodeRefused({ campaignId: id, variant: "SW" } as TestInput, o.id, landedDeps({ send: u37bSpy("unknown").send }));
+          return !real.ok && !real.error.includes("network refused") && !planted.ok && planted.error.includes("The network refused the message (UNKNOWN)");
+        },
+        landedAs: "the real test says an UNKNOWN failure couldn't be handed to the network, and the plant's says the network refused it",
       },
     ];
     for (const p of testPlants) {
