@@ -291,7 +291,7 @@ export type PolicyLinesActionResult =
  * ⭐ DG-S-05 · a refusal about words names the first box to fix (`policyLineFieldName`, the ONE spelling the card renders
  * too) and carries every problem of every line, so the card shows each one under its own box at once.
  * ⭐ The two legal pages print these lines, so both are revalidated; so is the profile's notifications page, where U33a-P
- * prints the outreach note once licence outreach exists (nothing prints it yet).
+ * prints the outreach note under an offers switch that is ON on the licence basis.
  */
 export async function savePolicyLinesAction(formData: FormData): Promise<PolicyLinesActionResult> {
   const session = await requireAdmin();

@@ -7,7 +7,8 @@
  *            versions are read from the pages' own META in the source, and every stamp this drive expects is derived
  *            from them by the stamp rule (`nextStamp`, `nextPolicyVersion`'s rule — test:policy-lines holds the rule).
  *   1280   — the card on its own tab (not on Platform): "0 of 5 lines saved.", every line unsaved and prefilled with
- *            today's words, Save held WITH its reason, the outreach note's hint saying it prints nowhere yet. A refusal
+ *            today's words, Save held WITH its reason, the outreach note's hint saying where it prints (under the
+ *            offers switch, for a player reached under the licence — U33a-P shipped it). A refusal
  *            with every problem at once: the RG English given a promise the code does not keep (a frequency cap — the
  *            late-night window is kept since U13), a phone number and an angle bracket,
  *            and the Swahili emptied — each problem under its own box in its own words, Save waiting, and the pending bar's
@@ -204,7 +205,7 @@ for (const l of LOCALES) {
   const save = page.locator(FORM).getByRole("button", { name: "Save policy lines" });
   ok("1280 · Save is held while nothing changed", await save.isDisabled());
   ok("1280 · …and says why beside it", (await page.locator(FORM).getByText(HELD_IDLE).count()) === 1);
-  ok("1280 · the outreach note's hint says it prints nowhere yet", (await page.locator(lineSel("profile.outreachNote")).getByText("printed nowhere yet", { exact: false }).count()) === 1);
+  ok("1280 · the outreach note's hint says where it prints", (await page.locator(lineSel("profile.outreachNote")).getByText("shown only to a player whose offers come under our licence", { exact: false }).count()) === 1);
   const describedBy = (await page.locator(boxSel("rg.marketing", "sw")).getAttribute("aria-describedby").catch(() => null)) || "";
   const statusId = (await page.locator(`${lineSel("rg.marketing")} [data-policy-status]`).getAttribute("id").catch(() => null)) || "";
   ok("1280 · each box names its line's status (aria-describedby)", statusId !== "" && describedBy.split(" ").includes(statusId), `${describedBy} · ${statusId}`);

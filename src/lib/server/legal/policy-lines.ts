@@ -6,7 +6,8 @@
  *
  * ⭐ WHY THIS EXISTS. Five public lines are admin-edited config now (the pure half, `@/lib/legal/policy-lines`, holds the
  * keys, today's text as defaults, the rules and the versions). This file is where each line's history lives, how a page
- * prints it, and the only door it is written through.
+ * prints it, and the only door it is written through — the card, and from 2026-10-07 the audited ops door that carries out
+ * the lines Ali approves in the Claude session (`owner-save.ts`), both through `savePolicyLines`.
  *
  * ⛔ NOTHING PRINTS DIFFERENTLY UNTIL AN ADMIN SAVES NEW WORDS. A page wraps each editable bullet in `<PolicyLine line
  * locale>` with its OWN literal JSX inside — today's text, untouched. While the line has no saved words (never saved, or
@@ -74,6 +75,15 @@ export type PolicyLinesProblems = { readonly [K in PolicyLineKey]?: Readonly<Rec
 /** The version each page prints after a save. */
 export type PolicyPageVersions = Readonly<Record<PolicyPage, string>>;
 
+/**
+ * The WHOLE row as it is now, from ONE re-read — the record (a deep copy), whether a row is stored at all, and every entry
+ * that read had to leave out (M1). ⛔ `{ ok: false }` is a read that could not answer, never "nothing saved"; and a read
+ * that dropped anything is said so (`dropped`), never passed off as lines nobody saved.
+ */
+export type PolicyLinesReload =
+  | { readonly ok: true; readonly record: PolicyLinesRecord; readonly stored: boolean; readonly dropped: readonly string[] }
+  | { readonly ok: false };
+
 export type PolicyLinesSaveResult =
   | {
     readonly ok: true;
@@ -125,6 +135,8 @@ export type PolicyLinesStore = {
   readonly savedRecord: () => PolicyLinesRecord;
   /** ⛔ F8 · Does this process hold the record at all — hydrated, and read in full? */
   readonly readable: () => boolean;
+  /** ⭐ The ops door's read (`owner-save.ts`) — the whole row as it is now, re-read, and whether it was read in full. */
+  readonly reloadRecord: () => Promise<PolicyLinesReload>;
   /** ⛔ THE ONLY WRITER. */
   readonly savePolicyLines: (patch: unknown, officerId: string, nowIso?: string) => Promise<PolicyLinesSaveResult>;
 };
@@ -326,7 +338,25 @@ function storeOver(
     }
   };
 
-  return { savedLine, savedHistory, savedPolicyText, policyLine, policyVersion, policyMeta, savedRecord, readable, savePolicyLines, publishedTexts };
+  /**
+   * ⭐ THE OPS DOOR'S READ (2026-10-07, `owner-save.ts`) — the WHOLE row as it is NOW: a card save re-reads it only to write,
+   * and `publishedTexts` only for the RG line's printed words, so the door had no way to see every line's history as it
+   * stands. One re-read (`reload` replaces the cache with what it read): the door builds the card's own request from it
+   * (each base is the revision saved now), finds a line that already reads that way, previews the page versions and the
+   * opening checks, and reads its own save back. ⛔ FAILS CLOSED: a read that could not answer is `{ ok: false }`. ⛔ M1 ·
+   * a read that had to leave something out NAMES it (`dropped`), so the door refuses before it records anything — never
+   * "not saved" for a line this file could not read. A row that is not stored drops nothing.
+   */
+  const reloadRecord = async (): Promise<PolicyLinesReload> => {
+    const read = await cfg.reload().catch(() => ({ ok: false as const }));
+    if (!read.ok) return { ok: false };
+    return { ok: true, record: merge(read.config, {}), stored: read.stored, dropped: read.stored ? [...seen.dropped] : [] };
+  };
+
+  return {
+    savedLine, savedHistory, savedPolicyText, policyLine, policyVersion, policyMeta, savedRecord, readable, reloadRecord, savePolicyLines,
+    publishedTexts,
+  };
 }
 
 type StoreOptions = {
@@ -436,12 +466,22 @@ export function policyLinesReadable(): boolean {
   return live.readable();
 }
 
+/** ⭐ The ops door's read — the record as the ROW holds it now (one re-read), and what that read dropped (M1) — ⛔
+ *  `{ ok: false }` when the read cannot answer. */
+export function reloadPolicyLines(): Promise<PolicyLinesReload> {
+  return live.reloadRecord();
+}
+
 /**
  * ⛔ THE ONLY WRITER, and the ONLY one the card's action may call: TEXT per line and language with the revision it was
  * edited from and its review tick (`readPolicyLinesPatch`), every rule run first (`policyLineProblems`), the server's own
  * admission (a stale page), a version appended only on change (new words, or a review marker), the page's version stamped
  * only for new words, the append-only check, then the VERIFIED write and its audit row. `nowIso` is the server's clock
  * (tests pin it); the author is the session's officer.
+ * ⭐ 2026-10-07 · the ops door (`owner-save.ts`, run by `ops:marketing-owner-save`) calls this SAME writer to carry out the
+ * lines Ali approved in the Claude session (G10): the card's own request, the author `ops: <by>` and the DATABASE's clock as
+ * `nowIso` (it stamps the page's EAT day) — every rule above runs unchanged, and the card names such a version "the ops
+ * door (…)".
  */
 export function savePolicyLines(patch: unknown, officerId: string, nowIso?: string): Promise<PolicyLinesSaveResult> {
   return live.savePolicyLines(patch, officerId, nowIso);
