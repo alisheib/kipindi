@@ -16,10 +16,15 @@
  * run before `onSubmit` fires.
  *
  * ⛔ THE LANGUAGE RULE: NO `useT()` IN THIS FILE. Every sentence arrives in `copy`, drawn by the server in the language
- * the page was drawn in - the language the hidden `shownLocale` field posts, so the consent sentence the ledger stores
- * is the one on screen (actions.ts `shownLocale`). A client lookup could disagree with it once the language provider
- * rewrites the cookie. The refusal's own reason is worded from the registry (`copy.reasons`), never the server's
- * English sentence: "That password is in the public breach list" reached Swahili and Chinese players here (C-X1).
+ * the page was drawn in - the language the hidden `shownLocale` field posts, so the account's language is the one on
+ * screen (actions.ts `shownLocale`). A client lookup could disagree with it once the language provider rewrites the
+ * cookie. The refusal's own reason is worded from the registry (`copy.reasons`), never the server's English sentence:
+ * "That password is in the public breach list" reached Swahili and Chinese players here (C-X1).
+ *
+ * ⛔ NO MARKETING BOX (2026-10-07, the owner's final rule — COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to
+ * anyone with a phone — consent is not a condition"): sign-up asks nothing about offers. The SMS-offers box and its
+ * `marketingOptIn` field are REMOVED, and nothing here may bring either back; a player turns offers on or off under
+ * Profile → Notifications. `test:marketing-consent-ledger` 7f holds the absence.
  *
  * ⭐ THE SCROLL. The panel sits ABOVE the form and the player submitted from its bottom, so a refusal brings the panel
  * into view at once (instant: a smooth scroll on a slow phone lands late). `key={refusal.at}` makes each refusal a new
@@ -49,7 +54,6 @@ export type RegisterCopy = {
   dobHint: string;
   age18Confirm: string;
   termsAccept: string;
-  optionalUpdates: string;
   terms: string;
   privacy: string;
   responsibleGambling: string;
@@ -232,7 +236,8 @@ export function RegisterForm({
             in Chinese two short consents fit and sat side by side on one line. `items-start`
             keeps each tap area on its own words rather than the full row width. */}
         {/* ⛔ No box is ever pre-ticked, and a refusal never ticks one: the form stays mounted, so each box holds
-            exactly what the player did (test:marketing-consent-ledger 7g). */}
+            exactly what the player did (test:marketing-consent-ledger 7h). ⛔ Two boxes, both required — the
+            SMS-offers box was removed on 2026-10-07 (the header). */}
         <fieldset className="flex flex-col items-start gap-[10px] pt-1">
           <Checkbox
             name="acceptAge"
@@ -243,10 +248,6 @@ export function RegisterForm({
             name="acceptTerms"
             required
             label={<span className="text-[13px] text-text-muted">{copy.termsAccept}</span>}
-          />
-          <Checkbox
-            name="marketingOptIn"
-            label={<span className="text-[13px] text-text-muted">{copy.optionalUpdates}</span>}
           />
           {/* The binding documents must be reachable at the consent point. */}
           {/* No separator dots in the flow: on a phone the row wraps, and a dot ends up stranded at a line start

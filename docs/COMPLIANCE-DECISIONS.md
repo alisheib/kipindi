@@ -9,6 +9,81 @@
 ---
 
 
+## 2026-10-07 · Privacy v2026-10-07 — §5 states the 7-year record of marketing text messages, §9 keeps the referee promise only for referees already given it, and the sign-up box is removed
+
+**Authority.** Ali's approvals of 2026-10-07, recorded in § "2026-10-07 · Marketing SMS go to anyone with a phone —
+consent is not a condition (the owner's FINAL rule), and his approvals given in the session": *"The 7-year campaign
+record, said publicly — approved"* (the §5 bullet, the erasure clause's "except as stated below", the data-rights file's
+erasure sentence — the 2026-10-05 G10 sentence plus the record — and the note under "Erase my data"); *"Agents' referees
+(Q8) — … HONOURED for every referee already given it … and RE-WORDED from today"*; *"The sign-up box (Q2) — REMOVED"*. The
+referees' new words are management's, § "2026-10-07 · Management's answers for the first marketing campaign — a small
+pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)", item 4.
+Applied by Claude in the commit that carries this entry (marketing S14, final-rule units).
+
+**/legal/privacy, in en/sw/zh (the English is binding).**
+- **§5, a new bullet** after "Marketing consent" — en: *"Records of marketing text messages (offers and news by SMS): at
+  least 7 years. For each message they hold the number it was sent to, the message, what happened to it and the stop
+  link it carried. If you ask us to erase a closed account, we remove which account they belonged to and keep the
+  rest"*; sw: *"Kumbukumbu za SMS za ofa na habari: angalau miaka 7. Kwa kila ujumbe tunahifadhi namba ya simu, maandishi
+  ya ujumbe, kilichotokea kwa ujumbe huo na kiungo cha “Acha” kilichokuwa ndani yake. Ukituomba kufuta akaunti
+  iliyofungwa, uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa"*; zh:
+  *"短信优惠与资讯的记录：至少 7 年。我们为每条短信保存所发往的号码、短信内容、发送结果，以及短信中用于停止接收的链接。如您要求删除已注销的账户，我们将删除这些记录与您账户的关联，其余内容予以保留"*.
+- **§5, the first bullet's erasure clause** — "…are removed at once" gains en *", except as stated below for marketing
+  text messages"*, sw *", isipokuwa kama ilivyoelezwa hapa chini kuhusu SMS za ofa na habari"*, zh
+  *"，但下文所述的短信优惠与资讯记录除外"*: without it the new bullet would contradict "removed at once".
+- **§9, the referees.** The promise *"we never contact you for marketing"* is no longer made to every referee; a second
+  paragraph says — en: *"Until version 2026-10-07 of this policy we told every referee that we never contact them for
+  marketing, and that promise stands: if you were named as a referee before then, we send you no offers. If you are
+  named as a referee after that: 50pick may send you offers by SMS. You can stop them at any time with the link in every
+  offer."*; sw: *"Hadi toleo la 2026-10-07 la sera hii tuliwaambia wadhamini wote kwamba hatuwasiliani nao kamwe kwa
+  matangazo, na ahadi hiyo inabaki: kama ulitajwa kuwa mdhamini kabla ya hapo, hatukutumii ofa yoyote. Kama umetajwa
+  kuwa mdhamini baada ya hapo: 50pick inaweza kukutumia ofa kwa SMS. Unaweza kuzisimamisha wakati wowote kwa kiungo cha
+  kusimamisha kilicho katika kila ofa."*; zh: *"在本政策 2026-10-07 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。这一承诺依然有效：若您在此之前被提名为推荐人，我们不会向您发送任何优惠。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。"*
+  The version is named by its label, never "this version", which would move with every later version and the promise
+  with it. The stop sentence stands only while every offer carries its stop link (management's item 7: it goes, with
+  the link, in the commit that files the written confirmation).
+
+**The same record, said in the same commit.**
+- **The data-rights file** (`privacy.ts`, `rights.erasure`, English only): *"…we erase your contact details (except as
+  below), password, … We keep your phone number only in our record of your marketing choices, so that we never send you
+  marketing again, and in the records of the marketing text messages we sent to it: those records (the number, the
+  message, what happened to it and the stop link it carried) are kept for at least 7 years, as the record GN 478T reg
+  51(1) requires; erasure removes which account they belonged to and keeps the rest."* ⚠️ The G10 sentence and the
+  record are joined into ONE sentence: G10's "only", printed beside a second record that also keeps the number, would
+  be false.
+- **The note under "Erase my data"** (`profile.privacyRequestErasureNote`) gains, before "Close your account first." —
+  en *"Records of offers and news we sent you by SMS (the number, the message, what happened to it and its stop link)
+  are kept for at least 7 years; erasure removes only which account they belonged to."*, and the approved sw and zh.
+
+**Why each is true.** Erasure's one write to a campaign recipient row clears the account link and nothing else (U16a,
+`unlinkCampaignRecipients` → `smsCampaignRecipient.unlinkUser`); no code deletes a recipient row; `DATA-RETENTION.md`
+keeps the campaign and opt-out-link rows 7 years (rows "SMS campaigns and their recipients" and "Marketing opt-out
+links", GN 478T reg 51(1)). For §9: nothing can send a marketing SMS while licence outreach is closed and the engine is
+unbuilt, and the final-rule gate's referee exclusion — which refuses every referee named before its cutoff — lands
+before licence outreach opens, its cutoff set to the instant this version is served.
+
+**The sign-up box (Q2), removed.** `/auth/register` asks nothing about offers: no `marketingOptIn` box, field, schema
+key or ledger append, and no `auth.optionalUpdates` key in any language. A new account starts with the offers switch off
+and NO consent-ledger row. No consent sentence was reworded, so nothing is appended to `consent-wording.ts`: the box's
+three sentences stay pinned there, because a yes recorded under them from 2026-09-28 still counts.
+
+**The pins moved.** `test:privacy-notice`: the version (v2026-10-07 in en/sw/zh) and the English hash; §5f's planted
+label; new §4i (the record in §5, the data-rights file and the note, tied to the unlink, the absence of a delete and the
+retention rows) and §4j (§9 — the label named, the old promise made to nobody new, management's sentences, the stop
+sentence tied to the footer's stop link), each with its planted controls. `POLICY_PAGES.privacy.codeVersion` 2026-10-07
+(`test:policy-lines` L0). The box's absence: `test:marketing-consent-ledger` 6, 7f, 7g and 8g; `test:registration-contact`
+1.2 and 6.1.
+
+**Translations.** §5's sw and zh and the note's are the drafts Ali approved, copied byte for byte. §9's sw and zh have
+no separately approved wording: the Swahili is accepted as written (management's item 5), and both reuse the approved
+Privacy §4 phrases for the stop sentence (spec `U33a-U37c-OD58.md` Appendix B.3/B.4).
+
+⛔ Do not restore: the sign-up box, its key or its ledger row; "we never contact you for marketing" as a promise to
+referees named after version 2026-10-07 — or its withdrawal from any referee named before it.
+
+---
+
+
 ## 2026-10-07 · Management's answers for the first marketing campaign — a small pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)
 
 **Authority.** Ali, for 50pick management, 2026-10-07, answering questions put to him one round at a time in the Claude

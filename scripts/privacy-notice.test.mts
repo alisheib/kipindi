@@ -19,6 +19,11 @@
  *        locales, with the session cap, the sign-out note's lifetime and the preview pass's hours read from the
  *        code, not retyped.
  *   §4h · zh typography: no space after full-width punctuation (a {" "} after "：" printed a gap in §1).
+ *   §4i · v2026-10-07 · the 7-year record of marketing text messages: §5, the data-rights file (`privacy.ts`) and the note
+ *        under "Erase my data" say it in their languages, and erasure only unlinks it, nothing deletes it, and
+ *        DATA-RETENTION keeps it 7 years.
+ *   §4j · v2026-10-07 · §9: referees named before version 2026-10-07 keep "we never contact you for marketing"; those
+ *        named after it are told management's two sentences — the stop sentence only while every offer carries its link.
  *
  * ⭐ U33p (2026-10-04) · THREE BULLETS ARE ADMIN-EDITED LINES NOW (`legal.policy_lines`): the §3 Consent bullet, a new §3
  * licence bullet, and the §4 Blackball bullet. The page wraps each in a `PolicyLine` element whose children are today's
@@ -39,6 +44,9 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { stripPolicyLineTags } from "./lib/policy-line-source.mts";
 import { ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, SMS_GATEWAY_WORDS } from "../src/lib/legal/policy-lines.ts";
+// §4i reads the note under "Erase my data" from the dictionary; §4j reads whether every offer carries its stop link.
+import { dict } from "../src/lib/i18n-dict.ts";
+import { OPTOUT_PATH, footerMeasurementToken, marketingFooter } from "../src/lib/marketing/footer.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
@@ -53,9 +61,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-10-01";
+const PRIVACY_VERSION = "2026-10-07";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "45c8e6d42132";
+const PRIVACY_EN_SHA = "a06058e4ace8";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -472,7 +480,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-10-01 ·', 'sw: "Toleo 2026-09-26 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-10-07 ·', 'sw: "Toleo 2026-10-01 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -721,6 +729,146 @@ const zhGaps = (src: string) => [...code(blocks(src).zh).matchAll(/[：。，；
 ok("§4h zh puts no space after a full-width colon, stop, comma or closing bracket", zhGaps(pageSrc).length === 0, zhGaps(pageSrc).join(" | "));
 const plantZhGap = pageSrc.replace("达累斯萨拉姆。联系方式：", '达累斯萨拉姆。联系方式：{" "}');
 ok("§5am control · the §1 {\" \"} after \"联系方式：\" put back is reported", plantZhGap !== pageSrc && zhGaps(plantZhGap).length > 0);
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4i · THE 7-YEAR RECORD OF MARKETING TEXT MESSAGES — v2026-10-07 (approved by Ali in the session; COMPLIANCE-DECISIONS
+ * "Privacy v2026-10-07"). §5 says the record is kept at least 7 years and that erasure removes only which account it
+ * belonged to, and its first bullet's "removed at once" points to it; the data-rights file (`privacy.ts`, rights.erasure)
+ * and the note under "Erase my data" (`profile.privacyRequestErasureNote`) say the same. All of it is true only while
+ * erasure's ONE write to a recipient row clears the account link (U16a's `unlinkUser`, through `erase.ts`), no code
+ * deletes a recipient row, and DATA-RETENTION keeps the campaign and opt-out-link rows at 7 years — so each is read here.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4i · the 7-year record of marketing text messages: what §5, the data-rights file and the erasure note say is what erasure does");
+const eraseSrc = code(read("src/lib/server/marketing/erase.ts"));
+/** The rights.erasure sentence as the bundle prints it: its string pieces joined, the address left as written. */
+function erasureSentence(src: string): string {
+  const s = src.replace(/\r\n/g, "\n");
+  const at = s.indexOf("erasure: `Request erasure");
+  const end = s.indexOf("portability:", at);
+  if (at < 0 || end < 0) return "";
+  return [...s.slice(at, end).matchAll(/`([^`]*)`|"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1] ?? m[2]).join("");
+}
+const dsarSentence = erasureSentence(read("src/lib/server/privacy.ts"));
+const retentionDoc = read("docs/DATA-RETENTION.md");
+const erasureNotes: Record<Loc, string> = {
+  en: dict.en.profile.privacyRequestErasureNote, sw: dict.sw.profile.privacyRequestErasureNote, zh: dict.zh.profile.privacyRequestErasureNote,
+};
+const RECORD_WORDS: Record<Loc, { bullet: string[]; except: string; note: string }> = {
+  en: {
+    bullet: ["Records of marketing text messages (offers and news by SMS): at least 7 years", "we remove which account they belonged to and keep the rest"],
+    except: "except as stated below for marketing text messages",
+    note: "are kept for at least 7 years; erasure removes only which account they belonged to",
+  },
+  sw: {
+    bullet: ["Kumbukumbu za SMS za ofa na habari: angalau miaka 7", "uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa"],
+    except: "isipokuwa kama ilivyoelezwa hapa chini kuhusu SMS za ofa na habari",
+    note: "zinahifadhiwa kwa angalau miaka 7; kufuta huondoa tu uhusiano wa kumbukumbu hizo na akaunti yako",
+  },
+  zh: {
+    bullet: ["短信优惠与资讯的记录：至少 7 年", "我们将删除这些记录与您账户的关联，其余内容予以保留"],
+    except: "但下文所述的短信优惠与资讯记录除外",
+    note: "至少保留 7 年；删除仅会移除这些记录与您账户的关联",
+  },
+};
+/** What the data-rights file (English only) must say — the G10 sentence and the record, as ONE sentence. */
+const DSAR_RECORD = [
+  "we erase your contact details (except as below)",
+  "We keep your phone number only in our record of your marketing choices, so that we never send you marketing again, and in the records of the marketing text messages we sent to it",
+  "are kept for at least 7 years",
+  "erasure removes which account they belonged to and keeps the rest",
+];
+const RECIPIENT_DELETE = /\bsmsCampaignRecipient\.(?:delete|deleteMany|remove|purge)\w*\s*\(/;
+function recordDefects(page: string, erase: string, dsar: string, notes: Record<Loc, string>, doc: string, files: Array<{ path: string; src: string }>): string[] {
+  const d: string[] = [];
+  const bl = blocks(page);
+  for (const l of LOCS) {
+    const s5 = section(bl[l], "5");
+    for (const w of RECORD_WORDS[l].bullet) if (!s5.includes(w)) d.push(`${l} §5 does not say "${w}" (the 7-year record of marketing text messages)`);
+    if (!s5.includes(RECORD_WORDS[l].except)) d.push(`${l} §5's first bullet says contact details are removed at once without "${RECORD_WORDS[l].except}"`);
+    if (!notes[l].includes(RECORD_WORDS[l].note)) d.push(`${l} profile.privacyRequestErasureNote does not say "${RECORD_WORDS[l].note}"`);
+  }
+  if (dsar === "") d.push("the data-rights file's rights.erasure sentence was not read (privacy.ts)");
+  for (const w of DSAR_RECORD) if (!dsar.includes(w)) d.push(`the data-rights file's rights.erasure (privacy.ts) does not say "${w}"`);
+  if (!/\bdb\.smsCampaignRecipient\.unlinkUser\(/.test(erase)) d.push("erase.ts no longer clears the account link through smsCampaignRecipient.unlinkUser — §5 says erasure removes which account the records belonged to");
+  const deleters = files.filter((f) => RECIPIENT_DELETE.test(f.src)).map((f) => relative(ROOT, f.path));
+  if (deleters.length > 0) d.push(`a recipient row can be deleted (${deleters.join(", ")}) — §5 says the record is kept at least 7 years`);
+  for (const row of ["| SMS campaigns and their recipients |", "| Marketing opt-out links"]) {
+    const line = doc.split(/\r?\n/).find((x) => x.startsWith(row)) ?? "";
+    if (!line.includes("| **7 years** |")) d.push(`DATA-RETENTION.md has no 7-year row starting "${row}" — §5's period must agree with it`);
+  }
+  return d;
+}
+ok("§4i en/sw/zh §5, the data-rights file and the erasure note state the 7-year record; erasure only unlinks it; nothing deletes it; DATA-RETENTION agrees",
+  recordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).length === 0,
+  recordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).join("; "));
+const plantRecordSw = pageSrc.replace("Kumbukumbu za SMS za ofa na habari: angalau miaka 7", "Kumbukumbu za SMS za ofa na habari: angalau miaka 2");
+const plantExceptZh = pageSrc.replace("，但下文所述的短信优惠与资讯记录除外", "");
+const plantNoteEn = { ...erasureNotes, en: erasureNotes.en.replace("are kept for at least 7 years; erasure removes only which account they belonged to", "are erased with your account") };
+const plantDsarOnly = dsarSentence.replace(", and in the records of the marketing text messages we sent to it", "");
+const plantEraseDelete = eraseSrc.replace("db.smsCampaignRecipient.unlinkUser(", "db.smsCampaignRecipient.deleteForUser(");
+const plantDeleter = { path: join(ROOT, "src/lib/server/marketing/planted.ts"), src: "export const p = (db: any, id: string) => db.smsCampaignRecipient.deleteMany({ where: { userId: id } });\n" };
+ok("§4i control · planted record copies found their targets",
+  [plantRecordSw !== pageSrc, plantExceptZh !== pageSrc, plantNoteEn.en !== erasureNotes.en, plantDsarOnly !== dsarSentence, plantEraseDelete !== eraseSrc].every(Boolean));
+ok("§4i control · the record's period changed in ONE locale (sw) is reported",
+  recordDefects(plantRecordSw, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("sw §5")));
+ok("§4i control · the first bullet's exception dropped from ONE locale (zh) is reported",
+  recordDefects(plantExceptZh, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("zh §5's first bullet")));
+ok("§4i control · the erasure note telling the old story (en) is reported",
+  recordDefects(pageSrc, eraseSrc, dsarSentence, plantNoteEn, retentionDoc, srcFiles).some((x) => x.startsWith("en profile.privacyRequestErasureNote")));
+ok("§4i control · the data-rights file's G10 sentence without the record (its \"only\" made false) is reported",
+  recordDefects(pageSrc, eraseSrc, plantDsarOnly, erasureNotes, retentionDoc, srcFiles).some((x) => x.includes("rights.erasure")));
+ok("§4i control · erasure deleting the recipient rows instead of unlinking them is reported",
+  recordDefects(pageSrc, plantEraseDelete, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.includes("unlinkUser")));
+ok("§4i control · a src file that deletes recipient rows is reported",
+  recordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, [...srcFiles, plantDeleter]).some((x) => x.includes("can be deleted")));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4j · §9, THE REFEREES — v2026-10-07 (Ali's Q8, COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a
+ * phone — consent is not a condition"; management's item 4, § "2026-10-07 · Management's answers for the first marketing
+ * campaign"). The old promise "we never contact you for marketing" is kept for every referee named before version
+ * 2026-10-07 and no longer made to anyone named after it, who is told management's two sentences. ⛔ The version is named
+ * by its LABEL in every language: a relative "this version" would move with every later version, and the promise with it.
+ * ⛔ The stop sentence is true only while every offer carries its stop link (`marketingFooter`): when the link goes
+ * (management's item 7, on the written confirmation), this check goes red until §9 is re-worded with it.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4j · §9: the referee promise kept for those named before 2026-10-07, management's sentences for those named after");
+const REFEREE_REWORDED_IN = "2026-10-07";
+const REFEREE_SENTENCES = { offers: "50pick may send you offers by SMS.", stop: "You can stop them at any time with the link in every offer." } as const;
+/** The old promise as each locale printed it until v2026-10-01 — made to everyone, which it may no longer be. */
+const OLD_REFEREE_PROMISE: Record<Loc, string> = {
+  en: "we never contact you for marketing;",
+  sw: "hatuwasiliani nawe kamwe kwa matangazo;",
+  zh: "我们绝不会为营销目的联系您；",
+};
+const stopLinkInOffers = (footer: string) => footer.includes(`${OPTOUT_PATH}${footerMeasurementToken()}`);
+function refereeDefects(page: string, footer: string): string[] {
+  const d: string[] = [];
+  const bl = blocks(page);
+  const s9 = (l: Loc) => section(bl[l], "9").replace(/\s+/g, " ");
+  for (const l of LOCS) {
+    if (!s9(l).includes(REFEREE_REWORDED_IN)) d.push(`${l} §9 does not name version ${REFEREE_REWORDED_IN}, the line between the kept promise and the new words`);
+    if (s9(l).includes(OLD_REFEREE_PROMISE[l])) d.push(`${l} §9 still promises every referee "${OLD_REFEREE_PROMISE[l]}"`);
+  }
+  if (!s9("en").includes(REFEREE_SENTENCES.offers)) d.push(`en §9 does not tell new referees "${REFEREE_SENTENCES.offers}"`);
+  if (/\bthis version\b/i.test(s9("en"))) d.push("en §9 names the line as \"this version\" — a later version would move it");
+  const says = s9("en").includes(REFEREE_SENTENCES.stop);
+  if (stopLinkInOffers(footer) && !says) d.push(`en §9 does not tell new referees "${REFEREE_SENTENCES.stop}" while every offer carries its stop link`);
+  if (!stopLinkInOffers(footer) && says) d.push(`en §9 promises "${REFEREE_SENTENCES.stop}" but the offer footer carries no stop link`);
+  return d;
+}
+const offerFooter = marketingFooter(footerMeasurementToken(), "SW");
+ok("§4j en/sw/zh §9 keep the old promise only for referees named before 2026-10-07, and tell those named after management's two sentences while the stop link exists",
+  refereeDefects(pageSrc, offerFooter).length === 0, refereeDefects(pageSrc, offerFooter).join("; "));
+const plantRefereeOld = pageSrc.replace("hatukutumii ofa yoyote.", "hatukutumii ofa yoyote; hatuwasiliani nawe kamwe kwa matangazo;");
+const plantRefereeRelative = pageSrc.replace("Until version 2026-10-07 of this policy", "Until this version of this policy");
+const plantRefereeNoStop = pageSrc.replace("by SMS. You can stop them at any time with the link in every offer.", "by SMS.");
+const footerWithoutLink = offerFooter.replace(`${OPTOUT_PATH}${footerMeasurementToken()}`, "");
+ok("§4j control · planted §9 copies found their targets",
+  [plantRefereeOld !== pageSrc, plantRefereeRelative !== pageSrc, plantRefereeNoStop !== pageSrc, footerWithoutLink !== offerFooter].every(Boolean));
+ok("§4j control · the old promise made to everyone again (sw) is reported", refereeDefects(plantRefereeOld, offerFooter).some((x) => x.startsWith("sw §9 still promises")));
+ok("§4j control · the line named as \"this version\" (en) is reported", refereeDefects(plantRefereeRelative, offerFooter).some((x) => x.includes("this version")));
+ok("§4j control · the stop sentence dropped while the stop link exists is reported", refereeDefects(plantRefereeNoStop, offerFooter).some((x) => x.includes("while every offer carries its stop link")));
+ok("§4j control · the stop sentence kept after the footer loses its link is reported", refereeDefects(pageSrc, footerWithoutLink).some((x) => x.includes("carries no stop link")));
 
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

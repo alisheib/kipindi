@@ -55,10 +55,21 @@ const TITLE: Record<Locale, string> = {
 // byte; `test:privacy-notice` reads them with the wrapper's tags stripped, so this label and its English hash still move
 // only with the code's own English (`POLICY_PAGES.privacy.codeVersion` in `src/lib/legal/policy-lines.ts` moves with it —
 // test:policy-lines L0).
+// 2026-10-07: §5 states the 7-year record of marketing text messages — a new bullet (the number, the message, what happened
+// to it and its stop link, kept at least 7 years; erasure removes only which account they belonged to: U16a's
+// `unlinkCampaignRecipients` in `src/lib/server/marketing/erase.ts`, DATA-RETENTION rows 48–49) — and its first bullet's
+// erasure clause points to it ("except as stated below"); §9 no longer promises every referee that we never contact them
+// for marketing: referees named before version 2026-10-07 keep that promise (the final-rule gate's referee exclusion,
+// whose cutoff must be the instant this version is served), and referees named after it are told management's two
+// sentences ("50pick may send you offers by SMS." "You can stop them at any time with the link in every offer."). ⛔ §9
+// names the version by its LABEL, never "this version": a later version would move a relative phrase and with it the
+// promise. Approved by Ali in the session — COMPLIANCE-DECISIONS.md "Privacy v2026-10-07". The same record is said in the
+// data-rights file (`privacy.ts`, rights.erasure) and under "Erase my data" (`profile.privacyRequestErasureNote`);
+// `test:privacy-notice` §4i ties all three to the code.
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-01 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-01 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-01 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-07 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-07 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-07 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -125,10 +136,11 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Retention">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Account and identity (KYC) records: at least 7 years after the account is closed (AML statutory). If you ask us to erase a closed account, your contact details, password and the name and number on your identity record are removed at once; the images of your identity documents are kept until at least 7 years after closure</li>
+          <li>Account and identity (KYC) records: at least 7 years after the account is closed (AML statutory). If you ask us to erase a closed account, your contact details, password and the name and number on your identity record are removed at once, except as stated below for marketing text messages; the images of your identity documents are kept until at least 7 years after closure</li>
           <li>Prediction and transaction history: at least 7 years</li>
           <li>Audit log entries: at least 7 years</li>
           <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
+          <li>Records of marketing text messages (offers and news by SMS): at least 7 years. For each message they hold the number it was sent to, the message, what happened to it and the stop link it carried. If you ask us to erase a closed account, we remove which account they belonged to and keep the rest</li>
           <li>Visit counts, daily totals that identify no one: 400 days</li>
           <li>Journey counts, daily totals that identify no one: 400 days</li>
           <li>Google Analytics, only if you allow analytics: Google keeps the events it receives for 2 months, and data linked to your browser&apos;s random identifier for 14 months</li>
@@ -178,9 +190,15 @@ function content(): Record<Locale, React.ReactNode> { return {
           and national-ID scans of two referees, and attest that each referee agreed to this. If
           you are such a referee: we hold your details only to verify that application; the ID
           scan is destroyed {AGENT_REFEREE_DOC_HOLD_DAYS} days after the decision, and
-          immediately if the application is refused; we never contact you for marketing; and you
-          may ask us to destroy your information sooner by writing to the data controller named
-          in §1 — you do not need an account to do so.
+          immediately if the application is refused; and you may ask us to destroy your
+          information sooner by writing to the data controller named in §1 — you do not need an
+          account to do so.
+        </p>
+        <p>
+          Until version 2026-10-07 of this policy we told every referee that we never contact them
+          for marketing, and that promise stands: if you were named as a referee before then, we
+          send you no offers. If you are named as a referee after that: 50pick may send you offers
+          by SMS. You can stop them at any time with the link in every offer.
         </p>
       </LegalSection>
     </>
@@ -236,10 +254,11 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Uhifadhi">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Kumbukumbu za akaunti na utambulisho (KYC): angalau miaka 7 baada ya akaunti kufungwa (sharti la kisheria la AML). Ukituomba kufuta akaunti iliyofungwa, taarifa zako za mawasiliano, nenosiri, na jina na namba kwenye rekodi yako ya utambulisho huondolewa mara moja; picha za nyaraka zako za utambulisho huhifadhiwa hadi angalau miaka 7 baada ya kufungwa</li>
+          <li>Kumbukumbu za akaunti na utambulisho (KYC): angalau miaka 7 baada ya akaunti kufungwa (sharti la kisheria la AML). Ukituomba kufuta akaunti iliyofungwa, taarifa zako za mawasiliano, nenosiri, na jina na namba kwenye rekodi yako ya utambulisho huondolewa mara moja, isipokuwa kama ilivyoelezwa hapa chini kuhusu SMS za ofa na habari; picha za nyaraka zako za utambulisho huhifadhiwa hadi angalau miaka 7 baada ya kufungwa</li>
           <li>Historia ya utabiri na miamala: angalau miaka 7</li>
           <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
           <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
+          <li>Kumbukumbu za SMS za ofa na habari: angalau miaka 7. Kwa kila ujumbe tunahifadhi namba ya simu, maandishi ya ujumbe, kilichotokea kwa ujumbe huo na kiungo cha “Acha” kilichokuwa ndani yake. Ukituomba kufuta akaunti iliyofungwa, uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa</li>
           <li>Hesabu za matembeleo, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
           <li>Hesabu za safari, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
           <li>Google Analytics, ikiwa tu utaruhusu takwimu: Google huhifadhi matukio inayopokea kwa miezi 2, na data inayohusishwa na kitambulisho cha nasibu cha kivinjari chako kwa miezi 14</li>
@@ -289,9 +308,16 @@ function content(): Record<Locale, React.ReactNode> { return {
           vitambulisho vya taifa vya wadhamini wawili, na anathibitisha kuwa kila mdhamini
           amekubali. Kama wewe ni mdhamini wa aina hiyo: tunahifadhi taarifa zako kwa ajili ya
           kuhakiki maombi hayo pekee; nakala ya kitambulisho huharibiwa siku {AGENT_REFEREE_DOC_HOLD_DAYS}{" "}
-          baada ya uamuzi, na mara moja maombi yakikataliwa; hatuwasiliani nawe kamwe kwa
-          matangazo; na unaweza kutuomba tuharibu taarifa zako mapema zaidi kwa kumwandikia
-          msimamizi wa data aliyetajwa katika §1 — huhitaji kuwa na akaunti.
+          baada ya uamuzi, na mara moja maombi yakikataliwa; na unaweza kutuomba tuharibu taarifa
+          zako mapema zaidi kwa kumwandikia msimamizi wa data aliyetajwa katika §1 — huhitaji kuwa
+          na akaunti.
+        </p>
+        <p>
+          Hadi toleo la 2026-10-07 la sera hii tuliwaambia wadhamini wote kwamba hatuwasiliani nao
+          kamwe kwa matangazo, na ahadi hiyo inabaki: kama ulitajwa kuwa mdhamini kabla ya hapo,
+          hatukutumii ofa yoyote. Kama umetajwa kuwa mdhamini baada ya hapo: 50pick inaweza
+          kukutumia ofa kwa SMS. Unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha
+          kilicho katika kila ofa.
         </p>
       </LegalSection>
     </>
@@ -347,10 +373,11 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="保留期限">
         <ul className="list-disc pl-5 space-y-1">
-          <li>账户与身份（KYC）记录：账户注销后至少 7 年（AML 法定要求）。如您要求删除已注销的账户，您的联系方式、密码以及身份记录上的姓名与证件号码将立即删除；身份证件图片保留至注销后至少 7 年</li>
+          <li>账户与身份（KYC）记录：账户注销后至少 7 年（AML 法定要求）。如您要求删除已注销的账户，您的联系方式、密码以及身份记录上的姓名与证件号码将立即删除，但下文所述的短信优惠与资讯记录除外；身份证件图片保留至注销后至少 7 年</li>
           <li>预测与交易历史：至少 7 年</li>
           <li>审计日志条目：至少 7 年</li>
           <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>
+          <li>短信优惠与资讯的记录：至少 7 年。我们为每条短信保存所发往的号码、短信内容、发送结果，以及短信中用于停止接收的链接。如您要求删除已注销的账户，我们将删除这些记录与您账户的关联，其余内容予以保留</li>
           <li>访问计数（不识别任何人的每日总数）：400 天</li>
           <li>使用流程计数（不识别任何人的每日总数）：400 天</li>
           <li>Google Analytics（仅在您允许分析时）：Google 将其接收的事件数据保留 2 个月，与您浏览器随机标识符相关联的数据保留 14 个月</li>
@@ -383,7 +410,10 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="9" title="非客户人士（推荐人）">
         <p>
-          当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息；身份证扫描件在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；我们绝不会为营销目的联系您；您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
+          当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息；身份证扫描件在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
+        </p>
+        <p>
+          在本政策 2026-10-07 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。这一承诺依然有效：若您在此之前被提名为推荐人，我们不会向您发送任何优惠。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。
         </p>
       </LegalSection>
     </>

@@ -4,9 +4,11 @@
  *
  * ⭐ DRIVEN, NOT READ, wherever it can run in a script — over the MEMORY twin, in-process:
  *   §1 THE DOOR — the REAL `registerWithPassword`, the one sign-up door since 2026-10-06 (the one-time-code sign-up was
- *      deleted): it makes the new number a contact; the ticked box reads GIVEN and the unticked one UNKNOWN with no
- *      ledger row; the bootstrap admin is never one; a THROWING book and a SILENT book each leave the sign-up finishing
- *      (the account and its wallet created); the failure is logged with no number in it.
+ *      deleted): it makes the new number a contact; sign-up records no consent since the SMS-offers box was REMOVED
+ *      (2026-10-07), so a new number reads UNKNOWN with no ledger row — even when its page posts the old tick — and a
+ *      number the ledger already holds reads the ledger's word; the bootstrap admin is never one; a THROWING book and a
+ *      SILENT book each leave the sign-up finishing (the account and its wallet created); the failure is logged with no
+ *      number in it.
  *   §2 THE RULE — `ensureRegistrationContact` on seeded accounts: the row's shape, the cache from the ledger, an officer's
  *      contact LINKED (not duplicated, not overwritten, its stamp kept — OD56), clients only, already-linked a read.
  *   §3 U18b's RECYCLED-NUMBER RULES — an erased tombstone never revived; a row linked to another account never re-pointed.
@@ -38,6 +40,8 @@ import { db } from "../src/lib/server/store.ts";
 import type { MessagingKey, PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredUser } from "../src/lib/server/store.ts";
 import { audit, auditFlush, getAuditPage } from "../src/lib/server/audit.ts";
 import { registerWithPassword } from "../src/lib/server/auth-service.ts";
+import type { PasswordRegisterInput } from "../src/lib/server/auth-service.ts";
+import { appendMarketingConsent } from "../src/lib/server/marketing/consent-ledger.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { maskPhone } from "../src/lib/phone-normalize.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
@@ -215,13 +219,16 @@ const leaksIn = (text: string, secrets: readonly string[]): string[] => secrets.
 type DoorRun = { result: unknown; thrown: string };
 const PASSWORD = "Str0ng!Passw0rd#2026";
 /** A successful sign-up mints a session cookie, which needs a Next request scope — so its throw means "it got all the
- *  way" (the `marketing-consent-ledger` suite's reading), and the rows it wrote are read back. */
-async function passwordDoor(phone: string, email: string, ticked: boolean): Promise<DoorRun> {
+ *  way" (the `marketing-consent-ledger` suite's reading), and the rows it wrote are read back.
+ *  ⛔ `staleTick` hands the service the REMOVED SMS-offers box's field, ticked — what a page served before 2026-10-07
+ *  would still post — so §1.2 measures that a stray tick records nothing. */
+async function passwordDoor(phone: string, email: string, staleTick: boolean): Promise<DoorRun> {
   try {
     const result = await registerWithPassword({
       phone, email, password: PASSWORD, passwordConfirm: PASSWORD, dob: "1990-01-01",
-      acceptTerms: true, acceptAge: true, marketingOptIn: ticked, locale: "EN",
-    });
+      acceptTerms: true, acceptAge: true, locale: "EN",
+      ...(staleTick ? ({ marketingOptIn: true } as Record<string, unknown>) : {}),
+    } as PasswordRegisterInput);
     return { result, thrown: "" };
   } catch (err) {
     return { result: null, thrown: String((err as Error)?.message ?? err) };
@@ -243,7 +250,7 @@ const REAL_SOURCES: Sources = {
 
 type Ensure = (user: RegistrationContactUser, deps?: RegistrationContactDeps) => Promise<RegistrationContactResult>;
 type Impl = {
-  password: (phone: string, email: string, ticked: boolean) => Promise<DoorRun>;
+  password: (phone: string, email: string, staleTick: boolean) => Promise<DoorRun>;
   bootstrapDoor: (phone: string, email: string) => Promise<DoorRun>;
   ensure: Ensure;
   atSignup: Ensure;
@@ -275,25 +282,12 @@ function fnBody(src: string, name: string): string {
   const next = src.indexOf(`${LF}export `, at + 1);
   return src.slice(at, next < 0 ? src.length : next);
 }
-/** The index of the brace that closes the block opened at `open`, or -1. */
-function blockEnd(s: string, open: number): number {
-  if (open < 0) return -1;
-  let depth = 0;
-  for (let i = open; i < s.length; i++) {
-    if (s[i] === "{") depth++;
-    else if (s[i] === "}") {
-      depth--;
-      if (depth === 0) return i;
-    }
-  }
-  return -1;
-}
 
 /* ═══ THE LABELS, ONCE — the assertions and the red cases both read them ════════════════════════════ */
 
 const L = {
   d1: "1.1 · THE ONE DOOR makes the new number a contact: the password sign-up leaves exactly ONE book row for the account's number - source REGISTRATION, linked to the account, sourceRef the account id (EXECUTED through the real auth-service)",
-  d2: "1.2 · ⭐ the cache is the ledger's: the ticked box's row reads GIVEN beside its GIVEN ledger row, the unticked box's row reads UNKNOWN and its number has NO ledger row — nothing invented (EXECUTED through the real password door)",
+  d2: "1.2 · ⭐ the cache is the ledger's and sign-up adds nothing to it: a new number reads UNKNOWN with NO ledger row though its page posted the removed SMS-offers box's tick (2026-10-07), and a number the ledger already holds as GIVEN reads GIVEN beside its ONE row — nothing invented (EXECUTED through the real password door)",
   d3: "1.3 · ⛔ the bootstrap admin is never a contact: a password sign-up on an ADMIN_BOOTSTRAP_PHONES number is created ADMIN and leaves the book without a row for it (EXECUTED)",
   d4: "1.4 · ⛔ A THROWING BOOK NEVER FAILS A SIGN-UP: with every book create throwing, the door still creates the account and its wallet (the only throw is the session cookie's, never the book's) and write no row — and the bounded wrapper answers failed, never rejecting",
   d5: "1.5 · ⛔ the failure is logged WITHOUT the number or the email: a book whose error message prints the whole row still yields one [registration-contact] line naming only the stage and the error's name and code — and the cache mirror every sign-up passes through logs its own failure the same way",
@@ -311,7 +305,7 @@ const L = {
   b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
   b2: "5.2 · ⭐ THE BACKFILL IS IDEMPOTENT: a second run creates and links nothing, repairs no cache, writes no audit row, and leaves the store byte-identical",
   b3: "5.3 · ⛔ the backfill holds no number and no name: its counts and every line of its report carry none of the world's numbers, names or emails",
-  s1: "6.1 · THE WIRING: the sign-up door calls registrationContactAtSignup(user) exactly ONCE - after its account row, after (and outside) its consent-ledger block, and after its wallet (the money first) - auth-service creates an account at exactly ONE site, and never calls the unbounded ensureRegistrationContact",
+  s1: "6.1 · THE WIRING: the sign-up door calls registrationContactAtSignup(user) exactly ONCE - after its account row and after its wallet (the money first) - auth-service appends NO consent-ledger row (the SMS-offers box was removed 2026-10-07), creates an account at exactly ONE site, and never calls the unbounded ensureRegistrationContact",
   s2: '6.2 · the copy: SOURCE_LABEL.REGISTRATION reads "Signed up" in the ONE table the column, the rail, the edit dialog and the export read, and "Sign-up" is gone from it',
   s3: "6.3 · the backfill script refuses no DATABASE_URL, the memory twin, a non-loopback URL without --production, and a real-database write run without the app's own audit key — all BEFORE the store loads — runs the ONE walk and prints only the report's lines, naming no number, name or email; and its Postgres probe refuses any non-loopback URL before the store loads",
   s4: "6.4 · the suite is wired: test:registration-contact and red:registration-contact (--prove-red, in-process) exist, and predeploy runs the suite exactly once",
@@ -332,9 +326,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
 
   await inEmptyWorld(async () => {
     /* ── §1 · THE DOORS ──────────────────────────────────────────────────────────────────────────── */
-    const P = { pw: num(1), unticked: num(3), boot: num(4), throwPw: num(5), silent: num(7) };
+    const P = { pw: num(1), known: num(3), boot: num(4), throwPw: num(5), silent: num(7) };
+    // ⛔ P.pw's page posts the removed box's tick (a page served before 2026-10-07); P.known said yes before signing up.
     const pwRun = await impl.password(P.pw, mail(1), true);
-    const untickedRun = await impl.password(P.unticked, mail(3), false);
+    await ledger(P.known, "GIVEN", "2026-09-20T08:00:01.000Z");
+    const knownRun = await impl.password(P.known, mail(3), false);
 
     await check(p(L.d1), async () => {
       const u1 = await addAccount(P.pw);
@@ -346,13 +342,15 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       return [good(u1, c1, P.pw), `password: ${say(u1, c1, pwRun)}`];
     });
     await check(p(L.d2), async () => {
-      await addAccount(P.unticked);
-      const ticked = await db.marketingContact.findByMsisdn(keyOf(P.pw));
-      const plain = await db.marketingContact.findByMsisdn(keyOf(P.unticked));
-      const word = await db.messagingConsent.latestFor(mkey(P.pw));
-      const plainRows = await db.messagingConsent.listFor(mkey(P.unticked));
-      return [ticked?.consentState === "GIVEN" && word?.status === "GIVEN" && plain !== null && plain.consentState === "UNKNOWN" && plainRows.length === 0,
-        `ticked ${ticked?.consentState ?? "no row"} (ledger ${word?.status ?? "none"}) · unticked ${plain?.consentState ?? `no row ${untickedRun.thrown.slice(0, 40)}`} (${plainRows.length} ledger row(s))`];
+      const knownUser = await addAccount(P.known);
+      const fresh = await db.marketingContact.findByMsisdn(keyOf(P.pw));
+      const freshRows = await db.messagingConsent.listFor(mkey(P.pw));
+      const freshUser = await db.user.findByPhone(P.pw);
+      const known = await db.marketingContact.findByMsisdn(keyOf(P.known));
+      const knownRows = await db.messagingConsent.listFor(mkey(P.known));
+      return [fresh !== null && fresh.consentState === "UNKNOWN" && freshRows.length === 0 && freshUser?.marketingOptIn === false
+        && knownUser !== null && known !== null && known.consentState === "GIVEN" && knownRows.length === 1 && knownRows[0]?.status === "GIVEN",
+        `new number ${fresh?.consentState ?? "no row"} (${freshRows.length} ledger row(s), switch ${freshUser?.marketingOptIn}) · known number ${known?.consentState ?? `no row ${knownRun.thrown.slice(0, 40)}`} (${knownRows.length} ledger row(s))`];
     });
 
     const bootRun = await impl.bootstrapDoor(P.boot, mail(4));
@@ -669,18 +667,17 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const body = fnBody(auth, name);
       const calls = body.split("registrationContactAtSignup(").length - 1;
       const iUser = body.indexOf("db.user.create(");
-      const iIf = body.search(/if [(](?:reg|baseParse[.]data)[.]marketingOptIn === true[)] [{]/);
-      const iLedger = body.indexOf("await appendMarketingConsent({");
-      const iEnd = iIf < 0 ? -1 : blockEnd(body, body.indexOf("{", iIf));
       const iHook = body.indexOf("await registrationContactAtSignup(user);");
       const iWallet = body.indexOf("wallet.create(");
-      const placed = calls === 1 && iUser >= 0 && iIf > iUser && iLedger > iIf && iEnd > iLedger && iWallet > iEnd && iHook > iWallet;
-      return { name, placed, at: [iUser, iIf, iLedger, iEnd, iWallet, iHook].join("/"), calls };
+      const placed = calls === 1 && iUser >= 0 && iWallet > iUser && iHook > iWallet;
+      return { name, placed, at: [iUser, iWallet, iHook].join("/"), calls };
     });
+    // ⛔ 2026-10-07 · the SMS-offers box is removed, and with it the door's ledger row: auth-service appends none.
+    const ledgerAppends = auth.split("appendMarketingConsent(").length - 1;
     const imported = auth.includes('import { registrationContactAtSignup } from "@/lib/server/marketing/registration-contact";');
     const unbounded = auth.includes("ensureRegistrationContact");
-    return [doors.every((d) => d.placed) && factories === 1 && imported && !unbounded,
-      `${doors.map((d) => `${d.name} ${d.placed ? "placed" : "OFF"} (${d.calls} call(s) @${d.at})`).join(" · ")} · account factories ${factories} · imported ${imported} · unbounded call ${unbounded}`];
+    return [doors.every((d) => d.placed) && ledgerAppends === 0 && factories === 1 && imported && !unbounded,
+      `${doors.map((d) => `${d.name} ${d.placed ? "placed" : "OFF"} (${d.calls} call(s) @${d.at})`).join(" · ")} · ledger appends ${ledgerAppends} · account factories ${factories} · imported ${imported} · unbounded call ${unbounded}`];
   });
   await check(p(L.s2), () => {
     const copy = src.copy;
@@ -774,7 +771,8 @@ const handShapedRow: Ensure = (user, deps = {}) => {
   });
 };
 
-/** 🔴 The cache read from the account's own toggle when the ledger is silent — an unticked box recorded as a withdrawal. */
+/** 🔴 The cache read from the account's own toggle when the ledger is silent — a switch never turned on recorded as a
+ *  withdrawal. */
 const inventingMirror: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
   ...deps,
   mirror: async (msisdn) => {
@@ -891,16 +889,31 @@ if (!PROVE_RED) {
     {
       name: "the door's book write goes nowhere — the rule hears created while the row never lands",
       expect: L.d1,
-      impl: { ...REAL, password: (phone, email, ticked) => withBookMember("create", (row: StoredMarketingContact) => row, () => passwordDoor(phone, email, ticked)) },
+      impl: { ...REAL, password: (phone, email, staleTick) => withBookMember("create", (row: StoredMarketingContact) => row, () => passwordDoor(phone, email, staleTick)) },
     },
     {
-      name: "the cache write is lost — the ticked box's new row is left reading UNKNOWN",
+      name: "the cache write is lost — a number the ledger holds as GIVEN is left reading UNKNOWN on its new row",
       expect: L.d2,
       impl: {
         ...REAL,
-        password: (phone, email, ticked) => (ticked
-          ? withBookMember("update", (id: string) => db.marketingContact.find(id), () => passwordDoor(phone, email, ticked))
-          : passwordDoor(phone, email, ticked)),
+        password: (phone, email, staleTick) =>
+          withBookMember("update", (id: string) => db.marketingContact.find(id), () => passwordDoor(phone, email, staleTick)),
+      },
+    },
+    {
+      name: "⛔ 2026-10-07 · the removed box revived — a sign-up whose page posts the old tick records a GIVEN row again",
+      expect: L.d2,
+      impl: {
+        ...REAL,
+        password: async (phone, email, staleTick) => {
+          const run = await passwordDoor(phone, email, staleTick);
+          if (staleTick) {
+            await appendMarketingConsent({
+              phoneE164: phone, locale: "EN", status: "GIVEN", source: "REGISTRATION", site: "PROFILE", evidence: "v1", recordedBy: null,
+            });
+          }
+          return run;
+        },
       },
     },
     {
@@ -945,7 +958,7 @@ if (!PROVE_RED) {
       impl: { ...REAL, ensure: handShapedRow },
     },
     {
-      name: "the cache invented from the account's toggle — an unticked box recorded as a withdrawal",
+      name: "the cache invented from the account's toggle — a switch never turned on recorded as a withdrawal",
       expect: L.r2,
       impl: { ...REAL, ensure: inventingMirror },
     },
@@ -1013,6 +1026,11 @@ if (!PROVE_RED) {
       name: "a second account factory returns — another door that creates accounts beside the one sign-up",
       expect: L.s1,
       impl: { ...REAL, sources: { ...REAL_SOURCES, auth: `${REAL_SOURCES.auth}${LF}export async function planted() { await db.user.create({} as never); }${LF}` } },
+    },
+    {
+      name: "⛔ 2026-10-07 · the removed box's ledger append returns to the sign-up door",
+      expect: L.s1,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, auth: REAL_SOURCES.auth.replace("const testerPhones = new Set(", "await appendMarketingConsent({} as never);\n  const testerPhones = new Set(") } },
     },
     {
       name: "the old label back in the ONE table — the column says Sign-up again",
