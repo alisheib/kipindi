@@ -20,6 +20,15 @@
  * ⛔ It is NOT a source-level mutation of `consent.ts`: it cannot catch a defect nobody thought to name. The spec's full
  * `gateWithDefect` matrix (G0 parity against the pre-change model, and its twelve source plants) is still owed, and the
  * tracker says so — this section is the decision table, not the whole of §9 U33a-G.
+ *
+ * ⭐ THE FINAL RULE (2026-10-07) — two changes to the table, each a row here with its plant:
+ *   · Q9 REVERSED (G4, G4b): the two-year lapse is refused EXACTLY as before while the record is closed, and reached on
+ *     LICENCE_PLAYER while it is open — then held to RG, age and status exactly as a never-asked player is;
+ *   · U33r, step 1b (G18–G23): a number keyed as a promised agent referee is refused `agent_referee` in BOTH states —
+ *     a consenting player's, a never-asked player's, a listed contact's and a typed test's — after the stop list and
+ *     before any basis is read; and with no new words live (`REFEREE_NEW_WORDS_LIVE_AT` null) whenever they were named.
+ *     The referee keys are written by the REAL writer (`recordRefereeKeys`), and the gate reads them through the store's
+ *     own read (`DB_GATE_READS.refereeNamedAt`) — so this is the keyed hash, end to end.
  */
 import { db } from "../../src/lib/server/store.ts";
 import type {
@@ -32,6 +41,10 @@ import type {
 } from "../../src/lib/server/marketing/consent.ts";
 import type { LicenceOutreach } from "../../src/lib/server/marketing/outreach-record.ts";
 import { SMS_CONSENT_WORDINGS } from "../../src/lib/marketing/consent-wording.ts";
+// U33r · the REAL writer seeds the referee keys, and the ONE rule and constant the gate asks.
+import {
+  recordRefereeKeys, refereePromiseHolds, REFEREE_NEW_WORDS_LIVE_AT,
+} from "../../src/lib/server/marketing/referee-exclusion.ts";
 
 export type Ok = (label: string, cond: boolean, detail?: string) => void;
 
@@ -65,7 +78,8 @@ export const LICENCE_LABELS = {
   g1: "G1 · a player who was never asked — no ledger row, toggle off — is refused `no_consent` while the record is closed, and ALLOWED on LICENCE_PLAYER when it is open, with the record's own instant as the ref",
   g2: "G2 · a player whose only GIVEN is under words that never named SMS is refused while closed, and ALLOWED on LICENCE_PLAYER while open — the licence reaches somebody who was never properly asked",
   g3: "G3 · ⛔ a WITHDRAWN latest row is refused `consent_withdrawn` in BOTH states — the licence basis never overrides a stop, and says so",
-  g4: "G4 · ⛔ a toggle switched off after a GIVEN with no withdrawal (the lapse) is refused `no_consent` in both states — a person who turned it off is nearer a stop than to never having been asked",
+  g4: "G4 · ⭐ Q9 REVERSED (the owner's FINAL rule, 2026-10-07) · a toggle switched off after a GIVEN with no withdrawal (the two-year lapse) is refused `no_consent` while the record is CLOSED — today's detail, byte for byte — and ALLOWED on LICENCE_PLAYER while it is OPEN, with the record's own instant as the ref",
+  g4b: "G4b · ⛔ …and a LAPSED player is then held to RG, age and status exactly as a never-asked one: serving a self-exclusion → `rg_self_excluded`, under 18 → `age_minor`, a CLOSED account (closure clears the flag too) → `account_status` while open — and each `no_consent` while closed",
   g5: "G5 · ⛔ a player serving a self-exclusion is refused `rg_self_excluded` in both states — a licence basis never counts as opting in again (S11)",
   g6: "G6 · ⛔ a player under 18 is refused `age_minor` in both states, whatever the basis",
   g7: "G7 · ⛔ a CLOSED account is refused `account_status` in both states",
@@ -77,8 +91,14 @@ export const LICENCE_LABELS = {
   g13: "G13 · a contact consented under a pinned SMS sentence with no 18+ evidence is refused `age_unknown` in both states — consent to be messaged is not a statement of age (OD14)",
   g14: "G14 · a contact consented under a pinned sentence AND covered by a list is ALLOWED on CONSENT in both states — consent is asked first and wins wherever it exists, and the 18+ comes from the cover",
   g15: "G15 · the typed test's attestation: a non-member is ALLOWED on LICENCE_TEST while open; it is ignored while the record is closed, ignored when stale, and never overrides an erased record",
-  g16: "G16 · ⛔ asking changes nothing — no consent row, suppression, user or RG row is written by any call in this table",
+  g16: "G16 · ⛔ asking changes nothing — no consent row, suppression, user, RG row or referee key is written by any call in this table",
   g17: "G17 · every ALLOWED names a basis whose ref has that kind's shape, and no ref that can reach an audit payload carries a run of nine digits",
+  g18: "G18 · ⛔ U33r · a CONSENTING player whose number is a promised agent referee is refused `agent_referee` in BOTH states — the promise is asked before any basis, so a consent given at that number never outranks it — with no account on the refusal, and a detail that names when the referee was named, never the number",
+  g19: "G19 · ⛔ U33r · a NEVER-ASKED player and a LAPSED player whose numbers are promised referees are refused `agent_referee` in BOTH states — an open licence-outreach record never reaches a referee",
+  g20: "G20 · ⛔ U33r · a contact consented under a pinned sentence AND covered by a list, and a contact handed a fresh typed-test attestation, whose numbers are promised referees, are refused `agent_referee` in BOTH states — no consent, list basis or attestation reaches a referee",
+  g21: "G21 · ⛔ U33r · THE ORDER — a referee on the stop list is refused `suppressed` (the stop list is asked first), and a referee is refused right after it, BEFORE any basis is read: the account, the ledger, the record and the book are never asked about the number",
+  g22: "G22 · ⛔ U33r · NEVER ON A GUESS — with no new words live (REFEREE_NEW_WORDS_LIVE_AT is null) a referee named at ANY instant, even years from now, is refused; and the ONE rule, once new words are live: named before them still refused, named at or after them not, an instant that cannot be read on either side refused",
+  g23: "G23 · ⚠️ CONTROL · U33r · every referee number this section keyed answers its naming instant through the store's own read, and none of G1–G15's numbers answers one — so every row above is a non-referee, answering exactly as it always did",
 } as const;
 
 /* ══ THE WORLD ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -112,7 +132,21 @@ export const FX = {
   neverAsked: 1, oldWordingPlayer: 2, withdrawnPlayer: 3, lapsedPlayer: 4, selfExcluded: 5,
   minor: 6, closedAccount: 7, listed: 8, uncovered: 9, erasedContact: 10, withdrawnListed: 11,
   suppressedListed: 12, consentedBare: 13, consentedListed: 14, typedTest: 15,
+  // ── Q9 reversed · a lapse held to the protections (G4b) ──
+  lapsedSelfExcluded: 16, lapsedMinor: 17, lapsedClosed: 18,
+  // ── U33r · promised agent referees (G18–G22) ──
+  refereeConsenting: 19, refereeNeverAsked: 20, refereeLapsed: 21, refereeListed: 22, refereeTyped: 23,
+  refereeSuppressed: 24, refereeLater: 25,
 } as const;
+
+/** U33r · the fixtures whose numbers this section keys as promised referees — every other FX number is a non-referee. */
+export const REFEREE_FX: readonly number[] = [
+  FX.refereeConsenting, FX.refereeNeverAsked, FX.refereeLapsed, FX.refereeListed, FX.refereeTyped, FX.refereeSuppressed, FX.refereeLater,
+];
+/** When the referees were named — the agent programme's first week — and, for `refereeLater`, years after any plausible
+ *  re-wording: with no new words live, it is excluded all the same (G22). */
+const REFEREES_NAMED_AT = "2026-09-08T10:00:00.000Z";
+const REFEREE_NAMED_LATER = "2030-01-01T00:00:00.000Z";
 
 const STANDING: Record<number, BookStanding> = {
   [FX.listed]: LIVE_COVERED,
@@ -122,6 +156,10 @@ const STANDING: Record<number, BookStanding> = {
   [FX.suppressedListed]: LIVE_COVERED,
   [FX.consentedBare]: LIVE_BARE,
   [FX.consentedListed]: LIVE_COVERED,
+  // U33r · a referee contact that WOULD be reached on its own consent and its list's cover — and must not be.
+  [FX.refereeListed]: LIVE_COVERED,
+  [FX.refereeSuppressed]: LIVE_COVERED,
+  [FX.refereeTyped]: LIVE_BARE,
 };
 
 let seeded = false;
@@ -164,6 +202,36 @@ export async function seedLicenceWorld(): Promise<void> {
   await consent(FX.consentedBare, "GIVEN", PINNED_SW, "2026-01-01T00:00:00.000Z");
   await consent(FX.consentedListed, "GIVEN", PINNED_SW, "2026-01-01T00:00:00.000Z");
   // FX.uncovered and FX.erasedContact and FX.listed and FX.typedTest carry no ledger row at all.
+
+  // ── Q9 reversed · three LAPSED players (the flag cleared, the latest row still GIVEN), each with a protection (G4b) ──
+  await user(FX.lapsedSelfExcluded, { marketingOptIn: false }, new Date(Date.now() + 30 * 86400_000).toISOString());
+  await consent(FX.lapsedSelfExcluded, "GIVEN", PINNED_SW, "2024-01-01T00:00:00.000Z");
+  await user(FX.lapsedMinor, { marketingOptIn: false, dob: "2015-01-01" });
+  await consent(FX.lapsedMinor, "GIVEN", PINNED_SW, "2024-01-01T00:00:00.000Z");
+  await user(FX.lapsedClosed, { marketingOptIn: false, status: "CLOSED" });
+  await consent(FX.lapsedClosed, "GIVEN", PINNED_SW, "2024-01-01T00:00:00.000Z");
+
+  // ── U33r · the promised referees: each a fixture that WOULD be reached, or refused for another reason, without the key ──
+  await user(FX.refereeConsenting, { marketingOptIn: true });                              // a consent the gate counts
+  await consent(FX.refereeConsenting, "GIVEN", PINNED_SW, "2026-01-01T00:00:00.000Z");
+  await user(FX.refereeNeverAsked, { marketingOptIn: false });                             // LICENCE_PLAYER while open
+  await user(FX.refereeLapsed, { marketingOptIn: false });                                 // the lapse, reached while open
+  await consent(FX.refereeLapsed, "GIVEN", PINNED_SW, "2024-01-01T00:00:00.000Z");
+  await consent(FX.refereeListed, "GIVEN", PINNED_SW, "2026-01-01T00:00:00.000Z");         // a consented, covered contact
+  await Promise.resolve(db.suppression.create({
+    id: `ls${seq++}`, channel: "SMS", identifier: key(FX.refereeSuppressed), category: "MARKETING",
+    reason: "WITHDRAWN", evidence: "fixture", recordedBy: null,
+    createdAt: "2026-01-01T00:00:00.000Z", liftedAt: null, liftedReason: null,
+  }));
+  // FX.refereeTyped and FX.refereeLater carry no ledger row: a stranger, but for the key.
+  // ⭐ Keyed by the REAL writer, from contacts spelled the way applicants type them — the gate then reads the keyed hash.
+  const spelled = (i: number): string => `+255 ${phone(i).slice(1, 4)} ${phone(i).slice(4, 7)} ${phone(i).slice(7)}`;
+  await recordRefereeKeys({
+    contacts: [phone(FX.refereeConsenting), spelled(FX.refereeNeverAsked), `${phone(FX.refereeLapsed)} / ${spelled(FX.refereeListed)}`],
+    namedAt: REFEREES_NAMED_AT,
+  });
+  await recordRefereeKeys({ contacts: [phone(FX.refereeTyped), phone(FX.refereeSuppressed)], namedAt: REFEREES_NAMED_AT });
+  await recordRefereeKeys({ contacts: [spelled(FX.refereeLater)], namedAt: REFEREE_NAMED_LATER });
 }
 
 /** The reads: the store's own three, and the two U33a-G planted ones. */
@@ -226,10 +294,27 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
     ok(p(L.g3), refused(c, "consent_withdrawn") && refused(o, "consent_withdrawn") && says,
       `closed ${show(c)} · open ${show(o)} · names the rule ${says}`);
   }
-  // ── G4 · the lapse ──────────────────────────────────────────────────────────────────────────────────────────────
+  // ── G4 · the lapse — Q9 REVERSED: refused exactly as before while closed, reached on the licence while open ────────
   {
     const c = await closed(FX.lapsedPlayer); const o = await open(FX.lapsedPlayer);
-    ok(p(L.g4), refused(c, "no_consent") && refused(o, "no_consent"), `closed ${show(c)} · open ${show(o)}`);
+    // ⛔ The closed answer is today's, detail and all: the toggle refuses before the ledger is ever read (S5).
+    const today = "ok" in c && c.ok === false && c.detail === "the player's own marketing toggle is off";
+    ok(p(L.g4), refused(c, "no_consent") && today && allowed(o, "LICENCE_PLAYER", `outreach:${OPEN.recordedAt}`),
+      `closed ${show(c)} (today's detail ${today}) · open ${show(o)}`);
+  }
+  // ── G4b · a lapse reached is a lapse protected: RG, age and status, exactly as a never-asked player ─────────────────
+  {
+    const rows = [
+      [FX.lapsedSelfExcluded, "rg_self_excluded"], [FX.lapsedMinor, "age_minor"], [FX.lapsedClosed, "account_status"],
+    ] as const;
+    const said: string[] = [];
+    let held = true;
+    for (const [i, reason] of rows) {
+      const c = await closed(i); const o = await open(i);
+      said.push(`${reason}: closed ${show(c)} · open ${show(o)}`);
+      if (!refused(c, "no_consent") || !refused(o, reason)) held = false;
+    }
+    ok(p(L.g4b), held, said.join(" · "));
   }
   // ── G5–G7 · the protections a basis never lowers ────────────────────────────────────────────────────────────────
   {
@@ -301,6 +386,8 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
       consents: (await Promise.resolve(db.messagingConsent.latestFor({ channel: "SMS", identifier: key(FX.neverAsked), category: "MARKETING" }))) ?? null,
       stop: (await Promise.resolve(db.suppression.find({ channel: "SMS", identifier: key(FX.listed), category: "MARKETING" }))) ?? null,
       optIn: (await Promise.resolve(db.user.findByPhone(`+${key(FX.neverAsked)}`)))?.marketingOptIn ?? null,
+      // U33r · the referee keys — every row, not a count: a write that replaced one would move it too.
+      referees: [...(globalThis as unknown as { __50PICK_STORE?: { agentRefereeKeys?: Map<string, unknown> } }).__50PICK_STORE?.agentRefereeKeys?.entries() ?? []],
     });
     const before = await count();
     for (const i of Object.values(FX)) { await open(i); await closed(i); }
@@ -324,7 +411,87 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
     ok(p(L.g17), shaped && clean && auditable.length === 3,
       `shaped ${shaped} · auditable ${auditable.length} · clean ${clean}`);
   }
+
+  /* ══ U33r · STEP 1b — THE PROMISED AGENT REFEREES ══════════════════════════════════════════════════════════════════ */
+  // ── G18 · a consent never outranks the promise ──────────────────────────────────────────────────────────────────────
+  {
+    const c = await closed(FX.refereeConsenting); const o = await open(FX.refereeConsenting);
+    let v: MarketingGateVerdict | null = null;
+    try { v = await impl.gate(phone(FX.refereeConsenting), NOW, readsFor(OPEN), {}); } catch { v = null; }
+    const noAccount = v !== null && !v.ok && v.userId === undefined;
+    const detail = "ok" in o && o.ok === false ? o.detail : "";
+    const says = detail.includes(`named ${REFEREES_NAMED_AT}`) && !NINE_DIGITS.test(detail) && !detail.includes(key(FX.refereeConsenting).slice(3));
+    ok(p(L.g18), refused(c, "agent_referee") && refused(o, "agent_referee") && noAccount && says,
+      `closed ${show(c)} · open ${show(o)} · no account ${noAccount} · detail names the instant and no number ${says}`);
+  }
+  // ── G19 · an open record never reaches a referee — never asked, or lapsed ────────────────────────────────────────────
+  {
+    const never = [await closed(FX.refereeNeverAsked), await open(FX.refereeNeverAsked)];
+    const lapsed = [await closed(FX.refereeLapsed), await open(FX.refereeLapsed)];
+    ok(p(L.g19), [...never, ...lapsed].every((a) => refused(a, "agent_referee")),
+      `never asked ${never.map(show).join("/")} · lapsed ${lapsed.map(show).join("/")}`);
+  }
+  // ── G20 · no consent, list basis or attestation reaches a referee contact ───────────────────────────────────────────
+  {
+    const listed = [await closed(FX.refereeListed), await open(FX.refereeListed)];
+    const typed = [await closed(FX.refereeTyped, { testAttestation: attestation() }), await open(FX.refereeTyped, { testAttestation: attestation() })];
+    ok(p(L.g20), [...listed, ...typed].every((a) => refused(a, "agent_referee")),
+      `listed and consented ${listed.map(show).join("/")} · typed ${typed.map(show).join("/")}`);
+  }
+  // ── G21 · the order: the stop list first, then the promise, then nothing else is read ───────────────────────────────
+  {
+    const stopped = [await closed(FX.refereeSuppressed), await open(FX.refereeSuppressed)];
+    const count = { stop: 0, referee: 0, account: 0, ledger: 0, record: 0, book: 0 };
+    const base = readsFor(OPEN);
+    const counting: MarketingGateReads = {
+      suppression: (k) => { count.stop++; return base.suppression(k); },
+      refereeNamedAt: (m) => { count.referee++; return base.refereeNamedAt(m); },
+      userByPhone: (ph) => { count.account++; return base.userByPhone(ph); },
+      latestConsent: (k) => { count.ledger++; return base.latestConsent(k); },
+      outreach: () => { count.record++; return base.outreach(); },
+      bookStanding: (m) => { count.book++; return base.bookStanding(m); },
+    };
+    let v: MarketingGateVerdict | null = null;
+    try { v = await impl.gate(phone(FX.refereeConsenting), NOW, counting, {}); } catch { v = null; }
+    const refereeReads = { ...count };
+    // ⚠️ CONTROL: the same counting reads DO see the account and the ledger for a non-referee player — so a zero above is
+    // the gate not asking, never a counter that does not count.
+    for (const k of Object.keys(count) as (keyof typeof count)[]) count[k] = 0;
+    try { await impl.gate(phone(FX.neverAsked), NOW, counting, {}); } catch { /* the counts say what was read */ }
+    const controlSaw = count.account >= 1 && count.ledger >= 1;
+    ok(p(L.g21),
+      stopped.every((a) => refused(a, "suppressed")) && v !== null && !v.ok && v.skipReason === "agent_referee"
+        && refereeReads.stop === 1 && refereeReads.referee === 1
+        && refereeReads.account === 0 && refereeReads.ledger === 0 && refereeReads.record === 0 && refereeReads.book === 0 && controlSaw,
+      `stopped ${stopped.map(show).join("/")} · referee reads ${JSON.stringify(refereeReads)} · control saw the account ${controlSaw}`);
+  }
+  // ── G22 · never on a guess ──────────────────────────────────────────────────────────────────────────────────────────
+  {
+    const later = [await closed(FX.refereeLater), await open(FX.refereeLater), await open(FX.refereeLater, { testAttestation: attestation() })];
+    const CUT = "2026-10-20T00:00:00.000Z";
+    const rule = [
+      refereePromiseHolds(REFEREES_NAMED_AT, CUT) === true,
+      refereePromiseHolds(CUT, CUT) === false,
+      refereePromiseHolds("2026-10-21T00:00:00.000Z", CUT) === false,
+      refereePromiseHolds("not an instant", CUT) === true,
+      refereePromiseHolds(REFEREES_NAMED_AT, "not an instant") === true,
+      refereePromiseHolds(REFEREE_NAMED_LATER, null) === true,
+    ];
+    ok(p(L.g22), REFEREE_NEW_WORDS_LIVE_AT === null && later.every((a) => refused(a, "agent_referee")) && rule.every(Boolean),
+      `constant ${String(REFEREE_NEW_WORDS_LIVE_AT)} · named 2030 ${later.map(show).join("/")} · rule ${rule.join(",")}`);
+  }
+  // ── G23 · CONTROL — the keys are there, and only for the referees ───────────────────────────────────────────────────
+  {
+    const answers = await Promise.all(Object.values(FX).map(async (i) => [i, await Promise.resolve(DB_GATE_READS.refereeNamedAt(key(i)))] as const));
+    const keyed = answers.filter(([i]) => REFEREE_FX.includes(i)).every(([, at]) => at !== null);
+    const others = answers.filter(([i]) => !REFEREE_FX.includes(i)).every(([, at]) => at === null);
+    ok(p(L.g23), keyed && others && answers.length === Object.values(FX).length,
+      answers.map(([i, at]) => `${i}:${at === null ? "-" : "named"}`).join(" "));
+  }
 }
+
+/** A run of nine digits — a phone number's national part in any refusal text or ref. ⛔ A character class, no escape. */
+const NINE_DIGITS = /[0-9]{9}/;
 
 /* ══ THE RED CASES ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -333,14 +500,29 @@ export type LicenceDefect = {
   readonly basisAsConsent?: boolean;
   /** A WITHDRAWN row is overridden by a list cover. */
   readonly stopOverridden?: boolean;
-  /** The lapse rule is dropped: a switched-off player is reached under the licence. */
-  readonly lapseDropped?: boolean;
+  /** ⛔ Q9 UN-REVERSED — the lapse refusal restored: a switched-off player is refused under an open record again (the plant
+   *  that was "the lapse rule dropped" until the owner's final rule made dropping it the law). */
+  readonly lapseRestored?: boolean;
+  /** A lapsed player reached under the licence WITHOUT the protections — RG, age and status skipped for them. */
+  readonly lapseUnprotected?: boolean;
   /** An erased record is treated as an ordinary uncovered one. */
   readonly erasedForgotten?: boolean;
   /** The record is honoured as open even when it is closed. */
   readonly openWhileClosed?: boolean;
   /** A stale attestation is honoured. */
   readonly staleHonoured?: boolean;
+  /** U33r · the referee keys never asked — every referee answered as a stranger. */
+  readonly refereeIgnored?: boolean;
+  /** U33r · consent asked BEFORE the promise — a referee who consented is reached on CONSENT. */
+  readonly refereeAfterConsent?: boolean;
+  /** U33r · the promise kept only while the record is CLOSED — an open record reaches a referee. */
+  readonly refereeOnlyWhileClosed?: boolean;
+  /** U33r · the promise asked BEFORE the stop list — a stopped referee says `agent_referee`, not `suppressed`. */
+  readonly refereeBeforeStop?: boolean;
+  /** U33r · the account read BEFORE the promise — the gate asks about a referee's account at all. */
+  readonly accountBeforeReferee?: boolean;
+  /** U33r · a guess at the re-wording: a referee named after the final rule is let through though no new words are live. */
+  readonly cutoffGuessed?: boolean;
 };
 
 /**
@@ -355,17 +537,41 @@ export function licenceGateWithDefect(d: LicenceDefect): LicenceImpl {
       const ctx: MarketingGateContext = d.staleHonoured && context.testAttestation
         ? { testAttestation: { ...context.testAttestation, at: now.toISOString() } }
         : context;
+      // U33r · the account asked about first — before the gate (and so before its promise) is asked at all.
+      if (d.accountBeforeReferee) await Promise.resolve(reads.userByPhone(`+${toMsisdn255(msisdn)}`));
       const v = await mayReceiveMarketingSms(msisdn, now, effective, ctx);
       const standing = await Promise.resolve(reads.bookStanding(toMsisdn255(msisdn)));
+      /** The same question with the referee keys answering "not a referee" — what each referee plant hands back. */
+      const withoutPromise = () => mayReceiveMarketingSms(msisdn, now, { ...effective, refereeNamedAt: () => null }, ctx);
       if (d.basisAsConsent && v.ok && v.basis !== "CONSENT") return { ok: true, basis: "CONSENT", basisRef: v.basisRef };
       if (!v.ok && d.stopOverridden && v.skipReason === "consent_withdrawn" && standing.cover) {
         return { ok: true, basis: "LICENCE_LIST", basisRef: `list-basis:${standing.cover.basisId}` };
       }
-      if (!v.ok && d.lapseDropped && v.skipReason === "no_consent" && record.state === "open" && msisdn === phone(FX.lapsedPlayer)) {
+      if (v.ok && d.lapseRestored && record.state === "open" && msisdn === phone(FX.lapsedPlayer)) {
+        return { ok: false, skipReason: "no_consent", detail: "a lapse — the licence basis does not reach it" };
+      }
+      if (!v.ok && d.lapseUnprotected && record.state === "open"
+        && [phone(FX.lapsedSelfExcluded), phone(FX.lapsedMinor), phone(FX.lapsedClosed)].includes(msisdn)) {
         return { ok: true, basis: "LICENCE_PLAYER", basisRef: `outreach:${OPEN.recordedAt}` };
       }
       if (!v.ok && d.erasedForgotten && standing.row === "erased" && context.testAttestation) {
         return { ok: true, basis: "LICENCE_TEST", basisRef: `test:${context.testAttestation.attemptRef}` };
+      }
+      if (!v.ok && v.skipReason === "agent_referee") {
+        if (d.refereeIgnored) return withoutPromise();
+        if (d.refereeAfterConsent) {
+          const w = await withoutPromise();
+          if (w.ok && w.basis === "CONSENT") return w;
+        }
+        if (d.refereeOnlyWhileClosed && record.state === "open") return withoutPromise();
+        if (d.cutoffGuessed) {
+          const named = await Promise.resolve(reads.refereeNamedAt(toMsisdn255(msisdn)));
+          if (named !== null && Date.parse(named) > Date.parse("2026-10-07T00:00:00.000Z")) return withoutPromise();
+        }
+      }
+      if (!v.ok && v.skipReason === "suppressed" && d.refereeBeforeStop) {
+        const named = await Promise.resolve(reads.refereeNamedAt(toMsisdn255(msisdn)));
+        if (named !== null) return { ok: false, skipReason: "agent_referee", detail: "a referee, asked before the stop list" };
       }
       return v;
     },
@@ -376,9 +582,16 @@ export function licenceCases(): { name: string; defect: LicenceDefect; expect: s
   return [
     { name: "a licence basis handed out as a CONSENT", defect: { basisAsConsent: true }, expect: LICENCE_LABELS.g1 },
     { name: "a list cover overriding a WITHDRAWN row", defect: { stopOverridden: true }, expect: LICENCE_LABELS.g11 },
-    { name: "the lapse rule dropped", defect: { lapseDropped: true }, expect: LICENCE_LABELS.g4 },
+    { name: "⛔ Q9 un-reversed — the lapse refusal restored under an open record", defect: { lapseRestored: true }, expect: LICENCE_LABELS.g4 },
+    { name: "a lapsed player reached with RG, age and status skipped", defect: { lapseUnprotected: true }, expect: LICENCE_LABELS.g4b },
     { name: "an erased record reached by an attestation", defect: { erasedForgotten: true }, expect: LICENCE_LABELS.g10 },
     { name: "the record read open while it is closed", defect: { openWhileClosed: true }, expect: LICENCE_LABELS.g1 },
     { name: "a stale attestation honoured", defect: { staleHonoured: true }, expect: LICENCE_LABELS.g15 },
+    { name: "U33r · the referee keys never asked", defect: { refereeIgnored: true }, expect: LICENCE_LABELS.g18 },
+    { name: "U33r · consent asked before the promise — a consenting referee reached", defect: { refereeAfterConsent: true }, expect: LICENCE_LABELS.g18 },
+    { name: "U33r · the promise kept only while the record is closed", defect: { refereeOnlyWhileClosed: true }, expect: LICENCE_LABELS.g19 },
+    { name: "U33r · the promise asked before the stop list", defect: { refereeBeforeStop: true }, expect: LICENCE_LABELS.g21 },
+    { name: "U33r · the referee's account read before the promise", defect: { accountBeforeReferee: true }, expect: LICENCE_LABELS.g21 },
+    { name: "U33r · a referee named after the final rule let through on a guessed re-wording", defect: { cutoffGuessed: true }, expect: LICENCE_LABELS.g22 },
   ];
 }

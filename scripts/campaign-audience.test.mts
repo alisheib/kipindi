@@ -66,6 +66,8 @@ import type {
 } from "../src/lib/server/marketing/audience-split.ts";
 import { mayReceiveMarketingSms, DB_GATE_READS, userPhoneKeyFor } from "../src/lib/server/marketing/consent.ts";
 import type { MarketingSkipReason } from "../src/lib/server/marketing/consent.ts";
+// U33r · the REAL writer keys the fixture's referee, and the single read the bulk one must equal.
+import { recordRefereeKeys, refereeNamedAtFor } from "../src/lib/server/marketing/referee-exclusion.ts";
 import { dispatchSlice } from "../src/lib/server/marketing/dispatch.ts";
 import type { SliceOutcome } from "../src/lib/server/marketing/dispatch.ts";
 // U13 · the send loop is driven with a FIXED open window (ENGINE-SPEC §5 rule 9) — 4.3 and R12 hold at any clock.
@@ -224,6 +226,10 @@ await consenting("pa14", "+255711000014", 14, { dob: null });                   
 await consenting("pa15", "+255641000015", 15);                                                   // NDC 064 — no live network
 await consenting("pa16", "+255761000016", 16);                                                   // will receive; the book holds the number (cb06)
 await consenting("pa17", "+255761000017", 17);                                                   // will receive; an ERASED tombstone holds it (cb07)
+// ⛔ U33r · a CONSENTING player whose number an agent applicant gave as a referee — refused agent_referee, the protected line.
+// Keyed by the REAL writer, so the split's ONE bulk referee read must find it exactly as the single read does.
+await consenting("pa18", "+255711000018", 21);
+await recordRefereeKeys({ contacts: ["0711 000 018"], namedAt: "2026-09-08T10:00:00.000Z" });
 await consenting("ps01", "+255751000090", 18, { role: "GROWTH" });                               // ⛔ staff — never walked
 await db.user.create(makeUser("pe01", "erased:pe01", { createdAt: joined(19) }));                 // ⛔ an erased account — never walked
 await consenting("pf01", "+254712000001", 20);                                                   // ⛔ a foreign number — never walked
@@ -255,7 +261,7 @@ const PLAYERS_AIRTEL = F({ population: "players", operators: ["AIRTEL"] });
 const PLAYERS_WINDOW = F({ population: "players", addedFrom: "2026-07-31T21:00:00.000Z", addedBefore: "2026-08-05T21:00:00.000Z" });
 
 const SEQ_BOOK = ["cb01", "cb02", "cb03", "cb04", "cb05", "cb06"];
-const SEQ_PLAYERS = Array.from({ length: 17 }, (_, i) => `pa${String(i + 1).padStart(2, "0")}`);
+const SEQ_PLAYERS = Array.from({ length: 18 }, (_, i) => `pa${String(i + 1).padStart(2, "0")}`);
 const SEQ_BOTH = [...SEQ_BOOK, ...SEQ_PLAYERS.filter((p) => p !== "pa16")];
 const SEQ_BOTH_VODACOM = ["cb01", "cb03", "cb06", "pa01", "pa02", "pa03", "pa04", "pa05", "pa06", "pa07", "pa17"];
 const SEQ_PLAYERS_AIRTEL = ["pa08", "pa09", "pa10", "pa11"];
@@ -263,13 +269,14 @@ const SEQ_PLAYERS_WINDOW = ["pa01", "pa02", "pa03", "pa04", "pa05"];
 const NEVER = ["cb07", "ps01", "pe01", "pf01"];
 
 type Figures = Pick<AudienceSplit, "matching" | "unsendable" | "reachable" | "willReceive" | "notReceiving" | "unanswered" | "notReceivingTotal" | "unchecked">;
+/* ⭐ U33r · pa18, the promised referee, is the protected line's SEVENTH number — one line for every role, never its own. */
 const EXPECT_BOTH: Figures = {
-  matching: 22, unsendable: 2, reachable: 20, willReceive: 4,
-  notReceiving: { suppressed: 2, no_consent: 3, withdrawn: 3, age_unknown: 2, protected: 6 }, unanswered: 0, notReceivingTotal: 16, unchecked: 0,
+  matching: 23, unsendable: 2, reachable: 21, willReceive: 4,
+  notReceiving: { suppressed: 2, no_consent: 3, withdrawn: 3, age_unknown: 2, protected: 7 }, unanswered: 0, notReceivingTotal: 17, unchecked: 0,
 };
 const EXPECT_PLAYERS: Figures = {
-  matching: 17, unsendable: 1, reachable: 16, willReceive: 4,
-  notReceiving: { suppressed: 1, no_consent: 2, withdrawn: 2, age_unknown: 1, protected: 6 }, unanswered: 0, notReceivingTotal: 12, unchecked: 0,
+  matching: 18, unsendable: 1, reachable: 17, willReceive: 4,
+  notReceiving: { suppressed: 1, no_consent: 2, withdrawn: 2, age_unknown: 1, protected: 7 }, unanswered: 0, notReceivingTotal: 13, unchecked: 0,
 };
 const EXPECT_BOOK: Figures = {
   matching: 6, unsendable: 1, reachable: 5, willReceive: 1,
@@ -280,9 +287,11 @@ const figuresOf = (s: AudienceSplit): Figures => ({
   notReceiving: Object.fromEntries(AUDIENCE_BUCKETS.map((b) => [b, s.notReceiving[b]])) as Record<AudienceBucket, number>,
   unanswered: s.unanswered, notReceivingTotal: s.notReceivingTotal, unchecked: s.unchecked,
 });
+/** Every reason the gate can give with the record CLOSED — `no_basis` arises only while it is open (licence-basis.mts holds
+ *  it there). U33r's `agent_referee` arises in both states, so the fixture holds it (pa18). */
 const ALL_REASONS: MarketingSkipReason[] = [
   "bad_msisdn", "suppressed", "no_consent", "consent_withdrawn", "rg_self_excluded", "rg_cooling_off", "rg_harm_marker",
-  "rg_under25_history", "age_minor", "age_unknown", "account_status",
+  "rg_under25_history", "age_minor", "age_unknown", "account_status", "agent_referee",
 ];
 
 const rowId = (r: CampaignAudienceRow): string => (r.kind === "contact" ? r.contactId : r.userId);
@@ -375,15 +384,17 @@ function spy(target: unknown, name: string): { calls: number; restore: () => voi
   t[name] = (...a: unknown[]) => { s.calls++; return real(...a); };
   return s;
 }
-type BulkCount = { stops: number; users: number; consents: number; walks: number };
+type BulkCount = { stops: number; users: number; consents: number; walks: number; referees: number };
 const counted = (base: AudienceSplitDeps, n: BulkCount): AudienceSplitDeps => ({
   ...base,
   walk: async (f, c, l, d) => { n.walks++; return base.walk(f, c, l, d); },
   suppressions: async (b) => { n.stops++; return base.suppressions(b); },
   users: async (p) => { n.users++; return base.users(p); },
   consents: async (b) => { n.consents++; return base.consents(b); },
+  // U33r · the chunk's ONE keyed referee read.
+  referees: async (m) => { n.referees++; return base.referees(m); },
 });
-const zero = (): BulkCount => ({ stops: 0, users: 0, consents: 0, walks: 0 });
+const zero = (): BulkCount => ({ stops: 0, users: 0, consents: 0, walks: 0, referees: 0 });
 const splitOf = (r: AudienceSplitResult | null): AudienceSplit | null => (r !== null && r.ok ? r.split : null);
 /** The memory store, serialised — EVERY field, and a Map or Set at ANY depth by its entries (the import runs' rows are a
  *  Map of Maps, which a bare JSON.stringify writes as {}) — so a write anywhere moves it. */
@@ -409,14 +420,15 @@ const L = {
   l32: "3.2 · ⭐ a number the book holds is walked ONCE, by its book row (both) — and a player-only population still walks that player; an ERASED tombstone is never walked and hides nobody",
   l33: "3.3 · ⛔ staff, an erased account and a foreign number are never walked; the player arm takes the operator by prefix and the window on the account's createdAt; the book alone is the book",
   l34: "3.4 · ⛔ a cursor the walk did not write REFUSES — never read as a restart or as done — and so does a cursor naming an arm the filter does not have",
-  l35: "3.5 · ⭐ X9 · the campaign-audience count IS the walk — 22 for both, 17 for the players, 6 for the book",
+  l35: "3.5 · ⭐ X9 · the campaign-audience count IS the walk — 23 for both, 18 for the players, 6 for the book",
   l40: "4.0 · §25 · the memory twin's bulk reads equal its single reads PER ELEMENT — findActiveAmong = find (the lifted stop absent in both), latestAmong = latestFor (the same-millisecond tie included), findByPhones = findByPhone with the avatar omitted, msisdnsPresent = findByMsisdn (the tombstone present unless its mark is excluded); an empty set is [] and 2,001 keys REFUSE",
   l41: "4.1 · ⭐ THE SPLIT EQUALS THE GATE — every walked number's slot is the gate's own answer (default single reads), and the figures are the hand-counted ones for both, the players and the book",
   l42: "4.2 · the figures are COUNTED from the answers, never derived — they add up (assertAudienceSplitAdds), and not receiving is the buckets + unanswered, which matching − will receive is not when unsendable numbers are in the audience",
   l43: "4.3 · ⭐ THE PROJECTION EQUALS THE LOOP — a dry dispatchSlice over the same walk hands over exactly will receive, skips exactly the buckets and the unsendable, and holds exactly the unanswered",
   l44: "4.4 · ⛔ THE COUNT WRITES NOTHING — the store and the audit chain are unchanged across a split over RG-refused players",
-  l45: "4.5 · ⛔ protected standing is ONE line — the buckets are exactly the five, and no rg_*, age_minor or account_status appears anywhere in the split",
-  l46: "4.6 · ⭐ the gate's three single reads are never asked per row — suppression, account and latest word come from §25's bulk reads, each asked once per walk page that holds a sendable number (RG's own break check still reads the ledger directly; the RG, identity and harm-marker reads stay the gate's own, per player)",
+  l45: "4.5 · ⛔ protected standing is ONE line — the buckets are exactly the five, no rg_*, age_minor, account_status or agent_referee appears anywhere in the split, and U33r's promised referee is counted IN that line (seven), never apart",
+  l46: "4.6 · ⭐ the gate's single reads are never asked per row — suppression, account and latest word come from §25's bulk reads, and U33r's referee keys from ONE keyed read, each asked once per walk page that holds a sendable number, the single referee read never (RG's own break check still reads the ledger directly; the RG, identity and harm-marker reads stay the gate's own, per player)",
+  l46r: "4.6r · ⭐ U33r · the split's bulk referee read answers EXACTLY what the single read answers, number by number — the referee's earliest naming, null for every other — so the split can never let a referee through the gate refuses",
   l47: "4.7 · ⛔ THE BUDGET — past it the gate is asked with no reads: an unsendable number is still unsendable, every other is unchecked (never will receive), the figures still add up, and no bulk read is made for a page that starts past it",
   l48: "4.8 · ⭐ the sample is the walk's FIRST FIVE REACHABLE rows, in the walk's own order, each with its gate slot, masked number and operator by prefix",
   l49: "4.9 · ⛔ the send loop is untouched — no src file calls the gate BY NAME with a third argument but the typed test's ONE pinned call (campaign-test-send.ts, its own 18+ attestation as the context — U37c), dispatch still asks with ONE (its exact text pinned), the split's gate IS the send gate, and the split names no send path or audit",
@@ -591,7 +603,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     // 4.0 · the memory twin's §25 reads, per element
     const playerKeys = SEQ_PLAYERS.map((_, i) => i).map((i) => ["+255751000001", "+255751000002", "+255751000003", "+255751000004",
       "+255751000005", "+255751000006", "+255751000007", "+255681000008", "+255681000009", "+255681000010", "+255681000011",
-      "+255711000012", "+255711000013", "+255711000014", "+255641000015", "+255761000016", "+255761000017"][i]).map(k);
+      "+255711000012", "+255711000013", "+255711000014", "+255641000015", "+255761000016", "+255761000017", "+255711000018"][i]).map(k);
     const bookKeys = ["255791000101", "255641000102", "255791000103", "255681000104", "255681000105", "255761000016", "255761000017"];
     const ids = [...new Set([...playerKeys, ...bookKeys, "255759999998", "255759999999"])];
     const batch = { channel: "SMS" as const, category: "MARKETING" as const, identifiers: ids };
@@ -647,7 +659,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     try { if (both) { assertAudienceSplitAdds(both); adds = true; } } catch { adds = false; }
     const bucketSum = both ? AUDIENCE_BUCKETS.reduce((n, b) => n + both.notReceiving[b], 0) : -1;
     ok(p(L.l42),
-      both !== null && adds && both.notReceivingTotal === bucketSum + both.unanswered && both.notReceivingTotal === 16
+      both !== null && adds && both.notReceivingTotal === bucketSum + both.unanswered && both.notReceivingTotal === 17
         && both.notReceivingTotal !== both.matching - both.willReceive && both.reachable === both.matching - both.unsendable,
       both ? `not receiving ${both.notReceivingTotal} · matching − will receive ${both.matching - both.willReceive}` : "the split threw");
 
@@ -687,11 +699,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const flat = json(both ?? {});
     ok(p(L.l45),
       both !== null && json(Object.keys(both.notReceiving).sort()) === json([...AUDIENCE_BUCKETS].sort())
-        && !/rg_|age_minor|account_status/.test(flat) && both.notReceiving.protected === 6,
+        && !/rg_|age_minor|account_status|agent_referee/.test(flat) && both.notReceiving.protected === 7,
       both ? Object.keys(both.notReceiving).join(",") : "the split threw");
 
     // 4.6 · no per-row read
-    const singles = [spy(db.suppression, "find"), spy(db.user, "findByPhone"), spy(db.messagingConsent, "latestFor")];
+    const singles = [spy(db.suppression, "find"), spy(db.user, "findByPhone"), spy(db.messagingConsent, "latestFor"), spy(db.agentRefereeKey, "earliestFor")];
     const n46 = zero();
     let s46: AudienceSplit | null = null;
     try {
@@ -701,9 +713,23 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     }
     const pages4 = (await walkAll(REAL.walk, BOTH, 4)).pages.filter((page) => page.some((r) => parseTzNumber(r.msisdn).verdict === "ok")).length;
     ok(p(L.l46),
-      s46 !== null && singles[0].calls === 0 && singles[1].calls === 0 && singles[2].calls <= 1
-        && n46.stops === pages4 && n46.users === pages4 && n46.consents === pages4 && pages4 === 7,
-      `single reads find=${singles[0].calls} findByPhone=${singles[1].calls} latestFor=${singles[2].calls} · bulk ${json(n46)} over ${pages4} pages`);
+      s46 !== null && singles[0].calls === 0 && singles[1].calls === 0 && singles[2].calls <= 1 && singles[3].calls === 0
+        && n46.stops === pages4 && n46.users === pages4 && n46.consents === pages4 && n46.referees === pages4 && pages4 === 7,
+      `single reads find=${singles[0].calls} findByPhone=${singles[1].calls} latestFor=${singles[2].calls} referee=${singles[3].calls} · bulk ${json(n46)} over ${pages4} pages`);
+
+    // 4.6r · U33r · the bulk referee read equals the single read, number by number
+    {
+      const keys = (await walkAll(REAL.walk, BOTH, 1000)).rows.map((r) => parseTzNumber(r.msisdn).msisdn).filter((m): m is string => m !== null);
+      const bulk = new Map((await impl.deps.referees(keys)).map((e) => [e.msisdn, e.namedAt] as const));
+      const off: string[] = [];
+      for (const m of keys) {
+        const single = await refereeNamedAtFor(m);
+        if (!bulk.has(m) || (bulk.get(m) ?? null) !== single) off.push(`${m.slice(-3)} bulk=${String(bulk.get(m))} single=${String(single)}`);
+      }
+      const named = keys.filter((m) => (bulk.get(m) ?? null) !== null);
+      ok(p(L.l46r), off.length === 0 && named.length === 1 && named[0] === k("+255711000018") && bulk.get(named[0]) === "2026-09-08T10:00:00.000Z",
+        off.length ? off.join(" | ") : `${keys.length} numbers asked · named ${named.length}`);
+    }
 
     // 4.7 · the budget — a clock that counts the gate's answers runs out after seven
     let gateCalls = 0;
@@ -713,8 +739,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     let adds47 = false;
     try { if (s47) { assertAudienceSplitAdds(s47); adds47 = true; } } catch { adds47 = false; }
     ok(p(L.l47),
-      s47 !== null && adds47 && s47.unchecked === 14 && s47.willReceive === 2 && s47.unsendable === 2 && s47.notReceivingTotal === 4
-        && s47.matching === 22 && n47.stops === 3 && n47.users === 3 && n47.consents === 3,
+      s47 !== null && adds47 && s47.unchecked === 15 && s47.willReceive === 2 && s47.unsendable === 2 && s47.notReceivingTotal === 4
+        && s47.matching === 23 && n47.stops === 3 && n47.users === 3 && n47.consents === 3 && n47.referees === 3,
       s47 ? `${json(figuresOf(s47))} · bulk ${json(n47)}` : "the split threw");
 
     // 4.8 · the sample
@@ -830,6 +856,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
          gate, or the split could not hand in a chunk's answers. */
       JSON.stringify(await DB_GATE_READS.bookStanding(k("+255751000006"))) === JSON.stringify(db.contactListBasis.standingFor(k("+255751000006"))),
       ((await DB_GATE_READS.outreach()) as { state: string }).state === "closed",
+      // U33r · the referee read is defaulted like the others: the referee's earliest naming, null for a non-referee.
+      (await DB_GATE_READS.refereeNamedAt(k("+255711000018"))) === "2026-09-08T10:00:00.000Z",
+      (await DB_GATE_READS.refereeNamedAt(k("+255751000001"))) === null,
     ];
     ok(p(L.l411),
       /* ⚠️ The signature is MULTI-LINE since U33a-G (it gained `context`), so it is pinned piece by piece rather than as
@@ -844,8 +873,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && gateBody.includes("const latest = await Promise.resolve(reads.latestConsent(key));")
         && gateBody.includes("const outreach = await Promise.resolve(reads.outreach());")
         && gateBody.includes("const standing = await Promise.resolve(reads.bookStanding(identifier));")
+        && gateBody.includes("const refereeNamedAt = await Promise.resolve(reads.refereeNamedAt(identifier));")
         && !gateBody.includes("db.suppression.find(") && !gateBody.includes("db.user.findByPhone(") && !gateBody.includes("db.messagingConsent.latestFor(")
         && !gateBody.includes("db.contactListBasis.") && !gateBody.includes("licenceOutreach()")
+        && !gateBody.includes("db.agentRefereeKey.") && !gateBody.includes("refereeNamedAtFor(")
         && cons.includes("reads: MarketingGateReads = DB_GATE_READS,") && cons.includes("const noConsent = await playerConsentRefusal(user, key, DB_GATE_READS, seen);")
         && cons.split(RG_LINE).length - 1 === 1 && defaults.every(Boolean)
         && Object.isFrozen(DB_GATE_READS) && Object.isFrozen(AUDIENCE_SPLIT_DEPS) && Object.isFrozen(CAMPAIGN_WALK_DEPS),
@@ -1238,6 +1269,16 @@ if (!PROVE_RED) {
       name: "R6 · no prefetch — the split asks the gate with its default single reads, three a number",
       expect: [L.l46],
       impl: { ...REAL, deps: { ...REAL.deps, gate: async (m, at) => mayReceiveMarketingSms(m, at) } },
+    },
+    {
+      name: "R30 · ⛔ U33r · the bulk referee read answers 'not a referee' for every number — the promised referee counted as will receive while the gate refuses them",
+      expect: [L.l41, L.l46r],
+      impl: { ...REAL, deps: { ...REAL.deps, referees: async (msisdns) => msisdns.map((msisdn) => ({ msisdn, namedAt: null })) } },
+    },
+    {
+      name: "R31 · U33r · the bulk referee read answers nothing — every number falls back to the single referee read, one a number",
+      expect: [L.l46],
+      impl: { ...REAL, deps: { ...REAL.deps, referees: async () => [] } },
     },
     {
       name: "R7 · ⭐ `unchecked` counted as will receive — a number past the budget read as a yes",

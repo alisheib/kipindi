@@ -128,6 +128,9 @@ const REACH: Record<MarketingSkipReason, string> = {
   rg_under25_history: "Not reachable",
   age_minor: "Not reachable",
   account_status: "Not reachable",
+  // U33r · named to the reader this column renders for: it is a promise 50pick made about the NUMBER, not a person's
+  // protected standing, and it is what an officer needs to stop looking for a remedy — none exists, it is kept for good.
+  agent_referee: "Agent referee (no marketing)",
 };
 
 async function reachOf(c: StoredMarketingContact): Promise<{ ok: boolean; label: string }> {

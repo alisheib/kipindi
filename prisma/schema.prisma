@@ -3498,6 +3498,32 @@ model ContactListBasis {
   @@index([recordedAt])
 }
 
+/// U33r · THE AGENT-REFEREE EXCLUSION (Q8; COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
+/// consent is not a condition (the owner's FINAL rule), and his approvals given in the session"). /legal/privacy §9
+/// promised every agent applicant's referee "we never contact you for marketing", and the owner ruled the promise HONOURED
+/// for every referee already given it. A referee's contact is free text on `AgentApplication`, so each Tanzanian mobile
+/// number it holds is kept here as a keyed hash, and the send gate asks this table by key before any basis (consent.ts 1b).
+///
+/// ⛔ HOLDS NO MORE THAN IT MUST: the key is thirty-two letters a–p — an HMAC of the number under the server's pepper
+/// (`refereeKeyOf`, referee-exclusion.ts), never the number and never a digit — plus the instant the referee was named and
+/// the instant the row was written. No name, no application id, no link to the applicant: the applicant's erasure leaves
+/// nothing of theirs here, and the referee's protection outlives it (docs/DATA-RETENTION.md).
+/// ⛔ APPEND-ONLY BY THE DATA LAYER: a pair already held is skipped (ON CONFLICT DO NOTHING), and neither twin has an update
+/// or a delete member (`test:dal-parity` §28). Hand-written migration 20261007150000_agent_referee_key; the rows that
+/// predate it are written by `npm run ops:marketing-referee-keys` (the pepper lives in the application, never in SQL).
+model AgentRefereeKey {
+  /// Thirty-two letters a–p — `refereeKeyOf(msisdn)`. Both twins refuse any other spelling (`referee-key-model.ts`).
+  refereeKey String
+  /// When the referee was named: the application's `refereeConsentAt`, else its creation. The gate reads the EARLIEST.
+  namedAt    DateTime @db.Timestamptz(3)
+  /// When this row was written — at the naming, by an erasure about to empty the contact, or by the backfill.
+  recordedAt DateTime @db.Timestamptz(3)
+
+  /// ⭐ THE COMPOSITE KEY IS THE DEDUPLICATION AND THE LOOKUP: `refereeKey` leads it, so the gate's read by key is an
+  /// index read, and naming the same referee at the same instant twice writes one row.
+  @@id([refereeKey, namedAt])
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════════
 // CONTACT IMPORT STAGING (marketing U29 — OD26 · OD30; decisions X1 · X2 · X18–X20 · X23 · X28 · X29)
 //

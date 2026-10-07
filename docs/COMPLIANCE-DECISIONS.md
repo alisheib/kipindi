@@ -187,9 +187,17 @@ rather than guessed at.
 - **G6 / OQ11 · A "yes" under the OLD wording does NOT count as SMS consent** (built default). Those sentences named no
   SMS, no sender and no number. Such a person is reached only under the licence (per Q1), never recorded as consented.
 - **Q9 · A LAPSED consent is NOT reached by the licence** (built default, and shipped in U33a-G today): somebody who
-  switched off after once saying yes is nearer a stop than to never having been asked.
+  switched off after once saying yes is nearer a stop than to never having been asked. ⟶ REVERSED 2026-10-07 by the
+  owner's final rule (§ "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's
+  FINAL rule), and his approvals given in the session"): the gate reaches a lapsed player on the licence while the record
+  is open, and refuses them exactly as before while it is closed (the final-rule gate, built with U33r; `test:marketing-consent`
+  G4 and G4b).
 - **Q8 · The promise made to agent referees IS to be enforced in code.** ⚠️ OWED — the exclusion is NOT built. Until it
-  is, a referee can be reached, which contradicts a promise 50pick made them in writing.
+  is, a referee can be reached, which contradicts a promise 50pick made them in writing. ⟶ BUILT 2026-10-07 (marketing
+  U33r): every referee number is kept as a keyed hash (`AgentRefereeKey`) and the gate refuses it `agent_referee` before
+  any basis; every referee named before the re-worded §9 goes live stays excluded (`REFEREE_NEW_WORDS_LIVE_AT`, null
+  until the public-texts unit sets it). ⚠️ The referees named before the deploy are keyed by `npm run
+  ops:marketing-referee-keys -- backfill`, owed once after it, before any campaign sends.
 - **Q7 · A list's recorded basis does NOT expire** (built default). ⚠️ Accepted residual risk, stated plainly: Tanzanian
   operators recycle numbers, so a basis recorded for a previous holder can authorise a message to a new one. The stop
   list remains the protection.

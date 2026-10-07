@@ -73,6 +73,8 @@ import {
 } from "./email";
 import { kycNotifyEmails } from "./kyc-service";
 import { sendEmail } from "./email";
+// U33r · the referees' marketing exclusion — written when referees are named and before an erasure empties them.
+import { recordRefereeKeys, refereeNamedAtOf } from "./marketing/referee-exclusion";
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  THE DOCUMENTS — framework §2, verbatim
@@ -526,7 +528,14 @@ export async function setReferees(
   return withLock(`agentapp:${userId}`, async () => {
     const e = await editableApplication(userId);
     if (!e.ok) return { ok: false as const, error: e.error, code: e.code };
-    await db.agentApplication.update(e.app.id, { refereeOneName: oneName, refereeOneContact: oneContact, refereeTwoName: twoName, refereeTwoContact: twoContact, refereeConsentAt: iso() });
+    const namedAt = iso();
+    /* ⛔ U33r · THE REFEREES' MARKETING EXCLUSION IS WRITTEN FIRST (Q8; `referee-exclusion.ts`). Every referee named before
+       the re-worded /legal/privacy §9 went live was promised "we never contact you for marketing", so each Tanzanian mobile
+       number in these two contacts is keyed — a keyed hash, never the number — BEFORE the application is saved: a write that
+       fails here saves nothing (the applicant is told and tries again), and one that fails after it leaves only an extra
+       exclusion. Never a saved referee with no exclusion. A referee replaced later keeps their key: they were named. */
+    await recordRefereeKeys({ contacts: [oneContact, twoContact], namedAt }, namedAt);
+    await db.agentApplication.update(e.app.id, { refereeOneName: oneName, refereeOneContact: oneContact, refereeTwoName: twoName, refereeTwoContact: twoContact, refereeConsentAt: namedAt });
     audit({ category: "ADMIN", action: "agent.application.referees_set", actorId: userId, targetType: "AgentApplication", targetId: e.app.id });
     return { ok: true as const };
   });
@@ -1848,12 +1857,21 @@ export async function purgeAgedAgentDocuments(now = Date.now()): Promise<{ refer
  * officer typed, are personal data with no statute behind them; they go the moment erasure
  * runs, ⛔ never gated on the 7-year document hold (a description is not a document — the
  * same rule `erasure.ts` applies to KYC `extraRequests`).
+ *
+ * ⛔ U33r · THE REFEREES' MARKETING EXCLUSION IS KEPT, AND WRITTEN FIRST. The contacts are the
+ * only copy of a referee's number; once emptied, a referee never keyed (an application older than
+ * the exclusion, before the backfill ran) could never be excluded again — and the promise "we never
+ * contact you for marketing" was made to the REFEREE, not to the applicant asking to be forgotten.
+ * So every number in them is keyed (`recordRefereeKeys`, a keyed hash with no name, no application
+ * id and no link to this person) BEFORE they are emptied, and a key already held is skipped. A
+ * failure to write it throws: the erasure stops with the contacts still there, never emptied first.
  */
 export async function pseudonymiseAgentApplications(userId: string): Promise<number> {
   let n = 0;
   for (const a of await db.agentApplication.listByUser(userId)) {
     const already = a.refereeOneName === "Erased" && a.refereeTwoName === "Erased" && !a.refereeOneContact && !a.refereeTwoContact;
     if (already) continue;
+    await recordRefereeKeys({ contacts: [a.refereeOneContact, a.refereeTwoContact], namedAt: refereeNamedAtOf(a) });
     await db.agentApplication.update(a.id, {
       refereeOneName: a.refereeOneName ? "Erased" : null, refereeTwoName: a.refereeTwoName ? "Erased" : null,
       refereeOneContact: null, refereeTwoContact: null,

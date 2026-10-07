@@ -49,6 +49,10 @@ import { decomment } from "./lib/decomment.mts";
 import { REAL_BASIS, assertConsentBasis, basisModel, basisCases } from "./marketing-consent/consent-basis.mts";
 // U33a-G · the licence decision table, run over one seeded world with the record closed and open.
 import { REAL_LICENCE, assertLicenceBasis, licenceGateWithDefect, licenceCases } from "./marketing-consent/licence-basis.mts";
+// U33r · the referee keys: the REAL writer seeds the switch's referee rows, and the section that holds the writer, the
+// erasure and the backfill to the promise.
+import { recordRefereeKeys } from "../src/lib/server/marketing/referee-exclusion.ts";
+import { REAL_REFEREE, assertRefereeExclusion, refereeCases } from "./marketing-consent/referee-exclusion.mts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
  * at the end scores GREEN when a promise never settles or the process exits early. */
@@ -1013,8 +1017,40 @@ async function runToggleAssertions(impl: ToggleImpl, run: number, tag: string): 
   const o6state = await impl.state(await user(o6.id));
   ok(p("T-O6 · ⚠️ CONTROL — the CONSENT path is unchanged: an OPERATOR stop leaves a consenting player's switch ON, exactly as before U33a-P (the platform's decision is not the player's consent)"),
     o6state.on === true && o6state.outreach === false, JSON.stringify(o6state));
+
+  // ── T-O7 · ⭐ Q9 REVERSED — the LAPSE reads ON while the record is open (the gate reaches it), OFF while it is closed ──
+  const o7 = await mkNever(7);
+  await Promise.resolve(db.messagingConsent.create({
+    id: `tgol${run}-7`, channel: "SMS", identifier: o7.msisdn, category: "MARKETING", status: "GIVEN", source: "REGISTRATION",
+    wording: PINNED_SW, locale: "SW", evidence: "fixture", recordedBy: null, createdAt: "2024-06-01T00:00:00.000Z",
+  }));
+  setRecord(false);
+  const o7closed = await impl.state(await user(o7.id));
+  setRecord(true);
+  const o7open = await impl.state(await user(o7.id));
+  const r7 = await impl.choose({ userId: o7.id, marketingOptIn: false, locale: "SW" });
+  const o7row = await Promise.resolve(db.messagingConsent.latestFor(o7.key));
+  const o7after = await impl.state(await user(o7.id));
+  ok(p(T_O7),
+    !o7closed.on && o7open.on && o7open.outreach && r7.ok && o7row?.status === "WITHDRAWN" && o7row.source === "PROFILE" && !o7after.on,
+    `closed ${JSON.stringify(o7closed)} · open ${JSON.stringify(o7open)} · tap OFF → ${o7row?.status}/${o7row?.source} · after ${o7after.on}`);
+
+  // ── T-O8 · U33r — a promised referee's licence-path switch reads OFF while the record is open; the consent path keeps
+  //    the person's own word (the promise is the platform's, as an OPERATOR stop is — T-O6) ──────────────────────────────
+  const o8 = await mkNever(8);
+  const o8c = await mkp(56); // ⛔ not 48: mkNever(8) above holds phoneFor(run, 48)
+  await recordRefereeKeys({ contacts: [`+${o8.msisdn}`, `0${o8c.msisdn.slice(3)}`], namedAt: "2026-09-08T10:00:00.000Z" });
+  const o8state = await impl.state(await user(o8.id));
+  const o8consenting = await impl.state(await user(o8c.id));
+  const o8gate = await gateSays(o8.msisdn);
+  ok(p(T_O8),
+    o8gate === "agent_referee" && o8state.on === false && o8state.outreach === false && o8consenting.on === true && o8consenting.outreach === false,
+    `gate ${o8gate} · never asked ${JSON.stringify(o8state)} · consenting ${JSON.stringify(o8consenting)}`);
   setRecord(false);
 }
+/** U33r / Q9 · the two switch rows the final rule adds — named once, so each red case expects exactly what the run says. */
+const T_O7 = "T-O7 · ⭐ Q9 REVERSED · a player switched off by the two-year LAPSE (the flag cleared, the latest row still GIVEN) reads OFF while the record is CLOSED and ON with outreach:true once it is OPEN — the gate reaches them — and an OFF tapped there records their stop (a WITHDRAWN PROFILE row) and reads OFF after";
+const T_O8 = "T-O8 · ⛔ U33r · a never-asked player whose number is a promised agent referee reads OFF while the record is OPEN — the gate refuses agent_referee, so the switch never says offers reach them — while a CONSENTING referee's switch keeps reading their own ON (the promise is the platform's decision, as an OPERATOR stop is: T-O6)";
 
 /* ══ THE CONSENT CARD — what the player SEES when a save fails, a read fails, or a break is running ══════
  * Source-level (a client component needs a browser), each rule read where it lives, each with a red plant
@@ -1119,6 +1155,9 @@ type ToggleDefect = {
   outreachOverStop?: boolean;   // an outreach ON survives an active OPERATOR stop (the switch lies about the gate)
   outreachWhileClosed?: boolean; // outreach ON although the licence record is closed
   outreachWritesGiven?: boolean; // "nothing to do" writes a GIVEN anyway — a consent invented from a tap
+  // ── the owner's FINAL rule (2026-10-07) ──
+  lapseReadsOff?: boolean;      // Q9 un-reversed on the switch: a lapsed player reads OFF while the gate reaches them
+  refereeReadsOn?: boolean;     // U33r · the licence path ignores the promise: a referee reads ON while the gate refuses
 };
 /**
  * ⛔ `liftsAnyReason` IS PLANTED ACROSS BOTH LAYERS (2026-09-27). The store's own `suppression.lift` now refuses
@@ -1144,6 +1183,18 @@ function toggleModel(d: ToggleDefect): ToggleImpl {
       const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
       const stop = await Promise.resolve(db.suppression.find(key));
       if (d.outreachOverStop ? stop !== null : stop === null) {
+        return { on: true, paused: false, held: false, heldUntil: null, outreach: true };
+      }
+    }
+    /* The final rule's two plants — each acts only on the licence path (a player who never consented), so the consent
+       path's own assertions stay green and each plant turns red the line that names it. */
+    if ((d.lapseReadsOff || d.refereeReadsOn) && u.marketingOptIn !== true) {
+      const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
+      const latest = await Promise.resolve(db.messagingConsent.latestFor(key));
+      if (d.lapseReadsOff && s.on && s.outreach && latest?.status === "GIVEN") {
+        return { on: false, paused: false, held: false, heldUntil: null, outreach: false };
+      }
+      if (d.refereeReadsOn && !s.on && !s.held && latest === null && (await Promise.resolve(db.suppression.find(key))) === null) {
         return { on: true, paused: false, held: false, heldUntil: null, outreach: true };
       }
     }
@@ -1203,6 +1254,8 @@ if (!PROVE_RED) {
   assertConsentBasis(REAL_BASIS, "", ok);
   console.log("\n── U33a-G · the licence decision table (§3.2), executed with the record CLOSED and OPEN\n");
   await assertLicenceBasis(REAL_LICENCE, "", ok);
+  console.log("\n── U33r · the agent-referee exclusion, written — the reader, the key, setReferees, the erasure, the backfill, the loop\n");
+  await assertRefereeExclusion(REAL_REFEREE, 0, "", ok);
   console.log(`\nmarketing-consent: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;
 } else {
@@ -1419,6 +1472,16 @@ if (!PROVE_RED) {
 
   const TOGGLE_CASES: Array<{ name: string; defect: ToggleDefect; expect: string }> = [
     {
+      name: "⛔ Q9 un-reversed on the switch — a lapsed player reads OFF while the open record reaches them",
+      defect: { lapseReadsOff: true },
+      expect: T_O7,
+    },
+    {
+      name: "U33r · the licence path ignores the referee promise — the switch reads ON while the gate refuses agent_referee",
+      defect: { refereeReadsOn: true },
+      expect: T_O8,
+    },
+    {
       name: "U33a-P · an outreach ON survives an active OPERATOR stop",
       defect: { outreachOverStop: true },
       expect: "T-O2 · ⛔ ANY active stop reads OFF here, an OPERATOR stop included — stricter than the consent path on purpose: nobody said yes, so the switch must never read ON while the gate refuses",
@@ -1633,15 +1696,38 @@ if (!PROVE_RED) {
 `);
   }
 
+  // ── U33r · the referee exclusion's writers: the shipped pieces green, then one wrong piece at a time ──
+  pass = 0; fail = 0; failed.length = 0;
+  await assertRefereeExclusion(REAL_REFEREE, 700, "refbase:", ok);
+  if (fail !== 0) problems.push(`REFEREE BASELINE: the shipped writers are already red (${failed.join(" | ")})`);
+  console.log(`\n§0 referee baseline · referee-exclusion.ts and its callers: ${pass} passed, ${fail} failed\n`);
+  const REFEREE_CASES = refereeCases();
+  for (const [i, c] of REFEREE_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    const tag = `refred${i + 1}:`;
+    console.log(`── referee case ${i + 1}: ${c.name}`);
+    await assertRefereeExclusion(c.impl, 701 + i, tag, ok);
+    const wanted = `${tag}${c.expect}`;
+    if (fail === 0) problems.push(`referee case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(wanted)) problems.push(`referee case ${i + 1} (${c.name}): red, but not on its own row — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect.slice(0, 70)}…\n`);
+  }
+
   const caughtGate = CASES.length - problems.filter((x) => x.startsWith("case")).length;
   const caughtLoop = LOOP_CASES.length - problems.filter((x) => x.startsWith("loop case")).length;
   const caughtToggle = TOGGLE_CASES.length - problems.filter((x) => x.startsWith("toggle case")).length;
   const caughtCard = CARD_CASES.length - problems.filter((x) => x.startsWith("card case")).length;
   const caughtHeld = HELD_CASES.length - problems.filter((x) => x.startsWith("held case")).length;
   const caughtBasis = BASIS_CASES.length - problems.filter((x) => x.startsWith("basis case")).length;
-  const caught = caughtGate + caughtLoop + caughtToggle + caughtCard + caughtHeld + caughtBasis;
-  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length} · basis ${caughtBasis}/${BASIS_CASES.length}`);
-  console.log(`${caught}/${CASES.length + LOOP_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length + BASIS_CASES.length} caught`);
+  // U33r · the licence table's and the referee section's cases are counted too (the licence cases were reported only as
+  // problems before — never in the tally).
+  const caughtLicence = LICENCE_CASES.length - problems.filter((x) => x.startsWith("licence case")).length;
+  const caughtReferee = REFEREE_CASES.length - problems.filter((x) => x.startsWith("referee case")).length;
+  const caught = caughtGate + caughtLoop + caughtToggle + caughtCard + caughtHeld + caughtBasis + caughtLicence + caughtReferee;
+  const total = CASES.length + LOOP_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length + BASIS_CASES.length
+    + LICENCE_CASES.length + REFEREE_CASES.length;
+  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length} · basis ${caughtBasis}/${BASIS_CASES.length} · licence ${caughtLicence}/${LICENCE_CASES.length} · referee ${caughtReferee}/${REFEREE_CASES.length}`);
+  console.log(`${caught}/${total} caught`);
   if (problems.length) {
     console.log("\nPROBLEMS:");
     for (const x of problems) console.log(`  ✗ ${x}`);

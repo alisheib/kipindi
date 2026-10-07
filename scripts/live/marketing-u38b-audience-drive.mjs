@@ -92,7 +92,8 @@ const REASON = {
   no_consent: "No consent or recorded basis",
   withdrawn: "Withdrew consent",
   age_unknown: "Age not confirmed",
-  protected: "Protected (responsible gambling, age or account status)",
+  // U33r · the ONE protected line names the promised agent referee too (audience-copy.ts).
+  protected: "Protected (responsible gambling, age, account status or agent referee)",
 };
 const FIGURE_LABEL = { onCampaign: "On this campaign", willReceive: "Will receive now (forecast)", notReceiving: "Not receiving", unsendable: "Can't be sent to" };
 const nf = new Intl.NumberFormat("en-US");

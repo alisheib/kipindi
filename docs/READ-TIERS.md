@@ -355,6 +355,13 @@ versions), the officer's proof note, staff ids, times, and a revocation. No pers
 read cell governs it. ⚠️ The proof note and the revocation reason are officer free text, screened for phone numbers by
 the input check (U33b-L), not for names — keep it that way, or give them a cell.
 
+**Recorded 2026-10-07 (marketing U33r): `AgentRefereeKey` adds NO readable personal-data column.** A row is a keyed hash
+of an agent referee's mobile number (thirty-two letters a–p, irreversible without the server's pepper), the instant the
+referee was named and the instant the row was written — no number, no name, no application id. No screen reads it: the
+send gate asks it by key, and the only thing any viewer ever learns from it is a refusal reason, `agent_referee`, which is
+shown only where a number is already readable (the contacts page's Will receive cell for a reader, a reader's typed test)
+and is collapsed for a masked viewer (`typed_refused`; the split's ONE protected line).
+
 **Wired 2026-10-01 (marketing U39a): the SMS campaign estimate — a PLATFORM AGGREGATE, not a
 player's figure.** A campaign's cost, the account's SMS credit and what that credit covers are
 decided by `campaignMoneyVisible(role)` in `src/lib/server/marketing/estimate.ts`: `canView(role,

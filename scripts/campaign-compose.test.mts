@@ -72,6 +72,9 @@
  * (`scripts/lib/send-window.mts`, ENGINE-SPEC §5 rule 9), so the suite is green at any hour; §18.33 closes it on purpose:
  * the test is refused held in the window's own sentence before a token, a row or the wire (M12), and the saved line
  * invites no test while the window note stands (§16.15).
+ * ⛔ §18.34 (U33r, 2026-10-07) · A PROMISED AGENT REFEREE. A typed test to a number an applicant gave as a referee is refused
+ * by the ONE gate before a token or the wire — `typed_refused` to a masked viewer, `agent_referee` in its own words to a
+ * reader, the precise reason in the audit row — and an officer's own number that is a referee's gets its own-number words.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
@@ -1325,6 +1328,8 @@ const TEST = await import("../src/lib/server/marketing/campaign-test-send.ts");
 const LIVE = await import("../src/lib/server/marketing/live-switch.ts");
 const { dispatchSlice, auditRgRefusal } = await import("../src/lib/server/marketing/dispatch.ts");
 const { recordPlayerMarketingChoice, mayReceiveMarketingSms, DB_GATE_READS } = await import("../src/lib/server/marketing/consent.ts");
+// U33r · the REAL writer keys §18.34's referee numbers, exactly as setReferees does.
+const { recordRefereeKeys } = await import("../src/lib/server/marketing/referee-exclusion.ts");
 const { ensureOptOutToken, mintOptOutToken, stopMarketing } = await import("../src/lib/server/marketing/optout-service.ts");
 /** U37c · §18.19's self-excluded player is made by the platform's own writer, never a hand-built row. */
 const { selfExclude } = await import("../src/lib/server/responsible-gambling.ts");
@@ -2676,8 +2681,36 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       && rows.length === 3 && rows.every(heldRow) && reads === 2,
       `own ${reasonOf(own)}${own.ok ? "" : `: ${own.error}`} · typed ${reasonOf(typed)} · late ${reasonOf(late)} · gate asked ${gates} · tokens ${tokensClosed} · rows ${smsRowsFor(id).length} · audit ${JSON.stringify(rows.map((a) => a.payload ?? null))} · window reads ${reads}`];
   });
+
+  await claim(S18_34, async () => {
+    const id = await phrasedDraft();
+    const refKey = u37bKey();
+    // Keyed by the REAL writer, from the contact spelled the way an applicant types it.
+    await recordRefereeKeys({ contacts: [`0${refKey.slice(3)}`], namedAt: "2026-09-08T10:00:00.000Z" });
+    const { send: spy, spy: seen } = u37bSpy();
+    const start = audits.length;
+    const before = await tokenCount(refKey);
+    const masked = await sendTyped(id, `+${refKey}`, o.id, { over: { send: spy } });
+    const reader = await sendTyped(id, `+${refKey}`, o.id, { reads: true, over: { send: spy } });
+    const minted = (await tokenCount(refKey)) - before;
+    const rows = audits.slice(start).filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION && a.actorId === o.id);
+    // The officer's OWN number, given by somebody as a referee: the own path is refused too, in its own words.
+    const own = await officer();
+    await recordRefereeKeys({ contacts: [`+${own.key}`], namedAt: "2026-09-08T10:00:00.000Z" });
+    const ownR = await send({ campaignId: id, variant: "SW" }, own.id, { send: spy });
+    const refusedAs = (r: TestResult, reason: string, error: string) => !r.ok && r.outcome === "refused" && r.reason === reason && r.error === error;
+    return [refusedAs(masked, "typed_refused", TEST.TEST_TYPED_REFUSED)
+      && refusedAs(reader, "agent_referee", TEST.typedReaderSentence("agent_referee"))
+      && TEST.typedReaderReason("agent_referee") === "agent_referee"
+      && rows.length === 2 && rows.every((a) => a.payload?.reason === "agent_referee" && a.payload?.target === "typed")
+      && refusedAs(ownR, "agent_referee", TEST.testGateSentence("agent_referee"))
+      && seen.calls === 0 && minted === 0,
+      `masked ${reasonOf(masked)} · reader ${reasonOf(reader)} · audit ${JSON.stringify(rows.map((a) => a.payload?.reason ?? null))} · own ${reasonOf(ownR)} · sends ${seen.calls} · tokens ${minted}`];
+  });
   return failed;
 }
+/** U33r · §18.34's claim — named once, so its red case expects exactly what the run says. */
+const S18_34 = "§18.34 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets agent_referee and its OWN sentence (never collapsed into 'protected' — it is no account's standing), the audit row records agent_referee for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is refused agent_referee in the own-number words";
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════ */
 
@@ -4328,6 +4361,9 @@ if (!PROVE_RED) {
     /** A.8 · the confirmation honoured for a player — the gate's player branch skipped on a typed test. */
     const playerSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, userByPhone: () => null } }, options);
+    /** U33r · §18.34 · a typed test whose gate never asks the referee keys — the promise skipped on the test path. */
+    const refereeSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
+      realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, refereeNamedAt: () => null } }, options);
     /** A.8 · a typed refusal itemised for a masked viewer. */
     const itemised: typeof realTest = (input, officerId, deps) => realTest(input, officerId, deps, { viewerReads: true });
     /** A.8 · the real token returned to the screen. */
@@ -4695,6 +4731,20 @@ if (!PROVE_RED) {
           return !real.ok && planted.ok;
         },
         landedAs: "a player under 18: refused by the real test, handed over by the plant",
+      },
+      {
+        name: "U33r · a typed test whose gate never asks the referee keys — a promised agent referee tested on",
+        expect: [/^§18[.]34 ⛔/], impl: { ...R, test: refereeSkipped },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await phrased();
+          const k = u37bKey();
+          await recordRefereeKeys({ contacts: [`+${k}`], namedAt: "2026-09-08T10:00:00.000Z" });
+          const real = await realTest(typedInput(id, `+${k}`), o.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await refereeSkipped(typedInput(id, `+${k}`), o.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && planted.ok;
+        },
+        landedAs: "a promised referee: refused by the real test, handed over by the plant",
       },
       {
         name: "U37c · a typed refusal itemised for a masked viewer",

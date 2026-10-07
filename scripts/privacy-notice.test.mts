@@ -722,6 +722,47 @@ ok("§4h zh puts no space after a full-width colon, stop, comma or closing brack
 const plantZhGap = pageSrc.replace("达累斯萨拉姆。联系方式：", '达累斯萨拉姆。联系方式：{" "}');
 ok("§5am control · the §1 {\" \"} after \"联系方式：\" put back is reported", plantZhGap !== pageSrc && zhGaps(plantZhGap).length > 0);
 
+/* ═══ §4i · U33r · §9's PROMISE TO REFEREES IS KEPT BY THE GATE (2026-10-07) ═══
+ * §9 tells every agent applicant's referee "we never contact you for marketing", and the owner ruled it HONOURED for every
+ * referee already given it. While ANY locale's §9 still says it, no new words are live — so the gate's cut-off
+ * (`REFEREE_NEW_WORDS_LIVE_AT`) must still be null, or a referee named after it would be messaged while the page promises
+ * "never"; and the gate must still refuse a promised referee (`agent_referee`, step 1b). The public-texts unit re-words §9
+ * and sets the cut-off in ONE commit; this holds that the two move together. ⛔ No backslash in this section. */
+console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees is kept by the gate");
+const WS4I = new RegExp("[ " + String.fromCharCode(9, 10, 13) + "]+", "g");
+const refereeExclusionSrc = code(read("src/lib/server/marketing/referee-exclusion.ts"));
+const consentGateSrc = code(read("src/lib/server/marketing/consent.ts"));
+/** The promise as each locale's §9 words it — read with its whitespace collapsed. */
+const NEVER_MARKET: Record<Loc, string> = {
+  en: "we never contact you for marketing",
+  sw: "hatuwasiliani nawe kamwe kwa matangazo",
+  zh: "我们绝不会为营销目的联系您",
+};
+const CUT_NULL = "export const REFEREE_NEW_WORDS_LIVE_AT: string | null = null;";
+const GATE_REFUSES = 'return refuse("agent_referee", refereeDetail(refereeNamedAt));';
+function refereeDefects(page: string, referee: string, gate: string): string[] {
+  const d: string[] = [];
+  const bl = blocks(page);
+  const promising = LOCS.filter((l) => section(bl[l], "9").replace(WS4I, " ").includes(NEVER_MARKET[l]));
+  if (promising.length > 0 && !referee.includes(CUT_NULL)) {
+    d.push(`§9 still promises referees "never" (${promising.join(", ")}) while REFEREE_NEW_WORDS_LIVE_AT is set — a referee named after it would be messaged`);
+  }
+  if (!gate.includes(GATE_REFUSES) || !gate.includes("refereePromiseHolds(refereeNamedAt)")) {
+    d.push("consent.ts no longer refuses a promised referee (agent_referee, step 1b)");
+  }
+  return d;
+}
+ok("§4i while §9 promises referees no marketing (today: all three locales), the cut-off is null and the gate refuses a promised referee",
+  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc).length === 0
+    && LOCS.every((l) => section(blocks(pageSrc)[l], "9").replace(WS4I, " ").includes(NEVER_MARKET[l])),
+  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc).join("; "));
+const plantCut = refereeExclusionSrc.replace(CUT_NULL, 'export const REFEREE_NEW_WORDS_LIVE_AT: string | null = "2026-10-20T00:00:00.000Z";');
+ok("§5ap control · the cut-off set while §9 still promises 'never' is reported",
+  plantCut !== refereeExclusionSrc && refereeDefects(pageSrc, plantCut, consentGateSrc).some((x) => x.includes("still promises")));
+const plantNoRefusal = consentGateSrc.replace(GATE_REFUSES, "return null;");
+ok("§5aq control · the gate's referee refusal removed is reported",
+  plantNoRefusal !== consentGateSrc && refereeDefects(pageSrc, refereeExclusionSrc, plantNoRefusal).some((x) => x.includes("no longer refuses")));
+
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 20) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }

@@ -792,7 +792,8 @@ shows no audience words yet (M8).
    "Will receive now (forecast)" · "Not receiving" · "Can't be sent to" (unsendable) and, when the budget ran out, "Not
    checked yet". The five reasons as `AdminBarList` rows, dominant first: "Stopped (on the stop list)" · "No consent or
    recorded basis" · "Withdrew consent" · "Age not confirmed" · "Protected (responsible gambling, age or account status)" —
-   protected is ONE line for every role. `unanswered` joins Not receiving as "Couldn't be checked — checked again when
+   protected is ONE line for every role. (⟶ 2026-10-07, U33r: "Protected (responsible gambling, age, account status or agent
+   referee)" — a promised agent referee is counted in that ONE line, never apart.) `unanswered` joins Not receiving as "Couldn't be checked — checked again when
    sent".
 7. **⛔ The D19 floor (E23):** `MASKED_BREAKDOWN_MIN = 10` in `campaign-status.ts`; for a viewer who may not read a number
    and `matching < 10`, the view-model carries `matching` only — no will-receive, no reasons, no sample — and says why. A

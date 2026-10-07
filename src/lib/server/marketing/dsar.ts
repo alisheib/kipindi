@@ -121,8 +121,9 @@ export type CampaignMessageStatus = "handed over" | "delivered" | "no answer fro
 export const CAMPAIGN_HISTORY_CUT =
   "There are more campaign messages than this file can list; the oldest are not included.";
 
-/** Every reason inside U38a's PROTECTED bucket reads as this ONE value (U20's REACH ruling, D19). */
-const PROTECTED_WORDS = "protected (responsible gambling, age or account status)";
+/** Every reason inside U38a's PROTECTED bucket reads as this ONE value (U20's REACH ruling, D19) — U33r's promised agent
+ *  referee among them, so the words name it too and stay true for every reason they stand for. */
+const PROTECTED_WORDS = "protected (responsible gambling, age, account status or agent referee)";
 
 /**
  * U16a · a refusal AT SENDING, in U38a's five buckets (`AUDIENCE_BUCKET_OF`, `audience-split.ts`): the stop list, no
@@ -145,6 +146,8 @@ export const NOT_SENT_REASON: Readonly<Record<MarketingSkipReason, string>> = {
   account_status: PROTECTED_WORDS,
   // U33a-G · the split's `no_consent` bucket ("No consent or recorded basis", S6) — the same words, as P8 requires.
   no_basis: "no consent or recorded basis",
+  // U33r · the split's ONE protected line (`AUDIENCE_BUCKET_OF`), so the same ONE value — P8 holds the partition.
+  agent_referee: PROTECTED_WORDS,
 };
 
 /** U16a · the words for a row that sent nothing without a known refusal at sending. */
