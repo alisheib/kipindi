@@ -35,7 +35,8 @@ import {
   smsCodingFor,
   type BlackballEnv,
 } from "../src/lib/server/sms-blackball.ts";
-import { otpMessage } from "../src/lib/server/sms.ts";
+import { otpMessage, sendBatch } from "../src/lib/server/sms.ts";
+import { db } from "../src/lib/server/store.ts";
 
 let pass = 0,
   fail = 0;
@@ -416,6 +417,96 @@ const OK_BODY = JSON.stringify({ status: true, message: "Queued", data: null, ba
   const bad = await blackballBalance(ENV);
   s2.restore();
   ok("§12 ⛔ refused credentials read as NOT ok: its 0.0 is not a balance", bad.ok === false && bad.message === "Invalid credentials used");
+}
+
+// ── §13 · ⛔ U43b-1 · E3 · F2 · A REPLY BODY THAT DIES MID-READ IS A LOST REPLY, NOT A THROW ──────────────────
+// The status line arrives and the first bytes of the body, then the connection drops. The read used to sit OUTSIDE the
+// adapter's try, so the throw escaped into sendBatch's chunk catch, which writes the row FAILED: terminal (a late receipt
+// is discarded) and an invitation to retry — a second SMS at a second charge — for a batch the gateway had whole.
+// `red:blackball` plants the read back outside the try, for the send and for the balance (R-BB1 · R-BB1b).
+/** A reply whose status line and first bytes arrive, then the body dies while it is being read. */
+const PARTIAL = '{"status":true,"message":"PARTIALBODY';
+const dyingReply = (): Response => {
+  let pulls = 0;
+  return new Response(new ReadableStream<Uint8Array>({
+    pull(c) {
+      if (pulls++ === 0) c.enqueue(new TextEncoder().encode(PARTIAL));
+      else c.error(new Error("socket reset mid-body"));
+    },
+  }), { status: 200, headers: { "content-type": "application/json" } });
+};
+{
+  const real = globalThis.fetch;
+  globalThis.fetch = (async () => dyingReply()) as typeof fetch;
+  let threw: string | null = null;
+  let out: Awaited<ReturnType<typeof blackballSend>> | null = null;
+  try {
+    out = await blackballSend(ENV, [{ msisdn: "255772619619", text: "x", reference: REF() }]);
+  } catch (e) {
+    threw = String((e as Error)?.message ?? e);
+  }
+  let balThrew: string | null = null;
+  let bal: Awaited<ReturnType<typeof blackballBalance>> | null = null;
+  try {
+    bal = await blackballBalance(ENV);
+  } catch (e) {
+    balThrew = String((e as Error)?.message ?? e);
+  }
+  globalThis.fetch = real;
+  ok(
+    "§13 ⛔ U43b-1 · a send reply whose body dies mid-read does NOT throw: ambiguous, transport set, the status line kept",
+    threw === null && out?.ok === false && out.transport === "reply body unreadable: socket reset mid-body" && out.httpStatus === 200,
+    threw !== null ? `threw="${threw}"` : `transport=${out?.transport} http=${out?.httpStatus}`,
+  );
+  const line = out ? describeBlackball(out) : "";
+  ok(
+    "§13 …and the log line calls it a transport failure, with no byte of the body in it",
+    /transport=reply body unreadable/.test(line) && !line.includes("PARTIALBODY"),
+    line || "(threw)",
+  );
+  ok(
+    "§13 ⛔ the balance read is the same: a body that dies mid-read does NOT throw, it comes back as a transport (unreachable to sms.ts)",
+    balThrew === null && bal?.ok === false && bal.balance === null && (bal.transport ?? "").startsWith("reply body unreadable:"),
+    balThrew !== null ? `threw="${balThrew}"` : `transport=${bal?.transport}`,
+  );
+}
+
+// ── §14 · …AND sendBatch WRITES THAT ROW UNKNOWN, NEVER FAILED (the facade end to end, on the memory store) ───────
+{
+  const label =
+    "§14 ⭐ sendBatch: that reply leaves its SmsMessage row UNKNOWN, never FAILED (result TRANSPORT, a late receipt can still settle it)";
+  if (process.env.DATABASE_URL) {
+    // ⛔ This case writes one SmsMessage row — on the memory store only, never into a database this run can see.
+    ok(label, false, "DATABASE_URL is set: run this suite without it (the store picks its twin when it is imported)");
+  } else {
+    const saved = { ...process.env };
+    process.env.SMS_PROVIDER = "blackball";
+    process.env.SMS_SENDER_ID = "50PICK";
+    process.env.BLACKBALL_CLIENT_ID = "cid";
+    process.env.BLACKBALL_CLIENT_SECRET = "csec";
+    process.env.BLACKBALL_API_URL = ENV.endpoint;
+    const real = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls++;
+      return dyingReply();
+    }) as typeof fetch;
+    let r: Awaited<ReturnType<typeof sendBatch>> | null = null;
+    try {
+      // An OTP: the rail this protects, and exempt from the credit floor, so no balance read is made.
+      r = await sendBatch([{ to: "255772619619", body: otpMessage("123456", "SW"), purpose: "OTP" }]);
+    } finally {
+      globalThis.fetch = real;
+      process.env = saved;
+    }
+    const res = r?.results[0];
+    const row = res?.reference ? await db.smsMessage.findByReference(res.reference) : null;
+    ok(
+      label,
+      calls === 1 && res?.ok === false && res.code === "TRANSPORT" && row?.status === "UNKNOWN" && row.failedAt === null,
+      `calls=${calls} · result ${res?.code ?? "none"} · row ${row?.status ?? "none"}, failedAt ${row?.failedAt ?? "null"}`,
+    );
+  }
 }
 
 console.log(`\nblackball-adapter: ${pass} passed, ${fail} failed`);

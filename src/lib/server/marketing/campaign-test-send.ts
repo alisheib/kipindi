@@ -593,9 +593,11 @@ export async function sendCampaignTest(
       return refuse("held", heldSentence(out.reason, sendWindow));
     }
     // ⛔ A transport that lost its reply may still have sent it: unconfirmed, never retried, never "handed over" (OD23).
+    // U43b-1 · E3 · dispatch now says so itself (a TRANSPORT result arrives `unconfirmed`, its code kept); this mapping stays
+    // as defence in depth, and the masked row still records TRANSPORT for a lost reply and no_answer for no result at all.
     if (out?.outcome === "failed" && out.code !== "TRANSPORT") return refuse("failed", failedSentence(out.code, target));
     await floor();
-    await record("unconfirmed", out?.outcome === "failed" ? out.code : "no_answer");
+    await record("unconfirmed", out?.outcome === "failed" || out?.outcome === "unconfirmed" ? (out.code ?? "no_answer") : "no_answer");
     return { ok: false, outcome: "unconfirmed", error: target === "typed" ? TEST_TYPED_UNCONFIRMED : TEST_UNCONFIRMED, text: shown, maskedTo: to, at, target };
   } catch (err) {
     // ⛔ S25 · BY CONSTRUCTION: a typed outcome decided at the gate or after it — a throw included — waits for the floor

@@ -38,6 +38,8 @@ import type { SendWindowState } from "../src/lib/marketing/window.ts";
 // U13 · every slice this suite drives is handed a FIXED window (ENGINE-SPEC §5 rule 9) — green at any clock.
 import { ALWAYS_OPEN, ALWAYS_CLOSED } from "./lib/send-window.mts";
 import type { SliceRecipient, SliceOutcome, SliceDeps } from "../src/lib/server/marketing/dispatch.ts";
+// U43b-1 · the hooks' own shapes — U9.15–U9.21 drive `prepare` and `beforeSend`.
+import type { SliceMeta, SlicePrepared, SliceCleared, MarketingGateAllow } from "../src/lib/server/marketing/dispatch.ts";
 import { mintOptOutToken, stopMarketing } from "../src/lib/server/marketing/optout-service.ts";
 import * as optoutService from "../src/lib/server/marketing/optout-service.ts";
 import { getAuditForTargetsDurable } from "../src/lib/server/audit.ts";
@@ -540,7 +542,14 @@ function gateWithDefect(d: Defect): Gate {
  * ⭐ vb3 · one row is WRITTEN '+255 0712…': the wire must be given the gate's own key for it (U9.13), never the row's
  * spelling.
  * ⭐ U13 · every slice here is handed a FIXED window (`scripts/lib/send-window.mts`), so the contract is green at any clock
- * (ENGINE-SPEC §5 rule 9) — and U9.14 is the window's own clause: outside it the slice is held whole, no gate asked. */
+ * (ENGINE-SPEC §5 rule 9) — and U9.14 is the window's own clause: outside it the slice is held whole, no gate asked.
+ * ⭐ U43b-1 · THE ENGINE'S HOOKS (ENGINE-SPEC §4.13 Decision 1 · E1 · E2 · E3), `runHookContract`: U9.15 runs this whole
+ * contract again with every row PREPARED (a `prepare` instead of a body, and a `beforeSend` that keeps every row — the
+ * engine's shape) and asserts nobody the gate refused was ever prepared; U9.16–U9.24 then drive each hook on the world the
+ * contract left behind (X stopped, Y self-excluded, Z on a break) — the review round added U9.17b (a malformed prepare
+ * answer costs its own row only), U9.19b (a malformed beforeSend answer sends nothing), U9.22 (the meta and the basis on
+ * EVERY outcome after the clear), U9.23 (the window judged after beforeSend) and U9.24 (beforeSend is handed copies).
+ * U9.1–U9.13 are untouched: they are what U43b-2's engine must pass as the second driver (§T). */
 type Driver = (slices: SliceRecipient[][], between: () => Promise<void>, deps: SliceDeps) => Promise<SliceOutcome[]>;
 type Dispatch = (rows: SliceRecipient[], deps: SliceDeps) => Promise<SliceOutcome[]>;
 
@@ -553,6 +562,34 @@ const loopOver = (dispatch: Dispatch): Driver => async (slices, between, deps) =
   }
   return out;
 };
+
+/** U43b-1 · a fixed `meta` per row, so a carried one can be told from a lost or a mixed-up one. */
+const hookMeta = (ref: string): SliceMeta => ({ locale: "SW", segments: 1, bodyLen: 9 + ref.length, token: `tok${ref}`, origin: "account", name: "account" });
+
+/** U43b-1 · the loop with every row PREPARED — a prepare instead of its body, as the engine's slice will hand them — and a
+ *  beforeSend that keeps every cleared row. Each prepare makes the row's own text, so every U9 assertion reads the same, and
+ *  records the key it was asked under: U9.15 holds that list against the people the gate refused. Every outcome the step
+ *  answers is kept in `seen` too, so U9.22 can read each one for the meta and the basis it must carry. */
+const preparedLoop = (dispatch: Dispatch, asked: string[], seen: SliceOutcome[]): Driver => async (slices, between, deps) =>
+  loopOver(async (rows, d) => {
+    const out = await dispatch(rows, d);
+    seen.push(...out);
+    return out;
+  })(
+    slices.map((slice) => slice.map((r): SliceRecipient => {
+      const text = r.body ?? "";
+      return {
+        ref: r.ref,
+        msisdn: r.msisdn,
+        prepare: async (key) => {
+          asked.push(key);
+          return { ok: true, body: text, meta: hookMeta(r.ref) };
+        },
+      };
+    })),
+    between,
+    { ...deps, beforeSend: async (cleared) => ({ proceed: true, keep: cleared.map((c) => c.ref) }) },
+  );
 
 type Wire = { sent: SmsOutbound[]; calls: number; send: SliceDeps["send"] };
 function fakeWire(failMsisdn: Set<string>, refused?: SmsBatchOutcome["refused"]): Wire {
@@ -590,7 +627,10 @@ async function seedLoop(run: number) {
   return { A, B, X, Y, Z, F, G, H, token };
 }
 
-async function runLoopContract(driver: Driver, run: number, tag: string): Promise<void> {
+type LoopWorld = Awaited<ReturnType<typeof seedLoop>>;
+
+/** The contract, on its own world — which it hands back, so U43b-1's hook clauses can carry on in it. */
+async function runLoopContract(driver: Driver, run: number, tag: string): Promise<LoopWorld> {
   const p = (n: string) => `${tag}${n}`;
   const w = await seedLoop(run);
   const row = (who: { msisdn: string }, ref: string): SliceRecipient => ({ ref, msisdn: who.msisdn, body: "50pick: tangazo." });
@@ -662,22 +702,335 @@ async function runLoopContract(driver: Driver, run: number, tag: string): Promis
     quiet.length === 3 && quiet.every((o) => o.outcome === "held" && (o as { reason?: string }).reason === "quiet_hours")
       && asked === 0 && night.calls === 0 && reads === 1,
     `${quiet.map((o) => `${o.ref}:${o.outcome}:${(o as { reason?: string }).reason ?? "-"}`).join(" ")} · gate asked ${asked} · wire calls ${night.calls} · window read ${reads}`);
+  return w;
 }
 
 /** U13 · the contract's closed-window clause — named once, so its red case expects exactly what the run says. */
 const U9_14 = "U9.14 · ⭐ U13 · OUTSIDE THE SEND WINDOW the slice is held WHOLE — every row held quiet_hours, the gate asked ZERO times, the wire never called, the window read ONCE";
 
+/** U43b-1 · the hook clauses — named once, so each red case expects exactly what the run says. */
+const U9_15 = "U9.15 · ⭐ E1 · with every row PREPARED (the engine's shape) the same contract holds, and NOBODY the gate refused was ever prepared — the opt-out, the self-exclusion and the break between the slices got no prepare (so no token is minted for them), and the row written '+255 0712…' was prepared under the gate's key";
+const U9_16 = "U9.16 · ⭐ E1 · prepare runs only for a number the gate has just CLEARED — after that row's gate, under the gate's key, with the gate's yes and its basis; the prepared text is what the wire is given; and every outcome after the clear carries the prepare's meta and the gate's basis (a refused row carries neither)";
+const U9_17 = "U9.17 · a prepare that REFUSES holds its row 'prepare:<reason>' with its detail, and one that THROWS holds it 'prepare:unanswered' — each with the gate's basis, neither on the wire — while the rest of the slice is still sent, in its one call";
+const U9_18 = "U9.18 · ⭐ beforeSend is asked ONCE, after every gate and prepare and before the wire, with exactly the CLEARED rows under the gate's keys and the text that would go — and its VETO holds every cleared row with its reason and the gate's basis, and nothing reaches the wire (a campaign paused while it was gating sends nothing)";
+const U9_19 = "U9.19 · ⛔ E6 · beforeSend keeping SOME rows sends only those — every other cleared row held claim_lost, never on the wire (a ref it names outside the slice changes nothing); keeping NONE (a stalled claimant whose claims were all reaped) makes ZERO wire calls; one that THROWS holds every cleared row before_send_unanswered, the wire untouched";
+const U9_20 = "U9.20 · ⭐ E3 · a result the wire marks TRANSPORT (the reply lost — the gateway may hold the message and bill for it) is 'unconfirmed' with that result's reference and code, never 'failed' (which invites a retry, a second charge), and carries the meta and the basis; a refusal the wire names (REJECTED) is still 'failed' with its code";
+const U9_21 = "U9.21 · a row with NEITHER a body nor a prepare, or with BOTH, is refused as a programming error before any gate is asked or anything is sent (with both, which text went would be an accident) — while a well-formed row is dispatched";
+/* U43b-1 · the review round's clauses */
+const U9_17B = "U9.17b · ⛔ a prepare whose answer is MALFORMED — ok with no body, an empty body or no meta; a refusal with no reason; no answer at all — holds THAT row 'prepare:unanswered' with the gate's basis, and only that row: the well-formed row beside it is still handed over in the slice's one call and nothing is left 'unconfirmed' (a body-less message on the wire throws inside sendBatch and leaves every row 'maybe sent')";
+const U9_19B = "U9.19b · ⛔ beforeSend's answer is READ, never trusted — a go-ahead with no keep, a null keep, a keep that is a string ('k', which new Set reads as letters) or holds a number; a veto with no reason, an empty one or an object for one; no answer; a proceed that is the text 'true' — each holds every cleared row before_send_unanswered and sends nothing";
+const U9_22 = "U9.22 · ⭐ the meta and the basis ride EVERY outcome after the clear — in the prepared re-run the handed over, the one the wire refused (U9.7's), the one the credit floor held (U9.9's) and the one whose send threw (U9.11's) each carry the prepare's meta and the gate's basis, as does a row the wire's answer left out; while every outcome decided BEFORE the clear (refused, the gate unanswered, the window) carries neither";
+const U9_23 = "U9.23 · ⛔ U13 SP-1 AFTER beforeSend — a beforeSend that takes the slice past 20:00 (the slice's clock moved inside it) has every cleared row held quiet_hours at the wire, with its meta and basis, and ZERO wire calls: the window is judged after the hook — while the same slice with a hook that takes no time is handed over";
+const U9_24 = "U9.24 · ⛔ beforeSend is handed COPIES — rewriting the body, the key, the basis and the meta's token of every row it was handed changes nothing: the wire is given the original text under the gate's key, and each outcome carries the original meta and basis";
+
+/**
+ * U43b-1 · THE HOOKS (ENGINE-SPEC §4.13 Decision 1). U9.15 runs the whole contract again with every row prepared; U9.16–
+ * U9.24 then drive each hook on the world that contract left: A, B and H still consenting, X stopped, Y self-excluded.
+ */
+async function runHookContract(dispatch: Dispatch, run: number, tag: string): Promise<void> {
+  const p = (n: string) => `${tag}${n}`;
+  type Row = Record<string, unknown> | undefined;
+  const find = (os: SliceOutcome[], ref: string): Row => os.find((o) => o.ref === ref) as Row;
+  const show = (os: SliceOutcome[]) => os.map((o) => `${o.ref}:${o.outcome}:${String((o as { reason?: string }).reason ?? "-")}`).join(" ");
+  const sameMeta = (o: Row, ref: string) => JSON.stringify(o?.meta) === JSON.stringify(hookMeta(ref));
+
+  // ── U9.15 · the contract again, every row prepared ────────────────────────────────────────────────────────────────
+  const asked: string[] = [];
+  /** Every outcome of the prepared re-run — U9.22 reads each one. */
+  const seen: SliceOutcome[] = [];
+  const w = await runLoopContract(preparedLoop(dispatch, asked, seen), run, `${tag}prepared:`);
+  const consenting = [w.A, w.B, w.F, w.G, w.H].map((x) => x.msisdn);
+  const refused = [w.X, w.Y, w.Z].map((x) => x.msisdn);
+  const named = (k: string) => (Object.entries(w).find(([, v]) => (v as { msisdn?: string } | null)?.msisdn === k)?.[0] ?? "?");
+  ok(p(U9_15),
+    asked.length > 0 && asked.every((k) => consenting.includes(k)) && !asked.some((k) => refused.includes(k)) && asked.includes(w.H.msisdn),
+    `prepared for [${asked.map(named).join(", ")}]`);
+
+  /** A prepare that records whom it was asked about, and how, and makes `50pick: <ref>.` with `hookMeta(ref)`. */
+  const order: string[] = [];
+  const preps: Array<{ ref: string; key: string; ok: boolean; basis: string }> = [];
+  const prep = (ref: string) => async (key: string, verdict: MarketingGateAllow): Promise<SlicePrepared> => {
+    order.push(`prepare:${ref}`);
+    preps.push({ ref, key, ok: verdict.ok === true, basis: verdict.basis });
+    return { ok: true, body: `50pick: ${ref}.`, meta: hookMeta(ref) };
+  };
+  /** The ONE gate, recording which row it was asked about. */
+  const recording = (rows: SliceRecipient[], log: string[]): NonNullable<SliceDeps["gate"]> => {
+    const refOf = new Map(rows.map((r) => [r.msisdn, r.ref]));
+    return async (m) => { log.push(`gate:${refOf.get(m) ?? "?"}`); return mayReceiveMarketingSms(m); };
+  };
+
+  // ── U9.16 · prepare: after the gate, under its key, with its verdict; its text on the wire; meta and basis carried ──
+  const rows16: SliceRecipient[] = [
+    { ref: "hA", msisdn: w.A.msisdn, prepare: prep("hA") },
+    { ref: "hX", msisdn: w.X.msisdn, prepare: prep("hX") },
+    { ref: "hY", msisdn: w.Y.msisdn, prepare: prep("hY") },
+    { ref: "hH", msisdn: `+255 0${w.H.msisdn.slice(3)}`, prepare: prep("hH") },
+  ];
+  const wire16 = fakeWire(new Set());
+  const o16 = await dispatch(rows16, { send: wire16.send, gate: recording(rows16, order), window: ALWAYS_OPEN });
+  const afterItsGate = (ref: string) => order.indexOf(`gate:${ref}`) >= 0 && order.indexOf(`gate:${ref}`) < order.indexOf(`prepare:${ref}`);
+  const sent16 = (ref: string) => wire16.sent.find((m) => m.targetId === ref);
+  const carries = (o: Row, ref: string) => sameMeta(o, ref) && o?.basis === "CONSENT" && String(o?.basisRef ?? "").startsWith("ledger:");
+  ok(p(U9_16),
+    preps.map((x) => x.ref).join() === "hA,hH" && afterItsGate("hA") && afterItsGate("hH")
+      && preps.every((x) => x.ok && x.basis === "CONSENT") && preps[0]?.key === w.A.msisdn && preps[1]?.key === w.H.msisdn
+      && wire16.calls === 1 && wire16.sent.length === 2
+      && sent16("hA")?.to === w.A.msisdn && sent16("hA")?.body === "50pick: hA." && sent16("hH")?.to === w.H.msisdn && sent16("hH")?.body === "50pick: hH."
+      && find(o16, "hA")?.outcome === "handed_over" && carries(find(o16, "hA"), "hA") && find(o16, "hH")?.outcome === "handed_over" && carries(find(o16, "hH"), "hH")
+      && find(o16, "hX")?.outcome === "skipped" && find(o16, "hX")?.skipReason === "suppressed" && find(o16, "hX")?.meta === undefined && find(o16, "hX")?.basis === undefined
+      && find(o16, "hY")?.outcome === "skipped" && find(o16, "hY")?.skipReason === "rg_self_excluded",
+    `prepared [${preps.map((x) => `${x.ref}@${named(x.key)}`).join(", ")}] · order ${order.join(" ")} · ${show(o16)}`);
+
+  // ── U9.17 · a prepare that refuses, or throws, holds THAT row and no other ────────────────────────────────────────
+  const wire17 = fakeWire(new Set());
+  let o17: SliceOutcome[] = [];
+  let threw17 = "";
+  try {
+    o17 = await dispatch([
+      { ref: "pA", msisdn: w.A.msisdn, prepare: async () => ({ ok: false, reason: "token_unavailable", detail: "no stop link could be made" }) },
+      { ref: "pB", msisdn: w.B.msisdn, prepare: async () => { throw new Error("db down"); } },
+      { ref: "pH", msisdn: w.H.msisdn, prepare: prep("pH") },
+    ], { send: wire17.send, window: ALWAYS_OPEN });
+  } catch (e) {
+    threw17 = String((e as Error)?.message ?? e);
+  }
+  ok(p(U9_17),
+    threw17 === "" && find(o17, "pA")?.outcome === "held" && find(o17, "pA")?.reason === "prepare:token_unavailable"
+      && find(o17, "pA")?.detail === "no stop link could be made" && find(o17, "pA")?.basis === "CONSENT"
+      && find(o17, "pB")?.outcome === "held" && find(o17, "pB")?.reason === "prepare:unanswered" && find(o17, "pB")?.basis === "CONSENT"
+      && find(o17, "pH")?.outcome === "handed_over" && wire17.calls === 1 && wire17.sent.length === 1 && wire17.sent[0]?.targetId === "pH",
+    threw17 !== "" ? `the slice threw: ${threw17}` : `${show(o17)} · wire ${wire17.calls} call(s) [${wire17.sent.map((m) => m.targetId).join(", ")}]`);
+
+  // ── U9.17b · a MALFORMED prepare answer costs its own row, never the slice (the review's MINOR 1) ─────────────────────
+  // The wire here behaves as sendBatch does: a message with no text, or an empty one, throws the WHOLE call.
+  const inner17b = fakeWire(new Set());
+  let calls17b = 0;
+  const strict: SliceDeps["send"] = async (messages) => {
+    calls17b++;
+    if (messages.some((m) => typeof m.body !== "string" || m.body === "")) throw new Error("a message with no text — sendBatch throws before any row is written");
+    return inner17b.send(messages);
+  };
+  const malformed: Array<[string, unknown]> = [
+    ["mNoBody", { ok: true, meta: hookMeta("mNoBody") }],
+    ["mEmptyBody", { ok: true, body: "", meta: hookMeta("mEmptyBody") }],
+    ["mNoMeta", { ok: true, body: "50pick: mNoMeta." }],
+    ["mNoReason", { ok: false }],
+    ["mNull", null],
+  ];
+  let o17b: SliceOutcome[] = [];
+  let threw17b = "";
+  try {
+    o17b = await dispatch([
+      ...malformed.map(([ref, answer]): SliceRecipient => ({ ref, msisdn: w.A.msisdn, prepare: async () => answer as SlicePrepared })),
+      { ref: "mGood", msisdn: w.H.msisdn, prepare: prep("mGood") },
+    ], { send: strict, window: ALWAYS_OPEN });
+  } catch (e) {
+    threw17b = String((e as Error)?.message ?? e);
+  }
+  ok(p(U9_17B),
+    threw17b === ""
+      && malformed.every(([ref]) => find(o17b, ref)?.outcome === "held" && find(o17b, ref)?.reason === "prepare:unanswered"
+        && find(o17b, ref)?.basis === "CONSENT" && find(o17b, ref)?.meta === undefined)
+      && find(o17b, "mGood")?.outcome === "handed_over" && !o17b.some((o) => o.outcome === "unconfirmed")
+      && calls17b === 1 && inner17b.sent.length === 1 && inner17b.sent[0]?.targetId === "mGood" && inner17b.sent[0]?.body === "50pick: mGood.",
+    threw17b !== "" ? `the slice threw: ${threw17b}` : `${show(o17b)} · wire ${calls17b} call(s) [${inner17b.sent.map((m) => m.targetId).join(", ")}]`);
+
+  // ── U9.18 · beforeSend: once, after every gate and prepare, before the wire — a veto sends nothing ───────────────────
+  const order18: string[] = [];
+  const handed18: SliceCleared[][] = [];
+  const rows18: SliceRecipient[] = [
+    { ref: "vA", msisdn: w.A.msisdn, prepare: async () => { order18.push("prepare:vA"); return { ok: true, body: "50pick: vA.", meta: hookMeta("vA") }; } },
+    { ref: "vX", msisdn: w.X.msisdn, prepare: async () => { order18.push("prepare:vX"); return { ok: true, body: "50pick: vX.", meta: hookMeta("vX") }; } },
+    { ref: "vB", msisdn: w.B.msisdn, body: "50pick: vB." },
+  ];
+  const wire18 = fakeWire(new Set());
+  const o18 = await dispatch(rows18, {
+    send: wire18.send, gate: recording(rows18, order18), window: ALWAYS_OPEN,
+    beforeSend: async (cleared) => { order18.push("beforeSend"); handed18.push([...cleared]); return { proceed: false, reason: "not_running" }; },
+  });
+  const handed = handed18[0] ?? [];
+  const handedRow = (ref: string) => handed.find((c) => c.ref === ref);
+  ok(p(U9_18),
+    handed18.length === 1 && order18.filter((x) => x === "beforeSend").length === 1 && order18[order18.length - 1] === "beforeSend"
+      && ["gate:vA", "gate:vX", "gate:vB"].every((x) => order18.includes(x)) && order18.indexOf("gate:vA") < order18.indexOf("prepare:vA")
+      && !order18.includes("prepare:vX") && handed.map((c) => c.ref).join() === "vA,vB" && handedRow("vA")?.msisdn === w.A.msisdn && handedRow("vA")?.body === "50pick: vA."
+      && sameMeta(handedRow("vA") as Row, "vA") && handedRow("vB")?.body === "50pick: vB." && handed.every((c) => c.basis === "CONSENT")
+      && find(o18, "vA")?.outcome === "held" && find(o18, "vA")?.reason === "not_running" && sameMeta(find(o18, "vA"), "vA")
+      && find(o18, "vB")?.outcome === "held" && find(o18, "vB")?.reason === "not_running" && find(o18, "vB")?.basis === "CONSENT"
+      && find(o18, "vX")?.outcome === "skipped" && wire18.calls === 0,
+    `order ${order18.join(" ")} · handed [${handed.map((c) => c.ref).join(", ")}] · ${show(o18)} · wire ${wire18.calls} call(s)`);
+
+  // ── U9.19 · beforeSend keeping some, keeping none, throwing ───────────────────────────────────────────────────────────
+  const three = (s: string): SliceRecipient[] => [
+    { ref: `${s}A`, msisdn: w.A.msisdn, body: "50pick: tangazo." },
+    { ref: `${s}B`, msisdn: w.B.msisdn, prepare: prep(`${s}B`) },
+    { ref: `${s}H`, msisdn: w.H.msisdn, body: "50pick: tangazo." },
+  ];
+  const someWire = fakeWire(new Set());
+  const some = await dispatch(three("k"), { send: someWire.send, window: ALWAYS_OPEN, beforeSend: async () => ({ proceed: true, keep: ["kA", "zz_not_in_this_slice"] }) });
+  const noneWire = fakeWire(new Set());
+  const none = await dispatch(three("n"), { send: noneWire.send, window: ALWAYS_OPEN, beforeSend: async () => ({ proceed: true, keep: [] }) });
+  const thrownWire = fakeWire(new Set());
+  const thrown = await dispatch(three("t"), { send: thrownWire.send, window: ALWAYS_OPEN, beforeSend: async () => { throw new Error("db down"); } });
+  const allHeld = (os: SliceOutcome[], reason: string) => os.length === 3
+    && os.every((o) => o.outcome === "held" && (o as { reason?: string }).reason === reason && (o as { basis?: string }).basis === "CONSENT");
+  ok(p(U9_19),
+    find(some, "kA")?.outcome === "handed_over" && find(some, "kB")?.outcome === "held" && find(some, "kB")?.reason === "claim_lost"
+      && sameMeta(find(some, "kB"), "kB") && find(some, "kH")?.outcome === "held" && find(some, "kH")?.reason === "claim_lost"
+      && someWire.calls === 1 && someWire.sent.map((m) => m.targetId).join() === "kA"
+      && allHeld(none, "claim_lost") && noneWire.calls === 0 && allHeld(thrown, "before_send_unanswered") && thrownWire.calls === 0,
+    `some: ${show(some)}, wire [${someWire.sent.map((m) => m.targetId).join(", ")}] · none: ${show(none)}, wire ${noneWire.calls} · threw: ${show(thrown)}, wire ${thrownWire.calls}`);
+
+  // ── U9.19b · a MALFORMED beforeSend answer sends nothing (the review's NIT) ─────────────────────────────────────────────
+  const answers: Array<[string, unknown]> = [
+    ["no keep", { proceed: true }],
+    ["keep null", { proceed: true, keep: null }],
+    ["keep a string", { proceed: true, keep: "k" }],
+    ["keep holding a number", { proceed: true, keep: ["k", 1] }],
+    ["a veto with no reason", { proceed: false }],
+    ["a veto with an empty reason", { proceed: false, reason: "" }],
+    ["a veto with an object for a reason", { proceed: false, reason: { why: 1 } }],
+    ["no answer", undefined],
+    ["proceed as the text 'true'", { proceed: "true", keep: ["k"] }],
+  ];
+  const odd: string[] = [];
+  for (const [name, answer] of answers) {
+    const wireB = fakeWire(new Set());
+    const os = await dispatch([{ ref: "k", msisdn: w.A.msisdn, body: "50pick: tangazo." }], {
+      send: wireB.send, window: ALWAYS_OPEN, beforeSend: async () => answer as SliceSendVerdict,
+    });
+    const o = find(os, "k");
+    if (!(o?.outcome === "held" && o?.reason === "before_send_unanswered" && o?.basis === "CONSENT" && wireB.calls === 0)) {
+      odd.push(`${name} → ${String(o?.outcome)}:${typeof o?.reason === "string" ? o.reason : JSON.stringify(o?.reason ?? null)}, wire ${wireB.calls}`);
+    }
+  }
+  ok(p(U9_19B), odd.length === 0, odd.length > 0 ? odd.join(" · ") : `${answers.length} malformed answers, each held before_send_unanswered, nothing sent`);
+
+  // ── U9.20 · E3 · TRANSPORT is unconfirmed, with its reference; a named refusal is still failed ─────────────────────────
+  const lossy: SliceDeps["send"] = async (messages) => ({
+    results: messages.map((m) => (m.targetId === "eA"
+      ? { reference: "sms_lost_eA", to: m.to, ok: false, code: "TRANSPORT" as const, error: "transport failure", targetType: m.targetType, targetId: m.targetId }
+      : { reference: "sms_refused_eB", to: m.to, ok: false, code: "REJECTED" as const, error: "Rejected", targetType: m.targetType, targetId: m.targetId })),
+    balanceTzs: null,
+  });
+  const o20 = await dispatch([{ ref: "eA", msisdn: w.A.msisdn, prepare: prep("eA") }, { ref: "eB", msisdn: w.B.msisdn, body: "50pick: tangazo." }],
+    { send: lossy, window: ALWAYS_OPEN });
+  ok(p(U9_20),
+    find(o20, "eA")?.outcome === "unconfirmed" && find(o20, "eA")?.reference === "sms_lost_eA" && find(o20, "eA")?.code === "TRANSPORT"
+      && sameMeta(find(o20, "eA"), "eA") && find(o20, "eA")?.basis === "CONSENT"
+      && find(o20, "eB")?.outcome === "failed" && find(o20, "eB")?.code === "REJECTED" && find(o20, "eB")?.basis === "CONSENT",
+    JSON.stringify(o20.map((o) => ({ ref: o.ref, outcome: o.outcome, code: (o as { code?: string }).code ?? null, reference: (o as { reference?: string }).reference ?? null }))));
+
+  // ── U9.21 · a row carries a body OR a prepare — exactly one ───────────────────────────────────────────────────────────
+  let asked21 = 0;
+  const wire21 = fakeWire(new Set());
+  const refuses = async (rows: unknown[]): Promise<boolean> => {
+    try {
+      await dispatch(rows as SliceRecipient[], { send: wire21.send, window: ALWAYS_OPEN, gate: async (m) => { asked21++; return mayReceiveMarketingSms(m); } });
+      return false;
+    } catch {
+      return true;
+    }
+  };
+  const neither = await refuses([{ ref: "sN", msisdn: w.A.msisdn }]);
+  const both = await refuses([{ ref: "sB", msisdn: w.A.msisdn, body: "50pick: tangazo.", prepare: prep("sB") }]);
+  const wellFormed = !(await refuses([{ ref: "sF", msisdn: w.A.msisdn, body: "50pick: tangazo." }]));
+  ok(p(U9_21),
+    neither && both && wellFormed && asked21 === 1 && wire21.calls === 1,
+    `neither refused ${neither} · both refused ${both} · a well-formed row dispatched ${wellFormed} · gate asked ${asked21} · wire ${wire21.calls} call(s)`);
+
+  // ── U9.22 · the meta and the basis on EVERY outcome after the clear (the review's MINOR 2a) ───────────────────────────
+  // After the clear: handed over, failed, unconfirmed, or held by the wire's own refusal of the batch (U9.9's floor).
+  const afterClear = (o: SliceOutcome) => o.outcome === "handed_over" || o.outcome === "failed" || o.outcome === "unconfirmed"
+    || (o.outcome === "held" && (o as { reason?: string }).reason === "BALANCE_FLOOR");
+  const carriesBoth = (o: SliceOutcome) => carries(o as Row, o.ref);
+  const carriesNone = (o: SliceOutcome) => { const r = o as Row; return r?.meta === undefined && r?.basis === undefined && r?.basisRef === undefined; };
+  const after = seen.filter(afterClear);
+  const before = seen.filter((o) => !afterClear(o));
+  const everyKind = ["handed_over", "failed", "unconfirmed"].every((k) => after.some((o) => o.outcome === k)) && after.some((o) => o.outcome === "held");
+  // …and a row the wire's answer left out (no result for it at all): unconfirmed, with both.
+  const partial: SliceDeps["send"] = async (messages) => ({
+    results: messages.filter((m) => m.targetId !== "gB")
+      .map((m) => ({ reference: `ref_${m.targetId}`, to: m.to, ok: true, targetType: m.targetType, targetId: m.targetId })),
+    balanceTzs: null,
+  });
+  const o22 = await dispatch([{ ref: "gA", msisdn: w.A.msisdn, prepare: prep("gA") }, { ref: "gB", msisdn: w.B.msisdn, prepare: prep("gB") }],
+    { send: partial, window: ALWAYS_OPEN });
+  const leftOut = find(o22, "gB");
+  ok(p(U9_22),
+    everyKind && after.every(carriesBoth) && before.length > 0 && before.every(carriesNone)
+      && find(o22, "gA")?.outcome === "handed_over" && carries(find(o22, "gA"), "gA")
+      && leftOut?.outcome === "unconfirmed" && leftOut?.reference === undefined && leftOut?.code === undefined && carries(leftOut, "gB"),
+    `after the clear: ${after.map((o) => `${o.ref}:${o.outcome}${carriesBoth(o) ? "" : " LACKS its meta or basis"}`).join(" ")} · before it: ${before.map((o) => `${o.ref}:${o.outcome}${carriesNone(o) ? "" : " CARRIES one"}`).join(" ")} · left out: ${leftOut?.outcome ?? "none"}${carries(leftOut, "gB") ? "" : " LACKS its meta or basis"}`);
+
+  // ── U9.23 · the window is judged AFTER beforeSend: a slow hook that crosses 20:00 sends nothing (the review's MINOR 2b) ──
+  // ALWAYS_OPEN is judged at 12:00 EAT and closes at 20:00; the hook moves the slice's own clock on nine hours, to 21:00.
+  let slowNow = 0;
+  const slowWire = fakeWire(new Set());
+  const slow = await dispatch([{ ref: "wA", msisdn: w.A.msisdn, prepare: prep("wA") }, { ref: "wB", msisdn: w.B.msisdn, body: "50pick: tangazo." }], {
+    send: slowWire.send, window: ALWAYS_OPEN, clock: () => slowNow,
+    beforeSend: async (cleared) => { slowNow += 9 * 60 * 60_000; return { proceed: true, keep: cleared.map((c) => c.ref) }; },
+  });
+  const fastWire = fakeWire(new Set());
+  const fast = await dispatch([{ ref: "fA", msisdn: w.A.msisdn, prepare: prep("fA") }], {
+    send: fastWire.send, window: ALWAYS_OPEN, clock: () => 0,
+    beforeSend: async (cleared) => ({ proceed: true, keep: cleared.map((c) => c.ref) }),
+  });
+  ok(p(U9_23),
+    find(slow, "wA")?.outcome === "held" && find(slow, "wA")?.reason === "quiet_hours" && carries(find(slow, "wA"), "wA")
+      && find(slow, "wB")?.outcome === "held" && find(slow, "wB")?.reason === "quiet_hours" && find(slow, "wB")?.basis === "CONSENT"
+      && slowWire.calls === 0 && find(fast, "fA")?.outcome === "handed_over" && fastWire.calls === 1,
+    `the slow hook: ${show(slow)}, wire ${slowWire.calls} call(s)${carries(find(slow, "wA"), "wA") ? "" : " (wA LACKS its meta or basis)"} · the quick one: ${show(fast)}, wire ${fastWire.calls}`);
+
+  // ── U9.24 · beforeSend is handed COPIES (the review's MINOR 2c, and its NIT on the shared meta) ────────────────────────
+  const wire24 = fakeWire(new Set());
+  const o24 = await dispatch([{ ref: "cA", msisdn: w.A.msisdn, prepare: prep("cA") }, { ref: "cB", msisdn: w.B.msisdn, body: "50pick: cB." }], {
+    send: wire24.send, window: ALWAYS_OPEN,
+    beforeSend: async (cleared) => {
+      for (const c of cleared) {
+        const m = c as unknown as { body: string; msisdn: string; basis: string; basisRef: string; meta?: { token: string } };
+        m.body = "50pick: HIJACKED.";
+        m.msisdn = w.X.msisdn;
+        m.basis = "LICENCE_TEST";
+        m.basisRef = "test:hijacked";
+        if (m.meta !== undefined) m.meta.token = "HIJACKED";
+      }
+      return { proceed: true, keep: cleared.map((c) => c.ref) };
+    },
+  });
+  const sent24 = (ref: string) => wire24.sent.find((m) => m.targetId === ref);
+  ok(p(U9_24),
+    wire24.calls === 1 && sent24("cA")?.body === "50pick: cA." && sent24("cA")?.to === w.A.msisdn && sent24("cB")?.body === "50pick: cB."
+      && sent24("cB")?.to === w.B.msisdn && !wire24.sent.some((m) => m.to === w.X.msisdn || m.body.includes("HIJACKED"))
+      && find(o24, "cA")?.outcome === "handed_over" && carries(find(o24, "cA"), "cA")
+      && find(o24, "cB")?.outcome === "handed_over" && find(o24, "cB")?.basis === "CONSENT" && String(find(o24, "cB")?.basisRef ?? "").startsWith("ledger:"),
+    `wire [${wire24.sent.map((m) => `${m.targetId}=${m.body}@${named(m.to)}`).join(", ")}] · ${o24.map((o) => `${o.ref}:${o.outcome}:${String((o as { basis?: string }).basis ?? "-")}:${String(((o as { meta?: { token?: string } }).meta ?? {}).token ?? "-")}`).join(" ")}`);
+}
+
 /** The dispatch step written out so one step at a time can be made wrong. Never ships; with no flag set it
- *  is asserted to agree with `dispatchSlice` on the whole contract before any plant is trusted. */
-type LoopDefect = { hoisted?: boolean; settleByIndex?: boolean; skipAsFailed?: boolean; gateErrorSends?: boolean; noRgAudit?: boolean; rawOnWire?: boolean; windowAfterGate?: boolean };
+ *  is asserted to agree with `dispatchSlice` on the whole contract — and, U43b-1, on the hooks — before any plant is trusted. */
+type LoopDefect = {
+  hoisted?: boolean; settleByIndex?: boolean; skipAsFailed?: boolean; gateErrorSends?: boolean; noRgAudit?: boolean; rawOnWire?: boolean; windowAfterGate?: boolean;
+  /* U43b-1 · the hooks, each made wrong on its own */
+  noShapeCheck?: boolean; prepareBeforeGate?: boolean; prepareRowKey?: boolean; prepareThrowEscapes?: boolean; noCarry?: boolean;
+  noBeforeSend?: boolean; keepIgnored?: boolean; transportAsFailed?: boolean;
+  /* U43b-1 review · a prepare's answer trusted as it comes, beforeSend's answer read loosely, beforeSend handed the live rows */
+  malformedTrusted?: boolean; looseBeforeSendAnswer?: boolean; beforeSendShared?: boolean;
+};
 function dispatchModel(d: LoopDefect): Dispatch {
   return async (rows, deps) => {
-    /** U13 · the send window as dispatchSlice reads it — once, failing closed — FIRST, or (planted) after every gate. */
+    // U43b-1 · a body or a prepare, exactly one — or (planted) whatever arrives is dispatched.
+    if (!d.noShapeCheck && rows.some((r) => ("body" in r) === ("prepare" in r))) throw new Error("model: a row carries a body or a prepare — exactly one");
+    /** U13 · the send window as dispatchSlice reads it — once, failing closed — FIRST, or (planted) after every gate. Its
+     *  answer is kept for the re-check at the wire (SP-1), set against the slice's own elapsed time. */
+    const clock = deps.clock ?? (() => performance.now());
+    const sliceStart = clock();
+    let judged: SendWindowState | undefined;
     const windowHold = async (): Promise<SliceOutcome[] | null> => {
-      let win: SendWindowState | undefined;
-      try { win = await (deps.window ?? liveSendWindow)(); } catch { win = sendWindowUnreadable(); }
-      if (win?.open === true) return null;
-      const reason = win?.reason === "quiet_hours" ? "quiet_hours" : "window_unreadable";
+      try { judged = await (deps.window ?? liveSendWindow)(); } catch { judged = sendWindowUnreadable(); }
+      if (judged?.open === true) return null;
+      const reason = judged?.reason === "quiet_hours" ? "quiet_hours" : "window_unreadable";
       return rows.map((r): SliceOutcome => ({ ref: r.ref, outcome: "held", reason }));
     };
     if (!d.windowAfterGate) {
@@ -686,11 +1039,41 @@ function dispatchModel(d: LoopDefect): Dispatch {
     }
     const ask = deps.gate ?? mayReceiveMarketingSms;
     const out = new Map<string, SliceOutcome>();
-    const cleared: SliceRecipient[] = [];
+    /** A cleared row as dispatchSlice keeps it: the key (or, planted, the row's spelling), the text that goes, the gate's
+     *  basis (absent, planted) and the prepare's meta. */
+    const cleared: SliceCleared[] = [];
+    /** What an outcome after the clear carries — the basis and the meta the cleared row holds. */
+    const carriedOf = (c: SliceCleared): Record<string, unknown> => ({
+      ...(c.basis === undefined ? {} : { basis: c.basis, basisRef: c.basisRef }),
+      ...(c.meta === undefined ? {} : { meta: c.meta }),
+    });
+    /** A prepare's answer read as dispatchSlice reads it — or (planted) trusted as it comes, the shape before the review. */
+    const readAnswer = (made: unknown): { ok: true; body: string; meta: SliceMeta } | { ok: false; reason: string; detail?: string } => {
+      const a = made !== null && typeof made === "object" ? (made as Record<string, unknown>) : null;
+      if (d.malformedTrusted) {
+        if (a?.ok === true) return { ok: true, body: a.body as string, meta: a.meta as SliceMeta };
+        if (a?.ok === false) return { ok: false, reason: `prepare:${String(a.reason)}`, detail: a.detail as string };
+        return { ok: false, reason: "prepare:unanswered" };
+      }
+      if (a?.ok === true && typeof a.body === "string" && a.body !== "" && a.meta !== null && typeof a.meta === "object") return { ok: true, body: a.body, meta: a.meta as SliceMeta };
+      if (a?.ok === false && typeof a.reason === "string" && a.reason !== "") {
+        return typeof a.detail === "string" ? { ok: false, reason: `prepare:${a.reason}`, detail: a.detail } : { ok: false, reason: `prepare:${a.reason}` };
+      }
+      return { ok: false, reason: "prepare:unanswered" };
+    };
+    const prepareOf = async (r: SliceRecipient, key: string, v: MarketingGateVerdict): Promise<unknown> => {
+      if (typeof r.prepare !== "function") return null;
+      try { return await r.prepare(key, v as MarketingGateAllow); } catch (e) { if (d.prepareThrowEscapes) throw e; return null; }
+    };
+    // U43b-1 · R-S7 · planted: every row prepared BEFORE its gate is asked — a refused person is prepared (and minted) anyway.
+    const early = new Map<string, unknown>();
+    if (d.prepareBeforeGate) {
+      for (const r of rows) early.set(r.ref, await prepareOf(r, parseTzNumber(r.msisdn).msisdn ?? r.msisdn, { ok: true, basis: "CONSENT", basisRef: "ledger:early" }));
+    }
     for (const r of rows) {
       let v: MarketingGateVerdict;
       try { v = await ask(r.msisdn); } catch {
-        if (d.gateErrorSends) { cleared.push(r); continue; }
+        if (d.gateErrorSends) { cleared.push({ ref: r.ref, msisdn: r.msisdn, body: r.body ?? "" } as SliceCleared); continue; }
         out.set(r.ref, { ref: r.ref, outcome: "held", reason: "gate_unanswered" }); continue;
       }
       if (!v.ok) {
@@ -706,22 +1089,60 @@ function dispatchModel(d: LoopDefect): Dispatch {
       // vb3 · the gate's key on the wire, as dispatchSlice puts it — or, planted, the row's own spelling as it did before.
       const key = parseTzNumber(r.msisdn).msisdn;
       if (key === null) { out.set(r.ref, { ref: r.ref, outcome: "skipped", skipReason: "bad_msisdn", detail: "no sendable key" }); continue; }
-      cleared.push(d.rawOnWire ? r : { ...r, msisdn: key });
+      const grounds: Record<string, unknown> = d.noCarry ? {} : { basis: v.basis, basisRef: v.basisRef };
+      const msisdn = d.rawOnWire ? r.msisdn : key;
+      if (!("prepare" in r)) { cleared.push({ ref: r.ref, msisdn, body: r.body, ...grounds } as SliceCleared); continue; }
+      // U43b-1 · E1 · prepared only now, under the gate's key — or (planted) under the row's own spelling, or long before.
+      const answer = readAnswer(d.prepareBeforeGate ? (early.get(r.ref) ?? null) : await prepareOf(r, d.prepareRowKey ? r.msisdn : key, v));
+      if (!answer.ok) {
+        out.set(r.ref, { ref: r.ref, outcome: "held", reason: answer.reason, ...(answer.detail === undefined ? {} : { detail: answer.detail }), ...grounds } as SliceOutcome);
+        continue;
+      }
+      cleared.push({ ref: r.ref, msisdn, body: answer.body, ...grounds, ...(d.noCarry ? {} : { meta: answer.meta }) } as SliceCleared);
     }
     if (d.windowAfterGate) {
       const late = await windowHold();
       if (late !== null) return late;
     }
-    if (cleared.length) {
+    // U43b-1 · E2b · beforeSend, once, before the wire, handed copies and its answer read: a veto, a throw or a malformed
+    // answer holds every cleared row; a row it does not keep is held claim_lost — or (planted) it is never asked, its keep
+    // is ignored, its answer is read loosely (the shape before the review), or it is handed the live rows.
+    let sending = cleared;
+    if (cleared.length && deps.beforeSend && !d.noBeforeSend) {
+      let said: unknown;
+      try { said = await deps.beforeSend(d.beforeSendShared ? cleared : structuredClone(cleared)); } catch { said = null; }
+      const a = said !== null && typeof said === "object" ? (said as Record<string, unknown>) : null;
+      let keep: Set<string> | null;
+      let veto: string | null;
+      if (d.looseBeforeSendAnswer) {
+        keep = a?.proceed === true ? new Set(a.keep as Iterable<string>) : null;
+        veto = keep !== null ? null : ((a?.reason as string) || "before_send_unanswered");
+      } else {
+        keep = a?.proceed === true && Array.isArray(a.keep) && a.keep.every((x) => typeof x === "string") ? new Set<string>(a.keep) : null;
+        veto = keep !== null ? null : (a?.proceed === false && typeof a.reason === "string" && a.reason !== "" ? a.reason : "before_send_unanswered");
+      }
+      if (d.keepIgnored && keep !== null) keep = new Set(cleared.map((c) => c.ref));
+      sending = cleared.filter((c) => keep?.has(c.ref) === true);
+      for (const c of cleared) if (!sending.includes(c)) out.set(c.ref, { ref: c.ref, outcome: "held", reason: veto ?? "claim_lost", ...carriedOf(c) } as SliceOutcome);
+    }
+    if (sending.length) {
+      // U13 · SP-1 · the window again AT THE WIRE — after beforeSend — against the slice's own elapsed time.
+      if (judged !== undefined && !(Date.parse(judged.judgedAt) + (clock() - sliceStart) < Date.parse(judged.closesAt))) {
+        for (const c of sending) out.set(c.ref, { ref: c.ref, outcome: "held", reason: "quiet_hours", ...carriedOf(c) } as SliceOutcome);
+        return rows.map((r) => out.get(r.ref) as SliceOutcome);
+      }
       let b: SmsBatchOutcome | null = null;
-      try { b = await deps.send(cleared.map((r) => ({ to: r.msisdn, body: r.body, targetType: "SmsCampaignRecipient", targetId: r.ref }))); } catch { b = null; }
-      if (b === null) for (const r of cleared) out.set(r.ref, { ref: r.ref, outcome: "unconfirmed" });
-      else if (b.refused) for (const r of cleared) out.set(r.ref, { ref: r.ref, outcome: "held", reason: b.refused });
-      else for (const [i, r] of cleared.entries()) {
-        const res = d.settleByIndex ? b.results[i] : b.results.find((x) => x.targetId === r.ref);
-        if (!res) out.set(r.ref, { ref: r.ref, outcome: "unconfirmed" });
-        else if (res.ok) out.set(r.ref, { ref: r.ref, outcome: "handed_over", reference: res.reference });
-        else out.set(r.ref, { ref: r.ref, outcome: "failed", code: res.code ?? "UNKNOWN", error: res.error ?? null });
+      try { b = await deps.send(sending.map((c) => ({ to: c.msisdn, body: c.body, targetType: "SmsCampaignRecipient", targetId: c.ref }))); } catch { b = null; }
+      const put = (c: SliceCleared, o: Record<string, unknown>) => out.set(c.ref, { ref: c.ref, ...o, ...carriedOf(c) } as SliceOutcome);
+      if (b === null) for (const c of sending) put(c, { outcome: "unconfirmed" });
+      else if (b.refused) for (const c of sending) put(c, { outcome: "held", reason: b.refused });
+      else for (const [i, c] of sending.entries()) {
+        const res = d.settleByIndex ? b.results[i] : b.results.find((x) => x.targetId === c.ref);
+        if (!res) put(c, { outcome: "unconfirmed" });
+        else if (res.ok) put(c, { outcome: "handed_over", reference: res.reference });
+        // U43b-1 · E3 · a lost reply is unconfirmed, its reference kept — or (planted, R-S2) settled as a refusal.
+        else if (res.code === "TRANSPORT" && !d.transportAsFailed) put(c, { outcome: "unconfirmed", reference: res.reference, code: res.code });
+        else put(c, { outcome: "failed", code: res.code ?? "UNKNOWN", error: res.error ?? null });
       }
     }
     return rows.map((r) => out.get(r.ref) as SliceOutcome);
@@ -743,6 +1164,61 @@ const hoistedDriver = (dispatch: Dispatch): Driver => async (slices, between, de
     out.push(...await dispatch(slice, { ...deps, gate: async () => ({ ok: true }) }));
   }
   return out;
+};
+
+/* ══ U43b-1 review · PLANTS ON THE SHIPPED STEP ════════════════════════════════════════════════════════════════════════
+ * The review's MINOR 2(d): the carry on each path after the clear, and the window's place after beforeSend, are planted on
+ * the REAL `dispatchSlice` — not on the model. Each plant runs the shipped function with ONE behaviour taken away, through
+ * what it is handed (the clock) or what it hands back (one path's outcome stripped of its meta and basis), the way
+ * `test:marketing-window`'s R-W3c and `test:campaign-compose`'s R-S2 bite the real code. A claim that stayed green under one
+ * of these could not see that regression in dispatch.ts itself. */
+
+/** The paths after the clear whose outcome must carry the meta and the basis (dispatch.ts: the hold at the wire, the send
+ *  that threw, the batch the wire refused, the result the wire left out, the message it refused). */
+type CarryPath = "wireWindow" | "sendThrew" | "refused" | "missing" | "failed";
+/** The SHIPPED step, except that the outcome ONE path writes loses its meta and basis — the path told apart by what the wire
+ *  did (it threw, it refused the batch, it left a result out) and by the outcome's own shape. */
+const carryDropped = (path: CarryPath): Dispatch => async (rows, deps) => {
+  let threw = false;
+  let refused: string | null = null;
+  const out = await dispatchSlice(rows, {
+    ...deps,
+    send: async (messages) => {
+      try {
+        const batch = await deps.send(messages);
+        refused = batch.refused ?? null;
+        return batch;
+      } catch (e) {
+        threw = true;
+        throw e;
+      }
+    },
+  });
+  const hit = (o: SliceOutcome): boolean => {
+    const x = o as { outcome: string; reason?: string; code?: string; basis?: string };
+    if (path === "failed") return x.outcome === "failed";
+    if (path === "refused") return x.outcome === "held" && refused !== null && x.reason === refused;
+    if (path === "sendThrew") return x.outcome === "unconfirmed" && threw;
+    if (path === "missing") return x.outcome === "unconfirmed" && !threw && x.code === undefined;
+    return x.outcome === "held" && x.reason === "quiet_hours" && x.basis !== undefined;   // the hold AT THE WIRE (the first one has no basis)
+  };
+  return out.map((o) => {
+    if (!hit(o)) return o;
+    const { meta: _meta, basis: _basis, basisRef: _basisRef, ...rest } = o as Record<string, unknown>;
+    return rest as SliceOutcome;
+  });
+};
+/** U13 SP-1 judged BEFORE beforeSend — the SHIPPED step with its clock stopped the moment beforeSend is asked, so the
+ *  re-check at the wire sees the slice's time as it was before the hook: as if the window were read there. */
+const windowBeforeHook: Dispatch = async (rows, deps) => {
+  const clock = deps.clock ?? (() => performance.now());
+  let stopped: number | null = null;
+  const hook = deps.beforeSend;
+  return dispatchSlice(rows, {
+    ...deps,
+    clock: () => stopped ?? clock(),
+    ...(hook === undefined ? {} : { beforeSend: async (cleared: readonly SliceCleared[]) => { stopped = clock(); return hook(cleared); } }),
+  });
 };
 
 /** Structural: the shipped step asks the gate INSIDE the per-row loop and BEFORE the one send, and the
@@ -1193,6 +1669,8 @@ if (!PROVE_RED) {
   console.log("\n── U9 · the loop contract (dispatchSlice, two slices, three minds changed between them)\n");
   await runLoopContract(loopOver(dispatchSlice), 300, "");
   assertDispatchShape("");
+  console.log("\n── U9 · U43b-1 · the hooks (the contract again with every row prepared, then prepare, beforeSend and TRANSPORT)\n");
+  await runHookContract(dispatchSlice, 310, "");
   console.log("\n── D4 · the profile switch (recordPlayerMarketingChoice, judged by the gate)\n");
   await runToggleAssertions(REAL_TOGGLE, 500, "");
   console.log("\n── the consent card (what a failed save, a failed read and a running break look like)\n");
@@ -1404,6 +1882,117 @@ if (!PROVE_RED) {
     const wanted = `${tag}${c.expect}`;
     if (fail === 0) problems.push(`loop case ${i + 1} (${c.name}): stayed GREEN`);
     else if (!failed.includes(wanted)) problems.push(`loop case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect}\n`);
+  }
+
+  // ── U9 · U43b-1 · the hooks: the shipped step green, the model faithful, then one plant at a time ──
+  pass = 0; fail = 0; failed.length = 0;
+  await runHookContract(dispatchSlice, 392, "hookbase:");
+  if (fail !== 0) problems.push(`HOOK BASELINE: the shipped dispatch step fails its hook clauses (${failed.join(" | ")})`);
+  console.log(`\n§0 hook baseline · dispatchSlice: ${pass} passed, ${fail} failed`);
+  pass = 0; fail = 0; failed.length = 0;
+  await runHookContract(dispatchModel({}), 393, "hookmodel:");
+  if (fail !== 0) problems.push(`HOOK MODEL: the defect-free model disagrees with dispatchSlice on the hooks (${failed.join(" | ")})`);
+  console.log(`§0b hook model · no defect set: ${pass} passed, ${fail} failed\n`);
+
+  /* Each case is a whole dispatch step: the model with one flag set, or (the review's MINOR 2d) the SHIPPED `dispatchSlice`
+     with one behaviour taken away — `carryDropped`, `windowBeforeHook`. */
+  const HOOK_CASES: Array<{ name: string; dispatch: Dispatch; expect: string }> = [
+    {
+      name: "U43b-1 · R-S7 · every row prepared BEFORE its gate — the token minted for a person the gate then refuses (E1 undone)",
+      dispatch: dispatchModel({ prepareBeforeGate: true }),
+      expect: U9_16,
+    },
+    {
+      name: "U43b-1 · vb3 for the link — the prepare handed the row's own spelling, not the gate's key ('+255 0712…' minted and rendered under a number nobody holds)",
+      dispatch: dispatchModel({ prepareRowKey: true }),
+      expect: U9_16,
+    },
+    {
+      name: "U43b-1 · the prepare's meta and the gate's basis dropped from the outcomes — the settle would write a token, a language and a size it was never told",
+      dispatch: dispatchModel({ noCarry: true }),
+      expect: U9_16,
+    },
+    {
+      name: "U43b-1 · a prepare that throws takes the whole slice down — every other person in it unsent, and their claims stranded",
+      dispatch: dispatchModel({ prepareThrowEscapes: true }),
+      expect: U9_17,
+    },
+    {
+      name: "U43b-1 · R-S9 · beforeSend never asked — a campaign paused (or stopped) while it was gating still sends",
+      dispatch: dispatchModel({ noBeforeSend: true }),
+      expect: U9_18,
+    },
+    {
+      name: "U43b-1 · R-R2 · beforeSend's keep ignored — a stalled claimant whose claims were reaped sends them anyway (E6's double send)",
+      dispatch: dispatchModel({ keepIgnored: true }),
+      expect: U9_19,
+    },
+    {
+      name: "U43b-1 · R-S2 · a TRANSPORT result settled as 'failed' — the lost reply invites a retry, a second SMS at a second charge (F1)",
+      dispatch: dispatchModel({ transportAsFailed: true }),
+      expect: U9_20,
+    },
+    {
+      name: "U43b-1 · a row with both a body and a prepare (or neither) dispatched anyway — which text went is an accident of the code's order",
+      dispatch: dispatchModel({ noShapeCheck: true }),
+      expect: U9_21,
+    },
+    // ── the review round (MINOR 1, MINOR 2, the NITs) ──
+    {
+      name: "U43b-1 review · MINOR 1 · a prepare's { ok: true } trusted as it comes — a body-less message reaches the wire, sendBatch throws, and EVERY row of the slice is left 'unconfirmed'",
+      dispatch: dispatchModel({ malformedTrusted: true }),
+      expect: U9_17B,
+    },
+    {
+      name: "U43b-1 review · beforeSend's answer read loosely — a missing keep reads as 'keep none', a string keep as a list of its letters, an object as the veto's reason",
+      dispatch: dispatchModel({ looseBeforeSendAnswer: true }),
+      expect: U9_19B,
+    },
+    {
+      name: "U43b-1 review · MINOR 2c · beforeSend handed the live rows, not copies — the hook rewrites the text, the key and the meta that are then sent and settled",
+      dispatch: dispatchModel({ beforeSendShared: true }),
+      expect: U9_24,
+    },
+    {
+      name: "U43b-1 review · MINOR 2d · the SHIPPED step with the carry dropped where the wire refused the message (failed)",
+      dispatch: carryDropped("failed"),
+      expect: U9_22,
+    },
+    {
+      name: "U43b-1 review · MINOR 2d · the SHIPPED step with the carry dropped where the wire refused the batch (held, the credit floor)",
+      dispatch: carryDropped("refused"),
+      expect: U9_22,
+    },
+    {
+      name: "U43b-1 review · MINOR 2d · the SHIPPED step with the carry dropped where the send threw (unconfirmed)",
+      dispatch: carryDropped("sendThrew"),
+      expect: U9_22,
+    },
+    {
+      name: "U43b-1 review · MINOR 2d · the SHIPPED step with the carry dropped where the wire left a result out (unconfirmed)",
+      dispatch: carryDropped("missing"),
+      expect: U9_22,
+    },
+    {
+      name: "U43b-1 review · MINOR 2d · the SHIPPED step with the carry dropped from the quiet_hours hold at the wire",
+      dispatch: carryDropped("wireWindow"),
+      expect: U9_23,
+    },
+    {
+      name: "U43b-1 review · MINOR 2b/2d · the SHIPPED step with the window judged BEFORE beforeSend (its clock stopped at the hook) — a hook that runs past 20:00 still sends",
+      dispatch: windowBeforeHook,
+      expect: U9_23,
+    },
+  ];
+  for (const [i, c] of HOOK_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    const tag = `hookred${i + 1}:`;
+    console.log(`── hook case ${i + 1}: ${c.name}`);
+    await runHookContract(c.dispatch, 420 + i, tag);
+    const wanted = `${tag}${c.expect}`;
+    if (fail === 0) problems.push(`hook case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(wanted)) problems.push(`hook case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failed.join(" | ")}`);
     else console.log(`   caught → ${c.expect}\n`);
   }
 
@@ -1635,13 +2224,14 @@ if (!PROVE_RED) {
 
   const caughtGate = CASES.length - problems.filter((x) => x.startsWith("case")).length;
   const caughtLoop = LOOP_CASES.length - problems.filter((x) => x.startsWith("loop case")).length;
+  const caughtHook = HOOK_CASES.length - problems.filter((x) => x.startsWith("hook case")).length;
   const caughtToggle = TOGGLE_CASES.length - problems.filter((x) => x.startsWith("toggle case")).length;
   const caughtCard = CARD_CASES.length - problems.filter((x) => x.startsWith("card case")).length;
   const caughtHeld = HELD_CASES.length - problems.filter((x) => x.startsWith("held case")).length;
   const caughtBasis = BASIS_CASES.length - problems.filter((x) => x.startsWith("basis case")).length;
-  const caught = caughtGate + caughtLoop + caughtToggle + caughtCard + caughtHeld + caughtBasis;
-  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length} · basis ${caughtBasis}/${BASIS_CASES.length}`);
-  console.log(`${caught}/${CASES.length + LOOP_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length + BASIS_CASES.length} caught`);
+  const caught = caughtGate + caughtLoop + caughtHook + caughtToggle + caughtCard + caughtHeld + caughtBasis;
+  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · hook ${caughtHook}/${HOOK_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length} · basis ${caughtBasis}/${BASIS_CASES.length}`);
+  console.log(`${caught}/${CASES.length + LOOP_CASES.length + HOOK_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length + BASIS_CASES.length} caught`);
   if (problems.length) {
     console.log("\nPROBLEMS:");
     for (const x of problems) console.log(`  ✗ ${x}`);
