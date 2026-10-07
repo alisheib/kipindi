@@ -48,7 +48,9 @@ function HeldLine({ template, date }: { template: string; date: string }) {
  * D4 · `initialOn` is the EFFECTIVE consent (`marketingToggleState`), and `initialPaused` says the
  * consent lapsed when a break or self-exclusion ended. D4b · `held` says a break or self-exclusion is
  * in force now: the switch is OFF and locked, and `heldUntil` (formatted by the server in the page's
- * language, `held-until.ts`) is when it ends.
+ * language, `held-until.ts`) is when it ends. ⛔ U33r · `referee` says the number is a promised agent
+ * referee's: the page passes it with `held`, so the switch is locked the same way, and the note says
+ * why — for good, with no date.
  * ⭐ THE CONSENT SENTENCE NEVER LEAVES THE SCREEN (2026-09-27). A failed save used to REPLACE it with
  * "Something didn't work. Try again." — so the retry was tapped with the sentence the ledger records as
  * "shown" nowhere in sight, and a lapsed session was told to try again, which could never succeed.
@@ -60,12 +62,15 @@ export function MarketingConsent({
   initialPaused = false,
   held = false,
   heldUntil = null,
+  referee = false,
   outreachNote = null,
 }: {
   initialOn: boolean;
   initialPaused?: boolean;
   held?: boolean;
   heldUntil?: string | null;
+  /** U33r · the number is a promised agent referee's — locked (with `held`) and said, for good. */
+  referee?: boolean;
   /** U33a-P · the line that says offers reach this person on the LICENCE basis, not on a consent they gave. The
    *  SERVER passes the words (an admin edits them on Admin → System), and passes null when the switch is ON because
    *  the person actually consented — so the note appears only where it is true. */
@@ -108,12 +113,13 @@ export function MarketingConsent({
         : want ? t.push.marketingErrOnTitle : t.push.marketingErrOffTitle;
       const description = r.reason === "signed_out" ? t.push.marketingErrSignedOut
         : r.reason === "held" ? t.push.marketingHeldNoDate
+        : r.reason === "referee" ? t.push.marketingReferee
         : r.on === null ? t.push.marketingErrUnsureBody
         : t.push.marketingErrBody;
       toast({ title, description, variant: "factual" });
       if (r.reason === "signed_out") setSignedOut(true);
-      // Unknown, or a break began since this page was drawn: read the page again rather than guess.
-      else if (r.on === null || r.reason === "held") router.refresh();
+      // Unknown, a break began, or the number became a promised referee's since this page was drawn: read it again.
+      else if (r.on === null || r.reason === "held" || r.reason === "referee") router.refresh();
     });
   };
 
@@ -130,7 +136,8 @@ export function MarketingConsent({
             <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{t.push.marketingBody}</p>
             {held && (
               <p className={NOTE} data-testid="marketing-consent-held">
-                {heldUntil ? <HeldLine template={t.push.marketingHeld} date={heldUntil} /> : t.push.marketingHeldNoDate}
+                {referee ? t.push.marketingReferee
+                  : heldUntil ? <HeldLine template={t.push.marketingHeld} date={heldUntil} /> : t.push.marketingHeldNoDate}
               </p>
             )}
             {paused && !on && !held && (

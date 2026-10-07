@@ -11,11 +11,13 @@
  * ── THE RULES ──────────────────────────────────────────────────────────────────────────────────────────────────
  *   · a referee key is EXACTLY thirty-two letters a–p — `refereeKeyOf`'s spelling (`referee-exclusion.ts`): one letter
  *     per hex nibble of an HMAC, so no digit — and so no phone number, in any spelling — can ever be a key;
- *   · every instant is EXACTLY `toISOString()`'s spelling — what Prisma hands back — so both twins hold one string for
- *     one instant, and the composite key (`refereeKey`, `namedAt`) is one row in both;
+ *   · ⛔ A ROW IS THE KEY AND NOTHING ELSE (the U33r review's MAJOR-1, 2026-10-07): exactly one field, `refereeKey`. No
+ *     instant of any kind — when a referee was named, when the row was written — because an application's
+ *     `refereeConsentAt`, joined on an instant, would link a referee's key back to the applicant who named them. A row
+ *     carrying any other field is refused whole, in both twins;
  *   · one `record` call takes at most `REFEREE_KEY_RECORD_MAX` rows, refused above — never cut off.
- * ⛔ The rules say nothing about MEANING: which numbers a contact holds and when a referee was named are the writer's
- * (`referee-exclusion.ts`).
+ * ⛔ The rules say nothing about MEANING: which numbers a contact leads to, and whether its referee was given the old
+ * promise at all, are the writer's (`referee-exclusion.ts`).
  * ⛔ PURE: types only from the store (erased), so `store.ts` and `prisma-dal.ts` both import it and there is no cycle.
  * ⛔ No message thrown here ever carries a value — a field is named, never echoed (§5.14).
  *
@@ -27,30 +29,24 @@ import type { StoredAgentRefereeKey } from "@/lib/server/store";
 export const REFEREE_KEY = /^[a-p]{32}$/;
 /** The most rows one `record` call takes — the backfill writes in calls of this size, and a larger call is refused. */
 export const REFEREE_KEY_RECORD_MAX = 2000;
-/** `toISOString()`'s spelling, built from pieces: four digits, a dash, two, a dash, two, T, two, a colon … Z. */
-const DIGITS = (n: number): string => `[0-9]{${n}}`;
-const ISO_INSTANT = new RegExp(`^${DIGITS(4)}-${DIGITS(2)}-${DIGITS(2)}T${DIGITS(2)}:${DIGITS(2)}:${DIGITS(2)}[.]${DIGITS(3)}Z$`);
 
 /** Every refusal goes through here, so each names the member it guards. A refused call reads and writes NOTHING. */
 function refuse(where: string, why: string): never {
   throw new Error(`[referee-key-model] ${where}: ${why} — nothing was done.`);
 }
 const isKey = (v: unknown): v is string => typeof v === "string" && REFEREE_KEY.test(v);
-const isInstant = (v: unknown): v is string =>
-  typeof v === "string" && ISO_INSTANT.test(v) && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
 
-/** ⭐ BEFORE A RECORD, in both twins — the batch checked WHOLE, every row's three columns, before the first write: a refused
- *  batch writes nothing anywhere. */
+/** ⭐ BEFORE A RECORD, in both twins — the batch checked WHOLE before the first write: every row exactly `{ refereeKey }`
+ *  with a key in the hash's spelling. A refused batch writes nothing anywhere. */
 export function assertRefereeKeyRows(rows: readonly StoredAgentRefereeKey[]): void {
   const where = "agentRefereeKey.record";
   if (!Array.isArray(rows)) refuse(where, "the rows are not a list");
   if (rows.length > REFEREE_KEY_RECORD_MAX) refuse(where, `more than ${REFEREE_KEY_RECORD_MAX} rows in one call`);
   for (const r of rows as readonly unknown[]) {
-    if (r === null || typeof r !== "object") refuse(where, "a row is not an object");
-    const row = r as StoredAgentRefereeKey;
-    if (!isKey(row.refereeKey)) refuse(where, "a referee key is not thirty-two letters a–p");
-    if (!isInstant(row.namedAt)) refuse(where, "namedAt is not an instant in toISOString's spelling");
-    if (!isInstant(row.recordedAt)) refuse(where, "recordedAt is not an instant in toISOString's spelling");
+    if (r === null || typeof r !== "object" || Array.isArray(r)) refuse(where, "a row is not an object");
+    const fields = Object.keys(r as object);
+    if (fields.length !== 1 || fields[0] !== "refereeKey") refuse(where, "a row holds something beside its key");
+    if (!isKey((r as StoredAgentRefereeKey).refereeKey)) refuse(where, "a referee key is not thirty-two letters a–p");
   }
 }
 

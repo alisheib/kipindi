@@ -26,9 +26,10 @@
  *     LICENCE_PLAYER while it is open — then held to RG, age and status exactly as a never-asked player is;
  *   · U33r, step 1b (G18–G23): a number keyed as a promised agent referee is refused `agent_referee` in BOTH states —
  *     a consenting player's, a never-asked player's, a listed contact's and a typed test's — after the stop list and
- *     before any basis is read; and with no new words live (`REFEREE_NEW_WORDS_LIVE_AT` null) whenever they were named.
+ *     before any basis is read; and it never asks WHEN a referee was named — the key holds no instant (the U33r review's
+ *     MAJOR-1): the WRITER decides who was promised (`referee-exclusion.mts` R8), and a key held is the whole answer.
  *     The referee keys are written by the REAL writer (`recordRefereeKeys`), and the gate reads them through the store's
- *     own read (`DB_GATE_READS.refereeNamedAt`) — so this is the keyed hash, end to end.
+ *     own read (`DB_GATE_READS.refereeHeld`) — so this is the keyed hash, end to end.
  */
 import { db } from "../../src/lib/server/store.ts";
 import type {
@@ -41,10 +42,8 @@ import type {
 } from "../../src/lib/server/marketing/consent.ts";
 import type { LicenceOutreach } from "../../src/lib/server/marketing/outreach-record.ts";
 import { SMS_CONSENT_WORDINGS } from "../../src/lib/marketing/consent-wording.ts";
-// U33r · the REAL writer seeds the referee keys, and the ONE rule and constant the gate asks.
-import {
-  recordRefereeKeys, refereePromiseHolds, REFEREE_NEW_WORDS_LIVE_AT,
-} from "../../src/lib/server/marketing/referee-exclusion.ts";
+// U33r · the REAL writer seeds the referee keys, and the constant it asks when it writes.
+import { recordRefereeKeys, REFEREE_NEW_WORDS_LIVE_AT } from "../../src/lib/server/marketing/referee-exclusion.ts";
 
 export type Ok = (label: string, cond: boolean, detail?: string) => void;
 
@@ -93,12 +92,12 @@ export const LICENCE_LABELS = {
   g15: "G15 · the typed test's attestation: a non-member is ALLOWED on LICENCE_TEST while open; it is ignored while the record is closed, ignored when stale, and never overrides an erased record",
   g16: "G16 · ⛔ asking changes nothing — no consent row, suppression, user, RG row or referee key is written by any call in this table",
   g17: "G17 · every ALLOWED names a basis whose ref has that kind's shape, and no ref that can reach an audit payload carries a run of nine digits",
-  g18: "G18 · ⛔ U33r · a CONSENTING player whose number is a promised agent referee is refused `agent_referee` in BOTH states — the promise is asked before any basis, so a consent given at that number never outranks it — with no account on the refusal, and a detail that names when the referee was named, never the number",
+  g18: "G18 · ⛔ U33r · a CONSENTING player whose number is a promised agent referee is refused `agent_referee` in BOTH states — the promise is asked before any basis, so a consent given at that number never outranks it — with no account on the refusal, and a detail that names NO instant (MAJOR-1) and no number",
   g19: "G19 · ⛔ U33r · a NEVER-ASKED player and a LAPSED player whose numbers are promised referees are refused `agent_referee` in BOTH states — an open licence-outreach record never reaches a referee",
   g20: "G20 · ⛔ U33r · a contact consented under a pinned sentence AND covered by a list, and a contact handed a fresh typed-test attestation, whose numbers are promised referees, are refused `agent_referee` in BOTH states — no consent, list basis or attestation reaches a referee",
   g21: "G21 · ⛔ U33r · THE ORDER — a referee on the stop list is refused `suppressed` (the stop list is asked first), and a referee is refused right after it, BEFORE any basis is read: the account, the ledger, the record and the book are never asked about the number",
-  g22: "G22 · ⛔ U33r · NEVER ON A GUESS — with no new words live (REFEREE_NEW_WORDS_LIVE_AT is null) a referee named at ANY instant, even years from now, is refused; and the ONE rule, once new words are live: named before them still refused, named at or after them not, an instant that cannot be read on either side refused",
-  g23: "G23 · ⚠️ CONTROL · U33r · every referee number this section keyed answers its naming instant through the store's own read, and none of G1–G15's numbers answers one — so every row above is a non-referee, answering exactly as it always did",
+  g22: "G22 · ⛔ U33r · THE GATE NEVER ASKS WHEN — with no new words live (REFEREE_NEW_WORDS_LIVE_AT is null) a referee keyed with a naming years from now is refused in both states and on a typed test, and the gate's read answers a yes or a no, never an instant (MAJOR-1: who was promised is the writer's decision)",
+  g23: "G23 · ⚠️ CONTROL · U33r · every referee number this section keyed reads HELD through the store's own read, and none of G1–G15's numbers does — so every row above is a non-referee, answering exactly as it always did",
 } as const;
 
 /* ══ THE WORLD ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -420,9 +419,10 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
     try { v = await impl.gate(phone(FX.refereeConsenting), NOW, readsFor(OPEN), {}); } catch { v = null; }
     const noAccount = v !== null && !v.ok && v.userId === undefined;
     const detail = "ok" in o && o.ok === false ? o.detail : "";
-    const says = detail.includes(`named ${REFEREES_NAMED_AT}`) && !NINE_DIGITS.test(detail) && !detail.includes(key(FX.refereeConsenting).slice(3));
+    const says = detail.includes("referee") && !ISO_DAY.test(detail) && !detail.includes(REFEREES_NAMED_AT)
+      && !NINE_DIGITS.test(detail) && !detail.includes(key(FX.refereeConsenting).slice(3));
     ok(p(L.g18), refused(c, "agent_referee") && refused(o, "agent_referee") && noAccount && says,
-      `closed ${show(c)} · open ${show(o)} · no account ${noAccount} · detail names the instant and no number ${says}`);
+      `closed ${show(c)} · open ${show(o)} · no account ${noAccount} · detail names no instant and no number ${says}`);
   }
   // ── G19 · an open record never reaches a referee — never asked, or lapsed ────────────────────────────────────────────
   {
@@ -445,7 +445,7 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
     const base = readsFor(OPEN);
     const counting: MarketingGateReads = {
       suppression: (k) => { count.stop++; return base.suppression(k); },
-      refereeNamedAt: (m) => { count.referee++; return base.refereeNamedAt(m); },
+      refereeHeld: (m) => { count.referee++; return base.refereeHeld(m); },
       userByPhone: (ph) => { count.account++; return base.userByPhone(ph); },
       latestConsent: (k) => { count.ledger++; return base.latestConsent(k); },
       outreach: () => { count.record++; return base.outreach(); },
@@ -465,33 +465,27 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
         && refereeReads.account === 0 && refereeReads.ledger === 0 && refereeReads.record === 0 && refereeReads.book === 0 && controlSaw,
       `stopped ${stopped.map(show).join("/")} · referee reads ${JSON.stringify(refereeReads)} · control saw the account ${controlSaw}`);
   }
-  // ── G22 · never on a guess ──────────────────────────────────────────────────────────────────────────────────────────
+  // ── G22 · the gate never asks when ──────────────────────────────────────────────────────────────────────────────────
   {
     const later = [await closed(FX.refereeLater), await open(FX.refereeLater), await open(FX.refereeLater, { testAttestation: attestation() })];
-    const CUT = "2026-10-20T00:00:00.000Z";
-    const rule = [
-      refereePromiseHolds(REFEREES_NAMED_AT, CUT) === true,
-      refereePromiseHolds(CUT, CUT) === false,
-      refereePromiseHolds("2026-10-21T00:00:00.000Z", CUT) === false,
-      refereePromiseHolds("not an instant", CUT) === true,
-      refereePromiseHolds(REFEREES_NAMED_AT, "not an instant") === true,
-      refereePromiseHolds(REFEREE_NAMED_LATER, null) === true,
-    ];
-    ok(p(L.g22), REFEREE_NEW_WORDS_LIVE_AT === null && later.every((a) => refused(a, "agent_referee")) && rule.every(Boolean),
-      `constant ${String(REFEREE_NEW_WORDS_LIVE_AT)} · named 2030 ${later.map(show).join("/")} · rule ${rule.join(",")}`);
+    const answer = await Promise.resolve(DB_GATE_READS.refereeHeld(key(FX.refereeLater)));
+    ok(p(L.g22), REFEREE_NEW_WORDS_LIVE_AT === null && later.every((a) => refused(a, "agent_referee")) && answer === true,
+      `constant ${String(REFEREE_NEW_WORDS_LIVE_AT)} · named ${REFEREE_NAMED_LATER} → ${later.map(show).join("/")} · the read answers ${JSON.stringify(answer)}`);
   }
   // ── G23 · CONTROL — the keys are there, and only for the referees ───────────────────────────────────────────────────
   {
-    const answers = await Promise.all(Object.values(FX).map(async (i) => [i, await Promise.resolve(DB_GATE_READS.refereeNamedAt(key(i)))] as const));
-    const keyed = answers.filter(([i]) => REFEREE_FX.includes(i)).every(([, at]) => at !== null);
-    const others = answers.filter(([i]) => !REFEREE_FX.includes(i)).every(([, at]) => at === null);
+    const answers = await Promise.all(Object.values(FX).map(async (i) => [i, await Promise.resolve(DB_GATE_READS.refereeHeld(key(i)))] as const));
+    const keyed = answers.filter(([i]) => REFEREE_FX.includes(i)).every(([, held]) => held === true);
+    const others = answers.filter(([i]) => !REFEREE_FX.includes(i)).every(([, held]) => held === false);
     ok(p(L.g23), keyed && others && answers.length === Object.values(FX).length,
-      answers.map(([i, at]) => `${i}:${at === null ? "-" : "named"}`).join(" "));
+      answers.map(([i, held]) => `${i}:${held ? "held" : "-"}`).join(" "));
   }
 }
 
 /** A run of nine digits — a phone number's national part in any refusal text or ref. ⛔ A character class, no escape. */
 const NINE_DIGITS = /[0-9]{9}/;
+/** An ISO day — what any instant in a detail would start with. ⛔ Character classes, no escape. */
+const ISO_DAY = /[0-9]{4}-[0-9]{2}-[0-9]{2}/;
 
 /* ══ THE RED CASES ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -521,7 +515,7 @@ export type LicenceDefect = {
   readonly refereeBeforeStop?: boolean;
   /** U33r · the account read BEFORE the promise — the gate asks about a referee's account at all. */
   readonly accountBeforeReferee?: boolean;
-  /** U33r · a guess at the re-wording: a referee named after the final rule is let through though no new words are live. */
+  /** U33r · a guess at WHEN: a referee keyed with a naming after the final rule is let through though no new words are live. */
   readonly cutoffGuessed?: boolean;
 };
 
@@ -542,7 +536,7 @@ export function licenceGateWithDefect(d: LicenceDefect): LicenceImpl {
       const v = await mayReceiveMarketingSms(msisdn, now, effective, ctx);
       const standing = await Promise.resolve(reads.bookStanding(toMsisdn255(msisdn)));
       /** The same question with the referee keys answering "not a referee" — what each referee plant hands back. */
-      const withoutPromise = () => mayReceiveMarketingSms(msisdn, now, { ...effective, refereeNamedAt: () => null }, ctx);
+      const withoutPromise = () => mayReceiveMarketingSms(msisdn, now, { ...effective, refereeHeld: () => false }, ctx);
       if (d.basisAsConsent && v.ok && v.basis !== "CONSENT") return { ok: true, basis: "CONSENT", basisRef: v.basisRef };
       if (!v.ok && d.stopOverridden && v.skipReason === "consent_withdrawn" && standing.cover) {
         return { ok: true, basis: "LICENCE_LIST", basisRef: `list-basis:${standing.cover.basisId}` };
@@ -564,14 +558,13 @@ export function licenceGateWithDefect(d: LicenceDefect): LicenceImpl {
           if (w.ok && w.basis === "CONSENT") return w;
         }
         if (d.refereeOnlyWhileClosed && record.state === "open") return withoutPromise();
-        if (d.cutoffGuessed) {
-          const named = await Promise.resolve(reads.refereeNamedAt(toMsisdn255(msisdn)));
-          if (named !== null && Date.parse(named) > Date.parse("2026-10-07T00:00:00.000Z")) return withoutPromise();
-        }
+        // The table holds no instant, so a gate that guessed WHEN could only guess per number — this one lets through the
+        // referee the fixtures named years after the final rule.
+        if (d.cutoffGuessed && msisdn === phone(FX.refereeLater)) return withoutPromise();
       }
       if (!v.ok && v.skipReason === "suppressed" && d.refereeBeforeStop) {
-        const named = await Promise.resolve(reads.refereeNamedAt(toMsisdn255(msisdn)));
-        if (named !== null) return { ok: false, skipReason: "agent_referee", detail: "a referee, asked before the stop list" };
+        const held = await Promise.resolve(reads.refereeHeld(toMsisdn255(msisdn)));
+        if (held) return { ok: false, skipReason: "agent_referee", detail: "a referee, asked before the stop list" };
       }
       return v;
     },
@@ -592,6 +585,6 @@ export function licenceCases(): { name: string; defect: LicenceDefect; expect: s
     { name: "U33r · the promise kept only while the record is closed", defect: { refereeOnlyWhileClosed: true }, expect: LICENCE_LABELS.g19 },
     { name: "U33r · the promise asked before the stop list", defect: { refereeBeforeStop: true }, expect: LICENCE_LABELS.g21 },
     { name: "U33r · the referee's account read before the promise", defect: { accountBeforeReferee: true }, expect: LICENCE_LABELS.g21 },
-    { name: "U33r · a referee named after the final rule let through on a guessed re-wording", defect: { cutoffGuessed: true }, expect: LICENCE_LABELS.g22 },
+    { name: "U33r · a referee keyed with a later naming let through on a guess at WHEN", defect: { cutoffGuessed: true }, expect: LICENCE_LABELS.g22 },
   ];
 }

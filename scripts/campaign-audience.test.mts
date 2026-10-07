@@ -67,7 +67,7 @@ import type {
 import { mayReceiveMarketingSms, DB_GATE_READS, userPhoneKeyFor } from "../src/lib/server/marketing/consent.ts";
 import type { MarketingSkipReason } from "../src/lib/server/marketing/consent.ts";
 // U33r · the REAL writer keys the fixture's referee, and the single read the bulk one must equal.
-import { recordRefereeKeys, refereeNamedAtFor } from "../src/lib/server/marketing/referee-exclusion.ts";
+import { recordRefereeKeys, isPromisedReferee } from "../src/lib/server/marketing/referee-exclusion.ts";
 import { dispatchSlice } from "../src/lib/server/marketing/dispatch.ts";
 import type { SliceOutcome } from "../src/lib/server/marketing/dispatch.ts";
 // U13 · the send loop is driven with a FIXED open window (ENGINE-SPEC §5 rule 9) — 4.3 and R12 hold at any clock.
@@ -428,7 +428,7 @@ const L = {
   l44: "4.4 · ⛔ THE COUNT WRITES NOTHING — the store and the audit chain are unchanged across a split over RG-refused players",
   l45: "4.5 · ⛔ protected standing is ONE line — the buckets are exactly the five, no rg_*, age_minor, account_status or agent_referee appears anywhere in the split, and U33r's promised referee is counted IN that line (seven), never apart",
   l46: "4.6 · ⭐ the gate's single reads are never asked per row — suppression, account and latest word come from §25's bulk reads, and U33r's referee keys from ONE keyed read, each asked once per walk page that holds a sendable number, the single referee read never (RG's own break check still reads the ledger directly; the RG, identity and harm-marker reads stay the gate's own, per player)",
-  l46r: "4.6r · ⭐ U33r · the split's bulk referee read answers EXACTLY what the single read answers, number by number — the referee's earliest naming, null for every other — so the split can never let a referee through the gate refuses",
+  l46r: "4.6r · ⭐ U33r · the split's bulk referee read answers EXACTLY what the single read answers, number by number — held for the promised referee, not held for every other, and never an instant — so the split can never let a referee through the gate refuses",
   l47: "4.7 · ⛔ THE BUDGET — past it the gate is asked with no reads: an unsendable number is still unsendable, every other is unchecked (never will receive), the figures still add up, and no bulk read is made for a page that starts past it",
   l48: "4.8 · ⭐ the sample is the walk's FIRST FIVE REACHABLE rows, in the walk's own order, each with its gate slot, masked number and operator by prefix",
   l49: "4.9 · ⛔ the send loop is untouched — no src file calls the gate BY NAME with a third argument but the typed test's ONE pinned call (campaign-test-send.ts, its own 18+ attestation as the context — U37c), dispatch still asks with ONE (its exact text pinned), the split's gate IS the send gate, and the split names no send path or audit",
@@ -703,7 +703,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       both ? Object.keys(both.notReceiving).join(",") : "the split threw");
 
     // 4.6 · no per-row read
-    const singles = [spy(db.suppression, "find"), spy(db.user, "findByPhone"), spy(db.messagingConsent, "latestFor"), spy(db.agentRefereeKey, "earliestFor")];
+    const singles = [spy(db.suppression, "find"), spy(db.user, "findByPhone"), spy(db.messagingConsent, "latestFor"), spy(db.agentRefereeKey, "holds")];
     const n46 = zero();
     let s46: AudienceSplit | null = null;
     try {
@@ -720,15 +720,17 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     // 4.6r · U33r · the bulk referee read equals the single read, number by number
     {
       const keys = (await walkAll(REAL.walk, BOTH, 1000)).rows.map((r) => parseTzNumber(r.msisdn).msisdn).filter((m): m is string => m !== null);
-      const bulk = new Map((await impl.deps.referees(keys)).map((e) => [e.msisdn, e.namedAt] as const));
+      const answered = await impl.deps.referees(keys);
+      const bulk = new Map(answered.map((e) => [e.msisdn, e.held] as const));
       const off: string[] = [];
       for (const m of keys) {
-        const single = await refereeNamedAtFor(m);
-        if (!bulk.has(m) || (bulk.get(m) ?? null) !== single) off.push(`${m.slice(-3)} bulk=${String(bulk.get(m))} single=${String(single)}`);
+        const single = await isPromisedReferee(m);
+        if (!bulk.has(m) || bulk.get(m) !== single) off.push(`${m.slice(-3)} bulk=${String(bulk.get(m))} single=${String(single)}`);
       }
-      const named = keys.filter((m) => (bulk.get(m) ?? null) !== null);
-      ok(p(L.l46r), off.length === 0 && named.length === 1 && named[0] === k("+255711000018") && bulk.get(named[0]) === "2026-09-08T10:00:00.000Z",
-        off.length ? off.join(" | ") : `${keys.length} numbers asked · named ${named.length}`);
+      const held = keys.filter((m) => bulk.get(m) === true);
+      const noInstant = answered.every((e) => JSON.stringify(Object.keys(e).sort()) === JSON.stringify(["held", "msisdn"]) && typeof e.held === "boolean");
+      ok(p(L.l46r), off.length === 0 && held.length === 1 && held[0] === k("+255711000018") && noInstant,
+        off.length ? off.join(" | ") : `${keys.length} numbers asked · held ${held.length} · answers carry no instant ${noInstant}`);
     }
 
     // 4.7 · the budget — a clock that counts the gate's answers runs out after seven
@@ -856,9 +858,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
          gate, or the split could not hand in a chunk's answers. */
       JSON.stringify(await DB_GATE_READS.bookStanding(k("+255751000006"))) === JSON.stringify(db.contactListBasis.standingFor(k("+255751000006"))),
       ((await DB_GATE_READS.outreach()) as { state: string }).state === "closed",
-      // U33r · the referee read is defaulted like the others: the referee's earliest naming, null for a non-referee.
-      (await DB_GATE_READS.refereeNamedAt(k("+255711000018"))) === "2026-09-08T10:00:00.000Z",
-      (await DB_GATE_READS.refereeNamedAt(k("+255751000001"))) === null,
+      // U33r · the referee read is defaulted like the others: held for the referee, not for anybody else — never an instant.
+      (await DB_GATE_READS.refereeHeld(k("+255711000018"))) === true,
+      (await DB_GATE_READS.refereeHeld(k("+255751000001"))) === false,
     ];
     ok(p(L.l411),
       /* ⚠️ The signature is MULTI-LINE since U33a-G (it gained `context`), so it is pinned piece by piece rather than as
@@ -873,10 +875,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && gateBody.includes("const latest = await Promise.resolve(reads.latestConsent(key));")
         && gateBody.includes("const outreach = await Promise.resolve(reads.outreach());")
         && gateBody.includes("const standing = await Promise.resolve(reads.bookStanding(identifier));")
-        && gateBody.includes("const refereeNamedAt = await Promise.resolve(reads.refereeNamedAt(identifier));")
+        && gateBody.includes("if (await Promise.resolve(reads.refereeHeld(identifier))) {")
         && !gateBody.includes("db.suppression.find(") && !gateBody.includes("db.user.findByPhone(") && !gateBody.includes("db.messagingConsent.latestFor(")
         && !gateBody.includes("db.contactListBasis.") && !gateBody.includes("licenceOutreach()")
-        && !gateBody.includes("db.agentRefereeKey.") && !gateBody.includes("refereeNamedAtFor(")
+        && !gateBody.includes("db.agentRefereeKey.") && !gateBody.includes("isPromisedReferee(")
         && cons.includes("reads: MarketingGateReads = DB_GATE_READS,") && cons.includes("const noConsent = await playerConsentRefusal(user, key, DB_GATE_READS, seen);")
         && cons.split(RG_LINE).length - 1 === 1 && defaults.every(Boolean)
         && Object.isFrozen(DB_GATE_READS) && Object.isFrozen(AUDIENCE_SPLIT_DEPS) && Object.isFrozen(CAMPAIGN_WALK_DEPS),
@@ -1273,7 +1275,7 @@ if (!PROVE_RED) {
     {
       name: "R30 · ⛔ U33r · the bulk referee read answers 'not a referee' for every number — the promised referee counted as will receive while the gate refuses them",
       expect: [L.l41, L.l46r],
-      impl: { ...REAL, deps: { ...REAL.deps, referees: async (msisdns) => msisdns.map((msisdn) => ({ msisdn, namedAt: null })) } },
+      impl: { ...REAL, deps: { ...REAL.deps, referees: async (msisdns) => msisdns.map((msisdn) => ({ msisdn, held: false })) } },
     },
     {
       name: "R31 · U33r · the bulk referee read answers nothing — every number falls back to the single referee read, one a number",

@@ -2,24 +2,28 @@
  * U33r · THE AGENT-REFEREE KEYS ON A REAL POSTGRES — and the SAME scenario on the memory twin, answer for answer.
  *
  * ⭐ WHY THIS EXISTS. `test:dal-parity` §28 holds both twins' SHAPE, and the suites run only the MEMORY twin. Whether
- * `createMany … skipDuplicates` really skips a pair already held (and counts 0), whether the composite key really keeps a
- * second naming of one referee as a second row, whether the earliest naming really comes back from Timestamptz(3), whether
- * the backfill and the gate really refuse a referee through Prisma — those are facts about the database. So the scenario
- * below runs twice — here, through the REAL `db` on a scratch PostgreSQL, and in a child process with no database (the
- * memory twin) — and every answer must be identical between the two AND equal to the answers written here by hand.
+ * `createMany … skipDuplicates` really skips a key already held (and counts 0), whether the table really holds the KEY AND
+ * NOTHING ELSE (the U33r review's MAJOR-1), whether the e-mail lookup on the book really matches case-insensitively on
+ * Postgres (MINOR-1), whether the backfill and the gate really refuse a referee through Prisma — those are facts about the
+ * database. So the scenario below runs twice — here, through the REAL `db` on a scratch PostgreSQL, and in a child process
+ * with no database (the memory twin) — and every answer must be identical between the two AND equal to the answers
+ * written here by hand.
  *
- *   0  the migration `…_agent_referee_key` is applied and finished, and the table is EXACTLY its three columns, NOT NULL,
- *      with the composite primary key and NO foreign key (no link to an application or an applicant);
- *   1  the scenario on Postgres, through `db`, against the hand-written answers: a pair held is skipped (0), an earlier
- *      naming of one key is a second row and wins, a bulk read answers one entry per key in key order, a raw number asked
- *      or written as a key is REFUSED by the rule set before any query, and 2,001 keys are refused, never cut off;
- *   2  the backfill end to end: an application written straight to Postgres (the shape that predates the exclusion) is
- *      counted missing, keyed, then counted 0 missing; a re-run writes nothing; and the REAL gate refuses each referee
- *      number `agent_referee` while a stranger is refused for no consent;
+ *   0  the migration `…_agent_referee_key` is applied and finished, and the table is EXACTLY one column — `refereeKey`
+ *      text, NOT NULL, the primary key — with NO foreign key and no instant (no link to an application or an applicant);
+ *   1  the scenario on Postgres, through `db`, against the hand-written answers: a key held is skipped (0), the held read
+ *      answers one entry per key in key order, a raw number asked or written as a key is REFUSED by the rule set before
+ *      any query, a row carrying an INSTANT beside its key is refused and leaves nothing, 2,001 keys are refused, never cut
+ *      off, and the book's e-mail lookup matches whatever the case;
+ *   2  the backfill end to end: two applications written straight to Postgres (the shape that predates the exclusion) —
+ *      one naming two referees by number, one naming a referee by e-mail (whose number only the book holds) and a landline
+ *      — are counted missing, keyed, then counted 0 missing; a re-run writes nothing; and the REAL gate refuses each
+ *      referee number `agent_referee` while a stranger is refused for no consent;
  *   3  the memory twin's transcript of the same scenario equals Postgres', answer for answer.
  *
- * ⚠️ WRITTEN BY THE U33r BUILDER, WHO MAY NOT START POSTGRES ON THIS PC — NOT YET RUN. The integrator runs it once, through
- * the heavy-node lock, and fixes the probe (never the expected answers) if it trips over itself.
+ * ⚠️ WRITTEN BY THE U33r BUILDER, WHO MAY NOT START POSTGRES ON THIS PC — NOT YET RUN ON POSTGRES (its memory phase was run
+ * and gives exactly the answers below). The integrator runs it once, through the heavy-node lock, and fixes the probe
+ * (never the expected answers) if it trips over itself.
  * ⛔ A LOOPBACK CLUSTER ONLY: it writes rows. ⛔ No backslash anywhere in this file (the tools that write it decode escapes).
  *
  * Run: npm run db:probe-referee-keys   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this)
@@ -28,7 +32,7 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
-import type { StoredAgentApplication, StoredUser } from "../../src/lib/server/store.ts";
+import type { StoredAgentApplication, StoredMarketingContact, StoredUser } from "../../src/lib/server/store.ts";
 
 process.exitCode = 1;
 const PHASE = process.env.REFEREE_KEYS_PROBE_PHASE ?? "";
@@ -38,16 +42,16 @@ const MARK = "REFEREE_KEYS_TRANSCRIPT ";
 
 /* ═══ THE WORLD — every instant, number and expected answer written HERE, by hand ═════════════════════════════════ */
 
-const T_EARLY = "2026-09-08T10:00:00.000Z";   // a referee named in the programme's first week
-const T_LATE = "2026-10-08T10:00:00.000Z";    // the same referee named again a month later
-const T_REC = "2026-10-08T12:00:00.000Z";     // a row written
-const T_REC2 = "2026-10-08T13:00:00.000Z";    // another row written
+const T_EARLY = "2026-09-08T10:00:00.000Z";   // the referees were named in the programme's first week
 const N = {
   one: "255712300001", two: "255712300002", three: "255712300003",
-  refA: "255712300004", refB: "255712300005", stranger: "255712300006", applicant: "255712300009",
+  refA: "255712300004", refB: "255712300005", stranger: "255712300006", refC: "255712300007", applicant: "255712300009",
 };
+const REF_EMAIL = "Probe.Referee@Example.com";
 const U1 = "probe_rk_u1";
 const APP1 = "probe_rk_app1";
+const APP2 = "probe_rk_app2";
+const BOOK1 = "probe_rk_book1";
 
 const user = (id: string, phoneE164: string): StoredUser => ({
   id, phoneE164, email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
@@ -56,10 +60,10 @@ const user = (id: string, phoneE164: string): StoredUser => ({
   avatarDataUrl: null, createdAt: T_EARLY, updatedAt: T_EARLY, lastLoginAt: null, closedAt: null,
 } as StoredUser);
 /** An application in the shape that predates the exclusion: its referees written straight to the row, never keyed. */
-const application = (id: string, userId: string): StoredAgentApplication => ({
+const application = (id: string, userId: string, one: string, two: string): StoredAgentApplication => ({
   id, userId, status: "REJECTED", source: "SELF_SERVICE",
-  refereeOneName: "Probe Referee A", refereeOneContact: `0${N.refA.slice(3, 6)} ${N.refA.slice(6, 9)} ${N.refA.slice(9)}`,
-  refereeTwoName: "Probe Referee B", refereeTwoContact: `+255 ${N.refB.slice(3)}`, refereeConsentAt: T_EARLY,
+  refereeOneName: "Probe Referee A", refereeOneContact: one,
+  refereeTwoName: "Probe Referee B", refereeTwoContact: two, refereeConsentAt: T_EARLY,
   feeAmountTzs: null, feeAttestedTzs: null, feeFundingSource: null, feeReference: null, feeStatementRef: null,
   feeReconciledAt: null, feeReconciledById: null, feeSourceAccount: null,
   feeWaivedAt: null, feeWaivedById: null, feeWaiverReason: null,
@@ -68,17 +72,24 @@ const application = (id: string, userId: string): StoredAgentApplication => ({
   approvedRatePct: null, agentCode: null, acceptedTermsVersion: null, acceptedTermsAt: null,
   submittedAt: T_EARLY, expiresAt: null, createdAt: T_EARLY, updatedAt: T_EARLY,
 } as StoredAgentApplication);
+/** A contact-book row holding the e-mail referee's number — the only place 50pick holds it. */
+const bookRow = (id: string, msisdn: string, email: string): StoredMarketingContact => ({
+  id, msisdn, rawInput: `+${msisdn}`, displayName: "Probe Referee C", email, ndc: msisdn.slice(3, 5), operator: null,
+  source: "OPERATOR", sourceRef: null, userId: null, consentState: "UNKNOWN", suppressedAt: null, tags: [], notes: null,
+  importId: null, createdAt: T_EARLY, createdBy: null, updatedAt: T_EARLY, updatedBy: null,
+});
 
 /** The answers, written by hand — both twins must give exactly these. */
 const EXPECTED = {
-  r1: 1, r2: 0, r3: 2,
-  e1: T_EARLY, e2: T_LATE, e3: null,
-  amongShape: [true, true, true], amongNamed: [T_EARLY, T_LATE, null], empty: 0,
-  rawAskRefused: true, rawWriteRefused: true, tooManyRefused: true,
-  censusBefore: { applications: 1, withContact: 1, numbers: 2, missing: 2 },
-  backfill: { applications: 1, withContact: 1, numbers: 2, missing: 0, written: 2 },
+  r1: 1, r2: 0, r3: 1,
+  held: [true, true, false],
+  amongShape: [true, true, true], amongHeld: [true, true, false], empty: 0,
+  rawAskRefused: true, rawWriteRefused: true, instantWriteRefused: true, instantLeftNothing: true, tooManyRefused: true,
+  byEmail: [N.refC], byBlankEmail: 0,
+  censusBefore: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 3, unreadable: 0, notMobile: 1, emailOnlyUnmatched: 0 },
+  backfill: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 0, unreadable: 0, notMobile: 1, emailOnlyUnmatched: 0, written: 3 },
   again: { written: 0, missing: 0 },
-  gate: ["agent_referee", "agent_referee", "no_consent"],
+  gate: ["agent_referee", "agent_referee", "agent_referee", "no_consent"],
 };
 
 /* ═══ THE SCENARIO — the same code on either twin; it answers a transcript ═══════════════════════════════════════════ */
@@ -93,33 +104,37 @@ async function scenario(): Promise<Record<string, unknown>> {
   const { mayReceiveMarketingSms } = await import("../../src/lib/server/marketing/consent.ts");
   const K = { one: RX.refereeKeyOf(N.one), two: RX.refereeKeyOf(N.two), three: RX.refereeKeyOf(N.three) };
   const t: Record<string, unknown> = {};
-  t.r1 = await db.agentRefereeKey.record([{ refereeKey: K.one, namedAt: T_LATE, recordedAt: T_REC }]);
-  t.r2 = await db.agentRefereeKey.record([{ refereeKey: K.one, namedAt: T_LATE, recordedAt: T_REC2 }]);
-  t.r3 = await db.agentRefereeKey.record([
-    { refereeKey: K.one, namedAt: T_EARLY, recordedAt: T_REC2 }, { refereeKey: K.two, namedAt: T_LATE, recordedAt: T_REC2 },
-  ]);
-  t.e1 = await db.agentRefereeKey.earliestFor(K.one);
-  t.e2 = await db.agentRefereeKey.earliestFor(K.two);
-  t.e3 = await db.agentRefereeKey.earliestFor(K.three);
-  const among = await db.agentRefereeKey.earliestAmong([K.three, K.one, K.two, K.one]);
+  t.r1 = await db.agentRefereeKey.record([{ refereeKey: K.one }]);
+  t.r2 = await db.agentRefereeKey.record([{ refereeKey: K.one }]);
+  t.r3 = await db.agentRefereeKey.record([{ refereeKey: K.one }, { refereeKey: K.two }]);
+  t.held = [await db.agentRefereeKey.holds(K.one), await db.agentRefereeKey.holds(K.two), await db.agentRefereeKey.holds(K.three)];
+  const among = await db.agentRefereeKey.heldAmong([K.three, K.one, K.two, K.one]);
   const order = [K.one, K.two, K.three].sort();
-  t.amongShape = [among.length === 3, among.map((e) => e.refereeKey).join() === order.join(), among.every((e) => typeof e.refereeKey === "string")];
-  const named = new Map(among.map((e) => [e.refereeKey, e.namedAt] as const));
-  t.amongNamed = [named.get(K.one) ?? "missing", named.get(K.two) ?? "missing", named.has(K.three) ? named.get(K.three) : "missing"];
-  t.empty = (await db.agentRefereeKey.earliestAmong([])).length;
-  t.rawAskRefused = await refused(async () => db.agentRefereeKey.earliestFor(N.one));
-  t.rawWriteRefused = await refused(async () => db.agentRefereeKey.record([{ refereeKey: N.one, namedAt: T_EARLY, recordedAt: T_REC }]));
+  t.amongShape = [among.length === 3, among.map((e) => e.refereeKey).join() === order.join(), among.every((e) => Object.keys(e).sort().join() === "held,refereeKey")];
+  const held = new Map(among.map((e) => [e.refereeKey, e.held] as const));
+  t.amongHeld = [held.get(K.one) ?? "missing", held.get(K.two) ?? "missing", held.has(K.three) ? held.get(K.three) : "missing"];
+  t.empty = (await db.agentRefereeKey.heldAmong([])).length;
+  t.rawAskRefused = await refused(async () => db.agentRefereeKey.holds(N.one));
+  t.rawWriteRefused = await refused(async () => db.agentRefereeKey.record([{ refereeKey: N.one }]));
+  // ⛔ MAJOR-1 · a row carrying an instant beside its key is refused WHOLE, and nothing is written.
+  t.instantWriteRefused = await refused(async () => db.agentRefereeKey.record([{ refereeKey: K.three, namedAt: T_EARLY } as unknown as { refereeKey: string }]));
+  t.instantLeftNothing = (await db.agentRefereeKey.holds(K.three)) === false;
   const many = Array.from({ length: 2001 }, (_, i) => RX.refereeKeyOf(`2557${String(10000000 + i)}`));
-  t.tooManyRefused = await refused(async () => db.agentRefereeKey.earliestAmong(many));
+  t.tooManyRefused = await refused(async () => db.agentRefereeKey.heldAmong(many));
+  // ── MINOR-1 · the book's e-mail lookup, case-insensitive, key-only ──
+  await db.marketingContact.create(bookRow(BOOK1, N.refC, REF_EMAIL));
+  t.byEmail = await db.marketingContact.msisdnsByEmail(REF_EMAIL.toLowerCase());
+  t.byBlankEmail = (await db.marketingContact.msisdnsByEmail("   ")).length;
   // ── the backfill end to end ──
   await db.user.create(user(U1, `+${N.applicant}`));
-  await db.agentApplication.create(application(APP1, U1));
+  await db.agentApplication.create(application(APP1, U1, `0${N.refA.slice(3, 6)} ${N.refA.slice(6, 9)} ${N.refA.slice(9)}`, `+255 ${N.refB.slice(3)}`));
+  await db.agentApplication.create(application(APP2, U1, REF_EMAIL.toUpperCase(), "022 211 5811"));
   t.censusBefore = await RX.refereeKeyCensus();
-  t.backfill = await RX.backfillRefereeKeys(T_REC);
-  const again = await RX.backfillRefereeKeys(T_REC);
+  t.backfill = await RX.backfillRefereeKeys();
+  const again = await RX.backfillRefereeKeys();
   t.again = { written: again.written, missing: again.missing };
   t.gate = [];
-  for (const m of [N.refA, N.refB, N.stranger]) {
+  for (const m of [N.refA, N.refB, N.refC, N.stranger]) {
     const v = await mayReceiveMarketingSms(m);
     (t.gate as string[]).push(v.ok ? "ALLOWED" : v.skipReason);
   }
@@ -166,9 +181,9 @@ const canon = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) => (x !
     const pk = await client.query(`select pg_get_constraintdef(c.oid) as def from pg_constraint c join pg_class t on t.oid = c.conrelid where t.relname = 'AgentRefereeKey' and c.contype = 'p'`);
     const fks = await client.query(`select count(*)::int as n from pg_constraint c join pg_class t on t.oid = c.conrelid where t.relname = 'AgentRefereeKey' and c.contype = 'f'`);
     const shape = cols.rows.map((r) => `${r.column_name}:${r.data_type}:${r.datetime_precision ?? "-"}:${r.is_nullable}`).join(" ");
-    const want = "namedAt:timestamp with time zone:3:NO recordedAt:timestamp with time zone:3:NO refereeKey:text:-:NO";
-    ok("0 · the migration is applied and finished, and the table is EXACTLY refereeKey text, namedAt and recordedAt timestamptz(3), all NOT NULL, the primary key (refereeKey, namedAt) and NO foreign key",
-      applied.rowCount === 1 && shape === want && pk.rows.length === 1 && String(pk.rows[0].def) === 'PRIMARY KEY ("refereeKey", "namedAt")' && fks.rows[0].n === 0,
+    const want = "refereeKey:text:-:NO";
+    ok("0 · the migration is applied and finished, and the table is EXACTLY one column — refereeKey text, NOT NULL, the primary key — with NO instant and NO foreign key",
+      applied.rowCount === 1 && shape === want && pk.rows.length === 1 && String(pk.rows[0].def) === 'PRIMARY KEY ("refereeKey")' && fks.rows[0].n === 0,
       `applied ${applied.rowCount} · columns ${shape} · pk ${pk.rows.map((r) => r.def).join()} · fks ${fks.rows[0]?.n}`);
   } finally {
     await client.end();
@@ -181,16 +196,16 @@ for (const [k, want] of Object.entries(EXPECTED)) {
   const got = onPostgres[k];
   ok(`1 · Postgres · ${k} is the hand-written answer`, canon(got) === canon(want), `got ${canon(got)} · want ${canon(want)}`);
 }
-// ── 1b · what the table holds afterwards, read by SQL: the five rows the scenario wrote (K.one twice, K.two once, the two
-//    backfilled referees), every key thirty-two letters a–p — the refused raw-number write left nothing, and no digit is
-//    stored anywhere ──
+// ── 1b · what the table holds afterwards, read by SQL: the five keys the scenario wrote (two by hand, three by the
+//    backfill), every one thirty-two letters a–p — the refused raw-number write and the refused row with an instant left
+//    nothing, and no digit is stored anywhere ──
 {
   const client = new pg.Client({ connectionString: URL_RAW });
   await client.connect();
   try {
     const all = await client.query(`select count(*)::int as n from "AgentRefereeKey"`);
     const letters = await client.query(`select count(*)::int as n from "AgentRefereeKey" where "refereeKey" ~ '^[a-p]{32}$'`);
-    ok("1b · the table holds exactly the five rows written, every key thirty-two letters a–p — the refused raw-number write left nothing",
+    ok("1b · the table holds exactly the five keys written, every one thirty-two letters a–p — the refused writes left nothing",
       all.rows[0].n === 5 && letters.rows[0].n === 5, `rows ${all.rows[0].n} · letter keys ${letters.rows[0].n}`);
   } finally {
     await client.end();

@@ -410,10 +410,11 @@ export async function anonymizeClosedAccount(
   // the bytes go under the same 7-year gate as the KYC images, with the same "the row only
   // goes if the bytes went" retry shape (`purgeAgentDocumentsForUser`).
   // ⛔ U33r · `AgentRefereeKey` IS NAMED HERE AND KEPT, on purpose: before the contacts go, each
-  // referee number in them is keyed (a keyed hash — no number, no name, no application id, no
-  // link to this person), because the promise "we never contact you for marketing" was made to
-  // the REFEREE and must outlive the applicant's erasure (docs/DATA-RETENTION.md). Nothing of the
-  // erased person is in that table, so nothing there is theirs to erase.
+  // promised referee's number they lead to is keyed (a coded form of the number and nothing else —
+  // no number, no instant, no name, no application id, no link to this person), because the promise
+  // "we never contact you for marketing" was made to the REFEREE and must outlive the applicant's
+  // erasure (docs/DATA-RETENTION.md). Nothing of the erased person is in that table, so nothing there
+  // is theirs to erase.
   counts.agentApplicationsRedacted = await pseudonymiseAgentApplications(userId);
   if (documentsReleased) {
     const agentDocs = await purgeAgentDocumentsForUser(userId);

@@ -13,9 +13,10 @@
  * (`AlreadyOpenReadsAs`), never from the page as it was before the click.
  */
 
-/** The switch-on refusals made before this click wrote anything: a bad duration, no officer, a screened text, no
- *  database, an opening record that could not be written. */
-export const REFUSED_BEFORE_ANY_WRITE: ReadonlySet<string> = new Set(["bad_duration", "no_officer", "bad_ops_text", "no_database", "record_failed"]);
+/** The switch-on refusals made before this click wrote anything: a bad duration, no officer, a screened text, the
+ *  agent-referee backfill still outstanding (U33r — refused before anything is read), no database, an opening record
+ *  that could not be written. */
+export const REFUSED_BEFORE_ANY_WRITE: ReadonlySet<string> = new Set(["bad_duration", "no_officer", "bad_ops_text", "referee_keys", "no_database", "record_failed"]);
 /** The switch-on refusals whose write landed (or may have) and was taken back — each proven off by a read. */
 export const TAKEN_BACK: ReadonlySet<string> = new Set(["save_failed", "not_open_after_save", "audit_failed"]);
 

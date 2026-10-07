@@ -1811,6 +1811,9 @@ export const dict = {
       // D4b — under the LOCKED off switch while a break or self-exclusion is in force. {date} = when it ends.
       marketingHeld: "Off during your break or self-exclusion, until {date}. It stays off after that unless you switch it on.",
       marketingHeldNoDate: "Off during your break or self-exclusion. It stays off after that unless you switch it on.",
+      // U33r — under the LOCKED off switch when the number is a promised agent referee's: off for good, with no date and
+      // no remedy (the promise "we never contact you for marketing" is kept). A statement, never a nudge.
+      marketingReferee: "Off for good: this number was given to 50pick as a referee in an agent application, and we promised referees never to send them offers.",
       // The card when the setting could not be read: never a switch showing a guessed state.
       marketingUnavailable: "We couldn’t load this setting. Reload the page, or contact us to stop offers.",
       marketingOnToast: "Offers and news by SMS turned on",
@@ -4401,6 +4404,7 @@ export const dict = {
       marketingPaused: "Ilizimwa baada ya mapumziko yako au kipindi chako cha kujitenga kuisha. Itabaki imezimwa usipoiwasha.",
       marketingHeld: "Imezimwa wakati wa mapumziko yako au kipindi chako cha kujitenga, hadi {date}. Baada ya hapo itabaki imezimwa usipoiwasha.",
       marketingHeldNoDate: "Imezimwa wakati wa mapumziko yako au kipindi chako cha kujitenga. Baada ya hapo itabaki imezimwa usipoiwasha.",
+      marketingReferee: "Imezimwa kabisa: namba hii ilitolewa kwa 50pick kama namba ya mdhamini katika maombi ya uwakala, na tuliwaahidi wadhamini kwamba hatutawatumia ofa kamwe.",
       marketingUnavailable: "Hatukuweza kupakia mpangilio huu. Pakia upya ukurasa, au wasiliana nasi ili kuacha ofa.",
       marketingOnToast: "Ofa na habari kwa SMS zimewashwa",
       marketingOffToast: "Ofa na habari kwa SMS zimezimwa",
@@ -6740,6 +6744,7 @@ export const dict = {
       marketingPaused: "您的\u200B冷静期或\u200B自我排除期\u200B结束时，此项\u200B已关闭。除非您\u200B重新开启，否则将\u200B保持关闭。",
       marketingHeld: "在您的\u200B冷静期或\u200B自我排除期内（至 {date}），此项\u200B保持关闭。期满后，除非您\u200B重新开启，否则将\u200B继续\u200B保持关闭。",
       marketingHeldNoDate: "在您的\u200B冷静期或\u200B自我排除期内，此项\u200B保持关闭。期满后，除非您\u200B重新开启，否则将\u200B继续\u200B保持关闭。",
+      marketingReferee: "此项\u200B永久关闭：该号码\u200B曾在\u200B代理申请中\u200B作为推荐人\u200B号码\u200B提供给 50pick，我们\u200B已向\u200B推荐人\u200B承诺\u200B绝不\u200B向其\u200B发送优惠。",
       marketingUnavailable: "无法加载\u200B此设置。请刷新页面，或\u200B联系我们\u200B停止接收优惠。",
       marketingOnToast: "短信优惠与资讯已开启",
       marketingOffToast: "短信优惠与资讯已关闭",

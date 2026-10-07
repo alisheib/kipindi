@@ -194,10 +194,14 @@ rather than guessed at.
   G4 and G4b).
 - **Q8 · The promise made to agent referees IS to be enforced in code.** ⚠️ OWED — the exclusion is NOT built. Until it
   is, a referee can be reached, which contradicts a promise 50pick made them in writing. ⟶ BUILT 2026-10-07 (marketing
-  U33r): every referee number is kept as a keyed hash (`AgentRefereeKey`) and the gate refuses it `agent_referee` before
-  any basis; every referee named before the re-worded §9 goes live stays excluded (`REFEREE_NEW_WORDS_LIVE_AT`, null
-  until the public-texts unit sets it). ⚠️ The referees named before the deploy are keyed by `npm run
-  ops:marketing-referee-keys -- backfill`, owed once after it, before any campaign sends.
+  U33r): every promised referee's number is kept as a coded form, not the number itself — without the server's pepper it
+  cannot be turned back — and NOTHING else: no instant, no name, no application id (`AgentRefereeKey`); the gate refuses it
+  `agent_referee` before any
+  basis; only a referee named before the re-worded §9 goes live is ever keyed (`REFEREE_NEW_WORDS_LIVE_AT`, null until
+  the public-texts unit sets it: today every referee). ⚠️ The referees named before the deploy are keyed by `npm run
+  ops:marketing-referee-keys -- backfill` — after the deploy, BEFORE licence outreach or the live-send switch opens
+  (both refuse until its counts are recorded in the code, the fifth opening check `referee_keys`), BEFORE the cutoff is
+  set, and again after any rollback to a build without U33r and the redeploy that follows.
 - **Q7 · A list's recorded basis does NOT expire** (built default). ⚠️ Accepted residual risk, stated plainly: Tanzanian
   operators recycle numbers, so a basis recorded for a previous holder can authorise a message to a new one. The stop
   list remains the protection.

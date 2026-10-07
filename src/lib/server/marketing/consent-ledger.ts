@@ -83,10 +83,12 @@ export function marketingConsentWording(site: MarketingConsentSite, locale: Mess
  * Append one row. ⛔ Never updates and never deletes — the DAL exposes no method to do either
  * (`test:dal-parity` §17 asserts the absence in both stores).
  *
- * ⚠️ A FAILURE HERE MUST NOT FAIL THE PLAYER'S ACTION, AND MUST NOT BE SILENT. Refusing a
- * player's own withdrawal because a ledger insert failed would leave them marketable against
- * their stated wish; swallowing it quietly would leave a consent change with no record. So it
- * is caught and reported, the way `retention.ts` reports its own lapse failures.
+ * ⚠️ A FAILURE HERE NEVER THROWS, AND IS NEVER SILENT: it is caught and reported, the way
+ * `retention.ts` reports its own lapse failures, and the caller is told `false`. ⛔ WHAT THE CALLER
+ * DOES WITH `false` IS ITS OWN RULE — and since Q9 was reversed (2026-10-07) the profile switch's OFF
+ * writes THIS row FIRST and changes nothing when it did not land (`recordPlayerMarketingChoice`, the
+ * U33r review's MAJOR-3): a switch cleared over a latest GIVEN reads as the two-year LAPSE, which an
+ * open licence record reaches, so a "no" with no row behind it would become licence outreach.
  */
 export async function appendMarketingConsent(input: AppendMarketingConsentInput): Promise<boolean> {
   const identifier = toMsisdn255(input.phoneE164);

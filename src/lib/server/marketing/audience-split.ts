@@ -38,7 +38,7 @@ import type {
 // U33a-G · the record the split prices ONCE per chunk, and its type.
 import { licenceOutreach, type LicenceOutreach } from "@/lib/server/marketing/outreach-record";
 // U33r · the referee keys a chunk asks about in ONE keyed read, and the shape of its answer.
-import { refereeNamedAtAmong, type RefereeNamedEntry } from "@/lib/server/marketing/referee-exclusion";
+import { promisedRefereesAmong, type RefereeHeldEntry } from "@/lib/server/marketing/referee-exclusion";
 import { mayReceiveMarketingSms, userPhoneKeyFor, DB_GATE_READS } from "@/lib/server/marketing/consent";
 import type { MarketingGateReads, MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { walkCampaignAudience, contactAudienceKey, campaignAudienceRefusal, campaignAudienceCount, CAMPAIGN_WALK_MAX } from "@/lib/server/marketing/audience";
@@ -85,8 +85,8 @@ export const AUDIENCE_BUCKET_OF: Readonly<Record<MarketingSkipReason, "unsendabl
   account_status: "protected",
   /* U33r · a promised agent referee lands in the ONE protected line — collapsed like the protected reasons (D19): the split
      is the count a later surface shows a viewer who may not read a number (U47b/U48a, above E23's floor), and a line of
-     its own would say how many referees a padded tag holds. A reader learns one number's reason where a number is shown
-     (the contacts page's Will receive cell, a typed test), never as a count. */
+     its own would say how many referees a padded tag holds. ⛔ And for a READER too (the U33r review's MINOR-5): the
+     contacts page says "Not reachable" and a typed test "protected" — only a typed test's audit row names it. */
   agent_referee: "protected",
 };
 
@@ -217,9 +217,9 @@ export type AudienceSplitDeps = {
   standings: (msisdns: string[]) => Promise<BookStandingEntry[]>;
   /** U33a-G · the licence-outreach record, read once per chunk. No query — this process's config cache. */
   outreach: () => Promise<LicenceOutreach> | LicenceOutreach;
-  /** U33r · the chunk's numbers asked of the referee keys, ONE keyed read (`refereeNamedAtAmong`) — every number, players
-   *  and contacts alike: the gate asks it before it knows which a number is. */
-  referees: (msisdns: string[]) => Promise<RefereeNamedEntry[]>;
+  /** U33r · the chunk's numbers asked of the referee keys, ONE keyed read (`promisedRefereesAmong`) — every number,
+   *  players and contacts alike: the gate asks it before it knows which a number is. */
+  referees: (msisdns: string[]) => Promise<RefereeHeldEntry[]>;
   slotOf: typeof audienceSlotOf;
   figures: typeof audienceSplitFigures;
   shape: typeof audienceSplitForViewer;
@@ -234,7 +234,7 @@ export const AUDIENCE_SPLIT_DEPS: Readonly<AudienceSplitDeps> = Object.freeze({
   consents: async (b: MessagingKeyBatch) => db.messagingConsent.latestAmong(b),
   standings: async (msisdns: string[]) => db.contactListBasis.standingAmong(msisdns),
   outreach: () => licenceOutreach(),
-  referees: async (msisdns: string[]) => refereeNamedAtAmong(msisdns),
+  referees: async (msisdns: string[]) => promisedRefereesAmong(msisdns),
   slotOf: audienceSlotOf,
   figures: audienceSplitFigures,
   shape: audienceSplitForViewer,
@@ -278,7 +278,7 @@ export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<A
   /* ⭐ U33r · EVERY key of the chunk is asked of the referee keys, in ONE read — the gate asks it right after the stop list,
      before it knows a player from a contact. ⛔ A key the answer leaves out is NOT "not a referee": it falls back to the
      single read below, so a short answer costs a query and never lets a referee through. */
-  const namedOf = new Map((await deps.referees(unique)).map((e) => [e.msisdn, e.namedAt] as const));
+  const heldOf = new Map((await deps.referees(unique)).map((e) => [e.msisdn, e.held] as const));
   const ours = (k: MessagingKey) => k.channel === "SMS" && k.category === "MARKETING" && known.has(k.identifier);
   return {
     suppression: (k) => (ours(k) ? stopOf.get(k.identifier) ?? null : DB_GATE_READS.suppression(k)),
@@ -287,7 +287,7 @@ export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<A
     outreach: () => outreachOnce,
     // ⛔ A key missing from the map falls back to the single read: it costs a query and can never give a wrong answer.
     bookStanding: (m) => standingOf.get(m) ?? DB_GATE_READS.bookStanding(m),
-    refereeNamedAt: (m) => (namedOf.has(m) ? namedOf.get(m) ?? null : DB_GATE_READS.refereeNamedAt(m)),
+    refereeHeld: (m) => (heldOf.has(m) ? heldOf.get(m) === true : DB_GATE_READS.refereeHeld(m)),
   };
 }
 
@@ -304,7 +304,7 @@ const BUDGET_READS: MarketingGateReads = {
   suppression: refuseRead, userByPhone: refuseRead, latestConsent: refuseRead,
   outreach: () => licenceOutreach(), bookStanding: refuseRead,
   // U33r · a database read like the three above: past the budget it throws, so a referee is never guessed at.
-  refereeNamedAt: refuseRead,
+  refereeHeld: refuseRead,
 };
 
 async function askGate(row: CampaignAudienceRow, now: Date, reads: MarketingGateReads, deps: AudienceSplitDeps): Promise<AudienceGateOutcome> {

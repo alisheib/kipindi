@@ -727,10 +727,18 @@ ok("§5am control · the §1 {\" \"} after \"联系方式：\" put back is repor
  * referee already given it. While ANY locale's §9 still says it, no new words are live — so the gate's cut-off
  * (`REFEREE_NEW_WORDS_LIVE_AT`) must still be null, or a referee named after it would be messaged while the page promises
  * "never"; and the gate must still refuse a promised referee (`agent_referee`, step 1b). The public-texts unit re-words §9
- * and sets the cut-off in ONE commit; this holds that the two move together. ⛔ No backslash in this section. */
+ * and sets the cut-off in ONE commit; this holds that the two move together. ⛔ AND THE CUT-OFF WAITS FOR THE BACKFILL (the
+ * U33r review's MAJOR-2): while production's referee-key backfill is not recorded with nothing missing and nothing
+ * unreadable (`REFEREE_KEYS_ON_PRODUCTION`, the fifth licence-outreach check), the cut-off must stay null whatever §9 says
+ * — a referee saved again after it is re-stamped past it, and a backfill run then would read them as never promised.
+ * ⛔ No backslash in this section. */
 console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees is kept by the gate");
 const WS4I = new RegExp("[ " + String.fromCharCode(9, 10, 13) + "]+", "g");
 const refereeExclusionSrc = code(read("src/lib/server/marketing/referee-exclusion.ts"));
+// The two constants themselves, and the ONE rule that judges the record — read as the code reads them, never re-parsed.
+const { REFEREE_NEW_WORDS_LIVE_AT } = await import("../src/lib/server/marketing/referee-exclusion.ts");
+const { REFEREE_KEYS_ON_PRODUCTION } = await import("../src/lib/server/marketing/outreach-record.ts");
+const { refereeKeysState } = await import("../src/lib/marketing/outreach-open-checks.ts");
 const consentGateSrc = code(read("src/lib/server/marketing/consent.ts"));
 /** The promise as each locale's §9 words it — read with its whitespace collapsed. */
 const NEVER_MARKET: Record<Loc, string> = {
@@ -739,29 +747,43 @@ const NEVER_MARKET: Record<Loc, string> = {
   zh: "我们绝不会为营销目的联系您",
 };
 const CUT_NULL = "export const REFEREE_NEW_WORDS_LIVE_AT: string | null = null;";
-const GATE_REFUSES = 'return refuse("agent_referee", refereeDetail(refereeNamedAt));';
-function refereeDefects(page: string, referee: string, gate: string): string[] {
+const GATE_REFUSES = 'return refuse("agent_referee", REFEREE_DETAIL);';
+const GATE_ASKS = "if (await Promise.resolve(reads.refereeHeld(identifier))) {";
+function refereeDefects(page: string, referee: string, gate: string, cutoff: string | null, backfill: string): string[] {
   const d: string[] = [];
   const bl = blocks(page);
   const promising = LOCS.filter((l) => section(bl[l], "9").replace(WS4I, " ").includes(NEVER_MARKET[l]));
   if (promising.length > 0 && !referee.includes(CUT_NULL)) {
     d.push(`§9 still promises referees "never" (${promising.join(", ")}) while REFEREE_NEW_WORDS_LIVE_AT is set — a referee named after it would be messaged`);
   }
-  if (!gate.includes(GATE_REFUSES) || !gate.includes("refereePromiseHolds(refereeNamedAt)")) {
+  if (!gate.includes(GATE_REFUSES) || !gate.includes(GATE_ASKS)) {
     d.push("consent.ts no longer refuses a promised referee (agent_referee, step 1b)");
+  }
+  if ((cutoff !== null || !referee.includes(CUT_NULL)) && backfill !== "reconciled") {
+    d.push("REFEREE_NEW_WORDS_LIVE_AT is set while production's referee-key backfill is not recorded (REFEREE_KEYS_ON_PRODUCTION) — an old referee saved again after the cut-off would never be keyed");
   }
   return d;
 }
+const BACKFILL_NOW = refereeKeysState(REFEREE_KEYS_ON_PRODUCTION);
 ok("§4i while §9 promises referees no marketing (today: all three locales), the cut-off is null and the gate refuses a promised referee",
-  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc).length === 0
+  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).length === 0
     && LOCS.every((l) => section(blocks(pageSrc)[l], "9").replace(WS4I, " ").includes(NEVER_MARKET[l])),
-  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc).join("; "));
+  refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).join("; "));
 const plantCut = refereeExclusionSrc.replace(CUT_NULL, 'export const REFEREE_NEW_WORDS_LIVE_AT: string | null = "2026-10-20T00:00:00.000Z";');
 ok("§5ap control · the cut-off set while §9 still promises 'never' is reported",
-  plantCut !== refereeExclusionSrc && refereeDefects(pageSrc, plantCut, consentGateSrc).some((x) => x.includes("still promises")));
+  plantCut !== refereeExclusionSrc && refereeDefects(pageSrc, plantCut, consentGateSrc, null, "reconciled").some((x) => x.includes("still promises")));
 const plantNoRefusal = consentGateSrc.replace(GATE_REFUSES, "return null;");
 ok("§5aq control · the gate's referee refusal removed is reported",
-  plantNoRefusal !== consentGateSrc && refereeDefects(pageSrc, refereeExclusionSrc, plantNoRefusal).some((x) => x.includes("no longer refuses")));
+  plantNoRefusal !== consentGateSrc && refereeDefects(pageSrc, refereeExclusionSrc, plantNoRefusal, null, "reconciled").some((x) => x.includes("no longer refuses")));
+ok("§4j ⛔ U33r · MAJOR-2 · the referee cut-off waits for the backfill — today the backfill is not recorded (outstanding), and the cut-off is null",
+  BACKFILL_NOW === "outstanding" && REFEREE_NEW_WORDS_LIVE_AT === null
+    && !refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).some((x) => x.includes("not recorded")),
+  `backfill ${BACKFILL_NOW} · cut-off ${String(REFEREE_NEW_WORDS_LIVE_AT)}`);
+ok("§5ar control · a cut-off set while the backfill is outstanding is reported — even once §9 no longer promises 'never'",
+  refereeDefects("", plantCut, consentGateSrc, "2026-10-20T00:00:00.000Z", "outstanding").some((x) => x.includes("not recorded"))
+    && refereeDefects("", refereeExclusionSrc, consentGateSrc, "2026-10-20T00:00:00.000Z", "outstanding").some((x) => x.includes("not recorded")));
+ok("§5as control · a cut-off set once the backfill is RECORDED is not reported on that count",
+  !refereeDefects("", plantCut, consentGateSrc, "2026-10-20T00:00:00.000Z", "reconciled").some((x) => x.includes("not recorded")));
 
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

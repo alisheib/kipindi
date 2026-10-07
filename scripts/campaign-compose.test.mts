@@ -73,8 +73,9 @@
  * the test is refused held in the window's own sentence before a token, a row or the wire (M12), and the saved line
  * invites no test while the window note stands (§16.15).
  * ⛔ §18.34 (U33r, 2026-10-07) · A PROMISED AGENT REFEREE. A typed test to a number an applicant gave as a referee is refused
- * by the ONE gate before a token or the wire — `typed_refused` to a masked viewer, `agent_referee` in its own words to a
- * reader, the precise reason in the audit row — and an officer's own number that is a referee's gets its own-number words.
+ * by the ONE gate before a token or the wire — `typed_refused` to a masked viewer, the ONE `protected` reason to a reader
+ * (the U33r review's MINOR-5: collapsed for readers too, as the split collapses it), the precise `agent_referee` ONLY in the
+ * audit row — and an officer's own number that is a referee's is told it is protected, in the own-number words.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
@@ -2699,18 +2700,22 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     await recordRefereeKeys({ contacts: [`+${own.key}`], namedAt: "2026-09-08T10:00:00.000Z" });
     const ownR = await send({ campaignId: id, variant: "SW" }, own.id, { send: spy });
     const refusedAs = (r: TestResult, reason: string, error: string) => !r.ok && r.outcome === "refused" && r.reason === reason && r.error === error;
+    // ⛔ MINOR-5 · no screen names the referee: the reader's sentence is the ONE protected one, the own-number words say
+    // "protected", and only the audit rows keep the precise reason.
+    const screens = [masked, reader, ownR].map((r) => (r.ok ? "" : r.error)).join(" ");
     return [refusedAs(masked, "typed_refused", TEST.TEST_TYPED_REFUSED)
-      && refusedAs(reader, "agent_referee", TEST.typedReaderSentence("agent_referee"))
-      && TEST.typedReaderReason("agent_referee") === "agent_referee"
+      && refusedAs(reader, "protected", TEST.typedReaderSentence("protected"))
+      && TEST.typedReaderReason("agent_referee") === "protected"
       && rows.length === 2 && rows.every((a) => a.payload?.reason === "agent_referee" && a.payload?.target === "typed")
-      && refusedAs(ownR, "agent_referee", TEST.testGateSentence("agent_referee"))
+      && refusedAs(ownR, "agent_referee", TEST.testGateSentence("agent_referee")) && /protected/.test(TEST.testGateSentence("agent_referee"))
+      && !/referee/i.test(screens.split(TEST.typedReaderSentence("protected")).join(""))
       && seen.calls === 0 && minted === 0,
       `masked ${reasonOf(masked)} · reader ${reasonOf(reader)} · audit ${JSON.stringify(rows.map((a) => a.payload?.reason ?? null))} · own ${reasonOf(ownR)} · sends ${seen.calls} · tokens ${minted}`];
   });
   return failed;
 }
 /** U33r · §18.34's claim — named once, so its red case expects exactly what the run says. */
-const S18_34 = "§18.34 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets agent_referee and its OWN sentence (never collapsed into 'protected' — it is no account's standing), the audit row records agent_referee for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is refused agent_referee in the own-number words";
+const S18_34 = "§18.34 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets the ONE protected reason and sentence (MINOR-5: collapsed for readers too, as the split collapses it), the audit row ALONE records agent_referee, for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is told it is protected, in the own-number words";
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════ */
 
@@ -4363,7 +4368,7 @@ if (!PROVE_RED) {
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, userByPhone: () => null } }, options);
     /** U33r · §18.34 · a typed test whose gate never asks the referee keys — the promise skipped on the test path. */
     const refereeSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
-      realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, refereeNamedAt: () => null } }, options);
+      realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, refereeHeld: () => false } }, options);
     /** A.8 · a typed refusal itemised for a masked viewer. */
     const itemised: typeof realTest = (input, officerId, deps) => realTest(input, officerId, deps, { viewerReads: true });
     /** A.8 · the real token returned to the screen. */

@@ -531,10 +531,15 @@ export async function setReferees(
     const namedAt = iso();
     /* ⛔ U33r · THE REFEREES' MARKETING EXCLUSION IS WRITTEN FIRST (Q8; `referee-exclusion.ts`). Every referee named before
        the re-worded /legal/privacy §9 went live was promised "we never contact you for marketing", so each Tanzanian mobile
-       number in these two contacts is keyed — a keyed hash, never the number — BEFORE the application is saved: a write that
-       fails here saves nothing (the applicant is told and tries again), and one that fails after it leaves only an extra
-       exclusion. Never a saved referee with no exclusion. A referee replaced later keeps their key: they were named. */
-    await recordRefereeKeys({ contacts: [oneContact, twoContact], namedAt }, namedAt);
+       number these contacts lead to is keyed — a keyed hash, never the number — BEFORE the application is saved: a write
+       that fails here saves nothing (the applicant is told and tries again), and one that fails after it leaves only an
+       extra exclusion. Never a saved referee with no exclusion. ⭐ TWO WRITES, each asking its OWN naming instant (the
+       writer keys only a referee given the old promise, and stores no instant — the U33r review's MAJOR-1):
+         · the referees ON FILE, named at the application's own `refereeConsentAt` — keyed BEFORE this save overwrites
+           them, so a referee replaced before the backfill ran is never lost (their contact is the only copy);
+         · the referees being NAMED NOW, at this instant — keyed while the old promise is still the one shown. */
+    await recordRefereeKeys({ contacts: [e.app.refereeOneContact, e.app.refereeTwoContact], namedAt: refereeNamedAtOf(e.app) });
+    await recordRefereeKeys({ contacts: [oneContact, twoContact], namedAt });
     await db.agentApplication.update(e.app.id, { refereeOneName: oneName, refereeOneContact: oneContact, refereeTwoName: twoName, refereeTwoContact: twoContact, refereeConsentAt: namedAt });
     audit({ category: "ADMIN", action: "agent.application.referees_set", actorId: userId, targetType: "AgentApplication", targetId: e.app.id });
     return { ok: true as const };
@@ -1862,9 +1867,10 @@ export async function purgeAgedAgentDocuments(now = Date.now()): Promise<{ refer
  * only copy of a referee's number; once emptied, a referee never keyed (an application older than
  * the exclusion, before the backfill ran) could never be excluded again — and the promise "we never
  * contact you for marketing" was made to the REFEREE, not to the applicant asking to be forgotten.
- * So every number in them is keyed (`recordRefereeKeys`, a keyed hash with no name, no application
- * id and no link to this person) BEFORE they are emptied, and a key already held is skipped. A
- * failure to write it throws: the erasure stops with the contacts still there, never emptied first.
+ * So every number they lead to is keyed (`recordRefereeKeys` — a keyed hash and nothing else: no
+ * name, no application id, no instant, no link to this person) BEFORE they are emptied, when the
+ * application's referees were named under the old promise; a key already held is skipped. A failure
+ * to write it throws: the erasure stops with the contacts still there, never emptied first.
  */
 export async function pseudonymiseAgentApplications(userId: string): Promise<number> {
   let n = 0;

@@ -890,33 +890,27 @@ export type ListBasisCoverage = {
  * ⭐ WHY IT EXISTS. /legal/privacy §9 promised every agent applicant's referee "we never contact you for marketing", and the
  * owner ruled that promise HONOURED for every referee already given it. A referee's contact is free text on
  * `AgentApplication` — no gate can ask a spreadsheet of free text about a number — so each Tanzanian mobile number a
- * referee contact holds is kept here as a KEYED HASH (`refereeKeyOf`, `referee-exclusion.ts`), with the instant the referee
- * was named, and the send gate asks this table by key (`consent.ts`, step 1b).
- * ⛔ HOLDS NO MORE THAN IT MUST: thirty-two letters a–p (an HMAC under the server's pepper — never the number, never a digit,
- * irreversible without the pepper), the instant the referee was named, and when this row was written. No name, no
- * application id, no link to the applicant — so the applicant's erasure leaves nothing of theirs here, and the referee's
- * protection outlives it.
- * ⛔ APPEND-ONLY, IN BOTH TWINS: `record` inserts and skips a pair (key, instant) already held — Postgres's ON CONFLICT DO
- * NOTHING — and there is NO update member and NO delete member (`test:dal-parity` §28). A referee named twice is two rows;
- * the gate reads the EARLIEST instant, so a promise once given is never lost to a later naming. Every DAL signature below
- * is NAMED: dal-parity's `region()` would read an inline literal as the body. */
+ * PROMISED referee's contact leads to is kept here as a KEYED HASH (`refereeKeyOf`, `referee-exclusion.ts`), and the send
+ * gate asks this table by key (`consent.ts`, step 1b): a key held is a refusal.
+ * ⛔ THE KEY AND NOTHING ELSE (the U33r review's MAJOR-1): thirty-two letters a–p — an HMAC under the server's pepper, never
+ * the number, never a digit, and nothing without the pepper maps it back. No instant (when a referee was named, when the
+ * row was written): an applicant's `refereeConsentAt` joined on an instant would link the referee's key back to the
+ * applicant. No name, no application id, no link to the applicant — so the applicant's erasure leaves nothing of theirs
+ * here, and the referee's protection outlives it. WHETHER a referee was given the old promise is decided by the WRITER,
+ * when it writes, and only a promised referee is ever written.
+ * ⛔ APPEND-ONLY, IN BOTH TWINS: `record` inserts a key not yet held and skips one already held — Postgres's ON CONFLICT DO
+ * NOTHING — and there is NO update member and NO delete member (`test:dal-parity` §28). Every DAL signature below is
+ * NAMED: dal-parity's `region()` would read an inline literal as the body. */
 
-/** ONE ROW: a referee's number as a keyed hash, and the instant the referee was named. The composite key is
- *  (`refereeKey`, `namedAt`). */
+/** ONE ROW: a promised referee's number as a keyed hash — the primary key, and the whole row. */
 export type StoredAgentRefereeKey = {
   /** Thirty-two letters a–p — `refereeKeyOf(msisdn)`, refused in any other spelling by both twins (`referee-key-model.ts`). */
   refereeKey: string;
-  /** When the referee was named — the application's `refereeConsentAt` (the applicant's attestation that the referee agreed
-   *  and was shown the notice), or the application's creation when that is missing. The gate compares it with the moment
-   *  the re-worded §9 went live (`REFEREE_NEW_WORDS_LIVE_AT`). */
-  namedAt: string;
-  /** When this row was written — at the naming itself, by an erasure about to empty the contact, or by the backfill. */
-  recordedAt: string;
 };
-/** One key's answer in a read: the EARLIEST instant it was named, or null when no row holds it. */
+/** One key's answer in a read: whether a row holds it. */
 export type AgentRefereeKeyEntry = {
   refereeKey: string;
-  namedAt: string | null;
+  held: boolean;
 };
 
 /** ⛔ `id`, `msisdn`, `createdAt` and `createdBy` are NOT patchable: the key and the
@@ -1802,7 +1796,7 @@ declare global {
     recipientsByCampaignMsisdn: Map<string, string>;
     /** U33a-L · the recorded list bases, by id. ⛔ Append-only: never deleted, revoked once. */
     contactListBases: Map<string, StoredContactListBasis>;
-    /** U33r · the agent-referee keys, by `${refereeKey}|${namedAt}` — the composite key, faked. ⛔ Append-only. */
+    /** U33r · the agent-referee keys, by `refereeKey` — the primary key, and the whole row. ⛔ Append-only. */
     agentRefereeKeys: Map<string, StoredAgentRefereeKey>;
   } | undefined;
 }
@@ -1992,27 +1986,15 @@ function bookStandings(keys: readonly string[]): BookStandingEntry[] {
 }
 
 /**
- * U33r · THE ONE DEFINITION OF A REFEREE KEY'S ANSWER IN THIS TWIN — `earliestFor` and `earliestAmong` both ask it, so the
- * single read and the bulk read cannot disagree, and the Prisma twin's `refereeEarliest` takes the same steps (`test:dal-parity`
+ * U33r · THE ONE DEFINITION OF A REFEREE KEY'S ANSWER IN THIS TWIN — `holds` and `heldAmong` both ask it, so the single
+ * read and the bulk read cannot disagree, and the Prisma twin's `refereeHeld` takes the same steps (`test:dal-parity`
  * §28). Keys in (already deduplicated by the caller, and checked by the rule set), one entry per key out — a key no row
- * holds included, as null — ordered by key. ⭐ The EARLIEST instant a key was named, compared as INSTANTS (`Date.parse`),
- * never as strings: a promise once given is never hidden by a later naming of the same number.
+ * holds included, as `held: false` — ordered by key.
  */
-function refereeEarliest(keys: readonly string[]): AgentRefereeKeyEntry[] {
+function refereeHeld(keys: readonly string[]): AgentRefereeKeyEntry[] {
   if (keys.length === 0) return [];
-  assertRefereeKeys("agentRefereeKey.earliest", keys);
-  const asked = new Set(keys);
-  const earliest = new Map<string, number>();
-  for (const r of store.agentRefereeKeys.values()) {
-    if (!asked.has(r.refereeKey)) continue;
-    const at = Date.parse(r.namedAt);
-    const was = earliest.get(r.refereeKey);
-    if (was === undefined || at < was) earliest.set(r.refereeKey, at);
-  }
-  return [...keys].sort().map((refereeKey): AgentRefereeKeyEntry => {
-    const at = earliest.get(refereeKey);
-    return { refereeKey, namedAt: at === undefined ? null : new Date(at).toISOString() };
-  });
+  assertRefereeKeys("agentRefereeKey.held", keys);
+  return [...keys].sort().map((refereeKey): AgentRefereeKeyEntry => ({ refereeKey, held: store.agentRefereeKeys.has(refereeKey) }));
 }
 
 /** U38a · THE MEMORY TWIN'S PLAYER ARM — the Prisma twin's `playerWalk` where, predicate for predicate. Every key is
@@ -3543,6 +3525,17 @@ const memoryDb = {
       Array.from(store.marketingContacts.values())
         .filter((c) => c.userId === userId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
+    /** U33r · the book's numbers held under ONE e-mail address, case-insensitive — KEY-ONLY (the number alone, never the
+     *  row), sorted. A referee named only by e-mail is keyed under every number the book holds for that address (the
+     *  U33r review's MINOR-1). A blank address answers nothing. */
+    msisdnsByEmail: (email: string): string[] => {
+      const norm = email.trim().toLowerCase();
+      if (!norm) return [];
+      return Array.from(store.marketingContacts.values())
+        .filter((c) => (c.email ?? "").trim().toLowerCase() === norm)
+        .map((c) => c.msisdn)
+        .sort();
+    },
     /** ⛔ `msisdn` is not patchable (see `MarketingContactPatch`), so the unique index can
      *  never need re-pointing here — which is why this does not touch `contactsByMsisdn`. */
     update: (id: string, patch: MarketingContactPatch, at: string): StoredMarketingContact | null => {
@@ -3847,41 +3840,35 @@ const memoryDb = {
     },
   },
 
-  /* ═══ U33r · THE AGENT-REFEREE KEYS (Q8) ═════════════════════════════════════════════════════════════════════════════
-   * ⛔ APPEND-ONLY: `record` writes a pair (key, instant) not yet held and SKIPS one already held — Postgres's ON CONFLICT DO
-   * NOTHING in the other twin, so the first row is the record and nothing is ever moved — and there is NO update member and
-   * NO delete member (`test:dal-parity` §28). ⛔ EVERY member asks the ONE rule set (`referee-key-model.ts`) before it reads
-   * or writes, as the Prisma twin does, so a raw number handed in as a key is refused by both. Instants are compared as
-   * instants, and the composite key is faked as `${refereeKey}|${namedAt}` over the instant's ONE spelling. ⛔ The ONE
-   * writer is `referee-exclusion.ts` (`test:dal-parity` §28.writers); the ONE reader the gate's (`DB_GATE_READS`) and the
-   * split's prefetch, both through that module. */
+  /* ═══ U33r · THE AGENT-REFEREE KEYS (Q8) ══════════════════════════════════════════════════════════════════
+   * ⛔ APPEND-ONLY: `record` writes a key not yet held and SKIPS one already held — Postgres's ON CONFLICT DO NOTHING in the
+   * other twin, so nothing is ever moved — and there is NO update member and NO delete member (`test:dal-parity` §28).
+   * ⛔ EVERY member asks the ONE rule set (`referee-key-model.ts`) before it reads or writes, as the Prisma twin does, so a
+   * raw number handed in as a key — or a row carrying anything beside its key — is refused by both. ⛔ The ONE writer is
+   * `referee-exclusion.ts` (`test:dal-parity` §28.writers); the ONE reader the gate's (`DB_GATE_READS`) and the split's
+   * prefetch, both through that module. */
   agentRefereeKey: {
-    /** The batch checked WHOLE first; then each pair not yet held is written by NAME — never a spread — and one already
+    /** The batch checked WHOLE first; then each key not yet held is written by NAME — never a spread — and one already
      *  held is skipped. Answers how many rows were written: 0 on a re-run, which is what makes the backfill re-runnable. */
     record: (rows: StoredAgentRefereeKey[]): number => {
       assertRefereeKeyRows(rows);
       let written = 0;
       for (const r of rows) {
-        const stored: StoredAgentRefereeKey = {
-          refereeKey: r.refereeKey,
-          namedAt: new Date(r.namedAt).toISOString(),
-          recordedAt: new Date(r.recordedAt).toISOString(),
-        };
-        const pk = `${stored.refereeKey}|${stored.namedAt}`;
-        if (store.agentRefereeKeys.has(pk)) continue;
-        store.agentRefereeKeys.set(pk, stored);
+        if (store.agentRefereeKeys.has(r.refereeKey)) continue;
+        const stored: StoredAgentRefereeKey = { refereeKey: r.refereeKey };
+        store.agentRefereeKeys.set(stored.refereeKey, stored);
         written++;
       }
       return written;
     },
-    /** One key's EARLIEST naming, or null — the ONE definition, asked of one key. */
-    earliestFor: (refereeKey: string): string | null => refereeEarliest([refereeKey])[0].namedAt,
+    /** Whether a row holds this key — the ONE definition, asked of one key. */
+    holds: (refereeKey: string): boolean => refereeHeld([refereeKey])[0].held,
     /** §25's bound and shape: at most `BULK_KEYED_READ_MAX` distinct keys, REFUSED above — never cut off — duplicates
      *  folded, an empty set answered with nothing; then the ONE definition, one entry per key. */
-    earliestAmong: (refereeKeys: string[]): AgentRefereeKeyEntry[] => {
-      const keys = bulkKeys(refereeKeys, "agentRefereeKey.earliestAmong");
+    heldAmong: (refereeKeys: string[]): AgentRefereeKeyEntry[] => {
+      const keys = bulkKeys(refereeKeys, "agentRefereeKey.heldAmong");
       if (keys.length === 0) return [];
-      return refereeEarliest(keys);
+      return refereeHeld(keys);
     },
   },
 

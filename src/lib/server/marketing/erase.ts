@@ -70,9 +70,10 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * person's and is not touched.
  *
  * ⛔ U33r · AN AGENT-REFEREE KEY IS NOT TOUCHED. If the account's number was ever named as an agent applicant's referee, its
- * `AgentRefereeKey` row stays: it holds a keyed hash and two instants — no number, no name, no account — and it keeps the
- * promise "we never contact you for marketing" made to whoever was named at that number. Like the erasure marker (step 1),
- * it only ever stops marketing (`referee-exclusion.ts`; docs/DATA-RETENTION.md).
+ * `AgentRefereeKey` row stays: it holds a coded form of the number and nothing else — no number, no instant, no name, no
+ * account; it cannot be turned back into the number without the server's pepper — and it keeps the promise "we never
+ * contact you for marketing" made to whoever was named at that number, for as long as 50pick sends marketing. Like the
+ * erasure marker (step 1), it only ever stops marketing (`referee-exclusion.ts`; docs/DATA-RETENTION.md).
  *
  * WHAT IS KEPT: the number, in the ledger rows, in the emptied book row's `msisdn` and in every campaign recipient
  * row. Nothing written here names the account (the evidence is the bare word `erasure`). ⚠️ Not unlinkable in the

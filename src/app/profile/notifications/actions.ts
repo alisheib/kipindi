@@ -11,7 +11,7 @@ import { recordPlayerMarketingChoice } from "@/lib/server/marketing/consent";
  *  it could not read one, and the card re-reads the page rather than guess. */
 type MarketingConsentAnswer =
   | { ok: true; on: boolean }
-  | { ok: false; reason: "signed_out" | "held" | "error"; on: boolean | null };
+  | { ok: false; reason: "signed_out" | "held" | "referee" | "error"; on: boolean | null };
 
 /**
  * E-409 · WITHDRAW OR GIVE MARKETING CONSENT — the control Privacy §3 has promised all along.
@@ -50,5 +50,6 @@ export async function setMarketingConsentAction(on: boolean, renderedLocale?: st
   }
   revalidatePath("/profile/notifications");
   if (r.ok && typeof r.on === "boolean") return { ok: true, on: r.on };
-  return { ok: false, reason: r.held ? "held" : "error", on: r.on };
+  // U33r · a promised agent referee's number: nothing was written, and the card says why, for good.
+  return { ok: false, reason: r.held ? "held" : r.referee ? "referee" : "error", on: r.on };
 }
