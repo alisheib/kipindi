@@ -1751,6 +1751,92 @@ deployed.
   `test:campaign-compose` §18.34 + its plant (R-S2 at the test send's step); `test:blackball` §13–§14 + anchors R-BB1
   (send) and R-BB1b (balance), the headline anchor re-anchored on its two comment lines.
 
+✅ **AS BUILT — U43b-2 (S14, 2026-10-07): every place the build reads this section, said once.**
+- **Files beyond the table.** The suite's sections are modules the host runs after §F:
+  `scripts/marketing-engine/{engine-world,s-slice,r-reaper,c-concurrency,t-contract}.mts`. Also `scripts/otp-delivery.test.mts`
+  §10, `scripts/live/campaign-models-pg-probe.mts` §12 (the send record on Postgres — written, never run by the builder),
+  and `sms-blackball.ts`'s `BlackballOutcome.verdict` (the reply's `status` boolean exactly as carried, null when none).
+- **The numbers.** The slice constants live in the pure `engine-rules.ts` (it sizes and settles the slice); `engine.ts`
+  re-exports them. Added beyond the APIs block: `SLICE_MIN = 5` (S14's floor), `GATE_TIME_WEIGHT = 0.3` (E11's moving
+  average), `REAP_BATCH = 200` (the settle door's batch ceiling), `SLICE_CREDIT_MAX_AGE_MS = 60_000` (Start's),
+  `BEFORE_SEND_UNANSWERED_MAX = 3`, `SLICE_FLIGHT_STALE_MS = REAP_AFTER_MS`. The audit actions are spelled in `engine.ts`
+  (it may never import `enqueue.ts`); §S holds `marketing.campaign_paused` equal to enqueue's.
+- **One step, in order.** ① the flight (E10: a ticket on `globalThis.__50PICK_MARKETING_ENGINE`, shared by every module
+  instance; a flight older than 10 min is lost and no longer holds); ② find — not RUNNING → `not_running`, NOTHING reaped
+  (U47b's dispatcher reaps the other statuses); ③ reap; ④a ⛔ **the coordinator's U42 re-review requirement, as built:**
+  a confirmed `audienceCount` that is not a positive safe integer → pause `audience_unreadable` (fail closed — not
+  `list_over_confirmed_sending`, whose sentence would be false); the rows on the list (the ONE count, `countByStatus`
+  through `recipientRows`) above `audienceCount` → pause `list_over_confirmed_sending`. FIRST of the slice-wide checks:
+  only a new copy fixes either. ④b the switch through `marketingLiveGate` (the console stub passes; a switch that cannot
+  be read is closed) → `live_switch_closed`; the rail (an `unrecognised` provider is a dead rail whatever the rail reader
+  says) → `PROVIDER_UNRECOGNISED` / `NOT_CONFIGURED`; ④c window → WAIT `quiet_hours` until `opensAt`, or
+  `window_unreadable`; ④d money busy (a signal that throws is busy) → WAIT; ④e an OTP failure under 2 min old (either
+  side of now) → WAIT `otp_failing` until the mark + 2 min; ④f a dry render per variant (SW; EN when it has a body) →
+  `template_invalid`, the first problem as the audit detail; ④g the credit — NOT read on the console stub (it has none and
+  spends none); settings unreadable or half-read → `credit_unreadable` (OD63, fail closed); the slice's cost at its size
+  through `campaignEstimate` (U39's one arithmetic); `creditVerdict` → `marketing_floor` / `credit_unreadable`; the
+  kept-for-codes figure handed to `sendBatch` as `minimumBalanceTzs`. ⑤ claim; none → PENDING held by another claim →
+  WAIT `busy`; HELD → `held_rows`; else DONE.
+- **`verifyClaims` (`beforeSend`)** re-reads before the wire: not RUNNING → `{ proceed: false, reason: "not_running" }`;
+  ⛔ a non-count `audienceCount` → `audience_unreadable`; ⛔ an over-count list → `list_over_confirmed_sending` (a list that
+  grew between the claim and the send sends nothing); else `keep` = the rows `claimedBy` this token.
+- **Reasons beyond the APIs block.** `EngineStopReason` adds `gateway_unanswered`, `list_over_confirmed_sending`,
+  `audience_unreadable`, `before_send_unanswered`; `SliceWait` adds `before_send_unanswered`. `before_send_unanswered`
+  is a WAIT, and a PAUSE after three slices running (a hook that always fails would stall silently). `campaign-status.ts`
+  gains the sentences for `live_switch_closed`, `gateway_refused`, `gateway_unanswered`, `template_invalid`, `held_rows`,
+  `before_send_unanswered` (the others were U42's and U49a's).
+- **`isShopWide`** answers `{ shopWide: true; reason; detail; pause; release; attemptsDelta; match }` (widened). Order: a
+  hold that pauses (`BALANCE_FLOOR` · `NOT_CONFIGURED` · `PROVIDER_UNRECOGNISED` · `MARKETING_FLOOR` · the two U42 vetoes);
+  a hold that waits; EVERY row that reached the wire `failed` with ONE code (not `BAD_MSISDN`) → release +1 and pause
+  `gateway_refused` — or the code's own key when it is a pause reason (a transport that threw `NOT_CONFIGURED`); ⭐ EVERY
+  row that reached the wire `unconfirmed` → the rows settled UNCONFIRMED (never released: the gateway may hold them) and
+  pause `gateway_unanswered`, so an outage costs one slice, never the audience. Rows the fact does not touch keep their
+  own verdicts: a `skipped` row stays SKIPPED (its RG line is written; releasing it would write a second).
+- **`settlementFor(o, row, ctx)`** takes `ctx = { claimToken, slice, wireAt, shop }` and answers a patch or null
+  (`claim_lost`). `sentAt`, and a wire refusal's `failedAt`, are the instant the ONE send came back (`wireAt`, PE-08); a
+  `handed_over` with no reference or no instant → UNCONFIRMED; a `failed` with no instant → released +0. A hold reason
+  the table does not know is about one person (three tries, then HELD). DC-4 covers a lost UNCONFIRMED patch too
+  (`sendRecordOf`: SENT and UNCONFIRMED, `sentAt` null for the latter).
+- **DC-5 as built.** Every trail string scrubbed (`scrubPhoneRuns`) and cut to its column; a `source` word by word
+  (`cleanSource`: the words that hold a letter — a reference, an id — kept whole, so a reference is never corrupted); each
+  patch asked `assertSettle` alone; refused → its trail withheld and its words emptied; still refused → set aside for the
+  reaper, never released.
+- **DC-4's door.** `assertSendRecord` · `sendRecordWrite` · `SMS_SEND_RECORD_FROM = [DELIVERED, FAILED]` in
+  `campaign-model.ts`; the Prisma WHERE is `{ id, claimToken, status in FROM, gateTrail: { equals: Prisma.AnyNull } }`
+  (SQL NULL and JSON null alike) — a RUNTIME import of `Prisma` in `prisma-dal.ts`, the one new SQL: probe §12.
+- **The reaper.** `ReapEvidence` adds `createdAt` (DC-1: a message made provably before the claim is an earlier
+  attempt's → PENDING +1), `dlrStatus`, `dlrDesc` (a FAILED message → class `receipt:<TOKEN>` when a receipt said why,
+  else `FAILED`; the words scrubbed). ACCEPTED without `sentAt`, DELIVERED without `deliveredAt` and any unknown status →
+  UNCONFIRMED. Trail: `["reaper", <status | no_message>, null, "stranded-since:<claimedAt>"]`, `["dispatch", <verdict>,
+  null, <reference>]`.
+- **E11.** The gate time runs from the dispatch's start to its send (the gate, the prepare and the re-read: everything
+  between the claim and the wire), per claimed row, folded as a moving average; `adaptSliceSize` aims at 10 s, moves by at
+  most half or double, clamps 5–50; null keeps the size, 0 grows it, an unreadable `prev` restarts at 20. A slice the
+  window held before any gate measures nothing.
+- **E12's mark** is stamped in `sendBatch` wherever an OTP row is written FAILED or UNKNOWN (one assignment, before the
+  row write), read through `lastOtpFailureAt()`; nothing in `sms.ts` reads it.
+- **The rail, the review's two ⛔.** (1) A refusal is ONLY the gateway's own `status:false` on a status line below 500
+  (`verdict`); anything else not accepted — no response, a body that died, a 5xx (a proxy's 504 can follow an accepted
+  batch), an HTML or empty body, JSON without the boolean — is AMBIGUOUS: row UNKNOWN, result TRANSPORT, `unconfirmed`,
+  never re-sent by itself. (2) A throw out of a transport (only ever before the request) writes the row FAILED with the
+  error's own code — UNKNOWN for one that is not an `SmsError` (it was TRANSPORT: the row said "never left", the code
+  "the gateway may have it"). The OTP facade answers, consumes and refunds byte-for-byte as before in every mode
+  (`test:otp-delivery` §10, run also against the base's `sms.ts`); only the audit's `code` and the message row move (a
+  504 or HTML page: REJECTED/FAILED → TRANSPORT/UNKNOWN; a non-`SmsError` throw: TRANSPORT → UNKNOWN). The test send follows
+  dispatch: a 5xx is now "unconfirmed — don't resend", a pre-request throw "refused (UNKNOWN)". Invites: every entry
+  still FAILED on any refusal or ambiguity.
+- **§T** lives in `test:marketing-engine` (T1 drives the contract through the engine; T2 checks `test:marketing-consent`
+  wires the second driver); the full second driver is `engineDriver` in `test:marketing-consent` (U9.1–U9.13 through
+  `runCampaignSlice` over real recipient rows; R-T1 hoists the verdicts to claim time).
+- **Proof.** §S S0–S28 (S17 the pre-claim over-count and unreadable-count pauses, S18 the veto when the list grows between
+  the claim and the send, S19 the unanswered batch, S20 the REAL `sendBatch` behind a stubbed fetch, S21 the credit, S22
+  the escalation, S26 DC-5, S27 the wiring and `ENGINE_CALLERS` = none until U47b, S28 the OTP mark) with 30 plants
+  (R-S1…R-S28, R-S26b, R-S27b); §R R1–R8 with R-R1…R-R8; §C C0–C2 with R-C1…R-C3; §T T1–T2 with R-T1, R-T2.
+  `test:campaign-models` §2.32 + R-43b-1…5 (`engine.ts` in `MARKETING_WRITERS`; `engine-rules.ts` the one
+  `UNCONFIRMED_WRITERS` entry); `test:dal-parity` §26.u43b + seven anchors; `test:campaign-privacy` P10 (`recordSend`
+  accounted, R-P10d re-aimed at `recordCost`, R-P10h new); `test:blackball` §15–§16 + anchors R-BB2…R-BB5;
+  `test:otp-delivery` §10.
+
 **Premises checked.** P1–P3, P5–P7, P13–P15, F1–F5, F8; the U9 second-driver contract (§9 U43: "call it, do not rewrite it");
 `MARKETING_WRITERS` (P19); `SliceOutcome` gains `basis`/`basisRef` with U33a-G (spec §3.5); `renderForRecipient`,
 `variantFor`, `firstNameFor`, `footerMeasurementToken` (`campaign-template.ts`, `footer.ts:99`).

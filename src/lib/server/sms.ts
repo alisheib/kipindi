@@ -120,6 +120,25 @@ declare global {
   var __50PICK_SMS_BALANCE: { tzs: number; at: number } | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_SMS_BALANCE_READ: { inflight: Promise<boolean> | null; failedAt: number | null; error: SmsBalanceError | null } | undefined;
+  /** U43b-2 · the newest instant (epoch ms) an OTP-purpose `SmsMessage` row went FAILED or UNKNOWN in this process. */
+  // eslint-disable-next-line no-var
+  var __50PICK_OTP_LAST_FAILURE_AT: number | undefined;
+}
+
+/**
+ * ⭐ U43b-2 · THE OTP-FAILURE MARK (ENGINE-SPEC §4.13, E12): login and withdrawal codes share the rail with marketing, so
+ * the campaign slice WAITS two minutes after a code failed or went unknown. Stamped where an OTP row is written FAILED or
+ * UNKNOWN, on `globalThis` (the slice runs in a server action's module instance, the OTP path in another — the money-busy
+ * lesson). ⛔ NO BEHAVIOUR CHANGE: one assignment that cannot throw, and nothing in this file reads it.
+ */
+function noteOtpFailure(purpose: SmsPurpose | undefined): void {
+  if (purpose === "OTP") globalThis.__50PICK_OTP_LAST_FAILURE_AT = Date.now();
+}
+
+/** U43b-2 · the newest OTP failure this process saw (epoch ms), or null — the campaign slice's one reader. */
+export function lastOtpFailureAt(): number | null {
+  const at = globalThis.__50PICK_OTP_LAST_FAILURE_AT;
+  return typeof at === "number" && Number.isFinite(at) ? at : null;
 }
 
 /** ⛔ ON `globalThis`, NOT A MODULE-SCOPE `let`. Every other counter in this repo is
@@ -482,9 +501,14 @@ const blackballTransport: SmsTransport = {
     const problem = senderIdProblem(env.senderId);
     if (problem) throw new SmsError("NOT_CONFIGURED", `blackball: sender ID ${problem}`);
     const r = await blackballSend(env, msgs);
-    // `transport` is set ONLY when no response arrived — the authoritative signal for "we do
-    // not know whether the gateway has this batch".
-    return { ok: r.ok, ambiguous: r.transport !== null, detail: describeBlackball(r), message: r.message, balance: r.balance };
+    // ⛔ U43b-2 · A REFUSAL IS THE GATEWAY'S OWN `status:false`, ON A STATUS LINE BELOW 500 — measured: every refusal the
+    // gateway makes (bad keys, a schema complaint) is a 400 carrying the boolean, decided before anything is queued, so it
+    // charged nothing and a re-send is not a second charge. Anything else that is not an acceptance is AMBIGUOUS: no
+    // response (`transport`), a body that died, a 5xx (a proxy's 504 can arrive AFTER the gateway took the batch), an HTML
+    // page or an empty body, JSON without the boolean — we do not know whether the gateway has the batch, so the row is
+    // UNKNOWN (a late receipt can still settle it) and the result TRANSPORT, never a refusal a caller may re-send.
+    const refusedByGateway = r.verdict === false && r.httpStatus < 500;
+    return { ok: r.ok, ambiguous: !r.ok && !refusedByGateway, detail: describeBlackball(r), message: r.message, balance: r.balance };
   },
   async balance(): Promise<BalanceReply> {
     const env = blackballEnv();
@@ -814,10 +838,17 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
         group.map((p) => ({ msisdn: p.msisdn, text: p.out.body, reference: p.reference })),
       );
     } catch (err) {
-      const code = err instanceof SmsError ? err.code : "TRANSPORT";
+      // ⛔ U43b-2 · A THROW IS A FAILURE BEFORE THE WIRE, AND ITS ROW AND ITS CODE SAY THE SAME THING. The transports throw
+      // only before a request is made — an `SmsError` they raise on purpose (NOT_CONFIGURED), or `blackballSend`'s own
+      // programming-error guards (an empty or oversized batch, a short reference); a reply that is lost or dies comes back
+      // as `transport` and is the AMBIGUOUS path below, never this one. So the row is FAILED and the code is the error's own
+      // — or UNKNOWN for a throw that is not an `SmsError`. ⛔ Never TRANSPORT here: that code means "the gateway may have it"
+      // (`dispatchSlice` settles it UNCONFIRMED, never re-sent), while this row says FAILED and no receipt can ever move it.
+      const code = err instanceof SmsError ? err.code : "UNKNOWN";
       const detail = String((err as Error)?.message ?? err).slice(0, 200);
       for (const p of group) {
         health().failed++;
+        noteOtpFailure(p.out.purpose);
         await db.smsMessage.update(p.reference, { status: "FAILED", providerMsg: detail, failedAt: new Date().toISOString() });
         results[p.index] = { reference: p.reference, to: p.out.to, ok: false, error: detail, code, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
       }
@@ -855,6 +886,7 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
         results[p.index] = { reference: p.reference, to: p.out.to, ok: true, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
       } else {
         health().failed++;
+        noteOtpFailure(p.out.purpose);
         await db.smsMessage.update(p.reference, {
           status: ambiguous ? "UNKNOWN" : "FAILED",
           providerMsg: outcome.message.slice(0, 200),

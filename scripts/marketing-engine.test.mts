@@ -5,7 +5,11 @@
  *       in this file;
  *   §F  U49a · the credit kept for codes, and the refusals at Start and at Resume (§4.12, `start-check.ts`) — a SECTION
  *       MODULE, `scripts/marketing-engine/f-credit.mts`, loaded after the database variables are gone (`hosted`, below);
- *   U43b's sections (the slice, §4.13) join as section modules of the same shape.
+ *   §S  U43b-2 · the slice — `runCampaignSlice` end to end (§4.13 decisions 2–4 and 6): `scripts/marketing-engine/s-slice.mts`;
+ *   §R  U43b-2 · the reaper — `reapStrandedClaims`, E6 and DC-1: `scripts/marketing-engine/r-reaper.mts`;
+ *   §C  U43b-2 · concurrency — five drivers over 1,000 people, the single-flight on and bypassed: `…/c-concurrency.mts`;
+ *   §T  U43b-2 · the U9 contract through the engine (its whole second driver lives in `test:marketing-consent`):
+ *       `scripts/marketing-engine/t-contract.mts`; the four share their fixture world, `scripts/marketing-engine/engine-world.mts`.
  *
  * ⭐ DRIVEN, NOT READ. §E runs `enqueueStep` on the memory twin over the REAL walk (`walkCampaignAudience`), the REAL fence
  * (`audienceFence` — the confirmed counts and members keys U40a freezes) and the REAL doors (`createMany`, `countByStatus`,
@@ -1323,6 +1327,14 @@ function hosted<I>(s: EngineSection<I>): Section {
   };
 }
 SECTIONS.push(hosted(SECTION_F));
+
+/* ══ §S · §R · §C · §T · U43b-2 — THE SLICE, THE REAPER, CONCURRENCY, THE U9 CONTRACT: section modules of §F's shape ═════ */
+
+const { SECTION_S } = await import("./marketing-engine/s-slice.mts");
+const { SECTION_R } = await import("./marketing-engine/r-reaper.mts");
+const { SECTION_C } = await import("./marketing-engine/c-concurrency.mts");
+const { SECTION_T } = await import("./marketing-engine/t-contract.mts");
+SECTIONS.push(hosted(SECTION_S), hosted(SECTION_R), hosted(SECTION_C), hosted(SECTION_T));
 
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 

@@ -243,6 +243,13 @@ const MARKETING_FLOOR_SENTENCE = "Paused — the SMS credit reached what is kept
  * ⭐ U49a (ENGINE-SPEC §3.4, §4.12 decision 5): the credit kept for login and withdrawal codes — `MARKETING_FLOOR` is
  * `sendBatch`'s own refusal (its last line), `marketing_floor` and `credit_unreadable` are the slice's own checks before it
  * claims anyone (U43b writes all three; one sentence for the floor, whichever line caught it).
+ * ⭐ U43b-2 (ENGINE-SPEC §3.4, §4.13): the slice's own — `live_switch_closed` (the owner's switch closed mid-campaign),
+ * `gateway_refused` (the network refused a batch with its own "no" — nothing was charged, so Resume sends it again),
+ * `template_invalid` (the saved message no longer passes its own check), `held_rows` (only people the engine could not
+ * check or prepare are left) — and, as built, `gateway_unanswered` (a batch the network never answered: its people are
+ * "no answer" and are never sent again by themselves) and `before_send_unanswered` (the engine could not re-check its own
+ * claims just before the wire, three slices running). The slice also pauses with U42's `list_over_confirmed_sending` and
+ * `audience_unreadable` when it finds them itself (the U42 re-review).
  */
 const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   BALANCE_FLOOR: "The SMS credit is below its floor. Top it up, then resume.",
@@ -257,6 +264,14 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   list_over_confirmed: "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy.",
   list_over_confirmed_sending:
     "Paused — more people are on this campaign's list than were confirmed, found after sending had started. Nobody more is messaged. Stop it and confirm a new copy.",
+  live_switch_closed: "Paused — marketing SMS were switched off. The owner switches them on, then press Resume.",
+  gateway_refused: "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume.",
+  gateway_unanswered:
+    "Paused — the SMS network gave no answer for the last batch, so those people are counted as no answer and are never sent again by themselves. Check Admin → System, then Resume.",
+  template_invalid: "Paused — the saved message no longer passes its own check, so nobody more is messaged. Stop this campaign and send a corrected copy.",
+  held_rows: "Paused — some people could not be checked or prepared. Resume to try them again, or Stop.",
+  before_send_unanswered:
+    "Paused — the last check before sending could not be made three times running, so nothing more was sent. Resume to try again.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */

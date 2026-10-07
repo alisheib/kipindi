@@ -168,4 +168,42 @@ export const MUTATIONS = [
     to: ``,
     expect: `§1 exactly the five Swagger message fields, no extras`,
   },
+  {
+    // ⛔ U43b-2 (R-BB2) · THE STATUS LINE FORGOTTEN. Only the gateway's own `status:false` BELOW a 5xx is a refusal; a 5xx
+    // can come from a proxy AFTER the gateway took the batch. Read the boolean alone and a 502 saying status:false is
+    // written FAILED and REJECTED: terminal, a late receipt discarded, and a refusal a caller may re-send at a second charge.
+    name: "sms.ts — a 5xx carrying status:false is a refusal again (the status line forgotten)",
+    file: "src/lib/server/sms.ts",
+    from: `    const refusedByGateway = r.verdict === false && r.httpStatus < 500;`,
+    to: `    const refusedByGateway = r.verdict === false;`,
+    expect: `§15 ⛔ U43b-2 · …and a 5xx is ambiguous EVEN WHEN its body says status:false: a reply from behind a failing proxy is not the gateway's verdict on the batch`,
+  },
+  {
+    // ⛔ U43b-2 (R-BB3) · THE AMBIGUITY READ OFF THE TRANSPORT FIELD ALONE — the shape before U43b-2: a 504 with a proxy's HTML page
+    // arrived with a status line, so it counted as a refusal, FAILED and REJECTED, for a batch the gateway may hold.
+    name: "sms.ts — only a reply that never came is ambiguous again (a 504 page becomes a refusal)",
+    file: "src/lib/server/sms.ts",
+    from: `    return { ok: r.ok, ambiguous: !r.ok && !refusedByGateway, detail: describeBlackball(r), message: r.message, balance: r.balance };`,
+    to: `    return { ok: r.ok, ambiguous: r.transport !== null, detail: describeBlackball(r), message: r.message, balance: r.balance };`,
+    expect: `§15 ⛔ U43b-2 · a 504 carrying a proxy's HTML page is AMBIGUOUS, never a refusal: the row UNKNOWN with no failedAt, the result TRANSPORT (a late receipt can still settle it, and nobody re-sends it)`,
+  },
+  {
+    // ⛔ U43b-2 (R-BB4) · A THROW LABELLED TRANSPORT AGAIN. The transport throws only before any request, and the catch
+    // writes the row FAILED; the code TRANSPORT says the opposite ("the gateway may have it" — dispatch settles it
+    // unconfirmed, never re-sent). Row and code must say the same thing: the error's own code, or UNKNOWN.
+    name: "sms.ts — a throw that is not an SmsError is coded TRANSPORT again while its row says FAILED",
+    file: "src/lib/server/sms.ts",
+    from: `      const code = err instanceof SmsError ? err.code : "UNKNOWN";`,
+    to: `      const code = err instanceof SmsError ? err.code : "TRANSPORT";`,
+    expect: `§15 ⛔ U43b-2 · a throw that is not an SmsError, raised inside the transport before any request, is code UNKNOWN with its row FAILED and dated: never TRANSPORT, which says the gateway may have it while the row says it never left`,
+  },
+  {
+    // ⭐ U43b-2 (R-BB5) · THE OTP-FAILURE MARK DROPPED. The campaign slice waits two minutes after a login or withdrawal
+    // code failed; with the stamp gone it never waits, and marketing keeps the rail busy while codes are failing.
+    name: "sms.ts — an OTP failure no longer stamps the OTP-failure mark",
+    file: "src/lib/server/sms.ts",
+    from: `  if (purpose === "OTP") globalThis.__50PICK_OTP_LAST_FAILURE_AT = Date.now();`,
+    to: `  void purpose;`,
+    expect: `§16 ⭐ U43b-2 · an OTP that fails (refused, unanswered or thrown before the request) stamps the process's OTP-failure mark at that moment, read back through lastOtpFailureAt`,
+  },
 ];

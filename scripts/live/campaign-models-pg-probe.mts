@@ -33,6 +33,10 @@
  * row and no other, never back; another number or another message's reference is refused; Postgres's unique reference
  * refuses a second holder (P2002); and twenty receipts racing twenty settles on claimed rows, truly concurrent, end every
  * row DELIVERED with nothing thrown. ⛔ No backslash in §11 either.
+ * ⭐ §12 · U43b-2 (S14 2026-10-07 — ENGINE-SPEC §4.13, DC-4): the send-record door through the REAL Prisma twin — a patch
+ * the slice lost to a receipt is written into its DELIVERED or FAILED row once, under its claim, while the trail is null
+ * (SQL NULL and JSON null alike: the Json AnyNull in the WHERE is the new SQL this section exists for); another claim, a
+ * settled-SENT row, a PENDING row and an unknown id write nothing. ⛔ No backslash in §12 either.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database, runs the Prisma CLI three times and creates and
  * drops a shadow database and a throwaway type — loopback only):
@@ -41,6 +45,7 @@
 import type {
   StoredSmsCampaign, StoredSmsCampaignRecipient, SmsCampaignRecipientSeed, SmsCampaignRecipientCount, SmsCampaignRecipientCountsById,
   SmsCampaignTransitionPatch, StoredUser, SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage, SmsRecipientReceipt,
+  SmsRecipientSendRecord,
 } from "../../src/lib/server/store.ts";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -857,6 +862,123 @@ async function toRunning(id: string): Promise<void> {
     ok("11f · ⭐ twenty receipts racing twenty settles, each pair truly concurrent: every row ends DELIVERED with its reference, and nothing throws",
       errors.length === 0 && delivered === 20 && outcomes.every((o) => o === "applied"),
       `${delivered}/20 DELIVERED · receipts ${json(outcomes.reduce<Record<string, number>>((m, o) => ({ ...m, [o]: (m[o] ?? 0) + 1 }), {}))} · errors ${json(errors)}`);
+  }
+}
+
+// ── 12 · U43b-2 · the send-record door through the REAL Prisma twin (ENGINE-SPEC §4.13, DC-4): a slice's patch LOST to a
+//        receipt that settled its row first is written by `recordSend` — the trail, the token, the variant, the size and
+//        the sentAt — ONLY into a DELIVERED or FAILED row still under that claim whose trail is still null, SQL NULL or
+//        JSON null alike (the Json AnyNull); once written, a second call, another claim, a row the settle wrote, a row
+//        still PENDING and an unknown id write nothing. ⚠️ Written by U43b-2's builder, who has no Postgres: its first run
+//        is the integrator's — a throw is caught and FAILS 12 with its first line rather than ending the probe ──────────
+{
+  const CM12 = await import("../../src/lib/server/marketing/campaign-model.ts");
+  const NL = String.fromCharCode(10);
+  const json = (v: unknown) => JSON.stringify(v);
+  const firstLine = (e: unknown) =>
+    (String((e as Error)?.message ?? e).split(NL).map((s) => s.trim()).find((s) => s !== "") ?? "(an error with no message)").slice(0, 200);
+  try {
+    const T12 = Date.parse("2026-10-07T13:00:00.000Z");
+    const at12 = (s: number) => new Date(T12 + s * 1000).toISOString();
+    const trail12: SmsCampaignGateTrail = [
+      { check: "gate", verdict: "ok", wording: null, source: "basis:CONSENT" },
+      { check: "dispatch", verdict: "SENT", wording: null, source: "probe_ref12" },
+    ];
+    const C12 = "probe_u43b2";
+    await db.smsCampaign.create(draft(C12));
+    const ids = Array.from({ length: 6 }, (_, i) => `probe_u43b2_${String(i).padStart(3, "0")}`);
+    const key12 = (i: number) => keyOf(40000 + i);
+    const ref12 = (i: number) => `probe_ref12_${String(i).padStart(3, "0")}`;
+    await db.smsCampaignRecipient.createMany(ids.map((x, i) => seed(x, C12, key12(i))));
+    const tok12 = "probe_tok_u43b2";
+    const won12 = await db.smsCampaignRecipient.claim(C12, 6, tok12, at12(1));
+    const sent12 = (i: number): SmsCampaignRecipientSettle => ({
+      id: ids[i], claimToken: tok12, to: "SENT", smsReference: ref12(i), sentAt: at12(2), optOutToken: "K7MXP2QR", locale: "SW",
+      segments: 1, bodyLen: 72, gateTrail: trail12,
+    });
+    const record12 = (o: Partial<SmsRecipientSendRecord> = {}): SmsRecipientSendRecord => ({
+      claimToken: tok12, gateTrail: trail12, optOutToken: "K7MXP2QR", locale: "SW", segments: 1, bodyLen: 72, sentAt: at12(2), ...o,
+    });
+    type Row12 = {
+      status: string; claimToken: string | null; smsReference: string | null; gateTrail: unknown; trailIsNull: boolean; optOutToken: string | null;
+      locale: string | null; segments: number | null; bodyLen: number | null; sentAt: Date | null; deliveredAt: Date | null; failedAt: Date | null;
+      failureClass: string | null;
+    };
+    const row12 = async (id: string): Promise<Row12 | null> => (await pg.$queryRawUnsafe<Row12[]>(
+      `select status::text as status, "claimToken", "smsReference", "gateTrail", ("gateTrail" is null or "gateTrail" = 'null'::jsonb) as "trailIsNull", "optOutToken", locale::text as locale, segments, "bodyLen", "sentAt", "deliveredAt", "failedAt", "failureClass" from "SmsCampaignRecipient" where id = $1`, id))[0] ?? null;
+    const receipt12 = (i: number, o: Partial<SmsRecipientReceipt> = {}): SmsRecipientReceipt =>
+      ({ reference: ref12(i), msisdn: key12(i), status: "DELIVERED", rawStatus: "DELIVRD", desc: null, at: at12(3), ...o });
+    // Receipts settle rows 0, 1 and 5 DELIVERED and row 2 FAILED BEFORE the slice's settle — whose patches for rows 0–3 and
+    // 5 then lose those four and write row 3 SENT; row 4 stays claimed PENDING. Row 5's trail is then made JSON null by SQL.
+    const receipts = [
+      await db.smsCampaignRecipient.recordReceipt(ids[0], receipt12(0)),
+      await db.smsCampaignRecipient.recordReceipt(ids[1], receipt12(1)),
+      await db.smsCampaignRecipient.recordReceipt(ids[2], receipt12(2, { status: "FAILED", rawStatus: "UNDELIV", desc: "absent subscriber" })),
+      await db.smsCampaignRecipient.recordReceipt(ids[5], receipt12(5)),
+    ];
+    const settled12 = await db.smsCampaignRecipient.settle([0, 1, 2, 3, 5].map(sent12), at12(4));
+    await pg.$executeRawUnsafe(`update "SmsCampaignRecipient" set "gateTrail" = 'null'::jsonb where id = $1`, ids[5]);
+    const before5 = await row12(ids[5]);
+    ok("12 · U43b-2 · CONTROL · 6 rows claimed by one token; four receipts applied first; the slice's settle then LOSES those four and writes row 3 SENT; row 5's trail is JSON null in SQL",
+      won12.length === 6 && receipts.every((r) => r.changed) && settled12.settled === 1 && json([...settled12.lost].sort()) === json([ids[0], ids[1], ids[2], ids[5]])
+        && (await row12(ids[3]))?.status === "SENT" && before5?.trailIsNull === true && before5.gateTrail === null,
+      `claimed ${won12.length} · receipts ${json(receipts.map((r) => r.reason))} · settle ${json(settled12)} · row 5 trail ${json(before5?.gateTrail)}`);
+
+    // 12a · the lost patch is written into its DELIVERED row: every carried column, nothing the receipt wrote disturbed
+    {
+      const r = await db.smsCampaignRecipient.recordSend(ids[0], record12(), at12(5));
+      const after = await row12(ids[0]);
+      ok("12a · recordSend on a DELIVERED row under its claim with a SQL NULL trail is written: the trail, token, variant, size and sentAt in SQL — still DELIVERED at the receipt's instant, its reference and claim kept",
+        r.written && after?.status === "DELIVERED" && json(after.gateTrail) === json(trail12) && after.optOutToken === "K7MXP2QR" && after.locale === "SW"
+          && after.segments === 1 && after.bodyLen === 72 && after.sentAt?.toISOString() === at12(2) && after.deliveredAt?.toISOString() === at12(3)
+          && after.smsReference === ref12(0) && after.claimToken === tok12,
+        `${json(r)} · ${json(after)}`);
+    }
+    // 12b · once: a second record (other words) writes nothing — the trail is no longer null
+    {
+      const r = await db.smsCampaignRecipient.recordSend(ids[0], record12({ bodyLen: 99, sentAt: at12(9) }), at12(6));
+      const after = await row12(ids[0]);
+      ok("12b · a second recordSend on the same row writes nothing: the trail is no longer null — bodyLen and sentAt still the first",
+        !r.written && after?.bodyLen === 72 && after.sentAt?.toISOString() === at12(2), `${json(r)} · ${json(after)}`);
+    }
+    // 12c · a FAILED row a receipt settled takes the record too, its failure kept
+    {
+      const r = await db.smsCampaignRecipient.recordSend(ids[2], record12(), at12(7));
+      const after = await row12(ids[2]);
+      ok("12c · recordSend on a FAILED row a receipt settled is written, its failure class and failedAt kept",
+        r.written && after?.status === "FAILED" && after.failureClass === `${CM12.SMS_RECEIPT_CLASS_PREFIX}UNDELIV` && after.failedAt?.toISOString() === at12(3)
+          && json(after.gateTrail) === json(trail12), `${json(r)} · ${json(after)}`);
+    }
+    // 12d · JSON null is null too (Prisma's AnyNull): row 5's 'null'::jsonb trail takes the record
+    {
+      const r = await db.smsCampaignRecipient.recordSend(ids[5], record12(), at12(8));
+      const after = await row12(ids[5]);
+      ok("12d · ⭐ the AnyNull WHERE on Postgres: a row whose trail is JSON null (not SQL NULL) takes the record like a SQL NULL one",
+        r.written && after?.status === "DELIVERED" && json(after.gateTrail) === json(trail12), `${json(r)} · ${json(after)}`);
+    }
+    // 12e · the refusals that reach the database: another claim, a row the settle wrote, a PENDING row, an unknown id
+    {
+      const otherClaim = await db.smsCampaignRecipient.recordSend(ids[1], record12({ claimToken: "probe_tok_other" }), at12(9));
+      const settledRow = await db.smsCampaignRecipient.recordSend(ids[3], record12({ bodyLen: 99 }), at12(9));
+      const pending = await db.smsCampaignRecipient.recordSend(ids[4], record12(), at12(9));
+      const nobody = await db.smsCampaignRecipient.recordSend("probe_u43b2_no_such_row", record12(), at12(9));
+      const one = await row12(ids[1]);
+      const three = await row12(ids[3]);
+      const four = await row12(ids[4]);
+      ok("12e · the WHERE holds on Postgres: another claim, a row the settle wrote SENT, a row still PENDING and an unknown id each write nothing — row 1's trail still null, row 3 as its settle wrote it, row 4 PENDING",
+        !otherClaim.written && !settledRow.written && !pending.written && !nobody.written && one?.trailIsNull === true && one.status === "DELIVERED"
+          && three?.status === "SENT" && three.bodyLen === 72 && four?.status === "PENDING" && four.trailIsNull === true,
+        `${json([otherClaim, settledRow, pending, nobody])} · ${json({ one: one?.trailIsNull, three: three?.bodyLen, four: four?.status })}`);
+    }
+    // 12f · the rule set refuses before any statement: an unreadable record throws, and nothing changes
+    {
+      const refused = await throws(() => db.smsCampaignRecipient.recordSend(ids[1], record12({ claimToken: "" }), at12(10)));
+      const one = await row12(ids[1]);
+      ok("12f · an unreadable record (an empty claim) throws before any statement — row 1's trail still null",
+        refused && one?.trailIsNull === true, `threw ${refused} · ${json(one?.trailIsNull)}`);
+    }
+  } catch (e) {
+    ok("12 · U43b-2 · the send-record door ran on Postgres without throwing", false, firstLine(e));
   }
 }
 

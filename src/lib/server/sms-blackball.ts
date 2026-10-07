@@ -174,6 +174,10 @@ export function senderIdProblem(senderId: string | undefined | null): string | n
 export type BlackballOutcome = {
   /** The gateway's own verdict — the `status` boolean, NEVER `res.ok`. */
   ok: boolean;
+  /** U43b-2 · the `status` boolean EXACTLY as the reply carried it — null when it carried none: no response, a body that
+   *  died, an HTML page or an empty body, JSON without the field. A fact, reported faithfully; `sms.ts` decides what it
+   *  means (only the gateway's own `false` below a 5xx is a refusal — anything else not accepted is ambiguous). */
+  verdict: boolean | null;
   /** 0 when the request never completed. */
   httpStatus: number;
   message: string;
@@ -197,6 +201,7 @@ export type BlackballOutcome = {
 function replyBodyUnreadable(httpStatus: number, err: unknown): BlackballOutcome {
   return {
     ok: false,
+    verdict: null,
     httpStatus,
     message: "transport failure",
     balance: null,
@@ -235,6 +240,7 @@ export function parseBlackballBody(raw: string, httpStatus: number): BlackballOu
   const o = json && typeof json === "object" ? (json as Record<string, unknown>) : {};
   return {
     ok: o.status === true,
+    verdict: typeof o.status === "boolean" ? o.status : null,
     httpStatus,
     message:
       typeof o.message === "string" && o.message
@@ -306,6 +312,7 @@ export async function blackballSend(
       // retry blindly, which would be a second SMS at a second charge.
       return {
         ok: false,
+        verdict: null,
         httpStatus: 0,
         message: "transport failure",
         balance: null,
@@ -358,6 +365,7 @@ export async function blackballBalance(env: BlackballEnv): Promise<BlackballOutc
     } catch (err) {
       return {
         ok: false,
+        verdict: null,
         httpStatus: 0,
         message: "transport failure",
         balance: null,

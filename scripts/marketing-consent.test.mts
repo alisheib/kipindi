@@ -51,6 +51,10 @@ import { decomment } from "./lib/decomment.mts";
 import { REAL_BASIS, assertConsentBasis, basisModel, basisCases } from "./marketing-consent/consent-basis.mts";
 // U33a-G · the licence decision table, run over one seeded world with the record closed and open.
 import { REAL_LICENCE, assertLicenceBasis, licenceGateWithDefect, licenceCases } from "./marketing-consent/licence-basis.mts";
+// U43b-2 · the contract's SECOND DRIVER — the campaign engine over real recipient rows (ENGINE-SPEC §4.13 decision 4).
+import { runCampaignSlice } from "../src/lib/server/marketing/engine.ts";
+import type { EngineDeps, SliceStepResult } from "../src/lib/server/marketing/engine.ts";
+import { engineDeps, freshState, runningCampaign, seat as seatRows } from "./marketing-engine/engine-world.mts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
  * at the end scores GREEN when a promise never settles or the process exits early. */
@@ -549,7 +553,11 @@ function gateWithDefect(d: Defect): Gate {
  * contract left behind (X stopped, Y self-excluded, Z on a break) — the review round added U9.17b (a malformed prepare
  * answer costs its own row only), U9.19b (a malformed beforeSend answer sends nothing), U9.22 (the meta and the basis on
  * EVERY outcome after the clear), U9.23 (the window judged after beforeSend) and U9.24 (beforeSend is handed copies).
- * U9.1–U9.13 are untouched: they are what U43b-2's engine must pass as the second driver (§T). */
+ * U9.1–U9.13 are untouched: they are what U43b-2's engine must pass as the second driver (§T).
+ * ⭐ U43b-2 · THE SECOND DRIVER (`engineDriver`, ENGINE-SPEC §4.13 decision 4): the whole contract again through
+ * `runCampaignSlice` over REAL recipient rows — each slice seated on a fresh RUNNING campaign as the enqueue seats people
+ * (under the gate's key), ONE engine step per slice, each row's stored settlement read back into the contract's words.
+ * Its red is R-T1: the engine's verdicts taken when the list is claimed, up front, and the slices sent on them. */
 type Driver = (slices: SliceRecipient[][], between: () => Promise<void>, deps: SliceDeps) => Promise<SliceOutcome[]>;
 type Dispatch = (rows: SliceRecipient[], deps: SliceDeps) => Promise<SliceOutcome[]>;
 
@@ -605,6 +613,85 @@ function fakeWire(failMsisdn: Set<string>, refused?: SmsBatchOutcome["refused"])
   };
   return w;
 }
+
+/**
+ * ⭐ U43b-2 · THE SECOND DRIVER — `runCampaignSlice`, the campaign engine, over REAL recipient rows (ENGINE-SPEC §4.13
+ * decision 4: "call it, do not rewrite it"). Every call is one fresh RUNNING campaign, confirmed for every row the contract
+ * hands it; each contract slice is seated on it under the gate's key (`parseTzNumber` — U42's seed), then ONE engine step
+ * runs it with the contract's wire, window and gate, and each row's STORED settlement is read back into the contract's
+ * words (a row still owed a message is `held`, with the step's reason when it paused or waited). The contract's wire is
+ * handed its own refs — the rows' ids are translated each way — and every reference carries the drive's number on the
+ * row, so the unique column is never shared by two drives (the reference handed back is the wire's own).
+ * `hoisted` is R-T1 (the spec's): every verdict asked when the list is claimed, before the first slice, and the slices then
+ * sent on those answers — the engine gating at claim time instead of inside `dispatchSlice`.
+ */
+let ENGINE_DRIVES = 0;
+const engineDriver = (o: { hoisted?: boolean } = {}): Driver => async (slices, between, deps) => {
+  const drive = ++ENGINE_DRIVES;
+  const cid = `cmp_u9e_${drive}`;
+  const total = slices.reduce((n, s) => n + s.length, 0);
+  await runningCampaign(cid, { count: Math.max(1, total) });
+  const suffix = `~d${drive}`;
+  const rowOf = new Map<string, string>();
+  const refOf = new Map<string, string>();
+  const send: EngineDeps["send"] = async (messages) => {
+    const r = await deps.send(messages.map((m) => ({ ...m, targetId: refOf.get(m.targetId ?? "") ?? m.targetId })));
+    return {
+      ...r,
+      results: r.results.map((x) => ({ ...x, targetId: rowOf.get(x.targetId ?? "") ?? x.targetId, reference: x.reference ? `${x.reference}${suffix}` : x.reference })),
+    };
+  };
+  let gate = deps.gate;
+  if (o.hoisted) {
+    const ask = deps.gate ?? ((m: string) => mayReceiveMarketingSms(m));
+    const verdicts = new Map<string, MarketingGateVerdict>();
+    for (const slice of slices) {
+      for (const r of slice) {
+        const key = parseTzNumber(r.msisdn).msisdn ?? r.msisdn;
+        // A verdict that cannot be had up front is left to the live ask (U9.10's unanswered gate stays unanswered).
+        try {
+          verdicts.set(key, await ask(key));
+        } catch {
+          verdicts.delete(key);
+        }
+      }
+    }
+    gate = async (m: string) => verdicts.get(m) ?? ask(m);
+  }
+  const d = engineDeps(freshState(), { calls: 0, sent: [], opts: [], send }, { send, ...(deps.window ? { window: deps.window } : {}), ...(gate ? { gate } : {}) });
+  const back = (s: string | null): string => (s !== null && s.endsWith(suffix) ? s.slice(0, -suffix.length) : (s ?? ""));
+  const outcomeOf = async (ref: string, step: SliceStepResult): Promise<SliceOutcome> => {
+    const row = await Promise.resolve(db.smsCampaignRecipient.find(rowOf.get(ref) ?? ""));
+    const gateSource = row?.gateTrail?.find((g) => g.check === "gate")?.source ?? "";
+    const cut = gateSource.indexOf(":");
+    const carried = { basis: (cut > 0 ? gateSource.slice(0, cut) : "CONSENT") as "CONSENT", basisRef: cut > 0 ? gateSource.slice(cut + 1) : "" };
+    switch (row?.status) {
+      case "SENT":
+      case "DELIVERED":
+        return { ref, outcome: "handed_over", reference: back(row.smsReference), ...carried };
+      case "SKIPPED":
+        return { ref, outcome: "skipped", skipReason: (row.skipReason ?? "no_consent") as MarketingSkipReason, detail: row.skipDetail ?? "" };
+      case "FAILED":
+        return { ref, outcome: "failed", code: row.failureClass ?? "UNKNOWN", error: row.error, ...carried };
+      case "UNCONFIRMED":
+        return { ref, outcome: "unconfirmed", ...(row.smsReference ? { reference: back(row.smsReference) } : {}), ...carried };
+    }
+    return { ref, outcome: "held", reason: step.kind === "paused" || step.kind === "waiting" ? step.reason : "held" };
+  };
+  const out: SliceOutcome[] = [];
+  for (const [i, slice] of slices.entries()) {
+    if (i > 0) await between();
+    await seatRows(cid, slice.map((r, j) => {
+      const id = `rcp_u9e_${String(drive).padStart(5, "0")}_${i}_${String(j).padStart(3, "0")}`;
+      rowOf.set(r.ref, id);
+      refOf.set(id, r.ref);
+      return { id, key: parseTzNumber(r.msisdn).msisdn ?? r.msisdn };
+    }));
+    const step = await runCampaignSlice(cid, d);
+    for (const r of slice) out.push(await outcomeOf(r.ref, step));
+  }
+  return out;
+};
 
 async function seedLoop(run: number) {
   const p = (i: number) => phoneFor(run, i);
@@ -1671,6 +1758,8 @@ if (!PROVE_RED) {
   assertDispatchShape("");
   console.log("\n── U9 · U43b-1 · the hooks (the contract again with every row prepared, then prepare, beforeSend and TRANSPORT)\n");
   await runHookContract(dispatchSlice, 310, "");
+  console.log("\n── U9 · U43b-2 · the SECOND driver (runCampaignSlice over real recipient rows, the contract's own wire)\n");
+  await runLoopContract(engineDriver(), 320, "engine:");
   console.log("\n── D4 · the profile switch (recordPlayerMarketingChoice, judged by the gate)\n");
   await runToggleAssertions(REAL_TOGGLE, 500, "");
   console.log("\n── the consent card (what a failed save, a failed read and a running break look like)\n");
@@ -1836,6 +1925,11 @@ if (!PROVE_RED) {
   await runLoopContract(loopOver(dispatchModel({})), 391, "loopmodel:");
   if (fail !== 0) problems.push(`LOOP MODEL: the defect-free model disagrees with dispatchSlice (${failed.join(" | ")})`);
   console.log(`§0b loop model · no defect set: ${pass} passed, ${fail} failed\n`);
+  // U43b-2 · the second driver green before its own red case is read.
+  pass = 0; fail = 0; failed.length = 0;
+  await runLoopContract(engineDriver(), 394, "enginebase:");
+  if (fail !== 0) problems.push(`ENGINE BASELINE: the engine as the second driver fails the contract (${failed.join(" | ")})`);
+  console.log(`§0c engine baseline · runCampaignSlice: ${pass} passed, ${fail} failed\n`);
 
   const LOOP_CASES: Array<{ name: string; driver: Driver; expect: string }> = [
     {
@@ -1872,6 +1966,11 @@ if (!PROVE_RED) {
       name: "U13 · the send window asked AFTER the gate — every recipient's gate asked, then the slice held for the window",
       driver: loopOver(dispatchModel({ windowAfterGate: true })),
       expect: U9_14,
+    },
+    {
+      name: "U43b-2 · R-T1 (the spec's) · the ENGINE gating at claim time instead of in dispatchSlice — every verdict taken when the list is claimed, then the slices sent on them",
+      driver: engineDriver({ hoisted: true }),
+      expect: "U9.1 · ⭐ a number that OPTED OUT between slice one and slice two never reaches the wire — skipped as suppressed",
     },
   ];
   for (const [i, c] of LOOP_CASES.entries()) {

@@ -445,5 +445,90 @@ const auditCount = (action: string) => getAuditPage({ limit: 20_000 }).filter((a
     `planted register codes ${planted} · ${say(otherRun)}`);
 }
 
+/* ══ §10 · ⛔ U43b-2 · EVERY WAY A CODE FAILS TO LEAVE, THE PLAYER IS ANSWERED THE SAME ═══ */
+/**
+ * U43b-2 renamed two failures BELOW this path (sms.ts): a reply that is not the gateway's own `status:false` under a 5xx
+ * (a 504 page, an HTML body, a 5xx saying false) is now AMBIGUOUS (row UNKNOWN, result TRANSPORT — it was FAILED and
+ * REJECTED), and a throw that is not an SmsError is coded UNKNOWN (it was TRANSPORT). `requestLoginOtp` answers every
+ * SmsError alike, so the player's answer, the consumed code and the refunded allowance must be byte-for-byte the same
+ * across all of them — the renamed modes beside the two that did not move (the refusal, a reply that never came). Only the
+ * record says which failure it was. ⛔ No SMS: every request is answered in-process.
+ */
+{
+  const RealAbort = globalThis.AbortController;
+  const throwingAbort = class {
+    constructor() {
+      throw new Error("a fault before the request");
+    }
+  } as unknown as typeof AbortController;
+  const html = (status: number, body: string) => () => new Response(body, { status, headers: { "content-type": "text/html" } });
+  const json = (status: number, body: unknown) => () =>
+    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  type Mode = { name: string; reply: (init?: RequestInit) => Response; throwsFirst?: boolean };
+  const modes: Mode[] = [
+    { name: "refused (a 400 saying status:false)", reply: authFailReply },
+    { name: "a 504 page", reply: html(504, "<html><body>504 Gateway Time-out</body></html>") },
+    { name: "a 502 saying status:false", reply: json(502, { status: false, message: "Bad gateway", data: null }) },
+    { name: "an HTML 200", reply: html(200, "<html>queued?</html>") },
+    { name: "a reply that never came", reply: () => { throw new Error("network down"); } },
+    { name: "a throw before the request", reply: okReply, throwsFirst: true },
+  ];
+  const seen: Array<{ name: string; answer: string; consumed: boolean; refunded: boolean; code: unknown; row: string; requests: number }> = [];
+  for (const m of modes) {
+    const phone = await player();
+    liveProvider();
+    let requests = 0;
+    stub((init) => {
+      requests++;
+      return m.reply(init);
+    });
+    await auditFlush();
+    const before = new Set(getAuditPage({ limit: 20_000 }).filter((a) => a.action === "sms.delivery_failed").map((a) => a.id));
+    if (m.throwsFirst) globalThis.AbortController = throwingAbort;
+    let r: Awaited<ReturnType<typeof requestLoginOtp>> | null = null;
+    try {
+      r = await requestLoginOtp({ phone });
+    } finally {
+      globalThis.AbortController = RealAbort;
+      globalThis.fetch = realFetch;
+      clearSms();
+    }
+    await auditFlush();
+    const fresh = getAuditPage({ limit: 20_000 }).filter((a) => a.action === "sms.delivery_failed" && !before.has(a.id));
+    const row = (await db.smsMessage.listRecent(50)).find((x) => x.msisdn === phone.replace(/[^0-9]/g, ""));
+    seen.push({
+      name: m.name,
+      answer: JSON.stringify(r),
+      consumed: (await activeFor(phone)) === 0,
+      refunded: rateCheck(phone, "otp.resend").allowed === true,
+      code: fresh.length === 1 ? fresh[0].payload?.code : `${fresh.length} rows`,
+      row: row?.status ?? "(no row)",
+      requests,
+    });
+  }
+  const refusedAnswer = seen[0]?.answer ?? "";
+  const shape = (() => {
+    try {
+      const a = JSON.parse(refusedAnswer) as { ok?: unknown; code?: unknown; error?: unknown };
+      return a.ok === false && a.code === "SMS_UNDELIVERABLE" && typeof a.error === "string" && /password/i.test(a.error);
+    } catch {
+      return false;
+    }
+  })();
+  ok("§10 ⭐ U43b-2 · every way a login code fails to leave answers the player the SAME, byte for byte (refused, a 504 page, a 5xx saying status:false, an HTML 200, a reply that never came, a throw before the request): SMS_UNDELIVERABLE with the password route",
+    seen.length === modes.length && shape && seen.every((s) => s.answer === refusedAnswer),
+    seen.filter((s) => s.answer !== refusedAnswer).map((s) => `${s.name}: ${s.answer}`).join(" | ") || refusedAnswer);
+  ok("§10 ⭐ U43b-2 · …and every one consumes the minted code and refunds the resend allowance",
+    seen.length === modes.length && seen.every((s) => s.consumed && s.refunded),
+    seen.map((s) => `${s.name}: consumed ${s.consumed}, refunded ${s.refunded}`).join(" | "));
+  const WANT: Array<readonly [unknown, string, number]> = [
+    ["REJECTED", "FAILED", 1], ["TRANSPORT", "UNKNOWN", 1], ["TRANSPORT", "UNKNOWN", 1], ["TRANSPORT", "UNKNOWN", 1],
+    ["TRANSPORT", "UNKNOWN", 1], ["UNKNOWN", "FAILED", 0],
+  ];
+  ok("§10 U43b-2 · only the record says which failure it was: the audit's code REJECTED for the refusal, TRANSPORT for the four unanswered, UNKNOWN for the throw; the row FAILED, UNKNOWN or FAILED to match (and the throw made no request)",
+    seen.length === WANT.length && seen.every((s, i) => s.code === WANT[i][0] && s.row === WANT[i][1] && s.requests === WANT[i][2]),
+    seen.map((s) => `${s.name}: ${String(s.code)}/${s.row}/${s.requests} request(s)`).join(" | "));
+}
+
 console.log(`\notp-delivery: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

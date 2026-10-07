@@ -1671,6 +1671,64 @@ export const MUTATIONS = [
     to: `      writeRecipient(row, receiptWrite(r));`,
     expect: "26.u46a.memory · ⛔ the memory receipt asks assertReceipt FIRST, tests the identity — the message's number, the reference null or the receipt's own — AND the status through SMS_RECEIPT_FROM BEFORE it writes, refuses a reference another row holds before the write (the memory twin of P2002), writes the rule set's receiptWrite through the ONE apply, and answers every miss through receiptMiss",
   },
+  /* ── §26 · U43b-2 · DC-4's send record (S14 2026-10-07 — ENGINE-SPEC §4.13 decision 6) ─────────────────────────────── */
+  {
+    // ⭐ THE TRAIL'S NULL LEAVES THE WHERE, on Postgres only: a second send record — or one landing after the reaper's
+    // settle — overwrites the trail already written, while every suite, on the memory twin, stays green.
+    name: "prisma-dal.ts — the send record's WHERE forgets that the trail must still be null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    to: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] } },`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // ⭐ THE CLAIM LEAVES THE WHERE: another slice's record lands on a row this slice never held.
+    name: "prisma-dal.ts — the send record's WHERE forgets the claim",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    to: `        where: { id, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // ⭐ THE STATUSES LEAVE THE WHERE: a SENT row's (or a still-claimed row's) trail and token rewritten by a lost patch.
+    name: "prisma-dal.ts — the send record's WHERE forgets the statuses a receipt settles to",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    to: `        where: { id, claimToken: s.claimToken, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // 🔴 THE NO-CONDITION TRAP REOPENED, on Postgres only: a send record whose id was lost is `where: { id: undefined }`.
+    name: "prisma-dal.ts — the Prisma send record stops asking the rule set first",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      assertSendRecord(id, s, at);`,
+    to: `      // (the rule set not asked)`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // ⭐ A DOOR IN ONE TWIN ONLY: the slice's send record works in every suite and throws on production.
+    name: "prisma-dal.ts — the Prisma recipient namespace loses recordSend (a door in one twin only)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    recordSend: async (id: string, s: SmsRecipientSendRecord, at: string): Promise<SmsRecipientSendRecordResult> => {`,
+    to: `    recordSending: async (id: string, s: SmsRecipientSendRecord, at: string): Promise<SmsRecipientSendRecordResult> => {`,
+    expect: "26.u43b.parity · ⭐ BOTH twins define smsCampaignRecipient.recordSend — a door in one twin only works in every suite and throws on production",
+  },
+  {
+    // In the twin every suite runs on: the trail's null forgotten, so no suite can see a second record overwrite the first.
+    name: "store.ts — the memory send record stops testing that the trail is still null",
+    file: "src/lib/server/store.ts",
+    from: `      if (!SMS_SEND_RECORD_FROM.includes(owedTo.status) || owedTo.gateTrail !== null) return { written: false };`,
+    to: `      if (!SMS_SEND_RECORD_FROM.includes(owedTo.status)) return { written: false };`,
+    expect: "26.u43b.memory · ⛔ the memory send record asks assertSendRecord FIRST, tests the claim, the status through SMS_SEND_RECORD_FROM AND the trail still null BEFORE it writes, and writes the rule set's sendRecordWrite through the ONE apply — no status of its own spelling",
+  },
+  {
+    // …and the claim, so the record of which slice held the row is rewritten by another's.
+    name: "store.ts — the memory send record stops testing the claim",
+    file: "src/lib/server/store.ts",
+    from: `      if (owedTo === undefined || owedTo.claimToken !== s.claimToken) return { written: false };`,
+    to: `      if (owedTo === undefined) return { written: false };`,
+    expect: "26.u43b.memory · ⛔ the memory send record asks assertSendRecord FIRST, tests the claim, the status through SMS_SEND_RECORD_FROM AND the trail still null BEFORE it writes, and writes the rule set's sendRecordWrite through the ONE apply — no status of its own spelling",
+  },
   /* ── §23 · vb7 (review m1) · the bound Remove, all or nothing ─────────────────────────────────────────────────── */
   {
     // 🔴 THE CHUNKS OUT OF THEIR TRANSACTION: each delete commits on its own, so a fault at chunk 37 leaves 36 removed.
