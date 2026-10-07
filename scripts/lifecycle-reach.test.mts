@@ -36,6 +36,8 @@ import { fileURLToPath } from "node:url";
 import { FOLLOW_LENSES, matchesFollowLens, type FollowRow } from "../src/lib/watchlist/following.ts";
 import { POSITION_LENSES, matchesLens, type PortfolioRow } from "../src/lib/positions/portfolio.ts";
 import { BOARD_LENSES, matchesBoardLens, type BoardRow } from "../src/lib/proposals/board.ts";
+import { RECEIPT_STATES } from "../src/lib/wallet/receipts.ts";
+import { STATE_STATUSES } from "../src/lib/wallet/ledger.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
@@ -98,6 +100,16 @@ const AXES = [
     lenses: BOARD_LENSES as readonly string[],
     matches: (v: string, lens: string) =>
       matchesBoardLens({ status: v } as unknown as BoardRow, lens as never),
+  },
+  {
+    // ⭐ ADDED 2026-10-07 — the Receipts page (owner ruling: every deposit and withdrawal kept in the app). Its state lens
+    // is the wallet's (`LEDGER_STATES`), so every one of the seven stored payment statuses must be reachable by a lens
+    // that is not `any` — the page's "all". (A deposit held for return is SHOWN as Reversed; AML_REVIEW stays
+    // reachable through a withdrawal in review.)
+    enumName: "TxnStatus",
+    surface: "/wallet/receipts",
+    lenses: RECEIPT_STATES.filter((l) => l !== "any") as readonly string[],
+    matches: (v: string, lens: string) => (STATE_STATUSES as Record<string, readonly string[]>)[lens]?.includes(v) ?? false,
   },
 ] as const;
 

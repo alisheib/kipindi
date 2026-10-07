@@ -11,7 +11,10 @@ statement. If any surface, doc or comment contradicts it, that surface is wrong.
 
 ## ⭐ When identity is asked — before WITHDRAWAL only (owner ruling, 2026-09-13)
 
-A player registers, confirms their email, deposits and plays **without** verifying their identity.
+A player registers, deposits and plays **without** verifying their identity — and, since 2026-10-07, without
+confirming an email either (owner ruling: a deposit asks no email; a confirmed email is the second withdrawal step,
+`COMPLIANCE-DECISIONS.md` § "2026-10-07 · A deposit asks no email; a confirmed email is required to withdraw; receipts
+in the app (owner ruling)"). The ladder: **register → deposit and play → verify identity + confirm email → withdraw**.
 Identity is verified once, **before the first withdrawal**, and before nothing else. The ruling, its
 accepted consequences (declared age only until withdrawal; sanctions/PEP screening happens at the
 review, after the money) and the date history are in

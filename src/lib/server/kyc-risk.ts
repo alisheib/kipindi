@@ -163,7 +163,12 @@ export type BlockedCashOut = {
 };
 
 export function toBlockedCashOut(e: AuditEntry): BlockedCashOut | null {
-  if (e.action !== WITHDRAW_KYC_BLOCKED) return null;
+  return toRefusedCashOut(e, WITHDRAW_KYC_BLOCKED);
+}
+
+/** One refusal row of `action` → a `BlockedCashOut`; both refusals write the same payload shape. */
+function toRefusedCashOut(e: AuditEntry, action: string): BlockedCashOut | null {
+  if (e.action !== action) return null;
   const p = (e.payload ?? {}) as Record<string, unknown>;
   const userId = e.targetId ?? (typeof p.onBehalfOf === "string" ? p.onBehalfOf : null);
   if (!userId) return null;
@@ -178,6 +183,22 @@ export type BlockedCashOutRead = { rows: BlockedCashOut[]; total: number; trunca
 export async function readBlockedCashOuts(limit = 1000): Promise<BlockedCashOutRead> {
   const r = await getAuditByActionsDurable([WITHDRAW_KYC_BLOCKED], { category: "COMPLIANCE", limit });
   const rows = r.entries.map(toBlockedCashOut).filter((x): x is BlockedCashOut => x !== null);
+  return { rows, total: r.total, truncated: r.truncated };
+}
+
+/**
+ * ⭐ THE SECOND HALF OF THE SAME HARM (owner ruling 2026-10-07). A withdrawal now also needs a confirmed email
+ * address, and `withdraw()` writes `withdraw.email_unverified_blocked` — one COMPLIANCE row per refusal, the same
+ * payload shape as the identity refusal (`amount`, `onBehalfOf`, `operatorInitiated`). It is read apart, never added
+ * into the identity count: an officer can act on a file in the identity queue, but only the player can confirm their
+ * own address, so the two numbers answer different questions — "is the queue too slow?" and "is the prompt failing?".
+ * Same contract as `readBlockedCashOuts`: durable, throws on a failed read, `truncated` carried through.
+ */
+export const WITHDRAW_EMAIL_BLOCKED = "withdraw.email_unverified_blocked";
+
+export async function readBlockedEmailCashOuts(limit = 1000): Promise<BlockedCashOutRead> {
+  const r = await getAuditByActionsDurable([WITHDRAW_EMAIL_BLOCKED], { category: "COMPLIANCE", limit });
+  const rows = r.entries.map((e) => toRefusedCashOut(e, WITHDRAW_EMAIL_BLOCKED)).filter((x): x is BlockedCashOut => x !== null);
   return { rows, total: r.total, truncated: r.truncated };
 }
 

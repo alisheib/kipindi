@@ -32,9 +32,12 @@ export default async function ReceiptLoading() {
           </div>
         ))}
       </div>
-      {/* ⚠️ TOKEN, not `h-10` (80px on the overridden scale) — a full-width control ghost,
-          so --h-control-md (44px). */}
-      <div className="h-[var(--h-control-md)] w-full rounded-control bg-bg-overlay kp-shimmer-track" />
+      {/* ⚠️ TOKEN, not `h-10` (80px on the overridden scale). The page's TWO pill buttons since 2026-10-07 ("All
+          receipts" · "Back to wallet", `btn-lg` = --h-control-lg) — stacked on a phone, side by side from `sm`. */}
+      <div className="flex flex-col sm:flex-row gap-2" aria-hidden>
+        <div className="h-[var(--h-control-lg)] w-full rounded-pill bg-bg-overlay kp-shimmer-track" />
+        <div className="h-[var(--h-control-lg)] w-full rounded-pill bg-bg-overlay kp-shimmer-track" />
+      </div>
     </PageContainer>
   );
 }

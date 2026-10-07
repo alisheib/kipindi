@@ -603,9 +603,17 @@ export const PROVIDER_MIN_PAYOUT_TZS = 1_000;
  * The smallest GROSS withdrawal whose NET still clears `PROVIDER_MIN_PAYOUT_TZS`.
  *
  * ⚠️ Derived, never hardcoded — and that is the whole point. `withdrawalFeeRate` is
- * admin-tunable at `/admin/config`, so a constant "minimum is 1,016" would silently break
+ * admin-tunable at `/admin/config`, so a constant minimum would silently break
  * the day someone edits the fee, in exactly the way that is invisible until a player is
  * refused. The gateway's floor is on the NET, so the check belongs on the NET.
+ *
+ * 🔴 AND IT WALKS TO THE TRUE BOUNDARY, BECAUSE THE FEE ROUNDS (2026-10-07). The algebraic
+ * answer `ceil(floor / (1 − rate))` gave 1,016 at 1.5%, but `computeWithdrawalFee` ROUNDS:
+ * 1,015 pays round(15.225) = 15 and nets exactly 1,000, which the gateway accepts and
+ * `withdraw()` allowed — so every surface stated a minimum one shilling above the real one
+ * (found by the money-and-compliance review of the owner's "state the true minimum" ruling).
+ * Net is non-decreasing in the gross (the fee grows by at most 1 per shilling while rate < 1),
+ * so stepping from the algebraic answer, with the SAME fee function, finds the exact boundary.
  *
  * ⚠️ This note used to add *"(it is 1.5% in production today, not the 1% default)"*.
  * That parenthetical outlived its own fact: `DEFAULT_WITHDRAWAL_FEE_RATE` has read 0.015
@@ -616,7 +624,11 @@ export const PROVIDER_MIN_PAYOUT_TZS = 1_000;
  */
 export function minWithdrawalForRate(rate: number): number {
   const r = Math.min(Math.max(0, rate), 0.9); // a fee ≥ 100% has no solution; clamp rather than divide by ~0
-  return Math.ceil(PROVIDER_MIN_PAYOUT_TZS / (1 - r));
+  const nets = (gross: number) => gross - computeWithdrawalFee(gross, r) >= PROVIDER_MIN_PAYOUT_TZS;
+  let gross = Math.ceil(PROVIDER_MIN_PAYOUT_TZS / (1 - r));
+  while (nets(gross - 1)) gross--;
+  while (!nets(gross)) gross++;
+  return gross;
 }
 
 /**

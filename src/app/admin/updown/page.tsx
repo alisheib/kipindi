@@ -4,7 +4,7 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { listAssets, listChains, getUpDownConfig, ALLOWED_DURATIONS, resolveScheduledMarginBps, boardFeeSummary } from "@/lib/server/updown-config";
+import { listAssets, listChains, getUpDownConfig, getStoredUpDownStakeDefaults, ALLOWED_DURATIONS, resolveScheduledMarginBps, boardFeeSummary } from "@/lib/server/updown-config";
 // E-46: the Add-asset form is driven by the catalogue, so a symbol/category pair that
 // cannot work is not offerable. The server enforces the same rule in `createAsset`.
 import { SYMBOL_CATALOGUE, symbolReadiness, readinessMark, findSymbol } from "@/lib/server/updown-symbols";
@@ -83,6 +83,8 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
     const qs = p.toString();
     return (qs ? `/admin/updown?${qs}` : "/admin/updown") as Route;
   };
+  // The product default stake bounds as STORED, beside the enforced ones `cfg` carries (floored on read, 2026-10-07).
+  const storedStakeDefaults = await getStoredUpDownStakeDefaults().catch(() => null);
   const [assets, allChains, cfg, feed, book] = await Promise.all([
     listAssets().catch(() => []),
     listChains().catch(() => []),
@@ -755,8 +757,10 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
                               officer sets what a player may stake, and a bare `toLocaleString()`
                               also groups by whatever locale the runtime holds. Both figures take
                               the unit, as the player-facing stake range does. */}
+                          {/* ⭐ THE BOUNDS IN FORCE, the ones `stakeBoundsFor` enforces and the board shows — a chain stored
+                              under the product minimum is held to the minimum, so the cell says so (2026-10-07). */}
                           {c.minStake != null || c.maxStake != null
-                            ? `${formatTzs(c.minStake ?? cfg.defaultMinStake)} – ${formatTzs(c.maxStake ?? cfg.defaultMaxStake)}`
+                            ? `${formatTzs(Math.max(c.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake))} – ${formatTzs(Math.max(c.maxStake ?? cfg.defaultMaxStake, c.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake))}${c.minStake != null && c.minStake < cfg.defaultMinStake ? ` (stored ${formatTzs(c.minStake)})` : ""}`
                             : "inherit"}
                         </td>
                         <td className="px-4 py-3">
@@ -963,6 +967,14 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
           {!canConfig ? (
             <ControlLocked what="Change the thresholds" need={CONTROL_DOMAIN.updateThresholds} block />
           ) : (
+            <>
+            {/* ⭐ A STORED DEFAULT UNDER THE PLATFORM MINIMUM IS SAID, NOT HIDDEN (2026-10-07): the form shows the
+                enforced value, and saving it stores that. */}
+            {storedStakeDefaults && storedStakeDefaults.defaultMinStake !== cfg.defaultMinStake && (
+              <p className="mb-3 text-body-sm text-warning-fg" data-stored-min-stake={storedStakeDefaults.defaultMinStake}>
+                The stored default minimum stake is <span className="font-mono tabular-nums">{formatTzs(storedStakeDefaults.defaultMinStake)}</span>; <span className="font-mono tabular-nums">{formatTzs(cfg.defaultMinStake)}</span> is enforced — the platform minimum. Save the form to store it.
+              </p>
+            )}
             <ThresholdsForm
               maxStalenessSeconds={cfg.maxStalenessSeconds}
               confidenceThreshold={cfg.confidenceThreshold}
@@ -971,6 +983,7 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
               defaultMaxStake={cfg.defaultMaxStake}
               defaultMarginBps={cfg.defaultMarginBps}
             />
+            </>
           )}
         </AdminCard>
         </>)}

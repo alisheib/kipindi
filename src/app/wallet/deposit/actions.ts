@@ -97,14 +97,19 @@ export async function depositAction(formData: FormData) {
     if (missing) fail(t.wallet.billingIncomplete);
 
     const user = await db.user.findById(session.userId);
-    if (!user?.email) fail(t.wallet.emailForCard);
+    if (!user) fail(t.error.somethingDidntWork);
 
     // `order_id` is pre-seeded by US — Selcom appends payment_status + transid on
     // the return but does NOT echo order_id back. Without this the return page
     // would have no way to know which deposit it is looking at.
     const ref = `${BASE_URL()}/wallet/deposit/return`;
     card = {
-      buyerEmail: user!.email!,
+      // ⭐ NO EMAIL REFUSAL ON THE CARD RAIL (owner ruling 2026-10-07: a deposit asks no email question). It used to
+      // stop a player with no address here — after they had typed every billing field — and say "add and confirm",
+      // which was half false even then. The order carries the address on the account when there is one, confirmed or
+      // not (it is theirs, and the privacy notice says a card deposit sends it), and otherwise the account's
+      // placeholder reference, exactly as every mobile-money order does (`selcomPlaceholderEmail`).
+      buyerEmail: user!.email ?? null,
       buyerName: displayLabel(user!),
       buyerPhone: user!.phoneE164,
       billing: {
@@ -131,13 +136,9 @@ export async function depositAction(formData: FormData) {
   revalidatePath("/wallet");
 
   if (!result.ok) {
-    // The email gate is a recoverable STATE, not a form error — send the player
-    // to the gate surface (which offers resend / change address) rather than
-    // re-rendering the form with a message they can't act on.
-    // Back to the page's email door WITH the player's choices (amount, rail, from, card billing), so once the address
-    // is confirmed the form is as they left it; never the number (a load without an error prefills the account's own
-    // via moneyFormMsisdn).
-    if (result.code === "EMAIL_UNVERIFIED") { const back = new URLSearchParams(carry); back.delete("msisdn"); redirect(`/wallet/deposit?${back.toString()}` as never); }
+    // ⛔ NO EMAIL HOP HERE ANY MORE (2026-10-07): `deposit()` asks no email question, so it can no longer return
+    // `EMAIL_UNVERIFIED`. The hop that kept the player's choices on the way to the email door moved to the WITHDRAW
+    // action, where the confirmed email is now asked (`wallet/withdraw/actions.ts`).
     // B-7 — the service's English string is audit truth; the player reads the
     // dictionary line for its code (bilingual gateway reasons pass through).
     return fail(errorCopy(t, result));

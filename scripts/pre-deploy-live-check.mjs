@@ -418,6 +418,12 @@ if (LOCAL) {
   ok(`/wallet renders`, (await page.locator("body").innerText()).length > 60);
   ok(`/wallet no error overlay`, !(await hasErrorOverlay(page)));
 
+  // Receipts (2026-10-07, owner ruling) — every deposit and withdrawal kept in the app, a door in the profile.
+  await page.goto(BASE + "/wallet/receipts", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
+  ok(`/wallet/receipts renders for the signed-in player, on its own address`,
+    new URL(page.url()).pathname === "/wallet/receipts" && /Receipts/.test(await page.locator("h1").first().innerText().catch(() => "")));
+  ok(`/wallet/receipts no error overlay`, !(await hasErrorOverlay(page)));
+
   /**
    * ⭐ THE NEW JOURNEY, SIGNED IN (Vodacom plan S1) — section [E2]'s promise for a signed-in PLAYER: a player holds
    * no preview pass either, so while the rollout is short of ACTIVE "/" carries no preview marker for them. The

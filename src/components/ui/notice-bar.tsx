@@ -11,8 +11,9 @@
  * different max-widths, one with a dot and one with a glyph.
  *
  * So this is the single definition. `AnnouncementBanner` (operator broadcast /
- * maintenance) and `EmailVerifyBanner` (unconfirmed address) both render through
- * it, which is what keeps them looking like one system.
+ * maintenance) renders through it; `EmailVerifyBanner` (unconfirmed address) did too
+ * until it was deleted on 2026-10-07 (owner ruling: the email is asked quietly, at
+ * withdrawal), so any second bar must render through it again.
  *
  * Use `Callout` for something about a specific piece of content on the page.
  * Use `NoticeBar` for a standing condition affecting the whole account or site.
@@ -135,7 +136,7 @@ export function NoticeBar({
  *  real token can.
  *
  *  `--warning-fg` is what `currentColor` actually resolved to here, because the
- *  bar's one consumer is `EmailVerifyBanner` on `tone="warning"` (which sets
+ *  bar's one consumer was `EmailVerifyBanner` (deleted 2026-10-07) on `tone="warning"` (which sets
  *  `text-warning-fg`), and it is what the two weights below are matched to: a
  *  40% outline and a 10% hover wash, unchanged from the author's intent.
  *  ⛔ A future bar on another tone must key this off the tone the way `TONE`
@@ -176,8 +177,8 @@ export function NoticeBarAction({
   post?: { action: string; fields?: Record<string, string> };
   disabled?: boolean;
   glyph?: GlyphKey;
-  /** ⚠️ Must match the `tone` of the `NoticeBar` this sits in. Defaults to `warning` so the
-   *  original caller (`EmailVerifyBanner`) is unchanged, byte for byte. */
+  /** ⚠️ Must match the `tone` of the `NoticeBar` this sits in. Defaults to `warning`, the tone of
+   *  its original caller (`EmailVerifyBanner`, deleted 2026-10-07). */
   tone?: NoticeBarTone;
   testId?: string;
 }) {

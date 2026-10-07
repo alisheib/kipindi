@@ -1842,7 +1842,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
         paidExitWindowMinutes: betRates.paidExitWindowMinutes,
       }),
       tag: "bet-placed",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
     } else {
       // E-57 · Up & Down PUSHES even though it does not write an inbox row. The player
       // asked for a live signal on their phone; what the digest prevents is forty rows
@@ -1892,7 +1892,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
       subject: `Bonus unlocked · ${formatTzs(g.amountTzs)}`,
       html: bonusFulfilledHtml({ amountTzs: g.amountTzs }),
       tag: "bonus",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
   }
 
   // Affiliate accrual runs AFTER the bettor's wallet lock releases — never
@@ -2142,7 +2142,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
         payoutIfNo: mine.some((p) => p.side === "NO") ? ifNo : null,
       }),
       tag: "selection-closed",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
   }
 
   // ── ADMIN: flag a lopsided / thin market at close, while it can still be managed
@@ -3392,7 +3392,7 @@ export async function cashOutPosition(
       subject: `Position sold · ${formatTzs(paid)}`,
       html: cashOutReceiptHtml({ reference: p.id, value: paid, stake: p.stake, marketTitle: m.titleEn, soldAt: now, gracePeriod: inGracePeriod }),
       tag: "cashout",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
 
     audit({
       category: "BET",
@@ -3861,7 +3861,7 @@ export async function settleMarket(
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
           html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
           tag: "one-sided-refund",
-        })).catch(() => {});
+        }), { confirmedOnly: true }).catch(() => {});
       } else {
         // E-57 · ⛔ THE REFUND IS ANNOUNCED TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.
         // Announcing wins and losses while staying silent on refunds would rebuild the
@@ -4143,7 +4143,7 @@ export async function settleMarket(
             subject: `You won · ${formatTzs(payout)}`,
             html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt }),
             tag: "win",
-          })).catch(() => {});
+          }), { confirmedOnly: true }).catch(() => {});
         } else {
           // E-57 / 2026-08-22 · the win now lands in the BELL and pushes, from one copy.
           // ⛔ `payout` is the REALISED amount, not the place-time projection — E-105's rule,
@@ -4184,7 +4184,7 @@ export async function settleMarket(
             subject: `Bet lost · ${formatTzs(p.stake)}`,
             html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
             tag: "loss",
-          })).catch(() => {});
+          }), { confirmedOnly: true }).catch(() => {});
         } else {
           // E-57 / 2026-08-22 · the loss is announced too, and it stays DIRECT. ⛔ Announcing
           // only wins would be the E-43 failure wearing a new channel — the player would hear
@@ -4721,7 +4721,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
         subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
         html: marketCancelledRefundHtml({ title: m.titleEn, reason, amount: p.stake, reference: p.id }),
         tag: "market-cancelled-refund",
-      })).catch(() => {});
+      }), { confirmedOnly: true }).catch(() => {});
       refundedCount++;
       refundedTzs += p.stake;
     }
