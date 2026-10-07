@@ -28,8 +28,9 @@
  * attestation in hand — refuses it consent_withdrawn, a second pass appends nothing, a consent is still withdrawn exactly
  * once, and a later yes still lifts it (no stop-list row). P10's TRIPWIRE: a recipient-namespace member P10 does not
  * account for, in either twin, fails P10 by name — so no new door (U43b's send record, DC-4, next) lands without P10
- * sweeping what it writes; U43a's six and U46a's receipt door are accounted for, their writers driven (R-P10e and R-P10f
- * prove the settle and the receipt are the real doors). W1:
+ * sweeping what it writes; U43a's six and U46a's receipt door are accounted for, their writers driven (R-P10e proves the
+ * settle is the real door; R-P10f and R-P10g the receipt, on its delivery and on its failure path, both swept before the
+ * erasure). W1:
  * the suite's own wiring (its four package.json keys; on predeploy once, straight after test:erasure). A row put on its
  * campaign before the account is listed undated (P3b). P6c reads the page's SCHEDULE too, and S1 sees any spelling.
  * ⛔ No backslash anywhere in this file: line breaks and patterns are built with String.fromCharCode and character
@@ -408,10 +409,11 @@ function holds(text: string, needle: string): boolean {
 
 /** ⛔ P10's TRIPWIRE · the recipient-namespace members P10 accounts for: the six WRITERS it drives (createMany seeds every
  *  fixture row; claim, settle and requeueHeld settle them — `settle()` above, `World.marks` handed to the real door;
- *  recordReceipt delivers and fails them as the DLR route does — `receipt()` above, U46a; unlinkUser is erasure's own
- *  write) and the seven READS, which write nothing. A NEW member — U43b's send record (DC-4) next — is a writer P10 has
- *  never seen. ⚠️ A member joins this list only in the commit that makes P10 sweep what it writes: route the fixture
- *  writes it takes over through it, and prove the routing with a red case (R-P10e, R-P10f). */
+ *  recordReceipt delivers and fails them as the DLR route does — `receipt()` above, U46a, on rows of a person erased
+ *  afterwards; unlinkUser is erasure's own write) and the seven READS, which write nothing. A NEW member — U43b's send
+ *  record (DC-4) next — is a writer P10 has never seen. ⚠️ A member joins this list only in the commit that makes P10
+ *  sweep what it writes: route the fixture writes it takes over through it, BEFORE the erasure P10 follows, and prove the
+ *  routing with a red case on every path it writes (R-P10e; R-P10f and R-P10g). */
 const P10_ACCOUNTED: readonly string[] = [
   "createMany", "claim", "settle", "requeueHeld", "recordReceipt", "unlinkUser",
   "find", "countByStatus", "countsByCampaign", "listByMsisdn", "claimedBy", "findStranded", "lastActivity",
@@ -573,6 +575,12 @@ async function run(w: World, tag: string): Promise<void> {
     });
     await receipt(rEb, { status: "DELIVERED", rawStatus: "DELIVRD", desc: "Success", at: iso(T0 - 20 * DAY + 120_000) });
     afterTheDoors(rEb, { costTzs: 6 });
+    // ⭐ U46a review · …and a FAILURE through the receipt door on another of this person's rows, also before the erasure: the
+    // words the vendor reported become the row's error (`World.marks`' error stands for them, so a world that names the
+    // person there is seen), and P10 sweeps the failure path too — R-P10g plants on that path alone.
+    const mEa = w.marks(pE1);
+    await settle(rEa, { to: "SENT", smsReference: `REF-${K}-ea`, sentAt: iso(T0 - 10 * DAY + 60_000), locale: "SW", gateTrail: mEa.trail });
+    await receipt(rEa, { status: "FAILED", rawStatus: "UNDELIV", desc: mEa.error, at: iso(T0 - 10 * DAY + 120_000) });
     const mEc = w.marks(pE1);
     await settle(rEc, { to: "SKIPPED", skipReason: "suppressed", skipDetail: mEc.skipDetail, gateTrail: mEc.trail });
     await settle(rPrev, {
@@ -760,7 +768,7 @@ async function run(w: World, tag: string): Promise<void> {
       const all = rowsNow();
       const hits = all.flatMap((r) => swept(r).map((x) => `${r.id} holds "${x}"`));
       const eb = mem().smsCampaignRecipients.get(rEb), ec = mem().smsCampaignRecipients.get(rEc);
-      const hf = mem().smsCampaignRecipients.get(`rcp_${K}_h2`);
+      const hf = mem().smsCampaignRecipients.get(`rcp_${K}_h2`), ea = mem().smsCampaignRecipients.get(rEa);
       // ⭐ CONTROLS: the sweep reads rows that DO carry a trail, a refusal detail and an error — and it finds a first
       // name written into a copy of one of them — so a clean answer is never an empty or a blind scan.
       const carried = (eb?.gateTrail?.length ?? 0) > 0 && (ec?.skipDetail ?? "") !== "" && (hf?.error ?? "") !== "";
@@ -768,10 +776,13 @@ async function run(w: World, tag: string): Promise<void> {
         && swept({ ...eb, gateTrail: [{ check: "c", verdict: "v", wording: `Habari ${nameE1.firstName}`, source: null }] }).length > 0;
       // CONTROL: those three rows were written BY THE DOORS — each keeps the claim the settle landed under (a settled row
       // keeps its claim) — so the sweep reads what the settle door wrote (R-P10e proves the door is the real one).
-      const byDoors = [eb, ec, hf].every((r) => r !== undefined && (r.claimToken ?? "").startsWith("fixture") && r.claimedAt !== null);
-      // CONTROL (U46a): one of them was DELIVERED by the RECEIPT door after the settle door sent it — the receipt's instant,
-      // the hand-over's kept — so the sweep reads what the receipt door writes too (R-P10f proves that door is the real one).
-      const byReceipt = eb?.status === "DELIVERED" && eb.deliveredAt === iso(T0 - 20 * DAY + 120_000) && eb.sentAt === iso(T0 - 20 * DAY + 60_000);
+      const byDoors = [eb, ec, hf, ea].every((r) => r !== undefined && (r.claimToken ?? "").startsWith("fixture") && r.claimedAt !== null);
+      // CONTROL (U46a): two of them were settled by the RECEIPT door after the settle door sent them — one DELIVERED, one
+      // FAILED with the vendor's words as its error, each at the receipt's instant, the hand-over's kept — so the sweep reads
+      // what the receipt door writes on BOTH paths (R-P10f and R-P10g prove that door is the real one).
+      const byReceipt = eb?.status === "DELIVERED" && eb.deliveredAt === iso(T0 - 20 * DAY + 120_000) && eb.sentAt === iso(T0 - 20 * DAY + 60_000)
+        && ea?.status === "FAILED" && ea.failedAt === iso(T0 - 10 * DAY + 120_000) && ea.failureClass === "receipt:UNDELIV"
+        && (ea.error ?? "") !== "" && ea.sentAt === iso(T0 - 10 * DAY + 60_000);
       // ⛔ THE TRIPWIRE (PE-01): every row swept above was settled through the doors P10 accounts for, so a member of either
       // twin's recipient namespace that P10 does not account for is a writer nobody sweeps — named, and red until P10
       // drives it.
@@ -786,7 +797,7 @@ async function run(w: World, tag: string): Promise<void> {
       const readerSees = twinsRead.every(([, members]) => members !== null && P10_ACCOUNTED.every((m) => members.includes(m)))
         && JSON.stringify([...(recipientMembers(w.twins.memory) ?? [])].sort()) === JSON.stringify(Object.keys(db.smsCampaignRecipient).sort());
       return [hits.length === 0 && carried && sees && byDoors && byReceipt && strays.length === 0 && readerSees,
-        [...strays, ...hits].slice(0, 6).join(" · ") || `${all.length} rows swept for ${needles.length} needles · carried ${carried} · the scan sees a planted name ${sees} · written by the doors ${byDoors} · one delivered by the receipt door ${byReceipt} · both namespaces accounted for, the reader sees them ${readerSees}`];
+        [...strays, ...hits].slice(0, 6).join(" · ") || `${all.length} rows swept for ${needles.length} needles · carried ${carried} · the scan sees a planted name ${sees} · written by the doors ${byDoors} · one delivered and one failed by the receipt door ${byReceipt} · both namespaces accounted for, the reader sees them ${readerSees}`];
     });
 
     // ── S2 · the DAL refuses before it reads or writes ─────────────────────────────────────────────────────────────
@@ -1384,6 +1395,23 @@ const CASES: Array<{ name: string; expect: string; also?: string[]; build: () =>
           const row = mem().smsCampaignRecipients.get(id);
           if (out.changed && row !== undefined) row.error = `delivered to account ${account}`;
           return out;
+        },
+      },
+    }),
+  },
+  {
+    // ⭐ U46a review · THE FAILURE PATH ALONE: the receipt door writes the row's account into a FAILED receipt's words, and
+    // nothing on a delivery. Only a FAILED receipt on a row whose person is erased afterwards meets it — so P10's fixture
+    // drives one (rEa) before the erasure; were the only failure written after P10's sweep, this would stay green.
+    name: "R-P10g · a FAILED receipt alone writes the row's account into its words — the erased account's id outlives the erasure, on the failure path only",
+    expect: L.p10,
+    build: () => ({
+      ...REAL,
+      recipient: {
+        recordReceipt: async (id, r) => {
+          if (r.status !== "FAILED") return REAL_RECIPIENT.recordReceipt(id, r);
+          const account = mem().smsCampaignRecipients.get(id)?.userId ?? "none";
+          return REAL_RECIPIENT.recordReceipt(id, { ...r, desc: `not delivered to account ${account}` });
         },
       },
     }),

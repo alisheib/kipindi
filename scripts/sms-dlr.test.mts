@@ -29,6 +29,9 @@
  * refusal recorded, never thrown; D7 a test send's receipt touches no recipient; D8 three
  * arms in one POST; D9 the previous secret beside the current one (E29); D10 the reply.
  * Every fixture row goes through the REAL recipient doors (U43a), never a hand-set map.
+ * ⭐ THE REVIEW ROUND: D6d a campaign line without the message's number moves no recipient
+ * row (finding 1); D4c words that fold into a number again after one scrub still land
+ * (finding 4); D9 the CURRENT secret's own floor, ONE constant with boot's (finding 5).
  *
  * Run: npm run test:sms-dlr
  */
@@ -40,9 +43,11 @@ import { isProtectedPath } from "../src/proxy.ts";
 // U46a · the target type the slice sends under, the boot sentence for the rotation's second secret, the ONE mask and the
 // ONE phone-run reading — §12 holds the arm to each.
 import { DISPATCH_TARGET_TYPE } from "../src/lib/server/marketing/dispatch.ts";
-import { previousWebhookSecretWarning } from "../src/lib/server/boot-checks.ts";
+import { previousWebhookSecretWarning, webhookSecretUnusable } from "../src/lib/server/boot-checks.ts";
 import { maskPhone } from "../src/lib/phone-normalize.ts";
 import { holdsPhoneRun } from "../src/lib/contacts/contact-fields.ts";
+// U46a review · the ONE floor a webhook secret must reach — boot and the receiver both read it (D9).
+import { WEBHOOK_SECRET_MIN_CHARS } from "../src/lib/server/webhook-secret-floor.ts";
 
 let pass = 0,
   fail = 0;
@@ -589,6 +594,26 @@ const bodies12: string[] = [];
       && error.length > 0 && error.length <= 200 && error.startsWith("xxx") && !error.includes("2557") && !holdsPhoneRun(error),
     `${fv?.status} · ${fv?.failureClass} · the error ends ${JSON.stringify(error.slice(-12))}`);
 }
+{
+  // ⛔ U46a review · WORDS THAT FOLD INTO A NUMBER AGAIN AFTER ONE SCRUB. The fraction (U+00BC, one quarter) reads as "1",
+  // a slash, "4": one scrub masks the run up to it and keeps its last two digits, "71", which then read with the seven
+  // digits after the fraction as a number again. The door refuses a number and never scrubs, so the arm reads its words
+  // again until none is left, or drops them: the verdict must land either way.
+  const { cid, rows: [f] } = await campaignOf12(1);
+  const token = await claim12(cid, 1);
+  const ref = await message12(f);
+  await settle12([sent12(f, token, ref)]);
+  const words = `Rejected 25570000007${String.fromCharCode(188)}2345678 by network`;
+  await post([line12(f, ref, "UNDELIV", words)]);
+  await settle();
+  const row = await row12(f);
+  const error = row?.error ?? "";
+  const refused = getAuditPage({ limit: 20_000 }).some((x) => x.action === "sms.dlr.recipient_failed" && x.targetId === f.id);
+  ok("§12 D4c a FAILED receipt whose words fold into a number again after one scrub still lands: FAILED, its words read until no number is left",
+    holdsPhoneRun(words) && row?.status === "FAILED" && row.failureClass === "receipt:UNDELIV" && error.startsWith("Rejected")
+      && !holdsPhoneRun(error) && !error.includes("2345678") && !refused,
+    `${row?.status} · ${JSON.stringify(error)} · refused by the door ${refused}`);
+}
 
 // ── D5 · a receipt that beats the slice's settle ──────────────────────────────────────────────────
 {
@@ -653,6 +678,39 @@ const bodies12: string[] = [];
     res.status === 200 && JSON.stringify(after) === JSON.stringify(before) && (await db.smsMessage.findByReference(shared))?.status === "DELIVERED"
       && noted?.category === "SYSTEM" && pl.code === "P2002" && pl.reference === shared && !JSON.stringify(pl).includes(t.key.slice(3)),
     JSON.stringify(pl));
+}
+{
+  // ⛔ U46a review · A CAMPAIGN LINE WITHOUT THE NUMBER. The route's gate compares a number only when a line carries one,
+  // and the MESSAGE still settles on its reference alone (unchanged, as an invite's does) — but the campaign arm requires
+  // the line's own number: a line holding nothing but a real reference must not fail a recipient with words of its own.
+  const { cid, rows: [a] } = await campaignOf12(1);
+  const token = await claim12(cid, 1);
+  const ref = await message12(a);
+  await settle12([sent12(a, token, ref)]);
+  const entryId = `ive_dlr12_${++seq}`;
+  await db.inviteEntry.create({
+    id: entryId, campaignId: "camp_dlr12", contactType: "PHONE", contactValue: "+255772619619", bonusAmountTzs: 1000, status: "SENT",
+    sentAt: null, registeredUserId: null, bonusGrantId: null, failureReason: null, createdAt: new Date().toISOString(),
+  });
+  const refI = await seed({ targetType: "InviteEntry", targetId: entryId });
+  const before = await row12(a);
+  const res = await post([
+    { reference: ref, status: "REJECTD", description: "Forged words: call the office, not us" },
+    { reference: refI, status: "DELIVRD", description: "d" },
+  ]);
+  const body = await res.text();
+  await settle();
+  const after = await row12(a);
+  const noted = getAuditPage({ limit: 20_000, category: "SECURITY" }).find((x) => x.action === "sms.dlr.recipient_unverified" && x.targetId === a.id);
+  const pl = (noted?.payload ?? {}) as Record<string, unknown>;
+  const counts = received12();
+  ok("§12 D6d ⛔ a campaign line without the message's number moves no recipient row: the row as it was, audited SECURITY by its code alone, and the reply still Ok",
+    res.status === 200 && body === '{"status":"Ok"}' && before?.status === "SENT" && JSON.stringify(after) === JSON.stringify(before)
+      && (await db.smsMessage.findByReference(ref))?.status === "FAILED" && pl.code === "msisdn_missing" && pl.reference === ref
+      && counts.campaign === 0 && !JSON.stringify(pl).includes("Forged"),
+    `the row ${before?.status} -> ${after?.status} · ${JSON.stringify(pl)}`);
+  ok("§12 D6d …and the other arms are untouched by that rule: the same POST's invite line, without a number too, settles its invite as before",
+    (await db.inviteEntry.findById(entryId))?.status === "DELIVERED" && counts.invites === 1 && counts.applied === 2, JSON.stringify(counts));
 }
 
 // ── D7 · a test send's receipt ────────────────────────────────────────────────────────────────────
@@ -736,6 +794,24 @@ const bodies12: string[] = [];
     said === sentence && saidShort.startsWith(sentence) && saidShort.includes("shorter than 16 characters")
       && previousWebhookSecretWarning(undefined) === null && previousWebhookSecretWarning("") === null,
     JSON.stringify(said));
+  // ⛔ U46a review · THE CURRENT SECRET'S OWN FLOOR. This suite's secret is far longer than the floor, so nothing above
+  // could tell a receiver that compares a short CURRENT secret from one that refuses it. One character short of the floor
+  // is refused even when the token is its own exact value; exactly the floor is accepted.
+  const SHORT_CURRENT = "fifteen-current";
+  const EXACT_CURRENT = "sixteen-chars-ok";
+  process.env.BLACKBALL_WEBHOOK_SECRET = SHORT_CURRENT;
+  const shortCurrent = { own: asks(SHORT_CURRENT), header: asks(SHORT_CURRENT, "header"), none: asks(null) };
+  process.env.BLACKBALL_WEBHOOK_SECRET = EXACT_CURRENT;
+  const exactCurrent = asks(EXACT_CURRENT);
+  process.env.BLACKBALL_WEBHOOK_SECRET = SECRET;
+  ok("§12 D9 ⛔ a CURRENT secret shorter than the floor is never compared either: even its own exact value is refused, while one of exactly the floor is accepted",
+    SHORT_CURRENT.length === WEBHOOK_SECRET_MIN_CHARS - 1 && EXACT_CURRENT.length === WEBHOOK_SECRET_MIN_CHARS
+      && !shortCurrent.own && !shortCurrent.header && !shortCurrent.none && exactCurrent,
+    `${JSON.stringify(shortCurrent)} · exactly the floor ${exactCurrent}`);
+  ok("§12 D9 ONE floor, 16 characters, for boot and the receiver: boot calls a secret unusable exactly where the receiver stops comparing it",
+    WEBHOOK_SECRET_MIN_CHARS === 16 && webhookSecretUnusable(SHORT_CURRENT) && !webhookSecretUnusable(EXACT_CURRENT)
+      && !shortCurrent.own && exactCurrent,
+    `floor ${WEBHOOK_SECRET_MIN_CHARS} · boot: ${SHORT_CURRENT.length} unusable ${webhookSecretUnusable(SHORT_CURRENT)}, ${EXACT_CURRENT.length} unusable ${webhookSecretUnusable(EXACT_CURRENT)}`);
 }
 
 // ── D10 · the reply ───────────────────────────────────────────────────────────────────────────────

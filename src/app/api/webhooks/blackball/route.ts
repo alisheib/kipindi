@@ -12,9 +12,10 @@
  * ── U46a · E29 · THE SECRET ROTATES WITHOUT DROPPING A RECEIPT ────────────────
  * While the secret is being rotated, `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` holds the OLD
  * value and is accepted beside the new one until Blackball's callback URL carries the
- * new secret (docs/BLACKBALL-SMS.md §7). Both must be at least 16 characters to be
- * compared at all, and both are always compared, each in constant time. Boot warns
- * while PREVIOUS is set (`boot-checks.ts`), so it is never left behind.
+ * new secret (docs/BLACKBALL-SMS.md §7). Both must be at least `WEBHOOK_SECRET_MIN_CHARS`
+ * (16) characters to be compared at all — the one floor boot warns below too
+ * (`webhook-secret-floor.ts`) — and both are always compared, each in constant time.
+ * Boot warns while PREVIOUS is set (`boot-checks.ts`), so it is never left behind.
  *
  * ── ⛔ ONE DELIBERATE DEVIATION FROM THE POSTMARK TEMPLATE ───────────────────
  * Postmark's `authorized()` returns `NODE_ENV !== "production"` when the secret is
@@ -27,13 +28,19 @@
  * ── FOUR LAYERS AGAINST FORGERY, AND AN HONEST BLAST RADIUS ──────────────────
  *  1. the shared secret, timing-safe, failing closed once the provider is live
  *  2. the reference must EXIST — 24 hex characters, not guessable
- *  3. the msisdn must MATCH the one we sent to
+ *  3. the msisdn, when a line carries one, must MATCH the one we sent to — and a
+ *     line for a campaign message must carry it (U46a review)
  *  4. the state machine is monotonic, so a settled row cannot be rewritten
- * Even a fully-authenticated forger can therefore do exactly one thing: mark an
- * invite delivered that was not — or, since U46a, a campaign recipient whose message
- * is still open, and only with that message's own reference and number. No money
- * moves, no session is created, and ⛔ an OTP receipt is explicitly inert — see the
- * `Otp` note below.
+ * Even a fully-authenticated forger therefore holds one lever, and only for a message
+ * whose reference it already has: a line can settle THAT message's still-open rows as a
+ * real receipt would — the SmsMessage row; the invite it carried, DELIVERED or BOUNCED
+ * (never one already REGISTERED; the line's words, at most 200 characters, as the
+ * reason); and, since U46a and ONLY when the line also carries the message's own number,
+ * the campaign recipient it names while that row is still open — DELIVERED, or FAILED
+ * with the line's words, scrubbed of every phone number and at most 200 characters, as
+ * its error. A campaign line without the number moves no recipient row. No money moves,
+ * no session is created, and ⛔ an OTP receipt is explicitly inert — see the `Otp` note
+ * below.
  *
  * ── U46a · E28 · THE CAMPAIGN ARM ────────────────────────────────────────────
  * A receipt for a campaign message settles its `SmsCampaignRecipient` row through ONE
@@ -41,8 +48,10 @@
  * message — and the door itself writes only the row the message named, while that row
  * holds the message's number and reference (or none yet) and is still open (PENDING,
  * SENT, UNCONFIRMED — `SMS_RECEIPT_FROM`). A mismatch writes nothing and is audited
- * SECURITY, masked. A test send's receipt (`SmsCampaignTest`) settles its SmsMessage row
- * alone.
+ * SECURITY, masked. A line without the message's own number reaches no door at all: it
+ * is audited SECURITY by its code (`sms.dlr.recipient_unverified`), and the vendor still
+ * reads `{"status":"Ok"}`. A test send's receipt (`SmsCampaignTest`) settles its
+ * SmsMessage row alone.
  * ⛔ Never deploy while a campaign is PREPARING or RUNNING (ENGINE-SPEC §5 rule 8): a
  * receipt that reaches the old build in the overlap settles only its SmsMessage row,
  * and its replay cannot re-run this arm.
@@ -57,11 +66,14 @@ import { smsProviderResolution } from "@/lib/server/sms";
 import { audit } from "@/lib/server/audit";
 import { maskPhone } from "@/lib/phone-normalize";
 // U46a · the target type the campaign slice sends under (`dispatch.ts`: "the DLR route's recipient arm keys on this"), the
-// ONE masking half of the phone-run rule — a vendor's description is scrubbed before it can become a row's `error` — and
-// the longest description the receipt door writes (the rule set's own constant, so the cut and the refusal are one number).
+// phone-run rule's two halves — a vendor's description is scrubbed, and read again, before it can become a row's `error` —
+// and the longest description the receipt door writes (the rule set's own constant, so the cut and the refusal are one
+// number).
 import { DISPATCH_TARGET_TYPE } from "@/lib/server/marketing/dispatch";
-import { scrubPhoneRuns } from "@/lib/contacts/contact-fields";
+import { scrubPhoneRuns, holdsPhoneRun } from "@/lib/contacts/contact-fields";
 import { SMS_RECEIPT_DESC_MAX } from "@/lib/server/marketing/campaign-model";
+// U46a review · the ONE floor a webhook secret must reach — boot warns below the very same number.
+import { WEBHOOK_SECRET_MIN_CHARS as SECRET_MIN_CHARS } from "@/lib/server/webhook-secret-floor";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -77,10 +89,6 @@ function secretEqual(a: string, b: string): boolean {
   return timingSafeEqual(ab, bb);
 }
 
-/** U46a · E29 · the floor a secret must reach to be compared at all — the same 16 characters below which
- *  `webhookSecretUnusable` (boot-checks.ts) warns. */
-const SECRET_MIN_CHARS = 16;
-
 export function authorized(req: Request): boolean {
   const secret = process.env.BLACKBALL_WEBHOOK_SECRET ?? "";
   if (!secret) {
@@ -92,12 +100,14 @@ export function authorized(req: Request): boolean {
   const provided =
     new URL(req.url).searchParams.get("token") ?? req.headers.get("x-blackball-token") ?? "";
   // ⭐ E29 · THE ROTATION'S SECOND SECRET. The old value is accepted beside the new one while Blackball's URL is changed, so
-  // no receipt is refused in between. ⛔ A secret counts only when it is SET to a real one (at least 16 characters): an
-  // unset PREVIOUS is the empty string, and the empty string compares equal to an absent token — so without this floor
-  // every caller that sends NO token would be let in. ⚠️ The CURRENT secret is held to the same floor (§4.14: both at least
-  // 16) — a change for a shorter one, which boot-checks already warns about at every start; production's is not one (its
-  // boot log carries no such warning, docs/BLACKBALL-SMS.md). Every secret that is set is compared, each in constant time,
-  // and neither comparison is skipped because the other matched — the time a request takes never says which one it carried.
+  // no receipt is refused in between. ⛔ A secret counts only when it is SET to a real one (at least `SECRET_MIN_CHARS` —
+  // `WEBHOOK_SECRET_MIN_CHARS`, the floor boot warns below): an unset PREVIOUS is the empty string, and the empty string
+  // compares equal to an absent token — so without this floor every caller that sends NO token would be let in. ⚠️ The
+  // CURRENT secret is held to the same floor (§4.14: both at least 16) — a change for a shorter one, which boot-checks
+  // already warns about at every start; production's is not one (its boot log carries no such warning,
+  // docs/BLACKBALL-SMS.md). `test:sms-dlr` §12 D9 holds both floors. Every secret that is set is compared, each in constant
+  // time, and neither comparison is skipped because the other matched — the time a request takes never says which one it
+  // carried.
   const previous = process.env.BLACKBALL_WEBHOOK_SECRET_PREVIOUS ?? "";
   const current = secret.length >= SECRET_MIN_CHARS && secretEqual(provided, secret);
   const rotated = previous.length >= SECRET_MIN_CHARS && secretEqual(provided, previous);
@@ -221,6 +231,38 @@ async function noteRecipientMismatch(recipientId: string, reference: string, mes
       got: maskPhone(messageMsisdn),
     },
   });
+}
+
+/**
+ * U46a review · a campaign receipt line that does not carry the message's own number — so nothing vouches that it is the
+ * vendor's report about THIS person, and its words could fail a recipient. No door is asked; the line is audited SECURITY
+ * by its code alone (`msisdn_missing`, or `msisdn_mismatch` should the route's own gate ever let one through) — no
+ * number, no words. At most once per message: the arm runs only when the message moved, and a message moves once.
+ */
+function noteRecipientUnverified(recipientId: string, reference: string, token: string, code: "msisdn_missing" | "msisdn_mismatch"): void {
+  audit({
+    category: "SECURITY",
+    action: "sms.dlr.recipient_unverified",
+    actorId: null,
+    targetType: DISPATCH_TARGET_TYPE,
+    targetId: recipientId,
+    payload: { reference, rawStatus: token, code },
+  });
+}
+
+/**
+ * U46a · the vendor's words as the receipt door may take them (§5.14): every phone number scrubbed, then cut to
+ * `SMS_RECEIPT_DESC_MAX` — and, U46a review, scrubbed AGAIN while the cut text still holds one. A compatibility character
+ * can fold into more than one digit (the fraction ¼ reads as 1, a slash, 4), so the two digits a mask keeps can join the
+ * digits after it into a number one pass never saw. Three passes, then the words are dropped: the door refuses a number,
+ * it never scrubs, and a refused receipt would leave the row unsettled for ever — the verdict must land, with its words
+ * or without them.
+ */
+function receiptWords(description: string | null): string | null {
+  if (description === null) return null;
+  let words = scrubPhoneRuns(description).slice(0, SMS_RECEIPT_DESC_MAX);
+  for (let pass = 0; pass < 3 && holdsPhoneRun(words); pass++) words = scrubPhoneRuns(words).slice(0, SMS_RECEIPT_DESC_MAX);
+  return holdsPhoneRun(words) ? null : words;
 }
 
 /**
@@ -366,22 +408,32 @@ export async function POST(req: Request) {
     // ⭐ U46a · THE CAMPAIGN ARM (E28). The message moved, and it was a campaign's: its recipient row settles through the
     // ONE door — which writes only that row, only while it holds the message's number and reference (or none yet), and
     // only out of PENDING, SENT or UNCONFIRMED, so a late or out-of-order receipt never moves a settled row.
-    // ⛔ Guarded on `changed`, as the invite arm is: a replayed receipt cannot re-run this. ⛔ The number handed in is the
-    // MESSAGE's, already held to the receipt's own above. ⛔ The door refuses, it never scrubs, so what it is handed is
-    // lawful first: the token as the mapper read it (trimmed, upper case — a token the mapper recognised, so a code of its
-    // own list in any spelling the vendor chose), and the description scrubbed of every phone number and only THEN cut
-    // (§5.14 — cut first, a number split at the cut would slip past the scrub). A test send's receipt (`SmsCampaignTest`)
+    // ⛔ Guarded on `changed`, as the invite arm is: a replayed receipt cannot re-run this. ⛔ The door refuses, it never
+    // scrubs, so what it is handed is lawful first: the token as the mapper read it (trimmed, upper case — a token the
+    // mapper recognised, so a code of its own list in any spelling the vendor chose), and the description scrubbed of every
+    // phone number and only THEN cut, then read again (`receiptWords` — §5.14). A test send's receipt (`SmsCampaignTest`)
     // never reaches here: it settles its SmsMessage row and nothing else.
     if (changed && after?.targetType === DISPATCH_TARGET_TYPE && after.targetId && (mapped === "DELIVERED" || mapped === "FAILED")) {
       const recipientId = after.targetId;
       const token = rawStatus.trim().toUpperCase();
+      // ⛔ U46a review · THE LINE MUST CARRY THE MESSAGE'S OWN NUMBER HERE — required, not merely checked. The gate above
+      // compares a number only when a line has one (an invite's or a code's message still settles on its reference alone,
+      // unchanged), so a line holding nothing but a reference reached this arm and could fail a recipient with its own
+      // words. Real callbacks always carry the number (docs/BLACKBALL-SMS.md §4.8), so a campaign line without it moves no
+      // recipient row: audited SECURITY by its code, and the vendor still reads Ok. Its MESSAGE has settled, as before —
+      // so the recipient keeps its last door-written state, and the audit row is how an operator finds it.
+      const vouched = msisdn !== "" && msisdn.replace(/[^0-9]/g, "") === after.msisdn;
+      if (!vouched) {
+        noteRecipientUnverified(recipientId, reference, token, msisdn === "" ? "msisdn_missing" : "msisdn_mismatch");
+        continue;
+      }
       try {
         const outcome = await db.smsCampaignRecipient.recordReceipt(recipientId, {
           reference,
           msisdn: after.msisdn,
           status: mapped,
           rawStatus: token,
-          desc: description === null ? null : scrubPhoneRuns(description).slice(0, SMS_RECEIPT_DESC_MAX),
+          desc: receiptWords(description),
           at,
         });
         if (outcome.changed) counts.campaign++;

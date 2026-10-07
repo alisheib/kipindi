@@ -27,6 +27,8 @@ import { isAdminTotpEnforced } from "./admin-guard";
 import { previewSecretUsable } from "./journey-preview-secret";
 import { smsConfigured, smsProviderResolution } from "./sms";
 import { blackballConfigured, senderIdProblem } from "./sms-blackball";
+// U46a review · the ONE floor a webhook secret must reach — the receipt receiver reads the same number.
+import { WEBHOOK_SECRET_MIN_CHARS } from "./webhook-secret-floor";
 
 /** The exact env names read by api/webhooks/payments/route.ts (KNOWN_PROVIDERS). */
 const WEBHOOK_SECRET_ENVS = ["SELCOM_WEBHOOK_SECRET", "AZAMPAY_WEBHOOK_SECRET", "MIXX_WEBHOOK_SECRET"] as const;
@@ -40,16 +42,16 @@ const SMS_WEBHOOK_PREVIOUS_ENV = "BLACKBALL_WEBHOOK_SECRET_PREVIOUS";
 /**
  * U46a · E29 — the line boot prints while the rotation's second secret is still set, or null when it is not. A PREVIOUS
  * left behind keeps the old secret — the one that travelled through chat — opening the receiver for ever, so it is said at
- * every boot until it is removed. A PREVIOUS under 16 characters is never compared at all (the receiver's floor), and the
- * line says that too: a rotation counting on it would be refusing the old URL's receipts. Exported so `test:sms-dlr` reads
- * the exact sentence (D9).
+ * every boot until it is removed. A PREVIOUS under `WEBHOOK_SECRET_MIN_CHARS` is never compared at all (the receiver's
+ * floor — the same constant), and the line says that too: a rotation counting on it would be refusing the old URL's
+ * receipts. Exported so `test:sms-dlr` reads the exact sentence (D9).
  */
 export function previousWebhookSecretWarning(raw: string | undefined): string | null {
   const value = raw ?? "";
   if (value === "") return null;
   const line = `[sms] WARNING: ${SMS_WEBHOOK_PREVIOUS_ENV} is set — remove it once Blackball's callback URL carries the new secret.`;
-  return value.length < 16
-    ? `${line} It is shorter than 16 characters, so the receiver does not accept it at all — a callback still carrying the old secret is refused.`
+  return value.length < WEBHOOK_SECRET_MIN_CHARS
+    ? `${line} It is shorter than ${WEBHOOK_SECRET_MIN_CHARS} characters, so the receiver does not accept it at all — a callback still carrying the old secret is refused.`
     : line;
 }
 
@@ -61,7 +63,7 @@ export function webhookSecretUnusable(raw: string | undefined): boolean {
   if (!v) return true;
   if (/^(paste|change|replace|set|your|todo|xxx+|placeholder|example|generated?[_-]?value)/i.test(v)) return true;
   if (/^[A-Z][A-Z0-9_]{8,}$/.test(v)) return true; // SCREAMING_SNAKE — a template token, not a secret
-  return v.length < 16;
+  return v.length < WEBHOOK_SECRET_MIN_CHARS;
 }
 
 export async function runBootChecks(): Promise<void> {

@@ -607,7 +607,8 @@ export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipient
  *   `assertSettle([p], at)` of one patch to set it aside. Otherwise one gateway message echoing a number refuses the
  *   slice's whole settle — and the reaper's on every step after it (§3.3 reaps first), wedging the campaign until a hand
  *   repair. U43b's engine suite (ENGINE-SPEC §4.13, its §S and §R) holds that case.
- * · OWED BY U43b — THE SEND RECORD WHEN A RECEIPT WINS (DC-4). A receipt that lands between the wire and this settle
+ * · OWED BY U43b — THE SEND RECORD WHEN A RECEIPT WINS (DC-4 — ENGINE-SPEC §4.13 decision 6, its test S16, and the
+ *   tracker's U43 row). A receipt that lands between the wire and this settle
  *   moves the still-claimed PENDING row (U46a's `recordReceipt`, `test:sms-dlr` D5), so the slice's SENT patch is `lost`
  *   here and the row's trail, token, variant, segments, length and `sentAt` (E20, E30, the access export) are never
  *   written. U46a is built FIRST, while no slice exists — no row is claimed in production, so none can meet a receipt yet —

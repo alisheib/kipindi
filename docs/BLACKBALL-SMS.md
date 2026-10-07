@@ -200,12 +200,17 @@ A receipt for a campaign message also settles its `SmsCampaignRecipient` row, th
 (`smsCampaignRecipient.recordReceipt`), and only when the receipt MOVED its `SmsMessage` row — so a
 replay never re-runs it:
 
+- the line must carry the message's own number: real callbacks always do (§4.8), and a campaign line without
+  it moves no recipient row — it is audited SECURITY `sms.dlr.recipient_unverified` by its code alone, and
+  the reply is still `{"status":"Ok"}` (its `SmsMessage` row settles as any line's does);
 - it writes only the row the message named, only while that row holds the message's number and either no
   reference yet or the message's own, and only out of PENDING, SENT or UNCONFIRMED — a late or
   out-of-order receipt never moves a settled row, and an unanswered (UNCONFIRMED) row is settled by its late
   receipt;
 - DELIVERED writes `deliveredAt`; FAILED writes `failedAt`, the class `receipt:<token>` and the vendor's
-  description as the row's error — scrubbed of every phone number first, then cut to 200 characters;
+  description as the row's error — scrubbed of every phone number first, then cut to 200 characters, then
+  scrubbed again while a number remains (a character that folds into several digits can rebuild one), or
+  dropped, so the verdict always lands;
 - a row of another number, or one already holding another message's reference, is not written and is
   audited SECURITY `sms.dlr.recipient_mismatch` (numbers masked); a receipt the door refuses is audited
   SYSTEM `sms.dlr.recipient_failed` by its error code alone, and the reply is still `{"status":"Ok"}`;
@@ -220,12 +225,18 @@ Guard: `npm run test:sms-dlr` (§12) · `npm run red:sms-dlr`.
 
 1. the shared secret, constant-time, failing closed once the provider is live
 2. the reference must **exist** — 24 hex characters
-3. the msisdn must **match** the one we sent to
+3. the msisdn, when a line carries one, must **match** the one we sent to — and a line for a campaign
+   message must carry it
 4. the state machine is **monotonic** — a settled row is never rewritten
 
-The worst a fully-authenticated forger can do is mark an invite delivered that was not — or, since
-U46a, a campaign recipient whose message is still open, and only with that message's own reference and
-number. An OTP receipt is explicitly inert, and an empty callback writes nothing to the audit chain.
+A fully-authenticated forger therefore holds one lever, and only for a message whose reference it already
+has: a line can settle THAT message's still-open rows as a real receipt would — its `SmsMessage` row; the
+invite it carried, DELIVERED or BOUNCED (never one already REGISTERED; the line's words, at most 200
+characters, as the reason); and, since U46a and ONLY when the line also carries the message's own number,
+the campaign recipient it names while that row is still open — DELIVERED, or FAILED with the line's words,
+scrubbed of every phone number and at most 200 characters, as its error. A campaign line without the number
+moves no recipient row. An OTP receipt is explicitly inert, and an empty callback writes nothing to the
+audit chain.
 
 ---
 
@@ -611,7 +622,7 @@ the 15-minute TTL.
 | `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET` | portal → Configurations → API Configurations |
 | `BLACKBALL_API_URL` | defaults to the live send endpoint; the balance endpoint is derived from its host |
 | `BLACKBALL_TIMEOUT_MS` | default 8000 |
-| `BLACKBALL_WEBHOOK_SECRET` | ≥ 16 chars, set in Railway. A placeholder is functionally ABSENT |
+| `BLACKBALL_WEBHOOK_SECRET` | ≥ 16 chars, set in Railway. A placeholder is functionally ABSENT. Shorter than 16, it is never compared at all — every callback 401s — and boot warns about it at every start (one floor for both, marketing U46a) |
 | `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` | Unset, unless the secret is being rotated (§7, *Rotating the webhook secret*): then the OLD value, accepted beside `BLACKBALL_WEBHOOK_SECRET` until Blackball's callback URL carries the new one. ≥ 16 chars, or it is never compared at all; each secret is compared in constant time. Boot warns at every start while it is set, so it is never left behind (marketing U46a, E29) |
 | `SMS_BALANCE_FLOOR_TZS` / `SMS_BALANCE_ALERT_TZS` | default 50 / 150 (≈ 8 / 25 messages) |
 | `SMS_BALANCE_TTL_MS` | default 900000 (15 minutes) |

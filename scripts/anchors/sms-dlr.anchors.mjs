@@ -222,4 +222,33 @@ export const MUTATIONS = [
     to: ``,
     expect: `§12 D6 …and each is audited SECURITY as sms.dlr.recipient_mismatch, naming the numbers masked and never in full`,
   },
+  /* ── U46a · the review round (findings 1, 4 and 5) ───────────────────────────────────────────────────────────── */
+  {
+    // ⭐ FINDING 1: the campaign arm trusts a line that carries no number. A real reference alone then fails a recipient
+    // with the forger's own words — the message's number, checked only when a line has one, no longer vouches for it.
+    name: "route.ts — the campaign arm stops requiring the line's own number",
+    file: "src/app/api/webhooks/blackball/route.ts",
+    from: `      const vouched = msisdn !== "" && msisdn.replace(/[^0-9]/g, "") === after.msisdn;`,
+    to: `      const vouched = true;`,
+    expect: `§12 D6d ⛔ a campaign line without the message's number moves no recipient row: the row as it was, audited SECURITY by its code alone, and the reply still Ok`,
+  },
+  {
+    // FINDING 4: one scrub, never read again. Words whose fraction folds into digits keep a number after the scrub, the
+    // door refuses it, and the row waits for a verdict that already came — for ever.
+    name: "route.ts — the receipt's words are handed in after one scrub, never read again",
+    file: "src/app/api/webhooks/blackball/route.ts",
+    from: `  for (let pass = 0; pass < 3 && holdsPhoneRun(words); pass++) words = scrubPhoneRuns(words).slice(0, SMS_RECEIPT_DESC_MAX);
+  return holdsPhoneRun(words) ? null : words;`,
+    to: `  return words;`,
+    expect: `§12 D4c a FAILED receipt whose words fold into a number again after one scrub still lands: FAILED, its words read until no number is left`,
+  },
+  {
+    // FINDING 5: the CURRENT secret compared below the floor — a short secret, the kind boot already calls unusable, opens
+    // the receiver to whoever guesses it.
+    name: "route.ts — the current secret is compared without its floor",
+    file: "src/app/api/webhooks/blackball/route.ts",
+    from: `  const current = secret.length >= SECRET_MIN_CHARS && secretEqual(provided, secret);`,
+    to: `  const current = secretEqual(provided, secret);`,
+    expect: `§12 D9 ⛔ a CURRENT secret shorter than the floor is never compared either: even its own exact value is refused, while one of exactly the floor is accepted`,
+  },
 ];
