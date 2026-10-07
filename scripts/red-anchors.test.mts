@@ -285,7 +285,9 @@ console.log("\n§4 · the ratchet — harnesses still outside the anchor audit")
    * `test:house-bot-ops` `ops.red.1` reads this section's rule out of this file and holds the entry, and
    * everything it imports, to it — so a reshaped rule here is reported there by name.
    */
-  const UNDECLARED_CEILING = 65;
+  // 65 → 64 on 2026-10-07 (the Vodacom plan's S7 WP0, S7-PLAN A4): `red:ticker-honesty` DECLARED its 28 cases in
+  // `anchors/ticker-honesty.anchors.mjs`. ⛔ Re-derive the count when this lands; never raise it to meet a merge.
+  const UNDECLARED_CEILING = 64;
   const declaredNames = new Set(declFiles.map((f) => f.replace(/\.anchors\.mjs$/, "")));
   /**
    * ⭐ IN-PROCESS RED PROOFS ARE OUTSIDE THIS POPULATION (2026-09-14), AND THE CEILING DID NOT MOVE.
