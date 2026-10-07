@@ -81,6 +81,17 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   real settle, then its suites, the Postgres probe, review, push, read-back. The Vodacom plan runs beside it on the same
   PC in another session (its own worktrees, ports 3071-3079); this lane uses ports 3101-3109 and scratch Postgres 5461,
   and both take `F:/heavy-node.lock` (a `mkdir` mutex) before any heavy job.
+  ▸ 10:08 EAT: S14's first session closed mid-task; a second session on the same PC continues S14 in the same worktree
+  (Ali: "proceed with the sms campaign plan … check what's left and proceed"). STATE 10:40 EAT — U43a BUILT, uncommitted
+  in `F:\kipindi-m14`: the seven files from `backup/marketing-s13-wip` `u43a/` (six byte-identical to the backup; the
+  anchors file merged by hand, keeping main's two U16a TGT-6 anchors the backup lacked); P10 ROUTED — the suite's fixture
+  rows are claimed and settled through the real doors (`claim` · `claimedBy` · `settle` · `requeueHeld`), only U46a's
+  receipt shapes and PE-08's unreachable state stay by hand (`afterTheDoors`); `P10_ACCOUNTED` takes U43a's six; R-P10d
+  now plants U46a's `recordReceipt`; NEW R-P10e (the settle door writing the account into the trail) proves the routing;
+  DATA-RETENTION's "no settle door exists yet" sentence rewritten. GREEN: `test:campaign-models` 48/48,
+  `test:dal-parity` 2,150/2,150, `test:campaign-privacy` 27/27, `red:campaign-privacy` 32/32. LEFT for U43a:
+  `red:campaign-models`, `red:dal-parity`, typecheck, `db:probe-campaign-models` + `db:probe-campaign-privacy`, an
+  independent review and its fixes, the push, the read-back — then U38b (decide D19-1: count-only for masked viewers).
 ⏳ (S13's block, kept as the handover) S13 — 2026-10-06, ALI-BLADE15 (`C:\kipindi-marketing`, branch `marketing-s13` cut from `origin/main` at
   `85866b36`; docs-only commits from `C:\kipindi-s13-docs`). Taken over ~21:50 EAT: OMEGA-COMPILE01's S12 stopped after
   STEP 44's push — no read-back and no closing commit followed for over three hours — and Ali asked this PC to continue
