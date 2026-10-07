@@ -30,7 +30,9 @@ a dialog acts on Enter only where it is pressed, and a key held down from before
 A8i-2 (`586c5183`): a key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered
 money dialog lands on its way out (below). ⚠️ Owner ruling of 2026-10-07 (the ▶ 0e MONEY DOORS lane): a deposit asks no
 email question, and the minimum deposit and stake are TZS 1,000 — §3.6's S9 (an email code before the first deposit)
-will NOT be built, and this plan's "TZS 500 minimum" lines are to be rewritten (owed, this lane's docs, after A8j).
+will NOT be built (§3.6 and R2 marked superseded), and this plan's TZS 500 lines carry the new minimum. Still owed here:
+the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `emailCodeFirst` (when S9 is built), and
+`qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar.
 
 **✅ A8i-2 LIVE `586c5183` (2026-10-07) — a key held down presses once, wherever it is; nothing behind the top dialog
 takes a key; an uncovered money dialog lands on its way out.** Taken from the handover's unreviewed draft on
@@ -67,8 +69,8 @@ key submit the withdraw, deposit, close-account, RG or sign-out form without its
 wakes). `test:implicit-submit` 25/25, `red:implicit-submit` 61/61 and 1/1 green control held, typecheck. **Still to
 come:** rebase onto A8i-2 (its held-key cases need A8i-2's key guard) → the suites again → `qa:implicit-submit` in
 Chromium, Firefox and WebKit and its control on the tree before it → `test:all` → push → production read-back →
-records (§0i, §0h point for its calls). Then the close-out's three owed items, then **WP12**; and this lane's docs for the
-owner ruling above (S9 not built; the TZS 500 lines). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
+records (§0i, §0h point for its calls). Then the close-out's three owed items, then **WP12**; and the owner ruling's
+remaining items above (its docs here are done: §3.6, R2, the TZS 500 lines, SHELVED, the copy audit). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
 **Next:** (1) S6 — **A8j** (live for every player, money: above, §0i "A8i" and the handover's draft), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
@@ -1909,7 +1911,9 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     read English months: "8 Oct" and "11 May" where Swahili says "8 Okt" and "11 Mei". The frames show the Swahili.
     Fixing it means threading a locale through every caller, and `test:timer-date` must hold. That is its own lane.
 - Item 5 ✅ on the canvas (row "5 · Balance too low", six frames, each a branch of `shortfallPlan`).
-  - Deposit only: balance 0; and short by less than TZS 500, where the deposit is 500 with a note (draft).
+  - Deposit only: balance 0; and short by less than TZS 500, where the deposit is 500 with a note (draft). ⚠️ The
+    minimum becomes TZS 1,000 by the owner's ruling of 2026-10-07 (NEXT-PLAN ▶ 0e, its Phase B): the note's figures
+    follow it.
   - "Bet instead" only: the deposit limit is reached; and every deposit rail is paused.
   - No option: source of funds is needed.
   - Waiting: a deposit is already pending.
@@ -2263,7 +2267,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S6 | Shell (flagged) | 🔨 | Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | ⬜ | Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
-| S9 | Deposit, email code, waiting and return (flagged) | ⬜ | `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and `test:email-code` are green. The card `order_id` fix is live. |
+| S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
 | S11 | How to Play complete + copy ready for the flip | ⬜ | Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
 | S12 | Consistency sweep | ⬜ | Juu/Chini uses the journey language, admin ink is fixed, short titles are used outside the site, NDIO is swept. |
@@ -2756,7 +2760,8 @@ Other rules:
   - All chips clamped to `depositCeilingFor` (DEPOSIT_MAX, RG day/week/month headroom counting PROCESSING deposits,
     SoF headroom).
   - Examples: 3,000 → [3,000, 5,000, 10,000]; 5,000 → [5,000, 10,000, 25,000]; 300 → [500, 1,000, 5,000] with
-    `belowDepositMin`.
+    `belowDepositMin`. ⚠️ With the TZS 1,000 minimum (the owner's ruling of 2026-10-07, ▶ 0e's Phase B, which also
+    edits `test:shortfall` to match): 300 → [1,000, 5,000, 10,000] with `belowDepositMin`.
   - No per-rail ceiling (E-231).
 - `depositCeilingFor` and `lossHeadroomFor` are proven equal to the real gates (`test:deposit-ceiling`).
 
@@ -2903,7 +2908,8 @@ that reopens the sheet. `test:deploy-skew` covers the sheet and the waiting page
 4. compact row "Ukishinda ≈ TZS {x}" … "≈{m}×" (new keys)
 5. warning callout "Salio halitoshi / Una TZS {have}. Unahitaji TZS {short} zaidi." (new keys)
 6. eyebrow "CHAGUA UNACHOTAKA KUFANYA"
-7. the 2-line deposit action (the amount is D; a clear note when D > shortfall because of the 500 minimum)
+7. the 2-line deposit action (the amount is D; a clear note when D > shortfall because of the deposit minimum — TZS
+   1,000 from the owner's ruling of 2026-10-07, ▶ 0e; it was 500)
 8. "Weka dau la TZS {spendable} badala yake"
 9. the disabled "Weka dau · TZS {stake}" (`aria-describedby` → the warning)
 
@@ -2985,7 +2991,14 @@ Polling: every 3s for the first minute, then every 10s.
 **Card return fix (first).** Append `order_id` to the Selcom card `redirectUrl`/`cancelUrl`, and carry `bet` through
 (MONEY-GATE §3.2, a live defect today).
 
-### 3.6 Inline email code (S9)
+### 3.6 Inline email code (S9) — ⛔ SUPERSEDED 2026-10-07, not to be built
+
+⛔ **The owner's ruling of 2026-10-07 (NEXT-PLAN ▶ 0e MONEY DOORS):** a deposit asks NO email question at all — the
+deposit email door, the deposit page's `EmailVerifyGate` and the app-wide `EmailVerifyBanner` are removed by that lane —
+and a confirmed email is required to WITHDRAW instead (asked after identity, on /wallet/withdraw; a refused-funds return
+is exempt). The journey's deposit therefore carries no code step: the rest of this section is kept as the record of what
+was planned, and `shortfall.ts`'s `emailCodeFirst` and its docblock go when S9 is built (owed, this lane). R2 in the
+INHERIT-MANIFEST is superseded with it.
 
 **Storage and security**
 - A new `Otp` purpose `email_verify`: bound to `userId` + the exact address, hashed, 30-minute TTL, 5 attempts.
@@ -3260,7 +3273,8 @@ retention/backup/DAL and the privacy lines.
 - Checks whether `test:rg-doors` requires a limits link (SJ-22).
 - **Done when:** `test:bet-sheet`, V20 and the refusal matrix pass, and a staff real bet works on production.
 
-**S9 — Deposit, email code, waiting and return (flagged):** the card `order_id` fix first, then §3.5 and §3.6.
+**S9 — Deposit, waiting and return (flagged):** the card `order_id` fix first, then §3.5. (§3.6, the email code, is
+superseded by the owner's ruling of 2026-10-07 and is not built.)
 - **Done when:** `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and
   `test:email-code` pass.
 
@@ -3395,7 +3409,7 @@ Design **is** needed for:
 >      session limit, rate-limited, busy / Jaribu tena, maintenance.
 >    - Keyboard open at 360×640.
 >    - ◆ Desktop centred dialog.
-> 5. **Balance too low.** 0 / 1 / 2 options; balance 0; below the 500 minimum; deposit pending; limit reached; SoF;
+> 5. **Balance too low.** 0 / 1 / 2 options; balance 0; below the 500 minimum [TZS 1,000 since the owner's ruling of 2026-10-07]; deposit pending; limit reached; SoF;
 >    held wallet; 4 wallets on the sub-line.
 > 6. **Deposit.**
 >    - Focused chrome.
