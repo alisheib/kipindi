@@ -70,7 +70,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
    - **Matrix:** 360/768/1024/1280 × en/sw.
    - **Routes:** `/`, `/markets`, `/positions`, `/wallet`, `/profile`, `/account`.
    - **Captured per cell:**
-     - normalized outerHTML of `header.app-topbar`, `nav.kp-rail`, `footer` and `[data-testid=email-verify-banner]`;
+     - normalized outerHTML of `header.app-topbar`, `nav.kp-rail`, `footer` and `[data-testid=email-verify-banner]` (deleted by the owner's ruling of 2026-10-07: 2.9 reads which tree it runs on);
      - the set of fixed overlays present after 3 s;
      - computed footer padding-bottom and html scroll-padding-bottom;
      - /account's HTTP status and main text.
@@ -588,7 +588,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
 **Steps.**
 1. **app-shell.tsx.**
    - Add `{journeyShown && <JourneyFlag />}` beside the `data-kp-funnel` span.
-   - :425 becomes `{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}`. This is a per-viewer server decision, so it is stable across soft navigation. The deposit page's own EmailVerifyGate still gates.
+   - :425 becomes `{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}`. This is a per-viewer server decision, so it is stable across soft navigation. The deposit page's own EmailVerifyGate still gates. (⛔ the owner's ruling of 2026-10-07, NEXT-PLAN ▶ 0e: the app-wide email bar and the deposit's email gate are deleted for every viewer, and a deposit asks no email question)
 2. **needle.tsx.** Add `const journeyOn = useJourneyOn();` with the hooks. :792 becomes `const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname));`, and journeyOn joins the deps.
 3. **channels-panel.tsx.**
    - After :191: `const journeyHidden = useJourneyOn() && isJourneySurface(pathname);`.
@@ -602,7 +602,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
    - the consent prompt (:520, ungated: privacy-notice §4f) and the install invite;
    - the first-visit primer and the ticker, which §3.2 and §3.8 place in S7;
    - the sheet-presence attribute, which waits for S8.
-   SHELVED rows: EmailVerifyBanner for journey viewers; the Needle, channels panel and chat bubble on journey surfaces.
+   SHELVED rows: EmailVerifyBanner for journey viewers (deleted with the bar, 2026-10-07); the Needle, channels panel and chat bubble on journey surfaces.
 
 **Flag gating.** JourneyFlag renders only when journeyShown, so a classic page never carries data-journey. useJourneyOn's server snapshot and its no-attribute value are both false, so each stand-down term reduces to today's expression. The email-bar condition is unchanged whenever journeyShown is false. qa:classic-shell-parity --compare must show 0 diffs, including overlay presence.
 
@@ -613,7 +613,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
 - the consent mount is ungated;
 - JourneyFlag is mounted only behind journeyShown.
 Plus one plant each.
-- test:simple-journey-flag '10.shell.emailbar' (new): the bar is present for classic and absent for journey. No gate pinned this bar before: searching scripts/ for EmailVerifyBanner finds nothing. Plus the plant 'the email bar is dropped for classic viewers'.
+- test:simple-journey-flag '10.shell.emailbar' (new): the bar is present for classic and absent for journey. (Flipped by money doors' release with the owner's ruling of 2026-10-07: no shell mounts the bar, for any viewer.) No gate pinned this bar before: searching scripts/ for EmailVerifyBanner finds nothing. Plus the plant 'the email bar is dropped for classic viewers'.
 - test:social-panel + red:social-panel
 - test:marketing-optout + red:marketing-optout
 - test:chat-availability + red:chat-availability
@@ -1111,7 +1111,7 @@ New files keep them unique; run test:red-anchors after every package.
 - **Canvas drift from the kit.** The canvas draws: a 64px header; pill-shaped desktop links; a --bg-elevated capsule; segmented capsules for the Tiketi switch and card size; a 68px rail; round bordered language and bell buttons. The kit wins (DESIGN_AUTHORITY). Each deviation is recorded in §0h. S7's above-the-fold budget must use 56.
 - **Helpline vs our desk.** The canvas's Msaada sub-line puts 0800 11 0011 (the national problem-gambling helpline, support-config.ts:120) under 50pick's help desk. test:support-contact §8 also bans support-contact literals outside support-config.ts.
 - **The break flag fails open.** promoSuppressed fails OPEN on an RG read error, so '+ Weka pesa' can show during a break after a failed read. This is LAW 1 (it gates an offer, never a refusal) and is stated, not hidden.
-- **No email bar for journey viewers before S9's inline code.** Hiding EmailVerifyBanner leaves the deposit page's own EmailVerifyGate in place. But the agent-application fee (agent-application-service.ts:688) loses its standing reminder for preview viewers.
+- **No email bar for journey viewers before S9's inline code.** (⛔ Superseded by the owner's ruling of 2026-10-07: no viewer has the bar, and S9 asks no code.) Hiding EmailVerifyBanner leaves the deposit page's own EmailVerifyGate in place. But the agent-application fee (agent-application-service.ts:688) loses its standing reminder for preview viewers.
 - **Classic words on journey desktop until the S15 sweep:** the avatar menu's hard-coded 'Nafasi' row (avatar-menu.tsx:368) and the bell's rose CountBadge.
 - **Pre-existing reds must be re-derived in WP0**, so S6 is neither blamed nor credited for them. The ones recorded so far: type-scale; red-anchors 4.1/4.2 (66 vs 65); house-bot-disclosure 5.1, red by construction on a dictionary change; tap-target; decomment; section-rail offenders.
 - **Cross-lane conflict.** MOBILE-VISUAL-PLAN U21 (branch mobile-visual) plans its own --rail-h and a 48px short-screen rail. Two definitions would drift.
@@ -1135,7 +1135,7 @@ PARTLY REFUTED: the architecture holds, but 1 blocker and 9 majors must be fixed
 - These keys and functions exist: `notif.unreadOne/unreadN` (:2028), `performance.viewPerformance`, `formatClock` (utils.ts:358, EAT tz).
 - `/auth/demo` supports `?deposit=0`, `?hold=officer` and `?email=unverified`. seed-wallet ADDS to the balance, so 0 + 999,999 works.
 - The away-summary defect is real: the link is `/positions?filter=settled` at away-summary-bar.tsx:141, and `parsePortfolioParams` reads only `tab`.
-- No gate pins EmailVerifyBanner (grep of scripts/ finds nothing).
+- No gate pins EmailVerifyBanner (grep of scripts/ finds nothing). (WP7 then pinned it, `10.shell.emailbar`; the bar is deleted on 2026-10-07.)
 - Every existing script key the plan names exists in package.json.
 
 **What fails.** Three classes of problem:

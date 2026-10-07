@@ -54,10 +54,10 @@
 - errDepositLimit "Amana hii ingepita kikomo cha amana ulichojiwekea. Unaweza kukagua vikomo vyako chini ya Uchezaji Salama."
 - errSofRequired "Amana hii inahitaji tamko la chanzo cha fedha lililokubaliwa na timu yetu. Jaza tamko kutoka kwenye wasifu wako; utaweza kuweka amana hii baada ya kukubaliwa."
 - Frozen: errWalletFrozen "Pochi yako imegandishwa. Wasiliana na msaada ili kutatua."; kycGate.frozenCta "Wasiliana na msaada".
-- 500 minimum note NO STRING. DEPOSIT_MIN 500, MAX 2,000,000. Deposit quick ladder 1,000/5,000/10,000/25,000/50,000/100,000 (page shows "1K"…).
+- 500 minimum note NO STRING. DEPOSIT_MIN 500 (⚠️ TZS 1,000 since the owner's ruling of 2026-10-07), MAX 2,000,000. Deposit quick ladder 1,000/5,000/10,000/25,000/50,000/100,000 (page shows "1K"…).
 
 ## Deposit
-- Email gate today is LINK-based: verifyGateTitle "Thibitisha barua pepe yako ili kuweka fedha"; verifyGateBody "Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa — hii ni hatua ya mara moja kabla ya amana yako ya kwanza."
+- Email gate today is LINK-based: verifyGateTitle "Thibitisha barua pepe yako ili kuweka fedha"; verifyGateBody "Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa — hii ni hatua ya mara moja kabla ya amana yako ya kwanza." (⛔ the owner's ruling of 2026-10-07, NEXT-PLAN ▶ 0e: the app-wide email bar and the deposit's email gate are deleted for every viewer, and a deposit asks no email question)
   Code UI NO STRING; reusable: "Ingiza msimbo wa tarakimu 6", "Tumetuma msimbo kwa", "Msimbo mpya umetumwa.", "Tuma msimbo tena", "Inathibitisha…",
   "Msimbo si sahihi — jaribu tena.", "Msimbo umeisha muda — omba mpya.", "Majaribio mengi sana — subiri kidogo.", "Unaweza kuomba msimbo mpya baada ya" + countdown,
   agent.inviteOtpSent "Msimbo umetumwa kwa {address}", inviteOtpHint "Tarakimu sita, kutoka kwenye barua pepe tuliyotuma". "Tuma msimbo" NO STRING.
@@ -126,7 +126,7 @@ rule as above: they ship with S12, never earlier.
 - `failSelectionClosed` / "Soko limefungwa" → "Swali hili limefungwa" / "Muda wa kuchagua umekwisha. Sasa tunasubiri matokeo."
 - Cash-out: "Toka bila gharama · Hakuna ada" → "Uza bila ada hadi {saa}"; "TZS {n} pesa yote" → "Rudishiwa TZS {n} kamili".
 - `errDepositLimit` / `errSofRequired` · "Amana hii…" → the C11 sentences (the deposit has not happened yet; SJ-19 "kuweka pesa").
-- `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens).
+- `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens). (`verifyGateTitle`'s change is moot since 2026-10-07: the gate is deleted.)
 - Payout delayed body · "— inaweza tu kutofika mara moja." → "— pesa zinaweza tu kuchelewa kufika."
 - Market chart "Uwezekano wa NDIYO kwa muda" → "NDIO"; market KPI "Kiasi" (pool) → "Bwawa"; "Inaisha {date}" → "Matokeo {date}".
 - Akaunti · "Maswali · Simu · Barua pepe" → "Maswali ya kawaida · Simu · Barua pepe" (no number: VODACOM-PLAN §0h point 10 reversed the panel here — 0800 11 0011 is the national helpline, not our desk, and keeps its own labelled row); "Nafasi ya kadi" → "Ukubwa wa kadi"; "Mipaka · Kujitenga" → "Mipaka · Pumzika · Jizuie".
