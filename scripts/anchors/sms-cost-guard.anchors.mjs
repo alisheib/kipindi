@@ -458,4 +458,47 @@ export const MUTATIONS = [
     to: `  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5`,
     expect: `§4c ⛔ …and never to an officer whose role cannot open that page: no bell, no email for compliance`,
   },
+
+  // ══ 2026-10-07 · U49a — the credit kept for login and withdrawal codes (`sendBatch`'s `minimumBalanceTzs`, §10) ══════
+  {
+    // The plan's RED, undone: the engine asks for the credit kept for codes and the send path never looks.
+    name: "sms.ts — the marketing floor option is ignored",
+    file: "src/lib/server/sms.ts",
+    from: `    if (keptForCodes !== undefined && prepared.every((p) => p.out.purpose === "MARKETING")) {`,
+    to: `    if (false) {`,
+    expect: `§10 ⭐ below the credit kept for codes a MARKETING batch is REFUSED MARKETING_FLOOR before any request, every message reported refused and no row written`,
+  },
+  {
+    // "every" become "some": a login code sent beside marketing is held by a floor that exists to protect it.
+    name: "sms.ts — the marketing floor judges a batch that carries a login code",
+    file: "src/lib/server/sms.ts",
+    from: `&& prepared.every((p) => p.out.purpose === "MARKETING")) {`,
+    to: `&& prepared.some((p) => p.out.purpose === "MARKETING")) {`,
+    expect: `§10 ⭐ in the SAME state an OTP batch still sends, and so does a batch carrying a login code beside marketing: the marketing floor judges only an all-MARKETING batch`,
+  },
+  {
+    // Unknown read as low on the SHARED rail: one failed balance read would hold every campaign batch. Failing closed on
+    // an unreadable credit is the engine's rule, never this path's.
+    name: "sms.ts — an unknown or stale balance is read as below the credit kept for codes",
+    file: "src/lib/server/sms.ts",
+    from: `  return s.tzs !== null && !s.stale && s.tzs < keptTzs;`,
+    to: `  return s.tzs === null || s.stale || s.tzs < keptTzs;`,
+    expect: `§10 ⛔ an unreadable or a stale balance does NOT hold a MARKETING batch inside sendBatch: unknown is not low, the engine fails closed before it (E16)`,
+  },
+  {
+    // "TZS 15,000 on the card → top up → send" held on a figure the top-up had already made false.
+    name: "sms.ts — a low reading is trusted by the marketing floor without a re-check",
+    file: "src/lib/server/sms.ts",
+    from: `      if (belowKeptForCodes(keptForCodes)) await refreshSmsBalance({ maxAgeMs: LOW_READING_RECHECK_MS });`,
+    to: `      /* no re-check before the marketing floor refuses */`,
+    expect: `§10 a LOW reading over a minute old is re-checked before the marketing floor refuses: a top-up is honoured`,
+  },
+  {
+    // NaN compares false with everything, so a malformed floor would read as no floor at all.
+    name: "sms.ts — a malformed floor is read as no floor",
+    file: "src/lib/server/sms.ts",
+    from: `      if (!Number.isFinite(keptForCodes) || keptForCodes < 0) {`,
+    to: `      if (false) {`,
+    expect: `§10 ⛔ a floor that is not a figure holds the MARKETING batch: a malformed option never opens the rail (and 0, a figure, sends)`,
+  },
 ];

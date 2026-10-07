@@ -390,6 +390,8 @@ back, except U47a's future Retry (an operator's act, re-gated).
 | `held_rows` | "Paused — some people could not be checked or prepared. Resume to try them again, or Stop." | U43b |
 | `audience_unreadable` | "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy." | U42 |
 | `audience_moved` | "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy." | U42 |
+| `list_over_confirmed` | "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy." | U42 (✅ as built, its review's MINOR 1: the enqueue fails closed before the list runs) |
+| `list_over_confirmed_sending` | "Paused — more people are on this campaign's list than were confirmed, found after sending had started. Nobody more is messaged. Stop it and confirm a new copy." | U42 (✅ as built: the same, found after another step had moved the campaign to RUNNING) |
 | existing | `BALANCE_FLOOR` · `NOT_CONFIGURED` · `PROVIDER_UNRECOGNISED` · `gate_unanswered` (kept) | U36 |
 
 ---
@@ -1223,6 +1225,14 @@ the book is exhausted and the players are next, then an empty page moves to the 
    writes them with `createMany` (duplicates skipped on the unique key — restart-safe), then advances the cursor with ONE
    conditional `transition(from: ["PREPARING"], to: null, patch: { enqueueCursor })`. A Pause landing between the write
    and the cursor leaves the cursor behind; the next step re-walks the page and writes nothing new.
+   ✅ **AS BUILT (U42, S14 2026-10-07 — and its review's MINOR 1, NIT 1).** The cap is spent by rows ADDED (decision 4 as
+   built): a chunk that could cross it is written a room at a time — the room counted ONCE before the chunk, then moved
+   down by each write's own `inserted` (exact for one writer), at most that many seeds per write — so a person already on
+   the list (a page walked again) costs no room. After a step's writes the list is counted ONCE more, and ⛔ a list LONGER
+   than the confirmed count never moves to RUNNING: the campaign is paused `list_over_confirmed` (nothing was sent), or —
+   when another step had already moved it to RUNNING — `list_over_confirmed_sending` (§3.4). A step that finds the list
+   already longer than confirmed pauses the same way before it walks; one that finds the cap already MET (an earlier
+   step's finish never landed) finishes without walking.
 2. **A number that does not parse is not seeded** (it would refuse the whole batch): counted `unusable` and reported in
    the enqueue audit row. Keys come from `parseTzNumber(row.msisdn).msisdn` (the gate's key).
 3. **The seed:** `id = "rcp_" + ledgerStamp().id` (E21), `contactId` (book rows), `userId` (player rows, and a book row's
@@ -1234,10 +1244,21 @@ the book is exhausted and the players are next, then an empty page moves to the 
    `audienceWatermark` (a change in the moments after Start's check), it writes nothing and pauses the campaign
    `audience_moved` (sentence: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it
    and confirm a new copy.").
+   ✅ **AS BUILT (U42).** Read literally, "the rows already on the campaign + this chunk" counts a page walked again after an
+   interruption twice: the enqueue ends early and leaves out everyone after that page (`test:marketing-engine` E1b; plant
+   R-E3b is the literal reading). The cap counts rows ADDED instead (decision 1 as built). The ENUMERATE check runs in ONE
+   step from the walk's START — a listed audience can span the book's page and the players' — over the walk's RAW keys of
+   the people about to be written (the fence's input, so a number that cannot be messaged is still one of the people the key
+   names — E10b), compared through `startAudienceVerdict`; a newcomer AFTER the listed people is `overflow`, a swap, a
+   departure or a newcomer before one of them pauses `audience_moved`.
 5. **Finish:** when the walk says `done` or the cap is reached → `transition(PREPARING → RUNNING, { enqueuedAt, enqueueCursor:
    "done" })` + audit `marketing.campaign_enqueued`.
 6. **Backstop:** 200,000 rows written ends the enqueue with the rest reported (never silently truncated).
 7. **An unreadable stored audience** pauses the campaign `audience_unreadable` (never "start again", never "done").
+   ✅ **AS BUILT (U42):** a filter the campaign's door refuses; a filter holding a ticked selection (an `ids` arm — X13; the
+   column refuses one, so this is the belt, and its review's BLOCKER keeps the walk's own refusal the only one read: a
+   cursor it did not write, or one naming an arm the filter lacks); a confirmation whose count, tier or (listed) key cannot
+   be read. A read that FAILS throws, pausing nothing — the next step tries again.
 8. OD28's first check is NOT here — it runs at Start (U49a, E19); this step is the continuous cap.
 
 **Files.** `src/lib/server/marketing/enqueue.ts` (create), `scripts/marketing-engine.test.mts` (create — §E; U43b and U49a
@@ -1262,8 +1283,18 @@ export type EnqueueDeps = {
 export async function enqueueStep(campaignId: string, deps?: EnqueueDeps): Promise<EnqueueStepResult>;
 ```
 
+✅ **As built (U42):** `paused.reason` also takes `list_over_confirmed` and `list_over_confirmed_sending` (decision 1 as
+built); `EnqueueDeps` also hands in `frozen` (`frozenAudienceOf`, the confirmation read back — so the X13 belt has its plant);
+`done.overflow` is the finishing step's own count of people it walked past the cap (0 when it walked none).
+
 **Audit rows.** `marketing.campaign_enqueued` (SYSTEM, actor null; `{ rows, duplicates, unusable, overflow, backstop: bool }`)
 · `marketing.campaign_paused` (SYSTEM; `{ reason }`) on an unreadable audience.
+✅ **As built (U42's review, MINOR 2):** `marketing.campaign_enqueued` is `{ rows, confirmed, backstop, walkComplete, lastStep:
+{ unusable, duplicates, overflow } }` — `rows` the whole list (a groupBy) and `confirmed` the frozen count; `lastStep` the
+FINISHING step's own figures, never list totals (no counter, OD26; no row per chunk, E24 — every step's figures are in its
+result), its `overflow` null — not counted — when the walk had not ended; `backstop` true only when the backstop left people
+out (the walk not ended, or people walked past it). `marketing.campaign_paused` `{ reason }` for `audience_unreadable`,
+`audience_moved`, `list_over_confirmed` and `list_over_confirmed_sending`.
 
 **Tests** (`test:marketing-engine` §E).
 - E1 ⭐ restart mid-walk: run steps until 3 of 5 chunks, simulate a crash between `createMany` and the cursor (a transition
@@ -1280,6 +1311,11 @@ export async function enqueueStep(campaignId: string, deps?: EnqueueDeps): Promi
 **Plants:** R-E1 the cursor advanced before `createMany` · R-E1b `skipDuplicates` removed (via an injected recipient dep
 that inserts duplicates — the memory twin's index plant lives in dal-parity) · R-E3 the cap removed · R-E4 a bad key seeded
 (the batch refused whole) · R-E5 a token minted per seed.
+✅ **As built (U42 and its review):** E0–E14 — beyond the list above, E1b a restart near the cap, E10 a listed confirmation
+(changed people pause `audience_moved`, nothing written) and E10b one holding a 064 number, E11 the backstop, E12 no phone
+number anywhere, E13 the wiring (no src file imports the module but `ENQUEUE_CALLERS`, empty until U47b; no book-reader word
+— `test:contacts-audience` 1.4), E14 two steps of one campaign at once (fail closed) — with 23 in-process plants.
+`test:campaign-gates` 6.8 (a declaration-order check) is withdrawn for E10 (b).
 **Schema / deploy:** none (the seed door and `transition` exist); an ordinary push, but only AFTER U16a is live (M9).
 **Drive:** none of its own (no screen) — U47b's drive runs the enqueue through Start.
 **Risks.** A 150k enqueue is ~150 steps of 1–3 s — acceptable with the page driving; U45 tunes it.
@@ -1413,6 +1449,179 @@ caps it. **Owner decision:** none.
 ### 4.12 · U49a · The credit kept for codes, and the refusal at Start
 
 **Kind:** engine · **Hours:** 6–10 · **Review:** yes (money, codes) · **Depends:** U49s, U40a.
+
+> **As built — U49a (2026-10-07: built `e33e792c`, then its review's fixes).** Everything from here to "Planning text"
+> is the contract U47b builds from; where the planning text below differs, THIS wins. The review (no BLOCKER, no MAJOR)
+> asked for: a retryable `audience_uncounted` (a count that fails at Start is never told to confirm a new copy); Resume
+> priced on everyone still owed a message, including a list that never finished, with no read skipped; Resume's own
+> sentences and `sizes_unreadable`; `settings_unreadable` (beyond the planning list, by OD63) recorded here; OD66 held in
+> the `audience_moved` sentence; `confirmation_unreadable`, `members_unverified` and `settings_incomplete` so that no
+> sentence says what the check cannot know; a reserve that is not a figure above 0 read as unreadable everywhere.
+
+**As built · Start, in order** (`checkStart`; `startRefusal` is its refusal or null). The first that refuses answers.
+1. `not_confirmed` — the row is not CONFIRMED. `confirmation_unreadable` — it is, but its frozen confirmation cannot be
+   read whole: the tier, the count (≥ 1), `estimateSegments` (≥ 1), `budgetTzs`, the saved sizes, the count × the largest
+   saved variant equal to `estimateSegments`, and — for a list confirmation — a 32-hex members key.
+2. `switch_closed` — through `marketingLiveGate` (the console stub passes it: no handset, no money). An unrecognised
+   provider is never a closed switch: step 3 answers it.
+3. `rail_dead` — `smsRailProblem`, or `provider-unrecognised` for an unrecognised provider whatever the reader says.
+4. `needs_source_line` — E18, judged on the stored filter (book or both, blank `sourcePhrase`).
+5. `audience_unreadable` — the stored filter no longer reads at the campaign's door. ⛔ The ONLY step that says so.
+6. `settings_unreadable` — the settings re-read did not answer or threw (retryable). `settings_incomplete` — the stored
+   record cannot be read in full (`readable: false`): a developer's repair. ⛔ OD63: never priced from the defaults.
+7. `price_unknown` — today's price (`loadSegmentCost`: measured, else the configured one) is unknown.
+8. `over_budget` — `ceil(estimateSegments × today's price)` (U39's arithmetic) strictly above the frozen `budgetTzs`. ⛔
+   Never the frozen `estimateTzs`: the price may have moved since the confirmation.
+9. `credit_unreadable` · `credit_low` — `refreshSmsBalance({ maxAgeMs: 60_000 })`, waited for, through `balanceFigureOf`
+   and `creditVerdict` against that same cost and the settings' `codesReserveTzs`. Not read on the console stub.
+10. OD28 through the ONE fence (`audienceFence`, the members key scoped to the confirmed row's own id and revision) →
+    `startAudienceVerdict`: `audience_uncounted` — the fence threw or answered a count that is not one (RETRYABLE);
+    `audience_moved` — more people than were confirmed (with `population`); `members_unverified` — a list confirmation
+    whose fresh walk could not name its people (the count and the walk disagree, or a number that cannot be listed came
+    in); `members_changed` — a list whose people differ (a swap, fewer, nobody). The same or fewer start, with `shrunkBy`.
+
+**As built · Resume** (`resumeRefusal(c, counts)` — the recipient rows by status, so no caller can hand it another figure).
+- What is left (`resumeOutstanding`, the ONE definition): the list finished (`enqueuedAt` set) → PENDING + HELD; the list
+  never finished (`enqueuedAt` null — paused while PREPARING; Resume returns it to PREPARING, §3.1) → the confirmed count
+  (`audienceCount`) minus the settled rows, never fewer than the rows outstanding; no confirmed count to start from → null.
+  Counts that are not a whole number ≥ 0 for EVERY status throw.
+- ✅ **FIRST, with no read (the U42 + U49a merge — §4.15 decision 1 as amended): what only a new copy can fix**
+  (`copyOnlyRefusal`): `list_over_confirmed` — a list LONGER than its confirmed count, read off the counts and WHATEVER the
+  stop reason (an officer's Pause can land before the enqueue's own); then a campaign the enqueue paused `audience_moved`,
+  `audience_unreadable`, `list_over_confirmed` or `list_over_confirmed_sending` is refused `audience_moved`,
+  `audience_unreadable` or `list_over_confirmed`, even with its list within its count. Neither the switch nor the credit is
+  read for them, and the console stub is refused them too. Each sentence says Stop it and confirm a new copy, and Nobody
+  more was messaged (`test:marketing-engine` F16, F13).
+- Order: `switch_closed` → `rail_dead` → (the console stub resumes here) → `confirmation_unreadable` (what is left is null)
+  → `sizes_unreadable` (the saved sizes cannot be read, so it cannot be priced) → `settings_unreadable` /
+  `settings_incomplete` → `price_unknown` → `credit_unreadable` / `credit_low` for `ceil(what is left × the largest saved
+  variant × today's price)`. ⛔ Nothing is skipped because nothing is left: a cost of 0 still reads the settings and the
+  credit, and still keeps the line. The status is the caller's conditional transition.
+
+**As built · who may read what.** ⛔ A refusal OBJECT (`StartRefusal`, `ResumeRefusal`) carries money and count figures
+for EVERY role — for the caller's audit row and its decisions; ONLY the sentence functions may reach a viewer, and the
+object is never sent to a browser. `RefusalViewer = { money, reads }`: `money` is `campaignMoneyVisible`, `reads` is the
+viewer's `identity.contact` cell being `read`. TZS and money figures only for `money`; ⛔ OD66 · the count of a book ∪
+players campaign (`audience_moved` with `population: "both"`) only for `reads`. A one-arm count is OD65's count alone and
+is said to every role.
+
+**As built · APIs.**
+
+```ts
+// src/lib/server/marketing/start-check.ts
+export type CampaignPopulation = "book" | "players" | "both";
+export type StartRefusal =
+  | { reason: "not_confirmed" | "confirmation_unreadable" | "switch_closed" | "needs_source_line" | "audience_unreadable"
+      | "settings_unreadable" | "settings_incomplete" | "price_unknown" | "credit_unreadable" | "audience_uncounted"
+      | "members_unverified" | "members_changed" }
+  | { reason: "rail_dead"; rail: SmsRailProblem }
+  | { reason: "over_budget"; costTzs: number; budgetTzs: number }
+  | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number }
+  | { reason: "audience_moved"; freshCount: number; confirmedCount: number; population: CampaignPopulation };
+export type ResumeRefusal =
+  | { reason: "list_over_confirmed" | "audience_moved" | "audience_unreadable" // the U42 + U49a merge (copyOnlyRefusal)
+      | "switch_closed" | "confirmation_unreadable" | "sizes_unreadable" | "settings_unreadable"
+      | "settings_incomplete" | "price_unknown" | "credit_unreadable" }
+  | { reason: "rail_dead"; rail: SmsRailProblem }
+  | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number };
+export type RefusalViewer = { money: boolean; reads: boolean };
+export type StartCheck = { ok: true; freshCount: number; shrunkBy: number; costTzs: number } | { ok: false; refusal: StartRefusal };
+export const START_CREDIT_MAX_AGE_MS = 60_000;
+export async function checkStart(c: StoredSmsCampaign, deps?: StartCheckDeps): Promise<StartCheck>;
+export async function startRefusal(c: StoredSmsCampaign, deps?: StartCheckDeps): Promise<StartRefusal | null>;
+export function resumeOutstanding(c: Pick<StoredSmsCampaign, "enqueuedAt" | "audienceCount">, counts: SmsCampaignRecipientStatusCounts): number | null;
+export function copyOnlyRefusal(c: Pick<StoredSmsCampaign, "audienceCount" | "stopReason">, counts: SmsCampaignRecipientStatusCounts): ResumeRefusal | null; // the merge
+export async function resumeRefusal(c: StoredSmsCampaign, counts: SmsCampaignRecipientStatusCounts, deps?: StartCheckDeps): Promise<ResumeRefusal | null>;
+export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): string;
+export function resumeRefusalSentence(r: ResumeRefusal, viewer: RefusalViewer): string;
+// src/lib/marketing/credit-guard.ts (pure) — a reserve must be a finite figure ABOVE 0, a cost a finite figure ≥ 0
+export function creditVerdict(a: { balance: BalanceFigure; costTzs: number; reserveTzs: number }):
+  { ok: true } | { ok: false; reason: "credit_unreadable" } | { ok: false; reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number };
+// src/lib/server/sms.ts
+export type SmsBatchOptions = { minimumBalanceTzs?: number };
+export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions): Promise<SmsBatchOutcome>;
+```
+
+**As built · the Start sentences, verbatim** (`startRefusalSentence`; the figures are the spec's examples):
+- `not_confirmed`: "Only a confirmed campaign can start."
+- `confirmation_unreadable`: "This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a
+  new copy. Nothing was sent."
+- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+  then you can start. Nothing was sent."
+- `rail_dead`: "No SMS can leave this server right now — Admin → System says why. Nothing was sent."
+- `needs_source_line`: "This campaign can reach people from the contact book, and its message has no source line. Stop it
+  and confirm a copy once the owner has set the source line. Nothing was sent."
+- `audience_unreadable`: "The saved audience can't be read any more. Stop this campaign and confirm a new copy. Nothing
+  was sent."
+- `settings_unreadable`: "The Marketing SMS settings couldn't be read just now, so this campaign can't be checked before it
+  starts. Try again in a moment. Nothing was sent."
+- `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before
+  it starts. The developer must repair them first. Nothing was sent."
+- `price_unknown`: "The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System →
+  Marketing SMS. Nothing was sent."
+- `over_budget` (money): "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it
+  and confirm a smaller copy, or the owner raises the limit. Nothing was sent." · (other roles): "At today's price this
+  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent."
+- `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a
+  minute. Nothing was sent."
+- `credit_low` (money): "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
+  24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent." ·
+  (other roles): "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes
+  need. Ask the owner to top up. Nothing was sent."
+- `audience_uncounted`: "The audience couldn't be counted just now. Try again in a minute. Nothing was sent."
+- `audience_moved` (a reader, or a one-arm campaign): "The audience grew since it was confirmed — now 1,610, confirmed
+  1,604. Nothing was sent. Stop this campaign and confirm a new copy." · (book ∪ players, a viewer who may not read
+  numbers): "The audience grew since it was confirmed. Nothing was sent. Stop this campaign and confirm a new copy."
+- `members_unverified`: "The people on this campaign couldn't be matched to the confirmed list just now. Try again in a
+  minute; if it happens again, stop this campaign and confirm a new copy. Nothing was sent."
+- `members_changed`: "The people on this campaign changed since they were confirmed. Nothing was sent. Stop this campaign
+  and confirm a new copy."
+
+**As built · the Resume sentences, verbatim** (`resumeRefusalSentence` — a paused campaign may already have sent, so each
+ends "Nobody more was messaged."; none says start, narrow the audience, or "Nothing was sent."):
+- `list_over_confirmed` (the U42 + U49a merge): "More people are on this campaign's list than were confirmed, so it can't
+  resume. Stop it and confirm a new copy. Nobody more was messaged."
+- `audience_moved` (the merge): "The people on this campaign changed after it was confirmed, so it can't resume. Stop it
+  and confirm a new copy. Nobody more was messaged."
+- `audience_unreadable` (the merge): "The saved audience can't be read any more, so this campaign can't resume. Stop it and
+  confirm a new copy. Nobody more was messaged."
+- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+  then you can resume. Nobody more was messaged."
+- `rail_dead`: "No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more
+  was messaged."
+- `confirmation_unreadable`: "This campaign's confirmation can't be read in full, so what is left to send can't be
+  counted, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."
+- `sizes_unreadable`: "This campaign's saved message size can't be read, so what is left to send can't be priced, and it
+  can't resume. Stop it, or ask the developer. Nobody more was messaged."
+- `settings_unreadable`: "The Marketing SMS settings couldn't be read just now, so what is left to send can't be checked.
+  Try again in a moment. Nobody more was messaged."
+- `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so what is left to send can't be
+  checked. The developer must repair them first. Nobody more was messaged."
+- `price_unknown`: "The price per SMS isn't known, so what is left to send can't be priced. The owner sets it on Admin →
+  System → Marketing SMS. Nobody more was messaged."
+- `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't resume safely. Try again in a
+  minute. Nobody more was messaged."
+- `credit_low` (money): "Resuming would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
+  24,000, the rest of this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, then resume. Nobody more was
+  messaged." · (other roles): "There isn't enough SMS credit to finish this campaign and still keep what login and
+  withdrawal codes need. Ask the owner to top up, then resume. Nobody more was messaged."
+
+**As built · around it.**
+- `sendBatch`'s `minimumBalanceTzs` judges only an all-MARKETING batch, after the platform floor (`BALANCE_FLOOR` keeps
+  precedence); a confirmed reading strictly below it, re-checked first when over a minute old, holds the whole batch
+  `MARKETING_FLOOR` before any row or request; a missing or stale reading is asked for first; unknown stays "not low"
+  there (the engine fails closed); an option that is not a figure of 0 or more holds the batch; a batch carrying a login
+  code is never held by it; with no option the function is unchanged. Its error strings: "SMS credit is below the TZS
+  20,000 kept for login and withdrawal codes — marketing messages are held so codes keep sending" · "the credit kept for
+  login and withdrawal codes is not a usable figure, so marketing messages are held".
+- The estimate's reserve is the settings' `codesReserveTzs`, re-read with the price; a reserve not read, NaN, negative or
+  0 is UNREADABLE — no spendable, covers or shortfall — and the covers tile says "needs the credit kept for login and
+  withdrawal codes, which couldn't be read"; with a reserve: "TZS 10,376 left, above the TZS 20,000 kept for login and
+  withdrawal codes".
+- Guards: `test:marketing-engine` §F (F0–F15, its plants in memory: `red:marketing-engine`) · `test:sms-cost-guard` §10
+  (its plants in `scripts/anchors/sms-cost-guard.anchors.mjs`).
+
+**Planning text (2026-10-04), kept for the record:**
 
 **Premises checked.** P2 (the floor, its re-check, the OTP exemption), `refreshSmsBalance` (`sms.ts:383`: fresh / reused /
 pending / failed / unavailable, `stale`), `balanceFigureOf` (`estimate.ts:63`), `startAudienceVerdict` (P10),
@@ -1765,6 +1974,17 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
    "officer_stopped" })`), `copyCampaign` (a new DRAFT through `saveCampaignDraft` with the stored message and
    `campaignAudienceParams(storedFilter)`; refused when the filter cannot travel), `campaignStep` (§3.3: enqueueStep /
    runCampaignSlice / reap).
+   ⚠️ **AMENDED (U42's review, S14 2026-10-07 — MINOR 1).** `campaignStep` SINGLE-FLIGHTS PREPARING steps PER CAMPAIGN,
+   in-process — E10's globalThis gate widened to the enqueue step — so two drivers (two officers' pages, §4.15 Risks) never
+   run two enqueue steps of one campaign at once: two steps with stale counts could each write inside their own room on the
+   cap's page. Across processes (a deploy's overlap) the enqueue itself FAILS CLOSED (§4.9 decision 1 as built: a list longer
+   than confirmed is paused `list_over_confirmed`, or `list_over_confirmed_sending` once RUNNING). `enqueue.ts` names this
+   amendment as its residual's answer. And `resumeRefusal` REFUSES (1) a campaign whose list is LONGER than its confirmed
+   count — one groupBy, WHATEVER its stop reason, since an officer's Pause can land before the enqueue's own — and (2) one
+   the enqueue paused for `audience_unreadable`, `audience_moved`, `list_over_confirmed` or `list_over_confirmed_sending`:
+   each sentence says Stop and confirm a new copy, and a Resume of a list that already ran goes back to RUNNING and would
+   send to the extra rows. ✅ **The refusal is built** at the U42 + U49a merge, in `start-check.ts`'s `resumeRefusal`
+   (`copyOnlyRefusal`, asked before any read — §4.12's as-built Resume); the single-flight is U47b's to build.
 2. **The view-model** (`campaign-live.ts`) — ONE function, used by the page's first render AND returned by every step and
    poll, so the browser never computes a figure. Role-shaped: E23's floor; money only for `campaignMoneyVisible`.
 3. **The driver** (`live-driver.tsx`, client): while the status is PREPARING or RUNNING and the viewer may act, it calls

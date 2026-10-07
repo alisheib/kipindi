@@ -519,6 +519,9 @@ export type SmsFailureCode =
   | "NOT_CONFIGURED"
   | "PROVIDER_UNRECOGNISED"
   | "BALANCE_FLOOR"
+  /** U49a · an all-MARKETING batch held at the credit kept for login and withdrawal codes — only when its caller set
+   *  `minimumBalanceTzs` (`SmsBatchOptions`). Whole batch, before any row or request, like `BALANCE_FLOOR`. */
+  | "MARKETING_FLOOR"
   /** The number is not one a gateway can dial — refused here, before a row exists. See `sendBatch`. */
   | "BAD_MSISDN"
   | "REJECTED"
@@ -588,6 +591,27 @@ export type SmsBatchOutcome = {
   refused?: SmsFailureCode;
 };
 
+/**
+ * ⭐ U49a · WHAT A CALLER MAY ASK OF ONE BATCH BEYOND ITS MESSAGES (ENGINE-SPEC §4.12 decision 1, E16).
+ * Leave it out and `sendBatch` behaves exactly as it always has: every existing caller (the OTP path, invites, the
+ * campaign test send) passes nothing.
+ */
+export type SmsBatchOptions = {
+  /**
+   * The credit kept for login and withdrawal codes, in TZS — the campaign engine's LAST line (its slice checks the
+   * credit before it claims anyone). It judges ONLY a batch whose every message is MARKETING, after the platform floor,
+   * and holds the whole batch `MARKETING_FLOOR` on a CONFIRMED reading below it. ⛔ An OTP never passes it.
+   */
+  minimumBalanceTzs?: number;
+};
+
+/** U49a · a CONFIRMED reading under the credit kept for codes: a live figure (one past the TTL is stale) strictly
+ *  below it. ⛔ UNKNOWN IS NOT LOW — no reading, or a stale one, never holds a batch here (the engine fails closed). */
+function belowKeptForCodes(keptTzs: number): boolean {
+  const s = smsBalanceSnapshot();
+  return s.tzs !== null && !s.stale && s.tzs < keptTzs;
+}
+
 const chunk = <T,>(xs: T[], size: number): T[][] => {
   const out: T[][] = [];
   for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
@@ -610,8 +634,11 @@ const chunk = <T,>(xs: T[], size: number): T[][] => {
  * ⚠️ A TRANSPORT FAILURE LEAVES THE ROW `UNKNOWN`, NOT `FAILED`. The gateway may
  * hold the batch and bill for it; we simply lost the reply. Calling that a failure
  * invites a retry, and a retry is a second SMS at a second charge.
+ *
+ * ⭐ U49a · `opts.minimumBalanceTzs` (`SmsBatchOptions`) adds ONE check after the platform
+ * floor, for an all-MARKETING batch only. With no option this function is what it was.
  */
-export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcome> {
+export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions): Promise<SmsBatchOutcome> {
   if (messages.length === 0) return { results: [], balanceTzs: smsBalanceSnapshot().tzs };
 
   const transport = pickTransport();
@@ -716,6 +743,28 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
         "BALANCE_FLOOR",
         `SMS credit is below the TZS ${balanceFloor()} floor — non-critical messages are held so login codes keep sending`,
       );
+    }
+    // ⛔ U49a · THE CREDIT KEPT FOR LOGIN AND WITHDRAWAL CODES (ENGINE-SPEC §4.12 decision 1, E16) — ADDITIVE, judged
+    // after the platform floor above, and ONLY when the caller set `minimumBalanceTzs` AND every prepared message is
+    // MARKETING: a batch that carries a login code beside marketing is never held by it, and an OTP-only batch never
+    // reaches this block at all. A CONFIRMED reading below it holds the WHOLE batch, as the floor does — re-checked first
+    // when it is over a minute old (a top-up is honoured, exactly as the floor's re-check honours one).
+    // ⛔ UNKNOWN STAYS "NOT LOW" HERE, as everywhere in this file: failing closed on an unreadable credit is the ENGINE's
+    // rule (its slice pauses `credit_unreadable` before it claims anyone), never the shared send path's.
+    // ⛔ A floor that is not a figure of 0 or more (NaN, a string, a negative) holds the batch: a malformed option never
+    // opens the rail.
+    const keptForCodes = opts?.minimumBalanceTzs;
+    if (keptForCodes !== undefined && prepared.every((p) => p.out.purpose === "MARKETING")) {
+      if (!Number.isFinite(keptForCodes) || keptForCodes < 0) {
+        return refuse("MARKETING_FLOOR", "the credit kept for login and withdrawal codes is not a usable figure, so marketing messages are held");
+      }
+      if (belowKeptForCodes(keptForCodes)) await refreshSmsBalance({ maxAgeMs: LOW_READING_RECHECK_MS });
+      if (belowKeptForCodes(keptForCodes)) {
+        return refuse(
+          "MARKETING_FLOOR",
+          `SMS credit is below the ${formatTzs(keptForCodes)} kept for login and withdrawal codes — marketing messages are held so codes keep sending`,
+        );
+      }
     }
   }
 

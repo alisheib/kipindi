@@ -35,14 +35,16 @@
  * 🔴 The plan's "count + watermark" never defined the watermark. An UNKEYED digest of a one-person audience, sent to
  * the browser, can be brute-forced back to the number (about ten million candidates once the masked tail and the
  * operator are known). So the members key is an HMAC computed on the server (`audience-fence.ts`, U40a). This module
- * fixes only its INPUT (`canonicalMembers`) and its shape (`MEMBERS_KEY_HEX_CHARS`), so that the confirmation and
- * U42's Start can never compute two different keys for one set of people.
+ * fixes only its INPUT (`canonicalMembers`) and its shape (`MEMBERS_KEY_HEX_CHARS`), so that the confirmation, Start
+ * (U49a) and U42's enqueue can never compute two different keys for one set of people.
  *
  * ── OD28 · START ─────────────────────────────────────────────────────────────
- * U42 calls `startAudienceVerdict` before it writes its first recipient row. MORE people than were confirmed refuses
- * with `audience_moved` and sends nothing. The same number or fewer goes ahead and reports how many fewer. An
- * ENUMERATED confirmation refuses any change of people at all, because a keyed set cannot prove that it holds only a
- * subset.
+ * Start (U49a's refusal at U47b's Start, ENGINE-SPEC E19) calls `startAudienceVerdict` before a campaign moves to
+ * PREPARING. MORE people than were confirmed refuses with `audience_moved` and sends nothing. The same number or fewer
+ * goes ahead and reports how many fewer. An ENUMERATED confirmation refuses any change of people at all, because a keyed
+ * set cannot prove that it holds only a subset. ⭐ U42's enqueue (`enqueue.ts`, §4.9 decisions 4 and 8) is the
+ * CONTINUOUS cap, not this first check: it holds a typed confirmation to its count by the rows it adds, and a listed one
+ * to its people through this same comparison, while it writes.
  *
  * ⛔ IT FAILS CLOSED. Each rule here can only RAISE the bar. An unreadable count is typed, a claim that could not
  * name its members is typed, and an unreadable count at Start refuses.
@@ -136,8 +138,8 @@ export type FenceClaim = {
 /**
  * The INPUT to the members key: the people an enumerate confirmation lists, in one spelling. The keys are sorted
  * and each number is counted ONCE, because a number that is both in the book and on a player account is one person
- * (X9, OD6). The server HMACs this string. The confirmation and U42's Start both call this function, so they cannot
- * build two different keys for the same people.
+ * (X9, OD6). The server HMACs this string. The confirmation, Start (U49a) and U42's enqueue all call this function, so
+ * they cannot build two different keys for the same people.
  * ⛔ Returns `null` unless the walk named EXACTLY `count` distinct bare keys, with `count` between 1 and
  * `CONFIRM_ENUMERATE_MAX`. A walk that disagrees with the count, a "+255" or "07…" spelling, or a sixth person all
  * give no key, and `buildFenceClaim` then makes the claim typed.
@@ -317,7 +319,8 @@ export type StartAudienceVerdict =
   | { ok: false; reason: "audience_moved"; freshCount: number; confirmedCount: number };
 
 /**
- * ⭐ OD28, for U42 to call before its first recipient row. `confirmed*` are the frozen columns (`audienceCount`,
+ * ⭐ OD28, for Start (U49a, E19) to call before a campaign moves to PREPARING — and U42's enqueue asks it again of a
+ * listed confirmation's people while it writes (§4.9 decision 4). `confirmed*` are the frozen columns (`audienceCount`,
  * `confirmTier`, `audienceWatermark`). `fresh` is the campaign population counted now, through the same walk, with
  * its members key whenever the confirmation was enumerated.
  *   · MORE people than were confirmed → `audience_moved`, and nothing is sent. That is money nobody approved.
