@@ -90,6 +90,12 @@ corrected.
 > → signed order-status re-query → exactly-once credit) + **player receipts** (`/wallet/receipt/[id]`).
 > **Email is now mandatory at sign-up and GATES THE FIRST DEPOSIT**; sign-in takes email *or* phone.
 > Ladder: browse free → confirm email to deposit → KYC to withdraw.
+> ⚠️ **Corrected 2026-10-07 (owner ruling): a deposit asks NO email any more** — not even "add one". A confirmed email
+> is required to WITHDRAW, beside identity: register → deposit and play → verify identity + confirm email → withdraw.
+> The app-wide bar below is DELETED (the step is asked quietly on the withdraw screen, the profile pill and the
+> first-deposit notice); money email goes only to confirmed addresses; every deposit and withdrawal is kept in the app
+> at `/wallet/receipts` (Profile → Receipts). Minimum deposit and stake: TZS 1,000. `docs/COMPLIANCE-DECISIONS.md`,
+> the two 2026-10-07 entries.
 > ✅ **SELCOM STATES/NOTIFICATIONS/VERIFICATION COMPLETED 2026-07-19.** Every deposit state
 > (PROCESSING · CONFIRMED · FAILED · REVERSED) now has a player notification, an email where
 > it matters, a truthful label and a receipt link; deposit emails carry BOTH the 50pick and
@@ -678,6 +684,8 @@ Already shipped (was on this list before):
   email door in place of the form — a locked door as the first screen. Before that (2026-09-05 →
   09-13) they landed on `/profile/kyc?welcome=new`. Never route a new account to a gate: the email
   is asked by the app-wide bar and enforced at deposit (`docs/FLOWS.md` §1).
+  ⚠️ Corrected again 2026-10-07 (owner ruling): there is no app-wide email bar and no email door at deposit — the
+  confirmed email is asked at WITHDRAWAL, quietly (`docs/FLOWS.md` §2).
   ⚠️ **At the Vodacom plan's S15 flip (`docs/VODACOM-PLAN.md` §3.7)** the no-`next` landing is already
   `/?welcome=new`; what still changes is that a player who signed up from the bet sheet lands back on
   that sheet (`?bet=`).

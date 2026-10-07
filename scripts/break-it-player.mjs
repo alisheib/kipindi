@@ -344,10 +344,11 @@ console.log("\n=== H · WITHDRAWAL ASKS FOR IDENTITY; NOTHING ELSE DOES ===");
   const barOnWithdraw = await p.locator('[data-testid="kyc-verify-banner"]').count();
 
   await p.goto(`${BASE}/wallet/deposit`, { waitUntil: "networkidle" });
-  log("H4 ⛔ /wallet/deposit shows NO identity panel — its one door is the email",
-    (await p.locator('[data-testid="kyc-gate-panel"]').count()) === 0);
-  log("H5 control · …the email door or the deposit form is what renders there",
-    (await p.locator('[data-testid="email-verify-gate"], #provider-MPESA').count()) > 0);
+  // 2026-10-07 (owner ruling): a deposit asks no email either — the screen is the form, whatever the email standing.
+  log("H4 ⛔ /wallet/deposit shows NO identity panel and NO email door",
+    (await p.locator('[data-testid="kyc-gate-panel"]').count()) === 0 && (await p.locator('[data-testid="email-verify-gate"]').count()) === 0);
+  log("H5 control · …the deposit form is what renders there",
+    (await p.locator("#provider-MPESA").count()) > 0);
   const barOnDeposit = await p.locator('[data-testid="kyc-verify-banner"]').count();
   log("H6 ⛔ no app-wide identity bar (deleted 2026-09-13) on either screen",
     barOnWithdraw === 0 && barOnDeposit === 0, `withdraw=${barOnWithdraw} deposit=${barOnDeposit}`);

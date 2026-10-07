@@ -544,19 +544,42 @@ function persist(): void {
   void saveConfig(MARKET_CONFIG_KEY, { global: store.global, perMarket: Array.from(store.perMarket.entries()), v: CONFIG_VERSION });
 }
 
-/** Read merged config — per-market overrides on top of global. */
+/**
+ * ⭐ THE STAKE FLOOR, APPLIED ON READ (management, relayed by Ali 2026-10-07: "consistently 1000 not 500" — RULES.md
+ * §2.3). The minimum stake is TZS 1,000 (`PLATFORM_MIN_STAKE`), and every WRITE below it is refused (`validate`). But a
+ * value STORED before a floor was raised survives until something rewrites it — the v3 reconcile above exists because
+ * production sat on 500 for weeks after the code said 1,000, and a per-market override is never reconciled at all. So
+ * every READ floors the copy it returns: the rules pages, the dial, the board, the house engine and `buyPosition` can
+ * never meet a stake bound under the rule, whatever a row says. The max is lifted to at least the min.
+ * ⛔ The STORE is never mutated here and `persist()` writes it raw; the admin form shows "stored X · enforced Y" when
+ * the two differ (`getStoredStakeBounds`), so an officer can see — and save away — a legacy value.
+ */
+export function floorStakeBounds<T extends { minStake: number; maxStake: number }>(c: T): T {
+  const minStake = Math.max(Number.isFinite(c.minStake) ? c.minStake : PLATFORM_MIN_STAKE, PLATFORM_MIN_STAKE);
+  const maxStake = Math.max(Number.isFinite(c.maxStake) ? c.maxStake : PLATFORM_MAX_STAKE, minStake);
+  return { ...c, minStake, maxStake };
+}
+
+/** Read merged config — per-market overrides on top of global, stake bounds floored (`floorStakeBounds`). */
 export async function getEffectiveConfig(marketId?: string): Promise<RateConfig> {
   await ensureHydrated();
   if (marketId) {
     const over = store.perMarket.get(marketId);
-    if (over) return { ...store.global, ...over };
+    if (over) return floorStakeBounds({ ...store.global, ...over });
   }
-  return { ...store.global };
+  return floorStakeBounds({ ...store.global });
 }
 
 export async function getGlobalConfig(): Promise<RateConfig> {
   await ensureHydrated();
-  return { ...store.global };
+  return floorStakeBounds({ ...store.global });
+}
+
+/** The GLOBAL stake bounds exactly as stored — for the admin form's "stored X · enforced Y" line only. ⛔ Never enforce
+ *  or display these to a player: every reader of a bound goes through the floored getters above. */
+export async function getStoredStakeBounds(): Promise<{ minStake: number; maxStake: number }> {
+  await ensureHydrated();
+  return { minStake: store.global.minStake, maxStake: store.global.maxStake };
 }
 
 /**

@@ -85,15 +85,16 @@ export const MUTATIONS = [
   },
   {
     name: "deposit-gate-restored",
-    why: "🔴 The 2026-09-05 deposit gate, put back exactly where it stood — between the RG lockout and "
-       + "the email gate, asking the withdrawal question. It reads as prudence and it is a reversal of "
-       + "the owner's ruling: a player who has confirmed their email is told to verify identity before "
-       + "they may add money. `deposit()` still imports the gate, so this is one line away.",
+    why: "🔴 The 2026-09-05 deposit gate, put back where it stood — after the RG lockout and before the "
+       + "reserving lock, asking the withdrawal question. It reads as prudence and it is a reversal of "
+       + "the owner's ruling: a player is told to verify identity before they may add money. `deposit()` "
+       + "still imports the gate, so this is one line away. (Re-anchored 2026-10-07: the email gate it "
+       + "sat above is deleted, so the plant now lands on the first line of the reservation block.)",
     file: WALLET,
-    from: `  if (!depositor?.emailVerifiedAt) {`,
+    from: `  const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;`,
     to: `  const identityGate = await assertIdentityForPayout(userId);\n`
       + `  if (!identityGate.eligible) return { ok: false, error: "Identity not verified.", code: "INVALID", reason: identityGate.reason };\n`
-      + `  if (!depositor?.emailVerifiedAt) {`,
+      + `  const thirtyDaysAgo = Date.now() - 30 * 24 * 3600_000;`,
     check: "1.NOT_STARTED.deposit · goes through with a confirmed email",
   },
   {
@@ -115,7 +116,8 @@ export const MUTATIONS = [
        + "stays green — and the compliance record of which deposits arrived before identity was ever "
        + "checked silently stops being written, on the row the 2026-09-13 ruling relies on.",
     file: WALLET,
-    from: `amount: parse.data.amount, kycStatus: standing.kycStatus, everApproved: standing.everApproved } });`,
+    // Re-anchored 2026-10-07: the row gained the email standing (`hasEmail`, `emailConfirmed`) beside these two.
+    from: `amount: parse.data.amount, kycStatus: standing.kycStatus, everApproved: standing.everApproved, hasEmail: !!depositor?.email, emailConfirmed: !!depositor?.emailVerifiedAt } });`,
     to: `amount: parse.data.amount } });`,
     check: "7.2 · deposit.initiated carries kycStatus AND everApproved",
   },

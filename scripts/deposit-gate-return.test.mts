@@ -1,12 +1,10 @@
 /**
- * DEPOSIT EMAIL GATE + CARD RETURN LEG — the two money-in guards, and the door that is NOT there.
+ * MONEY IN — NO EMAIL DOOR, NO IDENTITY DOOR · THE CARD RETURN LEG.
  *
- * Part A — the email gate. A confirmed address is required before the first deposit.
- * The ladder (owner ruling, Ali, 2026-09-13) is register → confirm email → deposit and
- * play → verify identity → withdraw, so on the money-in path this is the FRONT door.
- * What must hold: a blocked deposit creates NO transaction row, consumes NO deposit cap,
- * and never reaches the gateway; admins are not exempt; and changing an address re-gates
- * depositing (because it clears the verified flag).
+ * Part A — no email door (owner ruling, Ali, 2026-10-07). A deposit asks no email question: an account with no
+ * address, an unconfirmed one, a changed one and a staff account all deposit, and each deposit RECORDS the email
+ * standing on its `deposit.initiated` row. The ladder is register → deposit and play → verify identity + confirm email →
+ * withdraw. The doors that remain (a break, the TZS 1,000 minimum) are driven to a refusal in the same run.
  *
  * Part B — the return leg. Selcom sends the buyer back with UNSIGNED query
  * params. The load-bearing property is that those params decide nothing: the
@@ -15,15 +13,15 @@
  * payment reports PENDING (never FAILED — that is what makes people pay twice),
  * and refresh / back-button / double-submit credit exactly once.
  *
- * Part C — no identity door on money in (2026-09-13). An account with a confirmed email
- * deposits in EVERY identity state; the same account is refused at WITHDRAWAL on identity,
- * which is where the ladder puts the question; no role carries an identity door; and a
- * responsible-gambling break still outranks the email door.
+ * Part C — no identity door on money in (2026-09-13). An account deposits in EVERY identity state; the same account is
+ * refused at WITHDRAWAL on identity, which is where the ladder puts the question; no role carries an identity door; and
+ * a responsible-gambling break still outranks every other answer.
  */
 import { db } from "../src/lib/server/store.ts";
 import { deposit, settleDepositFromReturn, withdraw } from "../src/lib/server/wallet-service.ts";
 import { setUserEmail } from "../src/lib/server/email-verification.ts";
 import { setPaymentControls } from "../src/lib/server/payment-control.ts";
+import { getAuditPage } from "../src/lib/server/audit.ts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -84,60 +82,84 @@ async function mkUser(id: string, opts: { verified: boolean; email?: string | nu
 
 const txnsFor = async (uid: string) => (await db.txn.findByUser(uid)).length;
 
-// ═══ PART A — THE EMAIL GATE ════════════════════════════════════════════════
+// ═══ PART A — NO EMAIL DOOR ON MONEY IN (owner ruling 2026-10-07) ═══════════════
+//
+// 🔴 INVERTED 2026-10-07, NOT DELETED. Until that day this part proved the email gate: an unconfirmed or missing address
+// was refused a deposit, staff included, and changing the address re-gated depositing. Ali: *"for deposits — even if no
+// mail was there — remove the input to verify mail to deposit; only withdrawals are enforced to verify mail"*. A removed
+// gate comes back silently (one block restored in `deposit()` and nothing else goes red), so every account shape that
+// was refused is now driven to an ACCEPTED deposit — and the doors that REMAIN are driven to a refusal in the same run,
+// or every line below would be satisfied by a `deposit()` that accepts everybody. The email moved to WITHDRAWAL:
+// `test:withdraw-email-gate` holds that half.
 
-// A1 — unverified email blocks the deposit, and leaves NO trace behind.
+/** The `deposit.initiated` row a deposit by `userId` wrote (newest first). */
+function initiatedFor(userId: string) {
+  return getAuditPage({ limit: 10_000, category: "WALLET" }).find((e) => e.action === "deposit.initiated" && e.actorId === userId);
+}
+
+// A1 — an UNCONFIRMED email deposits, and the deposit carries the account's email standing.
 await mkUser("usr_gate_unverified", { verified: false });
 {
   const before = await txnsFor("usr_gate_unverified");
   const r = await deposit("usr_gate_unverified", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
-  ok("unverified email → deposit refused", !r.ok);
-  ok("refusal carries the actionable EMAIL_UNVERIFIED code (not a generic INVALID)",
-    !r.ok && r.code === "EMAIL_UNVERIFIED", !r.ok ? String(r.code) : "");
-  ok("refusal message tells the player what to do", !r.ok && /confirm your email/i.test(r.error));
-  // The gate sits BEFORE the reserving lock on purpose: a blocked deposit must
-  // not create a PROCESSING row that eats the player's daily cap.
-  ok("blocked deposit creates NO transaction row", (await txnsFor("usr_gate_unverified")) === before);
-  ok("blocked deposit credits nothing", (await db.wallet.findByUserId("usr_gate_unverified"))?.balance === 0);
+  ok("A1 · ★ an unconfirmed email → deposit ACCEPTED", r.ok, r.ok ? "" : `${r.code} — ${r.error}`);
+  ok("A1 · …and it reserved exactly one transaction", (await txnsFor("usr_gate_unverified")) === before + 1);
+  const row = initiatedFor("usr_gate_unverified");
+  ok("A1 · ⭐ the deposit.initiated row records the email standing (the record that replaced the gate)",
+    row?.payload?.hasEmail === true && row?.payload?.emailConfirmed === false, JSON.stringify(row?.payload ?? null));
 }
 
-// A2 — verified email lets the same deposit through.
+// A2 — a confirmed email deposits too (the ordinary case), and is recorded as confirmed.
 await mkUser("usr_gate_verified", { verified: true });
 {
   const r = await deposit("usr_gate_verified", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
-  ok("verified email → deposit accepted", r.ok, !r.ok ? r.error : "");
-  ok("accepted deposit created a transaction", (await txnsFor("usr_gate_verified")) === 1);
+  ok("A2 · a confirmed email → deposit accepted", r.ok, !r.ok ? r.error : "");
+  ok("A2 · …one transaction", (await txnsFor("usr_gate_verified")) === 1);
+  ok("A2 · …recorded as confirmed", initiatedFor("usr_gate_verified")?.payload?.emailConfirmed === true);
 }
 
-// A3 — no email at all is refused too, with its own message.
+// A3 — NO EMAIL AT ALL deposits ("even if no mail was there").
 await mkUser("usr_gate_noemail", { verified: false, email: null });
 {
   const r = await deposit("usr_gate_noemail", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
-  ok("no email on file → deposit refused", !r.ok && r.code === "EMAIL_UNVERIFIED");
-  ok("message asks them to ADD an address, not confirm a missing one",
-    !r.ok && /add and confirm/i.test(r.error), !r.ok ? r.error : "");
+  ok("A3 · ★ no email on file → deposit ACCEPTED", r.ok, r.ok ? "" : `${r.code} — ${r.error}`);
+  ok("A3 · …recorded as having no address", initiatedFor("usr_gate_noemail")?.payload?.hasEmail === false);
 }
 
-// A4 — admins are NOT exempt. An exemption here is how a gate rots.
+// A4 — staff are treated exactly like players: no email door for any role.
 for (const role of ["ADMIN", "COMPLIANCE", "MODERATOR"]) {
   const id = `usr_gate_${role.toLowerCase()}`;
   await mkUser(id, { verified: false, role });
   const r = await deposit(id, { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
-  ok(`${role} with an unverified email is ALSO blocked`, !r.ok && r.code === "EMAIL_UNVERIFIED");
+  ok(`A4 · ${role} with an unconfirmed email deposits too`, r.ok, r.ok ? "" : `${r.code}`);
 }
 
-// A5 — changing the address clears verification, which re-gates depositing.
-// setUserEmail is the single writer, so this property can't drift per call site.
+// A5 — changing the address clears the confirmation (`setUserEmail` is the single writer) — and that no longer touches
+// depositing. ⚠️ It re-gates WITHDRAWING, which `test:withdraw-email-gate` drives.
 await mkUser("usr_gate_changed", { verified: true, email: "first@example.com" });
 {
   const before = await deposit("usr_gate_changed", { provider: "MPESA", amount: 1_000, msisdn: "712345678" });
-  ok("deposits work while the address is confirmed", before.ok);
+  ok("A5 · deposits work while the address is confirmed", before.ok);
   const changed = await setUserEmail("usr_gate_changed", "second@example.com");
-  ok("email change accepted", changed.ok);
-  ok("changing the address cleared the verified flag",
-    !(await db.user.findById("usr_gate_changed"))?.emailVerifiedAt);
+  ok("A5 · email change accepted", changed.ok);
+  ok("A5 · changing the address cleared the confirmation", !(await db.user.findById("usr_gate_changed"))?.emailVerifiedAt);
   const after = await deposit("usr_gate_changed", { provider: "MPESA", amount: 1_000, msisdn: "712345678" });
-  ok("changing the address re-gates depositing", !after.ok && after.code === "EMAIL_UNVERIFIED");
+  ok("A5 · ★ …and the next deposit is still ACCEPTED", after.ok, after.ok ? "" : `${after.code}`);
+}
+
+// A6 — ⭐ THE CONTROLS: the doors that REMAIN still refuse, on this same population (an unconfirmed email).
+// The minimum is TZS 1,000 (management, 2026-10-07): 999 is refused on the AMOUNT and leaves no row; 1,000 is accepted.
+await mkUser("usr_gate_bounds", { verified: false });
+{
+  const before = await txnsFor("usr_gate_bounds");
+  const low = await deposit("usr_gate_bounds", { provider: "MPESA", amount: 999, msisdn: "712345678" });
+  // ⭐ ON THE AMOUNT, said positively (tests-and-records review): "any refusal that is not email or identity" would also
+  // pass a rate limit or a maintenance refusal, which is not what this control claims.
+  ok("A6 · CONTROL — TZS 999 is refused ON THE AMOUNT (the minimum is 1,000), never as an email errand",
+    !low.ok && low.code === "INVALID" && /minimum deposit/i.test(low.error) && low.code !== "EMAIL_UNVERIFIED", low.ok ? "ACCEPTED" : `${low.code} — ${low.error}`);
+  ok("A6 · …and the refusal leaves no transaction row", (await txnsFor("usr_gate_bounds")) === before);
+  const floor = await deposit("usr_gate_bounds", { provider: "MPESA", amount: 1_000, msisdn: "712345678" });
+  ok("A6 · TZS 1,000 exactly is accepted", floor.ok, floor.ok ? "" : `${floor.code} — ${floor.error}`);
 }
 
 // ═══ PART B — THE CARD RETURN LEG ═══════════════════════════════════════════
@@ -162,6 +184,7 @@ const ref = seededTxn.providerRef!;
   ok("return leg exposes the gateway reference (the id support/the bank will ask for)",
     out.txn?.providerRef === ref);
   ok("return leg names the method", out.txn?.providerLabel === "Card", out.txn?.providerLabel);
+  ok("return leg carries the STORED rail, so the page can name it in the reader's language (2026-10-07)", out.txn?.provider === "CARD", String(out.txn?.provider));
   ok("PAID reports the balance the money landed in", out.balance === 25_000, String(out.balance));
 }
 
@@ -261,9 +284,9 @@ const ref = seededTxn.providerRef!;
 // ═══ PART C — NO IDENTITY DOOR ON MONEY IN, AND THE ORDER THE DOORS ARE ASKED IN ════
 //
 // Owner ruling, Ali, 2026-09-13 (docs/COMPLIANCE-DECISIONS.md, the top 2026-09-13 entries): identity
-// is required before a WITHDRAWAL and before nothing else. PART A proves the email door. This proves
-// the identity door is ABSENT from deposit, that identity is still asked where the ladder puts it,
-// and — the half that has no other home — that a responsible-gambling break outranks the email door.
+// is required before a WITHDRAWAL and before nothing else. PART A proves there is no email door either (2026-10-07).
+// This proves the identity door is ABSENT from deposit, that identity is still asked where the ladder puts it,
+// and — the half that has no other home — that a responsible-gambling break outranks every other answer.
 // Rationale for the gate itself: `src/lib/server/kyc-gate.ts`.
 //
 // 🔴 INVERTED 2026-09-13, NOT DELETED. From 2026-09-05 this part proved the opposite: every unverified
@@ -283,7 +306,7 @@ async function setKyc(id: string, status: "APPROVED" | "IN_PROGRESS" | "PENDING_
   });
 }
 
-// C1 — ⭐ EVERY IDENTITY STATE DEPOSITS, ONCE THE EMAIL IS CONFIRMED.
+// C1 — ⭐ EVERY IDENTITY STATE DEPOSITS — with a confirmed email or without one (2026-10-07).
 // ⛔ FIVE STATES, NOT ONE, for the same reason the withdrawal gate has four refusal reasons:
 // "unverified" is several different accounts. A `deposit()` that still refused one of them — a
 // PENDING_REVIEW player waiting on US, say — would pass a check written against the no-row case alone.
@@ -294,26 +317,27 @@ async function setKyc(id: string, status: "APPROVED" | "IN_PROGRESS" | "PENDING_
   const STATES = ["NOT_STARTED", "IN_PROGRESS", "PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED", "REJECTED"] as const;
   for (const kyc of STATES) {
     const id = `usr_kyc_${kyc.toLowerCase()}`;
-    // `verified: true` — the email door is OPEN, so a refusal here could only be about identity.
     await mkUser(id, { verified: true, kyc });
     const before = await txnsFor(id);
     const r = await deposit(id, { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
-    ok(`C1.${kyc} · ★ a confirmed email and no approved identity → deposit ACCEPTED`,
+    ok(`C1.${kyc} · ★ no approved identity → deposit ACCEPTED`,
       r.ok, r.ok ? "" : `${(r as { code?: string }).code}/${(r as { reason?: string }).reason} — ${(r as { error: string }).error}`);
     ok(`C1.${kyc} · …and it reserved exactly one transaction`, (await txnsFor(id)) === before + 1);
 
-    // ⭐ THE CONTROL, ON THE SAME IDENTITY STATE. Without it every line above is satisfied by a
-    // `deposit()` that accepts everybody. The door that REMAINS must still fire on this population —
-    // and its refusal must name the email, never identity.
+    // The same identity state with an UNCONFIRMED email deposits too — there is no email door (2026-10-07).
     const mailId = `${id}_nomail`;
     await mkUser(mailId, { verified: false, kyc });
-    const refused = await deposit(mailId, { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
-    ok(`C1.${kyc} · CONTROL — the same state with an UNCONFIRMED email is refused, on the EMAIL`,
-      !refused.ok && refused.code === "EMAIL_UNVERIFIED",
+    const unconfirmed = await deposit(mailId, { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
+    ok(`C1.${kyc} · …and with an UNCONFIRMED email, ACCEPTED as well`, unconfirmed.ok,
+      unconfirmed.ok ? "" : `${unconfirmed.code}/${(unconfirmed as { reason?: string }).reason}`);
+    // ⭐ THE CONTROL, ON THE SAME IDENTITY STATE. Without it every line above is satisfied by a `deposit()` that
+    // accepts everybody. A door that REMAINS — the TZS 1,000 minimum — must still fire on this population, and its
+    // refusal must name neither identity nor email.
+    const refused = await deposit(mailId, { provider: "MPESA", amount: 999, msisdn: "712345678" });
+    ok(`C1.${kyc} · CONTROL — the same account is refused TZS 999, on the amount`,
+      !refused.ok && refused.code === "INVALID" && /minimum deposit/i.test(refused.error)
+        && refused.code !== "EMAIL_UNVERIFIED" && !/^kyc_/.test(String((refused as { reason?: string }).reason ?? "")),
       refused.ok ? "ACCEPTED" : `${refused.code}/${(refused as { reason?: string }).reason}`);
-    ok(`C1.${kyc} · ⛔ …and that refusal carries no identity reason`,
-      !refused.ok && !/^kyc_/.test(String((refused as { reason?: string }).reason ?? "")),
-      refused.ok ? "ACCEPTED" : String((refused as { reason?: string }).reason));
   }
 }
 
@@ -346,18 +370,18 @@ async function setKyc(id: string, status: "APPROVED" | "IN_PROGRESS" | "PENDING_
 
 // C3 — NO ROLE CARRIES AN IDENTITY DOOR EITHER.
 // 🔴 INVERTED 2026-09-13. This was "admins are NOT exempt from the identity door". That door is gone
-// for every role; what must not appear in its place is a role-shaped one. PART A still proves staff are
-// not exempt from the EMAIL door — the rule that survives.
+// for every role; what must not appear in its place is a role-shaped one. (PART A drives staff with an unconfirmed
+// email — there is no email door for any role since 2026-10-07.)
 {
   for (const role of ["ADMIN", "COMPLIANCE", "MODERATOR"]) {
     await mkUser(`usr_kyc_${role}`, { verified: true, role, kyc: "NOT_STARTED" });
     const r = await deposit(`usr_kyc_${role}`, { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
-    ok(`C3 · ${role} with a confirmed email and no identity deposits too`, r.ok,
+    ok(`C3 · ${role} with no identity deposits too`, r.ok,
       r.ok ? "" : `${(r as { code?: string }).code}/${(r as { reason?: string }).reason}`);
   }
 }
 
-// C4 — ⛔ PRECEDENCE: A RESPONSIBLE-GAMBLING BREAK OUTRANKS THE EMAIL DOOR.
+// C4 — ⛔ PRECEDENCE: A RESPONSIBLE-GAMBLING BREAK OUTRANKS EVERY OTHER ANSWER.
 //
 // 🔴 THIS IS THE ONE THAT HAD NO GUARD AND WAS ALREADY WRONG. Before 2026-09-05 the email
 // gate sat ABOVE the lockout check while its own comment claimed it sat *"AFTER the
@@ -368,8 +392,8 @@ async function setKyc(id: string, status: "APPROVED" | "IN_PROGRESS" | "PENDING_
 // A break is the player's own protective decision and it carries an end date they are
 // entitled to be told. Being handed an errand instead is the worst available answer on
 // the responsible-gambling path — it reads as an operator problem and it invites them
-// back. The email door must lose to it (and from 2026-09-05 to 2026-09-13 so did the
-// identity door that stood between the two; that door is gone — see PART C's header).
+// back. The email door had to lose to it until 2026-10-07 (and from 2026-09-05 to 2026-09-13 so did the identity door
+// that stood between them); both doors are gone, and the break must still be what the player is told.
 // ⚠️ COOLING-OFF, NOT SELF-EXCLUSION, AND THE FIRST DRAFT USED THE WRONG ONE. `selfExclude`
 // also FREEZES THE WALLET (`responsible-gambling.ts` — `db.wallet.update(..., FROZEN)`), so
 // a self-excluded player is stopped by the `wallet.status !== "ACTIVE"` check several lines
@@ -379,8 +403,7 @@ async function setKyc(id: string, status: "APPROVED" | "IN_PROGRESS" | "PENDING_
 // wallet ACTIVE, so it is the instrument that actually exercises the ordering.
 {
   const { coolOff } = await import("../src/lib/server/responsible-gambling.ts");
-  // The email door is not open, and there is no identity either — as for most depositors.
-  // If precedence is wrong, this refusal comes back as an email errand instead of the break.
+  // No confirmed email and no identity — as for many depositors. Whatever else is asked, the break answers first.
   await mkUser("usr_rg_wins", { verified: false, kyc: "NOT_STARTED" });
   await coolOff("usr_rg_wins", "24h");
   const r = await deposit("usr_rg_wins", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
@@ -409,7 +432,7 @@ async function setKyc(id: string, status: "APPROVED" | "IN_PROGRESS" | "PENDING_
   await selfExclude("usr_rg_se", "6m");
   const r = await deposit("usr_rg_se", { provider: "MPESA", amount: 5_000, msisdn: "712345678" });
   ok("C5 · a self-excluded player is refused (by the wallet freeze)", !r.ok);
-  ok("C5 · …and it is NOT an identity or email errand — the email door still loses to it",
+  ok("C5 · …and it is NOT an identity or email errand",
     !r.ok && !/^kyc_/.test(String((r as { reason?: string }).reason ?? ""))
           && (r as { code?: string }).code !== "EMAIL_UNVERIFIED",
     !r.ok ? `${(r as { code?: string }).code}/${(r as { reason?: string }).reason}` : "accepted");

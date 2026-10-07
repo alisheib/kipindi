@@ -3969,8 +3969,10 @@ await guard("9.235", async () => {
   const b = await w.bot();
   const HOLDER = b.userId;
   const PLAYER = await w.user({ balance: 100_000 });
-  await w.setUserFields(HOLDER, { email: `holder.dg.${process.pid}@50pick.tz` });
-  await w.setUserFields(PLAYER, { email: `player.dg.${process.pid}@50pick.tz` });
+  // CONFIRMED addresses (2026-10-07): the digest is money mail, sent only to a confirmed address (`confirmedOnly`), and a
+  // deposit no longer requires one — an unconfirmed fixture would be silent for THAT reason, not the house rule measured here.
+  await w.setUserFields(HOLDER, { email: `holder.dg.${process.pid}@50pick.tz`, emailVerifiedAt: new Date().toISOString() });
+  await w.setUserFields(PLAYER, { email: `player.dg.${process.pid}@50pick.tz`, emailVerifiedAt: new Date().toISOString() });
 
   /* DAY 1 · the holder's rounds are ALL house-marked; the player's are their own. The two accounts are
    * given IDENTICAL outcomes so 9.235.2 can compare the two bells field by field. */

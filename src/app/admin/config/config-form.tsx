@@ -19,7 +19,9 @@ import { formatTzs } from "@/lib/utils";
 import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
-export function GlobalConfigForm({ config }: { config: RateConfig }) {
+/** `storedStake` — the global bounds as stored. The form shows the ENFORCED ones (floored on read, 2026-10-07); when a
+ *  stored value differs, the hint says both, and saving the form writes the enforced value back. */
+export function GlobalConfigForm({ config, storedStake = null }: { config: RateConfig; storedStake?: { minStake: number; maxStake: number } | null }) {
   // A1 — /admin/config is the `accounting` domain, and AUDITOR + COMPLIANCE both hold
   // accounting VIEW without ACT. The rate values stay readable — a read-only officer needs
   // to see what the platform charges — and only the writes are gated.
@@ -166,10 +168,10 @@ export function GlobalConfigForm({ config }: { config: RateConfig }) {
         >
           <Input name="withdrawalGatewayShareRate" type="number" step="0.01" min="0" max="5" defaultValue={gwPct} mono />
         </Field>
-        <Field label="Min stake (TZS)" hint={`Current ${formatTzs(config.minStake)}`}>
+        <Field label="Min stake (TZS)" hint={storedStake && storedStake.minStake !== config.minStake ? `Stored ${formatTzs(storedStake.minStake)} · enforced ${formatTzs(config.minStake)} — the platform minimum. Save to store it.` : `Current ${formatTzs(config.minStake)}`}>
           <Input name="minStake" type="number" step="100" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} defaultValue={config.minStake} mono />
         </Field>
-        <Field label="Max stake (TZS)" hint={`Current ${formatTzs(config.maxStake)}`}>
+        <Field label="Max stake (TZS)" hint={storedStake && storedStake.maxStake !== config.maxStake ? `Stored ${formatTzs(storedStake.maxStake)} · enforced ${formatTzs(config.maxStake)}. Save to store it.` : `Current ${formatTzs(config.maxStake)}`}>
           <Input name="maxStake" type="number" step="1000" min={PLATFORM_MIN_STAKE} max={PLATFORM_MAX_STAKE} defaultValue={config.maxStake} mono />
         </Field>
         <Field

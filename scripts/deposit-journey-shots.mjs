@@ -57,9 +57,10 @@ const PLAYER_SURFACES = [
   { name: "deposit-error", path: "/wallet/deposit?error=Enter%20your%20billing%20city%20to%20pay%20by%20card.&provider=CARD&amount=10000", demoEmail: "verified" },
   { name: "return-unknown", path: "/wallet/deposit/return", demoEmail: "verified" },
   { name: "wallet", path: "/wallet", demoEmail: "verified" },
-  // email=unverified / none — the gate, both variants
-  { name: "gate-unverified", path: "/wallet/deposit", demoEmail: "unverified" },
-  { name: "gate-noemail", path: "/wallet/deposit", demoEmail: "none" },
+  // email=unverified / none — the SAME form (2026-10-07, owner ruling: a deposit asks no email). These two were the
+  // gate's variants; they are kept to prove the gate is gone for exactly the accounts it used to stop.
+  { name: "deposit-unconfirmed", path: "/wallet/deposit", demoEmail: "unverified" },
+  { name: "deposit-noemail", path: "/wallet/deposit", demoEmail: "none" },
 ];
 
 async function auditPage(page, name, width, locale) {
@@ -149,14 +150,14 @@ for (const locale of LOCALES) {
         }
         await page.goto(`${BASE}${s.path}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
 
-        // The gate and the form are mutually exclusive — assert we actually got
-        // the one this surface is meant to capture, so a silently-skipped
-        // assertion can never masquerade as a pass.
+        // Every email standing gets the FORM and never the deleted gate (2026-10-07) — asserted for each surface, so a
+        // silently-skipped assertion can never masquerade as a pass.
         const gateShown = await page.locator('[data-testid="email-verify-gate"]').count();
-        if (s.demoEmail === "verified") {
-          ok(`${s.name}-${width.tag}-${locale} · deposit FORM renders (not the gate)`, gateShown === 0);
+        if (s.path === "/wallet/deposit" || s.path.startsWith("/wallet/deposit?")) {
+          ok(`${s.name}-${width.tag}-${locale} · deposit FORM renders, no email gate (email: ${s.demoEmail})`,
+            gateShown === 0 && (await page.locator("#provider-MPESA").count()) === 1);
         } else {
-          ok(`${s.name}-${width.tag}-${locale} · email GATE renders (not the form)`, gateShown === 1);
+          ok(`${s.name}-${width.tag}-${locale} · no email gate`, gateShown === 0);
         }
 
         if (s.selectCard) {

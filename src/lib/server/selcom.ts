@@ -400,13 +400,26 @@ function envelopeSettlementVerdict(json: SelcomEnvelope): "CONFIRMED" | "FAILED"
 //     error AFTER the request left) → the customer might still approve + pay, so we
 //     must NOT declare failure. The caller keeps the deposit PROCESSING and lets the
 //     authoritative order-status re-query (webhook + reconcile sweep) settle it.
+/**
+ * The per-account reference Selcom's `buyer_email` field carries when we send no player address.
+ *
+ * Every mobile-money order has always carried it (the push goes to the handset; there is nothing for
+ * the gateway to mail), and from 2026-10-07 a CARD order for an account with no email on file carries
+ * it too — a deposit no longer asks for an email at all (owner ruling 2026-10-07), so the card rail
+ * must not refuse for want of one. It is a reference, not a mailbox: `users.50pick.tz` receives nothing.
+ * ⛔ One home: both order builders below call this, so the two rails can never send different shapes.
+ */
+export function selcomPlaceholderEmail(userId: string): string {
+  return `${userId}@users.50pick.tz`;
+}
+
 export async function selcomDeposit(env: SelcomEnv, opts: { orderId: string; amount: number; msisdn: string; userId: string }): Promise<{ ok: true } | { ok: false; reason: "PROVIDER_DOWN" | "DECLINED" | "AMBIGUOUS"; detail?: string }> {
   const phone = toSelcomMsisdn(opts.msisdn);
   // 1) Create the order. Field order is load-bearing (== Signed-Fields order).
   const createBody: Record<string, string | number> = {
     vendor: env.vendor,
     order_id: opts.orderId,
-    buyer_email: `${opts.userId}@users.50pick.tz`,
+    buyer_email: selcomPlaceholderEmail(opts.userId),
     buyer_name: opts.userId,
     buyer_phone: phone,
     amount: Math.round(opts.amount),
@@ -515,7 +528,11 @@ export async function selcomCardCheckout(
   opts: {
     orderId: string;
     amount: number;
-    buyerEmail: string;
+    /** The address on the account, or null when it has none — then the order carries the account's
+     *  placeholder reference (`selcomPlaceholderEmail`), exactly as a mobile-money order does. */
+    buyerEmail: string | null;
+    /** Only for the placeholder above. */
+    userId: string;
     buyerName: string;
     buyerPhone: string;
     billing: SelcomBilling;
@@ -530,7 +547,7 @@ export async function selcomCardCheckout(
   const body: Record<string, string | number> = {
     vendor: env.vendor,
     order_id: opts.orderId,
-    buyer_email: opts.buyerEmail,
+    buyer_email: opts.buyerEmail || selcomPlaceholderEmail(opts.userId),
     buyer_name: opts.buyerName,
     buyer_phone: phone,
     amount: Math.round(opts.amount),

@@ -4,7 +4,8 @@
  *   Run: npx tsx scripts/kyc-at-withdrawal.test.mts
  *
  * ⭐ THE RULING (Ali, 2026-09-13 — the top 2026-09-13 entries of docs/COMPLIANCE-DECISIONS.md): identity is required
- * ONLY before WITHDRAWAL. The ladder: register → confirm email → deposit and play → verify identity → withdraw.
+ * ONLY before WITHDRAWAL. The ladder: register → deposit and play → verify identity → confirm email → withdraw
+ * (2026-10-07, owner ruling: a deposit asks no email; a confirmed address is asked after identity, before money leaves).
  *
  * ⭐ THE QUIET RULE (Ali, the same day): "we don't have to over-tell the user to verify before he withdraws … when he
  * goes to withdraw, say nicely: verify before you withdraw. Maybe on first deposit show a small notice … in a nice
@@ -46,7 +47,7 @@ import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { startKyc, submitIdentityStep, attachDocument, submitForReview, reviewKyc, forceReverifyKyc } from "../src/lib/server/kyc-service.ts";
 import { notifyKyc } from "../src/lib/server/notification-service.ts";
-import { firstDepositNoticeDue, kycNoticeDismissValue } from "../src/lib/server/kyc-notice.ts";
+import { firstDepositNotice, firstDepositNoticeDue, kycNoticeDismissValue } from "../src/lib/server/kyc-notice.ts";
 import { kycGateState } from "../src/lib/kyc-gate-state.ts";
 import { kycNoticeStateDue } from "../src/lib/kyc-notice.ts";
 import { getAuditPage, getAuditForTarget, auditFlush } from "../src/lib/server/audit.ts";
@@ -82,7 +83,7 @@ const newMarket = (title: string) => createMarket({
 } as never);
 
 // ═══ §A · THE LADDER ═════════════════════════════════════════════════════════════════════════════
-section("§A · register → confirm email → deposit and play → verify identity → withdraw");
+section("§A · register → deposit and play → verify identity → confirm email → withdraw");
 {
   const PHONE = "+255745550101", LOCAL = "745550101", EMAIL = "ladder.player@t.tz";
   let reg: unknown = null, regThrew: string | null = null;
@@ -105,22 +106,23 @@ section("§A · register → confirm email → deposit and play → verify ident
   ok("A.3 …with NO identity row at all", (await db.kyc.findByUserId(id)) === null);
   ok("A.4 …and an ACTIVE wallet", (await db.wallet.findByUserId(id))?.status === "ACTIVE");
 
+  // ⭐ 2026-10-07 (owner ruling): a deposit asks NO email question. The account was created seconds ago — its address
+  // unconfirmed, no identity row — and its first deposit goes straight through. Until that day this step asserted the
+  // opposite (refused for the email, never for identity); the email moved to WITHDRAWAL, which A.15b drives.
   const d0 = await deposit(id, { provider: "MPESA", amount: 50_000, msisdn: LOCAL });
-  ok("A.5 the first deposit is refused ONLY for the unconfirmed email — never for identity",
-    !d0.ok && d0.code === "EMAIL_UNVERIFIED" && !/^kyc_/.test((d0 as { reason?: string }).reason ?? ""), J(d0));
-  // ⚠️ The email gate's audit row is fire-and-forget — settle before reading it, or the check measures a race.
+  ok("A.5 ★ the first deposit goes through with an UNCONFIRMED email and no identity row",
+    d0.ok && d0.code === undefined && (await db.kyc.findByUserId(id)) === null && !(await db.user.findById(id))?.emailVerifiedAt, J(d0));
+  // ⚠️ The audit rows are fire-and-forget — settle before reading them, or the check measures a race.
   await settle();
   const depositTxns = (await db.txn.listForUser(id)).filter((t) => t.type === "DEPOSIT").length;
   const emailBlocked = getAuditForTarget("User", id).some((e) => e.action === "deposit.email_unverified_blocked");
-  ok("A.5b …no transaction was written, and the refusal is on record", depositTxns === 0 && emailBlocked,
-    `deposit txns ${depositTxns} · email_unverified_blocked row ${emailBlocked}`);
-
+  const d0Row = auditRow("deposit.initiated", d0.ok ? d0.data?.txnId : null);
+  ok("A.5b …a transaction was written, no deposit was ever refused for the email, and the row records the address as unconfirmed",
+    depositTxns === 1 && !emailBlocked && d0Row?.payload?.hasEmail === true && d0Row?.payload?.emailConfirmed === false,
+    `deposit txns ${depositTxns} · email_unverified_blocked row ${emailBlocked} · ${J(d0Row?.payload ?? null)}`);
   const mail = emailOutbox().find((m) => m.to === EMAIL && /Confirm your email/i.test(m.subject));
   const token = mail ? decodeURIComponent((/token=([^"'&\s<]+)/.exec(mail.html) ?? [])[1] ?? "") : "";
-  ok("A.6 fixture · registration sent the confirmation link", !!mail && token.length > 20, mail?.subject ?? "no mail");
-  // The link opened in the account's own session (route audit 2026-10-06, A3: anywhere else it asks for the password).
-  const v = await confirmEmailWithProof(token, { sessionUserId: id, password: null });
-  ok("A.6b confirming the email through the real token", v.status === "verified" && !!(await db.user.findById(id))?.emailVerifiedAt, J(v));
+  ok("A.6 fixture · registration sent the confirmation link (it is opened at A.15c, when a withdrawal needs it)", !!mail && token.length > 20, mail?.subject ?? "no mail");
 
   const walletBefore = (await db.wallet.findByUserId(id))!.balance;
   const d1 = await deposit(id, { provider: "MPESA", amount: 50_000, msisdn: LOCAL });
@@ -163,6 +165,22 @@ section("§A · register → confirm email → deposit and play → verify ident
   ok("A.15 the officer approves — and the player's chosen handle is NOT replaced by the legal name",
     appr.ok && (await db.kyc.findByUserId(id))?.status === "APPROVED" && approvedUser?.displayName === "LadderFox"
       && (await db.kyc.findByUserId(id))?.fullName === "Asha Ladder Mwakalinga", `${J(appr)} · ${String(approvedUser?.displayName)}`);
+
+  // ⭐ THE SECOND HALF OF THE WITHDRAWAL GATE (owner ruling 2026-10-07). Identity is answered; the address is still
+  // unconfirmed, so the same withdrawal is refused — on the EMAIL now, with nothing moved, and on record. A.11 proved
+  // identity is asked FIRST (that refusal came while the email was unconfirmed too).
+  const wE = await withdraw(id, { provider: "MPESA", amount: 20_000, msisdn: LOCAL } as never);
+  await settle();
+  const afterE = (await db.wallet.findByUserId(id))!;
+  const emailRow = getAuditForTarget("User", id).find((e) => e.action === "withdraw.email_unverified_blocked");
+  ok("A.15b ★ approved, but the email is unconfirmed: the withdrawal is refused on the EMAIL",
+    !wE.ok && wE.code === "EMAIL_UNVERIFIED" && (wE as { reason?: string }).reason === "email_unverified", J(wE));
+  ok("A.15b2 …nothing moved, and the refusal is recorded citing the 2026-10-07 ruling",
+    afterE.balance === before.balance && afterE.hold === before.hold && !!emailRow && /2026-10-07/.test(String(emailRow.payload?.instruction)),
+    `${before.balance}→${afterE.balance} · hold ${afterE.hold} · ${J(emailRow?.payload ?? null)}`);
+  // The link opened in the account's own session (route audit 2026-10-06, A3: anywhere else it asks for the password).
+  const v = await confirmEmailWithProof(token, { sessionUserId: id, password: null });
+  ok("A.15c confirming the email through the real token", v.status === "verified" && !!(await db.user.findById(id))?.emailVerifiedAt, J(v));
 
   const w1 = await withdraw(id, { provider: "MPESA", amount: 20_000, msisdn: LOCAL } as never);
   ok("A.16 ★ the same withdrawal now goes through", w1.ok && (await db.wallet.findByUserId(id))!.balance === before.balance - 20_000, J(w1));
@@ -317,7 +335,9 @@ section("§B2 · the first-deposit notice appears only on /wallet and the deposi
     (mounts.includes("src/app/wallet/page.tsx") || mounts.includes("src/app/wallet/wallet-client.tsx"))
       && (!existsSync(join(ROOT, "src/app/wallet/deposit/return/page.tsx")) || mounts.includes("src/app/wallet/deposit/return/page.tsx")), mounts.join(", "));
   ok("B2.3 every mount renders only on the server's decision", mounts.every((f) => /kycFirstDepositNotice\s*&&\s*<KycFirstDepositNotice\b/.test(code.get(f)!)));
-  const callers = files.filter((f) => f !== "src/lib/server/kyc-notice.ts" && /\bfirstDepositNoticeDue\s*\(/.test(code.get(f)!));
+  // ⭐ 2026-10-07: the pages ask `firstDepositNotice` (WHICH notice — identity, email or both); `firstDepositNoticeDue`
+  // is its yes/no wrapper. Either name counts as asking the one predicate.
+  const callers = files.filter((f) => f !== "src/lib/server/kyc-notice.ts" && /\bfirstDepositNotice(?:Due)?\s*\(/.test(code.get(f)!));
   ok("B2.4 the one predicate decides for both pages, and nobody else asks it",
     J(callers.sort()) === J(["src/app/wallet/deposit/return/page.tsx", "src/app/wallet/page.tsx"]), callers.join(", "));
   const rederives = (s: string) => /\b(kycGateState|kycNoticeStateDue)\s*\(/.test(s);
@@ -327,14 +347,14 @@ section("§B2 · the first-deposit notice appears only on /wallet and the deposi
   // 🔴 THE DISMISSAL IS BOUND TO THE PLAYER (2026-09-14, audit session 95, U2). A bare `dismissed` was read
   // with no user binding, so on a shared phone one player's X hid the notice from the next.
   const WALLET = code.get("src/app/wallet/page.tsx") ?? "", RETURN = code.get("src/app/wallet/deposit/return/page.tsx") ?? "";
-  const handsRawCookie = (s: string) => /firstDepositNoticeDue\(\s*session\.userId,\s*\{\s*dismissCookie:\s*\(await cookies\(\)\)\.get\(KYC_NOTICE_COOKIE\)\?\.value\b/.test(s);
+  const handsRawCookie = (s: string) => /firstDepositNotice(?:Due)?\(\s*session\.userId,\s*\{\s*dismissCookie:\s*\(await cookies\(\)\)\.get\(KYC_NOTICE_COOKIE\)\?\.value\b/.test(s);
   ok("B2.7 both pages hand the RAW cookie to the one predicate — neither decides whose dismissal it is",
     handsRawCookie(WALLET) && (!existsSync(join(ROOT, "src/app/wallet/deposit/return/page.tsx")) || handsRawCookie(RETURN)));
   ok("B2.7c control · the matcher rejects the old unbound comparison",
     !handsRawCookie("firstDepositNoticeDue(session.userId, { dismissed: (await cookies()).get(KYC_NOTICE_COOKIE)?.value === KYC_NOTICE_DISMISSED })"));
   ok("B2.8 ★ the return page hands its notice the per-player value",
     !existsSync(join(ROOT, "src/app/wallet/deposit/return/page.tsx"))
-      || /kycFirstDepositNotice\s*&&\s*<KycFirstDepositNotice\s+dismissValue=\{kycNoticeDismissValue\(session\.userId\)\}/.test(RETURN));
+      || /kycFirstDepositNotice\s*&&\s*<KycFirstDepositNotice\s+(?:variant=\{kycFirstDepositNotice\}\s+)?dismissValue=\{kycNoticeDismissValue\(session\.userId\)\}/.test(RETURN));
   ok("B2.9 ★ /wallet scopes the per-player value around the client tree that mounts the notice",
     /<KycNoticeDismissScope\s+value=\{kycFirstDepositNotice\s*\?\s*kycNoticeDismissValue\(session\.userId\)\s*:\s*null\}\s*>\s*<WalletPageClient\b/.test(WALLET), "");
   const NOTICE = code.get("src/components/wallet/kyc-first-deposit-notice.tsx") ?? "";
@@ -474,12 +494,15 @@ section("§B7 · who sees the first-deposit notice — the one server predicate,
   type K = { status: string; rejectReason?: string | null; approvedAt?: string | null; documents?: number } | null;
   const SLOTS = ["NIDA_FRONT", "NIDA_BACK", "SELFIE"];
   let s7 = 0;
-  const fixture = async (tag: string, kyc: K, deposits: string[]) => {
+  // `email` is decided AT CREATE (never by a later `db.user.update`, which would join test:house-bot-holder-lifecycle's
+  // shrink-only population of account-fact writers).
+  const fixture = async (tag: string, kyc: K, deposits: string[], email: "confirmed" | "unconfirmed" | "none" = "confirmed") => {
     const id = `usr_kaw_notice_${tag}`;
     await db.user.create({
       id, phoneE164: `+25571${String(++s7).padStart(7, "0")}`, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
       role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1",
-      acceptedTermsAt: now(), marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`, emailVerifiedAt: now(),
+      acceptedTermsAt: now(), marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+      email: email === "none" ? null : `${id}@t.tz`, emailVerifiedAt: email === "confirmed" ? now() : null,
       createdAt: now(), updatedAt: now(), lastLoginAt: now(), closedAt: null,
     } as never);
     await db.wallet.create({ id: `wal_${id}`, userId: id, balance: 10_000, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now() } as never);
@@ -524,6 +547,36 @@ section("§B7 · who sees the first-deposit notice — the one server predicate,
     ok(`B7.${tag} → ${want ? "SHOWN" : "hidden"}`, due === want, `got ${due}`);
   }
   ok("B7.c control · the cases include both answers, so neither can be a constant", CASES.some((c) => c[3]) && CASES.some((c) => !c[3]));
+
+  // ⭐ WHICH WORDING (owner ruling 2026-10-07: the confirmed email is asked quietly before a withdrawal, in this same note).
+  // Every fixture above has a CONFIRMED address, so until the tests-and-records review these three wordings — and the two
+  // "owes nothing" answers — were stated in the records and tested nowhere.
+  const emailAs = (tag: string, kyc: K, email: "confirmed" | "unconfirmed" | "none", deposits = ["CONFIRMED"]) =>
+    fixture(`e_${tag}`, kyc, deposits, email);
+  const APPROVED: K = { status: "APPROVED", approvedAt: now(), documents: 3 };
+  const WORDING: Array<[string, K, "confirmed" | "unconfirmed" | "none", string[], string | null]> = [
+    ["identity_only", null, "confirmed", ["CONFIRMED"], "identity"],
+    ["email_only", APPROVED, "unconfirmed", ["CONFIRMED"], "email"],
+    ["no_address", APPROVED, "none", ["CONFIRMED"], "email"],
+    ["both", null, "unconfirmed", ["CONFIRMED"], "both"],
+    ["email_under_review", { status: "PENDING_REVIEW", documents: 3 }, "unconfirmed", ["CONFIRMED"], "email"],
+    ["email_no_deposit", APPROVED, "unconfirmed", [], null],
+    ["nothing_owed", APPROVED, "confirmed", ["CONFIRMED"], null],
+  ];
+  for (const [tag, kyc, email, deposits, want] of WORDING) {
+    const got = await firstDepositNotice(await emailAs(tag, kyc, email, deposits), { dismissCookie: null });
+    ok(`B7.w.${tag} → ${want ?? "none"}`, got === want, `got ${got}`);
+  }
+  ok("B7.w.missing · a missing account row owes NO email (nothing says it is unconfirmed) — identity alone",
+    (await firstDepositNotice("usr_kaw_notice_missing_row", { dismissCookie: null, depositInHand: true })) === "identity");
+  {
+    const real = db.user.findById;
+    (db.user as { findById: unknown }).findById = async () => { throw new Error("injected read failure"); };
+    let got: unknown = "unset";
+    try { got = await firstDepositNotice(await emailAs("read_fails", null, "unconfirmed"), { dismissCookie: null }); }
+    finally { (db.user as { findById: unknown }).findById = real; }
+    ok("B7.w.read-fails · ⛔ a failed account read is NO notice — never an identity or email prompt on a failed query", got === null, String(got));
+  }
 
   // 🔴 THE DISMISSAL IS PER PLAYER (2026-09-14, audit session 95, U2): the cookie counts only when it holds
   // the value for THIS player, so on a shared phone one player's X cannot hide the notice from the next.
@@ -661,6 +714,17 @@ section("§B10 · a wallet that is not ACTIVE is never given the withdraw form")
   ok("B10.1 ★ the form bound to withdrawAction is not rendered when the wallet is not ACTIVE", real.ok, real.why);
   ok("B10.2 …and a FINAL refusal keeps its own panel: `frozen` is not chosen over refused_final",
     /withdrawGateState\s*!==\s*"refused_final"/.test(real.init), flat(real.init));
+  // ⭐ THE EMAIL STEP RIDES THE SAME PANEL (2026-10-07, tests-and-records review). Unpinned, a page that stopped choosing
+  // it would hand an unconfirmed player the form, and the action's EMAIL_UNVERIFIED hop would bounce them back to it.
+  const emailBranch = (init: string, src: string) => /\?\?\s*\(\s*emailOwed\s*\?\s*"email"\s*:\s*null\s*\)/.test(init)
+    && src.includes("const emailOwed = !account?.emailVerifiedAt;")
+    && src.includes("const emailStanding = emailOwed ? { address: account?.email ?? null } : null;")
+    && /<KycGatePanel\b[^>]*?\bemail=\{emailStanding\}/.test(src);
+  ok("B10.2e ★ …identity settled and the address unconfirmed, the panel IS the email step; on an identity state it carries it",
+    emailBranch(real.init, PAGE), flat(real.init));
+  const noEmailPanel = PAGE.replace(/\?\?\s*\(\s*emailOwed\s*\?\s*"email"\s*:\s*null\s*\)/, "");
+  ok("B10.2f control · a page that never chooses the email panel is caught",
+    noEmailPanel !== PAGE && !emailBranch(formHeldBack(noEmailPanel).init, noEmailPanel));
 
   // ⛔ PLANTED CONTROLS — the matcher must go red on each shape it forbids, and green on a correct one.
   const SHIPPED = `

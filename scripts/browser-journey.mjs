@@ -83,16 +83,16 @@ for (let run = 1; run <= RUNS; run++) {
   await page.waitForTimeout(1200);
   ok(`run ${run} · signed up and landed in-app`, !page.url().includes("/auth/register"), page.url());
 
-  // ── 2. THE GATE — a fresh account must NOT be able to deposit ─────────────
+  // ── 2. NO GATE — a fresh account deposits straight away (owner ruling 2026-10-07: a deposit asks no email; the
+  //       confirmed address is asked before a WITHDRAWAL). This step used to prove the opposite, and is inverted.
   await page.goto(`${BASE}/wallet/deposit`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForTimeout(500);
-  const gateShown = await page.locator('[data-testid="email-verify-gate"]').count();
-  ok(`run ${run} · a brand-new account meets the EMAIL GATE`, gateShown === 1);
-  ok(`run ${run} · the deposit form is NOT reachable while unverified`,
-    (await page.locator("#provider-CARD").count()) === 0);
-  await page.screenshot({ path: `${OUT}/run${run}-1-gate.png`, fullPage: false });
+  ok(`run ${run} · a brand-new, unconfirmed account meets NO email question on the deposit screen`,
+    (await page.locator('[data-testid="email-verify-gate"]').count()) === 0);
+  ok(`run ${run} · …it gets the deposit FORM`, (await page.locator("#provider-CARD").count()) === 1);
+  await page.screenshot({ path: `${OUT}/run${run}-1-form-unconfirmed.png`, fullPage: false });
 
-  // ── 3. CONFIRM THE EMAIL (the link the player gets by mail) ───────────────
+  // ── 3. CONFIRM THE EMAIL (the link the player gets by mail) — still a real step: it opens WITHDRAWAL now ──
   // Mint the same signed token the mail carries, via the dev-only helper.
   const verifyUrl = await page.evaluate(async (b) => {
     const r = await fetch(`${b}/api/dev/verify-link`, { credentials: "include" });
@@ -110,8 +110,8 @@ for (let run = 1; run <= RUNS; run++) {
   // ── 4. DEPOSIT BY CARD ────────────────────────────────────────────────────
   await page.goto(`${BASE}/wallet/deposit`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForTimeout(500);
-  ok(`run ${run} · after confirming, the deposit FORM renders`,
-    (await page.locator('[data-testid="email-verify-gate"]').count()) === 0);
+  ok(`run ${run} · the deposit FORM renders (it never depended on the email)`,
+    (await page.locator('[data-testid="email-verify-gate"]').count()) === 0 && (await page.locator("#provider-CARD").count()) === 1);
 
   // The radio is `sr-only` (the tile is the visible control), so click the LABEL —
   // exactly what a player taps.

@@ -14,6 +14,10 @@
  * credits a bonus this import is now inert — harmless, and no longer a reason. ⛔ Do not cite
  * it as "deposit requires identity" or "a bet requires identity": both are false from 2026-09-13.
  *
+ * ⚠️ IT DOES NOT CONFIRM AN EMAIL. Since 2026-10-07 a withdrawal also needs a CONFIRMED address (owner ruling;
+ * `withdraw()` asks after identity), so a suite that pays a fixture out sets `emailVerifiedAt` on that fixture itself —
+ * as withdrawal-fee, concurrency and bonus-withdrawable do — and says why beside it.
+ *
  * ⛔ WHAT THIS IS NOT. It is NOT a bypass, and there is a bright line here worth stating.
  * It writes a real APPROVED `KycSubmission` row through the ordinary store, so the gate
  * runs in full and finds a verified player — exactly as if each fixture had been written

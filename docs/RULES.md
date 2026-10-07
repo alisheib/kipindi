@@ -25,7 +25,8 @@ file is worthless the moment it describes an intention as a fact.
 
 | Rule | Status |
 |---|---|
-| Stake bounds 1,000 / 1,000,000 | ✅ live — config reconciled and read back from the production DB |
+| Stake bounds 1,000 / 1,000,000 | ✅ live — config reconciled and read back from the production DB; ⭐ floored on every read from the 2026-10-07 release (§2.3) |
+| Minimum deposit TZS 1,000 · the true withdrawal minimum (§2.7a) | ⭐ 2026-10-07 (management, via Ali) — lands with the money-doors release; ⛔ read it back on production before removing this note |
 | Withdrawal fee 1.5% | ✅ live — production has charged 1.5% since before 2026-08-10 |
 | Taxes only on our fee · free cancellation 5 min | ✅ live, unchanged by this programme |
 | Our fee: 13% of the losing side, **both** games | ✅ **live, and now SETTLED ON BOTH PRODUCTS with real money.** Up & Down: Gold round #267 — fee **1,820.00 = 13% × 14,000**, payouts 20,180, residual 0.00. Long-form poll `mkt_3254d2723f3443358300` — fee **1,690.00 = 13% × 13,000**, payouts 12,069 + 4,827 + 2,414 = **19,310 = pool − fee**, residual 0.00, TRA 169 and GBT 85 taken from *our fee* only. ⭐ The winners' shares were 12,068.75 / 4,827.50 / 2,413.75 — they do not divide, so `allocateFeeShares`' largest-remainder path really was exercised and still summed exactly |
@@ -59,6 +60,8 @@ file is worthless the moment it describes an intention as a fact.
 | **Bonus wagering** | Only **one side** of a market counts toward a bonus requirement | Both |
 | Free cancellation | 5 minutes, full refund, then locked — **but only if the bet had 5 minutes of betting time still ahead of it when it was placed**, so it is **unreachable on Up & Down 3- and 5-minute rounds** (§2.6) | Long-form: yes · Up & Down: **10 minutes and longer only** |
 | Withdrawal fee | 1.5% of the amount withdrawn (0.5% of it is the gateway's) | Platform |
+| **Minimum deposit** | **TZS 1,000** (§2.7a) | Platform |
+| Minimum withdrawal | The smallest amount whose net after the fee is still TZS 1,000 — **TZS 1,015 at 1.5%** (the fee rounds), derived, never typed (§2.7a) | Platform |
 | Failure messages | State the reason and the next step; severity must match — a fixable problem is a **warning**, not a red error | Whole player UI |
 | House liquidity stakes | Accounts 50pick operates may stake; same fee, bounds and cut-offs; no cash-out, wagering, commission or objection standing | Both |
 
@@ -198,8 +201,9 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 | **The rule itself** | `PLATFORM_MIN_STAKE` / `PLATFORM_MAX_STAKE` in `src/lib/payout.ts`. The admin doors validate against these, so the platform cannot be configured out of its own rule: an operator may NARROW the window inside 1,000…1,000,000, never widen it. |
 | **Configured in** | `SystemConfig["market.config"].global.minStake/maxStake` (`/admin/config`) and `SystemConfig["updown.config"].defaultMinStake/defaultMaxStake` (`/admin/updown`). All Up & Down chains carry NULL min/max and inherit (**23 of 23** on production, read 2026-09-09 — this line said "16" until then, and a count written twice is a count that will disagree with itself); `stakeBoundsFor` additionally FLOORS any chain at the product minimum, so a legacy row below the floor can never take a sub-floor stake. |
 | **Migration** | `reconcileConfigDefaults` (v3) and `reconcileUpDownDefaults` (v3) raise a stored 500 → 1,000 and 100,000 → 1,000,000 on first read after deploy, and leave a deliberate custom value alone. |
+| **Floored on read** | ⭐ 2026-10-07 (management: *"consistently 1000 not 500"*). A per-market override is never reconciled and any stored value can predate a floor, so every READ floors the copy it returns: `floorStakeBounds` in `getEffectiveConfig` / `getGlobalConfig`, the twin in `getUpDownConfig`, and `stakeBoundsFor` names `PLATFORM_MIN_STAKE` itself. The stored row is never rewritten by a read; `/admin/config` and `/admin/updown` say "stored X · enforced 1,000" where the two differ. An invite programme's minimum bet is 0 or at least the minimum stake. |
 | **Stated to players** | The stake panel and preset ladder derive their range from the same resolver the money path uses — one source, no display/enforcement split. |
-| **Guarded by** | `npm run test:config` · `npm run red:stake-bounds` (6 mutations, incl. the exact 2026-08-14 state) · `test:updown-engine` §8B (floor-on-read for legacy rows) |
+| **Guarded by** | `npm run test:config` · `npm run red:stake-bounds` (6 mutations, incl. the exact 2026-08-14 state) · `test:updown-engine` §8B (floor-on-read for legacy rows) · `test:money-minimums` (a 500 planted in each stored place reads 1,000 everywhere) |
 
 > 🔴 **THE TRAP THIS RULE WAS FOUND BY.** On 2026-08-14 the code default read `1_000`, a green
 > suite asserted it read `1_000` — and **production had been charging a TZS 500 floor on both
@@ -406,6 +410,16 @@ configured in `market.config`, editable at `/admin/config`. Stated to players on
 > arithmetic, and in the payout runbook. **Neither states a rate now.** They point here instead:
 > the rule is in this section, the cold-start fallback is the constant, the live value is
 > `market.config`. A number written twice is a number that will disagree with itself.
+
+### 2.7a · Minimum deposit TZS 1,000 · the withdrawal minimum is the true one
+
+| | |
+|---|---|
+| **Decided** | 50pick management, relayed by Ali, 2026-10-07: *"in deposits and in the minimum stake where we teach people how to deposit, it should always be consistently 1000, not 500"*. On withdrawals Ali chose "show the true minimum". `docs/COMPLIANCE-DECISIONS.md` § "2026-10-07 · Minimum deposit and minimum stake are TZS 1,000 everywhere, and the withdrawal minimum is stated truly (management, relayed by the owner)". |
+| **The rule itself** | `DEPOSIT_MIN_TZS = 1_000` in `src/lib/server/validators.ts` — the player's deposit form and the officer's manual deposit read it. The withdrawal minimum is `withdrawMinFor(rate)` = the larger of `WITHDRAW_MIN_TZS` and `minWithdrawalForRate(rate)` (`payout.ts`): the smallest gross whose net clears the provider's TZS 1,000 payout floor, found at the TRUE boundary with the same rounding fee function (`computeWithdrawalFee`): TZS 1,015 at 1.5%, where the algebra `ceil(1,000 / 0.985)` gives 1,016 (corrected the same day, before release). |
+| **Stated to players** | The deposit hint is a `{min}`/`{max}` template filled from the constants in all three languages; the withdraw hint, its confirm step, the server's refusal and the wallet's Limits tab all state `withdrawMinFor` of the LIVE fee — never a typed "1,000", which a 1,000 withdrawal at 1.5% would contradict. The chat assistant states "Min TZS 1,000". |
+| **Money already moving** | A deposit of TZS 500–999 that FAILED before the release can only be cancelled (its retry meets the new minimum); one still PROCESSING then credits normally — completion never re-checks the minimum. |
+| **Guarded by** | `test:money-minimums` (999 refused, 1,000 accepted; no figure typed into the dictionary; the prompt's literal equals the constant; the withdraw hint and refusal show the derived figure with no `{` left) and `test:withdrawal-fee` (at every rate an operator could set, the derived gross nets the floor and one shilling less does NOT — strictly). |
 
 ### 2.8 · What a player is charged, in full
 
@@ -651,6 +665,7 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 
 | Date | Decision | Record |
 |---|---|---|
+| 2026-10-07 | ⭐ **Minimum deposit TZS 1,000** (was 500), the **stake floor applied on every read**, and the **withdrawal minimum stated truly** (TZS 1,015 at 1.5%) — management, relayed by Ali | `docs/COMPLIANCE-DECISIONS.md` § "2026-10-07 · Minimum deposit and minimum stake are TZS 1,000 everywhere, and the withdrawal minimum is stated truly (management, relayed by the owner)" |
 | 2026-09-27 | ⭐ **Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling).** The state card's clearance line and the Make-payable dialog's warning are removed; the card states the enforced 50% commission cap instead. The Owner's switch stays the one control, and nothing else changes. Supersedes the clearance sentence of the 2026-09-26 row below. | §2.10a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-27 |
 | 2026-09-26 | ⭐ **Deposit-tied invite rewards retired.** The bonus pays on sign-up only and the prize on a friend's first bet only; a deposit pays no referral reward, so the published RG policy's "No bonus offers tied to deposit increases" stays true. `requireDeposit` on the first-bet prize stays, as an anti-fraud precondition. | §2.10a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-26 · Deposit-tied invite rewards retired · `docs/PLAYER-INVITE-UNPAID.md` §7 |
 | 2026-09-26 | ⭐ **Invite payment becomes the Owner's switch — Not payable by default.** `inviteRewards` ACTIVE now means the Owner decides, on `/admin/affiliate`: a written reason (5–300 characters) and the typed words `MAKE PAYABLE`, with no authenticator code (Ali's choice); stopping is Owner-only too, with a reason only. Not payable by default and in every failure mode: an HMAC-sealed row, and a `SESSION_SECRET` rotation fails closed. Env `FEATURE_INVITEREWARDS=WITHDRAWN` is the hard kill, `=ACTIVE` forces payment. The money path re-reads the switch, and the settings, fresh. Rewards land as CASH. Commission ≤ 50% of margin is enforced, window 1–60 months. While Not payable the settings are locked and the Save is refused. ⛔ Gaming Board of Tanzania clearance is still required before switching on. ⚠️ *Superseded 2026-09-27 (row above): no separate clearance — 50pick's licence covers invite rewards.* Supersedes the 2026-09-25 row's `inviteRewards` WITHDRAWN (payment could be turned on only by a code change or an env variable) and nothing else. | §2.10a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-26 · Invite payment becomes an Owner switch · `docs/PLAYER-INVITE-UNPAID.md` §12 |

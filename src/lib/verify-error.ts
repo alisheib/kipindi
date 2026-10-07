@@ -2,13 +2,14 @@
  * One place that turns a `resendEmailVerificationAction` CODE into words.
  *
  * The action deliberately returns codes rather than prose (it is a server
- * action rendered on trilingual player surfaces). Two components consume it —
- * the deposit gate and the standing app-wide bar — and if each mapped the codes
- * itself they would drift the moment a new code appeared. This is the mapper.
+ * action rendered on trilingual player surfaces). Its consumers — the withdraw
+ * screen's email step and the account page's editor (the deposit gate and the
+ * app-wide bar that once used it were deleted on 2026-10-07) — would drift the
+ * moment a new code appeared if each mapped the codes itself. This is the mapper.
  *
  * An UNKNOWN code falls back to the generic send-failure line rather than
  * printing the raw code at a player: a stray identifier on screen reads as a
- * crash, and on the flow that unlocks depositing that costs real trust.
+ * crash, and on the flow that unlocks withdrawing (depositing, until 2026-10-07) that costs real trust.
  */
 import type { Dict } from "@/lib/i18n-dict";
 

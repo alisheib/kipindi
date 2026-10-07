@@ -253,7 +253,8 @@ export async function setPlayerEmailAction(formData: FormData) {
   // Writing here bypassed the one-account-per-email check (which is app-level,
   // not a DB index, so the direct write silently succeeded on a duplicate) and
   // never sent a confirmation link — leaving the player unverified, un-emailed,
-  // and unable to deposit after a support agent "fixed" their address.
+  // and unable to deposit after a support agent "fixed" their address (unable to WITHDRAW, since the
+  // owner ruling of 2026-10-07 moved the email requirement from deposits to withdrawals).
   const r = await setUserEmail(userId, email, { byOfficer: true });
   if (!r.ok) return { ok: false as const, error: r.error };
   audit({

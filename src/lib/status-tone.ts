@@ -88,6 +88,20 @@ export const TONE_CHIP = {
 } as const satisfies Record<StatusTone, StatusChipVariant>;
 
 /**
+ * Tone → the INK a status word wears when it is printed as text, not as a chip (2026-10-07) — the /wallet row prints
+ * its payment status as a small uppercase word. The SAME tones as `TONE_CHIP`, in the chip's own text colour, so a word
+ * reads one colour whether it is a chip on Receipts or a word on /wallet. ⛔ Only the tones a player status uses as a
+ * word are here; `playerStatusInk` returns null for any other, and the caller states its fallback where it can see it.
+ */
+export const TONE_INK = {
+  royal: "text-brand-300",
+  green: "text-success-fg",
+  amber: "text-warning-fg",
+  rose:  "text-danger-fg",
+  slate: "text-text-muted",
+} as const satisfies Partial<Record<StatusTone, string>>;
+
+/**
  * ⭐ THE DICTIONARY. Keyed by the WORD a human reads, because that is the level the
  * defect lives at — a player and an officer looking at the same word.
  *
@@ -200,6 +214,23 @@ export const STATUS_TONE = {
    * by paperwork.
    */
   CASHED_OUT: { player: "slate" },
+  // ── A PLAYER'S PAYMENT — a deposit or a withdrawal (2026-10-07, the Receipts page) ─────────────
+  /**
+   * ⭐ THE SEVEN `TxnStatus` WORDS A PLAYER READS ON THEIR OWN MONEY, DECIDED ONCE. Until 2026-10-07 two surfaces
+   * painted them two ways: the single receipt carried a file-local map in the BETTING inks (yes-green, no-rose — §B2a
+   * forbids that for app state) and the /wallet row a ternary that put Pending and Processing in AMBER, which is gilt
+   * (§F3) and means "somebody must act". The new Receipts list would have been a third. All three read this now.
+   * `PENDING` is the shared entry above — royal, because waiting is not a warning. Processing and In review are
+   * waiting too. Completed is app-state green. Failed is the failure colour. Reversed and Cancelled are SLATE —
+   * terminal and inert, nobody's fault, the money is back or never left (the VOID / CASHED_OUT reasoning above).
+   * ⛔ Never `gilt`: moving your own money into or out of your own wallet earns nothing (§M3a D1).
+   */
+  PROCESSING: { player: "royal" },
+  AML_REVIEW: { player: "royal" },
+  CONFIRMED:  { player: "green" },
+  FAILED:     { player: "rose" },
+  REVERSED:   { player: "slate" },
+  CANCELLED:  { player: "slate" },
   // ── KYC STAGE on the player roster (2026-09-11, Ali's request) ────────────────────────────
   /**
    * ⚠️ KYC-SCOPED KEYS, DELIBERATELY — and the reason is three screens up, not a preference.
@@ -231,7 +262,7 @@ export const STATUS_TONE = {
    * ⭐ ADDED 2026-09-13 — "Funded · nothing sent". SLATE, AND AMBER WAS CONSIDERED AND REFUSED.
    *
    * Amber means "somebody must act, and it is not simply waiting". Under the 2026-09-13 ladder
-   * (register → confirm email → deposit and play → verify identity → withdraw) nobody must: a
+   * (register → deposit and play → verify identity + confirm email → withdraw — email moved there 2026-10-07) nobody must: a
    * funded player who has sent nothing is in the ORDINARY, permitted state, and nothing is asked
    * of them until they reach for their money. It is also about to be the roster's MAJORITY — so
    * amber here would repaint most of the column in the "act now" colour, which is *"it says
@@ -271,6 +302,13 @@ export function playerStatusChip(word: string): StatusChipVariant | null {
   const entry = (STATUS_TONE as Record<string, Partial<Record<StatusSurface, StatusTone>>>)[word];
   const tone = entry?.player;
   return tone ? TONE_CHIP[tone] : null;
+}
+
+/** The ink for a player status word printed as text (`TONE_INK`), or null — same contract as `playerStatusChip`. */
+export function playerStatusInk(word: string): string | null {
+  const entry = (STATUS_TONE as Record<string, Partial<Record<StatusSurface, StatusTone>>>)[word];
+  const tone = entry?.player;
+  return tone && tone in TONE_INK ? TONE_INK[tone as keyof typeof TONE_INK] : null;
 }
 
 /**

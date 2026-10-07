@@ -31,6 +31,7 @@ import { getServerT, type Dict, type Locale } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
 import { isSafePath } from "@/lib/safe-next";
+import { EmailResendInline } from "@/components/profile/email-resend-inline";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Verify identity", which a Swahili player saw in their browser tab and history.
@@ -168,18 +169,22 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </div>
       )}
       {hasEmail && !emailVerified && idDone && (
-        <div className="rounded-xl border border-gold-700 bg-gold-500/[0.06] px-4 py-3 flex items-start gap-2.5">
-          <I.mail s={16} className="text-gold-300 mt-0.5 shrink-0" />
-          <div className="text-body-sm text-text-muted leading-snug">
-            <p className="font-display font-semibold text-gold-300">{t.profile.kycConfirmEmail}</p>
+        // ⭐ THE CONFIRMED EMAIL, ONCE IDENTITY IS DONE (the form row below carries it before then). 2026-10-07: NEUTRAL,
+        // never gold — §M3 keeps gold for earned money, and the profile pill one tap earlier calls the same state neutral.
+        // The sign-up link expires after 24 h, so a new one is offered HERE, beside the door to fix a mistyped address.
+        <div data-kyc-email-callout className="rounded-xl border border-border bg-bg-elevated px-4 py-3 flex items-start gap-2.5">
+          <I.mail s={16} className="text-brand-300 mt-0.5 shrink-0" />
+          <div className="min-w-0 text-body-sm text-text-muted leading-snug">
+            <p className="font-display font-semibold text-text">{t.profile.kycConfirmEmail}</p>
             <p className="mt-0.5">
-              {t.profile.kycConfirmEmailBody} <span className="font-semibold text-text">{user?.email}</span>
+              {t.profile.kycConfirmEmailBody} <span className="font-mono text-text break-all">{user?.email}</span>
             </p>
-            <p className="mt-1.5">
-              <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
-                {t.profile.kycResendEmail}
+            <EmailResendInline className="mt-2">
+              <Link href="/profile/account" className="btn btn-ghost btn-sm btn-pill inline-flex items-center gap-1.5">
+                <I.user s={14} />
+                {t.wallet.verifyChangeEmailCta}
               </Link>
-            </p>
+            </EmailResendInline>
           </div>
         </div>
       )}
@@ -527,7 +532,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 </div>
               ) : user?.email ? (
                 // An address ON FILE BUT NOT CONFIRMED is shown as unconfirmed, read-only: the account page changes
-                // it, behind the current password. The link already sent to it stays valid.
+                // it, behind the current password, and sends a new link (a link expires after 24 h).
                 <div>
                   <FieldLegend as="p" className="block mb-2">
                     {t.common.email}
@@ -544,13 +549,15 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                     {t.profile.emailOnFileUnconfirmed}{locale === "zh" ? "" : " "}
                     <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">{t.wallet.verifyChangeEmailCta}</Link>
                   </p>
+                  {/* 2026-10-07 · the first-deposit notice's "both" variant lands here: a new link in place, not one more page. */}
+                  <EmailResendInline className="mt-2" />
                 </div>
               ) : (
                 // No address yet: named, and the one door to add it — never a field here.
                 <div>
                   <FieldLegend as="p" className="block mb-2">{t.common.email}</FieldLegend>
                   <p className="text-body-sm text-text-muted">
-                    {t.wallet.verifyNoEmailTitle}{" "}
+                    {t.profile.noEmailOnFile}{locale === "zh" ? "" : " "}
                     <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">{t.wallet.verifyAddEmailCta}</Link>
                   </p>
                 </div>
