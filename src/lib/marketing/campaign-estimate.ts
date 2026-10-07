@@ -19,7 +19,8 @@
  * in words that cost and credit are shown to other roles, and prints none of the money fixture's digits.
  * ⛔ An unreadable credit has NO `tzs` field (`BalanceFigure`), so no "Was TZS 185" can be rendered from it — the
  * Admin → System tile still prints its kept figure; this card prints neither the figure nor "was".
- * ⛔ A failed audience count is `audience-error`, never a zero; an unknown price is "—", never TZS 0.
+ * ⛔ A failed audience count is `audience-error`, never a zero; an unknown price is "—", never TZS 0; and (U49a) a credit
+ * kept for codes that could not be read gives no coverage figure, never a reserve of TZS 0.
  * ⚠️ Every segment total says "estimated" while `SMS_ARITHMETIC_VERIFIED_AGAINST_BILLER` is false.
  *
  * Guard: `npm run test:campaign-estimate` §4/§5. Red: `npm run red:campaign-estimate` (in memory).
@@ -53,8 +54,12 @@ export type EstimateAudience = { ok: true; population: number; forecast: number 
 export type EstimateInputs = {
   audience: EstimateAudience;
   pace: ChunkPace | null;
-  /** ⛔ null for a role that may not read money figures — decided on the server, never here. */
-  money: null | { cost: SegmentCostMeasure; balance: BalanceFigure; reserveTzs: number };
+  /**
+   * ⛔ null for a role that may not read money figures — decided on the server, never here.
+   * `reserveTzs` is the credit kept for login and withdrawal codes (U49a: the Marketing SMS settings, read fresh); ⛔ null
+   * when it could not be read — then nothing is said about coverage, and no default stands in for the owner's figure.
+   */
+  money: null | { cost: SegmentCostMeasure; balance: BalanceFigure; reserveTzs: number | null };
 };
 
 export type VariantSize = { locale: "SW" | "EN"; segments: number; encoding: SmsEncoding };
@@ -101,8 +106,9 @@ export type EstimateMoney = {
   /** ceil(billable × price) — never rounded down; null when the price is unknown. */
   costTzs: number | null;
   balance: BalanceFigure;
-  reserveTzs: number;
-  /** The live credit above the reserve kept for login codes; null when the credit is unreadable. */
+  /** The credit kept for login and withdrawal codes; null when it could not be read (U49a). */
+  reserveTzs: number | null;
+  /** The live credit above the reserve kept for login codes; null when the credit or the reserve is unreadable. */
   spendableTzs: number | null;
   /** How many people the spendable credit pays for; null when the price or the credit is unknown. */
   covers: number | null;
@@ -162,10 +168,12 @@ export function campaignEstimate(i: EstimateInputs, variants: readonly VariantSi
   let money: EstimateMoney | null = null;
   if (i.money) {
     const m = i.money;
-    const reserveTzs = Number.isFinite(m.reserveTzs) && m.reserveTzs > 0 ? m.reserveTzs : 0;
+    // ⛔ U49a · a reserve that could not be read (null) stays unknown — never 0, which would offer the codes' credit to
+    // the campaign.
+    const reserveTzs = m.reserveTzs === null ? null : Number.isFinite(m.reserveTzs) && m.reserveTzs > 0 ? m.reserveTzs : 0;
     const tzsPerSegment = m.cost.kind === "unknown" ? null : m.cost.tzsPerSegment;
     const costTzs = tzsPerSegment === null ? null : Math.ceil(billableSegments * tzsPerSegment);
-    const above = m.balance.kind === "live" ? m.balance.tzs - reserveTzs : null;
+    const above = m.balance.kind === "live" && reserveTzs !== null ? m.balance.tzs - reserveTzs : null;
     const spendableTzs = above === null ? null : Math.max(0, above);
     const covers =
       tzsPerSegment === null || spendableTzs === null ? null : Math.floor(spendableTzs / (tzsPerSegment * segmentsPerRecipient));
@@ -295,6 +303,10 @@ function creditTile(m: EstimateMoney, now: number): EstimateTile {
 }
 
 function coversTile(e: CampaignEstimate, m: EstimateMoney): EstimateTile {
+  // ⛔ U49a · no reserve, no coverage: what the credit pays for is only what lies above the credit kept for codes.
+  if (m.reserveTzs === null) {
+    return { key: "covers", label: "Covers", value: "—", note: "needs the credit kept for login codes, which couldn't be read" };
+  }
   if (m.covers === null || m.spendableTzs === null || m.costTzs === null || e.population === null) {
     return { key: "covers", label: "Covers", value: "—", note: "needs a cost and a credit reading" };
   }

@@ -227,17 +227,26 @@ export function wantsAttention(
 
 /* ══ WHY A CAMPAIGN STOPPED ═════════════════════════════════════════════════════════════════════════════════════ */
 
+/** U49a · the floor's one sentence, whichever line caught it (`STOP_REASON_SENTENCE`, below). */
+const MARKETING_FLOOR_SENTENCE = "Paused — the SMS credit reached what is kept for login and withdrawal codes. Top up, then Resume.";
+
 /**
  * The engine's own reasons, in words an officer can act on. The first three are the shop-wide refusals `sendBatch`
  * returns before a request is made (`SmsFailureCode` in `sms.ts`) and `gate_unanswered` is `dispatchSlice`'s own: the
  * reasons a slice HOLDS rows for (`dispatch.ts`), which the engine turns into ONE pause (§9 U43). ⚠️ U41, U43 and U49
  * each add the keys they write — an unknown key is still shown, labelled as the engine's own words.
+ * ⭐ U49a (ENGINE-SPEC §3.4, §4.12 decision 5): the credit kept for login and withdrawal codes — `MARKETING_FLOOR` is
+ * `sendBatch`'s own refusal (its last line), `marketing_floor` and `credit_unreadable` are the slice's own checks before it
+ * claims anyone (U43b writes all three; one sentence for the floor, whichever line caught it).
  */
 const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   BALANCE_FLOOR: "The SMS credit is below its floor. Top it up, then resume.",
   NOT_CONFIGURED: "SMS sending is not set up on the server.",
   PROVIDER_UNRECOGNISED: "The SMS provider setting is not one this platform knows.",
   gate_unanswered: "The consent check could not answer, so nobody more was messaged.",
+  MARKETING_FLOOR: MARKETING_FLOOR_SENTENCE,
+  marketing_floor: MARKETING_FLOOR_SENTENCE,
+  credit_unreadable: "Paused — the SMS credit couldn't be read, so sending stopped to protect login codes. Resume when Admin → System shows the credit again.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */
