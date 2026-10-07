@@ -51,6 +51,8 @@ type Props = {
 export function SellConfirmModal({ open, pending, stake, value, positionId, onConfirm, onCancel, titleLabel, keepLabel }: Props) {
   const { t } = useT();
   const confirmRef = useRef<HTMLButtonElement>(null);
+  /** The way out, "Hifadhi nafasi": where focus lands when a dialog drawn over this one closes (`safeFocus`, S6 A8i-2). */
+  const keepRef = useRef<HTMLButtonElement>(null);
 
   // B-21 — the quote hold. The bet path locks its quote for 10s; the exit path
   // (same pool volatility) let the player consent to a figure that could be a
@@ -71,8 +73,11 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
   // press of whatever had focus, so Enter on the keep button sold the ticket, and Enter on the win seal — opened on top
   // when another ticket wins — sold in this dialog underneath. Enter is now the focused button's own press: the dialog
   // opens with focus on the sell button (`initialFocus`), so Enter there still sells, through the same click a mouse
-  // makes, which refuses a lapsed quote and is `disabled` while a sale is in flight. A key held down from before presses
-  // nothing (`modal.tsx`, `held-key.ts`). `test:enter-where-pressed` holds every dialog to this.
+  // makes, which refuses a lapsed quote and is `disabled` while a sale is in flight. A key held down presses once
+  // (`key-guard.tsx`, `held-key.ts`).
+  // ⭐ S6 A8i-2 · and the win seal closing over this dialog hands focus to "Hifadhi nafasi" (`safeFocus`), never back to the
+  // sell button: a second Enter meant for the seal (W2, which SOLD the ticket in a real browser), or for a second seal still
+  // on its way, can at worst keep the ticket. `test:enter-where-pressed` holds every dialog to this.
 
   // Cash-out is an early exit, never a profit. `value` is the stake returned —
   // full inside the free-exit window, stake − fee outside it.
@@ -88,6 +93,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       maxWidth={440}
       closeOnScrim={!pending}
       initialFocus={confirmRef}
+      safeFocus={keepRef}
     >
       <div className="mb-4 min-w-0">
         <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
@@ -164,6 +170,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
           {pending ? t.dialog.selling : `${t.dialog.sellLabel} · ${formatTzs(value)}`}
         </button>
         <button
+          ref={keepRef}
           type="button"
           onClick={onCancel}
           disabled={pending}

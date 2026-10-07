@@ -884,6 +884,20 @@ The conviction dial must never be enterable in the unlocked both-ways state:
 The invariant itself survives: the stake surface is never enterable both ways. Until the flip, the rules above stand
 for every player.
 
+⛔ **Keyboard — Enter acts only where it is pressed; a held key presses once; nothing behind the top dialog takes a key
+(Vodacom S6 A8i 2026-10-06, A8i-2 2026-10-07).** Never add a `window`/`document` keydown listener that does a dialog's act
+on Enter: it cancels the focused button's own press, which is how Enter on "Ghairi" placed bets and Enter on the win seal
+sold the ticket underneath (live until A8i). Money dialogs open with focus on their primary, so Enter there is the
+button's own click. Every `Modal` stands on one dialog stack (`src/lib/modal-stack.ts`): only the top dialog takes focus
+and answers Escape and Tab, and a closing dialog hands focus back by `leaveLayer` — never behind the dialog now on top, and
+an uncovered money dialog lands on its WAY OUT (`safeFocus`: Ghairi, Hifadhi nafasi, Cancel), never its money button. One
+app-wide key guard (`src/components/ui/key-guard.tsx`, window capture phase, mounted by AppShell and by every Modal)
+swallows a held key's repeats anywhere (a held Enter on Up & Down's UP placed 13 bets), every Enter or Space behind the
+top dialog, and a fresh press in the 400 ms arming beat after a dialog takes focus or hands it back. A new key listener
+gets a NAME (the census refuses inline ones) and every key event named in `src/` must belong to a listener the census
+reads. Guards: `test:enter-where-pressed` (predeploy; it builds the guard and `leaveLayer` from their text and runs them)
+and its `red:` twin; the drive `qa:enter-where-pressed` (`ENGINE=webkit|firefox` for the other engines).
+
 ## Brand Kit v2 "Needle" (June 2026)
 
 Logo redesigned by Claude Design. The gilt NEEDLE crossing the rim is now the

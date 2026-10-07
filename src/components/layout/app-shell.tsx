@@ -25,6 +25,7 @@ import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NavProgress } from "@/components/ui/nav-progress";
+import { KeyGuard } from "@/components/ui/key-guard";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession, sessionEndedThisRequest, type SessionEndReason } from "@/lib/server/session";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
@@ -375,6 +376,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           hydrating. It is now the `<Reveal>` client wrapper, which renders the attribute from
           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
       <HeaderScrollCast />
+      {/* ⭐ S6 A8i-2 · THE KEY GUARD (`key-guard.tsx`): a key held down presses once, wherever it is on the page, and
+          nothing behind the top dialog takes Enter or Space. It renders nothing. Every `Modal` installs it too, for a page
+          outside this shell. */}
+      <KeyGuard />
       <Suspense fallback={null}><NavProgress /></Suspense>
       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each

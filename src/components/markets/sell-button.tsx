@@ -336,10 +336,13 @@ export function SellButton({
   // BOTH latches below stay, because they close different windows. `pending` is
   // `useTransition` state read from the closure of the render that built this `submit`, so
   // a second call in the same tick — before React has re-rendered — still reads it false and
-  // walks straight through. Since A8i Enter is the sell button's own press, which React
-  // re-renders after, but a double press from any surface (two fast clicks, a script) is the
-  // same window. `inFlight` is set SYNCHRONOUSLY on the first call, so it is the only one
-  // that closes that tick. `pending` stays because it is the in-repo precedent
+  // walks straight through. No player can reach that window: two clicks or two Enters are two
+  // tasks, and React commits the first one's `pending` (the transition's pending flag is an
+  // urgent update, flushed in a microtask) before the second runs, so the button is already
+  // `disabled` and takes no second press. Only a second call in the
+  // SAME task reaches here: a script, or two synthetic `.click()` calls in a row. `inFlight`
+  // is set SYNCHRONOUSLY on the first call, so it is the only one that closes that tick.
+  // `pending` stays because it is the in-repo precedent
   // (`conviction-dial.tsx`'s `submit` opens with exactly it) and it refuses a repeat
   // arriving from any surface that never armed the ref.
   const inFlight = useRef(false);

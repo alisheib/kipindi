@@ -266,7 +266,9 @@ export function Select({
    *     or committed, the reset row, and Enter always chose the value already there;
    *   · the opening key itself also reached the listener (attached by that same commit), so ArrowDown
    *     opened the list AND moved one row.
-   * While the list is open the listener owns every key; the opening key never reaches it.
+   * While the list is open the listener owns every key pressed in this control — on its trigger, in its list, or on the
+   * page itself when a click left focus there (S6 A8i: a key pressed in anything else is that thing's); the opening key
+   * never reaches it.
    * Guards: `npm run test:select-keyboard` (the contract) and `npm run qa:select-keyboard` (the keys). */
   const onTriggerKey = (e: React.KeyboardEvent) => {
     if (open) return;
@@ -287,6 +289,8 @@ export function Select({
          lose its Enter to this listener, which picked an option here and cancelled the press of the dialog's button. */
       const at = e.target as Node | null;
       if (at !== document.body && !triggerRef.current?.contains(at) && !listRef.current?.contains(at)) return;
+      /* ⭐ S6 A8i-2 · inside a dialog this Escape closes the list and only the list: `Modal` leaves an Escape pressed on the
+         open combobox to it, where it used to close the dialog as well, with whatever had been entered in it. */
       if (e.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
       // ⛔ ARROW KEYS SKIP DISABLED OPTIONS. Landing focus on something Enter refuses to select
       // is a dead end that reads as a broken dropdown — and it is only reachable by keyboard, so
