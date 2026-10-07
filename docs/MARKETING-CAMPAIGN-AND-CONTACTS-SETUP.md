@@ -82,17 +82,37 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push U43a, U38b, U13 or the
-  owner door. NOW (11:00 EAT · 2026-10-07): U38b BUILT in `F:kipindi-m14` (uncommitted) — the 28 drafts applied, OD65 (the
-  count alone for a masked viewer, the gate never asked) and OD66 (no `pop=both` for a masked viewer) decided and built,
-  every finding of an independent review fixed (STD-1's redirect on Save and on "Remove the filter", the in-memory save
-  read, false unsaved-changes prompts on the rail, Reload after a stale save, the masked count inside the split's slots);
-  `test:campaign-audience` 40, its red 46/46; typecheck clean; its six drives queued for `F:/kipindi-locks/heavy-node.lock`.
-  U13 BUILT on top of it in `F:kipindi-m14b` (the drafts merged; the pre-review's SP-1…SP-5 and ruling R1 built; 20 suites
-  and reds green), under independent review. BUILDERS RUNNING (static, light suites only): U40a in `F:kipindi-m14c` (on
-  U38b + U13), U46a in `F:kipindi-m14d` (on main). Order to land: U38b → U13 → U40a → … (§0 ▶ NEXT). The Vodacom plan runs beside it on the same PC in another session
-  (its own worktrees, ports 3071-3079); this lane uses ports 3101-3109 and scratch Postgres 5461, and both take
-  `F:/heavy-node.lock` (a `mkdir` mutex) before any heavy job — ⛔ release it ONLY if you took it: a cleanup that ran
-  after a failed `mkdir` once removed the Vodacom session's lock (restored at once, its owner told).
+  owner door. NOW (15:45 EAT · 2026-10-07) — where each piece is, for a session on ANY machine (another PC: both
+  commits below are on origin as backup branches; `origin/backup/marketing-s14-u13` holds U38b and U13 together):
+  · U38b COMMITTED `a5feb9f1` on `marketing-s14` (`F:\kipindi-m14`), merged with `origin/main` as `fc49aeb5`, backed
+    up as `origin/backup/marketing-s14`. Every finding of the independent review fixed; 13 suites re-run green on the
+    merged tree. Under the lock now: its battery (typecheck clean, the light suites done, the database ones running),
+    then its three drives again after the drive fixes (audience, contacts, compose). Then STEP 48 here, the push to
+    `main`, and the read-back from `?dpl=`.
+  · U13 COMMITTED `53fd74ad` on `marketing-s14-u13` (`F:\kipindi-m14b`), on top of `fc49aeb5`, backed up as
+    `origin/backup/marketing-s14-u13`. Moved from the m14b build by a three-way merge (base: the U38b it was built on);
+    two overlaps settled by hand (package.json's predeploy keeps both new suites; one ENGINE-SPEC paragraph keeps
+    U38b's final words). Green: `test:marketing-window` 9 (red 9/9), `test:marketing-settings` 21 (red 73/73),
+    `test:policy-lines` 11, `test:rg-policy` 23 (red 26/26), `test:marketing-consent` 162 (red 94/94),
+    `test:campaign-audience` 40, `test:campaign-privacy` 27, `test:campaign-compose`, `test:client-graph-safe`,
+    `test:guards-exist`. Owed before its push: its battery (84 light suites, 21 database ones, and the three planting
+    reds whose anchors sit in its files: `red:chart-one-home`, `red:house-bot-c5`, `red:sms-cost-guard`), its drives
+    (the composer with the window closed by the dev clock door, `qa:marketing-policy-lines`, `qa:marketing-settings`),
+    then STEP 49.
+  · THE OWNER DOOR: worktree `F:\kipindi-m14e`, branch `marketing-s14-owner` from `53fd74ad`. It is built from
+    `backup/marketing-s13-wip` `wip-s13/owner-door/` (PARTIAL: re-read every file) and `wip-s13/notes/owner-acts-packet.json`
+    (`ops_door_design`, `risks`). Once it is live: `status`, then `check` for G5, G4 and G10, showing Ali the words
+    `check` prints, then `apply`, one gate at a time (COMPLIANCE-DECISIONS § 2026-10-07, the owner's approvals).
+  · BUILDERS RUNNING (static, light suites only): U40a in `F:\kipindi-m14c` (on the m14b tree as it was BEFORE U13 was
+    committed: three-way merge its work onto `marketing-s14-u13` or later), U46a in `F:\kipindi-m14d` (on `a439a464`).
+  · Order to land: U38b → U13 → the owner door (then Ali's approved texts saved through it) → the final-rule units →
+    licence outreach opened → U40a → U40b → U42 → U49a → U43b → U46a → U47b → U48a → U52a (§0 ▶ NEXT).
+  · THE LOCK: the Vodacom and money-doors sessions run beside this one on the same PC. Every heavy job (tsc, builds,
+    dev servers and drives, scratch Postgres, batteries) takes `F:/kipindi-locks/heavy-node.lock` (a `mkdir` mutex;
+    the owner line's first word is the session) and queues with ONE note, `F:/kipindi-locks/heavy-node.wait`: a note
+    that is not yours goes first, and a job clears only its OWN note, word for word. ⛔ Release the lock ONLY if you
+    took it (a cleanup after a failed `mkdir` once removed the Vodacom session's lock; restored at once, its owner told).
+    This lane uses ports 3101-3109 and scratch Postgres 5461-5463; the Vodacom lane 3071-3079.
   ▸ 10:08 EAT: S14's first session closed mid-task; a second session on the same PC continues S14 in the same worktree
   (Ali: "proceed with the sms campaign plan … check what's left and proceed").
   STEP 47 · U43a PUSHED `89775271` — THE RECIPIENT DOORS IN BOTH TWINS (ENGINE-SPEC §4.10), inert until U43b: `claim`,
