@@ -4,10 +4,11 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
-switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 44, U49s-2
-LIVE `4093dc54` — the Marketing SMS card above Admin → System's rail and the Marketing SMS tab, so U49s is whole (after
-STEP 43, U49s-1 LIVE `34c1ea7f`: the live switch's closing time, its audited writers and the settings record). ⏳ S13 in
-flight on ALI-BLADE15 (§0). First real campaign: realistic window 18–25 October.**
+switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 46, U43y
+(money first — a campaign yields while bets, payouts and deposits run) and STEP 45, U16a (erasure, the access export
+and retention reach the campaign records), pushed 2026-10-07 by S13; before them STEP 44, U49s-2 LIVE `4093dc54`. Ali's
+FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S13
+in flight on ALI-BLADE15 (§0). First real campaign: realistic window 18–25 October.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -39,33 +40,32 @@ flight on ALI-BLADE15 (§0). First real campaign: realistic window 18–25 Octob
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U16a → U43y → U43a (S13, in flight) — the three units ALI-BLADE15 built on 2026-10-04 and never pushed,
-  ported onto `main` (each re-reviewed, batteried and pushed as its own STEP) — then U38b, the audience card on the
-  composer (ENGINE-SPEC §4.4: the campaign rail incl. "who": book / players / both, the keyed split, the D19 floor,
-  words on the list rows; its builder is running), then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order (its
-  parallel sets are §0.2; its dependency column allows the three first): U40a → U40b → U13 → U42 → U49a → U43b → U46a →
-  U47b → U48a → (U48b) → U52a, the live drive on production.
-  WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates):
-     1. U16a  erasure, the access export and retention reach the campaign records .................... 7–11 h
-     2. U43y  money first: a campaign yields to bets and payouts ......................................  3–6 h
-     3. U43a  the recipient doors: claim, settle, find the stranded, requeue .......................... 9–14 h
-     4. U38b  who a campaign goes to: the audience card, its counts and the D19 floor ................. 9–15 h
-     5. U40a  the confirmation on the server: the typed count, the frozen estimate and budget .......... 7–11 h
-     6. U40b  the confirmation on screen: the modal on the composer ...................................  6–10 h
-     7. U13   the 08:00–20:00 EAT send window, enforced where messages are sent .......................  4–7 h
-     8. U42   enqueue: the recipient rows, capped at the confirmed count .............................. 6–10 h
-     9. U49a  the credit kept for login codes, and the refusal at Start ............................... 6–10 h
-    10. U43b  the send engine itself (built as U43b-1 then U43b-2) .................................... 14–22 h
-    11. U46a  delivery receipts on the recipients ..................................................... 5–8 h
-    12. U47b  the live campaign page: Start · Pause · Resume · Stop · Make a copy (U47b-1, U47b-2) .... 14–22 h
-    13. U48a  results on the live page (U48b — the recipients table and its CSV — may follow) ........... 5–8 h
-    14. U52a  the live drive on PRODUCTION: at most 6 real SMS to the approved test number ............. 4–8 h
+▶ NEXT: U43a (S13) — the recipient doors, ported + reviewed + fixed, on `backup/marketing-s13-wip` (§0 HANDOVER) —
+  then U38b, the audience card on the composer (ENGINE-SPEC §4.4; drafts on the backup branch, one D19 MAJOR open),
+  then U13, then the owner door and Ali's approved texts, then the final-rule units, then licence outreach opened,
+  then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order: U40a → U40b → U42 → U49a → U43b → U46a → U47b → U48a →
+  (U48b) → U52a, the live drive on production.
+  WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates; the
+  three first are built and reviewed, so what is left of them is verification):
+     1. U43a  the recipient doors: claim, settle, find the stranded, requeue .......................... 9–14 h
+     2. U38b  who a campaign goes to: the audience card, its counts and the D19 floor ................. 9–15 h
+     3. U13   the 08:00–20:00 EAT send window, enforced where messages are sent .......................  4–7 h
+     4. U40a  the confirmation on the server: the typed count, the frozen estimate and budget .......... 7–11 h
+     5. U40b  the confirmation on screen: the modal on the composer ...................................  6–10 h
+     6. U42   enqueue: the recipient rows, capped at the confirmed count .............................. 6–10 h
+     7. U49a  the credit kept for login codes, and the refusal at Start ............................... 6–10 h
+     8. U43b  the send engine itself (built as U43b-1 then U43b-2) .................................... 14–22 h
+     9. U46a  delivery receipts on the recipients ..................................................... 5–8 h
+    10. U47b  the live campaign page: Start · Pause · Resume · Stop · Make a copy (U47b-1, U47b-2) .... 14–22 h
+    11. U48a  results on the live page (U48b — the recipients table and its CSV — may follow) ........... 5–8 h
+    12. U52a  the live drive on PRODUCTION: at most 6 real SMS to the approved test number ............. 4–8 h
   ⛔ Tell Ali BEFORE the first real SMS (U52a), and send it only to the approved test number, within the ledger cap.
   Then: the admin guide v1.4 (the switch, the Marketing SMS settings, a test to another number) as a PDF, with a copy
   on Ali's Desktop.
   ⛔ Before licence outreach is opened, the owed items in ◐ HALF-DONE 3a–4: U33r, the agent-referee exclusion (Q8 —
-  until it exists a referee can be reached, against a written promise), the registration box reworded (Q2), OD61's
-  feed restriction, the erasure marker (U16a), and the Lists card's 18+ words checked against the version on screen.
+  until it exists a referee can be reached, against a written promise; Ali 2026-10-07: honour it for every referee
+  already told, re-word it for new ones), the sign-up box REMOVED (Q2, Ali 2026-10-07), OD61's feed restriction, and
+  the Lists card's 18+ words checked against the version on screen. (The erasure marker shipped in STEP 45, U16a.)
 
 WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ · 13/25 defects ✅. LIVE and usable on
   www.50pick.tz today: the contacts book on /admin/contacts (the list, the filters, add and edit, bulk actions, the
@@ -86,32 +86,39 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   never run). All three are ported onto `main` by a three-way merge — one conflict, `dsar.ts`, where U33a-P's
   `outreach` field sat beside U16a's fields (both kept) — and re-reviewed before each push. S10's merged worktree is
   parked on the LOCAL branch `wip/marketing-s10-unshipped-2026-10-04` (`10b457f4`, never pushed).
-  ▶ HANDOVER — where everything is, for ANY machine (state 2026-10-07 ~01:00 EAT; Ali: "push any progress so we can
-  later proceed from another machine"):
-  · Branch `marketing-s13` on origin (`18e6192b`, NOT on main): U16a committed `d2fe9731` (STEP 45: both review rounds'
-    fixes + the erasure marker, ◐ 3a(ii)), main merged `e0d70fad`, U43y committed `18e6192b` (STEP 46: the BLOCKER fixed
-    with `src/lib/server/money-chores.d.ts`; a third mirror on the Up & Down chain gate). Owed before it goes to main: ONE
-    battery — the whole predeploy chain once (U43y is platform-wide) + U16a's reach, the planting reds alone with a
-    byte-compare, `db:probe-campaign-privacy`, `next build`, `qa:live` and `qa:marketing-retention`; its exact lists
-    and runner are in the backup branch below (`battery.sh`, `gen-lists.mjs`, `b2-extra-keys.txt`). A first run on
-    U16a's earlier version reached ~170 suites with NO failure that clean main does not have (2026-10-06, before a
-    reboot). Then STEP 45 + 46 are recorded here and pushed `HEAD:main`, and the deploy read back from `?dpl=`.
-  · Branch `backup/marketing-s13-wip` on origin (`87acfd20`, never for main): `wip-s13/` holds every unfinished draft as
-    complete files at their repo paths — `u43a/` (the recipient doors, ported + reviewed + fixed; three-way merge onto
-    `marketing-s13`, then route `test:campaign-privacy` P10's hand settle through the real `settle` door), `u38b/` (the
-    audience card, 28 files; its adversarial pre-review was running), `u13/` (the send window, 24 files; review round
-    running), `owner-door/` (`ops:marketing-owner-save` — the audited door that saves Ali's chat-approved texts; being
-    built) — and `notes/README.md` with the approved texts (`owner-acts-packet.json`) and the review findings.
-  · Recorded on main (`e41a42d9`, `eae30f0f`): Ali's FINAL rule and every approval of 2026-10-07 —
-    COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition".
-  · Being built from that rule (static, ALI-BLADE15 scratch; pushed to the backup branch as they land): the gate (the
-    lapse reversal Q9 + the referee exclusion U33r — its new promise wording goes to Ali before it ships), the public
-    texts (the sign-up box removed + the 7-year campaign record on /legal/privacy, the data-rights file and "Erase my
-    data"), OD61 (the activity feed's COMPLIANCE rows for compliance viewers only), and ◐ 3b (the Lists card's 18+
-    words checked against the version on screen).
-  · Order to live: the `marketing-s13` battery → push (STEPS 45-46) → U43a → U38b → U13 → the owner door, then apply
-    Ali's approved texts (G4, G5, G10) and redeploy once → the final-rule units → open licence outreach → the engine
-    (U40a → U40b → U42 → U49a → U43b → U46a → U47b → U48a → U52a).
+  ▶ HANDOVER — where everything is, for ANY machine (state 2026-10-07 ~09:20 EAT; Ali: "push the progress now to
+  continue from another machine"):
+  · STEP 45 (U16a, `d2fe9731`) + STEP 46 (U43y, `18e6192b`) PUSHED to main with this record, after ONE battery on
+    `marketing-s13` @ `18e6192b` (2026-10-06 22:50 → 23:54 UTC, 315 steps): the whole predeploy chain + U16a's reach +
+    the planting reds + `db:probe-campaign-privacy` 9/9 + `next build` + `qa:live` 303/303 + `qa:marketing-retention`
+    30/30 (tiles read: both new schedule rows at 1280 and 360). Own suites: `test:campaign-privacy` 27/27 and its red
+    complete, `test:money-busy` 34/34 and its red complete, `test:backup` 134/134 (U43y's BLOCKER), dal-parity 2,129,
+    `red:erasure` 33/33. NO failure that clean main does not have — compared on main: decomment (24 > 20), red-anchors
+    (the same 2), orphans (identical but the 4 new reachable scripts), updown-digest; admin-section-gate, revoked-deadend
+    and needle-rest need a server on :3009, verify-house-bot-bundle ran before the build, the old-build verify needs
+    `HOUSE_BOT_OLD_BUILD_DIR`, red:journey-header-fit runs only by name. ⏳ OWED: `red:house-bot-c5` ALONE with no time cap
+    (the battery's 20-minute step cap killed it; its one plant in `scripts/lib/house-bot-reports-cases.mts` and its lock
+    file were restored byte-for-byte), and the deploy read back from `?dpl=`.
+  · Branch `backup/marketing-s13-wip` (`4384fc3a`, never for main): `wip-s13/notes/README.md` says what each folder is —
+    `u43a/` fixed and ready to merge (then P10 through the real settle), `u38b/` with ONE D19 MAJOR open (a GROWTH officer
+    can pad a tag with 9 of their own contacts so the floor of 10 opens: decide count-only for masked viewers), `u13/`
+    (review partial), `owner-door/` (PARTIAL), `fr-public/` · `fr-lists/` · `fr-feed/` (PARTIAL), and every finding and
+    the approved texts.
+  · ⚠️ ~02:10 EAT this session hit its usage limit: the U38b fixer, U13's promise lens and fixer (with ruling R1: a
+    settings save that changes the hours is refused while the published RG line names an hour the new window drops), the
+    owner-door builder and the four final-rule builders stopped mid-task — re-run them.
+  · Recorded on main: Ali's FINAL rule and every approval of 2026-10-07 — COMPLIANCE-DECISIONS § "2026-10-07 · Marketing
+    SMS go to anyone with a phone — consent is not a condition" (the stop kept; his "people cannot stop offers" recorded,
+    not implemented).
+  · The final-rule units: (1) the gate — Q9 reversed (a lapsed player is reached under the licence) + U33r, the referee
+    exclusion for every referee already promised "we never contact you for marketing", the promise re-worded for new
+    referees (its new words to Ali first); (2) the public texts — the sign-up box removed + the approved 7-year
+    campaign-record texts (/legal/privacy §5, the data-rights file, "Erase my data"; `test:privacy-notice`'s version and
+    hash move with a COMPLIANCE "Privacy v…" entry); (3) OD61 — the /admin activity feed's COMPLIANCE rows for compliance
+    viewers only; (4) ◐ 3b — the Lists card posts the 18+ version it showed and a mismatch is refused.
+  · Order to live: U43a → U38b (decide D19-1) → U13 → the owner door, then apply Ali's approved texts (G4, G5, G10) and
+    redeploy once → the final-rule units → open licence outreach → the engine (U40a → U40b → U42 → U49a → U43b → U46a →
+    U47b → U48a → U52a). ⛔ On ALI-BLADE15 check the lock owner and LastBootUpTime before any battery (it rebooted once).
 
 ✔ LAST SESSION: S12 — 2026-10-06, OMEGA-COMPILE01 (`F:\kipindi-main`, on `main`): the send engine begins (Ali: "proceed
   please, next steps until we go live, fully done and perfect"). S11's block (STEPS 40–42 — the gate track finished,
@@ -471,7 +478,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U13 | engine | ⬜ | — | — | — | `test:marketing-window` | — | quiet hours |
 | U14 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | frequency cap |
 | U15 | guard | ⬜ | — | — | — | `test:marketing-engine` | — | D15 one send path |
-| U16 | data | ⬜ | — | — | — | `test:retention` | — | erasure reaches it |
+| U16 | data | 🟡 | S13 | d2fe9731 | — | `test:campaign-privacy` · `test:retention` | yes — `red:campaign-privacy` (in-process) | erasure reaches it. U16a pushed 2026-10-07 (§0 STEP 45): erasure, the access export and retention reach the campaign records and the opt-out links, plus the erasure marker; U16b (SmsMessage's retention and export reach, the lapse's ledger row, the import-row expiry, the never-finished campaign's trigger) follows. |
 | U17 | visual | 🔵 | S9 | 7bef9f97 | /admin/contacts did not exist, and nothing compared a nav item's domain with the page's → six doors (the page carries its own `AdminPageGate`), `test:rbac` §7b holds menu = page, the skeleton equals the real block (230.38 px / 272.63 px, delta 0) | `test:rbac` · `test:admin-section-gate` · `test:admin-nav` | yes · `red:rbac` (2/2 in-process, S10 — the ROUTE_DOMAINS row deleted; the nav item's domain edited) | live since S9's push (production serves later builds); ✅ owes ONE admin-session look at Growth → Contacts on www.50pick.tz — production has no QA admin, only Ali's login (⛔ never used) |
 | U18 | data | ✅ | S9 · S10 | aa2767e9 | there was no contact book, and erasure reached no marketing store — an erased player's sign-up GIVEN decided on Postgres, and neither export had a marketing section → the three tables in both DALs (U18a `fb194038`); erasure appends WITHDRAWN for every number the person consented with (never a stop, so a recycled number's next owner can consent) and empties every book row by link or number; both exports carry the book, the ledger and the stop history from the account's creation, through one allowlist | `test:erasure` · `test:dal-parity` | yes · `red:erasure` (29) · `red:dal-parity` | 2026-10-01 · live: U18a since S9's push (`fb194038`); U18b + both review rounds (`0e68d59e` → `2d4ca3b6` → `aa2767e9`) inside production's `1931d4c3` (proved by DISCRIMINATION: `aa2767e9` absent from the `2d4ca3b6` build, present in `1931d4c3`). No erasure is run on production by a drive (no QA account may be erased), so the behaviour is proven by EXECUTION — `test:erasure` §12, 338/338 |
 | U19 | guard | ✅ | S10 | addf5351 | a contact number had no registry entry, and the ONE mask printed every bare `255…` key as `2557••••01` (the operator digit) — in the SMS refusal audit and the delivery-receipt audit already → `contactPhone` (a CONTACT id, targetType MarketingContact, identity.contact: GROWTH sees `+255••••01` and no control); `maskPhone` reads a bare key as the `+` form, platform-wide; "Copy number" is a reveal through the same audited action, on the `read` branch only | `test:read-tiers` | yes · `red:read-tiers` (35/35, +4) | 2026-10-01 · live on `2d4ca3b6` (proved by DISCRIMINATION: production served `45794cc9` before the push, `2d4ca3b6` after). ⚠️ No live surface to look at yet — no contact exists on production (no writer until U22/U25) — so, like U11, proven by EXECUTION: read-tiers 8.23 runs the mask on a bare key. ⚠️ The export half lands with the export (U34), which must mask through `maskPhone` and name its column (read-tiers 8.9/8.10 are the precedent) |
@@ -498,7 +505,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
 | U41 | guard | 🟡 | S10 | — | — | `test:campaign-gates` | — | officer authorisation — DECIDED (OD60, 2026-10-04): one officer's typed confirmation at any size, under the 2026-07-24 single-admin ruling; ✅ when U40a's push carries the guard (G7.1). |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
-| U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43a (the doors), U43y and U43b (the slice) follow. |
+| U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43y pushed 2026-10-07 (§0 STEP 46, `18e6192b`): money first — ONE busy signal (`money-busy.ts`) fed by one-line mirrors in the lifecycle pass, the deposit poll, market fires and Up & Down chain fires (`test:money-busy` 34 claims, `red:money-busy` in-process); nothing calls it until U43b. U43a (the doors) and U43b (the slice) follow. |
 | U44 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the pump |
 | U45 | engine | ⬜ | — | — | — | `test:dal-parity` | — | D20 scale |
 | U46 | engine | ⬜ | — | — | — | `test:sms-dlr` | — | D21 receipts · also owns inbound STOP (NOT built, §9 U46) |
