@@ -1,0 +1,178 @@
+[
+ {
+  "where": "§0 seeding, P.1 and §8 tickets (the settled cell)",
+  "problem": "The settled Tiketi state only ever shows cashed-out tickets. No won, lost or refunded card is tiled, even though an existing dev-test route would produce them. The settled tiles therefore look covered without showing a settled ticket.",
+  "evidence": "seed-player-portfolio/route.ts:79 takes WANT = body.markets ?? 12. Lines 90-92 take the first WANT live non-demo markets. Lines 146-149 plan i<4 OPEN, i<6 CASHED_OUT, i<9 WIN, i<11 LOSS, else VOID. The draft seeds only seed-real-markets' six questions (route.ts:21-28), so the portfolio is 4 OPEN + 2 CASHED_OUT, as its own note admits. ?tab=settled (portfolio.ts matchesLens: status !== OPEN) then draws only cashed-out cards. The S4 frame s4-9-tiketi-settled.dc.html draws a won card ('Umeshinda') and a lost card ('Hasara'), each with 'Malipo ya mwisho'. POST /api/dev-test/seed-markets (seed-markets/route.ts:19 calls seedDemoMarkets) creates the real catalogue whenever fewer than 25 markets are live (market-service.ts:4866-4875, createMarket loop :4985-4989). Those titles carry no 'Demo · ' prefix, which is the only thing isDemoMarket excludes (:405-406). The draft's note never names this route.",
+  "fix": "In §0, POST /api/dev-test/seed-markets after seed-real-markets and before ensureMain. It is an existing route, so no route is added. In P.1, require byStatus WIN >= 1 and LOSS >= 1 (and VOID >= 1); if not, BLOCK the settled cell and name the shortfall. Keep ?tab=settled, and optionally add ?tab=win and ?tab=loss tiles at 390 sw. Note in the header that catalogue questions have no zh title (they fall back to English), so a zh settled card may read English. heldQuestion still picks a seed-real question through SEEDED_TITLES.",
+  "severity": "major",
+  "lens": "coverage"
+ },
+ {
+  "where": "§9 hub: one tile per width (toTop, or scrolled to the staff card)",
+  "problem": "The hub tiles capture only the first viewport. At 320, 360 and 390 most of the member hub and the guest hub's Safety and Legal cards never appear in any tile. The sign-out row sits below the fold at every width, so the done-when's 'Akaunti hub signed-in, guest and staff' tiles cover only the top of the page.",
+  "evidence": "account/page.tsx:54-91 renders the h1, the identity block, one card per group, the staff card, then SignOutRow (sign-out-row.tsx:29, button.kp-hub__exit). memberGroups (hub-rows.ts:151-188) has up to eight cards, including Settings (language, card size, Needle drawer, Tafuta at :185) and Help with Arifa. guestGroups (:132-147) has Play, Fairness/Help, Safety and four Legal rows. globals.css:5972 sets a single column below 1024 (two columns from 1024 at :6002), and :5977 makes every row at least --h-control-xl (56px). That is about 1,250px of member hub against a 780px phone viewport. §9 takes ONE viewport tile per width, and only the unread tiles (scrolled to Arifa) and the staff tile ever scroll. Sign-out, language, card size, the Needle drawer and the guest's legal rows, which are the census's non-route hub controls (S6-PLAN:1007), are therefore never read.",
+  "fix": "After the top tile, walk the hub in viewport steps. Scroll each later .kp-hub__card and then .kp-hub__exit into view, and take a tile of each new screenful. Keep asserting the h1 from the DOM and keep CLIP_PROBE over HUB. Name the step in the file name (hub-top, hub-2, and so on). To hold the 15-minute budget, walk the full hub at 390 and 1280 for all three viewers × sw/en/zh, keep top-only tiles at 320, 360 and 1024, and re-state the cell count.",
+  "severity": "major",
+  "lens": "coverage"
+ },
+ {
+  "where": "§7 tabs (doors discovered from the demo player's hub only) and PAGE_HEADINGS",
+  "problem": "'The active tab on every tab and hub route' is only half covered. Three gaps: the guest hub's own routes are never tiled, the pass-holding guest is never judged on the step-5 routes a guest can open, and the /profile/kyc hub door is never reached.",
+  "evidence": "The guest hub's rows go to /legal/responsible-gambling (hub-rows.ts:119-121) and to /legal/privacy, /legal/aml, /legal/terms and /legal/rules (:141-144). No member hub has these rows, and active-tab.ts maps /legal to the Akaunti tab. §7 discovers doors only with [pass, main], and PAGE_HEADINGS has no /legal entry, so even a discovered legal door would BLOCK. Step 5 (S6-PLAN:536-539) says 'Pass-holding guest and player cover … the active tab on /, /markets/<id>, /updown, /updown/<id>, …, /results'. The guest's Tiketi slot is a different branch: a button with data-on and no aria-current (journey-tabs.tsx:83-92; desktop journey-top-bar.tsx:113-123). It is judged only on / (header, sheet, focus) and /account (hub), never on /markets/<id>, /updown, /updown/<id> or /results. /updown/history, /positions and /wallet sit behind proxy.ts:39. /profile/kyc is offered only when kycOffered (hub-rows.ts:171). The demo player and every seed-admin user are KYC-approved (seed-admin route.ts:3), so PAGE_HEADINGS['/profile/kyc'] is dead code. /auth/demo?kyc=none (auth/demo/route.ts:63, 89-92) is an existing door that does offer it.",
+  "fix": "Add a guest pass to §7. Open /account with [pass] only, discover the guest hub's doors, and copy the five /legal/* h1s into PAGE_HEADINGS from their page sources. Run the guest over /, /markets/<id>, /updown, /updown/<id>, /results and its hub doors at 390, since the player already covers the desktop links. As the LAST use of the demo account, call demoSession({query: '?kyc=none'}) and tile the Profile card's 'Verify ID' row and /profile/kyc's active tab at 390 and 1280. Print BLOCKED for every hub door S6-PLAN:993 names that no viewer's hub offered (invite, proposals, agent included), so a missing door is never silent.",
+  "severity": "major",
+  "lens": "coverage"
+ },
+ {
+  "where": "Whole drive: its notes say 'Not covered. G1's still-owed drive …'",
+  "problem": "G1's drive is left out. It is the browser check the critic's only blocker asked to be put in qa:journey-shell, and A1 still lists it as owed. No other script and nothing else in this change set covers it, so WP12 cannot close that item.",
+  "evidence": "S6-PLAN.md:1127-1130: 'Add a drive step in qa:journey-shell: end the demo session through the idle path; sign in a second account through the header <Link>; assert … never the first account's count before B's first answer.' A1 (:1492-1494): 'Still owed: (1) G1's drive, in WP6b or WP12 … the Akaunti dot and the Arifa row never show A's count before B's first answer lands.' VODACOM-PLAN.md:405-407 lists it as owed item (6). use-unread-count.ts and unread-row.tsx key the count by viewer for exactly this case. A grep of scripts/ for the hub and tab test ids finds only footer-reachable.mjs, qa-classic-shell-parity.mjs and journey-header-fit.mjs.",
+  "fix": "Add a §12 'viewer change' section, or a sibling drive in this same change set. Player A is the pass-holding demo player with unread >= 1, on / at 390 (the dot) and then on /account (the Arifa row). End A's session mid-visit the way scripts/revoked-midvisit-repro.mjs does: a second /auth/demo ends A's session, and the next router.refresh renders the guest shell in place (E-381). Then click the header's Ingia (journey-top-bar.tsx:158) and sign in player B through the real form. B is a seed-admin PLAYER with 0 unread and the default password Admin2026! (seed-admin route.ts:36); use /api/dev-test/last-otp if the form asks for a code. Install an addInitScript recorder that samples the dot and the Arifa badge every animation frame, and FAIL on any frame that shows A's count before B's first answer. Also add a cheap check in §4: hold the Arifa badge and the dot's spoken count equal to the bell's data-unread, since all three read the same endpoint.",
+  "severity": "major",
+  "lens": "coverage"
+ },
+ {
+  "where": "§6 focus (its four steps plus the guest's Ingia, FOCUS_PROBE, focusTile's ring test)",
+  "problem": "Focus rings are read on five header and rail controls only, never inside the hub or either sheet. The ring assertion also cannot fail for the gold pill.",
+  "evidence": "s4-12-focus.dc.html calls for one ring on every control: a 2px outline at a 2px offset with a 4px halo. Its item 05 is the gold Weka pesa; its item 06 is a 'Weka mipaka' text link, which S6 draws as the hub's limits row and the Wallet's footer link (wallet-sheet.tsx:114). The hub uses a different, INSET ring because its cards clip (globals.css:5973 .kp-hub__card overflow hidden; :5976 outline-offset -2px), and no tile reads it. The Wallet's Weka pesa and Toa pesa doors (wallet-sheet.tsx:84-106) and the guest sheet's Jisajili and Ingia (tickets-guest-sheet.tsx:40-53) never take keyboard focus. focusTile passes when f.visible && (f.outlineOn || f.halo), where halo is ANY computed box-shadow. .gilt-metal has three box-shadows at rest (motion.css:446-452), so the pill's line passes with no ring at all.",
+  "fix": "Add focus tiles: Tab onto the first hub row at 390 (the inset ring); Tab inside the open Wallet onto Toa pesa and onto its 'Weka mipaka' link at 390 and 1280; Tab onto the guest sheet's first door at 390. Run them in sw at least. Judge the ring by reading the control's computed outline and box-shadow both blurred and focused and requiring a change. Hold the outline to 2px solid at a 2px offset, or -2px inside hub cards and section rails (globals.css:2411, :5976).",
+  "severity": "major",
+  "lens": "coverage"
+ },
+ {
+  "where": "§8 tickets (the empty cell)",
+  "problem": "Only the first-ticket empty state is tiled. The empty outcome lens, with its own words and its exit links, is never reached.",
+  "evidence": "tickets-view.tsx:70-81: firstTicket is true only when the cause is no-rows or the lens is open. Otherwise the view uses LENS_EMPTY (journey.ticketsEmptySettled, Won, Lost, Refunded and Cashed; A7 and §0h point 27), and :100-107 adds the 'ticketsExitLens (n)' exit links. The draft's empty cell is a fresh player with no rows on /positions, so firstTicket is always true.",
+  "fix": "After the empty tiles, POST /api/dev-test/seed-player-portfolio {markets: 5} as the fresh player, which leaves 4 open and 1 cashed out. Then tile /positions?tab=win at 320, 390 and 1280 in sw, asserting no card, the ticketsEmptyWon words, and at least one exit link.",
+  "severity": "minor",
+  "lens": "coverage"
+ },
+ {
+  "where": "HEADER_STATES (all on /), §4 unread and §5 wallet",
+  "problem": "Several states the shell draws are built or measured but never tiled: the header on the deposit screen (no gilt pill), the compact >= 1M figure, the held Wallet, a break, and the Akaunti dot on an unlit tab or at 320.",
+  "evidence": "header-state.ts journeyHeaderState drops the pill on /wallet/deposit and during a break, and shows no capsule for a balance that was not read. journey-header-fit.mjs:51 has a 'TZS 9.9M' state, A5's widest compact figure and the departure A17 records against the canvas, and :83 defines NO_PILL_PREFIX. wallet-sheet.tsx:76-80 is the held branch: a frozen notice and no money doors. Canvas frames cover s4-2-hdr-held and s4-3-home-break (no 'Weka pesa'). The only dot tile is on /account at 390, where the Akaunti tab is itself lit; below 360 the slots stack (A17).",
+  "fix": "Add the player's header on /wallet/deposit at 320, 390 and 1280 in sw: assert the pill is absent and Akaunti is lit, and copy the page's h1 from its source. Add a TZS 9,940,000 state at 320 and 1024 × sw/en/zh via demoSession {query: '?deposit=0', balance: 9_940_000}, figure 'TZS 9.9M'. In the held state, open the capsule once at 390 and assert the frozen notice with no wallet-sheet-deposit or wallet-sheet-withdraw. Add one dot tile on / at 320. State in the header that a break can only be reached through the limits page form and is not driven.",
+  "severity": "minor",
+  "lens": "coverage"
+ },
+ {
+  "where": "§10 overlays (WP7)",
+  "problem": "WP7 is read for one viewer at steady state only. A pass-holding guest is never read, no first frame is sampled, and WP7's journey email-bar rule has no browser reading anywhere.",
+  "evidence": "S6-PLAN.md:624 says 'a pass holder', which covers a guest as well as a player. The chat bubble has no sign-in gate (ChatRoot.tsx:244-256). The draft opens the four pages with [pass, main] only and probes once after a 48 s dwell. A return of the 1-3-frame Needle flash that WP7's as-built measured and fixed (S6-PLAN.md:637-646, 're-driven 32/32: no frame of either overlay') would pass unseen: checkShell asserts the mark that fixes it is present, not that no frame draws. app-shell.tsx:438 drops EmailVerifyBanner for journey viewers (WP7 goal, S6-PLAN:577). The only browser reading of that banner is qa-classic-shell-parity.mjs:203/581, which covers classic viewers only.",
+  "fix": "In the same parallel dwell, also open /, /positions, /help and /account with [pass] only, and assert the Needle, bubble and panel are absent on the first two and present on the last two. On / and /positions, install an addInitScript recorder that samples whether #needle-root #needle is drawn on every animation frame from document start, and FAIL on any drawn frame. As a late step, after the other demo-account sections, add one cell with the pass plus demoSession({query: '?email=unverified'}) on / at 390, asserting no [data-testid=\"email-verify-banner\"] (email-verify-banner.tsx:104).",
+  "severity": "minor",
+  "lens": "coverage"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: watch() (its pageerror handler) and the final assertion \"11.1 no script error and no hydration warning on any page the drive opened\"",
+  "problem": "watch() counts every pageerror except \"ResizeObserver loop\". That includes React 19's development-only error \"Failed to execute 'measure' on 'Performance': '<zero-width space>AccountHubPage' cannot have a negative time stamp.\", which the repo has already measured hitting /account on a local dev server. This drive only ever runs against a dev server and opens /account about 16 times (unread 3, tabs 1, hub 9, overlays 1, plus the warm pass). So 11.1 should be expected to FAIL, and the run would exit 1 over an error a production build cannot throw and no player can meet. That trains the reader to ignore 11.1.",
+  "evidence": "origin/main (7d4b0ad5, commit 5a87e764, which is newer than the checkout's HEAD 85866b36): scripts/qa-classic-shell-parity.mjs:100-108 says it \"hit 6 /account cells on one run of 2d0f56e7 and 16 on one of 55cb61e3, trees that do not touch /account ... A production build has no such measure\". The filter is DEV_MEASURE at :109, and isDevMeasure/fileError at :110-112 are wired to page.on(\"pageerror\") at :979 and :1133. The draft's watch() has no such filter.",
+  "fix": "Copy the parity harness's filter. It already contains no backslash: new RegExp(\"^Failed to execute 'measure' on 'Performance': '\" + String.fromCharCode(0x200b) + \"?[A-Za-z0-9_$]+' cannot have a negative time stamp[.]$\"). A startsWith/endsWith pair on the same sentence would also work. Put matching page errors in a devOnly list that is printed beside 11.1 and never counted as a FAIL. Keep failing on every other page error and every hydration warning.",
+  "severity": "major",
+  "lens": "code-truth"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: FOCUS_PROBE (halo) and focusTile (ring = !!f && f.visible && (f.outlineOn || f.halo))",
+  "problem": "For two of the five focus cells, the ring half of the assertion cannot fail. The captioned capsule and the gilt \"+ Weka pesa\" pill both carry a box-shadow at rest, so halo is true whether or not any focus ring is drawn. If someone removed the outline from either control, the line would still PASS, because only f.visible (the :focus-visible match) is actually tested.",
+  "evidence": "src/app/globals.css:5925 gives .kp-jbal a resting `box-shadow: inset 0 0 0 1px ...`. src/app/motion.css:446-455 gives .gilt-metal a resting box-shadow. The ring these controls actually draw is an outline: the catch-all :where(a, button, ...):focus-visible at globals.css:2325-2331, .btn:focus-visible at globals.css:1152, and .gilt-metal:focus-visible at motion.css:475-479.",
+  "fix": "Require outlineOn, since every control in these steps draws an outline ring. Alternatively, read the element's box-shadow before focus and treat halo as true only if the shadow changed.",
+  "severity": "minor",
+  "lens": "code-truth"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: checkShell (the classic branch's \"no horizontal overflow\" line, and every journey call without a scope: the header, tabs, focus and overlays sections)",
+  "problem": "On classic tiles the overflow line can never FAIL. It reads only documentElement.scrollWidth - clientWidth, and that is always 0 because html and body both clip, so the line passes without measuring anything. The classic branch never runs CLIP_PROBE. On journey tiles without a scope, CLIP_PROBE sweeps only the journey header and the rail. A page's own control past the edge is therefore never asserted on any tabs-section page (/wallet, /results, /live, /leaderboard, /markets/<id>, /updown/<id>, and the rest), or on the header, focus and overlays tiles.",
+  "evidence": "src/app/globals.css:932-933 (html) and :960-961 (body) both set `overflow-x: clip`. scripts/live/clip.mjs:16-19 records that `documentElement.scrollWidth - clientWidth WAS 0 THROUGHOUT` over controls that were severed. In the draft, checkShell's classic branch is ok(`no horizontal overflow`, s.docOverflow <= 0) with no CLIP_PROBE call, and scope is passed only in the unread, hub, sheet, wallet and tickets sections.",
+  "fix": "On classic tiles, run CLIP_PROBE over the classic header and rail. CLIP_PROBE falls back to the whole body when its selector is absent, so calling it with \"body\" also works. On every journey tile, add the #main-content sweep (scope \"#main-content\") that only the tickets section uses now. Then either drop the docOverflow half or label it as a backstop that cannot fail on its own.",
+  "severity": "minor",
+  "lens": "code-truth"
+ },
+ {
+  "where": "the change set's notes[0] (\"origin/main 783b652c\") and the file's line citations of ui/modal.tsx (:288 for Escape, :313-324 for the dialog)",
+  "problem": "The recorded baseline is already stale. origin/main has moved, and on the tree this change will be rebased onto, the cited modal.tsx lines are off by 5. Nothing functional breaks: Escape still closes the dialog, because the new held-key rule swallows only repeated Enter and Space.",
+  "evidence": "In C:/kipindi-vdocs, `git rev-parse origin/main` = 7d4b0ad5, 5 commits past HEAD 85866b36. `git diff HEAD origin/main -- src/components/ui/modal.tsx` adds the held-key import and a 5-line guard in onKey (A8i, 23f762f4). On that tree the Escape line is at :293 and the dialog root at :318-329. The package.json find string still occurs exactly once on both trees (grep -c = 1).",
+  "fix": "After rebasing, check each file:line cited in the drive's comments against the tree the change lands on, or cite by symbol (Modal's onKey; the role=dialog root) where a line number will drift.",
+  "severity": "minor",
+  "lens": "code-truth"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: the whole run (section(), withPage(), openPage(), warm(), post()) and the header's 'CELLS ... about 15 minutes' claim",
+  "problem": "Nothing bounds the run time. There is no overall deadline and no circuit breaker; only per-call timeouts limit it. The 15-minute estimate assumes a warm server, but the drive's own usage requires a fresh (cold) one.",
+  "evidence": "Nothing in the file tracks elapsed time across sections or counts consecutive failures. The per-call ceilings are: goto 240 s plus hydrate 120 s for each of about 81 page loads, post() 300 s, warm() 240 s for each of 19 paths, and noHub() 240 s. Every page.evaluate (settle()'s requestAnimationFrame promise and every probe) has no timeout at all. If the server stops answering mid-run, each remaining load can cost about 360 s, roughly 8 hours in total, while the job holds the heavy-node lock. A healthy run is also tight. Fixed sleeps alone come to about 5 minutes: 262 tiles x (450 ms resize settle + 250 ms shoot settle), 81 loads x 400 ms, 15 sheet/wallet opens x about 1 s, and the 48 s overlay dwell. Add about 81 loads at 4-8 s and 262 probe-and-screenshot passes, and my estimate is about 14-21 minutes on a warm server. The usage requires `rm -rf .next` and a fresh server, so the first compiles of about 20 routes come on top of that. Heavy jobs here run under heavy-node-lock.sh and are never wrapped in an external timeout, so the limit has to be inside the drive.",
+  "fix": "1. Add KP_BUDGET_MIN (default 15-20). Check it in section() and before every openPage(); once it is spent, print one BLOCKED line per remaining section or cell, by name. 2. Add a circuit breaker: after 3 consecutive openPage() or post() failures, BLOCK everything left with the reason 'server stopped answering'. 3. Arm one watchdog setTimeout at budget + 5 min that prints the counts and a BLOCKED line, then exits 3; this covers a hung page.evaluate. 4. Move warm() into §0 so cold compiles are paid and timed up front, and restate the time estimate for a cold server.",
+  "severity": "major",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: the single premise() call at the top, versus ensureMain(), post(), seededSession() and every demoSession() call",
+  "problem": "The check that the server is local and in-memory runs once at start-up. The real-money seeding runs minutes later with no re-check, leaving a time-of-check to time-of-use gap.",
+  "evidence": "`const { refuse, health } = await premise(BASE)` is the only premise call. ensureMain() calls /api/dev-test/seed-player-portfolio for the first time at §4, after §0, the classic section (6 loads), the header section (18 loads, 90 tiles) and the sheet section: about 6-9 minutes later. That route runs buyPosition, cashOutPosition, settleMarket({force:true}) and emergencyVoidMarket against the first 12 LIVE non-demo markets (seed-player-portfolio/route.ts:90-190). It is gated only by NODE_ENV, so any `next dev` answers it, including one with a DATABASE_URL. Parallel sessions here start and stop dev servers on the same ports. If :3041 changes hands in that window, the drive would force-settle and void markets in whatever store that server has. /api/health reports uptimeSec (health/route.ts:42), so a restarted or swapped server can be detected.",
+  "fix": "Put every server-mutating request behind one guard. That covers seed-real-markets, updown-seed, seed-player-portfolio, each demoSession, each seededSession and mintStaffPass. The guard re-runs premise(BASE) and also requires health.uptimeSec >= (start-up uptimeSec + elapsed seconds - a small margin). If either check fails, print REFUSED and exit 2 before sending the request.",
+  "severity": "major",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: FOCUS_PROBE (halo) and focusTile() (the ring condition)",
+  "problem": "For the captioned balance and the gold '+ Weka pesa' pill, the assertion that a :focus-visible ring is shown cannot fail. Both controls wear a box-shadow at rest, and the probe counts any box-shadow as a ring.",
+  "evidence": "FOCUS_PROBE sets `halo: !!cs.boxShadow && cs.boxShadow !== 'none'`. focusTile() passes when `f.visible && (f.outlineOn || f.halo)`. f.visible is always true after a real Tab. `.kp-jbal` has `box-shadow: inset 0 0 0 1px ...` at rest (globals.css:5925), and `.gilt-metal` has `box-shadow: var(--gilt-metal-edge), 0 1px 2px ...` at rest (motion.css:451). So 6 of the 13 focus lines (capsule and pill x sw/en/zh) would still PASS if every focus-visible rule were deleted. This is the 'defensive OR that measures nothing' pattern recorded in live/clip.mjs (E-191).",
+  "fix": "Read the target's computed outline and box-shadow at rest (before the Tab, or after blur()), then read them again after the Tab. Require an outline (outlineStyle not 'none' and width at least 1px), or else a box-shadow that differs from the resting value. Never accept a bare box-shadow. The product's own rules all draw a 2px outline: the `:where(a, button, ...)` catch-all (globals.css:2325), `.btn:focus-visible` (:1152) and `.gilt-metal:focus-visible` (motion.css:475, kept on purpose by E-129). So requiring the outline is correct and can actually fail.",
+  "severity": "major",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: openPage() and shoot(), which never hide the Next.js dev overlay",
+  "problem": "Tiles are shot on `next dev` without hiding the Next.js dev-tools indicator (`nextjs-portal`). At phone widths it covers the rail's first tab, Maswali, which is the tab every tile on / must show as lit.",
+  "evidence": "next.config.ts sets no devIndicators, and the draft adds no style. The repo's other tile drives that shoot on next dev all hide it: scripts/qa/landing-v3/capture.mjs:112, scripts/live/mobile-visual-drive.mjs:137, scripts/qa/tax-report-drive.mjs:146 and :402, and scripts/qa-house-bots-visual.mjs:302, each with `nextjs-portal{display:none!important}`. The journey rail is fixed at the bottom (journey-tabs.tsx:57), and its first slot is Maswali. That affects about 51 header phone tiles, 6 classic tiles, and the sheet, wallet, focus and overlay tiles on /. The indicator sits in a shadow root, so CLIP_PROBE and RAIL_PROBE cannot see it; only the human reading of the tiles is affected.",
+  "fix": "In openPage(), after hydration, add `await page.addStyleTag({ content: 'nextjs-portal,[data-nextjs-toast],[data-nextjs-dialog-overlay]{display:none!important}' })`. This is the repo's own line and needs no backslash. Also follow pre-deploy-live-check.mjs:45-50 and FAIL a cell when a real Next error dialog is present, instead of only hiding it.",
+  "severity": "major",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: `const OUT = process.argv[2] || join(tmpdir(), ...)`, followed by mkdirSync(OUT) and page.screenshot({ path: join(OUT, file) })",
+  "problem": "Nothing stops the drive writing inside the repository. Whatever outDir it is given is used as-is, including relative paths.",
+  "evidence": "OUT is taken verbatim from argv[2]. `npm run` runs scripts with cwd set to the package root, so the documented `npm run qa:journey-shell -- <outDir>` with a name like `tiles` puts about 262 untracked PNGs into the worktree. The repo's .gitignore records why that is dangerous: the scripts/live/.shots/ entry notes that 'one [session] has already swept another's untracked files into its own commit', and a push to main deploys live. The lens requires the drive to write nothing in the repo, but today only the default path guarantees that.",
+  "fix": "Resolve OUT with path.resolve. Compute the repo root as resolve(dirname(fileURLToPath(import.meta.url)), '..') and rel = relative(root, OUT). If rel is '', or rel does not start with '..' and is not absolute, print `REFUSED: outDir is inside the repository` and exit 2 before premise() or mkdirSync() runs. None of this needs a backslash in the source.",
+  "severity": "major",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: noHub()",
+  "problem": "The line '/account renders no hub for a viewer without a pass' passes on any response that lacks the test id: a 500, an error boundary or a redirect to sign-in.",
+  "evidence": "The check is `ok(..., !html.includes('journey-account-hub'), 'HTTP ' + res.status())`. The status is printed but never asserted, and nothing confirms that the not-found body was served. account/page.tsx calls notFound() for a classic viewer, which streams HTTP 200 with the not-found metadata and robots noindex (S6-PLAN A2/A3). A broken /account would pass this line.",
+  "fix": "Assert res.status() === 200 and a positive not-found marker, such as the 'noindex, nofollow' robots meta or the not-found page's own words. Add a control in the same section: the same GET sent with the pass cookie must contain 'journey-account-hub'.",
+  "severity": "minor",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: §0 mintStaffPass(), and the header section's first demoSession() with a balance (live/journey-pass.mjs:62 and :88)",
+  "problem": "The first compiles of the dev-test routes go through shared helpers that use Playwright's default 30 s request timeout, on a server the usage requires to start cold.",
+  "evidence": "journey-pass.mjs:62 (seed-admin) and :88 (seed-wallet) post with no timeout option, so the 30 s default applies. The draft's first dev-test request is mintStaffPass() in §0; if it times out, 0.1 FAILs and every journey section is BLOCKED. The first seed-wallet call comes in the header's 999999 state; if it times out, that state's 24 tiles (the widest figure) are lost. The draft's own requests get 240-300 s, but these two do not.",
+  "fix": "Before minting, warm each dev-test route the helpers use with a request that has no side effects, for example ctx.request.get(BASE + '/api/dev-test/seed-admin', { timeout: 300_000 }) and the same for /api/dev-test/seed-wallet. A POST-only route answers 405 once it has compiled. Alternatively, give the two helper posts an explicit 240 s timeout in a separate change.",
+  "severity": "minor",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: §11, line 11.1",
+  "problem": "Line 11.1 prints only the first six script errors and hydration warnings, so any others are hidden.",
+  "evidence": "The detail is `errors.slice(0, 6).join(' | ')`. scripts/qa-journey-header-fit.mjs (listOf) records why this repo prints every item: 'Every item, never the first six: a calibration run is read from this line, and a cut list hid 87 of 93 breaks once.'",
+  "fix": "Print the total count and then every entry on its own line, keeping each entry's 200-character cap.",
+  "severity": "minor",
+  "lens": "safety"
+ },
+ {
+  "where": "scripts/qa-journey-shell.mjs: §7 tabs (hub door discovery) and PAGE_HEADINGS",
+  "problem": "The doors on the guest hub never get an active-tab tile, and nothing reports that they were skipped.",
+  "evidence": "Doors are discovered only from the demo player's hub (cookies [pass, main]). The guest hub (hub-rows.ts:131-147) lists /legal/privacy, /legal/aml, /legal/terms, /legal/rules and /legal/responsible-gambling, which TAB_ROUTES maps to the account tab (active-tab.ts:69). PAGE_HEADINGS has no /legal entry. S6-PLAN's done-when (line 1020) requires 'the active tab on every tab and hub route'.",
+  "fix": "Also discover doors on a pass-holding guest's /account, and tile each new pathname at 390 and 1280 in sw. Add each /legal page's h1 to PAGE_HEADINGS from its source, or let the existing 'no h1 is written down' branch BLOCK each one by name so the gap stays visible.",
+  "severity": "minor",
+  "lens": "safety"
+ },
+ {
+  "where": "C:/Users/Ali/AppData/Local/Temp/lookup.sh (Git Bash /tmp), outside the change set",
+  "problem": "While researching, the drafting agent wrote a file despite the task's read-only rule, and the file is still on disk.",
+  "evidence": "The draft's own disclosure note admits it. The file exists (761 bytes, dated 2026-10-07 00:21) and contains only two awk helpers that read src/lib/i18n-dict.ts. It is outside every repository and is harmless.",
+  "fix": "The orchestrator should delete it (a read-only reviewer cannot) and record the breach in the run record.",
+  "severity": "minor",
+  "lens": "safety"
+ }
+]

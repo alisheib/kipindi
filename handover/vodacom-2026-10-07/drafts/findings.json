@@ -1,0 +1,303 @@
+[
+ {
+  "id": "updown-held-enter-bet-burst",
+  "title": "Up & Down UP/DOWN buttons: a held Enter places a new bet on every auto-repeat, because the held-key rule exists only inside an open Modal",
+  "severity": "money",
+  "origin": "left-open-by-A8i",
+  "scenario": "A signed-in keyboard player is on /updown (a board card) or /updown/[roundId] with no side chosen and the TZS 1,000 chip selected. They Tab to UP and hold Enter for about 2 s. Keydown 1 clicks UP and places bet 1. After the OS repeat delay (about 0.5 s), every repeat keydown (about 30 a second) clicks UP again. Each time, bet.place('UP') runs with a fresh idempotency key, so bets 2, 3, 4 and on are placed with no confirm. Pending never disables the buttons. The burst ends only when the balance check (which counts in-flight spend) disables UP, or when the server's bet.place bucket (30, refilling 10 a minute) starts answering 'Slow down' with a sticky red toast for each refusal. That is up to about 30 real bets. On the round page the burst stops once bet 1's receipt takes focus, which takes as long as the network does (seconds on 2G). On the board it never stops (see updown-card-wrapper-starves-held-key-rule). There is a second way in: a held Enter, or a quick double Enter, on the receipt's 'Endelea kucheza' (Keep playing) closes the receipt. Modal then puts focus back on UP, and each remaining repeat, or the second press, places a bet. Space is not the risk on UP itself, because it clicks only once, on release.",
+  "evidence": "src/components/updown/updown-stake-controls.tsx:247-249 ('The buttons stay ENABLED - repeat taps are repeat bets'), :250-251 and :261-262 (onClick=guard(() => bet.place(...)); disabled only on !stakeReady || insufficient || locallyLocked, never on pending). src/components/updown/use-quick-bet.ts:163-164 ('do not debounce'); :302-336 (place() mints a new idempotency key on every call at :325-327, has no pending or in-flight gate, and starts the bet at :332); :245 (insufficient counts in-flight spend). src/lib/server/rate-limit.ts:97 (bet.place capacity 30, refillPerMin 10). The rule runs only from modal.tsx:291, inside the open-dialog effect (modal.tsx:273-315), even though held-key.ts:4-8 itself says the browser presses a focused button on every repeated Enter. Receipt path: updown-bet-receipt-modal.tsx:69 and :110-129 (primary = onClose, no onPrimary); operation-result-modal.tsx:387-394 (initialFocus=primaryRef) and :523; updown-stake-controls.tsx:347-357 (onClose=bet.clearPlacedReceipt); use-quick-bet.ts:260-261; modal.tsx:276-279 and :309-314 (focus returns to the element that had focus when the receipt opened, which is UP). The round page hosts the same controls (round-stake-panel.tsx:106). Its locked-side gold Confirm is disabled while pending (round-stake-panel.tsx:262-264), so that button is bounded by the round trip. Neither guard has an Up & Down case (scripts/enter-where-pressed.test.mts:32-37; scripts/qa-enter-where-pressed.mjs:11-20).",
+  "proposedFix": "Make an auto-repeat press nothing on money buttons outside dialogs. Export one noHeldRepeat handler from held-key.ts: an onKeyDown that calls preventDefault when e.repeat is true and the key is Enter or Space. Cancelling the repeated keydown cancels its keypress and click, which is A8i's own mechanism. Put it on UP and DOWN in updown-stake-controls.tsx and on round-stake-panel.tsx's gold Confirm. Alternatively, install the held-key rule once, app-wide, as a window CAPTURE listener (for example in AppShell). It would swallow any repeat=true Enter or Space that held-key.ts says would press something, whether a dialog is open or not. Deliberate taps (repeat=false) remain repeat bets, as Ali ruled. The hold-after-close in held-key-stops-at-close-reopens-confirm also closes the receipt path. The lenses split here: old-draft left a key held on 'Juu' itself to Ali's standing ruling and proposed only the hold after the receipt closes, while money-census, browser-semantics and regression read an auto-repeat as not a tap. Add a census check that money buttons outside dialogs carry the repeat guard. Add drive cases for Enter held on a board card's UP, and for Enter held or double-pressed on the receipt's primary. In each case the wallet must move by exactly one stake.",
+  "lenses": [
+   "money-census",
+   "browser-semantics",
+   "regression",
+   "old-draft"
+  ]
+ },
+ {
+  "id": "updown-card-wrapper-starves-held-key-rule",
+  "title": "The board card's Enter/Space stopPropagation (UD-16) stops keys before Modal's bubble-phase window listener, so the held-key rule is dead in the card's receipt and refusal dialogs",
+  "severity": "money",
+  "origin": "left-open-by-A8i",
+  "scenario": "On the /updown board, a keyboard player holds Enter on a card's UP, or on the receipt's 'Endelea kucheza'. When a receipt opens, Modal moves focus to 'Endelea kucheza' at +30 ms. The receipt is a React child of the card's controls wrapper, whose onKeyDown calls stopPropagation for Enter and Space. React therefore stops every native repeat at the document root, and Modal's window listener, which holds the held-key rule, never sees it. stopPropagation is not preventDefault, so the repeat still clicks 'Endelea kucheza'. The receipt closes, Modal puts focus back on UP, and the next repeats place bets. The next receipt opens and is pressed the same way. The cycle runs until the key is released or the balance or the bet.place bucket runs out, so the whole balance can go in a few seconds. Keyboard focus also pauses the receipt's 5 s auto-close, so the receipt waits for the next repeat. There are other routes. When a win seal is over an open receipt, Enter held on the seal's Continue closes the seal and focus returns to 'Keep playing'; the next repeat presses it, and the rest are bets. When a held Enter keeps getting refused (for example a cooling-off refusal in UpDownBetBlockedModal), each repeat dismisses the refusal at once, so a refusal that UD-3 says must be read is only glimpsed. On /updown/[roundId] there is no wrapper, so the first receipt to take focus stops the burst. This was the same before A8i, because UD-16 also hid the result modal's old window listener.",
+  "evidence": "updown-card.tsx:994-997 (onKeyDown: if Enter or Space, e.stopPropagation()) wraps UpDownStakeControls with receipt={receipt} (:1000-1004). The wrapper's stated reason is stale: the comment at :985-993 says the article has role='link', but the article (:716-730) has no role and no key handler, and the card link is a stretched sibling <Link> (:736-741). updown-stake-controls.tsx:338 and :347-357 host UpDownBetBlockedModal and UpDownBetReceiptModal inside the wrapper. updown-bet-receipt-modal.tsx:28 and :110-129: it is an OperationResultModal whose primary has no onPrimary, so pressing it closes the dialog (operation-result-modal.tsx:514-523); :69: it unmounts without placed. operation-result-modal.tsx:256-262: keyboard focus pauses the auto-close. React carries portal events up the React tree and listens on the root container (node_modules/react-dom/cjs/react-dom-client.development.js:12907-12913), and its synthetic stopPropagation calls the native one (:3394-3401). The App Router root is document (node_modules/next/dist/client/app-index.js:32 and :293; Next 16.2.4, package.json:1119). Modal registers the rule in the window BUBBLE phase (modal.tsx:286-291, :308). Guard 2.4 pins that registration (enter-where-pressed.test.mts:215-218), so the gate enforces the very shape that a stopPropagation ancestor starves. Focus return to UP: modal.tsx:276-279, :309-314. held-key.ts:2 ('A KEY HELD DOWN FROM BEFORE PRESSES NOTHING IN A DIALOG') is false here. No plant or drive case covers a dialog under such a parent (qa-enter-where-pressed.mjs:11-20). The round page has no wrapper (round-stake-panel.tsx:106). guard-quality rated this guard and introduced-by-A8i, because the bubble-phase registration and 2.4 are A8i's. The other four lenses rated it money and left-open.",
+  "proposedFix": "In modal.tsx, run swallowsHeldKey from its own window CAPTURE-phase keydown listener (window.addEventListener('keydown', fn, true)) that calls preventDefault and stopPropagation on each swallowed repeat. Keep Escape and Tab in the existing bubble listener. Then no React or native descendant can get in first, and React handlers behind an open dialog (the dial's onKeyDown, the Select list) cannot act on a held repeat either. Make 2.4 require the capture registration. Narrow updown-card.tsx:996 to keys whose DOM target is inside the wrapper (e.currentTarget.contains(e.target as Node)), or drop its Enter/Space stopPropagation and keep onClick if it is still needed. Add a census check for an onKeyDown that stops Enter/Space above a component hosting a Modal (see census-blind-to-react-key-handlers). Drive cases: hold Enter on a board card's UP and expect exactly one bet; hold Enter on the board receipt's 'Endelea kucheza' and expect zero new bet requests.",
+  "lenses": [
+   "old-draft",
+   "money-census",
+   "browser-semantics",
+   "regression",
+   "guard-quality"
+  ]
+ },
+ {
+  "id": "modal-focus-moves-behind-top-dialog",
+  "title": "Modal is not stack-aware: a dialog that closes or opens beneath the win seal moves focus behind the seal's scrim, so Enters meant for the seal open a new confirm and then place a bet unseen",
+  "severity": "money",
+  "origin": "left-open-by-A8i",
+  "scenario": "(a) On a market page, a keyboard player opens the bet confirm (Enter on the dial or on the 'Weka …' pill), and focus is on 'Thibitisha · TZS 1,000'. 3-10 s later another ticket wins and the seal opens over the confirm (z 1700 against 100), with focus on 'Endelea'. The confirm's 10 s quote lapses under the seal and the confirm cancels itself. Its Modal cleanup focuses its trigger, which is behind the seal. The player presses Enter to dismiss the seal. That press goes to 'Weka' (or to the dial's onKeyDown) and opens a NEW confirm under the seal, with a fresh quote and idempotency key. 30 ms later that confirm focuses 'Thibitisha'. The seal still looks untouched, so the player presses Enter again and the bet is placed unseen. (b) A bet waiting for admission is refused with a retryable failure while the seal is up. Its result opens under the seal and takes focus on 'Jaribu tena' at +30 ms, so an Enter meant for the seal re-submits the bet. Space does the same through keyup. (c) A confirm opened within the first 30 ms of the seal, or of the reality check at its tick (for example, Enter on the dial just as the seal appears), runs its focus timer last. Focus ends on the covered Confirm, and the next Enter places the bet. (d) On the /updown board a receipt is open when the seal arrives. The seal taking focus blurs the receipt, so the receipt's paused 5 s countdown resumes. The receipt auto-closes under the seal (which has a 7 s dwell), and focus goes back to UP/DOWN. One Enter meant for the seal places a quick bet with no confirm. Its new receipt opens under the scrim, and toasts are held meanwhile.",
+  "evidence": "modal.tsx:282-285: the 30 ms initial-focus timer focuses its target unconditionally, whatever is drawn above it. modal.tsx:276-279 and :309-314: restoreTo is captured at open and restored at close unconditionally, even while another dialog is on top. The default zIndex is 100 (modal.tsx:205, :336), against 1700 for the seal (win-celebration.tsx:286-294) and the reality check (reality-check.tsx:128). The seal opens on any poll tick without checking for an open dialog (win-celebration.tsx:208-229, :242-270), and its dwell is 7 s (win-celebration.tsx:228; feedback-timing.ts:53). The reality check looks for open dialogs only at its tick (reality-check.tsx:81-101). Bet confirm: QUOTE_HOLD_MS is 10 s (bet-confirm-modal.tsx:36); expiry calls onCancel (:171-175, :182-184); no zIndex is set (:213-222); Confirm is at :377-385. Dial: the pill is enabled again after the cancel (conviction-dial.tsx:1688-1691). openConfirm mints a new key and does not check for another dialog (:821-826). The slider opens the confirm on an Enter/Space keydown (:729-734, :762-763). Cancel keeps the side and stake (:1753). The retryable failure's primary is retrySubmit (:931-935, :1802-1811). Up & Down: operation-result-modal.tsx:56 (5 s), :348-351 (auto-close), :418-423 (blur resumes the countdown); updown-bet-receipt-modal.tsx:69; updown-result-announcer.tsx:136 (the seal is sent on the board); toast.tsx:240-243 (toasts held). use-modal-lock.ts:52-53 sets only overflow and no inert, so the page behind stays focusable. A fresh press is never swallowed (held-key.ts:41-42). A8h fixed this pattern only in the sell-result host (sell-result-host.tsx:34-40; giveFocusBack at :65-67 moves focus only from 'nowhere'). Modal has no such check, so A8i's claim that Enter in a dialog on top acts in that dialog (bet-confirm-modal.tsx:19-22) fails on these paths. The old draft swallowed Enter on a covered primary but left Space open (old-draft A8i.json summary and keyboard finding 4). Drive case H covers only the path where focus is correctly inside a seal drawn over an open Sell confirm (qa-enter-where-pressed.mjs:18, :211-226).",
+  "proposedFix": "Make Modal stack-aware, with one module-level list of open dialogs ordered by zIndex and then by open order. (1) Only the top dialog runs the 30 ms initial focus. A dialog opened beneath waits, and takes focus when the dialogs above it close. (2) On close, restore focus only when document.activeElement is inside this panel, is body or null, or is inside [aria-hidden=true]/[inert] (A8h's NOWHERE test). Otherwise hand restoreTo to the top dialog, which restores it when it closes. (3) Only the top dialog handles keys (see escape-closes-every-dialog). (4) As defence in depth, set inert on everything outside the top dialog's portal while any dialog is open. Also swallow Enter and Space keydowns whose target is inside a covered dialog: the old draft's covered rule, extended to Space. Optionally, make openConfirm refuse while isModalDialogOpen(). Drive cases: a bet confirm left to lapse under a seal, then Enter, Enter, sends zero bet requests; a retryable failure under the seal, then Enter, sends zero retries; Enter on the dial within 30 ms of the seal leaves focus in the seal; a seal over the board receipt causes no wallet movement.",
+  "lenses": [
+   "old-draft",
+   "browser-semantics",
+   "regression",
+   "money-census"
+  ]
+ },
+ {
+  "id": "focus-returns-to-money-button-after-top-dialog",
+  "title": "W2: when a dialog drawn over a bet or Sell confirm closes, focus returns to the confirm's money button, so a second fresh Enter commits",
+  "severity": "money",
+  "origin": "left-open-by-A8i",
+  "scenario": "The Sell confirm is open with focus on 'Uza · TZS …', and the win seal opens over it. Enter on 'Endelea' closes the seal, which is correct (drive case H). In that same commit, the seal's Modal cleanup returns focus to 'Uza'. The seal's ghost is still drawn for 140 ms (0 ms under reduced motion), and if two tickets won, seal 2 is still 350 ms away. A second fresh Enter 60-380 ms later lands on 'Uza'. It can be a double press to clear a celebration, the press for the next seal, a repeat of a press that looked unregistered, or key chatter. If the quote is still live (the Sell quote re-arms on every new price), the ticket is SOLD. The same happens when the seal's 7 s auto-dismiss fires just as the player presses Enter to dismiss it. It also happens with a bet confirm ('Thibitisha', 10 s quote) or a failure result ('Jaribu tena') underneath. The old draft swallowed the second Enter only during the 140 ms exit, so a second Enter after that still sold.",
+  "evidence": "modal.tsx:276-279: the seal's restoreTo is the confirm's primary, which the confirm's own timer focused at :282-285. modal.tsx:309-314: focus is restored at close, before the exit ends. modal.tsx:117-131, :230-235 and src/app/motion.css:33: the ghost lasts 140 ms and is aria-hidden and pointer-events-none (modal.tsx:327-335); it lasts 0 ms under reduced motion (:96-100). win-celebration.tsx:242-270: the seal opens on every win event and never defers, unlike reality-check.tsx:94. win-celebration.tsx:286-293: z 1700, initialFocus Continue. win-celebration.tsx:228 and :233-240: auto-dismiss; dismiss presents the next queued seal 350 ms later. sell-confirm-modal.tsx:63-68: the quote re-arms on each value. sell-confirm-modal.tsx:84-91 and :157-165: the click on 'Uza' sells unless the quote has lapsed. bet-confirm-modal.tsx:213-222, :377-381. A fresh keydown is never swallowed (held-key.ts:41-42). Drive case H presses Enter once and waits (qa-enter-where-pressed.mjs:18, :220-221).",
+  "proposedFix": "Never hand focus back to a money commit in a dialog underneath. When restoreTo is inside another open [aria-modal=true] dialog, focus that dialog's panel (tabIndex={-1}) or its cancel/keep button instead of its primary, so the next Enter does nothing until the player tabs to a control. In addition, or instead, give every Modal a short arming window, about 300 ms after it opens or after a dialog drawn over it closes. During that window, swallow Enter/Space keydowns on its controls, from the capture listener proposed in updown-card-wrapper-starves-held-key-rule. This also covers the double press and the reduced-motion case. A third option is to have BetConfirmModal and SellConfirmModal cancel themselves when another dialog opens above them. Drive cases: a second Enter 60-120 ms after 'Endelea' sends zero sale requests; a Sell confirm with two queued seals and Enter pressed twice sells nothing; the auto-dismiss race.",
+  "lenses": [
+   "old-draft",
+   "money-census"
+  ]
+ },
+ {
+  "id": "dial-repeat-reopens-confirm-under-retry",
+  "title": "The dial ignores e.repeat: a held Enter across a BUSY reply reopens the confirm with a new key under 'Retry now'",
+  "severity": "money",
+  "origin": "left-open-by-A8i",
+  "scenario": "A keyboard player opens the bet confirm from the dial (Enter on role=slider), then presses and holds Enter on Confirm. The repeats are swallowed while the bet is pending. The server answers BUSY or system_error, which is retryable. The confirm closes and Modal returns focus to the dial. The failure result opens, but it takes focus only at +30 ms. A repeat that lands on the dial in that window runs the dial's React onKeyDown before Modal's window listener sees it. Once pending has fallen, openConfirm() mints a NEW idempotency key and reopens the confirm, and the confirm's later 30 ms timer wins focus. If the confirm reopens within its 140 ms exit beat, it keeps its earlier portal node, so the failure dialog (same z 100, later node) paints over it. On release, the player sees 'Retry now' while focus sits on the covered Confirm. Enter then calls submit() with the new key instead of retrySubmit's same key. If the first attempt had in fact landed (system_error means the outcome is unknown), that is a second bet. If the reopen comes after the beat, the player instead faces a bet confirm they never asked for.",
+  "evidence": "src/components/markets/conviction-dial.tsx:729-765: the dial's onKeyDown opens the confirm on Enter/Space (:734, :762-763) with no e.repeat check. :821-826: openConfirm mints a new key (:824). :976-1019: on a retryable failure the confirm closes (:984), the failure result opens (:1003-1007) and the dial is kept (:1012). :931-935 and :1802-1811: 'Retry now', the pre-focused primary, reuses the key; the comment at :922-930 says this is what prevents a double bet. src/components/ui/modal.tsx:313 returns focus to the dial. :282-285: the result takes focus only at +30 ms. :291: the held-key preventDefault runs after React's handler has already acted. :117-131 and :317-319: the exit beat keeps the confirm's portal node. :205 and :336: both dialogs are at zIndex 100.",
+  "proposedFix": "In the dial's onKeyDown, add if (e.repeat) { if (e.key === 'Enter' || e.key === ' ') e.preventDefault(); return; } before any openConfirm(), and make openConfirm refuse while resultOpen is true. The capture-phase held-key listener with stopPropagation proposed in updown-card-wrapper-starves-held-key-rule would also stop React handlers behind an open dialog from acting on a held key. Extend test §3.1 to require the repeat check.",
+  "lenses": [
+   "money-census"
+  ]
+ },
+ {
+  "id": "withdraw-enter-skips-confirm",
+  "title": "Enter in the withdraw amount box submits the withdrawal with no confirm",
+  "severity": "money",
+  "origin": "pre-existing-out-of-scope",
+  "scenario": "An approved player on /wallet/withdraw, with payouts open, clicks or Tabs into Amount, types 20000 and presses Enter (or the Go/arrow key on an Android numeric keypad). The form has exactly one text field and no submit button, so the browser submits it implicitly (HTML implicit submission). React runs withdrawAction(formData), which calls withdraw() and redirects to /wallet?withdrawal=…&status=…. The money leaves for the registered number without the 'Confirm withdrawal' dialog ever opening. The player never sees the amount, the tax/fee row, the 'You receive' net or the recipient name, so a mistyped amount goes out without review. Repeated Enters are deduplicated by the form's single idempotency key, so this is one withdrawal, not several.",
+  "evidence": "src/app/wallet/withdraw/page.tsx:222-225 (<form action={withdrawAction}>, no onSubmit), :226 (hidden key), :227-232 (radio inputs, which do not block implicit submission), :236-247 (AmountField), :285 (hidden msisdn), :295 (WithdrawConfirm is the only control when canSubmit). src/components/wallet/amount-field.tsx:52-67 has the only text input; its chips are type=button (:76-80). src/components/ui/input.tsx:506, :606 and :652 render it as type='text', and :574-576 do not preventDefault Enter. The trigger is type=button (src/app/wallet/withdraw/withdraw-confirm.tsx:205-212), and ConfirmDialog forces type button (src/components/ui/confirm-dialog.tsx:131-141), so the form has no submit button. The intended path is submitForm, then requestSubmit after the dialog (withdraw-confirm.tsx:136-150); the dialog shows the disclosure at :174-191. src/app/wallet/withdraw/actions.ts:54-124 moves the money. By contrast, the deposit form is safe only because it has more than one text field: the amount, the tel msisdn (src/app/wallet/deposit/page.tsx:245-256) and six always-mounted billing inputs (src/components/wallet/card-billing-fields.tsx:53-58, :67-111). The codebase already relies on 'a disabled submit button stops an implicit submission' (src/components/ui/modal.tsx:660-662).",
+  "proposedFix": "Block implicit submission on the withdraw form and route Enter to the confirm. In the amount box, handle Enter with preventDefault and run the same openGuard/onOpen/setOpen path that the trigger runs. Alternatively, put a disabled default submit button first in the form (<button type='submit' disabled hidden aria-hidden tabIndex={-1} />), which per the HTML spec stops implicit submission outright. Apply the same to the deposit form, so it does not depend on its field count, and to every <form action> whose commit sits behind ConfirmDialog. Add a QA case: type an amount on /wallet/withdraw and press Enter; the confirm must open and the balance must be unchanged.",
+  "lenses": [
+   "money-census"
+  ]
+ },
+ {
+  "id": "money-confirms-open-on-money-button",
+  "title": "Bet and Sell confirms still open with focus on the money button, so a second separate Enter 30 ms or more after opening confirms, although the repo's own A5 rule says such a confirm 'has confirmed nothing'",
+  "severity": "money",
+  "origin": "design-difference",
+  "scenario": "A keyboard player presses Enter on the dial and then, impatiently, presses Enter again 80-150 ms later. People do this when a page seems slow, and it also happens with a keyboard that double-types or a bouncing key. The second keydown is not a repeat. Focus moved to Confirm at 30 ms, so the second Enter confirms, with the locked quote on screen for about 0.1 s. A second press inside the first 30 ms lands on the dial instead: it reopens the confirm, re-locks the quote and mints a new key, but places no bet. The Sell confirm behaves the same way, so a double Enter on 'Uza sasa' sells. The old tree also confirmed here (its window listener acted on any second Enter). A8i closes only the auto-repeat.",
+  "evidence": "bet-confirm-modal.tsx:221 and sell-confirm-modal.tsx:90: initialFocus is the money button. modal.tsx:282-285: the 30 ms timer. held-key.ts:41-46: only repeat=true is swallowed. conviction-dial.tsx:729-765: the dial's Enter/Space handler. modal.tsx:606-626: ConfirmModal's A5 rule opens medium-tier confirms on Cancel, because 'A confirmation that can be satisfied by the same keystroke that opened it has confirmed nothing'. enter-where-pressed.test.mts:200-204: test 2.2 locks focus onto the primary. In its W2 finding, old-draft noted the same double press on 'Uza sasa' as pre-existing and did not handle it.",
+  "proposedFix": "This is Ali's decision, between three options. (1) Keep Enter-to-confirm on the money button, which is today's behaviour. (2) Open both money confirms on Cancel/Keep, as A5 does. (3) Add an arming beat: for about 300-400 ms after opening, Modal swallows any Enter or Space keydown on the primary, repeat or not, or keeps the primary disabled for that beat. Whichever is chosen, make test 2.2 assert it.",
+  "lenses": [
+   "browser-semantics",
+   "regression",
+   "old-draft"
+  ]
+ },
+ {
+  "id": "census-scope-exemption-presence-test",
+  "title": "Check 2.1's 'scoped to its own control' exemption is a presence test: a dialog-scoped window Enter listener, an inverted scope or an unrelated early return all pass, so the Ghairi defect can return with the gate green",
+  "severity": "money",
+  "origin": "introduced-by-A8i",
+  "scenario": "Three shapes get through. (1) Someone restores Enter-to-confirm 'only inside this dialog' in bet-confirm-modal.tsx: const onKey = (e: KeyboardEvent) => { if (!bodyRef.current?.contains(e.target as Node)) return; if (e.key === 'Enter' && !pending) { e.preventDefault(); onConfirm(); } }; window.addEventListener('keydown', onKey);. A player tabs to 'Ghairi' (Cancel, which is inside the dialog) and presses Enter. The listener cancels Cancel's press and calls onConfirm, so the bet is placed (drive case A). (2) An inverted scope, if (panelRef.current?.contains(e.target as Node)) return; if (e.key === 'Enter') onConfirm();, acts on Enter pressed anywhere except its own panel, which is exactly the A8i defect. (3) A handler that has an unrelated if (!open) return; and any .contains(e.target before its first 'Enter' acts on Enter pressed anywhere. In all three cases, test:enter-where-pressed 2.1 passes, every other check passes, and the red twin still reports 20/20, because no plant tries these shapes.",
+  "evidence": "scopedToItsControl (scripts/enter-where-pressed.test.mts:84-88) only asks whether .contains(, return and .target appear somewhere before the first quoted Enter literal. Any occurrence counts, in either direction and for any reason. 2.0's own control fixture (:188-192) asserts that this same shape (if (!listRef.current?.contains(e.target as Node)) return; if (e.key === 'Enter') pick();) is NOT flagged. Scoping to the dialog fixes only the stacked-dialog half of the defect. The ✕ and Cancel are inside the dialog (src/components/markets/bet-confirm-modal.tsx:264-271, :386-389), so a window listener that preventDefaults Enter still overrides the focused button. The select plant (:276-278) is caught only because no other .contains( happens to come before the first Enter in select.tsx's handler (src/components/ui/select.tsx:288-323). The plants (:253-299) delete the select scoping line but never invert it or scope one to a dialog. The header (:15-16) claims every such listener is held. Severity: guard-quality rated this money; old-draft and regression rated it guard.",
+  "proposedFix": "Replace the text-pattern exemption with an explicit allowlist keyed by file: src/components/ui/select.tsx only, pinned to its scope line (select.tsx:289, which tests the trigger and list refs, not a dialog). Any other window or document handler that reads Enter then fails 2.1, whatever it checks first. Accepting only the negated !x.contains(t) form is not enough, because the dialog-scoped shape is itself negated. Add red plants that must fail 2.1: a dialog-scoped window Enter listener in the bet confirm, the inverted scope, and an unrelated early return.",
+  "lenses": [
+   "guard-quality",
+   "regression",
+   "old-draft"
+  ]
+ },
+ {
+  "id": "census-same-name-handler-shadowed",
+  "title": "The census resolves a handler name to its FIRST definition in the file, so a second component's same-named onKey is never read",
+  "severity": "money",
+  "origin": "introduced-by-A8i",
+  "scenario": "Suppose ConfirmModal (the settle, emergency-void and kill-switch confirm) gets Enter-to-confirm: const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && armed && !loading) { e.preventDefault(); fire(); } }; window.addEventListener('keydown', onKey);. Its medium tier opens with focus ON Cancel, so an officer's first Enter, pressed on Cancel, settles the market. test:enter-where-pressed 2.1 still passes, because both listeners in modal.tsx resolve to Modal's own const onKey, which has no Enter. More generally, in any file with two same-named handlers, every listener is judged by the first definition, so an Enter handler added second is never read. No red plant covers this.",
+  "evidence": "listenersIn finds the handler's definition with a regex and .exec(code) (scripts/enter-where-pressed.test.mts:107). It has no g flag and no position, so every listener whose handler is called onKey resolves to the first onKey in the file. In modal.tsx that is Modal's own handler (modal.tsx:286), which has no Enter once comments are stripped. ConfirmModal is at modal.tsx:540, focuses cancelRef (:626) and guards money acts (:4-8, :606-615). onKey is the usual name: 17 of the 21 window/document keydown listeners in src use it. poll-actions.tsx already registers onKey twice (:261-262 and :670-671), and both listeners are checked against line 261's handler. Both are Escape-only today, so the gate is right today but will be blind as soon as one of them reads Enter. Every 2.1 plant (enter-where-pressed.test.mts:266-281) inserts its handler right after the component's first ref, which makes it the first definition in its file, so the red twin never hits this case. Severity: guard-quality rated this money; regression rated it guard.",
+  "proposedFix": "Resolve the handler by scope: take the LAST definition of the name that starts before the listener, inside the enclosing function, and fall back to the first one after it for hoisted functions. Alternatively, resolve the identifier through the TypeScript API, which the repo already uses in scripts/sell-grace-truth.test.mts. Add a red plant that appends, after Modal in modal.tsx, a second component whose same-named handler reads Enter; 2.1 must fail on it.",
+  "lenses": [
+   "guard-quality",
+   "regression"
+  ]
+ },
+ {
+  "id": "census-lexical-blind-spots",
+  "title": "The census passes cast, wrapper and member handlers it cannot read, recognises Enter only as a quoted literal, and looks only at keydown on four receivers",
+  "severity": "money",
+  "origin": "introduced-by-A8i",
+  "scenario": "Each of these shapes brings back 'Enter on Ghairi places the bet' or 'Enter on the win seal sells underneath' while 2.0 and 2.1 stay green: (a) window.addEventListener('keydown', (e) => onKeyRef.current(e)) with onKeyRef.current = (e) => { if (e.key === 'Enter') onConfirm(); }; (b) window.addEventListener('keydown', onKey as EventListener); (c) if (isConfirmKey(e)) onConfirm() with the key test in a src/lib helper, which is the same pure-helper pattern A8i introduced with held-key.ts, or a check on e.keyCode === 13; (d) a window keyup or keypress listener that acts on Enter. In case (d), on the win seal the seal's button closes on keydown, then the keyup reaches the Sell confirm's listener underneath and sells (case H); (e) a window.onkeydown = … assignment, document.body.addEventListener('keydown', …), or one of the listener-registry helpers already in src, such as on(window, 'keydown', …); (f) a window listener that confirms on Space.",
+  "evidence": "The name regex (scripts/enter-where-pressed.test.mts:100) accepts only a bare identifier followed by a comma or a closing parenthesis. So 'onKey as EventListener', a member such as handlers.onKey, or an arrow function falls to the fallback (:102-105), which takes the raw argument text as the handler. That text is not null, so 2.0 does not count the listener as unresolved (:187). The text contains no Enter literal, so 2.1 passes: the check fails OPEN. The 'as EventListener' cast is used in this codebase (win-celebration.tsx:270; needle.tsx:627-629). ENTER (:78) recognises only a quoted literal, and only in the handler's own text. LISTEN (:77) matches only keydown, and only on window, document, globalThis or self, so keyup, keypress and on* assignments are never seen. Registry helpers exist at needle.tsx:184-187 and use-unread-count.ts:37-40. The walk skips .js files (:43); the two .js files in src have no listeners today. Severity: guard-quality rated this money; old-draft rated it guard.",
+  "proposedFix": "Make the census fail closed. Treat a handler that does not resolve to a function body (a cast, a member, a call, or a wrapper arrow whose body only calls something) as unresolved, so that 2.0 fails. Match keydown, keyup and keypress, and on* property assignments. Match addEventListener on any receiver, and flag the ones on window, document, body or documentElement. Flag keyCode/which 13, 'NumpadEnter' and Space. Either follow one level of call into same-file or src/lib helpers, or move the census to the TypeScript AST. Add plants for shapes (a), (b) and (d).",
+  "lenses": [
+   "guard-quality",
+   "old-draft"
+  ]
+ },
+ {
+  "id": "census-blind-to-react-key-handlers",
+  "title": "The census never reads React key props: a dialog's onKeyDown that confirms on Enter, or an ancestor's onKeyDown that stops Enter/Space above a Modal host (UD-16 today), passes every check",
+  "severity": "money",
+  "origin": "left-open-by-A8i",
+  "scenario": "(1) Suppose bet-confirm-modal.tsx wraps its button block in <div onKeyDown={(e) => { if (e.key === 'Enter' && !pending) { e.preventDefault(); onConfirm(); } }}>. Tab to Ghairi and press Enter: the keydown bubbles through React from Cancel to the div, and the bet is placed (case A). Hold Enter on the dial: the confirm opens, the repeats land on Confirm and reach the div's handler before the window rule can stop them, and a bet is placed (case C). Checks 2.1, 2.2 and 2.3 all stay green. The three dialogs have no onKeyDown today, so this is an open path for a regression, not a live defect. (2) An onKeyDown that stops Enter/Space propagation above a component that hosts a Modal deafens the held-key rule while every check stays green. The live instance is UD-16 (see updown-card-wrapper-starves-held-key-rule), and nothing in the gate proves that Modal's listener can hear every host.",
+  "evidence": "LISTEN (scripts/enter-where-pressed.test.mts:77) matches only addEventListener('keydown', …) on window, document, globalThis or self, and §2.1 (:184-195) censuses only those listeners. 2.2 and 2.3 (:197-209) inspect only onClick attributes and the confirm button. 2.4 (:215-219) pins only the call text. Under the App Router, React's root listener sits on document (node_modules/next/dist/client/app-index.js:32). A bubbling keydown reaches document before window, where Modal registers the rule in the bubble phase (src/components/ui/modal.tsx:308), so a React handler acts on held repeats before the rule's preventDefault can matter. UD-16: src/components/updown/updown-card.tsx:994-997. Severity: guard-quality rated shape (1) money; old-draft, money-census and browser-semantics rated these gaps guard.",
+  "proposedFix": "Extend the census to JSX. In files that render <Modal, <ConfirmModal or OperationResultModal, flag any onKeyDown, onKeyUp or onKeyPress prop whose handler reads Enter or Space and does more than stopPropagation or blur, apart from an allowlist (the dial's inputs and slider). Also fail on any onKeyDown that stops Enter/Space propagation above a component hosting a Modal. Alternatively, have 2.4 require that Modal's held-key rule is a window capture listener, so that such an ancestor no longer matters. Add red plants: the bet confirm's button block wrapped in such a div, and a stopPropagation wrapper above a Modal host.",
+  "lenses": [
+   "guard-quality",
+   "old-draft",
+   "money-census",
+   "browser-semantics"
+  ]
+ },
+ {
+  "id": "keytargetof-never-executed",
+  "title": "No test ever runs keyTargetOf, the half of the held-key rule that reads the real element",
+  "severity": "money",
+  "origin": "left-open-by-A8i",
+  "scenario": "Suppose a refactor changes keyTargetOf to tag: e.localName (lowercase), or makes it return null. spacePresses then compares 'button' with 'BUTTON', or Space gets a null target. Either way, a held Space on the dial presses Confirm when the key is released and places a bet (drive case D). test:enter-where-pressed stays green and its red twin stays at 20/20, because §1 feeds only hand-built KeyTargets to swallowsHeldKey and 2.4 only matches the call text keyTargetOf(e.target).",
+  "evidence": "keyTargetOf is at held-key.ts:49-53, and Space needs a non-null target (held-key.ts:43). The guard's §1 calls only HK.swallowsHeldKey, on hand-made KeyTargets (enter-where-pressed.test.mts:51, :151-182, :160). 2.4 is a text match (:215-219). None of the 20 plants (:253-299) touches keyTargetOf or tests behaviour, and no script calls keyTargetOf. held-key.ts:18-19 says the guard 'runs the very rule the dialog runs', which is true only of swallowsHeldKey. Only qa:enter-where-pressed exercises keyTargetOf, and that drive is in no pipeline: package.json:375 runs only test:enter-where-pressed, and the drive is defined at :836. Severity: guard-quality rated this money; old-draft rated it guard.",
+  "proposedFix": "Test keyTargetOf without a DOM, on stub targets: { tagName: 'button', getAttribute: () => null, isContentEditable: false }, an input with type='checkbox', a div with role='switch', a contentEditable div, and a non-element. Assert the combined result, swallowsHeldKey(' ', true, keyTargetOf(stub)). Add red plants for a lowercase tag, a dropped role, and a keyTargetOf that returns null.",
+  "lenses": [
+   "guard-quality",
+   "old-draft"
+  ]
+ },
+ {
+  "id": "close-account-enter-skips-confirm",
+  "title": "Enter in the close-account phrase box closes the account and wallet without the final dialog",
+  "severity": "safety",
+  "origin": "pre-existing-out-of-scope",
+  "scenario": "On /profile/account the player types the close phrase in the confirm box and presses Enter. The form has one text input (the reason field is a textarea) and no submit button, so the browser submits it implicitly and closeAccountAction runs. The account and the wallet are set CLOSED, with any balance still in the wallet, and the player is signed out. The 'Close permanently / Keep my account' dialog never opens. This is the same implicit-submission pattern as withdraw-enter-skips-confirm.",
+  "evidence": "src/app/profile/account/close-account-form.tsx:22 (<form action={closeAccountAction}>), :25 (Textarea, which does not block implicit submission), :36 (the only text input), :86-95 (the ConfirmDialog trigger is type=button; onConfirm calls requestSubmit). src/app/profile/account/actions.ts:89-100. src/lib/server/user-service.ts:146-155 (user and wallet set CLOSED; the wallet then refuses withdrawals, per :119).",
+  "proposedFix": "Apply the same fix as for the withdraw form: put a disabled default submit button in the form, or handle Enter in the phrase box by opening the ConfirmDialog.",
+  "lenses": [
+   "money-census"
+  ]
+ },
+ {
+  "id": "held-key-stops-at-close-reopens-confirm",
+  "title": "The held-key rule stops when the dialog closes: Enter held on 'Ghairi', 'Hifadhi nafasi' or ✕ closes the confirm, then its repeats press the trigger and reopen the confirm with focus on the money button",
+  "severity": "usability",
+  "origin": "left-open-by-A8i",
+  "scenario": "On /positions the Sell confirm is open. The player tabs to 'Hifadhi nafasi' (Keep position) and holds Enter for about 0.6 s. Keydown 1 keeps the position: the confirm closes, Modal removes its listener, and focus goes back to 'Uza sasa'. The first repeat lands there while no dialog is open, so nothing swallows it, and the confirm reopens. The following repeats are swallowed, and 30 ms later focus sits on 'Uza · TZS …'. The player asked to keep the position, sees a confirm that 'did not close', and their next Enter sells. The same thing happens in these cases: (1) The bet confirm's 'Ghairi' or ✕. The repeats land on the Place pill (a native click) or on the dial, whose onKeyDown has no e.repeat check. The confirm reopens with a new locked quote, a new idempotency key and focus on Confirm. (2) A failed bet's 'Funga', when the confirm was opened from the dial. (3) After a sale, a held Enter on the result's 'Sawa'. The result host hands focus to the next control after the sold ticket, which on /positions can be the next ticket's Sell button, so a different ticket's confirm opens. No sale or bet happens without a further fresh Enter. On the Up & Down receipt, the same close hands the repeats to UP, which bets (see updown-held-enter-bet-burst).",
+  "evidence": "modal.tsx:309-314: on close, the listener is removed and focus goes to restoreTo. The rule runs only inside an open Modal's onKey (modal.tsx:286-291 and :308; held-key.ts:41-46). sell-confirm-modal.tsx:90 and :166-176: keep has onClick=onCancel, which leads to sell-button.tsx:544. sell-button.tsx:320-324: openConfirm checks only pending and closedNow, and both looks call it (:606, :664-667). Bet side: bet-confirm-modal.tsx:221, :264-271 and :386-399 (initial focus is Confirm, with Cancel below it); conviction-dial.tsx:729-734 and :762-763 (no e.repeat check), :821-826 (openConfirm mints a new key), :1688-1691 (the pill). Result host: sell-result-host.tsx:48-55, :64-70 and :94-100. Drive cases A and G press Enter once and never hold it on a way out. The drive accepts 'the confirm opens' for a key held on the trigger, and it has no K case (qa-enter-where-pressed.mjs:11, :17, :19, :227-236). The old draft's holdEnter covered this case (A8i.json notes, keyboard finding 2: 'a held Hifadhi nafasi no longer reopens the confirm').",
+  "proposedFix": "Make the rule follow the key rather than the dialog. When a fresh Enter or Space pressed inside a dialog is followed by that dialog closing or unmounting before the key's keyup, arm a one-shot window CAPTURE guard. The guard calls preventDefault and stopPropagation on every repeat of that key until its keyup or a window blur. The app-wide capture listener proposed in updown-held-enter-bet-burst would also do this. Also add if (e.repeat) return to the dial's onKeyDown, calling preventDefault for Enter and Space. Drive case K: Enter held on 'Hifadhi nafasi', on 'Baki na tiketi' in the journey look, and on 'Ghairi' must leave the confirm closed and send zero sale or bet requests.",
+  "lenses": [
+   "old-draft",
+   "browser-semantics"
+  ]
+ },
+ {
+  "id": "escape-closes-every-dialog",
+  "title": "One Escape closes every open Modal, the lower one first, and the closing dialog's ghost Confirm can receive focus",
+  "severity": "usability",
+  "origin": "pre-existing-out-of-scope",
+  "scenario": "A win seal is over the bet confirm, and the player presses Escape to close the seal. The bet confirm's handler runs first because it was registered first, so the confirm is cancelled; then the seal's handler dismisses the seal. AppShell renders the seal after {children}, so the seal's cleanup restores focus last, onto the bet confirm's Confirm. That button is still enabled inside the exiting ghost for --t-quick (140 ms): the ghost is aria-hidden and pointer-events-none, but the button can still be pressed from the keyboard. An Enter in that beat calls submit() with the lockedQuote that cancel left in place. Two more effects: Shift+Tab inside the top dialog first moves focus into the lower dialog's last control (that dialog's trap sees focus outside its panel) before the top dialog pulls it back; and Escape in an open Select inside a dialog closes both the list and the dialog.",
+  "evidence": "modal.tsx:295: every open Modal handles Escape, with no check for which dialog is on top. modal.tsx:308: all the listeners are on window and run in registration order. modal.tsx:300-306: each trap moves focus to its own last control when focus is outside its panel. modal.tsx:327-335: the exiting ghost is only aria-hidden and pointer-events-none. app-shell.tsx:472 against :502: {children} come before the seal host. motion.css:33: --t-quick is 140ms. conviction-dial.tsx:941: submit() checks only lockedQuote and pending. conviction-dial.tsx:1753: cancel does not clear lockedQuote. select.tsx:290. old-draft raised the same Escape cascade as part of its covered-focus finding.",
+  "proposedFix": "Use the dialog stack from modal-focus-moves-behind-top-dialog, so that only the top dialog handles Escape and Tab. Make the exit ghost inert (or disable its buttons) for the exit beat. Clear lockedQuote when the confirm is cancelled.",
+  "lenses": [
+   "browser-semantics",
+   "old-draft"
+  ]
+ },
+ {
+  "id": "retry-queue-cancel-focus-carries-to-yes",
+  "title": "Admin retry queue: Enter on 'Cancel' leaves focus on the inline 'Yes'",
+  "severity": "usability",
+  "origin": "pre-existing-out-of-scope",
+  "scenario": "An officer on the /admin/payments retry queue, on a failed WITHDRAWAL or DEPOSIT row, Tabs to 'Cancel' and presses Enter. The inline 'Cancel & close? Yes / No' replaces the buttons, and React reuses the focused Cancel <button> DOM node as 'Yes'. A second Enter, or the held key's first repeat about 0.5 s later (no Modal is open to swallow it), presses Yes. cancelRefundTxnAction then closes the FAILED record. The action is audited and no money moves, but the payout drops out of the retry queue. The Retry button's own confirm does not carry focus over, because Retry is replaced by a span.",
+  "evidence": "src/app/admin/payments/retry-controls.tsx:70-79 (idle state: span > [Button Retry, Button Cancel]) and :47-55 (confirmCancel state: span > [span, Button Yes, Button No]). The element at index 1 keeps the same Button type, so React reuses the focused DOM node. src/app/admin/payments/payment-actions.ts:146-163 sets the status to CANCELLED. By contrast, in src/app/admin/payments/bulk-retry-controls.tsx:53-63 the type changes at that position, so focus is not carried over.",
+  "proposedFix": "Give the confirm branches distinct keys or structure, so the focused Cancel node is not reused as Yes, and focus 'No' when the confirm state is entered.",
+  "lenses": [
+   "money-census"
+  ]
+ },
+ {
+  "id": "gate-and-drive-miss-left-open-paths",
+  "title": "Neither the gate nor the real-browser drive covers the paths A8i leaves open; the drive is outside predeploy and runs only in Chromium, in English, at 1280 px",
+  "severity": "guard",
+  "origin": "left-open-by-A8i",
+  "scenario": "Every left-open finding in this list is present at HEAD e6484dd5 while test:enter-where-pressed is green. The gate has no check for money buttons outside dialogs, for implicit form submission behind a ConfirmDialog, for focus returned into or behind a dialog underneath, or for the dial ignoring e.repeat (§3.1 only checks that the dial calls openConfirm). qa:enter-where-pressed is not in predeploy. Its cases A-J cover the dial, the bet confirm, the receipt and Sell, on the market page and /positions. It has no case for K, W2, PW, P, a failed bet's 'Funga', the journey look, the Up & Down board or receipt, a seal plus a quote lapse, BUSY with Enter held, Enter in the withdraw amount, or a short-held Space. hold() always produces repeats. So a Space held on the dial and released on Confirm with no repeat is kept from clicking only by each browser engine's own keyup rule, which A8i never looks at. The drive runs in Chromium only. Safari does not focus a clicked button, which changes restoreTo and sends Select down its body path, and whether iPadOS hardware-keyboard repeats carry repeat=true is not proven in this repo.",
+  "evidence": "package.json:375 (predeploy runs only test:enter-where-pressed) and :836 (the drive's script). scripts/qa-enter-where-pressed.mjs:11-21 (cases A-J), :25 and :42-44 (Chromium only), :68-73 (hold() always repeats). scripts/enter-where-pressed.test.mts:32-37 (scope), :77 and :184-195 (§2.1 censuses only window/document keydown listeners), :223-229 (§3.1 checks only that the dial calls openConfirm). The old draft's gates review raised the same blind spots (workflow-output.json reviews[1], findings 1-3).",
+  "proposedFix": "Add these gate checks: (a) money buttons outside dialogs carry the repeat guard; (b) every <form action> committed through ConfirmDialog blocks implicit submission; (c) the dial ignores e.repeat (extend §3.1). Add these drive cases: Enter held on a board card's UP gives exactly one bet; Enter held or double-pressed on the receipt's primary; Enter held on 'Ghairi', 'Hifadhi nafasi' and 'Baki na tiketi' (K); a seal over the Sell confirm followed by Enter, Enter (W2), also with two queued seals; a seal plus a quote lapse, then Enter twice; a seal over the board receipt; a BUSY reply with Enter held does not reopen the confirm; Enter in the withdraw amount opens the confirm; Space held 200 ms on the dial. Also run the drive under Playwright webkit and firefox, and run it before A8i is merged.",
+  "lenses": [
+   "old-draft",
+   "money-census",
+   "browser-semantics"
+  ]
+ },
+ {
+  "id": "drive-controls-dont-isolate-held-key",
+  "title": "On the old tree, cases C and I turn red only because of the removed window listeners; nothing shows that the held-key rule keeps them green, or that the repeats ever reached the dialog",
+  "severity": "guard",
+  "origin": "introduced-by-A8i",
+  "scenario": "On the pre-A8i tree, C (Enter held on the dial) and I (Enter held on Sell) fail because the old window listener fires on the first repeat, before focus moves. They do not fail through the focus path. On the A8i tree they pass, but they would pass just as well if the dialog opened after the key was released and no repeat ever landed in it. The only recorded control is the pre-A8i tree. No run is recorded on A8i with modal.tsx:291 removed, which would show that C and I go red without the rule. Only D (Space) is controlled by the rule itself. Two further cases are weaker than they look: F asserts only the URL, not that Enter was pressed on 'View positions', and H never checks that the Sell confirm is still open underneath once the seal closes.",
+  "evidence": "hold() is at scripts/qa-enter-where-pressed.mjs:67-73. The C/D and I bodies (:161-172, :227-236) assert only open && !receipt && balance unchanged after QUIET_MS. Nothing records a repeat keydown whose target is inside [role=dialog]. F's condition is at :191-192 and H's at :224-225. The header (:22) and commit e6484dd5 claim that the drive is its own red control. The mechanism itself is sound: Playwright 1.59.1 sets repeat=true on repeated keyboard.down (node_modules/playwright-core/lib/server/input.js:55-61; lib/server/chromium/crInput.js:62-76). What is missing is the control, and the check that the repeats arrived.",
+  "proposedFix": "Add a capture-phase window keydown counter through page.addInitScript that counts events where e.repeat && e.target.closest('[role=dialog]'), and require the count to be above 0 in C, D and I. Run the drive once on the A8i tree with modal.tsx:291 removed, and record C, D and I as red. In F, also require that the tabbed label matches 'View positions'. In H, also require await sellDialog.isVisible() after the seal closes.",
+  "lenses": [
+   "guard-quality"
+  ]
+ },
+ {
+  "id": "bet-confirm-disabled-on-first-open-render",
+  "title": "After a lapsed quote, the bet confirm's Confirm is disabled on the first render of the next opening; Enter-to-confirm now depends on an effect winning a race against Modal's 30 ms focus, and nothing checks it",
+  "severity": "guard",
+  "origin": "introduced-by-A8i",
+  "scenario": "The quote lapses on the animation-frame path, so remainingMs is left at 0. When the player reopens the confirm, the first render draws Confirm disabled. Modal's effect runs first, because Modal is the child, and sets its one-shot 30 ms focus. The quote effect then sets remainingMs back to 10 s and triggers a re-render. If that re-render is delayed past 30 ms (by a long task on a slow phone), focus() on the still-disabled Confirm does nothing. Focus then stays on the Place button or slider behind the scrim. Enter reopens the confirm and re-locks the quote with a new idempotency key instead of confirming. Tab from there walks the page behind, because the trap wraps only at the first and last controls. Before A8i, where focus sat did not matter for Enter. In practice the re-render wins, but nothing guarantees it.",
+  "evidence": "bet-confirm-modal.tsx:166-175 sets remainingMs to 0 at expiry. The cleanup at :185-192 does not reset it; it is reset only on open (:126). Confirm is disabled={pending || remainingMs <= 0} (:381). modal.tsx:282-285 focuses once, with no check that the target is enabled and no retry; the fallback at :283 is skipped because the ref is non-null. The trap at modal.tsx:296-306 handles only the first and last controls. Check 2.2 in enter-where-pressed.test.mts:200-204 is textual (initialFocus={confirmRef}) and cannot see a disabled target. A similar first-mount race exists for result dialogs that mount already open (Modal renders null until mounted, modal.tsx:212, :238, :317), such as the wallet result on page load.",
+  "proposedFix": "Reset remainingMs and lastSecLabelRef to the full 10 s when the confirm closes, so every opening renders an enabled Confirm. In Modal, if the target is disabled or missing when the 30 ms timer fires, retry on the next frame, and then fall back to the first enabled focusable control in the panel. A QA case could let a quote lapse, reopen the confirm, and press Enter.",
+  "lenses": [
+   "regression"
+  ]
+ },
+ {
+  "id": "feedback-law-7-5-narrow-text-ban",
+  "title": "feedback-law 7.5's Enter half bans one exact expression, its label claims 'no window Enter handler', and no red mutation covers 7.5",
+  "severity": "guard",
+  "origin": "introduced-by-A8i",
+  "scenario": "A window Enter listener restored in operation-result-modal.tsx as (onPrimary ?? onClose)(), as onPrimary ? onPrimary() : closeRef.current(), or as primaryRef.current?.click() passes 7.5. Only the exact (onPrimary ?? closeRef.current)() fails it. The real protection is enter-where-pressed 2.1, which has the gaps reported in the census findings.",
+  "evidence": "scripts/feedback-law.test.mts:424-426. The first half is a regex for if (onPrimary) onPrimary(); else onClose(), and it runs on RAW text, comments included (:412). The second half bans a single expression in the comment-stripped text. The targets of scripts/red-feedback-law.cjs (:28-40) do not include operation-result-modal.tsx, so neither half of 7.5 (nor 7.1-7.3) has ever been proven red; that part predates A8i. The first half still guards something real: the primary dismissing itself at src/components/markets/operation-result-modal.tsx:523, which is the fix for the double push.",
+  "proposedFix": "Either relabel 7.5 to say what it actually checks, or make the Enter half structural (no addEventListener('keydown' in the comment-stripped operation-result-modal.tsx) and run the first half on comment-stripped text. Add a red-feedback-law mutation for 7.5: onClick={() => { onPrimary?.(); onClose(); }}.",
+  "lenses": [
+   "guard-quality"
+  ]
+ },
+ {
+  "id": "red-twin-anchors-outside-audit",
+  "title": "test:red-anchors never audits the twin's 13 source-text anchors, and red:all does not recognise its anchor-failure message",
+  "severity": "guard",
+  "origin": "design-difference",
+  "scenario": "A prettier reflow or a change of attribute order in bet-confirm-modal.tsx makes one plant anchor match 0 times. An example is the Cancel anchor: onClick={onCancel}, then a newline, then disabled={pending}. predeploy and CI (test:all) stay green, because the red twin runs only under the manual red:all. When red:all does run, it prints 'plant anchor in … occurs 0 times, not once'. red-all's anchor regex does not match that text, so the run is counted as a guard MISS. It is not listed under 'UNRESOLVED ANCHORS (the harness is broken, not the guard)', where it belongs.",
+  "evidence": "plantIn (scripts/enter-where-pressed.test.mts:242-248) is stricter than its in-process peers: it requires exactly one match on line-ending-normalised text (:30), whereas scripts/sell-price-guard.test.mts:776 replaces every occurrence with split/join. But plantIn re-implements resolveAnchor and injectDefect (scripts/red-anchor.mjs:41-51, :122-128) instead of calling them. In-process twins are excluded from test:red-anchors §3 and §4 by design (scripts/red-anchors.test.mts:290-311). red-all's anchor regex (scripts/red-all.mjs:153) matches only 'ANCHOR NOT FOUND', 'anchor missing', 'anchor not found' or 'anchor matches N'.",
+  "proposedFix": "Declare the source-text plants in scripts/anchors/enter-where-pressed.anchors.mjs as {name, file, from} entries, and build each plant with injectDefect. test:red-anchors §3 then audits every anchor on every test:all and CI run. An anchor that stops matching then reads 'anchor missing — cannot inject', which red:all classifies correctly.",
+  "lenses": [
+   "guard-quality"
+  ]
+ },
+ {
+  "id": "sell-button-note-two-clicks",
+  "title": "The rewritten sell-button note says two fast clicks share the same-tick window, which React 19 rules out",
+  "severity": "docs",
+  "origin": "introduced-by-A8i",
+  "scenario": "A reader of sell-button.tsx concludes that a fast double click on the Sell confirm can reach submit twice before pending lands. Under React 19, the first click's pending state commits before the second click's task runs, and a disabled button receives no click. Only a second call within the same task (a script, or two synthetic .click() calls) falls in that window.",
+  "evidence": "sell-button.tsx:339-341: 'a double press from any surface (two fast clicks, a script) is the same window'. useTransition sets isPending through an optimistic update on SyncLane, which commits in the microtask after the event, so the button is disabled={pending || quoteExpired} (sell-confirm-modal.tsx:161) before the next click. The inFlight latch (sell-button.tsx:345 and :388-389) is still correct.",
+  "proposedFix": "Change the wording to 'a second call in the same task (a script or a synthetic double .click())'. Keep both latches.",
+  "lenses": [
+   "regression"
+  ]
+ },
+ {
+  "id": "select-comment-owns-every-key",
+  "title": "An older comment in select.tsx says the list listener 'owns every key', which A8i made untrue",
+  "severity": "cosmetic",
+  "origin": "introduced-by-A8i",
+  "scenario": "A maintainer reads 'While the list is open the listener owns every key' and relies on it. Since A8i, however, the listener ignores keys pressed outside the trigger, the list and <body>.",
+  "evidence": "The comment at select.tsx:269 contradicts the new scope at select.tsx:284-289. DESIGN-BASELINE.md:72 is still accurate.",
+  "proposedFix": "Change line 269 to say the listener owns every key pressed in this control (the trigger, the list, or the page body).",
+  "lenses": [
+   "regression"
+  ]
+ }
+]
