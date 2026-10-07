@@ -944,6 +944,52 @@ gains no server-bound harness. Verified as the VODACOM-PLAN §0i bullet records.
 - test:all, red:all, test:red-anchors
 - every drive listed under verification
 
+*As built (WP12, drafted 2026-10-04 — the code and records that do not wait on the final commits; the results are
+VODACOM-PLAN §0i's):*
+- **qa:live** (`scripts/pre-deploy-live-check.mjs`). [E2] now also holds `/` and `/markets`, for a signed-out visitor
+  while the rollout is short of ACTIVE, free of every trace of the journey shell — any `journey-*` or `tickets-guest-*`
+  test id, the shell mark, the journey flag, a funnel scope of "new", in the HTML and in the RSC payload — and holds
+  `/account` to the not-found page against an unmatched path read in the same context (its main text and title the
+  control's, noindex in the bytes sent, no journey trace; its status printed, never judged: A3's 200). Each page
+  counts only as the route named (no redirect). A new [E3] asks both of a signed-in player: on production the QA player
+  `mobile01`, through the harness's `loginOnce` and the real form (never an admin; one attempt, and a failed sign-in
+  stops the run), locally the demo player (a failed demo sign-in is a failure, and [F] still runs). Before any
+  absence is asked, locally, the readers are seen to SEE the shell: `/` with a staff preview pass must carry the
+  journey header, its tabs and the shell mark through both reads (behind `premise` and a console with
+  DISABLE_ADMIN_TOTP=true; a SKIP anywhere else). Under ACTIVE both sections are printed SKIPs. The production run's
+  one write is the sign-in; CLAUDE.md's qa:live line says so.
+- **qa:landmark-seal `--journey`** (`scripts/landmark-seal.mjs`). Every context carries a pass that counts and each
+  cell first proves it did (the journey header and its tabs on the page); the widths are the header-fit matrix's
+  (`JHF_WIDTHS`, 320–1279) and `/account` joins PUBLIC in this mode only. The pass: locally `mintStaffPass` behind
+  `premise`; on production an Owner-issued link in PREVIEW_URL (decision 7), refused without one while the rollout is
+  STAFF_PREVIEW, none needed under ACTIVE — and there the reader is `mobile01`, the one QA player production still has,
+  and `/profile/kyc` is left out (a GET there starts a reader's identity check). Without the flag the seal runs
+  exactly as before.
+- **A1 (1), G1's drive** — `scripts/live/journey-unread-handover-drive.mjs` (`qa:journey-unread-handover`). Player A
+  on a preview pass, on `/account` then `/markets`; A's own cookie re-signed 25 h idle and `/markets`' refresh run, so
+  the shell turns guest in place under the session-ended notice; B signs in through the header's link and the form;
+  B's first unread answer, then the Arifa row's, is held four seconds (`route.fetch`, wait, `fulfill`) while a
+  MutationObserver records every state of the dot and the row. A pure verdict with its own synthetic controls: no
+  count at all from A's end until each answer lands, B's count after, never A's, B's shell seen inside the window, one
+  document throughout (a reload is BLOCKED: the case never arose). `--prove-red` plants A's count in the window and
+  must be caught by 3.held alone.
+- **A1 (2), the bell** — `scripts/bell-untouched.mjs` (`qa:bell-untouched`): A1's command as written; then the same
+  diff from the plan's own commit — found by git as the commit that added this file (`5a820b9c`), because S6 reached
+  main package by package and the merge base with `origin/main` is now the last pushed commit, so A1's diff covers
+  only what is unpushed; then the working tree. Its controls: every revision resolves, the bell exists at each, and
+  the same diff sees S6's change to `app-shell.tsx` and the bell's own last change before the plan. A change in S6's
+  range made only by commits that do not name the plan is READ EACH (exit 3), never a pass and never a blame (A1:
+  another lane may fix the bell). Never in predeploy and not a test key, for A1's reason.
+- **A6** was already true at the base: `scripts/journey-header-fit-red.mjs` restores on exit, on an error and on four
+  signals (lines 110–127) and races every wait against RED_BUDGET_S (lines 59, 129–142, 267).
+- **Records:** DESIGN_AUTHORITY §K rule 8, the four kit additions effective at the S15 flip, with a provenance
+  CHANGELOG entry of the same date; SHELVED gains the classic pieces S6 hid without a row (the capsule's eye, caret
+  and door words, the two loading pictures, the classic empty state, the Utendaji link's place). The error pages'
+  words keep their one fate in VODACOM-PLAN §3's S15 rename list. Open, for a ruling before the flip: the sign-out
+  confirm's claret tone (rule 8c).
+- **Not done here:** WP6b step 5's tile drive (the plan's qa:journey-shell, which has no package key) was never written, and
+  `scripts/qa-journey-preview.mjs`'s step 7 (pass-holder tiles, a trace regex of test ids) is still owed.
+
 ## New dictionary keys (journey.*)
 
 - journey.balanceCaption: sw 'Salio' / en 'Balance' / zh '余额' (plan §3 table)
@@ -1494,6 +1540,10 @@ WP12: on a preview session, end A through the idle (E-381) path, sign B in throu
 Akaunti dot and the Arifa row never show A's count before B's first answer lands. (2) WP12 proves the bell untouched by
 S6: `git diff --exit-code "$(git merge-base origin/main HEAD)" HEAD -- src/components/layout/notifications-panel.tsx`
 (not a hash in a predeploy test: another lane may fix the bell, and that must not turn predeploy red).
+
+*As built (WP12, drafted 2026-10-04):* (1) is `scripts/live/journey-unread-handover-drive.mjs`, run as
+`npm run qa:journey-unread-handover`; (2) is `scripts/bell-untouched.mjs`, run as `npm run qa:bell-untouched` — A1's
+command, plus the same diff from the plan's own commit, since S6's merges moved the merge base (WP12's as-built note).
 
 **A2 · G2 — `/account` metadata obeys the switch.** `generateMetadata` calls `resolveSimpleJourney()` first and returns
 the not-found title (and `robots: noindex`) when the journey is off. Pinned in `test:journey-account` with a plant.

@@ -596,6 +596,8 @@
     "test:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts",
     "red:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts --prove-red",
     "qa:journey-preview": "node scripts/qa-journey-preview.mjs",
+    "qa:journey-unread-handover": "node scripts/live/journey-unread-handover-drive.mjs",
+    "qa:bell-untouched": "node scripts/bell-untouched.mjs",
     "qa:classic-shell-parity": "node scripts/qa-classic-shell-parity.mjs",
     "qa:journey-header-fit": "node scripts/qa-journey-header-fit.mjs",
     "red:journey-header-fit": "node scripts/journey-header-fit-red.mjs",
