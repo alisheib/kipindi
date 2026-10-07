@@ -28,9 +28,10 @@ import { screenOpsText } from "@/lib/server/marketing/live-switch";
  * RUNS — AND THE ADDRESS ITSELF (the third pass's MINOR-2): its own keyed hash (`refereeEmailKeyOf`, the pepper's
  * "marketing-referee-email" domain) in the same table, so an account that signs up LATER with that address, at any
  * number, is refused at the gate (`consent.ts`, step 2's first question — one keyed read more, for an account that has an
- * address). ⚠️ RESIDUAL, STILL OPEN: a contact-book row IMPORTED later with that address, at a number no account holds, is
- * not refused — the gate would need one more read per send (the book row by its number) and the split a new bulk read
- * per chunk to see a book row's address; that cost is stated in the spec and waits on the lead.
+ * address), and so is a contact-book row IMPORTED later with that address at a number no account holds (step 1b′, built on
+ * the lead's go-ahead). ⭐ THE COST, STATED: ONE indexed read per send (the book row by its number, the unique index) and
+ * a keyed read more only when that row has an address; in the audience preview ONE query per chunk
+ * (`marketingContact.emailsAmong`) and one keyed read for the addresses it finds.
  *
  * ⛔ WHO IS EXCLUDED, AND WHO DECIDES (the U33r review's MAJOR-1): every referee named BEFORE the re-worded §9 went live —
  * the instant version `REFEREE_PROMISE_REWORDED_IN` first went live, so the keys are exactly the "coded form of the phone
@@ -460,6 +461,41 @@ export async function promisedRefereeEmailsAmong(emails: readonly (string | null
   for (const e of await Promise.resolve(db.agentRefereeKey.heldAmong([...byKey.keys()]))) {
     const email = byKey.get(e.refereeKey);
     if (email !== undefined) out.push({ email, held: e.held });
+  }
+  return out;
+}
+
+/**
+ * ⭐ THE GATE'S BOOK READ (the third pass's MINOR-2, built on the lead's go-ahead) — does the contact-book row at this
+ * number hold a promised referee's ADDRESS? A referee named only by e-mail, imported LATER into the book at a number no
+ * account holds, was told "that promise stands". ONE indexed read per send (the row by its number, the unique index), and
+ * one keyed read more ONLY when that row has an address.
+ */
+export async function isPromisedRefereeBookAddress(msisdn: string): Promise<boolean> {
+  const row = await Promise.resolve(db.marketingContact.findByMsisdn(msisdn));
+  return isPromisedRefereeEmail(row?.email ?? null);
+}
+
+/**
+ * ⭐ THE PREVIEW'S BULK BOOK READ — `isPromisedRefereeBookAddress` for a chunk's numbers: ONE query for the chunk's book
+ * addresses (`marketingContact.emailsAmong`, §25's bound), and one keyed read for those addresses. A number whose book row
+ * holds no address is answered NOT held (the bulk read answered for the whole set); one whose address the keyed read left
+ * unanswered is left OUT, so the caller falls back to the single read — never a referee let through on a guess.
+ */
+export async function promisedRefereeBookAddressesAmong(msisdns: readonly string[]): Promise<RefereeHeldEntry[]> {
+  const unique = Array.from(new Set(msisdns)).sort();
+  if (unique.length === 0) return [];
+  const emailOf = new Map<string, string>();
+  for (const r of await Promise.resolve(db.marketingContact.emailsAmong(unique))) {
+    const norm = normalRefereeEmail(r.email);
+    if (norm !== null) emailOf.set(r.msisdn, norm);
+  }
+  const heldOf = new Map((await promisedRefereeEmailsAmong([...new Set(emailOf.values())])).map((e) => [e.email, e.held] as const));
+  const out: RefereeHeldEntry[] = [];
+  for (const msisdn of unique) {
+    const email = emailOf.get(msisdn);
+    if (email === undefined) out.push({ msisdn, held: false });
+    else if (heldOf.has(email)) out.push({ msisdn, held: heldOf.get(email) === true });
   }
   return out;
 }

@@ -1033,6 +1033,12 @@ export type MarketingContactPresenceQuery = {
   msisdns: string[];
   excludeSourceRef: string | null;
 };
+/** U33r · the third pass's MINOR-2 · one book row's ADDRESS in `marketingContact.emailsAmong`'s answer — its number and
+ *  the e-mail as stored, nothing else of the row. */
+export type MarketingContactEmailEntry = {
+  msisdn: string;
+  email: string;
+};
 /**
  * U38a · THE PLAYER ARM OF A CAMPAIGN AUDIENCE, as a KEYSET on the account id (decision X8) — `user.playerWalk`.
  * ⛔ ONLY PLAYER ACCOUNTS ON A `+255…` NUMBER: staff are never an audience, and an erased account (`erased:<id>`) or a
@@ -3529,6 +3535,20 @@ const memoryDb = {
         if (c && (q.excludeSourceRef === null || c.sourceRef !== q.excludeSourceRef)) out.push(m);
       }
       return out.sort();
+    },
+    /** U33r · the third pass's MINOR-2 · the ADDRESS each of these numbers' book rows holds — `findByMsisdn` asked of a set,
+     *  through the same index, answering the number and the address only (never the row); a row with no address is left
+     *  out. Ordered by number. The audience preview asks it so its "will receive" agrees with the gate. */
+    emailsAmong: (msisdns: string[]): MarketingContactEmailEntry[] => {
+      const keys = bulkKeys(msisdns, "marketingContact.emailsAmong");
+      if (keys.length === 0) return [];
+      const out: MarketingContactEmailEntry[] = [];
+      for (const m of keys) {
+        const id = store.contactsByMsisdn.get(m);
+        const c = id ? store.marketingContacts.get(id) : undefined;
+        if (c && typeof c.email === "string" && c.email.trim() !== "") out.push({ msisdn: m, email: c.email });
+      }
+      return out.sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
     },
     /** Every book row LINKED to an account — erasure's reach (U18b). Usually one; a player who changed
      *  number can have the old one in the book too. */

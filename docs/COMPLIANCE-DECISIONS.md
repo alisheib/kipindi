@@ -458,8 +458,9 @@ rather than guessed at.
   short. ⚠️ RESIDUALS, STATED TRULY (the re-review's MINOR-5, 2026-10-07): (1) a referee named by e-mail is keyed under
   the numbers held under that address WHEN a writer runs — the naming, the applicant's erasure, the backfill — and,
   since the third pass (MINOR-2), under the ADDRESS itself, so an account that signs up later with it, at any number, is
-  refused by the gate; ⚠️ still open: a contact-book row IMPORTED later with that address, at a number no account holds
-  (closing it costs the gate one more read per send — the spec states it, and it waits on the lead). (2) The reader
+  refused by the gate, and so is a contact-book row IMPORTED later with it at a number no account holds (built on the
+  lead's go-ahead; the cost: one indexed read per send for the book row, a keyed read only when it has an address, and
+  one query per chunk in the audience preview) — so §9's "that promise stands" holds for both. (2) The reader
   keys in the safe direction: the strict readings first, and only when none reads, the generous ones (a digit too many,
   digits behind a prefix it does not know); it also reads the Tanzanian number inside a foreign one written with spaces —
   such a key may be a stranger's number, excluded for good, so the player's switch line says only what is true of every

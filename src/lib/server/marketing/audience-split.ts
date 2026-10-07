@@ -39,7 +39,8 @@ import type {
 import { licenceOutreach, type LicenceOutreach } from "@/lib/server/marketing/outreach-record";
 // U33r · the referee keys a chunk asks about in ONE keyed read, and the shape of its answer.
 import {
-  normalRefereeEmail, promisedRefereeEmailsAmong, promisedRefereesAmong, type RefereeEmailHeldEntry, type RefereeHeldEntry,
+  normalRefereeEmail, promisedRefereeBookAddressesAmong, promisedRefereeEmailsAmong, promisedRefereesAmong, type RefereeEmailHeldEntry,
+  type RefereeHeldEntry,
 } from "@/lib/server/marketing/referee-exclusion";
 import { mayReceiveMarketingSms, userPhoneKeyFor, DB_GATE_READS } from "@/lib/server/marketing/consent";
 import type { MarketingGateReads, MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
@@ -225,6 +226,9 @@ export type AudienceSplitDeps = {
   /** U33r · the third pass's MINOR-2 · the chunk's ACCOUNT e-mail addresses asked of the referee keys, ONE keyed read
    *  (`promisedRefereeEmailsAmong`) — and none at all for a chunk whose accounts hold no address. */
   refereeEmails: (emails: string[]) => Promise<RefereeEmailHeldEntry[]>;
+  /** U33r · the third pass's MINOR-2 · the chunk's numbers asked whether their BOOK ROW holds a promised referee's address:
+   *  ONE query for the chunk's book addresses (`marketingContact.emailsAmong`) and one keyed read for them. */
+  refereeBookEmails: (msisdns: string[]) => Promise<RefereeHeldEntry[]>;
   slotOf: typeof audienceSlotOf;
   figures: typeof audienceSplitFigures;
   shape: typeof audienceSplitForViewer;
@@ -241,6 +245,7 @@ export const AUDIENCE_SPLIT_DEPS: Readonly<AudienceSplitDeps> = Object.freeze({
   outreach: () => licenceOutreach(),
   referees: async (msisdns: string[]) => promisedRefereesAmong(msisdns),
   refereeEmails: async (emails: string[]) => promisedRefereeEmailsAmong(emails),
+  refereeBookEmails: async (msisdns: string[]) => promisedRefereeBookAddressesAmong(msisdns),
   slotOf: audienceSlotOf,
   figures: audienceSplitFigures,
   shape: audienceSplitForViewer,
@@ -256,7 +261,7 @@ export const AUDIENCE_SPLIT_DEPS: Readonly<AudienceSplitDeps> = Object.freeze({
  * ⛔ The keys are the gate's own (`parseTzNumber(...).msisdn`, and `+` that for the account); an unsendable number is
  * not asked about — the gate refuses it before any read.
  */
-export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<AudienceSplitDeps, "suppressions" | "users" | "consents" | "standings" | "outreach" | "referees" | "refereeEmails"> = AUDIENCE_SPLIT_DEPS): Promise<MarketingGateReads> {
+export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<AudienceSplitDeps, "suppressions" | "users" | "consents" | "standings" | "outreach" | "referees" | "refereeEmails" | "refereeBookEmails"> = AUDIENCE_SPLIT_DEPS): Promise<MarketingGateReads> {
   const keys: string[] = [];
   for (const m of msisdns) {
     const parsed = parseTzNumber(m);
@@ -289,6 +294,9 @@ export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<A
      an address). An address the answer leaves out falls back to the single read, as every member here does. */
   const addresses = Array.from(new Set(accounts.map((u) => normalRefereeEmail(u.email)).filter((e): e is string => e !== null)));
   const emailHeldOf = new Map((addresses.length > 0 ? await deps.refereeEmails(addresses) : []).map((e) => [e.email, e.held] as const));
+  /* ⭐ The third pass's MINOR-2 · every key's BOOK ROW asked for a promised referee's address — ONE query per chunk and one
+     keyed read — so the preview's "will receive" agrees with the gate's step 1b′. A key left out falls back to the single read. */
+  const bookHeldOf = new Map((await deps.refereeBookEmails(unique)).map((e) => [e.msisdn, e.held] as const));
   const ours = (k: MessagingKey) => k.channel === "SMS" && k.category === "MARKETING" && known.has(k.identifier);
   return {
     suppression: (k) => (ours(k) ? stopOf.get(k.identifier) ?? null : DB_GATE_READS.suppression(k)),
@@ -303,6 +311,7 @@ export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<A
       if (norm === null) return false;
       return emailHeldOf.has(norm) ? emailHeldOf.get(norm) === true : DB_GATE_READS.refereeEmailHeld(e);
     },
+    refereeBookEmailHeld: (m) => (bookHeldOf.has(m) ? bookHeldOf.get(m) === true : DB_GATE_READS.refereeBookEmailHeld(m)),
   };
 }
 
@@ -321,6 +330,7 @@ const BUDGET_READS: MarketingGateReads = {
   // U33r · a database read like the three above: past the budget it throws, so a referee is never guessed at.
   refereeHeld: refuseRead,
   refereeEmailHeld: refuseRead,
+  refereeBookEmailHeld: refuseRead,
 };
 
 async function askGate(row: CampaignAudienceRow, now: Date, reads: MarketingGateReads, deps: AudienceSplitDeps): Promise<AudienceGateOutcome> {

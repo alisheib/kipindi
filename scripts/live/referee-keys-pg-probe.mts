@@ -19,7 +19,9 @@
  *      one naming two referees by number, one naming a referee by e-mail (whose number only the book holds) and a landline
  *      — are counted missing, keyed, then counted 0 missing; a re-run writes nothing; and the REAL gate refuses each
  *      referee number `agent_referee` while a stranger is refused for no consent;
- *   2a (the third pass's MINOR-2) the e-mail referee's ADDRESS is keyed by the backfill, and read case-insensitively;
+ *   2a (the third pass's MINOR-2) the e-mail referee's ADDRESS is keyed by the backfill, and read case-insensitively; the
+ *      book's addresses for a set of numbers come back in ONE query (marketingContact.emailsAmong: the number and the
+ *      address only), and the gate's single book read finds the referee's address on the book row at its number;
  *   2b (the re-review's MINOR-4; the third pass) the two HAND STEPS on the real audit log, each naming referee one: a third application holding a contact the
  *      reader cannot read is counted unreadable; a reason with a numeral is refused; a person's review clears it (counted
  *      reviewed); a number keyed by hand is refused by the real gate; and the two audit rows name the application and
@@ -98,6 +100,8 @@ const EXPECTED = {
   censusBefore: { applications: 2, promised: 2, withContact: 2, numbers: 3, emails: 1, missing: 4, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0 },
   backfill: { applications: 2, promised: 2, withContact: 2, numbers: 3, emails: 1, missing: 0, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0, written: 4 },
   emailHeld: [true, true, false],
+  bookEmails: [{ msisdn: N.refC, email: REF_EMAIL }],
+  bookHeld: [true, false],
   again: { written: 0, missing: 0 },
   gate: ["agent_referee", "agent_referee", "agent_referee", "no_consent"],
   handBefore: { unreadable: 1, reviewed: 0, missing: 0, notMobile: 2 },
@@ -159,6 +163,9 @@ async function scenario(): Promise<Record<string, unknown>> {
     await RX.isPromisedRefereeEmail(REF_EMAIL), await RX.isPromisedRefereeEmail(`  ${REF_EMAIL.toUpperCase()}  `),
     await RX.isPromisedRefereeEmail("somebody.else@example.com"),
   ];
+  // ── MINOR-2's last part · the book row's ADDRESS at a number — the bulk read (one query) and the gate's single read ──
+  t.bookEmails = await db.marketingContact.emailsAmong([N.stranger, N.refC]);
+  t.bookHeld = [await RX.isPromisedRefereeBookAddress(N.refC), await RX.isPromisedRefereeBookAddress(N.stranger)];
   t.gate = [];
   for (const m of [N.refA, N.refB, N.refC, N.stranger]) {
     const v = await mayReceiveMarketingSms(m);

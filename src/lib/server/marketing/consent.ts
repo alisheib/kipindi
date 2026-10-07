@@ -21,7 +21,7 @@ import { isImportAttestationSaved } from "@/lib/server/marketing/wordings";
 // U33r · the agent-referee exclusion: the keyed read. ⛔ The gate never hashes a number or reads the table itself —
 // `reads.refereeHeld` does, so the split can hand in a chunk's answers — and it never asks WHEN a referee was named: only
 // a promised referee is ever keyed (the writer decides, `referee-exclusion.ts`), so a key held is the whole answer.
-import { isPromisedReferee, isPromisedRefereeEmail, isRefereeKeyable } from "@/lib/server/marketing/referee-exclusion";
+import { isPromisedReferee, isPromisedRefereeBookAddress, isPromisedRefereeEmail, isRefereeKeyable } from "@/lib/server/marketing/referee-exclusion";
 import { withLock } from "@/lib/server/locks";
 
 /**
@@ -217,6 +217,10 @@ export type MarketingGateReads = {
    *  writers key every address written in a promised referee's contact). A blank address answers no, with no read. ⛔ A
    *  yes or a no, never the address or its hash. Past the split's time budget it throws like the other reads. */
   refereeEmailHeld: (email: string | null) => Promise<boolean> | boolean;
+  /** U33r · the third pass's MINOR-2 · does the contact-book row AT THIS NUMBER hold a promised referee's address — ONE
+   *  indexed read (the row by its number), and a keyed read only when it has an address. ⛔ A yes or a no. Past the split's
+   *  time budget it throws like the other reads. */
+  refereeBookEmailHeld: (msisdn: string) => Promise<boolean> | boolean;
 };
 
 /** The default — the store's own single-key reads, asked AT CALL TIME, so the twin `db` resolves to is the one read.
@@ -229,6 +233,7 @@ export const DB_GATE_READS: Readonly<MarketingGateReads> = Object.freeze({
   bookStanding: (msisdn: string) => db.contactListBasis.standingFor(msisdn),
   refereeHeld: (msisdn: string) => isPromisedReferee(msisdn),
   refereeEmailHeld: (email: string | null) => isPromisedRefereeEmail(email),
+  refereeBookEmailHeld: (msisdn: string) => isPromisedRefereeBookAddress(msisdn),
 });
 
 /**
@@ -353,6 +358,13 @@ export async function mayReceiveMarketingSms(
   // given the old promise (`refereePromiseHolds`, asked as it writes), so a key held is the whole answer. No `userId`: the
   // refusal is about the number's promise, never an account's standing.
   if (await Promise.resolve(reads.refereeHeld(identifier))) {
+    return refuse("agent_referee", REFEREE_DETAIL);
+  }
+  // ── 1b′ · U33r · THE BOOK ROW AT THIS NUMBER HOLDS A PROMISED REFEREE'S ADDRESS (the third pass's MINOR-2) ───────────────
+  // ⛔ A referee named only by e-mail and imported LATER into the contact book, at a number no account holds: §9 told them
+  // "that promise stands". Asked here, before any basis and before a player is known, as 1b is: ONE indexed read per send
+  // (the book row by its number, the unique index), and a keyed read more only when that row has an address.
+  if (await Promise.resolve(reads.refereeBookEmailHeld(identifier))) {
     return refuse("agent_referee", REFEREE_DETAIL);
   }
 
@@ -553,6 +565,8 @@ export async function marketingToggleState(
   if (isRefereeKeyable(identifier) && (await Promise.resolve(DB_GATE_READS.refereeHeld(identifier)))) return TOGGLE_REFEREE;
   // …and the account's e-mail, as the gate's step 2 asks it (the third pass's MINOR-2).
   if (await Promise.resolve(DB_GATE_READS.refereeEmailHeld(typeof user.email === "string" ? user.email : null))) return TOGGLE_REFEREE;
+  // …and the book row at this number, as the gate's step 1b′ asks it.
+  if (isRefereeKeyable(identifier) && (await Promise.resolve(DB_GATE_READS.refereeBookEmailHeld(identifier)))) return TOGGLE_REFEREE;
   const rg = await marketingRgStanding(user, identifier, now.getTime(), { ...MARKETING_RG_DEPS, harmFlags: async () => [] });
   const held = holdOf(rg, now);
   if (held) return held;

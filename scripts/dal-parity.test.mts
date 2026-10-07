@@ -2474,6 +2474,25 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const plantedBatch = storeSrc.replace("export type MessagingKeyBatch = {", `export type MessagingKeyBatch = {${NL25}  plantedKey: string;`);
   ok("25.c6 · CONTROL · a key PLANTED in MessagingKeyBatch is seen by the parser and fails 25.named's exact set",
     storedKeys("MessagingKeyBatch", plantedBatch).includes("plantedKey") && !sameSet(storedKeys("MessagingKeyBatch", plantedBatch), BATCH_KEYS));
+
+  // ── 25.emails · MINOR-2's last part (U33r, the lead's go-ahead) · the book's ADDRESSES for a set of numbers ──
+  const memE = memberOf(ns(storeSrc, "marketingContact"), "emailsAmong");
+  const priE = memberOf(ns(dalSrc, "marketingContact"), "emailsAmong");
+  const E_KEYS = 'const keys = bulkKeys(msisdns, "marketingContact.emailsAmong");';
+  const emailsOk = (mem: string, pri: string): boolean => {
+    const fm = flat25(mem), fp = flat25(pri);
+    return mem.includes("emailsAmong: (msisdns: string[]): MarketingContactEmailEntry[] =>")
+      && pri.includes("emailsAmong: async (msisdns: string[]): Promise<MarketingContactEmailEntry[]> =>")
+      && before(fm, E_KEYS, EMPTY) && before(fp, E_KEYS, EMPTY) && before(fp, EMPTY, "pc()")
+      && fp.includes("select: { msisdn: true, email: true }") && !pri.includes("toStoredMarketingContact(")
+      && fm.includes("out.push({ msisdn: m, email: c.email });") && !/out[.]push[(]c[^A-Za-z0-9_]/.test(mem);
+  };
+  ok("25.emails · ⭐ MINOR-2's last part · marketingContact.emailsAmong in BOTH twins — named (MarketingContactEmailEntry is EXACTLY msisdn and email, exported by store.ts and imported by prisma-dal.ts), through bulkKeys, an empty set answered before any query, ONE select of the number and the address (never the row), a row with no address left out",
+    emailsOk(memE, priE) && storeImport25.includes("  MarketingContactEmailEntry,") && storeSrc.includes("export type MarketingContactEmailEntry = {")
+      && sameSet(storedKeys("MarketingContactEmailEntry"), ["msisdn", "email"]),
+    `memory ${memE.length} · prisma ${priE.length}`);
+  ok("25.c7 · CONTROL · an emailsAmong that selects the whole row, or skips bulkKeys, FAILS 25.emails",
+    !emailsOk(memE, priE.split("select: { msisdn: true, email: true }").join("")) && !emailsOk(memE.split(E_KEYS).join(""), priE));
 }
 
 /* ═══ §26 · The campaign tables — SmsCampaign / SmsCampaignRecipient in both twins (U35b, S10 2026-10-02; decision X1) ═══ */

@@ -54,6 +54,7 @@ import { toMsisdn255 } from "../../src/lib/phone-normalize.ts";
 import { parseTzNumber, readAsciiDigits } from "../../src/lib/tz-msisdn.ts";
 import { mayReceiveMarketingSms, marketingToggleState, DB_GATE_READS } from "../../src/lib/server/marketing/consent.ts";
 import type { MarketingGateReads } from "../../src/lib/server/marketing/consent.ts";
+import { prefetchGateReads, AUDIENCE_SPLIT_DEPS } from "../../src/lib/server/marketing/audience-split.ts";
 import {
   refereeNumbersIn, refereeKeyOf, recordRefereeKeys, backfillRefereeKeys, refereeKeyCensus, refereePromiseHolds,
   readRefereeContact, isPromisedReferee, refereeKeysDoorVerdict, REFEREE_KEYS_DOOR_SENTENCE, REFEREE_NEW_WORDS_LIVE_AT,
@@ -105,8 +106,10 @@ export type RefereeImpl = {
   /** R15 · R16 — the two hand steps. */
   readonly keyByHand: typeof keyRefereeNumberByHand;
   readonly reviewByHand: typeof recordRefereeContactReviewed;
-  /** R17 — the gate's reads (the account's e-mail asked of the keys). */
+  /** R17 — the gate's reads (the account's e-mail and the book row's address asked of the keys). */
   readonly gateReads: MarketingGateReads;
+  /** R17 — the audience preview's reads for a chunk (the split's bulk answers). */
+  readonly previewReads: (msisdns: string[]) => Promise<MarketingGateReads>;
 };
 export const REAL_REFEREE: RefereeImpl = {
   numbersIn: refereeNumbersIn,
@@ -130,6 +133,7 @@ export const REAL_REFEREE: RefereeImpl = {
   keyByHand: keyRefereeNumberByHand,
   reviewByHand: recordRefereeContactReviewed,
   gateReads: DB_GATE_READS,
+  previewReads: (msisdns) => prefetchGateReads(msisdns),
 };
 
 export const REFEREE_LABELS = {
@@ -146,7 +150,7 @@ export const REFEREE_LABELS = {
   r11: "R11 · ⛔ U33r · MINOR-1 · a referee named only by E-MAIL is keyed under the number of every account and every book row holding that address, case-insensitive — the gate refuses both numbers — and an e-mail that leads nowhere is counted, not keyed",
   r12: "R12 · ⛔ U33r · MINOR-2 · THE CENSUS COUNTS WHAT THE READER COULD NOT READ — a contact of nine or more digits that gave no number is `unreadable` (an e-mail beside it changes nothing), and so is a number found with a digit run LEFT OVER beside it ('0754 123 456 / 0712 345 67' — the third pass's NIT), a landline and a foreign number are `notMobile`, each counted once, never listed, and none counted reviewed until a person handles it",
   r14: "R14 · ⛔ U33r · a player whose OWN number is a promised referee's is TOLD SO in both access doors' marketing section (agentRefereeExclusion: true) — a yes, never the coded form, never who named the number or when — and a player whose number is not held reads false",
-  r17: "R17 · ⛔ U33r · the third pass's MINOR-2 · A REFEREE NAMED ONLY BY E-MAIL IS KEPT OUT AT WHATEVER NUMBER THAT ADDRESS TURNS UP ON LATER — the writer keys the address itself (its own keyed hash and nothing else); an account that signs up afterwards with it, in any case, is refused agent_referee at the gate and its switch reads off for good, while an account with another address is not; and the census counts every address and its missing key until the backfill keys it",
+  r17: "R17 · ⛔ U33r · the third pass's MINOR-2 · A REFEREE NAMED ONLY BY E-MAIL IS KEPT OUT AT WHATEVER NUMBER THAT ADDRESS TURNS UP ON LATER — the writer keys the address itself (its own keyed hash and nothing else); an account that signs up afterwards with it, in any case, is refused agent_referee at the gate and its switch reads off for good, and so is a contact-book row IMPORTED afterwards with it at a number no account holds — at send AND in the audience preview — while another address is not; and the census counts every address and its missing key until the backfill keys it",
   r13: "R13 · ⛔ U33r · MAJOR-2 · THE FIFTH CHECK — only a well-formed PRODUCTION record with nothing missing and nothing unreadable reconciles it (a scratch run's record never does — the re-review's MINOR-1); it binds on NODE_ENV or RAILWAY_ENVIRONMENT_NAME production AND on any DATABASE_URL that is not a loopback host, an unreadable one included (MINOR-1); today's state is exactly what the ONE rule says of the record (null: OUTSTANDING where it binds — the re-review's NIT); and the LIVE SWITCH refuses to open on it (referee_keys) before anything is read, recorded or written",
   r15: "R15 · ⛔ U33r · the third pass's MAJOR · A NUMBER KEYED BY HAND — read STRICTLY (a digit too many, other text or two numbers are refused, never keyed as a stranger's), typed TWICE (a swapped pair of digits in either is a mismatch, nothing keyed), for a promised application's contact in the place named; then the gate refuses it, ONE COMPLIANCE audit row names the application, the place and who — no digit, no key — and THAT contact alone is handled: the other referee on the same application stays unreadable",
   r16: "R16 · ⛔ U33r · the third pass · A CONTACT REVIEWED BY HAND — free text, a name or a numeral as the reason is refused (ONE of the fixed codes only), as is a missing --by, and nothing is written; a listed reason writes ONE COMPLIANCE audit row naming the application, the place, the code and who; the census then counts THAT contact reviewed (the other stays unreadable) — and a LATER naming makes it count unreadable again",
@@ -848,9 +852,26 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
     await impl.backfill();
     const cB = await impl.census();
     const counted = cA.emails >= 2 && cA.missing >= 1 && cB.missing === 0 && cB.emails === cA.emails && (await isPromisedRefereeEmail(olderAddress));
+    // ⭐ A contact-book row IMPORTED later with a referee's address, at a number no account holds — refused at send and in
+    // the preview (the lead's go-ahead); a book row with another address is not.
+    const bookAddress = `imani.r17.${run}@example.com`;
+    await impl.record({ contacts: [bookAddress], namedAt: "2026-09-08T10:00:00.000Z" });
+    const imported = keyOf(run, 122);
+    const unrelated = keyOf(run, 123);
+    await Promise.resolve(db.marketingContact.create(bookRow(`rfb${run}-${seq++}`, imported, `  ${bookAddress.toUpperCase()}  `)));
+    await Promise.resolve(db.marketingContact.create(bookRow(`rfb${run}-${seq++}`, unrelated, `another.r17.${run}@example.com`)));
+    const sendGate = [await gateOf(imported), await gateOf(unrelated)];
+    const preview = await impl.previewReads([imported, unrelated]);
+    const previewGate: string[] = [];
+    for (const m of [imported, unrelated]) {
+      const g = await mayReceiveMarketingSms(m, new Date(), preview);
+      previewGate.push(g.ok ? "ALLOWED" : g.skipReason);
+    }
+    const bookOk = sendGate[0] === "agent_referee" && sendGate[1] !== "agent_referee"
+      && previewGate[0] === "agent_referee" && previewGate[1] !== "agent_referee";
     ok(p(L.r17),
-      wrote === 1 && keyOnly && heldGate === "agent_referee" && otherGate !== "agent_referee" && sw.referee === true && sw.on === false && counted,
-      `written ${wrote} · the key and nothing else ${keyOnly} · the referee's later account ${heldGate} · a stranger ${otherGate} · switch ${JSON.stringify({ on: sw.on, referee: sw.referee })} · addresses ${cA.emails}, missing ${cA.missing} → ${cB.missing}`);
+      wrote === 1 && keyOnly && heldGate === "agent_referee" && otherGate !== "agent_referee" && sw.referee === true && sw.on === false && counted && bookOk,
+      `written ${wrote} · the key and nothing else ${keyOnly} · the referee's later account ${heldGate} · a stranger ${otherGate} · switch ${JSON.stringify({ on: sw.on, referee: sw.referee })} · addresses ${cA.emails}, missing ${cA.missing} → ${cB.missing} · book row at send ${sendGate.join("/")} · in the preview ${previewGate.join("/")}`);
   }
 }
 
@@ -1177,6 +1198,19 @@ export function refereeCases(): { name: string; impl: RefereeImpl; expect: strin
     {
       name: "⛔ the third pass's MINOR-2 · the gate never asks the account's e-mail — the referee's later account is reached",
       impl: { ...REAL, gateReads: { ...DB_GATE_READS, refereeEmailHeld: () => false } },
+      expect: REFEREE_LABELS.r17,
+    },
+    {
+      name: "⛔ MINOR-2's last part · the gate never asks the book row at the number — an imported referee's address is reached",
+      impl: { ...REAL, gateReads: { ...DB_GATE_READS, refereeBookEmailHeld: () => false } },
+      expect: REFEREE_LABELS.r17,
+    },
+    {
+      name: "⛔ MINOR-2's last part · the preview's bulk book read answers 'not held' for every number — it says 'will receive' where the gate refuses",
+      impl: {
+        ...REAL,
+        previewReads: (msisdns) => prefetchGateReads(msisdns, { ...AUDIENCE_SPLIT_DEPS, refereeBookEmails: async (ms) => ms.map((msisdn) => ({ msisdn, held: false })) }),
+      },
       expect: REFEREE_LABELS.r17,
     },
     {

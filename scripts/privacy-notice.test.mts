@@ -781,6 +781,8 @@ console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees
   const GATE_ASKS = "if (await Promise.resolve(reads.refereeHeld(identifier))) {";
   /** The third pass's MINOR-2 · the second question: the account's e-mail, for a referee named by e-mail who signs up later. */
   const GATE_ASKS_EMAIL = "if (await Promise.resolve(reads.refereeEmailHeld(";
+  /** …and the third: the contact-book row at the number (MINOR-2's last part, on the lead's go-ahead). */
+  const GATE_ASKS_BOOK = "if (await Promise.resolve(reads.refereeBookEmailHeld(identifier))) {";
   /** §9's paragraphs in one locale, whitespace collapsed — split on the tags, so no pattern needs an escape. */
   const paragraphs9 = (block: string): string[] =>
     section(block, "9").split("<p>").slice(1).map((p) => p.split("</p>")[0].replace(WS4I, " "));
@@ -812,8 +814,8 @@ console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees
     if (cutSet && none.length > 0) {
       d.push(`REFEREE_NEW_WORDS_LIVE_AT is set but §9 does not keep the promise, conditionally, in ${none.join(", ")} — the cut-off names a re-wording that locale does not print`);
     }
-    if (!gate.includes(GATE_REFUSES) || !gate.includes(GATE_ASKS) || !gate.includes(GATE_ASKS_EMAIL)) {
-      d.push("consent.ts no longer refuses a promised referee (agent_referee, step 1b by the number, step 2 by the account's address)");
+    if (!gate.includes(GATE_REFUSES) || !gate.includes(GATE_ASKS) || !gate.includes(GATE_ASKS_EMAIL) || !gate.includes(GATE_ASKS_BOOK)) {
+      d.push("consent.ts no longer refuses a promised referee (agent_referee — step 1b by the number, 1b′ by the book row's address, step 2 by the account's address)");
     }
     if (cutSet && backfill !== "reconciled") {
       d.push("REFEREE_NEW_WORDS_LIVE_AT is set while production's referee-key backfill is not recorded (REFEREE_KEYS_ON_PRODUCTION) — an old referee saved again after the cut-off would never be keyed");
@@ -848,12 +850,15 @@ console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees
   // Every refusal goes — the number's (1b) and the address's (2-0) — never only the first.
   const plantNoRefusal = consentGateSrc.split(GATE_REFUSES).join("return null;");
   const plantNoEmailAsk = consentGateSrc.split(GATE_ASKS_EMAIL).join("if (false && (");
+  const plantNoBookAsk = consentGateSrc.split(GATE_ASKS_BOOK).join("if (false) {");
   ok("§5ap control · planted §4i copies found their targets",
     [plantCut !== refereeExclusionSrc, plantOldEn !== pageSrc, plantNoMarkerZh !== pageSrc, plantNoneSw !== pageSrc, plantNoRefusal !== consentGateSrc, swSecond.length > 100].every(Boolean));
   ok("§5aq control · the gate's referee refusal removed is reported — and so is the account's-address question alone (the third pass)",
     refereeDefects(pageSrc, refereeExclusionSrc, plantNoRefusal, null, "reconciled").some((x) => x.includes("no longer refuses"))
       && plantNoEmailAsk !== consentGateSrc
-      && refereeDefects(pageSrc, refereeExclusionSrc, plantNoEmailAsk, null, "reconciled").some((x) => x.includes("no longer refuses")));
+      && refereeDefects(pageSrc, refereeExclusionSrc, plantNoEmailAsk, null, "reconciled").some((x) => x.includes("no longer refuses"))
+      && plantNoBookAsk !== consentGateSrc
+      && refereeDefects(pageSrc, refereeExclusionSrc, plantNoBookAsk, null, "reconciled").some((x) => x.includes("no longer refuses")));
   ok("§5ar control · the OLD words in ONE locale (en) with the cut-off set are reported — even with the backfill recorded — and the same words with the cut-off null are not, on that count",
     wordsOf(plantOldEn, "en") === "old"
       && refereeDefects(plantOldEn, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("still promises EVERY referee") && x.includes("en"))

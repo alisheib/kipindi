@@ -99,6 +99,7 @@ import type {
   StoredMessagingConsent, StoredSuppression, MessagingKey,
   MessagingKeyBatch,
   MarketingContactPresenceQuery,
+  MarketingContactEmailEntry,
   PlayerWalkQuery,
   PlayerWalk,
   StoredMarketingOptOutToken,
@@ -4219,6 +4220,17 @@ export const prismaDb = {
         select: { msisdn: true },
       });
       return rows.map((r) => r.msisdn).sort();
+    },
+    /** U33r · the third pass's MINOR-2 · the ADDRESS each of these numbers' book rows holds — ONE query on the unique
+     *  `msisdn`, selecting the number and the address only (never the row); a row with no address is left out. */
+    emailsAmong: async (msisdns: string[]): Promise<MarketingContactEmailEntry[]> => {
+      const keys = bulkKeys(msisdns, "marketingContact.emailsAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().marketingContact.findMany({ where: { msisdn: { in: keys } }, select: { msisdn: true, email: true } });
+      return rows
+        .filter((r) => typeof r.email === "string" && r.email.trim() !== "")
+        .map((r) => ({ msisdn: r.msisdn, email: r.email as string }))
+        .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
     },
     /** Every book row LINKED to an account — erasure's reach (U18b). `userId` is indexed. */
     listByUserId: async (userId: string): Promise<StoredMarketingContact[]> => {
