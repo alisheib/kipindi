@@ -975,6 +975,8 @@
     "ops:prelaunch-reset": "tsx scripts/ops-prelaunch-reset.mts",
     "ops:prelaunch-purge": "tsx scripts/ops-prelaunch-purge-r2.mts",
     "ops:provision-staff": "tsx scripts/ops-provision-staff.mts",
+    "test:ops-provision-staff": "tsx scripts/ops-provision-staff.test.mts",
+    "red:ops-provision-staff": "tsx scripts/ops-provision-staff.test.mts --prove-red",
     "ops:seed-test-float": "node scripts/seed-test-float.mjs",
     "ops:levy-divergence": "node scripts/live/ops/levy-divergence.cjs",
     "ops:payments-now": "node scripts/live/ops/payments-now.cjs",
