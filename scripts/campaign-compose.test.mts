@@ -1456,6 +1456,8 @@ type ComposeImpl = {
   testDeps: TestDeps;
   /** campaign-test-send.ts as text — §18.14 pins the wires it is built from. */
   testSendSource: string;
+  /** U43b-1 · the send step itself (`dispatchSlice`) — §18.34 asks it how a lost reply arrives, alone and under the test. */
+  dispatch: typeof dispatchSlice;
   /** The composer's Audience card (`composeAudienceView`) — §17.8 asks it for a masked viewer, the save's own rule. */
   audienceView: typeof LOADER.composeAudienceView;
   /** U37s · the line the composer's counter prices (`composerSourcePhrase`) — §17.16. */
@@ -1474,6 +1476,7 @@ const REAL_COMPOSE: ComposeImpl = {
   liveGate: LIVE.marketingLiveGate, ensureToken: ensureOptOutToken,
   testDeps: TEST.CAMPAIGN_TEST_DEPS,
   testSendSource: readFileSync(new URL("../src/lib/server/marketing/campaign-test-send.ts", import.meta.url), "utf8"),
+  dispatch: dispatchSlice,
   audienceView: LOADER.composeAudienceView,
   sourceLine: LOADER.composerSourcePhrase,
   staleLine: LOADER.composerSourceLineStale,
@@ -2675,6 +2678,34 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       && QUIET === TEST.testQuietHours(ALWAYS_CLOSED()) && gates === 0 && tokensClosed === 0 && smsRowsFor(id).length === 0
       && rows.length === 3 && rows.every(heldRow) && reads === 2,
       `own ${reasonOf(own)}${own.ok ? "" : `: ${own.error}`} · typed ${reasonOf(typed)} · late ${reasonOf(late)} · gate asked ${gates} · tokens ${tokensClosed} · rows ${smsRowsFor(id).length} · audit ${JSON.stringify(rows.map((a) => a.payload ?? null))} · window reads ${reads}`];
+  });
+
+  /* ── U43b-1 · E3 · F1 — the send step used to answer a lost reply (TRANSPORT) as `failed`, and the test send turned it
+   *    back into `unconfirmed` by hand. The step now says so itself, for every caller; the test send's answer is unchanged. ── */
+  await claim("§18.34 ⭐ U43b-1 · E3 · A LOST REPLY ARRIVES UNCONFIRMED BY CONSTRUCTION — the send step itself answers a TRANSPORT result 'unconfirmed', keeping the wire's reference and the gate's basis (never 'failed', which invites a second charge), and the test send through that step is unchanged: 'unconfirmed', don't resend, and its masked row still records TRANSPORT for a lost reply and no_answer for a send that threw", async () => {
+    const o34 = await officer();
+    const id = await u37bDraft();
+    // The step alone, as the engine will call it: one cleared row, a wire that lost its reply.
+    const step = await impl.dispatch([{ ref: `cmp_u43b1_step_${u37bSeq}`, msisdn: o34.key, body: "50pick: fixture" }], { send: u37bSpy("transport").send, window: ALWAYS_OPEN });
+    // The test send through the same step, with the step's own answers observed.
+    const seen: Array<Record<string, unknown>> = [];
+    const observed: TestDeps["dispatch"] = async (rows, d) => {
+      const out = await impl.dispatch(rows, d);
+      seen.push(...(out as unknown as Array<Record<string, unknown>>));
+      return out;
+    };
+    const start = audits.length;
+    const lost = await send({ campaignId: id, variant: "SW" }, o34.id, { send: u37bSpy("transport").send, dispatch: observed });
+    const threw = await send({ campaignId: id, variant: "SW" }, o34.id, { send: u37bSpy("throw").send, dispatch: observed });
+    const rows = audits.slice(start).filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION && a.actorId === o34.id);
+    const s = step[0] as unknown as Record<string, unknown> | undefined;
+    return [s?.outcome === "unconfirmed" && s.reference === "sms_lost_1" && s.code === "TRANSPORT" && s.basis === "CONSENT"
+      && seen.length === 2 && seen[0]?.outcome === "unconfirmed" && seen[0]?.reference === "sms_lost_1"
+      && seen[1]?.outcome === "unconfirmed" && seen[1]?.reference === undefined
+      && !lost.ok && lost.outcome === "unconfirmed" && lost.error === TEST.TEST_UNCONFIRMED && !threw.ok && threw.outcome === "unconfirmed"
+      && rows.length === 2 && rows[0].payload?.outcome === "unconfirmed" && rows[0].payload?.reason === "TRANSPORT"
+      && rows[1].payload?.outcome === "unconfirmed" && rows[1].payload?.reason === "no_answer",
+      `the step ${String(s?.outcome ?? "none")}${s?.code ? ` ${String(s.code)}` : ""} ref ${String(s?.reference ?? "none")} · under the test ${seen.map((o) => `${String(o.outcome)}:${String(o.reference ?? "-")}`).join(" ")} · lost ${reasonOf(lost)} · threw ${reasonOf(threw)} · audit ${JSON.stringify(rows.map((a) => a.payload?.reason ?? null))}`];
   });
   return failed;
 }
@@ -4424,6 +4455,12 @@ if (!PROVE_RED) {
     const windowIgnored: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, window: ALWAYS_OPEN }, options);
 
+    /** U43b-1 · R-S2 · the send step before E3: a lost reply (TRANSPORT) settled as a refusal, `failed`. */
+    const transportFailed: typeof dispatchSlice = async (rows, d) => (await dispatchSlice(rows, d)).map((o) =>
+      (o.outcome === "unconfirmed" && o.code === "TRANSPORT"
+        ? { ref: o.ref, outcome: "failed" as const, code: "TRANSPORT", error: "reply lost", basis: o.basis, basisRef: o.basisRef }
+        : o));
+
     /** A.5 · the typed gate built from a stand-in — the source no longer asks the ONE gate. */
     const GATE_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
     const standInGate = R.testSendSource.split(GATE_CALL).join("allowTypedTest(m, testAttestation)");
@@ -4934,6 +4971,18 @@ if (!PROVE_RED) {
           return !real.ok && real.outcome === "refused" && real.reason === "held" && planted.ok;
         },
         landedAs: "with the window closed the real test is refused held, and the plant's is handed over",
+      },
+      {
+        name: "U43b-1 · R-S2 · the send step answers a lost reply (TRANSPORT) 'failed' again — the shape before E3, which only the test send's own mapping papered over",
+        expect: [/^§18[.]34 /], impl: { ...R, dispatch: transportFailed },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const rows = [{ ref: `cmp_u43b1_landed_${u37bSeq}`, msisdn: o.key, body: "50pick: fixture" }];
+          const real = await dispatchSlice(rows, { send: u37bSpy("transport").send, window: ALWAYS_OPEN });
+          const planted = await transportFailed(rows, { send: u37bSpy("transport").send, window: ALWAYS_OPEN });
+          return real[0]?.outcome === "unconfirmed" && planted[0]?.outcome === "failed";
+        },
+        landedAs: "the real step answers a lost reply unconfirmed, and the plant's answers it failed",
       },
     ];
     for (const p of testPlants) {

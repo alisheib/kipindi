@@ -18,14 +18,51 @@ export const MUTATIONS = [
     // 400 for "Invalid credentials" — measured 2026-09-16 — so the reflex converts a nameable
     // credential failure into an opaque transport error and discards the one string that says
     // what went wrong. This is the mutation that must never pass.
+    // ⚠️ RE-ANCHORED 2026-10-07 (U43b-1). The return line this quoted now parses a body read INSIDE a
+    // try (F2), so the throw is planted just above the comment that introduces the read — the same
+    // seam: the verdict taken from `res.ok` before the body is ever read. Its `expect` is unchanged.
     name: "sms-blackball.ts — the verdict goes back to res.ok instead of the status boolean",
     file: "src/lib/server/sms-blackball.ts",
     from: `    // Read as TEXT then parse, like \`selcomFetch\`: a non-JSON reply is exactly the
-    // case where the raw shape is the evidence, and \`res.json()\` would throw it away.
-    return parseBlackballBody(await res.text(), res.status);`,
+    // case where the raw shape is the evidence, and \`res.json()\` would throw it away.`,
     to: `    if (!res.ok) throw new Error(\`blackball sms failed: \${res.status}\`);
-    return parseBlackballBody(await res.text(), res.status);`,
+    // Read as TEXT then parse, like \`selcomFetch\`: a non-JSON reply is exactly the
+    // case where the raw shape is the evidence, and \`res.json()\` would throw it away.`,
     expect: `§3 an HTTP 400 auth refusal does NOT throw`,
+  },
+  {
+    // ⛔ U43b-1 · E3 · F2 (R-BB1) — THE SEND'S BODY READ MOVED BACK OUTSIDE THE TRY. A reply whose body
+    // dies mid-read throws out of the adapter again, into sendBatch's chunk catch, which writes the row
+    // FAILED — terminal, so a late receipt is discarded — for a batch the gateway had whole; and FAILED
+    // invites a retry, a second SMS at a second charge.
+    name: "sms-blackball.ts — the send's body read moved back outside the try (a body that dies mid-read throws)",
+    file: "src/lib/server/sms-blackball.ts",
+    from: `    // lost reply, never a refusal (see \`replyBodyUnreadable\`).
+    let raw: string;
+    try {
+      raw = await res.text();
+    } catch (err) {
+      return replyBodyUnreadable(res.status, err);
+    }`,
+    to: `    // lost reply, never a refusal (see \`replyBodyUnreadable\`).
+    const raw = await res.text();`,
+    expect: `§13 ⛔ U43b-1 · a send reply whose body dies mid-read does NOT throw: ambiguous, transport set, the status line kept`,
+  },
+  {
+    // The same for the balance read (R-BB1b): its body read outside the try throws instead of
+    // coming back as a transport that `sms.ts` reads as unreachable.
+    name: "sms-blackball.ts — the balance's body read moved back outside the try",
+    file: "src/lib/server/sms-blackball.ts",
+    from: `    // dies mid-read is \`unreachable\` to \`sms.ts\`, never a throw.
+    let raw: string;
+    try {
+      raw = await res.text();
+    } catch (err) {
+      return replyBodyUnreadable(res.status, err);
+    }`,
+    to: `    // dies mid-read is \`unreachable\` to \`sms.ts\`, never a throw.
+    const raw = await res.text();`,
+    expect: `§13 ⛔ the balance read is the same: a body that dies mid-read does NOT throw, it comes back as a transport (unreachable to sms.ts)`,
   },
   {
     // The PDF types `data` as an Object. The gateway sends an ARRAY on the commonest failure it
