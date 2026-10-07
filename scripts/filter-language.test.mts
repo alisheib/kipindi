@@ -273,6 +273,14 @@ const ADMIN_SURFACES = [
      rail file — §0.4 refuses an undeclared `data-filter-rail` and §6.1 a declared file that renders no control.
      `red:filter-language` plants both directions. */
   "src/app/admin/campaigns/campaign-status-rail.tsx", // /admin/campaigns — status (U36)
+  /* DECLARED 2026-10-07 (U38b, marketing S13) · the campaign composer's audience rail — Who (contact book · player
+     accounts · both), Operator (by prefix), the window (the platform's ONE window control, `defaultPreset="all"`), and
+     the contact book's own List and Tag (and a reader's Consent · Stop list · Source · Player) while Who is the book.
+     Every label and href built on the server (`audience-rail-model.ts`, through the composer's ONE href builder). TWO
+     rank-taking controls — one `FilterPill`, one `DateTimeRangeFilter` — both at the dense rank: §6.6 counts it 2 dense
+     of 2. ⛔ Declared in the SAME commit as the rail file — §0.4 refuses an undeclared `data-filter-rail` and §6.1 a
+     declared file that renders no control. `red:filter-language` plants both directions. */
+  "src/app/admin/campaigns/new/audience-rail.tsx", // /admin/campaigns/new — who + operator + window + list + tag (U38b)
 ];
 
 /**

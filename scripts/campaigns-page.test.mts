@@ -9,7 +9,7 @@
  * UNCONFIRMED as settled (U43-0, §3f), the empty campaign with no bar, attention, the badge refused to a viewer without
  * growth, and the sync throw. Then the source, for what only the source can show: the doors' literal titles, no money,
  * no timer, no pulse, the links behind their flags, the rail file's shape and its declaration, the shell's two callers,
- * the dev seed's refusal.
+ * the dev seed's refusal. U38b · M8 (§5l): each row's audience in words, role-shaped, executed over the fixtures' filter.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY (a nav copy, a crumb builder, a progress
  * function, a badge reader, a loader, a source string, a flag) and requires the MATCHING assertion to fail — each plant
@@ -40,7 +40,7 @@ delete process.env.DATABASE_URL;
 const { db } = await import("../src/lib/server/store.ts");
 const CS = await import("../src/lib/marketing/campaign-status.ts");
 const { campaignAttentionBadge } = await import("../src/lib/server/marketing/campaign-attention.ts");
-const { loadCampaigns, campaignsSort } = await import("../src/app/admin/campaigns/campaigns-loader.ts");
+const { loadCampaigns, campaignsSort, campaignRowAudience } = await import("../src/app/admin/campaigns/campaigns-loader.ts");
 const { campaignRail, campaignsHref, campaignsLinkSp } = await import("../src/app/admin/campaigns/campaigns-rail.ts");
 const COPY = await import("../src/app/admin/campaigns/campaigns-copy.ts");
 const NAV = await import("../src/components/admin/admin-nav-groups.ts");
@@ -202,6 +202,8 @@ type Impl = {
   /** The per-campaign recipient tally both twins' list read answers through — §3f holds it knowing UNCONFIRMED and
    *  still refusing a status nobody knows (U43-0, P8). */
   tally: typeof CS.tallyRecipientsByCampaign;
+  /** U38b · M8 · a row's audience in words, role-shaped — §5l. */
+  rowAudience: typeof campaignRowAudience;
   sources: Sources;
 };
 const REAL: Impl = {
@@ -215,6 +217,7 @@ const REAL: Impl = {
   sortOf: campaignsSort,
   twinAttention: () => db.smsCampaign.attentionCount(),
   tally: CS.tallyRecipientsByCampaign,
+  rowAudience: campaignRowAudience,
   sources: REAL_SOURCES,
 };
 
@@ -269,11 +272,12 @@ const L = {
   s5d: "5d · ⛔ no pulse and no animate-pulse in any file of the campaigns section (OD38)",
   s5e: "5e · a failed read renders AdminLoadError for the SMS campaigns with the rail still drawn — gated on the WHOLE table, never the page's rows — and a rail built without counts carries none",
   s5f: "5f · ⛔ LINKS ONLY TO PAGES THAT EXIST (432(h)): CAMPAIGN_SCREENS.compose and .detail are true exactly when their page files exist, the page renders each link only behind its flag, and its ghost reserves the head's action behind the same flag",
-  s5k: "5k · ⭐ A SAVED DRAFT REOPENS FROM THE LIST: a DRAFT row's name links to the composer at its own ?draft= address (campaignDraftHref, from the ONE route table), behind the compose flag — every other row stays plain while detail is false",
+  s5k: "5k · ⭐ A SAVED DRAFT REOPENS FROM THE LIST: a DRAFT row's name links to the composer at its own address for this viewer (draftAddressFor — the canonical address, else the ?draft= one campaignDraftHref builds from the ONE route table), behind the compose flag — every other row stays plain while detail is false",
   s5g: "5g · the empty and no-match states read the copy module — no-match offers Show all, the rail stands outside the rows — the pager is AdminPagination, and a row in flight says when it was read beside a Refresh",
   s5h: "5h · ⛔ the dev seed refuses production FIRST (404 before any await) and touches no SMS path — no sendBatch, no SmsMessage, no SMS module",
   s5i: "5i · the rail file is a dumb server renderer — ONE data-filter-rail campaign-status, ONE FilterPill at the dense rank (tab semantics, replace, no scroll), a FilterGroupKey, no client directive, no route or label typed — and filter-language declares it in ADMIN_SURFACES",
   s5j: "5j · every rail href is the ONE builder's: it keeps the sort, never page or a stray parameter; exactly one pill is in force; counts are the whole table's, and absent when the read failed",
+  s5l: "5l · ⭐ U38b · M8 · each row says its audience in words under its name — the ONE describer, role-shaped as the composer's card: a masked viewer is told it is hidden for their role while a reader reads 'Consent: given'; the page asks campaignRowAudience with the viewer's read cell decided on the server, renders campaignAudienceWords, and the line cannot widen its column",
 } as const;
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
@@ -626,7 +630,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   });
   await check(p(L.s5k), () => {
     const page = S.page;
-    const linked = page.includes(': c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={campaignDraftHref(c.id) as Route}');
+    // U38b · STD-1 · the link is the draft's own address for this viewer (`draftAddressFor` — the composer's canonical
+    // address, else the bare ?draft= one from the ONE route table), so opening a draft from the list never meets the page's
+    // redirect.
+    const linked = page.includes(': c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route}')
+      && page.includes("draftHref={draftAddressFor(c, reads)}");
     const href = CS.campaignDraftHref("cmp x");
     return [linked && href === `${CS.CAMPAIGN_SCREEN_ROUTES.compose}?draft=cmp%20x` && href.startsWith("/admin/campaigns/new?draft="), `linked ${linked} · ${href}`];
   });
@@ -676,6 +684,26 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && unknown.length === 1 && unknown[0] === "" && JSON.stringify(campaignsLinkSp(sp)) === JSON.stringify({ status: "paused", sort: "name", dir: "asc" })
       && campaignsHref(sp, { page: "2" }) === "/admin/campaigns?status=paused&sort=name&dir=asc&page=2",
       `statuses [${statuses}] · on [${on}] · counts [${counted}] · ${campaignsHref(sp, { page: "2" })}`];
+  });
+  // ⭐ U38b · M8 — EXECUTED over the fixtures' own stored filter (every fixture asks consent GIVEN, a reader's axis), then
+  // the page read for its wiring.
+  await check(p(L.s5l), async () => {
+    const rows = (await impl.load({})).result.rows;
+    const masked = rows.map((c) => impl.rowAudience(c, false));
+    const reader = rows.map((c) => impl.rowAudience(c, true));
+    const maskedWords = masked.map((a) => COPY.campaignAudienceWords(a));
+    const readerWords = reader.map((a) => COPY.campaignAudienceWords(a));
+    const whole = COPY.campaignAudienceWords(impl.rowAudience({ audienceFilter: "{}" }, false));
+    const players = COPY.campaignAudienceWords(impl.rowAudience({ audienceFilter: '{"operators":["TTCL"],"population":"players"}' }, false));
+    const unreadable = COPY.campaignAudienceWords(impl.rowAudience({ audienceFilter: "not json" }, true));
+    const page = S.page;
+    const wired = page.includes("const reads = await viewerReadsContacts().catch(() => false);")
+      && page.includes("audience={campaignRowAudience(c, reads)}") && page.includes("{campaignAudienceWords(audience)}")
+      && page.includes("block w-0 min-w-full") && !page.includes("audienceFilter");
+    return [rows.length === 10 && maskedWords.every((w) => w === "Audience hidden for your role.") && !maskedWords.some((w) => /Consent/i.test(w))
+      && readerWords.every((w) => w === "Consent: given") && whole === "Everyone in the contact book"
+      && players === "Player accounts · Operator: TTCL" && unreadable === "The saved audience can't be read." && wired,
+      JSON.stringify({ masked: [...new Set(maskedWords)], reader: [...new Set(readerWords)], whole, players, unreadable, wired })];
   });
 }
 
@@ -796,6 +824,8 @@ if (!PROVE_RED) {
     { name: "UNCONFIRMED counted outstanding in the bar — 'a campaign with an unanswered message never finishes'", expect: L.s3f, impl: { ...REAL, progress: unconfirmedOutstanding } },
     { name: "UNCONFIRMED counted outstanding by the badge — a paused campaign with an unanswered message wants an officer for ever", expect: L.s3f, impl: { ...REAL, attention: unconfirmedOwed } },
     { name: "a recipient status this code does not know dropped instead of refused (P8 undone)", expect: L.s3f, impl: { ...REAL, tally: dropsUnknown } },
+    /* ── U38b · M8 · the row's words are role-shaped (D19) ── */
+    { name: "🔴 a masked viewer handed the reader's words — the list says 'Consent: given' to a role that may not read a number", expect: L.s5l, impl: { ...REAL, rowAudience: (c) => campaignRowAudience(c, true) } },
   ];
 
   for (const [i, c] of CASES.entries()) {

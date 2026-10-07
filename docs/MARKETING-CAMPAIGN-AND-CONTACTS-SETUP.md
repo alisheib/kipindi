@@ -1209,6 +1209,28 @@ is decided, with what it rules out. They are not questions.
   view on Roles (only ADMIN holds it by default), and then with the buttons disabled and the reason beside them; (7) the
   duration is six radios inside the dialog, not the kit select (whose list VoiceOver cannot reach inside an aria-modal
   dialog). Guards: `test:marketing-settings` S6 · S11 · S14 · `qa:marketing-settings`.
+- **OD65 · Before a campaign sends, a viewer who may not read a number is shown the COUNT ALONE, at every size — decided
+  (U38b, S14 2026-10-07, on Ali's delegation; the U38b pre-review's D19-1; amends ENGINE-SPEC E23 and §4.4 decision
+  7).** The spec's floor of 10 (`MASKED_BREAKDOWN_MIN`) cannot hold: a GROWTH officer — who may add contacts and tag
+  them — can pad a tag or a list with nine numbers of their own whose verdicts they know, and the tenth person's verdict,
+  protected standing included, is the difference between two counts. So the composer's audience card (and, when it
+  lands, U40's confirmation) shows such a viewer how many people match — the ONE walk's count, `campaignAudienceCount`
+  — and nothing else: no will-receive figure, no reason, no sample, and the gate is NEVER asked about the people a masked
+  officer chose, so no verdict exists to leak, not even through how long the answer takes. A reader sees everything, as
+  before. The floor of 10 stays for the surfaces that count messages actually SENT (U47b's live page, U48a's results),
+  where every probe costs a real campaign — the owner's live switch, a typed confirmation and an audit row; that
+  residual is recorded for them. Told to Ali in plain words the same day ("staff who can't see phone numbers will see
+  only how many people match, never the breakdown"). Guards: `test:campaign-audience` B6 (R-B6 · R-B6b · R-B6c ·
+  R-B6d · R-B6e), B4 (R-B4c), `qa:marketing-audience`.
+- **OD66 · A viewer who may not read a number counts the contact book OR the player accounts — never both at once —
+  decided (U38b, S14 2026-10-07, on Ali's delegation; the U38b review's #1).** The ONE walk counts a number the book
+  holds once (a player whose number a live book row holds is skipped in the player phase, X8), so with both arms on, one
+  contact added by a GROWTH officer moves the count by 0 or 1 as that number is or is not a player's — "is this a
+  player?" through a bare count, which OD65 alone does not close. So the campaign door (`campaignAudienceRefusal`)
+  refuses `pop=both` to such a viewer, naming `pop` in its own words ("For your role, choose the contact book or player
+  accounts — not both together."), and their Who pills offer the two alone; the card's read, the save and U40 inherit
+  it; a draft a reader saved with both is "hidden for your role" to them, as any filter their role may not use. A
+  reader keeps all three. Guards: `test:campaign-audience` B3m (R-B3m · R-B3n), B6.
 
 ### §4a — The eleven legal questions (each with the safe default that is BUILT)
 

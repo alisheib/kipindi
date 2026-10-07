@@ -99,8 +99,10 @@ const TWINS = new Set([STORE, PRISMA_DAL]);
  *  (export walk), U38/U40 (counts, recount) and U42 (enqueue walk) each APPEND their file in their own commit.
  *  U23 (S10, 2026-10-02): `contact-bulk.ts` — the bulk bar's recount, its preview sample and its per-number walk; its
  *  set-based writes reach the store's `…Where` members through `contactAudienceWrites` (audience.ts), never directly.
- *  U34a (S10, 2026-10-02): `contacts/export.ts` — the export's count and its keyset walk, capped at the audited count. */
-const READERS = [LOADER, "lib/server/marketing/contact-bulk.ts", "lib/server/contacts/export.ts"];
+ *  U34a (S10, 2026-10-02): `contacts/export.ts` — the export's count and its keyset walk, capped at the audited count.
+ *  U38b (S13, 2026-10-07): `campaigns/new/audience-rail.tsx` — the composer's audience rail reads the book's tags for its
+ *  Tag axis through the resolver's own tag reader (`contactTagCounts`), as the contact book's loader does; it reads no row. */
+const READERS = [LOADER, "lib/server/marketing/contact-bulk.ts", "lib/server/contacts/export.ts", "app/admin/campaigns/new/audience-rail.tsx"];
 
 /** The book's SET readers — the members that return many rows or count them. Point lookups (`find`,
  *  `findByMsisdn`, `listByUserId`, `listMemberships`) are not a path from a filter. */

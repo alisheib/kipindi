@@ -13,11 +13,15 @@
  * ⛔ A READ THAT FAILS THROWS to the caller, which renders `AdminLoadError` with the rail still drawn and no counts —
  * never a zero, which on this list would read as "nothing has ever been sent".
  * ⛔ IT READS NOTHING THE LIST MAY NOT SHOW: no money (OD24 — the rows go to a server component that renders no
- * budget or estimate), and no audience resolver at all (the audience figure is the population frozen at confirm;
- * U38 adds the filter in words).
+ * budget or estimate), and no audience resolver at all (the audience figure is the population frozen at confirm).
+ * ⭐ U38b · M8 · EACH ROW'S AUDIENCE IN WORDS (`campaignRowAudience`): the stored filter read at the CAMPAIGN scope and
+ * said by the ONE describer (`describeAudience`), role-shaped EXACTLY as the composer shapes it — the words only when the
+ * campaign door's role rule passes the filter (its ticked selection aside), else "Audience hidden for your role". It
+ * reads nothing: the filter is on the row.
  */
 import { db } from "@/lib/server/store";
-import type { SmsCampaignListSort, SmsCampaignPage, SmsCampaignRecipientCountsById, SmsCampaignStatusCounts } from "@/lib/server/store";
+import type { SmsCampaignListSort, SmsCampaignPage, SmsCampaignRecipientCountsById, SmsCampaignStatusCounts, StoredSmsCampaign } from "@/lib/server/store";
+import { parseContactAudienceJson, describeAudience, campaignAudienceRefusal } from "@/lib/server/marketing/audience";
 import { statusesForRail } from "@/lib/marketing/campaign-status";
 import type { CampaignRailKey } from "@/lib/marketing/campaign-status";
 import { PER_PAGE, parsePage } from "@/components/admin/admin-pagination";
@@ -69,4 +73,29 @@ export async function loadCampaigns(sp: CampaignsParams): Promise<CampaignsView>
   // ⭐ ONE read for the page's recipients — exactly its ids (an empty page asks for none and is answered {}).
   const recipients = await db.smsCampaignRecipient.countsByCampaign(result.rows.map((c) => c.id));
   return { counts, result, recipients, rail, page, sort, dir, readAt: new Date().toISOString() };
+}
+
+/* ═══ U38b · M8 · A ROW'S AUDIENCE, IN WORDS ═════════════════════════════════════════════════════════════════════ */
+
+/** What one row says about its audience: the describer's phrases (none = the whole contact book), hidden for this
+ *  viewer's role, or a stored filter this build cannot read. */
+export type CampaignRowAudience = { kind: "words"; lines: string[] } | { kind: "hidden" } | { kind: "unreadable" };
+
+/**
+ * ⛔ D19 / A1.1 / X25 · role-shaped exactly as the composer shapes its card (`composeAudienceView`): the stored filter is
+ * read at the CAMPAIGN scope (a population included), and described only when the campaign door's role rule passes it for
+ * THIS viewer with the ticked selection set aside — so a viewer who may not read a number never gets a phrase naming a
+ * consent, a source, a player, a stop or a search. Pure: the filter is on the row, and nothing is read.
+ */
+export function campaignRowAudience(c: Pick<StoredSmsCampaign, "audienceFilter">, viewerReads: boolean): CampaignRowAudience {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(c.audienceFilter);
+  } catch {
+    return { kind: "unreadable" };
+  }
+  const parsed = parseContactAudienceJson(raw, "campaign");
+  if (!parsed.ok) return { kind: "unreadable" };
+  if (campaignAudienceRefusal({ ...parsed.filter, ids: null }, viewerReads) !== null) return { kind: "hidden" };
+  return { kind: "words", lines: describeAudience(parsed.filter) };
 }

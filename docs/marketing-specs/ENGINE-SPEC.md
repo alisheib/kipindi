@@ -307,7 +307,10 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   says "Keep this page open while it sends".
 - **E23 · The D19 floor on every campaign surface.** A viewer whose `identity.contact` cell is not `read` sees no
   per-state split and no reason breakdown for an audience or campaign of fewer than `MASKED_BREAKDOWN_MIN` (10) people,
-  and never a per-row reason. Readers see everything.
+  and never a per-row reason. Readers see everything. ⚠️ **AMENDED by OD65 (S14, 2026-10-07): BEFORE A CAMPAIGN SENDS —
+  the composer's card and U40's confirmation — such a viewer sees the COUNT ALONE at every size** (the ONE walk's count,
+  the gate never asked for them): a size floor cannot hold against an officer who pads a tag or a list with numbers of
+  their own. The floor of 10 stays for U47b's live page and U48a's results, which count messages actually sent.
 - **E24 · One audit row per event** — no per-recipient row, no per-slice row: started, start refused, enqueued, paused
   (officer or engine, with the reason), resumed, stopped, finished (with counts), reaped (when > 0), exported. ADMIN for
   an officer's act, SYSTEM (actor null) for the engine, COMPLIANCE for the live switch and the confirmation.
@@ -763,7 +766,9 @@ shows no audience words yet (M8).
 1. **The campaign door takes a population in the address:** a new key `pop` (`book` · `players` · `both`), read ONLY by
    `parseCampaignAudienceParams(sp, now)` (U24's parser for the other keys, then `pop`, then `populationProblem`) and
    written only by `campaignAudienceParams(f)`. `CAMPAIGN_AUDIENCE_URL_KEYS = [...CONTACT_AUDIENCE_URL_KEYS, "pop"]`. The
-   contacts page never reads `pop` (its door refuses a population, unchanged).
+   contacts page never reads `pop` (its door refuses a population, unchanged). ⛔ **OD66 (as built):** a viewer who may not
+   read a number is refused `both` at the campaign door and offered Contact book and Player accounts only — the walk counts
+   a book-held player once, so a union count would answer "is this a player?" for one added contact.
 2. **Both campaign doors read a stored filter at the campaign scope:** `composer-loader.ts` and `campaign-draft.ts` call
    `parseContactAudienceJson(raw, "campaign")` and the address through `parseCampaignAudienceParams`; the save posts
    `CAMPAIGN_AUDIENCE_URL_KEYS`.
@@ -786,7 +791,11 @@ shows no audience words yet (M8).
    sent".
 7. **⛔ The D19 floor (E23):** `MASKED_BREAKDOWN_MIN = 10` in `campaign-status.ts`; for a viewer who may not read a number
    and `matching < 10`, the view-model carries `matching` only — no will-receive, no reasons, no sample — and says why. A
-   reader always gets the full split (the sample's per-row detail stays reader-only, as shipped).
+   reader always gets the full split (the sample's per-row detail stays reader-only, as shipped). ✅ **AS BUILT (OD65):**
+   for such a viewer the count alone at EVERY size — `breakdownVisible(viewerReads)` is the read cell alone, the card's
+   read (`composeAudienceCount`) counts them with `campaignAudienceCount` and never asks the split, the view is
+   `audienceCountView`, the sentence "Your role sees how many people match, not who will receive it." (the standing callout
+   below says every number is checked again when sent), and the keyed fallback and the route's ghost are the count alone's shape (`AudienceFloorGhost`).
 8. **One vocabulary:** U20's "Reachable" header and chip read "Will receive" (the gate's yes); the REACH refusal words
    are unchanged.
 9. **M8:** each row of `/admin/campaigns` gets its audience in words under the name — `describeAudience` of the stored

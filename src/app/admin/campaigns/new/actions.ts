@@ -29,8 +29,11 @@ import { SMS_CAMPAIGN_VALUE } from "@/lib/server/marketing/campaign-model";
 import { sendCampaignTest, testRecipientOf, CAMPAIGN_TEST_DEPS } from "@/lib/server/marketing/campaign-test-send";
 import type { CampaignTestResult } from "@/lib/server/marketing/campaign-test-send";
 import type { CampaignVariant } from "@/lib/marketing/campaign-template";
-import { CONTACT_AUDIENCE_URL_KEYS } from "@/lib/server/marketing/audience";
+import { CAMPAIGN_AUDIENCE_URL_KEYS } from "@/lib/server/marketing/audience";
 import { viewerReadsContacts } from "@/app/admin/contacts/contacts-loader";
+import { db } from "@/lib/server/store";
+import { campaignDraftHref } from "@/lib/marketing/campaign-status";
+import { draftAddressFor } from "./composer-loader";
 import {
   COMPOSE_ROLE_REFUSAL, COMPOSE_SAVE_UNFINISHED, COMPOSE_TEST_UNFINISHED, composeSaveRateLimited,
 } from "./composer-copy";
@@ -45,19 +48,37 @@ const bag = (v: unknown): Record<string, unknown> => (v !== null && typeof v ===
 /** A revision is the column's whole number (Postgres INTEGER — `campaign-model.ts`'s own rule), or nothing. */
 const revision = (v: unknown): number | null => (SMS_CAMPAIGN_VALUE.draftRevision(v) ? v : null);
 
-/** The composer's address, in the contacts filter vocabulary ONLY — any other key is dropped; none at all keeps the stored one. */
+/** The composer's address, in the CAMPAIGN's audience vocabulary ONLY (U24's keys and U38b's `pop` — a population the
+ *  rail chose travels with the save) — any other key is dropped; none at all keeps the stored one. */
 function audienceParams(v: unknown): Record<string, string> | null {
   const posted = bag(v);
   const out: Record<string, string> = {};
-  for (const k of CONTACT_AUDIENCE_URL_KEYS) {
+  for (const k of CAMPAIGN_AUDIENCE_URL_KEYS) {
     const value = posted[k];
     if (typeof value === "string" && value.trim() !== "") out[k] = value;
   }
   return Object.keys(out).length > 0 ? out : null;
 }
 
+/** A saved draft, and the address the composer lives at for this viewer — the client goes straight there (STD-1). */
+export type CampaignDraftSavedAt = Extract<CampaignDraftResult, { ok: true }> & { href: string };
+
+/** The saved row's address for this viewer — the bare `?draft=` address when the row cannot be read back. */
+async function savedDraftAddress(id: string, viewerReads: boolean): Promise<string> {
+  // ⛔ Through a promise: the memory twin's `find` answers synchronously, so `.catch` on its value would throw (the trap
+  // `kyc-service.ts` records) — a read that fails is the bare address, never a failed save.
+  const row = await Promise.resolve().then(() => db.smsCampaign.find(id)).catch(() => null);
+  return row === null ? campaignDraftHref(id) : draftAddressFor(row, viewerReads);
+}
+
 /** Save one draft — a new one, or the one the form was rendered on, by compare-and-set on its revision. */
-export async function saveCampaignDraftAction(request: unknown): Promise<CampaignDraftResult | Refused> {
+/** A refused save; a STALE one (or a draft confirmed since) carries the stored draft's address for this viewer, so "Reload"
+ *  lands on the audience somebody else saved — never the old one left in this page's address (the U38b review's #5). */
+export type CampaignDraftRefusedAt = Extract<CampaignDraftResult, { ok: false }> & { href?: string };
+
+export async function saveCampaignDraftAction(
+  request: unknown,
+): Promise<CampaignDraftSavedAt | CampaignDraftRefusedAt | Refused> {
   const g = await softRequireStaff("growth", "marketing.campaign.save", COMPOSE_ROLE_REFUSAL);
   if (!g.ok) return { ok: false, reason: "role", error: g.error };
   // ⛔ THE OFFICER'S SAVE BUDGET, BEFORE THE SERVICE (U37b review m5): every create is a campaign row and an audit row
@@ -76,17 +97,22 @@ export async function saveCampaignDraftAction(request: unknown): Promise<Campaig
     nameFallbackEn: text(body.nameFallbackEn),
     audience: audienceParams(body.audience),
   };
+  const reads = await viewerReadsContacts().catch(() => false);
   let result: CampaignDraftResult;
   try {
-    result = await saveCampaignDraft(input, g.userId, { viewerReads: await viewerReadsContacts().catch(() => false) });
+    result = await saveCampaignDraft(input, g.userId, { viewerReads: reads });
   } catch (err) {
     // ⛔ The throw may come AFTER the row was written (its audit row), so the sentence never says "nothing was saved".
     return { ok: false, reason: "unfinished", error: safeError(err, COMPOSE_SAVE_UNFINISHED) };
   }
-  if (result.ok) {
-    try { revalidatePath("/admin/campaigns"); } catch { /* saved; a stale list is the smaller harm */ }
+  if (!result.ok) {
+    return (result.reason === "stale" || result.reason === "not_draft") && input.id !== null
+      ? { ...result, href: await savedDraftAddress(input.id, reads) }
+      : result;
   }
-  return result;
+  try { revalidatePath("/admin/campaigns"); } catch { /* saved; a stale list is the smaller harm */ }
+  // A NEW draft's address is the one the client goes to; an edit stays where it is (its address already holds the audience).
+  return { ...result, href: result.created ? await savedDraftAddress(result.id, reads) : "" };
 }
 
 /** ⛔ Test the SAVED draft — on the officer's OWN number, or (U37c) a typed one with their 18+ confirmation. Three

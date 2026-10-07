@@ -158,11 +158,9 @@ export const COMPOSE_SENDER_STUB =
   "Sender: this server's SMS rail is the console stub — messages go to the server log, never to a phone. It can't be changed here.";
 export const COMPOSE_SENDER_UNSET = "Sender: not set on this server — it can't be changed here.";
 
-/* ── the audience card ── */
+/* ── the audience card (U38b: its counts, its rail and its states speak `audience-copy.ts`) ── */
 export const COMPOSE_AUDIENCE_EVERYONE = "Everyone in the contact book — no filter.";
 export const COMPOSE_AUDIENCE_LEAD = "Contacts matching:";
-export const COMPOSE_AUDIENCE_NOTE =
-  "Nothing is counted or sent from this page. Who will receive it — after consent, stops and age — is counted and confirmed before any campaign starts.";
 /** A STORED filter this viewer may not have described (A1.1) — said, never a block: the save keeps it as it is. */
 export const COMPOSE_AUDIENCE_HIDDEN = "This draft's audience uses a filter your role can't see — saving keeps it as it is.";
 /** The address's filter is refused: the one control that takes it out (the draft and the typed text kept). */

@@ -7,8 +7,9 @@
  *   · LOADING — the composer's own ghost while its page chunk is held (the list's ghost never stands in), the first
  *     card's top edge unmoved when the page swaps in (within 1px), and the three card-height differences RECORDED;
  *   · BLANK — Save off WITH its reason (beside it and in its title), the live counter at its full room, the source line's
- *     reserved room said, "No English text", the sender line the server's (the console stub, said honestly), the whole
- *     book as the audience, the test card naming the officer's own number masked and "Save first"; ⛔ no tel input, no
+ *     reserved room said, "No English text", the sender line the server's (the console stub, said honestly), nobody yet
+ *     chosen as the audience (U38b — its rail and counts are `qa:marketing-audience`'s), the test card naming the
+ *     officer's own number masked and "Save first"; ⛔ no tel input, no
  *     number, sender or money control, no TZS; the reason is a button that puts focus in Campaign name, and a click
  *     inside the Audience card with nothing wrong never focuses the card;
  *   · REFUSED — no Swahili message; a message not starting "50pick"; a placeholder that is not {jina} — each said beside
@@ -111,8 +112,10 @@ const EN_NONE = "No English text — everyone gets the Swahili message.";
 const EN_RULE = "English goes to players whose account language is English; everyone else gets Swahili.";
 const SENDER_STUB = "Sender: this server's SMS rail is the console stub — messages go to the server log, never to a phone. It can't be changed here.";
 const SENDER_LIVE = "Sender 50pick — set on the server; it can't be changed here.";
-const EVERYONE = "Everyone in the contact book — no filter.";
-const AUDIENCE_NOTE = "Nothing is counted or sent from this page.";
+/** U38b · a new draft has chosen nobody yet: the card asks, and counts nothing (its counts are `qa:marketing-audience`'s). */
+const NOT_CHOSEN = "Choose who receives it — the counts appear once you choose.";
+/** U38b · the card's standing callout (ENGINE-SPEC §4.4 decision 10) — its first words. */
+const AUDIENCE_NOTE = "Every number is checked again at the moment its message is sent";
 const AUDIENCE_HIDDEN = "This draft's audience uses a filter your role can't see — saving keeps it as it is.";
 const JINA_RESERVE = "{jina} keeps 12 characters for the name.";
 const FALLBACK_PROBLEM = "This message uses {jina}, so it needs a word to print when a name cannot be used.";
@@ -457,9 +460,9 @@ async function consolePass() {
     ok(`${vp.name} · BLANK · ⛔ OD45 · the sender is a line of text — the console stub, said as what it is — and no control names a sender`,
       sender === SENDER_STUB && (await attr(page, "[data-sender-line]", "data-sender-line")) === "ok"
         && (await page.locator('main#main-content input[name*="sender" i], main#main-content select, main#main-content [aria-label*="sender" i]').count()) === 0, sender);
-    ok(`${vp.name} · BLANK · the audience is the whole book, in words, and nothing is counted here`,
-      (await attr(page, "[data-audience]", "data-audience")) === "everyone" && (await textOf(page, "[data-audience-line]")) === EVERYONE
-        && (await textOf(page, SEL.audience)).includes(AUDIENCE_NOTE));
+    ok(`${vp.name} · BLANK · U38b · nobody is chosen yet: the card asks who receives it, counts nothing, and keeps its standing note`,
+      (await attr(page, "[data-audience]", "data-audience")) === "not-chosen" && (await textOf(page, "[data-audience-not-chosen]")) === NOT_CHOSEN
+        && !(await has(page, "[data-audience-count]")) && (await textOf(page, SEL.audience)).includes(AUDIENCE_NOTE));
     ok(`${vp.name} · BLANK · the test card names the officer's OWN number, masked, says "Save first", and its button is off`,
       (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(phone)}` && (await textOf(page, "[data-test-blocked]")) === SAVE_FIRST
         && (await attr(page, "[data-test-card]", "data-test-card")) === "blocked" && (await isDisabled(page, '[data-test-send="SW"]')) === true
@@ -480,7 +483,7 @@ async function consolePass() {
     ok(`${vp.name} · BLANK · the reason is a button that takes the officer to the field it names — focus lands in Campaign name`,
       landedIn === "name" && (await page.evaluate(() => document.activeElement?.tagName ?? "")) === "INPUT", String(landedIn));
     // ⛔ The Audience card is a tab stop only while it shows a problem: a click inside it now must not focus (or ring) it.
-    await page.locator("[data-audience-line]").first().click().catch(() => {});
+    await page.locator("[data-audience-not-chosen]").first().click().catch(() => {});
     await wait(250);
     ok(`${vp.name} · BLANK · a click inside the Audience card with nothing wrong never focuses the card — no tab stop, no ring`,
       !(await page.evaluate(() => document.activeElement?.getAttribute?.("data-field") === "audience"))
@@ -779,14 +782,14 @@ async function consolePass() {
     await stateShot(page, vp.name, "refused-search", SEARCH_REFUSED, SEL.audience);
     await page.locator("[data-audience-clear]").first().click().catch(() => {});
     await page.waitForFunction(() => !new URL(location.href).searchParams.has("q"), null, { timeout: 30000 }).catch(() => {});
-    await page.waitForSelector('[data-audience="everyone"]', { timeout: 30000 }).catch(() => {});
+    await page.waitForSelector('[data-audience="not-chosen"]', { timeout: 30000 }).catch(() => {});
     await wait(400);
-    ok(`${vp.name} · X25 · "${REMOVE_FILTER}" takes the search out of the address — the whole book, no problem, Save on — and every character typed is still here`,
-      !new URL(page.url()).searchParams.has("q") && (await attr(page, "[data-audience]", "data-audience")) === "everyone"
+    ok(`${vp.name} · X25 · "${REMOVE_FILTER}" takes the search out of the address — nobody chosen again (U38b), no problem, Save on — and every character typed is still here`,
+      !new URL(page.url()).searchParams.has("q") && (await attr(page, "[data-audience]", "data-audience")) === "not-chosen"
         && !(await has(page, "[data-audience-problem]")) && (await page.locator(SEL.name).inputValue()) === NAME
         && (await page.locator(SEL.bodySw).inputValue()) === BODY_TYPED && (await isDisabled(page, SEL.save)) === false,
       `${page.url()} · "${await page.locator(SEL.name).inputValue()}"`);
-    await stateShot(page, vp.name, "search-removed", EVERYONE, SEL.audience);
+    await stateShot(page, vp.name, "search-removed", NOT_CHOSEN, SEL.audience);
 
     // ── MISSING — ?draft= naming nothing ────────────────────────────────────────────────────────────────────────────
     await openComposer(page, "?draft=cmp_nobody_here", "missing");

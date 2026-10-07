@@ -6,8 +6,9 @@
  * the one the page calls) over the memory twin — the four spellings of one number, a part of a number, a
  * name, the page clamp, the whole-book KPIs, both sorts and their tiebreak, and (U24) a filter in the address,
  * an unreadable filter refused, D19's player filter refused to a masked viewer. Then the source, for what only
- * the source can show: every number through `<Sensitive field="contactPhone">` (U19), the "Reachable" column
- * never naming a player's protected standing, every link built by the ONE href builder.
+ * the source can show: every number through `<Sensitive field="contactPhone">` (U19), the "Will receive" column (it
+ * read "Reachable" until U38b — one vocabulary with the campaign's audience card) never naming a player's protected
+ * standing, every link built by the ONE href builder.
  * ⭐ U21 · THE RAIL, driven through the REAL rail builder (`contacts-rail.ts`, the one the page calls) over the
  * loader's own options: the model with nothing applied, the operator options against the ONE numbering table (and
  * every operator pill FOLLOWED through the loader), every pill's href (the search and the sort kept, never `page`),
@@ -221,7 +222,7 @@ const VB7 = {
  *  opt-out or an officer's, so for a masked viewer it answers "is this a player?" exactly as consent does. */
 const OD54 = {
   recent: "5b · ⭐ OD54 · a masked viewer's second KPI fact is the contacts ADDED IN THE LAST 7 DAYS — counted over the WHOLE book through the ONE resolver at the load's one clock (the bound inclusive: B, added exactly seven days before, counts; A, a day earlier, does not), the same under a filter and in the refused state — and a reader's view does not ask it",
-  chip: "9h · 🔴 OD54 · no per-row stop signal reaches a masked viewer: page.tsx reads no suppressedAt cache and says no \"Suppressed since\", it writes \"Suppressed\" exactly twice — the gate's REACH map (the reader's Reachable cell) and the reader's KPI band — and neither the selection row nor the edit view carries a stop",
+  chip: "9h · 🔴 OD54 · no per-row stop signal reaches a masked viewer: page.tsx reads no suppressedAt cache and says no \"Suppressed since\", it writes \"Suppressed\" exactly twice — the gate's REACH map (the reader's Will receive cell) and the reader's KPI band — and neither the selection row nor the edit view carries a stop",
   axis: "13b · 🔴 OD54 · roleRefusal refuses suppressed — yes and no alike — to a masked viewer with the ROLE_REFUSAL_REASON and allows it to a reader; the loader refuses a masked ?suppressed=yes and ?op=HONORA&suppressed=no by role with NO row read, a reader gets the stopped row and the rest, and a masked viewer's \"Showing contacts:\" line names no stop",
 } as const;
 
@@ -325,8 +326,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const readsSeen = (await impl.load({})).viewerReads;
   ok(p("9b · ⛔ D19 · the loader hands the page the viewer's read cell — a masked viewer gets viewerReads false"),
     readsSeen === false && (await impl.load({}, true)).viewerReads === true, String(readsSeen));
-  ok(p("9c · ⛔ D19 · Reachable, Source and the Player chip render ONLY when the viewer reads — and the gate is not even asked otherwise"),
-    page.includes('{reads && <th className="text-left">Reachable</th>}') && page.includes('{reads && <th className="text-left">Source</th>}')
+  ok(p("9c · ⛔ D19 · Will receive (the gate's yes — U38b's one word for it, never 'Reachable'), Source and the Player chip render ONLY when the viewer reads — and the gate is not even asked otherwise"),
+    page.includes('{reads && <th className="text-left">Will receive</th>}') && page.includes('{ ok: true, label: "Will receive" }')
+      && !/\bReachable\b/.test(page) && page.includes('{reads && <th className="text-left">Source</th>}')
       && page.includes("{reads && c.userId && <Chip") && page.includes("const reach = reads ? await Promise.all(rows.map(reachOf)) : [];")
       && page.includes("{reads && <td><Chip") && page.includes("{reads && <td className=\"whitespace-nowrap\">{SOURCE_LABEL[c.source]}</td>}"));
   const maskedConsent = await impl.load({ consent: "GIVEN" });
@@ -341,7 +343,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   ok(p("9d · ⛔ D19 · the read cell is asked in the .ts loader — identity.contact through mayReveal, failing closed"),
     impl.sources.loader.includes('mayReveal(role, "identity.contact")') && impl.sources.loader.includes("if (!session) return false;"));
   // 🔴 OD54 · a stop said per row is the same oracle: the page reads no stop cache, and the ONE row-level "Suppressed" is
-  // the gate's answer in the reader's Reachable cell. What reaches the browser per row — the selection's projection and
+  // the gate's answer in the reader's Will receive cell. What reaches the browser per row — the selection's projection and
   // the dialog's view — carries none (EXECUTED on B, the suppressed fixture).
   const reachCell = "{reads && <td><Chip size=\"sm\" variant={r.ok ? \"success\" : \"neutral\"}>";
   const bandAt = page.indexOf("{reads ? (");
@@ -771,7 +773,7 @@ if (!PROVE_RED) {
     },
     {
       name: "🔴 D19 · the Player chip renders for every viewer — a masked role learns which numbers are players",
-      expect: "9c · ⛔ D19 · Reachable, Source and the Player chip render ONLY when the viewer reads — and the gate is not even asked otherwise",
+      expect: "9c · ⛔ D19 · Will receive (the gate's yes — U38b's one word for it, never 'Reachable'), Source and the Player chip render ONLY when the viewer reads — and the gate is not even asked otherwise",
       impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("{reads && c.userId && <Chip", "{c.userId && <Chip") } },
     },
     {
@@ -780,7 +782,7 @@ if (!PROVE_RED) {
       impl: { ...REAL, sources: { ...REAL_SOURCES, loader: REAL_SOURCES.loader.replace('mayReveal(role, "identity.contact")', "true") } },
     },
     {
-      name: "the Reachable column names a self-exclusion to GROWTH",
+      name: "the Will receive column names a self-exclusion to GROWTH",
       expect: "9 · ⛔ a self-exclusion, a break, a harm marker, an age or an account status reads only \"Not reachable\"",
       impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace('rg_self_excluded: "Not reachable",', 'rg_self_excluded: "Self-excluded",') } },
     },

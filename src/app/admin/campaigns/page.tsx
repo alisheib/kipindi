@@ -17,7 +17,11 @@
  * never a timer, never an animation that moves on its own (OD34, OD38). A campaign with nothing to measure shows "—",
  * never a 0 % bar. The list is a snapshot, and a row in flight says when it was read, beside a Refresh.
  * ⛔ NO MONEY ON THE LIST (OD24): no TZS, no budget, no estimate — GROWTH reads this page. ⛔ No raw audience filter
- * (U38 adds it in words) and no raw stop-reason key (`stopReasonLabel`). ⛔ No pulse anywhere (OD38).
+ * and no raw stop-reason key (`stopReasonLabel`). ⛔ No pulse anywhere (OD38).
+ * ⭐ U38b · M8 · EACH ROW SAYS ITS AUDIENCE IN WORDS under its name (`campaignRowAudience` — the ONE describer, role-shaped
+ * exactly as the composer shapes it: a viewer who may not read a number gets the words only when the campaign door's role
+ * rule passes the filter, else "Audience hidden for your role."). The line never widens its column: it wraps inside the
+ * width the name gives it, so the seven columns still fit the card at 1280.
  *
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses, contacts and invites.
  */
@@ -35,17 +39,19 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { ScrollX } from "@/components/ui/scroll-x";
 import type { StoredSmsCampaign, SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById } from "@/lib/server/store";
 import {
-  CAMPAIGN_SCREENS, CAMPAIGN_SCREEN_ROUTES, CAMPAIGN_STATUS_VIEW, campaignDetailHref, campaignDraftHref, campaignProgress, campaignTotal,
+  CAMPAIGN_SCREENS, CAMPAIGN_SCREEN_ROUTES, CAMPAIGN_STATUS_VIEW, campaignDetailHref, campaignProgress, campaignTotal,
   stopReasonLabel, zeroRecipientStatusCounts,
 } from "@/lib/marketing/campaign-status";
 import { formatClock, formatDate } from "@/lib/utils";
-import { loadCampaigns, campaignsSort } from "./campaigns-loader";
-import type { CampaignsParams, CampaignsView } from "./campaigns-loader";
+import { viewerReadsContacts } from "@/app/admin/contacts/contacts-loader";
+import { loadCampaigns, campaignsSort, campaignRowAudience } from "./campaigns-loader";
+import { draftAddressFor } from "./new/composer-loader";
+import type { CampaignsParams, CampaignsView, CampaignRowAudience } from "./campaigns-loader";
 import { campaignRail, campaignsHref, campaignsLinkSp } from "./campaigns-rail";
 import { CampaignStatusRail } from "./campaign-status-rail";
 import {
   CAMPAIGNS_EMPTY, CAMPAIGNS_NO_MATCH, CAMPAIGNS_SHOW_ALL, CAMPAIGNS_NEW, CAMPAIGNS_NOT_CONFIRMED, CAMPAIGNS_UNTITLED,
-  audienceLine, segmentsLine, progressCaption, progressLabel, campaignsAsOf,
+  audienceLine, segmentsLine, progressCaption, progressLabel, campaignsAsOf, campaignAudienceWords,
 } from "./campaigns-copy";
 
 export const metadata = { title: "SMS campaigns · Admin" };
@@ -75,7 +81,7 @@ function ProgressCell({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaign
   );
 }
 
-function CampaignRow({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts }) {
+function CampaignRow({ c, counts, audience, draftHref }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts; audience: CampaignRowAudience; draftHref: string }) {
   const view = CAMPAIGN_STATUS_VIEW[c.status];
   const name = c.name.trim() === ""
     ? <span className="text-text-tertiary">{CAMPAIGNS_UNTITLED}</span>
@@ -85,7 +91,14 @@ function CampaignRow({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaignR
       {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): plain text until U47 lands /admin/campaigns/[id] and flips the flag. */}
       {/* ⭐ A SAVED DRAFT REOPENS FROM HERE: a DRAFT row links to the composer at its own ?draft= address (behind the
           compose flag); every other row stays plain text until U47 lands its page and flips `detail`. */}
-      <td>{CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={campaignDraftHref(c.id) as Route} className="hover:underline">{name}</Link> : name}</td>
+      <td>
+        {CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route} className="hover:underline">{name}</Link> : name}
+        {/* ⭐ U38b · M8 · the audience in words, role-shaped. A zero width with a full minimum: it wraps inside the column
+            the name sets and never widens it. */}
+        <span className="mt-0.5 block w-0 min-w-full break-words text-body-sm text-text-tertiary" data-campaign-audience={audience.kind}>
+          {campaignAudienceWords(audience)}
+        </span>
+      </td>
       <td>
         <Chip size="sm" variant={view.chip}><span className="whitespace-nowrap">{view.label}</span></Chip>
         {/* ⛔ The engine's reason in words — an unknown key reads "Engine reason: <key>", never the key alone. */}
@@ -119,6 +132,9 @@ async function AdminCampaignsContent({ searchParams }: { searchParams: Promise<C
     console.error("[admin/campaigns] read failed:", (err as Error)?.message ?? err);
   }
   const failed = view === null;
+  // ⭐ U38b · M8 · D19 · the viewer's read cell, decided on the server (failing closed) — each row's audience words are
+  // shaped by it, exactly as the composer's card is.
+  const reads = await viewerReadsContacts().catch(() => false);
   // ⭐ A WHOLE-TABLE FACT, never the page: the rail and the empty row both read it.
   const emptyTable = view !== null && campaignTotal(view.counts) === 0;
   const rows = view?.result.rows ?? [];
@@ -179,7 +195,7 @@ async function AdminCampaignsContent({ searchParams }: { searchParams: Promise<C
                     action={<a href={campaignsHref(sp, { status: null })} className="btn btn-ghost btn-sm">{CAMPAIGNS_SHOW_ALL}</a>}
                   />
                 ) : (
-                  rows.map((c) => <CampaignRow key={c.id} c={c} counts={recipients[c.id] ?? zeroRecipientStatusCounts()} />)
+                  rows.map((c) => <CampaignRow key={c.id} c={c} counts={recipients[c.id] ?? zeroRecipientStatusCounts()} audience={campaignRowAudience(c, reads)} draftHref={draftAddressFor(c, reads)} />)
                 )}
               </tbody>
             </table>

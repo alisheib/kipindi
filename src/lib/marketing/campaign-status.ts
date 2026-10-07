@@ -40,7 +40,12 @@
  * `prisma-dal.ts` may import this file without a cycle, and a client component may import it without the server
  * graph (pinned in `test:client-graph-safe`).
  *
- * Guard: `npm run test:campaigns-page` (§3 the split and progress, §4 attention, §5f the screens).
+ * ── THE D19 FLOOR (U38b, E23) ─────────────────────────────────────────────────────────────────────────────────────
+ * `MASKED_BREAKDOWN_MIN` and `breakdownVisible`: the one rule for how small an audience may be before a viewer who may
+ * not read a number is shown its count alone.
+ *
+ * Guard: `npm run test:campaigns-page` (§3 the split and progress, §4 attention, §5f the screens) · the floor:
+ * `npm run test:campaign-audience` §B6.
  */
 import type {
   StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignStatusCounts,
@@ -265,4 +270,25 @@ export function campaignDetailHref(id: string): string {
  *  detail page exists (the validation audit, 2026-10-03: a saved draft could not be found again from the list). */
 export function campaignDraftHref(id: string): string {
   return `${CAMPAIGN_SCREEN_ROUTES.compose}?draft=${encodeURIComponent(id)}`;
+}
+
+/* ══ U38b · THE D19 RULE BEFORE A CAMPAIGN SENDS (ENGINE-SPEC E23, as OD65 amends it) ══════════════════════════════ */
+
+/**
+ * ⛔ BEFORE A CAMPAIGN SENDS, A VIEWER WHO MAY NOT READ A NUMBER IS TOLD HOW MANY PEOPLE MATCH — AND NOTHING ELSE, AT
+ * EVERY SIZE (OD65, 2026-10-07: S14's ruling on the U38b pre-review's D19-1, on Ali's delegation). The breakdown — the
+ * will-receive figure, the reasons, the sample — is the gate's verdict on the very people a filter holds, and an officer
+ * who may not read numbers can still fill a filter with people of their choosing: a tag or a list padded with numbers
+ * whose verdicts they know leaves the one remaining verdict, protected standing included, as the difference. A size
+ * floor cannot hold against that, so the composer's card and the confirmation (U40) use none: such a viewer's count is
+ * the ONE walk's count (`campaignAudienceCount`) and the gate is never asked for them at all. A reader sees everything.
+ * `MASKED_BREAKDOWN_MIN` — E23's floor of 10 — stays for the surfaces that count messages actually SENT (U47b's live
+ * page, U48a's results), where every probe costs a real campaign: the owner's live switch, a typed confirmation and an
+ * audit row (OD65 records that residual for them).
+ */
+export const MASKED_BREAKDOWN_MIN = 10;
+
+/** May this viewer see an audience's breakdown before the campaign sends? A reader only (OD65) — the size never matters. */
+export function breakdownVisible(viewerReads: boolean): boolean {
+  return viewerReads;
 }

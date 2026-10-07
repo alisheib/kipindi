@@ -1673,7 +1673,7 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
       `masked ${masked.ok ? "SAVED" : masked.reason} · rows ${before} → ${afterRefusal} · reader ${reader.ok ? "saved" : reader.error} · masked re-save ${kept === null ? "-" : kept.ok ? "saved" : kept.error} · stored ${row?.audienceFilter ?? "NOTHING"}`];
   });
 
-  await claim("§17.8 ⛔ X25 · THE CARD ASKS THE SAVE'S RULE — ?q=asha for a masked viewer is refused on the Audience card with the same sentence, nothing described, and 'Remove the filter' leads to the composer's own address with the draft kept (?draft=<id>, or the bare composer); a reader's is described, with no remove control; a STORED search this viewer may not use is noted and never blocks Save", async () => {
+  await claim("§17.8 ⛔ X25 · THE CARD ASKS THE SAVE'S RULE — ?q=asha for a masked viewer is refused on the Audience card with the same sentence, nothing described, and 'Remove the filter' leads to the draft's own address for this viewer (draftAddressFor — its stored audience carried, so no redirect fires inside the mounted composer; the bare composer for a new draft); a reader's is described, with no remove control; a STORED search this viewer may not use is noted and never blocks Save", async () => {
     const made = await save(draftInput({ name: "Card fixture" }));
     if (!made.ok) return [false, `fixture refused: ${made.error}`];
     const row = await db.smsCampaign.find(made.id);
@@ -1683,7 +1683,7 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
     const blank = impl.audienceView({ q: "asha" }, null, false);
     const stored = impl.audienceView({ draft: made.id }, { ...row, audienceFilter: '{"q":"asha"}' }, false);
     return [masked.problem === AUDIENCE.CAMPAIGN_SEARCH_REFUSAL_REASON && masked.lines.length === 0
-      && masked.clearHref === `/admin/campaigns/new?draft=${encodeURIComponent(made.id)}`
+      && masked.clearHref === LOADER.draftAddressFor(row, false) && masked.clearHref.startsWith(`/admin/campaigns/new?draft=${encodeURIComponent(made.id)}`)
       && reader.problem === null && reader.lines.length > 0 && reader.clearHref === null
       && blank.problem === AUDIENCE.CAMPAIGN_SEARCH_REFUSAL_REASON && blank.clearHref === "/admin/campaigns/new"
       && stored.problem === null && stored.note !== null && stored.lines.length === 0 && stored.clearHref === null,
