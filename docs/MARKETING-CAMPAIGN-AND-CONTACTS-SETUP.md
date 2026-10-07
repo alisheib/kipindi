@@ -1,6 +1,6 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
-**STATUS — 🟢 BUILDING. 17/52 units ✅ LIVE, 13/25 defects ✅ · 52 units · defects D1–D25 · owner decisions OD1–OD63, taken on
+**STATUS — 🟢 BUILDING. 17/52 units ✅ LIVE, 13/25 defects ✅ · 52 units · defects D1–D25 · owner decisions OD1–OD67, taken on
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live

@@ -906,8 +906,10 @@ runs OUTSIDE any lock (OD21). `test:campaign-gates` does not exist.
 **Decisions.**
 1. **The fence** (`audience-fence.ts`): `campaignAudienceCount(filter)` (X9) and, when the count is 1–5 and the audience is
    filtered (`!isUnfilteredCampaignAudience`), the first 6 keys of `walkCampaignAudience` → `canonicalMembers` →
-   `membersKeyOf` = first 32 hex of HMAC-SHA256(session secret, `"kp-audience-members:" + canonical`) — KEYED, never a bare
-   digest. The browser holds a signed claim `aw1.<b64url(json)>.<HMAC("kp-audience-fence:" + json)>`, verified in constant
+   `membersKeyOf` = first 32 hex of HMAC-SHA256(session secret, `"kp-audience-members:" + id + ":" + draftRevision + ":" +
+   canonical`) — KEYED, never a bare digest, and ✅ AS BUILT (the U40a review's MAJOR) BOUND TO THE DRAFT it names, so two
+   drafts holding the same person never show the same key (it was an oracle for "is this contact a player?"). ⭐ OD67: a
+   viewer who may not read a number gets NO members key, no sample and the TYPED tier, in the view and the confirmation. The browser holds a signed claim `aw1.<b64url(json)>.<HMAC("kp-audience-fence:" + json)>`, verified in constant
    time; it is never stored (X13).
 2. **The service** (`campaign-confirm-service.ts`) runs, in order: find (DRAFT) → fresh fence → `decideConfirm` → E18 the
    source line (population null or both and `sourcePhrase` blank → refuse `needs_source_line`) → the estimate freeze
@@ -933,7 +935,7 @@ runs OUTSIDE any lock (OD21). `test:campaign-gates` does not exist.
 **APIs.**
 
 ```ts
-export function membersKeyOf(canonical: string): string; // 32 lowercase hex
+export function membersKeyOf(scope: { campaignId: string; draftRevision: number }, canonical: string): string; // 32 lowercase hex
 export function signFence(f: FenceClaim): string;
 export function verifyFence(token: string | null | undefined): FenceClaim | null;
 export async function audienceFence(c: Pick<StoredSmsCampaign, "id" | "draftRevision" | "audienceFilter">, deps?: FenceDeps):
@@ -1010,8 +1012,9 @@ cards and `readOnly` for a non-draft (`composer-loader.ts:235`).
    in `title` (never hidden): "Save first — confirming freezes the saved message." (unsaved edits) · "Nobody matches this
    audience yet." · "Write the Swahili message first." · "This campaign is already confirmed." · the service's blocked
    sentences.
-2. The trigger refreshes, then opens (fresh figures, U40.md). Enumerate tier (≤ 5, filtered): medium tier, every person as a
-   masked number + operator (no player flag, D19). Typed tier: hard tier `typedWord = confirmTypedWord(count)` with the new
+2. The trigger refreshes, then opens (fresh figures, U40.md). ⭐ The modal follows `view.tier` AS THE SERVER RETURNS IT — never a
+   tier recomputed in the browser from the count (OD67: a viewer who may not read a number is always TYPED, with no list).
+   Enumerate tier (a reader, ≤ 5, filtered): medium tier, every person as a masked number + operator (no player flag, D19). Typed tier: hard tier `typedWord = confirmTypedWord(count)` with the new
    additive `typedInputMode: "numeric"`.
 3. The modal shows the estimate: segments for every role ("Up to 1,604 SMS — one per person"), money only for a money
    reader ("Up to TZS 9,624 · limit TZS 10,000 · price TZS 6 per SMS, configured, not yet measured").
@@ -1224,7 +1227,8 @@ the book is exhausted and the players are next, then an empty page moves to the 
    `linkedUserId` — a link, set null on erasure), `optOutToken: null` (E1), `createdAt`.
 4. **The cap (E19):** before writing, the rows already on the campaign (`countByStatus` sum) + this chunk may not exceed
    `audienceCount`; the excess is not written and is reported as `overflow`, and the enqueue finishes. For an ENUMERATE
-   confirmation the step also re-derives the keyed members key over the rows it is about to write (≤ 5); if it differs from
+   confirmation the step also re-derives the keyed members key over the rows it is about to write (≤ 5), with the scope
+   `{ campaignId: row.id, draftRevision: row.draftRevision }` (the confirmed row's own id and frozen revision); if it differs from
    `audienceWatermark` (a change in the moments after Start's check), it writes nothing and pauses the campaign
    `audience_moved` (sentence: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it
    and confirm a new copy.").
@@ -1423,7 +1427,8 @@ pending / failed / unavailable, `stale`), `balanceFigureOf` (`estimate.ts:63`), 
    segments × price) and per slice (cost = the slice's claim size × segments × price).
 3. **`start-check.ts` — the ONE list of Start refusals,** in this order: not confirmed · switch closed · rail dead · E18
    source line · audience unreadable · price unknown · over budget (today's price × `estimateSegments` > `budgetTzs`) · credit
-   (fresh read, ≤ 60 s, must be live) · OD28 (`campaignAudienceCount` + the members key for an enumerated confirmation →
+   (fresh read, ≤ 60 s, must be live) · OD28 (`campaignAudienceCount` + the members key for an enumerated confirmation, scoped
+   `{ campaignId: row.id, draftRevision: row.draftRevision }` →
    `startAudienceVerdict`). `resumeRefusal` = switch · rail · credit for the outstanding rows.
 4. The estimate's reserve becomes the credit kept for codes (`estimate.ts` `reserveTzs`, "U49 swaps in its marketing
    floor").
