@@ -5,7 +5,7 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
 switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 47, U43a
-(the recipient doors in both twins — claim, settle, the reaper's reads; inert until U43b), pushed `89775271` 2026-10-07
+(the recipient doors in both twins — claim, settle, the reaper's reads; inert until U43b), `89775271`, LIVE `0f1b143c` 2026-10-07
 (S14); before it STEP 46, U43y (money first — a campaign yields while bets, payouts and deposits run) and STEP 45, U16a
 (erasure, the access export and retention reach the campaign records), LIVE `023eae9f` 2026-10-07 (S13). Ali's
 FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S14
@@ -52,7 +52,7 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
   U40b → U42 → U49a → U43b → U46a → U47b → U48a → (U48b) → U52a, the live drive on production.
   WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates; the
   next two are built and reviewed in part, so what is left of them is the fixes and verification):
-     1. U43a  ✅ PUSHED (STEP 47, `89775271`) — the recipient doors: claim, settle, find the stranded, requeue
+     1. U43a  ✅ LIVE (STEP 47, `89775271`, served as `0f1b143c`) — the recipient doors: claim, settle, find the stranded, requeue
      2. U38b  who a campaign goes to: the audience card, its counts and the D19 rule ................. 9–15 h
      3. U13   the 08:00–20:00 EAT send window, enforced where messages are sent .......................  4–7 h
      4. U40a  the confirmation on the server: the typed count, the frozen estimate and budget .......... 7–11 h
@@ -82,7 +82,7 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push U43a, U38b, U13 or the
-  owner door. NOW: STEP 47's read-back, then U38b. The Vodacom plan runs beside it on the same PC in another session
+  owner door. NOW: U38b (STEP 47 is LIVE). The Vodacom plan runs beside it on the same PC in another session
   (its own worktrees, ports 3071-3079); this lane uses ports 3101-3109 and scratch Postgres 5461, and both take
   `F:/heavy-node.lock` (a `mkdir` mutex) before any heavy job — ⛔ release it ONLY if you took it: a cleanup that ran
   after a failed `mkdir` once removed the Vodacom session's lock (restored at once, its owner told).
@@ -113,7 +113,7 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   fixed `test:guards-exist` is red on a clean `main` too, with the same failures (`red:policy-lines`,
   `test:house-bot-holder-lifecycle`, `verify:reports-live`, `test:updown-digest`, `red:simple-journey-flag`,
   `test:orphans`, `test:failure-reasons`, `test:decomment`, `test:red-anchors`); the 184 red-harness anchors that plant
-  into a touched file each still resolve exactly once. OWED: the read-back of this push live (`?dpl=` the pushed head, on 50pick.tz and www).
+  into a touched file each still resolve exactly once. ✅ READ BACK LIVE: `?dpl=0f1b143c` (the pushed head) on 50pick.tz and on www at 08:43 UTC 2026-10-07 — a fresh container, up since ~08:28 UTC, after the push at 08:23; `/api/health` ok, the database reachable and migrated (no migration in this unit).
 ⏳ (S13's block, kept as the handover) S13 — 2026-10-06, ALI-BLADE15 (`C:\kipindi-marketing`, branch `marketing-s13` cut from `origin/main` at
   `85866b36`; docs-only commits from `C:\kipindi-s13-docs`). Taken over ~21:50 EAT: OMEGA-COMPILE01's S12 stopped after
   STEP 44's push — no read-back and no closing commit followed for over three hours — and Ali asked this PC to continue
@@ -334,29 +334,48 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   4. Three things Ali's 2026-10-05 answers created, none built yet: the registration box reworded (Q2); the
      agent-referee exclusion (Q8 → U33r). (G9, the price of TZS 6, is in force since STEP 43 — the settings record's default;
      the variable it replaced is gone, so nothing is owed on Railway.)
-  5. Carried from S7c, all needing a person: Ali to compare Admin → System's SMS credit with the Blackball portal; a
-     native Swahili (and Chinese) read of the consent sentences and the `/s/<token>` copy; where Blackball stores SMS
-     data (BLACKBALL-SMS.md §8).
+  5. Carried from S7c, needing a person: Ali to compare Admin → System's SMS credit with the Blackball portal; where
+     Blackball stores SMS data (BLACKBALL-SMS.md §8). (The native Swahili read is CLOSED — management accepts the
+     Swahili as written, 2026-10-07.)
 
 ⭐ THE FINAL RULE (Ali, 2026-10-07 — COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
   consent is not a condition"): anyone with a Tanzanian mobile number may be sent offers under the licence; consent is
   recorded when given but decides nothing; the lapse refusal (Q9) is reversed; licence outreach opens as soon as its
-  checks hold; the sign-up box becomes a box to STOP offers. KEPT, not consent rules: a person's own stop and the stop
-  link (ETA 2015 s.32, PDPA 2022 s.35; revisited only on a lawyer's written confirmation), and never the self-excluded,
-  under-18s or players in RG standing.
+  checks hold; the sign-up box is REMOVED. Never the self-excluded, under-18s or players in RG standing.
+⭐ MANAGEMENT'S ANSWERS (Ali for management, 2026-10-07, put to him in four rounds by S14 — COMPLIANCE-DECISIONS §
+  "2026-10-07 · Management's answers for the first marketing campaign — a small pilot, no frequency cap, two-step
+  sign-in off, and the stop link (owner rulings, put to Ali in the session)") — the authority for every point below:
+  · THE FIRST CAMPAIGN: a small pilot (~200 players; ~115 accounts exist today, so in practice every reachable player);
+    Claude drafts the Swahili message, management approves the exact words; sent as soon as ready (right after U52a,
+    inside 18–25 October, Ali told first); the TZS 10,000 per-campaign limit kept.
+  · NO PER-PERSON FREQUENCY CAP — management decides each campaign: U14 / D14 are CLOSED BY RULING, not built (one
+    message per number per campaign stays).
+  · ADMIN TWO-STEP SIGN-IN STAYS OFF, during campaigns too — nothing is owed before the first campaign.
+  · NEW REFEREES are told "50pick may send you offers by SMS." (+ the stop sentence while the stop link exists);
+    referees already promised "we never contact you for marketing" stay excluded (U33r).
+  · THE STOP LINK — management's instruction: no stop link in offers and nothing said about stopping, in messages or on
+    the policy pages; players keep the offers switch on Profile → Notifications; non-players get no way to stop (risk
+    accepted). Basis: TRA and the Gaming Board, verbally — A WRITTEN COPY TO FOLLOW. ⛔ So U43b builds the stop link as
+    ONE setting, on until the written confirmation is filed in that COMPLIANCE entry; the commit that files it switches
+    the setting off and re-words the policy lines, the consent-wording ledger and the referee sentence to say nothing
+    about stopping, keeping `/s/<token>` working for links already sent.
+  · THE GROWTH TEST LOGIN (G7/G11): "QA Growth (Claude)", `qa.growth@50pick.test`, the phone Ali gave (in
+    `.env.qa.local`, `QA_GROWTH_PHONE`; its password goes in `QA_GROWTH_PROD_PASSWORD` when it is created), no
+    two-step, the Growth role unchanged — used by Claude only, to look.
 OWNER ACTS — Ali's, in the order the path needs them (none of them blocks building). Since 2026-10-07 he approves each
   in the session and Claude saves it through the audited `ops:marketing-owner-save` door (being built) — never his login:
   1. G4 · the nine wordings — ✅ APPROVED 2026-10-07 as written (saved once the door ships). G10 · the five public policy
-     lines — to be put to him in the session.
+     lines — ✅ APPROVED 2026-10-07 as written (saved once the door ships; re-worded to say nothing about stopping in the
+     commit that files the stop-link confirmation, then shown to him again).
   2. G5 · the source line "Namba yako ipo orodhani kwetu." — ✅ APPROVED 2026-10-07 (saved once the door ships); then any
      draft made before it is re-saved (the composer says so on each one).
-  3. A GROWTH staff account with 2-step sign-in (G7/G11) — to be put to him. The admin 2-step sign-in back on before the
-     first campaign — ⏸ "not yet" (Ali, 2026-10-07); still owed (`/api/health` reports it off).
+  3. ✅ DECIDED 2026-10-07: the Growth test login (above) — Claude creates it; admin two-step sign-in stays OFF.
   4. ✅ CONFIRMED 2026-10-07: the Marketing SMS defaults — TZS 6 per SMS (G9), TZS 20,000 kept for login and withdrawal
      codes, TZS 10,000 per campaign (G3), 08:00–20:00 EAT — nothing to save, they are the record's defaults.
   5. The approved test phone is Jay's (G7, ENGINE-SPEC §0.3) — confirmed by Ali 2026-10-05 ("we have already sent Jay a
      test SMS"). The live switch is opened for U52a's drive window only (G1), within the §11.4 ledger cap.
-  6. G2 — the first real campaign: the Swahili message (it starts "50pick"), the audience, the day.
+  6. G2 — the first real campaign: ✅ DECIDED 2026-10-07 (above); owed from him only the approval of Claude's draft text.
+  7. The stop link's written confirmation (TRA / the Gaming Board, or an advocate's opinion) — management to send.
 
 ⚠ TRAPS — the ones that still bite (every one, with its story, is in the history file):
   ⛔ Every push to `main` is a LIVE deploy. `git commit --only <paths>`, a new file `git add`ed by name first; ⛔ never
@@ -517,7 +536,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U11 | engine | ✅ | S7 | 40b83931 | nothing asked age before a marketing message → one age definition (`ageOnPlatformDate`) in the gate after harm markers: under 18 `age_minor`, missing `age_unknown`, a contact `age_unknown` until U33 records an attestation (none is inferred) | `test:marketing-consent` | yes · `red:marketing-consent` (16/16 — incl. a null date of birth treated as adult, a contact marketed with no attestation) | 2026-09-26 · live on `40b83931`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (adult / minor / unknown as a three-outcome property) — the deploy is the build proof. ⚠️ The 2026-09-26 audit found the gate clearing a player KYC had refused as UNDERAGE; the audit-fix pass asks the identity check too (§9 U11) |
 | U12 | docs | ✅ | S7 | 40b83931 | §4 of /legal/responsible-gambling promised "no marketing to players under 25 in vulnerability segments" and "no sign-up nudges in the late-night window" with NO code behind either, and the page had no version pin → the under-25 segment DEFINED and BUILT (under 25 + a self-exclusion or break ever on record, no lift until 25), §4 re-versioned v2026-09-26 to name exactly what the gate runs, the late-night bullet CUT; ruled on Ali's delegation (COMPLIANCE-DECISIONS § "2026-09-26 · RG Policy v2026-09-26") | `test:rg-policy` | yes · `red:rg-policy` (7/7) | 2026-09-26 · live on `40b83931`, proven by DISCRIMINATION in all three languages: each locale serves its OWN new §4 (and none of the other two), the new version, and neither the old version nor the late-night promise; screenshots at 360 (sw, zh) and 1280 (en) OPENED AND READ — 0px horizontal overflow, the bullets wrap inside the column |
 | U13 | engine | ⬜ | — | — | — | `test:marketing-window` | — | quiet hours |
-| U14 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | frequency cap |
+| U14 | engine | ⏸ | — | — | — | `test:marketing-consent` | — | frequency cap — ⏸ HELD BY RULING: management, 2026-10-07, wants no per-person cap ("we decide, we are management"; COMPLIANCE-DECISIONS § "2026-10-07 · Management's answers for the first marketing campaign", item 2). Not built unless management asks. |
 | U15 | guard | ⬜ | — | — | — | `test:marketing-engine` | — | D15 one send path |
 | U16 | data | 🟡 | S13 | d2fe9731 | — | `test:campaign-privacy` · `test:retention` | yes — `red:campaign-privacy` (in-process) | erasure reaches it. U16a pushed 2026-10-07 (§0 STEP 45): erasure, the access export and retention reach the campaign records and the opt-out links, plus the erasure marker; U16b (SmsMessage's retention and export reach, the lapse's ledger row, the import-row expiry, the never-finished campaign's trigger) follows. |
 | U17 | visual | 🔵 | S9 | 7bef9f97 | /admin/contacts did not exist, and nothing compared a nav item's domain with the page's → six doors (the page carries its own `AdminPageGate`), `test:rbac` §7b holds menu = page, the skeleton equals the real block (230.38 px / 272.63 px, delta 0) | `test:rbac` · `test:admin-section-gate` · `test:admin-nav` | yes · `red:rbac` (2/2 in-process, S10 — the ROUTE_DOMAINS row deleted; the nav item's domain edited) | live since S9's push (production serves later builds); ✅ owes ONE admin-session look at Growth → Contacts on www.50pick.tz — production has no QA admin, only Ali's login (⛔ never used) |
@@ -546,7 +565,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
 | U41 | guard | 🟡 | S10 | — | — | `test:campaign-gates` | — | officer authorisation — DECIDED (OD60, 2026-10-04): one officer's typed confirmation at any size, under the 2026-07-24 single-admin ruling; ✅ when U40a's push carries the guard (G7.1). |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
-| U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43y pushed 2026-10-07 (§0 STEP 46, `18e6192b`): money first — ONE busy signal (`money-busy.ts`) fed by one-line mirrors in the lifecycle pass, the deposit poll, market fires and Up & Down chain fires (`test:money-busy` 34 claims, `red:money-busy` in-process); nothing calls it until U43b. U43a pushed 2026-10-07 (§0 STEP 47, `89775271`): the recipient doors in both twins — claim, claimedBy, settle, findStranded, requeueHeld, lastActivity, smsMessage.findByTargets — each asking the one rule set first (`test:campaign-models` §2.14–§2.27, `red:campaign-models` in-process; `test:dal-parity` §26.u43a; `db:probe-campaign-models` §10 on PostgreSQL, five truly concurrent claimers); `test:campaign-privacy` P10 sweeps rows the real doors settled; inert until U43b. U43b (the slice) follows. |
+| U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43y pushed 2026-10-07 (§0 STEP 46, `18e6192b`): money first — ONE busy signal (`money-busy.ts`) fed by one-line mirrors in the lifecycle pass, the deposit poll, market fires and Up & Down chain fires (`test:money-busy` 34 claims, `red:money-busy` in-process); nothing calls it until U43b. U43a LIVE 2026-10-07 (§0 STEP 47, `89775271`, read back as `0f1b143c`): the recipient doors in both twins — claim, claimedBy, settle, findStranded, requeueHeld, lastActivity, smsMessage.findByTargets — each asking the one rule set first (`test:campaign-models` §2.14–§2.27, `red:campaign-models` in-process; `test:dal-parity` §26.u43a; `db:probe-campaign-models` §10 on PostgreSQL, five truly concurrent claimers); `test:campaign-privacy` P10 sweeps rows the real doors settled; inert until U43b. U43b (the slice) follows. |
 | U44 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the pump |
 | U45 | engine | ⬜ | — | — | — | `test:dal-parity` | — | D20 scale |
 | U46 | engine | ⬜ | — | — | — | `test:sms-dlr` | — | D21 receipts · also owns inbound STOP (NOT built, §9 U46) |
@@ -574,7 +593,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D11 | U11 | ✅ | nothing checks age before an outbound marketing message |
 | D12 | U12 | ✅ | `/legal/responsible-gambling` §4 publishes three commitments with no code behind them |
 | D13 | U13 | ⬜ | the published "late-night window" does not exist in code |
-| D14 | U14 | ⬜ | no per-person frequency cap; uniqueness is per-campaign only |
+| D14 | U14 | ⬜ | no per-person frequency cap; uniqueness is per-campaign only — accepted by management 2026-10-07: U14 is held by ruling, so this stays open on purpose |
 | D15 | U15 | ⬜ | `invite-service.sendCampaign` is a second, ungated send path holding `withLock` across sends |
 | D16 | U16 | ⬜ | new PII stores would sit outside erasure and retention, as `SmsMessage` already does |
 | D17 | U17 | ⬜ | a new admin section is five doors; missing one renders it to the Owner alone |
@@ -3366,7 +3385,7 @@ removed — the refusal is the evidence, not the send.
 The order is §0's ▶ NEXT — the critical path to the first real campaign — and it comes from two specs: the gate
 track's build order (`docs/marketing-specs/U33a-U37c-OD58.md` §11, down to U37c) and the send engine's
 (`docs/marketing-specs/ENGINE-SPEC.md` §0.1, with its parallel sets in §0.2). What the engine track leaves out follows
-the first campaign, in ENGINE-SPEC §0.4's order: U14 the frequency cap (⛔ BEFORE A SECOND campaign), U44 the pump, U45
+the first campaign, in ENGINE-SPEC §0.4's order: U14 the frequency cap (⏸ held by management's ruling of 2026-10-07 — no per-person cap), U44 the pump, U45
 scale, U46b inbound STOP (it needs Blackball's reply number, OQ8), U15 one send path, U16b, the import entrance U30–U32,
 U34b, U39b, U50, U51 the operator's guide and U52b the Seal.
 

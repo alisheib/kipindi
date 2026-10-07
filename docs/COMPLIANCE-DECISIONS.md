@@ -9,6 +9,59 @@
 ---
 
 
+## 2026-10-07 · Management's answers for the first marketing campaign — a small pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)
+
+**Authority.** Ali, for 50pick management, 2026-10-07, answering questions put to him one round at a time in the Claude
+session (marketing S14, OMEGA-COMPILE01) — *"ask me now the management questions … and save result forever so we don't
+have any missing points"*; *"management doesn't want 2FA now, keep off even during campaign"*; and on stopping: *"we
+need to remove stop links please, management said no need for them and they asked TRA and Gaming Board, it's fine …
+don't say anything about stopping, but users in profile could stop from receiving"*.
+
+**What it rules — in force now.**
+1. **The first real campaign is a small pilot** — about 200 players (the platform holds about 115 accounts today, so in
+   practice every reachable player). **Claude drafts the message** in Swahili (it starts "50pick", one SMS long) and
+   **management approves the exact words** before it is sent. It goes **as soon as it is ready** — right after the final
+   live test of at most 6 SMS to the approved test phone (U52a), inside the 18–25 October window, Ali told first.
+   **The per-campaign limit stays TZS 10,000.**
+2. **No per-person frequency cap** — *"no specific count, it's open ended, we decide, we are management"*. Management
+   decides each campaign's audience and timing; the plan's automatic cap (one offer per number per 72 h, four per 30
+   days — U14, D14) is NOT built. What stays: one message per number per campaign.
+3. **Admin two-step sign-in stays OFF, during campaigns too.** This supersedes "Admin two-step sign-in — NOT YET. It
+   stays owed before the first campaign" in § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a
+   condition (the owner's FINAL rule), and his approvals given in the session". It is not owed before any campaign.
+4. **Agents' referees recruited from now on** are told: *"50pick may send you offers by SMS."* — and, while every
+   offer still carries its stop link, *"You can stop them at any time with the link in every offer."* (that second
+   sentence goes with the stop link, item 7). Every referee already promised "we never contact you for marketing" stays
+   excluded.
+5. **No separate native-Swahili read** — management accepts the Swahili as written (the plan's ◐ HALF-DONE 5 read is
+   closed by this ruling).
+6. **A Growth test login for Claude's live checks** — used only by Claude to look at Contacts and SMS campaigns, never
+   Ali's login: named "QA Growth (Claude)", email `qa.growth@50pick.test`, the phone number Ali gave in the session
+   (kept with the login's credentials in the gitignored `.env.qa.local`, never in the repo), no two-step sign-in (item
+   3), and the Growth role left exactly as it is — the login only looks.
+
+**What it rules — the stop link, management's instruction and how it is carried out.**
+7. **Management's instruction:** remove the stop link from every offer SMS and say nothing about stopping — in the
+   messages and on the policy pages; **players keep the offers switch on Profile → Notifications**; people who are not
+   players (the contacts book) get **no way to stop**, a risk management accepts. **Basis given:** management asked TRA
+   and the Gaming Board, who said it is fine — confirmed verbally, **a written copy to follow**.
+   **How it is carried out.** The entry below reopens the stop only on a written confirmation, so: the engine is built
+   with the stop link as ONE setting (on until then), and the session switches it off — with the policy lines, the
+   consent-wording ledger and the referee sentence re-worded to say nothing about stopping, and the `/s/<token>` page
+   kept working for every link already sent — **in the commit that files the written confirmation here** (a copy or its
+   reference and date). Nothing sends before U52a's live drive, so nothing waits on it. Ali was told the same hour, in
+   plain words: TRA (tax) and the Gaming Board do not enforce the Electronic Transactions Act 2015 or the PDPA 2022 (the
+   data-protection commission does, and TCRA licenses the sender), so the strongest written proof is a short opinion from
+   a Tanzanian advocate; with no link, a person who is not a player has no way at all to stop; and complaints to the
+   operators can block the `50pick` sender, which also carries every login and withdrawal code.
+
+⛔ Do not build: a per-person frequency cap (item 2), or two-step sign-in for admins (item 3) — unless management asks.
+⛔ The stop link goes, and the pages fall silent on stopping, only in the commit that files the written confirmation in
+item 7. ⛔ Never remove: the self-exclusion, under-18 and responsible-gambling refusals, or the players' offers switch.
+
+---
+
+
 ## 2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session
 
 **Authority.** Ali, 2026-10-07, in the Claude session (marketing S13, ALI-BLADE15): *"let us send to anyone, don't care
@@ -50,7 +103,9 @@ record names "approved by Ali in the Claude session" and the date — never his 
   (the texts the code offers as suggestions today, word for word).
 - **G3 · G9 · the Marketing SMS limits** — confirmed: TZS 6 per SMS · TZS 20,000 always kept for login and withdrawal
   codes · at most TZS 10,000 per campaign · sending 08:00–20:00 EAT. Nothing to save: they are the record's defaults.
-- **Admin two-step sign-in** — NOT YET. It stays owed before the first campaign.
+- **Admin two-step sign-in** — NOT YET. It stays owed before the first campaign. ⟶ Superseded the same day: OFF,
+  during campaigns too (§ "2026-10-07 · Management's answers for the first marketing campaign — a small pilot, no
+  frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)", item 3).
 - **G10 · the five public policy lines** — approved as written (spec `U33a-U37c-OD58.md` Appendix B.2–B.6): the RG §4
   marketing line, Privacy §3's new licence bullet and its re-worded Consent bullet, Privacy §4's Blackball bullet, and
   the note under the offers switch on /profile/notifications.
