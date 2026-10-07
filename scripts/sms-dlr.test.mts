@@ -20,12 +20,29 @@
  * not the `{ok:true}` every other webhook here returns. A shape check would pass on
  * `{status:"Ok", extra:1}`; a string compare will not.
  *
+ * ⭐ U46a (ENGINE-SPEC §4.14) · §12 — THE CAMPAIGN ARM AND THE ROTATED SECRET. A campaign
+ * receipt settles its `SmsCampaignRecipient` row through ONE door, `recordReceipt`, run
+ * only when the message itself moved: D1 a SENT row DELIVERED; D2 a replay re-runs
+ * nothing; D3 a late FAILED after DELIVERED is discarded, and D3b the door's own status
+ * guard; D4 an UNCONFIRMED row settled late, D4b a FAILED one's words scrubbed before the
+ * cut; D5 a claimed row reached first; D6 the identity (number and reference), D6c a
+ * refusal recorded, never thrown; D7 a test send's receipt touches no recipient; D8 three
+ * arms in one POST; D9 the previous secret beside the current one (E29); D10 the reply.
+ * Every fixture row goes through the REAL recipient doors (U43a), never a hand-set map.
+ *
  * Run: npm run test:sms-dlr
  */
 import { GET, POST, mapDlrStatus, authorized } from "../src/app/api/webhooks/blackball/route.ts";
 import { db } from "../src/lib/server/store.ts";
+import type { StoredSmsCampaignRecipient, SmsCampaignRecipientSettle, SmsCampaignGateTrail } from "../src/lib/server/store.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 import { isProtectedPath } from "../src/proxy.ts";
+// U46a · the target type the slice sends under, the boot sentence for the rotation's second secret, the ONE mask and the
+// ONE phone-run reading — §12 holds the arm to each.
+import { DISPATCH_TARGET_TYPE } from "../src/lib/server/marketing/dispatch.ts";
+import { previousWebhookSecretWarning } from "../src/lib/server/boot-checks.ts";
+import { maskPhone } from "../src/lib/phone-normalize.ts";
+import { holdsPhoneRun } from "../src/lib/contacts/contact-fields.ts";
 
 let pass = 0,
   fail = 0;
@@ -397,6 +414,333 @@ const line = (reference: string, status: string, extra: Record<string, unknown> 
   await settle();
   ok("§11 control: {statuses: []} is recognised, not malformed", malformed().length === m0 + 2);
 }
+
+/* ══ §12 · U46a · THE CAMPAIGN ARM, AND THE SECRET THAT ROTATES (ENGINE-SPEC §4.14 · E28 · E29) ═════════════
+ * ⭐ A campaign receipt settles its recipient row through ONE door, `smsCampaignRecipient.recordReceipt`, run only when
+ * the message itself moved. Every row below is made through the REAL recipient doors (create, claim, settle — U43a),
+ * never a hand-set map, so what each case meets is the door's own guard. The messages are seeded as the slice's send
+ * writes them: the campaign's target type, the row's id, the row's number.
+ * ⛔ No backslash below, and no spaced dash inside a label: `red:sms-dlr` reads a FAIL line's label up to the first one. */
+const FIX_AT = "2026-10-01T08:00:00.000Z";
+const SENT_AT = "2026-10-01T08:00:01.000Z";
+const TRAIL12: SmsCampaignGateTrail = [{ check: "gate", verdict: "CLEARED", wording: null, source: null }];
+type Row12 = { id: string; key: string };
+let cmp12 = 0, tok12 = 0;
+/** A DRAFT campaign of `n` people through the real create doors (the recipient doors never read a campaign's status),
+ *  each on a number of their own. */
+async function campaignOf12(n: number): Promise<{ cid: string; rows: Row12[] }> {
+  const cid = `cmp_dlr12_${String(++cmp12).padStart(3, "0")}`;
+  await db.smsCampaign.create({
+    id: cid, name: `DLR ${cid}`, status: "DRAFT", bodySw: "50pick: Habari.", bodyEn: null, codingSw: "GSM7", segmentsSw: 1,
+    codingEn: null, segmentsEn: null, nameFallbackSw: null, nameFallbackEn: null, sourcePhrase: null, draftRevision: 0,
+    confirmTier: null, audienceFilter: '{"consent":["GIVEN"]}', audienceCount: null, audienceWatermark: null,
+    estimateSegments: null, estimateTzs: null, budgetTzs: null, enqueueCursor: null, enqueuedAt: null, stopReason: null,
+    createdBy: "usr_dlr12_officer", confirmedBy: null, confirmedAt: null, startedAt: null, pausedAt: null, finishedAt: null,
+    createdAt: FIX_AT, updatedAt: FIX_AT,
+  });
+  const rows = Array.from({ length: n }, (_, i): Row12 => ({
+    id: `rcp_dlr12_${String(cmp12).padStart(3, "0")}_${i}`, key: `25571${String(4000000 + cmp12 * 10 + i)}`,
+  }));
+  const made = await db.smsCampaignRecipient.createMany(rows.map((r) => ({
+    id: r.id, campaignId: cid, msisdn: r.key, contactId: null, userId: null, optOutToken: null, createdAt: FIX_AT,
+  })));
+  if (made.inserted !== n) throw new Error(`fixture: ${made.inserted} of ${n} recipient rows inserted`);
+  return { cid, rows };
+}
+/** Every row of the campaign claimed under ONE fresh token, as a slice claims them. Answers the token. */
+async function claim12(cid: string, n: number): Promise<string> {
+  const token = `tok_dlr12_${String(++tok12).padStart(4, "0")}`;
+  const won = await db.smsCampaignRecipient.claim(cid, n, token, FIX_AT);
+  if (won.length !== n) throw new Error(`fixture: the claim took ${won.length} of ${n} rows`);
+  return token;
+}
+/** The slice's settle, through the real door. A patch that does not land is a broken fixture. */
+async function settle12(patches: SmsCampaignRecipientSettle[]): Promise<void> {
+  const res = await db.smsCampaignRecipient.settle(patches, FIX_AT);
+  if (res.settled !== patches.length) throw new Error(`fixture: ${res.settled} of ${patches.length} settles landed`);
+}
+const sent12 = (r: Row12, claimToken: string, smsReference: string): SmsCampaignRecipientSettle => ({
+  id: r.id, claimToken, to: "SENT", smsReference, sentAt: SENT_AT, optOutToken: null, locale: "SW", segments: 1, bodyLen: 40, gateTrail: TRAIL12,
+});
+/** The SmsMessage the slice's send writes for a row. Answers its reference. */
+const message12 = (r: Row12, over: Partial<Parameters<typeof db.smsMessage.create>[0]> = {}) =>
+  seed({ msisdn: r.key, purpose: "MARKETING", targetType: DISPATCH_TARGET_TYPE, targetId: r.id, ...over });
+/** A receipt line for a row, carrying the row's own number as the vendor echoes it. */
+const line12 = (r: Row12, reference: string, status: string, description = "d") => ({ reference, status, description, msisdn: r.key });
+const row12 = (r: Row12) => db.smsCampaignRecipient.find(r.id);
+/** The newest `sms.dlr.received` row's counts — the callback just posted (read after `settle()`). */
+const received12 = (): Record<string, unknown> =>
+  (getAuditPage({ limit: 20_000 }).find((a) => a.action === "sms.dlr.received")?.payload ?? {}) as Record<string, unknown>;
+/** Every column of `b` but `except` holds the same value in `r`. */
+const sameBut12 = (r: StoredSmsCampaignRecipient | null, b: StoredSmsCampaignRecipient | null, except: readonly string[]): boolean =>
+  r !== null && b !== null && Object.keys(b).every((k) => except.includes(k)
+    || JSON.stringify((r as unknown as Record<string, unknown>)[k]) === JSON.stringify((b as unknown as Record<string, unknown>)[k]));
+/** The reply bodies D10 reads: a single campaign line, a refused one, a batch. */
+const bodies12: string[] = [];
+
+// ── D1 · ⭐ a SENT recipient DELIVERED by its receipt ──────────────────────────────────────────────
+{
+  const { cid, rows: [a] } = await campaignOf12(1);
+  const token = await claim12(cid, 1);
+  const ref = await message12(a);
+  await settle12([sent12(a, token, ref)]);
+  const before = await row12(a);
+  const res = await post([line12(a, ref, "DELIVRD", "Success")]);
+  bodies12.push(await res.text());
+  const after = await row12(a);
+  const msg = await db.smsMessage.findByReference(ref);
+  await settle();
+  const counts = received12();
+  ok("§12 D1 ⭐ a DELIVRD receipt moves its SENT recipient to DELIVERED at the message's own instant: the reference, the claim and every other column kept",
+    res.status === 200 && before?.status === "SENT" && after?.status === "DELIVERED" && !!after.deliveredAt
+      && after.deliveredAt === msg?.deliveredAt && after.updatedAt === after.deliveredAt && after.smsReference === ref
+      && after.claimToken === token && after.claimedAt === FIX_AT && after.sentAt === SENT_AT
+      && sameBut12(after, before, ["status", "deliveredAt", "updatedAt"]),
+    `${before?.status} -> ${after?.status} · deliveredAt ${after?.deliveredAt} (the message's ${msg?.deliveredAt}) · claim ${after?.claimToken}`);
+  ok("§12 D1 …and the callback's ONE audit row counts it under campaign, beside invites",
+    counts.campaign === 1 && counts.applied === 1 && counts.invites === 0 && counts.lines === 1, JSON.stringify(counts));
+}
+
+// ── D2 · a replay re-runs nothing ─────────────────────────────────────────────────────────────────
+{
+  const { cid, rows: [a, b] } = await campaignOf12(2);
+  const token = await claim12(cid, 2);
+  const refA = await message12(a);
+  // ⭐ THE DEPLOY OVERLAP'S STATE (decision 6): a receipt reached the OLD build, which settled the MESSAGE alone — the
+  // message DELIVERED, its recipient still SENT. Its replay must not run the arm, and it is the `changed` gate itself, and
+  // nothing else, that keeps this row SENT: the door, asked, would move it. (§7's replay marker, for the same reason.)
+  const refB = await message12(b, { status: "DELIVERED", deliveredAt: SENT_AT });
+  await settle12([sent12(a, token, refA), sent12(b, token, refB)]);
+  await post([line12(a, refA, "DELIVRD")]);
+  const once = await row12(a);
+  await post([line12(a, refA, "DELIVRD")]);
+  const twice = await row12(a);
+  await settle();
+  const replay = received12();
+  await post([line12(b, refB, "DELIVRD")]);
+  const overlap = await row12(b);
+  ok("§12 D2 a replay re-runs nothing: a receipt whose message did not move leaves its recipient as it was, even one still SENT",
+    once?.status === "DELIVERED" && JSON.stringify(twice) === JSON.stringify(once) && replay.campaign === 0 && replay.replayed === 1
+      && overlap?.status === "SENT" && overlap.deliveredAt === null,
+    `the same receipt twice: ${once?.status}, then ${JSON.stringify(twice) === JSON.stringify(once) ? "unchanged" : "REWRITTEN"} · counted ${String(replay.campaign)} · the overlap's row ${overlap?.status}`);
+}
+
+// ── D3 · a late FAILED after DELIVERED · D3b · the door's own status guard ───────────────────────────
+{
+  const { cid, rows: [a] } = await campaignOf12(1);
+  const token = await claim12(cid, 1);
+  const ref = await message12(a);
+  await settle12([sent12(a, token, ref)]);
+  await post([line12(a, ref, "DELIVRD")]);
+  const delivered = await row12(a);
+  await post([line12(a, ref, "UNDELIV", "Absent subscriber")]);
+  const late = await row12(a);
+  ok("§12 D3 ⛔ a late FAILED after DELIVERED is discarded: the recipient stays DELIVERED, with no failedAt, class or error",
+    delivered?.status === "DELIVERED" && JSON.stringify(late) === JSON.stringify(delivered)
+      && late?.failedAt === null && late.failureClass === null && late.error === null,
+    `${delivered?.status} -> ${late?.status}`);
+}
+{
+  // ⭐ THE DOOR'S OWN GUARD, with the message's out of the way: each row was settled by ANOTHER writer for its claim —
+  // refused at hand-over (FAILED, never handed over), refused by the gate (SKIPPED), parked (HELD) — while an EARLIER
+  // attempt's message to it is still open (E6's race: a stalled slice's send that left after a reap). That message's
+  // receipt DOES move the message, so only the door's status test keeps each row as it was.
+  const { cid, rows: [f, s, h] } = await campaignOf12(3);
+  const token = await claim12(cid, 3);
+  const refs = [await message12(f), await message12(s), await message12(h)];
+  await settle12([
+    { id: f.id, claimToken: token, to: "FAILED", failureClass: "BAD_MSISDN", error: null, failedAt: SENT_AT, smsReference: null, gateTrail: TRAIL12 },
+    { id: s.id, claimToken: token, to: "SKIPPED", skipReason: "suppressed", skipDetail: "", gateTrail: TRAIL12 },
+    { id: h.id, claimToken: token, to: "HELD", failureClass: "gate_unanswered", attempts: 3 },
+  ]);
+  const before = [await row12(f), await row12(s), await row12(h)];
+  await post([line12(f, refs[0], "DELIVRD"), line12(s, refs[1], "DELIVRD"), line12(h, refs[2], "UNDELIV")]);
+  const after = [await row12(f), await row12(s), await row12(h)];
+  const moved = await Promise.all(refs.map((x) => db.smsMessage.findByReference(x)));
+  ok("§12 D3b ⭐ a receipt never moves a row another writer settled: FAILED, SKIPPED and HELD rows stay as they were though their message moved",
+    moved.every((m) => m?.status === "DELIVERED" || m?.status === "FAILED") && JSON.stringify(after) === JSON.stringify(before),
+    `messages ${moved.map((m) => m?.status).join(",")} · rows ${after.map((r) => r?.status).join(",")}`);
+}
+
+// ── D4 · ⭐ an UNCONFIRMED row settled by a late receipt · D4b · a FAILED one's words ──────────────────
+{
+  const { cid, rows: [u, v] } = await campaignOf12(2);
+  const token = await claim12(cid, 2);
+  // Handed to the wire, and the network's answer never came (E3): the message UNKNOWN, the row UNCONFIRMED — u without
+  // the reference (a transport that died before it learnt one), v with it.
+  const refU = await message12(u, { status: "UNKNOWN", sentAt: null });
+  const refV = await message12(v, { status: "UNKNOWN", sentAt: null });
+  await settle12([
+    { id: u.id, claimToken: token, to: "UNCONFIRMED", smsReference: null, optOutToken: null, locale: "SW", segments: 1, bodyLen: 40, gateTrail: TRAIL12 },
+    { id: v.id, claimToken: token, to: "UNCONFIRMED", smsReference: refV, optOutToken: null, locale: "SW", segments: 1, bodyLen: 40, gateTrail: TRAIL12 },
+  ]);
+  // The vendor's words hold a number placed so that a cut at 200 would keep eight of its digits — fewer than the scan
+  // calls a number, so only a scrub of the WHOLE text, before the cut, can take it out.
+  const words = `${"x".repeat(191)} 255712345678 is not reachable`;
+  await post([line12(u, refU, "DELIVRD", "Success"), line12(v, refV, " undeliv ", words)]);
+  const du = await row12(u);
+  const fv = await row12(v);
+  ok("§12 D4 ⭐ an UNCONFIRMED row settles on a late receipt: DELIVERED, the receipt's reference written where the row had none",
+    du?.status === "DELIVERED" && du.smsReference === refU && !!du.deliveredAt && du.sentAt === null && du.claimToken === token,
+    `${du?.status} · reference ${du?.smsReference === refU ? "written" : String(du?.smsReference)}`);
+  const error = fv?.error ?? "";
+  ok("§12 D4b a FAILED receipt writes its class receipt:<token> and the vendor's words as the error, every phone number scrubbed before the cut",
+    fv?.status === "FAILED" && fv.failureClass === "receipt:UNDELIV" && !!fv.failedAt && fv.smsReference === refV
+      && error.length > 0 && error.length <= 200 && error.startsWith("xxx") && !error.includes("2557") && !holdsPhoneRun(error),
+    `${fv?.status} · ${fv?.failureClass} · the error ends ${JSON.stringify(error.slice(-12))}`);
+}
+
+// ── D5 · a receipt that beats the slice's settle ──────────────────────────────────────────────────
+{
+  const { cid, rows: [p] } = await campaignOf12(1);
+  const token = await claim12(cid, 1);
+  const ref = await message12(p, { status: "QUEUED", sentAt: null });   // the wire has it; the slice has not settled yet
+  const held = await row12(p);
+  await post([line12(p, ref, "DELIVRD")]);
+  const reached = await row12(p);
+  const lateSettle = await db.smsCampaignRecipient.settle([sent12(p, token, ref)], FIX_AT);
+  const after = await row12(p);
+  ok("§12 D5 a receipt that beats the slice's settle sets its claimed row DELIVERED with the claim kept, and the slice's later settle of it is lost",
+    held?.status === "PENDING" && held.claimToken === token && reached?.status === "DELIVERED" && reached.smsReference === ref
+      && reached.claimToken === token && reached.claimedAt === held.claimedAt
+      && lateSettle.settled === 0 && lateSettle.lost.join(",") === p.id && JSON.stringify(after) === JSON.stringify(reached),
+    `${held?.status} -> ${reached?.status} · the settle after it: settled ${lateSettle.settled}, lost [${lateSettle.lost.join(",")}]`);
+}
+
+// ── D6 · the identity: the number and the reference · D6c · a refusal recorded, never thrown ────────────
+{
+  const { cid, rows: [m, r] } = await campaignOf12(2);
+  const token = await claim12(cid, 2);
+  // (a) THE MESSAGE NAMES THE ROW BUT WENT TO ANOTHER NUMBER — the receipt agrees with its message, so the route's own
+  //     check passes, and the door's identity test is all that is left to refuse it. The row stays open (claimed).
+  const elsewhere = "255719990001";
+  const refM = await seed({ msisdn: elsewhere, purpose: "MARKETING", targetType: DISPATCH_TARGET_TYPE, targetId: m.id });
+  // (b) THE ROW ALREADY HOLDS ANOTHER MESSAGE'S REFERENCE — a second message naming it.
+  const refR = await message12(r);
+  const refR2 = await message12(r);
+  await settle12([sent12(r, token, refR)]);
+  const before = [await row12(m), await row12(r)];
+  await settle();
+  const rowsBefore = getAuditPage({ limit: 20_000, category: "SECURITY" }).filter((x) => x.action === "sms.dlr.recipient_mismatch").length;
+  await post([{ reference: refM, status: "DELIVRD", description: "d", msisdn: elsewhere }, line12(r, refR2, "DELIVRD")]);
+  await settle();
+  const after = [await row12(m), await row12(r)];
+  const notes = getAuditPage({ limit: 20_000, category: "SECURITY" }).filter((x) => x.action === "sms.dlr.recipient_mismatch");
+  const fresh = notes.slice(0, Math.max(0, notes.length - rowsBefore));
+  const text = JSON.stringify(fresh.map((x) => x.payload));
+  ok("§12 D6 ⛔ a receipt for the row of another number, or for a row holding another message's reference, writes nothing",
+    JSON.stringify(after) === JSON.stringify(before), after.map((x) => `${x?.status}/${x?.smsReference ?? "no reference"}`).join(" · "));
+  ok("§12 D6 …and each is audited SECURITY as sms.dlr.recipient_mismatch, naming the numbers masked and never in full",
+    fresh.length === 2 && text.includes(maskPhone(m.key)) && text.includes(maskPhone(elsewhere)) && text.includes(refR)
+      && ![m.key, r.key, elsewhere].some((k) => text.includes(k.slice(3))),
+    text.slice(0, 320));
+}
+{
+  const { cid, rows: [h, t] } = await campaignOf12(2);
+  const token = await claim12(cid, 2);
+  // The message names t, but h already holds its reference: the column is unique, so the door refuses (P2002).
+  const shared = await message12(t);
+  await settle12([sent12(h, token, shared)]);
+  const before = [await row12(h), await row12(t)];
+  const res = await post([line12(t, shared, "DELIVRD")]);
+  const body = await res.text();
+  bodies12.push(body);
+  await settle();
+  const noted = getAuditPage({ limit: 20_000 }).find((x) => x.action === "sms.dlr.recipient_failed" && x.targetId === t.id);
+  const pl = (noted?.payload ?? {}) as Record<string, unknown>;
+  const after = [await row12(h), await row12(t)];
+  ok("§12 D6c a receipt the door refuses (a reference another row holds, P2002) writes nothing, is audited by its code alone, and still answers 200",
+    res.status === 200 && JSON.stringify(after) === JSON.stringify(before) && (await db.smsMessage.findByReference(shared))?.status === "DELIVERED"
+      && noted?.category === "SYSTEM" && pl.code === "P2002" && pl.reference === shared && !JSON.stringify(pl).includes(t.key.slice(3)),
+    JSON.stringify(pl));
+}
+
+// ── D7 · a test send's receipt ────────────────────────────────────────────────────────────────────
+{
+  // A TEST SEND's message (`SmsCampaignTest`, campaign-test-send.ts) whose target id happens to name a row a slice holds —
+  // open, no reference, the same number: everything the door would accept, so only the arm's target type keeps it out.
+  const { cid, rows: [a] } = await campaignOf12(1);
+  await claim12(cid, 1);
+  const testRef = await seed({ msisdn: a.key, purpose: "MARKETING", targetType: "SmsCampaignTest", targetId: a.id });
+  const before = await row12(a);
+  await post([line12(a, testRef, "DELIVRD")]);
+  const after = await row12(a);
+  await settle();
+  const counts = received12();
+  ok("§12 D7 a test send's receipt settles its SmsMessage row and touches no recipient, even one its target id names",
+    (await db.smsMessage.findByReference(testRef))?.status === "DELIVERED" && before?.status === "PENDING"
+      && JSON.stringify(after) === JSON.stringify(before) && counts.campaign === 0,
+    `the row ${before?.status} -> ${after?.status} · counted ${String(counts.campaign)}`);
+}
+
+// ── D8 · three lines in one POST, each to its own arm ─────────────────────────────────────────────────
+{
+  const { cid, rows: [a] } = await campaignOf12(1);
+  const token = await claim12(cid, 1);
+  const refA = await message12(a);
+  await settle12([sent12(a, token, refA)]);
+  const entryId = `ive_dlr12_${++seq}`;
+  await db.inviteEntry.create({
+    id: entryId, campaignId: "camp_dlr12", contactType: "PHONE", contactValue: "+255772619619", bonusAmountTzs: 1000, status: "SENT",
+    sentAt: null, registeredUserId: null, bonusGrantId: null, failureReason: null, createdAt: new Date().toISOString(),
+  });
+  const refI = await seed({ targetType: "InviteEntry", targetId: entryId });
+  const unknown = "sms_" + "c".repeat(24);
+  const res = await post([line12(a, refA, "DELIVRD"), line(refI, "DELIVRD"), line(unknown, "DELIVRD")]);
+  bodies12.push(await res.text());
+  await settle();
+  const counts = received12();
+  ok("§12 D8 three lines in one POST reach each its own arm: the campaign row DELIVERED, the invite DELIVERED, the unknown reference acked and audited",
+    (await row12(a))?.status === "DELIVERED" && (await db.inviteEntry.findById(entryId))?.status === "DELIVERED"
+      && getAuditPage({ limit: 20_000 }).some((x) => x.action === "sms.dlr.unknown_reference" && x.targetId === unknown),
+    `campaign ${(await row12(a))?.status} · invite ${(await db.inviteEntry.findById(entryId))?.status}`);
+  ok("§12 D8 …and ONE audit row counts them: 3 lines, 2 applied, 1 unknown, 1 invite, 1 campaign",
+    counts.lines === 3 && counts.applied === 2 && counts.unknownRef === 1 && counts.invites === 1 && counts.campaign === 1,
+    JSON.stringify(counts));
+}
+
+// ── D9 · ⭐ the previous secret beside the current one (E29) ──────────────────────────────────────────────
+{
+  const OLD = "the-old-secret-that-went-through-chat";
+  const THIRD = "a-third-value-nobody-was-given";
+  const SHORT = "fifteen-chars-x";
+  /** `authorized()` asked with a token in the query, in the header, or none at all. */
+  const asks = (token: string | null, where: "query" | "header" = "query"): boolean => authorized(new Request(
+    token !== null && where === "query" ? `${URL_BASE}?token=${encodeURIComponent(token)}` : URL_BASE,
+    { method: "POST", headers: token !== null && where === "header" ? { "x-blackball-token": token } : {} },
+  ));
+  process.env.BLACKBALL_WEBHOOK_SECRET_PREVIOUS = OLD;
+  const during = { old: asks(OLD), oldHeader: asks(OLD, "header"), current: asks(SECRET), third: asks(THIRD), none: asks(null), empty: asks("") };
+  const ref = await seed();
+  const res = await post([line(ref, "DELIVRD")], { token: OLD });
+  const applied = (await db.smsMessage.findByReference(ref))?.status === "DELIVERED";
+  delete process.env.BLACKBALL_WEBHOOK_SECRET_PREVIOUS;
+  const unset = { old: asks(OLD), current: asks(SECRET), third: asks(THIRD), none: asks(null), empty: asks("") };
+  process.env.BLACKBALL_WEBHOOK_SECRET_PREVIOUS = SHORT;
+  const short = { value: asks(SHORT), none: asks(null), current: asks(SECRET) };
+  process.env.BLACKBALL_WEBHOOK_SECRET_PREVIOUS = "";
+  const blank = { none: asks(null), empty: asks(""), current: asks(SECRET) };
+  delete process.env.BLACKBALL_WEBHOOK_SECRET_PREVIOUS;
+  ok("§12 D9 ⭐ while PREVIOUS is set the old secret is accepted beside the current one, in the query and in the header, and a receipt carrying it is applied",
+    during.old && during.oldHeader && during.current && res.status === 200 && applied, JSON.stringify(during));
+  ok("§12 D9 ⛔ while PREVIOUS is set a third value, an absent token and an empty one are still refused",
+    !during.third && !during.none && !during.empty, JSON.stringify(during));
+  ok("§12 D9 ⭐ with PREVIOUS unset only the current secret works: the old one, a third value and an absent or empty token are each refused",
+    unset.current && !unset.old && !unset.third && !unset.none && !unset.empty, JSON.stringify(unset));
+  ok("§12 D9 ⛔ a PREVIOUS shorter than 16 characters, or set empty, is never compared: neither it nor an absent token gets in, and the current still does",
+    !short.value && !short.none && short.current && !blank.none && !blank.empty && blank.current, `${JSON.stringify(short)} ${JSON.stringify(blank)}`);
+  const sentence = "[sms] WARNING: BLACKBALL_WEBHOOK_SECRET_PREVIOUS is set — remove it once Blackball's callback URL carries the new secret.";
+  const said = previousWebhookSecretWarning(OLD);
+  const saidShort = previousWebhookSecretWarning(SHORT) ?? "";
+  ok("§12 D9 boot says the exact sentence while PREVIOUS is set, says too that a short one is never accepted, and says nothing once it is gone",
+    said === sentence && saidShort.startsWith(sentence) && saidShort.includes("shorter than 16 characters")
+      && previousWebhookSecretWarning(undefined) === null && previousWebhookSecretWarning("") === null,
+    JSON.stringify(said));
+}
+
+// ── D10 · the reply ───────────────────────────────────────────────────────────────────────────────
+ok(`§12 D10 the reply stays exactly {"status":"Ok"} for a campaign receipt, for one the door refused and for a batch`,
+  bodies12.length === 3 && bodies12.every((b) => b === '{"status":"Ok"}'), JSON.stringify(bodies12));
 
 console.log(`\nsms-dlr: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

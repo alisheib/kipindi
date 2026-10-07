@@ -24,7 +24,8 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 > tokens (only `DELIVRD` has ever arrived); since 2026-09-26 also where they store message data (the
 > Privacy notice says "in Tanzania") and whether the account has an inbound number (§8). **Owner item:** the webhook secret travelled through chat and
 > WhatsApp while this was being fixed — rotate it when convenient (new value in Railway, new URL to them,
-> one test send to confirm).
+> one test send to confirm). Since marketing U46a it rotates without a receipt refused in between: the old
+> value is held as `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` while the URL changes (§7, *Rotating the webhook secret*).
 
 
 | | |
@@ -193,6 +194,28 @@ The portal's Out SMS **CSV export** for that message (supplied by Ali, 2026-09-1
 status, the raw token is stored on `SmsMessage.dlrStatus`, and `sms.dlr.unmapped_status` is audited.
 ⛔ **There is no default-to-DELIVERED arm and there must never be one.**
 
+### Campaign receipts — the recipient arm (marketing U46a)
+
+A receipt for a campaign message also settles its `SmsCampaignRecipient` row, through ONE door
+(`smsCampaignRecipient.recordReceipt`), and only when the receipt MOVED its `SmsMessage` row — so a
+replay never re-runs it:
+
+- it writes only the row the message named, only while that row holds the message's number and either no
+  reference yet or the message's own, and only out of PENDING, SENT or UNCONFIRMED — a late or
+  out-of-order receipt never moves a settled row, and an unanswered (UNCONFIRMED) row is settled by its late
+  receipt;
+- DELIVERED writes `deliveredAt`; FAILED writes `failedAt`, the class `receipt:<token>` and the vendor's
+  description as the row's error — scrubbed of every phone number first, then cut to 200 characters;
+- a row of another number, or one already holding another message's reference, is not written and is
+  audited SECURITY `sms.dlr.recipient_mismatch` (numbers masked); a receipt the door refuses is audited
+  SYSTEM `sms.dlr.recipient_failed` by its error code alone, and the reply is still `{"status":"Ok"}`;
+- a test send's receipt (`SmsCampaignTest`) settles its `SmsMessage` row and nothing else;
+- the `sms.dlr.received` audit row counts `campaign` beside `invites`.
+
+⛔ Never deploy while a campaign is PREPARING or RUNNING: a receipt that reaches the old build in the
+60-second overlap settles only its `SmsMessage` row, and its replay cannot re-run the arm.
+Guard: `npm run test:sms-dlr` (§12) · `npm run red:sms-dlr`.
+
 ### Four layers against forgery
 
 1. the shared secret, constant-time, failing closed once the provider is live
@@ -200,8 +223,9 @@ status, the raw token is stored on `SmsMessage.dlrStatus`, and `sms.dlr.unmapped
 3. the msisdn must **match** the one we sent to
 4. the state machine is **monotonic** — a settled row is never rewritten
 
-The worst a fully-authenticated forger can do is mark an invite delivered that was not. An OTP
-receipt is explicitly inert, and an empty callback writes nothing to the audit chain.
+The worst a fully-authenticated forger can do is mark an invite delivered that was not — or, since
+U46a, a campaign recipient whose message is still open, and only with that message's own reference and
+number. An OTP receipt is explicitly inert, and an empty callback writes nothing to the audit chain.
 
 ---
 
@@ -588,6 +612,7 @@ the 15-minute TTL.
 | `BLACKBALL_API_URL` | defaults to the live send endpoint; the balance endpoint is derived from its host |
 | `BLACKBALL_TIMEOUT_MS` | default 8000 |
 | `BLACKBALL_WEBHOOK_SECRET` | ≥ 16 chars, set in Railway. A placeholder is functionally ABSENT |
+| `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` | Unset, unless the secret is being rotated (§7, *Rotating the webhook secret*): then the OLD value, accepted beside `BLACKBALL_WEBHOOK_SECRET` until Blackball's callback URL carries the new one. ≥ 16 chars, or it is never compared at all; each secret is compared in constant time. Boot warns at every start while it is set, so it is never left behind (marketing U46a, E29) |
 | `SMS_BALANCE_FLOOR_TZS` / `SMS_BALANCE_ALERT_TZS` | default 50 / 150 (≈ 8 / 25 messages) |
 | `SMS_BALANCE_TTL_MS` | default 900000 (15 minutes) |
 | `SMS_BALANCE_RETRY_MS` | default 30000 — after a failed balance read, no new read is attempted for this long (a dead endpoint is not hammered by page renders or `/api/health`) |
@@ -598,8 +623,8 @@ the 15-minute TTL.
 | `OTP_ENABLED` | `1` un-hides `/auth/otp`; ⚠️ no login/register UI links to it yet (§7, step 6) |
 
 Boot warns in production (fail-open) on: an unrecognised provider, a selected Blackball with no
-credentials, a sender ID over the cap, an unusable DLR secret, and — loudest — `OTP_ENABLED=1`
-while SMS cannot deliver.
+credentials, a sender ID over the cap, an unusable DLR secret, the rotation's second secret for as long
+as it stays set, and — loudest — `OTP_ENABLED=1` while SMS cannot deliver.
 
 ---
 
@@ -645,6 +670,25 @@ Each step is independently reversible, and none of the later ones is safe withou
 | R1 | unset `OTP_ENABLED` | `/auth/otp` goes dormant; password carries every login |
 | R2 | `SMS_PROVIDER=console` | SMS stops; invites return to QUEUED honestly; OTP refuses with `SMS_UNDELIVERABLE` |
 | R3 | revert the code | Safe in any order — the migration is expand-only. ⛔ **Never drop `SmsMessage` on a rollback**: receipts for messages already sent are still arriving |
+
+### Rotating the webhook secret (marketing U46a, E29)
+
+The receiver accepts `BLACKBALL_WEBHOOK_SECRET` and, while it is set, `BLACKBALL_WEBHOOK_SECRET_PREVIOUS`
+(§6), so the URL Blackball holds can change with no callback refused in between. ⛔ Each Railway change is a
+redeploy: never while a campaign is PREPARING or RUNNING (pause it first).
+
+1. Make a new secret of at least 16 characters (a random hex string), and keep it out of chat.
+2. In Railway, in ONE change: `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` = the CURRENT value, and
+   `BLACKBALL_WEBHOOK_SECRET` = the new one. Both build instances of the 60-second overlap now accept the old
+   URL. Boot prints the PREVIOUS warning from here on — expected until step 5.
+3. In the Blackball portal, change the status callback URL to `…/api/webhooks/blackball?token=<the new value>`.
+4. One test send that production itself issues — the campaign composer's test to the officer's own number,
+   which needs the marketing live switch open (§6) — and read its `sms.dlr.received` audit row: `applied: 1`.
+   (A live-drive send proves nothing here: its receipts are `sms.dlr.unknown_reference` by design, §3.)
+5. Remove `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` in Railway.
+6. Confirm the URL really changed: one more test send reads `applied: 1`, and no `webhook.blackball.rejected`
+   row follows. If one does, Blackball still sends the old token — set PREVIOUS back at once (a refused
+   callback is retried 5 times, §8), correct the URL, and repeat from step 4.
 
 ---
 

@@ -15,7 +15,8 @@
  *    credentials, a sender ID over the gateway's 12-character cap, an unusable DLR
  *    secret, and — loudest — OTP login switched on while SMS cannot deliver. Each of
  *    these fails a whole rail SILENTLY; the first evidence would otherwise be a
- *    player who cannot sign in.
+ *    player who cannot sign in. Since U46a (E29) also the rotation's second DLR secret,
+ *    BLACKBALL_WEBHOOK_SECRET_PREVIOUS, for as long as it stays set.
  *
  * NOTE: the old POCA §16 conflicted-resolution boot alarm is gone — the two-officer
  * rule + officer-conflict block were retired (resolution-policy.ts; owner decision
@@ -32,6 +33,25 @@ const WEBHOOK_SECRET_ENVS = ["SELCOM_WEBHOOK_SECRET", "AZAMPAY_WEBHOOK_SECRET", 
 
 /** The exact env the SMS delivery-receipt receiver reads (api/webhooks/blackball/route.ts). */
 const SMS_WEBHOOK_SECRET_ENV = "BLACKBALL_WEBHOOK_SECRET";
+/** U46a · E29 — the rotation's second secret: the OLD value, accepted beside the current one while Blackball's callback URL
+ *  is changed (docs/BLACKBALL-SMS.md §7). Read by the same receiver. */
+const SMS_WEBHOOK_PREVIOUS_ENV = "BLACKBALL_WEBHOOK_SECRET_PREVIOUS";
+
+/**
+ * U46a · E29 — the line boot prints while the rotation's second secret is still set, or null when it is not. A PREVIOUS
+ * left behind keeps the old secret — the one that travelled through chat — opening the receiver for ever, so it is said at
+ * every boot until it is removed. A PREVIOUS under 16 characters is never compared at all (the receiver's floor), and the
+ * line says that too: a rotation counting on it would be refusing the old URL's receipts. Exported so `test:sms-dlr` reads
+ * the exact sentence (D9).
+ */
+export function previousWebhookSecretWarning(raw: string | undefined): string | null {
+  const value = raw ?? "";
+  if (value === "") return null;
+  const line = `[sms] WARNING: ${SMS_WEBHOOK_PREVIOUS_ENV} is set — remove it once Blackball's callback URL carries the new secret.`;
+  return value.length < 16
+    ? `${line} It is shorter than 16 characters, so the receiver does not accept it at all — a callback still carrying the old secret is refused.`
+    : line;
+}
 
 /** Anything that will never verify a vendor signature: unset, a setup-template placeholder,
  *  or too short to be a generated secret. Exported so `test:webhook-secret` can drive it —
@@ -144,6 +164,10 @@ export async function runBootChecks(): Promise<void> {
         );
       }
     }
+
+    // ⭐ U46a · E29 — whatever the provider: the receiver accepts PREVIOUS whenever the current secret is set.
+    const previousWarning = previousWebhookSecretWarning(process.env[SMS_WEBHOOK_PREVIOUS_ENV]);
+    if (previousWarning !== null) console.error(previousWarning);
 
     /**
      * ⭐ THE LOUDEST ONE, AND THE REASON THIS BLOCK EXISTS AT ALL. With OTP as a login

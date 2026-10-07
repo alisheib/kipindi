@@ -13,9 +13,10 @@
  * `scripts/live/campaign-privacy-pg-probe.mts` (its behaviour, on a scratch PostgreSQL).
  * ⭐ THROUGH THE REAL DOORS (U43a): a fixture row is settled as the engine settles one — claimed under a fresh token
  * (`claim`, re-read by `claimedBy`), then ONE patch of the settle table (`settle`), a held row re-queued first where a
- * fixture asks (`requeueHeld`) — so P10 sweeps what the doors WRITE, never what this suite wrote. Only what no U43a door
- * writes stays by hand (`afterTheDoors`): U46a's receipts (a failure reported after a send, the cost) and one state no
- * door can reach, kept to hold the export's defence.
+ * fixture asks (`requeueHeld`) — so P10 sweeps what the doors WRITE, never what this suite wrote. ⭐ U46a: a receipt
+ * reported after a send goes through the real receipt door too (`recordReceipt`, as the DLR route's campaign arm hands
+ * it in — a delivery, and a failure). Only what NO door writes stays by hand (`afterTheDoors`): the provider's cost (a
+ * receipt carries no price) and one state no door can reach, kept to hold the export's defence.
  * ⭐ THE REVIEW ROUND (U16a's D10 · D11 · D12, and the strict sweep). The read takes rows CREATED OR SENT since the bound
  * (P3's row queued for the previous holder and sent after the number passed; P9's small number); the cap is 5,000 and
  * both twins read ONE row past it, so a file that cannot list every row SAYS so (P3g, over one number holding more —
@@ -26,8 +27,9 @@
  * is marked WITHDRAWN on its own number at erasure, so the REAL gate — the outreach record open, a typed test's usable
  * attestation in hand — refuses it consent_withdrawn, a second pass appends nothing, a consent is still withdrawn exactly
  * once, and a later yes still lifts it (no stop-list row). P10's TRIPWIRE: a recipient-namespace member P10 does not
- * account for, in either twin, fails P10 by name — so no new door (U46a's receipt next) lands without P10 sweeping
- * what it writes; U43a's six are accounted for, its three writers driven (R-P10e proves the settle is the real one). W1:
+ * account for, in either twin, fails P10 by name — so no new door (U43b's send record, DC-4, next) lands without P10
+ * sweeping what it writes; U43a's six and U46a's receipt door are accounted for, their writers driven (R-P10e and R-P10f
+ * prove the settle and the receipt are the real doors). W1:
  * the suite's own wiring (its four package.json keys; on predeploy once, straight after test:erasure). A row put on its
  * campaign before the account is listed undated (P3b). P6c reads the page's SCHEDULE too, and S1 sees any spelling.
  * ⛔ No backslash anywhere in this file: line breaks and patterns are built with String.fromCharCode and character
@@ -49,6 +51,7 @@ import { decomment } from "./lib/decomment.mts";
 import type {
   StoredMarketingContact, StoredSmsCampaign, StoredSmsCampaignRecipient, StoredUser, SmsCampaignTransitionPatch,
   SmsCampaignStatus, SmsCampaignGateTrail, StoredMessagingConsent, SmsCampaignRecipientSettle, SmsCampaignSettleResult,
+  SmsRecipientReceipt, SmsRecipientReceiptResult,
 } from "../src/lib/server/store.ts";
 import type {
   MarketingSkipReason, MarketingGateReads, MarketingGateVerdict, TestAttestation,
@@ -150,7 +153,7 @@ const L = {
   p7b: "P7b · a re-run still reaches the campaign records: a row linked to the account AFTER the first pass loses its link (1), and the run after that unlinks 0",
   p8: "P8 · the export's refusal words keep U38a's five-bucket partition reason by reason — every reason has words, protected standing is ONE value, and two reasons share words exactly when they share a bucket",
   p9: "P9 · the memory read answers only rows CREATED OR SENT at or after the bound — one put on a campaign before it and sent after it is in, one sent before it is not — NEWEST first with ties broken on the id, and SMS_RECIPIENTS_BY_NUMBER_MAX + 1 rows at most (5,001): the newest",
-  p10: "P10 · ⭐ the strict sweep: after erasure no recipient row in the store — its gate trail, refusal detail, error, any column but the number — holds an erased person's account id, name, first name, masked name, masked number or anonymous handle (the number is the record itself, and stays); and neither twin's recipient namespace has a member P10 does not account for, named — so a new door that writes a row (U46a's receipt next) lands only with P10 sweeping it — and the rows it sweeps were settled through the real doors",
+  p10: "P10 · ⭐ the strict sweep: after erasure no recipient row in the store — its gate trail, refusal detail, error, any column but the number — holds an erased person's account id, name, first name, masked name, masked number or anonymous handle (the number is the record itself, and stays); and neither twin's recipient namespace has a member P10 does not account for, named — so a new door that writes a row (U43b's send record next) lands only with P10 sweeping it — and the rows it sweeps were settled through the real doors, the receipt door among them",
   p11: "P11 · ⭐ THE ERASURE MARKER (3a(ii)): an account that never consented and has no book row, erased — its own number's ledger now ends in the erasure's WITHDRAWN (OPERATOR, the erasure's wording and evidence, the officer), counted once",
   p11b: "P11b · ⭐ …and the ONE gate refuses that number consent_withdrawn with the licence-outreach record OPEN and a typed test's usable attestation in hand — while the same reads and attestation DO reach a number nobody holds (the control)",
   p11c: "P11c · a second pass appends nothing: a re-run of the erasure counts 0 and leaves the one row, and eraseMarketingFor called twice on a never-consented account writes 1 then 0",
@@ -167,6 +170,8 @@ type RecipientPlant = {
   unlinkUser?: (userId: string, at: string) => Promise<number>;
   listByMsisdn?: (msisdn: string, sinceIso: string) => Promise<StoredSmsCampaignRecipient[]>;
   settle?: (patches: readonly SmsCampaignRecipientSettle[], at: string) => Promise<SmsCampaignSettleResult>;
+  /** U46a · the receipt door — R-P10f swaps it to prove the fixture's receipts go through the real one. */
+  recordReceipt?: (id: string, r: SmsRecipientReceipt) => Promise<SmsRecipientReceiptResult>;
 };
 /** A fixture person a settle may name — what P10's needles are made of. */
 type Person = { id: string; firstName: string | null; displayName: string | null; phoneE164: string };
@@ -198,6 +203,7 @@ type World = {
 };
 const REAL_RECIPIENT = {
   unlinkUser: db.smsCampaignRecipient.unlinkUser, listByMsisdn: db.smsCampaignRecipient.listByMsisdn, settle: db.smsCampaignRecipient.settle,
+  recordReceipt: db.smsCampaignRecipient.recordReceipt,
 };
 const REAL_CONSENT_CREATE = db.messagingConsent.create;
 const REAL: World = {
@@ -220,10 +226,13 @@ const REAL: World = {
 async function withPlants(w: World, fn: () => Promise<void>): Promise<void> {
   const ns = db.smsCampaignRecipient as unknown as Record<string, unknown>;
   const consent = db.messagingConsent as unknown as Record<string, unknown>;
-  const saved = { unlinkUser: ns.unlinkUser, listByMsisdn: ns.listByMsisdn, settle: ns.settle, create: consent.create };
+  const saved = {
+    unlinkUser: ns.unlinkUser, listByMsisdn: ns.listByMsisdn, settle: ns.settle, recordReceipt: ns.recordReceipt, create: consent.create,
+  };
   if (w.recipient.unlinkUser) ns.unlinkUser = w.recipient.unlinkUser;
   if (w.recipient.listByMsisdn) ns.listByMsisdn = w.recipient.listByMsisdn;
   if (w.recipient.settle) ns.settle = w.recipient.settle;
+  if (w.recipient.recordReceipt) ns.recordReceipt = w.recipient.recordReceipt;
   if (w.consentCreate) consent.create = w.consentCreate;
   try {
     await fn();
@@ -231,6 +240,7 @@ async function withPlants(w: World, fn: () => Promise<void>): Promise<void> {
     ns.unlinkUser = saved.unlinkUser;
     ns.listByMsisdn = saved.listByMsisdn;
     ns.settle = saved.settle;
+    ns.recordReceipt = saved.recordReceipt;
     consent.create = saved.create;
   }
 }
@@ -354,9 +364,18 @@ async function settle(
   const done = await db.smsCampaignRecipient.settle([{ ...full, id, claimToken: await claim() } as SmsCampaignRecipientSettle], at);
   if (done.settled !== 1 || done.lost.length !== 0) throw new Error(`fixture: the settle did not land on ${id}`);
 }
-/** ⚠️ BY HAND, AFTER THE DOORS — only what no U43a door writes: U46a's receipt over a row the doors settled (a failure
- *  reported after a send, the cost) and one state no door can reach, kept to hold the export's defence (PE-08). When
- *  U46a's receipt door lands in either twin, P10's tripwire names it, and these writes move to it. */
+/** ⭐ THROUGH THE REAL RECEIPT DOOR (U46a) — a delivery receipt for a row the doors sent, as the DLR route's campaign arm
+ *  hands it in: the message's reference and number (a SENT row holds both), the verdict, the vendor's token and words, the
+ *  instant it arrived. The door's own rule set judges it. A receipt that does not land is a broken fixture and throws. */
+async function receipt(id: string, r: Omit<SmsRecipientReceipt, "reference" | "msisdn">): Promise<void> {
+  const row = mem().smsCampaignRecipients.get(id);
+  if (!row || row.smsReference === null) throw new Error(`fixture: ${id} is not a sent recipient`);
+  const out = await db.smsCampaignRecipient.recordReceipt(id, { reference: row.smsReference, msisdn: row.msisdn, ...r });
+  if (!out.changed) throw new Error(`fixture: the receipt did not land on ${id} (${out.reason})`);
+}
+/** ⚠️ BY HAND, AFTER THE DOORS — only what NO door writes: the provider's cost (`costTzs` — a receipt carries no price, and
+ *  nothing reports one yet) and one state no door can reach, kept to hold the export's defence (PE-08). U46a's receipts
+ *  left this helper for the real door (`receipt` above). */
 function afterTheDoors(id: string, patch: Partial<StoredSmsCampaignRecipient>): void {
   const row = mem().smsCampaignRecipients.get(id);
   if (!row) throw new Error(`fixture: no recipient ${id}`);
@@ -387,13 +406,14 @@ function holds(text: string, needle: string): boolean {
   return false;
 }
 
-/** ⛔ P10's TRIPWIRE · the recipient-namespace members P10 accounts for: the five WRITERS it drives (createMany seeds every
+/** ⛔ P10's TRIPWIRE · the recipient-namespace members P10 accounts for: the six WRITERS it drives (createMany seeds every
  *  fixture row; claim, settle and requeueHeld settle them — `settle()` above, `World.marks` handed to the real door;
- *  unlinkUser is erasure's own write) and the seven READS, which write nothing. A NEW member — U46a's receipt door next —
- *  is a writer P10 has never seen. ⚠️ A member joins this list only in the commit that makes P10 sweep what it writes:
- *  route the fixture writes it takes over (`afterTheDoors`, for the receipt) through it. */
+ *  recordReceipt delivers and fails them as the DLR route does — `receipt()` above, U46a; unlinkUser is erasure's own
+ *  write) and the seven READS, which write nothing. A NEW member — U43b's send record (DC-4) next — is a writer P10 has
+ *  never seen. ⚠️ A member joins this list only in the commit that makes P10 sweep what it writes: route the fixture
+ *  writes it takes over through it, and prove the routing with a red case (R-P10e, R-P10f). */
 const P10_ACCOUNTED: readonly string[] = [
-  "createMany", "claim", "settle", "requeueHeld", "unlinkUser",
+  "createMany", "claim", "settle", "requeueHeld", "recordReceipt", "unlinkUser",
   "find", "countByStatus", "countsByCampaign", "listByMsisdn", "claimedBy", "findStranded", "lastActivity",
 ];
 /** A twin's `smsCampaignRecipient` members, read from its SOURCE: the namespace's brace matched to its close, then every
@@ -544,10 +564,14 @@ async function run(w: World, tag: string): Promise<void> {
     await recipient(rEc, cC, N1_OLD, { userId: E1, contactId: bookE1, createdAt: iso(T0 - 5 * DAY) });
     await recipient(rPrev, cOld, N1, { userId: PREV1, createdAt: iso(T0 - 400 * DAY) });
     await recipient(rNone, cC, N1, { userId: null, createdAt: iso(T0 - 5 * DAY) });
+    // Sent through the settle door, then DELIVERED by its receipt through the receipt door (U46a) — so P10 sweeps a row
+    // both doors wrote, before this person is erased (R-P10f plants in the second). The cost after both, by hand: no door
+    // writes it.
     await settle(rEb, {
-      to: "DELIVERED", smsReference: `REF-${K}-eb`, sentAt: iso(T0 - 20 * DAY + 60_000), deliveredAt: iso(T0 - 20 * DAY + 120_000),
-      locale: "SW", segments: 1, bodyLen: 30, gateTrail: w.marks(pE1).trail,
+      to: "SENT", smsReference: `REF-${K}-eb`, sentAt: iso(T0 - 20 * DAY + 60_000), locale: "SW", segments: 1, bodyLen: 30,
+      gateTrail: w.marks(pE1).trail,
     });
+    await receipt(rEb, { status: "DELIVERED", rawStatus: "DELIVRD", desc: "Success", at: iso(T0 - 20 * DAY + 120_000) });
     afterTheDoors(rEb, { costTzs: 6 });
     const mEc = w.marks(pE1);
     await settle(rEc, { to: "SKIPPED", skipReason: "suppressed", skipDetail: mEc.skipDetail, gateTrail: mEc.trail });
@@ -745,6 +769,9 @@ async function run(w: World, tag: string): Promise<void> {
       // CONTROL: those three rows were written BY THE DOORS — each keeps the claim the settle landed under (a settled row
       // keeps its claim) — so the sweep reads what the settle door wrote (R-P10e proves the door is the real one).
       const byDoors = [eb, ec, hf].every((r) => r !== undefined && (r.claimToken ?? "").startsWith("fixture") && r.claimedAt !== null);
+      // CONTROL (U46a): one of them was DELIVERED by the RECEIPT door after the settle door sent it — the receipt's instant,
+      // the hand-over's kept — so the sweep reads what the receipt door writes too (R-P10f proves that door is the real one).
+      const byReceipt = eb?.status === "DELIVERED" && eb.deliveredAt === iso(T0 - 20 * DAY + 120_000) && eb.sentAt === iso(T0 - 20 * DAY + 60_000);
       // ⛔ THE TRIPWIRE (PE-01): every row swept above was settled through the doors P10 accounts for, so a member of either
       // twin's recipient namespace that P10 does not account for is a writer nobody sweeps — named, and red until P10
       // drives it.
@@ -758,8 +785,8 @@ async function run(w: World, tag: string): Promise<void> {
       // namespace exactly as the running twin holds it.
       const readerSees = twinsRead.every(([, members]) => members !== null && P10_ACCOUNTED.every((m) => members.includes(m)))
         && JSON.stringify([...(recipientMembers(w.twins.memory) ?? [])].sort()) === JSON.stringify(Object.keys(db.smsCampaignRecipient).sort());
-      return [hits.length === 0 && carried && sees && byDoors && strays.length === 0 && readerSees,
-        [...strays, ...hits].slice(0, 6).join(" · ") || `${all.length} rows swept for ${needles.length} needles · carried ${carried} · the scan sees a planted name ${sees} · written by the doors ${byDoors} · both namespaces accounted for, the reader sees them ${readerSees}`];
+      return [hits.length === 0 && carried && sees && byDoors && byReceipt && strays.length === 0 && readerSees,
+        [...strays, ...hits].slice(0, 6).join(" · ") || `${all.length} rows swept for ${needles.length} needles · carried ${carried} · the scan sees a planted name ${sees} · written by the doors ${byDoors} · one delivered by the receipt door ${byReceipt} · both namespaces accounted for, the reader sees them ${readerSees}`];
     });
 
     // ── S2 · the DAL refuses before it reads or writes ─────────────────────────────────────────────────────────────
@@ -860,9 +887,10 @@ async function run(w: World, tag: string): Promise<void> {
     await settle(xr("stranger"), { to: "DELIVERED", smsReference: `REF-SENTINEL-${K}-stranger`, sentAt: iso(TX + 4 * DAY + HOUR + 60_000), deliveredAt: iso(TX + 4 * DAY + HOUR + 120_000), locale: "SW", gateTrail: TRAIL });
     await settle(xr("skip"), { to: "SKIPPED", skipReason: "suppressed", skipDetail: "DETAIL-SENTINEL suppressed", gateTrail: TRAIL });
     await settle(xr("prot"), { to: "SKIPPED", skipReason: "rg_self_excluded", skipDetail: "DETAIL-SENTINEL self-excluded", gateTrail: TRAIL });
-    // Sent, then a FAILED receipt (U46a's): the doors send it, the receipt's failure is written after them.
+    // Sent, then a FAILED receipt through the real receipt door (U46a): the vendor's token becomes the class (receipt:…)
+    // and its words the error — each a sentinel no person's file may hold (P4).
     await settle(xr("failref"), { to: "SENT", smsReference: `REF-SENTINEL-${K}-failref`, sentAt: sentAt(6), locale: "SW", gateTrail: TRAIL });
-    afterTheDoors(xr("failref"), { status: "FAILED", failedAt: deliveredAt(6), failureClass: "FAILCLASS-SENTINEL", error: "ERROR-SENTINEL" });
+    await receipt(xr("failref"), { status: "FAILED", rawStatus: "FAILCLASS-SENTINEL", desc: "ERROR-SENTINEL", at: deliveredAt(6) });
     await settle(xr("failno"), { to: "FAILED", failedAt: sentAt(7), failureClass: "FAILCLASS-SENTINEL", error: "ERROR-SENTINEL", gateTrail: TRAIL });
     await settle(xr("wait"), { to: "HELD", failureClass: "gate_unanswered", attempts: 3 });
     await settle(xr("unknown"), { to: "SKIPPED", skipReason: "frequency_cap", skipDetail: "DETAIL-SENTINEL cap", gateTrail: TRAIL });
@@ -1315,13 +1343,14 @@ const CASES: Array<{ name: string; expect: string; also?: string[]; build: () =>
     build: () => ({ ...REAL, marks: (who) => ({ ...REAL.marks(who), error: `destination ${maskPhone(who.phoneE164)} unreachable` }) }),
   },
   {
-    name: "R-P10d · a receipt door (U46a's) lands in the Prisma twin's recipient namespace and P10 never drives it — the next writer of a row could name the person and the sweep would stay green",
+    // U46a's receipt door is accounted for now, so the tripwire is held to the NEXT door: DC-4's send record (U43b's).
+    name: "R-P10d · the NEXT door (U43b's send record, DC-4) lands in the Prisma twin's recipient namespace and P10 never drives it — the next writer of a row could name the person and the sweep would stay green",
     expect: L.p10,
     build: () => ({
       ...REAL,
       twins: {
         ...REAL.twins,
-        prisma: plant(REAL.twins.prisma, `${NL}  smsCampaignRecipient: {`, `${NL}  smsCampaignRecipient: {${NL}    recordReceipt: async (id: string): Promise<boolean> => id.length > 0,`),
+        prisma: plant(REAL.twins.prisma, `${NL}  smsCampaignRecipient: {`, `${NL}  smsCampaignRecipient: {${NL}    recordSend: async (id: string): Promise<boolean> => id.length > 0,`),
       },
     }),
   },
@@ -1338,6 +1367,24 @@ const CASES: Array<{ name: string; expect: string; also?: string[]; build: () =>
           const account = mem().smsCampaignRecipients.get(x.id)?.userId ?? "none";
           return { ...x, gateTrail: [...x.gateTrail, { check: "account", verdict: account, wording: null, source: null }] };
         }), at),
+      },
+    }),
+  },
+  {
+    // ⭐ THE RECEIPT ROUTING'S OWN RED (U46a): the receipt DOOR writes the account it settled into the row's error. Only a
+    // sweep of a row the real receipt door wrote sees it — were the receipts written by hand again, this would stay green.
+    name: "R-P10f · the receipt door itself writes the row's account into the error — the erased account's id outlives the erasure, written by the door, not by the caller",
+    expect: L.p10,
+    build: () => ({
+      ...REAL,
+      recipient: {
+        recordReceipt: async (id, r) => {
+          const account = mem().smsCampaignRecipients.get(id)?.userId ?? "none";
+          const out = await REAL_RECIPIENT.recordReceipt(id, r);
+          const row = mem().smsCampaignRecipients.get(id);
+          if (out.changed && row !== undefined) row.error = `delivered to account ${account}`;
+          return out;
+        },
       },
     }),
   },

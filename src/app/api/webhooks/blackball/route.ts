@@ -9,6 +9,13 @@
  * Blackball as `https://<host>/api/webhooks/blackball?token=<BLACKBALL_WEBHOOK_SECRET>`
  * (or let them send it as `X-Blackball-Token`). Compared in constant time.
  *
+ * ── U46a · E29 · THE SECRET ROTATES WITHOUT DROPPING A RECEIPT ────────────────
+ * While the secret is being rotated, `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` holds the OLD
+ * value and is accepted beside the new one until Blackball's callback URL carries the
+ * new secret (docs/BLACKBALL-SMS.md §7). Both must be at least 16 characters to be
+ * compared at all, and both are always compared, each in constant time. Boot warns
+ * while PREVIOUS is set (`boot-checks.ts`), so it is never left behind.
+ *
  * ── ⛔ ONE DELIBERATE DEVIATION FROM THE POSTMARK TEMPLATE ───────────────────
  * Postmark's `authorized()` returns `NODE_ENV !== "production"` when the secret is
  * unset — open in dev. That is tolerable for a suppression list. It is not
@@ -23,8 +30,22 @@
  *  3. the msisdn must MATCH the one we sent to
  *  4. the state machine is monotonic, so a settled row cannot be rewritten
  * Even a fully-authenticated forger can therefore do exactly one thing: mark an
- * invite delivered that was not. No money moves, no session is created, and ⛔ an
- * OTP receipt is explicitly inert — see the `Otp` note below.
+ * invite delivered that was not — or, since U46a, a campaign recipient whose message
+ * is still open, and only with that message's own reference and number. No money
+ * moves, no session is created, and ⛔ an OTP receipt is explicitly inert — see the
+ * `Otp` note below.
+ *
+ * ── U46a · E28 · THE CAMPAIGN ARM ────────────────────────────────────────────
+ * A receipt for a campaign message settles its `SmsCampaignRecipient` row through ONE
+ * door, `smsCampaignRecipient.recordReceipt`, run only when `recordDlr` MOVED the
+ * message — and the door itself writes only the row the message named, while that row
+ * holds the message's number and reference (or none yet) and is still open (PENDING,
+ * SENT, UNCONFIRMED — `SMS_RECEIPT_FROM`). A mismatch writes nothing and is audited
+ * SECURITY, masked. A test send's receipt (`SmsCampaignTest`) settles its SmsMessage row
+ * alone.
+ * ⛔ Never deploy while a campaign is PREPARING or RUNNING (ENGINE-SPEC §5 rule 8): a
+ * receipt that reaches the old build in the overlap settles only its SmsMessage row,
+ * and its replay cannot re-run this arm.
  *
  * Guard: `npm run test:sms-dlr` · `npm run red:sms-dlr`.
  */
@@ -35,6 +56,12 @@ import type { SmsStatus } from "@/lib/server/store";
 import { smsProviderResolution } from "@/lib/server/sms";
 import { audit } from "@/lib/server/audit";
 import { maskPhone } from "@/lib/phone-normalize";
+// U46a · the target type the campaign slice sends under (`dispatch.ts`: "the DLR route's recipient arm keys on this"), the
+// ONE masking half of the phone-run rule — a vendor's description is scrubbed before it can become a row's `error` — and
+// the longest description the receipt door writes (the rule set's own constant, so the cut and the refusal are one number).
+import { DISPATCH_TARGET_TYPE } from "@/lib/server/marketing/dispatch";
+import { scrubPhoneRuns } from "@/lib/contacts/contact-fields";
+import { SMS_RECEIPT_DESC_MAX } from "@/lib/server/marketing/campaign-model";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -50,6 +77,10 @@ function secretEqual(a: string, b: string): boolean {
   return timingSafeEqual(ab, bb);
 }
 
+/** U46a · E29 · the floor a secret must reach to be compared at all — the same 16 characters below which
+ *  `webhookSecretUnusable` (boot-checks.ts) warns. */
+const SECRET_MIN_CHARS = 16;
+
 export function authorized(req: Request): boolean {
   const secret = process.env.BLACKBALL_WEBHOOK_SECRET ?? "";
   if (!secret) {
@@ -60,7 +91,17 @@ export function authorized(req: Request): boolean {
   }
   const provided =
     new URL(req.url).searchParams.get("token") ?? req.headers.get("x-blackball-token") ?? "";
-  return secretEqual(provided, secret);
+  // ⭐ E29 · THE ROTATION'S SECOND SECRET. The old value is accepted beside the new one while Blackball's URL is changed, so
+  // no receipt is refused in between. ⛔ A secret counts only when it is SET to a real one (at least 16 characters): an
+  // unset PREVIOUS is the empty string, and the empty string compares equal to an absent token — so without this floor
+  // every caller that sends NO token would be let in. ⚠️ The CURRENT secret is held to the same floor (§4.14: both at least
+  // 16) — a change for a shorter one, which boot-checks already warns about at every start; production's is not one (its
+  // boot log carries no such warning, docs/BLACKBALL-SMS.md). Every secret that is set is compared, each in constant time,
+  // and neither comparison is skipped because the other matched — the time a request takes never says which one it carried.
+  const previous = process.env.BLACKBALL_WEBHOOK_SECRET_PREVIOUS ?? "";
+  const current = secret.length >= SECRET_MIN_CHARS && secretEqual(provided, secret);
+  const rotated = previous.length >= SECRET_MIN_CHARS && secretEqual(provided, previous);
+  return current || rotated;
 }
 
 /**
@@ -161,6 +202,28 @@ function noteMalformed(req: Request, reason: "bad-json" | "unrecognised-shape", 
 }
 
 /**
+ * U46a · a campaign receipt that names a recipient row of ANOTHER number, or one already holding ANOTHER message's
+ * reference — a vendor's error or a forgery, and either way the door wrote nothing. Audited SECURITY, as the message's own
+ * number mismatch is. ⛔ Masked numbers only — the row's and the message's (§5.14) — beside the two references.
+ */
+async function noteRecipientMismatch(recipientId: string, reference: string, messageMsisdn: string): Promise<void> {
+  const row = await db.smsCampaignRecipient.find(recipientId);
+  audit({
+    category: "SECURITY",
+    action: "sms.dlr.recipient_mismatch",
+    actorId: null,
+    targetType: DISPATCH_TARGET_TYPE,
+    targetId: recipientId,
+    payload: {
+      reference,
+      heldReference: row?.smsReference ?? null,
+      expected: row ? maskPhone(row.msisdn) : null,
+      got: maskPhone(messageMsisdn),
+    },
+  });
+}
+
+/**
  * ⭐ A GET ANSWERS 200, AND DOES NOTHING ELSE.
  *
  * On 2026-09-16 the only request that reached this URL after the callback was registered was a
@@ -202,13 +265,17 @@ export async function POST(req: Request) {
     noteMalformed(req, "unrecognised-shape", raw.length, topLevelKeys(body));
   }
   const lines: StatusLine[] = parsed ?? [];
-  const counts = { applied: 0, replayed: 0, unknownRef: 0, unmapped: 0, mismatch: 0, invites: 0 };
+  // U46a · `campaign` — the campaign recipients this callback settled, beside `invites` (ENGINE-SPEC §4.14 decision 3).
+  const counts = { applied: 0, replayed: 0, unknownRef: 0, unmapped: 0, mismatch: 0, invites: 0, campaign: 0 };
   const at = new Date().toISOString();
 
   for (const line of lines.slice(0, MAX_STATUSES)) {
     const reference = typeof line.reference === "string" ? line.reference : "";
     const rawStatus = typeof line.status === "string" ? line.status : "";
-    const desc = typeof line.description === "string" ? line.description.slice(0, 200) : null;
+    // U46a · the description WHOLE as well: the campaign arm scrubs it before it cuts it, so a number the cut would split
+    // is still a number the scrub can see.
+    const description = typeof line.description === "string" ? line.description : null;
+    const desc = description === null ? null : description.slice(0, 200);
     const msisdn = typeof line.msisdn === "string" ? line.msisdn : "";
     if (!reference) continue;
 
@@ -293,6 +360,45 @@ export async function POST(req: Request) {
           ...(mapped === "FAILED" ? { failureReason: (desc ?? rawStatus).slice(0, 200) } : {}),
         });
         counts.invites++;
+      }
+    }
+
+    // ⭐ U46a · THE CAMPAIGN ARM (E28). The message moved, and it was a campaign's: its recipient row settles through the
+    // ONE door — which writes only that row, only while it holds the message's number and reference (or none yet), and
+    // only out of PENDING, SENT or UNCONFIRMED, so a late or out-of-order receipt never moves a settled row.
+    // ⛔ Guarded on `changed`, as the invite arm is: a replayed receipt cannot re-run this. ⛔ The number handed in is the
+    // MESSAGE's, already held to the receipt's own above. ⛔ The door refuses, it never scrubs, so what it is handed is
+    // lawful first: the token as the mapper read it (trimmed, upper case — a token the mapper recognised, so a code of its
+    // own list in any spelling the vendor chose), and the description scrubbed of every phone number and only THEN cut
+    // (§5.14 — cut first, a number split at the cut would slip past the scrub). A test send's receipt (`SmsCampaignTest`)
+    // never reaches here: it settles its SmsMessage row and nothing else.
+    if (changed && after?.targetType === DISPATCH_TARGET_TYPE && after.targetId && (mapped === "DELIVERED" || mapped === "FAILED")) {
+      const recipientId = after.targetId;
+      const token = rawStatus.trim().toUpperCase();
+      try {
+        const outcome = await db.smsCampaignRecipient.recordReceipt(recipientId, {
+          reference,
+          msisdn: after.msisdn,
+          status: mapped,
+          rawStatus: token,
+          desc: description === null ? null : scrubPhoneRuns(description).slice(0, SMS_RECEIPT_DESC_MAX),
+          at,
+        });
+        if (outcome.changed) counts.campaign++;
+        else if (outcome.reason === "mismatch") await noteRecipientMismatch(recipientId, reference, after.msisdn);
+      } catch (err) {
+        // ⛔ A RECEIPT THE DOOR REFUSED IS RECORDED, NEVER THROWN. The message has moved, so a retry from the vendor would
+        // find nothing to change and could not re-run this arm — a 500 here would buy five retries and lose the receipt
+        // anyway. ⛔ The error's CODE only: a database error's text can quote the call's arguments, and they hold a number.
+        const code = (err as { code?: unknown } | null)?.code;
+        audit({
+          category: "SYSTEM",
+          action: "sms.dlr.recipient_failed",
+          actorId: null,
+          targetType: DISPATCH_TARGET_TYPE,
+          targetId: recipientId,
+          payload: { reference, rawStatus: token, code: typeof code === "string" ? code : "refused" },
+        });
       }
     }
 

@@ -22,6 +22,11 @@
  * UNCONFIRMED row (the claim's status test on its own), §2.21 claims a later id earlier (the stranded order), §2.24 gives
  * the newer message the lower reference, §2.23 holds a release and a requeue that keep their claim's instant (D15),
  * §2.15 a reused token (D16), §2.18 the P2002 code both twins carry.
+ * COMMIT E (U46a, S14 2026-10-07 — ENGINE-SPEC §4.14, decision E28): the receipt door EXECUTED on the memory twin —
+ * §2.29 ⭐ a receipt moves a SENT, an UNCONFIRMED and a still-claimed row forward, the claim kept and nothing else written;
+ * §2.30 ⛔ it never moves a settled row and never a row that is not the message's (number, reference), and a reference
+ * another row holds is P2002; §2.31 its rule set refuses before the door reads, and `receiptWrite` writes exactly its
+ * columns. A receipt only moves a row OUT of UNCONFIRMED, so §3.2's pin stays empty for it.
  *
  * ⭐ WHY A SUITE OF ITS OWN: `red:dal-parity` can never plant a defect in schema.prisma or a migration (it reads them
  * from ROOT, not KP_SRC), so a shape that lives in SQL needs an in-process suite that is HANDED the text and can be
@@ -47,7 +52,7 @@ import { decomment } from "./lib/decomment.mts";
 import type {
   StoredSmsCampaign, StoredSmsCampaignRecipient, SmsCampaignRecipientSeed, SmsCampaignRecipientStatus,
   SmsCampaignDraftPatch, SmsCampaignDraftGuard, SmsCampaignTransition, SmsCampaignTransitionPatch,
-  SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage,
+  SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage, SmsRecipientReceipt, SmsRecipientReceiptResult,
 } from "../src/lib/server/store.ts";
 
 // ⛔ BEFORE THE STORE IS IMPORTED — see the header.
@@ -130,14 +135,16 @@ type RecipientNs = typeof db.smsCampaignRecipient;
 type MessageNs = typeof db.smsMessage;
 type Twin = { campaign: CampaignNs; recipient: RecipientNs; message: MessageNs };
 /** The rule set itself (`campaign-model.ts`), executed directly by §2.9–§2.11 (and U43a's settle table by §2.17, its
- *  write by §2.28) — swappable, so a red case can delete one refusal from it. (Both twins call these very functions
- *  first: `test:dal-parity` §26.shape and §26.u43a.) */
+ *  write by §2.28; U46a's receipt rules and write by §2.31) — swappable, so a red case can delete one refusal from it.
+ *  (Both twins call these very functions first: `test:dal-parity` §26.shape, §26.u43a and §26.u46a.) */
 type Rules = {
   assertTransitionShape: typeof CM.assertTransitionShape;
   assertDraftPatch: typeof CM.assertDraftPatch;
   assertNewCampaign: typeof CM.assertNewCampaign;
   assertSettle: typeof CM.assertSettle;
   settleWrite: typeof CM.settleWrite;
+  assertReceipt: typeof CM.assertReceipt;
+  receiptWrite: typeof CM.receiptWrite;
 };
 type World = {
   migrations: Migration[];
@@ -160,7 +167,7 @@ const REAL: World = {
   twin: { campaign: db.smsCampaign, recipient: db.smsCampaignRecipient, message: db.smsMessage },
   rules: {
     assertTransitionShape: CM.assertTransitionShape, assertDraftPatch: CM.assertDraftPatch, assertNewCampaign: CM.assertNewCampaign,
-    assertSettle: CM.assertSettle, settleWrite: CM.settleWrite,
+    assertSettle: CM.assertSettle, settleWrite: CM.settleWrite, assertReceipt: CM.assertReceipt, receiptWrite: CM.receiptWrite,
   },
 };
 
@@ -240,6 +247,9 @@ const L = {
   s226: "2.26 claimedBy answers the campaign's rows still PENDING under the claim — what U43b's beforeSend re-reads (E6): a row settled, released or held since is not among them, and another token or campaign reads nothing",
   s227: "2.27 the claim's bound IS the send's chunk: SMS_RECIPIENT_CLAIM_MAX equals sms-blackball's BATCH_MAX (E11 — one slice, one sendBatch chunk)",
   s228: "2.28 ⛔ THE SETTLE'S WRITE (U16a PE-01, PE-08): for every lawful patch settleWrite writes EXACTLY its row of the table, the status and the caller's stamp — never userId, the account link only erasure clears, nor the number or the contact, even when a patch carries them — and every send instant as the patch carries it (sentAt is the hand-over copied from the message), never the settle's clock; the trail copied",
+  s229: "2.29 ⭐ THE RECEIPT DOOR (U46a · E28): a DELIVERED receipt moves a SENT row, an UNCONFIRMED row (its reference written where it had none, E4) and a row a slice still holds (PENDING, D5) to DELIVERED, and a FAILED receipt moves one to FAILED with its class receipt:<token> and its words — each at the receipt's own instant, the claim kept, nothing else written — and the slice's later settle of the held row is lost",
+  s230: "2.30 ⛔ MONOTONIC AND IDENTITY-CHECKED: a receipt never moves a DELIVERED, FAILED, SKIPPED or HELD row (settled) — a late FAILED after its DELIVERED among them — nor a row of another number or one holding another message's reference (mismatch), nor a row that is not there (not_found); nothing is written in each, and a reference another row holds is refused whole with Prisma's code P2002",
+  s231: "2.31 the receipt's rule set first: a lost id, a key a receipt does not have or one missing, a number in another spelling, a verdict other than DELIVERED or FAILED, an instant in another spelling, a FAILED token untrimmed, empty, too long or a phone number, a FAILED description over 200 characters or holding a phone number — each REFUSED, and by the door before it reads; every lawful receipt passes; and receiptWrite writes EXACTLY its columns — never the claim, sentAt, attempts, the account link, the number or the contact",
   s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (U37b's test send; U43's slice next)",
   s32: "3.2 ⛔ no src file writes a recipient's status as UNCONFIRMED unless it is a declared UNCONFIRMED_WRITER (none yet: the value ships one deploy before U43b, its first writer) — and the pin sees a key, an assignment, SQL and a settle patch's `to:` (U43a), and not a comparison, a read or a type",
 };
@@ -1400,6 +1410,158 @@ async function run(w: World, tag: string): Promise<void> {
       `off the table: [${wrong.join("; ")}] · send instants as carried, the clock in updatedAt alone ${instants} · the trail copied ${trailCopied}`];
   });
 
+  /* ── §2.29–§2.31 · U46a · THE RECEIPT DOOR, EXECUTED ON THE MEMORY TWIN (ENGINE-SPEC §4.14, E28) ─────────────────────────
+   * Every row reaches its state through the doors themselves (claim → settle → receipt), never a hand-set map, so a plant
+   * in the receipt door is seen. ⛔ No backslash below. */
+  /** A receipt as the DLR route's campaign arm hands it in: the message's reference and number, the verdict, the token as
+   *  the mapper read it, the vendor's words scrubbed, the instant it arrived. */
+  const receipt = (reference: string, msisdn: string, status: "DELIVERED" | "FAILED", o: Partial<SmsRecipientReceipt> = {}): SmsRecipientReceipt => ({
+    reference, msisdn, status, rawStatus: status === "DELIVERED" ? "DELIVRD" : "UNDELIV",
+    desc: status === "DELIVERED" ? "Success" : "Absent subscriber", at: at(300), ...o,
+  });
+  const applied = (x: SmsRecipientReceiptResult): boolean => x.changed && x.reason === "applied";
+
+  // ── §2.29 · ⭐ a receipt moves a row forward, and writes nothing else ───────────────────────────────────
+  await check(p(L.s229), async () => {
+    const id = "cmp_receipt_moves";
+    const ids = await campaignOf(id, 4, 24000);
+    const key = (i: number) => keyOf(24000 + i);
+    const T = "tok_rcpt_0001";
+    await R.claim(id, 4, T, at(290));
+    // rows 0 and 3 SENT, row 1 UNCONFIRMED without its reference (E3: the transport died first), row 2 still claimed (D5)
+    await R.settle([sent(ids[0], T, "sms_rcpt_0"), unsure(ids[1], T, null), sent(ids[3], T, "sms_rcpt_3")], at(291));
+    const before = new Map(rowsOf(id).map((r): [string, StoredSmsCampaignRecipient] => [r.id, { ...r }]));
+    const answers = [
+      await R.recordReceipt(ids[0], receipt("sms_rcpt_0", key(0), "DELIVERED")),
+      await R.recordReceipt(ids[1], receipt("sms_rcpt_1", key(1), "DELIVERED")),
+      await R.recordReceipt(ids[2], receipt("sms_rcpt_2", key(2), "DELIVERED")),
+      await R.recordReceipt(ids[3], receipt("sms_rcpt_3", key(3), "FAILED")),
+    ];
+    const lateSettle = await R.settle([sent(ids[2], T, "sms_rcpt_2")], at(310));
+    const [r0, r1, r2, r3] = ids.map(rowOf);
+    /** DELIVERED at the receipt's instant, the claim's token and instant kept, nothing but `except` moved. */
+    const deliveredRow = (r: StoredSmsCampaignRecipient | undefined, rid: string, except: readonly string[]): boolean =>
+      r?.status === "DELIVERED" && r.deliveredAt === at(300) && r.updatedAt === at(300) && r.claimToken === T && r.claimedAt === at(290)
+        && sameBut(r, before.get(rid), ["status", "deliveredAt", "updatedAt", ...except]);
+    const fromSent = deliveredRow(r0, ids[0], []) && r0?.smsReference === "sms_rcpt_0" && r0.sentAt === at(50);
+    const fromUnsure = deliveredRow(r1, ids[1], ["smsReference"]) && r1?.smsReference === "sms_rcpt_1" && r1.sentAt === null;
+    const fromClaimed = deliveredRow(r2, ids[2], ["smsReference"]) && r2?.smsReference === "sms_rcpt_2"
+      && lateSettle.settled === 0 && lateSettle.lost.join(",") === ids[2];
+    const toFailed = r3?.status === "FAILED" && r3.failedAt === at(300) && r3.updatedAt === at(300) && r3.failureClass === "receipt:UNDELIV"
+      && r3.error === "Absent subscriber" && r3.smsReference === "sms_rcpt_3" && r3.claimToken === T && r3.deliveredAt === null
+      && sameBut(r3, before.get(ids[3]), ["status", "failedAt", "failureClass", "error", "updatedAt"]);
+    return [answers.every(applied) && fromSent && fromUnsure && fromClaimed && toFailed,
+      `answers [${answers.map((x) => x.reason).join(",")}] · SENT ${fromSent} · UNCONFIRMED ${fromUnsure} · still claimed ${fromClaimed} (its late settle lost [${lateSettle.lost}]) · FAILED ${toFailed}`];
+  });
+
+  // ── §2.30 · ⛔ never a settled row, never another person's ─────────────────────────────────────────
+  await check(p(L.s230), async () => {
+    const id = "cmp_receipt_stays";
+    const ids = await campaignOf(id, 7, 24100);
+    const key = (i: number) => keyOf(24100 + i);
+    const T = "tok_rcpt_0002";
+    await R.claim(id, 7, T, at(320));
+    await R.settle([
+      sent(ids[0], T, "sms_stay_0"),
+      { id: ids[1], claimToken: T, to: "FAILED", failureClass: "BAD_MSISDN", error: null, failedAt: at(321), smsReference: null, gateTrail: TRAIL("failed") },
+      skipped(ids[2], T),
+      held(ids[3], T),
+      sent(ids[4], T, "sms_stay_4"),
+      sent(ids[5], T, "sms_stay_5"),
+    ], at(321));                                                                    // row 6 stays PENDING under the claim
+    const first = await R.recordReceipt(ids[0], receipt("sms_stay_0", key(0), "DELIVERED"));
+    const keep = snap(ids);
+    const misses: Array<[string, SmsRecipientReceiptResult, SmsRecipientReceiptResult["reason"]]> = [
+      ["a late FAILED after its DELIVERED", await R.recordReceipt(ids[0], receipt("sms_stay_0", key(0), "FAILED", { at: at(330) })), "settled"],
+      ["a DELIVERED for a row the wire refused (FAILED)", await R.recordReceipt(ids[1], receipt("sms_stay_1", key(1), "DELIVERED")), "settled"],
+      ["a DELIVERED for a SKIPPED row", await R.recordReceipt(ids[2], receipt("sms_stay_2", key(2), "DELIVERED")), "settled"],
+      ["a FAILED for a HELD row", await R.recordReceipt(ids[3], receipt("sms_stay_3", key(3), "FAILED")), "settled"],
+      ["another number's receipt", await R.recordReceipt(ids[4], receipt("sms_stay_4", key(94), "DELIVERED")), "mismatch"],
+      ["another message's reference", await R.recordReceipt(ids[5], receipt("sms_stay_other", key(5), "DELIVERED")), "mismatch"],
+      ["a row that is not there", await R.recordReceipt("rcp_receipt_nobody", receipt("sms_stay_x", key(7), "DELIVERED")), "not_found"],
+    ];
+    const unchanged = snap(ids) === keep;
+    // DC-7 · a reference another row holds: refused whole, with the code Prisma's unique index carries
+    let dupCode: unknown = "no refusal";
+    try {
+      await R.recordReceipt(ids[6], receipt("sms_stay_4", key(6), "DELIVERED"));
+    } catch (e) {
+      dupCode = (e as { code?: unknown } | null)?.code;
+    }
+    const stillUnchanged = snap(ids) === keep;
+    const misread = misses.filter(([, x, want]) => x.changed || x.reason !== want).map(([n, x]) => `${n} → ${x.changed ? "APPLIED" : x.reason}`);
+    return [applied(first) && misread.length === 0 && unchanged && dupCode === "P2002" && stillUnchanged && rowOf(ids[0])?.failedAt === null,
+      `misread: [${misread.join("; ")}] · nothing written ${unchanged} · a held reference ${dupCode === "P2002" ? "refused, code P2002" : `NOT refused as P2002 (${String(dupCode)})`} · still nothing written ${stillUnchanged}`];
+  });
+
+  // ── §2.31 · the receipt's rule set first, and its write exactly its columns ──────────────────────────────
+  await check(p(L.s231), async () => {
+    const refusesR = (rid: unknown, r: unknown): boolean => {
+      try { w.rules.assertReceipt(rid as string, r as SmsRecipientReceipt); return false; } catch { return true; }
+    };
+    const withoutR = (o: SmsRecipientReceipt, k: string): Record<string, unknown> => Object.fromEntries(Object.entries(o).filter(([key]) => key !== k));
+    const RID = "rcp_rule_0001";
+    const OK_D = receipt("sms_0a1b2c3d4e5f60718293a4b5", keyOf(24200), "DELIVERED");
+    const OK_F = receipt("sms_0a1b2c3d4e5f60718293a4b6", keyOf(24200), "FAILED");
+    const MAXT = CM.SMS_RECEIPT_TOKEN_MAX;
+    const [rules, why] = verdicts([
+      ["a lost id", refusesR(undefined, OK_D)],
+      ["an empty id", refusesR("", OK_D)],
+      ["⛔ a receipt carrying userId — the account link only erasure clears", refusesR(RID, { ...OK_D, userId: "usr_erased_0001" })],
+      ["a receipt carrying a claim token", refusesR(RID, { ...OK_D, claimToken: "tok_rcpt_9999" })],
+      ["no number", refusesR(RID, withoutR(OK_D, "msisdn"))],
+      ["no reference", refusesR(RID, withoutR(OK_D, "reference"))],
+      ["no token", refusesR(RID, withoutR(OK_D, "rawStatus"))],
+      ["no description key at all", refusesR(RID, withoutR(OK_D, "desc"))],
+      ["no instant", refusesR(RID, withoutR(OK_D, "at"))],
+      ["a reference with a space in it", refusesR(RID, { ...OK_D, reference: "sms 0a1b2c" })],
+      ["the number as +255", refusesR(RID, { ...OK_D, msisdn: `+${keyOf(24200)}` })],
+      ["the number as 07", refusesR(RID, { ...OK_D, msisdn: `0${keyOf(24200).slice(3)}` })],
+      ["a verdict of ACCEPTED", refusesR(RID, { ...OK_D, status: "ACCEPTED" })],
+      ["a verdict of UNCONFIRMED", refusesR(RID, { ...OK_D, status: "UNCONFIRMED" })],
+      ["an instant in another spelling", refusesR(RID, { ...OK_D, at: "2026-10-02 09:05" })],
+      ["a description that is not text", refusesR(RID, { ...OK_D, desc: 42 })],
+      ["a FAILED token with a trailing space", refusesR(RID, { ...OK_F, rawStatus: "UNDELIV " })],
+      ["a FAILED token with a leading space", refusesR(RID, { ...OK_F, rawStatus: " UNDELIV" })],
+      ["an empty FAILED token", refusesR(RID, { ...OK_F, rawStatus: "" })],
+      [`a FAILED token of ${MAXT + 1} characters`, refusesR(RID, { ...OK_F, rawStatus: "X".repeat(MAXT + 1) })],
+      ["⛔ a phone number as a FAILED token", refusesR(RID, { ...OK_F, rawStatus: "255712345678" })],
+      ["a FAILED description of 201 characters", refusesR(RID, { ...OK_F, desc: "x".repeat(201) })],
+      ["⛔ a phone number in a FAILED description", refusesR(RID, { ...OK_F, desc: "subscriber 0712 345 678 absent" })],
+      ["⛔ a phone number with a plus and dashes in a FAILED description", refusesR(RID, { ...OK_F, desc: "sent to +255-712-345-678" })],
+    ], [
+      ["a DELIVERED receipt", refusesR(RID, OK_D)],
+      ["a FAILED receipt", refusesR(RID, OK_F)],
+      ["a FAILED receipt with no description", refusesR(RID, { ...OK_F, desc: null })],
+      [`a FAILED token of ${MAXT} characters and a description of 200`, refusesR(RID, { ...OK_F, rawStatus: "X".repeat(MAXT), desc: "x".repeat(200) })],
+      ["a FAILED description holding the masked number the route's scrub leaves", refusesR(RID, { ...OK_F, desc: "subscriber ••••78 absent" })],
+      ["a DELIVERED receipt whose words it never writes (long, a number in them)", refusesR(RID, { ...OK_D, desc: `${"x".repeat(250)} 0712 345 678` })],
+    ]);
+    // ⛔ THE DOOR ASKS IT FIRST: a lost id, a lost number and a number in the words each refused before anything is read
+    const id = "cmp_receipt_rules";
+    const ids = await campaignOf(id, 1, 24300);
+    await R.claim(id, 1, "tok_rcpt_0003", at(340));
+    await R.settle([sent(ids[0], "tok_rcpt_0003", "sms_rules_0")], at(341));
+    const keep = snap(ids);
+    const doorFirst = [
+      await throws(() => R.recordReceipt(undefined as unknown as string, receipt("sms_rules_0", keyOf(24300), "DELIVERED"))),
+      await throws(() => R.recordReceipt(ids[0], { ...receipt("sms_rules_0", keyOf(24300), "DELIVERED"), msisdn: undefined } as unknown as SmsRecipientReceipt)),
+      await throws(() => R.recordReceipt(ids[0], receipt("sms_rules_0", keyOf(24300), "FAILED", { desc: "call 0712 345 678" }))),
+    ].every(Boolean) && snap(ids) === keep;
+    // ⛔ THE WRITE: exactly its columns, built from the receipt's own fields — a careless caller's extras never reach a column
+    const careless = { ...OK_D, userId: "usr_erased_0001", claimToken: null, sentAt: at(1), attempts: 9, contactId: "mc_x" } as unknown as SmsRecipientReceipt;
+    const wd = w.rules.receiptWrite(careless);
+    const wf = w.rules.receiptWrite({ ...OK_F, msisdn: keyOf(24201), userId: "usr_erased_0001" } as unknown as SmsRecipientReceipt);
+    const keysD = Object.keys(wd.set).sort().join(",");
+    const keysF = Object.keys(wf.set).sort().join(",");
+    const writes = keysD === "deliveredAt,smsReference,status,updatedAt" && keysF === "error,failedAt,failureClass,smsReference,status,updatedAt"
+      && wd.attemptsBy === 0 && wf.attemptsBy === 0
+      && wd.set.status === "DELIVERED" && wd.set.deliveredAt === OK_D.at && wd.set.updatedAt === OK_D.at && wd.set.smsReference === OK_D.reference
+      && wf.set.status === "FAILED" && wf.set.failedAt === OK_F.at && wf.set.updatedAt === OK_F.at && wf.set.smsReference === OK_F.reference
+      && wf.set.failureClass === `${CM.SMS_RECEIPT_CLASS_PREFIX}${OK_F.rawStatus}` && wf.set.error === OK_F.desc;
+    return [rules && doorFirst && writes, `${why} · the door asks it first ${doorFirst} · receiptWrite writes [${keysD}] and [${keysF}]`];
+  });
+
   // ── §3.1 · the MARKETING writer population ─────────────────────────────────────────────────
   const writers = w.src.filter((f) => /purpose\s*:\s*["']MARKETING["']/.test(f.text)).map((f) => f.path);
   const undeclared = writers.filter((f) => !MARKETING_WRITERS.includes(f));
@@ -1518,6 +1680,27 @@ if (!PROVE_RED) {
       }
       const won = new Set(landing.map((pp) => pp.id));
       return { settled: won.size, lost: patches.filter((pp) => !won.has(pp.id)).map((pp) => pp.id) };
+    };
+
+  /* ── U46a's plant helpers ── */
+  /** A planted receipt door: the rule set asked, then each guard the plant names LEFT OUT — the identity (the number, or
+   *  only the reference arm), the status, the unique reference — or the reference left out of the write. */
+  const plantedReceipt = (o: { status?: false; identity?: false; reference?: false; unique?: false; writeReference?: false }): RecipientNs["recordReceipt"] =>
+    async (id, r) => {
+      CM.assertReceipt(id, r);
+      const row = mem().smsCampaignRecipients.get(id);
+      if (row === undefined) return { changed: false, reason: "not_found" };
+      const numberOk = o.identity === false || row.msisdn === r.msisdn;
+      const referenceOk = o.identity === false || o.reference === false || row.smsReference === null || row.smsReference === r.reference;
+      const open = o.status === false || CM.SMS_RECEIPT_FROM.includes(row.status);
+      if (!numberOk || !referenceOk || !open) return { changed: false, reason: CM.receiptMiss(row, r) };
+      if (o.unique !== false && memRows().some((x) => x.id !== id && x.smsReference === r.reference)) {
+        throw Object.assign(new Error("planted door: a reference another row holds (P2002)"), { code: "P2002" });
+      }
+      const wr = CM.receiptWrite(r);
+      if (o.writeReference === false) delete (wr.set as Record<string, unknown>).smsReference;
+      applyWrite(row, wr);
+      return { changed: true, reason: "applied" };
     };
 
   const CASES: Array<{ name: string; expect: string; build: () => World }> = [
@@ -2129,6 +2312,64 @@ if (!PROVE_RED) {
         settleWrite: (pp, stamp) => {
           const wr = CM.settleWrite(pp, stamp);
           return pp.to === "SENT" || pp.to === "DELIVERED" ? { ...wr, set: { ...wr.set, sentAt: stamp } } : wr;
+        },
+      }),
+    },
+    /* ── U46a · the receipt door: each defect as somebody would write it ── */
+    {
+      name: "⭐ R-46a · the receipt door without its status guard — a late FAILED rewrites a DELIVERED row, and a FAILED, SKIPPED or HELD row is moved by a receipt (the spec's plant)",
+      expect: L.s230,
+      build: () => withRecipient({ recordReceipt: plantedReceipt({ status: false }) }),
+    },
+    {
+      name: "⭐ R-46b · the receipt door without its identity check — another number's receipt, and another message's, move the row (the spec's plant)",
+      expect: L.s230,
+      build: () => withRecipient({ recordReceipt: plantedReceipt({ identity: false }) }),
+    },
+    {
+      name: "R-46c · the receipt door's reference arm dropped — a row holding another message's reference is moved, its reference overwritten",
+      expect: L.s230,
+      build: () => withRecipient({ recordReceipt: plantedReceipt({ reference: false }) }),
+    },
+    {
+      name: "R-46d · the memory twin's P2002 removed from the receipt — a reference another row holds is written a second time",
+      expect: L.s230,
+      build: () => withRecipient({ recordReceipt: plantedReceipt({ unique: false }) }),
+    },
+    {
+      name: "⭐ R-46e · a receipt door that drops the claim as it settles — the row a receipt reached first can no longer be found by its slice's send record (DC-4), and the record of which slice held it is gone",
+      expect: L.s229,
+      build: () => withRecipient({
+        recordReceipt: async (id, r) => {
+          const out = await REAL.twin.recipient.recordReceipt(id, r);
+          const row = mem().smsCampaignRecipients.get(id);
+          if (out.changed && row !== undefined) row.claimToken = null;
+          return out;
+        },
+      }),
+    },
+    {
+      name: "R-46f · a receipt that never writes its reference — an UNCONFIRMED row DELIVERED with none reads as never handed to the network in the person's own file",
+      expect: L.s229,
+      build: () => withRecipient({ recordReceipt: plantedReceipt({ writeReference: false }) }),
+    },
+    {
+      name: "R-46g · the receipt's rule set lets a phone number through in a FAILED description (§5.14)",
+      expect: L.s231,
+      build: () => withRules({ assertReceipt: lets(CM.assertReceipt, (_id, r) => r.status === "FAILED" && typeof r.desc === "string" && r.desc.includes("0712")) }),
+    },
+    {
+      name: "R-46h · the receipt's rule set lets a lost id through — Prisma reads undefined as NO CONDITION, and one receipt reaches every open row",
+      expect: L.s231,
+      build: () => withRules({ assertReceipt: lets(CM.assertReceipt, (id) => !id) }),
+    },
+    {
+      name: "⭐ R-46i · receiptWrite dates the hand-over by the receipt — sentAt stamped with the receipt's instant (U16a PE-08)",
+      expect: L.s231,
+      build: () => withRules({
+        receiptWrite: (r) => {
+          const wr = CM.receiptWrite(r);
+          return { ...wr, set: { ...wr.set, sentAt: r.at } };
         },
       }),
     },
