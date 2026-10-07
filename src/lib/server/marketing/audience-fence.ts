@@ -20,6 +20,12 @@
  * ⛔ THE MEMBERS KEY IS KEYED, NEVER A BARE DIGEST. An unkeyed hash of a one-person audience, sent to the browser, could be
  * brute-forced back to the number: about ten million candidates once the masked tail and the operator are known. So it is
  * an HMAC under a key only this server holds, domain-separated (`kp-audience-members:`), cut to 32 hex characters.
+ * ⛔ AND IT IS BOUND TO ITS DRAFT (the U40a review's MAJOR). A key of the people alone is the same on every draft holding the
+ * same people, and the watermark carries it in readable base64: a one-contact tag on one draft and a one-minute window of
+ * player accounts on another would show the SAME key exactly when that contact is that player — "is this book contact a
+ * player?", the question OD66 closed. So the HMAC also takes the draft's id and revision (`membersKeyOf`): two drafts never
+ * share a key, while a re-view of the same draft at the same revision always gives the same one (OD27's list comparison).
+ * And a viewer who may not read a number never receives a key at all (OD67 — the service holds their claim to typed).
  *
  * ── THE KEY AND THE SEAL ────────────────────────────────────────────────────────────────────────────────────────
  * ⭐ KEYED FROM THE SESSION SECRET THROUGH `crypto.ts`. That module exports no raw secret, only its one sealing primitive,
@@ -74,14 +80,24 @@ function fenceKey(): string {
   return mac;
 }
 
+/** The draft a members key names people FOR: the campaign's id and the draft revision the officer was shown. */
+export type MembersKeyScope = { campaignId: string; draftRevision: number };
+
 /**
- * ⭐ THE KEYED NAME OF A LISTED AUDIENCE — the first 32 hex characters of HMAC-SHA256(the fence's key,
- * `"kp-audience-members:" + canonical`). `canonical` is `canonicalMembers`' output (the sorted bare keys, each once): the
+ * ⭐ THE KEYED NAME OF A LISTED AUDIENCE, FOR ONE DRAFT — the first 32 hex characters of HMAC-SHA256(the fence's key,
+ * `"kp-audience-members:<campaignId>:<draftRevision>:<canonical>"`). `canonical` is `canonicalMembers`' output (the sorted
+ * bare keys, each once, joined by commas — digits and commas only, so the colons cannot be read two ways): the
  * confirmation and U42's Start both call THIS with THAT, so they can never build two different names for the same people.
+ * ⛔ BOUND TO THE DRAFT (see the header): two drafts never share a key; the same draft at the same revision always does.
+ * ⭐ U42 recomputes it at Start from the CONFIRMED row's own `id` and its frozen `draftRevision` — no save moves a
+ * revision once the row has left DRAFT — so the key Start computes names the draft the confirmation stored a key for.
  * ⛔ Its input is raw phone numbers: it is computed here, on the server, and only its output ever leaves.
  */
-export function membersKeyOf(canonical: string): string {
-  return createHmac("sha256", fenceKey()).update(`${MEMBERS_DOMAIN}${canonical}`, "utf8").digest("hex").slice(0, MEMBERS_KEY_HEX_CHARS);
+export function membersKeyOf(scope: MembersKeyScope, canonical: string): string {
+  return createHmac("sha256", fenceKey())
+    .update(`${MEMBERS_DOMAIN}${scope.campaignId}:${scope.draftRevision}:${canonical}`, "utf8")
+    .digest("hex")
+    .slice(0, MEMBERS_KEY_HEX_CHARS);
 }
 
 /* ══ THE SEAL ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -136,7 +152,8 @@ export function verifyFence(token: string | null | undefined): FenceClaim | null
 export type FenceSampleRow = { masked: string; operator: string | null };
 
 /** What the server counted: the claim it signs, when, and the walk's first rows (masked) — for a listed audience, all
- *  of them. */
+ *  of them. ⛔ The fence answers for the AUDIENCE, whoever asks: what a viewer may see of it is the service's to decide
+ *  (`fenceForViewer` — OD67: a viewer who may not read a number gets no list and no members key). */
 export type AudienceFence = { claim: FenceClaim; countedAt: string; sample: FenceSampleRow[] };
 
 /** The reads and rules the fence asks — swappable for the suite's in-process red plants; production never passes them. */
@@ -147,8 +164,8 @@ export type FenceDeps = {
   walk: typeof walkCampaignAudience;
   /** Is this the whole of its population? (`isUnfilteredCampaignAudience`) — then it is typed at every size. */
   unfiltered: (f: ContactAudienceFilter) => boolean;
-  /** The keyed name of a listed audience (`membersKeyOf`). */
-  membersKey: (canonical: string) => string;
+  /** The keyed name of a listed audience, for its draft (`membersKeyOf`). */
+  membersKey: (scope: MembersKeyScope, canonical: string) => string;
   now: () => Date;
 };
 /** Frozen: production's fence — nothing may reassign a member in-process (a suite hands in its own copy instead). */
@@ -192,9 +209,10 @@ async function firstKeys(f: ContactAudienceFilter, walk: FenceDeps["walk"]): Pro
 
 /**
  * ⭐ THE FENCE — counted fresh, every call. The population through the ONE walk's count (X9); the first keys through the
- * ONE walk; a members key only for a FILTERED audience of 1–5 whose walk named exactly the people counted; the claim
- * built by the pure rule (`buildFenceClaim`: typed unless listed, and a typed claim never carries a key). The sample is
- * the walk's first rows, masked: every person on a listed audience, the first five in sending order otherwise.
+ * ONE walk; a members key only for a FILTERED audience of 1–5 whose walk named exactly the people counted, keyed for THIS
+ * draft at THIS revision; the claim built by the pure rule (`buildFenceClaim`: typed unless listed, and a typed claim
+ * never carries a key). The sample is the walk's first rows, masked: every person on a listed audience, the first five in
+ * sending order otherwise.
  * ⛔ A filter it cannot read, or a read that fails, THROWS — never a zero, never a guess.
  */
 export async function audienceFence(
@@ -213,7 +231,7 @@ export async function audienceFence(
     draftRevision: c.draftRevision,
     count,
     unfiltered,
-    membersKey: canonical === null ? null : deps.membersKey(canonical),
+    membersKey: canonical === null ? null : deps.membersKey({ campaignId: c.id, draftRevision: c.draftRevision }, canonical),
   });
   // ⭐ From the same walk as the key, each number once, masked here — the raw keys never leave this function.
   const sample = [...new Set(keys)].slice(0, CONFIRM_ENUMERATE_MAX).map((k): FenceSampleRow => ({

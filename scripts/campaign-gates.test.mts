@@ -1,20 +1,26 @@
 /**
  * test:campaign-gates — U40a's guard: THE CONFIRMATION, SERVER (spec `docs/marketing-specs/ENGINE-SPEC.md` §4.5, with the
  * assertions of `docs/marketing-specs/U40.md` carried over as §4.5 changes them; decisions OD27 · X9 · X13 · X15 · E15 ·
- * E18 · OD60 · OD63 · OD65 · OD66) — and U41's guard (G7.1).
+ * E18 · OD60 · OD63 · OD65 · OD66 · OD67) — and U41's guard (G7.1).
  *
  * ⭐ DRIVEN, NOT READ, wherever the behaviour can run in a script: the fence (`audience-fence.ts`) over the REAL walk on the
  * memory twin, and the service (`campaign-confirm-service.ts`) end to end — its view and its one conditional write, the
- * memory twin's `transition`, the real split door for a reader, the real settings re-read, the real audit chain (polled):
- *   §0  controls — the fixture world counts what it claims; the settings read answers the defaults;
+ * memory twin's `transition`, the real split door for a reader, the real settings re-read, the real audit chain (polled),
+ * and the shipped price loader (`estimate.ts`'s `loadSegmentCost`) over a send history seeded on the memory twin:
+ *   §0  controls — the fixture world counts what it claims; the settings read answers the defaults; the seeded Blackball
+ *       history measures TZS 5 a segment, and the console rail (this suite's) has none;
  *   §1  the tier at the server (1.1: through the fence) and the typed text as typed (1.2);
- *   §2  the seal (2.1: every one-character change refused, and the service refuses such a watermark) and the KEYED members
- *       key (2.2: no number, no bare digest, a new secret a new key);
+ *   §2  the seal (2.1: every one-character change refused, and the service refuses such a watermark), the KEYED members
+ *       key (2.2: no number, no bare digest, a new secret a new key) and the key BOUND TO ITS DRAFT (2.2b: the U40a
+ *       review's MAJOR — two drafts holding the same one person never share a key; the same draft re-viewed always does);
  *   §4  the service on the memory twin — OD27's stale client, equality, the two tiers, a swap, the crossing, draft_changed
  *       (before the view and WHILE the audience is counted), five officers at once, the fresh freeze, nobody, a confirmed
- *       campaign, nothing sent, X9's count, no raw key, the list is everybody, no money for GROWTH, a lost reply;
+ *       campaign, nothing sent, X9's count, no raw key, the list is everybody (for a reader), no money for GROWTH, a lost
+ *       reply (4.20) and one that is NOT this write's (4.20b: another officer's, and the same officer's twin in the same
+ *       millisecond), and the record said in both halves (4.21);
  *   §G  §4.5's own — E18 the source line (and the stamp saved now), E15 the limit and the frozen budget (X15), a measured
- *       price, unreadable settings (OD63), OD65's count alone, OD66's refusal, and U41's one officer;
+ *       price through the shipped loader, unreadable settings (OD63), OD65's count alone, OD66's refusal (nothing counted),
+ *       OD67's typed tier and no list for a viewer who may not read a number (G6c), and U41's one officer;
  *   §6  the source — the fence's one door, the send boundary, no posted count, ONE writer of the confirm keys, the wiring.
  * ⚠️ WHAT LIVES ELSEWHERE: the pure rule's table, the typed-number parse, the Start verdict (OD28) and their reds are
  * `test:campaign-confirm`'s; the modal, its focus line and the action (6.3, 6.4) are U40b's, which extends this suite.
@@ -32,6 +38,9 @@
 delete process.env.DATABASE_URL;
 delete process.env.REDIS_URL;
 delete process.env.REDIS_ENABLED;
+/* The suite's rail is the console stub, whose own sends are none: a confirmation prices the configured TZS 6 unless G5.4
+   points the rail at Blackball, whose seeded history measures TZS 5. */
+process.env.SMS_PROVIDER = "console";
 process.exitCode = 1;
 
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
@@ -47,8 +56,9 @@ const FEN = await import("../src/lib/server/marketing/audience-fence.ts");
 const PURE = await import("../src/lib/marketing/campaign-confirm.ts");
 const AUD = await import("../src/lib/server/marketing/audience.ts");
 const SETTINGS = await import("../src/lib/server/marketing/sms-settings.ts");
+const EST = await import("../src/lib/server/marketing/estimate.ts");
 const { MARKETING_SMS_SETTINGS_DEFAULTS } = await import("../src/lib/marketing/sms-settings.ts");
-const { readSavedSourcePhrase, savedSourcePhrase } = await import("../src/lib/server/marketing/campaign-draft.ts");
+const { readSavedSourcePhrase } = await import("../src/lib/server/marketing/campaign-draft.ts");
 const { composerSourceLineStale } = await import("../src/app/admin/campaigns/new/composer-loader.ts");
 const { breakdownVisible } = await import("../src/lib/marketing/campaign-status.ts");
 const { SMS_CAMPAIGN_CONFIRM_KEYS } = await import("../src/lib/server/marketing/campaign-model.ts");
@@ -74,6 +84,7 @@ type StoredSmsCampaign = import("../src/lib/server/store.ts").StoredSmsCampaign;
 type StoredMarketingContact = import("../src/lib/server/store.ts").StoredMarketingContact;
 type StoredUser = import("../src/lib/server/store.ts").StoredUser;
 type SmsCampaignTransition = import("../src/lib/server/store.ts").SmsCampaignTransition;
+type StoredSmsMessage = import("../src/lib/server/store.ts").StoredSmsMessage;
 type AuditEntry = import("../src/lib/server/audit.ts").AuditEntry;
 type SettingsReload = import("../src/lib/server/marketing/sms-settings.ts").SettingsReload;
 
@@ -89,11 +100,12 @@ const json = (v: unknown): string => JSON.stringify(v);
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
 const L = {
-  c0: "0 · CONTROLS — the memory twin is loaded; the fixture world counts what it claims through the ONE walk (tags of 1–7 people, 1,666 and 1,667, the book ∪ players fixture of 7 with a book-held player, five player accounts, two of them Yas, a list of 3 with an unsendable number, nobody); the settings re-read answers the defaults (TZS 6, a limit of TZS 10,000)",
+  c0: "0 · CONTROLS — the memory twin is loaded; the fixture world counts what it claims through the ONE walk (tags of 1–7 people, 1,666 and 1,667, the book ∪ players fixture of 7 with a book-held player, five player accounts, two of them Yas, a list of 3 with an unsendable number, nobody, one contact tagged alone whose number a player holds, and that player alone in a one-minute window); the settings re-read answers the defaults (TZS 6, a limit of TZS 10,000); the seeded Blackball history measures TZS 5 a segment through the shipped loader, and the console rail has no history (the configured TZS 6)",
   t1: "1.1 · ⭐ THE FENCE'S TIER over the real walk — a FILTERED audience of 1–5 people is listed with a 32-hex members key, 6 and 7 are typed with none, and an UNFILTERED population is typed at every size (all five player accounts, the whole book, both)",
   t2: "1.2 · the typed text reaches the gate as it was typed — '1,666' (grouped) and ' 7 ' confirm, read by the pure rule's parse, never a lenient one",
   w1: "2.1 · ⭐ THE SEAL — verifyFence(signFence(f)) is f for a listed and a typed claim; the token with ANY one character changed, another format (aw0, aw2), a part missing, empty or extra, padding, another key's seal, a non-string and an over-long string are null and never throw; a malformed claim is never sealed; and the service refuses a changed watermark stale_view with nothing frozen",
   w2: "2.2 · ⭐ THE MEMBERS KEY IS KEYED — a one-person audience's key and its whole watermark hold neither the bare key, its +255 form, its 0-form nor its nine national digits, the key is no part of the unkeyed sha256 of the canonical members, the bare key, the +255 or the 0-form; a new SESSION_SECRET gives a new key; and it is 32 lowercase hex",
+  w2b: "2.2b · ⭐ THE MEMBERS KEY IS BOUND TO ITS DRAFT (the U40a review's MAJOR) — a draft of one contact tagged on its own and a draft of the one player who joined in a one-minute window hold the SAME person, and their keys differ; the same draft re-viewed at the same revision gives the same key, and the next revision another",
   s1: "4.1 · the happy path, typed (7 people, filtered) — CONFIRMED, audienceCount 7, TYPED, no watermark, confirmedBy the officer, confirmedAt the write's own instant, estimateSegments 7, estimateTzs 42, and exactly ONE marketing.campaign_confirmed row (COMPLIANCE, the officer, SmsCampaign#id) carrying the audience in auditContactAudience's words, the tier, the count, the revision and the segments",
   s2: "4.2 · ⭐ OD27 · THE STALE CLIENT (the plan's control) — a view at 7, one matching contact added, '7' typed on the old watermark: refused audience_moved with freshCount 8, the row still DRAFT with no count, ONE refused row {shownCount 7, freshCount 8} and NO confirmed row; a fresh view and '8' then confirm 8",
   s3: "4.3 · confirmation is EQUALITY — a shrink at confirm (7 → 6) with '7' typed is refused audience_moved with freshCount 6; OD28's 'fewer goes ahead' is Start's",
@@ -109,26 +121,29 @@ const L = {
   s13: "4.13 · a filter matching nobody — the view is blocked audience_empty (a real 0) and a confirmation is refused audience_empty",
   s14: "4.14 · confirming a CONFIRMED campaign is refused not_draft with the row byte-identical, and its view is blocked not_draft with nothing counted",
   s15: "4.15 · ⭐ CONFIRMED SENDS NOTHING — across every view and confirmation of the run, no SmsMessage, no opt-out token and no SmsCampaignRecipient row appears",
-  s16: "4.16 · ⭐ X9 · THE NUMBER TO TYPE IS THE MATCHING FIGURE — for a reader the split's 'On this campaign' is the fence's count on every fixture, the book ∪ players one included (7: a book-held player counted once), and a masked viewer's count alone is that same count",
+  s16: "4.16 · ⭐ X9 · THE NUMBER TO TYPE IS THE MATCHING FIGURE — for a reader the fence's count equals the split door's own 'On this campaign' (a second walk) on every fixture, the book ∪ players one included (7: a book-held player counted once); and the count a masked viewer of the SAME draft types is that figure (their own view is built from the fence's count, so it is held against the reader's split, never against itself)",
   s17: "4.17 · ⭐ NO RAW KEY LEAVES THE SERVER — no view, result, confirmed or refused audit payload of the run holds a 255… key or a +255… number",
-  s18: "4.18 · ⭐ THE LIST IS EVERYBODY — a listed audience's sample is every person, the unsendable one included, each as maskPhone of its key; a typed audience's is the walk's first five, in the walk's order",
+  s18: "4.18 · ⭐ THE LIST IS EVERYBODY, FOR A READER — a listed audience's sample is every person, the unsendable one included, each as maskPhone of its key; a typed audience's is the walk's first five, in the walk's order (a viewer who may not read a number gets none — G6c)",
   s19: "4.19 · G5.3 · ⛔ A GROWTH VIEWER READS NO MONEY — its view and its refusal hold no 'TZS' and no money figures (estimate.money null, the segments kept), while a money reader's view carries the cost",
   s20: "4.20 · a write that lands but loses its reply is reported confirmed — the row's own stamp read back — with exactly one confirmed row, never 'nothing was confirmed'",
+  s20b: "4.20b · ⛔ A WRITE THAT IS NOT THIS ONE IS NEVER CLAIMED — another officer's confirmation landing before this write throws is not taken for it (the error reaches the caller, no confirmed row for this officer); nor is the same officer's twin in the SAME millisecond (one confirmed row in all)",
+  s21: "4.21 · ⭐ ruling 543 · THE CONFIRMATION SAYS BOTH HALVES — its answer carries recorded: true when the marketing.campaign_confirmed row is in the log, and recorded: false (the campaign still CONFIRMED) when the audit reports it was not",
   g51: "G5.1 · ⭐ E18 · needs_source_line for the book and for both with no source line on the draft — the view blocked with the spec's sentence, the confirmation refused, nothing frozen — while a players-only campaign with none confirms",
   g51b: "G5.1b · the draft's stamped source line must be the one saved now — an older stamp is unsaved (view blocked, confirmation refused), a saved line that cannot be read is source_unreadable, and once saved again it confirms; and the rule blocks exactly where the composer's composerSourceLineStale (or a blank stamp) does, on every pair",
   g52: "G5.2 · ⭐ E15 · THE LIMIT — 1,667 people at TZS 6 (TZS 10,002) are refused over_limit, the money reader told 'TZS 10,002' and 'TZS 10,000' and GROWTH told no figure, nothing frozen; 1,666 (TZS 9,996) confirm with budgetTzs 10,000, estimateTzs 9,996 and estimateSegments 1,666 — the population × the saved segments × the price (X15)",
-  g54: "G5.4 · a MEASURED price wins over the configured one in the freeze — measured TZS 5 beside a configured TZS 6 freezes 7 × 1 × 5 = TZS 35, and the view says measured",
+  g54: "G5.4 · a MEASURED price wins over the configured one in the freeze, through the SHIPPED loader (CONFIRM_DEPS.cost — estimate.ts's loadSegmentCost) over a send history on the memory twin — on the Blackball rail its history measures TZS 5 beside a configured TZS 6, and 7 × 1 × 5 = TZS 35 is frozen; on the console rail, which has none, the configured TZS 6 stands (TZS 42)",
   g55: "G5.5 · ⛔ OD63 · settings that cannot be read — a read that failed, a row not read in full, a read that throws — are settings_unreadable, never priced from the defaults; a price nobody knows is price_unknown; nothing frozen",
   g6: "G6 · ⛔ OD65 · A VIEWER WHO MAY NOT READ A NUMBER SEES THE COUNT ALONE — their view's split is the count-alone view over the fence's own count and the split door is asked ZERO times; a reader's is the full view, asked once",
-  g6b: "G6b · ⛔ OD66 · a viewer who may not read a number, on a book ∪ players audience, is refused audience_refused BEFORE anything is counted — no count, no watermark, no list, no split, no figure in the sentence, freshCount null in the result and the refused row — while a reader confirms the same campaign",
+  g6b: "G6b · ⛔ OD66 · a viewer who may not read a number, on a book ∪ players audience, is refused audience_refused BEFORE anything is counted — the fence asked ZERO times by their view and their confirmation; no count, no watermark, no list, no split, no figure in the sentence, freshCount null in the result and the refused row — while a reader's view counts once and the reader confirms the same campaign",
+  g6c: "G6c · ⛔ OD67 · A VIEWER WHO MAY NOT READ A NUMBER CONFIRMS BY TYPING, NEVER BY A LIST — on a listed-size audience (3) their view is typed with no sample and a watermark naming nobody; their confirmation with nothing typed is refused typed_required, on their own watermark AND on a reader's list watermark; '3' confirms TYPED with no watermark stored; the review's two one-person drafts show them no key at all; while a reader keeps the list tier and its sample",
   g71: "G7.1 · ⭐ U41 · ONE OFFICER — no file under src/lib/server/marketing/ or src/app/admin/campaigns/ calls twoOfficerGate, imports two-officer or names a second approver, and test:two-admin is in predeploy",
   x1: "6.1 · the fence reaches the audience only through campaignAudienceCount and walkCampaignAudience — no db., no contactAudience, no marketingContact, no createHash — and keys from the session secret through crypto.ts's signSession",
-  x2: "6.2 · ⛔ THE SEND BOUNDARY — the import walk from the service and the fence reaches no send loop, token mint or enqueue (marketing/dispatch, marketing/optout-service, marketing/enqueue); neither file names a send, a mint or a recipient write; the service takes only smsProviderResolution from sms.ts, and the fence nothing",
+  x2: "6.2 · ⛔ THE SEND BOUNDARY — the import walk from the service and the fence reaches no send loop, token mint or enqueue (marketing/dispatch, marketing/optout-service, marketing/enqueue); neither file names a send, a mint or a recipient write; and neither imports from sms.ts (the price comes from estimate.ts's one cost loader)",
   x5: "6.5 · ⛔ OD27 tripwire — ConfirmCampaignInput declares exactly campaignId, typed, watermark and actorId: no posted count can reach the gate",
   x6: '6.6 · ⭐ the confirm keys have exactly ONE src writer — the transition(… to: "CONFIRMED" …) in campaign-confirm-service.ts (dev-only seed routes aside), whose patch names every confirm key',
   x7: "6.7 · ⭐ test:campaign-gates and red:campaign-gates resolve to this file, and predeploy runs test:campaign-gates exactly once, right after test:campaign-confirm",
   x8: "6.8 · PENDING until U42 — enqueue.ts asks startAudienceVerdict before its first createMany",
-  x9: "6.9 · the shipped wiring is the real doors — CONFIRM_DEPS hands in audienceFence, signFence, verifyFence, decideConfirm, campaignAudienceRefusal, breakdownVisible, sourceLineRefusal, the FRESH source-line read and the cached one, the settings' re-read, spendRefusal and audit; FENCE_DEPS campaignAudienceCount, walkCampaignAudience, isUnfilteredCampaignAudience and membersKeyOf",
+  x9: "6.9 · the shipped wiring is the real doors — CONFIRM_DEPS hands in audienceFence, fenceForViewer, signFence, verifyFence, decideConfirm, campaignAudienceRefusal, breakdownVisible, sourceLineRefusal, the FRESH source-line read, the settings' re-read, estimate.ts's ONE cost loader (loadSegmentCost), spendRefusal, confirmInstant, confirmedByThisWrite and audit; FENCE_DEPS campaignAudienceCount, walkCampaignAudience, isUnfilteredCampaignAudience and membersKeyOf",
 } as const;
 type Label = (typeof L)[keyof typeof L];
 
@@ -196,8 +211,7 @@ function contactRow(id: string, msisdn: string, tags: string[]): StoredMarketing
 async function addContact(id: string, msisdn: string, tags: string[]): Promise<void> {
   if ((await db.marketingContact.create(contactRow(id, msisdn, tags))) === null) throw new Error(`fixture: contact ${id} collided`);
 }
-function playerRow(id: string, key: string): StoredUser {
-  const at = "2026-08-01T08:00:00.000Z";
+function playerRow(id: string, key: string, at = "2026-08-01T08:00:00.000Z"): StoredUser {
   return {
     id, phoneE164: `+${key}`, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
     role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: null, dob: "1990-01-01", region: null,
@@ -212,6 +226,13 @@ const X9F: ContactAudienceFilter = { ...WHOLE_BOOK, population: "both", operator
 const PLAYERS_ALL: ContactAudienceFilter = { ...WHOLE_BOOK, population: "players" };
 const YAS_PLAYERS: ContactAudienceFilter = { ...WHOLE_BOOK, population: "players", operators: ["HONORA"] };
 const BOTH_ALL: ContactAudienceFilter = { ...WHOLE_BOOK, population: "both" };
+/** The review's MAJOR, as fixtures: ONE contact tagged on its own (the book) and the ONE player who joined in a one-minute
+ *  window (player accounts only) — the same number, two drafts a GROWTH officer may build. */
+const HELD_TAG = tagF("g-held");
+const JOINED_AT = "2026-08-02T08:00:00.000Z";
+const ONE_MINUTE_PLAYERS: ContactAudienceFilter = {
+  ...WHOLE_BOOK, population: "players", addedFrom: JOINED_AT, addedBefore: "2026-08-02T08:01:00.000Z",
+};
 
 // ── tags of 1–7 people (Vodacom 074): g-n{n} ──
 const N_KEYS: Record<number, string[]> = {};
@@ -232,16 +253,41 @@ const U3_KEYS = [keyOf("74", 901), keyOf("74", 902), "255641000903"];
 await addContact("mc_u3_1", U3_KEYS[0], ["g-u3"]);
 await addContact("mc_u3_2", U3_KEYS[1], ["g-u3"]);
 await addContact("mc_u3_3", U3_KEYS[2], ["g-u3"]);
-// ── X9 · the book ∪ players on Airtel: four contacts, a contact whose number a player holds, three players ──
+// ── X9 · the book ∪ players on Airtel: four contacts, a contact whose number a player holds, three players. The held
+//    contact is also tagged on its own (g-held), and its player alone joined on 2 August — the review's two drafts. ──
 const HELD = keyOf("68", 50);
 for (let i = 1; i <= 4; i++) await addContact(`mc_x9_${i}`, keyOf("68", i), ["g-x9"]);
-await addContact("mc_x9_h", HELD, ["g-x9"]);
+await addContact("mc_x9_h", HELD, ["g-x9", "g-held"]);
 await db.user.create(playerRow("pl_x9_1", keyOf("68", 60)));
 await db.user.create(playerRow("pl_x9_2", keyOf("68", 61)));
-await db.user.create(playerRow("pl_x9_3", HELD));
+await db.user.create(playerRow("pl_x9_3", HELD, JOINED_AT));
 // ── two Yas (HONORA) players: a players-only audience of 2 ──
 await db.user.create(playerRow("pl_q_1", keyOf("65", 70)));
 await db.user.create(playerRow("pl_q_2", keyOf("65", 71)));
+// ── a Blackball send history: five one-message chunks ten minutes apart, each charged TZS 5, so U39's walk finds four
+//    clean pairs and MEASURES TZS 5 a segment for that rail. This suite's own rail is the console, which has no history
+//    (the configured TZS 6 stands); G5.4 points the rail at Blackball to drive the shipped price loader over it. ──
+const HISTORY_AT = Date.now() - 2 * 24 * 60 * 60_000;
+for (let i = 0; i < 5; i++) {
+  const t = HISTORY_AT + i * 10 * 60_000;
+  await db.smsMessage.create({
+    reference: `msg_gates_${i}`, msisdn: keyOf("79", 900 + i), purpose: "OPS", provider: "blackball", senderId: "50PICK",
+    bodyLen: 48, status: "DELIVERED", providerMsg: null, dlrStatus: null, dlrDesc: null, balanceTzs: 500 - 5 * i, attempts: 1,
+    targetType: null, targetId: null, createdAt: new Date(t).toISOString(), sentAt: new Date(t + 400).toISOString(),
+    deliveredAt: new Date(t + 2_000).toISOString(), failedAt: null,
+  } as StoredSmsMessage);
+}
+/** Runs `fn` with the SMS rail pointed at `provider`, and puts the suite's rail back. */
+async function onRail<T>(provider: string, fn: () => Promise<T>): Promise<T> {
+  const before = process.env.SMS_PROVIDER;
+  process.env.SMS_PROVIDER = provider;
+  try {
+    return await fn();
+  } finally {
+    if (before === undefined) delete process.env.SMS_PROVIDER;
+    else process.env.SMS_PROVIDER = before;
+  }
+}
 
 /** Each run's own campaigns and churn: fresh ids, fresh tags, fresh numbers (Vodacom 076), so no run meets another's. */
 let RUN = 0;
@@ -324,10 +370,9 @@ const REAL: Impl = {
   shipped: { confirm: SVC.CONFIRM_DEPS, fence: FEN.FENCE_DEPS },
 };
 
-/** The suite's one fixed injection: the saved source line, read fresh and from the cache, is LINE. */
+/** The suite's one fixed injection: the saved source line, read fresh (by the view and the confirmation alike), is LINE. */
 const SUITE_LINE: Partial<ConfirmDeps> = {
   freshLine: () => ({ ok: true, phrase: LINE }),
-  shownLine: () => LINE,
 };
 /** The dependencies one call gets: production's, the suite's source line, the impl's fence, an assertion's own, and the
  *  plant's last word. */
@@ -440,13 +485,20 @@ async function runAssertions(impl: Impl): Promise<void> {
     const figures = {
       ns: ns.join(","), l6: await count(tagF("g-l6")), l7: await count(tagF("g-l7")), x9: await count(X9F),
       players: await count(PLAYERS_ALL), yas: await count(YAS_PLAYERS), u3: await count(tagF("g-u3")), none: await count(tagF("g-none")),
+      held: await count(HELD_TAG), minute: await count(ONE_MINUTE_PLAYERS),
     };
     const s = await SETTINGS.reloadMarketingSmsSettings();
     const settings = s.ok && s.readable && s.settings.pricePerSegmentTzs === 6 && s.settings.campaignLimitTzs === 10_000;
+    // The shipped price loader, straight: the Blackball history measures 5; the console rail has none, so 6 stands.
+    const blackball = await onRail("blackball", () => EST.loadSegmentCost(6));
+    const consoleRail = await EST.loadSegmentCost(6);
+    const prices = `${blackball.kind}:${blackball.kind === "unknown" ? "-" : blackball.tzsPerSegment} · ${consoleRail.kind}:${consoleRail.kind === "unknown" ? "-" : consoleRail.tzsPerSegment}`;
+    const priced = blackball.kind === "measured" && blackball.tzsPerSegment === 5 && consoleRail.kind === "configured" && consoleRail.tzsPerSegment === 6;
     mem();
     return [figures.ns === "1,2,3,4,5,6,7" && figures.l6 === 1666 && figures.l7 === 1667 && figures.x9 === 7 && figures.players === 5
-      && figures.yas === 2 && figures.u3 === 3 && figures.none === 0 && settings && !process.env.DATABASE_URL,
-    `${json(figures)} · settings ${settings}`];
+      && figures.yas === 2 && figures.u3 === 3 && figures.none === 0 && figures.held === 1 && figures.minute === 1 && settings && priced
+      && !process.env.DATABASE_URL && process.env.SMS_PROVIDER === "console",
+    `${json(figures)} · settings ${settings} · prices ${prices}`];
   });
 
   // ── §1 · THE TIER ──
@@ -531,11 +583,25 @@ async function runAssertions(impl: Impl): Promise<void> {
     const noNumber = spellings.every((s) => !token.includes(s) && !decoded.includes(s) && !M.includes(s));
     const digests = [canonical, k, `+${k}`, `0${k.slice(3)}`].map(sha256hex);
     const notBare = M !== "" && digests.every((h) => !h.includes(M));
-    const mine = impl.fenceDeps.membersKey(canonical);
-    const theirs = withSecret(OTHER_SECRET, () => impl.fenceDeps.membersKey(canonical));
+    const scope = { campaignId: "cmp_w2", draftRevision: 0 };
+    const mine = impl.fenceDeps.membersKey(scope, canonical);
+    const theirs = withSecret(OTHER_SECRET, () => impl.fenceDeps.membersKey(scope, canonical));
     const keyed = mine === M && theirs !== M;
     return [f.claim.tier === "enumerate" && HEX32.test(M) && notBare && noNumber && keyed,
       `tier ${f.claim.tier} · hex ${HEX32.test(M)} · not a bare digest ${notBare} · no number ${noNumber} · keyed ${keyed}`];
+  });
+
+  await claim(L.w2b, async () => {
+    // The review's scenario: the contact tagged on its own, and the one player who joined in that minute — one number.
+    const book = await D.fence(rowLike("cmp_w2b_book", HELD_TAG));
+    const players = await D.fence(rowLike("cmp_w2b_players", ONE_MINUTE_PLAYERS));
+    const again = await D.fence(rowLike("cmp_w2b_book", HELD_TAG));
+    const nextRevision = await D.fence({ ...rowLike("cmp_w2b_book", HELD_TAG), draftRevision: 1 });
+    const [kBook, kPlayers, kAgain, kNext] = [book, players, again, nextRevision].map((f) => f.claim.membersKey ?? "");
+    const listed = [book, players].every((f) => f.claim.tier === "enumerate" && f.claim.count === 1);
+    const keys = [kBook, kPlayers, kAgain, kNext].every((k) => HEX32.test(k));
+    return [listed && keys && kBook !== kPlayers && kBook === kAgain && kNext !== kBook,
+      `both listed with one person ${listed} · two drafts differ ${kBook !== kPlayers} · re-viewed same ${kBook === kAgain} · next revision differs ${kNext !== kBook}`];
   });
 
   // ── §4 · THE SERVICE ON THE MEMORY TWIN ──
@@ -602,9 +668,9 @@ async function runAssertions(impl: Impl): Promise<void> {
 
   await claim(L.s6, async () => {
     const id = await draft(w, "s6", tagF("g-n3"));
-    const v = await viewOf(impl, w, id, GROWTH);
+    const v = await viewOf(impl, w, id, READER);
     const shownKey = FEN.verifyFence(v?.watermark ?? null)?.membersKey ?? null;
-    const r = await confirmOf(impl, w, id, null, v?.watermark ?? null, GROWTH);
+    const r = await confirmOf(impl, w, id, null, v?.watermark ?? null, READER);
     const row = rowOf(id);
     return [v?.tier === "enumerate" && r.ok && r.tier === "enumerate" && row?.confirmTier === "ENUMERATE" && shownKey !== null
       && HEX32.test(shownKey) && row.audienceWatermark === shownKey && row.audienceCount === 3,
@@ -614,19 +680,19 @@ async function runAssertions(impl: Impl): Promise<void> {
   await claim(L.s7, async () => {
     const t = await freshTag(w, "w", 3);
     const id = await draft(w, "s7", tagF(t.tag));
-    const v = await viewOf(impl, w, id, GROWTH);
+    const v = await viewOf(impl, w, id, READER);
     untag(t.ids[1]);
     await addTo(t.tag, w, "w");
-    const r = await confirmOf(impl, w, id, null, v?.watermark ?? null, GROWTH);
+    const r = await confirmOf(impl, w, id, null, v?.watermark ?? null, READER);
     return [v?.tier === "enumerate" && v.count === 3 && !r.ok && r.reason === "audience_moved" && r.freshCount === 3
       && rowOf(id)?.status === "DRAFT", `${showView(v)} · ${show(r)}`];
   });
 
   await claim(L.s8, async () => {
     const id = await draft(w, "s8", PLAYERS_ALL);
-    const v = await viewOf(impl, w, id, GROWTH);
-    const none = await confirmOf(impl, w, id, null, v?.watermark ?? null, GROWTH);
-    const five = await confirmOf(impl, w, id, "5", v?.watermark ?? null, GROWTH);
+    const v = await viewOf(impl, w, id, READER);
+    const none = await confirmOf(impl, w, id, null, v?.watermark ?? null, READER);
+    const five = await confirmOf(impl, w, id, "5", v?.watermark ?? null, READER);
     const row = rowOf(id);
     return [v?.tier === "typed" && v.count === 5 && !none.ok && none.reason === "typed_required" && five.ok && five.tier === "typed"
       && row?.confirmTier === "TYPED" && row.audienceWatermark === null,
@@ -636,10 +702,10 @@ async function runAssertions(impl: Impl): Promise<void> {
   await claim(L.s9, async () => {
     const t = await freshTag(w, "x", 5);
     const id = await draft(w, "s9", tagF(t.tag));
-    const v = await viewOf(impl, w, id, GROWTH);
+    const v = await viewOf(impl, w, id, READER);
     await addTo(t.tag, w, "x");
-    const r = await confirmOf(impl, w, id, null, v?.watermark ?? null, GROWTH);
-    const next = await viewOf(impl, w, id, GROWTH);
+    const r = await confirmOf(impl, w, id, null, v?.watermark ?? null, READER);
+    const next = await viewOf(impl, w, id, READER);
     return [v?.tier === "enumerate" && v.count === 5 && !r.ok && r.reason === "audience_moved" && r.freshCount === 6
       && next?.tier === "typed" && next.count === 6, `${showView(v)} · ${show(r)} · next ${showView(next)}`];
   });
@@ -678,9 +744,9 @@ async function runAssertions(impl: Impl): Promise<void> {
   await claim(L.s12, async () => {
     const t = await freshTag(w, "g", 3);
     const id = await draft(w, "s12", tagF(t.tag));
-    const v = await viewOf(impl, w, id, GROWTH);
+    const v = await viewOf(impl, w, id, READER);
     for (let i = 0; i < 4; i++) await addTo(t.tag, w, "g");
-    const r = await confirmOf(impl, w, id, "7", v?.watermark ?? null, GROWTH);
+    const r = await confirmOf(impl, w, id, "7", v?.watermark ?? null, READER);
     return [v?.count === 3 && v.tier === "enumerate" && r.ok && r.count === 7 && rowOf(id)?.audienceCount === 7,
       `${showView(v)} · ${show(r)} · frozen ${rowOf(id)?.audienceCount}`];
   });
@@ -709,25 +775,30 @@ async function runAssertions(impl: Impl): Promise<void> {
   await claim(L.s16, async () => {
     const checks: string[] = [];
     let good = true;
-    for (const [name, filter, viewer] of [
-      ["both", X9F, READER], ["book", tagF("g-n7"), READER], ["players", PLAYERS_ALL, READER], ["yas", YAS_PLAYERS, READER],
-      ["book masked", tagF("g-n7"), GROWTH], ["players masked", PLAYERS_ALL, GROWTH],
-    ] as const) {
-      const id = await draft(w, `s16_${name.split(" ").join("_")}`, filter);
-      const v = await viewOf(impl, w, id, viewer);
-      const same = v !== null && v.count !== null && v.split !== null && v.split.onCampaign === formatNumber(v.count);
-      good = good && same;
-      checks.push(`${name} ${v?.count}/${v?.split?.onCampaign}`);
-      if (name === "both") good = good && v?.count === 7;
+    for (const [name, filter] of [["both", X9F], ["book", tagF("g-n7")], ["players", PLAYERS_ALL], ["yas", YAS_PLAYERS]] as const) {
+      const id = await draft(w, `s16_${name}`, filter);
+      // A reader: the fence's count beside the split door's own "On this campaign" — two walks, one number.
+      const reader = await viewOf(impl, w, id, READER);
+      const figure = reader !== null && reader.split !== null && reader.split.kind === "full" ? reader.split.onCampaign : null;
+      const same = reader !== null && reader.count !== null && figure === formatNumber(reader.count);
+      good = good && same && (name !== "both" || reader?.count === 7);
+      checks.push(`${name} ${reader?.count}/${figure}`);
+      // ⚠️ A masked viewer's own view is built from the fence's count, so it is never held against itself: the number they
+      // type is held against the READER's split figure for the same draft. (Both populations at once are refused to them.)
+      if (name !== "both") {
+        const masked = await viewOf(impl, w, id, GROWTH);
+        good = good && masked !== null && masked.count !== null && figure === formatNumber(masked.count);
+        checks.push(`${name} masked ${masked?.count}`);
+      }
     }
     return [good, checks.join(" · ")];
   });
 
   await claim(L.s18, async () => {
     const a = await draft(w, "s18a", tagF("g-u3"));
-    const va = await viewOf(impl, w, a, GROWTH);
+    const va = await viewOf(impl, w, a, READER);
     const b = await draft(w, "s18b", tagF("g-n7"));
-    const vb = await viewOf(impl, w, b, GROWTH);
+    const vb = await viewOf(impl, w, b, READER);
     const listed = va !== null && va.tier === "enumerate" && va.count === 3 && va.sample.length === 3
       && json(va.sample.map((s) => s.masked).sort()) === json(U3_KEYS.map((k) => maskPhone(k)).sort());
     const typed = vb !== null && vb.tier === "typed" && json(vb.sample.map((s) => s.masked)) === json(N_KEYS[7].slice(0, 5).map((k) => maskPhone(k)));
@@ -767,6 +838,73 @@ async function runAssertions(impl: Impl): Promise<void> {
     return [r !== null && r.ok && rowOf(id)?.status === "CONFIRMED" && rows.length === 1, `${show(r)}${threw ? ` · threw ${threw}` : ""} · ${rows.length} confirmed row(s)`];
   });
 
+  await claim(L.s20b, async () => {
+    const base = depsOf(impl).campaigns;
+    // ① Another officer's confirmation lands, then THIS write throws: the row is not this officer's — never claimed.
+    const a = await draft(w, "s20b_other", tagF("g-n7"));
+    const va = await viewOf(impl, w, a, GROWTH);
+    const mine = `off_${w.run}_s20b`;
+    const other = `off_${w.run}_s20b_other`;
+    const othersFirst: ConfirmDeps["campaigns"] = {
+      find: base.find,
+      transition: async (cid: string, t: SmsCampaignTransition) => {
+        await base.transition(cid, { ...t, patch: { ...t.patch, confirmedBy: other } });
+        throw new Error("the reply was lost");
+      },
+    };
+    let ra: ConfirmCampaignResult | null = null;
+    let threwA = false;
+    try {
+      ra = await confirmOf(impl, w, a, "7", va?.watermark ?? null, GROWTH, { campaigns: othersFirst }, mine);
+    } catch {
+      threwA = true;
+    }
+    const minesA = (await auditRows(CONFIRMED_ROW, a)).filter((e) => e.actorId === mine).length;
+    // ② The same officer, the SAME millisecond: the first attempt lands; the twin's write then fails, and its read-back
+    //    finds the first attempt's row — every value alike but the instant. It is not the twin's own.
+    const b = await draft(w, "s20b_twin", tagF("g-n7"));
+    const vb = await viewOf(impl, w, b, GROWTH);
+    const AT = new Date(Date.UTC(2026, 9, 7, 11, 0, 0));
+    const twin = `off_${w.run}_s20b_twin`;
+    const before = rowOf(b) as StoredSmsCampaign;
+    const first = await confirmOf(impl, w, b, "7", vb?.watermark ?? null, GROWTH, { now: () => AT }, twin);
+    let reads = 0;
+    const lateTwin: ConfirmDeps["campaigns"] = {
+      // Its first read predates the first attempt's write; its read-back is the real one.
+      find: async (cid: string) => (reads++ === 0 ? { ...before } : base.find(cid)),
+      transition: async () => {
+        throw new Error("the database refused this write");
+      },
+    };
+    let threwB = false;
+    try {
+      await confirmOf(impl, w, b, "7", vb?.watermark ?? null, GROWTH, { now: () => AT, campaigns: lateTwin }, twin);
+    } catch {
+      threwB = true;
+    }
+    const rowsB = (await auditRows(CONFIRMED_ROW, b)).length;
+    return [threwA && ra === null && minesA === 0 && rowOf(a)?.confirmedBy === other && first.ok && threwB && rowsB === 1,
+      `another officer's write: threw ${threwA}, answered ${show(ra)}, rows for this officer ${minesA} · the twin: first ${show(first)}, twin threw ${threwB}, ${rowsB} confirmed row(s)`];
+  });
+
+  await claim(L.s21, async () => {
+    const a = await draft(w, "s21", tagF("g-n7"));
+    const va = await viewOf(impl, w, a, GROWTH);
+    const ra = await confirmOf(impl, w, a, "7", va?.watermark ?? null, GROWTH);
+    // The chain could not keep the confirmed row (a persist failure): the campaign is confirmed, the record is not.
+    const b = await draft(w, "s21_unrecorded", tagF("g-n7"));
+    const vb = await viewOf(impl, w, b, GROWTH);
+    const notKept: Partial<ConfirmDeps> = {
+      audit: async (entry) => {
+        const r = await audit(entry);
+        return entry.action === CONFIRMED_ROW ? { ...r, recorded: false, unrecorded: "PERSIST_FAILED" } : r;
+      },
+    };
+    const rb = await confirmOf(impl, w, b, "7", vb?.watermark ?? null, GROWTH, notKept);
+    return [ra.ok && ra.recorded === true && rb.ok && rb.recorded === false && rowOf(b)?.status === "CONFIRMED",
+      `recorded ${ra.ok ? ra.recorded : show(ra)} · not kept ${rb.ok ? rb.recorded : show(rb)} · ${rowOf(b)?.status}`];
+  });
+
   // ── §G · §4.5'S OWN ──
   await claim(L.g51, async () => {
     const book = await draft(w, "g51book", tagF("g-n7"), { sourcePhrase: null });
@@ -792,6 +930,8 @@ async function runAssertions(impl: Impl): Promise<void> {
   await claim(L.g51b, async () => {
     const id = await draft(w, "g51b", tagF("g-n7"), { sourcePhrase: OLD_LINE });
     const v = await viewOf(impl, w, id, READER);
+    // The view reads the line FRESH, as the confirmation does: one that cannot be read blocks it, in the same words.
+    const vu = await viewOf(impl, w, id, READER, { freshLine: () => ({ ok: false }) });
     const r = await confirmOf(impl, w, id, "7", v?.watermark ?? null, READER);
     const unread = await confirmOf(impl, w, id, "7", v?.watermark ?? null, READER, { freshLine: () => ({ ok: false }) });
     await db.smsCampaign.update(id, { sourcePhrase: LINE }, { draftRevision: 0 }, new Date().toISOString());
@@ -807,9 +947,9 @@ async function runAssertions(impl: Impl): Promise<void> {
         if (rule(row, YAS_PLAYERS, { ok: true, phrase: saved }) !== null) agree = false;
       }
     }
-    return [v?.blocked === "unsaved" && !r.ok && r.reason === "unsaved" && !unread.ok && unread.reason === "source_unreadable"
-      && v2?.blocked === null && r2.ok && agree,
-    `${showView(v)} · ${show(r)} · unread ${show(unread)} · saved again ${show(r2)} · agrees ${agree}`];
+    return [v?.blocked === "unsaved" && vu?.blocked === "source_unreadable" && !r.ok && r.reason === "unsaved" && !unread.ok
+      && unread.reason === "source_unreadable" && v2?.blocked === null && r2.ok && agree,
+    `${showView(v)} · unread view ${showView(vu)} · ${show(r)} · unread ${show(unread)} · saved again ${show(r2)} · agrees ${agree}`];
   });
 
   await claim(L.g52, async () => {
@@ -832,14 +972,20 @@ async function runAssertions(impl: Impl): Promise<void> {
   });
 
   await claim(L.g54, async () => {
-    const measured = async () => ({ kind: "measured" as const, tzsPerSegment: 5, sends: 12, pairs: 4, spread: { min: 5, max: 5 }, since: T0 });
+    // Nothing injected: the shipped price loader (CONFIRM_DEPS.cost) walks the seeded history of the rail in use.
     const id = await draft(w, "g54", tagF("g-n7"));
-    const v = await viewOf(impl, w, id, MONEY_MASKED, { cost: measured });
-    const r = await confirmOf(impl, w, id, "7", v?.watermark ?? null, MONEY_MASKED, { cost: measured });
+    const [v, r] = await onRail("blackball", async () => {
+      const view = await viewOf(impl, w, id, MONEY_MASKED);
+      return [view, await confirmOf(impl, w, id, "7", view?.watermark ?? null, MONEY_MASKED)] as const;
+    });
     const row = rowOf(id);
-    return [v?.estimate?.money?.priceKind === "measured" && v.estimate.money.priceTzs === 5 && v.estimate.money.costTzs === 35
-      && r.ok && row?.estimateTzs === 35,
-    `view ${json(v?.estimate?.money)} · ${show(r)} · frozen ${row?.estimateTzs}`];
+    const plain = await draft(w, "g54_console", tagF("g-n7"));
+    const vc = await viewOf(impl, w, plain, MONEY_MASKED);
+    const measured = v?.estimate?.money?.priceKind === "measured" && v.estimate.money.priceTzs === 5 && v.estimate.money.costTzs === 35
+      && r.ok && row?.estimateTzs === 35;
+    const configured = vc?.estimate?.money?.priceKind === "configured" && vc.estimate.money.priceTzs === 6 && vc.estimate.money.costTzs === 42;
+    return [SVC.CONFIRM_DEPS.cost === EST.loadSegmentCost && measured && configured,
+      `Blackball ${json(v?.estimate?.money)} · ${show(r)} · frozen ${row?.estimateTzs} · console ${json(vc?.estimate?.money)}`];
   });
 
   await claim(L.g55, async () => {
@@ -881,10 +1027,21 @@ async function runAssertions(impl: Impl): Promise<void> {
   });
 
   await claim(L.g6b, async () => {
+    // A spy on the fence: "refused BEFORE anything is counted" is the number of counts, not a reading of the answer.
+    let fenced = 0;
+    const counting: Partial<ConfirmDeps> = {
+      fence: async (c) => {
+        fenced++;
+        return FEN.audienceFence(c, impl.fenceDeps);
+      },
+    };
     const id = await draft(w, "g6b", X9F);
-    const masked = await viewOf(impl, w, id, GROWTH);
-    const readerView = await viewOf(impl, w, id, READER);
-    const r = await confirmOf(impl, w, id, "7", readerView?.watermark ?? null, GROWTH);
+    const masked = await viewOf(impl, w, id, GROWTH, counting);
+    const afterMaskedView = fenced;
+    const readerView = await viewOf(impl, w, id, READER, counting);
+    const afterReaderView = fenced;
+    const r = await confirmOf(impl, w, id, "7", readerView?.watermark ?? null, GROWTH, counting);
+    const afterMaskedConfirm = fenced;
     const refusedRows = await auditRows(REFUSED_ROW, id);
     const p = (refusedRows[0]?.payload ?? {}) as Record<string, unknown>;
     const digit = new RegExp("[0-9]");
@@ -894,9 +1051,37 @@ async function runAssertions(impl: Impl): Promise<void> {
     const refused = !r.ok && r.reason === "audience_refused" && r.freshCount === null && !digit.test(r.message)
       && refusedRows.length === 1 && p.freshCount === null && p.reason === "audience_refused" && rowOf(id)?.status === "DRAFT";
     // The reader types what their own view shows: this claim is about who may count, not about what the count is (4.16's).
-    const rr = await confirmOf(impl, w, id, String(readerView?.count ?? ""), readerView?.watermark ?? null, READER);
-    return [uncounted && refused && rr.ok && rr.count === readerView?.count,
-      `masked ${showView(masked)} · ${show(r)} · ${refusedRows.length} refused row(s) · reader ${show(rr)}`];
+    const rr = await confirmOf(impl, w, id, String(readerView?.count ?? ""), readerView?.watermark ?? null, READER, counting);
+    const counts = afterMaskedView === 0 && afterReaderView === 1 && afterMaskedConfirm === 1 && fenced === 2;
+    return [uncounted && refused && counts && rr.ok && rr.count === readerView?.count,
+      `masked ${showView(masked)} · ${show(r)} · ${refusedRows.length} refused row(s) · counted ${afterMaskedView}/${afterReaderView}/${afterMaskedConfirm}/${fenced} · reader ${show(rr)}`];
+  });
+
+  await claim(L.g6c, async () => {
+    // A listed-size audience (3 people, filtered), seen by a viewer who may not read a number and by a reader.
+    const id = await draft(w, "g6c", tagF("g-n3"));
+    const masked = await viewOf(impl, w, id, GROWTH);
+    const reader = await viewOf(impl, w, id, READER);
+    const maskedClaim = FEN.verifyFence(masked?.watermark ?? null);
+    const readerClaim = FEN.verifyFence(reader?.watermark ?? null);
+    const countAlone = masked !== null && masked.tier === "typed" && masked.count === 3 && masked.sample.length === 0
+      && maskedClaim !== null && maskedClaim.tier === "typed" && maskedClaim.membersKey === null;
+    const readerKeeps = reader !== null && reader.tier === "enumerate" && reader.sample.length === 3
+      && readerClaim !== null && readerClaim.membersKey !== null;
+    // Their confirmation is held to the typed tier — on their own watermark, and on a reader's list watermark.
+    const none = await confirmOf(impl, w, id, null, masked?.watermark ?? null, GROWTH);
+    const viaList = await confirmOf(impl, w, id, null, reader?.watermark ?? null, GROWTH);
+    const typed = await confirmOf(impl, w, id, "3", masked?.watermark ?? null, GROWTH);
+    const row = rowOf(id);
+    const heldTyped = !none.ok && none.reason === "typed_required" && !viaList.ok && viaList.reason === "typed_required"
+      && typed.ok && typed.tier === "typed" && row?.confirmTier === "TYPED" && row.audienceWatermark === null;
+    // The review's two one-person drafts: what such a viewer is handed names nobody.
+    const a = await draft(w, "g6c_book", HELD_TAG);
+    const b = await draft(w, "g6c_players", ONE_MINUTE_PLAYERS);
+    const nameless = [await viewOf(impl, w, a, GROWTH), await viewOf(impl, w, b, GROWTH)].every((v) =>
+      v !== null && v.count === 1 && v.tier === "typed" && v.sample.length === 0 && FEN.verifyFence(v.watermark)?.membersKey === null);
+    return [countAlone && readerKeeps && heldTyped && nameless,
+      `masked ${showView(masked)} key ${maskedClaim?.membersKey ?? "none"} list ${masked?.sample.length} · reader ${showView(reader)} list ${reader?.sample.length} · none ${show(none)} · via a list ${show(viaList)} · typed ${show(typed)} · the two drafts nameless ${nameless}`];
   });
 
   // ── 4.15 and 4.17 read the whole run ──
@@ -954,7 +1139,7 @@ async function runAssertions(impl: Impl): Promise<void> {
       .flatMap((m) => m[1].split(",").map((x) => x.trim()).filter((x) => x !== ""));
     const svcSms = smsImports(impl.sources.service);
     const fenceSms = smsImports(impl.sources.fence);
-    return [reached.size > 20 && reachedForbidden.length === 0 && named.length === 0 && json(svcSms) === json(["smsProviderResolution"]) && fenceSms.length === 0,
+    return [reached.size > 20 && reachedForbidden.length === 0 && named.length === 0 && svcSms.length === 0 && fenceSms.length === 0,
       `${reached.size} files reached · forbidden reached [${reachedForbidden.join(", ")}] · send names [${named.join(", ")}] · from sms.ts: service [${svcSms.join(", ")}], fence [${fenceSms.join(", ")}]`];
   });
 
@@ -1007,10 +1192,11 @@ async function runAssertions(impl: Impl): Promise<void> {
     const c = impl.shipped.confirm;
     const f = impl.shipped.fence;
     const wiring = {
-      fence: c.fence === FEN.audienceFence, sign: c.sign === FEN.signFence, verify: c.verify === FEN.verifyFence,
-      decide: c.decide === PURE.decideConfirm, refusal: c.refusal === AUD.campaignAudienceRefusal, breakdown: c.breakdown === breakdownVisible,
-      sourceRule: c.sourceRule === SVC.sourceLineRefusal, freshLine: c.freshLine === readSavedSourcePhrase, shownLine: c.shownLine === savedSourcePhrase,
-      settings: c.settings === SETTINGS.reloadMarketingSmsSettings, spendRule: c.spendRule === SVC.spendRefusal, audit: c.audit === audit,
+      fence: c.fence === FEN.audienceFence, shape: c.shape === SVC.fenceForViewer, sign: c.sign === FEN.signFence,
+      verify: c.verify === FEN.verifyFence, decide: c.decide === PURE.decideConfirm, refusal: c.refusal === AUD.campaignAudienceRefusal,
+      breakdown: c.breakdown === breakdownVisible, sourceRule: c.sourceRule === SVC.sourceLineRefusal, freshLine: c.freshLine === readSavedSourcePhrase,
+      settings: c.settings === SETTINGS.reloadMarketingSmsSettings, cost: c.cost === EST.loadSegmentCost, spendRule: c.spendRule === SVC.spendRefusal,
+      stamp: c.stamp === SVC.confirmInstant, ownWrite: c.ownWrite === SVC.confirmedByThisWrite, audit: c.audit === audit,
       count: f.count === AUD.campaignAudienceCount, walk: f.walk === AUD.walkCampaignAudience,
       unfiltered: f.unfiltered === AUD.isUnfilteredCampaignAudience, membersKey: f.membersKey === FEN.membersKeyOf,
     };
@@ -1186,15 +1372,19 @@ if (!PROVE_RED) {
     { name: "R3 · the list tier skips the members key — a swapped person is confirmed", expect: [L.s7], impl: withDecide({ noMembers: true }) },
     { name: "R4 · the fence ignores `unfiltered` — every small audience is listed", expect: [L.t1, L.s8],
       impl: { fenceDeps: { ...FEN.FENCE_DEPS, unfiltered: () => false } } },
+    // The DAL's conditional write replaced by an unconditional one; an assertion that hands in its own write stand-in (4.20,
+    // 4.20b) keeps it — that stand-in is wrapped around this very write, so it is never lost to the plant.
     { name: "R5 · the confirmation is an unconditional update — status and revision ignored", expect: [L.s10, L.s11],
-      impl: finishWith((d) => ({ ...d, campaigns: { ...d.campaigns, transition: async (id: string, t: SmsCampaignTransition) => {
-        const row = mem().smsCampaigns.get(id);
-        if (!row) return null;
-        const next = { ...row, status: t.to ?? row.status, updatedAt: t.at } as StoredSmsCampaign;
-        for (const [k, v] of Object.entries(t.patch)) if (v !== undefined) (next as Record<string, unknown>)[k] = v;
-        mem().smsCampaigns.set(id, next);
-        return { ...next };
-      } } })) },
+      impl: finishWith((d) => ({ ...d, campaigns: { ...d.campaigns, transition: d.campaigns.transition !== SVC.CONFIRM_DEPS.campaigns.transition
+        ? d.campaigns.transition
+        : async (id: string, t: SmsCampaignTransition) => {
+          const row = mem().smsCampaigns.get(id);
+          if (!row) return null;
+          const next = { ...row, status: t.to ?? row.status, updatedAt: t.at } as StoredSmsCampaign;
+          for (const [k, v] of Object.entries(t.patch)) if (v !== undefined) (next as Record<string, unknown>)[k] = v;
+          mem().smsCampaigns.set(id, next);
+          return { ...next };
+        } } })) },
     { name: "R7 · the list's rows carry the msisdn", expect: [L.s17],
       impl: finishWith((d) => ({ ...d, fence: async (c) => {
         const f = await d.fence(c);
@@ -1210,8 +1400,12 @@ if (!PROVE_RED) {
       } } } },
     { name: "R9b · the fence's source counts through contactAudience", expect: [L.x1],
       impl: () => withSources({ fence: plantIn(REAL_SOURCES.fence, "count: campaignAudienceCount,", "count: (f) => contactAudience(f).count(),") }) },
-    { name: "R10 · the members key is a plain sha256 of the members", expect: [L.w2],
-      impl: { fenceDeps: { ...FEN.FENCE_DEPS, membersKey: (canonical: string) => sha256hex(canonical).slice(0, 32) } } },
+    // A bare digest is neither keyed nor bound to a draft: both claims about the key go red, by its nature.
+    { name: "R10 · the members key is a plain sha256 of the members", expect: [L.w2, L.w2b],
+      impl: { fenceDeps: { ...FEN.FENCE_DEPS, membersKey: (_scope: { campaignId: string; draftRevision: number }, canonical: string) => sha256hex(canonical).slice(0, 32) } } },
+    { name: "R-2.2b · the members key without its draft (the review's MAJOR) — keyed, but the same on every draft holding the same people", expect: [L.w2b],
+      impl: { fenceDeps: { ...FEN.FENCE_DEPS, membersKey: (_scope: { campaignId: string; draftRevision: number }, canonical: string) =>
+        FEN.membersKeyOf({ campaignId: "", draftRevision: 0 }, canonical) } } },
     { name: "R13 · the view embeds the money for every role", expect: [L.s19],
       impl: { view: (id, viewer, deps) => SVC.campaignConfirmView(id, { ...viewer, money: true }, deps) } },
     { name: "R-1.2 · the typed text is read with Number() before the gate", expect: [L.t2], impl: withDecide({ numberParse: true }) },
@@ -1238,7 +1432,9 @@ if (!PROVE_RED) {
       impl: finishWith((d) => ({ ...d, sourceRule: (row, f, s) => { const r = SVC.sourceLineRefusal(row, f, s); return r === "unsaved" || r === "source_unreadable" ? null : r; } })) },
     { name: "R-G5.2 · E15's limit check removed", expect: [L.g52],
       impl: finishWith((d) => ({ ...d, spendRule: (cost) => (cost === null ? "price_unknown" : null) })) },
-    { name: "R-G5.2b · budgetTzs frozen as null", expect: [L.g52],
+    // The write lands with a budget the confirmation did not ask for, so a lost reply's read-back (4.20) rightly refuses to
+    // claim it as this write: the stricter read-back the U40a review asked for sees the difference. Both reds are this plant's.
+    { name: "R-G5.2b · budgetTzs frozen as null", expect: [L.g52, L.s20],
       impl: finishWith((d) => ({ ...d, campaigns: { ...d.campaigns, transition: (id: string, t: SmsCampaignTransition) =>
         d.campaigns.transition(id, t.to === "CONFIRMED" ? { ...t, patch: { ...t.patch, budgetTzs: null } } : t) } })) },
     { name: "R-G5.2c · the over-limit sentence names the money to every role", expect: [L.g52],
@@ -1258,6 +1454,17 @@ if (!PROVE_RED) {
       impl: finishWith((d) => ({ ...d, breakdown: () => true })) },
     { name: "R-OD66 · the role rule skipped — a masked viewer's book ∪ players audience is counted", expect: [L.g6b],
       impl: finishWith((d) => ({ ...d, refusal: () => null })) },
+    { name: "R-OD67 · the fence as a reader sees it, for every role — a viewer who may not read a number gets the list, the members key and the list tier", expect: [L.g6c],
+      impl: finishWith((d) => ({ ...d, shape: (f) => f })) },
+    { name: "R-4.20b · a lost reply's read-back claims any CONFIRMED row — another officer's confirmation, or a twin's, taken for this one", expect: [L.s20b],
+      impl: finishWith((d) => ({ ...d, ownWrite: (after) => after?.status === "CONFIRMED" })) },
+    { name: "R-4.20c · the instant is not made unique — the same officer's twin in the same millisecond reads as this write", expect: [L.s20b],
+      impl: finishWith((d) => ({ ...d, stamp: (_id: string, now: Date) => now.toISOString() })) },
+    { name: "R-4.21 · the answer says recorded without reading the audit's result", expect: [L.s21],
+      impl: { confirm: async (input, viewer, deps) => {
+        const r = await SVC.confirmCampaign(input, viewer, deps);
+        return r.ok ? { ...r, recorded: true } : r;
+      } } },
     { name: "R-G7.1 · the service asks a second officer (twoOfficerGate)", expect: [L.g71],
       impl: withSources({ service: `import { twoOfficerGate } from "@/lib/server/two-officer";${NL}${REAL_SOURCES.service}${NL}void twoOfficerGate;` }) },
     { name: "R-6.5 · the confirmation's input grows a posted count", expect: [L.x5],

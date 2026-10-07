@@ -1,16 +1,20 @@
 /**
  * ⭐ U40a · THE CONFIRMATION, SERVER — the view a confirmation is opened on (`campaignConfirmView`) and the ONE write that
- * confirms (`confirmCampaign`). ENGINE-SPEC §4.5 decision 2; OD27, X9, X13, X15, E15, E18, E27; OD60, OD65, OD66.
+ * confirms (`confirmCampaign`). ENGINE-SPEC §4.5 decision 2; OD27, X9, X13, X15, E15, E18, E27; OD60, OD65, OD66, OD67.
  *
  * ── THE ORDER (§4.5 decision 2) ──────────────────────────────────────────────────────────────────────────────────
  *   find (a DRAFT, else `not_found` / `not_draft`) → the stored audience read at the campaign's door → this viewer's role
- *   rule → a FRESH fence (`audienceFence`: the ONE walk's count, the members key) → `decideConfirm` (OD27) → E18 the
- *   source line → the estimate frozen (the SAVED segments × the fresh count × the measured price, else the settings'
- *   price, X15) → E15 the limit → ONE `transition(DRAFT → CONFIRMED, draftRevision)` writing every confirm key → a null
- *   answer read back once to say why (`confirmWriteRefusal`).
+ *   rule → a FRESH fence (`audienceFence`: the ONE walk's count, the members key for THIS draft) held to what this viewer
+ *   may see (`fenceForViewer`, OD67) → `decideConfirm` (OD27) → E18 the source line, read fresh → the estimate frozen (the
+ *   SAVED segments × the fresh count × the measured price, else the settings' price, X15) → E15 the limit → ONE
+ *   `transition(DRAFT → CONFIRMED, draftRevision)` writing every confirm key → a null answer read back once to say why
+ *   (`confirmWriteRefusal`).
  * ⛔ OD27 · THE GATE IS THE SERVER'S RECOUNT. The browser sends the text the modal armed on and the SIGNED claim it was
  * opened on (the watermark) — never a count (`ConfirmCampaignInput` has no such field). The typed text is checked against
- * the count made HERE, now; the claim proves only which draft revision and which audience the officer looked at.
+ * the count made HERE, now; the claim proves only which draft (its id and revision) and which count the officer was shown.
+ * The FILTER is bound through the draft, not inside the seal: it is a draft key, so changing it is a save, and a save moves
+ * the revision. A list confirmation also compares its keyed members; a TYPED one compares the count alone, so a swap that
+ * keeps the count is not noticed — by design: typing a number approves that many people, and Start refuses more (OD28).
  * ⛔ THE COUNT IS COUNTED OUTSIDE ANY LOCK (OD21). The race between the count and the write is settled by the write itself:
  * the transition is conditional on DRAFT and on the draft revision the officer saw, so of two officers ONE wins, and an
  * edit saved while the audience was being counted is caught by the same condition.
@@ -28,37 +32,47 @@
  *   · `no_body` — the stored sizes cannot be priced (`savedVariantSizes`; the door never stores such a row — fail closed).
  *   · `settings_unreadable` — ⛔ OD63 · the Marketing SMS settings were re-read and could not be read in full: the limit is
  *     unknown, and a default standing in for the owner's value is never confirmed against.
- *   · `price_unknown`, `over_limit` — ⛔ E15 · the frozen estimate is checked against the most one campaign may spend,
- *     and `budgetTzs` freezes that limit. Strictly above it refuses; at it confirms.
+ *   · `price_unknown`, `over_limit` — ⛔ E15 · the frozen estimate (`estimateTzs` — the population × the saved segments ×
+ *     the price per segment, MEASURED from our own sends when there are enough, else the configured one) is checked against
+ *     the most one campaign may spend, and `budgetTzs` freezes that LIMIT — the ceiling, not the estimate. Strictly above
+ *     it refuses; at it confirms.
  * ⭐ MONEY WORDS ONLY FOR A MONEY READER (`viewer.money` — the caller asks `campaignMoneyVisible`): the view's figures and
  * the `over_limit` sentence carry TZS only then; anyone else reads the same refusal without a figure.
  *
- * ── WHAT A VIEWER WHO MAY NOT READ A NUMBER SEES (OD65) ────────────────────────────────────────────────────────
- * ⛔ THE COUNT ALONE, at every size: `split` is the count-alone view (`audienceCountView`) over the FENCE's own count — the
- * number they type — and the split door, which asks the gate about every number, is never called for them, so no verdict
- * exists to leak, not even through how long the answer takes. A reader gets U38b's full view-model. The list (`sample`)
- * is the walk's own rows, masked, with no verdict and no player flag (D19): every person on a listed confirmation — they
- * are confirming THOSE people.
+ * ── WHAT A VIEWER WHO MAY NOT READ A NUMBER SEES (OD65 · OD67) ───────────────────────────────────────────────────
+ * ⛔ THE COUNT ALONE, at every size, before a campaign sends: `split` is the count-alone view (`audienceCountView`) over the
+ * FENCE's own count — the number they type — and the split door, which asks the gate about every number, is never called
+ * for them, so no verdict exists to leak, not even through how long the answer takes. ⛔ OD67 · NO LIST, AND ALWAYS THE
+ * TYPED TIER (`fenceForViewer`): they could not check a list of numbers they may not read, and a list is what lets two
+ * drafts be set side by side to ask "is this contact a player?" — so they get no sample, their claim carries no members
+ * key, and they confirm by typing the count, on the view AND in the confirmation (a list watermark they post is refused
+ * the way a typed tier is refused without its number). A reader gets U38b's full view-model, the list (the walk's own
+ * rows, masked, with no verdict and no player flag — D19) and both tiers, as built.
  *
  * ── AUDIT (E24: one row per event, COMPLIANCE) ─────────────────────────────────────────────────────────────────
  * `marketing.campaign_confirmed` `{ tier, count, describe, draftRevision, estimateSegments, budgetSet }` and
  * `marketing.campaign_confirm_refused` `{ reason, shownCount, freshCount, tier }`. ⛔ No phone number: the audience goes
  * in through `auditContactAudience` (masked), the typed text is never recorded, and a campaign id is recorded only when it
- * names a stored row (a posted id is text anyone can send).
+ * names a stored row (a posted id is text anyone can send). ⭐ ruling 543 · the confirmation SAYS BOTH HALVES: its answer
+ * carries `recorded`, read from the audit's own result — the campaign is confirmed either way; when the record did not
+ * land the caller says so too.
  *
  * ⛔ CONFIRMED SENDS NOTHING. No recipient row, no opt-out token, no message, no `dispatchSlice`: the first live send is
  * a separate Start (owner gate G2). ⛔ ONE OFFICER'S TYPED CONFIRMATION IS THE AUTHORISATION (OD60, U41): no second
  * officer is asked for here or anywhere on the campaign path.
- * ⚠️ KNOWN RESIDUAL: a write that commits and whose reply is lost is looked at once — if the row carries THIS write's
- * stamp it is reported confirmed, with its row; if that look fails too, the error reaches the caller, and the campaign
- * may be confirmed (`confirmedBy`/`confirmedAt` on the row say by whom) with no `marketing.campaign_confirmed` row.
+ * ⭐ A WRITE WHOSE REPLY WAS LOST is looked at once: it is reported confirmed only when the row carries EVERY value this
+ * write set (`confirmedByThisWrite`), and this write's instant is unique per campaign in this process (`confirmInstant`), so
+ * neither another officer's confirmation nor the same officer's twin in the same millisecond is taken for it.
+ * ⚠️ KNOWN RESIDUAL: if that look fails too, the error reaches the caller — and the campaign may be confirmed
+ * (`confirmedBy`/`confirmedAt` on the row say by whom) with no `marketing.campaign_confirmed` row. Two PROCESSES (a deploy's
+ * overlap) do not share the instants, so the same officer's twin there, in the same millisecond, with a thrown write, could
+ * still be taken for this one.
  *
  * Guard: `npm run test:campaign-gates` · Red: `npm run red:campaign-gates` (in memory).
  */
 import { db } from "@/lib/server/store";
-import type { SmsCampaignTransition, StoredSmsCampaign, StoredSmsMessage } from "@/lib/server/store";
+import type { SmsCampaignTransition, StoredSmsCampaign } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { smsProviderResolution } from "@/lib/server/sms";
 import {
   campaignAudienceRefusal, describeAudience, auditContactAudience, contactAudienceKey,
 } from "@/lib/server/marketing/audience";
@@ -69,14 +83,14 @@ import { audienceFence, readCampaignAudience, signFence, verifyFence } from "@/l
 import type { AudienceFence, FenceSampleRow } from "@/lib/server/marketing/audience-fence";
 import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings";
 import type { SettingsReload } from "@/lib/server/marketing/sms-settings";
-import { CAMPAIGN_AUDIENCE_UNREADABLE, readSavedSourcePhrase, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
+import { loadSegmentCost } from "@/lib/server/marketing/estimate";
+import { CAMPAIGN_AUDIENCE_UNREADABLE, readSavedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
 import type { SourcePhraseRead } from "@/lib/server/marketing/campaign-draft";
 import { CONFIRM_REFUSAL_COPY, CONFIRM_TIER_COLUMN, confirmWriteRefusal, decideConfirm } from "@/lib/marketing/campaign-confirm";
 import type { ConfirmOutcomeReason, ConfirmTier } from "@/lib/marketing/campaign-confirm";
 import { campaignEstimate, savedVariantSizes } from "@/lib/marketing/campaign-estimate";
 import type { BalanceFigure } from "@/lib/marketing/campaign-estimate";
-import { COST_WALK, measureSegmentCost } from "@/lib/marketing/segment-cost";
-import type { CostWalkRow, SegmentCostMeasure } from "@/lib/marketing/segment-cost";
+import type { SegmentCostMeasure } from "@/lib/marketing/segment-cost";
 import { breakdownVisible } from "@/lib/marketing/campaign-status";
 import { audienceCountView, audienceSplitView } from "@/app/admin/campaigns/new/audience-view-model";
 import type { AudienceSplitView } from "@/app/admin/campaigns/new/audience-view-model";
@@ -98,9 +112,9 @@ export type ConfirmServiceRefusal =
   | "audience_unreadable" | "audience_refused" | "needs_source_line" | "unsaved" | "source_unreadable"
   | "no_body" | "settings_unreadable" | "price_unknown" | "over_limit";
 
-/** Why the confirm trigger is disabled — exactly the first refusal a correctly typed confirmation of this view would get.
- *  (`source_unreadable` cannot be one: the view reads the source line from this process's cache, as the composer does.) */
-export type ConfirmBlocked = "not_draft" | "audience_empty" | Exclude<ConfirmServiceRefusal, "source_unreadable">;
+/** Why the confirm trigger is disabled — the first refusal a correctly typed confirmation of this view would get, read
+ *  from the same sources at the same moment (the source line too is read fresh, as the confirmation reads it). */
+export type ConfirmBlocked = "not_draft" | "audience_empty" | ConfirmServiceRefusal;
 
 /** The estimate a confirmation would freeze. `money` is null for a viewer who may not read money — no figure, no key. */
 export type CampaignConfirmEstimate = {
@@ -121,6 +135,7 @@ export type CampaignConfirmView = {
   campaignId: string;
   /** The signed claim the modal posts back — null when the confirmation is blocked before the audience is counted. */
   watermark: string | null;
+  /** ⛔ Always `typed` for a viewer who may not read a number (OD67). */
   tier: ConfirmTier | null;
   /** The ONE walk's count, counted now — the number to type. ⛔ null, never 0, when nothing was counted. */
   count: number | null;
@@ -130,7 +145,8 @@ export type CampaignConfirmView = {
   /** U38b's view-model: the full split for a reader (null when the split failed — never zeros), the count alone for anyone
    *  else (OD65); null when nothing was counted. */
   split: AudienceSplitView | null;
-  /** The walk's first rows, masked: every person on a listed (enumerate) audience; at most five otherwise. */
+  /** The walk's first rows, masked — FOR A READER: every person on a listed (enumerate) audience, at most five otherwise.
+   *  ⛔ Empty for a viewer who may not read a number (OD67). */
   sample: FenceSampleRow[];
   /** null when nothing was counted, or the stored sizes cannot be priced. */
   estimate: CampaignConfirmEstimate | null;
@@ -143,8 +159,10 @@ export type CampaignConfirmView = {
  *  armed on; `watermark` the claim it was opened on; `actorId` the officer, from the session. */
 export type ConfirmCampaignInput = { campaignId: string; typed: string | null; watermark: string | null; actorId: string };
 
+/** ⭐ ruling 543 · `recorded` says whether the `marketing.campaign_confirmed` row is in the log: the campaign is confirmed
+ *  either way, and a caller that tells an officer so says the second half too when it is false. */
 export type ConfirmCampaignResult =
-  | { ok: true; count: number; tier: ConfirmTier }
+  | { ok: true; count: number; tier: ConfirmTier; recorded: boolean }
   | { ok: false; reason: ConfirmOutcomeReason | ConfirmServiceRefusal; freshCount: number | null; message: string };
 
 /* ══ THE SENTENCES ═══════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -205,6 +223,60 @@ export function spendRefusal(costTzs: number | null, limitTzs: number): "price_u
   return costTzs > limitTzs ? "over_limit" : null;
 }
 
+/**
+ * ⛔ OD67 · THE FENCE AS THIS VIEWER MAY SEE IT. A viewer who may not read a number sees the COUNT ALONE before a campaign
+ * sends, at every size — OD65's one rule, `breakdownVisible`: so no list (they could not check numbers they may not read)
+ * and therefore always the TYPED tier — their claim is held to typed, with no members key, and their sample is empty. A
+ * reader keeps the fence as counted: both tiers, the list.
+ * ⭐ The confirmation holds its FRESH claim to the same shape, so a list watermark posted by such a viewer is refused
+ * exactly as a typed tier is refused without its number (`typed_required`); and their confirmation freezes TYPED.
+ */
+export function fenceForViewer(f: AudienceFence, viewerReads: boolean): AudienceFence {
+  if (breakdownVisible(viewerReads)) return f;
+  return { claim: { ...f.claim, tier: "typed", membersKey: null }, countedAt: f.countedAt, sample: [] };
+}
+
+/**
+ * ⛔ DID THIS WRITE LAND? — asked only when the write threw (its reply may have been lost after it committed). The row is
+ * this write's only when it holds EVERY value the write's patch set — who and when, the count, the tier, the watermark,
+ * the segments, the estimate, the budget — on the revision the write was conditional on. Not its status: the confirm keys
+ * are written once, and the campaign may have moved on since. With `confirmInstant`, neither another officer's
+ * confirmation nor the same officer's twin in the same millisecond reads as this one.
+ */
+export function confirmedByThisWrite(after: StoredSmsCampaign | null, t: SmsCampaignTransition): boolean {
+  if (after === null) return false;
+  if (t.draftRevision !== null && after.draftRevision !== t.draftRevision) return false;
+  const row = after as unknown as Record<string, unknown>;
+  const set = Object.entries(t.patch).filter(([, v]) => v !== undefined);
+  return set.length > 0 && set.every(([k, v]) => row[k] === v);
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_CONFIRM_INSTANTS: Map<string, number> | undefined;
+}
+/** The last confirmation instant handed out per campaign in this process — on globalThis, so a hot reload keeps it. */
+const LAST_CONFIRM_MS: Map<string, number> = globalThis.__50PICK_CONFIRM_INSTANTS ?? (globalThis.__50PICK_CONFIRM_INSTANTS = new Map());
+/** Campaigns remembered at once — the oldest is forgotten first (a twin is milliseconds apart, never this many apart). */
+const CONFIRM_INSTANTS_KEPT = 1000;
+
+/**
+ * ⭐ THIS CONFIRMATION'S INSTANT — `now`, moved on by a millisecond when another attempt on the SAME campaign in this
+ * process already took that millisecond or a later one. So two attempts never stamp the same `confirmedAt`, and a lost
+ * reply's read-back (`confirmedByThisWrite`) tells its own write from a twin's. ⚠️ Per process (the header's residual).
+ */
+export function confirmInstant(campaignId: string, now: Date): string {
+  const last = LAST_CONFIRM_MS.get(campaignId);
+  const ms = last !== undefined && now.getTime() <= last ? last + 1 : now.getTime();
+  LAST_CONFIRM_MS.delete(campaignId);
+  LAST_CONFIRM_MS.set(campaignId, ms);
+  if (LAST_CONFIRM_MS.size > CONFIRM_INSTANTS_KEPT) {
+    const oldest = LAST_CONFIRM_MS.keys().next().value;
+    if (oldest !== undefined) LAST_CONFIRM_MS.delete(oldest);
+  }
+  return new Date(ms).toISOString();
+}
+
 /* ══ THE DEPENDENCIES ════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** Every read, rule and write the confirmation makes — swappable for the suite's in-process red plants; production never
@@ -215,8 +287,10 @@ export type ConfirmDeps = {
     find: (id: string) => Promise<StoredSmsCampaign | null>;
     transition: (id: string, t: SmsCampaignTransition) => Promise<StoredSmsCampaign | null>;
   };
-  /** The fresh count and members key (`audienceFence`). */
+  /** The fresh count and the members key for this draft (`audienceFence`). */
   fence: (c: Pick<StoredSmsCampaign, "id" | "draftRevision" | "audienceFilter">) => Promise<AudienceFence>;
+  /** OD67 · the fence as this viewer may see it (`fenceForViewer`). */
+  shape: typeof fenceForViewer;
   sign: typeof signFence;
   verify: typeof verifyFence;
   /** OD27 (`decideConfirm`). */
@@ -229,43 +303,22 @@ export type ConfirmDeps = {
   split: (f: ContactAudienceFilter, viewerReads: boolean) => Promise<AudienceSplitResult>;
   /** E18 (`sourceLineRefusal`). */
   sourceRule: typeof sourceLineRefusal;
-  /** The saved source line READ FRESH, for the confirmation that acts on it (`readSavedSourcePhrase`). */
+  /** The saved source line READ FRESH (`readSavedSourcePhrase`) — by the view and by the confirmation alike. */
   freshLine: () => Promise<SourcePhraseRead> | SourcePhraseRead;
-  /** The saved source line from this process's cache, for the view that only shows it (`savedSourcePhrase`). */
-  shownLine: () => string | null;
   /** The Marketing SMS settings, re-read (`reloadMarketingSmsSettings`) — the price and the limit. */
   settings: () => Promise<SettingsReload>;
-  /** The price of one segment: measured from our own delivered sends, else the configured one, else unknown. */
-  cost: (configuredTzs: number | null) => Promise<SegmentCostMeasure>;
+  /** The price of one segment — `estimate.ts`'s ONE cost loader (`loadSegmentCost`): measured from our own delivered sends,
+   *  else the configured price handed in, else unknown. */
+  cost: typeof loadSegmentCost;
   /** E15 (`spendRefusal`). */
   spendRule: typeof spendRefusal;
+  /** This confirmation's instant (`confirmInstant`). */
+  stamp: typeof confirmInstant;
+  /** A lost reply's read-back (`confirmedByThisWrite`). */
+  ownWrite: typeof confirmedByThisWrite;
   audit: (entry: Parameters<typeof audit>[0]) => unknown;
   now: () => Date;
 };
-
-/** ⭐ What U39's walk sees of a message: the seven fields `estimate.ts` projects for it (its `toCostWalkRow`) — typed by
- *  `CostWalkRow`, so a field the walk gains or loses is a compile error here too. No number, no reference, no body. */
-function costWalkRowOf(m: StoredSmsMessage): CostWalkRow {
-  return {
-    provider: m.provider, status: m.status, bodyLen: m.bodyLen, balanceTzs: m.balanceTzs,
-    createdAt: m.createdAt, sentAt: m.sentAt, deliveredAt: m.deliveredAt,
-  };
-}
-
-/**
- * ⭐ THE PRICE THE CONFIRMATION FREEZES (§4.5): the price MEASURED from our own delivered sends when U39's walk has one
- * (`measureSegmentCost` — the median of clean pairs), else the owner's configured price. ⛔ Never throws: a history that
- * cannot be read gives the configured price, or unknown — as the estimate's loader does.
- */
-async function measuredOrConfigured(configuredTzs: number | null): Promise<SegmentCostMeasure> {
-  let rows: CostWalkRow[];
-  try {
-    rows = (await db.smsMessage.listRecent(COST_WALK.windowRows)).map(costWalkRowOf);
-  } catch {
-    return configuredTzs !== null ? { kind: "configured", tzsPerSegment: configuredTzs } : { kind: "unknown", reason: "history-unreadable" };
-  }
-  return measureSegmentCost(rows, { provider: smsProviderResolution(), now: Date.now(), configuredTzs });
-}
 
 /** Frozen: production's confirmation — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const CONFIRM_DEPS: Readonly<ConfirmDeps> = Object.freeze({
@@ -274,6 +327,7 @@ export const CONFIRM_DEPS: Readonly<ConfirmDeps> = Object.freeze({
     transition: async (id: string, t: SmsCampaignTransition) => db.smsCampaign.transition(id, t),
   }),
   fence: audienceFence,
+  shape: fenceForViewer,
   sign: signFence,
   verify: verifyFence,
   decide: decideConfirm,
@@ -282,13 +336,36 @@ export const CONFIRM_DEPS: Readonly<ConfirmDeps> = Object.freeze({
   split: (f: ContactAudienceFilter, viewerReads: boolean) => audienceSplit(f, { viewerReads }),
   sourceRule: sourceLineRefusal,
   freshLine: readSavedSourcePhrase,
-  shownLine: savedSourcePhrase,
   settings: reloadMarketingSmsSettings,
-  cost: measuredOrConfigured,
+  cost: loadSegmentCost,
   spendRule: spendRefusal,
+  stamp: confirmInstant,
+  ownWrite: confirmedByThisWrite,
   audit,
   now: () => new Date(),
 });
+
+/**
+ * ⭐ ruling 543 · whether an awaited audit call left its row — a stand-in that throws, or a result without
+ * `recorded: true`, did not (`live-switch.ts`'s `recordedBy`: the same measurement, never a default).
+ */
+async function recordedBy(deps: ConfirmDeps, entry: Parameters<typeof audit>[0]): Promise<boolean> {
+  try {
+    const r = await deps.audit(entry);
+    return r !== null && typeof r === "object" && (r as { recorded?: unknown }).recorded === true;
+  } catch {
+    return false;
+  }
+}
+
+/** The saved source line read fresh — or a read that could not answer (a throw is one). */
+async function freshLineOf(deps: ConfirmDeps): Promise<SourcePhraseRead> {
+  try {
+    return await deps.freshLine();
+  } catch {
+    return { ok: false };
+  }
+}
 
 /* ══ THE ESTIMATE ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -365,8 +442,10 @@ async function audienceViewFor(filter: ContactAudienceFilter, count: number, vie
 
 /**
  * ⭐ WHAT A CONFIRMATION IS OPENED ON — counted fresh, every call: the watermark the modal posts back, the tier, the number
- * to type, the audience in words and as this viewer may see it, the list, the estimate it would freeze, and why it is
- * blocked (exactly the first refusal a correctly typed confirmation of this view would get, in its own words).
+ * to type, the audience in words and as this viewer may see it, the list (a reader's), the estimate it would freeze, and
+ * why it is blocked: the first refusal a correctly typed confirmation of this view would get, in its own words — read
+ * from the same sources, the source line included (fresh, as the confirmation reads it; never this process's cache, which
+ * would say `unsaved` for every book draft before the wordings have loaded, and stale things on a stale instance).
  * ⛔ null when the campaign does not exist; a failed read THROWS (the host says so — never a zero).
  */
 export async function campaignConfirmView(campaignId: string, viewer: ConfirmViewer, deps: ConfirmDeps = CONFIRM_DEPS): Promise<CampaignConfirmView | null> {
@@ -384,15 +463,14 @@ export async function campaignConfirmView(campaignId: string, viewer: ConfirmVie
   // ⛔ OD66 · BEFORE THE COUNT: a filter this viewer's role may not count is never counted for them.
   if (deps.refusal(filter, viewer.reads) !== null) return uncounted("audience_refused", CONFIRM_SERVICE_COPY.audience_refused(none));
 
-  const fence = await deps.fence(row);
-  const count = fence.claim.count;
+  // ⛔ OD67 · what this viewer may see of the fence — a viewer who may not read a number: typed, no key, no list.
+  const seen = deps.shape(await deps.fence(row), viewer.reads);
+  const count = seen.claim.count;
   const split = await audienceViewFor(filter, count, viewer, deps);
   const spend = await spendOf(row, count, deps);
-  const line = deps.sourceRule(row, filter, { ok: true, phrase: deps.shownLine() });
+  const line = deps.sourceRule(row, filter, await freshLineOf(deps));
   // The order is the confirmation's: nobody (the gate's first answer), then E18, then the estimate.
-  const blocked: Exclude<ConfirmBlocked, "not_draft"> | null = count === 0 ? "audience_empty"
-    : line === "needs_source_line" || line === "unsaved" ? line
-      : spend.refusal;
+  const blocked: Exclude<ConfirmBlocked, "not_draft"> | null = count === 0 ? "audience_empty" : line ?? spend.refusal;
   const message = blocked === null ? null
     : blocked === "audience_empty" ? CONFIRM_REFUSAL_COPY.audience_empty({ fresh: count, shown: null })
       : CONFIRM_SERVICE_COPY[blocked](moneyWords(viewer, spend));
@@ -404,13 +482,13 @@ export async function campaignConfirmView(campaignId: string, viewer: ConfirmVie
   };
   return {
     campaignId: row.id,
-    watermark: deps.sign(fence.claim),
-    tier: fence.claim.tier,
+    watermark: deps.sign(seen.claim),
+    tier: seen.claim.tier,
     count,
-    countedAt: fence.countedAt,
+    countedAt: seen.countedAt,
     describe: describeAudience(filter),
     split,
-    sample: fence.sample,
+    sample: seen.sample,
     estimate,
     blocked,
     message,
@@ -420,7 +498,8 @@ export async function campaignConfirmView(campaignId: string, viewer: ConfirmVie
 /* ══ THE CONFIRMATION ════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /**
- * ⭐ CONFIRM ONE DRAFT — in the header's order, with ONE write. Every answer is audited once (COMPLIANCE).
+ * ⭐ CONFIRM ONE DRAFT — in the header's order, with ONE write. Every answer is audited once (COMPLIANCE), and a
+ * confirmation's answer says whether its row was recorded.
  * ⛔ The freeze is ALWAYS the fresh count (`decideConfirm`'s), never the claim the browser carried.
  */
 export async function confirmCampaign(
@@ -438,7 +517,7 @@ export async function confirmCampaign(
     reason: ConfirmOutcomeReason | ConfirmServiceRefusal,
     at: { targetId: string | null; freshCount: number | null; tier: ConfirmTier | null; message: string },
   ): Promise<ConfirmCampaignResult> => {
-    await deps.audit({
+    await recordedBy(deps, {
       category: "COMPLIANCE",
       action: CAMPAIGN_CONFIRM_REFUSED_ACTION,
       actorId,
@@ -467,9 +546,9 @@ export async function confirmCampaign(
     return refuse("audience_refused", { targetId: row.id, freshCount: null, tier: null, message: CONFIRM_SERVICE_COPY.audience_refused(none) });
   }
 
-  // ── a fresh fence, and the gate (OD27) ──
-  const fence = await deps.fence(row);
-  const decision = deps.decide({ fresh: fence.claim, shown, typed });
+  // ── a fresh fence, held to what this viewer may see (OD67), and the gate (OD27) ──
+  const seen = deps.shape(await deps.fence(row), viewer.reads);
+  const decision = deps.decide({ fresh: seen.claim, shown, typed });
   if (!decision.ok) {
     return refuse(decision.reason, {
       targetId: row.id, freshCount: decision.freshCount, tier: decision.freshTier,
@@ -479,13 +558,7 @@ export async function confirmCampaign(
   const freeze = decision.freeze;
 
   // ── E18 · the source line, read fresh — this acts on it ──
-  let saved: SourcePhraseRead;
-  try {
-    saved = await deps.freshLine();
-  } catch {
-    saved = { ok: false };
-  }
-  const line = deps.sourceRule(row, filter, saved);
+  const line = deps.sourceRule(row, filter, await freshLineOf(deps));
   if (line !== null) {
     return refuse(line, { targetId: row.id, freshCount: freeze.count, tier: freeze.tier, message: CONFIRM_SERVICE_COPY[line](none) });
   }
@@ -497,7 +570,7 @@ export async function confirmCampaign(
   }
 
   // ── ONE conditional write: DRAFT → CONFIRMED, on the revision the officer saw, every confirm key at once ──
-  const at = deps.now().toISOString();
+  const at = deps.stamp(row.id, deps.now());
   const t: SmsCampaignTransition = {
     from: ["DRAFT"],
     to: "CONFIRMED",
@@ -518,11 +591,9 @@ export async function confirmCampaign(
   try {
     moved = await deps.campaigns.transition(row.id, t);
   } catch (err) {
-    // ⛔ A write whose reply was lost may have committed — look once before answering, and claim only THIS write's stamp.
+    // ⛔ A write whose reply was lost may have committed — look once before answering, and claim only THIS write.
     const after = await deps.campaigns.find(row.id).catch(() => null);
-    const ours = after !== null && after.status === "CONFIRMED" && after.confirmedAt === at && after.confirmedBy === actorId
-      && after.draftRevision === freeze.draftRevision;
-    if (!ours) throw err;
+    if (!deps.ownWrite(after, t)) throw err;
     moved = after;
   }
   if (moved === null) {
@@ -532,7 +603,7 @@ export async function confirmCampaign(
       message: CONFIRM_REFUSAL_COPY[why]({ fresh: freeze.count, shown: shown?.count ?? null }),
     });
   }
-  await deps.audit({
+  const recorded = await recordedBy(deps, {
     category: "COMPLIANCE",
     action: CAMPAIGN_CONFIRMED_ACTION,
     actorId,
@@ -548,5 +619,5 @@ export async function confirmCampaign(
       budgetSet: true,
     },
   });
-  return { ok: true, count: freeze.count, tier: freeze.tier };
+  return { ok: true, count: freeze.count, tier: freeze.tier, recorded };
 }
