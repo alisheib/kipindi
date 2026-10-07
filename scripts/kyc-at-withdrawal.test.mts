@@ -41,7 +41,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../src/lib/server/store.ts";
 import { registerWithPassword } from "../src/lib/server/auth-service.ts";
-import { verifyEmailToken } from "../src/lib/server/email-verification.ts";
+import { confirmEmailWithProof } from "../src/lib/server/email-verification.ts";
 import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { startKyc, submitIdentityStep, attachDocument, submitForReview, reviewKyc, forceReverifyKyc } from "../src/lib/server/kyc-service.ts";
@@ -118,7 +118,8 @@ section("§A · register → confirm email → deposit and play → verify ident
   const mail = emailOutbox().find((m) => m.to === EMAIL && /Confirm your email/i.test(m.subject));
   const token = mail ? decodeURIComponent((/token=([^"'&\s<]+)/.exec(mail.html) ?? [])[1] ?? "") : "";
   ok("A.6 fixture · registration sent the confirmation link", !!mail && token.length > 20, mail?.subject ?? "no mail");
-  const v = await verifyEmailToken(token);
+  // The link opened in the account's own session (route audit 2026-10-06, A3: anywhere else it asks for the password).
+  const v = await confirmEmailWithProof(token, { sessionUserId: id, password: null });
   ok("A.6b confirming the email through the real token", v.status === "verified" && !!(await db.user.findById(id))?.emailVerifiedAt, J(v));
 
   const walletBefore = (await db.wallet.findByUserId(id))!.balance;
@@ -171,33 +172,56 @@ section("§A · register → confirm email → deposit and play → verify ident
   ok("A.17 ★ a force-reverified account that was approved still withdraws",
     rv.ok && (await db.kyc.findByUserId(id))?.status === "ADDITIONAL_INFO_REQUIRED" && w2.ok, `${J(rv)} · ${J(w2)}`);
 
+  // ⭐ ONE LANDING RULE (route audit 2026-10-06). Every sign-in and sign-up door lands through `landingAfterAuth`
+  // (src/lib/auth-landing.ts); the doors are pinned to CALL it, and the rule itself is executed below (A.20, A.30).
   const REG = decomment(read("src/app/auth/register/actions.ts"));
-  const at = REG.indexOf("export async function startRegisterAction");
-  const body = at < 0 ? "" : REG.slice(at, REG.indexOf("\nexport ", at + 10));
+  /** A function's text: from `export async function <name>(` to the next top-level export, or the end of the file. */
+  const fnOf = (src: string, name: string) => {
+    const from = src.indexOf(`export async function ${name}(`);
+    if (from < 0) return "";
+    const to = src.indexOf("\nexport ", from + 10);
+    return src.slice(from, to < 0 ? undefined : to);
+  };
+  const body = fnOf(REG, "startRegisterAction");
   const redirects = (src: string) => [...src.matchAll(/redirect\(\s*(`[^`]*`|"[^"]*")/g)].map((m) => m[1]);
   const targets = redirects(body);
-  console.log(`     sign-up redirect targets: ${targets.join(" · ")}`);
-  ok("A.18 control · the sign-up action and its redirects were found", body.length > 500 && targets.length >= 3, `${targets.length} redirect(s)`);
+  const landingCalls = (body.match(/landingAfterAuth\(/g) ?? []).length;
+  console.log(`     sign-up literal redirect targets: ${targets.join(" · ") || "(none)"} · landingAfterAuth calls: ${landingCalls}`);
+  // ⚠️ No literal-redirect floor here: the failure hop need not stay a literal redirect, and this control must hold either way.
+  ok("A.18 control · the sign-up action was found, and it lands through the one rule exactly once", body.length > 300 && landingCalls === 1,
+    `${body.length} chars · ${landingCalls} landingAfterAuth call(s)`);
   // ⭐ OWNER RULING 2026-10-06: home, not the deposit page. For an account created seconds ago that page renders no
   // form — its email door stands in the form's place — so it made a locked door the first screen of a new account.
-  ok("A.19 a new player with nowhere to go lands on the market board, /?welcome=new", targets.includes('"/?welcome=new"'));
-  ok("A.19b ⛔ …and no sign-up redirect sends a new player to /wallet/deposit and its email door", !targets.some((t) => /\/wallet\/deposit/.test(t)));
-  ok("A.20 a new player with a safe destination lands THERE, greeted", /qs\.set\(\s*"welcome",\s*"new"\s*\)/.test(body) && targets.some((t) => t.startsWith("`${path}?")));
+  ok("A.19 a new account lands by the ONE rule — landingAfterAuth, kind new", body.includes('landingAfterAuth({ role: result.data?.role, next: safeNext, kind: "new" })'));
+  ok("A.19b ⛔ …and no literal sign-up redirect target names /wallet/deposit and its email door", !targets.some((t) => /\/wallet\/deposit/.test(t)), targets.join(" · "));
+  const { landingAfterAuth } = await import("../src/lib/auth-landing.ts");
+  type LandingRow = [[string | undefined, string, "new" | "back"], string];
+  const landingWrong = (rows: LandingRow[]) => rows.filter(([[role, next, kind], want]) => landingAfterAuth({ role, next, kind }) !== want)
+    .map(([[role, next, kind], want]) => `${String(role)} ${next || "-"} ${kind} → ${landingAfterAuth({ role, next, kind })} (want ${want})`);
+  const PLAYER_ROWS: LandingRow[] = [
+    [["PLAYER", "", "new"], "/?welcome=new"], [["PLAYER", "", "back"], "/?welcome=back"],
+    [["PLAYER", "/markets/mkt_a1?side=YES", "back"], "/markets/mkt_a1?side=YES&welcome=back"],
+    [["PLAYER", "/positions#pos_q1", "back"], "/positions?welcome=back#pos_q1"],
+    [["AGENT", "/agent", "new"], "/agent?welcome=new"],
+    [[undefined, "/wallet/deposit?from=low-balance", "new"], "/wallet/deposit?from=low-balance&welcome=new"],
+  ];
+  const playerWrong = landingWrong(PLAYER_ROWS);
+  ok("A.20 ⭐ EXECUTED · the one rule: a new or returning player lands where they were going, greeted before any #fragment, or on the market board — and a next that IS the deposit page still lands there", playerWrong.length === 0, playerWrong.join(" | "));
   ok("A.21 ⛔ no sign-up redirect sends a new player to identity verification", !targets.some((t) => /\/profile\/kyc/.test(t)));
   ok("A.21b control · the extractor catches the old destination", redirects(`redirect("/profile/kyc?welcome=new");`).some((t) => /\/profile\/kyc/.test(t)));
   ok("A.21c control · …and the 2026-09-13 one", redirects(`redirect("/wallet/deposit?welcome=new" as never);`).some((t) => /\/wallet\/deposit/.test(t)));
 
-  // The one-time-code door (`login/actions.ts`, `isNew`) follows the same rule. Sliced to the new-account block
-  // alone, so the returning player's `/?welcome=back` beneath it cannot answer for it.
+  // The one-time-code door signs EXISTING accounts in only (the code sign-up was deleted 2026-10-06), and lands by the
+  // same rule as the password door.
   const LOGIN = decomment(read("src/app/auth/login/actions.ts"));
-  const nb = LOGIN.indexOf("if (result.data?.isNew)");
-  const ne = nb < 0 ? -1 : LOGIN.indexOf("/?welcome=back", nb);
-  const newBlock = ne < 0 ? "" : LOGIN.slice(nb, ne);
-  const codeTargets = redirects(newBlock);
-  console.log(`     one-time-code new-account redirect targets: ${codeTargets.join(" · ")}`);
-  ok("A.22 control · the one-time-code door's new-account block and its redirects were found", newBlock.length > 100 && codeTargets.length >= 2, `${codeTargets.length} redirect(s)`);
-  ok("A.23 a new account through that door with nowhere to go lands on /?welcome=new too", codeTargets.includes('"/?welcome=new"'));
-  ok("A.24 ⛔ …never on /wallet/deposit or the identity form", !codeTargets.some((t) => /\/wallet\/deposit|\/profile\/kyc/.test(t)));
+  const OTP_DOOR = fnOf(LOGIN, "verifyLoginOtpAction");
+  const codeTargets = redirects(OTP_DOOR);
+  console.log(`     one-time-code door literal redirect targets: ${codeTargets.join(" · ") || "(none)"}`);
+  ok("A.22 control · the one-time-code sign-in action was found", OTP_DOOR.length > 400, `${OTP_DOOR.length} chars`);
+  ok("A.23 the code door lands by the one rule (kind back — it signs existing accounts in only), and no isNew branch survives in the sign-in actions",
+    OTP_DOOR.includes('landingAfterAuth({ role: result.data?.role, next: safeNext, kind: "back" })') && !LOGIN.includes("isNew"));
+  ok("A.24 ⛔ the one-time-code SIGN-UP is gone (no startRegisterOtpAction), and no literal target of the code door names /wallet/deposit or the identity form",
+    !REG.includes("startRegisterOtpAction") && !codeTargets.some((t) => /\/wallet\/deposit|\/profile\/kyc/.test(t)), codeTargets.join(" · "));
 
   // ⭐ THE GREETING MUST FIRE ON THE LANDING (2026-10-06). `AuthFlash` is mounted on the /auth form too, and both
   // doors land by a server-action redirect — a soft navigation that keeps it mounted — so an effect keyed on mount
@@ -211,6 +235,44 @@ section("§A · register → confirm email → deposit and play → verify ident
   ok("A.26b control · the matcher catches the mount-only shape", mountOnly(["[]"]) && mountOnly(["[ ]"]));
   ok("A.27 the param is cleared in place (history.replaceState) — never by a router navigation that re-requests the landing",
     /window\.history\.replaceState\(/.test(FLASH) && !/router\.(replace|push)\(/.test(FLASH));
+
+  // ⭐ EVERY DOOR, ONE RULE. Four doors had four landing copies: a #pos_ fragment got the greeting appended INSIDE it, a
+  // player with an /admin next looped to the staff form, and a sign-in with a destination was never greeted.
+  const signInDoors = ["startLoginAction", "verifyLogin2faAction", "verifyLoginOtpAction"].map((n) => ({ n, b: fnOf(LOGIN, n) }));
+  const offRule = signInDoors.filter((d) => d.b.length < 300 || !d.b.includes("landingAfterAuth(")).map((d) => `${d.n} (${d.b.length} chars)`);
+  ok("A.28 every sign-in door — password, two-step and code — lands through landingAfterAuth", offRule.length === 0, offRule.join(", ") || "all three");
+  const privateLanding = (src: string) => src.includes('safeNext || "/?welcome=back"') || src.includes('qs.set("welcome"');
+  ok("A.28b ⛔ no door keeps a private landing copy: neither `safeNext || \"/?welcome=back\"` nor `qs.set(\"welcome\"` in the sign-in or sign-up actions",
+    !privateLanding(LOGIN) && !privateLanding(REG));
+  ok("A.28c control · the matcher fires on both retired shapes",
+    privateLanding('redirect((safeNext || "/?welcome=back") as never);') && privateLanding('qs.set("welcome", "new");'));
+  const staffWrong = landingWrong([
+    [["PLAYER", "/admin/kyc", "back"], "/?welcome=back"], [["ADMIN", "/admin/kyc", "back"], "/admin/kyc"],
+    [["COMPLIANCE", "/markets/mkt_a1", "back"], "/admin"], [["SUPPORT", "", "new"], "/admin"],
+  ]);
+  ok("A.30 ⭐ EXECUTED · staff land on an /admin next, else /admin; a player's /admin next is dropped (home, greeted) — never a loop to the staff form",
+    staffWrong.length === 0, staffWrong.join(" | "));
+
+  // C-X1 · a refused sign-up names its reason as a registry token (the form translates it; the service's English
+  // sentence is not shown). EXECUTED against the real service — each refusal returns before any write.
+  const signUp = async (phone: string, email: string, password: string, passwordConfirm: string) => {
+    try {
+      return (await registerWithPassword({ phone, email, password, passwordConfirm, dob: "1990-01-01", acceptTerms: true, acceptAge: true })) as
+        { ok: boolean; code?: string; reason?: string };
+    } catch (e) {
+      return { ok: false, threw: (e as Error)?.message ?? String(e) } as { ok: boolean; code?: string; reason?: string; threw?: string };
+    }
+  };
+  const REFUSED = ["+255745551001", "+255745551002", "+255745551003"];
+  const weak = await signUp(REFUSED[0], "weak.pw@t.tz", "12345678", "12345678");
+  const mismatch = await signUp(REFUSED[1], "mismatch.pw@t.tz", "Ladder-climb-2026-strong", "Ladder-climb-2026-strongX");
+  const badEmail = await signUp(REFUSED[2], "abc@def", "Ladder-climb-2026-strong", "Ladder-climb-2026-strong");
+  const refusedAs = (r: { ok: boolean; code?: string; reason?: string }, reason: string) => r.ok === false && r.code === "INVALID" && r.reason === reason;
+  ok("A.31 C-X1 · a refused sign-up carries its registry reason — a breach-list password_weak, password_mismatch, email_invalid — code INVALID unchanged",
+    refusedAs(weak, "password_weak") && refusedAs(mismatch, "password_mismatch") && refusedAs(badEmail, "email_invalid"), J([weak, mismatch, badEmail]));
+  const made: string[] = [];
+  for (const ph of REFUSED) if ((await db.user.findByPhone(ph)) !== null) made.push(ph);
+  ok("A.31b …and none of the three refused sign-ups created an account", made.length === 0, made.join(", "));
 }
 
 // ═══ §B · THE QUIET RULE ════════════════════════════════════════════════════════════════════════

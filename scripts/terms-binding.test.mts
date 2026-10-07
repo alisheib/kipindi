@@ -87,8 +87,9 @@ section("§1 · the page and the registration stamp read one constant");
     r.page, "the page's META carries a hard-coded date or does not read the shared constant");
   ok("1.2 ⛔ auth-service imports TERMS_VERSION, defines no local copy, and stamps no literal",
     r.auth, `literals=${JSON.stringify(r.literals)}`);
-  // Both registration doors — the password form and the one-time-code path — write a new user.
-  ok("1.3 ⛔ RATCHET · both registration paths stamp the shared constant (≥ 2 sites)", r.stamps >= 2, `stamps=${r.stamps}`);
+  // ONE registration door writes a new user since 2026-10-06: the password form. The one-time-code sign-up (the second
+  // door, which created accounts with no email and no password) is deleted, so the ratchet's floor is that one stamp.
+  ok("1.3 ⛔ RATCHET · the registration path stamps the shared constant (≥ 1 site)", r.stamps >= 1, `stamps=${r.stamps}`);
   // Every `db.user.create` in auth-service must be one of the stamped paths — a third door with no stamp
   // would record nothing at all.
   const creates = (decomment(authSrc).match(/db\.user\.create\(/g) ?? []).length;

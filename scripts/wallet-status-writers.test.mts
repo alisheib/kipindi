@@ -24,7 +24,7 @@
  * THE ALLOW-LIST — nothing else may write `status` or `freezeReasons`:
  *   · wallet-freeze.ts · applyFreeze — the reason-set writer every hold and every lift goes through;
  *   · user-service.ts · closeAccount — status "CLOSED" only (closure is terminal and ignores freezes);
- *   · auth-service.ts · the two registration paths — the wallet CREATED with status "ACTIVE" and no reasons;
+ *   · auth-service.ts · the registration path — the wallet CREATED with status "ACTIVE" and no reasons;
  *   · store.ts and prisma-dal.ts — the TRANSPORT under `db.wallet.*`: they pass the caller's patch through and may
  *     not assign a status of their own;
  *   · fixtures under src/app/api/dev-test and src/app/auth/demo — only when this file PROVES them dev-only: every
@@ -318,7 +318,8 @@ function devOnly(path: string, raw: string, proxyRaw: string): { ok: boolean; wh
 // ── the allow-list ──────────────────────────────────────────────────────────────────────────────────────────────
 type Bucket = "not a status writer" | "transport" | "freeze" | "close" | "registration" | "fixture" | "VIOLATION";
 const TRANSPORT = new Set(["src/lib/server/store.ts", "src/lib/server/prisma-dal.ts"]);
-const REGISTRATION_FNS = new Set(["verifyOtpAndAuth", "registerWithPassword"]);
+// ONE since 2026-10-06: the one-time-code sign-up (verifyOtpAndAuth's create branch) was deleted.
+const REGISTRATION_FNS = new Set(["registerWithPassword"]);
 const FIXTURE_ROOTS = ["src/app/api/dev-test/", "src/app/auth/demo/"];
 
 function judge(s: Site, raw: string, proxyRaw: string): { bucket: Bucket; why: string } {
@@ -385,7 +386,9 @@ const FILE_FLOOR = 800;
 // — a balance-only write in a dev-only fixture, not a status writer.
 // 37 since 2026-10-04: `dev-test/seed-tax-books/route.ts` (POST) creates its drive's players ACTIVE, as every
 // dev-test seeder does — judged `fixture` (proven dev-only), read from §1's list before the pin moved.
-const SITE_COUNT = 37;
+// 36 since 2026-10-06: the one-time-code sign-up was deleted, and with it `verifyOtpAndAuth`'s wallet create — the
+// second `registration` site; §1's list read before the pin moved (the password sign-up's create is the one left).
+const SITE_COUNT = 36;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);
@@ -407,9 +410,9 @@ section("§2 · nothing outside the allow-list writes a wallet's status or reaso
   const count = (b: Bucket) => all.filter((s) => s.bucket === b).length;
   ok("2.2 ⛔ RATCHET · applyFreeze is ONE site — the reason set has one writer", count("freeze") === 1, `${count("freeze")}`);
   ok("2.3 ⛔ RATCHET · closeAccount is ONE site, and it writes CLOSED", count("close") === 1, `${count("close")}`);
-  ok("2.4 ⛔ RATCHET · registration creates the wallet at exactly TWO sites (password and one-time code)", count("registration") === 2, `${count("registration")}`);
+  ok("2.4 ⛔ RATCHET · registration creates the wallet at exactly ONE site (the password sign-up)", count("registration") === 1, `${count("registration")}`);
   const production = count("freeze") + count("close") + count("registration");
-  ok("2.5 ⛔ RATCHET · production status writers total exactly 4", production === 4, `${production}`);
+  ok("2.5 ⛔ RATCHET · production status writers total exactly 3", production === 3, `${production}`);
   const transport = all.filter((s) => s.bucket === "transport");
   ok("2.6 both stores are seen as transport (the census reads the layer under db.wallet.*)",
     [...TRANSPORT].every((p) => transport.some((s) => s.path === p)), transport.map(where).join(", "));

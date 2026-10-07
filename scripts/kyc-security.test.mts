@@ -194,10 +194,10 @@ ok("own NIDA re-submit ok", r.ok && (r as { data?: { verified: boolean } }).data
 }
 
 // ─── 3. PHONE uniqueness (the lookup the registration guard relies on) ───
-// requestRegisterOtp() blocks a duplicate via `db.user.findByPhone(phone)` →
-// ALREADY_EXISTS (auth-service.ts:108-112), and Postgres enforces @unique on
-// phoneE164. We assert the lookup key behaves correctly (can't run the full
-// request-scoped action in a plain script).
+// registerWithPassword()'s duplicate-phone guard blocks a duplicate via
+// `db.user.findByPhone(phone)` → ALREADY_EXISTS (inside its `register:` lock), and
+// Postgres enforces @unique on phoneE164. We assert the lookup key behaves correctly
+// (can't run the full request-scoped action in a plain script).
 const TAKEN = "+255712345699";
 ok("fresh phone is free", !(await db.user.findByPhone(TAKEN)));
 await mkUser("usr_phone_taken", TAKEN);

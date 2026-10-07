@@ -237,7 +237,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           />
         </div>
         {/* Contact email — opt-in; once set, transactional receipts are emailed. */}
-        <FormColumn measure="field"><EmailEditor currentEmail={user?.email ?? null} verified={!!user?.emailVerifiedAt} /></FormColumn>
+        <FormColumn measure="field"><EmailEditor currentEmail={user?.email ?? null} verified={!!user?.emailVerifiedAt} hasPassword={!!user?.passwordHash} /></FormColumn>
         <div className="border-t border-border pt-3">
           <FormColumn measure="field"><PasswordSection hasPassword={!!(user?.passwordHash)} /></FormColumn>
         </div>

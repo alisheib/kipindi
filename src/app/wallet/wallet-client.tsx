@@ -38,8 +38,13 @@ function BalanceSpark({ series, label }: { series: number[]; label: string }) {
 }
 
 function BalanceCard({
-  balance, pending, hold, currency, held = false,
-}: { balance: number; pending: number; hold: number; currency: string; held?: boolean }) {
+  balance, pending, hold, currency, held = false, canDeposit = true,
+}: {
+  balance: number; pending: number; hold: number; currency: string; held?: boolean;
+  /** Whether this wallet may be invited to deposit — `depositOpen` from the page (wallet ACTIVE, no break). `held`
+   *  still names the balance; this only decides the Add funds link. */
+  canDeposit?: boolean;
+}) {
   const { t } = useT();
   return (
     <section className="relative overflow-hidden rounded-xl"
@@ -87,7 +92,8 @@ function BalanceCard({
         >
           <Cash>{formatTzs(balance)}</Cash>
         </p>
-        {balance === 0 && pending === 0 && hold === 0 && !held && (
+        {/* No Add funds during a break or over a hold (2026-10-06): the deposit screen would refuse it. */}
+        {balance === 0 && pending === 0 && hold === 0 && canDeposit && (
           <Link
             href="/wallet/deposit"
             className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
@@ -602,7 +608,7 @@ const METHODS: Method[] = [
 ];
 
 export function WalletPageClient({
-  balance, pending, hold, currency, walletHeld = false,
+  balance, pending, hold, currency, walletHeld = false, depositOpen = true,
   transactions,
   resultCount, page, totalPages, pagerBaseHref,
   section, sectionHrefs, activityBar,
@@ -620,6 +626,9 @@ export function WalletPageClient({
   balance: number; pending: number; hold: number; currency: string;
   /** The wallet is not ACTIVE (an officer's freeze, a final refusal) — decided on the server from the wallet row. */
   walletHeld?: boolean;
+  /** Whether this page may invite a deposit — decided on the server: the wallet is ACTIVE and no break is running
+   *  (2026-10-06). Gates every deposit invitation here; Withdraw is not gated by it. */
+  depositOpen?: boolean;
   /** One PAGE of rows — the server filtered, counted and paged them. */
   transactions: Transaction[];
   /** The SAME variable the bar published as `data-result-count`. Never recomputed. */
@@ -699,8 +708,10 @@ export function WalletPageClient({
                 header's gilt is untouched. The action is identical — only its claim on
                 the eye changes. */}
             {/* 2026-09-14 — a held wallet cannot take a deposit (/wallet/deposit says "Deposits paused"), so it is not
-                invited to make one; Withdraw stays, because its screen explains the freeze. */}
-            {!walletHeld && (
+                invited to make one; Withdraw stays, because its screen explains the freeze.
+                2026-10-06 — nor is a player on a break (`depositOpen`, decided on the server); Withdraw stays here too,
+                because a break does not stop withdrawals. */}
+            {depositOpen && (
             <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
               <I.arrowDown s={14} />
               {t.common.deposit}
@@ -724,7 +735,7 @@ export function WalletPageClient({
           one child) and nothing is orphaned. A lonely card in a multi-column grid is its own
           defect class, and `qa:withdrawal-visual` now measures it by name. */}
       <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusCardVisible && "lg:grid-cols-2")}>
-        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} />
+        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} canDeposit={depositOpen} />
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} showAllGrants={showAllGrants} grantsToggleHref={grantsToggleHref} />
       </div>
       {bonusWagerRemaining > 0 && (
@@ -799,9 +810,11 @@ export function WalletPageClient({
                    above: the header's gilt is the one.
                    The deposit CTA is offered only when the account is genuinely empty; a FILTERED
                    empty state offers the ways OUT of the filter instead, each labelled with the
-                   real number of rows it leads to. */
+                   real number of rows it leads to.
+                   2026-10-06 — and only when the wallet can take a deposit (`depositOpen`): not during
+                   a break, not over a hold. */
                 emptyCause === "no-rows" ? (
-                  isAuthed ? (
+                  isAuthed && depositOpen ? (
                     <Link href="/wallet/deposit" className="btn btn-primary btn-md">
                       {t.common.depositCta}
                     </Link>

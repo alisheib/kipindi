@@ -369,8 +369,8 @@ export function NotificationsPanel() {
       const first = f[0], last = f[f.length - 1];
       const active = document.activeElement;
       const outside = !dialogRef.current?.contains(active);
-      /* ⚠️ `outside` GUARDS BOTH DIRECTIONS HERE, where `<Modal>` guards only Shift+Tab —
-         a deliberate difference, not a copy error. Modal's content is static; this list
+      /* ⚠️ `outside` GUARDS BOTH DIRECTIONS, as `<Modal>` does since S6 A8i-2. Here it
+         matters more: this list
          DELETES the row under the user (dismiss is optimistic — the row leaves before the
          round-trip). When the focused ✕ is removed from the DOM the browser drops focus to
          `<body>`, and a plain Tab from there is the exact leak the trap exists to stop. */

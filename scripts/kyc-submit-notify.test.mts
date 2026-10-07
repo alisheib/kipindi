@@ -11,7 +11,7 @@ process.env.EMAIL_OUTBOX_CAPTURE = "1";
 process.env.KYC_NOTIFY_EMAILS = "Compliance@50pick.tz, ops@50pick.tz , compliance@50pick.tz"; // dupes + case + spaces
 
 import { submitForReview, reviewKyc, kycNotifyEmails } from "../src/lib/server/kyc-service.ts";
-import { setUserEmail, verifyEmailToken, buildEmailVerifyUrl } from "../src/lib/server/email-verification.ts";
+import { setUserEmail, confirmEmailWithProof, buildEmailVerifyUrl } from "../src/lib/server/email-verification.ts";
 import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
 import { listForUser } from "../src/lib/server/notification-service.ts";
 import { db } from "../src/lib/server/store.ts";
@@ -204,18 +204,20 @@ ok("setUserEmail reports a verification send", sr.ok && sr.changed && sr.verific
 ok("verification email stub sent to new address", sentTo("new.user@example.com").some((m) => m.subject.includes("Confirm your email")));
 
 const token = new URL(buildEmailVerifyUrl("usr_v0001", "new.user@example.com")).searchParams.get("token") ?? undefined;
-let vr = await verifyEmailToken(token);
+// The link opened in the account's own session (route audit 2026-10-06, A3: anywhere else it asks for the password).
+const owner = { sessionUserId: "usr_v0001", password: null };
+let vr = await confirmEmailWithProof(token, owner);
 ok("valid token -> verified", vr.status === "verified");
 ok("emailVerifiedAt now set", !!(await db.user.findById("usr_v0001"))?.emailVerifiedAt);
-vr = await verifyEmailToken(token);
+vr = await confirmEmailWithProof(token, owner);
 ok("second click -> already (idempotent)", vr.status === "already");
-vr = await verifyEmailToken("garbage.token.value");
+vr = await confirmEmailWithProof("garbage.token.value", owner);
 ok("garbage token -> invalid", vr.status === "invalid");
 
 // Changing the email invalidates the old verified flag AND the old token.
 sr = await setUserEmail("usr_v0001", "changed@example.com");
 ok("changing email clears verified flag", !(await db.user.findById("usr_v0001"))?.emailVerifiedAt);
-vr = await verifyEmailToken(token); // old token still names new.user@…
+vr = await confirmEmailWithProof(token, owner); // old token still names new.user@…
 ok("stale token (email changed) -> mismatch", vr.status === "mismatch");
 
 // Unchanged address is a no-op (no re-send, stays unverified-without-resend).

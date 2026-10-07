@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
-import { setLimits, selfExclude, coolOff, SELF_EXCLUSION_PERIODS_SEC, COOLING_OFF_PERIODS_SEC } from "@/lib/server/responsible-gambling";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
+import { setLimits, selfExclude, coolOff, selfExclusionStandingOf, SELF_EXCLUSION_PERIODS_SEC, COOLING_OFF_PERIODS_SEC } from "@/lib/server/responsible-gambling";
 import { destroySession } from "@/lib/server/session";
 
 function n(s: FormDataEntryValue | null): number | null {
@@ -16,7 +17,7 @@ function n(s: FormDataEntryValue | null): number | null {
 
 export async function setLimitsAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const result = await setLimits(session.userId, {
     dailyDepositLimit:   n(formData.get("dailyDepositLimit")),
     weeklyDepositLimit:  n(formData.get("weeklyDepositLimit")),
@@ -37,7 +38,7 @@ export async function setLimitsAction(formData: FormData) {
 
 export async function selfExcludeAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const period = String(formData.get("period") ?? "");
   if (!(period in SELF_EXCLUSION_PERIODS_SEC)) {
     redirect(`/profile/responsible-gambling?reason=rg_period_invalid`);
@@ -52,13 +53,18 @@ export async function selfExcludeAction(formData: FormData) {
   // sign-in — the rarest route exercising the code, the commonest route on the fallback.
   // The date matters here more than anywhere: this is the moment the player is told how long
   // the break they just chose actually lasts.
-  const until = res?.data?.until ? `&until=${encodeURIComponent(res.data.until.slice(0, 10))}` : "";
+  // A PERMANENT exclusion lands on the permanent panel, the one every later sign-in shows - asked through
+  // selfExclusionStandingOf, the one definition of permanent, never by comparing the period name.
+  const untilIso = res?.data?.until ?? null;
+  const standing = untilIso ? selfExclusionStandingOf(untilIso) : null;
+  if (standing?.state === "serving" && standing.permanent) redirect("/auth/login?excluded=permanent");
+  const until = untilIso ? `&until=${encodeURIComponent(untilIso.slice(0, 10))}` : "";
   redirect(`/auth/login?excluded=serving${until}`);
 }
 
 export async function coolOffAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const period = String(formData.get("period") ?? "");
   if (!(period in COOLING_OFF_PERIODS_SEC)) {
     redirect(`/profile/responsible-gambling?reason=rg_period_invalid`);

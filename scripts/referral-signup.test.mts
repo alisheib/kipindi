@@ -36,6 +36,10 @@
 // grant is minted while the feature sleeps. This suite exercises the bonus machinery a
 // re-enablement depends on, so it drives the ON path — Law 2, one home, see the module header.
 import "./lib/bonus-feature-on.mts";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { decomment } from "./lib/decomment.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
@@ -188,6 +192,64 @@ ok("§5 the override is restored, not leaked", process.env.FEATURE_INVITEREWARDS
   ok("§7 ⛔ …and no PRIZE row and no grant exist",
      (await db.referralReward.listByReferrer("ref_ivy")).filter((r) => r.type === "PRIZE").length === 0
      && (await db.bonusGrant.listByUser("ref_ivy")).length === 0);
+}
+
+// ── §8 · THE CODE SURVIVES THE DOORS (route audit B3, 2026-10-06) ─────────────
+// 🔴 §1–§7 prove the bind pays (or does not) once a code ARRIVES at sign-up. It did not always arrive: an invited
+// player who tapped "Sign in", failed, and then tapped "Create one" reached sign-up with the code gone, and the
+// header's bare Sign in / Sign up doors dropped it too. `recruitedBy` is written once, so each of those was a credit
+// lost for good, with no error anywhere. ⭐ One rule normalises a code (src/lib/referral-code.ts), and every door
+// between the invite link and the sign-up form carries it. Read as source, comments stripped.
+{
+  const ROOT = fileURLToPath(new URL("..", import.meta.url));
+  const read = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8")).replace(/\r\n/g, "\n");
+  const relOf = (full: string) => relative(ROOT, full).split(sep).join("/");
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap((name) => {
+    const full = join(dir, name);
+    return statSync(full).isDirectory() ? walk(full) : /\.(ts|tsx)$/.test(name) ? [full] : [];
+  });
+  const srcFiles = walk(join(ROOT, "src"));
+  const DEF = "function normalizeReferralCode(";
+  const defines = srcFiles
+    .filter((f) => readFileSync(f, "utf8").includes(DEF) && decomment(readFileSync(f, "utf8")).includes(DEF))
+    .map(relOf);
+  ok("§8.1 control: the walker read the source tree and finds the definition where it lives",
+     srcFiles.length > 500 && defines.includes("src/lib/referral-code.ts"), `${srcFiles.length} files · ${defines.join(", ")}`);
+  ok("§8.1 ONE referral rule — `function normalizeReferralCode(` is defined in exactly one file, src/lib/referral-code.ts",
+     defines.length === 1 && defines[0] === "src/lib/referral-code.ts", defines.join(", "));
+  ok("§8.2 affiliate-service re-exports it from that one home, so its importers compile unchanged",
+     /export \{[^}]*normalizeReferralCode[^}]*\} from "@\/lib\/referral-code"/.test(read("src/lib/server/affiliate-service.ts")));
+
+  const LOGIN = read("src/app/auth/login/page.tsx");
+  const loginDefects = [
+    !LOGIN.includes("normalizeReferralCode(sp.ref)") && "it does not read ?ref= through the one rule",
+    !LOGIN.includes('<input type="hidden" name="ref" value={refCode} />') && "no hidden ref field for the action's failure hop to read",
+    !LOGIN.includes('if (refCode) keepQs.set("ref", refCode);') && "registerHref does not carry the code",
+    !/<Link\s+href=\{registerHref as never\}/.test(LOGIN) && "'Create one' does not use registerHref",
+    !LOGIN.includes("cta: { href: registerHref, label: t.auth.createOne }") && "the no_account panel's CTA does not use registerHref",
+    LOGIN.includes("/auth/register${nextSafe") && "a sign-up link is still built from nextSafe alone, which drops the code",
+  ].filter(Boolean) as string[];
+  ok("§8.3 the sign-in page reads the code, posts it back in a hidden field, and both of its ways to sign-up carry it (registerHref)",
+     loginDefects.length === 0, loginDefects.join(" · "));
+  ok("§8.3 control: the old sign-up link shape is caught",
+     "href={`/auth/register${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : \"\"}` as never}".includes("/auth/register${nextSafe"));
+
+  const LOGIN_ACTIONS = read("src/app/auth/login/actions.ts");
+  const at = LOGIN_ACTIONS.indexOf("export async function startLoginAction(");
+  const end = at < 0 ? -1 : LOGIN_ACTIONS.indexOf("\nexport ", at + 10);
+  const loginDoor = at < 0 ? "" : LOGIN_ACTIONS.slice(at, end < 0 ? undefined : end);
+  ok("§8.4 the sign-in action's failure hop puts the code back on the page it returns to, normalised",
+     loginDoor.length > 400 && loginDoor.includes('normalizeReferralCode(String(formData.get("ref") ?? ""))')
+       && loginDoor.includes('params.set("ref", ref)'), `${loginDoor.length} chars`);
+
+  const REG = read("src/app/auth/register/page.tsx");
+  ok("§8.5 the sign-up page's 'Sign in' link keeps the code and where they were going",
+     REG.includes('signInQs.set("ref", refCode)') && REG.includes('signInQs.set("next", nextOk)')
+       && REG.includes("`/auth/login?${signInQs.toString()}`") && REG.includes('import { normalizeReferralCode } from "@/lib/referral-code";'));
+
+  const BAR = read("src/components/layout/top-app-bar.tsx");
+  ok("§8.6 the header's guest doors come from authDoorHrefs (this page as next, the code kept) — never a bare sign-up door",
+     BAR.includes("authDoorHrefs(") && !BAR.includes('href={"/auth/register" as never}') && !BAR.includes('href={"/auth/login" as never}'));
 }
 
 console.log(`\nreferral-signup: ${pass} passed, ${fail} failed`);

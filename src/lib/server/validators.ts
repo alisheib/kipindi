@@ -131,11 +131,8 @@ export const LoginRequestSchema = z.object({
 });
 export type LoginRequestInput = z.infer<typeof LoginRequestSchema>;
 
-export const OtpVerifySchema = z.object({
-  phone: tzPhone,
-  code: otpCode,
-  purpose: z.enum(["login", "register", "withdraw", "reauth", "self_exclusion"]),
-});
+// no purpose field: the server decides (verifyOtpAndAuth consumes a login code only)
+export const OtpVerifySchema = z.object({ phone: tzPhone, code: otpCode });
 export type OtpVerifyInput = z.infer<typeof OtpVerifySchema>;
 
 /**
@@ -172,10 +169,6 @@ export const KycIdentitySchema = z.object({
     .optional(),
   fullName,
   dob: dateOfBirth,
-  // Optional contact email collected at the identity step — the canonical
-  // collection point (tied to verification). Normalized (trim + lowercase);
-  // "" / omitted leaves any existing email untouched. Mirrors profile actions.
-  email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
 export type KycIdentityInput = z.infer<typeof KycIdentitySchema>;
 

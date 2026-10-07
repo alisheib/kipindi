@@ -1,7 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
@@ -11,6 +12,7 @@ import { WalletBalancePill, useLiveBalance } from "@/components/layout/wallet-ba
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
+import { authDoorHrefs } from "@/lib/auth-landing";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
@@ -408,24 +410,15 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               whole reason `.kp-auth-cta` exists — the pair tightens by 6px a side below `sm`
               (globals.css), same height, same radius, same idiom — after which `pastRight` is
               **0 at 320 too**. ⛔ Not a new breakpoint: `max-width: 639.98px` is the mirror of
-              Tailwind's `sm`, the boundary this pair was already being judged against. */}
+              Tailwind's `sm`, the boundary this pair was already being judged against.
+
+              ⭐ B3 (route audit 2026-10-06) · THE TWO DOORS RETURN A GUEST TO THIS PAGE, AND KEEP THE INVITE THAT
+              BROUGHT THEM (`GuestAuthDoors`, below). The fallback draws the bare doors while the page's query is
+              read, so the pair never waits on it. */}
           {!user.isAuthed && (
-            <>
-              <Link
-                href={"/auth/login" as never}
-                aria-label={t.common.signIn}
-                className="btn btn-ghost btn-lg btn-pill kp-auth-cta"
-              >
-                {t.common.signIn}
-              </Link>
-              <Link
-                href={"/auth/register" as never}
-                aria-label={t.common.signUp}
-                className="btn btn-primary btn-lg btn-pill kp-auth-cta"
-              >
-                {t.common.signUp}
-              </Link>
-            </>
+            <Suspense fallback={<GuestAuthPills signIn="/auth/login" signUp="/auth/register" />}>
+              <GuestAuthDoors />
+            </Suspense>
           )}
 
           <AvatarMenu
@@ -444,6 +437,48 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
       </div>
     </header>
   );
+}
+
+/**
+ * A guest's two account actions — `Sign in` the ghost pill, `Sign up` the filled one, both `.kp-auth-cta` (E-276, above).
+ * One drawing for the bare doors (the Suspense fallback) and for the doors that know the page (`GuestAuthDoors`).
+ */
+function GuestAuthPills({ signIn, signUp }: { signIn: string; signUp: string }) {
+  const { t } = useT();
+  return (
+    <>
+      <Link
+        href={signIn as never}
+        aria-label={t.common.signIn}
+        className="btn btn-ghost btn-lg btn-pill kp-auth-cta"
+      >
+        {t.common.signIn}
+      </Link>
+      <Link
+        href={signUp as never}
+        aria-label={t.common.signUp}
+        className="btn btn-primary btn-lg btn-pill kp-auth-cta"
+      >
+        {t.common.signUp}
+      </Link>
+    </>
+  );
+}
+
+/**
+ * ⭐ B3 (route audit 2026-10-06) · THE HEADER'S DOORS COME BACK TO THIS PAGE, WITH THE INVITE.
+ * 🔴 Both pills were bare `/auth/login` and `/auth/register`: a guest who opened a market from a shared link and
+ * tapped Sign up lost the market AND the `?ref=` that brought them, so the sharer or agent was never credited —
+ * permanently (`recruitedBy` is written once, at sign-up). `authDoorHrefs` (src/lib/auth-landing.ts) is the one rule:
+ * this page as `next` (on an /auth page, only that page's own next), and the referral code normalised or dropped.
+ * ⚠️ `useSearchParams` is why the caller wraps this in Suspense: a statically drawn page renders the fallback's bare
+ * doors on the server, and this takes over in the browser.
+ */
+function GuestAuthDoors() {
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const { signIn, signUp } = authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""));
+  return <GuestAuthPills signIn={signIn} signUp={signUp} />;
 }
 
 /**

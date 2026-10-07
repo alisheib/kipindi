@@ -110,7 +110,9 @@ try {
     // panel, not the chooser.
     await wp.fill("#idNumber", "199001" + String(Date.now()).slice(-10) + "9999");
     await wp.fill("#fullName", "Asha Mwamba Juma");
-    await wp.fill("#email", `rej${String(Date.now()).slice(-6)}@example.com`);
+    // Filled only where it exists: the identity step renders no `#email` field since route audit 2026-10-06 (A1).
+    const emailField = wp.locator("#email");
+    if (await emailField.count() > 0 && !(await emailField.inputValue())) await emailField.fill(`rej${String(Date.now()).slice(-6)}@example.com`);
     await wp.getByRole("button", { name: /Continue verification/ }).click();
     await wp.waitForTimeout(2500);
     const rejBody = await wp.locator("body").innerText();

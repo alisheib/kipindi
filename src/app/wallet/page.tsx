@@ -34,6 +34,7 @@ import { cookies } from "next/headers";
 import { firstDepositNoticeDue, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -156,6 +157,19 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const pending = w?.pending ?? 0;
   const hold = w?.hold ?? 0;
   const currency = w?.currency ?? "TZS";
+  /**
+   * ⭐ A BREAK PAUSES MONEY IN, AND THIS PAGE DOES NOT INVITE IT (2026-10-06) — the journey header's S4 rule,
+   * on the page that holds the most deposit invitations. A held wallet (officer freeze, final refusal) takes no
+   * deposit either. `depositOpen` is the one answer for the header Deposit, the balance card's Add funds, the
+   * empty state's deposit button and its sentence, and the cash back promo. Withdraw is not asked: a break does
+   * not stop withdrawals, and a held wallet's withdraw screen explains the freeze.
+   * ⚠️ The break read fails OPEN, like the shell's `promoSuppressed`: a failed read shows the invitations, and
+   * /wallet/deposit and `deposit()` still refuse a deposit during a break.
+   */
+  const walletHeld = !!w && w.status !== "ACTIVE";
+  let onBreak = false;
+  try { onBreak = (await isLockedOut(session.userId)).locked; } catch { /* fails OPEN like the shell's promoSuppressed: /wallet/deposit and deposit() still refuse */ }
+  const depositOpen = !walletHeld && !onBreak;
 
   const nowMs = Date.now();
   const { fromMs, toMs } = windowBounds(state.when, nowMs);
@@ -200,11 +214,13 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   // `?deposited=x&amount=5000000` finds no owned txn → no modal, no fake gilt.
   // ⚠️ Looked up over the WINDOWED read, so a player returning from a deposit while a narrow
   //    window is active still sees their own result — the id is matched, not filtered.
+  // ⭐ AND IT MUST BE A DEPOSIT OR A WITHDRAWAL (2026-10-06). The STORED type decides which result is drawn,
+  //    never the param's name: a bet id typed into `?deposited=` used to open a deposit modal over a stake.
   const resultId = (typeof sp.deposited === "string" ? sp.deposited : "") || (typeof sp.withdrawal === "string" ? sp.withdrawal : "");
   const resultTxn = resultId
     ? (rawTxns.find((x) => x.id === resultId) ?? ((await db.txn.findById(resultId)) as StoredTxn | null) ?? undefined)
     : undefined;
-  const resultOwned = resultTxn && resultTxn.userId === session.userId ? resultTxn : undefined;
+  const resultOwned = resultTxn && resultTxn.userId === session.userId && (resultTxn.type === "DEPOSIT" || resultTxn.type === "WITHDRAWAL") ? resultTxn : undefined;
 
   // Bonus balance is money too — same B-1 rule, no zero-on-failure.
   // ⛔ THE SUMMARY IS STILL READ WHEN THE PROGRAMME IS WITHDRAWN, deliberately: a player
@@ -218,7 +234,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   // switch; `bonusFeatureLive` is whether the programme is part of the product at all. An
   // operator re-enabling cashback in /admin/config must not be able to resurrect a promo for
   // a withdrawn programme, so the product state is ANDed in here rather than trusted to it.
-  const cashbackPercent = bonusFeatureLive && bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
+  // ⛔ AND NEVER TO A WALLET THAT CANNOT TAKE A DEPOSIT (2026-10-06): an incentive to put money in, shown during a
+  // break or over a hold, is a solicitation the deposit screen would refuse (`depositOpen` above).
+  const cashbackPercent = depositOpen && bonusFeatureLive && bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
   const cashbackMode = bonusCfg.cashbackMode ?? "REQUEST";
 
   /**
@@ -359,8 +377,8 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
       <RefreshPoller intervalMs={20_000} />
       {resultOwned && (
         <WalletResultModal
-          deposited={typeof sp.deposited === "string" ? sp.deposited : undefined}
-          withdrawal={typeof sp.withdrawal === "string" ? sp.withdrawal : undefined}
+          deposited={resultOwned.type === "DEPOSIT" ? resultOwned.id : undefined}
+          withdrawal={resultOwned.type === "WITHDRAWAL" ? resultOwned.id : undefined}
           status={resultOwned.status}
           amount={String(Math.abs(resultOwned.amount))}
         />
@@ -375,7 +393,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         currency={currency}
         /* A held wallet (officer freeze, final refusal) cannot spend, bet or withdraw, so its balance is not
            labelled "Available" — the same `status !== "ACTIVE"` rule the withdraw and deposit screens read. */
-        walletHeld={!!w && w.status !== "ACTIVE"}
+        walletHeld={walletHeld}
+        /* Wallet ACTIVE and no break — the only state in which this page invites a deposit (2026-10-06). */
+        depositOpen={depositOpen}
         transactions={pagedTxns}
         resultCount={matched.length}
         page={safePage}
@@ -404,7 +424,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           : t.wallet.emptyFilter
         }
         emptyBody={
-          cause === "no-rows" ? t.common.firstDepositHint
+          cause === "no-rows" ? (depositOpen ? t.common.firstDepositHint : t.wallet.emptyLensBody)
           : cause === "lens-empty" ? t.wallet.emptyLensBody
           : cause === "search-miss" ? t.wallet.emptySearchBody
           : cause === "window-miss" ? t.wallet.emptyWindowBody

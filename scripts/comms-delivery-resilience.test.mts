@@ -193,6 +193,46 @@ section("5 · a broken provider must not break a money path");
   ok("…and the outage is still visible in health", emailHealth().status === "DOWN", emailHealth().status);
 }
 
+// ── 6 · The reset path: a hung provider, and a hit that must look like a miss ──
+section("6 · a hung provider must not slow a reset, and a hit must look like a miss");
+{
+  // 🔴 A2 (route audit 2026-10-06). `requestPasswordReset` AWAITED the send, so against this server a reset for a REAL
+  // account took the whole EMAIL_SEND_TIMEOUT_MS (10 s) while an unknown one answered at once - a timing oracle on an
+  // unauthenticated endpoint, saying which numbers and addresses have an account. The mail now leaves after the reply.
+  resetEmailHealth();
+  mode = "hang";
+  const { db } = await import("../src/lib/server/store.ts");
+  const { requestPasswordReset } = await import("../src/lib/server/password-reset.ts");
+  const now = new Date().toISOString();
+  await db.user.create({
+    id: "usr_c2_reset_timing", phoneE164: "+255799000611",
+    passwordHash: "h".repeat(64), passwordSalt: "s".repeat(32),
+    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE",
+    locale: "EN", displayName: "Timing", dob: "1990-01-01", region: "TZ",
+    acceptedTermsVersion: "v1", acceptedTermsAt: now, marketingOptIn: false,
+    twoFactorEnabled: false, avatarDataUrl: null, email: "reset.timing@example.tz",
+    createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
+  } as never);
+
+  const before = received;
+  const t0 = Date.now();
+  const hit = await requestPasswordReset("reset.timing@example.tz");
+  const hitMs = Date.now() - t0;
+  ok("a reset for a REAL account returns ok", hit.ok === true);
+  ok(`…in under 1500ms against a provider that never answers (it took at least ${EMAIL_SEND_TIMEOUT_MS}ms while the send was awaited)`,
+    hitMs < 1500, `took ${hitMs}ms`);
+  await new Promise((r) => setTimeout(r, 300));
+  ok("…and the mail still left: the provider received it", received === before + 1, `received ${received - before}`);
+
+  const t1 = Date.now();
+  const miss = await requestPasswordReset("nobody.timing@example.tz");
+  const missMs = Date.now() - t1;
+  ok("a reset for an UNKNOWN address returns the same ok", miss.ok === true);
+  ok("…in under 1500ms too: a hit and a miss answer alike", missMs < 1500, `took ${missMs}ms`);
+  await new Promise((r) => setTimeout(r, 300));
+  ok("…and nothing was sent for it", received === before + 1, `received ${received - before}`);
+}
+
 for (const s of openSockets) s.destroy();
 server.close();
 

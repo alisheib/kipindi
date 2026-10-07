@@ -92,6 +92,8 @@ export function BetConfirmModal({
   const startedAtRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  /** The way out, "Ghairi": where focus lands when a dialog drawn over this one closes (`safeFocus`, S6 A8i-2). */
+  const cancelRef = useRef<HTMLButtonElement>(null);
   // Direct-DOM target for the gilt countdown strip. Driving its
   // transform through React state caused stair-stepping: every RAF
   // triggered a full modal re-render AND a CSS transition that
@@ -197,8 +199,9 @@ export function BetConfirmModal({
   // the bet, and Enter on a dialog opened on top (the win seal, the reality check) placed it underneath. Enter is now the
   // focused button's own press: the dialog opens with focus on Confirm (`initialFocus`), so Enter there still confirms,
   // through the same click a mouse makes — and that button is `disabled` while a bet is in flight or its quote has run
-  // out, where the listener checked only the first. A key held down from before presses nothing (`modal.tsx`,
-  // `held-key.ts`).
+  // out, where the listener checked only the first. A key held down presses once (`key-guard.tsx`, `held-key.ts`).
+  // ⭐ S6 A8i-2 · and a dialog drawn over this one (the win seal) closing hands focus to "Ghairi" (`safeFocus`), never back
+  // to Confirm: an Enter meant for the seal, or for a second seal still on its way, can at worst close this confirm.
   // `test:enter-where-pressed` holds every dialog to this.
 
   // DS-5 — composed from the YES/NO semantic families (the same lit-glass
@@ -219,6 +222,7 @@ export function BetConfirmModal({
       closeOnScrim={!pending}
       showClose={false}
       initialFocus={confirmRef}
+      safeFocus={cancelRef}
       panelClassName="overflow-hidden !p-0"
     >
       {/* Quote-hold progress strip — driven directly via stripRef from the RAF
@@ -384,6 +388,7 @@ export function BetConfirmModal({
             {pending ? t.dialog.placing : `${t.common.confirm} · ${formatTzs(stake)}`}
           </button>
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             disabled={pending}

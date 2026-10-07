@@ -31,6 +31,7 @@
 process.env.MARKET_SCHEDULER = "false";
 
 import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition, getMarket, resolveMarket, settleMarket, listPositionsForMarket, ratesFor } from "../src/lib/server/market-service.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
@@ -407,7 +408,7 @@ ok("audit chain verifies end-to-end", verifyChain().valid);
   ok("settlement payouts are audited", payouts.length >= winnerCount, `audited=${payouts.length} winners=${winnerCount}`);
 }
 
-// ── §S · THE LIVE-MONEY STARTER-BALANCE CLAMP IS ON *BOTH* REGISTRATION DOORS ──────────
+// ── §S · THE LIVE-MONEY STARTER-BALANCE CLAMP IS ON THE REGISTRATION DOOR (THERE IS ONE) ──
 //
 // 🔴 A starter balance is written straight onto the wallet with NO ledger entry, so every
 // shilling it creates is money minted from nothing and the wallet↔ledger trial balance breaks
@@ -423,14 +424,19 @@ ok("audit chain verifies end-to-end", verifyChain().valid);
 // ⭐ Source-level on purpose: the clamp is a one-line pure function, and what actually failed
 // here was not its logic but its ABSENCE at a second call site. So the assertion is about
 // call sites, which is the thing that was wrong.
+// ⭐ 2026-10-06: the one-time-code sign-up was deleted, so there is ONE registration door. A second
+// account factory is how a second, unclamped door would come back, so the factory count is pinned
+// beside the clamp (comments stripped: the history above names the old door in prose).
 {
-  const src = readFileSync("src/lib/server/auth-service.ts", "utf8");
+  const src = decomment(readFileSync("src/lib/server/auth-service.ts", "utf8"));
   const clampSites = (src.match(/clampStarterBalanceForLiveMoney\(/g) ?? []).length;
-  // one definition + two call sites
+  const factories = src.split("db.user.create(").length - 1;
+  ok("§S auth-service creates a player account at exactly ONE site", factories === 1, `db.user.create sites=${factories}`);
+  // one definition + the one call site
   ok("§S the live-money clamp has ONE definition", /function clampStarterBalanceForLiveMoney\(/.test(src));
-  ok("§S …and it is applied at BOTH registration paths", clampSites >= 3, `occurrences=${clampSites}`);
+  ok("§S …and it is applied at the registration door", clampSites >= 2, `occurrences=${clampSites}`);
   ok("§S …and no starter balance reaches a wallet unclamped",
-     !/balance:\s*starterBalance/.test(src) || clampSites >= 3,
+     !/balance:\s*starterBalance/.test(src) || clampSites >= 2,
      "a starterBalance is written without passing the clamp");
   ok("§S …and the clamp is keyed on live-money mode",
      /function clampStarterBalanceForLiveMoney\([^)]*\)[^{]*\{\s*return isLiveMoneyMode\(\) \? 0 :/.test(src),

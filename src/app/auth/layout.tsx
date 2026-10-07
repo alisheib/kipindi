@@ -16,9 +16,12 @@
  * ⭐ THE GATE NOW LIVES IN THE TWO PAGES (`bounce-authed.ts`), because a PAGE is re-executed on
  * every navigation and is therefore correct by construction rather than by remembering.
  * ⛔ DO NOT MOVE IT TO THE MIDDLEWARE — that is the obvious fix and it ships an infinite redirect
- * loop. `proxy.ts`'s gate is `isSessionCookieValid` (HMAC only); a REVOKED device still carries a
- * valid cookie, and `AppShell` deliberately routes it TO `/auth/login?revoked=1`. The full
- * reasoning is in `bounce-authed.ts`, next to the code it constrains.
+ * loop. `proxy.ts`'s gate is `readVerifiedSession` (named `isSessionCookieValid` before W25,
+ * 2026-09-19), which verifies the cookie's HMAC and its 7-day exp (and, on /admin, the role the
+ * cookie names), never the session registry; a REVOKED device still carries a valid cookie, and
+ * `AppShell` deliberately routes that device, through /auth/session-ended, TO
+ * `/auth/login?revoked=1`. The full reasoning is in `bounce-authed.ts`, next to the code it
+ * constrains.
  * ⚠️ NOTHING REPLACED IT HERE. A layout that reads a request header to decide something about
  * the CURRENT PAGE is the bug; adding a different version of it back is not a fix.
  */

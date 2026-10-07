@@ -17,7 +17,7 @@ import { Select } from "@/components/ui/select";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
-import { formatTzs, formatDateTime, formatDate, fill } from "@/lib/utils";
+import { formatTzs, formatDateTime, fill } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
@@ -101,11 +101,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           is the same screen a person on day two of a week-long break opens, and until 2026-09-10
           picking the shortest option there would silently REPLACE their week with an hour. The
           write now takes the furthest date; this is the half that tells them, and says plainly
-          that it cannot be shortened so nobody has to discover it by trying. */}
+          that it cannot be shortened so nobody has to discover it by trying.
+          ⭐ The date carries its time (2026-10-06), as /wallet/deposit and the server's own refusal do: a
+          one-hour break that ends today read "until 6 Oct 2026", which says nothing about when. */}
       {rg.selfExclusionUntil && Date.parse(rg.selfExclusionUntil) > Date.now() ? (
-        <Callout tone="warning">{fill(t.rg.exclusionActive, { date: formatDate(rg.selfExclusionUntil) })}</Callout>
+        <Callout tone="warning">{fill(t.rg.exclusionActive, { date: formatDateTime(rg.selfExclusionUntil) })}</Callout>
       ) : rg.coolingOffUntil && Date.parse(rg.coolingOffUntil) > Date.now() ? (
-        <Callout tone="warning">{fill(t.rg.breakActive, { date: formatDate(rg.coolingOffUntil) })}</Callout>
+        <Callout tone="warning">{fill(t.rg.breakActive, { date: formatDateTime(rg.coolingOffUntil) })}</Callout>
       ) : null}
 
       <PageHero glow="yes">

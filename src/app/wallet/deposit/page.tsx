@@ -28,7 +28,7 @@ import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
 import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
-import { fill, formatDate } from "@/lib/utils";
+import { fill, formatDateTime } from "@/lib/utils";
 import { readFlash } from "@/lib/server/flash-message";
 import { pathWithQuery } from "@/lib/safe-next";
 
@@ -84,8 +84,11 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
     postcode: sp.bPost ?? "",
   };
 
-  let user: Awaited<ReturnType<typeof db.user.findById>> | null = null;
-  try { user = await db.user.findById(session.userId); } catch { /* graceful — default limits */ }
+  // 🔴 NOT SWALLOWED (2026-10-06). This read picks the door, and a guess is a statement the page cannot back: a failed
+  // read told a CONFIRMED player "No email address on your account" and sent them to type one — and a different address
+  // clears the confirmation. A failed read now throws to `wallet/error.tsx` ("your funds are safe" · Try again), the
+  // answer /wallet and /wallet/withdraw already give (B-1). The wallet-status and break reads below stay graceful.
+  const user = await db.user.findById(session.userId);
   // The deposit gates. Read here purely to choose what to RENDER; wallet-service
   // re-checks BOTH on submit, so this is presentation, never the enforcement.
   //
@@ -105,18 +108,24 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
     const w = await db.wallet.findByUserId(session.userId);
     walletHeld = !!w && w.status !== "ACTIVE";
   } catch { /* graceful — the server is the enforcement */ }
-  // ⭐ A BREAK OUTRANKS EVERY OTHER DOOR, HERE AS ON THE SERVER (2026-10-06). `wallet-service.deposit()` asks the
-  // self-exclusion / cooling-off lockout FIRST and says the UI must render its gates in the same order — this page
-  // never asked it. A player on a cooling-off break with an unconfirmed address was shown the email door ("adding money
-  // opens as soon as your email is confirmed"), confirmed it, and was then refused for the break: two contradictory
-  // stories on one screen, and a nudge to deposit during a break the player chose. The break's own sentence now
-  // stands in place of the door and the form, with its end date.
+  // ⭐ THE BREAK IS DRAWN BEFORE EVERY OTHER DOOR (2026-10-06). The SERVER's order is a held wallet first, then the
+  // break, then the email (`wallet-service.deposit()`). This page draws the break first because it is the player's own
+  // decision and carries a date; a held wallet and a break both refuse, so for a player who is both only the words
+  // differ, never the outcome. Before this read existed, a player on a cooling-off break with an unconfirmed address was
+  // shown the email door ("adding money opens as soon as your email is confirmed"), confirmed it, and was then refused
+  // for the break: two contradictory stories on one screen, and a nudge to deposit during a break the player chose. The
+  // break's own sentence now stands in place of the door and the form, with its end date — and a SELF-EXCLUSION gets the
+  // exclusion's sentence, never the cooling-off one ("you can still sign in … does not stop withdrawals").
   // ⚠️ A failed read keeps the page as it was — the server still refuses a deposit during a break.
   let breakUntil: string | null = null;
+  let breakIsExclusion = false;
   try {
     const lock = await isLockedOut(session.userId);
-    if (lock.locked && lock.until) breakUntil = lock.until;
+    if (lock.locked && lock.until) { breakUntil = lock.until; breakIsExclusion = lock.reason === "self_exclusion"; }
   } catch { /* graceful — the server is the enforcement */ }
+  // ⭐ THE ONE ANSWER for everything on this page that would invite money in: the cash back promo, the trust strip, and
+  // which payout notice is drawn (a paused wallet is never told "you can still add funds" under "Deposits paused").
+  const moneyInPaused = !!breakUntil || walletHeld;
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
@@ -156,10 +165,12 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
       {/* 🔴 Deliberately ABOVE the cashback promo. If we cannot pay withdrawals, a player has to
           learn that BEFORE we offer them a bonus for putting money in — showing the incentive
-          first and the limitation later is the shape of a scam, whatever the intent. */}
+          first and the limitation later is the shape of a scam, whatever the intent.
+          ⭐ The DEPOSIT variant says "you can still add funds" (2026-10-06): true only when money in is open. During a
+          break or over a hold the page says "Deposits paused", so it draws the withdraw variant's sentence instead. */}
       <PayoutStatusNotice
         status={payouts.status}
-        variant="deposit"
+        variant={moneyInPaused ? "withdraw" : "deposit"}
         note={payouts.note}
         labels={{
           delayedTitle: t.wallet.payoutsDelayedTitle,
@@ -170,27 +181,29 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         }}
       />
 
-      {/* …and never an incentive to a player on a break (2026-10-06). */}
-      {showCashback && !breakUntil && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
+      {/* …and never an incentive to a player on a break, or to a held wallet (2026-10-06). */}
+      {showCashback && !moneyInPaused && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
       {/* ── THE ONE DOOR ────────────────────────────────────────────────────────
           The ladder is: register → confirm email → deposit and play → verify identity →
           withdraw (owner ruling 2026-09-13). On THIS screen that leaves one gate, the confirmed
           email, rendered INSTEAD of the form rather than letting a player fill everything in and
           be refused on submit — the server enforces it either way (`wallet-service.deposit()`
-          asks RG lockout → email → caps + SOF), but being told up front, with the action that
+          asks held wallet → RG lockout → email → caps + SOF), but being told up front, with the action that
           fixes it, is the difference between a gate and a dead end.
           ⛔ The identity panel that stood here from 2026-09-05 to 2026-09-13 is deleted with the
           deposit gate it mirrored. Do not restore it by reading the older ruling. */}
       {/* 🔴 A HELD WALLET OUTRANKS THE EMAIL DOOR (2026-09-14): confirming an address would open nothing.
           ⛔ Not `KycGatePanel` — the deposit screen draws no identity panel (`test:kyc-at-withdrawal` B1.1).
-          ⭐ AND A BREAK OUTRANKS BOTH (2026-10-06) — the server's own first door. Its sentence is the RG page's
-          (`rg.breakActive`): the end date, that it cannot be shortened, and that withdrawals are not stopped. No button:
+          ⭐ AND A BREAK IS DRAWN BEFORE BOTH (2026-10-06) — the player's own decision, with a date (the server refuses the
+          held wallet first; both refuse). Its sentence is the RG page's: `rg.breakActive` for a cooling-off (the end date,
+          that it cannot be shortened, that withdrawals are not stopped), `rg.exclusionActive` for a self-exclusion, which
+          promises neither sign-in nor withdrawals. The date carries its time, as the server's refusal does. No button:
           there is nothing to do here until the date, and nothing on this page may invite a deposit before it. */}
       {breakUntil ? (
         <div data-testid="deposit-break">
           <Callout tone="warning" layout="stack" glyph="lock" role="status" titleAs="h2" title={t.wallet.depositPausedTitle}>
-            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(t.rg.breakActive, { date: formatDate(breakUntil) })}</p>
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: formatDateTime(breakUntil) })}</p>
           </Callout>
         </div>
       ) : walletHeld ? (
@@ -217,7 +230,12 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         <EmailVerifyGate email={user?.email ?? null} />
       ) : (
       <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">
-        <IdempotencyKeyField />
+        {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
+            intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the
+            router's state key ignores the query), so a retry re-sent the SAME key — and a used key replays its row: a
+            synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
+            a new key; a double tap or a lost response on the SAME screen still dedupes. */}
+        <IdempotencyKeyField key={sp.error ?? ""} />
         {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. */}
         {sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}
         <fieldset>
@@ -291,8 +309,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);
           this slot is a deliberately-labeled placeholder, never a fabricated mark. */}
       {/* 2026-09-14 — how a deposit is credited means nothing to a wallet that cannot take one: pass 2 of the visual
-          audit found it under the "Deposits paused" notice. The same holds during a break (2026-10-06). */}
-      {!walletHeld && !breakUntil && (
+          audit found it under the "Deposits paused" notice. The same holds during a break (2026-10-06): `moneyInPaused`. */}
+      {!moneyInPaused && (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3">
         <span
           aria-hidden

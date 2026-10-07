@@ -82,7 +82,14 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push U43a, U38b, U13 or the
-  owner door. NOW: U38b (STEP 47 is LIVE). The Vodacom plan runs beside it on the same PC in another session
+  owner door. NOW (11:00 EAT · 2026-10-07): U38b BUILT in `F:kipindi-m14` (uncommitted) — the 28 drafts applied, OD65 (the
+  count alone for a masked viewer, the gate never asked) and OD66 (no `pop=both` for a masked viewer) decided and built,
+  every finding of an independent review fixed (STD-1's redirect on Save and on "Remove the filter", the in-memory save
+  read, false unsaved-changes prompts on the rail, Reload after a stale save, the masked count inside the split's slots);
+  `test:campaign-audience` 40, its red 46/46; typecheck clean; its six drives queued for `F:/kipindi-locks/heavy-node.lock`.
+  U13 BUILT on top of it in `F:kipindi-m14b` (the drafts merged; the pre-review's SP-1…SP-5 and ruling R1 built; 20 suites
+  and reds green), under independent review. BUILDERS RUNNING (static, light suites only): U40a in `F:kipindi-m14c` (on
+  U38b + U13), U46a in `F:kipindi-m14d` (on main). Order to land: U38b → U13 → U40a → … (§0 ▶ NEXT). The Vodacom plan runs beside it on the same PC in another session
   (its own worktrees, ports 3071-3079); this lane uses ports 3101-3109 and scratch Postgres 5461, and both take
   `F:/heavy-node.lock` (a `mkdir` mutex) before any heavy job — ⛔ release it ONLY if you took it: a cleanup that ran
   after a failed `mkdir` once removed the Vodacom session's lock (restored at once, its owner told).

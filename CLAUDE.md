@@ -884,6 +884,30 @@ The conviction dial must never be enterable in the unlocked both-ways state:
 The invariant itself survives: the stake surface is never enterable both ways. Until the flip, the rules above stand
 for every player.
 
+⛔ **Keyboard — Enter acts only where it is pressed; a held key presses once; nothing behind the top dialog takes a key
+(Vodacom S6 A8i 2026-10-06, A8i-2 2026-10-07).** Never add a `window`/`document` keydown listener that does a dialog's act
+on Enter: it cancels the focused button's own press, which is how Enter on "Ghairi" placed bets and Enter on the win seal
+sold the ticket underneath (live until A8i). Money dialogs open with focus on their primary, so Enter there is the
+button's own click. Every `Modal` stands on one dialog stack (`src/lib/modal-stack.ts`): only the top dialog takes focus
+and answers Escape and Tab, and a closing dialog hands focus back by `leaveLayer` — never behind the dialog now on top, and
+an uncovered money dialog lands on its WAY OUT (`safeFocus`: Ghairi, Hifadhi nafasi, Cancel), never its money button. One
+app-wide key guard (`src/components/ui/key-guard.tsx`, window capture phase, mounted by AppShell and by every Modal)
+swallows a held key's repeats anywhere (a held Enter on Up & Down's UP placed 13 bets), every Enter or Space behind the
+top dialog, and a fresh press in the 400 ms arming beat after a dialog takes focus or hands it back. A new key listener
+gets a NAME (the census refuses inline ones) and every key event named in `src/` must belong to a listener the census
+reads. Guards: `test:enter-where-pressed` (predeploy; it builds the guard and `leaveLayer` from their text and runs them)
+and its `red:` twin; the drive `qa:enter-where-pressed` (`ENGINE=webkit|firefox` for the other engines).
+
+⛔ **Forms — Enter in a form never skips its confirm (Vodacom S6 A8j, 2026-10-07).** `ConfirmDialog` forces its trigger
+to `type="button"`, so a form whose commit is that dialog has no submit button, and a browser SUBMITS a form of one text
+field on Enter (or a phone's Go key): that is how Enter in the withdraw amount box sent the withdrawal with no "Confirm
+withdrawal", and Enter in the close-account phrase box closed the account. A `ConfirmDialog` whose confirm submits the
+form it sits in takes `submitsForm` (a native guard that turns every other submit into the dialog, a hidden default
+`<input type="submit" autocomplete="off">` disabled until the guard listens, and a hidden unnamed second text field for
+WebKit), its confirm submits SYNCHRONOUSLY inside `onConfirm`, ONE such dialog per form, and NOTHING ELSE in the form may
+submit — the kit `<Button>` with no `type` is a submit button inside a form. Guard: `test:implicit-submit` (predeploy;
+the six host forms by name) and its `red:` twin; the drive `qa:implicit-submit` (`ENGINE=webkit|firefox`).
+
 ## Brand Kit v2 "Needle" (June 2026)
 
 Logo redesigned by Claude Design. The gilt NEEDLE crossing the rim is now the

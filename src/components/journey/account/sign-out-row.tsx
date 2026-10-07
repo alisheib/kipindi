@@ -25,6 +25,9 @@ export function SignOutRow() {
         confirmLabel={t.profile.signOutConfirmYes}
         cancelLabel={t.profile.signOutConfirmNo}
         onConfirm={() => form.current?.submit()}
+        /* S6 A8j — the confirm submits this form, so the dialog guards it (`submitsForm`, in `confirm-dialog.tsx`). The
+           form holds no field and Enter could never submit it; the rule is one for every dialog that submits a form. */
+        submitsForm
         trigger={
           <button type="button" className="kp-hub__exit">
             <span className="kp-hub__glyph" aria-hidden><I.logOut s={20} /></span>

@@ -5,6 +5,7 @@ import { signFlash } from "@/lib/server/flash-message";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { deposit } from "@/lib/server/wallet-service";
 import { db } from "@/lib/server/store";
 import { displayLabel } from "@/lib/display-label";
@@ -19,7 +20,7 @@ const BASE_URL = () => (process.env.NEXT_PUBLIC_APP_URL || "https://www.50pick.t
 
 export async function depositAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet/deposit");
+  if (!session) redirect((await signInPathForAction()) as never);
 
   // B-7 — every refusal this action redirects with is rendered verbatim by the
   // deposit page, so it must be minted in the player's own language, here.
@@ -133,7 +134,10 @@ export async function depositAction(formData: FormData) {
     // The email gate is a recoverable STATE, not a form error — send the player
     // to the gate surface (which offers resend / change address) rather than
     // re-rendering the form with a message they can't act on.
-    if (result.code === "EMAIL_UNVERIFIED") redirect("/wallet/deposit" as never);
+    // Back to the page's email door WITH the player's choices (amount, rail, from, card billing), so once the address
+    // is confirmed the form is as they left it; never the number (a load without an error prefills the account's own
+    // via moneyFormMsisdn).
+    if (result.code === "EMAIL_UNVERIFIED") { const back = new URLSearchParams(carry); back.delete("msisdn"); redirect(`/wallet/deposit?${back.toString()}` as never); }
     // B-7 — the service's English string is audit truth; the player reads the
     // dictionary line for its code (bilingual gateway reasons pass through).
     return fail(errorCopy(t, result));

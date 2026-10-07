@@ -147,6 +147,11 @@ export function DepositConfirm() {
       onOpen={openConfirm}
       openGuard={guardOpen}
       pending={pending}
+      /* ⭐ S6 A8j — the confirm submits this form, and so nothing else may (`submitsForm`, in `confirm-dialog.tsx`).
+         Enter could not submit it even before (it holds eight text fields), but that was an accident of its field
+         count; Enter now opens this dialog, exactly as the button does (in WebKit before Safari 16.4 it still does
+         nothing: see `submitsForm`). */
+      submitsForm
       trigger={
         <button ref={buttonRef} type="button" className="btn btn-gold btn-lg w-full">
           {t.common.confirmDeposit}

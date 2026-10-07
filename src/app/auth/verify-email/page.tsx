@@ -2,9 +2,15 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
+import { PasswordInput } from "@/components/ui/password-input";
+import { FieldLegend } from "@/components/ui/field-legend";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
-import { verifyEmailToken } from "@/lib/server/email-verification";
+import { currentSession } from "@/lib/server/auth-service";
+import { openEmailVerifyLink } from "@/lib/server/email-verification";
 import { getServerT } from "@/lib/i18n-server";
+import { bannerFor } from "@/lib/failure-banner";
+import { confirmEmailAction } from "./actions";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -12,10 +18,80 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-export default async function VerifyEmailPage({ searchParams }: { searchParams?: Promise<{ token?: string }> }) {
+export default async function VerifyEmailPage({ searchParams }: { searchParams?: Promise<{ token?: string; done?: string; reason?: string; retry?: string }> }) {
   const { t } = await getServerT();
   const sp = (await searchParams) ?? {};
-  const { status } = await verifyEmailToken(sp.token);
+  // 🔴 A3 (route audit 2026-10-06) · OPENING THE LINK CONFIRMS ONLY FOR THE ACCOUNT HOLDER. It used to confirm during this
+  // GET for anyone holding the link — a mail scanner, or the stranger who owns a mistyped address. A pending link now
+  // confirms on open only inside the account's own session; anywhere else this page asks for the account's password.
+  const session = await currentSession().catch(() => null);
+  const r = await openEmailVerifyLink(sp.token, session?.userId ?? null);
+  // `done=1` is the password form's own success hop: by then the link reads "already", and it was THIS confirmation.
+  const status = r.status === "already" && sp.done === "1" ? "verified" : r.status;
+  // Another account is signed in on this browser: "Add funds" would open THAT account's deposit screen.
+  const otherSignedIn = !!session && !!r.tokenUserId && session.userId !== r.tokenUserId;
+
+  if (status === "needs_password") {
+    const retry = Math.min(3600, Math.max(0, Number.parseInt(sp.retry ?? "", 10) || 0));
+    const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>, retry > 0 ? { retryAfterSec: retry } : undefined);
+    return (
+      <AuthShell>
+
+          <AuthPanel>
+            {/* Royal, not the success or danger family: nothing is confirmed yet, and nothing failed. LITERAL sizes, as
+                below — spacing is overridden (tailwind.config.ts:200-215). */}
+            <span className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill border border-brand-600/60 bg-brand-500/10 text-brand-300">
+              <I.mail s={22} />
+            </span>
+
+            <AuthHeader
+              tone="brand"
+              eyebrow={t.common.confirmEmailTitle}
+              title={t.common.confirmEmailPasswordTitle}
+              subtitle={t.common.confirmEmailPasswordBody}
+              subtitleLead="relaxed"
+            />
+
+            {banner && (
+              <div role="alert" className="rounded-md border border-danger-500/70 bg-danger-500/10 px-[14px] py-3 text-[13px] text-danger-fg">
+                {banner.body}
+              </div>
+            )}
+
+            {/* ⛔ The address is never shown in this view: whoever holds the link may not be the account holder. */}
+            <form action={confirmEmailAction} className="space-y-4">
+              <input type="hidden" name="token" value={sp.token ?? ""} />
+              <div>
+                <FieldLegend as="label" htmlFor="password" className="block mb-1.5">
+                  {t.common.passwordLabel}
+                </FieldLegend>
+                <PasswordInput
+                  id="password"
+                  name="password"
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  size="lg"
+                />
+              </div>
+              <SubmitButton label={t.common.confirmMyEmail} pendingLabel={t.common.verifying} />
+            </form>
+
+            <Link href="/auth/forgot-password" className="btn btn-ghost btn-lg btn-pill w-full">
+              {t.auth.forgotPassword}
+            </Link>
+
+            <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
+              {t.common.needHelpEmail}{" "}
+              <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
+                {SUPPORT_EMAIL()}
+              </a>
+            </p>
+          </AuthPanel>
+
+      </AuthShell>
+    );
+  }
 
   const COPY = {
     verified: {
@@ -86,10 +162,13 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
           <div className="flex flex-col gap-2.5">
             {good ? (
               <>
-                <Link href="/wallet/deposit" className="btn btn-primary btn-lg btn-pill w-full">
-                  {t.common.addFunds}
-                </Link>
-                <Link href="/markets" className="btn btn-ghost btn-lg btn-pill w-full">
+                {/* Not while ANOTHER account is signed in here: the deposit screen would be that account's. */}
+                {!otherSignedIn && (
+                  <Link href="/wallet/deposit" className="btn btn-primary btn-lg btn-pill w-full">
+                    {t.common.addFunds}
+                  </Link>
+                )}
+                <Link href="/markets" className={otherSignedIn ? "btn btn-primary btn-lg btn-pill w-full" : "btn btn-ghost btn-lg btn-pill w-full"}>
                   {t.home.heroCta}
                 </Link>
               </>

@@ -406,7 +406,9 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
     // request — so a Postmark socket that hangs hung a player's password reset
     // for as long as the platform's own request timeout allowed. The send is a
     // courtesy on every other path and a promise on those two; neither is worth
-    // a stalled request.
+    // a stalled request. (2026-10-06: `password-reset.ts` no longer awaits its
+    // reset-link send — a timing oracle, route audit P4 — so the promise is now
+    // `email-verification.ts` alone.)
     const res = await withTimeout(
       pm.sendEmail({
         From: FROM,
@@ -1946,8 +1948,22 @@ export function passwordChangedHtml({ time, method }: { time: string; method: st
 
 /** Security alert sent to the PREVIOUS address whenever the account email is
  *  changed — so an account-takeover that swaps the email still notifies the
- *  real owner on the address they still control. */
-export function emailChangedHtml({ newEmail, time }: { newEmail: string; time: string }): string {
+ *  real owner on the address they still control. `newEmail: null` is a REMOVAL
+ *  (route audit 2026-10-06, A1): clearing the address used to warn nobody, so
+ *  clear-then-add was a silent swap. */
+export function emailChangedHtml({ newEmail, time }: { newEmail: string | null; time: string }): string {
+  if (newEmail === null) {
+    return wrap(`
+    ${eyebrow("Security", "Usalama")}
+    ${heading("Your email was removed")}
+    ${subtitle("The email address on your 50pick account was just removed.")}
+    ${subtitleSw("Anwani ya barua pepe ya akaunti yako ya 50pick imeondolewa.")}
+    ${detailRows([
+      { label: "When", value: time },
+    ])}
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — contact <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a> immediately.</p>
+  `);
+  }
   return wrap(`
     ${eyebrow("Security", "Usalama")}
     ${heading("Your email was changed")}

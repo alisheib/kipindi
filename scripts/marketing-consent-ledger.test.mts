@@ -12,7 +12,9 @@
  * that wrote "Nipe matangazo (hiari)." for every registrant whatever they read; §7 pins that both consent
  * forms post the language they were DRAWN in (2026-09-27: the cookie alone could change between drawing
  * and submitting), that the actions validate it to en/sw/zh before the cookie fallback, and runs that
- * validator; §8 proves every consent sentence the dictionary
+ * validator; 7f–7h (2026-10-06) pin the sign-up form that now keeps what was typed on a refusal (a client
+ * form, `register-form.tsx`): its SMS-offers sentence is drawn by the server, its box is never pre-ticked,
+ * and the refusal it gets back (`refusal.ts`) echoes no tick; §8 proves every consent sentence the dictionary
  * shows today is one of the literal SMS-naming sentences the gate accepts (`consent-wording.ts`),
  * that no withdrawal or pre-2026-09-26 sentence is, that the pinned list was only ever appended to, and
  * that the three consent points call the consent by ONE name in each language (D1).
@@ -49,11 +51,13 @@ process.exitCode = 1;
 const PROVE_RED = process.argv.includes("--prove-red");
 
 /** The sources §7 reads — handed in, so a red case can plant the pre-fix text. */
-type Sources = { registerActions: string; registerPage: string; profileActions: string; profileCard: string; authService: string };
+type Sources = { registerActions: string; registerPage: string; registerForm: string; registerRefusal: string; profileActions: string; profileCard: string; authService: string };
 const read = (rel: string) => decomment(readFileSync(new URL(`../${rel}`, import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 const REAL_SOURCES: Sources = {
   registerActions: read("src/app/auth/register/actions.ts"),
   registerPage: read("src/app/auth/register/page.tsx"),
+  registerForm: read("src/app/auth/register/register-form.tsx"),
+  registerRefusal: read("src/app/auth/register/refusal.ts"),
   profileActions: read("src/app/profile/notifications/actions.ts"),
   profileCard: read("src/app/profile/notifications/marketing-consent.tsx"),
   authService: read("src/lib/server/auth-service.ts"),
@@ -241,10 +245,10 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   // Swahili tick was stored as the English sentence. ⭐ Each form now posts the language it was drawn
   // in, the action validates it (`renderedLocaleOf`), and the cookie is only the fallback.
   const s = impl.sources;
-  ok(p("7 · the register actions record the language the form posts as DRAWN (validated), the cookie only as fallback, on BOTH paths"),
+  // (2026-10-06: the one-time-code sign-up was deleted — registerWithPassword is the one sign-up door.)
+  ok(p("7 · the register action records the language the form posts as DRAWN (validated), the cookie only as fallback - the one sign-up door"),
     /renderedLocaleOf\(formData\.get\("shownLocale"\)\)\s*\?\?\s*messagingLocaleOf\(\(await getServerT\(\)\)\.locale\)/.test(s.registerActions)
-      && /registerWithPassword\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions)
-      && /requestRegisterOtp\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions));
+      && /registerWithPassword\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions));
   ok(p("7a · ⭐ the sign-up form posts the language it was drawn in — a hidden shownLocale from the same getServerT() that drew its label"),
     /const \{ t, locale \} = await getServerT\(\)/.test(s.registerPage)
       && /<input type="hidden" name="shownLocale" value=\{locale\} \/>/.test(s.registerPage));
@@ -266,8 +270,33 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   ok(p("7e · ⛔ EXECUTED · a posted language counts only as exactly en / sw / zh — case, padding and free text are refused"),
     wrongRendered.length === 0, wrongRendered.join(" | "));
   ok(p("7c · ⛔ no registration site in auth-service writes a literal \"SW\" locale any more"),
-    !/\blocale:\s*"SW"\s*,/.test(s.authService) && (s.authService.match(/messagingLocaleOf\(/g) ?? []).length >= 5,
+    !/\blocale:\s*"SW"\s*,/.test(s.authService) && (s.authService.match(/messagingLocaleOf\(/g) ?? []).length >= 2,
     `${(s.authService.match(/messagingLocaleOf\(/g) ?? []).length} messagingLocaleOf call(s)`);
+  // ── 7f–7h · THE SIGN-UP FORM IS A CLIENT FORM NOW (route audit C1, 2026-10-06) ─────────────────────────────
+  // A refusal returns to the mounted form instead of remounting the page, so the form lives in `register-form.tsx`.
+  // ⭐ Its sentence still comes from the server, in the language the page posts as shownLocale (7a): a client lookup
+  // could disagree with that language once the provider rewrites the cookie, and the ledger would store a sentence
+  // the person never saw.
+  ok(p("7f · ⭐ the SMS-offers sentence is drawn by the server (optionalUpdates: t.auth.optionalUpdates) and shown as {copy.optionalUpdates} — the client form never calls useT("),
+    s.registerPage.includes("optionalUpdates: t.auth.optionalUpdates") && s.registerForm.includes("{copy.optionalUpdates}")
+      && !s.registerForm.includes("useT("));
+  // ⛔ A consent box is evidence of what the person did. Pre-ticked, it records a choice nobody made.
+  const optInBox = (() => {
+    const at = s.registerForm.indexOf('name="marketingOptIn"');
+    if (at < 0) return "";
+    const from = s.registerForm.lastIndexOf("<Checkbox", at);
+    const to = s.registerForm.indexOf("/>", at);
+    return from < 0 || to < 0 ? "" : s.registerForm.slice(from, to + 2);
+  })();
+  ok(p("7g · ⛔ the SMS-offers box is never pre-ticked — its <Checkbox name=\"marketingOptIn\"> carries neither defaultChecked nor checked"),
+    optInBox.length > 0 && !/defaultChecked|(?<![A-Za-z])checked(?![A-Za-z])/.test(optInBox),
+    optInBox.replace(/\s+/g, " ").slice(0, 160) || "the box was not found");
+  // ⛔ And the refusal the form gets back carries no tick (or any other form value) to re-apply: the form stays mounted,
+  // so every box holds exactly what the player did.
+  const FORM_VALUES = ["acceptAge", "acceptTerms", "marketingOptIn", "dob", "password", "passwordConfirm"];
+  const echoed = FORM_VALUES.filter((k) => new RegExp(`(?<![A-Za-z0-9_$.])${k}\\s*\\??\\s*:|[{,]\\s*${k}\\s*[,}]`).test(s.registerRefusal));
+  ok(p("7h · ⛔ a sign-up refusal echoes no tick, no birth date and no password — refusal.ts declares none of acceptAge, acceptTerms, marketingOptIn, dob, password, passwordConfirm"),
+    s.registerRefusal.includes("export type RegisterRefusal") && echoed.length === 0, echoed.join(", "));
 
   // ── 8 · OQ11 · THE SENTENCES THE GATE COUNTS ───────────────────────────────────────────────
   // ⭐ Every consent sentence the dictionary shows TODAY must be pinned literally, so a copy change
@@ -391,6 +420,13 @@ if (!PROVE_RED) {
    * that goes red on some OTHER assertion is reported as a problem, not a success — a gate that
    * fails for the wrong reason is not a gate. */
   const problems: string[] = [];
+  /** A source with `from` planted as `to` — and a PROBLEM when `from` is not there, because a plant that changed
+   *  nothing would run the shipped code and prove nothing about the defect it names. */
+  const plant = (label: string, src: string, from: string, to: string): string => {
+    const out = src.replace(from, to);
+    if (out === src) problems.push(`PLANT MISSED (${label}): ${JSON.stringify(from)} is not in the source`);
+    return out;
+  };
 
   // §0 — THE SHIPPED CODE PASSES FIRST. Without this, "every proof held" could equally mean
   // "nothing works at all", and the whole run would be meaningless.
@@ -457,7 +493,7 @@ if (!PROVE_RED) {
     {
       name: "🔴 D2 · the register action reads only the cookie at submit again — a Swahili tick stored as English once the provider rewrote it",
       phone: "0712345611",
-      expect: "7 · the register actions record the language the form posts as DRAWN (validated), the cookie only as fallback, on BOTH paths",
+      expect: "7 · the register action records the language the form posts as DRAWN (validated), the cookie only as fallback - the one sign-up door",
       impl: { ...REAL, sources: { ...REAL_SOURCES, registerActions: REAL_SOURCES.registerActions.replace('renderedLocaleOf(formData.get("shownLocale")) ?? ', "") } },
     },
     {
@@ -528,6 +564,24 @@ if (!PROVE_RED) {
           return true;
         },
       },
+    },
+    {
+      name: "🔴 C1 · the client sign-up form looks its SMS-offers sentence up in the browser — it can disagree with the language the page posts",
+      phone: "0712345617",
+      expect: "7f · ⭐ the SMS-offers sentence is drawn by the server (optionalUpdates: t.auth.optionalUpdates) and shown as {copy.optionalUpdates} — the client form never calls useT(",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerForm: plant("7f", REAL_SOURCES.registerForm, "{copy.optionalUpdates}", "{t.auth.optionalUpdates}") } },
+    },
+    {
+      name: "⛔ C1 · the SMS-offers box comes pre-ticked — a consent nobody gave",
+      phone: "0712345618",
+      expect: "7g · ⛔ the SMS-offers box is never pre-ticked — its <Checkbox name=\"marketingOptIn\"> carries neither defaultChecked nor checked",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerForm: plant("7g", REAL_SOURCES.registerForm, 'name="marketingOptIn"', 'name="marketingOptIn" defaultChecked={true}') } },
+    },
+    {
+      name: "⛔ C1 · the refusal carries the SMS-offers tick back to the form, which could re-tick it",
+      phone: "0712345619",
+      expect: "7h · ⛔ a sign-up refusal echoes no tick, no birth date and no password — refusal.ts declares none of acceptAge, acceptTerms, marketingOptIn, dob, password, passwordConfirm",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerRefusal: plant("7h", REAL_SOURCES.registerRefusal, "at: number;", "at: number;\n  marketingOptIn: boolean;") } },
     },
   ];
 

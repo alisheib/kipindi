@@ -15,8 +15,18 @@
  *
  * Deliberately NOT a dead end and NOT alarming: an unconfirmed inbox is a normal
  * first-session state, not an error. Info tone, no red, no "blocked" language.
+ *
+ * ⭐ TWO STATES, AND EACH SAYS ONLY WHAT IS TRUE OF IT (route audit D1, 2026-10-06):
+ *   · AN ADDRESS ON FILE, NOT YET CONFIRMED — "we sent a confirmation link to the address below", the address, a
+ *     resend and a change-address door. The sentence is true for a new address and for a changed one alike, so it no
+ *     longer says "before your first deposit" to a player re-confirming an address they changed.
+ *   · NO ADDRESS AT ALL — the title and the warning callout explain, and the add-address door is the step. The "we sent
+ *     you a link" sentence is NOT drawn: nothing was sent to an account with no address.
+ * ⛔ The page never draws this door from a FAILED read: `wallet/deposit/page.tsx` lets its user read throw to
+ * `wallet/error.tsx` instead of guessing "no address" (D2), because a guess here sends a confirmed player to type an
+ * address, and a different address clears the confirmation.
  */
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
@@ -31,6 +41,27 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ tone: "ok" | "err"; message: string } | null>(null);
+  // ⭐ "OPEN IT, THEN COME BACK HERE" (D3f, 2026-10-06) — and coming back now re-reads the page. The player confirms in
+  // their mail app or another tab; returning to this one used to show the same stale door until they reloaded by hand.
+  // A tab that becomes visible again (or a page restored from the back-forward cache) refreshes the server render, so a
+  // confirmed address opens the form. At most once per 5 s, and never while hidden. S9's inline code step polls instead.
+  useEffect(() => {
+    let last = 0;
+    const back = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - last < 5_000) return;
+      last = now;
+      router.refresh();
+    };
+    const onShow = (e: PageTransitionEvent) => { if (e.persisted) back(); };
+    document.addEventListener("visibilitychange", back);
+    window.addEventListener("pageshow", onShow);
+    return () => {
+      document.removeEventListener("visibilitychange", back);
+      window.removeEventListener("pageshow", onShow);
+    };
+  }, [router]);
 
   function resend() {
     setResult(null);
@@ -70,7 +101,7 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
         </span>
         <div className="min-w-0">
           <h2 className="font-display font-bold text-[15px] text-text text-balance">{t.wallet.verifyGateTitle}</h2>
-          <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.wallet.verifyGateBody}</p>
+          {email && <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.wallet.verifyGateBody}</p>}
         </div>
       </div>
 

@@ -9,8 +9,10 @@
  *
  * ── WHAT THESE MUTATIONS ARE ─────────────────────────────────────────────────
  * Recovery accepts a phone OR an email as of 2026-08-25. Each mutation restores one
- * of the four ways that can silently regress, and `test:reset-identifier` must go RED
- * on every one.
+ * of the ways that can silently regress, and `test:reset-identifier` must go RED
+ * on every one. The last two (route audit 2026-10-06) restore the awaited send - a
+ * timing oracle (A2, §9) - and a reset link that drops where the player was going
+ * (B1, §12).
  *
  * ⭐ THE THIRD IS THE ONE TO READ. `enumeration-oracle` makes the function THROW on an
  * unknown address instead of returning ok. That is not a crash — the action would still
@@ -66,5 +68,21 @@ export const MUTATIONS = [
     suite: "reset-identifier",
     from: `    if (!email) {`,
     to: `    if (false) {`,
+  },
+  {
+    name: "awaited-reset-send",
+    why: "the reset mail is awaited again, so a hit answers a Postmark round trip slower than a miss - a timing oracle on an unauthenticated endpoint",
+    file: PR,
+    suite: "reset-identifier",
+    from: `    void sendEmail({`,
+    to: `    await sendEmail({`,
+  },
+  {
+    name: "the-destination-is-dropped-from-the-reset-link",
+    why: "a player who forgot their password comes back to the board, not to the market they were signing in for",
+    file: PR,
+    suite: "reset-identifier",
+    from: `    ...(next ? { next } : {}),`,
+    to: `    ...({}),`,
   },
 ];

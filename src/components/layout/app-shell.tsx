@@ -25,6 +25,7 @@ import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NavProgress } from "@/components/ui/nav-progress";
+import { KeyGuard } from "@/components/ui/key-guard";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession, sessionEndedThisRequest, type SessionEndReason } from "@/lib/server/session";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
@@ -262,9 +263,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     // deposit form the player may not reach for days. `u` is null only if the
     // user fetch failed above, in which case we stay silent rather than accuse a
     // player of being unverified on the strength of a failed query.
-    emailVerifyState = u
-      ? (u.emailVerifiedAt ? null : { email: u.email ?? null })
-      : null;
+    // ⛔ NOT OVER A HELD WALLET (2026-10-06). The bar says "confirm your email to add money", and a held wallet takes no
+    // deposit whatever the address — confirming would open nothing. A failed wallet read leaves `walletHeld` false, so the
+    // bar shows: the safe direction for a reminder. (The break half is the mount line's `promoSuppressed`, below.)
+    emailVerifyState = u && !topUser.walletHeld ? (u.emailVerifiedAt ? null : { email: u.email ?? null }) : null;
   }
 
   // The live ticker's REAL settlements. Batched with the config read rather than awaited at its
@@ -375,6 +377,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           hydrating. It is now the `<Reveal>` client wrapper, which renders the attribute from
           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
       <HeaderScrollCast />
+      {/* ⭐ S6 A8i-2 · THE KEY GUARD (`key-guard.tsx`): a key held down presses once, wherever it is on the page, and
+          nothing behind the top dialog takes Enter or Space. It renders nothing. Every `Modal` installs it too, for a page
+          outside this shell. */}
+      <KeyGuard />
       <Suspense fallback={null}><NavProgress /></Suspense>
       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
