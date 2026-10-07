@@ -982,14 +982,17 @@ export function UpDownCard(props: UpDownCardProps) {
             // Authed + has its market → the shared quick-bet control (chips + custom
             // amount + place buttons + success pulse), identical to the round page.
             //
-            // ⛔ UD-16 · THE CONTROLS AREA IS A NAVIGATION DEAD ZONE. The card is a link
-            // (role="link" on the <article>), and only the buttons/input stopped their
+            // ⛔ UD-16 · THE CONTROLS AREA IS A NAVIGATION DEAD ZONE. The card USED to be a
+            // link (role="link" on the <article>), and only the buttons/input stopped their
             // own propagation — so a tap on the "STAKE" label, a "You're in" chip, the
             // helper line, or the GAP BETWEEN CHIPS bubbled up and navigated away while
             // a player was lining up a bet: a 2mm mis-tap on the money surface yanked
-            // them to the detail page. The wrapper swallows click AND the Enter/Space
-            // bubbling; header/countdown/stats above keep the card-as-link behaviour.
-            // (The per-child stopPropagation prop stays — the input's Escape case and
+            // them to the detail page. Today the link is an anchor stretched OVER the card's
+            // content (`.mcardp-open`, above: z-index 2 over its rows at 1) and this block is
+            // raised above the link (`.ud-act`, z-index 3), so a tap here never reaches it; the
+            // wrapper still swallows click AND the Enter/Space bubbling, as defence in depth.
+            // Header, countdown and stats sit beneath the link, so a tap there opens the
+            // round. (The per-child stopPropagation prop stays — the input's Escape case and
             // defence in depth cost nothing.)
             <div
               onClick={(e) => e.stopPropagation()}
