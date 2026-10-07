@@ -2,9 +2,10 @@
  * LOCAL-ONLY end-to-end drive of the new journey's switch and preview (the Vodacom plan S1, `docs/VODACOM-PLAN.md`).
  * Done-when: "Staff see a 'preview' marker … and nobody else sees anything." This drive proves both halves in a real
  * browser, through the real doors, and reads every state from the PAGE, the COOKIE JAR and `/api/health`:
- *   §1 a guest sees nothing — no marker, no pass cookie, no trace in the HTML;
+ *   §1 a guest sees nothing — no marker, no pass cookie, no trace in the HTML (the journey shell's test ids included);
  *   §2 a SUPPORT officer (not the Owner) turns their preview on from /admin/journey → lands on / wearing the marker,
- *      keeps it on a document load of /markets, exits with the marker's own button, and it is gone;
+ *      drawn the journey header at 1280 and its four tabs at 390 with no classic bar or coin (WP6b step 7), keeps it
+ *      on a document load of /markets, exits with the marker's own button, and it is gone;
  *   §3 a signed-in player sees nothing;
  *   §4 the Owner stops the rollout → the officer's pass is ignored → Resume → it counts again;
  *   §5 the Owner issues a preview link → a stranger opens it and previews → the Owner revokes it → gone again;
@@ -58,6 +59,39 @@ async function watch(page, who) {
 const settle = async (page) => { await page.waitForLoadState("domcontentloaded"); await page.locator("main").first().waitFor({ timeout: 120_000 }); await page.waitForTimeout(900); };
 const tile = async (page, name) => { await page.screenshot({ path: `${SHOTS}/${name}.png` }); };
 const markerCount = (page) => page.locator(MARKER).count();
+/**
+ * ⭐ WP6b STEP 7 (done in S6 WP12): the trace a viewer WITHOUT a pass must never carry is the preview's (its marker, its
+ * cookie) AND the journey shell's own test ids — the header's and the tabs' — as an HTML attribute, escaped or not, or as
+ * a JSON prop in the RSC payload (`\"data-testid\":\"journey-tabs\"`). Test ids, never bare words: a chunk's file name
+ * may hold "journey-tabs" and is not the shell. Two readings, kept apart so each can be proven on its own: the preview's
+ * trace, and the shell's ids — 2.5c proves EACH shell id fires on the pass holder's own page (a single pattern with the
+ * preview in it would pass there on the marker alone, and prove nothing about the ids).
+ */
+const PREVIEW_TRACE = /journey-preview|kp_preview/;
+const shellId = (id) => new RegExp(`data-testid[\\\\":='\\s]{1,8}${id}\\b`);
+const SHELL_IDS = { "journey-top-bar": shellId("journey-top-bar"), "journey-tabs": shellId("journey-tabs") };
+/** Which of the shell's ids a page's HTML carries (attribute or JSON prop). */
+const shellIdsIn = (html) => Object.fromEntries(Object.entries(SHELL_IDS).map(([id, re]) => [id, re.test(html)]));
+/** A viewer without a pass: neither the preview's trace nor any shell id. */
+const traceFree = (html) => !PREVIEW_TRACE.test(html) && !Object.values(shellIdsIn(html)).some(Boolean);
+/** The chrome a page draws: the journey's header and rail (its four slots), and the classic bar and coin. */
+const chrome = (page) => page.evaluate(() => {
+  const shown = (el) => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && cs.display !== "none" && cs.visibility !== "hidden";
+  };
+  const n = (sel) => document.querySelectorAll(sel).length;
+  const rail = document.querySelector("nav[data-testid='journey-tabs']");
+  return {
+    journeyHeader: n("header[data-testid='journey-top-bar']"),
+    railShown: shown(rail),
+    tabs: rail ? rail.querySelectorAll("li > .kp-rail__item").length : 0,
+    classicHeader: n("header.app-topbar") - n("header.app-topbar[data-testid='journey-top-bar']"),
+    classicCoin: n("[data-testid='deposit-rail']"),
+  };
+});
 
 console.log(`qa:journey-preview — ${BASE}\n`);
 const h0 = await journeyHealth();
@@ -70,7 +104,7 @@ const gp = await watch(await guest.newPage(), "guest");
 await gp.goto(`${BASE}/`, { waitUntil: "domcontentloaded" }); await settle(gp);
 ok("1.1 no marker on / for a guest", (await markerCount(gp)) === 0);
 ok("1.2 no pass cookie in a guest's jar", (await passCookie(guest)) === null);
-ok("1.3 the guest's HTML carries no trace of the preview", !/journey-preview|kp_preview/.test(await gp.content()));
+ok("1.3 the guest's HTML carries no trace of the preview or the journey shell (the marker, the pass, the header's and tabs' test ids)", traceFree(await gp.content()));
 await tile(gp, "1-guest-home-390");
 
 // ── §2 · a SUPPORT officer previews ──────────────────────────────────────────────────────────────────────
@@ -92,8 +126,18 @@ ok("2.4 the officer lands on / wearing the marker", (await markerCount(sp)) === 
 const c = await passCookie(support);
 ok("2.5 the pass cookie is HttpOnly, SameSite=Lax, path /, and ends within 24 h",
   !!c && c.httpOnly && c.sameSite === "Lax" && c.path === "/" && c.expires > Date.now() / 1000 && c.expires - Date.now() / 1000 <= 24 * 3600 + 5, JSON.stringify(c && { httpOnly: c.httpOnly, sameSite: c.sameSite, path: c.path, inH: ((c.expires - Date.now() / 1000) / 3600).toFixed(2) }));
+const desk = await chrome(sp);
+ok("2.5b at 1280 the pass holder is drawn the journey header, and no classic bar or coin",
+  desk.journeyHeader === 1 && desk.classicHeader === 0 && desk.classicCoin === 0, JSON.stringify(desk));
+{
+  const ids = shellIdsIn(await sp.content());
+  ok("2.5c control · the pass holder's HTML carries EACH of the journey shell's test ids — so 1.3 and 3.3 can fail on them", Object.values(ids).every(Boolean), JSON.stringify(ids));
+}
 await tile(sp, "2-home-with-marker-1280");
 await sp.setViewportSize(PHONE); await sp.waitForTimeout(500);
+const phone = await chrome(sp);
+ok("2.5d at 390 the pass holder is drawn the journey header and its rail of four tabs, and no classic bar or coin",
+  phone.journeyHeader === 1 && phone.railShown && phone.tabs === 4 && phone.classicHeader === 0 && phone.classicCoin === 0, JSON.stringify(phone));
 await tile(sp, "2-home-with-marker-390");
 await sp.setViewportSize(DESK);
 await sp.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" }); await settle(sp);
@@ -118,7 +162,7 @@ await pp.goto(`${BASE}/`, { waitUntil: "domcontentloaded" }); await settle(pp);
 const signedIn = (await player.cookies(BASE)).some((x) => x.name === "kp_session");
 ok("3.1 the demo player is signed in", signedIn);
 ok("3.2 no marker on / for a player", (await markerCount(pp)) === 0);
-ok("3.3 the player's HTML carries no trace of the preview", !/journey-preview|kp_preview/.test(await pp.content()));
+ok("3.3 the player's HTML carries no trace of the preview or the journey shell (the marker, the pass, the header's and tabs' test ids)", traceFree(await pp.content()));
 await tile(pp, "3-player-home-390");
 
 // ── §4 · the Owner stops and resumes ─────────────────────────────────────────────────────────────────────
