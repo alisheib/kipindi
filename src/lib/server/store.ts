@@ -15,11 +15,14 @@ import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type Txn
 // U43a · and before the engine's doors — the claim, the settle, the reaper's reads and the requeue — whose WRITES it
 // computes too (`claimWrite`, `settleWrite`, `requeueWrite`): this twin applies them by name (`writeRecipient`), the
 // Prisma twin through its column map, so the two cannot write different columns (`test:dal-parity` §26.u43a).
+// U46a · and before the receipt door — its write (`receiptWrite`), the one list of rows a receipt moves (`SMS_RECEIPT_FROM`)
+// and the one reading of a miss (`receiptMiss`) are the rule set's too (`test:dal-parity` §26.u46a).
 import {
   assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
   assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
   assertClaim, assertClaimRead, assertSettle, assertStrandedRead, assertRequeueHeld, assertActivityRead, assertTargetsRead,
   claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
+  assertReceipt, receiptWrite, receiptMiss, SMS_RECEIPT_FROM,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
 // statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
@@ -580,7 +583,8 @@ export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipient
  * `claimToken` AND is PENDING; anywhere else it is `lost`, never forced. `PENDING` is a RELEASE — the claim's token
  * cleared (its `claimedAt` kept, D15), `attempts` moved on by 0 or 1 — and `HELD` parks the row; every other target
  * settles it.
- * ⛔ Nothing here moves a row OUT of a settled status: a late receipt is U46a's door, and UNCONFIRMED never goes back.
+ * ⛔ Nothing here moves a row OUT of a settled status: a late receipt is U46a's door (`recordReceipt`, below), and
+ * UNCONFIRMED never goes back.
  * ⚠️ The reaper settles a stranded claim from EVIDENCE (E6) and never saw what the slice prepared, so SENT's token,
  * variant, segments and length may be null — the slice always fills them — and DELIVERED is a target here (§3.2).
  *
@@ -603,12 +607,16 @@ export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipient
  *   `assertSettle([p], at)` of one patch to set it aside. Otherwise one gateway message echoing a number refuses the
  *   slice's whole settle — and the reaper's on every step after it (§3.3 reaps first), wedging the campaign until a hand
  *   repair. U43b's engine suite (ENGINE-SPEC §4.13, its §S and §R) holds that case.
- * · OWED BY U46a WITH U43b — THE SEND RECORD WHEN A RECEIPT WINS (DC-4). A receipt that lands between the wire and this
- *   settle moves the still-claimed PENDING row (U46a decision 1, its test D5), so the slice's SENT patch is `lost` here and
- *   the row's trail, token, variant, segments, length and `sentAt` (E20, E30, the access export) are never written.
- *   Before U46a's arm ships: a second, narrow door in both twins that writes ONLY those columns, never the status, WHERE
- *   the row still holds THIS claim, a receipt moved it (DELIVERED or FAILED) and its trail is still null; U43b calls it
- *   for each SENT patch lost to such a row; U46a's D5 asserts the DELIVERED row then carries its trail and `sentAt`.
+ * · OWED BY U43b — THE SEND RECORD WHEN A RECEIPT WINS (DC-4 — ENGINE-SPEC §4.13 decision 6, its test S16, and the
+ *   tracker's U43 row). A receipt that lands between the wire and this settle
+ *   moves the still-claimed PENDING row (U46a's `recordReceipt`, `test:sms-dlr` D5), so the slice's SENT patch is `lost`
+ *   here and the row's trail, token, variant, segments, length and `sentAt` (E20, E30, the access export) are never
+ *   written. U46a is built FIRST, while no slice exists — no row is claimed in production, so none can meet a receipt yet —
+ *   and its door KEEPS the claim on the row it settles, so the owed door can still find it: a second, narrow door in both
+ *   twins that writes ONLY those columns, never the status, WHERE the row still holds THIS claim, a receipt moved it
+ *   (DELIVERED or FAILED) and its trail is still null. ⛔ U43b builds it with its slice, before the slice settles a real row,
+ *   calls it for each SENT patch lost to such a row, and asserts the DELIVERED row then carries its trail and `sentAt` (what
+ *   U46a's D5 asserts today is the rest: the row DELIVERED, its claim kept, the slice's settle `lost`).
  */
 export type SmsCampaignRecipientSettle =
   | {
@@ -633,6 +641,38 @@ export type SmsCampaignRecipientSettle =
   | { id: string; claimToken: string; to: "PENDING"; attemptsDelta: 0 | 1 };
 /** What a settle did: how many rows it wrote, and the ids it did NOT write, in the order they were handed in. */
 export type SmsCampaignSettleResult = { settled: number; lost: string[] };
+
+/* ── U46a · THE RECEIPT DOOR — `recordReceipt` (ENGINE-SPEC §4.14, E28; `test:dal-parity` §26.u46a, `test:campaign-models`
+ * §2.29–§2.31, `test:sms-dlr` §12). ⚠️ NAMED, NOT INLINE: the `SmsDlrResult` note above — and one key per line, so the
+ * parity suite reads every key of both. ── */
+/**
+ * ⭐ ONE DELIVERY RECEIPT FOR ONE RECIPIENT — what the DLR route's campaign arm hands `recordReceipt` once `recordDlr` MOVED
+ * the message (`changed`) and the message targets a recipient.
+ * ⛔ LAWFUL BEFORE IT IS HANDED IN (the settle's DC-5 rule): the rule set (`assertReceipt`, campaign-model.ts) refuses, never
+ * scrubs and never trims — so the route hands in the token as `mapDlrStatus` read it and the description scrubbed by
+ * `scrubPhoneRuns`, then cut to `SMS_RECEIPT_DESC_MAX`.
+ */
+export type SmsRecipientReceipt = {
+  /** The reference the receipt echoed — the message's own, and the one key the row is matched on beside its id. */
+  reference: string;
+  /** The number the MESSAGE went to (the bare key) — the route has already held the receipt's own number to it. */
+  msisdn: string;
+  /** The verdict. The arm never runs on a token nobody recognised, so there is no third value. */
+  status: "DELIVERED" | "FAILED";
+  /** The vendor's token as the mapper read it (trimmed, upper case). A FAILED receipt writes it as its class. */
+  rawStatus: string;
+  /** The vendor's description, scrubbed and cut — a FAILED receipt writes it as the row's `error`. */
+  desc: string | null;
+  /** The instant the receipt arrived — the message's `deliveredAt` / `failedAt` too (`recordDlr` stamps the same one). */
+  at: string;
+};
+/** What a receipt did to its row. Only `applied` is `changed`. */
+export type SmsRecipientReceiptResult = {
+  changed: boolean;
+  /** `applied` (the row moved), `not_found` (no row of that id), `mismatch` (the row is another number's, or holds another
+   *  message's reference) or `settled` (the row is in a status no receipt moves — `SMS_RECEIPT_FROM`, campaign-model.ts). */
+  reason: "applied" | "not_found" | "mismatch" | "settled";
+};
 
 declare global {
   /** DEV ONLY — set by `/api/dev-test/marketing-campaigns-seed?fault=1` so the U36 drive can photograph the campaign
@@ -1974,9 +2014,9 @@ function byRecipientId(a: StoredSmsCampaignRecipient, b: StoredSmsCampaignRecipi
 function recipientCopy(rcp: StoredSmsCampaignRecipient): StoredSmsCampaignRecipient {
   return { ...rcp, gateTrail: rcp.gateTrail === null ? null : rcp.gateTrail.map((g) => ({ ...g })) };
 }
-/** ⭐ THE ONE APPLY of a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`): every column it sets,
- *  by name, and `attempts` moved on by its delta — the Prisma twin drives the same write through its column map
- *  (`smsRecipientData`). In place: a row is never replaced and never removed. */
+/** ⭐ THE ONE APPLY of a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`, and U46a's
+ *  `receiptWrite`): every column it sets, by name, and `attempts` moved on by its delta — the Prisma twin drives the same
+ *  write through its column map (`smsRecipientData`). In place: a row is never replaced and never removed. */
 function writeRecipient(r: StoredSmsCampaignRecipient, w: SmsRecipientWrite): void {
   for (const [k, v] of Object.entries(w.set)) (r as Record<string, unknown>)[k] = v;
   r.attempts += w.attemptsBy;
@@ -4229,6 +4269,32 @@ const memoryDb = {
         if (newest === null || Date.parse(r.claimedAt) > Date.parse(newest)) newest = r.claimedAt;
       }
       return newest;
+    },
+    /** U46a · ⭐ THE RECEIPT DOOR (E28) — a delivery receipt settles ITS row and no other: written only where the row is the
+     *  one named, holds the MESSAGE's number and either no reference yet or the receipt's own (the identity), AND is in a
+     *  status a receipt moves (`SMS_RECEIPT_FROM`: PENDING — a slice's claim on it or not, the list's own note — SENT,
+     *  UNCONFIRMED). Anywhere else nothing is written and the answer says why (`receiptMiss`, the one reading both twins
+     *  share). The rule set is asked first; the write is its `receiptWrite`, through the ONE apply — so the claim stays on
+     *  the row. ⛔ A reference another row already holds is refused BEFORE the write, carrying `code` "P2002" — the memory
+     *  twin of the column's unique index. JavaScript runs this member to its end before any other write, so the test and
+     *  the write are one step, as the Prisma twin's conditional `updateMany` is one statement. */
+    recordReceipt: (id: string, r: SmsRecipientReceipt): SmsRecipientReceiptResult => {
+      assertReceipt(id, r);
+      const row: StoredSmsCampaignRecipient | undefined = store.smsCampaignRecipients.get(id);
+      if (row === undefined) return { changed: false, reason: receiptMiss(null, r) };
+      const ours = row.msisdn === r.msisdn && (row.smsReference === null || row.smsReference === r.reference);
+      const open = SMS_RECEIPT_FROM.includes(row.status);
+      if (!ours || !open) return { changed: false, reason: receiptMiss(row, r) };
+      for (const other of store.smsCampaignRecipients.values()) {
+        if (other.id !== id && other.smsReference === r.reference) {
+          throw Object.assign(
+            new Error("unique constraint: SmsCampaignRecipient.smsReference already held by another row (memory twin of P2002) — nothing was written"),
+            { code: "P2002" },
+          );
+        }
+      }
+      writeRecipient(row, receiptWrite(r));
+      return { changed: true, reason: "applied" };
     },
   },
 };

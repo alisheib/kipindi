@@ -29,6 +29,10 @@
  * and 10f read a release and a requeue that keep the claim's instant (D15), 10e clears an UNCONFIRMED row's token by SQL
  * so the claim's STATUS test stands alone, 10g gives the newer message the lower reference, and 10j also records the
  * reaper's read and the activity read at 150,000 rows.
+ * ⭐ §11 · U46a (S14 2026-10-07 — ENGINE-SPEC §4.14): the receipt door through the REAL Prisma twin — a receipt moves its
+ * row and no other, never back; another number or another message's reference is refused; Postgres's unique reference
+ * refuses a second holder (P2002); and twenty receipts racing twenty settles on claimed rows, truly concurrent, end every
+ * row DELIVERED with nothing thrown. ⛔ No backslash in §11 either.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database, runs the Prisma CLI three times and creates and
  * drops a shadow database and a throwaway type — loopback only):
@@ -36,7 +40,7 @@
  */
 import type {
   StoredSmsCampaign, StoredSmsCampaignRecipient, SmsCampaignRecipientSeed, SmsCampaignRecipientCount, SmsCampaignRecipientCountsById,
-  SmsCampaignTransitionPatch, StoredUser, SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage,
+  SmsCampaignTransitionPatch, StoredUser, SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage, SmsRecipientReceipt,
 } from "../../src/lib/server/store.ts";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -741,6 +745,118 @@ async function toRunning(id: string): Promise<void> {
       inserted === 150000 && plan.length > 0 && strandedPlan.length > 0 && activityPlan.length > 0 && json(first.map((r) => r.id)) === json(want)
         && json(stranded.map((r) => r.id)) === json(want) && last === at43(400),
       `${inserted} inserted · plans ${plan.length}/${strandedPlan.length}/${activityPlan.length} line(s) · the claim ${claimMs} ms, findStranded ${strandedMs} ms (${stranded.length} rows), lastActivity ${activityMs} ms (${last}) · first ${first[0]?.id ?? "none"} … ${first[first.length - 1]?.id ?? "none"}`);
+  }
+}
+
+// ── 11 · U46a · the receipt door through the REAL Prisma twin (ENGINE-SPEC §4.14): a receipt moves its row and no other,
+//        never back; it is refused on another number or another message's reference; Postgres's own unique reference
+//        refuses a second holder (P2002) and changes nothing; and a receipt RACING the slice's settle on one claimed row —
+//        twenty races, truly concurrent on the pool — ends every row DELIVERED, with no error ─────────────────────────────
+{
+  const CM46 = await import("../../src/lib/server/marketing/campaign-model.ts");
+  const NL = String.fromCharCode(10);
+  const json = (v: unknown) => JSON.stringify(v);
+  const firstLine = (e: unknown) =>
+    (String((e as Error)?.message ?? e).split(NL).map((s) => s.trim()).find((s) => s !== "") ?? "(an error with no message)").slice(0, 200);
+  const T46 = Date.parse("2026-10-07T12:00:00.000Z");
+  const at46 = (s: number) => new Date(T46 + s * 1000).toISOString();
+  const trail46: SmsCampaignGateTrail = [{ check: "probe", verdict: "ok", wording: null, source: "u46a" }];
+  const C46 = "probe_u46a";
+  await db.smsCampaign.create(draft(C46));
+  const ids = Array.from({ length: 40 }, (_, i) => `probe_u46a_${String(i).padStart(3, "0")}`);
+  const key46 = (i: number) => keyOf(30000 + i);
+  const ref46 = (i: number) => `probe_ref46_${String(i).padStart(3, "0")}`;
+  await db.smsCampaignRecipient.createMany(ids.map((x, i) => seed(x, C46, key46(i))));
+  const tok46 = "probe_tok_u46a";
+  const won46 = await db.smsCampaignRecipient.claim(C46, 40, tok46, at46(1));
+  const sent46 = (i: number): SmsCampaignRecipientSettle => ({
+    id: ids[i], claimToken: tok46, to: "SENT", smsReference: ref46(i), sentAt: at46(2), optOutToken: "K7MXP2QR", locale: "SW",
+    segments: 1, bodyLen: 72, gateTrail: trail46,
+  });
+  // rows 0–9 SENT with their own references; rows 10–29 stay claimed PENDING for the races; 30–39 stay claimed PENDING
+  const settled46 = await db.smsCampaignRecipient.settle(Array.from({ length: 10 }, (_, i) => sent46(i)), at46(2));
+  type Row46 = { status: string; smsReference: string | null; deliveredAt: Date | null; failedAt: Date | null; failureClass: string | null; error: string | null };
+  const row46 = async (id: string): Promise<Row46 | null> => (await pg.$queryRawUnsafe<Row46[]>(
+    `select status::text as status, "smsReference", "deliveredAt", "failedAt", "failureClass", error from "SmsCampaignRecipient" where id = $1`, id))[0] ?? null;
+  const receipt = (i: number, o: Partial<SmsRecipientReceipt> = {}): SmsRecipientReceipt =>
+    ({ reference: ref46(i), msisdn: key46(i), status: "DELIVERED", rawStatus: "DELIVRD", desc: null, at: at46(10), ...o });
+  ok("11 · U46a · CONTROL · 40 rows claimed by one token, the first 10 settled SENT with their own references",
+    won46.length === 40 && settled46.settled === 10 && settled46.lost.length === 0 && (await row46(ids[0]))?.status === "SENT" && (await row46(ids[0]))?.smsReference === ref46(0),
+    `claimed ${won46.length} · settle ${json(settled46)}`);
+
+  // 11a · a DELIVERED receipt moves its SENT row — and no other row
+  {
+    const before = await countRows(`select count(*)::int as n from "SmsCampaignRecipient" where "campaignId" = $1 and status = 'DELIVERED'`, C46);
+    const r = await db.smsCampaignRecipient.recordReceipt(ids[0], receipt(0));
+    const after = await row46(ids[0]);
+    const delivered = await countRows(`select count(*)::int as n from "SmsCampaignRecipient" where "campaignId" = $1 and status = 'DELIVERED'`, C46);
+    ok("11a · a DELIVERED receipt on its SENT row is applied: the row reads DELIVERED in SQL at the receipt's instant, and no other row moved",
+      r.changed && r.reason === "applied" && after?.status === "DELIVERED" && after.deliveredAt?.toISOString() === at46(10)
+        && before === 0 && delivered === 1, `${json(r)} · ${json(after)} · delivered ${before} → ${delivered}`);
+  }
+  // 11b · never back: a FAILED receipt after the delivery, and the same DELIVERED again, change nothing
+  {
+    const late = await db.smsCampaignRecipient.recordReceipt(ids[0], receipt(0, { status: "FAILED", rawStatus: "UNDELIV", desc: "late", at: at46(11) }));
+    const again = await db.smsCampaignRecipient.recordReceipt(ids[0], receipt(0, { at: at46(12) }));
+    const after = await row46(ids[0]);
+    ok("11b · never back: a FAILED receipt after the delivery and the same DELIVERED again are `settled` — the row still DELIVERED at the FIRST instant, no failure written",
+      !late.changed && late.reason === "settled" && !again.changed && again.reason === "settled" && after?.status === "DELIVERED"
+        && after.deliveredAt?.toISOString() === at46(10) && after.failedAt === null && after.error === null, `${json(late)} · ${json(again)} · ${json(after)}`);
+  }
+  // 11c · a FAILED receipt writes its class and its words — then nothing moves it
+  {
+    const r = await db.smsCampaignRecipient.recordReceipt(ids[1], receipt(1, { status: "FAILED", rawStatus: "UNDELIV", desc: "absent subscriber", at: at46(13) }));
+    const after = await row46(ids[1]);
+    const late = await db.smsCampaignRecipient.recordReceipt(ids[1], receipt(1, { at: at46(14) }));
+    ok("11c · a FAILED receipt writes FAILED, its class `receipt:UNDELIV` and its words, in SQL — and a DELIVERED after it is `settled`",
+      r.changed && after?.status === "FAILED" && after.failureClass === `${CM46.SMS_RECEIPT_CLASS_PREFIX}UNDELIV` && after.error === "absent subscriber"
+        && after.failedAt?.toISOString() === at46(13) && !late.changed && late.reason === "settled" && (await row46(ids[1]))?.status === "FAILED",
+      `${json(r)} · ${json(after)} · ${json(late)}`);
+  }
+  // 11d · the identity: another number, or another message's reference, moves nothing; an unknown id is `not_found`
+  {
+    const wrongNumber = await db.smsCampaignRecipient.recordReceipt(ids[2], receipt(2, { msisdn: key46(3) }));
+    const wrongRef = await db.smsCampaignRecipient.recordReceipt(ids[2], receipt(2, { reference: ref46(3) }));
+    const nobody = await db.smsCampaignRecipient.recordReceipt("probe_u46a_no_such_row", receipt(2));
+    const after = await row46(ids[2]);
+    ok("11d · the WHERE holds on Postgres: another number and another message's reference are `mismatch`, an unknown id `not_found` — the row still SENT",
+      wrongNumber.reason === "mismatch" && wrongRef.reason === "mismatch" && nobody.reason === "not_found" && !wrongNumber.changed && !wrongRef.changed
+        && after?.status === "SENT" && after.deliveredAt === null, `${json(wrongNumber)} · ${json(wrongRef)} · ${json(nobody)} · ${json(after)}`);
+  }
+  // 11e · Postgres's unique reference: a receipt that would give a second row a reference another row holds is refused by
+  // the database itself (P2002) and changes nothing
+  {
+    let code = "", message = "";
+    try {
+      await db.smsCampaignRecipient.recordReceipt(ids[30], receipt(30, { reference: ref46(4) }));
+    } catch (e) {
+      code = String((e as { code?: unknown }).code ?? "");
+      message = firstLine(e);
+    }
+    const after = await row46(ids[30]);
+    const holder = await row46(ids[4]);
+    ok("11e · a receipt giving a claimed PENDING row a reference row 4 already holds: refused by Postgres (P2002), the row still PENDING with no reference, row 4 untouched",
+      code === "P2002" && after?.status === "PENDING" && after.smsReference === null && holder?.status === "SENT" && holder.smsReference === ref46(4),
+      `code ${code || "(none)"} · ${message} · ${json(after)} · ${json(holder)}`);
+  }
+  // 11f · ⭐ a receipt RACING the slice's settle on one claimed row — twenty races, both writes truly concurrent on the pool:
+  // whichever lands first, every row ends DELIVERED, at most one write per row is lost, and nothing throws
+  {
+    const errors: string[] = [];
+    const outcomes: string[] = [];
+    await Promise.all(Array.from({ length: 20 }, (_, k) => 10 + k).map(async (i) => {
+      const [s, r] = await Promise.allSettled([
+        db.smsCampaignRecipient.settle([sent46(i)], at46(20)),
+        db.smsCampaignRecipient.recordReceipt(ids[i], receipt(i, { at: at46(20) })),
+      ]);
+      if (s.status === "rejected") errors.push(`settle ${i}: ${firstLine(s.reason)}`);
+      if (r.status === "rejected") errors.push(`receipt ${i}: ${firstLine(r.reason)}`);
+      if (r.status === "fulfilled") outcomes.push(r.value.reason);
+    }));
+    const delivered = await countRows(`select count(*)::int as n from "SmsCampaignRecipient" where id = any($1::text[]) and status = 'DELIVERED' and "smsReference" is not null`, ids.slice(10, 30));
+    ok("11f · ⭐ twenty receipts racing twenty settles, each pair truly concurrent: every row ends DELIVERED with its reference, and nothing throws",
+      errors.length === 0 && delivered === 20 && outcomes.every((o) => o === "applied"),
+      `${delivered}/20 DELIVERED · receipts ${json(outcomes.reduce<Record<string, number>>((m, o) => ({ ...m, [o]: (m[o] ?? 0) + 1 }), {}))} · errors ${json(errors)}`);
   }
 }
 
