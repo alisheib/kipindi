@@ -40,7 +40,15 @@ behind it; one Escape closes every open dialog; the bet confirm can reopen with 
 pre-existing, money): Enter in the withdraw amount box submits the withdrawal without its confirm, and Enter in the
 close-account phrase box closes the account without its final dialog.
 
-**Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above and §0i "A8i"), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+**⏸ HANDOVER (2026-10-07 ~09:30 EAT, from ALI-BLADE15 — continue on any machine).** Branch `vodacom-handover`, folder
+`handover/vodacom-2026-10-07/`: its README is the work order. It holds the A8i-2 draft (`drafts/a8i2.json`: 2 new files,
+52 edits; ⚠️ UNREVIEWED — the session limit cut its three reviews), the A8j draft (`drafts/a8j.json`; its 19 review
+problems not yet addressed), the reviewed `qa:journey-shell` tile drive WP12 needs, the A8i review's verdicts (24
+confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools that lived only in one scratchpad
+(the change-set applier, the in-memory server runners, the drives and the chains). The A8d/A8g/A8h close-out ran on
+`7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
+re-run with its three-language crash titles, and the production build's first-load reading.
+**Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above, §0i "A8i" and the handover's drafts), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
@@ -254,6 +262,23 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   drives `main`, `extra` and `lost`, the lost-chunk control, the tiles), parity compare 2 after the copy, the
   battery, a production build's first-load reading, and the production check (`?dpl=`, the stylesheet's two phone
   blocks); then **WP12** (S6-PLAN.md). **A8i** is LIVE (`23f762f4`, its bullet at the end of this list); A8i-2 and A8j go first (§0).
+  **Ran 2026-10-06/07 on `7d4b0ad5` (ALI-BLADE15), the owed list above:** `red:ticker-honesty` alone 28/28 (re-armed in
+  `7d4b0ad5`: 9.8 reads `settledAmount`, 9.9 every fee call, the red's anchors unique); parity `--prove-red` 81/81 (with
+  `5a87e764`'s DEV-measure filing and its plant); parity `--compare` 2 against the v2 baseline: 38/39 — every Sell check
+  passes, the four measured A8d/A8g layouts copied in by `5a87e764` matched exactly, A8e's first paint named, A8f's and
+  A8g's entries seen in all their cells; 4.1's 224 cells differ ONLY in the footer, and only by the helpline link
+  `0652f61f` removed (owner ruling 2026-10-06, another lane), checked field by field over all 224 cells — so the v2
+  baseline predates main and WP12 captures a fresh one first (S6-PLAN A18); the tiles (both hosts × sw/en/zh × 14
+  widths, free and shut) 168/168 at TZS 1,500, the holder block at 320 sw shut included, where the ticket's date broke
+  before `95d15927`, and every measured cell at TZS 1,000,000 (its one failure is the fixture: four 1M tickets cannot
+  be seeded); the price-guard drive paid 28/28 (D.3 now times the result from its own entry — it had timed the
+  confirm) and current 4/4; the result drives `main` 10/10 and `extra` 4/4; `test:all` 444/461, the 17 reds exactly
+  the baseline list; production read back for `cd34231b` and `7d4b0ad5`. **Still owed:** the `lost` result drive (the
+  dev server reset the connection mid-run); the crash control — its C.1 matched only the ENGLISH crash title on a
+  Swahili page, and its diagnosis shows that page DID reach the critical-error screen with the host's guard stripped,
+  so the guard is needed; the drive now matches all three titles; re-run for a clean pass; and the production build's
+  first-load reading (the build compiled; its reader was handed an unconverted path, and the next drive deleted
+  `.next`). The tools are on the branch `vodacom-handover` (§0).
 - **Found on the way (2026-10-04):** `test:house-bot-reports` 0.232 was red on main for three reasons, and while it was,
   `red:house-bot-money`, `-c5`, `-chatbot` and `-console` refused to run for every lane. This lane's S3b had made
   `Transaction.origin` create-only in both txn twins and so broken 0.232.4's exact-text pin — re-pinned (`50552c40`); the
