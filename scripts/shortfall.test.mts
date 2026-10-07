@@ -10,10 +10,11 @@
  *      order: maintenance → a break (with its date) → the session limit → the account → the market → the stake → the
  *      wallet → the loss limit → a deposit already pending → the deposit.
  *   2. THE THREE DECK EXAMPLES — a shortfall of 3,000 → [3,000, 5,000, 10,000]; 5,000 → [5,000, 10,000, 25,000];
- *      300 → [500, 1,000, 5,000] with `belowDepositMin`.
+ *      300 → [1,000, 5,000, 10,000] with `belowDepositMin` (the deposit minimum is TZS 1,000 since 2026-10-07).
  *   3. SPENDABLE — the balance plus the bonus balance (what `buyPosition` refuses against); an unread balance is
  *      `unknown`, never zero.
- *   4. THE OFFER — an unconfirmed email is still a deposit (the code comes first); chips above the ceiling are dropped;
+ *   4. THE OFFER — an unconfirmed email is still a deposit, and the deposit asks no email step (the owner's ruling of
+ *      2026-10-07); chips above the ceiling are dropped;
  *      a deposit the limits or source of funds would refuse is not offered, and neither is one with every rail paused;
  *      "bet instead" appears only at or above the minimum stake, within the loss headroom; a held wallet offers nothing.
  *
@@ -32,7 +33,7 @@ function base(): SF.ShortfallInput {
     maintenance: false, lockout: null, session: null, account: { status: "ACTIVE", coolingOffUntil: null },
     market: { live: true, selectionClosed: false }, stake: 5_000, bounds: { min: 1_000, max: 1_000_000 },
     wallet: { status: "ACTIVE", balance: 2_000, bonusBalance: 0 }, loss: { dailyLossLimit: null, lossToday: 0 },
-    pendingDeposit: null, emailVerified: true,
+    pendingDeposit: null,
     deposit: {
       limits: { daily: null, weekly: null, monthly: null }, usage: { day: 0, week: 0, month: 0 },
       sof: { accepted: false, singleTxn: 1_000_000, rolling30d: 5_000_000 }, railsOpen: true,
@@ -102,9 +103,12 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     enough.kind === "enough" && enough.spendable === 5_000 && unknown.kind === "unknown" && noWallet.kind === "unknown", j({ enough, unknown, noWallet }));
 
   /* 4 · the offer */
-  const email = P({ ...base(), emailVerified: false });
-  ok("4.email · an unconfirmed email is still a deposit, with the code first",
-    email.kind === "short" && email.options[0]?.kind === "deposit" && (email.options[0] as SF.DepositOption).emailCodeFirst === true, j(email));
+  // ⛔ No email step (the owner's ruling of 2026-10-07: a deposit asks no email question). The deposit option is exactly
+  // its four fields, so a code-first flag cannot come back without failing here.
+  const email = P(base());
+  ok("4.email · the deposit option carries no email step — exactly kind, amount, chips and belowDepositMin",
+    email.kind === "short" && email.options[0]?.kind === "deposit"
+      && j(Object.keys(email.options[0]).sort()) === j(["amount", "belowDepositMin", "chips", "kind"]), j(email));
   const clamp = P({ ...base(), deposit: { ...base().deposit, limits: { daily: 7_000, weekly: null, monthly: null } } });
   ok("4.clamp · a chip above the ceiling is dropped (daily headroom 7,000: [3,000, 5,000])",
     clamp.kind === "short" && j((clamp.options[0] as SF.DepositOption).chips) === j([3_000, 5_000]), j(clamp));
@@ -158,8 +162,8 @@ if (!PROVE_RED) {
       impl: { plan: (i) => { const r = real(i); return r.kind === "short" ? { ...r, options: r.options.map((o) => (o.kind === "deposit" ? { ...o, amount: r.shortfall, chips: [r.shortfall, ...o.chips.slice(1)] } : o)) } : r; } } },
     { name: "chips not clamped to the ceiling", expect: /^4\.clamp /,
       impl: { plan: (i) => real({ ...i, deposit: { ...i.deposit, limits: { daily: null, weekly: null, monthly: null } } }) } },
-    { name: "an unconfirmed email blocks the deposit", expect: /^4\.email /,
-      impl: { plan: (i) => (i.emailVerified ? real(i) : { kind: "blocked", reason: "account_blocked" }) } },
+    { name: "an email step put back on the deposit option", expect: /^4\.email /,
+      impl: { plan: (i) => { const r = real(i); return r.kind === "short" ? { ...r, options: r.options.map((o) => (o.kind === "deposit" ? { ...o, emailCodeFirst: true } : o)) } : r; } } },
     { name: "a deposit offered past the limits", expect: /^4\.refused /,
       impl: { plan: (i) => real({ ...i, deposit: { ...i.deposit, limits: { daily: null, weekly: null, monthly: null }, sof: { ...i.deposit.sof, accepted: true }, railsOpen: true } }) } },
     { name: "\"bet instead\" offered below the minimum stake", expect: /^4\.instead /,
