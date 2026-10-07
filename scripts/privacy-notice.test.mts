@@ -819,15 +819,20 @@ console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees
     return d;
   };
   const BACKFILL_NOW = refereeKeysState(REFEREE_KEYS_ON_PRODUCTION);
+  /** ⭐ §4i.b's rule, CONDITIONAL ON THE RECORD (the re-review's NIT) — so recording production's counts never loosens it:
+   *  while the record is null the backfill MUST read outstanding (a rule that reconciled nothing would be a defect), and
+   *  WHATEVER the record, the cut-off is set only once the backfill reads reconciled. */
+  const cutoffWaits = (record: unknown, state: string, cutoff: string | null): boolean =>
+    (record === null ? state === "outstanding" : true) && (cutoff === null || state === "reconciled");
   const today = LOCS.map((l) => `${l}:${wordsOf(pageSrc, l)}`);
   ok("§4i every locale's §9 keeps the promise CONDITIONALLY (the new words, for the referees named before the version) — and with the cut-off null the gate still refuses a promised referee",
     refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).length === 0
       && LOCS.every((l) => wordsOf(pageSrc, l) === "new"),
     `${today.join(" · ")} · ${refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).join("; ")}`);
-  ok("§4i.b ⛔ U33r · MAJOR-2 · the referee cut-off waits for the backfill — today the backfill is not recorded (outstanding), and the cut-off is null",
-    BACKFILL_NOW === "outstanding" && REFEREE_NEW_WORDS_LIVE_AT === null
+  ok("§4i.b ⛔ U33r · MAJOR-2 · the referee cut-off waits for the backfill — while production's record is null the backfill reads outstanding, and whatever the record says the cut-off is set only once it reads reconciled",
+    cutoffWaits(REFEREE_KEYS_ON_PRODUCTION, BACKFILL_NOW, REFEREE_NEW_WORDS_LIVE_AT)
       && !refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).some((x) => x.includes("not recorded")),
-    `backfill ${BACKFILL_NOW} · cut-off ${String(REFEREE_NEW_WORDS_LIVE_AT)}`);
+    `record ${REFEREE_KEYS_ON_PRODUCTION === null ? "null" : "set"} · backfill ${BACKFILL_NOW} · cut-off ${String(REFEREE_NEW_WORDS_LIVE_AT)}`);
   // ── the controls ──
   const CUT = "2026-10-20T00:00:00.000Z";
   const plantCut = refereeExclusionSrc.replace(CUT_NULL, `export const REFEREE_NEW_WORDS_LIVE_AT: string | null = "${CUT}";`);
@@ -857,6 +862,10 @@ console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees
   ok("§5av control · the promise dropped from ONE locale (sw) with the cut-off set is reported — the cut-off names a re-wording sw does not print",
     wordsOf(plantNoneSw, "sw") === "none"
       && refereeDefects(plantNoneSw, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("does not keep the promise") && x.includes("sw")));
+  ok("§5aw control · §4i.b's rule holds whatever the record says — null and outstanding with no cut-off passes, null read as reconciled fails, a set record outstanding with the cut-off set fails, reconciled with it set passes, outstanding with none passes",
+    cutoffWaits(null, "outstanding", null) && !cutoffWaits(null, "reconciled", null)
+      && !cutoffWaits({ environment: "production" }, "outstanding", CUT) && cutoffWaits({ environment: "production" }, "reconciled", CUT)
+      && cutoffWaits({ environment: "production" }, "outstanding", null));
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

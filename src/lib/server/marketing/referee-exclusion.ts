@@ -1,8 +1,10 @@
 import { db } from "@/lib/server/store";
 import type { StoredAgentApplication, StoredAgentRefereeKey } from "@/lib/server/store";
 import { pepperedLetters } from "@/lib/server/crypto";
+import { audit, getAuditForTargetsDurable } from "@/lib/server/audit";
 import { parseTzNumber, readAsciiDigits } from "@/lib/tz-msisdn";
 import type { RefereeKeyCounts } from "@/lib/marketing/outreach-open-checks";
+import { REFEREE_KEY_RECORD_MAX } from "@/lib/server/marketing/referee-key-model";
 
 /**
  * U33r · THE AGENT-REFEREE EXCLUSION — the promise /legal/privacy §9 made to EVERY agent applicant's referee until version
@@ -21,8 +23,10 @@ import type { RefereeKeyCounts } from "@/lib/marketing/outreach-open-checks";
  * (`refereeKeyOf`), and the gate asks that table by key (`consent.ts`, step 1b, reason `agent_referee`) before any basis —
  * consent included — is asked. A key held is a refusal; nothing else is stored.
  * ⭐ "LEADS TO" (the U33r review's MINOR-1): the numbers written in the contact, AND — for an e-mail address in it — the
- * number of every account and every contact-book row holding that address (case-insensitive). A referee named only by
- * e-mail is still excluded wherever 50pick holds their number.
+ * number of every account and every contact-book row holding that address (case-insensitive), AS THEY ARE WHEN A WRITER
+ * RUNS. ⚠️ RESIDUAL (the re-review's MINOR-5): the e-mail is followed only when a writer runs — the naming, the applicant's
+ * erasure, the backfill. An account that signs up, or a book row imported, with that e-mail LATER is not keyed, and is
+ * reachable.
  *
  * ⛔ WHO IS EXCLUDED, AND WHO DECIDES (the U33r review's MAJOR-1): every referee named BEFORE the re-worded §9 went live —
  * the instant version `REFEREE_PROMISE_REWORDED_IN` first went live, so the keys are exactly the "coded form of the phone
@@ -33,10 +37,10 @@ import type { RefereeKeyCounts } from "@/lib/marketing/outreach-open-checks";
  * append-only, so they stay excluded — never sent offers, their coded form kept like a promised referee's. Keep the window
  * short: record the backfill and set the cutoff in one commit, at once. The WRITER asks it, when it
  * writes, and writes a key ONLY for a referee given the old promise: `setReferees` while no cutoff is set or before it;
- * the backfill and the applicant's erasure for an application named before it (`refereeNamedAtOf`). The table holds no
- * instant at all — an applicant's `refereeConsentAt` beside a key would link the referee back to them — so the gate asks
- * nothing about WHEN: a key held is a promised referee. ⛔ NEVER A REFEREE LET THROUGH ON A GUESS: an instant that cannot be
- * read, on either side, keeps the promise.
+ * the backfill and the applicant's erasure for an application named before it (`refereeNamedAtOf`). No column holds an
+ * instant — an applicant's `refereeConsentAt` beside a key would link the referee back to them — so the gate asks nothing
+ * about WHEN: a key held is a promised referee. ⛔ NEVER A REFEREE LET THROUGH ON A GUESS: an instant that cannot be read,
+ * on either side, keeps the promise.
  * ⚠️ THE CUTOFF IS SET ONLY AFTER THE BACKFILL: a referee saved again after it re-stamps `refereeConsentAt` past it, and a
  * backfill run then would read that application as never promised. `test:privacy-notice` §4i refuses the constant while
  * the backfill is not recorded (`REFEREE_KEYS_ON_PRODUCTION`, the fifth licence-outreach check).
@@ -44,32 +48,45 @@ import type { RefereeKeyCounts } from "@/lib/marketing/outreach-open-checks";
  * ⛔ THE KEY HOLDS NO MORE THAN IT MUST — the referee is not our customer. Thirty-two letters a–p: HMAC-SHA256 of the number
  * under `OTP_PEPPER` (`pepperedLetters`, one letter per hex nibble), so no digit and no number is ever stored, and it cannot
  * be turned back into the number by anyone without the server's pepper, which never leaves the application. ⚠️ With the
- * pepper, every Tanzanian mobile number can be hashed and compared, so the pepper's secrecy IS the protection. ⚠️ THE
- * FAILURE MODE, WRITTEN DOWN (as `identityFingerprint`'s is): rotating `OTP_PEPPER` makes every stored key disagree with
- * every lookup — the exclusion would quietly stop excluding. The pepper already cannot rotate without repealing
- * one-document-one-account, so this adds no new constraint; but if it ever rotates, `npm run ops:marketing-referee-keys --
- * backfill` must be re-run at once (it re-keys every application that still holds its contacts — an erased applicant's
- * referees cannot be re-keyed, because their numbers are gone).
+ * pepper, every Tanzanian mobile number can be hashed and compared, so the pepper's secrecy IS the protection. ⚠️ No COLUMN
+ * links a key to an application or an applicant — but a key written by `setReferees` lands moments before that save's own
+ * `agent.application.referees_set` audit row, and one written by an applicant's erasure beside that erasure's own rows, so
+ * they sit near each other in the database's own write order; that is why every writer writes its keys in ONE pass sorted
+ * by key (the backfill ALL of them at once), never application by application. ⚠️ THE FAILURE MODE,
+ * WRITTEN DOWN (as `identityFingerprint`'s is): rotating `OTP_PEPPER` makes every stored key disagree with every lookup —
+ * the exclusion would quietly stop excluding. The pepper already cannot rotate without repealing one-document-one-account,
+ * so this adds no new constraint; but if it ever rotates, `npm run ops:marketing-referee-keys -- backfill` must be re-run
+ * at once (it re-keys every application that still holds its contacts — an erased applicant's referees cannot be
+ * re-keyed, because their numbers are gone).
  *
  * ⭐ WHERE IT IS WRITTEN — every place a referee's number exists, before it can stop existing:
  *   · `setReferees` (agent-application-service.ts) — the moment referees are named, BEFORE the application is saved: the
  *     new referees (while the old promise is still the one shown) AND the referees being replaced (named under the old
- *     promise), so a write that fails saves nothing and leaves an extra exclusion at worst, never a saved or overwritten
- *     referee with no exclusion;
+ *     promise), in ONE write, so a write that fails saves nothing and leaves an extra exclusion at worst, never a saved or
+ *     overwritten referee with no exclusion;
  *   · `pseudonymiseAgentApplications` (the applicant's erasure) — BEFORE the contacts are emptied, so an erasure can never
  *     erase the only copy of a promised referee's number before it was keyed;
  *   · `backfillRefereeKeys` — every existing application, through the ops door (the migration cannot: the pepper lives in
  *     the application, never in SQL). ⛔ It runs after the deploy that applies the migration and BEFORE licence outreach
  *     or the live-send switch opens (both refuse while its record is outstanding), before the cutoff is set, and again
- *     after any rollback to a build without U33r and the redeploy that follows.
+ *     after any rollback to a build without U33r and the redeploy that follows;
+ *   · BY HAND, through the same ops door (the re-review's MINOR-4): a contact the reader cannot read is the census's
+ *     `unreadable`, and it holds both doors shut until a person looks — `key --application <id>` keys the ONE number they
+ *     type (read without echo, never printed, normalised by this reader), and `reviewed --application <id> --reason …`
+ *     records that it holds no mobile number. Each writes ONE COMPLIANCE audit row naming the application, never a number.
  * ⛔ APPEND-ONLY: nothing here, or anywhere, removes a key — a referee named again, or replaced, keeps theirs. The
  * applicant's erasure keeps the keys too: they hold nothing of the applicant, and the promise was made to the referee. A
  * referee asking 50pick to destroy their information has everything else destroyed, but not this coded form of their
  * number — it is what keeps them out of marketing for as long as 50pick sends it (docs/DATA-RETENTION.md).
- * ⛔ NO NUMBER IN ANY AUDIT OR LOG: nothing here audits or logs, and every count this module answers is a count.
+ * ⚠️ RESIDUALS, WRITTEN DOWN (the re-review's MINOR-5): a referee replaced, or an applicant erased, before U33r's deploy
+ * left no number in the live database, so nothing can key them — it may still sit in the backups (kept 90 days), which
+ * nothing reads to key it. And when a contact gives no number the strict way, its generous readings may key a number
+ * nobody wrote (a digit too many, digits behind a prefix we do not know): that number is then excluded for good.
+ * ⛔ NO NUMBER IN ANY AUDIT OR LOG: the hand steps' audit rows name the application and the step, and every count this
+ * module answers is a count.
  *
- * Guards: `npm run test:marketing-consent` (the referee rows, the writer, the erasure, the backfill, the pepper and the ops
- * door, with their plants) · `npm run test:dal-parity` §28 (the two twins and the migration).
+ * Guards: `npm run test:marketing-consent` (the referee rows, the writer, the erasure, the backfill, the pepper, the ops
+ * door and its hand steps, with their plants) · `npm run test:dal-parity` §28 (the two twins and the migration).
  */
 
 /** ⛔ THE MOMENT THE RE-WORDED /legal/privacy §9 WENT LIVE — the instant version `REFEREE_PROMISE_REWORDED_IN` (Privacy
@@ -132,6 +149,22 @@ const MAX_GROUPS = 15;
 const MAX_DIGITS = 15;
 const DIGIT_RUN = /[0-9]+/g;
 const LEADING_ZEROS = /^0+/;
+/** The characters two digit groups of ONE number are written apart by: a space, a dash, a dot, and the brackets around a
+ *  trunk zero ("+255 (0) 712-345-678"). A comma, a slash, a letter — anything else — between two groups means two things,
+ *  and they are never joined into a number nobody wrote ("Box 7, 12345678" is not 0712 345 678; the re-review's MINOR-3). */
+const NUMBER_PUNCTUATION = /^[ .()-]+$/;
+/** A field that IS a phone number and nothing else — the CSV export's leading quote, a plus, digits and that punctuation —
+ *  the only field the gate's own parser is asked about whole. */
+const PURE_NUMBER = /^['"]?[+]?[0-9 .()-]+$/;
+
+/** The text a contact's numbers are read from: every keyboard's digits made ASCII, every whitespace one space, and every
+ *  e-mail address taken out — an address's digits belong to the address, which is followed (`readRefereeContact`), never
+ *  read as a number. */
+function numberTextOf(contact: string | null | undefined): string {
+  const ascii = readAsciiDigits(typeof contact === "string" ? contact : "");
+  const spaced = [...ascii].map((c) => (c.trim() === "" ? " " : c)).join("");
+  return spaced.replace(EMAIL, " ");
+}
 
 /** The gate's key for a run of digits written the ways people write a Tanzanian mobile number — `+255 712…`, `00255…`,
  *  `0712…`, `712…`, `+255 (0) 712…` — following `parseTzNumber`'s own reading of the country code and the trunk zero, or
@@ -154,8 +187,8 @@ function mobileKeyOfDigits(run: string): string | null {
 }
 
 /** ⭐ THE GENEROUS READINGS of ONE unbroken run of ten to fifteen digits — a number with a digit too many, or behind a
- *  prefix we do not know: its LAST nine digits, and the nine after its country code or trunk zero. A wrong guess only
- *  keeps one more number out of marketing; a missed one is a promised referee messaged. */
+ *  prefix we do not know: its LAST nine digits, and the nine after its country code or trunk zero. ⛔ Asked ONLY when the
+ *  strict readings found nothing in the contact (`refereeNumbersIn`). */
 function lenientKeysOfRun(run: string): string[] {
   if (run.length < 10 || run.length > MAX_DIGITS) return [];
   const keys = new Set<string>();
@@ -175,35 +208,49 @@ function lenientKeysOfRun(run: string): string[] {
 }
 
 /**
- * ⭐ EVERY TANZANIAN MOBILE NUMBER WRITTEN IN A REFEREE CONTACT, as gate keys, sorted — read GENEROUSLY, because a number
- * missed here is a promised referee messaged: the whole field as the gate's own parser reads it; every window of up to
- * fifteen consecutive digit groups (so "0712 345 678", two numbers in one field, a number beside a word, a number typed a
- * digit at a time, and every keyboard's digits all count); and each unbroken run of ten to fifteen digits — and the
- * field's digits taken together — by its generous readings (`lenientKeysOfRun`).
- * ⚠️ It OVER-reads, on purpose and in the safe direction — one more number is never sent offers: the national part of a
- * foreign number ("+254 712 345 678" reads as 0712 345 678); a number with a digit too many ("0712 345 678 9" — the window
- * "0712 345 678" is a whole number — and "07123456789", whose nine after the zero are read); the last nine digits of a
- * long run. ⛔ What it CANNOT read gives nothing: a number with digits MISSING ("0712 345 67") is nobody's number with any
- * certainty, a landline or a foreign number with no mobile in it cannot receive an SMS, and an e-mail is not a number —
- * `readRefereeContact` follows an e-mail, and the census counts every contact that led nowhere (`unreadable`).
+ * ⭐ EVERY TANZANIAN MOBILE NUMBER WRITTEN IN A REFEREE CONTACT, as gate keys, sorted — read STRICTLY first, then, only when
+ * that finds nothing, GENEROUSLY:
+ *   · STRICT — a field that is a phone number and nothing else, as the gate's own parser reads it; and every window of up
+ *     to fifteen consecutive digit groups written apart only by number punctuation (a space, a dash, a dot, brackets), so
+ *     "0712 345 678", "+255 (0) 712-345-678", two numbers in one field, a number beside a word, a number typed a digit at a
+ *     time, and every keyboard's digits all count;
+ *   · GENEROUS — ONLY when the strict readings found NOTHING in the contact (the re-review's MINOR-3): each unbroken run of
+ *     ten to fifteen digits, and the field's digits taken together, by `lenientKeysOfRun` — a number with a digit too
+ *     many ("07123456789" keys 0712 345 678), digits behind a prefix we do not know.
+ * ⚠️ It still OVER-reads, in the safe direction: the national part of a foreign number written with spaces ("+254 712 345
+ * 678" reads as 0712 345 678), and a generous reading of a contact that held no number the strict way — such a key is a
+ * number nobody may have written, excluded for good (the module's residuals). ⛔ What it CANNOT read gives nothing: a number
+ * with digits MISSING ("0712 345 67") is nobody's number with any certainty, a landline or a foreign number cannot receive
+ * an SMS, digits across a comma or a word are not one number, and an e-mail's digits are the address's —
+ * `readRefereeContact` follows the e-mail, and the census counts every contact that led nowhere (`unreadable`).
  */
 export function refereeNumbersIn(contact: string | null | undefined): string[] {
-  const text = readAsciiDigits(typeof contact === "string" ? contact : "");
+  const text = numberTextOf(contact);
   const found = new Set<string>();
-  const whole = parseTzNumber(text);
-  if (whole.verdict === "ok" && whole.msisdn) found.add(whole.msisdn);
-  const groups = text.match(DIGIT_RUN) ?? [];
-  for (let i = 0; i < groups.length; i++) {
-    let run = "";
-    for (let j = i; j < groups.length && j < i + MAX_GROUPS; j++) {
-      run += groups[j];
-      if (run.length > MAX_DIGITS + 2) break;
-      const key = mobileKeyOfDigits(run);
+  const trimmed = text.trim();
+  if (trimmed !== "" && PURE_NUMBER.test(trimmed)) {
+    const whole = parseTzNumber(trimmed);
+    if (whole.verdict === "ok" && whole.msisdn) found.add(whole.msisdn);
+  }
+  const runs = [...text.matchAll(DIGIT_RUN)];
+  for (let i = 0; i < runs.length; i++) {
+    let digits = "";
+    for (let j = i; j < runs.length && j < i + MAX_GROUPS; j++) {
+      if (j > i) {
+        const prev = runs[j - 1];
+        const between = text.slice((prev.index ?? 0) + prev[0].length, runs[j].index ?? 0);
+        if (!NUMBER_PUNCTUATION.test(between)) break;
+      }
+      digits += runs[j][0];
+      if (digits.length > MAX_DIGITS + 2) break;
+      const key = mobileKeyOfDigits(digits);
       if (key !== null) found.add(key);
     }
   }
-  for (const run of groups) for (const key of lenientKeysOfRun(run)) found.add(key);
-  for (const key of lenientKeysOfRun(groups.join(""))) found.add(key);
+  if (found.size === 0) {
+    for (const run of runs) for (const key of lenientKeysOfRun(run[0])) found.add(key);
+    for (const key of lenientKeysOfRun(runs.map((r) => r[0]).join(""))) found.add(key);
+  }
   return [...found].sort();
 }
 
@@ -231,16 +278,18 @@ const REFEREE_EMAIL_ACCOUNTS_MAX = 20;
 export type RefereeContactReading = {
   /** Gate keys, sorted: written in the contact, or held by an account or a book row under an e-mail written in it. */
   readonly numbers: readonly string[];
-  /** `number` — a number was written in it · `email_matched` / `email_unmatched` — no number written, an e-mail that did /
-   *  did not lead to one · `not_mobile` — nine or more digits reading as a landline or a foreign number · `unreadable` —
-   *  nine or more digits that gave no number and are neither · `none` — empty, or too few digits to be a number. */
+  /** `number` — a number was written in it · `not_mobile` — nine or more digits (outside any e-mail) reading as a landline
+   *  or a foreign number · `unreadable` — nine or more digits that gave no number and are neither, WHATEVER else the
+   *  contact holds (an e-mail beside a broken number is still a broken number — the re-review's NIT) · `email_matched` /
+   *  `email_unmatched` — no digits to speak of, an e-mail that did / did not lead to a number · `none` — empty, or too
+   *  few digits to be a number. */
   readonly kind: "number" | "email_matched" | "email_unmatched" | "not_mobile" | "unreadable" | "none";
 };
 
 /**
  * ⭐ ONE REFEREE CONTACT, FOLLOWED — the numbers written in it (`refereeNumbersIn`), and for every e-mail address in it the
  * number of every account (`user.findAllByEmail`) and every book row (`marketingContact.msisdnsByEmail`) holding that
- * address, case-insensitive (the U33r review's MINOR-1). Reads only; writes and logs nothing.
+ * address, case-insensitive (the U33r review's MINOR-1). Classified by its DIGITS first. Reads only; writes and logs nothing.
  */
 export async function readRefereeContact(contact: string | null | undefined): Promise<RefereeContactReading> {
   const text = typeof contact === "string" ? contact : "";
@@ -258,11 +307,13 @@ export async function readRefereeContact(contact: string | null | undefined): Pr
   }
   const sorted = [...numbers].sort();
   if (written.length > 0) return { numbers: sorted, kind: "number" };
+  const digitsText = numberTextOf(text);
+  if ((digitsText.match(DIGIT_RUN) ?? []).join("").length >= 9) {
+    const verdict = parseTzNumber(digitsText).verdict;
+    return { numbers: sorted, kind: verdict === "landline" || verdict === "foreign" ? "not_mobile" : "unreadable" };
+  }
   if (emails.length > 0) return { numbers: sorted, kind: sorted.length > 0 ? "email_matched" : "email_unmatched" };
-  const ascii = readAsciiDigits(text);
-  if ((ascii.match(DIGIT_RUN) ?? []).join("").length < 9) return { numbers: sorted, kind: "none" };
-  const verdict = parseTzNumber(ascii).verdict;
-  return { numbers: sorted, kind: verdict === "landline" || verdict === "foreign" ? "not_mobile" : "unreadable" };
+  return { numbers: sorted, kind: "none" };
 }
 
 /** An instant in `toISOString()`'s spelling, or the fallback when it cannot be read. */
@@ -278,25 +329,44 @@ export function refereeNamedAtOf(app: Pick<StoredAgentApplication, "refereeConse
   return instantOr(app.refereeConsentAt, instantOr(app.createdAt, REFEREE_NAMED_UNKNOWN));
 }
 
+/** One set of referees, and when they were named — what the writers hand in. */
+export type RefereeNaming = { contacts: ReadonlyArray<string | null | undefined>; namedAt: string };
+
 /**
- * ⭐ THE ONE WRITER — for referees named at `namedAt`: if they were given the old promise (`refereePromiseHolds`), every
- * number their contacts lead to is keyed and appended; if not, NOTHING is written. Answers how many rows were NEW (0 when
- * every key was already held — what makes every caller re-runnable). ⛔ The instant decides and is then forgotten: no row
- * holds it. ⛔ It THROWS when the table cannot be written: `setReferees` then saves nothing, so a referee is never on file
- * without their exclusion. `newWordsLiveAt` is the constant — a parameter only so the suites can drive a set cutoff.
+ * ⭐ THE ONE WRITER — for every naming handed in whose referees were given the old promise (`refereePromiseHolds`), every
+ * number their contacts lead to is keyed; namings that were not promised add NOTHING. All the keys go in ONE pass, sorted
+ * by key (in calls of at most `REFEREE_KEY_RECORD_MAX`), so the keys of one application never sit together. Answers how
+ * many rows were NEW (0 when every key was already held — what makes every caller re-runnable). ⛔ The instants decide and
+ * are then forgotten: no row holds one. ⛔ It THROWS when the table cannot be written: `setReferees` then saves nothing, so
+ * a referee is never on file without their exclusion. `newWordsLiveAt` is the constant — a parameter only so the suites
+ * can drive a set cutoff.
  */
-export async function recordRefereeKeys(
-  input: { contacts: ReadonlyArray<string | null | undefined>; namedAt: string },
+export async function recordRefereeKeysFor(
+  namings: ReadonlyArray<RefereeNaming>,
   newWordsLiveAt: string | null = REFEREE_NEW_WORDS_LIVE_AT,
 ): Promise<number> {
-  if (!refereePromiseHolds(input.namedAt, newWordsLiveAt)) return 0;
   const keys = new Set<string>();
-  for (const contact of input.contacts) {
-    for (const msisdn of (await readRefereeContact(contact)).numbers) keys.add(refereeKeyOf(msisdn));
+  for (const naming of namings) {
+    if (!refereePromiseHolds(naming.namedAt, newWordsLiveAt)) continue;
+    for (const contact of naming.contacts) {
+      for (const msisdn of (await readRefereeContact(contact)).numbers) keys.add(refereeKeyOf(msisdn));
+    }
   }
-  if (keys.size === 0) return 0;
-  const rows = [...keys].sort().map((refereeKey): StoredAgentRefereeKey => ({ refereeKey }));
-  return Promise.resolve(db.agentRefereeKey.record(rows));
+  const sorted = [...keys].sort();
+  let written = 0;
+  for (let i = 0; i < sorted.length; i += REFEREE_KEY_RECORD_MAX) {
+    const rows = sorted.slice(i, i + REFEREE_KEY_RECORD_MAX).map((refereeKey): StoredAgentRefereeKey => ({ refereeKey }));
+    written += await Promise.resolve(db.agentRefereeKey.record(rows));
+  }
+  return written;
+}
+
+/** ⭐ ONE NAMING — `recordRefereeKeysFor` of a single set of referees. */
+export async function recordRefereeKeys(
+  input: RefereeNaming,
+  newWordsLiveAt: string | null = REFEREE_NEW_WORDS_LIVE_AT,
+): Promise<number> {
+  return recordRefereeKeysFor([input], newWordsLiveAt);
 }
 
 /** ⭐ THE GATE'S READ — is this number a promised referee's? It takes the gate's key; a key held is the whole answer. */
@@ -322,6 +392,95 @@ export async function promisedRefereesAmong(msisdns: readonly string[]): Promise
   return out;
 }
 
+/* ══ THE HAND STEPS — a contact the reader cannot read, looked at by a person (the re-review's MINOR-4) ══════════════ */
+
+/** The two COMPLIANCE audit actions the hand steps write — each names the APPLICATION and the step, never a number. */
+export const REFEREE_KEY_ADDED_ACTION = "marketing.referee_key_added";
+export const REFEREE_CONTACT_REVIEWED_ACTION = "marketing.referee_contact_reviewed";
+const HAND_ACTIONS: readonly string[] = [REFEREE_KEY_ADDED_ACTION, REFEREE_CONTACT_REVIEWED_ACTION];
+
+/**
+ * ⭐ WHICH OF THESE APPLICATIONS A PERSON HAS HANDLED: a hand step's audit row naming it, written AT OR AFTER its referees
+ * were last named — a later naming is a new contact, and must be looked at again. ⛔ A read that could not answer in full
+ * (more rows than one read takes) handles NOTHING: never a referee let through on a guess.
+ */
+async function handledApplications(apps: readonly StoredAgentApplication[]): Promise<Set<string>> {
+  const handled = new Set<string>();
+  if (apps.length === 0) return handled;
+  const read = await getAuditForTargetsDurable({
+    targetType: "AgentApplication", targetIds: apps.map((a) => a.id), actions: HAND_ACTIONS, sinceIso: REFEREE_NAMED_UNKNOWN, limit: 5000,
+  });
+  if (read.truncated) return handled;
+  const namedAt = new Map(apps.map((a) => [a.id, Date.parse(refereeNamedAtOf(a))] as const));
+  for (const e of read.entries) {
+    const at = Date.parse(e.createdAt);
+    const named = e.targetId === null ? undefined : namedAt.get(e.targetId);
+    if (named !== undefined && Number.isFinite(at) && at >= named) handled.add(e.targetId as string);
+  }
+  return handled;
+}
+
+/** What a reason for `reviewed` may be: plain words, 3–200 characters after Unicode normalisation, one line, no hidden
+ *  character — and NO numeral of any kind, in any script: a reason is never where a number goes (no number in any audit). */
+const HIDDEN = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/u;
+const ANY_NUMERAL = /\p{N}/u;
+export function screenReviewReason(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const t = raw.normalize("NFKC").trim();
+  if (t.length < 3 || t.length > 200 || HIDDEN.test(t) || ANY_NUMERAL.test(t)) return null;
+  return t;
+}
+
+export type RefereeHandRefusal = "no_application" | "not_promised" | "not_one_number" | "bad_reason" | "not_recorded";
+export type RefereeHandResult = { ok: true; written: number } | { ok: false; why: RefereeHandRefusal };
+/** The hand steps' one dependency a suite plants — the audit writer — so a plant can try to put a number in a payload. */
+export type RefereeHandDeps = { readonly audit: typeof audit };
+const HAND_DEPS: RefereeHandDeps = Object.freeze({ audit });
+const refuseHand = (why: RefereeHandRefusal): RefereeHandResult => ({ ok: false, why });
+
+/**
+ * ⭐ KEY ONE NUMBER BY HAND — the person typed the referee's number (the door reads it without echo and never prints it);
+ * it is normalised by THIS reader and must be exactly ONE number, the application must exist and be a PROMISED one, and
+ * the key is written, then ONE audit row naming the application. ⛔ The number reaches the key and nothing else: not the
+ * answer, not the audit payload, not a log.
+ */
+export async function keyRefereeNumberByHand(
+  i: { applicationId: string; typed: string },
+  deps: RefereeHandDeps = HAND_DEPS,
+  newWordsLiveAt: string | null = REFEREE_NEW_WORDS_LIVE_AT,
+): Promise<RefereeHandResult> {
+  const app = await Promise.resolve(db.agentApplication.findById(i.applicationId));
+  if (!app) return refuseHand("no_application");
+  if (!refereePromiseHolds(refereeNamedAtOf(app), newWordsLiveAt)) return refuseHand("not_promised");
+  const found = refereeNumbersIn(typeof i.typed === "string" ? i.typed : "");
+  if (found.length !== 1) return refuseHand("not_one_number");
+  const written = await Promise.resolve(db.agentRefereeKey.record([{ refereeKey: refereeKeyOf(found[0]) }]));
+  const r = await deps.audit({
+    category: "COMPLIANCE", action: REFEREE_KEY_ADDED_ACTION, actorId: null, targetType: "AgentApplication", targetId: app.id,
+    payload: { via: "ops" },
+  });
+  return r.recorded ? { ok: true, written } : refuseHand("not_recorded");
+}
+
+/** ⭐ RECORD THAT A PERSON LOOKED — the application exists, the reason is plain words with no numeral, and ONE audit row
+ *  names the application and carries the reason. Nothing is keyed: the contact holds no mobile number. */
+export async function recordRefereeContactReviewed(
+  i: { applicationId: string; reason: string },
+  deps: RefereeHandDeps = HAND_DEPS,
+): Promise<RefereeHandResult> {
+  const app = await Promise.resolve(db.agentApplication.findById(i.applicationId));
+  if (!app) return refuseHand("no_application");
+  const reason = screenReviewReason(i.reason);
+  if (reason === null) return refuseHand("bad_reason");
+  const r = await deps.audit({
+    category: "COMPLIANCE", action: REFEREE_CONTACT_REVIEWED_ACTION, actorId: null, targetType: "AgentApplication", targetId: app.id,
+    payload: { via: "ops", reason },
+  });
+  return r.recorded ? { ok: true, written: 0 } : refuseHand("not_recorded");
+}
+
+/* ══ THE CENSUS AND THE BACKFILL ═════════════════════════════════════════════════════════════════════════════════════ */
+
 /** What the backfill and the census count — counts only, never a number, a key or an application id. The SAME shape the
  *  code records production's run in (`RefereeKeysRecord`, the fifth licence-outreach check). */
 export type RefereeKeyCensus = RefereeKeyCounts;
@@ -329,6 +488,8 @@ export type RefereeKeyCensus = RefereeKeyCounts;
 type OnFile = {
   counts: Omit<RefereeKeyCounts, "numbers" | "missing">;
   byApplication: Array<{ app: StoredAgentApplication; numbers: string[] }>;
+  /** Promised applications holding a contact the reader could not read that no person has handled yet. */
+  unreadableApplications: string[];
 };
 
 /** Every PROMISED application's referee contacts, followed — the shared walk of the census and the backfill. */
@@ -336,9 +497,9 @@ async function refereesOnFile(newWordsLiveAt: string | null): Promise<OnFile> {
   const apps = await Promise.resolve(db.agentApplication.list());
   let promised = 0;
   let withContact = 0;
-  let unreadable = 0;
   let notMobile = 0;
   let emailOnlyUnmatched = 0;
+  const unreadableBy = new Map<string, { app: StoredAgentApplication; contacts: number }>();
   const byApplication: OnFile["byApplication"] = [];
   for (const app of apps) {
     if (!refereePromiseHolds(refereeNamedAtOf(app), newWordsLiveAt)) continue;
@@ -350,13 +511,29 @@ async function refereesOnFile(newWordsLiveAt: string | null): Promise<OnFile> {
     for (const contact of contacts) {
       const read = await readRefereeContact(contact);
       for (const n of read.numbers) numbers.add(n);
-      if (read.kind === "unreadable") unreadable++;
+      if (read.kind === "unreadable") unreadableBy.set(app.id, { app, contacts: (unreadableBy.get(app.id)?.contacts ?? 0) + 1 });
       else if (read.kind === "not_mobile") notMobile++;
       else if (read.kind === "email_unmatched") emailOnlyUnmatched++;
     }
     byApplication.push({ app, numbers: [...numbers].sort() });
   }
-  return { counts: { applications: apps.length, promised, withContact, unreadable, notMobile, emailOnlyUnmatched }, byApplication };
+  // ⭐ MINOR-4 · a person's hand step clears an application's unreadable contacts — counted as reviewed, never unreadable.
+  const handled = await handledApplications([...unreadableBy.values()].map((x) => x.app));
+  let unreadable = 0;
+  let reviewed = 0;
+  const unreadableApplications: string[] = [];
+  for (const [id, x] of unreadableBy) {
+    if (handled.has(id)) reviewed += x.contacts;
+    else {
+      unreadable += x.contacts;
+      unreadableApplications.push(id);
+    }
+  }
+  return {
+    counts: { applications: apps.length, promised, withContact, unreadable, reviewed, notMobile, emailOnlyUnmatched },
+    byApplication,
+    unreadableApplications: unreadableApplications.sort(),
+  };
 }
 
 /** ⭐ READ-ONLY: how many promised referees' numbers are not yet keyed, and how many contacts led nowhere — the ops door's
@@ -373,21 +550,25 @@ export async function refereeKeyCensus(newWordsLiveAt: string | null = REFEREE_N
   return { ...onFile.counts, numbers: numbers.length, missing };
 }
 
+/** ⭐ READ-ONLY: the APPLICATION IDS holding a contact the reader could not read that no person has handled — what the
+ *  ops door's `status` lists, so a person knows where to look. Ids only: never a number, a name or a contact. */
+export async function unreadableRefereeApplications(newWordsLiveAt: string | null = REFEREE_NEW_WORDS_LIVE_AT): Promise<string[]> {
+  return (await refereesOnFile(newWordsLiveAt)).unreadableApplications;
+}
+
 /**
- * ⭐ THE BACKFILL — every promised application's referees keyed. Idempotent: a re-run writes nothing new. Answers the
- * census taken AFTER the writes (so `missing` is 0 when it worked) and how many rows were new. Run through the ops door
- * after the migration is applied, before licence outreach or the live switch opens and before the cutoff is set; again
- * after any rollback to a build without U33r and the redeploy that follows, and if the pepper ever rotates.
+ * ⭐ THE BACKFILL — every promised application's referees keyed, in ONE pass sorted by key (`recordRefereeKeysFor`), so no
+ * application's keys sit together. Idempotent: a re-run writes nothing new. Answers the census taken AFTER the writes (so
+ * `missing` is 0 when it worked) and how many rows were new. Run through the ops door after the migration is applied,
+ * before licence outreach or the live switch opens and before the cutoff is set; again after any rollback to a build
+ * without U33r and the redeploy that follows, and if the pepper ever rotates.
  */
 export async function backfillRefereeKeys(newWordsLiveAt: string | null = REFEREE_NEW_WORDS_LIVE_AT): Promise<RefereeKeyCensus & { written: number }> {
   const onFile = await refereesOnFile(newWordsLiveAt);
-  let written = 0;
-  for (const { app } of onFile.byApplication) {
-    written += await recordRefereeKeys(
-      { contacts: [app.refereeOneContact, app.refereeTwoContact], namedAt: refereeNamedAtOf(app) },
-      newWordsLiveAt,
-    );
-  }
+  const written = await recordRefereeKeysFor(
+    onFile.byApplication.map(({ app }) => ({ contacts: [app.refereeOneContact, app.refereeTwoContact], namedAt: refereeNamedAtOf(app) })),
+    newWordsLiveAt,
+  );
   return { ...(await refereeKeyCensus(newWordsLiveAt)), written };
 }
 
@@ -403,21 +584,33 @@ export type RefereeKeysDoorInput = {
   readonly railwayEnvironment: string | undefined;
   readonly railwayService: string | undefined;
 };
-export type RefereeKeysDoorRefusal = "usage" | "no_database" | "no_pepper" | "not_production";
+export type RefereeKeysDoorCommand = "status" | "backfill" | "key" | "reviewed";
+export type RefereeKeysDoorRefusal = "usage" | "no_database" | "no_pepper" | "not_production" | "no_application" | "bad_reason";
+/** `environment` is where the run happened — "production" ONLY under Railway's production markers, "scratch" for every
+ *  other run — and the backfill's RECORD carries it: only a production record can reconcile the fifth check. */
 export type RefereeKeysDoorVerdict =
-  | { readonly ok: true; readonly command: "status" | "backfill" }
+  | {
+    readonly ok: true;
+    readonly command: RefereeKeysDoorCommand;
+    readonly environment: "production" | "scratch";
+    readonly applicationId: string | null;
+    readonly reason: string | null;
+  }
   | { readonly ok: false; readonly why: RefereeKeysDoorRefusal };
 
 /** The door's words for each refusal — exit 2, nothing read or written. */
 export const REFEREE_KEYS_DOOR_SENTENCE: Readonly<Record<RefereeKeysDoorRefusal, string>> = Object.freeze({
-  usage: "usage: npm run ops:marketing-referee-keys -- status | backfill [--scratch]",
+  usage: 'usage: npm run ops:marketing-referee-keys -- status | backfill [--scratch] | key --application <id> [--scratch] | reviewed --application <id> --reason "<why>" [--scratch]',
   no_database: "REFUSING: no DATABASE_URL — the keys live in the database. Run it through the runner (see the header).",
   no_pepper: "REFUSING: OTP_PEPPER is not set — keys made under the dev fallback would never match production's. Run it through the runner.",
   not_production:
     "REFUSING: this is not production's own environment (run it through `railway run --service 50pick`), and no --scratch against a loopback database was asked for — keys made under another pepper would protect nobody.",
+  no_application: "REFUSING: name the application with --application <id> (an id from `status`, nothing else).",
+  bad_reason: "REFUSING: say why with --reason — what the contact IS ('a landline', 'a postal address'), never whose: plain words of 3–200 characters on one line, with no name and no number of any kind.",
 });
 
 const LOOPBACK_HOSTS: readonly string[] = ["127.0.0.1", "localhost", "::1", "[::1]"];
+const APPLICATION_ID = /^[A-Za-z0-9_-]{1,80}$/;
 
 /** The database host, for the loopback check only — never printed. */
 function databaseHostOf(url: string | undefined): string {
@@ -428,23 +621,40 @@ function databaseHostOf(url: string | undefined): string {
   }
 }
 
+/** A flag's value: the word after it, when there is one and it is not another flag. */
+function flagValue(argv: readonly string[], flag: string): string | null {
+  const at = argv.indexOf(flag);
+  const v = at < 0 ? undefined : argv[at + 1];
+  return typeof v === "string" && !v.startsWith("--") ? v : null;
+}
+
 /**
  * ⛔ THE DOOR'S RULE, PURE (the U33r review's MINOR-4 — pinned by `test:marketing-consent` R10 with its plants):
  *   · a command it knows, or nothing runs;
  *   · a database — a no-database process would key the in-memory store and report success;
  *   · `OTP_PEPPER` itself — outside production `requireSecret` falls back to a dev pepper, and keys made under it would
  *     never match the ones production computes, while the read-back, under the same wrong pepper, said "0 missing";
- *   · a WRITE (`backfill`) only in production's own environment as `railway run` injects it, or with `--scratch` against a
- *     LOOPBACK database (the integrator's scratch Postgres). `status` reads only.
+ *   · a WRITE (`backfill`, `key`, `reviewed`) only in production's own environment as `railway run` injects it, or with
+ *     `--scratch` against a LOOPBACK database (the integrator's scratch Postgres). `status` reads only;
+ *   · `key` and `reviewed` name ONE application by its id, and `reviewed` says why in plain words with no numeral;
+ *   · ⛔ `environment` is "production" ONLY under Railway's production markers — a scratch run's RECORD says "scratch",
+ *     and the fifth check never takes it (the re-review's MINOR-1).
  */
 export function refereeKeysDoorVerdict(i: RefereeKeysDoorInput): RefereeKeysDoorVerdict {
   const command = i.argv[0];
-  if (command !== "status" && command !== "backfill") return { ok: false, why: "usage" };
+  if (command !== "status" && command !== "backfill" && command !== "key" && command !== "reviewed") return { ok: false, why: "usage" };
   if (typeof i.databaseUrl !== "string" || i.databaseUrl === "") return { ok: false, why: "no_database" };
   if (i.pepperSet !== true) return { ok: false, why: "no_pepper" };
-  if (command === "status") return { ok: true, command };
   const viaRailway = i.railwayEnvironment === "production" && i.railwayService === "50pick";
+  const environment = viaRailway ? "production" as const : "scratch" as const;
+  if (command === "status") return { ok: true, command, environment, applicationId: null, reason: null };
   const scratch = i.argv.includes("--scratch") && LOOPBACK_HOSTS.includes(databaseHostOf(i.databaseUrl));
   if (!viaRailway && !scratch) return { ok: false, why: "not_production" };
-  return { ok: true, command };
+  if (command === "backfill") return { ok: true, command, environment, applicationId: null, reason: null };
+  const applicationId = flagValue(i.argv, "--application");
+  if (applicationId === null || !APPLICATION_ID.test(applicationId)) return { ok: false, why: "no_application" };
+  if (command === "key") return { ok: true, command, environment, applicationId, reason: null };
+  const reason = screenReviewReason(flagValue(i.argv, "--reason"));
+  if (reason === null) return { ok: false, why: "bad_reason" };
+  return { ok: true, command, environment, applicationId, reason };
 }

@@ -74,7 +74,7 @@ import {
 import { kycNotifyEmails } from "./kyc-service";
 import { sendEmail } from "./email";
 // U33r · the referees' marketing exclusion — written when referees are named and before an erasure empties them.
-import { recordRefereeKeys, refereeNamedAtOf } from "./marketing/referee-exclusion";
+import { recordRefereeKeysFor, refereeNamedAtOf } from "./marketing/referee-exclusion";
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  THE DOCUMENTS — framework §2, verbatim
@@ -533,13 +533,17 @@ export async function setReferees(
        the re-worded /legal/privacy §9 went live was promised "we never contact you for marketing", so each Tanzanian mobile
        number these contacts lead to is keyed — a keyed hash, never the number — BEFORE the application is saved: a write
        that fails here saves nothing (the applicant is told and tries again), and one that fails after it leaves only an
-       extra exclusion. Never a saved referee with no exclusion. ⭐ TWO WRITES, each asking its OWN naming instant (the
+       extra exclusion. Never a saved referee with no exclusion. ⭐ TWO NAMINGS, each asking its OWN naming instant (the
        writer keys only a referee given the old promise, and stores no instant — the U33r review's MAJOR-1):
          · the referees ON FILE, named at the application's own `refereeConsentAt` — keyed BEFORE this save overwrites
            them, so a referee replaced before the backfill ran is never lost (their contact is the only copy);
-         · the referees being NAMED NOW, at this instant — keyed while the old promise is still the one shown. */
-    await recordRefereeKeys({ contacts: [e.app.refereeOneContact, e.app.refereeTwoContact], namedAt: refereeNamedAtOf(e.app) });
-    await recordRefereeKeys({ contacts: [oneContact, twoContact], namedAt });
+         · the referees being NAMED NOW, at this instant — keyed while the old promise is still the one shown.
+       ⭐ IN ONE WRITE, sorted by key (the re-review's NIT): the keys on file and the new ones land together, in an order
+       that says nothing of which was which. */
+    await recordRefereeKeysFor([
+      { contacts: [e.app.refereeOneContact, e.app.refereeTwoContact], namedAt: refereeNamedAtOf(e.app) },
+      { contacts: [oneContact, twoContact], namedAt },
+    ]);
     await db.agentApplication.update(e.app.id, { refereeOneName: oneName, refereeOneContact: oneContact, refereeTwoName: twoName, refereeTwoContact: twoContact, refereeConsentAt: namedAt });
     audit({ category: "ADMIN", action: "agent.application.referees_set", actorId: userId, targetType: "AgentApplication", targetId: e.app.id });
     return { ok: true as const };
@@ -1872,17 +1876,19 @@ export async function purgeAgedAgentDocuments(now = Date.now()): Promise<{ refer
  * only copy of a referee's number; once emptied, a referee never keyed (an application older than
  * the exclusion, before the backfill ran) could never be excluded again — and the promise "we never
  * contact you for marketing" was made to the REFEREE, not to the applicant asking to be forgotten.
- * So every number they lead to is keyed (`recordRefereeKeys` — a keyed hash and nothing else: no
- * name, no application id, no instant, no link to this person) BEFORE they are emptied, when the
- * application's referees were named under the old promise; a key already held is skipped. A failure
- * to write it throws: the erasure stops with the contacts still there, never emptied first.
+ * So every number they lead to is keyed (`recordRefereeKeysFor` — a keyed hash and nothing else: no
+ * name, no application id, no instant, and no column links it to this person) BEFORE any is emptied,
+ * when the application's referees were named under the old promise; a key already held is skipped.
+ * Every application's keys go in ONE write, sorted by key (the re-review's NIT). A failure to write
+ * it throws: the erasure stops with every contact still there, never emptied first.
  */
 export async function pseudonymiseAgentApplications(userId: string): Promise<number> {
+  const pending = (await db.agentApplication.listByUser(userId)).filter(
+    (a) => !(a.refereeOneName === "Erased" && a.refereeTwoName === "Erased" && !a.refereeOneContact && !a.refereeTwoContact),
+  );
+  await recordRefereeKeysFor(pending.map((a) => ({ contacts: [a.refereeOneContact, a.refereeTwoContact], namedAt: refereeNamedAtOf(a) })));
   let n = 0;
-  for (const a of await db.agentApplication.listByUser(userId)) {
-    const already = a.refereeOneName === "Erased" && a.refereeTwoName === "Erased" && !a.refereeOneContact && !a.refereeTwoContact;
-    if (already) continue;
-    await recordRefereeKeys({ contacts: [a.refereeOneContact, a.refereeTwoContact], namedAt: refereeNamedAtOf(a) });
+  for (const a of pending) {
     await db.agentApplication.update(a.id, {
       refereeOneName: a.refereeOneName ? "Erased" : null, refereeTwoName: a.refereeTwoName ? "Erased" : null,
       refereeOneContact: null, refereeTwoContact: null,

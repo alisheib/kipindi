@@ -896,7 +896,7 @@ export type ListBasisCoverage = {
  * ⛔ THE KEY AND NOTHING ELSE (the U33r review's MAJOR-1): thirty-two letters a–p — an HMAC under the server's pepper, never
  * the number, never a digit, and nothing without the pepper maps it back. No instant (when a referee was named, when the
  * row was written): an applicant's `refereeConsentAt` joined on an instant would link the referee's key back to the
- * applicant. No name, no application id, no link to the applicant — so the applicant's erasure leaves nothing of theirs
+ * applicant. No name, no application id, and no column links it to the applicant — so the applicant's erasure leaves nothing of theirs
  * here, and the referee's protection outlives it. WHETHER a referee was given the old promise is decided by the WRITER,
  * when it writes, and only a promised referee is ever written.
  * ⛔ APPEND-ONLY, IN BOTH TWINS: `record` inserts a key not yet held and skips one already held — Postgres's ON CONFLICT DO

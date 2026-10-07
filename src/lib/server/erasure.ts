@@ -411,7 +411,7 @@ export async function anonymizeClosedAccount(
   // goes if the bytes went" retry shape (`purgeAgentDocumentsForUser`).
   // ⛔ U33r · `AgentRefereeKey` IS NAMED HERE AND KEPT, on purpose: before the contacts go, each
   // promised referee's number they lead to is keyed (a coded form of the number and nothing else —
-  // no number, no instant, no name, no application id, no link to this person), because the promise
+  // no number, no instant, no name, no application id, and no column linking it to this person), because the promise
   // "we never contact you for marketing" was made to the REFEREE and must outlive the applicant's
   // erasure (docs/DATA-RETENTION.md). Nothing of the erased person is in that table, so nothing there
   // is theirs to erase.

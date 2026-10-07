@@ -10,7 +10,7 @@
  * written here by hand.
  *
  *   0  the migration `…_agent_referee_key` is applied and finished, and the table is EXACTLY one column — `refereeKey`
- *      text, NOT NULL, the primary key — with NO foreign key and no instant (no link to an application or an applicant);
+ *      text, NOT NULL, the primary key — with NO foreign key and no instant (no column links it to an application or an applicant);
  *   1  the scenario on Postgres, through `db`, against the hand-written answers: a key held is skipped (0), the held read
  *      answers one entry per key in key order, a raw number asked or written as a key is REFUSED by the rule set before
  *      any query, a row carrying an INSTANT beside its key is refused and leaves nothing, 2,001 keys are refused, never cut
@@ -19,6 +19,10 @@
  *      one naming two referees by number, one naming a referee by e-mail (whose number only the book holds) and a landline
  *      — are counted missing, keyed, then counted 0 missing; a re-run writes nothing; and the REAL gate refuses each
  *      referee number `agent_referee` while a stranger is refused for no consent;
+ *   2b (the re-review's MINOR-4) the two HAND STEPS on the real audit log: a third application holding a contact the
+ *      reader cannot read is counted unreadable; a reason with a numeral is refused; a person's review clears it (counted
+ *      reviewed); a number keyed by hand is refused by the real gate; and the two audit rows name the application and
+ *      carry no number;
  *   3  the memory twin's transcript of the same scenario equals Postgres', answer for answer.
  *
  * ⚠️ WRITTEN BY THE U33r BUILDER, WHO MAY NOT START POSTGRES ON THIS PC — NOT YET RUN ON POSTGRES (its memory phase was run
@@ -46,11 +50,14 @@ const T_EARLY = "2026-09-08T10:00:00.000Z";   // the referees were named in the 
 const N = {
   one: "255712300001", two: "255712300002", three: "255712300003",
   refA: "255712300004", refB: "255712300005", stranger: "255712300006", refC: "255712300007", applicant: "255712300009",
+  refD: "255712300008",
 };
 const REF_EMAIL = "Probe.Referee@Example.com";
 const U1 = "probe_rk_u1";
 const APP1 = "probe_rk_app1";
 const APP2 = "probe_rk_app2";
+const APP3 = "probe_rk_app3";
+const HAND_REASON = "digits missing, no phone to key";
 const BOOK1 = "probe_rk_book1";
 
 const user = (id: string, phoneE164: string): StoredUser => ({
@@ -86,10 +93,21 @@ const EXPECTED = {
   amongShape: [true, true, true], amongHeld: [true, true, false], empty: 0,
   rawAskRefused: true, rawWriteRefused: true, instantWriteRefused: true, instantLeftNothing: true, tooManyRefused: true,
   byEmail: [N.refC], byBlankEmail: 0,
-  censusBefore: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 3, unreadable: 0, notMobile: 1, emailOnlyUnmatched: 0 },
-  backfill: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 0, unreadable: 0, notMobile: 1, emailOnlyUnmatched: 0, written: 3 },
+  censusBefore: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 3, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0 },
+  backfill: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 0, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0, written: 3 },
   again: { written: 0, missing: 0 },
   gate: ["agent_referee", "agent_referee", "agent_referee", "no_consent"],
+  handBefore: { unreadable: 1, reviewed: 0, missing: 0, notMobile: 2 },
+  handGateBefore: "no_consent",
+  handBadReason: { ok: false, why: "bad_reason" },
+  handReviewed: { ok: true, written: 0 },
+  handAfterReview: { unreadable: 0, reviewed: 1, missing: 0, notMobile: 2 },
+  handKeyed: { ok: true, written: 1 },
+  handGate: "agent_referee",
+  handAudit: [
+    { action: "marketing.referee_contact_reviewed", category: "COMPLIANCE", payload: { reason: HAND_REASON, via: "ops" } },
+    { action: "marketing.referee_key_added", category: "COMPLIANCE", payload: { via: "ops" } },
+  ],
 };
 
 /* ═══ THE SCENARIO — the same code on either twin; it answers a transcript ═══════════════════════════════════════════ */
@@ -138,6 +156,26 @@ async function scenario(): Promise<Record<string, unknown>> {
     const v = await mayReceiveMarketingSms(m);
     (t.gate as string[]).push(v.ok ? "ALLOWED" : v.skipReason);
   }
+  // ── 2b · MINOR-4 · the hand steps, on the real audit log ──
+  const { getAuditForTargetsDurable } = await import("../../src/lib/server/audit.ts");
+  const handCounts = (c: { unreadable: number; reviewed: number; missing: number; notMobile: number }) =>
+    ({ unreadable: c.unreadable, reviewed: c.reviewed, missing: c.missing, notMobile: c.notMobile });
+  const gateOf = async (m: string): Promise<string> => { const v = await mayReceiveMarketingSms(m); return v.ok ? "ALLOWED" : v.skipReason; };
+  // A contact with a digit missing (no number the reader can key), and a landline beside it.
+  await db.agentApplication.create(application(APP3, U1, `0${N.refD.slice(3, 6)} ${N.refD.slice(6, 9)} ${N.refD.slice(9, 11)}`, "022 211 5812"));
+  t.handBefore = handCounts(await RX.refereeKeyCensus());
+  t.handGateBefore = await gateOf(N.refD);
+  t.handBadReason = await RX.recordRefereeContactReviewed({ applicationId: APP3, reason: "box 7" });
+  t.handReviewed = await RX.recordRefereeContactReviewed({ applicationId: APP3, reason: HAND_REASON });
+  t.handAfterReview = handCounts(await RX.refereeKeyCensus());
+  t.handKeyed = await RX.keyRefereeNumberByHand({ applicationId: APP3, typed: `+255 ${N.refD.slice(3)}` });
+  t.handGate = await gateOf(N.refD);
+  const rows = (await getAuditForTargetsDurable({
+    targetType: "AgentApplication", targetIds: [APP3], actions: [RX.REFEREE_CONTACT_REVIEWED_ACTION, RX.REFEREE_KEY_ADDED_ACTION],
+    sinceIso: "1970-01-01T00:00:00.000Z",
+  })).entries;
+  t.handAudit = rows.map((r) => ({ action: r.action, category: r.category, payload: r.payload ?? null }))
+    .sort((a, b) => (a.action < b.action ? -1 : a.action > b.action ? 1 : 0));
   return t;
 }
 
@@ -196,8 +234,8 @@ for (const [k, want] of Object.entries(EXPECTED)) {
   const got = onPostgres[k];
   ok(`1 · Postgres · ${k} is the hand-written answer`, canon(got) === canon(want), `got ${canon(got)} · want ${canon(want)}`);
 }
-// ── 1b · what the table holds afterwards, read by SQL: the five keys the scenario wrote (two by hand, three by the
-//    backfill), every one thirty-two letters a–p — the refused raw-number write and the refused row with an instant left
+// ── 1b · what the table holds afterwards, read by SQL: the six keys the scenario wrote (two by the DAL, three by the
+//    backfill, one by the hand step), every one thirty-two letters a–p — the refused raw-number write and the refused row with an instant left
 //    nothing, and no digit is stored anywhere ──
 {
   const client = new pg.Client({ connectionString: URL_RAW });
@@ -205,8 +243,8 @@ for (const [k, want] of Object.entries(EXPECTED)) {
   try {
     const all = await client.query(`select count(*)::int as n from "AgentRefereeKey"`);
     const letters = await client.query(`select count(*)::int as n from "AgentRefereeKey" where "refereeKey" ~ '^[a-p]{32}$'`);
-    ok("1b · the table holds exactly the five keys written, every one thirty-two letters a–p — the refused writes left nothing",
-      all.rows[0].n === 5 && letters.rows[0].n === 5, `rows ${all.rows[0].n} · letter keys ${letters.rows[0].n}`);
+    ok("1b · the table holds exactly the six keys written, every one thirty-two letters a–p — the refused writes left nothing",
+      all.rows[0].n === 6 && letters.rows[0].n === 6, `rows ${all.rows[0].n} · letter keys ${letters.rows[0].n}`);
   } finally {
     await client.end();
   }

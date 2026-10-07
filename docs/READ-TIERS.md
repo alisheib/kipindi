@@ -357,12 +357,17 @@ the input check (U33b-L), not for names — keep it that way, or give them a cel
 
 **Recorded 2026-10-07 (marketing U33r): `AgentRefereeKey` adds NO readable personal-data column.** A row is a coded form
 of a promised agent referee's mobile number and NOTHING else (thirty-two letters a–p, an HMAC that cannot be turned back
-into the number without the server's pepper) — no number, no instant, no name, no application id (the U33r review's
-MAJOR-1). No screen reads it: the send gate asks it by key, and NO staff screen ever names the reason apart — the split's
+into the number without the server's pepper) — no number, no instant, no name, no application id, and no column links it
+to an application or an applicant (the U33r review's MAJOR-1). No screen reads it: the send gate asks it by key, and NO staff screen ever names the reason apart — the split's
 ONE protected line, "Not reachable" on the contacts page, "protected" on a reader's typed test and `typed_refused` on a
 masked viewer's (the U33r review's MINOR-5). Only a typed test's own audit row records `agent_referee` precisely. The
 person whose OWN number is held is told so: their profile switch reads off for good with its reason, and both access
-exports say yes or no (`agentRefereeExclusion`, never the coded form).
+exports say yes or no (`agentRefereeExclusion`, never the coded form). The ops door's two HAND STEPS (the re-review's
+MINOR-4) write ONE COMPLIANCE audit row each, naming the APPLICATION only: `marketing.referee_key_added` (payload
+`{ via: "ops" }` — the number typed is read without echo and reaches the key alone) and `marketing.referee_contact_reviewed`
+(payload `{ via: "ops", reason }`). ⚠️ The reason is free text screened for numerals of every script (`screenReviewReason`),
+not for names — the door asks for what the contact IS ("a landline", "a postal address"), never whose it is; keep it
+that way, or give it a cell.
 
 **Wired 2026-10-01 (marketing U39a): the SMS campaign estimate — a PLATFORM AGGREGATE, not a
 player's figure.** A campaign's cost, the account's SMS credit and what that credit covers are

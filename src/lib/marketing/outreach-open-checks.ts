@@ -53,9 +53,13 @@ export type RefereeKeyCounts = {
   readonly numbers: number;
   /** ⛔ How many of those numbers have no key yet — 0 once the backfill has run. */
   readonly missing: number;
-  /** ⛔ Contacts with no e-mail in them holding nine or more digits that gave NO number, and that read as neither a
-   *  landline nor a foreign number — the reader could not tell whose number they are (the reviewers' MINOR-2). */
+  /** ⛔ Contacts holding nine or more digits (outside any e-mail address) that gave NO number, and that read as neither a
+   *  landline nor a foreign number — the reader could not tell whose number they are (the reviewers' MINOR-2) — and that
+   *  no person has handled yet (the re-review's MINOR-4). */
   readonly unreadable: number;
+  /** Such contacts a person HAS handled through the ops door — keyed the number by hand, or recorded that it holds no
+   *  mobile number — after the application's referees were last named. They no longer block. */
+  readonly reviewed: number;
   /** Contacts that read as a landline or a foreign number: no marketing SMS can reach them, so nothing is keyed. */
   readonly notMobile: number;
   /** Contacts holding an e-mail and no number, whose e-mail no account or book row with a number holds. */
@@ -63,11 +67,15 @@ export type RefereeKeyCounts = {
 };
 
 /**
- * ⛔ U33r · PRODUCTION'S RECORD OF THE REFEREE-KEY BACKFILL — the two lines the ops door printed there, copied into the
- * code by the commit that records them (`REFEREE_KEYS_ON_PRODUCTION`, `outreach-record.ts`). `status` is the census
- * BEFORE the backfill; `backfill` is the door's AFTER line with how many rows it wrote.
+ * ⛔ U33r · PRODUCTION'S RECORD OF THE REFEREE-KEY BACKFILL — the RECORD line the ops door printed there, copied into the
+ * code by the commit that records it (`REFEREE_KEYS_ON_PRODUCTION`, `outreach-record.ts`). `status` is the census
+ * BEFORE the backfill; `backfill` is the door's AFTER line with how many rows it wrote. ⛔ `environment` is what the door
+ * judged the run to be — "production" ONLY under Railway's production markers — and only a production record reconciles
+ * the check: a scratch run's RECORD, pasted here, keeps it outstanding (the re-review's MINOR-1).
  */
 export type RefereeKeysRecord = {
+  /** Where the backfill ran — "production" only when the door ran with Railway's production markers. */
+  readonly environment: "production" | "scratch";
   /** When the backfill ran on production — an ISO instant. */
   readonly ranAt: string;
   readonly status: RefereeKeyCounts;
@@ -76,20 +84,21 @@ export type RefereeKeysRecord = {
 export type RefereeKeysState = "reconciled" | "outstanding";
 
 const COUNT_KEYS: readonly (keyof RefereeKeyCounts)[] = [
-  "applications", "promised", "withContact", "numbers", "missing", "unreadable", "notMobile", "emailOnlyUnmatched",
+  "applications", "promised", "withContact", "numbers", "missing", "unreadable", "reviewed", "notMobile", "emailOnlyUnmatched",
 ];
 const isCount = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 const isCounts = (v: unknown): boolean =>
   v !== null && typeof v === "object" && COUNT_KEYS.every((k) => isCount((v as Record<string, unknown>)[k]));
 
 /**
- * ⭐ IS THE BACKFILL DONE ON PRODUCTION? Only a recorded, well-formed record whose AFTER line says NOTHING is missing and
- * NOTHING is unreadable — every promised referee's number keyed, and no contact the reader could not read. ⛔ Anything
- * else is OUTSTANDING: no record (today), a malformed one, a count that is not a count, a number still missing, an
- * unreadable contact still on file. Never on a guess.
+ * ⭐ IS THE BACKFILL DONE ON PRODUCTION? Only a recorded, well-formed PRODUCTION record whose AFTER line says NOTHING is
+ * missing and NOTHING is unreadable — every promised referee's number keyed, and every contact the reader could not read
+ * handled by a person. ⛔ Anything else is OUTSTANDING: no record (today), a scratch run's record, a malformed one, a count
+ * that is not a count, a number still missing, an unhandled unreadable contact still on file. Never on a guess.
  */
 export function refereeKeysState(record: RefereeKeysRecord | null): RefereeKeysState {
   if (record === null || typeof record !== "object") return "outstanding";
+  if (record.environment !== "production") return "outstanding";
   if (typeof record.ranAt !== "string" || !Number.isFinite(Date.parse(record.ranAt))) return "outstanding";
   if (!isCounts(record.status) || !isCounts(record.backfill) || !isCount(record.backfill.written)) return "outstanding";
   return record.backfill.missing === 0 && record.backfill.unreadable === 0 ? "reconciled" : "outstanding";

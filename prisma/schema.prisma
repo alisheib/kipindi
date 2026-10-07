@@ -3508,7 +3508,7 @@ model ContactListBasis {
 /// ⛔ THE KEY AND NOTHING ELSE (the U33r review's MAJOR-1): thirty-two letters a–p — an HMAC of the number under the
 /// server's pepper (`refereeKeyOf`, referee-exclusion.ts), never the number and never a digit. No instant of any kind: an
 /// applicant's `refereeConsentAt` joined on one would link a referee's key back to the applicant who named them. No name,
-/// no application id, no link to the applicant: the applicant's erasure leaves nothing of theirs here, and the referee's
+/// no application id, and no column links it to the applicant: the applicant's erasure leaves nothing of theirs here, and the referee's
 /// protection outlives it (docs/DATA-RETENTION.md). WHETHER a referee was given the old promise is the writer's decision,
 /// when it writes — only a promised referee is ever written.
 /// ⛔ APPEND-ONLY BY THE DATA LAYER: a key already held is skipped (ON CONFLICT DO NOTHING), and neither twin has an update

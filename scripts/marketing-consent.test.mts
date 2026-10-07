@@ -52,6 +52,7 @@ import { REAL_LICENCE, assertLicenceBasis, licenceGateWithDefect, licenceCases }
 // U33r · the referee keys: the REAL writer seeds the switch's referee rows, and the section that holds the writer, the
 // erasure and the backfill to the promise.
 import { recordRefereeKeys } from "../src/lib/server/marketing/referee-exclusion.ts";
+import { withLock } from "../src/lib/server/locks.ts";
 import { REAL_REFEREE, assertRefereeExclusion, refereeCases } from "./marketing-consent/referee-exclusion.mts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
@@ -1078,11 +1079,43 @@ async function runToggleAssertions(impl: ToggleImpl, run: number, tag: string): 
       && o9closed.on === true && o9open.on === true && o9open.outreach === false && o9gate.ok === true && o9gate.basis === "CONSENT",
     `answer ${JSON.stringify(rO9)} · flag ${o9user.marketingOptIn} · latest ${o9row?.status} · closed ${JSON.stringify(o9closed)} · open ${JSON.stringify(o9open)} · gate ${o9gate.ok ? o9gate.basis : o9gate.skipReason}`);
   setRecord(false);
+
+  // ── T-O10 · the re-review's MINOR-2 — an OFF and an ON in flight TOGETHER, both orders: the LAST decision wins ──
+  // From a switch reading OFF over a "yes" in the old wording with the flag still on — the state where both taps write.
+  const o10: string[] = [];
+  let o10ok = true;
+  for (const [n, order] of [[58, "OFF,ON"], [59, "ON,OFF"]] as const) {
+    const c = await mkp(n, {}, undefined, OLD_SIGNUP_SW);
+    setRecord(false);
+    const startC = await impl.state(await user(c.id));
+    const off = () => impl.choose({ userId: c.id, marketingOptIn: false, locale: "SW" });
+    const on = () => impl.choose({ userId: c.id, marketingOptIn: true, locale: "SW" });
+    const answers = order === "OFF,ON" ? await Promise.all([off(), on()]) : await Promise.all([on(), off()]);
+    const lastOn = order === "OFF,ON";
+    const cu = await user(c.id);
+    const latest = await Promise.resolve(db.messagingConsent.latestFor(c.key));
+    const closedC = await impl.state(cu);
+    setRecord(true);
+    const openC = await impl.state(cu);
+    const gateC = await mayReceiveMarketingSms(c.msisdn);
+    setRecord(false);
+    const ledgerAgrees = (cu.marketingOptIn === true) === (latest?.status === "GIVEN");
+    const lastWins = lastOn
+      ? cu.marketingOptIn === true && latest?.status === "GIVEN" && latest.source === "PROFILE" && closedC.on && openC.on && !openC.outreach
+        && gateC.ok && gateC.basis === "CONSENT" && answers[1].ok && answers[1].on === true
+      : cu.marketingOptIn === false && latest?.status === "WITHDRAWN" && latest.source === "PROFILE" && !closedC.on && !openC.on
+        && !gateC.ok && answers[1].ok && answers[1].on === false;
+    const fine = startC.on === false && ledgerAgrees && lastWins;
+    o10ok = o10ok && fine;
+    o10.push(`${order}: start ${startC.on} · answers ${JSON.stringify(answers)} · flag ${cu.marketingOptIn} · latest ${latest?.status}/${latest?.source} · switch closed ${closedC.on} open ${openC.on}${openC.outreach ? "/outreach" : ""} · gate open ${gateC.ok ? gateC.basis : gateC.skipReason}`);
+  }
+  ok(p(T_O10), o10ok, o10.join(" || "));
 }
 /** U33r / Q9 · the two switch rows the final rule adds — named once, so each red case expects exactly what the run says. */
 const T_O7 = "T-O7 · ⭐ Q9 REVERSED · a player switched off by the two-year LAPSE (the flag cleared, the latest row still GIVEN) reads OFF while the record is CLOSED and ON with outreach:true once it is OPEN — the gate reaches them — and an OFF tapped there records their stop (a WITHDRAWN PROFILE row) and reads OFF after";
 const T_O8 = "T-O8 · ⛔ U33r · a promised agent referee's switch reads OFF and LOCKED (referee:true) for every player — never asked, or CONSENTING — because the gate refuses agent_referee before any basis: the switch never says offers reach them";
 const T_O8B = "T-O8b · ⛔ U33r · as D4b, an ON tapped from a promised referee's number writes NOTHING and answers referee (no GIVEN that can never act, no flag set) — and an OFF is still recorded, a no is never refused";
+const T_O10 = "T-O10 · ⛔ MINOR-2 · an OFF and an ON tapped TOGETHER (two tabs, a double tap) are decided ONE AT A TIME, in both orders: the LAST decision wins and the ledger agrees with the flag — never a cleared flag over a latest GIVEN, the lapse the open record reaches on the licence after the player said no";
 const T_O9 = "T-O9 · ⛔ MAJOR-3 · an OFF whose WITHDRAWN row does not land changes NOTHING and SAYS SO — ok:false, the flag and the latest GIVEN left as they were, the switch reading ON with the record closed — so when the record opens the player is reached on their own CONSENT, never on the licence behind a switch that told them it was OFF";
 
 /* ══ THE CONSENT CARD — what the player SEES when a save fails, a read fails, or a break is running ══════
@@ -1201,6 +1234,8 @@ type ToggleDefect = {
   // ── the U33r review (2026-10-07) ──
   refereeWritesGiven?: boolean; // an ON from a referee's number is written as a GIVEN that can never act
   offClearsFirst?: boolean;     // MAJOR-3 undone: the flag cleared first, the WITHDRAWN row after, the answer read off the flag
+  // ── the U33r re-review (2026-10-07) ──
+  noLock?: boolean;             // MINOR-2 undone: no per-account lock, so two taps in flight read the same switch and interleave
 };
 /**
  * ⛔ `liftsAnyReason` IS PLANTED ACROSS BOTH LAYERS (2026-09-27). The store's own `suppression.lift` now refuses
@@ -1242,7 +1277,7 @@ function toggleModel(d: ToggleDefect): ToggleImpl {
     }
     return d.heldReadsOn && s.held ? { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null, outreach: false } : s;
   };
-  const choose: ToggleImpl["choose"] = async ({ userId, marketingOptIn, locale }) => {
+  const decide: ToggleImpl["choose"] = async ({ userId, marketingOptIn, locale }) => {
     const want = marketingOptIn === true;
     let liftedStop = false;
     let changed = false;
@@ -1286,6 +1321,9 @@ function toggleModel(d: ToggleDefect): ToggleImpl {
       return { ok: on === want, on, changed, liftedStop };
     }
   };
+  // MINOR-2 · one decision at a time per account, under the shipped writer's own key — unless the plant takes the lock away.
+  const choose: ToggleImpl["choose"] = (input) =>
+    d.noLock ? decide(input) : withLock(`marketing-choice:${input.userId}`, () => decide(input));
   return { choose, state };
 }
 
@@ -1542,6 +1580,11 @@ if (!PROVE_RED) {
       name: "⛔ MAJOR-3 undone — the flag cleared first and the answer read off it: a failed WITHDRAWN row is told 'turned off', and an open record then reaches the player on the licence",
       defect: { offClearsFirst: true },
       expect: T_O9,
+    },
+    {
+      name: "⛔ MINOR-2 undone — no per-account lock: an OFF and an ON in flight together leave the flag cleared over a latest GIVEN, which the open record reaches on the licence",
+      defect: { noLock: true },
+      expect: T_O10,
     },
     {
       name: "U33a-P · an outreach ON survives an active OPERATOR stop",

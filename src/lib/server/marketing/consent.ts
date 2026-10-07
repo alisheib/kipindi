@@ -22,6 +22,7 @@ import { isImportAttestationSaved } from "@/lib/server/marketing/wordings";
 // `reads.refereeHeld` does, so the split can hand in a chunk's answers — and it never asks WHEN a referee was named: only
 // a promised referee is ever keyed (the writer decides, `referee-exclusion.ts`), so a key held is the whole answer.
 import { isPromisedReferee, isRefereeKeyable } from "@/lib/server/marketing/referee-exclusion";
+import { withLock } from "@/lib/server/locks";
 
 /**
  * U7 · THE ONE GATE. Nothing sends a marketing SMS without asking this first.
@@ -611,6 +612,13 @@ async function rereadToggle(userId: string): Promise<boolean | null> {
  * ⭐ AND IT NEVER GUESSES (2026-09-27). The catch answered `on: !want` even when the writes had landed and
  * only the final read threw — so a recorded OFF snapped back to ON. It now reads the state again, and says
  * "unknown" (null) when it cannot.
+ * ⛔ ONE DECISION AT A TIME, PER ACCOUNT (the U33r re-review's MINOR-2, 2026-10-07) · `withLock("marketing-choice:<user>")`,
+ * as `setReferees` serialises an application. Each call reads the switch, then writes against what it read; two taps in
+ * flight together (two tabs, a double tap) each read the SAME before, and their writes interleaved: from a switch reading
+ * OFF over a "yes" in the old wording, an OFF and an ON together left the flag cleared over a latest GIVEN — the two-year
+ * LAPSE, which the open licence record REACHES, so the player who tapped OFF was reached on the licence. Serialised, the
+ * second call reads what the first wrote: the LAST decision wins, and the ledger agrees with the flag.
+ * The lock only orders the calls; each write still lands on its own, so the rules above hold inside it unchanged.
  */
 export async function recordPlayerMarketingChoice(input: {
   userId: string;
@@ -619,20 +627,44 @@ export async function recordPlayerMarketingChoice(input: {
   locale: MessagingLocale;
 }): Promise<PlayerMarketingChoice> {
   const want = input.marketingOptIn === true;
-  let changed = false;
-  let liftedStop = false;
+  // What the writes did, kept OUTSIDE the lock: an answer given after the lock itself failed still tells the truth.
+  const trail: ChoiceTrail = { changed: false, liftedStop: false };
+  try {
+    return await withLock(`marketing-choice:${input.userId}`, () => choosePlayerMarketing(input, want, trail));
+  } catch (err) {
+    // The decision answers its own failures inside the lock; only the lock itself (a pool or transaction failure) lands here.
+    return answerAfterThrow(err, input.userId, want, trail);
+  }
+}
+
+/** What a choice has written so far — read by the answer whichever way the call ends. */
+type ChoiceTrail = { changed: boolean; liftedStop: boolean };
+
+/** The answer after a throw: the writes may have landed first, so what the switch shows is READ, never assumed. */
+async function answerAfterThrow(err: unknown, userId: string, want: boolean, trail: ChoiceTrail): Promise<PlayerMarketingChoice> {
+  console.error("[marketing-consent] profile choice failed:", (err as Error)?.message ?? err);
+  const on = await rereadToggle(userId);
+  return { ok: on === want, on, changed: trail.changed, liftedStop: trail.liftedStop };
+}
+
+/** The decision itself, run under the account's lock by `recordPlayerMarketingChoice` (see its docblock). */
+async function choosePlayerMarketing(
+  input: { userId: string; locale: MessagingLocale },
+  want: boolean,
+  trail: ChoiceTrail,
+): Promise<PlayerMarketingChoice> {
   try {
     const user = await Promise.resolve(db.user.findById(input.userId));
-    if (!user) return { ok: false, on: null, changed, liftedStop };
+    if (!user) return { ok: false, on: null, changed: trail.changed, liftedStop: trail.liftedStop };
     const before = await marketingToggleState(user);
-    if (want && before.held) return { ok: false, on: false, changed, liftedStop, held: true };
+    if (want && before.held) return { ok: false, on: false, changed: trail.changed, liftedStop: trail.liftedStop, held: true };
     // ⛔ U33r · as D4b, for good: the gate refuses a promised referee's number before any basis, so a GIVEN row would
     // record a consent that can never act — and the switch would read ON over a refusal (the U33r review).
-    if (want && before.referee) return { ok: false, on: false, changed, liftedStop, referee: true };
+    if (want && before.referee) return { ok: false, on: false, changed: trail.changed, liftedStop: trail.liftedStop, referee: true };
     // An OFF is still written when the switch already shows OFF but the boolean reads true (a lapse,
     // or the old wording): the player said no, and the record should say so.
     const nothingToDo = want ? before.on : (!before.on && user.marketingOptIn !== true);
-    if (nothingToDo) return { ok: true, on: want, changed, liftedStop };
+    if (nothingToDo) return { ok: true, on: want, changed: trail.changed, liftedStop: trail.liftedStop };
     const key: MessagingKey = { channel: "SMS", identifier: toMsisdn255(user.phoneE164), category: "MARKETING" };
     if (!want) {
       // ⛔ MAJOR-3 · THE "NO" IS RECORDED FIRST, and the switch cleared only once it has landed (see the docblock).
@@ -649,24 +681,24 @@ export async function recordPlayerMarketingChoice(input: {
       if (!withdrawn) {
         // Nothing was written, so the switch is exactly where it was — READ, and said, never assumed OFF.
         const unchanged = await marketingToggleState(user);
-        return { ok: false, on: unchanged.on, changed, liftedStop };
+        return { ok: false, on: unchanged.on, changed: trail.changed, liftedStop: trail.liftedStop };
       }
-      changed = true;
+      trail.changed = true;
       if (user.marketingOptIn !== false) await Promise.resolve(db.user.update(user.id, { marketingOptIn: false }));
       const afterOff = await marketingToggleState({ ...user, marketingOptIn: false });
-      return { ok: afterOff.on === false, on: afterOff.on, changed, liftedStop };
+      return { ok: afterOff.on === false, on: afterOff.on, changed: trail.changed, liftedStop: trail.liftedStop };
     }
     const stop = await Promise.resolve(db.suppression.find(key));
     if (stop && isPersonCreatedSuppression(stop.reason)) {
-      liftedStop = (await Promise.resolve(db.suppression.lift(key, "profile", new Date().toISOString()))) !== null;
-      changed = changed || liftedStop;
+      trail.liftedStop = (await Promise.resolve(db.suppression.lift(key, "profile", new Date().toISOString()))) !== null;
+      trail.changed = trail.changed || trail.liftedStop;
       // U24 commit 2 · the book row stops reading "suppressed" NOW — a lift whose ledger append below then
       // fails still leaves the cache true (the append mirrors again when it lands).
       await mirrorContactCache(key.identifier);
     }
     if (user.marketingOptIn !== want) {
       await Promise.resolve(db.user.update(user.id, { marketingOptIn: want }));
-      changed = true;
+      trail.changed = true;
     }
     const appended = await appendMarketingConsent({
       phoneE164: user.phoneE164,
@@ -677,13 +709,12 @@ export async function recordPlayerMarketingChoice(input: {
       evidence: "/profile/notifications",
       recordedBy: null,
     });
-    changed = changed || appended;
+    trail.changed = trail.changed || appended;
     const after = await marketingToggleState({ ...user, marketingOptIn: want });
-    return { ok: after.on === want, on: after.on, changed, liftedStop };
+    return { ok: after.on === want, on: after.on, changed: trail.changed, liftedStop: trail.liftedStop };
   } catch (err) {
-    console.error("[marketing-consent] profile choice failed:", (err as Error)?.message ?? err);
-    // The writes above may have landed before the throw: what the switch shows is READ, not assumed.
-    const on = await rereadToggle(input.userId);
-    return { ok: on === want, on, changed, liftedStop };
+    // The writes above may have landed before the throw: what the switch shows is READ, not assumed (inside the lock,
+    // so the answer is the state THIS call left).
+    return answerAfterThrow(err, input.userId, want, trail);
   }
 }

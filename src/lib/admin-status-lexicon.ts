@@ -492,6 +492,11 @@ export const AGENT_AUDIT_ACTION: Record<string, string> = {
   "agent.reactivated": "Agent reactivated",
   "agent.review.self_blocked": "Self-review blocked",
   "agent.revoked": "Agent status revoked",
+  /** U33r · the ops door's two HAND STEPS on a referee contact the reader could not read (the re-review's MINOR-4) —
+   *  written by `referee-exclusion.ts` to the same case file, category COMPLIANCE, naming the application and never a
+   *  number. */
+  "marketing.referee_contact_reviewed": "Referee contact checked by hand — no mobile number in it",
+  "marketing.referee_key_added": "Referee's number kept out of marketing by hand",
 };
 
 /** The action in words, or the raw action when it has no entry — never nothing. */

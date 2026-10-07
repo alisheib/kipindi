@@ -12,7 +12,7 @@
 --
 -- HAND-WRITTEN AND EXPAND-ONLY. The one statement below creates one TABLE and its primary key. Nothing is altered or
 -- removed, no enum is created or extended (55P04 never arises), and no statement names an object another lane owns: the
--- table carries no foreign key at all — on purpose, so no link to an application or an applicant exists. ⚠️ This file
+-- table carries no foreign key at all — on purpose, so no column links a key to an application or an applicant. ⚠️ This file
 -- has never been applied anywhere, so it was rewritten in place for MAJOR-1 rather than followed by a second migration.
 --
 -- ⭐ SAFE WHILE THE OLD BUILD RUNS (§4.4's rule). Nothing in the running code reads or writes this table: the old Prisma

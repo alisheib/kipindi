@@ -455,7 +455,21 @@ rather than guessed at.
   set, and again after any rollback to a build without U33r and the redeploy that follows. ⚠️ A referee named after the
   new words go live but before that commit is deployed is keyed too (the go-live instant cannot be known in advance; the
   table is append-only): they are never sent offers, and keep a coded form like a promised referee's — keep the window
-  short.
+  short. ⚠️ RESIDUALS, STATED TRULY (the re-review's MINOR-5, 2026-10-07): (1) a referee named by e-mail is keyed under
+  the numbers held under that address WHEN a writer runs — the naming, the applicant's erasure, the backfill; an account
+  that signs up, or a contact-book row imported, with that address later is not keyed, and can be reached. (2) The reader
+  keys in the safe direction: the strict readings first, and only when none reads, the generous ones (a digit too many,
+  digits behind a prefix it does not know); it also reads the Tanzanian number inside a foreign one written with spaces —
+  such a key may be a stranger's number, excluded for good, so the player's switch line says only what is true of every
+  key: *"Off for good: 50pick has promised never to send offers to this number."* (3) A referee replaced, or an applicant
+  erased, before U33r's deploy left no number in the live database; it may remain for up to 90 days in the encrypted
+  backups, which nothing reads to key it. (4) No column links a key to an application or an applicant, but a key written
+  at a naming or an erasure lands near that act's own rows in the database's write order (every writer writes its keys in
+  one pass, sorted by key). ⭐ A contact the reader cannot read no longer blocks for ever: a person clears it through the
+  door (`key --application <id>` keys the number they read; `reviewed --application <id> --reason "…"` records it holds
+  none), with ONE COMPLIANCE audit row naming the application, never a number (MINOR-4); and only a RECORD printed under
+  Railway's production markers can reconcile the fifth check, which also binds on any process whose database is not on
+  its own machine (MINOR-1).
 - **Q7 · A list's recorded basis does NOT expire** (built default). ⚠️ Accepted residual risk, stated plainly: Tanzanian
   operators recycle numbers, so a basis recorded for a previous holder can authorise a message to a new one. The stop
   list remains the protection.

@@ -51,9 +51,10 @@ export const LICENCE_OUTREACH_AUDIT = { action: "config.outreach_updated", targe
 export const PRE_LEDGER_OFFS: PreLedgerOffs = "reconciled";
 
 /**
- * ⛔ U33r · PRODUCTION'S REFEREE-KEY BACKFILL, AS RECORDED — `null` until the commit that copies in the two lines
- * `railway run --service 50pick npm run ops:marketing-referee-keys -- status` and `-- backfill` printed on production
- * (`RefereeKeysRecord`). While it is null — or records a number still missing or a contact still unreadable — the fifth
+ * ⛔ U33r · PRODUCTION'S REFEREE-KEY BACKFILL, AS RECORDED — `null` until the commit that copies in the RECORD line
+ * `railway run --service 50pick npm run ops:marketing-referee-keys -- backfill` printed on production (`RefereeKeysRecord`;
+ * its `environment` says "production" only under Railway's production markers, and a scratch run's RECORD never reconciles
+ * — the re-review's MINOR-1). While it is null — or records a number still missing or a contact still unreadable — the fifth
  * check (`referee_keys`) fails, licence outreach cannot be opened and neither can the live-send switch (`live-switch.ts`):
  * until then every referee named before the exclusion existed is a stranger to the gate. A CODE constant, as
  * `PRE_LEDGER_OFFS` is: it states that an engineering step was completed once, on production, and nobody should be able
@@ -64,14 +65,29 @@ export const PRE_LEDGER_OFFS: PreLedgerOffs = "reconciled";
  */
 export const REFEREE_KEYS_ON_PRODUCTION: RefereeKeysRecord | null = null;
 
+/** The hosts a developer's own database answers on — a scratch cluster, a local server. */
+const LOOPBACK_HOSTS: readonly string[] = ["127.0.0.1", "localhost", "::1", "[::1]"];
+
 /**
- * ⭐ WHERE THE REFEREE CHECK BINDS: production — the server Next runs there (`NODE_ENV=production`) and every door run
- * through `railway run` against it (`RAILWAY_ENVIRONMENT_NAME=production`, the ops doors' own test). On a developer's
- * machine — `next dev`, the suites, the visual drives — no production referee exists to be keyed, so the record is
- * not asked there: `NODE_ENV` is already this platform's line between the two (every `dev-test` route answers 404 on it).
+ * ⭐ WHERE THE REFEREE CHECK BINDS: production — the server Next runs there (`NODE_ENV=production`), every door run
+ * through `railway run` against it (`RAILWAY_ENVIRONMENT_NAME=production`, the ops doors' own test) — AND ANY PROCESS WHOSE
+ * DATABASE IS NOT ON THIS MACHINE (the re-review's MINOR-1): a `next dev` or a `tsx` script pointed at production's
+ * database through its public proxy carries neither marker, and its seed routes and doors would otherwise open outreach
+ * on production's data with the check read as done. A `DATABASE_URL` that cannot be read binds too — never on a guess.
+ * Only a developer's machine with no database, or with a LOOPBACK one (a scratch cluster), reads the record as done: no
+ * production referee exists there to be keyed, and `NODE_ENV` is already this platform's line between the two.
  */
 export function refereeKeysCheckBinds(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
-  return env.NODE_ENV === "production" || env.RAILWAY_ENVIRONMENT_NAME === "production";
+  if (env.NODE_ENV === "production" || env.RAILWAY_ENVIRONMENT_NAME === "production") return true;
+  const url = env.DATABASE_URL;
+  if (typeof url !== "string" || url.trim() === "") return false;
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return true;
+  }
+  return !LOOPBACK_HOSTS.includes(host);
 }
 
 /** ⭐ The fifth check's state HERE, NOW: the recorded production backfill where the check binds, "reconciled" elsewhere. */
