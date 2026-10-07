@@ -157,6 +157,20 @@ export type FenceSampleRow = { masked: string; operator: string | null };
  *  (`fenceForViewer` — OD67: a viewer who may not read a number gets no list and no members key). */
 export type AudienceFence = { claim: FenceClaim; countedAt: string; sample: FenceSampleRow[] };
 
+/**
+ * ⭐ U40b · THE MOST A CONFIRMATION WAITS FOR ONE OF THE SPLIT DOOR'S SLOTS — ONE constant, for the trigger's read (its count,
+ * and what is left of it for a reader's split) and for the confirmation's own count (the U40b re-review's MINOR 3). Past it
+ * nothing is counted: `AudienceSlotBusy`, said as "busy" — never a zero, and never a dialog that cannot be closed while the
+ * line moves.
+ */
+export const CONFIRM_SLOT_WAIT_MS = 15_000;
+
+/** ⭐ U40b · how the fence's count takes its slot: its OWN count, never joined (MINOR 2 — a count already running for this
+ *  audience, an officer's or another draft's, may have begun before a contact was added, and the old typed number would
+ *  confirm the old count: OD27's own case), its slot waited for at most `CONFIRM_SLOT_WAIT_MS` (MINOR 3). */
+export type FenceSlot = { join: boolean; waitMs: number };
+export const FENCE_SLOT: Readonly<FenceSlot> = Object.freeze({ join: false, waitMs: CONFIRM_SLOT_WAIT_MS });
+
 /** The reads and rules the fence asks — swappable for the suite's in-process red plants; production never passes them. */
 export type FenceDeps = {
   /** The population (X9): `campaignAudienceCount` — the ONE walk's row count. */
@@ -168,6 +182,8 @@ export type FenceDeps = {
   /** The keyed name of a listed audience, for its draft (`membersKeyOf`). */
   membersKey: (scope: MembersKeyScope, canonical: string) => string;
   now: () => Date;
+  /** U40b · how the count takes its slot (`FENCE_SLOT` when absent). */
+  slot?: FenceSlot;
 };
 /** Frozen: production's fence — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const FENCE_DEPS: Readonly<FenceDeps> = Object.freeze({
@@ -176,6 +192,7 @@ export const FENCE_DEPS: Readonly<FenceDeps> = Object.freeze({
   unfiltered: isUnfilteredCampaignAudience,
   membersKey: membersKeyOf,
   now: () => new Date(),
+  slot: FENCE_SLOT,
 });
 
 /**
@@ -224,8 +241,10 @@ export async function audienceFence(
   if (!read.ok) throw new Error(`audience fence: the saved audience could not be read (${read.param})`);
   const filter = read.filter;
   // ⭐ U40b · THE COUNT TAKES THE SPLIT DOOR'S SLOTS (`audienceWalkCount`): at most AUDIENCE_SPLITS_PER_PROCESS walks at
-  // once — the pool is shared with bets — and one count per filter key that every asker joins. Still the ONE walk's count.
-  const count = await audienceWalkCount(filter, deps.count);
+  // once — the pool is shared with bets. Its OWN count, never joined, its slot waited for at most CONFIRM_SLOT_WAIT_MS
+  // (`FENCE_SLOT`): past it `AudienceSlotBusy` THROWS — nothing counted. Still the ONE walk's count.
+  const slot = deps.slot ?? FENCE_SLOT;
+  const count = await audienceWalkCount(filter, deps.count, { join: slot.join, waitMs: slot.waitMs });
   const keys = await firstKeys(filter, deps.walk);
   const unfiltered = deps.unfiltered(filter);
   const canonical = unfiltered ? null : canonicalMembers(keys, count);

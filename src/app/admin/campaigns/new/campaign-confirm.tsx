@@ -9,8 +9,14 @@
  * rail pick, save, test or "Count again" waits on a confirmation's walk. "Confirm audience…" ASKS
  * (`campaignConfirmViewAction`) — "Counting the audience…" while the view is counted for this officer, now — and opens the
  * dialog on those figures, or, if they are blocked, says why and offers to check again. A failed read is said as such, with
- * "Count again" — never a zero. The server counts nothing for a campaign past DRAFT, a revision this form is not showing, or
- * an audience on screen that the draft does not store.
+ * "Count again" — never a zero; so is a read that found the split door's slots busy for `CONFIRM_SLOT_WAIT_MS`. The server
+ * counts nothing for a campaign past DRAFT, a revision this form is not showing, or an audience on screen that the draft
+ * does not store.
+ * ⛔ THE DIALOG NEVER OPENS BY ITSELF (the U40b re-review's MINOR 1). An answer opens it only if, when it lands, the form on
+ * screen is still the one it was asked for and nothing on the page blocks the trigger (`confirmOpensOn`, read through
+ * `nowRef`); it is shown only for the form it was opened for (`openedFor`); and an `open` the page can no longer show is
+ * DROPPED while rendering, outside a confirmation — so typing while it counts, then undoing it, never pops a dialog nobody
+ * pressed for, on figures from before.
  * ⭐ DISABLED WITH ITS REASON, NEVER HIDDEN (decision 1): in its `title` and on the card (`confirmTriggerBlocked`) — a campaign
  * past DRAFT (its status, in words true of it), the act gate, the FORM (the server confirms the SAVED message and audience
  * and cannot see this form: an audience the composer cannot use says its own problem; unsaved text, an audience on screen
@@ -35,8 +41,11 @@
  * CONFIRMED closes once the page is read again (read-only now) and says "Nothing has been sent." (and that the record did
  * not land, when it did not — ruling 543); an ERROR keeps the dialog OPEN with the typing kept, saying only what is known;
  * the role's refusal closes; "no longer a draft" closes, reads the page again and is titled from the row it reads —
- * "Already confirmed" when this officer's own earlier press may have landed. CONFIRMING: both buttons off, a spinner, and
- * the scrim, Esc and ✕ refused (the kit's `loading`).
+ * "Already confirmed" when this officer's own earlier press may have landed; a count that found no slot in time keeps it
+ * open, saying nothing was confirmed. CONFIRMING — the confirmation's REQUEST in flight (`posting`): both buttons off, a
+ * spinner, and the scrim, Esc and ✕ refused (the kit's `loading`). ⭐ THE DIALOG IS CLOSABLE WHENEVER NO CONFIRMATION IS IN
+ * FLIGHT (MINOR 3): while its answer is acted on — a refusal's figures read again, the page read again after a
+ * confirmation — Confirm is held (the kit's `confirmHeld`) and Cancel, Esc, ✕ and the scrim all still close it.
  * ⛔ NO MONEY IS WORDED HERE: the estimate's segments are said to every role; the money line is the server's
  * (`confirmMoneyLine`), handed to a money reader only, and printed as it comes (`test:campaign-compose` §16.5).
  * ⛔ TWO ACTIONS, ONE EACH FILE, both imported here: the read (`campaignConfirmViewAction` — the form's campaign, revision and
@@ -45,7 +54,7 @@
  *
  * Guard: `npm run test:campaign-gates` §UI · Drive: `npm run qa:marketing-confirm`.
  */
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -66,8 +75,8 @@ import { AUDIENCE_COUNT_AGAIN, AUDIENCE_FIGURE, AUDIENCE_NO_OPERATOR, AUDIENCE_S
 import {
   COMPOSE_CONFIRM_ACT, COMPOSE_CONFIRM_CHECK_AGAIN, COMPOSE_CONFIRM_COUNTING, COMPOSE_CONFIRM_HONESTY, COMPOSE_CONFIRM_LIST_LEAD,
   COMPOSE_CONFIRM_REFUSED, COMPOSE_CONFIRM_TRIGGER, COMPOSE_CONFIRMED, COMPOSE_CONFIRMED_NEXT, COMPOSE_CONFIRMED_START,
-  afterRecount, composeConfirmSegments, composeConfirmTitle, composeNotDraftTitle, confirmAnswerReady, confirmAnswerRetry,
-  confirmGate, confirmOutcome, confirmTriggerBlocked,
+  afterRecount, composeConfirmSegments, composeConfirmTitle, composeNotDraftTitle, confirmAnswerRetry, confirmGate,
+  confirmOpensOn, confirmOutcome, confirmTriggerBlocked,
 } from "./composer-copy";
 import type { ConfirmGateProps, ConfirmOutcome, ConfirmRecount } from "./composer-copy";
 import { CONFIRM_LINE_BOX, CONFIRM_LINE_CELL, ConfirmLineSizer } from "./confirm-card-ghost";
@@ -173,6 +182,10 @@ export function CampaignConfirm() {
   const form = useComposerSaved();
   const [asked, setAsked] = useState<Asked | null>(null);
   const [open, setOpen] = useState(false);
+  // ⛔ MINOR 1 · the form the dialog was opened for — it is shown for that form and no other.
+  const [openedFor, setOpenedFor] = useState<string | null>(null);
+  // ⭐ MINOR 3 · the confirmation's REQUEST in flight — the one time the dialog may not be closed (the kit's `loading`).
+  const [posting, setPosting] = useState(false);
   // Bumped when a refusal re-arms the dialog on its fresh view — never by any other answer.
   const [attempt, setAttempt] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
@@ -187,8 +200,10 @@ export function CampaignConfirm() {
   const answer = asked !== null && asked.key === formKey ? asked.answer : null;
   const facts = { mayAct, actReason: actReason ?? null, form };
   const reason = confirmTriggerBlocked({ ...facts, answer });
+  // Nothing on the page itself stands in front of the trigger (whatever the last answer said).
+  const pageClear = confirmTriggerBlocked({ ...facts, answer: null }) === null;
   // The way back a blocked ANSWER offers — only while nothing on the page itself stands in front of it.
-  const retry = confirmTriggerBlocked({ ...facts, answer: null }) === null ? confirmAnswerRetry(answer) : null;
+  const retry = pageClear ? confirmAnswerRetry(answer) : null;
   const view = answer !== null && answer.ok ? answer.card.view : null;
   // ⛔ The tier is the VIEW's (`confirmGate` reads `view.tier`) — never worked out again here from the count (OD67).
   const gate = view === null ? null : confirmGate(view);
@@ -199,6 +214,15 @@ export function CampaignConfirm() {
   const [drawn, setDrawn] = useState<Drawn | null>(null);
   if (live !== null && drawn?.view !== live.view) setDrawn(live);
   const dialog = live ?? drawn;
+  // ⛔ MINOR 1 · an `open` the page can no longer show is DROPPED, never kept for later — outside a confirmation, whose own
+  // answer closes or re-arms the dialog. Undoing what blocked it can then never open the dialog by itself.
+  if (open && live === null && !confirming) setOpen(false);
+  const dialogOpen = open && openedFor === formKey && live !== null;
+  // The form on screen and whether the page blocks it, as of the last render — what an answer that lands later reads.
+  const nowRef = useRef({ key: formKey, clear: pageClear });
+  useLayoutEffect(() => {
+    nowRef.current = { key: formKey, clear: pageClear };
+  });
 
   /** The read's request: what this form shows — never a count. */
   const readRequest = () => ({ campaignId: form.savedId ?? "", draftRevision: form.savedRevision, audience: form.audienceParams });
@@ -213,7 +237,12 @@ export function CampaignConfirm() {
       const r = await runAdminAction(() => campaignConfirmViewAction(request));
       startCounting(() => {
         setAsked({ key, answer: r });
-        if (confirmAnswerReady(r)) setOpen(true);
+        // ⛔ MINOR 1 · opened only for the form still on screen, with nothing on the page in front of the trigger.
+        const now = nowRef.current;
+        if (confirmOpensOn({ answer: r, askedFor: key, onScreen: now.key, pageClear: now.clear })) {
+          setOpenedFor(key);
+          setOpen(true);
+        }
       });
     });
   };
@@ -262,21 +291,25 @@ export function CampaignConfirm() {
 
   const close = () => {
     setOpen(false);
+    setOpenedFor(null);
     setNotice(null);
   };
 
   /** ⛔ The campaign, the word the dialog armed on (the bare count — what the server checks against its OWN count) and the
    *  claim it was opened on. Never a count of the browser's. */
   const confirm = () => {
-    if (dialog === null || form.savedId === null || confirming) return;
+    if (dialog === null || form.savedId === null || confirming || posting) return;
     const fd = new FormData();
     fd.set("campaignId", form.savedId);
     fd.set("watermark", dialog.view.watermark ?? "");
     fd.set("typed", dialog.gate.tier === "hard" ? dialog.gate.typedWord : "");
     const key = formKey;
     const request = readRequest();
+    setPosting(true);
     startConfirming(async () => {
-      const r = await runAdminAction(() => confirmCampaignAction(fd));
+      // ⭐ MINOR 3 · once the request has answered, the dialog may be closed while its answer is acted on: `posting` falls
+      // at once (an urgent update, outside the transition), and Confirm stays held (`confirmHeld`) until it is settled.
+      const r = await runAdminAction(() => confirmCampaignAction(fd)).finally(() => setPosting(false));
       const o = confirmOutcome(r);
       if (o.kind !== "recount") {
         startConfirming(() => settle(o));
@@ -296,7 +329,7 @@ export function CampaignConfirm() {
   const state = status === "CONFIRMED" ? "confirmed"
     : status !== null && status !== "DRAFT" ? "closed"
       : counting ? "counting"
-        : open && live !== null ? "open"
+        : dialogOpen ? "open"
           : retry === "count" ? "error"
             : reason !== null ? "blocked" : "ready";
 
@@ -322,11 +355,13 @@ export function CampaignConfirm() {
           </Button>
         )}
       </div>
-      {/* ⭐ The line: the confirmed line, the reason, or the honesty line — in ONE box as tall as the honesty line. */}
-      <div className={CONFIRM_LINE_BOX}>
+      {/* ⭐ The line: the confirmed line, the reason, or the honesty line — in ONE box as tall as the honesty line. The box is
+          the live region (K8b): it is always there and its words change, so a reason that appears is announced — three
+          regions swapped in already holding their words would be announced unreliably. */}
+      <div className={CONFIRM_LINE_BOX} role="status">
         <ConfirmLineSizer />
         {status === "CONFIRMED" ? (
-          <p className={`${CONFIRM_LINE_CELL} text-success-fg`} role="status" data-confirm-confirmed>
+          <p className={`${CONFIRM_LINE_CELL} text-success-fg`} data-confirm-confirmed>
             {COMPOSE_CONFIRMED}{" "}
             {CAMPAIGN_SCREENS.detail && form.pageDraftId !== null ? (
               <Link href={campaignDetailHref(form.pageDraftId) as Route} className="underline underline-offset-2" data-confirm-start>
@@ -337,14 +372,14 @@ export function CampaignConfirm() {
             )}
           </p>
         ) : reason !== null ? (
-          <p className={`${CONFIRM_LINE_CELL} text-text-secondary`} role="status" data-confirm-blocked>{reason}</p>
+          <p className={`${CONFIRM_LINE_CELL} text-text-secondary`} data-confirm-blocked>{reason}</p>
         ) : (
-          <p className={`${CONFIRM_LINE_CELL} text-text-tertiary`} role="status" data-confirm-honesty="card">{COMPOSE_CONFIRM_HONESTY}</p>
+          <p className={`${CONFIRM_LINE_CELL} text-text-tertiary`} data-confirm-honesty="card">{COMPOSE_CONFIRM_HONESTY}</p>
         )}
       </div>
       {dialog !== null && dialog.view.count !== null && (
         <ConfirmModal
-          open={open && live !== null}
+          open={dialogOpen}
           onClose={close}
           onConfirm={confirm}
           title={composeConfirmTitle(dialog.view.count, dialog.gate.tier === "medium")}
@@ -352,7 +387,8 @@ export function CampaignConfirm() {
           confirmLabel={COMPOSE_CONFIRM_ACT}
           tone="brand"
           maxWidth={560}
-          loading={confirming}
+          loading={posting}
+          confirmHeld={confirming && !posting}
           armKey={`${dialog.view.watermark}:${attempt}`}
           {...dialog.gate}
         />

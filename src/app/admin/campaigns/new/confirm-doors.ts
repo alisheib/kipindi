@@ -9,7 +9,11 @@
  * only when the officer presses "Confirm audience…" (or asks again), so no rail pick, save, test or "Count again" waits on
  * it. And even then NOTHING IS COUNTED for a campaign past DRAFT, a draft revision the form is not showing (saved
  * elsewhere since), or an audience on screen that the draft does not store: the answer says which, and the card says what
- * to do. The fence's own count takes the split door's slots (`audienceWalkCount`, in `audience-fence.ts`).
+ * to do. The fence's own count takes the split door's slots (`audienceWalkCount`, in `audience-fence.ts`) — its OWN count,
+ * never another asker's, and never longer than `CONFIRM_SLOT_WAIT_MS` in line: past it the read answers `busy` and the
+ * confirmation `busy` (nothing was counted, so nothing was confirmed — the U40b re-review's MINORs 2 and 3).
+ * ⛔ AN AUDIENCE ON SCREEN THIS VIEWER MAY NOT USE IS NEVER COMPARED with the stored one (the role rule first): the answer
+ * would tell a viewer who may not read a number whether a filter hidden from them equals their guess.
  * ⛔ WHO IS LOOKING IS THE STORED ROLE'S (`confirmViewerFor`), never the browser's word — the very answer the confirmation
  * is judged by. A viewer who may not read a number gets the count alone and the typed tier, with no list and no members
  * key (OD65 · OD67), and the estimate's money reaches a money reader ONLY, as the service's words (`confirmMoneyLine`):
@@ -27,8 +31,11 @@
  */
 import { db } from "@/lib/server/store";
 import type { SmsCampaignStatus, StoredSmsCampaign } from "@/lib/server/store";
-import { CAMPAIGN_AUDIENCE_URL_KEYS, contactAudienceKey, parseCampaignAudienceParams } from "@/lib/server/marketing/audience";
+import {
+  CAMPAIGN_AUDIENCE_URL_KEYS, campaignAudienceRefusal, contactAudienceKey, parseCampaignAudienceParams,
+} from "@/lib/server/marketing/audience";
 import { readCampaignAudience } from "@/lib/server/marketing/audience-fence";
+import { isAudienceSlotBusy } from "@/lib/server/marketing/audience-split";
 import {
   campaignConfirmView, confirmCampaign, confirmMoneyLine, confirmViewerFor,
 } from "@/lib/server/marketing/campaign-confirm-service";
@@ -36,7 +43,7 @@ import type {
   CampaignConfirmView, ConfirmCampaignResult, ConfirmServiceRefusal, ConfirmViewer,
 } from "@/lib/server/marketing/campaign-confirm-service";
 import type { ConfirmOutcomeReason, ConfirmTier } from "@/lib/marketing/campaign-confirm";
-import { COMPOSE_CONFIRM_FAILED, COMPOSE_CONFIRM_UNFINISHED } from "./composer-copy";
+import { COMPOSE_CONFIRM_BUSY_CONFIRM, COMPOSE_CONFIRM_FAILED, COMPOSE_CONFIRM_UNFINISHED } from "./composer-copy";
 
 /* ══ THE SHAPES ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -49,7 +56,9 @@ export type ConfirmCardView = Omit<CampaignConfirmView, "estimate"> & { estimate
  *   · `view` — counted now, for this officer (`view`; it may still be blocked, in its own words);
  *   · `closed` — the campaign is past DRAFT (`status` says what it is) — nothing counted;
  *   · `stale` — the draft was saved since the revision the form shows — nothing counted;
- *   · `unsaved` — the audience on screen is not the one the draft stores — nothing counted;
+ *   · `unsaved` — the audience on screen is not the one the draft stores (or is one this viewer's role may not use, never
+ *     compared) — nothing counted;
+ *   · `busy` — no slot of the split door's came free in `CONFIRM_SLOT_WAIT_MS` — nothing counted (U40b, MINOR 3);
  *   · `gone` — no such campaign; `error` — a read failed (never a zero).
  * `money` — `confirmMoneyLine`'s words: null for anyone who may not read money.
  */
@@ -57,13 +66,14 @@ export type ConfirmCardData = {
   campaignId: string;
   /** The row's status as this read found it — null when it is gone, or could not be read. */
   status: SmsCampaignStatus | null;
-  read: "view" | "closed" | "stale" | "unsaved" | "gone" | "error";
+  read: "view" | "closed" | "stale" | "unsaved" | "busy" | "gone" | "error";
   view: ConfirmCardView | null;
   money: string | null;
 };
 
-/** The read action's answer: the card, or the gate's refusal in its own words. */
-export type ConfirmReadAnswer = { ok: true; card: ConfirmCardData } | { ok: false; reason: "role"; error: string };
+/** The read action's answer: the card, or a refusal in its own words — the gate's (`role`), or the officer's read budget
+ *  spent (`rate_limited`). */
+export type ConfirmReadAnswer = { ok: true; card: ConfirmCardData } | { ok: false; reason: "role" | "rate_limited"; error: string };
 
 /** What the trigger posts: the campaign, the revision its form shows, and the address keys of the audience on screen —
  *  null when the address carries none (the stored audience is on screen). ⛔ Never a count. */
@@ -74,14 +84,14 @@ export type ConfirmRequest = { campaignId: string; typed: string | null; waterma
 
 /**
  * What the dialog is answered. A refusal carries the service's reason and its sentence, and the count the server holds
- * now when it has one; `role` is the gate's, `failed` a failure that left the row a draft, and `unfinished` one that
- * cannot say whether the write landed.
+ * now when it has one; `role` is the gate's, `failed` a failure that left the row a draft, `unfinished` one that cannot
+ * say whether the write landed, and `busy` a count that found no slot in time — before any write, so nothing was confirmed.
  */
 export type ConfirmActionResult =
   | { ok: true; count: number; tier: ConfirmTier; recorded: boolean }
   | {
       ok: false;
-      reason: ConfirmOutcomeReason | ConfirmServiceRefusal | "role" | "failed" | "unfinished";
+      reason: ConfirmOutcomeReason | ConfirmServiceRefusal | "role" | "failed" | "unfinished" | "busy";
       error: string;
       freshCount: number | null;
     };
@@ -137,6 +147,8 @@ export type ConfirmReadDeps = {
   view: (campaignId: string, viewer: ConfirmViewer) => Promise<CampaignConfirmView | null>;
   /** The estimate's money in words, for a money reader (`confirmMoneyLine`). */
   money: typeof confirmMoneyLine;
+  /** The campaign door's role rule (`campaignAudienceRefusal`) — asked of the audience on screen BEFORE it is compared. */
+  refusal: typeof campaignAudienceRefusal;
 };
 
 /** Frozen: production's doors, by reference (`test:campaign-gates` §UI 6 holds them). */
@@ -145,6 +157,7 @@ export const CONFIRM_READ_DEPS: Readonly<ConfirmReadDeps> = Object.freeze({
   find: async (id: string) => db.smsCampaign.find(id),
   view: campaignConfirmView,
   money: confirmMoneyLine,
+  refusal: campaignAudienceRefusal,
 });
 
 /** ⛔ DEV ONLY (inert in production): U38b's two count switches (`/api/dev-test/marketing-audience-seed?delayMs=…|fault=1`)
@@ -158,10 +171,14 @@ async function devReadHold(): Promise<void> {
 }
 
 /** Is the audience on screen the one the draft stores? By the ONE key of each, the stored one read at the campaign scope.
- *  An address that cannot be read is not the stored audience; a stored one that cannot be read is the view's to say. */
-function storesThis(shown: Record<string, string>, stored: string): boolean {
+ *  An address that cannot be read is not the stored audience; a stored one that cannot be read is the view's to say.
+ *  ⛔ THE ROLE RULE FIRST (the U40b re-review): an audience this viewer may not use is answered "not the stored one" WITHOUT
+ *  a comparison — else the answer would tell a viewer who may not read a number whether a filter hidden from them (a
+ *  reader's consent, source or stop predicate, a search) equals their guess. */
+function storesThis(shown: Record<string, string>, stored: string, viewerReads: boolean, refusal: ConfirmReadDeps["refusal"]): boolean {
   const onScreen = parseCampaignAudienceParams(shown);
   if (!onScreen.ok) return false;
+  if (refusal(onScreen.filter, viewerReads) !== null) return false;
   const kept = readCampaignAudience(stored);
   if (!kept.ok) return true;
   return contactAudienceKey(onScreen.filter) === contactAudienceKey(kept.filter);
@@ -174,9 +191,10 @@ const logFailed = (what: string, err: unknown): void => {
 
 /**
  * ⭐ THE TRIGGER'S READ, for one officer — counted ON DEMAND. The draft is read first, and NOTHING IS COUNTED unless it is a
- * DRAFT at the revision the form shows, holding the audience the form shows; then who is looking (the stored role), and the
- * view counted NOW for exactly that viewer (OD65's count alone and OD67's typed tier for a viewer who may not read a number),
- * shaped for the browser: the estimate's money out, its words in for a money reader.
+ * DRAFT at the revision the form shows; then who is looking (the stored role), whose role rule the audience on screen must
+ * pass BEFORE it is held against the stored one; then the view counted NOW for exactly that viewer (OD65's count alone and
+ * OD67's typed tier for a viewer who may not read a number), shaped for the browser: the estimate's money out, its words in
+ * for a money reader. A count that found no slot in time is `busy`, never a zero and never an error.
  */
 export async function readConfirmCardFor(
   userId: string | null,
@@ -196,13 +214,15 @@ export async function readConfirmCardFor(
   // ⛔ NOTHING IS COUNTED for a campaign past DRAFT, a revision the form is not showing, or an audience it does not store.
   if (row.status !== "DRAFT") return { ...at, read: "closed", ...none };
   if (req.draftRevision === null || req.draftRevision !== row.draftRevision) return { ...at, read: "stale", ...none };
-  if (req.audience !== null && !storesThis(req.audience, row.audienceFilter)) return { ...at, read: "unsaved", ...none };
   const viewer = await deps.viewer(userId);
+  if (req.audience !== null && !storesThis(req.audience, row.audienceFilter, viewer.reads, deps.refusal)) return { ...at, read: "unsaved", ...none };
   let view: CampaignConfirmView | null;
   try {
     await devReadHold();
     view = await deps.view(row.id, viewer);
   } catch (err) {
+    // ⭐ U40b · no slot came free in time: said as such, with "Count again" — nothing was counted (MINOR 3).
+    if (isAudienceSlotBusy(err)) return { ...at, read: "busy", ...none };
     logFailed("view", err);
     return { ...at, read: "error", ...none };
   }
@@ -239,14 +259,16 @@ export const CONFIRM_RUN_DEPS: Readonly<ConfirmRunDeps> = Object.freeze({
  * ⭐ CONFIRM ONE DRAFT, for the officer the gate let through — the text the dialog armed on, against the server's own
  * count, on the claim it was opened on, judged as the officer's STORED role may see it. ⛔ A failure is said as what is
  * known: the row is read back once, and only a row still in DRAFT (or gone) is "nothing was confirmed"; a row that moved,
- * or a read that fails, may hold this very press's confirmation.
+ * or a read that fails, may hold this very press's confirmation. ⭐ U40b · a count that found no slot in time is `busy`:
+ * the fence counts BEFORE the one write, so this press confirmed nothing, whatever the row reads now (MINOR 3).
  */
 export async function runConfirmFor(actorId: string, req: ConfirmRequest, deps: ConfirmRunDeps = CONFIRM_RUN_DEPS): Promise<ConfirmActionResult> {
   const viewer = await deps.viewer(actorId);
   let result: ConfirmCampaignResult;
   try {
     result = await deps.confirm({ campaignId: req.campaignId, typed: req.typed, watermark: req.watermark, actorId }, viewer);
-  } catch {
+  } catch (err) {
+    if (isAudienceSlotBusy(err)) return { ok: false, reason: "busy", error: COMPOSE_CONFIRM_BUSY_CONFIRM, freshCount: null };
     let draft = false;
     try {
       const row = req.campaignId === "" ? null : await deps.find(req.campaignId);

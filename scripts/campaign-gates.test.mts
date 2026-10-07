@@ -29,7 +29,10 @@
  *       answered — no TZS for GROWTH (G5.3) and no list for a masked viewer (OD67); the trigger's reasons, the form's unsaved
  *       edits among them; the audience on screen held against the saved one; the view COUNTED ON DEMAND, never on a render,
  *       and nothing counted for what may not be confirmed (the review's MAJOR); the fence's count inside the split door's
- *       slots; every answer routed by the pure router; and a failed confirmation said as what is known.
+ *       slots; every answer routed by the pure router; and a failed confirmation said as what is known. The re-review's
+ *       fixes: the dialog never opens by itself (UI.15), the confirmation counts its own (UI.16), the wait for a slot is
+ *       bounded and said, the dialog closable whenever no confirmation is in flight (UI.17), the read is no oracle (UI.18),
+ *       the read has its own audited action and budget (UI.4b), and the card's reason lives in one live region (UI.8).
  * ⚠️ WHAT LIVES ELSEWHERE: the pure rule's table, the typed-number parse, the Start verdict (OD28) and their reds are
  * `test:campaign-confirm`'s; what the screen LOOKS like, at 1280 and 360 and with reduced motion, is the drive's
  * (`qa:marketing-confirm`).
@@ -73,6 +76,7 @@ const { composerSourceLineStale } = LOADER;
 const COPY = await import("../src/app/admin/campaigns/new/composer-copy.ts");
 const DOORS = await import("../src/app/admin/campaigns/new/confirm-doors.ts");
 const SPLIT = await import("../src/lib/server/marketing/audience-split.ts");
+const { RATE_RULES } = await import("../src/lib/server/rate-limit.ts");
 const { domainForPath } = await import("../src/lib/server/roles.ts");
 const { breakdownVisible } = await import("../src/lib/marketing/campaign-status.ts");
 const { SMS_CAMPAIGN_CONFIRM_KEYS } = await import("../src/lib/server/marketing/campaign-model.ts");
@@ -89,6 +93,7 @@ type CampaignConfirmView = import("../src/lib/server/marketing/campaign-confirm-
 type ConfirmCampaignResult = import("../src/lib/server/marketing/campaign-confirm-service.ts").ConfirmCampaignResult;
 type FenceDeps = import("../src/lib/server/marketing/audience-fence.ts").FenceDeps;
 type AudienceFence = import("../src/lib/server/marketing/audience-fence.ts").AudienceFence;
+type FenceSlot = import("../src/lib/server/marketing/audience-fence.ts").FenceSlot;
 type FenceClaim = import("../src/lib/marketing/campaign-confirm.ts").FenceClaim;
 type ConfirmTier = import("../src/lib/marketing/campaign-confirm.ts").ConfirmTier;
 type ConfirmDecision = import("../src/lib/marketing/campaign-confirm.ts").ConfirmDecision;
@@ -168,19 +173,23 @@ const L = {
   // ── §UI · U40b · THE CONFIRMATION ON SCREEN (ENGINE-SPEC §4.6, and the U40b review's fixes) ──
   u1: "UI.1 · ⭐ 6.4 · A5 · THE CONFIRM BUTTON IS NEVER FOCUSED WHEN THE DIALOG OPENS, NOR AFTER A REFUSAL — modal.tsx keeps `initialFocus={isHard ? inputRef : cancelRef}` byte-identical, exactly once; the Confirm card renders the kit's ConfirmModal once (no Modal and no dialog role of its own) and NEVER re-keys it: a refusal RE-ARMS it (`armKey` = `${watermark}:${attempt}` — the box cleared and the first target given the focus again through the opening's own focusIn, no remount, no blink), and the attempt is bumped in the router's re-arm branch and nowhere else",
   u2: "UI.2 · ⭐ OD67 · THE DIALOG'S TIER IS THE VIEW'S, NEVER THE COUNT'S (the U40a re-review's ruling) — on a listed-size audience of 3 the gate is the TYPED tier (the bare count to type, the digit keypad) for a viewer who may not read a number and the list tier for a reader; 7 people are typed for both; a view with no tier or no count opens nothing; and the card spreads `confirmGate(view)` into the dialog, with no CONFIRM_ENUMERATE_MAX, no confirmTier and no count compared in the card or the copy",
-  u3: "UI.3 · THE KIT'S ADDITIONS ARE ADDITIVE — the hard arm keeps `{ tier: 'hard'; typedWord: string }` and gains only an optional `typedInputMode?: 'numeric'`; the medium arm forbids it (`typedInputMode?: never`, beside `typedWord?: never`); the keypad line is unchanged and opens for the caller's ask or a count word; the gate gives it to the typed tier alone; `armKey?` (both tiers) and Modal's `refocusKey?` are optional, the re-arm going through the opening's own focusIn; and no file in src names typedInputMode but the confirmation's gate and the kit, nor armKey or refocusKey but the Confirm card and the kit (every existing caller unchanged)",
+  u3: "UI.3 · THE KIT'S ADDITIONS ARE ADDITIVE — the hard arm keeps `{ tier: 'hard'; typedWord: string }` and gains only an optional `typedInputMode?: 'numeric'`; the medium arm forbids it (`typedInputMode?: never`, beside `typedWord?: never`); the keypad line is unchanged and opens for the caller's ask or a count word; the gate gives it to the typed tier alone; `armKey?` (both tiers), Modal's `refocusKey?` and ConfirmModal's `confirmHeld?` are optional, the re-arm going through the opening's own focusIn; and no file in src names typedInputMode but the confirmation's gate and the kit, nor armKey, refocusKey or confirmHeld but the Confirm card and the kit (every existing caller unchanged)",
   u4: "UI.4 · ⭐ THE CONFIRMATION'S ACTION — confirm-actions.ts is a 'use server' file with EXACTLY ONE exported function, `confirmCampaignAction(formData: FormData)`, whose FIRST statement is `softRequireStaff('growth', 'marketing.campaign.confirm', …)` — and growth is domainForPath('/admin/campaigns') — and which hands the form to `runConfirmFor(g.userId, confirmRequestOf(formData))`; the request reads only the campaign, the typed text and the watermark, never a count; the confirmation is judged as the STORED role sees it (the doors' viewer is `confirmViewerFor`); and the Confirm card imports it and calls it — no orphan",
-  u4b: "UI.4b · ⭐ THE READ'S ACTION — confirm-view-actions.ts is a 'use server' file with EXACTLY ONE exported function, `campaignConfirmViewAction(request: unknown)`, whose FIRST statement is the same gate, and which hands the request to `readConfirmCardFor(g.userId, confirmReadRequestOf(request))`; the request keeps only the campaign, a whole-number revision and the audience's campaign keys — a posted count, a typed word or any other key is dropped; and the Confirm card imports it and calls it — no orphan",
+  u4b: "UI.4b · ⭐ THE READ'S ACTION — confirm-view-actions.ts is a 'use server' file with EXACTLY ONE exported function, `campaignConfirmViewAction(request: unknown)`, whose FIRST statement is the confirmation's gate under the READ's own action (`marketing.campaign.confirm_view` — a refused read is never audited as a refused confirmation), whose SECOND is the officer's read budget (`marketing.campaignConfirmRead`, a real rule: a spent budget answered in words, nothing read), and which hands the request to `readConfirmCardFor(g.userId, confirmReadRequestOf(request))`; the request keeps only the campaign, a whole-number revision and the audience's campaign keys — a posted count, a typed word or any other key is dropped; and the Confirm card imports it and calls it — no orphan",
   u5: "UI.5 · ⭐ THE VIEWER IS THE STORED ROLE'S, AND IT FAILS CLOSED — confirmViewerFor reads GROWTH as no number and no money, FINANCE as money without a number, ADMIN as both; an unknown officer, no officer and a blank id as neither; a role read that throws as neither, and a cell that throws as that cell refused",
   u6: "UI.6 · ⭐ G5.3 · NO TZS IN A GROWTH RENDER — the card a GROWTH officer's read is answered (readConfirmCardFor, the read action's own body, whose shipped doors are confirmViewerFor, campaignConfirmView and confirmMoneyLine) carries no 'TZS' and no money figure — the money line null and the estimate's money taken out, its segments kept and said money-free — while a money reader's card (FINANCE, ADMIN) carries the line with 'TZS 42'; and the card prints money only from that line",
   u7: "UI.7 · ⭐ OD67 · NO LIST FOR A VIEWER WHO MAY NOT READ A NUMBER, IN THE CARD — on a listed-size audience of 3 the card a GROWTH officer's read is answered is typed, the count alone, no sample, no masked number anywhere and a watermark naming nobody; a reader's card on the same draft lists all three; and the card lists the view's own rows and nothing else",
-  u8: "UI.8 · THE TRIGGER'S REASON, NEVER HIDDEN, NEVER A REFUSAL NOBODY ASKED FOR — none before a press or for a counted, unblocked draft; 'Save first' for unsaved text, an audience on screen the draft does not store, a save in flight or nothing saved; the audience's OWN problem when it cannot be used; 'reload' for a draft saved elsewhere since and 'Updating' while this tab's save is read back or another draft is on screen; 'Write the Swahili message first' for a blank body; the act gate's sentence for a view-only role; every status past DRAFT in words true of it; 'Nobody matches' for nobody; a read that failed or was lost said as such; the server's stale, unsaved, closed and gone answers; the service's own blocked sentence — no_body's included — WITHOUT a refused confirmation's 'Nothing was …' tail; and the card disables its trigger on it, with it in the title and on the card",
+  u8: "UI.8 · THE TRIGGER'S REASON, NEVER HIDDEN, NEVER A REFUSAL NOBODY ASKED FOR — none before a press or for a counted, unblocked draft; 'Save first' for unsaved text, an audience on screen the draft does not store, a save in flight or nothing saved; the audience's OWN problem when it cannot be used; 'reload' for a draft saved elsewhere since and 'Updating' while this tab's save is read back or another draft is on screen; 'Write the Swahili message first' for a blank body; the act gate's sentence for a view-only role; every status past DRAFT in words true of it; 'Nobody matches' for nobody; a read that failed or was lost said as such; the server's stale, unsaved, closed and gone answers; the service's own blocked sentence — no_body's included — WITHOUT a refused confirmation's 'Nothing was …' tail; a read that found no slot in time ('busy') and a spent read budget, each in its own words; and the card disables its trigger on it, with it in the title and on the card — said in ONE live region that is always there: the line's box carries role=status, the lines it swaps carry none (K8b)",
   u9: "UI.9 · ⛔ BOTH ACTIONS' IMPORT WALKS reach no send loop, token mint or enqueue (marketing/dispatch, optout-service, enqueue) — and neither the composer's loader nor its draft actions",
   u10: "UI.10 · THE AUDIENCE ON SCREEN AGAINST THE SAVED ONE — the composer's loader says `unsaved` for a saved draft whose address names another audience, never for its own stored audience, a draft opened with no audience in its address, or a new composer; the Confirm card reads it through the composer's state, and Save takes it as a change (never 'Nothing to save')",
   u11: "UI.11 · ⭐ COUNTED ON DEMAND, NEVER ON A RENDER (the U40b review's MAJOR) — page.tsx renders the card bare (no read, no boundary of its own, no import of the confirmation's doors or service); the card asks only inside `ask`, which its trigger and its way back call and no effect does; and the read counts NOTHING — its view door never asked — for a campaign past DRAFT (every status), a revision the form is not showing, an audience on screen the draft does not store, an address audience that cannot be read, or a campaign that is gone, while it asks exactly once for the draft the form shows",
-  u12: "UI.12 · ⭐ THE FENCE'S COUNT TAKES THE SPLIT DOOR'S SLOTS — with both per-process slots held, a fence's count does not start (its count door unasked, one waiter) and starts once a slot frees; and audience-fence.ts counts through `audienceWalkCount(filter, deps.count)`, calling `deps.count(` nowhere else",
+  u12: "UI.12 · ⭐ THE FENCE'S COUNT TAKES THE SPLIT DOOR'S SLOTS — with both per-process slots held, a fence's count does not start (its count door unasked, one waiter) and starts once a slot frees; and audience-fence.ts counts through `audienceWalkCount(filter, deps.count, { join: slot.join, waitMs: slot.waitMs })` (its slot FENCE_SLOT unless a suite hands one in), calling `deps.count(` nowhere else",
   u13: "UI.13 · ⭐ WHAT THE CARD DOES WITH EACH ANSWER (the pure router) — confirmed: close, read again, 'Nothing has been sent.' (success), its record's failure said and kept on screen when it did not land; failed: KEEP the dialog open, 'nothing was confirmed'; unfinished or lost in transit: KEEP it open, 'may already be confirmed', kept on screen; the role's refusal: close, in its words; not_draft: close, read again, titled 'Already confirmed' when the page then reads CONFIRMED and 'Not confirmed' otherwise; not_found: close, read again; every other refusal: RECOUNT, then RE-ARM on a fresh view that may open (the notice on top) or close with 'Not confirmed' and the notice; and the card routes every answer through confirmOutcome and afterRecount",
   u14: "UI.14 · ⭐ A FAILED CONFIRMATION IS SAID AS WHAT IS KNOWN — runConfirmFor with a confirmation that throws says 'nothing was confirmed' (failed) only when the row reads back a DRAFT or gone, and 'may already be confirmed' (unfinished) when it reads CONFIRMED or the read-back throws; a refusal and a confirmation pass through as the service gave them, its record's half kept; and the confirmation is handed the officer and the doors' viewer",
+  u15: "UI.15 · ⭐ THE DIALOG NEVER OPENS BY ITSELF (the U40b re-review's MINOR 1) — an answer opens it only for the form still on screen (the key it was asked for) while nothing on the page blocks the trigger: not after the officer typed while it counted, picked another audience or saved, and never on a blocked answer or none (`confirmOpensOn`); the card asks it when the answer lands, reading the form as last rendered (`nowRef`), opens in that one place, shows the dialog only for the form it was opened for, and DROPS an open it can no longer show, outside a confirmation — so undoing the change never pops a dialog nobody pressed for",
+  u16: "UI.16 · ⭐ THE CONFIRMATION COUNTS ITS OWN (the U40b re-review's MINOR 2 · OD27) — with a count of the same audience still in flight from before a contact was added (another officer's, another draft's), a view at 6 and the seventh added, a confirmation typed '6' counts 7 itself and is refused audience_moved (freshCount 7), the row still a DRAFT with nothing frozen, and the next view reads 7; the fence asks the split door `{ join: false }` (FENCE_SLOT), never the shared count",
+  u17: "UI.17 · ⭐ THE WAIT FOR A SLOT IS BOUNDED, AND SAID (the U40b re-review's MINOR 3) — with both per-process slots held, a fence whose slot waits the bound it is given (the shipped CONFIRM_SLOT_WAIT_MS, 15 s — here 250 times shorter) answers AudienceSlotBusy within it, its count never asked; the trigger's read answers `busy`, the confirmation `busy` saying nothing was confirmed (the row still a DRAFT), and a reader's split asked with a bound is busy within it — each answered in time; with a slot free the same bound counts; the dialog KEEPS on busy, saying nothing was confirmed, and the card offers 'Count again'; the view hands a reader's split what is left of the bound; and the dialog is closable whenever no confirmation is in flight — the card's `loading` is the request alone (`posting`, fallen as soon as it answers), `confirmHeld` the rest, and the kit's held Confirm is off while Cancel, Esc, ✕ and the scrim still close it",
+  u18: "UI.18 · ⛔ THE READ IS NO ORACLE (the U40b re-review) — a viewer who may not read a number, posting a reader's hidden audience (a consent predicate) as the one on screen, is answered `unsaved` whether or not it equals the stored one; a reader posting the same is compared (the stored one counted, another unsaved); and the read's role rule is the campaign door's (`campaignAudienceRefusal`), asked before the comparison",
 } as const;
 type Label = (typeof L)[keyof typeof L];
 
@@ -368,9 +377,11 @@ type Sources = {
   copy: string;
   client: string;
   page: string;
-  /** §UI 3 — every src file whose code names `typedInputMode`, and every one naming `armKey` or `refocusKey` (read once). */
+  /** §UI 3 — every src file whose code names `typedInputMode`, every one naming `armKey` or `refocusKey`, and every one
+   *  naming `confirmHeld` (read once). */
   inputModeHolders: string[];
   armKeyHolders: string[];
+  heldHolders: string[];
 };
 /** §UI (U40b) — the card's pure decisions and its two server doors, each swappable by a plant. */
 type UiImpl = {
@@ -390,6 +401,8 @@ type UiImpl = {
   /** The pure router (`confirmOutcome`, `afterRecount`). */
   outcome: typeof COPY.confirmOutcome;
   recount: typeof COPY.afterRecount;
+  /** May an answer open the dialog, now (`confirmOpensOn` — the re-review's MINOR 1)? */
+  opens: typeof COPY.confirmOpensOn;
   /** The audience on screen against the saved one (`composeAudienceView`). */
   audienceView: typeof LOADER.composeAudienceView;
 };
@@ -430,6 +443,7 @@ const DEV_ONLY = "src/app/api/dev-test/";
 const confirmedHolders = new Map<string, string>();
 const inputModeHolders: string[] = [];
 const armKeyHolders: string[] = [];
+const heldHolders: string[] = [];
 for (const abs of walkDir(join(ROOT, "src"))) {
   const rel = relOf(abs);
   if (rel.startsWith(DEV_ONLY)) continue;
@@ -438,6 +452,7 @@ for (const abs of walkDir(join(ROOT, "src"))) {
   // §UI 3 · a file whose CODE (not its comments) names the dialog's keypad key, or its re-arm keys.
   if (raw.includes("typedInputMode") && decomment(raw.split(CR).join("")).includes("typedInputMode")) inputModeHolders.push(rel);
   if ((raw.includes("armKey") || raw.includes("refocusKey")) && new RegExp("armKey|refocusKey").test(decomment(raw.split(CR).join("")))) armKeyHolders.push(rel);
+  if (raw.includes("confirmHeld") && decomment(raw.split(CR).join("")).includes("confirmHeld")) heldHolders.push(rel);
 }
 const campaignPath = new Map<string, string>();
 for (const dir of ["src/lib/server/marketing", "src/app/admin/campaigns"]) {
@@ -460,6 +475,7 @@ const REAL_SOURCES: Sources = {
   page: code(PAGE_REL),
   inputModeHolders: [...inputModeHolders].sort(),
   armKeyHolders: [...armKeyHolders].sort(),
+  heldHolders: [...heldHolders].sort(),
 };
 /** A source with one anchor replaced. ⛔ An anchor that is not there THROWS, so a plant can never pass as caught unchanged. */
 const plantIn = (src: string, from: string, to: string): string => {
@@ -492,6 +508,7 @@ const REAL: Impl = {
     outcome: COPY.confirmOutcome,
     recount: COPY.afterRecount,
     audienceView: LOADER.composeAudienceView,
+    opens: COPY.confirmOpensOn,
   },
 };
 
@@ -610,6 +627,9 @@ const GATE_SPREAD = "{...dialog.gate}";
 const ACTION_SIG = "export async function confirmCampaignAction(formData: FormData): Promise<ConfirmActionResult> {";
 const VIEW_SIG = "export async function campaignConfirmViewAction(request: unknown): Promise<ConfirmReadAnswer> {";
 const GUARD_LINE = 'const g = await softRequireStaff("growth", "marketing.campaign.confirm", COMPOSE_CONFIRM_ROLE_REFUSAL);';
+/** The read's own gate (its own audited action — the re-review's NIT) and the officer's read budget, its second statement. */
+const VIEW_GUARD_LINE = 'const g = await softRequireStaff("growth", "marketing.campaign.confirm_view", COMPOSE_CONFIRM_ROLE_REFUSAL);';
+const READ_BUDGET_LINE = 'const rate = await rateCheckAsync(g.userId, "marketing.campaignConfirmRead");';
 /** The Confirm card's one ConfirmModal element: from its tag to the end of the tag that spreads the gate. */
 function dialogOf(card: string): string {
   const at = card.indexOf("<ConfirmModal");
@@ -1332,13 +1352,14 @@ async function runAssertions(impl: Impl): Promise<void> {
       gate: hardGate !== null && hardGate.tier === "hard" && hardGate.typedInputMode === "numeric" && hardGate.typedWord === "5912"
         && mediumGate !== null && mediumGate.tier === "medium" && !("typedInputMode" in mediumGate),
       inputModeCallers: json(impl.sources.inputModeHolders) === json([COPY_REL, MODAL_REL].sort()),
-      // The re-arm keys: optional, and the kit's own focusIn does the focusing.
-      armOptional: m.includes("armKey?: string | number;") && m.includes("refocusKey?: string | number;"),
+      // The re-arm keys and the held Confirm: optional, and the kit's own focusIn does the focusing.
+      armOptional: m.includes("armKey?: string | number;") && m.includes("refocusKey?: string | number;") && m.includes("confirmHeld?: boolean;"),
       armThroughFocusIn: m.includes("const refocusSeen = React.useRef(refocusKey);") && m.includes("refocusKey={loading ? undefined : armKey}"),
       armCallers: json(impl.sources.armKeyHolders) === json([CARD_REL, MODAL_REL].sort()),
+      heldCallers: json(impl.sources.heldHolders) === json([CARD_REL, MODAL_REL].sort()),
     };
     return [Object.values(checks).every(Boolean),
-      `${json(checks)} · typedInputMode in [${impl.sources.inputModeHolders.join(", ")}] · armKey/refocusKey in [${impl.sources.armKeyHolders.join(", ")}]`];
+      `${json(checks)} · typedInputMode in [${impl.sources.inputModeHolders.join(", ")}] · armKey/refocusKey in [${impl.sources.armKeyHolders.join(", ")}] · confirmHeld in [${impl.sources.heldHolders.join(", ")}]`];
   });
 
   await claim(L.u4, async () => {
@@ -1376,14 +1397,25 @@ async function runAssertions(impl: Impl): Promise<void> {
     const kept = json(posted) === json({ campaignId: "cmp_ui_read", draftRevision: 3, audience: { tag: "vip" } });
     const revisions = [-1, 1.5, "3", null, undefined].every((r) => DOORS.confirmReadRequestOf({ campaignId: "c", draftRevision: r }).draftRevision === null);
     const noAudience = DOORS.confirmReadRequestOf({ campaignId: "c", draftRevision: 0, audience: { bogus: "x" } }).audience === null;
+    // The gate, then the budget: the line after the gate's own refusal is the budget's, before anything is read.
+    const afterGuard = body.slice(VIEW_GUARD_LINE.length).trimStart();
+    const secondStatement = afterGuard.slice(afterGuard.indexOf(NL) + 1).trimStart();
+    const rule = (RATE_RULES as Record<string, { capacity: number; refillPerMin: number } | undefined>)["marketing.campaignConfirmRead"];
+    const spent = COPY.composeConfirmReadRateLimited(24.2);
     const checks = {
       useServer: a.trimStart().startsWith('"use server";'),
       exactlyOne: body !== "" && json(exported) === json(["campaignConfirmViewAction"]) && otherExports(a) === 0,
-      guardFirst: body.startsWith(GUARD_LINE) && body.slice(GUARD_LINE.length).trimStart().startsWith("if (!g.ok) return"),
+      guardFirst: body.startsWith(VIEW_GUARD_LINE) && afterGuard.startsWith("if (!g.ok) return"),
+      ownAction: a.includes('"marketing.campaign.confirm_view"') && !a.includes('"marketing.campaign.confirm",'),
+      budgetSecond: secondStatement.startsWith(READ_BUDGET_LINE)
+        && body.includes('if (!rate.allowed) return { ok: false, reason: "rate_limited", error: composeConfirmReadRateLimited(rate.retryAfterSec) };')
+        && body.indexOf(READ_BUDGET_LINE) < body.indexOf("readConfirmCardFor("),
+      realRule: rule !== undefined && rule.capacity >= 1 && rule.refillPerMin > 0,
+      saysSpent: spent.includes("25 s") && spent.includes("nothing was counted"),
       handsOver: body.includes("return { ok: true, card: await readConfirmCardFor(g.userId, confirmReadRequestOf(request)) };"),
       kept, revisions, noAudience,
       readDoors: DOORS.CONFIRM_READ_DEPS.viewer === SVC.confirmViewerFor && DOORS.CONFIRM_READ_DEPS.view === SVC.campaignConfirmView
-        && DOORS.CONFIRM_READ_DEPS.money === SVC.confirmMoneyLine,
+        && DOORS.CONFIRM_READ_DEPS.money === SVC.confirmMoneyLine && DOORS.CONFIRM_READ_DEPS.refusal === AUD.campaignAudienceRefusal,
       imported: card.includes('import { campaignConfirmViewAction } from "./confirm-view-actions";') && card.includes("campaignConfirmViewAction(request)"),
     };
     return [Object.values(checks).every(Boolean), `${json(checks)} · exported [${exported.join(", ")}] · kept ${json(posted)}`];
@@ -1447,7 +1479,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     type View = { blocked: string | null; message: string | null; tier: ConfirmTier | null; count: number | null; watermark: string | null };
     const view: View = { blocked: null, message: null, tier: "typed", count: 7, watermark: "aw1.fixture.seal" };
     const seen = (v: Partial<View>): ConfirmAnswerFacts => ({ ok: true, card: { status: "DRAFT", read: "view", view: { ...view, ...v } } });
-    const said = (read: "closed" | "stale" | "unsaved" | "gone" | "error", status: StoredSmsCampaign["status"] | null = "DRAFT"): ConfirmAnswerFacts =>
+    const said = (read: "closed" | "stale" | "unsaved" | "busy" | "gone" | "error", status: StoredSmsCampaign["status"] | null = "DRAFT"): ConfirmAnswerFacts =>
       ({ ok: true, card: { status, read, view: null } });
     const base: ConfirmTriggerFacts = {
       mayAct: true,
@@ -1495,6 +1527,8 @@ async function runAssertions(impl: Impl): Promise<void> {
       ["the server says unsaved", answered(said("unsaved")), COPY.COMPOSE_CONFIRM_SAVE_FIRST],
       ["the server says closed", answered(said("closed", "RUNNING")), COPY.COMPOSE_CONFIRM_CLOSED.RUNNING],
       ["gone", answered(said("gone", null)), T(NOT_FOUND)],
+      ["no slot in time", answered(said("busy")), COPY.COMPOSE_CONFIRM_BUSY],
+      ["the read budget spent", answered({ ok: false, reason: "rate_limited", error: "the budget's own sentence" }), "the budget's own sentence"],
     ];
     const wrong = cases.filter(([, facts, want]) => B(facts) !== want).map(([name]) => name);
     // ⛔ "Nothing was …" is what a refused CONFIRMATION did not do — never said beside a trigger that only read.
@@ -1511,7 +1545,9 @@ async function runAssertions(impl: Impl): Promise<void> {
       && client.includes("savedRevision: c.saved?.draftRevision ?? null,") && client.includes("pageRevision: c.view.draft?.draftRevision ?? null,")
       && client.includes('audienceProblem: c.problemAt("audience") ?? c.view.audience.problem ?? null,')
       && client.includes("status: c.view.draft?.status ?? null,");
-    return [wrong.length === 0 && tailless && wired, `wrong [${wrong.join(", ")}] · tailless ${tailless} · wired ${wired}`];
+    // K8b · ONE live region, always there — the line's box — never the lines it swaps in already holding their words.
+    const liveRegion = src.includes('<div className={CONFIRM_LINE_BOX} role="status">') && src.split('role="status"').length - 1 === 1;
+    return [wrong.length === 0 && tailless && wired && liveRegion, `wrong [${wrong.join(", ")}] · tailless ${tailless} · wired ${wired} · one live region ${liveRegion}`];
   });
 
   await claim(L.u9, async () => {
@@ -1617,7 +1653,8 @@ async function runAssertions(impl: Impl): Promise<void> {
       && counted === 1 && f.claim.count === 3 && after.running === 0 && after.waiting === 0;
     const src = impl.sources.fence;
     const body = src.slice(src.indexOf("export async function audienceFence("));
-    const wired = body.includes("const count = await audienceWalkCount(filter, deps.count);") && body.split("deps.count(").length - 1 === 0
+    const wired = body.includes("const count = await audienceWalkCount(filter, deps.count, { join: slot.join, waitMs: slot.waitMs });")
+      && body.includes("const slot = deps.slot ?? FENCE_SLOT;") && body.split("deps.count(").length - 1 === 0
       && src.includes('import { audienceWalkCount } from "@/lib/server/marketing/audience-split";');
     return [waits && wired, `${json({ before, whileFull, counted, count: f.claim.count, after })} · wired ${wired}`];
   });
@@ -1702,6 +1739,169 @@ async function runAssertions(impl: Impl): Promise<void> {
       confirmationPasses: confirmedRun.ok && confirmedRun.count === 7 && confirmedRun.recorded === false,
     };
     return [Object.values(said).every(Boolean), json(said)];
+  });
+
+  await claim(L.u15, async () => {
+    const O = impl.ui.opens;
+    const view = { blocked: null, message: null, tier: "typed" as ConfirmTier, count: 7, watermark: "aw1.fixture.seal" };
+    const ready: ConfirmAnswerFacts = { ok: true, card: { status: "DRAFT", read: "view", view } };
+    const blocked: ConfirmAnswerFacts = { ok: true, card: { status: "DRAFT", read: "view", view: { ...view, blocked: "over_limit", message: "x" } } };
+    const ASKED = "cmp_ui:3:null";
+    const at = (answer: ConfirmAnswerFacts | null, onScreen: string, pageClear: boolean): boolean => O({ answer, askedFor: ASKED, onScreen, pageClear });
+    const decides = {
+      opens: at(ready, ASKED, true),
+      typedWhileItCounted: !at(ready, ASKED, false),
+      anotherAudience: !at(ready, 'cmp_ui:3:{"tag":"vip"}', true),
+      savedMeanwhile: !at(ready, "cmp_ui:4:null", true),
+      blockedAnswer: !at(blocked, ASKED, true),
+      noAnswer: !at(null, ASKED, true),
+    };
+    const card = impl.sources.card;
+    const landing = "if (confirmOpensOn({ answer: r, askedFor: key, onScreen: now.key, pageClear: now.clear })) {";
+    const wired = {
+      asksWhenItLands: card.includes(landing) && card.includes("const now = nowRef.current;")
+        && card.includes("nowRef.current = { key: formKey, clear: pageClear };"),
+      opensInOnePlace: card.split("setOpen(true)").length - 1 === 1 && card.indexOf("setOpen(true)") > card.indexOf(landing),
+      shownForItsForm: card.includes("const dialogOpen = open && openedFor === formKey && live !== null;") && dialogOf(card).includes("open={dialogOpen}"),
+      dropped: card.includes("if (open && live === null && !confirming) setOpen(false);"),
+    };
+    return [Object.values(decides).every(Boolean) && Object.values(wired).every(Boolean), `${json(decides)} · ${json(wired)}`];
+  });
+
+  await claim(L.u16, async () => {
+    // Six people, typed; a view at 6. Then a count of the SAME audience still in flight from before a contact was added —
+    // another officer's, another draft's: its answer will be the old 6, whenever it lands.
+    const { tag } = await freshTag(w, "own", 6);
+    const f = tagF(tag);
+    const id = await draft(w, "ui_own", f);
+    const at6 = await viewOf(impl, w, id, READER);
+    const flights = (globalThis as unknown as { __50PICK_AUDIENCE_COUNTS?: Map<string, Promise<number>> }).__50PICK_AUDIENCE_COUNTS;
+    if (flights === undefined) throw new Error("fixture: the split door's shared counts are not loaded");
+    const key = AUD.contactAudienceKey(f);
+    let landOld = (): void => {};
+    const old = new Promise<number>((resolve) => { landOld = () => resolve(6); });
+    flights.set(key, old);
+    let result: ConfirmCampaignResult;
+    try {
+      await addTo(tag, w, "own");
+      const confirming = confirmOf(impl, w, id, "6", at6?.watermark ?? null, READER);
+      await tick();
+      landOld();
+      result = await confirming;
+    } finally {
+      if (flights.get(key) === old) flights.delete(key);
+    }
+    const row = rowOf(id);
+    const after = await viewOf(impl, w, id, READER);
+    const own = at6 !== null && at6.count === 6 && at6.tier === "typed" && !result.ok && result.reason === "audience_moved" && result.freshCount === 7
+      && row?.status === "DRAFT" && row.audienceCount === null && after?.count === 7;
+    // The count line itself is §UI 12's to hold; this holds the shipped slot it is handed.
+    const shipped = impl.shipped.fence.slot === FEN.FENCE_SLOT && FEN.FENCE_SLOT.join === false;
+    const wired = impl.sources.fence.includes("export const FENCE_SLOT: Readonly<FenceSlot> = Object.freeze({ join: false, waitMs: CONFIRM_SLOT_WAIT_MS });");
+    return [own && shipped && wired, `view ${showView(at6)} · confirmation ${show(result)} · row ${row?.status} · next view ${showView(after)} · shipped ${shipped} · wired ${wired}`];
+  });
+
+  await claim(L.u17, async () => {
+    // The bound under test is the fence's own, 250 times shorter (60 ms for the shipped 15 s) — an unbounded one stays one.
+    const given = impl.fenceDeps.slot ?? FEN.FENCE_SLOT;
+    const bound = given.waitMs / 250;
+    const scaled: FenceDeps = { ...impl.fenceDeps, slot: { join: given.join, waitMs: bound } };
+    const scaledFence = (c: Parameters<ConfirmDeps["fence"]>[0]): Promise<AudienceFence> => FEN.audienceFence(c, scaled);
+    const id = await draft(w, "ui_busy", tagF("g-n7"));
+    // ① Both per-process slots held by two other counts.
+    let releaseA = (): void => {};
+    let releaseB = (): void => {};
+    const heldA = new Promise<number>((resolve) => { releaseA = () => resolve(0); });
+    const heldB = new Promise<number>((resolve) => { releaseB = () => resolve(0); });
+    const a = SPLIT.audienceWalkCount(tagF("g-n1"), () => heldA);
+    const b = SPLIT.audienceWalkCount(tagF("g-n2"), () => heldB);
+    await tick();
+    const t0 = Date.now();
+    type Timed<T> = { ok: true; v: T; at: number } | { ok: false; e: unknown; at: number };
+    const timed = <T,>(p: Promise<T>): Promise<Timed<T>> =>
+      p.then((v): Timed<T> => ({ ok: true, v, at: Date.now() - t0 }), (e: unknown): Timed<T> => ({ ok: false, e, at: Date.now() - t0 }));
+    let asked = 0;
+    const fenceP = timed(FEN.audienceFence(rowLike("cmp_ui_busy_fence", tagF("g-n3")), { ...scaled, count: async (fl) => { asked++; return AUD.campaignAudienceCount(fl); } }));
+    const readDeps: ConfirmReadDeps = { ...impl.ui.readDeps(impl), view: (campaignId, viewer) => impl.view(campaignId, viewer, depsOf(impl, { fence: scaledFence })) };
+    const readP = timed(impl.ui.read(UI_ADMIN, { campaignId: id, draftRevision: 0, audience: null }, readDeps));
+    const runP = timed(impl.ui.run("off_ui_busy", { campaignId: id, typed: "7", watermark: null }, {
+      viewer: async () => READER,
+      confirm: (input, viewer) => impl.confirm(input, viewer, depsOf(impl, { fence: scaledFence })),
+      find: async (x: string) => db.smsCampaign.find(x),
+    }));
+    const splitP = timed(SPLIT.audienceSplit(tagF("g-n3"), { viewerReads: true, waitMs: bound }));
+    const inTime = await Promise.race([
+      Promise.all([fenceP, readP, runP, splitP]).then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000)),
+    ]);
+    releaseA();
+    releaseB();
+    const [fe, rd, rn, sp] = await Promise.all([fenceP, readP, runP, splitP]);
+    await Promise.all([a, b]);
+    const slots = SPLIT.audienceSplitSlots();
+    // ② A slot free: the same bound counts.
+    const free = await FEN.audienceFence(rowLike("cmp_ui_busy_free", tagF("g-n3")), scaled);
+    const quick = (x: { at: number }): boolean => x.at < 1500;
+    const busy = {
+      inTime,
+      fence: !fe.ok && SPLIT.isAudienceSlotBusy(fe.e) && fe.at >= bound * 0.8 && quick(fe) && asked === 0,
+      read: rd.ok && rd.v.read === "busy" && rd.v.view === null && quick(rd),
+      run: rn.ok && !rn.v.ok && rn.v.reason === "busy" && rn.v.error === COPY.COMPOSE_CONFIRM_BUSY_CONFIRM && quick(rn)
+        && rowOf(id)?.status === "DRAFT" && (await auditRows(CONFIRMED_ROW, id)).length === 0,
+      split: !sp.ok && SPLIT.isAudienceSlotBusy(sp.e) && quick(sp),
+      freed: slots.running === 0 && slots.waiting === 0,
+      counted: free.claim.count === 3,
+    };
+    // ③ What the card does with it: KEEP the dialog, saying nothing was confirmed; "Count again" after a read.
+    const kept = impl.ui.outcome({ ok: false, reason: "busy", error: COPY.COMPOSE_CONFIRM_BUSY_CONFIRM });
+    const said = {
+      keeps: kept.kind === "keep" && kept.toast.title === COPY.COMPOSE_CONFIRM_BUSY_CONFIRM && kept.toast.title.includes("nothing was confirmed"),
+      readSays: COPY.COMPOSE_CONFIRM_BUSY.includes("nothing was confirmed")
+        && COPY.confirmAnswerRetry({ ok: true, card: { status: "DRAFT", read: "busy", view: null } }) === "count",
+    };
+    // ④ The wiring: one shipped bound; a reader's split gets what is left of it; the dialog closable but for the request.
+    const card = impl.sources.card;
+    const m = impl.sources.modal;
+    const svc = impl.sources.service;
+    const el = dialogOf(card);
+    const confirmAt = card.indexOf("const confirm = () => {");
+    const wired = {
+      shipped: FEN.CONFIRM_SLOT_WAIT_MS === 15_000 && FEN.FENCE_SLOT.waitMs === FEN.CONFIRM_SLOT_WAIT_MS && impl.shipped.fence.slot === FEN.FENCE_SLOT,
+      readerSplit: svc.includes("const left = Math.max(0, CONFIRM_SLOT_WAIT_MS - (deps.now().getTime() - started));")
+        && svc.includes("const split = await audienceViewFor(filter, count, viewer, deps, left);")
+        && svc.includes("split: (f: ContactAudienceFilter, viewerReads: boolean, waitMs?: number) => audienceSplit(f, { viewerReads, waitMs }),"),
+      requestAlone: el.includes("loading={posting}") && el.includes("confirmHeld={confirming && !posting}")
+        && card.includes("const r = await runAdminAction(() => confirmCampaignAction(fd)).finally(() => setPosting(false));")
+        && confirmAt >= 0 && card.indexOf("setPosting(true);", confirmAt) > confirmAt
+        && card.indexOf("setPosting(true);", confirmAt) < card.indexOf("startConfirming(async () => {", confirmAt),
+      kitHeld: m.includes("disabled={!armed || loading || confirmHeld}") && m.includes("disabled={loading} onClick={onClose}")
+        && m.includes("closeOnScrim={!loading}") && m.includes("showClose={!loading}") && m.includes("onClose={loading ? () => {} : onClose}"),
+    };
+    const answers = `fence ${fe.ok ? "counted" : SPLIT.isAudienceSlotBusy(fe.e) ? "busy" : "threw"} at ${fe.at} ms · read ${rd.ok ? rd.v.read : "threw"} at ${rd.at} · run ${rn.ok ? (rn.v.ok ? "confirmed" : rn.v.reason) : "threw"} at ${rn.at} · split ${sp.ok ? "walked" : SPLIT.isAudienceSlotBusy(sp.e) ? "busy" : "threw"} at ${sp.at} (bound ${bound} ms)`;
+    return [Object.values(busy).every(Boolean) && Object.values(said).every(Boolean) && Object.values(wired).every(Boolean),
+      `${answers} · ${json(busy)} · ${json(said)} · ${json(wired)}`];
+  });
+
+  await claim(L.u18, async () => {
+    // A reader's audience with a predicate a viewer who may not read a number may not use — and two guesses at it.
+    const hidden: ContactAudienceFilter = { ...tagF("g-n3"), consent: ["GIVEN"] };
+    const id = await draft(w, "ui_oracle", hidden);
+    const same = AUD.campaignAudienceParams(hidden) ?? {};
+    const guess = AUD.campaignAudienceParams({ ...hidden, consent: ["WITHDRAWN"] }) ?? {};
+    const deps = impl.ui.readDeps(impl);
+    const read = async (userId: string, audience: Record<string, string>): Promise<string> =>
+      (await impl.ui.read(userId, { campaignId: id, draftRevision: 0, audience }, deps)).read;
+    const masked = { same: await read(UI_GROWTH, same), guess: await read(UI_GROWTH, guess) };
+    const reader = { same: await read(UI_ADMIN, same), guess: await read(UI_ADMIN, guess) };
+    const noOracle = masked.same === "unsaved" && masked.guess === "unsaved";
+    const readerCompares = reader.same === "view" && reader.guess === "unsaved";
+    const d = impl.sources.doors;
+    const ruleAt = d.indexOf("if (refusal(onScreen.filter, viewerReads) !== null) return false;");
+    const wired = DOORS.CONFIRM_READ_DEPS.refusal === AUD.campaignAudienceRefusal && ruleAt > 0
+      && ruleAt < d.indexOf("return contactAudienceKey(onScreen.filter) === contactAudienceKey(kept.filter);")
+      && d.includes("!storesThis(req.audience, row.audienceFilter, viewer.reads, deps.refusal)")
+      && d.indexOf("const viewer = await deps.viewer(userId);") < d.indexOf("!storesThis(");
+    return [noOracle && readerCompares && wired, `masked ${json(masked)} · reader ${json(reader)} · wired ${wired}`];
   });
 
   // ── 4.15 and 4.17 read the whole run ──
@@ -1998,7 +2198,9 @@ if (!PROVE_RED) {
     plantIn(plantIn(src, GUARD_LINE, ""), "  if (result.ok) {", `  ${GUARD_LINE}${NL}  if (result.ok) {`);
   /** R-UI.4c · the read action's gate taken from the top and put after the read has run. */
   const viewGuardBelow = (src: string): string =>
-    plantIn(plantIn(src, GUARD_LINE, ""), "  return { ok: true, card:", `  ${GUARD_LINE}${NL}  return { ok: true, card:`);
+    plantIn(plantIn(src, VIEW_GUARD_LINE, ""), "  return { ok: true, card:", `  ${VIEW_GUARD_LINE}${NL}  return { ok: true, card:`);
+  /** R-UI.17b / 17c · "no slot in time" taken for any other throw — the busy error's code lost on the way. */
+  const plainThrow = (e: unknown): never => { throw new Error(`plain: ${String((e as Error)?.message ?? e)}`); };
   /** R-UI.11c · the read with its checks taken out: any revision, any audience on screen, any status — it counts. */
   const readCountingAnything: typeof DOORS.readConfirmCardFor = async (userId, req, deps = DOORS.CONFIRM_READ_DEPS) => {
     const row = await deps.find(req.campaignId);
@@ -2012,7 +2214,8 @@ if (!PROVE_RED) {
   /** A plant that replaces a source anchor is built when its turn comes, so an anchor that has gone fails that plant alone. */
   type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl>) };
   const plants: Plant[] = [
-    { name: "R1 (the plan's own) · the typed number checked against the count INSIDE the posted watermark", expect: [L.s2, L.s3, L.s12],
+    // §UI 16 is OD27's stale client too (the re-review's MINOR 2): the old typed number would confirm there as well.
+    { name: "R1 (the plan's own) · the typed number checked against the count INSIDE the posted watermark", expect: [L.s2, L.s3, L.s12, L.u16],
       impl: withDecide({ typedVsShown: true }) },
     { name: "R2 · the freeze takes the shown count", expect: [L.s12], impl: withDecide({ freezeShown: true }) },
     { name: "R3 · the list tier skips the members key — a swapped person is confirmed", expect: [L.s7], impl: withDecide({ noMembers: true }) },
@@ -2152,7 +2355,8 @@ if (!PROVE_RED) {
         (typeof id === "string" && id.trim() !== "" ? SVC.confirmViewerFor(id, deps) : { reads: true, money: true }) } } },
     { name: "R-UI.6 · G5.3 · the read counted with money for every role — TZS in a GROWTH render", expect: [L.u6],
       impl: { ui: { ...REAL.ui, readDeps: (impl: Impl) => ({ ...realReadDeps(impl), viewer: async (id: string | null) => ({ ...(await SVC.confirmViewerFor(id)), money: true }) }) } } },
-    { name: "R-UI.7 · ⛔ OD67 · the read counted as a READER for every role — a viewer who may not read a number shown the list of three", expect: [L.u7],
+    // §UI 18 reads the same viewer: a masked officer read as a reader passes the role rule, and the comparison answers them.
+    { name: "R-UI.7 · ⛔ OD67 · the read counted as a READER for every role — a viewer who may not read a number shown the list of three", expect: [L.u7, L.u18],
       impl: { ui: { ...REAL.ui, readDeps: (impl: Impl) => ({ ...realReadDeps(impl), viewer: async (id: string | null) => ({ ...(await SVC.confirmViewerFor(id)), reads: true }) }) } } },
     { name: "R-UI.8 · the trigger opens over unsaved text — the client's own check skipped (the server sees only the saved draft)", expect: [L.u8],
       impl: { ui: { ...REAL.ui, blocked: (f: ConfirmTriggerFacts) => COPY.confirmTriggerBlocked({ ...f, form: { ...f.form, dirty: false } }) } } },
@@ -2171,10 +2375,11 @@ if (!PROVE_RED) {
         '<AdminCard title={COMPOSE_CONFIRM_TITLE}><CampaignConfirm card={await readConfirmCardFor(null, { campaignId: view.draft?.id ?? "", draftRevision: null, audience: null })} /></AdminCard>') }) },
     { name: "R-UI.11b · the card asks on mount — a walk on every composer render, pressed or not", expect: [L.u11],
       impl: () => withSources({ card: plantIn(REAL_SOURCES.card, "  const close = () => {", `  useEffect(() => { ask(); }, []);${NL}  const close = () => {`) }) },
-    { name: "R-UI.11c · the read counts where it may not — past DRAFT, a stale revision, an audience on screen the draft does not store", expect: [L.u11],
+    // …and §UI 18 with it: a read that never holds the audience on screen against anything answers a masked guess with a count.
+    { name: "R-UI.11c · the read counts where it may not — past DRAFT, a stale revision, an audience on screen the draft does not store", expect: [L.u11, L.u18],
       impl: { ui: { ...REAL.ui, read: readCountingAnything } } },
     { name: "R-UI.12 · the fence counts OUTSIDE the split door's slots — beside two splits, on a pool shared with bets", expect: [L.u12],
-      impl: () => withSources({ fence: plantIn(REAL_SOURCES.fence, "const count = await audienceWalkCount(filter, deps.count);", "const count = await deps.count(filter);") }) },
+      impl: () => withSources({ fence: plantIn(REAL_SOURCES.fence, "const count = await audienceWalkCount(filter, deps.count, { join: slot.join, waitMs: slot.waitMs });", "const count = await deps.count(filter);") }) },
     { name: "R-UI.13 · a refusal left on the OLD figures — no recount, no re-arm", expect: [L.u13],
       impl: { ui: { ...REAL.ui, outcome: (r: ConfirmAnswerLike) => {
         const o = COPY.confirmOutcome(r);
@@ -2191,6 +2396,38 @@ if (!PROVE_RED) {
     { name: "R-UI.14 · a failed confirmation says 'nothing was confirmed' whatever the row reads", expect: [L.u14],
       impl: { ui: { ...REAL.ui, run: (actorId: string, req: Parameters<typeof DOORS.runConfirmFor>[1], deps: ConfirmRunDeps = DOORS.CONFIRM_RUN_DEPS) =>
         DOORS.runConfirmFor(actorId, req, { ...deps, find: async () => null }) } } },
+    // ── §UI · the U40b re-review's fixes (MINORs 1–3 and the NITs) ──
+    { name: "R-UI.3c · `confirmHeld` made REQUIRED — every existing ConfirmModal caller stops compiling", expect: [L.u3],
+      impl: () => withSources({ modal: plantIn(REAL_SOURCES.modal, "confirmHeld?: boolean;", "confirmHeld: boolean;") }) },
+    { name: "R-UI.4e · the read audited as the confirmation itself — a refused read reads as a refused confirmation", expect: [L.u4b],
+      impl: () => withSources({ viewActions: plantIn(REAL_SOURCES.viewActions, '"marketing.campaign.confirm_view"', '"marketing.campaign.confirm"') }) },
+    { name: "R-UI.4f · the read with no budget — a script holds both of the split door's slots for everyone", expect: [L.u4b],
+      impl: () => withSources({ viewActions: plantIn(REAL_SOURCES.viewActions, READ_BUDGET_LINE, "const rate = { allowed: true, retryAfterSec: 0 };") }) },
+    { name: "R-UI.8e · the live region back on the three lines the card swaps — each mounted already holding its words, announced unreliably", expect: [L.u8],
+      impl: () => withSources({ card: plantIn(plantIn(REAL_SOURCES.card, '<div className={CONFIRM_LINE_BOX} role="status">', "<div className={CONFIRM_LINE_BOX}>"),
+        "data-confirm-blocked>", 'role="status" data-confirm-blocked>') }) },
+    { name: "R-UI.15 · ⛔ MINOR 1 · the dialog opens on the answer alone — typed while it counted, then undone, it pops open with no press, on figures from before", expect: [L.u15],
+      impl: { ui: { ...REAL.ui, opens: (o: Parameters<typeof COPY.confirmOpensOn>[0]) => COPY.confirmAnswerReady(o.answer) } } },
+    { name: "R-UI.15b · an open the page can no longer show kept for later — undoing what blocked it opens the dialog by itself", expect: [L.u15],
+      impl: () => withSources({ card: plantIn(REAL_SOURCES.card, "  if (open && live === null && !confirming) setOpen(false);", "") }) },
+    { name: "R-UI.15c · the dialog shown for whatever form is on screen, not the one it was opened for", expect: [L.u15],
+      impl: () => withSources({ card: plantIn(REAL_SOURCES.card, "const dialogOpen = open && openedFor === formKey && live !== null;", "const dialogOpen = open && live !== null;") }) },
+    { name: "R-UI.16 · ⛔ MINOR 2 · the fence JOINS a count already running — one begun before a contact was added confirms the old number (OD27)", expect: [L.u16],
+      impl: { fenceDeps: { ...FEN.FENCE_DEPS, slot: { join: true, waitMs: FEN.CONFIRM_SLOT_WAIT_MS } } } },
+    { name: "R-UI.17 · ⛔ MINOR 3 · the confirmation's slot waited for without limit — the dialog unclosable while the line moves", expect: [L.u17],
+      impl: { fenceDeps: { ...FEN.FENCE_DEPS, slot: { join: false, waitMs: Number.POSITIVE_INFINITY } } } },
+    { name: "R-UI.17b · a confirmation that found no slot said as a failure — 'busy' taken for any throw", expect: [L.u17],
+      impl: { ui: { ...REAL.ui, run: (actorId: string, req: Parameters<typeof DOORS.runConfirmFor>[1], deps: ConfirmRunDeps = DOORS.CONFIRM_RUN_DEPS) =>
+        DOORS.runConfirmFor(actorId, req, { ...deps, confirm: (input, viewer) => deps.confirm(input, viewer).catch(plainThrow) }) } } },
+    { name: "R-UI.17c · a read that found no slot said as a read that failed", expect: [L.u17],
+      impl: { ui: { ...REAL.ui, read: (userId: string | null, req: Parameters<typeof DOORS.readConfirmCardFor>[1], deps: ConfirmReadDeps = DOORS.CONFIRM_READ_DEPS) =>
+        DOORS.readConfirmCardFor(userId, req, { ...deps, view: (campaignId, viewer) => deps.view(campaignId, viewer).catch(plainThrow) }) } } },
+    { name: "R-UI.17d · the dialog unclosable while a refusal's figures are read again — `loading` held for the whole confirmation", expect: [L.u17],
+      impl: () => withSources({ card: plantIn(REAL_SOURCES.card, "loading={posting}", "loading={confirming}") }) },
+    { name: "R-UI.17e · a busy confirmation recounted — the dialog asks again into the same full house", expect: [L.u17],
+      impl: { ui: { ...REAL.ui, outcome: (r: ConfirmAnswerLike) => (!r.ok && r.reason === "busy" ? { kind: "recount" as const, notice: r.error } : COPY.confirmOutcome(r)) } } },
+    { name: "R-UI.18 · ⛔ the read compares before the role rule — a masked viewer learns whether a hidden filter equals their guess", expect: [L.u18],
+      impl: { ui: { ...REAL.ui, readDeps: (impl: Impl) => ({ ...realReadDeps(impl), refusal: () => null }) } } },
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);

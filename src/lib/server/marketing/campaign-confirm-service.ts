@@ -82,7 +82,7 @@ import {
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { audienceSplit } from "@/lib/server/marketing/audience-split";
 import type { AudienceSplitResult } from "@/lib/server/marketing/audience-split";
-import { audienceFence, readCampaignAudience, signFence, verifyFence } from "@/lib/server/marketing/audience-fence";
+import { CONFIRM_SLOT_WAIT_MS, audienceFence, readCampaignAudience, signFence, verifyFence } from "@/lib/server/marketing/audience-fence";
 import type { AudienceFence, FenceSampleRow } from "@/lib/server/marketing/audience-fence";
 import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings";
 import type { SettingsReload } from "@/lib/server/marketing/sms-settings";
@@ -379,8 +379,8 @@ export type ConfirmDeps = {
   refusal: typeof campaignAudienceRefusal;
   /** May this viewer see a breakdown before the campaign sends? (`breakdownVisible`, OD65 — the read cell alone.) */
   breakdown: typeof breakdownVisible;
-  /** The split door, asked for a reader only (`audienceSplit`). */
-  split: (f: ContactAudienceFilter, viewerReads: boolean) => Promise<AudienceSplitResult>;
+  /** The split door, asked for a reader only (`audienceSplit`) — U40b: with what is left of the read's wait for a slot. */
+  split: (f: ContactAudienceFilter, viewerReads: boolean, waitMs?: number) => Promise<AudienceSplitResult>;
   /** E18 (`sourceLineRefusal`). */
   sourceRule: typeof sourceLineRefusal;
   /** The saved source line READ FRESH (`readSavedSourcePhrase`) — by the view and by the confirmation alike. */
@@ -413,7 +413,7 @@ export const CONFIRM_DEPS: Readonly<ConfirmDeps> = Object.freeze({
   decide: decideConfirm,
   refusal: campaignAudienceRefusal,
   breakdown: breakdownVisible,
-  split: (f: ContactAudienceFilter, viewerReads: boolean) => audienceSplit(f, { viewerReads }),
+  split: (f: ContactAudienceFilter, viewerReads: boolean, waitMs?: number) => audienceSplit(f, { viewerReads, waitMs }),
   sourceRule: sourceLineRefusal,
   freshLine: readSavedSourcePhrase,
   settings: reloadMarketingSmsSettings,
@@ -508,12 +508,13 @@ const moneyWords = (viewer: ConfirmViewer, s: Pick<Spend, "costTzs" | "limitTzs"
 /**
  * ⭐ OD65 · THE AUDIENCE AS THIS VIEWER MAY SEE IT. A viewer who may not read a number: the count alone, over the FENCE's
  * count — the gate is never asked (the split door is not called). A reader: U38b's ONE view-model over the split door,
- * or null when the split failed — never zeros.
+ * or null when the split failed — never zeros. ⭐ U40b · the split waits for a slot at most `waitMs` (what is left of the
+ * read's `CONFIRM_SLOT_WAIT_MS`): no slot in time is a split that failed — the count without its figures.
  */
-async function audienceViewFor(filter: ContactAudienceFilter, count: number, viewer: ConfirmViewer, deps: ConfirmDeps): Promise<AudienceSplitView | null> {
+async function audienceViewFor(filter: ContactAudienceFilter, count: number, viewer: ConfirmViewer, deps: ConfirmDeps, waitMs?: number): Promise<AudienceSplitView | null> {
   if (!deps.breakdown(viewer.reads)) return audienceCountView(contactAudienceKey(filter), count);
   try {
-    const r = await deps.split(filter, viewer.reads);
+    const r = await deps.split(filter, viewer.reads, waitMs);
     return r.ok ? audienceSplitView(r.split, viewer.reads) : null;
   } catch {
     return null;
@@ -544,9 +545,13 @@ export async function campaignConfirmView(campaignId: string, viewer: ConfirmVie
   if (deps.refusal(filter, viewer.reads) !== null) return uncounted("audience_refused", CONFIRM_SERVICE_COPY.audience_refused(none));
 
   // ⛔ OD67 · what this viewer may see of the fence — a viewer who may not read a number: typed, no key, no list.
+  // ⭐ U40b · the read waits for the split door's slots CONFIRM_SLOT_WAIT_MS in all: the fence's count first (no slot in
+  // time THROWS `AudienceSlotBusy`), then a reader's split with what is left of it.
+  const started = deps.now().getTime();
   const seen = deps.shape(await deps.fence(row), viewer.reads);
   const count = seen.claim.count;
-  const split = await audienceViewFor(filter, count, viewer, deps);
+  const left = Math.max(0, CONFIRM_SLOT_WAIT_MS - (deps.now().getTime() - started));
+  const split = await audienceViewFor(filter, count, viewer, deps, left);
   const spend = await spendOf(row, count, deps);
   const line = deps.sourceRule(row, filter, await freshLineOf(deps));
   // The order is the confirmation's: nobody (the gate's first answer), then E18, then the estimate.

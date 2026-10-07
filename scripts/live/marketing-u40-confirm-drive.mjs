@@ -19,6 +19,8 @@
  *     sentence.
  *   · COUNTED ON DEMAND — with every count held 3 s, the press reads "Counting the audience…" (busy), then the dialog
  *     opens on the figures counted for that press.
+ *   · ⛔ NEVER OPENS BY ITSELF (the re-review's MINOR 1) — pressed, then the name typed while it counts: the answer lands
+ *     on a form that says "Save first", and no dialog; the change undone, the card is back at rest and STILL no dialog.
  *   · BLOCKED BY THE READ — the source line missing (before the owner saves one), nobody matching, and over the campaign
  *     limit (the owner lowers it to TZS 100): the service's own sentence on the card WITHOUT "Nothing was confirmed", with
  *     "Check again"; the owner reads the cost and the limit, GROWTH the same refusal with NO figure — no "TZS" on GROWTH's
@@ -37,6 +39,8 @@
  *     number with the server's sentence on top, the box cleared and the focus back on the box or on Cancel — photographed
  *     the moment the sentence lands and settled, at 1280 and 360, with motion and with reduced motion; the panel does not
  *     move between the two (no entrance replayed).
+ *   · ⭐ THE RE-READ IS CLOSABLE (the re-review's MINOR 3) — the refusal's figures read again with every count held 4 s:
+ *     Confirm held (off, working), Cancel on, and Escape closes the dialog; the fresh figures land after — and open nothing.
  *   · REFUSED · a stale draft (saved in a second tab while the dialog is open): the dialog closes, "Not confirmed" with the
  *     server's sentence, and the card says to reload.
  *   · REFUSED · not_draft — the same draft confirmed in a second tab while this one's dialog is open: the dialog closes, the
@@ -55,7 +59,9 @@
  * is not driven — no dev switch makes the audit chain refuse a row; §UI 13 holds its toast; (3) the action's own role
  * refusal (a grant taken away while the page is open) is not driven — the dev seed can only grant a view without the act,
  * which the page's act gate answers (driven); §UI 13 holds the refusal's toast; (4) PREPARING, PAUSED and CANCELLED are held
- * by §UI 8 — RUNNING and DONE are driven from the campaign seed.
+ * by §UI 8 — RUNNING and DONE are driven from the campaign seed; (5) "busy" (no slot of the split door's in
+ * CONFIRM_SLOT_WAIT_MS) is not driven — no dev switch holds both slots for 15 s; §UI 17 holds the read's and the
+ * confirmation's answers, and the bound.
  *
  * Run (in-memory, zero prod risk; a FRESH server — the drive saves the source line, which nothing clears, and adds to the
  * "moved" tag every run; remove .next before the boot: a stale .next 404s every /api/dev-test route):
@@ -203,7 +209,8 @@ async function staffCtx(role, viewport, reducedMotion, n) {
   page.on("dialog", (d) => { d.accept().catch(() => {}); });
   page.on("pageerror", (e) => { pageErrors.push(`${role} ${viewport.width}: ${String(e?.message ?? e).slice(0, 200)}`); });
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
-  // Every officer's save budget (`marketing.campaignSave`, 30 then 10 a minute) full again: this drive saves a dozen drafts.
+  // Every officer's budgets full again — the save's (`marketing.campaignSave`, 30 then 10 a minute) and the Confirm card's
+  // read (`marketing.campaignConfirmRead`, 20 then 6 a minute): this drive saves a dozen drafts and presses a dozen times.
   await seed(page, "reset-rate-limits");
   // E.164, as every house drive seeds: +255, then 70, five run digits, the role's code and a slot.
   const phone = `+25570${runId}${ROLE_CODE[role]}${n}`;
@@ -476,6 +483,46 @@ async function refusalRearms(page, tag, label) {
   await closeDialog(page);
 }
 
+/**
+ * ⭐ THE RE-READ IS CLOSABLE (the re-review's MINOR 3): no request of the dialog's is in flight while a refusal's figures are
+ * read again — Confirm is held (off, working), Cancel is on, and Escape closes it; the fresh figures land after the officer
+ * has gone, and open nothing (MINOR 1).
+ */
+async function rereadClosable(page, tag, label) {
+  await saveDraft(page, MOVED, `U40b closable ${label} ${runId}`);
+  await press(page);
+  ok(`${tag} · THE RE-READ IS CLOSABLE · the dialog opened on the "moved" tag`, await has(page, DLG), await dialogTitle(page));
+  await seed(page, "marketing-contacts-seed?u23moved=1");
+  await typeCount(page);
+  // Every count held 4 s: the confirmation answers at once (refused — one more person), and its figures are read again, held.
+  await seed(page, "marketing-audience-seed?delayMs=4000");
+  try {
+    await page.locator(D.confirm).click();
+    await page.waitForFunction(([confirmSel, cancelSel]) => {
+      const c = document.querySelector(confirmSel);
+      const x = document.querySelector(cancelSel);
+      return c !== null && x !== null && c.hasAttribute("disabled") && c.getAttribute("aria-busy") === "true" && !x.hasAttribute("disabled");
+    }, [D.confirm, D.cancel], { timeout: 30000 }).catch(() => {});
+    const held = {
+      confirmOff: (await isDisabled(page, D.confirm)) === true,
+      cancelOn: (await isDisabled(page, D.cancel)) === false,
+      busy: (await attr(page, DLG, "aria-busy")) === "true",
+    };
+    await shoot(page, `${tag}-reread-held`, null);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction((s) => !document.querySelector(s), DLG, { timeout: 5000 }).catch(() => {});
+    const closed = !(await has(page, DLG));
+    ok(`${tag} · THE RE-READ IS CLOSABLE · ⭐ while a refusal's figures are read again: Confirm held (off, working), Cancel on — and Escape closes the dialog`,
+      held.confirmOff && held.cancelOn && held.busy && closed, JSON.stringify({ ...held, closed }));
+  } finally {
+    await seed(page, "marketing-audience-seed?delayMs=0");
+  }
+  await wait(5000);
+  ok(`${tag} · THE RE-READ IS CLOSABLE · ⛔ the fresh figures landed after the officer closed it — and opened nothing`,
+    !(await has(page, DLG)), `card ${await cardState(page)}`);
+  await dismissToasts(page);
+}
+
 const VPS = [
   { name: "1280", width: 1280, height: 800 },
   { name: "360", width: 360, height: 780 },
@@ -637,6 +684,27 @@ for (const role of ["GROWTH", "ADMIN"]) {
     await stateShot(page, tag, "blocked-audience-unsaved", SAVE_FIRST);
     await reopen(page, typedId);
 
+    // ── ⛔ NEVER OPENS BY ITSELF (the re-review's MINOR 1) — typed while it counts, then undone: no dialog nobody pressed for ──
+    await seed(page, "marketing-audience-seed?delayMs=3000");
+    try {
+      const nameNow = await page.locator(S.name).inputValue().catch(() => "");
+      await page.locator(S.trigger).first().click();
+      await wait(400);
+      await page.locator(S.name).fill(`${nameNow} (typed while it counted)`);
+      await page.waitForFunction((state) => document.querySelector(state)?.getAttribute("data-confirm-card") !== "counting", S.state, { timeout: 60000 }).catch(() => {});
+      await wait(600);
+      ok(`${tag} · NEVER OPENS BY ITSELF · the answer landed while the name was being typed: no dialog, "${SAVE_FIRST}" on the card`,
+        !(await has(page, DLG)) && (await textOf(page, S.blocked)) === SAVE_FIRST, `${await cardState(page)} · ${await textOf(page, S.blocked)}`);
+      await page.locator(S.name).fill(nameNow);
+      await wait(1500);
+      ok(`${tag} · NEVER OPENS BY ITSELF · ⛔ the change undone: the dialog does NOT pop open on the figures from before — the card at rest, the trigger enabled`,
+        !(await has(page, DLG)) && (await isDisabled(page, S.trigger)) === false && (await textOf(page, S.honestyCard)) === HONESTY,
+        `${await cardState(page)} · dialog ${await has(page, DLG)}`);
+      await stateShot(page, tag, "never-opens-by-itself", HONESTY);
+    } finally {
+      await seed(page, "marketing-audience-seed?delayMs=0");
+    }
+
     // ── COUNTED ON DEMAND → TYPED OPEN ───────────────────────────────────────────────────────────────────────────────
     await seed(page, "marketing-audience-seed?delayMs=3000");
     try {
@@ -769,6 +837,11 @@ for (const role of ["GROWTH", "ADMIN"]) {
 
     // ── ⭐ REFUSED · audience_moved — re-armed, never remounted ─────────────────────────────────────────────────────
     await refusalRearms(page, tag, `${role} ${vp.name}`);
+
+    // ── ⭐ THE RE-READ IS CLOSABLE — no request of the dialog's in flight ──────────────────────────────────────────────
+    await rereadClosable(page, tag, `${role} ${vp.name}`);
+    // The officer's read budget (`marketing.campaignConfirmRead`, 20 at once) full again for the steps that follow.
+    await seed(page, "reset-rate-limits");
 
     // ── REFUSED · a stale draft — saved in a second tab while this one's dialog is open ─────────────────────────────
     await saveDraft(page, PLAYERS13, `U40b stale ${role} ${vp.name} ${runId}`);

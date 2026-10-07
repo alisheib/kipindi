@@ -266,6 +266,19 @@ export const COMPOSE_CONFIRM_CLOSED: Readonly<Record<Exclude<SmsCampaignStatus, 
 };
 /** The view could not be counted: said as such, with "Count again" beside it — never a zero, never a word on the campaign. */
 export const COMPOSE_CONFIRM_UNCOUNTED = "Couldn't count this audience just now.";
+/** ⭐ U40b · no slot of the split door's came free in time (`CONFIRM_SLOT_WAIT_MS`) — the trigger's read counted nothing
+ *  (the U40b re-review's MINOR 3, in its own words); "Count again" beside it. */
+export const COMPOSE_CONFIRM_BUSY = "The audience is being counted for other work right now — nothing was confirmed. Try again in a moment.";
+/** ⭐ U40b · the same, for the confirmation itself: its own count found no slot in time — BEFORE the one write, so this press
+ *  confirmed nothing. The dialog stays open with the typing kept. */
+export const COMPOSE_CONFIRM_BUSY_CONFIRM =
+  "Couldn't confirm — the audience is being counted for other work right now, so nothing was confirmed. Try again in a moment.";
+
+/** ⭐ U40b · the officer's read budget is spent (`marketing.campaignConfirmRead`) — nothing was counted. */
+export function composeConfirmReadRateLimited(retryAfterSec: number): string {
+  const seconds = Math.max(1, Math.ceil(retryAfterSec));
+  return `That is a lot of counts in a row — nothing was counted. Try again in ${seconds} s.`;
+}
 /** A blocked answer can be asked for again (the owner has set the source line, the audience has changed): the same read. */
 export const COMPOSE_CONFIRM_CHECK_AGAIN = "Check again";
 /** The draft was saved elsewhere after this form was loaded: what a confirmation would freeze is not the text on screen. */
@@ -356,7 +369,7 @@ export type ConfirmAnswerFacts =
       ok: true;
       card: {
         status: SmsCampaignStatus | null;
-        read: "view" | "closed" | "stale" | "unsaved" | "gone" | "error";
+        read: "view" | "closed" | "stale" | "unsaved" | "busy" | "gone" | "error";
         view: null | { blocked: string | null; message: string | null; tier: ConfirmTier | null; count: number | null; watermark: string | null };
       };
     }
@@ -388,10 +401,12 @@ export type ConfirmTriggerFacts = {
 /** ⭐ What the read's answer says about opening — null when the dialog may open on it, else the reason in words. */
 function answerBlocked(a: ConfirmAnswerFacts | null): string | null {
   if (a === null) return null;
-  if (!a.ok) return a.reason === "role" ? a.error : COMPOSE_CONFIRM_UNCOUNTED;
+  // The action's own refusals in their own words — the gate's, and a spent read budget's; a read lost in transit, as such.
+  if (!a.ok) return a.reason === "role" || a.reason === "rate_limited" ? a.error : COMPOSE_CONFIRM_UNCOUNTED;
   const c = a.card;
   if (c.read === "gone") return composeTriggerSentence(CONFIRM_REFUSAL_COPY.not_found({ fresh: null, shown: null }));
   if (c.read === "error") return COMPOSE_CONFIRM_UNCOUNTED;
+  if (c.read === "busy") return COMPOSE_CONFIRM_BUSY;
   if (c.read === "closed") return c.status !== null && c.status !== "DRAFT" ? COMPOSE_CONFIRM_CLOSED[c.status] : COMPOSE_CONFIRM_ALREADY;
   if (c.read === "stale") return COMPOSE_CONFIRM_STALE;
   if (c.read === "unsaved") return COMPOSE_CONFIRM_SAVE_FIRST;
@@ -410,12 +425,23 @@ export function confirmAnswerReady(a: ConfirmAnswerFacts | null): boolean {
   return a !== null && answerBlocked(a) === null;
 }
 
-/** Which way back a blocked answer offers: a read that failed is counted again, a blocked view checked again; else none. */
+/** Which way back a blocked answer offers: a read that failed (or found no slot in time) is counted again, a blocked view
+ *  checked again; else none. */
 export function confirmAnswerRetry(a: ConfirmAnswerFacts | null): "count" | "check" | null {
   if (a === null) return null;
   if (!a.ok) return a.reason === "role" ? null : "count";
-  if (a.card.read === "error") return "count";
+  if (a.card.read === "error" || a.card.read === "busy") return "count";
   return a.card.read === "view" && answerBlocked(a) !== null ? "check" : null;
+}
+
+/**
+ * ⭐ MAY THE DIALOG OPEN ON THIS ANSWER, NOW? (the U40b re-review's MINOR 1) — only on an answer it may open on, for the form
+ * still on screen (the key it was asked for), while nothing on the page blocks the trigger. An answer that lands after the
+ * officer typed, picked another audience or saved is kept for its own form — and never opens the dialog by itself, then
+ * or later: opening is a press's, never a render's.
+ */
+export function confirmOpensOn(o: { answer: ConfirmAnswerFacts | null; askedFor: string; onScreen: string; pageClear: boolean }): boolean {
+  return o.pageClear && o.askedFor === o.onScreen && confirmAnswerReady(o.answer);
 }
 
 /**
@@ -455,8 +481,8 @@ export type ConfirmAnswerLike =
 /**
  * ⭐ THE CONFIRMATION'S ANSWER, ROUTED:
  *   · `confirmed` — close, read the page again (read-only now), then say it; a record that did not land is said too;
- *   · `keep` — the dialog STAYS OPEN with the typing kept: a failure that left the row a draft, or one nobody can vouch for
- *     (said until it is read);
+ *   · `keep` — the dialog STAYS OPEN with the typing kept: a failure that left the row a draft, one nobody can vouch for
+ *     (said until it is read), or a count that found no slot in time (`busy` — nothing was confirmed);
  *   · `close` — the role's refusal: closed where it stands; `already` — the campaign is no longer a draft (or is gone):
  *     closed, the page read again, and the toast titled from the row it reads (`composeNotDraftTitle`);
  *   · `recount` — every other refusal: the view is asked for again, and the dialog RE-ARMS on it with the server's sentence
@@ -480,6 +506,7 @@ export function confirmOutcome(r: ConfirmAnswerLike): ConfirmOutcome {
   }
   const reason = r.reason;
   if (reason === "failed") return { kind: "keep", toast: { title: COMPOSE_CONFIRM_FAILED, variant: "danger" } };
+  if (reason === "busy") return { kind: "keep", toast: { title: COMPOSE_CONFIRM_BUSY_CONFIRM, variant: "warning" } };
   if (reason === undefined || reason === "unfinished") return { kind: "keep", toast: { title: COMPOSE_CONFIRM_UNFINISHED, variant: "danger", durationMs: 0 } };
   if (reason === "role") return { kind: "close", toast: { title: COMPOSE_CONFIRM_REFUSED, description: r.error, variant: "danger" } };
   if (reason === "not_draft" || reason === "not_found") return { kind: "already", description: r.error, gone: reason === "not_found" };

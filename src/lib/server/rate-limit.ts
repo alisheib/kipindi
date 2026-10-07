@@ -168,6 +168,11 @@ export const RATE_RULES: Record<string, RateRule> = {
   // row that is never pruned — the case `contacts.write` bounds on the contacts form. 30 at once and 10 a minute cover
   // real editing; the steady rate is what stops a script.
   "marketing.campaignSave": { capacity: 30, refillPerMin: 10 },
+  // U40b · the Confirm card's READ (/admin/campaigns/new), per officer (the U40b re-review): each one walks the whole
+  // audience — and a reader's, the send gate over every number — in one of the split door's two per-process slots, which
+  // bets share. 20 at once covers checking again and again while a draft is finished; one every 10 s after that is what
+  // stops a script (or a held-down key) from holding the slots for everyone. A refused read counts nothing.
+  "marketing.campaignConfirmRead": { capacity: 20, refillPerMin: 6 },
   // U33b-L · recording or revoking a LIST BASIS, keyed on the OFFICER. Each recording is a row kept as seven-year
   // evidence and a COMPLIANCE audit row that is never pruned, and it widens who the platform may lawfully message —
   // so the budget is deliberately small and its steady rate is slow: 10 at once, then one a minute.

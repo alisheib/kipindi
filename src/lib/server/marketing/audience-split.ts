@@ -26,7 +26,8 @@
  * refused a search, and is handed a sample with no per-row detail — no contact or account id, no name, no verdict —
  * because a "will receive" row is today a player's (every contact-only number is refused until U33).
  * ⭐ THE POOL IS SHARED WITH BETS: one split runs per filter key at a time (a second asker joins it), and at most
- * `AUDIENCE_SPLITS_PER_PROCESS` run at once — a third waits for a slot. Each split's reads run one after another.
+ * `AUDIENCE_SPLITS_PER_PROCESS` run at once — a third waits for a slot (an asker may bound that wait and be answered
+ * "busy": the confirmation's own count and its read — U40b). Each split's reads run one after another.
  *
  * Guard: `test:campaign-audience` (in `predeploy`, in-process `--prove-red`).
  */
@@ -139,6 +140,10 @@ export type AudienceSplitOptions = {
   chunk?: number;
   /** A suite's window onto each number's slot, in walk order. Production never passes it. */
   observe?: (row: CampaignAudienceRow, slot: AudienceSlot) => void;
+  /** ⭐ U40b · the most this asker waits for a slot, in ms — past it `AudienceSlotBusy`, nothing walked (a reader's split in
+   *  the confirmation's view: the U40b re-review's MINOR 3). A bounded asker computes its OWN split, never joining one
+   *  nor lending its own: its line may end in "busy", which no joiner asked for. */
+  waitMs?: number;
 };
 
 /** Every slot's count, as the walk tallies it. */
@@ -377,14 +382,36 @@ const SPLITS: SplitState = globalThis.__50PICK_AUDIENCE_SPLITS ?? (globalThis.__
   flights: new Map(), running: 0, waiting: [],
 });
 
+/**
+ * ⭐ U40b · NO SLOT IN TIME — what an asker that bounds its wait (`waitMs`) is answered instead of being left in the line:
+ * nothing was walked or counted, and the caller says "busy" (the confirmation's read and its own count — the U40b
+ * re-review's MINOR 3). Recognised by its code (`isAudienceSlotBusy`), so it survives being caught and thrown again.
+ */
+export class AudienceSlotBusy extends Error {
+  readonly code = "AUDIENCE_SLOT_BUSY";
+  readonly waitedMs: number;
+  constructor(waitedMs: number) {
+    super(`audience slot: none free within ${waitedMs} ms — nothing was counted`);
+    this.name = "AudienceSlotBusy";
+    this.waitedMs = waitedMs;
+  }
+}
+export function isAudienceSlotBusy(err: unknown): err is AudienceSlotBusy {
+  return err !== null && typeof err === "object" && (err as { code?: unknown }).code === "AUDIENCE_SLOT_BUSY";
+}
+
 /** At most `AUDIENCE_SPLITS_PER_PROCESS` splits at once: a full house waits, and a finished split hands its slot
  *  STRAIGHT to the next in line (no gap a newcomer could take, so the count never exceeds the limit).
- *  ⚠️ No deadline on the wait or on a slot: a split holds its slot until its reads settle, and a failed read releases it
+ *  ⭐ U40b · A BOUNDED WAIT for the asker that names one (`waitMs`): past it the asker leaves the line — its place is taken
+ *  out, so no slot is ever handed to an asker that gave up — and is answered `AudienceSlotBusy`; 0 takes a slot only if one
+ *  is free now. Without `waitMs` the wait is as it was: unbounded.
+ *  ⚠️ No deadline on a slot once held: a split holds its slot until its reads settle, and a failed read releases it
  *  (`finally`). Two splits stuck on reads that never settle would hold both slots — with the database itself hung, which
- *  bets would feel first. A bounded wait ("busy — count again") is U52's to size with the other constants. */
-async function withSplitSlot<T>(work: () => Promise<T>): Promise<T> {
+ *  bets would feel first. The other constants are U52's to size. */
+async function withSplitSlot<T>(work: () => Promise<T>, waitMs?: number): Promise<T> {
   if (SPLITS.running < AUDIENCE_SPLITS_PER_PROCESS) SPLITS.running++;
-  else await new Promise<void>((resolve) => SPLITS.waiting.push(resolve));
+  else if (waitMs === undefined || waitMs === Number.POSITIVE_INFINITY) await new Promise<void>((resolve) => SPLITS.waiting.push(resolve));
+  else await slotWithin(waitMs);
   try {
     return await work();
   } finally {
@@ -394,8 +421,40 @@ async function withSplitSlot<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
+/** ⭐ U40b · a place in line for at most `waitMs`: handed a slot (the releaser hands it over, `running` unchanged), or out of
+ *  the line and `AudienceSlotBusy` — whichever comes first. Zero, less, or no number waits not at all; a finite wait past a
+ *  timer's longest (2³¹ − 1 ms) is that longest (an infinite one is the plain line, `withSplitSlot`). */
+function slotWithin(waitMs: number): Promise<void> {
+  if (!(waitMs > 0)) return Promise.reject(new AudienceSlotBusy(0));
+  const ms = Math.min(waitMs, 2_147_483_647);
+  return new Promise<void>((resolve, reject) => {
+    const take = (): void => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      const at = SPLITS.waiting.indexOf(take);
+      if (at < 0) return;
+      SPLITS.waiting.splice(at, 1);
+      reject(new AudienceSlotBusy(ms));
+    }, ms);
+    SPLITS.waiting.push(take);
+  });
+}
+
 /** One walk count per filter key, shared by every asker — on globalThis beside the split's own flights. */
 const COUNTS: Map<string, Promise<number>> = globalThis.__50PICK_AUDIENCE_COUNTS ?? (globalThis.__50PICK_AUDIENCE_COUNTS = new Map());
+
+/** ⭐ U40b · how one asker takes the walk's count. */
+export type WalkCountOptions = {
+  /** `false` — count afresh: never JOIN a count already running for this filter key (it may have begun before a contact
+   *  was added, and a confirmation would freeze the old number: OD27, the U40b re-review's MINOR 2), and never lend this
+   *  one to a later asker. */
+  join?: boolean;
+  /** The most this asker waits for a slot of its own, in ms — past it `AudienceSlotBusy`, nothing counted (MINOR 3).
+   *  ⚠️ It bounds this asker's OWN wait: a count it joins is awaited as that count runs — so give it with `join: false`. */
+  waitMs?: number;
+};
 
 /**
  * ⭐ OD65 · THE COUNT ALONE, UNDER THE SPLIT'S OWN LIMITS (the U38b review's #6) — what a viewer who may not read a number is
@@ -403,16 +462,18 @@ const COUNTS: Map<string, Promise<number>> = globalThis.__50PICK_AUDIENCE_COUNTS
  * split (`AUDIENCE_SPLITS_PER_PROCESS` — the pool is shared with bets), and ONE count per filter key that every asker joins.
  * The role rule is the caller's (`campaignAudienceRefusal`). `count` exists for in-process spies: a count other than the
  * real one computes its own, still inside the slots.
+ * ⭐ U40b · `opts` — the confirmation's own count (`audience-fence.ts`) takes it with `join: false` and a bounded wait.
  */
 export async function audienceWalkCount(
   f: ContactAudienceFilter,
   count: (f: ContactAudienceFilter) => Promise<number> = campaignAudienceCount,
+  opts: WalkCountOptions = {},
 ): Promise<number> {
-  const shared = count === campaignAudienceCount;
+  const shared = count === campaignAudienceCount && opts.join !== false;
   const key = contactAudienceKey(f);
   let flight = shared ? COUNTS.get(key) : undefined;
   if (flight === undefined) {
-    const mine = withSplitSlot(() => count(f));
+    const mine = withSplitSlot(() => count(f), opts.waitMs);
     if (shared) {
       COUNTS.set(key, mine);
       const clear = (): void => {
@@ -434,9 +495,10 @@ export function audienceSplitSlots(): { running: number; waiting: number; flight
  * ⭐ THE DOOR — what U38b's card, U39b's estimate and U40's confirmation call.
  *   1 · The role rule FIRST (`campaignAudienceRefusal`, X25): a refused filter is answered before any read.
  *   2 · ONE split per filter key: a second asker for the same audience JOINS the one running — each gets it shaped for
- *       their own role. (A call with injected options — a suite's clock, budget, chunk or observer, or its own
- *       dependencies — computes its own, still inside the per-process limit.)
- *   3 · At most `AUDIENCE_SPLITS_PER_PROCESS` at once.
+ *       their own role. (A call with injected options — a suite's clock, budget, chunk or observer, its own
+ *       dependencies, or a bounded wait — computes its own, still inside the per-process limit.)
+ *   3 · At most `AUDIENCE_SPLITS_PER_PROCESS` at once; an asker that bounds its wait (`waitMs`) is answered
+ *       `AudienceSlotBusy` past it (U40b).
  *   4 · The sample shaped for the viewer (`audienceSplitForViewer`).
  * ⛔ A read that fails THROWS to the caller — the card shows an error with "Count again", never a zero.
  */
@@ -448,11 +510,11 @@ export async function audienceSplit(
   const refused = deps.refusal(f, opts.viewerReads);
   if (refused !== null) return { ok: false, param: refused.param, reason: refused.reason };
   const shared = deps === AUDIENCE_SPLIT_DEPS && opts.now === undefined && opts.budgetMs === undefined
-    && opts.clock === undefined && opts.chunk === undefined && opts.observe === undefined;
+    && opts.clock === undefined && opts.chunk === undefined && opts.observe === undefined && opts.waitMs === undefined;
   const key = contactAudienceKey(f);
   let flight = shared ? SPLITS.flights.get(key) : undefined;
   if (flight === undefined) {
-    const mine = withSplitSlot(() => computeAudienceSplit(f, opts, deps));
+    const mine = withSplitSlot(() => computeAudienceSplit(f, opts, deps), opts.waitMs);
     if (shared) {
       SPLITS.flights.set(key, mine);
       const clear = (): void => {

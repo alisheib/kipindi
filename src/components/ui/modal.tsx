@@ -592,6 +592,14 @@ type ConfirmModalBase = {
    * commit: a blink.
    */
   armKey?: string | number;
+  /**
+   * ⭐ U40b · CONFIRM HELD, THE DIALOG STILL CLOSABLE — ADDITIVE AND OPTIONAL. The caller is acting on an answer and NO
+   * request of this dialog's is in flight (a refusal's figures read again; the page read again after a confirmation):
+   * Confirm shows the working spinner and cannot fire — a disabled submit button stops Enter in the box too — while Cancel,
+   * Esc, ✕ and the scrim all still close it. `loading` is for a request in flight, and refuses every way out, because
+   * closing mid-request reads as cancelled while the server goes ahead.
+   */
+  confirmHeld?: boolean;
 };
 
 /* ⛔ THE TIER AND ITS TYPED WORD ARE ONE DECISION, NOT TWO INDEPENDENT PROPS (S-17,
@@ -695,6 +703,7 @@ export function ConfirmModal({
   maxWidth = 400,
   loading = false,
   armKey,
+  confirmHeld = false,
 }: ConfirmModalProps) {
   const { t } = useT();
   /* What the officer typed into the gate — read through `gateReading` before it is compared (vb6). */
@@ -778,7 +787,8 @@ export function ConfirmModal({
       safeFocus={cancelRef}
       /* ⭐ U40b · re-armed (`armKey`): the first target takes the focus again once nothing is in flight. */
       refocusKey={loading ? undefined : armKey}
-      ariaBusy={loading}
+      /* ⭐ U40b · held (`confirmHeld`): busy, but every way out stays open — only a request in flight (`loading`) holds it. */
+      ariaBusy={loading || confirmHeld}
       closeOnScrim={!loading}
       showClose={!loading}
     >
@@ -858,11 +868,11 @@ export function ConfirmModal({
           <button
             ref={confirmRef}
             type="submit"
-            disabled={!armed || loading}
-            aria-busy={loading || undefined}
+            disabled={!armed || loading || confirmHeld}
+            aria-busy={loading || confirmHeld || undefined}
             className={`${TONE_BTN[tone]} ${btnSize} w-full`}
           >
-            {loading ? (
+            {loading || confirmHeld ? (
               <span className="inline-flex items-center gap-2"><Spinner size={14} />{t.common.working}</span>
             ) : (
               confirmLabel ?? t.common.confirm
