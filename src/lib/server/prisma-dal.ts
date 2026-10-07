@@ -51,6 +51,7 @@ import {
 // count is zero-filled through its tallies, exactly as the memory twin's are (`test:dal-parity` §26).
 import {
   ATTENTION_ALWAYS, ATTENTION_WHEN_OWED, OUTSTANDING_RECIPIENT_STATUSES, tallyCampaignStatuses, tallyRecipientsByCampaign,
+  tallyRecipientOutcomes,
 } from "@/lib/marketing/campaign-status";
 // ⛔ The lens definitions have ONE home. Re-listing MONEY_KINDS here is how a kind added to
 // the registry later stops appearing under the filter a player would look for it under.
@@ -98,6 +99,7 @@ import type {
   SmsCampaignPage,
   SmsCampaignStatusCounts,
   SmsCampaignRecipientCountsById,
+  SmsCampaignRecipientOutcomeCount,
   SmsCampaignRecipientSettle,
   SmsCampaignSettleResult,
   SmsRecipientReceipt,
@@ -5020,6 +5022,14 @@ export const prismaDb = {
       const groups = await pc().smsCampaignRecipient.groupBy({ by: ["campaignId", "status"], where: { campaignId: { in: [...ids] } }, _count: { _all: true } });
       return tallyRecipientsByCampaign(ids, (groups as Array<{ campaignId: string; status: string; _count: { _all: number } }>)
         .map((g) => ({ campaignId: g.campaignId, status: g.status, count: g._count._all })));
+    },
+    /** U47b-1 · THE LIVE PAGE'S ONE GROUPBY — ONE groupBy by (status, skipReason, failureClass) WHERE the campaign is this
+     *  one — never the rows, never a counter (OD26) — answered through the ONE tally the memory twin answers with
+     *  (`tallyRecipientOutcomes`: merged, none dropped, one order). A null reason or class is a group of its own. */
+    countByOutcome: async (campaignId: string): Promise<SmsCampaignRecipientOutcomeCount[]> => {
+      const outcomes = await pc().smsCampaignRecipient.groupBy({ by: ["status", "skipReason", "failureClass"], where: { campaignId }, _count: { _all: true } });
+      return tallyRecipientOutcomes((outcomes as Array<{ status: string; skipReason: string | null; failureClass: string | null; _count: { _all: number } }>)
+        .map((g) => ({ status: g.status, skipReason: g.skipReason, failureClass: g.failureClass, count: g._count._all })));
     },
     /** U16a · THE ACCESS EXPORT'S READ — the rows about ONE number CREATED OR SENT on or after `sinceIso`, NEWEST first,
      *  ties broken on `id` the same way, at most `SMS_RECIPIENTS_BY_NUMBER_MAX` + 1 — the one past the cap only tells the

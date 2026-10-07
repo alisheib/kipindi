@@ -1369,6 +1369,23 @@ export const MUTATIONS = [
     expect: "26.u36.bycampaign.memory · the memory countsByCampaign answers exactly the ids named — filtered to them, zero-filled — and {} for none",
   },
   {
+    // 🔴 U47b-1 · the live page's ONE groupBy over the WHOLE recipient table on every poll — every campaign's rows counted
+    // as this one's.
+    name: "prisma-dal.ts — countByOutcome groups the whole recipient table",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'groupBy({ by: ["status", "skipReason", "failureClass"], where: { campaignId }, _count: { _all: true } })',
+    to: 'groupBy({ by: ["status", "skipReason", "failureClass"], _count: { _all: true } })',
+    expect: "26.u47b.outcome.prisma · ⛔ the Prisma countByOutcome is ONE groupBy by (status, skipReason, failureClass) WHERE the campaign is the one asked — never the rows, never a count — answered through tallyRecipientOutcomes",
+  },
+  {
+    // U47b-1 · the memory twin counts every campaign's rows as this one's: green in memory only by luck of the fixtures.
+    name: "store.ts — the memory countByOutcome stops filtering to its campaign",
+    file: "src/lib/server/store.ts",
+    from: ".filter((r) => r.campaignId === campaignId)",
+    to: ".filter(() => true)",
+    expect: "26.u47b.outcome.memory · the memory countByOutcome answers ONE campaign's rows — filtered to it — through the same tallyRecipientOutcomes",
+  },
+  {
     // ⛔ A dev switch reaching the production twin: one flag away from every officer seeing "Couldn't load".
     name: "prisma-dal.ts — the Prisma campaign page reads the dev read fault",
     file: "src/lib/server/prisma-dal.ts",

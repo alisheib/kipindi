@@ -30,7 +30,7 @@ import {
 // U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
 // statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
 // back from this file, so there is no cycle.
-import { tallyCampaignStatuses, tallyRecipientsByCampaign, wantsAttention } from "@/lib/marketing/campaign-status";
+import { tallyCampaignStatuses, tallyRecipientsByCampaign, tallyRecipientOutcomes, wantsAttention } from "@/lib/marketing/campaign-status";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import type { ConfirmTierColumn } from "@/lib/marketing/campaign-confirm";
 // ⛔ The same lens definitions the Prisma DAL reads — one home (§0a), so the two
@@ -575,6 +575,14 @@ export type SmsCampaignStatusCounts = Record<SmsCampaignStatus, number>;
 export type SmsCampaignRecipientStatusCounts = Record<SmsCampaignRecipientStatus, number>;
 /** Each campaign asked about, by id, with its recipients by status — and only those. */
 export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipientStatusCounts>;
+/** U47b-1 · ONE group of one campaign's recipient rows by (status, skipReason, failureClass) — `countByOutcome`, the live
+ *  page's ONE groupBy (ENGINE-SPEC §4.15 decision 8). ⛔ Never stored (OD26): always counted from the rows. */
+export type SmsCampaignRecipientOutcomeCount = {
+  status: SmsCampaignRecipientStatus;
+  skipReason: string | null;
+  failureClass: string | null;
+  count: number;
+};
 
 /* ── U43a · THE ENGINE'S RECIPIENT DOORS — claim, claimedBy, settle, findStranded, requeueHeld, lastActivity, and
  * `smsMessage.findByTargets` (ENGINE-SPEC §4.10; `test:dal-parity` §26.u43a, `test:campaign-models` §2.14–§2.28).
@@ -4172,6 +4180,15 @@ const memoryDb = {
       return tallyRecipientsByCampaign(ids, recipients
         .filter((r) => wanted.has(r.campaignId))
         .map((r) => ({ campaignId: r.campaignId, status: r.status, count: 1 })));
+    },
+    /** U47b-1 · THE LIVE PAGE'S ONE GROUPBY — one campaign's rows by (status, skipReason, failureClass), every group with
+     *  its count, through the ONE tally both twins answer with (`tallyRecipientOutcomes`: merged, none dropped, one
+     *  order). The memory twin tallies because it never serves production; the Prisma twin asks ONE groupBy. */
+    countByOutcome: (campaignId: string): SmsCampaignRecipientOutcomeCount[] => {
+      const rows: StoredSmsCampaignRecipient[] = Array.from(store.smsCampaignRecipients.values());
+      return tallyRecipientOutcomes(rows
+        .filter((r) => r.campaignId === campaignId)
+        .map((r) => ({ status: r.status, skipReason: r.skipReason, failureClass: r.failureClass, count: 1 })));
     },
     /** U16a · THE ACCESS EXPORT'S READ — the rows about ONE number CREATED OR SENT on or after `sinceIso`, NEWEST first
      *  (`createdAt`, then `id`, both descending: the Prisma twin's `orderBy`), at most `SMS_RECIPIENTS_BY_NUMBER_MAX` + 1 —

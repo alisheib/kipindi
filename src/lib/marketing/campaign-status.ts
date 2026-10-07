@@ -49,7 +49,7 @@
  */
 import type {
   StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignStatusCounts,
-  SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById,
+  SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById, SmsCampaignRecipientOutcomeCount,
 } from "@/lib/server/store";
 
 /* ══ THE STATUS RAIL ═══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -178,6 +178,49 @@ export function tallyRecipientsByCampaign(
   return out;
 }
 
+/* ══ U47b-1 · THE LIVE PAGE'S ONE GROUPBY — a campaign's rows by (status, skipReason, failureClass) ═══════════════ */
+
+/** The text order of two group keys — none first, then byte order (never the locale's, so both twins sort alike). */
+const keyOrder = (a: string | null, b: string | null): number => (a === b ? 0 : a === null ? -1 : b === null ? 1 : a < b ? -1 : 1);
+
+/**
+ * ⭐ U47b-1 · ONE campaign's recipient rows grouped by (status, skipReason, failureClass) — what both twins'
+ * `countByOutcome` answer through, the live page's ONE groupBy (ENGINE-SPEC §4.15 decision 8; OD26: counted from the rows,
+ * never a counter). Groups of one key are merged, a group of none is dropped, and the answer is in ONE order — the
+ * schema's status order, then the skip reason, then the failure class (none first) — so the two twins answer alike.
+ * ⛔ A status this code does not know REFUSES, as every tally here does: a page that dropped those rows would read the
+ * campaign as smaller than it is.
+ */
+export function tallyRecipientOutcomes(
+  raw: ReadonlyArray<{ status: string; skipReason: string | null; failureClass: string | null; count: number }>,
+): SmsCampaignRecipientOutcomeCount[] {
+  const by = new Map<string, SmsCampaignRecipientOutcomeCount>();
+  for (const r of raw) {
+    if (!own(RECIPIENT_SIDE, r.status)) throw new Error(`[campaign-status] "${r.status}" is a recipient status this code does not know`);
+    const skipReason = typeof r.skipReason === "string" ? r.skipReason : null;
+    const failureClass = typeof r.failureClass === "string" ? r.failureClass : null;
+    const key = JSON.stringify([r.status, skipReason, failureClass]);
+    const was = by.get(key);
+    if (was !== undefined) was.count += r.count;
+    else by.set(key, { status: r.status as SmsCampaignRecipientStatus, skipReason, failureClass, count: r.count });
+  }
+  const rank = (s: SmsCampaignRecipientStatus): number => RECIPIENT_STATUSES.indexOf(s);
+  return [...by.values()]
+    .filter((g) => g.count > 0)
+    .sort((a, b) => rank(a.status) - rank(b.status) || keyOrder(a.skipReason, b.skipReason) || keyOrder(a.failureClass, b.failureClass));
+}
+
+/** U47b-1 · the rows by status, zero-filled, summed from the ONE groupBy's groups — never a second read. ⛔ An unknown
+ *  status REFUSES. */
+export function outcomeStatusCounts(groups: readonly SmsCampaignRecipientOutcomeCount[]): SmsCampaignRecipientStatusCounts {
+  const out = zeroRecipientStatusCounts();
+  for (const g of groups) {
+    if (!own(out, g.status)) throw new Error(`[campaign-status] "${String(g.status)}" is a recipient status this code does not know`);
+    out[g.status] += g.count;
+  }
+  return out;
+}
+
 /* ══ PROGRESS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 export type CampaignProgress = { phase: "preparing" | "sending"; value: number; max: number };
@@ -254,8 +297,13 @@ const MARKETING_FLOOR_SENTENCE = "Paused — the SMS credit reached what is kept
  * "no answer" and are never sent again by themselves) and `before_send_unanswered` (the engine could not re-check its own
  * claims just before the wire, three slices running). The slice also pauses with U42's `list_over_confirmed_sending` and
  * `audience_unreadable` when it finds them itself (the U42 re-review).
+ * ⭐ U47b-1 (ENGINE-SPEC §3.4): an officer's own two — `officer_paused` (Pause) and `officer_stopped` (Stop), written by
+ * `campaign-control.ts`. The live page names who and when from the act's audit row (`campaign-live.ts`); the list says
+ * these words.
  */
 const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
+  officer_paused: "Paused by an officer.",
+  officer_stopped: "Stopped by an officer.",
   BALANCE_FLOOR: "The SMS credit is below its floor. Top it up, then resume.",
   NOT_CONFIGURED: "SMS sending is not set up on the server.",
   PROVIDER_UNRECOGNISED: "The SMS provider setting is not one this platform knows.",

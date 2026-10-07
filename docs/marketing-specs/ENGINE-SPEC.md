@@ -2100,6 +2100,70 @@ when unset (empty string compares equal).
 - **U47b-2 · the page** (8–13 h): the route, its actions (each with its caller in the same push), the client, the driver, the
   list link and `CAMPAIGN_SCREENS.detail`, the REACHED row, the composer link, V1/V4–V10, the drive.
 
+✅ **AS BUILT — U47b-1 (S14, 2026-10-07; U47b-2 builds on exactly these shapes): every place the build reads this section, said
+once.** Files: `src/lib/server/marketing/campaign-control.ts` (the six services, `CONTROL_DEPS`), `campaign-live.ts`
+(`campaignLiveView`, `LIVE_VIEW_DEPS`, the pure rules), `src/app/admin/campaigns/[id]/live-copy.ts` (the words the services
+RETURN — pure, no directive; U47b-2 adds the page's own words to it), `scripts/campaign-visuals.test.mts` §svc.
+- ⭐ **Decision 8's ONE groupBy is a NEW READ DOOR** — no door grouped the rows by skip reason, and the table above named none:
+  `smsCampaignRecipient.countByOutcome(campaignId)` in BOTH twins (named type `SmsCampaignRecipientOutcomeCount`; Prisma: ONE
+  `groupBy` by `(status, skipReason, failureClass)` WHERE the campaign; both answer through the pure `tallyRecipientOutcomes`
+  in `campaign-status.ts` — merged, none dropped, ONE order — and `outcomeStatusCounts` sums it per status). Every figure of
+  the view is read off that one answer, asked ONCE per view. Held by `test:dal-parity` §26.u47b (+ two anchors),
+  `test:campaign-privacy`'s `P10_ACCOUNTED` (a read) and `db:probe-campaign-models` §13 (written, never run by the builder).
+  ⚠️ This makes U47b-1 DAL-serial after U43b-2's fixes (§0.2).
+- **The KPIs:** waiting = PENDING + HELD · handed over = SENT + DELIVERED (the network took it; U48a splits the receipts off) ·
+  failed · not sent = SKIPPED · no answer = UNCONFIRMED — summing to "On campaign" (the rows). **"Not sent" by reason:** the
+  five U38b words ALWAYS (zeros too, as U38b's card), dominant first, ties in U38b's order; then "Can't be sent to" (a
+  `bad_msisdn` skip — U38b's own word) and "Refused by another check at sending" (a skip reason this code has no word for),
+  each ONLY when there is one, so the lines add up to "Not sent". Chips: each status with rows, schema order.
+- **E23 · the floor counts ROWS** (people whose messages were decided), never the confirmed count — a shrunken list can sit far
+  below it. Under the floor a masked viewer keeps "On campaign", the bar and the headline's counts (no per-state split);
+  every other KPI, the reasons and the chips are null, and the view's `floor` says why.
+- ⛔ **The copy advice by reach (`liveReach`).** Every sentence the services return that advises a copy (or a new campaign) —
+  the pause reasons `audience_unreadable` and `template_invalid` (the slice can set them after sending began), `audience_moved`
+  and `list_over_confirmed`, the Stop dialog, Make a copy's answer and its refusal — says a copy messages again everyone
+  already messaged: as a FACT to a viewer who may see the split, as a CONDITION to a viewer below the floor (the same words
+  whether or not anybody was), and the spec's own words for a campaign that never ran (`enqueuedAt` null). ⛔ And Resume's
+  copy-only refusals (U49a's `reached` form, "Some people on it have already been messaged") are said to a viewer below the
+  floor in their conditional form (`resumeCopyOnlyHiddenSentence`) — E23 would otherwise leak that somebody was cleared.
+- **The view's API, beyond the block below:** `startDialog` (null while Start is disabled; the frozen estimate and limit for
+  a money reader only, "up to N SMS" — `estimateSegments` — for anyone else), `stopDialog` (by reach), `floor`; `results` is
+  typed `never | null` until U48a. `audienceLines` come from the LIST's one role-shaped describer (`campaignRowAudience`) and
+  its words, so a campaign never reads one way on the list and another on its page. `standing.keepOpen` is for an ACTING
+  viewer only; `nobodyDriving` is the data's fact (RUNNING, no claim for 90 s) — the page shows it to a viewer who cannot act
+  or before its own driver has run. Who paused or stopped: the newest audit row of that act WITH an actor
+  (`getAuditForTargetDurable`, 50 rows); when: the row's own `pausedAt` / `finishedAt`. CANCELLED's "N people were not
+  messaged" is `resumeOutstanding` (the ONE definition of what is left — a list that never finished: confirmed − settled).
+  A DRAFT's controls are all disabled with one sentence ("This campaign is still a draft — open it in the composer.").
+- **`StepActionResult` gains `said`** — a wait in words (`waitSentence`, live-copy; `window_unreadable` and
+  `before_send_unanswered` included), else null. `campaignStep` is act-gated in the service too (`role` when `mayAct` is false).
+- ⭐ **The single-flight covers EVERY step of one campaign** (decision 1 as amended asked it of PREPARING): one flight per
+  campaign on `globalThis.__50PICK_CAMPAIGN_STEPS`, so no reap ever runs beside a slice either; a taken flight answers
+  `{ kind: "waiting", reason: "busy" }`; a flight older than `REAP_AFTER_MS` (or dated ahead by as much) no longer holds; only
+  its own ticket releases it, a step that throws included. A PREPARING step reaps first (§3.3), though nothing can be claimed
+  before RUNNING.
+- **OD66 at Start** refuses, for a viewer who may not read a number, EVERY audience their role may not count — `campaignAudienceRefusal`
+  asked without the ticked selection, as the composer and the list ask it: both populations, a search, a consent, source,
+  player or stop filter — before anything is counted, only for a CONFIRMED row (anything else is U49a's `not_confirmed`).
+  The view disables Start for them with the same words.
+- **The audit rows:** `marketing.campaign_started` `{ count, estimateSegments, freshCount, shrunkBy }` (U49a's fresh count
+  beside the confirmed one); `marketing.campaign_start_refused` `{ reason }` + the money figures for `over_budget` and
+  `credit_low`, the rail's problem for `rail_dead`, the refused key (`param`) for `audience_refused` — never a count; a
+  campaign not found is recorded with no target (a posted id is text anyone can send), a lost race as `not_confirmed`;
+  `marketing.campaign_resumed` `{ requeuedHeld, to }`. A refused Pause, Resume, Stop or Make a copy writes no row (none is
+  listed). Every act's answer carries `recorded` (ruling 543) and says the second half when the row did not land.
+- **Start's toast** (the spec gives none): "Started — the list is being prepared. Keep this page open while it sends."
+  **Stop** moves only §3.1's four statuses (CONFIRMED · PREPARING · RUNNING · PAUSED); a DRAFT is refused. **Make a copy**
+  names the draft "<name> (copy)" when that fits the composer's 80 characters, else the name; it is refused, nothing made,
+  when the stored audience cannot travel (`copyTravel`: unreadable, not writable as an address, or a filter this viewer may
+  not post) and when the draft door refuses it (`audience_cannot_travel`) or the message (`message_cannot_travel`, the door's
+  first problem).
+- **`campaign-status.ts`:** the `officer_paused` / `officer_stopped` sentences land HERE (U47b-1 writes the keys);
+  `CAMPAIGN_SCREENS.detail` stays false until U47b-2's page. `test:marketing-engine`'s `ENQUEUE_CALLERS` and `ENGINE_CALLERS`
+  declare `campaign-control.ts`; nothing in `src` value-imports `campaign-control.ts` yet (W1 pins it empty until U47b-2).
+- **Proof:** `test:campaign-visuals` §svc — C0, V2, V3, S1–S9, T1–T8, D1–D5, W1, P1 (27 claims) with 20 in-process plants
+  (`red:campaign-visuals`); V1 and V4–V10 are U47b-2's.
+
 **Premises checked.** The six doors and the page gate rules (`admin-section-gate.test.mjs` §0b′: one return, a literal
 title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:campaigns-page` 5f/5k
 (`campaigns-page.test.mts:592-603`), the list link line (`campaigns/page.tsx:88`), `REACHED_WITHOUT_NAV`

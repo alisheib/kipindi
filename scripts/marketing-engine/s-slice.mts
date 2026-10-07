@@ -80,7 +80,7 @@ const L = {
   s24: "S24 · THE RAIL — a dead rail pauses NOT_CONFIGURED and an unrecognised provider pauses PROVIDER_UNRECOGNISED (never live_switch_closed, which the owner cannot fix) — BEFORE any claim",
   s25: "S25 · ⭐ E10 · ONE SLICE IN FLIGHT PER PROCESS — while one campaign's slice gates, a step of ANOTHER campaign answers waiting busy and claims nothing; once it has finished the other step runs; a flight older than ten minutes no longer holds",
   s26: "S26 · ⭐ DC-5 · NO PHONE NUMBER REFUSES A SETTLE — a gateway error and a gate detail that echo a number are settled with the number masked (four bullets and its last two digits), every trail string scrubbed — while a reference whose characters hold a phone-shaped run is kept WHOLE in the trail's source, as the rule set reads a source word by word; and a patch the rule set still refuses is SET ASIDE (its row keeps the claim, for the reaper) while the rest of the slice settles",
-  s27: "S27 · THE WIRING — ENGINE_DEPS is frozen and wired to the REAL doors (the ONE loop, the ONE renderer, the token door, the ONE gate by default, the store's doors, the window, money-busy, the OTP mark, the settings, the credit rule, the pure rules) and its send is engineSend; engineSend stamps purpose MARKETING through sendBatch; engine.ts never imports the enqueue, names no book reader and asks dispatchSlice; engine-rules.ts takes types alone from the server and one pure module; no src file but engine.ts calls or value-imports the engine beyond ENGINE_CALLERS (none until U47b); the host runs §S, §R, §C and §T",
+  s27: "S27 · THE WIRING — ENGINE_DEPS is frozen and wired to the REAL doors (the ONE loop, the ONE renderer, the token door, the ONE gate by default, the store's doors, the window, money-busy, the OTP mark, the settings, the credit rule, the pure rules) and its send is engineSend; engineSend stamps purpose MARKETING through sendBatch; engine.ts never imports the enqueue, names no book reader and asks dispatchSlice; engine-rules.ts takes types alone from the server and one pure module; no src file but engine.ts calls or value-imports the engine beyond ENGINE_CALLERS (U47b-1's step dispatcher, campaign-control.ts, alone); the host runs §S, §R, §C and §T",
   s28: "S28 · E12 · THE OTP MARK — an OTP that FAILS through the REAL sendBatch stamps the process's mark at that moment and the next step, through the SHIPPED reader, waits otp_failing until two minutes after it; a MARKETING failure and an ACCEPTED OTP stamp nothing",
 } as const;
 
@@ -130,8 +130,9 @@ export const S_REAL: SImpl = {
   sources: REAL_SOURCES,
 };
 
-/** ⛔ THE FILES ALLOWED TO CALL THE ENGINE — NONE until U47b's step dispatcher (`campaign-control.ts`) declares itself. */
-export const ENGINE_CALLERS: readonly string[] = [];
+/** ⛔ THE FILES ALLOWED TO CALL THE ENGINE — U47b-1's step dispatcher (`campaign-control.ts`, `campaignStep`: RUNNING → one
+ *  slice; PAUSED · CANCELLED · DONE and PREPARING → the reaper — ENGINE-SPEC §3.3), declared in its own commit. */
+export const ENGINE_CALLERS: readonly string[] = ["src/lib/server/marketing/campaign-control.ts"];
 const ENGINE_REL = "src/lib/server/marketing/engine.ts";
 
 /* ══ THE FIXTURE WORLD ═════════════════════════════════════════════════════════════════════════════════════════════ */

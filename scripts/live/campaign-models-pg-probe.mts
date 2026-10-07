@@ -37,6 +37,9 @@
  * the slice lost to a receipt is written into its DELIVERED or FAILED row once, under its claim, while the trail is null
  * (SQL NULL and JSON null alike: the Json AnyNull in the WHERE is the new SQL this section exists for); another claim, a
  * settled-SENT row, a PENDING row and an unknown id write nothing. ⛔ No backslash in §12 either.
+ * ⭐ §13 · U47b-1 (S14 2026-10-07 — ENGINE-SPEC §4.15 decision 8): the live page's ONE groupBy (`countByOutcome`) through the
+ * REAL Prisma twin — one campaign's rows by (status, skipReason, failureClass), a null its own group, the tally's one order,
+ * summing to `countByStatus`, never another campaign's rows. ⛔ No backslash in §13 either.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database, runs the Prisma CLI three times and creates and
  * drops a shadow database and a throwaway type — loopback only):
@@ -979,6 +982,65 @@ async function toRunning(id: string): Promise<void> {
     }
   } catch (e) {
     ok("12 · U43b-2 · the send-record door ran on Postgres without throwing", false, firstLine(e));
+  }
+}
+
+// ── 13 · U47b-1 · the live page's ONE groupBy through the REAL Prisma twin (ENGINE-SPEC §4.15 decision 8, OD26):
+//        `countByOutcome` groups ONE campaign's rows by (status, skipReason, failureClass) on Postgres — a null reason or
+//        class its own group, every group with its count, in the tally's one order — never another campaign's rows, and
+//        its sums per status are `countByStatus`'s. The statuses are set by SQL, so the answer is checked against groups
+//        written here by hand. ⚠️ Written by U47b-1's builder, who has no Postgres: its first run is the integrator's — a
+//        throw is caught and FAILS 13 with its first line rather than ending the probe ──────────────────────────────────
+{
+  const NL = String.fromCharCode(10);
+  const json = (v: unknown) => JSON.stringify(v);
+  const firstLine = (e: unknown) =>
+    (String((e as Error)?.message ?? e).split(NL).map((s) => s.trim()).find((s) => s !== "") ?? "(an error with no message)").slice(0, 200);
+  try {
+    const C13 = "probe_u47b1";
+    const OTHER13 = "probe_u47b1_other";
+    const EMPTY13 = "probe_u47b1_empty";
+    await db.smsCampaign.create(draft(C13));
+    await db.smsCampaign.create(draft(OTHER13));
+    await db.smsCampaign.create(draft(EMPTY13));
+    const ids = Array.from({ length: 9 }, (_, i) => `probe_u47b1_${String(i).padStart(3, "0")}`);
+    await db.smsCampaignRecipient.createMany(ids.map((x, i) => seed(x, C13, keyOf(50000 + i))));
+    await db.smsCampaignRecipient.createMany([seed("probe_u47b1_other_000", OTHER13, keyOf(50100), {})]);
+    const set13 = async (rows: number[], status: string, skipReason: string | null, failureClass: string | null): Promise<void> => {
+      await pg.$executeRawUnsafe(
+        `update "SmsCampaignRecipient" set status = $2::"SmsCampaignRecipientStatus", "skipReason" = $3, "failureClass" = $4 where id = any($1::text[])`,
+        rows.map((i) => ids[i]), status, skipReason, failureClass,
+      );
+    };
+    await set13([0, 1], "SKIPPED", "suppressed", null);
+    await set13([2], "SKIPPED", "rg_self_excluded", null);
+    await set13([3], "HELD", null, "gate_unanswered");
+    await set13([4], "FAILED", null, "BAD_MSISDN");
+    await set13([5], "FAILED", null, "receipt:UNDELIV");
+    await set13([8], "UNCONFIRMED", null, null);
+    await pg.$executeRawUnsafe(`update "SmsCampaignRecipient" set status = 'SENT'::"SmsCampaignRecipientStatus" where id = $1`, "probe_u47b1_other_000");
+    const groups = await db.smsCampaignRecipient.countByOutcome(C13);
+    const want = [
+      { status: "PENDING", skipReason: null, failureClass: null, count: 2 },
+      { status: "HELD", skipReason: null, failureClass: "gate_unanswered", count: 1 },
+      { status: "FAILED", skipReason: null, failureClass: "BAD_MSISDN", count: 1 },
+      { status: "FAILED", skipReason: null, failureClass: "receipt:UNDELIV", count: 1 },
+      { status: "SKIPPED", skipReason: "rg_self_excluded", failureClass: null, count: 1 },
+      { status: "SKIPPED", skipReason: "suppressed", failureClass: null, count: 2 },
+      { status: "UNCONFIRMED", skipReason: null, failureClass: null, count: 1 },
+    ];
+    ok("13 · U47b-1 · ⭐ countByOutcome on Postgres is the campaign's rows grouped by (status, skipReason, failureClass) exactly as written here — a null reason or class its own group, the tally's one order — and never the other campaign's SENT row",
+      json(groups) === json(want), json(groups));
+    const byStatus = await db.smsCampaignRecipient.countByStatus(C13);
+    const sums = byStatus.map((s) => ({ status: s.status, count: groups.filter((g) => g.status === s.status).reduce((n, g) => n + g.count, 0) }));
+    ok("13a · the groups summed per status are countByStatus's answer, status by status (UNCONFIRMED included)",
+      json(sums) === json(byStatus.map((s) => ({ status: s.status, count: s.count }))), `${json(byStatus)} · ${json(sums)}`);
+    const empty = await db.smsCampaignRecipient.countByOutcome(EMPTY13);
+    const other = await db.smsCampaignRecipient.countByOutcome(OTHER13);
+    ok("13b · a campaign with no rows answers no group, and the other campaign answers only its own SENT row",
+      json(empty) === json([]) && json(other) === json([{ status: "SENT", skipReason: null, failureClass: null, count: 1 }]), `${json(empty)} · ${json(other)}`);
+  } catch (e) {
+    ok("13 · U47b-1 · the live page's groupBy ran on Postgres without throwing", false, firstLine(e));
   }
 }
 

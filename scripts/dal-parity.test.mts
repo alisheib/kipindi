@@ -2814,6 +2814,41 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
         && !'groupBy({ by: ["campaignId", "status"], _count: { _all: true } })'.includes("where: { campaignId: { in: [...ids] } }"));
   }
 
+  // ══ 26.u47b · THE LIVE PAGE'S ONE GROUPBY (U47b-1, S14 2026-10-07 — ENGINE-SPEC §4.15 decision 8) ═══════════════════
+  // ⭐ WHY IT IS HELD HERE. The live page's KPIs, its chips, its bar and its "not sent" reasons are ONE read —
+  // `countByOutcome`, the recipient rows grouped by (status, skipReason, failureClass) — so no two figures can disagree and
+  // no counter is kept (OD26). `test:campaign-visuals` drives the MEMORY twin; a Prisma twin that loses its half is green in
+  // memory and wrong live: the rows read and counted in JavaScript (every recipient of a 150k campaign on every poll), a
+  // groupBy without the campaign (the whole table), or one answered through a tally of its own (another order, a null
+  // group dropped). The behaviour on Postgres is `db:probe-campaign-models` §13's. ⛔ No backslash anywhere in this block.
+  {
+    const flat47 = (s: string) => s.split(String.fromCharCode(13)).join("").split(String.fromCharCode(10)).map((l) => l.trim()).join(" ");
+    const pOutcome = delegateMethod("smsCampaignRecipient", "countByOutcome");
+    const mOutcome = memberText(rMem, "countByOutcome");
+    const U47B_SIGS: Array<[string, string]> = [
+      [rMem, "countByOutcome: (campaignId: string): SmsCampaignRecipientOutcomeCount[] =>"],
+      [rPri, "countByOutcome: async (campaignId: string): Promise<SmsCampaignRecipientOutcomeCount[]> =>"],
+    ];
+    const offSigs47 = U47B_SIGS.filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+    const exported47 = storeSrc.includes("export type SmsCampaignRecipientOutcomeCount =");
+    const imported47 = storeImport.includes("  SmsCampaignRecipientOutcomeCount,");
+    ok("26.u47b.named · countByOutcome names its parameter and return types in BOTH twins (never an inline literal) — SmsCampaignRecipientOutcomeCount exported by store.ts, imported by prisma-dal.ts",
+      offSigs47.length === 0 && exported47 && imported47,
+      `signatures off: [${offSigs47}] · exported ${exported47} · imported ${imported47}`);
+    const ONE_GROUPBY = 'groupBy({ by: ["status", "skipReason", "failureClass"], where: { campaignId }, _count: { _all: true } })';
+    ok("26.u47b.outcome.prisma · ⛔ the Prisma countByOutcome is ONE groupBy by (status, skipReason, failureClass) WHERE the campaign is the one asked — never the rows, never a count — answered through tallyRecipientOutcomes",
+      pOutcome.includes(ONE_GROUPBY) && (pOutcome.match(/[.]groupBy[(]/g) ?? []).length === 1 && pOutcome.includes("tallyRecipientOutcomes(")
+        && !/findMany|[.]count[(]|aggregate/.test(pOutcome),
+      flat47(pOutcome).slice(0, 300));
+    ok("26.u47b.outcome.memory · the memory countByOutcome answers ONE campaign's rows — filtered to it — through the same tallyRecipientOutcomes",
+      mOutcome.includes(".filter((r) => r.campaignId === campaignId)") && mOutcome.includes("tallyRecipientOutcomes(")
+        && mOutcome.includes("skipReason: r.skipReason, failureClass: r.failureClass"),
+      flat47(mOutcome).slice(0, 300));
+    // ── CONTROL — the matcher above can reject a groupBy that lost its campaign ──
+    ok("26.u47b.c1 · CONTROL · a groupBy over the whole table (no where) is NOT the one 26.u47b.outcome.prisma looks for",
+      !'groupBy({ by: ["status", "skipReason", "failureClass"], _count: { _all: true } })'.includes(ONE_GROUPBY));
+  }
+
   // ══ 26.status · THE RECIPIENT STATUS SET, ONE IN BOTH TWINS (U43-0, S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4) ═══
   // ⭐ WHY IT IS HELD HERE. UNCONFIRMED reaches Postgres through its own ADD VALUE migration, one deploy before any writer
   // (55P04). The memory twin types its rows with store.ts's union; the Prisma twin reads Postgres' enum through the
