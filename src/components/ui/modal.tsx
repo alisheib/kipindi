@@ -232,6 +232,14 @@ export type ModalProps = {
    * ⚠️ Only meaningful with `sheet` + `sheetUntil="lg"`; below lg the element is ignored.
    */
   anchorRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * ⭐ U40b · RE-ARM AN OPEN DIALOG WITHOUT A REMOUNT — ADDITIVE, AND INERT UNLESS SET. When this key moves on while the
+   * dialog is open, it gives focus to its first target again (`initialFocus`) through the very `focusIn` an opening uses:
+   * only while it is the top dialog, never on a control that cannot be pressed, its beat armed. `undefined` is "not now"
+   * (a caller holds it back while something is in flight). A caller re-keying the dialog instead would tear it down: this
+   * component draws nothing on its first commit, so the dialog would blink.
+   */
+  refocusKey?: string | number;
 };
 
 /** The shared centered-dialog shell. Controlled — the caller owns `open`. */
@@ -254,6 +262,7 @@ export function Modal({
   sheet = false,
   sheetUntil = "sm",
   anchorRef,
+  refocusKey,
 }: ModalProps) {
   const { t } = useT();
   const [mounted, setMounted] = React.useState(false);
@@ -328,6 +337,18 @@ export function Modal({
      reason the comment above `onCloseRef` gives. */
   const zIndexRef = React.useRef(zIndex);
   React.useEffect(() => { zIndexRef.current = zIndex; }, [zIndex]);
+  /* ⭐ U40b · the open dialog's place on the stack, for a re-arm (`refocusKey`): set by the opening below, cleared by its
+     close. */
+  const openLayerRef = React.useRef<Layer | null>(null);
+  /* ⭐ U40b · RE-ARM (`refocusKey`): the key moved on while the dialog is open — its first target takes the focus again,
+     through the opening's own `focusIn`. Read after the refs above are brought up to date, so a re-arm that also changed
+     the first target (a box that has just appeared) finds the new one. `undefined` is not a move. */
+  const refocusSeen = React.useRef(refocusKey);
+  React.useEffect(() => {
+    if (refocusKey === undefined || refocusSeen.current === refocusKey) return;
+    refocusSeen.current = refocusKey;
+    if (open) openLayerRef.current?.focusIn();
+  }, [refocusKey, open]);
 
   /* ⭐ S6 A8i-2 · A LAYOUT EFFECT, SO THE DIALOG STACK CHANGES IN THE SAME COMMIT AS THE PAGE. A dialog a timer opens (the
      second of two queued win seals, 350 ms after the first closed) is drawn, and often painted, before a passive effect
@@ -364,6 +385,7 @@ export function Modal({
       safe: () => safeFocusRef.current?.current ?? null,
     };
     openLayer(layer);
+    openLayerRef.current = layer;
     const timer = setTimeout(focusIn, 30);
     const onKey = (e: KeyboardEvent) => {
       /* ⭐ S6 A8i-2 · ONLY THE TOP DIALOG ANSWERS A KEY. Every open dialog listens here, and every one answered: one Escape
@@ -408,6 +430,7 @@ export function Modal({
       window.removeEventListener("keydown", onKey);
       // ⭐ S6 A8i-2 · focus moves only from inside this dialog or from nowhere, never behind the dialog now on top, and an
       // uncovered dialog takes it on its way out (`leaveLayer`, `modal-stack.ts`).
+      if (openLayerRef.current === layer) openLayerRef.current = null;
       leaveLayer(layer, PAGE);
     };
   }, [open]);
@@ -561,6 +584,14 @@ type ConfirmModalBase = {
    *  scrim/Esc/✕ dismissal, and sets aria-busy. Wire it from useTransition's
    *  pending at every consequential call site. */
   loading?: boolean;
+  /**
+   * ⭐ U40b · ARMED AGAIN, WITHOUT A REMOUNT — ADDITIVE AND OPTIONAL (ENGINE-SPEC §4.6's fallback). When the caller moves
+   * this key on while the dialog is open (a refusal read again: the dialog now shows the fresh figures), the typed box is
+   * cleared at once, and — once nothing is in flight — the first target takes the focus again (Modal's `refocusKey`): the
+   * box on the hard tier, Cancel on the medium one, never Confirm. Re-keying the dialog instead would draw nothing for a
+   * commit: a blink.
+   */
+  armKey?: string | number;
 };
 
 /* ⛔ THE TIER AND ITS TYPED WORD ARE ONE DECISION, NOT TWO INDEPENDENT PROPS (S-17,
@@ -663,10 +694,17 @@ export function ConfirmModal({
   icon,
   maxWidth = 400,
   loading = false,
+  armKey,
 }: ConfirmModalProps) {
   const { t } = useT();
   /* What the officer typed into the gate — read through `gateReading` before it is compared (vb6). */
   const [entry, setEntry] = React.useState("");
+  /* ⭐ U40b · a moved `armKey` clears the box in the same render — the caller's fresh figures never meet the old typing. */
+  const [armedFor, setArmedFor] = React.useState(armKey);
+  if (armedFor !== armKey) {
+    setArmedFor(armKey);
+    setEntry("");
+  }
   const inputRef = React.useRef<HTMLInputElement>(null);
   const confirmRef = React.useRef<HTMLButtonElement>(null);
   const cancelRef = React.useRef<HTMLButtonElement>(null);
@@ -738,6 +776,8 @@ export function ConfirmModal({
       /* ⭐ S6 A8i-2 · uncovered (a win seal or a reality check over it closing), it lands on Cancel: deposit, withdraw and
          every officer's money confirm come through here, and a press meant for the dialog that closed must not confirm. */
       safeFocus={cancelRef}
+      /* ⭐ U40b · re-armed (`armKey`): the first target takes the focus again once nothing is in flight. */
+      refocusKey={loading ? undefined : armKey}
       ariaBusy={loading}
       closeOnScrim={!loading}
       showClose={!loading}

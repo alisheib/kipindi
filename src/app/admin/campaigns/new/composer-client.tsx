@@ -55,6 +55,7 @@ import type { CampaignDraftFields, CampaignVariant, TemplateVerdict } from "@/li
 import { foldToGsm7 } from "@/lib/sms-compose";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import type { CampaignDraftField } from "@/lib/server/marketing/campaign-draft";
+import type { SmsCampaignStatus } from "@/lib/server/store";
 import type { CampaignTestResult } from "@/lib/server/marketing/campaign-test-send";
 import { saveCampaignDraftAction, sendCampaignTestAction } from "./actions";
 import { ComposerCounter } from "./composer-counter";
@@ -191,8 +192,16 @@ export type ComposerSaved = {
    *  tab saved the draft (the page is ahead), or this tab's save is still being read back (the form is ahead). */
   savedRevision: number | null;
   pageRevision: number | null;
+  /** The draft this page was read for, and its status as read (null for a new composer). */
+  pageDraftId: string | null;
+  status: SmsCampaignStatus | null;
   dirty: boolean;
   audienceUnsaved: boolean;
+  /** Why the audience on screen cannot be saved — the composer's own sentence (a refused save's, else the address's) — or null. */
+  audienceProblem: string | null;
+  /** The address keys of the audience on screen (null when the address carries none: the stored one is on screen) — what the
+   *  card's read posts, so the server counts nothing for an audience the draft does not store. */
+  audienceParams: Record<string, string> | null;
   saving: boolean;
   swBlank: boolean;
 };
@@ -200,9 +209,9 @@ export type ComposerSaved = {
 /**
  * ⭐ U40b · IS WHAT THE FORM SHOWS THE SAVED DRAFT? — asked by the Confirm card (`campaign-confirm.tsx`), because the server
  * confirms the STORED message and audience and cannot see this form (decision 1: "Save first — confirming freezes the saved
- * message"): the saved draft's id and the revision the form holds against the page's, unsaved text, an audience on screen
- * the draft does not store, a save in flight, and a blank Swahili message. Read-only: the card can neither save nor edit
- * through it.
+ * message"): the saved draft's id and the revision the form holds against the page's, the page's draft and its status,
+ * unsaved text, an audience on screen the draft does not store (and its keys, which the card's read posts), the audience's
+ * problem, a save in flight, and a blank Swahili message. Read-only: the card can neither save nor edit through it.
  */
 export function useComposerSaved(): ComposerSaved {
   const c = useComposer();
@@ -210,8 +219,12 @@ export function useComposerSaved(): ComposerSaved {
     savedId: c.saved?.id ?? null,
     savedRevision: c.saved?.draftRevision ?? null,
     pageRevision: c.view.draft?.draftRevision ?? null,
+    pageDraftId: c.view.draft?.id ?? null,
+    status: c.view.draft?.status ?? null,
     dirty: c.dirty,
     audienceUnsaved: c.view.audience.unsaved,
+    audienceProblem: c.problemAt("audience") ?? c.view.audience.problem ?? null,
+    audienceParams: c.view.audience.params,
     saving: c.saving,
     swBlank: c.fields.bodySw.trim() === "",
   };

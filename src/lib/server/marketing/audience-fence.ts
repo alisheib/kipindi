@@ -58,6 +58,7 @@ import {
   CONFIRM_ENUMERATE_MAX, MEMBERS_KEY_HEX_CHARS, buildFenceClaim, canonicalMembers, parseFenceClaim,
 } from "@/lib/marketing/campaign-confirm";
 import type { FenceClaim } from "@/lib/marketing/campaign-confirm";
+import { audienceWalkCount } from "@/lib/server/marketing/audience-split";
 import { maskPhone } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 
@@ -222,7 +223,9 @@ export async function audienceFence(
   const read = readCampaignAudience(c.audienceFilter);
   if (!read.ok) throw new Error(`audience fence: the saved audience could not be read (${read.param})`);
   const filter = read.filter;
-  const count = await deps.count(filter);
+  // ⭐ U40b · THE COUNT TAKES THE SPLIT DOOR'S SLOTS (`audienceWalkCount`): at most AUDIENCE_SPLITS_PER_PROCESS walks at
+  // once — the pool is shared with bets — and one count per filter key that every asker joins. Still the ONE walk's count.
+  const count = await audienceWalkCount(filter, deps.count);
   const keys = await firstKeys(filter, deps.walk);
   const unfiltered = deps.unfiltered(filter);
   const canonical = unfiltered ? null : canonicalMembers(keys, count);

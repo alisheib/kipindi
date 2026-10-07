@@ -13,8 +13,12 @@
  * ⭐ A REFUSAL SAYS ONLY WHAT CAN WORK NEXT (validation audit, 2026-10-03): the budget's and the role's refusals print
  * alone — "Couldn't save … Try again." in front of them read "Try again… Try again in 5 min", and invited a retry a role
  * can never win — and a save that stopped on the server says to check before saving again, never to retry blind.
- * ⛔ PURE — no "use client" and no server import: the server page and the client form both import it.
+ * ⛔ PURE — no "use client" and no server import at runtime (a TYPE is erased): the server page and the client form both
+ * import it.
+ * ⭐ U40b · the Confirm card's decisions live here too, pure, so the suite drives them: its tier (`confirmGate`), its
+ * trigger's reason (`confirmTriggerBlocked`), and what it does with each answer (`confirmOutcome`, `afterRecount`).
  */
+import type { SmsCampaignStatus } from "@/lib/server/store";
 import { SMS_MAX_SEGMENTS } from "@/lib/sms-compose";
 import { JINA } from "@/lib/marketing/campaign-template";
 import type { VariantCounter } from "@/lib/marketing/campaign-template";
@@ -237,30 +241,46 @@ export function composeTypedHandedOver(at: string, via: "stub" | "open"): string
 export const COMPOSE_CONFIRM_TITLE = "Confirm";
 /** The trigger — it OPENS a confirmation (the ellipsis), it never confirms by itself. */
 export const COMPOSE_CONFIRM_TRIGGER = "Confirm audience…";
-/** The trigger while the page is read again, so the dialog opens on the figures as they are now (U40.md "counting"). */
+/** The trigger while the confirmation's view is counted — ON DEMAND, on the press, never on a render (U40.md "counting"). */
 export const COMPOSE_CONFIRM_COUNTING = "Counting the audience…";
 /** The dialog's own confirm button. */
 export const COMPOSE_CONFIRM_ACT = "Confirm audience";
-/** The action's soft refusal for a role without the growth act grant (`softRequireStaff`). */
+/** Both actions' soft refusal for a role without the growth act grant (`softRequireStaff`). */
 export const COMPOSE_CONFIRM_ROLE_REFUSAL = "Your role can't confirm SMS campaigns — ask an officer with growth access.";
-/** ⭐ Why the trigger is disabled — in its `title` AND beside it, never hidden (decision 1). The service's own blocked
- *  sentences (`CONFIRM_SERVICE_COPY`) are said as they come. */
+/** ⭐ Why the trigger is disabled — in its `title` AND beside it, never hidden (decision 1). */
 export const COMPOSE_CONFIRM_SAVE_FIRST = "Save first — confirming freezes the saved message.";
 export const COMPOSE_CONFIRM_NOBODY = "Nobody matches this audience yet.";
 export const COMPOSE_CONFIRM_WRITE_SW = "Write the Swahili message first.";
 export const COMPOSE_CONFIRM_ALREADY = "This campaign is already confirmed.";
-export const COMPOSE_CONFIRM_CANCELLED = "This campaign was cancelled — there is nothing to confirm.";
-/** The view could not be read: said, with "Count again" beside it — never a zero (U40.md "blocked"). */
-export const COMPOSE_CONFIRM_UNCOUNTED = "Couldn't count this audience just now — nothing is wrong with the campaign.";
+/**
+ * ⭐ A CAMPAIGN PAST DRAFT, IN WORDS THAT ARE TRUE OF IT — its status, never the honesty line: "nothing is sent until
+ * someone presses Start" stops being true the moment somebody has. A full Record, so a new status is a compile error here.
+ */
+export const COMPOSE_CONFIRM_CLOSED: Readonly<Record<Exclude<SmsCampaignStatus, "DRAFT">, string>> = {
+  CONFIRMED: COMPOSE_CONFIRM_ALREADY,
+  PREPARING: "This campaign has been started — its recipients are being prepared, and nothing here can change it.",
+  RUNNING: "This campaign is sending — nothing here can change it.",
+  PAUSED: "This campaign was started and is paused — some of its messages may already have gone out.",
+  DONE: "This campaign has finished sending.",
+  CANCELLED: "This campaign was cancelled — there is nothing to confirm.",
+};
+/** The view could not be counted: said as such, with "Count again" beside it — never a zero, never a word on the campaign. */
+export const COMPOSE_CONFIRM_UNCOUNTED = "Couldn't count this audience just now.";
+/** A blocked answer can be asked for again (the owner has set the source line, the audience has changed): the same read. */
+export const COMPOSE_CONFIRM_CHECK_AGAIN = "Check again";
 /** The draft was saved elsewhere after this form was loaded: what a confirmation would freeze is not the text on screen. */
 export const COMPOSE_CONFIRM_STALE = "This draft was saved elsewhere after this page loaded — reload the page to see it, then confirm.";
-/** ⭐ THE HONESTY LINE (decision 5) — in the dialog, and under the trigger. */
+/** ⭐ THE HONESTY LINE (decision 5) — in the dialog, and on the card of a DRAFT while nothing blocks it. */
 export const COMPOSE_CONFIRM_HONESTY =
   "Confirming freezes this message and this audience. Nothing is sent until someone presses Start on the campaign's page.";
-/** A listed audience's people, shown to a READER only (OD67: a viewer who may not read a number is shown no list). */
-export const COMPOSE_CONFIRM_LIST_LEAD = "Everyone this campaign will go to";
-/** The title of a refusal said outside the dialog (the dialog closed on it, or a fresh view blocks it). */
+/** A listed audience's people, shown to a READER only (OD67: a viewer who may not read a number is shown no list).
+ *  ⛔ "On", never "will go to": the send gate is asked again at the moment of each message. */
+export const COMPOSE_CONFIRM_LIST_LEAD = "Everyone on this campaign";
+/** The title of a refusal said outside the dialog (the dialog closed on it). */
 export const COMPOSE_CONFIRM_REFUSED = "Not confirmed";
+/** ⭐ A refusal because the campaign is no longer a draft, when the page then reads it CONFIRMED: the officer's own earlier
+ *  press may have landed with its answer lost, so it is never titled "Not confirmed". */
+export const COMPOSE_CONFIRM_ALREADY_TITLE = "Already confirmed";
 /** ⭐ THE ERROR STATE (U40.md): the action failed and the row is still a draft — the dialog stays open, the typing kept. */
 export const COMPOSE_CONFIRM_FAILED = "Couldn't confirm — nothing was confirmed. Try again.";
 /**
@@ -294,6 +314,24 @@ export function composeConfirmedToast(count: number): string {
   return `Audience confirmed — ${adminCount(count, "person", "people")}. Nothing has been sent.`;
 }
 
+/** A refusal for a campaign no longer a draft, titled from the row as the page reads it AFTER (decision 4's honesty). */
+export function composeNotDraftTitle(status: SmsCampaignStatus | null): string {
+  return status === "CONFIRMED" ? COMPOSE_CONFIRM_ALREADY_TITLE : COMPOSE_CONFIRM_REFUSED;
+}
+
+/** What a REFUSED confirmation did not do, as the service's sentences end — the longest first. */
+const REFUSAL_TAILS = [" Nothing was confirmed or sent.", " Nothing was confirmed.", " Nothing was sent.", " Nothing was changed."] as const;
+
+/**
+ * ⛔ A SENTENCE BESIDE A TRIGGER NOBODY CONFIRMED WITH never says "Nothing was confirmed": the service's sentences end with
+ * what a refused CONFIRMATION did not do, and beside the trigger nothing was attempted — the press only read the audience.
+ * The tail is taken off; the rest is the service's own words.
+ */
+export function composeTriggerSentence(message: string): string {
+  for (const tail of REFUSAL_TAILS) if (message.endsWith(tail)) return message.slice(0, -tail.length);
+  return message;
+}
+
 /** The dialog's tier, as the ConfirmModal takes it — spread whole (`modal.tsx`: a tier and its word are one decision). */
 export type ConfirmGateProps = { tier: "hard"; typedWord: string; typedInputMode: "numeric" } | { tier: "medium" };
 
@@ -312,7 +350,19 @@ export function confirmGate(view: { tier: ConfirmTier | null; count: number | nu
     : { tier: "hard", typedWord: confirmTypedWord(view.count), typedInputMode: "numeric" };
 }
 
-/** What the trigger's reason is decided from: the act gate, the form against what is saved, and the page's card. */
+/** The trigger read's answer, as far as the card's words need it (`ConfirmReadAnswer`, or a read lost in transit). */
+export type ConfirmAnswerFacts =
+  | {
+      ok: true;
+      card: {
+        status: SmsCampaignStatus | null;
+        read: "view" | "closed" | "stale" | "unsaved" | "gone" | "error";
+        view: null | { blocked: string | null; message: string | null; tier: ConfirmTier | null; count: number | null; watermark: string | null };
+      };
+    }
+  | { ok: false; reason?: string; error: string };
+
+/** What the trigger's reason is decided from: the act gate, the form against what is saved, and the read's last answer. */
 export type ConfirmTriggerFacts = {
   mayAct: boolean;
   actReason: string | null;
@@ -320,47 +370,128 @@ export type ConfirmTriggerFacts = {
   form: {
     savedId: string | null;
     savedRevision: number | null;
+    /** The draft this page was read for, its revision and its status. */
+    pageDraftId: string | null;
     pageRevision: number | null;
+    status: SmsCampaignStatus | null;
     dirty: boolean;
     audienceUnsaved: boolean;
+    /** Why the audience on screen cannot be saved — the composer's own sentence — or null. */
+    audienceProblem: string | null;
     saving: boolean;
     swBlank: boolean;
   };
-  /** The page's card — null while no draft is saved; `read` says whether its view was counted. */
-  card: null | {
-    campaignId: string;
-    status: string;
-    read: "view" | "error" | "gone";
-    view: null | { blocked: string | null; message: string | null; tier: ConfirmTier | null; count: number | null; watermark: string | null };
-  };
+  /** The read's last answer for THIS form (its draft, revision and audience) — null before the trigger is pressed. */
+  answer: ConfirmAnswerFacts | null;
 };
 
+/** ⭐ What the read's answer says about opening — null when the dialog may open on it, else the reason in words. */
+function answerBlocked(a: ConfirmAnswerFacts | null): string | null {
+  if (a === null) return null;
+  if (!a.ok) return a.reason === "role" ? a.error : COMPOSE_CONFIRM_UNCOUNTED;
+  const c = a.card;
+  if (c.read === "gone") return composeTriggerSentence(CONFIRM_REFUSAL_COPY.not_found({ fresh: null, shown: null }));
+  if (c.read === "error") return COMPOSE_CONFIRM_UNCOUNTED;
+  if (c.read === "closed") return c.status !== null && c.status !== "DRAFT" ? COMPOSE_CONFIRM_CLOSED[c.status] : COMPOSE_CONFIRM_ALREADY;
+  if (c.read === "stale") return COMPOSE_CONFIRM_STALE;
+  if (c.read === "unsaved") return COMPOSE_CONFIRM_SAVE_FIRST;
+  const v = c.view;
+  if (v === null) return COMPOSE_CONFIRM_UNCOUNTED;
+  if (v.blocked === "not_draft") return COMPOSE_CONFIRM_ALREADY;
+  if (v.blocked === "audience_empty") return COMPOSE_CONFIRM_NOBODY;
+  // ⭐ Every other block in the service's own sentence (`no_body` included), without a refused confirmation's tail.
+  if (v.blocked !== null) return v.message !== null ? composeTriggerSentence(v.message) : COMPOSE_CONFIRM_UNCOUNTED;
+  if (v.tier === null || v.count === null || v.watermark === null) return COMPOSE_CONFIRM_UNCOUNTED;
+  return null;
+}
+
+/** ⭐ The read's answer is one the dialog may open on: counted, unblocked, with a tier, a count and its claim. */
+export function confirmAnswerReady(a: ConfirmAnswerFacts | null): boolean {
+  return a !== null && answerBlocked(a) === null;
+}
+
+/** Which way back a blocked answer offers: a read that failed is counted again, a blocked view checked again; else none. */
+export function confirmAnswerRetry(a: ConfirmAnswerFacts | null): "count" | "check" | null {
+  if (a === null) return null;
+  if (!a.ok) return a.reason === "role" ? null : "count";
+  if (a.card.read === "error") return "count";
+  return a.card.read === "view" && answerBlocked(a) !== null ? "check" : null;
+}
+
 /**
- * ⭐ WHY THE TRIGGER IS DISABLED — the first reason, or null when the dialog may open. In order: a campaign past DRAFT (said
- * as what it is); the act gate; the FORM — a blank Swahili message, nothing saved yet, a form whose revision is not the
- * page's (saved elsewhere since: reload; or this tab's own save still being read back: updating), or what the form shows
- * is not the saved draft (its text, its audience on screen, a save in flight) — because confirming freezes the SAVED
- * message and audience, which the server reads and the form is not; then the server's view, in its own words (an unread
- * view never reads as nobody).
+ * ⭐ WHY THE TRIGGER IS DISABLED — the first reason, or null when it may be pressed. In order: a campaign past DRAFT (its
+ * status, in words true of it); the act gate; an audience the composer cannot use (its own sentence — the Save beside it
+ * is refused for the same problem); a blank Swahili message; nothing saved yet; a form whose draft or revision is not the
+ * page's (saved elsewhere since: reload; this tab's own save still being read back: updating); what the form shows is not
+ * the saved draft (its text, its audience on screen, a save in flight) — because confirming freezes the SAVED message and
+ * audience, which the server reads and the form is not; then the read's last answer, in its words. Before any press there
+ * is no answer: nothing is counted until the officer asks.
  */
 export function confirmTriggerBlocked(f: ConfirmTriggerFacts): string | null {
-  const c = f.card;
-  if (c !== null && c.status !== "DRAFT") return c.status === "CANCELLED" ? COMPOSE_CONFIRM_CANCELLED : COMPOSE_CONFIRM_ALREADY;
+  const s = f.form.status;
+  if (s !== null && s !== "DRAFT") return COMPOSE_CONFIRM_CLOSED[s];
   if (!f.mayAct) return f.actReason ?? COMPOSE_CONFIRM_ROLE_REFUSAL;
+  if (f.form.audienceProblem !== null) return f.form.audienceProblem;
   if (f.form.swBlank) return COMPOSE_CONFIRM_WRITE_SW;
   if (f.form.savedId === null) return COMPOSE_CONFIRM_SAVE_FIRST;
-  if (c === null || c.campaignId !== f.form.savedId) return COMPOSE_TEST_UPDATING;
+  if (f.form.pageDraftId !== f.form.savedId) return COMPOSE_TEST_UPDATING;
   const { savedRevision: held, pageRevision: read } = f.form;
   if (held === null || read === null || held > read) return COMPOSE_TEST_UPDATING;
   if (held < read) return COMPOSE_CONFIRM_STALE;
   if (f.form.dirty || f.form.audienceUnsaved || f.form.saving) return COMPOSE_CONFIRM_SAVE_FIRST;
-  if (c.read === "gone") return CONFIRM_REFUSAL_COPY.not_found({ fresh: null, shown: null });
-  const v = c.view;
-  if (c.read === "error" || v === null) return COMPOSE_CONFIRM_UNCOUNTED;
-  if (v.blocked === "not_draft") return COMPOSE_CONFIRM_ALREADY;
-  if (v.blocked === "audience_empty") return COMPOSE_CONFIRM_NOBODY;
-  if (v.blocked === "no_body") return COMPOSE_CONFIRM_WRITE_SW;
-  if (v.blocked !== null) return v.message ?? COMPOSE_CONFIRM_UNCOUNTED;
-  if (v.tier === null || v.count === null || v.watermark === null) return COMPOSE_CONFIRM_UNCOUNTED;
-  return null;
+  return answerBlocked(f.answer);
+}
+
+/* ── U40b · WHAT THE CARD DOES WITH AN ANSWER — pure, so `test:campaign-gates` §UI 13 drives every route ── */
+
+/** A toast as the card hands it to the kit (`durationMs: 0` stays until it is read — UD-3). */
+export type ConfirmToast = { title: string; description?: string; variant: "success" | "warning" | "danger"; durationMs?: number };
+
+/** The confirmation's answer as the card receives it (`ConfirmActionResult`), or a request lost in transit. */
+export type ConfirmAnswerLike =
+  | { ok: true; count: number; recorded: boolean }
+  | { ok: false; reason?: string; error: string };
+
+/**
+ * ⭐ THE CONFIRMATION'S ANSWER, ROUTED:
+ *   · `confirmed` — close, read the page again (read-only now), then say it; a record that did not land is said too;
+ *   · `keep` — the dialog STAYS OPEN with the typing kept: a failure that left the row a draft, or one nobody can vouch for
+ *     (said until it is read);
+ *   · `close` — the role's refusal: closed where it stands; `already` — the campaign is no longer a draft (or is gone):
+ *     closed, the page read again, and the toast titled from the row it reads (`composeNotDraftTitle`);
+ *   · `recount` — every other refusal: the view is asked for again, and the dialog RE-ARMS on it with the server's sentence
+ *     on top (`afterRecount`) — never remounted (a remount blinks), never left on the old number.
+ */
+export type ConfirmOutcome =
+  | { kind: "confirmed"; toast: ConfirmToast }
+  | { kind: "keep"; toast: ConfirmToast }
+  | { kind: "close"; toast: ConfirmToast }
+  | { kind: "already"; description: string; gone: boolean }
+  | { kind: "recount"; notice: string };
+
+export function confirmOutcome(r: ConfirmAnswerLike): ConfirmOutcome {
+  if (r.ok) {
+    return {
+      kind: "confirmed",
+      toast: r.recorded
+        ? { title: composeConfirmedToast(r.count), variant: "success" }
+        : { title: composeConfirmedToast(r.count), description: COMPOSE_CONFIRM_UNRECORDED, variant: "danger", durationMs: 0 },
+    };
+  }
+  const reason = r.reason;
+  if (reason === "failed") return { kind: "keep", toast: { title: COMPOSE_CONFIRM_FAILED, variant: "danger" } };
+  if (reason === undefined || reason === "unfinished") return { kind: "keep", toast: { title: COMPOSE_CONFIRM_UNFINISHED, variant: "danger", durationMs: 0 } };
+  if (reason === "role") return { kind: "close", toast: { title: COMPOSE_CONFIRM_REFUSED, description: r.error, variant: "danger" } };
+  if (reason === "not_draft" || reason === "not_found") return { kind: "already", description: r.error, gone: reason === "not_found" };
+  return { kind: "recount", notice: r.error };
+}
+
+/** After a refusal's recount: RE-ARM on the fresh view when it may open, else close — the refusal said in a toast, and the
+ *  card says what blocks it now. */
+export type ConfirmRecount = { kind: "rearm"; notice: string } | { kind: "close"; toast: ConfirmToast };
+
+export function afterRecount(answer: ConfirmAnswerFacts | null, notice: string): ConfirmRecount {
+  return confirmAnswerReady(answer)
+    ? { kind: "rearm", notice }
+    : { kind: "close", toast: { title: COMPOSE_CONFIRM_REFUSED, description: notice, variant: "warning" } };
 }

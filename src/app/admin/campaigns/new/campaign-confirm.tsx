@@ -2,38 +2,50 @@
 
 /**
  * U40b · THE CONFIRM CARD — the composer's fourth card, under the Test card, and the dialog it opens (ENGINE-SPEC §4.6;
- * OD27 · OD65 · OD67; U40.md "UI states"). The work is the server's: U40a's `campaignConfirmView` and `confirmCampaign`.
+ * OD27 · OD65 · OD67; U40.md "UI states"). The work is the server's: U40a's `campaignConfirmView` and `confirmCampaign`,
+ * reached through this card's two actions.
  *
- * ⭐ THE TRIGGER READS THE PAGE AGAIN, THEN OPENS. "Confirm audience…" refreshes the page (the view is counted again on the
- * server for this officer — `loadConfirmCard`), says "Counting the audience…" while it does, and opens the dialog on the
- * figures as they are NOW — or, if the fresh view is blocked, does not open and says why.
- * ⭐ DISABLED WITH ITS REASON, NEVER HIDDEN (decision 1): in its `title` and beside it (`confirmTriggerBlocked`) — a campaign
- * past DRAFT, the act gate, the FORM (the server confirms the SAVED message and audience and cannot see this form, so
- * unsaved text, an audience on screen the draft does not store, a save in flight or a blank Swahili message all say "Save
- * first" or "Write the Swahili message first" — and a draft saved in another tab since this page loaded says reload, so
- * nobody confirms text they are not looking at), and the server's view in its own words.
+ * ⭐ COUNTED ON DEMAND, NEVER ON A RENDER (the U40b review's MAJOR). The composer's render counts nothing for this card: no
+ * rail pick, save, test or "Count again" waits on a confirmation's walk. "Confirm audience…" ASKS
+ * (`campaignConfirmViewAction`) — "Counting the audience…" while the view is counted for this officer, now — and opens the
+ * dialog on those figures, or, if they are blocked, says why and offers to check again. A failed read is said as such, with
+ * "Count again" — never a zero. The server counts nothing for a campaign past DRAFT, a revision this form is not showing, or
+ * an audience on screen that the draft does not store.
+ * ⭐ DISABLED WITH ITS REASON, NEVER HIDDEN (decision 1): in its `title` and on the card (`confirmTriggerBlocked`) — a campaign
+ * past DRAFT (its status, in words true of it), the act gate, the FORM (the server confirms the SAVED message and audience
+ * and cannot see this form: an audience the composer cannot use says its own problem; unsaved text, an audience on screen
+ * the draft does not store or a save in flight say "Save first"; a blank Swahili message says so; a draft saved in another
+ * tab since this page loaded says reload), and the read's last answer in its own words — never "Nothing was confirmed"
+ * beside a trigger nobody confirmed with.
+ * ⭐ ONE HEIGHT AT REST: the card's line under the trigger is a box as tall as the honesty line at every width (an invisible
+ * copy sizes it), holding the honesty line, the reason, or the confirmed line — so the route's ghost (`ConfirmCardGhost`,
+ * the same box) is the card's height (`qa:marketing-confirm` asserts it). The boxes are `confirm-card-ghost.tsx`'s, a
+ * server-safe file, so the route's ghost is drawn without this card's chunk.
  * ⛔ THE DIALOG'S TIER IS THE VIEW'S (`confirmGate` — `view.tier` exactly as the server answered it, never worked out again
  * here from a count). OD67: a viewer who may not read a number is always handed the typed tier, with the count alone, no
  * list and no sample — so this card has nothing to list for them, and never could: it lists `view.sample` and nothing
  * else. A reader's list tier names every person (masked, the operator by prefix — no player flag, D19).
  * ⭐ THE DIALOG IS THE KIT'S `ConfirmModal`, never a Modal of its own: the medium tier opens on Cancel and the typed tier on
- * its box (the digit keypad — `typedInputMode`), so the Confirm button is never the focused element when it opens; it is
- * keyed `${watermark}:${attempt}`, so a refusal REMOUNTS it on the fresh view — the new number, the server's sentence on
- * top, the box cleared, the focus back on the box or on Cancel (an enumerate → typed crossing switches the tier).
- * ⭐ CONFIRMING: both buttons off, a spinner, and the scrim, Esc and ✕ refused (the kit's `loading`). CONFIRMED: the dialog
- * closes once the page is read again (read-only now), and a toast says so — "Nothing has been sent." — with the record's
- * failure said too when it did not land (ruling 543). ERROR (the action failed, or its answer was lost): the dialog stays
- * OPEN with the typing kept, and a toast says only what is known — "nothing was confirmed" only when the row is still a
- * draft.
+ * its box (the digit keypad — `typedInputMode`), so the Confirm button is never the focused element when it opens. It is
+ * NEVER REMOUNTED: a refusal asks for the view again inside the same busy moment and RE-ARMS the dialog on it
+ * (`armKey` = `${watermark}:${attempt}`) — the new number, the server's sentence on top, the box cleared, the focus back on
+ * the box or on Cancel; a fresh view that can no longer open closes it in the same render (`open` is decided while
+ * rendering), its sentence said in a toast. A remount would draw nothing for a commit: a blink.
+ * ⭐ WHAT EACH ANSWER DOES is decided by the pure router (`confirmOutcome`, `afterRecount` — `test:campaign-gates` §UI 13):
+ * CONFIRMED closes once the page is read again (read-only now) and says "Nothing has been sent." (and that the record did
+ * not land, when it did not — ruling 543); an ERROR keeps the dialog OPEN with the typing kept, saying only what is known;
+ * the role's refusal closes; "no longer a draft" closes, reads the page again and is titled from the row it reads —
+ * "Already confirmed" when this officer's own earlier press may have landed. CONFIRMING: both buttons off, a spinner, and
+ * the scrim, Esc and ✕ refused (the kit's `loading`).
  * ⛔ NO MONEY IS WORDED HERE: the estimate's segments are said to every role; the money line is the server's
  * (`confirmMoneyLine`), handed to a money reader only, and printed as it comes (`test:campaign-compose` §16.5).
- * ⛔ ONE ACTION, imported here (`confirmCampaignAction`) — the browser posts the campaign, the word the dialog armed on and
- * the claim it was opened on; never a count (OD27: the server counts).
+ * ⛔ TWO ACTIONS, ONE EACH FILE, both imported here: the read (`campaignConfirmViewAction` — the form's campaign, revision and
+ * audience keys) and the confirmation (`confirmCampaignAction` — the campaign, the word the dialog armed on and the claim it
+ * was opened on). Never a count (OD27: the server counts).
  *
  * Guard: `npm run test:campaign-gates` §UI · Drive: `npm run qa:marketing-confirm`.
  */
-import { Suspense, useEffect, useState, useTransition } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -42,23 +54,25 @@ import { Callout } from "@/components/ui/callout";
 import { ConfirmModal } from "@/components/ui/modal";
 import { Stat } from "@/components/ui/stat";
 import { useDeferredToast } from "@/components/ui/toast";
-import { SkBar } from "@/components/admin/admin-skeletons";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { CAMPAIGN_SCREENS, campaignDetailHref } from "@/lib/marketing/campaign-status";
 import { confirmCampaignAction } from "./confirm-actions";
+import { campaignConfirmViewAction } from "./confirm-view-actions";
 import { useComposerSaved } from "./composer-client";
-import type { ConfirmCardData, ConfirmCardView } from "./composer-loader";
+import type { ConfirmCardView, ConfirmReadAnswer } from "./confirm-doors";
 import type { AudienceSplitView } from "./audience-view-model";
 import { AUDIENCE_COUNT_AGAIN, AUDIENCE_FIGURE, AUDIENCE_NO_OPERATOR, AUDIENCE_SAMPLE_LEAD } from "./audience-copy";
 import {
-  COMPOSE_CONFIRM_ACT, COMPOSE_CONFIRM_COUNTING, COMPOSE_CONFIRM_FAILED, COMPOSE_CONFIRM_HONESTY, COMPOSE_CONFIRM_LIST_LEAD,
-  COMPOSE_CONFIRM_REFUSED, COMPOSE_CONFIRM_TRIGGER, COMPOSE_CONFIRM_UNFINISHED, COMPOSE_CONFIRM_UNRECORDED, COMPOSE_CONFIRMED,
-  COMPOSE_CONFIRMED_NEXT, COMPOSE_CONFIRMED_START, composeConfirmSegments, composeConfirmTitle, composeConfirmedToast,
-  confirmGate, confirmTriggerBlocked,
+  COMPOSE_CONFIRM_ACT, COMPOSE_CONFIRM_CHECK_AGAIN, COMPOSE_CONFIRM_COUNTING, COMPOSE_CONFIRM_HONESTY, COMPOSE_CONFIRM_LIST_LEAD,
+  COMPOSE_CONFIRM_REFUSED, COMPOSE_CONFIRM_TRIGGER, COMPOSE_CONFIRMED, COMPOSE_CONFIRMED_NEXT, COMPOSE_CONFIRMED_START,
+  afterRecount, composeConfirmSegments, composeConfirmTitle, composeNotDraftTitle, confirmAnswerReady, confirmAnswerRetry,
+  confirmGate, confirmOutcome, confirmTriggerBlocked,
 } from "./composer-copy";
+import type { ConfirmGateProps, ConfirmOutcome, ConfirmRecount } from "./composer-copy";
+import { CONFIRM_LINE_BOX, CONFIRM_LINE_CELL, ConfirmLineSizer } from "./confirm-card-ghost";
 
-/* ═══ THE GEOMETRY — one set of boxes for the card and its ghost ═════════════════════════════════════════════════════ */
+/* ═══ THE GEOMETRY — the dialog's boxes (the card's line and the route's ghost share `confirm-card-ghost.tsx`'s) ══════ */
 
 /** A figure tile — the kit's `Stat` in its card box, tall enough for a two-line label at 360 (the audience card's floor). */
 const TILE = "min-h-[84px]";
@@ -66,30 +80,6 @@ const TILE = "min-h-[84px]";
 const TILES = "grid grid-cols-2 gap-2 sm:grid-cols-4";
 /** One listed person: the masked number and the operator, wrapping rather than clipping. */
 const ROW = "flex flex-wrap items-baseline justify-between gap-x-3 border-b border-border px-3 py-2 last:border-0";
-
-/** ⭐ THE CARD'S GHOST — the route's ghost (`loading.tsx`) and the boundary's fallback draw THIS: the trigger's box (a
- *  `btn-md`, 44px) and the line under it. */
-export function ConfirmCardGhost() {
-  return (
-    <div className="space-y-2" aria-hidden data-confirm-card="loading">
-      <SkBar className="h-[44px] w-[176px]" />
-      <SkBar className="h-[18px] w-full" />
-    </div>
-  );
-}
-
-/**
- * ⭐ THE CARD'S OWN SUSPENSE, keyed by the draft — a new draft mounts a new boundary and shows the ghost while its view is
- * counted; a refresh of the same draft keeps the card on screen until the fresh view lands (page.tsx holds its one Suspense
- * for the audience count — `test:campaign-audience` B5 — so this one lives here).
- */
-export function ConfirmCardBoundary({ draftKey, children }: { draftKey: string; children: ReactNode }) {
-  return (
-    <Suspense key={draftKey} fallback={<ConfirmCardGhost />}>
-      {children}
-    </Suspense>
-  );
-}
 
 /* ═══ THE DIALOG'S BODY ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -128,7 +118,7 @@ function ConfirmFigures({ split }: { split: AudienceSplitView }) {
 function ConfirmBody({ view, money, listed, notice }: { view: ConfirmCardView; money: string | null; listed: boolean; notice: string | null }) {
   return (
     <div className="space-y-3" data-confirm-body={listed ? "listed" : "typed"}>
-      {/* A refusal's own sentence, on top of the view it was refused for — read again since. */}
+      {/* A refusal's own sentence, on top of the fresh view it was asked again on. */}
       {notice !== null && (
         <Callout tone="warning" role="alert">
           <span className="block" data-confirm-notice>{notice}</span>
@@ -168,61 +158,107 @@ function ConfirmBody({ view, money, listed, notice }: { view: ConfirmCardView; m
 
 /* ═══ THE CARD ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** ⭐ The card for one draft as page.tsx counted it for this officer — `null` while no draft is saved. */
-export function CampaignConfirm({ card }: { card: ConfirmCardData | null }) {
+/** The read's answer as the card receives it — the action's, or a request lost in transit (`runAdminAction`). */
+type ReadAnswer = ConfirmReadAnswer | { ok: false; error: string; field?: string };
+/** The read's last answer, held with the form it was asked for (its draft, revision and audience). */
+type Asked = { key: string; answer: ReadAnswer };
+/** What the dialog is drawn from: the last view it could open on, kept while it closes so its exit plays on it. */
+type Drawn = { view: ConfirmCardView; gate: ConfirmGateProps; money: string | null };
+
+/** ⭐ The card for the composer's draft — it reads the composer's own state, and counts nothing until it is pressed. */
+export function CampaignConfirm() {
   const router = useRouter();
   const mayAct = useMayAct();
   const actReason = useActDisabledReason();
   const form = useComposerSaved();
+  const [asked, setAsked] = useState<Asked | null>(null);
   const [open, setOpen] = useState(false);
-  // Bumped by a refusal, so the dialog remounts on the fresh view even when its claim did not change.
+  // Bumped when a refusal re-arms the dialog on its fresh view — never by any other answer.
   const [attempt, setAttempt] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
-  const [asked, setAsked] = useState(false);
+  // A refusal for a campaign no longer a draft, said once the page has been read again — titled from the row it reads.
+  const [notDraft, setNotDraft] = useState<string | null>(null);
   const [counting, startCounting] = useTransition();
   const [confirming, startConfirming] = useTransition();
   const { toast, deferToast } = useDeferredToast(confirming);
 
-  const view = card !== null && card.read === "view" ? card.view : null;
+  // ⭐ The answer is the FORM's: another draft, another revision or another audience on screen asks again.
+  const formKey = `${form.savedId ?? ""}:${form.savedRevision ?? ""}:${JSON.stringify(form.audienceParams)}`;
+  const answer = asked !== null && asked.key === formKey ? asked.answer : null;
+  const facts = { mayAct, actReason: actReason ?? null, form };
+  const reason = confirmTriggerBlocked({ ...facts, answer });
+  // The way back a blocked ANSWER offers — only while nothing on the page itself stands in front of it.
+  const retry = confirmTriggerBlocked({ ...facts, answer: null }) === null ? confirmAnswerRetry(answer) : null;
+  const view = answer !== null && answer.ok ? answer.card.view : null;
   // ⛔ The tier is the VIEW's (`confirmGate` reads `view.tier`) — never worked out again here from the count (OD67).
   const gate = view === null ? null : confirmGate(view);
-  // The last view the dialog could be drawn from: a confirmation that lands (or a campaign confirmed meanwhile) reads the
-  // page again into a view with nothing left to count, and the dialog then CLOSES on the view it was showing — playing the
-  // kit's exit — instead of vanishing. Held by the "adjust state while rendering" rule, so no frame draws a mismatch.
-  const live = view !== null && view.count !== null && gate !== null ? { view, gate } : null;
-  const [drawn, setDrawn] = useState<{ view: ConfirmCardView; gate: NonNullable<typeof gate> } | null>(null);
+  const live: Drawn | null = reason === null && view !== null && view.count !== null && gate !== null
+    ? { view, gate, money: answer !== null && answer.ok ? answer.card.money : null }
+    : null;
+  // The last view the dialog could open on — held by the "adjust state while rendering" rule, so no frame draws a mismatch.
+  const [drawn, setDrawn] = useState<Drawn | null>(null);
   if (live !== null && drawn?.view !== live.view) setDrawn(live);
   const dialog = live ?? drawn;
-  const reason = confirmTriggerBlocked({
-    mayAct,
-    actReason: actReason ?? null,
-    form,
-    card: card === null ? null : { campaignId: card.campaignId, status: card.status, read: card.read, view },
-  });
-  const openable = reason === null && gate !== null;
 
-  /** ⭐ Read the page again, THEN open — on the figures as they are now. */
-  const begin = () => {
-    if (!openable || counting || confirming) return;
+  /** The read's request: what this form shows — never a count. */
+  const readRequest = () => ({ campaignId: form.savedId ?? "", draftRevision: form.savedRevision, audience: form.audienceParams });
+
+  /** ⭐ ASK — count the confirmation's view for this officer, NOW (a press, never a render), and open on it when it may. */
+  const ask = () => {
+    if (form.savedId === null || counting || confirming) return;
+    const key = formKey;
+    const request = readRequest();
     setNotice(null);
-    setAsked(true);
-    startCounting(() => router.refresh());
+    startCounting(async () => {
+      const r = await runAdminAction(() => campaignConfirmViewAction(request));
+      startCounting(() => {
+        setAsked({ key, answer: r });
+        if (confirmAnswerReady(r)) setOpen(true);
+      });
+    });
   };
-  // The page has been read again: open on the fresh view — when it may still open (else the card says why).
-  useEffect(() => {
-    if (!asked || counting) return;
-    setAsked(false);
-    if (openable) setOpen(true);
-  }, [asked, counting, openable]);
-  // A dialog whose fresh view may no longer open (a refusal read again, and now blocked) closes, and its sentence stays said.
-  useEffect(() => {
-    if (!open || confirming || openable) return;
-    setOpen(false);
-    if (notice !== null) {
-      toast({ title: COMPOSE_CONFIRM_REFUSED, description: notice, variant: "warning" });
-      setNotice(null);
+
+  /** What each answer does — decided by the pure router, applied here and nowhere else. */
+  const settle = (o: ConfirmOutcome | ConfirmRecount) => {
+    switch (o.kind) {
+      case "confirmed":
+        setOpen(false);
+        setNotice(null);
+        router.refresh();
+        deferToast(o.toast);
+        return;
+      case "keep":
+        // ⭐ THE ERROR STATE: the dialog stays OPEN with the typing kept — no re-arm, no close.
+        toast(o.toast);
+        return;
+      case "close":
+        setOpen(false);
+        setNotice(null);
+        toast(o.toast);
+        return;
+      case "already":
+        setOpen(false);
+        setNotice(null);
+        router.refresh();
+        if (o.gone) deferToast({ title: COMPOSE_CONFIRM_REFUSED, description: o.description, variant: "warning" });
+        else setNotDraft(o.description);
+        return;
+      case "rearm":
+        // ⭐ RE-ARMED on the fresh view: the server's sentence on top, the box cleared and the focus given again (`armKey`).
+        setNotice(o.notice);
+        setAttempt((a) => a + 1);
+        return;
+      case "recount":
+        return;
     }
-  }, [open, confirming, openable, notice, toast]);
+  };
+
+  // "No longer a draft" is said once the page has been read again: "Already confirmed" when it now reads CONFIRMED.
+  useEffect(() => {
+    if (notDraft === null || confirming) return;
+    toast({ title: composeNotDraftTitle(form.status), description: notDraft, variant: "warning" });
+    setNotDraft(null);
+  }, [notDraft, confirming, form.status, toast]);
 
   const close = () => {
     setOpen(false);
@@ -232,116 +268,92 @@ export function CampaignConfirm({ card }: { card: ConfirmCardData | null }) {
   /** ⛔ The campaign, the word the dialog armed on (the bare count — what the server checks against its OWN count) and the
    *  claim it was opened on. Never a count of the browser's. */
   const confirm = () => {
-    if (card === null || view === null || gate === null || confirming) return;
+    if (dialog === null || form.savedId === null || confirming) return;
     const fd = new FormData();
-    fd.set("campaignId", card.campaignId);
-    fd.set("watermark", view.watermark ?? "");
-    fd.set("typed", gate.tier === "hard" ? gate.typedWord : "");
+    fd.set("campaignId", form.savedId);
+    fd.set("watermark", dialog.view.watermark ?? "");
+    fd.set("typed", dialog.gate.tier === "hard" ? dialog.gate.typedWord : "");
+    const key = formKey;
+    const request = readRequest();
     startConfirming(async () => {
       const r = await runAdminAction(() => confirmCampaignAction(fd));
-      if (r.ok) {
-        // Read the page again (read-only now, the confirmed line on this card), then close and say it.
-        startConfirming(() => {
-          setOpen(false);
-          setNotice(null);
-          router.refresh();
-        });
-        deferToast(r.recorded
-          ? { title: composeConfirmedToast(r.count), variant: "success" }
-          : { title: composeConfirmedToast(r.count), description: COMPOSE_CONFIRM_UNRECORDED, variant: "danger", durationMs: 0 });
+      const o = confirmOutcome(r);
+      if (o.kind !== "recount") {
+        startConfirming(() => settle(o));
         return;
       }
-      const why = "reason" in r ? r.reason : undefined;
-      if (why === undefined || why === "failed" || why === "unfinished") {
-        // ⭐ THE ERROR STATE: the dialog stays OPEN with the typing kept — no remount, no close. Saying only what is known; an
-        // outcome nobody can vouch for ("may already be confirmed") stays on screen until it is read (UD-3).
-        toast(why === "failed"
-          ? { title: COMPOSE_CONFIRM_FAILED, variant: "danger" }
-          : { title: COMPOSE_CONFIRM_UNFINISHED, variant: "danger", durationMs: 0 });
-        return;
-      }
-      if (why === "role") {
-        setOpen(false);
-        toast({ title: COMPOSE_CONFIRM_REFUSED, description: r.error, variant: "danger" });
-        return;
-      }
-      if (why === "not_draft" || why === "not_found") {
-        // Confirmed or closed meanwhile (perhaps by this very press, its answer lost): the page is read again and says so.
-        startConfirming(() => {
-          setOpen(false);
-          setNotice(null);
-          router.refresh();
-        });
-        deferToast({ title: COMPOSE_CONFIRM_REFUSED, description: r.error, variant: "warning" });
-        return;
-      }
-      // ⭐ EVERY OTHER REFUSAL: the page is read again, and the dialog REMOUNTS on the fresh view with the server's sentence.
+      // ⭐ A REFUSAL: the view asked for again inside the same busy moment — the dialog stays drawn until it can re-arm.
+      const refused = o.notice;
+      const again = await runAdminAction(() => campaignConfirmViewAction(request));
       startConfirming(() => {
-        setNotice(r.error);
-        setAttempt((a) => a + 1);
-        router.refresh();
+        setAsked({ key, answer: again });
+        settle(afterRecount(again, refused));
       });
     });
   };
 
-  const state = card === null ? "unsaved"
-    : card.status === "CONFIRMED" ? "confirmed"
-      : card.status !== "DRAFT" ? "closed"
-        : counting ? "counting"
-          : open ? "open"
-            : card.read === "error" ? "error"
-              : reason !== null ? "blocked" : "ready";
+  const status = form.status;
+  const state = status === "CONFIRMED" ? "confirmed"
+    : status !== null && status !== "DRAFT" ? "closed"
+      : counting ? "counting"
+        : open && live !== null ? "open"
+          : retry === "count" ? "error"
+            : reason !== null ? "blocked" : "ready";
 
   return (
     <div className="space-y-2" data-confirm-card={state}>
-      {card !== null && card.status === "CONFIRMED" && (
-        <Callout tone="success" role="status">
-          <span className="block" data-confirm-confirmed>
-            {COMPOSE_CONFIRMED}{" "}
-            {CAMPAIGN_SCREENS.detail ? (
-              <Link href={campaignDetailHref(card.campaignId) as Route} className="underline underline-offset-2" data-confirm-start>
-                {COMPOSE_CONFIRMED_START}
-              </Link>
-            ) : (
-              COMPOSE_CONFIRMED_NEXT
-            )}
-          </span>
-        </Callout>
-      )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button
           type="button"
           size="md"
           variant="primary"
-          disabled={!openable || confirming}
+          disabled={reason !== null || confirming}
           loading={counting}
           title={reason ?? undefined}
-          onClick={begin}
+          onClick={ask}
           data-confirm-trigger
         >
           {counting ? COMPOSE_CONFIRM_COUNTING : COMPOSE_CONFIRM_TRIGGER}
         </Button>
-        {reason !== null && <span className="text-body-sm text-text-secondary" data-confirm-blocked>{reason}</span>}
-        {/* A view that could not be read is counted again here — the same page, read again; never a zero. */}
-        {card !== null && card.read === "error" && (
-          <Button type="button" size="sm" variant="ghost" loading={counting} onClick={() => startCounting(() => router.refresh())} data-confirm-count-again>
-            {AUDIENCE_COUNT_AGAIN}
+        {/* A read that failed is counted again, a blocked one checked again — the trigger's own read. Never a zero. */}
+        {retry !== null && (
+          <Button type="button" size="sm" variant="ghost" disabled={counting || confirming} onClick={ask} data-confirm-again={retry}>
+            {retry === "count" ? AUDIENCE_COUNT_AGAIN : COMPOSE_CONFIRM_CHECK_AGAIN}
           </Button>
         )}
       </div>
-      <p className="text-body-sm text-text-tertiary" data-confirm-honesty="card">{COMPOSE_CONFIRM_HONESTY}</p>
+      {/* ⭐ The line: the confirmed line, the reason, or the honesty line — in ONE box as tall as the honesty line. */}
+      <div className={CONFIRM_LINE_BOX}>
+        <ConfirmLineSizer />
+        {status === "CONFIRMED" ? (
+          <p className={`${CONFIRM_LINE_CELL} text-success-fg`} role="status" data-confirm-confirmed>
+            {COMPOSE_CONFIRMED}{" "}
+            {CAMPAIGN_SCREENS.detail && form.pageDraftId !== null ? (
+              <Link href={campaignDetailHref(form.pageDraftId) as Route} className="underline underline-offset-2" data-confirm-start>
+                {COMPOSE_CONFIRMED_START}
+              </Link>
+            ) : (
+              COMPOSE_CONFIRMED_NEXT
+            )}
+          </p>
+        ) : reason !== null ? (
+          <p className={`${CONFIRM_LINE_CELL} text-text-secondary`} role="status" data-confirm-blocked>{reason}</p>
+        ) : (
+          <p className={`${CONFIRM_LINE_CELL} text-text-tertiary`} role="status" data-confirm-honesty="card">{COMPOSE_CONFIRM_HONESTY}</p>
+        )}
+      </div>
       {dialog !== null && dialog.view.count !== null && (
         <ConfirmModal
-          key={`${dialog.view.watermark}:${attempt}`}
           open={open && live !== null}
           onClose={close}
           onConfirm={confirm}
           title={composeConfirmTitle(dialog.view.count, dialog.gate.tier === "medium")}
-          body={<ConfirmBody view={dialog.view} money={card?.money ?? null} listed={dialog.gate.tier === "medium"} notice={notice} />}
+          body={<ConfirmBody view={dialog.view} money={dialog.money} listed={dialog.gate.tier === "medium"} notice={notice} />}
           confirmLabel={COMPOSE_CONFIRM_ACT}
           tone="brand"
           maxWidth={560}
           loading={confirming}
+          armKey={`${dialog.view.watermark}:${attempt}`}
           {...dialog.gate}
         />
       )}
