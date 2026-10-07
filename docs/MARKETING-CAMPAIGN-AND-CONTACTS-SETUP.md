@@ -80,14 +80,18 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push a unit named
-  here. NOW (22:40 EAT · 2026-10-07) — where each piece is, for a session on ANY machine (another PC: every commit
+  here. NOW (22:50 EAT · 2026-10-07) — where each piece is, for a session on ANY machine (another PC: every commit
   below is on origin as a backup branch, `origin/backup/marketing-s14-*`). Ali, 2026-10-07: "keep going and putting
   progress updated until you're done, I'll be away. Keep pushing live." — and "take decisions and fix for perfection".
   · U38b, U13 LIVE (STEPS 48, 49) · THE OWNER DOOR, U40a, U46a and the U38b save fixes PUSHED (STEP 50 below).
-  · NEXT ON PRODUCTION: Ali's approved texts saved through the owner door — `status`, then `check` and `apply` for G5,
-    G4, G10 in that order (the exact lines, every digest, in `scripts/ops/marketing-owner-save.mts`'s header; run from a
-    checkout of the commit production runs, through `railway run --service 50pick`), ONE `railway redeploy`, then the
-    pages read back (the RG page's marketing line, the privacy notice's lines, Admin → System's cards).
+  · STEP 50 LIVE `88792619` (19:41Z: www and the apex, /api/health ok, the public pages 200).
+  · ⛔ BLOCKED — ALI'S APPROVED TEXTS ON PRODUCTION (G5, G4, G10): `status` and `check` ran (production has no wordings
+    and no policy lines saved yet; G5's check passes — "Namba yako ipo orodhani kwetu.", version 1), but the door REFUSES
+    the apply: OMEGA-COMPILE01's clock is ~96 s behind real time (google.com, cloudflare.com and www.50pick.tz agree) and
+    the door allows 20 s. The PC takes its time from the domain controller; `w32tm /resync` needs administrator rights.
+    FIX: sync this PC's clock (Settings → Time & language → Date & time → Sync now, or an administrator), or run the three
+    apply lines (`scripts/ops/marketing-owner-save.mts`'s header) from any PC whose clock is right — then ONE
+    `railway redeploy --service 50pick` and the pages read back. Nothing depends on them tonight (no campaign can run).
   · THE ENGINE, each unit built, independently reviewed, fixed and re-reviewed before it lands:
     - U42 (enqueue) + U49a (the credit kept for codes, Start's and Resume's refusals) — merged on `marketing-s14-u42`
       (`F:\kipindi-m14j`: … `9e0dd1d4` · `75bdfa53` · `dada4a1d` the merge · `75273ced` Resume refused by the list's
@@ -95,16 +99,23 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
       overshoot the count; a refusal never advises a copy that would message people again; Resume with nothing left).
     - U43b-1 (the dispatch hooks, the transport fix) — `marketing-s14-u43b1` (`F:\kipindi-m14l`): `0b5b1730` + `9b2aa51b`
       (the review's fixes: every hook's answer read, never trusted).
-    - U43b-2 (THE ENGINE: the slice, the reaper, the settlement) — BEING BUILT in `F:\kipindi-m14m`
-      (`marketing-s14-u43b2`, base `42f6aa38` = this push + U42/U49a + U43b-1; its light suites green).
-    - U40b (the confirmation on screen) — `marketing-s14-u40b` (`F:\kipindi-m14i`): `d35fd5cd` + `23352fcb` + `8e861dd1`
-      (the review's fixes: the confirmation counted only on the press, inside the split's two slots; a refusal re-arms
-      the dialog without a remount) — under re-review. Owed: typecheck, `qa:marketing-confirm`, its reds.
+    - U43b-2 (THE ENGINE: the slice, the reaper, the settlement) — BUILT `73086586` in `F:\kipindi-m14m`
+      (`marketing-s14-u43b2`, with U42/U49a's last fixes merged `33786835`: test:marketing-engine 76, red 104/104),
+      REVIEWED — no blocker; two MAJORs in its fix round now (a reap landing between the last check and the send could
+      send twice; a "send a corrected copy" sentence that does not say a copy re-messages people already reached), plus
+      the owner's switch re-judged just before the wire. The codes path (sms.ts) is reviewed clean.
+    - U47b-1 (the live page's services and view-model) — BEING BUILT in `F:\kipindi-m14o` (`marketing-s14-u47b1`).
+    - U40b (the confirmation on screen) — `marketing-s14-u40b` (`F:\kipindi-m14i`, on main `4f8d20a1`): three review rounds,
+      every finding closed (`8e861dd1` · `2f31ebf3` · `5a48e843`: counted only on the press, its own fresh count inside
+      the two slots with a 15 s bound, a refusal re-arms without a remount, the dialog never opens by itself, every
+      sentence true); light suites green on main. Owed: typecheck, `qa:marketing-confirm`, its reds (the next lock turn).
     - Then U47b-1 → U47b-2 (the live campaign page) → U48a (results), then U52a (the live drive on production).
   · THE FINAL-RULE UNITS, MERGED — `marketing-s14-final` (`F:\kipindi-m14n`): the gate `4e8c80d0` + the texts `f46ebc38`
     (`9fc6830b`), §4i telling §9's old promise from the new conditional one (`2d172ecb`), on main (`7dad998c`); the
-    gate's re-review (all 3 MAJORs closed) fixes are being made (the referee check bound to production's own record,
-    an OFF and an ON serialised per account, the generous number reader narrowed, a way to clear an unreadable contact).
+    gate's re-review and third pass closed (`008fe25a` · `7d8f6ddd` · `ae8fe245`: the referee check bound to production's
+    own record; an OFF and an ON serialised per account; the number reader keys only what was written; the hand steps
+    strict — one exact number typed twice, one contact per step, console only; a referee's ADDRESS keyed too, so §9's
+    "that promise stands" holds for a later account or contact-book row at that address).
     Then its heavy checks (own node_modules, prisma generate, typecheck, the referee-key probe, the backup schema,
     `red:dal-parity`, `red:dead-schema`, its drives). They land after Ali's yes; then production's referee-key backfill,
     recorded, before licence outreach or the live switch can open.
