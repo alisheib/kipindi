@@ -4,10 +4,10 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
-switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 48, U38b
-(the audience card on the composer — a viewer who may not read a number sees the count alone, OD65 · OD66), `a5feb9f1`,
-pushed 2026-10-07 (S14); before it STEP 47, U43a (the recipient doors in both twins; inert until U43b), `89775271`, LIVE
-`0f1b143c` 2026-10-07 (S14), and STEPS 45–46, U16a and U43y, LIVE `023eae9f` 2026-10-07 (S13). Ali's
+switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 49, U13
+(the 08:00–20:00 EAT send window, enforced where messages are sent), `53fd74ad`, pushed 2026-10-07 (S14); before it
+STEP 48, U38b (the audience card — the count alone for a viewer who may not read a number), LIVE `fefa358d`, and STEP 47,
+U43a (the recipient doors), LIVE `0f1b143c`, 2026-10-07 (S14). Ali's
 FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S14
 in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campaign: realistic window 18–25 October.**
 
@@ -41,19 +41,19 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U13, the 08:00–20:00 EAT send window (ENGINE-SPEC §4.8) — BUILT and committed `53fd74ad` on
-  `marketing-s14-u13` (backed up as `origin/backup/marketing-s14-u13`), its quick suites green; its battery and drives
-  run under the lock in S14's turn, then STEP 49. Then the owner door (`ops:marketing-owner-save`, being built in
-  `F:\kipindi-m14e` from the S13 drafts) and Ali's approved texts saved through it (G5, G4, G10), then the final-rule
-  units, then licence outreach opened, then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order: U40a (BUILT `39a4fc50`
-  on `marketing-s14-u40a`, under independent review) → U40b → U42 → U49a → U43b → U46a (BUILT `4b41f032` on
-  `marketing-s14-u46a`, under independent review) → U47b → U48a → (U48b) → U52a, the live drive on production.
-  WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates; U13,
-  U40a and U46a are built, so what is left of them is review, fixes and verification):
+▶ NEXT: the owner door (`ops:marketing-owner-save`, reviewed twice, `f5db4ea9` on `marketing-s14-owner`): its typecheck, its
+  rehearsal on scratch PostgreSQL and its drive under the lock, then its push, then Ali's approved texts saved through it on
+  production (G5, G4, G10 — `status`, `check`, `apply`, one gate at a time, ONE redeploy, the pages read back). Then the
+  engine in `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order as each is verified: U40a (reviewed twice, `e4348bae`) →
+  U46a (reviewed, `23a138e8`) → U42 + U49a (built, in review) → U40b (built `d35fd5cd`, in review) → U43b → U47b → U48a →
+  (U48b) → U52a, the live drive on production. The final-rule units (built; review fixes in progress) land together once
+  Ali says yes to their five public wordings, then licence outreach is opened (an owner act).
+  WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates; U40a,
+  U40b, U42, U49a and U46a are built, so what is left of them is review, fixes and verification):
      1. U43a  ✅ LIVE (STEP 47, `89775271`, served as `0f1b143c`) — the recipient doors: claim, settle, find the stranded, requeue
-     2. U38b  ✅ PUSHED (STEP 48, `a5feb9f1`) — who a campaign goes to: the audience card, its counts and the D19 rule
-     3. U13   BUILT (`53fd74ad`) — the 08:00–20:00 EAT send window, enforced where messages are sent; in verification
-     4. U40a  BUILT (`39a4fc50`) — the confirmation on the server: the typed count, the frozen estimate and budget; in review
+     2. U38b  ✅ LIVE (STEP 48, `a5feb9f1`, served as `fefa358d`) — who a campaign goes to: the audience card, its counts and the D19 rule
+     3. U13   ✅ PUSHED (STEP 49, `53fd74ad`) — the 08:00–20:00 EAT send window, enforced where messages are sent
+     4. U40a  BUILT, reviewed twice (`e4348bae`) — the confirmation on the server: the typed count, the frozen estimate and budget
      5. U40b  the confirmation on screen: the modal on the composer ...................................  6–10 h
      6. U42   enqueue: the recipient rows, capped at the confirmed count .............................. 6–10 h
      7. U49a  the credit kept for login codes, and the refusal at Start ............................... 6–10 h
@@ -80,48 +80,81 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push U43a, U38b, U13 or the
-  owner door. NOW (16:30 EAT · 2026-10-07) — where each piece is, for a session on ANY machine (another PC: every
-  commit below is on origin as a backup branch, `origin/backup/marketing-s14-*`):
-  · U38b PUSHED to `main` — STEP 48 below; the read-back of its deploy goes into the next record.
-  · U13 COMMITTED `53fd74ad` on `marketing-s14-u13` (`F:\kipindi-m14b`), on top of U38b, backed up as
-    `origin/backup/marketing-s14-u13`. Moved from the m14b build by a three-way merge (base: the U38b it was built on);
-    two overlaps settled by hand (package.json's predeploy keeps both new suites; one ENGINE-SPEC paragraph keeps
-    U38b's final words). Green: `test:marketing-window` 9 (red 9/9), `test:marketing-settings` 21 (red 73/73),
-    `test:policy-lines` 11, `test:rg-policy` 23 (red 26/26), `test:marketing-consent` 162 (red 94/94),
-    `test:campaign-audience` 40, `test:campaign-privacy` 27, `test:campaign-compose`, `test:client-graph-safe`,
-    `test:guards-exist`. Running under the lock in S14's turn (in `F:\kipindi-m14`, fast-forwarded to it): its battery
-    (82 light suites, the 21 database ones, and the three planting reds whose anchors sit in its files:
-    `red:chart-one-home`, `red:house-bot-c5`, `red:sms-cost-guard`), then its drives (the composer with the window
-    closed by the dev clock door and every other composer pass, `qa:marketing-policy-lines`, and `qa:marketing-settings`
-    on a scratch PostgreSQL). Then STEP 49 and the push.
-  · U40a COMMITTED `39a4fc50` on `marketing-s14-u40a` (`F:\kipindi-m14c`), on top of U13, backed up: the confirmation's
-    server half — `audience-fence.ts` (the audience sealed by a keyed HMAC, so a confirm answers `stale_view` when the
-    people matching are not the people shown) and `campaign-confirm-service.ts` (the typed count, the frozen budget,
-    E18's source line, OD65/OD66, U41's one-officer guard, ONE conditional DRAFT → CONFIRMED). `test:campaign-gates` 39
-    (+1 pending until `enqueue.ts` exists), `red:campaign-gates` 31/31, and 24 neighbouring suites green on U13. Under
-    independent review.
-  · U46a COMMITTED `4b41f032` on `marketing-s14-u46a` (`F:\kipindi-m14d`, on `a439a464`), backed up: delivery receipts
-    through ONE receipt door in both twins (conditional, monotonic, identity-checked), the webhook scrubbing a description
-    before cutting it. `test:sms-dlr` 77, `test:dal-parity` 2,159, `test:campaign-models` 51 (red 81/81),
-    `test:campaign-privacy` 27 (red 33/33). Under independent review; owed: typecheck, `red:dal-parity`, `red:sms-dlr`,
-    and the Postgres receipt cases as `db:probe-campaign-models` §11. It lands after U43b (§0.1's order).
-  · THE OWNER DOOR: worktree `F:\kipindi-m14e`, branch `marketing-s14-owner` from `53fd74ad`, being built from
-    `backup/marketing-s13-wip` `wip-s13/owner-door/` (PARTIAL: every file re-read) and `wip-s13/notes/owner-acts-packet.json`
-    (`ops_door_design`, `risks`). Once it is live: `status`, then `check` for G5, G4 and G10, showing Ali the words
-    `check` prints, then `apply`, one gate at a time (COMPLIANCE-DECISIONS § 2026-10-07, the owner's approvals).
-  · Order to land: U13 → the owner door (then Ali's approved texts saved through it) → the final-rule units → licence
-    outreach opened → U40a → U40b → U42 → U49a → U43b → U46a → U47b → U48a → U52a (§0 ▶ NEXT).
+  owner door. NOW (19:05 EAT · 2026-10-07) — where each piece is, for a session on ANY machine (another PC: every
+  commit below is on origin as a backup branch, `origin/backup/marketing-s14-*`). Ali, 2026-10-07: "keep going and putting
+  progress updated until you're done, I'll be away. Keep pushing live." — and "take decisions and fix for perfection".
+  · U38b and U13 LIVE — STEPS 48 and 49 below.
+  · U40a REVIEWED TWICE, every finding closed — `marketing-s14-u40a` (`F:\kipindi-m14c`): `39a4fc50` + `6fd388df` (the members
+    key bound to its draft — the review's MAJOR; ⭐ OD67, §4) + `e4348bae` (the spec as built). Owed: typecheck (queued).
+  · U40b BUILT `d35fd5cd` on `marketing-s14-u40b` (`F:\kipindi-m14i`): the "Confirm audience…" card and its modal, OD67 on
+    screen (the tier from `view.tier` only). REVIEWED — no blocker, two MAJORs: a preset date window read as unsaved a minute
+    after its save (fixed at its root by the U38b save fix below, merged in as `23352fcb`), and the confirmation counted on
+    every render, outside the split's two slots (to be counted on demand) — its fix round is running, with the drive's
+    payload checks, the refusal's remount and five wordings. Owed after it: typecheck, `qa:marketing-confirm`, its reds.
+  · THE U38b SAVE FIXES — `marketing-s14-u13` (`F:\kipindi-m14b`): `e25de55d` (a saved draft whose only change is its
+    audience saves it, never "Nothing to save") + `db841d68` (every save goes to the draft's own address, so a window saved
+    as "7 days" never reads as unsaved the next minute). Light suites green (campaign-audience 41, red 49/49). Owed: the
+    audience drive's WINDOW SAVED step and the composer drives on main + U13 (queued in the next lock turn), then its push.
+  · U42 BUILT `f32d455c` on `marketing-s14-u42` (`F:\kipindi-m14j`) and U49a BUILT `e33e792c` on `marketing-s14-u49a`
+    (`F:\kipindi-m14k`) — both under independent review (U49a touches `sendBatch`, which carries every login code).
+  · U43b-1 BEING BUILT in `F:\kipindi-m14l` (`marketing-s14-u43b1`): the dispatch hooks and the transport fix, the first half
+    of the send engine (ENGINE-SPEC §4.13).
+  · U46a REVIEWED, every finding fixed — `marketing-s14-u46a` (`F:\kipindi-m14d`): `4b41f032` + `0b5126b2` + `23a138e8`
+    (`db:probe-campaign-models` §11, the receipt door on PostgreSQL). Owed: typecheck, `red:sms-dlr`, `red:dal-parity`, §11.
+  · THE OWNER DOOR REVIEWED TWICE, every finding fixed — `marketing-s14-owner` (`F:\kipindi-m14e`): `51a4acb0` + `8e508606` +
+    `f5db4ea9`. Owed: typecheck, the rehearsal on scratch PostgreSQL (status → check → apply G5, G4, G10 → NOTHING TO DO),
+    `qa:marketing-policy-lines`; then its push, then `status` / `check` / `apply` on production, one gate at a time, and ONE
+    redeploy. The G10 note (the RG line no longer says "whose age we cannot confirm"; the code still refuses them) was put
+    to Ali; he ruled "take decisions" — the approved words are applied as approved.
+  · THE FINAL-RULE GATE (`marketing-s14-frgate`, `F:\kipindi-m14f`, `b514d5e9`) — review fixes in progress: NO time in the
+    key table (keys of promised referees only — a stored instant linked a referee to the applicant), a fifth licence-outreach
+    opening check `referee_keys` (outstanding until production's backfill is recorded with 0 missing; the live switch
+    refuses on it too), an OFF that writes its WITHDRAWN row first, e-mail-only referees keyed by the holder's number.
+  · THE FINAL-RULE TEXTS (`marketing-s14-frtexts`, `F:\kipindi-m14g`: `18948144` · `b4cd8741` OD61 · `2a8ffff2` 3b) — review
+    fixes in progress. ⛔ FIVE CORRECTED PUBLIC WORDINGS WAIT FOR ALI'S YES (put to him 2026-10-07): the data-rights erasure
+    sentence (no "only", no "erased when that period ends"), the note under "Erase my data", §6 "Erasure: subject to the
+    records the law requires us to keep (see §5)", §9's coded referee record, and §5's line for it. These two units land
+    TOGETHER, after his yes; the §9 version label is set to what production prints at go-live, and the cutoff after it.
+  · THE STAFF DOOR (`ops:provision-staff`) went live with STEP 49. ⛔ The QA GROWTH login is NOT created: the phone Ali gave
+    (+255772619619) already holds an OWNER account on production (the door refused, nothing written). It waits for another
+    number from Ali.
+  · ⛔ WAITING FOR ALI: the five wordings' yes · a phone for the QA GROWTH login · his go before the first real SMS (U52a).
+  · Order to land now: U13 ✅ → the owner door (and the texts saved through it) → U40a → U46a → U42 + U49a → U40b → U43b →
+    U47b → U48a; the final-rule units after Ali's yes, then licence outreach opened (an owner act), then U52a.
   · THE LOCK: the Vodacom and money-doors sessions run beside this one on the same PC. Every heavy job (tsc, builds,
     dev servers and drives, scratch Postgres, batteries) takes `F:/kipindi-locks/heavy-node.lock` (a `mkdir` mutex;
     the owner line's first word is the session) and queues with ONE note, `F:/kipindi-locks/heavy-node.wait`: a note
     that is not yours goes first, and a job clears only its OWN note, word for word; a session that takes another's
     place by agreement writes that place back into the note when it takes the lock. ⛔ Release the lock ONLY if you took
-    it (a cleanup after a failed `mkdir` once removed the Vodacom session's lock; restored at once, its owner told).
-    While queued, keep working on everything that needs no lock (Ali, 2026-10-07; the `keep-working-while-waiting`
-    skill). A ready helper: `F:/kipindi-locks/withlock.sh`. This lane uses ports 3101-3109 and scratch Postgres
-    5461-5463; the Vodacom lane 3071-3079.
+    it. While queued, keep working on everything that needs no lock (the `keep-working-while-waiting` skill). A ready
+    helper: `F:/kipindi-locks/withlock.sh`. This lane uses ports 3101-3109 and scratch Postgres 5461-5463.
   ▸ 10:08 EAT: S14's first session closed mid-task; a second session on the same PC continues S14 in the same worktree
   (Ali: "proceed with the sms campaign plan … check what's left and proceed").
+  STEP 49 · U13 PUSHED `53fd74ad` (with `cb3fb2c7`, the contacts drive's corrected check) — THE 08:00–20:00 EAT SEND
+  WINDOW, ENFORCED WHERE MESSAGES ARE SENT (ENGINE-SPEC §4.8, D13 · OQ5): ONE rule (`lib/marketing/window.ts`) read by the
+  send path, the officer's test send and the composer's Test card; the live reader `liveSendWindow` (dispatch.ts).
+  `dispatchSlice` reads the window first — closed → every row held `quiet_hours`, no gate asked; hours that cannot be read
+  → every row held `window_unreadable`, the same shop-wide wait, never a pause and never the default hours obeyed (SP-2);
+  the window judged again at the wire against the slice's own elapsed time (SP-1); the test send refused `held` in the
+  window's own sentence before a token, a row or the wire, and the composer says so up front (M12); ⭐ R1 — new hours on
+  Admin → System refused while the responsible-gambling page's marketing line names a time they would not keep
+  (`published_hours`), or while the public lines cannot be read (`published_unread`), the line read for word times too
+  (English hour words, the Swahili clock, Chinese numerals) after NFKC (the review's MAJOR #1); every suite that drives
+  `dispatchSlice` hands it a fixed window (`scripts/lib/send-window.mts`), W6 walking the callers; a dev-only clock door
+  (`/api/dev-test/marketing-send-window`) for the drives. Moved onto U38b by a three-way merge from the S13 drafts and the
+  S14 build (two overlaps settled by hand). ⭐ PROVEN: `test:marketing-window` 9 (red 9/9), `test:marketing-settings` 21
+  (red 73/73), `test:policy-lines` 11, `test:rg-policy` 23 (red 26/26), `test:marketing-consent` 162 (red 94/94),
+  `test:campaign-audience` 40, `test:campaign-privacy` 27, `test:campaign-compose` (with §18.33), `test:client-graph-safe`,
+  `test:guards-exist`. THE BATTERY on `cb3fb2c7`: typecheck clean; 82 light suites three at a time — every failure red on a
+  clean `main` too (`red:policy-lines`, `test:red-anchors`, `test:house-bot-holder-lifecycle`, `test:orphans`), and
+  `test:admin-section-gate` driven live below; 5 of the 21 database suites green (`test:cashout-price-guard`,
+  `verify:backup-schema`, `test:kyc-restart-docs`, `test:house-bot-migrations`, `test:house-bot-money`) — the battery was
+  cut short to hand the lock to the deposits release Ali asked to go first, and the other 16 (house-bot and rehearsals —
+  none names a file U38b or U13 changed, the rehearsals only through their registry reading package.json) are OWED on this tree; `red:chart-one-home` caught every plant; `red:sms-cost-guard` 53/53 caught on their own assertion, the tree byte-identical after; `red:house-bot-c5` REFUSED before any plant on the drive tree — its disclosure baseline holds every published word to `main`'s, and that tree (`e25de55d`) lacks the money doors' words; none of its plants touches a file U13 changed. ⛔ OWED: it runs on main's words in the next lock turn.
+  THE DRIVES, each on a fresh server: on the U13 tree with the first U38b save fix (`e25de55d` — NOT in this push; it lands with its follow-up `db841d68`): `qa:marketing-audience` 142/0 · `qa:marketing-compose` window-closed 17/0 (the dev clock door), console 198/0, typed 179/0, live-closed 18/0, dead-rail 10/0 · `qa:marketing-policy-lines` 89/0 · `qa:marketing-contacts` 487/0 · `test:admin-section-gate` live and warm 21/0 · `qa:marketing-settings` on a scratch PostgreSQL 184/0.
+  WITH IT: the staff door `ops:provision-staff` (`4bd4c728` — run from a PC through Railway's public proxy; no database, no
+  run; `--execute` only in production; the password written to a gitignored file, never printed; test 10/10, red 6/6) and
+  `c9a5a6fa` (the section gate waits for the URL after a soft navigation, not a fixed six seconds).
   STEP 48 · U38b PUSHED `a5feb9f1` (merged with `main` as `fc49aeb5`, then `2c89a953`) — THE AUDIENCE CARD ON THE COMPOSER
   (ENGINE-SPEC §4.4): who a campaign goes to (Contact book · Player accounts · Both — the `pop` key read only at the
   campaign door), the audience rail, and a keyed Suspense count from ONE pure view-model; the campaign list says each
@@ -597,7 +630,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U10 | engine | ✅ | S6 | f1ad4417 | a player who took a one-hour break was refused for ever as `account_status`, a restored self-excluder for ever, harm markers were never asked, and U7's "deciding must not write" fix still REWROTE any RG row whose pending limit had come due → one read-only standing predicate: an exclusion lifts only on an officer restore + six calendar months + a consent after the restore, a break only on a consent after it ended, a harm marker refuses for its window and an unreadable check refuses | `test:rg-doors` · `test:marketing-consent` | yes · `red:rg-doors` (19/19 real-file mutations, 8 of them on `marketing/rg.ts` and the gate) · `red:marketing-consent` | 2026-09-25 · live on `12c37673` then `4dfea77e`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (`test:rg-doors` §8, 37 assertions, both lifts proven to EXIST, a control proving the no-write fixture really exercises the write path) — not by a live drive. ⚠️ Harm markers are NOT standing (nothing persists a flag) — an owner item in §0, not a hidden gap. D10 stays ⬜: an owner ruling |
 | U11 | engine | ✅ | S7 | 40b83931 | nothing asked age before a marketing message → one age definition (`ageOnPlatformDate`) in the gate after harm markers: under 18 `age_minor`, missing `age_unknown`, a contact `age_unknown` until U33 records an attestation (none is inferred) | `test:marketing-consent` | yes · `red:marketing-consent` (16/16 — incl. a null date of birth treated as adult, a contact marketed with no attestation) | 2026-09-26 · live on `40b83931`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (adult / minor / unknown as a three-outcome property) — the deploy is the build proof. ⚠️ The 2026-09-26 audit found the gate clearing a player KYC had refused as UNDERAGE; the audit-fix pass asks the identity check too (§9 U11) |
 | U12 | docs | ✅ | S7 | 40b83931 | §4 of /legal/responsible-gambling promised "no marketing to players under 25 in vulnerability segments" and "no sign-up nudges in the late-night window" with NO code behind either, and the page had no version pin → the under-25 segment DEFINED and BUILT (under 25 + a self-exclusion or break ever on record, no lift until 25), §4 re-versioned v2026-09-26 to name exactly what the gate runs, the late-night bullet CUT; ruled on Ali's delegation (COMPLIANCE-DECISIONS § "2026-09-26 · RG Policy v2026-09-26") | `test:rg-policy` | yes · `red:rg-policy` (7/7) | 2026-09-26 · live on `40b83931`, proven by DISCRIMINATION in all three languages: each locale serves its OWN new §4 (and none of the other two), the new version, and neither the old version nor the late-night promise; screenshots at 360 (sw, zh) and 1280 (en) OPENED AND READ — 0px horizontal overflow, the bullets wrap inside the column |
-| U13 | engine | ⬜ | — | — | — | `test:marketing-window` | — | quiet hours |
+| U13 | engine | 🔵 | S14 | 53fd74ad | no send path asked the hour → ONE window rule read by the send loop (held `quiet_hours`, or `window_unreadable` when the hours cannot be read), the test send and the composer, judged again at the wire; new hours refused while the published RG line names a time they would not keep | `test:marketing-window` | yes · `red:marketing-window` | quiet hours. Pushed (§0 STEP 49): `qa:marketing-compose` window-closed with the dev clock door. 🔵 until a campaign's slice runs on production (U43b). |
 | U14 | engine | ⏸ | — | — | — | `test:marketing-consent` | — | frequency cap — ⏸ HELD BY RULING: management, 2026-10-07, wants no per-person cap ("we decide, we are management"; COMPLIANCE-DECISIONS § "2026-10-07 · Management's answers for the first marketing campaign", item 2). Not built unless management asks. |
 | U15 | guard | ⬜ | — | — | — | `test:marketing-engine` | — | D15 one send path |
 | U16 | data | 🟡 | S13 | d2fe9731 | — | `test:campaign-privacy` · `test:retention` | yes — `red:campaign-privacy` (in-process) | erasure reaches it. U16a pushed 2026-10-07 (§0 STEP 45): erasure, the access export and retention reach the campaign records and the opt-out links, plus the erasure marker; U16b (SmsMessage's retention and export reach, the lapse's ledger row, the import-row expiry, the never-finished campaign's trigger) follows. |
