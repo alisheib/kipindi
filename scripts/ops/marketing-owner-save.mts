@@ -18,7 +18,8 @@
  * `RAILWAY_SERVICE_NAME=50pick`, and an `AUDIT_CHAIN_SECRET` that is set and is not `SESSION_SECRET` (the live switch door's
  * check: the realistic mistake — a local `.env` run — closed; not a cryptographic proof of the key). Status only reads.
  * ⛔ THE CLOCK: an apply is refused from a PC whose clock is more than 20 s off the database's — the audit rows carry this
- * PC's instant, while the saved versions carry the database's. A check only warns.
+ * PC's instant, while the saved versions carry the database's. A check only warns. A database clock that cannot be READ
+ * is no PC clock to sync: the database is out of reach, and both commands refuse, saying so.
  *
  * Run it through Railway, from a checkout of the commit production runs:
  *   railway run --service 50pick npm run ops:marketing-owner-save -- status
@@ -45,7 +46,8 @@
  *   railway redeploy --service 50pick
  *
  * Exit: 0 done or nothing to do · 1 refused or not confirmed (the reason is printed) · 2 not run (usage, no database, not
- * production's own environment, an approval file that can't be opened, or — for apply — this PC's clock off the database's).
+ * production's own environment, the database's clock unreadable, an approval file that can't be opened, or — for apply —
+ * this PC's clock off the database's).
  */
 import { readFileSync } from "node:fs";
 
@@ -117,6 +119,12 @@ async function main(): Promise<number> {
   // This PC's clock against the database's, measured across one round trip: it gates an APPLY; a check only warns.
   const askedAt = Date.now();
   const dbMs = await DOOR.readDatabaseClockMs();
+  // ⛔ A clock that could not be READ is the database out of reach — no clock of this PC's to sync, and nothing to check
+  // or apply with: said as itself, for both commands.
+  if (dbMs === null) {
+    console.log("REFUSING: the database's clock couldn't be read — the database could not be reached, so nothing was read or written. Run it again.");
+    return 2;
+  }
   const clockProblem = DOOR.opsClockProblem(dbMs, askedAt, Date.now());
   if (command === "apply" && clockProblem !== null) {
     console.log(`REFUSING: ${clockProblem} — sync it (Windows: Settings → Time & language → Date & time → Sync now) and run it again.`);

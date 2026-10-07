@@ -30,10 +30,15 @@
  * recorded; a record that does not land writes nothing at all. Every ending after it is recorded too, awaited:
  *   · `marketing.owner_save_applied` — the versions written, the lines that moved, the page versions and the confirmed
  *     ADMIN row;
- *   · `marketing.owner_save_refused` — NOTHING WAS WRITTEN: the writer refused (its reason, its sentence and every
- *     per-key problem, verbatim), or the database's clock could not be read for the write;
- *   · `marketing.owner_save_failed` — the writer threw, or said saved while the row does not read back as Ali's words:
- *     what the row holds is not known, or not what was approved — never passed off as a refusal.
+ *   · `marketing.owner_save_refused` — NOTHING WAS WRITTEN: the writer refused before its write (its reason, its sentence
+ *     and every per-key problem, verbatim), or the database's clock could not be read for the write;
+ *   · `marketing.owner_save_failed` — the writer threw, or said saved while the row does not read back as Ali's words, or
+ *     answered `not_saved` while the row does not read back as this door's write: what the row holds is not known, or not
+ *     what was approved — never passed off as a refusal.
+ * ⛔ `not_saved` IS NOT "NOTHING WAS WRITTEN": the factory's verified write (`define-config.ts`) answers it when its read-back
+ * fails AFTER a committed save, before its ADMIN row, as well as before a write. So the row is read FRESH: this door's
+ * write found there (its `ops: <by>`, this save's instant, Ali's words) → the applied path, never confirmed
+ * (`done_unconfirmed`: no ADMIN row); not found → `save_unconfirmed`, recorded `_failed`, and the operator runs `status`.
  * The texts are not copied into these rows: the factory's ADMIN row holds them, before and after.
  *
  * ⛔ THE FACTORY'S ADMIN ROW IS FIRE-AND-FORGET (`define-config.ts`), and a short-lived ops process can exit before it lands.
@@ -789,7 +794,7 @@ export type OwnerSaveCode =
   | "done" | "done_unconfirmed" | "nothing_to_do" | "checked" | "status" | "status_unreadable"
   | "bad_ops_text" | "no_database" | "clock_unreadable" | "bad_file" | "expect_mismatch" | "unreadable" | "read_in_part"
   | "window_unreadable" | "invalid" | "review_not_possible" | "builder_mismatch" | "record_failed" | "writer_refused"
-  | "writer_failed" | "read_back_mismatch";
+  | "writer_failed" | "save_unconfirmed" | "read_back_mismatch";
 
 /** What a command did: a code a test can ask for, the exit code (0 done or nothing to do · 1 refused or not confirmed ·
  *  2 not run), the lines the CLI prints, and the ids of the rows it wrote. */
@@ -819,6 +824,13 @@ export const OWNER_SAVE_SENTENCE = Object.freeze({
   recordFailed: "The record of Ali's approval couldn't be written, so nothing was saved. Run it again; if it repeats, tell the developer.",
   writerRefused: "The writer refused the save, so nothing was written:",
   writerFailed: "The writer failed before it answered, so whether anything was written is not known — run status to see the row, and tell the developer at once:",
+  /** ⛔ `not_saved` is the factory's answer when its read-back after a COMMITTED save fails, as well as before a write — so
+   *  it is never "nothing was written". The row, read fresh, did not show this door's write either. */
+  saveUnconfirmed:
+    "The writer could not confirm its save, and the row does not read back as Ali's words saved by this door — so whether anything was written is not known. Run status to see the row, and tell the developer at once. The writer said:",
+  /** The same answer over a write that DID land — the fresh read shows every version this door wrote, at this instant. */
+  saveLanded: (error: string): string =>
+    `  · the writer answered “${error}” (not_saved), but a fresh read shows every version saved by this door at this instant — the save landed, and the factory never wrote its ADMIN row.`,
   readBack: "The writer reported the save, but the row does not read back as Ali's approval — tell the developer at once:",
   unconfirmed: "Saved, but its audit row was not confirmed — tell the developer.",
   redeploy:
@@ -1087,7 +1099,9 @@ function wordingsReadBackProblems(plan: WordingsPlan, h: WordingHistories, offic
   return out;
 }
 
-function linesReadBackProblems(plan: LinesPlan, r: PolicyLinesRecord, officer: string, nowIso: string, versions: Readonly<Record<PolicyPage, string>>): string[] {
+/** Every written line's new revision as this door's save of Ali's words — and, when the writer reported the page versions
+ *  (`versions`; a `not_saved` answer reports none), each page printing exactly that. */
+function linesReadBackProblems(plan: LinesPlan, r: PolicyLinesRecord, officer: string, nowIso: string, versions: Readonly<Record<PolicyPage, string>> | null): string[] {
   const out: string[] = [];
   for (const s of plan.steps) {
     if (!s.writes) continue;
@@ -1105,6 +1119,7 @@ function linesReadBackProblems(plan: LinesPlan, r: PolicyLinesRecord, officer: s
       out.push(`“${s.key}”: revision ${s.base + 1} does not hold Ali's words`);
     }
   }
+  if (versions === null) return out;
   const pages = pagesOf(r);
   for (const page of POLICY_PAGE_KEYS) {
     if (pages[page] !== versions[page]) out.push(`the ${POLICY_PAGES[page].title} prints ${pages[page]}, not ${versions[page]} as the writer reported`);
@@ -1154,12 +1169,14 @@ export type ApplyInput = {
  *   9 · ⛔ RECORD FIRST — `marketing.owner_save_applying`, awaited; not recorded → record_failed, nothing written;
  *  10 · the database's instant, read again for the write → clock_unreadable, recorded `_refused`;
  *  11 · THE SAME WRITER, the card's own request, `ops: <by>`, that instant → writer_refused, recorded `_refused` in the
- *       writer's own words; a writer that throws → writer_failed, recorded `_failed` (whether it wrote is not known);
- *  12 · the row read back: every written key's new version is Ali's words, this door's, this instant → otherwise
- *       read_back_mismatch, recorded `_failed`;
+ *       writer's own words, for every refusal it answers before its write; a writer that throws → writer_failed, recorded
+ *       `_failed` (whether it wrote is not known);
+ *  12 · the row read back FRESH: every written key's new version is Ali's words, this door's, this instant → otherwise
+ *       read_back_mismatch, recorded `_failed`. ⛔ After `not_saved` the same read decides: found → on, never confirmed;
+ *       not found → save_unconfirmed, recorded `_failed` (the outcome unknown — run status);
  *  13 · the queue flushed and the factory's ADMIN row read back durably; `marketing.owner_save_applied` recorded; the queue
  *       flushed again with nothing pending → DONE, or done_unconfirmed (exit 1, "Saved, but its audit row was not
- *       confirmed — tell the developer.") when any of the three is missing.
+ *       confirmed — tell the developer.") when any of the three is missing, or the writer's answer was `not_saved`.
  */
 export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Promise<OwnerSaveOutcome> {
   const by = screenOpsText(input.by);
@@ -1210,6 +1227,11 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
     const error = String((err as Error)?.message ?? err);
     return ended("failed", "writer_failed", "writer", { outcome: "unknown", error }, [`FAILED (writer_failed): ${OWNER_SAVE_SENTENCE.writerFailed} ${error}`]);
   };
+  /** ⛔ `not_saved` over a row that does not read back as this door's write: the outcome is UNKNOWN (the write may have
+   *  committed, or may yet show) — recorded `_failed`, never `_refused`, and the operator is sent to `status`. */
+  const unconfirmedSave = (error: string, found: readonly string[]): Promise<OwnerSaveOutcome> =>
+    ended("failed", "save_unconfirmed", "writer", { refusal: "not_saved", error, outcome: "unknown", found: [...found] },
+      [`FAILED (save_unconfirmed): ${OWNER_SAVE_SENTENCE.saveUnconfirmed} ${error}`, ...found.map((p) => `  · ${p}`)]);
 
   const atMs = await dbNow(deps);
   if (atMs === null) {
@@ -1227,6 +1249,9 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
   let pageLine: string | null = null;
   let pageVersions: Readonly<Record<PolicyPage, string>> | null = null;
   let adminKind: { readonly action: string; readonly targetType: string };
+  /** ⛔ The writer's `not_saved`, over a write the fresh read shows LANDED: the save goes down the applied path and is
+   *  never confirmed — the factory wrote no ADMIN row, and the writer's own answer was not "saved". */
+  let writerSaid: { readonly refusal: string; readonly error: string } | null = null;
   if (plan.record === "wordings") {
     adminKind = MARKETING_WORDINGS_AUDIT;
     let res: WordingsSaveResult;
@@ -1235,20 +1260,25 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
     } catch (err) {
       return threw(err);
     }
-    if (!res.ok) {
+    // ⛔ Every refusal but `not_saved` is answered BEFORE the write: nothing was written, said in the writer's own words.
+    if (!res.ok && res.reason !== "not_saved") {
       const refused = res;
       const per = WORDING_KEYS.flatMap((k) => (refused.problems[k] ?? []).map((p) => `  · “${k}”: ${p.sentence}`));
       return ended("refused", "writer_refused", "writer", { refusal: refused.reason, error: refused.error, problems: refused.problems },
         [`REFUSED (writer_refused): ${OWNER_SAVE_SENTENCE.writerRefused} ${refused.error}`, ...per]);
     }
-    const saved = res;
-    if (!sameSet(saved.changed, plan.writes)) {
-      return ended("failed", "read_back_mismatch", "writer", { found: ["the writer saved other wordings than the approval's"], changed: [...saved.changed] },
-        [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack} the writer saved [${saved.changed.join(", ")}], not [${plan.writes.join(", ")}].`]);
+    if (res.ok && !sameSet(res.changed, plan.writes)) {
+      return ended("failed", "read_back_mismatch", "writer", { found: ["the writer saved other wordings than the approval's"], changed: [...res.changed] },
+        [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack} the writer saved [${res.changed.join(", ")}], not [${plan.writes.join(", ")}].`]);
     }
+    // ⭐ THE ROW, READ FRESH, DECIDES — after a save, and after a `not_saved`, which `define-config.ts`'s verified write also
+    // answers when its read-back fails AFTER a committed save (and before its ADMIN row): never the answer alone.
     const back = await safely<WordingsReload>(deps.readWordings, { ok: false });
     const problems = back.ok ? wordingsReadBackProblems(plan, back.histories, officer, nowIso) : ["the row couldn't be read back"];
-    if (problems.length > 0) {
+    if (!res.ok) {
+      if (problems.length > 0) return unconfirmedSave(res.error, problems);
+      writerSaid = { refusal: res.reason, error: res.error };
+    } else if (problems.length > 0) {
       return ended("failed", "read_back_mismatch", "read_back", { found: problems },
         [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack}`, ...problems.map((p) => `  · ${p}`)]);
     }
@@ -1264,7 +1294,8 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
     } catch (err) {
       return threw(err);
     }
-    if (!res.ok) {
+    // ⛔ Every refusal but `not_saved` is answered BEFORE the write: nothing was written, said in the writer's own words.
+    if (!res.ok && res.reason !== "not_saved") {
       const refused = res;
       const per: string[] = [];
       for (const k of POLICY_LINE_KEYS) {
@@ -1275,26 +1306,38 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
       return ended("refused", "writer_refused", "writer", { refusal: refused.reason, error: refused.error, problems: refused.problems },
         [`REFUSED (writer_refused): ${OWNER_SAVE_SENTENCE.writerRefused} ${refused.error}`, ...per]);
     }
-    const saved = res;
-    if (!sameSet(saved.changed, plan.writes)) {
-      return ended("failed", "read_back_mismatch", "writer", { found: ["the writer saved other lines than the approval's"], changed: [...saved.changed] },
-        [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack} the writer saved [${saved.changed.join(", ")}], not [${plan.writes.join(", ")}].`]);
+    if (res.ok && !sameSet(res.changed, plan.writes)) {
+      return ended("failed", "read_back_mismatch", "writer", { found: ["the writer saved other lines than the approval's"], changed: [...res.changed] },
+        [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack} the writer saved [${res.changed.join(", ")}], not [${plan.writes.join(", ")}].`]);
     }
+    // ⭐ THE ROW, READ FRESH, DECIDES — after a save, and after a `not_saved` (see the wordings branch above).
     const back = await safely<PolicyLinesReload>(deps.readPolicy, { ok: false });
-    const problems = back.ok ? linesReadBackProblems(plan, back.record, officer, nowIso, saved.versions) : ["the row couldn't be read back"];
-    if (problems.length > 0) {
-      return ended("failed", "read_back_mismatch", "read_back", { found: problems },
-        [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack}`, ...problems.map((p) => `  · ${p}`)]);
+    if (!back.ok) {
+      const unread = ["the row couldn't be read back"];
+      return res.ok
+        ? ended("failed", "read_back_mismatch", "read_back", { found: unread }, [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack}`, ...unread.map((p) => `  · ${p}`)])
+        : unconfirmedSave(res.error, unread);
     }
-    // The page stamps the writer moved: the ADMIN row's `changes` names each of them beside the lines.
-    const stamped = POLICY_PAGE_KEYS.filter((page) => saved.moved.some((k) => POLICY_LINE_SPEC[k].page === page)).map((page) => POLICY_PAGES[page].versionKey);
+    const problems = linesReadBackProblems(plan, back.record, officer, nowIso, res.ok ? res.versions : null);
+    if (problems.length > 0) {
+      return res.ok
+        ? ended("failed", "read_back_mismatch", "read_back", { found: problems }, [`FAILED (read_back_mismatch): ${OWNER_SAVE_SENTENCE.readBack}`, ...problems.map((p) => `  · ${p}`)])
+        : unconfirmedSave(res.error, problems);
+    }
+    if (!res.ok) writerSaid = { refusal: res.reason, error: res.error };
+    /* The lines whose printed words moved — the writer's own answer, or, after a `not_saved` whose write landed, every line
+       this door wrote with words (a review moves none) — and the page stamps they moved, which the ADMIN row's `changes`
+       names beside the lines. The versions the pages print: the writer's answer, or the fresh read. */
+    const moved: readonly PolicyLineKey[] = res.ok ? res.moved : plan.steps.filter((s) => s.writes && !s.review).map((s) => s.key);
+    const stamped = POLICY_PAGE_KEYS.filter((page) => moved.some((k) => POLICY_LINE_SPEC[k].page === page)).map((page) => POLICY_PAGES[page].versionKey);
+    const versions: Readonly<Record<PolicyPage, string>> = res.ok ? res.versions : pagesOf(back.record);
     written = plan.writes;
     adminKeys = [...plan.writes, ...stamped];
-    movedLines = [...saved.moved];
-    pageVersions = saved.versions;
+    movedLines = [...moved];
+    pageVersions = versions;
     versionLines = plan.steps.filter((s) => s.writes).map((s) => `  ${s.key} · revision ${s.base + 1}${s.review ? " (today's words, reviewed)" : ""} saved ${eatStamp(nowIso)} by ${officer} · sha12 ${s.sha12}`);
-    const checks = back.ok ? policyOpeningProblems(back.record) : [];
-    pageLine = `  the pages print now: ${POLICY_PAGE_KEYS.map((p) => `${POLICY_PAGES[p].title} ${saved.versions[p]}`).join(" · ")} · licence outreach, the public texts' opening checks: ${checksOf(checks)}`;
+    const checks = policyOpeningProblems(back.record);
+    pageLine = `  the pages print now: ${POLICY_PAGE_KEYS.map((p) => `${POLICY_PAGES[p].title} ${versions[p]}`).join(" · ")} · licence outreach, the public texts' opening checks: ${checksOf(checks)}`;
   }
 
   // ⛔ The factory's ADMIN row is fire-and-forget: flushed, then read back DURABLY and matched to THIS save.
@@ -1310,12 +1353,14 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
       moved: [...movedLines],
       versions: Object.fromEntries((plan.steps as ReadonlyArray<{ readonly key: string; readonly base: number; readonly writes: boolean }>).filter((s) => s.writes).map((s) => [s.key, s.base + 1])),
       ...(pageVersions !== null ? { pageVersions } : {}),
+      ...(writerSaid !== null ? { writerSaid } : {}),
       adminRow: admin,
     },
   });
   await settle(deps);
   const pending = pendingNow(deps);
-  const confirmed = admin !== null && applied.recorded && pending === 0;
+  // ⛔ DONE needs all four: the ADMIN row found, the ending recorded, nothing left pending — and the writer's own "saved".
+  const confirmed = admin !== null && applied.recorded && pending === 0 && writerSaid === null;
   const unchanged = (plan.steps as ReadonlyArray<{ readonly key: string; readonly writes: boolean }>).filter((s) => !s.writes).map((s) => s.key);
   const lines: string[] = [
     `DONE — ${plan.approval.gate} (${GATE_WHAT[plan.approval.gate]}) saved through the ops door, on ${APPROVED_BY}'s approval of ${plan.approval.approvedOn} in ${APPROVED_IN}.`,
@@ -1326,6 +1371,7 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
   ];
   if (!confirmed) {
     lines.push(`⚠️ ${OWNER_SAVE_SENTENCE.unconfirmed}`);
+    if (writerSaid !== null) lines.push(OWNER_SAVE_SENTENCE.saveLanded(writerSaid.error));
     if (admin === null) lines.push("  · the factory's ADMIN row for this save was not found in the audit log.");
     if (!applied.recorded) lines.push("  · the record of the save's ending (marketing.owner_save_applied) was not written.");
     if (pending !== 0) lines.push(`  · ${Number.isFinite(pending) ? pending : "an unknown number of"} audit row(s) were still waiting to be written.`);

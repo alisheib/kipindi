@@ -21,12 +21,16 @@
  *   O8  the record's own rules refuse in the card's own words, before the record; a note never blocks;
  *   O9  ⛔ RECORD FIRST — the applying row before any write, carrying Ali's approval; a lost record writes nothing;
  *   O10 ⛔ THE SAME WRITER — the card's own request, `ops: <by>`, the database's instant, the words byte for byte;
- *   O11 a writer that refuses is recorded `_refused` in its own words; one that throws is recorded `_failed`;
+ *   O11 a writer that refuses is recorded `_refused` in its own words (and a lost record said so); one that throws is
+ *       recorded `_failed`; ⛔ `not_saved` is decided by a fresh read — a write that landed goes on, never confirmed, and one
+ *       that did not show is `_failed` with the outcome unknown (the review of 2026-10-07's MAJOR);
  *   O12 a row that does not read back as the approval is `_failed` (step read_back);
  *   O13 NOTHING TO DO writes and records nothing; approve only where the history is empty; a review only of today's words;
- *   O14 ⛔ the factory's ADMIN row flushed, found and named by the applied record — or the save is not confirmed;
+ *   O14 ⛔ the factory's ADMIN row flushed, found and named by the applied record — or the save is not confirmed, each of
+ *       DONE's conditions held by itself; DONE ends with the redeploy instruction, and a G5 apply names older drafts;
  *   O15 the display rule — "through the ops door (…)", never "by an admin", one rule with the live switch card;
- *   O16 the door's source — the proxy before the import, production's environment, the clock, no writer or reader of its own;
+ *   O16 the door's source — the proxy before ANY static specifier names src, production's environment, the clock (an
+ *       unreadable one said as the database out of reach), no writer or reader of its own;
  *   O17 the wiring — the scripts and predeploy (a gate outside the pipeline is not a gate);
  *   O18 check writes nothing and prints the words exactly as stored, the previews and the exact apply line;
  *   O19 ⭐ ALI'S APPROVALS OF 2026-10-07, AS COMMITTED (`docs/marketing-approvals/2026-10-07/`) — every text word for word
@@ -92,12 +96,12 @@ const L = {
   o8: "O8 · the record's own rules, in the card's own words — a basis that never says 'agreed', a source line over 30 septets (the renderer's sentence) and an RG line promising what the code does not keep (a message limit) are refused invalid before the record, nothing written; a note never blocks a save",
   o9: "O9 · ⛔ RECORD FIRST — the applying row is recorded BEFORE the first row write, with actorId null, targetType SystemConfig, the record's key, via ops, the gate, the keys, every digest, the bases, by, reason, approvedBy Ali, approvedIn the Claude session and approvedOn; a record that is lost or throws refuses record_failed with the writer never called and the row untouched",
   o10: "O10 · ⛔ THE SAME WRITER, the card's own request — called once with exactly the card's builder's fields (base the count saved now; approve.<key>=1 only where the history is empty; review.<key>=1 only for a review), the officer 'ops: <by>' and the DATABASE's instant read for the write, never this PC's; the versions saved carry that author and instant and the file's normalised words byte for byte, and the RG page is stamped while a review moves nothing",
-  o11: "O11 · a writer that refuses (a card save landing between the door's read and its write: stale) is recorded _refused with the writer's own reason, sentence and per-key problem, the operator's reason kept, and the card's version stands alone; a writer that throws is writer_failed, recorded _failed with the outcome unknown — never as a refusal",
+  o11: "O11 · a writer that refuses (a card save landing between the door's read and its write: stale) is recorded _refused with the writer's own reason, sentence and per-key problem, the operator's reason kept, and the card's version stands alone — and when that _refused record is lost, the door says so; a writer that throws is writer_failed, recorded _failed with the outcome unknown — never as a refusal; ⛔ a not_saved answer is decided by a FRESH read: over a write that landed (the factory's read-back failed after it committed) it goes down the applied path, recorded _applied with the writer's answer and never confirmed (done_unconfirmed, the save said landed), wordings and policy lines alike; over a write that did not show it is save_unconfirmed, recorded _failed with the outcome unknown, the operator sent to status — never 'nothing was written'",
   o12: "O12 · a row that does not read back as Ali's words after the writer said saved is read_back_mismatch, recorded _failed (step read_back) with what was found",
   o13: "O13 · NOTHING TO DO — the same file applied twice writes and records nothing the second time (exit 0); a file holding one saved and one new wording sends only the new one; today's words given to a never-saved line are nothing to do (and check says to approve review instead); a review twice is nothing to do; a review of a line that prints saved words is refused review_not_possible with nothing built, recorded or written",
-  o14: "O14 · ⛔ THE FACTORY'S ADMIN ROW — after DONE nothing is pending, the door found THIS save's ADMIN row (author 'ops: <by>', changes exactly the keys moved — G10's page stamps included) and the applied record names it with the versions and the page versions; a reader that finds no such row is done_unconfirmed, exit 1, its applied record saying adminRow null",
+  o14: "O14 · ⛔ THE FACTORY'S ADMIN ROW — after DONE nothing is pending, the door found THIS save's ADMIN row (author 'ops: <by>', changes exactly the keys moved — G10's page stamps included) and the applied record names it with the versions and the page versions; DONE ends with the redeploy instruction, and a G5 apply also says drafts saved before the line carry none (a G10 apply does not); each of DONE's conditions is held by itself — a reader that finds no such row, a lost _applied record, and an audit row still pending each end done_unconfirmed, exit 1, in their own words",
   o15: "O15 · the display rule — a version saved by 'ops: <by>' reads 'the ops door (<by>)' in its history and 'through the ops door (<by>)' in its status line, never 'by an admin'; a by that could be a number reads just 'the ops door'; a staff id reads its name, or 'an admin'; the live switch card names the door by the SAME rule; the page asks no user row for a door stamp and hands both cards the words; the two forms print them",
-  o16: "O16 · the door's source — the CLI rewrites Railway's private host to the public proxy before it loads any src module (it statically imports none), refuses without a database before it loads one, checks production's environment (with its audit secret) before check and apply but not status, refuses an apply on the clock and only warns a check, hands the door the audit log's durable reader and writes nothing itself; owner-save.ts imports no config store, names no audit-row reader and none of the card's suggestions, records before it calls the writers and calls them only through its deps as 'ops: <by>'; no src file imports the door",
+  o16: "O16 · the door's source — the CLI rewrites Railway's private host to the public proxy before it loads any src module (it statically names only node:fs — no import from, bare import or export from of anything else), refuses without a database before it loads one, checks production's environment (with its audit secret) before check and apply but not status, refuses both when the database's clock cannot be read — saying the database could not be reached, never to sync this PC — then refuses an apply on the clock and only warns a check, hands the door the audit log's durable reader and writes nothing itself; owner-save.ts imports no config store, names no audit-row reader and none of the card's suggestions, records before it calls the writers and calls them only through its deps as 'ops: <by>'; no src file imports the door",
   o17: "O17 · the wiring — test:/red:/ops:marketing-owner-save resolve to this suite and the door, and predeploy runs the suite once, in the Marketing SMS block: right after test:marketing-window, which follows test:marketing-settings (both of whose neighbours other suites pin)",
   o18: "O18 · check writes nothing and prints, for every text, its words exactly as they will be stored, the page versions it would stamp and the opening checks, and the exact apply line with every digest",
   o19: "O19 · ⭐ ALI'S APPROVALS OF 2026-10-07, AS COMMITTED — the three files are UTF-8 with no byte-order mark and no escape, read by the door's own reader as exactly their gate's keys and approvedOn 2026-10-07: G5 is his sentence (the one the decisions log quotes), G4 the nine wordings word for word the code's suggestions, G10 the five lines word for word spec Appendix B.2–B.6 in all three languages; every --expect in the door's header is the file's own digests; and on the memory twin each checks clean and applies in one save (G10 stamping each page once, every public opening check passing after it)",
@@ -267,9 +271,15 @@ const sameValue = (a: unknown, b: unknown): boolean => {
 
 type FakeRow = {
   readonly deps: unknown;
+  /** Row writes ATTEMPTED (a dropped one counts: the writer did try). */
   readonly writes: () => number;
   readonly row: () => Record<string, unknown> | null;
   readonly failLoads: (on: boolean) => void;
+  /** The next `n` reads AFTER the next write fail — `n = 1` is the factory's own read-back (`setVerified`), so the writer
+   *  answers `not_saved` over a write that committed (`saveConfig` swallows its errors; the read-back decides). */
+  readonly failReadsAfterWrite: (n: number) => void;
+  /** Writes are swallowed and never land — `saveConfig` answering as if they had (it never throws). */
+  readonly dropWrites: (on: boolean) => void;
 };
 
 /** ⭐ One SystemConfig row that answers like Postgres: every write kept as a JSON copy and every read a JSON copy back, so the
@@ -279,15 +289,30 @@ function fakeRow(seed: unknown = null): FakeRow {
   let stored: unknown = copy(seed);
   let writes = 0;
   let failing = false;
+  let afterWrite = 0;
+  let armed = 0;
+  let dropping = false;
+  const unanswered = { ok: false, error: "the store did not answer" } as const;
   return {
     deps: {
       hasDatabase: () => true,
-      loadConfigResult: async () => (failing ? { ok: false, error: "the store did not answer" } : { ok: true, value: copy(stored) }),
-      saveConfig: async (_key: string, value: unknown) => { writes++; stored = copy(value); },
+      loadConfigResult: async () => {
+        if (failing) return unanswered;
+        if (armed > 0) { armed--; return unanswered; }
+        return { ok: true, value: copy(stored) };
+      },
+      saveConfig: async (_key: string, value: unknown) => {
+        writes++;
+        if (!dropping) stored = copy(value);
+        armed = afterWrite;
+        afterWrite = 0;
+      },
     },
     writes: () => writes,
     row: () => copy(stored) as Record<string, unknown> | null,
     failLoads: (on: boolean) => { failing = on; },
+    failReadsAfterWrite: (n: number) => { afterWrite = n; },
+    dropWrites: (on: boolean) => { dropping = on; },
   };
 }
 
@@ -384,6 +409,25 @@ const SRC = {
   wForm: "src/app/admin/system/marketing-wordings-form.tsx",
   pForm: "src/app/admin/system/policy-lines-form.tsx",
 } as const;
+
+/* Every STATIC module specifier a (decommented) source names — `import … from "…"`, a bare `import "…"`, and
+   `export … from "…"`, on one line or across several — and never a dynamic `import("…")`, which is how the door's CLI
+   loads src. ⛔ No backslash: the whitespace class is built from its codes. */
+const SPACE = `[ ${String.fromCharCode(9, 10, 13)}]`;
+/** A statement starting with `import` or `export` — at a line's start or after a `;` — and its text up to its `;`. */
+const STATEMENT = new RegExp(`(?:^|;)${SPACE}*(import|export)(?![A-Za-z0-9_$])([^;]*)`, "gm");
+const BARE_SPEC = new RegExp(`^${SPACE}*["']([^"']+)["']`);
+const FROM_SPEC = new RegExp(`(?<![A-Za-z0-9_$])from${SPACE}*["']([^"']+)["']`);
+function staticSpecifiers(source: string): string[] {
+  const out: string[] = [];
+  for (const m of source.matchAll(STATEMENT)) {
+    const rest = m[2] ?? "";
+    if (m[1] === "import" && rest.trimStart().startsWith("(")) continue;
+    const spec = (m[1] === "import" ? BARE_SPEC.exec(rest)?.[1] : undefined) ?? FROM_SPEC.exec(rest)?.[1];
+    if (spec !== undefined) out.push(spec);
+  }
+  return out;
+}
 
 /** Every src file that loads the door (comments aside) — the door is the CLI's and this suite's, nobody else's. */
 function doorImporters(): { readonly files: number; readonly importers: readonly string[] } {
@@ -740,14 +784,14 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
   // ── O11 · A WRITER THAT REFUSES OR THROWS ───────────────────────────────────────────────────────────────────────
   await claim(p(L.o11), async () => {
     const CARD_LINE = "Namba yako iko orodhani.";
-    const w = world({
-      afterRecord: async (action, self) => {
-        if (action !== APPLYING) return;
-        await self.wStore.saveMarketingWordings(
-          { "source.phrase": CARD_LINE, "base.source.phrase": "0", "approve.source.phrase": "1" }, "usr_card_officer", iso(DB_NOW + 60_000),
-        );
-      },
-    });
+    /** A card save landing between the door's read and its write. */
+    const cardSaves = async (action: string, self: World): Promise<void> => {
+      if (action !== APPLYING) return;
+      await self.wStore.saveMarketingWordings(
+        { "source.phrase": CARD_LINE, "base.source.phrase": "0", "approve.source.phrase": "1" }, "usr_card_officer", iso(DB_NOW + 60_000),
+      );
+    };
+    const w = world({ afterRecord: cardSaves });
     const o = await apply(w, g5(), G5_EXPECT);
     const refusedRow = w.rows.find((r) => r.action === REFUSED);
     const problems = (refusedRow?.payload.problems ?? {}) as Record<string, ReadonlyArray<{ readonly code?: unknown; readonly sentence?: unknown }>>;
@@ -759,6 +803,53 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
       { ...t.deps, saveWordings: async () => { throw new Error("the writer fell over"); } },
     );
     const tFailed = t.rows.find((r) => r.action === FAILED);
+    // The _refused record itself lost: the door says its ending could not be recorded.
+    const lostW = world({ afterRecord: cardSaves, lose: [REFUSED] });
+    const lost = await apply(lostW, g5(), G5_EXPECT);
+
+    // ⛔ `not_saved` over a write that LANDED — the factory's own read-back (the first read after the write) fails after the
+    // save committed: the fresh read finds this door's version, so the door goes on, and never says DONE.
+    const lw = world();
+    lw.wRow.failReadsAfterWrite(1);
+    const lby = BY("landed");
+    const landed = await apply(lw, g5(), G5_EXPECT, lby);
+    const lApplied = lw.rows.find((r) => r.action === APPLIED);
+    const lSaid = (lApplied?.payload.writerSaid ?? {}) as Record<string, unknown>;
+    const lHistory = ((lw.wRow.row() ?? {})["source.phrase"] ?? []) as Array<Record<string, unknown>>;
+    const again = await apply(lw, g5(), G5_EXPECT);
+    // …and never DONE on that answer even were an ADMIN row for this save found: the writer's own word was not "saved".
+    const rby = BY("landed with a row");
+    const rowFound = async (): Promise<{ entries: Array<Record<string, unknown>> }> => ({
+      entries: [{
+        id: "adm_found", action: WSTORE.MARKETING_WORDINGS_AUDIT.action, actorId: `ops: ${rby}`,
+        payload: {
+          changes: { "source.phrase": { from: [], to: [] } },
+          after: { "source.phrase": [{ v: 1, text: SOURCE_LINE, savedAt: iso(T_WRITE), savedBy: `ops: ${rby}` }] },
+        },
+      }],
+    });
+    const rw = world({ adminRows: rowFound as Deps["adminRows"] });
+    rw.wRow.failReadsAfterWrite(1);
+    const landedRow = await apply(rw, g5(), G5_EXPECT, rby);
+    // …and on the policy record: the page versions and the moved lines from the fresh read, the writer having reported none.
+    const pw = world();
+    pw.pRow.failReadsAfterWrite(1);
+    const pby = BY("landed lines");
+    const gateway = { "privacy.smsGateway": B3 };
+    const pLanded = await apply(pw, g10(gateway), expectL(gateway), pby);
+    const pApplied = pw.rows.find((r) => r.action === APPLIED);
+    const pGateway = ((pw.pRow.row() ?? {})["privacy.smsGateway"] ?? []) as Array<Record<string, unknown>>;
+    const nB3 = PPURE.normalizedPolicyTexts("privacy.smsGateway", B3);
+    const rgCode = PPURE.POLICY_PAGES.rg.codeVersion;
+    const prCode = PPURE.POLICY_PAGES.privacy.codeVersion;
+
+    // ⛔ `not_saved` over a write that did NOT land (the store swallowed it), its read-back failing too: the outcome is unknown.
+    const nw = world();
+    nw.wRow.dropWrites(true);
+    nw.wRow.failReadsAfterWrite(1);
+    const notLanded = await apply(nw, g5(), G5_EXPECT);
+    const nFailed = nw.rows.find((r) => r.action === FAILED);
+    const neverNothingWritten = (lines: readonly string[]): boolean => !lines.some((l) => l.includes("nothing was written"));
     return verdict({
       staleRefused: o.code === "writer_refused" && o.exitCode === 1,
       recordedInItsOwnWords: refusedRow?.payload.step === "writer" && refusedRow.payload.refusal === "stale"
@@ -770,6 +861,32 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
       aThrowIsFailedNeverRefused: threw.code === "writer_failed" && threw.exitCode === 1 && tFailed?.payload.step === "writer"
         && tFailed.payload.outcome === "unknown" && tFailed.payload.error === "the writer fell over"
         && !t.rows.some((r) => r.action === REFUSED) && t.writes() === 0,
+      aLostEndingIsSaid: lost.code === "writer_refused" && lost.exitCode === 1 && lost.records.ending === null
+        && !lostW.rows.some((r) => r.action === REFUSED)
+        && lost.lines.some((l) => l.includes("its ending could not be recorded — tell the developer")),
+      notSavedOverALandedWrite: landed.code === "done_unconfirmed" && landed.exitCode === 1
+        && lw.rows.map((r) => r.action).join(",") === `${APPLYING},${APPLIED}`
+        && lSaid.refusal === "not_saved" && typeof lSaid.error === "string" && lApplied?.payload.adminRow === null
+        && lHistory.length === 1 && lHistory[0]?.text === SOURCE_LINE && lHistory[0]?.savedBy === `ops: ${lby}` && lHistory[0]?.savedAt === iso(T_WRITE)
+        && landed.lines.includes(`⚠️ ${DOOR.OWNER_SAVE_SENTENCE.unconfirmed}`)
+        && landed.lines.some((l) => l.includes("(not_saved), but a fresh read shows every version saved by this door"))
+        && neverNothingWritten(landed.lines)
+        && again.code === "nothing_to_do" && again.exitCode === 0,
+      notSavedIsNeverDoneEvenWithARow: landedRow.code === "done_unconfirmed" && landedRow.exitCode === 1
+        && landedRow.records.admin === "adm_found" && landedRow.records.ending !== null
+        && landedRow.lines.some((l) => l.includes("(not_saved), but a fresh read shows every version saved by this door")),
+      notSavedOverALandedLine: pLanded.code === "done_unconfirmed" && pLanded.exitCode === 1
+        && pw.rows.map((r) => r.action).join(",") === `${APPLYING},${APPLIED}`
+        && (pApplied?.payload.writerSaid as { refusal?: unknown } | undefined)?.refusal === "not_saved"
+        && sameValue(pApplied?.payload.pageVersions, { rg: rgCode, privacy: PPURE.nextPolicyVersion(prCode, T_WRITE) })
+        && sameValue(pApplied?.payload.moved, ["privacy.smsGateway"])
+        && pGateway.length === 1 && pGateway[0]?.en === nB3.en && pGateway[0]?.savedBy === `ops: ${pby}` && pGateway[0]?.savedAt === iso(T_WRITE),
+      notSavedOverAWriteNotShown: notLanded.code === "save_unconfirmed" && notLanded.exitCode === 1
+        && nw.rows.map((r) => r.action).join(",") === `${APPLYING},${FAILED}`
+        && nFailed?.payload.refusal === "not_saved" && nFailed.payload.outcome === "unknown"
+        && Array.isArray(nFailed.payload.found) && (nFailed.payload.found as unknown[]).length > 0
+        && notLanded.lines.some((l) => l.includes(DOOR.OWNER_SAVE_SENTENCE.saveUnconfirmed)) && notLanded.lines.some((l) => l.includes("Run status"))
+        && neverNothingWritten(notLanded.lines) && nw.wRow.row() === null && nw.wRow.writes() === 1,
     });
   });
 
@@ -859,8 +976,23 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
     const wu = world({ adminRows: async () => ({ entries: [] }) });
     const ou = await apply(wu, g5(), G5_EXPECT);
     const uApplied = wu.rows.find((r) => r.action === APPLIED);
+    // ⛔ Each of DONE's other conditions, ALONE: the ADMIN row is found both times, so only the one condition can fail.
+    const wl = world({ lose: [APPLIED] });
+    const lostApplied = await apply(wl, g5(), G5_EXPECT, BY("lost applied"));
+    const wq = world();
+    const stillPending = await impl.apply({ fileBytes: g5(), by: BY("still pending"), reason: REASON, expect: G5_EXPECT }, { ...wq.deps, pending: () => 1 });
+    const redeploy = DOOR.OWNER_SAVE_SENTENCE.redeploy;
+    const drafts = `  ${DOOR.OWNER_SAVE_SENTENCE.draftsKeepNone}`;
     return verdict({
       done: o.code === "done" && o.exitCode === 0 && pendingAfter === 0,
+      aLostAppliedRecordIsNotConfirmed: lostApplied.code === "done_unconfirmed" && lostApplied.exitCode === 1
+        && lostApplied.records.admin !== null && lostApplied.records.ending === null
+        && lostApplied.lines.some((l) => l.includes("the record of the save's ending (marketing.owner_save_applied) was not written")),
+      aPendingAuditRowIsNotConfirmed: stillPending.code === "done_unconfirmed" && stillPending.exitCode === 1
+        && stillPending.records.admin !== null && stillPending.records.ending !== null
+        && stillPending.lines.some((l) => l.includes("1 audit row(s) were still waiting to be written")),
+      theRedeployInstructionEndsDone: o.lines[o.lines.length - 1] === redeploy && po.lines[po.lines.length - 1] === redeploy,
+      g5SaysDraftsKeepNone: o.lines.includes(drafts) && !po.lines.includes(drafts),
       thisSavesAdminRow: admin !== undefined && admin.actorId === `ops: ${by}` && admin.action === "config.marketing_wordings_updated"
         && JSON.stringify(Object.keys((admin.payload?.changes ?? {}) as object).sort()) === '["source.phrase"]',
       appliedNamesIt: appliedRow !== undefined && appliedRow.payload.adminRow === o.records.admin && o.records.ending === appliedRow.id
@@ -907,7 +1039,7 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
   await claim(p(L.o16), async () => {
     const cli = impl.sources[SRC.cli] ?? "";
     const door = impl.sources[SRC.door] ?? "";
-    const staticImports = [...cli.matchAll(/^[ ]*import[ ][^;]*?from[ ]*["']([^"']+)["']/gm)].map((m) => m[1]);
+    const staticImports = staticSpecifiers(cli);
     const firstLoad = cli.indexOf("await import(");
     const proxyAt = cli.indexOf('.replace(PRIVATE_DB_HOST, "@turntable.proxy.rlwy.net:40357")');
     const hostRule = cli.includes('new RegExp("@postgres[.]railway[.]internal(?::[0-9]+)?")');
@@ -915,6 +1047,7 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
     const statusAt = cli.indexOf("DOOR.ownerSaveStatus(deps)");
     const envAt = cli.indexOf('process.env.RAILWAY_ENVIRONMENT_NAME === "production" && process.env.RAILWAY_SERVICE_NAME === "50pick"');
     const clockAt = cli.indexOf("const clockProblem = DOOR.opsClockProblem(dbMs, askedAt, Date.now());");
+    const unreadAt = cli.indexOf("if (dbMs === null) {");
     const gateAt = cli.indexOf('if (command === "apply" && clockProblem !== null) {');
     const warnAt = cli.indexOf("if (clockProblem !== null) console.log(`WARNING:");
     const checkAt = cli.indexOf("DOOR.checkOwnerSave(");
@@ -934,6 +1067,10 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
       theClockGatesAnApplyOnly: clockAt > envAt && gateAt > clockAt && gateAt < checkAt && gateAt < applyAt
         && warnAt > gateAt && warnAt < checkAt && cli.slice(gateAt, warnAt).includes("return 2;")
         && !cli.slice(warnAt, cli.indexOf(LF, warnAt)).includes("return"),
+      // ⛔ A clock that could not be READ is the database out of reach — refused for both commands, never "sync this PC".
+      theUnreadableClockIsTheDatabase: unreadAt > envAt && unreadAt < clockAt && cli.slice(unreadAt, clockAt).includes("return 2;")
+        && cli.slice(unreadAt, clockAt).includes("the database could not be reached, so nothing was read or written")
+        && !cli.slice(unreadAt, clockAt).includes("Sync now"),
       theDurableReaderHandedIn: cli.includes("DOOR.ownerSaveDeps((targetType: string, targetId: string) => AUDIT.getAuditForTargetDurable(targetType, targetId, { limit: 25 }))"),
       theCliWritesNothing: !STORE_WRITE.test(cli) && !FILE_WRITE.test(cli),
       theDoorHasNoWriterOfItsOwn: !specs.some((s) => s.includes("config-store")) && !STORE_WRITE.test(door) && !FILE_WRITE.test(door),
@@ -1292,6 +1429,65 @@ if (!PROVE_RED) {
     const o = await real(input, deps);
     return o.code === "done_unconfirmed" ? { ...o, code: "done", exitCode: 0 } : o;
   };
+  /** R-O11c · the review's MAJOR: `not_saved` taken as a refusal answered before the write — "nothing was written", over a
+   *  save that landed (its answer passed on as any other refusal's). */
+  const notSavedAsRefusal: ApplyFn = (input, deps) => {
+    const asRefusal = <T,>(r: T): T => {
+      const x = r as { ok?: unknown; reason?: unknown };
+      return x.ok === false && x.reason === "not_saved" ? ({ ...(r as object), reason: "unreadable" } as T) : r;
+    };
+    return real(input, {
+      ...deps,
+      saveWordings: async (patch, officer, nowIso) => asRefusal(await deps.saveWordings(patch, officer, nowIso)),
+      savePolicy: async (patch, officer, nowIso) => asRefusal(await deps.savePolicy(patch, officer, nowIso)),
+    });
+  };
+  /** R-O11d · a `not_saved` whose write did not show, recorded as a refusal — "nothing was written", which nobody knows. */
+  const unconfirmedAsRefusal: ApplyFn = (input, deps) => real(input, {
+    ...deps,
+    audit: (entry) => deps.audit(entry.action === FAILED && entry.payload?.refusal === "not_saved" ? { ...entry, action: REFUSED } : entry),
+  });
+  /** R-O11e · a landed `not_saved` said DONE — the writer's own answer overruled. */
+  const landedSaidDone: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return o.code === "done_unconfirmed" && o.lines.some((l) => l.includes("(not_saved)")) ? { ...o, code: "done", exitCode: 0 } : o;
+  };
+  /** R-O11g · DONE's `writerSaid === null` deleted: a landed `not_saved` reads DONE once an ADMIN row for it is found. */
+  const notSavedOverruledByARow: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return o.code === "done_unconfirmed" && o.records.admin !== null && o.records.ending !== null && o.lines.some((l) => l.includes("(not_saved)"))
+      && !o.lines.some((l) => l.includes("still waiting")) ? { ...o, code: "done", exitCode: 0 } : o;
+  };
+  /** R-O11f · an ending record that was lost, not said. */
+  const lostEndingUnsaid: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return { ...o, lines: o.lines.filter((l) => !l.includes("its ending could not be recorded")) };
+  };
+  /** R-O14b · DONE's `applied.recorded` deleted: a lost _applied record (the ADMIN row found) reads DONE. */
+  const appliedRecordIgnored: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return o.code === "done_unconfirmed" && o.records.admin !== null && o.records.ending === null ? { ...o, code: "done", exitCode: 0 } : o;
+  };
+  /** R-O14c · DONE's `pending === 0` deleted: an audit row still pending (the ADMIN row found, the ending recorded) reads DONE. */
+  const pendingIgnored: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return o.code === "done_unconfirmed" && o.records.admin !== null && o.records.ending !== null && !o.lines.some((l) => l.includes("(not_saved)"))
+      ? { ...o, code: "done", exitCode: 0 } : o;
+  };
+  /** R-O14d · DONE without the redeploy instruction (risk 2: production keeps its cached copy). */
+  const noRedeploy: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return { ...o, lines: o.lines.filter((l) => l !== DOOR.OWNER_SAVE_SENTENCE.redeploy) };
+  };
+  /** R-O14e · a G5 apply that never says drafts saved before the line carry none. */
+  const noDraftsLine: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return { ...o, lines: o.lines.filter((l) => !l.includes(DOOR.OWNER_SAVE_SENTENCE.draftsKeepNone)) };
+  };
+  const G5_IN = (what: string) => ({ fileBytes: g5(), by: BY(what), reason: REASON, expect: G5_EXPECT });
+  const staleWriter = async () => ({ ok: false as const, reason: "stale" as const, error: WSTORE.WORDINGS_REFUSAL_SENTENCE.stale, problems: {} });
+  const BARE_DOOR_IMPORT = `import "../../src/lib/server/marketing/owner-save.ts";${LF}`;
+  const DOOR_EXPORT_FROM = `${LF}export { applyOwnerSave } from "../../src/lib/server/marketing/owner-save.ts";${LF}`;
   /** R-O15a · a door save shown as an admin's. */
   const asAnAdmin: Impl["savedByView"] = (savedBy, names) => {
     const name = names.get(savedBy) ?? "an admin";
@@ -1411,6 +1607,45 @@ if (!PROVE_RED) {
         return w.rows.some((r) => r.action === REFUSED) && !w.rows.some((r) => r.action === FAILED);
       },
       landedAs: "a throw reads 'nothing was written'" },
+    { name: "R-O11c · THE REVIEW'S MAJOR: not_saved taken as a refusal before the write, over a save that landed", claim: "O11 ·", impl: { ...REAL, apply: notSavedAsRefusal },
+      landed: async () => {
+        const w = fresh();
+        w.wRow.failReadsAfterWrite(1);
+        const o = await notSavedAsRefusal(G5_IN("plant"), w.deps);
+        const h = ((w.wRow.row() ?? {})["source.phrase"] ?? []) as unknown[];
+        return o.code === "writer_refused" && w.rows.some((r) => r.action === REFUSED) && h.length === 1;
+      },
+      landedAs: "'nothing was written' recorded over the door's own landed version" },
+    { name: "R-O11d · a not_saved whose write did not show recorded as a refusal", claim: "O11 ·", impl: { ...REAL, apply: unconfirmedAsRefusal },
+      landed: async () => {
+        const w = fresh();
+        w.wRow.dropWrites(true);
+        w.wRow.failReadsAfterWrite(1);
+        await unconfirmedAsRefusal(G5_IN("plant"), w.deps);
+        return w.rows.some((r) => r.action === REFUSED) && !w.rows.some((r) => r.action === FAILED);
+      },
+      landedAs: "an unknown outcome reads 'nothing was written'" },
+    { name: "R-O11e · a landed not_saved said DONE", claim: "O11 ·", impl: { ...REAL, apply: landedSaidDone },
+      landed: async () => { const w = fresh(); w.wRow.failReadsAfterWrite(1); return (await landedSaidDone(G5_IN("plant"), w.deps)).code === "done"; },
+      landedAs: "the writer's not_saved overruled" },
+    { name: "R-O11g · a landed not_saved said DONE once an ADMIN row is found", claim: "O11 ·", impl: { ...REAL, apply: notSavedOverruledByARow },
+      landed: async () => {
+        const by = BY("plant row");
+        const w = fresh(REAL.rules, { adminRows: (async () => ({ entries: [{
+          id: "adm_plant", action: WSTORE.MARKETING_WORDINGS_AUDIT.action, actorId: `ops: ${by}`,
+          payload: { changes: { "source.phrase": {} }, after: { "source.phrase": [{ v: 1, text: SOURCE_LINE, savedAt: iso(T_WRITE), savedBy: `ops: ${by}` }] } },
+        }] })) as Deps["adminRows"] });
+        w.wRow.failReadsAfterWrite(1);
+        return (await notSavedOverruledByARow({ fileBytes: g5(), by, reason: REASON, expect: G5_EXPECT }, w.deps)).code === "done";
+      },
+      landedAs: "the writer's not_saved overruled by a row" },
+    { name: "R-O11f · a lost ending record not said", claim: "O11 ·", impl: { ...REAL, apply: lostEndingUnsaid },
+      landed: async () => {
+        const w = fresh(REAL.rules, { lose: [REFUSED] });
+        const o = await lostEndingUnsaid(G5_IN("plant"), { ...w.deps, saveWordings: staleWriter });
+        return o.code === "writer_refused" && o.records.ending === null && !o.lines.some((l) => l.includes("could not be recorded"));
+      },
+      landedAs: "the operator is never told the ending was lost" },
     { name: "R-O12 · the door believing its own write", claim: "O12 ·", impl: { ...REAL, apply: believesItself },
       landed: async () => {
         const w = fresh();
@@ -1443,6 +1678,18 @@ if (!PROVE_RED) {
     { name: "R-O14 · DONE said without the ADMIN row confirmed", claim: "O14 ·", impl: { ...REAL, apply: trustsAdmin },
       landed: async () => (await trustsAdmin({ fileBytes: g5(), by: BY("plant"), reason: REASON, expect: G5_EXPECT }, fresh(REAL.rules, { adminRows: async () => ({ entries: [] }) }).deps)).code === "done",
       landedAs: "an unconfirmed save reads DONE" },
+    { name: "R-O14b · the review's MINOR: DONE without its _applied record", claim: "O14 ·", impl: { ...REAL, apply: appliedRecordIgnored },
+      landed: async () => (await appliedRecordIgnored(G5_IN("plant"), fresh(REAL.rules, { lose: [APPLIED] }).deps)).code === "done",
+      landedAs: "a lost _applied record reads DONE" },
+    { name: "R-O14c · the review's MINOR: DONE with an audit row still pending", claim: "O14 ·", impl: { ...REAL, apply: pendingIgnored },
+      landed: async () => (await pendingIgnored(G5_IN("plant"), { ...fresh().deps, pending: () => 1 })).code === "done",
+      landedAs: "a pending audit row reads DONE" },
+    { name: "R-O14d · DONE without the redeploy instruction", claim: "O14 ·", impl: { ...REAL, apply: noRedeploy },
+      landed: async () => { const o = await noRedeploy(G5_IN("plant"), fresh().deps); return o.code === "done" && !o.lines.includes(DOOR.OWNER_SAVE_SENTENCE.redeploy); },
+      landedAs: "production's cached copy is never mentioned" },
+    { name: "R-O14e · a G5 apply without the drafts line", claim: "O14 ·", impl: { ...REAL, apply: noDraftsLine },
+      landed: async () => { const o = await noDraftsLine(G5_IN("plant"), fresh().deps); return o.code === "done" && !o.lines.some((l) => l.includes(DOOR.OWNER_SAVE_SENTENCE.draftsKeepNone)); },
+      landedAs: "drafts made before the line are never mentioned" },
     { name: "R-O15a · a door save shown as an admin's", claim: "O15 ·", impl: { ...REAL, savedByView: asAnAdmin },
       landed: () => asAnAdmin("ops: Claude for Ali (G4)", new Map()).words === "by an admin", landedAs: "the door reads 'by an admin'" },
     { name: "R-O15b · the door's by shown unscreened", claim: "O15 ·", impl: { ...REAL, savedByView: unscreened },
@@ -1479,6 +1726,17 @@ if (!PROVE_RED) {
     { name: "R-O16h · a src file wiring the door into the app", claim: "O16 ·",
       impl: { ...REAL, importers: { files: REAL.importers.files, importers: ["src/app/admin/system/actions.ts"] } },
       landed: () => REAL.importers.importers.length === 0, landedAs: "an action imports the door" },
+    { name: "R-O16i · the review's NIT: a bare static import of the door in the CLI", claim: "O16 ·",
+      impl: { ...REAL, sources: withSource(SRC.cli, (t) => `${BARE_DOOR_IMPORT}${t}`) },
+      landed: () => staticSpecifiers(`${BARE_DOOR_IMPORT}${REAL.sources[SRC.cli] ?? ""}`).some((s) => s.includes("src/lib/server/marketing/owner-save")),
+      landedAs: "the bare import loads the door before the proxy rewrite" },
+    { name: "R-O16j · a static export from the door in the CLI", claim: "O16 ·",
+      impl: { ...REAL, sources: withSource(SRC.cli, (t) => `${t}${DOOR_EXPORT_FROM}`) },
+      landed: () => staticSpecifiers(`${REAL.sources[SRC.cli] ?? ""}${DOOR_EXPORT_FROM}`).some((s) => s.includes("src/lib/server/marketing/owner-save")),
+      landedAs: "the export-from loads the door before the proxy rewrite" },
+    { name: "R-O16k · the review's NIT: an unreadable database clock sent to sync this PC", claim: "O16 ·",
+      impl: { ...REAL, sources: withSource(SRC.cli, (t) => t.split("if (dbMs === null) {").join("if (false) {")) },
+      landed: () => has(SRC.cli, "if (dbMs === null) {"), landedAs: "the unreadable clock falls to 'sync it'" },
     { name: "R-O17 · the suite out of predeploy", claim: "O17 ·",
       impl: { ...REAL, pkg: REAL.pkg.split(" && npm run test:marketing-owner-save").join("") },
       landed: () => REAL.pkg.includes(" && npm run test:marketing-owner-save"), landedAs: "predeploy no longer runs the suite" },
