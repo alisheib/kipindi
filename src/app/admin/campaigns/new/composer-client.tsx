@@ -252,7 +252,8 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
             }
           : null;
   // ⭐ U37s · a draft carrying another line than the one saved now is never "no changes": only a save re-stamps it.
-  const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
+  // ⭐ Nor is an audience on screen that the draft does not store (a rail pick): only a save keeps it (`audience.unsaved`).
+  const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
   const saveBlocked: string | null = blocked?.reason ?? null;
   const blockedField: CampaignDraftField | null = blocked?.field ?? null;
   const canSave = saveBlocked === null && !saving;
@@ -403,7 +404,7 @@ export function ComposerMessage() {
   const enJina = enWritten && scanPlaceholders(fields.bodyEn).jina > 0;
   // ⛔ The saved line invites a test only when the test card beside it can send one — never one it would refuse.
   const canTest = view.test.liveNote === null && view.test.windowNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;
-  const savedLine = c.saved?.savedAt && !c.dirty ? composeSaved(c.saved.savedAt, canTest) : null;
+  const savedLine = c.saved?.savedAt && !c.dirty && !view.audience.unsaved ? composeSaved(c.saved.savedAt, canTest) : null;
   const showReason = c.saveBlocked !== null && !c.saving && !(savedLine !== null && c.saveBlocked === COMPOSE_NO_CHANGES);
 
   return (
