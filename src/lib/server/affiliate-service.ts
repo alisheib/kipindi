@@ -36,6 +36,8 @@ import { sendEmailToUser, referralRewardHtml, referralEarningHtml, agentCommissi
 import { appUrl } from "@/lib/app-url";
 import { withLock } from "./locks";
 import { formatTzs } from "@/lib/utils";
+import { normalizeReferralCode } from "@/lib/referral-code";
+export { MAX_REFERRAL_CODE_LEN, normalizeReferralCode } from "@/lib/referral-code";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
 
@@ -46,43 +48,6 @@ const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguit
  */
 export const AGENT_CODE_PREFIX = "50PICK-AG-";
 const AGENT_CODE_ID_LEN = 6;
-
-/**
- * 🔴 THE LENGTH THAT USED TO SILENTLY EAT AN AGENT'S ATTRIBUTION.
- *
- * `/auth/register` sliced an incoming `?ref=` to SIXTEEN characters, in two places — the page
- * and the server action. `50PICK-AG-` is already ten, leaving six for the id, so a
- * `50PICK-AG-ABC123` code fitted by exactly nothing and anything longer was cut with no
- * error, no audit row, and no ribbon: the attribution was simply lost, permanently, because
- * `recruitedBy` is written once and `already_bound` means it is never re-attributed.
- *
- * ⛔ AND TRUNCATION IS THE WRONG REPAIR EVEN AT A LARGER NUMBER. A cut prefix can MATCH
- * SOMEBODY ELSE'S CODE, which is worse than losing the bind: it is a permanent mis-bind to a
- * partner who did no work. `normalizeReferralCode` therefore REFUSES an over-length input
- * rather than shortening it — an unrecognised code degrades to "no code", which every caller
- * already handles.
- */
-export const MAX_REFERRAL_CODE_LEN = 32;
-
-/** The shape a referral code may take: the player alphabet, plus the agent prefix's
- *  `50PICK-AG-` characters (digits and the hyphen). */
-const REFERRAL_CODE_RE = /^[A-Z0-9-]{4,32}$/;
-
-/**
- * Normalise an inbound referral code, or return `null` if it cannot be one.
- *
- * ⭐ ONE HOME, consumed by the register page, the register action, `bindRecruit` and
- * `resolveReferralPreview` — so the ribbon and the bind can never disagree about whether a
- * code is valid, which is the promise `resolveReferralPreview`'s own header makes.
- */
-export function normalizeReferralCode(raw: string | null | undefined): string | null {
-  const code = (raw ?? "").trim().toUpperCase();
-  if (!code) return null;
-  // ⛔ REFUSE, never truncate — see MAX_REFERRAL_CODE_LEN.
-  if (code.length > MAX_REFERRAL_CODE_LEN) return null;
-  if (!REFERRAL_CODE_RE.test(code)) return null;
-  return code;
-}
 
 /** Mint a `50PICK-AG-XXXXXX` code. Uniqueness is enforced by the caller's retry loop against
  *  `db.affiliate.findByCode`, exactly as player codes are. */
@@ -1231,7 +1196,7 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
           subject: `Referral bonus · ${formatTzs(amount)}`,
           html: referralEarningHtml({ type: "BONUS", amountTzs: amount }),
           tag: "referral",
-        })).catch(() => {});
+        }), { confirmedOnly: true }).catch(() => {});
       }
     };
 
@@ -1316,7 +1281,7 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
         totalEarned: acct?.totalEarnedTzs ?? cfg.prize.amountTzs,
       }),
       tag: "referral-reward",
-    }));
+    }), { confirmedOnly: true });
   }
 }
 
@@ -1627,7 +1592,7 @@ export async function onRecruitSettlement(
     // reading it would be told their business is a promo (four-lens review, 2026-09-07).
     if (policy.programme === "AGENT") {
       notifyAgentCommission(referrerUserId, { amountTzs: paid.cut });
-      sendEmailToUser(referrerUserId, (email) => ({ to: email, subject: `Agent commission · ${formatTzs(paid.cut)}`, html: agentCommissionEarnedHtml({ amountTzs: paid.cut }), tag: "agent-commission" })).catch(() => {});
+      sendEmailToUser(referrerUserId, (email) => ({ to: email, subject: `Agent commission · ${formatTzs(paid.cut)}`, html: agentCommissionEarnedHtml({ amountTzs: paid.cut }), tag: "agent-commission" }), { confirmedOnly: true }).catch(() => {});
     } else {
       notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: paid.cut });
       sendEmailToUser(referrerUserId, (email) => ({
@@ -1635,7 +1600,7 @@ export async function onRecruitSettlement(
         subject: `Referral commission · ${formatTzs(paid.cut)}`,
         html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.cut }),
         tag: "referral",
-      })).catch(() => {});
+      }), { confirmedOnly: true }).catch(() => {});
     }
   } else if (paid) {
     // A payable was created and no money moved. That is an officer's problem, not a silent
@@ -1730,7 +1695,7 @@ export async function clawbackMarketCommission(
       // ⭐ Money left a wallet — the person is told, with the figure (four-lens review, 2026-09-07).
       if (current.programme === "AGENT") {
         notifyAgentCommissionReversed(current.referrerUserId, { amountTzs: current.amountTzs, recoveredTzs: recovered, marketId });
-        sendEmailToUser(current.referrerUserId, (email) => ({ to: email, subject: `Commission of ${formatTzs(current.amountTzs)} reversed — market voided`, html: agentCommissionReversedHtml({ amountTzs: current.amountTzs, recoveredTzs: recovered, marketId }), tag: "agent-commission-reversed" })).catch(() => {});
+        sendEmailToUser(current.referrerUserId, (email) => ({ to: email, subject: `Commission of ${formatTzs(current.amountTzs)} reversed — market voided`, html: agentCommissionReversedHtml({ amountTzs: current.amountTzs, recoveredTzs: recovered, marketId }), tag: "agent-commission-reversed" }), { confirmedOnly: true }).catch(() => {});
       }
     });
   }

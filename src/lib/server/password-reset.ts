@@ -6,8 +6,12 @@
  *   - HMAC prevents forgery; exp prevents replay
  *
  * Two entry points:
- *   1. Player-initiated: /auth/forgot-password → enters phone → if email on
- *      file, sends a reset link. If no email → "contact support" message.
+ *   1. Player-initiated: /auth/forgot-password → a phone OR an email (sign-in's
+ *      own resolveLoginIdentifier) → a link to the address the ACCOUNT holds, or
+ *      to the address typed when it names that account. Never PHONE_EMAIL_MAP
+ *      (retired from recovery 2026-10-06). Every branch - unknown number, unknown
+ *      address, an account with no email - answers the same, in the same time:
+ *      the mail leaves after the reply (requestPasswordReset).
  *   2. Admin-initiated: officer generates a temporary password directly
  *      (for support requests from users without email).
  */
@@ -19,7 +23,8 @@ import { db } from "./store";
 import { signSession, verifySession, hashPassword, randomId } from "./crypto";
 import { audit } from "./audit";
 import { sendEmail, sendEmailToUser, passwordResetHtml, passwordChangedHtml } from "./email";
-import { resolvePhoneEmail } from "./email-map";
+import { boundedNext } from "@/lib/safe-next";
+import { verifyCurrentPassword } from "./reauth";
 import { validatePasswordStrength } from "./password-policy";
 // ⭐ ONE definition of "is this an email or a phone", shared with sign-in. See
 // requestPasswordReset — a second parser here would be a second answer.
@@ -68,6 +73,9 @@ type ResetTokenPayload = {
    *  (or using an intercepted copy after the password changed) fails the
    *  fingerprint check even though the email still matches. */
   pwh: string;
+  /** Where the player was going (B1, 2026-10-06): bound at issue, re-checked at use (boundedNext); absent on links
+   *  issued before this field. */
+  next?: string;
   exp: number;
 };
 
@@ -77,13 +85,15 @@ export function passwordFingerprint(passwordHash: string | null | undefined): st
   return createHash("sha256").update(passwordHash ?? "").digest("hex").slice(0, 16);
 }
 
-/** Build a signed reset URL for a user. */
-function buildResetUrl(userId: string, email: string, passwordHash: string | null | undefined): string {
+/** Build a signed reset URL for a user. `next` (already bounded by the caller) rides INSIDE the signed token: the link
+ *  opens in a mail app's browser, where nothing outside the token survives the hop (B1, 2026-10-06). */
+function buildResetUrl(userId: string, email: string, passwordHash: string | null | undefined, next = ""): string {
   const token = signSession({
     purpose: "password-reset",
     userId,
     email,
     pwh: passwordFingerprint(passwordHash),
+    ...(next ? { next } : {}),
     exp: Date.now() + RESET_TTL_MS,
   } satisfies ResetTokenPayload);
   return `${appUrl()}/auth/reset-password?token=${encodeURIComponent(token)}`;
@@ -119,16 +129,24 @@ function buildResetUrl(userId: string, email: string, passwordHash: string | nul
  * others. The alternative — picking "the first" account — would silently strand
  * every other owner of that address.
  *
- * ⛔ ENUMERATION-NEUTRAL, ON EVERY BRANCH. Unknown phone, unknown address, known
- * account with no email on file: all return `{ ok: true }` and the page says the
- * same sentence. A caller must never be able to tell which happened. That is why
- * this returns no count and no status.
+ * ⛔ ENUMERATION-NEUTRAL, ON EVERY BRANCH - IN SHAPE AND IN TIME. Unknown phone,
+ * unknown address, known account with no email on file: all return `{ ok: true }`
+ * and the page says the same sentence. A caller must never be able to tell which
+ * happened. That is why this returns no count and no status - and why the mail is
+ * NOT awaited (A2, 2026-10-06): a hit used to wait for the Postmark round trip and
+ * a miss did not, so the reply's timing said which numbers have an account. The
+ * mail now leaves after the reply, so a hit answers as fast as a miss. No padding.
+ *
+ * ⭐ `opts.next` (B1, 2026-10-06): where the player was going. Bounded here
+ * (`boundedNext`: same-origin, not an /auth page, capped) and bound INSIDE each
+ * signed token, so it survives the mail app's browser; re-checked at use.
  */
-export async function requestPasswordReset(identifier: string): Promise<{ ok: true }> {
+export async function requestPasswordReset(identifier: string, opts: { next?: string } = {}): Promise<{ ok: true }> {
   const resolved = resolveLoginIdentifier(identifier);
   // Not a valid phone OR address. Say nothing — the action has already decided
   // what the player sees, and an error here would be an existence oracle.
   if (!resolved) return { ok: true };
+  const next = boundedNext((opts.next ?? "").trim());
 
   const users =
     resolved.kind === "email"
@@ -154,11 +172,13 @@ export async function requestPasswordReset(identifier: string): Promise<{ ok: tr
   }
 
   for (const user of users as NonNullable<Awaited<ReturnType<typeof db.user.findById>>>[]) {
-    // ⚠️ When the player typed an ADDRESS, send to THAT address — not to
-    // `resolvePhoneEmail`, whose job is to find a fallback address for a
-    // phone-only account. Sending a link somewhere the player did not name
-    // would be a link they never receive.
-    const email = resolved.kind === "email" ? resolved.value : (user.email || resolvePhoneEmail(user.phoneE164));
+    // ⭐ The link goes ONLY to the address the account holds - or, when the player
+    // typed an address, to that one, which matched this account. ⛔ PHONE_EMAIL_MAP
+    // is never a recovery address (A4, 2026-10-06): the account does not hold a
+    // mapped address, so `validateResetToken` refused every link sent there - a dead
+    // link, in an inbox the account never named. An account with no address falls
+    // to the `password_reset.no_email` audit below and the page's support card.
+    const email = resolved.kind === "email" ? resolved.value : user.email;
     if (!email) {
       // No email on file — can't send a link. The page already states this
       // precondition ("if an account WITH an email exists…"), so the player is
@@ -168,14 +188,17 @@ export async function requestPasswordReset(identifier: string): Promise<{ ok: tr
       continue;
     }
 
-    const resetLink = buildResetUrl(user.id, email, user.passwordHash);
-    await sendEmail({
+    const resetLink = buildResetUrl(user.id, email, user.passwordHash, next);
+    // NOT AWAITED (A2): the reply must take the same time whether or not an account exists; the mail leaves after it
+    void sendEmail({
       to: email,
       subject: "Reset your password · 50pick",
       html: passwordResetHtml({ resetLink }),
       tag: "password-reset",
       trackLinks: false, // don't rewrite the reset link through Postmark tracking
-    }).catch((err) => console.error("[password-reset] send failed:", (err as Error)?.message));
+    })
+      .then((r) => { if (!r.ok) console.warn("[password-reset] reset mail not delivered (" + r.reason + ")"); })
+      .catch((err) => console.error("[password-reset] send failed:", (err as Error)?.message));
 
     audit({
       category: "AUTH",
@@ -191,47 +214,67 @@ export async function requestPasswordReset(identifier: string): Promise<{ ok: tr
 
 type ResolvedUser = NonNullable<Awaited<ReturnType<typeof db.user.findById>>>;
 
+/** Why a reset link cannot be used. The reset page picks its panel from it; `consumeResetToken` needs only "not ok". */
+export type ResetTokenState = "expired" | "invalid" | "email_changed" | "used";
+
 /**
  * Validate a reset token without consuming it: checks HMAC + expiry + that the
  * email and password-hash fingerprint still match what the link was issued
- * against. Used by the reset page (to decide whether to render the form) and by
- * `consumeResetToken` (so the two can never disagree). Single-use is enforced by
+ * against. Used by the reset page (to pick its panel) and by consumeResetToken,
+ * so the two can never disagree. Single-use is enforced by
  * the `pwh` fingerprint: a completed reset rotates the hash, so the link fails.
+ *
+ * 🔴 A5 (2026-10-06): the page carried its own copy of this check, and the two
+ * disagreed on a token with NO fingerprint - the page drew the form, the action
+ * refused it. There is one check now; a missing `pwh` is `used`, here, for both.
+ * The error sentences are unchanged: `scripts/ops-reset-password.mts` prints them.
+ *
+ * ⭐ `next` (B1) is returned on every branch that read a payload, re-checked with
+ * `boundedNext`, so a dead link still offers a new one that keeps the destination.
  */
 export async function validateResetToken(
   token: string,
-): Promise<{ ok: true; user: ResolvedUser } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; user: ResolvedUser; next: string }
+  | { ok: false; error: string; state: ResetTokenState; next: string }
+> {
   const payload = verifySession<ResetTokenPayload>(token);
-  if (!payload || payload.purpose !== "password-reset" || !payload.userId || !payload.email) {
-    return { ok: false, error: "Invalid or expired reset link. Request a new one." };
+  if (!payload) {
+    return { ok: false, error: "Invalid or expired reset link. Request a new one.", state: "expired", next: "" };
   }
+  if (payload.purpose !== "password-reset" || !payload.userId || !payload.email) {
+    return { ok: false, error: "Invalid or expired reset link. Request a new one.", state: "invalid", next: "" };
+  }
+  const next = boundedNext((payload.next ?? "").trim());
 
   const user = await db.user.findById(payload.userId);
-  if (!user) return { ok: false, error: "Account not found." };
+  if (!user) return { ok: false, error: "Account not found.", state: "invalid", next };
 
   // Email must not have changed since the link was issued.
   const currentEmail = (user.email ?? "").trim().toLowerCase();
   if (currentEmail !== payload.email.trim().toLowerCase()) {
-    return { ok: false, error: "This reset link is no longer valid. Request a new one." };
+    return { ok: false, error: "This reset link is no longer valid. Request a new one.", state: "email_changed", next };
   }
 
-  // Single-use: the password must not have changed since the link was issued.
+  // Single-use: the password must not have changed since the link was issued - and a token with no fingerprint
+  // at all is refused here too (A5), never waved through.
   if (passwordFingerprint(user.passwordHash) !== payload.pwh) {
-    return { ok: false, error: "This reset link has already been used. Request a new one." };
+    return { ok: false, error: "This reset link has already been used. Request a new one.", state: "used", next };
   }
 
-  return { ok: true, user };
+  return { ok: true, user, next };
 }
 
 /**
  * Consume a reset token: validate it (HMAC + expiry + email + single-use), then
  * set the new password. The reset rotates the password hash, which invalidates
- * this token for any subsequent use.
+ * this token for any subsequent use. Returns the destination bound inside the
+ * token (B1; "" when none), for the action's sign-in redirect.
  */
 export async function consumeResetToken(
   token: string,
   newPassword: string,
-): Promise<{ ok: true } | { ok: false; error: string; code: "PW_WEAK" | "LINK_INVALID" }> {
+): Promise<{ ok: true; next: string } | { ok: false; error: string; code: "PW_WEAK" | "LINK_INVALID" }> {
   // ⭐ THE CODE TELLS THE PAGE WHICH IT WAS (2026-10-06). The action turned every failure into "that reset link is no
   // longer valid", and the strength check runs FIRST — so a password like "password123" was reported as a dead link,
   // above a form that still worked, and every new link said the same.
@@ -239,7 +282,7 @@ export async function consumeResetToken(
   if (pwError) return { ok: false, error: pwError, code: "PW_WEAK" };
 
   const check = await validateResetToken(token);
-  if (!check.ok) return { ...check, code: "LINK_INVALID" };
+  if (!check.ok) return { ok: false, error: check.error, code: "LINK_INVALID" };
   const user = check.user;
 
   const salt = randomId(32);
@@ -271,7 +314,7 @@ export async function consumeResetToken(
     targetId: user.id,
   });
   alertPasswordChanged(user.id, "password reset link");
-  return { ok: true };
+  return { ok: true, next: check.next };
 }
 
 /**
@@ -327,6 +370,7 @@ export async function changePassword(
 ): Promise<
   | { ok: true }
   | { ok: false; error: string; code: "PW_WEAK" | "NOT_FOUND" | "PW_CURRENT_WRONG"; reason: FailureReason }
+  | { ok: false; error: string; code: "RATE_LIMITED"; retryAfterSec: number }
 > {
   // ⛔ THE CODE IS MINTED HERE, NOT IN THE ACTION. `profile/account/actions.ts` used to recover
   // it by matching this function's OWN English back out of the string it had just returned:
@@ -348,11 +392,16 @@ export async function changePassword(
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND", reason: "not_found" };
 
-  // If the user already has a password, verify the current one.
+  // 🔴 A-X1 (2026-10-06) · the current password was checked here with NO limit: an unlimited current-password oracle for
+  // anyone holding a session. It now goes through the one re-auth check (`reauth.ts`) and its own per-account bucket
+  // (`auth.reauth`) - never the sign-in lock, so a session holder cannot lock the owner out of sign-in. A weak new
+  // password (above) spends nothing; every attempt here spends a token, a correct one included.
   if (user.passwordHash && user.passwordSalt) {
-    const { verifyPassword } = await import("./crypto");
-    const valid = await verifyPassword(currentPassword, user.passwordSalt, user.passwordHash);
-    if (!valid) return { ok: false, error: "Current password is incorrect.", code: "PW_CURRENT_WRONG", reason: "password_wrong" };
+    const re = await verifyCurrentPassword(userId, currentPassword, "password_change");
+    if (!re.ok) {
+      if (re.code === "RATE_LIMITED") return { ok: false, error: re.error, code: "RATE_LIMITED", retryAfterSec: re.retryAfterSec };
+      return { ok: false, error: "Current password is incorrect.", code: "PW_CURRENT_WRONG", reason: "password_wrong" };
+    }
   }
 
   const salt = randomId(32);

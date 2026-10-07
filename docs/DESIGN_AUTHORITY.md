@@ -393,6 +393,10 @@ as a decision stops being a drift.
 | **REJECTED** | — | rose | claret |
 | **OPEN** | royal | claret | — |
 | **CASHED_OUT** | *slate* (was amber) | ⚠️ amber — see below | — |
+| **PROCESSING** · **AML_REVIEW** (a payment) | royal | — | — |
+| **CONFIRMED** (a payment) | success green | — | — |
+| **FAILED** (a payment) | rose | — | — |
+| **REVERSED** · **CANCELLED** (a payment) | slate | — | — |
 
 **The three corrections.**
 
@@ -433,6 +437,17 @@ one is exactly the drift this section exists to prevent, and the admin console i
 standing ruling. ⛔ So it is named, not swept up: whoever next opens that page finds the reason
 instead of a puzzle, and the honest state is that the console's amber on a terminal word is still
 owed an answer.
+
+**5. THE SEVEN PAYMENT WORDS, DECIDED ONCE (added 2026-10-07, with the Receipts page).** A player's deposit or
+withdrawal reads one of seven stored statuses, and until that day two surfaces painted them two ways — neither from
+here: the single receipt carried a file-local map in the BETTING inks (yes-green, no-rose — §B2a forbids that for app
+state), and the `/wallet` row a ternary that put Pending and Processing in **amber** (somebody must act — nobody must;
+the money is moving). Receipts would have been a third. All three read `status-tone.ts` now — the chip through
+`playerStatusChip`, the `/wallet` row's printed word through `playerStatusInk` (`TONE_INK`, the chip's own text colour) —
+so one payment reads one colour everywhere: **waiting is royal** (Pending, Processing, In review), **Completed is
+success green**, **Failed is the failure colour**, and **Reversed and Cancelled are slate** — terminal and inert, the
+money is back or never left. ⛔ Never gilt: moving your own money in or out earns nothing (§M3a D1). A deposit held for
+return is SHOWN as Reversed (`presentedStatus`, `lib/wallet/receipts.ts`), as its notice and email say.
 
 **⛔ THE ONE KEPT SPLIT — LIVE — AND IT IS A DECISION, NOT A LEFTOVER.** LIVE is two facts
 wearing one word. To a **player** it is a broadcast — *this is open, money is moving, act
@@ -488,9 +503,11 @@ named `home/trust-band.tsx` or `updown/[roundId]/page.tsx`, which held the same 
   `STATUS_TONE_EXCEPTIONS` — writing a drift down as a decision would repeal the ruling by
   paperwork.
 
-⚠️ **And a status pill is not always a chip.** `wallet/receipt/[id]/page.tsx` holds a file-local
+⚠️ **And a status pill is not always a chip.** `wallet/receipt/[id]/page.tsx` held a file-local
 constant *named* `STATUS_TONE`, shadowing this module's export, hand-typing seven payment tones
-as Tailwind classes on a hand-rolled pill; `wallet/wallet-client.tsx` paints QUEUED amber.
+as Tailwind classes on a hand-rolled pill; `wallet/wallet-client.tsx` painted QUEUED amber. ✅ **Both closed
+2026-10-07** (money doors): the receipt page reads `playerStatusChip` and `/wallet`'s row word reads `playerStatusInk`
+— the seven payment words of item 5 above, decided here once.
 *(`profile/email-editor.tsx` and `profile/kyc/page.tsx` dressed app states in the betting-YES pair until
 2026-09-14 — both moved to the success/danger tokens in the KYC audit, session 95.)*
 A census that only greps `chip-*` cannot see any of them.

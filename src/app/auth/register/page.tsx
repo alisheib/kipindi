@@ -1,26 +1,23 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
-import { Checkbox } from "@/components/ui/checkbox";
 import { FiftyMark } from "@/components/brand";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { Field, Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
-import { PasswordPair } from "@/components/auth/password-pair";
-import { DateSelect } from "@/components/ui/date-select";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { resolveReferralPreview, normalizeReferralCode } from "@/lib/server/affiliate-service";
+import { resolveReferralPreview } from "@/lib/server/affiliate-service";
+import { normalizeReferralCode } from "@/lib/referral-code";
 import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
 import { bounceIfAuthed } from "../bounce-authed";
 import { getInvitePreview } from "@/lib/server/invite-service";
-import { startRegisterAction } from "./actions";
+import { RegisterForm, type RegisterCopy } from "./register-form";
+import { REGISTER_INVALID_REASONS, type RegisterInvalidReason } from "./refusal";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 import { ROOT_OPEN_GRAPH } from "../../layout";
 import { isSafePath } from "@/lib/safe-next";
-import { readFlash } from "@/lib/server/flash-message";
+import { bannerFor } from "@/lib/failure-banner";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string }> }) {
   const { t } = await getServerT();
@@ -49,7 +46,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; email?: string; error?: string; message?: string; ref?: string; invite?: string; next?: string }>;
+  searchParams: Promise<{ phone?: string; email?: string; ref?: string; invite?: string; next?: string }>;
 }) {
   // ⛔ IN THE PAGE, NOT THE LAYOUT — a layout is not re-executed on a soft navigation, so the
   // old placement stopped bouncing anyone who reached this page from another `/auth` route.
@@ -84,45 +81,47 @@ export default async function RegisterPage({
   const inviteCode = (sp.invite ?? "").trim().slice(0, 24);
   const invite = inviteCode ? await getInvitePreview(inviteCode) : null;
 
-  const errorPanel = (() => {
-    if (!sp.error) return null;
-    if (sp.error === "exists") {
-      return {
-        tone: "warning" as const,
-        title: t.auth.accountExists,
-        body: t.auth.accountExistsBody,
-        cta: { href: `/auth/login?phone=${encodeURIComponent(phoneDefault)}${nextOk ? `&next=${encodeURIComponent(nextOk)}` : ""}`, label: t.auth.signInTitle },
-      };
-    }
-    // A duplicate EMAIL is a different problem with a different remedy from a
-    // duplicate PHONE, and conflating them sent the player to sign in with a
-    // phone that has no account — an endless loop with the real cause never
-    // stated. Point them at the address, and at password recovery.
-    if (sp.error === "email_exists") {
-      return {
-        tone: "warning" as const,
-        title: t.auth.emailExists,
-        body: t.auth.emailExistsBody,
-        cta: { href: `/auth/login?identifier=${encodeURIComponent(emailDefault)}${nextOk ? `&next=${encodeURIComponent(nextOk)}` : ""}`, label: t.auth.signInTitle },
-      };
-    }
-    if (sp.error === "rate_limited") {
-      return {
-        tone: "warning" as const,
-        title: t.auth.tooManyTries,
-        body: t.auth.tooManyTriesBody,
-        cta: null,
-      };
-    }
-    // ⛔ Only a sentence this server signed (`flash-message.ts`) — never raw text from the address bar.
-    const msg = readFlash("register-error", (sp as { message?: string }).message);
-    return {
-      tone: "danger" as const,
-      title: t.auth.couldNotCreate,
-      body: msg ?? t.auth.checkFormFields,
-      cta: null,
-    };
-  })();
+  // The latest date of birth that is 18 today: the date box refuses anything later.
+  const today = new Date();
+  const maxDob = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  const dobMax = `${maxDob.getFullYear()}-${String(maxDob.getMonth() + 1).padStart(2, "0")}-${String(maxDob.getDate()).padStart(2, "0")}`;
+
+  // ⭐ EVERY SENTENCE THE FORM CAN SHOW, drawn HERE in the page's language — the language the hidden `shownLocale`
+  // field posts — and handed to the client form, which never looks a word up itself (register-form.tsx). A refusal's
+  // reason is worded by the failure registry (`bannerFor` over `t.error`), never by the server's English sentence.
+  const copy: RegisterCopy = {
+    phone: t.auth.phone,
+    phoneHint: t.auth.phonePlaceholder,
+    email: t.auth.emailLabel,
+    emailHint: t.auth.emailSignupHint,
+    emailPlaceholder: t.auth.emailPlaceholder,
+    dob: t.auth.dobLabel,
+    dobHint: t.auth.dobHint,
+    age18Confirm: t.auth.age18Confirm,
+    termsAccept: t.auth.termsAccept,
+    optionalUpdates: t.auth.optionalUpdates,
+    terms: t.footer.terms,
+    privacy: t.footer.privacy,
+    responsibleGambling: t.common.responsibleGambling,
+    submit: t.auth.signUpTitle,
+    submitting: t.common.creatingAccount,
+    signIn: t.auth.signInTitle,
+    accountExists: t.auth.accountExists,
+    accountExistsBody: t.auth.accountExistsBody,
+    emailExists: t.auth.emailExists,
+    emailExistsBody: t.auth.emailExistsBody,
+    tooManyTries: t.auth.tooManyTries,
+    tooManyTriesBody: t.auth.tooManyTriesBody,
+    couldNotCreate: t.auth.couldNotCreate,
+    checkFormFields: t.auth.checkFormFields,
+    reasons: Object.fromEntries(REGISTER_INVALID_REASONS.map((r) => [r, bannerFor(r, t.error as unknown as Record<string, string>)?.body ?? t.auth.checkFormFields])) as Record<RegisterInvalidReason, string>,
+  };
+
+  // B3 · "Already have an account? Sign in" keeps where they were going AND who invited them: a player who signs in
+  // instead, fails, and taps "Create one" there arrives back here with the code (the login page carries it).
+  const signInQs = new URLSearchParams();
+  if (nextOk) signInQs.set("next", nextOk);
+  if (refCode) signInQs.set("ref", refCode);
 
   return (
     <AuthShell>
@@ -181,39 +180,9 @@ export default async function RegisterPage({
             </div>
           )}
 
-          {errorPanel && (
-            <div
-              role="alert"
-              className={
-                "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
-                /* D2 (2026-08-21): `--danger-*`, not `--no-*`. Twin of
-                   auth/login/page.tsx — keep the two in step. */
-                (errorPanel.tone === "danger"
-                  ? "border-danger-500/45 bg-danger-500/[0.10]"
-                  : "border-warning-border bg-warning-bg")
-              }
-            >
-              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
-                <I.alertCircle s={16} />
-              </span>
-              <div className="text-body-sm leading-snug">
-                <p className="font-display font-semibold text-text">{errorPanel.title}</p>
-                <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>
-                {errorPanel.cta && (
-                  <Link
-                    href={errorPanel.cta.href as never}
-                    /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
-                       so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min. */
-                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
-                  >
-                    {errorPanel.cta.label} →
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
-
-          <form action={startRegisterAction} className="space-y-4">
+          {/* ⭐ The refusal panel and the form live in ONE client component, so a refusal returns to the form the
+              player is looking at and loses nothing (register-form.tsx). These are its first children. */}
+          <RegisterForm copy={copy} phoneDefault={phoneDefault} emailDefault={emailDefault} nextOk={nextOk} dobMax={dobMax}>
             {/* D2 · the language THIS form was drawn in, so the consent ledger stores the sentence the person
                 actually ticked, even if the cookie changes before they submit (actions.ts `shownLocale`). */}
             <input type="hidden" name="shownLocale" value={locale} />
@@ -232,95 +201,12 @@ export default async function RegisterPage({
                 />
               </Field>
             )}
-            <Field label={t.auth.phone} hint={t.auth.phonePlaceholder}>
-              <PhoneInput
-                id="phone"
-                name="phone"
-                required
-                defaultValue={phoneDefault}
-                size="lg"
-                error={sp.error === "exists"}
-              />
-            </Field>
-
-            {/* Email is REQUIRED at sign-up: it is where the confirmation link and
-                every deposit receipt go, and confirming it is what unlocks the
-                first deposit. `type="email"` gives mobile keyboards the right
-                layout and the browser its own format check before submit; the
-                server re-validates with the same `emailAddress` schema regardless. */}
-            <Field label={t.auth.emailLabel} hint={t.auth.emailSignupHint}>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                inputMode="email"
-                autoComplete="email"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={254}
-                defaultValue={emailDefault}
-                placeholder={t.auth.emailPlaceholder}
-                size="lg"
-                error={sp.error === "exists"}
-              />
-            </Field>
-
-            <Field label={t.auth.dobLabel} hint={t.auth.dobHint}>
-              {(() => {
-                const today = new Date();
-                const maxDob = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-                const maxStr = `${maxDob.getFullYear()}-${String(maxDob.getMonth() + 1).padStart(2, "0")}-${String(maxDob.getDate()).padStart(2, "0")}`;
-                return (
-                  <DateSelect
-                    name="dob"
-                    id="dob"
-                    required
-                    min="1930-01-01"
-                    max={maxStr}
-                  />
-                );
-              })()}
-            </Field>
-
-            <PasswordPair />
-
-            {/* 2026-09-13: a COLUMN, not vertical margins. Each Checkbox label is inline-flex, so
-                in Chinese two short consents fit and sat side by side on one line. `items-start`
-                keeps each tap area on its own words rather than the full row width. */}
-            <fieldset className="flex flex-col items-start gap-[10px] pt-1">
-              <Checkbox
-                name="acceptAge"
-                required
-                label={<span className="text-[13px] text-text-muted">{t.auth.age18Confirm}</span>}
-              />
-              <Checkbox
-                name="acceptTerms"
-                required
-                label={<span className="text-[13px] text-text-muted">{t.auth.termsAccept}</span>}
-              />
-              <Checkbox
-                name="marketingOptIn"
-                label={<span className="text-[13px] text-text-muted">{t.auth.optionalUpdates}</span>}
-              />
-              {/* The binding documents must be reachable at the consent point. */}
-              {/* No separator dots in the flow: on a phone the row wraps, and a dot ends up stranded at a line start
-                  or end either way (visual passes 2 and 2b). The gap separates the three links instead. */}
-              <p className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5 text-body-sm text-text-subtle">
-                <Link href={"/legal/terms" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{t.footer.terms}</Link>
-                <Link href={"/legal/privacy" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{t.footer.privacy}</Link>
-                <Link href={"/legal/responsible-gambling" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{t.common.responsibleGambling}</Link>
-              </p>
-            </fieldset>
-
-            <SubmitButton label={t.auth.signUpTitle} pendingLabel={t.common.creatingAccount} />
-          </form>
+          </RegisterForm>
 
           <p className="border-t border-border pt-3 text-center text-[13px] text-text-muted">
             {t.auth.alreadyHaveAccount}{" "}
             <Link
-              href={(nextOk ? `/auth/login?next=${encodeURIComponent(nextOk)}` : "/auth/login") as never}
+              href={(signInQs.toString() ? `/auth/login?${signInQs.toString()}` : "/auth/login") as never}
               className="font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
             >
               {t.auth.signInTitle}

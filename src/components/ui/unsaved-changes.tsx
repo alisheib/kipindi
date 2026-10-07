@@ -680,6 +680,10 @@ export function UnsavedChangesGuard({
       // ⛔ Same URL is not an exit. A rail's ACTIVE tab links to where you already are, and
       // prompting there would make the current tab unclickable while the form is dirty.
       if (url.pathname + url.search === window.location.pathname + window.location.search) return;
+      // ⛔ A link inside a `data-keeps-form` region is not an exit either: it changes the page's own query, and that page
+      // keeps the form mounted across it (the SMS composer's audience rail — a filter, not a navigation; the U38b
+      // review's #4). Prompting there would say "leaving now discards them" about a form that is never discarded.
+      if (a.closest("[data-keeps-form]") !== null && url.pathname === window.location.pathname) return;
       e.preventDefault();
       setPending(url.pathname + url.search + url.hash);
     };

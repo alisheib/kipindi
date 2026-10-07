@@ -2,9 +2,14 @@
  * /admin/campaigns/new — the SMS campaign composer (U37b: the Message card, the save, the officer's own test send).
  *
  * WHAT THIS PAGE IS TODAY, so nobody reads more into it: an officer writes a campaign's Swahili message (and, if they
- * want, an English one), saves it as a DRAFT, and sends the saved text to their OWN phone as a test. Nothing here
- * counts an audience, prices a send, confirms or starts a campaign: the audience card says in words which contacts the
- * draft is addressed to (U38 adds its controls and its counts), and the estimate and the confirmation are U39 and U40.
+ * want, an English one), saves it as a DRAFT, and sends the saved text to their OWN phone as a test. The audience card
+ * (U38b) chooses who it goes to — the contact book, player accounts or both, narrowed on its rail — says it in words, and
+ * counts who will receive it NOW by asking the send gate about every number (a forecast: the gate is asked again at
+ * send). Nothing here prices a send, confirms or starts a campaign: the estimate and the confirmation are U39 and U40.
+ * ⭐ U38b · THE COUNT IS KEYED BY THE FILTER (`countKey`, its ONE key): a new filter mounts a new Suspense, which shows its
+ * own fallback — never the old numbers under the new words. The card is an async SERVER component that renders the
+ * view-model and nothing else; a saved draft opened with no audience in its address is sent to the address that carries
+ * its stored filter (`canonicalHref`), so the rail and the window control start from it.
  *
  * ⭐ ONE COUNTER, THE RENDERER'S (U37a): the live counter, the server's save and the test send all size and render
  * through `campaign-template.ts` — the worst-case name, the source line or its reserved room, and the statutory footer.
@@ -19,7 +24,9 @@
  *
  * Growth domain (`roles.ts`, the `/admin/campaigns` prefix).
  */
+import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
@@ -29,6 +36,9 @@ import { CAMPAIGN_SCREEN_ROUTES } from "@/lib/marketing/campaign-status";
 import { loadComposer } from "./composer-loader";
 import type { ComposeParams, ComposeView } from "./composer-loader";
 import { ComposerProvider, ComposerMessage, ComposerAudience, ComposerTest } from "./composer-client";
+import { AudienceRail } from "./audience-rail";
+import { AudienceSplitCard, AudienceCountFallback } from "./audience-split-card";
+import { viewerReadsContacts } from "@/app/admin/contacts/contacts-loader";
 import {
   COMPOSE_AUDIENCE_TITLE, COMPOSE_MESSAGE_SW, COMPOSE_MESSAGE_TITLE, COMPOSE_MISSING, COMPOSE_START, COMPOSE_TEST_TITLE,
 } from "./composer-copy";
@@ -51,6 +61,13 @@ async function AdminComposeContent({ searchParams }: { searchParams: Promise<Com
     // ⛔ A failed read is AdminLoadError below — never a blank form.
     console.error("[admin/campaigns/new] read failed:", (err as Error)?.message ?? err);
   }
+  // ⭐ U38b · a saved DRAFT opened with no audience in its address goes to the address that carries its stored filter — so
+  // the rail's links and the window control, which build from the address, start from the audience the draft holds.
+  // ⛔ Outside the try: a redirect is never swallowed as a failed read.
+  if (view !== null && view.kind === "ready" && view.audience.canonicalHref !== null) redirect(view.audience.canonicalHref as never);
+  // ⛔ OD65 · the keyed fallback is THIS viewer's: the count alone's ghost for a viewer who may not read a number (failing
+  // closed — an unreadable cell is a masked one), the figures' ghost for a reader. The card itself asks the cell again.
+  const reads = await viewerReadsContacts().catch(() => false);
 
   return (
     <>
@@ -76,7 +93,19 @@ async function AdminComposeContent({ searchParams }: { searchParams: Promise<Com
               <AdminCard title={COMPOSE_MESSAGE_TITLE} sw={COMPOSE_MESSAGE_SW}><ComposerMessage /></AdminCard>
             </div>
             <div data-block="compose-audience">
-              <AdminCard title={COMPOSE_AUDIENCE_TITLE}><ComposerAudience /></AdminCard>
+              <AdminCard title={COMPOSE_AUDIENCE_TITLE}>
+                {/* ⭐ U38b · the rail and the count are SERVER children handed to the card's client body. The Suspense is
+                    KEYED by the filter's ONE key: a new filter mounts a new boundary, which shows its own fallback — never
+                    the old numbers under the new words. No key, no count: nothing chosen, refused or hidden is counted. */}
+                <ComposerAudience
+                  rail={view.readOnly ? null : <AudienceRail sp={sp} />}
+                  count={view.audience.countKey === null ? null : (
+                    <Suspense key={view.audience.countKey} fallback={<AudienceCountFallback countOnly={!reads} />}>
+                      <AudienceSplitCard countKey={view.audience.countKey} />
+                    </Suspense>
+                  )}
+                />
+              </AdminCard>
             </div>
             <div data-block="compose-test">
               <AdminCard title={COMPOSE_TEST_TITLE}><ComposerTest /></AdminCard>

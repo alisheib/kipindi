@@ -32,13 +32,15 @@ const now = () => new Date().toISOString();
 let seq = 0;
 const allUsers: string[] = [];
 
-async function fundedUser(id: string, balance = 1_000_000, email: string | null = null): Promise<void> {
+// `confirmed` (2026-10-07): money mail goes only to a CONFIRMED address (`sendEmailToUser(…, { confirmedOnly: true })`) —
+// a deposit asks no email any more, so an address on file may never have been confirmed.
+async function fundedUser(id: string, balance = 1_000_000, email: string | null = null, confirmed = false): Promise<void> {
   allUsers.push(id);
   await db.user.create({
     id, phoneE164: `+25597${String(++seq).padStart(7, "0")}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
-    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email,
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email, emailVerifiedAt: confirmed ? now() : null,
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
   } as never);
   await db.wallet.create({
@@ -64,8 +66,9 @@ async function posOf(uid: string) { return (await listPositionsForUser(uid))[0];
 
 // ── Setup: 5 bettors (ev_b has an email) + an admin officer, snapshot total
 //    system money BEFORE any market exists. ──
-for (const id of ["ev_a", "ev_c", "ev_d", "ev_e"]) await fundedUser(id);
-await fundedUser("ev_b", 1_000_000, "evb@test.tz"); // player WITH email → must be mailed
+for (const id of ["ev_a", "ev_d", "ev_e"]) await fundedUser(id);
+await fundedUser("ev_c", 1_000_000, "evc@test.tz");       // an UNCONFIRMED address → the bell, never the money mail
+await fundedUser("ev_b", 1_000_000, "evb@test.tz", true); // a CONFIRMED address → must be mailed
 await mkAdmin("ev_admin", "void-admin@test.tz");     // officer → must get the confirmation
 const startSystem = await sumWallets(); // pools = 0 (no market yet)
 
@@ -126,6 +129,7 @@ const REASON = "Suspended by directive of the Gaming Board";
 const logs: string[] = [];
 const realLog = console.log;
 console.log = (...a: unknown[]) => { logs.push(a.join(" ")); };
+const evcBellsBefore = (await db.notification.findByUser("ev_c", 500)).length;
 const r = await emergencyVoidMarket({ marketId: m.id, officerId: "ev_admin", reason: REASON });
 await new Promise((res) => setTimeout(res, 250)); // let fire-and-forget emails flush
 console.log = realLog;
@@ -168,6 +172,11 @@ ok("whole-system money conserved (wallets + pools + house)", endSystem === start
 ok("refunded player was emailed the cancellation+refund",
    mailed.some((m) => m.to === "evb@test.tz" && /refunded/i.test(`${m.subject} ${m.html}`)),
    `mailed=${JSON.stringify(mailed.map((m) => `${m.to} | ${m.subject}`))}`);
+// Both halves of the 2026-10-07 rule: the confirmed address is mailed (above); the unconfirmed one is told in the bell
+// and is NOT mailed — the address may be a typo or someone else's.
+ok("an UNCONFIRMED address is not mailed the refund — the bell tells that player instead",
+   !mailed.some((m) => m.to === "evc@test.tz") && (await db.notification.findByUser("ev_c", 500)).length > evcBellsBefore,
+   `mailed=${JSON.stringify(mailed.map((m) => m.to))} · bells ${evcBellsBefore} → ${(await db.notification.findByUser("ev_c", 500)).length}`);
 ok("admin was emailed the cancellation confirmation",
    mailed.some((m) => m.to === "void-admin@test.tz" && m.subject.includes("Market cancelled")));
 // In-app: player sees the cancellation notice; admin sees the confirmation.

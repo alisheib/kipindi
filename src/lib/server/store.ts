@@ -2473,6 +2473,16 @@ const memoryDb = {
         })
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, limit),
+    /**
+     * ⭐ ONE PLAYER'S ROWS OF THE GIVEN TYPES, NEWEST FIRST — the Receipts page's read (2026-10-07). The memory half of
+     * `prisma-dal.ts`'s `findByUserTypes`, in the same order: `createdAt` desc, then `id` desc to break a tie — so a suite
+     * that passes here means the same against Postgres. ⛔ BOTH HALVES EXIST OR NEITHER DOES.
+     */
+    findByUserTypes: (userId: string, types: readonly StoredTxn["type"][], limit: number): StoredTxn[] =>
+      Array.from(store.txns.values())
+        .filter((t) => t.userId === userId && types.includes(t.type))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+        .slice(0, limit),
     findById: (id: string) => store.txns.get(id) ?? null,
     findByProviderRef: (providerRef: string) => Array.from(store.txns.values()).find((t) => t.providerRef === providerRef) ?? null,
     update: (id: string, patch: Partial<StoredTxn>) => {

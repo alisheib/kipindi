@@ -30,13 +30,14 @@ import { CloseAccountForm } from "./close-account-form";
 import { FormColumn } from "@/components/ui/form-column";
 import { EmailEditor } from "@/components/profile/email-editor";
 import { PasswordSection } from "@/components/profile/password-section";
-import { formatDateTimeSafe, formatDateTime } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { ExportDataButton } from "./export-data-button";
 import { PrivacyRequestForm } from "./privacy-request-form";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/server/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
+import { isSafePath } from "@/lib/safe-next";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "My account", which a Swahili player saw in their browser tab and history.
@@ -60,8 +61,14 @@ export const dynamic = "force-dynamic";
  */
 const OWN_ACTIVITY_MAX = 2_000;
 
-export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ reason?: string; act?: string; page?: string; when?: string; sort?: string; dir?: string; q?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams?: Promise<{ reason?: string; act?: string; page?: string; when?: string; sort?: string; dir?: string; q?: string; next?: string }> }) {
   const { t, locale } = await getServerT();
+  const nowMs = Date.now();
+  /** A stored instant as the reader reads it; "—" for none or an unreadable one. */
+  const when = (iso: string | null | undefined) => {
+    const ms = iso ? Date.parse(iso) : NaN;
+    return Number.isFinite(ms) ? formatEatDateTime(ms, nowMs, t.common.monthsShort, locale) : "—";
+  };
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/account");
 
@@ -84,6 +91,10 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   const allActivity = own.entries;
   const sp = (await searchParams) ?? {};
   const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
+  // ⭐ `?next=` (2026-10-07) — the withdraw screen's email step sends the player here to add or change the address, with
+  // the way back (amount and all). Only a same-site path is honoured (`isSafePath`, the one shared rule); the back link
+  // then returns there, and says "Back" rather than naming a page it does not go to.
+  const backHref = isSafePath(sp.next) ? sp.next : null;
 
   /**
    * ⭐ PLAYER QUERY, TASK 4.6. The rail was here already; what it never had was a count on any
@@ -104,7 +115,6 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   const activityCategories = [...new Set(allActivity.map((e) => e.category))].sort();
   const categoryIds = ["all", ...activityCategories] as const;
   const state = parseActivityParams(sp, categoryIds);
-  const nowMs = Date.now();
 
   const rows: ActivityRow[] = allActivity.map((e) => ({
     id: e.id,
@@ -196,7 +206,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           {banner.body}
         </div>
       )}
-      <BackLink fallbackHref="/profile" label={t.common.profile} />
+      <BackLink fallbackHref={backHref ?? "/profile"} label={backHref ? t.common.back : t.common.profile} />
 
       <PageHero glow="info">
         <PageHeader
@@ -227,17 +237,20 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
               </Chip>
             }
           />
+          {/* Dates in the reader's month words and East Africa Time (2026-10-07) — `formatDateTime` printed English
+              month names to Swahili and Chinese readers, beside the email editor every one of them now uses. */}
           <Item
             label={t.profile.accountOpened}
-            value={formatDateTimeSafe(user?.createdAt)}
+            value={when(user?.createdAt)}
           />
           <Item
             label={t.profile.lastLogin}
-            value={formatDateTimeSafe(user?.lastLoginAt)}
+            value={when(user?.lastLoginAt)}
           />
         </div>
-        {/* Contact email — opt-in; once set, transactional receipts are emailed. */}
-        <FormColumn measure="field"><EmailEditor currentEmail={user?.email ?? null} verified={!!user?.emailVerifiedAt} /></FormColumn>
+        {/* Contact email — required at sign-up, and CONFIRMED before a withdrawal (owner ruling 2026-10-07); money mail goes
+            only to a confirmed address, and every deposit and withdrawal keeps its receipt in the app (/wallet/receipts). */}
+        <FormColumn measure="field"><EmailEditor currentEmail={user?.email ?? null} verified={!!user?.emailVerifiedAt} hasPassword={!!user?.passwordHash} /></FormColumn>
         <div className="border-t border-border pt-3">
           <FormColumn measure="field"><PasswordSection hasPassword={!!(user?.passwordHash)} /></FormColumn>
         </div>
@@ -339,7 +352,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
                    languages at once. */
                 <tr key={e.id} data-row-id={e.id} className="border-b border-border last:border-b-0 transition-colors">
                   <td className="px-3 py-2 font-mono tabular-nums whitespace-nowrap text-text-muted">
-                    {formatDateTime(new Date(e.createdAtMs).toISOString())}
+                    {when(new Date(e.createdAtMs).toISOString())}
                     {/* 🔴 BELOW `sm` A ROW IS TWO LINES, NOT THREE COLUMNS (2026-09-14). At 360 the date
                         took about 200 of 278px: the Action column sat off-screen with no scroll cue,
                         and Chinese categories broke one character per line. Category and action move

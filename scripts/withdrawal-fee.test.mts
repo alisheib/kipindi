@@ -55,6 +55,8 @@ async function kycdUser(id: string, balance: number): Promise<void> {
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    // A withdrawal needs a confirmed email as well as identity (owner ruling 2026-10-07) — this fixture withdraws.
+    email: `${id}@test.tz`, emailVerifiedAt: now(),
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
   } as never);
   await db.wallet.create({
@@ -163,7 +165,7 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
 // So the smallest withdrawal 50pick offered was one it could never deliver. It stayed invisible
 // for the platform's whole life because no payout had ever reached Selcom's business layer.
 //
-// The trap this guards is the TEMPTING fix: hardcode the minimum at 1,016. `withdrawalFeeRate`
+// The trap this guards is the TEMPTING fix: hardcode the minimum (1,015 at 1.5%). `withdrawalFeeRate`
 // is admin-tunable, so that constant silently breaks the day someone raises the fee — and the
 // symptom is a refused player, not a failing test. Hence: derive it, and prove it at rates the
 // operator could actually set.
@@ -176,10 +178,12 @@ const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance 
       net >= PROVIDER_MIN_PAYOUT_TZS, `gross=${minGross} net=${net}`);
     // One shilling below must NOT clear it — otherwise the helper is just padding and would
     // drift from the real boundary the next time anyone touches the rounding.
+    // ⭐ STRICT since 2026-10-07: this check accepted a net EQUAL to the floor one shilling below
+    // (`<=`), which is exactly how 1,016 was stated while 1,015 netted 1,000 and was allowed.
     const below = minGross - 1;
     const belowNet = below - computeWithdrawalFee(below, rate);
     ok(`one shilling below the derived minimum does NOT clear it at ${(rate * 100).toFixed(1)}%`,
-      rate === 0 ? belowNet < PROVIDER_MIN_PAYOUT_TZS : belowNet <= PROVIDER_MIN_PAYOUT_TZS,
+      belowNet < PROVIDER_MIN_PAYOUT_TZS,
       `gross=${below} net=${belowNet}`);
   }
 

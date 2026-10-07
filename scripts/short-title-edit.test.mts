@@ -866,7 +866,7 @@ function fnBody(src: string, name: string): string {
 function g13Wiring(W: World) {
   const body = fnBody(W.actions, "setMarketShortTitlesAction");
   const iS = body.indexOf("currentSession()");
-  const iR = body.indexOf('redirect("/auth/login")');
+  const iR = body.indexOf("redirect((await signInPathForAction()) as never)");
   const iG = body.indexOf('await requireAdminOrThrow(session.userId, "setMarketShortTitlesAction")');
   const iA = body.indexOf("applyShortTitles(");
   ok("13.action.gate · setMarketShortTitlesAction: session → sign-in redirect → requireAdminOrThrow → applyShortTitles, in that order",

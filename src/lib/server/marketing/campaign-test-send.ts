@@ -56,8 +56,15 @@
  * `sendBatch` writes — purpose MARKETING, target `SmsCampaignTest` / the campaign id, so a delivery receipt settles that
  * row and nothing else (the DLR route has no per-target arm for it).
  *
- * OWED DOWNSTREAM: U15 allowlists this file on the one send path (M9); it obeys the send window once U13 exists, and
- * U14's frequency cap leaves `SmsCampaignTest` out (M12); U50 registers the audit action.
+ * ⭐ U13 · M12 · THE TEST OBEYS THE SEND WINDOW. Outside the hours the owner saved (08:00–20:00 EAT unless changed) a test
+ * is refused `held` with the window's own sentence (`testQuietHours`) at step 5b — a shop-wide fact, read like the rail and
+ * the switch: before a token, a row or a transport call, and before anything about the number (a typed test's checks and
+ * budgets included) — and the masked row records `held: quiet_hours`. The window travels into `dispatchSlice` as well
+ * (`deps.window`), so one that closes between that check and the send still holds the test. ⛔ Hours that cannot be read
+ * are a CLOSED window, said as such (`TEST_WINDOW_UNREADABLE`), never as quiet hours.
+ *
+ * OWED DOWNSTREAM: U15 allowlists this file on the one send path (M9); U14's frequency cap leaves `SmsCampaignTest` out
+ * (M12); U50 registers the audit action.
  *
  * Guard: `npm run test:campaign-compose` §18 · `npm run test:campaign-models` §3.1 (the MARKETING writer pin).
  */
@@ -70,8 +77,10 @@ import { rateCheckAsync } from "@/lib/server/rate-limit";
 import type { RateResult } from "@/lib/server/rate-limit";
 import { sendBatch, smsProviderResolution, smsRailProblem } from "@/lib/server/sms";
 import type { SmsBatchOutcome, SmsOutbound, SmsProviderResolution, SmsRailProblem } from "@/lib/server/sms";
-import { dispatchSlice } from "@/lib/server/marketing/dispatch";
+import { dispatchSlice, liveSendWindow } from "@/lib/server/marketing/dispatch";
 import type { SliceDeps } from "@/lib/server/marketing/dispatch";
+import { sendWindowUnreadable } from "@/lib/marketing/window";
+import type { SendWindowState } from "@/lib/marketing/window";
 import { mayReceiveMarketingSms, DB_GATE_READS } from "@/lib/server/marketing/consent";
 import type { MarketingGateReads, MarketingGateVerdict, MarketingSkipReason, TestAttestation } from "@/lib/server/marketing/consent";
 import { currentWording } from "@/lib/server/marketing/wordings";
@@ -147,6 +156,14 @@ export const TEST_TEMPLATE_INVALID = "The saved message no longer passes its own
 export const TEST_UNCONFIRMED = "No answer from the network — don't resend straight away; check your phone first.";
 export const TEST_GATE_UNANSWERED = "The consent check couldn't answer, so nothing was sent — try again shortly.";
 export const TEST_CREDIT_FLOOR = "SMS credit is below its floor, so marketing messages are held — top it up, then test again.";
+/** U13 · M12 · a test outside the send window — in the hours the window was read with, and when it opens again: "It's
+ *  outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00." */
+export function testQuietHours(w: Pick<SendWindowState, "label" | "opensAtTime">): string {
+  return `It's outside the send window (${w.label}), so no test can be sent now — try again at ${w.opensAtTime}.`;
+}
+/** U13 · the send window's hours could not be read: a CLOSED window (fail closed), said as such — never as quiet hours. */
+export const TEST_WINDOW_UNREADABLE =
+  "The Marketing SMS settings couldn't be read, so the send window is treated as closed and no test can be sent — reload the page and try again.";
 
 /* ── U37c · a typed test's sentences (spec §7.1–§7.3) ── */
 /** §7.1 · ⛔ D19 — the ONE sentence a viewer who may not read numbers gets for EVERY gate refusal of a typed number. */
@@ -230,10 +247,13 @@ export function typedReaderSentence(reason: TypedReaderReason): string {
   return TYPED_READER_SENTENCE[reason];
 }
 
-/** A send the slice HELD — nothing was attempted, for a reason that is not about this person. */
-function heldSentence(reason: string): string {
+/** A send the slice HELD — nothing was attempted, for a reason that is not about this person. U13 · quiet hours are said in
+ *  the hours `sendWindow` was read with; a closed window with no readable hours is said as unreadable. */
+function heldSentence(reason: string, sendWindow: SendWindowState | null = null): string {
   if (reason === "BALANCE_FLOOR") return TEST_CREDIT_FLOOR;
   if (reason === "gate_unanswered") return TEST_GATE_UNANSWERED;
+  if (reason === "quiet_hours") return sendWindow !== null && sendWindow.label !== "" ? testQuietHours(sendWindow) : TEST_WINDOW_UNREADABLE;
+  if (reason === "window_unreadable") return TEST_WINDOW_UNREADABLE;
   return TEST_RAIL_DEAD;
 }
 
@@ -302,6 +322,9 @@ export type CampaignTestDeps = {
    *  asked with this test's attestation as its context. */
   gate: SliceDeps["gate"];
   send: SliceDeps["send"];
+  /** U13 · M12 · THE SEND WINDOW this test obeys — `liveSendWindow`, the send path's own: read at step 5b, before a token is
+   *  minted, and handed to `dispatchSlice`. A suite passes a FIXED window (ENGINE-SPEC §5 rule 9). */
+  window: NonNullable<SliceDeps["window"]>;
   audit: (entry: Parameters<typeof audit>[0]) => unknown;
   now: () => Date;
   /** U37c · S25 · the floor's wait. */
@@ -334,11 +357,23 @@ export const CAMPAIGN_TEST_DEPS: CampaignTestDeps = {
   dispatch: dispatchSlice,
   gate: undefined,
   send: campaignTestSend,
+  window: liveSendWindow,
   audit,
   now: () => new Date(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   attemptRef: mintTestAttemptRef,
 };
+
+/** U13 · the window a test obeys, read through its deps. ⛔ A read that throws, or answers anything but a window, is a
+ *  CLOSED window — never an open one. */
+async function windowOf(deps: CampaignTestDeps): Promise<SendWindowState> {
+  try {
+    const w = await deps.window();
+    return w !== null && typeof w === "object" ? w : sendWindowUnreadable();
+  } catch {
+    return sendWindowUnreadable();
+  }
+}
 
 /* ══ THE TEST ════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -460,6 +495,16 @@ export async function sendCampaignTest(
   const live = marketingLiveGate(deps.provider(), await deps.liveSwitch());
   if (!live.ok) return refuse("live_sends_closed", TEST_LIVE_SENDS_CLOSED);
 
+  // ── 5b · U13 · M12 · THE SEND WINDOW — a shop-wide fact, read like the rail and the switch: before a token, a row or a
+  //    transport call, and before anything about the number (a typed test's checks and budgets included). ⛔ Hours that
+  //    cannot be read are a CLOSED window; the masked row records which one held it (`held`). ──
+  const sendWindow = await windowOf(deps);
+  if (sendWindow.open !== true) {
+    const why = sendWindow.reason === "quiet_hours" ? "quiet_hours" : "window_unreadable";
+    trail.held = why;
+    return refuse("held", heldSentence(why, sendWindow));
+  }
+
   // ── 6 · U37c · a TYPED test's four checks that do not depend on who holds the number — the same answer for a player's
   //    number and a stranger's, before any read about the number (§18.25) ──
   let adultWording: WordingVersion | null = null;
@@ -528,7 +573,7 @@ export async function sendCampaignTest(
     // ⛔ OD61 · a typed number's re-ask writes no RG line either.
     const outcomes = await deps.dispatch(
       [{ ref: campaign.id, msisdn: key, body: message.text }],
-      { send: deps.send, gate, ...(target === "typed" ? { rgAudit: NO_RG_LINE } : {}) },
+      { send: deps.send, gate, window: deps.window, ...(target === "typed" ? { rgAudit: NO_RG_LINE } : {}) },
     );
     const out = outcomes[0];
     const at = deps.now().toISOString();
@@ -542,7 +587,11 @@ export async function sendCampaignTest(
     if (out?.outcome === "skipped") {
       return target === "typed" ? typedRefusal(out.skipReason) : refuse(out.skipReason, testGateSentence(out.skipReason));
     }
-    if (out?.outcome === "held") return refuse("held", heldSentence(out.reason));
+    if (out?.outcome === "held") {
+      // U13 · a window that closed between step 5b and the send held it — the masked row records which, as at step 5b.
+      if (out.reason === "quiet_hours" || out.reason === "window_unreadable") trail.held = out.reason;
+      return refuse("held", heldSentence(out.reason, sendWindow));
+    }
     // ⛔ A transport that lost its reply may still have sent it: unconfirmed, never retried, never "handed over" (OD23).
     if (out?.outcome === "failed" && out.code !== "TRANSPORT") return refuse("failed", failedSentence(out.code, target));
     await floor();

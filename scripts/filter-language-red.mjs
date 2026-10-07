@@ -521,6 +521,32 @@ const CASES = [
           replace`,
     expect: "6.6 EVERY rank-taking control on src/app/admin/campaigns/campaign-status-rail.tsx",
   },
+
+  /* ── 2026-10-07 · U38b · THE CAMPAIGN COMPOSER'S AUDIENCE RAIL (`src/app/admin/campaigns/new/audience-rail.tsx`) ──────
+     The same pair for the third console rail on the marketing pages: the rail file and its ADMIN_SURFACES entry land in
+     ONE commit, so each half alone must be red, on its own assertion. The rail's LOGIC (Who, the book's axes hidden for
+     players and both, every href through the composer's builder) is proven in-process by `red:campaign-audience`; these
+     two prove the DECLARATION. */
+  {
+    // The rail renders and emits its hook, but the gate no longer knows it — the undeclared rail §0.4 exists to find.
+    name: "audience-rail-undeclared (the composer's audience rail loses its ADMIN_SURFACES entry while it still emits data-filter-rail)",
+    file: GATE,
+    from: `  "src/app/admin/campaigns/new/audience-rail.tsx", // /admin/campaigns/new — who + operator + window + list + tag (U38b)
+`,
+    to: ``,
+    expect: "0.4 no filter rail exists that this gate does not know about",
+  },
+  {
+    // Its pill leaves the dense rank while its window control keeps it: a rail half at 32px and half at 44px — 1 dense of 2.
+    name: "audience-rail-undensified (the composer's audience rail's FilterPill drops its dense rank)",
+    file: "src/app/admin/campaigns/new/audience-rail.tsx",
+    from: `                semantics={g.semantics}
+                rank="dense"
+                replace`,
+    to: `                semantics={g.semantics}
+                replace`,
+    expect: "6.6 EVERY rank-taking control on src/app/admin/campaigns/new/audience-rail.tsx",
+  },
 ];
 
 const runGate = () => {

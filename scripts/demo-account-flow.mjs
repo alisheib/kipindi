@@ -41,18 +41,34 @@ async function fillRegister(p, opts) {
     document.querySelectorAll('input[name="password"], input[name="passwordConfirm"]').forEach(el => {
       el.removeAttribute("minlength"); el.removeAttribute("pattern");
     });
-    const f = document.querySelector("form[action]");
+    // The sign-up form, found by its own field: its `action` is a function now (register-form.tsx).
+    const f = document.querySelector('input[name="passwordConfirm"]')?.form;
     if (f) f.noValidate = true;
   });
   await p.fill('input[name="password"]', opts.password ?? "TestPass123!");
   await p.fill('input[name="passwordConfirm"]', opts.confirm ?? opts.password ?? "TestPass123!");
   await p.check('input[name="acceptAge"]', { force: true });
   await p.check('input[name="acceptTerms"]', { force: true });
-  await Promise.all([
-    p.waitForURL(u => !/auth\/register$/.test(u.toString()) || u.toString().includes("error="), { timeout: 8_000 }).catch(() => null),
-    p.click('button[type="submit"]'),
+  // ⭐ 2026-10-06: a REFUSED sign-up no longer navigates. The refusal returns to the still-mounted form and paints a
+  // `[data-refusal]` panel above it (register-form.tsx); nothing goes in the URL. So wait for that panel OR the tab
+  // leaving /auth/register (a success lands on the market board), whichever comes first. Each wait swallows its own
+  // timeout, so the one that loses never rejects unhandled.
+  const settled = Promise.race([
+    p.waitForSelector("[data-refusal]", { timeout: 8_000 }).catch(() => null),
+    p.waitForURL((u) => !u.pathname.startsWith("/auth/register"), { timeout: 8_000 }).catch(() => null),
   ]);
+  await p.click('button[type="submit"]');
+  await settled;
 }
+
+/** What a refused sign-up leaves on screen: the panel and the code it names, and the URL the tab is still on. */
+async function refusalState(p) {
+  const panel = p.locator("[data-refusal]");
+  const shown = (await panel.count()) > 0;
+  return { shown, code: shown ? await panel.first().getAttribute("data-refusal") : null, url: p.url() };
+}
+/** The refusal stayed on the form: the panel shows, the tab is still on /auth/register, and no `error=` rides in the URL. */
+const refusedInPlace = (r) => r.shown && /auth\/register/.test(r.url) && !/error=/.test(r.url);
 
 const browser = await chromium.launch();
 
@@ -108,7 +124,8 @@ await reset();
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   await fillRegister(p, { tail: tail(1), password: "Goodpass!1", confirm: "Different!9" });
-  log("2.1 password mismatch → error panel", /auth\/register/.test(p.url()) && /error=/.test(p.url()), p.url());
+  const r = await refusalState(p);
+  log("2.1 password mismatch → the refusal panel on the same form, nothing in the URL", refusedInPlace(r), `${r.code} · ${r.url}`);
   await ctx.close();
 }
 await reset();
@@ -118,7 +135,8 @@ await reset();
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   await fillRegister(p, { tail: tail(2), dob: "2020-01-15" });
-  log("2.2 under-18 DOB → error panel", /auth\/register/.test(p.url()) && /error=/.test(p.url()), p.url());
+  const r = await refusalState(p);
+  log("2.2 under-18 DOB → the refusal panel on the same form, nothing in the URL", refusedInPlace(r), `${r.code} · ${r.url}`);
   await ctx.close();
 }
 await reset();
@@ -128,7 +146,12 @@ await reset();
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   await fillRegister(p, { tail: tail(3), password: "password" });
-  log("2.3 common password 'password' → error panel", /auth\/register/.test(p.url()) && /error=/.test(p.url()), p.url());
+  const r = await refusalState(p);
+  // ⭐ C1 · the point of the change: the form was NOT remounted, so what was typed is still there.
+  const dobKept = await p.locator('input[name="dob"]').inputValue().catch(() => "");
+  const ageKept = await p.locator('input[name="acceptAge"]').isChecked().catch(() => false);
+  log("2.3 common password 'password' → the refusal panel, and the form kept the date of birth and the 18+ tick",
+      refusedInPlace(r) && dobKept === "1990-01-15" && ageKept, `${r.code} · dob=${dobKept} · acceptAge=${ageKept} · ${r.url}`);
   await ctx.close();
 }
 

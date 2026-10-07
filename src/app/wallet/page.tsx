@@ -10,7 +10,8 @@ import type { StoredTxn } from "@/lib/server/store";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { bonusIsLiveFor } from "@/lib/feature-state";
-import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MAX_TZS, withdrawMinFor } from "@/lib/server/validators";
+import { getEffectiveConfig } from "@/lib/server/market-config";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { matchesQuery, parseQuery } from "@/lib/search";
@@ -31,9 +32,11 @@ import {
 } from "@/lib/wallet/ledger";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { cookies } from "next/headers";
-import { firstDepositNoticeDue, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
+import { firstDepositNotice, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { hasReceipt, presentedStatus } from "@/lib/wallet/receipts";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -44,9 +47,11 @@ export const dynamic = "force-dynamic";
 /**
  * 🔴 THE FOLD IS FOR DISPLAY ONLY, AND `lib/wallet/ledger.ts` FILTERS THE STORED TYPE INSTEAD.
  * The stored types collapse into fewer display tokens here — deliberately, because this token
- * drives the credit/debit SIGN and the receipt link. ⛔ It is NOT a filter vocabulary:
+ * drives the credit/debit SIGN. ⛔ It is NOT a filter vocabulary:
  * `BONUS_CREDIT` and `ADJUSTMENT_CREDIT` both land on `deposit`, so a "Deposits" filter built on
  * it would tell a player their bonus was a deposit.
+ * ⛔ NOR DOES IT DECIDE THE RECEIPT LINK any more (2026-10-07): that is `hasReceipt` of the STORED type — the fold
+ * offered "View receipt" on a bonus credit and a house fee (S10-02).
  */
 function adaptTxn(t: StoredTxn): Transaction {
   const typeMap: Record<StoredTxn["type"], Transaction["type"]> = {
@@ -68,6 +73,7 @@ function adaptTxn(t: StoredTxn): Transaction {
   // one we hadn't sent yet) and REVERSED + CANCELLED into "failed" (so a deposit
   // reversed by the self-exclusion guard read as a declined card). Different
   // events, different remedies, different words.
+  // ⭐ Through `presentedStatus` (2026-10-07): a deposit held for RETURN reads "Reversed", as on its receipt.
   const statusMap: Record<StoredTxn["status"], Transaction["status"]> = {
     PENDING: "pending", PROCESSING: "processing", AML_REVIEW: "review", CONFIRMED: "confirmed", FAILED: "failed", REVERSED: "reversed", CANCELLED: "cancelled",
   };
@@ -75,11 +81,12 @@ function adaptTxn(t: StoredTxn): Transaction {
     id: t.id,
     type: typeMap[t.type],
     amount: t.amount,
-    status: statusMap[t.status],
+    status: statusMap[presentedStatus(t)],
     description: t.description ?? "",
     createdAt: t.createdAt,
     positionId: t.positionId ?? null,
     providerRef: t.providerRef ?? null,
+    hasReceipt: hasReceipt(t.type),
   };
 }
 
@@ -156,6 +163,19 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const pending = w?.pending ?? 0;
   const hold = w?.hold ?? 0;
   const currency = w?.currency ?? "TZS";
+  /**
+   * ⭐ A BREAK PAUSES MONEY IN, AND THIS PAGE DOES NOT INVITE IT (2026-10-06) — the journey header's S4 rule,
+   * on the page that holds the most deposit invitations. A held wallet (officer freeze, final refusal) takes no
+   * deposit either. `depositOpen` is the one answer for the header Deposit, the balance card's Add funds, the
+   * empty state's deposit button and its sentence, and the cash back promo. Withdraw is not asked: a break does
+   * not stop withdrawals, and a held wallet's withdraw screen explains the freeze.
+   * ⚠️ The break read fails OPEN, like the shell's `promoSuppressed`: a failed read shows the invitations, and
+   * /wallet/deposit and `deposit()` still refuse a deposit during a break.
+   */
+  const walletHeld = !!w && w.status !== "ACTIVE";
+  let onBreak = false;
+  try { onBreak = (await isLockedOut(session.userId)).locked; } catch { /* fails OPEN like the shell's promoSuppressed: /wallet/deposit and deposit() still refuse */ }
+  const depositOpen = !walletHeld && !onBreak;
 
   const nowMs = Date.now();
   const { fromMs, toMs } = windowBounds(state.when, nowMs);
@@ -173,7 +193,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const rows: LedgerRow[] = windowRows.map((x) => ({
     id: x.id,
     type: x.type,
-    status: x.status,
+    status: presentedStatus(x),
     token: adaptTxn(x).type,
     amount: x.amount,
     description: x.description ?? "",
@@ -200,11 +220,13 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   // `?deposited=x&amount=5000000` finds no owned txn → no modal, no fake gilt.
   // ⚠️ Looked up over the WINDOWED read, so a player returning from a deposit while a narrow
   //    window is active still sees their own result — the id is matched, not filtered.
+  // ⭐ AND IT MUST BE A DEPOSIT OR A WITHDRAWAL (2026-10-06). The STORED type decides which result is drawn,
+  //    never the param's name: a bet id typed into `?deposited=` used to open a deposit modal over a stake.
   const resultId = (typeof sp.deposited === "string" ? sp.deposited : "") || (typeof sp.withdrawal === "string" ? sp.withdrawal : "");
   const resultTxn = resultId
     ? (rawTxns.find((x) => x.id === resultId) ?? ((await db.txn.findById(resultId)) as StoredTxn | null) ?? undefined)
     : undefined;
-  const resultOwned = resultTxn && resultTxn.userId === session.userId ? resultTxn : undefined;
+  const resultOwned = resultTxn && resultTxn.userId === session.userId && (resultTxn.type === "DEPOSIT" || resultTxn.type === "WITHDRAWAL") ? resultTxn : undefined;
 
   // Bonus balance is money too — same B-1 rule, no zero-on-failure.
   // ⛔ THE SUMMARY IS STILL READ WHEN THE PROGRAMME IS WITHDRAWN, deliberately: a player
@@ -218,7 +240,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   // switch; `bonusFeatureLive` is whether the programme is part of the product at all. An
   // operator re-enabling cashback in /admin/config must not be able to resurrect a promo for
   // a withdrawn programme, so the product state is ANDed in here rather than trusted to it.
-  const cashbackPercent = bonusFeatureLive && bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
+  // ⛔ AND NEVER TO A WALLET THAT CANNOT TAKE A DEPOSIT (2026-10-06): an incentive to put money in, shown during a
+  // break or over a hold, is a solicitation the deposit screen would refuse (`depositOpen` above).
+  const cashbackPercent = depositOpen && bonusFeatureLive && bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0;
   const cashbackMode = bonusCfg.cashbackMode ?? "REQUEST";
 
   /**
@@ -291,7 +315,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
     bookRows = allTxns.map((x) => ({
       id: x.id,
       type: x.type,
-      status: x.status,
+      status: presentedStatus(x),
       token: adaptTxn(x).type,
       amount: x.amount,
       description: x.description ?? "",
@@ -341,7 +365,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
    * identity, and a failed read must never put an identity prompt in front of anybody: not shown.
    */
   const bookIsWhole = !windowIsNarrowed && !capped;
-  const kycFirstDepositNotice = await firstDepositNoticeDue(session.userId, {
+  const kycFirstDepositNotice = await firstDepositNotice(session.userId, {
     dismissCookie: (await cookies()).get(KYC_NOTICE_COOKIE)?.value,
     depositInHand: bookIsWhole ? rawTxns.some((x) => x.type === "DEPOSIT" && x.status === "CONFIRMED") : null,
   });
@@ -359,8 +383,8 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
       <RefreshPoller intervalMs={20_000} />
       {resultOwned && (
         <WalletResultModal
-          deposited={typeof sp.deposited === "string" ? sp.deposited : undefined}
-          withdrawal={typeof sp.withdrawal === "string" ? sp.withdrawal : undefined}
+          deposited={resultOwned.type === "DEPOSIT" ? resultOwned.id : undefined}
+          withdrawal={resultOwned.type === "WITHDRAWAL" ? resultOwned.id : undefined}
           status={resultOwned.status}
           amount={String(Math.abs(resultOwned.amount))}
         />
@@ -375,7 +399,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         currency={currency}
         /* A held wallet (officer freeze, final refusal) cannot spend, bet or withdraw, so its balance is not
            labelled "Available" — the same `status !== "ACTIVE"` rule the withdraw and deposit screens read. */
-        walletHeld={!!w && w.status !== "ACTIVE"}
+        walletHeld={walletHeld}
+        /* Wallet ACTIVE and no break — the only state in which this page invites a deposit (2026-10-06). */
+        depositOpen={depositOpen}
         transactions={pagedTxns}
         resultCount={matched.length}
         page={safePage}
@@ -404,7 +430,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           : t.wallet.emptyFilter
         }
         emptyBody={
-          cause === "no-rows" ? t.common.firstDepositHint
+          cause === "no-rows" ? (depositOpen ? t.common.firstDepositHint : t.wallet.emptyLensBody)
           : cause === "lens-empty" ? t.wallet.emptyLensBody
           : cause === "search-miss" ? t.wallet.emptySearchBody
           : cause === "window-miss" ? t.wallet.emptyWindowBody
@@ -431,7 +457,8 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         cashbackMode={cashbackMode}
         limits={{
           depositMin: DEPOSIT_MIN_TZS, depositMax: DEPOSIT_MAX_TZS,
-          withdrawMin: WITHDRAW_MIN_TZS, withdrawMax: WITHDRAW_MAX_TZS,
+          // The TRUE minimum at the live fee (owner ruling 2026-10-07) — the withdraw screen's own figure, never a typed 1,000.
+          withdrawMin: withdrawMinFor((await getEffectiveConfig()).withdrawalFeeRate), withdrawMax: WITHDRAW_MAX_TZS,
         }}
         isAuthed={true}
         kycFirstDepositNotice={kycFirstDepositNotice}

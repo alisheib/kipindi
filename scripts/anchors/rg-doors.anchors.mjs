@@ -36,11 +36,24 @@ export const MUTATIONS = [
        + "removing this call is precisely the state the platform shipped in, and it is invisible "
        + "to any test of the gate function because the gate is untouched and still correct.",
     file: AUTH,
-    from: `    const otpGate = await assertSignInAllowed(user);
-    if (otpGate) return otpGate;`,
-    to: `    const otpGate = null;
-    if (otpGate) return otpGate;`,
+    // Re-indented 2026-10-06: the code door lost its sign-up branch, so the gate sits at the function's top level now.
+    from: `  const otpGate = await assertSignInAllowed(user);
+  if (otpGate) return otpGate;`,
+    to: `  const otpGate = null;
+  if (otpGate) return otpGate;`,
     check: "2.1 verifyOtpAndAuth() mints a session AND consults the gate",
+  },
+  {
+    name: "the-code-door-skips-the-second-factor",
+    why: "🔴 THE SECOND FACTOR, E-240's SHAPE (route audit 2026-10-06). The dormant code door minted a session "
+       + "without asking is2faEnabled(), so a code stood in for the password AND the authenticator. The gate is "
+       + "untouched by this edit — the door simply stops asking, which no test of the 2FA module can see.",
+    file: AUTH,
+    from: `  if (await is2faEnabled(user.id)) {
+    audit({ category: "SECURITY", action: "user.login.2fa_challenge", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, payload: { via: "otp" } });`,
+    to: `  if (false) {
+    audit({ category: "SECURITY", action: "user.login.2fa_challenge", actorId: user.id, targetType: "User", targetId: user.id, ip: meta.ip, payload: { via: "otp" } });`,
+    check: "2.7 verifyOtpAndAuth() mints a session AND asks",
   },
   {
     name: "the-password-door-stops-reading-account-status",
@@ -137,6 +150,26 @@ export const MUTATIONS = [
     from: `    if (result.code === "SUSPENDED") {`,
     to: `    if (result.code === "__never__") {`,
     check: "6.8 a SUSPENDED refusal on the OTP door routes to the exclusion panels",
+  },
+  {
+    name: "a-closed-account-is-told-only-that-it-is-blocked",
+    why: "🔴 B4 (route audit 2026-10-06). The gate answered CLOSED exactly like SUSPENDED, so sign-in said "
+       + "'blocked · contact support' to a player who had closed their own account, while /auth/session-ended and "
+       + "every other surface say 'closed'. The token rides only on the refusal that follows proof of ownership.",
+    file: AUTH,
+    from: `...(user.status === "CLOSED" ? { detail: { accountClosed: true } } : {})`,
+    to: `...({})`,
+    check: "6.11 the gate tells a CLOSED account it is closed",
+  },
+  {
+    name: "the-two-step-door-flattens-every-refusal-into-blocked",
+    why: "🔴 THE ONE-SCREEN REGRESSION, ON THE THIRD DOOR. The two-step completion mapped every refusal — an "
+       + "exclusion with its end date, a closed account — to one bare error=blocked and dropped `next`: the panels "
+       + "the password and code doors reach were unreachable after an authenticator code.",
+    file: LOGIN_ACTION,
+    from: `if (!done.ok) redirect(accountRefusalPath(done.detail, safeNext) as never);`,
+    to: `if (!done.ok) redirect("/auth/login?error=blocked");`,
+    check: "6.14 the two-step door routes a refusal",
   },
   {
     name: "a-served-exclusion-is-told-to-wait-for-a-date-that-has-passed",

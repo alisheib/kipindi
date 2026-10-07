@@ -233,7 +233,9 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   `prepare(key, verdict)` instead of a `body`; it runs only after the gate clears, before the wire, and may refuse (held).
   (b) `deps.beforeSend(cleared)` runs once after gating and before the one send; it may veto the send (every cleared row
   held) or drop rows (held `claim_lost`). (c) `deps.window()` runs first; closed → every row held `quiet_hours`, no gate
-  asked (U13). The test send passes none of (a)/(b); the U9 landmarks stay; `sendBatch` is still not imported there.
+  asked (U13) — ✅ as built: hours that cannot be read (a failed read, a row this build cannot read in full, a window that
+  throws) hold every row `window_unreadable` instead, the same shop-wide wait (the U13 review's SP-2), and the window is
+  set against the slice's own elapsed time again at the wire (SP-1). The test send passes none of (a)/(b); the U9 landmarks stay; `sendBatch` is still not imported there.
 - **E3 · A transport ambiguity is UNCONFIRMED, decided in ONE place.** `dispatchSlice` maps a result whose code is
   `TRANSPORT` to `unconfirmed` and carries its `reference`; `blackballSend` reads the reply body inside its try, so a body
   that dies is `transport` (ambiguous) and the `SmsMessage` row is `UNKNOWN`, never `FAILED`. The test send's hand-mapping
@@ -250,17 +252,20 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   a reap finds its claim gone and sends nothing). Every case where the wire may have been reached stays UNCONFIRMED —
   §9 U43's rule, kept where it applies.
 - **E7 · A shop-wide refusal is never N failed rows.** Held with a shop-wide reason (`BALANCE_FLOOR`, `NOT_CONFIGURED`,
-  `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `quiet_hours`, `not_running`), or a batch in which EVERY cleared row failed
+  `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `quiet_hours`, `window_unreadable`, `not_running`), or a batch in which EVERY cleared row failed
   with one non-`BAD_MSISDN` code (a `status:false` reply — bad keys, a sender-ID fault): every claimed row goes back to
   PENDING (attempts unchanged for a hold, + 1 for a refused batch), the campaign pauses with ONE reason and ONE audit
-  row. A gateway `status:false` charged nothing, so re-sending after Resume is not a second charge.
+  row — ✅ except the WAITS (`quiet_hours`, `window_unreadable`, `not_running`), which return the rows and pause nothing: the
+  step waits (E9; the U43 settlement table). A gateway `status:false` charged nothing, so re-sending after Resume is not a second charge.
 - **E8 · HELD means "parked: the engine could not check or prepare this person".** A per-person hold (`gate_unanswered`,
   `token_unavailable`, `template_invalid`) returns the row to PENDING with attempts + 1; at `MAX_ROW_ATTEMPTS` (3) it is
   HELD. HELD is OUTSTANDING (U36's vocabulary). Resume re-queues HELD → PENDING (attempts 0). A RUNNING campaign whose only
   outstanding rows are HELD pauses `held_rows` instead of finishing.
 - **E9 · The send window never changes a campaign's status.** Outside it the slice WAITS (claims nothing) and
   `dispatchSlice` holds every row `quiet_hours` (defence in depth, and the test send obeys it — M12). Rows stay PENDING; the
-  page says when sending resumes.
+  page says when sending resumes. ✅ As built (U13): hours that cannot be read are the same wait, `window_unreadable` —
+  never a pause and never the default hours obeyed — and the page says sending resumes once the hours can be read (there
+  is no `opensAt` to name); U43b's own pre-claim check waits the same way.
 - **E10 · One marketing slice in flight per PROCESS** (a `globalThis` single-flight across all campaigns), enforcing
   `MAX_SLICES_IN_FLIGHT` = 1 and sparing the shared rail. Across processes (the 60 s deploy overlap) the conditional claim
   keeps every send single.
@@ -309,7 +314,10 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   says "Keep this page open while it sends".
 - **E23 · The D19 floor on every campaign surface.** A viewer whose `identity.contact` cell is not `read` sees no
   per-state split and no reason breakdown for an audience or campaign of fewer than `MASKED_BREAKDOWN_MIN` (10) people,
-  and never a per-row reason. Readers see everything.
+  and never a per-row reason. Readers see everything. ⚠️ **AMENDED by OD65 (S14, 2026-10-07): BEFORE A CAMPAIGN SENDS —
+  the composer's card and U40's confirmation — such a viewer sees the COUNT ALONE at every size** (the ONE walk's count,
+  the gate never asked for them): a size floor cannot hold against an officer who pads a tag or a list with numbers of
+  their own. The floor of 10 stays for U47b's live page and U48a's results, which count messages actually sent.
 - **E24 · One audit row per event** — no per-recipient row, no per-slice row: started, start refused, enqueued, paused
   (officer or engine, with the reason), resumed, stopped, finished (with counts), reaped (when > 0), exported. ADMIN for
   an officer's act, SYSTEM (actor null) for the engine, COMPLIANCE for the live switch and the confirmation.
@@ -765,7 +773,9 @@ shows no audience words yet (M8).
 1. **The campaign door takes a population in the address:** a new key `pop` (`book` · `players` · `both`), read ONLY by
    `parseCampaignAudienceParams(sp, now)` (U24's parser for the other keys, then `pop`, then `populationProblem`) and
    written only by `campaignAudienceParams(f)`. `CAMPAIGN_AUDIENCE_URL_KEYS = [...CONTACT_AUDIENCE_URL_KEYS, "pop"]`. The
-   contacts page never reads `pop` (its door refuses a population, unchanged).
+   contacts page never reads `pop` (its door refuses a population, unchanged). ⛔ **OD66 (as built):** a viewer who may not
+   read a number is refused `both` at the campaign door and offered Contact book and Player accounts only — the walk counts
+   a book-held player once, so a union count would answer "is this a player?" for one added contact.
 2. **Both campaign doors read a stored filter at the campaign scope:** `composer-loader.ts` and `campaign-draft.ts` call
    `parseContactAudienceJson(raw, "campaign")` and the address through `parseCampaignAudienceParams`; the save posts
    `CAMPAIGN_AUDIENCE_URL_KEYS`.
@@ -788,7 +798,11 @@ shows no audience words yet (M8).
    sent".
 7. **⛔ The D19 floor (E23):** `MASKED_BREAKDOWN_MIN = 10` in `campaign-status.ts`; for a viewer who may not read a number
    and `matching < 10`, the view-model carries `matching` only — no will-receive, no reasons, no sample — and says why. A
-   reader always gets the full split (the sample's per-row detail stays reader-only, as shipped).
+   reader always gets the full split (the sample's per-row detail stays reader-only, as shipped). ✅ **AS BUILT (OD65):**
+   for such a viewer the count alone at EVERY size — `breakdownVisible(viewerReads)` is the read cell alone, the card's
+   read (`composeAudienceCount`) counts them with `campaignAudienceCount` and never asks the split, the view is
+   `audienceCountView`, the sentence "Your role sees how many people match, not who will receive it." (the standing callout
+   below says every number is checked again when sent), and the keyed fallback and the route's ghost are the count alone's shape (`AudienceFloorGhost`).
 8. **One vocabulary:** U20's "Reachable" header and chip read "Will receive" (the gate's yes); the REACH refusal words
    are unchanged.
 9. **M8:** each row of `/admin/campaigns` gets its audience in words under the name — `describeAudience` of the stored
@@ -1571,7 +1585,7 @@ export const SLICE_GATE_BUDGET_MS = 10_000;
 export const REAP_AFTER_MS = 10 * 60_000;
 export const MAX_ROW_ATTEMPTS = 3;
 export const OTP_FAILURE_WAIT_MS = 2 * 60_000;
-export type SliceWait = "busy" | "quiet_hours" | "money_busy" | "otp_failing";
+export type SliceWait = "busy" | "quiet_hours" | "window_unreadable" | "money_busy" | "otp_failing"; // window_unreadable: U13 SP-2
 export type EngineStopReason = "live_switch_closed" | "NOT_CONFIGURED" | "PROVIDER_UNRECOGNISED" | "BALANCE_FLOOR" | "MARKETING_FLOOR"
   | "marketing_floor" | "credit_unreadable" | "gateway_refused" | "template_invalid" | "held_rows";
 export type SliceStepResult =
@@ -1607,7 +1621,7 @@ name:<account|fallback>"]` · `["dispatch", <outcome>, null, <reference or null>
 | `unconfirmed` | UNCONFIRMED (reference when known) |
 | `failed` with `BAD_MSISDN` | FAILED (failureClass `BAD_MSISDN`) |
 | `failed`, every cleared row the same other code | shop-wide: all claimed rows → PENDING (+1), pause `gateway_refused` |
-| `held` shop-wide (`BALANCE_FLOOR`, `NOT_CONFIGURED`, `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `not_running`, `quiet_hours`) | all claimed → PENDING (+0); pause with the key (`not_running` and `quiet_hours`: no pause) |
+| `held` shop-wide (`BALANCE_FLOOR`, `NOT_CONFIGURED`, `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `not_running`, `quiet_hours`, `window_unreadable`) | all claimed → PENDING (+0); pause with the key (`not_running`, `quiet_hours` and `window_unreadable`: no pause — the step waits) |
 | `held` per person (`gate_unanswered`, `prepare:token_unavailable`, `prepare:template_invalid`) | attempts < 3 → PENDING (+1); else HELD |
 | `held` `claim_lost` | nothing (the row is someone else's now) |
 

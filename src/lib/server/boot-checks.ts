@@ -29,6 +29,7 @@ import { smsConfigured, smsProviderResolution } from "./sms";
 import { blackballConfigured, senderIdProblem } from "./sms-blackball";
 // U46a review · the ONE floor a webhook secret must reach — the receipt receiver reads the same number.
 import { WEBHOOK_SECRET_MIN_CHARS } from "./webhook-secret-floor";
+import { phoneCodeSignInEnabled } from "./otp-door";
 
 /** The exact env names read by api/webhooks/payments/route.ts (KNOWN_PROVIDERS). */
 const WEBHOOK_SECRET_ENVS = ["SELCOM_WEBHOOK_SECRET", "AZAMPAY_WEBHOOK_SECRET", "MIXX_WEBHOOK_SECRET"] as const;
@@ -177,7 +178,7 @@ export async function runBootChecks(): Promise<void> {
      * player locked out. Password sign-in still works, which is exactly what the
      * operator needs to be told in the same breath.
      */
-    if (process.env.OTP_ENABLED === "1" && !smsConfigured()) {
+    if (phoneCodeSignInEnabled() && !smsConfigured()) {
       console.error(
         `[sms] 🔴 OTP LOGIN IS ON AND SMS CANNOT DELIVER (provider="${resolution}"). Every phone-code sign-in ` +
           `will refuse with SMS_UNDELIVERABLE. Password sign-in is unaffected. Either fix the provider or unset ` +

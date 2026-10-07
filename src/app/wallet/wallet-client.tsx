@@ -14,7 +14,10 @@ import { Stat } from "@/components/ui/stat";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
+import type { FirstDepositNotice } from "@/lib/kyc-notice";
 import { formatDateTimeSafe, formatTzs, formatNumber, cn } from "@/lib/utils";
+import { playerStatusInk } from "@/lib/status-tone";
+import { formatEatDateTime } from "@/lib/eat-day";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
 import { useT } from "@/lib/i18n";
@@ -38,8 +41,13 @@ function BalanceSpark({ series, label }: { series: number[]; label: string }) {
 }
 
 function BalanceCard({
-  balance, pending, hold, currency, held = false,
-}: { balance: number; pending: number; hold: number; currency: string; held?: boolean }) {
+  balance, pending, hold, currency, held = false, canDeposit = true,
+}: {
+  balance: number; pending: number; hold: number; currency: string; held?: boolean;
+  /** Whether this wallet may be invited to deposit — `depositOpen` from the page (wallet ACTIVE, no break). `held`
+   *  still names the balance; this only decides the Add funds link. */
+  canDeposit?: boolean;
+}) {
   const { t } = useT();
   return (
     <section className="relative overflow-hidden rounded-xl"
@@ -87,7 +95,8 @@ function BalanceCard({
         >
           <Cash>{formatTzs(balance)}</Cash>
         </p>
-        {balance === 0 && pending === 0 && hold === 0 && !held && (
+        {/* No Add funds during a break or over a hold (2026-10-06): the deposit screen would refuse it. */}
+        {balance === 0 && pending === 0 && hold === 0 && canDeposit && (
           <Link
             href="/wallet/deposit"
             className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
@@ -428,9 +437,19 @@ function BonusWalletCard({
   );
 }
 
+/** The row's status token → the stored word `status-tone.ts` is keyed by (1:1, `adaptTxn`'s status map read backwards). */
+const STORED_STATUS: Record<Transaction["status"], string> = {
+  pending: "PENDING", processing: "PROCESSING", review: "AML_REVIEW", confirmed: "CONFIRMED",
+  failed: "FAILED", reversed: "REVERSED", cancelled: "CANCELLED",
+};
+
 function TxnRow({ tx }: { tx: Transaction }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const [expanded, setExpanded] = useState(false);
+  // The moment in the reader's month words and East Africa Time — the Receipts list's and the receipt's own format
+  // (2026-10-07), so one payment reads one date everywhere. `formatDateTime` printed English months in every locale.
+  const atMs = Date.parse(tx.createdAt);
+  const when = Number.isFinite(atMs) ? formatEatDateTime(atMs, Date.now(), t.common.monthsShort, locale) : "—";
   const isCredit = tx.amount > 0;
   // 2026-09-13 · SIGN AND COLOUR FOLLOW WHAT THE MONEY DID, not the amount's sign alone: a FAILED
   // deposit read as a green "+TZS 100,000". Green + "+" is a SETTLED credit only; a row that moved
@@ -443,11 +462,10 @@ function TxnRow({ tx }: { tx: Transaction }) {
   // this screen that never got translated, so SW and ZH players read "pending".
   // 2026-09-14 · The status WORD is app state, not the side of a stake, so it wears the app-state
   // success and danger tokens — never the betting YES green or NO rose (§B2a). The amount keeps its own rule above.
-  const statusTone =
-    tx.status === "confirmed" ? "text-success-fg"
-    : tx.status === "pending" || tx.status === "processing" ? "text-warning-fg"
-    : tx.status === "review"  ? "text-info-fg"
-    : "text-danger-fg";
+  // ⭐ 2026-10-07 · AND THE TONE IS DECIDED ONCE, in `status-tone.ts` (§B11), where the Receipts list and the receipt
+  // read it as a chip — so one payment reads one colour on all three. Waiting is royal, not amber (amber asks somebody
+  // to act); Reversed and Cancelled are slate (the money is back, or never left), not the failure colour.
+  const statusTone = playerStatusInk(STORED_STATUS[tx.status]) ?? "text-text-muted";
   const statusLabel: Record<Transaction["status"], string> = {
     pending: t.wallet.txnStatusPending,
     processing: t.wallet.txnStatusProcessing,
@@ -470,7 +488,8 @@ function TxnRow({ tx }: { tx: Transaction }) {
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="w-full flex items-center gap-3 py-3 px-3 hover:bg-bg-overlay/30 transition-colors text-left"
+        /* The ring sits inside the row: the list is an `overflow-hidden` panel, which clipped an outset ring's sides. */
+        className="w-full flex items-center gap-3 py-3 px-3 hover:bg-bg-overlay/30 transition-colors text-left focus-visible:[outline-offset:-2px]"
       >
         <span className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md shrink-0 ${arrowBg}`}>
           {isCredit ? <I.arrowDown s={16} /> : <I.arrowUp s={16} />}
@@ -508,7 +527,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
             {tx.description ?? tx.type}
           </p>
           <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle tabular-nums">
-            {formatDateTimeSafe(tx.createdAt)}
+            {when}
           </p>
         </div>
         <div className="text-right shrink-0">
@@ -549,7 +568,10 @@ function TxnRow({ tx }: { tx: Transaction }) {
               <p className="font-mono text-text-muted break-all">{tx.providerRef}</p>
             </div>
           )}
-          {(tx.type === "deposit" || tx.type === "withdraw") && (
+          {/* ⭐ ASKED OF THE STORED TYPE (2026-10-07): only a deposit or a withdrawal has a receipt. This keyed on the
+              folded token, which also says `deposit` for a bonus credit and `withdraw` for a house fee — so it offered
+              a receipt the receipt page now answers 404 for (S10-02). */}
+          {tx.hasReceipt && (
             <Link
               href={`/wallet/receipt/${tx.id}`}
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
@@ -602,7 +624,7 @@ const METHODS: Method[] = [
 ];
 
 export function WalletPageClient({
-  balance, pending, hold, currency, walletHeld = false,
+  balance, pending, hold, currency, walletHeld = false, depositOpen = true,
   transactions,
   resultCount, page, totalPages, pagerBaseHref,
   section, sectionHrefs, activityBar,
@@ -615,11 +637,14 @@ export function WalletPageClient({
   cashbackMode = "REQUEST",
   limits,
   isAuthed,
-  kycFirstDepositNotice = false,
+  kycFirstDepositNotice = null,
 }: {
   balance: number; pending: number; hold: number; currency: string;
   /** The wallet is not ACTIVE (an officer's freeze, a final refusal) — decided on the server from the wallet row. */
   walletHeld?: boolean;
+  /** Whether this page may invite a deposit — decided on the server: the wallet is ACTIVE and no break is running
+   *  (2026-10-06). Gates every deposit invitation here; Withdraw is not gated by it. */
+  depositOpen?: boolean;
   /** One PAGE of rows — the server filtered, counted and paged them. */
   transactions: Transaction[];
   /** The SAME variable the bar published as `data-result-count`. Never recomputed. */
@@ -657,7 +682,7 @@ export function WalletPageClient({
   isAuthed: boolean;
   /** Whether the first-deposit identity notice is DUE — decided on the server (`wallet/page.tsx`).
    *  The notice itself only remembers a dismissal; it never re-derives who should see it. */
-  kycFirstDepositNotice?: boolean;
+  kycFirstDepositNotice?: FirstDepositNotice | null;
 }) {
   const { t } = useT();
   /** ⛔ THE GRID AND THE CARD MUST AGREE — see `bonusCardHasContent`. Derived once, here, and
@@ -699,8 +724,10 @@ export function WalletPageClient({
                 header's gilt is untouched. The action is identical — only its claim on
                 the eye changes. */}
             {/* 2026-09-14 — a held wallet cannot take a deposit (/wallet/deposit says "Deposits paused"), so it is not
-                invited to make one; Withdraw stays, because its screen explains the freeze. */}
-            {!walletHeld && (
+                invited to make one; Withdraw stays, because its screen explains the freeze.
+                2026-10-06 — nor is a player on a break (`depositOpen`, decided on the server); Withdraw stays here too,
+                because a break does not stop withdrawals. */}
+            {depositOpen && (
             <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
               <I.arrowDown s={14} />
               {t.common.deposit}
@@ -724,7 +751,7 @@ export function WalletPageClient({
           one child) and nothing is orphaned. A lonely card in a multi-column grid is its own
           defect class, and `qa:withdrawal-visual` now measures it by name. */}
       <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusCardVisible && "lg:grid-cols-2")}>
-        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} />
+        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} canDeposit={depositOpen} />
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} showAllGrants={showAllGrants} grantsToggleHref={grantsToggleHref} />
       </div>
       {bonusWagerRemaining > 0 && (
@@ -736,7 +763,7 @@ export function WalletPageClient({
           dismissal cookie — so the notice is in the first HTML or not rendered at all. ⚠️ The one time it
           can arrive on a page already open is the refresh that confirms the FIRST deposit — the moment it is
           for — and it sits below the balance cards so even then the money figure does not move. */}
-      {kycFirstDepositNotice && <KycFirstDepositNotice />}
+      {kycFirstDepositNotice && <KycFirstDepositNotice variant={kycFirstDepositNotice} />}
 
       {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} mode={cashbackMode} />}
 
@@ -756,6 +783,25 @@ export function WalletPageClient({
               Hiding the rail along with the rows is how an empty page becomes a trap. It is
               withheld only when the account genuinely has no transactions at all. */}
           {emptyCause !== "no-rows" && activityBar}
+
+          {/* ⭐ THE WALLET'S DOOR TO RECEIPTS (2026-10-07) — every deposit and withdrawal, each with its receipt; the
+              profile holds the other door. Under the bar and over the list it belongs to — never under the chart, where
+              it read as the chart's caption — and OUTSIDE the bar (the bar's geometry and tap census are measured). It
+              stays when a filter empties the list (design review): the receipts did not go anywhere. Withheld only when
+              the account has no rows at all. 44px tap floor; brand ink: a way through, not money. */}
+          {emptyCause !== "no-rows" && (
+            <div className="flex justify-end">
+              <Link
+                href="/wallet/receipts"
+                data-testid="wallet-all-receipts"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-body-sm font-semibold text-brand-300 underline-offset-2 hover:underline"
+              >
+                <I.receipt s={14} aria-hidden />
+                {t.receipts.allReceipts}
+                <I.chevronRight s={14} aria-hidden />
+              </Link>
+            </div>
+          )}
 
           {/* THE CAP IS STATED WHEN IT BITES. The read takes at most `rowCap` rows and nothing
               anywhere said so — while the pager printed "1-12 of 1000", which reads as "you have
@@ -799,9 +845,11 @@ export function WalletPageClient({
                    above: the header's gilt is the one.
                    The deposit CTA is offered only when the account is genuinely empty; a FILTERED
                    empty state offers the ways OUT of the filter instead, each labelled with the
-                   real number of rows it leads to. */
+                   real number of rows it leads to.
+                   2026-10-06 — and only when the wallet can take a deposit (`depositOpen`): not during
+                   a break, not over a hold. */
                 emptyCause === "no-rows" ? (
-                  isAuthed ? (
+                  isAuthed && depositOpen ? (
                     <Link href="/wallet/deposit" className="btn btn-primary btn-md">
                       {t.common.depositCta}
                     </Link>

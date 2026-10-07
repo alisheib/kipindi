@@ -7,6 +7,7 @@ import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
 import { TotpSetupClient } from "./setup-client";
 import { isStaffRole } from "@/lib/server/roles";
+import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
 import { AdminBody } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · 2FA setup" };
@@ -61,11 +62,22 @@ export default async function TotpSetupPage({ searchParams }: { searchParams?: P
         <AdminCard className="border-info-border bg-info-bg">
           <div className="text-caption text-text-secondary space-y-1">
             <p className="text-text font-bold">How this works in production</p>
-            <p>
-              On admin login, after the OTP step succeeds, you&apos;ll be required to enter a 6-digit code from your
-              authenticator app. Lost device? Recovery is via documented identity verification with the AML lead —
-              there is no self-service reset.
-            </p>
+            {/* ⛔ SAYS WHAT IS TRUE TODAY (review of the route audit, 2026-10-07): production runs DISABLE_ADMIN_TOTP=true,
+                so "you'll be required to enter a code" was a promise the console did not keep. The same flag decides. */}
+            {isAdminTotpEnforced() ? (
+              <p>
+                On admin login, after your password is accepted, you&apos;ll be required to enter a 6-digit code from your
+                authenticator app. Lost device? Recovery is via documented identity verification with the AML lead —
+                there is no self-service reset.
+              </p>
+            ) : (
+              <p>
+                Admin two-step is switched off on this deployment right now: your password alone signs you in. Enrol now so
+                you are ready when it is switched on — from then, after your password is accepted, you&apos;ll enter a 6-digit
+                code from your authenticator app. Lost device? Recovery is via documented identity verification with the AML
+                lead — there is no self-service reset.
+              </p>
+            )}
             <p>
               All 2FA events (provisioning, successful verification, removed) are recorded under <code>SECURITY</code>{" "}
               in the audit log.

@@ -3,17 +3,17 @@
  * marketing contact book, and an idempotent backfill makes every existing client one (`registration-contact.ts`).
  *
  * ⭐ DRIVEN, NOT READ, wherever it can run in a script — over the MEMORY twin, in-process:
- *   §1 THE DOORS — the REAL `registerWithPassword` and `verifyOtpAndAuth`: each makes the new number a contact; the ticked
- *      box reads GIVEN and the unticked one UNKNOWN with no ledger row; the bootstrap admin is never one; a THROWING book
- *      and a SILENT book each leave the sign-up finishing (the account and its wallet created); the failure is logged
- *      with no number in it.
+ *   §1 THE DOOR — the REAL `registerWithPassword`, the one sign-up door since 2026-10-06 (the one-time-code sign-up was
+ *      deleted): it makes the new number a contact; the ticked box reads GIVEN and the unticked one UNKNOWN with no
+ *      ledger row; the bootstrap admin is never one; a THROWING book and a SILENT book each leave the sign-up finishing
+ *      (the account and its wallet created); the failure is logged with no number in it.
  *   §2 THE RULE — `ensureRegistrationContact` on seeded accounts: the row's shape, the cache from the ledger, an officer's
  *      contact LINKED (not duplicated, not overwritten, its stamp kept — OD56), clients only, already-linked a read.
  *   §3 U18b's RECYCLED-NUMBER RULES — an erased tombstone never revived; a row linked to another account never re-pointed.
  *   §4 THE AUDIT — the masked number, the account, field names; no whole number, name or email.
  *   §5 THE BACKFILL — the dry run writes nothing; every PLAYER on +255 visited once, in pages; counts exactly the world's;
  *      a second run changes nothing; no number or name in its counts or its report.
- * Then the SOURCE, for what only the source can show (§6): each door's one call and its place, the copy, the backfill
+ * Then the SOURCE, for what only the source can show (§6): the door's one call and its place, the copy, the backfill
  * script's refusals, the wiring.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a door, the rule, the wrapper, the backfill,
@@ -37,8 +37,7 @@ import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import type { MessagingKey, PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredUser } from "../src/lib/server/store.ts";
 import { audit, auditFlush, getAuditPage } from "../src/lib/server/audit.ts";
-import { hashOtp } from "../src/lib/server/crypto.ts";
-import { registerWithPassword, verifyOtpAndAuth } from "../src/lib/server/auth-service.ts";
+import { registerWithPassword } from "../src/lib/server/auth-service.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { maskPhone } from "../src/lib/phone-normalize.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
@@ -211,7 +210,7 @@ const eqCounts = (a: Record<string, number>, b: Record<string, number>): boolean
   Object.keys(a).length === Object.keys(b).length && Object.keys(b).every((k) => a[k] === b[k]);
 const leaksIn = (text: string, secrets: readonly string[]): string[] => secrets.filter((s) => s.length > 0 && text.includes(s));
 
-/* ═══ THE DOORS — the real auth-service, as far as a script can drive it ═══════════════════════════ */
+/* ═══ THE DOOR — the real auth-service, as far as a script can drive it ════════════════════════════ */
 
 type DoorRun = { result: unknown; thrown: string };
 const PASSWORD = "Str0ng!Passw0rd#2026";
@@ -223,27 +222,6 @@ async function passwordDoor(phone: string, email: string, ticked: boolean): Prom
       phone, email, password: PASSWORD, passwordConfirm: PASSWORD, dob: "1990-01-01",
       acceptTerms: true, acceptAge: true, marketingOptIn: ticked, locale: "EN",
     });
-    return { result, thrown: "" };
-  } catch (err) {
-    return { result: null, thrown: String((err as Error)?.message ?? err) };
-  }
-}
-
-type PendingRegistrations = Map<string, { dob: string; marketingOptIn: boolean; locale?: "EN" | "SW" | "ZH" }>;
-const OTP_CODE = "246810";
-async function otpDoor(phone: string, ticked: boolean): Promise<DoorRun> {
-  const pending = (globalThis as unknown as { __50PICK_PENDING_REG?: PendingRegistrations }).__50PICK_PENDING_REG;
-  if (!pending) return { result: null, thrown: "auth-service's pending-registration map is not loaded" };
-  // ⭐ What `requestRegisterOtp` stashes, and the code it would have texted — the verify door itself runs for real.
-  pending.set(phone, { dob: "1990-01-01", marketingOptIn: ticked, locale: "EN" });
-  const salt = `rcotp${RUN}${phone.slice(-5)}`;
-  await db.otp.create({
-    id: `otp_rc_${RUN}_${phone.slice(-5)}`, phoneE164: phone, email: null, hashedCode: await hashOtp(OTP_CODE, salt), salt,
-    purpose: "register", attempts: 0, consumedAt: null,
-    expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(), createdAt: new Date().toISOString(),
-  });
-  try {
-    const result = await verifyOtpAndAuth({ phone, code: OTP_CODE, purpose: "register" });
     return { result, thrown: "" };
   } catch (err) {
     return { result: null, thrown: String((err as Error)?.message ?? err) };
@@ -266,7 +244,6 @@ const REAL_SOURCES: Sources = {
 type Ensure = (user: RegistrationContactUser, deps?: RegistrationContactDeps) => Promise<RegistrationContactResult>;
 type Impl = {
   password: (phone: string, email: string, ticked: boolean) => Promise<DoorRun>;
-  otp: (phone: string, ticked: boolean) => Promise<DoorRun>;
   bootstrapDoor: (phone: string, email: string) => Promise<DoorRun>;
   ensure: Ensure;
   atSignup: Ensure;
@@ -280,7 +257,6 @@ type Impl = {
 };
 const REAL: Impl = {
   password: passwordDoor,
-  otp: otpDoor,
   bootstrapDoor: (phone, email) => withEnv("ADMIN_BOOTSTRAP_PHONES", phone, () => passwordDoor(phone, email, false)),
   ensure: ensureRegistrationContact,
   atSignup: registrationContactAtSignup,
@@ -316,12 +292,12 @@ function blockEnd(s: string, open: number): number {
 /* ═══ THE LABELS, ONCE — the assertions and the red cases both read them ════════════════════════════ */
 
 const L = {
-  d1: "1.1 · ⭐ BOTH DOORS make the new number a contact: the password sign-up and the OTP sign-up each leave exactly ONE book row for the account's number — source REGISTRATION, linked to the account, sourceRef the account id (EXECUTED through the real auth-service)",
+  d1: "1.1 · THE ONE DOOR makes the new number a contact: the password sign-up leaves exactly ONE book row for the account's number - source REGISTRATION, linked to the account, sourceRef the account id (EXECUTED through the real auth-service)",
   d2: "1.2 · ⭐ the cache is the ledger's: the ticked box's row reads GIVEN beside its GIVEN ledger row, the unticked box's row reads UNKNOWN and its number has NO ledger row — nothing invented (EXECUTED through the real password door)",
   d3: "1.3 · ⛔ the bootstrap admin is never a contact: a password sign-up on an ADMIN_BOOTSTRAP_PHONES number is created ADMIN and leaves the book without a row for it (EXECUTED)",
-  d4: "1.4 · ⛔ A THROWING BOOK NEVER FAILS A SIGN-UP: with every book create throwing, both doors still create the account and its wallet (the only throw is the session cookie's, never the book's) and write no row — and the bounded wrapper answers failed, never rejecting",
+  d4: "1.4 · ⛔ A THROWING BOOK NEVER FAILS A SIGN-UP: with every book create throwing, the door still creates the account and its wallet (the only throw is the session cookie's, never the book's) and write no row — and the bounded wrapper answers failed, never rejecting",
   d5: "1.5 · ⛔ the failure is logged WITHOUT the number or the email: a book whose error message prints the whole row still yields one [registration-contact] line naming only the stage and the error's name and code — and the cache mirror every sign-up passes through logs its own failure the same way",
-  d6: "1.6 · ⛔ A SILENT BOOK NEVER HOLDS A SIGN-UP: the wrapper gives up within its budget (timed_out) when the book never answers, and the real OTP door, its book read never answering, still finishes and creates the wallet",
+  d6: "1.6 · ⛔ A SILENT BOOK NEVER HOLDS A SIGN-UP: the wrapper gives up within its budget (timed_out) when the book never answers, and the real password door, its book read never answering, still finishes and creates the wallet",
   r1: "2.1 · the row's shape: the bare 255… key and its prefix from the ONE table, the account's number as rawInput, the account's name and email through the ONE field rule (cleaned; an over-long name and a malformed email DROPPED, never cut), no stored operator, no officer, no tags, notes or import, and the account's own createdAt",
   r2: "2.2 · ⭐ the cache comes from the LEDGER: an account whose ledger says GIVEN reads GIVEN, one whose last word is WITHDRAWN reads WITHDRAWN, one with no ledger row reads UNKNOWN — and the rule writes NO ledger row of its own",
   r3: "2.3 · ⭐ an OFFICER'S contact is LINKED, not duplicated: one row for the number, the same id, now linked to the account, source OPERATOR kept, every field the officer typed untouched (name, email, notes, tags, sourceRef, createdBy, createdAt), the consent mirrored",
@@ -335,7 +311,7 @@ const L = {
   b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
   b2: "5.2 · ⭐ THE BACKFILL IS IDEMPOTENT: a second run creates and links nothing, repairs no cache, writes no audit row, and leaves the store byte-identical",
   b3: "5.3 · ⛔ the backfill holds no number and no name: its counts and every line of its report carry none of the world's numbers, names or emails",
-  s1: "6.1 · ⭐ THE WIRING: each sign-up door calls registrationContactAtSignup(user) exactly ONCE — after its account row, after (and outside) its consent-ledger block, and after its wallet (the money first) — and auth-service never calls the unbounded ensureRegistrationContact",
+  s1: "6.1 · THE WIRING: the sign-up door calls registrationContactAtSignup(user) exactly ONCE - after its account row, after (and outside) its consent-ledger block, and after its wallet (the money first) - auth-service creates an account at exactly ONE site, and never calls the unbounded ensureRegistrationContact",
   s2: '6.2 · the copy: SOURCE_LABEL.REGISTRATION reads "Signed up" in the ONE table the column, the rail, the edit dialog and the export read, and "Sign-up" is gone from it',
   s3: "6.3 · the backfill script refuses no DATABASE_URL, the memory twin, a non-loopback URL without --production, and a real-database write run without the app's own audit key — all BEFORE the store loads — runs the ONE walk and prints only the report's lines, naming no number, name or email; and its Postgres probe refuses any non-loopback URL before the store loads",
   s4: "6.4 · the suite is wired: test:registration-contact and red:registration-contact (--prove-red, in-process) exist, and predeploy runs the suite exactly once",
@@ -356,21 +332,18 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
 
   await inEmptyWorld(async () => {
     /* ── §1 · THE DOORS ──────────────────────────────────────────────────────────────────────────── */
-    const P = { pw: num(1), otp: num(2), unticked: num(3), boot: num(4), throwPw: num(5), throwOtp: num(6), silent: num(7) };
+    const P = { pw: num(1), unticked: num(3), boot: num(4), throwPw: num(5), silent: num(7) };
     const pwRun = await impl.password(P.pw, mail(1), true);
-    const otpRun = await impl.otp(P.otp, true);
     const untickedRun = await impl.password(P.unticked, mail(3), false);
 
     await check(p(L.d1), async () => {
       const u1 = await addAccount(P.pw);
-      const u2 = await addAccount(P.otp);
       const c1 = await db.marketingContact.findByMsisdn(keyOf(P.pw));
-      const c2 = await db.marketingContact.findByMsisdn(keyOf(P.otp));
       const good = (u: StoredUser | null, c: StoredMarketingContact | null, phone: string) =>
         u !== null && c !== null && c.source === "REGISTRATION" && c.userId === u.id && c.sourceRef === u.id && c.msisdn === keyOf(phone) && rowsFor(phone) === 1;
       const say = (u: StoredUser | null, c: StoredMarketingContact | null, run: DoorRun) =>
         u === null ? `NO ACCOUNT (${JSON.stringify(run.result)} ${run.thrown.slice(0, 60)})` : c === null ? "account, NO ROW" : `${c.source}, linked ${c.userId === u.id}`;
-      return [good(u1, c1, P.pw) && good(u2, c2, P.otp), `password: ${say(u1, c1, pwRun)} · otp: ${say(u2, c2, otpRun)}`];
+      return [good(u1, c1, P.pw), `password: ${say(u1, c1, pwRun)}`];
     });
     await check(p(L.d2), async () => {
       await addAccount(P.unticked);
@@ -390,11 +363,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         `${u ? u.role : `no account ${bootRun.thrown.slice(0, 40)}`} · ${c ? "A BOOK ROW" : "no row"}`];
     });
 
-    // ── a THROWING book: the store's create refuses for the length of both doors ──
+    // ── a THROWING book: the store's create refuses for the length of the door ──
     const refuse = (row: StoredMarketingContact) => { throw new Error(`planted by test:registration-contact: the book refused ${row.msisdn}`); };
     const thrown = await capturingErrors(() => withBookMember("create", refuse, async () => ({
       pw: await impl.password(P.throwPw, mail(5), true),
-      otp: await impl.otp(P.throwOtp, true),
     })));
     const wrapper = (await capturingErrors(() => settle(impl.atSignup(account(`rc${RUN}_w8`, num(8)), {
       book: { ...REGISTRATION_BOOK, create: async () => { throw new Error("planted by test:registration-contact"); } },
@@ -406,10 +378,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         return u !== null && w !== null && !run.thrown.includes("planted") && rowsFor(phone) === 0;
       };
       const a = await finished(P.throwPw, thrown.value.pw);
-      const b = await finished(P.throwOtp, thrown.value.otp);
       const w = wrapper.ok ? wrapper.value : null;
-      return [a && b && w !== null && w.outcome === "failed" && "stage" in w && w.stage === "create",
-        `password finished ${a} · otp finished ${b} · wrapper ${wrapper.ok ? JSON.stringify(wrapper.value) : `REJECTED (${String((wrapper.error as Error)?.message ?? wrapper.error)})`}`];
+      return [a && w !== null && w.outcome === "failed" && "stage" in w && w.stage === "create",
+        `password finished ${a} · wrapper ${wrapper.ok ? JSON.stringify(wrapper.value) : `REJECTED (${String((wrapper.error as Error)?.message ?? wrapper.error)})`}`];
     });
 
     // ── the failure's log line, with a database message that prints the row ──
@@ -437,7 +408,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         `${loud.value.outcome} · ${ours.length} line(s) · ${dirty.length} carrying the number or the address · ${ours[0] ?? "no line"} · mirror ${mirrorLoud.value}: ${mirrorOurs[0] ?? "no line"} (${mirrorDirty.length} carrying the number)`];
     });
 
-    // ── a SILENT book: the wrapper with a book that never answers, then the real OTP door with a read that never answers ──
+    // ── a SILENT book: the wrapper with a book that never answers, then the real password door with a read that never answers ──
     const t0 = Date.now();
     const quiet = (await capturingErrors(() => within(impl.atSignup(account(`rc${RUN}_slow`, num(10)), {
       book: { ...REGISTRATION_BOOK, findByMsisdn: () => new Promise<StoredMarketingContact | null>(() => undefined) },
@@ -445,7 +416,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     }), 2_000))).value;
     const wrapperMs = Date.now() - t0;
     const t1 = Date.now();
-    const door = await capturingErrors(() => withBookMember("findByMsisdn", () => new Promise(() => undefined), () => within(impl.otp(P.silent, false), 8_000)));
+    const door = await capturingErrors(() => withBookMember("findByMsisdn", () => new Promise(() => undefined), () => within(impl.password(P.silent, mail(7), false), 8_000)));
     const doorMs = Date.now() - t1;
     await check(p(L.d6), async () => {
       const u = await addAccount(P.silent);
@@ -692,7 +663,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const src = impl.sources;
   await check(p(L.s1), () => {
     const auth = src.auth;
-    const doors = ["verifyOtpAndAuth", "registerWithPassword"].map((name) => {
+    // ⭐ ONE account factory (2026-10-06): a second `db.user.create(` in auth-service is a second sign-up door.
+    const factories = auth.split("db.user.create(").length - 1;
+    const doors = ["registerWithPassword"].map((name) => {
       const body = fnBody(auth, name);
       const calls = body.split("registrationContactAtSignup(").length - 1;
       const iUser = body.indexOf("db.user.create(");
@@ -706,8 +679,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     });
     const imported = auth.includes('import { registrationContactAtSignup } from "@/lib/server/marketing/registration-contact";');
     const unbounded = auth.includes("ensureRegistrationContact");
-    return [doors.every((d) => d.placed) && imported && !unbounded,
-      `${doors.map((d) => `${d.name} ${d.placed ? "placed" : "OFF"} (${d.calls} call(s) @${d.at})`).join(" · ")} · imported ${imported} · unbounded call ${unbounded}`];
+    return [doors.every((d) => d.placed) && factories === 1 && imported && !unbounded,
+      `${doors.map((d) => `${d.name} ${d.placed ? "placed" : "OFF"} (${d.calls} call(s) @${d.at})`).join(" · ")} · account factories ${factories} · imported ${imported} · unbounded call ${unbounded}`];
   });
   await check(p(L.s2), () => {
     const copy = src.copy;
@@ -916,9 +889,9 @@ if (!PROVE_RED) {
 
   const CASES: Array<{ name: string; expect: string; impl: Impl }> = [
     {
-      name: "the OTP door's book write goes nowhere — the rule hears created while the row never lands",
+      name: "the door's book write goes nowhere — the rule hears created while the row never lands",
       expect: L.d1,
-      impl: { ...REAL, otp: (phone, ticked) => withBookMember("create", (row: StoredMarketingContact) => row, () => otpDoor(phone, ticked)) },
+      impl: { ...REAL, password: (phone, email, ticked) => withBookMember("create", (row: StoredMarketingContact) => row, () => passwordDoor(phone, email, ticked)) },
     },
     {
       name: "the cache write is lost — the ticked box's new row is left reading UNKNOWN",
@@ -1032,9 +1005,14 @@ if (!PROVE_RED) {
       impl: { ...REAL, backfill: listingBackfill },
     },
     {
-      name: "the OTP door loses its call — a door that stopped calling the hook (E-240's shape)",
+      name: "the sign-up door loses its call — a door that stopped calling the hook (E-240's shape)",
       expect: L.s1,
-      impl: { ...REAL, sources: { ...REAL_SOURCES, auth: REAL_SOURCES.auth.replace("    await registrationContactAtSignup(user);", "") } },
+      impl: { ...REAL, sources: { ...REAL_SOURCES, auth: REAL_SOURCES.auth.replace("  await registrationContactAtSignup(user);", "") } },
+    },
+    {
+      name: "a second account factory returns — another door that creates accounts beside the one sign-up",
+      expect: L.s1,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, auth: `${REAL_SOURCES.auth}${LF}export async function planted() { await db.user.create({} as never); }${LF}` } },
     },
     {
       name: "the old label back in the ONE table — the column says Sign-up again",

@@ -7,8 +7,9 @@
  *   · LOADING — the composer's own ghost while its page chunk is held (the list's ghost never stands in), the first
  *     card's top edge unmoved when the page swaps in (within 1px), and the three card-height differences RECORDED;
  *   · BLANK — Save off WITH its reason (beside it and in its title), the live counter at its full room, the source line's
- *     reserved room said, "No English text", the sender line the server's (the console stub, said honestly), the whole
- *     book as the audience, the test card naming the officer's own number masked and "Save first"; ⛔ no tel input, no
+ *     reserved room said, "No English text", the sender line the server's (the console stub, said honestly), nobody yet
+ *     chosen as the audience (U38b — its rail and counts are `qa:marketing-audience`'s), the test card naming the
+ *     officer's own number masked and "Save first"; ⛔ no tel input, no
  *     number, sender or money control, no TZS; the reason is a button that puts focus in Campaign name, and a click
  *     inside the Audience card with nothing wrong never focuses the card;
  *   · REFUSED — no Swahili message; a message not starting "50pick"; a placeholder that is not {jina} — each said beside
@@ -52,6 +53,13 @@
  *     test over) beside a typed refusal with none; plus U37s's stale-line note and re-save; and the 18+ tick BOUND
  *     (§16.19): an edited number unticks it (8b), every Send spends it, and words reworded while the page is open are
  *     refused and re-read (14, §18.32).
+ *   PASS=window-closed (U13 · the console boot — a draft saves and the test reaches the window, the stub passing the switch):
+ *   · the send window's clock pinned at 03:00 EAT through /api/dev-test/marketing-send-window (dev only, 404 in production;
+ *     it moves nothing but that clock): the Test card says UP FRONT that it is outside the send window, with its hours and
+ *     when a test can be sent; the saved line invites no test; a test is refused held in the window's own sentence; and
+ *     the preview still shows xxxxxxxx after a reload — no token was minted. At 1280 and 360.
+ *   ⭐ U13 · EVERY OTHER PASS pins the window's clock at NOON EAT, so a test is handed over whatever hour this drive runs
+ *   (the laptop's batteries often run at night); the real clock is put back when the drive ends.
  *   NOT DRIVEN: the test's "unconfirmed" state — it needs a carrier that took the request and lost the reply, which only a
  *   recorded switch could reach; `test:campaign-compose` §18.11 and §18.5's control hold it.
  *
@@ -66,6 +74,8 @@
  *   BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
  *   (the same console boot, FRESH, for PASS=typed — it moves the server's licence-outreach record)
  *   PASS=typed BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
+ *   (the console boot again — any, fresh or not — for U13's closed window)
+ *   PASS=window-closed BASE=http://localhost:3010 node scripts/live/marketing-compose-drive.mjs
  *   SMS_PROVIDER=blackball BLACKBALL_CLIENT_ID=dummy-not-a-key BLACKBALL_CLIENT_SECRET=dummy-not-a-key
  *     SMS_SENDER_ID=50pick BLACKBALL_API_URL=http://127.0.0.1:9/ SESSION_SECRET=… OTP_PEPPER=… DISABLE_ADMIN_TOTP=true
  *     npx next dev -p 3010
@@ -83,7 +93,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const BASE = process.env.BASE || "http://localhost:3010";
-const PASS = ["live-closed", "dead-rail", "typed"].includes(process.env.PASS ?? "") ? process.env.PASS : "console";
+const PASS = ["live-closed", "dead-rail", "typed", "window-closed"].includes(process.env.PASS ?? "") ? process.env.PASS : "console";
 const SHOTS = join(".qa-shots", "marketing-setup", "u37b", PASS);
 mkdirSync(SHOTS, { recursive: true });
 
@@ -111,8 +121,10 @@ const EN_NONE = "No English text — everyone gets the Swahili message.";
 const EN_RULE = "English goes to players whose account language is English; everyone else gets Swahili.";
 const SENDER_STUB = "Sender: this server's SMS rail is the console stub — messages go to the server log, never to a phone. It can't be changed here.";
 const SENDER_LIVE = "Sender 50pick — set on the server; it can't be changed here.";
-const EVERYONE = "Everyone in the contact book — no filter.";
-const AUDIENCE_NOTE = "Nothing is counted or sent from this page.";
+/** U38b · a new draft has chosen nobody yet: the card asks, and counts nothing (its counts are `qa:marketing-audience`'s). */
+const NOT_CHOSEN = "Choose who receives it — the counts appear once you choose.";
+/** U38b · the card's standing callout (ENGINE-SPEC §4.4 decision 10) — its first words. */
+const AUDIENCE_NOTE = "Every number is checked again at the moment its message is sent";
 const AUDIENCE_HIDDEN = "This draft's audience uses a filter your role can't see — saving keeps it as it is.";
 const JINA_RESERVE = "{jina} keeps 12 characters for the name.";
 const FALLBACK_PROBLEM = "This message uses {jina}, so it needs a word to print when a name cannot be used.";
@@ -125,6 +137,12 @@ const TOKEN_NOTE = "Your stop link is made the first time you send a test; until
 const LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.";
 const NO_CONSENT = "Your number has no SMS offers consent on record — turn on SMS offers on your own profile, then test again.";
 const LIVE_CLOSED = "Marketing SMS are not switched on yet. The owner switches them on before the first send.";
+/** U13 · the Test card's window note and the test send's quiet-hours refusal, word for word (the default hours). */
+const WINDOW_NOTE = "Outside the send window (08:00–20:00 EAT) — a test can be sent from 08:00.";
+const QUIET_HOURS = "It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
+/** U13 · the instants the send window's clock is pinned at: 03:00 EAT (closed) and noon EAT (open), 7 October 2026. */
+const NIGHT_EAT = "2026-10-07T00:00:00.000Z";
+const NOON_EAT = "2026-10-07T09:00:00.000Z";
 const HANDED_STUB = "Handed to this server's console stub at ";
 const STUB_TAIL = " — it went to the server log, not to a phone.";
 const STALE = "Someone else saved this draft at ";
@@ -220,6 +238,19 @@ const seed = async (page, query) => {
   if (!r.ok()) throw new Error(`campaign seed ${query} failed: ${r.status()} ${await r.text()}`);
   return r.json();
 };
+
+/** U13 · the send window's clock on this server (`/api/dev-test/marketing-send-window`): an ISO instant, or "now" for the
+ *  real clock. Answers the window as the send path then reads it. */
+async function pinWindow(at) {
+  const ctx = await browser.newContext();
+  try {
+    const r = await ctx.request.post(`${BASE}/api/dev-test/marketing-send-window?at=${encodeURIComponent(at)}`);
+    if (!r.ok()) throw new Error(`send-window clock ${at} failed: ${r.status()} ${await r.text()}`);
+    return await r.json();
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
 
 const boxOf = (page, selector) => page.evaluate((sel) => {
   const el = document.querySelector(sel);
@@ -457,9 +488,9 @@ async function consolePass() {
     ok(`${vp.name} · BLANK · ⛔ OD45 · the sender is a line of text — the console stub, said as what it is — and no control names a sender`,
       sender === SENDER_STUB && (await attr(page, "[data-sender-line]", "data-sender-line")) === "ok"
         && (await page.locator('main#main-content input[name*="sender" i], main#main-content select, main#main-content [aria-label*="sender" i]').count()) === 0, sender);
-    ok(`${vp.name} · BLANK · the audience is the whole book, in words, and nothing is counted here`,
-      (await attr(page, "[data-audience]", "data-audience")) === "everyone" && (await textOf(page, "[data-audience-line]")) === EVERYONE
-        && (await textOf(page, SEL.audience)).includes(AUDIENCE_NOTE));
+    ok(`${vp.name} · BLANK · U38b · nobody is chosen yet: the card asks who receives it, counts nothing, and keeps its standing note`,
+      (await attr(page, "[data-audience]", "data-audience")) === "not-chosen" && (await textOf(page, "[data-audience-not-chosen]")) === NOT_CHOSEN
+        && !(await has(page, "[data-audience-count]")) && (await textOf(page, SEL.audience)).includes(AUDIENCE_NOTE));
     ok(`${vp.name} · BLANK · the test card names the officer's OWN number, masked, says "Save first", and its button is off`,
       (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(phone)}` && (await textOf(page, "[data-test-blocked]")) === SAVE_FIRST
         && (await attr(page, "[data-test-card]", "data-test-card")) === "blocked" && (await isDisabled(page, '[data-test-send="SW"]')) === true
@@ -480,7 +511,7 @@ async function consolePass() {
     ok(`${vp.name} · BLANK · the reason is a button that takes the officer to the field it names — focus lands in Campaign name`,
       landedIn === "name" && (await page.evaluate(() => document.activeElement?.tagName ?? "")) === "INPUT", String(landedIn));
     // ⛔ The Audience card is a tab stop only while it shows a problem: a click inside it now must not focus (or ring) it.
-    await page.locator("[data-audience-line]").first().click().catch(() => {});
+    await page.locator("[data-audience-not-chosen]").first().click().catch(() => {});
     await wait(250);
     ok(`${vp.name} · BLANK · a click inside the Audience card with nothing wrong never focuses the card — no tab stop, no ring`,
       !(await page.evaluate(() => document.activeElement?.getAttribute?.("data-field") === "audience"))
@@ -779,14 +810,14 @@ async function consolePass() {
     await stateShot(page, vp.name, "refused-search", SEARCH_REFUSED, SEL.audience);
     await page.locator("[data-audience-clear]").first().click().catch(() => {});
     await page.waitForFunction(() => !new URL(location.href).searchParams.has("q"), null, { timeout: 30000 }).catch(() => {});
-    await page.waitForSelector('[data-audience="everyone"]', { timeout: 30000 }).catch(() => {});
+    await page.waitForSelector('[data-audience="not-chosen"]', { timeout: 30000 }).catch(() => {});
     await wait(400);
-    ok(`${vp.name} · X25 · "${REMOVE_FILTER}" takes the search out of the address — the whole book, no problem, Save on — and every character typed is still here`,
-      !new URL(page.url()).searchParams.has("q") && (await attr(page, "[data-audience]", "data-audience")) === "everyone"
+    ok(`${vp.name} · X25 · "${REMOVE_FILTER}" takes the search out of the address — nobody chosen again (U38b), no problem, Save on — and every character typed is still here`,
+      !new URL(page.url()).searchParams.has("q") && (await attr(page, "[data-audience]", "data-audience")) === "not-chosen"
         && !(await has(page, "[data-audience-problem]")) && (await page.locator(SEL.name).inputValue()) === NAME
         && (await page.locator(SEL.bodySw).inputValue()) === BODY_TYPED && (await isDisabled(page, SEL.save)) === false,
       `${page.url()} · "${await page.locator(SEL.name).inputValue()}"`);
-    await stateShot(page, vp.name, "search-removed", EVERYONE, SEL.audience);
+    await stateShot(page, vp.name, "search-removed", NOT_CHOSEN, SEL.audience);
 
     // ── MISSING — ?draft= naming nothing ────────────────────────────────────────────────────────────────────────────
     await openComposer(page, "?draft=cmp_nobody_here", "missing");
@@ -951,6 +982,54 @@ async function deadRailPass() {
       refused?.outcome === "refused" && refused.reason === "rail_dead" && refused.sentence === RAIL_DEAD, JSON.stringify(refused));
     await fitCheck(page, vp.name, "test-refused-dead-rail");
     await stateShot(page, vp.name, "test-refused-dead-rail", RAIL_DEAD, SEL.test);
+    await ctx.close();
+  }
+}
+
+/* ═══ PASS · window-closed — U13: the send window's clock pinned at 03:00 EAT, on the console boot ════════════════════ */
+async function windowClosedPass() {
+  const pinned = await pinWindow(NIGHT_EAT);
+  ok("WINDOW CLOSED · the server judges the send window at 03:00 EAT — closed for quiet hours, its hours 08:00–20:00 EAT, opening at 08:00",
+    pinned?.window?.open === false && pinned.window.reason === "quiet_hours" && pinned.window.label === "08:00–20:00 EAT"
+      && pinned.window.opensAtTime === "08:00", JSON.stringify(pinned).slice(0, 300));
+  for (const [i, vp] of VIEWPORTS.entries()) {
+    console.log(`${NL}[u13] the send window closed · ${vp.name}`);
+    const { ctx, page } = await staffCtx("GROWTH", phoneFor(61 + i), { width: vp.width, height: vp.height }, "no-preference", OFFICER);
+    await openComposer(page);
+    const sender = await textOf(page, "[data-sender-line]");
+    if (i === 0 && sender !== SENDER_STUB) {
+      ok(`PASS=window-closed needs the CONSOLE boot — the sender line must be the stub's sentence`, false,
+        `sender line "${sender}" — boot with SMS_PROVIDER=console, as the console pass does`);
+      await ctx.close();
+      return;
+    }
+    ok(`${vp.name} · WINDOW CLOSED · the test card says UP FRONT that it is outside the send window, with its hours and when a test can be sent — and the live switch says nothing (the stub passes it)`,
+      (await textOf(page, "[data-test-window-note]")) === WINDOW_NOTE && !(await has(page, "[data-test-live-note]")),
+      await textOf(page, "[data-test-window-note]"));
+    await page.locator(SEL.name).fill(NAME);
+    await page.locator(SEL.bodySw).fill(BODY_JINA);
+    await wait(250);
+    await page.locator(SEL.fallbackSw).fill(FALLBACK_SW);
+    await wait(250);
+    await save(page);
+    await waitReady(page);
+    const draftId = new URL(page.url()).searchParams.get("draft") ?? "";
+    ok(`${vp.name} · WINDOW CLOSED · saved; the preview's stop link is still xxxxxxxx`,
+      /^cmp_/.test(draftId) && (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx"));
+    ok(`${vp.name} · WINDOW CLOSED · the saved line says nothing was sent and does NOT invite the test this card would refuse`,
+      SAVED_NO_TEST_RE.test(await textOf(page, SEL.saved)), await textOf(page, SEL.saved));
+    await stateShot(page, vp.name, "window-closed-saved", WINDOW_NOTE, SEL.test);
+    const refused = await sendTest(page, "SW");
+    ok(`${vp.name} · WINDOW CLOSED · ⛔ M12 · the test is refused held, in the window's own sentence — never handed over, and no consent link`,
+      refused?.outcome === "refused" && refused.reason === "held" && refused.sentence === QUIET_HOURS && refused.consentLink === null,
+      JSON.stringify(refused));
+    await fitCheck(page, vp.name, "test-refused-window-closed");
+    await stateShot(page, vp.name, "test-refused-window-closed", QUIET_HOURS, SEL.test);
+    await openComposer(page, `?draft=${draftId}`);
+    await waitReady(page);
+    ok(`${vp.name} · WINDOW CLOSED · after a reload the stop link is STILL xxxxxxxx — the refusal minted no token — and the note still stands`,
+      (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx") && (await textOf(page, SEL.test)).includes(TOKEN_NOTE)
+        && (await textOf(page, "[data-test-window-note]")) === WINDOW_NOTE);
     await ctx.close();
   }
 }
@@ -1305,11 +1384,16 @@ async function typedPass() {
 }
 
 try {
+  // ⭐ U13 · the send window's clock pinned for the whole pass — noon EAT (open) for every pass but window-closed, which
+  // pins 03:00 itself — so what a pass sees never depends on the hour it runs at. The real clock goes back after.
+  if (PASS !== "window-closed") await pinWindow(NOON_EAT);
   if (PASS === "console") await consolePass();
   else if (PASS === "live-closed") await liveClosedPass();
   else if (PASS === "typed") await typedPass();
+  else if (PASS === "window-closed") await windowClosedPass();
   else await deadRailPass();
 } finally {
+  await pinWindow("now").catch(() => {});
   await browser.close();
 }
 console.log(`${NL}MEASURED ${JSON.stringify(measured)}`);

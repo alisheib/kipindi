@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { buyPosition, cashOutPositionFromForm, resolveMarket, emergencyVoidMarket, adminReopenMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side, recategoriseMarket, MARKET_CATEGORIES } from "@/lib/server/market-service";
 import { addComment, reportComment, deleteComment, restoreComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
@@ -83,7 +84,7 @@ async function requireAdminOrThrow(userId: string, action: string) {
 
 export async function buyPositionAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const marketId = String(formData.get("marketId") ?? "");
   const sideRaw = String(formData.get("side") ?? "");
   if (sideRaw !== "YES" && sideRaw !== "NO") return { ok: false as const, error: "Invalid side." };
@@ -122,7 +123,7 @@ export async function buyPositionAction(formData: FormData) {
 
 export async function cashOutPositionAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   // ⭐ S6 A8c — the sale as the Sell button's form asks for it: the ticket and the figure its confirm showed, read and
   // checked by `cashOutPositionFromForm` (market-service), which both stores' suites run as this very path. A broken
   // figure is refused there before the money path; a refused price is recorded there once the money path has returned.
@@ -138,7 +139,7 @@ export async function cashOutPositionAction(formData: FormData) {
 
 export async function resolveMarketAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   await requireAdminOrThrow(session.userId, "resolveMarketAction");
   await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA at the action layer
   const marketId = String(formData.get("marketId") ?? "");
@@ -179,7 +180,7 @@ export async function resolveMarketAction(formData: FormData) {
  */
 export async function recategoriseMarketAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   await requireAdminOrThrow(session.userId, "recategoriseMarketAction");
   const marketId = String(formData.get("marketId") ?? "");
   const category = String(formData.get("category") ?? "");
@@ -204,7 +205,7 @@ export async function recategoriseMarketAction(formData: FormData) {
  */
 export async function adminReopenMarketAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   await requireAdminOrThrow(session.userId, "adminReopenMarketAction");
   await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA step-up (reopening resumes betting)
   const marketId = String(formData.get("marketId") ?? "");
@@ -245,7 +246,7 @@ export async function adminReopenMarketAction(formData: FormData) {
  */
 export async function setMarketShortTitlesAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   await requireAdminOrThrow(session.userId, "setMarketShortTitlesAction");
   const marketId = String(formData.get("marketId") ?? "");
   const field = (k: string): string | undefined => (formData.has(k) ? String(formData.get(k) ?? "") : undefined);
@@ -294,7 +295,7 @@ export async function setMarketShortTitlesAction(formData: FormData) {
  */
 export async function emergencyVoidMarketAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const user = await db.user.findById(session.userId);
   // E-18: `/admin/markets` is `trading`, this action is `compliance` — one definition
   // (control-gates.ts) so the page can hide the control instead of offering a kill
@@ -327,7 +328,7 @@ export async function emergencyVoidMarketAction(formData: FormData) {
 
 export async function createMarketAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   await requireAdminOrThrow(session.userId, "createMarketAction");
   await requireAdminTotp(session.userId, session.sessionId); // B3: 2FA step-up at the action layer
   const VALID_CATEGORIES = new Set(["sports", "macro", "weather", "crypto", "culture", "tech", "other"]);
@@ -455,7 +456,7 @@ export async function createMarketAction(formData: FormData) {
 
 export async function postCommentAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) return { ok: false as const, error: "Sign in to comment · Ingia ili kutoa maoni." };
+  if (!session) return { ok: false as const, error: "Sign in to comment · Ingia ili kutoa maoni.", code: "AUTH" as const };
   const marketId = String(formData.get("marketId") ?? "");
   const body = String(formData.get("body") ?? "");
   // Surface which side they hold as a small trust badge on the comment.
@@ -478,7 +479,7 @@ export async function postCommentAction(formData: FormData) {
  */
 export async function fileObjectionAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) return { ok: false as const, error: "Sign in first." };
+  if (!session) return { ok: false as const, error: "Sign in first.", code: "AUTH" as const };
 
   const marketId = String(formData.get("marketId") ?? "");
   const reason = String(formData.get("reason") ?? "") as ObjectionReason;
@@ -492,7 +493,7 @@ export async function fileObjectionAction(formData: FormData) {
 
 export async function reportCommentAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) return { ok: false as const, error: "Sign in first." };
+  if (!session) return { ok: false as const, error: "Sign in first.", code: "AUTH" as const };
   const marketId = String(formData.get("marketId") ?? "");
   const commentId = String(formData.get("commentId") ?? "");
   const r = await reportComment(session.userId, commentId);
@@ -502,7 +503,7 @@ export async function reportCommentAction(formData: FormData) {
 
 export async function deleteCommentAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) return { ok: false as const, error: "Sign in first." };
+  if (!session) return { ok: false as const, error: "Sign in first.", code: "AUTH" as const };
   const marketId = String(formData.get("marketId") ?? "");
   const commentId = String(formData.get("commentId") ?? "");
   const r = await deleteComment(session.userId, commentId);
@@ -513,7 +514,7 @@ export async function deleteCommentAction(formData: FormData) {
 /** Moderator: clear an unfounded report / auto-hide and republish. */
 export async function restoreCommentAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) return { ok: false as const, error: "Sign in first." };
+  if (!session) return { ok: false as const, error: "Sign in first.", code: "AUTH" as const };
   // Moderator-only action — gate at the action layer too (the store also checks
   // isMod; this keeps it consistent with every other admin action). Delete stays
   // ungated here because a comment's own author may delete it (store decides).

@@ -29,7 +29,10 @@
  *   · M1 · a row the reader could not read in full is never rewritten — every save is refused while the latest read dropped
  *     anything (the reader fails closed: a dropped line prints the page's own words);
  *   · m1 · a page edited from a revision that is not the revision saved now is refused, never quietly superseded;
- *   · D9 · saves are serialised within this process, so two admins saving at once cannot drop each other's version.
+ *   · D9 · saves are serialised within this process, so two admins saving at once cannot drop each other's version;
+ *   · U13 · a save holding the RG line reads the send window's hours FRESH (`policySendWindow`, the Marketing SMS
+ *     settings) and judges every time the line names against them — and is refused, writing nothing, while they cannot
+ *     be read (fail closed): a line can never publish an hour the window does not use.
  *
  * ⚠️ THE READERS ARE THIS PROCESS'S CACHE (sync — the pages print through them on every request). Production runs one
  * instance; in a deploy's overlap a line saved on the other instance reaches this one at its next reload. ⚠️ KNOWN GAP (the
@@ -44,11 +47,11 @@
 import { createElement, type ReactNode } from "react";
 import { defineConfig } from "../define-config";
 import {
-  EMPTY_POLICY_LINES, POLICY_LINE_DEFAULTS, POLICY_LINE_KEYS, POLICY_LINE_RULES, POLICY_LINE_SPEC, POLICY_PAGE_KEYS,
+  EMPTY_POLICY_LINES, POLICY_LINE_DEFAULTS, POLICY_LINE_KEYS, POLICY_LINE_RULES, POLICY_LINE_SPEC, POLICY_LOCALES, POLICY_PAGE_KEYS,
   POLICY_PAGES, isPolicyLineKey, isPolicyLocale, mergePolicyLines, metaWithVersion, policyDefaultFingerprint,
   policyLineParts, policyLineState, policyLinesShapeProblem, policyVerdictBlocks, printedPolicyVersion,
   type PolicyLineHistory, type PolicyLineKey, type PolicyLineProblem, type PolicyLineRules, type PolicyLineVersion,
-  type PolicyLinesRecord, type PolicyLinesUpdate, type PolicyLocale, type PolicyPage, type PolicyTexts,
+  type PolicyLinesRecord, type PolicyLinesUpdate, type PolicyLocale, type PolicyPage, type PolicySendWindow, type PolicyTexts,
 } from "@/lib/legal/policy-lines";
 
 /** The SystemConfig row. */
@@ -59,7 +62,11 @@ export const POLICY_LINES_AUDIT = { action: "config.policy_lines_updated", targe
 
 /** Why a save was refused. Every refusal writes nothing and makes no audit row. */
 export type PolicyLinesRefusal =
-  | "no_officer" | "not_understood" | "invalid" | "stale" | "unreadable" | "row_unreadable" | "history" | "not_saved";
+  | "no_officer" | "not_understood" | "invalid" | "stale" | "unreadable" | "row_unreadable" | "history" | "window_unreadable"
+  | "not_saved";
+
+/** U13 · the send window's hours as a save reads them: the saved pair, or `ok: false` when they could not be read. */
+export type PolicySendWindowRead = { readonly ok: true; readonly hours: PolicySendWindow } | { readonly ok: false };
 
 /** Every problem of every line in a request, by line and language — the card shows each under its own box. */
 export type PolicyLinesProblems = { readonly [K in PolicyLineKey]?: Readonly<Record<PolicyLocale, readonly PolicyLineProblem[]>> };
@@ -88,10 +95,19 @@ export const POLICY_LINES_REFUSAL_SENTENCE: Readonly<Record<Exclude<PolicyLinesR
   unreadable: "The saved policy lines couldn't be read, so nothing was changed. Please try again.",
   row_unreadable: "The saved policy lines could not be read in full, so nothing was saved. Ask the developer to check the public policy lines setting.",
   history: "That save would change or remove a version already saved, so nothing was saved. Reload the page and try again.",
+  window_unreadable:
+    "The send window's hours couldn't be read from the Marketing SMS settings, so the marketing line can't be checked against them — nothing was saved. Reload the page and try again.",
 };
 
 /** What this file reads and writes — every reader and the setter, over ONE factory instance. */
+/** U13 · R1 · what the public pages print from the policy lines, read FRESH — or `ok: false` when it could not be read in
+ *  full (a read that failed, a row read only in part). */
+export type PublishedPolicyTexts = { ok: true; texts: string[] } | { ok: false };
+
 export type PolicyLinesStore = {
+  /** ⭐ U13 · R1 · every word the pages print from these lines (saved words, or the page's own), read FRESH — what a change
+   *  to the send window's hours is held to. Fails closed. */
+  readonly publishedTexts: () => Promise<PublishedPolicyTexts>;
   /** ⭐ A line's NEWEST saved version — new words or a review marker — or `null` when it was never saved (a copy). */
   readonly savedLine: (key: PolicyLineKey) => PolicyLineVersion | null;
   /** Every saved version of a line, oldest first (copies). */
@@ -132,7 +148,10 @@ const printedVersions = (r: PolicyLinesRecord): PolicyPageVersions => ({
   privacy: printedPolicyVersion(POLICY_PAGES.privacy.codeVersion, r["version.privacy"]),
 });
 
-function storeOver(cfg: PolicyLinesConfig, key: string, seen: RowSeen, rules: PolicyLineRules, merge: typeof mergePolicyLines, queued: boolean): PolicyLinesStore {
+function storeOver(
+  cfg: PolicyLinesConfig, key: string, seen: RowSeen, rules: PolicyLineRules, merge: typeof mergePolicyLines, queued: boolean,
+  windowRead: () => Promise<PolicySendWindowRead>,
+): PolicyLinesStore {
   const historyOf = (line: PolicyLineKey): PolicyLineHistory => (isPolicyLineKey(line) ? cfg.get()[line] ?? [] : []);
 
   const savedHistory = (line: PolicyLineKey): PolicyLineVersion[] => historyOf(line).map((v) => ({ ...v }));
@@ -183,6 +202,19 @@ function storeOver(cfg: PolicyLinesConfig, key: string, seen: RowSeen, rules: Po
 
     // Every problem with every line in the request, at once — nothing is written while any remains.
     const keys = POLICY_LINE_KEYS.filter((k) => asked[k] !== undefined);
+    // ⭐ U13 · a request holding a promise line (the RG line) is judged against the send window's hours as SAVED now, read
+    // fresh — and ⛔ refused, writing nothing, while they cannot be read: no time it names may go unchecked.
+    let sendWindow: PolicySendWindow | undefined;
+    if (keys.some((k) => POLICY_LINE_SPEC[k].promises)) {
+      let w: PolicySendWindowRead;
+      try {
+        w = await windowRead();
+      } catch {
+        w = { ok: false };
+      }
+      if (!w.ok) return refusal("window_unreadable");
+      sendWindow = w.hours;
+    }
     const texts: Partial<Record<PolicyLineKey, PolicyTexts>> = {};
     const problems: { [K in PolicyLineKey]?: Readonly<Record<PolicyLocale, readonly PolicyLineProblem[]>> } = {};
     for (const k of keys) {
@@ -194,7 +226,7 @@ function storeOver(cfg: PolicyLinesConfig, key: string, seen: RowSeen, rules: Po
         zh: rules.normalize(req.texts.zh, k, "zh"),
       };
       texts[k] = t;
-      const verdict = rules.problems(k, t);
+      const verdict = rules.problems(k, t, undefined, sendWindow);
       if (policyVerdictBlocks(verdict)) problems[k] = verdict.problems;
     }
     if (Object.keys(problems).length > 0) {
@@ -277,7 +309,24 @@ function storeOver(cfg: PolicyLinesConfig, key: string, seen: RowSeen, rules: Po
     return run;
   };
 
-  return { savedLine, savedHistory, savedPolicyText, policyLine, policyVersion, policyMeta, savedRecord, readable, savePolicyLines };
+  const publishedTexts = async (): Promise<PublishedPolicyTexts> => {
+    try {
+      const fresh = await cfg.reload();
+      if (!fresh.ok || (fresh.stored && seen.dropped.length > 0)) return { ok: false };
+      const texts: string[] = [];
+      // Exactly the lines whose times the policy save holds to the window (`spec.promises` — the RG line).
+      for (const k of POLICY_LINE_KEYS) {
+        if (!POLICY_LINE_SPEC[k].promises) continue;
+        const printed = policyLineState(k, fresh.config[k]).printed;
+        for (const l of POLICY_LOCALES) if (typeof printed[l] === "string" && printed[l] !== "") texts.push(printed[l]);
+      }
+      return { ok: true, texts };
+    } catch {
+      return { ok: false };
+    }
+  };
+
+  return { savedLine, savedHistory, savedPolicyText, policyLine, policyVersion, policyMeta, savedRecord, readable, savePolicyLines, publishedTexts };
 }
 
 type StoreOptions = {
@@ -286,7 +335,27 @@ type StoreOptions = {
   readonly rules: PolicyLineRules;
   readonly merge: typeof mergePolicyLines;
   readonly queued: boolean;
+  /** U13 · how a save reads the send window's hours — `policySendWindow` unless a test hands in its own. */
+  readonly window?: () => Promise<PolicySendWindowRead>;
 };
+
+/**
+ * ⭐ U13 · THE SEND WINDOW'S HOURS, AS THE RG LINE IS JUDGED AGAINST THEM — the Marketing SMS settings read FRESH (E14), the
+ * same record the send path obeys. ⛔ FAILS CLOSED: a read that could not answer, or a row read only in part, is `ok: false`
+ * — a save then refuses, and the card refuses any time a line names. The settings module is loaded on first use, never at
+ * import: the public legal pages print through this file and never need it.
+ */
+export async function policySendWindow(): Promise<PolicySendWindowRead> {
+  try {
+    const { reloadMarketingSmsSettings } = await import("../marketing/sms-settings");
+    const r = await reloadMarketingSmsSettings();
+    return r.ok && r.readable
+      ? { ok: true, hours: { windowStartMinute: r.settings.windowStartMinute, windowEndMinute: r.settings.windowEndMinute } }
+      : { ok: false };
+  } catch {
+    return { ok: false };
+  }
+}
 
 /**
  * ⭐ ONE BUILDER, TWO INSTANCES — the live record and the test seam are both made here, so a protection added here is driven
@@ -312,10 +381,15 @@ function makeStore(o: StoreOptions): PolicyLinesStore {
     audit: POLICY_LINES_AUDIT,
     deps: o.deps,
   });
-  return storeOver(cfg, o.key, seen, o.rules, o.merge, o.queued);
+  return storeOver(cfg, o.key, seen, o.rules, o.merge, o.queued, o.window ?? policySendWindow);
 }
 
 const live = makeStore({ key: POLICY_LINES_KEY, rules: POLICY_LINE_RULES, merge: mergePolicyLines, queued: true });
+
+/** ⭐ U13 · R1 · what the public pages print from the policy lines, read fresh (the Marketing SMS settings save asks it). */
+export function publishedPolicyTexts(): Promise<PublishedPolicyTexts> {
+  return live.publishedTexts();
+}
 
 /** ⭐ A line's NEWEST saved version (new words or a review marker), or `null` — the card's status line. */
 export function savedPolicyLine(key: PolicyLineKey): PolicyLineVersion | null {
@@ -403,13 +477,15 @@ export function PolicyLine({ line, locale, children }: { line: PolicyLineKey; lo
  *
  * A SECOND instance built by the same `makeStore`, against an injected store (`deps`) — so `test:policy-lines` drives the
  * code that ships, read-back and hydration gate included. `rules` and `merge` default to the shipped ones; a red case
- * plants exactly one of them, and `unqueued` removes the D9 queue for the one case that proves it.
+ * plants exactly one of them, and `unqueued` removes the D9 queue for the one case that proves it. `window` (U13) is how
+ * a save reads the send window's hours — the live reader unless a check hands in its own.
  */
 export function __policyLinesStoreForTest(opts: {
   deps?: Parameters<typeof defineConfig>[0]["deps"];
   rules?: PolicyLineRules;
   merge?: typeof mergePolicyLines;
   unqueued?: boolean;
+  window?: () => Promise<PolicySendWindowRead>;
 } = {}): PolicyLinesStore {
   return makeStore({
     key: `${POLICY_LINES_KEY}.__test__${Math.random().toString(36).slice(2)}`,
@@ -417,5 +493,6 @@ export function __policyLinesStoreForTest(opts: {
     rules: opts.rules ?? POLICY_LINE_RULES,
     merge: opts.merge ?? mergePolicyLines,
     queued: opts.unqueued !== true,
+    window: opts.window,
   });
 }

@@ -90,6 +90,12 @@ corrected.
 > → signed order-status re-query → exactly-once credit) + **player receipts** (`/wallet/receipt/[id]`).
 > **Email is now mandatory at sign-up and GATES THE FIRST DEPOSIT**; sign-in takes email *or* phone.
 > Ladder: browse free → confirm email to deposit → KYC to withdraw.
+> ⚠️ **Corrected 2026-10-07 (owner ruling): a deposit asks NO email any more** — not even "add one". A confirmed email
+> is required to WITHDRAW, beside identity: register → deposit and play → verify identity + confirm email → withdraw.
+> The app-wide bar below is DELETED (the step is asked quietly on the withdraw screen, the profile pill and the
+> first-deposit notice); money email goes only to confirmed addresses; every deposit and withdrawal is kept in the app
+> at `/wallet/receipts` (Profile → Receipts). Minimum deposit and stake: TZS 1,000. `docs/COMPLIANCE-DECISIONS.md`,
+> the two 2026-10-07 entries.
 > ✅ **SELCOM STATES/NOTIFICATIONS/VERIFICATION COMPLETED 2026-07-19.** Every deposit state
 > (PROCESSING · CONFIRMED · FAILED · REVERSED) now has a player notification, an email where
 > it matters, a truthful label and a receipt link; deposit emails carry BOTH the 50pick and
@@ -678,6 +684,8 @@ Already shipped (was on this list before):
   email door in place of the form — a locked door as the first screen. Before that (2026-09-05 →
   09-13) they landed on `/profile/kyc?welcome=new`. Never route a new account to a gate: the email
   is asked by the app-wide bar and enforced at deposit (`docs/FLOWS.md` §1).
+  ⚠️ Corrected again 2026-10-07 (owner ruling): there is no app-wide email bar and no email door at deposit — the
+  confirmed email is asked at WITHDRAWAL, quietly (`docs/FLOWS.md` §2).
   ⚠️ **At the Vodacom plan's S15 flip (`docs/VODACOM-PLAN.md` §3.7)** the no-`next` landing is already
   `/?welcome=new`; what still changes is that a player who signed up from the bet sheet lands back on
   that sheet (`?bet=`).
@@ -883,6 +891,30 @@ The conviction dial must never be enterable in the unlocked both-ways state:
 
 The invariant itself survives: the stake surface is never enterable both ways. Until the flip, the rules above stand
 for every player.
+
+⛔ **Keyboard — Enter acts only where it is pressed; a held key presses once; nothing behind the top dialog takes a key
+(Vodacom S6 A8i 2026-10-06, A8i-2 2026-10-07).** Never add a `window`/`document` keydown listener that does a dialog's act
+on Enter: it cancels the focused button's own press, which is how Enter on "Ghairi" placed bets and Enter on the win seal
+sold the ticket underneath (live until A8i). Money dialogs open with focus on their primary, so Enter there is the
+button's own click. Every `Modal` stands on one dialog stack (`src/lib/modal-stack.ts`): only the top dialog takes focus
+and answers Escape and Tab, and a closing dialog hands focus back by `leaveLayer` — never behind the dialog now on top, and
+an uncovered money dialog lands on its WAY OUT (`safeFocus`: Ghairi, Hifadhi nafasi, Cancel), never its money button. One
+app-wide key guard (`src/components/ui/key-guard.tsx`, window capture phase, mounted by AppShell and by every Modal)
+swallows a held key's repeats anywhere (a held Enter on Up & Down's UP placed 13 bets), every Enter or Space behind the
+top dialog, and a fresh press in the 400 ms arming beat after a dialog takes focus or hands it back. A new key listener
+gets a NAME (the census refuses inline ones) and every key event named in `src/` must belong to a listener the census
+reads. Guards: `test:enter-where-pressed` (predeploy; it builds the guard and `leaveLayer` from their text and runs them)
+and its `red:` twin; the drive `qa:enter-where-pressed` (`ENGINE=webkit|firefox` for the other engines).
+
+⛔ **Forms — Enter in a form never skips its confirm (Vodacom S6 A8j, 2026-10-07).** `ConfirmDialog` forces its trigger
+to `type="button"`, so a form whose commit is that dialog has no submit button, and a browser SUBMITS a form of one text
+field on Enter (or a phone's Go key): that is how Enter in the withdraw amount box sent the withdrawal with no "Confirm
+withdrawal", and Enter in the close-account phrase box closed the account. A `ConfirmDialog` whose confirm submits the
+form it sits in takes `submitsForm` (a native guard that turns every other submit into the dialog, a hidden default
+`<input type="submit" autocomplete="off">` disabled until the guard listens, and a hidden unnamed second text field for
+WebKit), its confirm submits SYNCHRONOUSLY inside `onConfirm`, ONE such dialog per form, and NOTHING ELSE in the form may
+submit — the kit `<Button>` with no `type` is a submit button inside a form. Guard: `test:implicit-submit` (predeploy;
+the six host forms by name) and its `red:` twin; the drive `qa:implicit-submit` (`ENGINE=webkit|firefox`).
 
 ## Brand Kit v2 "Needle" (June 2026)
 

@@ -353,10 +353,11 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   withdraw_below_min:   { severity: "warning", channel: "inline", key: "errWithdrawMin", needs: ["net", "min"] },
   email_invalid:        { severity: "warning", channel: "inline", key: "errEmailInvalid" },
   email_taken:          { severity: "warning", channel: "inline", key: "errEmailTaken" },
-  // ⛔ NOT an error, and not a money fault: the deposit was refused because the address that
-  // will carry the receipt is not confirmed yet. The player fixes it by opening a link that is
+  // ⛔ NOT an error, and not a money fault: the WITHDRAWAL was refused because the account's
+  // address is not confirmed yet (owner ruling 2026-10-07 — until then it was the deposit that was
+  // refused, and a deposit asks no email now). The player fixes it by opening a link that is
   // already in their inbox, so it is a WARNING with the next step named — never a red failure
-  // on the money-in path. `EMAIL_UNVERIFIED` has been a distinct server code since the
+  // on the money path. `EMAIL_UNVERIFIED` has been a distinct server code since the
   // email gate shipped, and until now nothing rendered it: `errorCopy` had no branch for it, so
   // it fell to `default:` and printed the SERVER'S OWN ENGLISH SENTENCE to a SW/ZH player.
   email_unverified:     { severity: "warning", channel: "inline", key: "errEmailUnverified" },
@@ -564,6 +565,9 @@ export interface FailureDetail {
    * until the period ends"* — about a period that ended an hour earlier.
    */
   standing?: "serving" | "minimum_served" | "permanent" | "diverged";
+  /** A sign-in refusal for a CLOSED account (route audit B4, 2026-10-06): the doors show the login page's own closed=1 panel,
+   *  the words /auth/session-ended already gives it. Set only by assertSignInAllowed, after ownership is proven. */
+  accountClosed?: boolean;
   /** `E-235` · the session time limit the player set for themselves, in minutes. */
   limitMin?: number;
   /** `E-235` · how long this play session has actually run, in minutes. */

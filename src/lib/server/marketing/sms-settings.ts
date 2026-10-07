@@ -26,7 +26,12 @@
  * ⚠️ KNOWN GAPS, recorded rather than hidden (the U49s review): (1) inherited from every `defineConfig` record (the U33w
  * review's m5), the factory's own `config.marketing_sms_settings_updated` ADMIN row is fire-and-forget — the WRITE is
  * verified (read back before it is believed), its audit row is not; (2) the stale check is check-then-write, so two owners
- * saving in the same instant can both pass it — the second save wins whole and both are audited (one owner account today).
+ * saving in the same instant can both pass it — the second save wins whole and both are audited (one owner account today);
+ * (3) the U13 review's SP-3: a row whose stored JSON value is itself `null`, `false`, `0` or `""` (only an out-of-band
+ * write could leave one — no writer here stores a non-object) reads as NO ROW, so the default hours are obeyed rather than
+ * the closed window an unreadable row gives (`liveSendWindow`); the store does not yet tell "a row exists with a
+ * non-object value" from "no row" (`loadConfigResult`'s `value`). The defaults are the documented rule (OQ5), never a
+ * money or audience widening, so this is recorded, not fixed here.
  *
  * Guard: `npm run test:marketing-settings` (S8 · S9 · S10 drive THIS file through `__marketingSmsSettingsForTest`).
  */
@@ -36,6 +41,8 @@ import {
   MARKETING_SMS_SETTINGS_DEFAULTS, SETTINGS_FIELDS, marketingSmsSettingsProblems, settingsFingerprint,
   type MarketingSmsSettings, type SettingsField,
 } from "@/lib/marketing/sms-settings";
+import { namesATime, timesNamedIn } from "@/lib/legal/kept-promises";
+import type { PublishedPolicyTexts } from "../legal/policy-lines";
 
 /** The SystemConfig key. */
 export const MARKETING_SMS_SETTINGS_KEY = "marketing.sms.settings";
@@ -44,7 +51,8 @@ export const MARKETING_SMS_SETTINGS_KEY = "marketing.sms.settings";
 export const MARKETING_SMS_SETTINGS_AUDIT = { action: "config.marketing_sms_settings_updated", targetType: "MARKETING_SMS_SETTINGS" } as const;
 
 /** Why a save was refused. Every refusal writes nothing and makes no audit row. */
-export type SettingsRefusal = "no_officer" | "not_understood" | "invalid" | "stale" | "unreadable" | "not_saved";
+export type SettingsRefusal =
+  | "no_officer" | "not_understood" | "invalid" | "stale" | "unreadable" | "published_hours" | "published_unread" | "not_saved";
 
 /** The console's sentence for each refusal (spec §4.3; `invalid` is the headline — each box carries its own problem). */
 export const SETTINGS_REFUSAL_SENTENCE: Readonly<Record<Exclude<SettingsRefusal, "not_saved">, string>> = Object.freeze({
@@ -53,6 +61,8 @@ export const SETTINGS_REFUSAL_SENTENCE: Readonly<Record<Exclude<SettingsRefusal,
   invalid: "Some settings can't be saved yet — each problem is shown under its box.",
   stale: "These settings were changed by someone else since you opened the page — reload, then save again.",
   unreadable: "The saved settings couldn't be read in full, so nothing was saved — reload the page.",
+  published_hours: "The responsible-gambling page's marketing line names a time these hours would no longer keep, so nothing was saved — remove that time from the line on the Policy lines card first, then save the hours.",
+  published_unread: "The public policy lines couldn't be read just now, so new hours weren't saved — try again in a moment.",
 });
 
 export type SettingsSaveResult =
@@ -147,7 +157,41 @@ type StoreOptions = {
   /** ⚠️ Test seam: a row reader other than `readSettingsRow` (the "reads everything, notes nothing" plant). */
   readRow?: (persisted: Record<string, unknown>) => SettingsRowReading;
   factoryDeps?: FactoryDeps;
+  /** ⚠️ Test seam: what the public pages print from the policy lines (U13 · R1) — the live fresh read unless a suite
+   *  hands in its own. */
+  published?: () => Promise<PublishedPolicyTexts>;
 };
+
+/** The live read of the published policy lines — loaded on first use, never at import (the legal pages import neither). */
+async function livePublishedTexts(): Promise<PublishedPolicyTexts> {
+  try {
+    const { publishedPolicyTexts } = await import("../legal/policy-lines");
+    return await publishedPolicyTexts();
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * ⛔ U13 · R1 (S13's ruling) · A PUBLISHED PROMISE HOLDS THE HOURS. A policy line may name the send window's opening or
+ * closing time (the policy-lines save holds it to them); a change to the hours that would leave a printed time unkept is
+ * refused until the line is re-worded first. Every time each printed text names (`timesNamedIn`) must be the NEW window's
+ * opening or closing time; a time the clock patterns spot but cannot value is refused, never let through. Null when
+ * nothing printed names a time these hours drop; otherwise the times, as the lines say them.
+ */
+export function hoursDroppedByPublished(texts: readonly string[], next: { windowStartMinute: number; windowEndMinute: number }): string[] | null {
+  const edges = [next.windowStartMinute, next.windowEndMinute];
+  const off: string[] = [];
+  for (const text of texts) {
+    const named = timesNamedIn(text);
+    if (named.length === 0) {
+      if (namesATime(text)) off.push("a time it names");
+      continue;
+    }
+    for (const n of named) if (n.minutes.length === 0 || !n.minutes.every((m) => edges.includes(m))) off.push(n.said);
+  }
+  return off.length === 0 ? null : [...new Set(off)];
+}
 
 /**
  * ⭐ ONE BUILDER, TWO INSTANCES — the live record and the test seam are both made here, so a protection added here is
@@ -197,6 +241,15 @@ function makeStore(o: StoreOptions): SettingsStore {
     if (!fresh.ok) return refusal("unreadable");
     if (fresh.stored && seen.dropped.length > 0) return refusal("unreadable");
     if (request.base !== settingsFingerprint(fresh.config)) return refusal("stale");
+    // ⛔ U13 · R1 · new hours are held to every time the public pages print — read fresh, failing closed.
+    if (judged.value.windowStartMinute !== fresh.config.windowStartMinute || judged.value.windowEndMinute !== fresh.config.windowEndMinute) {
+      const published = await (o.published ?? livePublishedTexts)();
+      if (!published.ok) return refusal("published_unread");
+      const dropped = hoursDroppedByPublished(published.texts, judged.value);
+      if (dropped !== null) {
+        return { ok: false, reason: "published_hours", error: `${SETTINGS_REFUSAL_SENTENCE.published_hours} It names: ${dropped.join(", ")}.` };
+      }
+    }
     // Nothing moved: nothing is written and nothing is audited.
     if (sameSettings(judged.value, fresh.config)) return { ok: true, value: fresh.config, changed: [] };
     const res = await cfg.setVerified(judged.value, officerId);

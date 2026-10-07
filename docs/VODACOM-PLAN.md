@@ -26,7 +26,29 @@ and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an office
 point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Every call made under Ali's
 delegation is a numbered point in §0h. Nothing moved here 2026-10-04 → 10-06 except main's sign-up change (`9b21bae9`),
 which rewrote §3.7: a new account now lands home on the classic site too. On 2026-10-07 S6 A8i went live (`23f762f4`):
-a dialog acts on Enter only where it is pressed, and a key held down from before presses nothing in it (below).
+a dialog acts on Enter only where it is pressed, and a key held down from before presses nothing in it (below); and
+A8i-2 (`586c5183`): a key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered
+money dialog lands on its way out (below); and A8j (`88fb1f41`): Enter in a form never skips its confirm (below).
+⚠️ Owner ruling of 2026-10-07 (the ▶ 0e MONEY DOORS lane): a deposit asks no
+email question, and the minimum deposit and stake are TZS 1,000 — §3.6's S9 (an email code before the first deposit)
+will NOT be built (§3.6 and R2 marked superseded), and this plan's TZS 500 lines carry the new minimum. Still owed here:
+the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `emailCodeFirst` (when S9 is built), and
+`qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar.
+
+**✅ A8j LIVE `88fb1f41` (2026-10-07) — Enter in a form never skips its confirm.** Enter, or a phone's Go key, in the
+withdraw amount box sent the withdrawal with no "Confirm withdrawal" (no fee, no "You receive", no recipient), and in the
+close-account phrase box it closed the account: on live main the drive's control run withdrew TZS 20,000 three times
+(W1, K2, P1) and closed the account. Taken from the handover's draft on OMEGA-COMPILE01, revised there for its 19 review problems and an
+independent verifier's findings, and proven in Chromium and Firefox and, once the page has woken, in WebKit — §0i "A8j",
+§0h point 60. WebKit before the page wakes, run 2026-10-07 with the sleeping page in a fresh context: P1 and P2 hold,
+and the hidden second field proved a belt there — Playwright's WebKit honours the disabled default control, where
+WebKit's source was read to skip it (§0i "A8j", the drive's P1x).
+
+**✅ A8i-2 LIVE `586c5183` (2026-10-07) — a key held down presses once, wherever it is; nothing behind the top dialog
+takes a key; an uncovered money dialog lands on its way out.** Taken from the handover's unreviewed draft on
+OMEGA-COMPILE01, reviewed there in three lenses and changed by what they confirmed; proven in Chromium, Firefox and WebKit
+against a control run on live main that failed exactly the nine cases it closes (W2 and SQ sold, UD1 placed 13 bets) —
+§0i "A8i-2", §0h point 59.
 
 **✅ A8i LIVE `23f762f4` (2026-10-07) — a dialog acts on Enter only where it is pressed.** Built on OMEGA-COMPILE01
 (branch `vodacom-a8i`), taken over on ALI-BLADE15 when that session stopped (Ali, 2026-10-06), re-reviewed there in five
@@ -49,24 +71,34 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-07 ~11:10 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other session on
-that PC holds marketing S14 only, by agreement). **A8i-2: reviewed in three lenses and revised — branch `vodacom-a8i2`
-`2e0aa062` (pushed; worktree `F:\kipindi-a8i2`, cut from `9352de7c`), NOT yet on main.** The control run of the drive
-on live main (`9352de7c`, fresh in-memory server) failed exactly where the draft predicts: W2 SOLD the ticket (the
-second Enter 60 ms after the seal's), DD and SL each placed a bet, Enter held on Up & Down's UP placed 13 bets and on
-the receipt's "Keep playing" 11 more. The reviews' confirmed findings are applied (`2e0aa062`'s message lists them):
-the main one, from the correctness lens — two win seals queued 350 ms apart could still let an Enter meant for the
-second land on the sell button after its beat — is closed by sending focus to an uncovered money confirm's WAY OUT
-(`safeFocus`: Ghairi, Hifadhi nafasi, Cancel), with dialogs joining the stack in a layout effect; the proof lens's —
-the suite pinned the wiring only by text — by building the key guard and `leaveLayer` from their text and running them.
-Proven on `2e0aa062`: typecheck; `test:enter-where-pressed` green; `red:enter-where-pressed` 103/103; the structural
-suites green (stacking 6.1 and red-anchors ×2 are main's own). **Still to come:** the drive on the new tree (queued
-behind the shared heavy-job lock) and its control re-run → the 2026-10-04 12-case drive → WebKit and Firefox runs →
-`test:all` → push → production read-back → records (§0i bullet, §0h point 59). **A8j** is being revised beside it in
-`F:\kipindi-a8j` (branch `vodacom-a8j`; the draft applied, its 19 review problems being addressed); it ships after
-A8i-2, rebased onto it. Then the close-out's three owed items, then **WP12**. (Left alone on that PC:
+**⏳ IN FLIGHT (updated 2026-10-07 ~18:40 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). Ali
+(2026-10-07, away): *"keep going and putting progress updated until you're done … keep pushing live"* — each piece goes
+live once its core is proven, the rest runs after it, and anything found is fixed forward. Done today: A8i-2 and A8j
+LIVE (above); A8j's WebKit runs; **the S6 close-out's three owed items, all passing** (§0i "S6 STOPPED HERE"); QA
+Mobile 01 signs in on production again (its password reset through the console's own Reset password, with Ali's
+approval; the new one is in `F:\kipindi-main\.env.qa.local`). Money doors' release is live (`012cccbc`: no email
+before a deposit, the email bar deleted, the TZS 1,000 minimum) and this lane's work sits on it. **Now: WP12, the last
+S6 package** — branch `vodacom-wp12` (pushed, NOT on main; worktree `F:\kipindi-wp12`), eleven commits on `012cccbc`:
+the bell's bytes put back (A1); the handover's WP12 change set (rule 8 dated the day it lands, six statements corrected
+by an independent read); the tile drive `qa:journey-shell`; A8j's WebKit follow-up (P1x reports the engine's rule);
+the S4 canvas brought to the owner's ruling; the Up & Down card's UD-16 comment made true; `qa:journey-preview`'s step
+7 (WP6b item 8); `qa:enter-where-pressed` with `REDUCED_MOTION=1` (A8i-2's owed "reduced motion"); parity 2.9 reading
+which tree it runs on (the email bar deleted → no viewer may see one); `shortfallPlan` without its email step; the
+plans' notes for the ruling, and the email bar's SHELVED row deleted. An independent review of the new commits found
+five slips, all fixed. Light gates equal main's; the suites they touch green. **Queued under the lock** (after
+marketing's U13 turn, ~19:45 EAT): A — typecheck, `test:all` with the database suites, `red:all`; B — parity (the v2
+baseline re-captured from `7c859cdf`, WP12's fresh baseline at its parent, each calibrated, both compares); **then WP12
+goes live**; then B2 — the header fit and its reds; C — the 335 tiles (read one by one), the preview drive, the footer
+four ways; D — the landmark seal both ways, local `qa:live`, G1 and its prove-red; E — the A8j drive in WebKit; F — S7
+WP0's reds and bar probe, and the A8i-2 drive under reduced motion; then `qa:live` on production (mobile01, once), and
+the records. **S7 WP0 has started, by Ali's choice** (before S6 closed, S7-PLAN's narrower overrule): branch
+`vodacom-s7` (`2f340ecd`): red:ticker-honesty's cases declared and judged by the whole check id, test:stacking's
+primer checks renumbered; its records and bar probe are drafted, and its runs are turn F. **If this session is gone:**
+WP12's run list is in its S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on
+`vodacom-handover`, `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC:
 `F:\kipindi-journey` keeps uncommitted edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above, §0i "A8i" and the handover's drafts), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+**Next:** (1) S6 — WP12 (above; A8j's WebKit runs and the S6 close-out are done), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
@@ -279,7 +311,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   rest of the detached chain (`scratchpad/s6/a8-chain.sh`: the price-guard drive in the current mode, the result
   drives `main`, `extra` and `lost`, the lost-chunk control, the tiles), parity compare 2 after the copy, the
   battery, a production build's first-load reading, and the production check (`?dpl=`, the stylesheet's two phone
-  blocks); then **WP12** (S6-PLAN.md). **A8i** is LIVE (`23f762f4`, its bullet at the end of this list); A8i-2 and A8j go first (§0).
+  blocks); then **WP12** (S6-PLAN.md). **A8i**, **A8i-2** and **A8j** are LIVE (`23f762f4`, `586c5183`, `88fb1f41`, their bullets at the end of this list); the close-out's three owed items have run (below); WP12 is next (§0).
   **Ran 2026-10-06/07 on `7d4b0ad5` (ALI-BLADE15), the owed list above:** `red:ticker-honesty` alone 28/28 (re-armed in
   `7d4b0ad5`: 9.8 reads `settledAmount`, 9.9 every fee call, the red's anchors unique); parity `--prove-red` 81/81 (with
   `5a87e764`'s DEV-measure filing and its plant); parity `--compare` 2 against the v2 baseline: 38/39 — every Sell check
@@ -291,12 +323,19 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   before `95d15927`, and every measured cell at TZS 1,000,000 (its one failure is the fixture: four 1M tickets cannot
   be seeded); the price-guard drive paid 28/28 (D.3 now times the result from its own entry — it had timed the
   confirm) and current 4/4; the result drives `main` 10/10 and `extra` 4/4; `test:all` 444/461, the 17 reds exactly
-  the baseline list; production read back for `cd34231b` and `7d4b0ad5`. **Still owed:** the `lost` result drive (the
-  dev server reset the connection mid-run); the crash control — its C.1 matched only the ENGLISH crash title on a
-  Swahili page, and its diagnosis shows that page DID reach the critical-error screen with the host's guard stripped,
-  so the guard is needed; the drive now matches all three titles; re-run for a clean pass; and the production build's
-  first-load reading (the build compiled; its reader was handed an unconverted path, and the next drive deleted
-  `.next`). The tools are on the branch `vodacom-handover` (§0).
+  the baseline list; production read back for `cd34231b` and `7d4b0ad5`. **Ran 2026-10-07 on main `0b841d07` (OMEGA-COMPILE01),
+  the three still owed — all pass:** the `lost` result drive 6/6 (every request for the sale-result host's chunk
+  aborted, and the abort seen: the page stays up with its shell, one `/api/client-error` report, no host answers the
+  sale event, and an aborted sale's ✗ result is drawn by the Sell button itself); the crash control 3/3, its throwaway
+  edit inside the same lock turn (the host's `.catch(nothingIfLost)` stripped, then put back; the tree clean after):
+  the same lost chunk then reaches the critical-error screen, matched by its Swahili title ("Kitu kimevunjika kabla
+  hata ya kuanza") now that the drive knows all three — so the guard is what keeps the page up; and a production build
+  (`next build`, compiled in 43 s) read by `first-load-parts` on `/`, `/markets`, `/positions` and `/help`: the control
+  (the classic deposit test id) in every first load; the sale-result host and the journey's top bar, tabs and flag each
+  in a chunk of their own and off every first load; the offline banner and the win-celebration host in it — all as
+  expected (the reader's first try was handed Git Bash's rewritten route paths; re-run with `MSYS_NO_PATHCONV=1` on the
+  same build). **The A8d/A8g/A8h close-out is complete.** The tools: the handover's (`vodacom-handover`), in this
+  machine's Node ports (`handover/vodacom-2026-10-07/omega-tools/`).
 - **Found on the way (2026-10-04):** `test:house-bot-reports` 0.232 was red on main for three reasons, and while it was,
   `red:house-bot-money`, `-c5`, `-chatbot` and `-console` refused to run for every lane. This lane's S3b had made
   `Transaction.origin` create-only in both txn twins and so broken 0.232.4's exact-text pin — re-pinned (`50552c40`); the
@@ -1189,6 +1228,89 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   in the close-account phrase box submits without the confirm (A8j). **Served bytes for a classic viewer:** no markup,
   word, class or prop changes; the client code of the three dialogs, `Modal`, `Select` and the Sell button changes
   (behaviour only), so `qa:classic-shell-parity` names no entry.
+- **A8i-2 — a key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered money
+  dialog lands on its way out (LIVE `586c5183`, 2026-10-07, for every player, both looks).** What it closes, each proven on
+  live main `9352de7c` by the drive's control run on OMEGA-COMPILE01 (a fresh in-memory server, 15 pass, 9 fail, none
+  blocked): W2 — the second Enter 60 ms after the seal's SOLD the ticket; SQ — two win seals queued and Enter mashed:
+  sold; K1/K2 — Enter held on "Hifadhi nafasi"/Cancel reopened the confirm under the finger; ESC — one Escape closed the
+  seal AND the Sell confirm; DD — Enter, Enter 100 ms apart on the dial placed the bet; SL — a quote lapsing under the
+  seal sent focus behind it, and Enter, Enter placed a bet; UD1 — Enter held on Up & Down's UP placed 13 bets; UD2 —
+  Enter held on the receipt's "Keep playing" placed 13 more. **How:** one app-wide key guard
+  (`src/components/ui/key-guard.tsx`: a window capture listener for keydown and keyup, installed by AppShell and by
+  every Modal) decides by `swallowsKey` (`src/lib/modal-stack.ts`): a held repeat that would press something, anywhere;
+  an Enter or Space behind the top dialog; a fresh press in the 400 ms arming beat after a dialog takes focus or hands it
+  back; and a Space presses only where it went down. `modal-stack.ts` keeps the page's open dialogs (by zIndex, then open
+  order); `leaveLayer` decides where focus goes when one closes — never behind the dialog now on top; an uncovered money
+  dialog on its WAY OUT (`safeFocus`: "Ghairi", "Hifadhi nafasi", ConfirmModal's Cancel); whatever takes focus armed; a
+  seal opened with focus on the page arms nothing. Modal joins the stack in a layout effect (a timer-opened seal is on it
+  from its first frame), answers keys only while on top, closes once per Escape, leaves Escape to an open list, and its
+  leaving ghost is inert. Space on the bet dial counts as a press. **The draft** (ALI-BLADE15, never run) was reviewed
+  here in three lenses — correctness and money, change-set mechanics, gates and proof — and changed by what they
+  confirmed: the way out (the correctness lens: two queued seals, the second drawn late on a slow phone, left an Enter
+  meant for it landing on the sell button after its beat), the layout effect, one Escape one dialog, Space on the dial,
+  the page itself never armed, the suite made to RUN the guard and `leaveLayer` (five of six wiring deletions had passed
+  it), the census closed on inline handlers, namespace imports, parameter names and every key event named in `src/` (2.8,
+  which found the needle's own `on(hit, "keydown")` the census had never seen — an element listener, no money), 2.6
+  widened to every file that draws a dialog; Modal's dead held-key line and the refuted quote-clock reset dropped.
+  **Guard:** `test:enter-where-pressed` (predeploy) — it builds `key-guard.tsx` and `leaveLayer` from their text and
+  fires keys through them (4.4, 5.9) — and `red:enter-where-pressed`, 103 plants, 103 caught. **Proof (OMEGA-COMPILE01):**
+  typecheck; the structural suites green (stacking 6.1 and red-anchors ×2 main's own); `qa:enter-where-pressed` on the new
+  tree — Chromium 24/24, Firefox 23/24, WebKit 23/24 — the non-Chromium engines' one red is "Z", the dev server's
+  hot-reload chunk failing to load in them on Windows, which fails the same on live main (Firefox control: 14 pass, 10
+  fail — the nine above and Z). Two drive faults the other engines exposed are fixed in the drive: its wallet read opened
+  a second page, which takes focus in Firefox and WebKit (now read over HTTP), and the first-visit primer hides itself
+  from Chromium's automation only, so it opened over the dialogs there (now marked seen). The 2026-10-04 12-case drive on
+  the new tree: S, J (the journey look), K, W, R, B, F, BE and E pass; W2's stage now finds the second Enter on
+  "Hifadhi nafasi" (the way out, by design); P is A8i's design difference; PW's seal was never accepted by its page (a
+  set-up race in that older drive). `test:all` 433/463: every red one of the §0i baseline list (17), or a database suite
+  this worktree first ran without the local Postgres binaries (13; then 12/13, house-bot-designation's 1/161 the known
+  scratch flake — 161/161 alone). Production read back: `dpl=586c5183` served on www.50pick.tz and 50pick.tz from 09:38:56 UTC by a fresh container (uptime climbing from 7 s, no restart), `/api/health` ok with the database reachable, and `qa:live` against production 318/318 (signed-out pages: no console or page error, no dead link, no preview marker). **Served bytes for a classic viewer:** no markup, word or
+  class changes — a `ref` and the `safeFocus` prop are not drawn, and `inert` appears only on the client-only exit
+  ghost; the client code of Modal, the three money confirms, the dropdown, the Sell button's comment and the shell's key
+  guard changes (behaviour only). **Owed (recorded, not run):** an iPad hardware keyboard's repeats; reduced motion; a
+  retryable failure under the seal; the seal over the Up & Down receipt; a BUSY reply with Enter held; an officer's
+  ConfirmModal and Escape on a Select inside a dialog in a real browser; WebKit on a Mac or a production build; the drive
+  in predeploy (it needs a server).
+- **A8j — Enter in a form never skips its confirm (LIVE `88fb1f41`, 2026-10-07, for every player, both looks).** What it
+  closes, each proven on live main `586c5183` by the drive's control run on OMEGA-COMPILE01 (Chromium, a fresh in-memory
+  server; 3 pass, 10 fail): W1 — 20,000 and Enter in the withdraw amount box sent the withdrawal with no confirm; P1 — the
+  same Enter before the page woke posted the form as plain HTML and withdrew 20,000; C1 — the phrase and Enter closed the
+  account and signed the player out; C2 — half the phrase and Enter posted, and came back with "type the phrase"; W2 and
+  K1 — 5 and Enter posted, and came back with the minimum's error (the server refused: no money); K2 — 20,000 and Enter
+  withdrew again (no confirm opened to hold Enter on); D1 — Enter in the deposit box did nothing; R1 — the RG break and self-exclusion forms had no
+  submit control. ConfirmDialog forces its trigger to `type="button"`, so these forms had no submit button and one text
+  field, and a browser SUBMITS such a form on Enter. **How:** ConfirmDialog's opt-in `submitsForm`
+  (`src/components/ui/confirm-dialog.tsx`): a native submit guard on the host form refuses every submit but the confirm's
+  own (prevented AND stopped, so React's root never runs the action) and opens the dialog the way its trigger does; before
+  the page wakes, a hidden default `<input type="submit" autocomplete="off">`, disabled until the guard listens, stops
+  Enter in Chromium and Firefox (`autocomplete="off"`: Firefox would restore it enabled), and a hidden unnamed second text
+  field stops it in WebKit (by WebKit's source, which submits a one-field form past a disabled control). One guarded
+  dialog per form (a second throws in development and stays out in production). Consumers: withdraw, deposit (Enter now
+  opens its confirm), close account, the RG break and self-exclusion confirm, the journey hub's sign-out. **The draft**
+  (ALI-BLADE15, never run) was revised here for its 19 review problems and an independent verifier's findings (product
+  verdict: sound) — among them WebKit's own implicit-submission rule (the second field), Firefox's restored control, one
+  guarded dialog per form, the census read by scope and one hop into imports, and the drive given an ENGINE switch and
+  P1x (WebKit with the second field stripped must post). **Guard:** `test:implicit-submit` (predeploy) — the guard run on
+  real submit events; the server's markup read by each engine's own implicit-submission rule; a census of every
+  ConfirmDialog and ConfirmModal in `src/`; the six host forms with nothing else submit-capable inside them — and
+  `red:implicit-submit`, 61 plants caught and 1 green control held. **Proof (OMEGA-COMPILE01):** on the shipped tree,
+  typecheck, `test:implicit-submit`, `test:enter-where-pressed`, `test:journey-account` (85), `test:journey-shell` (429),
+  `test:close-account-phrase` and `test:ui-consistency` green; `qa:implicit-submit` in
+  Chromium and Firefox 15/15 each (Z passing: the one error main shows too, the RG page's hydration mismatch, is named
+  as known); in WebKit 2272, the sleeping page in a fresh context, every case passes but P1x and Z — P1 and P2 hold
+  before the page wakes — and its control on `586c5183` failed W1 W2 K1 K2 D1 P1 P1x R1 C2 C1 and Z (W1, K2, P1 and P1x each
+  withdrew 20,000 — P1 asleep by a native POST, P1x's set-up unable to hold on that tree; C1 closed the account; Z the
+  dev server's lazy-chunk and fetch errors), so the drive does see a WebKit post (corrected 2026-10-07: the first record
+  left P1x and Z out). P1x, the
+  second field taken out, posted nothing: this WebKit honours the disabled default control where WebKit's source was
+  read to skip it, so the field is a belt there — kept, as it holds any WebKit that does skip the control, at no cost;
+  `8adafb15` (with WP12) makes P1x report the engine's rule instead of demanding a post. Z in WebKit: the dev server's
+  lazy-chunk (`needle-physics`) and fetch errors, the same on the control. `test:all` 433/464: every red on the §0i baseline list, one of the 13
+  database suites (A8j touches none of their code), or audit-drain's timing flake (42/42 re-run on this tree).
+  Production read back: `dpl=88fb1f41` served on www.50pick.tz and 50pick.tz by a fresh container (uptime 15 s, then
+  climbing), `/api/health` ok with the database reachable, and `qa:live` against production 318/318. **Served bytes:**
+  two hidden inputs inside each host form (no word, class or layout change); no other page changes. **Owed (recorded,
+  not run):** a real iPhone's Go key; the drive in predeploy (it needs a server).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1222,7 +1344,8 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
    in the account menu"; recorded in COMPLIANCE-DECISIONS.
 10. **Msaada carries no phone number.** 0800 11 0011 is the national problem-gambling helpline, not 50pick's help desk,
     so it keeps its own labelled row under Weka mipaka. This reverses the S4 panel's wording for that row; the canvas
-    is corrected to match.
+    is corrected to match. ⛔ The row is superseded by the owner's ruling of 2026-10-06 (`docs/COMPLIANCE-DECISIONS.md`,
+    `0652f61f`): the hub has no helpline row; Msaada still names no number.
 11. **Tiketi zangu for preview viewers** keeps the ticket number and all 7 filters, and drops the share button, the
     profit strip, the yes/no bar, search and sort (shelved, not deleted).
 12. **The new shell is verified locally** (point 4: no preview on production before the plan is done); on production
@@ -1717,6 +1840,55 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     (f) Tafuta keeps the Akaunti board's row and opens a search field in place, submitting to the journey home. (g) When
     asked, S7's production check also signs in once as the unfunded QA player mobile01, reading pages only, so
     signed-in players are covered too (overrule: signed out only).
+59. **A key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered money dialog
+    lands on its way out (S6 A8i-2, for every player, both looks).** The calls taken: (a) THE ARMING BEAT is 400 ms, on
+    every dialog: for 400 ms after a dialog takes focus a fresh Enter or Space in it presses nothing. It outlasts the
+    350 ms between two queued win seals, a double press (W2's was 60 ms) and key chatter, and is shorter than anyone takes
+    to read a confirm. Overrule: any figure from 351 to 600 ms (5.7 holds that band), or the beat on the bet and Sell
+    confirms only. (b) The beat also arms the control a closing dialog hands focus back to — UP after the Up & Down
+    receipt closes, the dial after the bet confirm is cancelled — so a double Enter on the receipt is one bet. A fresh
+    Enter more than 400 ms later, and every tap, is a bet as before (Ali's repeat-taps rule untouched). Overrule: arm
+    dialogs only. (c) THE WAY OUT — taken by this session, against the draft: when a dialog drawn over a money confirm
+    closes (the win seal, the reality check), focus lands on the confirm's way out — "Ghairi", "Hifadhi nafasi",
+    ConfirmModal's Cancel (deposit, withdraw and every officer's money confirm) — never its money button. The review
+    found that two seals queued 350 ms apart, the second drawn later still on a slow phone, left a moment where an Enter
+    meant for the second seal landed on the sell button after its beat and sold; on the way out it can at worst close the
+    confirm. A keyboard player needs one Tab back to the money button. Overrule: focus back on the money button, armed for
+    the beat (the draft's call). (d) Nothing behind the top dialog takes Enter or Space — repeats, fresh presses, a Space
+    typed in a field under the scrim. The page itself is left alone (it presses nothing), and a surface put in the page
+    after the top dialog (a dropdown's list, a calendar) counts as over it and keeps its keys; toasts sit behind for keys
+    (a click still works). (e) One Escape closes one dialog (a dialog under one that has just answered it no longer closes
+    too), and an Escape with a dropdown's list open in a dialog closes only the list — also when a click left focus on the
+    page — where it used to close the dialog and lose what was typed. Overrule: Escape closes both again. (f) Space on the
+    bet dial is a press, as Enter is: a held Space's repeats there are swallowed, and a Space in the beat presses nothing.
+    (g) Modal's own held-key line is deleted: the key guard swallows a held key first, page-wide (the draft kept the line
+    only because its pipeline could not edit it). (h) The Tab trap pulls focus in from anywhere outside the dialog, both
+    ways, and a leaving dialog's ghost is inert. (i) A dialog joins the stack in the same commit it is drawn (a layout
+    effect), so a seal opened by a timer is on the stack from its first frame. (j) A dialog's first focus never lands on
+    a button that cannot be pressed: the first control that can takes it. The draft's reset of the bet confirm's quote
+    clock is NOT taken: its race was refuted twice, and the handover said to drop it.
+60. **Enter in a form never skips its confirm (S6 A8j, for every player).** The calls taken: (a) BEFORE THE PAGE WAKES
+    TOO, by markup the server draws: a hidden default submit control, disabled until the guard listens, stops Enter in
+    Chromium and Firefox, and a hidden unnamed second text field stops it in WebKit (every iPhone browser), which submits a
+    form of one text field past a disabled control (so its source reads; Playwright's WebKit 2272 honours the disabled control instead, so there the field is a belt, kept for any WebKit that does skip it; §0i "A8j"); in WebKit
+    before Safari 16.4 Enter in these forms does nothing at all
+    (safe: Next 16 builds for 16.4 on). Overrule: drop the second field (an iPhone could then send a withdrawal with Enter
+    in the seconds before the page wakes), or add a server-side seal — the withdraw and close-account actions refusing a
+    post that did not come through the confirm, with a refusal sentence in en/sw/zh. (b) Enter now opens the confirm on
+    the deposit form too (its eight text fields made Enter do nothing before): one rule for every form whose commit is a
+    dialog. Overrule: keep deposit's Enter doing nothing. (c) The journey hub's sign-out row and the two RG confirms carry
+    the prop though Enter could never submit them (no text field): the census rule has no exemptions to rot, and nothing
+    they draw or do changes. Overrule: exempt them by name. (d) Close account: Enter does nothing until the phrase is typed
+    whole, then opens the dialog; it used to post and come back with the "type the phrase" message. Overrule: show that
+    message on Enter with half a phrase (a toast in three languages). (e) Two officer forms save some changes directly by
+    design and are named in the census with the call that asks first: the config form (only a money-model change asks)
+    and Up & Down's reading-method form (only the simulated feed asks). Overrule: make either always ask. (f) The rules
+    the census holds: a ConfirmModal may not submit a form (it has no guard); one `submitsForm` dialog per form (a second
+    throws in development and stays out in production); the confirm's submit is synchronous inside `onConfirm`; nothing
+    else in a host form may submit (a kit `<Button>` with no type is a submit button) — the one exemption is a control
+    in the other arm of a ternary from the dialog (the withdraw page's disabled `SubmitButton`); a new `submitsForm`
+    consumer joins the host table; imported helpers are read one hop deep. (g) A held Enter in these forms presses once
+    (A8i-2's key guard): one warning toast at most, and a dialog closed with Enter held on Cancel stays closed.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -1835,7 +2007,9 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     read English months: "8 Oct" and "11 May" where Swahili says "8 Okt" and "11 Mei". The frames show the Swahili.
     Fixing it means threading a locale through every caller, and `test:timer-date` must hold. That is its own lane.
 - Item 5 ✅ on the canvas (row "5 · Balance too low", six frames, each a branch of `shortfallPlan`).
-  - Deposit only: balance 0; and short by less than TZS 500, where the deposit is 500 with a note (draft).
+  - Deposit only: balance 0; and short by less than TZS 500, where the deposit is 500 with a note (draft). ⚠️ The
+    minimum becomes TZS 1,000 by the owner's ruling of 2026-10-07 (NEXT-PLAN ▶ 0e, its Phase B): the note's figures
+    follow it.
   - "Bet instead" only: the deposit limit is reached; and every deposit rail is paused.
   - No option: source of funds is needed.
   - Waiting: a deposit is already pending.
@@ -2189,7 +2363,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S6 | Shell (flagged) | 🔨 | Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | ⬜ | Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
-| S9 | Deposit, email code, waiting and return (flagged) | ⬜ | `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and `test:email-code` are green. The card `order_id` fix is live. |
+| S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
 | S11 | How to Play complete + copy ready for the flip | ⬜ | Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
 | S12 | Consistency sweep | ⬜ | Juu/Chini uses the journey language, admin ink is fixed, short titles are used outside the site, NDIO is swept. |
@@ -2682,7 +2856,8 @@ Other rules:
   - All chips clamped to `depositCeilingFor` (DEPOSIT_MAX, RG day/week/month headroom counting PROCESSING deposits,
     SoF headroom).
   - Examples: 3,000 → [3,000, 5,000, 10,000]; 5,000 → [5,000, 10,000, 25,000]; 300 → [500, 1,000, 5,000] with
-    `belowDepositMin`.
+    `belowDepositMin`. ⚠️ With the TZS 1,000 minimum (the owner's ruling of 2026-10-07, ▶ 0e's Phase B, which also
+    edits `test:shortfall` to match): 300 → [1,000, 5,000, 10,000] with `belowDepositMin`.
   - No per-rail ceiling (E-231).
 - `depositCeilingFor` and `lossHeadroomFor` are proven equal to the real gates (`test:deposit-ceiling`).
 
@@ -2829,7 +3004,8 @@ that reopens the sheet. `test:deploy-skew` covers the sheet and the waiting page
 4. compact row "Ukishinda ≈ TZS {x}" … "≈{m}×" (new keys)
 5. warning callout "Salio halitoshi / Una TZS {have}. Unahitaji TZS {short} zaidi." (new keys)
 6. eyebrow "CHAGUA UNACHOTAKA KUFANYA"
-7. the 2-line deposit action (the amount is D; a clear note when D > shortfall because of the 500 minimum)
+7. the 2-line deposit action (the amount is D; a clear note when D > shortfall because of the deposit minimum — TZS
+   1,000 from the owner's ruling of 2026-10-07, ▶ 0e; it was 500)
 8. "Weka dau la TZS {spendable} badala yake"
 9. the disabled "Weka dau · TZS {stake}" (`aria-describedby` → the warning)
 
@@ -2911,7 +3087,14 @@ Polling: every 3s for the first minute, then every 10s.
 **Card return fix (first).** Append `order_id` to the Selcom card `redirectUrl`/`cancelUrl`, and carry `bet` through
 (MONEY-GATE §3.2, a live defect today).
 
-### 3.6 Inline email code (S9)
+### 3.6 Inline email code (S9) — ⛔ SUPERSEDED 2026-10-07, not to be built
+
+⛔ **The owner's ruling of 2026-10-07 (NEXT-PLAN ▶ 0e MONEY DOORS):** a deposit asks NO email question at all — the
+deposit email door, the deposit page's `EmailVerifyGate` and the app-wide `EmailVerifyBanner` are removed by that lane —
+and a confirmed email is required to WITHDRAW instead (asked after identity, on /wallet/withdraw; a refused-funds return
+is exempt). The journey's deposit therefore carries no code step: the rest of this section is kept as the record of what
+was planned, and `shortfall.ts`'s `emailCodeFirst` and its docblock go when S9 is built (owed, this lane). R2 in the
+INHERIT-MANIFEST is superseded with it.
 
 **Storage and security**
 - A new `Otp` purpose `email_verify`: bound to `userId` + the exact address, hashed, 30-minute TTL, 5 attempts.
@@ -3186,7 +3369,8 @@ retention/backup/DAL and the privacy lines.
 - Checks whether `test:rg-doors` requires a limits link (SJ-22).
 - **Done when:** `test:bet-sheet`, V20 and the refusal matrix pass, and a staff real bet works on production.
 
-**S9 — Deposit, email code, waiting and return (flagged):** the card `order_id` fix first, then §3.5 and §3.6.
+**S9 — Deposit, waiting and return (flagged):** the card `order_id` fix first, then §3.5. (§3.6, the email code, is
+superseded by the owner's ruling of 2026-10-07 and is not built.)
 - **Done when:** `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and
   `test:email-code` pass.
 
@@ -3321,7 +3505,7 @@ Design **is** needed for:
 >      session limit, rate-limited, busy / Jaribu tena, maintenance.
 >    - Keyboard open at 360×640.
 >    - ◆ Desktop centred dialog.
-> 5. **Balance too low.** 0 / 1 / 2 options; balance 0; below the 500 minimum; deposit pending; limit reached; SoF;
+> 5. **Balance too low.** 0 / 1 / 2 options; balance 0; below the 500 minimum [TZS 1,000 since the owner's ruling of 2026-10-07]; deposit pending; limit reached; SoF;
 >    held wallet; 4 wallets on the sub-line.
 > 6. **Deposit.**
 >    - Focused chrome.

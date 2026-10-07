@@ -15,6 +15,7 @@
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { adminCount, formatNumber } from "@/lib/utils";
 import type { CampaignProgress, CampaignRailKey } from "@/lib/marketing/campaign-status";
+import type { CampaignRowAudience } from "./campaigns-loader";
 
 export const CAMPAIGNS_TITLE = "SMS campaigns";
 export const CAMPAIGNS_SW = "Kampeni";
@@ -44,6 +45,21 @@ export const CAMPAIGNS_RAIL_LABEL = "Filter SMS campaigns by status";
 
 export const CAMPAIGNS_NOT_CONFIRMED = "Not confirmed";
 export const CAMPAIGNS_UNTITLED = "Untitled campaign";
+
+/* ── U38b · M8 · each row's audience, in words, under its name (`campaignRowAudience`) ── */
+/** The whole contact book — the stored filter narrows nothing. */
+export const CAMPAIGNS_AUDIENCE_EVERYONE = "Everyone in the contact book";
+/** ⛔ D19 · a stored filter this viewer's role may not have described (a consent, source, player or stop axis, a search). */
+export const CAMPAIGNS_AUDIENCE_HIDDEN = "Audience hidden for your role.";
+/** A stored filter this build cannot read — said, never guessed at (the composer refuses to save it until it is chosen again). */
+export const CAMPAIGNS_AUDIENCE_UNREADABLE = "The saved audience can't be read.";
+
+/** A row's audience as ONE line: the describer's phrases joined, the whole book said, or why there are no words. */
+export function campaignAudienceWords(a: CampaignRowAudience): string {
+  if (a.kind === "hidden") return CAMPAIGNS_AUDIENCE_HIDDEN;
+  if (a.kind === "unreadable") return CAMPAIGNS_AUDIENCE_UNREADABLE;
+  return a.lines.length === 0 ? CAMPAIGNS_AUDIENCE_EVERYONE : a.lines.join(" · ");
+}
 
 /** The confirmed audience, as a count of people. */
 export function audienceLine(n: number): string {

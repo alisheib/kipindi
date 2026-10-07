@@ -49,7 +49,6 @@ import type { FailureReason } from "@/lib/failure-reasons";
 import { notifyKyc, notifyAdminKycReview } from "./notification-service";
 import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, kycMoreInfoHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
-import { setUserEmail } from "./email-verification";
 import { runOutsideLock, withLock } from "./locks";
 import { displayLabel } from "@/lib/display-label";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
@@ -330,19 +329,7 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
     return { ok: false, error: "This identity document is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "id_taken" };
   }
 
-  // Collect the contact email at the identity step (canonical collection point).
-  // Routed through the single setUserEmail() writer so a new address resets
-  // verification and fires a confirmation link. Best-effort: never block KYC.
-  if (parse.data.email !== undefined && parse.data.email !== "") {
-    const emailResult = await setUserEmail(userId, parse.data.email).catch((err) => {
-      console.error("[kyc] setUserEmail failed:", (err as Error)?.message);
-      return null;
-    });
-    if (emailResult && !emailResult.ok) console.warn(`[kyc] setUserEmail rejected: ${emailResult.error}`);
-    else if (emailResult?.ok) console.log(`[kyc] email saved for ${userId.slice(0, 14)}… (changed=${emailResult.changed}, verificationSent=${emailResult.verificationSent})`);
-  } else {
-    console.warn(`[kyc] no email provided in identity step for ${userId.slice(0, 14)}…`);
-  }
+  // The identity step never writes the contact email (changeOwnEmail or an officer does — route audit 2026-10-06, A1).
 
   // ── THE NIDA AUTHORITY SEAM ───────────────────────────────────────────────
   // ⛔ ONLY NIDA HAS ONE, AND TODAY IT ANSWERS NOTHING. `nida.ts` is a
@@ -1150,7 +1137,8 @@ export async function reviewKyc(opts: {
       sendEmailToUser(userId, (email) => ({
         to: email,
         subject: "Identity verified · You're fully verified",
-        html: kycApprovedHtml({ name: greetName, reference: k.id }),
+        // ⭐ The second withdrawal step, only when it is still owed (2026-10-07) — see `kycApprovedHtml`.
+        html: kycApprovedHtml({ name: greetName, reference: k.id, emailUnconfirmed: !!u?.email && !u.emailVerifiedAt }),
         tag: "kyc-approved",
       }));
       return { ok: true as const };

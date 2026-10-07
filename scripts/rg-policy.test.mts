@@ -33,6 +33,11 @@
  *             its CONTACT branch; the frequency cap (F2) by U14's module or the gate's own refusal;
  *        K2 · the save's validator, run on every promise word — the English phrases, a clock time, a frequency, and the
  *             Swahili and Chinese words in their own boxes (F3): refused when the promise is unkept, accepted when kept.
+ *        ⭐ U13 (2026-10-07) · the late-night control is the send window OBEYED, not a file that exists: `window.ts` exists
+ *        AND `dispatch.ts` imports `sendWindowState` from it and calls it, AND `dispatchSlice` reads the window and holds
+ *        the slice on it BEFORE its per-recipient loop (`windowObeyed`). It holds, so `KEPT_PROMISES.lateNight` flipped to
+ *        kept in the same commit (K1); a plant that drops the read, or moves it after the loop, turns K1 red. The EVENING
+ *        is a promise of its own that no code keeps (the window is open until 20:00), held unkept by K1 and refused by K2.
  *   ⭐ The page is read with its `PolicyLine` tags stripped (`scripts/lib/policy-line-source.mts`): the wrapper prints a
  *      SAVED line, and its children — the literal bullet, byte for byte the page before U33p — until then. So §1-§3 read
  *      exactly the text the page prints while nothing is saved, and the English hash pin holds untouched; a SAVED line is
@@ -63,6 +68,8 @@ export const RG_EN_SHA = "b9897a0ebf5d";
 type World = {
   page: string; consent: string; rg: string; featureState: string; footer: string; compliance: string;
   windowExists: boolean;
+  /** U13 · the send loop's source (decommented) — the late-night control holds only where it reads the window. */
+  dispatch: string;
   /** U33p (F2) · U14's per-person frequency cap — its module, when it exists. */
   capExists: boolean;
   /** U33p · the map the policy-line save reads, and the save's validator — each swappable, so a red case plants one. */
@@ -78,6 +85,7 @@ const REAL: World = {
   footer: read("src/components/layout/public-footer.tsx"),
   compliance: read("docs/COMPLIANCE-DECISIONS.md"),
   windowExists: existsSync(join(ROOT, "src/lib/marketing/window.ts")),
+  dispatch: decomment(read("src/lib/server/marketing/dispatch.ts")),
   capExists: existsSync(join(ROOT, "src/lib/server/marketing/frequency-cap.ts")),
   kept: KEPT_PROMISES,
   validate: policyLineProblems,
@@ -102,9 +110,33 @@ const CONTROLS: Control[] = [
   // promise put back on the page is a promise with nothing behind it, and §2.2 refuses it.
   { id: "helpline", when: /helpline/i, where: "public-footer.tsx renders {HELPLINE()}",
     holds: (w) => /\{HELPLINE\(\)\}/.test(w.footer) },
-  { id: "late-night", when: /late[- ]night/i, where: "src/lib/marketing/window.ts (U13) — it does not exist, so the promise may not either",
-    holds: (w) => w.windowExists },
+  // ⭐ U13 · the send window OBEYED — the module exists, AND the send loop imports it, calls it and holds on it first —
+  // ⛔ AND the one SMS sender that never asks it stays dormant (the U13 review's SP-5): the invite campaign's phone half
+  // (`invite-service.ts` sendBatch, purpose INVITE) sends at any hour, and refuses only while the bonus feature is
+  // WITHDRAWN. Until U15 retires that half, "kept" is true only while the flag holds it off.
+  { id: "late-night", when: /late[- ]night/i, where: "src/lib/marketing/window.ts (U13), imported and called by dispatch.ts, whose dispatchSlice holds the slice on it before its per-recipient loop; and feature-state's bonus WITHDRAWN (the invite SMS, which never asks the window, kept dormant until U15)",
+    holds: (w) => w.windowExists && windowObeyed(w.dispatch) && w.featureState.includes('bonus: "WITHDRAWN",') },
 ];
+
+/**
+ * ⭐ U13 · THE WINDOW IS OBEYED, NOT MERELY WRITTEN (the tracker's §9 U13 condition 1) — read in `dispatch.ts`, decommented:
+ *   · a value import of `sendWindowState` from the window module (`import type` erases at build, so it does not count);
+ *   · a CALL of it (the live reader `liveSendWindow` judges the saved hours with it);
+ *   · and `dispatchSlice` reads the window — `deps.window`, else the live one — and holds the slice on it BEFORE its
+ *     per-recipient loop: outside the window no gate is asked and nothing is sent.
+ */
+function windowObeyed(dispatch: string): boolean {
+  const lines = dispatch.split(String.fromCharCode(10));
+  const imports = lines.some((l) => l.trim().startsWith("import {") && l.includes("sendWindowState")
+    && l.includes('from "@/lib/marketing/window";'));
+  const calls = dispatch.split("sendWindowState(").length > 1;
+  const at = dispatch.indexOf("export async function dispatchSlice(");
+  const body = at < 0 ? "" : dispatch.slice(at);
+  const read = body.indexOf("await (deps.window ?? liveSendWindow)()");
+  const held = body.indexOf("if (sendWindow?.open !== true)");
+  const loop = body.indexOf("for (const row of rows)");
+  return imports && calls && read > 0 && held > read && loop > held;
+}
 
 /* ══ THE PAGE ═══════════════════════════════════════════════════════════════════════════════════════ */
 function blocks(page: string): { en: string; sw: string; zh: string } {
@@ -154,11 +186,16 @@ const KEPT_CONTROL: Record<PromiseKey, (w: World) => boolean> = {
   staffConfirmedAge: (w) => contactBranch(w.consent).includes('refuse("age_unknown"'),
   under25: (w) => controlHolds("under-25", w),
   lateNight: (w) => controlHolds("late-night", w),
+  // ⭐ U13 · no code keeps it: the send window closes at 20:00 EAT by default (bounded 09:00–21:00), so evening messages are
+  // sent — the promise stays unkept, and a map that said otherwise would let the save publish it.
+  evening: () => false,
   // F2 · U14 builds it: its module, or the gate refusing on it.
   frequencyCap: (w) => w.capExists || w.consent.includes('refuse("frequency_cap"'),
 };
-/** A clock time stands for a window too (the late-night promise's other spelling) — read in every language. */
-const CLOCK_SAMPLE = "between 22:00 and 06:00";
+/** A clock time stands for a window too (the late-night promise's other spelling) — read in every language. ⭐ U13 · the
+ *  send window's own hours (08:00 and 20:00 by default): a time it does not use is refused on its own rule since U13
+ *  (`test:policy-lines` L10), so the sample of a KEPT promise names only the window's hours. */
+const CLOCK_SAMPLE = "outside 08:00–20:00";
 /** A frequency is the cap's own spelling of its promise — in English, Swahili and Chinese. */
 const FREQUENCY_SAMPLE = "at most two messages a week";
 const SW_FREQUENCY_SAMPLE = "mara 2 kwa wiki";
@@ -291,6 +328,17 @@ if (!PROVE_RED) {
     : REAL.consent.slice(0, gateAt) + REAL.consent.slice(gateAt, contactAt).split('refuse("age_unknown"').join('refuse("account_status"')
       + REAL.consent.slice(contactAt);
   if (playerAgeDropped === REAL.consent) problems.push("K1 plant: the player branch's age refusals were not found");
+  // ⭐ U13 · R-W3b · the send loop that no longer reads the window: its read and its hold cut out of dispatchSlice…
+  const windowAt = REAL.dispatch.indexOf("let sendWindow: SendWindowState | undefined;");
+  const askAt = REAL.dispatch.indexOf("const ask = deps.gate ?? mayReceiveMarketingSms;");
+  const windowBlock = windowAt < 0 || askAt < windowAt ? "" : REAL.dispatch.slice(windowAt, askAt);
+  const windowDropped = windowBlock === "" ? REAL.dispatch : REAL.dispatch.slice(0, windowAt) + REAL.dispatch.slice(askAt);
+  if (windowDropped === REAL.dispatch) problems.push("K1 plant: dispatchSlice's window read was not found");
+  // …and moved AFTER the per-recipient loop: every gate asked before the window is consulted.
+  const sendAt = windowDropped.indexOf("if (cleared.length > 0) {");
+  const windowAfterLoop = windowBlock === "" || sendAt < 0 ? REAL.dispatch
+    : windowDropped.slice(0, sendAt) + windowBlock + windowDropped.slice(sendAt);
+  if (windowAfterLoop === REAL.dispatch) problems.push("K1 plant: dispatchSlice's window read could not be moved after the loop");
   const CASES: Array<{ name: string; world: World; expect: RegExp }> = [
     { name: "a new §4 promise with NO control behind it (the D12 shape)",
       world: { ...REAL, page: withEn(enBlock.replace(firstLi, `${firstLi}\n          <li>No marketing messages between 22:00 and 06:00 EAT</li>`)) }, expect: /^2\.1 /},
@@ -298,8 +346,9 @@ if (!PROVE_RED) {
       world: { ...REAL, consent: REAL.consent.replace(/refuse\("rg_under25_history"/g, 'refuse("account_status"') }, expect: /"under-25" control holds/ },
     { name: "the binding English edited without a new version",
       world: { ...REAL, page: withEn(enBlock.replace("No marketing messages, ever,", "No marketing messages")) }, expect: /^1\.2 / },
+    // ⭐ U13 · the window exists now, and REAL spreads it — so this case names "no window in code" itself.
     { name: "the late-night bullet restored with no window in code",
-      world: { ...REAL, page: withEn(enBlock.replace(firstLi, `${firstLi}\n          <li>No sign-up nudges in the late-night window</li>`)) }, expect: /"late-night" control holds/ },
+      world: { ...REAL, windowExists: false, page: withEn(enBlock.replace(firstLi, `${firstLi}\n          <li>No sign-up nudges in the late-night window</li>`)) }, expect: /"late-night" control holds/ },
     { name: "the bonus comes back while the page still says no deposit-linked bonuses",
       world: { ...REAL, featureState: REAL.featureState.replace(/bonus:\s*"WITHDRAWN"/, 'bonus: "ACTIVE"') }, expect: /"bonus" control holds/ },
     { name: "a translation drops a §4 bullet",
@@ -321,7 +370,17 @@ if (!PROVE_RED) {
     { name: "zh: the settings link can break mid-term again ('负责任博彩设' / '置' at 360)",
       world: { ...REAL, page: REAL.page.replace('className="whitespace-nowrap text-gold-300 hover:text-gold-200', 'className="text-gold-300 hover:text-gold-200') }, expect: /^3\.4 / },
     { name: "K1 · KEPT_PROMISES says the late-night window is kept while src/lib/marketing/window.ts does not exist",
-      world: { ...REAL, kept: { ...REAL.kept, lateNight: { ...REAL.kept.lateNight, kept: true } } }, expect: /^4[.]1 / },
+      world: { ...REAL, windowExists: false, kept: { ...REAL.kept, lateNight: { ...REAL.kept.lateNight, kept: true } } }, expect: /^4[.]1 / },
+    { name: "K1 · U13 · SP-5 · KEPT_PROMISES says the late-night window is kept while the bonus feature is live again — the invite campaign's SMS, which never asks the window, sends at any hour",
+      world: { ...REAL, featureState: REAL.featureState.replace('bonus: "WITHDRAWN",', 'bonus: "LIVE",') }, expect: /^4[.]1 / },
+    { name: "K1 · U13 · R-W3b · KEPT_PROMISES says the late-night window is kept while dispatch.ts no longer reads it (the module exists; the send loop ignores it)",
+      world: { ...REAL, dispatch: windowDropped }, expect: /^4[.]1 / },
+    { name: "K1 · U13 · the window read AFTER dispatchSlice's per-recipient loop — every gate asked before the window — while KEPT_PROMISES says kept",
+      world: { ...REAL, dispatch: windowAfterLoop }, expect: /^4[.]1 / },
+    { name: "K1 · U13 · the send window obeyed while KEPT_PROMISES still says the late-night promise is unkept (the map flips in the same commit)",
+      world: { ...REAL, kept: { ...REAL.kept, lateNight: { ...REAL.kept.lateNight, kept: false } } }, expect: /^4[.]1 / },
+    { name: "K1 · U13 · KEPT_PROMISES says the evening is kept — messages are sent until the window closes at 20:00",
+      world: { ...REAL, kept: { ...REAL.kept, evening: { ...REAL.kept.evening, kept: true } } }, expect: /^4[.]1 / },
     { name: "K1 · the gate stops refusing a number no account holds on age, while KEPT_PROMISES still says the promise is kept",
       world: { ...REAL, consent: contactAgeDropped }, expect: /^4[.]1 / },
     { name: "K1 · F13 · the gate stops refusing a player whose age cannot be read, while KEPT_PROMISES still says that promise is kept",
@@ -330,12 +389,12 @@ if (!PROVE_RED) {
       world: { ...REAL, kept: { ...REAL.kept, frequencyCap: { ...REAL.kept.frequencyCap, kept: true } } }, expect: /^4[.]1 / },
     { name: "K1 · F2 · U14 builds the cap while KEPT_PROMISES still says it is unkept (the map must flip in the same commit)",
       world: { ...REAL, capExists: true }, expect: /^4[.]1 / },
-    { name: "K2 · F3 · the policy-line save reads only the English — a Swahili or Chinese late-night promise is published",
+    { name: "K2 · F3 · the policy-line save reads only the English — a Swahili or Chinese promise the code does not keep (the frequency cap) is published",
       world: { ...REAL, validate: (key, raw) => {
         const v = policyLineProblems(key, raw);
         return { ...v, problems: { ...v.problems, sw: v.problems.sw.filter((x) => x.code !== "promise_unkept"), zh: v.problems.zh.filter((x) => x.code !== "promise_unkept") } };
       } }, expect: /^4[.]2 / },
-    { name: "K2 · the policy-line save lets a late-night promise through (its unkept-promise rule removed)",
+    { name: "K2 · the policy-line save lets an unkept promise through — the frequency cap (its unkept-promise rule removed)",
       world: { ...REAL, validate: (key, raw) => {
         const v = policyLineProblems(key, raw);
         return { ...v, problems: { ...v.problems, en: v.problems.en.filter((p) => p.code !== "promise_unkept") } };

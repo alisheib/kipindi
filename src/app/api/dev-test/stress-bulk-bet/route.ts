@@ -24,6 +24,7 @@ import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { buyPosition, getMarket } from "@/lib/server/market-service";
 import { randomId } from "@/lib/server/crypto";
+import { PLATFORM_MIN_STAKE } from "@/lib/payout";
 
 type Body = {
   marketId?: string;
@@ -134,7 +135,9 @@ export async function POST(req: Request) {
 
   const n = Math.max(1, Math.min(2000, numOrDefault(body?.n, 100)));
   const yesRatio = Math.max(0, Math.min(1, numOrDefault(body?.yesRatio, 0.5)));
-  const stake = Math.max(100, Math.min(1_000_000, numOrDefault(body?.stake, 1_000)));
+  // Clamped at the platform minimum (2026-10-07): a stake under it is refused by `buyPosition`, so a lower floor here only
+  // manufactured refusals the harness then had to explain.
+  const stake = Math.max(PLATFORM_MIN_STAKE, Math.min(1_000_000, numOrDefault(body?.stake, 1_000)));
   const prefix = typeof body?.userPrefix === "string" ? body.userPrefix.slice(0, 4) : "s1";
 
   const m0 = await getMarket(marketId);

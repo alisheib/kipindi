@@ -88,7 +88,11 @@ export function SetEmailForm({ userId }: { userId: string }) {
           </button>
         }
         title="Change player email"
-        body={<>All KYC notifications, payment receipts, and account recovery will go to <strong className="font-mono text-text">{email || "…"}</strong>. This cannot be undone without another manual change.</>}
+        /* ⭐ 2026-10-07 — A SET ADDRESS IS AN UNCONFIRMED ONE. `setUserEmail` clears the confirmation and sends the
+           link, and since the owner ruling of 2026-10-07 a withdrawal needs a confirmed address — so the officer is told,
+           at the moment of decision, that this stops the player's withdrawals until they open the link. Payment
+           emails wait for the same confirmation (`sendEmailToUser`'s `confirmedOnly`). */
+        body={<>KYC notices and account recovery go to <strong className="font-mono text-text">{email || "…"}</strong> straight away; payment emails only once the player confirms it from the link we send. <strong>Until they confirm it, they cannot withdraw</strong> — a new address is always confirmed again, even one set here. This cannot be undone without another manual change.</>}
         confirmLabel="Yes, set email"
         tone="warning"
         onConfirm={submit}

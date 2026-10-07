@@ -37,7 +37,7 @@
  *   · OD54 — D19 COVERS SUPPRESSION TOO: GROWTH's KPI band is In the book + Added in the last 7 days (still the four-tile
  *     ghost's height; the second tile rises by exactly one with a U22 add), its rail has no Suppressed axis, and a typed
  *     `?suppressed=yes` / `?op=VODACOM&suppressed=no` is the role refusal IN WORDS; a reader (ADMIN) keeps the Suppressed
- *     axis, the Reachable column's "Suppressed" and the Suppressed tile; in U23, GROWTH's one-row suppression is told the
+ *     axis, the Will receive column's "Suppressed" (U38b renamed "Reachable" — one vocabulary with the campaign card) and the Suppressed tile; in U23, GROWTH's one-row suppression is told the
  *     TOTAL ("A stop is on record for 1 contact") and a reader the split.
  *   · U22 — ADD AND EDIT ONE CONTACT (`contact-form.tsx`), every state the unit names:
  *       BLANK — on the EMPTY book (whose row names "Add contact") and on the populated one: focus in the number field,
@@ -130,7 +130,7 @@ const ok = (label, cond, detail = "") => {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const MASK = /^\+255•{4}\d{2}$/;
 /** U23 · THE SELECT COLUMN IS FIRST, so every data column moved one place right: Name 2, Number 3, Operator 4, and for a
- *  reader Consent 5 and Reachable 6. Named once, so no selector counts columns by hand. */
+ *  reader Consent 5 and Will receive 6 (U38b's word for the gate's yes). Named once, so no selector counts columns by hand. */
 const COL = { number: 3, operator: 4, consent: 5, reach: 6 };
 
 const browser = await chromium.launch();
@@ -473,8 +473,8 @@ for (const vp of VIEWPORTS) {
     `${kpisMasked.replace(/\s+/g, " ")} · added recently ${await addedRecently(page)}`);
   // 🔴 D19 · a role that may not read a number gets no row-by-row player signal.
   const headGrowth = await page.locator('[data-block="contacts-card"] thead').innerText();
-  ok(`${vp.name} · D19 · GROWTH sees NO Consent, Reachable or Source column and NO Player chip (D19 + A1.1)`,
-    !/reachable/i.test(headGrowth) && !/source/i.test(headGrowth) && !/consent/i.test(headGrowth) && (await page.getByText("Player", { exact: true }).count()) === 0, headGrowth.replace(/[^A-Za-z( )·]+/g, " "));
+  ok(`${vp.name} · D19 · GROWTH sees NO Consent, Will receive or Source column and NO Player chip (D19 + A1.1)`,
+    !/will receive|reachable/i.test(headGrowth) && !/source/i.test(headGrowth) && !/consent/i.test(headGrowth) && (await page.getByText("Player", { exact: true }).count()) === 0, headGrowth.replace(/[^A-Za-z( )·]+/g, " "));
   ok(`${vp.name} · POPULATED · the pager is there (45 contacts, 3 pages)`, (await page.locator('a[href*="page=2"]').count()) > 0);
   const text = await mainText(page);
   ok(`${vp.name} · POPULATED · the whole-book tiles: 45 in the book`, /In the book\s*45/i.test(text), text.slice(0, 160));
@@ -504,7 +504,7 @@ for (const vp of VIEWPORTS) {
 
   // ── U24 · FILTERS IN THE ADDRESS, THROUGH THE ONE RESOLVER ─────────────────────────────────────
   // GROWTH reads no number, so its columns are Name · Number · Operator · Lists·Tags · Added (D19 + A1.1: no Consent,
-  // Reachable or Source) — and it filters only by the axes a masked role may use: operator, list, tag and the window.
+  // Will receive or Source) — and it filters only by the axes a masked role may use: operator, list, tag and the window.
   // Consent, source, player and (OD54) the stop axis are asserted REFUSED below.
   await openContacts(page, "?op=VODACOM&tag=vip");
   const fOps = await page.locator(`[data-contact-row] td:nth-child(${COL.operator})`).allInnerTexts();
@@ -726,27 +726,32 @@ for (const vp of VIEWPORTS) {
       && (await adm.page.locator('[data-kpis-masked]').count()) === 0,
     kpisReader.replace(/\s+/g, " "));
   const headAdmin = await adm.page.locator('[data-block="contacts-card"] thead').innerText();
-  ok(`${vp.name} · ADMIN · the role that may read a number sees Reachable and Source`, /reachable/i.test(headAdmin) && /source/i.test(headAdmin));
+  ok(`${vp.name} · ADMIN · the role that may read a number sees Will receive (never "Reachable" — U38b) and Source`,
+    /will receive/i.test(headAdmin) && !/reachable/i.test(headAdmin) && /source/i.test(headAdmin));
   const reach = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.reach})`).allInnerTexts();
-  ok(`${vp.name} · ADMIN · Reachable names the gate's real reasons (age, suppressed, no consent)`,
-    reach.some((t) => /age not confirmed/i.test(t)) && reach.some((t) => /suppressed/i.test(t)) && reach.some((t) => /no consent/i.test(t)),
+  // ⚠️ Corrected 2026-10-07 (S14, U38b's drives): this asked for "Age not confirmed" too. Since U33a-G (b5680d5d) an
+  // IMPORT consent counts only against a SAVED wording (consent.ts's 3b), and a fresh dev server has none saved, so every
+  // seeded GIVEN row reads "No consent" and none reaches the 18+ check. The reasons asked are the ones this seed CAN
+  // produce; age_unknown is held by test:marketing-consent (the gate) and qa:marketing-audience (its reason drawn).
+  ok(`${vp.name} · ADMIN · Will receive names the gate's real reasons (suppressed, no consent, withdrawn)`,
+    reach.some((t) => /suppressed/i.test(t)) && reach.some((t) => /no consent/i.test(t)) && reach.some((t) => /withdrawn/i.test(t)),
     [...new Set(reach.map((t) => t.trim()))].join(" | "));
   const adminChips = await adm.page.$$eval("[data-contact-row] span.whitespace-nowrap", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-  ok(`${vp.name} · ADMIN · Consent and Reachable chips each sit on ONE line`, adminChips.length === 40 && Math.max(...adminChips) <= 18, `${adminChips.length} chips, max ${Math.max(...adminChips)}px`);
+  ok(`${vp.name} · ADMIN · Consent and Will receive chips each sit on ONE line`, adminChips.length === 40 && Math.max(...adminChips) <= 18, `${adminChips.length} chips, max ${Math.max(...adminChips)}px`);
   await shoot(adm.page, `${vp.name}-admin-rows`, '[data-block="contacts-card"]');
-  // 🔴 OD54 · A READER KEEPS THE STOP: the Suppressed axis filters (in force on its own axis), every listed row's Reachable
+  // 🔴 OD54 · A READER KEEPS THE STOP: the Suppressed axis filters (in force on its own axis), every listed row's Will receive
   // cell says Suppressed, the "Showing contacts:" line says it, and the band keeps its Suppressed tile — nothing GROWTH lost.
   await openContacts(adm.page, "?suppressed=yes");
   const stopReach = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.reach})`).allInnerTexts();
   const stopLead = ((await adm.page.locator('[data-block="contacts-filtered"]').innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
   const stopBand = ((await adm.page.locator('[data-block="contacts-kpis"]').innerText().catch(() => "")) || "").replace(/\s+/g, " ");
-  ok(`${vp.name} · ADMIN · OD54 · a reader keeps the stop: ?suppressed=yes lists the stopped contacts, Suppressed in force on the rail's Suppressed axis, every Reachable cell "Suppressed", the line "Showing contacts: Suppressed", the Suppressed tile in the band`,
+  ok(`${vp.name} · ADMIN · OD54 · a reader keeps the stop: ?suppressed=yes lists the stopped contacts, Suppressed in force on the rail's Suppressed axis, every Will receive cell "Suppressed", the line "Showing contacts: Suppressed", the Suppressed tile in the band`,
     stopReach.length > 0 && stopReach.every((t) => /^suppressed$/i.test(t.trim()))
       && (await railGroups(adm.page)).includes("suppressed") && (await currentChips(adm.page)).includes("suppressed:yes")
       && /Showing contacts:\s*Suppressed\s*Clear filters/i.test(stopLead) && /Suppressed \d+/i.test(stopBand),
     `${stopReach.length} rows: ${[...new Set(stopReach.map((t) => t.trim()))].join("/")} · "${stopLead}" · band "${stopBand}"`);
   await shoot(adm.page, `${vp.name}-admin-od54-suppressed`, '[data-block="contacts-card"]');
-  // A reader's columns: (select) · Name · Number · Operator · Consent · Reachable · Source · Lists·Tags · Added.
+  // A reader's columns: (select) · Name · Number · Operator · Consent · Will receive · Source · Lists·Tags · Added.
   await openContacts(adm.page, "?op=VODACOM&consent=GIVEN");
   const aOps = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.operator})`).allInnerTexts();
   const aConsent = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.consent})`).allInnerTexts();

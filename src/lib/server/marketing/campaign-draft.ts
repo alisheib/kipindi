@@ -23,8 +23,10 @@
  * once, only to say WHY: gone (`not_found`), confirmed or cancelled since (`not_draft`), or saved by someone else
  * (`stale`, with the time they saved).
  *
- * ⭐ THE AUDIENCE IS A FILTER (U24's canonical key, X13), read from the composer's own address in the contacts filter
- * vocabulary (U38 adds the controls that write it). ⛔ OD55: a whole phone number is refused — a campaign targets a
+ * ⭐ THE AUDIENCE IS A FILTER (U24's canonical key, X13), read from the composer's own address in the CAMPAIGN's vocabulary
+ * (`CAMPAIGN_AUDIENCE_URL_KEYS` — U24's keys and U38b's `pop`, through `parseCampaignAudienceParams`), and a stored one
+ * at the campaign scope (U38b decision 2), so a draft saved with a population reads back here as it does on the composer
+ * — never "unreadable". ⛔ OD55: a whole phone number is refused — a campaign targets a
  * group; one person is reached only by the officer's own test send, and a number frozen into a confirmed campaign's
  * filter is a key erasure would have to chase (U16). A name search stays allowed for a viewer who reads numbers.
  * ⛔ X25 · A POSTED filter meets the campaign door's OWN rule (`campaignAudienceRefusal`, the one U38a's count asks):
@@ -51,7 +53,7 @@ import type { CampaignDraftFields, TemplateField, TemplateVerdict } from "@/lib/
 import { cleanDisplayName } from "@/lib/contacts/contact-fields";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import {
-  WHOLE_BOOK, parseContactAudienceParams, parseContactAudienceJson, contactAudienceKey, campaignAudienceRefusal,
+  WHOLE_BOOK, parseCampaignAudienceParams, parseContactAudienceJson, contactAudienceKey, campaignAudienceRefusal,
   auditContactAudience, scrubPhoneRuns, CAMPAIGN_AUDIENCE_SELECTION,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
@@ -100,7 +102,8 @@ export type CampaignDraftInput = {
   bodyEn: string;
   nameFallbackSw: string;
   nameFallbackEn: string;
-  /** The composer's address in the contacts filter vocabulary; null keeps the stored audience (a new draft: the whole book). */
+  /** The composer's address in the campaign's audience vocabulary (`CAMPAIGN_AUDIENCE_URL_KEYS`, its `pop` included); null
+   *  keeps the stored audience (a new draft: the whole book). */
   audience: Record<string, string> | null;
 };
 
@@ -168,8 +171,9 @@ export function wholeNumberAudienceProblem(f: ContactAudienceFilter): string | n
 type AudienceVerdict = { ok: true; filter: ContactAudienceFilter; key: string; write: boolean } | { ok: false; reason: string };
 
 /**
- * The audience this save stores: the posted address (re-parsed here — an unknown value refuses, C2), else the stored
- * filter (kept as it is), else the whole book. The campaign door's rule and OD55 are asked of every one of them.
+ * The audience this save stores: the posted address (re-parsed here at the CAMPAIGN door — an unknown value refuses, C2;
+ * `pop` read, a book-only axis beside a population refused), else the stored filter (kept as it is, read at the campaign
+ * scope — U38b), else the whole book. The campaign door's rule and OD55 are asked of every one of them.
  */
 function audienceOf(
   posted: Record<string, string> | null,
@@ -179,7 +183,7 @@ function audienceOf(
 ): AudienceVerdict {
   let filter: ContactAudienceFilter = WHOLE_BOOK;
   if (posted !== null) {
-    const parsed = parseContactAudienceParams(posted);
+    const parsed = parseCampaignAudienceParams(posted);
     if (!parsed.ok) return { ok: false, reason: parsed.reason };
     filter = parsed.filter;
   } else if (current !== null) {
@@ -189,7 +193,8 @@ function audienceOf(
     } catch {
       return { ok: false, reason: CAMPAIGN_AUDIENCE_UNREADABLE };
     }
-    const parsed = parseContactAudienceJson(raw);
+    // ⭐ U38b · at the campaign scope (decision 2): a population the composer saved reads back — never "unreadable".
+    const parsed = parseContactAudienceJson(raw, "campaign");
     if (!parsed.ok) return { ok: false, reason: CAMPAIGN_AUDIENCE_UNREADABLE };
     filter = parsed.filter;
   }

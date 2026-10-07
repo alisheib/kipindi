@@ -88,9 +88,11 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     return d && d.kind === "deposit" ? { amount: d.amount, chips: d.chips, below: d.belowDepositMin } : null;
   };
   const e3 = chipsFor(2_000, 5_000), e5 = chipsFor(0, 5_000), e300 = chipsFor(4_700, 5_000);
-  ok("2.examples · 3,000 → [3,000, 5,000, 10,000]; 5,000 → [5,000, 10,000, 25,000]; 300 → [500, 1,000, 5,000] below the deposit minimum",
+  // ⭐ 2026-10-07: the deposit minimum is TZS 1,000 (management, via Ali — "consistently 1000 not 500"), so a 300 shortfall
+  // offers 1,000 and the chips start there. Edited by the money-doors lane with the Vodacom lane's OK (this file is theirs).
+  ok("2.examples · 3,000 → [3,000, 5,000, 10,000]; 5,000 → [5,000, 10,000, 25,000]; 300 → [1,000, 5,000, 10,000] below the deposit minimum",
     j(e3) === j({ amount: 3_000, chips: [3_000, 5_000, 10_000], below: false }) && j(e5) === j({ amount: 5_000, chips: [5_000, 10_000, 25_000], below: false })
-      && j(e300) === j({ amount: 500, chips: [500, 1_000, 5_000], below: true }), j({ e3, e5, e300 }));
+      && j(e300) === j({ amount: 1_000, chips: [1_000, 5_000, 10_000], below: true }), j({ e3, e5, e300 }));
 
   /* 3 · spendable */
   const enough = P({ ...base(), wallet: { status: "ACTIVE", balance: 3_000, bonusBalance: 2_000 } });

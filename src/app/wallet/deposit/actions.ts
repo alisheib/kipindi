@@ -5,6 +5,7 @@ import { signFlash } from "@/lib/server/flash-message";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { deposit } from "@/lib/server/wallet-service";
 import { db } from "@/lib/server/store";
 import { displayLabel } from "@/lib/display-label";
@@ -19,7 +20,7 @@ const BASE_URL = () => (process.env.NEXT_PUBLIC_APP_URL || "https://www.50pick.t
 
 export async function depositAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet/deposit");
+  if (!session) redirect((await signInPathForAction()) as never);
 
   // B-7 — every refusal this action redirects with is rendered verbatim by the
   // deposit page, so it must be minted in the player's own language, here.
@@ -96,14 +97,19 @@ export async function depositAction(formData: FormData) {
     if (missing) fail(t.wallet.billingIncomplete);
 
     const user = await db.user.findById(session.userId);
-    if (!user?.email) fail(t.wallet.emailForCard);
+    if (!user) fail(t.error.somethingDidntWork);
 
     // `order_id` is pre-seeded by US — Selcom appends payment_status + transid on
     // the return but does NOT echo order_id back. Without this the return page
     // would have no way to know which deposit it is looking at.
     const ref = `${BASE_URL()}/wallet/deposit/return`;
     card = {
-      buyerEmail: user!.email!,
+      // ⭐ NO EMAIL REFUSAL ON THE CARD RAIL (owner ruling 2026-10-07: a deposit asks no email question). It used to
+      // stop a player with no address here — after they had typed every billing field — and say "add and confirm",
+      // which was half false even then. The order carries the address on the account when there is one, confirmed or
+      // not (it is theirs, and the privacy notice says a card deposit sends it), and otherwise the account's
+      // placeholder reference, exactly as every mobile-money order does (`selcomPlaceholderEmail`).
+      buyerEmail: user!.email ?? null,
       buyerName: displayLabel(user!),
       buyerPhone: user!.phoneE164,
       billing: {
@@ -130,10 +136,9 @@ export async function depositAction(formData: FormData) {
   revalidatePath("/wallet");
 
   if (!result.ok) {
-    // The email gate is a recoverable STATE, not a form error — send the player
-    // to the gate surface (which offers resend / change address) rather than
-    // re-rendering the form with a message they can't act on.
-    if (result.code === "EMAIL_UNVERIFIED") redirect("/wallet/deposit" as never);
+    // ⛔ NO EMAIL HOP HERE ANY MORE (2026-10-07): `deposit()` asks no email question, so it can no longer return
+    // `EMAIL_UNVERIFIED`. The hop that kept the player's choices on the way to the email door moved to the WITHDRAW
+    // action, where the confirmed email is now asked (`wallet/withdraw/actions.ts`).
     // B-7 — the service's English string is audit truth; the player reads the
     // dictionary line for its code (bilingual gateway reasons pass through).
     return fail(errorCopy(t, result));

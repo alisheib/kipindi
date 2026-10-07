@@ -37,6 +37,10 @@
  * `done` read here alone; a number the book holds is walked once, by its book row; erased tombstones, staff and
  * non-`+255` numbers never. Its length, `campaignAudienceCount`, IS the population U40 confirms and U42 enqueues (X9).
  * The will-receive split asks the send gate about each walked number (`audience-split.ts`).
+ * ⭐ U38b · THE CAMPAIGN'S ADDRESS CARRIES THE POPULATION — ONE key, `pop` (`book` · `players` · `both`), read ONLY by the
+ * campaign door's URL parser (`parseCampaignAudienceParams`: U24's parser for every other key, then `pop`, then
+ * `populationProblem`) and written ONLY by `campaignAudienceParams`. The contact book's address REFUSES `pop` by name
+ * (`parseContactAudienceParams`), as its JSON door refuses a population — never read as the book, never ignored.
  *
  * ⭐ vb5 · THE SHARED FIELD RULES, READ HERE, KEPT IN `contact-fields.ts` (S10 2026-10-03). A `?tag=` is read by
  * `parseFilterTag` — the write rule's own steps, where this file kept a narrower copy — and the phone-run mask the audit
@@ -138,11 +142,19 @@ const OPERATOR_IDS = Object.keys(TZ_OPERATORS) as TzOperatorId[];
 
 /**
  * ⭐ THE URL KEYS THIS PARSER READS — the contacts page's filter vocabulary (decision C2). `sort`, `dir`, `page`
- * and any unknown key are ignored (they cannot narrow); `ids` is a known key that always REFUSES in an address.
+ * and any unknown key are ignored (they cannot narrow); `ids` is a known key that always REFUSES in an address, and so
+ * (U38b) is the campaign's `pop`, which only `parseCampaignAudienceParams` reads.
  * ⚠️ `contacts-query.ts` keeps its own copy for the page's links (it must stay free of the server graph so a
  * client rail can build links); `test:contacts-audience` 1.7 holds the two equal.
  */
 export const CONTACT_AUDIENCE_URL_KEYS = ["q", "consent", "suppressed", "op", "list", "tag", "source", "player", "import", "range", "from", "to"] as const;
+
+/**
+ * ⭐ U38b · THE CAMPAIGN'S ADDRESS VOCABULARY — the contact book's keys and ONE more, `pop` (who the audience is drawn
+ * from: `book` · `players` · `both`). Read only by `parseCampaignAudienceParams`, written only by `campaignAudienceParams`;
+ * the composer's links, its save and its action carry exactly these (decision 1 of ENGINE-SPEC §4.4).
+ */
+export const CAMPAIGN_AUDIENCE_URL_KEYS = [...CONTACT_AUDIENCE_URL_KEYS, "pop"] as const;
 
 /** A list or import id as the store mints them (cuid; the dev seed's `mc_seed_000`). Narrower can only refuse. */
 const ID_SHAPE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -349,6 +361,10 @@ function readWindow(sp: Record<string, Raw>, now: number): { ok: true; from: str
  */
 export function parseContactAudienceParams(sp: Record<string, string | string[] | undefined>, now = Date.now()): AudienceParse {
   if (tokens(sp.ids).length > 0) return refuse("ids", "A ticked selection cannot travel in an address. Tick the contacts on the page again.");
+  // ⛔ U38b · `pop` is the CAMPAIGN's key (`parseCampaignAudienceParams` reads it, and hands this parser the rest): at the
+  // contact book's address it is REFUSED BY NAME — never read as the book, and never ignored, which would list the book
+  // under a heading that says players.
+  if (tokens(sp.pop).length > 0) return refuse("pop", POPULATION_BOOK_DOOR_REASON);
 
   // The first NON-BLANK value — the same one the link builder carries (`contactsLinkSp`), so `?q=&q=asha` cannot
   // list the whole book while every link on the page says "asha".
@@ -430,8 +446,8 @@ export function parseContactAudienceParams(sp: Record<string, string | string[] 
   if (!win.ok) return refuse(win.param, win.reason);
 
   // ⚠️ `population` is not part of the contacts page's address vocabulary (`CONTACT_AUDIENCE_URL_KEYS`, which
-  // `contacts-query.ts` mirrors): an address always means the contact book. U38b's audience rail decides how a
-  // campaign's population travels in an address; until then it travels only in a posted or stored filter (JSON).
+  // `contacts-query.ts` mirrors): this parser's address always means the contact book. A campaign's population travels
+  // in the campaign's own key, `pop`, read by `parseCampaignAudienceParams` alone (U38b).
   return {
     ok: true,
     filter: { q, consent, suppressed, operators, lists, tags, sources, player, importId, addedFrom: win.from, addedBefore: win.before, ids: null, population: null },
@@ -500,6 +516,42 @@ export function populationProblem(f: ContactAudienceFilter): { param: string; re
   return null;
 }
 
+/* ═══ U38b · THE CAMPAIGN'S ADDRESS — the population in its own key ═══════════════════════════ */
+
+/** The address key each book-only axis travels under, so a refusal at the campaign's address names the key the address
+ *  holds (`tag`, never the filter's `tags`). */
+const ADDRESS_KEY_OF: Readonly<Partial<Record<keyof ContactAudienceFilter, string>>> = {
+  q: "q", consent: "consent", suppressed: "suppressed", lists: "list", tags: "tag", sources: "source", player: "player",
+  importId: "import", ids: "ids",
+};
+
+/**
+ * ⭐ U38b · THE CAMPAIGN DOOR'S ADDRESS → a filter (decision 1 of ENGINE-SPEC §4.4). U24's parser reads every key it knows
+ * (an unknown value REFUSES, C2) with `pop` handed to nobody else; then `pop` — `book` · `players` · `both`, any case, ONE
+ * value (two refuse; an unknown one refuses naming it) — the book held as null, so one filter has one key; then
+ * `populationProblem`: a book-only axis beside `players` or `both` is REFUSED with its address key, never dropped (C2).
+ * ⛔ The only reader of `pop`. The contact book's address refuses it (`parseContactAudienceParams`).
+ */
+export function parseCampaignAudienceParams(sp: Record<string, string | string[] | undefined>, now = Date.now()): AudienceParse {
+  const rest: Record<string, string | string[] | undefined> = {};
+  for (const [k, v] of Object.entries(sp)) if (k !== "pop") rest[k] = v;
+  const base = parseContactAudienceParams(rest, now);
+  if (!base.ok) return base;
+  const popOne = oneToken(sp.pop);
+  if (!popOne.ok) return refuse("pop", `“${clip(popOne.bad)}” is more than one audience; keep one.`);
+  let population: AudiencePopulation | null = null;
+  if (popOne.value !== undefined) {
+    const said = popOne.value.toLowerCase();
+    const p = POPULATIONS.find((x) => x === said);
+    if (p === undefined) return refuse("pop", `“${clip(popOne.value)}” is not an audience a campaign can go to (${POPULATIONS.join(", ")}).`);
+    population = p === "book" ? null : p;
+  }
+  const filter: ContactAudienceFilter = { ...base.filter, population };
+  const mixed = populationProblem(filter);
+  if (mixed !== null) return refuse(ADDRESS_KEY_OF[mixed.param as keyof ContactAudienceFilter] ?? mixed.param, mixed.reason);
+  return { ok: true, filter };
+}
+
 /* ═══ THE JSON PARSER — posted and stored filters ══════════════════════════════════════════ */
 
 function readJsonStrings(v: unknown): string[] | null {
@@ -522,9 +574,9 @@ function readJsonInstant(v: unknown): string | null {
  * ⛔ An unknown KEY refuses too: a predicate this parser does not know is a predicate it would drop, and a dropped
  * predicate widens the audience. `ids` are allowed here (≤ `MAX_AUDIENCE_IDS`, more REFUSES), and `[]` stays `[]`
  * — nothing.
- * U38a · `scope` names the door (`AudienceScope`): the population axis is read only at a campaign's door. ⚠️ U38b passes
- * `"campaign"` at the campaign doors that read a stored filter (`composer-loader.ts`, `campaign-draft.ts`) when the
- * composer can hold a population — until then a stored population reads there as unreadable, the safe state.
+ * U38a · `scope` names the door (`AudienceScope`): the population axis is read only at a campaign's door. ⭐ U38b · both
+ * campaign doors that read a stored filter (`composer-loader.ts`, `campaign-draft.ts`) pass `"campaign"`, so a draft saved
+ * with a population reads back at both; the contact book's doors keep the default and refuse it by name.
  */
 export function parseContactAudienceJson(raw: unknown, scope: AudienceScope = "book"): AudienceParse {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return refuse("filter", "The audience is not a filter.");
@@ -655,8 +707,9 @@ export function contactAudienceKey(f: ContactAudienceFilter): string {
  */
 export function urlExpressible(f: ContactAudienceFilter): boolean {
   if (f.ids !== null) return false;
-  // U38a · an address always means the contact book (`parseContactAudienceParams`), so a population cannot be written
-  // as one — a link that dropped it would open the BOOK under a heading that says players.
+  // U38a · the contact book's address always means the contact book (`parseContactAudienceParams`), so a population
+  // cannot be written as one — a link that dropped it would open the BOOK under a heading that says players. (U38b · the
+  // campaign's own address carries it, `campaignAudienceParams`.)
   if (f.population != null) return false;
   for (const xs of [f.consent, f.operators, f.lists, f.tags, f.sources]) if (xs !== null && xs.length === 0) return false;
   for (const at of [f.addedFrom, f.addedBefore]) if (at !== null && Date.parse(at) % 60_000 !== 0) return false;
@@ -685,6 +738,19 @@ export function contactAudienceParams(f: ContactAudienceFilter): Record<string, 
   put("from", f.addedFrom === null ? undefined : formatEatLocal(Date.parse(f.addedFrom)));
   put("to", f.addedBefore === null ? undefined : formatEatLocal(Date.parse(f.addedBefore)));
   return out;
+}
+
+/**
+ * ⭐ U38b · THE FILTER → THE CAMPAIGN'S ADDRESS (`parseCampaignAudienceParams` reads it back to the same filter): the
+ * contact book's keys, then `pop` — ALWAYS written, `book` for the contact book, so an address built here is an audience
+ * someone chose and a save that posts it replaces a stored population with the book when that is what was chosen.
+ * ⛔ null when it cannot be written exactly: a selection (`ids`), an empty any-of, a bound finer than a minute
+ * (`urlExpressible`), or a book-only axis beside a population (the parser would refuse the address it built).
+ */
+export function campaignAudienceParams(f: ContactAudienceFilter): Record<string, string> | null {
+  if (populationProblem(f) !== null) return null;
+  const book = contactAudienceParams({ ...f, population: null });
+  return book === null ? null : { ...book, pop: f.population ?? "book" };
 }
 
 /**
@@ -807,6 +873,12 @@ export function describeAudience(f: ContactAudienceFilter): string[] {
  *  box already shows its own text.) */
 export function narrowsBeyondSearch(f: ContactAudienceFilter): boolean {
   return FILTER_KEYS.some((k) => k !== "q" && f[k] !== null);
+}
+
+/** U38b · Is this the WHOLE of its population — every predicate null but `population`? (The composer then says "everyone"
+ *  in the population's own words: the contact book, every player account, or both.) */
+export function isUnfilteredCampaignAudience(f: ContactAudienceFilter): boolean {
+  return FILTER_KEYS.every((k) => k === "population" || f[k] === null);
 }
 
 /* ═══ THE ONE TRANSLATION ══════════════════════════════════════════════════════════════════ */
@@ -962,15 +1034,22 @@ export const CAMPAIGN_AUDIENCE_SELECTION = "A campaign's audience is a filter, n
  * ⛔ A TICKED SELECTION (`ids`) IS REFUSED FOR EVERY ROLE, first: a campaign's audience is a filter, never a list of
  * people (X13 — U37's save and `assertAudienceFilter` refuse it too), and one ticked row would make a masked viewer's
  * figures that row's own verdict, the protected line included.
- * ⚠️ RESIDUAL, for U38b and U40: any axis that narrows the audience to one known person — a tag, a list, an import, a
- * one-minute window — makes a masked viewer's figures that person's verdict. A minimum audience for masked figures is
- * theirs to decide; this rule closes the three oracles named so far.
+ * ⚠️ RESIDUAL: any axis that narrows the audience to one known person — a tag, a list, an import, a one-minute window —
+ * would make a masked viewer's figures that person's verdict. ⭐ U38b answers it with OD65: before a campaign sends, a
+ * masked viewer is shown the COUNT ALONE at every size — the ONE walk's count, the gate never asked (`composeAudienceCount`).
+ * ⛔ OD66 · AND NEVER BOTH POPULATIONS AT ONCE: the walk counts a number the book holds ONCE (a player whose number a
+ * live book row holds is skipped in the player phase), so with both arms on, adding one contact moves the count by 0 or 1
+ * as that number is or is not a player's — "is this a player?" again, through a bare count. A masked viewer may count the
+ * book or the players, one at a time; a reader may count both.
  */
+export const CAMPAIGN_BOTH_MASKED_REASON = "For your role, choose the contact book or player accounts — not both together.";
 export function campaignAudienceRefusal(f: ContactAudienceFilter, viewerReads: boolean): { param: string; reason: string } | null {
   if (f.ids !== null) return { param: "ids", reason: CAMPAIGN_AUDIENCE_SELECTION };
   const role = roleRefusal(f, viewerReads);
   if (role !== null) return role;
   if (!viewerReads && f.q !== null) return { param: "q", reason: CAMPAIGN_SEARCH_REFUSAL_REASON };
+  // ⛔ OD66 · both populations at once count a book-held player once — a masked viewer's count would say who is a player.
+  if (!viewerReads && f.population === "both") return { param: "pop", reason: CAMPAIGN_BOTH_MASKED_REASON };
   return populationProblem(f);
 }
 

@@ -18,14 +18,20 @@
  *      the sample is the walk's first five reachable rows (4.8); the send loop still asks with one argument (4.9);
  *      one split per filter key and at most two at once (4.10); the gate's reads parameter (4.11).
  *   §5 THE WIRING — the keys, and the suite on predeploy exactly once.
+ *   §B U38b · THE CARD (ENGINE-SPEC §4.4) — `pop` read only at the campaign's door and round-tripped (B1); a population
+ *      saved through the composer read back by both campaign doors (B2); a book-only axis beside it refused, and the rail
+ *      hiding the book's axes (B3); the card renders the view-model alone, and no .tsx does arithmetic on a figure (B4);
+ *      the count's Suspense keyed by the filter's ONE key (B5); the D19 floor (B6); nothing counted until "Who" is chosen
+ *      (B7); the list rows' words role-shaped (B8); one vocabulary — "Will receive" (B9).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a planted dependency handed to the split or
  * the walk, a planted parser, an alternative engine, a source string replaced exactly once — and requires the MATCHING
  * assertion to fail. This file makes no file-modifying call of any kind (`test:red-anchors` 4.3 counts it in-process
  * only while that holds). Its store writes are the fixture's, through the store's own methods, made once at load; the
  * one assertion that drives the send loop (4.3) writes only the audit rows that loop writes, after the split it checks.
- * ⚠️ The Suspense key and the client derivation (the plan's RED for the card) are U38b's — there is no card yet. The
- * engine's half of "derive a count" is R1 here: a figure derived by subtraction.
+ * ⭐ U38b · the card's half of the plan's RED lives here too: R-B4 (a figure derived in a .tsx), R-B5 (the Suspense key
+ * removed — the shipped U38 red), and R-B2, R-B6, R-B6b, R-B7, R-B8 (§B's own). The engine's half of "derive a count" is
+ * R1: a figure derived by subtraction.
  *
  * Run:  npm run test:campaign-audience
  * Red:  npm run red:campaign-audience
@@ -43,7 +49,8 @@ import type {
 import {
   WHOLE_BOOK, parseContactAudienceJson, parseContactAudienceParams, contactAudienceKey, describeAudience, auditContactAudience,
   urlExpressible, contactAudienceParams, contactAudience, contactAudienceWrites, roleRefusal, ROLE_REFUSAL_REASON,
-  campaignAudienceRefusal, CAMPAIGN_SEARCH_REFUSAL_REASON, POPULATION_BOOK_ONLY_REASON, CONTACT_AUDIENCE_URL_KEYS,
+  campaignAudienceRefusal, CAMPAIGN_SEARCH_REFUSAL_REASON, CAMPAIGN_BOTH_MASKED_REASON, POPULATION_BOOK_ONLY_REASON, CONTACT_AUDIENCE_URL_KEYS,
+  populationProblem,
   audienceArms, walkCampaignAudience, CAMPAIGN_WALK_DEPS, campaignAudienceCount, CAMPAIGN_AUDIENCE_SELECTION,
   POPULATION_BOOK_DOOR_REASON,
 } from "../src/lib/server/marketing/audience.ts";
@@ -61,6 +68,8 @@ import { mayReceiveMarketingSms, DB_GATE_READS, userPhoneKeyFor } from "../src/l
 import type { MarketingSkipReason } from "../src/lib/server/marketing/consent.ts";
 import { dispatchSlice } from "../src/lib/server/marketing/dispatch.ts";
 import type { SliceOutcome } from "../src/lib/server/marketing/dispatch.ts";
+// U13 · the send loop is driven with a FIXED open window (ENGINE-SPEC §5 rule 9) — 4.3 and R12 hold at any clock.
+import { ALWAYS_OPEN } from "./lib/send-window.mts";
 import { auditTicketsIssued, auditFlush } from "../src/lib/server/audit.ts";
 import { SMS_CONSENT_WORDINGS } from "../src/lib/marketing/consent-wording.ts";
 import { SMS_CAMPAIGN_VALUE, assertAudienceFilter } from "../src/lib/server/marketing/campaign-model.ts";
@@ -68,6 +77,20 @@ import { parseBulkRequest } from "../src/lib/server/marketing/contact-bulk.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/server/marketing/erase.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { maskPhone, toMsisdn255 } from "../src/lib/phone-normalize.ts";
+// ── U38b · §B — the card: the campaign's address, the composer's doors, the view-model, the rail, the list rows ──
+import {
+  parseCampaignAudienceParams, campaignAudienceParams, isUnfilteredCampaignAudience, CAMPAIGN_AUDIENCE_URL_KEYS,
+} from "../src/lib/server/marketing/audience.ts";
+import { MASKED_BREAKDOWN_MIN, breakdownVisible } from "../src/lib/marketing/campaign-status.ts";
+import { formatNumber } from "../src/lib/utils.ts";
+import { saveCampaignDraft, CAMPAIGN_DRAFT_DEPS, CAMPAIGN_AUDIENCE_UNREADABLE } from "../src/lib/server/marketing/campaign-draft.ts";
+import { composeAudienceView, composeAudienceCount, COMPOSE_AUDIENCE_DOORS, draftAddressFor } from "../src/app/admin/campaigns/new/composer-loader.ts";
+import { audienceSplitView } from "../src/app/admin/campaigns/new/audience-view-model.ts";
+import { AUDIENCE_FLOOR, AUDIENCE_EMPTY, AUDIENCE_UNANSWERED_LABEL, AUDIENCE_REASON_LABEL, audienceUncheckedLine } from "../src/app/admin/campaigns/new/audience-copy.ts";
+import { COMPOSE_AUDIENCE_HIDDEN } from "../src/app/admin/campaigns/new/composer-copy.ts";
+import { audienceRail } from "../src/app/admin/campaigns/new/audience-rail-model.ts";
+import { campaignRowAudience } from "../src/app/admin/campaigns/campaigns-loader.ts";
+import { endOfOpenTag } from "./lib/jsx-open-tag.mts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -299,6 +322,16 @@ type Impl = {
   split: (f: ContactAudienceFilter, o: AudienceSplitOptions, d?: AudienceSplitDeps) => Promise<AudienceSplitResult>;
   deps: AudienceSplitDeps;
   sources: Sources;
+  /** U38b · the composer's Audience card (`composeAudienceView`) — B2 reads a saved population back through it. */
+  audienceView: typeof composeAudienceView;
+  /** U38b · the card's ONE read (`composeAudienceCount`) — B7 spies its split door. */
+  audienceCount: typeof composeAudienceCount;
+  /** U38b · the ONE view-model (`audienceSplitView`) — B6 holds its floor. */
+  view: (split: AudienceSplit, viewerReads: boolean) => ReturnType<typeof audienceSplitView>;
+  /** U38b · the composer's audience rail, its model (`audienceRail`) — B3. */
+  rail: typeof audienceRail;
+  /** U38b · M8 · a list row's audience in words (`campaignRowAudience`) — B8. */
+  rowAudience: typeof campaignRowAudience;
 };
 
 const readRepo = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8")).split(CRLF).join(NL);
@@ -327,6 +360,11 @@ const REAL: Impl = {
   split: (f, o, d) => audienceSplit(f, o, d),
   deps: AUDIENCE_SPLIT_DEPS,
   sources: REAL_SOURCES,
+  audienceView: (sp, d, r) => composeAudienceView(sp, d, r),
+  audienceCount: (a, r, s, c) => composeAudienceCount(a, r, s, c),
+  view: (s, r) => audienceSplitView(s, r),
+  rail: (i) => audienceRail(i),
+  rowAudience: (c, r) => campaignRowAudience(c, r),
 };
 
 /** A spy on one store member, restored by the caller. The memory twin's members are plain arrow functions. */
@@ -365,7 +403,7 @@ const L = {
   l12: "1.2 · ⛔ a book-only axis beside a population is REFUSED by name — q, consent, suppressed, lists, tags, sources, player, importId and ids, with players and with both — never dropped for the player arm (wider) nor read as nobody (narrower); the operator and the window are accepted, and a filter built in code throws in audienceArms",
   l13: "1.3 · describeAudience says the population first and gives the window its verb — Added (the book, unchanged), Joined (players), Added or joined (both)",
   l14: "1.4 · ⛔ the contact book's doors REFUSE a population — the JSON parser at its default (book) scope BY NAME, so U23's bulk bar answers bad_audience naming it, never a generic failure; the book's readers throw on one (a bulk or a count never reads players as the book); an address cannot carry one (urlExpressible false, no params, not in the address vocabulary); and the audit form names it",
-  l21: "2.1 · 🔴 X25 / D19 · the campaign door's role rule — a ticked selection (ids) is refused for EVERY role (X13), a masked viewer is refused ANY search (a whole number or a name) by name, and still U24's player axes; a reader is refused nothing new; the operator, the window and the population pass — and the door answers BEFORE a single walk or bulk read",
+  l21: "2.1 · 🔴 X25 / D19 · the campaign door's role rule — a ticked selection (ids) is refused for EVERY role (X13), a masked viewer is refused ANY search (a whole number or a name) by name, and still U24's player axes; a reader is refused nothing new; the operator, the window and ONE population pass — BOTH at once is refused to a masked viewer, naming pop (OD66) — and the door answers BEFORE a single walk or bulk read",
   l22: "2.2 · 🔴 X25 · a masked viewer's sample carries NO per-row detail — no contact or account id, no subject field, no name, no slot — while a reader's carries all of it",
   l31: "3.1 · ⭐ THE ONE ORDER — the book by contact id, then the players by account id — identical at limit 1000, 3 and 1, resumed from every cursor with no row twice and none skipped; every cursor is b:<id> · p:<id> · done, never a phone number",
   l32: "3.2 · ⭐ a number the book holds is walked ONCE, by its book row (both) — and a player-only population still walks that player; an ERASED tombstone is never walked and hides nobody",
@@ -386,6 +424,19 @@ const L = {
   l410b: "4.10b · ⛔ at most TWO splits run at once — a third waits for a slot, then runs; nothing is left running",
   l411: "4.11 · consent.ts's DEFAULTED reads — the gate's three single reads go through `reads` (the store's own by default, answering what the store answers), the profile switch keeps the default, the defaults are FROZEN (the send loop's reads, the split's and the walk's dependencies), and the rg-doors anchor line is byte-identical, once",
   l5: "5 · the wiring — test:campaign-audience and red:campaign-audience (in-process --prove-red) exist, and predeploy runs the suite exactly once",
+  b1: "B1 · ⭐ U38b · `pop` is read ONLY at the campaign's door — book · players · both, any case, ONE value (an unknown one or two of them REFUSE, naming pop); the contact book's address REFUSES it by name; CAMPAIGN_AUDIENCE_URL_KEYS is the book's keys and pop; isUnfilteredCampaignAudience is the whole of each population; and campaignAudienceParams(parse(x)) round-trips book, players and both with an operator and a window — the address and the filter alike",
+  b2: "B2 · ⭐ U38b · the composer's action posts the campaign keys (pop among them), and a population SAVED through the composer is read back by BOTH campaign doors — the composer's card (described, chosen, counted, sent to its canonical address) and the save (an edit keeps it, never 'unreadable') — while the contact book's door still refuses it by name",
+  b2c: "B2c · ⭐ U38b · STD-1 · no in-app navigation meets the page's redirect — a saved draft's address for its viewer is the page's own canonical address (draftAddressFor; the bare ?draft= for a filter no address holds), the save answers it, the client replaces straight to it and the list's DRAFT rows link to it (a redirect thrown inside the mounted page unmounts the composer: the saved line gone)",
+  b3: "B3 · ⛔ U38b · a book-only axis beside pop=players|both is REFUSED at the campaign's address with POPULATION_BOOK_ONLY_REASON, naming its address key — and the rail hides List, Tag and a reader's four for players and both, draws them for the contact book, draws no Consent, Stop list, Source or Player for a masked viewer, and is Who alone while nothing is chosen",
+  b3m: "B3m · ⛔ U38b · OD66 · a masked viewer never counts BOTH populations at once — the campaign door refuses pop=both to them (naming pop, in its own words) while a reader is refused nothing and the players alone stay theirs, and their Who pills offer the contact book and player accounts only (a reader's offer all three)",
+  b4: "B4 · ⛔ U38b · the card's figures are exactly the view-model's — audience-split-card.tsx reads THIS viewer's read cell (failing closed) and hands that cell to the card's ONE read (D19-2), renders its view's fields, never the split's, and no .tsx under campaigns/new does + or − arithmetic on a figure",
+  b5: "B5 · ⭐ U38b · the count's Suspense is KEYED by the filter's ONE key — page.tsx's one Suspense carries key={view.audience.countKey} around the split card, and the loader sets countKey from contactAudienceKey(filter) (the shipped U38 red: 'the key removed')",
+  b6: "B6 · ⛔ U38b · D19 · OD65 · THE COUNT ALONE — before a campaign sends, a masked viewer gets kind floor and NOTHING else at EVERY size (1, 5, 9, 10, 22 — no will-receive, no reason, no sample; nobody at all says so), counted by the ONE walk with the split door NEVER asked (spies: the six-row book and every player account, well past E23's old floor of 10); BOTH populations at once REFUSED to them (OD66: the union counts a book-held player once, so one added contact would say who is a player); a reader gets the full view at every size, through the split, never the walk count; and a split handed in WITH its detail never prints a row's name or verdict to a masked viewer (D19-3, the view-model checks viewerReads itself)",
+  b6u: "B6u · U38b · STD-5 · the Unchecked state (the time budget ran out) — will-receive is a FLOOR ('≥ 4'), 'Not checked yet' carries the unchecked count, the unanswered numbers join the reasons as their own row in dominant order, and the card prints the unchecked sentence behind view.unchecked",
+  b7: "B7 · ⛔ U38b · 'Who' is an explicit choice — a NEW draft with no audience in its address is not chosen, has no key, and its count never asks the split door (a spy: 0 calls), while a chosen one asks it exactly once",
+  b7h: "B7h · ⛔ U38b · D19-4 · a masked viewer who opens a draft whose STORED filter their role may not use (a search, a consent axis — a reader saved it) gets no count key, no canonical address, no 'who', no words, no carried params — the hidden note alone — while a reader opening the same draft is counted and sent to its canonical address",
+  b8: "B8 · ⛔ U38b · M8 · the list rows' words are role-shaped as the composer's card — a masked viewer gets no consent, source, player, stop or search phrase ('hidden' instead) while a reader gets each, an operator, a window or a population is described to both, and an unreadable filter is said",
+  b9: "B9 · U38b · one vocabulary — the contacts page's gate yes reads 'Will receive', in its header and its chip, and 'Reachable' is in no code under the contacts or campaigns pages",
 };
 
 /* ═══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -473,15 +524,17 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     ok(p(L.l21),
       nameQ?.param === "q" && nameQ.reason === CAMPAIGN_SEARCH_REFUSAL_REASON && numberQ?.param === "q" && numberQ.reason === CAMPAIGN_SEARCH_REFUSAL_REASON
         && consentQ?.param === "consent" && consentQ.reason === ROLE_REFUSAL_REASON
-        && impl.refusal(F({ q: "Asha" }), true) === null && impl.refusal(BOTH_VODACOM, false) === null && impl.refusal(PLAYERS_WINDOW, false) === null
+        && impl.refusal(F({ q: "Asha" }), true) === null && impl.refusal(BOTH_VODACOM, false)?.param === "pop" && impl.refusal(BOTH_VODACOM, true) === null
+        && impl.refusal(F({ population: "players", operators: ["VODACOM"] }), false) === null && impl.refusal(PLAYERS_WINDOW, false) === null
         && door !== null && !door.ok && door.param === "q" && n.walks === 0 && n.stops + n.users + n.consents === 0
         && readerDoor !== null && readerDoor.ok
         && ticked.every((r) => r?.param === "ids" && r.reason === CAMPAIGN_AUDIENCE_SELECTION)
         && tickedDoor !== null && !tickedDoor.ok && tickedDoor.param === "ids" && nIds.walks === 0 && nIds.stops + nIds.users + nIds.consents === 0,
       `name ${json(nameQ)} · number ${numberQ?.param} · door ${json(door)} · reads ${json(n)} · ticked ${ticked.map((r) => r?.param ?? "ACCEPTED").join(",")}`);
 
-    const masked = splitOf(await safe(() => impl.split(BOTH, { viewerReads: false, now: NOW }, impl.deps)));
-    const reader = splitOf(await safe(() => impl.split(BOTH, { viewerReads: true, now: NOW }, impl.deps)));
+    // (the players: a population a masked viewer may count — both at once is refused to them, OD66)
+    const masked = splitOf(await safe(() => impl.split(PLAYERS, { viewerReads: false, now: NOW }, impl.deps)));
+    const reader = splitOf(await safe(() => impl.split(PLAYERS, { viewerReads: true, now: NOW }, impl.deps)));
     const maskedJson = json(masked?.sample ?? null);
     ok(p(L.l22),
       masked !== null && masked.sample.length === AUDIENCE_SAMPLE_SIZE && masked.sample.every((r) => r.detail === null && r.masked.includes("••••"))
@@ -605,6 +658,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         results: messages.map((m) => ({ reference: `ref_${m.targetId}`, to: m.to, ok: true, targetType: m.targetType, targetId: m.targetId })),
         balanceTzs: 100,
       }),
+      window: ALWAYS_OPEN,
     });
     const loop = { handed: 0, unsendable: 0, held: 0, buckets: Object.fromEntries(AUDIENCE_BUCKETS.map((b) => [b, 0])) as Record<string, number> };
     for (const o of outcomes) {
@@ -727,16 +781,17 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const bulk = [spy(db.suppression, "findActiveAmong"), spy(db.user, "findByPhones"), spy(db.messagingConsent, "latestAmong")];
     let pair: Array<AudienceSplitResult | null> = [];
     try {
-      pair = await Promise.all([safe(() => impl.split(BOTH, { viewerReads: true })), safe(() => impl.split(BOTH, { viewerReads: false }))]);
+      // (the players: one key a masked viewer may also ask — both at once is refused to them, OD66)
+      pair = await Promise.all([safe(() => impl.split(PLAYERS, { viewerReads: true })), safe(() => impl.split(PLAYERS, { viewerReads: false }))]);
     } finally {
       for (const s of bulk) s.restore();
     }
     const [readerShared, maskedShared] = pair.map(splitOf);
     ok(p(L.l410a),
-      readerShared !== null && maskedShared !== null && bulk.every((s) => s.calls === 2)
-        && json(figuresOf(readerShared)) === json(figuresOf(maskedShared)) && json(figuresOf(readerShared)) === json(EXPECT_BOTH)
+      readerShared !== null && maskedShared !== null && bulk.every((s) => s.calls === 1)
+        && json(figuresOf(readerShared)) === json(figuresOf(maskedShared)) && json(figuresOf(readerShared)) === json(EXPECT_PLAYERS)
         && readerShared.sample.every((r) => r.detail !== null) && maskedShared.sample.every((r) => r.detail === null),
-      `bulk calls ${bulk.map((s) => s.calls).join("/")} (one walk = 2 each)`);
+      `bulk calls ${bulk.map((s) => s.calls).join("/")} (one walk of the players = 1 each)`);
 
     // 4.10b · at most two at once
     let release: () => void = () => {};
@@ -807,6 +862,286 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && chain.filter((x) => x === "npm run test:campaign-audience").length === 1,
       `on predeploy ×${chain.filter((x) => x === "npm run test:campaign-audience").length}`);
   }
+
+  /* ── §B · U38b · THE CARD (ENGINE-SPEC §4.4) ── */
+  {
+    // B1 · the campaign's address — `pop` read here alone, and written back exactly
+    const popPlayers = parseCampaignAudienceParams({ pop: "players" }, T0);
+    const popUpper = parseCampaignAudienceParams({ pop: "BOTH" }, T0);
+    const popBook = parseCampaignAudienceParams({ pop: "book", op: "VODACOM" }, T0);
+    const popUnknown = parseCampaignAudienceParams({ pop: "everyone" }, T0);
+    const popTwo = parseCampaignAudienceParams({ pop: ["players", "both"] }, T0);
+    const popAtBook = parseContactAudienceParams({ pop: "players" }, T0);
+    const trips = (["book", "players", "both"] as const).map((pop) => {
+      const address: Record<string, string> = { op: "VODACOM", from: "2026-09-03T00:00", to: "2026-09-05T23:59", pop };
+      const first = parseCampaignAudienceParams(address, T0);
+      const written = first.ok ? campaignAudienceParams(first.filter) : null;
+      const again = written === null ? null : parseCampaignAudienceParams(written, T0);
+      return first.ok && written !== null && json(written) === json(address) && again !== null && again.ok
+        && contactAudienceKey(again.filter) === contactAudienceKey(first.filter) && first.filter.population === (pop === "book" ? null : pop);
+    });
+    ok(p(L.b1),
+      popPlayers.ok && popPlayers.filter.population === "players" && popUpper.ok && popUpper.filter.population === "both"
+        && popBook.ok && popBook.filter.population === null && json(popBook.filter.operators) === json(["VODACOM"])
+        && !popUnknown.ok && popUnknown.param === "pop" && !popTwo.ok && popTwo.param === "pop"
+        && !popAtBook.ok && popAtBook.param === "pop" && popAtBook.reason === POPULATION_BOOK_DOOR_REASON
+        && json(CAMPAIGN_AUDIENCE_URL_KEYS) === json([...CONTACT_AUDIENCE_URL_KEYS, "pop"])
+        && isUnfilteredCampaignAudience(WHOLE_BOOK) && isUnfilteredCampaignAudience(PLAYERS) && isUnfilteredCampaignAudience(BOTH)
+        && !isUnfilteredCampaignAudience(BOTH_VODACOM) && trips.every(Boolean),
+      `round trips ${trips.join(",")} · unknown ${json(popUnknown)} · at the book's address ${json(popAtBook)}`);
+
+    // B2 · a population saved through the composer, read back by both campaign doors
+    const quietDeps = { ...CAMPAIGN_DRAFT_DEPS, audit: () => undefined, sourcePhrase: () => ({ ok: true as const, phrase: null }) };
+    type DraftInput = Parameters<typeof saveCampaignDraft>[0];
+    const draftInput = (over: Partial<DraftInput> = {}): DraftInput => ({
+      id: null, draftRevision: null, name: "U38b population", bodySw: "50pick: Habari, mechi kubwa leo.", bodyEn: "",
+      nameFallbackSw: "", nameFallbackEn: "", audience: { pop: "players", op: "VODACOM" }, ...over,
+    });
+    const STORED_KEY = '{"operators":["VODACOM"],"population":"players"}';
+    const savedPop = await safe(() => saveCampaignDraft(draftInput(), "usr_u38b_officer", { viewerReads: true }, quietDeps));
+    const stored = savedPop !== null && savedPop.ok ? await db.smsCampaign.find(savedPop.id) : null;
+    const card = stored === null ? null : impl.audienceView({ draft: stored.id }, stored, true);
+    const edited = stored === null ? null : await safe(() => saveCampaignDraft(
+      draftInput({ id: stored.id, draftRevision: stored.draftRevision, name: "U38b population, edited", audience: null }),
+      "usr_u38b_officer", { viewerReads: true }, quietDeps));
+    const after = stored === null ? null : await db.smsCampaign.find(stored.id);
+    const bookDoor = stored === null ? null : parseContactAudienceJson(JSON.parse(stored.audienceFilter));
+    // STD-2 · the composer's own action posts the CAMPAIGN keys — `pop` among them — or a save from the page silently drops
+    // the population while `saveCampaignDraft`, called directly above, still keeps it.
+    const actionsSrc = impl.sources.srcFiles.get("app/admin/campaigns/new/actions.ts") ?? "";
+    const paramsAt = actionsSrc.indexOf("function audienceParams(");
+    const paramsBody = paramsAt < 0 ? "" : actionsSrc.slice(paramsAt, actionsSrc.indexOf(NL + "}", paramsAt));
+    const postsPop = paramsBody.includes("for (const k of CAMPAIGN_AUDIENCE_URL_KEYS)");
+    ok(p(L.b2),
+      postsPop && stored !== null && stored.audienceFilter === STORED_KEY
+        && card !== null && card.problem === null && card.chosen && card.who === "players"
+        && json(card.lines) === json(["Player accounts", "Operator: Vodacom"]) && card.countKey === STORED_KEY
+        && card.canonicalHref === `/admin/campaigns/new?draft=${encodeURIComponent(stored.id)}&op=VODACOM&pop=players`
+        && edited !== null && edited.ok && after !== null && after.audienceFilter === STORED_KEY && after.name === "U38b population, edited"
+        && bookDoor !== null && !bookDoor.ok && bookDoor.param === "population" && bookDoor.reason === POPULATION_BOOK_DOOR_REASON,
+      `stored ${stored?.audienceFilter ?? (savedPop === null ? "threw" : savedPop.ok ? "no row" : json(savedPop))} · card ${card === null ? "-" : json({ problem: card.problem, unreadable: card.problem === CAMPAIGN_AUDIENCE_UNREADABLE, who: card.who, key: card.countKey, href: card.canonicalHref })} · edit ${edited === null ? "-" : edited.ok ? "saved" : json(edited)}`);
+
+    // B2c · STD-1 · no in-app navigation meets the page's redirect
+    const NEW_SRC = (rel: string) => impl.sources.srcFiles.get(`app/admin/campaigns/${rel}`) ?? "";
+    const savedAt = stored === null ? null : draftAddressFor(stored, true);
+    const bareAt = stored === null ? null : draftAddressFor({ ...stored, audienceFilter: '{"ids":["mc_u38b_one"]}' }, true);
+    const clientGoes = NEW_SRC("new/composer-client.tsx").includes("router.replace(r.href as never");
+    const actionAnswers = NEW_SRC("new/actions.ts").includes("href: result.created ? await savedDraftAddress(result.id, reads)")
+      && NEW_SRC("new/actions.ts").includes("Promise.resolve().then(() => db.smsCampaign.find(id))");
+    // ...and "Remove the filter" too: a refused ADDRESS filter on a saved draft clears to the draft's own address.
+    const refusedAt = stored === null ? null : impl.audienceView({ draft: stored.id, q: "asha" }, stored, false);
+    const clearsHome = refusedAt !== null && refusedAt.problem !== null && refusedAt.clearHref !== null && refusedAt.clearHref === draftAddressFor(stored as NonNullable<typeof stored>, false)
+      && new URL(refusedAt.clearHref, "http://x").searchParams.has("pop");
+    const listLinks = NEW_SRC("page.tsx").includes("draftHref={draftAddressFor(c, reads)}") && NEW_SRC("page.tsx").includes("<Link href={draftHref as Route}");
+    // ...and a rail pill is a filter, not an exit: the unsaved-changes guard lets a `data-keeps-form` region's same-page link
+    // through, and the composer's rail is one (the U38b review's #4 — no false "leaving discards your text").
+    // ...and "Reload" after a stale save goes to the STORED draft's address (the audience somebody else saved), never the
+    // old one left in this page's address, which a next save would post back over theirs (the U38b review's #5).
+    const staleGoesHome = NEW_SRC("new/actions.ts").includes('(result.reason === "stale" || result.reason === "not_draft") && input.id !== null')
+      && NEW_SRC("new/composer-client.tsx").includes("if (refusal?.href) router.replace(refusal.href as never, { scroll: false });");
+    const railKeeps = NEW_SRC("new/audience-rail.tsx").includes('data-filter-rail="campaign-audience" data-keeps-form')
+      && (impl.sources.srcFiles.get("components/ui/unsaved-changes.tsx") ?? "").includes('a.closest("[data-keeps-form]") !== null && url.pathname === window.location.pathname');
+    ok(p(L.b2c),
+      stored !== null && card !== null && card.canonicalHref !== null && savedAt === card.canonicalHref
+        && bareAt === `/admin/campaigns/new?draft=${encodeURIComponent(stored.id)}` && clientGoes && actionAnswers && listLinks && clearsHome && railKeeps && staleGoesHome,
+      `saved at ${savedAt} (the page's own ${card?.canonicalHref ?? "-"}) · a filter no address holds → ${bareAt} · the client replaces to the answer ${clientGoes} · the action answers it ${actionAnswers} · the list links it ${listLinks} · 'Remove the filter' goes home ${clearsHome} (${refusedAt?.clearHref ?? "-"}) · the rail keeps the form ${railKeeps} · Reload after a stale save goes to the stored audience ${staleGoesHome}`);
+
+    // B3 · a book-only axis beside a population: refused at the address, hidden on the rail
+    const BOOK_ONLY_ADDRESS: Array<[string, string]> = [
+      ["q", "Asha"], ["consent", "GIVEN"], ["suppressed", "no"], ["list", "lst_1"], ["tag", "vip"], ["source", "IMPORT"], ["player", "yes"], ["import", "imp_1"],
+    ];
+    const leakedAt: string[] = [];
+    for (const pop of ["players", "both"]) {
+      for (const [key, value] of BOOK_ONLY_ADDRESS) {
+        const r = parseCampaignAudienceParams({ pop, [key]: value }, T0);
+        if (r.ok || r.param !== key || r.reason !== POPULATION_BOOK_ONLY_REASON) leakedAt.push(`${pop}+${key}`);
+      }
+    }
+    const railLists = [{ id: "lst_rail", name: "Rail list", description: null, createdAt: iso(T0), createdBy: null, updatedAt: iso(T0), updatedBy: null }];
+    const railTags = [{ tag: "vip", count: 3 }];
+    const axesOf = (sp: Record<string, string>, reads: boolean): string =>
+      impl.rail({ sp, reads, lists: railLists, tags: railTags }).groups.map((g) => g.param).join(",");
+    const axes = {
+      bookReader: axesOf({ pop: "book" }, true), bookMasked: axesOf({ pop: "book" }, false),
+      players: axesOf({ pop: "players", tag: "vip" }, true), both: axesOf({ pop: "both" }, true), none: axesOf({}, true),
+    };
+    ok(p(L.b3),
+      leakedAt.length === 0 && axes.bookReader === "pop,op,range,consent,suppressed,source,player,list,tag"
+        && axes.bookMasked === "pop,op,range,list,tag" && axes.players === "pop,op,range" && axes.both === "pop,op,range" && axes.none === "pop",
+      leakedAt.length ? `accepted or misnamed: ${leakedAt.join(" | ")}` : json(axes));
+
+    // B3m · ⛔ OD66 · a masked viewer never counts both populations at once — refused at the campaign door (the card's read,
+    // the save and U40 all ask it), and not offered on their Who pills; a reader keeps it.
+    const whoOf = (reads: boolean): string => {
+      const g = impl.rail({ sp: { pop: "book" }, reads, lists: railLists, tags: railTags }).groups.find((x) => x.param === "pop");
+      return g !== undefined && g.kind === "pills" ? g.options.map((o) => o.key).join(",") : "-";
+    };
+    const bothMasked = impl.refusal({ ...WHOLE_BOOK, population: "both" }, false);
+    const bothReader = impl.refusal({ ...WHOLE_BOOK, population: "both" }, true);
+    const playersMasked = impl.refusal({ ...WHOLE_BOOK, population: "players" }, false);
+    ok(p(L.b3m),
+      bothMasked?.param === "pop" && bothMasked.reason === CAMPAIGN_BOTH_MASKED_REASON && bothReader === null && playersMasked === null
+        && whoOf(false) === "book,players" && whoOf(true) === "book,players,both",
+      `masked both → ${json(bothMasked)} · reader both → ${json(bothReader)} · masked players → ${json(playersMasked)} · Who: masked ${whoOf(false)}, reader ${whoOf(true)}`);
+
+    // B4 · the card renders the view-model alone, and no .tsx derives a figure
+    const NEW_DIR = "app/admin/campaigns/new/";
+    const cardSrc = impl.sources.srcFiles.get(`${NEW_DIR}audience-split-card.tsx`) ?? "";
+    const newTsx = [...impl.sources.srcFiles].filter(([rel]) => rel.startsWith(NEW_DIR) && rel.endsWith(".tsx"));
+    const FIGURE = /\.(?:onCampaign|willReceive|notReceiving|notReceivingTotal|unsendable|unchecked|unanswered|matching|reachable|count|n|tookSeconds|durationMs)\b/;
+    const SPACED_ARITHMETIC = /[\w)\]]\s+[-+]\s+[\w(]/;
+    const derived = newTsx.flatMap(([rel, s]) => s.split(NL)
+      .filter((line) => FIGURE.test(line) && SPACED_ARITHMETIC.test(line))
+      .map((line) => `${rel.slice(NEW_DIR.length)}: ${line.trim().slice(0, 90)}`));
+    const RAW_SPLIT = /\baudienceSplit\(|\baudienceSplitView\(|\.(?:matching|reachable|notReceivingTotal|unanswered|durationMs|computedAt)\b|\.notReceiving\[/;
+    const VIEW_FIELDS = ["view.onCampaign", "view.willReceive", "view.notReceiving", "view.unsendable", "view.unchecked", "view.reasons", "view.sample", "view.countedAt", "view.tookSeconds", "view.sentence"];
+    // D19-2 · the card's own read cell, and that cell handed to the read — a one-token edit (`true`) would show every masked
+    // viewer a reader's card.
+    const READ_CELL = "const reads = await viewerReadsContacts().catch(() => false);";
+    const READ_PASSED = "composeAudienceCount({ countKey }, reads)";
+    ok(p(L.b4),
+      cardSrc.length > 1500 && cardSrc.includes(READ_CELL) && cardSrc.includes(READ_PASSED) && VIEW_FIELDS.every((f) => cardSrc.includes(f))
+        && !RAW_SPLIT.test(cardSrc) && newTsx.length >= 6 && derived.length === 0,
+      derived.length ? `derived: ${derived.join(" | ")}`
+        : `card ${cardSrc.length} chars · the read cell ${cardSrc.includes(READ_CELL)}, passed ${cardSrc.includes(READ_PASSED)} · ${newTsx.length} .tsx · the split read raw ${RAW_SPLIT.test(cardSrc)} · fields missing [${VIEW_FIELDS.filter((f) => !cardSrc.includes(f)).join(", ")}]`);
+
+    // B5 · the count's Suspense keyed by the filter's ONE key
+    const pageSrc = impl.sources.srcFiles.get(`${NEW_DIR}page.tsx`) ?? "";
+    const loaderSrc = impl.sources.srcFiles.get(`${NEW_DIR}composer-loader.ts`) ?? "";
+    const suspenseAt = pageSrc.indexOf("<Suspense");
+    const suspenseEnd = suspenseAt < 0 ? -1 : endOfOpenTag(pageSrc, suspenseAt);
+    const suspenseOpen = suspenseEnd < 0 ? "" : pageSrc.slice(suspenseAt, suspenseEnd + 1);
+    const suspenseClose = suspenseEnd < 0 ? -1 : pageSrc.indexOf("</Suspense>", suspenseEnd);
+    const suspenseBody = suspenseClose < 0 ? "" : pageSrc.slice(suspenseEnd + 1, suspenseClose);
+    ok(p(L.b5),
+      pageSrc.split("<Suspense").length - 1 === 1 && /\bkey=\{view\.audience\.countKey\}/.test(suspenseOpen)
+        && suspenseBody.includes("<AudienceSplitCard") && /const countKey = [^;\n]*contactAudienceKey\(filter\)/.test(loaderSrc),
+      `the open tag: ${suspenseOpen.slice(0, 140)}`);
+
+    // B6 · ⛔ D19 · OD65 · the count alone, at every size, for a viewer who may not read a number
+    const syntheticSplit = (n: number, reads: boolean): AudienceSplit => {
+      const will = Math.floor(n / 2);
+      return {
+        filterKey: `{"tags":["n${n}"]}`, matching: n, unsendable: 0, reachable: n, willReceive: will,
+        notReceiving: { suppressed: n - will, no_consent: 0, withdrawn: 0, age_unknown: 0, protected: 0 },
+        unanswered: 0, notReceivingTotal: n - will, unchecked: 0,
+        sample: Array.from({ length: Math.min(AUDIENCE_SAMPLE_SIZE, n) }, (_, i) => ({
+          masked: maskPhone(`25575100000${i}`), operator: "Vodacom",
+          detail: reads ? { subject: { field: "phone" as const, id: `pa0${i + 1}` }, name: `Asha ${i}`, slot: "willReceive" as const } : null,
+        })),
+        computedAt: iso(T0), durationMs: 2100,
+      };
+    };
+    const FLOOR_KEYS = json(["filterKey", "kind", "onCampaign", "sentence"]);
+    const MASKED_SIZES = [1, 5, 9, 10, 22];
+    const floored = MASKED_SIZES.map((n) => impl.view(syntheticSplit(n, false), false));
+    const maskedNobody = impl.view(syntheticSplit(0, false), false);
+    const readerViews = [0, 1, 5, 9, 10, 22].map((n) => impl.view(syntheticSplit(n, true), true));
+    // D19-3 · a split that still CARRIES its detail, handed to the view-model as a masked viewer's (the floor forced open):
+    // no row prints a name or a verdict — the view-model checks viewerReads itself, beside the door's own shaping.
+    const forcedOpen = audienceSplitView(syntheticSplit(10, true), false, () => true);
+    const vmSrc = impl.sources.srcFiles.get("app/admin/campaigns/new/audience-view-model.ts") ?? "";
+    const stripsDetail = forcedOpen.kind === "full" && forcedOpen.sample.length > 0 && forcedOpen.sample.every((r) => r.who === null && r.status === null)
+      && /if [(]d === null [|][|] !viewerReads[)] return/.test(vmSrc);
+    // The card's ONE read, for real: a masked viewer is counted by the ONE walk and the split door is NEVER asked (spies) —
+    // over the six-row book and over BOTH (well past E23's old floor); a reader's count asks the split, never the walk count.
+    const asks = { split: 0, count: 0 };
+    const splitSpy6: typeof audienceSplit = async (f, o, d) => { asks.split++; return audienceSplit(f, o, d); };
+    const countSpy6: typeof campaignAudienceCount = async (f, w) => { asks.count++; return campaignAudienceCount(f, w); };
+    const realMasked = await safe(() => impl.audienceCount({ countKey: contactAudienceKey(BOOK) }, false, splitSpy6, countSpy6));
+    const bookWalked = await campaignAudienceCount(PLAYERS);
+    const realMaskedPlayers = await safe(() => impl.audienceCount({ countKey: contactAudienceKey(PLAYERS) }, false, splitSpy6, countSpy6));
+    // ⛔ OD66 · BOTH populations at once is refused to a masked viewer — nothing counted, the gate never asked.
+    const realMaskedBoth = await safe(() => impl.audienceCount({ countKey: contactAudienceKey(BOTH) }, false, splitSpy6, countSpy6));
+    const maskedAsks = { ...asks };
+    asks.split = 0; asks.count = 0;
+    const realReader = await safe(() => impl.audienceCount({ countKey: contactAudienceKey(BOOK) }, true, splitSpy6, countSpy6));
+    const readerAsks = { ...asks };
+    const floorOf = (r: typeof realMasked) => (r !== null && r.kind === "view" && r.view.kind === "floor" ? r.view : null);
+    // ⭐ #6 · the masked count runs INSIDE the split's slots (the pool is shared with bets) — a count seen from inside.
+    let ranInSlot = false;
+    const slotSeen: typeof campaignAudienceCount = async (f, w) => { ranInSlot = audienceSplitSlots().running > 0; return campaignAudienceCount(f, w); };
+    const slotted = await safe(() => impl.audienceCount({ countKey: contactAudienceKey(BOOK) }, false, splitSpy6, slotSeen));
+    const limited = ranInSlot && floorOf(slotted)?.onCampaign === "6" && (impl.sources.srcFiles.get("app/admin/campaigns/new/composer-loader.ts") ?? "").includes("await audienceWalkCount(parsed.filter, count)");
+    ok(p(L.b6),
+      MASKED_BREAKDOWN_MIN === 10 && !breakdownVisible(false) && breakdownVisible(true)
+        && floored.every((v, i) => v.kind === "floor" && json(Object.keys(v).sort()) === FLOOR_KEYS && v.sentence === AUDIENCE_FLOOR && v.onCampaign === formatNumber(MASKED_SIZES[i]))
+        && maskedNobody.kind === "floor" && maskedNobody.sentence === AUDIENCE_EMPTY && maskedNobody.onCampaign === "0"
+        && readerViews.every((v) => v.kind === "full") && stripsDetail
+        && floorOf(realMasked) !== null && json(Object.keys(floorOf(realMasked) ?? {}).sort()) === FLOOR_KEYS && floorOf(realMasked)?.onCampaign === "6"
+        && bookWalked > MASKED_BREAKDOWN_MIN && floorOf(realMaskedPlayers)?.onCampaign === formatNumber(bookWalked)
+        && realMaskedBoth !== null && realMaskedBoth.kind === "refused" && realMaskedBoth.reason === CAMPAIGN_BOTH_MASKED_REASON
+        && maskedAsks.split === 0 && maskedAsks.count === 2
+        && realReader !== null && realReader.kind === "view" && realReader.view.kind === "full" && realReader.view.onCampaign === "6"
+        && readerAsks.split === 1 && readerAsks.count === 0 && limited,
+      `masked ${MASKED_SIZES.join("/")} → ${floored.map((v) => v.kind).join(",")} · readers → ${readerViews.map((v) => v.kind).join(",")} · detail stripped ${stripsDetail} · the book, masked → ${floorOf(realMasked)?.onCampaign ?? json(realMasked)} · the players, masked → ${floorOf(realMaskedPlayers)?.onCampaign ?? json(realMaskedPlayers)} of ${bookWalked} walked · BOTH, masked → ${realMaskedBoth?.kind ?? "-"} · masked asked split ${maskedAsks.split}, count ${maskedAsks.count} · reader asked split ${readerAsks.split}, count ${readerAsks.count} · the count inside the slots ${limited}`);
+
+    // B6u · STD-5 · the Unchecked state — the split's time budget ran out before every number was asked
+    const tight: AudienceSplit = {
+      ...syntheticSplit(10, true), willReceive: 4, unchecked: 3, unanswered: 2, notReceivingTotal: 3,
+      notReceiving: { suppressed: 1, no_consent: 0, withdrawn: 0, age_unknown: 0, protected: 0 },
+    };
+    const tightView = impl.view(tight, true);
+    const uncheckedSaid = cardSrc.includes("{view.unchecked !== null && <p") && cardSrc.includes("audienceUncheckedLine(view.willReceive)");
+    ok(p(L.b6u),
+      tightView.kind === "full" && tightView.willReceive === "≥ 4" && tightView.unchecked === "3"
+        && tightView.reasons[0]?.label === AUDIENCE_UNANSWERED_LABEL && tightView.reasons[0]?.count === "2"
+        && tightView.reasons[1]?.label === AUDIENCE_REASON_LABEL.suppressed && uncheckedSaid
+        && audienceUncheckedLine(tightView.willReceive).startsWith("≥ 4 will receive"),
+      `${tightView.kind === "full" ? json({ will: tightView.willReceive, unchecked: tightView.unchecked, reasons: tightView.reasons.slice(0, 2).map((r) => `${r.label}: ${r.count}`) }) : tightView.kind} · the card says it ${uncheckedSaid}`);
+
+    // B7 · nothing chosen, nothing counted — the split door spied
+    let splitAsked = 0;
+    const splitSpy: typeof audienceSplit = async (f, o, d) => { splitAsked++; return audienceSplit(f, o, d); };
+    const blank = impl.audienceView({}, null, true);
+    const blankCount = await safe(() => impl.audienceCount(blank, true, splitSpy));
+    const askedWhenBlank = splitAsked;
+    const chosenBook = impl.audienceView({ pop: "book" }, null, true);
+    const chosenCount = await safe(() => impl.audienceCount(chosenBook, true, splitSpy));
+    ok(p(L.b7),
+      !blank.chosen && blank.countKey === null && blank.who === null && blankCount === null && askedWhenBlank === 0
+        && chosenBook.chosen && chosenBook.countKey === "{}" && chosenBook.everyone && chosenBook.who === "book"
+        && chosenCount !== null && chosenCount.kind === "view" && splitAsked === 1,
+      `blank: chosen ${blank.chosen} · key ${blank.countKey} · asked ${askedWhenBlank} — chosen book: key ${chosenBook.countKey} · asked ${splitAsked} in all`);
+
+    // B7h · ⛔ D19-4 · a masked viewer opening a draft a READER saved with a filter the masked role may not use
+    const hiddenDrafts = stored === null ? [] : ['{"q":"asha"}', '{"consent":["GIVEN"]}'].map((audienceFilter) =>
+      impl.audienceView({ draft: stored.id }, { ...stored, audienceFilter }, false));
+    const readerOpens = stored === null ? null : impl.audienceView({ draft: stored.id }, { ...stored, audienceFilter: '{"consent":["GIVEN"]}' }, true);
+    ok(p(L.b7h),
+      hiddenDrafts.length === 2 && hiddenDrafts.every((v) => v.countKey === null && v.canonicalHref === null && v.who === null
+        && v.lines.length === 0 && v.note === COMPOSE_AUDIENCE_HIDDEN && v.params === null && v.carry === null)
+        && readerOpens !== null && readerOpens.countKey === '{"consent":["GIVEN"]}' && readerOpens.canonicalHref !== null,
+      `masked opens: ${json(hiddenDrafts.map((v) => ({ key: v.countKey, href: v.canonicalHref, who: v.who, lines: v.lines.length, note: v.note === COMPOSE_AUDIENCE_HIDDEN })))} · a reader opening the consent draft: key ${readerOpens?.countKey ?? "-"}, href ${readerOpens?.canonicalHref ?? "-"}`);
+
+    // B8 · M8 · the list rows' words, role-shaped
+    const rowOf = (f: unknown) => ({ audienceFilter: typeof f === "string" ? f : JSON.stringify(f) });
+    const READER_ONLY = [{ consent: ["GIVEN"] }, { sources: ["REGISTRATION"] }, { player: true }, { suppressed: false }, { q: "Asha" }, { q: "255712345678" }];
+    const PLAYER_PHRASE = /Consent|Source|Players only|Not players|[Ss]uppressed|Name contains|Number \+255/;
+    const maskedRows = READER_ONLY.map((f) => impl.rowAudience(rowOf(f), false));
+    const readerRows = READER_ONLY.map((f) => impl.rowAudience(rowOf(f), true));
+    const OPEN = [{ operators: ["VODACOM"] }, { population: "players" }, { addedFrom: "2026-09-02T21:00:00.000Z" }, {}];
+    const openMasked = OPEN.map((f) => impl.rowAudience(rowOf(f), false));
+    const openReader = OPEN.map((f) => impl.rowAudience(rowOf(f), true));
+    const unreadable = impl.rowAudience(rowOf('{"nope":1}'), false);
+    const wordsOf = (a: ReturnType<typeof campaignRowAudience>) => (a.kind === "words" ? a.lines : a.kind);
+    const OPEN_WORDS = json([["Operator: Vodacom"], ["Player accounts"], ["Added from 3 Sep 2026"], []]);
+    ok(p(L.b8),
+      maskedRows.every((a) => a.kind === "hidden") && !maskedRows.some((a) => PLAYER_PHRASE.test(json(a)))
+        && readerRows.every((a) => a.kind === "words" && a.lines.length === 1 && PLAYER_PHRASE.test(a.lines[0]))
+        && json(openMasked.map(wordsOf)) === OPEN_WORDS && json(openReader.map(wordsOf)) === OPEN_WORDS
+        && unreadable.kind === "unreadable",
+      `masked ${json(maskedRows.map(wordsOf))} · reader ${json(readerRows.map(wordsOf))} · open ${json(openMasked.map(wordsOf))}`);
+
+    // B9 · one vocabulary — "Will receive"
+    const contactsPage = impl.sources.srcFiles.get("app/admin/contacts/page.tsx") ?? "";
+    const marketingPages = [...impl.sources.srcFiles].filter(([rel]) => rel.startsWith("app/admin/contacts/") || rel.startsWith("app/admin/campaigns/"));
+    const stillReachable = marketingPages.filter(([, s]) => /\bReachable\b/.test(s)).map(([rel]) => rel);
+    ok(p(L.b9),
+      contactsPage.includes('{reads && <th className="text-left">Will receive</th>}') && contactsPage.includes('{ ok: true, label: "Will receive" }')
+        && marketingPages.length > 20 && stillReachable.length === 0,
+      `"Reachable" in [${stillReachable.join(", ")}] · ${marketingPages.length} files read`);
+  }
 }
 
 /* ═══ THE RUN ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -824,6 +1159,10 @@ if (!PROVE_RED) {
   /** A walk whose player phase is planted — the shipped walk over planted store reads. */
   const walkWith = (d: Partial<CampaignWalkDeps>): Impl["walk"] => (f, c, l) => walkCampaignAudience(f, c, l, { ...CAMPAIGN_WALK_DEPS, ...d });
   const withWalk = (w: Impl["walk"]): Partial<Impl> => ({ walk: w, count: (f) => campaignAudienceCount(f, (g, c, l) => w(g, c, l)) });
+  /** U38b · the src tree with ONE anchor of one file swapped (in memory, decommented) — an anchor that is not there swaps
+   *  nothing, and that case then stays green, which the harness reports as a problem. */
+  const withSource = (rel: string, from: string, to: string): Sources =>
+    ({ ...REAL_SOURCES, srcFiles: new Map([...SRC_FILES].map(([k, v]) => [k, k === rel ? v.replace(from, to) : v])) });
   /** The memory ledger in WRITE order — what a read with no tiebreak falls back on. */
   const ledgerRows = () => [...((globalThis as unknown as { __50PICK_STORE?: { messagingConsents: Map<string, { identifier: string; channel: string; category: string; createdAt: string }> } }).__50PICK_STORE?.messagingConsents.values() ?? [])];
 
@@ -832,7 +1171,7 @@ if (!PROVE_RED) {
     const refused = campaignAudienceRefusal(f, o.viewerReads);
     if (refused) return { ok: false, param: refused.param, reason: refused.reason };
     const rows = (await walkAll(REAL.walk, f, 1000)).rows;
-    const outs = await dispatchSlice(rows.map((r, i) => ({ ref: `c${i}`, msisdn: r.msisdn, body: "count" })), { send: async () => ({ results: [], balanceTzs: null }) });
+    const outs = await dispatchSlice(rows.map((r, i) => ({ ref: `c${i}`, msisdn: r.msisdn, body: "count" })), { send: async () => ({ results: [], balanceTzs: null }), window: ALWAYS_OPEN });
     const notReceiving = Object.fromEntries(AUDIENCE_BUCKETS.map((b) => [b, 0])) as Record<AudienceBucket, number>;
     let unsendable = 0, willReceive = 0, unanswered = 0;
     for (const x of outs) {
@@ -847,7 +1186,7 @@ if (!PROVE_RED) {
 
   const CASES: Array<{ name: string; expect: string[]; impl: Impl }> = [
     {
-      name: "R1 · a figure DERIVED, not counted — not receiving as matching − will receive (the engine's half of 'derive a count'; the card's is U38b's)",
+      name: "R1 · a figure DERIVED, not counted — not receiving as matching − will receive (the engine's half of 'derive a count'; the card's is R-B4)",
       expect: [L.l42],
       impl: { ...REAL, deps: { ...REAL.deps, figures: (t) => { const fig = AUDIENCE_SPLIT_DEPS.figures(t); return { ...fig, notReceivingTotal: fig.matching - fig.willReceive }; } } },
     },
@@ -1011,6 +1350,125 @@ if (!PROVE_RED) {
       name: "R24 · the contact book's reader reads a population as the book",
       expect: [L.l14],
       impl: { ...REAL, book: (f) => contactAudience({ ...f, population: null }) },
+    },
+    /* ── U38b · §B's plants: the card's half of the plan's RED, each on its own label ── */
+    {
+      name: "R-B2 · ⭐ the composer reads the stored filter at the BOOK door — a population it saved reads back as 'unreadable'",
+      expect: [L.b2],
+      impl: { ...REAL, audienceView: (sp, d, r) => composeAudienceView(sp, d, r, { ...COMPOSE_AUDIENCE_DOORS, json: (raw) => parseContactAudienceJson(raw) }) },
+    },
+    {
+      name: "R-B4 · a figure DERIVED in a .tsx — the card prints on-campaign minus will-receive for 'not receiving' (the plan's own RED: derive a count on the client)",
+      expect: [L.b4],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/audience-split-card.tsx", "value={view.notReceiving}", "value={String(Number(view.onCampaign) - Number(view.willReceive))}") },
+    },
+    {
+      name: "R-B5 · ⭐ the count's Suspense key removed — old numbers stay under a new filter's words (the shipped U38 red)",
+      expect: [L.b5],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/page.tsx", " key={view.audience.countKey}", "") },
+    },
+    {
+      name: "R-B6 · ⛔ D19 · the floor removed for a masked viewer — a list of three shows its will-receive figure, its reasons and its sample",
+      expect: [L.b6],
+      impl: { ...REAL, view: (s, r) => audienceSplitView(s, r, () => true) },
+    },
+    {
+      name: "R-B6b · the floor applied to a READER too — over-hiding is a defect as well",
+      expect: [L.b6],
+      impl: { ...REAL, view: (s, r) => audienceSplitView(s, r, (_reads, matching) => matching >= MASKED_BREAKDOWN_MIN) },
+    },
+    {
+      name: "R-B6c · ⛔ D19-1 · E23's SIZE floor back for a masked viewer — a tag padded with nine numbers of the officer's own opens the breakdown at ten, and the tenth person's verdict is the difference",
+      expect: [L.b6],
+      impl: { ...REAL, view: (s, r) => audienceSplitView(s, r, (reads, matching) => reads || matching >= MASKED_BREAKDOWN_MIN) },
+    },
+    {
+      name: "R-B6d · ⛔ OD65 · a masked viewer's count asks the SPLIT — the gate answers for the people a masked officer chose, and the card is a reader's",
+      expect: [L.b6],
+      impl: { ...REAL, audienceCount: (a, _r, s, c) => composeAudienceCount(a, true, s, c) },
+    },
+    {
+      name: "R-B6e · D19-3 · the view-model's own check removed — a split that carries its detail prints names and verdicts to a masked viewer",
+      expect: [L.b6],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/audience-view-model.ts", "if (d === null || !viewerReads) return", "if (d === null) return") },
+    },
+    {
+      name: "R-B3m · ⛔ OD66 · pop=both admitted for a masked viewer — the union's count says whether one added contact is a player",
+      expect: [L.b3m],
+      impl: { ...REAL, refusal: (f, r) => (f.population === "both" ? populationProblem(f) : campaignAudienceRefusal(f, r)) },
+    },
+    {
+      name: "R-B3n · ⛔ OD66 · the Both pill offered to a masked viewer",
+      expect: [L.b3m],
+      impl: { ...REAL, rail: (i) => audienceRail({ ...i, reads: true }) },
+    },
+    {
+      name: "R-B4c · ⛔ D19-2 · the card hands the read 'true' instead of its viewer's cell — every masked viewer gets a reader's card",
+      expect: [L.b4],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/audience-split-card.tsx", "composeAudienceCount({ countKey }, reads)", "composeAudienceCount({ countKey }, true)") },
+    },
+    {
+      name: "R-B6u · STD-5 · the Unchecked floor printed as an exact figure — '4 will receive' when 3 numbers were never asked",
+      expect: [L.b6u],
+      impl: { ...REAL, view: (s, r) => { const v = audienceSplitView(s, r); return v.kind === "full" ? { ...v, willReceive: v.willReceive.replace("≥ ", "") } : v; } },
+    },
+    {
+      name: "R-B7 · ⛔ the split computed for an UNCHOSEN new draft — the whole book counted before anybody chose it",
+      expect: [L.b7],
+      impl: {
+        ...REAL,
+        audienceView: (sp, d, r) => {
+          const v = composeAudienceView(sp, d, r);
+          return !v.chosen && v.countKey === null ? { ...v, countKey: contactAudienceKey(WHOLE_BOOK) } : v;
+        },
+      },
+    },
+    {
+      name: "R-B2c · STD-1 · the save sends the client to the BARE ?draft= address — the page's redirect fires inside the mounted composer and the saved line vanishes",
+      expect: [L.b2c],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/composer-client.tsx", "router.replace(r.href as never", "router.replace(campaignDraftHref(r.id) as never") },
+    },
+    {
+      name: "R-B2d · STD-1 · 'Remove the filter' back to the BARE ?draft= — the redirect fires inside the mounted composer and the typed text is lost",
+      expect: [L.b2c],
+      impl: {
+        ...REAL,
+        audienceView: (sp, d, r) => {
+          const v = composeAudienceView(sp, d, r);
+          return d !== null && v.clearHref !== null ? { ...v, clearHref: `/admin/campaigns/new?draft=${encodeURIComponent(d.id)}` } : v;
+        },
+      },
+    },
+    {
+      name: "R-B2e · #5 · Reload after a stale save only refreshes — the old audience stays in the address, and the next save posts it back over the one somebody else saved",
+      expect: [L.b2c],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/composer-client.tsx", "if (refusal?.href) router.replace(refusal.href as never, { scroll: false });", "") },
+    },
+    {
+      name: "R-B6f · #6 · the masked count walks OUTSIDE the split's slots — every GROWTH render a full walk on the pool bets share",
+      expect: [L.b6],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/composer-loader.ts", "await audienceWalkCount(parsed.filter, count)", "await count(parsed.filter)") },
+    },
+    {
+      name: "R-B2b · STD-2 · the composer's action posts the CONTACT BOOK's keys — a save from the page drops pop, and a players campaign is stored aimed at the book",
+      expect: [L.b2],
+      impl: { ...REAL, sources: withSource("app/admin/campaigns/new/actions.ts", "for (const k of CAMPAIGN_AUDIENCE_URL_KEYS)", "for (const k of CONTACT_AUDIENCE_URL_KEYS)") },
+    },
+    {
+      name: "R-B7h · ⛔ D19-4 · the canonical address built from the STORED filter, not from what this viewer may carry — a masked officer is redirected to an address holding a reader's search",
+      expect: [L.b7h],
+      impl: {
+        ...REAL,
+        audienceView: (sp, d, r) => {
+          const v = composeAudienceView(sp, d, r);
+          return d !== null && v.canonicalHref === null ? { ...v, canonicalHref: `/admin/campaigns/new?draft=${encodeURIComponent(d.id)}&q=asha` } : v;
+        },
+      },
+    },
+    {
+      name: "R-B8 · 🔴 a MASKED row describing a consent axis — the list's words read as a reader's for every role",
+      expect: [L.b8],
+      impl: { ...REAL, rowAudience: (c) => campaignRowAudience(c, true) },
     },
     {
       name: "R28 · a contact-book door admits a population — the bulk bar's audience parsed at the campaign scope, so its reader throws a generic failure where a refusal named the axis (U38a review)",

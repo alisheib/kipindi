@@ -265,7 +265,7 @@ function g1Service(W: World, ok: Ok) {
 
 /* ══ §2 · THE ACTION AND ITS FORM ══════════════════════════════════════════════════════════════════════════ */
 const ACTION_HEAD = "export async function cashOutPositionAction(";
-const SESSION = `if (!session) redirect("/auth/login");`;
+const SESSION = `if (!session) redirect((await signInPathForAction()) as never);`;
 const ACTION_CALL = "const r = await cashOutPositionFromForm(session.userId, formData);";
 const FORM_HEAD = "export async function cashOutPositionFromForm(";
 const FORM_SIGNATURE = "export async function cashOutPositionFromForm(userId: string,form: { get(name: string): unknown },): Promise<ServiceResult<{ value: number; balance: number }>> {";

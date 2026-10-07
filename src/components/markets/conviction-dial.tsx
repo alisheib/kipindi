@@ -381,7 +381,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
    *  editing intent (or current side) exists. The knob visually
    *  nudges ~2.3% off-centre but the displayed multiplier is
    *  overridden to "1.00×" via exactStake (above) so the player sees
-   *  a coherent { side, 1.00×, TZS 500, Place button } state. */
+   *  a coherent { side, 1.00×, TZS 1,000 (the platform minimum), Place button } state. */
   const posFromStake = useCallback((tzs: number): number => {
     const minDial = baseStake;          // multiplier 1 → baseStake
     const maxDial = baseStake * maxMultiplier; // multiplier 200 → baseStake × 200
@@ -983,7 +983,8 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       // open with the same locked quote was racing into double-place.
       setConfirmOpen(false);
       // AUTH LOSS IS NOT A FAILED BET (the model is `use-quick-bet.ts`). A session
-      // revoked in another tab makes `buyPositionAction` `redirect("/auth/login")`,
+      // revoked in another tab makes `buyPositionAction` answer with a redirect to the
+      // sign-in door that names this page (signInPathForAction, route audit B2),
       // and a Server Action that redirects RESOLVES TO NOTHING — the router is already
       // navigating by the time we get here and there is no verdict object at all.
       // Reading `.ok` off that undefined throws a TypeError the try/catch above cannot
@@ -991,8 +992,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       // error boundary flashes on top of the login navigation — two contradictory
       // stories about one tap, on a money control. Return silently; the nav speaks.
       // Nothing else needs unwinding: the confirm modal is already closed above,
-      // `pending` clears when this callback returns, and `betIdempotencyKey.current`
-      // is deliberately reusable, so the same tap can be finished after signing in.
+      // `pending` clears when this callback returns, and after signing in the player is
+      // back on this market with the side still locked; the stake is chosen again, and
+      // nothing was placed.
       if (r == null) return;
       if (!r.ok) {
         const mapped = errorToToast((r as { code?: string }).code, r.error, r as { reason?: string; detail?: FailureDetail; retryAfterSec?: number });

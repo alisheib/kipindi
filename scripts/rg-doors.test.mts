@@ -25,6 +25,7 @@ import { marketingRgStanding, sixMonthFloor, MARKETING_RG_DEPS } from "../src/li
 import type { MarketingRgDeps, MarketingRgStanding } from "../src/lib/server/marketing/rg.ts";
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
+import { accountRefusalPath } from "../src/lib/auth-landing.ts";
 
 import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
@@ -142,6 +143,27 @@ console.log("\n§2 · every door that mints a session consults ONE gate (E-240)\
   ok("2.2 control: the scan actually found the doors (at least 4 session minters)",
     minters >= 4, `found ${minters}`);
   ok("2.3 every door found is accounted for", accounted === minters, `${accounted}/${minters}`);
+
+  /**
+   * ⭐ THE SECOND FACTOR, THE SAME SHAPE AS E-240 (route audit 2026-10-06). The dormant code door minted a session
+   * without asking is2faEnabled(): a code stood in for the password AND the authenticator. So, of every door that
+   * mints a session: does it ask for the second factor BEFORE it mints?
+   * ⛔ DECLARED, WITH REASONS: `registerWithPassword` (an account created a moment ago has no second factor) and
+   * `completeTwoFactorLogin` (it IS the second factor — its caller verified the authenticator code).
+   */
+  const SECOND_FACTOR_EXEMPT = new Set(["registerWithPassword", "completeTwoFactorLogin"]);
+  let asked = 0;
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const body = SRC.slice(bounds[i].at, bounds[i + 1].at);
+    const mintAt = body.indexOf("createSession(");
+    if (mintAt < 0 || SECOND_FACTOR_EXEMPT.has(bounds[i].name)) continue;
+    asked++;
+    const askAt = body.indexOf("is2faEnabled(");
+    ok(`2.7 ${bounds[i].name}() mints a session AND asks for the second factor first`, askAt >= 0 && askAt < mintAt,
+      askAt < 0 ? "no is2faEnabled() call — the session needs no authenticator" : `is2faEnabled@${askAt} createSession@${mintAt}`);
+  }
+  // ⭐ REACH FLOOR — the password door and the code door must both have been scanned, or 2.7 vanished silently.
+  ok("2.8 control: the 2FA scan reached the doors that must ask", asked >= 2, `found ${asked}`);
 
   // ⛔ THE ASYMMETRY THAT MUST NOT DRIFT. Adding COOLED_OFF to the sign-in gate would lock a
   // player out of their own account for the length of a break they took to protect themselves
@@ -275,6 +297,7 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
   };
   const PASSWORD_DOOR = fnBody("startLoginAction");
   const OTP_DOOR = fnBody("verifyLoginOtpAction");
+  const TFA_DOOR = fnBody("verifyLogin2faAction");
   // ⭐ REACH FLOOR — if either function is renamed the slices go empty and every check below
   // would pass against nothing.
   ok("6.0 control: both door functions were located in the file",
@@ -354,6 +377,54 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
     ok("6.7c ⚠️ CONTROL — break/cool-off copy was actually found", breakKeys.length >= 6, `found ${breakKeys.length}`);
     ok("6.7d ⚠️ CONTROL — the pattern still catches the pre-fix sentence",
       BLOCKS_SIGNIN.test('breakDescription: "A short, one-way pause. You cannot bet, deposit, or sign in until it ends.",'));
+  }
+
+  // ── B4 (route audit 2026-10-06) · ONE refusal table for every door ─────────────────────────────────────────────
+  // 🔴 A CLOSED account was told "blocked" at sign-in while every other surface says "closed", and the two-step door
+  // flattened EVERY refusal — an exclusion with its date included — to error=blocked and dropped `next`. Each door now
+  // hands the refusal's machine tokens to ONE function, `accountRefusalPath` (src/lib/auth-landing.ts).
+  {
+    const rows: Array<[Parameters<typeof accountRefusalPath>[0], string, string]> = [
+      [{ standing: "serving", until: "2026-12-01T09:00:00.000Z" }, "", "/auth/login?excluded=serving&until=2026-12-01"],
+      [{ standing: "permanent" }, "", "/auth/login?excluded=permanent"],
+      [{ standing: "minimum_served", until: "2026-01-01T00:00:00.000Z" }, "", "/auth/login?excluded=minimum_served"],
+      [{ standing: "diverged" }, "", "/auth/login?error=blocked"],
+      [{ accountClosed: true }, "/markets/mkt_a1", "/auth/login?closed=1&next=%2Fmarkets%2Fmkt_a1"],
+      [undefined, "/wallet", "/auth/login?error=blocked&next=%2Fwallet"],
+      [undefined, "//evil.example", "/auth/login?error=blocked"],
+    ];
+    const wrong = rows.filter(([d, n, want]) => accountRefusalPath(d, n) !== want)
+      .map(([d, n, want]) => `${JSON.stringify(d) ?? "undefined"} next=${n || "-"} → ${accountRefusalPath(d, n)} (want ${want})`);
+    ok("6.10 ⭐ EXECUTED · every account refusal has its own panel: serving (with its date), permanent and minimum_served their own, a CLOSED account closed=1, a divergence or nothing error=blocked — and only a safe next is kept",
+      wrong.length === 0, wrong.join(" | "));
+  }
+  ok("6.11 the gate tells a CLOSED account it is closed — a machine token on the refusal ownership already earned, never only 'blocked'",
+    GATE.includes('...(user.status === "CLOSED" ? { detail: { accountClosed: true } } : {})'),
+    "assertSignInAllowed answers CLOSED exactly like SUSPENDED again");
+  {
+    const closedAt = PASSWORD_DOOR.indexOf("accountClosed");
+    const standingAt = PASSWORD_DOOR.indexOf("const standing = result.detail?.standing;");
+    ok("6.12 the password door sends a CLOSED account to its own panel (accountRefusalPath) before it reads the exclusion standing",
+      closedAt >= 0 && standingAt > closedAt && PASSWORD_DOOR.includes("accountRefusalPath(result.detail, safeNext)"),
+      `accountClosed@${closedAt} standing@${standingAt}`);
+  }
+  ok("6.13 the code door asks for a CLOSED account first, inside its SUSPENDED branch",
+    OTP_DOOR.replace(/\s+/g, " ").includes('if (result.code === "SUSPENDED") { if (result.detail?.accountClosed)'));
+  const FLAT_BLOCKED = '"/auth/login?error=blocked"';
+  ok("6.14 the two-step door routes a refusal through accountRefusalPath — never one flat error=blocked that drops the panel and the next",
+    TFA_DOOR.length > 300 && TFA_DOOR.includes("accountRefusalPath(done.detail, safeNext)") && !TFA_DOOR.includes(FLAT_BLOCKED),
+    `${TFA_DOOR.length} chars`);
+  ok("6.14b control: that literal check fires on the flattened shape", 'redirect("/auth/login?error=blocked");'.includes(FLAT_BLOCKED));
+  {
+    const TFA_PAGE = decomment(readFileSync("src/app/auth/2fa/page.tsx", "utf8").replace(/\r\n/g, "\n"));
+    ok("6.15 a mistyped BACKUP code stays on the backup box: the form posts its mode, and both failure hops carry it back",
+      TFA_PAGE.includes('{backup && <input type="hidden" name="mode" value="backup" />}')
+        && TFA_DOOR.includes("error=invalid${modeParam}") && TFA_DOOR.includes("error=rate_limited${modeParam}"));
+  }
+  {
+    const ADMIN_PAGE = decomment(readFileSync("src/app/auth/admin/page.tsx", "utf8").replace(/\r\n/g, "\n"));
+    ok("6.16 the staff sign-in page keeps only a safe /admin next — the one same-origin rule, then the console's own — never a hand-written prefix test",
+      ADMIN_PAGE.includes("sanitizeNext(") && ADMIN_PAGE.includes("isAdminPath(") && !ADMIN_PAGE.includes('nextRaw.startsWith("/admin")'));
   }
 }
 

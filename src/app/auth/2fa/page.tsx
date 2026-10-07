@@ -51,6 +51,7 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
 
         <form action={verifyLogin2faAction} className="space-y-3">
           {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
+          {backup && <input type="hidden" name="mode" value="backup" />}
           <label className="block">
             <FieldLegend className="block mb-1.5">{backup ? t.security.backupCodeLabel : t.security.codeLabel}</FieldLegend>
             {backup ? (

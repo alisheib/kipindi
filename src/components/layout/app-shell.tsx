@@ -25,6 +25,7 @@ import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NavProgress } from "@/components/ui/nav-progress";
+import { KeyGuard } from "@/components/ui/key-guard";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession, sessionEndedThisRequest, type SessionEndReason } from "@/lib/server/session";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
@@ -49,7 +50,6 @@ import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
-import { EmailVerifyBanner } from "./email-verify-banner";
 import { AwaySummaryBar } from "./away-summary-bar";
 import { Needle } from "./needle";
 import { HeaderScrollCast } from "./scroll-cast";
@@ -161,8 +161,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
    * client component never reads product state. See `installInviteIsLive` in `feature-state.ts`.
    */
   const installInviteLive = installInviteIsLive();
-  /** Non-null = signed in with an UNCONFIRMED address → show the standing bar. */
-  let emailVerifyState: { email: string | null } | null = null;
   /** Who is asking about Invite — standing, not role. See `feature-state.ts` → `InviteViewer`. */
   let inviteViewer: InviteViewer = NO_VIEWER;
   /** The journey funnel's view of this reader (S3b): a signed-in account whose read failed is NOT counted. */
@@ -257,14 +255,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     const until = (iso: string | null | undefined) => (iso ? Date.parse(iso) : 0);
     promoSuppressed =
       until(rg?.selfExclusionUntil) > now || until(rg?.coolingOffUntil) > now;
-    // Email confirmation gates depositing, so an unconfirmed address is a live
-    // limitation on the account and belongs on every page — not only on the
-    // deposit form the player may not reach for days. `u` is null only if the
-    // user fetch failed above, in which case we stay silent rather than accuse a
-    // player of being unverified on the strength of a failed query.
-    emailVerifyState = u
-      ? (u.emailVerifiedAt ? null : { email: u.email ?? null })
-      : null;
   }
 
   // The live ticker's REAL settlements. Batched with the config read rather than awaited at its
@@ -375,6 +365,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           hydrating. It is now the `<Reveal>` client wrapper, which renders the attribute from
           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
       <HeaderScrollCast />
+      {/* ⭐ S6 A8i-2 · THE KEY GUARD (`key-guard.tsx`): a key held down presses once, wherever it is on the page, and
+          nothing behind the top dialog takes Enter or Space. It renders nothing. Every `Modal` installs it too, for a page
+          outside this shell. */}
+      <KeyGuard />
       <Suspense fallback={null}><NavProgress /></Suspense>
       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
@@ -417,28 +411,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               : t.auth.sessionIdleBody}
         </NoticeBar>
       )}
-      {/* ⭐ THE EMAIL BAR STANDS ALONE (2026-09-13). There is no app-wide identity bar any more, and
-          so no ordering question between two bars. Identity is asked before a WITHDRAWAL and
-          nothing else, and Ali's ruling of the same day is that it is raised QUIETLY: on the withdraw
-          screen itself (`KycGatePanel`), in one dismissible notice under the balance from the first
-          confirmed deposit (`kyc-first-deposit-notice.tsx`), and wherever the player goes to look
-          (/profile, /profile/kyc). A bar on every page was the opposite of that.
-          ⛔ Do not reintroduce an identity bar here, or a KYC read in the batch above to feed one.
-          The email bar stays app-wide because an unconfirmed address blocks the NEXT thing the
-          player wants to do — adding money — wherever they are when they decide to. The one exception
-          (2026-09-13) is /wallet/deposit itself, where the page's own email gate says it with its own
-          resend action; the bar hides there so the player is not told twice (email-verify-banner.tsx).
-          ⭐ AND NOT FOR A JOURNEY VIEWER (Vodacom plan S6, WP7; VODACOM-PLAN §3.2 item 2, "no email-verify bar on
-          journey"). Decided here, per request, on the resolver's own answer, so no soft navigation changes it. The
-          deposit page's own email gate still stands between an unconfirmed address and a deposit; what a journey viewer
-          goes without is this reminder on every other page, until S9 asks for the code in the flow itself. */}
-      {/* ⭐ NOT DURING A BREAK (2026-10-06). The bar's whole message is "confirm your email to add money" — an invitation
-          to deposit, shown to a player whose break pauses deposits. `promoSuppressed` is exactly "do not solicit": it fails
-          OPEN (a failed RG read shows the bar), which is the right direction for a reminder. */}
-      {emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}
-      {/* ⭐ BELOW THE EMAIL GATE, ON PURPOSE. That bar names a COMPLIANCE condition blocking
-          the player's first deposit; this one is a courtesy summary of results they already
-          hold. If both are up, the one that costs them something must read first.
+      {/* ⛔ NO APP-WIDE BAR — NEITHER FOR IDENTITY (2026-09-13) NOR FOR EMAIL (2026-10-07). Both are asked before a
+          WITHDRAWAL and nothing else, and both are raised QUIETLY (Ali's rule of 2026-09-13, extended to the email on
+          2026-10-07 when the confirmed address moved from deposits to withdrawals): on the withdraw screen itself, in ONE
+          card (`KycGatePanel` — the identity step, then the email step), in one dismissible note under the balance from
+          the first confirmed deposit (`kyc-first-deposit-notice.tsx`), and wherever the player goes to look (/profile's
+          pills, /profile/kyc, /profile/account). The standing "confirm your email to add money" bar that stood here from
+          2026-07-18 is DELETED with the deposit email gate it announced — a deposit asks no email question at all.
+          ⛔ Do not reintroduce either bar here, or a KYC or email read in the batch above to feed one. */}
+      {/* ⭐ A COURTESY SUMMARY of results the player already holds. (It stood below the email bar so that a
+          compliance condition read first; that bar is gone, 2026-10-07.)
           ⛔ It renders null whenever nothing settled while they were away, which is almost
           always — and it fires nothing when it does appear (§F5). `playStartedAt` is already
           on the signed session (`getSession()` returns it, and `markets/actions.ts` already

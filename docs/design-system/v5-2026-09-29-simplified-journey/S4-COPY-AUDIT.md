@@ -224,7 +224,8 @@ in "Existing words the S4 panel found wrong" is correct Swahili and says what th
   agreement in the same sentence ("zimeingia"), so the figure that stands for it does too.
 - Its button: "Nenda **kwenye** raundi inayofuata" — *kwenda* to a place needs *kwenye*.
 - Approved as drawn: "Upande mdogo, ona makadirio"; "Faida ndogo · ≈1.0×"; "Kiasi cha chini cha kuweka ni TZS 500 —
-  TZS 300 zitabaki kwenye salio lako."; "Malipo yako ya TZS 3,000 yanasubiri"; "Fuatilia malipo"; "Jaza tamko"; "Weka
+  TZS 300 zitabaki kwenye salio lako." (⚠️ from the owner's ruling of 2026-10-07, a TZS 1,000 minimum: "Kiasi cha chini
+  cha kuweka ni TZS 1,000 — TZS 800 zitabaki kwenye salio lako."); "Malipo yako ya TZS 3,000 yanasubiri"; "Fuatilia malipo"; "Jaza tamko"; "Weka
   PIN kwenye simu yako"; "Usianzishe malipo mengine."; "Angalia hali ya malipo"; "Hakuna pesa iliyokatwa"; "Pesa zako
   zitarudishwa" and its sentence; "Malipo bado hayajathibitishwa" and its sentence; "Maswali yanayofanana"; "Weka pesa
   tena"; "Kikomo chako cha hasara kinaruhusu hadi TZS 3,000 leo."; "Jisajili uweke dau"; "Makadirio yamesasishwa"; the

@@ -5,8 +5,8 @@
  * predictable 100,000 TZS, issues a session cookie, then redirects to
  * "/". Lets the existing 22 stress / a11y / multi-viewport / smoke
  * scripts under scripts/* drive an authed flow without doing the full
- * register → confirm email → deposit dance every time (identity is asked
- * before withdrawal only since 2026-09-13 — see `kycState` below).
+ * register → deposit dance every time (identity is asked before withdrawal
+ * only since 2026-09-13 — see `kycState` below — and a confirmed email too, since 2026-10-07).
  *
  * Returns 404 in production — the route does not exist on a live
  * deployment. Per memory: an earlier "Enter demo" button on the
@@ -27,11 +27,13 @@ const DEMO_EMAIL = "demo.player@50pick.test";
 const DEMO_STARTING_BALANCE = 100_000;
 
 /**
- * `emailState` decides which side of the DEPOSIT EMAIL GATE the demo session
- * lands on, so the harness can screenshot BOTH without hand-editing the DB:
- *   "verified" (default) — confirmed address → the real deposit form renders
- *   "unverified"         — address on file, not confirmed → the gate renders
- *   "none"               — no address at all → the gate's "add an email" variant
+ * `emailState` decides which side of the WITHDRAWAL EMAIL STEP the demo session
+ * lands on (since 2026-10-07 — it was the deposit's gate until the owner moved it),
+ * so the harness can screenshot every state without hand-editing the DB:
+ *   "verified" (default) — confirmed address → the withdraw form renders
+ *   "unverified"         — address on file, not confirmed → the withdraw email card
+ *   "none"               — no address at all → the card's "add an email" variant
+ * The deposit form renders in all three: a deposit asks no email.
  * Reached as /auth/demo?email=unverified. Dev-only route (404 in production).
  */
 type EmailState = "verified" | "unverified" | "none";
@@ -242,6 +244,45 @@ async function ensureDemoUser(emailState: EmailState) {
   return { userId: user.id, phoneE164: user.phoneE164 };
 }
 
+/**
+ * ⭐ `&receipts=1` (2026-10-07) — a book of receipts for the Receipts page drives: fifteen rows, so the list has a page 2,
+ * spread over 40 days so every window has rows, and every one of the seven payment statuses shown.
+ * ⛔ THROUGH THE REAL DOORS: deposits and withdrawals are made by `deposit()` and `withdraw()` (the mock rail settles
+ * them CONFIRMED), so this route adds no money-row writer and no wallet writer of its own (the `.txn.create` census in
+ * `test:house-bot-reports` and `test:wallet-status-writers` stay as they are). The other statuses — and the dates — are
+ * then set on those rows with the store's existing `txn.update`; balances are not touched by that, and the next visit's
+ * `ensureDemoWallet` resets the balance anyway. Idempotent: an account that already holds fifteen receipts is left alone.
+ * Needs the demo defaults (identity approved, email confirmed) for the withdrawals to pass their gates.
+ */
+async function ensureDemoReceipts(userId: string, phoneE164: string) {
+  const have = await db.txn.findByUserTypes(userId, ["DEPOSIT", "WITHDRAWAL"], 50);
+  if (have.length >= 15) return;
+  const { deposit: doDeposit, withdraw: doWithdraw } = await import("@/lib/server/wallet-service");
+  const msisdn = phoneE164.replace(/^\+255/, "");
+  const DAY = 86_400_000;
+  // [type, provider, amount, status to show, age in days]
+  const BOOK: Array<["DEPOSIT" | "WITHDRAWAL", "MPESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX", number, StoredTxn["status"], number]> = [
+    ["DEPOSIT", "MPESA", 25_000, "CONFIRMED", 0.05], ["WITHDRAWAL", "MPESA", 12_000, "PROCESSING", 0.1],
+    ["DEPOSIT", "AIRTEL_MONEY", 5_000, "PENDING", 0.2], ["DEPOSIT", "HALO_PESA", 1_000, "FAILED", 1.2],
+    ["WITHDRAWAL", "MPESA", 8_500, "CONFIRMED", 1.4], ["DEPOSIT", "MIXX", 50_000, "REVERSED", 2.5],
+    ["DEPOSIT", "MPESA", 3_000, "AML_REVIEW", 3.5], ["WITHDRAWAL", "MPESA", 2_000, "CANCELLED", 4.5],
+    ["DEPOSIT", "MPESA", 10_000, "PROCESSING", 6], ["WITHDRAWAL", "MPESA", 20_000, "AML_REVIEW", 8],
+    ["DEPOSIT", "AIRTEL_MONEY", 7_500, "CONFIRMED", 12], ["WITHDRAWAL", "MPESA", 4_000, "FAILED", 20],
+    ["DEPOSIT", "MPESA", 100_000, "CONFIRMED", 25], ["DEPOSIT", "MPESA", 1_500, "CANCELLED", 33],
+    ["WITHDRAWAL", "MPESA", 30_000, "CONFIRMED", 40],
+  ];
+  const now = Date.now();
+  for (const [type, provider, amount, status, age] of BOOK.slice(have.length)) {
+    const r = type === "DEPOSIT"
+      ? await doDeposit(userId, { provider, amount, msisdn })
+      : await doWithdraw(userId, { provider, amount, msisdn });
+    const txnId = r.ok ? r.data?.txnId : undefined;
+    if (!txnId) continue;
+    const at = new Date(now - age * DAY).toISOString();
+    await db.txn.update(txnId, { status, createdAt: at, updatedAt: at, completedAt: status === "CONFIRMED" ? at : null });
+  }
+}
+
 async function bootstrapDemo(req: NextRequest) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
@@ -255,6 +296,7 @@ async function bootstrapDemo(req: NextRequest) {
   const { userId, phoneE164 } = await ensureDemoUser(emailState);
   await ensureDemoKyc(userId, kycState);
   await ensureDemoWallet(userId, kycState, deposit, req.nextUrl.searchParams.get("hold") === "officer");
+  if (req.nextUrl.searchParams.get("receipts") === "1") await ensureDemoReceipts(userId, phoneE164);
   await createSession({
     userId,
     phoneE164,

@@ -28,13 +28,14 @@
  * filtered view — a search must not make "Consent given" look like it fell.
  * ⛔ Every number renders through `<Sensitive field="contactPhone">` (U19): GROWTH sees `+255••••01` and no
  * control; a role that may reveal gets the eye and Copy, each one a `pii.revealed` row.
- * ⭐ "Reachable" is the SEND GATE's own answer (`mayReceiveMarketingSms`), asked per visible row — not a
- * second definition. It names only the reasons an operator can act on; a responsible-gambling, age or
- * account refusal reads "Not reachable" and never says which (the gate's detail is not this role's to read).
- * 🔴 D19 · Reachable, Source and the Player chip render ONLY for a viewer who may read a number
+ * ⭐ "Will receive" (U38b · one vocabulary with the campaign's audience card — it read "Reachable" until then) is the SEND
+ * GATE's own answer (`mayReceiveMarketingSms`), asked per visible row — not a second definition. Its refusals name only
+ * the reasons an operator can act on; a responsible-gambling, age or account refusal reads "Not reachable" and never
+ * says which (the gate's detail is not this role's to read).
+ * 🔴 D19 · Will receive, Source and the Player chip render ONLY for a viewer who may read a number
  * (`viewerReads`, decided in `contacts-loader.ts`): each one, row by row, tells a masked role whether a
  * number belongs to a player. 🔴 OD54 · and so does a STOP: until the importer goes live it is a player's own
- * opt-out or an officer's, so the one place a row says "Suppressed" — the Reachable cell, the gate's own answer — is a
+ * opt-out or an officer's, so the one place a row says "Suppressed" — the Will receive cell, the gate's own answer — is a
  * reader's, this page reads no `suppressedAt` cache for any row, and a masked viewer's KPI band carries no stop count.
  * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). A filter
  * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href builder
@@ -109,7 +110,7 @@ export default async function AdminContactsPage(props: { searchParams: Promise<C
 /** ⛔ Only the reasons an operator can act on are named; everything else is "Not reachable". A
  *  self-exclusion, a break, a harm marker, an age or an account status is the player's protected
  *  standing, and it is not named even to the reader this column renders for (D19: GROWTH, a masked
- *  role, gets no Reachable column at all). 🔴 OD54 · its "Suppressed" is the ONE place a row says it is
+ *  role, gets no Will receive column at all). 🔴 OD54 · its "Suppressed" is the ONE place a row says it is
  *  under a stop, which is why the column stays a reader's. Typed as a full Record so a new gate reason
  *  is a compile error here, not a silent blank. */
 const REACH: Record<MarketingSkipReason, string> = {
@@ -133,7 +134,8 @@ async function reachOf(c: StoredMarketingContact): Promise<{ ok: boolean; label:
   try {
     // Concatenated, not a template: `{…msisdn}` in braces is the shape read-tiers §7 reads as a raw render.
     const v = await mayReceiveMarketingSms("+" + c.msisdn);
-    return v.ok ? { ok: true, label: "Reachable" } : { ok: false, label: REACH[v.skipReason] };
+    // ⭐ U38b · the gate's yes reads "Will receive" — the campaign card's word for the same answer (one vocabulary).
+    return v.ok ? { ok: true, label: "Will receive" } : { ok: false, label: REACH[v.skipReason] };
   } catch {
     // ⛔ A gate that could not answer is not a yes.
     return { ok: false, label: "Not reachable" };
@@ -352,7 +354,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                       cannot give stably across pages (§9 U20). */}
                   <SortTh field="operator" label="Operator (by prefix)" current={sort} dir={dir} sp={linkSp} baseHref="/admin/contacts" />
                   {reads && <th className="text-left">Consent</th>}
-                  {reads && <th className="text-left">Reachable</th>}
+                  {reads && <th className="text-left">Will receive</th>}
                   <th className="text-left">Lists · Tags</th>
                   {reads && <th className="text-left">Source</th>}
                   <SortTh field="added" label="Added" current={sort} dir={dir} sp={linkSp} baseHref="/admin/contacts" />
@@ -423,7 +425,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                         {/* 🔴 A1.1 · until U33 a Given/Withdrawn consent can only be a player's (or an erasure's), so the
                             per-row chip is a membership oracle for a masked viewer — shown only to a reader. */}
                         {reads && <td><Chip size="sm" variant={consent.variant}><span className="whitespace-nowrap">{consent.label}</span></Chip></td>}
-                        {/* 🔴 OD54 · the Reachable chip can say "Suppressed" — a stop, which until the importer goes live is a
+                        {/* 🔴 OD54 · the Will receive chip can say "Suppressed" — a stop, which until the importer goes live is a
                             player's own opt-out or an officer's — so it is a reader's too, and no other cell names a stop. */}
                         {reads && <td><Chip size="sm" variant={r.ok ? "success" : "neutral"}><span className="whitespace-nowrap">{r.label}</span></Chip></td>}
                         <td className="whitespace-nowrap">

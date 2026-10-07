@@ -131,10 +131,13 @@ export async function retryDepositAction(formData: FormData): Promise<Result> {
   if (r.ok) {
     await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "deposit failed"} · superseded by retry` });
   } else {
-    // Retry refused (kill-switch, frozen wallet, RG lockout, unconfirmed email, caps / Source of
-    // Funds, rate limit, bounds) — no replacement txn was created, so the FAILED row must stay in
-    // the queue. Record why, cancel nothing. ⚠️ Identity is NOT among these since 2026-09-13: a
-    // deposit asks no identity question (`kyc-gate.ts`); from 2026-09-05 to 2026-09-13 it did.
+    // Retry refused (kill-switch, frozen wallet, RG lockout, caps / Source of Funds, rate limit,
+    // bounds) — no replacement txn was created, so the FAILED row must stay in the queue. Record
+    // why, cancel nothing. ⚠️ Identity is NOT among these since 2026-09-13: a deposit asks no
+    // identity question (`kyc-gate.ts`); from 2026-09-05 to 2026-09-13 it did. ⚠️ Nor an unconfirmed
+    // email since 2026-10-07: a deposit asks no email (owner ruling); a withdrawal does.
+    // ⚠️ A FAILED deposit of TZS 500–999 from before the TZS 1,000 minimum (2026-10-07) is now refused
+    // as below the minimum, so its retry fails here and it can only be cancelled.
     await db.txn.update(txnId, { description: `${t.description ?? "deposit failed"} · retry refused: ${r.error ?? "unknown"}` });
   }
   audit({ category: "WALLET", action: "payments.retry.deposit", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { retried: r.ok, newStatus: r.ok ? r.data?.status : null } });

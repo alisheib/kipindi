@@ -7,6 +7,10 @@
  * `admin-shell`, which a client module must never import — it reaches the store), and `ComposerProvider`, a client
  * provider wrapped around all three, holds what they share: the five fields, the saved snapshot, the refusal, the test.
  * The three bodies (`ComposerMessage`, `ComposerAudience`, `ComposerTest`) read it through one hook.
+ * ⭐ U38b · THE AUDIENCE CARD HOSTS TWO SERVER CHILDREN, handed in by the page: the audience rail (`audience-rail.tsx`,
+ * FilterPills built on the server) and the count — a Suspense keyed by the filter's ONE key around the async split card
+ * (`audience-split-card.tsx`), which renders the server's view-model and nothing else. Nothing here counts, adds or
+ * subtracts a figure; this file only says whether "Who" was chosen and which words describe it.
  *
  * ⭐ THE COUNTER IS THE RENDERER'S. Each variant's live counter is `validateCampaignTemplate` → `counterFor` — the ONE
  * worst-case counter in `campaign-template.ts` (the reserved name, the source line or its room, the statutory footer) —
@@ -45,7 +49,6 @@ import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { validateCampaignTemplate, scanPlaceholders } from "@/lib/marketing/campaign-template";
 import type { CampaignDraftFields, CampaignVariant, TemplateVerdict } from "@/lib/marketing/campaign-template";
-import { campaignDraftHref } from "@/lib/marketing/campaign-status";
 import { foldToGsm7 } from "@/lib/sms-compose";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import type { CampaignDraftField } from "@/lib/server/marketing/campaign-draft";
@@ -53,8 +56,9 @@ import type { CampaignTestResult } from "@/lib/server/marketing/campaign-test-se
 import { saveCampaignDraftAction, sendCampaignTestAction } from "./actions";
 import { ComposerCounter } from "./composer-counter";
 import type { ComposeView } from "./composer-loader";
+import { AUDIENCE_COUNT_AGAIN, AUDIENCE_EVERYONE, AUDIENCE_NOT_CHOSEN, AUDIENCE_RECHECK } from "./audience-copy";
 import {
-  COMPOSE_AUDIENCE_CLEAR, COMPOSE_AUDIENCE_EVERYONE, COMPOSE_AUDIENCE_LEAD, COMPOSE_AUDIENCE_NOTE, COMPOSE_BODY_SW_HINT,
+  COMPOSE_AUDIENCE_CLEAR, COMPOSE_AUDIENCE_LEAD, COMPOSE_BODY_SW_HINT,
   COMPOSE_DISCARD_BODY, COMPOSE_DISCARD_CANCEL, COMPOSE_DISCARD_CONFIRM, COMPOSE_DISCARD_TITLE, COMPOSE_EN_NONE,
   COMPOSE_EN_RULE, COMPOSE_FIELD, COMPOSE_NO_CHANGES, COMPOSE_READ_ONLY, COMPOSE_RELOAD, COMPOSE_SAVE, COMPOSE_SAVE_AS_NEW,
   COMPOSE_SOURCE_LINE_STALE,
@@ -81,6 +85,8 @@ type Saved = { id: string; draftRevision: number; savedAt: string | null; fields
 type Refusal = {
   kind: "invalid" | "not_found" | "not_draft" | "stale" | "source_unreadable" | "failed" | "role" | "rate_limited" | "unfinished";
   message: string;
+  /** A stale save (or a draft confirmed since): the stored draft's own address, which "Reload" goes to. */
+  href?: string;
 };
 /** U37c-2 · who a test went to — a typed number the officer's own is `own` (the server decides it, never the screen). */
 type TestTarget = "own" | "typed";
@@ -302,8 +308,10 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
         setSaved({ id: r.id, draftRevision: r.draftRevision, savedAt: r.savedAt, fields: submitted });
         setServerProblems({});
         setTest({ kind: "idle" });
-        // ⭐ A new draft gets its address (?draft=<id>), so a reload reopens it; an edit re-reads the saved preview.
-        if (r.created) router.replace(campaignDraftHref(r.id) as never, { scroll: false });
+        // ⭐ A new draft gets its address — the composer's own canonical one, built by the server (STD-1: a bare ?draft=<id>
+        // would meet the page's redirect inside this mounted page and unmount the composer) — so a reload reopens it; an
+        // edit re-reads the saved preview.
+        if (r.created) router.replace(r.href as never, { scroll: false });
         else router.refresh();
         return;
       }
@@ -316,7 +324,10 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
       const kind: Refusal["kind"] = "reason" in r ? r.reason : "failed";
       // ⛔ A failure keeps every character the officer typed — the state is not touched. Only a save lost in transit
       // carries "Couldn't save … Try again." — every reason that came back is its own whole sentence.
-      setRefusal({ kind, message: kind === "failed" ? `${COMPOSE_SAVE_FAILED} ${r.error}` : r.error });
+      setRefusal({
+        kind, message: kind === "failed" ? `${COMPOSE_SAVE_FAILED} ${r.error}` : r.error,
+        href: "href" in r && typeof r.href === "string" && r.href !== "" ? r.href : undefined,
+      });
     });
   };
   const save = () => {
@@ -330,7 +341,10 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
   const reload = () => {
     setDiscardAsked(false);
     setAdopt(true);
-    router.refresh();
+    // ⭐ The stored draft's own address when the server named it: its audience is the one somebody else saved, not the one
+    // left in this page's address (which a next save would post back over theirs).
+    if (refusal?.href) router.replace(refusal.href as never, { scroll: false });
+    else router.refresh();
   };
 
   const sendTest = (variant: CampaignVariant, recipient?: TypedTestRecipient) => {
@@ -388,7 +402,7 @@ export function ComposerMessage() {
   const enWritten = fields.bodyEn.trim() !== "";
   const enJina = enWritten && scanPlaceholders(fields.bodyEn).jina > 0;
   // ⛔ The saved line invites a test only when the test card beside it can send one — never one it would refuse.
-  const canTest = view.test.liveNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;
+  const canTest = view.test.liveNote === null && view.test.windowNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;
   const savedLine = c.saved?.savedAt && !c.dirty ? composeSaved(c.saved.savedAt, canTest) : null;
   const showReason = c.saveBlocked !== null && !c.saving && !(savedLine !== null && c.saveBlocked === COMPOSE_NO_CHANGES);
 
@@ -575,12 +589,15 @@ export function ComposerMessage() {
 
 /* ═══ THE AUDIENCE CARD ══════════════════════════════════════════════════════════════════════════════════════════ */
 
-export function ComposerAudience() {
+export function ComposerAudience({ rail, count }: { rail: ReactNode; count: ReactNode }) {
   const c = useComposer();
   const router = useRouter();
   const a = c.view.audience;
   const problem = c.problemAt("audience") ?? a.problem;
   const flagged = problem !== null && problem !== undefined;
+  // ⭐ U38b · what the card is showing: nothing chosen yet, the whole of a population, a stored filter this viewer may not
+  // see, or a filter — the drive's handle, never a style hook.
+  const state = !a.chosen ? "not-chosen" : a.note !== null ? "hidden" : a.everyone ? "everyone" : "filtered";
   return (
     // ⭐ `data-field="audience"`: the Save reason and a refused save take the officer HERE. ⛔ The programmatic tab stop and
     // its ring exist only while the card shows a problem — a tab stop that is always there takes focus on any click inside
@@ -589,14 +606,19 @@ export function ComposerAudience() {
       className={flagged ? "space-y-2 rounded-md brand-focus" : "space-y-2 rounded-md"}
       tabIndex={flagged ? -1 : undefined}
       data-field="audience"
-      data-audience={a.everyone ? "everyone" : a.note !== null ? "hidden" : "filtered"}
+      data-audience={state}
     >
+      {/* ⭐ U38b · the server's rail (null on a campaign past DRAFT — its audience can no longer change). */}
+      {rail}
+      {/* ⭐ U38b · "Who" is an explicit choice: until it is made nothing is counted, and the card says so (decision 3). */}
+      {!a.chosen && <p className="text-body-sm text-text" data-audience-not-chosen>{AUDIENCE_NOT_CHOSEN}</p>}
       {a.note !== null && <p className="text-body-sm text-text-secondary" data-audience-note>{a.note}</p>}
-      {a.everyone ? (
-        <p className="text-body-sm text-text" data-audience-line>{COMPOSE_AUDIENCE_EVERYONE}</p>
+      {a.everyone && a.who !== null ? (
+        <p className="text-body-sm text-text" data-audience-line>{AUDIENCE_EVERYONE[a.who]}</p>
       ) : a.lines.length > 0 ? (
         <div className="space-y-1">
-          <p className="text-body-sm text-text-secondary">{COMPOSE_AUDIENCE_LEAD}</p>
+          {/* The contact book is led in; a population's own first line already says who ("Player accounts"). */}
+          {a.who === "book" && <p className="text-body-sm text-text-secondary">{COMPOSE_AUDIENCE_LEAD}</p>}
           <ul className="space-y-0.5">
             {a.lines.map((line) => <li key={line} className="text-body-sm text-text" data-audience-line>{line}</li>)}
           </ul>
@@ -619,8 +641,28 @@ export function ComposerAudience() {
           {COMPOSE_AUDIENCE_CLEAR}
         </Button>
       )}
-      <p className="text-body-sm text-text-tertiary">{COMPOSE_AUDIENCE_NOTE}</p>
+      {/* ⭐ U38b · the count — the server's keyed Suspense around the split card (page.tsx); null when nothing may be counted. */}
+      {count}
+      {/* ⭐ U38b · the permanent callout (decision 10): every figure above is a forecast, and the gate is asked again at send. */}
+      <Callout tone="info" role="note">
+        <span className="block" data-audience-recheck>{AUDIENCE_RECHECK}</span>
+      </Callout>
     </div>
+  );
+}
+
+/**
+ * ⭐ U38b · "COUNT AGAIN" — the same address, read again (`router.refresh`): the card's error is a read that failed, never a
+ * zero, and a refresh keeps this client tree mounted, so every character the officer typed stays. The count's Suspense
+ * keeps its key, so the sentence stays on screen until the new answer replaces it; the button says it is working.
+ */
+export function AudienceCountAgain() {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <Button type="button" size="sm" variant="ghost" loading={pending} onClick={() => start(() => router.refresh())} data-audience-count-again>
+      {AUDIENCE_COUNT_AGAIN}
+    </Button>
   );
 }
 
@@ -814,6 +856,7 @@ export function ComposerTest() {
       )}
 
       {t.liveNote !== null && <p className="text-body-sm text-text-secondary" data-test-live-note>{t.liveNote}</p>}
+      {t.windowNote !== null && <p className="text-body-sm text-text-secondary" data-test-window-note>{t.windowNote}</p>}
       {fresh && preview !== null && variants.map((v) => (
         <div key={v} className="space-y-1.5">
           <p className="text-body-sm text-text-secondary">{headings[v]}</p>

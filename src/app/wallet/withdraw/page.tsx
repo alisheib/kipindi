@@ -11,13 +11,12 @@ import { Input, Field as KitField } from "@/components/ui/input";
 import { Chip } from "@/components/ui/chip";
 import { Cash } from "@/components/ui/cash";
 import { AmountField } from "@/components/wallet/amount-field";
-import { formatTzs, fill, pctNum } from "@/lib/utils";
+import { formatTzs, formatNumber, fill, pctNum } from "@/lib/utils";
 import { formatTzPhone } from "@/lib/tz-msisdn";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { WithdrawConfirm } from "./withdraw-confirm";
 import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
-import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
-import { minWithdrawalForRate } from "@/lib/payout";
+import { WITHDRAW_MAX_TZS, withdrawMinFor } from "@/lib/server/validators";
 
 // Quick-amount chips for withdraw — AmountField hides any chip above the
 // account's withdrawable max (min(cap, balance)), so small balances show fewer.
@@ -56,6 +55,8 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // withholds tax on their winnings at withdrawal — we withheld 15% of every
   // withdrawal, including money they had deposited and never bet. That is gone.
   const wcfg = await getEffectiveConfig();
+  // The smallest withdrawal at the LIVE fee — the figure the hint states and the field, the action and the server enforce.
+  const withdrawMin = withdrawMinFor(wcfg.withdrawalFeeRate);
   const session = await currentSession();
   if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/withdraw", await searchParams))}`);
 
@@ -107,6 +108,16 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
   const wallet = await db.wallet.findByUserId(session.userId);
 
+  // ⭐ THE CONFIRMED EMAIL (owner ruling 2026-10-07) — the second thing this screen asks, after identity, in the
+  // server's own order (`wallet-service.withdraw()`). A deposit asks no email question any more; money leaving does.
+  // 🔴 NOT SWALLOWED (B-1): a failed read throws to `wallet/error.tsx` ("your funds are safe") — guessing "no address"
+  // would send a confirmed player to type one, and a different address clears the confirmation.
+  const account = await db.user.findById(session.userId);
+  const emailOwed = !account?.emailVerifiedAt;
+  // The email step's facts, passed to the panel only while a confirmed address is still owed: the address on file (the
+  // link went there), or none — then the one step is "Add email".
+  const emailStanding = emailOwed ? { address: account?.email ?? null } : null;
+
   // 🔴 A WALLET THAT IS NOT ACTIVE GETS NO FORM (2026-09-14, audit session 95, U1). An account approved
   // once answered `null` above, so the full payout form was drawn over a FROZEN wallet — an officer's
   // hold, a self-exclusion, a final refusal after re-verification — and the player learned only at
@@ -117,8 +128,12 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // ⚠️ `withdraw()` is still the enforcement; this only stops the page offering what it will refuse.
   // A missing wallet row is not "frozen" — it keeps today's form, which the server refuses.
   const walletHeld = !!wallet && wallet.status !== "ACTIVE";
+  // ⭐ ONE PANEL, IN THE SERVER'S ORDER (2026-10-07): a hold first (unless the refusal is final), then the identity
+  // state — which carries the email as its SECOND step when both are owed (`email={emailStanding}` below) — and only
+  // when identity is settled does the email become the panel itself (`"email"`). So the player never clears the step
+  // the screen showed and is then refused for one it did not (E-5).
   const withdrawPanel: KycPanelState | null =
-    walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState;
+    walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState ?? (emailOwed ? "email" : null);
 
   // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,
   // and until this landed the form said nothing at all. `unavailable` disables the form — taking
@@ -146,10 +161,11 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
       {/* 2026-09-13 · stacks below sm: side by side at 360 the shrink-0 balance squeezed the
           title to "Move / funds / out", one word a line. */}
-      <PageHero glow="rose" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+      {/* ⛔ NO GOLD, NO BETTING ROSE (§M3a D1, §B2a — 2026-10-07): taking your own money out earns nothing and is not the
+          NO side of a stake. Plain, like the receipt it ends on. */}
+      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <PageHeader
-            tone="gold"
-            icon={<I.arrowUpFromLine s={14} className="text-gold-300" />}
+            icon={<I.arrowUpFromLine s={14} className="text-text-subtle" />}
             eyebrow={t.wallet.withdrawTitle}
             title={t.wallet.moveFundsOut}
             subtitle={t.wallet.mobileMoneyOnly}
@@ -168,8 +184,8 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
       </PageHero>
 
       {errorMsg && (
-        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
-          <I.alertCircle s={16} />
+        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger-border bg-danger-bg px-4 py-3">
+          <I.alertCircle s={16} className="text-danger-fg shrink-0" />
           <div className="text-body-sm leading-snug">
             <p className="font-display font-semibold text-text">{t.wallet.withdrawFailed}</p>
             <p className="mt-0.5 text-text-muted">{errorMsg}</p>
@@ -211,19 +227,26 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           re-verification keeps access to money they already earned.
           🔴 AND A HELD WALLET IS NEVER GIVEN THE FORM (2026-09-14): `withdrawPanel` is `frozen` when the
           wallet is not ACTIVE, so the panel's frozen variant (`kycGate.frozen*`) stands where the form would
-          have been, with support as its only step, instead of a refusal at confirm. */}
+          have been, with support as its only step, instead of a refusal at confirm.
+          ⭐ AND THE CONFIRMED EMAIL IS ITS SECOND STEP (owner ruling 2026-10-07): `email` is passed only while the
+          address is owed. On an identity state it adds the email under a hairline; with identity settled the panel IS
+          the email step (`"email"`). Coming back from the mail app re-reads this page, so the form appears with the
+          `?amount=` still set. */}
       {withdrawPanel ? (
         <KycGatePanel
           state={withdrawPanel}
           purpose="payout"
           returnTo={/^\d{1,9}$/.test(prevAmount) ? `/wallet/withdraw?amount=${prevAmount}` : "/wallet/withdraw"}
+          email={emailStanding}
         />
       ) : (
       <form
         action={withdrawAction}
         className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${canSubmit ? "" : "opacity-60"}`}
       >
-        <IdempotencyKeyField />
+        {/* 🔴 A refusal ends the attempt, so each signed `?error=` is a new key (2026-10-06) — the deposit page's note
+            says why: this page stays mounted across its own redirect, and a used key replays its row. */}
+        <IdempotencyKeyField key={sp.error ?? ""} />
         <fieldset disabled={!canSubmit}>
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.destination}
@@ -235,12 +258,14 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             control (Input + quick-amount chips), instead of a bare number field. */}
         <AmountField
           label={t.wallet.amount}
-          hint={t.wallet.amountHint}
+          // ⭐ THE HINT STATES THE MINIMUM THE FORM ENFORCES (owner ruling 2026-10-07): it said a typed "Min TZS 1,000"
+          // while the field — and the server — refused anything below the true minimum at the live fee. One figure, `withdrawMin`.
+          hint={fill(t.wallet.amountHint, { min: formatNumber(withdrawMin), max: formatNumber(WITHDRAW_MAX_TZS) })}
           quickAmounts={WITHDRAW_QUICK}
           // Derived from the LIVE fee rate, not WITHDRAW_MIN_TZS: the gateway's floor is on
           // what it receives (net), so a gross minimum of 1,000 offers an amount we cannot
-          // actually send. See minWithdrawalForRate.
-          min={Math.max(WITHDRAW_MIN_TZS, minWithdrawalForRate(wcfg.withdrawalFeeRate))}
+          // actually send. See `withdrawMinFor`.
+          min={withdrawMin}
           max={Math.min(WITHDRAW_MAX_TZS, wallet?.balance ?? 0)}
           defaultValue={prevAmount || undefined}
           disabled={!canSubmit}

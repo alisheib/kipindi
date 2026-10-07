@@ -300,8 +300,11 @@ console.log("\n§4 · the bounce off login/register runs in the PAGES, which do 
   const helper = read("src/app/auth/bounce-authed.ts");
   // ⛔ THE PROPERTY THAT PREVENTS AN INFINITE REDIRECT LOOP, asserted because the obvious
   // "improvement" — move this to the middleware, where the pathname is always right — destroys
-  // it. `proxy.ts` gates on `isSessionCookieValid` (HMAC only), and a REVOKED device still
-  // carries a valid cookie while `AppShell` deliberately routes it TO /auth/login?revoked=1.
+  // it. `proxy.ts` gates on `readVerifiedSession` (named `isSessionCookieValid` before W25,
+  // 2026-09-19), which verifies the cookie's HMAC and its 7-day exp (and, on /admin, the role the
+  // cookie names), never the session registry, and a REVOKED device still carries a valid cookie
+  // while `AppShell` deliberately routes that device, through /auth/session-ended, TO
+  // /auth/login?revoked=1.
   // ⚠️ ASSERTED ON THE IMPORT AND THE CALL, NOT ON THE WORD — and this check FAILED on its first
   // run for exactly the reason it exists. `bounce-authed.ts`'s docstring NAMES
   // `isSessionCookieValid` while explaining why the middleware is the wrong home, so a

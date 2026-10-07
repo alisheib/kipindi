@@ -35,8 +35,9 @@
  * campaign before the account is listed undated (P3b). P6c reads the page's SCHEDULE too, and S1 sees any spelling.
  * ⛔ No backslash anywhere in this file: line breaks and patterns are built with String.fromCharCode and character
  * classes, because the tools this file is edited with decode escapes (`test:source-bytes`).
- * ⚠️ U13 (the send window) makes `dispatchSlice` time-dependent: its builder injects an open window into P5's call in
- * the same commit (the spec's §5.9 — U13 greps every `dispatchSlice(` under scripts/).
+ * ⭐ U13 (the send window) makes `dispatchSlice` time-dependent, so P5's slice is handed a FIXED open window
+ * (`scripts/lib/send-window.mts`, ENGINE-SPEC §5 rule 9) — green at any hour; `test:marketing-window` W6 walks scripts/
+ * and fails any suite that drives a send path without one.
  *
  * Run:  npm run test:campaign-privacy
  * Red:  npm run red:campaign-privacy
@@ -72,6 +73,8 @@ const { marketingDsarView, NOT_SENT_REASON, CAMPAIGN_HISTORY_CUT } = await impor
 const { exportUserData } = await import("../src/lib/server/user-service.ts");
 const { buildDsarBundle } = await import("../src/lib/server/privacy.ts");
 const { dispatchSlice } = await import("../src/lib/server/marketing/dispatch.ts");
+// U13 · the suites' fixed send windows — P5's slice is handed ALWAYS_OPEN, so the suite is green at any hour.
+const { ALWAYS_OPEN } = await import("./lib/send-window.mts");
 const { AUDIENCE_BUCKET_OF } = await import("../src/lib/server/marketing/audience-split.ts");
 const { SMS_CONSENT_WORDINGS } = await import("../src/lib/marketing/consent-wording.ts");
 const { OPTOUT_TOKEN_ALPHABET, optOutTokenRef } = await import("../src/lib/marketing/optout.ts");
@@ -684,7 +687,7 @@ async function run(w: World, tag: string): Promise<void> {
         balanceTzs: 100,
       } as SmsBatchOutcome;
     };
-    const outcomes = await dispatchSlice([{ ref: rF, msisdn: NF, body: "50pick: tangazo." }, { ref: rG, msisdn: NG, body: "50pick: tangazo." }], { send });
+    const outcomes = await dispatchSlice([{ ref: rF, msisdn: NF, body: "50pick: tangazo." }, { ref: rG, msisdn: NG, body: "50pick: tangazo." }], { send, window: ALWAYS_OPEN });
     await check(p(L.p5), () => {
       const oF = outcomes.find((o) => o.ref === rF);
       const oG = outcomes.find((o) => o.ref === rG);

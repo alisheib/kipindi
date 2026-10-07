@@ -7,6 +7,8 @@ import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OtpInput } from "@/components/ui/otp-input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { FieldLegend } from "@/components/ui/field-legend";
 import { Chip } from "@/components/ui/chip";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -14,7 +16,7 @@ import { startEnrollAction, confirmEnrollAction, disable2faAction, regenerateBac
 
 type Phase = "idle" | "enrolling" | "codes";
 
-export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean; backupRemaining: number }) {
+export function SecurityClient({ enabled, backupRemaining, hasPassword }: { enabled: boolean; backupRemaining: number; hasPassword: boolean }) {
   const { t } = useT();
   const router = useRouter();
   const { toast } = useToast();
@@ -28,6 +30,9 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [disarm, setDisarm] = useState<null | "disable" | "regen">(null);
   const [disarmCode, setDisarmCode] = useState("");
+  // A-X3 · turning two-step on asks for the current password first (when the account has one).
+  const [pwPanel, setPwPanel] = useState(false);
+  const [pw, setPw] = useState("");
 
   // Render the otpauth URI to a QR data-URI (client-only, no network).
   useEffect(() => {
@@ -45,19 +50,40 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
   // account. Each branch now carries its own body; the pair is what the toast renders.
   // `danger` is kept deliberately: this is the two-factor rail, and a change that did not
   // take on the control guarding the account is an error, not a fixable slip.
-  const errFor = (e?: string): { title: string; body: string } =>
+  // A-X3 · the two current-password refusals say nothing changed (title), then why and
+  // what next (body); the wait is the server's own `retryAfterSec`, never a guess.
+  const errFor = (e?: string, sec?: number): { title: string; body: string } =>
     e === "rate_limited" ? { title: t.security.errRateLimited, body: t.security.errRateLimitedBody }
     : e === "invalid"    ? { title: t.security.errInvalid,     body: t.security.errInvalidBody }
+    : e === "password_wrong"      ? { title: t.security.errGeneric, body: t.error.errPwCurrentWrong }
+    : e === "reauth_rate_limited" ? { title: t.security.errGeneric, body: t.error.errRateLimited.replace("{sec}", String(Math.max(1, sec ?? 60))) }
     :                      { title: t.security.errGeneric,     body: t.security.errGenericBody };
   const errToast = (e?: string) => {
     const c = errFor(e);
     toast({ title: c.title, description: c.body, variant: "danger" });
   };
 
-  function beginEnroll() {
+  // A-X3 · `password` is the current password ("" for an account that has none). It is cleared
+  // after every attempt. Already on (another tab or device got there first) is not an error:
+  // say so and refresh into the "on" view. The refusals carry the server's wait, so they render
+  // the same pair at the same severity as `errToast`, with `errFor`'s second argument
+  // (feedback-law 3.8/3.9 hold `errToast` by its one-argument opening).
+  function beginEnroll(password: string) {
     start(async () => {
-      const r = await startEnrollAction();
-      if (!r.ok || !r.otpauthUrl) { errToast(r.error); return; }
+      const r = await startEnrollAction(password);
+      setPw("");
+      if (r.error === "already_enabled") {
+        setPwPanel(false);
+        toast({ title: t.security.enabledToast, variant: "success" });
+        router.refresh();
+        return;
+      }
+      if (!r.ok || !r.otpauthUrl) {
+        const c = errFor(r.error, r.retryAfterSec);
+        toast({ title: c.title, description: c.body, variant: "danger" });
+        return;
+      }
+      setPwPanel(false);
       setOtpauthUrl(r.otpauthUrl);
       setSecret(r.secret ?? null);
       setCode("");
@@ -166,9 +192,29 @@ export function SecurityClient({ enabled, backupRemaining }: { enabled: boolean;
       </div>
 
       {!enabled ? (
-        <Button variant="primary" size="md" fullWidth loading={pending} leading={<I.keyRound s={16} />} onClick={beginEnroll}>
-          {t.security.enable}
-        </Button>
+        pwPanel ? (
+          // A-X3 · the current password, in the disarm panel's recipe; a password-less account never sees it.
+          <div className="space-y-2 rounded-md border border-border bg-bg-overlay/40 p-3">
+            <FieldLegend as="label" htmlFor="tfa-current-pw" className="block mb-1.5">{t.common.currentPassword}</FieldLegend>
+            <PasswordInput
+              id="tfa-current-pw"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && pw && !pending) { e.preventDefault(); beginEnroll(pw); } }}
+              autoComplete="current-password"
+              placeholder="••••••••"
+            />
+            <p className="text-body-sm text-text-muted">{t.common.reauthHint}</p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setPwPanel(false); setPw(""); }} disabled={pending}>{t.common.cancel}</Button>
+              <Button variant="primary" size="sm" fullWidth loading={pending} disabled={!pw} onClick={() => beginEnroll(pw)}>{t.common.continue}</Button>
+            </div>
+          </div>
+        ) : (
+          <Button variant="primary" size="md" fullWidth loading={pending} leading={<I.keyRound s={16} />} onClick={hasPassword ? () => { setPw(""); setPwPanel(true); } : () => beginEnroll("")}>
+            {t.security.enable}
+          </Button>
+        )
       ) : (
         <div className="space-y-3 border-t border-border pt-4">
           <div className="flex items-center justify-between gap-3 text-[13px]">

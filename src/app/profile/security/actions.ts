@@ -3,15 +3,20 @@
 import { getSession } from "@/lib/server/session";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import {
-  enrollPlayer2fa, confirmPlayer2fa, disablePlayer2fa, regeneratePlayer2faBackupCodes,
+  startPlayer2faEnrolment, confirmPlayer2fa, disablePlayer2fa, regeneratePlayer2faBackupCodes,
 } from "@/lib/server/player-2fa";
 
-/** Begin enrollment — provision a secret + return the otpauth URI for the QR. */
-export async function startEnrollAction(): Promise<{ ok: boolean; otpauthUrl?: string; secret?: string; error?: string }> {
+/**
+ * Begin enrollment — provision a secret + return the otpauth URI for the QR. Asks for the
+ * current password first (A-X3) and is refused while 2FA is already on (A-X2), so a session
+ * alone can neither enrol a stranger's authenticator nor swap the owner's.
+ */
+export async function startEnrollAction(currentPassword?: string): Promise<{ ok: boolean; otpauthUrl?: string; secret?: string; error?: string; retryAfterSec?: number }> {
   const s = await getSession();
   if (!s) return { ok: false, error: "unauthorized" };
-  const { otpauthUrl, secretBase32 } = await enrollPlayer2fa(s.userId);
-  return { ok: true, otpauthUrl, secret: secretBase32 };
+  const r = await startPlayer2faEnrolment(s.userId, typeof currentPassword === "string" ? currentPassword : "");
+  if (!r.ok) return { ok: false, error: r.error, retryAfterSec: r.retryAfterSec };
+  return { ok: true, otpauthUrl: r.otpauthUrl, secret: r.secretBase32 };
 }
 
 /** Confirm the first live code → enable 2FA → return the one-time backup codes. */

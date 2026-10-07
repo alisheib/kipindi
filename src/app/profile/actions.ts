@@ -3,47 +3,47 @@
 /**
  * Profile self-service actions.
  *
- *   • updateProfileBasicsAction — display name + locale.
+ *   • updateProfileBasicsAction — display name + locale. Nothing else: the email
+ *     has its own door (below), and this action refuses any form that carries one.
+ *   • changeEmailAction — add, change or remove the contact email, behind the
+ *     current password (`changeOwnEmail`, route audit 2026-10-06, A1).
  *   • updateAvatarAction — accepts a small base64 data URL (capped at 96 KB
  *     after client-side resize) and stores it on the user record.
  *
- * Both actions audit under USER.profile.* so the trail survives in the
- * compliance ring even when the field itself rotates.
+ * Each audits under its own action, so the trail survives in the compliance ring
+ * even when the field itself rotates.
  */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { audit } from "@/lib/server/audit";
-import { setUserEmail, sendEmailVerification } from "@/lib/server/email-verification";
+import { sendEmailVerification, changeOwnEmail } from "@/lib/server/email-verification";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 
 const MAX_AVATAR_BYTES = 96 * 1024; // 96 KB after client-side resize
 
 const BasicsSchema = z.object({
-  // OPTIONAL. The email editor only wants to change an address, and when it was
-  // required that component had to invent a value — it sent the literal English
+  // OPTIONAL. The email editor used to save through this action, and when the name
+  // was required that component had to invent a value — it sent the literal English
   // string "Player", which then got PERSISTED as the display name of anyone who
   // had not set one. An omitted field now means "leave the name alone".
   displayName: z.string().trim().min(1).max(40).optional(),
   locale: z.enum(["EN", "SW"]).optional(),
-  // Optional contact email — once on file, the player receives transactional
-  // receipts (deposit/withdraw/win/KYC/etc.). Empty string clears it. Validated
-  // and normalized (trim + lowercase) so what we email is always well-formed.
-  email: z.string().trim().toLowerCase().email("Enter a valid email.").max(254).or(z.literal("")).optional(),
 });
 
-export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true; emailVerificationSent?: boolean } | { ok: false; error: string; code?: string; reason?: string }> {
+export async function updateProfileBasicsAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string }> {
   // B-7 — failures carry a `code` so the trilingual editors can render their own
   // localized line (src/lib/error-copy.ts); `error` stays the audit/API truth.
   const session = await currentSession();
   if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
+  // 🔴 A1 (route audit 2026-10-06) · THE EMAIL IS NOT A BASIC. It changes only through `changeEmailAction`, behind the
+  // current password. A page cached from before that deploy still posts `email` here: it fails loudly, never silently.
+  if (formData.has("email")) return { ok: false, error: "Email changes need your current password.", code: "INVALID", reason: "unknown_failure" };
 
-  const rawEmail = formData.get("email");
   const parsed = BasicsSchema.safeParse({
     displayName: formData.get("displayName") ?? undefined,
     locale: formData.get("locale") || undefined,
-    email: rawEmail === null ? undefined : rawEmail,
   });
   if (!parsed.success) {
     const issuePath = String(parsed.error.issues[0]?.path?.[0] ?? "");
@@ -59,27 +59,34 @@ export async function updateProfileBasicsAction(formData: FormData): Promise<{ o
   });
   if (!next) return { ok: false, error: "User not found.", code: "NOT_FOUND" };
 
-  // Email goes through the single setUserEmail() writer so a new/changed
-  // address resets verification and triggers a confirmation link — the same
-  // path the KYC step uses. Only touch it when the field was actually submitted.
-  let emailVerificationSent = false;
-  if (parsed.data.email !== undefined) {
-    const r = await setUserEmail(session.userId, parsed.data.email);
-    // ⭐ `setUserEmail` says which refusal this is; this line used to phrase-match its English.
-    if (!r.ok) return { ok: false, error: r.error, code: r.code, reason: r.reason };
-    emailVerificationSent = r.verificationSent;
-  }
-
   audit({
     category: "COMPLIANCE",
     action: "user.profile.basics_updated",
     actorId: session.userId,
     targetType: "User",
     targetId: session.userId,
-    payload: { displayName: parsed.data.displayName ?? null, locale: parsed.data.locale ?? null, emailSet: parsed.data.email ? true : parsed.data.email === "" ? false : undefined },
+    payload: { displayName: parsed.data.displayName ?? null, locale: parsed.data.locale ?? null },
   });
   revalidatePath("/profile");
-  return { ok: true, emailVerificationSent };
+  return { ok: true };
+}
+
+/**
+ * THE PLAYER'S EMAIL DOOR (route audit 2026-10-06, A1) — add, change and remove alike, behind the current password.
+ * `changeOwnEmail` decides everything (the no-op, the password, the duplicate check, the single writer); this boundary
+ * only reads the form and forwards the refusal's `code` / `reason` / `retryAfterSec`, so the editor can say which one
+ * in the player's language. ⛔ The password is never echoed back.
+ */
+export async function changeEmailAction(formData: FormData): Promise<
+  | { ok: true; emailVerificationSent: boolean; deliveryIssue?: string }
+  | { ok: false; error: string; code?: string; reason?: string; retryAfterSec?: number }
+> {
+  const session = await currentSession();
+  if (!session) return { ok: false, error: "Sign in required.", code: "AUTH" };
+  const r = await changeOwnEmail(session.userId, String(formData.get("email") ?? ""), formData.get("currentPassword"));
+  if (!r.ok) return { ok: false, error: r.error, code: r.code, reason: r.reason, retryAfterSec: r.retryAfterSec };
+  revalidatePath("/profile");
+  return { ok: true, emailVerificationSent: r.verificationSent, deliveryIssue: r.deliveryIssue };
 }
 
 /** Re-send the email confirmation link for the player's current address.

@@ -285,6 +285,8 @@ scripts/.kyc-gate-red.lock
 # (root-anchored). A run killed mid-flight must not leave these as untracked files a later commit sweeps up.
 scripts/.kyc-copy-truth-red.lock
 scripts/.refused-funds-race-red.lock
+# 2026-10-07 — red:withdraw-email-gate's lock (money doors), for the same reason.
+scripts/.withdraw-email-gate-red.lock
 /.red-refused-funds-*/
 /.red-tax-report-*/
 

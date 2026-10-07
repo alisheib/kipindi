@@ -61,3 +61,38 @@ export function pathWithQuery(path: string, query: Record<string, string | strin
   const s = qs.toString();
   return s ? `${path}?${s}` : path;
 }
+
+/** The longest `next` any door carries. A longer one is REFUSED (""), never cut - a cut path can name a different page (route audit B1, 2026-10-06). */
+export const MAX_NEXT_LEN = 512;
+
+/** `sanitizeNext` with a length cap: "" for anything unsafe, an `/auth` page, or longer than MAX_NEXT_LEN. */
+export function boundedNext(raw: unknown): string {
+  const safe = sanitizeNext(raw);
+  return safe.length <= MAX_NEXT_LEN ? safe : "";
+}
+
+/** An `/admin` page, with or without a tail - the console's own rule for a destination. */
+export function isAdminPath(p: string): boolean {
+  return /^\/admin(?:[/?#]|$)/.test(p);
+}
+
+/** `path` with `welcome=<kind>` set in its QUERY, before any `#fragment` (a greeting after the fragment is never read). */
+export function withWelcome(path: string, kind: "new" | "back"): string {
+  const h = path.indexOf("#");
+  const hash = h < 0 ? "" : path.slice(h);
+  const rest = h < 0 ? path : path.slice(0, h);
+  const q = rest.indexOf("?");
+  const qs = new URLSearchParams(q < 0 ? "" : rest.slice(q + 1));
+  qs.set("welcome", kind);
+  return `${q < 0 ? rest : rest.slice(0, q)}?${qs.toString()}${hash}`;
+}
+
+/** The page a request came from (an `x-href`: path + query) as a safe return path: fragment and `welcome` dropped, capped; an over-long query falls back to the bare path; "" when nothing safe remains. */
+export function returnPathFrom(href: string): string {
+  const raw = String(href ?? "").split("#")[0];
+  const q = raw.indexOf("?");
+  const path = q < 0 ? raw : raw.slice(0, q);
+  const query: Record<string, string[]> = {};
+  for (const [k, v] of new URLSearchParams(q < 0 ? "" : raw.slice(q + 1))) (query[k] ??= []).push(v);
+  return boundedNext(pathWithQuery(path, query)) || boundedNext(path);
+}

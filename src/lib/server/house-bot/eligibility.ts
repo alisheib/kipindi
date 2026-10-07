@@ -388,7 +388,9 @@ export async function houseBotEligibility(
   }
 
   // ── warnings ──────────────────────────────────────────────────────────────────────────────────────
-  if (!user.email || !user.emailVerifiedAt) warnings.push(warn("EMAIL_UNVERIFIED", "Email unconfirmed — they can't top up until they confirm it."));
+  // ⭐ 2026-10-07: a confirmed email is a WITHDRAWAL step now (owner ruling) — a deposit asks for none, so "can't top up"
+  // became false that day. Still a warning, never a block: a house bot stakes without either half of the cash-out gate.
+  if (!user.email || !user.emailVerifiedAt) warnings.push(warn("EMAIL_UNVERIFIED", "Email unconfirmed — they can't withdraw until they confirm it."));
   if (!kyc || kyc.status !== "APPROVED") warnings.push(warn("IDENTITY_NOT_APPROVED", "Identity never approved — they can't withdraw until it is."));
   if (user.recruitedBy) warnings.push(warn("RECRUITED", "Recruited by an agent — no commission is paid on house stakes."));
   const open = (await positionStore.listForUser(userId, 100)).filter((p) => p.status === "OPEN" && p.houseBotId == null);

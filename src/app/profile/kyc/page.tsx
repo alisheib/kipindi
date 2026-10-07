@@ -31,6 +31,7 @@ import { getServerT, type Dict, type Locale } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
 import { isSafePath } from "@/lib/safe-next";
+import { EmailResendInline } from "@/components/profile/email-resend-inline";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Verify identity", which a Swahili player saw in their browser tab and history.
@@ -41,7 +42,7 @@ export async function generateMetadata() {
   return { title: t.profile.kycIdentityVerification };
 }
 
-export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; reason?: string; id?: string; idType?: string; idNumber?: string; idExpiry?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
+export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; reason?: string; id?: string; idType?: string; idNumber?: string; idExpiry?: string; submitted?: string; fullName?: string; dob?: string; next?: string }> }) {
   const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
@@ -168,18 +169,22 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </div>
       )}
       {hasEmail && !emailVerified && idDone && (
-        <div className="rounded-xl border border-gold-700 bg-gold-500/[0.06] px-4 py-3 flex items-start gap-2.5">
-          <I.mail s={16} className="text-gold-300 mt-0.5 shrink-0" />
-          <div className="text-body-sm text-text-muted leading-snug">
-            <p className="font-display font-semibold text-gold-300">{t.profile.kycConfirmEmail}</p>
+        // ⭐ THE CONFIRMED EMAIL, ONCE IDENTITY IS DONE (the form row below carries it before then). 2026-10-07: NEUTRAL,
+        // never gold — §M3 keeps gold for earned money, and the profile pill one tap earlier calls the same state neutral.
+        // The sign-up link expires after 24 h, so a new one is offered HERE, beside the door to fix a mistyped address.
+        <div data-kyc-email-callout className="rounded-xl border border-border bg-bg-elevated px-4 py-3 flex items-start gap-2.5">
+          <I.mail s={16} className="text-brand-300 mt-0.5 shrink-0" />
+          <div className="min-w-0 text-body-sm text-text-muted leading-snug">
+            <p className="font-display font-semibold text-text">{t.profile.kycConfirmEmail}</p>
             <p className="mt-0.5">
-              {t.profile.kycConfirmEmailBody} <span className="font-semibold text-text">{user?.email}</span>
+              {t.profile.kycConfirmEmailBody} <span className="font-mono text-text break-all">{user?.email}</span>
             </p>
-            <p className="mt-1.5">
-              <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">
-                {t.profile.kycResendEmail}
+            <EmailResendInline className="mt-2">
+              <Link href="/profile/account" className="btn btn-ghost btn-sm btn-pill inline-flex items-center gap-1.5">
+                <I.user s={14} />
+                {t.wallet.verifyChangeEmailCta}
               </Link>
-            </p>
+            </EmailResendInline>
           </div>
         </div>
       )}
@@ -503,14 +508,13 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               </div>
               {emailVerified && user?.email ? (
                 // 2026-09-13 — a CONFIRMED account email is shown, not re-asked: the empty
-                // box read "Required" over an inbox we had already proven. The hidden input
-                // keeps the action's contract; `setUserEmail` treats the same address as
-                // unchanged, so nothing is re-sent and the confirmation stands.
+                // box read "Required" over an inbox we had already proven.
+                // 🔴 2026-10-06 (route audit A1) — and this step no longer WRITES the address in any state: it
+                // was a second, password-less door to the recovery inbox. The account page is the one door.
                 <div>
                   <FieldLegend as="p" className="block mb-2">
                     {t.common.email}
                   </FieldLegend>
-                  <input type="hidden" name="email" value={user.email} />
                   {/* 2026-09-13 — the address gets the row's FULL width on its own line, with the
                       tag beneath. Sharing a line with the tag in a mono face split it mid-word at
                       360 in every locale. Wrapping only breaks inside a word when the address is
@@ -526,22 +530,37 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   </div>
                   <p className="mt-1.5 text-body-sm text-text-subtle">{t.profile.dobFromSignUp}</p>
                 </div>
+              ) : user?.email ? (
+                // An address ON FILE BUT NOT CONFIRMED is shown as unconfirmed, read-only: the account page changes
+                // it, behind the current password, and sends a new link (a link expires after 24 h).
+                <div>
+                  <FieldLegend as="p" className="block mb-2">
+                    {t.common.email}
+                  </FieldLegend>
+                  <div className="flex items-start gap-2 rounded-xl border border-border bg-bg-elevated px-[14px] py-[10px]">
+                    <I.mail s={14} className="mt-0.5 text-text-subtle shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block break-words text-body-sm text-text">{user.email}</span>
+                      <span className="block text-body-sm text-text-subtle">{t.common.unconfirmed}</span>
+                    </div>
+                  </div>
+                  {/* No ASCII space after the zh full stop before the link: it doubles the gap (as on the DOB line). */}
+                  <p className="mt-1.5 text-body-sm text-text-subtle">
+                    {t.profile.emailOnFileUnconfirmed}{locale === "zh" ? "" : " "}
+                    <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">{t.wallet.verifyChangeEmailCta}</Link>
+                  </p>
+                  {/* 2026-10-07 · the first-deposit notice's "both" variant lands here: a new link in place, not one more page. */}
+                  <EmailResendInline className="mt-2" />
+                </div>
               ) : (
-                // 2026-09-14 — an address ON FILE BUT NOT CONFIRMED is filled in and named as unconfirmed, not asked
-                // for again: the empty box read "Required" beside a banner saying we had sent a link to it. It stays
-                // editable (it may be a typo); the same address submitted is a no-op in `setUserEmail`, so the link
-                // already sent stays valid.
-                <Field
-                  id="email"
-                  label={t.common.email}
-                  hint={hasEmail ? t.profile.emailOnFileUnconfirmed : t.profile.emailHint}
-                  type="email"
-                  required
-                  maxLength={254}
-                  inputMode="text"
-                  placeholder="you@example.com"
-                  defaultValue={(sp as Record<string, string | undefined>).email ?? user?.email ?? ""}
-                />
+                // No address yet: named, and the one door to add it — never a field here.
+                <div>
+                  <FieldLegend as="p" className="block mb-2">{t.common.email}</FieldLegend>
+                  <p className="text-body-sm text-text-muted">
+                    {t.profile.noEmailOnFile}{locale === "zh" ? "" : " "}
+                    <Link href="/profile/account" className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">{t.wallet.verifyAddEmailCta}</Link>
+                  </p>
+                </div>
               )}
               <SubmitButton label={`${t.profile.continueVerification}`} pendingLabel={t.common.loading} />
             </form>

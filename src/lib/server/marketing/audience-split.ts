@@ -38,7 +38,7 @@ import type {
 import { licenceOutreach, type LicenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { mayReceiveMarketingSms, userPhoneKeyFor, DB_GATE_READS } from "@/lib/server/marketing/consent";
 import type { MarketingGateReads, MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
-import { walkCampaignAudience, contactAudienceKey, campaignAudienceRefusal, CAMPAIGN_WALK_MAX } from "@/lib/server/marketing/audience";
+import { walkCampaignAudience, contactAudienceKey, campaignAudienceRefusal, campaignAudienceCount, CAMPAIGN_WALK_MAX } from "@/lib/server/marketing/audience";
 import type { CampaignAudiencePage, CampaignAudienceRow, ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
@@ -369,6 +369,8 @@ type SplitState = { flights: Map<string, Promise<AudienceSplit>>; running: numbe
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_AUDIENCE_SPLITS: SplitState | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_AUDIENCE_COUNTS: Map<string, Promise<number>> | undefined;
 }
 /** On globalThis, so a hot reload cannot start a second set of slots beside the first. */
 const SPLITS: SplitState = globalThis.__50PICK_AUDIENCE_SPLITS ?? (globalThis.__50PICK_AUDIENCE_SPLITS = {
@@ -390,6 +392,37 @@ async function withSplitSlot<T>(work: () => Promise<T>): Promise<T> {
     if (next) next();
     else SPLITS.running--;
   }
+}
+
+/** One walk count per filter key, shared by every asker — on globalThis beside the split's own flights. */
+const COUNTS: Map<string, Promise<number>> = globalThis.__50PICK_AUDIENCE_COUNTS ?? (globalThis.__50PICK_AUDIENCE_COUNTS = new Map());
+
+/**
+ * ⭐ OD65 · THE COUNT ALONE, UNDER THE SPLIT'S OWN LIMITS (the U38b review's #6) — what a viewer who may not read a number is
+ * counted with (`composeAudienceCount`): the ONE walk's count, never the gate, inside the SAME per-process slots as the
+ * split (`AUDIENCE_SPLITS_PER_PROCESS` — the pool is shared with bets), and ONE count per filter key that every asker joins.
+ * The role rule is the caller's (`campaignAudienceRefusal`). `count` exists for in-process spies: a count other than the
+ * real one computes its own, still inside the slots.
+ */
+export async function audienceWalkCount(
+  f: ContactAudienceFilter,
+  count: (f: ContactAudienceFilter) => Promise<number> = campaignAudienceCount,
+): Promise<number> {
+  const shared = count === campaignAudienceCount;
+  const key = contactAudienceKey(f);
+  let flight = shared ? COUNTS.get(key) : undefined;
+  if (flight === undefined) {
+    const mine = withSplitSlot(() => count(f));
+    if (shared) {
+      COUNTS.set(key, mine);
+      const clear = (): void => {
+        if (COUNTS.get(key) === mine) COUNTS.delete(key);
+      };
+      void mine.then(clear, clear);
+    }
+    flight = mine;
+  }
+  return flight;
 }
 
 /** The slots as they stand — for the suite and for a health read. */

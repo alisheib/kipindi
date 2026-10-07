@@ -69,8 +69,8 @@
  *      joined to the rule the overlay already had (today's half verbatim, so with the flag down the rule IS today's) or
  *      a guard straight after the pinned line it follows; each overlay reads the flag once and asks the one list (§2)
  *      once; the chat keeps its conversation; the HIDE_ON patterns other gates pin are unchanged; the analytics consent
- *      prompt is still asked of everybody; the email-verify bar is gated on the same per-request answer (VODACOM-PLAN
- *      §3.2 item 2); and the shell's lazy module alone loads the flag, through `next/dynamic` (WP6c). In the file it
+ *      prompt is still asked of everybody; the email-verify bar — gated on the same per-request answer (VODACOM-PLAN
+ *      §3.2 item 2) until it was deleted on 2026-10-07 — stays absent (11.emailbar); and the shell's lazy module alone loads the flag, through `next/dynamic` (WP6c). In the file it
  *      sits beside §5, whose flag it reads.
  *   §12 THE SHELL'S DEFERRED PARTS (WP6c, VODACOM-PLAN §0h point 20) — AppShell is a server component, and its own
  *      `React.lazy` split nothing: every module it named rode in every page's first load. So every lazily loaded part
@@ -433,7 +433,7 @@ const EXPECTED: Record<string, Expect> = {
   "/updown": U, "/updown/[roundId]": U,
   "/updown/history": T, "/positions": T, "/positions/[positionId]": T, "/positions/performance": T,
   "/account": A,
-  "/wallet": A, "/wallet/deposit": A, "/wallet/deposit/return": A, "/wallet/receipt/[id]": A, "/wallet/withdraw": A,
+  "/wallet": A, "/wallet/deposit": A, "/wallet/deposit/return": A, "/wallet/receipt/[id]": A, "/wallet/receipts": A, "/wallet/withdraw": A,
   "/profile": A, "/profile/account": A, "/profile/activity": A, "/profile/invite": A, "/profile/kyc": A,
   "/profile/notifications": A, "/profile/responsible-gambling": A, "/profile/security": A, "/profile/sessions": A,
   "/profile/source-of-funds": A,
@@ -844,7 +844,7 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
  * rule exactly — or a guard straight after the pinned line it follows. Read here with comments stripped: each join as
  * written beside today's half; each overlay reading the flag once and the one journey list once; the chat keeping its
  * conversation; the HIDE_ON patterns other gates pin; the analytics consent prompt still asked of every reader; the
- * email-verify bar gated on the same per-request answer (VODACOM-PLAN §3.2 item 2); and the shell's lazy module alone
+ * email-verify bar — deleted 2026-10-07 (owner ruling), so now its ABSENCE (11.emailbar); and the shell's lazy module alone
  * loading the flag, through `next/dynamic` (WP6c; 5.mount holds where it is mounted).
  * ⚠️ Kept here, beside §5 whose flag it reads, and numbered after WP6b's §9 and §10.
  */
@@ -886,8 +886,8 @@ const OVERLAY_HIDE_ON: ReadonlyArray<[string, string, string]> = [
 const asWritten = (s: string) => s.split("~").join(String.fromCharCode(92));
 /** The flag's one line in the shell's lazy module (WP6c): `next/dynamic`, server render on, no option object. */
 const FLAG_BINDING = partLineOf("LazyJourneyFlag");
-/** The email-verify bar's mount: today's condition, and never for a journey request. */
-// 2026-10-06: and never during a break (`promoSuppressed`) — the bar invites a deposit (docs/FLOWS.md §2).
+/** The email-verify bar's last mount — it was deleted on 2026-10-07 (owner ruling: ask quietly at withdrawal). Kept as
+ *  the PLANT that puts it back: 11.emailbar must see any return of it, for a classic request or a journey one. */
 const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}";
 
 function g11Overlays(W: World, G: Graph, ok: Ok) {
@@ -933,9 +933,11 @@ function g11Overlays(W: World, G: Graph, ok: Ok) {
     show(consent) === show(["<Suspense fallback={null}><LazyConsentPrompt /></Suspense>"])
       && show(install) === show(["{installInviteLive && <Suspense fallback={null}><LazyInstallInvite /></Suspense>}"]),
     show({ consent, install }));
-  ok("11.emailbar · the email-verify bar keeps today's condition and adds the resolver's answer: a classic request's as before, never a journey request's (VODACOM-PLAN §3.2 item 2)",
-    count(shell, EMAIL_BAR_MOUNT) === 1 && count(shell, "<EmailVerifyBanner") === 1 && shell.includes("const journeyShown = (await journeyRead).journey;"),
-    show({ gated: count(shell, EMAIL_BAR_MOUNT), mounts: count(shell, "<EmailVerifyBanner") }));
+  // 🔴 INVERTED 2026-10-07. This pinned the bar's condition (classic requests only, never during a break). The owner
+  // removed the bar (a deposit asks no email; a withdrawal asks it, quietly), so the shell must mount it for NOBODY.
+  ok("11.emailbar · there is no email-verify bar for any reader — classic or journey (deleted 2026-10-07)",
+    count(shell, "<EmailVerifyBanner") === 0 && !shell.includes("emailVerifyState") && shell.includes("const journeyShown = (await journeyRead).journey;"),
+    show({ mounts: count(shell, "<EmailVerifyBanner"), state: shell.includes("emailVerifyState") }));
   const loaders = [...(G.into.get(FLAG_COMPONENT) ?? [])].sort();
   const binding = count(text(W, SHELL_LAZY), FLAG_BINDING);
   ok("11.flag.lazy · the shell's lazy module alone loads JourneyFlag, through next/dynamic (WP6c), and AppShell never imports it — a classic page's first load carries none of it",
@@ -1656,7 +1658,7 @@ const LOGIN_ROUTE = "/auth/login";
 const CENSUS_CHROME = new Set([
   SHELL, TOP_BAR_FILE, BOTTOM_NAV, NAV_MORE_FILE, AVATAR_FILE, FOOTER_FILE, WALLET_SHEET_FILE, BELL,
   "src/components/layout/wallet-balance-pill.tsx", "src/components/layout/away-summary-bar.tsx",
-  "src/components/layout/email-verify-banner.tsx",
+  // (`email-verify-banner.tsx` was here — deleted 2026-10-07 with the app-wide email bar.)
   JHDR, JTABS, GUEST_SHEET, FLAG_COMPONENT,
 ]);
 /** The hub's own components and page: `/account`'s doors are `hubRowsFor`'s rows, never what its files happen to name. */
@@ -1770,7 +1772,6 @@ const EXTERNAL: ReadonlyArray<{ route: string; file: string; cite: string; why: 
   { route: "/agent/invite/[token]", file: "src/lib/server/agent-application-service.ts", cite: "/agent/invite/${token}", why: "an officer's invitation, sent by email" },
   { route: "/auth/reset-password", file: "src/lib/server/password-reset.ts", cite: "/auth/reset-password?token=", why: "the reset link, sent by email" },
   { route: "/auth/verify-email", file: "src/lib/server/email-verification.ts", cite: "/auth/verify-email?token=", why: "the confirmation link, sent by email" },
-  { route: "/auth/admin", file: PROXY_FILE, cite: '"/auth/admin"', why: "the staff sign-in the edge sends the console's visitors to" },
   { route: "/s", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "a marketing SMS's opt-out link that lost its token" },
   { route: "/s/[token]", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "the opt-out link in every marketing SMS" },
   { route: "/offline", file: "public/sw.js", cite: 'OFFLINE_URL = "/offline"', why: "the service worker's offline fallback" },
@@ -2447,7 +2448,7 @@ if (!PROVE_RED) {
     const chatHideWidened = withFile(WORLD, OVERLAY_CHAT, (s) => s.replace("(auth|admin|s)(", "(auth|admin|s|markets)("));
     const panelHideWidened = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace("(legal|profile)", "(legal|profile|help)"));
     const consentForClassicOnly = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyConsentPrompt /></Suspense>", "{!journeyShown && <Suspense fallback={null}><LazyConsentPrompt /></Suspense>}"));
-    const emailBarForAll = withFile(WORLD, SHELL, (s) => s.replace(EMAIL_BAR_MOUNT, "{emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}"));
+    const emailBarForAll = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyConsentPrompt /></Suspense>", `<Suspense fallback={null}><LazyConsentPrompt /></Suspense>${EMAIL_BAR_MOUNT}`));
     const flagEager = withFile(WORLD, SHELL, (s) => `${s}${LF}import { JourneyFlag } from "@/components/journey/journey-flag";${LF}`);
     const flagInClassic = withFile(WORLD, BOTTOM_NAV, (s) => `${s}${LF}import { JourneyFlag } from "@/components/journey/journey-flag";${LF}`);
 
@@ -2878,8 +2879,8 @@ ${s}`);
         world: panelHideWidened, landed: changed(panelHideWidened, OVERLAY_CHANNELS), landedAs: "the panel gone from the help page for every reader" },
       { name: "the analytics consent prompt withheld from journey viewers", expect: at("11.consent ·"),
         world: consentForClassicOnly, landed: changed(consentForClassicOnly, SHELL), landedAs: "a preview viewer can never answer the analytics question" },
-      { name: "the email-verify bar shown to journey viewers", expect: at("11.emailbar ·"),
-        world: emailBarForAll, landed: changed(emailBarForAll, SHELL), landedAs: "the bar on every journey page (VODACOM-PLAN §3.2 item 2)" },
+      { name: "the email-verify bar mounted again", expect: at("11.emailbar ·"),
+        world: emailBarForAll, landed: changed(emailBarForAll, SHELL), landedAs: "the deleted app-wide bar back on every page (owner ruling 2026-10-07)" },
       { name: "AppShell imports the flag eagerly", expect: at("11.flag.lazy ·"),
         world: flagEager, landed: changed(flagEager, SHELL), landedAs: "every classic visitor's first load carries the journey flag" },
       { name: "a classic layout component loads the flag", expect: at("11.flag.lazy ·"),

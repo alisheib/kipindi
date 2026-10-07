@@ -120,6 +120,10 @@ const SURFACES = [
      server component inside a client page, so its controls are real <Link>s and its counts
      come from the same read as the rows. */
   "src/app/wallet/wallet-bar.tsx",              // /wallet — 9 money lenses + state/window
+  /* DECLARED 2026-10-07 (the Receipts page — owner ruling: every deposit and withdrawal kept in the app). The wallet's
+     own query language narrowed to the two money movements that have a receipt: All · Deposits · Withdrawals, plus the
+     wallet's state and window axes. Declared in the same commit as the rail, as §0.4 requires. */
+  "src/app/wallet/receipts/receipts-bar.tsx",   // /wallet/receipts — 3 lenses + state/window
   "src/components/updown/updown-board-tabs.tsx", // /updown — assets + durations
   /* ⚠️ RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.1). The day rail folded into the shared
      WINDOW vocabulary and the hook moved with the controls into `history-bar.tsx`. `?day=`
@@ -273,6 +277,14 @@ const ADMIN_SURFACES = [
      rail file — §0.4 refuses an undeclared `data-filter-rail` and §6.1 a declared file that renders no control.
      `red:filter-language` plants both directions. */
   "src/app/admin/campaigns/campaign-status-rail.tsx", // /admin/campaigns — status (U36)
+  /* DECLARED 2026-10-07 (U38b, marketing S13) · the campaign composer's audience rail — Who (contact book · player
+     accounts · both), Operator (by prefix), the window (the platform's ONE window control, `defaultPreset="all"`), and
+     the contact book's own List and Tag (and a reader's Consent · Stop list · Source · Player) while Who is the book.
+     Every label and href built on the server (`audience-rail-model.ts`, through the composer's ONE href builder). TWO
+     rank-taking controls — one `FilterPill`, one `DateTimeRangeFilter` — both at the dense rank: §6.6 counts it 2 dense
+     of 2. ⛔ Declared in the SAME commit as the rail file — §0.4 refuses an undeclared `data-filter-rail` and §6.1 a
+     declared file that renders no control. `red:filter-language` plants both directions. */
+  "src/app/admin/campaigns/new/audience-rail.tsx", // /admin/campaigns/new — who + operator + window + list + tag (U38b)
 ];
 
 /**

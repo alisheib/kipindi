@@ -3,13 +3,14 @@
 import { redirect } from "next/navigation";
 import { reasonKeyFor } from "@/lib/failure-banner";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { closeAccount, exportUserData } from "@/lib/server/user-service";
 import { isCloseAccountConfirmation } from "@/lib/close-account-phrase";
 import { audit } from "@/lib/server/audit";
 
 export async function exportDataAction(): Promise<{ ok: true; payload: string; filename: string } | { ok: false; error: string }> {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const data = await exportUserData(session.userId);
   audit({
     category: "COMPLIANCE",
@@ -52,7 +53,7 @@ export async function filePrivacyRequestAction(
   formData: FormData,
 ): Promise<{ ok: true; duplicate: boolean } | { ok: false; error: string; reason?: string }> {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const { fileDsarRequest, hasOpenRequest, asRequestableType } = await import("@/lib/server/privacy");
   // ⛔ AN ALLOWLIST, not a cast. `DsarType` also admits ACCESS and PORTABILITY, and a bare
   // `as DsarType` on form input would let a hand-posted body file one of those — creating the
@@ -72,9 +73,9 @@ export async function filePrivacyRequestAction(
   return { ok: true, duplicate: false };
 }
 
-export async function changePasswordAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string }> {
+export async function changePasswordAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string; code?: string; reason?: string; retryAfterSec?: number }> {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("new") ?? "");
   const { changePassword } = await import("@/lib/server/password-reset");
@@ -88,7 +89,7 @@ export async function changePasswordAction(formData: FormData): Promise<{ ok: tr
 
 export async function closeAccountAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login");
+  if (!session) redirect((await signInPathForAction()) as never);
   const confirm = String(formData.get("confirm") ?? "");
   // One rule with the form (`src/lib/close-account-phrase.ts`): any locale's phrase, typed whole (E-400 ⑦c).
   if (!isCloseAccountConfirmation(confirm)) {

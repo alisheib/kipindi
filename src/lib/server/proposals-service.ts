@@ -682,7 +682,7 @@ export async function approveProposal(proposalId: string, officerId: string): Pr
         : "Proposal approved",
       html: proposalApprovedHtml({ titleEn: p.titleEn, amountTzs: grantedTzs, wagerRequiredTzs, queued, paidAsCash }),
       tag: "proposal-approved",
-    }));
+    }), { confirmedOnly: true });
 
     return { ok: true, grantedTzs, prizeSuppressedByRg };
   });

@@ -76,8 +76,16 @@ export const RATE_RULES: Record<string, RateRule> = {
   "auth.login":    { capacity: 8,  refillPerMin: 2 },
   "auth.register": { capacity: 3,  refillPerMin: 0.2 },   // 3 per hour per phone
   "password_reset":{ capacity: 5,  refillPerMin: 0.2 },   // 5 reset-link requests per ~hour per phone
-  // Confirmation-link resends, per user. Reachable from the deposit gate, so a
-  // stuck player will tap it — 3 quickly is generous, then ~1 every 2 min. Tight
+  // Per ACCOUNT: every current-password check outside sign-in (email change, password change, the confirmation page, turning
+  // on 2FA; src/lib/server/reauth.ts). Every attempt spends. Never touches the sign-in lock, so neither a session holder nor
+  // a link holder can lock the owner out.
+  "auth.reauth":   { capacity: 5,  refillPerMin: 0.2 },
+  // Per client IP beside the per-identifier bucket above: bounds a script walking numbers and the mail it costs us. Wide,
+  // because carrier NAT puts many phones behind one address. Reads the first X-Forwarded-For entry like every per-IP bucket
+  // here, so it is defence in depth only (FLOWS.md section 8a).
+  "password_reset.ip": { capacity: 20, refillPerMin: 1 },
+  // Confirmation-link resends, per user. Reachable from the withdraw screen's email
+  // step, the identity page and the account page, so a stuck player will tap it — 3 quickly is generous, then ~1 every 2 min. Tight
   // enough that a signed-in account can't flood a third party's inbox with our
   // mail (which would also burn our sending reputation).
   "email.verify.resend": { capacity: 3, refillPerMin: 0.5 },

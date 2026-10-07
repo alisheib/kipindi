@@ -26,8 +26,8 @@ import { mkdirSync } from "node:fs";
 // ⛔ THE STAKE IS THE CARD'S, NOT A CONSTANT — AND ASSUMING IT COST THIS RUN TWO FALSE
 // FAILURES. The first version hardcoded 1,000 "the platform floor", priced the expected
 // multiplier at that, and reported the DOWN button as wrong (card 1.74 vs "truth" 1.33). The
-// card was right: the live global `minStake` is **500**, so the default preset — and the bet
-// actually placed — was 500, and the two figures were answers to two different questions.
+// card was right: the live global `minStake` was **500** that day (1,000 since 2026-08-14), so the default preset —
+// and the bet actually placed — was 500, and the two figures were answers to two different questions.
 // A pari-mutuel multiplier is a function OF the stake; comparing one computed at a different
 // stake is not a comparison. Ask the page which amount it is pricing.
 // ⚠️ THE BOARD DEFAULTS TO THE SHORTEST DURATION, AND OURS IS STOPPED. `getBoard` picks

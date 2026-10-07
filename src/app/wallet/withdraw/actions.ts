@@ -6,14 +6,17 @@ import { signFlash } from "@/lib/server/flash-message";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
+import { signInPathForAction } from "@/lib/server/sign-in-path";
 import { withdraw } from "@/lib/server/wallet-service";
 import { lookupPayeeName, type PaymentProvider } from "@/lib/server/payments";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import type { WithdrawInput } from "@/lib/server/validators";
-import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { WITHDRAW_MAX_TZS, withdrawMinFor } from "@/lib/server/validators";
+import { getEffectiveConfig } from "@/lib/server/market-config";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { getServerT } from "@/lib/i18n-server";
 import { errorCopy } from "@/lib/error-copy";
+import { fill, formatNumber } from "@/lib/utils";
 
 const WITHDRAW_PROVIDERS = new Set(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX"]);
 
@@ -53,7 +56,7 @@ export async function lookupWithdrawPayeeAction(input: { provider: string; msisd
 
 export async function withdrawAction(formData: FormData) {
   const session = await currentSession();
-  if (!session) redirect("/auth/login?next=/wallet/withdraw");
+  if (!session) redirect((await signInPathForAction()) as never);
 
   const { t } = await getServerT();
 
@@ -84,7 +87,8 @@ export async function withdrawAction(formData: FormData) {
   // ⚠️ WHAT PROTECTS A PAYOUT WHILE THE OTP WAITS — read this before deciding it can keep waiting.
   // Since 2026-09-13 the protections are three: identity approval (at least once — `kyc-gate.ts`),
   // the binding of the payout to the registered number (E-215), and the per-withdrawal cap
-  // (`WITHDRAW_MAX_TZS`, TZS 5,000,000, checked below). The payee-name lookup above shows who is
+  // (`WITHDRAW_MAX_TZS`, TZS 5,000,000, checked below) — and from 2026-10-07 a fourth, a confirmed
+  // email address on the account (`withdraw()`, after identity). The payee-name lookup above shows who is
   // being paid. ⛔ No officer reviews a withdrawal before it is sent: the TZS 1,000,000 two-officer
   // hold that used to be listed here was switched off by the owner ruling of 2026-09-13
   // (`WITHDRAWAL_AML_HOLD` in payments.ts) — do not count it as a protection. Between 2026-08-20
@@ -99,8 +103,13 @@ export async function withdrawAction(formData: FormData) {
   // These two were hardcoded English on the money path — a Swahili- or Chinese-speaking player
   // saw an English validation error. `amountHint` already states the same bounds in all three
   // locales, so it is the honest thing to echo rather than a fourth phrasing of the same rule.
-  if (!Number.isFinite(amount) || amount < WITHDRAW_MIN_TZS || amount > WITHDRAW_MAX_TZS) {
-    redirect(("/wallet/withdraw?error=" + encodeURIComponent(signFlash("withdraw-error", t.wallet.amountHint)) + carryParams) as never);
+  // ⭐ THE BOUND IS THE TRUE MINIMUM (owner ruling 2026-10-07): `withdrawMinFor` at the LIVE fee — the figure the page's
+  // hint states (TZS 1,015 at 1.5%), built on WITHDRAW_MIN_TZS — and the hint is a `{min}`/`{max}` template, filled here
+  // exactly as on the page, so a refusal can never print a different number or a bare "{min}".
+  const withdrawMin = withdrawMinFor((await getEffectiveConfig()).withdrawalFeeRate);
+  if (!Number.isFinite(amount) || amount < withdrawMin || amount > WITHDRAW_MAX_TZS) {
+    const bounds = fill(t.wallet.amountHint, { min: formatNumber(withdrawMin), max: formatNumber(WITHDRAW_MAX_TZS) });
+    redirect(("/wallet/withdraw?error=" + encodeURIComponent(signFlash("withdraw-error", bounds)) + carryParams) as never);
   }
   // The payee mobile number is where the money is sent — required for every
   // (mobile-money) payout. The exact format is validated by the WithdrawSchema
@@ -118,6 +127,16 @@ export async function withdrawAction(formData: FormData) {
     msisdn,
   }, idempotencyKey);
   revalidatePath("/wallet");
+  // ⭐ THE EMAIL STEP IS A STATE, NOT A FORM ERROR (owner ruling 2026-10-07: a confirmed email is required to withdraw).
+  // The page's panel shows that step — the address, "Send the link again", or "Add email" — so the player goes back to it
+  // WITH their choices (amount, rail): once the address is confirmed the form opens as they left it. Never the number:
+  // the destination is the account's own, read from the session (E-215). The hop that used to do this on the DEPOSIT
+  // action was deleted with the deposit email door.
+  if (!result.ok && result.code === "EMAIL_UNVERIFIED") {
+    const back = new URLSearchParams(carryParams.slice(1));
+    back.delete("msisdn");
+    redirect(`/wallet/withdraw?${back.toString()}` as never);
+  }
   // B-7 — mint the refusal in the player's language; the English service string
   // stays in the audit record, not on the screen.
   if (!result.ok) redirect(("/wallet/withdraw?error=" + encodeURIComponent(signFlash("withdraw-error", errorCopy(t, result))) + carryParams) as never);

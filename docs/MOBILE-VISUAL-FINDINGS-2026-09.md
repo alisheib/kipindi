@@ -4726,6 +4726,8 @@ The listener is on `window` and unconditionally `preventDefault()`s Enter, so it
 
 *Evidence:* src/components/markets/operation-result-modal.tsx:356-359 `const onKey = (e: KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); (onPrimary ?? closeRef.current)(); } }; window.addEventListener("keydown", onKey);` (and the identical non-success branch at :302-307). The secondary is a real button at :519-531, the ✕ comes from Modal at :325-333.
 
+*Resolved 2026-10-06 by the Vodacom plan S6 A8i, LIVE `23f762f4` 2026-10-07* (`docs/VODACOM-PLAN.md` §0i) — confirmed in a real browser first: on the tree before it, Tab to "View positions" + Enter went to /markets. Both listeners are gone; Enter is the focused button's own press. Guards: `test:enter-where-pressed`, `qa:enter-where-pressed` (case F).
+
 ### S12-overlays-code-12 · 🟡 medium · 🕓 unverified · state
 **OperationResultModal crest + primary button tones for success/danger** — `every result receipt (KYC approved, password changed, propos`
 

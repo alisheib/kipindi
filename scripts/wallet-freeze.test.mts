@@ -16,8 +16,18 @@
  * check) is given an APPROVED row by hand, visibly, so the refusal measured is the freeze and not the gate.
  * ⚠️ `db.wallet` in the memory store keeps whole objects, so it cannot prove the column survives Postgres —
  * `test:dal-parity` §5 holds `freezeReasons` in the Prisma mapper.
+ *
+ * ⭐ THE PAGES THAT INVITE MONEY IN (route audit, 2026-10-06) — read from decommented source and the LOADED dictionary,
+ * each with a planted control:
+ *   §7 · no "confirm your email to add money" bar over a held wallet (`app-shell.tsx`), on the one pinned mount line;
+ *   §8 · a break or a hold pauses every money-in invitation on /wallet/deposit (promo, trust strip, the "you can still
+ *        add funds" payout sentence) and on /wallet (header Deposit, Add funds, the empty state, the promo), and a
+ *        self-exclusion reads its own sentence — never the cooling-off one that promises sign-in and withdrawals;
+ *   §9 · the email step's copy is true for everyone (no "first deposit", no "we sent you a link" with no address), the
+ *        withdraw page's user read is not swallowed into a wrong door, and coming back to the tab re-reads the page.
+ *        ⭐ Retargeted 2026-10-07: the step moved from the deposit door to the withdraw screen (owner ruling).
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import {
   addWalletFreeze, removeWalletFreeze, freezeWalletByOfficer, unfreezeWalletByOfficer, OFFICER_FREEZE_REASON_MIN,
@@ -27,6 +37,7 @@ import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { createMarket, buyPosition } from "../src/lib/server/market-service.ts";
 import { selfExclude } from "../src/lib/server/responsible-gambling.ts";
 import { getAuditForTarget, auditFlush } from "../src/lib/server/audit.ts";
+import { payoutNoticeCopy } from "../src/lib/payout-notice-copy.ts";
 import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
@@ -230,6 +241,144 @@ section("§6 · a frozen wallet refuses deposit, withdrawal and bet — and the 
   ok("6.6 · control · the same deposit goes through once lifted", d2.ok, JSON.stringify(d2));
   ok("6.7 · control · the same bet goes through once lifted", b2.ok, JSON.stringify(b2));
   ok("6.8 · control · the same withdrawal goes through once lifted", w2.ok, JSON.stringify(w2));
+}
+
+// ── shared by §7-§9: decommented, whitespace-collapsed source, and the LOADED dictionary ────────────────
+// ⛔ Never a grep of raw `i18n-dict.ts`: its own comments quote the retired sentences ("Never 'first deposit'.").
+const flat = (s: string) => s.replace(/\s+/g, " ");
+const srcOf = (rel: string) => flat(decomment(readFileSync(new URL(`../${rel}`, import.meta.url), "utf8")));
+const count = (hay: string, needle: string) => hay.split(needle).length - 1;
+const { dict } = await import("../src/lib/i18n-dict.ts");
+type Loc = "en" | "sw" | "zh";
+const LOCS: readonly Loc[] = ["en", "sw", "zh"];
+const say = (loc: Loc, ns: string, key: string): string => {
+  const v = (dict as unknown as Record<Loc, Record<string, Record<string, unknown>>>)[loc]?.[ns]?.[key];
+  return typeof v === "string" ? v : "";
+};
+
+// ── §7 · no email bar at all (2026-10-07; was: none over a held wallet, D3e) ──────────────────────────────
+section("§7 · there is no app-wide \"confirm your email\" bar — over a held wallet or anywhere else (2026-10-07)");
+{
+  // 🔴 INVERTED 2026-10-07 (owner ruling: remove the bar, ask quietly at withdrawal). From 2026-10-06 this section proved
+  // the bar was not drawn over a HELD wallet, where confirming would open nothing. The bar is deleted: the email is asked
+  // on the withdraw screen, the profile's pill and the one first-deposit notice — never on every page.
+  const shell = srcOf("src/components/layout/app-shell.tsx");
+  const hasBar = (s: string) => /EmailVerifyBanner|emailVerifyState/.test(s);
+  ok("7.1 · app-shell neither imports, derives nor mounts an email bar", !hasBar(shell));
+  ok("7.2 · …and the bar's component file is gone", !existsSync(new URL("../src/components/layout/email-verify-banner.tsx", import.meta.url)));
+  const planted = `${shell} {emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}`;
+  ok("7.1c · control · a planted mount of the old bar fails 7.1", hasBar(planted));
+}
+
+// ── §8 · a break or a hold pauses every money-in invitation (D3c / D3d) ─────────────────────────────────
+section("§8 · a break or a hold pauses every money-in invitation on /wallet/deposit and /wallet; an exclusion reads its own sentence");
+{
+  const dep = srcOf("src/app/wallet/deposit/page.tsx");
+  ok("8.1 · the deposit page tells a self-exclusion from a cooling-off and draws the exclusion's own sentence",
+    dep.includes('breakIsExclusion = lock.reason === "self_exclusion"') && dep.includes("breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive"));
+  const WITHDRAW_WORD: Record<Loc, RegExp> = { en: /withdraw/i, sw: /kutoa/i, zh: /提现/ };
+  const SIGN_IN_WORD: Record<Loc, RegExp> = { en: /sign in/i, sw: /kuingia/i, zh: /登录/ };
+  for (const loc of LOCS) {
+    const ex = say(loc, "rg", "exclusionActive");
+    const br = say(loc, "rg", "breakActive");
+    ok(`8.2 · ${loc} · rg.exclusionActive promises neither withdrawals nor signing in`,
+      ex.length > 0 && !WITHDRAW_WORD[loc].test(ex) && !SIGN_IN_WORD[loc].test(ex), ex);
+    ok(`8.2c · ${loc} · control · both words ARE found in rg.breakActive, the sentence an exclusion used to be shown`,
+      WITHDRAW_WORD[loc].test(br) && SIGN_IN_WORD[loc].test(br), br);
+  }
+  ok("8.3 · one answer for money in on the deposit page, and the payout notice follows it",
+    dep.includes("const moneyInPaused = !!breakUntil || walletHeld;") && dep.includes('variant={moneyInPaused ? "withdraw" : "deposit"}'));
+  const L = { delayedTitle: "dT", delayedBody: "dB", unavailableTitle: "uT", unavailableBody: "uB", depositWarning: "dW" };
+  ok("8.3b · pure · unavailable + withdraw says the withdraw body; only unavailable + deposit says \"you can still add funds\"",
+    payoutNoticeCopy("unavailable", "withdraw", L)?.body === "uB" && payoutNoticeCopy("unavailable", "deposit", L)?.body === "dW",
+    `${payoutNoticeCopy("unavailable", "withdraw", L)?.body} · ${payoutNoticeCopy("unavailable", "deposit", L)?.body}`);
+  const promoGated = (s: string) => s.includes("showCashback && !moneyInPaused && <CashbackPromo") && s.includes("{!moneyInPaused && (");
+  ok("8.4 · the cash back promo and the trust strip are drawn only while money in is open", promoGated(dep));
+  const plantedPromo = dep.replace("showCashback && !moneyInPaused && <CashbackPromo", "showCashback && !breakUntil && <CashbackPromo");
+  ok("8.4c · control · the planted `{showCashback && !breakUntil && <CashbackPromo` (a held wallet saw the promo) fails 8.4",
+    plantedPromo !== dep && !promoGated(plantedPromo));
+
+  const wal = srcOf("src/app/wallet/page.tsx");
+  ok("8.5 · /wallet reads the break inside a try that fails open, and opens deposits only for an ACTIVE wallet with no break",
+    /try ?\{ ?onBreak = \(await isLockedOut\(session\.userId\)\)\.locked;? ?\} ?catch/.test(wal) && wal.includes("const depositOpen = !walletHeld && !onBreak;"));
+  ok("8.6 · /wallet's cash back promo is gated on depositOpen as well as the switch",
+    wal.includes("depositOpen && bonusFeatureLive && bonusCfg.enabled && bonusCfg.cashbackEnabled ? bonusCfg.cashbackPercentage : 0"));
+
+  const client = srcOf("src/app/wallet/wallet-client.tsx");
+  const DOOR = 'href="/wallet/deposit"';
+  const doorsGated = (s: string) => count(s, DOOR) === 3
+    && s.includes('{depositOpen && ( <Link href="/wallet/deposit"')
+    && s.includes('hold === 0 && canDeposit && ( <Link href="/wallet/deposit"')
+    && s.includes('isAuthed && depositOpen ? ( <Link href="/wallet/deposit"');
+  ok("8.7 · wallet-client's three deposit doors (header Deposit, Add funds, the empty state) are each gated on depositOpen",
+    doorsGated(client), `${count(client, DOOR)} door(s)`);
+  const plantedDoor = client.replace('{depositOpen && ( <Link href="/wallet/deposit"', '{!walletHeld && ( <Link href="/wallet/deposit"');
+  ok("8.7c · control · the planted pre-fix header door `{!walletHeld && ( <Link href=\"/wallet/deposit\"` fails 8.7",
+    plantedDoor !== client && !doorsGated(plantedDoor));
+}
+
+// ── §9 · the email step: true copy, no swallowed read, a fresh page on return (D1 / D2 / D3f) ──────────
+// ⭐ RETARGETED 2026-10-07. The step these rules were earned on — the DEPOSIT email door — is deleted (owner ruling: a
+// deposit asks no email; a confirmed email is required to withdraw). The rules moved with the step, to the withdraw
+// screen's panel (`KycGatePanel`, state `email` or its second step) and the hooks it shares (`use-email-confirm.ts`).
+section("§9 · the email step says only what is true, its read is not swallowed, and coming back re-reads the page");
+{
+  const FIRST: Record<Loc, RegExp> = { en: /\bfirst\b/i, sw: /ya kwanza|kwanza/i, zh: /首次/ };
+  const KEYS: [string, string][] = [["kycGate", "emailTitle"], ["kycGate", "emailBody"], ["kycGate", "emailBodyNone"],
+    ["kycGate", "emailStepTitle"], ["kycGate", "emailStepNone"], ["error", "errEmailUnverified"]];
+  for (const loc of LOCS) {
+    const lines = KEYS.map(([ns, k]) => say(loc, ns, k));
+    ok(`9.1 · ${loc} · every email-step sentence exists, and none says "first" (a changed address reads them too)`,
+      lines.every((l) => l.length > 0) && lines.every((l) => !FIRST[loc].test(l)), lines.filter((l) => !l || FIRST[loc].test(l)).join(" | "));
+  }
+  const OLD: Record<Loc, string> = {
+    en: "…this is a one-time step before your first deposit.",
+    sw: "…hii ni hatua ya mara moja kabla ya amana yako ya kwanza.",
+    zh: "…这是首次充值前的一次性步骤。",
+  };
+  ok("9.1c · control · FIRST matches the old sentence in every language", LOCS.every((loc) => FIRST[loc].test(OLD[loc])));
+  ok("9.1d · the retired door's own keys are gone from every language",
+    LOCS.every((loc) => !say(loc, "wallet", "verifyGateBody") && !say(loc, "wallet", "verifyGateTitle")));
+
+  const panel = srcOf("src/components/kyc/kyc-gate-panel.tsx");
+  const BODY = "body: address ? t.kycGate.emailBody : t.kycGate.emailBodyNone";
+  // 2026-10-07 · the step's title is chosen ONCE — "While you wait…" under review (design review: "Nothing more to do"
+  // sat above a step the player still owed), the plain title otherwise — and both address titles sit on the address side.
+  const STEP = "const stepTitle = address ? (waiting ? t.kycGate.emailStepWaitTitle : t.kycGate.emailStepTitle) : (waiting ? t.kycGate.emailStepWaitNone : t.kycGate.emailStepNone);";
+  // Each "we sent you a link" key appears ONCE, and that once is inside the address conditional.
+  const bodyOnlyWithAddress = (s: string) => s.includes(BODY) && s.includes(STEP) && s.includes("{stepTitle}")
+    && (s.match(/t\.kycGate\.emailBody(?!None)/g) ?? []).length === 1 && count(s, "t.kycGate.emailStepTitle") === 1
+    && count(s, "t.kycGate.emailStepWaitTitle") === 1;
+  ok("9.2 · \"we sent you a link\" is said only when there is an address it could have been sent to — card and step alike",
+    bodyOnlyWithAddress(panel));
+  const plantedBody = panel.replace(BODY, "body: t.kycGate.emailBody");
+  ok("9.2c · control · a body that ignores the address fails 9.2", plantedBody !== panel && !bodyOnlyWithAddress(plantedBody));
+  const NOTHING = /nothing more|hakuna kingine|无需再/i;
+  ok("9.2d · under review with the email step owed, the card's body is the one that never says \"nothing more to do\" — in every language",
+    panel.includes("fill(emailStep ? t.kycGate.bodyPendingEmail : t.kycGate.bodyPending,")
+      && LOCS.every((loc) => say(loc, "kycGate", "bodyPendingEmail").length > 10 && !NOTHING.test(say(loc, "kycGate", "bodyPendingEmail"))));
+  ok("9.2e · control · 9.2d's words catch the plain pending body in every language", LOCS.every((loc) => NOTHING.test(say(loc, "kycGate", "bodyPending"))));
+  ok("9.2f · the account doors carry the safe return path, and the two-step card has its change door",
+    panel.includes("const accountHref = safeNext ? `/profile/account?next=${encodeURIComponent(safeNext)}` : \"/profile/account\";")
+      && !panel.includes('href="/profile/account"') && count(panel, "{t.wallet.verifyChangeEmailCta}") === 2);
+
+  const wd = srcOf("src/app/wallet/withdraw/page.tsx");
+  const swallowed = (s: string) => /try\s*\{\s*(?:const\s+)?account\s*=\s*await\s+db\.user\.findById\(/.test(s);
+  ok("9.3 · the withdraw page's account read is NOT swallowed — a failed read throws to wallet/error.tsx instead of picking a door",
+    wd.includes("const account = await db.user.findById(session.userId);") && !swallowed(wd));
+  ok("9.3b · …and the email step is chosen by `const emailOwed = !account?.emailVerifiedAt;`", wd.includes("const emailOwed = !account?.emailVerifiedAt;"));
+  ok("9.3c · control · the swallow matcher fires on a planted swallowed read",
+    swallowed("try { account = await db.user.findById(session.userId); } catch { /* default to no email step */ }"));
+
+  const hook = srcOf("src/lib/use-email-confirm.ts");
+  const refreshes = (s: string) => /export function useRefreshOnReturn\(enabled: boolean\)/.test(s)
+    && s.includes('document.addEventListener("visibilitychange", back)') && s.includes('document.removeEventListener("visibilitychange", back)')
+    && s.includes("router.refresh()") && /now - last < 5_000/.test(s);
+  ok("9.4 · coming back to the tab re-reads the page: a visibilitychange listener added and removed, at most once per 5 s",
+    refreshes(hook));
+  ok("9.4b · …and the panel turns it on exactly while the email step is shown", panel.includes("useRefreshOnReturn(emailOnly || emailStep);"));
+  const plantedHook = hook.replace('document.addEventListener("visibilitychange", back)', "");
+  ok("9.4c · control · a hook that never listens fails 9.4", plantedHook !== hook && !refreshes(plantedHook));
 }
 
 console.log(`\nwallet-freeze: ${pass} passed, ${fail} failed`);

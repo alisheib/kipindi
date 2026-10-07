@@ -119,7 +119,40 @@ for (const p of MISSING_EVIDENCE) {
   else if (!seenEvidence.has(p)) { bad++; console.log(`  ✗ ${p} is no longer cited — remove it from MISSING_EVIDENCE`); }
 }
 
-console.log(`\nchecked ${links} links · ${paths} script paths · ${npms} npm refs · ${shots} evidence shots across docs/`);
+// FLOWS.md: no line-number anchor, every backticked `src/` anchor exists, and section 1's edge row names exactly PROTECTED_PREFIXES.
+// FOUND 2026-10-06: all 23 line-number anchors had drifted, one named a file deleted 2026-08-13, and section 1's edge row listed 4 of the 9 gated prefixes.
+let flowsAnchors = 0;
+{
+  const flows = readFileSync(join(DOCS, "FLOWS.md"), "utf8").split(/\r?\n/);
+  flows.forEach((line, i) => {
+    for (const m of line.matchAll(/[\w./[\]-]+\.(?:ts|tsx|mts|mjs|js):\d+/g)) report("line anchor", "FLOWS.md", m[0], i + 1);
+    // ⛔ ONLY A STRUCK ANCHOR IS EXEMPT (review of the route audit, 2026-10-07). This used to skip the WHOLE row whenever
+    // its prose said "deleted", "gone" or "removed" — eight live rows went unchecked because a sentence about something
+    // else happened to use one of those words. A deleted file is named as `~~src/…~~`; every other anchor must exist.
+    const struck = [...line.matchAll(/~~[\s\S]*?~~/g)].map((s) => [s.index, s.index + s[0].length]);
+    for (const m of line.matchAll(/`(src\/[^`\s]+)`/g)) {
+      if (struck.some(([a, b]) => m.index >= a && m.index < b)) continue;
+      flowsAnchors++;
+      const star = m[1].indexOf("*");
+      const target = (star >= 0 ? m[1].slice(0, star) : m[1]).replace(/\/$/, "");
+      if (!existsSync(join(ROOT, target))) report("missing anchor", "FLOWS.md", m[1], i + 1);
+    }
+  });
+  const proxySrc = readFileSync(join(ROOT, "src", "proxy.ts"), "utf8");
+  const head = "const PROTECTED_PREFIXES = [";
+  const at = proxySrc.indexOf(head);
+  const gated = at < 0 ? [] : [...proxySrc.slice(at + head.length, proxySrc.indexOf("]", at + head.length)).matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+  const MARK = "Edge-gated prefixes:";
+  const rowAt = flows.findIndex((l) => l.includes(MARK));
+  const listed = rowAt < 0 ? [] : [...flows[rowAt].slice(flows[rowAt].indexOf(MARK) + MARK.length).split(". ")[0].matchAll(/`([^`]+)`/g)].map((x) => x[1]);
+  if (gated.length < 5) report("control", "src/proxy.ts", "PROTECTED_PREFIXES was not read", 0);
+  if (rowAt < 0) report("control", "FLOWS.md", `no '${MARK}' row in section 1`, 0);
+  const notListed = gated.filter((p) => !listed.includes(p));
+  const notGated = listed.filter((p) => !gated.includes(p));
+  if (rowAt >= 0 && (notListed.length || notGated.length)) report("edge row drift", "FLOWS.md", `not listed: ${notListed.join(" ") || "none"} · not gated: ${notGated.join(" ") || "none"}`, rowAt + 1);
+}
+
+console.log(`\nchecked ${links} links · ${paths} script paths · ${npms} npm refs · ${shots} evidence shots · ${flowsAnchors} FLOWS.md anchors across docs/`);
 if (MISSING_EVIDENCE.size) {
   console.log(`⚠️  ${MISSING_EVIDENCE.size} historical screenshot(s) cited but never committed — listed in MISSING_EVIDENCE, and that list may only shrink.`);
 }
