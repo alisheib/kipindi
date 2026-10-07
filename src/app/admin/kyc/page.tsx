@@ -19,6 +19,7 @@ import {
   readKycQueueIdentity,
   kycWaitedLabel,
   readBlockedCashOuts,
+  readBlockedEmailCashOuts,
   tallyBlockedCashOuts,
   blockedCashOutsByPlayer,
   compareQueuePriority,
@@ -115,12 +116,14 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
 
   // ⭐ `readKycQueueIdentity` (kyc-risk.ts) — the one identity × money read this page shares with
   // /admin/approvals, so the two queues cannot fail differently. It never throws.
-  const [identity, blocked, refused] = await Promise.all([
+  const [identity, blocked, refused, emailBlocked] = await Promise.all([
     readKycQueueIdentity(canSeeMoney),
     readBlockedCashOuts().catch(() => null),
     // ⛔ MONEY-DERIVED, SO MONEY-GATED (audit session 95, 2026-09-14): "undecided" is where the money stands, so a
     // viewer without money rights reads no report at all — the tile says "not in your role".
     canSeeMoney ? refusedFundsReport({ money: true }).catch(() => null) : null,
+    // ⭐ The email half of the withdrawal gate (2026-10-07) — read apart, reported beside the identity count, never in it.
+    readBlockedEmailCashOuts().catch(() => null),
   ]);
 
   const { facts, wallets, walletsFailed } = identity;
@@ -212,6 +215,7 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
 
   // ── KPIs ───────────────────────────────────────────────────────────────────
   const week = blocked ? tallyBlockedCashOuts(blocked, now - 7 * 24 * H) : null;
+  const emailWeek = emailBlocked ? tallyBlockedCashOuts(emailBlocked, now - 7 * 24 * H) : null;
   // ⭐ THE REPORT'S OWN STATE WORD (audit session 95): a case waits on an officer while it is undecided, or while a
   // return's payout failed and the money is still in the frozen wallet. On hold, in flight and settled do not.
   const openRefused = canSeeMoney && refused && !refused.accountsFailed
@@ -317,6 +321,24 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
             older refusals are not in the per-player counts below.
           </p>
         )}
+        {/* ⭐ THE OTHER HALF OF THE WITHDRAWAL GATE (owner ruling 2026-10-07): a confirmed email address. Beside the
+            identity count, never inside it — no officer can confirm a player's address, so nothing below is work for this
+            queue; the number says whether the in-app prompt is reaching people. A failed read says so. */}
+        <p className="text-body-sm text-text-muted" data-email-refusals={emailWeek ? emailWeek.attempts : "unreadable"}>
+          {!emailWeek ? (
+            <span className="text-warning-fg">Cash-outs refused for an unconfirmed email could not be read.</span>
+          ) : (
+            <>
+              {/* Every numeral in the numeral face (§T5); "1 officer retry", never "+1 retries". */}
+              Also refused in the last 7 days because the email address was not confirmed:{" "}
+              <strong className="font-mono tabular-nums text-text">{`${emailWeek.attempts}${emailWeek.complete ? "" : "+"}`}</strong>
+              {emailWeek.attempts > 0 && <> · <span className="font-mono tabular-nums">{adminCount(emailWeek.players, "player")}</span></>}
+              {canSeeMoney && emailWeek.attempts > 0 && <> · <span className="font-mono tabular-nums">{`${formatTzsCompact(emailWeek.tzs)}${emailWeek.complete ? "" : "+"}`}</span></>}
+              {emailWeek.operatorRetries > 0 && <> · plus <span className="font-mono tabular-nums">{adminCount(emailWeek.operatorRetries, "officer retry", "officer retries")}</span></>}
+              . The player confirms it themselves, from the link we send.
+            </>
+          )}
+        </p>
 
         {/* ── WITH US ─────────────────────────────────────────────────────────── */}
         <AdminCard

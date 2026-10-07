@@ -49,8 +49,8 @@
  *
  * ⭐ WHY THE STAGE NOW READS MONEY. From 2026-09-13 identity is asked before a
  * WITHDRAWAL and before nothing else (docs/COMPLIANCE-DECISIONS.md, 2026-09-13). The
- * ladder is register → confirm email → deposit and play → verify identity →
- * withdraw, so a player deposits and plays with NO submission at all. "Nothing yet"
+ * ladder is register → deposit and play → verify identity + confirm email →
+ * withdraw (email moved there 2026-10-07), so a player deposits and plays with NO submission at all. "Nothing yet"
  * used to be the dormant majority, holding nothing. From that date it would also
  * cover a player holding real money we hold no identity for — in NO queue, because
  * `listPendingKyc` still reads only PENDING_REVIEW + ADDITIONAL_INFO_REQUIRED. The

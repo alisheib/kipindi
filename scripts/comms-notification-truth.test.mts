@@ -476,6 +476,20 @@ section("7 · identity, quietly — no receipt sentence, no reminder, no blocked
   ok("7c control: the kyc_blocked branch is where this suite expects it, and still records the attempt",
     blockedAt > 0 && branch.length > 200 && branch.length < 6_000 && /operatorInitiated/.test(branch), `len=${branch.length}`);
   ok("7c ⛔ the kyc_blocked branch notifies, mails and prompts nobody", !CALL.test(branch), branch.match(CALL)?.[0] ?? "");
+  // ⭐ AND THE EMAIL HALF OF THE GATE (owner ruling 2026-10-07) holds the same quiet rule: the withdraw screen's panel is
+  // the only voice a refusal for an unconfirmed address has — no bell row, no mail, no prompt on top of it.
+  const emailAt = WS.indexOf('action: "withdraw.email_unverified_blocked"');
+  const emailBranch = emailAt > 0 ? WS.slice(emailAt, WS.indexOf('code: "EMAIL_UNVERIFIED"', emailAt) + 1) : "";
+  ok("7c control: the email-refusal branch is where this suite expects it, and still records the attempt",
+    emailAt > blockedAt && emailBranch.length > 200 && emailBranch.length < 4_000 && /operatorInitiated/.test(emailBranch), `len=${emailBranch.length}`);
+  ok("7c ⛔ the email-refusal branch notifies, mails and prompts nobody", !CALL.test(emailBranch), emailBranch.match(CALL)?.[0] ?? "");
+
+  // ⭐ A WITHDRAWAL'S BELL ROW OPENS ITS OWN RECEIPT (2026-10-07), as a deposit's does — and two same-amount withdrawals
+  // are two rows: `notify()` dedupes on the message AND the link, and every withdrawal's link was "/wallet".
+  const w1 = await N.notifyWithdraw(U, { status: "INITIATED", amount: 30_303, net: 29_848, provider: "M-Pesa", txnId: "txn_c3_w1" });
+  const w2 = await N.notifyWithdraw(U, { status: "INITIATED", amount: 30_303, net: 29_848, provider: "M-Pesa", txnId: "txn_c3_w2" });
+  ok("7c ★ a withdrawal's bell row links to its receipt", w1?.href === "/wallet/receipt/txn_c3_w1", String(w1?.href));
+  ok("7c ★ two same-amount withdrawals are BOTH delivered — the receipt link keeps them apart", !!w1 && !!w2 && w1.id !== w2.id);
 
   // ── 7d · the review target — one OFFICER alert per breach (kept: not a player message) ──
   await mkUser("c3_sla_old"); await mkKyc("c3_sla_old", "PENDING_REVIEW", { submittedAt: new Date(Date.now() - (KYC_REVIEW_SLA_HOURS + 2) * H).toISOString() });

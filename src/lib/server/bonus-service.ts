@@ -265,7 +265,7 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
         subject: `Bonus added · ${formatTzs(g.amountTzs)}`,
         html: bonusCreditedHtml({ amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[g.source] }),
         tag: "bonus",
-      })).catch(() => {});
+      }), { confirmedOnly: true }).catch(() => {});
     }
   }
   return result;
@@ -295,7 +295,7 @@ export async function recordWagering(userId: string, stakeTzs: number): Promise<
       subject: `Bonus unlocked · ${formatTzs(g.amountTzs)}`,
       html: bonusFulfilledHtml({ amountTzs: g.amountTzs }),
       tag: "bonus",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
   }
   return result;
 }
@@ -905,7 +905,7 @@ async function activateNextQueued(userId: string, tx?: Prisma.TransactionClient 
     subject: `Bonus activated · ${formatTzs(nextQueued.amountTzs)}`,
     html: bonusCreditedHtml({ amountTzs: nextQueued.amountTzs, wagerRequiredTzs: nextQueued.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[nextQueued.source] ?? "Bonus" }),
     tag: "bonus",
-  })).catch(() => {});
+  }), { confirmedOnly: true }).catch(() => {});
 }
 
 export type BonusGrantView = Omit<StoredBonusGrant, "remainingTzs"> & {

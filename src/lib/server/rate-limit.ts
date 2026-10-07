@@ -84,8 +84,8 @@ export const RATE_RULES: Record<string, RateRule> = {
   // because carrier NAT puts many phones behind one address. Reads the first X-Forwarded-For entry like every per-IP bucket
   // here, so it is defence in depth only (FLOWS.md section 8a).
   "password_reset.ip": { capacity: 20, refillPerMin: 1 },
-  // Confirmation-link resends, per user. Reachable from the deposit gate, so a
-  // stuck player will tap it — 3 quickly is generous, then ~1 every 2 min. Tight
+  // Confirmation-link resends, per user. Reachable from the withdraw screen's email
+  // step, the identity page and the account page, so a stuck player will tap it — 3 quickly is generous, then ~1 every 2 min. Tight
   // enough that a signed-in account can't flood a third party's inbox with our
   // mail (which would also burn our sending reputation).
   "email.verify.resend": { capacity: 3, refillPerMin: 0.5 },

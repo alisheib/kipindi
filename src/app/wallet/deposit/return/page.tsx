@@ -34,13 +34,16 @@ import { PageHero } from "@/components/ui/page-hero";
 import { Callout } from "@/components/ui/callout";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
-import { formatTzs, formatDateTime } from "@/lib/utils";
+import { formatTzs } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
+import { methodLabel } from "@/lib/wallet/receipts";
 import { settleDepositFromReturn } from "@/lib/server/wallet-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { Cash } from "@/components/ui/cash";
 import { PageContainer } from "@/components/layout/page-container";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import { cookies } from "next/headers";
-import { firstDepositNoticeDue, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
+import { firstDepositNotice, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
@@ -59,7 +62,7 @@ export default async function DepositReturnPage({
   const session = await currentSession();
   // Back to THIS return, `order_id` and all, after signing in — the wallet alone could not say what happened (2026-10-06).
   if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit/return", await searchParams))}`);
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const sp = await searchParams;
 
   // The ONLY thing we take from the URL: which order to ask Selcom about.
@@ -72,23 +75,25 @@ export default async function DepositReturnPage({
   // inferred from PAID, so the two surfaces cannot disagree about who is due. Never throws; a failed read →
   // not shown. 🔴 The RAW cookie goes to the predicate and the per-player value to the notice (2026-09-14):
   // a bare "dismissed" once let one player's X hide it from the next player on a shared phone.
-  const kycFirstDepositNotice = outcome.state === "PAID" && await firstDepositNoticeDue(session.userId, {
+  const kycFirstDepositNotice = outcome.state === "PAID" ? await firstDepositNotice(session.userId, {
     dismissCookie: (await cookies()).get(KYC_NOTICE_COOKIE)?.value,
-  });
+  }) : null;
 
-  const tone =
-    outcome.state === "PAID" ? "gold" :
-    outcome.state === "FAILED" ? "rose" : "royal";
-
+  // ⭐ REVERSED (2026-10-07, money-and-compliance review): the card PAID, but the account could not take money (a break or
+  // an exclusion), so the deposit is held for return. It used to fall into FAILED — "Payment didn't complete. Nothing was
+  // taken from your card." with a Try again button, during a break — while the bell, the email and the receipt all said
+  // "Reversed". Now it says what happened, and offers the receipt rather than another deposit.
   const heading =
     outcome.state === "PAID" ? t.wallet.returnPaidTitle :
     outcome.state === "FAILED" ? t.wallet.returnFailedTitle :
+    outcome.state === "REVERSED" ? t.wallet.returnReversedTitle :
     outcome.state === "UNKNOWN" ? t.wallet.returnUnknownTitle :
     t.wallet.returnPendingTitle;
 
   const body =
     outcome.state === "PAID" ? t.wallet.returnPaidBody :
     outcome.state === "FAILED" ? t.wallet.returnFailedBody :
+    outcome.state === "REVERSED" ? t.wallet.returnReversedBody :
     outcome.state === "UNKNOWN" ? t.wallet.returnUnknownBody :
     t.wallet.returnPendingBody;
 
@@ -100,12 +105,15 @@ export default async function DepositReturnPage({
     // money screen, and it was unreadable on a phone. Reverts at lg, where the
     // nav is not fixed.
     <PageContainer tier="receipt" className="pb-28 lg:pb-6 space-y-5">
-      <PageHero glow={outcome.state === "PAID" ? "gold" : undefined}>
+      {/* ⛔ NO GOLD ON A DEPOSIT (§M3, §M3a D1 — 2026-10-07): moving your own money into your own wallet earns nothing,
+          and the receipt of this same deposit dropped its gold the same day. Landed is app-state green, failed the failure
+          colour — never the betting NO rose (§B2a). */}
+      <PageHero>
         <PageHeader
-          tone={tone === "gold" ? "gold" : undefined}
           icon={
-            outcome.state === "PAID" ? <I.checkCircle s={14} className="text-gold-300" /> :
-            outcome.state === "FAILED" ? <I.alertCircle s={14} className="text-no-300" /> :
+            outcome.state === "PAID" ? <I.checkCircle s={14} className="text-success-fg" /> :
+            outcome.state === "FAILED" ? <I.alertCircle s={14} className="text-danger-fg" /> :
+            outcome.state === "REVERSED" ? <I.rotateCcw s={14} className="text-text-muted" /> :
             <I.clock s={14} className="text-brand-300" />
           }
           eyebrow={t.common.deposit}
@@ -133,33 +141,34 @@ export default async function DepositReturnPage({
       )}
 
       {/* Under the success message, on a confirmed deposit only — decided above, from the store. */}
-      {kycFirstDepositNotice && <KycFirstDepositNotice dismissValue={kycNoticeDismissValue(session.userId)} />}
+      {kycFirstDepositNotice && <KycFirstDepositNotice variant={kycFirstDepositNotice} dismissValue={kycNoticeDismissValue(session.userId)} />}
 
       {outcome.txn && (
         <dl className="rounded-xl glass-panel divide-y divide-border" data-testid="deposit-return-details">
+          {/* Money in `<Cash>` (§M4): the privacy eye masks these figures as it masks them on the list. */}
           <Row label={t.wallet.amount}>
-            <span className="font-mono tabular-nums text-text">{formatTzs(outcome.txn.amount)}</span>
+            <span className="amount text-text"><Cash>{formatTzs(outcome.txn.amount)}</Cash></span>
           </Row>
           <Row label={t.wallet.method}>
-            <span className="text-text">{outcome.txn.providerLabel}</span>
+            <span className="text-text">{methodLabel(t, outcome.txn.provider)}</span>
           </Row>
           <Row label={t.wallet.transactionId}>
-            <span className="font-mono text-[12px] text-text break-all">{outcome.txn.id}</span>
+            <span className="font-mono text-text break-all">{outcome.txn.id}</span>
           </Row>
           {outcome.txn.providerRef && (
             <Row label={t.wallet.gatewayReference}>
-              <span className="font-mono text-[12px] text-text break-all">{outcome.txn.providerRef}</span>
+              <span className="font-mono text-text break-all">{outcome.txn.providerRef}</span>
             </Row>
           )}
           <Row label={t.wallet.date}>
-            <span className="text-text">{formatDateTime(outcome.txn.createdAt)}</span>
+            <span className="font-mono tabular-nums text-text">{formatEatDateTime(Date.parse(outcome.txn.createdAt), Date.now(), t.common.monthsShort, locale)}</span>
           </Row>
           {/* Balance is shown ONLY when the deposit actually landed — printing a
               balance next to a pending payment invites the reading that it
               already counted. */}
           {outcome.state === "PAID" && (
             <Row label={t.wallet.newBalance}>
-              <span className="font-mono tabular-nums font-semibold text-gold-300">{formatTzs(outcome.balance)}</span>
+              <span className="amount font-semibold text-text"><Cash>{formatTzs(outcome.balance)}</Cash></span>
             </Row>
           )}
         </dl>
@@ -179,9 +188,10 @@ export default async function DepositReturnPage({
             waiting is precisely the one who needs a stable, bookmarkable page
             carrying both references — the receipt updates itself as the deposit
             settles, so sending them there beats sending them to a wallet list
-            they have to search. Withheld only on FAILED/UNKNOWN, where there is
+            they have to search. And on REVERSED: its receipt is the record of the
+            money going back. Withheld only on FAILED/UNKNOWN, where there is
             either nothing to track or no transaction we can vouch for. */}
-        {(outcome.state === "PAID" || outcome.state === "PENDING") && outcome.txn && (
+        {(outcome.state === "PAID" || outcome.state === "PENDING" || outcome.state === "REVERSED") && outcome.txn && (
           <Link
             href={`/wallet/receipt/${outcome.txn.id}` as never}
             className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5"
@@ -209,8 +219,8 @@ export default async function DepositReturnPage({
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-3">
-      <dt className="text-[12.5px] text-text-muted shrink-0">{label}</dt>
-      <dd className="text-[12.5px] text-right min-w-0">{children}</dd>
+      <dt className="text-body-sm text-text-muted shrink-0">{label}</dt>
+      <dd className="text-body-sm text-right min-w-0">{children}</dd>
     </div>
   );
 }

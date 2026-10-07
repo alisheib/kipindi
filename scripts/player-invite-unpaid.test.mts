@@ -1059,7 +1059,9 @@ setAffiliateConfig({
     setAffiliateConfig({
       commission: { enabled: true, rate: 0.1, windowMonths: 24, capPerRecruitTzs: 250_000 },
       bonus: { enabled: true, recipient: "REFERRER", newAmountTzs: 2_000, referrerAmountTzs: 5_000, trigger: "SIGNUP" },
-      prize: { enabled: false, milestone: "FIRST_BET", amountTzs: 9_000, capPerReferrer: 20, minBetAmountTzs: 1_000, requireDeposit: false },
+      // minBetAmountTzs 2,000 (2026-10-07): a programme's minimum bet is 0 or at least the TZS 1,000 stake floor (management),
+      // so "lowered" now goes 2,000 → 1,000 — it went 1,000 → 500, which the floor refuses.
+      prize: { enabled: false, milestone: "FIRST_BET", amountTzs: 9_000, capPerReferrer: 20, minBetAmountTzs: 2_000, requireDeposit: false },
     }, "test-officer");
     const CASES: Array<[string, Record<string, unknown>, string | null]> = [
       ["the prize amount raised", { prize: { amountTzs: 12_000 } }, "prize.amountTzs"],
@@ -1068,7 +1070,7 @@ setAffiliateConfig({
       ["the prize cap loosened to 0 (uncapped)", { prize: { capPerReferrer: 0 } }, "prize.capPerReferrer"],
       ["the prize cap set again (0 → 10, tightened)", { prize: { capPerReferrer: 10 } }, null],
       ["the prize cap raised (10 → 15)", { prize: { capPerReferrer: 15 } }, "prize.capPerReferrer"],
-      ["the minimum bet lowered", { prize: { minBetAmountTzs: 500 } }, "prize.minBetAmountTzs"],
+      ["the minimum bet lowered", { prize: { minBetAmountTzs: 1_000 } }, "prize.minBetAmountTzs"],
       ["the deposit precondition set (false → true)", { prize: { requireDeposit: true } }, null],
       ["the deposit precondition dropped (true → false)", { prize: { requireDeposit: false } }, "prize.requireDeposit"],
       ["the commission window raised", { commission: { windowMonths: 36 } }, "commission.windowMonths"],

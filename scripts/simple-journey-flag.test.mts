@@ -17,7 +17,7 @@
  *       Suspense, since WP6c `next/dynamic` parts of the shell's one lazy module, today's bar and rail in the else arms,
  *       and nothing else rendering or loading them), the
  *       Akaunti hub's gate (S6 WP5: /account asks the resolver and calls notFound() before any read),
- *       the email-verify bar (S6 WP7: a classic request's on today's condition, never a journey request's), no-store,
+ *       the email-verify bar (S6 WP7; deleted 2026-10-07 — 10.shell.emailbar now pins its absence), no-store,
  *       the health block, and nothing that grants access ever reading the pass.
  *   §11 `/api/health` reports the rollout.
  *   §12 database mode (its own process, a fake client): a kill written by another container, a failed read,
@@ -617,18 +617,17 @@ function g10Wiring(W: World) {
   ok("10.shell.order · AppShell asks the resolver AFTER the /admin and opt-out returns (the console is never previewed)",
     iAdmin > 0 && iOpt > iAdmin && iResolve > iOpt, j({ iAdmin, iOpt, iResolve }));
   ok("10.shell.marker · the marker renders only on the resolver's `preview`", /const journeyPreview = \(await journeyRead\)\.preview;/.test(shell) && /\{journeyPreview && <PreviewMarker /.test(shell));
-  // ⭐ THE EMAIL-VERIFY BAR (S6 WP7; VODACOM-PLAN §3.2 item 2, "no email-verify bar on journey") is decided by the same
-  // per-request answer as the marker: a classic request renders it on today's condition, a journey request never does,
-  // and nothing else renders it. No gate held this bar before WP7. (A block, so its names cannot meet the chrome's.)
+  // ⭐ THE EMAIL-VERIFY BAR (S6 WP7; VODACOM-PLAN §3.2 item 2, "no email-verify bar on journey") was decided by the same
+  // per-request answer as the marker — a classic request rendered it, a journey request never did. 🔴 INVERTED
+  // 2026-10-07: the owner removed the bar for everybody (a deposit asks no email; a withdrawal asks it, quietly), so no
+  // file renders it for any reader. (A block, so its names cannot meet the chrome's.)
   {
-    // 2026-10-06: and never during a break (`promoSuppressed`) — the bar invites a deposit (docs/FLOWS.md §2).
-    const EMAIL_BAR = "{emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}";
     const tallyIn = (s: string, needle: string) => s.split(needle).length - 1;
-    const barElsewhere = [...W.files].filter(([p, s]) => p !== "src/components/layout/app-shell.tsx" && s.includes("<EmailVerifyBanner")).map(([p]) => p);
-    ok("10.shell.emailbar · the email-verify bar renders for a classic request on today's condition and never for a journey request (S6 WP7)",
-      tallyIn(shell, EMAIL_BAR) === 1 && tallyIn(shell, "<EmailVerifyBanner") === 1
-        && shell.includes("const journeyShown = (await journeyRead).journey;") && barElsewhere.length === 0,
-      j({ gated: tallyIn(shell, EMAIL_BAR), mounts: tallyIn(shell, "<EmailVerifyBanner"), elsewhere: barElsewhere }));
+    const barAnywhere = [...W.files].filter(([, s]) => s.includes("<EmailVerifyBanner")).map(([p]) => p);
+    ok("10.shell.emailbar · there is no email-verify bar for any reader, classic or journey — the shell or anywhere else (deleted 2026-10-07)",
+      tallyIn(shell, "<EmailVerifyBanner") === 0 && !shell.includes("emailVerifyState")
+        && shell.includes("const journeyShown = (await journeyRead).journey;") && barAnywhere.length === 0,
+      j({ mounts: tallyIn(shell, "<EmailVerifyBanner"), elsewhere: barAnywhere }));
   }
   const readers: string[] = []; const writers: string[] = []; const deciders: string[] = []; const passReaders: string[] = [];
   for (const [path, src] of W.files) {
@@ -846,10 +845,9 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, shell: w.shell.replace("  const h = await headers();", "  const early = resolveSimpleJourney();\n  const h = await headers();") }) },
   { name: "the marker renders for everyone", expect: /^10\.shell\.marker/,
     world: (w) => ({ ...w, shell: w.shell.replace("{journeyPreview && <PreviewMarker ", "{<PreviewMarker ") }) },
-  { name: "the email bar is dropped for classic viewers (S6 WP7)", expect: new RegExp("^10[.]shell[.]emailbar"),
-    world: (w) => ({ ...w, shell: w.shell.replace("{emailVerifyState && !journeyShown && <EmailVerifyBanner", "{emailVerifyState && journeyShown && <EmailVerifyBanner") }) },
-  { name: "the email bar is shown to journey viewers (S6 WP7)", expect: new RegExp("^10[.]shell[.]emailbar"),
-    world: (w) => ({ ...w, shell: w.shell.replace("{emailVerifyState && !journeyShown && <EmailVerifyBanner", "{emailVerifyState && <EmailVerifyBanner") }) },
+  { name: "the deleted email bar mounted again (owner ruling 2026-10-07)", expect: new RegExp("^10[.]shell[.]emailbar"),
+    world: (w) => ({ ...w, shell: `${w.shell}
+{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}` }) },
   { name: "a page reads the pass cookie itself", expect: /^10\.census\.read/,
     world: (w) => files(w, "src/app/page.tsx", (s) => `${s}\nconst x = (await cookies()).get(JOURNEY_PREVIEW_COOKIE);`) },
   { name: "a second place writes the pass cookie", expect: /^10\.census\.write/,

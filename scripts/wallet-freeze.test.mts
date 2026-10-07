@@ -23,10 +23,11 @@
  *   §8 · a break or a hold pauses every money-in invitation on /wallet/deposit (promo, trust strip, the "you can still
  *        add funds" payout sentence) and on /wallet (header Deposit, Add funds, the empty state, the promo), and a
  *        self-exclusion reads its own sentence — never the cooling-off one that promises sign-in and withdrawals;
- *   §9 · the email door's copy is true for everyone (no "first deposit", no "we sent you a link" with no address), the
- *        deposit page's user read is not swallowed into a wrong door, and coming back to the tab re-reads the page.
+ *   §9 · the email step's copy is true for everyone (no "first deposit", no "we sent you a link" with no address), the
+ *        withdraw page's user read is not swallowed into a wrong door, and coming back to the tab re-reads the page.
+ *        ⭐ Retargeted 2026-10-07: the step moved from the deposit door to the withdraw screen (owner ruling).
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import {
   addWalletFreeze, removeWalletFreeze, freezeWalletByOfficer, unfreezeWalletByOfficer, OFFICER_FREEZE_REASON_MIN,
@@ -255,18 +256,18 @@ const say = (loc: Loc, ns: string, key: string): string => {
   return typeof v === "string" ? v : "";
 };
 
-// ── §7 · no email bar over a held wallet (D3e) ──────────────────────────────────────────────────────────
-section("§7 · the \"confirm your email to add money\" bar is not drawn over a held wallet — confirming would open nothing");
+// ── §7 · no email bar at all (2026-10-07; was: none over a held wallet, D3e) ──────────────────────────────
+section("§7 · there is no app-wide \"confirm your email\" bar — over a held wallet or anywhere else (2026-10-07)");
 {
+  // 🔴 INVERTED 2026-10-07 (owner ruling: remove the bar, ask quietly at withdrawal). From 2026-10-06 this section proved
+  // the bar was not drawn over a HELD wallet, where confirming would open nothing. The bar is deleted: the email is asked
+  // on the withdraw screen, the profile's pill and the one first-deposit notice — never on every page.
   const shell = srcOf("src/components/layout/app-shell.tsx");
-  const DERIVE = "emailVerifyState = u && !topUser.walletHeld ?";
-  const MOUNT = "{emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}";
-  const heldGated = (s: string) => s.includes(DERIVE);
-  ok("7.1 · app-shell derives the bar's state only for a wallet that is not held", heldGated(shell));
-  ok("7.2 · …and still mounts the bar exactly once, on the pinned line (journey-shell and simple-journey-flag pin it too)",
-    count(shell, MOUNT) === 1, `${count(shell, MOUNT)} occurrence(s)`);
-  const planted = shell.replace(DERIVE, "emailVerifyState = u ?");
-  ok("7.1c · control · the planted pre-fix derivation `emailVerifyState = u ? (…)` fails 7.1", planted !== shell && !heldGated(planted));
+  const hasBar = (s: string) => /EmailVerifyBanner|emailVerifyState/.test(s);
+  ok("7.1 · app-shell neither imports, derives nor mounts an email bar", !hasBar(shell));
+  ok("7.2 · …and the bar's component file is gone", !existsSync(new URL("../src/components/layout/email-verify-banner.tsx", import.meta.url)));
+  const planted = `${shell} {emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}`;
+  ok("7.1c · control · a planted mount of the old bar fails 7.1", hasBar(planted));
 }
 
 // ── §8 · a break or a hold pauses every money-in invitation (D3c / D3d) ─────────────────────────────────
@@ -316,15 +317,19 @@ section("§8 · a break or a hold pauses every money-in invitation on /wallet/de
     plantedDoor !== client && !doorsGated(plantedDoor));
 }
 
-// ── §9 · the email door: true copy, no swallowed read, a fresh page on return (D1 / D2 / D3f) ──────────
-section("§9 · the email door says only what is true, its read is not swallowed, and coming back re-reads the page");
+// ── §9 · the email step: true copy, no swallowed read, a fresh page on return (D1 / D2 / D3f) ──────────
+// ⭐ RETARGETED 2026-10-07. The step these rules were earned on — the DEPOSIT email door — is deleted (owner ruling: a
+// deposit asks no email; a confirmed email is required to withdraw). The rules moved with the step, to the withdraw
+// screen's panel (`KycGatePanel`, state `email` or its second step) and the hooks it shares (`use-email-confirm.ts`).
+section("§9 · the email step says only what is true, its read is not swallowed, and coming back re-reads the page");
 {
-  const FIRST: Record<Loc, RegExp> = { en: /first deposit/i, sw: /ya kwanza/i, zh: /首次/ };
+  const FIRST: Record<Loc, RegExp> = { en: /\bfirst\b/i, sw: /ya kwanza|kwanza/i, zh: /首次/ };
+  const KEYS: [string, string][] = [["kycGate", "emailTitle"], ["kycGate", "emailBody"], ["kycGate", "emailBodyNone"],
+    ["kycGate", "emailStepTitle"], ["kycGate", "emailStepNone"], ["error", "errEmailUnverified"]];
   for (const loc of LOCS) {
-    const door = say(loc, "wallet", "verifyGateBody");
-    const refusal = say(loc, "error", "errEmailUnverified");
-    ok(`9.1 · ${loc} · neither wallet.verifyGateBody nor error.errEmailUnverified says "first deposit" (a changed address reads them too)`,
-      door.length > 0 && refusal.length > 0 && !FIRST[loc].test(door) && !FIRST[loc].test(refusal), `${door} | ${refusal}`);
+    const lines = KEYS.map(([ns, k]) => say(loc, ns, k));
+    ok(`9.1 · ${loc} · every email-step sentence exists, and none says "first" (a changed address reads them too)`,
+      lines.every((l) => l.length > 0) && lines.every((l) => !FIRST[loc].test(l)), lines.filter((l) => !l || FIRST[loc].test(l)).join(" | "));
   }
   const OLD: Record<Loc, string> = {
     en: "…this is a one-time step before your first deposit.",
@@ -332,48 +337,48 @@ section("§9 · the email door says only what is true, its read is not swallowed
     zh: "…这是首次充值前的一次性步骤。",
   };
   ok("9.1c · control · FIRST matches the old sentence in every language", LOCS.every((loc) => FIRST[loc].test(OLD[loc])));
+  ok("9.1d · the retired door's own keys are gone from every language",
+    LOCS.every((loc) => !say(loc, "wallet", "verifyGateBody") && !say(loc, "wallet", "verifyGateTitle")));
 
-  const gate = srcOf("src/components/wallet/email-verify-gate.tsx");
-  const BODY = '{email && <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.wallet.verifyGateBody}</p>}';
-  const bodyOnlyWithAddress = (s: string) => count(s, "t.wallet.verifyGateBody") === 1 && s.includes(BODY);
-  ok("9.2 · \"we sent a confirmation link\" is drawn only when there is an address it could have been sent to", bodyOnlyWithAddress(gate));
-  const plantedBody = gate.replace(BODY, '<p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.wallet.verifyGateBody}</p>');
-  ok("9.2c · control · the pre-fix line without `email &&` fails 9.2", plantedBody !== gate && !bodyOnlyWithAddress(plantedBody));
+  const panel = srcOf("src/components/kyc/kyc-gate-panel.tsx");
+  const BODY = "body: address ? t.kycGate.emailBody : t.kycGate.emailBodyNone";
+  // 2026-10-07 · the step's title is chosen ONCE — "While you wait…" under review (design review: "Nothing more to do"
+  // sat above a step the player still owed), the plain title otherwise — and both address titles sit on the address side.
+  const STEP = "const stepTitle = address ? (waiting ? t.kycGate.emailStepWaitTitle : t.kycGate.emailStepTitle) : (waiting ? t.kycGate.emailStepWaitNone : t.kycGate.emailStepNone);";
+  // Each "we sent you a link" key appears ONCE, and that once is inside the address conditional.
+  const bodyOnlyWithAddress = (s: string) => s.includes(BODY) && s.includes(STEP) && s.includes("{stepTitle}")
+    && (s.match(/t\.kycGate\.emailBody(?!None)/g) ?? []).length === 1 && count(s, "t.kycGate.emailStepTitle") === 1
+    && count(s, "t.kycGate.emailStepWaitTitle") === 1;
+  ok("9.2 · \"we sent you a link\" is said only when there is an address it could have been sent to — card and step alike",
+    bodyOnlyWithAddress(panel));
+  const plantedBody = panel.replace(BODY, "body: t.kycGate.emailBody");
+  ok("9.2c · control · a body that ignores the address fails 9.2", plantedBody !== panel && !bodyOnlyWithAddress(plantedBody));
+  const NOTHING = /nothing more|hakuna kingine|无需再/i;
+  ok("9.2d · under review with the email step owed, the card's body is the one that never says \"nothing more to do\" — in every language",
+    panel.includes("fill(emailStep ? t.kycGate.bodyPendingEmail : t.kycGate.bodyPending,")
+      && LOCS.every((loc) => say(loc, "kycGate", "bodyPendingEmail").length > 10 && !NOTHING.test(say(loc, "kycGate", "bodyPendingEmail"))));
+  ok("9.2e · control · 9.2d's words catch the plain pending body in every language", LOCS.every((loc) => NOTHING.test(say(loc, "kycGate", "bodyPending"))));
+  ok("9.2f · the account doors carry the safe return path, and the two-step card has its change door",
+    panel.includes("const accountHref = safeNext ? `/profile/account?next=${encodeURIComponent(safeNext)}` : \"/profile/account\";")
+      && !panel.includes('href="/profile/account"') && count(panel, "{t.wallet.verifyChangeEmailCta}") === 2);
 
-  const dep = srcOf("src/app/wallet/deposit/page.tsx");
-  const swallowed = (s: string) => /try\s*\{\s*user\s*=\s*await\s+db\.user\.findById\(/.test(s);
-  ok("9.3 · the deposit page's user read is NOT swallowed — a failed read throws to wallet/error.tsx instead of picking a door",
-    dep.includes("const user = await db.user.findById(session.userId);") && !swallowed(dep));
-  ok("9.3b · …and the door is still chosen by `const emailVerified = !!user?.emailVerifiedAt;` (test:kyc-approved-copy pins it)",
-    dep.includes("const emailVerified = !!user?.emailVerifiedAt;"));
-  ok("9.3c · control · the swallow matcher fires on the planted pre-fix line",
-    swallowed("try { user = await db.user.findById(session.userId); } catch { /* graceful — default limits */ }"));
+  const wd = srcOf("src/app/wallet/withdraw/page.tsx");
+  const swallowed = (s: string) => /try\s*\{\s*(?:const\s+)?account\s*=\s*await\s+db\.user\.findById\(/.test(s);
+  ok("9.3 · the withdraw page's account read is NOT swallowed — a failed read throws to wallet/error.tsx instead of picking a door",
+    wd.includes("const account = await db.user.findById(session.userId);") && !swallowed(wd));
+  ok("9.3b · …and the email step is chosen by `const emailOwed = !account?.emailVerifiedAt;`", wd.includes("const emailOwed = !account?.emailVerifiedAt;"));
+  ok("9.3c · control · the swallow matcher fires on a planted swallowed read",
+    swallowed("try { account = await db.user.findById(session.userId); } catch { /* default to no email step */ }"));
 
-  /** Each `useEffect(…)` call in `s`, matched by its parentheses with string literals skipped. */
-  const effectCalls = (s: string): string[] => {
-    const out: string[] = [];
-    let at = s.indexOf("useEffect(");
-    while (at >= 0) {
-      let depth = 0, end = -1;
-      for (let i = at + "useEffect".length; i < s.length; i++) {
-        const c = s[i];
-        if (c === '"' || c === "'" || c === "`") { const close = s.indexOf(c, i + 1); if (close < 0) break; i = close; continue; }
-        if (c === "(") depth++;
-        else if (c === ")" && --depth === 0) { end = i; break; }
-      }
-      if (end < 0) break;
-      out.push(s.slice(at, end + 1));
-      at = s.indexOf("useEffect(", end);
-    }
-    return out;
-  };
-  const returnEffect = (s: string) => effectCalls(s).find((e) => /\}, ?\[router\]\)$/.test(e)
-    && e.includes('addEventListener("visibilitychange"') && e.includes('removeEventListener("visibilitychange"') && e.includes("router.refresh()"));
-  const effect = returnEffect(gate);
-  ok("9.4 · a useEffect on [router] adds and removes a visibilitychange listener that calls router.refresh()",
-    !!effect, effect ? `${effect.length} chars` : `${effectCalls(gate).length} useEffect call(s), none matching`);
-  const plantedGate = effect ? gate.replace(effect, "") : gate;
-  ok("9.4c · control · the planted pre-fix gate (no such effect) fails 9.4", !!effect && plantedGate !== gate && !returnEffect(plantedGate));
+  const hook = srcOf("src/lib/use-email-confirm.ts");
+  const refreshes = (s: string) => /export function useRefreshOnReturn\(enabled: boolean\)/.test(s)
+    && s.includes('document.addEventListener("visibilitychange", back)') && s.includes('document.removeEventListener("visibilitychange", back)')
+    && s.includes("router.refresh()") && /now - last < 5_000/.test(s);
+  ok("9.4 · coming back to the tab re-reads the page: a visibilitychange listener added and removed, at most once per 5 s",
+    refreshes(hook));
+  ok("9.4b · …and the panel turns it on exactly while the email step is shown", panel.includes("useRefreshOnReturn(emailOnly || emailStep);"));
+  const plantedHook = hook.replace('document.addEventListener("visibilitychange", back)', "");
+  ok("9.4c · control · a hook that never listens fails 9.4", plantedHook !== hook && !refreshes(plantedHook));
 }
 
 console.log(`\nwallet-freeze: ${pass} passed, ${fail} failed`);

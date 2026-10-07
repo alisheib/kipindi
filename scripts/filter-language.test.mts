@@ -120,6 +120,10 @@ const SURFACES = [
      server component inside a client page, so its controls are real <Link>s and its counts
      come from the same read as the rows. */
   "src/app/wallet/wallet-bar.tsx",              // /wallet — 9 money lenses + state/window
+  /* DECLARED 2026-10-07 (the Receipts page — owner ruling: every deposit and withdrawal kept in the app). The wallet's
+     own query language narrowed to the two money movements that have a receipt: All · Deposits · Withdrawals, plus the
+     wallet's state and window axes. Declared in the same commit as the rail, as §0.4 requires. */
+  "src/app/wallet/receipts/receipts-bar.tsx",   // /wallet/receipts — 3 lenses + state/window
   "src/components/updown/updown-board-tabs.tsx", // /updown — assets + durations
   /* ⚠️ RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.1). The day rail folded into the shared
      WINDOW vocabulary and the hook moved with the controls into `history-bar.tsx`. `?day=`

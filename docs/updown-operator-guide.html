@@ -357,20 +357,21 @@ keep the old model and settle by it — the two are never mixed.</em></p>
 </div>
 
 <div class="f eg">A · a balanced round
-UP 500 + DOWN 500      pool 1,000
+UP 5,000 + DOWN 5,000  pool 10,000
 DOWN wins, so UP is the losing side:
-fee          13% x 500 = 65                  net pool 935
-DOWN's backer staked 500 of the 500 on DOWN:
-payout = 500/500 x 935 = 935                 commission retained 65
+fee          13% x 5,000 = 650               net pool 9,350
+DOWN's backer staked 5,000 of the 5,000 on DOWN:
+payout = 5,000/5,000 x 9,350 = 9,350         commission retained 650
 
 B · an unbalanced round
-UP 900 + DOWN 100      pool 1,000
-If DOWN wins:  fee = 13% x 900 = 117   net pool 883
-               DOWN's single 100 backer receives 883 - nearly nine times the stake.
-If UP wins:    fee = 13% x 100 = 13    net pool 987
-               the 900 receives 987. Either way, above the stake.
+UP 9,000 + DOWN 1,000  pool 10,000
+If DOWN wins:  fee = 13% x 9,000 = 1,170   net pool 8,830
+               DOWN's single 1,000 backer receives 8,830 - nearly nine times the stake.
+If UP wins:    fee = 13% x 1,000 = 130     net pool 9,870
+               the 9,000 receives 9,870. Either way, above the stake.
 
-Note the fee itself: 117 one way, 13 the other. The result decides it.</div>
+Note the fee itself: 1,170 one way, 130 the other. The result decides it.
+(Every stake here is at least TZS 1,000, the minimum.)</div>
 
 <h3>4.4 · The two parts of a round</h3>
 
@@ -643,7 +644,7 @@ undo. These are all the reasons, in the order you will meet them.</p>
   </tr>
   <tr>
     <td><b>Min stake</b></td><td><i>leave blank</i></td>
-    <td>Blank inherits the product setting, <b>TZS 500</b>. Set it only to raise the floor on one chain.</td>
+    <td>Blank inherits the product setting, <b>TZS 1,000</b> — the platform minimum. Set it only to raise the floor on one chain.</td>
   </tr>
   <tr>
     <td><b>Max stake</b></td><td><i>leave blank</i></td>
@@ -724,7 +725,7 @@ produces none.</b></p>
   <tr><td><b>Max attempts</b></td><td><b>4</b></td>
       <td>Real attempts to read a price before the round refunds. A “not published yet” answer within
       120 seconds is not counted.</td></tr>
-  <tr><td><b>Default min / max stake</b></td><td><b>500</b> / <b>1,000,000</b></td>
+  <tr><td><b>Default min / max stake</b></td><td><b>1,000</b> / <b>1,000,000</b></td>
       <td>The TZS bounds every chain inherits.</td></tr>
 </table>
 
@@ -957,7 +958,7 @@ an operator answering a player can say exactly what they should be seeing and wh
       <td>The two targets, frozen at open and never recalculated. The close must reach one of
       them for that side to win.</td>
       <td>Same as above.</td></tr>
-  <tr><td><b>500 · 1K · 2.5K · 5K · Custom</b></td>
+  <tr><td><b>1K · 2K · 5K · 10K · Custom</b></td>
       <td>The stake to be used by the next tap. It is a chooser, not an amount already bet.</td>
       <td><b>Only while betting is open.</b></td></tr>
   <tr><td><b>Up × 1.4 est.</b> / <b>Down × 1.4 est.</b></td>

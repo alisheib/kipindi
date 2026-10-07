@@ -15,8 +15,8 @@ export default async function WithdrawLoading() {
           stakes: the h1 read **"Loading"** while `page.tsx:106` names the page
           "Move funds out", and the hand-typed h1 was missing the `leading-tight
           tracking-[-0.02em]` `PageHeader` carries. It now renders the page's own components
-          with the page's own props — BackLink ghost, `PageHero glow="rose"` with the page's
-          `contentClassName`, `PageHeader tone="gold"`.
+          with the page's own props — BackLink ghost, `PageHero` with the page's
+          `contentClassName`, `PageHeader` (plain since 2026-10-07, §M3a D1 / §B2a).
           ⚠️ The page's hero also holds an "Available" balance block on the right, which a
           skeleton must NOT draw: it would be a number a player could read as their balance
           before one has been fetched (§C — the interface never states a money fact it does not
@@ -28,10 +28,9 @@ export default async function WithdrawLoading() {
           that cannot invert. */}
       <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
-      <PageHero glow="rose" contentClassName="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
+      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
         <PageHeader
-          tone="gold"
-          icon={<I.arrowUpFromLine s={14} className="text-gold-300" />}
+          icon={<I.arrowUpFromLine s={14} className="text-text-subtle" />}
           eyebrow={t.wallet.withdrawTitle}
           title={t.wallet.moveFundsOut}
           subtitle={t.wallet.mobileMoneyOnly}

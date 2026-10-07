@@ -128,7 +128,9 @@ export type DispatchOpts = {
  *  supply: who the buyer is, the billing details they entered (Selcom rejects card
  *  orders without them), and where to send them back to. */
 export type CardCheckoutContext = {
-  buyerEmail: string;
+  /** The address on the account, confirmed or not, or null when it has none (owner ruling 2026-10-07:
+   *  a deposit asks no email question). The adapter sends the account's placeholder in its place. */
+  buyerEmail: string | null;
   buyerName: string;
   buyerPhone: string;
   billing: SelcomBilling;
@@ -360,6 +362,7 @@ export const selcomAdapter: PaymentAdapter = {
         orderId: correlationId,
         amount,
         buyerEmail: card.buyerEmail,
+        userId,
         buyerName: card.buyerName,
         buyerPhone: card.buyerPhone,
         billing: card.billing,

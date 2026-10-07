@@ -26,7 +26,7 @@ export default async function DepositLoading() {
           heading was the word `Loading`. §L1: one name per destination. `positions/loading.tsx`
           states this rule in its own header; this file was the counter-example.
           ⭐ It now renders the SAME three components the page does, with the same props —
-          BackLink ghost, `PageHero glow="gold"`, `PageHeader tone="gold"` — so the shape and
+          BackLink ghost, `PageHero` and `PageHeader` (plain since 2026-10-07, §M3a D1) — so the shape and
           the words are the page's, not a second copy of them. The h1 recipe was also
           `font-display text-[28px] font-bold text-text`, missing the `leading-tight
           tracking-[-0.02em]` `PageHeader` carries, so the heading changed line-height too. */}
@@ -37,10 +37,9 @@ export default async function DepositLoading() {
           that cannot invert. */}
       <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
-      <PageHero glow="gold">
+      <PageHero>
         <PageHeader
-          tone="gold"
-          icon={<I.arrowDownToLine s={14} className="text-gold-300" />}
+          icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
           eyebrow={t.common.addFunds}
           title={t.common.deposit}
           subtitle={t.wallet.mobileMoney}

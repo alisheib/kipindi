@@ -3084,7 +3084,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       rKeys.length >= 24 && rUnnamed.length === 0 && rNotDate.length === 0 && rMap.includes(`  gateTrail: "json",`) && sameSet(rNull, NEVER_WRITTEN43),
       `${setDiff(NEVER_WRITTEN43, rNull) || rNull.join(",")} · unnamed [${rUnnamed}] · not a date [${rNotDate}]`);
     ok("26.u43a.map.data · the ONE recipient writer drives off SMS_CAMPAIGN_RECIPIENT_COLUMN, THROWS on an unmapped key and on a key these doors never write, writes a trail as a JSON value (never null) and moves attempts as an increment — and the claim, the settle and the requeue all write through it",
-      mentions(rData, "SMS_CAMPAIGN_RECIPIENT_COLUMN") && rData.includes("unmapped field") && rData.includes("is never written by a claim, a settle or a requeue")
+      mentions(rData, "SMS_CAMPAIGN_RECIPIENT_COLUMN") && rData.includes("unmapped field") && rData.includes("is never written by a claim, a settle, a requeue or a receipt")
         && rData.includes("is never cleared") && rData.includes("data.attempts = { increment: w.attemptsBy };")
         && [pClaim, pSettle, pRequeue].every((b) => b.includes("smsRecipientData("))
         && !/if [(]patch[.][A-Za-z]+ !== undefined[)]/.test(rData),
@@ -3156,6 +3156,100 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("26.u43a.c5 · CONTROL · a Prisma claim without its freshness read, and a memory claim that tests the token only after it writes, each FAIL 26.u43a.claim.fresh's matcher",
       !before(pClaim.split(FRESH_PRI).join(""), FRESH_PRI, ".findMany(")
         && !before("for (const r of free.sort(byRecipientId).slice(0, limit)) writeRecipient(r, write); if (r.claimToken === token) refuseHeldToken();", FRESH_MEM, "writeRecipient(r, write)"));
+  }
+
+  // ══ 26.u46a · THE RECEIPT DOOR (U46a, S14 2026-10-07 — ENGINE-SPEC §4.14, decision E28) ═════════════════════════════
+  // ⭐ WHY IT IS HELD HERE. The DLR route's campaign arm settles a recipient through ONE door, and every behavioural suite
+  // (`test:sms-dlr` §12, `test:campaign-models` §2.29–§2.31) drives the MEMORY twin. A Prisma twin that loses its half
+  // rewrites the campaign record on production alone: a WHERE without the status (a late FAILED over a DELIVERED, a
+  // SKIPPED row DELIVERED), without the number or the reference (one real reference settles another person's row), a
+  // status list of its own that drifts from the rule set's, or the rule set not asked (a lost id is NO CONDITION — every
+  // open row at once). So the door's SHAPE is held in both twins, plantable through KP_SRC (`red:dal-parity`; the cases are
+  // in scripts/anchors/dal-parity.anchors.mjs). The behaviour is EXECUTED on the memory twin by `test:campaign-models`
+  // §2.29–§2.31 and through the route by `test:sms-dlr` §12.
+  // ⛔ No backslash anywhere in this block: a line break is String.fromCharCode, and every matcher is an `includes`, a
+  // `before` or a character class.
+  {
+    const NL46 = String.fromCharCode(10);
+    const flat46 = (s: string) => s.split(String.fromCharCode(13)).join("").split(NL46).map((l) => l.trim()).join(" ");
+    const pReceipt = delegateMethod("smsCampaignRecipient", "recordReceipt");
+    const mReceipt = memberText(rMem, "recordReceipt");
+    const rData46 = region(dalSrc, "function smsRecipientData(");
+    const rMap46 = region(dalSrc, "const SMS_CAMPAIGN_RECIPIENT_COLUMN");
+    const count46 = (body: string, needle: string): number => body.split(needle).length - 1;
+    /** The keys of a named store type — every `key:` inside its braces (one per line, as the type is written). */
+    const keysOf46 = (typeName: string): string[] => {
+      const body = region(storeSrc, `export type ${typeName} = {`);
+      return Array.from(body.slice(body.indexOf("{") + 1).matchAll(/([A-Za-z]+)[?]?[ ]*:/g), (m) => m[1]);
+    };
+
+    ok("26.u46a.parity · ⭐ BOTH twins define smsCampaignRecipient.recordReceipt — a door in one twin only works in every suite and throws on production",
+      members(rPri).includes("recordReceipt") && members(rMem).includes("recordReceipt"),
+      `prisma=[${members(rPri)}] memory=[${members(rMem)}]`);
+
+    const SIG_MEM46 = "recordReceipt: (id: string, r: SmsRecipientReceipt): SmsRecipientReceiptResult =>";
+    const SIG_PRI46 = "recordReceipt: async (id: string, r: SmsRecipientReceipt): Promise<SmsRecipientReceiptResult> =>";
+    const NAMED46 = ["SmsRecipientReceipt", "SmsRecipientReceiptResult"];
+    const RECEIPT_KEYS46 = ["reference", "msisdn", "status", "rawStatus", "desc", "at"];
+    const RESULT_KEYS46 = ["changed", "reason"];
+    ok("26.u46a.named · the receipt door names its parameter and return types in BOTH twins (never an inline literal) — SmsRecipientReceipt and SmsRecipientReceiptResult, exported by store.ts with exactly the spec's keys and imported by prisma-dal.ts",
+      rMem.includes(SIG_MEM46) && rPri.includes(SIG_PRI46)
+        && NAMED46.every((t) => storeSrc.includes(`export type ${t} =`) && storeImport.includes(`  ${t},`))
+        && sameSet(keysOf46("SmsRecipientReceipt"), RECEIPT_KEYS46) && sameSet(keysOf46("SmsRecipientReceiptResult"), RESULT_KEYS46)
+        && storeSrc.includes(`status: "DELIVERED" | "FAILED";`),
+      `memory ${rMem.includes(SIG_MEM46)} · prisma ${rPri.includes(SIG_PRI46)} · receipt [${keysOf46("SmsRecipientReceipt")}] · result [${keysOf46("SmsRecipientReceiptResult")}]`);
+
+    // ── the Prisma door: the rule set, ONE conditional write whose WHERE is the identity AND the open statuses ──
+    const WHERE46 = `where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] }, data: smsRecipientData(receiptWrite(r)),`;
+    ok("26.u46a.prisma · ⛔ the Prisma receipt asks assertReceipt FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the MESSAGE's number, a status a receipt moves (SMS_RECEIPT_FROM, spread — never a list of its own) AND the reference null or the receipt's own, its data the rule set's receiptWrite through the map; the count alone decides applied, and a miss is ONE findUnique of the row read through receiptMiss — no other statement",
+      before(pReceipt, "assertReceipt(id, r)", ".updateMany(") && flat46(pReceipt).includes(WHERE46)
+        && count46(pReceipt, ".updateMany(") === 1 && count46(pReceipt, ".findUnique(") === 1 && before(pReceipt, ".updateMany(", ".findUnique(")
+        && pReceipt.includes(`if (moved.count > 0) return { changed: true, reason: "applied" };`)
+        && pReceipt.includes("receiptMiss(row ? toStoredSmsCampaignRecipient(row) : null, r)")
+        && !/[.](update|upsert|create|createMany|delete|deleteMany|findMany|findFirst)[(]|[$](transaction|executeRaw|queryRaw)/.test(pReceipt)
+        && !/"(PENDING|SENT|UNCONFIRMED|HELD|SKIPPED)"/.test(pReceipt),
+      flat46(pReceipt).slice(0, 360));
+
+    // ── the memory door: the rule set, the identity and the status BEFORE the one apply ──
+    const IDENT46 = "const ours = row.msisdn === r.msisdn && (row.smsReference === null || row.smsReference === r.reference);";
+    const OPEN46 = "const open = SMS_RECEIPT_FROM.includes(row.status);";
+    const MISS46 = "if (!ours || !open) return { changed: false, reason: receiptMiss(row, r) };";
+    const APPLY46 = "writeRecipient(row, receiptWrite(r));";
+    ok("26.u46a.memory · ⛔ the memory receipt asks assertReceipt FIRST, tests the identity — the message's number, the reference null or the receipt's own — AND the status through SMS_RECEIPT_FROM BEFORE it writes, refuses a reference another row holds before the write (the memory twin of P2002), writes the rule set's receiptWrite through the ONE apply, and answers every miss through receiptMiss",
+      before(mReceipt, "assertReceipt(id, r)", "store.smsCampaignRecipients.get(id)") && mReceipt.includes(IDENT46) && mReceipt.includes(OPEN46)
+        && mReceipt.includes(MISS46) && before(mReceipt, MISS46, APPLY46) && before(mReceipt, "memory twin of P2002", APPLY46)
+        && count46(mReceipt, "writeRecipient(") === 1 && mReceipt.includes("receiptMiss(null, r)")
+        && !/[.](delete|clear|set)[(]/.test(mReceipt) && !/"(PENDING|SENT|UNCONFIRMED|HELD|SKIPPED)"/.test(mReceipt),
+      flat46(mReceipt).slice(0, 360));
+
+    // ── ONE rule set for both twins, and ONE writer ──
+    const RULES46 = "@/lib/server/marketing/campaign-model";
+    const importOf46 = (src: string): string => {
+      const end = src.indexOf(`} from "${RULES46}";`);
+      return end < 0 ? "" : src.slice(src.lastIndexOf("import {", end), end);
+    };
+    const NAMES46 = ["assertReceipt", "receiptWrite", "receiptMiss", "SMS_RECEIPT_FROM"];
+    const named46 = (text: string, n: string): boolean => new RegExp(`[^A-Za-z_]${n}[^A-Za-z_]`).test(text);
+    const ruleImports46 = [importOf46(storeSrc), importOf46(dalSrc)];
+    ok("26.u46a.rules · ONE rule set for both twins: store.ts and prisma-dal.ts each import assertReceipt, receiptWrite, receiptMiss and SMS_RECEIPT_FROM from campaign-model.ts — the list of the rows a receipt moves lives there alone",
+      ruleImports46.every((t) => NAMES46.every((n) => named46(t, n))),
+      ruleImports46.map((t) => NAMES46.filter((n) => !named46(t, n)).join(",") || "all").join(" | "));
+    ok("26.u46a.map · the receipt writes through the ONE recipient writer, whose refusal names it beside the claim, the settle and the requeue — and the cost stays a key no door writes (a receipt carries no price)",
+      pReceipt.includes("smsRecipientData(receiptWrite(r))") && rData46.includes("is never written by a claim, a settle, a requeue or a receipt")
+        && rMap46.includes("  costTzs: null,"),
+      `${rData46.length} chars`);
+
+    // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+    ok("26.u46a.c1 · CONTROL · a receipt WHERE without its status, one without the number and one without the reference arm each FAIL 26.u46a.prisma's matcher",
+      ![
+        `where: { id, msisdn: r.msisdn, OR: [{ smsReference: null }, { smsReference: r.reference }] }, data: smsRecipientData(receiptWrite(r)),`,
+        `where: { id, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] }, data: smsRecipientData(receiptWrite(r)),`,
+        `where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] } }, data: smsRecipientData(receiptWrite(r)),`,
+      ].some((t) => t.includes(WHERE46)));
+    ok("26.u46a.c2 · CONTROL · a memory receipt that writes before it tests FAILS before(), and a status list spelled in a twin IS seen",
+      !before(`${APPLY46} ${MISS46}`, MISS46, APPLY46) && /"(PENDING|SENT|UNCONFIRMED|HELD|SKIPPED)"/.test(`status: { in: ["PENDING", "SENT", "UNCONFIRMED"] }`));
+    ok("26.u46a.c3 · CONTROL · a door in one twin only IS seen: with recordReceipt renamed in the Prisma block, the parity check no longer finds it there while the memory block's does",
+      !members(rPri.split("recordReceipt: async").join("recordDelivery: async")).includes("recordReceipt") && members(rMem).includes("recordReceipt"));
   }
 }
 

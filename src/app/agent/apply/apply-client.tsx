@@ -117,8 +117,8 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
   const [feePending, startFee] = useTransition();
   // The two doors the FEE PAYMENT holds shut, in the SAME ORDER the server asks them -- identity,
   // then email -- so a person cannot clear the one it names and then be refused for the other.
-  // 2026-09-13: these were "the two doors DEPOSIT holds shut". A deposit now asks email only; the
-  // identity door here is the agent programme's own requirement, kept by that ruling (payFeeFromWallet).
+  // 2026-09-13: these were "the two doors DEPOSIT holds shut"; since 2026-10-07 a deposit asks neither.
+  // Both doors here are the agent programme's own requirements, kept by those rulings (payFeeFromWallet).
   const kycBlocks = !app.feeWaived && !feeSettled && !walletPay.kycApproved;
   const emailBlocks = !app.feeWaived && !feeSettled && walletPay.kycApproved && !walletPay.emailVerified;
   const canAfford = balanceTzs >= fee.totalTzs;

@@ -85,3 +85,17 @@ export function formatEatDate(atMs: number, nowMs: number, monthsShort: readonly
   const day = formatEatDay(key, monthsShort, locale);
   return locale === "zh" || key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4) ? day : `${day} ${key.slice(0, 4)}`;
 }
+
+/**
+ * A MOMENT a player reads on a money record: `formatEatDate` plus the EAT clock, 24-hour `HH:mm` (2026-10-07 — the
+ * Receipts list, the single receipt and the /wallet row). Two deposits on one day must be told apart, and the clock is
+ * East Africa Time on every device — the platform's own day boundary — so one receipt reads the same on a phone in
+ * Dar es Salaam and a laptop abroad. ⛔ It replaces `formatDateTime` on these surfaces, which printed English month
+ * names in every locale (§L4).
+ */
+export function formatEatDateTime(atMs: number, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh"): string {
+  const eat = new Date(atMs + EAT_OFFSET_MS);
+  const clock = `${String(eat.getUTCHours()).padStart(2, "0")}:${String(eat.getUTCMinutes()).padStart(2, "0")}`;
+  const day = formatEatDate(atMs, nowMs, monthsShort, locale);
+  return locale === "zh" ? `${day} ${clock}` : `${day}, ${clock}`;
+}

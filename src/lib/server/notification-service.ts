@@ -777,9 +777,13 @@ export function notifyWithdraw(
     amount: number;
     net?: number;
     provider: string;
+    /** Internal txn id — the notification opens this withdrawal's own receipt (2026-10-07), as a deposit's does.
+     *  It also keeps two same-amount withdrawals apart: `notify()` dedupes on the message AND the link. */
+    txnId?: string;
     reason?: string;
   },
 ) {
+  const href = opts.txnId ? `/wallet/receipt/${opts.txnId}` : "/wallet";
   if (opts.status === "CONFIRMED") {
     const net = opts.net ?? opts.amount;
     return notify({
@@ -791,7 +795,7 @@ export function notifyWithdraw(
       bodyEn: `${opts.provider} should land in moments.`,
       bodySw: `${opts.provider} itafika sasa hivi.`,
       bodyZh: `${opts.provider} 稍后即可到账。`,
-      href: "/wallet",
+      href,
     });
   }
   if (opts.status === "AML_REVIEW") {
@@ -804,7 +808,7 @@ export function notifyWithdraw(
       bodyEn: "Compliance review takes up to 24h.",
       bodySw: "Ukaguzi unachukua hadi saa 24.",
       bodyZh: "合规审核最长需要 24 小时。",
-      href: "/wallet",
+      href,
     });
   }
   if (opts.status === "FAILED") {
@@ -817,7 +821,7 @@ export function notifyWithdraw(
       bodyEn: opts.reason ? `Funds returned. ${opts.reason}` : "Funds returned to your balance.",
       bodySw: "Pesa imerudishwa kwenye salio lako.",
       bodyZh: opts.reason ? `款项已退回您的余额。${opts.reason}` : "款项已退回您的余额。",
-      href: "/wallet",
+      href,
     });
   }
   return notify({
@@ -829,7 +833,7 @@ export function notifyWithdraw(
     bodyEn: `${opts.provider} processing.`,
     bodySw: `${opts.provider} inaendelea.`,
     bodyZh: `${opts.provider} 正在处理。`,
-    href: "/wallet",
+    href,
   });
 }
 

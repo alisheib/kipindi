@@ -60,6 +60,8 @@ async function fundedUser(id: string, balance: number, role: "PLAYER" | "AGENT" 
     failedLoginCount: 0, lockedUntil: null, role, status: "ACTIVE", locale: "EN",
     displayName: null, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    // A withdrawal needs a confirmed email as well as identity (owner ruling 2026-10-07) — this fixture withdraws.
+    email: `${id}@test.tz`, emailVerifiedAt: now(),
     createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
   } as never);
   await db.wallet.create({

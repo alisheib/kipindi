@@ -15,7 +15,9 @@
  *     ADMIN_BOOTSTRAP_PHONES and TESTER_BOOTSTRAP_PHONES (a listed phone would be promoted at sign-up): in neither.
  *   · email qa.mobile01@50pick.test — Ali's choice (2026-09-22). It does not deliver: the first mail hard-bounces
  *     and the address is suppressed, and the account keeps the (collapsible) verify-email bar, like any new player.
- *   · wallet 0, never funded, no deposit possible (a verified email gates deposits). It moves no money.
+ *   · wallet 0, never funded. It moves no money. ⚠️ Since 2026-10-07 a deposit asks NO email (owner ruling), so the
+ *     unconfirmed address no longer stops this account at the deposit form: nothing but discipline does. ⛔ No drive
+ *     may submit the deposit form as this account.
  *
  * ⛔ ONE MINT, EVER. The password is generated here, written to the gitignored `.env.qa.local` of THIS checkout as
  * QA_MOBILE01_PASSWORD before anything can throw, and never printed. The script refuses if that key already exists:

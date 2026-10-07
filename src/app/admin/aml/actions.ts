@@ -180,7 +180,7 @@ export async function rejectAmlAction(formData: FormData) {
         subject: `Withdrawal returned · ${formatTzs(Math.abs(txn.amount))}`,
         html: amlRejectRefundHtml({ amount: Math.abs(txn.amount), reason, reference: txn.id, gatewayRef: txn.providerRef ?? null }),
         tag: "aml-refund",
-      })).catch(() => {});
+      }), { confirmedOnly: true }).catch(() => {});
     }
 
     revalidatePath("/admin/aml");

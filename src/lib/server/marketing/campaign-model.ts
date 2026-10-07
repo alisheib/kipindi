@@ -62,6 +62,15 @@
  * (`userId`), never a send instant from its own clock. What a caller owes and what these doors never do is written ONCE,
  * on the settle's type, `SmsCampaignRecipientSettle` (store.ts).
  *
+ * ── U46a · THE RECEIPT DOOR (ENGINE-SPEC §4.14, E28 — the DLR route's campaign arm is its caller) ─────────────────────────
+ * A delivery receipt settles its recipient through ONE door (`assertReceipt`, `receiptWrite`, `receiptMiss` and the one
+ * list `SMS_RECEIPT_FROM`): only the row the message named, only while that row holds the message's number and the
+ * message's reference (or none yet), and only out of PENDING, SENT or UNCONFIRMED — to DELIVERED or FAILED. ⛔ MONOTONIC:
+ * a late or out-of-order receipt never moves a settled row, and a receipt only ever moves a row OUT of UNCONFIRMED (so it
+ * is no UNCONFIRMED writer — `test:campaign-models` §3.2's pin stays empty for it). Its write is computed here, as every
+ * door's is, and keeps the claim. `test:campaign-models` §2.29–§2.31 execute it; `test:dal-parity` §26.u46a holds both
+ * twins' shape; `test:sms-dlr` §12 drives it through the route.
+ *
  * ⛔ PURE, AND NOTHING AT RUNTIME COMES FROM THE STORE OR THE CONSOLE'S UI LIBRARIES. `store.ts` and `prisma-dal.ts`
  * both import this file, so a runtime import back into `store.ts` would be a cycle through the DAL switch: types only
  * (erased). `campaign-confirm.ts` is reached for its TYPE only, and `test:campaign-models` 2.11 holds the watermark
@@ -76,6 +85,7 @@ import type {
   StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignDraftPatch, SmsCampaignDraftGuard,
   SmsCampaignTransition, SmsCampaignTransitionPatch, SmsCampaignRecipientSeed, SmsCampaignRecipientCount,
   StoredSmsCampaignRecipient, SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage, MessagingLocale,
+  SmsRecipientReceipt, SmsRecipientReceiptResult,
 } from "@/lib/server/store";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import type { ConfirmTierColumn } from "@/lib/marketing/campaign-confirm";
@@ -827,4 +837,109 @@ export function newestPerTarget(rows: readonly StoredSmsMessage[]): StoredSmsMes
     if (held === undefined || gap > 0 || (gap === 0 && m.reference > held.reference)) newest.set(m.targetId, m);
   }
   return [...newest.values()].sort((a, b) => ((a.targetId ?? "") < (b.targetId ?? "") ? -1 : (a.targetId ?? "") > (b.targetId ?? "") ? 1 : 0));
+}
+
+/* ══ U46a · THE RECEIPT DOOR — a delivery receipt settles its recipient (ENGINE-SPEC §4.14, E28) ══════════════════════════ */
+
+/**
+ * ⭐ THE STATUSES A RECEIPT MOVES A ROW OUT OF — §3.2: "Receipts move PENDING (claimed) · SENT · UNCONFIRMED → DELIVERED |
+ * FAILED and nothing else." ONE list: the Prisma twin spreads it into its WHERE and the memory twin asks it, so the two can
+ * never disagree about which rows a receipt reaches. SENT is a receipt's usual row. UNCONFIRMED is the row whose answer
+ * never came, and a late receipt IS that answer (E4) — so a receipt only ever moves a row OUT of UNCONFIRMED (decision 5: no
+ * UNCONFIRMED writer). PENDING is a row a slice still holds: the receipt beat the slice's settle, which is then `lost` (D5).
+ * ⚠️ PENDING WHETHER OR NOT A CLAIM IS ON IT, as decision 1's WHERE is written: the one way a free PENDING row meets a
+ * receipt is E6's residual race — the reaper returned a claim to PENDING after its send had already left — and then the
+ * receipt is the evidence the reaper lacked, so settling the row is what spares the person a second message (the next
+ * slice's `beforeSend` re-read no longer finds it).
+ * ⛔ NEVER BACKWARDS: not DELIVERED or FAILED (a late or out-of-order receipt never rewrites a settled row), and not SKIPPED
+ * or HELD (nothing was handed over for that claim; a receipt for an earlier attempt's message changes neither).
+ */
+export const SMS_RECEIPT_FROM: readonly SmsCampaignRecipientStatus[] = Object.freeze(["PENDING", "SENT", "UNCONFIRMED"] as SmsCampaignRecipientStatus[]);
+/** A FAILED receipt's class is the vendor's token behind this prefix, so "the network refused it" (the wire's own class)
+ *  and "not delivered" (a receipt's) stay two answers (U48a). */
+export const SMS_RECEIPT_CLASS_PREFIX = "receipt:";
+/** The longest token a FAILED receipt names: its class (`receipt:` and the token) is a code, at most
+ *  `SMS_RECIPIENT_CODE_MAX` characters in all. */
+export const SMS_RECEIPT_TOKEN_MAX = SMS_RECIPIENT_CODE_MAX - SMS_RECEIPT_CLASS_PREFIX.length;
+/** The longest description a FAILED receipt writes as the row's `error` — the route scrubs the vendor's text, then cuts it
+ *  to this. */
+export const SMS_RECEIPT_DESC_MAX = 200;
+/** A receipt's keys, EXACTLY — `satisfies` the store's type, so a key added there and not here is a compile error. */
+const RECEIPT_KEY_SET = {
+  reference: true, msisdn: true, status: true, rawStatus: true, desc: true, at: true,
+} as const satisfies Record<keyof SmsRecipientReceipt, true>;
+
+/**
+ * `recordReceipt` · THE RULE SET FIRST, before either twin reads or writes: the row named (Prisma reads `where: { id:
+ * undefined }` as NO CONDITION — one receipt would settle every open row in the table); the receipt carrying exactly its
+ * six keys, every one of them present; the reference a key the system minted; the number the ONE bare key (a missing one
+ * would drop the identity check on Postgres the same way); a verdict of DELIVERED or FAILED (the arm never runs on a token
+ * nobody recognised); an instant in `toISOString()`'s spelling. A FAILED receipt WRITES its token and its description, so
+ * both are held to the settle's own rules: the token a code — printable, trimmed, 1 to `SMS_RECEIPT_TOKEN_MAX` characters
+ * (its class `receipt:<token>` then fits the 100 a code may hold) — and the description at most `SMS_RECEIPT_DESC_MAX`
+ * characters; ⛔ neither ever a phone number (§5.14). The route normalises the token, scrubs the description and cuts it
+ * first; this refuses, never scrubs and never trims. A DELIVERED receipt writes neither, so neither can refuse it.
+ * ⛔ A refusal names a key, never a value.
+ */
+export function assertReceipt(id: string, r: SmsRecipientReceipt): void {
+  const where = "smsCampaignRecipient.recordReceipt";
+  if (!isNonEmpty(id)) refuse(where, "a receipt names its row — a missing id would reach every open row on Postgres");
+  if (r === null || typeof r !== "object") refuse(where, "the receipt is not an object");
+  for (const k of Object.keys(r)) if (!own(RECEIPT_KEY_SET, k)) refuse(where, `the receipt carries "${k}" — not a key a receipt has`);
+  if (!isKeyText(r.reference)) refuse(where, "a receipt names the SMS reference it echoes");
+  if (typeof r.msisdn !== "string" || !isGatewayMsisdn(r.msisdn)) {
+    refuse(where, "the number is not the bare 255 key a recipient row holds — a missing one would drop the identity check on Postgres");
+  }
+  if (r.status !== "DELIVERED" && r.status !== "FAILED") refuse(where, "a receipt settles a row DELIVERED or FAILED, and nothing else");
+  if (typeof r.rawStatus !== "string") refuse(where, "the vendor's token is text");
+  if (r.desc !== null && typeof r.desc !== "string") refuse(where, "the description is text, or null");
+  if (!isInstant(r.at)) refuse(where, "at is an instant in toISOString's spelling");
+  if (r.status === "FAILED") {
+    if (!isCode(r.rawStatus) || r.rawStatus.length > SMS_RECEIPT_TOKEN_MAX) {
+      refuse(where, `a FAILED receipt's token is printable, trimmed, 1 to ${SMS_RECEIPT_TOKEN_MAX} characters and never a phone number (§5.14) — it becomes the row's class`);
+    }
+    if (r.desc !== null && (r.desc.length > SMS_RECEIPT_DESC_MAX || holdsPhoneRun(r.desc))) {
+      refuse(where, `a FAILED receipt's description is at most ${SMS_RECEIPT_DESC_MAX} characters and never holds a phone number (§5.14) — the route scrubs it first`);
+    }
+  }
+}
+
+/**
+ * The receipt's write, from a receipt the rule set has passed (`assertReceipt` first): the verdict, its instant, the
+ * reference the receipt was matched on and the stamp — and for a FAILED, the class `receipt:<token>` and the description
+ * as the row's `error`. Built key by key from the receipt's own fields, never spread from it, so nothing a caller handed in
+ * beside them can reach a column.
+ * ⭐ THE REFERENCE IS WRITTEN: a row a receipt reached before its settle (PENDING, D5), or one that never learnt its
+ * reference (UNCONFIRMED), holds none yet — and a FAILED row without one reads "not handed to the network" in the person's
+ * own file (`dsar.ts`), though the receipt proves the network had it. Both WHEREs let only the row's own reference, or
+ * none, through, so it is never another message's.
+ * ⭐ THE RECEIPT'S INSTANT is `deliveredAt` / `failedAt` — the message's own (`recordDlr` stamps the same `at`) — and the
+ * stamp. ⛔ NEVER THE CLAIM: a row a receipt reached first keeps its claim's token and instant, the record of which slice held
+ * it (the settle's D7 and D15) and how U43b's send record finds it (DC-4, store.ts). ⛔ Never `sentAt`, the hand-over instant
+ * only the slice and the reaper know (PE-08), never `attempts`, never the account link, the number or the contact.
+ */
+export function receiptWrite(r: SmsRecipientReceipt): SmsRecipientWrite {
+  if (r.status === "DELIVERED") {
+    return { set: { status: "DELIVERED", deliveredAt: r.at, smsReference: r.reference, updatedAt: r.at }, attemptsBy: 0 };
+  }
+  return {
+    set: {
+      status: "FAILED", failedAt: r.at, failureClass: `${SMS_RECEIPT_CLASS_PREFIX}${r.rawStatus}`, error: r.desc,
+      smsReference: r.reference, updatedAt: r.at,
+    },
+    attemptsBy: 0,
+  };
+}
+
+/**
+ * Why a receipt wrote nothing — the ONE reading both twins answer a miss through: no row of that id (`not_found`); a row of
+ * another number, or one already holding another message's reference (`mismatch` — a vendor's error, a slice that named the
+ * wrong row, or a forgery; the route audits it as SECURITY); otherwise a row in a status no receipt moves (`settled` — a
+ * late receipt, or one another writer, the reaper among them, settled first). Identity is read before status, so a row of
+ * another person is always a `mismatch`, whatever its status.
+ */
+export function receiptMiss(row: StoredSmsCampaignRecipient | null, r: SmsRecipientReceipt): Exclude<SmsRecipientReceiptResult["reason"], "applied"> {
+  if (row === null) return "not_found";
+  if (row.msisdn !== r.msisdn || (row.smsReference !== null && row.smsReference !== r.reference)) return "mismatch";
+  return "settled";
 }
