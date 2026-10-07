@@ -3,7 +3,9 @@
  *
  * ⭐ THE RULE (owner ruling, Ali, 2026-09-13 — docs/COMPLIANCE-DECISIONS.md):
  * identity is required before money is WITHDRAWN, and before nothing else.
- * The ladder is: **register → confirm email → deposit and play → verify identity → withdraw**.
+ * The ladder is: **register → deposit and play → verify identity + confirm email → withdraw**
+ * (the confirmed email moved from before the first deposit to before a withdrawal on 2026-10-07 —
+ * owner ruling; `wallet-service.withdraw()` asks it right after this gate).
  *
  * ⛔ READ THE DATES BEFORE CHANGING ANYTHING HERE. This area has been inverted three times:
  *   · 2026-08-20 — identity stopped being a precondition of withdrawal, and a RECORD replaced it;

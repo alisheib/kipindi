@@ -433,9 +433,26 @@ async function hydrateUpDownNow(): Promise<void> {
   globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED = true;
 }
 
+/**
+ * ⭐ THE PRODUCT STAKE FLOOR, ON READ (management via Ali, 2026-10-07: "consistently 1000 not 500"). Every write under
+ * `PLATFORM_MIN_STAKE` is refused (`setUpDownConfig`), but a stored default from before a floor rose survives until
+ * rewritten — the market config's twin (`floorStakeBounds`, market-config.ts) records the weeks production sat on 500.
+ * So the copy returned here is floored; the STORE is never mutated, and the admin form shows "stored X · enforced Y"
+ * (`getStoredUpDownStakeDefaults`). The max is lifted to at least the min.
+ */
 export async function getUpDownConfig(): Promise<UpDownConfig> {
   await ensureHydrated();
-  return { ...cfgStore() };
+  const c = { ...cfgStore() };
+  const defaultMinStake = Math.max(Number.isFinite(c.defaultMinStake) ? c.defaultMinStake : PLATFORM_MIN_STAKE, PLATFORM_MIN_STAKE);
+  const defaultMaxStake = Math.max(Number.isFinite(c.defaultMaxStake) ? c.defaultMaxStake : PLATFORM_MAX_STAKE, defaultMinStake);
+  return { ...c, defaultMinStake, defaultMaxStake };
+}
+
+/** The product's default stake bounds exactly as STORED — the admin form's "stored X · enforced Y" line only. */
+export async function getStoredUpDownStakeDefaults(): Promise<{ defaultMinStake: number; defaultMaxStake: number }> {
+  await ensureHydrated();
+  const c = cfgStore();
+  return { defaultMinStake: c.defaultMinStake, defaultMaxStake: c.defaultMaxStake };
 }
 
 export async function setUpDownConfig(
@@ -1326,12 +1343,16 @@ export async function deleteChain(id: string, officerId: string): Promise<Servic
  * drop it below `defaultMinStake` (the platform stake floor, currently 1,000). This
  * guarantees no surface can ever present a sub-floor stake, even if a chain row was
  * created/stored with an older, lower minimum before the floor was raised.
+ * ⭐ AND THE PLATFORM MINIMUM IS NAMED HERE TOO (2026-10-07): `getUpDownConfig` already floors the product default,
+ * but this is the one resolver the board, the round page and `buyPosition` read, so it states the rule itself rather
+ * than trusting one layer up to have done it. The max is lifted to at least the min.
  */
 export async function stakeBoundsFor(chain: StoredChain): Promise<{ min: number; max: number }> {
   const cfg = await getUpDownConfig();
+  const min = Math.max(chain.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake, PLATFORM_MIN_STAKE);
   return {
-    min: Math.max(chain.minStake ?? cfg.defaultMinStake, cfg.defaultMinStake),
-    max: Math.max(chain.maxStake ?? cfg.defaultMaxStake, cfg.defaultMinStake),
+    min,
+    max: Math.max(chain.maxStake ?? cfg.defaultMaxStake, min),
   };
 }
 

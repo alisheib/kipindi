@@ -2,12 +2,12 @@
  * Wallet service — deposits, withdrawals, balance management.
  * Compliance:
  *  - All money movements posted via Transaction rows (immutable history)
- *  - Withdrawals require an identity approved at least once (2026-09-13); deposits ask
- *    for a confirmed email and no identity at all. ⚠️ This line has been wrong twice —
- *    it said withdrawals needed KYC through the fortnight they did not, then said
- *    deposits and bets needed it after they stopped. A header that drifts is worse than
- *    no header: it is read as authority. The rule lives in `kyc-gate.ts`; this is a
- *    pointer, not a copy.
+ *  - Withdrawals require an identity approved at least once (2026-09-13) AND a confirmed
+ *    email address (owner ruling 2026-10-07); deposits ask neither. ⚠️ This line has been
+ *    wrong twice — it said withdrawals needed KYC through the fortnight they did not, then
+ *    said deposits and bets needed it after they stopped. A header that drifts is worse than
+ *    no header: it is read as authority. The identity rule lives in `kyc-gate.ts`, the email
+ *    rule in `withdraw()` below; this is a pointer, not a copy.
  *  - No withdrawal is held for AML review: the TZS 1M two-officer hold was switched off
  *    by the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD`, payments.ts). A single
  *    withdrawal is capped at `WITHDRAW_MAX_TZS`. `AML_REVIEW` stays in use for rows held
@@ -42,6 +42,7 @@ import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
+import { RG_RETURN_MARK, presentedStatus } from "@/lib/wallet/receipts";
 import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
@@ -121,7 +122,7 @@ export async function deposit(
 
   // ══ THE DOORS ON THE MONEY-IN PATH, IN THE ORDER THEY MUST BE ASKED ════════════
   //
-  //     RG lockout  →  email  →  (lock) caps + SOF
+  //     RG lockout  →  (lock) caps + SOF
   //
   // ⛔ THERE IS NO IDENTITY DOOR, AND THERE WAS ONE FROM 2026-09-05 TO 2026-09-13. It stood
   // between the lockout and the email gate and was deleted — not disabled — when the owner
@@ -129,8 +130,17 @@ export async function deposit(
   // docs/COMPLIANCE-DECISIONS.md 2026-09-13). Do not restore it by reading the older entry.
   // What replaced it is a RECORD: `kycStatus` on this deposit's `deposit.initiated` row below.
   //
-  // 🔴 THE ORDER IS THE INTERFACE, AND IT WAS WRONG BEFORE 2026-09-05. The email gate
-  // used to stand HERE, above the lockout — and its own comment claimed it was placed
+  // ⛔ AND THERE IS NO EMAIL DOOR, AND THERE WAS ONE FROM 2026-07-18 TO 2026-10-07. A deposit
+  // whose account had no confirmed address was refused here with `EMAIL_UNVERIFIED`; the owner
+  // ruled on 2026-10-07 that a deposit asks no email question at all — not even "add one" — and
+  // that a confirmed address is asked before WITHDRAWAL instead (`withdraw()` below, after the
+  // identity gate). It was deleted, not disabled. What replaced it is, again, a RECORD:
+  // `hasEmail` and `emailConfirmed` on the same `deposit.initiated` row, so a funded account
+  // without a confirmed contact stays countable. The player's guarantee is in-app instead:
+  // every deposit and withdrawal has a receipt on /wallet/receipts, mailed or not.
+  //
+  // 🔴 THE ORDER IS THE INTERFACE, AND IT WAS WRONG BEFORE 2026-09-05. The email gate (deleted
+  // 2026-10-07) used to stand HERE, above the lockout — and its own comment claimed it was placed
   // *"AFTER the wallet/lockout checks"*, which the code it sat in had never done. So a
   // SELF-EXCLUDED player with an unconfirmed address was told to go and confirm their
   // email: a protective control the player set for their own safety, losing to a
@@ -164,40 +174,6 @@ export async function deposit(
       return { ok: false, error: `You are in a cooling-off period until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
     }
     return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
-  }
-
-  // ── 2 · EMAIL-VERIFICATION GATE ─────────────────────────────────────────────
-  // Why deposit and not sign-up: blocking sign-up costs conversion for no safety
-  // gain, whereas the first deposit is the first moment a real inbox actually
-  // matters — that address is where the receipt goes, and it is the evidence we
-  // rely on in a chargeback or a regulator dispute.
-  //
-  // 🔴 FROM 2026-09-13 THIS IS THE FRONT DOOR, AND IT IS LOAD-BEARING IN A WAY IT NEVER WAS.
-  // With identity gone from the money-in path it is the only thing between a stranger and a
-  // funded account, and a confirmed address is the only verified contact channel the platform
-  // holds: the one-time-code registration path creates `email: null`, and phone is no fallback
-  // (the default SMS provider reports success while delivering nothing). ⛔ Any change that
-  // relaxes this gate re-opens a funded, uncontactable account — docs/COMPLIANCE-DECISIONS.md
-  // 2026-09-13 records it among the controls that deliberately did NOT change.
-  //
-  // Placed BEFORE the reserving lock: a blocked deposit must not create a PROCESSING
-  // row, consume a deposit cap, or reach the gateway. `depositor` is already loaded above.
-  //
-  // ⚠️ Admins are NOT exempt.
-  if (!depositor?.emailVerifiedAt) {
-    audit({
-      category: "COMPLIANCE",
-      action: "deposit.email_unverified_blocked",
-      actorId: userId, targetType: "User", targetId: userId,
-      payload: { hasEmail: !!depositor?.email },
-    });
-    return {
-      ok: false,
-      code: "EMAIL_UNVERIFIED",
-      error: depositor?.email
-        ? "Confirm your email address before your first deposit. We sent a link to your inbox — open it, then come back."
-        : "Add and confirm your email address before your first deposit.",
-    };
   }
 
   // ── Atomic reservation: RG deposit-cap + SOF gate + PROCESSING row (audit C4) ──
@@ -309,13 +285,14 @@ export async function deposit(
     const w = await db.wallet.findByUserId(userId);
     return { ok: true, data: { txnId, status: txn.status, balance: w?.balance ?? 0 } };
   }
-  // ⭐ THE RECORD THAT REPLACED THE DEPOSIT GATE (2026-09-13): the account's identity standing, as
-  // two fields on the row every deposit already writes. Stamped on EVERY deposit, verified or not —
-  // a stamp that appeared only on unverified deposits would make its own absence ambiguous (the
-  // 2026-08-20 precedent). `readIdentityStanding` never throws and never refuses: this money is
-  // already on its way, and a failed read is recorded as "UNREADABLE", never as "NOT_STARTED".
+  // ⭐ THE RECORD THAT REPLACED THE DEPOSIT GATES: the account's identity standing (2026-09-13) and
+  // its email standing (2026-10-07), as fields on the row every deposit already writes. Stamped on
+  // EVERY deposit, verified or not — a stamp that appeared only on unverified deposits would make its
+  // own absence ambiguous (the 2026-08-20 precedent). `readIdentityStanding` never throws and never
+  // refuses: this money is already on its way, and a failed read is recorded as "UNREADABLE", never
+  // as "NOT_STARTED". The email fields read the `depositor` row this function loaded above.
   const standing = await readIdentityStanding(userId);
-  audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount, kycStatus: standing.kycStatus, everApproved: standing.everApproved } });
+  audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount, kycStatus: standing.kycStatus, everApproved: standing.everApproved, hasEmail: !!depositor?.email, emailConfirmed: !!depositor?.emailVerifiedAt } });
 
   // Mint the correlation id and PERSIST it BEFORE dispatching.
   //
@@ -436,7 +413,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
       await withMoneyTx(async (tx) => {
         await db.txn.update(txnId, {
           status: "AML_REVIEW",
-          amlReason: `rg_refund_due_${rgLock.reason}`,
+          amlReason: `${RG_RETURN_MARK}${rgLock.reason}`,
           description: `${t.description ?? "Deposit"} · held for return (account excluded)`,
         }, tx);
         await postLedgerEntries(
@@ -494,7 +471,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
       subject: `Deposit confirmed · ${formatTzs(t.amount)}`,
       html: depositConfirmedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef, balance: outcome.balance }),
       tag: "deposit",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
     // Affiliate accrual (first-deposit bonus / threshold prize) — best-effort.
     try {
       const { onRecruitDeposit } = await import("./affiliate-service");
@@ -546,7 +523,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
       subject: `Deposit reversed · ${formatTzs(t.amount)}`,
       html: depositReversedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef }),
       tag: "deposit",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
   }
   return { credited: outcome.credited, balance: outcome.balance };
 }
@@ -591,7 +568,7 @@ async function settleDepositFailed(txnId: string, reason: string): Promise<boole
     subject: `Deposit failed · ${formatTzs(t.amount)}`,
     html: depositFailedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef: t.providerRef, reason: friendly }),
     tag: "deposit",
-  })).catch(() => {});
+  }), { confirmedOnly: true }).catch(() => {});
   return true;
 }
 
@@ -656,7 +633,7 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
   const gross = Math.abs(txn.amount);
   // Net of the withdrawal fee (1.5% live) — the only deduction. No withholding tax.
   const net = gross - (txn.fee ?? 0);
-  notifyWithdraw(txn.userId, { status: "CONFIRMED", amount: gross, net, provider: friendlyProvider(txn.provider) });
+  notifyWithdraw(txn.userId, { status: "CONFIRMED", amount: gross, net, provider: friendlyProvider(txn.provider), txnId: txn.id });
   sendEmailToUser(txn.userId, (email) => ({
     to: email,
     subject: `Withdrawal sent · ${formatTzs(net)}`,
@@ -674,7 +651,7 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
       railNote: payoutRailNote(txn.payoutRail),
     }),
     tag: "withdrawal",
-  })).catch(() => {});
+  }), { confirmedOnly: true }).catch(() => {});
 }
 
 /**
@@ -830,7 +807,7 @@ export async function dispatchApprovedWithdrawal(
   }
   // PENDING (real async payout): stays PROCESSING; the walletcashin/query webhook +
   // reconcile sweep confirm or reverse it. Tell the player their payout is on its way.
-  notifyWithdraw(claimed.userId, { status: "INITIATED", amount: gross, net, provider: friendlyProvider(provider) });
+  notifyWithdraw(claimed.userId, { status: "INITIATED", amount: gross, net, provider: friendlyProvider(provider), txnId });
   return { ok: true, status: "PROCESSING" };
 }
 
@@ -906,7 +883,7 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
         tag: "kyc-refused-funds",
       })).catch(() => {});
     } else {
-      notifyWithdraw(done.userId, { status: "FAILED", amount: refunded, provider: friendlyProvider(done.provider), reason });
+      notifyWithdraw(done.userId, { status: "FAILED", amount: refunded, provider: friendlyProvider(done.provider), reason, txnId: done.id });
       // Dual-channel parity with every other money event: the funds came back to
       // the wallet, so the player gets an email too (purpose-built refund template).
       sendEmailToUser(done.userId, (email) => ({
@@ -914,7 +891,7 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
         subject: `Withdrawal returned · ${formatTzs(refunded)}`,
         html: amlRejectRefundHtml({ amount: refunded, reason, reference: done.id, gatewayRef: done.providerRef ?? null, railLabel: payoutRailLabel(done.payoutRail) }),
         tag: "withdrawal",
-      })).catch(() => {});
+      }), { confirmedOnly: true }).catch(() => {});
     }
   }
   return !!done;
@@ -923,13 +900,17 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
 /** What the card return leg renders. `state` is derived ONLY from the signed
  *  re-query + the stored transaction — never from the return URL's parameters. */
 export type DepositReturnOutcome = {
-  state: "PAID" | "PENDING" | "FAILED" | "UNKNOWN";
+  /** `REVERSED` (2026-10-07): the card paid, but the account could not take money (a break or an exclusion), so the
+   *  deposit is held for return — never "nothing was taken from your card", which is what FAILED says. */
+  state: "PAID" | "PENDING" | "FAILED" | "UNKNOWN" | "REVERSED";
   balance: number;
   txn?: {
     id: string;
     amount: number;
     providerRef: string | null;
     providerLabel: string;
+    /** The stored rail — the page names it in the reader's language (`methodLabel`: "Kadi" / "银行卡" for a card). */
+    provider: string | null;
     createdAt: string;
   };
 };
@@ -992,10 +973,13 @@ export async function settleDepositFromReturn(userId: string, orderId: string): 
     txn = (await db.txn.findById(txn.id)) ?? txn;
   }
 
+  // Through the player's one status rule, so the return page, the receipt and the bell agree about a held deposit.
+  const shown = presentedStatus(txn);
   const state: DepositReturnOutcome["state"] =
-    txn.status === "CONFIRMED" ? "PAID" :
-    txn.status === "PROCESSING" ? "PENDING" :
-    "FAILED"; // FAILED / REVERSED / anything terminal-but-not-credited
+    shown === "CONFIRMED" ? "PAID" :
+    shown === "PROCESSING" ? "PENDING" :
+    shown === "REVERSED" ? "REVERSED" :
+    "FAILED"; // FAILED / CANCELLED / anything terminal-but-not-credited
 
   return {
     state,
@@ -1005,6 +989,7 @@ export async function settleDepositFromReturn(userId: string, orderId: string): 
       amount: Math.abs(txn.amount),
       providerRef: txn.providerRef,
       providerLabel: friendlyProvider(txn.provider),
+      provider: txn.provider ?? null,
       createdAt: txn.createdAt,
     },
   };
@@ -1461,7 +1446,7 @@ export async function notifyStillPendingDeposits(olderThanMs = 30 * 60 * 1000): 
       subject: `Still waiting on your deposit · ${formatTzs(t.amount)}`,
       html: depositPendingHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef: t.providerRef }),
       tag: "deposit",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
     audit({ category: "WALLET", action: "deposit.pending_notified", actorId: null, targetType: "Transaction", targetId: t.id, payload: { olderThanMs, amount: t.amount } });
   }
   return { notified };
@@ -1652,7 +1637,8 @@ export async function withdraw(
   // ⚠️ THE STAMP SURVIVES THE GATE. `kycStatus` rides on `withdraw.initiated` for EVERY payout: a
   // stamp that only appeared while it could be non-APPROVED would make its own absence ambiguous.
   //
-  // ⚠️ WHAT ELSE REMAINS: the per-withdrawal cap (`WITHDRAW_MAX_TZS`), the wallet freeze below, the per-provider
+  // ⚠️ WHAT ELSE REMAINS: the confirmed email (the next gate, 2026-10-07), the per-withdrawal cap
+  // (`WITHDRAW_MAX_TZS`), the wallet freeze below, the per-provider
   // kill-switch, the gateway floor, and the payout pause — the last of which lives in the
   // ROUTE (`wallet/withdraw/actions.ts`), not here. There is still no `user.status` check
   // and no self-exclusion check on the withdraw path; that predates this change and is
@@ -1699,6 +1685,58 @@ export async function withdraw(
       },
     });
     return { ok: false, error: `Identity not verified (${withdrawGate.kycStatus}).`, code: "INVALID", reason: withdrawGate.reason };
+  }
+
+  // ══ THE EMAIL GATE — A CONFIRMED ADDRESS BEFORE MONEY LEAVES (owner ruling 2026-10-07) ══════
+  //
+  // ⭐ WHERE IT CAME FROM. Until 2026-10-07 a confirmed email was asked before the first DEPOSIT and
+  // never here. The owner moved it: a deposit asks no email question at all, and a withdrawal needs a
+  // confirmed address ("its fine only withdrawals are enforced verify mail"). It is the one verified
+  // contact we hold for an account whose money is leaving.
+  //
+  // ⛔ ASKED AFTER IDENTITY, NEVER BEFORE. The withdraw screen draws ONE panel in that order
+  // (`KycGatePanel`: the identity step, then the email step) and the server refuses in the same
+  // order, so a player who clears the step the screen asked for is never refused for a step it did
+  // not show (E-5). It also keeps `withdraw.kyc_blocked` — the harm signal `kyc-risk.ts` ranks the
+  // identity queue by — counting every unverified attempt, whatever the email says.
+  //
+  // ⛔ A CURRENT CONDITION, NOT "EVER". Changing or removing the address clears the stamp
+  // (`email-verification.ts`), so a player who has withdrawn before is asked again — by the panel.
+  //
+  // ⚠️ THE OFFICER'S REFUSED-FUNDS RETURN IS EXEMPT, AND MUST BE: `decideRefusedFunds` has already
+  // forfeited the remainder when it calls this function, so a refusal here would turn an officer's
+  // return into "forfeited, payout failed". Operator retries of a FAILED withdrawal are NOT exempt —
+  // they re-send what the player asked for, under the rule that governs the player.
+  // Refused BEFORE the hold, like the two gates above: nothing has moved when this returns, and
+  // nobody is notified, mailed or prompted — the withdraw screen's panel is the only voice it has.
+  if (!refundReturn && !user.emailVerifiedAt) {
+    audit({
+      category: "COMPLIANCE",
+      action: "withdraw.email_unverified_blocked",
+      actorId: actor,
+      targetType: "User",
+      targetId: userId,
+      payload: {
+        hasEmail: !!user.email,
+        onBehalfOf: userId,
+        operatorInitiated,
+        amount: parse.data.amount,
+        provider: parse.data.provider,
+        // The authority of record, in the row itself — these rows are HMAC-chained and kept seven
+        // years, so the refusal names the ruling that governs it (the identity gate's precedent above).
+        instruction: "Owner ruling 2026-10-07 · a confirmed email is required before withdrawal",
+      },
+    });
+    return {
+      ok: false,
+      // The English service string is audit/API truth; the player reads `errEmailUnverified` in their
+      // own language, minted from the reason below — and on the page, the withdraw panel's email step.
+      error: user.email
+        ? "Confirm your email address before you withdraw. Open the link we sent you, then try again."
+        : "Add an email address to your account and confirm it before you withdraw.",
+      code: "EMAIL_UNVERIFIED",
+      reason: "email_unverified" as const,
+    };
   }
 
   const amount = parse.data.amount;
@@ -1973,7 +2011,7 @@ export async function withdraw(
     runOutsideLock(() => {
       void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(userId, { event: "withdrawal_held", amountTzs: amount, txnId: txnId })).catch(() => {});
     });
-    notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
+    notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel, txnId });
     // Alert compliance officers (bell + email) so they act on the queue.
     notifyAdminsAmlReview({ txnKind: "WITHDRAWAL", amountTzs: amount, reference: txnId }).catch(() => {});
     sendEmailToUser(userId, (email) => ({
@@ -1981,7 +2019,7 @@ export async function withdraw(
       subject: `Withdrawal under review · ${formatTzs(amount)}`,
       html: withdrawalUnderReviewHtml({ amount, reference: txnId }),
       tag: "withdrawal-review",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
     return { ok: true, data: { txnId, status: "AML_REVIEW", fee, net } };
   }
 
@@ -1990,7 +2028,7 @@ export async function withdraw(
     // confirms (release hold) or fails (reverse) the disbursement. The webhook
     // is the authority — we don't release the hold here.
     audit({ category: "WALLET", action: "withdraw.pending", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, net } });
-    notifyWithdraw(userId, { status: "INITIATED", amount, net, provider: providerLabel });
+    notifyWithdraw(userId, { status: "INITIATED", amount, net, provider: providerLabel, txnId });
     return { ok: true, data: { txnId, status: "PROCESSING", fee, net } };
   }
 
@@ -2653,7 +2691,11 @@ export async function refundAmlRejection(txn: StoredTxn, reason: string): Promis
         if (!updated) throw new Error(`aml reject ${txn.id}: wallet ${wallet.id} row missing`);
       }
     }
-    await db.txn.update(txn.id, { status: "FAILED", completedAt: new Date().toISOString(), amlReason: reason }, tx);
+    // ⭐ A DEPOSIT HELD FOR RETURN KEEPS ITS MARK in front of the officer's reason (2026-10-07). The player's surfaces read
+    // the mark (`presentedStatus`), so the returned deposit still reads "Reversed" — as the notice and the email already
+    // said — instead of turning into "Failed" the moment the money goes back. A withdrawal's reason is unchanged.
+    const keepMark = txn.type === "DEPOSIT" && (txn.amlReason ?? "").startsWith(RG_RETURN_MARK);
+    await db.txn.update(txn.id, { status: "FAILED", completedAt: new Date().toISOString(), amlReason: keepMark ? `${txn.amlReason} · ${reason}` : reason }, tx);
   });
 }
 

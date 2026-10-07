@@ -2,7 +2,9 @@
 
 /**
  * Contact-email editor for the account page. Lets any player add/update/clear
- * the email that receipts (deposit, withdraw, win, KYC, etc.) are sent to.
+ * their email. Once it is CONFIRMED, money mail (deposit, withdrawal, win, refund)
+ * goes to it, and a withdrawal needs it confirmed (owner ruling 2026-10-07); every
+ * receipt is also kept in the app (/wallet/receipts).
  * Backed by changeEmailAction (route audit 2026-10-06, A1): the address also
  * receives password-reset links, so adding, changing or removing it asks for the
  * current password. An account with no password (`hasPassword` false — the
@@ -130,7 +132,7 @@ export function EmailEditor({ currentEmail, verified, hasPassword }: { currentEm
       // `verifyErrorMessage` is the existing mapper for exactly these codes.
       if (!r.ok) { toast({ title: t.toast.couldntResend, description: verifyErrorMessage(t, r.error, r.retryAfterSec), variant: "danger" }); return; }
       // A7 / D-X4 (route audit 2026-10-06) · `sent: false` means the address is ALREADY CONFIRMED (in another tab, say)
-      // and nothing was sent. This said "Confirmation sent" anyway. The deposit gate and the bar handle it the same way.
+      // and nothing was sent. This said "Confirmation sent" anyway. The withdraw screen's email step handles it the same way.
       if (!r.sent) { toast({ title: t.common.alreadyConfirmed, description: t.common.emailAlreadyConfirmedBody, variant: "success" }); router.refresh(); return; }
       toast({ title: t.toast.confirmationSent, description: t.toast.checkInbox, variant: "success" });
       router.refresh();
@@ -190,13 +192,16 @@ export function EmailEditor({ currentEmail, verified, hasPassword }: { currentEm
                 <I.check s={10} /> {t.common.confirmed}
               </span>
             ) : (
+              /* 2026-10-07 · NEUTRAL, not gold: an unconfirmed address is an ordinary step (the profile pill and the withdraw
+                 card say so in the same tone; §M3 keeps gold for earned money). The resend was an 11px text link — now the
+                 40px ghost control (§A2) the withdraw card uses. */
               <span className="inline-flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-pill border border-gold-700 bg-gold-500/10 px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-gold-300">
+                <span className="inline-flex items-center gap-1 rounded-pill border border-border bg-bg-inset px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-text-muted">
                   <I.mail s={10} /> {t.common.unconfirmed}
                 </span>
-                <button type="button" onClick={resend} disabled={pending} className="font-mono text-[11px] text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline disabled:opacity-60">
-                  {pending ? t.common.sending : t.common.resendLink}
-                </button>
+                <Button type="button" variant="ghost" size="sm" onClick={resend} loading={pending} leading={<I.mail s={14} />} className="btn-pill">
+                  {t.common.resendLink}
+                </Button>
               </span>
             )
           )}

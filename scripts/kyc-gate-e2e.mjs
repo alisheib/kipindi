@@ -14,11 +14,12 @@
  * the player is TOLD on the way: identity on the withdraw screen, and in ONE dismissible notice after
  * the first confirmed deposit; nowhere else.
  *
- *   ① register → lands on the market board (/), not on a gate — the email asked by the app-wide bar
+ *   ① register → lands on the market board (/), not on a gate, and NO app-wide email bar (deleted 2026-10-07)
  *      (2026-10-06; from 2026-09-13 it landed on /wallet/deposit, whose email door stood in place of the form)
- *   ② a new account: TZS 0, the email door on the deposit screen, the stake control on a market,
- *      the payout panel on the withdraw screen — and no identity prompt anywhere else
- *   ③ confirm the email through the real link → the deposit form
+ *   ② a new account: TZS 0, the deposit FORM with no email question (owner ruling 2026-10-07), the stake control on
+ *      a market, the payout panel on the withdraw screen carrying the email as its second step — and no identity
+ *      prompt anywhere else
+ *   ③ confirm the email through the real link → the withdraw card drops its email step; the deposit form as before
  *   ④ a REAL deposit → the one quiet notice on /wallet; dismissed, it stays gone in this browser
  *   ⑤ identity + documents → ⑥ submit (the withdraw panel says it is with us; the notice is not due)
  *   ⑦ an officer approves → ⑧ the withdrawal form opens, and nothing asks again
@@ -163,7 +164,8 @@ step("① register — the real sign-up form, no fixture");
     landing?.searchParams.get("welcome") === "new", landing?.href ?? "(no landing recorded)");
   ok("1.3 · ⛔ …and never passing through /profile/kyc or /wallet/deposit on the way",
     seen.length > 0 && !seen.some((u) => /^\/(profile\/kyc|wallet\/deposit)(\/|$)/.test(new URL(u).pathname)), seen.join(" → "));
-  ok("1.4 · …where the email is still asked, by the app-wide bar", await player.locator(sel.emailBar).count() > 0);
+  ok("1.4 · …and NO app-wide email bar: the bar is deleted, the email is asked quietly at withdrawal (2026-10-07)",
+    await player.locator(sel.emailBar).count() === 0);
 }
 
 // ── ② A NEW ACCOUNT: NOTHING HELD, IDENTITY ASKED ONLY AT THE WITHDRAWAL ────
@@ -180,16 +182,18 @@ step("② a brand-new account: nothing held, the email door, the stake control �
 
   await go(player, `${BASE}/wallet/deposit`);
   ok("2.4 · ⛔ NO identity panel on the deposit screen", await player.locator(sel.gate).count() === 0);
-  // ⭐ Registration confirms no address, so the one door on this screen is the EMAIL — the
-  // second step of the ladder, and nothing to do with identity.
-  ok("2.5 · ★ …the one door there is the email", await player.locator(sel.emailGate).count() > 0);
-  ok("2.6 · …and the form waits behind it", await player.locator(sel.depositForm).count() === 0);
+  // ⭐ Registration confirms no address, and since 2026-10-07 that stops nothing here: a deposit asks no email
+  // (owner ruling). These two checks proved the opposite until then, and are inverted.
+  ok("2.5 · ★ …and NO email door: a deposit asks no email", await player.locator(sel.emailGate).count() === 0);
+  ok("2.6 · …the deposit form is there for an unconfirmed account", await player.locator(sel.depositForm).count() > 0);
   await noBar(player, "2.6b · /wallet/deposit");
 
   await go(player, `${BASE}/wallet/withdraw`);
   const panel = player.locator(sel.payoutGate);
   ok("2.7 · ★ the withdraw screen shows the payout identity panel", await panel.count() === 1, `${await panel.count()} found`);
   ok("2.8 · …in the not-started state", (await panel.first().getAttribute("data-kyc-state").catch(() => null)) === "not_started");
+  ok("2.8e · …carrying the unconfirmed email as its second step (2026-10-07)",
+    (await panel.first().getAttribute("data-kyc-email").catch(() => null)) === "owed");
   ok("2.9 · ⛔ …and the withdrawal form is ABSENT from the DOM, not disabled", await player.locator(sel.withdrawForm).count() === 0);
   const pt = await textOf(panel);
   ok('2.10 · it says "Before you withdraw" — and no "balance is safe" line',
@@ -232,9 +236,13 @@ step("③ confirm the email — the link the player would receive");
     const u = new URL(link.url, BASE);
     await go(player, `${BASE}${u.pathname}${u.search}`);
   }
+  await go(player, `${BASE}/wallet/withdraw`);
+  const after = player.locator(sel.payoutGate);
+  ok("3.2 · ★ confirmed, the withdraw card drops its email step — identity is the one thing left",
+    await after.count() === 1 && (await after.first().getAttribute("data-kyc-email").catch(() => "x")) === null);
   await go(player, `${BASE}/wallet/deposit`);
-  ok("3.2 · ★ the real deposit form is present — the email was the only door", await player.locator(sel.depositForm).count() > 0);
-  ok("3.3 · ⛔ …and still no identity panel", await player.locator(sel.gate).count() === 0);
+  ok("3.3 · the deposit form, as before — it never waited on the email", await player.locator(sel.depositForm).count() > 0);
+  ok("3.3b · ⛔ …and still no identity panel", await player.locator(sel.gate).count() === 0);
 }
 
 // ── ④ A REAL DEPOSIT, AND THE ONE QUIET NOTICE ──────────────────────────────

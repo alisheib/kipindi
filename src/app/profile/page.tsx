@@ -198,11 +198,17 @@ export default async function ProfilePage() {
                   own name. It read the stored `user.locale` with no ZH case, and the language menu never writes that
                   column, so a zh page said "English". */}
               <Pill tone="neutral">{LANGUAGE_NAME[locale]}</Pill>
-              {user.email && (
-                user.emailVerifiedAt
-                  ? <Pill tone="success"><I.check s={10} className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
-                  : <Link href="/profile/account" className="no-underline"><Pill tone="warning"><I.mail s={10} className="inline -mt-px" /> {t.profile.emailUnconfirmed}</Pill></Link>
-              )}
+              {/* ⭐ THE EMAIL STANDING, STATED QUIETLY (2026-10-07). A confirmed address is now asked before a WITHDRAWAL
+                  (owner ruling), the way identity is — so this pill follows the identity pill's rule: an outstanding step
+                  is an ordinary condition, NEUTRAL, never amber, and until it is done the pill is the quiet way in, on
+                  the same tap floor. With no address at all it says "Add email" (it said nothing). Confirmed, it states. */}
+              {user.emailVerifiedAt && user.email
+                ? <Pill tone="success"><I.check s={10} className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
+                : (
+                  <Link href="/profile/account" data-testid="profile-email-pill" className="no-underline inline-flex items-center min-h-[var(--tap-min)]">
+                    <Pill tone="neutral"><I.mail s={10} className="inline -mt-px" /> {user.email ? t.profile.emailUnconfirmed : t.profile.addEmailPill}</Pill>
+                  </Link>
+                )}
             </div>
           </div>
         </div>
@@ -331,6 +337,11 @@ export default async function ProfilePage() {
           )}
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
           <SettingRow icon={I.chart}           title={t.activity.title}              subtitle={t.activity.settingSub}             href="/profile/activity" />
+          {/* ⭐ RECEIPTS (owner ruling 2026-10-07: "in the user profile we need a tab for internal receipts"). Every deposit
+              and withdrawal, with its references, kept in the app — mailed or not, now that a deposit asks no email. The
+              door is here, beside the money summary; the list lives with the wallet (`/wallet/receipts`, a money surface
+              with the wallet's own "funds are safe" boundary), next to the single receipt it opens. */}
+          <SettingRow icon={I.receipt}         title={t.receipts.title}              subtitle={t.receipts.settingSub}             href="/wallet/receipts" />
           <SettingRow icon={I.star}            title={t.watchlist.title}             subtitle={t.watchlist.settingSub}            href="/watchlist" />
           <SettingRow icon={I.bellRing}        title={t.push.pageTitle}              subtitle={t.push.settingSub}                 href="/profile/notifications" />
           <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />

@@ -269,11 +269,21 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
                     dates. `formatDate` (2026-09-13) gives "13 Sep 2026" in the platform zone, like the rest of the page. */}
                 {id.slice(0, 14)}… · <Sensitive field="phone" subjectId={id} value={user.phoneE164} /> · {user.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "—"} · joined {formatDate(user.createdAt)}
               </p>
-              {user.email && (
-                <p data-identity-line="2" className="font-mono text-caption text-text-tertiary mt-0.5 flex items-center gap-1">
+              {/* ⭐ 2026-10-07 — THE EMAIL'S STANDING IS A WITHDRAWAL FACT NOW (owner ruling: a confirmed address is
+                  needed to withdraw, a deposit asks none), so support reads it here instead of inferring it from a
+                  missing tick. A missing address says so too: that player must add one before cashing out. */}
+              {user.email ? (
+                <p data-identity-line="2" className="font-mono text-caption text-text-tertiary mt-0.5 flex flex-wrap items-center gap-1">
                   <I.mail s={10} />
                   <Sensitive field="email" subjectId={id} value={user.email} />
-                  {user.emailVerifiedAt && <I.check s={10} className="text-success" />}
+                  {user.emailVerifiedAt
+                    ? <I.check s={10} className="text-success" />
+                    : <span data-email-standing="unconfirmed" className="text-warning-fg">· unconfirmed — needed to withdraw</span>}
+                </p>
+              ) : (
+                /* The same warning ink as "unconfirmed" above: both stop a withdrawal (design review, 2026-10-07). */
+                <p data-identity-line="2" data-email-standing="none" className="font-mono text-caption text-text-tertiary mt-0.5 flex flex-wrap items-center gap-1">
+                  <I.mail s={10} /> <span className="text-warning-fg">no email — one is needed to withdraw</span>
                 </p>
               )}
               <div className="flex items-center gap-1.5 flex-wrap mt-2">

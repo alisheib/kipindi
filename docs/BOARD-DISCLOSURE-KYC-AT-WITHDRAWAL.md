@@ -1,5 +1,10 @@
 # To the Gaming Board — identity verification is now enforced at withdrawal only
 
+> ⚠️ **ONE ROW HERE STOPPED BEING TRUE ON 2026-10-07 (owner ruling).** "First deposit — a confirmed email address" no
+> longer holds: a deposit asks for no email, and a confirmed email is required at WITHDRAWAL, beside identity. If this
+> letter is still unsent, that row and the sentence "registers, confirms their email address, and may then deposit"
+> must change before it goes; if it was sent, the Board may need to be told of the change. `COMPLIANCE-DECISIONS.md` § "2026-10-07 · A deposit asks no email; a confirmed email is required to withdraw; receipts in the app (owner ruling)".
+>
 > **Status:** DRAFT FOR ALI, written 2026-09-13, the day the change was built.
 > **Follows:** the Board's permission, obtained by the owner, for 50pick to enforce identity
 > (KYC) finalisation only at withdrawal.

@@ -39,11 +39,11 @@
    ⭐ The helpline readers are imported to prove NO email carries the helpline (owner's ruling, 2026-10-06). */
 import { HELPLINE, SUPPORT_DEFAULTS } from "../src/lib/support-config.ts";
 import { SUPPORT_PHONE } from "../src/lib/server/support-config.ts";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  EMAIL_TEMPLATES, DUAL_CHROME_TEMPLATES, NO_CTA_TEMPLATES,
+  EMAIL_TEMPLATES, DUAL_CHROME_TEMPLATES, NO_CTA_TEMPLATES, CONFIRMED_ONLY_TEMPLATES, CONFIRMED_ONLY_EXEMPT,
 } from "../src/lib/server/comms-registry.ts";
 import * as E from "../src/lib/server/email.ts";
 
@@ -380,6 +380,59 @@ for (const spec of EMAIL_TEMPLATES) {
     return new RegExp(`html:\\s*${name}\\b`).test(src);
   });
   ok(`${spec.template} sits inside a send call`, nearSend || viaLocal);
+}
+
+// ── 2b · Money mail only to a confirmed address (owner ruling 2026-10-07) ─────────
+// ⭐ A deposit asks no email since 2026-10-07, so an account can hold money with an address nobody proved is theirs. Every
+// player money template is therefore sent with `sendEmailToUser(…, { confirmedOnly: true })` — the list is DERIVED from
+// the registry (`CONFIRMED_ONLY_TEMPLATES`), never typed here — and the two refused-funds letters are exempt BY NAME
+// (Terms §3a promises them in writing). ⛔ Every call in src/ is read, not only the registered trigger: the second
+// `amlRejectRefundHtml` sender lives in `admin/aml/actions.ts`.
+section("2b · money mail — only to a confirmed address, every sender, every file");
+{
+  /** Each `sendEmailToUser(…)` call's full argument text, matched by parentheses with strings and comments skipped. */
+  const sendCalls = (s: string): string[] => {
+    const out: string[] = [];
+    for (const m of s.matchAll(/\bsendEmailToUser\s*\(/g)) {
+      if (/function\s+$/.test(s.slice(Math.max(0, (m.index ?? 0) - 20), m.index))) continue;
+      let depth = 0, end = -1;
+      for (let i = (m.index ?? 0) + m[0].length - 1; i < s.length; i++) {
+        const c = s[i], n = s[i + 1];
+        if (c === "/" && n === "/") { i = s.indexOf("\n", i); if (i < 0) break; continue; }
+        if (c === "/" && n === "*") { i = s.indexOf("*/", i + 2) + 1; if (i <= 0) break; continue; }
+        if (c === '"' || c === "'" || c === "`") { const q = c; for (i++; i < s.length && s[i] !== q; i++) if (s[i] === "\\") i++; continue; }
+        if (c === "(") depth++;
+        else if (c === ")" && --depth === 0) { end = i; break; }
+      }
+      if (end > 0) out.push(s.slice(m.index ?? 0, end + 1));
+    }
+    return out;
+  };
+  const walk = (dir: string): string[] => {
+    return readdirSync(join(root, dir)).flatMap((f) => {
+      const rel = `${dir}/${f}`;
+      return statSync(join(root, rel)).isDirectory() ? walk(rel) : /\.(ts|tsx)$/.test(f) ? [rel] : [];
+    });
+  };
+  const calls = walk("src").flatMap((f) => sendCalls(read(f)).map((c) => ({ f, c })));
+  const MONEY = new Set(CONFIRMED_ONLY_TEMPLATES);
+  const EXEMPT = new Set(CONFIRMED_ONLY_EXEMPT);
+  const moneyCalls = calls.filter(({ c }) => [...MONEY].some((t) => c.includes(`${t}(`)));
+  ok("2b.0 control · the sender census found the money sends (the registry's list, across files)",
+    moneyCalls.length >= 25 && new Set(moneyCalls.map(({ f }) => f)).size >= 8, `${moneyCalls.length} call(s)`);
+  const unflagged = moneyCalls.filter(({ c }) => !/confirmedOnly:\s*true/.test(c)).map(({ f, c }) => `${f}: ${c.slice(0, 90)}`);
+  ok("2b.1 ★ every player money template is sent with { confirmedOnly: true }", unflagged.length === 0, unflagged.join(" | "));
+  const exemptCalls = calls.filter(({ c }) => [...EXEMPT].some((t) => c.includes(`${t}(`)));
+  ok("2b.2 ⛔ the refused-funds letters are exempt in fact, not only on paper — they reach the player's written address",
+    exemptCalls.length >= 2 && exemptCalls.every(({ c }) => !/confirmedOnly/.test(c)), `${exemptCalls.length} call(s)`);
+  ok("2b.3 the list is derived from the registry: every player money template but the two letters, nothing else",
+    EMAIL_TEMPLATES.filter((t) => t.audience === "player" && t.money && !EXEMPT.has(t.template)).every((t) => MONEY.has(t.template))
+      && [...MONEY].every((t) => EMAIL_TEMPLATES.some((s) => s.template === t && s.audience === "player" && s.money)));
+  const planted = `sendEmailToUser(id, (email) => ({ to: email, subject: "x", html: depositConfirmedHtml({}), tag: "deposit" })).catch(() => {});`;
+  ok("2b.c control · a planted money send without the flag is caught by the same reader",
+    sendCalls(planted).length === 1 && !/confirmedOnly:\s*true/.test(sendCalls(planted)[0]));
+  ok("2b.4 ⛔ the confirmation mail is never flagged — it is how an address becomes confirmed",
+    calls.filter(({ c }) => /emailVerifyHtml\(/.test(c)).every(({ c }) => !/confirmedOnly/.test(c)));
 }
 
 // ── 3 · The bytes the player receives ──────────────────────────────────────────

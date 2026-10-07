@@ -229,13 +229,13 @@ try {
   // survives a validation error with the chosen number intact.*
   //
   // ⛔ NO MONEY MOVES, AND THAT IS BY CONSTRUCTION, NOT BY LUCK. The amount submitted is
-  // deliberately BELOW `DEPOSIT_MIN_TZS` (500), and `deposit/actions.ts:62` refuses on the
+  // deliberately BELOW `DEPOSIT_MIN_TZS` (TZS 1,000 since 2026-10-07), and `deposit/actions.ts` refuses on the
   // amount bound BEFORE `dispatchDeposit` is reached — so the round-trip this leg needs is the
   // only thing that happens.
   //
   // 🔴 AND IT RUNS AS `alpha`, NOT AS THE FLEET ACCOUNT — a precondition, measured rather than
-  // assumed. Deposits are gated behind a verified email address, and **no QA fleet account has
-  // one**: `/wallet/deposit` as `fleet:01` renders "Add an email address to your account —
+  // assumed. ⚠️ Written while deposits were gated behind a verified email address (until 2026-10-07 — a deposit asks
+  // none now, so a fleet account reaches the form too), and **no QA fleet account had one**: `/wallet/deposit` as `fleet:01` renders "Add an email address to your account —
   // you'll need one to add money" and no form at all. The first version of this leg ran there
   // and reported "no 'use another number' control" against a page that was correct and simply
   // was not the deposit form. ⭐ Same shape as `E-177`'s blocked precondition: the account
@@ -305,7 +305,7 @@ try {
   //
   // The round-trip is a property of the PAGE re-rendering from the error redirect's query
   // string, so drive exactly that: land on the URL `depositAction` builds and read the field.
-  const errUrl = `${BASE}/wallet/deposit?error=${encodeURIComponent("Enter an amount between TZS 500 and TZS 5,000,000.")}&provider=MPESA&amount=1&msisdn=${chosen}`;
+  const errUrl = `${BASE}/wallet/deposit?error=${encodeURIComponent("Enter an amount between TZS 1,000 and TZS 2,000,000.")}&provider=MPESA&amount=1&msisdn=${chosen}`;
   await dpage.goto(errUrl, { waitUntil: "domcontentloaded" });
   await dpage.waitForTimeout(2_500);
   const rt = await dpage.locator("#msisdn").inputValue().catch(() => null);

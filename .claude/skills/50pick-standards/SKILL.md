@@ -198,9 +198,11 @@ day, four checks passed while the thing they named was broken — each asserting
 10. ⛔ **A DERIVED FIGURE IS ONLY COMPARABLE AT THE SAME INPUTS** (2026-08-06). A live driver
    hardcoded a 1,000 stake "the platform floor", priced the expected multiplier at that, and
    reported the product wrong (card `1.74` vs its own `1.33`). The card was right: the live
-   global `minStake` is **500**, and **a pari-mutuel multiplier is a function OF the stake**.
+   global `minStake` was **500** that day, and **a pari-mutuel multiplier is a function OF the stake**.
    Two numbers answering different questions is not a comparison. **Read the input off the
    product** — it now takes the amount from the button's own accessible name.
+   ⚠️ The minimum is TZS 1,000 now (reconciled 2026-08-14; floored on every read since 2026-10-07,
+   management's "consistently 1000 not 500") — and the lesson stands unchanged: read it, never type it.
 11. ⛔ **`node -e` AND SHELL HEREDOCS EAT A BACKSLASH LAYER** (2026-08-06, the second instance).
    A generated driver shipped `/([d,]+)s*$/` and reported *"the Up button names no stake"* over a
    label reading `TZS 500`. **Write files with an editor, never through a shell string.**

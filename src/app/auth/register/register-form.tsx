@@ -193,10 +193,11 @@ export function RegisterForm({
         </Field>
 
         {/* Email is REQUIRED at sign-up: it is where the confirmation link and
-            every deposit receipt go, and confirming it is what unlocks the
-            first deposit. `type="email"` gives mobile keyboards the right
-            layout and the browser its own format check before submit; the
-            server re-validates with the same `emailAddress` schema regardless. */}
+            account notices go, and — since 2026-10-07 (owner ruling) — confirming
+            it is what a WITHDRAWAL needs, beside identity; a deposit asks none.
+            `type="email"` gives mobile keyboards the right layout and the browser
+            its own format check before submit; the server re-validates with the
+            same `emailAddress` schema regardless. */}
         <Field label={copy.email} hint={copy.emailHint}>
           <Input
             id="email"

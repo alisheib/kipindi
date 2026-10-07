@@ -1,7 +1,9 @@
 "use client";
 
 /**
- * THE FIRST-DEPOSIT IDENTITY NOTICE — one quiet line, with an X, remembered once dismissed.
+ * THE FIRST-DEPOSIT NOTICE — one quiet line, with an X, remembered once dismissed. It began as the identity notice
+ * (2026-09-13); from 2026-10-07 it also carries the confirmed email (`email` / `both` wordings), asked before a
+ * withdrawal the same quiet way.
  *
  * ⭐ WHY IT EXISTS (Ali, 2026-09-13). Identity is asked before a WITHDRAWAL and before nothing else,
  * and it is raised without disturbing anybody: "maybe on first deposit show a small notice that
@@ -10,7 +12,7 @@
  * purpose "payout") is the only other place identity is put in front of somebody who did not go
  * looking for it.
  *
- * ⭐ WHO SEES IT IS DECIDED ON THE SERVER — `firstDepositNoticeDue` in `src/lib/server/kyc-notice.ts`,
+ * ⭐ WHO SEES IT, AND WHICH WORDING, IS DECIDED ON THE SERVER — `firstDepositNotice` in `src/lib/server/kyc-notice.ts`,
  * called by `/wallet` (under the balance) and the card-deposit return page (confirmed state only). This
  * file never re-derives it: when it is mounted, it is due.
  *
@@ -48,7 +50,20 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
-import { KYC_NOTICE_COOKIE, KYC_NOTICE_MAX_AGE_S } from "@/lib/kyc-notice";
+import { KYC_NOTICE_COOKIE, KYC_NOTICE_MAX_AGE_S, type FirstDepositNotice } from "@/lib/kyc-notice";
+
+/**
+ * ⭐ THE THREE WORDINGS, FROM ONE TABLE (2026-10-07). The confirmed email moved from deposits to withdrawals and is asked
+ * the quiet way, like identity, so the note says what is still owed before a withdrawal: identity, the email, or both.
+ * `both` links to /profile/kyc, whose form already carries the email row and its door; `email` links to the account
+ * page, where the address is added or its link re-sent. ⛔ The email wording says "before you withdraw", never "first":
+ * the step returns whenever the address changes. "Confirm", never "verify", beside the email.
+ */
+const VARIANT: Record<FirstDepositNotice, { glyph: "shieldcheck" | "mail"; href: string }> = {
+  identity: { glyph: "shieldcheck", href: "/profile/kyc" },
+  email:    { glyph: "mail",        href: "/profile/account" },
+  both:     { glyph: "shieldcheck", href: "/profile/kyc" },
+};
 
 const DismissValue = createContext<string | null>(null);
 
@@ -63,12 +78,18 @@ export function KycNoticeDismissScope({ value, children }: { value: string | nul
 
 export function KycFirstDepositNotice({
   dismissValue,
+  variant = "identity",
 }: {
   /** The server's per-player value to write on dismiss (`kycNoticeDismissValue`). Falls back to the
    *  nearest `KycNoticeDismissScope`. */
   dismissValue?: string | null;
+  /** What is still owed before a withdrawal — the server's answer (`firstDepositNotice`). */
+  variant?: FirstDepositNotice;
 } = {}) {
   const { t } = useT();
+  const v = VARIANT[variant];
+  const body = variant === "email" ? t.kycNotice.bodyEmail : variant === "both" ? t.kycNotice.bodyBoth : t.kycNotice.body;
+  const cta = variant === "email" ? t.kycNotice.ctaEmail : t.kycNotice.cta;
   const scoped = useContext(DismissValue);
   const value = dismissValue ?? scoped;
   const [open, setOpen] = useState(true);
@@ -90,19 +111,19 @@ export function KycFirstDepositNotice({
   };
 
   return (
-    <div data-testid="kyc-first-deposit-notice" className="relative">
+    <div data-testid="kyc-first-deposit-notice" data-notice-variant={variant} className="relative">
       {/* The right padding keeps the sentence clear of the dismiss target laid over the box's edge. */}
-      <Callout tone="info" glyph="shieldcheck" size="sm" className="pr-[48px]">
+      <Callout tone="info" glyph={v.glyph} size="sm" className="pr-[48px]">
         <p className="text-body-sm leading-snug text-text-secondary">
-          {t.kycNotice.body}{" "}
+          {body}{" "}
           {/* ⚠️ Plain /profile/kyc, NOT `?next=/wallet/withdraw`. The KYC page honours a safe `next`,
               but only as a "Continue" on the approved state, and none of its form actions carry it
               forward — and this line answers no refused action, so there is nothing to return to. */}
           <Link
-            href="/profile/kyc"
+            href={v.href as never}
             className="whitespace-nowrap font-semibold text-brand-300 underline underline-offset-2 hover:text-brand-200"
           >
-            {t.kycNotice.cta}
+            {cta}
           </Link>
         </p>
       </Callout>
