@@ -112,6 +112,13 @@ export type ComposeAudienceView = {
    * from the address, start from the audience the draft holds. null otherwise.
    */
   canonicalHref: string | null;
+  /**
+   * ⭐ The audience ON SCREEN is not the one this saved DRAFT stores: its address names another (a rail pick not saved yet),
+   * or one that cannot be read — so Save counts it as a change, never "Nothing to save" (the gap U40b found, 2026-10-07:
+   * a saved draft whose only change was its audience could not be saved). False with no saved draft, past DRAFT, or with
+   * no audience in the address (the stored one is kept).
+   */
+  unsaved: boolean;
 };
 
 export type ComposeSenderView = { line: string; dead: boolean; vars: string[] };
@@ -270,6 +277,11 @@ export function composeAudienceView(
   // holds a filter). A NEW draft with neither has chosen nothing, and nothing is counted (decision 3).
   const chosen = fromAddress || draft !== null;
   const nothing = { chosen, who: null, countKey: null, canonicalHref: null } as const;
+  // ⭐ Is the audience on screen the one this DRAFT stores? Asked by the ONE key of each (`contactAudienceKey`), the stored
+  // one read at the campaign scope — only while the address names an audience and the draft can still change.
+  const storedKey = draft !== null && draft.status === "DRAFT" && fromAddress ? storedAudienceKey(draft.audienceFilter, doors) : null;
+  const unsavedFor = (shownKey: string | null): boolean =>
+    draft !== null && draft.status === "DRAFT" && fromAddress && (shownKey === null || shownKey !== storedKey);
   // ⭐ The composer's own address WITHOUT the filter, the draft kept — the one way to take a refused address filter out.
   // ⭐ STD-1 (the U38b review) · "Remove the filter" goes to the draft's OWN address for this viewer (`draftAddressFor` —
   // its stored audience in the address), never the bare ?draft=, which would meet the page's redirect inside the mounted
@@ -278,7 +290,7 @@ export function composeAudienceView(
   let filter: ContactAudienceFilter = WHOLE_BOOK;
   if (fromAddress) {
     const parsed = doors.params(sp);
-    if (!parsed.ok) return { lines: [], everyone: false, problem: parsed.reason, note: null, params, clearHref, carry: null, ...nothing };
+    if (!parsed.ok) return { lines: [], everyone: false, problem: parsed.reason, note: null, params, clearHref, carry: null, ...nothing, unsaved: unsavedFor(null) };
     filter = parsed.filter;
     // ⛔ THE CARD AND THE SAVE READ ONE AUDIENCE (U37b review m6): the parser unions a repeated key, so what is posted is
     // re-spelt from the parsed filter — never the first raw value of each key, which saved Vodacom under "Airtel or Vodacom".
@@ -289,12 +301,12 @@ export function composeAudienceView(
     try {
       raw = JSON.parse(draft.audienceFilter);
     } catch {
-      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing };
+      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing, unsaved: false };
     }
     // ⭐ U38b · AT THE CAMPAIGN SCOPE (decision 2): a population the composer saved reads back — never "unreadable".
     const parsed = doors.json(raw);
     if (!parsed.ok) {
-      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing };
+      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing, unsaved: false };
     }
     filter = parsed.filter;
   }
@@ -303,6 +315,7 @@ export function composeAudienceView(
   const door = campaignAudienceRefusal(filter, fromAddress ? reads : true);
   const problem = door?.reason ?? wholeNumberAudienceProblem(filter);
   const clear = problem !== null ? clearHref : null;
+  const unsaved = unsavedFor(contactAudienceKey(filter));
   // ⭐ A NEW draft is a POSTED filter, so it meets this viewer's own rule: the address's (already asked above), or the
   // stored one re-asked for this viewer and written as an address — never a filter the new draft could not save. Nothing
   // chosen carries nothing (`{}`): the new draft is then the whole book, as a save of an unchosen draft is.
@@ -318,8 +331,8 @@ export function composeAudienceView(
   // here would refuse a save the server accepts. ⛔ U38b · and neither is counted: no key, so no split is ever asked.
   if (campaignAudienceRefusal({ ...filter, ids: null }, reads) !== null) {
     return fromAddress
-      ? { lines: [], everyone: false, problem, note: null, params, clearHref: clear, carry, ...nothing }
-      : { lines: [], everyone: false, problem, note: COMPOSE_AUDIENCE_HIDDEN, params: null, clearHref: null, carry, ...nothing };
+      ? { lines: [], everyone: false, problem, note: null, params, clearHref: clear, carry, ...nothing, unsaved }
+      : { lines: [], everyone: false, problem, note: COMPOSE_AUDIENCE_HIDDEN, params: null, clearHref: null, carry, ...nothing, unsaved };
   }
   const lines = chosen ? describeAudience(filter) : [];
   // ⭐ U38b · COUNTED ONLY WHAT WAS CHOSEN, IS SAVEABLE, AND THIS VIEWER MAY COUNT — the split door asks the role rule again.
@@ -342,7 +355,18 @@ export function composeAudienceView(
     who: chosen ? filter.population ?? "book" : null,
     countKey,
     canonicalHref,
+    unsaved,
   };
+}
+
+/** A stored filter's ONE key, read at the campaign scope — null when it cannot be read (then nothing on screen is it). */
+function storedAudienceKey(stored: string, doors: ComposeAudienceDoors): string | null {
+  try {
+    const parsed = doors.json(JSON.parse(stored));
+    return parsed.ok ? contactAudienceKey(parsed.filter) : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ═══ U38b · THE COMPOSER'S ONE HREF BUILDER ═════════════════════════════════════════════════════════════════════ */
