@@ -4,9 +4,10 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
-switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 46, U43y
-(money first — a campaign yields while bets, payouts and deposits run) and STEP 45, U16a (erasure, the access export
-and retention reach the campaign records), LIVE `023eae9f` 2026-10-07 (S13); before them STEP 44, U49s-2 LIVE `4093dc54`. Ali's
+switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 47, U43a
+(the recipient doors in both twins — claim, settle, the reaper's reads; inert until U43b), pushed `89775271` 2026-10-07
+(S14); before it STEP 46, U43y (money first — a campaign yields while bets, payouts and deposits run) and STEP 45, U16a
+(erasure, the access export and retention reach the campaign records), LIVE `023eae9f` 2026-10-07 (S13). Ali's
 FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S14
 in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campaign: realistic window 18–25 October.**
 
@@ -40,15 +41,19 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U43a (S13) — the recipient doors, ported + reviewed + fixed, on `backup/marketing-s13-wip` (§0 HANDOVER) —
-  then U38b, the audience card on the composer (ENGINE-SPEC §4.4; drafts on the backup branch, one D19 MAJOR open),
-  then U13, then the owner door and Ali's approved texts, then the final-rule units, then licence outreach opened,
-  then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order: U40a → U40b → U42 → U49a → U43b → U46a → U47b → U48a →
-  (U48b) → U52a, the live drive on production.
+▶ NEXT: U38b, the audience card on the composer (ENGINE-SPEC §4.4; 28 drafts on `backup/marketing-s13-wip` `u38b/`,
+  whose base files are unchanged on main since `7d4b0ad5`) — ⭐ D19-1 DECIDED by S14 on Ali's delegation (told to him
+  2026-10-07): BEFORE A CAMPAIGN SENDS, a viewer who may not read a number sees the COUNT ALONE at every size — no
+  will-receive figure, no reason, no sample — because a size floor cannot hold against an officer who pads a tag with
+  numbers of their own (record it as OD65 with the unit, and amend E23: its floor stays for the surfaces that count
+  messages actually SENT, U47b/U48a). Then the drafts' other MAJORs (D19-2's pins, STD-1's redirect, STD-2's pin), the
+  build-types lens that was cut off, and the fixer. Then U13, then the owner door and Ali's approved texts, then the
+  final-rule units, then licence outreach opened, then `docs/marketing-specs/ENGINE-SPEC.md` §0.1's order: U40a →
+  U40b → U42 → U49a → U43b → U46a → U47b → U48a → (U48b) → U52a, the live drive on production.
   WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates; the
-  three first are built and reviewed, so what is left of them is verification):
-     1. U43a  the recipient doors: claim, settle, find the stranded, requeue .......................... 9–14 h
-     2. U38b  who a campaign goes to: the audience card, its counts and the D19 floor ................. 9–15 h
+  next two are built and reviewed in part, so what is left of them is the fixes and verification):
+     1. U43a  ✅ PUSHED (STEP 47, `89775271`) — the recipient doors: claim, settle, find the stranded, requeue
+     2. U38b  who a campaign goes to: the audience card, its counts and the D19 rule ................. 9–15 h
      3. U13   the 08:00–20:00 EAT send window, enforced where messages are sent .......................  4–7 h
      4. U40a  the confirmation on the server: the typed count, the frozen estimate and budget .......... 7–11 h
      5. U40b  the confirmation on screen: the modal on the composer ...................................  6–10 h
@@ -77,21 +82,38 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push U43a, U38b, U13 or the
-  owner door. NOW: U43a — the recipient doors from `backup/marketing-s13-wip` applied on `main`, P10 routed through the
-  real settle, then its suites, the Postgres probe, review, push, read-back. The Vodacom plan runs beside it on the same
-  PC in another session (its own worktrees, ports 3071-3079); this lane uses ports 3101-3109 and scratch Postgres 5461,
-  and both take `F:/heavy-node.lock` (a `mkdir` mutex) before any heavy job.
+  owner door. NOW: STEP 47's read-back, then U38b. The Vodacom plan runs beside it on the same PC in another session
+  (its own worktrees, ports 3071-3079); this lane uses ports 3101-3109 and scratch Postgres 5461, and both take
+  `F:/heavy-node.lock` (a `mkdir` mutex) before any heavy job — ⛔ release it ONLY if you took it: a cleanup that ran
+  after a failed `mkdir` once removed the Vodacom session's lock (restored at once, its owner told).
   ▸ 10:08 EAT: S14's first session closed mid-task; a second session on the same PC continues S14 in the same worktree
-  (Ali: "proceed with the sms campaign plan … check what's left and proceed"). STATE 10:40 EAT — U43a BUILT, uncommitted
-  in `F:\kipindi-m14`: the seven files from `backup/marketing-s13-wip` `u43a/` (six byte-identical to the backup; the
-  anchors file merged by hand, keeping main's two U16a TGT-6 anchors the backup lacked); P10 ROUTED — the suite's fixture
-  rows are claimed and settled through the real doors (`claim` · `claimedBy` · `settle` · `requeueHeld`), only U46a's
-  receipt shapes and PE-08's unreachable state stay by hand (`afterTheDoors`); `P10_ACCOUNTED` takes U43a's six; R-P10d
-  now plants U46a's `recordReceipt`; NEW R-P10e (the settle door writing the account into the trail) proves the routing;
-  DATA-RETENTION's "no settle door exists yet" sentence rewritten. GREEN: `test:campaign-models` 48/48,
-  `test:dal-parity` 2,150/2,150, `test:campaign-privacy` 27/27, `red:campaign-privacy` 32/32. LEFT for U43a:
-  `red:campaign-models`, `red:dal-parity`, typecheck, `db:probe-campaign-models` + `db:probe-campaign-privacy`, an
-  independent review and its fixes, the push, the read-back — then U38b (decide D19-1: count-only for masked viewers).
+  (Ali: "proceed with the sms campaign plan … check what's left and proceed").
+  STEP 47 · U43a PUSHED `89775271` — THE RECIPIENT DOORS IN BOTH TWINS (ENGINE-SPEC §4.10), inert until U43b: `claim`,
+  `claimedBy`, `settle`, `findStranded`, `requeueHeld`, `lastActivity` and `smsMessage.findByTargets`, each asking the
+  one rule set (`campaign-model.ts`) first. The seven files of `backup/marketing-s13-wip` `u43a/` applied on `main` (six
+  byte-identical to the backup; the anchors file merged by hand, keeping main's two U16a TGT-6 anchors the backup
+  lacked). ⭐ P10 ROUTED: `test:campaign-privacy`'s fixture rows are claimed and settled through the real doors
+  (`claim` · `claimedBy` · `settle` · `requeueHeld`); only U46a's receipt shapes and PE-08's unreachable state stay by
+  hand (`afterTheDoors`); `P10_ACCOUNTED` takes U43a's six; R-P10d now plants U46a's `recordReceipt`; NEW R-P10e (the
+  settle door writing the account into the trail) proves the routing; DATA-RETENTION's "no settle door exists yet"
+  sentence rewritten. 🔎 An independent review of the whole diff found nothing at MAJOR or above; both its findings were
+  fixed before the push: (MINOR) a trail `source` split on symbols let a phone number written with separators through
+  (`msisdn 0712 345 678`) — the source is now read piece by piece, the words that hold a letter taken out whole and a
+  number between them refused in any spelling (§2.17 +2 refusals, +1 lawful case of references, an instant and the
+  window; a new plant, caught); (NIT) ENGINE-SPEC §4.10's settle table said a release clears `claimedAt` — rewritten as
+  built, with D15 (a release keeps `claimedAt`) and D16 (a fresh token per claim). Found in the battery and fixed: a
+  comment in `store.ts` cited a guard that does not exist yet (`test:guards-exist`). Found by the probe and fixed: §10's
+  `firstLine` read a Prisma error's empty first line as "no error" (10h). ⭐ PROVEN: `test:campaign-models` 48
+  (`red:campaign-models` 72/72), `test:dal-parity` 2,150 (`red:dal-parity` 198/198, the working tree byte-identical
+  after), `test:campaign-privacy` 27 (`red:campaign-privacy` 32/32), typecheck clean; ON POSTGRESQL 18.3 (scratch,
+  port 5461): `db:probe-campaign-models` 35/35 — five claimers TRULY CONCURRENT over 1,000 rows: 1,000 won, none twice,
+  none lost, no error; the forced race (five claims waiting on one row lock at once: exactly one winner); one
+  transaction or nothing (P2002, the first statement rolled back) — and `db:probe-campaign-privacy` 9/9. THE BATTERY:
+  the 208 suites that read a touched file (203 three at a time, the 5 database ones alone) — every failure but the
+  fixed `test:guards-exist` is red on a clean `main` too, with the same failures (`red:policy-lines`,
+  `test:house-bot-holder-lifecycle`, `verify:reports-live`, `test:updown-digest`, `red:simple-journey-flag`,
+  `test:orphans`, `test:failure-reasons`, `test:decomment`, `test:red-anchors`); the 184 red-harness anchors that plant
+  into a touched file each still resolve exactly once. OWED: the read-back of this push live (`?dpl=` the pushed head, on 50pick.tz and www).
 ⏳ (S13's block, kept as the handover) S13 — 2026-10-06, ALI-BLADE15 (`C:\kipindi-marketing`, branch `marketing-s13` cut from `origin/main` at
   `85866b36`; docs-only commits from `C:\kipindi-s13-docs`). Taken over ~21:50 EAT: OMEGA-COMPILE01's S12 stopped after
   STEP 44's push — no read-back and no closing commit followed for over three hours — and Ali asked this PC to continue
@@ -524,7 +546,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
 | U41 | guard | 🟡 | S10 | — | — | `test:campaign-gates` | — | officer authorisation — DECIDED (OD60, 2026-10-04): one officer's typed confirmation at any size, under the 2026-07-24 single-admin ruling; ✅ when U40a's push carries the guard (G7.1). |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
-| U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43y pushed 2026-10-07 (§0 STEP 46, `18e6192b`): money first — ONE busy signal (`money-busy.ts`) fed by one-line mirrors in the lifecycle pass, the deposit poll, market fires and Up & Down chain fires (`test:money-busy` 34 claims, `red:money-busy` in-process); nothing calls it until U43b. U43a (the doors) and U43b (the slice) follow. |
+| U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43y pushed 2026-10-07 (§0 STEP 46, `18e6192b`): money first — ONE busy signal (`money-busy.ts`) fed by one-line mirrors in the lifecycle pass, the deposit poll, market fires and Up & Down chain fires (`test:money-busy` 34 claims, `red:money-busy` in-process); nothing calls it until U43b. U43a pushed 2026-10-07 (§0 STEP 47, `89775271`): the recipient doors in both twins — claim, claimedBy, settle, findStranded, requeueHeld, lastActivity, smsMessage.findByTargets — each asking the one rule set first (`test:campaign-models` §2.14–§2.27, `red:campaign-models` in-process; `test:dal-parity` §26.u43a; `db:probe-campaign-models` §10 on PostgreSQL, five truly concurrent claimers); `test:campaign-privacy` P10 sweeps rows the real doors settled; inert until U43b. U43b (the slice) follows. |
 | U44 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the pump |
 | U45 | engine | ⬜ | — | — | — | `test:dal-parity` | — | D20 scale |
 | U46 | engine | ⬜ | — | — | — | `test:sms-dlr` | — | D21 receipts · also owns inbound STOP (NOT built, §9 U46) |
