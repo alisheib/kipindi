@@ -49,15 +49,22 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (2026-10-07 ~10:20 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other session on that PC
-holds marketing S14 only, by agreement). **A8i-2** is being taken from the handover's draft in `F:\kipindi-a8i2`, branch
-`vodacom-a8i2` (cut from `9352de7c`); nothing applied or committed yet. Its remaining steps, in order: the three
-reviews (correctness and money, change-set mechanics, gates and proof) → apply → typecheck, its suites,
-`red:enter-where-pressed` and `test:red-anchors` → `qa:enter-where-pressed` (its new A8i-2 section, and the control run
-on the tree before it) and `tools/a8i/drive.mjs main` (W2 and K must pass) → `test:all` → push → production read-back →
-records (§0i, §0h points from its calls). Then **A8j** (`F:\kipindi-a8j`, its 19 review problems first), then the
-close-out's three owed items, then **WP12**: the handover README's order. (Left alone on that PC: `F:\kipindi-journey`
-keeps uncommitted edits from 2026-10-06, an early start on the 400 ms arming beat that the handover draft supersedes.)
+**⏳ IN FLIGHT (updated 2026-10-07 ~10:45 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other session on
+that PC holds marketing S14 only, by agreement). **A8i-2:** the handover draft is applied on branch `vodacom-a8i2`
+(`d5bf2c48`, pushed; worktree `F:kipindi-a8i2`, cut from `9352de7c`) — NOT for main as is. Proven so far: typecheck,
+`test:enter-where-pressed` green, `--prove-red` 76/76. **The new drive's control run on live main (`9352de7c`, a
+fresh in-memory server): 15 pass, 8 fail — K1 K2 W2 ESC DD SL UD1 UD2, the eight the draft predicts:** W2 SOLD the
+ticket (the second Enter 60 ms after the seal's), DD and SL each placed a bet, Enter held on Up & Down's UP placed
+13 bets and on the receipt's "Keep playing" 11 more; ESC could not start (W2's sale had used its ticket — each Sell
+case gets its own ticket next). The change-set review is in: it builds and every structural suite is green (stacking
+6.1 and red-anchors ×2 are main's own), but the suite does not pin the guard's held rule or the focus hand-back (five
+of six deletions passed it) — being fixed with Modal's dead held-key line, the census's first-definition fallback, a
+page-wide beat after a seal opened with focus on the page, and stale comments. Still to come: the correctness and
+proof reviews → the fixes → typecheck, suites, reds → the drive on the new tree and the 12-case drive → `test:all` →
+push → production read-back → records. **A8j** is being revised beside it in `F:kipindi-a8j` (branch `vodacom-a8j`,
+from `a663acac`; the draft applied, its 19 review problems being addressed); it ships after A8i-2, rebased onto it.
+Then the close-out's three owed items, then **WP12**. (Left alone on that PC: `F:kipindi-journey` keeps uncommitted
+edits from 2026-10-06, an early start on the arming beat that the handover draft supersedes.)
 **Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above, §0i "A8i" and the handover's drafts), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
