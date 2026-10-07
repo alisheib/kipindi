@@ -96,7 +96,7 @@ const L = {
   o8: "O8 · the record's own rules, in the card's own words — a basis that never says 'agreed', a source line over 30 septets (the renderer's sentence) and an RG line promising what the code does not keep (a message limit) are refused invalid before the record, nothing written; a note never blocks a save",
   o9: "O9 · ⛔ RECORD FIRST — the applying row is recorded BEFORE the first row write, with actorId null, targetType SystemConfig, the record's key, via ops, the gate, the keys, every digest, the bases, by, reason, approvedBy Ali, approvedIn the Claude session and approvedOn; a record that is lost or throws refuses record_failed with the writer never called and the row untouched",
   o10: "O10 · ⛔ THE SAME WRITER, the card's own request — called once with exactly the card's builder's fields (base the count saved now; approve.<key>=1 only where the history is empty; review.<key>=1 only for a review), the officer 'ops: <by>' and the DATABASE's instant read for the write, never this PC's; the versions saved carry that author and instant and the file's normalised words byte for byte, and the RG page is stamped while a review moves nothing",
-  o11: "O11 · a writer that refuses (a card save landing between the door's read and its write: stale) is recorded _refused with the writer's own reason, sentence and per-key problem, the operator's reason kept, and the card's version stands alone — and when that _refused record is lost, the door says so; a writer that throws is writer_failed, recorded _failed with the outcome unknown — never as a refusal; ⛔ a not_saved answer is decided by a FRESH read: over a write that landed (the factory's read-back failed after it committed) it goes down the applied path, recorded _applied with the writer's answer and never confirmed (done_unconfirmed, the save said landed), wordings and policy lines alike; over a write that did not show it is save_unconfirmed, recorded _failed with the outcome unknown, the operator sent to status — never 'nothing was written'",
+  o11: "O11 · a writer that refuses (a card save landing between the door's read and its write: stale) is recorded _refused with the writer's own reason, sentence and per-key problem, the operator's reason kept, and the card's version stands alone — and when that _refused record is lost, the door says so; a writer that throws is writer_failed, recorded _failed with the outcome unknown — never as a refusal; ⛔ a not_saved answer is decided by a FRESH read: over a write that landed (the factory's read-back failed after it committed) it goes down the applied path, recorded _applied with the writer's answer and never confirmed (done_unconfirmed, the save said landed), wordings and policy lines alike; over a write that did not show it is save_unconfirmed, recorded _failed with the outcome unknown, the operator sent to status — never 'nothing was written'; and both unknown outcomes (the throw, save_unconfirmed) record AND print the write's own instant and ops: <by>, and end 'Do not run apply again: run status, and tell the developer.' — the factory's 'please try again' kept in the record, never shown",
   o12: "O12 · a row that does not read back as Ali's words after the writer said saved is read_back_mismatch, recorded _failed (step read_back) with what was found",
   o13: "O13 · NOTHING TO DO — the same file applied twice writes and records nothing the second time (exit 0); a file holding one saved and one new wording sends only the new one; today's words given to a never-saved line are nothing to do (and check says to approve review instead); a review twice is nothing to do; a review of a line that prints saved words is refused review_not_possible with nothing built, recorded or written",
   o14: "O14 · ⛔ THE FACTORY'S ADMIN ROW — after DONE nothing is pending, the door found THIS save's ADMIN row (author 'ops: <by>', changes exactly the keys moved — G10's page stamps included) and the applied record names it with the versions and the page versions; DONE ends with the redeploy instruction, and a G5 apply also says drafts saved before the line carry none (a G10 apply does not); each of DONE's conditions is held by itself — a reader that finds no such row, a lost _applied record, and an audit row still pending each end done_unconfirmed, exit 1, in their own words",
@@ -414,14 +414,20 @@ const SRC = {
    `export … from "…"`, on one line or across several — and never a dynamic `import("…")`, which is how the door's CLI
    loads src. ⛔ No backslash: the whitespace class is built from its codes. */
 const SPACE = `[ ${String.fromCharCode(9, 10, 13)}]`;
-/** A statement starting with `import` or `export` — at a line's start or after a `;` — and its text up to its `;`. */
-const STATEMENT = new RegExp(`(?:^|;)${SPACE}*(import|export)(?![A-Za-z0-9_$])([^;]*)`, "gm");
+/** Where a statement starting with `import` or `export` begins — at a line's start, or after a `;` or a `}` (`if (x) {}
+ *  import "…";`). ⛔ ZERO-WIDTH past its keyword (the re-review's NIT): the text it names is LOOKED AT, never consumed, so a
+ *  statement with no `;` can never swallow the next one — every statement start is visited. */
+const STATEMENT = new RegExp(`(?:^|[;}])${SPACE}*(import|export)(?![A-Za-z0-9_$])(?=([^;]*))`, "gm");
+/** …and that text is cut where the NEXT such statement begins, so one statement never lends another its `from "…"`. */
+const NEXT_STATEMENT = new RegExp(`(?:^|[;}])${SPACE}*(?:import|export)(?![A-Za-z0-9_$])`, "m");
 const BARE_SPEC = new RegExp(`^${SPACE}*["']([^"']+)["']`);
 const FROM_SPEC = new RegExp(`(?<![A-Za-z0-9_$])from${SPACE}*["']([^"']+)["']`);
 function staticSpecifiers(source: string): string[] {
   const out: string[] = [];
   for (const m of source.matchAll(STATEMENT)) {
-    const rest = m[2] ?? "";
+    const ahead = m[2] ?? "";
+    const next = NEXT_STATEMENT.exec(ahead);
+    const rest = next === null ? ahead : ahead.slice(0, next.index);
     if (m[1] === "import" && rest.trimStart().startsWith("(")) continue;
     const spec = (m[1] === "import" ? BARE_SPEC.exec(rest)?.[1] : undefined) ?? FROM_SPEC.exec(rest)?.[1];
     if (spec !== undefined) out.push(spec);
@@ -798,11 +804,19 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
     const staleProblem = problems["source.phrase"]?.[0];
     const history = ((w.wRow.row() ?? {})["source.phrase"] ?? []) as Array<Record<string, unknown>>;
     const t = world();
+    const tby = BY("writer threw");
     const threw = await impl.apply(
-      { fileBytes: g5(), by: BY("writer threw"), reason: REASON, expect: G5_EXPECT },
+      { fileBytes: g5(), by: tby, reason: REASON, expect: G5_EXPECT },
       { ...t.deps, saveWordings: async () => { throw new Error("the writer fell over"); } },
     );
     const tFailed = t.rows.find((r) => r.action === FAILED);
+    /** ⛔ An UNKNOWN outcome (the re-review's NIT): its _failed row carries this attempt's own write instant and `ops: <by>`,
+     *  the screen prints them, and the LAST word is "do not run apply again" — never the factory's "please try again". */
+    const unknownOutcomeSaid = (o: Outcome, row: ChainRow | undefined, by: string): boolean =>
+      row?.payload.savedAt === iso(T_WRITE) && row.payload.savedBy === `ops: ${by}`
+      && o.lines.some((l) => l.includes("this attempt's write was stamped") && l.includes(iso(T_WRITE)) && l.includes(`ops: ${by}`))
+      && o.lines[o.lines.length - 1] === DOOR.OWNER_SAVE_SENTENCE.doNotRunAgain
+      && !o.lines.some((l) => /try again/i.test(l) || l.includes("Nothing has been changed"));
     // The _refused record itself lost: the door says its ending could not be recorded.
     const lostW = world({ afterRecord: cardSaves, lose: [REFUSED] });
     const lost = await apply(lostW, g5(), G5_EXPECT);
@@ -847,7 +861,8 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
     const nw = world();
     nw.wRow.dropWrites(true);
     nw.wRow.failReadsAfterWrite(1);
-    const notLanded = await apply(nw, g5(), G5_EXPECT);
+    const nby = BY("not landed");
+    const notLanded = await apply(nw, g5(), G5_EXPECT, nby);
     const nFailed = nw.rows.find((r) => r.action === FAILED);
     const neverNothingWritten = (lines: readonly string[]): boolean => !lines.some((l) => l.includes("nothing was written"));
     return verdict({
@@ -861,6 +876,7 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
       aThrowIsFailedNeverRefused: threw.code === "writer_failed" && threw.exitCode === 1 && tFailed?.payload.step === "writer"
         && tFailed.payload.outcome === "unknown" && tFailed.payload.error === "the writer fell over"
         && !t.rows.some((r) => r.action === REFUSED) && t.writes() === 0,
+      aThrowCarriesItsStamp: unknownOutcomeSaid(threw, tFailed, tby),
       aLostEndingIsSaid: lost.code === "writer_refused" && lost.exitCode === 1 && lost.records.ending === null
         && !lostW.rows.some((r) => r.action === REFUSED)
         && lost.lines.some((l) => l.includes("its ending could not be recorded — tell the developer")),
@@ -885,8 +901,12 @@ async function runAssertions(impl: Impl, prefix: string): Promise<void> {
         && nw.rows.map((r) => r.action).join(",") === `${APPLYING},${FAILED}`
         && nFailed?.payload.refusal === "not_saved" && nFailed.payload.outcome === "unknown"
         && Array.isArray(nFailed.payload.found) && (nFailed.payload.found as unknown[]).length > 0
-        && notLanded.lines.some((l) => l.includes(DOOR.OWNER_SAVE_SENTENCE.saveUnconfirmed)) && notLanded.lines.some((l) => l.includes("Run status"))
+        && notLanded.lines.some((l) => l.includes(DOOR.OWNER_SAVE_SENTENCE.saveUnconfirmed))
         && neverNothingWritten(notLanded.lines) && nw.wRow.row() === null && nw.wRow.writes() === 1,
+      // …recorded with its own stamp and ended "do not run apply again"; the writer's own words — the factory's "could not
+      // confirm it was stored … please try again" — kept word for word in the record, and never printed as the advice.
+      notShownCarriesItsStamp: unknownOutcomeSaid(notLanded, nFailed, nby)
+        && String(nFailed?.payload.error ?? "").includes("could not confirm it was stored"),
     });
   });
 
@@ -1488,6 +1508,49 @@ if (!PROVE_RED) {
   const staleWriter = async () => ({ ok: false as const, reason: "stale" as const, error: WSTORE.WORDINGS_REFUSAL_SENTENCE.stale, problems: {} });
   const BARE_DOOR_IMPORT = `import "../../src/lib/server/marketing/owner-save.ts";${LF}`;
   const DOOR_EXPORT_FROM = `${LF}export { applyOwnerSave } from "../../src/lib/server/marketing/owner-save.ts";${LF}`;
+  /* The re-review's NIT: the three spellings a scanner that CONSUMED up to the next `;` missed — the fs line without its `;`
+     and a bare import or an import-from after it, and an import after a `}` on the same line. */
+  const FS_LINE = 'import { readFileSync } from "node:fs";';
+  const FS_LINE_BARE = 'import { readFileSync } from "node:fs"';
+  const PRISMA = "../../src/lib/server/prisma.ts";
+  const NO_SEMI_THEN_BARE = (t: string): string => t.split(FS_LINE).join(`${FS_LINE_BARE}${LF}import "${PRISMA}";`);
+  const NO_SEMI_THEN_FROM = (t: string): string => t.split(FS_LINE).join(`${FS_LINE_BARE}${LF}import { hasDatabase } from "${PRISMA}";`);
+  const AFTER_A_BRACE = (t: string): string => t.split(FS_LINE).join(`${FS_LINE}${LF}if (true) {} import "${PRISMA}";`);
+  const seesPrisma = (f: (t: string) => string): boolean => {
+    const planted = f(REAL.sources[SRC.cli] ?? "");
+    return planted !== REAL.sources[SRC.cli] && staticSpecifiers(planted).includes(PRISMA);
+  };
+  /* O11 · an unknown outcome's own stamp, and its last word. */
+  const isUnknown = (entry: Parameters<Deps["audit"]>[0]): boolean => entry.action === FAILED && entry.payload?.outcome === "unknown";
+  /** R-O11h · the unknown outcome recorded WITHOUT the write's instant and stamp — nothing ties it to a version status shows. */
+  const stampUnrecorded: ApplyFn = (input, deps) => real(input, {
+    ...deps,
+    audit: (entry) => {
+      if (!isUnknown(entry)) return deps.audit(entry);
+      const payload = { ...(entry.payload ?? {}) };
+      delete payload.savedAt;
+      delete payload.savedBy;
+      return deps.audit({ ...entry, payload });
+    },
+  });
+  /** R-O11i · the unknown outcome's stamp never printed. */
+  const stampUnprinted: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return { ...o, lines: o.lines.filter((l) => !l.includes("this attempt's write was stamped")) };
+  };
+  /** R-O11j · the factory's "please try again" as the unknown outcome's last word — the invitation to apply twice. */
+  const FACTORY_TRY_AGAIN = "Saved, but we could not confirm it was stored. Nothing has been changed — please try again.";
+  const tryAgainLast: ApplyFn = async (input, deps) => {
+    const o = await real(input, deps);
+    return { ...o, lines: o.lines.map((l) => (l === DOOR.OWNER_SAVE_SENTENCE.doNotRunAgain ? FACTORY_TRY_AGAIN : l)) };
+  };
+  /** The not-landed world: the store swallows the write, and the factory's read-back fails. */
+  const notLandedWorld = (): World => {
+    const w = fresh();
+    w.wRow.dropWrites(true);
+    w.wRow.failReadsAfterWrite(1);
+    return w;
+  };
   /** R-O15a · a door save shown as an admin's. */
   const asAnAdmin: Impl["savedByView"] = (savedBy, names) => {
     const name = names.get(savedBy) ?? "an admin";
@@ -1639,6 +1702,23 @@ if (!PROVE_RED) {
         return (await notSavedOverruledByARow({ fileBytes: g5(), by, reason: REASON, expect: G5_EXPECT }, w.deps)).code === "done";
       },
       landedAs: "the writer's not_saved overruled by a row" },
+    { name: "R-O11h · the re-review's NIT: an unknown outcome recorded without the write's instant and stamp", claim: "O11 ·", impl: { ...REAL, apply: stampUnrecorded },
+      landed: async () => {
+        const w = notLandedWorld();
+        await stampUnrecorded(G5_IN("plant"), w.deps);
+        const row = w.rows.find((r) => r.action === FAILED);
+        return row !== undefined && row.payload.outcome === "unknown" && row.payload.savedAt === undefined && row.payload.savedBy === undefined;
+      },
+      landedAs: "nothing ties the unknown outcome to the version status shows" },
+    { name: "R-O11i · the unknown outcome's stamp never printed", claim: "O11 ·", impl: { ...REAL, apply: stampUnprinted },
+      landed: async () => !(await stampUnprinted(G5_IN("plant"), notLandedWorld().deps)).lines.some((l) => l.includes("stamped")),
+      landedAs: "the operator never sees the attempt's stamp" },
+    { name: "R-O11j · the re-review's NIT: the factory's 'please try again' as an unknown outcome's last word", claim: "O11 ·", impl: { ...REAL, apply: tryAgainLast },
+      landed: async () => {
+        const o = await tryAgainLast(G5_IN("plant"), notLandedWorld().deps);
+        return o.code === "save_unconfirmed" && o.lines[o.lines.length - 1] === FACTORY_TRY_AGAIN;
+      },
+      landedAs: "the operator is invited to apply again" },
     { name: "R-O11f · a lost ending record not said", claim: "O11 ·", impl: { ...REAL, apply: lostEndingUnsaid },
       landed: async () => {
         const w = fresh(REAL.rules, { lose: [REFUSED] });
@@ -1737,6 +1817,15 @@ if (!PROVE_RED) {
     { name: "R-O16k · the review's NIT: an unreadable database clock sent to sync this PC", claim: "O16 ·",
       impl: { ...REAL, sources: withSource(SRC.cli, (t) => t.split("if (dbMs === null) {").join("if (false) {")) },
       landed: () => has(SRC.cli, "if (dbMs === null) {"), landedAs: "the unreadable clock falls to 'sync it'" },
+    { name: "R-O16l · the re-review's NIT: the fs line without its ';', then a bare import of src", claim: "O16 ·",
+      impl: { ...REAL, sources: withSource(SRC.cli, NO_SEMI_THEN_BARE) },
+      landed: () => has(SRC.cli, FS_LINE) && seesPrisma(NO_SEMI_THEN_BARE), landedAs: "a bare import hides behind a statement with no ';'" },
+    { name: "R-O16m · the re-review's NIT: the fs line without its ';', then an import-from of src", claim: "O16 ·",
+      impl: { ...REAL, sources: withSource(SRC.cli, NO_SEMI_THEN_FROM) },
+      landed: () => has(SRC.cli, FS_LINE) && seesPrisma(NO_SEMI_THEN_FROM), landedAs: "an import-from hides behind a statement with no ';'" },
+    { name: "R-O16n · the re-review's NIT: an import of src after a '}' on the same line", claim: "O16 ·",
+      impl: { ...REAL, sources: withSource(SRC.cli, AFTER_A_BRACE) },
+      landed: () => has(SRC.cli, FS_LINE) && seesPrisma(AFTER_A_BRACE), landedAs: "an import hides after 'if (true) {}'" },
     { name: "R-O17 · the suite out of predeploy", claim: "O17 ·",
       impl: { ...REAL, pkg: REAL.pkg.split(" && npm run test:marketing-owner-save").join("") },
       landed: () => REAL.pkg.includes(" && npm run test:marketing-owner-save"), landedAs: "predeploy no longer runs the suite" },

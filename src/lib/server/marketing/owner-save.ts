@@ -34,7 +34,8 @@
  *     and every per-key problem, verbatim), or the database's clock could not be read for the write;
  *   · `marketing.owner_save_failed` — the writer threw, or said saved while the row does not read back as Ali's words, or
  *     answered `not_saved` while the row does not read back as this door's write: what the row holds is not known, or not
- *     what was approved — never passed off as a refusal.
+ *     what was approved — never passed off as a refusal. An UNKNOWN outcome also carries the write's own instant and
+ *     `ops: <by>` (tying it to any version `status` later shows), and tells the operator not to run apply again.
  * ⛔ `not_saved` IS NOT "NOTHING WAS WRITTEN": the factory's verified write (`define-config.ts`) answers it when its read-back
  * fails AFTER a committed save, before its ADMIN row, as well as before a write. So the row is read FRESH: this door's
  * write found there (its `ops: <by>`, this save's instant, Ali's words) → the applied path, never confirmed
@@ -823,11 +824,18 @@ export const OWNER_SAVE_SENTENCE = Object.freeze({
   nothingToDo: "every text in the file already reads exactly that way, so nothing was written and nothing was recorded.",
   recordFailed: "The record of Ali's approval couldn't be written, so nothing was saved. Run it again; if it repeats, tell the developer.",
   writerRefused: "The writer refused the save, so nothing was written:",
-  writerFailed: "The writer failed before it answered, so whether anything was written is not known — run status to see the row, and tell the developer at once:",
+  writerFailed: "The writer failed before it answered, so whether anything was written is not known. It threw:",
   /** ⛔ `not_saved` is the factory's answer when its read-back after a COMMITTED save fails, as well as before a write — so
-   *  it is never "nothing was written". The row, read fresh, did not show this door's write either. */
+   *  it is never "nothing was written". The row, read fresh, did not show this door's write either. ⛔ The factory's own
+   *  words ("Nothing has been changed — please try again") are kept in the record, never shown as the advice. */
   saveUnconfirmed:
-    "The writer could not confirm its save, and the row does not read back as Ali's words saved by this door — so whether anything was written is not known. Run status to see the row, and tell the developer at once. The writer said:",
+    "The writer could not confirm its save, and the row does not read back as Ali's words saved by this door — so whether anything was written is not known. The writer answered not_saved; its own words are kept in the _failed record.",
+  /** An unknown outcome's own stamp — so a version `status` later shows can be tied to THIS attempt. */
+  attemptStamp: (savedAt: string, savedBy: string): string =>
+    `  · this attempt's write was stamped ${eatStamp(savedAt)} (${savedAt}) by ${savedBy} — a version that status shows with that stamp is this attempt's.`,
+  /** ⛔ The last word of an unknown outcome — never the factory's "try again": whether a second apply is wanted is decided
+   *  only after status shows what the row holds. */
+  doNotRunAgain: "Do not run apply again: run status, and tell the developer.",
   /** The same answer over a write that DID land — the fresh read shows every version this door wrote, at this instant. */
   saveLanded: (error: string): string =>
     `  · the writer answered “${error}” (not_saved), but a fresh read shows every version saved by this door at this instant — the save landed, and the factory never wrote its ADMIN row.`,
@@ -1173,7 +1181,8 @@ export type ApplyInput = {
  *       `_failed` (whether it wrote is not known);
  *  12 · the row read back FRESH: every written key's new version is Ali's words, this door's, this instant → otherwise
  *       read_back_mismatch, recorded `_failed`. ⛔ After `not_saved` the same read decides: found → on, never confirmed;
- *       not found → save_unconfirmed, recorded `_failed` (the outcome unknown — run status);
+ *       not found → save_unconfirmed, recorded `_failed` (the outcome unknown). Both unknown outcomes record and print the
+ *       write's own instant and `ops: <by>`, and end "Do not run apply again: run status, and tell the developer.";
  *  13 · the queue flushed and the factory's ADMIN row read back durably; `marketing.owner_save_applied` recorded; the queue
  *       flushed again with nothing pending → DONE, or done_unconfirmed (exit 1, "Saved, but its audit row was not
  *       confirmed — tell the developer.") when any of the three is missing, or the writer's answer was `not_saved`.
@@ -1214,24 +1223,17 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
    *  Ali's words). ⛔ The writer's code goes in `refusal`: the payload's `reason` is the operator's, and stays his. */
   const ended = async (
     kind: "refused" | "failed", code: OwnerSaveCode, step: "clock" | "writer" | "read_back", details: Record<string, unknown>,
-    lines: readonly string[],
+    lines: readonly string[], closing?: string,
   ): Promise<OwnerSaveOutcome> => {
     const ending = await recordOf(deps, { ...base, action: OWNER_SAVE_ACTIONS[kind], payload: { ...story, step, ...details } });
     await settle(deps);
     const tail = ending.recorded
       ? `  records: COMPLIANCE ${applying.id ?? "?"} (applying) · ${ending.id ?? "?"} (${kind})`
       : `  ⚠️ its ending could not be recorded — tell the developer (the applying record ${applying.id ?? "?"} names the attempt).`;
-    return outcome(code, 1, [...lines, tail], { applying: applying.id, ending: ending.recorded ? ending.id : null, admin: null });
+    return outcome(code, 1, [...lines, tail, ...(closing !== undefined ? [closing] : [])], {
+      applying: applying.id, ending: ending.recorded ? ending.id : null, admin: null,
+    });
   };
-  const threw = (err: unknown): Promise<OwnerSaveOutcome> => {
-    const error = String((err as Error)?.message ?? err);
-    return ended("failed", "writer_failed", "writer", { outcome: "unknown", error }, [`FAILED (writer_failed): ${OWNER_SAVE_SENTENCE.writerFailed} ${error}`]);
-  };
-  /** ⛔ `not_saved` over a row that does not read back as this door's write: the outcome is UNKNOWN (the write may have
-   *  committed, or may yet show) — recorded `_failed`, never `_refused`, and the operator is sent to `status`. */
-  const unconfirmedSave = (error: string, found: readonly string[]): Promise<OwnerSaveOutcome> =>
-    ended("failed", "save_unconfirmed", "writer", { refusal: "not_saved", error, outcome: "unknown", found: [...found] },
-      [`FAILED (save_unconfirmed): ${OWNER_SAVE_SENTENCE.saveUnconfirmed} ${error}`, ...found.map((p) => `  · ${p}`)]);
 
   const atMs = await dbNow(deps);
   if (atMs === null) {
@@ -1239,6 +1241,22 @@ export async function applyOwnerSave(input: ApplyInput, deps: OwnerSaveDeps): Pr
       [`REFUSED (clock_unreadable): ${OWNER_SAVE_SENTENCE.clockUnreadable}`]);
   }
   const nowIso = new Date(atMs).toISOString();
+
+  /* ⛔ AN UNKNOWN OUTCOME — a writer that threw, or `not_saved` over a row that does not read back as this door's write (the
+     write may have committed, or may yet show). Recorded `_failed`, never `_refused`, WITH THIS ATTEMPT'S OWN STAMP — the
+     write's instant and `ops: <by>` — so a version `status` later shows can be tied to it; printed with that stamp, and
+     ending "Do not run apply again", never the factory's "please try again". */
+  const attempt = { savedAt: nowIso, savedBy: officer };
+  const attemptLine = OWNER_SAVE_SENTENCE.attemptStamp(nowIso, officer);
+  const threw = (err: unknown): Promise<OwnerSaveOutcome> => {
+    const error = String((err as Error)?.message ?? err);
+    return ended("failed", "writer_failed", "writer", { outcome: "unknown", error, ...attempt },
+      [`FAILED (writer_failed): ${OWNER_SAVE_SENTENCE.writerFailed} ${error}`, attemptLine], OWNER_SAVE_SENTENCE.doNotRunAgain);
+  };
+  const unconfirmedSave = (error: string, found: readonly string[]): Promise<OwnerSaveOutcome> =>
+    ended("failed", "save_unconfirmed", "writer", { refusal: "not_saved", error, outcome: "unknown", found: [...found], ...attempt },
+      [`FAILED (save_unconfirmed): ${OWNER_SAVE_SENTENCE.saveUnconfirmed}`, attemptLine, ...found.map((p) => `  · ${p}`)],
+      OWNER_SAVE_SENTENCE.doNotRunAgain);
 
   /** The keys the writer wrote, the keys the factory's ADMIN row must name as changed (G10: the page stamps too), and the
    *  lines whose printed words moved. */
