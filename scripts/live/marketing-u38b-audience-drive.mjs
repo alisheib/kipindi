@@ -478,6 +478,29 @@ for (const role of ["GROWTH", "ADMIN"]) {
       ok(`${tag} · AUDIENCE ONLY · a saved draft whose only change is its audience: Save is offered (never "Nothing to save"), the saved line steps aside until it is saved, and the draft reopens on the NEW audience`,
         saveOffered && savedLineGone && reopened.searchParams.get("op") === "VODACOM" && reopened.searchParams.get("pop") === "players",
         `Save offered ${saveOffered} · saved line gone before the save ${savedLineGone} · reopened at ${page.url()}`);
+
+      // ── A DATE WINDOW BY PRESET: every save goes to the draft's own address (absolute from/to) — "Last 7 days" left in the
+      //    address would be resolved again the next minute and read the saved draft as unsaved (the U40b review's MAJOR) ──
+      await page.locator(S.rail).getByRole("link", { name: "7 days", exact: true }).first().click().catch(() => {});
+      await page.waitForFunction(() => new URL(location.href).searchParams.has("range"), null, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      await page.locator(S.save).click().catch(() => {});
+      await page.waitForFunction(() => { const u = new URL(location.href); return !u.searchParams.has("range") && u.searchParams.has("from"); }, null, { timeout: 30000 }).catch(() => {});
+      await page.waitForSelector(S.saved, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      const homed = new URL(page.url());
+      const savedShown = await has(page, S.saved);
+      const saveIdle = !(await page.locator(S.save).isEnabled().catch(() => true));
+      ok(`${tag} · WINDOW SAVED · "7 days" saved on a draft: the page goes to the draft's own address with the window it stored (from/to, no preset), the saved line shows and Save is at rest`,
+        !homed.searchParams.has("range") && homed.searchParams.has("from") && homed.searchParams.has("to") && savedShown && saveIdle,
+        `${page.url()} · saved line ${savedShown} · Save at rest ${saveIdle}`);
+      // ...and back to "All time", saved, so the list below reads the audience it expects.
+      await page.locator(S.rail).getByRole("link", { name: "All time", exact: true }).first().click().catch(() => {});
+      await page.waitForFunction(() => { const u = new URL(location.href); return !u.searchParams.has("from") && !u.searchParams.has("range"); }, null, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      await page.locator(S.save).click().catch(() => {});
+      await page.waitForSelector(S.saved, { timeout: 30000 }).catch(() => {});
+      await settle(page);
     }
 
     // ── THE LIST — each row's audience in words ─────────────────────────────────────────────────────────────────

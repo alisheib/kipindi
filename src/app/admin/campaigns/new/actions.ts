@@ -111,8 +111,10 @@ export async function saveCampaignDraftAction(
       : result;
   }
   try { revalidatePath("/admin/campaigns"); } catch { /* saved; a stale list is the smaller harm */ }
-  // A NEW draft's address is the one the client goes to; an edit stays where it is (its address already holds the audience).
-  return { ...result, href: result.created ? await savedDraftAddress(result.id, reads) : "" };
+  // ⭐ EVERY save answers the draft's own address for this viewer: a NEW draft goes there (STD-1), and so does an EDIT — an
+  // address that names its window by a preset ("Last 7 days") is resolved again every minute, so it is replaced by the
+  // window the save stored, or the next minute would read the saved draft as unsaved (the U40b review's MAJOR).
+  return { ...result, href: await savedDraftAddress(result.id, reads) };
 }
 
 /** ⛔ Test the SAVED draft — on the officer's OWN number, or (U37c) a typed one with their 18+ confirmation. Three
