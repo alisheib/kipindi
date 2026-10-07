@@ -202,6 +202,11 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
       // has answered.
       onClose={() => { payeeSeq.current++; setPayee({ state: "idle", name: null }); }}
       pending={pending}
+      /* ⭐ S6 A8j — the confirm submits this form, and so nothing else may (`submitsForm`, in `confirm-dialog.tsx`).
+         Enter in the amount box SENT the withdrawal with no dialog: one text field and no submit button is a form a
+         browser submits on Enter, and before the page woke the same Enter posted it as plain HTML. Now it opens this
+         dialog, exactly as the button does (in WebKit before Safari 16.4 it does nothing at all: see `submitsForm`). */
+      submitsForm
       trigger={
         <button
           ref={buttonRef}
