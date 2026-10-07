@@ -235,8 +235,8 @@ export function RegisterForm({
         {/* 2026-09-13: a COLUMN, not vertical margins. Each Checkbox label is inline-flex, so
             in Chinese two short consents fit and sat side by side on one line. `items-start`
             keeps each tap area on its own words rather than the full row width. */}
-        {/* ⛔ No box is ever pre-ticked, and a refusal never ticks one: the form stays mounted, so each box holds
-            exactly what the player did (test:marketing-consent-ledger 7h). ⛔ Two boxes, both required — the
+        {/* ⛔ No box is ever pre-ticked (test:marketing-consent-ledger 7g), and a refusal never ticks one: the form
+            stays mounted, so each box holds exactly what the player did (7h). ⛔ Two boxes, both required — the
             SMS-offers box was removed on 2026-10-07 (the header). */}
         <fieldset className="flex flex-col items-start gap-[10px] pt-1">
           <Checkbox

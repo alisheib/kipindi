@@ -28,7 +28,8 @@
  * beside new ones the officer never saw. The card therefore posts the VERSION its tick was given for
  * (`attestedVersionOf` re-types the field), and a version that is not the saved one — older, newer, absent or malformed —
  * is refused `attestation_stale`: nothing is written, no audit row is made, and the officer is asked to reload and read
- * the new words. The same rule the typed test applies to `adult.test` (campaign-compose §18.32).
+ * the sentence again — in words true both when it was reworded after the page loaded and when the page predates this
+ * rule. The same rule the typed test applies to `adult.test` (campaign-compose §18.32).
  *
  * Guard: `npm run test:contacts-lists`.
  */
@@ -62,9 +63,12 @@ export const LIST_BASIS_REFUSAL_SENTENCE: Readonly<Record<ListBasisRefusal, stri
     "The licence outreach wording or its 18+ confirmation hasn't been saved yet — an admin saves them in Admin → System → Marketing wordings.",
   list_not_found: "That list wasn't found — reload the page.",
   adult_not_attested: "Confirm that every number on this list belongs to a person aged 18 or older.",
-  // ⛔ 3b · the tick was given for words reworded since the page opened, or the page posted no version: nothing is recorded.
+  // ⛔ 3b · the tick was given for words reworded since the page opened, or the page predates this rule and posted no
+  // version: nothing is recorded. ⛔ The sentence must be TRUE IN BOTH CASES (the review of 2026-10-07) — "reworded while
+  // this page was open" was false for a page that simply predates the deploy, so it names both causes: the sentence
+  // changed, or the page itself did.
   attestation_stale:
-    "The 18+ confirmation was reworded while this page was open, so nothing was recorded — reload the page, read the new words and tick the box again.",
+    "Nothing was recorded: the 18+ sentence, or this page itself, has changed since the page was loaded. Reload the page, read the sentence again, tick it, then record.",
   note_has_phone: CONSENT_BASIS_REFUSAL_SENTENCE.note_has_phone,
   note_too_short: CONSENT_BASIS_REFUSAL_SENTENCE.note_too_short,
   note_too_long: CONSENT_BASIS_REFUSAL_SENTENCE.note_too_long,

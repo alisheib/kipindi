@@ -1,15 +1,18 @@
 /**
- * test:admin-overview-feed — ⛔ OD61 · THE /admin OVERVIEW'S LIVE ACTIVITY FEED SHOWS COMPLIANCE ROWS ONLY TO A VIEWER WHO
- * MAY READ COMPLIANCE (marketing tracker ◐ 3a (i); `src/lib/server/admin-overview-feed.ts`).
+ * test:admin-overview-feed — ⛔ OD61 · THE /admin OVERVIEW'S LIVE ACTIVITY FEED SHOWS COMPLIANCE AND IDENTITY ROWS ONLY TO A
+ * VIEWER WHO MAY READ COMPLIANCE (marketing tracker ◐ 3a (i); `src/lib/server/admin-overview-feed.ts`; the identity rows
+ * by OD61's amendment of 2026-10-07).
  *
- * The overview is open to every staff role, and its feed printed the newest audit rows whole, COMPLIANCE ones included —
- * so a `marketing.suppressed.rg · User#…` line written while a campaign sends would tell a GROWTH officer which number
- * belongs to a protected player (the D19 oracle). This suite owns the feed's rule.
+ * The overview is open to every staff role, and its feed printed the newest audit rows whole, COMPLIANCE and KYC ones
+ * included — so a `marketing.suppressed.rg · User#…` line written while a campaign sends would tell a GROWTH officer which
+ * number belongs to a protected player (the D19 oracle), and a `kyc.rejected · User#…` line whose identity check failed.
+ * This suite owns the feed's rule.
  *
  * ⭐ DRIVEN, NOT READ, wherever a script can run it — over the MEMORY twin, in-process:
- *   §1 THE RULE — `overviewFeedRows` on a ring of mixed rows: a reader is shown the newest rows as read, COMPLIANCE
- *      included; anyone else no COMPLIANCE row and the SAME number of rows — the newest of every other category, in
- *      order, so the gap where a hidden row was can never be counted; a short ring shows what it may; nothing is nothing.
+ *   §1 THE RULE — `overviewFeedRows` on a ring of mixed rows: a reader is shown the newest rows as read, COMPLIANCE and
+ *      KYC included; anyone else no COMPLIANCE row, no KYC row and no `kyc.*` row of any category, and the SAME number of
+ *      rows — the newest of everything else, in order, so the gap where a hidden row was can never be counted; a short
+ *      ring shows what it may; nothing is nothing.
  *   §2 THE VIEWER — `viewerMayReadCompliance` on real accounts and the real grant matrix: the Owner, COMPLIANCE and
  *      AUDITOR may; GROWTH, FINANCE, MODERATOR and SUPPORT may not; a GROWTH officer the Owner grants the compliance view
  *      may, and stops with the grant; a player, an agent, an unknown id, null and "" may not; a row that cannot be read
@@ -37,7 +40,7 @@ import type { AuditCategory, AuditEntry } from "../src/lib/server/audit.ts";
 import { isStaffRole } from "../src/lib/server/roles.ts";
 import { __resetGrantsForTest, canView, setRoleGrant } from "../src/lib/server/rbac.ts";
 import {
-  COMPLIANCE_ONLY_CATEGORY, OVERVIEW_FEED_ROWS, OVERVIEW_FEED_SCAN, overviewFeedRows, viewerMayReadCompliance,
+  OVERVIEW_FEED_ROWS, OVERVIEW_FEED_SCAN, overviewFeedRows, viewerMayReadCompliance,
 } from "../src/lib/server/admin-overview-feed.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -67,15 +70,25 @@ async function check(label: string, fn: () => Promise<[boolean, string?]> | [boo
 
 /* ═══ FIXTURES ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** A ring of `n` rows, newest first, whose categories cycle so COMPLIANCE rows sit among every other kind. */
-const CYCLE: readonly AuditCategory[] = ["COMPLIANCE", "BET", "WALLET", "COMPLIANCE", "AUTH", "ADMIN", "COMPLIANCE", "SYSTEM", "SECURITY", "KYC"];
+/** A ring of `n` rows, newest first, whose kinds cycle so the hidden ones sit among every other kind: COMPLIANCE rows, KYC
+ *  rows (the category's own actions), and a `kyc.*` row a SECURITY check wrote — besides money, sign-in and staff rows. */
+const CYCLE: ReadonlyArray<readonly [AuditCategory, string]> = [
+  ["COMPLIANCE", "marketing.suppressed.rg"], ["BET", "bet.placed"], ["KYC", "kyc.rejected"], ["WALLET", "wallet.deposit"],
+  ["SECURITY", "kyc.id.duplicate_blocked"], ["AUTH", "user.login"], ["COMPLIANCE", "rg.self_excluded"], ["ADMIN", "config.updated"],
+  ["KYC", "kyc_doc.viewed"], ["SYSTEM", "contacts.contact.registered"], ["SECURITY", "register.ip_rate_limited"],
+];
 function ring(n: number, prefix: string): AuditEntry[] {
   return Array.from({ length: n }, (_, i) => ({
-    id: `${prefix}_${String(i).padStart(4, "0")}`, category: CYCLE[i % CYCLE.length], action: `fixture.row_${i}`,
+    id: `${prefix}_${String(i).padStart(4, "0")}`, category: CYCLE[i % CYCLE.length][0], action: CYCLE[i % CYCLE.length][1],
     actorId: null, targetType: "User", targetId: `usr_fixture_${i}`, createdAt: new Date(Date.UTC(2026, 9, 7, 12, 0, 0) - i * 1000).toISOString(),
   }) as AuditEntry);
 }
 const ids = (rows: readonly AuditEntry[]) => rows.map((r) => r.id).join(",");
+/** ⛔ The rows only a compliance reader may see — written HERE, apart from the module's own rule, so a planted rule is
+ *  measured against this suite's reading and never against itself. */
+const hidden = (r: AuditEntry) => r.category === "COMPLIANCE" || r.category === "KYC" || r.action.startsWith("kyc.");
+const kinds = (rows: readonly AuditEntry[]) =>
+  `${rows.filter((r) => r.category === "COMPLIANCE").length} compliance · ${rows.filter((r) => r.category === "KYC").length} KYC · ${rows.filter((r) => r.category !== "KYC" && r.action.startsWith("kyc.")).length} other kyc.*`;
 
 let RUN = 0;
 /** An account with a number no other run uses: the run in two digits, a three-digit slot. */
@@ -121,14 +134,14 @@ const REAL: Impl = { rows: overviewFeedRows, mayRead: viewerMayReadCompliance, s
 /* ═══ THE LABELS, ONCE — the assertions and the red cases both read them ══════════════════════════════════════════ */
 
 const L = {
-  r1: `1.1 · a viewer who may read compliance is shown the newest ${OVERVIEW_FEED_ROWS} rows exactly as read — COMPLIANCE rows included, in order`,
-  r2: `1.2 · ⛔ OD61 · anyone else is shown NO COMPLIANCE row and the SAME number of rows — the newest ${OVERVIEW_FEED_ROWS} of every other category, in order, so the gap where a hidden row was can never be counted`,
-  r3: "1.3 · a short ring shows what each may read (all of it to a reader, every non-compliance row to anyone else), and no rows is no rows",
+  r1: `1.1 · a viewer who may read compliance is shown the newest ${OVERVIEW_FEED_ROWS} rows exactly as read — COMPLIANCE and KYC rows included, in order`,
+  r2: `1.2 · ⛔ OD61 · anyone else is shown NO COMPLIANCE row, NO KYC row and NO kyc.* row whatever its category, and the SAME number of rows — the newest ${OVERVIEW_FEED_ROWS} of everything else, in order, so the gap where a hidden row was can never be counted`,
+  r3: "1.3 · a short ring shows what each may read (all of it to a reader, every row neither compliance nor identity to anyone else), and no rows is no rows",
   v1: "2.1 · ⛔ the STORED role decides: the Owner, COMPLIANCE and AUDITOR may read compliance; GROWTH, FINANCE, MODERATOR and SUPPORT may not; a player, an agent, an unknown id, null and an empty id may not",
   v2: "2.2 · the grant decides, live: a GROWTH officer the Owner grants the compliance view may read compliance, and may not once the grant is taken back",
   v3: "2.3 · ⛔ FAILS CLOSED: a viewer whose row cannot be read may not read compliance — and the answer is false, never a throw",
   s1: "3.1 · THE PAGE: /admin asks viewerMayReadCompliance(session?.userId ?? null) once, reads the feed ONCE through houseAuditForConsole(session?.userId ?? null, \"/admin\", getAuditPage({ limit: OVERVIEW_FEED_SCAN })), and renders only what overviewFeedRows(…, mayReadCompliance) hands it",
-  s2: "3.2 · the scan covers the WHOLE audit ring (OVERVIEW_FEED_SCAN ≥ audit.ts MAX_IN_MEM), so a burst of compliance rows can never shorten anybody's feed",
+  s2: "3.2 · the scan covers the WHOLE audit ring (OVERVIEW_FEED_SCAN ≥ audit.ts MAX_IN_MEM), so a burst of hidden rows can never shorten anybody's feed",
   s3: "3.3 · the suite is wired: test:admin-overview-feed and red:admin-overview-feed (--prove-red, in-process) exist, and predeploy runs the suite exactly once",
 } as const;
 
@@ -143,20 +156,20 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   await check(p(L.r1), () => {
     const got = impl.rows(big, true);
     const want = big.slice(0, OVERVIEW_FEED_ROWS);
-    return [ids(got) === ids(want) && got.some((r) => r.category === COMPLIANCE_ONLY_CATEGORY),
-      `${got.length} row(s) · ${got.filter((r) => r.category === "COMPLIANCE").length} compliance`];
+    return [ids(got) === ids(want) && got.some((r) => r.category === "COMPLIANCE") && got.some((r) => r.category === "KYC"),
+      `${got.length} row(s) · ${kinds(got)}`];
   });
   await check(p(L.r2), () => {
     const got = impl.rows(big, false);
-    const want = big.filter((r) => r.category !== "COMPLIANCE").slice(0, OVERVIEW_FEED_ROWS);
-    return [got.length === OVERVIEW_FEED_ROWS && !got.some((r) => r.category === "COMPLIANCE") && ids(got) === ids(want),
-      `${got.length} row(s) · ${got.filter((r) => r.category === "COMPLIANCE").length} compliance · ${ids(got) === ids(want) ? "the newest of the rest, in order" : `NOT the newest of the rest: ${ids(got)}`}`];
+    const want = big.filter((r) => !hidden(r)).slice(0, OVERVIEW_FEED_ROWS);
+    return [got.length === OVERVIEW_FEED_ROWS && !got.some(hidden) && ids(got) === ids(want),
+      `${got.length} row(s) · ${kinds(got)} · ${ids(got) === ids(want) ? "the newest of the rest, in order" : `NOT the newest of the rest: ${ids(got)}`}`];
   });
   await check(p(L.r3), () => {
     const short = ring(7, `s${RUN}`);
     const reader = impl.rows(short, true);
     const other = impl.rows(short, false);
-    const wantOther = short.filter((r) => r.category !== "COMPLIANCE");
+    const wantOther = short.filter((r) => !hidden(r));
     const none = impl.rows([], false).length === 0 && impl.rows(null, true).length === 0 && impl.rows(undefined, false).length === 0;
     return [ids(reader) === ids(short) && ids(other) === ids(wantOther) && none,
       `reader ${reader.length}/${short.length} · other ${other.length}/${wantOther.length} · empty reads ${none ? "empty" : "NOT EMPTY"}`];
@@ -262,20 +275,36 @@ if (!PROVE_RED) {
       impl: { ...REAL, rows: (rows) => (rows ?? []).slice(0, OVERVIEW_FEED_ROWS) },
     },
     {
-      name: "the cut before the filter — a non-reader shown fewer rows exactly where compliance rows were",
+      name: "the cut before the filter — a non-reader shown fewer rows exactly where hidden rows were",
       expect: L.r2,
       impl: {
         ...REAL,
         rows: (rows, may) => {
           const cut = (rows ?? []).slice(0, OVERVIEW_FEED_ROWS);
-          return may ? cut : cut.filter((r) => r.category !== "COMPLIANCE");
+          return may ? cut : cut.filter((r) => !hidden(r as AuditEntry));
         },
+      },
+    },
+    {
+      name: "⛔ OD61 as first built — COMPLIANCE rows hidden, KYC rows left in (a player's identity check and its verdict)",
+      expect: L.r2,
+      impl: {
+        ...REAL,
+        rows: (rows, may) => (may ? (rows ?? []) : (rows ?? []).filter((r) => r.category !== "COMPLIANCE")).slice(0, OVERVIEW_FEED_ROWS),
+      },
+    },
+    {
+      name: "⛔ the identity family hidden by category only — a kyc.* row a SECURITY check wrote stays in",
+      expect: L.r2,
+      impl: {
+        ...REAL,
+        rows: (rows, may) => (may ? (rows ?? []) : (rows ?? []).filter((r) => r.category !== "COMPLIANCE" && r.category !== "KYC")).slice(0, OVERVIEW_FEED_ROWS),
       },
     },
     {
       name: "the reader's feed filtered too — a compliance officer loses the rows they exist to read",
       expect: L.r1,
-      impl: { ...REAL, rows: (rows) => (rows ?? []).filter((r) => r.category !== "COMPLIANCE").slice(0, OVERVIEW_FEED_ROWS) },
+      impl: { ...REAL, rows: (rows) => (rows ?? []).filter((r) => !hidden(r as AuditEntry)).slice(0, OVERVIEW_FEED_ROWS) },
     },
     {
       name: "any staff role may read compliance — the overview's own view mistaken for the compliance view",
@@ -329,7 +358,7 @@ if (!PROVE_RED) {
       impl: { ...REAL, sources: plant("yes", "page", "overviewFeedRows(feedRead, mayReadCompliance)", "overviewFeedRows(feedRead, true)") },
     },
     {
-      name: "the read cut back to the twelve the feed shows — a burst of compliance rows empties a non-reader's feed",
+      name: "the read cut back to the twelve the feed shows — a burst of hidden rows empties a non-reader's feed",
       expect: L.s2,
       impl: { ...REAL, scan: OVERVIEW_FEED_ROWS },
     },

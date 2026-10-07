@@ -64,11 +64,12 @@ async function AdminOverviewContent() {
   const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
   const session = await currentSession();
-  /* ⛔ OD61 · THE FEED'S COMPLIANCE ROWS ARE FOR A VIEWER WHO MAY READ COMPLIANCE. Every staff role may open this page,
-     and a `marketing.suppressed.rg · User#…` row would tell any of them which player is in responsible-gambling
-     standing. So the whole ring is read — through the gate, as every console audit read is — and `overviewFeedRows`
-     shows a viewer whose STORED role may not view the compliance domain the newest rows of every OTHER category, as many
-     as anyone is shown, so a hidden row leaves no gap to count (`admin-overview-feed.ts`; `test:admin-overview-feed`). */
+  /* ⛔ OD61 · THE FEED'S COMPLIANCE AND IDENTITY ROWS ARE FOR A VIEWER WHO MAY READ COMPLIANCE. Every staff role may open
+     this page, and a `marketing.suppressed.rg · User#…` row would tell any of them which player is in responsible-gambling
+     standing — a `kyc.rejected · User#…` row whose identity check failed (OD61's amendment). So the whole ring is read —
+     through the gate, as every console audit read is — and `overviewFeedRows` shows a viewer whose STORED role may not
+     view the compliance domain no COMPLIANCE, KYC or `kyc.*` row: the newest rows of everything else, as many as anyone
+     is shown, so a hidden row leaves no gap to count (`admin-overview-feed.ts`; `test:admin-overview-feed`). */
   const mayReadCompliance = await viewerMayReadCompliance(session?.userId ?? null);
   const feedRead = await houseAuditForConsole(session?.userId ?? null, "/admin", getAuditPage({ limit: OVERVIEW_FEED_SCAN }));
   const recent = overviewFeedRows(feedRead, mayReadCompliance);
