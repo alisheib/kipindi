@@ -7,8 +7,8 @@ officer's own number, or — once licence outreach opens — to another number w
 switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 46, U43y
 (money first — a campaign yields while bets, payouts and deposits run) and STEP 45, U16a (erasure, the access export
 and retention reach the campaign records), LIVE `023eae9f` 2026-10-07 (S13); before them STEP 44, U49s-2 LIVE `4093dc54`. Ali's
-FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S13
-in flight on ALI-BLADE15 (§0). First real campaign: realistic window 18–25 October.**
+FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S14
+in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campaign: realistic window 18–25 October.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -74,7 +74,14 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
   can send a marketing SMS yet: the engine is not built and the live switch is closed. Realistic window for the first
   real campaign: 18–25 October (told to Ali 2026-10-04, re-stated 2026-10-05).
 
-⏳ IN FLIGHT: S13 — 2026-10-06, ALI-BLADE15 (`C:\kipindi-marketing`, branch `marketing-s13` cut from `origin/main` at
+⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
+  `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
+  plan … another machine was working earlier today"). ⛔ Another session must not start or push U43a, U38b, U13 or the
+  owner door. NOW: U43a — the recipient doors from `backup/marketing-s13-wip` applied on `main`, P10 routed through the
+  real settle, then its suites, the Postgres probe, review, push, read-back. The Vodacom plan runs beside it on the same
+  PC in another session (its own worktrees, ports 3071-3079); this lane uses ports 3101-3109 and scratch Postgres 5461,
+  and both take `F:/heavy-node.lock` (a `mkdir` mutex) before any heavy job.
+⏳ (S13's block, kept as the handover) S13 — 2026-10-06, ALI-BLADE15 (`C:\kipindi-marketing`, branch `marketing-s13` cut from `origin/main` at
   `85866b36`; docs-only commits from `C:\kipindi-s13-docs`). Taken over ~21:50 EAT: OMEGA-COMPILE01's S12 stopped after
   STEP 44's push — no read-back and no closing commit followed for over three hours — and Ali asked this PC to continue
   ("if omega compile 01 is still working … let it finish, then continue; I think it stopped already"). ⛔ Another
