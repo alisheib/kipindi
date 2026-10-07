@@ -1,0 +1,15 @@
+{
+  "gate": "G4",
+  "approvedOn": "2026-10-07",
+  "wordings": {
+    "basis.OWN_FORM": "This person gave their number to 50pick on a 50pick form and agreed there to receive 50pick offers and news by SMS.",
+    "basis.OWN_EVENT": "This person gave their number to 50pick staff at a 50pick event or shop and agreed there to receive 50pick offers and news by SMS.",
+    "basis.AGENT_ROSTER": "This person gave their number to a registered 50pick agent for 50pick and agreed to receive 50pick offers and news by SMS.",
+    "basis.THIRD_PARTY": "This number came from a bought or third-party list; the person never agreed to hear from 50pick.",
+    "basis.LICENCE_OUTREACH": "50pick may send this person offers and news by SMS as outreach under its Gaming Board of Tanzania licence. The person has not agreed to receive them; every message carries a stop link, and a stop is kept for good.",
+    "adult.consent": "They told us they are 18 or older.",
+    "adult.list": "I confirm that every number on this list belongs to a person aged 18 or older, and I have recorded where the numbers came from.",
+    "adult.test": "I confirm that the person who uses this number is 18 or older.",
+    "notice.thirdParty": "These numbers will be stored without consent. They receive marketing SMS only after you put them on a list and record the licence outreach basis for it, with its 18+ confirmation."
+  }
+}
