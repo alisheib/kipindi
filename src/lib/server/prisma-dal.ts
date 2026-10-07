@@ -1536,8 +1536,9 @@ export const prismaDb = {
       //   2. the one-account-per-email guard — which is enforced HERE, in app
       //      code, because there is no DB unique index — could be walked
       //      straight past with different casing. One inbox could then open
-      //      unlimited depositing accounts, which makes the email deposit gate
-      //      decorative and per-account RG limits / self-exclusion evadable.
+      //      unlimited accounts, which makes the email gate (on depositing until
+      //      2026-10-07, on withdrawing since) decorative and per-account RG limits /
+      //      self-exclusion evadable.
       // The in-memory Map lower-cases on the way in, so this only ever bit on
       // real Postgres — i.e. only in production.
       // (`email @unique` is deliberately absent: adding the index to the live
@@ -2277,6 +2278,22 @@ export const prismaDb = {
       const rows = await pc().transaction.findMany({
         where: { userId, createdAt: { gte: new Date(fromMs), lt: new Date(toMs) } },
         orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+      return rows.map(toStoredTxn);
+    },
+    /**
+     * ⭐ ONE PLAYER'S ROWS OF THE GIVEN TYPES, NEWEST FIRST — the Receipts page's read (2026-10-07: every deposit and
+     * withdrawal in the app, mailed or not). The TYPE filter is applied in the STORE, so a heavy bettor's thousands of
+     * stake rows can never push a deposit out of reach the way the all-types cap of `findByUserWindow` would.
+     * Ordered `createdAt desc, id desc` in BOTH twins — the id breaks a tie, so two rows stamped in the same millisecond
+     * come back in one order everywhere. Served by `@@index([userId, createdAt])`; no migration.
+     * ⛔ BOTH HALVES EXIST OR NEITHER DOES (the memory twin is a blind cast in `store.ts`, so the compiler cannot say).
+     */
+    findByUserTypes: async (userId: string, types: readonly StoredTxn["type"][], limit: number): Promise<StoredTxn[]> => {
+      const rows = await pc().transaction.findMany({
+        where: { userId, type: { in: [...types] } as never },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit,
       });
       return rows.map(toStoredTxn);

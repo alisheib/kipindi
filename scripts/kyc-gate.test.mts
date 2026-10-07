@@ -3,8 +3,8 @@
  *
  * ⭐ THE RULE (owner ruling, Ali, 2026-09-13 — the top 2026-09-13 entries of
  * docs/COMPLIANCE-DECISIONS.md): identity is required before money is WITHDRAWN, and before
- * nothing else. The ladder: **register → confirm email → deposit and play → verify identity →
- * withdraw.** The gate, and why withdrawal asks "ever approved" rather than "approved now", live in
+ * nothing else. The ladder: **register → deposit and play → verify identity → confirm email →
+ * withdraw** (2026-10-07: the email moved from before the deposit to before the withdrawal). The gate, and why withdrawal asks "ever approved" rather than "approved now", live in
  * `src/lib/server/kyc-gate.ts` and `src/lib/kyc-approval.ts`.
  *
  * ⛔ THIS FILE ASSERTED THE OPPOSITE FOR DEPOSIT AND BET FROM 2026-09-05 TO 2026-09-13. Its §1 then
@@ -28,7 +28,8 @@
  * "went red on the wrong assertion".
  *
  * SECTIONS
- *   §1  every never-approved state: deposit reaches the email gate and goes through, bet accepted,
+ *   §1  every never-approved state: deposit goes through with or without a confirmed email (no identity door,
+ *       and no email door since 2026-10-07), bet accepted,
  *       withdrawal REFUSED with that state's own reason
  *   §2  the positive controls — APPROVED withdraws; APPROVED with no stamp: gate, panel and predicate agree
  *   §3  🔴 RE-VERIFICATION: approved once, re-verifying now — the withdrawal STAYS OPEN
@@ -165,15 +166,14 @@ section("§1 · a never-approved account deposits and plays, and cannot withdraw
   for (const c of CASES) {
     const s = c.kyc;
 
-    // ⭐ THE DOOR BELOW IDENTITY'S OLD SPOT. The 2026-09-05 gate stood between the RG lockout and the
-    // email gate, so an account with an UNCONFIRMED address is the sharpest probe: without an identity
-    // question it must be stopped by the email gate (`EMAIL_UNVERIFIED`), and with one restored it
-    // would be stopped earlier with a `kyc_*` reason instead.
+    // ⭐ AN UNCONFIRMED ADDRESS IS THE SHARPEST PROBE. Until 2026-10-07 it was stopped by the email gate; since the
+    // owner ruling of that day a deposit asks no email either, so this account must go straight through — and a
+    // restored identity question would stop it with a `kyc_*` reason, a restored email door with `EMAIL_UNVERIFIED`.
     const noEmail = `kg_${s.toLowerCase()}_noemail`;
     await account(noEmail, s, { emailConfirmed: false });
     const e = await doDeposit(noEmail);
-    ok(`1.${s}.deposit · reaches the email gate, not an identity refusal`,
-      !e.ok && e.code === "EMAIL_UNVERIFIED" && !/^kyc_/.test(e.reason ?? ""), why(e));
+    ok(`1.${s}.deposit · with NO confirmed email: accepted — no identity door and no email door`,
+      e.ok && e.code !== "EMAIL_UNVERIFIED" && !/^kyc_/.test(e.reason ?? ""), why(e));
 
     const id = `kg_${s.toLowerCase()}`;
     await account(id, s);

@@ -61,12 +61,16 @@ import { isFinalRefusal } from "./kyc-refusal";
 export type KycGateState = "not_started" | "uploaded" | "pending_review" | "more_info" | "rejected" | "refused_final";
 
 /**
- * What the identity panel can draw: every identity state, plus `frozen` — a WALLET fact, never derived
- * here. The withdraw page chooses it when the wallet is not ACTIVE (an officer hold, self-exclusion)
- * and the identity state is not already `refused_final`, so the payout form is never drawn over money
- * that cannot leave (2026-09-14).
+ * What the identity panel can draw: every identity state, plus two that are NEVER derived here:
+ *  · `frozen` — a WALLET fact. The withdraw page chooses it when the wallet is not ACTIVE (an officer hold,
+ *    self-exclusion) and the identity state is not already `refused_final`, so the payout form is never drawn
+ *    over money that cannot leave (2026-09-14).
+ *  · `email` — an ACCOUNT-CONTACT fact (owner ruling 2026-10-07: a confirmed email is required to withdraw). The
+ *    withdraw page chooses it when identity is settled (`kycGateState` → null) but the address is not confirmed;
+ *    while identity is still outstanding, the email step rides on the identity panel as its second step instead.
+ * ⛔ `kycGateState` stays identity-only: null ⟺ approvedEver (the state table's own rule). Email is the page's call.
  */
-export type KycPanelState = KycGateState | "frozen";
+export type KycPanelState = KycGateState | "frozen" | "email";
 
 /** The facts the derivation reads. Every KYC shape on the server has them. */
 export type KycGateFacts = {

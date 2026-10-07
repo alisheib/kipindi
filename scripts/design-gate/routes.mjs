@@ -44,7 +44,7 @@ export const PLAYER_PUBLIC = [
 
 /** Player routes that need a session. */
 export const PLAYER_AUTHED = [
-  "/wallet", "/wallet/deposit", "/wallet/withdraw", "/positions", "/positions/performance", "/watchlist",
+  "/wallet", "/wallet/deposit", "/wallet/withdraw", "/wallet/receipts", "/positions", "/positions/performance", "/watchlist",
   "/agent/apply", "/agent/status",
   "/notifications", "/updown/history", "/proposals/new",
   "/profile", "/profile/account", "/profile/activity", "/profile/invite", "/profile/kyc",

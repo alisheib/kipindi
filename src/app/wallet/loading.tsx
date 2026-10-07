@@ -110,6 +110,14 @@ export default async function WalletLoading() {
         ))}
       </nav>
 
+      {/* The "All receipts" door (2026-10-07): a 44px row, right-aligned, over the list — as the page draws it for an
+          account that has rows, which is the account that opens /wallet. */}
+      <div className="flex justify-end" aria-hidden>
+        <div className="flex h-[44px] items-center">
+          <div className="h-[14px] w-[112px] rounded bg-bg-overlay kp-shimmer-track" />
+        </div>
+      </div>
+
       {/* 30-day balance spark strip (46px svg + label padding on the page). */}
       <div className="rounded-xl border border-border bg-bg-elevated p-3 kp-shimmer-track" aria-hidden>
         <div className="h-2.5 w-36 rounded bg-bg-overlay mb-2" />

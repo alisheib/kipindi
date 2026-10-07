@@ -111,7 +111,7 @@ const PLAYER = [
   "/notifications",
   "/", "/markets", "/positions", "/positions/performance", "/leaderboard",
   "/proposals", "/proposals/new", "/results", "/live", "/wallet",
-  "/wallet/deposit", "/wallet/withdraw", "/profile", "/profile/account",
+  "/wallet/deposit", "/wallet/withdraw", "/wallet/receipts", "/profile", "/profile/account",
   "/profile/kyc", "/profile/invite", "/profile/sessions",
   "/profile/source-of-funds", "/profile/responsible-gambling",
   "/fairness", "/help", "/legal/terms", "/legal/privacy", "/legal/aml",

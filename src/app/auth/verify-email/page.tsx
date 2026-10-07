@@ -130,11 +130,11 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
           {/* `/[0.12]` and not `/12`: Tailwind's opacity scale runs in steps of 5, so
               `/12` was dropped before the mix and BOTH medallions rendered with no fill
               — confirmed and failed looked identical apart from the glyph tint. Email
-              confirmation gates the first deposit, so this chip sits on the money-in
-              ladder and has to read at a glance. */}
+              confirmation gates withdrawal (since 2026-10-07; it gated the first deposit
+              before), so this chip sits on the money ladder and has to read at a glance. */}
           <span
             /* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215)
-               and `h-12` rendered a 128px disc on the money-in ladder described above. */
+               and `h-12` rendered a 128px disc on the money ladder described above. */
             className={`inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill ${
               /* D2 (2026-08-21): the SEMANTIC families. A confirmed inbox is not a
                  won bet and an expired link is not a lost one — §B2 keeps `--yes-*`
@@ -154,18 +154,19 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             subtitleLead="relaxed"
           />
 
-          {/* ⭐ 2026-10-06 · A CONFIRMED ADDRESS IS ONE TAP FROM THE DEPOSIT IT UNLOCKS. The player confirmed because
-              every screen said "confirm your email to add money"; this page then offered only "Browse markets" and
-              "Go to account", so the money step had to be found again. Signed out (a link opened in the mail app's own
-              browser), `/wallet/deposit` asks them to sign in and keeps the destination. A link that did NOT confirm
-              keeps its two doors: the markets, and the account page where a new link is sent. */}
+          {/* ⭐ A CONFIRMED ADDRESS IS ONE TAP FROM THE MONEY IT UNLOCKS. 2026-10-06 sent this to the deposit, which the
+              email then gated. ⭐ 2026-10-07 (owner ruling): a deposit asks no email; a confirmed one is what WITHDRAWAL
+              needs — so the door is the wallet, where Withdraw and the balance are, and it no longer invites a deposit
+              the confirmation had nothing to do with. Signed out (a link opened in the mail app's own browser), `/wallet`
+              asks them to sign in and keeps the destination. A link that did NOT confirm keeps its two doors: the
+              markets, and the account page where a new link is sent. */}
           <div className="flex flex-col gap-2.5">
             {good ? (
               <>
-                {/* Not while ANOTHER account is signed in here: the deposit screen would be that account's. */}
+                {/* Not while ANOTHER account is signed in here: the wallet would be that account's. */}
                 {!otherSignedIn && (
-                  <Link href="/wallet/deposit" className="btn btn-primary btn-lg btn-pill w-full">
-                    {t.common.addFunds}
+                  <Link href="/wallet" className="btn btn-primary btn-lg btn-pill w-full">
+                    {t.wallet.openWallet}
                   </Link>
                 )}
                 <Link href="/markets" className={otherSignedIn ? "btn btn-primary btn-lg btn-pill w-full" : "btn btn-ghost btn-lg btn-pill w-full"}>

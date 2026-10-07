@@ -193,8 +193,8 @@ export function clearEmailOutbox(): void {
  * this address because it hard-bounced" are three different facts, and the last
  * one used to be reported as `{ ok: true }` — indistinguishable from a real
  * send. That is what let the UI tell a player "Sent. Check your inbox." about a
- * confirmation link that was never going to arrive, on the one flow that unlocks
- * depositing, with no way out and no signal to an operator.
+ * confirmation link that was never going to arrive, on the one flow that then
+ * unlocked depositing (since 2026-10-07: withdrawing), with no way out and no signal to an operator.
  *
  * Callers that genuinely don't care (receipts, notifications) can keep ignoring
  * the result. Callers that make a PROMISE to the player must read it.
@@ -225,8 +225,9 @@ export function maskEmail(address?: string | null): string {
 export type SendResult = {
   ok: boolean;
   messageId?: string;
-  /** `sent` · `stub` (no provider configured) · `no-address` · `suppressed` · `failed`. */
-  reason: "sent" | "stub" | "no-address" | "suppressed" | "failed";
+  /** `sent` · `stub` (no provider configured) · `no-address` · `suppressed` · `failed` · `unconfirmed` (a money mail
+   *  withheld because the address on file was never confirmed — `sendEmailToUser`'s `confirmedOnly`, 2026-10-07). */
+  reason: "sent" | "stub" | "no-address" | "suppressed" | "failed" | "unconfirmed";
 };
 
 /**
@@ -745,18 +746,44 @@ function refNote(): string {
 /** Look up a user's email and send. Silently skips if no email on file.
  *  Fully best-effort: NEVER throws and NEVER blocks the caller's flow — a
  *  failed lookup or send must not break a bet, deposit, or KYC decision. Call
- *  sites fire-and-forget (no await), so any rejection is swallowed here. */
+ *  sites fire-and-forget (no await), so any rejection is swallowed here.
+ *
+ *  ⭐ `confirmedOnly` — MONEY MAIL GOES ONLY TO A CONFIRMED ADDRESS (owner ruling 2026-10-07). A deposit stopped asking
+ *  for an email that day, so an account can now move money with an address nobody ever proved is theirs — mistyped, or
+ *  someone else's. A statement of a player's money (amounts, references, the mobile number it was paid to) must not be
+ *  sent to it. With the flag: an address that was never confirmed is skipped as `unconfirmed` (distinct, so a test and a
+ *  log can tell it from a missing one), and the `PHONE_EMAIL_MAP` fallback is never used — that map is an operator
+ *  override no player confirmed. The in-app record does not depend on it: the bell row and the receipt
+ *  (`/wallet/receipts`) are written either way. ⛔ Opt-in per call site, and `test:cert-c1` (`comms-email-truth.test.mts`) §2b holds every
+ *  player money template (`comms-registry.ts`) to it, except the refused-funds letters Terms §3a promises in writing
+ *  (`CONFIRMED_ONLY_EXEMPT`). Never on the confirmation mail itself — it is how an address becomes confirmed.
+ *
+ *  ⭐ …EXCEPT FOR AN ACCOUNT THAT CANNOT SIGN IN (money-and-compliance review, 2026-10-07). A self-excluded, closed or
+ *  suspended player is refused at sign-in (`assertSignInAllowed`) and push is suppressed for them, so the bell and the
+ *  receipt — the in-app record that stands in for the letter — are out of their reach: a deposit reversed during an
+ *  exclusion, a stake refunded after a closure, a payout settling after a suspension would otherwise reach NOBODY. There
+ *  the letter goes to the address on file, confirmed or not, as every money letter did before the ruling — the same
+ *  reason the refused-funds letters are exempt. The phone map is still never used. A cooling-off break is not on the
+ *  list: that player signs in and reads the bell. */
+/** The statuses `assertSignInAllowed` refuses (auth-service) — a player there cannot reach the bell or the receipts. */
+export const CANNOT_SIGN_IN: ReadonlySet<string> = new Set(["SELF_EXCLUDED", "CLOSED", "SUSPENDED"]);
+
 export async function sendEmailToUser(
   userId: string,
   build: (email: string) => SendInput,
+  opts: { confirmedOnly?: boolean } = {},
 ): Promise<SendResult> {
   try {
     const { db } = await import("./store");
     const user = await db.user.findById(userId);
+    if (opts.confirmedOnly && user?.email && !user.emailVerifiedAt && !CANNOT_SIGN_IN.has(String(user.status))) {
+      console.warn(`[email] sendEmailToUser withheld — money mail to an unconfirmed address for user ${userId.slice(0, 14)}… (user.email=${maskEmail(user.email)})`);
+      return { ok: false, reason: "unconfirmed" };
+    }
     // Prefer the stored email; fall back to the live phone→email map so receipts
     // reach mapped accounts even if user.email was never persisted (matches how
-    // login/welcome emails resolve the address).
-    const email = user?.email || resolvePhoneEmail(user?.phoneE164 ?? "");
+    // login/welcome emails resolve the address). ⛔ Never for a `confirmedOnly` send (above).
+    const email = user?.email || (opts.confirmedOnly ? "" : resolvePhoneEmail(user?.phoneE164 ?? ""));
     if (!email) {
       console.warn(`[email] sendEmailToUser skipped — no email for user ${userId.slice(0, 14)}… (user.email=${user?.email ? maskEmail(user.email) : "null"}, phone=${user?.phoneE164?.slice(0, 6) ?? "?"}…)`);
       return { ok: false, reason: "no-address" };
@@ -1251,7 +1278,14 @@ export function passwordResetHtml({ resetLink }: { resetLink: string }): string 
   `);
 }
 
-export function kycApprovedHtml({ name, reference }: { name: string; reference?: string }): string {
+/**
+ * ⭐ `emailUnconfirmed` (2026-10-07). A withdrawal needs a confirmed email address as well as approved identity (owner
+ * ruling 2026-10-07), so an approval sent to an address the player never confirmed would say "covers your withdrawals"
+ * one step short. Only then does the letter add the second step — never "first" (the step returns whenever the address
+ * changes), and never when the address is confirmed. ⛔ The bell row is NOT changed: `notifyKyc` rows are stored verbatim
+ * for ever, and an approval written on a confirmed account must not later read as an instruction.
+ */
+export function kycApprovedHtml({ name, reference, emailUnconfirmed = false }: { name: string; reference?: string; emailUnconfirmed?: boolean }): string {
   return wrapGold(`
     ${eyebrow("Identity verified", "Utambulisho umethibitishwa", true)}
     ${heading(`You're fully verified, ${name}`)}
@@ -1269,6 +1303,8 @@ export function kycApprovedHtml({ name, reference }: { name: string; reference?:
           door on a money moment. */""}
     ${subtitle("Your identity is confirmed, and it covers your withdrawals from now on. This document is now linked to your account.")}
     ${subtitleSw("Utambulisho wako umethibitishwa, na uthibitisho huu unatumika kwa kila utoaji wa pesa kuanzia sasa. Kitambulisho hiki sasa kimeunganishwa na akaunti yako.")}
+    ${emailUnconfirmed ? subtitle("Before you withdraw, confirm your email address too: open the link we sent to this address, or send a new one from your account.") : ""}
+    ${emailUnconfirmed ? subtitleSw("Kabla ya kutoa pesa, thibitisha pia anwani yako ya barua pepe: fungua kiungo tulichotuma kwa anwani hii, au tuma kipya kutoka kwenye akaunti yako.") : ""}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
     ${ctaButton("/wallet", "Go to your wallet · Nenda kwenye pochi")}
   `, { promo: true });
@@ -1524,8 +1560,10 @@ export function emailVerifyHtml({ name, verifyUrl }: { name?: string; verifyUrl:
   return wrap(`
     ${eyebrow("Confirm your email · Thibitisha barua pepe")}
     ${heading("Confirm your email address")}
-    ${subtitle(`${name ? `${name}, please` : "Please"} confirm this is your email so we can send you account, deposit, withdrawal, and verification notices. This link expires in 24 hours.`)}
-    ${subtitleSw("Tafadhali thibitisha barua pepe yako ili tuweze kukutumia taarifa za akaunti. Kiungo hiki kinaisha baada ya saa 24.")}
+    ${/* ⭐ 2026-10-07 — a confirmed address is what a WITHDRAWAL needs (owner ruling), so the letter says why it matters
+          now; it no longer gates a deposit. Money mail goes only to a confirmed address (`sendEmailToUser`). */""}
+    ${subtitle(`${name ? `${name}, please` : "Please"} confirm this is your email. A confirmed address is needed before you withdraw, and it is where we send your account, deposit, withdrawal and verification notices. This link expires in 24 hours.`)}
+    ${subtitleSw("Tafadhali thibitisha barua pepe yako. Anwani iliyothibitishwa inahitajika kabla ya kutoa pesa, na ndipo tunapotuma taarifa za akaunti yako. Kiungo hiki kinaisha baada ya saa 24.")}
     ${ctaButton(verifyUrl, "Confirm email · Thibitisha")}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you didn't add this email to a 50pick account, ignore this message — nothing will change.</p>
   `);

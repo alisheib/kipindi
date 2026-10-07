@@ -3,8 +3,8 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { getGlobalConfig, listMarketOverrides, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
-import { worstCaseWinnerRatio } from "@/lib/payout";
+import { getGlobalConfig, getStoredStakeBounds, listMarketOverrides, DEFAULT_GLOBAL_CONFIG } from "@/lib/server/market-config";
+import { PLATFORM_MIN_STAKE, worstCaseWinnerRatio } from "@/lib/payout";
 import { FeeSimulator } from "./fee-simulator";
 import { getMarket } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
@@ -37,6 +37,8 @@ export default async function AdminConfigPage(props: ConfigProps) {
 async function AdminConfigContent({ searchParams }: ConfigProps) {
   const sp = await searchParams;
   const config = await getGlobalConfig().catch(() => DEFAULT_GLOBAL_CONFIG);
+  // The stake bounds as STORED, beside the enforced ones the form shows (2026-10-07 · the floor is applied on read).
+  const storedStake = await getStoredStakeBounds().catch(() => null);
   const overrides = await listMarketOverrides().catch(() => []);
   const oPage = parsePage(sp.opage, overrides.length);
   const overridesPage = overrides.slice((oPage - 1) * PER_PAGE, oPage * PER_PAGE);
@@ -257,7 +259,7 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
               console each cell was ~780px wide for a value like "10.0". Bounding
               the column puts each cell back around 310px. */}
           <FormColumn measure="form">
-            <GlobalConfigForm config={config} />
+            <GlobalConfigForm config={config} storedStake={storedStake} />
           </FormColumn>
         </AdminCard>
         </>)}
@@ -326,8 +328,10 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
                             {over.commissionRate !== undefined ? `${(over.commissionRate * 100).toFixed(1)}%` : "—"}
                           </td>
                           <td className="p-3 font-mono tabular">
+                            {/* ⭐ An override stored under the platform minimum (before it rose) is ENFORCED at the minimum —
+                                say both, so the table never shows a bound no bet is held to (2026-10-07). */}
                             {over.minStake !== undefined || over.maxStake !== undefined
-                              ? `${over.minStake != null ? formatTzs(over.minStake) : "—"} / ${over.maxStake != null ? formatTzs(over.maxStake) : "—"}`
+                              ? `${over.minStake != null ? (over.minStake < PLATFORM_MIN_STAKE ? `${formatTzs(PLATFORM_MIN_STAKE)} (stored ${formatTzs(over.minStake)})` : formatTzs(over.minStake)) : "—"} / ${over.maxStake != null ? formatTzs(over.maxStake) : "—"}`
                               : "—"}
                           </td>
                           <td className="p-3 text-right">

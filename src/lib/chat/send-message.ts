@@ -40,6 +40,8 @@ import type { Citation, Lang, Message } from "@/components/chat/types";
 // ⛔ A-5: never render a number nobody produced. The bounds now come from the same constants the
 // deposit form validates against, and every claim that could not be sourced is DELETED rather
 // than softened — a vaguer invented number is still invented.
+// ⭐ 2026-10-07: management set the deposit minimum to TZS 1,000 (`DEPOSIT_MIN_TZS`), so the "1,000"
+// above is true now — and this answer still reads the constant, so it moved with it.
 import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { PLATFORM_MIN_STAKE } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
@@ -229,11 +231,15 @@ function stubReply(userText: string, lang: Lang): Reply {
         "2. Choose your payment method — M-Pesa, Airtel Money, HaloPesa, Mixx by Yas or card",
         `3. Enter the amount — from {${formatTzs(DEPOSIT_MIN_TZS)}} to {${formatTzs(DEPOSIT_MAX_TZS)}}`,
         "4. Confirm the payment on your phone",
-        "If a deposit does not arrive, your money is safe — the receipt in your wallet shows its exact state, and support can trace it[2]. Deposits need a confirmed email.",
+        // ⛔ NO EMAIL STEP (owner ruling 2026-10-07): a deposit asks for no email — the sentence "Deposits need a confirmed
+        // email." was deleted with the gate. Every deposit keeps its receipt in the app, under Receipts.
+        "If a deposit does not arrive, your money is safe — its receipt, under **Receipts**[2], shows its exact state, and support can trace it.",
       ],
       citations: [
         { n: 1, href: "/wallet/deposit", label: "/wallet/deposit" },
-        { n: 2, href: "/help#deposit-failed", label: "/help#deposit-failed" },
+        // ⛔ Was `/help#deposit-failed` — an anchor /help never had (its FAQ items carry no ids), so it landed on the top of
+        // the page. Receipts is where the deposit's state actually is (2026-10-07).
+        { n: 2, href: "/wallet/receipts", label: "/wallet/receipts" },
       ],
     };
   }
@@ -251,7 +257,8 @@ function stubReply(userText: string, lang: Lang): Reply {
         "4. Tap confirm — the popup locks the quote so you can't accidentally move the dial",
         "The locked quote is exactly what gets placed. No surprises.",
       ],
-      citations: [{ n: 1, href: "/help#conviction-dial", label: "/help#conviction-dial" }],
+      // ⛔ Was `/help#conviction-dial` — an anchor /help never had (2026-10-07); the page itself is the honest citation.
+      citations: [{ n: 1, href: "/help", label: "/help" }],
     };
   }
 
@@ -283,11 +290,16 @@ function stubReply(userText: string, lang: Lang): Reply {
         // per-day total, the `DAILY_LIMIT` reason in payments.ts is returned by no adapter,
         // and /profile/account has no limit control.
         "You verify your identity once, before your first withdrawal[3]. After that, no withdrawal waits for an officer's review, whatever its size.",
+        // ⭐ AND A CONFIRMED EMAIL (owner ruling 2026-10-07): a withdrawal needs the address on the account confirmed — the
+        // link we send — and a new address is confirmed again. Asked at withdrawal only; a deposit asks for no email.
+        // After the identity line: the server's order, and the citations read [3] then [4].
+        "Before you withdraw, confirm your email address — open the link we send to the address on your account[4].",
       ],
       citations: [
         { n: 1, href: "/fairness", label: "/fairness" },
         { n: 2, href: "/wallet/withdraw", label: "/wallet/withdraw" },
         { n: 3, href: "/profile/kyc", label: "/profile/kyc" },
+        { n: 4, href: "/profile/account", label: "/profile/account" },
       ],
     };
   }

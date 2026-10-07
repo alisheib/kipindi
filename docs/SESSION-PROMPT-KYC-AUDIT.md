@@ -4,6 +4,10 @@
 
 ---
 
+> ⚠️ **PARTLY SUPERSEDED 2026-10-07 (owner ruling):** the confirmed email moved from the first deposit to withdrawal —
+> a deposit asks no email; a withdrawal needs identity AND a confirmed email. Read the ladder below as the 2026-09-13
+> release this prompt audits, not as today's. `COMPLIANCE-DECISIONS.md` § "2026-10-07 · A deposit asks no email; a confirmed email is required to withdraw; receipts in the app (owner ruling)".
+
 You are auditing a release that is ALREADY LIVE on **50pick** (https://50pick.tz), a licensed real-money prediction-market
 and betting platform in Tanzania regulated by the Gaming Board of Tanzania. Repo `C:\kipindi-main`, branch `main`.
 **Push to main = LIVE, with real players and real money.** Your job is to prove the release is correct, find every gap,

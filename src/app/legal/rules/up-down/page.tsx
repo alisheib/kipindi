@@ -1,6 +1,7 @@
 import { LegalHeader, LEGAL_BINDING_LANGUAGE as BINDING } from "../../_components";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
+import { getUpDownConfig } from "@/lib/server/updown-config";
 import { upDownContent } from "../_content-up-down";
 import { ratesFrom } from "../_shared";
 
@@ -38,7 +39,12 @@ const META: Record<Locale, string> = {
 
 export default async function UpDownRulesPage() {
   const { locale } = await getServerT();
-  const r = ratesFrom(await getGlobalConfig());
+  /* ⭐ THE STAKE BOUNDS ARE UP & DOWN'S OWN (2026-10-07). They quoted the polls' global config — the same TZS 1,000 by rule,
+     but set in a different place (`updown-config.ts`, the product default every chain inherits and `stakeBoundsFor`
+     floors at). A binding document states the bounds of the game it governs; both reads are floored at the platform
+     minimum on read. The fee and the rest still come from the shared rates. */
+  const [cfg, ud] = await Promise.all([getGlobalConfig(), getUpDownConfig()]);
+  const r = { ...ratesFrom(cfg), minStake: ud.defaultMinStake, maxStake: ud.defaultMaxStake };
 
   return (
     <>

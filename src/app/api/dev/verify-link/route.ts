@@ -4,7 +4,7 @@
  *
  * The confirmation link is a stateless HMAC-signed token delivered by email.
  * The browser journey harness (scripts/browser-journey.mjs) has to follow that
- * link to prove the deposit gate actually opens, but it has no inbox to read.
+ * link to prove a confirmation actually opens what it gates (the withdrawal, since 2026-10-07), but it has no inbox to read.
  * Rather than reach into the token internals from the test — which would let the
  * test pass while the REAL link was broken — this returns the exact URL
  * `buildEmailVerifyUrl` produces, i.e. the same string the mail contains.

@@ -17,14 +17,17 @@
  * email silently invalidates any older link, and a tampered token fails the MAC
  * check. We persist only the *result* (`user.emailVerifiedAt`), not the token.
  *
- * Transactional mail (receipts, KYC notices) still sends to an unverified
- * address — we never silently drop a player's receipts.
+ * Transactional mail that is not about money (KYC notices, security alerts) still sends to an
+ * unconfirmed address. ⭐ MONEY MAIL DOES NOT, since 2026-10-07 (`sendEmailToUser`'s
+ * `confirmedOnly`): an address nobody confirmed may be a stranger's. No receipt is lost by it —
+ * every deposit and withdrawal keeps its receipt in the app (`/wallet/receipts`).
  *
- * ⚠️ As of the 2026-07-18 real-money launch, `emailVerifiedAt` IS a hard gate on
- * the money-in path: `wallet-service.deposit()` refuses a deposit until it is
- * set. Anything that changes an address therefore clears the flag and re-gates
- * depositing — that is intentional, and `setUserEmail` is the single writer that
- * guarantees it.
+ * ⚠️ From the 2026-07-18 real-money launch to 2026-10-07, `emailVerifiedAt` was a hard gate on
+ * the money-IN path (`wallet-service.deposit()` refused a deposit until it was set). ⭐ Since the
+ * owner ruling of 2026-10-07 it gates the money-OUT path instead: `wallet-service.withdraw()`
+ * refuses until it is set, and a deposit asks for no email at all. Anything that changes an
+ * address therefore clears the flag and re-gates WITHDRAWING — that is intentional, and
+ * `setUserEmail` is the single writer that guarantees it.
  *
  * 🔴 FROM 2026-09-13 THIS IS THE FRONT DOOR. From 2026-09-05 to 2026-09-13 an approved
  * identity was a second, independent requirement for depositing; that gate is DELETED
@@ -32,6 +35,10 @@
  * 2026-09-13). A confirmed address is now the only thing between a stranger and a funded
  * account, and the only verified contact channel the platform holds. ⛔ Nothing may relax
  * the clear-on-change rule above.
+ * ⭐ 2026-10-07 — NO LONGER THE FRONT DOOR (owner ruling: a deposit asks no email). A confirmed
+ * address is what a WITHDRAWAL needs, beside approved identity, and it is still the only verified
+ * contact channel the platform holds — so the clear-on-change rule stands: a new address is
+ * confirmed again before the next withdrawal.
  */
 import { z } from "zod";
 import { runOutsideLock } from "./locks";
@@ -83,7 +90,7 @@ export function buildEmailVerifyUrl(userId: string, email: string): string {
  * It used to swallow everything, so `setUserEmail` and the resend action both
  * reported `sent: true` unconditionally and the UI said "Sent. Check your inbox"
  * even when the address was on the hard-bounce suppression list and nothing had
- * been sent at all. On the flow that unlocks depositing, that left a player
+ * been sent at all. On the flow that unlocks withdrawing (depositing, until 2026-10-07), that left a player
  * tapping Resend until the rate limit stopped them, with no way forward.
  */
 export async function sendEmailVerification(userId: string, email: string, name?: string): Promise<SendResult> {
@@ -96,10 +103,10 @@ export async function sendEmailVerification(userId: string, email: string, name?
       subject: "Confirm your email · 50pick",
       html: emailVerifyHtml({ name, verifyUrl }),
       tag: "email-verify",
-      // ⛔ NEVER track this link. It is the single link that unlocks depositing,
+      // ⛔ NEVER track this link. It is the single link that unlocks withdrawing (depositing, until 2026-10-07),
       // and Postmark's click-tracking rewrites it through a redirect domain — a
       // mis-set tracking domain would send every confirmation click nowhere and
-      // silently close the money-in path. (The email-changed alert already
+      // silently close the money-out path. (The email-changed alert already
       // passes this; the link that actually matters had been missed.)
       // ⚠️ It does NOT stop a recipient-side scanner: `trackLinks: false` only stops
       // Postmark rewriting the link, and a corporate/Gmail scanner still fetches the
@@ -145,7 +152,7 @@ export async function setUserEmail(
   // `code: /already linked/i.test(r.error) ? "EMAIL_TAKEN" : "NOT_FOUND"` — matching this
   // function's own English back out of the string it had just returned. Rewording the
   // duplicate-address sentence below would have silently turned a "that inbox is taken"
-  // refusal into "we couldn't find that", on the surface that gates depositing.
+  // refusal into "we couldn't find that", on the surface that gates withdrawing (depositing, until 2026-10-07).
   const next = email.trim().toLowerCase();
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND", reason: "not_found" };
@@ -203,6 +210,8 @@ export async function setUserEmail(
   // address would let one inbox open unlimited depositing accounts, and per-account
   // controls (deposit caps, self-exclusion) are only as strong as the one-person-
   // one-account assumption underneath them.
+  // ⭐ 2026-10-07: a confirmed email unlocks WITHDRAWING now, not depositing — and the rule
+  // stands for the same reason: one inbox must not be the cash-out door of many accounts.
   //
   // Enforced in application code, not by a DB @unique: adding a unique index to the
   // live money DB risks failing `prisma migrate deploy` — which would take
@@ -268,7 +277,7 @@ export async function setUserEmail(
 /**
  * THE PLAYER'S ONE EMAIL DOOR (route audit 2026-10-06, A1) — add, change and remove alike.
  *
- * 🔴 The address is a recovery factor: it receives password-reset links, and confirming it opens depositing. With no
+ * 🔴 The address is a recovery factor: it receives password-reset links, and confirming it opens withdrawal (it opened depositing until 2026-10-07). With no
  * password asked, a minute with an unlocked, signed-in phone was enough to plant an address, confirm it from that same
  * session, run forgot-password and own the account. So every real change asks for the current password, through the one
  * re-auth check (`reauth.ts`) and its `auth.reauth` bucket, which `changePassword` shares. An unchanged address is a no-op
@@ -346,7 +355,7 @@ export async function markEmailVerified(
 /**
  * 🔴 A3 (route audit 2026-10-06) · OPENING THE LINK CONFIRMS ONLY FOR THE ACCOUNT HOLDER. The page used to confirm during
  * the GET for anyone holding the link — a mail scanner pre-fetching it, or the stranger who owns a mistyped address — and
- * that address then became the deposit door and the recovery inbox of a soon-funded account. A pending link now confirms
+ * that address then became the deposit door (the withdrawal door since 2026-10-07) and the recovery inbox of a soon-funded account. A pending link now confirms
  * on open only inside the account's OWN session; anywhere else the answer is `needs_password` and the page asks for the
  * account's password (`confirmEmailWithProof`). The states that need no proof (invalid, mismatch, already) answer as before.
  */

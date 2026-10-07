@@ -209,7 +209,7 @@ for (const [param, expectState, pillWords, showsWait, ctaPath] of NEVER_APPROVED
     await noBar(page, `${L}.${name}`);
   }
 
-  // ⭐ THE DEPOSIT SCREEN'S ONE DOOR IS THE EMAIL, and the demo address is confirmed — so, the form.
+  // ⭐ THE DEPOSIT SCREEN ASKS NO EMAIL (2026-10-07, owner ruling) — so, the form.
   // 🔴 EXCEPT A FROZEN WALLET (2026-09-14): a final refusal freezes it (IDENTITY_REFUSED), and a wallet that is not
   // ACTIVE gets the paused notice instead of a form the server would refuse.
   await go(page, `${BASE}/wallet/deposit`);

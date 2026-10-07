@@ -7852,7 +7852,7 @@ const CONSOLE_ELIGIBILITY_COPY: Readonly<Record<string, string>> = {
   RG_SINCE_VERIFIED: "A self-exclusion or break has run since their permission was last confirmed.",
   DAILY_LOSS_STOP: "The day's loss limit has already been reached.",
   OWNER_LOSS_LIMIT: "Their own daily loss limit has been reached.",
-  EMAIL_UNVERIFIED: "Their email is not confirmed, so they cannot top up until they confirm it.",
+  EMAIL_UNVERIFIED: "Their email is not confirmed, so they cannot withdraw until they confirm it.",
   IDENTITY_NOT_APPROVED: "Their identity has never been approved, so they cannot withdraw until it is.",
   RECRUITED: "An agent recruited them. No commission is paid on anything staked from the desk.",
   OPEN_POSITIONS: "They hold open positions of their own. Those markets are skipped.",

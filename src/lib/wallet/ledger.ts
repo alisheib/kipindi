@@ -7,7 +7,7 @@
  *
  * 🔴 **FILTER THE STORED `TxnType`, NEVER THE UI TOKEN.** `wallet/page.tsx`'s `adaptTxn` folds
  * the stored types into fewer display tokens — deliberately, because that token drives the
- * credit/debit SIGN and the receipt link. It folds `BONUS_CREDIT` and `ADJUSTMENT_CREDIT` into
+ * credit/debit SIGN (the receipt link asks the stored type since 2026-10-07). It folds `BONUS_CREDIT` and `ADJUSTMENT_CREDIT` into
  * `deposit`, and `HOUSE_FEE` and `ADJUSTMENT_DEBIT` into `withdraw`. ⛔ **A "Deposits" filter
  * built on that token would tell a player their bonus was a deposit** — a false statement about
  * their own money, on the one surface that exists to be the truth about it. Re-derive the fold:
@@ -40,8 +40,11 @@ export type TxnStatusValue =
 
 /**
  * ⚠️ `type` AND `status` ARE THE STORED ENUMS, not the display tokens — see the header. The row
- * also carries the display `token`, because the page still renders the sign and the receipt link
- * from it; the two travel together so a reader can see they are different things.
+ * also carries the display `token`, because the page still renders the sign from it; the two
+ * travel together so a reader can see they are different things.
+ * ⭐ ONE TRANSLATION, NOT A FOLD (2026-10-07): `status` is the status the PLAYER is shown —
+ * `presentedStatus` (`lib/wallet/receipts.ts`), the stored one except a deposit held for return,
+ * which reads REVERSED here exactly as on its receipt. Still one of the seven, so the partition holds.
  */
 export type LedgerRow = {
   id: string;
