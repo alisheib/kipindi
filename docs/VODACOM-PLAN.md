@@ -26,7 +26,17 @@ and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an office
 point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Every call made under Ali's
 delegation is a numbered point in §0h. Nothing moved here 2026-10-04 → 10-06 except main's sign-up change (`9b21bae9`),
 which rewrote §3.7: a new account now lands home on the classic site too. On 2026-10-07 S6 A8i went live (`23f762f4`):
-a dialog acts on Enter only where it is pressed, and a key held down from before presses nothing in it (below).
+a dialog acts on Enter only where it is pressed, and a key held down from before presses nothing in it (below); and
+A8i-2 (`586c5183`): a key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered
+money dialog lands on its way out (below). ⚠️ Owner ruling of 2026-10-07 (the ▶ 0e MONEY DOORS lane): a deposit asks no
+email question, and the minimum deposit and stake are TZS 1,000 — §3.6's S9 (an email code before the first deposit)
+will NOT be built, and this plan's "TZS 500 minimum" lines are to be rewritten (owed, this lane's docs, after A8j).
+
+**✅ A8i-2 LIVE `586c5183` (2026-10-07) — a key held down presses once, wherever it is; nothing behind the top dialog
+takes a key; an uncovered money dialog lands on its way out.** Taken from the handover's unreviewed draft on
+OMEGA-COMPILE01, reviewed there in three lenses and changed by what they confirmed; proven in Chromium, Firefox and WebKit
+against a control run on live main that failed exactly the nine cases it closes (W2 and SQ sold, UD1 placed 13 bets) —
+§0i "A8i-2", §0h point 59.
 
 **✅ A8i LIVE `23f762f4` (2026-10-07) — a dialog acts on Enter only where it is pressed.** Built on OMEGA-COMPILE01
 (branch `vodacom-a8i`), taken over on ALI-BLADE15 when that session stopped (Ali, 2026-10-06), re-reviewed there in five
@@ -49,24 +59,18 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-07 ~11:10 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other session on
-that PC holds marketing S14 only, by agreement). **A8i-2: reviewed in three lenses and revised — branch `vodacom-a8i2`
-`2e0aa062` (pushed; worktree `F:\kipindi-a8i2`, cut from `9352de7c`), NOT yet on main.** The control run of the drive
-on live main (`9352de7c`, fresh in-memory server) failed exactly where the draft predicts: W2 SOLD the ticket (the
-second Enter 60 ms after the seal's), DD and SL each placed a bet, Enter held on Up & Down's UP placed 13 bets and on
-the receipt's "Keep playing" 11 more. The reviews' confirmed findings are applied (`2e0aa062`'s message lists them):
-the main one, from the correctness lens — two win seals queued 350 ms apart could still let an Enter meant for the
-second land on the sell button after its beat — is closed by sending focus to an uncovered money confirm's WAY OUT
-(`safeFocus`: Ghairi, Hifadhi nafasi, Cancel), with dialogs joining the stack in a layout effect; the proof lens's —
-the suite pinned the wiring only by text — by building the key guard and `leaveLayer` from their text and running them.
-Proven on `2e0aa062`: typecheck; `test:enter-where-pressed` green; `red:enter-where-pressed` 103/103; the structural
-suites green (stacking 6.1 and red-anchors ×2 are main's own). **Still to come:** the drive on the new tree (queued
-behind the shared heavy-job lock) and its control re-run → the 2026-10-04 12-case drive → WebKit and Firefox runs →
-`test:all` → push → production read-back → records (§0i bullet, §0h point 59). **A8j** is being revised beside it in
-`F:\kipindi-a8j` (branch `vodacom-a8j`; the draft applied, its 19 review problems being addressed); it ships after
-A8i-2, rebased onto it. Then the close-out's three owed items, then **WP12**. (Left alone on that PC:
-`F:\kipindi-journey` keeps uncommitted edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above, §0i "A8i" and the handover's drafts), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+**⏳ IN FLIGHT (updated 2026-10-07 ~12:45 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement). **A8j — Enter in a form never skips its confirm** —
+branch `vodacom-a8j` `f849950a` (pushed; worktree `F:\kipindi-a8j`, its own install): the handover draft revised for its
+19 review problems and an independent verifier's findings (product verdict: sound — no path lets Enter or a phone's Go
+key submit the withdraw, deposit, close-account, RG or sign-out form without its confirm, before or after the page
+wakes). `test:implicit-submit` 25/25, `red:implicit-submit` 61/61 and 1/1 green control held, typecheck. **Still to
+come:** rebase onto A8i-2 (its held-key cases need A8i-2's key guard) → the suites again → `qa:implicit-submit` in
+Chromium, Firefox and WebKit and its control on the tree before it → `test:all` → push → production read-back →
+records (§0i, §0h point for its calls). Then the close-out's three owed items, then **WP12**; and this lane's docs for the
+owner ruling above (S9 not built; the TZS 500 lines). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
+edits from 2026-10-06, an early start that the handover draft supersedes.)
+**Next:** (1) S6 — **A8j** (live for every player, money: above, §0i "A8i" and the handover's draft), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
@@ -279,7 +283,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   rest of the detached chain (`scratchpad/s6/a8-chain.sh`: the price-guard drive in the current mode, the result
   drives `main`, `extra` and `lost`, the lost-chunk control, the tiles), parity compare 2 after the copy, the
   battery, a production build's first-load reading, and the production check (`?dpl=`, the stylesheet's two phone
-  blocks); then **WP12** (S6-PLAN.md). **A8i** is LIVE (`23f762f4`, its bullet at the end of this list); A8i-2 and A8j go first (§0).
+  blocks); then **WP12** (S6-PLAN.md). **A8i** and **A8i-2** are LIVE (`23f762f4`, `586c5183`, their bullets at the end of this list); A8j goes first (§0).
   **Ran 2026-10-06/07 on `7d4b0ad5` (ALI-BLADE15), the owed list above:** `red:ticker-honesty` alone 28/28 (re-armed in
   `7d4b0ad5`: 9.8 reads `settledAmount`, 9.9 every fee call, the red's anchors unique); parity `--prove-red` 81/81 (with
   `5a87e764`'s DEV-measure filing and its plant); parity `--compare` 2 against the v2 baseline: 38/39 — every Sell check
@@ -1189,6 +1193,49 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   in the close-account phrase box submits without the confirm (A8j). **Served bytes for a classic viewer:** no markup,
   word, class or prop changes; the client code of the three dialogs, `Modal`, `Select` and the Sell button changes
   (behaviour only), so `qa:classic-shell-parity` names no entry.
+- **A8i-2 — a key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered money
+  dialog lands on its way out (LIVE `586c5183`, 2026-10-07, for every player, both looks).** What it closes, each proven on
+  live main `9352de7c` by the drive's control run on OMEGA-COMPILE01 (a fresh in-memory server, 15 pass, 9 fail, none
+  blocked): W2 — the second Enter 60 ms after the seal's SOLD the ticket; SQ — two win seals queued and Enter mashed:
+  sold; K1/K2 — Enter held on "Hifadhi nafasi"/Cancel reopened the confirm under the finger; ESC — one Escape closed the
+  seal AND the Sell confirm; DD — Enter, Enter 100 ms apart on the dial placed the bet; SL — a quote lapsing under the
+  seal sent focus behind it, and Enter, Enter placed a bet; UD1 — Enter held on Up & Down's UP placed 13 bets; UD2 —
+  Enter held on the receipt's "Keep playing" placed 13 more. **How:** one app-wide key guard
+  (`src/components/ui/key-guard.tsx`: a window capture listener for keydown and keyup, installed by AppShell and by
+  every Modal) decides by `swallowsKey` (`src/lib/modal-stack.ts`): a held repeat that would press something, anywhere;
+  an Enter or Space behind the top dialog; a fresh press in the 400 ms arming beat after a dialog takes focus or hands it
+  back; and a Space presses only where it went down. `modal-stack.ts` keeps the page's open dialogs (by zIndex, then open
+  order); `leaveLayer` decides where focus goes when one closes — never behind the dialog now on top; an uncovered money
+  dialog on its WAY OUT (`safeFocus`: "Ghairi", "Hifadhi nafasi", ConfirmModal's Cancel); whatever takes focus armed; a
+  seal opened with focus on the page arms nothing. Modal joins the stack in a layout effect (a timer-opened seal is on it
+  from its first frame), answers keys only while on top, closes once per Escape, leaves Escape to an open list, and its
+  leaving ghost is inert. Space on the bet dial counts as a press. **The draft** (ALI-BLADE15, never run) was reviewed
+  here in three lenses — correctness and money, change-set mechanics, gates and proof — and changed by what they
+  confirmed: the way out (the correctness lens: two queued seals, the second drawn late on a slow phone, left an Enter
+  meant for it landing on the sell button after its beat), the layout effect, one Escape one dialog, Space on the dial,
+  the page itself never armed, the suite made to RUN the guard and `leaveLayer` (five of six wiring deletions had passed
+  it), the census closed on inline handlers, namespace imports, parameter names and every key event named in `src/` (2.8,
+  which found the needle's own `on(hit, "keydown")` the census had never seen — an element listener, no money), 2.6
+  widened to every file that draws a dialog; Modal's dead held-key line and the refuted quote-clock reset dropped.
+  **Guard:** `test:enter-where-pressed` (predeploy) — it builds `key-guard.tsx` and `leaveLayer` from their text and
+  fires keys through them (4.4, 5.9) — and `red:enter-where-pressed`, 103 plants, 103 caught. **Proof (OMEGA-COMPILE01):**
+  typecheck; the structural suites green (stacking 6.1 and red-anchors ×2 main's own); `qa:enter-where-pressed` on the new
+  tree — Chromium 24/24, Firefox 23/24, WebKit 23/24 — the non-Chromium engines' one red is "Z", the dev server's
+  hot-reload chunk failing to load in them on Windows, which fails the same on live main (Firefox control: 14 pass, 10
+  fail — the nine above and Z). Two drive faults the other engines exposed are fixed in the drive: its wallet read opened
+  a second page, which takes focus in Firefox and WebKit (now read over HTTP), and the first-visit primer hides itself
+  from Chromium's automation only, so it opened over the dialogs there (now marked seen). The 2026-10-04 12-case drive on
+  the new tree: S, J (the journey look), K, W, R, B, F, BE and E pass; W2's stage now finds the second Enter on
+  "Hifadhi nafasi" (the way out, by design); P is A8i's design difference; PW's seal was never accepted by its page (a
+  set-up race in that older drive). `test:all` 433/463: every red one of the §0i baseline list (17), or a database suite
+  this worktree first ran without the local Postgres binaries (13; then 12/13, house-bot-designation's 1/161 the known
+  scratch flake — 161/161 alone). Production read back: `dpl=586c5183` served on www.50pick.tz and 50pick.tz from 09:38:56 UTC by a fresh container (uptime climbing from 7 s, no restart), `/api/health` ok with the database reachable, and `qa:live` against production 318/318 (signed-out pages: no console or page error, no dead link, no preview marker). **Served bytes for a classic viewer:** no markup, word or
+  class changes — a `ref` and the `safeFocus` prop are not drawn, and `inert` appears only on the client-only exit
+  ghost; the client code of Modal, the three money confirms, the dropdown, the Sell button's comment and the shell's key
+  guard changes (behaviour only). **Owed (recorded, not run):** an iPad hardware keyboard's repeats; reduced motion; a
+  retryable failure under the seal; the seal over the Up & Down receipt; a BUSY reply with Enter held; an officer's
+  ConfirmModal and Escape on a Select inside a dialog in a real browser; WebKit on a Mac or a production build; the drive
+  in predeploy (it needs a server).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1717,6 +1764,33 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     (f) Tafuta keeps the Akaunti board's row and opens a search field in place, submitting to the journey home. (g) When
     asked, S7's production check also signs in once as the unfunded QA player mobile01, reading pages only, so
     signed-in players are covered too (overrule: signed out only).
+59. **A key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered money dialog
+    lands on its way out (S6 A8i-2, for every player, both looks).** The calls taken: (a) THE ARMING BEAT is 400 ms, on
+    every dialog: for 400 ms after a dialog takes focus a fresh Enter or Space in it presses nothing. It outlasts the
+    350 ms between two queued win seals, a double press (W2's was 60 ms) and key chatter, and is shorter than anyone takes
+    to read a confirm. Overrule: any figure from 351 to 600 ms (5.7 holds that band), or the beat on the bet and Sell
+    confirms only. (b) The beat also arms the control a closing dialog hands focus back to — UP after the Up & Down
+    receipt closes, the dial after the bet confirm is cancelled — so a double Enter on the receipt is one bet. A fresh
+    Enter more than 400 ms later, and every tap, is a bet as before (Ali's repeat-taps rule untouched). Overrule: arm
+    dialogs only. (c) THE WAY OUT — taken by this session, against the draft: when a dialog drawn over a money confirm
+    closes (the win seal, the reality check), focus lands on the confirm's way out — "Ghairi", "Hifadhi nafasi",
+    ConfirmModal's Cancel (deposit, withdraw and every officer's money confirm) — never its money button. The review
+    found that two seals queued 350 ms apart, the second drawn later still on a slow phone, left a moment where an Enter
+    meant for the second seal landed on the sell button after its beat and sold; on the way out it can at worst close the
+    confirm. A keyboard player needs one Tab back to the money button. Overrule: focus back on the money button, armed for
+    the beat (the draft's call). (d) Nothing behind the top dialog takes Enter or Space — repeats, fresh presses, a Space
+    typed in a field under the scrim. The page itself is left alone (it presses nothing), and a surface put in the page
+    after the top dialog (a dropdown's list, a calendar) counts as over it and keeps its keys; toasts sit behind for keys
+    (a click still works). (e) One Escape closes one dialog (a dialog under one that has just answered it no longer closes
+    too), and an Escape with a dropdown's list open in a dialog closes only the list — also when a click left focus on the
+    page — where it used to close the dialog and lose what was typed. Overrule: Escape closes both again. (f) Space on the
+    bet dial is a press, as Enter is: a held Space's repeats there are swallowed, and a Space in the beat presses nothing.
+    (g) Modal's own held-key line is deleted: the key guard swallows a held key first, page-wide (the draft kept the line
+    only because its pipeline could not edit it). (h) The Tab trap pulls focus in from anywhere outside the dialog, both
+    ways, and a leaving dialog's ghost is inert. (i) A dialog joins the stack in the same commit it is drawn (a layout
+    effect), so a seal opened by a timer is on the stack from its first frame. (j) A dialog's first focus never lands on
+    a button that cannot be pressed: the first control that can takes it. The draft's reset of the bet confirm's quote
+    clock is NOT taken: its race was refuted twice, and the handover said to drop it.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
