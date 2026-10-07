@@ -12,14 +12,16 @@
  * never pruned, and a widening of who the platform may lawfully message. ⛔ Spent BEFORE the writer, so a refused
  * recording spends it too — the budget bounds attempts, not successes.
  *
- * ⛔ NOTHING IS DECIDED HERE. Every rule — the saved wordings, the list, the 18+ tick, the note, the reason — belongs to
- * `list-basis.ts`, which is also what `test:contacts-lists` drives. These actions read named fields and hand them over.
+ * ⛔ NOTHING IS DECIDED HERE. Every rule — the saved wordings, the list, the 18+ tick and the version of the words it
+ * was given for, the note, the reason — belongs to `list-basis.ts`, which is also what `test:contacts-lists` drives.
+ * These actions read named fields and hand them over; the posted version is re-typed by the writer's own rule
+ * (`attestedVersionOf`), never by one written here.
  */
 import { revalidatePath } from "next/cache";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { safeError } from "@/lib/server/safe-error";
-import { recordListBasis, revokeListBasis } from "@/lib/server/marketing/list-basis";
+import { attestedVersionOf, recordListBasis, revokeListBasis } from "@/lib/server/marketing/list-basis";
 
 export type ListBasisActionResult = { ok: true } | { ok: false; error: string };
 
@@ -43,6 +45,8 @@ export async function recordListBasisAction(formData: FormData): Promise<ListBas
       proofNote: String(formData.get("proofNote") ?? ""),
       // ⛔ The tick is read as an EXACT "1", never as truthiness: a stray value is not an attestation.
       adultAttested: formData.get("adultAttested") === "1",
+      // ⛔ 3b · and the version of the 18+ words it was given for — absent or malformed is null, which the writer refuses.
+      attestedVersion: attestedVersionOf(formData.get("attestedVersion")),
     });
     if (!res.ok) return { ok: false as const, error: res.error };
     revalidatePath("/admin/contacts");

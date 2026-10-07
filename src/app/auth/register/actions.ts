@@ -10,16 +10,18 @@ import { sanitizeNext } from "@/lib/safe-next";
 import { registerRefusalOf, type RegisterRefusal } from "./refusal";
 
 /**
- * D2 · THE LANGUAGE THE FORM WAS SHOWN IN — it decides which sentence the consent ledger stores as
- * evidence of what this person read, and it is the account's `User.locale` from the first day.
+ * D2 · THE LANGUAGE THE FORM WAS SHOWN IN — it is the account's `User.locale` from the first day (OD42 reads it).
+ * Until 2026-10-07 it also decided which sentence of the SMS-offers box the consent ledger stored; that box is
+ * REMOVED (the owner's final rule, COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
+ * consent is not a condition"), so sign-up records no consent and this action reads no `marketingOptIn` field: a
+ * page served before the removal that still posts its tick changes nothing.
  * 🔴 This read only the `kp-locale` cookie AT SUBMIT, and the cookie can change after the page is drawn:
  * the language provider adopts a stored choice on mount and rewrites the cookie without redrawing the
  * server's page (Safari drops script-set cookies after 7 days; localStorage survives), so a person who
- * ticked the Swahili box was recorded as having read the English sentence.
+ * read the Swahili page was recorded as having read the English one.
  * ⭐ So the form posts the language it was DRAWN in (the hidden `shownLocale` field, page.tsx), validated
- * to exactly en/sw/zh by `renderedLocaleOf`; it only chooses which of the dictionary's own sentences is
- * stored, never any text. The cookie remains the fallback for a form that posted none (a page served
- * before this deploy).
+ * to exactly en/sw/zh by `renderedLocaleOf`; it only chooses one of three languages, never any text. The
+ * cookie remains the fallback for a form that posted none (a page served before this deploy).
  */
 async function shownLocale(formData: FormData) {
   return renderedLocaleOf(formData.get("shownLocale")) ?? messagingLocaleOf((await getServerT()).locale);
@@ -43,7 +45,6 @@ export async function startRegisterAction(_prev: RegisterRefusal | null, formDat
   const dob = String(formData.get("dob") ?? "");
   const acceptTerms = formData.get("acceptTerms") === "on" || formData.get("acceptTerms") === "true";
   const acceptAge = formData.get("acceptAge") === "on" || formData.get("acceptAge") === "true";
-  const marketingOptIn = formData.get("marketingOptIn") === "on";
   // ⛔ NEVER `.slice(0, 16)` — see `MAX_REFERRAL_CODE_LEN` in affiliate-service. Refuse, never
   // truncate: a cut prefix can match a different partner's code.
   const referralCode = normalizeReferralCode(String(formData.get("ref") ?? "")) ?? undefined;
@@ -55,7 +56,7 @@ export async function startRegisterAction(_prev: RegisterRefusal | null, formDat
 
   const result = await registerWithPassword({
     phone, email, password, passwordConfirm, dob,
-    acceptTerms, acceptAge, marketingOptIn, referralCode, inviteCode,
+    acceptTerms, acceptAge, referralCode, inviteCode,
     locale: await shownLocale(formData),
   });
 

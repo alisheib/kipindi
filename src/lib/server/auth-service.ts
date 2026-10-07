@@ -28,7 +28,7 @@ import { isLiveMoneyMode } from "./runtime-mode";
 import { selfExclusionStanding } from "./responsible-gambling";
 import { SUPPORT_PHONE } from "@/lib/server/support-config";
 import { TERMS_VERSION } from "@/lib/terms-version";
-import { appendMarketingConsent, messagingLocaleOf } from "@/lib/server/marketing/consent-ledger";
+import { messagingLocaleOf } from "@/lib/server/marketing/consent-ledger";
 import { registrationContactAtSignup } from "@/lib/server/marketing/registration-contact";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
@@ -531,9 +531,10 @@ export type PasswordRegisterInput = {
   dob: string;              // YYYY-MM-DD
   acceptTerms: boolean;
   acceptAge: boolean;
-  marketingOptIn?: boolean;
-  /** D2 · the language the form was SHOWN in (the action reads the form's own `shownLocale` field, the cookie as fallback). Decides the
-   *  consent sentence the ledger stores and `User.locale`. SW when absent. */
+  // ⛔ No `marketingOptIn`: the SMS-offers box was REMOVED from sign-up on 2026-10-07 (COMPLIANCE-DECISIONS § "2026-10-07 ·
+  // Marketing SMS go to anyone with a phone — consent is not a condition"). Sign-up asks nothing about offers.
+  /** D2 · the language the form was SHOWN in (the action reads the form's own `shownLocale` field, the cookie as fallback). Decides
+   *  `User.locale`. SW when absent. */
   locale?: MessagingLocale;
   /** Affiliate referral code from a ?ref= link, if the user arrived via one. */
   referralCode?: string;
@@ -550,7 +551,6 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     dob: input.dob,
     acceptTerms: input.acceptTerms,
     acceptAge: input.acceptAge,
-    marketingOptIn: input.marketingOptIn ?? false,
   });
   if (!baseParse.success) {
     const first = baseParse.error.errors[0];
@@ -646,7 +646,13 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     region: null,
     acceptedTermsVersion: TERMS_VERSION,
     acceptedTermsAt: new Date().toISOString(),
-    marketingOptIn: baseParse.data.marketingOptIn ?? false,
+    // ⛔ NO MARKETING CHOICE AT SIGN-UP (2026-10-07). The SMS-offers box is REMOVED — the owner's final rule
+    // (COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition"):
+    // consent decides nothing, so sign-up asks nothing. A new account starts with the switch off and NO consent-ledger
+    // row — this door writes none (U6's REGISTRATION row, written for a ticked box from 2026-09-28, is gone with the
+    // box; the rows already written stay, and their sentences stay pinned in `consent-wording.ts`). A player turns
+    // offers on or off under Profile → Notifications, which writes the ledger as before.
+    marketingOptIn: false,
     twoFactorEnabled: false,
     avatarDataUrl: null,
     createdAt: new Date().toISOString(),
@@ -654,25 +660,6 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     lastLoginAt: new Date().toISOString(),
     closedAt: null,
   });
-
-  // U6 · THE CONSENT LEDGER ROW FOR A TICKED BOX (D8).
-  // ⛔ ONLY WHEN THEY TICKED IT. An unticked box is not a withdrawal — it is the absence
-  // of consent, and writing a WITHDRAWN row for it would invent a decision this person
-  // never made. U7's gate reads "no row" as "no consent" — the same answer, without the
-  // fiction. ⛔ Zero backfill (OD8): nothing here reaches back over existing accounts.
-  if (baseParse.data.marketingOptIn === true) {
-    await appendMarketingConsent({
-      phoneE164: phone,
-      // ⛔ D2 · the language the form was SHOWN in. A literal "SW" here recorded every EN/ZH
-      // registrant as having read the Swahili sentence (2026-09-25 → the fix).
-      locale: messagingLocaleOf(input.locale),
-      status: "GIVEN",
-      source: "REGISTRATION",
-      site: "REGISTRATION",
-      evidence: TERMS_VERSION,
-      recordedBy: null,
-    });
-  }
 
   // Auto-create wallet. Tester phones get 100K TZS for QA sessions;
   // everyone else gets the configured starter balance (default 0).
@@ -713,7 +700,7 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   }
 
   // ⭐ EVERY CLIENT IS A CONTACT (owner, 2026-10-03) — one line: after the account
-  // row, the ledger row and the wallet. A bootstrap admin is created ADMIN above and is never a contact. ⛔ It never
+  // row and the wallet. A bootstrap admin is created ADMIN above and is never a contact. ⛔ It never
   // fails and never holds the sign-up — it runs outside this `register:` lock, bounded — and the backfill repairs a miss.
   await registrationContactAtSignup(user);
 

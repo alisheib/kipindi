@@ -6,6 +6,7 @@ import { db } from "@/lib/server/store";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
+import { OVERVIEW_FEED_SCAN, overviewFeedRows, viewerMayReadCompliance } from "@/lib/server/admin-overview-feed";
 import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries, bucketGrain } from "@/lib/server/analytics";
 import { dailyKpiSeries, lastEatDays } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
@@ -63,7 +64,15 @@ async function AdminOverviewContent() {
   const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
   const session = await currentSession();
-  const recent = await houseAuditForConsole(session?.userId ?? null, "/admin", getAuditPage({ limit: 12 }));
+  /* ⛔ OD61 · THE FEED'S COMPLIANCE AND IDENTITY ROWS ARE FOR A VIEWER WHO MAY READ COMPLIANCE. Every staff role may open
+     this page, and a `marketing.suppressed.rg · User#…` row would tell any of them which player is in responsible-gambling
+     standing — a `kyc.rejected · User#…` row whose identity check failed (OD61's amendment). So the whole ring is read —
+     through the gate, as every console audit read is — and `overviewFeedRows` shows a viewer whose STORED role may not
+     view the compliance domain no COMPLIANCE, KYC or `kyc.*` row: the newest rows of everything else, as many as anyone
+     is shown, so a hidden row leaves no gap to count (`admin-overview-feed.ts`; `test:admin-overview-feed`). */
+  const mayReadCompliance = await viewerMayReadCompliance(session?.userId ?? null);
+  const feedRead = await houseAuditForConsole(session?.userId ?? null, "/admin", getAuditPage({ limit: OVERVIEW_FEED_SCAN }));
+  const recent = overviewFeedRows(feedRead, mayReadCompliance);
   const flow = await moneyFlowSeries(period24h, 24).catch(() => null);
   /* What a bucket on that chart actually is, so the card's subtitle is rendered rather than
      typed. 24 buckets over 24 hours is hourly — but if either number ever moves, the caption

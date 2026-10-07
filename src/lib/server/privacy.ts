@@ -382,19 +382,37 @@ export async function buildDsarBundle(userId: string) {
       //  · Corrected again 2026-08-21, because there IS a routine now
       //    (`anonymizeClosedAccount`) and describing a capability we have as a mere postal
       //    address is the same defect pointing the other way: it under-states a right.
+      //  · Corrected again 2026-10-07 (approved by Ali in the session — COMPLIANCE-DECISIONS
+      //    "Privacy v2026-10-07"): "we erase your contact details" was false of the phone
+      //    number, which erasure deliberately KEEPS — in the record of the person's marketing
+      //    choices (the consent ledger, the stop list and the emptied book row, U18b) so they are
+      //    never messaged again (G10 of 2026-10-05), and in the records of the marketing text
+      //    messages sent to it, kept 7 years with only the account link removed (U16a's
+      //    `unlinkCampaignRecipients`; DATA-RETENTION rows 48–49).
+      //  · And again the same day, on the review (the lead's words, to be put to Ali): "they are
+      //    erased when that period ends" is gone — money and audit rows are NEVER deleted
+      //    (DATA-RETENTION §1: "Never deleted — by design"); and "only" is gone — the number also
+      //    stays in the log of the security codes texted to it and in the payment records, both
+      //    kept because the law requires them, which the last sentence now says.
       //
       // ⛔ IT DESCRIBES A PARTIAL FULFILMENT AND SAYS WHICH PART. That is the honest shape of
       // erasure for a licensed operator, and it is the posture `/admin/retention` already
       // publishes to the Gaming Board. Whatever this says must stay true of what the routine
-      // does — `test:erasure` §10 holds the period, and the two tiers are named in
-      // `docs/DATA-RETENTION.md` §2.
+      // does — `test:erasure` §10 holds the period, the two tiers are named in
+      // `docs/DATA-RETENTION.md` §2, and `test:privacy-notice` §4j pins these words and the record.
       erasure: `Request erasure by writing to ${SUPPORT_EMAIL()}, or from Account settings. `
-        + "On a closed account we erase your contact details, password, profile, in-app "
+        + "On a closed account we erase your contact details (except as below), password, profile, in-app "
         + "messages and the name and number on your identity record, and we replace any "
         + "name shown beside your past comments. Your financial and audit records, and the "
         + "images of your identity documents, are retained for 7 years from account closure "
-        + "under POCA Cap 423 §16 and cannot be erased before then; they are erased when "
-        + "that period ends. Each request is handled by a compliance officer within the "
+        + "under POCA Cap 423 §16 and cannot be erased before then. We also keep your phone "
+        + "number in our record of your marketing choices, so that we never send you marketing "
+        + "again, and in the records of the marketing text messages we sent to it: those records "
+        + "(the number, the message, what happened to it and the stop link it carried) are kept "
+        + "for at least 7 years, as the record GN 478T reg 51(1) requires; erasure removes which "
+        + "account they belonged to and keeps the rest. The records of the security codes we "
+        + "texted to your number, and your payment records, which the law requires us to keep, "
+        + "keep it too. Each request is handled by a compliance officer within the "
         + "30-day statutory period (PDPA 2022 §31 / GDPR Art. 17).",
       portability: "This bundle is the portability format (machine-readable JSON).",
     },

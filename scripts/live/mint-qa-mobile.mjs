@@ -69,7 +69,9 @@ for (const n of ["acceptAge", "acceptTerms"]) {
   if (!(await c.isChecked())) await c.check({ force: true });
   R.check(`${n} is checked`, await c.isChecked());
 }
-R.check("marketing opt-in left unchecked", !(await page.locator('input[name="marketingOptIn"]').isChecked()));
+// ⛔ The SMS-offers box was REMOVED from sign-up on 2026-10-07 (COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to
+// anyone with a phone — consent is not a condition"): there is nothing to leave unticked, and a box found is a regression.
+R.check("the sign-up form has no SMS-offers box (removed 2026-10-07)", (await page.locator('input[name="marketingOptIn"]').count()) === 0);
 if (R.failed) { await b.close(); process.exit(R.done() === 0 ? 0 : 1); }
 
 await page.locator('form button[type="submit"]').first().click();

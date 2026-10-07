@@ -38,9 +38,10 @@
  *     email — to this account's own data export (`dsar.ts` lists every LINKED row).
  *
  * ⛔ THE CACHE IS NEVER INVENTED. The consent state is U24's `mirrorContactCache`: the ledger's latest word for the
- * number, else UNKNOWN. A ticked box is a GIVEN row the door wrote FIRST, so the mirror reads GIVEN; an unticked box is
- * no row, so UNKNOWN. This module writes NO ledger row and NO stop — OD8's zero backfill stands: this backfills the BOOK,
- * never consent.
+ * number, else UNKNOWN. Sign-up writes no ledger row since 2026-10-07 (the SMS-offers box is removed), so a new number
+ * reads UNKNOWN, and a number the ledger already holds — a person who said yes or no before they signed up — reads that
+ * word. This module writes NO ledger row and NO stop — OD8's zero backfill stands: this backfills the BOOK, never
+ * consent.
  * ⛔ THE AUDIT NAMES THE MASKED NUMBER, THE ACCOUNT AND FIELD NAMES — never the digits, the name or the email (U22's
  * convention), and it is never awaited (a sign-up does not queue behind the audit chain). A failure is logged with the
  * error's NAME and CODE only: a database error's message can print the whole row it refused, the number included.
@@ -302,7 +303,8 @@ export async function ensureRegistrationContact(
 export const REGISTRATION_CONTACT_BUDGET_MS = 1_500;
 
 /**
- * ⭐ THE ONE LINE BOTH SIGN-UP DOORS CALL, after the account row, the consent ledger row and the wallet.
+ * ⭐ THE ONE LINE BOTH SIGN-UP DOORS CALL, after the account row and the wallet (sign-up writes no consent ledger row
+ * since the SMS-offers box was removed on 2026-10-07).
  * ⛔ OUTSIDE THE LOCK: the password door holds `register:<phone>` around this, and a write that outlives the budget must
  * not carry that lock's context into a transaction that has already committed (`runOutsideLock`, house bots C4 §2).
  * ⛔ BOUNDED: a book that does not answer within the budget is not waited for. ⛔ NEVER THROWS, NEVER REJECTS — a late
