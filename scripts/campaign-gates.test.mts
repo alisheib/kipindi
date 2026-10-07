@@ -142,7 +142,6 @@ const L = {
   x5: "6.5 · ⛔ OD27 tripwire — ConfirmCampaignInput declares exactly campaignId, typed, watermark and actorId: no posted count can reach the gate",
   x6: '6.6 · ⭐ the confirm keys have exactly ONE src writer — the transition(… to: "CONFIRMED" …) in campaign-confirm-service.ts (dev-only seed routes aside), whose patch names every confirm key',
   x7: "6.7 · ⭐ test:campaign-gates and red:campaign-gates resolve to this file, and predeploy runs test:campaign-gates exactly once, right after test:campaign-confirm",
-  x8: "6.8 · PENDING until U42 — enqueue.ts asks startAudienceVerdict before its first createMany",
   x9: "6.9 · the shipped wiring is the real doors — CONFIRM_DEPS hands in audienceFence, fenceForViewer, signFence, verifyFence, decideConfirm, campaignAudienceRefusal, breakdownVisible, sourceLineRefusal, the FRESH source-line read, the settings' re-read, estimate.ts's ONE cost loader (loadSegmentCost), spendRefusal, confirmInstant, confirmedByThisWrite and audit; FENCE_DEPS campaignAudienceCount, walkCampaignAudience, isUnfilteredCampaignAudience and membersKeyOf",
 } as const;
 type Label = (typeof L)[keyof typeof L];
@@ -1176,17 +1175,9 @@ async function runAssertions(impl: Impl): Promise<void> {
     return [wired, `test ${scripts["test:campaign-gates"]} · red ${scripts["red:campaign-gates"]} · at ${at}, campaign-confirm at ${chain.indexOf("npm run test:campaign-confirm")}`];
   });
 
-  const ENQUEUE_REL = "src/lib/server/marketing/enqueue.ts";
-  if (!existsSync(join(ROOT, ...ENQUEUE_REL.split("/")))) {
-    skip(L.x8, "enqueue.ts does not exist yet — U42's commit turns this on");
-  } else {
-    await claim(L.x8, async () => {
-      const e = code(ENQUEUE_REL);
-      const ask = e.indexOf("startAudienceVerdict(");
-      const write = e.indexOf("createMany(");
-      return [ask > 0 && write > 0 && ask < write, `startAudienceVerdict at ${ask}, the first createMany at ${write}`];
-    });
-  }
+  // 6.8 ("enqueue.ts asks startAudienceVerdict before its first createMany") is WITHDRAWN with U42's review: it held only by
+  // the order the file declares things in. The behaviour is driven instead by `test:marketing-engine` E10 (b) — a listed
+  // confirmation whose people changed writes NOTHING and pauses `audience_moved` — and E10b, with their plants.
 
   await claim(L.x9, async () => {
     const c = impl.shipped.confirm;

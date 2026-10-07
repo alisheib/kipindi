@@ -231,10 +231,12 @@ export function wantsAttention(
  * The engine's own reasons, in words an officer can act on. The first three are the shop-wide refusals `sendBatch`
  * returns before a request is made (`SmsFailureCode` in `sms.ts`) and `gate_unanswered` is `dispatchSlice`'s own: the
  * reasons a slice HOLDS rows for (`dispatch.ts`), which the engine turns into ONE pause (§9 U43). ⭐ U42's enqueue
- * (`enqueue.ts`, ENGINE-SPEC §3.4) adds the two it pauses a PREPARING campaign for: `audience_unreadable` (the saved
- * audience can no longer be read — never read as "start again" or "done") and `audience_moved` (a listed confirmation's
- * people changed after Start; nothing was written). ⚠️ U41, U43 and U49 each add the keys they write — an unknown key is
- * still shown, labelled as the engine's own words.
+ * (`enqueue.ts`, ENGINE-SPEC §3.4) adds the ones it pauses a campaign for: `audience_unreadable` (the saved audience can no
+ * longer be read — never read as "start again" or "done"), `audience_moved` (a listed confirmation's people changed after
+ * Start; nothing was written), and — failing closed, U42's review — `list_over_confirmed` (the list came out longer than
+ * the confirmed count before it ever ran; nothing was sent) and `list_over_confirmed_sending` (the same, found after another
+ * step had moved it to sending). Every one of the four says Stop and confirm a new copy, never Resume. ⚠️ U41, U43 and U49
+ * each add the keys they write — an unknown key is still shown, labelled as the engine's own words.
  */
 const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   BALANCE_FLOOR: "The SMS credit is below its floor. Top it up, then resume.",
@@ -243,6 +245,9 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   gate_unanswered: "The consent check could not answer, so nobody more was messaged.",
   audience_unreadable: "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy.",
   audience_moved: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy.",
+  list_over_confirmed: "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy.",
+  list_over_confirmed_sending:
+    "Paused — more people are on this campaign's list than were confirmed, found after sending had started. Nobody more is messaged. Stop it and confirm a new copy.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */

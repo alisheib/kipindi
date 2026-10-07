@@ -24,16 +24,18 @@
  * ⭐ ids are `rcp_` + `ledgerStamp().id` (fixed-width hex, the clock first, a counter inside the millisecond), minted in walk
  * order, so `ORDER BY id` is the walk's order (E21).
  *
- * ── THE CAP (decision 4, E19) ─────────────────────────────────────────────────────────────────────────────────────
+ * ── THE CAP (decisions 1 and 4 as built, E19) ─────────────────────────────────────────────────────────────────────
  * The rows on the campaign (`countByStatus`, a groupBy — OD26) never exceed the confirmed `audienceCount`. ⭐ The cap is
  * spent by rows ADDED, never by people walked: a page walked again after an interruption holds people already on the list,
- * and counting them again would end the enqueue early and leave out everyone after that page. So the page that meets the
- * cap is written a room at a time — the room counted afresh before each write, at most that many seeds per write — and a
- * person already on the list costs no room. Whoever the cap leaves out is reported as `overflow`, and the enqueue finishes.
- * ⚠️ `overflow` counts what the step that met the cap SAW: the walk is not continued past the cap (the audit row's
- * `walkComplete` says whether the walk had ended), and in a page walked again after an interruption it can count people
- * already on the list (that step's `duplicates` say so). A step that finds the cap already met — an earlier step met it and
- * its finish never landed — finishes without walking at all, `overflow` 0.
+ * and counting them again would end the enqueue early and leave out everyone after that page. So a chunk that could cross
+ * the cap is written a room at a time — the room counted once before the chunk, then moved down by each write's own
+ * `inserted` (exact for one writer), at most that many seeds per write — and a person already on the list costs no room.
+ * Whoever the cap leaves out is reported as `overflow`, and the enqueue finishes.
+ * ⛔ AND IT FAILS CLOSED. After a step's writes the list is counted ONCE more; a list LONGER than the confirmed count (two
+ * steps that wrote at once, each inside its own room) never moves to RUNNING — the campaign is PAUSED `list_over_confirmed`
+ * (nothing was sent: it never ran), or, when another step had already moved it to RUNNING, `list_over_confirmed_sending`.
+ * The same holds for a step that finds the list already longer than confirmed before it walks.
+ * ⚠️ A step that finds the cap already MET — an earlier step met it and its finish never landed — finishes without walking.
  *
  * ── A LISTED CONFIRMATION (decision 4, X13, OD67) ────────────────────────────────────────────────────────────────────
  * A confirmation that LISTED its people (ENUMERATE: at most `CONFIRM_ENUMERATE_MAX`, the members key in `audienceWatermark`)
@@ -41,37 +43,47 @@
  * over the people about to be written — `canonicalMembers` of the walk's own keys (the fence's input, so a number that
  * cannot be messaged is still one of the people), keyed by `membersKeyOf` with the CONFIRMED row's own scope, its id and
  * its frozen `draftRevision` (no save moves a revision once the row has left DRAFT) — and held to the watermark through
- * `startAudienceVerdict`, the one comparison Start makes. A different key (somebody changed in the moments after Start's
- * check) writes NOTHING and pauses the campaign `audience_moved`. A TYPED confirmation carries no members key (X13, OD67):
- * the cap alone holds it.
+ * `startAudienceVerdict`, the comparison Start makes. A different key (somebody changed in the moments after Start's check)
+ * writes NOTHING and pauses the campaign `audience_moved`. A TYPED confirmation carries no members key (X13, OD67): the cap
+ * alone holds it.
  * ⛔ OD28's first check is NOT here — it is Start's (U49a, E19). This step is the CONTINUOUS cap.
  *
- * ── FAIL CLOSED (decision 7) ──────────────────────────────────────────────────────────────────────────────────────
- * A stored audience that cannot be read — a filter the campaign's door refuses, a confirmation without a readable count or
- * tier (or a listed one without its key), a stored cursor the walk refuses — pauses the campaign `audience_unreadable`:
- * never read as "start again" (a restart re-sends) and never as "done". A read that FAILS (the database) throws instead,
- * with nothing written: the next step tries again.
+ * ── FAIL CLOSED ON WHAT IS STORED (decision 7) ──────────────────────────────────────────────────────────────────────
+ * A stored audience that cannot be read — a filter the campaign's door refuses, a filter holding a ticked selection (an
+ * `ids` arm: X13 — the column refuses one, so this is the belt), a confirmation without a readable count or tier (or a
+ * listed one without its key), a stored cursor the walk refuses — pauses the campaign `audience_unreadable`: never read as
+ * "start again" (a restart re-sends) and never as "done". A read that FAILS (the database) throws instead, with nothing
+ * written: the next step tries again.
  *
  * ── THE BACKSTOP (decision 6) ─────────────────────────────────────────────────────────────────────────────────────
- * `ENQUEUE_BACKSTOP` rows end the enqueue whatever was confirmed — never silently: its audit row says `backstop: true`, with
- * `confirmed` beside `rows`, so the people left are on the record.
+ * `ENQUEUE_BACKSTOP` rows end the enqueue whatever was confirmed — never silently: when they left people out, its audit row
+ * says `backstop: true`, with `confirmed` beside `rows`.
  *
  * ── AUDIT (E24: one row per event — SYSTEM, actor null) ─────────────────────────────────────────────────────────────
- * `marketing.campaign_enqueued` once, when the list is finished: `{ rows, confirmed, duplicates, unusable, overflow,
- * backstop, walkComplete }` — `rows` is the whole list (a groupBy) and `confirmed` the frozen count; `duplicates`,
- * `unusable` and `overflow` are the finishing step's own (no counter is kept, OD26 — every step's figures are in its
- * result). `marketing.campaign_paused` `{ reason }` when this step pauses the campaign. ⛔ No phone number in either row,
- * nor in any result, nor in any error this throws.
+ * `marketing.campaign_enqueued` once, when the list is finished: `{ rows, confirmed, backstop, walkComplete, lastStep:
+ * { unusable, duplicates, overflow } }`. `rows` is the whole list (a groupBy) and `confirmed` the frozen count; `lastStep`
+ * holds the FINISHING step's own figures, never list totals (no counter is kept, OD26, and no row is written per chunk,
+ * E24 — every step's figures are in its result); its `overflow` is null — not counted — when the walk had not ended (the
+ * people past the cap were never walked). `backstop` is true only when the backstop left people out.
+ * `marketing.campaign_paused` `{ reason }` when this step pauses the campaign. ⛔ No phone number in either row, nor in any
+ * result, nor in any error this throws.
  *
  * ── WHO CALLS IT ──────────────────────────────────────────────────────────────────────────────────────────────────
- * ⛔ NOTHING YET. U47b's Start (`campaign-control.ts`, its step dispatcher) is the first caller, driven by the live page
- * (E22). Until then NO src file imports this module or names `enqueueStep` — `test:marketing-engine` E13 holds every importer
- * to its `ENQUEUE_CALLERS` (empty; U47b declares its file there in its own commit), so no graph, a client's included,
- * reaches it. It is SERVER-ONLY: never import it into a client component (a type-only import is erased, and allowed).
- * ⚠️ RESIDUAL: two steps of ONE campaign running AT ONCE (two drivers, or a deploy's overlap) are safe for the rows — a
- * person already on the list is skipped — but near the cap each counts the room before the other's write lands, so
- * together they could pass the cap by at most that room. U47b runs one step of a campaign at a time (E22), and §5 rule 8
- * pauses every campaign before a push.
+ * ⛔ NOTHING YET. U47b's Start (`campaign-control.ts`, its step dispatcher `campaignStep`) is the first caller, driven by the
+ * live page (E22). Until then NO src file imports this module or names `enqueueStep` — `test:marketing-engine` E13 holds
+ * every importer to its `ENQUEUE_CALLERS` (empty; U47b declares its file there in its own commit), so no graph, a client's
+ * included, reaches it. It is SERVER-ONLY: never import it into a client component (a type-only import is erased, and
+ * allowed).
+ * ⚠️ RESIDUALS.
+ *   · Two steps of ONE campaign at once. `campaignStep` single-flights PREPARING steps per campaign IN-PROCESS (ENGINE-SPEC
+ *     §4.15 decision 1, as amended by U42's review — E10's globalThis gate widened); across processes (a deploy's overlap —
+ *     §5 rule 8 pauses every campaign before a push) two steps could each write inside their own room, and the step above
+ *     fails closed instead of running a list longer than was confirmed. Should an officer's Pause land first, the campaign
+ *     keeps the officer's reason — so `resumeRefusal` refuses by the COUNT itself, whatever the reason (§4.15 decision 1,
+ *     as amended).
+ *   · An erasure racing a step. A step reads a person, an erasure unlinks them, then the step writes a PENDING row linking
+ *     the erased account. The gate refuses that person at send (the erased account and its tombstoned number), and erasure's
+ *     re-run unlinks the row (`unlinkUser`, U16a — `test:campaign-privacy` holds the straggler).
  *
  * Guard: `npm run test:marketing-engine` §E · Red: `npm run red:marketing-engine` (in memory).
  */
@@ -105,13 +117,14 @@ export const CAMPAIGN_PAUSED_ACTION = "marketing.campaign_paused";
 /* ══ THE SHAPES ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** Why this step paused a campaign — `campaign-status.ts`' `STOP_REASON_SENTENCE` holds each key's words (§3.4). */
-export type EnqueuePauseReason = "audience_unreadable" | "audience_moved";
+export type EnqueuePauseReason = "audience_unreadable" | "audience_moved" | "list_over_confirmed" | "list_over_confirmed_sending";
 
 /**
  * What one step did. `wrote` — a chunk written and the cursor moved on (`next`); `done` — the list is finished and the
- * campaign RUNNING (`total`: every row on it; `unusable` and `overflow`: this step's own); `paused` — this step paused the
- * campaign; `not_preparing` — the campaign is not (or no longer) PREPARING: nothing was written by this answer's step,
- * except a chunk a Pause or a Stop overtook between its write and its cursor.
+ * campaign RUNNING (`total`: every row on it; `unusable` and `overflow`: this step's own — the people it walked past the
+ * cap, 0 when it walked none); `paused` — this step paused the campaign; `not_preparing` — the campaign is not (or no
+ * longer) PREPARING: nothing was written by this answer's step, except a chunk a Pause or a Stop overtook between its write
+ * and its cursor.
  */
 export type EnqueueStepResult =
   | { kind: "wrote"; inserted: number; duplicates: number; unusable: number; next: string }
@@ -122,7 +135,17 @@ export type EnqueueStepResult =
 /** The audit door as this step uses it. */
 export type AuditFn = (entry: Parameters<typeof audit>[0]) => unknown;
 
-/** Every read and write one step makes — swappable for the suite's in-process plants; production never passes them. */
+/** What a confirmation froze, as this step reads it back. */
+export type FrozenAudience = {
+  filter: ContactAudienceFilter;
+  /** `audienceCount` — the cap. */
+  count: number;
+  tier: ConfirmTier;
+  /** The members key on the enumerate tier; null on the typed tier. */
+  watermark: string | null;
+};
+
+/** Every read, rule and write one step makes — swappable for the suite's in-process plants; production never passes them. */
 export type EnqueueDeps = {
   /** The campaign door's two members this needs: the read, and the ONE conditional write (cursor, finish, pause). */
   campaigns: {
@@ -134,6 +157,8 @@ export type EnqueueDeps = {
     createMany: (seeds: SmsCampaignRecipientSeed[]) => Promise<SmsCampaignRecipientInsert>;
     countByStatus: (campaignId: string) => Promise<SmsCampaignRecipientCount[]>;
   };
+  /** The confirmation read back (`frozenAudienceOf`). */
+  frozen: (row: Pick<StoredSmsCampaign, "audienceFilter" | "audienceCount" | "confirmTier" | "audienceWatermark">) => FrozenAudience | null;
   /** THE ONE WALK (`walkCampaignAudience`). */
   walk: typeof walkCampaignAudience;
   /** The keyed members key, for a listed confirmation (`membersKeyOf`). */
@@ -146,29 +171,22 @@ export type EnqueueDeps = {
 
 /* ══ THE RULES — pure ═════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** What a confirmation froze, as this step reads it back. */
-export type FrozenAudience = {
-  filter: ContactAudienceFilter;
-  /** `audienceCount` — the cap. */
-  count: number;
-  tier: ConfirmTier;
-  /** The members key on the enumerate tier; null on the typed tier. */
-  watermark: string | null;
-};
-
 const isMembersKey = (v: unknown): v is string =>
   typeof v === "string" && v.length === MEMBERS_KEY_HEX_CHARS && /^[0-9a-f]+$/.test(v);
 
 /**
  * ⛔ THE CONFIRMATION, READ BACK — or null when ANY part of it cannot be read: the filter at the campaign's door
- * (`readCampaignAudience`), a whole positive count, a tier this code knows, and on the enumerate tier at most
- * `CONFIRM_ENUMERATE_MAX` people and a well-formed members key. Null pauses the campaign `audience_unreadable`.
+ * (`readCampaignAudience`) and never a ticked selection (an `ids` arm — X13: a campaign's audience is a filter, never a list
+ * of people; the column refuses one, so this is the belt), a whole positive count, a tier this code knows, and on the
+ * enumerate tier at most `CONFIRM_ENUMERATE_MAX` people and a well-formed members key. Null pauses the campaign
+ * `audience_unreadable`.
  */
 export function frozenAudienceOf(
   row: Pick<StoredSmsCampaign, "audienceFilter" | "audienceCount" | "confirmTier" | "audienceWatermark">,
 ): FrozenAudience | null {
   const read = readCampaignAudience(row.audienceFilter);
   if (!read.ok) return null;
+  if (read.filter.ids !== null) return null;
   const count = row.audienceCount;
   if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 1) return null;
   const tier = confirmTierFromColumn(row.confirmTier);
@@ -228,14 +246,14 @@ export function listedPeopleHold(
 }
 
 /**
- * The walk's OWN refusals of what is stored — a cursor it did not write, a cursor naming an arm the filter lacks, a filter
- * whose arms it cannot build (`audience.ts`: each refusal names its function first). ⭐ Those pause `audience_unreadable`;
- * any other throw (the database) is a failed read and is thrown on.
+ * The walk's OWN refusal of what is stored: a cursor it did not write, or one naming an arm the filter lacks (`audience.ts`
+ * names the walk first in each). ⭐ That pauses `audience_unreadable`; any other throw (the database) is a failed read and is
+ * thrown on. (The arms' and the book reader's own refusals cannot be reached from a stored filter: the campaign's door
+ * refuses a population problem, and `frozenAudienceOf` refuses an `ids` arm.)
  */
-const WALK_REFUSALS: readonly string[] = ["walkCampaignAudience:", "audienceArms:", "contactAudience:"];
+const WALK_REFUSAL = "walkCampaignAudience:";
 export function walkRefusedStored(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : "";
-  return WALK_REFUSALS.some((p) => message.startsWith(p));
+  return err instanceof Error && err.message.startsWith(WALK_REFUSAL);
 }
 
 /* ══ THE DOORS ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -250,6 +268,7 @@ export const ENQUEUE_DEPS: Readonly<EnqueueDeps> = Object.freeze({
     createMany: async (seeds: SmsCampaignRecipientSeed[]) => db.smsCampaignRecipient.createMany(seeds),
     countByStatus: async (campaignId: string) => db.smsCampaignRecipient.countByStatus(campaignId),
   }),
+  frozen: frozenAudienceOf,
   walk: walkCampaignAudience,
   membersKeyOf,
   audit,
@@ -273,17 +292,24 @@ async function record(deps: EnqueueDeps, entry: Parameters<typeof audit>[0]): Pr
   }
 }
 
-/** A conditional write that found the campaign gone from PREPARING: say where it is now. */
+/** A conditional write that found the campaign gone from where it expected: say where it is now. */
 async function notPreparing(campaignId: string, deps: EnqueueDeps): Promise<EnqueueStepResult> {
   const now = await deps.campaigns.find(campaignId);
   if (now === null) throw new Error("enqueueStep: the campaign is no longer there — nothing more was written");
   return { kind: "not_preparing", status: now.status };
 }
 
-/** ⛔ PAUSE — one conditional move, PREPARING → PAUSED, with the reason; recorded only when this move landed. */
-async function pauseFor(row: StoredSmsCampaign, reason: EnqueuePauseReason, at: string, deps: EnqueueDeps): Promise<EnqueueStepResult> {
+/** ⛔ PAUSE — one conditional move from `from` (PREPARING unless said) to PAUSED, with the reason; recorded only when this
+ *  move landed. */
+async function pauseFor(
+  row: StoredSmsCampaign,
+  reason: EnqueuePauseReason,
+  at: string,
+  deps: EnqueueDeps,
+  from: readonly SmsCampaignStatus[] = ["PREPARING"],
+): Promise<EnqueueStepResult> {
   const paused = await deps.campaigns.transition(row.id, {
-    from: ["PREPARING"], to: "PAUSED", patch: { pausedAt: at, stopReason: reason }, draftRevision: null, at,
+    from, to: "PAUSED", patch: { pausedAt: at, stopReason: reason }, draftRevision: null, at,
   });
   if (paused === null) return notPreparing(row.id, deps);
   await record(deps, {
@@ -293,15 +319,25 @@ async function pauseFor(row: StoredSmsCampaign, reason: EnqueuePauseReason, at: 
   return { kind: "paused", reason };
 }
 
+/**
+ * ⛔ FAIL CLOSED (E19, E15) — the list is LONGER than was confirmed: it never runs. Paused before it ever moved to RUNNING
+ * (`list_over_confirmed`: nothing was sent); or, when another step had already moved it to RUNNING, paused there
+ * (`list_over_confirmed_sending`), so nobody more is messaged.
+ */
+async function pauseOverConfirmed(row: StoredSmsCampaign, at: string, deps: EnqueueDeps): Promise<EnqueueStepResult> {
+  const before = await pauseFor(row, "list_over_confirmed", at, deps);
+  if (before.kind !== "not_preparing" || before.status !== "RUNNING") return before;
+  return pauseFor(row, "list_over_confirmed_sending", at, deps, ["RUNNING"]);
+}
+
 type Finish = {
   /** Every row on the campaign before the move — counted, never added up. */
   rows: number;
   confirmed: number;
-  duplicates: number;
-  unusable: number;
-  overflow: number;
-  backstop: boolean;
+  /** Did the walk end in this step (its page said `done`)? */
   walkComplete: boolean;
+  /** The finishing step's own figures. */
+  lastStep: { unusable: number; duplicates: number; overflow: number };
 };
 
 /** ⭐ THE LIST IS FINISHED — one conditional move, PREPARING → RUNNING (`enqueuedAt`, the cursor `done`), then its one row. */
@@ -310,14 +346,20 @@ async function finish(row: StoredSmsCampaign, f: Finish, at: string, deps: Enque
     from: ["PREPARING"], to: "RUNNING", patch: { enqueuedAt: at, enqueueCursor: "done" }, draftRevision: null, at,
   });
   if (moved === null) return notPreparing(row.id, deps);
+  // The backstop is on the record only when it left people out: the walk not finished, or people walked past it.
+  const backstop = f.confirmed > ENQUEUE_BACKSTOP && f.rows >= ENQUEUE_BACKSTOP && (!f.walkComplete || f.lastStep.overflow > 0);
   await record(deps, {
     category: "SYSTEM", action: CAMPAIGN_ENQUEUED_ACTION, actorId: null, targetType: "SmsCampaign", targetId: row.id,
     payload: {
-      rows: f.rows, confirmed: f.confirmed, duplicates: f.duplicates, unusable: f.unusable, overflow: f.overflow,
-      backstop: f.backstop, walkComplete: f.walkComplete,
+      rows: f.rows, confirmed: f.confirmed, backstop, walkComplete: f.walkComplete,
+      lastStep: {
+        unusable: f.lastStep.unusable, duplicates: f.lastStep.duplicates,
+        // ⛔ Not counted — never a 0 — when the people past the cap were never walked.
+        overflow: f.walkComplete ? f.lastStep.overflow : null,
+      },
     },
   });
-  return { kind: "done", total: f.rows, unusable: f.unusable, overflow: f.overflow };
+  return { kind: "done", total: f.rows, unusable: f.lastStep.unusable, overflow: f.lastStep.overflow };
 }
 
 type WalkRead = { ok: true; page: CampaignAudiencePage } | { ok: false };
@@ -357,23 +399,23 @@ async function listedStep(row: StoredSmsCampaign, frozen: FrozenAudience, at: st
   if (!listedPeopleHold(row, frozen, people, deps.membersKeyOf)) return pauseFor(row, "audience_moved", at, deps);
   const { seeds, unusable } = seedsOf(people, row.id, at, deps.newId);
   const wrote = seeds.length === 0 ? { inserted: 0, duplicates: 0 } : await deps.recipients.createMany(seeds);
+  const rows = await rowsOn(row.id, deps);
+  if (rows > frozen.count) return pauseOverConfirmed(row, at, deps);
   return finish(row, {
-    rows: await rowsOn(row.id, deps), confirmed: frozen.count, duplicates: wrote.duplicates, unusable,
-    overflow: walked.length - people.length, backstop: false, walkComplete,
+    rows, confirmed: frozen.count, walkComplete,
+    lastStep: { unusable, duplicates: wrote.duplicates, overflow: walked.length - people.length },
   }, at, deps);
 }
 
 /** ⭐ A TYPED CONFIRMATION — one chunk from the cursor, written within the cap, then the cursor moved on (or finished). */
 async function typedStep(row: StoredSmsCampaign, frozen: FrozenAudience, at: string, deps: EnqueueDeps): Promise<EnqueueStepResult> {
   const limit = Math.min(frozen.count, ENQUEUE_BACKSTOP);
-  const backstopped = (onList: number): boolean => frozen.count > ENQUEUE_BACKSTOP && onList >= ENQUEUE_BACKSTOP;
   let rows = await rowsOn(row.id, deps);
+  if (rows > frozen.count) return pauseOverConfirmed(row, at, deps);
   if (rows >= limit) {
     // ⛔ The cap was met by an earlier step whose finish never landed: walk nothing — a page walked again here would be
     // people already on the list, read as people left out.
-    return finish(row, {
-      rows, confirmed: frozen.count, duplicates: 0, unusable: 0, overflow: 0, backstop: backstopped(rows), walkComplete: false,
-    }, at, deps);
+    return finish(row, { rows, confirmed: frozen.count, walkComplete: false, lastStep: { unusable: 0, duplicates: 0, overflow: 0 } }, at, deps);
   }
   const cursor = row.enqueueCursor;
   const read = await walkPage(deps, frozen.filter, cursor);
@@ -391,10 +433,9 @@ async function typedStep(row: StoredSmsCampaign, frozen: FrozenAudience, at: str
       duplicates = wrote.duplicates;
     }
     tried = seeds.length;
-    rows += inserted;
   } else {
-    // ⭐ THE CAP'S PAGE — a room at a time, the room counted afresh before each write: never more seeds in one write than
-    // the room left, and a person already on the list costs none of it.
+    // ⭐ THE CAP'S PAGE — a room at a time: never more seeds in one write than the room left, the room moved down by each
+    // write's own `inserted`, so a person already on the list costs none of it.
     let room = limit - rows;
     while (room > 0 && tried < seeds.length) {
       const take = seeds.slice(tried, tried + room);
@@ -402,16 +443,18 @@ async function typedStep(row: StoredSmsCampaign, frozen: FrozenAudience, at: str
       inserted += wrote.inserted;
       duplicates += wrote.duplicates;
       tried += take.length;
-      rows = await rowsOn(row.id, deps);
-      room = limit - rows;
+      room -= wrote.inserted;
     }
+  }
+  if (tried > 0) {
+    // ⛔ FAIL CLOSED — the list counted once more after this step's writes: longer than confirmed never runs.
+    rows = await rowsOn(row.id, deps);
+    if (rows > frozen.count) return pauseOverConfirmed(row, at, deps);
   }
   const overflow = seeds.length - tried;
   if (page.next === "done" || rows >= limit) {
-    const total = await rowsOn(row.id, deps);
     return finish(row, {
-      rows: total, confirmed: frozen.count, duplicates, unusable, overflow, backstop: backstopped(total),
-      walkComplete: page.next === "done",
+      rows, confirmed: frozen.count, walkComplete: page.next === "done", lastStep: { unusable, duplicates, overflow },
     }, at, deps);
   }
   if (page.next === cursor) throw new Error("enqueueStep: the walk did not move — refusing to loop");
@@ -425,8 +468,9 @@ async function typedStep(row: StoredSmsCampaign, frozen: FrozenAudience, at: str
 
 /**
  * ⭐ ONE ENQUEUE STEP for one campaign (the header). `not_preparing` writes nothing; a stored audience it cannot read pauses
- * the campaign `audience_unreadable`; a listed confirmation whose people changed pauses it `audience_moved`; otherwise one
- * chunk is written within the cap and the cursor moved on — or the list is finished and the campaign RUNNING.
+ * the campaign `audience_unreadable`; a listed confirmation whose people changed pauses it `audience_moved`; a list longer
+ * than was confirmed pauses it `list_over_confirmed` (or `list_over_confirmed_sending`); otherwise one chunk is written
+ * within the cap and the cursor moved on — or the list is finished and the campaign RUNNING.
  * ⛔ A read or a write that FAILS throws, and the next step starts again from the stored cursor.
  */
 export async function enqueueStep(campaignId: string, deps: EnqueueDeps = ENQUEUE_DEPS): Promise<EnqueueStepResult> {
@@ -434,7 +478,7 @@ export async function enqueueStep(campaignId: string, deps: EnqueueDeps = ENQUEU
   if (row === null) throw new Error("enqueueStep: no such campaign — nothing was written");
   if (row.status !== "PREPARING") return { kind: "not_preparing", status: row.status };
   const at = deps.now().toISOString();
-  const frozen = frozenAudienceOf(row);
+  const frozen = deps.frozen(row);
   if (frozen === null) return pauseFor(row, "audience_unreadable", at, deps);
   return frozen.tier === "enumerate" ? listedStep(row, frozen, at, deps) : typedStep(row, frozen, at, deps);
 }

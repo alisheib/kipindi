@@ -388,6 +388,8 @@ back, except U47a's future Retry (an operator's act, re-gated).
 | `held_rows` | "Paused — some people could not be checked or prepared. Resume to try them again, or Stop." | U43b |
 | `audience_unreadable` | "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy." | U42 |
 | `audience_moved` | "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy." | U42 |
+| `list_over_confirmed` | "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy." | U42 (✅ as built, its review's MINOR 1: the enqueue fails closed before the list runs) |
+| `list_over_confirmed_sending` | "Paused — more people are on this campaign's list than were confirmed, found after sending had started. Nobody more is messaged. Stop it and confirm a new copy." | U42 (✅ as built: the same, found after another step had moved the campaign to RUNNING) |
 | existing | `BALANCE_FLOOR` · `NOT_CONFIGURED` · `PROVIDER_UNRECOGNISED` · `gate_unanswered` (kept) | U36 |
 
 ---
@@ -1221,6 +1223,14 @@ the book is exhausted and the players are next, then an empty page moves to the 
    writes them with `createMany` (duplicates skipped on the unique key — restart-safe), then advances the cursor with ONE
    conditional `transition(from: ["PREPARING"], to: null, patch: { enqueueCursor })`. A Pause landing between the write
    and the cursor leaves the cursor behind; the next step re-walks the page and writes nothing new.
+   ✅ **AS BUILT (U42, S14 2026-10-07 — and its review's MINOR 1, NIT 1).** The cap is spent by rows ADDED (decision 4 as
+   built): a chunk that could cross it is written a room at a time — the room counted ONCE before the chunk, then moved
+   down by each write's own `inserted` (exact for one writer), at most that many seeds per write — so a person already on
+   the list (a page walked again) costs no room. After a step's writes the list is counted ONCE more, and ⛔ a list LONGER
+   than the confirmed count never moves to RUNNING: the campaign is paused `list_over_confirmed` (nothing was sent), or —
+   when another step had already moved it to RUNNING — `list_over_confirmed_sending` (§3.4). A step that finds the list
+   already longer than confirmed pauses the same way before it walks; one that finds the cap already MET (an earlier
+   step's finish never landed) finishes without walking.
 2. **A number that does not parse is not seeded** (it would refuse the whole batch): counted `unusable` and reported in
    the enqueue audit row. Keys come from `parseTzNumber(row.msisdn).msisdn` (the gate's key).
 3. **The seed:** `id = "rcp_" + ledgerStamp().id` (E21), `contactId` (book rows), `userId` (player rows, and a book row's
@@ -1232,10 +1242,21 @@ the book is exhausted and the players are next, then an empty page moves to the 
    `audienceWatermark` (a change in the moments after Start's check), it writes nothing and pauses the campaign
    `audience_moved` (sentence: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it
    and confirm a new copy.").
+   ✅ **AS BUILT (U42).** Read literally, "the rows already on the campaign + this chunk" counts a page walked again after an
+   interruption twice: the enqueue ends early and leaves out everyone after that page (`test:marketing-engine` E1b; plant
+   R-E3b is the literal reading). The cap counts rows ADDED instead (decision 1 as built). The ENUMERATE check runs in ONE
+   step from the walk's START — a listed audience can span the book's page and the players' — over the walk's RAW keys of
+   the people about to be written (the fence's input, so a number that cannot be messaged is still one of the people the key
+   names — E10b), compared through `startAudienceVerdict`; a newcomer AFTER the listed people is `overflow`, a swap, a
+   departure or a newcomer before one of them pauses `audience_moved`.
 5. **Finish:** when the walk says `done` or the cap is reached → `transition(PREPARING → RUNNING, { enqueuedAt, enqueueCursor:
    "done" })` + audit `marketing.campaign_enqueued`.
 6. **Backstop:** 200,000 rows written ends the enqueue with the rest reported (never silently truncated).
 7. **An unreadable stored audience** pauses the campaign `audience_unreadable` (never "start again", never "done").
+   ✅ **AS BUILT (U42):** a filter the campaign's door refuses; a filter holding a ticked selection (an `ids` arm — X13; the
+   column refuses one, so this is the belt, and its review's BLOCKER keeps the walk's own refusal the only one read: a
+   cursor it did not write, or one naming an arm the filter lacks); a confirmation whose count, tier or (listed) key cannot
+   be read. A read that FAILS throws, pausing nothing — the next step tries again.
 8. OD28's first check is NOT here — it runs at Start (U49a, E19); this step is the continuous cap.
 
 **Files.** `src/lib/server/marketing/enqueue.ts` (create), `scripts/marketing-engine.test.mts` (create — §E; U43b and U49a
@@ -1260,8 +1281,18 @@ export type EnqueueDeps = {
 export async function enqueueStep(campaignId: string, deps?: EnqueueDeps): Promise<EnqueueStepResult>;
 ```
 
+✅ **As built (U42):** `paused.reason` also takes `list_over_confirmed` and `list_over_confirmed_sending` (decision 1 as
+built); `EnqueueDeps` also hands in `frozen` (`frozenAudienceOf`, the confirmation read back — so the X13 belt has its plant);
+`done.overflow` is the finishing step's own count of people it walked past the cap (0 when it walked none).
+
 **Audit rows.** `marketing.campaign_enqueued` (SYSTEM, actor null; `{ rows, duplicates, unusable, overflow, backstop: bool }`)
 · `marketing.campaign_paused` (SYSTEM; `{ reason }`) on an unreadable audience.
+✅ **As built (U42's review, MINOR 2):** `marketing.campaign_enqueued` is `{ rows, confirmed, backstop, walkComplete, lastStep:
+{ unusable, duplicates, overflow } }` — `rows` the whole list (a groupBy) and `confirmed` the frozen count; `lastStep` the
+FINISHING step's own figures, never list totals (no counter, OD26; no row per chunk, E24 — every step's figures are in its
+result), its `overflow` null — not counted — when the walk had not ended; `backstop` true only when the backstop left people
+out (the walk not ended, or people walked past it). `marketing.campaign_paused` `{ reason }` for `audience_unreadable`,
+`audience_moved`, `list_over_confirmed` and `list_over_confirmed_sending`.
 
 **Tests** (`test:marketing-engine` §E).
 - E1 ⭐ restart mid-walk: run steps until 3 of 5 chunks, simulate a crash between `createMany` and the cursor (a transition
@@ -1278,6 +1309,11 @@ export async function enqueueStep(campaignId: string, deps?: EnqueueDeps): Promi
 **Plants:** R-E1 the cursor advanced before `createMany` · R-E1b `skipDuplicates` removed (via an injected recipient dep
 that inserts duplicates — the memory twin's index plant lives in dal-parity) · R-E3 the cap removed · R-E4 a bad key seeded
 (the batch refused whole) · R-E5 a token minted per seed.
+✅ **As built (U42 and its review):** E0–E14 — beyond the list above, E1b a restart near the cap, E10 a listed confirmation
+(changed people pause `audience_moved`, nothing written) and E10b one holding a 064 number, E11 the backstop, E12 no phone
+number anywhere, E13 the wiring (no src file imports the module but `ENQUEUE_CALLERS`, empty until U47b; no book-reader word
+— `test:contacts-audience` 1.4), E14 two steps of one campaign at once (fail closed) — with 23 in-process plants.
+`test:campaign-gates` 6.8 (a declaration-order check) is withdrawn for E10 (b).
 **Schema / deploy:** none (the seed door and `transition` exist); an ordinary push, but only AFTER U16a is live (M9).
 **Drive:** none of its own (no screen) — U47b's drive runs the enqueue through Start.
 **Risks.** A 150k enqueue is ~150 steps of 1–3 s — acceptable with the page driving; U45 tunes it.
@@ -1748,6 +1784,16 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
    "officer_stopped" })`), `copyCampaign` (a new DRAFT through `saveCampaignDraft` with the stored message and
    `campaignAudienceParams(storedFilter)`; refused when the filter cannot travel), `campaignStep` (§3.3: enqueueStep /
    runCampaignSlice / reap).
+   ⚠️ **AMENDED (U42's review, S14 2026-10-07 — MINOR 1).** `campaignStep` SINGLE-FLIGHTS PREPARING steps PER CAMPAIGN,
+   in-process — E10's globalThis gate widened to the enqueue step — so two drivers (two officers' pages, §4.15 Risks) never
+   run two enqueue steps of one campaign at once: two steps with stale counts could each write inside their own room on the
+   cap's page. Across processes (a deploy's overlap) the enqueue itself FAILS CLOSED (§4.9 decision 1 as built: a list longer
+   than confirmed is paused `list_over_confirmed`, or `list_over_confirmed_sending` once RUNNING). `enqueue.ts` names this
+   amendment as its residual's answer. And `resumeRefusal` REFUSES (1) a campaign whose list is LONGER than its confirmed
+   count — one groupBy, WHATEVER its stop reason, since an officer's Pause can land before the enqueue's own — and (2) one
+   the enqueue paused for `audience_unreadable`, `audience_moved`, `list_over_confirmed` or `list_over_confirmed_sending`:
+   each sentence says Stop and confirm a new copy, and a Resume of a list that already ran goes back to RUNNING and would
+   send to the extra rows.
 2. **The view-model** (`campaign-live.ts`) — ONE function, used by the page's first render AND returned by every step and
    poll, so the browser never computes a figure. Role-shaped: E23's floor; money only for `campaignMoneyVisible`.
 3. **The driver** (`live-driver.tsx`, client): while the status is PREPARING or RUNNING and the viewer may act, it calls
