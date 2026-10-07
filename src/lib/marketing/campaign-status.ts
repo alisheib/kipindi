@@ -238,8 +238,12 @@ const MARKETING_FLOOR_SENTENCE = "Paused — the SMS credit reached what is kept
  * longer be read — never read as "start again" or "done"), `audience_moved` (a listed confirmation's people changed after
  * Start; nothing was written), and — failing closed, U42's review — `list_over_confirmed` (the list came out longer than
  * the confirmed count before it ever ran; nothing was sent) and `list_over_confirmed_sending` (the same, found after another
- * step had moved it to sending). Every one of the four says Stop and confirm a new copy, never Resume. ⚠️ U41, U43 and U49
- * each add the keys they write — an unknown key is still shown, labelled as the engine's own words.
+ * step had moved it to sending). None says Resume. The three paused before anything ran (the enqueue pauses only a
+ * PREPARING campaign) say Stop and confirm a new copy — `audience_unreadable` also the way out when the copy is refused, as
+ * a copy carries the same unreadable filter. ⛔ `list_over_confirmed_sending` prescribes NO copy (U42's re-review): some
+ * people may already have been messaged, a copy has the same filter and nothing de-duplicates across campaigns, so a copy
+ * would message them again — it says that, and Stop. ⚠️ U41, U43 and U49 each add the keys they write — an unknown key is
+ * still shown, labelled as the engine's own words.
  * ⭐ U49a (ENGINE-SPEC §3.4, §4.12 decision 5): the credit kept for login and withdrawal codes — `MARKETING_FLOOR` is
  * `sendBatch`'s own refusal (its last line), `marketing_floor` and `credit_unreadable` are the slice's own checks before it
  * claims anyone (U43b writes all three; one sentence for the floor, whichever line caught it).
@@ -252,11 +256,11 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   MARKETING_FLOOR: MARKETING_FLOOR_SENTENCE,
   marketing_floor: MARKETING_FLOOR_SENTENCE,
   credit_unreadable: "Paused — the SMS credit couldn't be read, so sending stopped to protect login codes. Resume when Admin → System shows the credit again.",
-  audience_unreadable: "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy.",
+  audience_unreadable: "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused.",
   audience_moved: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy.",
   list_over_confirmed: "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy.",
   list_over_confirmed_sending:
-    "Paused — more people are on this campaign's list than were confirmed, found after sending had started. Nobody more is messaged. Stop it and confirm a new copy.",
+    "Paused — more people are on this campaign's list than were confirmed, found after sending had started, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop this campaign.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */

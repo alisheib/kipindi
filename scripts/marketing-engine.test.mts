@@ -158,7 +158,7 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
     e10b: "E10b · ⭐ A LISTED AUDIENCE HOLDING A NUMBER THAT CANNOT BE MESSAGED — three people, one a 064 number, listed by the real fence: the key is re-derived over the walk's RAW keys (the fence's input), so the three hold, the two that can be messaged are written, the 064 number is counted unusable (1, in the result and the audit row's lastStep) and never seeded, and the campaign RUNNING",
     e11: "E11 · the backstop — on the record only when it left people out: confirmed 250,000 with 199,995 rows already on the campaign, 5 more written (the walk's first 5), the rest of the page overflow 3, and the list finished at 200,000 rows with backstop true; with 199,992 rows already, the walk's last 8 land EXACTLY on 200,000 and nobody is left — backstop false; confirmed 7 over the same people finishes backstop false",
     e12: "E12 · ⛔ no phone number — no 255… key and no +255… number in any step result, audit payload or error of the run",
-    e14: "E14 · ⭐ TWO STEPS OF ONE CAMPAIGN AT ONCE (U42's review) — 5 confirmed of the 8 walked, two steps on the one page that meets the cap: whichever writes last finds the list longer than confirmed and pauses it, never RUNNING with more rows than confirmed — interleaved as they come, the campaign ends PAUSED with a list_over_confirmed reason and ONE paused row; when the second write lands after the first step moved it to RUNNING, it is paused list_over_confirmed_sending; when both write before either finishes, list_over_confirmed and no enqueued row (the other step answers not_preparing); the same two steps one after the other finish RUNNING at exactly 5 (the control); and stopReasonLabel says both new sentences",
+    e14: "E14 · ⭐ TWO STEPS OF ONE CAMPAIGN AT ONCE (U42's review and re-review) — 5 confirmed of eight, two steps on the one page that meets the cap: (a) over the SAME view nobody is written past the cap — the second step's write finds only people already on the list (5 inserted, the same 5 met as duplicates — the overlap itself asserted), so it counts the list again and writes no more: RUNNING at exactly 5, no pause row, ONE enqueued row; over a CHANGED view (five people join between the two reads, ids sorting first) whichever writes last finds the list longer than confirmed and pauses it, never RUNNING — (b) its write landing after the first step moved the campaign to RUNNING, paused list_over_confirmed_sending; (c) both writing before either finishes, list_over_confirmed with no enqueued row (the other step answers not_preparing); (d) the same two steps one after the other finish RUNNING at exactly 5 (the control); and stopReasonLabel says both sentences, the sending one prescribing no copy",
     e13: "E13 · the wiring — ENQUEUE_DEPS is frozen and hands in frozenAudienceOf, walkCampaignAudience, membersKeyOf and audit, and its ids are rcp_ and 32 lowercase hex; enqueue.ts holds no word contactAudience or contactTagCounts (test:contacts-audience 1.4 counts such a file a reader of the book); enqueue.ts reaches the store only through smsCampaign.find, smsCampaign.transition, smsCampaignRecipient.createMany and smsCampaignRecipient.countByStatus; no src file but enqueue.ts names enqueueStep or VALUE-imports the module (any specifier that resolves to it; a type-only import is erased and allowed — the detector's own control) beyond ENQUEUE_CALLERS (none until U47b's Start), so no graph — a client's included — reaches it; test:marketing-engine and red:marketing-engine resolve to this file, and predeploy runs the suite once, right after test:campaign-gates",
   } as const;
 
@@ -231,6 +231,8 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
 
   /* ── ONE RUN'S WORLD: its campaigns, its results, its errors ── */
   let RUN = 0;
+  /** E14's fresh numbers — every variant of every run its own people. */
+  let E14_SEQ = 0;
   type World = { run: number; ids: Set<string>; results: unknown[]; errors: string[] };
 
   async function draftOf(w: World, slot: string, audienceFilter: string): Promise<string> {
@@ -320,11 +322,13 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
   const RAW_KEY = new RegExp("(^|[^0-9])255[67][0-9]{8}([^0-9]|$)");
   const PLUS_KEY = new RegExp("[+]255[0-9]{9}");
   const RCP_ID = new RegExp("^rcp_[0-9a-f]{32}$");
-  const UNREADABLE_SENTENCE = "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy.";
+  const UNREADABLE_SENTENCE =
+    "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused.";
   const MOVED_SENTENCE = "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy.";
   const OVER_SENTENCE = "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy.";
+  /** ⛔ Prescribes NO copy (U42's re-review): some people may already have been messaged, and a copy would message them again. */
   const OVER_SENDING_SENTENCE =
-    "Paused — more people are on this campaign's list than were confirmed, found after sending had started. Nobody more is messaged. Stop it and confirm a new copy.";
+    "Paused — more people are on this campaign's list than were confirmed, found after sending had started, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop this campaign.";
   /** The enqueued row's `lastStep` — the finishing step's own figures. */
   const lastStepOf = (p: Record<string, unknown>): Record<string, unknown> =>
     (p.lastStep !== null && typeof p.lastStep === "object" ? p.lastStep : {}) as Record<string, unknown>;
@@ -898,65 +902,95 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
         `left out: [${end.results.map(said).join(", ")}] · audit ${json(p)} · real rows ${rowsOf(id).length} · exactly: ${said(finX)}, backstop ${String(pX.backstop)} · the control's backstop ${String(p2.backstop)}`];
     });
 
-    /* E14 · ⭐ two steps of one campaign at once — whichever writes last finds the list longer than confirmed */
+    /* E14 · ⭐ two steps of one campaign at once — over the same view nobody past the cap; over a changed one, fail closed */
     await claim(L.e14, async () => {
       const base = ENQ.ENQUEUE_DEPS;
       const CONFIRMED = 5;
-      /** 5 confirmed over the 8 of e3: its one page meets the cap. */
-      const atCapPage = (slot: string): Promise<string> => typedCampaign(w, slot, tagF("e3"), CONFIRMED);
-      const pausedRows = async (cid: string): Promise<number> => (await auditRows(ENQ.CAMPAIGN_PAUSED_ACTION, cid)).length;
-      const over = (cid: string): boolean => rowsOf(cid).length > CONFIRMED;
-      const runningOver = (cid: string): boolean => campaignOf(cid)?.status === "RUNNING" && over(cid);
-      // (a) two steps at once, interleaved as they come — every door is awaited
-      const a = await atCapPage("e14a");
-      const both = await Promise.all([stepOf(impl, w, a), stepOf(impl, w, a)]);
-      const ca = campaignOf(a);
-      const okA = over(a) && ca?.status === "PAUSED" && (ca.stopReason === "list_over_confirmed" || ca.stopReason === "list_over_confirmed_sending")
-        && (await pausedRows(a)) === 1 && !runningOver(a);
-      // (b) the second write lands after the first step moved the campaign to RUNNING
-      const b = await atCapPage("e14b");
-      const go = deferred();
-      const pbA = stepOf(impl, w, b);
-      const pbB = stepOf(impl, w, b, {
-        recipients: { countByStatus: base.recipients.countByStatus, createMany: async (s) => { await within(go.promise); return base.recipients.createMany(s); } },
+      /** A variant's own audience: eight people (ids `…_1i`) and five who may JOIN it between two reads, with ids sorting
+       *  first (`…_0j`) — the changed view. Every number is fresh, so no run meets another's. */
+      const world = async (slot: string): Promise<{ id: string; join: () => Promise<void> }> => {
+        const tag = `e14${slot}-r${w.run}`;
+        for (let i = 0; i < 8; i++) await addContact(`mc_e14${slot}_r${w.run}_1${i}`, keyOf("71", 9_000_000 + ++E14_SEQ), [tag]);
+        const id = await typedCampaign(w, `e14${slot}`, tagF(tag), CONFIRMED);
+        const join = async (): Promise<void> => {
+          for (let j = 0; j < 5; j++) await addContact(`mc_e14${slot}_r${w.run}_0${j}`, keyOf("71", 9_000_000 + ++E14_SEQ), [tag]);
+        };
+        return { id, join };
+      };
+      /** ⛔ Every step promise is settled the moment it exists, so a step that rejects while another is awaited can never
+       *  surface as an unhandled rejection that ends a red run (U42's re-review). */
+      type Settled = { ok: true; v: EnqueueStepResult } | { ok: false; why: string };
+      const settled = (p: Promise<EnqueueStepResult>): Promise<Settled> =>
+        p.then((v): Settled => ({ ok: true, v }), (e): Settled => ({ ok: false, why: String((e as Error)?.message ?? e).slice(0, 80) }));
+      const told = (s: Settled): string => (s.ok ? said(s.v) : `threw (${s.why})`);
+      const gatedWalk = (gate: Gate): Partial<EnqueueDeps> => ({
+        walk: async (f, cur, l, wd) => { await within(gate.promise); return AUD.walkCampaignAudience(f, cur, l, wd); },
       });
+      const pausedRows = async (cid: string): Promise<number> => (await auditRows(ENQ.CAMPAIGN_PAUSED_ACTION, cid)).length;
+      const enqueuedRows = async (cid: string): Promise<number> => (await auditRows(ENQ.CAMPAIGN_ENQUEUED_ACTION, cid)).length;
+      // (a) the SAME view, two steps at once: the second's write finds only people already on the list, counts the list
+      //     again, and writes nobody more — RUNNING at exactly 5, no pause
+      const A = await world("a");
+      // Both steps' writes tallied: the overlap itself is asserted — five inserted by one, the same five met as
+      // duplicates by the other — so a change that stopped the two steps overlapping fails here instead of passing idly.
+      const writes = { inserted: 0, duplicates: 0 };
+      const tallied: Partial<EnqueueDeps> = {
+        recipients: {
+          createMany: async (s) => { const r = await base.recipients.createMany(s); writes.inserted += r.inserted; writes.duplicates += r.duplicates; return r; },
+          countByStatus: base.recipients.countByStatus,
+        },
+      };
+      const both = await Promise.all([settled(stepOf(impl, w, A.id, tallied)), settled(stepOf(impl, w, A.id, tallied))]);
+      const ca = campaignOf(A.id);
+      const okA = both.every((s) => s.ok) && ca?.status === "RUNNING" && rowsOf(A.id).length === CONFIRMED
+        && writes.inserted === CONFIRMED && writes.duplicates === CONFIRMED
+        && (await pausedRows(A.id)) === 0 && (await enqueuedRows(A.id)) === 1;
+      // (b) a CHANGED view: the second step counts before the first writes, five join, then it walks — and its write lands
+      //     after the first step moved the campaign to RUNNING
+      const B = await world("b");
+      const bWalks = deferred();
+      const pbA = settled(stepOf(impl, w, B.id));
+      const pbB = settled(stepOf(impl, w, B.id, gatedWalk(bWalks)));
       const rbA = await pbA;
-      go.resolve();
+      await B.join();
+      bWalks.resolve();
       const rbB = await pbB;
-      const cb = campaignOf(b);
-      const okB = rbA.kind === "done" && rbB.kind === "paused" && rbB.reason === "list_over_confirmed_sending" && over(b)
-        && cb?.status === "PAUSED" && cb.stopReason === "list_over_confirmed_sending" && (await pausedRows(b)) === 1;
-      // (c) both write before either finishes: the last writer pauses it before it ever runs
-      const c = await atCapPage("e14c");
+      const cb = campaignOf(B.id);
+      const okB = rbA.ok && rbA.v.kind === "done" && rbB.ok && rbB.v.kind === "paused" && rbB.v.reason === "list_over_confirmed_sending"
+        && rowsOf(B.id).length > CONFIRMED && cb?.status === "PAUSED" && cb.stopReason === "list_over_confirmed_sending" && (await pausedRows(B.id)) === 1;
+      // (c) a CHANGED view, both writing before either finishes: the last writer pauses it before it ever runs
+      const C = await world("c");
       const aWrote = deferred();
       const aMay = deferred();
+      const cWalks = deferred();
       let aCounts = 0;
-      const pcA = stepOf(impl, w, c, {
+      const pcA = settled(stepOf(impl, w, C.id, {
         recipients: {
           createMany: async (s) => { const r = await base.recipients.createMany(s); aWrote.resolve(); return r; },
           countByStatus: async (cid) => { aCounts++; if (aCounts === 2) await within(aMay.promise); return base.recipients.countByStatus(cid); },
         },
-      });
-      const pcB = stepOf(impl, w, c, {
-        recipients: { countByStatus: base.recipients.countByStatus, createMany: async (s) => { await within(aWrote.promise); return base.recipients.createMany(s); } },
-      });
+      }));
+      const pcB = settled(stepOf(impl, w, C.id, gatedWalk(cWalks)));
+      await within(aWrote.promise);
+      await C.join();
+      cWalks.resolve();
       const rcB = await pcB;
       aMay.resolve();
       const rcA = await pcA;
-      const cc = campaignOf(c);
-      const okC = rcB.kind === "paused" && rcB.reason === "list_over_confirmed" && rcA.kind === "not_preparing" && over(c)
-        && cc?.status === "PAUSED" && cc.stopReason === "list_over_confirmed" && (await pausedRows(c)) === 1
-        && (await auditRows(ENQ.CAMPAIGN_ENQUEUED_ACTION, c)).length === 0;
+      const cc = campaignOf(C.id);
+      const okC = rcB.ok && rcB.v.kind === "paused" && rcB.v.reason === "list_over_confirmed" && rcA.ok && rcA.v.kind === "not_preparing"
+        && rowsOf(C.id).length > CONFIRMED && cc?.status === "PAUSED" && cc.stopReason === "list_over_confirmed"
+        && (await pausedRows(C.id)) === 1 && (await enqueuedRows(C.id)) === 0;
       // (d) the control — the same two steps one after the other
-      const d = await atCapPage("e14d");
-      const r1 = await stepOf(impl, w, d);
-      const r2 = await stepOf(impl, w, d);
+      const D = await world("d");
+      const r1 = await stepOf(impl, w, D.id);
+      const r2 = await stepOf(impl, w, D.id);
       const okD = r1.kind === "done" && r1.total === CONFIRMED && r2.kind === "not_preparing" && r2.status === "RUNNING"
-        && rowsOf(d).length === CONFIRMED && campaignOf(d)?.status === "RUNNING";
+        && rowsOf(D.id).length === CONFIRMED && campaignOf(D.id)?.status === "RUNNING";
       const sentences = CS.stopReasonLabel("list_over_confirmed") === OVER_SENTENCE
         && CS.stopReasonLabel("list_over_confirmed_sending") === OVER_SENDING_SENTENCE;
       return [okA && okB && okC && okD && sentences,
-        `(a) [${both.map(said).join(" + ")}] → ${ca?.status} ${ca?.stopReason ?? "none"}, ${rowsOf(a).length} rows · (b) ${said(rbA)} + ${said(rbB)} → ${cb?.status} · (c) ${said(rcB)} + ${said(rcA)} → ${cc?.status} ${cc?.stopReason ?? "none"} · (d) ${said(r1)} then ${said(r2)}, ${rowsOf(d).length} rows · sentences ${sentences}`];
+        `(a) same view [${both.map(told).join(" + ")}] → ${ca?.status} ${ca?.stopReason ?? "none"}, ${rowsOf(A.id).length} rows (writes: ${writes.inserted} inserted, ${writes.duplicates} met as duplicates) · (b) changed view ${told(rbA)} + ${told(rbB)} → ${cb?.status}, ${rowsOf(B.id).length} rows · (c) changed view ${told(rcB)} + ${told(rcA)} → ${cc?.status} ${cc?.stopReason ?? "none"} · (d) ${said(r1)} then ${said(r2)}, ${rowsOf(D.id).length} rows · sentences ${sentences}`];
     });
 
     /* E5 · ⭐ no token is minted, and the module reaches no mint and no send */
@@ -1068,8 +1102,9 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
       })),
     },
     {
+      // E14's second step over the same view writes the first step's five again: ten rows, and the list is paused.
       name: "R-E1b (the spec's) · skipDuplicates removed — a recipient door that writes a person already on the campaign again",
-      expect: [L.e1, L.e1b, L.e2, L.e6],
+      expect: [L.e1, L.e1b, L.e2, L.e6, L.e14],
       run: () => runE(withFinish((d) => ({
         ...d,
         recipients: {
@@ -1101,9 +1136,10 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
     },
     {
       // A page walked again counts its people a second time: near the cap that ends the enqueue early (E1b), and on E2's
-      // resumed page the count after its write reads the cap met, finishing the list before its last 200 are reached.
+      // resumed page the count after its write reads the cap met, finishing the list before its last 200 are reached. E14's
+      // second step over the same view counts the five it met as duplicates again: ten, so the list is paused.
       name: "R-E3b · the cap spent by people walked, not rows added (§4.9's sentence read literally) — a page walked again after an interruption ends the enqueue early",
-      expect: [L.e1b, L.e2],
+      expect: [L.e1b, L.e2, L.e14],
       run: () => runE(withFinish((d) => {
         let phantom = 0;
         return {
@@ -1296,6 +1332,25 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
           transition: async (id, t) => (t.to === "PAUSED" && t.from.includes("RUNNING") ? null : d.campaigns.transition(id, t)),
         },
       }))),
+    },
+    {
+      // The count the step reads after a write that found people already on the list leaves those people out — so the room
+      // comes back as if nothing had been spent, exactly as moving it down by `inserted` alone would (the re-review's MINOR).
+      name: "R-E14c · the room not counted again after a write that found duplicates — two steps over the same view write past the cap",
+      expect: [L.e14],
+      run: () => runE(withFinish((d) => {
+        let seen = 0;
+        return {
+          ...d,
+          recipients: {
+            createMany: async (seeds) => { const r = await d.recipients.createMany(seeds); seen += r.duplicates; return r; },
+            countByStatus: async (cid) => {
+              const c = await d.recipients.countByStatus(cid);
+              return seen === 0 ? c : c.map((x) => (x.status === "PENDING" ? { ...x, count: Math.max(0, x.count - seen) } : x));
+            },
+          },
+        };
+      })),
     },
     {
       name: "R-E13c · the suite drops out of predeploy",

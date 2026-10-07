@@ -87,17 +87,17 @@ const L = {
   f3: "F3 · ⛔ AN UNREADABLE BALANCE REFUSES (FAIL CLOSED) — a refused, unanswered, unfinished, unavailable or stale read, and a read that throws, are each credit_unreadable with no figure in the refusal (a kept TZS 517 never leaks); creditVerdict: on the line goes ahead, a shilling under is credit_low with its three figures, and an unreadable credit, a cost or a credit that is not a figure of 0 or more, or a reserve that is not a figure ABOVE 0 (NaN, negative, 0) is credit_unreadable",
   f4: "F4 · ⭐ OD28 AT START, THROUGH THE ONE FENCE — typed: the confirmed 1,604 again starts (shrunkBy 0), 1,600 starts reporting shrunkBy 4, 1,605 refuses audience_moved (1,605 over 1,604, the book); listed (3): the same three start, a swapped person, one fewer and nobody are members_changed, a fourth is audience_moved; a watermark keyed for the revision before is members_changed; a walk that cannot name the people it counted is members_unverified, never members_changed; a list whose stored watermark is not a members key is confirmation_unreadable, never members_changed",
   f5: "F5 · ⛔ A GROWTH SENTENCE CARRIES NO TZS — each Start refusal says its words (§4.12's, and the as-built note's for the reasons added); for a viewer who may not read money none holds TZS or a figure of the money fixture (10,800 · 10,000 · 24,000 · 9,624 · 20,000), while a money reader's over_budget and credit_low carry them; every one but not_confirmed says Nothing was sent",
-  f6: "F6 · ⭐ RESUME PRICES ONLY WHAT IS LEFT, AND NEVER SKIPS ITS READS — the list finished: 604 owed (600 pending, 4 held) of 1,604 at TZS 6 is TZS 3,624, and TZS 24,000 of credit resumes it where the whole campaign (TZS 9,624) would be refused; 1,000 owed (TZS 6,000) is credit_low with that figure; nothing owed still reads the settings and the credit — it resumes at TZS 24,000 and is credit_low (cost 0) at TZS 15,000; a closed switch, a dead rail and an unreadable credit refuse it; Resume never counts the population; counts that are not counts throw",
+  f6: "F6 · ⭐ RESUME PRICES ONLY WHAT IS LEFT, AND NEVER SKIPS ITS READS — the list finished: 604 owed (600 pending, 4 held) of 1,604 at TZS 6 is TZS 3,624, and TZS 24,000 of credit resumes it where the whole campaign (TZS 9,624) would be refused; 1,000 owed (TZS 6,000) is credit_low with that figure; NOTHING OWED (every row settled — paused just after the last slice) resumes only AFTER the switch and the rail (switched off, it is switch_closed) with no settings, price or credit read, at TZS 24,000 and at TZS 15,000 alike: the step finds nothing owed and finishes, and a refusal 'up to TZS 0 … Top up' would be false (U49a's re-review); with rows owed, a closed switch, a dead rail and an unreadable credit refuse it; Resume never counts the population; counts that are not counts throw",
   f7: "F7 · THE STUB AND THE PROVIDER — on the console stub (no handset, no money) a campaign starts and resumes with the switch closed and NO credit read (U47b's local drive); an unrecognised provider is rail_dead (provider-unrecognised), never a closed switch, even when the rail reader says nothing; Blackball with the switch closed is switch_closed",
   f8: "F8 · THE ESTIMATE'S RESERVE IS THE CREDIT KEPT FOR CODES (decision 4) — through the shipped default it is the live Marketing SMS settings record's figure (TZS 20,000 kept, 20,000 reserved; never the platform floor of TZS 50, never the price); a reserve that cannot be read — null, NaN, negative or 0 — is UNREADABLE: no coverage figure (no spendable, covers or shortfall) and the covers tile says why, in the words of the credit kept for login and withdrawal codes, never a reserve of TZS 0; the source re-reads the settings for codesReserveTzs, null on a record it cannot read, and names no platform floor",
   f9: "F9 · THE STOP REASONS (decision 5, §3.4) — MARKETING_FLOOR and marketing_floor say the credit reached what is kept for login and withdrawal codes, credit_unreadable says it could not be read, each in the spec's words, and an unknown key is still named",
   f10: "F10 · THE WIRING — Start's shipped reads are the real doors (the provider, the switch through THE gate, the rail, the settings re-read, the cost loader, the ONE fence, the credit rule, OD28's verdict); its credit is read at most a minute old (START_CREDIT_MAX_AGE_MS at most 60 s); credit-guard.ts stays pure: type imports alone, from the pure marketing modules",
   f11: "F11 · A COUNT THAT FAILS IS RETRYABLE — a fence that throws, or answers a count that is not one, is audience_uncounted (Try again in a minute; never confirm a new copy), while ONLY a stored filter that cannot be read is audience_unreadable",
-  f12: "F12 · ⭐ RESUME BEFORE THE LIST FINISHED (enqueuedAt null) PRICES EVERYONE STILL OWED — paused at 0 rows written of 1,604 confirmed is credit_low with the whole price (TZS 9,624 against TZS 24,000), and so is 600 rows written; TZS 40,000 resumes it; resumeOutstanding is the confirmed count minus the settled rows there and PENDING + HELD once the list is finished; no confirmed count to start from is confirmation_unreadable",
-  f13: "F13 · RESUME'S OWN REASONS AND WORDS — saved sizes that cannot be read are sizes_unreadable (never price_unknown, which the owner could not fix); every Resume refusal says its own words, money only for a money reader, none says start, narrow the audience or Nothing was sent, and each ends Nobody more was messaged",
+  f12: "F12 · ⭐ RESUME BEFORE THE LIST FINISHED (enqueuedAt null) PRICES EVERYONE STILL OWED — paused at 0 rows written of 1,604 confirmed is credit_low with the whole price (TZS 9,624 against TZS 24,000), and so is 600 rows written; TZS 40,000 resumes it; resumeOutstanding is the confirmed count minus the settled rows there and PENDING + HELD once the list is finished; no confirmed count to start from is confirmation_unreadable — and so is a FINISHED list with no confirmed count, before any read (as Start reads it: the list's length cannot be judged without one — U49a's re-review)",
+  f13: "F13 · RESUME'S OWN REASONS AND WORDS — saved sizes that cannot be read are sizes_unreadable (never price_unknown, which the owner could not fix); every Resume refusal says its own words, money only for a money reader, none says start, narrow the audience or Nothing was sent, and each ends Nobody more was messaged; and once anyone on the list was messaged, what only a new copy can fix says a copy would message them AGAIN and never prescribes one (U42's re-review)",
   f14: "F14 · ⛔ OD66 · NO BOTH-ARMS COUNT FOR A VIEWER WHO MAY NOT READ NUMBERS — audience_moved on a book ∪ players campaign says the audience grew with NO figure to such a viewer, and the figures to a reader; on a book or a players campaign the figures are OD65's count alone and go to every role; the refusal OBJECT names its population",
   f15: "F15 · ⛔ OD63 · SETTINGS THAT CANNOT BE READ ARE NEVER PRICED FROM THEIR DEFAULTS — a read that did not answer or threw is settings_unreadable and a record not read in full (its gaps holding the defaults) settings_incomplete, at Start and at Resume, with no price and no credit read, in a world where the defaults would START; settings_unreadable says try again, settings_incomplete names the developer and never says try again",
-  f16: "F16 · ⛔ RESUME REFUSES WHAT ONLY A NEW COPY CAN FIX (U42's review; ENGINE-SPEC §4.15 decision 1 as amended) — a list LONGER than its confirmed count (1,605 rows of 1,604) is list_over_confirmed WHATEVER the stop reason (an officer's pause, none, the credit's own) and BEFORE ANY READ — with the switch closed and on the console stub too, the switch, the settings, the price and the credit never read; a campaign the enqueue paused audience_moved, audience_unreadable, list_over_confirmed or list_over_confirmed_sending is refused for that reason (list_over_confirmed for the last two) with its list within its count, again with nothing read; and the same row paused by an officer within its count resumes (the control)",
+  f16: "F16 · ⛔ RESUME REFUSES WHAT ONLY A NEW COPY CAN FIX (U42's review; ENGINE-SPEC §4.15 decision 1 as amended) — a list LONGER than its confirmed count (1,605 rows of 1,604) is list_over_confirmed WHATEVER the stop reason (an officer's pause, none, the credit's own) and BEFORE ANY READ — with the switch closed and on the console stub too, the switch, the settings, the price and the credit never read; a campaign the enqueue paused audience_moved, audience_unreadable, list_over_confirmed or list_over_confirmed_sending is refused for that reason (list_over_confirmed for the last two) with its list within its count, again with nothing read; each refusal says whether anyone on the list was already messaged (reached: true after 1,000 SENT, false with nothing handed over); and the same row paused by an officer within its count resumes (the control)",
 } as const;
 
 /* ══ THE IMPLEMENTATION UNDER TEST — swapped piece by piece by the plants ══════════════════════════════════════════ */
@@ -238,6 +238,8 @@ const withW = (over: Partial<World>): World => ({ ...W0(), ...over });
 
 type Calls = { switch: number; settings: number; cost: number; balance: number; fence: number };
 const blank = (): Calls => ({ switch: 0, settings: 0, cost: 0, balance: 0, fence: 0 });
+/** Nothing read at all: no switch, settings, price, credit or fence. */
+const nothingRead = (c: Calls): boolean => c.switch === 0 && c.settings === 0 && c.cost === 0 && c.balance === 0 && c.fence === 0;
 
 /** The ONE fence's own reads over a fixture walk: `audienceFence` itself, and the real keyed members key, run on top. */
 const fenceDepsOf = (a: Audience): FenceDeps => ({
@@ -335,7 +337,8 @@ const START_WORDS: Readonly<Record<string, readonly [string, string]>> = {
   switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent."),
   rail_dead: both("No SMS can leave this server right now — Admin → System says why. Nothing was sent."),
   needs_source_line: both("This campaign can reach people from the contact book, and its message has no source line. Stop it and confirm a copy once the owner has set the source line. Nothing was sent."),
-  audience_unreadable: both("The saved audience can't be read any more. Stop this campaign and confirm a new copy. Nothing was sent."),
+  // A copy carries the same stored filter and U47b's copy refuses one it cannot read: the other way out is said too.
+  audience_unreadable: both("The saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused. Nothing was sent."),
   settings_unreadable: both("The Marketing SMS settings couldn't be read just now, so this campaign can't be checked before it starts. Try again in a moment. Nothing was sent."),
   settings_incomplete: both("The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before it starts. The developer must repair them first. Nothing was sent."),
   price_unknown: both("The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System → Marketing SMS. Nothing was sent."),
@@ -358,18 +361,28 @@ const MOVED_WITHOUT_FIGURES = "The audience grew since it was confirmed. Nothing
 
 const RESUME_LOW: ResumeRefusal = { reason: "credit_low", balanceTzs: 24_000, costTzs: 9_624, reserveTzs: 20_000 };
 const EVERY_RESUME_REFUSAL: ResumeRefusal[] = [
-  { reason: "list_over_confirmed" }, { reason: "audience_moved" }, { reason: "audience_unreadable" },
+  { reason: "list_over_confirmed", reached: false }, { reason: "list_over_confirmed", reached: true },
+  { reason: "audience_moved", reached: false }, { reason: "audience_moved", reached: true },
+  { reason: "audience_unreadable", reached: false }, { reason: "audience_unreadable", reached: true },
   { reason: "switch_closed" }, { reason: "rail_dead", rail: "keys-not-set" }, { reason: "confirmation_unreadable" }, { reason: "sizes_unreadable" },
   { reason: "settings_unreadable" }, { reason: "settings_incomplete" }, { reason: "price_unknown" }, { reason: "credit_unreadable" }, RESUME_LOW,
 ];
+/** A Resume refusal's key in `RESUME_WORDS`: its reason, and `+reached` once anyone on the list was messaged. */
+const wordsKeyOf = (r: ResumeRefusal): string => ("reached" in r && r.reached ? `${r.reason}+reached` : r.reason);
+/** ⭐ A copy has the same filter and nothing de-duplicates across campaigns (U42's re-review). */
+const AGAIN = "Some people on it have already been messaged, and a copy would message them again: stop it, and confirm a copy only if that is what you want.";
 const RESUME_WORDS: Readonly<Record<string, readonly [string, string]>> = {
-  // ⭐ What only a new copy can fix (F16): each says so, and that nobody more was messaged — never "then resume".
+  // ⭐ What only a new copy can fix (F16): never "then resume"; nothing reached → Stop and confirm a new copy; anyone
+  //    already messaged → a copy would message them again, and the choice is the officer's.
   list_over_confirmed: both("More people are on this campaign's list than were confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged."),
+  "list_over_confirmed+reached": both(`More people are on this campaign's list than were confirmed, so it can't resume. ${AGAIN} Nobody more was messaged.`),
   audience_moved: both("The people on this campaign changed after it was confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged."),
-  audience_unreadable: both("The saved audience can't be read any more, so this campaign can't resume. Stop it and confirm a new copy. Nobody more was messaged."),
+  "audience_moved+reached": both(`The people on this campaign changed after it was confirmed, so it can't resume. ${AGAIN} Nobody more was messaged.`),
+  audience_unreadable: both("The saved audience can't be read any more, so this campaign can't resume. Stop it and confirm a new copy — or write a new campaign if the copy is refused. Nobody more was messaged."),
+  "audience_unreadable+reached": both("The saved audience can't be read any more, so this campaign can't resume. Some people on it have already been messaged, and a new campaign to the same people would message them again: stop it, and send another only if that is what you want. Nobody more was messaged."),
   switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged."),
   rail_dead: both("No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more was messaged."),
-  confirmation_unreadable: both("This campaign's confirmation can't be read in full, so what is left to send can't be counted, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
+  confirmation_unreadable: both("This campaign's confirmation can't be read in full, so what is left to send can't be checked, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
   sizes_unreadable: both("This campaign's saved message size can't be read, so what is left to send can't be priced, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
   settings_unreadable: both("The Marketing SMS settings couldn't be read just now, so what is left to send can't be checked. Try again in a moment. Nobody more was messaged."),
   settings_incomplete: both("The saved Marketing SMS settings can't be read in full, so what is left to send can't be checked. The developer must repair them first. Nobody more was messaged."),
@@ -593,6 +606,7 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const r1000 = await resumeIn(impl, at(24_000), rows({ PENDING: 1000, SENT: 604 }));
     const r0 = await resumeIn(impl, at(24_000), rows({ SENT: 1604 }));
     const r0low = await resumeIn(impl, at(15_000), rows({ SENT: 1604 }));
+    const r0closed = await resumeIn(impl, at(24_000, { live: CLOSED }), rows({ SENT: 1604 }));
     const unread = await resumeIn(impl, at(24_000, { balance: UNANSWERED }), LEFT_604);
     const closed = await resumeIn(impl, at(24_000, { live: CLOSED }), LEFT_604);
     const dead = await resumeIn(impl, at(24_000, { rail: "keys-not-set" }), LEFT_604);
@@ -607,14 +621,16 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     };
     const badCounts = [rows({ PENDING: -1 }), rows({ PENDING: 1.5 }), { PENDING: 604 }, null];
     const throwsBad = (await Promise.all(badCounts.map(throwsOn))).every(Boolean);
-    const fences = [r604, r1000, r0, r0low, unread, closed, dead].reduce((n, r) => n + r.calls.fence, 0);
+    const fences = [r604, r1000, r0, r0low, r0closed, unread, closed, dead].reduce((n, r) => n + r.calls.fence, 0);
     const holds = r604.refusal === null && !whole.ok
       && json(r1000.refusal) === json({ reason: "credit_low", balanceTzs: 24_000, costTzs: 6_000, reserveTzs: 20_000 })
-      && r0.refusal === null && r0.calls.balance === 1 && r0.calls.settings === 1
-      && json(r0low.refusal) === json({ reason: "credit_low", balanceTzs: 15_000, costTzs: 0, reserveTzs: 20_000 })
+      // ⭐ nothing owed resumes with nothing priced and no credit read, whatever the credit (U49a's re-review)
+      && [r0, r0low].every((x) => x.refusal === null && x.calls.settings === 0 && x.calls.cost === 0 && x.calls.balance === 0 && x.calls.switch === 1)
+      // ... and only AFTER ② the switch and ③ the rail: switched off, it is switch_closed
+      && r0closed.refusal?.reason === "switch_closed" && r0closed.calls.balance === 0
       && unread.refusal?.reason === "credit_unreadable" && closed.refusal?.reason === "switch_closed" && dead.refusal?.reason === "rail_dead"
       && fences === 0 && throwsBad;
-    return [holds, `604 owed → ${resumed(r604.refusal)} (the whole: ${whole.ok ? "ok" : whole.reason}) · 1,000 → ${json(r1000.refusal)} · 0 at 24,000 → ${resumed(r0.refusal)} with ${r0.calls.settings} settings and ${r0.calls.balance} credit reads · 0 at 15,000 → ${json(r0low.refusal)} · unreadable → ${resumed(unread.refusal)} · switch off → ${resumed(closed.refusal)} · no keys → ${resumed(dead.refusal)} · fences ${fences} · bad counts throw ${throwsBad}`];
+    return [holds, `604 owed → ${resumed(r604.refusal)} (the whole: ${whole.ok ? "ok" : whole.reason}) · 1,000 → ${json(r1000.refusal)} · nothing owed at 24,000 → ${resumed(r0.refusal)} with ${r0.calls.settings} settings and ${r0.calls.balance} credit reads · at 15,000 → ${resumed(r0low.refusal)} with ${r0low.calls.balance} credit reads · nothing owed, switched off → ${resumed(r0closed.refusal)} · unreadable → ${resumed(unread.refusal)} · switch off → ${resumed(closed.refusal)} · no keys → ${resumed(dead.refusal)} · fences ${fences} · bad counts throw ${throwsBad}`];
   });
 
   /* ── F7 · the stub and the provider ── */
@@ -719,14 +735,17 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const some = await resumeIn(impl, early(24_000), rows({ PENDING: 600 }));
     const topped = await resumeIn(impl, early(40_000), rows({ PENDING: 600 }));
     const noCount = await resumeIn(impl, early(40_000, { audienceCount: null }), rows());
+    const finishedNoCount = await resumeIn(impl, withW({ row: paused({ audienceCount: null }), balance: credit(40_000) }), LEFT_604);
     const defs = [
       SC.resumeOutstanding(pausedEarly(), rows()), SC.resumeOutstanding(pausedEarly(), rows({ PENDING: 600 })),
       SC.resumeOutstanding(pausedEarly(), rows({ PENDING: 590, SENT: 10 })), SC.resumeOutstanding(paused(), LEFT_604),
       SC.resumeOutstanding(pausedEarly({ audienceCount: null }), rows()),
     ];
     const holds = json(none.refusal) === WHOLE && json(some.refusal) === WHOLE && topped.refusal === null
-      && noCount.refusal?.reason === "confirmation_unreadable" && json(defs) === json([1604, 1604, 1594, 604, null]);
-    return [holds, `0 written → ${json(none.refusal)} · 600 written → ${json(some.refusal)} · at TZS 40,000 → ${resumed(topped.refusal)} · no confirmed count → ${resumed(noCount.refusal)} · resumeOutstanding ${json(defs)}`];
+      && noCount.refusal?.reason === "confirmation_unreadable"
+      && finishedNoCount.refusal?.reason === "confirmation_unreadable" && nothingRead(finishedNoCount.calls)
+      && json(defs) === json([1604, 1604, 1594, 604, null]);
+    return [holds, `0 written → ${json(none.refusal)} · 600 written → ${json(some.refusal)} · at TZS 40,000 → ${resumed(topped.refusal)} · no confirmed count → ${resumed(noCount.refusal)} · finished, no confirmed count → ${resumed(finishedNoCount.refusal)}${nothingRead(finishedNoCount.calls) ? "" : " (read)"} · resumeOutstanding ${json(defs)}`];
   });
 
   /* ── F13 · Resume's own reasons and words ── */
@@ -734,16 +753,19 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const sizes = await resumeIn(impl, withW({ row: paused({ segmentsSw: 0 }), balance: credit(40_000) }), LEFT_604);
     const misses: string[] = [];
     for (const r of EVERY_RESUME_REFUSAL) {
-      const words = RESUME_WORDS[r.reason];
+      const key = wordsKeyOf(r);
+      const words = RESUME_WORDS[key];
       const growth = impl.resumeSentence(r, READER);
       const money = impl.resumeSentence(r, MONEY_READER);
-      if (!words) { misses.push(`${r.reason}: no words to hold it to`); continue; }
-      if (growth !== words[0]) misses.push(`${r.reason} (growth): "${growth}"`);
-      if (money !== words[1]) misses.push(`${r.reason} (money): "${money}"`);
+      if (!words) { misses.push(`${key}: no words to hold it to`); continue; }
+      if (growth !== words[0]) misses.push(`${key} (growth): "${growth}"`);
+      if (money !== words[1]) misses.push(`${key} (money): "${money}"`);
       for (const s of [growth, money]) {
-        if (/start|narrow|Nothing was sent/i.test(s) || !s.endsWith("Nobody more was messaged.")) misses.push(`${r.reason}: "${s}"`);
+        if (/start|narrow|Nothing was sent/i.test(s) || !s.endsWith("Nobody more was messaged.")) misses.push(`${key}: "${s}"`);
+        // ⛔ Once anyone was messaged, a copy is never prescribed as if it reached nobody twice (U42's re-review).
+        if (key.endsWith("+reached") && (!/again/.test(s) || /Stop it and confirm a new copy/.test(s))) misses.push(`${key}: a copy prescribed — "${s}"`);
       }
-      if (growth.includes("TZS") || MONEY_FIGURES.some((f) => growth.includes(f))) misses.push(`${r.reason}: growth told money`);
+      if (growth.includes("TZS") || MONEY_FIGURES.some((f) => growth.includes(f))) misses.push(`${key}: growth told money`);
     }
     const told = impl.resumeSentence(RESUME_LOW, MONEY_READER);
     const control = ["TZS 24,000", "TZS 9,624", "TZS 20,000"].every((f) => told.includes(f));
@@ -790,7 +812,6 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     /** 1,605 rows on a list of 1,604 confirmed — a list longer than confirmed. */
     const OVER_LIST = rows({ PENDING: 605, SENT: 1000 });
     const at = (row: Partial<StoredSmsCampaign>, over: Partial<World> = {}): World => withW({ row: paused(row), balance: credit(40_000), ...over });
-    const nothingRead = (c: Calls): boolean => c.switch === 0 && c.settings === 0 && c.cost === 0 && c.balance === 0 && c.fence === 0;
     const longer = [
       await resumeIn(impl, at({ stopReason: "officer_paused" }), OVER_LIST),
       await resumeIn(impl, at({ stopReason: null }), OVER_LIST),
@@ -798,15 +819,23 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
       await resumeIn(impl, at({ stopReason: "officer_paused" }, { live: CLOSED }), OVER_LIST),
       await resumeIn(impl, at({ stopReason: "officer_paused" }, { provider: "console", live: CLOSED }), OVER_LIST),
     ];
-    const longerOk = longer.every((x) => x.refusal?.reason === "list_over_confirmed" && nothingRead(x.calls));
+    // ⭐ 1,000 of them already SENT: the refusal says so (reached), so its words never prescribe a copy as if it reached nobody
+    const longerOk = longer.every((x) => json(x.refusal) === json({ reason: "list_over_confirmed", reached: true }) && nothingRead(x.calls));
+    // ... and with nothing handed over yet (all 1,605 PENDING), reached is false
+    const unsent = await resumeIn(impl, at({ stopReason: "officer_paused" }), rows({ PENDING: 1605 }));
+    const unsentOk = json(unsent.refusal) === json({ reason: "list_over_confirmed", reached: false }) && nothingRead(unsent.calls);
     const ENQUEUE_REASONS = ["audience_moved", "audience_unreadable", "list_over_confirmed", "list_over_confirmed_sending"];
     const paused4: Array<{ refusal: ResumeRefusal | null; calls: Calls }> = [];
     for (const stopReason of ENQUEUE_REASONS) paused4.push(await resumeIn(impl, at({ stopReason }), LEFT_604));
-    const reasonsOk = json(paused4.map((x) => resumed(x.refusal))) === json(["audience_moved", "audience_unreadable", "list_over_confirmed", "list_over_confirmed"])
+    const reasonsOk = json(paused4.map((x) => x.refusal)) === json(["audience_moved", "audience_unreadable", "list_over_confirmed", "list_over_confirmed"].map((reason) => ({ reason, reached: true })))
       && paused4.every((x) => nothingRead(x.calls));
+    // The enqueue paused it before a row was written (the list unfinished, nobody handed over): reached is false
+    const early = await resumeIn(impl, at({ stopReason: "audience_moved", enqueuedAt: null }), rows());
+    const earlyOk = json(early.refusal) === json({ reason: "audience_moved", reached: false }) && nothingRead(early.calls);
     const control = await resumeIn(impl, at({ stopReason: "officer_paused" }), LEFT_604);
-    const holds = longerOk && reasonsOk && control.refusal === null;
-    return [holds, `1,605 of 1,604 → ${json(longer.map((x) => `${resumed(x.refusal)}${nothingRead(x.calls) ? "" : " (read)"}`))} · the enqueue's reasons → ${json(paused4.map((x) => resumed(x.refusal)))} · an officer's pause within its count → ${resumed(control.refusal)}`];
+    const holds = longerOk && unsentOk && reasonsOk && earlyOk && control.refusal === null;
+    const shown = (x: { refusal: ResumeRefusal | null; calls: Calls }): string => `${json(x.refusal)}${nothingRead(x.calls) ? "" : " (read)"}`;
+    return [holds, `1,605 of 1,604 → ${longer.map(shown).join(", ")} · none handed over → ${shown(unsent)} · the enqueue's reasons → ${paused4.map(shown).join(", ")} · paused before a row was written → ${shown(early)} · an officer's pause within its count → ${resumed(control.refusal)}`];
   });
 }
 
@@ -950,7 +979,18 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     impl: () => ({ resume: (c, counts, d) => SC.resumeRefusal(c, rows({ PENDING: c.audienceCount ?? outstandingOf(counts) }), d) }),
   },
   {
-    name: "R-F6b · Resume skips its reads when nothing is left (a cost of 0 never checked against the line)",
+    // One settled row counted as owed whenever nothing is: TZS 6 priced and checked against the line — at TZS 15,000 a
+    // campaign with nothing left to send is told to top up, and every nothing-owed Resume reads the settings and the credit.
+    name: "R-F6c · nothing owed still priced and checked against the credit line (a refusal 'up to TZS 6 … Top up' for nothing to send)",
+    expect: [L.f6],
+    impl: () => ({
+      resume: (c, counts, d) =>
+        SC.resumeRefusal(c, SC.resumeOutstanding(c, counts) === 0 ? { ...counts, SENT: counts.SENT - 1, PENDING: counts.PENDING + 1 } : counts, d),
+    }),
+  },
+  {
+    // (R-F6b's old shortcut, kept for what it still breaks: the switch and the rail are asked before nothing-left resumes.)
+    name: "R-F6d · nothing owed resumes before the switch and the rail are asked (switched off, it resumes anyway)",
     expect: [L.f6],
     impl: () => ({ resume: async (c, counts, d) => (SC.resumeOutstanding(c, counts) === 0 ? null : SC.resumeRefusal(c, counts, d)) }),
   },
@@ -1011,9 +1051,23 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     impl: () => ({ resume: (c, counts, d) => SC.resumeRefusal({ ...c, enqueuedAt: c.enqueuedAt ?? iso(NOW) }, counts, d) }),
   },
   {
+    // The list's own length stands in for the count that was lost — the very length the count is there to judge.
+    name: "R-F12b · a finished list with no confirmed count resumes, the list's own length taken as what was confirmed",
+    expect: [L.f12],
+    impl: () => ({
+      resume: (c, counts, d) =>
+        SC.resumeRefusal(c.audienceCount === null && typeof c.enqueuedAt === "string" ? { ...c, audienceCount: rowsIn(counts) } : c, counts, d),
+    }),
+  },
+  {
     name: "R-F13 · Resume borrows Start's sentences (“Starting would leave…”, “narrow the audience”)",
     expect: [L.f13],
     impl: () => ({ resumeSentence: (r, v) => SC.startRefusalSentence(r as unknown as StartRefusal, v) }),
+  },
+  {
+    name: "R-F13c · the words drop reached — people already messaged told to “Stop it and confirm a new copy” (a copy messages them again)",
+    expect: [L.f13],
+    impl: () => ({ resumeSentence: (r, v) => SC.resumeRefusalSentence("reached" in r ? { ...r, reached: false } : r, v) }),
   },
   {
     name: "R-F13b · unreadable message sizes answered price_unknown (“the owner sets it”, which the owner cannot fix)",
@@ -1083,11 +1137,26 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
       },
     }),
   },
+  {
+    name: "R-F16d · the refusal forgets who was already messaged (reached always false — the words would prescribe a copy)",
+    expect: [L.f16],
+    impl: () => ({
+      resume: async (c, counts, d) => {
+        const r = await SC.resumeRefusal(c, counts, d);
+        return r !== null && "reached" in r ? { ...r, reached: false } : r;
+      },
+    }),
+  },
 ];
 
 /** PENDING + HELD, for a plant that needs a figure when the row has no confirmed count. */
 function outstandingOf(counts: SmsCampaignRecipientStatusCounts): number {
   return counts.PENDING + counts.HELD;
+}
+
+/** Every row the list holds, whatever its status (R-F12b). */
+function rowsIn(counts: SmsCampaignRecipientStatusCounts): number {
+  return Object.values(counts).reduce((n: number, x) => n + (typeof x === "number" ? x : 0), 0);
 }
 
 /** The stop reasons the enqueue (U42) pauses a campaign for — what R-F16b hides. */
