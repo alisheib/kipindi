@@ -35,8 +35,10 @@
  *       today's pin follows the record (the re-review's NIT);
  *   R14 (the DATA-RETENTION NIT) a player whose OWN number is held is told so in the access export — a yes, never the key;
  *   R15 (the re-review's MINOR-4) a number keyed BY HAND — one number, a promised application, an audit row with no number;
- *   R16 (the re-review's MINOR-4) a contact REVIEWED by hand — no numeral in the reason, the census clears it, and a later
- *       naming makes it count again.
+ *   R16 (the re-review's MINOR-4; the third pass) a contact REVIEWED by hand — a fixed reason code, ONE contact, the census
+ *       clears it, and a later naming makes it count again;
+ *   R17 (the third pass's MINOR-2) a referee named only by E-MAIL — the address keyed, and refused at whatever number it
+ *       later signs up with.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: every red case below plants ONE defect in the impl handed in (a swapped function, a source
  * text changed in memory, a store member stubbed and restored in `finally`) and requires the matching row to turn red.
@@ -50,14 +52,15 @@ import { db } from "../../src/lib/server/store.ts";
 import type { StoredAgentApplication, StoredMarketingContact, StoredUser } from "../../src/lib/server/store.ts";
 import { toMsisdn255 } from "../../src/lib/phone-normalize.ts";
 import { parseTzNumber, readAsciiDigits } from "../../src/lib/tz-msisdn.ts";
-import { mayReceiveMarketingSms } from "../../src/lib/server/marketing/consent.ts";
+import { mayReceiveMarketingSms, marketingToggleState, DB_GATE_READS } from "../../src/lib/server/marketing/consent.ts";
+import type { MarketingGateReads } from "../../src/lib/server/marketing/consent.ts";
 import {
   refereeNumbersIn, refereeKeyOf, recordRefereeKeys, backfillRefereeKeys, refereeKeyCensus, refereePromiseHolds,
   readRefereeContact, isPromisedReferee, refereeKeysDoorVerdict, REFEREE_KEYS_DOOR_SENTENCE, REFEREE_NEW_WORDS_LIVE_AT,
   keyRefereeNumberByHand, recordRefereeContactReviewed, unreadableRefereeApplications, REFEREE_KEY_ADDED_ACTION,
-  REFEREE_CONTACT_REVIEWED_ACTION,
+  REFEREE_CONTACT_REVIEWED_ACTION, refereeEmailKeyOf, isPromisedRefereeEmail, REFEREE_REVIEW_REASONS,
 } from "../../src/lib/server/marketing/referee-exclusion.ts";
-import type { RefereeKeysDoorInput } from "../../src/lib/server/marketing/referee-exclusion.ts";
+import type { RefereeKeysDoorInput, RefereeSlot } from "../../src/lib/server/marketing/referee-exclusion.ts";
 import { setReferees, pseudonymiseAgentApplications } from "../../src/lib/server/agent-application-service.ts";
 import { dispatchSlice, MARKETING_RG_SUPPRESSED_ACTION } from "../../src/lib/server/marketing/dispatch.ts";
 import type { SliceDeps, SliceRecipient, SliceOutcome } from "../../src/lib/server/marketing/dispatch.ts";
@@ -86,8 +89,8 @@ export type RefereeImpl = {
   readonly record: typeof recordRefereeKeys;
   /** R9 — the key. */
   readonly keyOf: typeof refereeKeyOf;
-  /** R9 · R10 — the sources the pins read: the exclusion module and the ops door. */
-  readonly sources: { readonly exclusion: string; readonly door: string };
+  /** R9 · R10 — the sources the pins read: the exclusion module and the ops door (and the door as written, comments and all). */
+  readonly sources: { readonly exclusion: string; readonly door: string; readonly doorRaw: string };
   /** R10 — the door's rule. */
   readonly doorVerdict: typeof refereeKeysDoorVerdict;
   /** R12 — the census. */
@@ -102,6 +105,8 @@ export type RefereeImpl = {
   /** R15 · R16 — the two hand steps. */
   readonly keyByHand: typeof keyRefereeNumberByHand;
   readonly reviewByHand: typeof recordRefereeContactReviewed;
+  /** R17 — the gate's reads (the account's e-mail asked of the keys). */
+  readonly gateReads: MarketingGateReads;
 };
 export const REAL_REFEREE: RefereeImpl = {
   numbersIn: refereeNumbersIn,
@@ -114,6 +119,7 @@ export const REAL_REFEREE: RefereeImpl = {
   sources: {
     exclusion: decomment(readSource("src/lib/server/marketing/referee-exclusion.ts")),
     door: decomment(readSource("scripts/ops/marketing-referee-keys.mts")),
+    doorRaw: readSource("scripts/ops/marketing-referee-keys.mts"),
   },
   doorVerdict: refereeKeysDoorVerdict,
   census: refereeKeyCensus,
@@ -123,25 +129,27 @@ export const REAL_REFEREE: RefereeImpl = {
   binds: refereeKeysCheckBinds,
   keyByHand: keyRefereeNumberByHand,
   reviewByHand: recordRefereeContactReviewed,
+  gateReads: DB_GATE_READS,
 };
 
 export const REFEREE_LABELS = {
   r1: "R1 · U33r · the free-text reader reads every spelling an applicant types as the gate's key — '0712 345 678', '+255 712 345 678', '+255 (0) 712-345-678', '00255712345678', '712345678', Arabic-Indic digits and a number typed a digit at a time — reads BOTH numbers of a field holding two, reads a digit too many the safe way ('0712 345 678 9', '07123456789' key 0712 345 678), and reads nothing from an e-mail, a landline or a number with digits missing — and (the re-review's MINOR-3) never joins digits across a comma or a word and reads generously ONLY when nothing reads strictly: the reviewer's thirteen contacts each give exactly their pinned keys ('Box 7, 12345678' none, 'P.O. Box 70123 Arusha 0754123456' only 0754 123 456)",
   r2: "R2 · U33r · the key is the keyed hash — thirty-two letters a–p, the SAME for every spelling of one number, different for another number, never a digit — and anything but a gate key (a '+255…' or a '0712…' spelling) is refused, never hashed",
-  r3: "R3 · ⛔ U33r · setReferees KEYS BOTH REFEREES BEFORE IT SAVES — a key write that fails saves nothing; one that works makes the gate refuse both numbers agent_referee; an e-mail with no number behind it keys nothing; and every stored row is exactly its key",
+  r3: "R3 · ⛔ U33r · setReferees KEYS BOTH REFEREES BEFORE IT SAVES — a key write that fails saves nothing; one that works makes the gate refuse both numbers agent_referee; an e-mail with no number behind it keys its ADDRESS and nothing else (the third pass's MINOR-2); and every stored row is exactly its key",
   r4: "R4 · ⛔ U33r · a referee REPLACED by a later save keeps their key — and a referee ON FILE from before the exclusion existed is keyed by the save that replaces them, BEFORE their only contact is overwritten",
   r5: "R5 · ⛔ U33r · MAJOR-1 · the applicant's ERASURE keys referees never keyed before BEFORE it empties the contacts — the contacts end empty, both numbers are refused agent_referee, and the table holds exactly those two keys and NOTHING else: no field beside the key, no digit, no value equal to or derived from refereeConsentAt, createdAt or the erasure moment",
   r6: "R6 · ⭐ U33r · the BACKFILL keys every older application's referees — the census counts them missing before and 0 after (its counts carry the reviewed contacts apart), the gate refuses each, and a re-run writes nothing",
   r7: "R7 · ⛔ U33r · a referee in a real send slice is SKIPPED agent_referee before the wire (the wire never called), and no RG COMPLIANCE line is written for it — the reason never starts rg_",
   r8: "R8 · ⛔ U33r · MAJOR-1 · THE WRITER DECIDES WHO WAS PROMISED — with no new words live (REFEREE_NEW_WORDS_LIVE_AT null) a referee named at ANY instant, even years from now, is keyed; with a cutoff, one named before it is keyed and one named at or after it is NOT; an instant that cannot be read, on either side, keeps the promise",
   r9: `R9 · ⛔ U33r · MINOR-3 · THE KEY IS KEYED — one number hashed under two OTP_PEPPER values gives two different keys (and the same pepper twice the same key), and referee-exclusion.ts makes it with pepperedLetters("marketing-referee", msisdn, 32)`,
-  r10: "R10 · ⛔ U33r · MINOR-4 · THE OPS DOOR'S REFUSALS — run as the ONE pure rule: an unknown command, no database and no OTP_PEPPER refuse every command; a write (backfill, key, reviewed) refuses outside production's own environment unless --scratch names a loopback database; key and reviewed name ONE application by its id, and a reason with a numeral of any script is refused; the verdict says where the door ran — production ONLY under Railway's production markers (the re-review's MINOR-1) — and the door asks that rule BEFORE any census, read or write, exits 2 on it, rewrites the private host first, imports only referee-exclusion.ts, prints no number, never echoes or prints what a person types, and writes where it ran into its STATUS and its RECORD",
+  r10: "R10 · ⛔ U33r · MINOR-4 · THE OPS DOOR'S REFUSALS — run as the ONE pure rule: an unknown command, no database and no OTP_PEPPER refuse every command; a write (backfill, key, reviewed) refuses outside production's own environment unless --scratch names a loopback database; key and reviewed name ONE application, ONE referee place and who (--by, screened), reviewed ONE reason from the fixed list (never free text), and key runs ONLY on a real console (the third pass); the verdict says where the door ran — and the door asks that rule BEFORE any census, read or write, exits 2 on it, rewrites the private host first, imports only referee-exclusion.ts, prints no number, reads the number TWICE without echo from a console and never prints either, says in its header how key must be run, and writes where it ran into its STATUS and its RECORD",
   r11: "R11 · ⛔ U33r · MINOR-1 · a referee named only by E-MAIL is keyed under the number of every account and every book row holding that address, case-insensitive — the gate refuses both numbers — and an e-mail that leads nowhere is counted, not keyed",
-  r12: "R12 · ⛔ U33r · MINOR-2 · THE CENSUS COUNTS WHAT THE READER COULD NOT READ — a contact of nine or more digits that gave no number is `unreadable` (an e-mail beside it changes nothing — the re-review's NIT), a landline and a foreign number are `notMobile` (no SMS can reach them), each counted once, never listed, and none counted reviewed until a person handles it",
+  r12: "R12 · ⛔ U33r · MINOR-2 · THE CENSUS COUNTS WHAT THE READER COULD NOT READ — a contact of nine or more digits that gave no number is `unreadable` (an e-mail beside it changes nothing), and so is a number found with a digit run LEFT OVER beside it ('0754 123 456 / 0712 345 67' — the third pass's NIT), a landline and a foreign number are `notMobile`, each counted once, never listed, and none counted reviewed until a person handles it",
   r14: "R14 · ⛔ U33r · a player whose OWN number is a promised referee's is TOLD SO in both access doors' marketing section (agentRefereeExclusion: true) — a yes, never the coded form, never who named the number or when — and a player whose number is not held reads false",
+  r17: "R17 · ⛔ U33r · the third pass's MINOR-2 · A REFEREE NAMED ONLY BY E-MAIL IS KEPT OUT AT WHATEVER NUMBER THAT ADDRESS TURNS UP ON LATER — the writer keys the address itself (its own keyed hash and nothing else); an account that signs up afterwards with it, in any case, is refused agent_referee at the gate and its switch reads off for good, while an account with another address is not; and the census counts every address and its missing key until the backfill keys it",
   r13: "R13 · ⛔ U33r · MAJOR-2 · THE FIFTH CHECK — only a well-formed PRODUCTION record with nothing missing and nothing unreadable reconciles it (a scratch run's record never does — the re-review's MINOR-1); it binds on NODE_ENV or RAILWAY_ENVIRONMENT_NAME production AND on any DATABASE_URL that is not a loopback host, an unreadable one included (MINOR-1); today's state is exactly what the ONE rule says of the record (null: OUTSTANDING where it binds — the re-review's NIT); and the LIVE SWITCH refuses to open on it (referee_keys) before anything is read, recorded or written",
-  r15: "R15 · ⛔ U33r · the re-review's MINOR-4 · A NUMBER KEYED BY HAND — the application must exist and be a PROMISED one, and what was typed must read, by the same reader, as exactly ONE number; then the gate refuses it, ONE COMPLIANCE audit row names the application with no digit and no key in its payload, the answer holds no number, the application leaves the unreadable list, and the census counts its contact reviewed",
-  r16: "R16 · ⛔ U33r · the re-review's MINOR-4 · A CONTACT REVIEWED BY HAND — a reason with a numeral of any script, or too short, is refused and writes nothing; a plain reason writes ONE COMPLIANCE audit row naming the application, with exactly that reason; the census then counts the contact reviewed, not unreadable — and a LATER naming of that application's referees makes it count unreadable again",
+  r15: "R15 · ⛔ U33r · the third pass's MAJOR · A NUMBER KEYED BY HAND — read STRICTLY (a digit too many, other text or two numbers are refused, never keyed as a stranger's), typed TWICE (a swapped pair of digits in either is a mismatch, nothing keyed), for a promised application's contact in the place named; then the gate refuses it, ONE COMPLIANCE audit row names the application, the place and who — no digit, no key — and THAT contact alone is handled: the other referee on the same application stays unreadable",
+  r16: "R16 · ⛔ U33r · the third pass · A CONTACT REVIEWED BY HAND — free text, a name or a numeral as the reason is refused (ONE of the fixed codes only), as is a missing --by, and nothing is written; a listed reason writes ONE COMPLIANCE audit row naming the application, the place, the code and who; the census then counts THAT contact reviewed (the other stays unreadable) — and a LATER naming makes it count unreadable again",
 } as const;
 
 /* ══ THE WORLD — this section's own numbers, one block per run ═════════════════════════════════════════════════════ */
@@ -316,10 +324,11 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
     const before = storeRows().length;
     await impl.setReferees(mail.userId, { oneName: "Chausiku Referee", oneContact: `chausiku.r3.${run}@example.com`, twoName: "Daudi Referee", twoContact: `daudi.r3.${run}@example.com`, consent: true });
     const mailKeyed = storeRows().length - before;
+    const mailRows = rowsFor([refereeEmailKeyOf(`chausiku.r3.${run}@example.com`), refereeEmailKeyOf(`daudi.r3.${run}@example.com`)]);
     const mine = rowsFor([refereeKeyOf(k1), refereeKeyOf(k2)]);
-    const clean = mine.length === 2 && mine.every(isBareKeyRow);
+    const clean = mine.length === 2 && mine.every(isBareKeyRow) && mailRows.length === 2 && mailRows.every(isBareKeyRow);
     ok(p(L.r3),
-      (failed === null || (failed as { ok?: boolean }).ok !== true) && savedNothing && done.ok && gate.every((g) => g === "agent_referee") && mailKeyed === 0 && clean,
+      (failed === null || (failed as { ok?: boolean }).ok !== true) && savedNothing && done.ok && gate.every((g) => g === "agent_referee") && mailKeyed === 2 && clean,
       `failed write saved nothing ${savedNothing} · then ${JSON.stringify(done)} · gate ${gate.join("/")} · e-mail keyed ${mailKeyed} · rows exactly their key ${clean}`);
   }
 
@@ -472,7 +481,7 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
   {
     const base: RefereeKeysDoorInput = {
       argv: ["backfill"], databaseUrl: "postgresql://u:p@db.example.net:5432/k", pepperSet: true,
-      railwayEnvironment: undefined, railwayService: undefined,
+      railwayEnvironment: undefined, railwayService: undefined, stdinIsTerminal: true,
     };
     const v = (over: Partial<RefereeKeysDoorInput>) => impl.doorVerdict({ ...base, ...over });
     // ⭐ The verdict's answer, and WHERE it says the door ran (the re-review's MINOR-1).
@@ -480,6 +489,9 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
     const PROD = { railwayEnvironment: "production", railwayService: "50pick" } as const;
     const LOOP = "postgresql://u:p@127.0.0.1:5461/k";
     const APP = `app_r10-${run}`;
+    const BY = ["--by", "Claude for Ali"];
+    const K1 = ["key", "--application", APP, "--referee", "one", ...BY];
+    const RV = (reason: string) => ["reviewed", "--application", APP, "--referee", "two", "--reason", reason, ...BY];
     const cases: Array<[string, Partial<RefereeKeysDoorInput>, string]> = [
       ["no command", { argv: [] }, "usage"],
       ["an unknown command", { argv: ["erase"] }, "usage"],
@@ -489,6 +501,7 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
       ["backfill with no pepper, even in production", { pepperSet: false, ...PROD }, "no_pepper"],
       ["status, database and pepper — a scratch run", { argv: ["status"] }, "ok:status@scratch"],
       ["status in production's environment", { argv: ["status"], ...PROD }, "ok:status@production"],
+      ["status on a pipe — it reads no number", { argv: ["status"], stdinIsTerminal: false }, "ok:status@scratch"],
       ["backfill outside production", {}, "not_production"],
       ["backfill in production's environment", { ...PROD }, "ok:backfill@production"],
       ["backfill in production, another service", { railwayEnvironment: "production", railwayService: "worker" }, "not_production"],
@@ -497,26 +510,33 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
       ["--scratch on localhost — a scratch run", { argv: ["backfill", "--scratch"], databaseUrl: "postgresql://u:p@localhost:5461/k" }, "ok:backfill@scratch"],
       ["--scratch on a remote host", { argv: ["backfill", "--scratch"], databaseUrl: "postgresql://u:p@db.example.net:5432/k" }, "not_production"],
       ["a loopback database WITHOUT --scratch", { databaseUrl: LOOP }, "not_production"],
-      ["key by id, in production", { argv: ["key", "--application", APP], ...PROD }, "ok:key@production"],
-      ["key by id, --scratch on a loopback database", { argv: ["key", "--application", APP, "--scratch"], databaseUrl: LOOP }, "ok:key@scratch"],
-      ["key outside production", { argv: ["key", "--application", APP] }, "not_production"],
-      ["key with no application", { argv: ["key"], ...PROD }, "no_application"],
-      ["key with a flag where the id goes", { argv: ["key", "--application", "--scratch"], databaseUrl: LOOP }, "no_application"],
-      ["key with an id that is not one", { argv: ["key", "--application", "app r10;1"], ...PROD }, "no_application"],
-      ["reviewed with a plain reason", { argv: ["reviewed", "--application", APP, "--reason", "a landline written twice"], ...PROD }, "ok:reviewed@production"],
-      ["reviewed with a numeral in the reason", { argv: ["reviewed", "--application", APP, "--reason", "the box 7 address"], ...PROD }, "bad_reason"],
-      ["reviewed with an Arabic-Indic numeral", { argv: ["reviewed", "--application", APP, "--reason", `the box ${arabicIndic("7")} address`], ...PROD }, "bad_reason"],
-      ["reviewed with no reason", { argv: ["reviewed", "--application", APP], ...PROD }, "bad_reason"],
-      ["reviewed with a reason too short", { argv: ["reviewed", "--application", APP, "--reason", "ok"], ...PROD }, "bad_reason"],
-      ["reviewed with no application", { argv: ["reviewed", "--reason", "a landline"], ...PROD }, "no_application"],
-      ["reviewed outside production", { argv: ["reviewed", "--application", APP, "--reason", "a landline"] }, "not_production"],
+      ["key in production, on a console", { argv: K1, ...PROD }, "ok:key@production"],
+      ["key --scratch on a loopback database", { argv: [...K1, "--scratch"], databaseUrl: LOOP }, "ok:key@scratch"],
+      ["key outside production", { argv: K1 }, "not_production"],
+      ["key with no application", { argv: ["key", "--referee", "one", ...BY], ...PROD }, "no_application"],
+      ["key with a flag where the id goes", { argv: ["key", "--application", "--scratch", "--referee", "one", ...BY], databaseUrl: LOOP }, "no_application"],
+      ["key with an id that is not one", { argv: ["key", "--application", "app r10;1", "--referee", "one", ...BY], ...PROD }, "no_application"],
+      ["key with no referee place", { argv: ["key", "--application", APP, ...BY], ...PROD }, "no_referee"],
+      ["key with a place that is not one or two", { argv: ["key", "--application", APP, "--referee", "three", ...BY], ...PROD }, "no_referee"],
+      ["key with no --by", { argv: ["key", "--application", APP, "--referee", "one"], ...PROD }, "bad_by"],
+      ["⛔ key on a PIPE — a number piped in sits in a history, a transcript or a file", { argv: K1, ...PROD, stdinIsTerminal: false }, "not_a_terminal"],
+      ["reviewed with a listed reason", { argv: RV("landline"), ...PROD }, "ok:reviewed@production"],
+      ["reviewed on a pipe — it reads no number", { argv: RV("postal_address"), ...PROD, stdinIsTerminal: false }, "ok:reviewed@production"],
+      ["⛔ reviewed with FREE TEXT as the reason", { argv: RV("a landline written twice"), ...PROD }, "bad_reason"],
+      ["reviewed with a name as the reason", { argv: RV("Juma"), ...PROD }, "bad_reason"],
+      ["reviewed with no reason", { argv: ["reviewed", "--application", APP, "--referee", "two", ...BY], ...PROD }, "bad_reason"],
+      ["reviewed with no application", { argv: ["reviewed", "--referee", "two", "--reason", "landline", ...BY], ...PROD }, "no_application"],
+      ["reviewed with no --by", { argv: ["reviewed", "--application", APP, "--referee", "two", "--reason", "landline"], ...PROD }, "bad_by"],
+      ["reviewed outside production", { argv: RV("landline") }, "not_production"],
     ];
     const wrong = cases.filter(([, over, want]) => why(over) !== want).map(([name, over]) => `${name} → ${why(over)}`);
-    // The hand steps carry exactly the id and the screened reason — nothing else from the command line.
-    const carried = v({ argv: ["reviewed", "--application", APP, "--reason", "  a landline written twice  "], ...PROD });
-    const carriedRight = carried.ok && carried.applicationId === APP && carried.reason === "a landline written twice";
-    const sentences = (["usage", "no_database", "no_pepper", "not_production", "no_application", "bad_reason"] as const)
-      .every((w) => (REFEREE_KEYS_DOOR_SENTENCE[w] ?? "").length > 20);
+    // The hand steps carry exactly the id, the place, the listed reason and the screened `by` — nothing else.
+    const carried = v({ argv: ["reviewed", "--application", APP, "--referee", "two", "--reason", "landline", "--by", "  Claude for Ali  "], ...PROD });
+    const carriedRight = carried.ok && carried.applicationId === APP && carried.referee === "two" && carried.reason === "landline" && carried.by === "Claude for Ali";
+    const sentences = (["usage", "no_database", "no_pepper", "not_production", "no_application", "no_referee", "bad_reason", "bad_by", "not_a_terminal"] as const)
+      .every((w) => (REFEREE_KEYS_DOOR_SENTENCE[w] ?? "").length > 20)
+      && REFEREE_KEYS_DOOR_SENTENCE.not_a_terminal.includes("run it in PowerShell or Windows Terminal")
+      && REFEREE_KEYS_DOOR_SENTENCE.not_a_terminal.includes("the number must be typed, never piped");
     const door = impl.sources.door;
     const imports = Array.from(door.matchAll(/^import [^;]*from "([^"]+)";/gm)).map((m) => m[1]);
     const onlyExclusion = imports.length === 2 && imports.every((x) => x === "../../src/lib/server/marketing/referee-exclusion.ts");
@@ -531,26 +551,28 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
     const envRead = door.includes("databaseUrl: process.env.DATABASE_URL,")
       && door.includes('pepperSet: typeof process.env.OTP_PEPPER === "string" && process.env.OTP_PEPPER !== "",')
       && door.includes("railwayEnvironment: process.env.RAILWAY_ENVIRONMENT_NAME,") && door.includes("railwayService: process.env.RAILWAY_SERVICE_NAME,")
-      && door.includes("argv: process.argv.slice(2),");
+      && door.includes("argv: process.argv.slice(2),") && door.includes("stdinIsTerminal: process.stdin.isTTY === true,");
     const proxyAt = door.indexOf('.replace(/@postgres[.]railway[.]internal(:[0-9]+)?/, "@turntable.proxy.rlwy.net:40357")');
     const mainAt = door.indexOf("async function main(");
     const quiet = !/console[.]log[(][^;]*(msisdn|refereeKey|email|userId|[.]id[^a-z])/.test(door);
     const ordered = verdictAt > 0 && refusal > verdictAt && exit2 && firstRead > refusal && firstRead < Infinity && proxyAt > 0 && proxyAt < mainAt;
-    // ⛔ MINOR-4 · what a person types is read without echo, and reaches the writer alone: main names it twice (read, then
-    // handed to keyRefereeNumberByHand), the door writes nothing to a stream but the prompt and a line end, and no console
-    // call ever names it.
+    // ⛔ MINOR-4 · the third pass · what a person types — TWICE — is read without echo from a real console, and reaches the
+    // writer alone: main names each once more (handed to keyRefereeNumberByHand), the door writes nothing to a stream but
+    // the prompt and a line end, no console call ever names them, and the reader refuses anything but a console.
     const mainBody = mainAt < 0 ? "" : door.slice(mainAt);
-    const typedOnlyToWriter = mainBody.includes("const typed = await readQuietly(")
-      && mainBody.includes('keyRefereeNumberByHand({ applicationId: verdict.applicationId ?? "", typed })')
-      && (mainBody.match(/typed/g) ?? []).length === 2;
+    const typedOnlyToWriter = mainBody.includes("const typed = await readQuietly(") && mainBody.includes("const again = await readQuietly(")
+      && mainBody.includes("typed, again, by: verdict.by")
+      && (mainBody.match(/[^A-Za-z]typed[^A-Za-z]/g) ?? []).length === 2;
     const streamWrites = Array.from(door.matchAll(/[.]write[(]([^)]*)[)]/g)).map((m) => m[1]);
     const noEcho = door.includes("stdin.setRawMode(true);") && streamWrites.length > 0 && streamWrites.every((w) => w === "prompt" || w === "NL");
-    const neverLogged = !/console[.][a-z]+[(][^;]*[^A-Za-z](typed|chunk|ch)[^A-Za-z]/.test(door);
+    const neverLogged = !/console[.][a-z]+[(][^;]*([$][{]|[(,] *)(typed|again|chunk|ch)[^A-Za-z]/.test(door);
+    const pipeRefused = door.includes("if (stdin.isTTY !== true) throw new Error(");
+    const headerSays = impl.sources.doorRaw.includes("⛔ `key`: run it in PowerShell or Windows Terminal — the number must be typed, never piped.");
     // ⛔ MINOR-1 · the STATUS line and the RECORD say where the door ran.
     const saysWhere = door.includes("STATUS (${verdict.environment})") && door.includes("JSON.stringify({ environment: verdict.environment, ranAt,");
     ok(p(L.r10), wrong.length === 0 && carriedRight && sentences && onlyExclusion && noWriter && envRead && ordered && quiet
-      && typedOnlyToWriter && noEcho && neverLogged && saysWhere,
-      `rule wrong [${wrong.join(" · ")}] · carried ${carriedRight} · sentences ${sentences} · imports [${imports.join(", ")}] · no writer ${noWriter} · env read ${envRead} · verdict@${verdictAt} refusal@${refusal} exit2 ${exit2} first read@${firstRead} · proxy@${proxyAt} main@${mainAt} · quiet ${quiet} · typed only to the writer ${typedOnlyToWriter} · no echo ${noEcho} (${streamWrites.join(",")}) · never logged ${neverLogged} · says where ${saysWhere}`);
+      && typedOnlyToWriter && noEcho && neverLogged && pipeRefused && headerSays && saysWhere,
+      `rule wrong [${wrong.join(" · ")}] · carried ${carriedRight} · sentences ${sentences} · imports [${imports.join(", ")}] · no writer ${noWriter} · env read ${envRead} · verdict@${verdictAt} refusal@${refusal} exit2 ${exit2} first read@${firstRead} · proxy@${proxyAt} main@${mainAt} · quiet ${quiet} · typed only to the writer ${typedOnlyToWriter} · no echo ${noEcho} (${streamWrites.join(",")}) · never logged ${neverLogged} · a pipe refused ${pipeRefused} · header ${headerSays} · says where ${saysWhere}`);
   }
 
   // ── R11 · a referee named by e-mail ──
@@ -566,7 +588,7 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
     const nowhere = await readRefereeContact(`nobody.r11.${run}@example.com`);
     const followed = await readRefereeContact(address);
     ok(p(L.r11),
-      before.every((g) => g !== "agent_referee") && wrote === 2 && after.every((g) => g === "agent_referee")
+      before.every((g) => g !== "agent_referee") && wrote === 3 && after.every((g) => g === "agent_referee")
         && nowhere.kind === "email_unmatched" && nowhere.numbers.length === 0
         && followed.kind === "email_matched" && followed.numbers.length === 2,
       `before ${before.join("/")} · written ${wrote} · after ${after.join("/")} · nowhere ${nowhere.kind}/${nowhere.numbers.length} · followed ${followed.kind}/${followed.numbers.length}`);
@@ -584,11 +606,15 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
       (await readRefereeContact(missingDigit)).kind, (await readRefereeContact("022 211 5811")).kind, (await readRefereeContact("+1 202 555 0143")).kind,
       // The re-review's NIT · classified by its DIGITS first: an e-mail beside a broken number is still a broken number.
       (await readRefereeContact(`amina.r12.${run}@example.com ${missingDigit}`)).kind,
+      // The third pass's NIT · a number found with a broken one beside it: keyed, and still unreadable for a person.
+      (await readRefereeContact("0754 123 456 / 0712 345 67")).kind,
+      (await readRefereeContact("0754 123 456")).kind,
     ];
+    const leftoverKeyed = JSON.stringify((await readRefereeContact("0754 123 456 / 0712 345 67")).numbers) === JSON.stringify(["255754123456"]);
     ok(p(L.r12),
       c1.unreadable - c0.unreadable === 1 && c1.notMobile - c0.notMobile === 2 && c1.applications - c0.applications === 2
         && Number.isSafeInteger(c1.reviewed) && c1.reviewed - c0.reviewed === 0
-        && JSON.stringify(kinds) === JSON.stringify(["unreadable", "not_mobile", "not_mobile", "unreadable"]),
+        && JSON.stringify(kinds) === JSON.stringify(["unreadable", "not_mobile", "not_mobile", "unreadable", "unreadable", "number"]) && leftoverKeyed,
       `unreadable ${c0.unreadable} → ${c1.unreadable} · landline or foreign ${c0.notMobile} → ${c1.notMobile} · reviewed ${c0.reviewed} → ${c1.reviewed} · kinds ${kinds.join(",")}`);
   }
 
@@ -597,8 +623,8 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
     const good: RefereeKeysRecord = {
       environment: "production",
       ranAt: "2026-10-08T09:00:00.000Z",
-      status: { applications: 12, promised: 12, withContact: 11, numbers: 20, missing: 20, unreadable: 0, reviewed: 1, notMobile: 1, emailOnlyUnmatched: 0 },
-      backfill: { applications: 12, promised: 12, withContact: 11, numbers: 20, missing: 0, unreadable: 0, reviewed: 1, notMobile: 1, emailOnlyUnmatched: 0, written: 20 },
+      status: { applications: 12, promised: 12, withContact: 11, numbers: 20, emails: 2, missing: 22, unreadable: 0, reviewed: 1, notMobile: 1, emailOnlyUnmatched: 0 },
+      backfill: { applications: 12, promised: 12, withContact: 11, numbers: 20, emails: 2, missing: 0, unreadable: 0, reviewed: 1, notMobile: 1, emailOnlyUnmatched: 0, written: 22 },
     };
     const S = impl.keysState;
     const states = [
@@ -688,76 +714,143 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
       `held ${String(told.agentRefereeExclusion)} · not held ${String(notHeld.agentRefereeExclusion)} · no coded form in the file ${noKey}`);
   }
 
-  // ── R15 · a number keyed BY HAND — one number, a promised application, an audit row with no number ──
+  // ── R15 · a number keyed BY HAND — strict, typed twice, ONE contact, an audit row with no number ──
   {
     const target = keyOf(run, 100);
+    const nat = target.slice(3);
+    const BY = "Claude for Ali";
+    // An application with BOTH contacts unreadable: a step on referee one must leave referee two exactly as it was.
     const { appId } = await applicant(run, 11, {
-      status: "REJECTED", refereeOneName: "Nuru Referee", refereeOneContact: digitsMissing(run, 101), refereeConsentAt: "2026-09-08T10:00:00.000Z",
+      status: "REJECTED", refereeOneName: "Nuru Referee", refereeOneContact: digitsMissing(run, 101),
+      refereeTwoName: "Rehema Referee", refereeTwoContact: digitsMissing(run, 104), refereeConsentAt: "2026-09-08T10:00:00.000Z",
+    });
+    const solo = await applicant(run, 13, {
+      status: "REJECTED", refereeOneName: "Pendo Referee", refereeOneContact: digitsMissing(run, 105), refereeConsentAt: "2026-09-08T10:00:00.000Z",
     });
     const c0 = await impl.census();
-    const listedBefore = (await unreadableRefereeApplications()).includes(appId);
+    const listed = async (): Promise<string> =>
+      (await unreadableRefereeApplications()).filter((x) => x.applicationId === appId).map((x) => x.referee).join(",");
+    const listedBefore = await listed();
     const gateBefore = await said(target);
+    const spaced = `0${nat.slice(0, 3)} ${nat.slice(3, 6)} ${nat.slice(6)}`;
+    // ⛔ The reviewer's cases (the third pass's MAJOR (a)): a digit too many, and a pair of digits swapped.
+    const extraDigit = `0${nat}${nat.slice(-1)}`;
+    // Two neighbouring digits swapped (the third and fourth: "1" and the run's own block digit, always different) — a
+    // valid number, and never another fixture's (every fixture reads 074 1…).
+    const swapped = `0${nat.slice(0, 2)}${nat[3]}${nat[2]}${nat.slice(4)}`;
+    const swappedKey = `255${swapped.slice(1)}`;
+    const lastNine = `255${extraDigit.slice(-9)}`;
+    const strangers = [swappedKey, lastNine].filter((k) => k !== target && /^255[67][0-9]{8}$/.test(k));
+    type KeyInput = { applicationId: string; referee: RefereeSlot; typed: string; again: string; by: string };
+    const ask = (over: Partial<KeyInput>, cut?: string) =>
+      impl.keyByHand({ applicationId: appId, referee: "one", typed: spaced, again: spaced, by: BY, ...over }, undefined, cut);
     const refusals = [
-      await impl.keyByHand({ applicationId: `rfa-none-${run}`, typed: `+${target}` }),
-      await impl.keyByHand({ applicationId: appId, typed: `+${target} / 0${keyOf(run, 102).slice(3)}` }),
-      await impl.keyByHand({ applicationId: appId, typed: digitsMissing(run, 103) }),
-      await impl.keyByHand({ applicationId: appId, typed: "" }),
+      await ask({ applicationId: `rfa-none-${run}` }),
+      await ask({ applicationId: solo.appId, referee: "two" }),
+      await ask({ typed: extraDigit, again: extraDigit }),
+      await ask({ typed: `${spaced} x`, again: `${spaced} x` }),
+      await ask({ typed: `+${target} / 0${keyOf(run, 102).slice(3)}`, again: `+${target} / 0${keyOf(run, 102).slice(3)}` }),
+      await ask({ typed: spaced, again: swapped }),
+      await ask({ typed: swapped, again: spaced }),
+      await ask({ by: "" }),
       // Named after a cutoff: never promised, so nothing is keyed by hand either.
-      await impl.keyByHand({ applicationId: appId, typed: `+${target}` }, undefined, "2026-09-01T00:00:00.000Z"),
+      await ask({}, "2026-09-01T00:00:00.000Z"),
     ].map((r) => (r.ok ? "ok" : r.why));
     const gateAfterRefusals = await said(target);
-    const keyed = await impl.keyByHand({ applicationId: appId, typed: `+255 ${target.slice(3, 6)} ${target.slice(6, 9)} ${target.slice(9)}` });
+    // The same number twice, in two spellings: keyed.
+    const keyed = await ask({ typed: `+255 ${nat.slice(0, 3)} ${nat.slice(3, 6)} ${nat.slice(6)}`, again: spaced });
     const gateAfter = await said(target);
+    const strangerGates = [];
+    for (const k of strangers) strangerGates.push(await said(k));
+    const strangersClear = strangers.length >= 1 && strangerGates.every((g) => g !== "agent_referee");
     const rows = (await getAuditForTargetsDurable({
       targetType: "AgentApplication", targetIds: [appId], actions: [REFEREE_KEY_ADDED_ACTION, REFEREE_CONTACT_REVIEWED_ACTION],
       sinceIso: "1970-01-01T00:00:00.000Z",
     })).entries;
     const payloads = rows.map((r) => JSON.stringify(r.payload ?? null));
     const clean = rows.length === 1 && rows[0].action === REFEREE_KEY_ADDED_ACTION && rows[0].category === "COMPLIANCE" && rows[0].targetId === appId
+      && JSON.stringify(rows[0].payload) === JSON.stringify({ via: "ops", referee: "one", by: BY })
       && payloads.every((s) => !DIGIT.test(s) && !/[a-p]{32}/.test(s)) && !DIGIT.test(JSON.stringify(keyed).replace(/"written":[0-9]+/, ""));
     const c1 = await impl.census();
-    const listedAfter = (await unreadableRefereeApplications()).includes(appId);
-    const WANT = ["no_application", "not_one_number", "not_one_number", "not_one_number", "not_promised"];
+    const listedAfter = await listed();
+    const WANT = ["no_application", "no_contact", "not_a_number", "not_a_number", "not_a_number", "mismatch", "mismatch", "bad_by", "not_promised"];
     ok(p(L.r15),
       gateBefore !== "agent_referee" && JSON.stringify(refusals) === JSON.stringify(WANT) && gateAfterRefusals !== "agent_referee"
-        && keyed.ok && keyed.written === 1 && gateAfter === "agent_referee" && clean
-        && listedBefore && !listedAfter && c1.unreadable - c0.unreadable === -1 && c1.reviewed - c0.reviewed === 1,
-      `gate ${gateBefore} → ${gateAfterRefusals} → ${gateAfter} · refusals ${refusals.join(",")} · keyed ${JSON.stringify(keyed)} · audit ${rows.length} row(s) ${payloads.join(" ")} · listed ${listedBefore} → ${listedAfter} · unreadable ${c0.unreadable} → ${c1.unreadable} · reviewed ${c0.reviewed} → ${c1.reviewed}`);
+        && keyed.ok && keyed.written === 1 && gateAfter === "agent_referee" && strangersClear && clean
+        && listedBefore === "one,two" && listedAfter === "two" && c1.unreadable - c0.unreadable === -1 && c1.reviewed - c0.reviewed === 1,
+      `gate ${gateBefore} → ${gateAfterRefusals} → ${gateAfter} · refusals ${refusals.join(",")} · keyed ${JSON.stringify(keyed)} · strangers ${strangerGates.join("/")} · audit ${rows.length} row(s) ${payloads.join(" ")} · listed ${listedBefore} → ${listedAfter} · unreadable ${c0.unreadable} → ${c1.unreadable} · reviewed ${c0.reviewed} → ${c1.reviewed}`);
   }
 
-  // ── R16 · a contact REVIEWED by hand — no numeral in the reason; the census clears it; a later naming re-opens it ──
+  // ── R16 · a contact REVIEWED by hand — a listed reason, ONE contact; the census clears it; a later naming re-opens it ──
   {
+    const BY = "Claude for Ali";
     const { appId } = await applicant(run, 12, {
-      status: "REJECTED", refereeOneName: "Omari Referee", refereeOneContact: digitsMissing(run, 110), refereeConsentAt: "2026-09-08T10:00:00.000Z",
+      status: "REJECTED", refereeOneName: "Omari Referee", refereeOneContact: digitsMissing(run, 110),
+      refereeTwoName: "Sabra Referee", refereeTwoContact: digitsMissing(run, 111), refereeConsentAt: "2026-09-08T10:00:00.000Z",
     });
     const c0 = await impl.census();
+    const listed = async (): Promise<string> =>
+      (await unreadableRefereeApplications()).filter((x) => x.applicationId === appId).map((x) => x.referee).join(",");
     const auditRows = async () => (await getAuditForTargetsDurable({
       targetType: "AgentApplication", targetIds: [appId], actions: [REFEREE_CONTACT_REVIEWED_ACTION, REFEREE_KEY_ADDED_ACTION],
       sinceIso: "1970-01-01T00:00:00.000Z",
     })).entries;
     const refusals = [
-      await impl.reviewByHand({ applicationId: appId, reason: "the box 7 address" }),
-      await impl.reviewByHand({ applicationId: appId, reason: `the box ${arabicIndic("7")} address` }),
-      await impl.reviewByHand({ applicationId: appId, reason: "ok" }),
-      await impl.reviewByHand({ applicationId: `rfa-none-${run}`, reason: "a landline written twice" }),
+      await impl.reviewByHand({ applicationId: appId, referee: "one", reason: "a postal address, no phone", by: BY }),
+      await impl.reviewByHand({ applicationId: appId, referee: "one", reason: "Juma", by: BY }),
+      await impl.reviewByHand({ applicationId: appId, referee: "one", reason: "the box 7", by: BY }),
+      await impl.reviewByHand({ applicationId: `rfa-none-${run}`, referee: "one", reason: "postal_address", by: BY }),
+      await impl.reviewByHand({ applicationId: appId, referee: "one", reason: "postal_address", by: "" }),
     ].map((r) => (r.ok ? "ok" : r.why));
     const rowsAfterRefusals = (await auditRows()).length;
-    const done = await impl.reviewByHand({ applicationId: appId, reason: "  a postal address, no phone  " });
+    const done = await impl.reviewByHand({ applicationId: appId, referee: "one", reason: "postal_address", by: BY });
     const rows = await auditRows();
     const recorded = rows.length === 1 && rows[0].action === REFEREE_CONTACT_REVIEWED_ACTION && rows[0].category === "COMPLIANCE"
-      && rows[0].targetId === appId && JSON.stringify(rows[0].payload) === JSON.stringify({ via: "ops", reason: "a postal address, no phone" });
+      && rows[0].targetId === appId && JSON.stringify(rows[0].payload) === JSON.stringify({ via: "ops", referee: "one", reason: "postal_address", by: BY });
     const c1 = await impl.census();
-    const listed1 = (await unreadableRefereeApplications()).includes(appId);
+    const listed1 = await listed();
     // A LATER naming is a new contact: the review no longer covers it.
     await Promise.resolve(db.agentApplication.update(appId, { refereeConsentAt: new Date(Date.now() + 60_000).toISOString() }));
     const c2 = await impl.census();
-    const listed2 = (await unreadableRefereeApplications()).includes(appId);
-    const WANT = ["bad_reason", "bad_reason", "bad_reason", "no_application"];
+    const listed2 = await listed();
+    const WANT = ["bad_reason", "bad_reason", "bad_reason", "no_application", "bad_by"];
     ok(p(L.r16),
       JSON.stringify(refusals) === JSON.stringify(WANT) && rowsAfterRefusals === 0 && done.ok && done.written === 0 && recorded
-        && c1.unreadable - c0.unreadable === -1 && c1.reviewed - c0.reviewed === 1 && !listed1
-        && c2.unreadable - c0.unreadable === 0 && c2.reviewed - c0.reviewed === 0 && listed2,
+        && c1.unreadable - c0.unreadable === -1 && c1.reviewed - c0.reviewed === 1 && listed1 === "two"
+        && c2.unreadable - c0.unreadable === 0 && c2.reviewed - c0.reviewed === 0 && listed2 === "one,two",
       `refusals ${refusals.join(",")} · rows after them ${rowsAfterRefusals} · done ${JSON.stringify(done)} · recorded ${recorded} · unreadable ${c0.unreadable} → ${c1.unreadable} → ${c2.unreadable} · reviewed ${c0.reviewed} → ${c1.reviewed} → ${c2.reviewed} · listed ${listed1} → ${listed2}`);
+  }
+
+  // ── R17 · a referee named only by E-MAIL is kept out at whatever number that address turns up on LATER ──
+  {
+    const address = `zawadi.r17.${run}@example.com`;
+    const later = keyOf(run, 120);
+    const stranger = keyOf(run, 121);
+    // Named by e-mail, while no account and no book row holds the address: only the address can be keyed.
+    const wrote = await impl.record({ contacts: [`Zawadi <${address}>`], namedAt: "2026-09-08T10:00:00.000Z" });
+    const emailKey = refereeEmailKeyOf(address);
+    const mine = rowsFor([emailKey]);
+    const keyOnly = mine.length === 1 && mine.every(isBareKeyRow) && !JSON.stringify(mine).includes("@") && !JSON.stringify(mine).includes("zawadi")
+      && emailKey !== refereeKeyOf(later);
+    // The referee signs up LATER, with that address spelled another way; a stranger signs up with another address.
+    const holder = { ...makeUser(`rfz${run}-${seq++}`, `+${later}`), email: `  ${address.toUpperCase()}  `, marketingOptIn: true } as StoredUser;
+    const other = { ...makeUser(`rfz${run}-${seq++}`, `+${stranger}`), email: `someone.else.r17.${run}@example.com`, marketingOptIn: true } as StoredUser;
+    await Promise.resolve(db.user.create(holder));
+    await Promise.resolve(db.user.create(other));
+    const gateOf = async (m: string): Promise<string> => { const g = await mayReceiveMarketingSms(m, new Date(), impl.gateReads); return g.ok ? "ALLOWED" : g.skipReason; };
+    const heldGate = await gateOf(later);
+    const otherGate = await gateOf(stranger);
+    const sw = await marketingToggleState(holder);
+    // ⭐ The census counts addresses and their missing keys; the backfill keys an older application's address.
+    const olderAddress = `baraka.r17.${run}@example.com`;
+    await applicant(run, 14, { refereeOneName: "Baraka Referee", refereeOneContact: olderAddress, refereeConsentAt: "2026-09-08T10:00:00.000Z" });
+    const cA = await impl.census();
+    await impl.backfill();
+    const cB = await impl.census();
+    const counted = cA.emails >= 2 && cA.missing >= 1 && cB.missing === 0 && cB.emails === cA.emails && (await isPromisedRefereeEmail(olderAddress));
+    ok(p(L.r17),
+      wrote === 1 && keyOnly && heldGate === "agent_referee" && otherGate !== "agent_referee" && sw.referee === true && sw.on === false && counted,
+      `written ${wrote} · the key and nothing else ${keyOnly} · the referee's later account ${heldGate} · a stranger ${otherGate} · switch ${JSON.stringify({ on: sw.on, referee: sw.referee })} · addresses ${cA.emails}, missing ${cA.missing} → ${cB.missing}`);
   }
 }
 
@@ -956,8 +1049,29 @@ export function refereeCases(): { name: string; impl: RefereeImpl; expect: strin
       expect: REFEREE_LABELS.r10,
     },
     {
-      name: "⛔ the re-review's MINOR-4 · the door's rule takes a reason with a numeral (the numerals read past)",
-      impl: { ...REAL, doorVerdict: (i) => refereeKeysDoorVerdict({ ...i, argv: i.argv.map((a) => a.replace(/[0-9]/g, "")) }) },
+      name: "⛔ the third pass · the door's rule takes free text as the reason (whatever is typed is read as a listed code)",
+      impl: {
+        ...REAL,
+        doorVerdict: (i) => {
+          const at = i.argv.indexOf("--reason");
+          return refereeKeysDoorVerdict({ ...i, argv: at < 0 ? i.argv : i.argv.map((a, k) => (k === at + 1 ? REFEREE_REVIEW_REASONS[0] : a)) });
+        },
+      },
+      expect: REFEREE_LABELS.r10,
+    },
+    {
+      name: "⛔ the third pass's MINOR-1 · the door's rule lets key run on a pipe — the number comes from a history or a file",
+      impl: { ...REAL, doorVerdict: (i) => refereeKeysDoorVerdict({ ...i, stdinIsTerminal: true }) },
+      expect: REFEREE_LABELS.r10,
+    },
+    {
+      name: "⛔ the third pass's MINOR-1 · the door's reader reads a pipe instead of refusing it",
+      impl: { ...REAL, sources: { ...REAL.sources, door: REAL.sources.door.split("if (stdin.isTTY !== true) throw new Error(").join("if (false) throw new Error(") } },
+      expect: REFEREE_LABELS.r10,
+    },
+    {
+      name: "⛔ the third pass's MAJOR · the door asks for the number once — nothing to catch a swapped digit",
+      impl: { ...REAL, sources: { ...REAL.sources, door: REAL.sources.door.split("const again = await readQuietly(").join("const again = typed; void (") } },
       expect: REFEREE_LABELS.r10,
     },
     {
@@ -1001,7 +1115,7 @@ export function refereeCases(): { name: string; impl: RefereeImpl; expect: strin
       expect: REFEREE_LABELS.r15,
     },
     {
-      name: "⛔ the re-review's MINOR-4 · the review takes a reason with a numeral — a referee's number can ride into the audit log as the reason",
+      name: "⛔ the third pass · the review takes FREE TEXT as the reason — a name or a number in words lands in a seven-year row",
       impl: {
         ...REAL,
         reviewByHand: async (i, deps = { audit }) => {
@@ -1009,14 +1123,61 @@ export function refereeCases(): { name: string; impl: RefereeImpl; expect: strin
           if (!app) return { ok: false, why: "no_application" };
           const reason = typeof i.reason === "string" ? i.reason.trim() : "";
           if (reason.length < 3) return { ok: false, why: "bad_reason" };
+          if (typeof i.by !== "string" || i.by.trim() === "") return { ok: false, why: "bad_by" };
           const r = await deps.audit({
             category: "COMPLIANCE", action: REFEREE_CONTACT_REVIEWED_ACTION, actorId: null, targetType: "AgentApplication", targetId: app.id,
-            payload: { via: "ops", reason },
+            payload: { via: "ops", referee: i.referee, reason, by: i.by.trim() },
           });
           return r.recorded ? { ok: true, written: 0 } : { ok: false, why: "not_recorded" };
         },
       },
       expect: REFEREE_LABELS.r16,
+    },
+    {
+      name: "⛔ the third pass's MAJOR (a) · key reads GENEROUSLY — a digit too many is keyed as a stranger's number",
+      impl: {
+        ...REAL,
+        keyByHand: (i, deps, cut) => {
+          const loose = (s: string): string => { const n = refereeNumbersIn(s); return n.length === 1 ? `+${n[0]}` : s; };
+          return keyRefereeNumberByHand({ ...i, typed: loose(i.typed), again: loose(i.again) }, deps, cut);
+        },
+      },
+      expect: REFEREE_LABELS.r15,
+    },
+    {
+      name: "⛔ the third pass's MAJOR (a) · key never compares the second typing — a swapped pair of digits is keyed",
+      impl: { ...REAL, keyByHand: (i, deps, cut) => keyRefereeNumberByHand({ ...i, again: i.typed }, deps, cut) },
+      expect: REFEREE_LABELS.r15,
+    },
+    {
+      name: "⛔ the third pass's MAJOR (b) · one step handles EVERY contact on the application — the other referee is cleared unread",
+      impl: {
+        ...REAL,
+        keyByHand: async (i, deps, cut) => {
+          const r = await keyRefereeNumberByHand(i, deps, cut);
+          if (r.ok) {
+            await audit({
+              category: "COMPLIANCE", action: REFEREE_KEY_ADDED_ACTION, actorId: null, targetType: "AgentApplication", targetId: i.applicationId,
+              payload: { via: "ops", referee: i.referee === "one" ? "two" : "one", by: i.by },
+            });
+          }
+          return r;
+        },
+      },
+      expect: REFEREE_LABELS.r15,
+    },
+    {
+      name: "⛔ the third pass's MINOR-2 · the writer does not key an e-mail address — a referee who signs up with it later is reached",
+      impl: {
+        ...REAL,
+        record: (input, cut) => recordRefereeKeys({ ...input, contacts: input.contacts.map((c) => (typeof c === "string" ? c.replace(/[^ <>]+@[^ <>]+/g, " ") : c)) }, cut),
+      },
+      expect: REFEREE_LABELS.r17,
+    },
+    {
+      name: "⛔ the third pass's MINOR-2 · the gate never asks the account's e-mail — the referee's later account is reached",
+      impl: { ...REAL, gateReads: { ...DB_GATE_READS, refereeEmailHeld: () => false } },
+      expect: REFEREE_LABELS.r17,
     },
     {
       name: "⛔ the re-review's MINOR-4 · the census never counts a review — a contact a person handled still holds both doors shut",

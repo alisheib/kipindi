@@ -3709,6 +3709,16 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     walked28.length > 300 && doors28.join(",") === "lib/server/prisma-dal.ts" && !RAW_SQL28.test(dalSrc), `callers=[${doors28}] · ${walked28.length} files walked, ${texts28.length} name the table`);
   ok("28.writers · ⛔ the DAL's three members are called by EXACTLY referee-exclusion.ts — the gate (consent.ts), the split, setReferees and the erasure all go through it — and no file hands the namespace on bare or destructures it from db",
     sameSet(callers28, CALLERS28) && aliases28.length === 0, `callers=[${callers28}] · aliases=[${aliases28}]`);
+  // ── 28.emailkey · the third pass's MINOR-2 · a promised referee's ADDRESS is keyed into the SAME one-column table ──
+  const exclusion28 = decomment(readFileSync(join(ROOT, "src", "lib", "server", "marketing", "referee-exclusion.ts"), "utf8"));
+  const emailKey28 = (src: string): boolean =>
+    src.includes('return pepperedLetters("marketing-referee-email", norm, 32);') && src.includes('return pepperedLetters("marketing-referee", msisdn, 32);')
+      && (src.match(/pepperedLetters[(]/g) ?? []).length === 2;
+  ok("28.emailkey · ⭐ the third pass's MINOR-2 · a promised referee's e-mail ADDRESS is kept as its own keyed hash — pepperedLetters under its OWN domain (marketing-referee-email, so no address can ever key like a number), thirty-two letters a–p that 28.model's rule set takes and a raw address it refuses — in the SAME one-column table, through the SAME door (28.writers): no new table, no column, no instant, no link",
+    emailKey28(exclusion28) && !/^[a-p]{32}$/.test("zawadi@example.com") && /^[a-p]{32}$/.test("p".repeat(32)),
+    `pepper calls ${(exclusion28.match(/pepperedLetters[(]/g) ?? []).length}`);
+  ok("28.c7 · CONTROL · the address keyed under the NUMBER's domain — so an address and a number could share a key — breaks 28.emailkey",
+    !emailKey28(exclusion28.split('"marketing-referee-email"').join('"marketing-referee"')));
 
   // ── 28.email · MINOR-1 · the book's e-mail lookup — one rule in both twins, key-only, one caller ──
   const priBook = region(dalSrc, `${NL28}  marketingContact: {`);

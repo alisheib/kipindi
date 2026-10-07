@@ -441,7 +441,7 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
   // ── G21 · the order: the stop list first, then the promise, then nothing else is read ───────────────────────────────
   {
     const stopped = [await closed(FX.refereeSuppressed), await open(FX.refereeSuppressed)];
-    const count = { stop: 0, referee: 0, account: 0, ledger: 0, record: 0, book: 0 };
+    const count = { stop: 0, referee: 0, account: 0, ledger: 0, record: 0, book: 0, refereeEmail: 0 };
     const base = readsFor(OPEN);
     const counting: MarketingGateReads = {
       suppression: (k) => { count.stop++; return base.suppression(k); },
@@ -450,6 +450,7 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
       latestConsent: (k) => { count.ledger++; return base.latestConsent(k); },
       outreach: () => { count.record++; return base.outreach(); },
       bookStanding: (m) => { count.book++; return base.bookStanding(m); },
+      refereeEmailHeld: (e) => { count.refereeEmail++; return base.refereeEmailHeld(e); },
     };
     let v: MarketingGateVerdict | null = null;
     try { v = await impl.gate(phone(FX.refereeConsenting), NOW, counting, {}); } catch { v = null; }
@@ -462,7 +463,7 @@ export async function assertLicenceBasis(impl: LicenceImpl, tag: string, ok: Ok)
     ok(p(L.g21),
       stopped.every((a) => refused(a, "suppressed")) && v !== null && !v.ok && v.skipReason === "agent_referee"
         && refereeReads.stop === 1 && refereeReads.referee === 1
-        && refereeReads.account === 0 && refereeReads.ledger === 0 && refereeReads.record === 0 && refereeReads.book === 0 && controlSaw,
+        && refereeReads.account === 0 && refereeReads.ledger === 0 && refereeReads.record === 0 && refereeReads.book === 0 && refereeReads.refereeEmail === 0 && controlSaw,
       `stopped ${stopped.map(show).join("/")} · referee reads ${JSON.stringify(refereeReads)} · control saw the account ${controlSaw}`);
   }
   // ── G22 · the gate never asks when ──────────────────────────────────────────────────────────────────────────────────

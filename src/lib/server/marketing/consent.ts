@@ -21,7 +21,7 @@ import { isImportAttestationSaved } from "@/lib/server/marketing/wordings";
 // U33r · the agent-referee exclusion: the keyed read. ⛔ The gate never hashes a number or reads the table itself —
 // `reads.refereeHeld` does, so the split can hand in a chunk's answers — and it never asks WHEN a referee was named: only
 // a promised referee is ever keyed (the writer decides, `referee-exclusion.ts`), so a key held is the whole answer.
-import { isPromisedReferee, isRefereeKeyable } from "@/lib/server/marketing/referee-exclusion";
+import { isPromisedReferee, isPromisedRefereeEmail, isRefereeKeyable } from "@/lib/server/marketing/referee-exclusion";
 import { withLock } from "@/lib/server/locks";
 
 /**
@@ -213,6 +213,10 @@ export type MarketingGateReads = {
    *  the free text asked. ⛔ It takes the gate's key and answers a yes or a no: no number, no hash and no instant ever leaves
    *  it. Past the split's time budget it throws like the other database reads (`unchecked`). */
   refereeHeld: (msisdn: string) => Promise<boolean> | boolean;
+  /** U33r · the third pass's MINOR-2 · is this ACCOUNT's e-mail address a promised referee's — its keyed hash held (the
+   *  writers key every address written in a promised referee's contact). A blank address answers no, with no read. ⛔ A
+   *  yes or a no, never the address or its hash. Past the split's time budget it throws like the other reads. */
+  refereeEmailHeld: (email: string | null) => Promise<boolean> | boolean;
 };
 
 /** The default — the store's own single-key reads, asked AT CALL TIME, so the twin `db` resolves to is the one read.
@@ -224,6 +228,7 @@ export const DB_GATE_READS: Readonly<MarketingGateReads> = Object.freeze({
   outreach: () => licenceOutreach(),
   bookStanding: (msisdn: string) => db.contactListBasis.standingFor(msisdn),
   refereeHeld: (msisdn: string) => isPromisedReferee(msisdn),
+  refereeEmailHeld: (email: string | null) => isPromisedRefereeEmail(email),
 });
 
 /**
@@ -354,6 +359,14 @@ export async function mayReceiveMarketingSms(
   // ── 2 · IF THE NUMBER BELONGS TO A PLAYER, THE PLAYER GOVERNS ───────────────────────────
   const user = await Promise.resolve(reads.userByPhone(userPhoneKeyFor(identifier)));
   if (user) {
+    // ── 2-0 · U33r · THE ACCOUNT'S E-MAIL IS A PROMISED REFEREE'S (the third pass's MINOR-2) ─────────────────────────────
+    // ⛔ A referee named only by E-MAIL who signs up later, at any number, with that address: §9 told them "that promise
+    // stands", so the account's e-mail is asked of the same keys BEFORE ANY BASIS, exactly as step 1b asks the number —
+    // ONE keyed read more, and only for an account that has an address (the account itself is the read below, already
+    // made). No `userId`, as at 1b: the refusal is about the promise, never the account's standing.
+    if (await Promise.resolve(reads.refereeEmailHeld(typeof user.email === "string" ? user.email : null))) {
+      return refuse("agent_referee", REFEREE_DETAIL);
+    }
     // ── 2a · CONSENT — the toggle AND an SMS-naming GIVEN row as the latest ledger entry (D3, see
     // `playerConsentRefusal`). Asked before RG because it is two cheap reads, and the RG step below
     // is the costly one.
@@ -529,7 +542,7 @@ function holdOf(rg: MarketingRgStanding, now: Date): MarketingToggleState | null
 }
 
 export async function marketingToggleState(
-  user: Pick<StoredUser, "id" | "status" | "phoneE164" | "marketingOptIn">,
+  user: Pick<StoredUser, "id" | "status" | "phoneE164" | "marketingOptIn"> & { email?: string | null },
   now: Date = new Date(),
 ): Promise<MarketingToggleState> {
   // The ledger's own key (`consent-ledger.ts` writes by `toMsisdn255`), so the read finds its rows.
@@ -538,6 +551,8 @@ export async function marketingToggleState(
   // ⛔ U33r · A PROMISED REFEREE FIRST — the gate's own read (step 1b), for every player: refused whatever the basis, so
   // the switch is OFF and locked whatever the ledger says. A number that is not a gate key cannot be a referee's.
   if (isRefereeKeyable(identifier) && (await Promise.resolve(DB_GATE_READS.refereeHeld(identifier)))) return TOGGLE_REFEREE;
+  // …and the account's e-mail, as the gate's step 2 asks it (the third pass's MINOR-2).
+  if (await Promise.resolve(DB_GATE_READS.refereeEmailHeld(typeof user.email === "string" ? user.email : null))) return TOGGLE_REFEREE;
   const rg = await marketingRgStanding(user, identifier, now.getTime(), { ...MARKETING_RG_DEPS, harmFlags: async () => [] });
   const held = holdOf(rg, now);
   if (held) return held;

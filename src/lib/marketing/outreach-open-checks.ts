@@ -51,7 +51,10 @@ export type RefereeKeyCounts = {
   readonly withContact: number;
   /** The distinct referee numbers those contacts lead to. */
   readonly numbers: number;
-  /** ⛔ How many of those numbers have no key yet — 0 once the backfill has run. */
+  /** The distinct e-mail addresses written in those contacts — each keyed too, so a referee named by e-mail who signs up
+   *  with it later is still refused (the third pass's MINOR-2). */
+  readonly emails: number;
+  /** ⛔ How many of those numbers AND addresses have no key yet — 0 once the backfill has run. */
   readonly missing: number;
   /** ⛔ Contacts holding nine or more digits (outside any e-mail address) that gave NO number, and that read as neither a
    *  landline nor a foreign number — the reader could not tell whose number they are (the reviewers' MINOR-2) — and that
@@ -84,7 +87,7 @@ export type RefereeKeysRecord = {
 export type RefereeKeysState = "reconciled" | "outstanding";
 
 const COUNT_KEYS: readonly (keyof RefereeKeyCounts)[] = [
-  "applications", "promised", "withContact", "numbers", "missing", "unreadable", "reviewed", "notMobile", "emailOnlyUnmatched",
+  "applications", "promised", "withContact", "numbers", "emails", "missing", "unreadable", "reviewed", "notMobile", "emailOnlyUnmatched",
 ];
 const isCount = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 const isCounts = (v: unknown): boolean =>

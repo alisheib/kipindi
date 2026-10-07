@@ -19,7 +19,8 @@
  *      one naming two referees by number, one naming a referee by e-mail (whose number only the book holds) and a landline
  *      — are counted missing, keyed, then counted 0 missing; a re-run writes nothing; and the REAL gate refuses each
  *      referee number `agent_referee` while a stranger is refused for no consent;
- *   2b (the re-review's MINOR-4) the two HAND STEPS on the real audit log: a third application holding a contact the
+ *   2a (the third pass's MINOR-2) the e-mail referee's ADDRESS is keyed by the backfill, and read case-insensitively;
+ *   2b (the re-review's MINOR-4; the third pass) the two HAND STEPS on the real audit log, each naming referee one: a third application holding a contact the
  *      reader cannot read is counted unreadable; a reason with a numeral is refused; a person's review clears it (counted
  *      reviewed); a number keyed by hand is refused by the real gate; and the two audit rows name the application and
  *      carry no number;
@@ -57,7 +58,8 @@ const U1 = "probe_rk_u1";
 const APP1 = "probe_rk_app1";
 const APP2 = "probe_rk_app2";
 const APP3 = "probe_rk_app3";
-const HAND_REASON = "digits missing, no phone to key";
+const HAND_REASON = "incomplete_number";
+const HAND_BY = "probe";
 const BOOK1 = "probe_rk_book1";
 
 const user = (id: string, phoneE164: string): StoredUser => ({
@@ -93,8 +95,9 @@ const EXPECTED = {
   amongShape: [true, true, true], amongHeld: [true, true, false], empty: 0,
   rawAskRefused: true, rawWriteRefused: true, instantWriteRefused: true, instantLeftNothing: true, tooManyRefused: true,
   byEmail: [N.refC], byBlankEmail: 0,
-  censusBefore: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 3, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0 },
-  backfill: { applications: 2, promised: 2, withContact: 2, numbers: 3, missing: 0, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0, written: 3 },
+  censusBefore: { applications: 2, promised: 2, withContact: 2, numbers: 3, emails: 1, missing: 4, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0 },
+  backfill: { applications: 2, promised: 2, withContact: 2, numbers: 3, emails: 1, missing: 0, unreadable: 0, reviewed: 0, notMobile: 1, emailOnlyUnmatched: 0, written: 4 },
+  emailHeld: [true, true, false],
   again: { written: 0, missing: 0 },
   gate: ["agent_referee", "agent_referee", "agent_referee", "no_consent"],
   handBefore: { unreadable: 1, reviewed: 0, missing: 0, notMobile: 2 },
@@ -105,8 +108,8 @@ const EXPECTED = {
   handKeyed: { ok: true, written: 1 },
   handGate: "agent_referee",
   handAudit: [
-    { action: "marketing.referee_contact_reviewed", category: "COMPLIANCE", payload: { reason: HAND_REASON, via: "ops" } },
-    { action: "marketing.referee_key_added", category: "COMPLIANCE", payload: { via: "ops" } },
+    { action: "marketing.referee_contact_reviewed", category: "COMPLIANCE", payload: { by: HAND_BY, reason: HAND_REASON, referee: "one", via: "ops" } },
+    { action: "marketing.referee_key_added", category: "COMPLIANCE", payload: { by: HAND_BY, referee: "one", via: "ops" } },
   ],
 };
 
@@ -151,6 +154,11 @@ async function scenario(): Promise<Record<string, unknown>> {
   t.backfill = await RX.backfillRefereeKeys();
   const again = await RX.backfillRefereeKeys();
   t.again = { written: again.written, missing: again.missing };
+  // ── the third pass's MINOR-2 · the referee's ADDRESS is keyed too, read case-insensitively; an unrelated one is not ──
+  t.emailHeld = [
+    await RX.isPromisedRefereeEmail(REF_EMAIL), await RX.isPromisedRefereeEmail(`  ${REF_EMAIL.toUpperCase()}  `),
+    await RX.isPromisedRefereeEmail("somebody.else@example.com"),
+  ];
   t.gate = [];
   for (const m of [N.refA, N.refB, N.refC, N.stranger]) {
     const v = await mayReceiveMarketingSms(m);
@@ -165,10 +173,10 @@ async function scenario(): Promise<Record<string, unknown>> {
   await db.agentApplication.create(application(APP3, U1, `0${N.refD.slice(3, 6)} ${N.refD.slice(6, 9)} ${N.refD.slice(9, 11)}`, "022 211 5812"));
   t.handBefore = handCounts(await RX.refereeKeyCensus());
   t.handGateBefore = await gateOf(N.refD);
-  t.handBadReason = await RX.recordRefereeContactReviewed({ applicationId: APP3, reason: "box 7" });
-  t.handReviewed = await RX.recordRefereeContactReviewed({ applicationId: APP3, reason: HAND_REASON });
+  t.handBadReason = await RX.recordRefereeContactReviewed({ applicationId: APP3, referee: "one", reason: "box 7", by: HAND_BY });
+  t.handReviewed = await RX.recordRefereeContactReviewed({ applicationId: APP3, referee: "one", reason: HAND_REASON, by: HAND_BY });
   t.handAfterReview = handCounts(await RX.refereeKeyCensus());
-  t.handKeyed = await RX.keyRefereeNumberByHand({ applicationId: APP3, typed: `+255 ${N.refD.slice(3)}` });
+  t.handKeyed = await RX.keyRefereeNumberByHand({ applicationId: APP3, referee: "one", typed: `+255 ${N.refD.slice(3)}`, again: `0${N.refD.slice(3)}`, by: HAND_BY });
   t.handGate = await gateOf(N.refD);
   const rows = (await getAuditForTargetsDurable({
     targetType: "AgentApplication", targetIds: [APP3], actions: [RX.REFEREE_CONTACT_REVIEWED_ACTION, RX.REFEREE_KEY_ADDED_ACTION],
@@ -234,8 +242,8 @@ for (const [k, want] of Object.entries(EXPECTED)) {
   const got = onPostgres[k];
   ok(`1 · Postgres · ${k} is the hand-written answer`, canon(got) === canon(want), `got ${canon(got)} · want ${canon(want)}`);
 }
-// ── 1b · what the table holds afterwards, read by SQL: the six keys the scenario wrote (two by the DAL, three by the
-//    backfill, one by the hand step), every one thirty-two letters a–p — the refused raw-number write and the refused row with an instant left
+// ── 1b · what the table holds afterwards, read by SQL: the seven keys the scenario wrote (two by the DAL, four by the
+//    backfill — three numbers and the e-mail referee's address — one by the hand step), every one thirty-two letters a–p — the refused raw-number write and the refused row with an instant left
 //    nothing, and no digit is stored anywhere ──
 {
   const client = new pg.Client({ connectionString: URL_RAW });
@@ -243,8 +251,8 @@ for (const [k, want] of Object.entries(EXPECTED)) {
   try {
     const all = await client.query(`select count(*)::int as n from "AgentRefereeKey"`);
     const letters = await client.query(`select count(*)::int as n from "AgentRefereeKey" where "refereeKey" ~ '^[a-p]{32}$'`);
-    ok("1b · the table holds exactly the six keys written, every one thirty-two letters a–p — the refused writes left nothing",
-      all.rows[0].n === 6 && letters.rows[0].n === 6, `rows ${all.rows[0].n} · letter keys ${letters.rows[0].n}`);
+    ok("1b · the table holds exactly the seven keys written, every one thirty-two letters a–p — the refused writes left nothing",
+      all.rows[0].n === 7 && letters.rows[0].n === 7, `rows ${all.rows[0].n} · letter keys ${letters.rows[0].n}`);
   } finally {
     await client.end();
   }
