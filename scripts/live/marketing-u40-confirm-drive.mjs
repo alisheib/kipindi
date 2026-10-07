@@ -61,7 +61,8 @@
  * which the page's act gate answers (driven); §UI 13 holds the refusal's toast; (4) PREPARING, PAUSED and CANCELLED are held
  * by §UI 8 — RUNNING and DONE are driven from the campaign seed; (5) "busy" (no slot of the split door's in
  * CONFIRM_SLOT_WAIT_MS) is not driven — no dev switch holds both slots for 15 s; §UI 17 holds the read's and the
- * confirmation's answers, and the bound.
+ * confirmation's answers, and the bound; (6) nor is a READER's split that found no slot in time ("Couldn't work out who
+ * will receive it just now…" where the four figures stand) — no switch fails the split alone; §UI 19 and 20 hold it.
  *
  * Run (in-memory, zero prod risk; a FRESH server — the drive saves the source line, which nothing clears, and adds to the
  * "moved" tag every run; remove .next before the boot: a stale .next 404s every /api/dev-test route):

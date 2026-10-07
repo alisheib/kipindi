@@ -266,13 +266,18 @@ export const COMPOSE_CONFIRM_CLOSED: Readonly<Record<Exclude<SmsCampaignStatus, 
 };
 /** The view could not be counted: said as such, with "Count again" beside it — never a zero, never a word on the campaign. */
 export const COMPOSE_CONFIRM_UNCOUNTED = "Couldn't count this audience just now.";
-/** ⭐ U40b · no slot of the split door's came free in time (`CONFIRM_SLOT_WAIT_MS`) — the trigger's read counted nothing
- *  (the U40b re-review's MINOR 3, in its own words); "Count again" beside it. */
-export const COMPOSE_CONFIRM_BUSY = "The audience is being counted for other work right now — nothing was confirmed. Try again in a moment.";
+/** ⭐ U40b · no slot of the split door's came free in time (`CONFIRM_SLOT_WAIT_MS`) — the trigger's read counted nothing;
+ *  "Count again" beside it. ⛔ True as written: the slots are usually counting OTHER audiences, and beside a trigger that
+ *  only read, what did not happen is a count — never a confirmation (the third pass). */
+export const COMPOSE_CONFIRM_BUSY = "Counting is busy right now — nothing was counted. Try again in a moment.";
 /** ⭐ U40b · the same, for the confirmation itself: its own count found no slot in time — BEFORE the one write, so this press
  *  confirmed nothing. The dialog stays open with the typing kept. */
-export const COMPOSE_CONFIRM_BUSY_CONFIRM =
-  "Couldn't confirm — the audience is being counted for other work right now, so nothing was confirmed. Try again in a moment.";
+export const COMPOSE_CONFIRM_BUSY_CONFIRM = "Couldn't confirm — counting is busy right now, so nothing was confirmed. Try again in a moment.";
+/** ⭐ U40b · a READER's four figures could not be worked out in time (the split door busy, or its read failed): said where
+ *  they would stand, never left out in silence — the count is the fence's own and exact either way, and the send gate asks
+ *  again at the moment of each message (the third pass). */
+export const COMPOSE_CONFIRM_SPLIT_UNREAD =
+  "Couldn't work out who will receive it just now — the count is exact, and each message is checked again when it is sent.";
 
 /** ⭐ U40b · the officer's read budget is spent (`marketing.campaignConfirmRead`) — nothing was counted. */
 export function composeConfirmReadRateLimited(retryAfterSec: number): string {
@@ -426,10 +431,11 @@ export function confirmAnswerReady(a: ConfirmAnswerFacts | null): boolean {
 }
 
 /** Which way back a blocked answer offers: a read that failed (or found no slot in time) is counted again, a blocked view
- *  checked again; else none. */
+ *  checked again; else none. ⛔ The action's own refusals — the role's, and a spent read budget's — are printed ALONE: no
+ *  button beside them would do anything but be refused again (the third pass). */
 export function confirmAnswerRetry(a: ConfirmAnswerFacts | null): "count" | "check" | null {
   if (a === null) return null;
-  if (!a.ok) return a.reason === "role" ? null : "count";
+  if (!a.ok) return a.reason === "role" || a.reason === "rate_limited" ? null : "count";
   if (a.card.read === "error" || a.card.read === "busy") return "count";
   return a.card.read === "view" && answerBlocked(a) !== null ? "check" : null;
 }

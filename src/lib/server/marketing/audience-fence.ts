@@ -154,8 +154,10 @@ export type FenceSampleRow = { masked: string; operator: string | null };
 
 /** What the server counted: the claim it signs, when, and the walk's first rows (masked) — for a listed audience, all
  *  of them. ⛔ The fence answers for the AUDIENCE, whoever asks: what a viewer may see of it is the service's to decide
- *  (`fenceForViewer` — OD67: a viewer who may not read a number gets no list and no members key). */
-export type AudienceFence = { claim: FenceClaim; countedAt: string; sample: FenceSampleRow[] };
+ *  (`fenceForViewer` — OD67: a viewer who may not read a number gets no list and no members key).
+ *  ⭐ U40b · `waitedMs` — how long its count WAITED for one of the split door's slots (never its walk): what the trigger's
+ *  read charges against `CONFIRM_SLOT_WAIT_MS` before a reader's split asks for one (the third pass). Server-side only. */
+export type AudienceFence = { claim: FenceClaim; countedAt: string; sample: FenceSampleRow[]; waitedMs?: number };
 
 /**
  * ⭐ U40b · THE MOST A CONFIRMATION WAITS FOR ONE OF THE SPLIT DOOR'S SLOTS — ONE constant, for the trigger's read (its count,
@@ -244,7 +246,9 @@ export async function audienceFence(
   // once — the pool is shared with bets. Its OWN count, never joined, its slot waited for at most CONFIRM_SLOT_WAIT_MS
   // (`FENCE_SLOT`): past it `AudienceSlotBusy` THROWS — nothing counted. Still the ONE walk's count.
   const slot = deps.slot ?? FENCE_SLOT;
-  const count = await audienceWalkCount(filter, deps.count, { join: slot.join, waitMs: slot.waitMs });
+  // How long the count WAITED for its slot (the door tells it) — the read's budget is charged this, never the walk.
+  let waitedMs = 0;
+  const count = await audienceWalkCount(filter, deps.count, { join: slot.join, waitMs: slot.waitMs, waited: (ms) => { waitedMs = ms; } });
   const keys = await firstKeys(filter, deps.walk);
   const unfiltered = deps.unfiltered(filter);
   const canonical = unfiltered ? null : canonicalMembers(keys, count);
@@ -260,5 +264,5 @@ export async function audienceFence(
     masked: maskPhone(k),
     operator: parseTzNumber(k).operator?.brand ?? null,
   }));
-  return { claim, countedAt: deps.now().toISOString(), sample };
+  return { claim, countedAt: deps.now().toISOString(), sample, waitedMs };
 }

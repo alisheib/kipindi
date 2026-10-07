@@ -545,12 +545,13 @@ export async function campaignConfirmView(campaignId: string, viewer: ConfirmVie
   if (deps.refusal(filter, viewer.reads) !== null) return uncounted("audience_refused", CONFIRM_SERVICE_COPY.audience_refused(none));
 
   // ⛔ OD67 · what this viewer may see of the fence — a viewer who may not read a number: typed, no key, no list.
-  // ⭐ U40b · the read waits for the split door's slots CONFIRM_SLOT_WAIT_MS in all: the fence's count first (no slot in
-  // time THROWS `AudienceSlotBusy`), then a reader's split with what is left of it.
-  const started = deps.now().getTime();
-  const seen = deps.shape(await deps.fence(row), viewer.reads);
+  // ⭐ U40b · the read WAITS for the split door's slots CONFIRM_SLOT_WAIT_MS in all: the fence's count first (no slot in
+  // time THROWS `AudienceSlotBusy`), then a reader's split with what is left once the count's WAIT is charged — its walk,
+  // and the first keys', never (the third pass: a large audience's walk would leave a reader's figures no bound at all).
+  const fenced = await deps.fence(row);
+  const seen = deps.shape(fenced, viewer.reads);
   const count = seen.claim.count;
-  const left = Math.max(0, CONFIRM_SLOT_WAIT_MS - (deps.now().getTime() - started));
+  const left = Math.max(0, CONFIRM_SLOT_WAIT_MS - (fenced.waitedMs ?? 0));
   const split = await audienceViewFor(filter, count, viewer, deps, left);
   const spend = await spendOf(row, count, deps);
   const line = deps.sourceRule(row, filter, await freshLineOf(deps));

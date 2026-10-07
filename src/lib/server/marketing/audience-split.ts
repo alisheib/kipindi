@@ -405,20 +405,29 @@ export function isAudienceSlotBusy(err: unknown): err is AudienceSlotBusy {
  *  ⭐ U40b · A BOUNDED WAIT for the asker that names one (`waitMs`): past it the asker leaves the line — its place is taken
  *  out, so no slot is ever handed to an asker that gave up — and is answered `AudienceSlotBusy`; 0 takes a slot only if one
  *  is free now. Without `waitMs` the wait is as it was: unbounded.
+ *  ⭐ U40b · `waited` is told, once the asker holds its slot, how long it waited for it — the confirmation's read budgets
+ *  only its WAITING, never a walk (the third pass).
  *  ⚠️ No deadline on a slot once held: a split holds its slot until its reads settle, and a failed read releases it
  *  (`finally`). Two splits stuck on reads that never settle would hold both slots — with the database itself hung, which
  *  bets would feel first. The other constants are U52's to size. */
-async function withSplitSlot<T>(work: () => Promise<T>, waitMs?: number): Promise<T> {
+async function withSplitSlot<T>(work: () => Promise<T>, waitMs?: number, waited?: (ms: number) => void): Promise<T> {
+  const asked = Date.now();
   if (SPLITS.running < AUDIENCE_SPLITS_PER_PROCESS) SPLITS.running++;
-  else if (waitMs === undefined || waitMs === Number.POSITIVE_INFINITY) await new Promise<void>((resolve) => SPLITS.waiting.push(resolve));
+  else if (!bounded(waitMs)) await new Promise<void>((resolve) => SPLITS.waiting.push(resolve));
   else await slotWithin(waitMs);
   try {
+    waited?.(Date.now() - asked);
     return await work();
   } finally {
     const next = SPLITS.waiting.shift();
     if (next) next();
     else SPLITS.running--;
   }
+}
+
+/** ⭐ U40b · is this a BOUND on the wait for a slot? Any number but +∞ — none, or an infinite one, is the plain line. */
+function bounded(waitMs: number | undefined): waitMs is number {
+  return waitMs !== undefined && waitMs !== Number.POSITIVE_INFINITY;
 }
 
 /** ⭐ U40b · a place in line for at most `waitMs`: handed a slot (the releaser hands it over, `running` unchanged), or out of
@@ -452,8 +461,12 @@ export type WalkCountOptions = {
    *  one to a later asker. */
   join?: boolean;
   /** The most this asker waits for a slot of its own, in ms — past it `AudienceSlotBusy`, nothing counted (MINOR 3).
-   *  ⚠️ It bounds this asker's OWN wait: a count it joins is awaited as that count runs — so give it with `join: false`. */
+   *  ⛔ A BOUND MEANS ITS OWN COUNT (the third pass): a bounded asker neither joins a count nor lends its own, so an
+   *  unbounded asker can never inherit a "busy" it did not ask for. */
   waitMs?: number;
+  /** Told, once this asker holds its own slot, how long it waited for it (ms) — what the confirmation's read charges
+   *  against its bound, never the walk. A count joined tells nothing: it waited for no slot of its own. */
+  waited?: (ms: number) => void;
 };
 
 /**
@@ -469,11 +482,11 @@ export async function audienceWalkCount(
   count: (f: ContactAudienceFilter) => Promise<number> = campaignAudienceCount,
   opts: WalkCountOptions = {},
 ): Promise<number> {
-  const shared = count === campaignAudienceCount && opts.join !== false;
+  const shared = count === campaignAudienceCount && opts.join !== false && !bounded(opts.waitMs);
   const key = contactAudienceKey(f);
   let flight = shared ? COUNTS.get(key) : undefined;
   if (flight === undefined) {
-    const mine = withSplitSlot(() => count(f), opts.waitMs);
+    const mine = withSplitSlot(() => count(f), opts.waitMs, opts.waited);
     if (shared) {
       COUNTS.set(key, mine);
       const clear = (): void => {
@@ -510,7 +523,7 @@ export async function audienceSplit(
   const refused = deps.refusal(f, opts.viewerReads);
   if (refused !== null) return { ok: false, param: refused.param, reason: refused.reason };
   const shared = deps === AUDIENCE_SPLIT_DEPS && opts.now === undefined && opts.budgetMs === undefined
-    && opts.clock === undefined && opts.chunk === undefined && opts.observe === undefined && opts.waitMs === undefined;
+    && opts.clock === undefined && opts.chunk === undefined && opts.observe === undefined && !bounded(opts.waitMs);
   const key = contactAudienceKey(f);
   let flight = shared ? SPLITS.flights.get(key) : undefined;
   if (flight === undefined) {

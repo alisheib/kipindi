@@ -74,9 +74,9 @@ import type { AudienceSplitView } from "./audience-view-model";
 import { AUDIENCE_COUNT_AGAIN, AUDIENCE_FIGURE, AUDIENCE_NO_OPERATOR, AUDIENCE_SAMPLE_LEAD } from "./audience-copy";
 import {
   COMPOSE_CONFIRM_ACT, COMPOSE_CONFIRM_CHECK_AGAIN, COMPOSE_CONFIRM_COUNTING, COMPOSE_CONFIRM_HONESTY, COMPOSE_CONFIRM_LIST_LEAD,
-  COMPOSE_CONFIRM_REFUSED, COMPOSE_CONFIRM_TRIGGER, COMPOSE_CONFIRMED, COMPOSE_CONFIRMED_NEXT, COMPOSE_CONFIRMED_START,
-  afterRecount, composeConfirmSegments, composeConfirmTitle, composeNotDraftTitle, confirmAnswerRetry, confirmGate,
-  confirmOpensOn, confirmOutcome, confirmTriggerBlocked,
+  COMPOSE_CONFIRM_REFUSED, COMPOSE_CONFIRM_SPLIT_UNREAD, COMPOSE_CONFIRM_TRIGGER, COMPOSE_CONFIRMED, COMPOSE_CONFIRMED_NEXT,
+  COMPOSE_CONFIRMED_START, afterRecount, composeConfirmSegments, composeConfirmTitle, composeNotDraftTitle,
+  confirmAnswerRetry, confirmGate, confirmOpensOn, confirmOutcome, confirmTriggerBlocked,
 } from "./composer-copy";
 import type { ConfirmGateProps, ConfirmOutcome, ConfirmRecount } from "./composer-copy";
 import { CONFIRM_LINE_BOX, CONFIRM_LINE_CELL, ConfirmLineSizer } from "./confirm-card-ghost";
@@ -138,7 +138,14 @@ function ConfirmBody({ view, money, listed, notice }: { view: ConfirmCardView; m
           {view.describe.map((line) => <li key={line} className="text-body-sm text-text">{line}</li>)}
         </ul>
       )}
-      {view.split !== null && <ConfirmFigures split={view.split} />}
+      {/* ⭐ A reader's figures that could not be worked out in time (the split door busy, or its read failed) are SAID where
+          they would stand — never left out in silence (the third pass). A viewer who may not read a number always has the
+          count alone here, so a missing split is only ever a reader's. */}
+      {view.split !== null ? (
+        <ConfirmFigures split={view.split} />
+      ) : (
+        <p className="text-body-sm text-text-secondary" data-confirm-figures="unread">{COMPOSE_CONFIRM_SPLIT_UNREAD}</p>
+      )}
       {/* ⛔ OD67 · the server's rows and nothing else: every person of a reader's list, the first five of a reader's typed
           audience — and none at all for a viewer who may not read a number (their view carries none). */}
       {view.sample.length > 0 && (
