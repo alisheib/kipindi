@@ -92,6 +92,22 @@ System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLI
 | **Where** | A worktree off `main` (`C:\kipindi-tax`, branch `tax-report`, on the laptop; `F:\kipindi-tax`, branch `tax-report-edits`, on OMEGA-COMPILE01) → `main` |
 | **Next** | Read [`TAX-REPORT.md`](TAX-REPORT.md) §0 — never this cell |
 
+## ▶ 0e · MONEY DOORS — `MONEY-DOORS` · ⏳ **IN FLIGHT on OMEGA-COMPILE01 since 2026-10-07 ~12:15 EAT** · Phase A (route audit) then Phase B (this ruling)
+
+Ali, 2026-10-07: *"for deposits. even if no mail was there remove the input to verify mail to deposit. its fine only
+withdrawals ar eforced verify maiil … intheuser profile we need a tab for internal receipts"*. Management, relayed by
+Ali the same day: *"in deposits and in the minmium stake where we teach people how to depsoit shoudl e alway
+sconsisently 1000 not 500"*. Owner answers the same day: publish the 2026-10-06 route audit FIRST; remove the app-wide
+"confirm your email" bar and ask quietly at withdrawal; the withdraw screen states the TRUE (derived) minimum.
+
+| | |
+|---|---|
+| **What** | **Phase A** — land the 2026-10-06 route audit (P1–P10, the local-only branch `arch-hardening`, never pushed) after re-verifying it on today's main. **Phase B** — a deposit asks no email; a confirmed email is required to withdraw (asked after identity; the officer refused-funds return exempt); the app-wide email bar removed, email asked quietly (withdraw card, profile pill, first-deposit note); money emails only to confirmed addresses; a Receipts page for every deposit and withdrawal at /wallet/receipts with its door in the profile; minimum deposit and minimum stake TZS 1,000 everywhere (stake bounds floored on read); the withdraw screen states the true minimum |
+| **Where** | OMEGA-COMPILE01 · Phase A: `F:\kipindi-route-land`, branch `route-audit-land` (backup `origin/backup/arch-hardening`) · Phase B: `F:\kipindi-receipts`, branch `deposit-open-receipts` → `main` · board notes: `F:\kipindi-0e-board` |
+| **⏳ In flight** | Plan approved by Ali. Phase A starting: backup, rebase onto today's main, a battery measured against a clean-main baseline, browser drives, an independent review, then the push. Nothing of Phase B is built yet |
+| **Other lanes** | ⛔ Vodacom: R2 / S9's "email code before the first deposit" is SUPERSEDED by this ruling — do not build it; the shortfall test's TZS 500 example moves to 1,000 in Phase B. Marketing: Phase B adds one paged deposit/withdrawal read to both data-layer twins (the transaction block only) |
+| **Next** | Phase A as above, then Phase B |
+
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
 Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:
