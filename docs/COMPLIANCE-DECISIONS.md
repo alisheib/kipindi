@@ -50,18 +50,24 @@ final-rule units, and their review fixes).
   *"（以及如下文所述，您号码的一种编码形式）"*, so it stays true. The second paragraph says — en: *"Until version {V} of
   this policy we told every referee that we never contact them for marketing. If you were named as a referee before
   then, that promise stands: we never contact you for marketing. To keep it, we keep a coded form of your phone number
-  (it cannot be turned back into the number) for as long as 50pick sends marketing messages; asking us to destroy your
+  (not the number itself) for as long as 50pick sends marketing messages; asking us to destroy your
   information removes everything else, but not this coded form, because without it we could not keep the promise. If
   you are named as a referee after that: 50pick may send you offers by SMS. You can stop them at any time with the link
   in every offer."*; sw: *"Hadi toleo la {V} la sera hii tuliwaambia wadhamini wote kwamba hatuwasiliani nao kamwe kwa
   matangazo. Kama ulitajwa kuwa mdhamini kabla ya hapo, ahadi hiyo inabaki: hatuwasiliani nawe kamwe kwa matangazo. Ili
-  kuitimiza, tunahifadhi namba yako ya simu ikiwa imegeuzwa kuwa msimbo (msimbo huo hauwezi kugeuzwa kurudi kuwa namba)
-  kwa muda wote ambao 50pick inatuma ujumbe wa matangazo; ukituomba tuharibu taarifa zako, kila kitu kingine
+  kuitimiza, tunahifadhi namba yako ya simu ikiwa imegeuzwa kuwa msimbo (si namba yenyewe) kwa muda wote ambao 50pick inatuma ujumbe wa matangazo; ukituomba tuharibu taarifa zako, kila kitu kingine
   huondolewa, lakini si msimbo huu, kwa sababu bila huo tusingeweza kutimiza ahadi hiyo. Kama umetajwa kuwa mdhamini
   baada ya hapo: 50pick inaweza kukutumia ofa kwa SMS. Unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha
-  kilicho katika kila ofa."*; zh: *"在本政策 {V} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（无法还原为该号码）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。"*
+  kilicho katika kila ofa."*; zh: *"在本政策 {V} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。"*
   The two sentences after "If you are named as a referee after that:" are management's (approved); the rest of the
   paragraph is ⏳.
+  ⚠️ **One parenthesis differs from the wording first put to Ali.** It read *"(it cannot be turned back into the
+  number)"* (sw *"(msimbo huo hauwezi kugeuzwa kurudi kuwa namba)"*, zh *"（无法还原为该号码）"*), and now reads en *"(not
+  the number itself)"*, sw *"(si namba yenyewe)"*, zh *"（并非号码本身）"*. Why: the coded form is an HMAC of the number
+  under the server's pepper, and whoever holds the pepper can hash every Tanzanian mobile number and compare — so "cannot
+  be turned back" overclaimed (the lead's correction, 2026-10-07). Ali had not answered the first wording; the corrected
+  one is the one put to him. ⛔ Never call the coded form irreversible, in any language: `test:privacy-notice` §4k
+  refuses it.
 - **{V}, the referees' line, is ONE constant** — `REFEREE_PROMISE_REWORDED_IN` (`src/lib/legal/privacy-referees.ts`),
   2026-10-07 for now, printed in §5 and §9 in all three languages. It is named by its label, never "this version", which
   would move with every later version and the promise with it. ⛔ At integration it is set to the version production
@@ -112,8 +118,8 @@ note in all three languages, and the data-rights sentence, each PINNED WHOLE by 
 tied to the unlink, the absence of a delete and the retention rows; new §4k (`refereeWordsDefects`, named apart from the
 final-rule gate's §4i) — §9 printing the ONE constant in every language, the constant recorded by a "Privacy v…" heading
 and never later than the page's version, the old promise made to nobody new, the kept promise, management's sentences,
-and the stop sentence tied to the footer's stop link (⚠️ to be re-tied to the stop-link setting when U43b makes the link
-one setting) — each with its planted controls. `POLICY_PAGES.privacy.codeVersion` 2026-10-07 (`test:policy-lines` L0).
+the coded referee number never called irreversible in any language, and the stop sentence tied to the footer's stop link
+(⚠️ to be re-tied to the stop-link setting when U43b makes the link one setting) — each with its planted controls. `POLICY_PAGES.privacy.codeVersion` 2026-10-07 (`test:policy-lines` L0).
 The box's absence: `test:marketing-consent-ledger` 6, 7f, 7g and 8g; `test:registration-contact` 1.2 and 6.1.
 
 **Translations.** Copied byte for byte from the drafts Ali approved: §5's record bullet and first-bullet clause in sw

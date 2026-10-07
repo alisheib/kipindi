@@ -69,7 +69,10 @@ const TITLE: Record<Locale, string> = {
 // with a coded form of each such number that §5's new referee bullet states and §9 explains, whose cutoff is the instant
 // the re-worded §9 first went live — and referees named after it are told management's two sentences ("50pick may send
 // you offers by SMS." "You can stop them at any time with the link in every offer."). ⛔ §9 names the version by its
-// LABEL, never "this version": a later version would move a relative phrase and with it the promise. §6's Erasure line
+// LABEL, never "this version": a later version would move a relative phrase and with it the promise. ⛔ §9 calls the coded
+// form "not the number itself", NEVER "it cannot be turned back into the number": it is an HMAC under the server's
+// pepper, and whoever holds the pepper can hash every Tanzanian mobile number and compare (`test:privacy-notice` §4k
+// refuses the claim in every language). §6's Erasure line
 // points to §5's records instead of "AML retention requirements". The coded-form words, §6 and the data-rights changes
 // are the lead's words of 2026-10-07, to be put to Ali — COMPLIANCE-DECISIONS.md "Privacy v2026-10-07". The same record
 // is said in the data-rights file (`privacy.ts`, rights.erasure) and under "Erase my data"
@@ -208,7 +211,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           Until version {REFEREE_PROMISE_REWORDED_IN} of this policy we told every referee that
           we never contact them for marketing. If you were named as a referee before then, that
           promise stands: we never contact you for marketing. To keep it, we keep a coded form of
-          your phone number (it cannot be turned back into the number) for as long as 50pick sends
+          your phone number (not the number itself) for as long as 50pick sends
           marketing messages; asking us to destroy your information removes everything else, but
           not this coded form, because without it we could not keep the promise. If you are named
           as a referee after that: 50pick may send you offers by SMS.
@@ -332,7 +335,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           Hadi toleo la {REFEREE_PROMISE_REWORDED_IN} la sera hii tuliwaambia wadhamini wote kwamba
           hatuwasiliani nao kamwe kwa matangazo. Kama ulitajwa kuwa mdhamini kabla ya hapo, ahadi
           hiyo inabaki: hatuwasiliani nawe kamwe kwa matangazo. Ili kuitimiza, tunahifadhi namba
-          yako ya simu ikiwa imegeuzwa kuwa msimbo (msimbo huo hauwezi kugeuzwa kurudi kuwa namba)
+          yako ya simu ikiwa imegeuzwa kuwa msimbo (si namba yenyewe)
           kwa muda wote ambao 50pick inatuma ujumbe wa matangazo; ukituomba tuharibu taarifa zako,
           kila kitu kingine huondolewa, lakini si msimbo huu, kwa sababu bila huo tusingeweza
           kutimiza ahadi hiyo. Kama umetajwa kuwa mdhamini baada ya hapo:
@@ -434,7 +437,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息（以及如下文所述，您号码的一种编码形式）；身份证扫描件在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
         </p>
         <p>
-          在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（无法还原为该号码）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。
+          在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。
         </p>
       </LegalSection>
     </>

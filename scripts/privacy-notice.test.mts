@@ -24,7 +24,8 @@
  *        and the record they state held to the code (erasure only unlinks it, nothing deletes it, DATA-RETENTION 7 years).
  *   §4k · v2026-10-07 · §9: referees named before REFEREE_PROMISE_REWORDED_IN keep "we never contact you for
  *        marketing"; those named after it are told management's two sentences — the stop sentence only while every offer
- *        carries its link. (§4i is the final-rule gate's own section; these two are named apart from it.)
+ *        carries its link; and the coded referee number is never called irreversible ("not the number itself").
+ *        (§4i is the final-rule gate's own section; these two are named apart from it.)
  *
  * ⭐ U33p (2026-10-04) · THREE BULLETS ARE ADMIN-EDITED LINES NOW (`legal.policy_lines`): the §3 Consent bullet, a new §3
  * licence bullet, and the §4 Blackball bullet. The page wraps each in a `PolicyLine` element whose children are today's
@@ -68,7 +69,7 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
 const PRIVACY_VERSION = "2026-10-07";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "11627fd5139d";
+const PRIVACY_EN_SHA = "88b049bf80b1";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -805,7 +806,7 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
     "en §5 referee numbers bullet": "759980721b5f", "sw §5 referee numbers bullet": "cd5575e2769c", "zh §5 referee numbers bullet": "724a23800660",
     "en §6 Erasure": "d92355281cf7", "sw §6 Erasure": "89c0ca55cb2b", "zh §6 Erasure": "ef70992f350e",
     "en §9 first paragraph": "85aa1bcc73a0", "sw §9 first paragraph": "3ec321fcfaf5", "zh §9 first paragraph": "877ece96400b",
-    "en §9 second paragraph": "577c4256d22c", "sw §9 second paragraph": "bd23fe11168e", "zh §9 second paragraph": "0d6aa8a64126",
+    "en §9 second paragraph": "655a862c8ac1", "sw §9 second paragraph": "5079ce41cd8c", "zh §9 second paragraph": "6384d026c548",
     'en the note under "Erase my data"': "4c0b74e089f4", 'sw the note under "Erase my data"': "88d387d24b5b", 'zh the note under "Erase my data"': "d5d322ec1b8b",
     "en the data-rights erasure sentence": "63c74d586aa8",
   };
@@ -839,7 +840,7 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
   ok("§4j en/sw/zh §5's three bullets, §6's Erasure line, §9's two paragraphs and the erasure note — and the data-rights sentence — are the pinned words, whole; erasure only unlinks the record; nothing deletes it; DATA-RETENTION agrees",
     campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).length === 0,
     campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).join("; "));
-  const plantP2Sw = pageSrc.replace("(msimbo huo hauwezi kugeuzwa kurudi kuwa namba)", "(msimbo huo unaweza kugeuzwa kurudi kuwa namba)");
+  const plantP2Sw = pageSrc.replace("(si namba yenyewe)", "(ni namba yenyewe)");
   const plantNoteZh = { ...erasureNotes, zh: erasureNotes.zh.replace("至少保留 7 年。我们", "保留 7 年，期满后删除。我们") };
   const plantS6Sw = pageSrc.replace("kwa kuzingatia kumbukumbu ambazo sheria inatulazimu kuhifadhi (angalia §5)", "kwa kuzingatia masharti ya uhifadhi ya AML");
   const plantRefereesZh = pageSrc.replace(/\n[ \t]*<li>本政策 \{REFEREE_PROMISE_REWORDED_IN\} 版之前被提名的[^\n]*<\/li>/, "");
@@ -874,6 +875,10 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
  * by its LABEL (never "this version", which would move with every later version, and the promise with it); it must have
  * its COMPLIANCE "Privacy v…" heading and may never name a version later than the one the page prints.
  * (The final-rule gate's own section reads §9 too; this block is named apart from it — §4k, `refereeWordsDefects`.)
+ * ⛔ THE CODED FORM IS "NOT THE NUMBER ITSELF" — NEVER CALLED IRREVERSIBLE, in any language, anywhere on the page. It is an
+ * HMAC of the number under the server's pepper, and whoever holds the pepper can hash every Tanzanian mobile number and
+ * compare: "(it cannot be turned back into the number)" overclaimed, and was replaced on 2026-10-07 (the lead's decision;
+ * COMPLIANCE-DECISIONS "Privacy v2026-10-07").
  * ⚠️ THE STOP SENTENCE IS TIED TO `marketingFooter()` FOR NOW — true only while every offer carries its stop link. When
  * U43b makes the link ONE setting (management's item 7: it goes, with these words, in the commit that files the written
  * confirmation), RE-TIE this check to that setting, so §9's stop sentence goes exactly when the link does.
@@ -890,7 +895,14 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
     zh: "我们绝不会为营销目的联系您；",
   };
   const LABEL_IN_SOURCE = "{REFEREE_PROMISE_REWORDED_IN}";
-  const metaVersion = (src: string) => src.match(/en: "Version ([0-9]{4}-[0-9]{2}-[0-9]{2}(?:\.[0-9]+)?) · /)?.[1] ?? "";
+  /** ⛔ The claims the coded referee number may never carry: that it cannot be turned back, reversed or undone. Read in each
+   *  locale's whole block, comments stripped and whitespace collapsed, so a wrapped line cannot hide one. */
+  const CODE_OVERCLAIM: Record<Loc, readonly RegExp[]> = {
+    en: [/\bcan(?:not|'t| not) be (?:turned back|reversed|undone)\b/i, /\birreversib/i],
+    sw: [/kugeuzwa kurudi/i, /wezi kugeuzwa/i],
+    zh: [/无法还原/, /不可逆/, /不能还原/],
+  };
+  const metaVersion =(src: string) => src.match(/en: "Version ([0-9]{4}-[0-9]{2}-[0-9]{2}(?:\.[0-9]+)?) · /)?.[1] ?? "";
   const stopLinkInOffers = (footer: string) => footer.includes(`${OPTOUT_PATH}${footerMeasurementToken()}`);
   const refereeWordsDefects = (page: string, footer: string, label: string, decisions: string): string[] => {
     const d: string[] = [];
@@ -903,6 +915,11 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
       if (s5 === "") d.push(`${l} §5 has no referee-numbers bullet printing the label from REFEREE_PROMISE_REWORDED_IN`);
       if (/\b20[0-9]{2}-[0-9]{2}-[0-9]{2}\b/.test(s9(l))) d.push(`${l} §9 types a version label instead of printing REFEREE_PROMISE_REWORDED_IN — two labels drift apart`);
       if (s9(l).includes(OLD_REFEREE_PROMISE[l])) d.push(`${l} §9 still promises every referee "${OLD_REFEREE_PROMISE[l]}"`);
+      const prose = code(bl[l]).replace(/\s+/g, " ");
+      for (const re of CODE_OVERCLAIM[l]) {
+        const hit = prose.match(re)?.[0];
+        if (hit) d.push(`${l} calls the coded referee number irreversible ("${hit}") — it is an HMAC under the server's pepper, which can try every number: say it is not the number itself`);
+      }
     }
     if (!isPolicyVersion(label)) d.push(`REFEREE_PROMISE_REWORDED_IN "${label}" is not a version label`);
     else {
@@ -928,8 +945,16 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
   // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
   const plantNoStop = pageSrc.replace("          You can stop them at any time with the link in every offer.", "");
   const footerWithoutLink = offerFooter.replace(`${OPTOUT_PATH}${footerMeasurementToken()}`, "");
+  // The parenthesis as it read before 2026-10-07's correction, put back into ONE language at a time.
+  const plantOverclaimEn = pageSrc.replace("(not the number itself)", "(it cannot be turned back into the number)");
+  const plantOverclaimZh = pageSrc.replace("（并非号码本身）", "（无法还原为该号码）");
   ok("§4k control · planted §9 copies found their targets",
-    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantNoStop !== pageSrc, footerWithoutLink !== offerFooter].every(Boolean));
+    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantNoStop !== pageSrc, footerWithoutLink !== offerFooter,
+      plantOverclaimEn !== pageSrc, plantOverclaimZh !== pageSrc].every(Boolean));
+  ok("§4k control · the coded number called irreversible again (en: \"it cannot be turned back into the number\") is reported",
+    refereeWordsDefects(plantOverclaimEn, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("en calls the coded referee number irreversible")));
+  ok("§4k control · the coded number called irreversible again in ONE language (zh: \"无法还原为该号码\") is reported",
+    refereeWordsDefects(plantOverclaimZh, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("zh calls the coded referee number irreversible")));
   ok("§4k control · the old promise made to everyone again (sw) is reported",
     refereeWordsDefects(plantOldPromiseSw, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("sw §9 still promises")));
   ok("§4k control · the label typed into ONE language (zh) instead of printed from the constant is reported",
