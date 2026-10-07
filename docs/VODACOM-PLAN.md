@@ -28,11 +28,20 @@ delegation is a numbered point in §0h. Nothing moved here 2026-10-04 → 10-06 
 which rewrote §3.7: a new account now lands home on the classic site too. On 2026-10-07 S6 A8i went live (`23f762f4`):
 a dialog acts on Enter only where it is pressed, and a key held down from before presses nothing in it (below); and
 A8i-2 (`586c5183`): a key held down presses once, wherever it is; nothing behind the top dialog takes a key; an uncovered
-money dialog lands on its way out (below). ⚠️ Owner ruling of 2026-10-07 (the ▶ 0e MONEY DOORS lane): a deposit asks no
+money dialog lands on its way out (below); and A8j (`88fb1f41`): Enter in a form never skips its confirm (below).
+⚠️ Owner ruling of 2026-10-07 (the ▶ 0e MONEY DOORS lane): a deposit asks no
 email question, and the minimum deposit and stake are TZS 1,000 — §3.6's S9 (an email code before the first deposit)
 will NOT be built (§3.6 and R2 marked superseded), and this plan's TZS 500 lines carry the new minimum. Still owed here:
 the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `emailCodeFirst` (when S9 is built), and
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar.
+
+**✅ A8j LIVE `88fb1f41` (2026-10-07) — Enter in a form never skips its confirm.** Enter, or a phone's Go key, in the
+withdraw amount box sent the withdrawal with no "Confirm withdrawal" (no fee, no "You receive", no recipient), and in the
+close-account phrase box it closed the account: on live main the drive's control run withdrew TZS 20,000 three times
+(W1, K2, P1) and closed the account. Taken from the handover's draft on OMEGA-COMPILE01, revised there for its 19 review problems and an
+independent verifier's findings, and proven in Chromium and Firefox and, once the page has woken, in WebKit — §0i "A8j",
+§0h point 60. ⚠️ Owed: WebKit before the page wakes (the drive's sleeping page now opens in a fresh context) and its
+WebKit control on `586c5183` — they show whether WebKit needs the hidden second field (its source says so; no run has).
 
 **✅ A8i-2 LIVE `586c5183` (2026-10-07) — a key held down presses once, wherever it is; nothing behind the top dialog
 takes a key; an uncovered money dialog lands on its way out.** Taken from the handover's unreviewed draft on
@@ -61,18 +70,15 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-07 ~12:45 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
-that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement). **A8j — Enter in a form never skips its confirm** —
-branch `vodacom-a8j` `f849950a` (pushed; worktree `F:\kipindi-a8j`, its own install): the handover draft revised for its
-19 review problems and an independent verifier's findings (product verdict: sound — no path lets Enter or a phone's Go
-key submit the withdraw, deposit, close-account, RG or sign-out form without its confirm, before or after the page
-wakes). `test:implicit-submit` 25/25, `red:implicit-submit` 61/61 and 1/1 green control held, typecheck. **Still to
-come:** rebase onto A8i-2 (its held-key cases need A8i-2's key guard) → the suites again → `qa:implicit-submit` in
-Chromium, Firefox and WebKit and its control on the tree before it → `test:all` → push → production read-back →
-records (§0i, §0h point for its calls). Then the close-out's three owed items, then **WP12**; and the owner ruling's
-remaining items above (its docs here are done: §3.6, R2, the TZS 500 lines, SHELVED, the copy audit). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
-edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — **A8j** (live for every player, money: above, §0i "A8i" and the handover's draft), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+**⏳ IN FLIGHT (updated 2026-10-07 ~13:45 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). A8j is
+LIVE (above). **Now: one heavy-lock turn, queued behind money doors and marketing** (`F:/kipindi-locks`): A8j's owed
+WebKit runs (its before-load cases, and its control on `586c5183`) and the final drive again in Chromium and Firefox;
+then the close-out's three owed items on main — the `lost` result drive, the crash control with its three-language crash
+titles, and a production build read by `first-load-parts` — then their records (§0i "S6 STOPPED HERE"); then **WP12** (a
+fresh parity baseline first); and the owner ruling's remaining items above. (Left alone on that PC: `F:\kipindi-journey`
+keeps uncommitted edits from 2026-10-06, an early start that the handover draft supersedes.)
+**Next:** (1) S6 — the lock turn above (A8j's owed WebKit runs, then the close-out's three owed items), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
@@ -285,7 +291,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   rest of the detached chain (`scratchpad/s6/a8-chain.sh`: the price-guard drive in the current mode, the result
   drives `main`, `extra` and `lost`, the lost-chunk control, the tiles), parity compare 2 after the copy, the
   battery, a production build's first-load reading, and the production check (`?dpl=`, the stylesheet's two phone
-  blocks); then **WP12** (S6-PLAN.md). **A8i** and **A8i-2** are LIVE (`23f762f4`, `586c5183`, their bullets at the end of this list); A8j goes first (§0).
+  blocks); then **WP12** (S6-PLAN.md). **A8i**, **A8i-2** and **A8j** are LIVE (`23f762f4`, `586c5183`, `88fb1f41`, their bullets at the end of this list); the close-out's three owed items go first (§0).
   **Ran 2026-10-06/07 on `7d4b0ad5` (ALI-BLADE15), the owed list above:** `red:ticker-honesty` alone 28/28 (re-armed in
   `7d4b0ad5`: 9.8 reads `settledAmount`, 9.9 every fee call, the red's anchors unique); parity `--prove-red` 81/81 (with
   `5a87e764`'s DEV-measure filing and its plant); parity `--compare` 2 against the v2 baseline: 38/39 — every Sell check
@@ -1238,6 +1244,41 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   retryable failure under the seal; the seal over the Up & Down receipt; a BUSY reply with Enter held; an officer's
   ConfirmModal and Escape on a Select inside a dialog in a real browser; WebKit on a Mac or a production build; the drive
   in predeploy (it needs a server).
+- **A8j — Enter in a form never skips its confirm (LIVE `88fb1f41`, 2026-10-07, for every player, both looks).** What it
+  closes, each proven on live main `586c5183` by the drive's control run on OMEGA-COMPILE01 (Chromium, a fresh in-memory
+  server; 3 pass, 10 fail): W1 — 20,000 and Enter in the withdraw amount box sent the withdrawal with no confirm; P1 — the
+  same Enter before the page woke posted the form as plain HTML and withdrew 20,000; C1 — the phrase and Enter closed the
+  account and signed the player out; C2 — half the phrase and Enter posted, and came back with "type the phrase"; W2 and
+  K1 — 5 and Enter posted, and came back with the minimum's error (the server refused: no money); K2 — 20,000 and Enter
+  withdrew again (no confirm opened to hold Enter on); D1 — Enter in the deposit box did nothing; R1 — the RG break and self-exclusion forms had no
+  submit control. ConfirmDialog forces its trigger to `type="button"`, so these forms had no submit button and one text
+  field, and a browser SUBMITS such a form on Enter. **How:** ConfirmDialog's opt-in `submitsForm`
+  (`src/components/ui/confirm-dialog.tsx`): a native submit guard on the host form refuses every submit but the confirm's
+  own (prevented AND stopped, so React's root never runs the action) and opens the dialog the way its trigger does; before
+  the page wakes, a hidden default `<input type="submit" autocomplete="off">`, disabled until the guard listens, stops
+  Enter in Chromium and Firefox (`autocomplete="off"`: Firefox would restore it enabled), and a hidden unnamed second text
+  field stops it in WebKit (by WebKit's source, which submits a one-field form past a disabled control). One guarded
+  dialog per form (a second throws in development and stays out in production). Consumers: withdraw, deposit (Enter now
+  opens its confirm), close account, the RG break and self-exclusion confirm, the journey hub's sign-out. **The draft**
+  (ALI-BLADE15, never run) was revised here for its 19 review problems and an independent verifier's findings (product
+  verdict: sound) — among them WebKit's own implicit-submission rule (the second field), Firefox's restored control, one
+  guarded dialog per form, the census read by scope and one hop into imports, and the drive given an ENGINE switch and
+  P1x (WebKit with the second field stripped must post). **Guard:** `test:implicit-submit` (predeploy) — the guard run on
+  real submit events; the server's markup read by each engine's own implicit-submission rule; a census of every
+  ConfirmDialog and ConfirmModal in `src/`; the six host forms with nothing else submit-capable inside them — and
+  `red:implicit-submit`, 61 plants caught and 1 green control held. **Proof (OMEGA-COMPILE01):** on the shipped tree,
+  typecheck, `test:implicit-submit`, `test:enter-where-pressed`, `test:journey-account` (85), `test:journey-shell` (429),
+  `test:close-account-phrase` and `test:ui-consistency` green; `qa:implicit-submit` (run before its last edit) in
+  Chromium and Firefox — every case passes but Z, which saw only the RG page's hydration mismatch that main shows too
+  (the drive now names it as known); in WebKit every after-load case passes and no case moved money, but P1 and P2 could
+  not keep the page asleep (WebKit served the scripts from its memory cache) and P1x did not post with the field
+  stripped, so no run has yet shown that WebKit needs the field (⚠️ owed: the re-run with the sleeping page in a fresh
+  context, and the WebKit control on `586c5183`). `test:all` 433/464: every red on the §0i baseline list, one of the 13
+  database suites (A8j touches none of their code), or audit-drain's timing flake (42/42 re-run on this tree).
+  Production read back: `dpl=88fb1f41` served on www.50pick.tz and 50pick.tz by a fresh container (uptime 15 s, then
+  climbing), `/api/health` ok with the database reachable, and `qa:live` against production 318/318. **Served bytes:**
+  two hidden inputs inside each host form (no word, class or layout change); no other page changes. **Owed (recorded,
+  not run):** the WebKit runs above; a real iPhone's Go key; the drive in predeploy (it needs a server).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1793,6 +1834,28 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     effect), so a seal opened by a timer is on the stack from its first frame. (j) A dialog's first focus never lands on
     a button that cannot be pressed: the first control that can takes it. The draft's reset of the bet confirm's quote
     clock is NOT taken: its race was refuted twice, and the handover said to drop it.
+60. **Enter in a form never skips its confirm (S6 A8j, for every player).** The calls taken: (a) BEFORE THE PAGE WAKES
+    TOO, by markup the server draws: a hidden default submit control, disabled until the guard listens, stops Enter in
+    Chromium and Firefox, and a hidden unnamed second text field stops it in WebKit (every iPhone browser), which submits a
+    form of one text field past a disabled control (so its source reads; no run has shown it yet, §0i "A8j"); in WebKit
+    before Safari 16.4 Enter in these forms does nothing at all
+    (safe: Next 16 builds for 16.4 on). Overrule: drop the second field (an iPhone could then send a withdrawal with Enter
+    in the seconds before the page wakes), or add a server-side seal — the withdraw and close-account actions refusing a
+    post that did not come through the confirm, with a refusal sentence in en/sw/zh. (b) Enter now opens the confirm on
+    the deposit form too (its eight text fields made Enter do nothing before): one rule for every form whose commit is a
+    dialog. Overrule: keep deposit's Enter doing nothing. (c) The journey hub's sign-out row and the two RG confirms carry
+    the prop though Enter could never submit them (no text field): the census rule has no exemptions to rot, and nothing
+    they draw or do changes. Overrule: exempt them by name. (d) Close account: Enter does nothing until the phrase is typed
+    whole, then opens the dialog; it used to post and come back with the "type the phrase" message. Overrule: show that
+    message on Enter with half a phrase (a toast in three languages). (e) Two officer forms save some changes directly by
+    design and are named in the census with the call that asks first: the config form (only a money-model change asks)
+    and Up & Down's reading-method form (only the simulated feed asks). Overrule: make either always ask. (f) The rules
+    the census holds: a ConfirmModal may not submit a form (it has no guard); one `submitsForm` dialog per form (a second
+    throws in development and stays out in production); the confirm's submit is synchronous inside `onConfirm`; nothing
+    else in a host form may submit (a kit `<Button>` with no type is a submit button) — the one exemption is a control
+    in the other arm of a ternary from the dialog (the withdraw page's disabled `SubmitButton`); a new `submitsForm`
+    consumer joins the host table; imported helpers are read one hop deep. (g) A held Enter in these forms presses once
+    (A8i-2's key guard): one warning toast at most, and a dialog closed with Enter held on Cancel stays closed.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
