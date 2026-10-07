@@ -187,6 +187,14 @@ const state = (page) => page.evaluate(() => {
   };
 });
 
+/** A soft navigation into a route the dev server has not compiled yet can take longer than any fixed pause (U38b's cold run,
+ *  2026-10-07: the URL still read /admin/kyc six seconds after the click, and the same check passed with the route warm).
+ *  So wait for the URL itself — up to 90 s — and then let the page render, before reading its state. */
+async function arrive(page, path) {
+  await page.waitForURL((u) => u.pathname === path, { timeout: 90_000 }).catch(() => {});
+  await wait(2500);
+}
+
 // ① LEAK — AUDITOR, the KYC queue → the queue's own player link.
 console.log("\n[admin-section-gate] ① AUDITOR follows an in-page link into a domain it cannot view");
 {
@@ -199,7 +207,7 @@ console.log("\n[admin-section-gate] ① AUDITOR follows an in-page link into a d
   ok("① the queue's own link to the player page is there", (await link.count()) > 0);
   if (await link.count()) {
     await link.click();
-    await wait(6000);
+    await arrive(page, `/admin/players/${uid}`);
     const b = await state(page);
     ok("① after the SOFT navigation the URL is the player page", b.path === `/admin/players/${uid}`, b.path);
     ok("① …and it shows RESTRICTED, not the player profile", b.restricted && !/Account actions|Player profile/.test(await page.innerText("main#main-content").catch(() => "")), JSON.stringify(b));
@@ -219,7 +227,7 @@ console.log("\n[admin-section-gate] ① AUDITOR follows an in-page link into a d
   ok("② the sidebar offers /admin/players", (await side.count()) > 0);
   if (await side.count()) {
     await side.click();
-    await wait(6000);
+    await arrive(page, "/admin/players");
     const d = await state(page);
     ok("② after the SOFT navigation the players list renders (not the frozen restricted panel)", d.path === "/admin/players" && !d.restricted && d.len > 200, JSON.stringify(d));
   }
@@ -237,7 +245,7 @@ console.log("\n[admin-section-gate] ③ COMPLIANCE moves from a domain it acts i
   const side = page.locator('a[href="/admin/players"]').first();
   if (await side.count()) {
     await side.click();
-    await wait(6000);
+    await arrive(page, "/admin/players");
     const f = await state(page);
     ok("③ after the SOFT navigation to /admin/players the READ-ONLY banner is shown", f.path === "/admin/players" && f.readOnly && !f.restricted, JSON.stringify(f));
   } else ok("③ the sidebar offers /admin/players", false);

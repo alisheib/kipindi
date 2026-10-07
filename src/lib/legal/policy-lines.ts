@@ -52,16 +52,25 @@
  * server rebuilt (spec §5: each record passes its own merge). A saved version is read TOLERANTLY: a field this build does
  * not know is ignored and kept, so a deploy's overlap never drops a record a newer build wrote.
  *
+ * ⭐ U13 · A TIME THE RG LINE NAMES IS HELD TO THE SEND WINDOW'S OWN HOURS. With the send window kept, the line may say so
+ * — but every clock time or hour range it names, in any language, must be the window's opening or closing time as SAVED
+ * now (the Marketing SMS settings' pair, 08:00 and 20:00 by default): "after 22:00" is a promise the window does not make.
+ * The server reads the hours FRESH and hands them in (a save is refused while they cannot be read); the card hands in
+ * the hours its page read. Evening words are refused as a promise of their own (`./kept-promises`): messages are sent
+ * until the window closes.
+ *
  * ⛔ No regex here is typed with a backslash: an editing tool decodes typed escapes (repo memory, 2026-10-02), so the
  * Unicode classes are built from their codes. Pinned client-safe by `test:client-graph-safe`: it imports only
- * `./kept-promises` (nothing), `../contacts/contact-fields` and `../eat-day` (nothing).
+ * `./kept-promises` (nothing), `../contacts/contact-fields`, `../eat-day` (nothing) and `../marketing/sms-settings`
+ * (nothing).
  *
- * Guard: `npm run test:policy-lines` (L0–L9, in-process `--prove-red`), with `test:rg-policy` K1/K2 and
+ * Guard: `npm run test:policy-lines` (L0–L10, in-process `--prove-red`), with `test:rg-policy` K1/K2 and
  * `test:privacy-notice`.
  */
-import { KEPT_PROMISES, holdsPhrase, promiseReading, promisesIn, type KeptPromise } from "./kept-promises";
+import { KEPT_PROMISES, holdsPhrase, namesATime, promiseReading, promisesIn, timesNamedIn, type KeptPromise } from "./kept-promises";
 import { charCount, holdsPhoneRun } from "../contacts/contact-fields";
 import { eatDayKey } from "../eat-day";
+import { MARKETING_SMS_SETTINGS_DEFAULTS, formatWindow } from "../marketing/sms-settings";
 
 /* ══ THE LANGUAGES ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -384,7 +393,18 @@ export function policyLineParts(key: PolicyLineKey, text: string): PolicyLinePar
  *  are the SERVER's (they need the saved record); every other code is `policyLineProblems`'. */
 export type PolicyLineProblemCode =
   | "unknown_key" | "blank" | "too_short" | "too_long" | "markup" | "has_phone" | "long_word" | "words_missing"
-  | "promise_unkept" | "stale" | "history";
+  | "promise_unkept" | "hours_unkept" | "stale" | "history";
+
+/** U13 · the send window a line's named hours are judged against — the Marketing SMS settings' pair, minutes after
+ *  midnight EAT. */
+export type PolicySendWindow = { readonly windowStartMinute: number; readonly windowEndMinute: number };
+
+/** U13 · the window when none is handed in: the settings' default, 08:00–20:00 EAT (OQ5). ⛔ The server and the card always
+ *  hand in the SAVED one; this default is for a reader with no record to ask (a suite's fixture). */
+export const POLICY_DEFAULT_SEND_WINDOW: PolicySendWindow = Object.freeze({
+  windowStartMinute: MARKETING_SMS_SETTINGS_DEFAULTS.windowStartMinute,
+  windowEndMinute: MARKETING_SMS_SETTINGS_DEFAULTS.windowEndMinute,
+});
 
 export type PolicyLineProblem = { readonly code: PolicyLineProblemCode; readonly sentence: string };
 
@@ -409,7 +429,15 @@ export const POLICY_LINE_SENTENCE = {
   blank: "Every language needs this line — the English is the binding text.",
   wordsMissing: (words: readonly string[], why: string): string => `This line must keep naming ${words.map((w) => `“${w}”`).join(", ")} — ${why}.`,
   promiseUnkept: (p: KeptPromise, language: string): string =>
-    `The ${language} line promises ${p.promise}, but the platform does not do this yet. Remove it, or have it built first.`,
+    (p.why !== undefined
+      ? `The ${language} line promises ${p.promise}, but ${p.why}. Remove it.`
+      : `The ${language} line promises ${p.promise}, but the platform does not do this yet. Remove it, or have it built first.`),
+  /** U13 · a time the line names that is neither the send window's opening nor its closing time. */
+  hoursUnkept: (language: string, said: readonly string[], window: string): string =>
+    `The ${language} line names a time the send window doesn't use${said.length > 0 ? ` (${listed(said)})` : ""} — the window is ${window}. Name only its opening or closing time, or no time at all.`,
+  /** U13 · the line names a time, and the window's hours could not be read to check it (fail closed). */
+  hoursUnread: (language: string): string =>
+    `The ${language} line names a time, but the send window's hours couldn't be read to check it — reload the page.`,
   dropped: (p: KeptPromise): string => `The platform still refuses ${p.refuses}; the page will no longer say so.`,
   unlabelled: (language: string): string =>
     `The ${language} line has no label — the page prints the words before the first colon in bold, like the other bullets (for example “Consent: …”).`,
@@ -438,6 +466,24 @@ const holdsPhone = (text: string): boolean =>
 const holdsLongWord = (text: string): boolean => text.split(" ").some((run) => charCount(run) > LONG_WORD);
 
 /**
+ * ⭐ U13 · THE HOURS A LINE NAMES, HELD TO THE SEND WINDOW — null when it names none, or only the window's opening or
+ * closing time (an hour that names no half of the day passes when either reading is one of them: "8 o'clock" is 08:00 or
+ * 20:00). ⛔ FAILS CLOSED: hours that could not be read refuse any time named, and a time the clock patterns spot but
+ * `timesNamedIn` cannot value is refused, never let through unread.
+ */
+function namedHoursProblem(text: string, language: string, w: PolicySendWindow | null): string | null {
+  const named = timesNamedIn(text);
+  if (named.length === 0 && !namesATime(text)) return null;
+  if (w === null) return POLICY_LINE_SENTENCE.hoursUnread(language);
+  const edges = [w.windowStartMinute, w.windowEndMinute];
+  // ⛔ Every reading of an hour must be an edge ("8 o'clock" is 08:00 AND 20:00 — the U13 review's #2); a word time has no
+  // reading at all, so it is always off.
+  const off = named.filter((n) => n.minutes.length === 0 || !n.minutes.every((m) => edges.includes(m))).map((n) => n.said);
+  if (off.length === 0 && named.length > 0) return null;
+  return POLICY_LINE_SENTENCE.hoursUnkept(language, [...new Set(off)], formatWindow(w));
+}
+
+/**
  * ⭐ EVERY PROBLEM WITH ONE LINE, AT ONCE, in each language (spec §5.2, L3) — the card shows them under each box as it is
  * typed, and the server refuses a save with the same list. The texts are normalised first, exactly as they are saved.
  * `published` is the line as the page prints it NOW (its saved words, or today's text) — the hints compare against it.
@@ -448,6 +494,8 @@ const holdsLongWord = (text: string): boolean => text.split(" ").some((run) => c
  *   · the RG line, in EVERY language: each promise it makes is read against KEPT_PROMISES — an unkept one is refused,
  *     naming it in that language's box — and a kept promise the published English makes that this English drops is a
  *     HINT, never a refusal;
+ *   · U13 · the RG line, in EVERY language: every time it names must be the send window's opening or closing time
+ *     (`sendWindow`, the hours SAVED now); ⛔ `null` — hours that could not be read — refuses any time it names;
  *   · hints that never block: a labelled line with no label (it prints plain), and one language changed while another
  *     still says what the page prints now.
  */
@@ -455,6 +503,7 @@ export function policyLineProblems(
   key: PolicyLineKey,
   raw: Partial<Record<PolicyLocale, unknown>>,
   published?: PolicyTexts,
+  sendWindow: PolicySendWindow | null = POLICY_DEFAULT_SEND_WINDOW,
 ): PolicyLineVerdict {
   const problems: Record<PolicyLocale, PolicyLineProblem[]> = { en: [], sw: [], zh: [] };
   const hints: string[] = [];
@@ -483,6 +532,9 @@ export function policyLineProblems(
       for (const k of promisesIn(t, l)) {
         if (!KEPT_PROMISES[k].kept) add("promise_unkept", POLICY_LINE_SENTENCE.promiseUnkept(KEPT_PROMISES[k], POLICY_LOCALE_NAME[l]));
       }
+      // ⭐ U13 · a time the line names must be one the send window uses — its opening or its closing time, as saved now.
+      const hours = namedHoursProblem(t, POLICY_LOCALE_NAME[l], sendWindow);
+      if (hours !== null) add("hours_unkept", hours);
     }
     if (spec.labelled && policyLineParts(key, t).label === null) hints.push(POLICY_LINE_SENTENCE.unlabelled(POLICY_LOCALE_NAME[l]));
   }
@@ -1036,7 +1088,7 @@ export function policyOpeningProblems(record: PolicyLinesRecord): PolicyOpeningC
 export type PolicyLineRules = {
   readonly readPatch: (raw: unknown) => PolicyRequestReading;
   readonly normalize: (raw: unknown, key?: PolicyLineKey, locale?: PolicyLocale) => string;
-  readonly problems: (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts) => PolicyLineVerdict;
+  readonly problems: (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts, sendWindow?: PolicySendWindow | null) => PolicyLineVerdict;
   readonly changes: (key: PolicyLineKey, normalized: PolicyTexts, saved: PolicyTexts | null, review: boolean, reviewedCurrent: boolean) => boolean;
   readonly movesWords: (key: PolicyLineKey, normalized: PolicyTexts, saved: PolicyTexts | null) => boolean;
   readonly admit: (base: number, history: PolicyLineHistory) => readonly PolicyLineProblem[];

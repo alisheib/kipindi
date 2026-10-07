@@ -68,6 +68,8 @@ import { mayReceiveMarketingSms, DB_GATE_READS, userPhoneKeyFor } from "../src/l
 import type { MarketingSkipReason } from "../src/lib/server/marketing/consent.ts";
 import { dispatchSlice } from "../src/lib/server/marketing/dispatch.ts";
 import type { SliceOutcome } from "../src/lib/server/marketing/dispatch.ts";
+// U13 · the send loop is driven with a FIXED open window (ENGINE-SPEC §5 rule 9) — 4.3 and R12 hold at any clock.
+import { ALWAYS_OPEN } from "./lib/send-window.mts";
 import { auditTicketsIssued, auditFlush } from "../src/lib/server/audit.ts";
 import { SMS_CONSENT_WORDINGS } from "../src/lib/marketing/consent-wording.ts";
 import { SMS_CAMPAIGN_VALUE, assertAudienceFilter } from "../src/lib/server/marketing/campaign-model.ts";
@@ -656,6 +658,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         results: messages.map((m) => ({ reference: `ref_${m.targetId}`, to: m.to, ok: true, targetType: m.targetType, targetId: m.targetId })),
         balanceTzs: 100,
       }),
+      window: ALWAYS_OPEN,
     });
     const loop = { handed: 0, unsendable: 0, held: 0, buckets: Object.fromEntries(AUDIENCE_BUCKETS.map((b) => [b, 0])) as Record<string, number> };
     for (const o of outcomes) {
@@ -1168,7 +1171,7 @@ if (!PROVE_RED) {
     const refused = campaignAudienceRefusal(f, o.viewerReads);
     if (refused) return { ok: false, param: refused.param, reason: refused.reason };
     const rows = (await walkAll(REAL.walk, f, 1000)).rows;
-    const outs = await dispatchSlice(rows.map((r, i) => ({ ref: `c${i}`, msisdn: r.msisdn, body: "count" })), { send: async () => ({ results: [], balanceTzs: null }) });
+    const outs = await dispatchSlice(rows.map((r, i) => ({ ref: `c${i}`, msisdn: r.msisdn, body: "count" })), { send: async () => ({ results: [], balanceTzs: null }), window: ALWAYS_OPEN });
     const notReceiving = Object.fromEntries(AUDIENCE_BUCKETS.map((b) => [b, 0])) as Record<AudienceBucket, number>;
     let unsendable = 0, willReceive = 0, unanswered = 0;
     for (const x of outs) {

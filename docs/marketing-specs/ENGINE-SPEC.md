@@ -231,7 +231,9 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   `prepare(key, verdict)` instead of a `body`; it runs only after the gate clears, before the wire, and may refuse (held).
   (b) `deps.beforeSend(cleared)` runs once after gating and before the one send; it may veto the send (every cleared row
   held) or drop rows (held `claim_lost`). (c) `deps.window()` runs first; closed → every row held `quiet_hours`, no gate
-  asked (U13). The test send passes none of (a)/(b); the U9 landmarks stay; `sendBatch` is still not imported there.
+  asked (U13) — ✅ as built: hours that cannot be read (a failed read, a row this build cannot read in full, a window that
+  throws) hold every row `window_unreadable` instead, the same shop-wide wait (the U13 review's SP-2), and the window is
+  set against the slice's own elapsed time again at the wire (SP-1). The test send passes none of (a)/(b); the U9 landmarks stay; `sendBatch` is still not imported there.
 - **E3 · A transport ambiguity is UNCONFIRMED, decided in ONE place.** `dispatchSlice` maps a result whose code is
   `TRANSPORT` to `unconfirmed` and carries its `reference`; `blackballSend` reads the reply body inside its try, so a body
   that dies is `transport` (ambiguous) and the `SmsMessage` row is `UNKNOWN`, never `FAILED`. The test send's hand-mapping
@@ -248,17 +250,20 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   a reap finds its claim gone and sends nothing). Every case where the wire may have been reached stays UNCONFIRMED —
   §9 U43's rule, kept where it applies.
 - **E7 · A shop-wide refusal is never N failed rows.** Held with a shop-wide reason (`BALANCE_FLOOR`, `NOT_CONFIGURED`,
-  `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `quiet_hours`, `not_running`), or a batch in which EVERY cleared row failed
+  `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `quiet_hours`, `window_unreadable`, `not_running`), or a batch in which EVERY cleared row failed
   with one non-`BAD_MSISDN` code (a `status:false` reply — bad keys, a sender-ID fault): every claimed row goes back to
   PENDING (attempts unchanged for a hold, + 1 for a refused batch), the campaign pauses with ONE reason and ONE audit
-  row. A gateway `status:false` charged nothing, so re-sending after Resume is not a second charge.
+  row — ✅ except the WAITS (`quiet_hours`, `window_unreadable`, `not_running`), which return the rows and pause nothing: the
+  step waits (E9; the U43 settlement table). A gateway `status:false` charged nothing, so re-sending after Resume is not a second charge.
 - **E8 · HELD means "parked: the engine could not check or prepare this person".** A per-person hold (`gate_unanswered`,
   `token_unavailable`, `template_invalid`) returns the row to PENDING with attempts + 1; at `MAX_ROW_ATTEMPTS` (3) it is
   HELD. HELD is OUTSTANDING (U36's vocabulary). Resume re-queues HELD → PENDING (attempts 0). A RUNNING campaign whose only
   outstanding rows are HELD pauses `held_rows` instead of finishing.
 - **E9 · The send window never changes a campaign's status.** Outside it the slice WAITS (claims nothing) and
   `dispatchSlice` holds every row `quiet_hours` (defence in depth, and the test send obeys it — M12). Rows stay PENDING; the
-  page says when sending resumes.
+  page says when sending resumes. ✅ As built (U13): hours that cannot be read are the same wait, `window_unreadable` —
+  never a pause and never the default hours obeyed — and the page says sending resumes once the hours can be read (there
+  is no `opensAt` to name); U43b's own pre-claim check waits the same way.
 - **E10 · One marketing slice in flight per PROCESS** (a `globalThis` single-flight across all campaigns), enforcing
   `MAX_SLICES_IN_FLIGHT` = 1 and sparing the shared rail. Across processes (the 60 s deploy overlap) the conditional claim
   keeps every send single.
@@ -1565,7 +1570,7 @@ export const SLICE_GATE_BUDGET_MS = 10_000;
 export const REAP_AFTER_MS = 10 * 60_000;
 export const MAX_ROW_ATTEMPTS = 3;
 export const OTP_FAILURE_WAIT_MS = 2 * 60_000;
-export type SliceWait = "busy" | "quiet_hours" | "money_busy" | "otp_failing";
+export type SliceWait = "busy" | "quiet_hours" | "window_unreadable" | "money_busy" | "otp_failing"; // window_unreadable: U13 SP-2
 export type EngineStopReason = "live_switch_closed" | "NOT_CONFIGURED" | "PROVIDER_UNRECOGNISED" | "BALANCE_FLOOR" | "MARKETING_FLOOR"
   | "marketing_floor" | "credit_unreadable" | "gateway_refused" | "template_invalid" | "held_rows";
 export type SliceStepResult =
@@ -1601,7 +1606,7 @@ name:<account|fallback>"]` · `["dispatch", <outcome>, null, <reference or null>
 | `unconfirmed` | UNCONFIRMED (reference when known) |
 | `failed` with `BAD_MSISDN` | FAILED (failureClass `BAD_MSISDN`) |
 | `failed`, every cleared row the same other code | shop-wide: all claimed rows → PENDING (+1), pause `gateway_refused` |
-| `held` shop-wide (`BALANCE_FLOOR`, `NOT_CONFIGURED`, `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `not_running`, `quiet_hours`) | all claimed → PENDING (+0); pause with the key (`not_running` and `quiet_hours`: no pause) |
+| `held` shop-wide (`BALANCE_FLOOR`, `NOT_CONFIGURED`, `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `not_running`, `quiet_hours`, `window_unreadable`) | all claimed → PENDING (+0); pause with the key (`not_running`, `quiet_hours` and `window_unreadable`: no pause — the step waits) |
 | `held` per person (`gate_unanswered`, `prepare:token_unavailable`, `prepare:template_invalid`) | attempts < 3 → PENDING (+1); else HELD |
 | `held` `claim_lost` | nothing (the row is someone else's now) |
 

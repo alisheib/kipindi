@@ -18,11 +18,13 @@
  *       the defaults; and both English hash pins, recomputed over the stripped pages, are the pins the sibling suites hold;
  *   L2  the pages print a saved line in place of the default — the wrapper's renderer, the wiring of both pages and their
  *       META, and the RG page's `content()` rendered before (today's text) and after a live save (the saved line);
- *   L3  the validator — every unkept promise refused by name, in EVERY language (F2 · F3): the late-night words matched
- *       whole (night, evening, midnight, after dark, quiet hours, bedtime, overnight …), a clock time in any spelling, the
- *       Swahili and Chinese late-night words, and a frequency cap; each kept promise accepted, the two age promises read
- *       apart (F13); a kept promise the PUBLISHED line makes and the new one drops a hint; one language changed and another
- *       not a hint; each refusal in its own words, every problem at once; the no-break space read as a space and the RG
+ *   L3  the validator — every promise's words READ as it in EVERY language (F2 · F3): the late-night words matched whole
+ *       (night, evening, midnight, after dark, quiet hours, bedtime, overnight …), a clock time in any spelling, the Swahili
+ *       and Chinese late-night words, and a frequency cap — and judged by the map: refused by name while unkept (the
+ *       frequency cap), accepted while kept (the late-night window, kept since U13's send window); each kept promise
+ *       accepted, the two age promises read apart (F13); a kept promise the PUBLISHED line makes and the new one drops a
+ *       hint; one language changed and another not a hint; each refusal in its own words, every problem at once; the
+ *       no-break space read as a space and the RG
  *       binding applied again (F9); Chinese tightened (F10);
  *   L4  the version — the stamp arithmetic; ONE function prints the version from (code, stamp, base) so a same-day code
  *       bump never reuses a label (F5); through the store each page moves once per save of NEW WORDS and a review-only save
@@ -36,7 +38,11 @@
  *       client-graph pins, the sibling suites' imports and stripped reads, the scripts, predeploy and the drive's key;
  *   L8  the request read as hostile — the card sends exactly the lines that change, its request reads back exactly, and
  *       anything else is not understood and writes nothing;
- *   L9  ⛔ the suite never touches a real database (F6) — its guard runs before the first server module loads.
+ *   L9  ⛔ the suite never touches a real database (F6) — its guard runs before the first server module loads;
+ *   L10 U13 · the RG line's hours and the evening — every time it names, in any spelling and language, must be the send
+ *       window's opening or closing time as SAVED (refused in the window's words otherwise; unreadable hours refuse any
+ *       time); evening words are their own unkept promise and night words the kept one; the save reads the window fresh
+ *       and refuses, writing nothing, while it cannot be read; the card, the page and the server read the one window.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — one rule, one piece of the store, one source
  * string — and requires the MATCHING assertion to fail. This file makes no file-modifying call of any kind, so it stays in
@@ -59,7 +65,7 @@ import { isDirective } from "./lib/is-directive.mts";
 import { policyLineTagCount, stripPolicyLineTags } from "./lib/policy-line-source.mts";
 import { KEPT_PROMISES, PROMISE_KEYS, promisesIn, type KeptPromise, type PromiseKey } from "../src/lib/legal/kept-promises.ts";
 import {
-  ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, EMPTY_POLICY_LINES, POLICY_LINE_DEFAULTS,
+  ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, EMPTY_POLICY_LINES, POLICY_DEFAULT_SEND_WINDOW, POLICY_LINE_DEFAULTS,
   POLICY_LINE_KEYS, POLICY_LINE_RULES, POLICY_LINE_SENTENCE, POLICY_LINE_SPEC, POLICY_LOCALES, POLICY_LOCALE_NAME, POLICY_PAGES,
   POLICY_PAGE_KEYS, SMS_GATEWAY_WORDS, comparePolicyVersions, holdsConsentOnlyPhrase, isPolicyVersion, isReviewVersion,
   mergePolicyLines, metaWithVersion, nextPolicyVersion, normalizePolicyLine, normalizedPolicyTexts, policyBaseFieldName,
@@ -68,10 +74,10 @@ import {
   readPolicyLinesPatch, readPolicyLinesReport,
 } from "../src/lib/legal/policy-lines.ts";
 import type {
-  PolicyCardState, PolicyLineHistory, PolicyLineKey, PolicyLineRules, PolicyLineVerdict, PolicyLineVersion, PolicyLinesRecord,
-  PolicyLocale, PolicyPageStamp, PolicyReviewVersion, PolicyTexts, PolicyWordsVersion,
+  PolicyCardState, PolicyLineHistory, PolicyLineKey, PolicyLineProblem, PolicyLineRules, PolicyLineVerdict, PolicyLineVersion,
+  PolicyLinesRecord, PolicyLocale, PolicyPageStamp, PolicyReviewVersion, PolicySendWindow, PolicyTexts, PolicyWordsVersion,
 } from "../src/lib/legal/policy-lines.ts";
-import type { PolicyLinesStore } from "../src/lib/server/legal/policy-lines.ts";
+import type { PolicyLinesStore, PolicySendWindowRead } from "../src/lib/server/legal/policy-lines.ts";
 import { patchFromForm } from "../src/lib/marketing/marketing-wordings.ts";
 
 /* ══ ⛔ F6 · NEVER A REAL DATABASE ════════════════════════════════════════════════════════════════════════════════════
@@ -103,13 +109,14 @@ const L = {
   l0: "L0 · the keys, the pages and their versions — five lines in the card's order, each on its page (the profile note on none), only the licence bullet and the note clearable, only the two §3 bullets labelled, and each page's code version the one its META prints in en, sw and zh",
   l1: "L1 · ⛔ nothing prints differently until a save — each default is today's page text byte for byte in every language, decoded from the JSX inside the page's own wrapper; each wrapper sits where its line prints, in its own language's block, with its one-line note; every default is a fixed point of the normaliser and passes its own rules with no problem and no hint; a saved line equal to today's text prints today's markup; the consent-only clause and the required words are substrings of the defaults; and both English hash pins, over the stripped pages, are the sibling suites' pins",
   l2: "L2 · the pages print a saved line in place of the default — the wrapper prints the saved words in today's markup, its children while it has none and nothing for a saved blank; both pages are wired to it and print META through policyMeta; and the RG page's own content() prints today's text before a live save and the saved line after it, with the licence bullet, the version derived from the code's, and the record readable",
-  l3: "L3 · the validator — every unkept promise refused by name in every language (the late-night words matched whole, a clock time in any spelling, the Swahili and Chinese late-night words, a frequency cap); each kept promise accepted and the two age promises read apart; a kept promise the published line makes and the new one drops a hint; one language changed and another not a hint; a blank language, markup, a phone number or any run of seven digits, an unbroken run over 30 characters, too long, too short, a missing gateway word and a missing Consent word each refused in its own words, every problem at once; the clearable lines all or nothing; the Appendix B drafts pass; every no-break space read as a space and the RG sw and zh binding applied again; Chinese tightened with Latin–Han spacing kept; and the normaliser idempotent",
+  l3: "L3 · the validator — every promise's words read as it in every language (the late-night words matched whole, a clock time in any spelling, the Swahili and Chinese late-night words, a frequency cap) and judged by the map: refused by name while unkept (the frequency cap), accepted while kept (the late-night window, since U13); each kept promise accepted and the two age promises read apart; a kept promise the published line makes and the new one drops a hint; one language changed and another not a hint; a blank language, markup, a phone number or any run of seven digits, an unbroken run over 30 characters, too long, too short, a missing gateway word and a missing Consent word each refused in its own words, every problem at once; the clearable lines all or nothing; the Appendix B drafts pass; every no-break space read as a space and the RG sw and zh binding applied again; Chinese tightened with Latin–Han spacing kept; and the normaliser idempotent",
   l4: "L4 · the version — the first save of an EAT day stamps the day, a second .2, a third .3, up to four digits; the next day the bare date; ONE function prints the version from code, stamp and base, so a same-day code bump or a code edit after a .2 stamp never reuses a label; META prints that version; through the store each page moves once per save of new words, a review-only save writes its marker and audit row and moves nothing, the profile note moves none, the audit row names the version, and every expected stamp is derived from the code's versions",
   l5: "L5 · the opening checks read the saved lines — nothing saved, or today's words saved, fails all three; the Appendix B lines pass, and so does a Consent bullet reviewed against today's code default, but not one reviewed against an old one; a consent-only phrase in the Blackball line in en, sw or zh (or capitalised), or in any other page line, fails check 1; a blank licence bullet fails check 2; an RG line that names no staff fails check 3",
   l6: "L6 · the store — a valid save is verified and audited { before, after, changes } as config.policy_lines_updated, with the code default's fingerprint; an unchanged save writes nothing; today's words are written only with the review tick, as a marker that prints nothing new and moves no version, and only once; new words append and version 1 stays as it was; the append-only check refuses a rewrite, a drop, two at once, a misnumbering and an unknown key, and the server runs it before every write; a newer build's field is read and kept; a stale page (behind or ahead) is refused under its box and writes nothing; a process that never loaded the row refuses and is not readable; a row read in part is never rewritten and is not readable (M1) while a row read in full saves; two saves at once keep both lines (D9)",
   l7: "L7 · the wiring — the action asks requireAdmin first, reads its form with patchFromForm, saves through the verified setter, names a box per refusal, reports the moved lines and revalidates both legal pages; the card validates live against the words printed now, re-reads every saved line on load, builds its request with policyLinesToSave and policyLinesPostEntries, never holds a save silently, imports nothing from the server and says the note prints nowhere yet; the page renders it on its own tab and reads its rows only there; the server module is the live store, runs its append-only check, stamps only for moved lines and exports the readable predicate; the pure modules are pure and pinned; the sibling suites import the shared tables and read the pages stripped; the scripts, predeploy (right after test:privacy-notice) and the drive's key",
   l8: "L8 · the request read as hostile — the card sends exactly the lines that change (a review only for a line printing today's text that is not clearable and not already reviewed against today's default), its request reads back exactly, and a missing language or base, a stray review, an unknown field, a number, a fourth language, a prototype key, a bad count, a bad tick, a saved version posted whole, a review marker, an array, a version or a stamp is not understood — and through the store writes nothing",
   l9: "L9 · ⛔ the suite never touches a real database — DATABASE_URL is deleted before the first server module loads, no server or page module is imported statically, the live save is handed its instant, and the variable is gone while the suite runs",
+  l10: "L10 · U13 · THE SEND WINDOW'S HOURS AND THE EVENING — a time written in WORDS (seven at night · after seven · saa moja usiku · saa 2 usiku · 七点 · full-width digits) is named and refused, and a duration is no time (ndani ya saa moja · within one hour · 两小时); an hour naming no half of the day is kept only while BOTH its readings are edges; R1's live read gives the promise lines as printed, fresh, failing closed; a time the RG line names, in any spelling and any language (22:00, 9 pm, 9pm, 9 p.m., 9 o'clock, 21h, 21h00, 21.00, 06:00, 19:30, 25:00, 22时, a Swahili 21:00), is refused in the window's own words unless it is the send window's opening or closing time as saved — 08:00 and 20:00 by default (a range, 8am/8pm, 8 o'clock, 20h and 20.00 included), 09:00 and 18:00 once saved; hours that could not be read refuse any time named, and a line naming none passes; evening words (evening, evenings, after dark, jioni, 傍晚, 晚上) are refused as their own promise, saying messages are sent until the window closes, while night words (late at night, overnight, night, midnight, late-night, quiet hours, bedtime, usiku, 夜间, 深夜) pass; the save reads the window — refused window_unreadable with nothing written and no audit row while it cannot be read (a privacy-only save still saves), a time the SAVED window does not use refused under the RG line's English box, and its own hours saved; and the card, the page and the server read the one window",
 } as const;
 
 /* ══ FIXTURES ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -300,7 +307,9 @@ const REAL_SOURCES: Sources = {
 type Impl = {
   readonly defaults: Readonly<Record<PolicyLineKey, PolicyTexts>>;
   /** The validator the card runs live (the store's own is `rules.problems`, planted together). */
-  readonly problems: (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts) => PolicyLineVerdict;
+  readonly problems: (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts, sendWindow?: PolicySendWindow | null) => PolicyLineVerdict;
+  /** U13 · how a store built here reads the send window's hours — the read a check hands in, unless a plant rewrites it. */
+  readonly windowWrap: (read: (() => Promise<PolicySendWindowRead>) | undefined) => (() => Promise<PolicySendWindowRead>) | undefined;
   readonly normalize: (raw: unknown, key?: PolicyLineKey, locale?: PolicyLocale) => string;
   /** What the store is built from. */
   readonly rules: PolicyLineRules;
@@ -324,6 +333,7 @@ type Impl = {
 const REAL: Impl = {
   defaults: POLICY_LINE_DEFAULTS,
   problems: policyLineProblems,
+  windowWrap: (read) => read,
   normalize: normalizePolicyLine,
   rules: POLICY_LINE_RULES,
   merge: mergePolicyLines,
@@ -342,8 +352,8 @@ const REAL: Impl = {
 
 /** ⭐ THE REAL STORE — the shipped readers and setter over a fresh factory instance and a fresh row (`merge` overridable for
  *  the one probe that hands the server a record that is not an append). */
-const storeOf = (impl: Impl, db: FakeDb, merge: typeof mergePolicyLines = impl.merge): PolicyLinesStore =>
-  impl.wrap(SERVER.__policyLinesStoreForTest({ deps: db.deps as never, rules: impl.rules, merge, unqueued: impl.unqueued }));
+const storeOf = (impl: Impl, db: FakeDb, merge: typeof mergePolicyLines = impl.merge, window?: () => Promise<PolicySendWindowRead>): PolicyLinesStore =>
+  impl.wrap(SERVER.__policyLinesStoreForTest({ deps: db.deps as never, rules: impl.rules, merge, unqueued: impl.unqueued, window: impl.windowWrap(window) }));
 
 /* ══ THE LIVE RUN — once, over the LIVE store the pages print through (this process has no database) ════════════ */
 
@@ -579,17 +589,31 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       r.problems[l].some((x) => x.code === "promise_unkept" && x.sentence === POLICY_LINE_SENTENCE.promiseUnkept(promise, POLICY_LOCALE_NAME[l]));
     const rgDefault = POLICY_LINE_DEFAULTS["rg.marketing"];
     const B2N = normalizedPolicyTexts("rg.marketing", B2);
+    /** ⭐ U13 · a promise's words are READ as that promise in that language (`promisesIn`), and the verdict follows the map:
+     *  refused by name while it is unkept, accepted while it is kept — the late-night window is kept since U13's send
+     *  window, so its words are now accepted, and they must still be READ as it (a reading that lost them would let a
+     *  promise through unread the day the map changes again). */
+    const judged = (line: string, l: PolicyLocale, key: PromiseKey): boolean => {
+      const r = v("rg.marketing", { ...B2, [l]: line });
+      return promisesIn(line, l).includes(key)
+        && (KEPT_PROMISES[key].kept ? !codesOf(r.problems[l]).includes("promise_unkept") : refuses(r, l, KEPT_PROMISES[key]));
+    };
     // ⛔ F2 · the late-night words, matched WHOLE — and a clock time in every spelling.
-    const LATE_WORDS = ["late-night", "overnight", "night", "nights", "midnight", "evening", "evenings", "after dark", "quiet hours", "bedtime"];
-    const missedLate = LATE_WORDS.filter((w) => !refuses(v("rg.marketing", { ...B2, en: `${B2.en} No messages (${w}).` }), "en", KEPT_PROMISES.lateNight));
+    const LATE_WORDS = ["late-night", "overnight", "night", "nights", "midnight", "quiet hours", "bedtime"];
+    const missedLate = LATE_WORDS.filter((w) => !judged(`${B2.en} No messages (${w}).`, "en", "lateNight"));
+    // ⭐ U13 · the evening is a promise of its own, and unkept: messages are sent until the send window closes.
+    const EVENING_WORDS = ["evening", "evenings", "after dark"];
+    const missedEvening = EVENING_WORDS.filter((w) => !judged(`${B2.en} No messages (${w}).`, "en", "evening"));
+    const swEvening = judged(`${B2.sw} Hakuna ujumbe jioni.`, "sw", "evening");
+    const zhEvening = judged(`${B2.zh}晚上不发送营销信息。`, "zh", "evening") && judged(`${B2.zh}傍晚不发送营销信息。`, "zh", "evening");
     const TIMES = ["22:00", "9pm", "9 pm", "9 p.m.", "9 o'clock", "21h", "21h00", "21.00"];
-    const missedTimes = TIMES.filter((t) => !refuses(v("rg.marketing", { ...B2, en: `${B2.en} Nothing is sent after ${t} EAT.` }), "en", KEPT_PROMISES.lateNight));
+    const missedTimes = TIMES.filter((t) => !judged(`${B2.en} Nothing is sent after ${t} EAT.`, "en", "lateNight"));
     const wholeOnly = clean(v("rg.marketing", { ...B2, en: `${B2.en} We review it every fortnight.` }));
     // ⛔ F3 · every language: a clock time anywhere, and the Swahili and Chinese late-night words.
-    const swClock = refuses(v("rg.marketing", { ...B2, sw: `${B2.sw} Hakuna ujumbe baada ya 21:00.` }), "sw", KEPT_PROMISES.lateNight);
-    const zhClock = refuses(v("rg.marketing", { ...B2, zh: `${B2.zh}21:00 后不发送。` }), "zh", KEPT_PROMISES.lateNight);
-    const swWord = refuses(v("rg.marketing", { ...B2, sw: `${B2.sw} Hakuna ujumbe usiku.` }), "sw", KEPT_PROMISES.lateNight);
-    const zhWord = refuses(v("rg.marketing", { ...B2, zh: `${B2.zh}深夜不发送营销信息。` }), "zh", KEPT_PROMISES.lateNight);
+    const swClock = judged(`${B2.sw} Hakuna ujumbe baada ya 21:00.`, "sw", "lateNight");
+    const zhClock = judged(`${B2.zh}21:00 后不发送。`, "zh", "lateNight");
+    const swWord = judged(`${B2.sw} Hakuna ujumbe usiku.`, "sw", "lateNight");
+    const zhWord = judged(`${B2.zh}深夜不发送营销信息。`, "zh", "lateNight");
     // ⛔ F2 · a frequency cap is a promise too, and nothing keeps it yet (U14).
     const FREQUENCY = ["at most two messages a week", "no more than 4 messages", "once a month", "3 offers per week"];
     const missedFrequency = FREQUENCY.filter((f) => !refuses(v("rg.marketing", { ...B2, en: `${B2.en} We send ${f}.` }), "en", KEPT_PROMISES.frequencyCap));
@@ -648,7 +672,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && codesOf(gw({ en: B3.en.split("your phone number and the text of each message").join("some details") }).problems.en).includes("words_missing");
     const consentOk = codesOf(v("privacy.lawfulConsent", { ...B5, en: B5.en.split("Profile → Notifications").join("your profile") }).problems.en).includes("words_missing")
       && codesOf(v("privacy.lawfulConsent", { ...B5, zh: B5.zh.split("第 7 条").join("最后") }).problems.zh).includes("words_missing");
-    const many = v("rg.marketing", { en: "<b> Call 0712 345 678 in the late-night window", sw: "", zh: rgDefault.zh });
+    // U13 · the unkept promise here is the frequency cap — the late-night window is kept since U13.
+    const many = v("rg.marketing", { en: "<b> Call 0712 345 678, at most two messages a week", sw: "", zh: rgDefault.zh });
     const manyOk = ["markup", "has_phone", "promise_unkept"].every((c) => codesOf(many.problems.en).includes(c)) && codesOf(many.problems.sw).includes("blank");
     // The clearable lines: all or nothing.
     const licPartial = v("privacy.lawfulLicence", { en: B4.en, sw: "", zh: "" });
@@ -686,6 +711,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && POLICY_LINE_KEYS.every((key) => POLICY_LOCALES.every((l) => n(n(t, key, l), key, l) === n(t, key, l))));
     const conds = {
       late: missedLate.length === 0, times: missedTimes.length === 0, wholeOnly, swClock, zhClock, swWord, zhWord,
+      evening: missedEvening.length === 0, swEvening, zhEvening,
       frequency: missedFrequency.length === 0, swFrequency, zhFrequency, keptAccepted, agesApart, b2Ok, droppedHint, publishedHint, mixedHint, blankOk,
       markupOk, phoneOk, longWordOk, longOk, shortOk, wordsOk, consentOk, manyOk, clearOk, draftsPass, labelHint, binding, nbsp,
       spaces, zhTight, idempotent,
@@ -955,7 +981,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && JSON.stringify(dbWhole.row()?.["version.rg"]) === JSON.stringify(seededStamp);
     // D9 · two saves at once keep both lines.
     const dbTwo = fakeDb();
-    const storeTwo = storeOf(impl, dbTwo);
+    // (an immediate window read, so the two saves still overlap — the live read's dynamic import would serialise them and
+    // hide the queue's work: the U13 review's #4)
+    const storeTwo = storeOf(impl, dbTwo, impl.merge, defaultHoursRead);
     const e1 = officer(tag, "l6f"), e2 = officer(tag, "l6g");
     const [t1, t2] = await Promise.all([
       storeTwo.savePolicyLines(cardPost(storeTwo, { "rg.marketing": B2 }), e1, T1),
@@ -988,7 +1016,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const BLOCKED = squash("if (blocked.length > 0) { focusFirstInvalid(form, problemFields(blocked, hasProblem)); return; }");
     const cardOk = isDirective(src.formRaw, "use client") && src.form.includes("useMayAct()")
       && (src.form.match(/policyLineProblems[(]/g) ?? []).length >= 2
-      && src.form.includes("policyLineProblems(key, text[key], now[key].printed)")
+      && src.form.includes("policyLineProblems(key, text[key], now[key].printed, sendWindow)")
       && src.form.includes("POLICY_LINE_SENTENCE.savedNowFails(") && src.form.includes("POLICY_LINE_SENTENCE.defaultChanged")
       && src.form.includes("POLICY_LINE_SENTENCE.reviewStale")
       && src.form.includes("policyLinesToSave(cardState)") && src.form.includes("policyLinesPostEntries(sending)")
@@ -1016,7 +1044,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && src.server.includes("export function policyLinesReadable(): boolean");
     const specsOf = (s: string): string[] => [...s.matchAll(/from[ ]*"([^"]+)"/g)].map((m) => m[1]);
     const pureOk = !isDirective(src.pureRaw, "use client") && !isDirective(src.pureRaw, "use server")
-      && JSON.stringify(specsOf(src.pure)) === JSON.stringify(["./kept-promises", "../contacts/contact-fields", "../eat-day"])
+      && JSON.stringify(specsOf(src.pure)) === JSON.stringify(["./kept-promises", "../contacts/contact-fields", "../eat-day", "../marketing/sms-settings"])
       && specsOf(src.kept).length === 0 && !isDirective(src.keptRaw, "use client");
     const pinAt = src.cgs.indexOf("const PINNED = [");
     const pinned = pinAt < 0 ? "" : src.cgs.slice(pinAt, src.cgs.indexOf("];", pinAt));
@@ -1131,6 +1159,114 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     ok(p(L.l9), Object.values(conds).every(Boolean),
       `${JSON.stringify(conds)} · guard at ${guardAt}, first server load at ${firstLoad} · static server imports ${serverStatic.join(", ") || "none"}`);
   }
+
+  // ── L10 · U13 · THE SEND WINDOW'S HOURS AND THE EVENING ───────────────────────────────────────────────────────
+  {
+    const v = (t: Partial<Record<PolicyLocale, unknown>>, w?: PolicySendWindow | null) => impl.problems("rg.marketing", t, undefined, w);
+    const SAVED_WINDOW: PolicySendWindow = { windowStartMinute: 540, windowEndMinute: 1080 };
+    const hoursOf = (r: PolicyLineVerdict, l: PolicyLocale): readonly PolicyLineProblem[] => r.problems[l].filter((x) => x.code === "hours_unkept");
+    const refusedHours = (r: PolicyLineVerdict, l: PolicyLocale, label: string): boolean =>
+      hoursOf(r, l).length === 1 && hoursOf(r, l)[0].sentence.includes(`the window is ${label}.`);
+    const clearHours = (r: PolicyLineVerdict, l: PolicyLocale): boolean => hoursOf(r, l).length === 0;
+    // (a) the default window, 08:00–20:00 — every time named that is not its opening or closing time, refused.
+    const OFF = ["22:00", "9 pm", "9pm", "9 p.m.", "9 o'clock", "21h", "21h00", "21.00", "06:00", "19:30", "25:00"];
+    const missedOff = OFF.filter((t) => !refusedHours(v({ ...B2, en: `${B2.en} Nothing is sent after ${t} EAT.` }), "en", "08:00–20:00 EAT"));
+    const ON = ["before 08:00 or after 20:00", "outside 08:00–20:00", "before 8am or after 8pm", "after 8 p.m.", "after 8 o'clock", "after 20h", "after 20.00"];
+    const wrongOn = ON.filter((t) => !clearHours(v({ ...B2, en: `${B2.en} No marketing SMS ${t} EAT.` }), "en"));
+    const otherLanguages = refusedHours(v({ ...B2, sw: `${B2.sw} Hakuna ujumbe baada ya 21:00.` }), "sw", "08:00–20:00 EAT")
+      && refusedHours(v({ ...B2, zh: `${B2.zh}22时后不发送。` }), "zh", "08:00–20:00 EAT")
+      && clearHours(v({ ...B2, sw: `${B2.sw} Hakuna ujumbe baada ya 20:00.` }), "sw")
+      && clearHours(v({ ...B2, zh: `${B2.zh}20:00 后不发送。` }), "zh");
+    // (a) a SAVED window, 09:00–18:00 — judged by its hours, never the default's.
+    const savedHours = refusedHours(v({ ...B2, en: `${B2.en} Nothing is sent after 20:00 EAT.` }, SAVED_WINDOW), "en", "09:00–18:00 EAT")
+      && clearHours(v({ ...B2, en: `${B2.en} Nothing is sent before 09:00 or after 18:00 EAT.` }, SAVED_WINDOW), "en");
+    // (a) ⛔ hours that could not be read: any time named is refused, and a line naming none passes.
+    const unreadOk = hoursOf(v({ ...B2, en: `${B2.en} Nothing is sent after 20:00 EAT.` }, null), "en")
+      .some((x) => x.sentence === POLICY_LINE_SENTENCE.hoursUnread("English")) && clearHours(v(B2, null), "en");
+    const sentenceOk = POLICY_LINE_SENTENCE.hoursUnkept("English", ["22:00"], "08:00–20:00 EAT")
+      === "The English line names a time the send window doesn't use (22:00) — the window is 08:00–20:00 EAT. Name only its opening or closing time, or no time at all."
+      && POLICY_DEFAULT_SEND_WINDOW.windowStartMinute === 480 && POLICY_DEFAULT_SEND_WINDOW.windowEndMinute === 1200;
+    // (b) the evening refused as its own promise, saying why; the night accepted.
+    const EVENING = KEPT_PROMISES.evening;
+    const asEvening = (r: PolicyLineVerdict, l: PolicyLocale): boolean =>
+      r.problems[l].some((x) => x.code === "promise_unkept" && x.sentence === POLICY_LINE_SENTENCE.promiseUnkept(EVENING, POLICY_LOCALE_NAME[l]));
+    const noUnkept = (r: PolicyLineVerdict, l: PolicyLocale): boolean => !r.problems[l].some((x) => x.code === "promise_unkept");
+    const missedEvening = ["evening", "evenings", "after dark"].filter((w) => !asEvening(v({ ...B2, en: `${B2.en} No messages (${w}).` }), "en"));
+    const eveningElsewhere = asEvening(v({ ...B2, sw: `${B2.sw} Hakuna ujumbe jioni.` }), "sw")
+      && ["傍晚", "晚上"].every((w) => asEvening(v({ ...B2, zh: `${B2.zh}${w}不发送营销信息。` }), "zh"));
+    const wrongNight = ["late at night", "overnight", "night", "midnight", "late-night", "quiet hours", "bedtime"]
+      .filter((w) => !noUnkept(v({ ...B2, en: `${B2.en} No messages (${w}).` }), "en"));
+    const nightElsewhere = noUnkept(v({ ...B2, sw: `${B2.sw} Hakuna ujumbe usiku.` }), "sw")
+      && ["夜间", "深夜"].every((w) => noUnkept(v({ ...B2, zh: `${B2.zh}${w}不发送营销信息。` }), "zh"));
+    const whyOk = EVENING.kept === false && KEPT_PROMISES.lateNight.kept === true
+      && POLICY_LINE_SENTENCE.promiseUnkept(EVENING, "English")
+        === "The English line promises no marketing in the evening, but marketing SMS are sent until the send window closes — 20:00 EAT unless the owner sets other hours. Remove it.";
+    // (c) the save: the window read fresh — refused while it cannot be read, judged by the SAVED hours when it can.
+    const WINDOW_DOWN = async (): Promise<PolicySendWindowRead> => ({ ok: false });
+    const WINDOW_SAVED = async (): Promise<PolicySendWindowRead> => ({ ok: true, hours: SAVED_WINDOW });
+    const a10 = officer(tag, "l10");
+    const dbDown = fakeDb();
+    const down = storeOf(impl, dbDown, impl.merge, WINDOW_DOWN);
+    const rDown = await down.savePolicyLines(cardPost(down, { "rg.marketing": B2 }), a10, T1);
+    const downRefused = !rDown.ok && rDown.reason === "window_unreadable" && rDown.error === SERVER.POLICY_LINES_REFUSAL_SENTENCE.window_unreadable
+      && dbDown.writes() === 0 && down.savedLine("rg.marketing") === null && (await auditRows(a10)).length === 0;
+    const rPrivacy = await down.savePolicyLines(cardPost(down, { "privacy.smsGateway": B3 }), a10, T1);
+    const privacySaves = rPrivacy.ok && rPrivacy.changed.length === 1 && dbDown.writes() === 1;
+    const dbSaved = fakeDb();
+    const saved = storeOf(impl, dbSaved, impl.merge, WINDOW_SAVED);
+    const rLate = await saved.savePolicyLines(cardPost(saved, { "rg.marketing": { ...B2, en: `${B2.en} No marketing SMS after 20:00 EAT.` } }), a10, T1);
+    const lateRefused = !rLate.ok && rLate.reason === "invalid" && dbSaved.writes() === 0
+      && (rLate.problems["rg.marketing"]?.en ?? []).some((x) => x.code === "hours_unkept" && x.sentence.includes("the window is 09:00–18:00 EAT."));
+    const rOwn = await saved.savePolicyLines(cardPost(saved, { "rg.marketing": { ...B2, en: `${B2.en} No marketing SMS before 09:00 or after 18:00 EAT.` } }), a10, T1);
+    const ownSaved = rOwn.ok && rOwn.moved.includes("rg.marketing") && dbSaved.writes() === 1;
+    // (d) the card, the page and the server read the one window — the card judges as the save will.
+    const src = impl.src;
+    const wiring = {
+      card: src.form.includes("policyLineProblems(key, text[key], now[key].printed, sendWindow)")
+        && src.form.includes("policyLineProblems(key, line.words, line.words, sendWindow)"),
+      page: src.page.includes("sendWindow={policyRows.sendWindow}") && src.page.includes("const windowRead = await policySendWindow();"),
+      server: src.server.includes('if (!w.ok) return refusal("window_unreadable");')
+        && src.server.includes("const verdict = rules.problems(k, t, undefined, sendWindow);")
+        && src.server.includes("const r = await reloadMarketingSmsSettings();") && src.server.includes("return r.ok && r.readable"),
+      pure: src.pure.includes("const hours = namedHoursProblem(t, POLICY_LOCALE_NAME[l], sendWindow);"),
+    };
+    // (e) U13 review #1 · a time written in WORDS is named, never valued — so the line is refused; a duration is no time.
+    const WORDS_OFF: Array<[PolicyLocale, string]> = [
+      ["en", "No marketing SMS after seven at night."], ["en", "No offers after nine pm."], ["en", "Nothing is sent after seven."],
+      ["sw", "Hakuna matangazo baada ya saa moja usiku."], ["sw", "Hakuna ujumbe baada ya saa 2 usiku."], ["sw", "Hakuna ujumbe kabla ya saa mbili."],
+      ["zh", "夜间七点后不发送营销信息。"], ["zh", "２２：００后不发送。"],
+    ];
+    const withLine = (l: PolicyLocale, t: string) => v({ ...B2, [l]: `${(B2 as Record<PolicyLocale, string>)[l]} ${t}` });
+    const missedWords = WORDS_OFF.filter(([l, t]) => !refusedHours(withLine(l, t), l, "08:00–20:00 EAT")).map(([, t]) => t);
+    const DURATIONS: Array<[PolicyLocale, string]> = [
+      ["sw", "Hakuna ujumbe wa pili ndani ya saa moja."], ["en", "No second message within one hour."], ["zh", "两小时内不发送第二条。"], ["zh", "２０：００后不发送。"],
+    ];
+    const wrongDurations = DURATIONS.filter(([l, t]) => !clearHours(withLine(l, t), l)).map(([, t]) => t);
+    // (f) U13 review #2 · an hour that names no half of the day is kept only while BOTH its readings are window edges.
+    const EARLY: PolicySendWindow = { windowStartMinute: 420, windowEndMinute: 1200 };
+    const ambiguousHeld = refusedHours(v({ ...B2, en: `${B2.en} No marketing SMS before 8 o'clock.` }, EARLY), "en", "07:00–20:00 EAT")
+      && clearHours(v({ ...B2, en: `${B2.en} No marketing SMS before 8 o'clock.` }), "en");
+    // (g) U13 review #5 · R1's LIVE read, through the store itself: the PROMISE lines as the pages print them, read fresh — a
+    // saved RG line naming 20:00 is in it, a privacy line is not (the save holds no time there), a never-saved store prints
+    // the page's own words, and a read that fails is `ok: false`.
+    const dbPub = fakeDb();
+    const pub = storeOf(impl, dbPub, impl.merge, WINDOW_SAVED);
+    await pub.savePolicyLines(cardPost(pub, { "rg.marketing": { ...B2, en: `${B2.en} No marketing SMS after 18:00 EAT.` }, "privacy.smsGateway": B3 }), a10, T1);
+    const read1 = await pub.publishedTexts();
+    const read0 = await storeOf(impl, fakeDb(), impl.merge, WINDOW_SAVED).publishedTexts();
+    const readDown = await storeOf(impl, fakeDb({ failLoads: true }), impl.merge, WINDOW_SAVED).publishedTexts();
+    const liveRead = read1.ok && read1.texts.some((t) => t.includes("No marketing SMS after 18:00 EAT."))
+      && !read1.texts.some((t) => t === normalizedPolicyTexts("privacy.smsGateway", B3).en)
+      && read0.ok && POLICY_LOCALES.every((l) => read0.texts.includes(POLICY_LINE_DEFAULTS["rg.marketing"][l])) && !readDown.ok;
+    const conds = {
+      off: missedOff.length === 0, on: wrongOn.length === 0, otherLanguages, savedHours, unreadOk, sentenceOk,
+      words: missedWords.length === 0, durations: wrongDurations.length === 0, ambiguousHeld, liveRead,
+      evening: missedEvening.length === 0, eveningElsewhere, night: wrongNight.length === 0, nightElsewhere, whyOk,
+      downRefused, privacySaves, lateRefused, ownSaved, wiring: Object.values(wiring).every(Boolean),
+    };
+    ok(p(L.l10), Object.values(conds).every(Boolean),
+      `${JSON.stringify(conds)} · word times missed ${missedWords.join(" / ") || "none"} · durations refused ${wrongDurations.join(" / ") || "none"} · off missed ${missedOff.join("/") || "none"} · on refused ${wrongOn.join("/") || "none"} · evening missed ${missedEvening.join("/") || "none"} · night refused ${wrongNight.join("/") || "none"} · down ${rDown.ok ? "SAVED" : rDown.reason} · late ${rLate.ok ? "SAVED" : rLate.reason} · own ${rOwn.ok ? "saved" : `${rOwn.reason}: ${rOwn.error}`} · wiring ${JSON.stringify(wiring)}`);
+  }
 }
 
 /** A stamp in a row, as JSON (`null` when the page was never stamped) — L6 reads it beside its own helpers. */
@@ -1146,12 +1282,27 @@ const ANY_SPACE_RUN = new RegExp(`[${BACKSLASH}s${BACKSLASH}p{Cc}]+`, "gu");
 const collapsingNormalize = (raw: unknown): string =>
   (typeof raw === "string" ? raw.normalize("NFC").replace(FORMAT_CHARS, "").normalize("NFC").replace(ANY_SPACE_RUN, " ").trim() : "");
 
-const withoutCode = (code: string) => (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts): PolicyLineVerdict => {
-  const v = policyLineProblems(key, raw, published);
+const withoutCode = (code: string) => (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts, sendWindow?: PolicySendWindow | null): PolicyLineVerdict => {
+  const v = policyLineProblems(key, raw, published, sendWindow);
   return {
     ...v,
     problems: { en: v.problems.en.filter((x) => x.code !== code), sw: v.problems.sw.filter((x) => x.code !== code), zh: v.problems.zh.filter((x) => x.code !== code) },
   };
+};
+
+/** L10's U13-review plants · the times an hours refusal names (the words inside its brackets). */
+const namedInSentence = (sentence: string): string => (sentence.split("(")[1] ?? "").split(")")[0] ?? "";
+/** #1 · times written in words read as no time at all — only an hours refusal naming a digit time survives. */
+const wordTimesUnread = (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts, sendWindow?: PolicySendWindow | null): PolicyLineVerdict => {
+  const v = policyLineProblems(key, raw, published, sendWindow);
+  const keep = (x: PolicyLineProblem): boolean => x.code !== "hours_unkept" || /[0-9]/.test(namedInSentence(x.sentence));
+  return { ...v, problems: { en: v.problems.en.filter(keep), sw: v.problems.sw.filter(keep), zh: v.problems.zh.filter(keep) } };
+};
+/** #2 · an hour naming no half of the day kept on EITHER reading — its refusal dropped whatever the window. */
+const eitherReadingKept = (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts, sendWindow?: PolicySendWindow | null): PolicyLineVerdict => {
+  const v = policyLineProblems(key, raw, published, sendWindow);
+  const keep = (x: PolicyLineProblem): boolean => x.code !== "hours_unkept" || !namedInSentence(x.sentence).includes("o'clock");
+  return { ...v, problems: { en: v.problems.en.filter(keep), sw: v.problems.sw.filter(keep), zh: v.problems.zh.filter(keep) } };
 };
 
 /** L3's F2 · F3 plant · the ROUND-ONE reading: English only, the old late-night words and an HH:MM clock, no frequency cap. */
@@ -1161,8 +1312,8 @@ const ROUND_ONE: Readonly<Record<PromiseKey, KeptPromise>> = {
   lateNight: { ...KEPT_PROMISES.lateNight, phrases: ["late-night", "late night", "late at night", "overnight", "night-time", "nighttime"], patterns: [CLOCK_ONLY], anyLanguage: [], sw: [], zh: [] },
   frequencyCap: { ...KEPT_PROMISES.frequencyCap, phrases: [], patterns: [] },
 };
-const roundOneProblems = (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts): PolicyLineVerdict => {
-  const v = policyLineProblems(key, raw, published);
+const roundOneProblems = (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts, sendWindow?: PolicySendWindow | null): PolicyLineVerdict => {
+  const v = policyLineProblems(key, raw, published, sendWindow);
   if (!POLICY_LINE_SPEC[key]?.promises) return v;
   const texts = normalizedPolicyTexts(key, raw);
   const redo = (l: PolicyLocale) => [
@@ -1206,6 +1357,20 @@ const knownFieldsOnly = (r: PolicyLinesRecord): PolicyLinesRecord => {
 /** L4's F5 plant · the printed version ignores the stamp's base — the later of stamp and code, nothing more. */
 const ignoringBase: typeof printedPolicyVersion = (code, saved) =>
   (!saved ? code : comparePolicyVersions(saved.stamp, code) > 0 ? saved.stamp : code);
+
+/** L10's plant · the evening read as the kept late-night promise — its refusal dropped, in every language. */
+const eveningAsKept = (key: PolicyLineKey, raw: Partial<Record<PolicyLocale, unknown>>, published?: PolicyTexts, sendWindow?: PolicySendWindow | null): PolicyLineVerdict => {
+  const v = policyLineProblems(key, raw, published, sendWindow);
+  const keep = (l: PolicyLocale) => v.problems[l].filter((x) => x.sentence !== POLICY_LINE_SENTENCE.promiseUnkept(KEPT_PROMISES.evening, POLICY_LOCALE_NAME[l]));
+  return { ...v, problems: { en: keep("en"), sw: keep("sw"), zh: keep("zh") } };
+};
+/** L10's plants · a save that never asks the settings (the default hours, always), and one that obeys an unreadable window
+ *  as the default hours. */
+const defaultHoursRead = async (): Promise<PolicySendWindowRead> => ({ ok: true, hours: POLICY_DEFAULT_SEND_WINDOW });
+const unreadableAsDefault = (read: () => Promise<PolicySendWindowRead>) => async (): Promise<PolicySendWindowRead> => {
+  const r = await read();
+  return r.ok ? r : { ok: true, hours: POLICY_DEFAULT_SEND_WINDOW };
+};
 
 function cases(problems: string[]): Array<{ name: string; expect: string; impl: Impl }> {
   const srcPlant = (over: Partial<Sources>): Impl => {
@@ -1276,12 +1441,12 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       impl: srcPlant({ rgPageRaw: REAL_SOURCES.rgPageRaw.replace('meta={policyMeta(META[locale], "rg")}', "meta={META[locale]}") }),
     },
     {
-      name: "⛔ the validator lets an unkept promise through (KEPT_PROMISES says late-night and the cap are unkept)",
+      name: "⛔ the validator lets an unkept promise through (KEPT_PROMISES says the frequency cap is unkept)",
       expect: L.l3,
       impl: withProblems(withoutCode("promise_unkept")),
     },
     {
-      name: "⛔ F2 · F3 · the round-one reading — 'evening', '9 pm', a frequency cap and any Swahili or Chinese promise pass",
+      name: "⛔ F2 · F3 · the round-one reading — a frequency cap, and any Swahili or Chinese promise the code does not keep, pass",
       expect: L.l3,
       impl: withProblems(roundOneProblems),
     },
@@ -1450,6 +1615,51 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       name: "⛔ L9 · F6 · a server module imported statically — it loads before the guard runs",
       expect: L.l9,
       impl: srcPlant({ self: `${REAL_SOURCES.self}${LF}${staticServerImport}${LF}` }),
+    },
+    {
+      name: "⛔ L10 · U13 · the hour check removed — a line may publish an hour the send window does not use",
+      expect: L.l10,
+      impl: withProblems(withoutCode("hours_unkept")),
+    },
+    {
+      name: "⛔ L10 · U13 review #1 · a time written in words read as no time — 'no marketing SMS after seven at night' or 'baada ya saa moja usiku' published while messages go out until 20:00",
+      expect: L.l10,
+      impl: withProblems(wordTimesUnread),
+    },
+    {
+      name: "⛔ L10 · U13 review #2 · an hour naming no half of the day kept on either reading — 'before 8 o'clock' published over a 07:00 opening",
+      expect: L.l10,
+      impl: withProblems(eitherReadingKept),
+    },
+    {
+      name: "⛔ L10 · U13 review #5 · R1's live read blind — the published promise lines read as nothing, so any change to the hours saves",
+      expect: L.l10,
+      impl: { ...REAL, wrap: (store) => ({ ...store, publishedTexts: async () => ({ ok: true as const, texts: [] }) }) },
+    },
+    {
+      name: "⛔ L10 · U13 · the evening read as the kept late-night promise — 'no marketing in the evening' published while messages go out until 20:00",
+      expect: L.l10,
+      impl: withProblems(eveningAsKept),
+    },
+    {
+      name: "⛔ L10 · U13 · the save judges every line by the DEFAULT hours — the window the owner saved is never read",
+      expect: L.l10,
+      impl: { ...REAL, windowWrap: () => defaultHoursRead },
+    },
+    {
+      name: "⛔ L10 · U13 · an unreadable window obeyed as the default hours — the save never fails closed",
+      expect: L.l10,
+      impl: { ...REAL, windowWrap: (read) => (read === undefined ? undefined : unreadableAsDefault(read)) },
+    },
+    {
+      name: "L10 · U13 · the card judges a named time by the default hours — it is not handed the window the page read",
+      expect: L.l10,
+      impl: srcPlant({ form: REAL_SOURCES.form.split(", sendWindow)").join(")") }),
+    },
+    {
+      name: "L10 · U13 · the page hands the card no window",
+      expect: L.l10,
+      impl: srcPlant({ page: REAL_SOURCES.page.split(" sendWindow={policyRows.sendWindow}").join("") }),
     },
   ];
 }

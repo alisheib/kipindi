@@ -198,6 +198,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // setter refuses with the same function. It imports nothing; the persisted half lives in
     // lib/server/marketing/sms-settings.ts and must stay there.
     "lib/marketing/sms-settings.ts",
+    // ⭐ ADDED 2026-10-07 (marketing U13, decision D13 · OQ5). The send window's ONE rule: the send path, the officer's test
+    // send and the composer's Test card read it, and the card's words come from it. It imports only sms-settings.ts (pinned
+    // above) and eat-day.ts (which imports nothing); the window's live reader lives in lib/server/marketing/dispatch.ts.
+    "lib/marketing/window.ts",
     // ⭐ ADDED 2026-10-04 (marketing U33p, decision M3). The public policy lines' keys, today's text as defaults, the rules,
     // the page versions, and the promises the code keeps: the "use client" Public policy lines card validates every box
     // live with them, and the server's verified setter runs the same functions before it writes. They import only each

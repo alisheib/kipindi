@@ -68,6 +68,10 @@
  * and the server's verdict prices exactly that line; blank (null) while nothing is saved, a line of spaces included; an
  * edit re-stamps — never a stale line — while a confirmed campaign keeps its own; and the composer's counter prices the
  * line the next save will stamp (a campaign past DRAFT, its frozen one).
+ * ⭐ §16.15 · §18.33 (U13, 2026-10-07) · THE SEND WINDOW. Every test send and send loop here is handed a FIXED open window
+ * (`scripts/lib/send-window.mts`, ENGINE-SPEC §5 rule 9), so the suite is green at any hour; §18.33 closes it on purpose:
+ * the test is refused held in the window's own sentence before a token, a row or the wire (M12), and the saved line
+ * invites no test while the window note stands (§16.15).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
@@ -1287,8 +1291,8 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     `${occurrences(client, "view.audience.carry")} reads of carry`);
 
   /* §16.15 · the saved line invites a test only when the page can send one */
-  ok("§16.15 the saved line names the test below only when this page can send one — the live switch open (no live note), the officer's own number reachable, the rail up",
-    client.includes("const canTest = view.test.liveNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;")
+  ok("§16.15 the saved line names the test below only when this page can send one — the live switch open (no live note), the send window open (no window note, U13), the officer's own number reachable, the rail up",
+    client.includes("const canTest = view.test.liveNote === null && view.test.windowNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;")
       && client.includes("composeSaved(c.saved.savedAt, canTest)"),
     `composeSaved calls: ${occurrences(client, "composeSaved(")}`);
 
@@ -1330,6 +1334,9 @@ const { maskPhone } = await import("../src/lib/phone-normalize.ts");
 const AUDIENCE = await import("../src/lib/server/marketing/audience.ts");
 const COMPOSE_COPY = await import("../src/app/admin/campaigns/new/composer-copy.ts");
 const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts");
+/** U13 · the test send and the send loop are handed a FIXED window here (ENGINE-SPEC §5 rule 9): §17–§18 hold at any clock,
+ *  and §18.33 closes it on purpose. */
+const { ALWAYS_OPEN, ALWAYS_CLOSED } = await import("./lib/send-window.mts");
 
 type DraftInput = Parameters<typeof DRAFT.saveCampaignDraft>[0];
 type TestDeps = typeof TEST.CAMPAIGN_TEST_DEPS;
@@ -1893,10 +1900,11 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   const audits: AuditRow[] = [];
   const keys: string[] = [];
   const capture = async (e: AuditRow) => { audits.push(e); return {}; };
-  /** The real dependencies, with an open budget, a capturing audit, and this run's token rule and switch reader. */
+  /** The real dependencies, with an open budget, a capturing audit, and this run's token rule and switch reader — and
+   *  (U13) a FIXED open send window, so a claim never depends on the hour the suite runs at. */
   const deps = (over: Partial<TestDeps> = {}): TestDeps => ({
     ...TEST.CAMPAIGN_TEST_DEPS, rate: ALLOW, audit: capture, ensureToken: (raw: string) => impl.ensureToken(raw),
-    liveSwitch: () => impl.readSwitch(), ...over,
+    liveSwitch: () => impl.readSwitch(), window: ALWAYS_OPEN, ...over,
   } as TestDeps);
   const send = (input: unknown, officerId: string, over: Partial<TestDeps> = {}) => impl.test(input as TestInput, officerId, deps(over));
   const officer = async (opts: Parameters<typeof u37bOfficer>[0] = {}) => {
@@ -2614,7 +2622,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const r = await sendTyped(id, excluded.number, o.id, { reads: true, over: { send: u37bSpy().send } });
     const afterTyped = await rgRows();
     const { send: spy } = u37bSpy();
-    await dispatchSlice([{ ref: `cmp_u37c_loop_${u37bSeq}`, msisdn: excluded.key, body: "50pick: fixture" }], { send: spy });
+    await dispatchSlice([{ ref: `cmp_u37c_loop_${u37bSeq}`, msisdn: excluded.key, body: "50pick: fixture" }], { send: spy, window: ALWAYS_OPEN });
     const afterLoop = await rgRows();
     return [!r.ok && r.outcome === "refused" && r.reason === "protected" && afterTyped === before && afterLoop === before + 1,
       `typed ${reasonOf(r)} · RG rows ${before} → ${afterTyped} (typed) → ${afterLoop} (the loop)`];
@@ -2641,6 +2649,32 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const r = await send({ campaignId: id, variant: "SW" }, o.id, { send: spy });
     return [r.ok && r.target === "own" && seen.messages.length === 1 && seen.messages[0].to === o.key,
       `${reasonOf(r)}${r.ok ? ` · ${r.target}` : `: ${r.error}`}`];
+  });
+
+  await claim("§18.33 ⛔ U13 · M12 · THE TEST SEND OBEYS THE SEND WINDOW — outside it (03:00 EAT) the officer's own test and a typed one are each refused 'held' with the window's sentence, word for word, before a token, a row or the wire: no token minted, no SmsMessage row, the gate never asked, and the masked audit row says held: quiet_hours; a window that closes between that check and the send still holds the test, with no row", async () => {
+    const o33 = await officer();
+    const id = await phrasedDraft();
+    const QUIET = "It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
+    const start = audits.length;
+    let gates = 0;
+    const counting = async (m: string) => { gates++; return mayReceiveMarketingSms(m); };
+    const realSend = TEST.CAMPAIGN_TEST_DEPS.send;
+    const before = await tokenCount(o33.key);
+    const own = await send({ campaignId: id, variant: "SW" }, o33.id, { send: realSend, gate: counting, window: ALWAYS_CLOSED });
+    const typedKey = u37bKey();
+    const typed = await sendTyped(id, `+${typedKey}`, o33.id, { over: { send: realSend, gate: counting, window: ALWAYS_CLOSED } });
+    const tokensClosed = (await tokenCount(o33.key)) - before + (await tokenCount(typedKey));
+    // The window that closes between the check (open) and the send (closed): dispatch's own read holds it.
+    let reads = 0;
+    const closing = () => (++reads === 1 ? ALWAYS_OPEN() : ALWAYS_CLOSED());
+    const late = await send({ campaignId: id, variant: "SW" }, o33.id, { send: realSend, window: closing });
+    const rows = audits.slice(start).filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION && a.actorId === o33.id);
+    const heldRow = (a: AuditRow) => a.payload?.outcome === "refused" && a.payload?.reason === "held" && a.payload?.held === "quiet_hours";
+    const said = (r: TestResult) => !r.ok && r.outcome === "refused" && r.reason === "held" && r.error === QUIET;
+    return [said(own) && own.target === "own" && said(typed) && typed.target === "typed" && said(late)
+      && QUIET === TEST.testQuietHours(ALWAYS_CLOSED()) && gates === 0 && tokensClosed === 0 && smsRowsFor(id).length === 0
+      && rows.length === 3 && rows.every(heldRow) && reads === 2,
+      `own ${reasonOf(own)}${own.ok ? "" : `: ${own.error}`} · typed ${reasonOf(typed)} · late ${reasonOf(late)} · gate asked ${gates} · tokens ${tokensClosed} · rows ${smsRowsFor(id).length} · audit ${JSON.stringify(rows.map((a) => a.payload ?? null))} · window reads ${reads}`];
   });
   return failed;
 }
@@ -4146,7 +4180,7 @@ if (!PROVE_RED) {
   {
     const R = REAL_COMPOSE;
     const realTest = TEST.sendCampaignTest;
-    const landedDeps = (over: Partial<TestDeps> = {}): TestDeps => ({ ...TEST.CAMPAIGN_TEST_DEPS, rate: ALLOW, audit: async () => ({}), ...over } as TestDeps);
+    const landedDeps = (over: Partial<TestDeps> = {}): TestDeps => ({ ...TEST.CAMPAIGN_TEST_DEPS, rate: ALLOW, audit: async () => ({}), window: ALWAYS_OPEN, ...over } as TestDeps);
     const CLEARED = async () => ({ ok: true as const });
     /** The plan's own RED · a typed test number honoured — the recipient read from the input when one is posted. */
     const typedNumber: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, {
@@ -4385,6 +4419,10 @@ if (!PROVE_RED) {
     /** Review · dispatch handed the pre-check's answer instead of asking the gate again. */
     const noReask: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, dispatch: (rows, d) => dispatchSlice(rows, { ...d, gate: async () => ({ ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:remembered" }) }) }, options);
+
+    /** U13 · M12 · the test send that ignores its send window — a test goes out at any hour. */
+    const windowIgnored: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
+      realTest(input, officerId, { ...deps, window: ALWAYS_OPEN }, options);
 
     /** A.5 · the typed gate built from a stand-in — the source no longer asks the ONE gate. */
     const GATE_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
@@ -4884,6 +4922,18 @@ if (!PROVE_RED) {
           return asked === 1;
         },
         landedAs: "the plant's hand-over asks the gate once — the send step never asks",
+      },
+      {
+        name: "U13 · M12 · the test send ignores its send window — a test goes out at 03:00",
+        expect: [/^§18[.]33 /], impl: { ...R, test: windowIgnored },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const real = await realTest({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send: u37bSpy().send, window: ALWAYS_CLOSED }));
+          const planted = await windowIgnored({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send: u37bSpy().send, window: ALWAYS_CLOSED }));
+          return !real.ok && real.outcome === "refused" && real.reason === "held" && planted.ok;
+        },
+        landedAs: "with the window closed the real test is refused held, and the plant's is handed over",
       },
     ];
     for (const p of testPlants) {

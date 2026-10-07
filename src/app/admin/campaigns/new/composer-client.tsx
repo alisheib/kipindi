@@ -402,7 +402,7 @@ export function ComposerMessage() {
   const enWritten = fields.bodyEn.trim() !== "";
   const enJina = enWritten && scanPlaceholders(fields.bodyEn).jina > 0;
   // ⛔ The saved line invites a test only when the test card beside it can send one — never one it would refuse.
-  const canTest = view.test.liveNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;
+  const canTest = view.test.liveNote === null && view.test.windowNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;
   const savedLine = c.saved?.savedAt && !c.dirty ? composeSaved(c.saved.savedAt, canTest) : null;
   const showReason = c.saveBlocked !== null && !c.saving && !(savedLine !== null && c.saveBlocked === COMPOSE_NO_CHANGES);
 
@@ -856,6 +856,7 @@ export function ComposerTest() {
       )}
 
       {t.liveNote !== null && <p className="text-body-sm text-text-secondary" data-test-live-note>{t.liveNote}</p>}
+      {t.windowNote !== null && <p className="text-body-sm text-text-secondary" data-test-window-note>{t.windowNote}</p>}
       {fresh && preview !== null && variants.map((v) => (
         <div key={v} className="space-y-1.5">
           <p className="text-body-sm text-text-secondary">{headings[v]}</p>
