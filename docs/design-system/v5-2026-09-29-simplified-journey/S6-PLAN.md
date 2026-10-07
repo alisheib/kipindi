@@ -988,7 +988,9 @@ VODACOM-PLAN §0i's):*
   words keep their one fate in VODACOM-PLAN §3's S15 rename list. Open, for a ruling before the flip: the sign-out
   confirm's claret tone (rule 8c).
 - **The tile drive:** WP6b step 5's drive, the plan's `qa:journey-shell`, is written in WP12's second commit
-  (`scripts/qa-journey-shell.mjs`; its run is VODACOM-PLAN §0i's). And `scripts/qa-journey-preview.mjs`'s step 7 is done
+  (`scripts/qa-journey-shell.mjs`; its run is VODACOM-PLAN §0i's). Its §12 reads which tree it runs on, as parity's 2.9
+  does: with the email bar deleted (the owner's ruling of 2026-10-07) neither the journey reader nor the classic one
+  whose address is unconfirmed may be shown one, and the classic half is no longer a control. And `scripts/qa-journey-preview.mjs`'s step 7 is done
   in WP12 too: 1.3 and 3.3 hold a viewer without a pass free of the journey shell's test ids as well (attribute or JSON
   prop, never a chunk's file name), 2.5c proves that reading can fire, and the pass holder's tiles at 1280 and 390 are
   held to the journey header and its four tabs with no classic bar or coin (2.5b, 2.5d).

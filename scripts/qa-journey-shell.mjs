@@ -54,7 +54,8 @@
  *     /positions, with not one frame of the Needle or the bubble from the document’s first frame, and are on screen on
  *     /help and /account after the panel’s 45 s dwell; for a pass-holding guest the bubble and the panel the same
  *     way and no Needle anywhere (AppShell mounts it for a session only); and no email-verify bar for a journey reader
- *     whose address is unconfirmed, beside a classic control that shows it;
+ *     whose address is unconfirmed, beside a classic control that shows it (once the bar is deleted, by the owner’s
+ *     ruling of 2026-10-07, neither reader may be shown one: see EMAIL_BAR_GONE);
  *   · G1 (A1): on one phone, player A’s session ends through the E-381 path, B signs in through the header’s Ingia and
  *     the real form, and no frame of the Akaunti dot or the Arifa row shows A’s count once A’s shell is gone;
  *   · every hub door the plan names, tiled through some viewer’s hub, or BLOCKED by name;
@@ -80,7 +81,8 @@
  *             390 and 1280, one tile per new screenful                                                         about 67
  *   overlays  / /positions /help /account for a pass-holding player; / /help /account for a guest (sw 390)        7
  *   viewer    G1: A before, A’s shell ended, B on /, B on /account (sw 390)                                         4
- *   emailbar  the journey without the bar, and the classic control with it (sw 390)                                 2
+ *   emailbar  the journey without the bar, and the classic control with it (sw 390); once the bar is deleted        2
+ *             (the owner’s ruling of 2026-10-07), the same two readers, and neither may be shown one
  *   kyc       the Verify ID row on the hub (sw 390), and /profile/kyc × 390 1280                                    3
  * About 12 minutes of cells on a warmed server, plus §0: about a minute on a warm server, five to eight just after
  * `rm -rf .next` (some thirty routes compile once). One browser context per viewer, navigated route to route, so a
@@ -105,7 +107,7 @@
  * EXIT 0 every line passed · 1 a FAIL · 2 REFUSED · 3 no FAIL, but something BLOCKED (not proven).
  */
 import { chromium } from 'playwright';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -142,6 +144,16 @@ const WARM_MIN = minutesFrom('KP_WARM_MIN', 10);
 
 /** The repository this file lives in. A tile written inside it is an untracked file another session’s commit can take. */
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/**
+ * ⭐ THE EMAIL BAR, AND THE OWNER’S RULING OF 2026-10-07 (NEXT-PLAN ▶ 0e, money doors): a deposit asks no email question,
+ * and the app-wide email bar is DELETED (`src/components/layout/email-verify-banner.tsx` goes), as
+ * `qa:classic-shell-parity`’s 2.9 reads it. The run list starts the server from this same tree, so the file says which
+ * world §12 is in: with the bar’s component there, WP7’s rule — a journey reader is not shown the bar, and the same
+ * reader without a pass is (the control that keeps the reader and the selector honest); with it gone, neither reader may
+ * be shown one. There is no control to be had then: zero is the truth because the component is gone, which is why the
+ * file is what decides, not the count.
+ */
+const EMAIL_BAR_GONE = !existsSync(join(REPO, 'src/components/layout/email-verify-banner.tsx'));
 const OUT = resolve(process.argv[2] || join(tmpdir(), `qa-journey-shell-${Date.now()}`));
 {
   const rel = relative(REPO, OUT);
@@ -2046,7 +2058,7 @@ async function viewerSection() {
   }
 }
 
-// ── §12 · WP7’s email-bar rule ─────────────────────────────────────────────────────────────────────────────────────
+// ── §12 · WP7’s email-bar rule, and the bar’s deletion (EMAIL_BAR_GONE) ──────────────────────────────────────────────
 async function emailbarSection() {
   let session = null;
   try {
@@ -2061,7 +2073,7 @@ async function emailbarSection() {
     if (await visit(j, '/', { locale: 'sw', width: 390, label: 'emailbar/root/player/sw' })) {
       const n = await j.page.locator(BAR).count();
       const cell = { section: 'emailbar', route: 'root', pathname: '/', viewer: 'player-unconfirmed', state: 'journey-no-bar', locale: 'sw', width: 390 };
-      ok(`${tagOf(cell)} · no email-verify bar for a journey reader whose address is unconfirmed (AppShell’s EmailVerifyBanner condition)`, n === 0, `${n} bar(s)`);
+      ok(`${tagOf(cell)} · no email-verify bar for a journey reader whose address is unconfirmed (${EMAIL_BAR_GONE ? 'the bar is deleted: the owner’s ruling of 2026-10-07' : 'AppShell’s EmailVerifyBanner condition'})`, n === 0, `${n} bar(s)`);
       await toTop(j.page);
       await checkShell(j.page, cell, { journey: true });
       await shoot(j.page, cell, HEAD.home);
@@ -2070,15 +2082,16 @@ async function emailbarSection() {
     await closeViewer(j);
   }
   if (ROLLOUT !== 'STAFF_PREVIEW') {
-    blocked('emailbar/control', `the rollout is ${ROLLOUT}: without STAFF_PREVIEW no viewer is classic, so the bar has no control`);
+    blocked('emailbar/control', `the rollout is ${ROLLOUT}: without STAFF_PREVIEW no viewer is classic, so ${EMAIL_BAR_GONE ? 'the classic reader’s half is not read' : 'the bar has no control'}`);
     return;
   }
   const c = await newViewer('email classic', [session]);
   try {
     if (await visit(c, '/', { locale: 'sw', width: 390, label: 'emailbar/root/player/sw/control' })) {
       const n = await c.page.locator(BAR).count();
-      const cell = { section: 'emailbar', route: 'root', pathname: '/', viewer: 'player-unconfirmed', state: 'classic-bar', locale: 'sw', width: 390 };
-      ok(`${tagOf(cell)} · the control: the same reader without a pass is shown the bar, so the reader and the selector are real`, n === 1, `${n} bar(s)`);
+      const cell = { section: 'emailbar', route: 'root', pathname: '/', viewer: 'player-unconfirmed', state: EMAIL_BAR_GONE ? 'classic-no-bar' : 'classic-bar', locale: 'sw', width: 390 };
+      if (EMAIL_BAR_GONE) ok(`${tagOf(cell)} · the same reader without a pass is shown no bar either: the bar is deleted (the owner’s ruling of 2026-10-07), so no reader has one`, n === 0, `${n} bar(s)`);
+      else ok(`${tagOf(cell)} · the control: the same reader without a pass is shown the bar, so the reader and the selector are real`, n === 1, `${n} bar(s)`);
       await toTop(c.page);
       await checkShell(c.page, cell, { journey: false });
       await shoot(c.page, cell, HEAD.home);
@@ -2162,7 +2175,9 @@ try {
   await section('hub', '§9 · the Akaunti hub for a member, a guest and staff, walked screen by screen at 390 and 1280 (WP5)', hubSection);
   await section('overlays', '§10 · WP7: the Needle, the chat bubble and the channels panel, for a pass-holding player and guest (sw, 390)', overlaysSection);
   await section('viewer', '§11 · G1, owed by A1: one phone changes hands, A ending through the E-381 path and B signing in through the header', viewerSection);
-  await section('emailbar', '§12 · WP7’s email-bar rule: no email-verify bar for a journey reader', emailbarSection);
+  await section('emailbar', EMAIL_BAR_GONE
+    ? '§12 · the email bar is deleted (the owner’s ruling of 2026-10-07): neither a journey reader nor a classic one whose address is unconfirmed is shown one'
+    : '§12 · WP7’s email-bar rule: no email-verify bar for a journey reader', emailbarSection);
   await section('kyc', '§13 · the Verify ID door: the demo player with no identity on file (the last use of the demo account)', kycSection);
   if (runs('tabs')) doorsCheck();
   pagesCheck();
