@@ -71,7 +71,7 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-07 ~18:40 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+**⏳ IN FLIGHT (updated 2026-10-07 ~19:30 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
 that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). Ali
 (2026-10-07, away): *"keep going and putting progress updated until you're done … keep pushing live"* — each piece goes
 live once its core is proven, the rest runs after it, and anything found is fixed forward. Done today: A8i-2 and A8j
@@ -86,10 +86,17 @@ the S4 canvas brought to the owner's ruling; the Up & Down card's UD-16 comment 
 7 (WP6b item 8); `qa:enter-where-pressed` with `REDUCED_MOTION=1` (A8i-2's owed "reduced motion"); parity 2.9 reading
 which tree it runs on (the email bar deleted → no viewer may see one); `shortfallPlan` without its email step; the
 plans' notes for the ruling, and the email bar's SHELVED row deleted. An independent review of the new commits found
-five slips, all fixed. Light gates equal main's; the suites they touch green. **Queued under the lock** (after
-marketing's U13 turn, ~19:45 EAT): A — typecheck, `test:all` with the database suites, `red:all`; B — parity (the v2
-baseline re-captured from `7c859cdf`, WP12's fresh baseline at its parent, each calibrated, both compares); **then WP12
-goes live**; then B2 — the header fit and its reds; C — the 335 tiles (read one by one), the preview drive, the footer
+five slips, all fixed. Light gates equal main's; the suites they touch green. **Turn A is running** (since 18:55 EAT,
+on `ec4734af`): typecheck clean; `test:all` 437/467 — main's known failures, plus twelve database suites that could not
+start their cluster; `red:all` under way. **Found and fixed on the way:** `db:scratch`'s sweep cannot see its own
+leftover `io_worker` in a worktree whose `node_modules` is a junction (most worktrees on that PC), so after the first
+database suite every later start fails with "gave no reason". Run from the checkout the junctions point at, the old
+sweep matched the siblings' LIVE clusters. The fix (`da35f89c`, branch `vodacom-dbscratch`, on `b6652201`) knows a
+cluster by its data directory and its postmaster's pid, and a start that fails prints postgres's own reason; it goes to
+main once turn A2 has proven it. WP12 is rebased onto it (the patch identical). **Queued under the lock:** A2 — WP12
+rebased: typecheck, `test:all` with the database suites, and every harness turn A's `red:all` failed, again; B — parity
+(the v2 baseline re-captured from `7c859cdf`, WP12's fresh baseline at its parent, each calibrated, both compares);
+**then WP12 goes live**; then B2 — the header fit and its reds; C — the 335 tiles (read one by one), the preview drive, the footer
 four ways; D — the landmark seal both ways, local `qa:live`, G1 and its prove-red; E — the A8j drive in WebKit; F — S7
 WP0's reds and bar probe, and the A8i-2 drive under reduced motion; then `qa:live` on production (mobile01, once), and
 the records. **S7 WP0 has started, by Ali's choice** (before S6 closed, S7-PLAN's narrower overrule): branch
