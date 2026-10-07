@@ -230,14 +230,19 @@ export function wantsAttention(
 /**
  * The engine's own reasons, in words an officer can act on. The first three are the shop-wide refusals `sendBatch`
  * returns before a request is made (`SmsFailureCode` in `sms.ts`) and `gate_unanswered` is `dispatchSlice`'s own: the
- * reasons a slice HOLDS rows for (`dispatch.ts`), which the engine turns into ONE pause (§9 U43). ⚠️ U41, U43 and U49
- * each add the keys they write — an unknown key is still shown, labelled as the engine's own words.
+ * reasons a slice HOLDS rows for (`dispatch.ts`), which the engine turns into ONE pause (§9 U43). ⭐ U42's enqueue
+ * (`enqueue.ts`, ENGINE-SPEC §3.4) adds the two it pauses a PREPARING campaign for: `audience_unreadable` (the saved
+ * audience can no longer be read — never read as "start again" or "done") and `audience_moved` (a listed confirmation's
+ * people changed after Start; nothing was written). ⚠️ U41, U43 and U49 each add the keys they write — an unknown key is
+ * still shown, labelled as the engine's own words.
  */
 const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   BALANCE_FLOOR: "The SMS credit is below its floor. Top it up, then resume.",
   NOT_CONFIGURED: "SMS sending is not set up on the server.",
   PROVIDER_UNRECOGNISED: "The SMS provider setting is not one this platform knows.",
   gate_unanswered: "The consent check could not answer, so nobody more was messaged.",
+  audience_unreadable: "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy.",
+  audience_moved: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */
