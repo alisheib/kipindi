@@ -2960,6 +2960,203 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("26.u16a.c4 · CONTROL · a memory unlink that also rewrites the status IS counted as a third assignment",
       (["        r.userId = null;", "        r.updatedAt = at;", '        r.status = "SKIPPED";'].join(String.fromCharCode(10)).match(/r[.][A-Za-z]+ = /g) ?? []).length === 3);
   }
+
+  // ══ 26.u43a · THE ENGINE'S RECIPIENT DOORS (U43a, S10 2026-10-04 — ENGINE-SPEC §4.10) ═══════════════════════════════
+  // ⭐ WHY THEY ARE HELD HERE. The slice (U43b) claims, settles and reaps through these doors, and every behavioural suite
+  // drives the MEMORY twin. A Prisma twin that loses its half sends a second message on production alone: a claim whose
+  // conditional write lost `claimToken: null` (two drivers take one row), a settle whose WHERE lost the claim (a reaped
+  // row's late settle lands over the reaper's verdict) or that left its transaction (half a slice settled), a requeue
+  // that widened past HELD (UNCONFIRMED sent again), an evidence read cut by a count (a message that went, read as never
+  // sent). So each door's SHAPE is held in both twins, plantable through KP_SRC (`red:dal-parity`; the cases are in
+  // scripts/anchors/dal-parity.anchors.mjs). The behaviour is EXECUTED on the memory twin by `test:campaign-models`
+  // §2.14–§2.28 and on Postgres — five concurrent claimers over 1,000 rows — by `db:probe-campaign-models` §10.
+  // ⛔ No backslash anywhere in this block: a line break is String.fromCharCode, and every matcher is an `includes`, a
+  // `before` or a character class.
+  {
+    const NL43 = String.fromCharCode(10);
+    const flat43 = (s: string) => s.split(String.fromCharCode(13)).join("").split(NL43).map((l) => l.trim()).join(" ");
+    const U43A = ["claim", "claimedBy", "settle", "findStranded", "requeueHeld", "lastActivity"];
+    const pRcp = (m: string): string => delegateMethod("smsCampaignRecipient", m);
+    const mRcp = (m: string): string => memberText(rMem, m);
+    const msgPri = region(dalSrc, NL43 + "  smsMessage: {");
+    const msgMem = region(storeSrc, NL43 + "  smsMessage: {");
+    const has43 = (block: string, names: readonly string[]): boolean => names.every((n) => members(block).includes(n));
+    const pClaim = pRcp("claim"), pClaimedBy = pRcp("claimedBy"), pSettle = pRcp("settle"), pStranded = pRcp("findStranded");
+    const pRequeue = pRcp("requeueHeld"), pActivity = pRcp("lastActivity");
+    const mClaim = mRcp("claim"), mClaimedBy = mRcp("claimedBy"), mSettle = mRcp("settle"), mStranded = mRcp("findStranded");
+    const mRequeue = mRcp("requeueHeld"), mActivity = mRcp("lastActivity");
+    const pTargets = delegateMethod("smsMessage", "findByTargets");
+    const mTargets = memberText(msgMem, "findByTargets");
+    const pHelper = region(dalSrc, "async function recipientsClaimedBy(");
+    const mHelper = region(storeSrc, "function claimedRows(");
+    const mApply = region(storeSrc, "function writeRecipient(");
+    const rMap = region(dalSrc, "const SMS_CAMPAIGN_RECIPIENT_COLUMN");
+    const rData = region(dalSrc, "function smsRecipientData(");
+
+    ok("26.u43a.parity · ⭐ BOTH twins define claim, claimedBy, settle, findStranded, requeueHeld and lastActivity — and smsMessage.findByTargets — a door in one twin only works in every suite and throws on production",
+      has43(rPri, U43A) && has43(rMem, U43A) && has43(msgPri, ["findByTargets"]) && has43(msgMem, ["findByTargets"]),
+      `prisma=[${members(rPri)}] memory=[${members(rMem)}] · findByTargets prisma ${has43(msgPri, ["findByTargets"])} memory ${has43(msgMem, ["findByTargets"])}`);
+
+    const U43A_SIGS: Array<[string, string]> = [
+      [rMem, "claim: (campaignId: string, limit: number, token: string, at: string): StoredSmsCampaignRecipient[] =>"],
+      [rMem, "claimedBy: (campaignId: string, token: string): StoredSmsCampaignRecipient[] =>"],
+      [rMem, "settle: (patches: readonly SmsCampaignRecipientSettle[], at: string): SmsCampaignSettleResult =>"],
+      [rMem, "findStranded: (campaignId: string, cutoff: string, limit: number): StoredSmsCampaignRecipient[] =>"],
+      [rMem, "requeueHeld: (campaignId: string, at: string): number =>"],
+      [rMem, "lastActivity: (campaignId: string): string | null =>"],
+      [msgMem, "findByTargets: (targetType: string, targetIds: readonly string[]): StoredSmsMessage[] =>"],
+      [rPri, "claim: async (campaignId: string, limit: number, token: string, at: string): Promise<StoredSmsCampaignRecipient[]> =>"],
+      [rPri, "claimedBy: async (campaignId: string, token: string): Promise<StoredSmsCampaignRecipient[]> =>"],
+      [rPri, "settle: async (patches: readonly SmsCampaignRecipientSettle[], at: string): Promise<SmsCampaignSettleResult> =>"],
+      [rPri, "findStranded: async (campaignId: string, cutoff: string, limit: number): Promise<StoredSmsCampaignRecipient[]> =>"],
+      [rPri, "requeueHeld: async (campaignId: string, at: string): Promise<number> =>"],
+      [rPri, "lastActivity: async (campaignId: string): Promise<string | null> =>"],
+      [msgPri, "findByTargets: async (targetType: string, targetIds: readonly string[]): Promise<StoredSmsMessage[]> =>"],
+    ];
+    const NAMED43 = ["SmsCampaignRecipientSettle", "SmsCampaignSettleResult"];
+    const offSigs43 = U43A_SIGS.filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+    const notExported43 = NAMED43.filter((t) => !storeSrc.includes(`export type ${t} =`));
+    const notImported43 = NAMED43.filter((t) => !storeImport.includes(`  ${t},`));
+    ok("26.u43a.named · every U43a door names its parameter and return types in BOTH twins (never an inline literal) — the settle's patch and result types exported by store.ts and imported by prisma-dal.ts",
+      offSigs43.length === 0 && notExported43.length === 0 && notImported43.length === 0,
+      `signatures off: [${offSigs43}] · not exported: [${notExported43}] · not imported: [${notImported43}]`);
+
+    // ── the claim: the rule set, the free rows, ONE conditional write that re-checks BOTH conditions, the read by token ──
+    const CLAIM_FREE = `where: { campaignId, status: "PENDING", claimToken: null }, orderBy: { id: "asc" }, take: limit, select: { id: true },`;
+    const CLAIM_WRITE = `where: { id: { in: free.map((r) => r.id) }, campaignId, status: "PENDING", claimToken: null }, data: smsRecipientData(claimWrite(token, at)),`;
+    ok("26.u43a.claim.prisma · ⛔ the Prisma claim asks assertClaim FIRST, then ① ONE findMany of the campaign's FREE rows (PENDING, claimToken null) by id, taking the limit, ② ONE updateMany whose WHERE re-checks BOTH — status PENDING AND claimToken null — beside the ids, writing the claim through the map, ③ the won set read back BY THE TOKEN — in that order, and no other write",
+      before(pClaim, "assertClaim(campaignId, limit, token, at)", ".findMany(")
+        && flat43(pClaim).includes(CLAIM_FREE) && flat43(pClaim).includes(CLAIM_WRITE)
+        && before(pClaim, ".findMany(", ".updateMany(") && before(pClaim, ".updateMany(", "return recipientsClaimedBy(campaignId, token);")
+        && (pClaim.match(/[.]findMany[(]/g) ?? []).length === 1 && (pClaim.match(/[.]updateMany[(]/g) ?? []).length === 1
+        && !/[.](update|upsert|create|createMany|delete|deleteMany)[(]|[$](executeRaw|queryRaw)/.test(pClaim)
+        && flat43(pHelper).includes(`findMany({ where: { campaignId, claimToken: token, status: "PENDING" }, orderBy: { id: "asc" } });`)
+        && pHelper.includes("return rows.map(toStoredSmsCampaignRecipient);"),
+      flat43(pClaim).slice(0, 320));
+    ok("26.u43a.claim.memory · ⛔ the memory claim asks assertClaim FIRST, takes only its campaign's rows that are PENDING with claimToken === null, in id order, at most the limit, writes the rule set's claimWrite through the ONE apply, and answers by the token — the same read as claimedBy",
+      before(mClaim, "assertClaim(campaignId, limit, token, at)", "for (const r of store.smsCampaignRecipients.values())")
+        && mClaim.includes(`if (r.campaignId === campaignId && r.status === "PENDING" && r.claimToken === null) free.push(r);`)
+        && mClaim.includes("const write = claimWrite(token, at);")
+        && mClaim.includes("for (const r of free.sort(byRecipientId).slice(0, limit)) writeRecipient(r, write);")
+        && mClaim.includes("return claimedRows(campaignId, token);")
+        && mHelper.includes(`if (r.campaignId === campaignId && r.claimToken === token && r.status === "PENDING") held.push(r);`)
+        && mHelper.includes("return held.sort(byRecipientId).map(recipientCopy);"),
+      flat43(mClaim).slice(0, 320));
+    ok("26.u43a.claimedby · both twins' claimedBy ask assertClaimRead FIRST and answer through the claim's own read — the rows still PENDING under the token (the Prisma helper's WHERE, the memory helper's test)",
+      before(pClaimedBy, "assertClaimRead(campaignId, token)", "return recipientsClaimedBy(campaignId, token);")
+        && before(mClaimedBy, "assertClaimRead(campaignId, token)", "return claimedRows(campaignId, token);"),
+      `${flat43(pClaimedBy).slice(0, 160)} | ${flat43(mClaimedBy).slice(0, 160)}`);
+    // D16 · a token is fresh for each claim — refused, in both twins, before the claim writes anything
+    const FRESH_PRI = "if ((await pc().smsCampaignRecipient.findFirst({ where: { claimToken: token }, select: { id: true } })) !== null) refuseHeldToken();";
+    const FRESH_MEM = "if (r.claimToken === token) refuseHeldToken();";
+    ok("26.u43a.claim.fresh · ⛔ A CLAIM TOKEN IS FRESH FOR EACH CLAIM in BOTH twins (D16): the Prisma claim asks the claimToken index whether ANY row holds the token (ONE findFirst, no campaign in its WHERE) and refuses through refuseHeldToken after the rule set and BEFORE its free read; the memory claim refuses a row holding the token in the same pass, before any write — so the won set read back by the token can only ever be this claim's rows",
+      before(pClaim, "assertClaim(campaignId, limit, token, at)", FRESH_PRI) && before(pClaim, FRESH_PRI, ".findMany(")
+        && (pClaim.match(/[.]findFirst[(]/g) ?? []).length === 1
+        && before(mClaim, "assertClaim(campaignId, limit, token, at)", FRESH_MEM) && before(mClaim, FRESH_MEM, "free.push(r);")
+        && before(mClaim, FRESH_MEM, "writeRecipient(r, write)"),
+      `${flat43(pClaim).slice(0, 220)} | ${flat43(mClaim).slice(0, 220)}`);
+
+    // ── the settle: the rule set, ONE transaction of conditional writes, each WHERE the row, its claim AND PENDING ──
+    const SETTLE_TX = "const written = await pc().$transaction(ordered.map((p) => pc().smsCampaignRecipient.updateMany({";
+    const SETTLE_WHERE = `where: { id: p.id, claimToken: p.claimToken, status: "PENDING" }, data: smsRecipientData(settleWrite(p, at)),`;
+    ok("26.u43a.settle.prisma · ⛔ the Prisma settle asks assertSettle FIRST, then is ONE $transaction over the patches' conditional updateMany — each WHERE the row's id, the claim the patch names AND status PENDING — each data the rule set's settleWrite through the map; a statement that wrote nothing is that patch's lost id, never forced",
+      before(pSettle, "assertSettle(patches, at)", "$transaction(")
+        && flat43(pSettle).includes(SETTLE_TX) && flat43(pSettle).includes(SETTLE_WHERE)
+        && (pSettle.match(/[.]updateMany[(]/g) ?? []).length === 1 && (pSettle.match(/[$]transaction[(]/g) ?? []).length === 1
+        && pSettle.includes("written[i].count > 0")
+        && !/Promise[.]all|[.](update|upsert|create|delete|deleteMany)[(]|[$](executeRaw|queryRaw)/.test(pSettle),
+      flat43(pSettle).slice(0, 320));
+    ok("26.u43a.settle.memory · ⛔ the memory settle asks assertSettle FIRST, lands a patch only on a row whose claimToken is the patch's AND whose status is PENDING, refuses a reference another row holds BEFORE its first write (the memory twin of P2002 rolling the transaction back), and writes each landing patch's settleWrite through the ONE apply",
+      before(mSettle, "assertSettle(patches, at)", "const landing = ")
+        && mSettle.includes(`return r !== undefined && r.claimToken === p.claimToken && r.status === "PENDING";`)
+        && mSettle.includes("const writes = landing.map((p) => ({ id: p.id, write: settleWrite(p, at) }));")
+        && before(mSettle, "memory twin of P2002", "writeRecipient(")
+        && mApply.includes("for (const [k, v] of Object.entries(w.set)) (r as Record<string, unknown>)[k] = v;")
+        && mApply.includes("r.attempts += w.attemptsBy;"),
+      flat43(mSettle).slice(0, 320));
+
+    // ── the map: every key named, the instants dates, the trail JSON, the never-written keys exactly the row's identity ──
+    const NEVER_WRITTEN43 = ["id", "campaignId", "msisdn", "contactId", "userId", "costTzs", "createdAt"];
+    const rNull = Array.from(rMap.matchAll(/^[ ]*([A-Za-z]+): null,/gm), (m) => m[1]);
+    const rUnnamed = rKeys.filter((k) => !writesKey(rMap, k));
+    const rNotDate = rKeys.filter((k) => k.endsWith("At") && k !== "createdAt" && !rMap.includes(`  ${k}: "date",`));
+    ok("26.u43a.map · SMS_CAMPAIGN_RECIPIENT_COLUMN names every StoredSmsCampaignRecipient key; every instant a door writes is a date and the gate trail is JSON; the keys these doors NEVER write are exactly the id, the campaign, the number, the two links, the cost and the birth stamp",
+      rKeys.length >= 24 && rUnnamed.length === 0 && rNotDate.length === 0 && rMap.includes(`  gateTrail: "json",`) && sameSet(rNull, NEVER_WRITTEN43),
+      `${setDiff(NEVER_WRITTEN43, rNull) || rNull.join(",")} · unnamed [${rUnnamed}] · not a date [${rNotDate}]`);
+    ok("26.u43a.map.data · the ONE recipient writer drives off SMS_CAMPAIGN_RECIPIENT_COLUMN, THROWS on an unmapped key and on a key these doors never write, writes a trail as a JSON value (never null) and moves attempts as an increment — and the claim, the settle and the requeue all write through it",
+      mentions(rData, "SMS_CAMPAIGN_RECIPIENT_COLUMN") && rData.includes("unmapped field") && rData.includes("is never written by a claim, a settle or a requeue")
+        && rData.includes("is never cleared") && rData.includes("data.attempts = { increment: w.attemptsBy };")
+        && [pClaim, pSettle, pRequeue].every((b) => b.includes("smsRecipientData("))
+        && !/if [(]patch[.][A-Za-z]+ !== undefined[)]/.test(rData),
+      `${rData.length} chars`);
+
+    // ── the reaper's reads, the requeue, the activity ──
+    ok("26.u43a.stranded · findStranded asks the rule set FIRST, then answers the campaign's PENDING rows holding a claim STRICTLY older than the cutoff (lt — never at it), oldest claim first then id, at most the limit — ONE findMany in the Prisma twin, the same test and order in the memory twin",
+      before(pStranded, "assertStrandedRead(campaignId, cutoff, limit)", ".findMany(")
+        && flat43(pStranded).includes(`where: { campaignId, status: "PENDING", claimToken: { not: null }, claimedAt: { lt: new Date(cutoff) } }, orderBy: [{ claimedAt: "asc" }, { id: "asc" }], take: limit,`)
+        && before(mStranded, "assertStrandedRead(campaignId, cutoff, limit)", "for (const r of store.smsCampaignRecipients.values())")
+        && mStranded.includes(`r.campaignId === campaignId && r.status === "PENDING" && r.claimToken !== null && r.claimedAt !== null && Date.parse(r.claimedAt) < before`)
+        && mStranded.includes(`.sort((a, b) => Date.parse(a.claimedAt ?? "") - Date.parse(b.claimedAt ?? "") || byRecipientId(a, b))`)
+        && mStranded.includes(".slice(0, limit).map(recipientCopy)"),
+      `${flat43(pStranded).slice(0, 200)} | ${flat43(mStranded).slice(0, 200)}`);
+    ok("26.u43a.requeue · ⛔ requeueHeld moves HELD and ONLY HELD — the Prisma twin ONE updateMany WHERE the campaign AND status HELD, the memory twin skipping every other status — both writing the rule set's requeueWrite",
+      before(pRequeue, "assertRequeueHeld(campaignId, at)", ".updateMany(")
+        && pRequeue.includes(`updateMany({ where: { campaignId, status: "HELD" }, data: smsRecipientData(requeueWrite(at)) })`)
+        && (pRequeue.match(/[.]updateMany[(]/g) ?? []).length === 1
+        && before(mRequeue, "assertRequeueHeld(campaignId, at)", "for (const r of store.smsCampaignRecipients.values())")
+        && mRequeue.includes(`if (r.campaignId !== campaignId || r.status !== "HELD") continue;`)
+        && mRequeue.includes("const write = requeueWrite(at);") && mRequeue.includes("writeRecipient(r, write);"),
+      `${flat43(pRequeue).slice(0, 200)} | ${flat43(mRequeue).slice(0, 200)}`);
+    const bodies43 = [...U43A.map(pRcp), ...U43A.map(mRcp)];
+    ok("26.u43a.never-back · ⛔ UNCONFIRMED NEVER GOES BACK TO PENDING: no U43a door in either twin names UNCONFIRMED — the claim and the settle write only where the row is PENDING, the requeue only where it is HELD — so a settled row has no way back but U46a's receipt",
+      bodies43.every((b) => b.length > 80 && !b.includes("UNCONFIRMED"))
+        && [pClaim, pSettle, mClaim, mSettle].every((b) => b.includes(`status === "PENDING"`) || b.includes(`status: "PENDING"`)),
+      bodies43.map((b) => b.length).join("/"));
+    ok("26.u43a.activity · lastActivity asks the rule set FIRST and is the newest claimedAt on the campaign — ONE aggregate _max in the Prisma twin (never the rows), the same maximum over instants in the memory twin",
+      before(pActivity, "assertActivityRead(campaignId)", ".aggregate(")
+        && pActivity.includes("aggregate({ where: { campaignId }, _max: { claimedAt: true } })") && !/findMany/.test(pActivity)
+        && before(mActivity, "assertActivityRead(campaignId)", "for (const r of store.smsCampaignRecipients.values())")
+        && mActivity.includes("if (newest === null || Date.parse(r.claimedAt) > Date.parse(newest)) newest = r.claimedAt;"),
+      `${flat43(pActivity).slice(0, 200)} | ${flat43(mActivity).slice(0, 200)}`);
+    ok("26.u43a.targets · ⛔ findByTargets asks the rule set FIRST (at most 200 ids, refused above), asks NOTHING for an empty list, then ONE findMany WHERE the type AND the ids — never cut by a count (a message cut off reads as never sent, and the reaper would send again) — and BOTH twins pick through the ONE rule, newestPerTarget",
+      before(pTargets, "assertTargetsRead(targetType, targetIds)", ".findMany(") && before(pTargets, "if (targetIds.length === 0) return [];", ".findMany(")
+        && flat43(pTargets).includes("findMany({ where: { targetType, targetId: { in: [...new Set(targetIds)] } } })")
+        && !/take[:]|[.]slice[(]/.test(pTargets) && pTargets.includes("return newestPerTarget(rows.map(toStoredSmsMessage));")
+        && before(mTargets, "assertTargetsRead(targetType, targetIds)", "for (const m of store.smsMessages.values())")
+        && mTargets.includes("return newestPerTarget(rows);") && !/[.]slice[(]/.test(mTargets),
+      `${flat43(pTargets).slice(0, 200)} | ${flat43(mTargets).slice(0, 200)}`);
+
+    // ── ONE rule set for both twins ──
+    const RULES43 = "@/lib/server/marketing/campaign-model";
+    const importOf43 = (src: string): string => {
+      const end = src.indexOf(`} from "${RULES43}";`);
+      return end < 0 ? "" : src.slice(src.lastIndexOf("import {", end), end);
+    };
+    const NAMES43 = ["assertClaim", "assertClaimRead", "assertSettle", "assertStrandedRead", "assertRequeueHeld", "assertActivityRead",
+      "assertTargetsRead", "claimWrite", "settleWrite", "requeueWrite", "newestPerTarget", "refuseHeldToken", "SmsRecipientWrite"];
+    const named43 = (text: string, n: string): boolean => new RegExp(`[^A-Za-z]${n}[^A-Za-z]`).test(text);
+    const ruleImports43 = [importOf43(storeSrc), importOf43(dalSrc)];
+    ok("26.u43a.rules · ONE rule set for both twins: store.ts and prisma-dal.ts each import every U43a guard (the reused-token refusal among them), the three writes, newestPerTarget and the write's type from campaign-model.ts — and neither keeps a settle table of its own",
+      ruleImports43.every((t) => NAMES43.every((n) => named43(t, n))) && ![storeSrc, dalSrc].some((t) => t.includes("SMS_RECIPIENT_SETTLE_KEYS")),
+      ruleImports43.map((t) => NAMES43.filter((n) => !named43(t, n)).join(",") || "all").join(" | "));
+
+    // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+    ok("26.u43a.c1 · CONTROL · a claim write that lost claimToken null, and one that lost the status, each FAIL 26.u43a.claim.prisma's matcher; a memory claim without the token test FAILS its own",
+      !`where: { id: { in: free.map((r) => r.id) }, campaignId, status: "PENDING" }, data: smsRecipientData(claimWrite(token, at)),`.includes(CLAIM_WRITE)
+        && !`where: { id: { in: free.map((r) => r.id) }, campaignId, claimToken: null }, data: smsRecipientData(claimWrite(token, at)),`.includes(CLAIM_WRITE)
+        && !`        if (r.campaignId === campaignId && r.status === "PENDING") free.push(r);`.includes(`r.claimToken === null) free.push(r);`));
+    ok("26.u43a.c2 · CONTROL · a settle outside its transaction IS seen, and a settle WHERE without the claim FAILS the matcher",
+      /Promise[.]all/.test("const written = await Promise.all(ordered.map((p) => pc().smsCampaignRecipient.updateMany({")
+        && !`where: { id: p.id, status: "PENDING" }, data: smsRecipientData(settleWrite(p, at)),`.includes(SETTLE_WHERE));
+    ok("26.u43a.c3 · CONTROL · a door in one twin only IS seen: with claim renamed in the Prisma block, the parity check's list no longer holds it while the memory block's does",
+      !has43(rPri.split("claim: async").join("claimRows: async"), U43A) && has43(rMem, U43A));
+    ok("26.u43a.c4 · CONTROL · a requeue whose WHERE also takes UNCONFIRMED IS seen by the never-back check, and an evidence read with a take IS seen",
+      'updateMany({ where: { campaignId, status: { in: ["HELD", "UNCONFIRMED"] } } })'.includes("UNCONFIRMED")
+        && /take[:]/.test("findMany({ where: { targetType, targetId: { in: [...new Set(targetIds)] } }, take: 200 })"));
+    ok("26.u43a.c5 · CONTROL · a Prisma claim without its freshness read, and a memory claim that tests the token only after it writes, each FAIL 26.u43a.claim.fresh's matcher",
+      !before(pClaim.split(FRESH_PRI).join(""), FRESH_PRI, ".findMany(")
+        && !before("for (const r of free.sort(byRecipientId).slice(0, limit)) writeRecipient(r, write); if (r.claimToken === token) refuseHeldToken();", FRESH_MEM, "writeRecipient(r, write)"));
+  }
 }
 
 /* ═══ §27 · The list basis — ContactListBasis in both twins (U33a-L, S10 2026-10-04; OD57 · OD58) ═══ */

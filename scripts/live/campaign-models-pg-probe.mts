@@ -15,13 +15,28 @@
  * else (the list-basis probe's method); and 55P04 itself, on a throwaway type, as the control that makes "later" mean
  * something. ⛔ No backslash in §9: line breaks are String.fromCharCode (the tools that write this file decode escapes).
  *
+ * ⭐ §10 · U43a (S10 2026-10-04 — ENGINE-SPEC §4.10): the engine's recipient doors through the REAL Prisma twin. Five
+ * claimers truly concurrent on the pool over 1,000 rows win exactly 1,000 rows, each once (the plan's RED, on the engine
+ * that decides it); the won set read back by its token equals what Postgres holds under that token; patches handed in a
+ * shuffled order land each on ITS row (settled by the row's id, never by place); a foreign claim, a reaped row's late
+ * settle and a second settle are lost and change nothing; the release's `{ increment: 1 }` lands; UNCONFIRMED written
+ * through the generated client in a later transaction and never moved back — not by a release, not by the requeue, not
+ * by a claim; the requeue takes HELD alone; the evidence read answers the newest message per target; a settle whose
+ * second statement breaks the unique reference rolls its first back; and the claim's plan at 150,000 rows is RECORDED
+ * (EXPLAIN ANALYZE, printed) for U45's index decision. ⛔ No backslash in §10 either. (§9's disconnect moved to the end.)
+ * ⭐ The review of 2026-10-07: 10a2 FORCES the race (five claims of the same rows queued behind one row lock, seen
+ * waiting on five connections at once, released together — exactly one wins), 10b2 refuses a reused token (D16), 10d
+ * and 10f read a release and a requeue that keep the claim's instant (D15), 10e clears an UNCONFIRMED row's token by SQL
+ * so the claim's STATUS test stands alone, 10g gives the newer message the lower reference, and 10j also records the
+ * reaper's read and the activity read at 150,000 rows.
+ *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database, runs the Prisma CLI three times and creates and
  * drops a shadow database and a throwaway type — loopback only):
  *   npm run db:probe-campaign-models   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
 import type {
   StoredSmsCampaign, StoredSmsCampaignRecipient, SmsCampaignRecipientSeed, SmsCampaignRecipientCount, SmsCampaignRecipientCountsById,
-  SmsCampaignTransitionPatch, StoredUser,
+  SmsCampaignTransitionPatch, StoredUser, SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage,
 } from "../../src/lib/server/store.ts";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -397,9 +412,339 @@ async function toRunning(id: string): Promise<void> {
   }
   ok("9h · CONTROL · 55P04 IS REAL ON THIS POSTGRES — a value added and used inside ONE transaction is refused (unsafe use of new value) while the same use in the next transaction is accepted: why the ADD VALUE ships alone, a deploy before its first writer",
     sameTx === "55P04" && nextTx === "accepted", `same transaction: ${sameTx} · next transaction: ${nextTx}`);
-
-  await pg.$disconnect().catch(() => {});
 }
+
+// ── 10 · U43a · the engine's recipient doors through the REAL Prisma twin (ENGINE-SPEC §4.10): five concurrent
+//        claimers, the won set read back by its token, settles by the row's id, lost settles, the release's increment,
+//        UNCONFIRMED never back, the requeue, the evidence read, one transaction or nothing, the claim's plan at 150k ─────
+{
+  const CM43 = await import("../../src/lib/server/marketing/campaign-model.ts");
+  const NL = String.fromCharCode(10);
+  const json = (v: unknown) => JSON.stringify(v);
+  // The first line that SAYS something: a Prisma error's message opens with an empty line ("" would read as no error).
+  const firstLine = (e: unknown) =>
+    (String((e as Error)?.message ?? e).split(NL).map((s) => s.trim()).find((s) => s !== "") ?? "(an error with no message)").slice(0, 200);
+  const T43 = Date.parse("2026-10-04T12:00:00.000Z");
+  const at43 = (s: number) => new Date(T43 + s * 1000).toISOString();
+  const rid = (prefix: string, i: number) => `${prefix}_${String(i).padStart(5, "0")}`;
+  const trail = (verdict: string): SmsCampaignGateTrail => [{ check: "probe", verdict, wording: null, source: "u43a" }];
+  /** JSONB keeps its own key order, so a trail is compared field by field — never as a JSON string. */
+  const sameTrail = (a: SmsCampaignGateTrail | null | undefined, b: SmsCampaignGateTrail): boolean =>
+    Array.isArray(a) && a.length === b.length
+      && a.every((g, i) => g.check === b[i].check && g.verdict === b[i].verdict && g.wording === b[i].wording && g.source === b[i].source);
+  const skippedP = (id: string, claimToken: string): SmsCampaignRecipientSettle =>
+    ({ id, claimToken, to: "SKIPPED", skipReason: "probe", skipDetail: "five claimers", gateTrail: trail("skipped") });
+  const sentP = (id: string, claimToken: string, smsReference: string): SmsCampaignRecipientSettle => ({
+    id, claimToken, to: "SENT", smsReference, sentAt: at43(5), optOutToken: "K7MXP2QR", locale: "SW", segments: 1, bodyLen: 72, gateTrail: trail("ok"),
+  });
+  /** A campaign of `n` fresh rows through the doors; their ids (fixed-width, so id order is seed order in any collation). */
+  const campaign43 = async (id: string, n: number, keyFrom: number): Promise<string[]> => {
+    await db.smsCampaign.create(draft(id));
+    const ids = Array.from({ length: n }, (_, i) => rid(id, i));
+    for (let i = 0; i < n; i += 1000) {
+      await db.smsCampaignRecipient.createMany(ids.slice(i, i + 1000).map((x, j) => seed(x, id, keyOf(keyFrom + i + j))));
+    }
+    return ids;
+  };
+  type Row43 = { status: string; claimToken: string | null; smsReference: string | null; attempts: number; claimedAt: Date | null };
+  /** One row as Postgres holds it — the database's own answer, not a twin's. */
+  const sqlRow = async (id: string): Promise<Row43 | null> => (await pg.$queryRawUnsafe<Row43[]>(
+    `select status::text as status, "claimToken", "smsReference", attempts, "claimedAt" from "SmsCampaignRecipient" where id = $1`, id))[0] ?? null;
+
+  // 10 · the fixture
+  const FIVE = "probe_u43a_five";
+  const five = await campaign43(FIVE, 1000, 20000);
+  const freeLeft = () => countRows(`select count(*)::int as n from "SmsCampaignRecipient" where "campaignId" = $1 and status = 'PENDING' and "claimToken" is null`, FIVE);
+  ok("10 · U43a · CONTROL · 1,000 rows on one campaign in Postgres, every one PENDING and unclaimed",
+    five.length === 1000 && (await freeLeft()) === 1000);
+
+  // 10a · ⭐ five claimers, truly concurrent on the pool — the plan's RED, on the engine that decides it
+  {
+    const wins = new Map<string, number>();
+    const wonWith = new Map<string, string>();
+    const errors: string[] = [];
+    let lost = 0, empty = 0, rounds = 0;
+    const claimer = async (who: number): Promise<void> => {
+      for (let round = 0; round < 400; round++) {
+        rounds++;
+        const token = `probe_tok_${who}_${String(round).padStart(4, "0")}`;
+        let won: StoredSmsCampaignRecipient[] = [];
+        try {
+          won = await db.smsCampaignRecipient.claim(FIVE, CM43.SMS_RECIPIENT_CLAIM_MAX, token, at43(round));
+        } catch (e) {
+          errors.push(firstLine(e));
+          continue;
+        }
+        if (won.length === 0) {
+          empty++;
+          if ((await freeLeft()) === 0) return;
+          continue;
+        }
+        for (const r of won) {
+          wins.set(r.id, (wins.get(r.id) ?? 0) + 1);
+          wonWith.set(r.id, token);
+        }
+        try {
+          const res = await db.smsCampaignRecipient.settle([...won].reverse().map((r) => skippedP(r.id, token)), at43(round));
+          lost += res.lost.length;
+        } catch (e) {
+          errors.push(firstLine(e));
+        }
+      }
+    };
+    const started = Date.now();
+    await Promise.all([1, 2, 3, 4, 5].map(claimer));
+    const ms = Date.now() - started;
+    const held = await pg.$queryRawUnsafe<Array<{ id: string; claimToken: string | null; status: string }>>(
+      `select id, "claimToken", status::text as status from "SmsCampaignRecipient" where "campaignId" = $1`, FIVE);
+    const twice = [...wins.values()].filter((n) => n !== 1).length;
+    const underItsToken = held.every((r) => r.status === "SKIPPED" && r.claimToken !== null && wonWith.get(r.id) === r.claimToken);
+    ok("10a · ⭐ FIVE CLAIMERS, TRULY CONCURRENT ON POSTGRES, over 1,000 rows: exactly 1,000 distinct rows won in total, none twice, every settle landed, every row SKIPPED under the very token that won it — and no claim or settle threw (a deadlock would)",
+      wins.size === 1000 && twice === 0 && lost === 0 && errors.length === 0 && held.length === 1000 && underItsToken,
+      `${wins.size} won · ${twice} twice · ${lost} lost · ${errors.length} error(s)${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""} · ${empty} empty claim(s) under contention · ${rounds} rounds in ${ms} ms`);
+  }
+
+  // 10a2 · ⭐ THE RACE, FORCED: 10a's claimers usually collide, but nothing there proves they did. Here a second connection
+  //        holds a row lock on all 50 free rows; five claims of those same rows are launched, each reads them free and
+  //        then WAITS on the lock in its conditional write — all five seen waiting at once, on five connections — and
+  //        the lock is released: Postgres re-checks each waiting write after the first commits, so exactly ONE wins.
+  {
+    const RACE = "probe_u43a_race";
+    await campaign43(RACE, 50, 21500);
+    const blocker = new pgLib.Client({ connectionString: process.env.DATABASE_URL ?? "" });
+    await blocker.connect();
+    let waiting = 0;
+    let answers: StoredSmsCampaignRecipient[][] = [];
+    const raceErrors: string[] = [];
+    try {
+      await blocker.query("begin");
+      await blocker.query(`select id from "SmsCampaignRecipient" where "campaignId" = $1 for update`, [RACE]);
+      const claims = [1, 2, 3, 4, 5].map((who) => db.smsCampaignRecipient.claim(RACE, CM43.SMS_RECIPIENT_CLAIM_MAX, `probe_tok_race_${who}`, at43(60))
+        .catch((e: unknown): StoredSmsCampaignRecipient[] => { raceErrors.push(firstLine(e)); return []; }));
+      for (let i = 0; i < 100 && waiting < 5; i++) {
+        await new Promise((done) => setTimeout(done, 100));
+        waiting = await countRows(
+          `select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query ilike '%update%SmsCampaignRecipient%'`);
+      }
+      await blocker.query("commit");
+      answers = await Promise.all(claims);
+    } finally {
+      await blocker.end().catch(() => {});
+    }
+    const winners = answers.filter((a) => a.length > 0);
+    const winner = winners[0]?.[0]?.claimToken ?? "";
+    const held = await countRows(`select count(*)::int as n from "SmsCampaignRecipient" where "campaignId" = $1 and "claimToken" = $2`, RACE, winner);
+    ok("10a2 · ⭐ THE RACE, FORCED ON POSTGRES: five claims of the same 50 free rows, held behind one row lock, are seen WAITING AT ONCE (five connections) and released together — Postgres re-checks each conditional write after the first commit, so exactly ONE claimant wins all 50 rows, the other four answer [] and none errs",
+      waiting === 5 && raceErrors.length === 0 && winners.length === 1 && winners[0].length === 50 && held === 50,
+      `${waiting} claim(s) seen waiting on the lock · ${winners.length} winner(s) · won ${answers.map((a) => a.length).join("/")} · Postgres holds ${held} under the winner's token · ${raceErrors.length} error(s)${raceErrors.length ? ` (${raceErrors[0]})` : ""}`);
+  }
+
+  // 10b · the won set is exactly readable
+  const READ = "probe_u43a_read";
+  const readIds = await campaign43(READ, 7, 21000);
+  const tokR = "probe_tok_read_0001";
+  const tokR2 = "probe_tok_read_0002";
+  const wonR = await db.smsCampaignRecipient.claim(READ, 5, tokR, at43(100));
+  const heldBySql = (await pg.$queryRawUnsafe<Array<{ id: string }>>(`select id from "SmsCampaignRecipient" where "claimToken" = $1 order by id`, tokR)).map((r) => r.id);
+  const byToken = await db.smsCampaignRecipient.claimedBy(READ, tokR);
+  const restR = await db.smsCampaignRecipient.claim(READ, 5, tokR2, at43(101));
+  ok("10b · the won set is EXACTLY READABLE: the claim answers the first 5 rows by id — what Postgres holds under that token, and what claimedBy reads — each PENDING with the token and the instant; the next claim takes the 2 left",
+    json(wonR.map((r) => r.id)) === json(readIds.slice(0, 5)) && json(heldBySql) === json(readIds.slice(0, 5))
+      && json(byToken.map((r) => r.id)) === json(readIds.slice(0, 5)) && wonR.every((r) => r.claimToken === tokR && r.claimedAt === at43(100) && r.status === "PENDING")
+      && json(restR.map((r) => r.id)) === json(readIds.slice(5)),
+    `won [${wonR.map((r) => r.id.slice(-2))}] · Postgres [${heldBySql.map((x) => x.slice(-2))}] · claimedBy ${byToken.length} · rest [${restR.map((r) => r.id.slice(-2))}]`);
+
+  // 10b2 · ⛔ D16 · a token a row already holds is refused on Postgres too — before anything is written, even where rows are free
+  {
+    const FRESH = "probe_u43a_fresh";
+    await campaign43(FRESH, 2, 21600);
+    let refusal = "";
+    try {
+      await db.smsCampaignRecipient.claim(FRESH, 2, tokR, at43(103));
+    } catch (e) {
+      refusal = firstLine(e);
+    }
+    const stillFree = await countRows(`select count(*)::int as n from "SmsCampaignRecipient" where "campaignId" = $1 and status = 'PENDING' and "claimToken" is null`, FRESH);
+    ok("10b2 · ⛔ A REUSED TOKEN IS REFUSED ON POSTGRES (D16): a claim under the token 10b's rows still hold is refused before anything is written — another campaign's two free rows stay free",
+      refusal !== "" && stillFree === 2, `${refusal || "the claim was ACCEPTED"} · free rows left ${stillFree}`);
+  }
+
+  // 10c · ⭐ settled by the row's id, never by its place
+  const refOf = (id: string) => `sms_probe_${id.slice(-5)}`;
+  const res10c = await db.smsCampaignRecipient.settle([3, 0, 4, 1, 2].map((i) => sentP(readIds[i], tokR, refOf(readIds[i]))), at43(102));
+  const refs = await pg.$queryRawUnsafe<Array<{ id: string; smsReference: string | null; status: string; sentAt: Date | null; locale: string | null }>>(
+    `select id, "smsReference", status::text as status, "sentAt", locale::text as locale from "SmsCampaignRecipient" where "campaignId" = $1 and "claimToken" = $2 order by id`, READ, tokR);
+  const readBack = await db.smsCampaignRecipient.find(readIds[0]);
+  ok("10c · ⭐ SETTLED BY THE ROW'S ID, NEVER BY PLACE: five SENT patches handed in the order 3, 0, 4, 1, 2 land each on ITS row — every reference on the row it was minted for, SENT, the instant and the variant as written — and the generated client reads the trail, the token, the segments and the length back",
+    res10c.settled === 5 && res10c.lost.length === 0 && refs.length === 5
+      && refs.every((r) => r.smsReference === refOf(r.id) && r.status === "SENT" && r.locale === "SW" && r.sentAt?.toISOString() === at43(5))
+      && sameTrail(readBack?.gateTrail, trail("ok")) && readBack?.optOutToken === "K7MXP2QR" && readBack?.segments === 1 && readBack?.bodyLen === 72,
+    `settled ${res10c.settled} · lost [${res10c.lost}] · ${refs.map((r) => `${r.id.slice(-2)}=${r.smsReference?.slice(-2)}`).join(" ")}`);
+
+  // 10d · lost settles change nothing; the reaper's release and its increment
+  {
+    const beforeFive = json(await Promise.all([readIds[5], readIds[6]].map(sqlRow)));
+    const foreign = await db.smsCampaignRecipient.settle([skippedP(readIds[5], "probe_tok_wrong_01"), skippedP(readIds[6], "probe_tok_wrong_01")], at43(103));
+    const untouched = json(await Promise.all([readIds[5], readIds[6]].map(sqlRow))) === beforeFive;
+    const second = await db.smsCampaignRecipient.settle([skippedP(readIds[0], tokR)], at43(104));
+    // The reaper: a cutoff in the future makes both fresh claims stranded; one is released, attempts + 1.
+    const stranded = await db.smsCampaignRecipient.findStranded(READ, at43(100_000), CM43.SMS_RECIPIENT_BATCH_MAX);
+    const reaped = await db.smsCampaignRecipient.settle([{ id: readIds[5], claimToken: tokR2, to: "PENDING", attemptsDelta: 1 }], at43(105));
+    const afterReap = await sqlRow(readIds[5]);
+    const late = await db.smsCampaignRecipient.settle([skippedP(readIds[5], tokR2)], at43(106)); // the stalled slice comes back
+    const afterLate = await sqlRow(readIds[5]);
+    const again = await db.smsCampaignRecipient.claim(READ, 5, "probe_tok_read_0003", at43(107));
+    ok("10d · a foreign claim, a second settle of a settled row and a stalled slice's late settle over its reaped row are each LOST and change nothing; the reaper's release lands — the claim's token cleared and its instant kept (D15), attempts moved on by exactly 1 ({ increment }) — and the row is claimable again",
+      foreign.settled === 0 && foreign.lost.length === 2 && untouched && second.settled === 0 && second.lost.join(",") === readIds[0]
+        && json(stranded.map((r) => r.id)) === json([readIds[5], readIds[6]]) && reaped.settled === 1
+        && afterReap?.status === "PENDING" && afterReap.claimToken === null && afterReap.claimedAt?.toISOString() === at43(101) && afterReap.attempts === 1
+        && late.settled === 0 && late.lost.join(",") === readIds[5] && json(afterLate) === json(afterReap) && json(again.map((r) => r.id)) === json([readIds[5]]),
+      `foreign lost ${foreign.lost.length} · second lost [${second.lost.map((x) => x.slice(-2))}] · stranded [${stranded.map((r) => r.id.slice(-2))}] · after the release ${json(afterReap)} · late lost [${late.lost.map((x) => x.slice(-2))}] · claimed again [${again.map((r) => r.id.slice(-2))}]`);
+  }
+
+  // 10e · ⭐ UNCONFIRMED, written through the generated client, never goes back
+  {
+    const unc = await db.smsCampaignRecipient.settle([
+      { id: readIds[6], claimToken: tokR2, to: "UNCONFIRMED", smsReference: "sms_probe_unconfirmed", optOutToken: null, locale: null, segments: null, bodyLen: null, gateTrail: trail("unconfirmed") },
+    ], at43(108));
+    const keep = json(await sqlRow(readIds[6]));
+    const release = await db.smsCampaignRecipient.settle([{ id: readIds[6], claimToken: tokR2, to: "PENDING", attemptsDelta: 1 }], at43(109));
+    const requeued = await db.smsCampaignRecipient.requeueHeld(READ, at43(110));
+    const unmoved = json(await sqlRow(readIds[6])) === keep;
+    // ⭐ DC-10 · the claim's STATUS test on its own. Every UNCONFIRMED row a door writes keeps its claim's token (D7), so a
+    // claim that lost `status: "PENDING"` would still take nothing above — its token test alone refuses the row. A raw
+    // repair or a receipt arm could clear the token, so it is cleared here by SQL, and the claim must still leave the row.
+    await pg.$executeRawUnsafe(`update "SmsCampaignRecipient" set "claimToken" = null where id = $1`, readIds[6]);
+    const bare = json(await sqlRow(readIds[6]));
+    const claimed = await db.smsCampaignRecipient.claim(READ, 5, "probe_tok_read_0004", at43(111));
+    const still = await sqlRow(readIds[6]);
+    ok("10e · ⭐ UNCONFIRMED, WRITTEN THROUGH THE GENERATED CLIENT in a later transaction, NEVER GOES BACK: a release under its own claim is lost, the requeue moves nothing — and a new claim takes nothing even once the row's token is cleared by SQL (the claim's STATUS test, on its own): the row exactly as it was left",
+      unc.settled === 1 && release.settled === 0 && requeued === 0 && unmoved && claimed.length === 0
+        && still?.status === "UNCONFIRMED" && still.claimToken === null && json(still) === bare,
+      `settled ${unc.settled} · release lost ${release.lost.length} · requeued ${requeued} · unmoved ${unmoved} · claimed ${claimed.length} · ${json(still)}`);
+  }
+
+  // 10f · the requeue takes HELD and only HELD
+  {
+    const Q = "probe_u43a_requeue";
+    const q = await campaign43(Q, 4, 21100);
+    const tokQ = "probe_tok_req_0001";
+    await db.smsCampaignRecipient.claim(Q, 4, tokQ, at43(120));
+    await db.smsCampaignRecipient.settle([
+      { id: q[0], claimToken: tokQ, to: "HELD", failureClass: "gate_unanswered", attempts: 3 },
+      { id: q[1], claimToken: tokQ, to: "HELD", failureClass: "gate_unanswered", attempts: 3 },
+      skippedP(q[2], tokQ),
+      { id: q[3], claimToken: tokQ, to: "UNCONFIRMED", smsReference: null, optOutToken: null, locale: null, segments: null, bodyLen: null, gateTrail: trail("unconfirmed") },
+    ], at43(121));
+    const keep = json(await Promise.all([q[2], q[3]].map(sqlRow)));
+    const requeued = await db.smsCampaignRecipient.requeueHeld(Q, at43(122));
+    const reset = await countRows(
+      `select count(*)::int as n from "SmsCampaignRecipient" where "campaignId" = $1 and status = 'PENDING' and attempts = 0 and "claimToken" is null and "claimedAt" = $3 and "failureClass" is null and "updatedAt" = $2`,
+      Q, new Date(at43(122)), new Date(at43(120)));
+    ok("10f · requeueHeld moves the campaign's HELD rows and ONLY them — PENDING, attempts 0, the claim's token and the class cleared, the claim's instant kept (D15), the caller's stamp — and leaves the SKIPPED and the UNCONFIRMED row exactly as they were",
+      requeued === 2 && reset === 2 && json(await Promise.all([q[2], q[3]].map(sqlRow))) === keep, `requeued ${requeued} · reset by SQL ${reset}`);
+  }
+
+  // 10g · the reaper's evidence: the newest message per target
+  {
+    const TT = "SmsCampaignRecipient";
+    const msg = (reference: string, targetType: string, targetId: string, status: StoredSmsMessage["status"], s: number): StoredSmsMessage => ({
+      reference, msisdn: keyOf(21200), purpose: "MARKETING", provider: "console", senderId: "50pick", bodyLen: 72, status,
+      providerMsg: null, dlrStatus: null, dlrDesc: null, balanceTzs: null, attempts: 1, targetType, targetId, createdAt: at43(s),
+      sentAt: status === "ACCEPTED" ? at43(s) : null, deliveredAt: null, failedAt: status === "FAILED" ? at43(s) : null,
+    });
+    // DC-2 · probe_ev_1's NEWEST message holds the LOWER reference: a pick by reference alone is seen, not only one by age
+    await db.smsMessage.createMany([
+      msg("sms_probe_ev_000000000a", TT, "probe_ev_1", "QUEUED", 210),
+      msg("sms_probe_ev_000000000b", TT, "probe_ev_1", "FAILED", 200),
+      msg("sms_probe_ev_000000000c", TT, "probe_ev_2", "ACCEPTED", 200),
+      msg("sms_probe_ev_000000000d", TT, "probe_ev_2", "UNKNOWN", 200),
+      msg("sms_probe_ev_000000000e", "InviteEntry", "probe_ev_1", "ACCEPTED", 220),
+    ]);
+    const evidence = await db.smsMessage.findByTargets(TT, ["probe_ev_2", "probe_ev_1", "probe_ev_none"]);
+    const tooMany = await throws(() => db.smsMessage.findByTargets(TT, Array.from({ length: CM43.SMS_RECIPIENT_BATCH_MAX + 1 }, (_, i) => `probe_ev_${i}`)));
+    const got = evidence.map((m) => `${m.targetId}:${m.reference.slice(-1)}:${m.status}`).join(",");
+    ok("10g · the reaper's evidence on Postgres: the NEWEST message of the type asked for each target (a tie on the instant broken by the higher reference), none for a target without one, another type's newer message ignored, ordered by target id — and 201 ids refused",
+      got === "probe_ev_1:a:QUEUED,probe_ev_2:d:UNKNOWN" && tooMany, `[${got}] · 201 ids ${tooMany ? "refused" : "ACCEPTED"}`);
+  }
+
+  // 10h · one transaction or nothing
+  {
+    const X = "probe_u43a_tx";
+    const xs = await campaign43(X, 2, 21300);
+    const tokX = "probe_tok_tx_00001";
+    await db.smsCampaignRecipient.claim(X, 2, tokX, at43(300));
+    const before = json(await Promise.all(xs.map(sqlRow)));
+    let txError = "";
+    let txCode: unknown = null;
+    try {
+      // xs[0] sorts first, so its statement RUNS first and lands — then xs[1]'s breaks the unique reference (10c's first
+      // row holds it): the whole transaction must roll back, xs[0]'s write with it.
+      await db.smsCampaignRecipient.settle([sentP(xs[0], tokX, "sms_probe_tx_fresh_0001"), sentP(xs[1], tokX, refOf(readIds[0]))], at43(301));
+    } catch (e) {
+      txError = firstLine(e);
+      txCode = (e as { code?: unknown } | null)?.code;
+    }
+    ok("10h · ONE TRANSACTION OR NOTHING: a settle whose second statement breaks the unique reference is refused WHOLE with code P2002 (the code the memory twin's refusal carries too) — its first statement, which had run, rolled back with it",
+      txError !== "" && txCode === "P2002" && json(await Promise.all(xs.map(sqlRow))) === before, `${txError || "the batch was ACCEPTED"} · code ${String(txCode)}`);
+  }
+
+  // 10i · lastActivity is Postgres' own max(claimedAt)
+  {
+    const newest = (await pg.$queryRawUnsafe<Array<{ m: Date | null }>>(`select max("claimedAt") as m from "SmsCampaignRecipient" where "campaignId" = $1`, FIVE))[0]?.m ?? null;
+    const last = await db.smsCampaignRecipient.lastActivity(FIVE);
+    await campaign43("probe_u43a_idle", 1, 21400);
+    const idle = await db.smsCampaignRecipient.lastActivity("probe_u43a_idle");
+    ok("10i · lastActivity is Postgres' own max(claimedAt) for the campaign — settled rows keep their claim — and null for a campaign nothing ever claimed",
+      newest !== null && last === newest.toISOString() && idle === null, `${last} vs ${newest === null ? null : newest.toISOString()} · idle ${idle}`);
+  }
+
+  // 10j · RECORDED · the claim's plan at 150,000 rows — U45's index decision is taken on these numbers
+  {
+    const SCALE = "probe_u43a_scale";
+    await db.smsCampaign.create(draft(SCALE));
+    const inserted = await pg.$executeRawUnsafe(
+      `insert into "SmsCampaignRecipient" ("id", "campaignId", "msisdn", "updatedAt") select 'probe_sc_' || lpad(g::text, 6, '0'), $1, '2557' || lpad(g::text, 8, '0'), now() from generate_series(1, 150000) g`,
+      SCALE);
+    await pg.$executeRawUnsafe(`analyze "SmsCampaignRecipient"`);
+    // The campaign id is this probe's own constant, inlined: EXPLAIN is a utility statement, so it is not handed a bind
+    // parameter (the claim itself, measured below, binds as Prisma does).
+    const plan = await pg.$queryRawUnsafe<Array<{ "QUERY PLAN": string }>>(
+      `explain (analyze, buffers) select "id" from "SmsCampaignRecipient" where "campaignId" = '${SCALE}' and "status" = 'PENDING' and "claimToken" is null order by "id" asc limit 50`);
+    const t0 = Date.now();
+    const first = await db.smsCampaignRecipient.claim(SCALE, CM43.SMS_RECIPIENT_CLAIM_MAX, "probe_tok_scale_01", at43(400));
+    const claimMs = Date.now() - t0;
+    // DC-9 · the reaper's read (every step) and the activity read (every poll), at the same scale: D7 keeps a token on every
+    // settled and held row, so the claimToken index cannot narrow `claimToken is not null` — U45 decides on these plans too
+    const cutoff = at43(100_000);
+    const strandedPlan = await pg.$queryRawUnsafe<Array<{ "QUERY PLAN": string }>>(
+      `explain (analyze, buffers) select * from "SmsCampaignRecipient" where "campaignId" = '${SCALE}' and "status" = 'PENDING' and "claimToken" is not null and "claimedAt" < '${cutoff}' order by "claimedAt" asc, "id" asc limit ${CM43.SMS_RECIPIENT_BATCH_MAX}`);
+    const activityPlan = await pg.$queryRawUnsafe<Array<{ "QUERY PLAN": string }>>(
+      `explain (analyze, buffers) select max("claimedAt") from "SmsCampaignRecipient" where "campaignId" = '${SCALE}'`);
+    const t1 = Date.now();
+    const stranded = await db.smsCampaignRecipient.findStranded(SCALE, cutoff, CM43.SMS_RECIPIENT_BATCH_MAX);
+    const strandedMs = Date.now() - t1;
+    const t2 = Date.now();
+    const last = await db.smsCampaignRecipient.lastActivity(SCALE);
+    const activityMs = Date.now() - t2;
+    console.log("   10j · the claim's candidate read at 150,000 PENDING rows — recorded for U45's index decision:");
+    for (const line of plan) console.log(`     ${line["QUERY PLAN"]}`);
+    console.log(`   10j · the whole claim (the token check, the find, the conditional update, the read by token) took ${claimMs} ms`);
+    console.log("   10j · the reaper's read (findStranded) at the same scale:");
+    for (const line of strandedPlan) console.log(`     ${line["QUERY PLAN"]}`);
+    console.log(`   10j · findStranded took ${strandedMs} ms`);
+    console.log("   10j · the activity read (lastActivity) at the same scale:");
+    for (const line of activityPlan) console.log(`     ${line["QUERY PLAN"]}`);
+    console.log(`   10j · lastActivity took ${activityMs} ms`);
+    const want = Array.from({ length: 50 }, (_, i) => `probe_sc_${String(i + 1).padStart(6, "0")}`);
+    ok("10j · RECORDED · 150,000 PENDING rows on one campaign: the plans of the claim's candidate read, the reaper's read and the activity read are printed above for U45 (the indexes are U45's to decide); the claim still takes exactly the FIRST 50 by id, the reaper's read answers those 50 and the activity read their claim's instant",
+      inserted === 150000 && plan.length > 0 && strandedPlan.length > 0 && activityPlan.length > 0 && json(first.map((r) => r.id)) === json(want)
+        && json(stranded.map((r) => r.id)) === json(want) && last === at43(400),
+      `${inserted} inserted · plans ${plan.length}/${strandedPlan.length}/${activityPlan.length} line(s) · the claim ${claimMs} ms, findStranded ${strandedMs} ms (${stranded.length} rows), lastActivity ${activityMs} ms (${last}) · first ${first[0]?.id ?? "none"} … ${first[first.length - 1]?.id ?? "none"}`);
+  }
+}
+
+await pg.$disconnect().catch(() => {});
 
 console.log(`\ncampaign-models-pg-probe: ${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

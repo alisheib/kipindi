@@ -47,10 +47,27 @@
  * `undefined` as NO CONDITION, so a caller that lost its account id or its number would unlink — or export — every row
  * in the table on Postgres while the memory twin matched nobody. Both refuse that before either twin is asked.
  *
+ * ── U43a · THE ENGINE'S RECIPIENT DOORS (ENGINE-SPEC §4.10 — the slice, U43b, is their caller) ─────────────────────────
+ * A slice CLAIMS rows with a token (`assertClaim`, `claimWrite`), SETTLES each one by its id and the claim it expects
+ * (`assertSettle`, `settleWrite`, the table `SMS_RECIPIENT_SETTLE_KEYS`), and the reaper reads stranded claims and their
+ * evidence (`assertStrandedRead`, `assertTargetsRead`, `newestPerTarget`); Resume re-queues HELD rows (`requeueWrite`).
+ * ⭐ ONE WRITE, TWO TWINS: every door's columns are computed HERE as an `SmsRecipientWrite` — the memory twin applies it
+ * by name, the Prisma twin drives it through its column map — so the two can never write different columns, and a
+ * column added to a settle that the map does not know throws instead of vanishing on Postgres.
+ * ⛔ A settle writes only where the row still holds the claim it names AND is PENDING (both twins' WHERE): so a reaped
+ * row's late settle is lost, never forced, and NOTHING here moves a row out of a settled status — UNCONFIRMED never goes
+ * back to PENDING (the requeue takes HELD and only HELD); a late receipt is U46a's door. ⛔ Free text a settle writes —
+ * a skip detail, an error, a gate trail's words — never holds a phone number (§5.14, `holdsPhoneRun`). ⛔ A claim token
+ * is fresh for each claim (`refuseHeldToken`); a settle writes exactly its row of the table — never the account link
+ * (`userId`), never a send instant from its own clock. What a caller owes and what these doors never do is written ONCE,
+ * on the settle's type, `SmsCampaignRecipientSettle` (store.ts).
+ *
  * ⛔ PURE, AND NOTHING AT RUNTIME COMES FROM THE STORE OR THE CONSOLE'S UI LIBRARIES. `store.ts` and `prisma-dal.ts`
  * both import this file, so a runtime import back into `store.ts` would be a cycle through the DAL switch: types only
  * (erased). `campaign-confirm.ts` is reached for its TYPE only, and `test:campaign-models` 2.11 holds the watermark
- * length here equal to its `MEMBERS_KEY_HEX_CHARS`.
+ * length here equal to its `MEMBERS_KEY_HEX_CHARS`. The ONE phone-run rule (`holdsPhoneRun`) is imported from
+ * `contact-fields.ts` — a pure rules module whose own imports are pure (`test:client-graph-safe` pins them), and which
+ * never imports the store.
  * ⛔ No message thrown here ever carries a phone number (§5.14) — a seed is named by its position.
  *
  * Guards: `npm run test:campaign-models` (§2) · `npm run test:dal-parity` (§26).
@@ -58,10 +75,12 @@
 import type {
   StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignDraftPatch, SmsCampaignDraftGuard,
   SmsCampaignTransition, SmsCampaignTransitionPatch, SmsCampaignRecipientSeed, SmsCampaignRecipientCount,
+  StoredSmsCampaignRecipient, SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage, MessagingLocale,
 } from "@/lib/server/store";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import type { ConfirmTierColumn } from "@/lib/marketing/campaign-confirm";
 import { isGatewayMsisdn } from "@/lib/phone-normalize";
+import { holdsPhoneRun } from "@/lib/contacts/contact-fields";
 
 /* ══ THE STATUSES AND THEIR MOVES ════════════════════════════════════════════════════════════════════════════ */
 
@@ -509,4 +528,303 @@ export function fillRecipientCounts(raw: readonly SmsCampaignRecipientCount[]): 
     by.set(r.status, (by.get(r.status) ?? 0) + r.count);
   }
   return SMS_CAMPAIGN_RECIPIENT_STATUSES.map((status) => ({ status, count: by.get(status) ?? 0 }));
+}
+
+/* ══ U43a · THE ENGINE'S RECIPIENT DOORS — claim, settle, the reaper's reads, the requeue (ENGINE-SPEC §4.10) ══════════ */
+
+/**
+ * ⭐ THE MOST ROWS ONE CLAIM TAKES. A slice is ONE `sendBatch` chunk — E11: never above `BATCH_MAX` (sms-blackball.ts) — so
+ * the data layer refuses a wider claim rather than strand more rows than one send can carry. `test:campaign-models` 2.27
+ * holds it equal to `BATCH_MAX`.
+ */
+export const SMS_RECIPIENT_CLAIM_MAX = 50;
+/** The most rows one settle, one stranded read or one evidence read handles — the reaper's page (E6: 200 a step). A larger
+ *  call is REFUSED, never cut off: a cut evidence read answers "never sent" for a message that went. */
+export const SMS_RECIPIENT_BATCH_MAX = 200;
+/** E20's gate trail: at most this many checks per recipient, each of its strings at most this long. */
+export const SMS_RECIPIENT_TRAIL_MAX = 24;
+export const SMS_RECIPIENT_TRAIL_TEXT_MAX = 200;
+/** The longest free text a settle writes (`skipDetail`, `error`) and the longest code (`skipReason`, `failureClass`). The
+ *  engine trims to these before it settles; the rule set refuses anything longer, never trims. */
+export const SMS_RECIPIENT_TEXT_MAX = 500;
+export const SMS_RECIPIENT_CODE_MAX = 100;
+
+/** A claim's token — minted fresh by the claimant for THIS claim (a UUID, a ledger stamp): letters, digits, low line, dash. */
+const CLAIM_TOKEN = /^[A-Za-z0-9_-]{8,64}$/;
+const isClaimToken = (v: unknown): v is string => typeof v === "string" && CLAIM_TOKEN.test(v);
+/** OD42's variants, as `MessagingLocale` spells them. A Record, so a variant added to the union is a compile error here. */
+const LOCALE_SET: Readonly<Record<MessagingLocale, true>> = { EN: true, SW: true, ZH: true };
+const isLocale = (v: unknown): v is MessagingLocale => typeof v === "string" && own(LOCALE_SET, v);
+/** A key the system minted — an SMS reference, an opt-out token: printable, no space, bounded. */
+const isKeyText = (v: unknown): v is string => typeof v === "string" && /^[!-~]{1,100}$/.test(v);
+/** A code — a gate reason, a failure class: printable, trimmed, bounded, and never a phone number. */
+const isCode = (v: unknown): v is string =>
+  typeof v === "string" && v.length <= SMS_RECIPIENT_CODE_MAX && /^[!-~]([ -~]*[!-~])?$/.test(v) && !holdsPhoneRun(v);
+/** Free words — a gate's detail, a gateway's message: bounded, and ⛔ never a phone number (§5.14). May be empty. */
+const isWords = (v: unknown): v is string => typeof v === "string" && v.length <= SMS_RECIPIENT_TEXT_MAX && !holdsPhoneRun(v);
+const isDelta = (v: unknown): v is 0 | 1 => v === 0 || v === 1;
+const TRAIL_KEYS: readonly string[] = ["check", "verdict", "wording", "source"];
+const isTrailWord = (v: unknown): boolean =>
+  typeof v === "string" && v.length > 0 && v.length <= SMS_RECIPIENT_TRAIL_TEXT_MAX && !holdsPhoneRun(v);
+const isTrailWording = (v: unknown): boolean =>
+  v === null || (typeof v === "string" && v.length <= SMS_RECIPIENT_TRAIL_TEXT_MAX && !holdsPhoneRun(v));
+/**
+ * A trail entry's `source` holds REFERENCES — an id, an SMS reference, an instant, a bound — and an SMS reference is 24 hex
+ * characters, which hold a phone-shaped digit run by chance often enough that the words rule would refuse a lawful settle
+ * now and then. So a source is read PIECE BY PIECE: every word that holds a letter or an underscore (an id, a reference,
+ * an instant's `T…Z`) is taken out whole, and ⛔ what stands between those words — digits with their spaces, dashes, dots
+ * and plus signs — may not hold a phone number in any spelling (the phone-run rule reads separators): `msisdn:255712345678`,
+ * `msisdn 0712 345 678`, `+255 712-345-678` are refused; `sms_0712…ab`, an instant and `08:00–20:00 EAT` are not. A number
+ * glued to letters inside one word (`n255712345678`) is a word, and passes — as it did when sources were split on symbols.
+ */
+const holdsPhoneToken = (text: string): boolean =>
+  text.replace(/[A-Za-z0-9_]*[A-Za-z_][A-Za-z0-9_]*/g, "|").split("|").some((piece) => holdsPhoneRun(piece));
+const isTrailSource = (v: unknown): boolean =>
+  v === null || (typeof v === "string" && v.length <= SMS_RECIPIENT_TRAIL_TEXT_MAX && !holdsPhoneToken(v));
+/** E20 · an ordered list of 1 to 24 checks, each EXACTLY { check, verdict, wording, source }. */
+const isTrail = (v: unknown): boolean => {
+  if (!Array.isArray(v) || v.length === 0 || v.length > SMS_RECIPIENT_TRAIL_MAX) return false;
+  return v.every((g: unknown) => {
+    if (g === null || typeof g !== "object" || Array.isArray(g)) return false;
+    const e = g as Record<string, unknown>;
+    return Object.keys(e).length === TRAIL_KEYS.length && TRAIL_KEYS.every((k) => own(e, k))
+      && isTrailWord(e.check) && isTrailWord(e.verdict) && isTrailWording(e.wording) && isTrailSource(e.source);
+  });
+};
+
+/**
+ * ⭐ THE SETTLE TABLE — ENGINE-SPEC §4.10 decision 3: for each status a settle moves a claimed row to, EXACTLY the columns
+ * its patch carries (no other key — a "forbidden" one is refused by name — and none missing), each with the values its
+ * column may take. ⚠️ Two widenings, both for the REAPER (E6), which settles a stranded claim from the `SmsMessage`
+ * EVIDENCE and never saw what the slice prepared: SENT's token, variant, segments and length may be null (the slice always
+ * fills them — U43b's own suite holds that), and DELIVERED is a target (§3.2: "DELIVERED — receipt; reap"). PENDING is
+ * the RELEASE: the claim's token cleared (its `claimedAt` kept — `settleWrite`), `attempts` moved on by 0 or 1 — nothing
+ * else. A compile-time check below holds every row of this table equal to its variant of `SmsCampaignRecipientSettle`
+ * (store.ts), and `settleWrite` reads the columns it writes off THIS table, never off the patch.
+ */
+export const SMS_RECIPIENT_SETTLE_KEYS = {
+  SENT: {
+    smsReference: isKeyText, sentAt: isInstant, optOutToken: orNull(isKeyText), locale: orNull(isLocale),
+    segments: orNull(isPositive), bodyLen: orNull(isPositive), gateTrail: isTrail,
+  },
+  SKIPPED: { skipReason: isCode, skipDetail: isWords, gateTrail: isTrail },
+  FAILED: { failureClass: isCode, error: orNull(isWords), failedAt: isInstant, smsReference: orNull(isKeyText), gateTrail: isTrail },
+  UNCONFIRMED: {
+    smsReference: orNull(isKeyText), optOutToken: orNull(isKeyText), locale: orNull(isLocale), segments: orNull(isPositive),
+    bodyLen: orNull(isPositive), gateTrail: isTrail,
+  },
+  DELIVERED: {
+    smsReference: isKeyText, sentAt: orNull(isInstant), deliveredAt: isInstant, optOutToken: orNull(isKeyText),
+    locale: orNull(isLocale), segments: orNull(isPositive), bodyLen: orNull(isPositive), gateTrail: isTrail,
+  },
+  HELD: { failureClass: isCode, attempts: isCount },
+  PENDING: { attemptsDelta: isDelta },
+} as const satisfies Record<SmsCampaignRecipientStatus, Readonly<Record<string, ValueRule>>>;
+
+/* ── compile-time: the table above and the store's patch union are ONE partition, and every column a settle writes is a
+ *    stored column (the release's `attemptsDelta` is a move, not a column) ── */
+type SettleOf<T extends SmsCampaignRecipientStatus> = Extract<SmsCampaignRecipientSettle, { to: T }>;
+type SettleColumns<T extends SmsCampaignRecipientStatus> = Exclude<keyof SettleOf<T>, "id" | "claimToken" | "to">;
+type TableKeys<T extends SmsCampaignRecipientStatus> = keyof (typeof SMS_RECIPIENT_SETTLE_KEYS)[T];
+type AllColumns<T> = T extends SmsCampaignRecipientStatus ? SettleColumns<T> : never;
+/** ⛔ A compile error the day a variant of `SmsCampaignRecipientSettle` and its row of the table disagree about a key. */
+export type SmsRecipientSettleTypesAgree = [
+  Assert<Same<SmsCampaignRecipientSettle["to"], SmsCampaignRecipientStatus>>,
+  Assert<Same<SettleColumns<"SENT">, TableKeys<"SENT">>>,
+  Assert<Same<SettleColumns<"SKIPPED">, TableKeys<"SKIPPED">>>,
+  Assert<Same<SettleColumns<"FAILED">, TableKeys<"FAILED">>>,
+  Assert<Same<SettleColumns<"UNCONFIRMED">, TableKeys<"UNCONFIRMED">>>,
+  Assert<Same<SettleColumns<"DELIVERED">, TableKeys<"DELIVERED">>>,
+  Assert<Same<SettleColumns<"HELD">, TableKeys<"HELD">>>,
+  Assert<Same<SettleColumns<"PENDING">, TableKeys<"PENDING">>>,
+  Assert<Same<Exclude<AllColumns<Exclude<SmsCampaignRecipientStatus, "PENDING">>, keyof StoredSmsCampaignRecipient>, never>>,
+];
+
+/** The keys of a patch that ADDRESS a row rather than write one: which row, the claim it expects, the status it moves to. */
+const SETTLE_GUARDS: ReadonlySet<string> = new Set(["id", "claimToken", "to"]);
+
+/**
+ * `settle` · ⭐ THE WHOLE BATCH OR NOTHING, checked before either twin writes a row (`assertSeeds`' rule): at most
+ * `SMS_RECIPIENT_BATCH_MAX` patches; each names its row and the claim it expects; each moves to a status of the table
+ * carrying EXACTLY that row's columns, each a value its column may take; no row twice and no SMS reference twice (the
+ * column is unique — Postgres would roll the whole transaction back); `at` an instant in `toISOString()`'s spelling.
+ * ⛔ A refusal names a patch by its POSITION and a key by its name — never a value (a value could be a phone number).
+ */
+export function assertSettle(patches: readonly SmsCampaignRecipientSettle[], at: string): void {
+  const where = "smsCampaignRecipient.settle";
+  if (!isInstant(at)) refuse(where, "at is an instant in toISOString's spelling");
+  const list: unknown = patches; // an alias, so `patches` keeps its type (`Array.isArray` would narrow it to any[])
+  if (!Array.isArray(list)) refuse(where, "the patches are not a list");
+  if (patches.length > SMS_RECIPIENT_BATCH_MAX) {
+    refuse(where, `at most ${SMS_RECIPIENT_BATCH_MAX} patches per call (this batch has ${patches.length})`);
+  }
+  const ids = new Set<string>();
+  const references = new Set<string>();
+  patches.forEach((p, i) => {
+    const at_ = `patch ${i + 1} of ${patches.length}`;
+    if (p === null || typeof p !== "object") refuse(where, `${at_} is not an object`);
+    if (!isNonEmpty(p.id)) refuse(where, `${at_} names no row`);
+    if (ids.has(p.id)) refuse(where, `${at_} names a row another patch in this batch settles — one settle per row`);
+    ids.add(p.id);
+    if (!isClaimToken(p.claimToken)) refuse(where, `${at_} names no claim — a settle lands only where the row still holds the claim it names`);
+    const target: unknown = p.to;
+    if (typeof target !== "string" || !own(SMS_RECIPIENT_SETTLE_KEYS, target)) refuse(where, `${at_} moves to a status the settle table does not hold`);
+    const rules = SMS_RECIPIENT_SETTLE_KEYS[p.to] as Readonly<Record<string, ValueRule>>;
+    const o = p as unknown as Record<string, unknown>;
+    for (const k of Object.keys(o)) {
+      if (!SETTLE_GUARDS.has(k) && !own(rules, k)) refuse(where, `${at_} (${p.to}) carries "${k}" — not a column a ${p.to} settle writes`);
+    }
+    for (const [k, rule] of Object.entries(rules)) {
+      if (!own(o, k) || o[k] === undefined) refuse(where, `${at_} (${p.to}) is missing "${k}"`);
+      if (!rule(o[k])) refuse(where, `${at_} (${p.to}): "${k}" holds a value its column cannot take (a phone number in free text is one — §5.14)`);
+    }
+    const reference = o.smsReference;
+    if (typeof reference === "string") {
+      if (references.has(reference)) refuse(where, `${at_} carries an SMS reference another patch carries — the column is unique`);
+      references.add(reference);
+    }
+  });
+}
+
+/**
+ * ⭐ WHAT ONE DOOR WRITES TO ONE RECIPIENT ROW — computed here, ONCE, and applied by both twins: the memory twin assigns
+ * every key of `set` by name, the Prisma twin drives `set` through `SMS_CAMPAIGN_RECIPIENT_COLUMN` (an unmapped key
+ * THROWS), so the twins can never write different columns. `attemptsBy` is how far `attempts` moves on — the Prisma twin's
+ * `{ increment }`, so a release adds to what Postgres holds at the write and never reads it first.
+ */
+export type SmsRecipientWrite = { set: Partial<StoredSmsCampaignRecipient>; attemptsBy: 0 | 1 };
+
+/** The claim's write: the token, the instant and the stamp — and nothing else (not the status, not `attempts`). */
+export function claimWrite(token: string, at: string): SmsRecipientWrite {
+  return { set: { claimToken: token, claimedAt: at, updatedAt: at }, attemptsBy: 0 };
+}
+
+/**
+ * The settle's write, from a patch the table has passed (`assertSettle` first): the status it moves to, the caller's
+ * stamp and EXACTLY the columns its row of `SMS_RECIPIENT_SETTLE_KEYS` names — read off the TABLE, never off the patch, so
+ * a key a patch carried beyond its row can never reach a column: ⛔ never `userId`, the account link only erasure clears
+ * (U16a PE-01 — a send that raced an erasure must not re-link the erased account), never the number, the contact or the
+ * campaign. Every value is the patch's own: ⛔ `sentAt` (like `deliveredAt` and `failedAt`) is the instant the patch
+ * carries — the hand-over instant copied from `SmsMessage` — and NEVER this settle's clock, which stamps `updatedAt`
+ * alone (U16a PE-08). The gate trail is copied, so the stored row never shares an array with its caller.
+ * ⭐ A RELEASE (to PENDING) clears the claim's TOKEN — the row is free for the next slice — and moves `attempts` on by its
+ * delta; it KEEPS `claimedAt`, the instant of the row's last claim, so `lastActivity` never forgets a claim that ended in
+ * a release (D15: "nobody is driving" must never be read off a page that is driving and releasing). A HELD or settled
+ * row keeps its token too: the token and `claimedAt` are the record of which slice handled it.
+ */
+export function settleWrite(p: SmsCampaignRecipientSettle, at: string): SmsRecipientWrite {
+  if (p.to === "PENDING") return { set: { status: p.to, claimToken: null, updatedAt: at }, attemptsBy: p.attemptsDelta };
+  const o = p as unknown as Record<string, unknown>;
+  const set: Record<string, unknown> = {};
+  for (const k of Object.keys(SMS_RECIPIENT_SETTLE_KEYS[p.to])) {
+    set[k] = k === "gateTrail" ? (o[k] as SmsCampaignGateTrail).map((g) => ({ ...g })) : o[k];
+  }
+  set.status = p.to;
+  set.updatedAt = at;
+  return { set: set as Partial<StoredSmsCampaignRecipient>, attemptsBy: 0 };
+}
+
+/**
+ * The requeue's write (E8 — Resume): a HELD row starts over — PENDING, `attempts` 0, the claim's token and the hold's
+ * class cleared, the caller's stamp; `claimedAt` kept, as a release keeps it (D15). ⛔ Its door applies it to HELD rows
+ * and to NOTHING else (never UNCONFIRMED).
+ */
+export function requeueWrite(at: string): SmsRecipientWrite {
+  return { set: { status: "PENDING", attempts: 0, claimToken: null, failureClass: null, updatedAt: at }, attemptsBy: 0 };
+}
+
+/**
+ * `claim` · the rule set first: a campaign named (Prisma reads `where: { campaignId: undefined }` as NO CONDITION — every
+ * campaign's rows), 1 to `SMS_RECIPIENT_CLAIM_MAX` rows, a fresh token of the token's shape, and an instant.
+ */
+export function assertClaim(campaignId: string, limit: number, token: string, at: string): void {
+  const where = "smsCampaignRecipient.claim";
+  if (!isNonEmpty(campaignId)) refuse(where, "a claim names its campaign — a missing id would take every campaign's rows on Postgres");
+  if (typeof limit !== "number" || !Number.isSafeInteger(limit) || limit < 1 || limit > SMS_RECIPIENT_CLAIM_MAX) {
+    refuse(where, `a claim takes 1 to ${SMS_RECIPIENT_CLAIM_MAX} rows — one sendBatch chunk`);
+  }
+  if (!isClaimToken(token)) refuse(where, "the claim token is 8 to 64 letters, digits, low lines or dashes, minted fresh for this claim");
+  if (!isInstant(at)) refuse(where, "at is an instant in toISOString's spelling");
+}
+
+/**
+ * `claim` · ⛔ A TOKEN IS FRESH FOR EACH CLAIM (D10, enforced — D16): a token ANY recipient row already holds is refused
+ * before anything is written. A settled or held row keeps its claim's token (D7), so a reused token would fold an
+ * earlier claim's rows into this claim's answer — more than `limit`, rows this slice never prepared — and into every
+ * later `claimedBy`. The twins ask whether a row holds the token (one indexed read on Postgres) and refuse through this
+ * ONE sentence.
+ */
+export function refuseHeldToken(): never {
+  refuse("smsCampaignRecipient.claim", "a recipient row already holds this claim token — a token is minted fresh for each claim and never reused");
+}
+
+/** `claimedBy` · the campaign and the token, both named — a missing token would read every claimed row on Postgres. */
+export function assertClaimRead(campaignId: string, token: string): void {
+  const where = "smsCampaignRecipient.claimedBy";
+  if (!isNonEmpty(campaignId)) refuse(where, "a claim read names its campaign");
+  if (!isClaimToken(token)) refuse(where, "a claim read names the token it reads by");
+}
+
+/** `findStranded` · the campaign named, the cutoff an instant (strictly older claims are stranded), 1 to 200 rows. */
+export function assertStrandedRead(campaignId: string, cutoff: string, limit: number): void {
+  const where = "smsCampaignRecipient.findStranded";
+  if (!isNonEmpty(campaignId)) refuse(where, "a stranded read names its campaign");
+  if (!isInstant(cutoff)) refuse(where, "the cutoff is an instant in toISOString's spelling");
+  if (typeof limit !== "number" || !Number.isSafeInteger(limit) || limit < 1 || limit > SMS_RECIPIENT_BATCH_MAX) {
+    refuse(where, `a stranded read takes 1 to ${SMS_RECIPIENT_BATCH_MAX} rows`);
+  }
+}
+
+/** `requeueHeld` · the campaign named (a missing id would requeue every campaign's HELD rows on Postgres) and an instant. */
+export function assertRequeueHeld(campaignId: string, at: string): void {
+  const where = "smsCampaignRecipient.requeueHeld";
+  if (!isNonEmpty(campaignId)) refuse(where, "a requeue names its campaign");
+  if (!isInstant(at)) refuse(where, "at is an instant in toISOString's spelling");
+}
+
+/** `lastActivity` · the campaign named. */
+export function assertActivityRead(campaignId: string): void {
+  if (!isNonEmpty(campaignId)) refuse("smsCampaignRecipient.lastActivity", "an activity read names its campaign");
+}
+
+/**
+ * `smsMessage.findByTargets` · THE REAPER'S EVIDENCE READ: a target type and at most `SMS_RECIPIENT_BATCH_MAX` target
+ * ids, each an id. ⛔ Refused above the bound, never cut off: a target whose message fell outside a cut would read "never
+ * sent", go back to PENDING and be sent again. ⚠️ The answer is the newest message EVER for each target — the claim's
+ * bound is the reaper's (`newestPerTarget`, DC-1).
+ */
+export function assertTargetsRead(targetType: string, targetIds: readonly string[]): void {
+  const where = "smsMessage.findByTargets";
+  if (!isNonEmpty(targetType)) refuse(where, "an evidence read names its target type");
+  const idList: unknown = targetIds;
+  if (!Array.isArray(idList)) refuse(where, "the target ids are not a list");
+  if (targetIds.length > SMS_RECIPIENT_BATCH_MAX) refuse(where, `at most ${SMS_RECIPIENT_BATCH_MAX} targets per read (this one has ${targetIds.length})`);
+  if (!targetIds.every((t) => isNonEmpty(t))) refuse(where, "every target id is an id");
+}
+
+/**
+ * ⭐ THE NEWEST MESSAGE FOR EACH TARGET — the ONE rule both twins' `findByTargets` answer through (E6: "the newest
+ * SmsMessage with that recipient as target"). Newest by `createdAt` compared as INSTANTS, a tie broken by the higher
+ * reference; one per target; a row with no target dropped; the answer ordered by target id — so it is read by the target
+ * id it carries, never by its place in the list.
+ * ⚠️ NOT BOUNDED BY THE CLAIM, AND THAT IS THE REAPER'S TO DO (DC-1). The newest message of a target can belong to an
+ * EARLIER attempt of the same row: a chunk the gateway refused (sms.ts marks its rows FAILED, or UNKNOWN on an ambiguous
+ * reply) whose rows E7 released, then a later claim that died before its own `sendBatch` wrote QUEUED rows. Read as
+ * evidence for THAT claim, the old FAILED settles a person who was never sent to as FAILED, with no retry. Only the
+ * reaper holds the row, so ⛔ U43b's `reapVerdict` MUST compare the evidence's `createdAt` with the row's `claimedAt` —
+ * a message created BEFORE the claim is an earlier attempt's, NO evidence for this claim (an earlier refused chunk
+ * charged nothing, E7) — and `ReapEvidence` must therefore keep `createdAt`. Both instants are the app's own clock (the
+ * claim's `at`, sms.ts's `createdAt`); a suite must never compare an injected clock with sms.ts's real one. The bound
+ * is not taken here because its failure is a VERDICT E6 must own: a read that dropped the claim's own message (a clock
+ * stepped back between the claim and the send) reads "never sent" and sends a second time.
+ */
+export function newestPerTarget(rows: readonly StoredSmsMessage[]): StoredSmsMessage[] {
+  const newest = new Map<string, StoredSmsMessage>();
+  for (const m of rows) {
+    if (m.targetId === null) continue;
+    const held = newest.get(m.targetId);
+    const gap = held === undefined ? 1 : Date.parse(m.createdAt) - Date.parse(held.createdAt);
+    if (held === undefined || gap > 0 || (gap === 0 && m.reference > held.reference)) newest.set(m.targetId, m);
+  }
+  return [...newest.values()].sort((a, b) => ((a.targetId ?? "") < (b.targetId ?? "") ? -1 : (a.targetId ?? "") > (b.targetId ?? "") ? 1 : 0));
 }

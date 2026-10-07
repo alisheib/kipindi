@@ -30,9 +30,13 @@ import { sniffBase64ImageMime } from "./image-signature";
 // U35b · the campaign tables' ONE rule set — asked before every campaign or recipient write, exactly as the memory
 // twin asks it (`test:dal-parity` §26). Pure: it takes only types from the store, so there is no cycle.
 // U16a · and before erasure's unlink and the access export's read — with the ONE bound that read shares with the memory twin.
+// U43a · and before the engine's doors — the claim, the settle, the reaper's reads and the requeue — whose WRITES it
+// computes too: this twin drives them through `SMS_CAMPAIGN_RECIPIENT_COLUMN`, the memory twin applies them by name.
 import {
   assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
   assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
+  assertClaim, assertClaimRead, assertSettle, assertStrandedRead, assertRequeueHeld, assertActivityRead, assertTargetsRead,
+  claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary: the attention count spreads its statuses (never a retyped list) and every
 // count is zero-filled through its tallies, exactly as the memory twin's are (`test:dal-parity` §26).
@@ -85,6 +89,8 @@ import type {
   SmsCampaignPage,
   SmsCampaignStatusCounts,
   SmsCampaignRecipientCountsById,
+  SmsCampaignRecipientSettle,
+  SmsCampaignSettleResult,
   StoredAgentApplication,
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
@@ -636,9 +642,10 @@ function toStoredSmsCampaign(cmp: SmsCampaignRow): StoredSmsCampaign {
  * SmsCampaignRecipient row -> StoredSmsCampaignRecipient (marketing U35b).
  * ⛔ It reads the row's OWN columns and never a relation — no contact, user or campaign reached through — because a
  * recipient holds LINKS, never a copy of a contact's or a player's details (`test:dal-parity` §26.link).
- * ⛔ THERE IS NO COLUMN MAP BESIDE IT YET, AND THAT IS DELIBERATE: U35b writes recipients only through `createMany`,
- * from the seed. The writers that settle a row (U43's claim, U45's settle, U46's receipt) bring the map with their
- * update — map-driven, never a hand-written allow-list.
+ * ⭐ THE COLUMN MAP BESIDE IT (U43a, `SMS_CAMPAIGN_RECIPIENT_COLUMN`) drives every write the engine's doors make — the
+ * claim, the settle, the requeue — from the ONE write the rule set computes (`smsRecipientData`): map-driven, never a
+ * hand-written allow-list. `createMany` still writes the seed's keys by name (§26.createMany); U46a's receipt brings
+ * its own write through the same map.
  * ⭐ THE STATUS IS CAST TO THE ONE NAMED UNION (`SmsCampaignRecipientStatus`, store.ts) — never an inline list — so the
  * value U43-0 added, UNCONFIRMED, is a status this twin names the moment the union does (`test:dal-parity`
  * 26.status). The cast checks nothing by itself: the generated client rejects a label it was not built with, and the
@@ -680,6 +687,78 @@ function toStoredSmsCampaignRecipient(rcp: SmsCampaignRecipientRow): StoredSmsCa
     deliveredAt: iso(rcp.deliveredAt),
     failedAt: iso(rcp.failedAt),
   };
+}
+
+/**
+ * ⭐ U43a · EVERY StoredSmsCampaignRecipient KEY AND HOW THE ENGINE'S DOORS WRITE IT — typed `Record<keyof …>`, so a
+ * column added to the stored shape and forgotten here is a `tsc` error. `null` = NEVER written by a claim, a settle or a
+ * requeue: the id, the campaign and the number are the seed's; the two LINKS move only by erasure's unlink and
+ * Postgres' SET NULL; `costTzs` is provider-reported and nothing reports it yet; `createdAt` is the seed's.
+ * ⛔ A DateTime column MUST be "date" — an ISO string reaching Prisma throws on Postgres and nowhere else — and the gate
+ * trail is "json": written as a value, never cleared.
+ */
+const SMS_CAMPAIGN_RECIPIENT_COLUMN: Record<keyof StoredSmsCampaignRecipient, "date" | "plain" | "json" | null> = {
+  id: null,
+  campaignId: null,
+  msisdn: null,
+  contactId: null,
+  userId: null,
+  costTzs: null,
+  createdAt: null,
+  status: "plain",
+  smsReference: "plain",
+  optOutToken: "plain",
+  locale: "plain",
+  failureClass: "plain",
+  error: "plain",
+  skipReason: "plain",
+  skipDetail: "plain",
+  claimToken: "plain",
+  claimedAt: "date",
+  attempts: "plain",
+  segments: "plain",
+  bodyLen: "plain",
+  gateTrail: "json",
+  updatedAt: "date",
+  sentAt: "date",
+  deliveredAt: "date",
+  failedAt: "date",
+};
+
+/**
+ * U43a · a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`, campaign-model.ts) -> Prisma `data`,
+ * DRIVEN BY THE MAP — the very write the memory twin applies by name (`writeRecipient`), so the twins cannot write
+ * different columns. ⛔ An unmapped key THROWS, and so does a key the map says these doors never write. `attempts` moves
+ * on as `{ increment }`, so a release adds to what Postgres holds at the write — never a read-then-write.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function smsRecipientData(w: SmsRecipientWrite): Record<string, any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: Record<string, any> = {};
+  for (const [k, v] of Object.entries(w.set)) {
+    if (v === undefined) continue;
+    const spec = SMS_CAMPAIGN_RECIPIENT_COLUMN[k as keyof StoredSmsCampaignRecipient];
+    if (spec === undefined) {
+      throw new Error(`[prisma-dal] smsCampaignRecipient: unmapped field "${k}" — add it to SMS_CAMPAIGN_RECIPIENT_COLUMN or it is a silent production no-op.`);
+    }
+    if (spec === null) throw new Error(`[prisma-dal] smsCampaignRecipient: "${k}" is never written by a claim, a settle or a requeue.`);
+    if (spec === "json") {
+      if (v === null) throw new Error(`[prisma-dal] smsCampaignRecipient: "${k}" is never cleared.`);
+      data[k] = v as unknown as Prisma.InputJsonValue;
+      continue;
+    }
+    data[k] = spec === "date" ? (v === null ? null : new Date(v as string)) : v;
+  }
+  if (w.attemptsBy > 0) data.attempts = { increment: w.attemptsBy };
+  return data;
+}
+
+/** U43a · the campaign's rows STILL PENDING under one claim, by id — the claim's own third step and `claimedBy`'s answer,
+ *  ONE read (`claimToken` is indexed). The status is in the WHERE, so a settled row that keeps its token is never read
+ *  back as held. */
+async function recipientsClaimedBy(campaignId: string, token: string): Promise<StoredSmsCampaignRecipient[]> {
+  const rows = await pc().smsCampaignRecipient.findMany({ where: { campaignId, claimToken: token, status: "PENDING" }, orderBy: { id: "asc" } });
+  return rows.map(toStoredSmsCampaignRecipient);
 }
 
 /**
@@ -3847,6 +3926,18 @@ export const prismaDb = {
       const rows = await pc().smsMessage.findMany({ orderBy: { createdAt: "desc" }, take: limit });
       return rows.map(toStoredSmsMessage);
     },
+    /** U43a · THE REAPER'S EVIDENCE (E6) — ONE findMany of every message of the type asked for the targets named (the
+     *  `(targetType, targetId)` index), then `newestPerTarget`, the ONE rule the memory twin answers through: the newest
+     *  per target, none for a target without one, ordered by target id. The rule set is asked first (at most 200 ids).
+     *  ⛔ NO `take`: a target whose message fell outside a cut would read "never sent", go back to PENDING and be sent
+     *  again. An empty list asks nothing. ⚠️ The newest message EVER for each target, not bounded by the row's claim —
+     *  that bound is the reaper's (`newestPerTarget`, DC-1). */
+    findByTargets: async (targetType: string, targetIds: readonly string[]): Promise<StoredSmsMessage[]> => {
+      assertTargetsRead(targetType, targetIds);
+      if (targetIds.length === 0) return [];
+      const rows = await pc().smsMessage.findMany({ where: { targetType, targetId: { in: [...new Set(targetIds)] } } });
+      return newestPerTarget(rows.map(toStoredSmsMessage));
+    },
   },
   /* ═══ MESSAGING CONSENT (marketing U6) ═══════════════════════════════════════════════
    * ⛔ NO `update`, NO `delete` — the append-only rule, enforced by there being no method
@@ -4924,6 +5015,84 @@ export const prismaDb = {
       assertRecipientUnlink(userId, at);
       const unlinked = await pc().smsCampaignRecipient.updateMany({ where: { userId }, data: { userId: null, updatedAt: new Date(at) } });
       return unlinked.count;
+    },
+    /** U43a · ⭐ THE CLAIM — compare-and-set with a token, four statements and no lock held across a send:
+     *  ⓪ ⛔ a token ANY row already holds is refused before anything is written (ONE read on the `claimToken` index,
+     *  `refuseHeldToken` — D16: a token is fresh for each claim, so ③ can only ever answer THIS claim's rows);
+     *  ① the first `limit` FREE rows of the campaign by id (PENDING, no claim — E21: the walk's order); ② ONE conditional
+     *  `updateMany` that writes the claim only where each row is STILL PENDING and unclaimed — Postgres re-checks that WHERE
+     *  after any concurrent commit, so of two claimants racing for a row exactly one takes it and the other's count simply
+     *  misses it; ③ the won set read BACK BY THE TOKEN (`recipientsClaimedBy`), so what this claimant holds is exactly
+     *  readable whatever the race did. The rule set is asked first: a missing campaign id would be NO CONDITION. */
+    claim: async (campaignId: string, limit: number, token: string, at: string): Promise<StoredSmsCampaignRecipient[]> => {
+      assertClaim(campaignId, limit, token, at);
+      if ((await pc().smsCampaignRecipient.findFirst({ where: { claimToken: token }, select: { id: true } })) !== null) refuseHeldToken();
+      const free = await pc().smsCampaignRecipient.findMany({
+        where: { campaignId, status: "PENDING", claimToken: null },
+        orderBy: { id: "asc" },
+        take: limit,
+        select: { id: true },
+      });
+      if (free.length === 0) return [];
+      await pc().smsCampaignRecipient.updateMany({
+        where: { id: { in: free.map((r) => r.id) }, campaignId, status: "PENDING", claimToken: null },
+        data: smsRecipientData(claimWrite(token, at)),
+      });
+      return recipientsClaimedBy(campaignId, token);
+    },
+    /** U43a · the campaign's rows STILL PENDING under this claim — what the slice's `beforeSend` re-reads just before the
+     *  wire (E6): a row reaped, released or settled since is not among them, so a stalled slice sends nothing. */
+    claimedBy: async (campaignId: string, token: string): Promise<StoredSmsCampaignRecipient[]> => {
+      assertClaimRead(campaignId, token);
+      return recipientsClaimedBy(campaignId, token);
+    },
+    /** U43a · ⭐ THE SETTLE — ONE `$transaction` of conditional `updateMany`s, one per patch, each written only WHERE its
+     *  row's id, the claim the patch names AND status PENDING all still hold; the data is the rule set's `settleWrite`
+     *  through the map. A statement that wrote nothing is that patch's id in `lost` — a reaped row, a row a receipt
+     *  settled, a stalled slice's claim — never forced. All or nothing: a refused statement (a reference another row
+     *  holds, P2002 — the code the memory twin's refusal carries too) rolls the whole settle back. The statements run in id
+     *  order, so two settles that overlap always take their row locks in the same order and cannot deadlock. The rule set
+     *  is asked first. The contract — what a caller owes, what this door never writes — is `SmsCampaignRecipientSettle`'s
+     *  (store.ts). */
+    settle: async (patches: readonly SmsCampaignRecipientSettle[], at: string): Promise<SmsCampaignSettleResult> => {
+      assertSettle(patches, at);
+      if (patches.length === 0) return { settled: 0, lost: [] };
+      const ordered = [...patches].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const written = await pc().$transaction(ordered.map((p) => pc().smsCampaignRecipient.updateMany({
+        where: { id: p.id, claimToken: p.claimToken, status: "PENDING" },
+        data: smsRecipientData(settleWrite(p, at)),
+      })));
+      // Each statement's own count, read beside the patch that built it (one array, built once — the patch and its
+      // statement travel together): a 0 is that patch's id in `lost`.
+      const landed = new Set(ordered.filter((_, i) => written[i].count > 0).map((p) => p.id));
+      return { settled: landed.size, lost: patches.filter((p) => !landed.has(p.id)).map((p) => p.id) };
+    },
+    /** U43a · THE REAPER'S QUESTION (E6) — ONE findMany of the campaign's PENDING rows holding a claim STRICTLY OLDER than
+     *  the cutoff (`lt`: a claim at the cutoff is not yet stranded), oldest claim first, then id, at most `limit`. */
+    findStranded: async (campaignId: string, cutoff: string, limit: number): Promise<StoredSmsCampaignRecipient[]> => {
+      assertStrandedRead(campaignId, cutoff, limit);
+      const rows = await pc().smsCampaignRecipient.findMany({
+        where: { campaignId, status: "PENDING", claimToken: { not: null }, claimedAt: { lt: new Date(cutoff) } },
+        orderBy: [{ claimedAt: "asc" }, { id: "asc" }],
+        take: limit,
+      });
+      return rows.map(toStoredSmsCampaignRecipient);
+    },
+    /** U43a · RESUME'S RE-QUEUE (E8) — ONE updateMany WHERE the campaign AND status HELD, ⛔ and nothing else (never
+     *  UNCONFIRMED, never a settled row): PENDING, `attempts` 0, the claim's token and the hold's class cleared (its
+     *  `claimedAt` kept, D15), the caller's stamp, through the map. Answers how many rows moved. */
+    requeueHeld: async (campaignId: string, at: string): Promise<number> => {
+      assertRequeueHeld(campaignId, at);
+      const requeued = await pc().smsCampaignRecipient.updateMany({ where: { campaignId, status: "HELD" }, data: smsRecipientData(requeueWrite(at)) });
+      return requeued.count;
+    },
+    /** U43a · "NOBODY IS DRIVING" — the newest `claimedAt` on the campaign as ONE aggregate (`_max`), never the rows; null
+     *  when nothing was ever claimed. A settled or held row keeps its claim, and a released or requeued row keeps the
+     *  instant of its last claim (D15), so the answer never moves backwards while a page claims and releases. */
+    lastActivity: async (campaignId: string): Promise<string | null> => {
+      assertActivityRead(campaignId);
+      const newest = await pc().smsCampaignRecipient.aggregate({ where: { campaignId }, _max: { claimedAt: true } });
+      return iso(newest._max.claimedAt);
     },
   },
 };

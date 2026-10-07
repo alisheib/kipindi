@@ -8,6 +8,20 @@
  * and campaign-model to the order Postgres holds after EVERY migration; §1.12 and §1.13 hold the ADD VALUE alone and
  * after the tables; §2.13 executes the counts knowing the value and still refusing a status nobody knows (P8); §3.2
  * pins its writers — none in this commit.
+ * COMMIT D (U43a, S10 2026-10-04 — ENGINE-SPEC §4.10): the engine's recipient doors EXECUTED on the memory twin —
+ * §2.14 ⭐ five concurrent claimers over 1,000 rows win 1,000 rows, each once (the plan's RED for the conditional claim);
+ * §2.15 the claim's shape; §2.16 ⭐ a settle lands by the row's id and the claim it names, never by its place, and is
+ * otherwise `lost`; §2.17 ⭐ the settle table, every row refused and accepted; §2.18 a refused batch, and a reference
+ * another row holds, change nothing; §2.19 the release and the hold; §2.20 ⭐ UNCONFIRMED never goes back to PENDING;
+ * §2.21 the stranded read; §2.22 the requeue; §2.23 `lastActivity`; §2.24 the reaper's evidence read; §2.25 every door
+ * asks the rule set first; §2.26 `claimedBy`; §2.27 the claim's bound IS `BATCH_MAX`; §2.28 ⛔ the settle's write — its
+ * row of the table, never the account link, never a clock in a send instant (U16a PE-01, PE-08). (The spec numbered its
+ * settle case §2.12; on this tree §2.12 is U35b's SET NULL and §2.13 U43-0's, so U43a's cases start at §2.14.) §3.2's
+ * pin now also sees the settle door's spelling, `to: "UNCONFIRMED"` in a patch — U43b, the first writer, declares itself
+ * there. ⭐ The review of 2026-10-07 made each case able to fail for the reason it names: §2.20 holds a token-less
+ * UNCONFIRMED row (the claim's status test on its own), §2.21 claims a later id earlier (the stranded order), §2.24 gives
+ * the newer message the lower reference, §2.23 holds a release and a requeue that keep their claim's instant (D15),
+ * §2.15 a reused token (D16), §2.18 the P2002 code both twins carry.
  *
  * ⭐ WHY A SUITE OF ITS OWN: `red:dal-parity` can never plant a defect in schema.prisma or a migration (it reads them
  * from ROOT, not KP_SRC), so a shape that lives in SQL needs an in-process suite that is HANDED the text and can be
@@ -33,6 +47,7 @@ import { decomment } from "./lib/decomment.mts";
 import type {
   StoredSmsCampaign, StoredSmsCampaignRecipient, SmsCampaignRecipientSeed, SmsCampaignRecipientStatus,
   SmsCampaignDraftPatch, SmsCampaignDraftGuard, SmsCampaignTransition, SmsCampaignTransitionPatch,
+  SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage,
 } from "../src/lib/server/store.ts";
 
 // ⛔ BEFORE THE STORE IS IMPORTED — see the header.
@@ -101,6 +116,9 @@ export const MARKETING_WRITERS: readonly string[] = [
  * ⚠️ A TEXT PIN, like MARKETING_WRITERS (§3.2's controls prove what it sees): an object key `status: "UNCONFIRMED"`, an
  * assignment `.status = "UNCONFIRMED"` and SQL's `"status" = 'UNCONFIRMED'` (which a WHERE also spells — declare it,
  * or say it is a read). It does NOT see a status passed through a variable or a generated enum member.
+ * ⭐ U43a widened it to its settle door's own spelling: a patch's `to: "UNCONFIRMED"` followed by a comma or a brace (the
+ * house's trailing-comma style) is a write — a TYPE's `to: "UNCONFIRMED";` is not — so U43b's settle and reaper cannot
+ * hand the door the value undeclared. The door itself writes `status` from a variable and so is not a writer here.
  */
 export const UNCONFIRMED_WRITERS: readonly string[] = [];
 
@@ -108,19 +126,26 @@ export const UNCONFIRMED_WRITERS: readonly string[] = [];
 
 type CampaignNs = typeof db.smsCampaign;
 type RecipientNs = typeof db.smsCampaignRecipient;
-type Twin = { campaign: CampaignNs; recipient: RecipientNs };
-/** The rule set itself (`campaign-model.ts`), executed directly by §2.9–§2.11 — swappable, so a red case can delete one
- *  refusal from it. (Both twins call these very functions first: `test:dal-parity` §26.shape.) */
+/** U43a · the message namespace — §2.24 drives its `findByTargets`, the reaper's evidence read. */
+type MessageNs = typeof db.smsMessage;
+type Twin = { campaign: CampaignNs; recipient: RecipientNs; message: MessageNs };
+/** The rule set itself (`campaign-model.ts`), executed directly by §2.9–§2.11 (and U43a's settle table by §2.17, its
+ *  write by §2.28) — swappable, so a red case can delete one refusal from it. (Both twins call these very functions
+ *  first: `test:dal-parity` §26.shape and §26.u43a.) */
 type Rules = {
   assertTransitionShape: typeof CM.assertTransitionShape;
   assertDraftPatch: typeof CM.assertDraftPatch;
   assertNewCampaign: typeof CM.assertNewCampaign;
+  assertSettle: typeof CM.assertSettle;
+  settleWrite: typeof CM.settleWrite;
 };
 type World = {
   migrations: Migration[];
   schema: string;
   store: string;
   smsCompose: string;
+  /** U43a · sms-blackball.ts, decommented — §2.27 reads `BATCH_MAX` from it. */
+  blackball: string;
   src: Array<{ path: string; text: string }>;
   twin: Twin;
   rules: Rules;
@@ -130,9 +155,13 @@ const REAL: World = {
   schema: lf(readFileSync(join(ROOT, "prisma", "schema.prisma"), "utf8")),
   store: decomment(lf(readFileSync(join(ROOT, "src", "lib", "server", "store.ts"), "utf8"))),
   smsCompose: decomment(lf(readFileSync(join(ROOT, "src", "lib", "sms-compose.ts"), "utf8"))),
+  blackball: decomment(lf(readFileSync(join(ROOT, "src", "lib", "server", "sms-blackball.ts"), "utf8"))),
   src: srcTexts(),
-  twin: { campaign: db.smsCampaign, recipient: db.smsCampaignRecipient },
-  rules: { assertTransitionShape: CM.assertTransitionShape, assertDraftPatch: CM.assertDraftPatch, assertNewCampaign: CM.assertNewCampaign },
+  twin: { campaign: db.smsCampaign, recipient: db.smsCampaignRecipient, message: db.smsMessage },
+  rules: {
+    assertTransitionShape: CM.assertTransitionShape, assertDraftPatch: CM.assertDraftPatch, assertNewCampaign: CM.assertNewCampaign,
+    assertSettle: CM.assertSettle, settleWrite: CM.settleWrite,
+  },
 };
 
 /** The memory twin's three campaign maps. §2 clears them before every run, so each run starts from nothing. */
@@ -196,8 +225,23 @@ const L = {
   s211: "2.11 the draft-save and birth rules refuse a body without its saved verdict, a half-removed English variant, an emptied column and a value its column cannot take — and the watermark width is U40's MEMBERS_KEY_HEX_CHARS",
   s212: "2.12 a contact removed from the book leaves its campaign recipient row in place with the link set to null — Postgres' SET NULL, mirrored by the memory twin",
   s213: "2.13 ⭐ the counts KNOW UNCONFIRMED (U43-0): a campaign with 2 UNCONFIRMED and 2 PENDING rows counts both, UNCONFIRMED last — and a status this code does not know is still REFUSED, never dropped (P8)",
+  s214: "2.14 ⭐ FIVE CONCURRENT CLAIMERS over 1,000 rows (the memory twin, interleaved between every claim and its settle): exactly 1,000 distinct rows won in total, no row twice, every settle landed and every row settled — the plan's RED for the conditional claim (U43a)",
+  s215: "2.15 the claim takes the FIRST `limit` rows of ITS campaign that are PENDING and unclaimed, in id order (E21), writes the token, the instant and the stamp and nothing else, answers exactly the rows now holding the token as copies — a held, settled or claimed row is never taken, a campaign with none answers [] — and ⛔ a token a row already holds (a settled row keeps its claim's) is refused before anything is written, in any campaign (D16)",
+  s216: "2.16 ⭐ A SETTLE LANDS BY THE ROW'S ID AND THE CLAIM IT NAMES, NEVER BY ITS PLACE: patches handed in shuffled land each on its own row; a foreign claim, a row already settled, a reaped row claimed again by another slice and a missing id are each LOST, the row untouched — and the rest of the batch still lands",
+  s217: "2.17 ⭐ THE SETTLE TABLE (ENGINE-SPEC §4.10 decision 3, + the reaper's DELIVERED and SENT): a key missing, a key another status owns, a phone number in a detail, an error, a trail's words or a source (in any spelling, separators and all), a trail of 25 checks or a 201-character string, a delta of 2, one row or one reference twice, 201 patches, an instant in another spelling — each REFUSED; every lawful patch the slice and the reaper write passes",
+  s218: "2.18 a refused settle batch changes NOTHING — one bad patch refuses the whole batch before any write — and a batch carrying a reference another row already holds is refused whole too, carrying Prisma's code P2002 (the memory twin of the transaction rolling back)",
+  s219: "2.19 a release (to PENDING) clears the claim's token and moves attempts on by exactly its delta, 1 or 0, keeping the claim's instant and writing nothing else; a HELD keeps its claim and writes its class and attempts; every settle stamps the caller's instant — and a released row is claimable again, a held one is not",
+  s220: "2.20 ⭐ UNCONFIRMED NEVER GOES BACK TO PENDING: a release, a hold or a second settle of an UNCONFIRMED row — even under its own claim — is lost and changes nothing; the requeue moves the HELD row beside it and never it; a new claim never takes it — not even one whose token was cleared, so the claim's STATUS test is held on its own",
+  s221: "2.21 findStranded answers ITS campaign's PENDING rows holding a claim STRICTLY older than the cutoff — never a claim at the cutoff, a younger one, a settled or an unclaimed row — OLDEST CLAIM FIRST (a higher id claimed earlier comes first) then id, at most `limit`",
+  s222: "2.22 requeueHeld moves exactly its campaign's HELD rows to PENDING — attempts 0, the claim's token and the class cleared, the claim's instant kept, stamped — answers how many, touches no other status and no other campaign, and the requeued rows are claimable again",
+  s223: "2.23 ⭐ lastActivity is the newest claim instant on the campaign and NEVER MOVES BACKWARDS while a page drives it — a settled row's claim counts, a released or requeued row keeps its claim's instant (D15), a later claim moves it on, another campaign's never counts — and null when nothing was ever claimed",
+  s224: "2.24 smsMessage.findByTargets answers the NEWEST message of the asked type for each target — by createdAt (the newer one holding the LOWER reference, so a pick by reference is seen), a tie broken by the higher reference — one per target, none for a target without one, ordered by target id, as copies — an empty list is an empty answer, and 201 ids are refused",
+  s225: "2.25 every U43a door asks the rule set FIRST: a lost campaign id, a limit of 0 or above the claim's bound, a token or an instant in another spelling, a cutoff that is not an instant, an empty target — each refused, and nothing written (Prisma reads undefined as NO CONDITION)",
+  s226: "2.26 claimedBy answers the campaign's rows still PENDING under the claim — what U43b's beforeSend re-reads (E6): a row settled, released or held since is not among them, and another token or campaign reads nothing",
+  s227: "2.27 the claim's bound IS the send's chunk: SMS_RECIPIENT_CLAIM_MAX equals sms-blackball's BATCH_MAX (E11 — one slice, one sendBatch chunk)",
+  s228: "2.28 ⛔ THE SETTLE'S WRITE (U16a PE-01, PE-08): for every lawful patch settleWrite writes EXACTLY its row of the table, the status and the caller's stamp — never userId, the account link only erasure clears, nor the number or the contact, even when a patch carries them — and every send instant as the patch carries it (sentAt is the hand-over copied from the message), never the settle's clock; the trail copied",
   s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (U37b's test send; U43's slice next)",
-  s32: "3.2 ⛔ no src file writes a recipient's status as UNCONFIRMED unless it is a declared UNCONFIRMED_WRITER (none in U43-0: the value ships one deploy before U43b, its first writer) — and the pin sees a key, an assignment and SQL, and not a comparison or a read",
+  s32: "3.2 ⛔ no src file writes a recipient's status as UNCONFIRMED unless it is a declared UNCONFIRMED_WRITER (none yet: the value ships one deploy before U43b, its first writer) — and the pin sees a key, an assignment, SQL and a settle patch's `to:` (U43a), and not a comparison, a read or a type",
 };
 
 /* ═══ THE TEXT READERS (§1) ═══════════════════════════════════════════════════════════════════════════════════ */
@@ -273,8 +317,9 @@ const unconfirmedAdds = (w: World): Migration[] => w.migrations.filter((m) => AD
 const statementsOf = (m: Migration): string[] => sqlStatements(m.sql).split(";").map((x) => x.trim()).filter(Boolean);
 /** §3.2's pin: a LITERAL write of the value — an object key, an assignment (never a comparison) or SQL's
  *  `"status" = '…'`. The status word in either case (SQL), the value in Postgres' own spelling only: the dispatch
- *  outcome "unconfirmed" is another word for another thing. */
-const WRITES_UNCONFIRMED = /[Ss][Tt][Aa][Tt][Uu][Ss]"?[ ]*(?::|=(?!=))[ ]*["'`]UNCONFIRMED["'`]/;
+ *  outcome "unconfirmed" is another word for another thing. U43a's second arm: a settle patch's `to: "UNCONFIRMED"`,
+ *  then a comma or a brace (never a type member's semicolon). */
+const WRITES_UNCONFIRMED = /[Ss][Tt][Aa][Tt][Uu][Ss]"?[ ]*(?::|=(?!=))[ ]*["'`]UNCONFIRMED["'`]|(?:^|[^A-Za-z0-9_$])to[ ]*:[ ]*["'`]UNCONFIRMED["'`][ ]*[,}]/m;
 
 type Col = { type: string; notNull: boolean; def: string | null };
 const colText = (c: Col | undefined) => (c ? `${c.type}${c.notNull ? " NOT NULL" : ""}${c.def !== null ? ` DEFAULT ${c.def}` : ""}` : "absent");
@@ -892,6 +937,469 @@ async function run(w: World, tag: string): Promise<void> {
       `[${counts.map((c) => `${c.status} ${c.count}`).join(", ")}] · a status this code does not know ${refused ? "refused" : "COUNTED (or dropped)"}`];
   });
 
+  /* ── §2.14–§2.28 · U43a · THE ENGINE'S RECIPIENT DOORS, EXECUTED ON THE MEMORY TWIN (ENGINE-SPEC §4.10) ───────────────
+   * Every fixture goes through the doors themselves (claim → settle), never a hand-set map, so a plant in any door is seen
+   * — with ONE exception, named where it stands (§2.20): a token-less UNCONFIRMED row, which no door can make and a raw
+   * repair could. Ids are fixed-width, so id order is seed order. ⛔ No backslash below: line breaks and patterns are
+   * classes. */
+  const M = w.twin.message;
+  const TRAIL = (verdict: string): SmsCampaignGateTrail => [{ check: "gate", verdict, wording: null, source: null }];
+  const rowOf = (id: string): StoredSmsCampaignRecipient | undefined => mem().smsCampaignRecipients.get(id);
+  const rowsOf = (campaignId: string): StoredSmsCampaignRecipient[] =>
+    Array.from(mem().smsCampaignRecipients.values()).filter((r) => r.campaignId === campaignId)
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const snap = (ids: readonly string[]): string => JSON.stringify(ids.map((x) => rowOf(x) ?? null));
+  /** A campaign of `n` fresh rows through the doors; answers their ids, in id order. */
+  const campaignOf = async (id: string, n: number, keyFrom: number): Promise<string[]> => {
+    await C.create(draft(id));
+    const ids = Array.from({ length: n }, (_, i) => `rcp_${id.slice(4)}_${String(i).padStart(4, "0")}`);
+    for (const part of chunks(ids.map((rid, i) => seed(rid, id, keyOf(keyFrom + i))), CM.SMS_CAMPAIGN_SEED_CHUNK_MAX)) await R.createMany(part);
+    return ids;
+  };
+  const skipped = (id: string, claimToken: string): SmsCampaignRecipientSettle => ({
+    id, claimToken, to: "SKIPPED", skipReason: "suppressed", skipDetail: "suppressed withdrawn on 2026-10-02T09:00:00.000Z", gateTrail: TRAIL("suppressed"),
+  });
+  const sent = (id: string, claimToken: string, smsReference: string): SmsCampaignRecipientSettle => ({
+    id, claimToken, to: "SENT", smsReference, sentAt: at(50), optOutToken: "K7MXP2QR", locale: "SW", segments: 1, bodyLen: 72, gateTrail: TRAIL("ok"),
+  });
+  const held = (id: string, claimToken: string): SmsCampaignRecipientSettle =>
+    ({ id, claimToken, to: "HELD", failureClass: "gate_unanswered", attempts: 3 });
+  const release = (id: string, claimToken: string, attemptsDelta: 0 | 1): SmsCampaignRecipientSettle =>
+    ({ id, claimToken, to: "PENDING", attemptsDelta });
+  const unsure = (id: string, claimToken: string, smsReference: string | null): SmsCampaignRecipientSettle => ({
+    id, claimToken, to: "UNCONFIRMED", smsReference, optOutToken: null, locale: null, segments: null, bodyLen: null, gateTrail: TRAIL("unconfirmed"),
+  });
+  /** Every key of `b` but `except` holds the same value in `r`. */
+  const sameBut = (r: StoredSmsCampaignRecipient | undefined, b: StoredSmsCampaignRecipient | undefined, except: readonly string[]): boolean =>
+    r !== undefined && b !== undefined && Object.keys(b).every((k) => except.includes(k)
+      || JSON.stringify((r as unknown as Record<string, unknown>)[k]) === JSON.stringify((b as unknown as Record<string, unknown>)[k]));
+  const yieldNow = (): Promise<void> => new Promise((done) => setImmediate(done));
+  const ids_ = (rows: ReadonlyArray<{ id: string }>): string => rows.map((r) => r.id).join(",");
+
+  // ── §2.14 · ⭐ five concurrent claimers ────────────────────────────────────────────────────────
+  await check(p(L.s214), async () => {
+    const id = "cmp_claim_five";
+    const ids = await campaignOf(id, 1000, 20000);
+    const wins = new Map<string, number>();
+    let lost = 0, rounds = 0;
+    const free = () => rowsOf(id).filter((r) => r.status === "PENDING" && r.claimToken === null).length;
+    const claimer = async (who: string): Promise<void> => {
+      for (let round = 0; round < 200; round++) {
+        rounds++;
+        const token = `tok_${who}_${String(round).padStart(4, "0")}`;
+        const won = await R.claim(id, CM.SMS_RECIPIENT_CLAIM_MAX, token, at(100 + round));
+        await yieldNow(); // ⭐ the window a real slice holds its claim open: the other four claim here
+        if (won.length === 0) {
+          if (free() === 0) return;
+          continue;
+        }
+        for (const r of won) wins.set(r.id, (wins.get(r.id) ?? 0) + 1);
+        const res = await R.settle([...won].reverse().map((r) => skipped(r.id, token)), at(100 + round));
+        lost += res.lost.length;
+        await yieldNow();
+      }
+    };
+    await Promise.all(["a", "b", "c", "d", "e"].map(claimer));
+    const twice = [...wins.values()].filter((n) => n !== 1).length;
+    const rows = rowsOf(id);
+    const settled = rows.filter((r) => r.status === "SKIPPED").length;
+    return [wins.size === 1000 && twice === 0 && lost === 0 && settled === 1000 && ids.every((x) => wins.get(x) === 1),
+      `${wins.size} rows won · ${twice} won more than once · ${lost} settle(s) lost · ${settled} of ${rows.length} SKIPPED · ${rounds} claim rounds`];
+  });
+
+  // ── §2.15 · the claim's shape ──────────────────────────────────────────────────────────────────
+  await check(p(L.s215), async () => {
+    const id = "cmp_claim_shape";
+    const ids = await campaignOf(id, 7, 22000);
+    const other = await campaignOf("cmp_claim_other", 2, 22100);
+    const h = await R.claim(id, 1, "tok_shape_held", at(10));
+    await R.settle([held(ids[0], "tok_shape_held")], at(11));
+    const s = await R.claim(id, 1, "tok_shape_skip", at(12));
+    await R.settle([skipped(ids[1], "tok_shape_skip")], at(13));
+    const before = new Map(rowsOf(id).map((r): [string, StoredSmsCampaignRecipient] => [r.id, { ...r }]));
+    const won = await R.claim(id, 3, "tok_shape_main", at(20));
+    const want = [ids[2], ids[3], ids[4]];
+    const onlyTheClaim = rowsOf(id).every((r) => {
+      const b = before.get(r.id);
+      if (!want.includes(r.id)) return JSON.stringify(r) === JSON.stringify(b);
+      return b !== undefined && b.claimToken === null && b.claimedAt === null && r.claimToken === "tok_shape_main" && r.claimedAt === at(20)
+        && r.updatedAt === at(20) && r.status === "PENDING" && r.attempts === 0 && sameBut(r, b, ["claimToken", "claimedAt", "updatedAt"]);
+    });
+    const answered = ids_(won) === want.join(",") && won.every((r) => r.claimToken === "tok_shape_main");
+    if (won[0]) won[0].status = "SKIPPED"; // a copy: the store must not move
+    const copies = rowOf(ids[2])?.status === "PENDING";
+    const rest = await R.claim(id, 10, "tok_shape_rest", at(21));
+    const none = await R.claim(id, 5, "tok_shape_none", at(22));
+    // ⛔ D16 · a token is fresh for each claim: the one a SETTLED row keeps, and the one rows still PENDING hold, are each
+    // refused before anything is written — here, and in another campaign that still has free rows to take
+    const keepAll = snap([...ids, ...other]);
+    const reusedSettled = await throws(() => R.claim(id, 1, "tok_shape_skip", at(23)));
+    const reusedHeld = await throws(() => R.claim("cmp_claim_other", 1, "tok_shape_main", at(24)));
+    const reuseWroteNothing = snap([...ids, ...other]) === keepAll;
+    const otherUntouched = other.every((x) => rowOf(x)?.claimToken === null);
+    return [ids_(h) === ids[0] && ids_(s) === ids[1] && answered && onlyTheClaim && copies && ids_(rest) === [ids[5], ids[6]].join(",")
+        && none.length === 0 && reusedSettled && reusedHeld && reuseWroteNothing && otherUntouched,
+      `held [${ids_(h)}] · skipped [${ids_(s)}] · won [${ids_(won)}] · only the claim moved ${onlyTheClaim} · copies ${copies} · rest [${ids_(rest)}] · none ${none.length} · a settled row's token ${reusedSettled ? "refused" : "REUSED"} · a held token in another campaign ${reusedHeld ? "refused" : "REUSED"} · nothing written ${reuseWroteNothing} · other campaign untouched ${otherUntouched}`];
+  });
+
+  // ── §2.16 · ⭐ settle by id and claim, never by position ───────────────────────────────────────────
+  await check(p(L.s216), async () => {
+    const id = "cmp_settle_id";
+    const ids = await campaignOf(id, 6, 22200);
+    const won = await R.claim(id, 6, "tok_settle_id", at(30));
+    const refOf = (rid: string): string => `sms_settle_${rid.slice(-4)}`;
+    // ⭐ never the claim's order: a fixed permutation, so a settle that zipped patches onto rows by place is seen
+    const patches = [3, 0, 5, 1, 4, 2].map((i) => sent(ids[i], "tok_settle_id", refOf(ids[i])));
+    const shuffledAway = ids_(won) === ids.join(",") && patches.map((pp) => pp.id).join(",") !== ids.join(",");
+    const res = await R.settle(patches, at(31));
+    const own = ids.every((x) => rowOf(x)?.status === "SENT" && rowOf(x)?.smsReference === refOf(x));
+    const lid = "cmp_settle_lost";
+    const l = await campaignOf(lid, 4, 22300);
+    await R.claim(lid, 4, "tok_lost_aaaa", at(40));
+    await R.settle([skipped(l[2], "tok_lost_aaaa")], at(41));        // row 2: settled already
+    await R.settle([release(l[3], "tok_lost_aaaa", 1)], at(42));     // row 3: reaped …
+    await R.claim(lid, 1, "tok_lost_bbbb", at(43));                  // … and claimed again by another slice
+    const keep = snap([l[0], l[2], l[3]]);
+    const late = await R.settle([
+      sent(l[0], "tok_wrong_xxxx", "sms_lost_0"),   // a claim it never held
+      sent(l[1], "tok_lost_aaaa", "sms_lost_1"),    // its own claim: lands
+      sent(l[2], "tok_lost_aaaa", "sms_lost_2"),    // already settled
+      sent(l[3], "tok_lost_aaaa", "sms_lost_3"),    // a stalled slice's late settle over a reaped row
+      sent("rcp_settle_nobody", "tok_lost_aaaa", "sms_lost_4"),
+    ], at(44));
+    const untouched = snap([l[0], l[2], l[3]]) === keep;
+    return [shuffledAway && res.settled === 6 && res.lost.length === 0 && own && late.settled === 1
+        && late.lost.join(",") === [l[0], l[2], l[3], "rcp_settle_nobody"].join(",") && rowOf(l[1])?.smsReference === "sms_lost_1" && untouched
+        && rowOf(l[3])?.claimToken === "tok_lost_bbbb" && rowOf(l[3])?.attempts === 1,
+      `shuffled ${shuffledAway} · settled ${res.settled}, lost [${res.lost}] · each its own reference ${own} · late: settled ${late.settled}, lost [${late.lost}] · lost rows untouched ${untouched}`];
+  });
+
+  // ── §2.17 · ⭐ the settle table, every row executed on the rule set ─────────────────────────────────
+  {
+    const refusesS = (patches: unknown[], stamp = at(60)): boolean => {
+      try { w.rules.assertSettle(patches as SmsCampaignRecipientSettle[], stamp); return false; } catch { return true; }
+    };
+    const base = { id: "rcp_rule_0001", claimToken: "tok_rule_0001" };
+    const SENT_FULL = { ...base, to: "SENT", smsReference: "sms_0a1b2c3d4e5f60718293a4b5", sentAt: at(60), optOutToken: "K7MXP2QR", locale: "SW", segments: 1, bodyLen: 72, gateTrail: TRAIL("ok") };
+    const SENT_REAPED = { ...base, to: "SENT", smsReference: "sms_0a1b2c3d4e5f60718293a4b6", sentAt: at(60), optOutToken: null, locale: null, segments: null, bodyLen: 72, gateTrail: TRAIL("reaped") };
+    const SKIP = { ...base, to: "SKIPPED", skipReason: "suppressed", skipDetail: "suppressed withdrawn on 2026-10-02T09:00:00.000Z", gateTrail: TRAIL("suppressed") };
+    const FAIL = { ...base, to: "FAILED", failureClass: "BAD_MSISDN", error: null, failedAt: at(60), smsReference: "sms_0a1b2c3d4e5f60718293a4b7", gateTrail: TRAIL("failed") };
+    const UNSURE = { ...base, to: "UNCONFIRMED", smsReference: null, optOutToken: null, locale: null, segments: null, bodyLen: null, gateTrail: TRAIL("unconfirmed") };
+    const DELIV = { ...base, to: "DELIVERED", smsReference: "sms_0a1b2c3d4e5f60718293a4b8", sentAt: null, deliveredAt: at(61), optOutToken: null, locale: null, segments: null, bodyLen: 72, gateTrail: TRAIL("delivered") };
+    const HOLD = { ...base, to: "HELD", failureClass: "gate_unanswered", attempts: 3 };
+    const FREE = { ...base, to: "PENDING", attemptsDelta: 1 };
+    const without = (o: Record<string, unknown>, k: string): Record<string, unknown> => Object.fromEntries(Object.entries(o).filter(([key]) => key !== k));
+    const many = (n: number) => Array.from({ length: n }, (_, i) => ({ ...SKIP, id: `rcp_rule_${String(i).padStart(4, "0")}` }));
+    await check(p(L.s217), () => verdicts([
+      ["a SENT without its reference", refusesS([without(SENT_FULL, "smsReference")])],
+      ["a SENT whose reference is null", refusesS([{ ...SENT_FULL, smsReference: null }])],
+      ["a SENT carrying skipReason (another status's key)", refusesS([{ ...SENT_FULL, skipReason: "suppressed" }])],
+      ["a SENT without its trail", refusesS([without(SENT_FULL, "gateTrail")])],
+      ["a SKIPPED carrying a reference", refusesS([{ ...SKIP, smsReference: "sms_0a1b2c3d4e5f60718293a4c0" }])],
+      ["a SKIPPED carrying a token", refusesS([{ ...SKIP, optOutToken: "K7MXP2QR" }])],
+      ["a FAILED without failedAt", refusesS([without(FAIL, "failedAt")])],
+      ["a FAILED carrying skipReason", refusesS([{ ...FAIL, skipReason: "suppressed" }])],
+      ["a HELD carrying a reference", refusesS([{ ...HOLD, smsReference: "sms_0a1b2c3d4e5f60718293a4c1" }])],
+      ["a HELD with negative attempts", refusesS([{ ...HOLD, attempts: -1 }])],
+      ["a release that moves attempts by 2", refusesS([{ ...FREE, attemptsDelta: 2 }])],
+      ["a release that also writes a column", refusesS([{ ...FREE, failureClass: "gate_unanswered" }])],
+      ["a status the table does not hold", refusesS([{ ...base, to: "ACCEPTED" }])],
+      ["no claim token", refusesS([{ ...SKIP, claimToken: "" }])],
+      ["no row id", refusesS([{ ...SKIP, id: "" }])],
+      ["⛔ a phone number in the skip detail", refusesS([{ ...SKIP, skipDetail: "refused 0712 345 678 at the gate" }])],
+      ["⛔ a phone number in the error", refusesS([{ ...FAIL, error: "gateway: 255712345678 rejected" }])],
+      ["⛔ a phone number in a trail's words", refusesS([{ ...SKIP, gateTrail: [{ check: "gate", verdict: "suppressed", wording: "the number +255 712 345 678", source: null }] }])],
+      ["⛔ a phone number standing as a trail source token", refusesS([{ ...SKIP, gateTrail: [{ check: "gate", verdict: "suppressed", wording: null, source: "msisdn:255712345678" }] }])],
+      ["⛔ a phone number written with spaces as a trail source", refusesS([{ ...SKIP, gateTrail: [{ check: "gate", verdict: "suppressed", wording: null, source: "msisdn 0712 345 678" }] }])],
+      ["⛔ a phone number written with a plus and dashes as a trail source", refusesS([{ ...SKIP, gateTrail: [{ check: "gate", verdict: "suppressed", wording: null, source: "tel:+255-712-345-678" }] }])],
+      ["a trail of 25 checks", refusesS([{ ...SKIP, gateTrail: Array.from({ length: 25 }, () => TRAIL("ok")[0]) }])],
+      ["a trail string of 201 characters", refusesS([{ ...SKIP, gateTrail: [{ check: "gate", verdict: "x".repeat(201), wording: null, source: null }] }])],
+      ["an empty trail", refusesS([{ ...SKIP, gateTrail: [] }])],
+      ["a trail check with a fifth key", refusesS([{ ...SKIP, gateTrail: [{ ...TRAIL("ok")[0], msisdn: "x" }] }])],
+      ["a skip detail of 501 characters", refusesS([{ ...SKIP, skipDetail: "x".repeat(501) }])],
+      ["two patches for one row", refusesS([SKIP, { ...SKIP }])],
+      ["two patches carrying one reference", refusesS([SENT_FULL, { ...SENT_FULL, id: "rcp_rule_0002" }])],
+      ["201 patches in one batch", refusesS(many(201))],
+      ["at in another spelling", refusesS([SKIP], "2026-10-02 09:00")],
+      ["a sentAt in another spelling", refusesS([{ ...SENT_FULL, sentAt: "2026-10-02" }])],
+      ["a variant that is not EN, SW or ZH", refusesS([{ ...SENT_FULL, locale: "FR" }])],
+      ["zero segments", refusesS([{ ...SENT_FULL, segments: 0 }])],
+      ["⛔ a patch carrying userId — the account link only erasure clears (U16a PE-01)", refusesS([{ ...SENT_FULL, userId: "usr_erased_0001" }])],
+    ], [
+      ["the slice's SENT — everything it prepared", refusesS([SENT_FULL])],
+      ["the reaper's SENT from evidence — token, variant and segments unknown (E6)", refusesS([SENT_REAPED])],
+      ["a SKIPPED whose detail carries an instant", refusesS([SKIP])],
+      ["a FAILED BAD_MSISDN with its reference and no error", refusesS([FAIL])],
+      ["an UNCONFIRMED knowing nothing but its trail", refusesS([UNSURE])],
+      ["the reaper's DELIVERED (§3.2)", refusesS([DELIV])],
+      ["a HELD after three attempts", refusesS([HOLD])],
+      ["a release by 1 and a release by 0", refusesS([FREE, { ...FREE, id: "rcp_rule_0002", attemptsDelta: 0 }])],
+      ["a trail source holding an SMS reference whose hex has a phone-shaped run (no false refusal)", refusesS([{ ...SKIP, gateTrail: [{ check: "dispatch", verdict: "handed_over", wording: null, source: "sms_0712345678abcdef0123456a" }] }])],
+      ["trail sources that are references, an instant and the send window (no false refusal)", refusesS([{ ...SKIP, gateTrail: [
+        { check: "consent", verdict: "GIVEN", wording: null, source: "ledger:lc_2557100012001" },
+        { check: "window", verdict: "open", wording: null, source: "08:00–20:00 EAT · 2026-10-07T08:00:00.000Z" },
+        { check: "outreach", verdict: "open", wording: null, source: "outreach:2026-10-07T06:19:55.000Z" },
+      ] }])],
+      ["an empty batch", refusesS([])],
+      ["200 patches", refusesS(many(200))],
+    ]));
+  }
+
+  // ── §2.18 · a refused batch changes nothing; a reference another row holds refuses the batch ───────────
+  await check(p(L.s218), async () => {
+    const id = "cmp_settle_whole";
+    const ids = await campaignOf(id, 4, 22400);
+    await R.claim(id, 4, "tok_whole_0001", at(70));
+    await R.settle([sent(ids[3], "tok_whole_0001", "sms_whole_held")], at(70));   // a reference a row now holds
+    const before = snap(ids.slice(0, 3));
+    const bad = { ...sent(ids[2], "tok_whole_0001", "sms_whole_2"), skipReason: "suppressed" } as unknown as SmsCampaignRecipientSettle;
+    const refused = await throws(() => R.settle([sent(ids[0], "tok_whole_0001", "sms_whole_0"), sent(ids[1], "tok_whole_0001", "sms_whole_1"), bad], at(71)));
+    const unchanged = snap(ids.slice(0, 3)) === before;
+    // DC-7 · the refusal carries Prisma's own code, so a caller that reads `code` reads it in both twins
+    let dupCode: unknown = "no refusal";
+    try {
+      await R.settle([sent(ids[0], "tok_whole_0001", "sms_whole_fresh"), sent(ids[1], "tok_whole_0001", "sms_whole_held")], at(72));
+    } catch (e) {
+      dupCode = (e as { code?: unknown } | null)?.code;
+    }
+    const dup = dupCode === "P2002";
+    const stillUnchanged = snap(ids.slice(0, 3)) === before;
+    return [refused && unchanged && dup && stillUnchanged,
+      `a bad third patch ${refused ? "refused" : "ACCEPTED"} · rows ${unchanged ? "unchanged" : "WRITTEN"} · a held reference ${dup ? "refused, code P2002" : `NOT refused as P2002 (${String(dupCode)})`} · rows ${stillUnchanged ? "unchanged" : "WRITTEN"}`];
+  });
+
+  // ── §2.19 · the release and the hold ───────────────────────────────────────────────────────────────
+  await check(p(L.s219), async () => {
+    const id = "cmp_settle_release";
+    const ids = await campaignOf(id, 3, 22500);
+    await R.claim(id, 3, "tok_rel_0001", at(80));
+    const before = new Map(rowsOf(id).map((r): [string, StoredSmsCampaignRecipient] => [r.id, { ...r }]));
+    const res = await R.settle([release(ids[0], "tok_rel_0001", 1), release(ids[1], "tok_rel_0001", 0), held(ids[2], "tok_rel_0001")], at(81));
+    const [r0, r1, r2] = ids.map(rowOf);
+    // D15 · a release clears the claim's TOKEN and keeps its instant (`lastActivity` reads it) — claimedAt is not excepted
+    const one = r0?.status === "PENDING" && r0.claimToken === null && r0.claimedAt === at(80) && r0.attempts === 1 && r0.updatedAt === at(81)
+      && sameBut(r0, before.get(ids[0]), ["claimToken", "attempts", "updatedAt"]);
+    const zero = r1?.status === "PENDING" && r1.claimToken === null && r1.claimedAt === at(80) && r1.attempts === 0 && r1.updatedAt === at(81)
+      && sameBut(r1, before.get(ids[1]), ["claimToken", "updatedAt"]);
+    const hold = r2?.status === "HELD" && r2.failureClass === "gate_unanswered" && r2.attempts === 3 && r2.claimToken === "tok_rel_0001"
+      && r2.updatedAt === at(81) && sameBut(r2, before.get(ids[2]), ["status", "failureClass", "attempts", "updatedAt"]);
+    const again = await R.claim(id, 3, "tok_rel_0002", at(82));
+    return [res.settled === 3 && one && zero && hold && ids_(again) === [ids[0], ids[1]].join(","),
+      `settled ${res.settled} · release by 1 ${one} · release by 0 ${zero} · hold ${hold} · claimed again [${ids_(again)}]`];
+  });
+
+  // ── §2.20 · ⭐ UNCONFIRMED never goes back to PENDING ──────────────────────────────────────────────
+  await check(p(L.s220), async () => {
+    const id = "cmp_unconfirmed_stays";
+    const ids = await campaignOf(id, 4, 22600);
+    await R.claim(id, 4, "tok_unc_0001", at(90));
+    await R.settle([unsure(ids[0], "tok_unc_0001", "sms_unc_0"), held(ids[1], "tok_unc_0001"), unsure(ids[3], "tok_unc_0001", "sms_unc_3")], at(91));
+    // ⛔ THE ONE HAND-SET ROW (DC-10): every UNCONFIRMED row a door writes keeps its claim's token (D7), so the claim's
+    // token test alone would refuse it and its STATUS test would never be exercised. A raw repair or a receipt arm could
+    // clear the token — so row 3's is cleared here, by hand, and the claim must still never take it.
+    const bare = rowOf(ids[3]);
+    if (bare) bare.claimToken = null;
+    const keep = snap([ids[0], ids[3]]);
+    const back = await R.settle([release(ids[0], "tok_unc_0001", 1)], at(92));
+    const parked = await R.settle([held(ids[0], "tok_unc_0001")], at(93));
+    const again = await R.settle([sent(ids[0], "tok_unc_0001", "sms_unc_again")], at(94));
+    const requeued = await R.requeueHeld(id, at(95));
+    const claimed = await R.claim(id, 10, "tok_unc_0002", at(96));
+    const stays = snap([ids[0], ids[3]]) === keep && rowOf(ids[0])?.status === "UNCONFIRMED" && rowOf(ids[3])?.status === "UNCONFIRMED"
+      && rowOf(ids[3])?.claimToken === null;
+    return [bare !== undefined && back.lost.join(",") === ids[0] && parked.lost.join(",") === ids[0] && again.lost.join(",") === ids[0]
+        && requeued === 1 && stays && ids_(claimed) === ids[1],
+      `release ${back.lost.length ? "lost" : "LANDED"} · hold ${parked.lost.length ? "lost" : "LANDED"} · second settle ${again.lost.length ? "lost" : "LANDED"} · requeued ${requeued} · both UNCONFIRMED rows ${stays ? "untouched" : `now ${rowOf(ids[0])?.status} / ${rowOf(ids[3])?.status} under ${rowOf(ids[3])?.claimToken}`} · claimed [${ids_(claimed)}]`];
+  });
+
+  // ── §2.21 · the stranded read ──────────────────────────────────────────────────────────────────────
+  await check(p(L.s221), async () => {
+    const id = "cmp_stranded";
+    const ids = await campaignOf(id, 5, 22700);
+    // DC-6 · the claim order is NOT the id order: row 1 holds the OLDEST claim, row 0 (a lower id) a later one — so an
+    // answer ordered by id alone, or newest first, is seen
+    await R.claim(id, 2, "tok_str_early", at(50));                         // rows 0 and 1, at 50 …
+    await R.settle([release(ids[0], "tok_str_early", 0)], at(51));         // … row 0 released: row 1 keeps the claim of 50
+    await R.claim(id, 1, "tok_str_late0", at(100));                        // row 0 again, at 100 — exactly the cutoff below
+    await R.claim(id, 1, "tok_str_young", at(400));                        // row 2, at 400
+    await R.claim(id, 1, "tok_str_sent", at(20));                          // row 3, at 20 …
+    await R.settle([sent(ids[3], "tok_str_sent", "sms_str_3")], at(21));   // … then settled: the oldest claim, never stranded
+    await campaignOf("cmp_stranded_other", 1, 22800);
+    await R.claim("cmp_stranded_other", 1, "tok_str_other", at(10));       // another campaign's, older still
+    const cut = await R.findStranded(id, at(200), CM.SMS_RECIPIENT_BATCH_MAX);
+    const atCut = await R.findStranded(id, at(100), CM.SMS_RECIPIENT_BATCH_MAX);
+    const one = await R.findStranded(id, at(200), 1);
+    return [ids_(cut) === [ids[1], ids[0]].join(",") && cut[0]?.claimToken === "tok_str_early" && cut[1]?.claimToken === "tok_str_late0"
+        && ids_(atCut) === ids[1] && ids_(one) === ids[1],
+      `older than 200 [${ids_(cut)}] · strictly older than 100 [${ids_(atCut)}] · limit 1 [${ids_(one)}]`];
+  });
+
+  // ── §2.22 · the requeue ────────────────────────────────────────────────────────────────────────────
+  await check(p(L.s222), async () => {
+    const id = "cmp_requeue";
+    const ids = await campaignOf(id, 7, 22900);
+    await R.claim(id, 7, "tok_req_0001", at(110));
+    await R.settle([
+      held(ids[0], "tok_req_0001"),
+      { ...held(ids[1], "tok_req_0001"), failureClass: "prepare:token_unavailable" } as SmsCampaignRecipientSettle,
+      unsure(ids[2], "tok_req_0001", "sms_req_2"),
+      sent(ids[3], "tok_req_0001", "sms_req_3"),
+      skipped(ids[4], "tok_req_0001"),
+      { id: ids[5], claimToken: "tok_req_0001", to: "FAILED", failureClass: "BAD_MSISDN", error: null, failedAt: at(111), smsReference: null, gateTrail: TRAIL("failed") },
+    ], at(111));                                                                   // row 6 stays PENDING under its claim
+    const otherIds = await campaignOf("cmp_requeue_other", 1, 23000);
+    await R.claim("cmp_requeue_other", 1, "tok_req_other", at(110));
+    await R.settle([held(otherIds[0], "tok_req_other")], at(111));
+    const keep = snap(ids.slice(2));
+    const n = await R.requeueHeld(id, at(120));
+    const right = [ids[0], ids[1]].map(rowOf).every((r) => r?.status === "PENDING" && r.attempts === 0 && r.claimToken === null
+      && r.claimedAt === at(110) && r.failureClass === null && r.updatedAt === at(120));                 // D15: the claim's instant kept
+    const othersSame = snap(ids.slice(2)) === keep;
+    const otherCampaign = rowOf(otherIds[0])?.status === "HELD";
+    const reclaimed = await R.claim(id, 10, "tok_req_0002", at(121));
+    return [n === 2 && right && othersSame && otherCampaign && ids_(reclaimed) === [ids[0], ids[1]].join(","),
+      `requeued ${n} · reset right ${right} · every other row untouched ${othersSame} · the other campaign's HELD kept ${otherCampaign} · claimed again [${ids_(reclaimed)}]`];
+  });
+
+  // ── §2.23 · lastActivity ───────────────────────────────────────────────────────────────────────────
+  await check(p(L.s223), async () => {
+    const id = "cmp_activity";
+    const ids = await campaignOf(id, 3, 23100);
+    const none = await R.lastActivity(id);
+    await R.claim(id, 1, "tok_act_0001", at(130));                              // row 0, at 130 …
+    await R.settle([sent(ids[0], "tok_act_0001", "sms_act_0")], at(131));       // … settled: its claim still counts
+    await R.claim(id, 1, "tok_act_0002", at(140));                              // row 1, at 140
+    const newest = await R.lastActivity(id);
+    await R.settle([release(ids[1], "tok_act_0002", 1)], at(141));              // released: a page WAS driving at 140 (D15)
+    const afterRelease = await R.lastActivity(id);
+    await R.claim(id, 1, "tok_act_0003", at(150));                              // row 1 again, at 150 — a later claim moves it on …
+    await R.settle([held(ids[1], "tok_act_0003")], at(151));                    // … held …
+    await R.requeueHeld(id, at(160));                                           // … and requeued by Resume: still 150
+    const afterRequeue = await R.lastActivity(id);
+    await campaignOf("cmp_activity_other", 1, 23200);
+    await R.claim("cmp_activity_other", 1, "tok_act_other", at(500));
+    const own = await R.lastActivity(id);
+    return [none === null && newest === at(140) && afterRelease === at(140) && afterRequeue === at(150) && own === at(150),
+      `none ${none} · after two claims ${newest} · after the release ${afterRelease} · after a later claim, a hold and the requeue ${afterRequeue} · beside another campaign's later claim ${own}`];
+  });
+
+  // ── §2.24 · the reaper's evidence read ─────────────────────────────────────────────────────────────
+  await check(p(L.s224), async () => {
+    const T = "SmsCampaignRecipient";
+    const message = (reference: string, targetType: string, targetId: string, status: StoredSmsMessage["status"], createdAt: string): StoredSmsMessage => ({
+      reference, msisdn: keyOf(23300), purpose: "MARKETING", provider: "console", senderId: "50pick", bodyLen: 72, status,
+      providerMsg: null, dlrStatus: null, dlrDesc: null, balanceTzs: null, attempts: 1, targetType, targetId, createdAt,
+      sentAt: status === "ACCEPTED" ? createdAt : null, deliveredAt: null, failedAt: status === "FAILED" ? createdAt : null,
+    });
+    // DC-2 · rcp_ft_1's NEWEST message holds the LOWER reference, so an answer picked by reference alone (references are
+    // random hex in production) is seen as well as one picked oldest-first
+    await M.createMany([
+      message("sms_ft_0000000000000000000a", T, "rcp_ft_1", "QUEUED", at(160)),            // rcp_ft_1's newest — the lower reference
+      message("sms_ft_0000000000000000000b", T, "rcp_ft_1", "FAILED", at(150)),
+      message("sms_ft_0000000000000000000c", T, "rcp_ft_2", "ACCEPTED", at(150)),
+      message("sms_ft_0000000000000000000d", T, "rcp_ft_2", "UNKNOWN", at(150)),           // the same instant: the higher reference
+      message("sms_ft_0000000000000000000e", "SmsCampaignTest", "rcp_ft_3", "ACCEPTED", at(170)),
+      message("sms_ft_0000000000000000000f", "InviteEntry", "rcp_ft_1", "ACCEPTED", at(180)),
+    ]);
+    const found = await M.findByTargets(T, ["rcp_ft_2", "rcp_ft_1", "rcp_ft_3", "rcp_ft_none"]);
+    const got = found.map((m) => `${m.targetId}:${m.reference.slice(-1)}`).join(",");
+    const empty = await M.findByTargets(T, []);
+    const tooMany = await throws(() => M.findByTargets(T, Array.from({ length: CM.SMS_RECIPIENT_BATCH_MAX + 1 }, (_, i) => `rcp_ft_${i}`)));
+    if (found[0]) found[0].status = "FAILED"; // a copy: the store must not move
+    const copy = (await M.findByTargets(T, ["rcp_ft_1"]))[0]?.status === "QUEUED";
+    return [got === "rcp_ft_1:a,rcp_ft_2:d" && empty.length === 0 && tooMany && copy,
+      `[${got}] · empty ${empty.length} · 201 ids ${tooMany ? "refused" : "ACCEPTED"} · copies ${copy}`];
+  });
+
+  // ── §2.25 · the rule set first, in every door ───────────────────────────────────────────────────────
+  await check(p(L.s225), async () => {
+    const id = "cmp_rules_first";
+    const ids = await campaignOf(id, 2, 23400);
+    const others = rowsOf("cmp_claim_five").length;
+    const keep = snap(ids);
+    const refused: Array<[string, boolean]> = [
+      ["a claim with a lost campaign id", await throws(() => R.claim(undefined as unknown as string, 5, "tok_rules_0001", at(200)))],
+      ["a claim of 0", await throws(() => R.claim(id, 0, "tok_rules_0001", at(200)))],
+      ["a claim above the bound", await throws(() => R.claim(id, CM.SMS_RECIPIENT_CLAIM_MAX + 1, "tok_rules_0001", at(200)))],
+      ["a token too short", await throws(() => R.claim(id, 5, "tok", at(200)))],
+      ["a claim instant in another spelling", await throws(() => R.claim(id, 5, "tok_rules_0001", "2026-10-02 09:00"))],
+      ["claimedBy with a lost token", await throws(() => R.claimedBy(id, undefined as unknown as string))],
+      ["a stranded cutoff that is not an instant", await throws(() => R.findStranded(id, "yesterday", 10))],
+      ["a stranded read of 0", await throws(() => R.findStranded(id, at(0), 0))],
+      ["a stranded read above the bound", await throws(() => R.findStranded(id, at(0), CM.SMS_RECIPIENT_BATCH_MAX + 1))],
+      ["a requeue with a lost campaign id", await throws(() => R.requeueHeld(undefined as unknown as string, at(200)))],
+      ["a requeue instant in another spelling", await throws(() => R.requeueHeld(id, "now"))],
+      ["an activity read of no campaign", await throws(() => R.lastActivity(""))],
+      ["an evidence read of no type", await throws(() => M.findByTargets("", ["rcp_x_0001"]))],
+      ["an evidence read of an empty id", await throws(() => M.findByTargets("SmsCampaignRecipient", [""]))],
+    ];
+    const letThrough = refused.filter(([, r]) => !r).map(([n]) => n);
+    const unchanged = snap(ids) === keep && rowsOf("cmp_claim_five").length === others
+      && rowsOf("cmp_claim_five").every((r) => r.claimToken === null || !r.claimToken.startsWith("tok_rules"));
+    return [letThrough.length === 0 && unchanged, `let through: [${letThrough.join("; ")}] · nothing written ${unchanged}`];
+  });
+
+  // ── §2.26 · claimedBy ──────────────────────────────────────────────────────────────────────────────
+  await check(p(L.s226), async () => {
+    const id = "cmp_claimed_by";
+    const ids = await campaignOf(id, 4, 23500);
+    await R.claim(id, 4, "tok_cb_00001", at(210));
+    const all = await R.claimedBy(id, "tok_cb_00001");
+    await R.settle([sent(ids[0], "tok_cb_00001", "sms_cb_0"), release(ids[1], "tok_cb_00001", 1), held(ids[2], "tok_cb_00001")], at(211));
+    const left = await R.claimedBy(id, "tok_cb_00001");
+    const foreign = await R.claimedBy(id, "tok_cb_other1");
+    const elsewhere = await R.claimedBy("cmp_claim_shape", "tok_cb_00001");
+    return [ids_(all) === ids.join(",") && ids_(left) === ids[3] && foreign.length === 0 && elsewhere.length === 0,
+      `after the claim [${ids_(all)}] · after a settle, a release and a hold [${ids_(left)}] · another token ${foreign.length} · another campaign ${elsewhere.length}`];
+  });
+
+  // ── §2.27 · the claim's bound is one sendBatch chunk ─────────────────────────────────────────────────
+  await check(p(L.s227), () => {
+    const m = /export const BATCH_MAX = ([0-9]+);/.exec(w.blackball);
+    const batchMax = m ? Number(m[1]) : Number.NaN;
+    return [batchMax === CM.SMS_RECIPIENT_CLAIM_MAX, `sms-blackball BATCH_MAX ${batchMax} · SMS_RECIPIENT_CLAIM_MAX ${CM.SMS_RECIPIENT_CLAIM_MAX}`];
+  });
+
+  // ── §2.28 · ⛔ the settle's write: its row of the table, never the account link, never a clock in a send instant ──────
+  await check(p(L.s228), () => {
+    const SETTLE_AT = at(70);
+    const W = "tok_write_0001";
+    const lawful: SmsCampaignRecipientSettle[] = [
+      sent("rcp_write_0001", W, "sms_write_1"),                                    // sentAt at(50): the hand-over, never at(70)
+      skipped("rcp_write_0002", W),
+      { id: "rcp_write_0003", claimToken: W, to: "FAILED", failureClass: "BAD_MSISDN", error: null, failedAt: at(55), smsReference: null, gateTrail: TRAIL("failed") },
+      unsure("rcp_write_0004", W, "sms_write_4"),
+      {
+        id: "rcp_write_0005", claimToken: W, to: "DELIVERED", smsReference: "sms_write_5", sentAt: at(52), deliveredAt: at(56), optOutToken: null,
+        locale: null, segments: null, bodyLen: 72, gateTrail: TRAIL("delivered"),
+      },
+      held("rcp_write_0006", W),
+      release("rcp_write_0007", W, 1),
+    ];
+    const wrong: string[] = [];
+    for (const pp of lawful) {
+      const columns = pp.to === "PENDING" ? ["claimToken"] : Object.keys(CM.SMS_RECIPIENT_SETTLE_KEYS[pp.to]);
+      const want = [...columns, "status", "updatedAt"].sort().join(",");
+      // the patch as a careless caller could hand it: the account link, the number and the contact riding along
+      const carried = { ...pp, userId: "usr_erased_0001", msisdn: keyOf(23600), contactId: "mc_write_0001" } as unknown as SmsCampaignRecipientSettle;
+      const wr = w.rules.settleWrite(carried, SETTLE_AT);
+      const got = Object.keys(wr.set).sort().join(",");
+      const patchOf = pp as unknown as Record<string, unknown>;
+      const values = Object.entries(wr.set).every(([k, v]) => (k === "status" ? v === pp.to : k === "updatedAt" ? v === SETTLE_AT
+        : k === "claimToken" ? v === null : JSON.stringify(v) === JSON.stringify(patchOf[k])));
+      const moves = wr.attemptsBy === (pp.to === "PENDING" ? pp.attemptsDelta : 0);
+      if (got !== want || !values || !moves) wrong.push(`${pp.to} [${got}]${values ? "" : " (a value not the patch's)"}${moves ? "" : " (attempts moved)"}`);
+    }
+    const sentSet = w.rules.settleWrite(lawful[0], SETTLE_AT).set;
+    const deliveredSet = w.rules.settleWrite(lawful[4], SETTLE_AT).set;
+    const instants = sentSet.sentAt === at(50) && sentSet.updatedAt === SETTLE_AT && deliveredSet.sentAt === at(52) && deliveredSet.deliveredAt === at(56);
+    const given = (lawful[0] as { gateTrail: SmsCampaignGateTrail }).gateTrail;
+    const stored = sentSet.gateTrail;
+    const trailCopied = Array.isArray(stored) && stored !== given && stored[0] !== given[0] && JSON.stringify(stored) === JSON.stringify(given);
+    return [wrong.length === 0 && instants && trailCopied,
+      `off the table: [${wrong.join("; ")}] · send instants as carried, the clock in updatedAt alone ${instants} · the trail copied ${trailCopied}`];
+  });
+
   // ── §3.1 · the MARKETING writer population ─────────────────────────────────────────────────
   const writers = w.src.filter((f) => /purpose\s*:\s*["']MARKETING["']/.test(f.text)).map((f) => f.path);
   const undeclared = writers.filter((f) => !MARKETING_WRITERS.includes(f));
@@ -903,12 +1411,18 @@ async function run(w: World, tag: string): Promise<void> {
     'await pc().smsCampaignRecipient.updateMany({ where: { id }, data: { status: "UNCONFIRMED" } });',
     "row.status = 'UNCONFIRMED';",
     `update "SmsCampaignRecipient" set "status" = 'UNCONFIRMED' where "id" = $1`,
+    // U43a · the settle door's own spelling, on one line and as the last key of a literal
+    'await db.smsCampaignRecipient.settle([{ id, claimToken, to: "UNCONFIRMED", smsReference: ref, gateTrail }], at);',
+    'return { id: row.id, claimToken: row.claimToken ?? "", to: "UNCONFIRMED" };',
   ].every((t) => WRITES_UNCONFIRMED.test(t));
   const pinIgnores = [
     'if (row.status === "UNCONFIRMED") return;',
     'where: { status: { in: ["SENT", "UNCONFIRMED"] } }',
     'UNCONFIRMED: "settled",',
     'return { ref, outcome: "unconfirmed" };',
+    // U43a · a TYPE member and a comparison of the patch's target are not writes
+    '  | { id: string; claimToken: string; to: "UNCONFIRMED"; smsReference: string | null }',
+    'if (p.to === "UNCONFIRMED") continue;',
   ].every((t) => !WRITES_UNCONFIRMED.test(t));
   const uWriters = w.src.filter((f) => WRITES_UNCONFIRMED.test(f.text)).map((f) => f.path);
   const uUndeclared = uWriters.filter((f) => !UNCONFIRMED_WRITERS.includes(f));
@@ -983,6 +1497,28 @@ if (!PROVE_RED) {
   };
   /** The six statuses a build before U43-0 knows. */
   const SIX: readonly string[] = ["PENDING", "HELD", "SENT", "DELIVERED", "FAILED", "SKIPPED"];
+
+  /* ── U43a's plant helpers ── */
+  const withMessage = (o: Partial<MessageNs>): World => ({ ...REAL, twin: { ...REAL.twin, message: { ...REAL.twin.message, ...o } } });
+  const byId = (a: StoredSmsCampaignRecipient, b: StoredSmsCampaignRecipient): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const memRows = (): StoredSmsCampaignRecipient[] => Array.from(mem().smsCampaignRecipients.values());
+  /** A write the rule set computed, applied by hand — the plants' own apply. */
+  const applyWrite = (r: StoredSmsCampaignRecipient, wr: ReturnType<typeof CM.settleWrite>): void => {
+    Object.assign(r, wr.set);
+    r.attempts += wr.attemptsBy;
+  };
+  /** A planted settle: the rule set asked, then `lands` alone decides which patches are written — in place, unchecked. */
+  const plantedSettle = (lands: (pp: SmsCampaignRecipientSettle, r: StoredSmsCampaignRecipient | undefined) => boolean): RecipientNs["settle"] =>
+    async (patches, stamp) => {
+      CM.assertSettle(patches, stamp);
+      const landing = patches.filter((pp) => lands(pp, mem().smsCampaignRecipients.get(pp.id)));
+      for (const pp of landing) {
+        const r = mem().smsCampaignRecipients.get(pp.id);
+        if (r) applyWrite(r, CM.settleWrite(pp, stamp));
+      }
+      const won = new Set(landing.map((pp) => pp.id));
+      return { settled: won.size, lost: patches.filter((pp) => !won.has(pp.id)).map((pp) => pp.id) };
+    };
 
   const CASES: Array<{ name: string; expect: string; build: () => World }> = [
     /* ── U35a's three, unchanged ── */
@@ -1263,6 +1799,338 @@ if (!PROVE_RED) {
       name: "R3.2 · ⭐ a src file writes a recipient's status as UNCONFIRMED while UNCONFIRMED_WRITERS is empty — a writer in the deploy that adds its value",
       expect: L.s32,
       build: () => ({ ...REAL, src: [...REAL.src, { path: "src/lib/server/marketing/rogue-settle.ts", text: 'await db.smsCampaignRecipient.settle(id, { status: "UNCONFIRMED", smsReference: ref });' }] }),
+    },
+    {
+      name: "R3.2b · ⭐ a src file hands U43a's settle door a patch to UNCONFIRMED while UNCONFIRMED_WRITERS is empty — the door's own spelling, seen",
+      expect: L.s32,
+      build: () => ({ ...REAL, src: [...REAL.src, { path: "src/lib/marketing/rogue-rules.ts", text: 'export const reaped = (id: string, claimToken: string) => ({ id, claimToken, to: "UNCONFIRMED", smsReference: null, optOutToken: null, locale: null, segments: null, bodyLen: null, gateTrail: [] });' }] }),
+    },
+    /* ── U43a · the engine's recipient doors: each defect as somebody would write it ── */
+    {
+      name: "⭐ R-C1 · an UNCONDITIONAL claim — the memory claim without its claimToken === null test: five drivers take the same rows (the plan's RED)",
+      expect: L.s214,
+      build: () => withRecipient({
+        claim: async (campaignId, limit, token, stamp) => {
+          CM.assertClaim(campaignId, limit, token, stamp);
+          const free = memRows().filter((r) => r.campaignId === campaignId && r.status === "PENDING").sort(byId).slice(0, limit);
+          for (const r of free) applyWrite(r, CM.claimWrite(token, stamp));
+          return free.map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "a claim that writes no token — the rows look free to every claimer, and each one's settle is lost",
+      expect: L.s214,
+      build: () => withRecipient({
+        claim: async (campaignId, limit, token, stamp) => {
+          CM.assertClaim(campaignId, limit, token, stamp);
+          return memRows().filter((r) => r.campaignId === campaignId && r.status === "PENDING" && r.claimToken === null).sort(byId).slice(0, limit)
+            .map((r) => ({ ...r, claimToken: token, claimedAt: stamp }));
+        },
+      }),
+    },
+    {
+      name: "a claim that crosses campaigns — the campaign test dropped, another campaign's people claimed into this slice",
+      expect: L.s215,
+      build: () => withRecipient({
+        claim: async (campaignId, limit, token, stamp) => {
+          CM.assertClaim(campaignId, limit, token, stamp);
+          const free = memRows().filter((r) => r.status === "PENDING" && r.claimToken === null).sort(byId).slice(0, limit);
+          for (const r of free) applyWrite(r, CM.claimWrite(token, stamp));
+          return free.map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "⭐ settle BY POSITION — the patches zipped onto the claim's rows in id order (an invite marked SENT because ANOTHER succeeded, sms.ts's attribution rule)",
+      expect: L.s216,
+      build: () => withRecipient({
+        settle: async (patches, stamp) => {
+          CM.assertSettle(patches, stamp);
+          const tokens = new Set(patches.map((pp) => pp.claimToken));
+          const rows = memRows().filter((r) => r.status === "PENDING" && r.claimToken !== null && tokens.has(r.claimToken)).sort(byId);
+          patches.forEach((pp, i) => {
+            const r = rows[i];
+            if (r) applyWrite(r, CM.settleWrite(pp, stamp));
+          });
+          return { settled: Math.min(rows.length, patches.length), lost: [] };
+        },
+      }),
+    },
+    {
+      name: "a settle that ignores the claim it names — a stalled slice's late settle lands over the reaper's verdict and over another slice's claim",
+      expect: L.s216,
+      build: () => withRecipient({ settle: plantedSettle((pp, r) => r !== undefined && r.status === "PENDING") }),
+    },
+    {
+      name: "the settle table lets a SENT carry a skipReason — another status's key, no longer refused by name",
+      expect: L.s217,
+      build: () => withRules({ assertSettle: lets(CM.assertSettle, (patches) => patches.some((pp) => pp.to === "SENT" && Object.prototype.hasOwnProperty.call(pp, "skipReason"))) }),
+    },
+    {
+      name: "the settle table lets a phone number through in a skip detail (§5.14)",
+      expect: L.s217,
+      build: () => withRules({ assertSettle: lets(CM.assertSettle, (patches) => patches.some((pp) => pp.to === "SKIPPED" && pp.skipDetail.includes("0712"))) }),
+    },
+    {
+      // The S14 review's MINOR: a source split on symbols read "0712 345 678" as three short numbers and let it through.
+      name: "the settle table lets a phone number written with separators through as a trail source (§5.14)",
+      expect: L.s217,
+      build: () => withRules({ assertSettle: lets(CM.assertSettle, (patches) => patches.some((pp) => "gateTrail" in pp && Array.isArray(pp.gateTrail)
+        && pp.gateTrail.some((g) => typeof g.source === "string" && (g.source.includes("712 345") || g.source.includes("712-345"))))) }),
+    },
+    {
+      name: "the settle table lets a gate trail of 25 checks through",
+      expect: L.s217,
+      build: () => withRules({ assertSettle: lets(CM.assertSettle, (patches) => patches.some((pp) => "gateTrail" in pp && Array.isArray(pp.gateTrail) && pp.gateTrail.length > 24)) }),
+    },
+    {
+      name: "the settle table refuses the reaper's SENT (no token, variant or segments) — E6's ACCEPTED → SENT could never be written",
+      expect: L.s217,
+      build: () => withRules({
+        assertSettle: (patches, stamp) => {
+          if (patches.some((pp) => pp.to === "SENT" && pp.optOutToken === null)) throw new Error("planted: a SENT must carry its token");
+          CM.assertSettle(patches, stamp);
+        },
+      }),
+    },
+    {
+      name: "a settle that asks the rule set one patch at a time — a bad third patch is found after the first two were written",
+      expect: L.s218,
+      build: () => withRecipient({
+        settle: async (patches, stamp) => {
+          let settled = 0;
+          const lost: string[] = [];
+          for (const pp of patches) {
+            CM.assertSettle([pp], stamp);
+            const r = mem().smsCampaignRecipients.get(pp.id);
+            if (!r || r.claimToken !== pp.claimToken || r.status !== "PENDING") {
+              lost.push(pp.id);
+              continue;
+            }
+            applyWrite(r, CM.settleWrite(pp, stamp));
+            settled++;
+          }
+          return { settled, lost };
+        },
+      }),
+    },
+    {
+      name: "the memory twin's P2002 removed — a reference another row already holds is written a second time",
+      expect: L.s218,
+      build: () => withRecipient({ settle: plantedSettle((pp, r) => r !== undefined && r.claimToken === pp.claimToken && r.status === "PENDING") }),
+    },
+    {
+      name: "a release that never moves attempts on — a person a failing gate holds is retried for ever, never HELD",
+      expect: L.s219,
+      build: () => withRecipient({
+        settle: async (patches, stamp) => REAL.twin.recipient.settle(patches.map((pp) => (pp.to === "PENDING" ? { ...pp, attemptsDelta: 0 as const } : pp)), stamp),
+      }),
+    },
+    {
+      name: "⭐ requeueHeld widened to UNCONFIRMED — an unanswered message goes back to PENDING and is SENT AGAIN, a second charge",
+      expect: L.s220,
+      build: () => withRecipient({
+        requeueHeld: async (campaignId, stamp) => {
+          CM.assertRequeueHeld(campaignId, stamp);
+          let n = 0;
+          for (const r of memRows()) {
+            if (r.campaignId !== campaignId || (r.status !== "HELD" && r.status !== "UNCONFIRMED")) continue;
+            applyWrite(r, CM.requeueWrite(stamp));
+            n++;
+          }
+          return n;
+        },
+      }),
+    },
+    {
+      name: "a settle that never looks at the status — a release lands on an UNCONFIRMED row and frees it for a second send",
+      expect: L.s220,
+      build: () => withRecipient({ settle: plantedSettle((pp, r) => r !== undefined && r.claimToken === pp.claimToken) }),
+    },
+    {
+      name: "findStranded counts a claim AT the cutoff — a claim exactly ten minutes old reaped under a live slice",
+      expect: L.s221,
+      build: () => withRecipient({
+        findStranded: async (campaignId, cutoff, limit) => {
+          CM.assertStrandedRead(campaignId, cutoff, limit);
+          return memRows().filter((r) => r.campaignId === campaignId && r.status === "PENDING" && r.claimedAt !== null && Date.parse(r.claimedAt) <= Date.parse(cutoff))
+            .sort((a, b) => Date.parse(a.claimedAt ?? "") - Date.parse(b.claimedAt ?? "") || byId(a, b)).slice(0, limit).map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "requeueHeld leaves the claim in place — a requeued row reads PENDING and is never claimed again",
+      expect: L.s222,
+      build: () => withRecipient({
+        requeueHeld: async (campaignId, stamp) => {
+          CM.assertRequeueHeld(campaignId, stamp);
+          let n = 0;
+          for (const r of memRows()) {
+            if (r.campaignId !== campaignId || r.status !== "HELD") continue;
+            Object.assign(r, { status: "PENDING", attempts: 0, failureClass: null, updatedAt: stamp });
+            n++;
+          }
+          return n;
+        },
+      }),
+    },
+    {
+      name: "lastActivity read from updatedAt — every write reads as a claim: a release's stamp, and erasure's unlink or Resume's requeue would read as somebody driving",
+      expect: L.s223,
+      build: () => withRecipient({
+        lastActivity: async (campaignId) => {
+          CM.assertActivityRead(campaignId);
+          const stamps = memRows().filter((r) => r.campaignId === campaignId && r.updatedAt !== r.createdAt).map((r) => r.updatedAt).sort();
+          return stamps.length === 0 ? null : stamps[stamps.length - 1];
+        },
+      }),
+    },
+    {
+      name: "findByTargets answers the OLDEST message per target — the reaper reads a superseded FAILED and drops a message in flight",
+      expect: L.s224,
+      build: () => withMessage({
+        findByTargets: async (targetType, targetIds) => {
+          CM.assertTargetsRead(targetType, targetIds);
+          if (targetIds.length === 0) return [];
+          const oldest = new Map<string, StoredSmsMessage>();
+          for (const m of await REAL.twin.message.listRecent(100_000)) {
+            if (m.targetType !== targetType || m.targetId === null || !targetIds.includes(m.targetId)) continue;
+            const prev = oldest.get(m.targetId);
+            if (!prev || Date.parse(m.createdAt) < Date.parse(prev.createdAt)) oldest.set(m.targetId, { ...m });
+          }
+          return [...oldest.values()].sort((a, b) => ((a.targetId ?? "") < (b.targetId ?? "") ? -1 : 1));
+        },
+      }),
+    },
+    {
+      name: "a twin without the rule set — a claim with a lost campaign id takes every campaign's rows (what Prisma does with undefined)",
+      expect: L.s225,
+      build: () => withRecipient({
+        claim: async (campaignId, limit, token, stamp) => {
+          const free = memRows().filter((r) => (campaignId === undefined || r.campaignId === campaignId) && r.status === "PENDING" && r.claimToken === null)
+            .sort(byId).slice(0, Math.max(limit, 1));
+          for (const r of free) applyWrite(r, CM.claimWrite(token, stamp));
+          return free.map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "claimedBy without the status test — beforeSend keeps rows a settle or the reaper already took (E6's double-send guard undone)",
+      expect: L.s226,
+      build: () => withRecipient({
+        claimedBy: async (campaignId, token) => {
+          CM.assertClaimRead(campaignId, token);
+          return memRows().filter((r) => r.campaignId === campaignId && r.claimToken === token).sort(byId).map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "the claim's bound out of step with the send's chunk — sms-blackball sends 100 a chunk while a claim takes 50",
+      expect: L.s227,
+      build: () => ({ ...REAL, blackball: plant(REAL.blackball, "export const BATCH_MAX = 50;", "export const BATCH_MAX = 100;") }),
+    },
+    /* ── U43a · the review of 2026-10-07: each case must fail for the reason its label names ── */
+    {
+      name: "a claim that takes a token a row already holds — the answer folds in an earlier claim's rows, and another campaign's free row is claimed under it (D16)",
+      expect: L.s215,
+      build: () => withRecipient({
+        claim: async (campaignId, limit, token, stamp) => {
+          CM.assertClaim(campaignId, limit, token, stamp);
+          const free = memRows().filter((r) => r.campaignId === campaignId && r.status === "PENDING" && r.claimToken === null).sort(byId).slice(0, limit);
+          for (const r of free) applyWrite(r, CM.claimWrite(token, stamp));
+          return memRows().filter((r) => r.campaignId === campaignId && r.claimToken === token && r.status === "PENDING").sort(byId).map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "the memory twin's P2002 without its code — a caller that reads Prisma's code (P2002) can never meet it in a suite (DC-7)",
+      expect: L.s218,
+      build: () => withRecipient({
+        settle: async (patches, stamp) => {
+          try {
+            return await REAL.twin.recipient.settle(patches, stamp);
+          } catch (e) {
+            throw new Error((e as Error).message);
+          }
+        },
+      }),
+    },
+    {
+      name: "⭐ the memory claim without its STATUS test — a row a raw repair left UNCONFIRMED and token-less is claimed and SENT AGAIN (DC-10)",
+      expect: L.s220,
+      build: () => withRecipient({
+        claim: async (campaignId, limit, token, stamp) => {
+          CM.assertClaim(campaignId, limit, token, stamp);
+          const free = memRows().filter((r) => r.campaignId === campaignId && r.claimToken === null).sort(byId).slice(0, limit);
+          for (const r of free) applyWrite(r, CM.claimWrite(token, stamp));
+          return memRows().filter((r) => r.campaignId === campaignId && r.claimToken === token).sort(byId).map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "findStranded ordered by id alone — the reaper's page reaps the youngest stranded claims first and leaves the oldest waiting (DC-6)",
+      expect: L.s221,
+      build: () => withRecipient({
+        findStranded: async (campaignId, cutoff, limit) => {
+          CM.assertStrandedRead(campaignId, cutoff, limit);
+          return memRows().filter((r) => r.campaignId === campaignId && r.status === "PENDING" && r.claimToken !== null && r.claimedAt !== null
+            && Date.parse(r.claimedAt) < Date.parse(cutoff)).sort(byId).slice(0, limit).map((r) => ({ ...r }));
+        },
+      }),
+    },
+    {
+      name: "⭐ a release that also clears claimedAt — lastActivity falls back while a page is claiming and releasing, and U47b tells that very page 'Nobody is sending' (DC-3)",
+      expect: L.s223,
+      build: () => withRecipient({
+        settle: async (patches, stamp) => {
+          const res = await REAL.twin.recipient.settle(patches, stamp);
+          for (const pp of patches) {
+            const r = mem().smsCampaignRecipients.get(pp.id);
+            if (pp.to === "PENDING" && r !== undefined && !res.lost.includes(pp.id)) r.claimedAt = null;
+          }
+          return res;
+        },
+      }),
+    },
+    {
+      name: "findByTargets picks the HIGHEST REFERENCE per target, not the newest — references are random hex, so the reaper reads a random message (DC-2)",
+      expect: L.s224,
+      build: () => withMessage({
+        findByTargets: async (targetType, targetIds) => {
+          CM.assertTargetsRead(targetType, targetIds);
+          if (targetIds.length === 0) return [];
+          const top = new Map<string, StoredSmsMessage>();
+          for (const m of await REAL.twin.message.listRecent(100_000)) {
+            if (m.targetType !== targetType || m.targetId === null || !targetIds.includes(m.targetId)) continue;
+            const prev = top.get(m.targetId);
+            if (!prev || m.reference > prev.reference) top.set(m.targetId, { ...m });
+          }
+          return [...top.values()].sort((a, b) => ((a.targetId ?? "") < (b.targetId ?? "") ? -1 : 1));
+        },
+      }),
+    },
+    {
+      name: "⭐ settleWrite reads its columns off the PATCH — a userId a patch carried reaches the row, and an erased account is linked again (U16a PE-01)",
+      expect: L.s228,
+      build: () => withRules({
+        settleWrite: (pp, stamp) => {
+          if (pp.to === "PENDING") return CM.settleWrite(pp, stamp);
+          const set: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(pp)) if (k !== "id" && k !== "claimToken" && k !== "to") set[k] = v;
+          return { set: { ...set, status: pp.to, updatedAt: stamp } as Partial<StoredSmsCampaignRecipient>, attemptsBy: 0 };
+        },
+      }),
+    },
+    {
+      name: "⭐ settleWrite stamps sentAt with the settle's own clock — the reaper dates a hand-over ten minutes late, and the access export lists a message to the number's next holder (U16a PE-08)",
+      expect: L.s228,
+      build: () => withRules({
+        settleWrite: (pp, stamp) => {
+          const wr = CM.settleWrite(pp, stamp);
+          return pp.to === "SENT" || pp.to === "DELIVERED" ? { ...wr, set: { ...wr.set, sentAt: stamp } } : wr;
+        },
+      }),
     },
   ];
 

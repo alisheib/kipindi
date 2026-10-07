@@ -1286,26 +1286,39 @@ after a concurrent commit.
    `{ settled, lost: string[] }`. A lost patch (reaped, or a receipt got there first) is reported, never forced.
 3. **The settle rule set** (`campaign-model.ts`, `assertSettle`) — one door, both twins call it first:
 
-   | Target | Required | Forbidden |
-   |---|---|---|
-   | `SENT` | `smsReference`, `sentAt`, `optOutToken`, `locale`, `segments`, `bodyLen`, `gateTrail` | `skipReason` |
-   | `SKIPPED` | `skipReason`, `skipDetail`, `gateTrail` | `smsReference`, `optOutToken` |
-   | `FAILED` | `failureClass`, `failedAt`, `gateTrail` (`smsReference` when the wire had it) | `skipReason` |
-   | `UNCONFIRMED` | `gateTrail` (`smsReference`, `optOutToken`, `locale`, `segments`, `bodyLen` when known) | `skipReason` |
-   | `HELD` | `failureClass`, `attempts` | `smsReference` |
-   | `PENDING` (release) | `claimToken: null`, `claimedAt: null`, optional `attemptsDelta` 0 or 1 | everything else |
+   ✅ **AS BUILT (U43a, S14 2026-10-07 — `SMS_RECIPIENT_SETTLE_KEYS`; this table replaced the planning one).** A patch
+   carries EXACTLY its target's keys (plus `id`, `claimToken`, `to`): a missing key, or a key another status owns, is
+   refused by name; no patch can write `userId`, `msisdn`, `contactId`, `costTzs` or `createdAt`.
 
-   `error` and `skipDetail` are refused when `holdsPhoneRun` finds a number (§5.14); `gateTrail` is ≤ 24 entries, each
-   string ≤ 200 characters.
-4. **`findStranded(campaignId, cutoffIso, limit)`**, **`requeueHeld(campaignId)`** (HELD → PENDING, attempts 0, claim
-   cleared; returns the count), **`lastActivity(campaignId)`** (the newest `claimedAt`, for "nobody is driving").
+   | Target | Keys — never null | Keys — may be null |
+   |---|---|---|
+   | `SENT` | `smsReference`, `sentAt`, `gateTrail` | `optOutToken`, `locale`, `segments`, `bodyLen` |
+   | `SKIPPED` | `skipReason`, `skipDetail` (may be ""), `gateTrail` | — |
+   | `FAILED` | `failureClass`, `failedAt`, `gateTrail` | `error`, `smsReference` (when the wire had it) |
+   | `UNCONFIRMED` | `gateTrail` | `smsReference`, `optOutToken`, `locale`, `segments`, `bodyLen` |
+   | `DELIVERED` (the reaper's, §3.2) | `smsReference`, `deliveredAt`, `gateTrail` | `sentAt`, `optOutToken`, `locale`, `segments`, `bodyLen` |
+   | `HELD` | `failureClass`, `attempts` | — |
+   | `PENDING` (release) | `attemptsDelta` — 0 or 1, required | — |
+
+   A release clears `claimToken` and ⛔ KEEPS `claimedAt` (D15): a settled, held or released row keeps the instant of its
+   last claim, so `lastActivity` never moves backwards while a page claims and releases, and `claimedAt` is never a "was
+   it ever claimed" test. ⛔ A claim token is fresh for each claim (D16): a token any row already holds is refused before
+   anything is written. `error`, `skipDetail` and a trail's `check`, `verdict` and `wording` are refused when
+   `holdsPhoneRun` finds a number (§5.14) — U43b scrubs and trims them first (`store.ts`, DC-5); a trail's `source` is
+   read piece by piece — the words that hold a letter taken out whole, a number between them refused in any spelling
+   (the S14 review). `gateTrail` is 1 to 24 entries, each string ≤ 200 characters.
+4. **`findStranded(campaignId, cutoffIso, limit)`**, **`requeueHeld(campaignId)`** (HELD → PENDING, attempts 0, the token
+   and the hold's class cleared, `claimedAt` kept — D15; returns the count), **`lastActivity(campaignId)`** (the newest
+   `claimedAt`, for "nobody is driving").
 5. **`smsMessage.findByTargets(targetType, targetIds)`** — ≤ 200 ids, newest per target.
 6. No raw SQL (no memory twin); no delete; no stored counter.
 
 **Files.** `src/lib/server/store.ts`, `src/lib/server/prisma-dal.ts` (members + named types),
 `src/lib/server/marketing/campaign-model.ts` (`assertSettle`, `SMS_RECIPIENT_SETTLE_KEYS`), `scripts/dal-parity.test.mts`
 (+ `scripts/anchors/dal-parity.anchors.mjs`), `scripts/campaign-models.test.mts` (§2.12 execute the settle rules on the
-memory twin), `scripts/live/campaign-engine-pg-probe.mts` (create) + `package.json` `db:probe-campaign-engine`.
+memory twin), `scripts/live/campaign-engine-pg-probe.mts` (create) + `package.json` `db:probe-campaign-engine`. ✅ As
+built: the cases are `test:campaign-models` §2.14–§2.27 (§2.12 and §2.13 were taken), and the Postgres proof is §10 of
+`scripts/live/campaign-models-pg-probe.mts`, run by `npm run db:probe-campaign-models` — no new probe file or key.
 
 **APIs.**
 

@@ -1486,6 +1486,103 @@ export const MUTATIONS = [
     to: `      // (the rule set not asked)`,
     expect: "26.u16a.list.prisma · ⛔ the Prisma listByMsisdn asks assertRecipientNumberRead FIRST, then ONE findMany whose WHERE holds the number AND the bound — created OR sent at or after the instant, both arms — never a filter after the fetch — ordered createdAt desc THEN id desc, taking ONE row past SMS_RECIPIENTS_BY_NUMBER_MAX, read back through the one mapper",
   },
+  /* ── §26 · U43a · the engine's recipient doors (S10 2026-10-04 — ENGINE-SPEC §4.10) ─────────────────────────────── */
+  {
+    // ⭐ THE SPEC'S OWN RED (the claim's WHERE without `claimToken: null`): two drivers racing for one row BOTH take it on
+    // Postgres — the second overwrites the first's token — and two slices send one person two messages. Memory suites green.
+    name: "prisma-dal.ts — the claim's conditional write forgets claimToken: null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id: { in: free.map((r) => r.id) }, campaignId, status: "PENDING", claimToken: null },`,
+    to: `        where: { id: { in: free.map((r) => r.id) }, campaignId, status: "PENDING" },`,
+    expect: "26.u43a.claim.prisma · ⛔ the Prisma claim asks assertClaim FIRST, then ① ONE findMany of the campaign's FREE rows (PENDING, claimToken null) by id, taking the limit, ② ONE updateMany whose WHERE re-checks BOTH — status PENDING AND claimToken null — beside the ids, writing the claim through the map, ③ the won set read back BY THE TOKEN — in that order, and no other write",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (the settle's WHERE without `claimToken`): a stalled slice's late settle lands over the
+    // reaper's verdict, or over the row another slice claimed since — on Postgres only.
+    name: "prisma-dal.ts — the settle's WHERE forgets the claim it names",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id: p.id, claimToken: p.claimToken, status: "PENDING" },`,
+    to: `        where: { id: p.id, status: "PENDING" },`,
+    expect: "26.u43a.settle.prisma · ⛔ the Prisma settle asks assertSettle FIRST, then is ONE $transaction over the patches' conditional updateMany — each WHERE the row's id, the claim the patch names AND status PENDING — each data the rule set's settleWrite through the map; a statement that wrote nothing is that patch's lost id, never forced",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (`settle` outside a transaction): a refused statement (a held reference, P2002) leaves half the
+    // slice settled and half not — rows that went to the wire read PENDING and are sent again.
+    name: "prisma-dal.ts — the settle leaves its transaction (Promise.all)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const written = await pc().$transaction(ordered.map((p) => pc().smsCampaignRecipient.updateMany({`,
+    to: `      const written = await Promise.all(ordered.map((p) => pc().smsCampaignRecipient.updateMany({`,
+    expect: "26.u43a.settle.prisma · ⛔ the Prisma settle asks assertSettle FIRST, then is ONE $transaction over the patches' conditional updateMany — each WHERE the row's id, the claim the patch names AND status PENDING — each data the rule set's settleWrite through the map; a statement that wrote nothing is that patch's lost id, never forced",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (a member in one twin only): the slice's claim works in every suite and throws on production.
+    name: "prisma-dal.ts — the Prisma recipient namespace loses claim (a door in one twin only)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    claim: async (campaignId: string, limit: number, token: string, at: string): Promise<StoredSmsCampaignRecipient[]> => {`,
+    to: `    claimRows: async (campaignId: string, limit: number, token: string, at: string): Promise<StoredSmsCampaignRecipient[]> => {`,
+    expect: "26.u43a.parity · ⭐ BOTH twins define claim, claimedBy, settle, findStranded, requeueHeld and lastActivity — and smsMessage.findByTargets — a door in one twin only works in every suite and throws on production",
+  },
+  {
+    // 🔴 R-C1, in the twin every suite runs on: the memory claim takes rows another slice holds, so the five-driver
+    // control and every engine suite stop meaning anything.
+    name: "store.ts — the memory claim forgets its claimToken === null test",
+    file: "src/lib/server/store.ts",
+    from: `        if (r.campaignId === campaignId && r.status === "PENDING" && r.claimToken === null) free.push(r);`,
+    to: `        if (r.campaignId === campaignId && r.status === "PENDING") free.push(r);`,
+    expect: "26.u43a.claim.memory · ⛔ the memory claim asks assertClaim FIRST, takes only its campaign's rows that are PENDING with claimToken === null, in id order, at most the limit, writes the rule set's claimWrite through the ONE apply, and answers by the token — the same read as claimedBy",
+  },
+  {
+    // 🔴 The memory settle forgets the status: a release lands on an UNCONFIRMED row in every suite, so nothing there can
+    // see the engine sending an unanswered message twice.
+    name: "store.ts — the memory settle forgets status PENDING",
+    file: "src/lib/server/store.ts",
+    from: `        return r !== undefined && r.claimToken === p.claimToken && r.status === "PENDING";`,
+    to: `        return r !== undefined && r.claimToken === p.claimToken;`,
+    expect: "26.u43a.settle.memory · ⛔ the memory settle asks assertSettle FIRST, lands a patch only on a row whose claimToken is the patch's AND whose status is PENDING, refuses a reference another row holds BEFORE its first write (the memory twin of P2002 rolling the transaction back), and writes each landing patch's settleWrite through the ONE apply",
+  },
+  {
+    // ⭐ UNCONFIRMED BACK TO PENDING, on Postgres: Resume re-queues every unanswered message, and the next slice sends each
+    // one again — a second charge and a second message to a person who may already have it.
+    name: "prisma-dal.ts — requeueHeld widens its WHERE to UNCONFIRMED",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `updateMany({ where: { campaignId, status: "HELD" }, data: smsRecipientData(requeueWrite(at)) })`,
+    to: `updateMany({ where: { campaignId, status: { in: ["HELD", "UNCONFIRMED"] } }, data: smsRecipientData(requeueWrite(at)) })`,
+    expect: "26.u43a.requeue · ⛔ requeueHeld moves HELD and ONLY HELD — the Prisma twin ONE updateMany WHERE the campaign AND status HELD, the memory twin skipping every other status — both writing the rule set's requeueWrite",
+  },
+  {
+    // ⭐ …and the same in the memory twin, seen by the never-back check: a requeue that names UNCONFIRMED at all.
+    name: "store.ts — the memory requeueHeld also takes UNCONFIRMED rows",
+    file: "src/lib/server/store.ts",
+    from: `        if (r.campaignId !== campaignId || r.status !== "HELD") continue;`,
+    to: `        if (r.campaignId !== campaignId || (r.status !== "HELD" && r.status !== "UNCONFIRMED")) continue;`,
+    expect: "26.u43a.never-back · ⛔ UNCONFIRMED NEVER GOES BACK TO PENDING: no U43a door in either twin names UNCONFIRMED — the claim and the settle write only where the row is PENDING, the requeue only where it is HELD — so a settled row has no way back but U46a's receipt",
+  },
+  {
+    // 🔴 THE EVIDENCE CUT BY A COUNT: a target whose message falls outside the take reads "never sent", the reaper returns it
+    // to PENDING, and the next slice sends it again — on Postgres only.
+    name: "prisma-dal.ts — findByTargets cuts its read with a take",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `findMany({ where: { targetType, targetId: { in: [...new Set(targetIds)] } } })`,
+    to: `findMany({ where: { targetType, targetId: { in: [...new Set(targetIds)] } }, take: 200 })`,
+    expect: "26.u43a.targets · ⛔ findByTargets asks the rule set FIRST (at most 200 ids, refused above), asks NOTHING for an empty list, then ONE findMany WHERE the type AND the ids — never cut by a count (a message cut off reads as never sent, and the reaper would send again) — and BOTH twins pick through the ONE rule, newestPerTarget",
+  },
+  {
+    // An ISO string reaching a Prisma DateTime throws on Postgres and nowhere else: every claim fails in production alone.
+    name: "prisma-dal.ts — SMS_CAMPAIGN_RECIPIENT_COLUMN types claimedAt plain",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  claimedAt: "date",`,
+    to: `  claimedAt: "plain",`,
+    expect: "26.u43a.map · SMS_CAMPAIGN_RECIPIENT_COLUMN names every StoredSmsCampaignRecipient key; every instant a door writes is a date and the gate trail is JSON; the keys these doors NEVER write are exactly the id, the campaign, the number, the two links, the cost and the birth stamp",
+  },
+  {
+    // ⭐ D16 ON POSTGRES ALONE: the Prisma claim stops refusing a reused token, so a slice that reuses one gets an earlier
+    // claim's rows folded into its answer — more than one chunk, rows it never prepared. Every suite drives the memory twin.
+    name: "prisma-dal.ts — the claim's reused-token refusal removed",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      if ((await pc().smsCampaignRecipient.findFirst({ where: { claimToken: token }, select: { id: true } })) !== null) refuseHeldToken();`,
+    to: ``,
+    expect: "26.u43a.claim.fresh · ⛔ A CLAIM TOKEN IS FRESH FOR EACH CLAIM in BOTH twins (D16): the Prisma claim asks the claimToken index whether ANY row holds the token (ONE findFirst, no campaign in its WHERE) and refuses through refuseHeldToken after the rule set and BEFORE its free read; the memory claim refuses a row holding the token in the same pass, before any write — so the won set read back by the token can only ever be this claim's rows",
+  },
   /* ── §23 · vb7 (review m1) · the bound Remove, all or nothing ─────────────────────────────────────────────────── */
   {
     // 🔴 THE CHUNKS OUT OF THEIR TRANSACTION: each delete commits on its own, so a fault at chunk 37 leaves 36 removed.

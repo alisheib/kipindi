@@ -12,9 +12,14 @@ import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type Txn
 // U35b · the campaign tables' ONE rule set — this twin asks it before every campaign or recipient write, exactly as
 // the Prisma twin does (`test:dal-parity` §26). It takes only TYPES back from this file, so there is no cycle.
 // U16a · and before erasure's unlink and the access export's read — with the ONE bound that read shares with Postgres.
+// U43a · and before the engine's doors — the claim, the settle, the reaper's reads and the requeue — whose WRITES it
+// computes too (`claimWrite`, `settleWrite`, `requeueWrite`): this twin applies them by name (`writeRecipient`), the
+// Prisma twin through its column map, so the two cannot write different columns (`test:dal-parity` §26.u43a).
 import {
   assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
   assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
+  assertClaim, assertClaimRead, assertSettle, assertStrandedRead, assertRequeueHeld, assertActivityRead, assertTargetsRead,
+  claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
 // statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
@@ -564,6 +569,70 @@ export type SmsCampaignStatusCounts = Record<SmsCampaignStatus, number>;
 export type SmsCampaignRecipientStatusCounts = Record<SmsCampaignRecipientStatus, number>;
 /** Each campaign asked about, by id, with its recipients by status — and only those. */
 export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipientStatusCounts>;
+
+/* ── U43a · THE ENGINE'S RECIPIENT DOORS — claim, claimedBy, settle, findStranded, requeueHeld, lastActivity, and
+ * `smsMessage.findByTargets` (ENGINE-SPEC §4.10; `test:dal-parity` §26.u43a, `test:campaign-models` §2.14–§2.28).
+ * ⚠️ NAMED, NOT INLINE: the `SmsDlrResult` note above. ── */
+/**
+ * ⭐ ONE SETTLE OF ONE CLAIMED ROW — the row by its `id` (never by its place in a list), the claim it expects, and the
+ * status it moves to with EXACTLY that status's columns (`SMS_RECIPIENT_SETTLE_KEYS`, campaign-model.ts; a compile-time
+ * check holds each variant equal to its row of that table). Both twins write it only where the row still holds
+ * `claimToken` AND is PENDING; anywhere else it is `lost`, never forced. `PENDING` is a RELEASE — the claim's token
+ * cleared (its `claimedAt` kept, D15), `attempts` moved on by 0 or 1 — and `HELD` parks the row; every other target
+ * settles it.
+ * ⛔ Nothing here moves a row OUT of a settled status: a late receipt is U46a's door, and UNCONFIRMED never goes back.
+ * ⚠️ The reaper settles a stranded claim from EVIDENCE (E6) and never saw what the slice prepared, so SENT's token,
+ * variant, segments and length may be null — the slice always fills them — and DELIVERED is a target here (§3.2).
+ *
+ * ⭐ THE SETTLE DOOR'S CONTRACT — written here ONCE; both twins' `settle` and the rule set point at it.
+ * · ONE BATCH, ONE ANSWER. The rule set refuses the WHOLE batch for one unlawful patch, before any write, and a throw
+ *   from `settle` — a refusal, or a reference another row holds (P2002, carried as `code` "P2002" by BOTH twins'
+ *   errors) — means NOTHING was written. Otherwise `{ settled, lost }`: a lost id is a row reaped, released, moved by a
+ *   receipt or claimed again since — read it again, never force it.
+ * · ⛔ NEVER THE ACCOUNT LINK (U16a PE-01). No variant carries `userId`, the rule set refuses the key by name, the write
+ *   is read off the table and never off the patch (`settleWrite`), and the Prisma map throws on it: erasure's `unlinkUser`
+ *   stays the ONE writer of the link, so a send that raced an erasure can never re-link the erased account.
+ * · ⛔ NEVER A CLOCK FOR A SEND INSTANT (U16a PE-08). `sentAt` is the HAND-OVER instant copied from the message — the
+ *   slice's from its own send, the reaper's from the evidence's `SmsMessage.sentAt` — and `deliveredAt` / `failedAt` are
+ *   the message's too. The settle's own `at` stamps `updatedAt` and nothing else; never the settle's or the reap's clock
+ *   in a send instant (the access export dates a hand-over by it).
+ * · OWED BY U43b — EVERY PATCH LAWFUL BEFORE IT IS HANDED IN (DC-5). The rule set REFUSES; it never scrubs and never
+ *   trims. So U43b passes every free text — `error` (a gateway's `providerMsg` above all), `skipDetail`, a trail's
+ *   `check`, `verdict` and `wording` — through `scrubPhoneRuns` (contact-fields.ts) and trims it to
+ *   `SMS_RECIPIENT_TEXT_MAX`, `SMS_RECIPIENT_TRAIL_TEXT_MAX` or `SMS_RECIPIENT_CODE_MAX` first, and may ask
+ *   `assertSettle([p], at)` of one patch to set it aside. Otherwise one gateway message echoing a number refuses the
+ *   slice's whole settle — and the reaper's on every step after it (§3.3 reaps first), wedging the campaign until a hand
+ *   repair. U43b's engine suite (ENGINE-SPEC §4.13, its §S and §R) holds that case.
+ * · OWED BY U46a WITH U43b — THE SEND RECORD WHEN A RECEIPT WINS (DC-4). A receipt that lands between the wire and this
+ *   settle moves the still-claimed PENDING row (U46a decision 1, its test D5), so the slice's SENT patch is `lost` here and
+ *   the row's trail, token, variant, segments, length and `sentAt` (E20, E30, the access export) are never written.
+ *   Before U46a's arm ships: a second, narrow door in both twins that writes ONLY those columns, never the status, WHERE
+ *   the row still holds THIS claim, a receipt moved it (DELIVERED or FAILED) and its trail is still null; U43b calls it
+ *   for each SENT patch lost to such a row; U46a's D5 asserts the DELIVERED row then carries its trail and `sentAt`.
+ */
+export type SmsCampaignRecipientSettle =
+  | {
+      id: string; claimToken: string; to: "SENT"; smsReference: string; sentAt: string; optOutToken: string | null;
+      locale: MessagingLocale | null; segments: number | null; bodyLen: number | null; gateTrail: SmsCampaignGateTrail;
+    }
+  | { id: string; claimToken: string; to: "SKIPPED"; skipReason: string; skipDetail: string; gateTrail: SmsCampaignGateTrail }
+  | {
+      id: string; claimToken: string; to: "FAILED"; failureClass: string; error: string | null; failedAt: string;
+      smsReference: string | null; gateTrail: SmsCampaignGateTrail;
+    }
+  | {
+      id: string; claimToken: string; to: "UNCONFIRMED"; smsReference: string | null; optOutToken: string | null;
+      locale: MessagingLocale | null; segments: number | null; bodyLen: number | null; gateTrail: SmsCampaignGateTrail;
+    }
+  | {
+      id: string; claimToken: string; to: "DELIVERED"; smsReference: string; sentAt: string | null; deliveredAt: string;
+      optOutToken: string | null; locale: MessagingLocale | null; segments: number | null; bodyLen: number | null;
+      gateTrail: SmsCampaignGateTrail;
+    }
+  | { id: string; claimToken: string; to: "HELD"; failureClass: string; attempts: number }
+  | { id: string; claimToken: string; to: "PENDING"; attemptsDelta: 0 | 1 };
+/** What a settle did: how many rows it wrote, and the ids it did NOT write, in the order they were handed in. */
+export type SmsCampaignSettleResult = { settled: number; lost: string[] };
 
 declare global {
   /** DEV ONLY — set by `/api/dev-test/marketing-campaigns-seed?fault=1` so the U36 drive can photograph the campaign
@@ -1892,6 +1961,36 @@ function playerMatchesWalk(u: StoredUser, q: PlayerWalkQuery): boolean {
   return true;
 }
 
+/* ═══ U43a · THE MEMORY TWIN'S RECIPIENT HELPERS (`test:dal-parity` §26.u43a) ═════════════════════════════════════
+ * One order, one copy, one apply of a write and one claim read — so the claim, `claimedBy`, the settle, the stranded read
+ * and the requeue cannot each spell them a little differently. */
+/** By id — the Prisma twin's `orderBy: { id: "asc" }`. Code-unit order: E21's ids are `rcp_` and lower-case hex, and in
+ *  that alphabet code-unit order and every Postgres collation agree (a fixture keeps its ids fixed-width for the same
+ *  reason). */
+function byRecipientId(a: StoredSmsCampaignRecipient, b: StoredSmsCampaignRecipient): number {
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+/** A copy all the way down — the gate trail too — as Postgres hands back a fresh row. */
+function recipientCopy(rcp: StoredSmsCampaignRecipient): StoredSmsCampaignRecipient {
+  return { ...rcp, gateTrail: rcp.gateTrail === null ? null : rcp.gateTrail.map((g) => ({ ...g })) };
+}
+/** ⭐ THE ONE APPLY of a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`): every column it sets,
+ *  by name, and `attempts` moved on by its delta — the Prisma twin drives the same write through its column map
+ *  (`smsRecipientData`). In place: a row is never replaced and never removed. */
+function writeRecipient(r: StoredSmsCampaignRecipient, w: SmsRecipientWrite): void {
+  for (const [k, v] of Object.entries(w.set)) (r as Record<string, unknown>)[k] = v;
+  r.attempts += w.attemptsBy;
+}
+/** The campaign's rows still PENDING under one claim, by id, as copies — the claim's answer and `claimedBy`'s, ONE read
+ *  (the Prisma twin's `recipientsClaimedBy`). */
+function claimedRows(campaignId: string, token: string): StoredSmsCampaignRecipient[] {
+  const held: StoredSmsCampaignRecipient[] = [];
+  for (const r of store.smsCampaignRecipients.values()) {
+    if (r.campaignId === campaignId && r.claimToken === token && r.status === "PENDING") held.push(r);
+  }
+  return held.sort(byRecipientId).map(recipientCopy);
+}
+
 const memoryDb = {
   // USER
   user: {
@@ -3158,6 +3257,21 @@ const memoryDb = {
     },
     listRecent: (limit = 50): StoredSmsMessage[] =>
       Array.from(store.smsMessages.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit),
+    /** U43a · THE REAPER'S EVIDENCE (E6) — for each target named, the NEWEST message of the type asked (`newestPerTarget`,
+     *  the ONE rule both twins answer through): one per target, none for a target without one, ordered by target id. The
+     *  rule set is asked first — at most 200 ids, refused above, never cut. ⛔ Never cut by a count either: a target whose
+     *  message fell outside a cut would read "never sent", go back to PENDING and be sent again. Copies. ⚠️ The newest
+     *  message EVER for each target, not bounded by the row's claim — that bound is the reaper's (`newestPerTarget`, DC-1). */
+    findByTargets: (targetType: string, targetIds: readonly string[]): StoredSmsMessage[] => {
+      assertTargetsRead(targetType, targetIds);
+      if (targetIds.length === 0) return [];
+      const wanted = new Set(targetIds);
+      const rows: StoredSmsMessage[] = [];
+      for (const m of store.smsMessages.values()) {
+        if (m.targetType === targetType && m.targetId !== null && wanted.has(m.targetId)) rows.push({ ...m });
+      }
+      return newestPerTarget(rows);
+    },
   },
   /* ═══ MESSAGING CONSENT (marketing U6) ═════════════════════════════════════════════════
    * ⛔ NO `update` AND NO `delete`, IN EITHER TWIN. An append-only ledger that grows an
@@ -4005,6 +4119,106 @@ const memoryDb = {
         unlinked++;
       }
       return unlinked;
+    },
+    /** U43a · ⭐ THE CLAIM — the first `limit` rows of the campaign that are PENDING AND UNCLAIMED, in id order (E21: the
+     *  walk's order), take the caller's fresh token, the instant and the stamp (`claimWrite`); nothing else moves — not
+     *  the status, not `attempts`. The rule set is asked first. JavaScript runs this member to its end before any other
+     *  write, so the test and the write are one step, as the Prisma twin's conditional `updateMany` is one statement.
+     *  ⛔ A token ANY row already holds is refused before anything is written (`refuseHeldToken`, D16 — a token is fresh
+     *  for each claim, so the answer can only ever be this claim's rows). Answers the rows NOW holding the token, read by
+     *  it (`claimedRows` — `claimedBy`'s read), as copies. */
+    claim: (campaignId: string, limit: number, token: string, at: string): StoredSmsCampaignRecipient[] => {
+      assertClaim(campaignId, limit, token, at);
+      const free: StoredSmsCampaignRecipient[] = [];
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.claimToken === token) refuseHeldToken();
+        if (r.campaignId === campaignId && r.status === "PENDING" && r.claimToken === null) free.push(r);
+      }
+      if (free.length === 0) return [];
+      const write = claimWrite(token, at);
+      for (const r of free.sort(byRecipientId).slice(0, limit)) writeRecipient(r, write);
+      return claimedRows(campaignId, token);
+    },
+    /** U43a · the campaign's rows STILL PENDING under this claim, in id order — what the slice's `beforeSend` re-reads just
+     *  before the wire (E6): a row reaped, released or settled since is not among them, so a stalled slice sends nothing. */
+    claimedBy: (campaignId: string, token: string): StoredSmsCampaignRecipient[] => {
+      assertClaimRead(campaignId, token);
+      return claimedRows(campaignId, token);
+    },
+    /** U43a · ⭐ THE SETTLE — each patch lands only on ITS row (by id, never by its place in the list) while that row still
+     *  holds the claim the patch names AND is PENDING; any other patch is `lost`, never forced (a reaped row, a row a
+     *  receipt settled, a stalled slice's claim). The rule set is asked first and refuses the WHOLE batch for one bad patch.
+     *  ⛔ ONE STEP OR NOTHING, as the Prisma twin's one transaction: an SMS reference another row already holds is refused
+     *  BEFORE the first write — Postgres' unique index would roll the whole transaction back (P2002) — and the refusal
+     *  carries `code` "P2002", as Prisma's error does, so a caller that reads the code reads it in both twins (DC-7). Each
+     *  landing patch's `settleWrite` is applied through the one apply. Answers how many landed and the ids that did not,
+     *  in the order given. The contract — what a caller owes, what this door never writes — is `SmsCampaignRecipientSettle`'s. */
+    settle: (patches: readonly SmsCampaignRecipientSettle[], at: string): SmsCampaignSettleResult => {
+      assertSettle(patches, at);
+      const landing = patches.filter((p) => {
+        const r: StoredSmsCampaignRecipient | undefined = store.smsCampaignRecipients.get(p.id);
+        return r !== undefined && r.claimToken === p.claimToken && r.status === "PENDING";
+      });
+      const writes = landing.map((p) => ({ id: p.id, write: settleWrite(p, at) }));
+      for (const { id, write } of writes) {
+        const reference = write.set.smsReference;
+        if (typeof reference !== "string") continue;
+        for (const other of store.smsCampaignRecipients.values()) {
+          if (other.id !== id && other.smsReference === reference) {
+            throw Object.assign(
+              new Error("unique constraint: SmsCampaignRecipient.smsReference already held by another row (memory twin of P2002, the transaction rolled back) — nothing was written"),
+              { code: "P2002" },
+            );
+          }
+        }
+      }
+      for (const { id, write } of writes) {
+        const r: StoredSmsCampaignRecipient | undefined = store.smsCampaignRecipients.get(id);
+        if (r !== undefined) writeRecipient(r, write);
+      }
+      const landed = new Set(landing.map((p) => p.id));
+      return { settled: landed.size, lost: patches.filter((p) => !landed.has(p.id)).map((p) => p.id) };
+    },
+    /** U43a · THE REAPER'S QUESTION (E6) — the campaign's PENDING rows holding a claim STRICTLY OLDER than `cutoff` (a
+     *  claim at the cutoff is not yet stranded), oldest claim first, then id — the Prisma twin's `orderBy` — at most
+     *  `limit`. Instants compared as instants. Copies. */
+    findStranded: (campaignId: string, cutoff: string, limit: number): StoredSmsCampaignRecipient[] => {
+      assertStrandedRead(campaignId, cutoff, limit);
+      const before = Date.parse(cutoff);
+      const held: StoredSmsCampaignRecipient[] = [];
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId === campaignId && r.status === "PENDING" && r.claimToken !== null && r.claimedAt !== null && Date.parse(r.claimedAt) < before) held.push(r);
+      }
+      return held
+        .sort((a, b) => Date.parse(a.claimedAt ?? "") - Date.parse(b.claimedAt ?? "") || byRecipientId(a, b))
+        .slice(0, limit).map(recipientCopy);
+    },
+    /** U43a · RESUME'S RE-QUEUE (E8) — every HELD row of the campaign, and ⛔ ONLY HELD (never UNCONFIRMED, never a settled
+     *  row), starts over: PENDING, `attempts` 0, the claim's token and the hold's class cleared (its `claimedAt` kept,
+     *  D15), the caller's stamp (`requeueWrite`). Answers how many rows moved. */
+    requeueHeld: (campaignId: string, at: string): number => {
+      assertRequeueHeld(campaignId, at);
+      const write = requeueWrite(at);
+      let requeued = 0;
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId !== campaignId || r.status !== "HELD") continue;
+        writeRecipient(r, write);
+        requeued++;
+      }
+      return requeued;
+    },
+    /** U43a · "NOBODY IS DRIVING" — the newest `claimedAt` on the campaign, the instant of the newest claim any of its rows
+     *  took: a settled or held row keeps its claim, and a released or requeued row keeps the instant of its last claim
+     *  (D15), so the answer never moves backwards while a page claims and releases. null when nothing was ever claimed.
+     *  Instants compared as instants. */
+    lastActivity: (campaignId: string): string | null => {
+      assertActivityRead(campaignId);
+      let newest: string | null = null;
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId !== campaignId || r.claimedAt === null) continue;
+        if (newest === null || Date.parse(r.claimedAt) > Date.parse(newest)) newest = r.claimedAt;
+      }
+      return newest;
     },
   },
 };
