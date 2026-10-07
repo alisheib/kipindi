@@ -6,7 +6,7 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
 switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 46, U43y
 (money first — a campaign yields while bets, payouts and deposits run) and STEP 45, U16a (erasure, the access export
-and retention reach the campaign records), pushed 2026-10-07 by S13; before them STEP 44, U49s-2 LIVE `4093dc54`. Ali's
+and retention reach the campaign records), LIVE `023eae9f` 2026-10-07 (S13); before them STEP 44, U49s-2 LIVE `4093dc54`. Ali's
 FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S13
 in flight on ALI-BLADE15 (§0). First real campaign: realistic window 18–25 October.**
 
@@ -98,7 +98,8 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
     and needle-rest need a server on :3009, verify-house-bot-bundle ran before the build, the old-build verify needs
     `HOUSE_BOT_OLD_BUILD_DIR`, red:journey-header-fit runs only by name. ⏳ OWED: `red:house-bot-c5` ALONE with no time cap
     (the battery's 20-minute step cap killed it; its one plant in `scripts/lib/house-bot-reports-cases.mts` and its lock
-    file were restored byte-for-byte), and the deploy read back from `?dpl=`.
+    file were restored byte-for-byte). ✅ READ BACK LIVE: `?dpl=023eae9f` on 50pick.tz and on www from 06:19:55 UTC
+    2026-10-07 (a fresh container; `/api/health` ok, the database reachable and migrated).
   · Branch `backup/marketing-s13-wip` (`4384fc3a`, never for main): `wip-s13/notes/README.md` says what each folder is —
     `u43a/` fixed and ready to merge (then P10 through the real settle), `u38b/` with ONE D19 MAJOR open (a GROWTH officer
     can pad a tag with 9 of their own contacts so the floor of 10 opens: decide count-only for masked viewers), `u13/`
