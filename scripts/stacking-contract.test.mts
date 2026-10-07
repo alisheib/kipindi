@@ -795,22 +795,24 @@ if (stackTable) {
 // render guard has no opinion about `SUPPRESS_ON`. The modal stays up, over the bet widget.
 // ⭐ `ChatRoot.tsx` had it right all along: it tests its own `HIDE_ON` in the effect AND in the
 // render. A guard on the effect alone cannot see state that is already true.
+// S7 WP0 (2026-10-07): the primer's five checks were 6.1-6.5, the same ids as the z-order block above, so a primer
+// regression read as the known z-order red. Renumbered 8.1-8.5 (7.x is the prose table's); only the labels changed.
 {
   const primer = src("src/components/onboarding/first-visit-primer.tsx");
   // ⚠️ LINE-SCOPED, NOT PAREN-SCOPED. The first version of this scan was
   // `/if \([^)]*\) return null;/` and matched NOTHING, because the guard it is looking for
   // contains nested parentheses — `if (HIDE_ON.test(…) || SUPPRESS_ON.test(…)) return null;` —
   // so the character class stopped at the first `)`. It reported "no guard found at all"
-  // against a file that has one. Control 6.2 below is what caught it.
+  // against a file that has one. Control 8.2 below is what caught it.
   const renderGuard = primer.match(/.*return null;.*/g) ?? [];
   const guardsBoth = renderGuard.some((g) => /HIDE_ON/.test(g) && /SUPPRESS_ON/.test(g));
-  ok("6.1 ⛔ the primer's RENDER guard tests SUPPRESS_ON, not only HIDE_ON", guardsBoth,
+  ok("8.1 ⛔ the primer's RENDER guard tests SUPPRESS_ON, not only HIDE_ON", guardsBoth,
     renderGuard.join(" | ") || "no `return null` guard found at all",
     "the mount effect cannot retract a modal that is already open — tapping a market card from /markets left the tour over the bet widget");
-  // ⚠️ CONTROLS — the population must exist, or 6.1 could pass by matching nothing, and both
+  // ⚠️ CONTROLS — the population must exist, or 8.1 could pass by matching nothing, and both
   // patterns must still be declared or the guard is asserting against names that are gone.
-  ok("6.2 ⚠️ CONTROL — a render-time `return null` guard was actually found", renderGuard.length > 0);
-  ok("6.3 ⚠️ CONTROL — both path patterns are still declared",
+  ok("8.2 ⚠️ CONTROL — a render-time `return null` guard was actually found", renderGuard.length > 0);
+  ok("8.3 ⚠️ CONTROL — both path patterns are still declared",
     /const HIDE_ON =/.test(primer) && /const SUPPRESS_ON =/.test(primer));
   // ⭐ And the automation block must remain OVERRIDABLE, or every design verdict on this modal
   // goes back to being source-derived: a default-UA Chromium sees a page where it never opened.
@@ -819,11 +821,11 @@ if (stackTable) {
   // definition. Deleting the CALL from the UA block left this green, and a mutation caught it.
   // The subject is the line that decides, so that is the line the scan reads.
   const uaLine = (primer.match(/.*HeadlessChrome.*/g) ?? []).join(" · ");
-  ok("6.4 the automation block can be opted out of, so the primer can be photographed",
+  ok("8.4 the automation block can be opted out of, so the primer can be photographed",
     uaLine.includes("primerForced()"),
     uaLine || "no UA block found at all",
     "the block is kept — ~10 drives assume the primer is absent — but a driver can now ask for it");
-  ok("6.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives)", uaLine.length > 0);
+  ok("8.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives)", uaLine.length > 0);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

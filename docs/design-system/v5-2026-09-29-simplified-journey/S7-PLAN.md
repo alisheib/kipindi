@@ -937,7 +937,8 @@ sheet replaces it (§3.8; S6-PLAN.md:603 hands both to S7). Classic readers keep
      `journeyOn && isJourneySurface(pathname)`. The sheet replaces the primer for a journey reader, and S11's auto-open
      will also run on `/live`, `/results` and `/watchlist` (:2833).
    - **Nothing moves out of the primer in S7:** HIDE_ON, SUPPRESS_ON, STORAGE_KEY and primerForced stay declared there
-     (marketing-optout.test.mts:983-989 with its plant :1342-1369; stacking-contract 6.1-6.5, :799-826). §3.8's
+     (marketing-optout.test.mts:983-989 with its plant :1342-1369; stacking-contract 8.1-8.5 since WP0's renumber,
+     A3 item 2 — drafted as 6.1-6.5 — :799-826). §3.8's
      `primer-keys.ts` is S11's (Open point 18).
    - **No flash:** the primer mounts in the browser only (lazy-overlays.tsx:21-24, `ssr: false`), after the shell's
      mark is on the page, so it does not open for a journey reader even for a frame.
@@ -953,7 +954,7 @@ sheet replaces it (§3.8; S6-PLAN.md:603 hands both to S7). Classic readers keep
 - test:journey-shell §11 (11.primer.effect, 11.primer.render, 11.reads.primer) + red:journey-shell plants
 - test:journey-home §8 + plants: the shell passes `journey` only in the journeyShown arm, and the else arm is verbatim.
 - test:marketing-optout + red:marketing-optout (alone)
-- test:stacking (6.1-6.5)
+- test:stacking (the primer's 8.1-8.5, renumbered from 6.1-6.5 in WP0; every other check's verdict as WP0's, A3)
 - test:hooks-order
 - test:simple-journey-flag
 - test:privacy-notice: no new storage.
@@ -1584,6 +1585,9 @@ The draft's overrule 'start on A8h's commit' is withdrawn: A8h is on main (2e3ea
 - It is the sign-up lane's red, and WP0 records it as such.
 - If it is still red when WP0 runs, S7 re-anchors the two plants on the current line in its own scripts-only commit, named in §0j and §0h. The twin must then catch every plant.
 - Only after that does S7 read this twin, for WP8's and WP9's AppShell plants and in WP12.
+- ⚠️ 2026-10-07, at WP0: the email bar itself goes. Money doors' release (the owner's ruling of that day) deletes it,
+  flips 10.shell.emailbar to "no shell mounts the bar", and replaces these two plants with one ("the deleted email bar
+  mounted again"). So S7 re-anchors nothing here, and WP0 reads this twin as that release leaves it.
 4. How each red that S7 runs touches the repo (read from each harness at 7d4b0ad5):
 - File-mutating: red:featured-card, red:one-sided, red:ticker-honesty, red:filter-language and red:timer-date (red-timer-date.mjs:51-53). Each writes the repo's own files, then restores them. Run each alone and detached, after committing, then run `git diff --exit-code`.
 - Temp-copy: red:measure (measure-red.mjs:61-63), red:contrast (contrast-audit-red.mjs:51) and red:chat-availability (chat-availability-red.mjs:67). Each mutates a copy in the OS temp folder and writes nothing in the repo. They are heavy, so run each alone and detached.
