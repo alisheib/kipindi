@@ -31,9 +31,10 @@
  *
  * 2026-10-07 (U49a, ENGINE-SPEC §4.12 decision 1): §10 `sendBatch`'s optional `minimumBalanceTzs`, the credit kept for
  * login and withdrawal codes. ⭐ An all-MARKETING batch on a confirmed reading below it is held MARKETING_FLOOR while a
- * login code in the same state sends (alone, or beside marketing); a top-up is honoured within the re-check; unknown is
- * not low there (the engine fails closed); a malformed option holds the batch. Every case above passes no option and
- * is unchanged: that is today's behaviour, byte for byte. Its plants are in the anchors file too.
+ * login code in the same state sends (alone, or beside marketing); a top-up is honoured within the re-check, and a
+ * missing or stale reading asked for that comes back low holds the batch; unknown is not low there (the engine fails
+ * closed); a malformed option holds the batch. Every case above passes no option and is unchanged: that is today's
+ * behaviour, byte for byte. Its plants are in the anchors file too.
  *
  * Run: npm run test:sms-cost-guard
  */
@@ -596,6 +597,22 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   ok("§10 …and a re-check that cannot read keeps the low reading: the MARKETING batch is still held",
     stillLow.refused === "MARKETING_FLOOR" && calls === 0 && balanceCalls === 1,
     `refused=${stillLow.refused} calls=${calls} balanceCalls=${balanceCalls}`);
+
+  // No reading at all, then a reading past the 15-minute TTL: each is ASKED for before the floor decides, and when the
+  // account really is under the line, the asked-for reading holds the batch (U49a review: the read that comes back LOW).
+  resetBalance();
+  balanceReply = balanceIs(15_000);
+  reply = accepted(15_000);
+  calls = 0;
+  balanceCalls = 0;
+  const askedLow = await sendBatch(marketing(), KEPT);
+  holding(30_000, 16 * 60_000);
+  const staleThenLow = await sendBatch(marketing(), KEPT);
+  ok("§10 a missing or stale reading is asked for first, and a credit that comes back below the line holds the MARKETING batch",
+    askedLow.refused === "MARKETING_FLOOR" && staleThenLow.refused === "MARKETING_FLOOR" && calls === 0 && balanceCalls === 2
+      && smsBalanceSnapshot().tzs === 15_000,
+    `refused=${askedLow.refused}/${staleThenLow.refused} calls=${calls} balanceCalls=${balanceCalls} tzs=${smsBalanceSnapshot().tzs}`);
+  balanceReply = balanceRefused;
 
   // ⛔ Unknown is not low INSIDE sendBatch: failing closed is the engine's (its slice pauses credit_unreadable first).
   resetBalance();

@@ -1,7 +1,8 @@
 /**
- * test:marketing-engine §F — U49a's guard: THE CREDIT KEPT FOR CODES, AND THE REFUSAL AT START (ENGINE-SPEC §4.12; E15 ·
- * E16 · E18 · E19 · OD28 · OD63). `sendBatch`'s own last line (`minimumBalanceTzs`, MARKETING_FLOOR) is held by
- * `test:sms-cost-guard` §10, whose plants are in-place anchors (`scripts/anchors/sms-cost-guard.anchors.mjs`).
+ * test:marketing-engine §F — U49a's guard: THE CREDIT KEPT FOR CODES, AND THE REFUSALS AT START AND AT RESUME
+ * (ENGINE-SPEC §4.12 and its "as built" note; E15 · E16 · E18 · E19 · OD28 · OD63 · OD65 · OD66). `sendBatch`'s own last
+ * line (`minimumBalanceTzs`, MARKETING_FLOOR) is held by `test:sms-cost-guard` §10, whose plants are in-place anchors
+ * (`scripts/anchors/sms-cost-guard.anchors.mjs`).
  *
  * ⚠️ A SECTION MODULE, NOT A SUITE. A host runs it (`scripts/marketing-engine.test.mts`) and hands it `ok`. It exports
  * `SECTION_F`: its labels, its assertions (`run(impl, ok)`), the shipped implementation (`real`) and its in-process plants,
@@ -12,10 +13,15 @@
  * members key the real keyed HMAC — over a fixture walk; the REAL `balanceFigureOf` inside the check; the pure rule
  * (`creditVerdict`); the estimate loader through its SHIPPED reserve over the live settings record; the stop-reason words.
  * Then the source, for what only the source can show.
- *   F0 controls · F1 every refusal by its fixture, in the documented order · F2 ⭐ the plan's RED, and nothing written ·
- *   F3 an unreadable balance refuses · F4 OD28 · F5 the sentences, no TZS for growth · F6 Resume prices only what is left ·
- *   F7 the stub and the provider · F8 the estimate's reserve · F9 the stop reasons · F10 the wiring.
+ *   F0 controls · F1 every Start refusal by its fixture, in the documented order · F2 ⭐ the plan's RED, priced at
+ *   today's price, and nothing written · F3 an unreadable balance refuses · F4 OD28 · F5 the Start sentences, no TZS for
+ *   growth · F6 Resume prices only what is left, and never skips its reads · F7 the stub and the provider · F8 the
+ *   estimate's reserve · F9 the stop reasons · F10 the wiring · F11 a count that fails is retryable · F12 Resume before
+ *   the list finished · F13 Resume's own reasons and words · F14 ⛔ OD66 no both-arms count for a viewer who may not read
+ *   numbers · F15 ⛔ OD63 settings never priced from their defaults.
  * F0 runs the real code alone, so no plant can turn it: a control is never a catch.
+ * ⭐ The fixtures' frozen `estimateTzs` was priced at TZS 5 a segment, and today's price is TZS 6: a check that priced
+ * Start from the frozen figure instead of today's would read every money fixture differently (R-F2d).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. Every plant is a dependency, a stand-in or a source string replaced IN MEMORY. No file is
  * written, no SMS can be sent (every credit read is handed in, and no wire is reachable from here), and no database is
@@ -29,7 +35,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "../lib/decomment.mts";
 import * as SC from "../../src/lib/server/marketing/start-check.ts";
-import type { StartCheck, StartCheckDeps, StartRefusal } from "../../src/lib/server/marketing/start-check.ts";
+import type {
+  RefusalViewer, ResumeRefusal, StartCheck, StartCheckDeps, StartRefusal,
+} from "../../src/lib/server/marketing/start-check.ts";
 import { creditVerdict } from "../../src/lib/marketing/credit-guard.ts";
 import { audienceFence, membersKeyOf, readCampaignAudience } from "../../src/lib/server/marketing/audience-fence.ts";
 import type { FenceDeps } from "../../src/lib/server/marketing/audience-fence.ts";
@@ -37,19 +45,20 @@ import { contactAudienceKey, WHOLE_BOOK } from "../../src/lib/server/marketing/a
 import type { ContactAudienceFilter } from "../../src/lib/server/marketing/audience.ts";
 import { canonicalMembers, startAudienceVerdict } from "../../src/lib/marketing/campaign-confirm.ts";
 import { campaignEstimate, estimateView } from "../../src/lib/marketing/campaign-estimate.ts";
-import type { BalanceFigure, EstimateAudience, VariantSize } from "../../src/lib/marketing/campaign-estimate.ts";
+import type { BalanceFigure, EstimateAudience, EstimateInputs, VariantSize } from "../../src/lib/marketing/campaign-estimate.ts";
 import { balanceFigureOf, loadEstimateInputsFor, loadSegmentCost } from "../../src/lib/server/marketing/estimate.ts";
-import { stopReasonLabel } from "../../src/lib/marketing/campaign-status.ts";
+import { stopReasonLabel, zeroRecipientStatusCounts } from "../../src/lib/marketing/campaign-status.ts";
 import { MARKETING_SMS_SETTINGS_DEFAULTS } from "../../src/lib/marketing/sms-settings.ts";
 import type { MarketingSmsSettings } from "../../src/lib/marketing/sms-settings.ts";
 import { reloadMarketingSmsSettings } from "../../src/lib/server/marketing/sms-settings.ts";
+import type { SettingsReload } from "../../src/lib/server/marketing/sms-settings.ts";
 import { marketingLiveGate, readMarketingLiveSwitch } from "../../src/lib/server/marketing/live-switch.ts";
 import type { MarketingLiveSwitch } from "../../src/lib/server/marketing/live-switch.ts";
 import { smsBalanceThresholds, smsProviderResolution, smsRailProblem } from "../../src/lib/server/sms.ts";
 import type { SmsBalanceRead, SmsProviderResolution, SmsRailProblem } from "../../src/lib/server/sms.ts";
 import type { SegmentCostMeasure } from "../../src/lib/marketing/segment-cost.ts";
 import { db } from "../../src/lib/server/store.ts";
-import type { StoredSmsCampaign } from "../../src/lib/server/store.ts";
+import type { SmsCampaignRecipientStatusCounts, StoredSmsCampaign } from "../../src/lib/server/store.ts";
 import { auditFlush, getAuditPage } from "../../src/lib/server/audit.ts";
 
 /* ══ WHAT A HOST CALLS ══════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -71,17 +80,22 @@ export type EngineSection<I> = {
 /* ══ THE LABELS — each once, so a plant names exactly the claims it must turn red ═══════════════════════════════════ */
 
 const L = {
-  f0: "F0 · CONTROLS — the fixture filters read back at the campaign's door, the listed key is 32 hex for the confirmed row's own draft, 1,604 people at TZS 6 cost TZS 9,624, and the fixture world STARTS (1,600 counted now, shrunkBy 4) with startRefusal, the spec's API, agreeing with checkStart both ways",
-  f1: "F1 · ⭐ EVERY START REFUSAL IS REACHED BY EXACTLY ITS FIXTURE, IN THE DOCUMENTED ORDER — a draft, a paused row, a confirmation missing its tier or budget or whose frozen segments disagree are not_confirmed; an off, expired or unreadable switch is switch_closed; no keys is rail_dead; the book or both with a blank source line is needs_source_line (players-only starts); a filter that is not JSON or a fence that cannot count is audience_unreadable; settings unanswered, half-read or thrown are settings_unreadable; no price is price_unknown; 1,800 at TZS 6 is over_budget (TZS 10,800 over 10,000; landing on the limit starts); a failed credit read is credit_unreadable and TZS 24,000 is credit_low; 1,610 is audience_moved; a swapped person on a list is members_changed — and with every later step broken too, the earliest still answers",
-  f2: "F2 · ⭐ THE PLAN'S RED — a projection above the live credit minus the credit kept for codes refuses at Start: TZS 24,000 of credit, TZS 9,624 for this campaign and TZS 20,000 kept is credit_low with exactly those figures (TZS 40,000 starts; 29,624 lands on the line and starts; 29,623 refuses) — and NOTHING IS WRITTEN: the row handed in is unchanged, no audit row and no SMS row appears for the campaign, and start-check.ts names no writer",
-  f3: "F3 · ⛔ AN UNREADABLE BALANCE REFUSES (FAIL CLOSED) — a refused, unanswered, unfinished, unavailable or stale read, and a read that throws, are each credit_unreadable with no figure in the refusal (a kept TZS 517 never leaks); creditVerdict: on the line goes ahead, a shilling under is credit_low with its three figures, and an unreadable credit or a cost, reserve or credit that is not a figure of 0 or more is credit_unreadable",
-  f4: "F4 · ⭐ OD28 AT START, THROUGH THE ONE FENCE — typed: the confirmed 1,604 again starts (shrunkBy 0), 1,600 starts reporting shrunkBy 4, 1,605 refuses audience_moved (1,605 over 1,604); listed (3): the same three start, a swapped person and one fewer are members_changed, a fourth is audience_moved; the members key is the confirmed row's own draft's (a watermark keyed for the revision before is members_changed)",
-  f5: "F5 · ⛔ A GROWTH SENTENCE CARRIES NO TZS — each refusal says the spec's words; for a viewer who may not read money none holds TZS or a figure of the money fixture (10,800 · 10,000 · 24,000 · 9,624 · 20,000), while a money reader's over_budget and credit_low carry them; every one but not_confirmed says Nothing was sent",
-  f6: "F6 · ⭐ resumeRefusal PRICES ONLY THE OUTSTANDING ROWS — 604 of 1,604 left at TZS 6 is TZS 3,624, and TZS 24,000 of credit resumes it where the whole campaign (TZS 9,624) would be refused; 1,000 left (TZS 6,000) is credit_low with that figure; nothing left reads neither the credit nor the settings and resumes; a closed switch, a dead rail and an unreadable credit refuse it; Resume never counts the population; an outstanding that is not a count throws",
+  f0: "F0 · CONTROLS — the fixture filters read back at the campaign's door, the listed key is 32 hex for the confirmed row's own draft, 1,604 people at today's TZS 6 cost TZS 9,624 (the frozen estimate, priced at TZS 5, is 8,020), and the fixture world STARTS (1,600 counted now, shrunkBy 4, costTzs 9,624) with startRefusal, the spec's API, agreeing with checkStart both ways",
+  f1: "F1 · ⭐ EVERY START REFUSAL IS REACHED BY EXACTLY ITS FIXTURE, IN THE DOCUMENTED ORDER — a draft or a paused row is not_confirmed; a confirmation missing its tier or budget, whose frozen segments disagree, or a list whose members key is corrupt or missing is confirmation_unreadable; an off, expired or unreadable switch is switch_closed; no keys is rail_dead; the book or both with a blank source line is needs_source_line (players-only starts); a filter that is not JSON is audience_unreadable; settings unanswered or thrown are settings_unreadable and half-read settings_incomplete; no price is price_unknown; 1,800 at today's TZS 6 is over_budget (TZS 10,800 over 10,000 — frozen at TZS 5 it would have been 9,000; landing on the limit starts); a failed credit read is credit_unreadable and TZS 24,000 is credit_low; a fence that cannot count is audience_uncounted; 1,610 is audience_moved; a swapped person on a list is members_changed and a list the walk cannot name members_unverified — and with every later step broken too, the earliest still answers",
+  f2: "F2 · ⭐ THE PLAN'S RED — a projection above the live credit minus the credit kept for codes refuses at Start, priced at TODAY's price (TZS 6, never the confirmation's frozen TZS 5): TZS 24,000 of credit, TZS 9,624 for this campaign and TZS 20,000 kept is credit_low with exactly those figures (TZS 40,000 starts; 29,624 lands on the line and starts; 29,623 refuses) — and NOTHING IS WRITTEN: the row handed in is unchanged, no audit row and no SMS row appears for the campaign, and start-check.ts names no writer",
+  f3: "F3 · ⛔ AN UNREADABLE BALANCE REFUSES (FAIL CLOSED) — a refused, unanswered, unfinished, unavailable or stale read, and a read that throws, are each credit_unreadable with no figure in the refusal (a kept TZS 517 never leaks); creditVerdict: on the line goes ahead, a shilling under is credit_low with its three figures, and an unreadable credit, a cost or a credit that is not a figure of 0 or more, or a reserve that is not a figure ABOVE 0 (NaN, negative, 0) is credit_unreadable",
+  f4: "F4 · ⭐ OD28 AT START, THROUGH THE ONE FENCE — typed: the confirmed 1,604 again starts (shrunkBy 0), 1,600 starts reporting shrunkBy 4, 1,605 refuses audience_moved (1,605 over 1,604, the book); listed (3): the same three start, a swapped person, one fewer and nobody are members_changed, a fourth is audience_moved; a watermark keyed for the revision before is members_changed; a walk that cannot name the people it counted is members_unverified, never members_changed; a list whose stored watermark is not a members key is confirmation_unreadable, never members_changed",
+  f5: "F5 · ⛔ A GROWTH SENTENCE CARRIES NO TZS — each Start refusal says its words (§4.12's, and the as-built note's for the reasons added); for a viewer who may not read money none holds TZS or a figure of the money fixture (10,800 · 10,000 · 24,000 · 9,624 · 20,000), while a money reader's over_budget and credit_low carry them; every one but not_confirmed says Nothing was sent",
+  f6: "F6 · ⭐ RESUME PRICES ONLY WHAT IS LEFT, AND NEVER SKIPS ITS READS — the list finished: 604 owed (600 pending, 4 held) of 1,604 at TZS 6 is TZS 3,624, and TZS 24,000 of credit resumes it where the whole campaign (TZS 9,624) would be refused; 1,000 owed (TZS 6,000) is credit_low with that figure; nothing owed still reads the settings and the credit — it resumes at TZS 24,000 and is credit_low (cost 0) at TZS 15,000; a closed switch, a dead rail and an unreadable credit refuse it; Resume never counts the population; counts that are not counts throw",
   f7: "F7 · THE STUB AND THE PROVIDER — on the console stub (no handset, no money) a campaign starts and resumes with the switch closed and NO credit read (U47b's local drive); an unrecognised provider is rail_dead (provider-unrecognised), never a closed switch, even when the rail reader says nothing; Blackball with the switch closed is switch_closed",
-  f8: "F8 · THE ESTIMATE'S RESERVE IS THE CREDIT KEPT FOR CODES (decision 4) — through the shipped default it is the live Marketing SMS settings record's figure (TZS 20,000 kept, 20,000 reserved; never the platform floor of TZS 50, never the price); a reserve that cannot be read gives no coverage figure (no spendable, covers or shortfall) and the covers tile says why, never a reserve of TZS 0; the source re-reads the settings for codesReserveTzs, null on a record it cannot read, and names no platform floor",
+  f8: "F8 · THE ESTIMATE'S RESERVE IS THE CREDIT KEPT FOR CODES (decision 4) — through the shipped default it is the live Marketing SMS settings record's figure (TZS 20,000 kept, 20,000 reserved; never the platform floor of TZS 50, never the price); a reserve that cannot be read — null, NaN, negative or 0 — is UNREADABLE: no coverage figure (no spendable, covers or shortfall) and the covers tile says why, in the words of the credit kept for login and withdrawal codes, never a reserve of TZS 0; the source re-reads the settings for codesReserveTzs, null on a record it cannot read, and names no platform floor",
   f9: "F9 · THE STOP REASONS (decision 5, §3.4) — MARKETING_FLOOR and marketing_floor say the credit reached what is kept for login and withdrawal codes, credit_unreadable says it could not be read, each in the spec's words, and an unknown key is still named",
   f10: "F10 · THE WIRING — Start's shipped reads are the real doors (the provider, the switch through THE gate, the rail, the settings re-read, the cost loader, the ONE fence, the credit rule, OD28's verdict); its credit is read at most a minute old (START_CREDIT_MAX_AGE_MS at most 60 s); credit-guard.ts stays pure: type imports alone, from the pure marketing modules",
+  f11: "F11 · A COUNT THAT FAILS IS RETRYABLE — a fence that throws, or answers a count that is not one, is audience_uncounted (Try again in a minute; never confirm a new copy), while ONLY a stored filter that cannot be read is audience_unreadable",
+  f12: "F12 · ⭐ RESUME BEFORE THE LIST FINISHED (enqueuedAt null) PRICES EVERYONE STILL OWED — paused at 0 rows written of 1,604 confirmed is credit_low with the whole price (TZS 9,624 against TZS 24,000), and so is 600 rows written; TZS 40,000 resumes it; resumeOutstanding is the confirmed count minus the settled rows there and PENDING + HELD once the list is finished; no confirmed count to start from is confirmation_unreadable",
+  f13: "F13 · RESUME'S OWN REASONS AND WORDS — saved sizes that cannot be read are sizes_unreadable (never price_unknown, which the owner could not fix); every Resume refusal says its own words, money only for a money reader, none says start, narrow the audience or Nothing was sent, and each ends Nobody more was messaged",
+  f14: "F14 · ⛔ OD66 · NO BOTH-ARMS COUNT FOR A VIEWER WHO MAY NOT READ NUMBERS — audience_moved on a book ∪ players campaign says the audience grew with NO figure to such a viewer, and the figures to a reader; on a book or a players campaign the figures are OD65's count alone and go to every role; the refusal OBJECT names its population",
+  f15: "F15 · ⛔ OD63 · SETTINGS THAT CANNOT BE READ ARE NEVER PRICED FROM THEIR DEFAULTS — a read that did not answer or threw is settings_unreadable and a record not read in full (its gaps holding the defaults) settings_incomplete, at Start and at Resume, with no price and no credit read, in a world where the defaults would START; settings_unreadable says try again, settings_incomplete names the developer and never says try again",
 } as const;
 
 /* ══ THE IMPLEMENTATION UNDER TEST — swapped piece by piece by the plants ══════════════════════════════════════════ */
@@ -101,10 +115,11 @@ const REAL_SOURCES: Sources = {
 
 export type FImpl = {
   start: (c: StoredSmsCampaign, deps: StartCheckDeps) => Promise<StartCheck>;
-  resume: (c: StoredSmsCampaign, outstanding: number, deps: StartCheckDeps) => Promise<StartRefusal | null>;
+  resume: (c: StoredSmsCampaign, counts: SmsCampaignRecipientStatusCounts, deps: StartCheckDeps) => Promise<ResumeRefusal | null>;
   /** Every fixture world's reads pass through here first — the hook a plant uses to change one of them. */
   deps: (d: StartCheckDeps) => StartCheckDeps;
-  sentence: (r: StartRefusal, money: boolean) => string;
+  sentence: (r: StartRefusal, v: RefusalViewer) => string;
+  resumeSentence: (r: ResumeRefusal, v: RefusalViewer) => string;
   credit: typeof creditVerdict;
   loadEstimate: typeof loadEstimateInputsFor;
   estimate: typeof campaignEstimate;
@@ -119,6 +134,7 @@ export const F_REAL: FImpl = {
   resume: (c, n, d) => SC.resumeRefusal(c, n, d),
   deps: (d) => d,
   sentence: SC.startRefusalSentence,
+  resumeSentence: SC.resumeRefusalSentence,
   credit: creditVerdict,
   loadEstimate: loadEstimateInputsFor,
   estimate: campaignEstimate,
@@ -141,6 +157,8 @@ const keyOf = (n: number): string => `2557${String(90_000_000 + n).slice(-8)}`;
 const KEYS6 = [1, 2, 3, 4, 5, 6].map(keyOf);
 const K3 = [keyOf(11), keyOf(12), keyOf(13)];
 const K3_SWAPPED = [keyOf(11), keyOf(12), keyOf(14)];
+/** Three counted, but the walk names one person twice: the count and the walk disagree, so nobody can be keyed. */
+const K3_UNNAMED = [keyOf(11), keyOf(12), keyOf(12)];
 const K2 = [keyOf(11), keyOf(12)];
 const K4 = [keyOf(11), keyOf(12), keyOf(13), keyOf(15)];
 
@@ -152,31 +170,44 @@ const PLAYERS = filterKey({ population: "players" });
 
 const CAMPAIGN_ID = "cmp_u49a_start_check";
 const REVISION = 7;
-/** The figures of the spec's sentences: TZS 6 a segment, TZS 20,000 kept for codes, a limit of TZS 10,000. */
+/** The figures of the spec's sentences: TZS 6 a segment today, TZS 20,000 kept for codes, a limit of TZS 10,000. */
 const PRICE = 6;
+/** ⭐ The price the confirmation froze its estimate at — NOT today's: Start must price at today's (R-F2d). */
+const FROZEN_PRICE = 5;
 const KEPT = 20_000;
 const LIMIT = 10_000;
 const SETTINGS: MarketingSmsSettings = { ...MARKETING_SMS_SETTINGS_DEFAULTS, pricePerSegmentTzs: PRICE, codesReserveTzs: KEPT, campaignLimitTzs: LIMIT };
-const SETTINGS_OK = { ok: true as const, settings: SETTINGS, stored: true, readable: true };
+const SETTINGS_OK: SettingsReload = { ok: true, settings: SETTINGS, stored: true, readable: true };
+/** A stored record read only in part: the reader fills its gaps with the defaults, and says so. */
+const SETTINGS_HALF: SettingsReload = { ok: true, settings: { ...MARKETING_SMS_SETTINGS_DEFAULTS }, stored: true, readable: false };
+const SETTINGS_DOWN: SettingsReload = { ok: false, error: "the database did not answer" };
 
-/** A campaign as U40a's confirmation leaves it: 1,604 people, typed, one segment each, TZS 9,624 within TZS 10,000. */
+/** A campaign as U40a's confirmation leaves it: 1,604 people, typed, one segment each, estimated at the TZS 5 then measured. */
 const confirmed = (over: Partial<StoredSmsCampaign> = {}): StoredSmsCampaign => ({
   id: CAMPAIGN_ID, name: "U49a · the refusal at Start", status: "CONFIRMED",
   bodySw: "50pick: ofa ya leo.", bodyEn: null, codingSw: "GSM7", segmentsSw: 1, codingEn: null, segmentsEn: null,
   nameFallbackSw: null, nameFallbackEn: null, sourcePhrase: "Namba yako ilitoka kwenye fomu ya 50pick.",
   draftRevision: REVISION, confirmTier: "TYPED", audienceFilter: BOOK, audienceCount: 1604, audienceWatermark: null,
-  estimateSegments: 1604, estimateTzs: 1604 * PRICE, budgetTzs: LIMIT, enqueueCursor: null, enqueuedAt: null, stopReason: null,
+  estimateSegments: 1604, estimateTzs: 1604 * FROZEN_PRICE, budgetTzs: LIMIT, enqueueCursor: null, enqueuedAt: null, stopReason: null,
   createdBy: "usr_u49a_officer", confirmedBy: "usr_u49a_officer", confirmedAt: iso(NOW - HOUR), startedAt: null, pausedAt: null,
   finishedAt: null, createdAt: iso(NOW - 2 * HOUR), updatedAt: iso(NOW - HOUR), ...over,
 });
+/** 1,800 people: TZS 10,800 at today's price, over the TZS 10,000 limit — frozen at TZS 5 it read 9,000, within it. */
+const over1800 = (): StoredSmsCampaign => confirmed({ audienceCount: 1800, estimateSegments: 1800, estimateTzs: 1800 * FROZEN_PRICE });
 /** The listed confirmation's members, and its key — for THIS row's draft, as U40a's confirmation stored it. */
 const CANON3 = canonicalMembers(K3, 3) ?? "";
 const LISTED_KEY = membersKeyOf({ campaignId: CAMPAIGN_ID, draftRevision: REVISION }, CANON3);
 const OTHER_DRAFT_KEY = membersKeyOf({ campaignId: CAMPAIGN_ID, draftRevision: REVISION - 1 }, CANON3);
 const listed = (over: Partial<StoredSmsCampaign> = {}): StoredSmsCampaign =>
-  confirmed({ confirmTier: "ENUMERATE", audienceCount: 3, estimateSegments: 3, estimateTzs: 3 * PRICE, audienceWatermark: LISTED_KEY, ...over });
+  confirmed({ confirmTier: "ENUMERATE", audienceCount: 3, estimateSegments: 3, estimateTzs: 3 * FROZEN_PRICE, audienceWatermark: LISTED_KEY, ...over });
+/** Paused after its list finished (`enqueuedAt` set). */
 const paused = (over: Partial<StoredSmsCampaign> = {}): StoredSmsCampaign =>
   confirmed({ status: "PAUSED", startedAt: iso(NOW - 40 * MIN), enqueuedAt: iso(NOW - 35 * MIN), pausedAt: iso(NOW - 5 * MIN), ...over });
+/** Paused while PREPARING: its list never finished (`enqueuedAt` null) — Resume returns it to PREPARING (§3.1). */
+const pausedEarly = (over: Partial<StoredSmsCampaign> = {}): StoredSmsCampaign => paused({ enqueuedAt: null, ...over });
+/** Recipient rows by status, zero-filled. */
+const rows = (over: Partial<SmsCampaignRecipientStatusCounts> = {}): SmsCampaignRecipientStatusCounts => ({ ...zeroRecipientStatusCounts(), ...over });
+const LEFT_604 = rows({ PENDING: 600, HELD: 4, SENT: 1000 });
 
 const OPEN: MarketingLiveSwitch = { state: "open", enabledBy: "the owner", enabledAt: iso(NOW - HOUR), closesAt: iso(NOW + HOUR) };
 const CLOSED: MarketingLiveSwitch = { state: "closed", why: "absent" };
@@ -191,7 +222,7 @@ type World = {
   provider: SmsProviderResolution;
   live: MarketingLiveSwitch;
   rail: SmsRailProblem | null;
-  settings: { ok: true; settings: MarketingSmsSettings; stored: boolean; readable: boolean } | { ok: false; error: string } | "throws";
+  settings: SettingsReload | "throws";
   cost: SegmentCostMeasure | "configured";
   balance: SmsBalanceRead | "throws";
   audience: Audience;
@@ -215,8 +246,8 @@ const fenceDepsOf = (a: Audience): FenceDeps => ({
   walk: async (_f, cursor, limit) => {
     if (a === "throws") throw new Error("the walk could not be read");
     const from = cursor === null ? 0 : Number(cursor.split(":")[1]);
-    const rows = a.keys.slice(from, from + limit).map((msisdn, i) => ({ kind: "player" as const, msisdn, userId: `usr_u49a_${from + i}` }));
-    return { rows, next: from + rows.length >= a.keys.length ? "done" : `f:${from + rows.length}` };
+    const page = a.keys.slice(from, from + limit).map((msisdn, i) => ({ kind: "player" as const, msisdn, userId: `usr_u49a_${from + i}` }));
+    return { rows: page, next: from + page.length >= a.keys.length ? "done" : `f:${from + page.length}` };
   },
   unfiltered: () => false,
   membersKey: membersKeyOf,
@@ -261,12 +292,13 @@ async function startIn(impl: FImpl, w: World): Promise<{ check: StartCheck; call
   const check = await impl.start(w.row, impl.deps(depsOf(w, calls)));
   return { check, calls };
 }
-async function resumeIn(impl: FImpl, w: World, outstanding: number): Promise<{ refusal: StartRefusal | null; calls: Calls }> {
+async function resumeIn(impl: FImpl, w: World, counts: SmsCampaignRecipientStatusCounts): Promise<{ refusal: ResumeRefusal | null; calls: Calls }> {
   const calls = blank();
-  const refusal = await impl.resume(w.row, outstanding, impl.deps(depsOf(w, calls)));
+  const refusal = await impl.resume(w.row, counts, impl.deps(depsOf(w, calls)));
   return { refusal, calls };
 }
 const said = (c: StartCheck): string => (c.ok ? "START" : c.refusal.reason);
+const resumed = (r: ResumeRefusal | null): string => (r === null ? "RESUME" : r.reason);
 
 /** One claim: its body answers [holds, detail]; a body that throws is that claim's failure, never the section's end. */
 async function claim(ok: Check, label: string, body: () => Promise<[boolean, string]>): Promise<void> {
@@ -278,24 +310,32 @@ async function claim(ok: Check, label: string, body: () => Promise<[boolean, str
   }
 }
 
-/* ══ THE SPEC'S SENTENCES (§4.12 "Sentences") — [for a viewer who may not read money, for a money reader] ═══════════ */
+/* ══ THE WORDS — [for a viewer who may not read money, for a money reader]; both read numbers ═══════════════════════ */
+
+const READER: RefusalViewer = { money: false, reads: true };
+const MONEY_READER: RefusalViewer = { money: true, reads: true };
+const MASKED: RefusalViewer = { money: false, reads: false };
 
 const OVER: StartRefusal = { reason: "over_budget", costTzs: 10_800, budgetTzs: 10_000 };
 const LOW: StartRefusal = { reason: "credit_low", balanceTzs: 24_000, costTzs: 9_624, reserveTzs: 20_000 };
-const MOVED: StartRefusal = { reason: "audience_moved", freshCount: 1_610, confirmedCount: 1_604 };
-const EVERY_REFUSAL: StartRefusal[] = [
-  { reason: "not_confirmed" }, { reason: "switch_closed" }, { reason: "rail_dead", rail: "keys-not-set" }, { reason: "needs_source_line" },
-  { reason: "audience_unreadable" }, { reason: "settings_unreadable" }, { reason: "price_unknown" }, OVER, { reason: "credit_unreadable" },
-  LOW, MOVED, { reason: "members_changed" },
+const MOVED = (population: "book" | "players" | "both"): StartRefusal =>
+  ({ reason: "audience_moved", freshCount: 1_610, confirmedCount: 1_604, population });
+const EVERY_START_REFUSAL: StartRefusal[] = [
+  { reason: "not_confirmed" }, { reason: "confirmation_unreadable" }, { reason: "switch_closed" }, { reason: "rail_dead", rail: "keys-not-set" },
+  { reason: "needs_source_line" }, { reason: "audience_unreadable" }, { reason: "settings_unreadable" }, { reason: "settings_incomplete" },
+  { reason: "price_unknown" }, OVER, { reason: "credit_unreadable" }, LOW, { reason: "audience_uncounted" }, MOVED("book"),
+  { reason: "members_unverified" }, { reason: "members_changed" },
 ];
 const both = (s: string): readonly [string, string] => [s, s];
-const SPEC_WORDS: Readonly<Record<string, readonly [string, string]>> = {
+const START_WORDS: Readonly<Record<string, readonly [string, string]>> = {
   not_confirmed: both("Only a confirmed campaign can start."),
+  confirmation_unreadable: both("This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a new copy. Nothing was sent."),
   switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent."),
   rail_dead: both("No SMS can leave this server right now — Admin → System says why. Nothing was sent."),
   needs_source_line: both("This campaign can reach people from the contact book, and its message has no source line. Stop it and confirm a copy once the owner has set the source line. Nothing was sent."),
   audience_unreadable: both("The saved audience can't be read any more. Stop this campaign and confirm a new copy. Nothing was sent."),
   settings_unreadable: both("The Marketing SMS settings couldn't be read just now, so this campaign can't be checked before it starts. Try again in a moment. Nothing was sent."),
+  settings_incomplete: both("The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before it starts. The developer must repair them first. Nothing was sent."),
   price_unknown: both("The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System → Marketing SMS. Nothing was sent."),
   over_budget: [
     "At today's price this campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent.",
@@ -306,8 +346,32 @@ const SPEC_WORDS: Readonly<Record<string, readonly [string, string]>> = {
     "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes need. Ask the owner to top up. Nothing was sent.",
     "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS 24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent.",
   ],
+  audience_uncounted: both("The audience couldn't be counted just now. Try again in a minute. Nothing was sent."),
   audience_moved: both("The audience grew since it was confirmed — now 1,610, confirmed 1,604. Nothing was sent. Stop this campaign and confirm a new copy."),
+  members_unverified: both("The people on this campaign couldn't be matched to the confirmed list just now. Try again in a minute; if it happens again, stop this campaign and confirm a new copy. Nothing was sent."),
   members_changed: both("The people on this campaign changed since they were confirmed. Nothing was sent. Stop this campaign and confirm a new copy."),
+};
+/** ⛔ OD66 · audience_moved on a book ∪ players campaign, to a viewer who may not read a number. */
+const MOVED_WITHOUT_FIGURES = "The audience grew since it was confirmed. Nothing was sent. Stop this campaign and confirm a new copy.";
+
+const RESUME_LOW: ResumeRefusal = { reason: "credit_low", balanceTzs: 24_000, costTzs: 9_624, reserveTzs: 20_000 };
+const EVERY_RESUME_REFUSAL: ResumeRefusal[] = [
+  { reason: "switch_closed" }, { reason: "rail_dead", rail: "keys-not-set" }, { reason: "confirmation_unreadable" }, { reason: "sizes_unreadable" },
+  { reason: "settings_unreadable" }, { reason: "settings_incomplete" }, { reason: "price_unknown" }, { reason: "credit_unreadable" }, RESUME_LOW,
+];
+const RESUME_WORDS: Readonly<Record<string, readonly [string, string]>> = {
+  switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged."),
+  rail_dead: both("No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more was messaged."),
+  confirmation_unreadable: both("This campaign's confirmation can't be read in full, so what is left to send can't be counted, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
+  sizes_unreadable: both("This campaign's saved message size can't be read, so what is left to send can't be priced, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
+  settings_unreadable: both("The Marketing SMS settings couldn't be read just now, so what is left to send can't be checked. Try again in a moment. Nobody more was messaged."),
+  settings_incomplete: both("The saved Marketing SMS settings can't be read in full, so what is left to send can't be checked. The developer must repair them first. Nobody more was messaged."),
+  price_unknown: both("The price per SMS isn't known, so what is left to send can't be priced. The owner sets it on Admin → System → Marketing SMS. Nobody more was messaged."),
+  credit_unreadable: both("The SMS credit couldn't be read just now, so the campaign can't resume safely. Try again in a minute. Nobody more was messaged."),
+  credit_low: [
+    "There isn't enough SMS credit to finish this campaign and still keep what login and withdrawal codes need. Ask the owner to top up, then resume. Nobody more was messaged.",
+    "Resuming would leave less SMS credit than is kept for login and withdrawal codes — credit TZS 24,000, the rest of this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, then resume. Nobody more was messaged.",
+  ],
 };
 const MONEY_FIGURES = ["10,800", "10,000", "24,000", "9,624", "20,000"];
 
@@ -317,6 +381,7 @@ const UNREADABLE_SENTENCE = "Paused — the SMS credit couldn't be read, so send
 
 const AUD: EstimateAudience = { ok: true, population: 1604, forecast: 1604 };
 const SW1: VariantSize = { locale: "SW", segments: 1, encoding: "GSM7" };
+const COVERS_UNREAD = "needs the credit kept for login and withdrawal codes, which couldn't be read";
 
 /* ══ THE ASSERTIONS ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -331,10 +396,10 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const checkLow = await SC.checkStart(low.row, depsOf(low, blank()));
     const specLow = await SC.startRefusal(low.row, depsOf(low, blank()));
     const holds = reads.every(Boolean) && CANON3 !== "" && /^[0-9a-f]{32}$/.test(LISTED_KEY) && LISTED_KEY !== OTHER_DRAFT_KEY
-      && Math.ceil(1604 * PRICE) === 9_624
+      && Math.ceil(1604 * PRICE) === 9_624 && confirmed().estimateTzs === 8_020
       && real.ok && real.freshCount === 1600 && real.shrunkBy === 4 && real.costTzs === 9_624 && spec === null
       && !checkLow.ok && json(specLow) === json(checkLow.refusal);
-    return [holds, `filters ${reads.join("/")} · W0 → ${said(real)}${real.ok ? ` shrunkBy ${real.shrunkBy}` : ""} · spec ${json(spec)} · at 24,000 ${json(specLow)}`];
+    return [holds, `filters ${reads.join("/")} · W0 → ${said(real)}${real.ok ? ` shrunkBy ${real.shrunkBy} cost ${real.costTzs}` : ""} · spec ${json(spec)} · at 24,000 ${json(specLow)}`];
   });
 
   /* ── F1 · each refusal by its fixture, and the order ── */
@@ -346,9 +411,11 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     };
     await expect("a draft", withW({ row: confirmed({ status: "DRAFT" }) }), "not_confirmed");
     await expect("a paused row", withW({ row: confirmed({ status: "PAUSED" }) }), "not_confirmed");
-    await expect("no tier", withW({ row: confirmed({ confirmTier: null }) }), "not_confirmed");
-    await expect("no budget", withW({ row: confirmed({ budgetTzs: null }) }), "not_confirmed");
-    await expect("frozen segments that disagree with the count", withW({ row: confirmed({ estimateSegments: 1700 }) }), "not_confirmed");
+    await expect("no tier", withW({ row: confirmed({ confirmTier: null }) }), "confirmation_unreadable");
+    await expect("no budget", withW({ row: confirmed({ budgetTzs: null }) }), "confirmation_unreadable");
+    await expect("frozen segments that disagree with the count", withW({ row: confirmed({ estimateSegments: 1700 }) }), "confirmation_unreadable");
+    await expect("a list whose members key is corrupt", withW({ row: listed({ audienceWatermark: "not-a-members-key" }), audience: { count: 3, keys: K3 } }), "confirmation_unreadable");
+    await expect("a list with no members key", withW({ row: listed({ audienceWatermark: null }), audience: { count: 3, keys: K3 } }), "confirmation_unreadable");
     await expect("the switch off", withW({ live: CLOSED }), "switch_closed");
     await expect("a switch past its closing time", withW({ live: { ...OPEN, closesAt: iso(NOW - 1) } }), "switch_closed");
     await expect("a switch that cannot be read", withW({ live: { state: "closed", why: "unreadable" } }), "switch_closed");
@@ -358,29 +425,31 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     await expect("book and players with none", withW({ row: confirmed({ audienceFilter: BOTH, sourcePhrase: null }) }), "needs_source_line");
     await expect("players alone with none (control)", withW({ row: confirmed({ audienceFilter: PLAYERS, sourcePhrase: null }) }), "START");
     await expect("a filter that is not JSON", withW({ row: confirmed({ audienceFilter: "{not json" }) }), "audience_unreadable");
-    await expect("a fence that cannot count", withW({ audience: "throws" }), "audience_unreadable");
-    await expect("settings that did not answer", withW({ settings: { ok: false, error: "down" } }), "settings_unreadable");
-    await expect("settings not read in full", withW({ settings: { ...SETTINGS_OK, readable: false } }), "settings_unreadable");
+    await expect("settings that did not answer", withW({ settings: SETTINGS_DOWN }), "settings_unreadable");
     await expect("a settings read that throws", withW({ settings: "throws" }), "settings_unreadable");
+    await expect("settings not read in full", withW({ settings: SETTINGS_HALF }), "settings_incomplete");
     await expect("a price nobody knows", withW({ cost: { kind: "unknown", reason: "no-sends" } }), "price_unknown");
-    await expect("1,800 people at TZS 6", withW({ row: confirmed({ audienceCount: 1800, estimateSegments: 1800 }) }), "over_budget",
+    await expect("1,800 people at today's TZS 6", withW({ row: over1800() }), "over_budget",
       (c) => !c.ok && c.refusal.reason === "over_budget" && c.refusal.costTzs === 10_800 && c.refusal.budgetTzs === 10_000);
     await expect("a limit the projection lands on (control)", withW({ row: confirmed({ budgetTzs: 9_624 }) }), "START");
     await expect("a credit read that failed", withW({ balance: UNANSWERED }), "credit_unreadable");
     await expect("TZS 24,000 of credit", withW({ balance: credit(24_000) }), "credit_low");
+    await expect("a fence that cannot count", withW({ audience: "throws" }), "audience_uncounted");
     await expect("1,610 people now", withW({ audience: { count: 1610, keys: KEYS6 } }), "audience_moved",
       (c) => !c.ok && c.refusal.reason === "audience_moved" && c.refusal.freshCount === 1610 && c.refusal.confirmedCount === 1604);
     await expect("a listed three with one swapped", withW({ row: listed(), audience: { count: 3, keys: K3_SWAPPED } }), "members_changed");
+    await expect("a listed three the walk cannot name", withW({ row: listed(), audience: { count: 3, keys: K3_UNNAMED } }), "members_unverified");
     await expect("all in order (control)", W0(), "START");
 
     // ⭐ THE ORDER: break step i AND every step after it — the earliest broken step must still be the answer.
     const STEPS: Array<{ reason: string; apply: (w: World) => World }> = [
       { reason: "not_confirmed", apply: (w) => ({ ...w, row: { ...w.row, status: "DRAFT" } }) },
+      { reason: "confirmation_unreadable", apply: (w) => ({ ...w, row: { ...w.row, confirmTier: null } }) },
       { reason: "switch_closed", apply: (w) => ({ ...w, live: CLOSED }) },
       { reason: "rail_dead", apply: (w) => ({ ...w, rail: "keys-not-set" }) },
       { reason: "needs_source_line", apply: (w) => ({ ...w, row: { ...w.row, sourcePhrase: null } }) },
       { reason: "audience_unreadable", apply: (w) => ({ ...w, row: { ...w.row, audienceFilter: "{not json" } }) },
-      { reason: "settings_unreadable", apply: (w) => ({ ...w, settings: { ok: false, error: "down" } }) },
+      { reason: "settings_unreadable", apply: (w) => ({ ...w, settings: SETTINGS_DOWN }) },
       { reason: "price_unknown", apply: (w) => ({ ...w, cost: { kind: "unknown", reason: "no-sends" } }) },
       { reason: "over_budget", apply: (w) => ({ ...w, row: { ...w.row, audienceCount: 1800, estimateSegments: 1800 } }) },
       { reason: "credit_unreadable", apply: (w) => ({ ...w, balance: UNANSWERED }) },
@@ -401,7 +470,7 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
       `${misses.length ? `${misses.join(" | ")} · ` : ""}order ${order.join(" > ")}`];
   });
 
-  /* ── F2 · ⭐ the plan's RED, and nothing written ── */
+  /* ── F2 · ⭐ the plan's RED, at today's price, and nothing written ── */
   await claim(ok, L.f2, async () => {
     const campaignRows = (): number => getAuditPage({ limit: 100_000 }).filter((e) => e.targetId === CAMPAIGN_ID).length;
     const marketingSms = async (): Promise<number> => (await db.smsMessage.listRecent(10_000)).filter((m) => m.purpose === "MARKETING").length;
@@ -421,10 +490,10 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const writer = impl.sources.startCheck.match(WRITERS)?.[0] ?? null;
     const lowRight = !r24.ok && r24.refusal.reason === "credit_low"
       && r24.refusal.balanceTzs === 24_000 && r24.refusal.costTzs === 9_624 && r24.refusal.reserveTzs === 20_000;
-    const holds = lowRight && r40.ok && onLine.ok && !under.ok && under.refusal.reason === "credit_low"
+    const holds = lowRight && r40.ok && r40.costTzs === 9_624 && onLine.ok && !under.ok && under.refusal.reason === "credit_low"
       && json(low.row) === rowBefore && auditAfter === auditBefore && smsAfter === smsBefore
       && impl.sources.startCheck.length > 2000 && writer === null;
-    return [holds, `24,000 → ${r24.ok ? "START" : json(r24.refusal)} · 40,000 → ${said(r40)} · 29,624 → ${said(onLine)} · 29,623 → ${said(under)} · row ${json(low.row) === rowBefore ? "unchanged" : "CHANGED"} · audit rows ${auditBefore} → ${auditAfter} · marketing SMS rows ${smsBefore} → ${smsAfter} · a writer in the source: ${writer ?? "none"}`];
+    return [holds, `24,000 → ${r24.ok ? "START" : json(r24.refusal)} · 40,000 → ${said(r40)}${r40.ok ? ` at ${r40.costTzs}` : ""} · 29,624 → ${said(onLine)} · 29,623 → ${said(under)} · row ${json(low.row) === rowBefore ? "unchanged" : "CHANGED"} · audit rows ${auditBefore} → ${auditAfter} · marketing SMS rows ${smsBefore} → ${smsAfter} · a writer in the source: ${writer ?? "none"}`];
   });
 
   /* ── F3 · an unreadable balance refuses ── */
@@ -454,7 +523,10 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
       ["a cost that is NaN", json(impl.credit({ balance: live(40_000), costTzs: Number.NaN, reserveTzs: 20_000 })), UNREAD],
       ["an endless cost", json(impl.credit({ balance: live(40_000), costTzs: Number.POSITIVE_INFINITY, reserveTzs: 20_000 })), UNREAD],
       ["a reserve below zero", json(impl.credit({ balance: live(40_000), costTzs: 1_000, reserveTzs: -1 })), UNREAD],
+      ["a reserve of 0", json(impl.credit({ balance: live(40_000), costTzs: 1_000, reserveTzs: 0 })), UNREAD],
+      ["a reserve that is NaN", json(impl.credit({ balance: live(40_000), costTzs: 1_000, reserveTzs: Number.NaN })), UNREAD],
       ["an endless credit", json(impl.credit({ balance: live(Number.POSITIVE_INFINITY), costTzs: 1_000, reserveTzs: 20_000 })), UNREAD],
+      ["nothing to spend (control)", json(impl.credit({ balance: live(40_000), costTzs: 0, reserveTzs: 20_000 })), json({ ok: true })],
     ];
     for (const [name, got, want] of table) if (got !== want) misses.push(`${name}: ${got} (want ${want})`);
     return [misses.length === 0, misses.length ? misses.join(" | ") : "every unreadable read refused with no figure; the table holds"];
@@ -463,78 +535,86 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
   /* ── F4 · OD28 through the ONE fence ── */
   await claim(ok, L.f4, async () => {
     const typed = async (count: number): Promise<StartCheck> => (await startIn(impl, withW({ audience: { count, keys: KEYS6 } }))).check;
-    const onList = async (keys: readonly string[], watermark: string = LISTED_KEY): Promise<StartCheck> =>
-      (await startIn(impl, withW({ row: listed({ audienceWatermark: watermark }), audience: { count: keys.length, keys } }))).check;
+    const onList = async (keys: readonly string[], watermark: string | null = LISTED_KEY, count = keys.length): Promise<StartCheck> =>
+      (await startIn(impl, withW({ row: listed({ audienceWatermark: watermark }), audience: { count, keys } }))).check;
     const t1604 = await typed(1604);
     const t1600 = await typed(1600);
     const t1605 = await typed(1605);
     const same = await onList(K3);
     const swapped = await onList(K3_SWAPPED);
     const fewer = await onList(K2);
+    const nobody = await onList([]);
     const more = await onList(K4);
     const otherDraft = await onList(K3, OTHER_DRAFT_KEY);
+    const unnamed = await onList(K3_UNNAMED, LISTED_KEY, 3);
+    const corrupt = await onList(K3, "zz-not-a-members-key");
+    const missing = await onList(K3, null);
     const holds = t1604.ok && t1604.freshCount === 1604 && t1604.shrunkBy === 0
       && t1600.ok && t1600.shrunkBy === 4
-      && !t1605.ok && json(t1605.refusal) === json({ reason: "audience_moved", freshCount: 1605, confirmedCount: 1604 })
+      && !t1605.ok && json(t1605.refusal) === json({ reason: "audience_moved", freshCount: 1605, confirmedCount: 1604, population: "book" })
       && same.ok && same.shrunkBy === 0
-      && said(swapped) === "members_changed" && said(fewer) === "members_changed"
-      && !more.ok && json(more.refusal) === json({ reason: "audience_moved", freshCount: 4, confirmedCount: 3 })
-      && said(otherDraft) === "members_changed";
+      && said(swapped) === "members_changed" && said(fewer) === "members_changed" && said(nobody) === "members_changed"
+      && !more.ok && json(more.refusal) === json({ reason: "audience_moved", freshCount: 4, confirmedCount: 3, population: "book" })
+      && said(otherDraft) === "members_changed" && said(unnamed) === "members_unverified"
+      && said(corrupt) === "confirmation_unreadable" && said(missing) === "confirmation_unreadable";
     const show = (c: StartCheck): string => (c.ok ? `START shrunkBy ${c.shrunkBy}` : json(c.refusal));
-    return [holds, `typed 1,604 ${show(t1604)} · 1,600 ${show(t1600)} · 1,605 ${show(t1605)} · listed same ${show(same)} · swapped ${show(swapped)} · fewer ${show(fewer)} · more ${show(more)} · another draft's key ${show(otherDraft)}`];
+    return [holds, `typed 1,604 ${show(t1604)} · 1,600 ${show(t1600)} · 1,605 ${show(t1605)} · listed same ${show(same)} · swapped ${show(swapped)} · fewer ${show(fewer)} · nobody ${show(nobody)} · more ${show(more)} · another draft's key ${show(otherDraft)} · unnamed ${show(unnamed)} · corrupt key ${show(corrupt)} · no key ${show(missing)}`];
   });
 
-  /* ── F5 · the sentences ── */
+  /* ── F5 · the Start sentences, money only for a money reader ── */
   await claim(ok, L.f5, async () => {
     const misses: string[] = [];
-    for (const r of EVERY_REFUSAL) {
-      const words = SPEC_WORDS[r.reason];
-      const growth = impl.sentence(r, false);
-      const money = impl.sentence(r, true);
-      if (!words) { misses.push(`${r.reason}: no spec words`); continue; }
+    for (const r of EVERY_START_REFUSAL) {
+      const words = START_WORDS[r.reason];
+      const growth = impl.sentence(r, READER);
+      const money = impl.sentence(r, MONEY_READER);
+      if (!words) { misses.push(`${r.reason}: no words to hold it to`); continue; }
       if (growth !== words[0]) misses.push(`${r.reason} (growth): "${growth}"`);
       if (money !== words[1]) misses.push(`${r.reason} (money): "${money}"`);
       if (growth.includes("TZS") || MONEY_FIGURES.some((f) => growth.includes(f))) misses.push(`${r.reason}: growth told money`);
       if (r.reason !== "not_confirmed" && (!growth.includes("Nothing was sent.") || !money.includes("Nothing was sent."))) misses.push(`${r.reason}: no Nothing was sent`);
     }
-    const told = impl.sentence(OVER, true) + " " + impl.sentence(LOW, true);
+    const told = impl.sentence(OVER, MONEY_READER) + " " + impl.sentence(LOW, MONEY_READER);
     const control = ["TZS 10,800", "TZS 10,000", "TZS 24,000", "TZS 9,624", "TZS 20,000"].every((f) => told.includes(f));
-    return [misses.length === 0 && control, misses.length ? misses.join(" | ") : `${EVERY_REFUSAL.length} refusals, each in the spec's words; a money reader is told the figures`];
+    return [misses.length === 0 && control, misses.length ? misses.join(" | ") : `${EVERY_START_REFUSAL.length} refusals, each in its words; a money reader is told the figures`];
   });
 
-  /* ── F6 · Resume prices only the outstanding rows ── */
+  /* ── F6 · Resume prices only what is left, and never skips its reads ── */
   await claim(ok, L.f6, async () => {
-    const at24 = (over: Partial<World> = {}): World => withW({ row: paused(), balance: credit(24_000), ...over });
-    const r604 = await resumeIn(impl, at24(), 604);
-    const r1000 = await resumeIn(impl, at24(), 1000);
-    const r0 = await resumeIn(impl, at24({ balance: "throws", settings: "throws" }), 0);
-    const unread = await resumeIn(impl, at24({ balance: UNANSWERED }), 604);
-    const closed = await resumeIn(impl, at24({ live: CLOSED }), 604);
-    const dead = await resumeIn(impl, at24({ rail: "keys-not-set" }), 604);
+    const at = (tzs: number, over: Partial<World> = {}): World => withW({ row: paused(), balance: credit(tzs), ...over });
+    const r604 = await resumeIn(impl, at(24_000), LEFT_604);
+    const r1000 = await resumeIn(impl, at(24_000), rows({ PENDING: 1000, SENT: 604 }));
+    const r0 = await resumeIn(impl, at(24_000), rows({ SENT: 1604 }));
+    const r0low = await resumeIn(impl, at(15_000), rows({ SENT: 1604 }));
+    const unread = await resumeIn(impl, at(24_000, { balance: UNANSWERED }), LEFT_604);
+    const closed = await resumeIn(impl, at(24_000, { live: CLOSED }), LEFT_604);
+    const dead = await resumeIn(impl, at(24_000, { rail: "keys-not-set" }), LEFT_604);
     const whole = creditVerdict({ balance: { kind: "live", tzs: 24_000, at: NOW }, costTzs: 9_624, reserveTzs: 20_000 });
-    const throwsOn = async (n: number): Promise<boolean> => {
+    const throwsOn = async (counts: unknown): Promise<boolean> => {
       try {
-        await impl.resume(paused(), n, impl.deps(depsOf(at24(), blank())));
+        await impl.resume(paused(), counts as SmsCampaignRecipientStatusCounts, impl.deps(depsOf(at(24_000), blank())));
         return false;
       } catch {
         return true;
       }
     };
-    const throwsBad = (await throwsOn(-1)) && (await throwsOn(1.5));
-    const fences = [r604, r1000, r0, unread, closed, dead].reduce((n, r) => n + r.calls.fence, 0);
+    const badCounts = [rows({ PENDING: -1 }), rows({ PENDING: 1.5 }), { PENDING: 604 }, null];
+    const throwsBad = (await Promise.all(badCounts.map(throwsOn))).every(Boolean);
+    const fences = [r604, r1000, r0, r0low, unread, closed, dead].reduce((n, r) => n + r.calls.fence, 0);
     const holds = r604.refusal === null && !whole.ok
       && json(r1000.refusal) === json({ reason: "credit_low", balanceTzs: 24_000, costTzs: 6_000, reserveTzs: 20_000 })
-      && r0.refusal === null && r0.calls.balance === 0 && r0.calls.settings === 0
+      && r0.refusal === null && r0.calls.balance === 1 && r0.calls.settings === 1
+      && json(r0low.refusal) === json({ reason: "credit_low", balanceTzs: 15_000, costTzs: 0, reserveTzs: 20_000 })
       && unread.refusal?.reason === "credit_unreadable" && closed.refusal?.reason === "switch_closed" && dead.refusal?.reason === "rail_dead"
       && fences === 0 && throwsBad;
-    return [holds, `604 left → ${json(r604.refusal)} (the whole: ${whole.ok ? "ok" : whole.reason}) · 1,000 → ${json(r1000.refusal)} · 0 → ${json(r0.refusal)} with ${r0.calls.balance} credit and ${r0.calls.settings} settings reads · unreadable → ${json(unread.refusal)} · switch off → ${json(closed.refusal)} · no keys → ${json(dead.refusal)} · fences ${fences} · bad counts throw ${throwsBad}`];
+    return [holds, `604 owed → ${resumed(r604.refusal)} (the whole: ${whole.ok ? "ok" : whole.reason}) · 1,000 → ${json(r1000.refusal)} · 0 at 24,000 → ${resumed(r0.refusal)} with ${r0.calls.settings} settings and ${r0.calls.balance} credit reads · 0 at 15,000 → ${json(r0low.refusal)} · unreadable → ${resumed(unread.refusal)} · switch off → ${resumed(closed.refusal)} · no keys → ${resumed(dead.refusal)} · fences ${fences} · bad counts throw ${throwsBad}`];
   });
 
   /* ── F7 · the stub and the provider ── */
   await claim(ok, L.f7, async () => {
     const UNAVAILABLE: SmsBalanceRead = { tzs: null, at: null, outcome: "unavailable", stale: false, error: null };
     const stub = await startIn(impl, withW({ provider: "console", live: CLOSED, balance: UNAVAILABLE }));
-    const stubResume = await resumeIn(impl, withW({ row: paused(), provider: "console", live: CLOSED, balance: "throws" }), 604);
+    const stubResume = await resumeIn(impl, withW({ row: paused(), provider: "console", live: CLOSED, balance: "throws" }), LEFT_604);
     const unknownRail = await startIn(impl, withW({ provider: "unrecognised", live: CLOSED, rail: "provider-unrecognised" }));
     const unknownSilent = await startIn(impl, withW({ provider: "unrecognised", live: OPEN, rail: null }));
     const carrierClosed = await startIn(impl, withW({ live: CLOSED }));
@@ -544,7 +624,7 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
       && !unknownRail.check.ok && json(unknownRail.check.refusal) === RAIL
       && !unknownSilent.check.ok && json(unknownSilent.check.refusal) === RAIL
       && said(carrierClosed.check) === "switch_closed";
-    return [holds, `stub → ${said(stub.check)} (${stub.calls.balance} credit reads), resume → ${json(stubResume.refusal)} · unrecognised → ${unknownRail.check.ok ? "START" : json(unknownRail.check.refusal)}, with a silent rail reader → ${unknownSilent.check.ok ? "START" : json(unknownSilent.check.refusal)} · Blackball, switch off → ${said(carrierClosed.check)}`];
+    return [holds, `stub → ${said(stub.check)} (${stub.calls.balance} credit reads), resume → ${resumed(stubResume.refusal)} · unrecognised → ${unknownRail.check.ok ? "START" : json(unknownRail.check.refusal)}, with a silent rail reader → ${unknownSilent.check.ok ? "START" : json(unknownSilent.check.refusal)} · Blackball, switch off → ${said(carrierClosed.check)}`];
   });
 
   /* ── F8 · the estimate's reserve ── */
@@ -560,22 +640,31 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const recorded = cur.settings.codesReserveTzs;
     const floor = smsBalanceThresholds().floorTzs;
     const reserved = (await impl.loadEstimate("ADMIN", AUD, MONEY_DEPS)).money?.reserveTzs;
-    // (b) a reserve that cannot be read: no coverage, said in words.
+    // (b) a reserve that cannot be read — not read at all, or not a figure above 0: no coverage, said in words.
     const unread = await impl.loadEstimate("ADMIN", AUD, { ...MONEY_DEPS, reserveTzs: () => null });
-    const e = impl.estimate(unread, [SW1]);
-    const view = impl.view(e, NOW);
-    const covers = view.tiles.find((t) => t.key === "covers");
-    const m = e.money;
-    const noCoverage = unread.money?.reserveTzs === null && m !== null && m.reserveTzs === null
-      && m.spendableTzs === null && m.covers === null && m.shortByTzs === null
-      && covers?.value === "—" && (covers.note ?? "").includes("kept for login codes")
-      && view.tiles.some((t) => t.key === "cost") && view.tiles.some((t) => t.key === "credit");
-    // (c) the source: the settings' figure, fresh, or nothing — and no platform floor anywhere in the file.
+    const noCoverage = (inputs: EstimateInputs): string | null => {
+      const e = impl.estimate(inputs, [SW1]);
+      const m = e.money;
+      const covers = impl.view(e, NOW).tiles.find((t) => t.key === "covers");
+      const right = m !== null && m.reserveTzs === null && m.spendableTzs === null && m.covers === null && m.shortByTzs === null
+        && covers?.value === "—" && covers.note === COVERS_UNREAD;
+      return right ? null : `reserve ${json(m?.reserveTzs)} covers ${json(covers ?? null)}`;
+    };
+    const withReserve = (r: number): EstimateInputs =>
+      ({ audience: AUD, pace: null, money: { cost: { kind: "configured", tzsPerSegment: PRICE }, balance: { kind: "live", tzs: 40_000, at: NOW }, reserveTzs: r } });
+    const bad = [
+      ["null", noCoverage(unread)], ["NaN", noCoverage(withReserve(Number.NaN))], ["negative", noCoverage(withReserve(-5))], ["0", noCoverage(withReserve(0))],
+    ].filter(([, why]) => why !== null);
+    // (c) a reserve that is a figure: coverage, said in the words of the credit kept for login AND withdrawal codes.
+    const good = impl.view(impl.estimate(withReserve(KEPT), [SW1]), NOW).tiles.find((t) => t.key === "covers");
+    const goodWords = good?.value === "Everyone" && (good.note ?? "").endsWith("kept for login and withdrawal codes");
+    // (d) the source: the settings' figure, fresh, or nothing — and no platform floor anywhere in the file.
     const src = impl.sources.estimate;
     const sourceRight = src.includes("reserveTzs: async () => {")
       && src.includes("return kept.ok && kept.readable ? kept.settings.codesReserveTzs : null;") && !src.includes("smsBalanceThresholds");
-    const holds = reserved === recorded && recorded !== floor && recorded !== cur.settings.pricePerSegmentTzs && noCoverage && sourceRight;
-    return [holds, `the record keeps ${recorded} · the estimate reserves ${reserved} (the platform floor is ${floor}) · unreadable → reserve ${json(m?.reserveTzs)}, covers ${json(covers ?? null)} · source ${sourceRight ? "right" : "WRONG"}`];
+    const holds = reserved === recorded && recorded !== floor && recorded !== cur.settings.pricePerSegmentTzs
+      && bad.length === 0 && goodWords && sourceRight;
+    return [holds, `the record keeps ${recorded} · the estimate reserves ${reserved} (the platform floor is ${floor}) · unreadable reserves: ${bad.length === 0 ? "no coverage, said why" : json(bad)} · a good reserve: ${json(good ?? null)} · source ${sourceRight ? "right" : "WRONG"}`];
   });
 
   /* ── F9 · the stop reasons ── */
@@ -603,6 +692,91 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     return [off.length === 0 && fresh && typeOnlyPure && !loadsAtRunTime && guard.length > 500,
       `not the real door: [${off.join(", ")}] · credit read at most ${SC.START_CREDIT_MAX_AGE_MS} ms, through the shipped dep ${fresh} · credit-guard imports ${json(imports)}${loadsAtRunTime ? " · LOADS A MODULE AT RUN TIME" : ""}`];
   });
+
+  /* ── F11 · a count that fails is retryable ── */
+  await claim(ok, L.f11, async () => {
+    const threw = (await startIn(impl, withW({ audience: "throws" }))).check;
+    const notACount = (await startIn(impl, withW({ audience: { count: Number.NaN, keys: KEYS6 } }))).check;
+    const badFilter = (await startIn(impl, withW({ row: confirmed({ audienceFilter: "{not json" }) }))).check;
+    const words = impl.sentence({ reason: "audience_uncounted" }, READER);
+    const retryable = words.includes("Try again in a minute") && !/confirm a new copy/i.test(words);
+    const holds = said(threw) === "audience_uncounted" && said(notACount) === "audience_uncounted" && said(badFilter) === "audience_unreadable" && retryable;
+    return [holds, `a fence that throws → ${said(threw)} · a count that is not one → ${said(notACount)} · a filter that is not JSON → ${said(badFilter)} · "${words}"`];
+  });
+
+  /* ── F12 · Resume before the list finished ── */
+  await claim(ok, L.f12, async () => {
+    const early = (tzs: number, over: Partial<StoredSmsCampaign> = {}): World => withW({ row: pausedEarly(over), balance: credit(tzs) });
+    const WHOLE = json({ reason: "credit_low", balanceTzs: 24_000, costTzs: 9_624, reserveTzs: 20_000 });
+    const none = await resumeIn(impl, early(24_000), rows());
+    const some = await resumeIn(impl, early(24_000), rows({ PENDING: 600 }));
+    const topped = await resumeIn(impl, early(40_000), rows({ PENDING: 600 }));
+    const noCount = await resumeIn(impl, early(40_000, { audienceCount: null }), rows());
+    const defs = [
+      SC.resumeOutstanding(pausedEarly(), rows()), SC.resumeOutstanding(pausedEarly(), rows({ PENDING: 600 })),
+      SC.resumeOutstanding(pausedEarly(), rows({ PENDING: 590, SENT: 10 })), SC.resumeOutstanding(paused(), LEFT_604),
+      SC.resumeOutstanding(pausedEarly({ audienceCount: null }), rows()),
+    ];
+    const holds = json(none.refusal) === WHOLE && json(some.refusal) === WHOLE && topped.refusal === null
+      && noCount.refusal?.reason === "confirmation_unreadable" && json(defs) === json([1604, 1604, 1594, 604, null]);
+    return [holds, `0 written → ${json(none.refusal)} · 600 written → ${json(some.refusal)} · at TZS 40,000 → ${resumed(topped.refusal)} · no confirmed count → ${resumed(noCount.refusal)} · resumeOutstanding ${json(defs)}`];
+  });
+
+  /* ── F13 · Resume's own reasons and words ── */
+  await claim(ok, L.f13, async () => {
+    const sizes = await resumeIn(impl, withW({ row: paused({ segmentsSw: 0 }), balance: credit(40_000) }), LEFT_604);
+    const misses: string[] = [];
+    for (const r of EVERY_RESUME_REFUSAL) {
+      const words = RESUME_WORDS[r.reason];
+      const growth = impl.resumeSentence(r, READER);
+      const money = impl.resumeSentence(r, MONEY_READER);
+      if (!words) { misses.push(`${r.reason}: no words to hold it to`); continue; }
+      if (growth !== words[0]) misses.push(`${r.reason} (growth): "${growth}"`);
+      if (money !== words[1]) misses.push(`${r.reason} (money): "${money}"`);
+      for (const s of [growth, money]) {
+        if (/start|narrow|Nothing was sent/i.test(s) || !s.endsWith("Nobody more was messaged.")) misses.push(`${r.reason}: "${s}"`);
+      }
+      if (growth.includes("TZS") || MONEY_FIGURES.some((f) => growth.includes(f))) misses.push(`${r.reason}: growth told money`);
+    }
+    const told = impl.resumeSentence(RESUME_LOW, MONEY_READER);
+    const control = ["TZS 24,000", "TZS 9,624", "TZS 20,000"].every((f) => told.includes(f));
+    const holds = sizes.refusal?.reason === "sizes_unreadable" && misses.length === 0 && control;
+    return [holds, `unreadable sizes → ${resumed(sizes.refusal)} · ${misses.length ? misses.join(" | ") : `${EVERY_RESUME_REFUSAL.length} refusals in their own words`}`];
+  });
+
+  /* ── F14 · OD66: no both-arms count for a viewer who may not read numbers ── */
+  await claim(ok, L.f14, async () => {
+    const grown = async (audienceFilter: string): Promise<StartCheck> =>
+      (await startIn(impl, withW({ row: confirmed({ audienceFilter }), audience: { count: 1610, keys: KEYS6 } }))).check;
+    const onBoth = await grown(BOTH);
+    const onBook = await grown(BOOK);
+    const onPlayers = await grown(PLAYERS);
+    const populations = [onBoth, onBook, onPlayers].map((c) => (!c.ok && c.refusal.reason === "audience_moved" ? c.refusal.population : said(c)));
+    const sentenceOf = (c: StartCheck, v: RefusalViewer): string => (c.ok ? "START" : impl.sentence(c.refusal, v));
+    const masked = { both: sentenceOf(onBoth, MASKED), book: sentenceOf(onBook, MASKED), players: sentenceOf(onPlayers, MASKED) };
+    const reader = sentenceOf(onBoth, READER);
+    const holds = json(populations) === json(["both", "book", "players"])
+      && masked.both === MOVED_WITHOUT_FIGURES && !/[0-9]/.test(masked.both)
+      && reader === START_WORDS.audience_moved[0] && masked.book === START_WORDS.audience_moved[0] && masked.players === START_WORDS.audience_moved[0];
+    return [holds, `populations ${json(populations)} · masked on both: "${masked.both}" · reader on both: "${reader}" · masked on the book: "${masked.book}"`];
+  });
+
+  /* ── F15 · OD63: settings never priced from their defaults ── */
+  await claim(ok, L.f15, async () => {
+    const control = await startIn(impl, W0());
+    const startOn = async (settings: World["settings"]) => startIn(impl, withW({ settings }));
+    const resumeOn = async (settings: World["settings"]) => resumeIn(impl, withW({ row: paused(), settings, balance: credit(40_000) }), LEFT_604);
+    const starts = [await startOn(SETTINGS_DOWN), await startOn("throws"), await startOn(SETTINGS_HALF)];
+    const resumes = [await resumeOn(SETTINGS_DOWN), await resumeOn("throws"), await resumeOn(SETTINGS_HALF)];
+    const WANT = ["settings_unreadable", "settings_unreadable", "settings_incomplete"];
+    const unpriced = [...starts, ...resumes].every((x) => x.calls.cost === 0 && x.calls.balance === 0);
+    const retry = impl.sentence({ reason: "settings_unreadable" }, READER);
+    const repair = impl.sentence({ reason: "settings_incomplete" }, READER);
+    const honest = /try again/i.test(retry) && !/try again/i.test(repair) && repair.includes("developer");
+    const holds = control.check.ok && json(starts.map((x) => said(x.check))) === json(WANT)
+      && json(resumes.map((x) => resumed(x.refusal))) === json(WANT) && unpriced && honest;
+    return [holds, `the defaults' world → ${said(control.check)} · Start ${json(starts.map((x) => said(x.check)))} · Resume ${json(resumes.map((x) => resumed(x.refusal)))} · never priced ${unpriced} · "${repair}"`];
+  });
 }
 
 /* ══ THE PLANTS — each a defect this unit could really ship, planted in memory ════════════════════════════════════ */
@@ -614,11 +788,32 @@ const plantIn = (src: string, from: string, to: string): string => {
   return src.split(from).join(to);
 };
 
+/** Start, with one refusal answered as another — the shape of every "told the wrong thing" plant below. */
+const startSaying = (from: StartRefusal["reason"], to: StartRefusal, when: (c: StoredSmsCampaign) => boolean = () => true) =>
+  async (c: StoredSmsCampaign, d: StartCheckDeps): Promise<StartCheck> => {
+    const r = await SC.checkStart(c, d);
+    return !r.ok && r.refusal.reason === from && when(c) ? { ok: false, refusal: to } : r;
+  };
+
+/** A reserve that is not a figure above 0, turned into a sliver of one: coverage computed as if nothing were kept. */
+const SLIVER = Number.MIN_VALUE;
+const isUsableReserve = (r: number | null): boolean => typeof r === "number" && Number.isFinite(r) && r > 0;
+
 export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
   {
     name: "R-F2 (the plan's RED) · the credit check skipped at Start",
     expect: [L.f1, L.f2, L.f3],
     impl: () => ({ start: (c, d) => SC.checkStart(c, { ...d, credit: () => ({ ok: true }) }) }),
+  },
+  {
+    name: "R-F2d · Start priced from the confirmation's frozen estimate, not today's price",
+    expect: [L.f1, L.f2],
+    impl: () => ({
+      start: (c, d) => SC.checkStart(c, {
+        ...d,
+        cost: async () => ({ kind: "configured", tzsPerSegment: (c.estimateTzs ?? 0) / Math.max(1, c.estimateSegments ?? 1) }),
+      }),
+    }),
   },
   {
     name: "R-F4 · OD28's > written >= (the confirmed number of people again is refused)",
@@ -633,8 +828,9 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     }),
   },
   {
+    // F15 sees the same defect from its side: a credit read made before settings that could not be read refused Start.
     name: "R-F1 · the credit read before the switch and the rail (a closed switch answered as a credit problem)",
-    expect: [L.f1],
+    expect: [L.f1, L.f15],
     impl: () => ({
       start: async (c, d) => {
         if (d.provider() !== "console") {
@@ -656,14 +852,38 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     impl: () => ({ start: (c, d) => SC.checkStart({ ...c, sourcePhrase: "a planted source line" }, d) }),
   },
   {
+    name: "R-F1c · a confirmation that cannot be read whole answered “Only a confirmed campaign can start”",
+    expect: [L.f1, L.f4],
+    impl: () => ({ start: startSaying("confirmation_unreadable", { reason: "not_confirmed" }) }),
+  },
+  {
     name: "R-F4b · the members key at Start keyed for another draft than the confirmed row's own",
     expect: [L.f4],
     impl: () => ({ deps: (d) => ({ ...d, fence: (c) => d.fence({ ...c, draftRevision: c.draftRevision + 1 }) }) }),
   },
   {
+    name: "R-F4c · a corrupt list watermark taken on trust and told “the people changed”",
+    expect: [L.f1, L.f4],
+    impl: () => ({
+      start: (c, d) => SC.checkStart(c.confirmTier === "ENUMERATE" && !/^[0-9a-f]{32}$/.test(c.audienceWatermark ?? "")
+        ? { ...c, audienceWatermark: "0".repeat(32) }
+        : c, d),
+    }),
+  },
+  {
+    name: "R-F4d · a list the walk could not name told “the people changed”",
+    expect: [L.f1, L.f4],
+    impl: () => ({ start: startSaying("members_unverified", { reason: "members_changed" }) }),
+  },
+  {
     name: "R-F3 · an unreadable credit taken as affordable (fail open)",
     expect: [L.f1, L.f3, L.f6],
     impl: () => ({ deps: (d) => ({ ...d, credit: (a) => (a.balance.kind === "live" ? creditVerdict(a) : { ok: true }) }) }),
+  },
+  {
+    name: "R-F3b · creditVerdict takes a reserve of 0 as a figure (nothing kept for codes)",
+    expect: [L.f3],
+    impl: () => ({ credit: (a) => creditVerdict(a.reserveTzs === 0 ? { ...a, reserveTzs: SLIVER } : a) }),
   },
   {
     name: "R-F2c · the credit line read as at-or-below (landing on the line refused)",
@@ -690,12 +910,17 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
   {
     name: "R-F5 · a viewer who may not read money is told the figures",
     expect: [L.f5],
-    impl: () => ({ sentence: (r) => SC.startRefusalSentence(r, true) }),
+    impl: () => ({ sentence: (r, v) => SC.startRefusalSentence(r, { ...v, money: true }) }),
   },
   {
     name: "R-F6 · Resume prices the whole campaign, not the rows still owed a message",
     expect: [L.f6],
-    impl: () => ({ resume: (c, n, d) => SC.resumeRefusal(c, c.audienceCount ?? n, d) }),
+    impl: () => ({ resume: (c, counts, d) => SC.resumeRefusal(c, rows({ PENDING: c.audienceCount ?? outstandingOf(counts) }), d) }),
+  },
+  {
+    name: "R-F6b · Resume skips its reads when nothing is left (a cost of 0 never checked against the line)",
+    expect: [L.f6],
+    impl: () => ({ resume: async (c, counts, d) => (SC.resumeOutstanding(c, counts) === 0 ? null : SC.resumeRefusal(c, counts, d)) }),
   },
   {
     name: "R-F7 · the console stub held to the switch (U47b's local drive could never start)",
@@ -708,10 +933,19 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     impl: () => ({ loadEstimate: (role, audience, deps) => loadEstimateInputsFor(role, audience, { ...deps, reserveTzs: () => smsBalanceThresholds().floorTzs }) }),
   },
   {
-    name: "R-F8b · a reserve that could not be read counted as TZS 0 (the codes' credit offered to the campaign)",
+    name: "R-F8b · a reserve that could not be read counted as kept-nothing (the codes' credit offered to the campaign)",
     expect: [L.f8],
     impl: () => ({
-      estimate: (i, v) => campaignEstimate(i.money && i.money.reserveTzs === null ? { ...i, money: { ...i.money, reserveTzs: 0 } } : i, v),
+      estimate: (i, v) => campaignEstimate(i.money && i.money.reserveTzs === null ? { ...i, money: { ...i.money, reserveTzs: SLIVER } } : i, v),
+    }),
+  },
+  {
+    name: "R-F8c · a NaN, negative or 0 reserve turned into a reserve instead of unreadable",
+    expect: [L.f8],
+    impl: () => ({
+      estimate: (i, v) => campaignEstimate(i.money && i.money.reserveTzs !== null && !isUsableReserve(i.money.reserveTzs)
+        ? { ...i, money: { ...i.money, reserveTzs: SLIVER } }
+        : i, v),
     }),
   },
   {
@@ -734,12 +968,76 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     expect: [L.f10],
     impl: () => ({ sources: { ...REAL_SOURCES, creditGuard: `${REAL_SOURCES.creditGuard}${NL}import { db } from "@/lib/server/store";${NL}void db;` } }),
   },
+  {
+    name: "R-F11 · a count that failed answered “the saved audience can't be read any more — confirm a new copy”",
+    expect: [L.f1, L.f11],
+    impl: () => ({ start: startSaying("audience_uncounted", { reason: "audience_unreadable" }) }),
+  },
+  {
+    name: "R-F12 · Resume before the list finished prices only the rows written (0 of 1,604 resumes for nothing)",
+    expect: [L.f12],
+    impl: () => ({ resume: (c, counts, d) => SC.resumeRefusal({ ...c, enqueuedAt: c.enqueuedAt ?? iso(NOW) }, counts, d) }),
+  },
+  {
+    name: "R-F13 · Resume borrows Start's sentences (“Starting would leave…”, “narrow the audience”)",
+    expect: [L.f13],
+    impl: () => ({ resumeSentence: (r, v) => SC.startRefusalSentence(r as unknown as StartRefusal, v) }),
+  },
+  {
+    name: "R-F13b · unreadable message sizes answered price_unknown (“the owner sets it”, which the owner cannot fix)",
+    expect: [L.f13],
+    impl: () => ({
+      resume: async (c, counts, d) => {
+        const r = await SC.resumeRefusal(c, counts, d);
+        return r?.reason === "sizes_unreadable" ? { reason: "price_unknown" } : r;
+      },
+    }),
+  },
+  {
+    name: "R-F14 · a viewer who may not read numbers is told a book ∪ players count (OD66)",
+    expect: [L.f14],
+    impl: () => ({ sentence: (r, v) => SC.startRefusalSentence(r, { ...v, reads: true }) }),
+  },
+  {
+    name: "R-F15 · settings that cannot be read priced from their defaults (OD63, fail open)",
+    expect: [L.f1, L.f15],
+    impl: () => ({
+      deps: (d) => ({
+        ...d,
+        settings: async () => {
+          let r: SettingsReload;
+          try {
+            r = await d.settings();
+          } catch {
+            r = { ok: false, error: "threw" };
+          }
+          return r.ok && r.readable ? r : { ok: true, settings: { ...MARKETING_SMS_SETTINGS_DEFAULTS }, stored: false, readable: true };
+        },
+      }),
+    }),
+  },
+  {
+    name: "R-F15b · a record that cannot be read in full told “try again in a moment”",
+    expect: [L.f1, L.f15],
+    impl: () => ({
+      start: startSaying("settings_incomplete", { reason: "settings_unreadable" }),
+      resume: async (c, counts, d) => {
+        const r = await SC.resumeRefusal(c, counts, d);
+        return r?.reason === "settings_incomplete" ? { reason: "settings_unreadable" } : r;
+      },
+    }),
+  },
 ];
+
+/** PENDING + HELD, for a plant that needs a figure when the row has no confirmed count. */
+function outstandingOf(counts: SmsCampaignRecipientStatusCounts): number {
+  return counts.PENDING + counts.HELD;
+}
 
 /** ⭐ §F, as a host runs it. */
 export const SECTION_F: EngineSection<FImpl> = {
   id: "F",
-  title: "§F · U49a · the credit kept for codes, and the refusal at Start",
+  title: "§F · U49a · the credit kept for codes, and the refusals at Start and at Resume",
   labels: Object.values(L),
   real: F_REAL,
   run: runSectionF,

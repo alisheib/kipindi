@@ -106,13 +106,16 @@ export type EstimateMoney = {
   /** ceil(billable × price) — never rounded down; null when the price is unknown. */
   costTzs: number | null;
   balance: BalanceFigure;
-  /** The credit kept for login and withdrawal codes; null when it could not be read (U49a). */
+  /** The credit kept for login and withdrawal codes; null when it is unreadable — not read, or not a figure above 0 (U49a). */
   reserveTzs: number | null;
-  /** The live credit above the reserve kept for login codes; null when the credit or the reserve is unreadable. */
+  /** The live credit above the credit kept for login and withdrawal codes; null when the credit or that reserve is
+   *  unreadable. */
   spendableTzs: number | null;
-  /** How many people the spendable credit pays for; null when the price or the credit is unknown. */
+  /** How many people the credit pays for ABOVE the credit kept for login and withdrawal codes; null when the price, the
+   *  credit or that reserve is unknown. */
   covers: number | null;
-  /** How far the credit falls short of the cost (0 when it does not); null when either is unknown. */
+  /** How far the credit above that reserve falls short of the cost (0 when it does not); null when the cost, the credit or
+   *  the reserve is unknown. */
   shortByTzs: number | null;
 };
 
@@ -168,9 +171,9 @@ export function campaignEstimate(i: EstimateInputs, variants: readonly VariantSi
   let money: EstimateMoney | null = null;
   if (i.money) {
     const m = i.money;
-    // ⛔ U49a · a reserve that could not be read (null) stays unknown — never 0, which would offer the codes' credit to
-    // the campaign.
-    const reserveTzs = m.reserveTzs === null ? null : Number.isFinite(m.reserveTzs) && m.reserveTzs > 0 ? m.reserveTzs : 0;
+    // ⛔ U49a · a reserve that is not a figure ABOVE 0 — not read (null), NaN, negative or 0 — is UNREADABLE, never a
+    // reserve of TZS 0, which would offer the codes' credit to the campaign. `creditVerdict` refuses the same figures.
+    const reserveTzs = typeof m.reserveTzs === "number" && Number.isFinite(m.reserveTzs) && m.reserveTzs > 0 ? m.reserveTzs : null;
     const tzsPerSegment = m.cost.kind === "unknown" ? null : m.cost.tzsPerSegment;
     const costTzs = tzsPerSegment === null ? null : Math.ceil(billableSegments * tzsPerSegment);
     const above = m.balance.kind === "live" && reserveTzs !== null ? m.balance.tzs - reserveTzs : null;
@@ -305,14 +308,14 @@ function creditTile(m: EstimateMoney, now: number): EstimateTile {
 function coversTile(e: CampaignEstimate, m: EstimateMoney): EstimateTile {
   // ⛔ U49a · no reserve, no coverage: what the credit pays for is only what lies above the credit kept for codes.
   if (m.reserveTzs === null) {
-    return { key: "covers", label: "Covers", value: "—", note: "needs the credit kept for login codes, which couldn't be read" };
+    return { key: "covers", label: "Covers", value: "—", note: "needs the credit kept for login and withdrawal codes, which couldn't be read" };
   }
   if (m.covers === null || m.spendableTzs === null || m.costTzs === null || e.population === null) {
     return { key: "covers", label: "Covers", value: "—", note: "needs a cost and a credit reading" };
   }
   if (m.covers >= e.population) {
     const left = Math.max(0, m.spendableTzs - m.costTzs);
-    return { key: "covers", label: "Covers", value: "Everyone", note: `${amount(left)} left, above the ${amount(m.reserveTzs)} kept for login codes` };
+    return { key: "covers", label: "Covers", value: "Everyone", note: `${amount(left)} left, above the ${amount(m.reserveTzs)} kept for login and withdrawal codes` };
   }
   return {
     key: "covers", label: "Covers", value: count(m.covers, "recipient", "recipients"), tone: "warning",

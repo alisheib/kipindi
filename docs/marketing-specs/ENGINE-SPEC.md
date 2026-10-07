@@ -1412,6 +1412,164 @@ caps it. **Owner decision:** none.
 
 **Kind:** engine · **Hours:** 6–10 · **Review:** yes (money, codes) · **Depends:** U49s, U40a.
 
+> **As built — U49a (2026-10-07: built `e33e792c`, then its review's fixes).** Everything from here to "Planning text"
+> is the contract U47b builds from; where the planning text below differs, THIS wins. The review (no BLOCKER, no MAJOR)
+> asked for: a retryable `audience_uncounted` (a count that fails at Start is never told to confirm a new copy); Resume
+> priced on everyone still owed a message, including a list that never finished, with no read skipped; Resume's own
+> sentences and `sizes_unreadable`; `settings_unreadable` (beyond the planning list, by OD63) recorded here; OD66 held in
+> the `audience_moved` sentence; `confirmation_unreadable`, `members_unverified` and `settings_incomplete` so that no
+> sentence says what the check cannot know; a reserve that is not a figure above 0 read as unreadable everywhere.
+
+**As built · Start, in order** (`checkStart`; `startRefusal` is its refusal or null). The first that refuses answers.
+1. `not_confirmed` — the row is not CONFIRMED. `confirmation_unreadable` — it is, but its frozen confirmation cannot be
+   read whole: the tier, the count (≥ 1), `estimateSegments` (≥ 1), `budgetTzs`, the saved sizes, the count × the largest
+   saved variant equal to `estimateSegments`, and — for a list confirmation — a 32-hex members key.
+2. `switch_closed` — through `marketingLiveGate` (the console stub passes it: no handset, no money). An unrecognised
+   provider is never a closed switch: step 3 answers it.
+3. `rail_dead` — `smsRailProblem`, or `provider-unrecognised` for an unrecognised provider whatever the reader says.
+4. `needs_source_line` — E18, judged on the stored filter (book or both, blank `sourcePhrase`).
+5. `audience_unreadable` — the stored filter no longer reads at the campaign's door. ⛔ The ONLY step that says so.
+6. `settings_unreadable` — the settings re-read did not answer or threw (retryable). `settings_incomplete` — the stored
+   record cannot be read in full (`readable: false`): a developer's repair. ⛔ OD63: never priced from the defaults.
+7. `price_unknown` — today's price (`loadSegmentCost`: measured, else the configured one) is unknown.
+8. `over_budget` — `ceil(estimateSegments × today's price)` (U39's arithmetic) strictly above the frozen `budgetTzs`. ⛔
+   Never the frozen `estimateTzs`: the price may have moved since the confirmation.
+9. `credit_unreadable` · `credit_low` — `refreshSmsBalance({ maxAgeMs: 60_000 })`, waited for, through `balanceFigureOf`
+   and `creditVerdict` against that same cost and the settings' `codesReserveTzs`. Not read on the console stub.
+10. OD28 through the ONE fence (`audienceFence`, the members key scoped to the confirmed row's own id and revision) →
+    `startAudienceVerdict`: `audience_uncounted` — the fence threw or answered a count that is not one (RETRYABLE);
+    `audience_moved` — more people than were confirmed (with `population`); `members_unverified` — a list confirmation
+    whose fresh walk could not name its people (the count and the walk disagree, or a number that cannot be listed came
+    in); `members_changed` — a list whose people differ (a swap, fewer, nobody). The same or fewer start, with `shrunkBy`.
+
+**As built · Resume** (`resumeRefusal(c, counts)` — the recipient rows by status, so no caller can hand it another figure).
+- What is left (`resumeOutstanding`, the ONE definition): the list finished (`enqueuedAt` set) → PENDING + HELD; the list
+  never finished (`enqueuedAt` null — paused while PREPARING; Resume returns it to PREPARING, §3.1) → the confirmed count
+  (`audienceCount`) minus the settled rows, never fewer than the rows outstanding; no confirmed count to start from → null.
+  Counts that are not a whole number ≥ 0 for EVERY status throw.
+- Order: `switch_closed` → `rail_dead` → (the console stub resumes here) → `confirmation_unreadable` (what is left is null)
+  → `sizes_unreadable` (the saved sizes cannot be read, so it cannot be priced) → `settings_unreadable` /
+  `settings_incomplete` → `price_unknown` → `credit_unreadable` / `credit_low` for `ceil(what is left × the largest saved
+  variant × today's price)`. ⛔ Nothing is skipped because nothing is left: a cost of 0 still reads the settings and the
+  credit, and still keeps the line. The status is the caller's conditional transition.
+
+**As built · who may read what.** ⛔ A refusal OBJECT (`StartRefusal`, `ResumeRefusal`) carries money and count figures
+for EVERY role — for the caller's audit row and its decisions; ONLY the sentence functions may reach a viewer, and the
+object is never sent to a browser. `RefusalViewer = { money, reads }`: `money` is `campaignMoneyVisible`, `reads` is the
+viewer's `identity.contact` cell being `read`. TZS and money figures only for `money`; ⛔ OD66 · the count of a book ∪
+players campaign (`audience_moved` with `population: "both"`) only for `reads`. A one-arm count is OD65's count alone and
+is said to every role.
+
+**As built · APIs.**
+
+```ts
+// src/lib/server/marketing/start-check.ts
+export type CampaignPopulation = "book" | "players" | "both";
+export type StartRefusal =
+  | { reason: "not_confirmed" | "confirmation_unreadable" | "switch_closed" | "needs_source_line" | "audience_unreadable"
+      | "settings_unreadable" | "settings_incomplete" | "price_unknown" | "credit_unreadable" | "audience_uncounted"
+      | "members_unverified" | "members_changed" }
+  | { reason: "rail_dead"; rail: SmsRailProblem }
+  | { reason: "over_budget"; costTzs: number; budgetTzs: number }
+  | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number }
+  | { reason: "audience_moved"; freshCount: number; confirmedCount: number; population: CampaignPopulation };
+export type ResumeRefusal =
+  | { reason: "switch_closed" | "confirmation_unreadable" | "sizes_unreadable" | "settings_unreadable"
+      | "settings_incomplete" | "price_unknown" | "credit_unreadable" }
+  | { reason: "rail_dead"; rail: SmsRailProblem }
+  | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number };
+export type RefusalViewer = { money: boolean; reads: boolean };
+export type StartCheck = { ok: true; freshCount: number; shrunkBy: number; costTzs: number } | { ok: false; refusal: StartRefusal };
+export const START_CREDIT_MAX_AGE_MS = 60_000;
+export async function checkStart(c: StoredSmsCampaign, deps?: StartCheckDeps): Promise<StartCheck>;
+export async function startRefusal(c: StoredSmsCampaign, deps?: StartCheckDeps): Promise<StartRefusal | null>;
+export function resumeOutstanding(c: Pick<StoredSmsCampaign, "enqueuedAt" | "audienceCount">, counts: SmsCampaignRecipientStatusCounts): number | null;
+export async function resumeRefusal(c: StoredSmsCampaign, counts: SmsCampaignRecipientStatusCounts, deps?: StartCheckDeps): Promise<ResumeRefusal | null>;
+export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): string;
+export function resumeRefusalSentence(r: ResumeRefusal, viewer: RefusalViewer): string;
+// src/lib/marketing/credit-guard.ts (pure) — a reserve must be a finite figure ABOVE 0, a cost a finite figure ≥ 0
+export function creditVerdict(a: { balance: BalanceFigure; costTzs: number; reserveTzs: number }):
+  { ok: true } | { ok: false; reason: "credit_unreadable" } | { ok: false; reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number };
+// src/lib/server/sms.ts
+export type SmsBatchOptions = { minimumBalanceTzs?: number };
+export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions): Promise<SmsBatchOutcome>;
+```
+
+**As built · the Start sentences, verbatim** (`startRefusalSentence`; the figures are the spec's examples):
+- `not_confirmed`: "Only a confirmed campaign can start."
+- `confirmation_unreadable`: "This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a
+  new copy. Nothing was sent."
+- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+  then you can start. Nothing was sent."
+- `rail_dead`: "No SMS can leave this server right now — Admin → System says why. Nothing was sent."
+- `needs_source_line`: "This campaign can reach people from the contact book, and its message has no source line. Stop it
+  and confirm a copy once the owner has set the source line. Nothing was sent."
+- `audience_unreadable`: "The saved audience can't be read any more. Stop this campaign and confirm a new copy. Nothing
+  was sent."
+- `settings_unreadable`: "The Marketing SMS settings couldn't be read just now, so this campaign can't be checked before it
+  starts. Try again in a moment. Nothing was sent."
+- `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before
+  it starts. The developer must repair them first. Nothing was sent."
+- `price_unknown`: "The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System →
+  Marketing SMS. Nothing was sent."
+- `over_budget` (money): "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it
+  and confirm a smaller copy, or the owner raises the limit. Nothing was sent." · (other roles): "At today's price this
+  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent."
+- `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a
+  minute. Nothing was sent."
+- `credit_low` (money): "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
+  24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent." ·
+  (other roles): "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes
+  need. Ask the owner to top up. Nothing was sent."
+- `audience_uncounted`: "The audience couldn't be counted just now. Try again in a minute. Nothing was sent."
+- `audience_moved` (a reader, or a one-arm campaign): "The audience grew since it was confirmed — now 1,610, confirmed
+  1,604. Nothing was sent. Stop this campaign and confirm a new copy." · (book ∪ players, a viewer who may not read
+  numbers): "The audience grew since it was confirmed. Nothing was sent. Stop this campaign and confirm a new copy."
+- `members_unverified`: "The people on this campaign couldn't be matched to the confirmed list just now. Try again in a
+  minute; if it happens again, stop this campaign and confirm a new copy. Nothing was sent."
+- `members_changed`: "The people on this campaign changed since they were confirmed. Nothing was sent. Stop this campaign
+  and confirm a new copy."
+
+**As built · the Resume sentences, verbatim** (`resumeRefusalSentence` — a paused campaign may already have sent, so each
+ends "Nobody more was messaged."; none says start, narrow the audience, or "Nothing was sent."):
+- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+  then you can resume. Nobody more was messaged."
+- `rail_dead`: "No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more
+  was messaged."
+- `confirmation_unreadable`: "This campaign's confirmation can't be read in full, so what is left to send can't be
+  counted, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."
+- `sizes_unreadable`: "This campaign's saved message size can't be read, so what is left to send can't be priced, and it
+  can't resume. Stop it, or ask the developer. Nobody more was messaged."
+- `settings_unreadable`: "The Marketing SMS settings couldn't be read just now, so what is left to send can't be checked.
+  Try again in a moment. Nobody more was messaged."
+- `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so what is left to send can't be
+  checked. The developer must repair them first. Nobody more was messaged."
+- `price_unknown`: "The price per SMS isn't known, so what is left to send can't be priced. The owner sets it on Admin →
+  System → Marketing SMS. Nobody more was messaged."
+- `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't resume safely. Try again in a
+  minute. Nobody more was messaged."
+- `credit_low` (money): "Resuming would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
+  24,000, the rest of this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, then resume. Nobody more was
+  messaged." · (other roles): "There isn't enough SMS credit to finish this campaign and still keep what login and
+  withdrawal codes need. Ask the owner to top up, then resume. Nobody more was messaged."
+
+**As built · around it.**
+- `sendBatch`'s `minimumBalanceTzs` judges only an all-MARKETING batch, after the platform floor (`BALANCE_FLOOR` keeps
+  precedence); a confirmed reading strictly below it, re-checked first when over a minute old, holds the whole batch
+  `MARKETING_FLOOR` before any row or request; a missing or stale reading is asked for first; unknown stays "not low"
+  there (the engine fails closed); an option that is not a figure of 0 or more holds the batch; a batch carrying a login
+  code is never held by it; with no option the function is unchanged. Its error strings: "SMS credit is below the TZS
+  20,000 kept for login and withdrawal codes — marketing messages are held so codes keep sending" · "the credit kept for
+  login and withdrawal codes is not a usable figure, so marketing messages are held".
+- The estimate's reserve is the settings' `codesReserveTzs`, re-read with the price; a reserve not read, NaN, negative or
+  0 is UNREADABLE — no spendable, covers or shortfall — and the covers tile says "needs the credit kept for login and
+  withdrawal codes, which couldn't be read"; with a reserve: "TZS 10,376 left, above the TZS 20,000 kept for login and
+  withdrawal codes".
+- Guards: `test:marketing-engine` §F (F0–F15, its plants in memory: `red:marketing-engine`) · `test:sms-cost-guard` §10
+  (its plants in `scripts/anchors/sms-cost-guard.anchors.mjs`).
+
+**Planning text (2026-10-04), kept for the record:**
+
 **Premises checked.** P2 (the floor, its re-check, the OTP exemption), `refreshSmsBalance` (`sms.ts:383`: fresh / reused /
 pending / failed / unavailable, `stale`), `balanceFigureOf` (`estimate.ts:63`), `startAudienceVerdict` (P10),
 `SmsFailureCode` (`sms.ts:518-526`), `test:sms-cost-guard` is in predeploy with an in-place red (`red-sms-cost-guard.mjs`).
