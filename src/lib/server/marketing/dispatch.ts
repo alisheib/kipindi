@@ -29,11 +29,16 @@ import type { CampaignVariant, RecipientOrigin } from "@/lib/marketing/campaign-
  *                      and a failure count that includes the people who said stop is a lie on the page.
  *   · `handed_over`  — the gateway ACCEPTED it. ⛔ Not "sent", not "delivered" (OD41): only a receipt is.
  *   · `failed`       — the wire refused THIS message (e.g. `BAD_MSISDN`).
- *   · `held`         — nothing was attempted for a reason that is not about this person: a shop-wide
- *                      refusal (balance floor, not configured), the send window (U13: `quiet_hours`, or
- *                      `window_unreadable` for hours that could not be read) or a gate that could not answer. U43
- *                      returns these to PENDING (§9 U43) — ⛔ never N failed rows for one shop-wide fact,
- *                      and ⛔ never a send on a question the gate could not answer.
+ *   · `held`         — NOTHING WAS ATTEMPTED, and nothing was decided about this person's consent.
+ *                      Shop-wide: a refusal before the wire (balance floor, not configured), the send window
+ *                      (U13: `quiet_hours`, or `window_unreadable` for hours that could not be read), or —
+ *                      U43b-1 — `beforeSend`'s veto (its own reason, e.g. `not_running`) or an answer it could
+ *                      not give (`before_send_unanswered`). About one person: a gate that could not answer
+ *                      (`gate_unanswered`), a message that could not be made for them (`prepare:<reason>`,
+ *                      `prepare:unanswered`), or a row the engine no longer holds (`claim_lost` — someone
+ *                      else's now). U43 returns each to PENDING or parks it (ENGINE-SPEC §4.13's settlement
+ *                      table) — ⛔ never N failed rows for one shop-wide fact, and ⛔ never a send on a question
+ *                      nobody could answer.
  *   · `unconfirmed`  — handed to the wire with no result back (a thrown transport, a result missing its
  *                      key), or — U43b-1 · E3 — a result the wire itself marked `TRANSPORT`: the reply was
  *                      lost, and the gateway may hold the message and bill for it. ⛔ Never retried
@@ -76,18 +81,20 @@ import type { CampaignVariant, RecipientOrigin } from "@/lib/marketing/campaign-
  *   · `prepare` — a row may carry the way to make its message instead of the message. It runs only AFTER the gate has
  *     cleared that number, under the gate's own key and with the gate's verdict — so the engine ensures the opt-out token
  *     and renders here, and a person the gate refuses never gets a permanent link (E1). A refusal holds the row
- *     `prepare:<reason>` (with its detail), a prepare that throws holds it `prepare:unanswered`, and what it learned
+ *     `prepare:<reason>` (with its detail); a prepare that throws, or answers anything but a refusal with a reason or a
+ *     message with a body and its meta, holds it `prepare:unanswered` — that row alone, never the slice. What it learned
  *     (`meta`) rides every outcome after it. A row carries a body or a prepare, exactly one: neither or both is refused.
  *   · `beforeSend` — asked ONCE, after every gate and before the one send: the engine re-reads its campaign and its claims
- *     there (E6). A veto holds every cleared row with its reason and nothing is sent; a row it does not keep is held
- *     `claim_lost` (the row is someone else's now) and never sent; a hook that throws holds them all
- *     `before_send_unanswered`. The window's re-check at the wire (SP-1) comes after it, as late as it can be.
+ *     there (E6). It is handed COPIES, so it can change nothing that is sent or settled. A veto holds every cleared row
+ *     with its reason and nothing is sent; a row it does not keep is held `claim_lost` (the row is someone else's now) and
+ *     never sent; a hook that throws, or answers anything but those two shapes, holds them all `before_send_unanswered`.
+ *     The window's re-check at the wire (SP-1) comes after it, as late as it can be.
  *   · E3 · a result the WIRE marks `TRANSPORT` is `unconfirmed`, with its reference and code — never `failed`, which
  *     invites a retry: decided here, once, for every caller.
  *   · every outcome after the gate cleared carries the basis the gate gave (U33a-G) and the prepare's `meta`.
  * No caller passes a hook yet. The officer's test send passes neither, so it is dispatched exactly as before — and a lost
  * reply reaches it `unconfirmed` by construction (its own mapping of `TRANSPORT` stays, as defence in depth).
- * Guards: `test:marketing-consent` U9.15–U9.21, `test:campaign-compose` §18.34.
+ * Guards: `test:marketing-consent` U9.15–U9.24, `test:campaign-compose` §18.34.
  */
 
 /** U43b-1 · the gate's yes — what a `prepare` is handed: the number was cleared, and on what basis (U33a-G). */
@@ -113,10 +120,11 @@ export type SliceMeta = {
 export type SlicePrepared = { ok: true; body: string; meta: SliceMeta } | { ok: false; reason: string; detail: string };
 
 /** One recipient of a slice: the message to send — or (U43b-1 · E2a) the way to make it, asked only once the gate has
- *  cleared the number, under the gate's own key. Exactly one of the two: a row with neither, or both, is refused. */
+ *  cleared the number, under the gate's own key. Exactly one of the two: a literal with both does not compile, and a row
+ *  with neither, or both, that reaches here anyway (a cast, plain JavaScript) is refused at run time. */
 export type SliceRecipient =
-  | { ref: string; msisdn: string; body: string }
-  | { ref: string; msisdn: string; prepare: (key: string, verdict: MarketingGateAllow) => Promise<SlicePrepared> };
+  | { ref: string; msisdn: string; body: string; prepare?: never }
+  | { ref: string; msisdn: string; prepare: (key: string, verdict: MarketingGateAllow) => Promise<SlicePrepared>; body?: never };
 
 /** U43b-1 · what every outcome AFTER the gate cleared carries: the basis the gate gave (U33a-G), and the prepare's `meta`
  *  when the row was prepared — so the settle, the trail and a receipt can say what authorised the message and what went,
@@ -155,10 +163,11 @@ export type SliceDeps = {
    *  (ENGINE-SPEC §5 rule 9: a battery run at night must not see every send held). */
   window?: () => SendWindowState | Promise<SendWindowState>;
   /** U43b-1 · E2b · THE LAST WORD BEFORE THE WIRE — asked ONCE, after every gate (and prepare) and before the one send,
-   *  with the rows about to go. The engine re-reads its campaign and its claims here (E6): `{ proceed: false, reason }`
-   *  holds every cleared row with that reason and sends nothing; `{ proceed: true, keep }` sends only the rows whose `ref`
-   *  it keeps — the rest are held `claim_lost`; a hook that throws, or answers anything but a go-ahead, holds every
-   *  cleared row `before_send_unanswered`. ⛔ The test send passes none: without it every cleared row goes, as before. */
+   *  with COPIES of the rows about to go. The engine re-reads its campaign and its claims here (E6): `{ proceed: false,
+   *  reason }` (a reason that is a non-empty string) holds every cleared row with that reason and sends nothing;
+   *  `{ proceed: true, keep }` (`keep` an array of refs) sends only the rows it keeps — the rest are held `claim_lost`;
+   *  a hook that throws, or answers anything else, holds every cleared row `before_send_unanswered`. ⛔ The test send
+   *  passes none: without it every cleared row goes, as before. */
   beforeSend?: (cleared: readonly SliceCleared[]) => Promise<SliceSendVerdict>;
 };
 
@@ -260,31 +269,40 @@ export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Pr
       continue;
     }
     const grounds = { basis: verdict.basis, basisRef: verdict.basisRef };
-    if (!("prepare" in row)) {
+    if (row.prepare === undefined) {
       cleared.push({ ref: row.ref, msisdn: key, body: row.body, ...grounds });
       continue;
     }
     // ── U43b-1 · E1 · PREPARE — only now, for a number the gate has JUST cleared, under the gate's key ──────────────
-    let made: SlicePrepared | null;
+    let made: unknown;
     try {
       made = await row.prepare(key, verdict);
     } catch {
       made = null;
     }
-    if (made?.ok !== true) {
-      // ⛔ Never a send on a message that was not made: a refusal names its reason, a prepare that threw could not answer.
-      outcomes.set(row.ref, made?.ok === false
-        ? { ref: row.ref, outcome: "held", reason: `prepare:${made.reason}`, detail: made.detail, ...grounds }
-        : { ref: row.ref, outcome: "held", reason: "prepare:unanswered", ...grounds });
+    const answer = readPrepared(made);
+    if (!answer.ok) {
+      // ⛔ Never a send on a message that was not made — and never a whole slice lost to one person's bad answer.
+      outcomes.set(row.ref, { ref: row.ref, outcome: "held", reason: answer.reason, ...(answer.detail === undefined ? {} : { detail: answer.detail }), ...grounds });
       continue;
     }
-    cleared.push({ ref: row.ref, msisdn: key, body: made.body, ...grounds, meta: made.meta });
+    cleared.push({ ref: row.ref, msisdn: key, body: answer.body, ...grounds, meta: answer.meta });
   }
 
   if (cleared.length > 0) {
     // ── U43b-1 · E2b · THE LAST WORD BEFORE THE WIRE — `beforeSend`, once, after every gate and before the one send ─────
-    // Without the hook every cleared row goes, exactly as before.
-    const sending = deps.beforeSend === undefined ? cleared : await vetBeforeSend(cleared, deps.beforeSend, outcomes);
+    // It is handed COPIES (`structuredClone`, the meta too), so it can change nothing that is sent or settled. Without the
+    // hook every cleared row goes, exactly as before.
+    let sending = cleared;
+    if (deps.beforeSend !== undefined) {
+      let said: unknown;
+      try {
+        said = await deps.beforeSend(structuredClone(cleared));
+      } catch {
+        said = null;
+      }
+      sending = keptBy(said, cleared, outcomes);
+    }
     if (sending.length === 0) return rows.map((r) => outcomes.get(r.ref) as SliceOutcome);
     // ⛔ U13 review SP-1 · THE WINDOW AGAIN, AT THE WIRE. The gate loop takes time (up to the slice's gate budget), so a
     // slice judged open at 19:59:58 could reach the network after 20:00. The window is still read ONCE (W5): its own
@@ -331,28 +349,39 @@ function carried(r: SliceCleared): SliceCarried {
 }
 
 /**
- * U43b-1 · E2b · `beforeSend`'s answer, applied: the rows it keeps go on; a row it does not keep is held `claim_lost` and
- * never reaches the wire. ⛔ IT FAILS CLOSED: a veto — or a hook that throws, or answers anything but a go-ahead — holds
- * EVERY cleared row and sends nothing (a send nobody could vouch for is the double send E6 exists to prevent). The hook is
- * handed copies, so it cannot change what is sent.
+ * U43b-1 · A `prepare`'s ANSWER, READ — never trusted (the engine's prepare is typed, but a cast or a bug must cost one
+ * row, not a slice). A message needs its text, a non-empty string, and its meta, an object; a refusal needs its reason, a
+ * non-empty string, and keeps its detail when that is text. ⛔ Anything else — a throw (read as null), no answer, `{ ok:
+ * true }` with no body or an empty one or no meta, `{ ok: false }` with no reason — is `prepare:unanswered`: a body-less
+ * message handed on would throw inside `sendBatch` before any row is written and leave EVERY row of the slice
+ * `unconfirmed` (nobody sent, everybody "maybe sent"), and an empty one is refused by the gateway for the whole chunk.
  */
-async function vetBeforeSend(
-  cleared: SliceCleared[],
-  beforeSend: NonNullable<SliceDeps["beforeSend"]>,
-  outcomes: Map<string, SliceOutcome>,
-): Promise<SliceCleared[]> {
-  let veto: string | null = null;
-  let keep = new Set<string>();
-  try {
-    const said = await beforeSend(cleared.map((r) => ({ ...r })));
-    if (said?.proceed === true) keep = new Set(said.keep);
-    else veto = said?.reason || "before_send_unanswered";
-  } catch {
-    veto = "before_send_unanswered";
+function readPrepared(made: unknown): { ok: true; body: string; meta: SliceMeta } | { ok: false; reason: string; detail?: string } {
+  const a = made !== null && typeof made === "object" ? (made as Record<string, unknown>) : null;
+  if (a?.ok === true && typeof a.body === "string" && a.body !== "" && a.meta !== null && typeof a.meta === "object") {
+    return { ok: true, body: a.body, meta: a.meta as SliceMeta };
   }
+  if (a?.ok === false && typeof a.reason === "string" && a.reason !== "") {
+    return typeof a.detail === "string" ? { ok: false, reason: `prepare:${a.reason}`, detail: a.detail } : { ok: false, reason: `prepare:${a.reason}` };
+  }
+  return { ok: false, reason: "prepare:unanswered" };
+}
+
+/**
+ * U43b-1 · E2b · `beforeSend`'s ANSWER, READ — never trusted. `{ proceed: true, keep }` with `keep` an array of refs sends
+ * the cleared rows it names and holds every other one `claim_lost`; `{ proceed: false, reason }` with a reason that is
+ * non-empty text holds every cleared row with that reason. ⛔ ANYTHING ELSE FAILS CLOSED — a throw (read as null), no
+ * answer, a `keep` that is missing, null or a string (`new Set("a")` would read one as a list of letters), a veto with no
+ * reason or an object for one: every cleared row is held `before_send_unanswered` and nothing is sent. A send nobody could
+ * vouch for is the double send E6 exists to prevent.
+ */
+function keptBy(said: unknown, cleared: SliceCleared[], outcomes: Map<string, SliceOutcome>): SliceCleared[] {
+  const a = said !== null && typeof said === "object" ? (said as Record<string, unknown>) : null;
+  const keep = a?.proceed === true && Array.isArray(a.keep) && a.keep.every((ref) => typeof ref === "string") ? new Set<string>(a.keep) : null;
+  const veto = keep !== null ? null : (a?.proceed === false && typeof a.reason === "string" && a.reason !== "" ? a.reason : "before_send_unanswered");
   const sending: SliceCleared[] = [];
   for (const r of cleared) {
-    if (veto === null && keep.has(r.ref)) sending.push(r);
+    if (keep?.has(r.ref)) sending.push(r);
     else outcomes.set(r.ref, { ref: r.ref, outcome: "held", reason: veto ?? "claim_lost", ...carried(r) });
   }
   return sending;

@@ -1505,18 +1505,23 @@ deployed.
   writer pins, `test:marketing-engine` §S/§R/§C/§T. Pushed only after U43-0's migration is live.
 
 ✅ **AS BUILT — U43b-1 (S14, 2026-10-07; U43b-2 builds on exactly these shapes, all in `dispatch.ts`):**
-- A row is `{ ref, msisdn, body }` or `{ ref, msisdn, prepare(key, verdict: MarketingGateAllow) }` — exactly one; neither or
-  both throws before the window is read. `prepare` runs inside the gate loop, right after THAT row's clear, under the gate's
-  key (vb3). `{ ok: false, reason, detail }` → `held` `prepare:<reason>` with `detail`; a prepare that throws → `held`
-  `prepare:unanswered` (not in Decision 1: a per-person hold, like `gate_unanswered`).
+- A row is `{ ref, msisdn, body; prepare?: never }` or `{ ref, msisdn, prepare(key, verdict: MarketingGateAllow); body?:
+  never }` — exactly one (a literal with both does not compile); a row with neither or both that arrives anyway throws
+  before the window is read. `prepare` runs inside the gate loop, right after THAT row's clear, under the gate's key (vb3).
+  Its answer is READ, never trusted: `{ ok: true, body, meta }` (a non-empty body, an object for meta) is cleared;
+  `{ ok: false, reason, detail }` (a non-empty reason) → `held` `prepare:<reason>` with `detail`; a prepare that throws, or
+  answers anything else (no body, an empty one, no meta, no reason, null) → `held` `prepare:unanswered` for THAT row only —
+  one reason for every unusable answer (not in Decision 1: a per-person hold, like `gate_unanswered`).
 - `SliceMeta` = `{ locale: CampaignVariant; segments; bodyLen; token; origin: RecipientOrigin; name: "account" | "fallback" }`
   (Decision 2's list). It and the gate's `basis` / `basisRef` (`SliceCarried`) ride `handed_over`, `failed`, `unconfirmed`
   and every `held` after the clear; a `held` before it (the window, `gate_unanswered`) and a `skipped` carry neither.
-- `deps.beforeSend(cleared: SliceCleared[])` is asked once, only when a row cleared, after every gate and prepare and BEFORE
-  U13's SP-1 re-check at the wire (so the window is still judged last). `{ proceed: false, reason }` → every cleared row
-  `held` with that reason; `{ proceed: true, keep }` → a row not kept is `held` `claim_lost`, and none kept is zero wire
-  calls; a hook that throws, or answers anything but a go-ahead → every cleared row `held` `before_send_unanswered` (not in
-  Decision 1: U43b-2's `isShopWide` should treat it as a wait, like `not_running` — release +0, no pause).
+- `deps.beforeSend(cleared: readonly SliceCleared[])` is asked once, only when a row cleared, after every gate and prepare
+  and BEFORE U13's SP-1 re-check at the wire (so the window is still judged last), with COPIES (`structuredClone`, the
+  meta too). Its answer is READ: `{ proceed: false, reason }` (a non-empty string) → every cleared row `held` with that
+  reason; `{ proceed: true, keep }` (`keep` an array of strings) → a row not kept is `held` `claim_lost`, and none kept is
+  zero wire calls; a hook that throws, or answers anything else (no keep, a null or string keep, a veto with no reason or an
+  object for one, no answer) → every cleared row `held` `before_send_unanswered` (not in Decision 1: a wait — see the
+  settlement table below).
 - E3 · a result with code `TRANSPORT` → `unconfirmed` with its `reference` (when non-empty) and `code: "TRANSPORT"`; a send
   that threw, or a missing result, → `unconfirmed` with neither. The code is kept so the test send's masked
   `marketing.campaign_test` row still records `TRANSPORT` for a lost reply and `no_answer` otherwise, as before (one line in
@@ -1524,9 +1529,11 @@ deployed.
 - Decision 5 · `blackballSend` and `blackballBalance` each read the body inside its own try; a body that dies →
   `transport: "reply body unreadable: <the error's message>"`, `message: "transport failure"`, `httpStatus` = the status
   line that did arrive (`sms.ts` reads `transport` as UNKNOWN for a send, `unreachable` for a balance). `sms.ts` untouched.
-- Proof: `test:marketing-consent` U9.15 (U9.0–U9.14 again with every row prepared) – U9.21, eight in-process plants (R-S2,
-  R-S7, R-S9, R-R2 among them); `test:campaign-compose` §18.34 + its plant (R-S2 at the test send's step); `test:blackball`
-  §13–§14 + anchors R-BB1 (send) and R-BB1b (balance), the headline anchor re-anchored on its two comment lines.
+- Proof: `test:marketing-consent` U9.15 (U9.0–U9.14 again with every row prepared) – U9.24 with U9.17b and U9.19b,
+  seventeen in-process plants: eleven on the model (R-S2, R-S7, R-S9, R-R2 among them) and six on the SHIPPED
+  `dispatchSlice` (the carry dropped on each of five paths after the clear; the window judged before `beforeSend`);
+  `test:campaign-compose` §18.34 + its plant (R-S2 at the test send's step); `test:blackball` §13–§14 + anchors R-BB1
+  (send) and R-BB1b (balance), the headline anchor re-anchored on its two comment lines.
 
 **Premises checked.** P1–P3, P5–P7, P13–P15, F1–F5, F8; the U9 second-driver contract (§9 U43: "call it, do not rewrite it");
 `MARKETING_WRITERS` (P19); `SliceOutcome` gains `basis`/`basisRef` with U33a-G (spec §3.5); `renderForRecipient`,
@@ -1633,6 +1640,8 @@ name:<account|fallback>"]` · `["dispatch", <outcome>, null, <reference or null>
 | `held` shop-wide (`BALANCE_FLOOR`, `NOT_CONFIGURED`, `PROVIDER_UNRECOGNISED`, `MARKETING_FLOOR`, `not_running`, `quiet_hours`, `window_unreadable`) | all claimed → PENDING (+0); pause with the key (`not_running`, `quiet_hours` and `window_unreadable`: no pause — the step waits) |
 | `held` per person (`gate_unanswered`, `prepare:token_unavailable`, `prepare:template_invalid`) | attempts < 3 → PENDING (+1); else HELD |
 | `held` `claim_lost` | nothing (the row is someone else's now) |
+| ✅ U43b-1 as built, for U43b-2: `held` `prepare:unanswered` (a prepare that threw, or gave no usable answer) | per person, like `gate_unanswered`: attempts < 3 → PENDING (+1); else HELD |
+| ✅ U43b-1 as built, for U43b-2: `held` `before_send_unanswered` (`beforeSend` threw, or gave no usable answer) | shop-wide WAIT, like `not_running`: all claimed → PENDING (+0); no pause — the step waits |
 
 **Tests** (`test:marketing-engine`).
 - §S S1 a RUNNING slice over consenting players settles every row SENT with token, locale, segments, body length and a
