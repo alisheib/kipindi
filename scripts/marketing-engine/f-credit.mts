@@ -18,7 +18,8 @@
  *   growth · F6 Resume prices only what is left, and never skips its reads · F7 the stub and the provider · F8 the
  *   estimate's reserve · F9 the stop reasons · F10 the wiring · F11 a count that fails is retryable · F12 Resume before
  *   the list finished · F13 Resume's own reasons and words · F14 ⛔ OD66 no both-arms count for a viewer who may not read
- *   numbers · F15 ⛔ OD63 settings never priced from their defaults.
+ *   numbers · F15 ⛔ OD63 settings never priced from their defaults · F16 ⛔ Resume refuses what only a new copy can fix
+ *   (U42's review, ENGINE-SPEC §4.15 decision 1 as amended — added at the U42 + U49a merge).
  * F0 runs the real code alone, so no plant can turn it: a control is never a catch.
  * ⭐ The fixtures' frozen `estimateTzs` was priced at TZS 5 a segment, and today's price is TZS 6: a check that priced
  * Start from the frozen figure instead of today's would read every money fixture differently (R-F2d).
@@ -96,6 +97,7 @@ const L = {
   f13: "F13 · RESUME'S OWN REASONS AND WORDS — saved sizes that cannot be read are sizes_unreadable (never price_unknown, which the owner could not fix); every Resume refusal says its own words, money only for a money reader, none says start, narrow the audience or Nothing was sent, and each ends Nobody more was messaged",
   f14: "F14 · ⛔ OD66 · NO BOTH-ARMS COUNT FOR A VIEWER WHO MAY NOT READ NUMBERS — audience_moved on a book ∪ players campaign says the audience grew with NO figure to such a viewer, and the figures to a reader; on a book or a players campaign the figures are OD65's count alone and go to every role; the refusal OBJECT names its population",
   f15: "F15 · ⛔ OD63 · SETTINGS THAT CANNOT BE READ ARE NEVER PRICED FROM THEIR DEFAULTS — a read that did not answer or threw is settings_unreadable and a record not read in full (its gaps holding the defaults) settings_incomplete, at Start and at Resume, with no price and no credit read, in a world where the defaults would START; settings_unreadable says try again, settings_incomplete names the developer and never says try again",
+  f16: "F16 · ⛔ RESUME REFUSES WHAT ONLY A NEW COPY CAN FIX (U42's review; ENGINE-SPEC §4.15 decision 1 as amended) — a list LONGER than its confirmed count (1,605 rows of 1,604) is list_over_confirmed WHATEVER the stop reason (an officer's pause, none, the credit's own) and BEFORE ANY READ — with the switch closed and on the console stub too, the switch, the settings, the price and the credit never read; a campaign the enqueue paused audience_moved, audience_unreadable, list_over_confirmed or list_over_confirmed_sending is refused for that reason (list_over_confirmed for the last two) with its list within its count, again with nothing read; and the same row paused by an officer within its count resumes (the control)",
 } as const;
 
 /* ══ THE IMPLEMENTATION UNDER TEST — swapped piece by piece by the plants ══════════════════════════════════════════ */
@@ -356,10 +358,15 @@ const MOVED_WITHOUT_FIGURES = "The audience grew since it was confirmed. Nothing
 
 const RESUME_LOW: ResumeRefusal = { reason: "credit_low", balanceTzs: 24_000, costTzs: 9_624, reserveTzs: 20_000 };
 const EVERY_RESUME_REFUSAL: ResumeRefusal[] = [
+  { reason: "list_over_confirmed" }, { reason: "audience_moved" }, { reason: "audience_unreadable" },
   { reason: "switch_closed" }, { reason: "rail_dead", rail: "keys-not-set" }, { reason: "confirmation_unreadable" }, { reason: "sizes_unreadable" },
   { reason: "settings_unreadable" }, { reason: "settings_incomplete" }, { reason: "price_unknown" }, { reason: "credit_unreadable" }, RESUME_LOW,
 ];
 const RESUME_WORDS: Readonly<Record<string, readonly [string, string]>> = {
+  // ⭐ What only a new copy can fix (F16): each says so, and that nobody more was messaged — never "then resume".
+  list_over_confirmed: both("More people are on this campaign's list than were confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged."),
+  audience_moved: both("The people on this campaign changed after it was confirmed, so it can't resume. Stop it and confirm a new copy. Nobody more was messaged."),
+  audience_unreadable: both("The saved audience can't be read any more, so this campaign can't resume. Stop it and confirm a new copy. Nobody more was messaged."),
   switch_closed: both("Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged."),
   rail_dead: both("No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more was messaged."),
   confirmation_unreadable: both("This campaign's confirmation can't be read in full, so what is left to send can't be counted, and it can't resume. Stop it, or ask the developer. Nobody more was messaged."),
@@ -777,6 +784,30 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
       && json(resumes.map((x) => resumed(x.refusal))) === json(WANT) && unpriced && honest;
     return [holds, `the defaults' world → ${said(control.check)} · Start ${json(starts.map((x) => said(x.check)))} · Resume ${json(resumes.map((x) => resumed(x.refusal)))} · never priced ${unpriced} · "${repair}"`];
   });
+
+  /* ── F16 · Resume refuses what only a new copy can fix (U42's review, §4.15 decision 1 as amended) ── */
+  await claim(ok, L.f16, async () => {
+    /** 1,605 rows on a list of 1,604 confirmed — a list longer than confirmed. */
+    const OVER_LIST = rows({ PENDING: 605, SENT: 1000 });
+    const at = (row: Partial<StoredSmsCampaign>, over: Partial<World> = {}): World => withW({ row: paused(row), balance: credit(40_000), ...over });
+    const nothingRead = (c: Calls): boolean => c.switch === 0 && c.settings === 0 && c.cost === 0 && c.balance === 0 && c.fence === 0;
+    const longer = [
+      await resumeIn(impl, at({ stopReason: "officer_paused" }), OVER_LIST),
+      await resumeIn(impl, at({ stopReason: null }), OVER_LIST),
+      await resumeIn(impl, at({ stopReason: "credit_unreadable" }), OVER_LIST),
+      await resumeIn(impl, at({ stopReason: "officer_paused" }, { live: CLOSED }), OVER_LIST),
+      await resumeIn(impl, at({ stopReason: "officer_paused" }, { provider: "console", live: CLOSED }), OVER_LIST),
+    ];
+    const longerOk = longer.every((x) => x.refusal?.reason === "list_over_confirmed" && nothingRead(x.calls));
+    const ENQUEUE_REASONS = ["audience_moved", "audience_unreadable", "list_over_confirmed", "list_over_confirmed_sending"];
+    const paused4: Array<{ refusal: ResumeRefusal | null; calls: Calls }> = [];
+    for (const stopReason of ENQUEUE_REASONS) paused4.push(await resumeIn(impl, at({ stopReason }), LEFT_604));
+    const reasonsOk = json(paused4.map((x) => resumed(x.refusal))) === json(["audience_moved", "audience_unreadable", "list_over_confirmed", "list_over_confirmed"])
+      && paused4.every((x) => nothingRead(x.calls));
+    const control = await resumeIn(impl, at({ stopReason: "officer_paused" }), LEFT_604);
+    const holds = longerOk && reasonsOk && control.refusal === null;
+    return [holds, `1,605 of 1,604 → ${json(longer.map((x) => `${resumed(x.refusal)}${nothingRead(x.calls) ? "" : " (read)"}`))} · the enqueue's reasons → ${json(paused4.map((x) => resumed(x.refusal)))} · an officer's pause within its count → ${resumed(control.refusal)}`];
+  });
 }
 
 /* ══ THE PLANTS — each a defect this unit could really ship, planted in memory ════════════════════════════════════ */
@@ -913,8 +944,9 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
     impl: () => ({ sentence: (r, v) => SC.startRefusalSentence(r, { ...v, money: true }) }),
   },
   {
+    // It also hands Resume a count of its own, so a list longer than confirmed is never seen (F16).
     name: "R-F6 · Resume prices the whole campaign, not the rows still owed a message",
-    expect: [L.f6],
+    expect: [L.f6, L.f16],
     impl: () => ({ resume: (c, counts, d) => SC.resumeRefusal(c, rows({ PENDING: c.audienceCount ?? outstandingOf(counts) }), d) }),
   },
   {
@@ -1027,11 +1059,47 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
       },
     }),
   },
+  {
+    // An officer's Pause landed before the enqueue's own: Resume reads only the stop reason, never the list's length.
+    name: "R-F16 · Resume blind to the list's length — a list longer than confirmed, paused by an officer, resumes",
+    expect: [L.f16],
+    impl: () => ({ resume: (c, counts, d) => SC.resumeRefusal(c, clippedTo(counts, c.audienceCount), d) }),
+  },
+  {
+    name: "R-F16b · Resume blind to the enqueue's stop reasons — a campaign paused audience_moved resumes",
+    expect: [L.f16],
+    impl: () => ({
+      resume: (c, counts, d) => SC.resumeRefusal(COPY_ONLY_STOPS.includes(c.stopReason ?? "") ? { ...c, stopReason: "officer_paused" } : c, counts, d),
+    }),
+  },
+  {
+    // Asked last, the refusal hides behind whatever is read first: a closed switch says "switch them on, then you can resume".
+    name: "R-F16c · what only a new copy can fix asked AFTER the reads — a closed switch answers first",
+    expect: [L.f16],
+    impl: () => ({
+      resume: async (c, counts, d) => {
+        const r = await SC.resumeRefusal({ ...c, stopReason: null }, clippedTo(counts, c.audienceCount), d);
+        return r ?? SC.copyOnlyRefusal(c, counts);
+      },
+    }),
+  },
 ];
 
 /** PENDING + HELD, for a plant that needs a figure when the row has no confirmed count. */
 function outstandingOf(counts: SmsCampaignRecipientStatusCounts): number {
   return counts.PENDING + counts.HELD;
+}
+
+/** The stop reasons the enqueue (U42) pauses a campaign for — what R-F16b hides. */
+const COPY_ONLY_STOPS = ["audience_moved", "audience_unreadable", "list_over_confirmed", "list_over_confirmed_sending"];
+
+/** The counts with PENDING cut back until the list is no longer than `cap` — the list's length hidden (R-F16, R-F16c). Counts
+ *  that are not a record of numbers are handed on as they are, so Resume still throws on them. */
+function clippedTo(counts: SmsCampaignRecipientStatusCounts, cap: number | null): SmsCampaignRecipientStatusCounts {
+  if (counts === null || typeof counts !== "object" || typeof cap !== "number") return counts;
+  const total = Object.values(counts).reduce((n: number, x) => n + (typeof x === "number" ? x : 0), 0);
+  const extra = total - cap;
+  return extra > 0 && typeof counts.PENDING === "number" ? { ...counts, PENDING: Math.max(0, counts.PENDING - extra) } : counts;
 }
 
 /** ⭐ §F, as a host runs it. */

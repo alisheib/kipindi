@@ -1483,6 +1483,13 @@ caps it. **Owner decision:** none.
   never finished (`enqueuedAt` null — paused while PREPARING; Resume returns it to PREPARING, §3.1) → the confirmed count
   (`audienceCount`) minus the settled rows, never fewer than the rows outstanding; no confirmed count to start from → null.
   Counts that are not a whole number ≥ 0 for EVERY status throw.
+- ✅ **FIRST, with no read (the U42 + U49a merge — §4.15 decision 1 as amended): what only a new copy can fix**
+  (`copyOnlyRefusal`): `list_over_confirmed` — a list LONGER than its confirmed count, read off the counts and WHATEVER the
+  stop reason (an officer's Pause can land before the enqueue's own); then a campaign the enqueue paused `audience_moved`,
+  `audience_unreadable`, `list_over_confirmed` or `list_over_confirmed_sending` is refused `audience_moved`,
+  `audience_unreadable` or `list_over_confirmed`, even with its list within its count. Neither the switch nor the credit is
+  read for them, and the console stub is refused them too. Each sentence says Stop it and confirm a new copy, and Nobody
+  more was messaged (`test:marketing-engine` F16, F13).
 - Order: `switch_closed` → `rail_dead` → (the console stub resumes here) → `confirmation_unreadable` (what is left is null)
   → `sizes_unreadable` (the saved sizes cannot be read, so it cannot be priced) → `settings_unreadable` /
   `settings_incomplete` → `price_unknown` → `credit_unreadable` / `credit_low` for `ceil(what is left × the largest saved
@@ -1510,7 +1517,8 @@ export type StartRefusal =
   | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number }
   | { reason: "audience_moved"; freshCount: number; confirmedCount: number; population: CampaignPopulation };
 export type ResumeRefusal =
-  | { reason: "switch_closed" | "confirmation_unreadable" | "sizes_unreadable" | "settings_unreadable"
+  | { reason: "list_over_confirmed" | "audience_moved" | "audience_unreadable" // the U42 + U49a merge (copyOnlyRefusal)
+      | "switch_closed" | "confirmation_unreadable" | "sizes_unreadable" | "settings_unreadable"
       | "settings_incomplete" | "price_unknown" | "credit_unreadable" }
   | { reason: "rail_dead"; rail: SmsRailProblem }
   | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number };
@@ -1520,6 +1528,7 @@ export const START_CREDIT_MAX_AGE_MS = 60_000;
 export async function checkStart(c: StoredSmsCampaign, deps?: StartCheckDeps): Promise<StartCheck>;
 export async function startRefusal(c: StoredSmsCampaign, deps?: StartCheckDeps): Promise<StartRefusal | null>;
 export function resumeOutstanding(c: Pick<StoredSmsCampaign, "enqueuedAt" | "audienceCount">, counts: SmsCampaignRecipientStatusCounts): number | null;
+export function copyOnlyRefusal(c: Pick<StoredSmsCampaign, "audienceCount" | "stopReason">, counts: SmsCampaignRecipientStatusCounts): ResumeRefusal | null; // the merge
 export async function resumeRefusal(c: StoredSmsCampaign, counts: SmsCampaignRecipientStatusCounts, deps?: StartCheckDeps): Promise<ResumeRefusal | null>;
 export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): string;
 export function resumeRefusalSentence(r: ResumeRefusal, viewer: RefusalViewer): string;
@@ -1568,6 +1577,12 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
 
 **As built · the Resume sentences, verbatim** (`resumeRefusalSentence` — a paused campaign may already have sent, so each
 ends "Nobody more was messaged."; none says start, narrow the audience, or "Nothing was sent."):
+- `list_over_confirmed` (the U42 + U49a merge): "More people are on this campaign's list than were confirmed, so it can't
+  resume. Stop it and confirm a new copy. Nobody more was messaged."
+- `audience_moved` (the merge): "The people on this campaign changed after it was confirmed, so it can't resume. Stop it
+  and confirm a new copy. Nobody more was messaged."
+- `audience_unreadable` (the merge): "The saved audience can't be read any more, so this campaign can't resume. Stop it and
+  confirm a new copy. Nobody more was messaged."
 - `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
   then you can resume. Nobody more was messaged."
 - `rail_dead`: "No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more
@@ -1951,7 +1966,8 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
    count — one groupBy, WHATEVER its stop reason, since an officer's Pause can land before the enqueue's own — and (2) one
    the enqueue paused for `audience_unreadable`, `audience_moved`, `list_over_confirmed` or `list_over_confirmed_sending`:
    each sentence says Stop and confirm a new copy, and a Resume of a list that already ran goes back to RUNNING and would
-   send to the extra rows.
+   send to the extra rows. ✅ **The refusal is built** at the U42 + U49a merge, in `start-check.ts`'s `resumeRefusal`
+   (`copyOnlyRefusal`, asked before any read — §4.12's as-built Resume); the single-flight is U47b's to build.
 2. **The view-model** (`campaign-live.ts`) — ONE function, used by the page's first render AND returned by every step and
    poll, so the browser never computes a figure. Role-shaped: E23's floor; money only for `campaignMoneyVisible`.
 3. **The driver** (`live-driver.tsx`, client): while the status is PREPARING or RUNNING and the viewer may act, it calls
