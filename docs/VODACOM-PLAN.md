@@ -51,7 +51,7 @@ re-run with its three-language crash titles, and the production build's first-lo
 
 **⏳ IN FLIGHT (updated 2026-10-07 ~10:45 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other session on
 that PC holds marketing S14 only, by agreement). **A8i-2:** the handover draft is applied on branch `vodacom-a8i2`
-(`d5bf2c48`, pushed; worktree `F:kipindi-a8i2`, cut from `9352de7c`) — NOT for main as is. Proven so far: typecheck,
+(`d5bf2c48`, pushed; worktree `F:\kipindi-a8i2`, cut from `9352de7c`) — NOT for main as is. Proven so far: typecheck,
 `test:enter-where-pressed` green, `--prove-red` 76/76. **The new drive's control run on live main (`9352de7c`, a
 fresh in-memory server): 15 pass, 8 fail — K1 K2 W2 ESC DD SL UD1 UD2, the eight the draft predicts:** W2 SOLD the
 ticket (the second Enter 60 ms after the seal's), DD and SL each placed a bet, Enter held on Up & Down's UP placed
@@ -61,9 +61,9 @@ case gets its own ticket next). The change-set review is in: it builds and every
 of six deletions passed it) — being fixed with Modal's dead held-key line, the census's first-definition fallback, a
 page-wide beat after a seal opened with focus on the page, and stale comments. Still to come: the correctness and
 proof reviews → the fixes → typecheck, suites, reds → the drive on the new tree and the 12-case drive → `test:all` →
-push → production read-back → records. **A8j** is being revised beside it in `F:kipindi-a8j` (branch `vodacom-a8j`,
+push → production read-back → records. **A8j** is being revised beside it in `F:\kipindi-a8j` (branch `vodacom-a8j`,
 from `a663acac`; the draft applied, its 19 review problems being addressed); it ships after A8i-2, rebased onto it.
-Then the close-out's three owed items, then **WP12**. (Left alone on that PC: `F:kipindi-journey` keeps uncommitted
+Then the close-out's three owed items, then **WP12**. (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start on the arming beat that the handover draft supersedes.)
 **Next:** (1) S6 — **A8i-2** and **A8j** (live for every player, money: above, §0i "A8i" and the handover's drafts), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
