@@ -92,7 +92,7 @@ System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLI
 | **Where** | A worktree off `main` (`C:\kipindi-tax`, branch `tax-report`, on the laptop; `F:\kipindi-tax`, branch `tax-report-edits`, on OMEGA-COMPILE01) → `main` |
 | **Next** | Read [`TAX-REPORT.md`](TAX-REPORT.md) §0 — never this cell |
 
-## ▶ 0e · MONEY DOORS — `MONEY-DOORS` · ⏳ **IN FLIGHT on OMEGA-COMPILE01 since 2026-10-07 ~12:15 EAT** · Phase A (route audit) then Phase B (this ruling)
+## ▶ 0e · MONEY DOORS — `MONEY-DOORS` · ⏳ **IN FLIGHT on OMEGA-COMPILE01 since 2026-10-07 ~12:15 EAT** · Phase A ✅ LIVE `c9b17053` · Phase B built, in verification
 
 Ali, 2026-10-07: *"for deposits. even if no mail was there remove the input to verify mail to deposit. its fine only
 withdrawals ar eforced verify maiil … intheuser profile we need a tab for internal receipts"*. Management, relayed by
@@ -104,9 +104,9 @@ sconsisently 1000 not 500"*. Owner answers the same day: publish the 2026-10-06 
 |---|---|
 | **What** | **Phase A** — land the 2026-10-06 route audit (P1–P10, the local-only branch `arch-hardening`, never pushed) after re-verifying it on today's main. **Phase B** — a deposit asks no email; a confirmed email is required to withdraw (asked after identity; the officer refused-funds return exempt); the app-wide email bar removed, email asked quietly (withdraw card, profile pill, first-deposit note); money emails only to confirmed addresses; a Receipts page for every deposit and withdrawal at /wallet/receipts with its door in the profile; minimum deposit and minimum stake TZS 1,000 everywhere (stake bounds floored on read); the withdraw screen states the true minimum |
 | **Where** | OMEGA-COMPILE01 · Phase A: `F:\kipindi-route-land`, branch `route-audit-land` (backup `origin/backup/arch-hardening`) · Phase B: `F:\kipindi-receipts`, branch `deposit-open-receipts` → `main` · board notes: `F:\kipindi-0e-board` |
-| **⏳ In flight** | Plan approved by Ali. Phase A starting: backup, rebase onto today's main, a battery measured against a clean-main baseline, browser drives, an independent review, then the push. Nothing of Phase B is built yet |
+| **⏳ In flight** | ✅ **Phase A LIVE** — `c9b17053`, served 2026-10-07 11:46 UTC (dpl read back, /api/health 200, signed-out /wallet → /auth/login?next=/wallet). Battery 431/465 with every red also red on clean main (DB suites need local Postgres binaries; three server-bound suites run separately against my own server on :3209 — 46/0, 21/0, 20/0); drives EN/SW/ZH × 360/1280 54/54. ⏳ **Phase B BUILT** on `deposit-open-receipts` (one WIP commit over `c9b17053`): deposit asks no email; withdraw needs a confirmed email after identity; the bar deleted; money mail to confirmed addresses only; `/wallet/receipts` + receipt page; TZS 1,000 floors; records written; 3 new suites (withdraw-email-gate 56/0, wallet-receipts 51/0, money-minimums 35/0) and ~20 suites re-pinned, all green one by one. Production read (read-only, 12:26 UTC): 9 funded players, ALL with a confirmed email — nobody holding money is newly stopped; 89 of 131 players never confirmed and can now deposit; every stored stake bound already 1,000. **Left:** the full battery + DB suites + red harnesses + build under the lock (queued behind Vodacom and marketing), drives at 360/768/1280/1920 × EN/SW/ZH, three PDFs, the independent review (running), push, live verify |
 | **Other lanes** | ⛔ Vodacom: R2 / S9's "email code before the first deposit" is SUPERSEDED by this ruling — do not build it; the shortfall test's TZS 500 example moves to 1,000 in Phase B. Marketing: Phase B adds one paged deposit/withdrawal read to both data-layer twins (the transaction block only) |
-| **Next** | Phase A as above, then Phase B |
+| **Next** | Phase B verification under the lock, then the push |
 
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
