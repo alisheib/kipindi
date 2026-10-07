@@ -16,6 +16,12 @@
  * ⛔ NO BUTTON WHILE THE WORDINGS ARE UNSAVED. The writer refuses then — a default nobody approved is not evidence — and
  * a control that always fails is worse than none, so the card says which screen saves them instead.
  *
+ * ⛔ 3b · THE TICK IS HELD AGAINST THE WORDS IT WAS GIVEN FOR. It is kept as the VERSION of the saved 18+ sentence that was
+ * on the screen when the box was ticked — never as a bare yes — so when the page re-reads (it does after every refusal)
+ * and the owner has reworded the sentence, the box reads unticked under the new words. Record captures that version at
+ * the click and posts it with the tick; the writer compares it with the version saved now and refuses a mismatch
+ * (`attestation_stale`) with nothing recorded — as the composer's Test card does for its own 18+ tick.
+ *
  * ⛔ A SEPARATE FILE, consulting the act gate itself (`useMayAct`), for the reason every card on this page does:
  * `test:admin-act-gate` judges a whole FILE. A viewer who may not act reads every count and changes nothing.
  * ⭐ D19 · there is nothing to mask here: a list row is counts, names and instants, never a phone number.
@@ -40,6 +46,12 @@ const DATE = (iso: string): string => {
   return Number.isNaN(d.getTime()) ? iso : d.toISOString().slice(0, 16).replace("T", " ");
 };
 
+/** What the confirmation dialog will do. ⛔ 3b · a recording carries the version of the 18+ words its tick was given
+ *  for, read at the Record click — the confirmation the officer gave travels with the words they gave it for. */
+type Ask =
+  | { readonly kind: "record"; readonly listId: string; readonly attestedVersion: number | null }
+  | { readonly kind: "revoke"; readonly listId: string };
+
 export function ListsCard({ view }: { view: ListsCardView }) {
   const mayAct = useMayAct();
   const router = useRouter();
@@ -48,38 +60,45 @@ export function ListsCard({ view }: { view: ListsCardView }) {
   /** Which list's form is open — one at a time, because each is an attestation and two half-filled ones invite a mix-up. */
   const [open, setOpen] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [ticked, setTicked] = useState(false);
-  const [asking, setAsking] = useState<{ kind: "record" | "revoke"; listId: string } | null>(null);
+  /** ⛔ 3b · The tick, held as the VERSION of the 18+ words it was given for (null: not ticked). */
+  const [tickedFor, setTickedFor] = useState<number | null>(null);
+  const [asking, setAsking] = useState<Ask | null>(null);
   /** The list whose revoke form is open. ⛔ The REASON is asked before the confirmation, never after: a dialog that
    *  fires on a reason nobody has written yet is a control that asks the wrong question first. */
   const [revoking, setRevoking] = useState<string | null>(null);
   const [reason, setReason] = useState("");
 
+  // ⛔ 3b · Ticked only while the words it was given for are still the words on the screen: a rewording read in unticks it.
+  const ticked = tickedFor !== null && tickedFor === view.adultVersion;
   const noteChars = proofNoteChars(note);
   const noteReady = noteChars >= PROOF_NOTE_MIN && noteChars <= PROOF_NOTE_MAX;
   const reasonChars = proofNoteChars(reason);
   const reasonReady = reasonChars >= PROOF_NOTE_MIN && reasonChars <= PROOF_NOTE_MAX;
 
-  const run = (kind: "record" | "revoke", listId: string) => {
+  const run = (ask: Ask) => {
     setAsking(null);
     start(async () => {
       const fd = new FormData();
-      fd.set("listId", listId);
-      if (kind === "record") { fd.set("proofNote", note); fd.set("adultAttested", ticked ? "1" : "0"); }
-      else fd.set("reason", reason);
-      const res = await runAdminAction(() => (kind === "record" ? recordListBasisAction(fd) : revokeListBasisAction(fd)));
+      fd.set("listId", ask.listId);
+      if (ask.kind === "record") {
+        fd.set("proofNote", note);
+        fd.set("adultAttested", ask.attestedVersion !== null ? "1" : "0");
+        // ⛔ 3b · the words the tick was given for travel with it; the writer refuses them once reworded.
+        if (ask.attestedVersion !== null) fd.set("attestedVersion", String(ask.attestedVersion));
+      } else fd.set("reason", reason);
+      const res = await runAdminAction(() => (ask.kind === "record" ? recordListBasisAction(fd) : revokeListBasisAction(fd)));
       if (!res.ok) {
-        toast({ title: kind === "record" ? "Couldn't record the basis" : "Couldn't revoke the basis", description: res.error, variant: "danger" });
+        toast({ title: ask.kind === "record" ? "Couldn't record the basis" : "Couldn't revoke the basis", description: res.error, variant: "danger" });
         router.refresh();
         return;
       }
       toast({
-        title: kind === "record" ? "Basis recorded" : "Basis revoked",
-        description: kind === "record"
+        title: ask.kind === "record" ? "Basis recorded" : "Basis revoked",
+        description: ask.kind === "record"
           ? "This list's members can now receive campaigns under the licence. Anyone added from now on is not covered until you record again."
           : "From now on this list covers nobody. People who consented are unaffected.",
       });
-      setOpen(null); setNote(""); setTicked(false); setReason(""); setRevoking(null);
+      setOpen(null); setNote(""); setTickedFor(null); setReason(""); setRevoking(null);
       router.refresh();
     });
   };
@@ -164,20 +183,24 @@ export function ListsCard({ view }: { view: ListsCardView }) {
                     {noteChars} / {PROOF_NOTE_MAX} characters{noteChars < PROOF_NOTE_MIN ? ` — at least ${PROOF_NOTE_MIN}` : ""}
                   </p>
                   {/* ⭐ The tick is labelled with the SAVED sentence, so the officer attests to the words that will be
-                      stored on the row — never to a paraphrase written in this file. */}
-                  <Checkbox checked={ticked} onChange={setTicked} label={view.adultLabel ?? ""} />
+                      stored on the row — never to a paraphrase written in this file — and ⛔ 3b it is held as that
+                      sentence's version, so the words it confirms are the words the writer is asked to store. */}
+                  <Checkbox checked={ticked} onChange={(on) => setTickedFor(on ? view.adultVersion : null)} label={view.adultLabel ?? ""} />
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => setAsking({ kind: "record", listId: l.id })} disabled={pending || !noteReady || !ticked}>
+                    <Button
+                      onClick={() => setAsking({ kind: "record", listId: l.id, attestedVersion: ticked ? tickedFor : null })}
+                      disabled={pending || !noteReady || !ticked}
+                    >
                       {inForce ? "Record again" : "Record"}
                     </Button>
-                    <Button variant="ghost" onClick={() => { setOpen(null); setNote(""); setTicked(false); }} disabled={pending}>
+                    <Button variant="ghost" onClick={() => { setOpen(null); setNote(""); setTickedFor(null); }} disabled={pending}>
                       Cancel
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => { setOpen(l.id); setNote(""); setTicked(false); }} disabled={pending}>
+                  <Button variant="secondary" onClick={() => { setOpen(l.id); setNote(""); setTickedFor(null); }} disabled={pending}>
                     {inForce ? "Record again" : "Record"}
                   </Button>
                   {inForce && (
@@ -215,7 +238,7 @@ export function ListsCard({ view }: { view: ListsCardView }) {
       <ConfirmModal
         open={asking !== null}
         onClose={() => setAsking(null)}
-        onConfirm={() => asking && run(asking.kind, asking.listId)}
+        onConfirm={() => asking && run(asking)}
         title={asking?.kind === "record" ? "Record this basis?" : "Revoke this basis?"}
         body={asking?.kind === "record"
           ? "From now on this list's current members can receive campaigns under the licence, without each person having agreed. Anyone added later is not covered until you record again. A stop is always kept."

@@ -23,6 +23,13 @@
  * default nobody approved is not evidence — `currentWording` answers null until an admin saves the card, and this
  * refuses rather than recording today's suggestion as though it had been approved.
  *
+ * ⛔ 3b · AND THE 18+ WORDS STORED ARE THE WORDS THE OFFICER READ. The row stores the `adult.list` sentence saved AT THE
+ * SAVE, and the owner may reword it while a Lists card is open — so a tick given under the old words would be recorded
+ * beside new ones the officer never saw. The card therefore posts the VERSION its tick was given for
+ * (`attestedVersionOf` re-types the field), and a version that is not the saved one — older, newer, absent or malformed —
+ * is refused `attestation_stale`: nothing is written, no audit row is made, and the officer is asked to reload and read
+ * the new words. The same rule the typed test applies to `adult.test` (campaign-compose §18.32).
+ *
  * Guard: `npm run test:contacts-lists`.
  */
 import { randomInt } from "node:crypto";
@@ -42,7 +49,7 @@ export const LIST_BASIS_KEY = "LICENCE_OUTREACH";
 
 /** Why a recording or a revocation was refused. Every refusal writes nothing and makes no audit row. */
 export type ListBasisRefusal =
-  | "no_officer" | "wording_unsaved" | "list_not_found" | "adult_not_attested"
+  | "no_officer" | "wording_unsaved" | "list_not_found" | "adult_not_attested" | "attestation_stale"
   | "note_has_phone" | "note_too_short" | "note_too_long"
   | "reason_has_phone" | "reason_too_short" | "reason_too_long"
   | "basis_not_found" | "not_saved";
@@ -55,6 +62,9 @@ export const LIST_BASIS_REFUSAL_SENTENCE: Readonly<Record<ListBasisRefusal, stri
     "The licence outreach wording or its 18+ confirmation hasn't been saved yet — an admin saves them in Admin → System → Marketing wordings.",
   list_not_found: "That list wasn't found — reload the page.",
   adult_not_attested: "Confirm that every number on this list belongs to a person aged 18 or older.",
+  // ⛔ 3b · the tick was given for words reworded since the page opened, or the page posted no version: nothing is recorded.
+  attestation_stale:
+    "The 18+ confirmation was reworded while this page was open, so nothing was recorded — reload the page, read the new words and tick the box again.",
   note_has_phone: CONSENT_BASIS_REFUSAL_SENTENCE.note_has_phone,
   note_too_short: CONSENT_BASIS_REFUSAL_SENTENCE.note_too_short,
   note_too_long: CONSENT_BASIS_REFUSAL_SENTENCE.note_too_long,
@@ -97,19 +107,45 @@ function noteProblem(raw: unknown, kind: "note" | "reason"): ListBasisRefusal | 
   return null;
 }
 
+/** ⛔ 3b · A posted version: plain decimal digits, the first not a zero, at most ten of them — and nothing else. */
+const POSTED_VERSION = /^[1-9][0-9]{0,9}$/;
+
+/**
+ * ⛔ 3b · THE VERSION A TICK WAS GIVEN FOR, AS THE CARD POSTS IT — re-typed here, never trusted to be the shape the card
+ * meant to send. A form field arrives as TEXT, so the version is plain decimal digits with no sign, space, leading zero,
+ * fraction or exponent ("3"); anything else — absent, empty, "0", "03", "3.0", " 3", "-3", a number, a file — is null.
+ * ⛔ Null is never "nothing was reworded": the writer refuses it `attestation_stale` like a mismatch, so a page that posts
+ * no version (one loaded before this rule shipped) is asked to read the words again, never recorded against today's.
+ */
+export function attestedVersionOf(raw: unknown): number | null {
+  return typeof raw === "string" && POSTED_VERSION.test(raw) ? Number(raw) : null;
+}
+
+/** What the writer reads that a suite may swap. ⛔ For in-process red plants and a fresh world per run ONLY, never in
+ *  production: the action passes nothing, and gets these. */
+export type ListBasisDeps = {
+  /** The newest SAVED version of a wording, or null while it is unsaved — ⛔ never a suggestion (W1). */
+  readonly wording: typeof currentWording;
+};
+export const LIST_BASIS_DEPS: ListBasisDeps = { wording: currentWording };
+
 /**
  * ⭐ RECORD A BASIS. Every rule is run before anything is written, the row carries the words as they stand, and the
  * COMPLIANCE row carries COUNTS ONLY — never a number, never the note's text (spec §8).
  */
 export async function recordListBasis(input: {
-  listId: string; officerId: string; proofNote: string; adultAttested: boolean; nowIso?: string;
-}): Promise<RecordListBasisResult> {
+  listId: string; officerId: string; proofNote: string; adultAttested: boolean;
+  /** ⛔ 3b · the version of the `adult.list` words the tick was given for, as the card showed them (`attestedVersionOf`
+   *  the posted field) — null when none was posted. */
+  attestedVersion: number | null;
+  nowIso?: string;
+}, deps: ListBasisDeps = LIST_BASIS_DEPS): Promise<RecordListBasisResult> {
   const officerId = typeof input?.officerId === "string" ? input.officerId.trim() : "";
   if (officerId === "") return refuse("no_officer");
 
   // ⛔ The words FIRST: a basis recorded under a wording nobody approved is not evidence of anything.
-  const wording = currentWording("basis.LICENCE_OUTREACH");
-  const adult = currentWording("adult.list");
+  const wording = deps.wording("basis.LICENCE_OUTREACH");
+  const adult = deps.wording("adult.list");
   if (wording === null || adult === null) return refuse("wording_unsaved");
 
   const list = await Promise.resolve(db.contactList.find(input.listId)).catch(() => null);
@@ -117,6 +153,10 @@ export async function recordListBasis(input: {
 
   // ⛔ The tick is a person's attestation, not a default. It is asked for every recording, including a re-recording.
   if (input.adultAttested !== true) return refuse("adult_not_attested");
+  // ⛔ 3b · AND IT COUNTS ONLY FOR THE WORDS IT WAS GIVEN FOR. The row stores `adult`, the words saved NOW; a tick given
+  // for any other version (reworded while the page was open), for none, or for a value that is not that version's
+  // number is refused before anything is written — a strict comparison, so text, a fraction or null never passes.
+  if (input.attestedVersion !== adult.v) return refuse("attestation_stale");
 
   const noteBad = noteProblem(input.proofNote, "note");
   if (noteBad) return refuse(noteBad);
