@@ -84,6 +84,11 @@ export function CloseAccountForm() {
         confirmLabel={t.common.yesClosePermanently}
         cancelLabel={t.common.keepMyAccount}
         onConfirm={() => formRef.current?.requestSubmit()}
+        /* ⭐ S6 A8j — Enter in the phrase box CLOSED THE ACCOUNT and its wallet with no dialog: one text input beside a
+           textarea and no submit button is a form a browser submits on Enter. Now Enter opens this dialog once the phrase
+           is typed, and does nothing before, as the disabled button does (`submitsForm`, in `confirm-dialog.tsx`; in
+           WebKit before Safari 16.4 it does nothing either way). */
+        submitsForm
         trigger={
           <button
             type="button"

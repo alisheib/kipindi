@@ -49,6 +49,9 @@ export function RgConfirmSubmit({
       body={typeof body === "string" ? <p>{body}</p> : body}
       confirmLabel={label}
       onConfirm={submitForm}
+      /* ⭐ S6 A8j — the confirm submits the host's form, and so nothing else may (`submitsForm`, in `confirm-dialog.tsx`).
+         Today's two hosts hold no text field, so Enter could not submit them; a field added later cannot open the hole. */
+      submitsForm
       trigger={
         <button ref={buttonRef} type="button" className={`${buttonClass} inline-flex items-center gap-1.5`}>
           {icon}

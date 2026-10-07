@@ -898,6 +898,16 @@ gets a NAME (the census refuses inline ones) and every key event named in `src/`
 reads. Guards: `test:enter-where-pressed` (predeploy; it builds the guard and `leaveLayer` from their text and runs them)
 and its `red:` twin; the drive `qa:enter-where-pressed` (`ENGINE=webkit|firefox` for the other engines).
 
+⛔ **Forms — Enter in a form never skips its confirm (Vodacom S6 A8j, 2026-10-07).** `ConfirmDialog` forces its trigger
+to `type="button"`, so a form whose commit is that dialog has no submit button, and a browser SUBMITS a form of one text
+field on Enter (or a phone's Go key): that is how Enter in the withdraw amount box sent the withdrawal with no "Confirm
+withdrawal", and Enter in the close-account phrase box closed the account. A `ConfirmDialog` whose confirm submits the
+form it sits in takes `submitsForm` (a native guard that turns every other submit into the dialog, a hidden default
+`<input type="submit" autocomplete="off">` disabled until the guard listens, and a hidden unnamed second text field for
+WebKit), its confirm submits SYNCHRONOUSLY inside `onConfirm`, ONE such dialog per form, and NOTHING ELSE in the form may
+submit — the kit `<Button>` with no `type` is a submit button inside a form. Guard: `test:implicit-submit` (predeploy;
+the six host forms by name) and its `red:` twin; the drive `qa:implicit-submit` (`ENGINE=webkit|firefox`).
+
 ## Brand Kit v2 "Needle" (June 2026)
 
 Logo redesigned by Claude Design. The gilt NEEDLE crossing the rim is now the
