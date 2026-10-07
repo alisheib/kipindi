@@ -2,8 +2,10 @@
  * test:marketing-engine — THE SEND ENGINE'S SUITE (spec `docs/marketing-specs/ENGINE-SPEC.md`), one SECTION per unit, each
  * self-contained: its labels, its fixture world, its implementation under test and its plants live inside its own block.
  *   §E  U42 · the enqueue — a confirmed campaign's recipient rows over the ONE walk (§4.9, `src/lib/server/marketing/enqueue.ts`);
- *   §F  U49a · the credit kept for codes and the refusal at Start (§4.12) — joins in its own commit;
- *   U43b's sections (the slice, §4.13) join in theirs.
+ *       in this file;
+ *   §F  U49a · the credit kept for codes, and the refusals at Start and at Resume (§4.12, `start-check.ts`) — a SECTION
+ *       MODULE, `scripts/marketing-engine/f-credit.mts`, loaded after the database variables are gone (`hosted`, below);
+ *   U43b's sections (the slice, §4.13) join as section modules of the same shape.
  *
  * ⭐ DRIVEN, NOT READ. §E runs `enqueueStep` on the memory twin over the REAL walk (`walkCampaignAudience`), the REAL fence
  * (`audienceFence` — the confirmed counts and members keys U40a freezes) and the REAL doors (`createMany`, `countByStatus`,
@@ -33,12 +35,14 @@
  *
  * ⭐ THE HARNESS (`SECTIONS`). A section is `{ name, run, plants }`: `run` records its claims against the REAL code through
  * `ok`/`claim`; each plant re-runs the section with ONE defect planted in memory and names EXACTLY the claims it must turn
- * red. Labels are prefixed by the section's letter, so two sections never share one.
+ * red. Labels are prefixed by the section's letter, so two sections never share one. A SECTION MODULE exports an
+ * `EngineSection` (its labels, `run(impl, ok)`, the shipped implementation `real`, and plants that each swap pieces of
+ * it); `hosted` runs one in this shape — against `real`, and each plant against `real` with its pieces swapped in.
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` proves the baseline of EVERY section green first, then runs every
  * plant of every section and requires exactly its named claims to fail — red anywhere else is reported, never counted as
- * a catch. A plant is a dependency handed to the step, a stand-in step, or a source text replaced in memory. No file on
- * disk is written. No database is touched: the database variables are removed below, before the first server module
- * loads, so the store picks its memory twin.
+ * a catch; a section or a plant that throws is a failure, never a crash. A plant is a dependency handed to the step, a
+ * stand-in, or a source text replaced in memory. No file on disk is written. No database is touched: the database
+ * variables are removed below, before the first server module loads, so the store picks its memory twin.
  * ⛔ A section that drives a send path (`dispatchSlice`, the test send) imports the fixed windows of
  * `scripts/lib/send-window.mts` (`test:marketing-window` W6) — §E drives none.
  * ⛔ This file holds no backslash (an editing tool decodes them): line breaks and patterns are built from codes and
@@ -1304,24 +1308,53 @@ const SECTION_E: Section = await (async (): Promise<Section> => {
 })();
 SECTIONS.push(SECTION_E);
 
+/* ══ §F · U49a — A SECTION MODULE, loaded now that the database variables are gone ══════════════════════════════════════ */
+
+type EngineSection<I> = import("./marketing-engine/f-credit.mts").EngineSection<I>;
+const { SECTION_F } = await import("./marketing-engine/f-credit.mts");
+
+/** ⭐ A section module's `EngineSection` in this host's shape: its claims against `real`, and each plant against `real` with
+ *  the plant's pieces swapped in. A plant whose pieces cannot be built throws from its run — reported failed, never a crash. */
+function hosted<I>(s: EngineSection<I>): Section {
+  return {
+    name: s.title,
+    run: () => s.run(s.real, ok),
+    plants: () => s.plants.map((p): Plant => ({ name: p.name, expect: p.expect, run: () => s.run({ ...s.real, ...p.impl() }, ok) })),
+  };
+}
+SECTIONS.push(hosted(SECTION_F));
+
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+const why = (err: unknown): string => String((err as Error)?.message ?? err).slice(0, 200);
+/** One section's claims; a section that throws is a failure of the suite, never a silent end. */
+async function runSection(s: Section): Promise<void> {
+  try {
+    await s.run();
+  } catch (err) {
+    ok(`${s.name} · the section ran to its end`, false, `threw: ${why(err)}`);
+  }
+}
 
 if (!PROVE_RED) {
   for (const s of SECTIONS) {
     console.log(`${NL}── ${s.name} ──`);
-    await s.run();
+    await runSection(s);
   }
   console.log(`${NL}marketing-engine: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;
 } else {
-  /* ── THE BASELINE — a plant can only "hold" against claims the real code PASSES ── */
-  await silently(async () => { for (const s of SECTIONS) await s.run(); });
-  if (fail > 0) {
-    console.log(`RED CONTROL — NOT RUN: the baseline is not green (${fail} claim(s) fail for the REAL code):${NL}  ${failed.join(`${NL}  `)}`);
-    process.exit(1);
+  /* ── THE BASELINE, section by section — a plant can only "hold" against claims the real code PASSES ── */
+  for (const s of SECTIONS) {
+    resetCounts();
+    await silently(() => runSection(s));
+    if (fail > 0) {
+      console.log(`RED CONTROL — NOT RUN: ${s.name} — the baseline is not green (${fail} claim(s) fail for the REAL code):${NL}  ${failed.join(`${NL}  `)}`);
+      process.exit(1);
+    }
+    console.log(`RED CONTROL — ${s.name} — baseline green (${pass} claims pass for the real code)`);
   }
-  console.log(`RED CONTROL — baseline green (${pass} claims pass for the real code)${NL}`);
-  console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);
+  console.log(`${NL}RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);
   let held = 0;
   let total = 0;
   const missed: string[] = [];
@@ -1331,7 +1364,11 @@ if (!PROVE_RED) {
       total++;
       resetCounts();
       const startedAt = Date.now();
-      await silently(plant.run);
+      try {
+        await silently(plant.run);
+      } catch (err) {
+        ok(`${plant.name} · the plant ran to its end`, false, `threw: ${why(err)}`);
+      }
       const took = `${((Date.now() - startedAt) / 1000).toFixed(1)} s`;
       const got = [...new Set(failed)].sort();
       const want = [...new Set<string>(plant.expect)].sort();
@@ -1349,3 +1386,6 @@ if (!PROVE_RED) {
   console.log(`${NL}RED CONTROL — ${held} of ${total} proofs held${missed.length ? `; ${missed.length} FAILED` : ""}`);
   process.exitCode = missed.length === 0 ? 0 : 1;
 }
+// ⛔ Explicit (U49a's host's rule): a handle an imported module leaves open must never turn a finished run into a hang on
+// the predeploy chain.
+process.exit(process.exitCode ?? 1);

@@ -29,6 +29,13 @@
  * named whole, the chip is one fact, "Healthy" names the alert line, a stale figure under the floor is danger, and the
  * clock's month comes from a fixed list (a newer ICU spelt September "Sept" and turned §9 red on one machine).
  *
+ * 2026-10-07 (U49a, ENGINE-SPEC §4.12 decision 1): §10 `sendBatch`'s optional `minimumBalanceTzs`, the credit kept for
+ * login and withdrawal codes. ⭐ An all-MARKETING batch on a confirmed reading below it is held MARKETING_FLOOR while a
+ * login code in the same state sends (alone, or beside marketing); a top-up is honoured within the re-check, and a
+ * missing or stale reading asked for that comes back low holds the batch; unknown is not low there (the engine fails
+ * closed); a malformed option holds the batch. Every case above passes no option and is unchanged: that is today's
+ * behaviour, byte for byte. Its plants are in the anchors file too.
+ *
  * Run: npm run test:sms-cost-guard
  */
 import { readFileSync } from "node:fs";
@@ -519,6 +526,133 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   balanceGate = null;
   ok("§7 a read that lands late never overwrites a newer reading", smsBalanceSnapshot().tzs === 146, `tzs=${smsBalanceSnapshot().tzs}`);
   balanceReply = balanceRefused;
+}
+
+/* ══ §10 · U49a · THE CREDIT KEPT FOR LOGIN AND WITHDRAWAL CODES, `minimumBalanceTzs` (2026-10-07) ═════════════════ */
+// ENGINE-SPEC §4.12 decision 1 / E16: the campaign engine's LAST line, ADDITIVE to the platform floor. It judges only a
+// batch whose every message is MARKETING, and only when the caller asks for it; with no option, every case above is
+// today's behaviour unchanged. TZS 15,000 sits far above the TZS 50 floor and the TZS 150 alert line (so it raises no
+// alarm) and below the TZS 20,000 kept for codes by default (OD63). Placed after §7 so no alarm count runs after it.
+// ⚠️ Labels here carry no spaced dash: the red harness reads a FAIL line's label up to the first one.
+{
+  const KEPT = { minimumBalanceTzs: 20_000 };
+  const marketing = (n = 1) =>
+    Array.from({ length: n }, (_, i) => ({ to: `+25577261962${i}`, body: "Ofa ya 50pick", purpose: "MARKETING" as const }));
+  /** A reading the snapshot holds, `ageMs` old, set directly as a send reply or the admin card would have left it. */
+  const holding = (tzs: number, ageMs = 0) => { resetBalance(); globalThis.__50PICK_SMS_BALANCE = { tzs, at: Date.now() - ageMs }; };
+  const rowCount = async () => (await db.smsMessage.listRecent(10_000)).length;
+
+  // Control: no option (and an empty one) is today's send path, the platform floor alone judging.
+  holding(15_000);
+  reply = accepted(15_000);
+  calls = 0;
+  const plain = await sendBatch(marketing());
+  holding(15_000);
+  const empty = await sendBatch(marketing(), {});
+  ok("§10 control: with no option a MARKETING batch at TZS 15,000 sends as it always has, the platform floor alone judging it",
+    !plain.refused && !empty.refused && calls === 2 && plain.results[0]?.ok === true && empty.results[0]?.ok === true,
+    `refused=${plain.refused}/${empty.refused} calls=${calls}`);
+
+  // ⭐ The plan's RED, this file's half: the same batch, with the credit kept for codes asked for.
+  holding(15_000);
+  calls = 0;
+  balanceCalls = 0;
+  const rowsBefore = await rowCount();
+  const held = await sendBatch(marketing(2), KEPT);
+  const rowsAfter = await rowCount();
+  ok("§10 ⭐ below the credit kept for codes a MARKETING batch is REFUSED MARKETING_FLOOR before any request, every message reported refused and no row written",
+    held.refused === "MARKETING_FLOOR" && calls === 0 && balanceCalls === 0 && rowsAfter === rowsBefore
+      && held.results.length === 2 && held.results.every((x) => !x.ok && x.code === "MARKETING_FLOOR"),
+    `refused=${held.refused} calls=${calls} balanceCalls=${balanceCalls} rows ${rowsBefore} -> ${rowsAfter}`);
+
+  // ⭐ …while a login code in the SAME state sends: alone (even were a caller to pass the option), or beside marketing.
+  holding(15_000);
+  calls = 0;
+  balanceCalls = 0;
+  const code = await sendBatch(otp(), KEPT);
+  const codeReads = balanceCalls;
+  holding(15_000);
+  const mixed = await sendBatch([...otp(), ...marketing()], KEPT);
+  ok("§10 ⭐ in the SAME state an OTP batch still sends, and so does a batch carrying a login code beside marketing: the marketing floor judges only an all-MARKETING batch",
+    !code.refused && code.results[0]?.ok === true && codeReads === 0
+      && !mixed.refused && mixed.results.length === 2 && mixed.results.every((x) => x.ok) && calls === 2,
+    `otp refused=${code.refused} reads=${codeReads} · mixed refused=${mixed.refused} · calls=${calls}`);
+
+  // A top-up: TZS 15,000 was read five minutes ago and the account was topped up since. Refusing is the costly outcome.
+  holding(15_000, 5 * 60_000);
+  balanceReply = balanceIs(30_000);
+  reply = accepted(30_000);
+  calls = 0;
+  balanceCalls = 0;
+  const topped = await sendBatch(marketing(), KEPT);
+  ok("§10 a LOW reading over a minute old is re-checked before the marketing floor refuses: a top-up is honoured",
+    !topped.refused && calls === 1 && balanceCalls === 1 && smsBalanceSnapshot().tzs === 30_000,
+    `refused=${topped.refused} calls=${calls} balanceCalls=${balanceCalls} tzs=${smsBalanceSnapshot().tzs}`);
+
+  holding(15_000, 5 * 60_000);
+  balanceReply = balanceRefused;
+  calls = 0;
+  balanceCalls = 0;
+  const stillLow = await sendBatch(marketing(), KEPT);
+  ok("§10 …and a re-check that cannot read keeps the low reading: the MARKETING batch is still held",
+    stillLow.refused === "MARKETING_FLOOR" && calls === 0 && balanceCalls === 1,
+    `refused=${stillLow.refused} calls=${calls} balanceCalls=${balanceCalls}`);
+
+  // No reading at all, then a reading past the 15-minute TTL: each is ASKED for before the floor decides, and when the
+  // account really is under the line, the asked-for reading holds the batch (U49a review: the read that comes back LOW).
+  resetBalance();
+  balanceReply = balanceIs(15_000);
+  reply = accepted(15_000);
+  calls = 0;
+  balanceCalls = 0;
+  const askedLow = await sendBatch(marketing(), KEPT);
+  holding(30_000, 16 * 60_000);
+  const staleThenLow = await sendBatch(marketing(), KEPT);
+  ok("§10 a missing or stale reading is asked for first, and a credit that comes back below the line holds the MARKETING batch",
+    askedLow.refused === "MARKETING_FLOOR" && staleThenLow.refused === "MARKETING_FLOOR" && calls === 0 && balanceCalls === 2
+      && smsBalanceSnapshot().tzs === 15_000,
+    `refused=${askedLow.refused}/${staleThenLow.refused} calls=${calls} balanceCalls=${balanceCalls} tzs=${smsBalanceSnapshot().tzs}`);
+  balanceReply = balanceRefused;
+
+  // ⛔ Unknown is not low INSIDE sendBatch: failing closed is the engine's (its slice pauses credit_unreadable first).
+  resetBalance();
+  balanceReply = balanceRefused;
+  reply = accepted(15_000);
+  calls = 0;
+  const unread = await sendBatch(marketing(), KEPT);
+  holding(10_000, 16 * 60_000); // past the 15-minute TTL: a stale reading
+  const stale = await sendBatch(marketing(), KEPT);
+  ok("§10 ⛔ an unreadable or a stale balance does NOT hold a MARKETING batch inside sendBatch: unknown is not low, the engine fails closed before it (E16)",
+    !unread.refused && !stale.refused && calls === 2, `refused=${unread.refused}/${stale.refused} calls=${calls}`);
+
+  // The line itself is not below it; and under the platform floor the floor still answers first.
+  holding(20_000);
+  reply = accepted(20_000);
+  calls = 0;
+  const atLine = await sendBatch(marketing(), KEPT);
+  holding(19_999);
+  const under = await sendBatch(marketing(), KEPT);
+  holding(30);
+  const belowFloor = await sendBatch(marketing(), KEPT);
+  ok("§10 the line itself: TZS 20,000 sends and TZS 19,999 is held, and under the platform floor the batch is still BALANCE_FLOOR",
+    !atLine.refused && under.refused === "MARKETING_FLOOR" && belowFloor.refused === "BALANCE_FLOOR" && calls === 1,
+    `20,000 ${atLine.refused ?? "sent"} · 19,999 ${under.refused ?? "SENT"} · 30 ${belowFloor.refused ?? "SENT"} · calls=${calls}`);
+
+  // ⛔ A malformed option never opens the rail; 0 is a figure (nothing kept) and sends.
+  holding(40_000);
+  reply = accepted(40_000);
+  calls = 0;
+  const notNumber = await sendBatch(marketing(), { minimumBalanceTzs: Number.NaN });
+  const negative = await sendBatch(marketing(), { minimumBalanceTzs: -1 });
+  const asText = await sendBatch(marketing(), { minimumBalanceTzs: "20000" as unknown as number });
+  const zero = await sendBatch(marketing(), { minimumBalanceTzs: 0 });
+  ok("§10 ⛔ a floor that is not a figure holds the MARKETING batch: a malformed option never opens the rail (and 0, a figure, sends)",
+    notNumber.refused === "MARKETING_FLOOR" && negative.refused === "MARKETING_FLOOR" && asText.refused === "MARKETING_FLOOR"
+      && !zero.refused && calls === 1,
+    `NaN ${notNumber.refused ?? "SENT"} · -1 ${negative.refused ?? "SENT"} · text ${asText.refused ?? "SENT"} · 0 ${zero.refused ?? "sent"} · calls=${calls}`);
+
+  balanceReply = balanceRefused;
+  await quiet();
 }
 
 /* ══ §8 · WHO CALLS IT — the admin card and /api/health, each within a budget ═══════════════════ */
