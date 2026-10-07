@@ -1196,7 +1196,7 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
           subject: `Referral bonus · ${formatTzs(amount)}`,
           html: referralEarningHtml({ type: "BONUS", amountTzs: amount }),
           tag: "referral",
-        })).catch(() => {});
+        }), { confirmedOnly: true }).catch(() => {});
       }
     };
 
@@ -1281,7 +1281,7 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
         totalEarned: acct?.totalEarnedTzs ?? cfg.prize.amountTzs,
       }),
       tag: "referral-reward",
-    }));
+    }), { confirmedOnly: true });
   }
 }
 
@@ -1592,7 +1592,7 @@ export async function onRecruitSettlement(
     // reading it would be told their business is a promo (four-lens review, 2026-09-07).
     if (policy.programme === "AGENT") {
       notifyAgentCommission(referrerUserId, { amountTzs: paid.cut });
-      sendEmailToUser(referrerUserId, (email) => ({ to: email, subject: `Agent commission · ${formatTzs(paid.cut)}`, html: agentCommissionEarnedHtml({ amountTzs: paid.cut }), tag: "agent-commission" })).catch(() => {});
+      sendEmailToUser(referrerUserId, (email) => ({ to: email, subject: `Agent commission · ${formatTzs(paid.cut)}`, html: agentCommissionEarnedHtml({ amountTzs: paid.cut }), tag: "agent-commission" }), { confirmedOnly: true }).catch(() => {});
     } else {
       notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: paid.cut });
       sendEmailToUser(referrerUserId, (email) => ({
@@ -1600,7 +1600,7 @@ export async function onRecruitSettlement(
         subject: `Referral commission · ${formatTzs(paid.cut)}`,
         html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.cut }),
         tag: "referral",
-      })).catch(() => {});
+      }), { confirmedOnly: true }).catch(() => {});
     }
   } else if (paid) {
     // A payable was created and no money moved. That is an officer's problem, not a silent
@@ -1695,7 +1695,7 @@ export async function clawbackMarketCommission(
       // ⭐ Money left a wallet — the person is told, with the figure (four-lens review, 2026-09-07).
       if (current.programme === "AGENT") {
         notifyAgentCommissionReversed(current.referrerUserId, { amountTzs: current.amountTzs, recoveredTzs: recovered, marketId });
-        sendEmailToUser(current.referrerUserId, (email) => ({ to: email, subject: `Commission of ${formatTzs(current.amountTzs)} reversed — market voided`, html: agentCommissionReversedHtml({ amountTzs: current.amountTzs, recoveredTzs: recovered, marketId }), tag: "agent-commission-reversed" })).catch(() => {});
+        sendEmailToUser(current.referrerUserId, (email) => ({ to: email, subject: `Commission of ${formatTzs(current.amountTzs)} reversed — market voided`, html: agentCommissionReversedHtml({ amountTzs: current.amountTzs, recoveredTzs: recovered, marketId }), tag: "agent-commission-reversed" }), { confirmedOnly: true }).catch(() => {});
       }
     });
   }

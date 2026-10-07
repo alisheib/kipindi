@@ -40,8 +40,9 @@ withdraw amount box sent the withdrawal with no "Confirm withdrawal" (no fee, no
 close-account phrase box it closed the account: on live main the drive's control run withdrew TZS 20,000 three times
 (W1, K2, P1) and closed the account. Taken from the handover's draft on OMEGA-COMPILE01, revised there for its 19 review problems and an
 independent verifier's findings, and proven in Chromium and Firefox and, once the page has woken, in WebKit — §0i "A8j",
-§0h point 60. ⚠️ Owed: WebKit before the page wakes (the drive's sleeping page now opens in a fresh context) and its
-WebKit control on `586c5183` — they show whether WebKit needs the hidden second field (its source says so; no run has).
+§0h point 60. WebKit before the page wakes, run 2026-10-07 with the sleeping page in a fresh context: P1 and P2 hold,
+and the hidden second field proved a belt there — Playwright's WebKit honours the disabled default control, where
+WebKit's source was read to skip it (§0i "A8j", the drive's P1x).
 
 **✅ A8i-2 LIVE `586c5183` (2026-10-07) — a key held down presses once, wherever it is; nothing behind the top dialog
 takes a key; an uncovered money dialog lands on its way out.** Taken from the handover's unreviewed draft on
@@ -70,24 +71,41 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-07 ~14:45 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
-that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). A8j is
-LIVE (above). **Now: one heavy-lock turn, queued behind money doors and marketing** (`F:/kipindi-locks`): A8j's owed
-WebKit runs (its before-load cases, and its control on `586c5183`) and the final drive again in Chromium and Firefox;
-then the close-out's three owed items on main — the `lost` result drive, the crash control with its three-language crash
-titles, and a production build read by `first-load-parts` — then their records (§0i "S6 STOPPED HERE"). **WP12 is
-prepared beside it** — branch `vodacom-wp12` (pushed, NOT on main; worktree `F:\kipindi-wp12`): `0f492b6a` puts the
-classic bell's bytes back as they were before S6 (A1 keeps `notifications-panel.tsx` untouched until S15; A8i-2 had
-corrected two lines of its comment, which its draft had only reported — the stale clause is owed to S15); `5b540d52` the
-handover's WP12 change set (one anchor moved: its CHANGELOG entry now sits above A8i's; rule 8 dated the day it lands);
-`5f236c51` the tile drive `qa:journey-shell`. Done: the parse, and WP12's light gates beside main's (the same reds, only
-the expected counts move), `test:enter-where-pressed` green, `qa:bell-untouched` check 2 green. **Still to come for
-WP12, in lock turns of their own:** typecheck, `test:all` and `red:all`, the two header-fit reds; parity (prove-red, a
-fresh baseline on `0f492b6a`, a null compare on a fresh server, then the compare); the header-fit, tile (read one by
-one), preview, footer, landmark-seal, local `qa:live` and G1 drives; then the push, the production read-back and the
-first signed-in `qa:live` on production (as mobile01 — the other sessions told first), and the records. (Left alone on
-that PC: `F:\kipindi-journey` keeps uncommitted edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — the lock turn above (A8j's owed WebKit runs, then the close-out's three owed items), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+**⏳ IN FLIGHT (updated 2026-10-07 ~19:30 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). Ali
+(2026-10-07, away): *"keep going and putting progress updated until you're done … keep pushing live"* — each piece goes
+live once its core is proven, the rest runs after it, and anything found is fixed forward. Done today: A8i-2 and A8j
+LIVE (above); A8j's WebKit runs; **the S6 close-out's three owed items, all passing** (§0i "S6 STOPPED HERE"); QA
+Mobile 01 signs in on production again (its password reset through the console's own Reset password, with Ali's
+approval; the new one is in `F:\kipindi-main\.env.qa.local`). Money doors' release is live (`012cccbc`: no email
+before a deposit, the email bar deleted, the TZS 1,000 minimum) and this lane's work sits on it. **Now: WP12, the last
+S6 package** — branch `vodacom-wp12` (pushed, NOT on main; worktree `F:\kipindi-wp12`), eleven commits on `012cccbc`:
+the bell's bytes put back (A1); the handover's WP12 change set (rule 8 dated the day it lands, six statements corrected
+by an independent read); the tile drive `qa:journey-shell`; A8j's WebKit follow-up (P1x reports the engine's rule);
+the S4 canvas brought to the owner's ruling; the Up & Down card's UD-16 comment made true; `qa:journey-preview`'s step
+7 (WP6b item 8); `qa:enter-where-pressed` with `REDUCED_MOTION=1` (A8i-2's owed "reduced motion"); parity 2.9 reading
+which tree it runs on (the email bar deleted → no viewer may see one); `shortfallPlan` without its email step; the
+plans' notes for the ruling, and the email bar's SHELVED row deleted. An independent review of the new commits found
+five slips, all fixed. Light gates equal main's; the suites they touch green. **Turn A is running** (since 18:55 EAT,
+on `ec4734af`): typecheck clean; `test:all` 437/467 — main's known failures, plus twelve database suites that could not
+start their cluster; `red:all` under way. **Found and fixed on the way:** `db:scratch`'s sweep cannot see its own
+leftover `io_worker` in a worktree whose `node_modules` is a junction (most worktrees on that PC), so after the first
+database suite every later start fails with "gave no reason". Run from the checkout the junctions point at, the old
+sweep matched the siblings' LIVE clusters. The fix (`da35f89c`, branch `vodacom-dbscratch`, on `b6652201`) knows a
+cluster by its data directory and its postmaster's pid, and a start that fails prints postgres's own reason; it goes to
+main once turn A2 has proven it. WP12 is rebased onto it (the patch identical). **Queued under the lock:** A2 — WP12
+rebased: typecheck, `test:all` with the database suites, and every harness turn A's `red:all` failed, again; B — parity
+(the v2 baseline re-captured from `7c859cdf`, WP12's fresh baseline at its parent, each calibrated, both compares);
+**then WP12 goes live**; then B2 — the header fit and its reds; C — the 335 tiles (read one by one), the preview drive, the footer
+four ways; D — the landmark seal both ways, local `qa:live`, G1 and its prove-red; E — the A8j drive in WebKit; F — S7
+WP0's reds and bar probe, and the A8i-2 drive under reduced motion; then `qa:live` on production (mobile01, once), and
+the records. **S7 WP0 has started, by Ali's choice** (before S6 closed, S7-PLAN's narrower overrule): branch
+`vodacom-s7` (`2f340ecd`): red:ticker-honesty's cases declared and judged by the whole check id, test:stacking's
+primer checks renumbered; its records and bar probe are drafted, and its runs are turn F. **If this session is gone:**
+WP12's run list is in its S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on
+`vodacom-handover`, `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC:
+`F:\kipindi-journey` keeps uncommitted edits from 2026-10-06, an early start that the handover draft supersedes.)
+**Next:** (1) S6 — WP12 (above; A8j's WebKit runs and the S6 close-out are done), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
@@ -300,7 +318,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   rest of the detached chain (`scratchpad/s6/a8-chain.sh`: the price-guard drive in the current mode, the result
   drives `main`, `extra` and `lost`, the lost-chunk control, the tiles), parity compare 2 after the copy, the
   battery, a production build's first-load reading, and the production check (`?dpl=`, the stylesheet's two phone
-  blocks); then **WP12** (S6-PLAN.md). **A8i**, **A8i-2** and **A8j** are LIVE (`23f762f4`, `586c5183`, `88fb1f41`, their bullets at the end of this list); the close-out's three owed items go first (§0).
+  blocks); then **WP12** (S6-PLAN.md). **A8i**, **A8i-2** and **A8j** are LIVE (`23f762f4`, `586c5183`, `88fb1f41`, their bullets at the end of this list); the close-out's three owed items have run (below); WP12 is next (§0).
   **Ran 2026-10-06/07 on `7d4b0ad5` (ALI-BLADE15), the owed list above:** `red:ticker-honesty` alone 28/28 (re-armed in
   `7d4b0ad5`: 9.8 reads `settledAmount`, 9.9 every fee call, the red's anchors unique); parity `--prove-red` 81/81 (with
   `5a87e764`'s DEV-measure filing and its plant); parity `--compare` 2 against the v2 baseline: 38/39 — every Sell check
@@ -312,12 +330,19 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   before `95d15927`, and every measured cell at TZS 1,000,000 (its one failure is the fixture: four 1M tickets cannot
   be seeded); the price-guard drive paid 28/28 (D.3 now times the result from its own entry — it had timed the
   confirm) and current 4/4; the result drives `main` 10/10 and `extra` 4/4; `test:all` 444/461, the 17 reds exactly
-  the baseline list; production read back for `cd34231b` and `7d4b0ad5`. **Still owed:** the `lost` result drive (the
-  dev server reset the connection mid-run); the crash control — its C.1 matched only the ENGLISH crash title on a
-  Swahili page, and its diagnosis shows that page DID reach the critical-error screen with the host's guard stripped,
-  so the guard is needed; the drive now matches all three titles; re-run for a clean pass; and the production build's
-  first-load reading (the build compiled; its reader was handed an unconverted path, and the next drive deleted
-  `.next`). The tools are on the branch `vodacom-handover` (§0).
+  the baseline list; production read back for `cd34231b` and `7d4b0ad5`. **Ran 2026-10-07 on main `0b841d07` (OMEGA-COMPILE01),
+  the three still owed — all pass:** the `lost` result drive 6/6 (every request for the sale-result host's chunk
+  aborted, and the abort seen: the page stays up with its shell, one `/api/client-error` report, no host answers the
+  sale event, and an aborted sale's ✗ result is drawn by the Sell button itself); the crash control 3/3, its throwaway
+  edit inside the same lock turn (the host's `.catch(nothingIfLost)` stripped, then put back; the tree clean after):
+  the same lost chunk then reaches the critical-error screen, matched by its Swahili title ("Kitu kimevunjika kabla
+  hata ya kuanza") now that the drive knows all three — so the guard is what keeps the page up; and a production build
+  (`next build`, compiled in 43 s) read by `first-load-parts` on `/`, `/markets`, `/positions` and `/help`: the control
+  (the classic deposit test id) in every first load; the sale-result host and the journey's top bar, tabs and flag each
+  in a chunk of their own and off every first load; the offline banner and the win-celebration host in it — all as
+  expected (the reader's first try was handed Git Bash's rewritten route paths; re-run with `MSYS_NO_PATHCONV=1` on the
+  same build). **The A8d/A8g/A8h close-out is complete.** The tools: the handover's (`vodacom-handover`), in this
+  machine's Node ports (`handover/vodacom-2026-10-07/omega-tools/`).
 - **Found on the way (2026-10-04):** `test:house-bot-reports` 0.232 was red on main for three reasons, and while it was,
   `red:house-bot-money`, `-c5`, `-chatbot` and `-console` refused to run for every lane. This lane's S3b had made
   `Transaction.origin` create-only in both txn twins and so broken 0.232.4's exact-text pin — re-pinned (`50552c40`); the
@@ -1277,17 +1302,22 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   ConfirmDialog and ConfirmModal in `src/`; the six host forms with nothing else submit-capable inside them — and
   `red:implicit-submit`, 61 plants caught and 1 green control held. **Proof (OMEGA-COMPILE01):** on the shipped tree,
   typecheck, `test:implicit-submit`, `test:enter-where-pressed`, `test:journey-account` (85), `test:journey-shell` (429),
-  `test:close-account-phrase` and `test:ui-consistency` green; `qa:implicit-submit` (run before its last edit) in
-  Chromium and Firefox — every case passes but Z, which saw only the RG page's hydration mismatch that main shows too
-  (the drive now names it as known); in WebKit every after-load case passes and no case moved money, but P1 and P2 could
-  not keep the page asleep (WebKit served the scripts from its memory cache) and P1x did not post with the field
-  stripped, so no run has yet shown that WebKit needs the field (⚠️ owed: the re-run with the sleeping page in a fresh
-  context, and the WebKit control on `586c5183`). `test:all` 433/464: every red on the §0i baseline list, one of the 13
+  `test:close-account-phrase` and `test:ui-consistency` green; `qa:implicit-submit` in
+  Chromium and Firefox 15/15 each (Z passing: the one error main shows too, the RG page's hydration mismatch, is named
+  as known); in WebKit 2272, the sleeping page in a fresh context, every case passes but P1x and Z — P1 and P2 hold
+  before the page wakes — and its control on `586c5183` failed W1 W2 K1 K2 D1 P1 P1x R1 C2 C1 and Z (W1, K2, P1 and P1x each
+  withdrew 20,000 — P1 asleep by a native POST, P1x's set-up unable to hold on that tree; C1 closed the account; Z the
+  dev server's lazy-chunk and fetch errors), so the drive does see a WebKit post (corrected 2026-10-07: the first record
+  left P1x and Z out). P1x, the
+  second field taken out, posted nothing: this WebKit honours the disabled default control where WebKit's source was
+  read to skip it, so the field is a belt there — kept, as it holds any WebKit that does skip the control, at no cost;
+  `8adafb15` (with WP12) makes P1x report the engine's rule instead of demanding a post. Z in WebKit: the dev server's
+  lazy-chunk (`needle-physics`) and fetch errors, the same on the control. `test:all` 433/464: every red on the §0i baseline list, one of the 13
   database suites (A8j touches none of their code), or audit-drain's timing flake (42/42 re-run on this tree).
   Production read back: `dpl=88fb1f41` served on www.50pick.tz and 50pick.tz by a fresh container (uptime 15 s, then
   climbing), `/api/health` ok with the database reachable, and `qa:live` against production 318/318. **Served bytes:**
   two hidden inputs inside each host form (no word, class or layout change); no other page changes. **Owed (recorded,
-  not run):** the WebKit runs above; a real iPhone's Go key; the drive in predeploy (it needs a server).
+  not run):** a real iPhone's Go key; the drive in predeploy (it needs a server).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1321,7 +1351,8 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
    in the account menu"; recorded in COMPLIANCE-DECISIONS.
 10. **Msaada carries no phone number.** 0800 11 0011 is the national problem-gambling helpline, not 50pick's help desk,
     so it keeps its own labelled row under Weka mipaka. This reverses the S4 panel's wording for that row; the canvas
-    is corrected to match.
+    is corrected to match. ⛔ The row is superseded by the owner's ruling of 2026-10-06 (`docs/COMPLIANCE-DECISIONS.md`,
+    `0652f61f`): the hub has no helpline row; Msaada still names no number.
 11. **Tiketi zangu for preview viewers** keeps the ticket number and all 7 filters, and drops the share button, the
     profit strip, the yes/no bar, search and sort (shelved, not deleted).
 12. **The new shell is verified locally** (point 4: no preview on production before the plan is done); on production
@@ -1846,7 +1877,7 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
 60. **Enter in a form never skips its confirm (S6 A8j, for every player).** The calls taken: (a) BEFORE THE PAGE WAKES
     TOO, by markup the server draws: a hidden default submit control, disabled until the guard listens, stops Enter in
     Chromium and Firefox, and a hidden unnamed second text field stops it in WebKit (every iPhone browser), which submits a
-    form of one text field past a disabled control (so its source reads; no run has shown it yet, §0i "A8j"); in WebKit
+    form of one text field past a disabled control (so its source reads; Playwright's WebKit 2272 honours the disabled control instead, so there the field is a belt, kept for any WebKit that does skip it; §0i "A8j"); in WebKit
     before Safari 16.4 Enter in these forms does nothing at all
     (safe: Next 16 builds for 16.4 on). Overrule: drop the second field (an iPhone could then send a withdrawal with Enter
     in the seconds before the page wakes), or add a server-side seal — the withdraw and close-account actions refusing a

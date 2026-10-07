@@ -139,10 +139,11 @@ const rule1 = (loc: Loc, t: string) => R1[loc].deny.test(t) && R1[loc].money.tes
 /**
  * RULE 2 — identity bound to the ENTRANCE (adding money, depositing, betting, playing).
  *
- * ⛔ THE IDENTITY WORDS ARE NARROWER THAN RULE 1's, AND THAT IS THE POINT. Confirming an EMAIL before a
- * deposit is TRUE (register → confirm email → deposit and play), and it is written "verify your email",
- * "thibitisha barua pepe", "验证邮箱". So bare verify / thibitisha / 验证 never count here — only words that
- * name identity itself. English also counts "we've verified you" / "you're verified" (the 2026-09-05
+ * ⛔ THE IDENTITY WORDS ARE NARROWER THAN RULE 1's, AND THAT IS THE POINT. Confirming an EMAIL is not an identity
+ * question, and it is written "verify your email", "thibitisha barua pepe", "验证邮箱". So bare verify / thibitisha /
+ * 验证 never count here — only words that name identity itself. (⚠️ Until 2026-10-07 an email was confirmed before the
+ * first deposit; since the owner ruling of that day a deposit asks no email at all. A sentence teaching the old order
+ * is now FALSE — and it is `test:withdraw-email-gate` §11, a claim rule of its own, that rejects it, not rule 2.) English also counts "we've verified you" / "you're verified" (the 2026-09-05
  * "open up once we've verified you"), but not in a sentence about an email.
  * ⛔ THE EXIT IS NOT A MONEY WORD HERE. Withdraw / cash out / kutoa pesa / 提现 is exactly where identity
  * belongs; naming it beside identity is the correct sentence, not a violation.
@@ -912,7 +913,8 @@ for (const loc of LOCALES) {
     ["en", "We do not run an automated screening feed against the UN, OFAC, EU or UK HMT sanctions lists. Sanctions and PEP exposure are assessed by a compliance officer as a checklist item during every identity review and every enhanced due diligence review, using the name, date of birth and document details collected under §1. Where an officer records a concern, the account may be suspended — which stops deposits, bets and withdrawals — and a suspicious-activity report is filed with the Financial Intelligence Unit where the law requires it. This policy states only the screening we actually perform; it will be re-versioned before any automated list screening is introduced."],
     ["sw", "Hatuendeshi mfumo wa kiotomatiki wa kuchunguza orodha za vikwazo za UN, OFAC, EU au UK HMT. Hatari ya vikwazo na ya PEP hukaguliwa na afisa wa uzingatiaji kama kipengele cha orodha ya ukaguzi katika kila ukaguzi wa utambulisho na kila ukaguzi wa kina wa mteja (EDD), kwa kutumia jina, tarehe ya kuzaliwa na taarifa za nyaraka zilizokusanywa chini ya §1. Afisa akirekodi wasiwasi, akaunti inaweza kusimamishwa — jambo linalozuia kuweka fedha, kuweka dau na kutoa fedha — na ripoti ya shughuli za kutiliwa shaka huwasilishwa kwa Kitengo cha Intelijensia ya Fedha (FIU) pale sheria inapohitaji. Sera hii inataja tu uchunguzi tunaoufanya kweli; itatolewa toleo jipya kabla ya uchunguzi wowote wa kiotomatiki wa orodha kuanzishwa."],
     ["zh", "我们不运行对照 UN、OFAC、EU 或 UK HMT 制裁名单的自动筛查系统。制裁与 PEP 风险由合规专员在每次身份审核及每次强化尽职调查（EDD）中，依据第 1 条采集的姓名、出生日期及证件信息，作为核查清单项目进行人工评估。若专员记录了疑虑，该账户可被暂停——暂停后无法充值、投注或提现——并在法律要求时向金融情报单位（FIU）提交可疑活动报告。本政策仅陈述我们实际执行的筛查；在引入任何自动名单筛查之前，本政策将先行更新版本。"],
-    // ⛔ Confirming an EMAIL before a deposit is the true ladder — bare verify / thibitisha / 验证 are not identity.
+    // ⛔ Bare verify / thibitisha / 验证 are not IDENTITY, so rule 2 accepts these. (They are false since 2026-10-07 — a
+    //    deposit asks no email — and `test:withdraw-email-gate` §11 rejects every one of them; that is the claim's own rule.)
     ["en", "Confirm your email to add money and play."],
     ["en", "Verify your email first to deposit."],
     ["sw", "Thibitisha barua pepe yako ili kuweka pesa na kucheza."],

@@ -10,6 +10,7 @@
  */
 import { z } from "zod";
 import { isOfAge } from "@/lib/id-documents";
+import { minWithdrawalForRate } from "@/lib/payout";
 
 // Tanzania mobile number — accepts every common shape the user might type:
 //   712 345 678   (just the 9 digits, with optional spaces) — most common,
@@ -83,11 +84,28 @@ export const fullName = z.string().trim().min(2).max(120);
 // server enforcement (the schemas below) AND the wallet "Limits" tab display, so
 // the numbers a player sees can never drift from what the server actually
 // enforces (wallet-client reads them via the server page's `limits` prop).
-export const DEPOSIT_MIN_TZS = 500;
+// ⭐ TZS 1,000 since 2026-10-07 (management, relayed by Ali: "in deposits and in the minimum stake … should be always
+// consistently 1000 not 500") — the same figure as the minimum stake (`PLATFORM_MIN_STAKE`). The rule is
+// docs/RULES.md §1; every surface that states it (the deposit hint, the chatbot, the Limits tab) is filled from here.
+export const DEPOSIT_MIN_TZS = 1_000;
 export const DEPOSIT_MAX_TZS = 2_000_000;
 export const WITHDRAW_MIN_TZS = 1_000;
 export const WITHDRAW_MAX_TZS = 5_000_000;
 const tzs = (n: number) => n.toLocaleString("en-US");
+
+/**
+ * THE SMALLEST WITHDRAWAL A PLAYER MAY ASK FOR — the one figure every surface states (owner ruling 2026-10-07: the
+ * withdraw screen states the TRUE minimum, never a typed "1,000").
+ *
+ * It is the larger of the platform's gross floor (`WITHDRAW_MIN_TZS`) and the gross whose NET still clears the
+ * gateway's own floor at the live fee (`minWithdrawalForRate`) — TZS 1,015 at a 1.5% fee (the fee rounds). The withdraw hint, the
+ * action's out-of-range refusal, the confirm dialog's check and the wallet's Limits tab all print THIS, so the number a
+ * player reads is the number the server refuses below. ⚠️ Pass the LIVE `withdrawalFeeRate` (`getEffectiveConfig()`):
+ * the fee is admin-tunable, which is exactly why the figure is derived and never typed.
+ */
+export function withdrawMinFor(withdrawalFeeRate: number): number {
+  return Math.max(WITHDRAW_MIN_TZS, minWithdrawalForRate(withdrawalFeeRate));
+}
 
 export const depositAmount = z
   .number()
@@ -101,12 +119,11 @@ export const withdrawAmount = z
   .min(WITHDRAW_MIN_TZS, `Minimum withdrawal is TZS ${tzs(WITHDRAW_MIN_TZS)}`)
   .max(WITHDRAW_MAX_TZS, `Single withdrawal cap is TZS ${tzs(WITHDRAW_MAX_TZS)}`);
 
-/** A real, deliverable email address. REQUIRED at sign-up: it is where deposit
- *  receipts and the verification link go, and a verified address is what unlocks
- *  the first deposit. ⚠️ From 2026-09-05 to 2026-09-13 an approved identity was a second
- *  requirement there; that gate is DELETED (`kyc-gate.ts` — identity is asked before
- *  withdrawal only, owner ruling 2026-09-13). So a confirmed address is now the only thing
- *  between a stranger and a funded account, and the only verified contact channel we hold.
+/** A real, deliverable email address. REQUIRED at sign-up: it is where the verification link
+ *  and account notices go, and a CONFIRMED address is what a withdrawal needs (owner ruling
+ *  2026-10-07, beside an approved identity). ⚠️ Until 2026-10-07 a confirmed address unlocked the
+ *  first DEPOSIT instead; that gate is deleted — a deposit asks no email question at all, and the
+ *  player's record of every deposit and withdrawal is in the app (/wallet/receipts), mailed or not.
  *  Normalised to lower-case here so uniqueness and lookups can never drift on case. */
 export const emailAddress = z
   .string()
@@ -191,7 +208,8 @@ export type DepositInput = z.infer<typeof DepositSchema>;
  */
 export const AdminDepositSchema = z.object({
   provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),
-  amount: z.number().int().min(500, "Minimum deposit is TZS 500").max(1_000_000_000, "Admin test-deposit cap is TZS 1,000,000,000"),
+  // The floor is the player's own (`DEPOSIT_MIN_TZS`, 2026-10-07) — it read a typed 500, a second definition of the rule.
+  amount: z.number().int().min(DEPOSIT_MIN_TZS, `Minimum deposit is TZS ${tzs(DEPOSIT_MIN_TZS)}`).max(1_000_000_000, "Admin test-deposit cap is TZS 1,000,000,000"),
   msisdn: tzPhone.optional(),
 });
 

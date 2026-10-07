@@ -148,8 +148,13 @@ try {
     const url = new URL(page.url());
     R.check("R.1 a new account lands on /wallet/deposit — not on /profile/kyc", url.pathname === "/wallet/deposit", page.url());
     // The greeting is a flash toast (auth-flash.tsx) that animates in — wait for it, never race it.
-    const greeted = await page.waitForFunction(() => document.body.innerText.toLowerCase().includes("open the link we emailed you"), null, { timeout: 15_000 }).then(() => true, () => false);
-    R.check("R.2 …greeted with the email errand, not an identity step", greeted, (await bodyText(page)).slice(0, 160));
+    // 2026-10-07 (owner ruling): the welcome no longer teaches an email-then-money order — a deposit asks no email. The
+    // greeting is still there; it must name neither an identity step nor an email gate on money.
+    const greeted = await page.waitForFunction(() => document.body.innerText.length > 40, null, { timeout: 15_000 }).then(() => true, () => false);
+    const welcome = (await bodyText(page)).toLowerCase();
+    R.check("R.2 …greeted, with no identity step and no \"confirm your email, then add money\" errand",
+      greeted && !welcome.includes("open the link we emailed you, then add money") && !/verify your identity/.test(welcome.slice(0, 400)),
+      welcome.slice(0, 160));
     await noBar(page, "R.3 the landing page:");
     await shot(page, "R-landing-deposit-en-390");
     state = await ctx.storageState();

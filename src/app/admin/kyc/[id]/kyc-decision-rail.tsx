@@ -226,8 +226,11 @@ export function KycDecisionRail({
                    stood, and `kyc-approved-copy.test.mts` asserted it stayed that way.
                ⭐ FROM 2026-09-13 THE TRUE SENTENCE IS ONE CLAUSE: approval opens the withdrawal gate,
                and nothing else (`kyc-gate.ts` — the only identity question on any money path).
+               ⭐ 2026-10-07 — THE GATE HAS TWO HALVES NOW (owner ruling): identity, which this decides, and a
+               confirmed email address, which the player confirms themselves; a deposit asks for neither. So
+               approval answers the identity HALF, and "depositing needs a confirmed email" became false that day.
                ⛔ Fix this sentence and its guard in the same commit, every time. */
-            body={<>This records the player&apos;s identity as <strong>verified</strong> and binds this document to this account, so no other account can claim it. It is audit-logged. <strong>It opens the withdrawal gate, and nothing else</strong> — depositing needs a confirmed email address and playing needs no identity, so this player may already hold money they are waiting to take out. Confirm the checklist reflects the documents you actually reviewed.</>}
+            body={<>This records the player&apos;s identity as <strong>verified</strong> and binds this document to this account, so no other account can claim it. It is audit-logged. <strong>It answers the identity half of the withdrawal gate, and nothing else</strong> — the other half is a confirmed email address, which the player confirms themselves. Depositing and playing need neither, so this player may already hold money they are waiting to take out. Confirm the checklist reflects the documents you actually reviewed.</>}
             confirmLabel="Yes, approve identity"
             tone="brand"
             /* E-4: the attestations travel WITH the decision. They used to arm this

@@ -141,11 +141,11 @@ try {
 
     await p.goto(`${BASE}/wallet/deposit`, { waitUntil: "networkidle" });
     await p.waitForTimeout(600);
-    // ⭐ The deposit screen's one door is the EMAIL (registration confirms no address) — never identity.
-    log("4e ⛔ /wallet/deposit shows NO identity panel",
-        (await p.locator('[data-testid="kyc-gate-panel"]').count()) === 0);
-    log("4f control · …the email door or the deposit form renders there instead",
-        (await p.locator('[data-testid="email-verify-gate"], #provider-MPESA').count()) > 0);
+    // ⭐ The deposit screen asks neither identity nor email (2026-09-13 / 2026-10-07, owner rulings) — it is the form.
+    log("4e ⛔ /wallet/deposit shows NO identity panel and NO email door",
+        (await p.locator('[data-testid="kyc-gate-panel"]').count()) === 0 && (await p.locator('[data-testid="email-verify-gate"]').count()) === 0);
+    log("4f control · …the deposit form renders there",
+        (await p.locator("#provider-MPESA").count()) > 0);
     // ⛔ The app-wide identity bar was DELETED 2026-09-13 (Ali's quiet rule).
     const barOnDeposit = await p.locator('[data-testid="kyc-verify-banner"]').count();
     log("4g ⛔ no app-wide identity bar on either screen", barOnWithdraw === 0 && barOnDeposit === 0,

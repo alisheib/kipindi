@@ -183,6 +183,25 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
 ];
 
 /**
+ * ⭐ MONEY MAIL ONLY TO A CONFIRMED ADDRESS (owner ruling 2026-10-07 — docs/COMPLIANCE-DECISIONS.md, "A deposit asks no
+ * email; a confirmed email is required to withdraw; receipts in the app"). Every `audience: "player"`, `money: true`
+ * template above is sent through `sendEmailToUser(…, { confirmedOnly: true })`: since a deposit asks for no email, an
+ * account can hold money with an address nobody proved is theirs, and a statement of that money must not go to it.
+ * `test:cert-c1` (`comms-email-truth.test.mts`) §2b derives the list from THIS registry and checks every call site. An account that cannot sign
+ * in (self-excluded, closed, suspended) is mailed at the address on file even unconfirmed (`CANNOT_SIGN_IN`, email.ts):
+ * the bell and the receipts are out of its reach, so the letter is the only notice it can read.
+ * ⛔ EXEMPT, BY NAME: the two refused-funds letters. Terms §3a promises a refused player the officer's decision about
+ * their balance IN WRITING; withholding the letter because an address was never confirmed would break that promise to
+ * the one player who cannot use the app to read it (the wallet is frozen). The in-app row carries it as well.
+ */
+export const CONFIRMED_ONLY_EXEMPT: readonly string[] = ["refusedFundsDecisionHtml", "refusedFundsReturnFailedHtml"];
+
+/** The player money templates `sendEmailToUser` must send with `confirmedOnly` — derived, never typed out. */
+export const CONFIRMED_ONLY_TEMPLATES: readonly string[] = EMAIL_TEMPLATES
+  .filter((t) => t.audience === "player" && t.money && !CONFIRMED_ONLY_EXEMPT.includes(t.template))
+  .map((t) => t.template);
+
+/**
  * `proposalApprovedHtml` renders gold ONLY on its bonus branch and royal when the
  * reward is zero. Registered as gold because that is the branch a player sees
  * when money moves; the chrome check treats it as satisfied if EITHER wrapper

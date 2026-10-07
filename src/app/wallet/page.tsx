@@ -10,7 +10,8 @@ import type { StoredTxn } from "@/lib/server/store";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { bonusIsLiveFor } from "@/lib/feature-state";
-import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MAX_TZS, withdrawMinFor } from "@/lib/server/validators";
+import { getEffectiveConfig } from "@/lib/server/market-config";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { matchesQuery, parseQuery } from "@/lib/search";
@@ -31,10 +32,11 @@ import {
 } from "@/lib/wallet/ledger";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { cookies } from "next/headers";
-import { firstDepositNoticeDue, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
+import { firstDepositNotice, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { hasReceipt, presentedStatus } from "@/lib/wallet/receipts";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -45,9 +47,11 @@ export const dynamic = "force-dynamic";
 /**
  * 🔴 THE FOLD IS FOR DISPLAY ONLY, AND `lib/wallet/ledger.ts` FILTERS THE STORED TYPE INSTEAD.
  * The stored types collapse into fewer display tokens here — deliberately, because this token
- * drives the credit/debit SIGN and the receipt link. ⛔ It is NOT a filter vocabulary:
+ * drives the credit/debit SIGN. ⛔ It is NOT a filter vocabulary:
  * `BONUS_CREDIT` and `ADJUSTMENT_CREDIT` both land on `deposit`, so a "Deposits" filter built on
  * it would tell a player their bonus was a deposit.
+ * ⛔ NOR DOES IT DECIDE THE RECEIPT LINK any more (2026-10-07): that is `hasReceipt` of the STORED type — the fold
+ * offered "View receipt" on a bonus credit and a house fee (S10-02).
  */
 function adaptTxn(t: StoredTxn): Transaction {
   const typeMap: Record<StoredTxn["type"], Transaction["type"]> = {
@@ -69,6 +73,7 @@ function adaptTxn(t: StoredTxn): Transaction {
   // one we hadn't sent yet) and REVERSED + CANCELLED into "failed" (so a deposit
   // reversed by the self-exclusion guard read as a declined card). Different
   // events, different remedies, different words.
+  // ⭐ Through `presentedStatus` (2026-10-07): a deposit held for RETURN reads "Reversed", as on its receipt.
   const statusMap: Record<StoredTxn["status"], Transaction["status"]> = {
     PENDING: "pending", PROCESSING: "processing", AML_REVIEW: "review", CONFIRMED: "confirmed", FAILED: "failed", REVERSED: "reversed", CANCELLED: "cancelled",
   };
@@ -76,11 +81,12 @@ function adaptTxn(t: StoredTxn): Transaction {
     id: t.id,
     type: typeMap[t.type],
     amount: t.amount,
-    status: statusMap[t.status],
+    status: statusMap[presentedStatus(t)],
     description: t.description ?? "",
     createdAt: t.createdAt,
     positionId: t.positionId ?? null,
     providerRef: t.providerRef ?? null,
+    hasReceipt: hasReceipt(t.type),
   };
 }
 
@@ -187,7 +193,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const rows: LedgerRow[] = windowRows.map((x) => ({
     id: x.id,
     type: x.type,
-    status: x.status,
+    status: presentedStatus(x),
     token: adaptTxn(x).type,
     amount: x.amount,
     description: x.description ?? "",
@@ -309,7 +315,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
     bookRows = allTxns.map((x) => ({
       id: x.id,
       type: x.type,
-      status: x.status,
+      status: presentedStatus(x),
       token: adaptTxn(x).type,
       amount: x.amount,
       description: x.description ?? "",
@@ -359,7 +365,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
    * identity, and a failed read must never put an identity prompt in front of anybody: not shown.
    */
   const bookIsWhole = !windowIsNarrowed && !capped;
-  const kycFirstDepositNotice = await firstDepositNoticeDue(session.userId, {
+  const kycFirstDepositNotice = await firstDepositNotice(session.userId, {
     dismissCookie: (await cookies()).get(KYC_NOTICE_COOKIE)?.value,
     depositInHand: bookIsWhole ? rawTxns.some((x) => x.type === "DEPOSIT" && x.status === "CONFIRMED") : null,
   });
@@ -451,7 +457,8 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         cashbackMode={cashbackMode}
         limits={{
           depositMin: DEPOSIT_MIN_TZS, depositMax: DEPOSIT_MAX_TZS,
-          withdrawMin: WITHDRAW_MIN_TZS, withdrawMax: WITHDRAW_MAX_TZS,
+          // The TRUE minimum at the live fee (owner ruling 2026-10-07) — the withdraw screen's own figure, never a typed 1,000.
+          withdrawMin: withdrawMinFor((await getEffectiveConfig()).withdrawalFeeRate), withdrawMax: WITHDRAW_MAX_TZS,
         }}
         isAuthed={true}
         kycFirstDepositNotice={kycFirstDepositNotice}

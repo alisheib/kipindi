@@ -1,5 +1,9 @@
 # SESSION PROMPT — 50pick: move KYC to withdrawal only
 
+> ⚠️ **PARTLY SUPERSEDED 2026-10-07 (owner ruling):** a deposit asks NO email question any more, and a confirmed email is
+> required to WITHDRAW, beside identity — the ladder is now register → deposit and play → verify identity + confirm
+> email → withdraw. The ladder quoted below is this brief's own (2026-09-13). `COMPLIANCE-DECISIONS.md` § "2026-10-07 · A deposit asks no email; a confirmed email is required to withdraw; receipts in the app (owner ruling)".
+>
 > **Status:** ⚪ SPENT — opened and closed 2026-09-13 (session 94). Every row below is ☑ and the change is
 > verified on production: `1699c17a` served 20:12, migration applied 20:08, signed-out live drive 49/0.
 > **Ruling of record:** [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), 2026-09-13 (and

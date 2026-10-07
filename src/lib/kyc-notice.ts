@@ -33,3 +33,10 @@ export const KYC_NOTICE_MAX_AGE_S = 60 * 60 * 24 * 400;
 export function kycNoticeStateDue(state: KycGateState | null): boolean {
   return state === "not_started" || state === "uploaded";
 }
+
+/**
+ * Which wording the note carries (owner ruling 2026-10-07: the confirmed email is asked before a withdrawal, quietly,
+ * the same way as identity): identity documents still to send, a confirmed address still owed, or both. Decided on the
+ * server (`firstDepositNotice`); the component draws the matching glyph, sentence and link from one table.
+ */
+export type FirstDepositNotice = "identity" | "email" | "both";

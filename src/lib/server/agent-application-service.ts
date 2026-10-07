@@ -580,7 +580,10 @@ export async function setReferees(
  *                         `applicantEligibility` enforces it for self-service but exempts an
  *                         OFFICER-INVITED applicant on purpose, so an invitee can reach the payment
  *                         step unverified — possibly with a funded wallet — and is refused here.
- *  · `email_unverified` — deposit needs a verified email; nothing upstream checks it.
+ *  · `email_unverified` — inherited from depositing, which needed a verified email until the owner
+ *                         ruling of 2026-10-07 (a deposit asks none now). Since then it is the AGENT
+ *                         PROGRAMME'S OWN requirement, kept deliberately: the fee buys a role that
+ *                         handles other people's money, and every agent letter goes to that address.
  *  · `insufficient_balance` — the commonest refusal of all, and the one that must carry the
  *                         SHORTFALL so the surface can offer a deposit for the right amount.
  *  · `wallet_unavailable` — one honest token for the rest, rather than leaking an internal code.
@@ -649,7 +652,8 @@ export async function recordFeePayment(userId: string, input: { feeReference: st
  *    check below is that requirement, not a copy of a deposit gate. ⛔ Do not delete it as stale.
  *    ⚠️ And the invitation email hard-codes `feeWaivable: true`, so it says the fee *may* be waived
  *    while the waiver is a separate officer action — an unwaived invitee must verify to pay.
- *  · A VERIFIED EMAIL — required by deposit, checked nowhere upstream.
+ *  · A VERIFIED EMAIL — required by deposit until 2026-10-07; since then the agent programme's own
+ *    requirement (see `email_unverified` above), checked nowhere upstream.
  *
  * ── WHAT IS RETAINED FROM THE OLD RAIL, AND WHAT IS NOT ─────────────────────────────────────
  * ⛔ The refund-owed refusal STAYS. It is not a receipt control — it is a money-owed control, and
@@ -691,9 +695,10 @@ export async function payFeeFromWallet(userId: string): Promise<FeeResult & { sh
     // ⛔ THE TWO PRECONDITIONS, CHECKED BEFORE ANY MONEY MOVES, in the SAME ORDER the application
     // screen shows them (`apply-client.tsx`: identity, then email) — so a person cannot clear the one
     // they were told about and then be refused for another. ⚠️ Until 2026-09-13 these were "the
-    // deposit preconditions, in the deposit screen's order". A deposit now asks email only; identity
-    // here is the AGENT PROGRAMME'S requirement, kept by that ruling, and it still asks the CURRENT
-    // status — the withdrawal gate's approved-ever question is a different rule for a different door.
+    // deposit preconditions, in the deposit screen's order". A deposit asks neither now (identity
+    // since 2026-09-13, email since 2026-10-07): both are the AGENT PROGRAMME'S requirements, kept
+    // by those rulings, and identity here still asks the CURRENT status — the withdrawal gate's
+    // approved-ever question is a different rule for a different door.
     const kyc = await getKycStatus(userId);
     if (!kyc || kyc.status !== "APPROVED") {
       return { ok: false as const, error: "Verify your identity before paying the registration fee.", code: "INVALID" as const, refusal: "kyc_required" as const };
@@ -1171,7 +1176,7 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
      * ⛔ EXTERNAL still names the masked bank account, because that is where it really went.
      */
     const refundDestination = fundingSource === "WALLET" ? "Your 50pick wallet" : app.feeSourceAccount;
-    sendEmailToUser(app.userId, (email) => ({ to: email, subject: `Your agent registration fee has been refunded · ${formatTzs(amount)}`, html: agentFeeRefundedHtml({ amountTzs: amount, reference: ref, destinationMasked: refundDestination }), tag: "agent-fee-refunded" })).catch(() => {});
+    sendEmailToUser(app.userId, (email) => ({ to: email, subject: `Your agent registration fee has been refunded · ${formatTzs(amount)}`, html: agentFeeRefundedHtml({ amountTzs: amount, reference: ref, destinationMasked: refundDestination }), tag: "agent-fee-refunded" }), { confirmedOnly: true }).catch(() => {});
     return { ok: true as const };
   });
 }
@@ -1232,7 +1237,7 @@ export async function rejectApplication(officerId: string, applicationId: string
       to: email, subject: "Your agent application was not approved",
       html: agentRejectedHtml({ reason: input.reason, note: note || null, refundDue, amountTzs: app.feeAmountTzs, refundDays: cfg.refundDeadlineDays, reapplyDays: terminal ? null : cfg.reapplyCooldownDays }),
       tag: "agent-rejected",
-    })).catch(() => {});
+    }), { confirmedOnly: true }).catch(() => {});
     return { ok: true as const };
   });
 }
@@ -1329,7 +1334,7 @@ export async function approveAgent(officerId: string, applicationId: string, inp
     await revokeUserSessions(app.userId).catch(() => {});
     audit({ category: "COMPLIANCE", action: "agent.approved", actorId: officerId, targetType: "User", targetId: app.userId, payload: { applicationId: app.id, agentCode: code, commissionPct: rate, feeDisposition: app.feeDisposition, source: app.source } });
     notifyAgentApproved(app.userId, { agentCode: code, commissionPct: rate });
-    sendEmailToUser(app.userId, (email) => ({ to: email, subject: "You are now a Verified 50pick Agent", html: agentApprovedHtml({ agentCode: code, commissionPct: rate, windowMonths: cfg.commissionWindowMonths }), tag: "agent-approved" })).catch(() => {});
+    sendEmailToUser(app.userId, (email) => ({ to: email, subject: "You are now a Verified 50pick Agent", html: agentApprovedHtml({ agentCode: code, commissionPct: rate, windowMonths: cfg.commissionWindowMonths }), tag: "agent-approved" }), { confirmedOnly: true }).catch(() => {});
     return { ok: true as const, data: { agentCode: code, commissionPct: rate } };
   });
   // Fired after the lock returns (C4-SPEC ruling 127): a hook inside it would join its transaction.
@@ -1372,7 +1377,7 @@ export async function setAgentRate(officerId: string, userId: string, commission
     // ⭐ The agent terms promise notice of a rate change; a change with no message is a broken
     // promise (four-lens review, 2026-09-07). Prospective only — every accrual keeps its own rate.
     notifyAgentRateChanged(userId, { beforePct: before, afterPct: pct });
-    sendEmailToUser(userId, (email) => ({ to: email, subject: `Your 50pick commission rate is now ${pct}%`, html: agentRateChangedHtml({ beforePct: before, afterPct: pct }), tag: "agent-rate-changed" })).catch(() => {});
+    sendEmailToUser(userId, (email) => ({ to: email, subject: `Your 50pick commission rate is now ${pct}%`, html: agentRateChangedHtml({ beforePct: before, afterPct: pct }), tag: "agent-rate-changed" }), { confirmedOnly: true }).catch(() => {});
     return { ok: true as const };
   });
 }

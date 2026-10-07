@@ -292,7 +292,7 @@ export async function runUpDownDailyDigest(opts: {
           staked: t.staked, returned: t.returned, net: line.net,
         }),
         tag: "updown-digest",
-      })).catch(() => {});
+      }), { confirmedOnly: true }).catch(() => {});
     }
 
     // One audit row for the RUN, not one per player — a digest is a communication,

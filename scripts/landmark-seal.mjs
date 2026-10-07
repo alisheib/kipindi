@@ -40,7 +40,7 @@ import { browser, loginOnce, BASE } from "./live/harness.mjs";
 import { CLIP_PROBE, LG_XL_BAND } from "./live/clip.mjs";
 
 const GATED = ["/wallet", "/profile", "/positions", "/notifications", "/profile/security",
-               "/wallet/deposit", "/wallet/withdraw", "/profile/kyc", "/positions/performance"];
+               "/wallet/deposit", "/wallet/withdraw", "/wallet/receipts", "/profile/kyc", "/positions/performance"];
 const PUBLIC = ["/", "/markets", "/results", "/leaderboard", "/help", "/legal/privacy",
   // ⭐ The rules documents join the SEAL, not just the static sweep: they are the only legal
   // pages carrying tables, and this is the check that asserts zero h-overflow per locale.

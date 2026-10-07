@@ -136,6 +136,123 @@ referees named after version 2026-10-07 — or its withdrawal from any referee n
 
 ---
 
+## 2026-10-07 · A deposit asks no email; a confirmed email is required to withdraw; receipts in the app (owner ruling)
+
+**Authority.** Ali, 2026-10-07, in the Claude session (money-doors lane, OMEGA-COMPILE01), spelling corrected:
+*"for deposits — even if no mail was there — remove the input to verify mail to deposit. It's fine, only withdrawals are
+enforced to verify mail. … But in return, to make sure users have all their receipts on withdrawals or deposits, in the
+user profile we need a tab for internal receipts."* Asked the follow-up questions in the session, he chose: **remove**
+the app-wide "confirm your email" bar and ask quietly at withdrawal (his 2026-09-13 identity rule, extended to email);
+and show the **true** withdrawal minimum (entry below).
+
+The ladder is now:
+
+> **register → deposit and play → verify identity + confirm email → withdraw**
+
+**What it rules — in force now.**
+1. **A deposit asks no email question** — no address, no confirmation, for players and staff alike.
+   `wallet-service.deposit()` asks: RG lockout → (under the wallet lock) caps + Source of Funds. A card deposit sends
+   Selcom the address on file, or, with none, the per-player placeholder `<userId>@users.50pick.tz` that mobile-money
+   deposits already send (`selcomPlaceholderEmail`).
+2. **A withdrawal requires a confirmed email address.** `withdraw()` asks it right after the identity gate and before the
+   fee, the lock, the hold and the row: refused, it writes one COMPLIANCE row `withdraw.email_unverified_blocked`
+   (`hasEmail`, `onBehalfOf`, `operatorInitiated`, amount, provider) and returns `EMAIL_UNVERIFIED`; no money moves and
+   nobody is notified, mailed or prompted. **An officer's retry is not exempt.** **The officer's refused-funds return
+   is exempt** — its forfeit commits first, and a refused player is owed their decision whatever their inbox.
+3. **The confirmation follows the address.** Changing it (which asks the password) or an officer setting it clears the
+   confirmation, so the next withdrawal waits for the new link. The officer's set-email dialog says so.
+4. **Asked quietly, never everywhere.** The app-wide bar is deleted. The player meets the step on the withdraw screen
+   (the address, "Send the link again", "Change email"; with identity also owed, both steps on one card), on the
+   profile's email pill, and in the one dismissible first-deposit notice (identity, email, or both).
+5. **Money email goes only to a confirmed address.** Every `audience: "player"`, `money: true` template in
+   `comms-registry.ts` that is sent to a player's own account goes through `sendEmailToUser(…, { confirmedOnly: true })`
+   (`CONFIRMED_ONLY_TEMPLATES`, held by `test:cert-c1` (`comms-email-truth.test.mts`) §2b): an unconfirmed address is skipped as `unconfirmed`,
+   and the `PHONE_EMAIL_MAP` fallback is never used for them. The confirmation email itself always goes; it is how an
+   address becomes confirmed. Three exceptions, each by name:
+   - **the two refused-funds letters** (`CONFIRMED_ONLY_EXEMPT`) — Terms §3a promises that decision in writing;
+   - **an account that cannot sign in** — self-excluded, closed or suspended (`CANNOT_SIGN_IN`, `email.ts`). Sign-in is
+     refused and push is suppressed for them, so the bell and the receipts cannot reach them; a deposit reversed during
+     an exclusion, a stake refunded after a closure or a payout settling after a suspension would otherwise be told to
+     nobody. Their letter goes to the address on file, confirmed or not, as every money letter did before this ruling
+     (found by the money-and-compliance review; `test:withdraw-email-gate` 8.7–8.9). A cooling-off break is not on the
+     list: that player signs in and reads the bell;
+   - **`inviteHtml`** is registered as player money mail but goes to an INVITEE's address (`invite-service.ts`, raw
+     `sendEmail`), not to a player account, so the account rule has nothing to read there.
+6. **Every deposit and withdrawal is kept in the app** — Profile → Receipts (`/wallet/receipts`, also linked from the
+   wallet), each row opening its receipt. Only a deposit or a withdrawal has a receipt; any other id answers 404, as a
+   foreign one does. A deposit held for return reads "Reversed" on every player surface, as its notice and email do —
+   while it waits (`AML_REVIEW`), after an officer returns it (`refundAmlRejection` now keeps its `rg_refund_due_` mark
+   in front of the officer's reason, and `presentedStatus` reads it), and on the card-return page, which said "Nothing
+   was taken from your card" for it until this change.
+7. **The record that replaces the gate:** every `deposit.initiated` row carries the account's email standing
+   (`hasEmail`, `emailConfirmed`) beside its identity standing, so "which deposits came from accounts with no confirmed
+   contact?" stays answerable.
+8. **The identity-approval letter** adds "Before you withdraw, confirm your email address too" only when the address is
+   unconfirmed. The bell row is unchanged (rows are stored verbatim). The officer's approve dialog says approval answers
+   the identity HALF of the withdrawal gate.
+
+### ⛔ This supersedes two entries IN PART — neither is edited
+- § "2026-09-13 · Identity verification moves to WITHDRAWAL ONLY — depositing and playing open at the door": its ladder
+  (*register → confirm email → deposit and play …*), its row "The confirmed email is the door", and the bullet of its
+  "What deliberately does NOT change" that keeps **"The email gate on the first deposit"** (with *"⛔ Any future work
+  that relaxes this gate re-opens a funded, uncontactable account"*) no longer hold. That bullet's premises have moved —
+  the one-time-code sign-up that made accounts with no email was deleted on 2026-10-06, and SMS delivers since
+  2026-09-16 — and the owner has accepted what remains of its risk (below). Identity at withdrawal only — and everything
+  else that entry rules — stands.
+- § "2026-09-29 · The Vodacom plan — the sponsor's "Simplified Journey", built in 50pick's design system (owner rulings
+  R1–R6; decisions SJ-1 … SJ-24)", §12 *"The email check before a first deposit (R2)"*: no longer true, and its inline
+  code (S9) is not built (recorded by that lane in `docs/VODACOM-PLAN.md`).
+
+### What this costs, stated plainly
+- **An account can hold money with no confirmed contact.** Its receipts are in the app; its codes go by SMS (live since
+  2026-09-16). Read from production (read-only) on 2026-10-07 before release: **9 funded player accounts, all 9 with a
+  confirmed email** — so no funded account meets the new step today — and **89 of 131 player accounts** with no
+  confirmed address, who can now deposit and will meet the step at their first withdrawal. Reported to Ali with the
+  release.
+- **Confirmation depends on the mail provider.** If mail stops, unconfirmed players cannot withdraw until it returns.
+  There is no officer override, deliberately: an officer cannot prove a player owns an inbox.
+- **An account with no email has no self-service password recovery** (`docs/FLOWS.md`, E5, open).
+- **Found by the review, older than this change, NOT changed here:** an officer's Reject of a held deposit
+  (`/admin/aml`) posts no ledger entry releasing `HOUSE:RG_SUSPENSE`, and the player's "returned to the account it came
+  from" notice and letter go out when the deposit is HELD, before any money is sent back. Recorded for the money lane.
+
+⛔ **Do not restore** an email question on deposit, an app-wide email bar, money mail to an unconfirmed address, or
+"View receipt" on anything but a deposit or a withdrawal.
+
+---
+
+## 2026-10-07 · Minimum deposit and minimum stake are TZS 1,000 everywhere, and the withdrawal minimum is stated truly (management, relayed by the owner)
+
+**Authority.** 50pick management, relayed by Ali, 2026-10-07, spelling corrected: *"in deposits and in the minimum stake
+where we teach people how to deposit, it should always be consistently 1000, not 500 — please fix everywhere needed,
+perfectly, cleanly, accurately. We need it consistent and functional."* On the withdrawal minimum Ali chose **"show the
+true minimum"**.
+
+**What it rules — in force now.**
+1. **Minimum deposit TZS 1,000** (`DEPOSIT_MIN_TZS`), on the player's form and the officer's manual deposit alike. Every
+   sentence that states it is filled from the constant — the deposit hint in all three languages — never typed. The
+   chat assistant's prompt states it as a literal ("Min TZS 1,000, max TZS 2,000,000"), held equal to the constants by
+   `test:money-minimums` 2.3.
+2. **Minimum stake TZS 1,000** (`PLATFORM_MIN_STAKE`), unchanged as a rule, now also **floored on every read**: the
+   market config (global and per market), the Up & Down product default and every chain. A value stored before a floor
+   rose can no longer reach a rules page, the dial, the board, the house engine or `buyPosition`; the stored row is not
+   rewritten, and the admin screens say "stored X · enforced 1,000" where they differ. An invite programme's minimum bet
+   is 0 or at least the minimum stake.
+3. **The withdrawal minimum is the TRUE one** — the smallest amount whose net, after the withdrawal fee, still clears
+   the payment provider's TZS 1,000 floor: **TZS 1,015 at today's 1.5%** (`withdrawMinFor`, derived from the live fee).
+   The fee ROUNDS — 1,015 pays round(15.225) = 15 and nets exactly 1,000 — so the figure is found at the true boundary,
+   not by the algebra `ceil(1,000 / 0.985)` = 1,016 that was first stated here and to the owner (the review caught it).
+   The withdraw screen, its confirm step, the server refusal and the wallet's Limits tab all state that figure.
+4. **What it does to money already moving.** A deposit of TZS 500–999 that FAILED before release can only be cancelled
+   now (its retry meets the new minimum). One started before release and still PROCESSING credits normally —
+   completion never re-checks the minimum.
+
+**Supersedes:** "at least the TZS 500 minimum" in § "2026-09-29 · The Vodacom plan — the sponsor's "Simplified
+Journey", built in 50pick's design system (owner rulings R1–R6; decisions SJ-1 … SJ-24)", §4 — the shortfall prompt's
+floor is TZS 1,000. Anything outside the app that teaches a 500 minimum (posters, SMS templates, agents' scripts) is not
+in this repository; Ali was told.
+
+---
 
 ## 2026-10-07 · Management's answers for the first marketing campaign — a small pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)
 

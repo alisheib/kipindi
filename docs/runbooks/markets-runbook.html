@@ -156,13 +156,15 @@ stated at the top of every step, not buried in settings.</figcaption></figure>
 </div>
 
 <h2 class="brk">Part 2 · The money, before anyone touches it</h2>
-<p>These are the platform's live settings. They are frozen into each market when it is created.</p>
+<p>These are the platform's live settings. The fee settings are frozen into each market when it is created; the
+stake bounds are not — every bet is checked against the bounds in force when it is placed, and the minimum is never
+below TZS 1,000, whatever a stored setting says.</p>
 <table>
   <tr><th style="width:38%">Setting</th><th style="width:20%">Live value</th><th>What it means</th></tr>
   <tr><td>Fee model</td><td><code>loser-share</code></td><td>The fee comes out of the losing pool. Winners are never charged.</td></tr>
   <tr><td>Commission</td><td><strong>13%</strong></td><td>Of the pool — but capped, see below.</td></tr>
   <tr><td>Fee ceiling</td><td><strong>33.3%</strong></td><td>Of the <em>smaller</em> side. The fee is the LOWER of the two.</td></tr>
-  <tr><td>Minimum stake</td><td>TZS 500</td><td>Per bet.</td></tr>
+  <tr><td>Minimum stake</td><td>TZS 1,000</td><td>Per bet. The platform minimum — the console refuses anything lower.</td></tr>
   <tr><td>Maximum stake</td><td>TZS 1,000,000</td><td>Per bet.</td></tr>
   <tr><td>Free exit</td><td>5 minutes</td><td>Cash out free within 5 minutes of placing.</td></tr>
   <tr><td>Cash-out fee</td><td>0%</td><td>After the free window.</td></tr>

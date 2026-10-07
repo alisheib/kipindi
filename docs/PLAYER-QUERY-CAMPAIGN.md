@@ -974,9 +974,13 @@ make impossible. Task 6.3 (`test:route-census`) turns that arithmetic into a gat
 population is how a campaign comes to believe it covered something it never looked at.
 Task 6.3 makes this claim checkable instead of asserted.
 
-**A · Full bar (10)** — `/positions` · `/wallet` · `/updown/history` · `/results` ·
+**A · Full bar (11)** — `/positions` · `/wallet` · `/updown/history` · `/results` ·
 `/watchlist` · `/proposals` · `/notifications` · `/profile/account` · `/fairness` ·
-`/markets`. Per-route detail is in §1 Stages 2–4. `/markets` is listed because it is the
+`/markets` · `/wallet/receipts`. Per-route detail is in §1 Stages 2–4. `/wallet/receipts` (added 2026-10-07 — owner
+ruling: every deposit and withdrawal kept in the app, a tab in the profile) is the wallet's own query language narrowed to
+the two movements that have a receipt: All · Deposits · Withdrawals, the wallet's state lens and the player windows, with
+cross-filtered counts and empty states that name their cause; no sort and no search, as on `/wallet` (a receipt list is
+chronological, and every row opens a receipt that prints both references in full). `/markets` is listed because it is the
 shape everything copies; **its only change is Stage 1, and nothing on it moves for a
 player.**
 

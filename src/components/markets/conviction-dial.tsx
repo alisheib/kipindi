@@ -381,7 +381,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
    *  editing intent (or current side) exists. The knob visually
    *  nudges ~2.3% off-centre but the displayed multiplier is
    *  overridden to "1.00×" via exactStake (above) so the player sees
-   *  a coherent { side, 1.00×, TZS 500, Place button } state. */
+   *  a coherent { side, 1.00×, TZS 1,000 (the platform minimum), Place button } state. */
   const posFromStake = useCallback((tzs: number): number => {
     const minDial = baseStake;          // multiplier 1 → baseStake
     const maxDial = baseStake * maxMultiplier; // multiplier 200 → baseStake × 200

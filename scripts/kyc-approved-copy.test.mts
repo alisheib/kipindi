@@ -7,9 +7,11 @@
  * banner telling the same player to confirm their email before adding money. It credited approval
  * with a door approval had nothing to do with, on the one screen a player is proudest of.
  *
- * ── THE LADDER THIS COPY DESCRIBES (owner ruling, Ali, 2026-09-13) ─────────────────────────────────
+ * ── THE LADDER THIS COPY DESCRIBES (owner rulings, Ali, 2026-09-13 and 2026-10-07) ──────────────────
  *
- *     register → confirm email → deposit and play → verify identity → withdraw
+ *     register → deposit and play → verify identity + confirm email → withdraw
+ *
+ * (Until 2026-10-07 a confirmed email came before the first deposit; it moved to withdrawal that day, beside identity.)
  *
  * Identity is asked before a WITHDRAWAL and before nothing else (`src/lib/server/kyc-gate.ts`;
  * docs/COMPLIANCE-DECISIONS.md, the top 2026-09-13 entries). So approval unlocks exactly one thing,
@@ -23,6 +25,8 @@
  *   · 2026-09-05 — identity gated deposit, play AND withdrawal; the burst had to NAME depositing;
  *   · 2026-09-13 — identity gates withdrawal only; the burst names withdrawals and must NOT name
  *     depositing or playing, and the services must have exactly that shape.
+ *   · 2026-10-07 — the confirmed email moved from the first deposit to withdrawal: `deposit()` asks no email
+ *     question, `withdraw()` asks it after identity, and the officer is told approval answers the identity HALF.
  * Anyone reading only one of those entries will "fix" this file back to it.
  *
  * The rules this pins: the burst states only what approval ACTUALLY unlocks (§1–§3), it ASKS the live
@@ -204,23 +208,30 @@ ok("control · …and does NOT fire on the record that replaced the gates",
 ok("control · the deposit page source actually loaded", DEPOSIT.length > 2_000 && /depositAction/.test(DEPOSIT));
 ok("🔴 the deposit page asks no identity question and draws no identity panel",
   !IDENTITY_ASK.test(DEPOSIT), (DEPOSIT.match(IDENTITY_ASK) ?? [""])[0]);
-ok("…and it still gates on email verification, rendering the email door instead of the form",
-  /const emailVerified = !!user\?\.emailVerifiedAt;/.test(DEPOSIT) && /<EmailVerifyGate\b/.test(DEPOSIT));
+// 🔴 INVERTED 2026-10-07 (owner ruling): the page used to render the email door instead of the form for an
+// unconfirmed account. It asks no email question now — any return of the gate component or its flag is a regression.
+ok("⛔ …and it draws no email door either — no gate component, no confirmation flag (2026-10-07)",
+  !/<EmailVerifyGate\b|EmailVerifyGate|emailVerified\b|emailVerifiedAt/.test(DEPOSIT), (DEPOSIT.match(/EmailVerifyGate|emailVerified\w*/) ?? [""])[0]);
 
 // ── the deposit SERVICE
 const DEPOSIT_FN = bodyOf(WALLET_CODE, "export async function deposit(");
 ok("control · deposit() was found and sliced", DEPOSIT_FN.length > 2_000 && DEPOSIT_FN.includes("deposit.initiated"), `len=${DEPOSIT_FN.length}`);
 ok("🔴 deposit() asks no identity question", !IDENTITY_ASK.test(DEPOSIT_FN), (DEPOSIT_FN.match(IDENTITY_ASK) ?? [""])[0]);
-ok("…and still refuses an unconfirmed email", /if \(!depositor\?\.emailVerifiedAt\)/.test(DEPOSIT_FN));
+// 🔴 INVERTED 2026-10-07: `deposit()` refused an unconfirmed email; it asks none now, and RECORDS the standing instead.
+ok("⛔ …and asks no email question either (2026-10-07)",
+  !/if \(!depositor\?\.emailVerifiedAt\)|deposit\.email_unverified_blocked|code:\s*["']EMAIL_UNVERIFIED["']/.test(DEPOSIT_FN));
+ok("⭐ …it records the email standing on deposit.initiated instead",
+  /action:\s*"deposit\.initiated"[\s\S]{0,400}?hasEmail:\s*!!depositor\?\.email[\s\S]{0,80}?emailConfirmed:\s*!!depositor\?\.emailVerifiedAt/.test(DEPOSIT_FN));
 {
   // ⛔ ORDER, NOT JUST PRESENCE. A responsible-gambling break outranks every trust-ladder door: a
   // self-excluded player is told about their OWN break, which carries an end date, never sent on an
   // errand. Before 2026-09-05 the email gate sat above the lockout while its comment said below.
+  // ⭐ 2026-10-07: the email door between them is deleted — the order is RG lockout → (lock) caps + SOF.
   const iLock = DEPOSIT_FN.indexOf("deposit.lockout_blocked");
   const iMail = DEPOSIT_FN.indexOf("deposit.email_unverified_blocked");
   const iReserve = DEPOSIT_FN.indexOf("withLock(`wallet:${userId}`");
-  ok("🔴 …in the order RG lockout → email → (lock) caps + SOF",
-    iLock > 0 && iMail > iLock && iReserve > iMail, `lockout@${iLock} email@${iMail} lock@${iReserve}`);
+  ok("🔴 …in the order RG lockout → (lock) caps + SOF, with no email door between them",
+    iLock > 0 && iMail < 0 && iReserve > iLock, `lockout@${iLock} email@${iMail} lock@${iReserve}`);
 }
 ok("⭐ …and every deposit is STAMPED with the account's identity standing — the record that replaced the gate",
   /readIdentityStanding\(userId\)/.test(DEPOSIT_FN)
@@ -316,10 +327,13 @@ const APPROVE_BODY = (() => {
 ok("§7.control · the approve dialog's rendered body was found", APPROVE_BODY.length > 200 && /verified/.test(APPROVE_BODY), `len=${APPROVE_BODY.length}`);
 // 🔴 INVERTED 2026-09-13. From 2026-08-20 this REQUIRED the dialog to say "does NOT open any money gate";
 // from 2026-09-05 that sentence was false in every clause while this file asserted it stayed. Approval
-// now opens the withdrawal gate and nothing else, and the dialog must say exactly that.
-ok("🔴 the approve dialog says approval opens the withdrawal gate, and nothing else",
-  /It opens the withdrawal gate, and nothing else/.test(APPROVE_BODY),
+// opened the withdrawal gate and nothing else — and since 2026-10-07 the gate has TWO halves, identity and a
+// confirmed email, so the dialog says approval answers the identity half, and names the other one.
+ok("🔴 the approve dialog says approval answers the identity half of the withdrawal gate, and nothing else",
+  /It answers the identity half of the withdrawal gate, and nothing else/.test(APPROVE_BODY) && /confirmed email address/.test(APPROVE_BODY),
   "an officer must know the one consequence the decision has, at the moment of decision");
+ok("⛔ …and never tells the officer that depositing needs a confirmed email (false since 2026-10-07)",
+  !/depositing needs a confirmed email/i.test(APPROVE_BODY));
 ok("⛔ …and does not claim it unlocks deposits or play",
   !/unlocks full real-money deposits, play and withdrawals/.test(RAIL_S) && !/unlock\w*[^.]{0,40}(deposit|play)/i.test(APPROVE_BODY),
   "the officer-facing twin of E-5 — misstating a compliance action to the accountable officer");
@@ -332,6 +346,31 @@ ok("control · that detector fires on the sentence it forbids",
 ok("…and it still names what approval DOES do — record an identity, bind the document",
   /binds this document to this account/.test(APPROVE_BODY) && /verified/.test(APPROVE_BODY));
 ok("§7.control · the rail source actually loaded", RAIL_S.length > 2_000 && /Approve identity/.test(RAIL_S));
+
+// ── 8 · The approval LETTER names the email step only when it is still owed (2026-10-07) ────
+section("8 · the approval letter and the email half of the gate");
+{
+  // ⭐ A withdrawal needs a confirmed email as well as identity (owner ruling 2026-10-07). The letter adds that step
+  // ONLY for an unconfirmed address — a confirmed player is never told to do what is done — and never says "first":
+  // the step returns whenever the address changes. ⛔ The BELL row is not touched (rows are stored verbatim).
+  const { kycApprovedHtml } = await import("../src/lib/server/email.ts");
+  const owed = kycApprovedHtml({ name: "Asha", reference: "kyc_test_1", emailUnconfirmed: true });
+  const done = kycApprovedHtml({ name: "Asha", reference: "kyc_test_1" });
+  const EN = "Before you withdraw, confirm your email address too";
+  const SW = "Kabla ya kutoa pesa, thibitisha pia anwani yako ya barua pepe";
+  ok("8.1 ★ an unconfirmed address: the letter names the email step, in English and Swahili", owed.includes(EN) && owed.includes(SW));
+  ok("8.2 ⛔ a confirmed address: the letter says nothing about email", !done.includes(EN) && !done.includes(SW) && !/barua pepe/.test(done));
+  const sentenceOf = (html: string, start: string) => { const i = html.indexOf(start); return i < 0 ? "" : html.slice(i, html.indexOf("<", i)); };
+  ok("8.3 ⛔ …and the step never says \"first\" (it returns whenever the address changes)",
+    !/\bfirst\b/i.test(sentenceOf(owed, EN)) && !/\bkwanza\b/i.test(sentenceOf(owed, SW)), sentenceOf(owed, EN));
+  ok("8.4 the trigger hands the letter the account's standing (an address on file, never confirmed)",
+    /kycApprovedHtml\(\{\s*name:\s*greetName,\s*reference:\s*k\.id,\s*emailUnconfirmed:\s*!!u\?\.email\s*&&\s*!u\.emailVerifiedAt\s*\}\)/.test(KYC_SERVICE_CODE));
+  const NOTIFY = stripComments(read("../src/lib/server/notification-service.ts"));
+  const iA = NOTIFY.indexOf('if (status === "APPROVED")');
+  const approvedBell = iA < 0 ? "" : NOTIFY.slice(iA, NOTIFY.indexOf("}", NOTIFY.indexOf("bodyZh", iA)));
+  ok("8.5 ⛔ the APPROVED bell row names no email — it is stored verbatim for ever",
+    approvedBell.length > 100 && !/email|barua pepe|邮箱/i.test(approvedBell), `len=${approvedBell.length}`);
+}
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

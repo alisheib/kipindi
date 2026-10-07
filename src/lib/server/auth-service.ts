@@ -90,9 +90,9 @@ export async function clientMeta(): Promise<{ ip: string | null; ua: string | nu
 
 export type ServiceResult<T = void> =
   | { ok: true; data?: T }
-  // EMAIL_UNVERIFIED is distinct from INVALID on purpose: the deposit surface
-  // renders it as a recoverable "confirm your inbox" step with a resend action,
-  // not as a form error the player cannot act on.
+  // EMAIL_UNVERIFIED is distinct from INVALID on purpose: the WITHDRAW surface (the deposit
+  // surface until 2026-10-07) renders it as a recoverable "confirm your inbox" step with a
+  // resend action, not as a form error the player cannot act on.
   // C2 · `reason` and `detail` are ADDITIVE and OPTIONAL. The `code` STAYS — it is API and
   // audit truth and ~200 sites and every caller depend on it. What `code` cannot do is say
   // WHY: `INVALID` alone is returned from 108 server sites covering bad input, stake bounds,
@@ -524,7 +524,8 @@ export async function currentSession(): Promise<SessionData | null> {
 
 export type PasswordRegisterInput = {
   phone: string;            // E.164, e.g. +255712345678
-  /** REQUIRED — receipts go here, and verifying it is what unlocks the first deposit. */
+  /** REQUIRED — account and money notices go here, and confirming it is what a withdrawal needs (owner ruling
+   *  2026-10-07; until then it unlocked the first deposit, and a deposit asks no email now). */
   email: string;
   password: string;
   passwordConfirm: string;
@@ -587,9 +588,9 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
   }
 
-  // ONE ACCOUNT PER EMAIL. Load-bearing for the deposit gate: a verified email is
-  // what unlocks depositing, so if one inbox could verify unlimited accounts the
-  // gate would be decorative — and multi-accounting is an AML/RG problem in its
+  // ONE ACCOUNT PER EMAIL. Load-bearing for the withdrawal gate (the deposit gate until
+  // 2026-10-07): a confirmed email is what a cash-out needs, so if one inbox could confirm
+  // unlimited accounts the gate would be decorative — and multi-accounting is an AML/RG problem in its
   // own right (self-exclusion and deposit caps are per-account). Enforced here in
   // application code rather than by a DB @unique because adding a unique index to
   // the LIVE money DB risks failing `migrate deploy` (which would take prod down)
@@ -619,8 +620,8 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   const user = await db.user.create({
     id: `usr_${randomId(12)}`,
     phoneE164: phone,
-    // The address the player typed — receipts, the verification link, and the
-    // deposit gate all key off this. (PHONE_EMAIL_MAP is a legacy override for
+    // The address the player typed — the verification link, money mail once it
+    // is confirmed, and (from 2026-10-07) the withdrawal's email step key off this. (PHONE_EMAIL_MAP is a legacy override for
     // pre-existing admin/test accounts that registered before email was
     // collected; it must not shadow an address a real player just gave us.)
     email: baseParse.data.email,
@@ -748,11 +749,11 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
       tag: "welcome",
     }).catch(() => {});
 
-    // Confirmation link, sent IMMEDIATELY at sign-up — the player needs a verified
-    // address before their first deposit, so the link must already be waiting in
-    // their inbox by the time they reach the wallet. Best-effort by contract
-    // (sendEmailVerification swallows its own errors); a failed send is recoverable
-    // from the deposit gate's "Resend" action, so it must never fail registration.
+    // Confirmation link, sent IMMEDIATELY at sign-up. Since 2026-10-07 a deposit asks
+    // no email; a confirmed address is needed before a WITHDRAWAL, so the link is
+    // waiting long before it matters (it expires in 24 h; the withdraw screen and the
+    // account page send a new one). Best-effort by contract (sendEmailVerification
+    // swallows its own errors), so it must never fail registration.
     const { sendEmailVerification } = await import("./email-verification");
     await sendEmailVerification(user.id, user.email, displayLabel(user));
   }
@@ -1096,7 +1097,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   //      on their next login, with nothing on screen explaining why;
   //   3. it bypassed the one-account-per-email check, reopening multi-accounting.
   // `email-verification.setUserEmail()` is the ONLY writer of `user.email`, and
-  // it is the thing that re-gates depositing. The map is now READ-ONLY — used
+  // a new address clears the confirmation — which re-gates WITHDRAWAL (2026-10-07). The map is now READ-ONLY — used
   // solely as a delivery fallback when an account has no address on file.
   const emailForPhone = resolvePhoneEmail(user.phoneE164);
 

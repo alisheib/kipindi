@@ -79,11 +79,11 @@ export async function startRegisterAction(_prev: RegisterRefusal | null, formDat
   // made a locked door the first screen of a brand-new account.
   //
   // ⭐ SO: with a safe `next`, they land on the market they came from; without one, on the market
-  // board — the same front door a returning player gets (`/?welcome=back`, login). The email is still
-  // asked: the welcome toast names it, the app-wide bar (`EmailVerifyBanner`) carries Resend, and the
-  // deposit page + `wallet-service.deposit()` still refuse money until it is confirmed — asked when
-  // the player reaches for the deposit, not before they have seen a market. A `next` that IS
-  // `/wallet/deposit` still lands there: then the deposit was their intent.
+  // board — the same front door a returning player gets (`/?welcome=back`, login). The link to confirm the
+  // email goes out at sign-up, and since 2026-10-07 (owner ruling) a deposit asks no email at all: the
+  // confirmed address is asked quietly before the first WITHDRAWAL (`wallet-service.withdraw()`, the
+  // withdraw screen's panel). The app-wide bar and the deposit door that once asked for it are deleted. A
+  // `next` that IS `/wallet/deposit` still lands there: then the deposit was their intent.
   //
   // ⭐ THE ONE RULE is `landingAfterAuth` (src/lib/auth-landing.ts), shared by every sign-in and sign-up door: the
   // greeting set before any #fragment, and a bootstrap admin (staff) sent to the console. `test:kyc-at-withdrawal` §A

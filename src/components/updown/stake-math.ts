@@ -18,7 +18,7 @@ export function quickStakes(min: number, max: number): number[] {
 /**
  * Tight chip label for a stake — just the magnitude, no "TZS" (the STAKE label and the
  * custom field already establish the currency). Keeps the chip row on one line at 360px:
- * 100 · 200 · 500 · 1K · 100K.
+ * 1K · 2K · 5K · 10K at the TZS 1,000 minimum (a sub-1,000 figure prints bare, e.g. "500").
  */
 export function stakeChipLabel(n: number): string {
   if (n >= 1_000_000) return `${n % 1_000_000 === 0 ? n / 1_000_000 : (n / 1_000_000).toFixed(1)}M`;

@@ -13,9 +13,9 @@ import { useT } from "@/lib/i18n";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ReceiptBox, ReceiptRow } from "@/components/ui/receipt-row";
 import { useToast } from "@/components/ui/toast";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import { computeWithdrawalFee } from "@/lib/payout";
-import { WITHDRAW_MIN_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { WITHDRAW_MAX_TZS, withdrawMinFor } from "@/lib/server/validators";
 import { lookupWithdrawPayeeAction } from "./actions";
 
 type PayeeState = { state: "idle" | "loading" | "done"; name: string | null };
@@ -82,8 +82,11 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
     const provider = String(fd.get("provider") ?? "");
     const msisdn = String(fd.get("msisdn") ?? "").trim();
     if (!provider) return t.wallet.chooseProvider;
-    if (!Number.isFinite(amount) || amount < WITHDRAW_MIN_TZS || amount > WITHDRAW_MAX_TZS) {
-      return t.wallet.amountHint;
+    // The TRUE minimum at the live fee (`withdrawMinFor`, owner ruling 2026-10-07) — the page's hint and the action's
+    // refusal print the same figure, filled into the same `{min}`/`{max}` template.
+    const min = withdrawMinFor(feeRate);
+    if (!Number.isFinite(amount) || amount < min || amount > WITHDRAW_MAX_TZS) {
+      return fill(t.wallet.amountHint, { min: formatNumber(min), max: formatNumber(WITHDRAW_MAX_TZS) });
     }
     // ⚠️ The 9-digit shape is the SAME rule the field's own `pattern="\d{9}"`
     // enforced. It is restated here because `noValidate` switches the native

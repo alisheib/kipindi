@@ -1137,7 +1137,8 @@ export async function reviewKyc(opts: {
       sendEmailToUser(userId, (email) => ({
         to: email,
         subject: "Identity verified · You're fully verified",
-        html: kycApprovedHtml({ name: greetName, reference: k.id }),
+        // ⭐ The second withdrawal step, only when it is still owed (2026-10-07) — see `kycApprovedHtml`.
+        html: kycApprovedHtml({ name: greetName, reference: k.id, emailUnconfirmed: !!u?.email && !u.emailVerifiedAt }),
         tag: "kyc-approved",
       }));
       return { ok: true as const };

@@ -36,6 +36,9 @@ export type Transaction = {
    *  and Selcom's support desk key off, so it belongs anywhere we show our own
    *  id. Null on internal movements that never touched a gateway. */
   providerRef?: string | null;
+  /** Whether this row has a receipt — decided on the STORED type (`hasReceipt`, lib/wallet/receipts.ts), never on
+   *  `type` above, which is a display fold (a bonus credit folds to `deposit`). */
+  hasReceipt?: boolean;
 };
 
 /** Logged-out shell identity (isAuthed:false) — never an authenticated user. */

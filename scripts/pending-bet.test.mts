@@ -278,10 +278,13 @@ if (!PROVE_RED) {
       "7.action-door · markets/actions.ts asks signInPathForAction at least 8 times; all seven action files import it from @/lib/server/sign-in-path; no wallet action hard-codes /auth/login?next=/wallet/",
       JSON.stringify({ calls: calls(MARKETS), notImporting, walletLiteral }));
 
-    // 7.deposit-door · the email-door hop goes back to the page WITH the player's choices, never with the number (B6).
+    // 7.withdraw-door · the email-step hop goes back to the page WITH the player's choices, never with the number (B6).
+    // ⭐ MOVED 2026-10-07 (owner ruling): a deposit asks no email any more — the hop it earned lives on the WITHDRAW
+    // action now, the one door that refuses an unconfirmed email. The deposit action must have no such branch at all.
     const DEPOSIT = read("src/app/wallet/deposit/actions.ts");
-    const OLD_HOP = `redirect("/wallet/deposit" as never)`;
-    const NEW_HOP = "redirect(" + BT + "/wallet/deposit?${";
+    const WITHDRAW = read("src/app/wallet/withdraw/actions.ts");
+    const OLD_HOP = `redirect("/wallet/withdraw" as never)`;
+    const NEW_HOP = "redirect(" + BT + "/wallet/withdraw?${";
     /** The email gate's consequent: its braced block, or its one statement up to the ";". */
     const emailHop = (s: string): string => {
       const at = s.indexOf(`result.code === "EMAIL_UNVERIFIED"`);
@@ -298,14 +301,16 @@ if (!PROVE_RED) {
     const keepsChoices = (s: string) => {
       const hop = emailHop(s);
       const drop = hop.indexOf(`.delete("msisdn")`);
-      return hop.includes("new URLSearchParams(carry)") && drop > 0 && drop < hop.indexOf(NEW_HOP) && !s.includes(OLD_HOP);
+      return hop.includes("new URLSearchParams(carryParams.slice(1))") && drop > 0 && drop < hop.indexOf(NEW_HOP) && !s.includes(OLD_HOP);
     };
-    console.log(`     the email gate's hop: ${emailHop(DEPOSIT).split(LF).map((l) => l.trim()).join(" ") || "(not found)"}`);
-    check(!keepsChoices(`    if (result.code === "EMAIL_UNVERIFIED") redirect("/wallet/deposit" as never);`)
-        && !keepsChoices(DEPOSIT.split(`.delete("msisdn")`).join("")),
-      "7.deposit-door · control: the pre-fix hop (the bare page, every choice lost) is flagged, and so is a hop that keeps the number");
-    check(keepsChoices(DEPOSIT),
-      "7.deposit-door · on EMAIL_UNVERIFIED the deposit action goes back to /wallet/deposit with new URLSearchParams(carry), less the msisdn, and the bare hop is gone");
+    console.log(`     the email step's hop: ${emailHop(WITHDRAW).split(LF).map((l) => l.trim()).join(" ") || "(not found)"}`);
+    check(!keepsChoices(`    if (result.code === "EMAIL_UNVERIFIED") redirect("/wallet/withdraw" as never);`)
+        && !keepsChoices(WITHDRAW.split(`.delete("msisdn")`).join("")),
+      "7.withdraw-door · control: the bare hop (every choice lost) is flagged, and so is a hop that keeps the number");
+    check(keepsChoices(WITHDRAW),
+      "7.withdraw-door · on EMAIL_UNVERIFIED the withdraw action goes back to /wallet/withdraw with the carried choices, less the msisdn");
+    check(emailHop(DEPOSIT) === "",
+      "7.withdraw-door · ⛔ …and the DEPOSIT action has no EMAIL_UNVERIFIED branch — a deposit asks no email (2026-10-07)");
 
     // 7.auth-code · a lost session on a comment, a report, a deletion, a restore or an objection answers with code AUTH, so
     // errorCopy renders t.error.errSignIn in the player's own language rather than the English prose (B-E1).
