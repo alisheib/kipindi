@@ -21,9 +21,15 @@
  *   §G  §4.5's own — E18 the source line (and the stamp saved now), E15 the limit and the frozen budget (X15), a measured
  *       price through the shipped loader, unreadable settings (OD63), OD65's count alone, OD66's refusal (nothing counted),
  *       OD67's typed tier and no list for a viewer who may not read a number (G6c), and U41's one officer;
- *   §6  the source — the fence's one door, the send boundary, no posted count, ONE writer of the confirm keys, the wiring.
+ *   §6  the source — the fence's one door, the send boundary, no posted count, ONE writer of the confirm keys, the wiring;
+ *   §UI U40b's screen (ENGINE-SPEC §4.6) — the dialog never opens on Confirm and REMOUNTS on a refusal (6.4); its tier is the
+ *       VIEW's, never the count's (OD67 · the U40a re-review), so a viewer who may not read a number always types; the
+ *       additive keypad key; the ONE action, its gate first (6.3), its viewer from the stored role and its import walk; the
+ *       Confirm card as each officer is handed it — no TZS for GROWTH (G5.3) and no list for a masked viewer (OD67); the
+ *       trigger's reasons, the form's unsaved edits among them; and the audience on screen held against the saved one.
  * ⚠️ WHAT LIVES ELSEWHERE: the pure rule's table, the typed-number parse, the Start verdict (OD28) and their reds are
- * `test:campaign-confirm`'s; the modal, its focus line and the action (6.3, 6.4) are U40b's, which extends this suite.
+ * `test:campaign-confirm`'s; what the screen LOOKS like, at 1280 and 360 and with reduced motion, is the drive's
+ * (`qa:marketing-confirm`).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` first proves the baseline green, then the plants' stand-in gate with no
  * flaw switched on, then plants each defect IN MEMORY (a dependency handed to the service or the fence, a stand-in gate, a
@@ -59,7 +65,10 @@ const SETTINGS = await import("../src/lib/server/marketing/sms-settings.ts");
 const EST = await import("../src/lib/server/marketing/estimate.ts");
 const { MARKETING_SMS_SETTINGS_DEFAULTS } = await import("../src/lib/marketing/sms-settings.ts");
 const { readSavedSourcePhrase } = await import("../src/lib/server/marketing/campaign-draft.ts");
-const { composerSourceLineStale } = await import("../src/app/admin/campaigns/new/composer-loader.ts");
+const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts");
+const { composerSourceLineStale } = LOADER;
+const COPY = await import("../src/app/admin/campaigns/new/composer-copy.ts");
+const { domainForPath } = await import("../src/lib/server/roles.ts");
 const { breakdownVisible } = await import("../src/lib/marketing/campaign-status.ts");
 const { SMS_CAMPAIGN_CONFIRM_KEYS } = await import("../src/lib/server/marketing/campaign-model.ts");
 const { AUDIENCE_FLOOR } = await import("../src/app/admin/campaigns/new/audience-copy.ts");
@@ -87,6 +96,10 @@ type SmsCampaignTransition = import("../src/lib/server/store.ts").SmsCampaignTra
 type StoredSmsMessage = import("../src/lib/server/store.ts").StoredSmsMessage;
 type AuditEntry = import("../src/lib/server/audit.ts").AuditEntry;
 type SettingsReload = import("../src/lib/server/marketing/sms-settings.ts").SettingsReload;
+type ConfirmCardData = import("../src/app/admin/campaigns/new/composer-loader.ts").ConfirmCardData;
+type ConfirmCardDeps = import("../src/app/admin/campaigns/new/composer-loader.ts").ConfirmCardDeps;
+type ConfirmTriggerFacts = import("../src/app/admin/campaigns/new/composer-copy.ts").ConfirmTriggerFacts;
+type ConfirmGateProps = import("../src/app/admin/campaigns/new/composer-copy.ts").ConfirmGateProps;
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CR = String.fromCharCode(13);
@@ -144,6 +157,17 @@ const L = {
   x7: "6.7 · ⭐ test:campaign-gates and red:campaign-gates resolve to this file, and predeploy runs test:campaign-gates exactly once, right after test:campaign-confirm",
   x8: "6.8 · PENDING until U42 — enqueue.ts asks startAudienceVerdict before its first createMany",
   x9: "6.9 · the shipped wiring is the real doors — CONFIRM_DEPS hands in audienceFence, fenceForViewer, signFence, verifyFence, decideConfirm, campaignAudienceRefusal, breakdownVisible, sourceLineRefusal, the FRESH source-line read, the settings' re-read, estimate.ts's ONE cost loader (loadSegmentCost), spendRefusal, confirmInstant, confirmedByThisWrite and audit; FENCE_DEPS campaignAudienceCount, walkCampaignAudience, isUnfilteredCampaignAudience and membersKeyOf",
+  // ── §UI · U40b · THE CONFIRMATION ON SCREEN (ENGINE-SPEC §4.6) ──
+  u1: "UI.1 · ⭐ 6.4 · A5 · THE CONFIRM BUTTON IS NEVER FOCUSED WHEN THE DIALOG OPENS — modal.tsx keeps `initialFocus={isHard ? inputRef : cancelRef}` byte-identical, exactly once; the Confirm card renders the kit's ConfirmModal once (no Modal and no dialog role of its own), KEYED `${watermark}:${attempt}` (the last view it was drawn from) so a refusal remounts it on the fresh view (the box cleared, the focus back on the box or on Cancel), and a refusal bumps the attempt",
+  u2: "UI.2 · ⭐ OD67 · THE DIALOG'S TIER IS THE VIEW'S, NEVER THE COUNT'S (the U40a re-review's ruling) — on a listed-size audience of 3 the gate is the TYPED tier (the bare count to type, the digit keypad) for a viewer who may not read a number and the list tier for a reader; 7 people are typed for both; a view with no tier or no count opens nothing; and the card spreads `confirmGate(view)` into the dialog, with no CONFIRM_ENUMERATE_MAX, no confirmTier and no count compared in the card or the copy",
+  u3: "UI.3 · `typedInputMode` IS ADDITIVE — the hard arm keeps `{ tier: 'hard'; typedWord: string }` and gains only an optional `typedInputMode?: 'numeric'`; the medium arm forbids it (`typedInputMode?: never`, beside `typedWord?: never`); the keypad line is unchanged and opens for the caller's ask or a count word; the gate gives it to the typed tier alone; and no ConfirmModal caller in src names it but the confirmation's own gate (every existing caller unchanged)",
+  u4: "UI.4 · ⭐ THE ACTION — confirm-actions.ts is a 'use server' file with EXACTLY ONE exported function, `confirmCampaignAction(formData: FormData)`, whose FIRST statement is `softRequireStaff('growth', 'marketing.campaign.confirm', …)` — and growth is domainForPath('/admin/campaigns'); it reads only the campaign, the typed text and the watermark, never a count, and its viewer from the STORED role (`confirmViewerFor(g.userId)`); and the Confirm card imports it and calls it — no orphan",
+  u5: "UI.5 · ⭐ THE VIEWER IS THE STORED ROLE'S, AND IT FAILS CLOSED — confirmViewerFor reads GROWTH as no number and no money, FINANCE as money without a number, ADMIN as both; an unknown officer, no officer and a blank id as neither; a role read that throws as neither, and a cell that throws as that cell refused",
+  u6: "UI.6 · ⭐ G5.3 · NO TZS IN A GROWTH RENDER — the Confirm card a GROWTH officer is handed (loadConfirmCardFor, the page's own read, whose shipped doors are confirmViewerFor, campaignConfirmView and confirmMoneyLine) carries no 'TZS' and no money figure — the money line null and the estimate's money taken out, its segments kept and said money-free — while a money reader's card (FINANCE, ADMIN) carries the line with 'TZS 42'; the card prints money only from that line; and the page renders the card under the Test card from that read",
+  u7: "UI.7 · ⭐ OD67 · NO LIST FOR A VIEWER WHO MAY NOT READ A NUMBER, IN THE CARD — on a listed-size audience of 3 the card a GROWTH officer is handed is typed, the count alone, no sample, no masked number anywhere and a watermark naming nobody; a reader's card on the same draft lists all three; and the card lists the view's own rows and nothing else",
+  u8: "UI.8 · THE TRIGGER'S REASON, NEVER HIDDEN — none for a saved, counted, unblocked draft; 'Save first' for unsaved text, an audience on screen the draft does not store, a save in flight or nothing saved; 'reload' for a draft saved elsewhere since the page loaded (the form's revision behind the page's) and 'Updating' while this tab's own save is read back or another draft is on screen; 'Write the Swahili message first' for a blank body; the act gate's sentence for a view-only role; 'already confirmed' and 'cancelled' past DRAFT; 'Nobody matches' for nobody; the unread view said as such; the service's own blocked sentence as it comes; and the card disables its trigger on it, with it in the title and beside it",
+  u9: "UI.9 · ⛔ THE ACTION'S IMPORT WALK reaches no send loop, token mint or enqueue (marketing/dispatch, optout-service, enqueue) — and neither the composer's loader nor its draft actions",
+  u10: "UI.10 · THE AUDIENCE ON SCREEN AGAINST THE SAVED ONE — the composer's loader says `unsaved` for a saved draft whose address names another audience, never for its own stored audience, a draft opened with no audience in its address, or a new composer; the Confirm card reads it through the composer's state, and Save takes it as a change (never 'Nothing to save')",
 } as const;
 type Label = (typeof L)[keyof typeof L];
 
@@ -264,6 +288,14 @@ await db.user.create(playerRow("pl_x9_3", HELD, JOINED_AT));
 // ── two Yas (HONORA) players: a players-only audience of 2 ──
 await db.user.create(playerRow("pl_q_1", keyOf("65", 70)));
 await db.user.create(playerRow("pl_q_2", keyOf("65", 71)));
+// ── §UI · three officers whose STORED roles decide the Confirm card's viewer: GROWTH (no number, no money), FINANCE (money,
+//    no number) and ADMIN (both). Staff accounts are never walked (`user.playerWalk`), so no audience above moves. ──
+const UI_GROWTH = "usr_gates_ui_growth";
+const UI_FINANCE = "usr_gates_ui_finance";
+const UI_ADMIN = "usr_gates_ui_admin";
+await db.user.create({ ...playerRow(UI_GROWTH, keyOf("78", 1)), role: "GROWTH" } as StoredUser);
+await db.user.create({ ...playerRow(UI_FINANCE, keyOf("78", 2)), role: "FINANCE" } as StoredUser);
+await db.user.create({ ...playerRow(UI_ADMIN, keyOf("78", 3)), role: "ADMIN" } as StoredUser);
 // ── a Blackball send history: five one-message chunks ten minutes apart, each charged TZS 5, so U39's walk finds four
 //    clean pairs and MEASURES TZS 5 a segment for that rail. This suite's own rail is the console, which has no history
 //    (the configured TZS 6 stands); G5.4 points the rail at Blackball to drive the shipped price loader over it. ──
@@ -313,6 +345,28 @@ type Sources = {
   /** Every .ts/.tsx under the two campaign directories (decommented), for G7.1. */
   campaignPath: Map<string, string>;
   pkg: string;
+  /** §UI (U40b) — the kit's dialog, the Confirm card, its one action, the composer's copy, client and page (decommented). */
+  modal: string;
+  card: string;
+  actions: string;
+  copy: string;
+  client: string;
+  page: string;
+  /** §UI 3 — every src file whose code names `typedInputMode` (read once from disk). */
+  inputModeHolders: string[];
+};
+/** §UI (U40b) — the card's pure decisions and reads, each swappable by a plant. */
+type UiImpl = {
+  /** The dialog's tier (`confirmGate`). */
+  gate: typeof COPY.confirmGate;
+  /** The trigger's reason (`confirmTriggerBlocked`). */
+  blocked: typeof COPY.confirmTriggerBlocked;
+  /** Who is looking (`confirmViewerFor`). */
+  viewer: typeof SVC.confirmViewerFor;
+  /** The card's reads as the page's own (`CONFIRM_CARD_DEPS`), the suite's view injected (its source line). */
+  cardDeps: (impl: Impl) => ConfirmCardDeps;
+  /** The audience on screen against the saved one (`composeAudienceView`). */
+  audienceView: typeof LOADER.composeAudienceView;
 };
 type Impl = {
   /** The fence's reads and rules — a plant swaps one. */
@@ -324,11 +378,21 @@ type Impl = {
   sources: Sources;
   /** The SHIPPED wiring, as 6.9 reads it. */
   shipped: { confirm: Readonly<ConfirmDeps>; fence: Readonly<FenceDeps> };
+  ui: UiImpl;
 };
 
 const SVC_REL = "src/lib/server/marketing/campaign-confirm-service.ts";
 const FENCE_REL = "src/lib/server/marketing/audience-fence.ts";
 const DRAFT_REL = "src/lib/server/marketing/campaign-draft.ts";
+/** §UI (U40b) — the files the confirmation's screen lives in. */
+const MODAL_REL = "src/components/ui/modal.tsx";
+const NEW_DIR = "src/app/admin/campaigns/new/";
+const CARD_REL = `${NEW_DIR}campaign-confirm.tsx`;
+const ACTIONS_REL = `${NEW_DIR}confirm-actions.ts`;
+const COPY_REL = `${NEW_DIR}composer-copy.ts`;
+const CLIENT_REL = `${NEW_DIR}composer-client.tsx`;
+const PAGE_REL = `${NEW_DIR}page.tsx`;
+const LOADER_REL = `${NEW_DIR}composer-loader.ts`;
 
 function walkDir(abs: string): string[] {
   if (!existsSync(abs)) return [];
@@ -337,11 +401,14 @@ function walkDir(abs: string): string[] {
 }
 const DEV_ONLY = "src/app/api/dev-test/";
 const confirmedHolders = new Map<string, string>();
+const inputModeHolders: string[] = [];
 for (const abs of walkDir(join(ROOT, "src"))) {
   const rel = relOf(abs);
   if (rel.startsWith(DEV_ONLY)) continue;
   const raw = readFileSync(abs, "utf8");
   if (raw.includes('"CONFIRMED"')) confirmedHolders.set(rel, decomment(raw.split(CR).join("")));
+  // §UI 3 · a file whose CODE (not its comments) names the dialog's keypad key.
+  if (raw.includes("typedInputMode") && decomment(raw.split(CR).join("")).includes("typedInputMode")) inputModeHolders.push(rel);
 }
 const campaignPath = new Map<string, string>();
 for (const dir of ["src/lib/server/marketing", "src/app/admin/campaigns"]) {
@@ -354,12 +421,26 @@ const REAL_SOURCES: Sources = {
   confirmedHolders,
   campaignPath,
   pkg: rawRead("package.json"),
+  modal: code(MODAL_REL),
+  card: code(CARD_REL),
+  actions: code(ACTIONS_REL),
+  copy: code(COPY_REL),
+  client: code(CLIENT_REL),
+  page: code(PAGE_REL),
+  inputModeHolders: [...inputModeHolders].sort(),
 };
 /** A source with one anchor replaced. ⛔ An anchor that is not there THROWS, so a plant can never pass as caught unchanged. */
 const plantIn = (src: string, from: string, to: string): string => {
   if (!src.includes(from)) throw new Error(`plant anchor not found: ${from.slice(0, 60)}`);
   return src.replace(from, to);
 };
+
+/** §UI · the card's reads as the page's own — production's viewer and money line — with the view counted through the
+ *  bundle under test and the suite's source line (so a reader's three are a list, not a stale stamp). */
+const realCardDeps = (impl: Impl): ConfirmCardDeps => ({
+  ...LOADER.CONFIRM_CARD_DEPS,
+  view: (campaignId, viewer) => impl.view(campaignId, viewer, depsOf(impl)),
+});
 
 const REAL: Impl = {
   fenceDeps: { ...FEN.FENCE_DEPS },
@@ -368,6 +449,13 @@ const REAL: Impl = {
   confirm: SVC.confirmCampaign,
   sources: REAL_SOURCES,
   shipped: { confirm: SVC.CONFIRM_DEPS, fence: FEN.FENCE_DEPS },
+  ui: {
+    gate: COPY.confirmGate,
+    blocked: COPY.confirmTriggerBlocked,
+    viewer: SVC.confirmViewerFor,
+    cardDeps: realCardDeps,
+    audienceView: LOADER.composeAudienceView,
+  },
 };
 
 /** The suite's one fixed injection: the saved source line, read fresh (by the view and the confirmation alike), is LINE. */
@@ -469,6 +557,35 @@ function withSecret<T>(secret: string, fn: () => T): T {
 }
 /** The token with the character at `i` changed to another. */
 const changeAt = (t: string, i: number): string => `${t.slice(0, i)}${t[i] === "a" ? "b" : "a"}${t.slice(i + 1)}`;
+
+/* ── §UI's handles (U40b) ── */
+/** A no-break space — a figure that must not split keeps its number with it (the money line's own spelling). */
+const NB = String.fromCharCode(0xa0);
+/** A masked number's dot (`maskPhone`): a card holding none shows no masked number at all. */
+const DOT = String.fromCharCode(0x2022);
+/** A5 · the one line that keeps the Confirm button from being focused when a dialog opens (`modal.tsx`). */
+const FOCUS_LINE = "initialFocus={isHard ? inputRef : cancelRef}";
+/** The dialog's key — a refusal remounts it on the fresh view. */
+const REMOUNT_KEY = "key={`${dialog.view.watermark}:${attempt}`}";
+/** The dialog takes its tier and its word as ONE spread of the gate (the last view it was drawn from). */
+const GATE_SPREAD = "{...dialog.gate}";
+/** The one action's signature, and the gate that must be its first statement (ruling 523). */
+const ACTION_SIG = "export async function confirmCampaignAction(formData: FormData): Promise<ConfirmActionResult> {";
+const GUARD_LINE = 'const g = await softRequireStaff("growth", "marketing.campaign.confirm", COMPOSE_CONFIRM_ROLE_REFUSAL);';
+/** The Confirm card's one ConfirmModal element: from its tag to the end of the tag that spreads the gate. */
+function dialogOf(card: string): string {
+  const at = card.indexOf("<ConfirmModal");
+  if (at < 0) return "";
+  const spread = card.indexOf(GATE_SPREAD, at);
+  const end = spread < 0 ? -1 : card.indexOf("/>", spread);
+  return end < 0 ? card.slice(at, at + 1200) : card.slice(at, end + 2);
+}
+/** §UI · the Confirm card one officer is handed — the page's own read (`loadConfirmCardFor`), the bundle's view. */
+async function cardOf(impl: Impl, w: World, userId: string, id: string): Promise<ConfirmCardData> {
+  const c = await LOADER.loadConfirmCardFor(userId, { id, status: "DRAFT" }, impl.ui.cardDeps(impl));
+  w.seen.push(c);
+  return c;
+}
 
 /* ══ THE ASSERTIONS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -1084,6 +1201,224 @@ async function runAssertions(impl: Impl): Promise<void> {
       `masked ${showView(masked)} key ${maskedClaim?.membersKey ?? "none"} list ${masked?.sample.length} · reader ${showView(reader)} list ${reader?.sample.length} · none ${show(none)} · via a list ${show(viaList)} · typed ${show(typed)} · the two drafts nameless ${nameless}`];
   });
 
+  // ── §UI · U40b · THE CONFIRMATION ON SCREEN (ENGINE-SPEC §4.6) — before 4.15 and 4.17, so every card is swept too ──
+  await claim(L.u1, async () => {
+    const m = impl.sources.modal;
+    const card = impl.sources.card;
+    const el = dialogOf(card);
+    const checks = {
+      focusOnce: m.split(FOCUS_LINE).length - 1 === 1,
+      oneDialog: card.split("<ConfirmModal").length - 1 === 1,
+      noOwnDialog: !new RegExp("<Modal[^A-Za-z]").test(card) && !new RegExp('role="(alert)?dialog"').test(card),
+      keyed: el.includes(REMOUNT_KEY),
+      bumped: card.includes("setAttempt((a) => a + 1);"),
+    };
+    return [Object.values(checks).every(Boolean), json(checks)];
+  });
+
+  await claim(L.u2, async () => {
+    const three = await draft(w, "ui_tier3", tagF("g-n3"));
+    const seven = await draft(w, "ui_tier7", tagF("g-n7"));
+    const m3 = await viewOf(impl, w, three, GROWTH);
+    const r3 = await viewOf(impl, w, three, READER);
+    const m7 = await viewOf(impl, w, seven, GROWTH);
+    const r7 = await viewOf(impl, w, seven, READER);
+    const g = impl.ui.gate;
+    const typedFor = (gp: ConfirmGateProps | null, n: number): boolean =>
+      gp !== null && gp.tier === "hard" && gp.typedWord === String(n) && gp.typedInputMode === "numeric";
+    const listed = (gp: ConfirmGateProps | null): boolean => gp !== null && gp.tier === "medium" && !("typedWord" in gp) && !("typedInputMode" in gp);
+    const tiers = {
+      maskedThree: m3 !== null && m3.tier === "typed" && typedFor(g(m3), 3),
+      readerThree: r3 !== null && r3.tier === "enumerate" && listed(g(r3)),
+      seven: m7 !== null && r7 !== null && typedFor(g(m7), 7) && typedFor(g(r7), 7),
+      nothing: g({ tier: null, count: null }) === null && g({ tier: "typed", count: null }) === null && g({ tier: null, count: 3 }) === null,
+    };
+    const card = impl.sources.card;
+    const el = dialogOf(card);
+    const both = `${card}${NL}${impl.sources.copy}`;
+    const wired = {
+      fromView: card.includes("const gate = view === null ? null : confirmGate(view);") && el.includes(GATE_SPREAD) && !el.includes("tier="),
+      noThreshold: !both.includes("CONFIRM_ENUMERATE_MAX") && !both.includes("confirmTier(") && !new RegExp("[.]count[ ]*(<=|>=|<|>)").test(both),
+    };
+    return [Object.values(tiers).every(Boolean) && Object.values(wired).every(Boolean),
+      `masked 3: ${showView(m3)} · reader 3: ${showView(r3)} · ${json(tiers)} · ${json(wired)}`];
+  });
+
+  await claim(L.u3, async () => {
+    const m = impl.sources.modal;
+    const at = m.indexOf("type ConfirmGate =");
+    const typeText = at < 0 ? "" : m.slice(at, m.indexOf("export type ConfirmModalProps", at));
+    const hardGate = impl.ui.gate({ tier: "typed", count: 5912 });
+    const mediumGate = impl.ui.gate({ tier: "enumerate", count: 3 });
+    const checks = {
+      hardArm: typeText.includes('| { tier: "hard"; typedWord: string } & HardGateKeypad'),
+      keypadKey: m.includes('type HardGateKeypad = { typedInputMode?: "numeric" };'),
+      mediumArm: typeText.includes('| { tier?: "medium"; typedWord?: never; typedInputMode?: never };'),
+      keypadLine: m.includes('inputMode={countGate ? "numeric" : undefined}')
+        && m.includes('const countGate = isHard && (typedInputMode === "numeric" || isCountWord(gateWord));'),
+      gate: hardGate !== null && hardGate.tier === "hard" && hardGate.typedInputMode === "numeric" && hardGate.typedWord === "5912"
+        && mediumGate !== null && mediumGate.tier === "medium" && !("typedInputMode" in mediumGate),
+      callers: json(impl.sources.inputModeHolders) === json([COPY_REL, MODAL_REL].sort()),
+    };
+    return [Object.values(checks).every(Boolean), `${json(checks)} · named in [${impl.sources.inputModeHolders.join(", ")}]`];
+  });
+
+  await claim(L.u4, async () => {
+    const a = impl.sources.actions;
+    const sigAt = a.indexOf(ACTION_SIG);
+    const body = sigAt < 0 ? "" : a.slice(sigAt + ACTION_SIG.length).trimStart();
+    const exported = [...a.matchAll(new RegExp("export[ ]+(async[ ]+)?function[ ]+([A-Za-z0-9_$]+)", "g"))].map((x) => x[2]);
+    const otherExports = [...a.matchAll(new RegExp("export[ ]+(const|let|var|default|class)[^A-Za-z0-9_$]", "g"))].length;
+    const fields = [...a.matchAll(new RegExp('posted[(]formData, "([A-Za-z]+)"[)]', "g"))].map((x) => x[1]).sort();
+    const card = impl.sources.card;
+    const checks = {
+      useServer: a.trimStart().startsWith('"use server";'),
+      exactlyOne: sigAt >= 0 && json(exported) === json(["confirmCampaignAction"]) && otherExports === 0,
+      guardFirst: body.startsWith(GUARD_LINE) && body.slice(GUARD_LINE.length).trimStart().startsWith("if (!g.ok) return"),
+      domain: domainForPath("/admin/campaigns") === "growth",
+      fields: json(fields) === json(["campaignId", "typed", "watermark"]),
+      storedViewer: a.includes("const viewer = await confirmViewerFor(g.userId);")
+        && a.includes("confirmCampaign({ campaignId, typed, watermark, actorId: g.userId }, viewer)"),
+      imported: card.includes('import { confirmCampaignAction } from "./confirm-actions";') && card.includes("confirmCampaignAction(fd)"),
+    };
+    return [Object.values(checks).every(Boolean), `${json(checks)} · exported [${exported.join(", ")}]`];
+  });
+
+  await claim(L.u5, async () => {
+    const V = impl.ui.viewer;
+    const is = (v: ConfirmViewer, reads: boolean, money: boolean): boolean => v.reads === reads && v.money === money;
+    const roleFails = { ...SVC.CONFIRM_VIEWER_DEPS, role: async (): Promise<null> => { throw new Error("fixture: the role read failed"); } };
+    const cellFails = { ...SVC.CONFIRM_VIEWER_DEPS, reads: async (): Promise<boolean> => { throw new Error("fixture: the cell read failed"); } };
+    const got = {
+      growth: is(await V(UI_GROWTH), false, false),
+      finance: is(await V(UI_FINANCE), false, true),
+      admin: is(await V(UI_ADMIN), true, true),
+      unknown: is(await V("usr_gates_ui_nobody"), false, false),
+      noOfficer: is(await V(null), false, false),
+      blank: is(await V("   "), false, false),
+      roleThrows: is(await V(UI_ADMIN, roleFails), false, false),
+      cellThrows: is(await V(UI_ADMIN, cellFails), false, true),
+    };
+    return [Object.values(got).every(Boolean), json(got)];
+  });
+
+  await claim(L.u6, async () => {
+    const id = await draft(w, "ui_money", tagF("g-n7"));
+    const growth = await cardOf(impl, w, UI_GROWTH, id);
+    const finance = await cardOf(impl, w, UI_FINANCE, id);
+    const admin = await cardOf(impl, w, UI_ADMIN, id);
+    const ge = growth.view?.estimate ?? null;
+    const said = ge === null ? "" : COPY.composeConfirmSegments(ge.segments, ge.perRecipient);
+    const growthText = `${json(growth)} ${said}`;
+    const moneyFree = growth.read === "view" && growth.money === null && ge !== null && ge.segments === 7 && !("money" in ge)
+      && said.startsWith("Up to 7") && !growthText.includes("TZS");
+    const readers = [finance, admin].every((c) =>
+      c.read === "view" && typeof c.money === "string" && c.money.split(NB).join(" ").includes("Up to TZS 42"));
+    const card = impl.sources.card;
+    const page = impl.sources.page;
+    const testAt = page.indexOf('data-block="compose-test"');
+    const wiring = {
+      doors: LOADER.CONFIRM_CARD_DEPS.viewer === SVC.confirmViewerFor && LOADER.CONFIRM_CARD_DEPS.view === SVC.campaignConfirmView
+        && LOADER.CONFIRM_CARD_DEPS.money === SVC.confirmMoneyLine,
+      line: card.includes("{money !== null && <p") && !new RegExp("TZS|formatTzs|costTzs|limitTzs|priceTzs").test(card),
+      page: page.includes("const card = draft === null ? null : await loadConfirmCard(draft);") && page.includes("<CampaignConfirm card={card} />")
+        && testAt >= 0 && testAt < page.indexOf('data-block="compose-confirm"'),
+    };
+    return [moneyFree && readers && Object.values(wiring).every(Boolean),
+      `GROWTH money ${json(growth.money)}, TZS in its render ${growthText.includes("TZS")} · readers' line ${json(finance.money)} · ${json(wiring)}`];
+  });
+
+  await claim(L.u7, async () => {
+    const id = await draft(w, "ui_list", tagF("g-n3"));
+    const masked = await cardOf(impl, w, UI_GROWTH, id);
+    const reader = await cardOf(impl, w, UI_ADMIN, id);
+    const mv = masked.view;
+    const rv = reader.view;
+    const countAlone = mv !== null && mv.tier === "typed" && mv.count === 3 && mv.sample.length === 0 && mv.split !== null
+      && mv.split.kind === "floor" && FEN.verifyFence(mv.watermark)?.membersKey === null && !json(masked).includes(DOT);
+    const readerList = rv !== null && rv.tier === "enumerate" && rv.sample.length === 3 && rv.sample.every((s) => s.masked.includes(DOT));
+    const card = impl.sources.card;
+    const rowsAt = card.indexOf("view.sample.map((row, i) =>");
+    const onlyRows = rowsAt >= 0 && card.split("data-confirm-row").length - 1 === 1 && card.indexOf("data-confirm-row") > rowsAt
+      && card.split(".sample.map(").length - 1 === 1;
+    return [countAlone && readerList && onlyRows,
+      `masked ${masked.read} ${mv?.tier ?? "-"} list ${mv?.sample.length ?? "-"} key ${FEN.verifyFence(mv?.watermark ?? null)?.membersKey ?? "none"} · reader ${rv?.tier ?? "-"} list ${rv?.sample.length ?? "-"} · only the view's rows ${onlyRows}`];
+  });
+
+  await claim(L.u8, async () => {
+    const B = impl.ui.blocked;
+    const view = { blocked: null as string | null, message: null as string | null, tier: "typed" as ConfirmTier | null, count: 7 as number | null, watermark: "aw1.fixture.seal" as string | null };
+    const card = { campaignId: "cmp_ui", status: "DRAFT", read: "view" as const, view };
+    const base: ConfirmTriggerFacts = {
+      mayAct: true,
+      actReason: null,
+      form: { savedId: "cmp_ui", savedRevision: 3, pageRevision: 3, dirty: false, audienceUnsaved: false, saving: false, swBlank: false },
+      card,
+    };
+    const form = (p: Partial<ConfirmTriggerFacts["form"]>): ConfirmTriggerFacts => ({ ...base, form: { ...base.form, ...p } });
+    const seen = (p: Partial<typeof view>): ConfirmTriggerFacts => ({ ...base, card: { ...card, view: { ...view, ...p } } });
+    const none = { money: false, costTzs: null, limitTzs: null };
+    const OVER = SVC.CONFIRM_SERVICE_COPY.over_limit(none);
+    const SOURCE = SVC.CONFIRM_SERVICE_COPY.needs_source_line(none);
+    const READ_ONLY = "Read-only: the AUDITOR role can view SMS campaigns but not change it.";
+    const cases: Array<[string, ConfirmTriggerFacts, string | null]> = [
+      ["ready", base, null],
+      ["unsaved text", form({ dirty: true }), COPY.COMPOSE_CONFIRM_SAVE_FIRST],
+      ["unsaved audience", form({ audienceUnsaved: true }), COPY.COMPOSE_CONFIRM_SAVE_FIRST],
+      ["saving", form({ saving: true }), COPY.COMPOSE_CONFIRM_SAVE_FIRST],
+      ["nothing saved", { ...form({ savedId: null, savedRevision: null }), card: null }, COPY.COMPOSE_CONFIRM_SAVE_FIRST],
+      ["saved elsewhere since", form({ pageRevision: 4 }), COPY.COMPOSE_CONFIRM_STALE],
+      ["this tab's save read back", form({ savedRevision: 4 }), COPY.COMPOSE_TEST_UPDATING],
+      ["another draft on screen", { ...base, card: { ...card, campaignId: "cmp_other" } }, COPY.COMPOSE_TEST_UPDATING],
+      ["blank Swahili", form({ swBlank: true }), COPY.COMPOSE_CONFIRM_WRITE_SW],
+      ["view-only role", { ...base, mayAct: false, actReason: READ_ONLY }, READ_ONLY],
+      ["confirmed", { ...base, card: { ...card, status: "CONFIRMED" } }, COPY.COMPOSE_CONFIRM_ALREADY],
+      ["cancelled", { ...base, card: { ...card, status: "CANCELLED" } }, COPY.COMPOSE_CONFIRM_CANCELLED],
+      ["nobody", seen({ blocked: "audience_empty", message: "the service's" }), COPY.COMPOSE_CONFIRM_NOBODY],
+      ["unread", { ...base, card: { ...card, read: "error", view: null } }, COPY.COMPOSE_CONFIRM_UNCOUNTED],
+      ["over the limit", seen({ blocked: "over_limit", message: OVER }), OVER],
+      ["no source line", seen({ blocked: "needs_source_line", message: SOURCE }), SOURCE],
+    ];
+    const wrong = cases.filter(([, facts, want]) => B(facts) !== want).map(([name]) => name);
+    const src = impl.sources.card;
+    const client = impl.sources.client;
+    const wired = src.includes("const form = useComposerSaved();") && src.includes("const reason = confirmTriggerBlocked({")
+      && src.includes("disabled={!openable || confirming}") && src.includes("title={reason ?? undefined}") && src.includes("data-confirm-blocked>{reason}")
+      && client.includes("dirty: c.dirty,") && client.includes("audienceUnsaved: c.view.audience.unsaved,") && client.includes("saving: c.saving,")
+      && client.includes("savedRevision: c.saved?.draftRevision ?? null,") && client.includes("pageRevision: c.view.draft?.draftRevision ?? null,");
+    return [wrong.length === 0 && wired, `wrong [${wrong.join(", ")}] · wired ${wired}`];
+  });
+
+  await claim(L.u9, async () => {
+    const reached = importWalk([ACTIONS_REL], impl.sources);
+    const forbidden = [
+      "src/lib/server/marketing/dispatch.ts", "src/lib/server/marketing/optout-service.ts", "src/lib/server/marketing/enqueue.ts",
+      LOADER_REL, `${NEW_DIR}actions.ts`,
+    ];
+    const hit = forbidden.filter((f) => reached.has(f));
+    return [reached.size > 20 && reached.has(SVC_REL) && hit.length === 0, `${reached.size} files reached · forbidden reached [${hit.join(", ")}]`];
+  });
+
+  await claim(L.u10, async () => {
+    const A = impl.ui.audienceView;
+    const three = tagF("g-n3");
+    const id = await draft(w, "ui_screen", three);
+    const row = rowOf(id) as StoredSmsCampaign;
+    const own = AUD.campaignAudienceParams(three) ?? {};
+    const other = AUD.campaignAudienceParams(tagF("g-n7")) ?? {};
+    const client = impl.sources.client;
+    const checks = {
+      own: A({ draft: id, ...own }, row, true).unsaved === false,
+      moved: A({ draft: id, ...other }, row, true).unsaved === true,
+      movedMasked: A({ draft: id, ...other }, row, false).unsaved === true,
+      bare: A({ draft: id }, row, true).unsaved === false,
+      fresh: A({ ...own }, null, true).unsaved === false,
+      save: client.includes("!dirty && !view.sourceLineStale && !view.audience.unsaved"),
+      hook: client.includes("audienceUnsaved: c.view.audience.unsaved,"),
+    };
+    return [Object.values(checks).every(Boolean), json(checks)];
+  });
+
   // ── 4.15 and 4.17 read the whole run ──
   await claim(L.s15, async () => {
     const after = sentCounts();
@@ -1221,6 +1556,7 @@ function sourceFor(rel: string, s: Sources): string {
   if (rel === SVC_REL) return s.service;
   if (rel === FENCE_REL) return s.fence;
   if (rel === DRAFT_REL) return s.draft;
+  if (rel === ACTIONS_REL) return s.actions;
   let text = DISK.get(rel);
   if (text === undefined) {
     text = code(rel);
@@ -1363,6 +1699,17 @@ if (!PROVE_RED) {
     } catch { return null; }
   };
 
+  /** R-UI.2 · the tier as a browser might work it out — five or fewer people is a list, whoever is looking. */
+  const countTier = (view: { tier: ConfirmTier | null; count: number | null }): ConfirmGateProps | null => {
+    if (view.tier === null || view.count === null) return null;
+    return view.count <= PURE.CONFIRM_ENUMERATE_MAX
+      ? { tier: "medium" }
+      : { tier: "hard", typedWord: String(view.count), typedInputMode: "numeric" };
+  };
+  /** R-UI.4 · the action's gate taken from the top and put after the service has run. */
+  const guardBelow = (src: string): string =>
+    plantIn(plantIn(src, GUARD_LINE, ""), "if (!result.ok) return", `${GUARD_LINE}${NL}  if (!result.ok) return`);
+
   /** A plant that replaces a source anchor is built when its turn comes, so an anchor that has gone fails that plant alone. */
   type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl>) };
   const plants: Plant[] = [
@@ -1406,7 +1753,8 @@ if (!PROVE_RED) {
     { name: "R-2.2b · the members key without its draft (the review's MAJOR) — keyed, but the same on every draft holding the same people", expect: [L.w2b],
       impl: { fenceDeps: { ...FEN.FENCE_DEPS, membersKey: (_scope: { campaignId: string; draftRevision: number }, canonical: string) =>
         FEN.membersKeyOf({ campaignId: "", draftRevision: 0 }, canonical) } } },
-    { name: "R13 · the view embeds the money for every role", expect: [L.s19],
+    // §UI 6 reads the card the page builds from this very view, so it goes red with it: TZS in a GROWTH render.
+    { name: "R13 · the view embeds the money for every role", expect: [L.s19, L.u6],
       impl: { view: (id, viewer, deps) => SVC.campaignConfirmView(id, { ...viewer, money: true }, deps) } },
     { name: "R-1.2 · the typed text is read with Number() before the gate", expect: [L.t2], impl: withDecide({ numberParse: true }) },
     { name: "R-2.1 · the watermark is read without its seal", expect: [L.w1], impl: finishWith((d) => ({ ...d, verify: unsealed })) },
@@ -1454,7 +1802,8 @@ if (!PROVE_RED) {
       impl: finishWith((d) => ({ ...d, breakdown: () => true })) },
     { name: "R-OD66 · the role rule skipped — a masked viewer's book ∪ players audience is counted", expect: [L.g6b],
       impl: finishWith((d) => ({ ...d, refusal: () => null })) },
-    { name: "R-OD67 · the fence as a reader sees it, for every role — a viewer who may not read a number gets the list, the members key and the list tier", expect: [L.g6c],
+    // §UI 2 and §UI 7 read this very view: the dialog's tier follows it to a list, and the card a masked viewer is handed lists.
+    { name: "R-OD67 · the fence as a reader sees it, for every role — a viewer who may not read a number gets the list, the members key and the list tier", expect: [L.g6c, L.u2, L.u7],
       impl: finishWith((d) => ({ ...d, shape: (f) => f })) },
     { name: "R-4.20b · a lost reply's read-back claims any CONFIRMED row — another officer's confirmation, or a twin's, taken for this one", expect: [L.s20b],
       impl: finishWith((d) => ({ ...d, ownWrite: (after) => after?.status === "CONFIRMED" })) },
@@ -1475,6 +1824,37 @@ if (!PROVE_RED) {
       impl: () => withSources({ pkg: plantIn(REAL_SOURCES.pkg, "npm run test:campaign-gates && ", "") }) },
     { name: "R-6.9 · the shipped confirmation reads the CACHED settings, not a fresh re-read", expect: [L.x9],
       impl: { shipped: { confirm: { ...SVC.CONFIRM_DEPS, settings: async () => ({ ok: true, settings: SETTINGS.marketingSmsSettings(), stored: true, readable: true }) }, fence: FEN.FENCE_DEPS } } },
+    // ── §UI · U40b — §4.6's four, OD67's list, the re-review's tier, and each §UI claim's own control ──
+    { name: "R-UI.1 · ⛔ A5 · the dialog opens with the focus ON CONFIRM (the medium tier's initialFocus becomes the confirm button)", expect: [L.u1],
+      impl: () => withSources({ modal: plantIn(REAL_SOURCES.modal, FOCUS_LINE, "initialFocus={isHard ? inputRef : confirmRef}") }) },
+    { name: "R-UI.1b · the remount key removed — a refusal leaves the dialog on the old number, with the old typing", expect: [L.u1],
+      impl: () => withSources({ card: plantIn(REAL_SOURCES.card, REMOUNT_KEY, "") }) },
+    { name: "R-UI.2 · ⛔ OD67 · the dialog's tier worked out from the COUNT in the browser (five or fewer is a list) — a masked viewer's three get a list dialog with no list in it, and a one-press confirm the server refuses", expect: [L.u2],
+      impl: { ui: { ...REAL.ui, gate: countTier } } },
+    { name: "R-UI.2b · the card works the tier out from the count itself, beside the view's", expect: [L.u2],
+      impl: () => withSources({ card: plantIn(REAL_SOURCES.card, "const gate = view === null ? null : confirmGate(view);",
+        'const gate = view === null || view.count === null ? null : view.count <= CONFIRM_ENUMERATE_MAX ? { tier: "medium" as const } : confirmGate(view);') }) },
+    { name: "R-UI.3 · `typedInputMode` given to the MEDIUM tier too", expect: [L.u3],
+      impl: () => withSources({ modal: plantIn(REAL_SOURCES.modal, "typedWord?: never; typedInputMode?: never };", 'typedWord?: never; typedInputMode?: "numeric" };') }) },
+    { name: "R-UI.4 · ⛔ ruling 523 · the action's guard moved BELOW the service call", expect: [L.u4],
+      impl: () => withSources({ actions: guardBelow(REAL_SOURCES.actions) }) },
+    { name: "R-UI.4b · a second action in the file — an orphan beside the one the card imports", expect: [L.u4],
+      impl: withSources({ actions: `${REAL_SOURCES.actions}${NL}export async function previewConfirmAction(formData: FormData) { return formData; }` }) },
+    { name: "R-UI.5 · the viewer fails OPEN — no officer reads as a reader of numbers and money", expect: [L.u5],
+      impl: { ui: { ...REAL.ui, viewer: async (id: string | null, deps?: Parameters<typeof SVC.confirmViewerFor>[1]) =>
+        (typeof id === "string" && id.trim() !== "" ? SVC.confirmViewerFor(id, deps) : { reads: true, money: true }) } } },
+    { name: "R-UI.6 · G5.3 · the card's view counted with money for every role — TZS in a GROWTH render", expect: [L.u6],
+      impl: { ui: { ...REAL.ui, cardDeps: (impl: Impl) => ({ ...realCardDeps(impl), viewer: async (id: string | null) => ({ ...(await SVC.confirmViewerFor(id)), money: true }) }) } } },
+    { name: "R-UI.7 · ⛔ OD67 · the card's view counted as a READER for every role — a viewer who may not read a number shown the list of three", expect: [L.u7],
+      impl: { ui: { ...REAL.ui, cardDeps: (impl: Impl) => ({ ...realCardDeps(impl), viewer: async (id: string | null) => ({ ...(await SVC.confirmViewerFor(id)), reads: true }) }) } } },
+    { name: "R-UI.8 · the trigger opens over unsaved text — the client's own check skipped (the server sees only the saved draft)", expect: [L.u8],
+      impl: { ui: { ...REAL.ui, blocked: (f: ConfirmTriggerFacts) => COPY.confirmTriggerBlocked({ ...f, form: { ...f.form, dirty: false } }) } } },
+    { name: "R-UI.8b · a form whose revision is behind the page's opens anyway — another tab's save confirmed under this tab's old text", expect: [L.u8],
+      impl: { ui: { ...REAL.ui, blocked: (f: ConfirmTriggerFacts) => COPY.confirmTriggerBlocked({ ...f, form: { ...f.form, pageRevision: f.form.savedRevision } }) } } },
+    { name: "R-UI.9 · the action reaches the composer's loader — and through it the send window's module", expect: [L.u9],
+      impl: () => withSources({ actions: plantIn(REAL_SOURCES.actions, '"use server";', `"use server";${NL}import { loadConfirmCard } from "./composer-loader";`) }) },
+    { name: "R-UI.10 · the audience on screen never compared with the saved one — a rail pick confirmed as the stored audience", expect: [L.u10],
+      impl: { ui: { ...REAL.ui, audienceView: (sp, d, r, doors) => ({ ...LOADER.composeAudienceView(sp, d, r, doors), unsaved: false }) } } },
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);

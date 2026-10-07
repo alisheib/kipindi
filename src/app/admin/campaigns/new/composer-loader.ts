@@ -24,7 +24,10 @@
  * ⭐ THE TEST CARD reads the officer's OWN account: the number masked, the first name the renderer would print, and their
  * existing opt-out token for the preview (a GET mints nothing — until the first test the link shows as xxxxxxxx). The
  * preview is the SAVED draft rendered by THE ONE renderer, as an account recipient — exactly what a test sends.
- * ⛔ No money is read and none is passed (OD24).
+ * ⛔ No money is read and none is passed (OD24) — with ONE exception, U40b's: the Confirm card's view (`loadConfirmCard`)
+ * carries the estimate's money as the service's words (`confirmMoneyLine`), to a money reader only, and no figure at all.
+ * ⭐ U40b · WHAT THE FORM SHOWS AGAINST WHAT IS SAVED: the audience on screen is compared with the one the draft stores
+ * (`unsaved`), because a confirmation freezes the stored one.
  */
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -40,6 +43,8 @@ import { audienceSplit, audienceWalkCount } from "@/lib/server/marketing/audienc
 import { audienceCountView, audienceSplitView } from "./audience-view-model";
 import type { AudienceSplitView } from "./audience-view-model";
 import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
+import { campaignConfirmView, confirmMoneyLine, confirmViewerFor } from "@/lib/server/marketing/campaign-confirm-service";
+import type { CampaignConfirmView, ConfirmViewer } from "@/lib/server/marketing/campaign-confirm-service";
 import {
   TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TYPED_NEEDS_SOURCE_LINE,
   TEST_TEMPLATE_INVALID,
@@ -112,6 +117,12 @@ export type ComposeAudienceView = {
    * from the address, start from the audience the draft holds. null otherwise.
    */
   canonicalHref: string | null;
+  /**
+   * ⭐ U40b · the audience ON SCREEN is not the one this DRAFT stores: its address names another (a rail pick not saved yet),
+   * or one that cannot be read. A confirmation freezes the STORED audience, so the Confirm card will not open on it ("Save
+   * first"), and Save counts it as a change. False with no saved draft, past DRAFT, or with no audience in the address.
+   */
+  unsaved: boolean;
 };
 
 export type ComposeSenderView = { line: string; dead: boolean; vars: string[] };
@@ -270,6 +281,11 @@ export function composeAudienceView(
   // holds a filter). A NEW draft with neither has chosen nothing, and nothing is counted (decision 3).
   const chosen = fromAddress || draft !== null;
   const nothing = { chosen, who: null, countKey: null, canonicalHref: null } as const;
+  // ⭐ U40b · is the audience on screen the one this DRAFT stores? Asked by the ONE key of each (`contactAudienceKey`), the
+  // stored one read at the campaign scope — only while the address names an audience and the draft can still change.
+  const storedKey = draft !== null && draft.status === "DRAFT" && fromAddress ? storedAudienceKey(draft.audienceFilter, doors) : null;
+  const unsavedFor = (shownKey: string | null): boolean =>
+    draft !== null && draft.status === "DRAFT" && fromAddress && (shownKey === null || shownKey !== storedKey);
   // ⭐ The composer's own address WITHOUT the filter, the draft kept — the one way to take a refused address filter out.
   // ⭐ STD-1 (the U38b review) · "Remove the filter" goes to the draft's OWN address for this viewer (`draftAddressFor` —
   // its stored audience in the address), never the bare ?draft=, which would meet the page's redirect inside the mounted
@@ -278,7 +294,7 @@ export function composeAudienceView(
   let filter: ContactAudienceFilter = WHOLE_BOOK;
   if (fromAddress) {
     const parsed = doors.params(sp);
-    if (!parsed.ok) return { lines: [], everyone: false, problem: parsed.reason, note: null, params, clearHref, carry: null, ...nothing };
+    if (!parsed.ok) return { lines: [], everyone: false, problem: parsed.reason, note: null, params, clearHref, carry: null, ...nothing, unsaved: unsavedFor(null) };
     filter = parsed.filter;
     // ⛔ THE CARD AND THE SAVE READ ONE AUDIENCE (U37b review m6): the parser unions a repeated key, so what is posted is
     // re-spelt from the parsed filter — never the first raw value of each key, which saved Vodacom under "Airtel or Vodacom".
@@ -289,12 +305,12 @@ export function composeAudienceView(
     try {
       raw = JSON.parse(draft.audienceFilter);
     } catch {
-      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing };
+      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing, unsaved: false };
     }
     // ⭐ U38b · AT THE CAMPAIGN SCOPE (decision 2): a population the composer saved reads back — never "unreadable".
     const parsed = doors.json(raw);
     if (!parsed.ok) {
-      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing };
+      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null, ...nothing, unsaved: false };
     }
     filter = parsed.filter;
   }
@@ -316,10 +332,11 @@ export function composeAudienceView(
   // phrase naming a consent, source, player or stop predicate, or a search. A POSTED one the role may not use is refused
   // above, as the save refuses it; a STORED one is only left undescribed — the save keeps it as it is, so blocking Save
   // here would refuse a save the server accepts. ⛔ U38b · and neither is counted: no key, so no split is ever asked.
+  const unsaved = unsavedFor(contactAudienceKey(filter));
   if (campaignAudienceRefusal({ ...filter, ids: null }, reads) !== null) {
     return fromAddress
-      ? { lines: [], everyone: false, problem, note: null, params, clearHref: clear, carry, ...nothing }
-      : { lines: [], everyone: false, problem, note: COMPOSE_AUDIENCE_HIDDEN, params: null, clearHref: null, carry, ...nothing };
+      ? { lines: [], everyone: false, problem, note: null, params, clearHref: clear, carry, ...nothing, unsaved }
+      : { lines: [], everyone: false, problem, note: COMPOSE_AUDIENCE_HIDDEN, params: null, clearHref: null, carry, ...nothing, unsaved };
   }
   const lines = chosen ? describeAudience(filter) : [];
   // ⭐ U38b · COUNTED ONLY WHAT WAS CHOSEN, IS SAVEABLE, AND THIS VIEWER MAY COUNT — the split door asks the role rule again.
@@ -342,7 +359,18 @@ export function composeAudienceView(
     who: chosen ? filter.population ?? "book" : null,
     countKey,
     canonicalHref,
+    unsaved,
   };
+}
+
+/** U40b · a stored filter's ONE key, read at the campaign scope — null when it cannot be read (then nothing on screen is it). */
+function storedAudienceKey(stored: string, doors: ComposeAudienceDoors): string | null {
+  try {
+    const parsed = doors.json(JSON.parse(stored));
+    return parsed.ok ? contactAudienceKey(parsed.filter) : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ═══ U38b · THE COMPOSER'S ONE HREF BUILDER ═════════════════════════════════════════════════════════════════════ */
@@ -461,6 +489,82 @@ export async function composeAudienceCount(
   const r = await split(parsed.filter, { viewerReads });
   if (!r.ok) return { kind: "refused", reason: r.reason };
   return { kind: "view", view: audienceSplitView(r.split, viewerReads) };
+}
+
+/* ═══ U40b · THE CONFIRM CARD — the confirmation's view, counted for THIS officer, as the card is handed it ═══════════ */
+
+/** The service's view as the card is handed it: ⛔ the estimate's money taken OUT — it reaches a money reader as words only
+ *  (`ConfirmCardData.money`), so no figure rides along in the page for anyone. */
+export type ConfirmCardView = Omit<CampaignConfirmView, "estimate"> & { estimate: { segments: number; perRecipient: number } | null };
+
+/**
+ * What the Confirm card is handed for a SAVED draft (page.tsx hands `null` while there is none). `read` — the view was
+ * counted (`view`), the read failed (`error` — said with "Count again", never a zero), or the campaign is gone. `status` is
+ * the row's as the composer read it. `money` — `confirmMoneyLine`'s words: null for anyone who may not read money.
+ */
+export type ConfirmCardData = {
+  campaignId: string;
+  status: SmsCampaignStatus;
+  read: "view" | "error" | "gone";
+  view: ConfirmCardView | null;
+  money: string | null;
+};
+
+/** The reads the card is built from — swappable for the suite's in-process red plants; production never passes them. */
+export type ConfirmCardDeps = {
+  /** Who is looking — the stored role's two cells (`confirmViewerFor`), never the browser's word. */
+  viewer: (userId: string | null) => Promise<ConfirmViewer>;
+  /** The view, counted now for that viewer (`campaignConfirmView`). */
+  view: (campaignId: string, viewer: ConfirmViewer) => Promise<CampaignConfirmView | null>;
+  /** The estimate's money in words, for a money reader (`confirmMoneyLine`). */
+  money: typeof confirmMoneyLine;
+};
+
+/** Frozen: production's reads — the confirmation's own doors, by reference (`test:campaign-gates` §UI 6 holds them). */
+export const CONFIRM_CARD_DEPS: Readonly<ConfirmCardDeps> = Object.freeze({
+  viewer: confirmViewerFor,
+  view: campaignConfirmView,
+  money: confirmMoneyLine,
+});
+
+/**
+ * ⭐ THE CONFIRM CARD'S ONE READ, for one officer: who they are (the stored role — `confirmViewerFor`, the very answer the
+ * confirmation action asks), then the view counted NOW for that viewer (`campaignConfirmView` — OD65's count alone and OD67's
+ * typed tier, with no list and no members key, for a viewer who may not read a number), shaped for the browser.
+ * ⛔ The estimate's money leaves only as `confirmMoneyLine`'s words, and only for a money reader. ⛔ A read that fails is
+ * `error` — never a zero — and its log line carries the error's name alone (no number in a database error reaches the log).
+ */
+export async function loadConfirmCardFor(
+  userId: string | null,
+  draft: Pick<ComposeDraftView, "id" | "status">,
+  deps: ConfirmCardDeps = CONFIRM_CARD_DEPS,
+): Promise<ConfirmCardData> {
+  const base = { campaignId: draft.id, status: draft.status };
+  const viewer = await deps.viewer(userId);
+  let view: CampaignConfirmView | null;
+  try {
+    // ⛔ DEV ONLY (inert in production): U38b's drive switches hold or fail the card's count too, so `qa:marketing-confirm`
+    // can photograph the card's own ghost and its unread view.
+    await devCountHold();
+    view = await deps.view(draft.id, viewer);
+  } catch (err) {
+    console.error("[admin/campaigns/new] the confirmation's view could not be read:", (err as { name?: unknown })?.name ?? "error");
+    return { ...base, read: "error", view: null, money: null };
+  }
+  if (view === null) return { ...base, read: "gone", view: null, money: null };
+  const { estimate, ...rest } = view;
+  return {
+    ...base,
+    read: "view",
+    view: { ...rest, estimate: estimate === null ? null : { segments: estimate.segments, perRecipient: estimate.perRecipient } },
+    money: deps.money(estimate === null ? null : estimate.money),
+  };
+}
+
+/** The card for the officer looking now — their session's id, read here on the server. */
+export async function loadConfirmCard(draft: Pick<ComposeDraftView, "id" | "status">): Promise<ConfirmCardData> {
+  const session = await currentSession().catch(() => null);
+  return loadConfirmCardFor(session?.userId ?? null, draft);
 }
 
 /** OD45 · the sender line: the server's value, or the stub's honest sentence, or Admin → System's words for a dead rail. */

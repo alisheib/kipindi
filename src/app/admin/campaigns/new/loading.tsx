@@ -1,6 +1,7 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
 import { SkBar, SkBody, SkCard, SkChip, SkTitle } from "@/components/admin/admin-skeletons";
 import { AudienceFloorGhost } from "./audience-split-card";
+import { ConfirmCardGhost } from "./campaign-confirm";
 
 /**
  * The ghost for /admin/campaigns/new (U37b).
@@ -21,6 +22,9 @@ import { AudienceFloorGhost } from "./audience-split-card";
  * into the full figures when the page swaps in (`qa:marketing-audience` asserts GROWTH's count block equal at 1280 and
  * 360, and RECORDS the reader's growth; the keyed fallback is each role's own and equal for both). The rail's and the words' heights depend on the role, the book's
  * lists and tags and how the pills wrap, and are RECORDED.
+ * ⭐ U40b · THE CONFIRM CARD'S GHOST is the card's own (`ConfirmCardGhost` — the trigger's box and the line under it), the
+ * very boxes its Suspense falls back to, under the card's title; its height against the page is RECORDED by the drive
+ * (`qa:marketing-confirm`): the line under the trigger wraps by width, and a confirmed campaign adds its line above it.
  * ⛔ `data-skeleton` stamps are the drive's handles — never match on class strings. ⛔ No numeric scale key that the
  * spacing scale inverts: the spacing scale is overridden.
  */
@@ -52,6 +56,12 @@ export default function Loading() {
           </div>
         </div>
         <div data-skeleton="compose-test"><SkCard lines={4} sw={false} titleW="w-[80px]" /></div>
+        <div data-skeleton="compose-confirm">
+          <div className="glass-panel p-4">
+            <SkTitle titleW="w-[64px]" sw={false} className="mb-3" />
+            <ConfirmCardGhost />
+          </div>
+        </div>
       </SkBody>
     </>
   );

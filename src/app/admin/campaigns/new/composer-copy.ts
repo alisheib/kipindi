@@ -6,6 +6,8 @@
  * ⭐ GLOSSES ARE COPIED, NEVER INVENTED (§5.13): "Kampeni mpya" is the shipped Swahili beside "New campaign" on
  * /admin/invites, and "Ujumbe" is the dictionary's own "message".
  * ⛔ NO MONEY WORD (OD24): GROWTH writes campaigns, and a currency figure renders only to a role holding the money tier.
+ * ⭐ U40b · the Confirm card's one money line, for a money reader only, is the confirmation service's (`confirmMoneyLine`),
+ * made on the server and printed as it comes — so no file here names money (`test:campaign-compose` §16.5).
  * ⛔ NEVER "DELIVERED" (OD41): the gateway taking a message is "handed to the network"; only a receipt is delivery.
  * ⭐ Every sentence renders at `text-body-sm` or larger — reading copy, never a caption (`test:type-scale` §3).
  * ⭐ A REFUSAL SAYS ONLY WHAT CAN WORK NEXT (validation audit, 2026-10-03): the budget's and the role's refusals print
@@ -18,7 +20,9 @@ import { JINA } from "@/lib/marketing/campaign-template";
 import type { VariantCounter } from "@/lib/marketing/campaign-template";
 import { SENDER_IDENTITY } from "@/lib/marketing/footer";
 import type { SendWindowState } from "@/lib/marketing/window";
-import { formatClock, formatNumber } from "@/lib/utils";
+import { CONFIRM_REFUSAL_COPY, confirmTypedWord } from "@/lib/marketing/campaign-confirm";
+import type { ConfirmTier } from "@/lib/marketing/campaign-confirm";
+import { adminCount, formatClock, formatNumber } from "@/lib/utils";
 
 export const COMPOSE_TITLE = "New SMS campaign";
 export const COMPOSE_SW = "Kampeni mpya";
@@ -227,4 +231,136 @@ export function composeTypedHandedOver(at: string, via: "stub" | "open"): string
   return via === "stub"
     ? `Handed to this server's console stub at ${formatClock(at)} — it went to the server log, not to a phone.`
     : `Handed to the network at ${formatClock(at)} — ask the person to check their phone.`;
+}
+
+/* ── U40b · THE CONFIRM CARD (ENGINE-SPEC §4.6) — the fourth card, under the Test card, and its dialog ── */
+export const COMPOSE_CONFIRM_TITLE = "Confirm";
+/** The trigger — it OPENS a confirmation (the ellipsis), it never confirms by itself. */
+export const COMPOSE_CONFIRM_TRIGGER = "Confirm audience…";
+/** The trigger while the page is read again, so the dialog opens on the figures as they are now (U40.md "counting"). */
+export const COMPOSE_CONFIRM_COUNTING = "Counting the audience…";
+/** The dialog's own confirm button. */
+export const COMPOSE_CONFIRM_ACT = "Confirm audience";
+/** The action's soft refusal for a role without the growth act grant (`softRequireStaff`). */
+export const COMPOSE_CONFIRM_ROLE_REFUSAL = "Your role can't confirm SMS campaigns — ask an officer with growth access.";
+/** ⭐ Why the trigger is disabled — in its `title` AND beside it, never hidden (decision 1). The service's own blocked
+ *  sentences (`CONFIRM_SERVICE_COPY`) are said as they come. */
+export const COMPOSE_CONFIRM_SAVE_FIRST = "Save first — confirming freezes the saved message.";
+export const COMPOSE_CONFIRM_NOBODY = "Nobody matches this audience yet.";
+export const COMPOSE_CONFIRM_WRITE_SW = "Write the Swahili message first.";
+export const COMPOSE_CONFIRM_ALREADY = "This campaign is already confirmed.";
+export const COMPOSE_CONFIRM_CANCELLED = "This campaign was cancelled — there is nothing to confirm.";
+/** The view could not be read: said, with "Count again" beside it — never a zero (U40.md "blocked"). */
+export const COMPOSE_CONFIRM_UNCOUNTED = "Couldn't count this audience just now — nothing is wrong with the campaign.";
+/** The draft was saved elsewhere after this form was loaded: what a confirmation would freeze is not the text on screen. */
+export const COMPOSE_CONFIRM_STALE = "This draft was saved elsewhere after this page loaded — reload the page to see it, then confirm.";
+/** ⭐ THE HONESTY LINE (decision 5) — in the dialog, and under the trigger. */
+export const COMPOSE_CONFIRM_HONESTY =
+  "Confirming freezes this message and this audience. Nothing is sent until someone presses Start on the campaign's page.";
+/** A listed audience's people, shown to a READER only (OD67: a viewer who may not read a number is shown no list). */
+export const COMPOSE_CONFIRM_LIST_LEAD = "Everyone this campaign will go to";
+/** The title of a refusal said outside the dialog (the dialog closed on it, or a fresh view blocks it). */
+export const COMPOSE_CONFIRM_REFUSED = "Not confirmed";
+/** ⭐ THE ERROR STATE (U40.md): the action failed and the row is still a draft — the dialog stays open, the typing kept. */
+export const COMPOSE_CONFIRM_FAILED = "Couldn't confirm — nothing was confirmed. Try again.";
+/**
+ * The action stopped, or its answer was lost, before it could say whether the write landed (the service's known residual):
+ * never "nothing was confirmed". Trying again is safe — the write is conditional on a draft, so a campaign that was
+ * confirmed is refused, never confirmed twice.
+ */
+export const COMPOSE_CONFIRM_UNFINISHED =
+  "Couldn't confirm — the server stopped before it answered, so this campaign may already be confirmed. Nothing has been sent. Try again: a campaign is never confirmed twice.";
+/** ⭐ ruling 543 · the confirmation landed and its record did not — said, never hidden (the live switch's own words). */
+export const COMPOSE_CONFIRM_UNRECORDED = "The record of this confirmation couldn't be written — tell the developer.";
+/** ⭐ THE CONFIRMED LINE (decision 4): the campaign's own page once `CAMPAIGN_SCREENS.detail` is on (U47b), else what is next. */
+export const COMPOSE_CONFIRMED = "Confirmed — nothing has been sent.";
+export const COMPOSE_CONFIRMED_START = "Start it from its own page.";
+export const COMPOSE_CONFIRMED_NEXT = "Starting a campaign comes next in this release.";
+
+/** The dialog's title — "Confirm these 3 people?" for a list, "Confirm 5,912 people?" to type. */
+export function composeConfirmTitle(count: number, listed: boolean): string {
+  if (listed) return count === 1 ? "Confirm this person?" : `Confirm these ${formatNumber(count)} people?`;
+  return `Confirm ${adminCount(count, "person", "people")}?`;
+}
+
+/** "Up to 1,604 SMS — one per person": the segments a confirmation would freeze, said to EVERY role (no money in it). */
+export function composeConfirmSegments(segments: number, perRecipient: number): string {
+  const each = perRecipient === 1 ? "one" : formatNumber(perRecipient);
+  return `Up to ${keep(`${formatNumber(segments)} SMS`)} — ${each} per person`;
+}
+
+/** The success toast (decision 4). */
+export function composeConfirmedToast(count: number): string {
+  return `Audience confirmed — ${adminCount(count, "person", "people")}. Nothing has been sent.`;
+}
+
+/** The dialog's tier, as the ConfirmModal takes it — spread whole (`modal.tsx`: a tier and its word are one decision). */
+export type ConfirmGateProps = { tier: "hard"; typedWord: string; typedInputMode: "numeric" } | { tier: "medium" };
+
+/**
+ * ⭐ THE DIALOG'S TIER IS THE VIEW'S — `view.tier` exactly as the server's `campaignConfirmView` answered it, and NEVER
+ * worked out again here from the count (the U40a re-review's ruling). ⛔ OD67 · a viewer who may not read a number is always
+ * handed `typed`: a tier recomputed from a count of five or fewer would show them a list dialog with no list in it, and a
+ * one-press confirm the server refuses (`typed_required`). So `enumerate` alone is the medium tier; anything else is the
+ * typed tier (fails closed): the bare count to type (`confirmTypedWord`, what the dialog arms on) and the digit keypad.
+ * Null while the view carries no tier or no count — nothing to confirm.
+ */
+export function confirmGate(view: { tier: ConfirmTier | null; count: number | null }): ConfirmGateProps | null {
+  if (view.tier === null || view.count === null) return null;
+  return view.tier === "enumerate"
+    ? { tier: "medium" }
+    : { tier: "hard", typedWord: confirmTypedWord(view.count), typedInputMode: "numeric" };
+}
+
+/** What the trigger's reason is decided from: the act gate, the form against what is saved, and the page's card. */
+export type ConfirmTriggerFacts = {
+  mayAct: boolean;
+  actReason: string | null;
+  /** The composer's shared state (`useComposerSaved`): ⛔ the server confirms the SAVED draft and cannot see the form. */
+  form: {
+    savedId: string | null;
+    savedRevision: number | null;
+    pageRevision: number | null;
+    dirty: boolean;
+    audienceUnsaved: boolean;
+    saving: boolean;
+    swBlank: boolean;
+  };
+  /** The page's card — null while no draft is saved; `read` says whether its view was counted. */
+  card: null | {
+    campaignId: string;
+    status: string;
+    read: "view" | "error" | "gone";
+    view: null | { blocked: string | null; message: string | null; tier: ConfirmTier | null; count: number | null; watermark: string | null };
+  };
+};
+
+/**
+ * ⭐ WHY THE TRIGGER IS DISABLED — the first reason, or null when the dialog may open. In order: a campaign past DRAFT (said
+ * as what it is); the act gate; the FORM — a blank Swahili message, nothing saved yet, a form whose revision is not the
+ * page's (saved elsewhere since: reload; or this tab's own save still being read back: updating), or what the form shows
+ * is not the saved draft (its text, its audience on screen, a save in flight) — because confirming freezes the SAVED
+ * message and audience, which the server reads and the form is not; then the server's view, in its own words (an unread
+ * view never reads as nobody).
+ */
+export function confirmTriggerBlocked(f: ConfirmTriggerFacts): string | null {
+  const c = f.card;
+  if (c !== null && c.status !== "DRAFT") return c.status === "CANCELLED" ? COMPOSE_CONFIRM_CANCELLED : COMPOSE_CONFIRM_ALREADY;
+  if (!f.mayAct) return f.actReason ?? COMPOSE_CONFIRM_ROLE_REFUSAL;
+  if (f.form.swBlank) return COMPOSE_CONFIRM_WRITE_SW;
+  if (f.form.savedId === null) return COMPOSE_CONFIRM_SAVE_FIRST;
+  if (c === null || c.campaignId !== f.form.savedId) return COMPOSE_TEST_UPDATING;
+  const { savedRevision: held, pageRevision: read } = f.form;
+  if (held === null || read === null || held > read) return COMPOSE_TEST_UPDATING;
+  if (held < read) return COMPOSE_CONFIRM_STALE;
+  if (f.form.dirty || f.form.audienceUnsaved || f.form.saving) return COMPOSE_CONFIRM_SAVE_FIRST;
+  if (c.read === "gone") return CONFIRM_REFUSAL_COPY.not_found({ fresh: null, shown: null });
+  const v = c.view;
+  if (c.read === "error" || v === null) return COMPOSE_CONFIRM_UNCOUNTED;
+  if (v.blocked === "not_draft") return COMPOSE_CONFIRM_ALREADY;
+  if (v.blocked === "audience_empty") return COMPOSE_CONFIRM_NOBODY;
+  if (v.blocked === "no_body") return COMPOSE_CONFIRM_WRITE_SW;
+  if (v.blocked !== null) return v.message ?? COMPOSE_CONFIRM_UNCOUNTED;
+  if (v.tier === null || v.count === null || v.watermark === null) return COMPOSE_CONFIRM_UNCOUNTED;
+  return null;
 }

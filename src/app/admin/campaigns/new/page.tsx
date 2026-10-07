@@ -5,7 +5,13 @@
  * want, an English one), saves it as a DRAFT, and sends the saved text to their OWN phone as a test. The audience card
  * (U38b) chooses who it goes to — the contact book, player accounts or both, narrowed on its rail — says it in words, and
  * counts who will receive it NOW by asking the send gate about every number (a forecast: the gate is asked again at
- * send). Nothing here prices a send, confirms or starts a campaign: the estimate and the confirmation are U39 and U40.
+ * send). Nothing here starts a campaign.
+ * ⭐ U40b · THE FOURTH CARD, "Confirm", under the Test card: the confirmation's view counted for THIS officer on the server
+ * (`loadConfirmCard` — the stored role; OD65's count alone and OD67's typed tier for a viewer who may not read a number; the
+ * estimate's money as words for a money reader only), handed to the client card (`campaign-confirm.tsx`), whose trigger
+ * reads the page again and opens the kit's ConfirmModal on the fresh figures. CONFIRMED sends nothing: Start is a separate
+ * act on the campaign's own page. The card keeps its own Suspense, keyed by the draft (this page's one Suspense is the
+ * audience count's — `test:campaign-audience` B5).
  * ⭐ U38b · THE COUNT IS KEYED BY THE FILTER (`countKey`, its ONE key): a new filter mounts a new Suspense, which shows its
  * own fallback — never the old numbers under the new words. The card is an async SERVER component that renders the
  * view-model and nothing else; a saved draft opened with no audience in its address is sent to the address that carries
@@ -33,14 +39,16 @@ import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/adm
 import { AdminBody } from "@/components/admin/admin-body";
 import { Callout } from "@/components/ui/callout";
 import { CAMPAIGN_SCREEN_ROUTES } from "@/lib/marketing/campaign-status";
-import { loadComposer } from "./composer-loader";
-import type { ComposeParams, ComposeView } from "./composer-loader";
+import { loadComposer, loadConfirmCard } from "./composer-loader";
+import type { ComposeDraftView, ComposeParams, ComposeView } from "./composer-loader";
 import { ComposerProvider, ComposerMessage, ComposerAudience, ComposerTest } from "./composer-client";
+import { CampaignConfirm, ConfirmCardBoundary } from "./campaign-confirm";
 import { AudienceRail } from "./audience-rail";
 import { AudienceSplitCard, AudienceCountFallback } from "./audience-split-card";
 import { viewerReadsContacts } from "@/app/admin/contacts/contacts-loader";
 import {
-  COMPOSE_AUDIENCE_TITLE, COMPOSE_MESSAGE_SW, COMPOSE_MESSAGE_TITLE, COMPOSE_MISSING, COMPOSE_START, COMPOSE_TEST_TITLE,
+  COMPOSE_AUDIENCE_TITLE, COMPOSE_CONFIRM_TITLE, COMPOSE_MESSAGE_SW, COMPOSE_MESSAGE_TITLE, COMPOSE_MISSING, COMPOSE_START,
+  COMPOSE_TEST_TITLE,
 } from "./composer-copy";
 
 export const metadata = { title: "New SMS campaign · Admin" };
@@ -110,9 +118,29 @@ async function AdminComposeContent({ searchParams }: { searchParams: Promise<Com
             <div data-block="compose-test">
               <AdminCard title={COMPOSE_TEST_TITLE}><ComposerTest /></AdminCard>
             </div>
+            {/* ⭐ U40b · the fourth card: its view is counted on the server for this officer, inside the card's own Suspense
+                (keyed by the draft), and handed to the client card, which shares the composer's state — it opens only on
+                the SAVED draft. */}
+            <div data-block="compose-confirm">
+              <AdminCard title={COMPOSE_CONFIRM_TITLE}>
+                <ConfirmCardBoundary draftKey={view.draft?.id ?? ""}>
+                  <ConfirmCardBody draft={view.draft} />
+                </ConfirmCardBoundary>
+              </AdminCard>
+            </div>
           </ComposerProvider>
         )}
       </AdminBody>
     </>
   );
+}
+
+/**
+ * ⭐ U40b · THE CONFIRM CARD'S SERVER HALF — the confirmation's view counted NOW for the officer looking (`loadConfirmCard`:
+ * who they are from their stored role, then `campaignConfirmView` for exactly that viewer), handed to the client card. No
+ * saved draft: nothing is counted, and the card says what comes first. A read that fails is the card's to say — never a zero.
+ */
+async function ConfirmCardBody({ draft }: { draft: ComposeDraftView | null }) {
+  const card = draft === null ? null : await loadConfirmCard(draft);
+  return <CampaignConfirm card={card} />;
 }

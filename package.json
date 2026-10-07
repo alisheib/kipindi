@@ -135,6 +135,7 @@
     "qa:marketing-campaigns": "node scripts/live/marketing-campaigns-drive.mjs",
     "qa:marketing-compose": "node scripts/live/marketing-compose-drive.mjs",
     "qa:marketing-audience": "node scripts/live/marketing-u38b-audience-drive.mjs",
+    "qa:marketing-confirm": "node scripts/live/marketing-u40-confirm-drive.mjs",
     "qa:marketing-e2e-capture": "node scripts/live/marketing-e2e-capture.mjs",
     "qa:marketing-empty-centre": "node scripts/live/marketing-empty-centre-probe.mjs",
     "qa:validation-phone-paste": "node scripts/live/validation-vb3-phone-paste-drive.mjs",

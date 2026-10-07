@@ -585,9 +585,15 @@ type ConfirmModalBase = {
  * so: TypeScript sees `"medium" | "hard"` and `string | undefined` independently, and that
  * pair genuinely can express hard-without-a-word. Write one object instead:
  *     {...(c ? { tier: "hard" as const, typedWord: "X" } : { tier: "medium" as const })} */
+/* ⭐ U40b · THE HARD TIER MAY ASK FOR THE DIGIT KEYPAD — ADDITIVE AND OPTIONAL, ON THE HARD ARM ONLY. A gate whose word is
+ * a number (the campaign confirmation's "Type 5912 to confirm") says so outright, so a phone at 360 opens digits whatever
+ * the word's spelling; a count word already did (vb6), and still does. ⛔ The medium arm has no box to type into, so it
+ * may not carry the key at all (`typedInputMode?: never`). Every existing caller compiles unchanged: the key is optional,
+ * and the two arms above it are as they were (`test:confirm-gate` §3 reads them; `test:campaign-gates` §UI holds this). */
+type HardGateKeypad = { typedInputMode?: "numeric" };
 type ConfirmGate =
-  | { tier: "hard"; typedWord: string }
-  | { tier?: "medium"; typedWord?: never };
+  | { tier: "hard"; typedWord: string } & HardGateKeypad
+  | { tier?: "medium"; typedWord?: never; typedInputMode?: never };
 
 export type ConfirmModalProps = ConfirmModalBase & ConfirmGate;
 
@@ -653,6 +659,7 @@ export function ConfirmModal({
   size = "md",
   tier = "medium",
   typedWord,
+  typedInputMode,
   icon,
   maxWidth = 400,
   loading = false,
@@ -673,9 +680,10 @@ export function ConfirmModal({
   const isHard = tier === "hard";
   const gateWord = typedWord?.trim() ?? "";
   /* ⭐ (vb6) The rule lives in `confirmGateArmed` above, pure, so a suite drives the rule this dialog runs. A count
-     word ("2981") also opens the numeric keypad. */
+     word ("2981") also opens the numeric keypad — and so does a hard gate whose caller asks for it (U40b,
+     `typedInputMode`). The arming rule is untouched: the keypad is how digits are typed, never what arms the gate. */
   const armed = confirmGateArmed(isHard, gateWord, entry);
-  const countGate = isHard && isCountWord(gateWord);
+  const countGate = isHard && (typedInputMode === "numeric" || isCountWord(gateWord));
 
   if (process.env.NODE_ENV !== "production" && isHard && gateWord === "") {
     throw new Error(
