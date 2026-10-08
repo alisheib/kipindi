@@ -73,7 +73,7 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-08 ~19:30 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+**⏳ IN FLIGHT (updated 2026-10-08 ~20:30 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
 that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). Ali
 (2026-10-07/08): *"keep going … keep pushing live"*, *"we don't want to be idle"* — each piece goes live once its core is
 proven, the rest runs after it, anything found is fixed forward, and lock-free work fills every wait. Done: A8i-2 and
@@ -87,7 +87,7 @@ and 333 of 335 tiles (two Up & Down tiles BLOCKED: no local price feed), the foo
 276 cells and `--journey` 504 cells, 0 problems; local `qa:live` 334/334; G1's prove-red caught; G — **the hydration
 fix in a real browser: on its parent 4 of 4 loads threw "Hydration failed" (en and sw, 390 and 1280), on the fix 4 of 4
 clean with the server's HTML stating "Chini 5 · Juu 120" as the browser does**, the tabs section 271/0 with 15.1 green,
-`qa:journey-preview` 33/33 twice (§5's one stop in C was a click before hydration: the drive now waits for React), G1
+`qa:journey-preview` 33/33 twice (§5's one stop in C was the kit Modal taking focus back from a field already chosen, below — not a click before hydration, as this line first said; the drive's new wait for React is a precondition, not that stop's cause), G1
 14/14, the footer's journey control caught 5 — every WP12 owed run is now done except E, F and the production seal.
 **The 333 tiles were read one by one (eight readers) and every
 finding checked against the code — and against the pixels where a reader estimated a position** (one "capsule at the
@@ -106,9 +106,9 @@ WP0's reds 28/28 and 37/37, the bar probe clean, A8i-2 under reduced motion 24/2
 (`test:red-anchors` 4865/0 on main). **Ali, 2026-10-08: "only perfect visual and logical results are accepted … visual
 perfection is above anything"** — so nothing the readers found is deferred: four helpers fix the rest (cards and
 filters, the hub and profile, tickets and empty states, the header and money pages), each finding measured first, then
-everything is re-tiled and read again until a read finds nothing; S6 closes after that pass (§0h point 64). The drives
+everything is re-tiled and read again until a read finds nothing; S6 closes after that pass (§0h point 64). **The pass so far, on branch `vodacom-visual` (on main `e16f9353`), each commit with its measurements and suites:** G1 — the featured card's top row in Swahili, Chinese titles that split "200 / 毫米" (`keepUnits`), the filter strips' fades, a divider stranded at a row's end, the Needle resting over text, a state pill 2px taller, the carousel caption cut; G4 — the money forms' extra 24px at the top (a hidden input without `hidden`), the legal nav's active label 2px off, a held wallet's figure gold in the journey's Wallet, the chat bubble on a notched iPhone's rail; G5 — **the owner's rule that the header's edge is the page's edge at every width**: the journey header pads 16 below 1024 and 32 from it, like every page (design call 10 and A5 amended; the least header slack is now 10.7px, sw at 320); `/`'s hero and bands follow in the journey only, by the shell's server-rendered mark, so classic viewers are served what they were; and **one logic bug the edge-scenario plan found: the journey's Wallet offered Weka pesa to a player on a break**, which `/wallet/deposit` refuses — it now offers Toa pesa alone. G2 (the hub and profile) and G3 (tickets and empty states) are still working. Then three lock turns on the combined branch: **M1** typecheck, `test:all` with the database suites, the journey header fit and its red, the landmark seal in both shells, needle-rest, the preview drive, local `qa:live`; **M2** the 335 journey tiles and the classic parity, a baseline at main against the branch; **M3** 532 edge-scenario tiles (a break, self-exclusion, a 40-character name, the longest title, slow 3G, not-found, odd viewports, 130% text, offline, TZS 0). Every tile is read and measured before anything goes live. The drives
 found one more real bug: the kit Modal took focus back from a field already chosen in the dialog (the preview link's
-reason typed into its label, 2 of 3 runs) — fixed on `vodacom-modal-focus`, its browser proof running (turn L). Held for S12 (§0h point 3, a
+reason typed into its label, 2 of 3 runs) — **LIVE: `e16f9353`** (turn L: the preview drive 33/33 three times with the button armed after the fills each time, `qa:enter-where-pressed` 24/0 in Chromium — WebKit's only failure its dev server's HMR chunk, as on main — and `qa:implicit-submit` 15/0). Held for S12 (§0h point 3, a
 live-word correction): Swahili "masaa 1 yamebaki" → "saa 1 imebaki" (S4-COPY-AUDIT, `bb9c951d`; branch
 `vodacom-s12-timeleft`, `1468d7cc`). **Fixed on main for every lane, 2026-10-07/08** (each with its proof in the commit): `red:all`'s Windows
 timeout (`b2e9db81`); `db:scratch`'s sweep in a junctioned worktree (`018e77e3`); eight dead red harnesses
@@ -121,9 +121,10 @@ codes and `test:stacking` 6.1 (`dfd0072e`); eyebrow-roles, holder-lifecycle and 
 live; its new Swahili line signed off in S4-COPY-AUDIT item 5); `test:kyc-copy-truth` (`318b8881`);
 `test:type-scale` (`6e4d4f0a`: 28 small-text sites recorded as a work order). ⚠️ This session stopped overnight (the account's usage limit) while its read-back grabber held the lock,
 2026-10-07 21:39Z – 10-08 08:33Z; marketing's turn waited. **Queued under the lock** (each turn stops if the one before
-did not end well): L — the Modal fix: the preview drive three times, `qa:enter-where-pressed` in Chromium and WebKit,
-`qa:implicit-submit`; I — S7 WP1's calibration (once WP1 is committed: parity v3 `--prove-red`, baseline and a null
-compare, the served-skeleton null pair, the first-load build); then the visual pass's tiles. **S7 WP1 is written**
+did not end well): I — S7 WP1's calibration, running (parity v3 `--prove-red` 114/122: the ticker strip moved between
+two captures of one cell — frozen for the capture in `9bcb22f7`; then the baseline and a null compare, the
+served-skeleton null pair, the first-load build); then the visual pass's M1–M3 (above), then I2, WP1's second
+calibration on `9bcb22f7`. **S7 WP1 is written**
 (branch `vodacom-s7-wp1`: parity v3 with the classic bodies, and A9's three tools — `qa:served-skeleton`,
 `qa:first-load`, `qa:chunks-prod`, which reads production 6/6 PASS; each self-test green and shown to fail when broken);
 it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **If this session is gone:** WP12's run list is in its
