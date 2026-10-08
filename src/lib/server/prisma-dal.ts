@@ -5060,7 +5060,8 @@ export const prismaDb = {
           }
           await tx.contactImport.updateMany({
             where: { id: b.importId, status: "COMMITTING", stagedThrough: b.toCursor },
-            data: { status: "DONE", finishedAt: new Date(b.at) },
+            // `updatedAt` named, as the memory twin writes it: left to @updatedAt it would be this statement's clock.
+            data: { status: "DONE", finishedAt: new Date(b.at), updatedAt: new Date(b.at) },
           });
           const settled = await tx.contactImport.findUnique({ where: { id: b.importId } });
           if (!settled) throw new Error("contactImport.commitBatch: the run vanished inside its own transaction");

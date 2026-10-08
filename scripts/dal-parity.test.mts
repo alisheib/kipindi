@@ -4255,7 +4255,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   };
   ok("29.members · the list memberships in both twins: only contacts that exist and are not the erased tombstone, never twice (Prisma reads the live ids null-safely, then createMany skipDuplicates; memory skips a held key) — a member keeps its first addedAt",
     membersPri29(pri29.commit) && membersMem29(mem29.commit));
-  const DONE_PRI29 = 'where: { id: b.importId, status: "COMMITTING", stagedThrough: b.toCursor }, data: { status: "DONE", finishedAt: new Date(b.at) },';
+  const DONE_PRI29 = 'where: { id: b.importId, status: "COMMITTING", stagedThrough: b.toCursor }, data: { status: "DONE", finishedAt: new Date(b.at), updatedAt: new Date(b.at) },';
   const doneMem29 = (b: string): boolean => {
     const f = flat29(b);
     return f.includes("const finished = b.toCursor === batchRun.stagedThrough;") && f.includes('status: finished ? "DONE" : batchRun.status,')
