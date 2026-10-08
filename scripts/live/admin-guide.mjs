@@ -81,7 +81,7 @@ async function shootTall(page, id, root = DIALOG) {
   await page.setViewportSize({ width: vp.width, height: 1240 });
   await wait(350);
   // The PANEL (`.mat-modal`, the kit Modal's box) — `[role=dialog]` itself is the full-screen layer with its scrim.
-  const panel = page.locator(`${root} .mat-modal`).first();
+  const panel = page.locator(root === DIALOG ? inDialog(".mat-modal") : `${root} .mat-modal`).first();
   const dialog = (await panel.count()) > 0 ? panel : page.locator(root).first();
   if ((await dialog.count()) > 0) {
     await dialog.screenshot({ path: join(SHOTS, `${id}.png`) });
@@ -123,15 +123,16 @@ async function guideContext(viewport) {
 }
 const mark = (page, selector) => page.evaluate((sel) => document.querySelectorAll(sel).forEach((e) => e.classList.add("kp-guide-mark")), selector);
 const unmark = (page) => page.evaluate(() => document.querySelectorAll(".kp-guide-mark").forEach((e) => e.classList.remove("kp-guide-mark")));
-const markCardByLabel = async (page, label) => {
-  const el = page.locator("main").getByText(label, { exact: true }).first();
-  if ((await el.count()) === 0) return false;
-  return el.evaluate((node) => {
-    const card = node.closest("[class*='rounded']");
-    if (card) card.classList.add("kp-guide-mark");
-    return card !== null;
-  });
-};
+const markCardByLabel = (page, label) => page.evaluate((want) => {
+  const leaves = [...document.querySelectorAll("main *")].filter((el) => el.children.length === 0 && (el.textContent ?? "").trim().toLowerCase() === want.toLowerCase());
+  for (const leaf of leaves) {
+    for (let n = leaf.parentElement; n && n.tagName !== "MAIN"; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (parseFloat(cs.borderTopLeftRadius) >= 8 && cs.borderTopWidth !== "0px") { n.classList.add("kp-guide-mark"); return true; }
+    }
+  }
+  return false;
+}, label);
 async function clearToasts(page) {
   for (const b of await page.locator("button[data-toast-dismiss]").all()) await b.click({ timeout: 2000 }).catch(() => {});
   await wait(350);
@@ -157,23 +158,27 @@ async function post(path, data) {
     await ctx.close().catch(() => {});
   }
 }
-const DIALOG = '[role="dialog"][aria-modal="true"]';
+/** Any open dialog — the kit's Modal (`dialog`) and its ConfirmModal (`alertdialog`, for Start, Stop, the switch, Confirm audience). */
+const DIALOG_ROLES = ['[role="dialog"][aria-modal="true"]', '[role="alertdialog"][aria-modal="true"]'];
+const DIALOG = DIALOG_ROLES.join(", ");
+/** `sub` inside any open dialog. */
+const inDialog = (sub) => DIALOG_ROLES.map((d) => `${d} ${sub}`).join(", ");
 const ADD_FORM = '[data-contact-form="add"]';
 const NUMBER = `${ADD_FORM} input[autocomplete="tel-national"]`;
 const SAVE = '[data-contact-form] button[type="submit"]';
 const textButton = (page, scope, label) => page.locator(scope).locator("button", { hasText: label }).first();
 async function closeDialog(page) {
   await textButton(page, DIALOG, "Cancel").click().catch(() => {});
-  const ask = page.locator(`${DIALOG} [data-discard-ask]`);
+  const ask = page.locator(inDialog("[data-discard-ask]"));
   if (await ask.isVisible().catch(() => false)) await textButton(page, DIALOG, "Discard").click().catch(() => {});
   await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
 }
 async function openAdd(page) {
   await page.locator('[data-block="contacts-add"]').first().click();
-  await page.waitForSelector(`${DIALOG} ${ADD_FORM}`, { timeout: 15_000 });
+  await page.waitForSelector(inDialog(ADD_FORM), { timeout: 15_000 });
   await wait(300);
 }
-const field = (page, key) => page.locator(`${DIALOG} [data-field="${key}"] input, ${DIALOG} [data-field="${key}"] textarea`).first();
+const field = (page, key) => page.locator(`${inDialog(`[data-field="${key}"] input`)}, ${inDialog(`[data-field="${key}"] textarea`)}`).first();
 const SEL = {
   name: 'label[data-field="name"] input',
   bodySw: 'label[data-field="bodySw"] textarea',
@@ -211,6 +216,8 @@ async function runA() {
 
     const { ctx, page } = await staff({ width: 1280, height: 800 });
     await post("/api/dev-test/marketing-contacts-seed?count=45");
+    // The pictures are of a working day: the send window judged at 12:00 EAT on this server.
+    await pinWindow(12);
 
     await step("02-menu", async () => {
       await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
@@ -270,7 +277,7 @@ async function runA() {
     await step("09-edit", async () => {
       await clearToasts(page);
       await page.locator("[data-contact-row] a[data-edit-contact]").first().click();
-      await page.waitForSelector(`${DIALOG} [data-contact-form="edit"]`, { timeout: 15_000 });
+      await page.waitForSelector(inDialog('[data-contact-form="edit"]'), { timeout: 15_000 });
       await wait(400);
       await shootTall(page, "09-edit");
       await closeDialog(page);
@@ -360,18 +367,14 @@ async function runA() {
     await step("18-compose", async () => {
       await page.goto(`${BASE}/admin/campaigns/new`, { waitUntil: "networkidle" });
       await page.locator(SEL.name).first().fill("October welcome");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari — bashiri sasa kwenye 50pick.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
       await wait(500);
       await shoot(page, "19-compose-filled");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari — bashiri “leo”.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri “leo”.");
       await wait(500);
       await shoot(page, "20-compose-warning");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari — bashiri sasa kwenye 50pick.");
-      await page.locator(SEL.audience).first().scrollIntoViewIfNeeded();
-      await wait(300);
-      await mark(page, SEL.audience);
-      await shoot(page, "21-audience");
-      await unmark(page);
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
+      await wait(400);
       await page.locator(SEL.save).first().click();
       await page.waitForSelector(SEL.saved, { timeout: 20_000 });
       await wait(500);
@@ -433,11 +436,15 @@ async function runB() {
   // ── tag the ten "weekend", as an officer would
   await step("b-tag", async () => {
     await page.goto(`${BASE}/admin/contacts?tag=${encodeURIComponent(seeded.tag)}`, { waitUntil: "networkidle" });
-    const boxes = page.locator('[data-contact-row] td:first-child input[type="checkbox"]');
-    const n = await boxes.count();
-    if (n === 0) throw new Error("the seeded people are not on the contacts page");
-    for (let i = 0; i < n; i++) await boxes.nth(i).check({ force: true });
-    await page.waitForSelector('[data-block="contacts-bulk-bar"]', { timeout: 10_000 });
+    if ((await page.locator("[data-contact-row]").count()) === 0) throw new Error("the seeded people are not on the contacts page");
+    // The page's own select-all box, pressed once the page answers (a press before hydration is lost).
+    let selected = false;
+    for (let attempt = 0; attempt < 5 && !selected; attempt++) {
+      await wait(800);
+      await page.locator('main table thead input[type="checkbox"]').first().click({ force: true }).catch(() => {});
+      selected = await page.locator('[data-block="contacts-bulk-bar"]').isVisible().catch(() => false);
+    }
+    if (!selected) throw new Error("the page's select-all box did not select the rows");
     await page.locator('[data-block="contacts-bulk-bar"] button', { hasText: /^Tag$/ }).first().click();
     await page.locator('[data-field="tag"] input').first().fill("weekend");
     await page.locator(DIALOG).locator("button", { hasText: "Continue" }).first().click();
@@ -452,16 +459,25 @@ async function runB() {
     // The audience first (the rail's own address, as its "weekend" pill writes it), then the words, then one save.
     await page.goto(`${BASE}/admin/campaigns/new?tag=weekend`, { waitUntil: "networkidle" });
     await page.locator(SEL.name).first().fill("Weekend offer");
-    await page.locator(SEL.bodySw).first().fill("50pick: Habari {jina}! Mechi za wikendi ziko tayari — bashiri sasa kwenye 50pick.");
+    await page.locator(SEL.bodySw).first().fill("50pick: Habari {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
     await wait(400);
     await page.locator(SEL.save).first().click();
     await page.waitForSelector(SEL.saved, { timeout: 20_000 });
     await wait(800);
     draftUrl = page.url();
+    // The audience card with its counts, scrolled to the top (the message card above it names this server's console rail).
+    await clearToasts(page);
+    await page.locator(SEL.audience).first().evaluate((n) => n.scrollIntoView({ block: "start" }));
+    await page.evaluate(() => window.scrollBy(0, -90));
+    await page.waitForFunction(() => !/counts appear once you choose|Counting who will receive/.test(document.querySelector('[data-block="compose-audience"]')?.textContent ?? ""), null, { timeout: 30_000 }).catch(() => {});
+    await wait(500);
+    await mark(page, SEL.audience);
+    await shoot(page, "21-audience");
+    await unmark(page);
     await clearToasts(page);
     await page.locator("[data-confirm-trigger]").first().scrollIntoViewIfNeeded();
     await page.locator("[data-confirm-trigger]").first().click();
-    await page.waitForSelector(`${DIALOG} [data-confirm-figures], ${DIALOG} [data-confirm-body]`, { timeout: 30_000 });
+    await page.waitForSelector(`${inDialog("[data-confirm-figures]")}, ${inDialog("[data-confirm-body]")}`, { timeout: 30_000 });
     await wait(600);
     await shootTall(page, "40-confirm-dialog");
     await page.locator(DIALOG).getByRole("button", { name: "Confirm audience", exact: true }).first().click();
