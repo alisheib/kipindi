@@ -22,6 +22,7 @@
  *   UNWRITTEN  unusable         a contact whose number the numbering plan refuses (a dead NDC) → counted `unusable`, never a row
  *   AND        duplicates       a second contact row holding an already-listed number in another spelling (the trunk zero after
  *                               the country code, a legacy dirty row) → the second seed is skipped by the unique key
+ * The proportions below are the default; each world moves every weight by up to 30 % either way from its seed.
  * This is the gate's own table (`consent.ts`), driven by the real rows; nothing here decides a verdict — it only writes the
  * rows and remembers what the gate is bound to answer.
  *
@@ -198,7 +199,12 @@ export async function buildWorld(h: Harness, spec: WorldSpec): Promise<World> {
   const rng = h.rng.fork(`world/${spec.id}`);
   const tag = `dryfire-r${h.runId}-${spec.id}`;
   const block = spec.block ?? h.nextBlock();
-  const mix: Partial<Record<Cls, number>> = { ...(spec.mix ?? MIX) };
+  // the default mix is the SEED's: every class keeps its place but its weight moves by up to 30 % either way, so two seeds are two
+  // different crowds (more or fewer people on the stop list, more or fewer players the book does not hold); a scenario that names its
+  // own mix (the one-class mini worlds) gets exactly that
+  const mix: Partial<Record<Cls, number>> = {};
+  const jitter = rng.fork("mix");
+  for (const [c, w] of Object.entries(spec.mix ?? MIX) as [Cls, number][]) mix[c] = spec.mix === undefined ? w * (0.7 + 0.6 * jitter.next()) : w;
   if (spec.population === "book") delete mix.player_only;
   const dups = spec.duplicates ?? Math.round(spec.n * DUP_FRACTION);
   const peopleCount = Math.max(1, spec.n - dups);
@@ -481,7 +487,8 @@ export async function applyLateStops(h: Harness, world: World, campaignId: strin
   let done = 0;
   for (const p of world.people) {
     if (done >= k) break;
-    if (p.oldToken === null || p.lateStopAt !== null || !waiting.has(p.key) || !p.expect.send) continue;
+    // a person listed twice (a duplicate contact row) is left alone: were the unique key ever lost, one of their rows could be sent before the stop
+    if (p.oldToken === null || p.lateStopAt !== null || p.dupContactId !== null || !waiting.has(p.key) || !p.expect.send) continue;
     const res = await h.S.optout.stopMarketing(p.oldToken, "SW");
     if (!res.ok) continue;
     p.lateStopAt = h.clock.now();

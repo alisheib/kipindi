@@ -445,7 +445,11 @@ export async function drive(h: Harness, proc: Process, campaignId: string, o: Dr
   const kinds: Record<string, number> = {};
   let last: StepActionResult | null = null;
   let busyRun = 0;
-  for (let n = 1; n <= max; n++) {
+  // a polite spin against a campaign another tab holds is not a step of work: against a database it takes real time (the other slice's
+  // queries), so spins are bounded by the clock and do not count against `max`
+  let spins = 0;
+  const began = performance.now();
+  for (let n = 1; n - spins <= max; n++) {
     const r = await step(h, proc, campaignId, o.driver);
     last = r;
     if (!r.ok) return { steps: n, end: "not_ok", last, kinds };
@@ -461,7 +465,11 @@ export async function drive(h: Harness, proc: Process, campaignId: string, o: Dr
         // "busy" more than a few hundred times running is waiting on a stranded claim only the reaper's clock will free.
         busyRun += 1;
         if (!o.yieldOnBusy && busyRun > 200) return { steps: n, end: "waiting", last, kinds };
-        if (o.yieldOnBusy) await new Promise<void>((resolve) => setImmediate(resolve));
+        if (o.yieldOnBusy) {
+          if (performance.now() - began > 600_000) return { steps: n, end: "waiting", last, kinds };
+          spins += 1;
+          await new Promise<void>((resolve) => setImmediate(resolve));
+        }
         continue;
       }
       if (o.onWait !== "continue") return { steps: n, end: "waiting", last, kinds };

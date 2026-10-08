@@ -9,6 +9,7 @@
  * deploy && npx tsx …'`), which npm cannot run on Windows, where package.json scripts run under cmd.exe — so the five
  * probes could not be keyed, and `test:orphans` counted them as scripts nothing runs (2026-10-04).
  * ⛔ Loopback only: the probes write and delete rows.
+ * Any arguments after the probe's path are handed to the probe unchanged (the dry-fire harness takes `--pg --seed=N --n=N`).
  */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -31,10 +32,11 @@ if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(host)) {
 }
 const env = { ...process.env, DATABASE_URL: RAW };
 const shell = process.platform === "win32";
+const rest = process.argv.slice(3);
 const migrate = spawnSync("npx", ["prisma", "migrate", "deploy"], { env, stdio: "inherit", shell, timeout: 30 * 60_000 });
 if (migrate.status !== 0) {
   console.error(`pg-probe-run: prisma migrate deploy failed (exit ${migrate.status}) — the probe was not run.`);
   process.exit(1);
 }
-const run = spawnSync("npx", ["tsx", probe], { env, stdio: "inherit", shell, timeout: 30 * 60_000 });
+const run = spawnSync("npx", ["tsx", probe, ...rest], { env, stdio: "inherit", shell, timeout: 30 * 60_000 });
 process.exit(run.status ?? 1);

@@ -7,8 +7,9 @@
  * `pauseCampaign` · `resumeCampaign` · `stopCampaign`, the real enqueue, the real `runCampaignSlice` over the real gate and the
  * real `sendBatch`, the real reaper, the real receipt route — over a seeded world, with a fake Blackball installed as `fetch`.
  *
- *   npm run qa:marketing-dry-fire -- --seed=7 --n=1000          the memory twin
- *   … --pg                                                       a LOOPBACK scratch Postgres (the lead's, under the heavy lock)
+ *   npm run qa:marketing-dry-fire -- --seed=7 --n=1000          the memory twin (SESSION_SECRET 32+ and OTP_PEPPER 16+ set, no DATABASE_URL)
+ *   npm run qa:marketing-dry-fire:pg -- --seed=7 --n=3000       a LOOPBACK scratch Postgres: boots `.pgscratch` (db:scratch --reset), applies the
+ *                                                                migrations, runs this file with --pg — the lead's, under the heavy lock
  *   … --only=3,4                                                 some scenarios
  *   flags: --seed=N (default 1) · --n=N (SCALE's audience, default 3000) · --json=PATH · --no-json · --quiet · --help
  *
@@ -23,7 +24,8 @@
  *   7 CREDIT        the credit kept for login codes, and the per-campaign limit: a campaign that would cross them stops BEFORE
  * ── THE SIX INVARIANTS, asserted after every scenario over the whole store ─────────────────────────────────────────────────
  *   INV1 no double send · INV2 every row terminal · INV3 nobody protected is sent · INV4 counts add up · INV5 audit · INV6 time
- * Exit code: 0 all held · 1 an invariant or a claim failed · 2 REFUSED (the environment is not a safe one) · 3 the harness itself crashed.
+ * Exit code: 0 all held · 1 an invariant or a claim failed · 2 REFUSED (the environment is not a safe one) · 3 the harness itself crashed ·
+ *             4 a bad command line.
  *
  * ⛔ NEVER PRODUCTION, NEVER RAILWAY, NEVER A REAL SMS. It refuses to start unless the SMS rail is the console stub, no gateway
  * credential and no Redis are in the environment, and the store is the memory twin — or, with --pg, a database whose host is
@@ -46,7 +48,7 @@ import type { Attribution } from "./dry-fire/carrier.mts";
 import { assertScratchDatabase, guardEnvironment, makeReader, resetMemoryStore, resetProcessGlobals } from "./dry-fire/store-io.mts";
 import { loadServer } from "./dry-fire/server.mts";
 import { assertRailIsFake, installFakeRail, makeHarness } from "./dry-fire/core.mts";
-import type { Claim, Harness, RunOptions } from "./dry-fire/core.mts";
+import type { Claim, Harness, RunOptions, Seams } from "./dry-fire/core.mts";
 import { evaluateInvariants, INV_IDS, INV_NAMES } from "./dry-fire/invariants.mts";
 import type { Inv } from "./dry-fire/invariants.mts";
 import { ensureWordings, seedOfficer } from "./dry-fire/world.mts";
@@ -305,47 +307,56 @@ const HELP = [
   "  --pg       use a LOOPBACK scratch Postgres (DATABASE_URL or VERIFY_DATABASE_URL; the .pgscratch cluster only) instead of memory",
   "  --json=P   where the JSON report goes (default .qa-shots/marketing-setup/dry-fire/report.json); --no-json to skip",
   "  --quiet    print only the summary",
+  "  exit code  0 everything held · 1 an invariant or a claim failed · 2 REFUSED (unsafe environment) · 3 the harness crashed · 4 a bad flag",
 ];
 
-export async function main(argv: readonly string[]): Promise<number> {
-  const cli = parseArgs(argv, out);
-  if (cli.help) { for (const l of HELP) out(l); return 0; }
-  out(`DRY-FIRE · seed ${cli.opts.seed} · n ${num(cli.opts.n)} · ${cli.opts.pg ? "scratch Postgres (loopback)" : "memory twin"} · fake carrier (nothing can leave)`);
+/** The command. `seams` and `emit` are for the suite (it plants a defect and reads what is printed); the command line passes neither. */
+export async function main(argv: readonly string[], seams: Seams = {}, emit: (line: string) => void = out): Promise<number> {
+  let cli: Cli;
+  try {
+    cli = parseArgs(argv, emit);
+  } catch (err) {
+    emit(`bad command line: ${String((err as Error)?.message ?? err)} (run with --help)`);
+    return 4;
+  }
+  cli.opts.seams = seams;
+  if (cli.help) { for (const l of HELP) emit(l); return 0; }
+  emit(`DRY-FIRE · seed ${cli.opts.seed} · n ${num(cli.opts.n)} · ${cli.opts.pg ? "scratch Postgres (loopback)" : "memory twin"} · fake carrier (nothing can leave)`);
   let report: Report;
   try {
     report = await runDryFire(cli.opts);
   } catch (err) {
     if (err instanceof RefusedError) {
-      out("");
-      out("REFUSED — the dry-fire will not run here:");
-      for (const r of err.reasons) out(`  · ${r}`);
+      emit("");
+      emit("REFUSED — the dry-fire will not run here:");
+      for (const r of err.reasons) emit(`  · ${r}`);
       return 2;
     }
-    out(`HARNESS CRASHED: ${String((err as Error)?.stack ?? err).slice(0, 1600)}`);
+    emit(`HARNESS CRASHED: ${String((err as Error)?.stack ?? err).slice(0, 1600)}`);
     return 3;
   }
-  out("");
-  for (const l of scaleBlock(report)) out(l);
-  out("");
-  for (const l of summaryTable(report)) out(l);
-  out("");
-  out(`carrier: ${num(report.carrier.messages)} messages in ${num(report.carrier.requests)} requests (${report.carrier.refused} refused outright), billed TZS ${num(report.carrier.billedTzs)} · ${ms(report.durationMs)} in all`);
+  emit("");
+  for (const l of scaleBlock(report)) emit(l);
+  emit("");
+  for (const l of summaryTable(report)) emit(l);
+  emit("");
+  emit(`carrier: ${num(report.carrier.messages)} messages in ${num(report.carrier.requests)} requests (${report.carrier.refused} refused outright), billed TZS ${num(report.carrier.billedTzs)} · ${ms(report.durationMs)} in all`);
   if (report.knownFindings.length > 0) {
-    out("KNOWN ENGINE FINDINGS (reported to the lead; they do not fail the run):");
-    for (const f of report.knownFindings) out(`  ${f.finding} · ${f.id} — ${f.label.slice(0, 120)} · ${f.detail.slice(0, 200)}`);
-    out("");
+    emit("KNOWN ENGINE FINDINGS (reported to the lead; they do not fail the run):");
+    for (const f of report.knownFindings) emit(`  ${f.finding} · ${f.id} — ${f.label.slice(0, 120)} · ${f.detail.slice(0, 200)}`);
+    emit("");
   }
   if (cli.json !== null) {
     const path = resolve(process.cwd(), cli.json);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, JSON.stringify(report, null, 2) + String.fromCharCode(10), "utf8");
-    out(`report: ${cli.json}`);
+    emit(`report: ${cli.json}`);
   }
   if (report.passed) {
-    out(`ALL HELD — ${INV_IDS.length} invariants × ${report.scenarios.length} scenarios, ${report.scenarios.reduce((n, s) => n + s.claims.length, 0)} claims (seed ${report.seed})`);
+    emit(`ALL HELD — ${INV_IDS.length} invariants × ${report.scenarios.length} scenarios, ${report.scenarios.reduce((n, s) => n + s.claims.length, 0)} claims (seed ${report.seed})`);
     return 0;
   }
-  out(`FAILED — invariants: ${report.failedInvariants.join(", ") || "none"} · claims: ${report.failedClaims.join(", ") || "none"} (replay with --seed=${report.seed} --n=${report.n})`);
+  emit(`FAILED — invariants: ${report.failedInvariants.join(", ") || "none"} · claims: ${report.failedClaims.join(", ") || "none"} (replay with --seed=${report.seed} --n=${report.n})`);
   return 1;
 }
 

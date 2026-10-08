@@ -24,10 +24,14 @@ class CrashError extends Error {}
 type Group = { rows: StoredSmsCampaignRecipient[]; messages: Map<string, StoredSmsMessage> };
 type Round = { c1: Group; c2: Group; c3: Group };
 
+/** Wait for something another step is doing. On the memory twin a few turns of the event loop are enough; against a database the step
+ *  needs real time for its queries, so after the first thousand turns the wait sleeps a millisecond at a time — for at most a minute. */
 async function until(cond: () => boolean, what: string): Promise<void> {
-  for (let i = 0; i < 20_000; i++) {
+  const began = performance.now();
+  for (let i = 0; performance.now() - began < 60_000; i++) {
     if (cond()) return;
-    await yieldTurn();
+    if (i < 1000) await yieldTurn();
+    else await new Promise<void>((resolve) => setTimeout(resolve, 1));
   }
   throw new Error(`dry-fire crash: gave up waiting for ${what}`);
 }

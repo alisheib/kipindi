@@ -522,6 +522,7 @@
     "db:probe-campaign-privacy": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/campaign-privacy-pg-probe.mts",
     "qa:marketing-retention": "node scripts/live/marketing-u16a-retention-drive.mjs",
     "qa:marketing-dry-fire": "tsx scripts/live/marketing-dry-fire.mts",
+    "qa:marketing-dry-fire:pg": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/marketing-dry-fire.mts --pg",
     "red:dsar-intake": "node scripts/dsar-intake-red.mjs",
     "red:dead-schema": "node scripts/dead-schema-red.mjs",
     "red:retention": "node scripts/retention-red.mjs",

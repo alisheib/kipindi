@@ -7,6 +7,7 @@
  *   B1  the real engine passes its own dry-fire at N=200: seven scenarios × six invariants, every claim holds
  *   B2  the report has the shape the lead reads — the SCALE figures, the summary table, the six invariants by name
  *   B3  the only known findings are the two reported to the lead (F-1, F-2), pinned to claims that exist
+ *   B4  the world is not vacuous: every class of person is there, every invariant had something to hold
  *   D1  deterministic: one seed twice gives one fingerprint, another seed another
  *   G1  the guard's refusal matrix (production · Railway · a real rail · Redis · a remote database · --pg off loopback …)
  *   G2  a run in an unsafe shell refuses BEFORE it touches anything
@@ -15,7 +16,8 @@
  *   P1  no phone number in the report, the table or the SCALE block
  *   L1  the `--pg` lock: only the repo's `.pgscratch` cluster, and only while it is empty (a stub client answers)
  *   L2  the `--pg` reader maps Prisma's rows and pages (a stub client answers)
- *   C1  the command line · W1 the scripts (and NOT the predeploy chain) · W2 no backslash in the harness
+ *   C1  the command line read as documented · C2 its exit codes (0 held · 1 an invariant failed · 2 refused · 4 bad flag) and its JSON report
+ *   W1  the scripts (and NOT the predeploy chain) · W2 no backslash in the harness
  *
  * ── THE RED CONTROL (`--prove-red`) ──────────────────────────────────────────────────────────────────────────────────────────
  * The baseline is proved green first, then each defect is PLANTED IN MEMORY through the harness's dependency seams (a wrapper of one
@@ -25,7 +27,7 @@
  * ⛔ IN-PROCESS: no file is written, no database is touched (the database variables are removed below, before the first server module
  * loads), no SMS can leave (the rail is the harness's fake carrier at an address that cannot resolve).
  * ⛔ HEAVY JOBS: none. `--plant=R3,R7` runs the named plants only; `--detail` prints what each failing invariant and claim said;
- * `--explore` skips the suite baseline (for building a plant — it never exits 0).
+ * `--explore` skips the suite baseline (for building a plant — it never exits 0); `--seed=N` runs the suite or the plants on another seed.
  * ⛔ This file holds no backslash (an editing tool decodes them): line breaks and patterns are built from codes and classes.
  *
  * Run: `npm run test:marketing-dry-fire` · Red: `npm run red:marketing-dry-fire`
@@ -40,7 +42,8 @@ if ((process.env.SESSION_SECRET ?? "").length < 32) process.env.SESSION_SECRET =
 if ((process.env.OTP_PEPPER ?? "").length < 16) process.env.OTP_PEPPER = "dry-fire-suite-pepper-0123456789";
 process.exitCode = 1;
 
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -67,7 +70,10 @@ const NL = String.fromCharCode(10);
 const BS = String.fromCharCode(92);
 const json = (v: unknown): string => JSON.stringify(v);
 const SUITE_N = 200;
-const SEED = 1;
+/** The suite's seed: 1 unless `--seed=N` (the same plants and claims hold for any seed — the lead may try another). */
+const seedArg = process.argv.find((a) => a.startsWith("--seed="));
+const SEED = seedArg === undefined ? 1 : Number(seedArg.slice("--seed=".length));
+if (!Number.isSafeInteger(SEED) || SEED < 0) throw new Error("--seed=N must be a whole number");
 
 /** The options of one run of the harness: silent, the memory twin, the real engine unless `seams` say otherwise. */
 const run = (o: Partial<RunOptions> = {}): RunOptions => ({ seed: SEED, n: SUITE_N, pg: false, only: null, log: () => undefined, seams: {}, ...o });
@@ -148,6 +154,22 @@ async function runSuite(): Promise<void> {
     const wrong = base.knownFindings.filter((f) => pinned[f.id] !== f.finding);
     return [wrong.length === 0 && base.failedClaims.length === 0 && base.failedInvariants.length === 0,
       `${base.knownFindings.length} known finding(s): ${base.knownFindings.map((f) => `${f.finding} ${f.id}`).join(", ") || "none (the engine was fixed — then delete the pins)"}`];
+  });
+
+  await claim("B4", "the world is not vacuous: every kind of person the gate must tell apart is in the SCALE audience (seventeen classes), and every invariant had something to hold", () => {
+    const m = base.scenarios[0]?.metrics as { classes?: Record<string, number>; people?: number } | undefined;
+    const classes = Object.entries(m?.classes ?? {});
+    const empty = classes.filter(([, k]) => !(k >= 1)).map(([c]) => c);
+    const last = base.scenarios[base.scenarios.length - 1];
+    const inv = (id: string): Record<string, number | string> => last.invariants.find((i) => i.id === id)?.numbers ?? {};
+    const n1 = inv("INV1");
+    const n3 = inv("INV3");
+    const n4 = inv("INV4");
+    const n5 = inv("INV5");
+    const alive = Number(n1.handedMessages) >= 500 && Number(n3.protectedPeople) >= 50 && Number(n3.skippedRight) >= 40 && Number(n4.viewsChecked) >= 10
+      && Number(n5.auditRows) >= 200 && Number(n5.officerActsLanded) >= 20 && Number(n5.enginePauses) >= 5;
+    return [classes.length === 17 && empty.length === 0 && alive,
+      `${classes.length} classes in ${m?.people ?? 0} people, empty [${empty.join(",")}] · over the whole run: ${n1.handedMessages} messages handed over, ${n3.protectedPeople} protected people (${n3.skippedRight} skipped with the right reason), ${n4.viewsChecked} views, ${n5.auditRows} audit rows, ${n5.officerActsLanded} officer acts, ${n5.enginePauses} engine pauses`];
   });
 
   /* ── D · DETERMINISM ── */
@@ -340,7 +362,7 @@ async function runSuite(): Promise<void> {
   });
 
   /* ── C · THE COMMAND LINE · W · THE WIRING ── */
-  await claim("C1", "the command line: --seed --n --only --pg --json/--no-json --quiet --help; a number that is not a whole number is refused", () => {
+  await claim("C1", "the command line is read as documented: --seed --n --only --pg --json/--no-json --quiet --help; a number that is not a whole number is refused", () => {
     const log = (): void => undefined;
     const a = H.parseArgs(["--seed=7", "--n=1000"], log);
     const b = H.parseArgs(["--only=3,4", "--pg", "--no-json", "--quiet", "--help"], log);
@@ -352,18 +374,46 @@ async function runSuite(): Promise<void> {
     return [ok, `defaults seed ${c.opts.seed} · n ${c.opts.n} · report ${a.json}`];
   });
 
-  await claim("W1", "the scripts: qa:marketing-dry-fire, test:marketing-dry-fire and red:marketing-dry-fire exist as written and none is in the predeploy chain; the report's folder is ignored by git", () => {
+  await claim("C2", "the command: exit 0 and a JSON report where asked when everything holds, 1 when an invariant fails (naming it and the flags that replay it), 2 when refused, 4 for a bad command line", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "dry-fire-suite-"));
+    try {
+      const file = join(dir, "nested", "report.json");
+      const small = ["--seed=1", "--n=60", "--only=1", "--quiet"];
+      const okLines: string[] = [];
+      const okCode = await H.main([...small, `--json=${file}`], {}, (l) => okLines.push(l));
+      const written = JSON.parse(readFileSync(file, "utf8")) as Report;
+      const badLines: string[] = [];
+      const badCode = await H.main([...small, "--no-json"], { gate: (real) => async (m) => { const v = await real(m); return !v.ok && v.skipReason === "suppressed" ? CLEARED : v; } }, (l) => badLines.push(l));
+      const saved = process.env.DATABASE_URL;
+      process.env.DATABASE_URL = pg("db.example.com");
+      const refusedLines: string[] = [];
+      let refusedCode = -1;
+      try { refusedCode = await H.main([...small, "--no-json"], {}, (l) => refusedLines.push(l)); } finally { if (saved === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = saved; }
+      const usageLines: string[] = [];
+      const usageCode = await H.main(["--n=abc"], {}, (l) => usageLines.push(l));
+      const ok = okCode === 0 && written.passed === true && written.seed === 1 && written.scenarios.length === 1 && okLines.some((l) => l.startsWith("ALL HELD")) && okLines.some((l) => l.startsWith("report: "))
+        && badCode === 1 && badLines.some((l) => l.startsWith("FAILED — invariants: INV3")) && badLines.some((l) => l.includes("replay with --seed=1 --n=60"))
+        && refusedCode === 2 && refusedLines.some((l) => l.startsWith("REFUSED")) && refusedLines.some((l) => l.includes("DATABASE_URL is set"))
+        && usageCode === 4 && usageLines.some((l) => l.startsWith("bad command line"));
+      return [ok, `exit codes ${okCode} (held, report written ${written.passed}) · ${badCode} (a planted stop-list gap: ${badLines.find((l) => l.startsWith("FAILED"))?.slice(0, 40) ?? "-"}) · ${refusedCode} (refused) · ${usageCode} (bad flag)`];
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await claim("W1", "the scripts: qa:marketing-dry-fire (and its :pg twin through the scratch cluster), test:marketing-dry-fire and red:marketing-dry-fire exist as written and none is in the predeploy chain; the report folder is ignored by git", () => {
     const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as { scripts: Record<string, string> };
     const s = pkg.scripts;
     const chain = (s.predeploy ?? "").split("&&").map((x) => x.trim());
     const wired = s["qa:marketing-dry-fire"] === "tsx scripts/live/marketing-dry-fire.mts" && s["test:marketing-dry-fire"] === "tsx scripts/marketing-dry-fire.test.mts"
-      && s["red:marketing-dry-fire"] === "tsx scripts/marketing-dry-fire.test.mts --prove-red";
+      && s["red:marketing-dry-fire"] === "tsx scripts/marketing-dry-fire.test.mts --prove-red"
+      && s["qa:marketing-dry-fire:pg"] === "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/marketing-dry-fire.mts --pg";
     const offChain = !chain.some((x) => x.includes("marketing-dry-fire"));
     const ignored = readFileSync(join(ROOT, ".gitignore"), "utf8").split(NL).some((l) => l.trim().startsWith(".qa-shots"));
     return [wired && offChain && ignored, `scripts wired ${wired} · off the predeploy chain ${offChain} · .qa-shots ignored ${ignored}`];
   });
 
-  await claim("W2", "the harness and this suite hold no backslash and no control character (an editing tool decodes them): fifteen files read", () => {
+  await claim("W2", "the harness and this suite hold no backslash and no control character (an editing tool decodes them): every file of both", () => {
     const dir = join(ROOT, "scripts", "live", "dry-fire");
     const files = [...readdirSync(dir).filter((f) => f.endsWith(".mts")).map((f) => join(dir, f)), join(ROOT, "scripts", "live", "marketing-dry-fire.mts"), join(ROOT, "scripts", "marketing-dry-fire.test.mts")];
     const bad: string[] = [];
@@ -584,10 +634,14 @@ const PLANTS: Plant[] = [
   /* ── SCENARIO CLAIMS THE SIX INVARIANTS DO NOT SEE ── */
   {
     id: "R19", name: "Pause does not veto a new claim (a paused campaign is still handed to the slice, whose first read of it says RUNNING; only the re-read before the wire stops the send)", only: [3],
-    seams: () => ({
-      control: (d) => ({ ...d, reap: async (id) => { const reaped = await d.reap(id); await d.slice(id); return reaped; } }),
+    seams: () => {
+      // twice is enough to see it (every further slice would only skip more of the protected people the real one skips later)
+      let handed = 0;
+      return {
+      control: (d) => ({ ...d, reap: async (id) => { const reaped = await d.reap(id); if (handed < 2) { handed += 1; await d.slice(id); } return reaped; } }),
       engine: (d) => {
         let first = true;
+        let lied = false;
         return {
           ...d,
           campaigns: {
@@ -596,12 +650,17 @@ const PLANTS: Plant[] = [
               const c = await d.campaigns.find(id);
               if (!first) return c;
               first = false;
-              return c !== null && c.status === "PAUSED" ? { ...c, status: "RUNNING" as const } : c;
+              if (c === null || c.status !== "PAUSED") return c;
+              lied = true;
+              return { ...c, status: "RUNNING" as const };
             },
           },
+          // the slice that should never have run leaves the group size as it found it (the rest of the scenario is then the real one's)
+          rules: { ...d.rules, adaptSliceSize: (prev, ms) => (lied ? prev : d.rules.adaptSliceSize(prev, ms)) },
         };
       },
-    }),
+      };
+    },
     expect: { inv: [], claims: ["S3.pause.veto"] },
   },
   {

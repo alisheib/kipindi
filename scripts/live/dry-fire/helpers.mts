@@ -58,6 +58,8 @@ export type SliceFigures = {
   gateMs: Summary;
   sendMs: Summary;
   firstSizes: number[];
+  /** Every slice that ran, in order: how many people it claimed. */
+  allSizes: number[];
   waits: Record<string, number>;
   pauses: Record<string, number>;
 };
@@ -82,6 +84,7 @@ export function sliceFigures(h: Harness, campaignId: string, from = 0): SliceFig
     gateMs: summarize(ran.map(gate)),
     sendMs: summarize(ran.map(send)),
     firstSizes: ran.slice(0, 8).map(size),
+    allSizes: ran.map(size),
     waits,
     pauses,
   };

@@ -344,17 +344,21 @@ const KNOWN_CAMPAIGN_ACTIONS = new Set([
   "marketing.campaign_stopped", "marketing.campaign_enqueued", "marketing.campaign_finished", "marketing.campaign_reaped",
 ]);
 
-/** The made-up numbers a text mentions — judged by their nine national digits, so a reference's accidental digit run is never
- *  taken for one. Plus any other 255-shaped Tanzanian mobile number (a number the world did not make is still a leak). */
+/** The phone numbers a text mentions: a number is a WHOLE run of digits in one of the spellings the platform uses (712345678 ·
+ *  0712345678 · 255712345678 · 2550712345678) — never a window inside a longer run, where an id or a timestamp can hold the same
+ *  nine digits by accident. A number the world made is judged by its nine national digits; any other 255-shaped Tanzanian mobile
+ *  number is a leak too (a number the world did not make is still somebody's). */
 export function numbersIn(text: string, nines: ReadonlySet<string>): string[] {
   const hits: string[] = [];
-  const runs = text.match(/[0-9]{9,}/g) ?? [];
-  for (const run of runs) {
-    for (let i = 0; i + 9 <= run.length; i++) {
-      if (nines.has(run.slice(i, i + 9))) { hits.push(`...${run.slice(-4)}`); break; }
-    }
+  for (const run of text.match(/[0-9]{9,}/g) ?? []) {
+    const body = run.length === 9 ? run
+      : run.length === 10 && run.startsWith("0") ? run.slice(1)
+      : run.length === 12 && run.startsWith("255") ? run.slice(3)
+      : run.length === 13 && run.startsWith("2550") ? run.slice(4)
+      : null;
+    if (body !== null && nines.has(body)) hits.push(`...${run.slice(-4)}`);
+    else if (run.length === 12 && /^255[67]/.test(run)) hits.push(`...${run.slice(-4)}`);
   }
-  for (const m of text.match(/255[67][0-9]{8}/g) ?? []) hits.push(`...${m.slice(-4)}`);
   return hits;
 }
 
@@ -453,7 +457,7 @@ async function inv5(h: Harness, data: Data[]): Promise<Inv> {
       failures.push(`audit row ${e.action} carries a phone number (${hits[0]})`);
     }
     // the target id may be an id the server made, never a number
-    if (e.targetId && /^[0-9]{9,}$/.test(e.targetId) && nines.has(e.targetId.slice(-9))) {
+    if (e.targetId && numbersIn(e.targetId, nines).length > 0) {
       leaks += 1;
       failures.push(`audit row ${e.action} is aimed at a phone number`);
     }
