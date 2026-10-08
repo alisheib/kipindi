@@ -22,10 +22,18 @@ import { Button } from "@/components/ui/button";
  * different number is exactly the player who will not think to try. An affordance that is
  * only discoverable by attempting to clear a filled field is not an affordance.
  *
- * ⚠️ IT CLEARS AND FOCUSES; IT DOES NOT REPLACE THE FIELD. The `Input` above stays the one
- * control that holds the value, so `deposit/actions.ts` keeps reading exactly the same
+ * ⚠️ IT CLEARS AND FOCUSES; IT DOES NOT REPLACE THE FIELD. The kit `PhoneInput` above stays the
+ * one control that holds the value, so `deposit/actions.ts` keeps reading exactly the same
  * `msisdn` and every validation it already ran still runs. This component only decides what
  * is in the box and where the caret is.
+ *
+ * 🔴 THROUGH THE NATIVE SETTER (2026-10-09). Since the box became the kit PhoneInput (the Vodacom
+ * plan §2 / S9), its digits live in React state and are POSTED from a hidden field. A plain
+ * `el.value = …` also moves React's value tracker, so the `input` event that follows reads as
+ * "no change", React never hears it, and the hidden field keeps the OLD number: the player would
+ * see their registered number while the payment prompt went to the other one. Setting the value
+ * through HTMLInputElement's own setter leaves the tracker behind, React hears the change, and the
+ * posted number follows the box (`test:deposit-phone` §3; `qa:deposit-phone` P4 in three engines).
  *
  * 🔴 AND IT MUST NOT FIGHT THE ERROR ROUND-TRIP. `moneyFormMsisdn` re-seeds the field with
  * whatever was SUBMITTED when the page comes back with an error, precisely so a player who
@@ -57,7 +65,11 @@ export function DepositNumberChoice({
     if (first.current) { first.current = false; return; }
     const el = document.getElementById("msisdn") as HTMLInputElement | null;
     if (!el) return;
-    el.value = other ? "" : registered;
+    const next = other ? "" : registered;
+    // The native setter, not `el.value =` (see the note above): React must hear this change.
+    const nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    if (nativeSet) nativeSet.call(el, next);
+    else el.value = next;
     // Fire `input` so React and any listener see the change rather than only the DOM.
     el.dispatchEvent(new Event("input", { bubbles: true }));
     if (other) el.focus();

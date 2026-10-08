@@ -5,7 +5,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { FieldLegend } from "@/components/ui/field-legend";
-import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { bonusIsLiveFor } from "@/lib/feature-state";
 import { currentSession } from "@/lib/server/auth-service";
@@ -251,23 +251,16 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
         {/* Handset number — mobile-money rails only. Hidden (not unmounted) for
             CARD, where the buyer enters their details on Selcom's page instead
             and there is no USSD prompt to push anywhere. No html `required`: it
-            would block submit while hidden. depositAction enforces it. */}
+            would block submit while hidden. depositAction enforces it.
+            ⭐ THE KIT PhoneInput (2026-10-09, the Vodacom plan §2 / S9), as on sign-up and sign-in. The raw box it
+            replaces had maxLength 9 and pattern \d{9}: "0712 345 678", the way a number is written here, stopped at
+            "071234567", which the server refuses. This one takes 07…, 7…, 255…, +255… and 00255…, shows
+            "712 345 678", and posts the nine digits in a hidden field named msisdn (`test:deposit-phone`). */}
         <div className="group-has-[#provider-CARD:checked]/deposit:hidden">
           <FieldLegend as="label" htmlFor="msisdn" className="block mb-2">
             {t.wallet.mobileMoneyNumber}
           </FieldLegend>
-          <Input
-            id="msisdn"
-            name="msisdn"
-            type="tel"
-            inputMode="numeric"
-            pattern="\d{9}"
-            maxLength={9}
-            placeholder="712 345 678"
-            prefix="+255"
-            mono
-            defaultValue={prevMsisdn}
-          />
+          <PhoneInput id="msisdn" name="msisdn" placeholder="712 345 678" defaultValue={prevMsisdn} />
           <p className="mt-1.5 text-body-sm text-text-subtle text-balance">{t.wallet.mobileMoneyNumberHint}</p>
           {/* 🔴 `E-215`'s OTHER HALF. Withdrawal states its destination and refuses any
               other; deposit OFFERS one, because money arriving from a friend's handset is
