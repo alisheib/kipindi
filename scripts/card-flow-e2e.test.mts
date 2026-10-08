@@ -27,6 +27,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { db } from "../src/lib/server/store.ts";
 import { deposit, settleDepositFromReturn, settlePaymentWebhook } from "../src/lib/server/wallet-service.ts";
 import { setPaymentControls } from "../src/lib/server/payment-control.ts";
+import { cardReturnOrderId } from "../src/lib/wallet/card-return.ts";
 
 const STUB_PORT = 4599;
 process.env.PAYMENT_API_URL = `http://127.0.0.1:${STUB_PORT}/v1`;
@@ -73,9 +74,11 @@ const CARD_CTX = (orderReturn = "http://127.0.0.1:3000/wallet/deposit/return") =
 });
 
 /** Pull order_id back out of the stub's gateway URL — this is exactly what the
- *  browser would carry to the return page. */
+ *  browser would carry to the return page, read as the page reads it.
+ *  ⭐ 2026-10-09: the stub no longer adds an order_id of its own (the real gateway never did), so the id read here is
+ *  the one `withOrderId` put into our redirect_url — this suite now fails if we stop sending it (MONEY-GATE §3.2). */
 function orderIdFrom(gatewayUrl: string): string {
-  return new URL(gatewayUrl).searchParams.get("order_id") ?? "";
+  return cardReturnOrderId(new URL(gatewayUrl).searchParams.get("order_id"));
 }
 
 /** THE money invariant: spendable balance must equal the sum of every deposit we

@@ -388,6 +388,15 @@ numbers are the finder's and predate this session's edits — re-derive them.
   PAID" written for money that never moved.
 - The card deposit return URL carries no `order_id`, so a card payer who has just been charged
   lands on *"We couldn't find that payment"*.
+  ✅ **CONFIRMED and FIXED 2026-10-09 — LIVE `684f72cb`** (Vodacom plan §2 / S9, built on ALI-BLADE15). Confirmed in a
+  real browser on the parent tree: the buyer came back to `/wallet/deposit/return?payment_status=COMPLETED&transid=…`
+  and read "We couldn't find that payment" (sw "Hatukuweza kupata malipo hayo"); the credit itself always arrived
+  through the fast-credit poll. Fixed: `withOrderId` (`src/lib/wallet/card-return.ts`) puts our order id into the
+  redirect and the cancel URL in `selcomCardCheckout`; the page reads it through `cardReturnOrderId`. It had passed
+  every test because `scripts/selcom-stub-gateway.mjs` appended an `order_id` of its own — the stub is faithful now.
+  Guards: `test:card-return-order` (26) + `red:card-return-order` (10/10 in process); `e2e:card` now fails without the
+  fix (64/36 on the old `selcom.ts`). ⚠️ Not yet seen against the REAL gateway: the first real card deposit on
+  production confirms Selcom keeps our query string (S14's real TZS 1,000 journey covers it).
 - CARD has **no kill-switch at all** — `MNOS` excludes it, so `isPaymentPaused("CARD", …)` can
   never be true, on the rail that carries chargeback risk.
 - A phantom `PROCESSING` deposit eats the player's RG cap.
