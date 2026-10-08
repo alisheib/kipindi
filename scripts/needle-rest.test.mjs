@@ -58,9 +58,30 @@ const HELPERS = () => {
   const controls = () => [...document.querySelectorAll(INTERACTIVE)].filter((n) => !root.contains(n)).map((n) => ({ n, r: n.getBoundingClientRect(), cs: getComputedStyle(n) }))
     .filter(({ r, cs }) => r.width >= 1 && r.height >= 1 && cs.visibility !== "hidden" && cs.pointerEvents !== "none" && r.bottom > 0 && r.top < innerHeight);
   const hitsFp = (x, f) => x.width > 0 && x.left < f.right && x.right > f.left && x.top < f.bottom && x.bottom > f.top;
+  // 2026-10-08 · G1 [193] · the host's SECOND rule, restated the same way: visible text outside any control (the
+  // /markets stat line the disc rested on) is under it too, measured with the host's own 4px clearance. The host
+  // prunes its walk for speed; this walks every text node, so it can only find MORE than the host does.
+  const textCovered = () => {
+    const f = fp(); const C = 4; const out = [];
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let t = w.nextNode(); t; t = w.nextNode()) {
+      const p = t.parentElement;
+      if (!p || !(t.textContent || "").trim() || root.contains(p) || p.closest(`svg,script,style,noscript,template,${INTERACTIVE}`)) continue;
+      range.selectNodeContents(t);
+      const rects = [...range.getClientRects()].filter((x) => x.width > 1 && x.height > 1
+        && x.left < f.right + C && x.right > f.left - C && x.top < f.bottom + C && x.bottom > f.top - C);
+      const seen = p.checkVisibility
+        ? p.checkVisibility({ opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
+        : getComputedStyle(p).visibility === "visible";
+      if (rects.length && seen) out.push(t.textContent.trim().slice(0, 30));
+    }
+    return out;
+  };
   window.__nr = {
     fp,
     covered: () => { const f = fp(); return controls().filter(({ n }) => contentRects(n).some((x) => hitsFp(x, f))).map(({ n }) => (n.textContent || n.getAttribute("aria-label") || n.tagName).trim().slice(0, 30)); },
+    textCovered,
     /** Content of a control reaching the strip the parked disc occupies, away from the top and bottom bars. */
     rightControl: () => {
       const f = fp();
@@ -155,7 +176,8 @@ console.log("\n[needle-rest] §1 the glide, frame by frame (360×740)");
   for (let cy = 140; cy < 600; cy += 20) {
     await page.evaluate((c) => window.__nr.placeAt(c), cy);
     await page.evaluate(() => window.__nr.record(40));
-    if ((await page.evaluate(() => window.__nr.covered())).length === 0) { clearY = cy; break; }
+    // Clear by BOTH of the host's rules (2026-10-08): a rest with text under it is one the host now moves.
+    if ((await page.evaluate(() => window.__nr.covered().length + window.__nr.textCovered().length)) === 0) { clearY = cy; break; }
   }
   ok("precondition · a clear rest position exists at the top of /markets", clearY !== null);
   if (clearY !== null) {

@@ -54,7 +54,9 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * ⭐ AND IT NO LONGER COLLIDES WITH THE NEEDLE. The fidget's badge overlapped the rail's FIRST
  * SLOT at 360 in the batch-2 baseline frames, and its `#hit` area is `pointer-events: auto` — so a
  * tap meant for Markets could grab the toy instead. The physics is vendored and do-not-edit; its
- * RESTING POSITION is not. See `needle-rest.css`, loaded beside this component's own layer.
+ * RESTING POSITION is not. ⚠️ (2026-10-08) There is no `needle-rest.css` — this line used to cite one and
+ * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
+ * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
  */
 export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean }) {
   const pathname = usePathname();

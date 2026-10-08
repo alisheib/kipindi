@@ -183,6 +183,7 @@ const sizeStyles: Record<Size, {
 export function Chip({
   variant = "neutral",
   size = "md",
+  metrics,
   selected,
   dot,
   className,
@@ -192,11 +193,21 @@ export function Chip({
 }: React.HTMLAttributes<HTMLSpanElement> & {
   variant?: Variant;
   size?: Size;
+  /**
+   * Which row of the size table the pill takes. Omitted, the VARIANT decides (`isStatus`): the kit's
+   * slightly taller status pill. ⭐ 2026-10-08 · G1 [167 168] — a row whose pills must match states it:
+   * a ticket's state pill is `pending` (royal, status metrics) when it is open or refunded and `gold`,
+   * `no` or `neutral` (base metrics) otherwise, so on the same card row it was 20px with 10px type beside
+   * an 18px, 9.5px side pill, and its card's question sat 2px below its neighbour's. Its height followed
+   * its COLOUR. `metrics="base"` gives every state the side pill's size; the colour is untouched.
+   */
+  metrics?: "status" | "base";
   selected?: boolean;
   dot?: boolean;
 }) {
   const sz = sizeStyles[size];
-  const { height, ...szRest } = isStatus(variant) ? sz.status : sz.base;
+  const tall = metrics ? metrics === "status" : isStatus(variant);
+  const { height, ...szRest } = tall ? sz.status : sz.base;
   return (
     <span
       /**

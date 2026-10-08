@@ -404,29 +404,100 @@ function mountNeedle(
     }
     return out;
   }
+  /* ⭐ 2026-10-08 · G1 [193] · READABLE TEXT IS SOMETHING UNDER IT TOO. The census above counts CONTROLS only
+     (the session-96 cases), so the disc rested on the /markets stat line at 390 in Swahili — "● 40 hai · TZS 49K
+     katika mchezo" cut at "mche", the board's own money figure line, which is text and not a control. ⛔ The page
+     reserves no room for the rest position, and never did: the `needle-rest.css` that `bottom-nav.tsx` cites was
+     never written (no commit ever added it) — the rest position is this host logic, and it had a blind spot.
+     So the visible text in the band is read as well: a TreeWalker over the page that skips the Needle, controls
+     (counted above, by their own rule), svg and script, and every subtree whose box neither reaches the band nor
+     overflows — so on a phone it reads the few elements at the right edge, not the page. Text that is not seen
+     (`visibility: hidden` slides, an `opacity: 0` ancestor, a 1px screen-reader-only box) is not counted. */
+  const TEXT_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "svg", "IFRAME", "CANVAS", "VIDEO", "IMG", "SELECT", "TEXTAREA"]);
+  // Both spellings of the options: Chromium 105–120 read `checkOpacity`/`checkVisibilityCSS`, later engines the
+  // `…Property` names; an engine ignores the pair it does not know.
+  type CheckVisibility = (o?: { opacityProperty?: boolean; visibilityProperty?: boolean; checkOpacity?: boolean; checkVisibilityCSS?: boolean }) => boolean;
+  function seen(el: Element) {
+    const check = (el as Element & { checkVisibility?: CheckVisibility }).checkVisibility;
+    return check
+      ? check.call(el, { opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
+      : getComputedStyle(el).visibility === "visible";
+  }
+  function textInBand(fp: { left: number; right: number }, rows: { top: number; bottom: number }) {
+    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+    const inBand = (x: { left: number; right: number }) => x.right >= fp.left - CLEARANCE && x.left <= fp.right + CLEARANCE;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        if (n.nodeType === Node.TEXT_NODE) return (n.textContent || "").trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        const el = n as Element;
+        if (el === root || TEXT_SKIP.has(el.tagName) || el.matches(INTERACTIVE)) return NodeFilter.FILTER_REJECT;
+        const r = el.getBoundingClientRect();
+        // `display: contents` reports an empty box and still holds laid-out text; any other empty box holds none.
+        if (r.width === 0 && r.height === 0) return getComputedStyle(el).display === "contents" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
+        // Only the rows a rest within reach can occupy (the caller's window), so a long page costs nothing extra.
+        const near = inBand(r) && r.bottom >= rows.top && r.top <= rows.bottom;
+        const overflows = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+        return near || overflows ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
+      },
+    });
+    const range = document.createRange();
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent) continue;
+      range.selectNodeContents(node);
+      let visible: boolean | null = null;
+      for (const t of range.getClientRects()) {
+        if (t.width <= 1 || t.height <= 1 || !inBand(t)) continue;
+        visible ??= seen(parent);
+        if (!visible) break;
+        out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+      }
+    }
+    return out;
+  }
+  /* A rest taken KNOWING text was under it (no gap in the text within reach): it is not re-decided until the page
+     moves under it. Without this, a rest chosen by the control-only floor below could, on the next scroll-idle,
+     find a text-clear spot within reach of its NEW height and glide again — a chain, which E-413 forbids
+     (`test:needle-rest` §1). Compared with 2px of slack: the park spring lands within a pixel of its target. */
+  let textAccepted: { y: number; sx: number; sy: number } | null = null;
+  const acceptText = (y: number) => { textAccepted = { y, sx: window.scrollX, sy: window.scrollY }; };
   /** The y to rest at: `null` = already clear (or not applicable), `undefined` = nothing clear within reach. */
   function clearRestY(): number | null | undefined {
     if (!body.parked || body.held || body.parking || isSuppressed()) return null;
     if (body.edge !== "left" && body.edge !== "right") return null;
     const fp = footprint();
-    const rects = controlsInBand(fp);
-    const covers = (dy: number) => rects.some((r) =>
+    const under = (rects: Array<{ left: number; right: number; top: number; bottom: number }>) => (dy: number) => rects.some((r) =>
       r.left < fp.right + CLEARANCE && r.right > fp.left - CLEARANCE
       && r.top < fp.bottom + dy + CLEARANCE && r.bottom > fp.top + dy - CLEARANCE);
-    if (!covers(0)) return null;
+    const reach = viewport().h / 3;
+    const onControl = under(controlsInBand(fp));
+    const settled = textAccepted !== null && Math.abs(textAccepted.y - body.y) < 2
+      && textAccepted.sx === window.scrollX && textAccepted.sy === window.scrollY;
+    const onText: (dy: number) => boolean = settled ? () => false : under(textInBand(fp, { top: fp.top - reach - CLEARANCE, bottom: fp.bottom + reach + CLEARANCE }));
+    if (!onControl(0) && !onText(0)) return null;
     const L = body.limits();
     const m = 14;
     const minY = L.minY + m;
     const maxY = Math.max(minY, L.maxY - m);
-    const reach = viewport().h / 3;
-    for (let d = 2; d <= reach; d += 2) {
-      for (const sign of [-1, 1]) {
-        const y = body.y + sign * d;
-        if (y < minY || y > maxY) continue;
-        if (!covers(y - body.y)) return y;
+    const nearest = (clear: (dy: number) => boolean) => {
+      for (let d = 2; d <= reach; d += 2) {
+        for (const sign of [-1, 1]) {
+          const y = body.y + sign * d;
+          if (y < minY || y > maxY) continue;
+          if (clear(y - body.y)) return y;
+        }
       }
-    }
-    return undefined;
+      return undefined;
+    };
+    // First choice: the nearest rest with neither a control nor a line of text under it.
+    const clearOfAll = nearest((dy) => !onControl(dy) && !onText(dy));
+    if (clearOfAll !== undefined) { textAccepted = null; return clearOfAll; }
+    // ⛔ E-413's guarantee is the floor and text never weakens it: off a CONTROL even where no gap in the
+    // text is within reach (a dense page). Text alone with nowhere clear to go stays put, as before.
+    if (!onControl(0)) { acceptText(body.y); return undefined; }
+    const offControl = nearest((dy) => !onControl(dy));
+    if (offControl !== undefined) acceptText(offControl);
+    return offControl;
   }
   function settleClear() {
     clearTimer = null;

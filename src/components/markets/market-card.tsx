@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
 import { ShareButton } from "@/components/markets/share-button";
 import { Chip } from "@/components/ui/chip";
+import { keepUnits } from "@/components/ui/keep-units";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { cn, fill, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -472,19 +473,33 @@ export function MarketCard({
             {signal.label}
           </Chip>
         )}
-        <span className="mcardp-catico"><CatIco /></span>
-        <span className="mcardp-cat">{catLabel}</span>
-        {/* ⭐ WP3 · the featured card's time left, top-right (the delivery's placement), in the neutral ink:
-            time is not a side (§B2a, `test:betting-ink`). It keeps to the right on whichever line it lands
-            when the chips wrap (D65 — chips wrap, never cut). */}
-        {featured && <span className="mcardp-closes" data-market-part="time">{timeLeft}</span>}
+        {/* 2026-10-08 · G1 [013 043 070 076 088 101 · 014 015 016 037 044 045 046 077 089 102] · THE ROW'S
+            TAIL WRAPS AS ONE PIECE. The glyph, its word and (featured) the time left were separate items of a
+            wrapping row, so in Swahili the row tore where it ran out: at 320 the glyph ended line 1 and
+            "HALI YA HEWA" began line 2; at 360–412 "masaa 1 yamebaki" fell onto a line of its own. Now the
+            glyph and its word are one unit that never parts (`.mcardp-catgrp`), and that unit plus the time
+            are the tail (`.mcardp-tail`): it stays on the chips' line while it fits and otherwise moves down
+            WHOLE, the category on the left and the time on the right — the row's own design on its own line.
+            DOM order (status, signal, category, time) is unchanged. */}
+        <span className="mcardp-tail">
+          <span className="mcardp-catgrp">
+            <span className="mcardp-catico"><CatIco /></span>
+            <span className="mcardp-cat">{catLabel}</span>
+          </span>
+          {/* ⭐ WP3 · the featured card's time left, top-right (the delivery's placement), in the neutral ink:
+              time is not a side (§B2a, `test:betting-ink`). It keeps to the right of its line (D65 — chips
+              wrap, never cut), and it never stands alone on one: it moves with the category beside it. */}
+          {featured && <span className="mcardp-closes" data-market-part="time">{timeLeft}</span>}
+        </span>
       </div>
 
       <div className="mcardp-head">
         <div className="mcardp-qwrap">
           {/* The featured card is only ever the landing hero's, where it follows the page's h1
               directly — so its question is the h2, and the heading order has no gap (WP17). */}
-          {featured ? <h2 className="mcardp-q">{title}</h2> : <h3 className="mcardp-q">{title}</h3>}
+          {/* `keepUnits` (2026-10-08 · G1 [029 059 074 084 097 109]): "200毫米" never breaks between the
+              number and its unit; a Swahili or English title is returned untouched. */}
+          {featured ? <h2 className="mcardp-q">{keepUnits(title)}</h2> : <h3 className="mcardp-q">{keepUnits(title)}</h3>}
           {/* A grid card's source line lives in the question column, so it stays with its question when
               the grid stretches the card (the head grows, the column does not move). */}
           {!featured && metaLine && <p className="mcardp-src">{metaLine}</p>}

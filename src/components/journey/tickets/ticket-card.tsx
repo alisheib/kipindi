@@ -37,6 +37,7 @@
  */
 import Link from "next/link";
 import { Chip } from "@/components/ui/chip";
+import { keepUnits } from "@/components/ui/keep-units";
 import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { SellButton } from "@/components/markets/sell-button";
@@ -87,11 +88,14 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{sideWord(t, p.side, "MARKET")}</Chip>
-        <Chip size="sm" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
+        {/* `metrics="base"` (2026-10-08 · G1 [167 168]): every state the side pill's 18px, 9.5px size — an
+            open or refunded ticket's royal pill took the taller status metrics, and its card sat 2px low. */}
+        <Chip size="sm" metrics="base" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
       </div>
       <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">
         <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">
-          <span className={title.short ? undefined : "line-clamp-2"}>{title.text}</span>
+          {/* `keepUnits` (2026-10-08 · G1): a Chinese "200毫米" never breaks between the number and its unit. */}
+          <span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span>
         </Link>
       </h2>
       <div className="mt-3 grid grid-cols-2 gap-3">

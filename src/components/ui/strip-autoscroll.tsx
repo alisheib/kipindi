@@ -28,6 +28,31 @@
 import { useEffect, useRef } from "react";
 import { centredScrollLeft } from "@/lib/strip-scroll";
 
+/**
+ * ⭐ WHICH EDGES HAVE MORE CHIPS BEYOND THEM — 2026-10-08 · G1 [220 221 223 224 226 227 249 250 · 193 191].
+ *
+ * The strip's fade (`.kp-strip-fade`) was ONE static mask on the trailing edge. So a strip this leaf had
+ * scrolled to frame the pressed chip showed the chips it had pushed off the LEADING edge cut mid-letter —
+ * "te" of "Zote" at the left of Tiketi zangu at 320, with nothing to say more lay that way — while a strip
+ * scrolled to its end, or one with nothing hidden at all, still dimmed its last chip on the right.
+ * `data-edges` says which edges hide something ("start", "end", "both" or "none"), and the CSS fades exactly
+ * those. ⛔ No attribute (no JavaScript yet, or a skeleton) reads as "end" — the trailing fade alone, which
+ * is what a strip at scroll 0 with more to its right needs — so nothing changes when the script lands.
+ * ⚠️ 1px of slack each way: `scrollLeft` is fractional on a high-density screen and a strip scrolled to its
+ * end can stop half a pixel short of `scrollWidth - clientWidth`.
+ */
+function markEdges(rail: HTMLElement) {
+  const max = rail.scrollWidth - rail.clientWidth;
+  const before = max > 1 && rail.scrollLeft > 1;
+  const after = max > 1 && rail.scrollLeft < max - 1;
+  const edges = before && after ? "both" : before ? "start" : after ? "end" : "none";
+  if (rail.getAttribute("data-edges") !== edges) rail.setAttribute("data-edges", edges);
+}
+
+/** Rails that already carry a scroll listener — a fact about the ELEMENT, so it lives and dies with it. ⛔ Not
+ *  the per-lens framing memory below, which must stay per-board and so stays a ref. */
+const watched = new WeakSet<HTMLElement>();
+
 export function StripAutoScroll() {
   /**
    * 🔴 WHICH LENS EACH RAIL HAS ALREADY BEEN FRAMED FOR — added 2026-09-06 after an adversarial
@@ -52,6 +77,13 @@ export function StripAutoScroll() {
 
   useEffect(() => {
     for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) {
+      // The edge fades follow the reader's own scrolling from here on (one listener per rail, ever),
+      // and are set now, so a strip that needs no framing is right on this render too.
+      if (!watched.has(rail)) {
+        watched.add(rail);
+        rail.addEventListener("scroll", () => markEdges(rail), { passive: true });
+      }
+      markEdges(rail);
       // Nothing to correct when everything already fits — and this is also what makes the
       // component inert at `lg`+, where the strip wraps instead of scrolling.
       if (rail.scrollWidth <= rail.clientWidth) continue;
@@ -71,7 +103,23 @@ export function StripAutoScroll() {
         itemLeft: itemBox.left,
         itemWidth: itemBox.width,
       });
+      // The frame just moved the strip: its edges are read again in the same task, so the frame that
+      // first shows the new scroll position shows its fades too.
+      markEdges(rail);
     }
   });
+
+  /* The edges also change when nothing scrolls: the viewport turns or resizes (the strip's own width), and the
+     web fonts land (every chip's width). Each re-reads every rail; reading is idempotent, so two strips on one
+     page each doing it costs nothing. */
+  useEffect(() => {
+    const all = () => {
+      for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) markEdges(rail);
+    };
+    window.addEventListener("resize", all);
+    let live = true;
+    document.fonts?.ready.then(() => { if (live) all(); }).catch(() => {});
+    return () => { live = false; window.removeEventListener("resize", all); };
+  }, []);
   return null;
 }

@@ -273,8 +273,9 @@ const RULE_CALL = "const payout = ticketPayout(p);";
 const FIGURE_LEAKS = ["potentialPayout", "selectionClosedNotifiedAt", "payoutIfWin", "payoutExactNote", `"exact"`];
 const CHIP_RULE = `status === "LOSS" ? "no" : (playerStatusChip(status) ?? "warning")`;
 const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as never}";
-/** The question's words: the short title, or the full one held to two lines by a clamp on the words themselves. */
-const TITLE_WORDS = `<span className={title.short ? undefined : "line-clamp-2"}>{title.text}</span>`;
+/** The question's words: the short title, or the full one held to two lines by a clamp on the words themselves.
+ *  `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line. */
+const TITLE_WORDS = `<span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span>`;
 /** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25). */
 const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">`;
 /** The link's reach: the scale's step 2 of padding above and below, taken back by the same step as negative margin. */

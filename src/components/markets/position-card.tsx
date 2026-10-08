@@ -117,8 +117,13 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
             * fallback is unreachable from this card today. It stays because that totality is a property
             * of the dictionary, not of this file, and a status column can hold a word the dictionary has
             * no player opinion about.
+            *
+            * ⭐ `metrics="base"` (2026-10-08 · G1 [167 168], the journey card's twin defect): an open or
+            * refunded position's royal pill took the taller STATUS metrics (20px, 10px type) beside the
+            * 18px side pill, so its card's content sat 2px below a settled neighbour's. Every state now
+            * takes the side pill's size; the colour rule above is untouched.
             */}
-          <Chip size="sm" variant={positionStatusChip(status)}>{statusLabel}</Chip>
+          <Chip size="sm" metrics="base" variant={positionStatusChip(status)}>{statusLabel}</Chip>
         </div>
         <span className="font-mono text-[14px] font-bold tabular-nums text-text">
           <Cash>{formatTzs(stake)}</Cash>

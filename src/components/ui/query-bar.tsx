@@ -99,7 +99,7 @@ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
  * ⛔ Guarded by `qa:tap-truth`'s DISJOINT/ATREST arms, which measure rendered boxes rather than
  * class strings — the reason this survived every source-scanning gate the repo already had.
  */
-export const QUERY_BAR_ROW2_CLASS = "flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
+export const QUERY_BAR_ROW2_CLASS = "kp-qrow flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
 
 /**
  * The LENS strip — rank-primary pills, scrolling below `lg`, wrapping above it.
@@ -438,9 +438,18 @@ export function QueryClear({
  *
  * ⚠️ Desktop only. Below `lg` those groups are inside the sheet, where a divider would separate
  * nothing — the sheet already gives each group a titled section.
+ *
+ * 🔴 2026-10-08 · G1 [170 194] · IT WAS ITS OWN FLEX ITEM, SO A WRAP LEFT IT STRANDED. Row 2 wraps, and
+ * a 5px divider fits at the end of a line where the 300px group after it does not: the group dropped to
+ * the next line and the rule stayed behind with nothing after it — /results at 1280 (x≈1241) and
+ * /markets at 1280 (x≈886), both in Swahili. ⭐ So this span no longer draws anything: it MARKS the
+ * element after it, and `globals.css` (`.kp-qdiv`) draws the rule as that element's own `::before`, in
+ * the same place it stood (the 29px between the two, 14px in). A rule that belongs to the group after it
+ * travels with that group, so it can never end a line; when the group STARTS a line its rule falls
+ * outside the row's left edge, where the row clips it. Same markup at every call site.
  */
 export function QueryGroupDivider() {
-  return <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />;
+  return <span aria-hidden className="kp-qdiv" />;
 }
 
 /**

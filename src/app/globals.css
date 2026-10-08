@@ -3486,10 +3486,40 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    ⛔ AND THIS IS THE SECOND REASON THE MENUS LIVE OUTSIDE THE CHIP STRIP: a mask clips an
    absolutely-positioned panel exactly as an overflow does. Putting a `<details>` menu back inside
    a faded strip would re-create the 4px-tall listbox this replaced. */
+/* ⭐ 2026-10-08 · G1 [220 221 223 224 226 227 249 250 · 193 191] · BOTH EDGES, AND ONLY WHERE SOMETHING IS
+   HIDDEN. The fade was one static 24px mask on the trailing edge, so: (1) a strip `StripAutoScroll` had
+   scrolled to frame the pressed chip cut the chips it pushed off the LEADING edge mid-letter — "te" of "Zote"
+   hard against the left of Tiketi zangu at 320 — with no cue at all; (2) the trailing ramp ran out exactly at
+   the strip's edge, so the dimmed chip ended against whatever stood next: on /markets at 390 the faded
+   "Zinafunga le" stopped 6px (the grid's column gap — measured, the strip does NOT run under the pill) from
+   the PANGA sort pill and read as sliced by it, and on /notifications "Pesa" read as jammed into the result
+   count "Arifa 25" 16px away. Now `StripAutoScroll` publishes `data-edges` and the mask follows it:
+     · the leading edge fades over 32px only once the strip is scrolled off its start;
+     · the trailing ramp is 32px and ends 8px INSIDE the strip, so the next control always has a clear
+       margin beside a chip that is visibly fading rather than cut; a strip scrolled to its end, or one with
+       nothing hidden, is not masked at all (it used to dim its last chip for no reason).
+   ⛔ The bare class (no attribute: before hydration, and the skeletons) is the "end" state, so the server's
+   first paint and the hydrated strip at scroll 0 are the same picture — nothing changes when the script lands.
+   ⭐ `scroll-padding-inline` keeps a chip that keyboard focus scrolls into view clear of both fades, so its
+   ring (D63, below) is never drawn dimmed. Mobile only, as before: from `lg` the strip wraps. */
 @media (max-width: 1023.98px) {
-  .kp-strip-fade {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
-    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+  .kp-strip-fade,
+  .kp-strip-fade[data-edges="end"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
+    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
+    scroll-padding-inline: 32px 40px;
+  }
+  .kp-strip-fade[data-edges="start"] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
+    mask-image: linear-gradient(to right, transparent, #000 32px);
+  }
+  .kp-strip-fade[data-edges="both"] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
+    mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
+  }
+  .kp-strip-fade[data-edges="none"] {
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 }
 /* 🔴 D63 · THE CHIPS' FOCUS RING WAS BEING EATEN BY THE STRIP THAT HOLDS THEM.
@@ -3503,6 +3533,36 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    ⚠️ A mask clips like an overflow does; the note above says so for panels, and it is true for rings too. */
 @media (max-width: 1023.98px) {
   .kp-strip-fade :where(a, button):focus-visible { outline-offset: -2px; }
+}
+
+/* 🔴 2026-10-08 · G1 [170 194] · THE GROUP DIVIDER NEVER ENDS A LINE.
+   `QueryGroupDivider` was a 5px flex item of row 2 (a 1×24px rule — `h-5` is 24px on this repo's scale —
+   2px each side, then the row's 12px gap each way; measured 1px × 24 rows in both tiles). Row 2 wraps, and a 5px item fits at the end of a line where the group after it does not, so the
+   group dropped to the next line and its rule stayed behind with nothing after it: /results at 1280 sw
+   (x≈1241, after "Muda wote") and /markets at 1280 sw (x≈886, after "Nafasi ndogo").
+   ⭐ The span (`.kp-qdiv`) is now a MARKER and draws nothing; the rule is the `::before` of the element
+   after it — the group it introduces — at the same place it stood: the row's column gap becomes the old
+   12 + 5 + 12 = 29px and the rule sits 14px into it, so a bar that does not wrap is drawn to the pixel as
+   before. A rule that belongs to its group moves with it, so it cannot end a line; when its group STARTS a
+   line the rule lands 15px left of the row, and the row clips everything more than 12px to its left —
+   wider than any focus ring (4px) or a selected pill's halo (≤11px), so nothing else is touched. Only rows
+   that hold a divider change (`:has`), so the skeletons, which draw none, keep their spacing.
+   ⛔ A browser without `:has()` keeps the old in-flow rule, stray and all — the fallback is today's bar. */
+.kp-qdiv { display: none; }
+@media (min-width: 1024px) {
+  .kp-qdiv { display: block; flex-shrink: 0; width: 1px; height: 24px; margin: 0 2px; background: var(--border); }
+}
+@supports selector(:has(a)) {
+  @media (min-width: 1024px) {
+    .kp-qdiv { display: none; }
+    .kp-qrow:has(.kp-qdiv) { column-gap: 29px; clip-path: inset(-100vmax -100vmax -100vmax -12px); }
+    .kp-qdiv + * { position: relative; }
+    .kp-qdiv + *::before {
+      content: ""; position: absolute; top: 50%; left: -15px;
+      width: 1px; height: 24px; margin-top: -12px;
+      background: var(--border); pointer-events: none;
+    }
+  }
 }
 
 /* The sort/topic menus are <details>, so they open with no JavaScript. The native marker is
@@ -4739,9 +4799,24 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* Category glyph — BARE neutral glyph (no box), identical to the /live dense
    card's category treatment so the cards read as one system. Never gold. */
 /* margin-left was an inline `style={{ marginLeft: 2 }}` — a 2px nudge that
-   separates the glyph from whichever signal chip precedes it. Kept exactly. */
-.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; margin-left: 2px; }
+   separates the glyph from whichever signal chip precedes it. Kept exactly — and since 2026-10-08 it is
+   the right margin of that chip (`.mcardp-top > :has(+ .mcardp-tail)`, below), not the glyph's own. */
+.mcardp-catico { display:inline-flex; align-items:center; justify-content:center; color: var(--text-subtle); flex-shrink:0; }
 .mcardp-catico svg { width: 13px; height: 13px; }
+/* 2026-10-08 · G1 [013 014 015 016 037 043–046 070 076 077 088 089 101 102] · THE TAIL OF THE ROW MOVES AS
+   ONE PIECE. The glyph, the category word and the featured card's time left were three items of this
+   wrapping row, so Swahili tore it wherever it ran out: at 320 the glyph ended line 1 and its word began
+   line 2; at 360–412 the time left stood alone on a right-aligned line. `.mcardp-catgrp` binds the glyph
+   to its word (they never part); `.mcardp-tail` carries that pair and the time, so the tail either fits on
+   the chips' line or drops to the next one WHOLE — category left, time right (`margin-left: auto` below).
+   The gaps are the row's own 5px, so a row that fitted before (English, Chinese, every width ≥ 768) still
+   fits, at the same widths, to the pixel. The tail wraps inside itself only if it cannot fit a line on its
+   own (large Android text, D65): then the category keeps its line and the time takes the next.
+   ⭐ The glyph's 2px nudge is now the margin of whatever precedes the tail: it separates the glyph from the
+   chip before it exactly as before, and it no longer indents the glyph when the tail starts a line. */
+.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }
+.mcardp-catgrp { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.mcardp-top > :has(+ .mcardp-tail) { margin-right: 2px; }
 /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
 .mcardp-cat { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
@@ -4989,7 +5064,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 /* The time left, top-right: the meta row's rung, in `--text` (the tracker's ink; a countdown never takes
    the betting pair, `test:betting-ink`). `margin-left: auto` keeps it right-aligned on whichever line it
-   lands when the chip row wraps (D65: chips wrap, never cut). */
+   lands when the chip row wraps (D65: chips wrap, never cut) — inside `.mcardp-tail` since 2026-10-08, so
+   that line always carries the category with it. */
 .mcardp-closes {
   margin-left: auto;
   font-family: var(--font-mono);

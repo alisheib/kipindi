@@ -15,6 +15,8 @@ import type { Route } from "next";
 import { leanWords, sideWord } from "@/lib/side-label";
 import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
+// 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
+import { keepUnits } from "@/components/ui/keep-units";
 import { useT } from "@/lib/i18n";
 
 // ⛔ `productLine` is REQUIRED, not optional. /live carries both products (see `pulse-grid`),
@@ -96,10 +98,18 @@ export function FeaturedContest({
       onTouchEnd={multi ? onTouchEnd : undefined}
     >
       {/* Eyebrow + arrow controls */}
-      <div className="mb-2 flex items-center justify-between gap-3">
-        {/* min-w-0 + truncate lets the eyebrow yield at the smallest widths (≤320) so the
-            44px arrow controls are never pushed off the panel edge; shrink-0 pins them. */}
-        <p className="min-w-0 truncate font-mono text-micro uppercase eyebrow font-bold text-aqua-300">{eyebrow}</p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        {/* min-w-0 lets the eyebrow yield so the 44px arrow controls are never pushed off the panel
+            edge; shrink-0 pins them.
+            2026-10-08 · G1 [175 202] · IT YIELDS BY WRAPPING, NOT BY AN ELLIPSIS. It was `truncate`, meant
+            for "the smallest widths (≤320)", and it cut the Swahili caption at 390 too: measured, the
+            caption is 154px (whole at 1280, [176]) and the row left it 148, so it read "LILILO NA SHAKA
+            ZAI…". The caption names what the carousel IS, so it is never cut: it breaks onto a second,
+            balanced line ("LILILO NA" / "SHAKA ZAIDI") inside the arrows' 44px row, which is taller than
+            two lines of this type (2 × 14px), so the row — and the hero under it — does not move.
+            ⚠️ The gap is 12px (`gap-2`, this repo's scale), was 16: at 320 the longer half, "SHAKA ZAIDI"
+            (≈81px with its tracking), had 80px and would have taken a third line; with 84 it keeps two. */}
+        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-aqua-300">{eyebrow}</p>
         {multi && (
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />
@@ -153,7 +163,7 @@ export function FeaturedContest({
                 data-slide-active={i === idx ? "" : undefined}
                 className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
               >
-                {mm.title}
+                {keepUnits(mm.title)}
               </h2>
             ))}
           </div>
