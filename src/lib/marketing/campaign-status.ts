@@ -290,13 +290,20 @@ const MARKETING_FLOOR_SENTENCE = "Paused — the SMS credit reached what is kept
  * ⭐ U49a (ENGINE-SPEC §3.4, §4.12 decision 5): the credit kept for login and withdrawal codes — `MARKETING_FLOOR` is
  * `sendBatch`'s own refusal (its last line), `marketing_floor` and `credit_unreadable` are the slice's own checks before it
  * claims anyone (U43b writes all three; one sentence for the floor, whichever line caught it).
- * ⭐ U43b-2 (ENGINE-SPEC §3.4, §4.13): the slice's own — `live_switch_closed` (the owner's switch closed mid-campaign),
- * `gateway_refused` (the network refused a batch with its own "no" — nothing was charged, so Resume sends it again),
- * `template_invalid` (the saved message no longer passes its own check), `held_rows` (only people the engine could not
- * check or prepare are left) — and, as built, `gateway_unanswered` (a batch the network never answered: its people are
- * "no answer" and are never sent again by themselves) and `before_send_unanswered` (the engine could not re-check its own
- * claims just before the wire, three slices running). The slice also pauses with U42's `list_over_confirmed_sending` and
- * `audience_unreadable` when it finds them itself (the U42 re-review).
+ * ⭐ U43b-2 (ENGINE-SPEC §3.4, §4.13): the slice's own — `live_switch_closed` (the owner's switch off, lapsed or unreadable,
+ * found before the claim or just before the wire), `gateway_refused` (the network refused a batch with its own "no" —
+ * nothing was charged, so Resume sends it again), `template_invalid` (the saved message no longer passes its own check),
+ * `held_rows` (only people the engine could not check or prepare are left) — and, as built, `gateway_unanswered` (a batch
+ * the network never clearly answered: its people are "no answer" and are never sent again by themselves) and
+ * `before_send_unanswered` (the engine could not re-check its own claims just before the wire, three slices running). The
+ * slice also pauses with U42's `list_over_confirmed_sending` when it finds a list longer than confirmed itself (the U42
+ * re-review). ⭐ The U43b-2 review made every engine sentence TRUE of every way its key is written: `confirmation_unreadable`
+ * (a confirmed count that is not a count, MID-campaign — the word Resume refuses it with, never `audience_unreadable`,
+ * whose cause and remedy are the enqueue's), `send_error` (a send that failed on our side: whoever it certainly missed goes
+ * back on the list, whoever it may have reached is "no answer"), and the credit check's causes each in its own words —
+ * `settings_unreadable`, `sizes_unreadable`, `price_unknown`, `credit_unreadable` (now the credit read alone). ⛔ A pause
+ * that can land after people were messaged never prescribes a copy as if it reached nobody: a copy has the same filter
+ * and nothing de-duplicates across campaigns (`template_invalid`, `confirmation_unreadable`, as U42's own).
  * ⭐ U47b-1 (ENGINE-SPEC §3.4): an officer's own two — `officer_paused` (Pause) and `officer_stopped` (Stop), written by
  * `campaign-control.ts`. The live page names who and when from the act's audit row (`campaign-live.ts`); the list says
  * these words.
@@ -316,14 +323,30 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   list_over_confirmed: "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy.",
   list_over_confirmed_sending:
     "Paused — more people are on this campaign's list than were confirmed, found after sending had started, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop this campaign.",
-  live_switch_closed: "Paused — marketing SMS were switched off. The owner switches them on, then press Resume.",
+  live_switch_closed:
+    "Paused — marketing SMS are not switched on: the owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume.",
   gateway_refused: "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume.",
   gateway_unanswered:
-    "Paused — the SMS network gave no answer for the last batch, so those people are counted as no answer and are never sent again by themselves. Check Admin → System, then Resume.",
-  template_invalid: "Paused — the saved message no longer passes its own check, so nobody more is messaged. Stop this campaign and send a corrected copy.",
+    "Paused — the SMS network gave no clear answer for the last batch (no reply, or an error page instead of its answer), so those people are counted as no answer and are never sent again by themselves. Check Admin → System, then Resume.",
+  send_error:
+    "Paused — sending the last batch failed on our side. Everyone it certainly did not reach goes back on the list, and nothing was charged for them; anyone it may have reached is counted as no answer and is never sent again by themselves. Ask the developer to check the server log, then press Resume.",
+  template_invalid:
+    "Paused — the saved message no longer passes its own check, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop this campaign, and send a corrected copy only if that is what you want.",
+  confirmation_unreadable:
+    "Paused — this campaign's confirmation can't be read in full, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop it, or ask the developer.",
+  settings_unreadable:
+    "Paused — the Marketing SMS settings couldn't be read in full, so what this campaign may spend can't be checked against the credit kept for login codes. Resume once Admin → System shows them; if it happens again, ask the developer.",
+  sizes_unreadable:
+    "Paused — this campaign's saved message size can't be read, so what is left to send can't be priced against the credit kept for login codes. Stop it, or ask the developer.",
+  price_unknown:
+    "Paused — the price per SMS isn't known, so what is left to send can't be priced against the credit kept for login codes. The owner sets it on Admin → System → Marketing SMS, then Resume.",
   held_rows: "Paused — some people could not be checked or prepared. Resume to try them again, or Stop.",
   before_send_unanswered:
     "Paused — the last check before sending could not be made three times running, so nothing more was sent. Resume to try again.",
+  // ⭐ The U43b-2 re-review · the send-age bound met three slices in a row (at the smallest group, the check before each
+  // message is slower than the time a group may take).
+  slice_too_slow:
+    "Paused — checking people just before their message took too long three times running, so nothing more was sent and those people were put back unsent. Resume to try again; if it happens again, ask the developer.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */

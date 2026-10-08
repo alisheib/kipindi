@@ -9,29 +9,47 @@
  *   ②  the campaign, read now: not RUNNING → `not_running` (U47b's step dispatcher reaps for the other statuses).
  *   ③  E6 · THE REAPER: claims older than `REAP_AFTER_MS` settled from the evidence (`reapStrandedClaims`).
  *   ④  THE SLICE-WIDE CHECKS — each a PAUSE (one conditional move, one SYSTEM audit row) or a WAIT, BEFORE ANY CLAIM:
- *       a  ⛔ the list no longer than confirmed (U42's re-review): rows on it > `audienceCount` → pause
- *          `list_over_confirmed_sending`; a confirmed count that is not a count → pause `audience_unreadable`;
- *       b  the owner's switch (through THE gate; the console stub passes) → pause `live_switch_closed`; the rail →
- *          pause `NOT_CONFIGURED` / `PROVIDER_UNRECOGNISED` (an unrecognised provider is a dead rail, never a closed switch);
+ *       a  ⛔ FIRST — the list no longer than confirmed (U42's re-review): a confirmed count that is not a count → pause
+ *          `confirmation_unreadable`; rows on the list > `audienceCount` → pause `list_over_confirmed_sending`;
+ *       b  the owner's switch (through THE gate; the console stub passes; a switch that cannot be read is closed) → pause
+ *          `live_switch_closed`; the rail → pause `NOT_CONFIGURED` / `PROVIDER_UNRECOGNISED` (an unrecognised provider is a
+ *          dead rail, never a closed switch);
  *       c  E9 · the send window → WAIT `quiet_hours` until it opens (`window_unreadable` when the hours cannot be read);
  *       d  E12 · money first (`money-busy.ts`) → WAIT `money_busy`;
  *       e  E12 · a login or withdrawal code failed or went unknown in the last `OTP_FAILURE_WAIT_MS` → WAIT `otp_failing`;
  *       f  the template's own verdict (a dry render per variant with the measurement token) → pause `template_invalid`;
- *       g  E16 · the credit kept for codes, for THIS slice (`creditVerdict`, read at most a minute old) → pause
- *          `credit_unreadable` (fail closed) or `marketing_floor`. ⭐ The console stub has no credit and spends none.
+ *       g  E16 · the credit kept for codes, for THIS slice (`creditVerdict`, read at most a minute old) → pause, each cause
+ *          in its own words (the words Resume refuses with): `settings_unreadable` · `sizes_unreadable` · `price_unknown` ·
+ *          `credit_unreadable` (fail closed) · `marketing_floor`. ⭐ The console stub has no credit and spends none.
  *   ⑤  THE CLAIM: `adaptSliceSize`'s rows under a fresh token. Nobody to claim → nobody PENDING: HELD left → pause
  *       `held_rows`, else the campaign is DONE (one row, the counts); PENDING rows held by another claim → `waiting busy`.
  *   ⑥  `dispatchSlice` — THE ONE LOOP, called, never rewritten (the U9 contract): the gate per recipient immediately before
- *       the wire; E1/E17 `prepare` (below) only for a number the gate has just cleared; E6 `beforeSend` re-reads the
- *       campaign and THIS claim just before the wire (a stalled claimant whose claims were reaped sends nothing, a campaign
- *       paused while it was gating sends nothing, ⛔ a list that grew past its confirmed count sends nothing); the ONE send
- *       (`engineSend` — `sendBatch`, purpose MARKETING, the credit kept for codes as its last line).
+ *       the wire; E1/E17 `prepare` (below) only for a number the gate has just cleared; E6 `beforeSend` (`verifyClaims`)
+ *       is the last word before the wire — it re-reads the campaign (a campaign paused while it was gating sends nothing),
+ *       ⛔ the list's length and its confirmed count again, ⛔ the owner's switch again (a state read earlier is not a
+ *       licence for later — `marketingLiveGate`'s own rule), and THIS claim: only the rows still under it (a stalled
+ *       claimant whose claims were reaped sends nothing), and ⛔ only while the claim is young enough to send (the send-age
+ *       bound, below); the ONE send (`engineSend` — `sendBatch`, purpose MARKETING, the credit kept for codes as its last
+ *       line).
  *   ⑦  THE SETTLE: every outcome through the pure table (`engine-rules.ts` — `isShopWide`, `settlementFor`) with its E20
  *       trail; ONE shop-wide fact pauses ONCE (E7) or waits; each patch made lawful before it is handed in (DC-5) — one that
  *       still cannot be is set aside for the reaper, never allowed to refuse the slice's whole settle; ⭐ DC-4 · a SENT (or
- *       UNCONFIRMED) patch a receipt beat is written through the narrow send record.
+ *       UNCONFIRMED) patch a receipt beat is written through the narrow send record. ⭐ A send that THREW (the U43b-2
+ *       review): the evidence is read — a row no message of this claim names was certainly never on the wire and goes back
+ *       (+1); the rest are UNCONFIRMED; the campaign pauses `send_error` (`thrownSend`).
  *   ⑧  E11 · the gate time (now including the prepare and the re-read: everything between the claim and the wire) folded
  *       into the in-process slice size.
+ *
+ * ── ⛔ THE SEND-AGE INVARIANT (E6's double-send guard, closed at the U43b-2 review) ──────────────────────────────────────
+ * A claim reaches the wire only while it is YOUNGER than `CLAIM_SEND_MAX_AGE_MS` — half of `REAP_AFTER_MS`. `beforeSend`
+ * reads the claim's own stored instant and vetoes an older one: a WAIT (`slice_too_slow`), every row back as it was,
+ * nothing sent, and the slow gate measured, so the next slice is smaller. So between the last re-read and the moment ANY
+ * reaper — this process's or another's (a deploy's overlap) — may judge the claim stranded, `sendBatch` has the other half
+ * (five minutes) to write its message rows, which are the reaper's evidence and are written before the wire (P2): a claim
+ * whose message reached the wire is never released, so never sent twice. And this process's own next step — the one place
+ * it reaps — cannot run beside a slice in flight: the flight holds for `SLICE_FLIGHT_STALE_MS`, TWICE `REAP_AFTER_MS`,
+ * far past the age at which the slice's claim stopped being sendable. (What this cannot cover: a `sendBatch` that waits
+ * five minutes or more between its call and its first row write — a database too sick to write anything.)
  *
  * ── E1 · E17 · THE PREPARE ─────────────────────────────────────────────────────────────────────────────────────────────
  * Run by `dispatchSlice` right after THAT row's clear, under the gate's key. WHO HOLDS THE NUMBER NOW decides the origin
@@ -42,7 +60,8 @@
  * problem scrubbed (DC-5). Either is about one person (E8).
  *
  * ── E24 · THE AUDIT ROWS (SYSTEM, actor null — one per event, never per recipient or per slice) ─────────────────────────
- * `marketing.campaign_paused` `{ reason, detail? }` (the gateway's words scrubbed and cut to 200 for `gateway_refused`) ·
+ * `marketing.campaign_paused` `{ reason, detail? }` (the gateway's words — or the thrown error's for `send_error` —
+ * scrubbed and cut to 200) ·
  * `marketing.campaign_finished` (the rows by status) · `marketing.campaign_reaped` (the five reap counts, only when > 0).
  * The RG line per refusal is `dispatchSlice`'s own (unchanged). ⛔ No phone number in any row, result or error.
  *
@@ -78,7 +97,7 @@ import type { SegmentCostMeasure } from "@/lib/marketing/segment-cost";
 import { creditVerdict } from "@/lib/marketing/credit-guard";
 import { campaignEstimate, savedVariantSizes } from "@/lib/marketing/campaign-estimate";
 import type { BalanceFigure, VariantSize } from "@/lib/marketing/campaign-estimate";
-import { ensureOptOutToken } from "@/lib/server/marketing/optout-service";
+import { currentOptOutToken, ensureOptOutToken } from "@/lib/server/marketing/optout-service";
 import { firstNameFor, renderForRecipient, variantFor } from "@/lib/marketing/campaign-template";
 import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/marketing/campaign-template";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
@@ -86,9 +105,9 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { assertSettle, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
 import { recipientRows, zeroRecipientStatusCounts } from "@/lib/marketing/campaign-status";
 import {
-  AUDIT_DETAIL_MAX, MAX_ROW_ATTEMPTS, SLICE_GATE_BUDGET_MS, SLICE_MAX, SLICE_MIN, SLICE_START, TRAIL_TEXT_MAX,
+  AUDIT_DETAIL_MAX, MAX_ROW_ATTEMPTS, SLICE_GATE_BUDGET_MS, SLICE_MAX, SLICE_MIN, SLICE_START, SLICE_TOO_SLOW, TRAIL_TEXT_MAX,
   adaptSliceSize, cleanText, foldGateTime, isShopWide, railStopReason, reapVerdict, sendRecordOf,
-  settlementFor, sliceCheck,
+  settlementFor, sliceCheck, thrownSend,
 } from "@/lib/marketing/engine-rules";
 import type { EngineStopReason, ReapEvidence, SettleContext, ShopWide, SliceWait } from "@/lib/marketing/engine-rules";
 
@@ -110,9 +129,17 @@ export const SLICE_CREDIT_MAX_AGE_MS = 60_000;
 /** ⭐ As built · after this many slices running whose re-check before the wire could not answer, the campaign PAUSES
  *  `before_send_unanswered` — a hook that always fails is a silent, permanent stall otherwise (U43b-1's hand-over). */
 export const BEFORE_SEND_UNANSWERED_MAX = 3;
-/** E10 · a slice in flight longer than this is taken to be lost (a process cannot run one this long), so it no longer
- *  holds every campaign of the process off. */
-export const SLICE_FLIGHT_STALE_MS = REAP_AFTER_MS;
+/** ⛔ E6 · THE SEND-AGE BOUND (the header's invariant; the U43b-2 review): a claim reaches the wire only while YOUNGER than
+ *  this — half of `REAP_AFTER_MS`, so `sendBatch` has the other half to write its message rows before any reaper may judge
+ *  the claim stranded. `beforeSend` vetoes an older claim (`slice_too_slow`, a wait). */
+export const CLAIM_SEND_MAX_AGE_MS = REAP_AFTER_MS / 2;
+/** ⭐ The U43b-2 re-review · after this many `slice_too_slow` waits IN A ROW the campaign PAUSES `slice_too_slow`: at the floor
+ *  size a gate slower than the bound re-asks the same five people for ever otherwise, and nothing is ever sent. */
+export const SLICE_TOO_SLOW_MAX = 3;
+/** E10 · a slice in flight longer than this is taken to be lost, so it no longer holds every campaign of the process off.
+ *  ⛔ Kept clearly APART from `REAP_AFTER_MS` — TWICE it (the U43b-2 review): this process's own next step, the one place
+ *  it reaps, must never start beside a slice that could still send, and a claim stops being sendable at HALF of it. */
+export const SLICE_FLIGHT_STALE_MS = 2 * REAP_AFTER_MS;
 
 /** The audit actions (E24). ⭐ `marketing.campaign_paused` is the SAME action U42's enqueue writes (`enqueue.ts` — which
  *  this file must never import: `test:marketing-engine` E13); `test:marketing-engine` holds the two spellings equal. */
@@ -155,6 +182,9 @@ export type EngineProcessState = {
   gateMsAvg: number | null;
   /** By campaign: how many slices running `beforeSend` could not answer. */
   unanswered: Record<string, number>;
+  /** By campaign: how many slices running waited `slice_too_slow` (the U43b-2 re-review). Optional: a state made by an
+   *  older build in a hot-reloaded process has none yet. */
+  tooSlow?: Record<string, number>;
 };
 
 declare global {
@@ -164,7 +194,7 @@ declare global {
 
 /** The process's own engine state (created on first use). */
 export function engineProcessState(): EngineProcessState {
-  return (globalThis.__50PICK_MARKETING_ENGINE ??= { flight: null, ticket: 0, sliceSize: SLICE_START, gateMsAvg: null, unanswered: {} });
+  return (globalThis.__50PICK_MARKETING_ENGINE ??= { flight: null, ticket: 0, sliceSize: SLICE_START, gateMsAvg: null, unanswered: {}, tooSlow: {} });
 }
 
 /** Every read, rule and write one step makes — swappable for the suites' in-process plants; production passes none. */
@@ -207,6 +237,10 @@ export type EngineDeps = {
   credit: typeof creditVerdict;
   /** E1 · the number's opt-out token: reused, else minted (`ensureOptOutToken`). */
   ensureToken: (key: string) => Promise<string | null>;
+  /** E30 · the number's CURRENT opt-out token, read and never minted (`currentOptOutToken` — the one `ensureOptOutToken`
+   *  reuses): the reaper gives a row that reached the wire the token its message carried (the U43b-2 review). Optional, so
+   *  a dependency set written before it still type-checks; production's sets it, and a set without it recovers nothing. */
+  tokenOf?: (key: string) => Promise<string | null>;
   /** THE ONE renderer (`renderForRecipient`). */
   render: typeof renderForRecipient;
   /** THE ONE loop (`dispatchSlice`) — called, never rewritten. */
@@ -274,6 +308,7 @@ export const ENGINE_DEPS: Readonly<EngineDeps> = Object.freeze({
   readBalance: () => refreshSmsBalance({ maxAgeMs: SLICE_CREDIT_MAX_AGE_MS }),
   credit: creditVerdict,
   ensureToken: (key: string) => ensureOptOutToken(key),
+  tokenOf: currentOptOutToken,
   render: renderForRecipient,
   dispatch: dispatchSlice,
   gate: undefined,
@@ -366,10 +401,17 @@ function projectedCostTzs(population: number, variants: readonly VariantSize[] |
 
 type CreditCheck =
   | { ok: true; reserveTzs: number }
-  | { ok: false; reason: "credit_unreadable" | "marketing_floor"; detail: string | null };
+  | {
+      ok: false;
+      reason: "settings_unreadable" | "sizes_unreadable" | "price_unknown" | "credit_unreadable" | "marketing_floor";
+      detail: string | null;
+    };
 
 /** ④g · E16 · may THIS slice spend its cost and still leave the credit kept for codes? The settings re-read (OD63 — never
- *  the defaults), today's price, the credit read fresh, the ONE rule. Anything that cannot be read is `credit_unreadable`. */
+ *  the defaults), the campaign's saved sizes, today's price, the credit read fresh, the ONE rule. ⛔ Fail closed, and each
+ *  cause in its OWN words — the words Resume refuses with (the U43b-2 review): settings that cannot be read in full →
+ *  `settings_unreadable`; saved sizes that cannot be read → `sizes_unreadable`; no price for a segment →
+ *  `price_unknown`; a credit read that fails → `credit_unreadable`; too little → `marketing_floor`. */
 async function creditFor(c: StoredSmsCampaign, size: number, deps: EngineDeps): Promise<CreditCheck> {
   let reload: SettingsReload;
   try {
@@ -377,7 +419,9 @@ async function creditFor(c: StoredSmsCampaign, size: number, deps: EngineDeps): 
   } catch {
     reload = { ok: false, error: "the settings read threw" };
   }
-  if (!reload.ok || !reload.readable) return { ok: false, reason: "credit_unreadable", detail: "the Marketing SMS settings could not be read in full" };
+  if (!reload.ok || !reload.readable) return { ok: false, reason: "settings_unreadable", detail: "the Marketing SMS settings could not be read in full" };
+  const variants = savedVariantSizes(c);
+  if (variants === null) return { ok: false, reason: "sizes_unreadable", detail: "the campaign's saved message sizes could not be read" };
   const configured = reload.settings.pricePerSegmentTzs;
   let cost: SegmentCostMeasure;
   try {
@@ -385,7 +429,9 @@ async function creditFor(c: StoredSmsCampaign, size: number, deps: EngineDeps): 
   } catch {
     cost = { kind: "configured", tzsPerSegment: configured };
   }
-  const costTzs = projectedCostTzs(size, savedVariantSizes(c), cost);
+  const costTzs = projectedCostTzs(size, variants, cost);
+  // The settings' price is validated, so this is a price measure with no figure in it — never read as affordable.
+  if (!Number.isFinite(costTzs)) return { ok: false, reason: "price_unknown", detail: "no price per segment could be read" };
   let read: SmsBalanceRead | null;
   try {
     read = await deps.readBalance();
@@ -424,18 +470,43 @@ async function prepareFor(t: CampaignTemplate, key: string, deps: EngineDeps): P
   };
 }
 
+/** ④b · ⑥ · THE owner's switch, judged NOW through THE gate (`marketingLiveGate`; the console stub passes it). ⛔ A read
+ *  that throws is a closed switch — never a licence. The reading is returned for the trail. */
+async function switchNow(provider: SmsProviderResolution, deps: EngineDeps): Promise<{ ok: boolean; live: MarketingLiveSwitch; via: string | null }> {
+  let live: MarketingLiveSwitch;
+  try {
+    live = await deps.liveSwitch();
+  } catch {
+    live = { state: "closed", why: "unreadable" };
+  }
+  const g = deps.liveGate(provider, live, deps.now().getTime());
+  return g.ok ? { ok: true, live, via: g.via } : { ok: false, live, via: null };
+}
+
+/** ⛔ The send-age bound (the header's invariant): may a claim stored at `claimedAt` still reach the wire at `nowMs`? An
+ *  instant that cannot be read is too old — the bound fails closed. */
+function sendable(claimedAt: string | null, nowMs: number): boolean {
+  const at = Date.parse(claimedAt ?? "");
+  return Number.isFinite(at) && nowMs - at < CLAIM_SEND_MAX_AGE_MS;
+}
+
 /**
- * ⭐ E6 · THE LAST WORD BEFORE THE WIRE — the campaign and THIS claim, re-read: a campaign no longer RUNNING sends nothing
- * (`not_running`); ⛔ a list longer than confirmed sends nothing (`list_over_confirmed_sending`), nor one whose confirmed
- * count cannot be read (`audience_unreadable`) — U42's re-review; and only the rows still PENDING under this token go
- * (a stalled claimant whose claims were reaped keeps none).
+ * ⭐ E6 · THE LAST WORD BEFORE THE WIRE (`beforeSend`) — the campaign, the shop and THIS claim, re-read: a campaign no longer
+ * RUNNING sends nothing (`not_running`); ⛔ nor does one whose confirmed count cannot be read (`confirmation_unreadable`)
+ * or whose list is longer than confirmed (`list_over_confirmed_sending`) — U42's re-review; ⛔ nor does one whose owner's
+ * switch closed while the slice gated (`live_switch_closed` — a state read before the claim is no licence now, the U43b-2
+ * review); then only the rows still PENDING under this token go (a stalled claimant whose claims were reaped keeps none),
+ * and ⛔ only while the claim is young enough to send (`slice_too_slow` otherwise — the send-age bound).
  */
-async function verifyClaims(c: StoredSmsCampaign, token: string, deps: EngineDeps): Promise<SliceSendVerdict> {
+async function verifyClaims(c: StoredSmsCampaign, token: string, provider: SmsProviderResolution, deps: EngineDeps): Promise<SliceSendVerdict> {
   const now = await deps.campaigns.find(c.id);
   if (now === null || now.status !== "RUNNING") return { proceed: false, reason: "not_running" };
-  if (!isCount(now.audienceCount) || now.audienceCount < 1) return { proceed: false, reason: "audience_unreadable" };
+  if (!isCount(now.audienceCount) || now.audienceCount < 1) return { proceed: false, reason: "confirmation_unreadable" };
   if (recipientRows(await countsOf(c.id, deps)) > now.audienceCount) return { proceed: false, reason: "list_over_confirmed_sending" };
+  if (provider !== "unrecognised" && !(await switchNow(provider, deps)).ok) return { proceed: false, reason: "live_switch_closed" };
   const held = await deps.recipients.claimedBy(c.id, token);
+  const nowMs = deps.now().getTime();
+  if (held.some((r) => !sendable(r.claimedAt, nowMs))) return { proceed: false, reason: SLICE_TOO_SLOW };
   return { proceed: true, keep: held.map((r) => r.id) };
 }
 
@@ -492,15 +563,23 @@ function evidenceOf(m: StoredSmsMessage | undefined): ReapEvidence {
 
 /**
  * ⭐ E6 · THE REAPER — every claim of this campaign older than `REAP_AFTER_MS` (at most `REAP_BATCH` a step), settled from
- * the evidence through `reapVerdict` (the pure table: none or an earlier attempt's → PENDING +1; QUEUED/UNKNOWN →
- * UNCONFIRMED; ACCEPTED → SENT; DELIVERED → DELIVERED; FAILED → FAILED). Each patch names the row's own claim, so a row
- * that moved meanwhile is `lost`, never forced. Runs for a campaign in ANY status (§3.3: a PAUSED, CANCELLED or DONE
- * campaign is only reaped, so a stranded claim never shows "not sent" for a message that went). ONE SYSTEM row, only when
- * it settled anybody.
+ * the evidence through `reapVerdict` (the pure table: none, an earlier attempt's, or a FAILED no receipt wrote → PENDING +1;
+ * QUEUED/UNKNOWN → UNCONFIRMED; ACCEPTED → SENT; DELIVERED → DELIVERED; FAILED by a receipt → FAILED). Each patch names the
+ * row's own claim, so a row that moved meanwhile is `lost`, never forced. ⭐ A row whose message reached the wire is given
+ * the opt-out token that message carried — the number's one reused token, READ (`tokenOf`, never minted: E1) — so E30 and
+ * the access export keep it (the U43b-2 review; its variant and size are not recoverable and stay empty). Runs for a
+ * campaign in ANY status (§3.3: a PAUSED, CANCELLED or DONE campaign is only reaped, so a stranded claim never shows "not
+ * sent" for a message that went). ONE SYSTEM row, only when it settled anybody.
  */
-export async function reapStrandedClaims(campaignId: string, deps: EngineDeps = ENGINE_DEPS): Promise<ReapResult> {
+export async function reapStrandedClaims(campaignId: string, deps: EngineDeps = ENGINE_DEPS, opts?: { insideFlight?: number }): Promise<ReapResult> {
   const counts: ReapResult = { reaped: 0, toPending: 0, toSent: 0, toUnconfirmed: 0, toFailed: 0, toDelivered: 0 };
   const nowMs = deps.now().getTime();
+  // ⛔ The U43b-2 re-review · NEVER BESIDE THIS PROCESS'S OWN SLICE OF THE SAME CAMPAIGN. A reap-only step (U47b's, for a
+  // PAUSED / CANCELLED / DONE campaign — an officer's Pause lands while a slice is mid-send) must not release a claim the
+  // slice in flight here is still sending: that slice settles its own rows. Only the slice itself, reaping first inside its
+  // own flight (`insideFlight` = its ticket), passes. A lost flight (older than SLICE_FLIGHT_STALE_MS) no longer holds.
+  const f = deps.state().flight;
+  if (f !== null && f.campaignId === campaignId && f.ticket !== opts?.insideFlight && Math.abs(nowMs - f.since) < SLICE_FLIGHT_STALE_MS) return counts;
   const at = iso(nowMs);
   const stranded = await deps.recipients.findStranded(campaignId, iso(nowMs - REAP_AFTER_MS), REAP_BATCH);
   if (stranded.length === 0) return counts;
@@ -508,8 +587,16 @@ export async function reapStrandedClaims(campaignId: string, deps: EngineDeps = 
   const byTarget = new Map(evidence.filter((m) => typeof m.targetId === "string").map((m) => [m.targetId as string, m]));
   const patches: SmsCampaignRecipientSettle[] = [];
   for (const row of stranded) {
-    const p = lawfulPatch(deps.rules.reapVerdict(row, evidenceOf(byTarget.get(row.id)), at), at);
-    if (p !== null) patches.push(p);
+    const ev = evidenceOf(byTarget.get(row.id));
+    let p = deps.rules.reapVerdict(row, ev, at);
+    // A row whose message reached the wire, holding no token: read the one that message carried, and settle it with that.
+    if ((p.to === "SENT" || p.to === "DELIVERED" || p.to === "UNCONFIRMED") && row.optOutToken === null && deps.tokenOf !== undefined) {
+      // ⛔ A failed read settles the row without its token — never the whole reap (it only serves E30's record).
+      const token = await deps.tokenOf(row.msisdn).catch(() => null);
+      if (token !== null) p = deps.rules.reapVerdict({ ...row, optOutToken: token }, ev, at);
+    }
+    const lawful = lawfulPatch(p, at);
+    if (lawful !== null) patches.push(lawful);
   }
   if (patches.length === 0) return counts;
   const result = await deps.recipients.settle(patches, at);
@@ -556,10 +643,10 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   if (c.status !== "RUNNING") return { kind: "not_running", status: c.status };
 
   // ③ E6 · the reaper first
-  const reaped = await reapStrandedClaims(campaignId, deps);
+  const reaped = await reapStrandedClaims(campaignId, deps, { insideFlight: state.flight?.ticket });
 
-  // ④a ⛔ the list no longer than confirmed — before anything else is read: only a new copy can fix it
-  if (!isCount(c.audienceCount) || c.audienceCount < 1) return pauseFor(c, "audience_unreadable", "the confirmed count cannot be read", deps);
+  // ④a ⛔ FIRST — the list no longer than confirmed, before anything else is read: no Resume can fix either
+  if (!isCount(c.audienceCount) || c.audienceCount < 1) return pauseFor(c, "confirmation_unreadable", "the confirmed count cannot be read", deps);
   if (recipientRows(await countsOf(campaignId, deps)) > c.audienceCount) {
     return pauseFor(c, "list_over_confirmed_sending", `more rows on the list than the ${c.audienceCount} confirmed`, deps);
   }
@@ -568,15 +655,9 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   const provider = deps.provider();
   let switchCheck = sliceCheck("live_switch", "stub", "console");
   if (provider !== "unrecognised") {
-    let live: MarketingLiveSwitch;
-    try {
-      live = await deps.liveSwitch();
-    } catch {
-      live = { state: "closed", why: "unreadable" };
-    }
-    const g = deps.liveGate(provider, live, deps.now().getTime());
-    if (!g.ok) return pauseFor(c, "live_switch_closed", null, deps);
-    if (g.via === "open") switchCheck = sliceCheck("live_switch", "open", `until:${live.state === "open" ? live.closesAt : "unknown"}`);
+    const s = await switchNow(provider, deps);
+    if (!s.ok) return pauseFor(c, "live_switch_closed", s.live.state === "closed" ? `switch ${s.live.why}` : "the switch's on-until time has passed or cannot be read", deps);
+    if (s.via === "open") switchCheck = sliceCheck("live_switch", "open", `until:${s.live.state === "open" ? s.live.closesAt : "unknown"}`);
   }
   // ⛔ An unrecognised provider is a dead rail whatever the rail reader answers — never a closed switch.
   const rail = deps.rail() ?? (provider === "unrecognised" ? "provider-unrecognised" : null);
@@ -634,25 +715,36 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
     sliceCheck("campaign", "RUNNING", campaignId), switchCheck, sliceCheck("send_window", "open", sendWindow.label), creditCheck,
   ];
   const rows: SliceRecipient[] = claimed.map((r) => ({ ref: r.id, msisdn: r.msisdn, prepare: (key: string) => prepareFor(template, key, deps) }));
-  /** What the slice learns inside the loop's two hooks: when its one send began and came back, and whether the re-read
-   *  before the wire answered. */
-  const seen: { sendStartedAt: number | null; sendMs: number; wireAt: string | null; hookAnswered: boolean } = {
-    sendStartedAt: null, sendMs: 0, wireAt: null, hookAnswered: false,
-  };
+  /** What the slice learns inside the loop's two hooks: when its one send began and came back, whether it THREW (and its
+   *  words), and whether the re-read before the wire answered. */
+  const seen: {
+    sendStartedAt: number | null; sendMs: number; wireAt: string | null; hookAnswered: boolean; threw: string | null;
+  } = { sendStartedAt: null, sendMs: 0, wireAt: null, hookAnswered: false, threw: null };
   const started = deps.clock();
+  // ⛔ The U43b-2 re-review · THE SEND'S DEADLINE: the slice's OLDEST claim plus `CLAIM_SEND_MAX_AGE_MS` — after it a reaper may
+  // judge the claim stranded, so `sendBatch` writes nothing and asks nothing past it (checked before its rows and again before
+  // its request). An instant that cannot be read makes it NaN, which sendBatch refuses: fail closed.
+  const claimMs = claimed.map((r) => Date.parse(r.claimedAt ?? ""));
+  const notAfter = claimMs.length > 0 && claimMs.every(Number.isFinite) ? Math.min(...claimMs) + CLAIM_SEND_MAX_AGE_MS : Number.NaN;
   const sliceDeps: SliceDeps = {
     send: async (messages) => {
       const t0 = deps.clock();
       seen.sendStartedAt = t0;
       try {
-        return await deps.send(messages, keptForCodes === undefined ? {} : { minimumBalanceTzs: keptForCodes });
+        return await deps.send(messages, { ...(keptForCodes === undefined ? {} : { minimumBalanceTzs: keptForCodes }), notAfter });
+      } catch (err) {
+        // `dispatchSlice` answers every row of a thrown send `unconfirmed`, as it must; the slice reads the evidence (⑦).
+        // ⛔ The error's CODE or NAME only — never its words, which can quote the call (the DLR route's precedent).
+        const e = err as { code?: unknown; name?: unknown } | null;
+        seen.threw = typeof e?.code === "string" && e.code !== "" ? e.code : typeof e?.name === "string" && e.name !== "" ? e.name : "Error";
+        throw err;
       } finally {
         seen.sendMs = deps.clock() - t0;
         seen.wireAt = deps.now().toISOString();
       }
     },
     beforeSend: async (_cleared: readonly SliceCleared[]) => {
-      const verdict = await verifyClaims(c, token, deps);
+      const verdict = await verifyClaims(c, token, provider, deps);
       seen.hookAnswered = true;
       return verdict;
     },
@@ -663,8 +755,25 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   const gateMs = Math.max(0, (seen.sendStartedAt ?? deps.clock()) - started);
 
   // ⑦ THE SETTLE — the pure table, each patch lawful first (DC-5), one shop-wide fact paused or waited once (E7)
-  const shop: ShopWide = deps.rules.isShopWide(outcomes);
-  const ctx: SettleContext = { claimToken: token, slice, wireAt: seen.wireAt, shop };
+  // ⭐ A send that THREW (the U43b-2 review): never re-send what MIGHT have reached the network, release only what
+  // CERTAINLY did not — a row no message of THIS claim names was never handed to the wire (sendBatch writes its rows before
+  // the wire, P2; a message made before the claim is an earlier attempt's, DC-1); the rest stay UNCONFIRMED; one pause.
+  let unsent: ReadonlySet<string> | undefined;
+  if (seen.threw !== null) {
+    const asked = outcomes.filter((o) => o.outcome === "unconfirmed").map((o) => o.ref);
+    const named = asked.length === 0 ? [] : await deps.messages.findByTargets(DISPATCH_TARGET_TYPE, asked);
+    const claimedMs = new Map(claimed.map((r) => [r.id, Date.parse(r.claimedAt ?? "")]));
+    const ofThisClaim = new Set(named.filter((m) => {
+      const at = Date.parse(m.createdAt);
+      const since = claimedMs.get(m.targetId ?? "") ?? Number.NaN;
+      return !(Number.isFinite(at) && Number.isFinite(since) && at < since);
+    }).map((m) => m.targetId ?? ""));
+    unsent = new Set(asked.filter((id) => !ofThisClaim.has(id)));
+  }
+  const shop: ShopWide = seen.threw !== null ? thrownSend(seen.threw) : deps.rules.isShopWide(outcomes);
+  const ctx: SettleContext = unsent === undefined
+    ? { claimToken: token, slice, wireAt: seen.wireAt, shop }
+    : { claimToken: token, slice, wireAt: seen.wireAt, shop, unsent };
   const byId = new Map(claimed.map((r) => [r.id, r]));
   const settledAt = deps.now().toISOString();
   const patches: SmsCampaignRecipientSettle[] = [];
@@ -693,8 +802,17 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   // The re-check before the wire that could not answer — a WAIT, and after BEFORE_SEND_UNANSWERED_MAX in a row a PAUSE
   if (shop.shopWide && shop.reason === "before_send_unanswered") state.unanswered[campaignId] = (state.unanswered[campaignId] ?? 0) + 1;
   else if (seen.hookAnswered) delete state.unanswered[campaignId];
+  // ⭐ The U43b-2 re-review · a slice too slow to send, counted IN A ROW; any slice that gets past the bound resets it.
+  const tooSlow = (state.tooSlow ??= {});
+  if (shop.shopWide && shop.reason === SLICE_TOO_SLOW) tooSlow[campaignId] = (tooSlow[campaignId] ?? 0) + 1;
+  else delete tooSlow[campaignId];
 
-  if (shop.shopWide && shop.pause) return pauseFor(c, shop.reason as EngineStopReason, shop.detail, deps);
+  if (shop.shopWide && shop.pause) {
+    // ⭐ `send_error`'s sentence sends the officer to the developer and the server log: the log must then hold the fact —
+    // the campaign and the error's code or name only (no number, no words that could quote the call).
+    if (shop.reason === "send_error") console.error(`[marketing-engine] campaign ${campaignId} paused send_error: ${shop.detail}`);
+    return pauseFor(c, shop.reason as EngineStopReason, shop.detail, deps);
+  }
   if (shop.shopWide && !shop.pause) {
     if (shop.reason === "not_running") return notRunning(campaignId, deps);
     if (shop.reason === "before_send_unanswered") {
@@ -707,6 +825,15 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
     if (shop.reason === "quiet_hours") {
       const w = await windowOf(deps);
       return { kind: "waiting", reason: "quiet_hours", until: w.open !== true && w.opensAt !== "" ? w.opensAt : null };
+    }
+    // ⛔ The send-age bound: the claim grew too old to send — its people went back as they were, and the slow gate was
+    // measured above, so the next slice is smaller.
+    if (shop.reason === SLICE_TOO_SLOW) {
+      if ((tooSlow[campaignId] ?? 0) >= SLICE_TOO_SLOW_MAX) {
+        delete tooSlow[campaignId];
+        return pauseFor(c, "slice_too_slow", `${SLICE_TOO_SLOW_MAX} slices running too slow to send at size ${state.sliceSize}`, deps);
+      }
+      return { kind: "waiting", reason: "slice_too_slow", until: null };
     }
     return { kind: "waiting", reason: "window_unreadable", until: null };
   }

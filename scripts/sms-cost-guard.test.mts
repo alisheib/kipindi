@@ -655,6 +655,62 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   await quiet();
 }
 
+/* ══ §11 · U43b-2 · THE CALLER'S DEADLINE, `notAfter` (2026-10-08) ══════════════════════════════════════════════════ */
+// The campaign engine's send-age bound carried into the send (its re-review): an all-MARKETING batch whose deadline passed is
+// refused whole before any row is written, and one whose deadline passes WHILE its rows are written makes no request — those
+// rows FAILED with no receipt token. An OTP, alone or beside marketing, never meets a deadline. With no option every case
+// above is unchanged. ⚠️ Labels here carry no spaced dash (the red harness reads a FAIL line's label up to the first one).
+{
+  const marketing = (n = 1) =>
+    Array.from({ length: n }, (_, i) => ({ to: `+25577261963${i}`, body: "Ofa ya 50pick", purpose: "MARKETING" as const }));
+  const rowCount = async () => (await db.smsMessage.listRecent(10_000)).length;
+  resetBalance();
+  globalThis.__50PICK_SMS_BALANCE = { tzs: 40_000, at: Date.now() };
+  reply = accepted(40_000);
+
+  calls = 0;
+  const ahead = await sendBatch(marketing(), { notAfter: Date.now() + 60_000 });
+  ok("§11 control: a MARKETING batch whose deadline is still ahead sends as it always has",
+    !ahead.refused && ahead.results[0]?.ok === true && calls === 1, `refused=${ahead.refused} calls=${calls}`);
+
+  calls = 0;
+  const rowsBefore = await rowCount();
+  const passed = await sendBatch(marketing(2), { notAfter: Date.now() - 1 });
+  const rowsAfter = await rowCount();
+  ok("§11 ⭐ a MARKETING batch whose deadline has passed is REFUSED DEADLINE_PASSED whole: no row written and no request",
+    passed.refused === "DEADLINE_PASSED" && passed.results.every((r) => !r.ok && r.code === "DEADLINE_PASSED") && rowsAfter === rowsBefore && calls === 0,
+    `refused=${passed.refused} rows +${rowsAfter - rowsBefore} calls=${calls}`);
+
+  calls = 0;
+  const nan = await sendBatch(marketing(), { notAfter: Number.NaN });
+  const text = await sendBatch(marketing(), { notAfter: "soon" as unknown as number });
+  ok("§11 ⛔ a deadline that is not a figure holds the MARKETING batch: a malformed option never opens the rail",
+    nan.refused === "DEADLINE_PASSED" && text.refused === "DEADLINE_PASSED" && calls === 0,
+    `NaN ${nan.refused ?? "SENT"} · text ${text.refused ?? "SENT"} · calls=${calls}`);
+
+  calls = 0;
+  const loginCode = await sendBatch(otp(), { notAfter: Date.now() - 1 });
+  const mixed = await sendBatch([...otp(), ...marketing()], { notAfter: Date.now() - 1 });
+  ok("§11 ⭐ an OTP never meets a deadline: alone, and beside marketing, a passed deadline holds nothing",
+    !loginCode.refused && loginCode.results[0]?.ok === true && !mixed.refused && mixed.results.every((r) => r.ok) && calls === 2,
+    `otp ${loginCode.refused ?? "sent"} · mixed ${mixed.refused ?? "sent"} · calls=${calls}`);
+
+  // The deadline passes WHILE the rows are written: the write held 150 ms, the deadline 40 ms ahead of the call.
+  const rowsDoor = db.smsMessage as unknown as { createMany: (rows: unknown[]) => unknown };
+  const realCreateMany = rowsDoor.createMany;
+  rowsDoor.createMany = async (rows: unknown[]) => { await new Promise((r) => setTimeout(r, 150)); return realCreateMany.call(db.smsMessage, rows); };
+  calls = 0;
+  let during: Awaited<ReturnType<typeof sendBatch>> | null = null;
+  try { during = await sendBatch(marketing(2), { notAfter: Date.now() + 40 }); } finally { rowsDoor.createMany = realCreateMany; }
+  const refs = (during?.results ?? []).map((r) => r.reference).filter((x) => x !== "");
+  const stored = (await db.smsMessage.listRecent(10_000)).filter((m) => refs.includes(m.reference));
+  ok("§11 ⭐ a deadline that passes while the rows are written makes NO request: those rows FAILED with no receipt, each answered DEADLINE_PASSED",
+    calls === 0 && during !== null && !during.refused && during.results.length === 2 && during.results.every((r) => !r.ok && r.code === "DEADLINE_PASSED")
+      && stored.length === 2 && stored.every((m) => m.status === "FAILED" && m.dlrStatus === null && m.failedAt !== null),
+    `calls=${calls} codes=${(during?.results ?? []).map((r) => r.code).join(",")} rows=${stored.map((m) => m.status).join(",")}`);
+  await quiet();
+}
+
 /* ══ §8 · WHO CALLS IT — the admin card and /api/health, each within a budget ═══════════════════ */
 {
   const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
