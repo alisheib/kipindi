@@ -189,11 +189,18 @@ export const MUTATIONS = [
      * ⚠️ SWAHILI AT 360, CHOSEN NOT DEFAULTED. Swahili runs 35–40% longer than English and Chinese
      * escapes the defect entirely on label length alone; a proof run at `zh` would report NOT
      * CAUGHT and the harness would look like the defect. `SHAPE` in `red-bar-geometry.mjs` pins it.
+     *
+     * ⚠️ RE-ANCHORED 2026-10-08 (the Vodacom lane, S7 WP0's reds): `be4fb670` (D79's floor, the 44px
+     * tap minimum) turned this element's `min-w-0` into `min-w-[var(--tap-min)]`, so the old anchor
+     * resolved nowhere and `test:red-anchors` §3 failed on it. The defect is unchanged — `w-full`
+     * dropped, the summary no longer bound to its column. Whether it still OVERLAPS at 360/sw with
+     * the tap floor in place is measured by `red:bar-geometry`'s next run (it needs a server, and on
+     * main it first refuses on `qa:bar-geometry`'s own red at /proposals).
      */
     name: "sort-summary-unbound",
     file: "src/components/ui/query-bar.tsx",
-    from: '        className="w-full min-w-0 rounded-l-pill rounded-r-none border-r-0"',
-    to: '        className="min-w-0 rounded-l-pill rounded-r-none border-r-0"',
+    from: '        className="w-full min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"',
+    to: '        className="min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"',
     expect: "OVERLAP",
     route: "/markets",
   },

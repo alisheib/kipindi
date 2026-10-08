@@ -13,3 +13,9 @@ lived only in one session's temporary scratchpad, so it is committed here, uncha
 - **Format:** each `*.dc.html` is one board, self-contained HTML with its own styles; open it in a browser to view it.
 - **Not app code:** nothing under `src/` imports these files, and Tailwind's content scan (`src/**`) never reads them.
 - **Revising a board:** edit it here, in the same commit as the change it records; the artifact is no longer the source.
+
+**Revised 2026-10-07, by the owner's ruling of that day** (NEXT-PLAN ▶ 0e; VODACOM-PLAN §0, §3.6): the minimum deposit
+and stake are TZS 1,000, and a deposit asks no email question. `s4-5-low-min500.dc.html` is redrawn for the TZS 1,000
+minimum ("Weka pesa TZS 1,000", and TZS 800 left in the balance; it keeps its file name, which is `canvas.json`'s key).
+The six `s4-6-code-*` boards (S9's email code) are kept as drawn and marked ⛔ superseded in their titles and in
+`canvas.json`: S9 asks no code and they are not built.

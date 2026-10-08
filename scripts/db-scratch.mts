@@ -40,13 +40,13 @@
  */
 import pgLib from "pg";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 // Deliberately not 5432 — never collide with a real local server.
 //
 // ⚠️ OVERRIDABLE BECAUSE EVERY WORKTREE OF THIS REPO PINS THE SAME PORT, AND THE ORPHAN
-// KILLER BELOW ONLY MATCHES CLUSTERS UNDER ITS OWN PATH. When a parallel session has a
+// KILLER BELOW ONLY TAKES THIS CHECKOUT'S OWN CLUSTER. When a parallel session has a
 // cluster up in a sibling checkout (`F:\kipindi-house-bots`), a `--reset` here dies with
 // "the cluster failed to start and gave no reason" — and anything that then connects to
 // 5433 is talking to THEIR database, with THEIR schema, while looking perfectly healthy.
@@ -88,25 +88,61 @@ let startedHere = false;
  * use", including `--reset`, and the data directory is unusable until someone finds the
  * process by hand. That cost this session three restarts.
  *
- * ⚠️ The filter is the repo path. Other projects on this machine run their OWN embedded
- * clusters (the sibling AWARKEH repo keeps one on :54330), and killing those would break
- * somebody else's work in a way that looks like a random failure.
+ * ⚠️ Other projects on this machine run their OWN embedded clusters (the sibling AWARKEH
+ * repo keeps one on :54330), and killing those would break somebody else's work in a way
+ * that looks like a random failure. So on Windows a process is taken only if it is:
+ *   · a postmaster whose `-D` argument is THIS checkout's data directory, the whole argument, or
+ *   · a child (`--forkchild`) of such a postmaster, or of a dead one named in `deadParents`
+ *     (a pid this tool read from the cluster's own pid file), or
+ *   · an orphaned child — its parent gone — whose binary lives under this checkout. Run from a
+ *     checkout that other worktrees' `node_modules` junctions point at, that includes THEIR
+ *     orphans too, and that is harmless: an orphan's postmaster is dead, so it serves no live
+ *     cluster, and all it can still do is block its own data directory's next start.
+ * Each is killed inside the same PowerShell run that listed it, and only while it is still the
+ * process listed (the same start time): a pid freed by `taskkill` between a listing here and a
+ * kill in another process could name a stranger by then.
+ *
+ * 🔴 WHY NOT SIMPLY "THE REPO PATH IS IN ITS COMMAND LINE", AS THIS ONCE WAS. A child's
+ * command line is only `"<bin>/postgres.exe" --forkchild="io_worker" <handle>`: the data
+ * directory is not in it, only the binary's path. In a worktree whose `node_modules` is a
+ * junction to another checkout (most worktrees on the shared PC are), that path names the
+ * OTHER checkout, so the sweep never found its own io_worker and every later start failed:
+ * on 2026-10-07 one leftover from the first database suite of a `test:all` in
+ * `F:\kipindi-wp12` made the next twelve fail with "gave no reason". And the same test,
+ * run from the checkout the junctions point at, matched every sibling's LIVE cluster,
+ * because all of them run its binaries.
  */
-function killOwnOrphans(): number {
-  const marker = resolve(process.cwd()).replace(/\\/g, "/").toLowerCase();
+function killOwnOrphans(deadParents: number[] = []): number {
+  const norm = (p: string): string => resolve(p).replace(/\\/g, "/").toLowerCase();
+  const marker = norm(process.cwd());
   try {
     if (process.platform === "win32") {
+      // Inside a single-quoted PowerShell string, where PowerShell reads the typographic single quotes as quotes too.
+      const ps = (s: string): string => s.replace(/['‘’‚‛]/g, "$&$&");
+      const dir = norm(DATA_DIR).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // `-D <dir>` as Node wrote it — quoted only when the path holds a space — and nothing after it but a space or the
+      // end: not `.pgscratch\sub`, not `.pgscratch - Copy`. `\x22` is the double quote, kept out of the command line.
+      const dirRe = ps(`\\s-d\\s+(\\x22${dir}\\x22|${dir})(\\s|$)`);
+      const known = deadParents.filter((p) => Number.isInteger(p) && p > 0).join(",");
       const out = execFileSync(
         "powershell",
         ["-NoProfile", "-Command",
-         `Get-CimInstance Win32_Process -Filter "Name='postgres.exe'" | ` +
-         `Where-Object { $_.CommandLine -and $_.CommandLine.Replace('\\','/').ToLower().Contains('${marker}') } | ` +
-         `ForEach-Object { $_.ProcessId }`],
+         `$all = @(Get-CimInstance Win32_Process -Filter "Name='postgres.exe'"); ` +
+         `$live = @{}; Get-Process | ForEach-Object { $live[[int]$_.Id] = 1 }; ` +
+         `$pm = @($all | Where-Object { $c = ([string]$_.CommandLine).Replace('\\','/').ToLower(); ` +
+         `-not $c.Contains('--forkchild') -and ($c -match '${dirRe}') } | ForEach-Object { [int]$_.ProcessId }); ` +
+         `$gone = @(@(${known}) | Where-Object { -not $live.ContainsKey([int]$_) }); ` +
+         `$par = @($pm + $gone); ` +
+         `$kids = @($all | Where-Object { $c = ([string]$_.CommandLine).Replace('\\','/').ToLower(); $p = [int]$_.ParentProcessId; ` +
+         `$c.Contains('--forkchild') -and (($par -contains $p) -or (-not $live.ContainsKey($p) -and $c.Contains('${ps(marker)}/'))) } | ` +
+         `ForEach-Object { [int]$_.ProcessId }); ` +
+         `$take = @($pm + $kids); ` +
+         `foreach ($x in @($all | Where-Object { $take -contains [int]$_.ProcessId })) { ` +
+         `$q = Get-Process -Id ([int]$x.ProcessId) -ErrorAction SilentlyContinue; ` +
+         `if ($q -and [Math]::Abs(($q.StartTime - $x.CreationDate).TotalMilliseconds) -lt 1) { try { $q.Kill(); [int]$x.ProcessId } catch {} } }`],
         { encoding: "utf8", timeout: 20_000 },
       );
-      const pids = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-      for (const pid of pids) { try { process.kill(Number(pid), "SIGKILL"); } catch { /* already gone */ } }
-      return pids.length;
+      return out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length; // one line per process killed
     }
     const out = execFileSync("bash", ["-c", `pgrep -f '${marker}.*postgres' || true`], { encoding: "utf8", timeout: 20_000 });
     const pids = out.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -114,6 +150,21 @@ function killOwnOrphans(): number {
     return pids.length;
   } catch {
     return 0; // best effort: the caller reports the original failure either way
+  }
+}
+
+/**
+ * The postmaster's pid, from the first line of the cluster's own pid file while it is
+ * there. Read BEFORE a stop or a start: a killed postmaster leaves the file behind, and its
+ * pid is the one thing that still names the children it orphaned. A start that fails
+ * removes the file, so afterwards it is too late to read it.
+ */
+function postmasterPid(): number | null {
+  try {
+    const n = Number(readFileSync(join(DATA_DIR, "postmaster.pid"), "utf8").split(/\r?\n/, 1)[0]);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  } catch {
+    return null;
   }
 }
 const runIdx = process.argv.indexOf("--run");
@@ -146,6 +197,12 @@ async function loadEmbeddedPostgres(): Promise<any> {
 
 const EmbeddedPostgres = await loadEmbeddedPostgres();
 
+// Postgres's own last lines. `start()` rejects with NOTHING when the server exits early, so
+// a start that died on "pre-existing shared memory block is still in use" reported only
+// "the cluster failed to start and gave no reason": the reason was printed by postgres and
+// thrown away here. The failure report below now shows them.
+const lastLog: string[] = [];
+
 const pg = new EmbeddedPostgres({
   databaseDir: DATA_DIR,
   port: PORT,
@@ -167,7 +224,10 @@ const pg = new EmbeddedPostgres({
   // holds a restored copy of every player record on the platform for the length of a
   // verification run, and the default would accept connections from the LAN.
   postgresFlags: ["-c", "listen_addresses=127.0.0.1"],
-  onLog: () => {},          // initdb/postgres chatter is noise unless it fails
+  onLog: (m: unknown) => {  // initdb/postgres chatter is noise unless it fails: keep the last few lines
+    lastLog.push(...String(m).split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+    lastLog.splice(0, Math.max(0, lastLog.length - 12));
+  },
   onError: (e: unknown) => console.error(`   pg: ${e instanceof Error ? e.message : String(e)}`),
 });
 
@@ -177,16 +237,52 @@ const pg = new EmbeddedPostgres({
  * `pg.stop()` alone was not enough: it took the postmaster down but left an `io_worker`
  * child alive holding shared memory, so the NEXT run could not start. Sweeping our own
  * processes afterwards makes the tool idempotent, which is the only way a nightly job can
- * depend on it.
+ * depend on it. On Windows the stop is `taskkill /f`, so the postmaster cannot remove its
+ * pid file: the pid read first is how the sweep knows which children were its.
  */
 async function stopCleanly(): Promise<void> {
-  await pg.stop().catch((e: unknown) => console.error(`   stop failed: ${e instanceof Error ? e.message : String(e)}`));
-  const left = killOwnOrphans();
+  const pm = postmasterPid();
+  // ⛔ BOUNDED, like the failure handler's stop below. When the postmaster is already gone (it crashed, or something
+  // killed it), pg.stop() waits for an `exit` that has already happened and NEVER SETTLES: `--run` then never reached
+  // its process.exit(code), the event loop emptied, and embedded-postgres's exit hook (async-exit-hook) ended the
+  // process with 0 ten seconds later — a failing suite reported as passing.
+  await Promise.race([
+    pg.stop().catch((e: unknown) => console.error(`   stop failed: ${e instanceof Error ? e.message : String(e)}`)),
+    new Promise((r) => setTimeout(r, 10_000)),
+  ]);
+  const left = killOwnOrphans(pm ? [pm] : []);
   if (left) console.log(`   swept ${left} lingering postgres process(es).`);
 }
 
+/**
+ * One cluster step (initdb, or the start), and if it fails, a sweep of this checkout's leftovers and one more try —
+ * rather than making the operator do it. Almost always the failure is an orphaned io_worker from a killed run holding
+ * the cluster's shared memory, and initdb's bootstrap meets the same block as a start does, because the block's name
+ * comes from the data directory's path. Postgres's own lines are kept per attempt, so a failure reports its own.
+ */
+async function withSweep(step: () => Promise<unknown>, deadParents: number[]): Promise<void> {
+  lastLog.length = 0;
+  try {
+    await step();
+  } catch (e) {
+    const killed = killOwnOrphans(deadParents);
+    if (!killed) throw e;
+    console.log(`   cleared ${killed} orphaned postgres process(es) from a previous run; retrying...`);
+    await new Promise((r) => setTimeout(r, 1500));
+    lastLog.length = 0;
+    await step();
+  }
+}
+
 async function main(): Promise<void> {
+  // Read the old postmaster's pid FIRST: `--reset` deletes the directory, and a failed start deletes the file, and
+  // after either it is too late to know which orphans were this cluster's.
+  const stale = postmasterPid();
+  const staleList = stale ? [stale] : [];
   if (has("reset") && existsSync(DATA_DIR)) {
+    // A leftover child of the old cluster holds its shared memory whatever happens to the directory: sweep it first.
+    const swept = killOwnOrphans(staleList);
+    if (swept) console.log(`   cleared ${swept} postgres process(es) of the old cluster.`);
     console.log(`Discarding the existing cluster at ${DATA_DIR}`);
     rmSync(DATA_DIR, { recursive: true, force: true });
   }
@@ -252,20 +348,10 @@ async function main(): Promise<void> {
     const fresh = !existsSync(join(DATA_DIR, "PG_VERSION"));
     if (fresh) {
       console.log(`Initialising a fresh cluster in ${DATA_DIR} ...`);
-      await pg.initialise();
+      await withSweep(() => pg.initialise(), staleList); // initdb removes what it made when it fails
     }
     console.log(`Starting Postgres on 127.0.0.1:${PORT} ...`);
-    try {
-      await pg.start();
-    } catch (e) {
-      // Almost always an orphaned io_worker from a killed run holding shared memory.
-      // Clear our own and try once more, rather than making the operator do it.
-      const killed = killOwnOrphans();
-      if (!killed) throw e;
-      console.log(`   cleared ${killed} orphaned postgres process(es) from a previous run; retrying...`);
-      await new Promise((r) => setTimeout(r, 1500));
-      await pg.start();
-    }
+    await withSweep(() => pg.start(), staleList);
     startedHere = true;
   }
 
@@ -307,7 +393,9 @@ async function main(): Promise<void> {
     if (stopping) return;
     stopping = true;
     console.log("\nStopping...");
-    await pg.stop().catch((e: unknown) => console.error(`   stop failed: ${(e as Error).message}`));
+    // The same sweep as --run (a bare pg.stop() left an io_worker behind), and only for a
+    // cluster started here: the sweep would kill a reused one, which pg.stop() leaves alone.
+    if (startedHere) await stopCleanly();
     process.exit(0);
   };
   process.on("SIGINT", () => void shutdown());
@@ -319,21 +407,27 @@ main().catch(async (e: unknown) => {
   // printed a bare "undefined" that said nothing about what went wrong.
   const msg =
     e instanceof Error ? (e.stack ?? e.message) : e ? JSON.stringify(e) : "(the cluster failed to start and gave no reason)";
-  console.error("\n!! db:scratch failed:", msg);
+  const said = lastLog.length ? `\n   postgres said:\n     ${lastLog.join("\n     ")}` : "";
+  console.error("\n!! db:scratch failed:", msg + said);
 
   // The one failure worth explaining, because the message Postgres gives is not the
   // instruction you need. Killing a run (Ctrl-C at the wrong moment, a crashed verifier)
   // can leave a child postmaster alive holding the cluster's shared memory, and every
   // later `--reset` then dies on "pre-existing shared memory block is still in use".
-  // The sibling AWARKEH repo lost an hour to exactly this, twice.
-  if (/shared memory block is still in use|could not create shared memory/i.test(msg)) {
+  // The sibling AWARKEH repo lost an hour to exactly this, twice. `--reset`, initdb and the
+  // start above have already swept what they could prove was this checkout's, so what is
+  // left is a process they could not attribute (a killed run whose pid file is gone): list
+  // them and let the operator judge, rather than offering a kill-by-path that would also take
+  // every cluster sharing a junctioned node_modules.
+  if (/shared memory block is still in use|could not create shared memory/i.test(msg + said)) {
     console.error(
-      "\n   A postgres.exe from a previous run of THIS repo is still alive. Find and stop\n" +
-        "   only those — other projects on this machine run their own clusters:\n\n" +
-        "     powershell -Command \"Get-CimInstance Win32_Process -Filter \\\"Name='postgres.exe'\\\" |\n" +
-        "       Where-Object { $_.CommandLine -like '*kipindi-main*' } |\n" +
-        "       ForEach-Object { Stop-Process -Id $_.ProcessId -Force }\"\n\n" +
-        "   Then re-run with --reset.\n",
+      "\n   A postgres.exe from a previous run is still alive, holding this cluster's shared\n" +
+        "   memory, and it could not be proven to be this checkout's. List them (in PowerShell):\n\n" +
+        "     Get-CimInstance Win32_Process -Filter \"Name='postgres.exe'\" | Select-Object ProcessId, ParentProcessId," +
+        " @{n='ParentAlive';e={[bool](Get-Process -Id $_.ParentProcessId -EA 0)}}, CommandLine | Format-List\n\n" +
+        "   Stop only an orphan (ParentAlive False) whose binary is this checkout's — or, when\n" +
+        "   node_modules is a junction, the junction target's — since other checkouts and\n" +
+        "   projects on this machine run their own clusters. Then re-run.\n",
     );
   }
   // 🔴 SET THE CODE BEFORE AWAITING ANYTHING. THIS HANDLER USED TO REPORT **EXIT 0** ON EVERY

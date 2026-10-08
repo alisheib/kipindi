@@ -5,7 +5,13 @@
  * want, an English one), saves it as a DRAFT, and sends the saved text to their OWN phone as a test. The audience card
  * (U38b) chooses who it goes to — the contact book, player accounts or both, narrowed on its rail — says it in words, and
  * counts who will receive it NOW by asking the send gate about every number (a forecast: the gate is asked again at
- * send). Nothing here prices a send, confirms or starts a campaign: the estimate and the confirmation are U39 and U40.
+ * send). Nothing here starts a campaign.
+ * ⭐ U40b · THE FOURTH CARD, "Confirm", under the Test card (`campaign-confirm.tsx`) — and ⛔ THIS PAGE COUNTS NOTHING FOR
+ * IT (the U40b review's MAJOR): the card reads only the composer's own state at rest, and its trigger ASKS for the
+ * confirmation's view on the press (`confirm-view-actions.ts` — the stored role; OD65's count alone and OD67's typed tier
+ * for a viewer who may not read a number; the estimate's money as words for a money reader only), so no render — no rail
+ * pick, save, test or "Count again" — waits on a confirmation's walk. CONFIRMED sends nothing: Start is a separate act on
+ * the campaign's own page. (This page's one Suspense stays the audience count's — `test:campaign-audience` B5.)
  * ⭐ U38b · THE COUNT IS KEYED BY THE FILTER (`countKey`, its ONE key): a new filter mounts a new Suspense, which shows its
  * own fallback — never the old numbers under the new words. The card is an async SERVER component that renders the
  * view-model and nothing else; a saved draft opened with no audience in its address is sent to the address that carries
@@ -36,11 +42,13 @@ import { CAMPAIGN_SCREEN_ROUTES } from "@/lib/marketing/campaign-status";
 import { loadComposer } from "./composer-loader";
 import type { ComposeParams, ComposeView } from "./composer-loader";
 import { ComposerProvider, ComposerMessage, ComposerAudience, ComposerTest } from "./composer-client";
+import { CampaignConfirm } from "./campaign-confirm";
 import { AudienceRail } from "./audience-rail";
 import { AudienceSplitCard, AudienceCountFallback } from "./audience-split-card";
 import { viewerReadsContacts } from "@/app/admin/contacts/contacts-loader";
 import {
-  COMPOSE_AUDIENCE_TITLE, COMPOSE_MESSAGE_SW, COMPOSE_MESSAGE_TITLE, COMPOSE_MISSING, COMPOSE_START, COMPOSE_TEST_TITLE,
+  COMPOSE_AUDIENCE_TITLE, COMPOSE_CONFIRM_TITLE, COMPOSE_MESSAGE_SW, COMPOSE_MESSAGE_TITLE, COMPOSE_MISSING, COMPOSE_START,
+  COMPOSE_TEST_TITLE,
 } from "./composer-copy";
 
 export const metadata = { title: "New SMS campaign · Admin" };
@@ -109,6 +117,10 @@ async function AdminComposeContent({ searchParams }: { searchParams: Promise<Com
             </div>
             <div data-block="compose-test">
               <AdminCard title={COMPOSE_TEST_TITLE}><ComposerTest /></AdminCard>
+            </div>
+            {/* ⭐ U40b · the fourth card: the composer's own state at rest, its view asked for on the press — never here. */}
+            <div data-block="compose-confirm">
+              <AdminCard title={COMPOSE_CONFIRM_TITLE}><CampaignConfirm /></AdminCard>
             </div>
           </ComposerProvider>
         )}

@@ -12,7 +12,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const BASE = (process.env.BASE || "https://www.50pick.tz").replace(/\/$/, "");
+// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
+// target read production without anyone choosing it. Loopback is the default now (a local run also needs OG_HOST,
+// below); production is reached by NAMING it, as the example at the top does.
+const BASE = (process.env.BASE || "http://localhost:3001").replace(/\/$/, "");
 const OUT = process.env.OUT || ".qa-shots/landing-v3/og";
 const UA = "WhatsApp/2.23.20.0 A";
 // The absolute host the tags carry: `metadataBase` is the app's own URL, so a LOCAL run reads production's

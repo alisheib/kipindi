@@ -112,7 +112,9 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/candidates/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em] text-text-subtle\">{CATEGORY_LABEL[c.category] ?? c.category}</span> ↵ <span className=\"font-mono text-[1", "OTHER"],
   ["app/admin/candidates/page.tsx :: <td className=\"p-3 font-mono uppercase tracking-[0.12em] text-micro\">{CATEGORY_LABEL[c.category] ?? c.category}</td> ↵ <td className=\"p-3 text-text max-w-[420px] truncate", "OTHER"],
   // ⛔ DELETED 2026-08-30 (DG-A-06) — the byte-identical twin of the ai-polls entry above.
-  ["app/admin/compliance/page.tsx :: <p className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ {continued} continued · {tookBreak} break · {sxd} self-excluded{\" \"}", "OTHER"],
+  // ⚠️ RE-KEYED 2026-10-08. Same element, same role: the readout under the reality-check bar. The key carries the element's
+  // text, and b151d874 (2026-09-20) took the dead `{continued}` term out of it — this gate went red on that edit, as designed.
+  ["app/admin/compliance/page.tsx :: <p className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ {tookBreak} break · {sxd} self-excluded{\" \"}", "OTHER"],
   ["app/admin/compliance/page.tsx :: <p className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ HMAC-SHA256 · last verify {formatClock(new Date().toISOString())}", "OTHER"],
   ["app/admin/compliance/page.tsx :: <span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\">LCCP §3.4.1</span> ↵ </div>", "OTHER"],
   ["app/admin/compliance/page.tsx :: <td className=\"py-2 pr-3\"><span className=\"font-mono text-micro tracking-wider uppercase\">{a.action.replace(\"integrity.alert.\", \"\")}</span></td> ↵ <td className=\"py-2 pl-", "STATUS_CHIP"],
@@ -120,7 +122,16 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/compliance/page.tsx :: className=\"font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal-300\" ↵ >", "CONTROL_LABEL"],
   ["app/admin/config/page.tsx :: <span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ {overrides.length} active", "OTHER"],
   ["app/admin/config/page.tsx :: action={<span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\">{recent.length} entries</span>} ↵ padding=\"p-0\"", "OTHER"],
+  // 2026-10-08 · READ, not guessed (24dca6aa, 2026-09-25). This card is all-time under a window picker and says so in its
+  // action slot — a count annotation, like `{recent.length} entries` on the config page. OTHER, not §T3's section eyebrow.
+  ["app/admin/finance/page.tsx :: <span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ all time · not this window", "OTHER"],
   ["app/admin/finance/page.tsx :: <span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ loser-share {pollFees.byModel[\"loser-share\"].count} · {formatTzsCompact(pollFees.", "OTHER"],
+  // 2026-10-08 · READ, not guessed (24dca6aa, 2026-09-25). A capped view says so in the card's action slot: a count annotation.
+  ["app/admin/finance/page.tsx :: <span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\"> ↵ top 5 of {provSeries.providers.length + provSeries.otherCount} by deposit volume", "OTHER"],
+  // 2026-10-08 · READ, not guessed (64d0ee80, 2026-09-25). "Statutory" and "This view" caption the two exports beside them —
+  // the fixed statutory month, or the window on screen. A caption beside a control, not the label over a block: OTHER.
+  ["app/admin/finance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-tertiary\">Statutory</span> ↵ {/* ⭐ `size=\"xs\"` on both pairs so they sit at the same 32px as t", "OTHER"],
+  ["app/admin/finance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-tertiary\">This view</span> ↵ <GenerateButton", "OTHER"],
   ["app/admin/finance/page.tsx :: <span className={[\"font-mono text-micro tracking-[0.10em] uppercase\", !tbMeasured ? \"text-text-tertiary\" : tb.ok ? \"text-success\" : \"text-danger-fg\"].join(\" \")}> ↵ {!tbMe", "STATUS_CHIP"],
   ["app/admin/finance/page.tsx :: className={`inline-block rounded px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.08em] ${ ↵ r.feeModel === \"loser-share\" ? \"bg-brand-500/15 text-brand-300\" : \"bg", "STATUS_CHIP"],
   ["app/admin/kyc/[id]/kyc-decision-rail.tsx :: <span className=\"font-mono text-caption uppercase tracking-[0.16em] text-text-muted\">Recording decision…</span> ↵ </div>", "OTHER"],
@@ -210,7 +221,12 @@ export const NOT_EYEBROW = new Map([
   // leave this census entirely.
   ["app/admin/updown/rounds/page.tsx :: <span className=\"ml-auto font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {total.toLocaleString()} rounds", "OTHER"],
   ["app/api/og/market/[id]/route.tsx :: <div style={{ fontSize: 14, fontFamily: \"JetBrains Mono, monospace\", letterSpacing: \"0.16em\", textTransform: \"uppercase\", opacity: 0.7 }}> ↵ {m.category}", "OTHER"],
-  ["app/api/og/market/[id]/route.tsx :: <span style={{ color: C.tipLabel, opacity: 0.6, fontStyle: \"italic\", textTransform: \"uppercase\", fontSize: 14 }}> ↵ {Math.abs(yes - 50) < 4 ? \"tipping\" : yes > 50 ? \"lean", "STATUS_CHIP"],
+  // 2026-10-08 · READ, not guessed (871b0844, 2026-09-27). The share card's state in words where there is no price to draw:
+  // "One side only" · "No bets yet" · "No pool yet". A status word, as the lean word beside it is: STATUS_CHIP.
+  ["app/api/og/market/[id]/route.tsx :: <span style={{ color: C.tipLabel, fontWeight: 700, textTransform: \"uppercase\", letterSpacing: \"0.12em\" }}>{price.label}</span> ↵ </div>", "STATUS_CHIP"],
+  // ⚠️ RE-KEYED 2026-10-08. Same element, same role: the lean word between the YES and NO figures. 871b0844 moved its text to
+  // `{price.lean}` and 3d4480c6 (both 2026-09-27) to `{settled ? settled.poolCaption : price.lean}` — a settled card says "Final pool".
+  ["app/api/og/market/[id]/route.tsx :: <span style={{ color: C.tipLabel, opacity: 0.6, fontStyle: \"italic\", textTransform: \"uppercase\", fontSize: 14 }}> ↵ {settled ? settled.poolCaption : price.lean}", "STATUS_CHIP"],
   ["app/api/og/market/[id]/route.tsx :: letterSpacing: \"0.18em\", textTransform: \"uppercase\", color: C.gilt, ↵ }}>", "CELEBRATION"],
   ["app/api/og/page/route.tsx :: <div style={{ position: \"absolute\", bottom: 46, fontSize: 15, letterSpacing: \"0.16em\", textTransform: \"uppercase\", opacity: 0.5 }}> ↵ The wisdom of YES &amp; NO", "CELEBRATION"],
   ["app/auth/2fa/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors\" ↵ >", "CONTROL_LABEL"],

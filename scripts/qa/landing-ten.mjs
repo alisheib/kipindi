@@ -1,10 +1,10 @@
 /**
  * THE LANDING-PAGE ACCEPTANCE GATE — "nothing less than 10 visually is accepted. not 9.99, only 10."
  *
- *   node landing-ten.mjs                 # the whole matrix against production
+ *   node landing-ten.mjs                 # the whole matrix against a LOCAL server, http://localhost:3001
  *   node landing-ten.mjs --pass=base     # one pass only: base | states | orientation
  *   RED=V4 node landing-ten.mjs --red    # plant V4's defect and assert V4 — and ONLY V4 — fires
- *   BASE=https://www.50pick.tz node ...
+ *   BASE=https://www.50pick.tz node ...  # PRODUCTION: name it. The `signedin` cells sign in as `mobile01` there
  *
  * ── WHAT A "10" MEANS HERE ────────────────────────────────────────────────────────────────────
  * Eleven defect classes, each of which must read EXACTLY ZERO in every cell. A class that cannot
@@ -74,7 +74,11 @@ const REPO = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const PW = join(REPO, "node_modules/playwright/index.mjs");
 const { chromium } = await import(pathToFileURL(PW).href);
 
-const BASE = process.env.BASE || "https://www.50pick.tz";
+// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). The `signedin` cells sign in as the QA player `mobile01`
+// through the harness on whatever BASE names, so a bare run used to sign in on production without anyone choosing
+// it. Loopback is the default now (the shared harness's own); production is reached by NAMING it:
+// BASE=https://www.50pick.tz. `--compile` never reads BASE, so it still runs bare.
+const BASE = process.env.BASE || "http://localhost:3001";
 const OUT = process.env.OUT || join(REPO, ".qa-shots", "landing-ten");
 const ONLY_PASS = (process.argv.find((a) => a.startsWith("--pass=")) || "").split("=")[1] || null;
 const RED = process.env.RED || null;

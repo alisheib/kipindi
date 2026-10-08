@@ -55,6 +55,20 @@ export const MUTATIONS = [
     from: `className="min-h-[var(--tap-min)] mt-3 flex items-center justify-between`,
     to: `className="min-h-[30px] mt-3 flex items-center justify-between`,
   },
+  {
+    /* ⭐ THE CONTROL FOR §2.1's OPT-IN SIGNAL (2026-10-08) — and the only §2 case this harness has. When
+       `ui/datetime-range-filter.tsx` joined `XS_DEFINERS` (its dense actions are `btn-xs` behind a caller's
+       `rank="dense"`, exactly as button.tsx maps `size="xs"`), the file stopped being convicted and the
+       OPT-IN became the thing to police: a player page that renders the date rail at the admin's 32px rank
+       is the defect, and it must be convicted by name. Planted on the positions filter bar, a real phone
+       surface whose chip wrapper is unique in its file. The admin population cannot move (a player file),
+       so the harness's steady-population check holds, and `expect` is §2.1 — not §5. */
+    name: "a player filter bar renders the shared date rail at the admin's 32px dense rank",
+    file: "src/app/positions/positions-bar.tsx",
+    expect: "2.1",
+    from: `<FilterPill {...p} semantics="toggle" replace scroll={false} />`,
+    to: `<><FilterPill {...p} semantics="toggle" replace scroll={false} /><DateTimeRangeFilter rank="dense" /></>`,
+  },
 ];
 
 /**

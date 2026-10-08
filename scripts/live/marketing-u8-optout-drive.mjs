@@ -44,6 +44,7 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "node:fs";
+import { decomment } from "../lib/decomment.mts";
 
 const BASE = process.env.LIVE_BASE ?? "http://localhost:3043";
 const WANT = (process.argv[2] || "").trim();
@@ -66,8 +67,9 @@ function block(section, name) {
   const m = section.match(new RegExp(`^ {4}${name}: \\{\\n([\\s\\S]*?)^ {4}\\},?$`, "m"));
   if (!m) throw new Error(`no "${name}" block in i18n-dict.ts`);
   const out = {};
-  // Comment lines out first, so a `key: "…"` quoted in a comment can never stand in for the real one.
-  const body = m[1].replace(/^\s*\/\/.*$/gm, "");
+  // Comments out first (the repo's one stripper, so a trailing or block comment counts too, and a `//` inside a
+  // string never does), so a `key: "…"` quoted in a comment can never stand in for the real one.
+  const body = decomment(m[1]);
   for (const kv of body.matchAll(/(\w+): ("(?:[^"\\]|\\.)*")/g)) {
     try { out[kv[1]] = JSON.parse(kv[2]); } catch { /* not JSON-shaped; never one this drive needs (NEED guards) */ }
   }

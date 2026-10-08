@@ -146,6 +146,12 @@ async function publicPage(viewport, locale) {
 async function openCard(page) {
   await page.goto(BASE + POLICY_TAB, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(FORM, { timeout: 60_000 });
+  // ⛔ The card is a client component: text typed before it hydrates reaches the boxes but never the card, so Save stays
+  // held. On a slow (webpack) dev server 400 ms was not enough — wait until React has attached to the card's Save button.
+  await page.waitForFunction((sel) => {
+    const b = document.querySelector(`${sel} button[type="submit"]`);
+    return !!b && Object.keys(b).some((k) => k.startsWith("__reactProps"));
+  }, FORM, { timeout: 60_000 });
   await page.locator(FORM).scrollIntoViewIfNeeded();
   await wait(400);
 }

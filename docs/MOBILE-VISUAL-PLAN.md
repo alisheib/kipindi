@@ -1345,7 +1345,7 @@ sign-in screen is "the most assured screen in the set". §8a already protects th
    bottom as sheets, with the same content and safety wording. Desktop unchanged.
 8. **Toasts on phones:** at most **2** at once; the rest queue and nothing is dropped.
 9. **Notice bars on phones:** announcements/maintenance and session-ended always show; the others show one at a time.
-   ⚠️ Reconciled with code: the **email-verify bar is deliberately not dismissible**, only collapsible (`email-verify-banner.tsx:19-44`:
+   ⚠️ Reconciled with code: the **email-verify bar is deliberately not dismissible**, only collapsible (⛔ deleted by the owner's ruling of 2026-10-07) (`email-verify-banner.tsx:19-44`:
    *"would let a player permanently hide the reason their deposit will be refused"*), and it reads first by design (`app-shell.tsx:334-336`).
    So it keeps first place and non-dismissibility, and the **away summary waits** until the email bar is collapsed or absent.
 10. **Scope:** the plan also covers toasts, popups/sheets, questions, celebrations, warnings, notifications and detail pages. Name: Mobile Visual Plan.
@@ -2113,7 +2113,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 **U16 · [General] Notice stack + first-visit coordination (D4 · D27)**
 - `notice-bar.tsx:93`: below 640 the text's `basis-[14rem]` drops so the 44px action (`:184`) stays inline; text clamps to 2 lines with the full text in the
   accessible name. Bar ≤ 60px.
-- Render order (`app-shell.tsx`): TopAppBar `:303` · Announcement `:304` · session-ended `:307` · EmailVerifyBanner `:333` (collapsible, never dismissible) ·
+- Render order (`app-shell.tsx`): TopAppBar `:303` · Announcement `:304` · session-ended `:307` · EmailVerifyBanner `:333` (collapsible, never dismissible; ⛔ deleted 2026-10-07, the owner's ruling) ·
   AwaySummaryBar `:341` · LiveTicker `:351`. On phones the AwaySummaryBar waits while the email bar is expanded; nothing else changes order or dismissibility.
   Re-run `qa:social-panel`.
 - ↪ **RE-TARGETED TO [VODACOM-PLAN](VODACOM-PLAN.md) (Ali, 2026-09-29): the old primer is shelved, and the new How to Play sheet's first-visit order (Vodacom plan §3.8) replaces this bullet. Not built in this unit.** D4: extend `src/lib/invitation-slot.ts` (today `useInvitationSlot(id, zone, priority, eligible)`, zones `bottom`/`top-right`) with a blocker the primer

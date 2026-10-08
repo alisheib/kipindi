@@ -1413,7 +1413,10 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
     {
       name: "L0 · the RG page's META moved in the code while the save still stamps against the old version",
       expect: L.l0,
-      impl: srcPlant({ rgPageRaw: REAL_SOURCES.rgPageRaw.replace('en: "Version 2026-09-26 ·', 'en: "Version 2026-10-09 ·') }),
+      /* The anchor is the code's OWN version (F7 — `RG_CODE`), not a typed date. A typed one rotted the day the page was re-versioned
+         (2026-09-26 → 2026-10-06, `0652f61f`, which moved `POLICY_PAGES.rg.codeVersion` with it): the plant then matched nothing, changed
+         nothing, and this case went green. The moved date is one no real re-version reaches, so it can never equal the code's. */
+      impl: srcPlant({ rgPageRaw: REAL_SOURCES.rgPageRaw.replace(`en: "Version ${RG_CODE} ·`, 'en: "Version 2099-12-31 ·') }),
     },
     {
       name: "⛔ a default drifts from the page — the RG Swahili's no-break spaces typed as plain spaces",
