@@ -36,12 +36,21 @@
  *     fails if a NORMAL email stops carrying the links, which is the only thing that
  *     proves the renderer can see them at all.
  *
+ *     ⭐ EACH RED RUN JUDGES ITSELF (2026-10-08), in the fleet's own polarity: exit 0 means the plant was
+ *     caught. Until then a red run exited 1 whenever the guard went red - the guard WORKING - so `red:all`
+ *     read all four as FAIL on a healthy tree, and exited 0 when the plant was NOT caught (the suite stayed
+ *     green), so a toothless guard would have read PASS. Now the run names the assertion each plant must
+ *     trip, runs the plain suite as a child to prove it green, and exits 0 only if the plant took, that
+ *     assertion failed, and nothing else did. Exit 2 = a control stopped firing (stale or missed), exit 1 =
+ *     the proof is unsound (red plain suite, or a stray failure). The judge is scripts/lib/red-judge.mts.
+ *
  * Run: npm run test:social-links
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { SOCIAL } from "../src/lib/social.ts";
 import * as E from "../src/lib/server/email.ts";
+import { judgeRedRun, judgeSelfTest, runPlain, strayRedFlags } from "./lib/red-judge.mts";
 
 const ARG = (f: string) => process.argv.includes(f);
 const RED_HOME = ARG("--prove-red-home");
@@ -50,14 +59,43 @@ const RED_REL = ARG("--prove-red-rel");
 const RED_PROMO = ARG("--prove-red-promo");
 
 let pass = 0, fail = 0;
+/** The label of every assertion that failed - what a red run is judged on. */
+const failed: string[] = [];
 const ok = (m: string) => { pass++; console.log(`  ✓ ${m}`); };
 const bad = (m: string) => { fail++; console.log(`  ✗ ${m}`); };
-const check = (m: string, cond: boolean, extra = "") => (cond ? ok(m) : bad(`${m}${extra ? ` — ${extra}` : ""}`));
+const check = (m: string, cond: boolean, extra = "") => {
+  if (!cond) failed.push(m);
+  return cond ? ok(m) : bad(`${m}${extra ? ` — ${extra}` : ""}`);
+};
 const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 64 - s.length))}`);
 
 /** The one file allowed to spell a social URL. */
 const HOME = "src/lib/social.ts";
 const SOCIAL_HOST = /(?:instagram|tiktok|whatsapp)\.com/;
+
+/**
+ * The ONE assertion each red flag is planted to trip. One definition, read by the check below AND by the red
+ * run's verdict, so rewording a label cannot leave the expectation pointing at nothing.
+ */
+const TRIPS = {
+  home: `no social URL literal outside ${HOME}`,
+  token: "every account URL is canonical — no query string, no share token",
+  rel: 'SocialLink carries rel="noopener noreferrer"',
+  promo: "no template carries the row without being on the written allow-list",
+} as const;
+const PLANTS = [
+  { flag: "--prove-red-home", on: RED_HOME, key: "home", what: "a social URL literal outside src/lib/social.ts" },
+  { flag: "--prove-red-token", on: RED_TOKEN, key: "token", what: "a ?stkn= share token on a canonical account URL" },
+  { flag: "--prove-red-rel", on: RED_REL, key: "rel", what: "a new-tab link with no rel" },
+  { flag: "--prove-red-promo", on: RED_PROMO, key: "promo", what: "a social URL inside a no-promo email (accountClosedHtml opted in)" },
+] as const;
+/** Whether each plant took. Three are synthetic injections into the data a section reads, which always take; the rel plant edits the footer's text and can miss. */
+const took = { home: true, token: true, rel: true, promo: true };
+const typo = strayRedFlags(PLANTS.map((p) => p.flag));
+if (typo.length) {
+  console.log(`unknown red flag(s) ${typo.join(", ")} - a typo here would run the plain suite and read green. Known: ${PLANTS.map((p) => p.flag).join(", ")}`);
+  process.exit(2);
+}
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
@@ -76,6 +114,8 @@ for (const f of files) {
     if (SOCIAL_HOST.test(text)) hits.push({ file: rel, line: i + 1, text: text.trim() });
   });
 }
+// ⚠️ Pushed past the scanner above, so this proves §1's VERDICT and not SOCIAL_HOST itself: a scanner that stopped
+// matching anything would still read 1/1 here. (Left as written 2026-10-08; the plain run's floor covers only SOCIAL.)
 if (RED_HOME) hits.push({ file: "src/__prove_red__.tsx", line: 1, text: `href="https://www.instagram.com/50pick.tz/"` });
 
 console.log(`\nSOCIAL LINKS — ${files.length} source files walked, ${hits.length} social-host line(s), ${SOCIAL.length} account(s)\n`);
@@ -90,7 +130,7 @@ check(
 {
   const strays = hits.filter((h) => h.file !== HOME && !h.text.startsWith("*") && !h.text.startsWith("//"));
   check(
-    `no social URL literal outside ${HOME}`,
+    TRIPS.home,
     strays.length === 0,
     strays.map((s) => `${s.file}:${s.line}`).join(", "),
   );
@@ -103,7 +143,7 @@ section("§2 · NO SHARE TOKENS");
   if (RED_TOKEN) urls.push("https://www.instagram.com/50pick.tz?stkn=MXJyam1vdDN1bzl4Yg==");
   const dirty = urls.filter((u) => u.includes("?") || u.includes("&"));
   check(
-    "every account URL is canonical — no query string, no share token",
+    TRIPS.token,
     dirty.length === 0,
     dirty.join(", "),
   );
@@ -115,8 +155,11 @@ section("§2 · NO SHARE TOKENS");
 section("§3 · NEW TAB, SAFELY");
 {
   const FOOTER = "src/components/layout/public-footer.tsx";
-  let src = readFileSync(FOOTER, "utf8");
+  const footer = readFileSync(FOOTER, "utf8");
+  let src = footer;
   if (RED_REL) src = src.replace(/rel="noopener noreferrer"\s*/g, "");
+  // A replace that matches nothing returns its input unchanged and says nothing: the plant must prove it took.
+  took.rel = !RED_REL || src !== footer;
 
   /* The block is the SocialLink recipe — read it, do not assume it.
      ⚠️ ANCHORED ON THE NEXT `function`, NOT ON THE NEXT `\n}`. The obvious non-greedy
@@ -130,7 +173,7 @@ section("§3 · NEW TAB, SAFELY");
   if (m) {
     const body = m[0];
     check("SocialLink opens in a new tab", body.includes('target="_blank"'));
-    check("SocialLink carries rel=\"noopener noreferrer\"", body.includes('rel="noopener noreferrer"'));
+    check(TRIPS.rel, body.includes('rel="noopener noreferrer"'));
     check("SocialLink is named for a screen reader", body.includes("aria-label={ariaLabel}"));
     check("SocialLink reaches the 44px tap floor", body.includes("min-h-[44px]"));
   }
@@ -174,10 +217,12 @@ section("§4 · THE EMAIL ROW IS OPT-IN, AND THE POPULATION IS DISCOVERED");
     const body = emailSrc.slice(names[i].at, names[i + 1]?.at ?? emailSrc.length);
     if (/\{\s*promo:\s*true\s*\}/.test(body)) optedIn.push(names[i].name);
   }
+  // ⚠️ Pushed past the opt-in scan above: this proves the allow-list comparison, not the scan. The scan is held by the
+  // plain run's "every allow-listed template still opts in", which goes red if the scan finds nothing.
   if (RED_PROMO) optedIn.push("accountClosedHtml");
 
   const unlisted = optedIn.filter((n) => !PROMO_ALLOWED.has(n));
-  check("no template carries the row without being on the written allow-list", unlisted.length === 0, unlisted.join(", "));
+  check(TRIPS.promo, unlisted.length === 0, unlisted.join(", "));
 
   const stale = [...PROMO_ALLOWED].filter((n) => !optedIn.includes(n));
   check("…and every allow-listed template still exists and still opts in", stale.length === 0, `stale: ${stale.join(", ")}`);
@@ -228,4 +273,30 @@ section("§5 · THE LABELS ARE KEYS, NOT LITERALS");
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${pass} passed, ${fail} failed\n`);
-process.exit(fail === 0 ? 0 : 1);
+
+// ─────────────────────────────────────────────────── THE VERDICT OF A RED RUN
+// A plain run is judged by its own failures. A red run is judged by WHICH assertion failed - see the header.
+const planted = PLANTS.filter((p) => p.on);
+if (planted.length === 0) process.exit(fail === 0 ? 0 : 1);
+section(`RED PROOF · ${planted.map((p) => p.flag).join(" ")}`);
+const brokenJudge = judgeSelfTest();
+if (brokenJudge.length > 0) {
+  for (const p of brokenJudge) console.log(`  ✗ judge     ${p}`);
+  process.exit(1);
+}
+console.log("  ✓ judge     its own controls hold - missed, stale, stray and red-baseline runs are each told apart from a catch");
+const base = runPlain(import.meta.url);
+const verdict = judgeRedRun({
+  plants: planted.map((p) => ({
+    name: p.flag,
+    what: p.what,
+    trips: [TRIPS[p.key]],
+    applied: took[p.key],
+    staleReason: took[p.key] ? undefined : 'the footer no longer holds rel="noopener noreferrer", so removing it changed nothing - anchor missing',
+  })),
+  failed,
+  baselineClean: base.clean,
+  baselineNote: base.note,
+});
+console.log(verdict.lines.join("\n"));
+process.exitCode = verdict.code;

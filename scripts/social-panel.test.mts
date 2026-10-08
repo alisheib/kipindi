@@ -13,12 +13,20 @@
  *  1. POPULATION — the panel, the shell that mounts it, the install card it shares a slot with,
  *     the slot module, and every `.tsx` under `src/` for §6. Read, never assumed.
  *  2. HEAD COUNT OUTSIDE THE FLOOR — zero.
- *  3. THE CONTROLS — SEVEN mutations, each injected into the SOURCE STRING a section reads,
+ *  3. THE CONTROLS — EIGHT mutations, each injected into the SOURCE STRING a section reads,
  *     so no section can pass by reading nothing:
- *        npm run red:social-panel   (expects exactly EIGHT failures — seven mutations, and the
+ *        npm run red:social-panel   (expects exactly NINE failures — eight mutations, and the
  *        slot mutation legitimately trips both §4.1 and §4.7, which check different things)
- *     ⚠️ It exits 2, not 1, on FEWER than eight — a control that stops firing is a section that
- *     stopped checking, and that must never look like a pass or like an ordinary red.
+ *     ⚠️ It exits 2 when a control stops firing — a plant that did not take, or one the suite stayed
+ *     green over - because a control that stops firing is a section that stopped checking, and that
+ *     must never look like a pass or like an ordinary red.
+ *     ⭐ AND IT EXITS 0 WHEN EVERY PLANT IS CAUGHT (2026-10-08). It used to exit 1 then - the guard
+ *     WORKING - which `red:all` reads as FAIL, and it judged the run by a COUNT (`>= 8`), which any
+ *     eight failures could meet, the wrong ones included. Now each plant names the assertion(s) it
+ *     must trip; the run passes only if the plain suite is green, every plant took (through the
+ *     fleet's own anchor resolver, so a stale or ambiguous anchor is reported instead of silently
+ *     planting nothing), each named assertion failed, and nothing else did. Exit 1 = the proof is
+ *     unsound (red plain suite, or a stray failure). The judge is scripts/lib/red-judge.mts.
  *     ⭐ Three of these controls exist because an adversarial audit found the checks they target
  *     were satisfiable WITHOUT the behaviour: §2.1 by the import line, §2.6 by the prop name in
  *     the component's own signature, and §3.1 by an inverted comparison.
@@ -31,8 +39,15 @@
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { injectDefect } from "./red-anchor.mjs";
+import { judgeRedRun, judgeSelfTest, runPlain, strayRedFlags, type RedPlant } from "./lib/red-judge.mts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
+const typo = strayRedFlags(["--prove-red"]);
+if (typo.length) {
+  console.log(`unknown red flag(s) ${typo.join(", ")} - a typo here would run the plain suite and read green. Known: --prove-red`);
+  process.exit(2);
+}
 
 const PANEL = "src/components/social/channels-panel.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
@@ -56,15 +71,46 @@ let shell = read(SHELL);
 let install = read(INSTALL);
 const slot = read(SLOT);
 
-// Seven mutations, EIGHT expected failures — the slot one trips §4.1 and §4.7 by design.
+// Eight mutations, NINE expected failures — the slot one trips §4.1 and §4.7 by design.
 // They mutate what the sections READ, so nothing can pass vacuously.
+// Each names the assertion(s) it is written to trip (a pattern over the check's leading id), and goes in through
+// `injectDefect` - the fleet's own resolver - so an anchor that no longer matches, or now matches twice, is
+// reported as a STALE plant instead of `String.replace` silently changing nothing.
+const PLANTS: RedPlant[] = [];
+const plant = (name: string, what: string, trips: RegExp[], mutate: () => void) => {
+  try {
+    mutate();
+    PLANTS.push({ name, what, trips, applied: true });
+  } catch (e) {
+    PLANTS.push({ name, what, trips, applied: false, staleReason: (e as Error).message });
+  }
+};
 if (PROVE_RED) {
-  panel = panel.replace("const MIN_DWELL_MS = 45_000;", "const MIN_DWELL_MS = 1_000;");
-  panel = panel.replace("^\\/(legal|profile)\\/responsible-gambling(\\/|$)", "^\\/nowhere");
-  panel = panel.replace('useInvitationSlot("channels", "top-right", 1, eligible)', "false");
-  install = install.replace('data-invitation="install"', "");
-  panel = panel.replace(" || isCommitSurface(path)", "");
-  panel = panel.replace("const eligible = open && !promoSuppressed", "const eligible = open");
+  plant("dwell", "the minimum dwell cut from 45 s to 1 s", [/^1\.2 /], () => {
+    panel = injectDefect(panel, "const MIN_DWELL_MS = 45_000;", "const MIN_DWELL_MS = 1_000;");
+  });
+  plant("rg-routes", "the responsible-gambling routes no longer suppressed", [/^2\.3 /], () => {
+    panel = injectDefect(panel, "^\\/(legal|profile)\\/responsible-gambling(\\/|$)", "^\\/nowhere");
+  });
+  plant("slot", "the top-right slot claim replaced by `false` (trips both zone checks by design)", [/^4\.1 /, /^4\.7 /], () => {
+    panel = injectDefect(panel, 'useInvitationSlot("channels", "top-right", 1, eligible)', "false");
+  });
+  plant("install-label", "the install card no longer labelled for measurement", [/^4\.3 /], () => {
+    install = injectDefect(install, 'data-invitation="install"', "");
+  });
+  plant("commit-gate", "the money-commit gate dropped from the route test, its import line left behind", [/^2\.1 /], () => {
+    panel = injectDefect(panel, " || isCommitSurface(path)", "");
+  });
+  plant("eligible", "the RG flag no longer a term of `eligible`", [/^2\.6a /], () => {
+    panel = injectDefect(panel, "const eligible = open && !promoSuppressed", "const eligible = open");
+  });
+  // §3.1 was strengthened against "an inverted comparison" (header, point 3) but no plant ever proved it: inverted, the
+  // derivation suppresses exactly the players who are NOT on a break.
+  plant("shell-inverted", "the shell's self-exclusion comparison inverted", [/^3\.1 /], () => {
+    shell = injectDefect(shell, "until(rg?.selfExclusionUntil) > now", "until(rg?.selfExclusionUntil) < now");
+  });
+  // The eighth is planted at §6, into the list that section reads.
+  PLANTS.push({ name: "elision", what: "a class with an elision in src/", trips: [/^6\.1 /], applied: true });
 }
 
 console.log("\nSOCIAL PANEL — the interstitial the compliance override paid for\n");
@@ -239,6 +285,8 @@ section("§6 · no class-shaped prose (the stylesheet-killer)");
       offenders.push(`${f.replace(/\\/g, "/")} → ${m[0]}`);
     }
   }
+  // ⚠️ Pushed past the scan above, so this proves 6.1's VERDICT and not its regex: a regex that stopped matching anything
+  // would still read 8/8 here. (Left as written 2026-10-08.)
   if (PROVE_RED) offenders.push("src/__prove_red__.tsx → bottom-[calc(96px_+_env(...))]");
   ok("6.1 no arbitrary-value class anywhere in src/ contains an elision",
      offenders.length === 0, offenders.slice(0, 4).join(" | "));
@@ -290,9 +338,18 @@ section("§7 · the copy exists in all three locales");
 }
 
 console.log(`\n${fails.length === 0 ? "ALL PASS" : `${fails.length} FAILED`} — ${pass} passed, ${fails.length} failed\n`);
-if (PROVE_RED) {
-  const expected = 8;
-  console.log(`--prove-red: expected ${expected} failure(s), saw ${fails.length}\n`);
-  process.exit(fails.length >= expected ? 1 : 2);
+
+// ─────────────────────────────────────────────────── THE VERDICT OF A RED RUN
+// A plain run is judged by its own failures. A red run is judged by WHICH assertions failed - see the header.
+if (!PROVE_RED) process.exit(fails.length === 0 ? 0 : 1);
+section("RED PROOF · --prove-red");
+const brokenJudge = judgeSelfTest();
+if (brokenJudge.length > 0) {
+  for (const p of brokenJudge) console.log(`  ✗ judge     ${p}`);
+  process.exit(1);
 }
-process.exit(fails.length === 0 ? 0 : 1);
+console.log("  ✓ judge     its own controls hold - missed, stale, stray and red-baseline runs are each told apart from a catch");
+const base = runPlain(import.meta.url);
+const verdict = judgeRedRun({ plants: PLANTS, failed: fails, baselineClean: base.clean, baselineNote: base.note });
+console.log(verdict.lines.join("\n"));
+process.exitCode = verdict.code;
