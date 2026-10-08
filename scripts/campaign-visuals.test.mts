@@ -140,7 +140,7 @@ const L = {
   t2: "T2 · ⭐ START'S REFUSALS WIRED — every U49a Start reason (the source's own case list, each answered by a stand-in check) is refused in EXACTLY startRefusalSentence(r, viewer) — TZS for a money reader, none for anyone else — the campaign still CONFIRMED, ONE start_refused row per refusal whose payload is the reason, plus the figures for the money reasons alone (the rail's problem for rail_dead) and never a count; and the REAL check refuses a RUNNING campaign not_confirmed",
   t3: "T3 · ⭐ OD66 AT START — a masked viewer on a book ∪ players campaign is refused audience_refused in START_AUDIENCE_REFUSED's words BEFORE anything is counted (the check never asked), ONE start_refused row { reason, param: pop }; a reader on the same campaign reaches the check, and so does a masked viewer on a book audience",
   t4: "T4 · PAUSE — PREPARING and RUNNING → PAUSED officer_paused with pausedAt, ONE ADMIN row of the engine's ONE spelling of marketing.campaign_paused { reason: officer_paused } by the officer, the answer LIVE_DONE.pause; CONFIRMED, DONE and a DRAFT refused in their words with no row; a second Pause 'already paused'",
-  t5: "T5 · ⭐ RESUME'S RE-QUEUE (E8), INSIDE THE STEP FLIGHT (the U47b-1 review) — a paused campaign whose list finished, holding 3 HELD rows: ONE move to RUNNING (stopReason cleared), THEN they start over (PENDING, attempts 0, the hold's class cleared), ONE ADMIN marketing.campaign_resumed row { requeuedHeld: 3, to: RUNNING } and 'Sending again.'; a step asked while Resume works answers busy and runs nothing; a Resume while another step holds the flight is refused busy with nothing read or changed; a Resume that loses its race to a Stop touches no row; a re-queue that fails still answers the Resume that landed (requeuedHeld null) and says the held people stay parked; a Stop landing between the move and the re-queue is said (resumed, then stopped), never 'Sending again.'; a list that never finished resumes to PREPARING with its own toast",
+  t5: "T5 · ⭐ RESUME'S RE-QUEUE (E8), INSIDE THE STEP FLIGHT (the U47b-1 review) — a paused campaign whose list finished, holding 3 HELD rows: ONE move to RUNNING (stopReason cleared), THEN they start over (PENDING, attempts 0, the hold's class cleared), ONE ADMIN marketing.campaign_resumed row { requeuedHeld: 3, to: RUNNING } and 'Sending again.'; a step asked while Resume works answers busy and runs nothing; a Resume while another step holds the flight is refused busy with nothing read or changed; a Resume that loses its race to a Stop touches no row; a re-queue that fails still answers the Resume that landed (requeuedHeld null) and says the held people stay parked; a Stop landing between the move and the re-queue is said (resumed, then stopped), never 'Sending again.'; a list that never finished resumes to PREPARING with its own toast; ⭐ the check of 980e2ee7: a Pause or the end landing after the move is said in its own words (resumed, then paused · resumed and finished); a read after the move that fails still answers the Resume that landed, in its own words; the held people's failure is said only when some are HELD, and below the floor as a condition for HELD and none alike (E23) — the plain words at ten rows",
   t6: "T6 · ⭐ RESUME'S COUNT-BASED REFUSALS — U49a's refusal fed the store's COUNTS: a list longer than confirmed under an OFFICER's pause is refused list_over_confirmed (the switch closed and the console stub alike) with nothing re-queued, the campaign still PAUSED and no resumed row; with someone already messaged its words say a copy would message them again; ⛔ E23 · a masked viewer below the floor reads the SAME conditional words whether or not anybody was messaged; an engine's copy-only pause (audience_moved) is refused first, before the switch; a list within its count resumes",
   t7: "T7 · STOP (E25) — CONFIRMED, PREPARING, RUNNING and PAUSED each → CANCELLED officer_stopped with finishedAt, ONE ADMIN marketing.campaign_stopped row { outstanding } = what was left (resumeOutstanding), the answer LIVE_DONE.stop, and EVERY row untouched; DONE, CANCELLED and a DRAFT refused with no row",
   t8: "T8 · ⭐ MAKE A COPY — a NEW DRAFT by the officer through the composer's one save: the same message, the same audience (the same canonical key), the name '<name> (copy)', ONE marketing.campaign_created and ONE marketing.campaign_copied { from, to }, the composer's address; once anybody was messaged its answer says the copy messages them again; REFUSED in its own words with NOTHING made for an audience no address can write and for a masked viewer on both populations; a DRAFT refused; ⭐ the name at the composer's 80 characters — one that fits takes ' (copy)', one that would not keeps itself, an untitled one reads 'Untitled campaign (copy)'; the draft door's refusal of the MESSAGE (message_cannot_travel, its problem in words) and a source line it could not read (source_unreadable, the door's words) each make nothing",
@@ -150,7 +150,7 @@ const L = {
   d3: "D3 · ACT-GATED — a view-only viewer's step is refused 'role' and runs nothing (no read, no enqueue, no slice, no reap); ⭐ so is every ACT of a view-only actor — Start, Pause, Resume, Stop and Make a copy each refused 'role' in the role's words before anything is read (no campaign read, nothing moved, no row); a campaign that is not there answers not_found",
   d4: "D4 · ⭐ END TO END on the memory twin — a confirmed tag audience of 6 (4 consenting players' book rows, 2 contacts with no consent): Start → a PREPARING step writes 6 rows and finishes RUNNING → a RUNNING step's slice hands 4 over on the STUB wire and refuses 2 (no consent) → the next step finishes DONE; each view says so (the bar 6 of 6, 'Not sent' 2 under 'No consent or recorded basis'); one wire call, no SmsMessage row for the campaign",
   d5: "D5 · THE REAPER ON MOUNT — a PAUSED campaign holding a claim stranded 11 minutes with no message: one step reaps it back to PENDING (attempts + 1, the claim cleared) — kind reaped 1 — and writes ONE SYSTEM marketing.campaign_reaped row",
-  w1: "W1 · THE WIRING — CONTROL_DEPS and LIVE_VIEW_DEPS frozen and wired to the REAL doors by identity; the officer's pause writes the ONE spelling the engine and the enqueue write and the view reads; no directive and no exported *Action in the three files; campaign-control is value-imported by the actions file alone (U47b-2's one door), campaign-live by those actions, their loader and act runner, the services and the campaigns list, live-copy by the readers of its words (the drive's dev seed among them) and nothing else; the services name no send; live-copy reaches the server for a type alone; test:/red:campaign-visuals resolve to this file",
+  w1: "W1 · THE WIRING — CONTROL_DEPS and LIVE_VIEW_DEPS frozen and wired to the REAL doors by identity; the officer's pause writes the ONE spelling the engine and the enqueue write and the view reads; no directive and no exported *Action in the three files; campaign-control is value-imported by the actions file alone (U47b-2's one door), campaign-live by those actions, their loader and act runner, the services and the campaigns list, live-copy by the readers of its words (the drive's dev seed among them) and nothing else; the services name no send; live-copy reaches the server for a type alone; test:/red:campaign-visuals resolve to this file, and predeploy runs the suite exactly once",
   p2: "P2 · ⛔ THE STEP ANSWER CARRIES NO FIGURE AND NO CURSOR (the U47b-1 review's MAJOR) — every step answer of the run, for every role, holds only kind, busy, until and status: no count, no cursor and ⭐ no reason (its re-review — a pause's or a wait's key named what the floor hides), so a padded tag below the floor never reads one person's gate verdict off a step",
   p1: "P1 · ⛔ NO PHONE NUMBER AND NO REFUSAL OBJECT — no 255… key and no +255… number in any view, answer or audit payload of the run; every service answer holds only ok, reason, message, recorded (and a copy's id and href)",
 } as const;
@@ -1136,8 +1136,53 @@ async function runAssertions(impl: Impl): Promise<void> {
     await rows(w, never.id, many(3, { status: "PENDING" }));
     const n = seen(await impl.resume(never.id, reader, ctrlDeps(impl)));
     const neverOk = n.ok && n.message === COPY.LIVE_DONE.resumePreparing && (await campaignOf(never.id)).status === "PREPARING";
-    return [landed && heldOff && busyOk && lostOk && survives && stoppedSaid && neverOk,
-      `${json(r)} · ${after.status} ${after.stopReason} · order ${json(order)} · HELD restarted ${restarted} · row ${json(rowsNow[0]?.payload)} · a step meanwhile ${m === null ? "never asked" : m.ok ? `${m.step.kind}${m.step.kind === "waiting" ? `:${m.step.busy ? "busy" : "other"}` : ""}` : m.reason} ran [${stepCalls.join(",")}] · busy ${busyOk} · lost to a Stop ${lostOk} · re-queue down ${survives} · stopped between ${stoppedSaid} · never finished → ${(await campaignOf(never.id)).status} "${n.ok ? n.message.slice(0, 30) : n.reason}"`];
+    // ⭐ The check of 980e2ee7 · each later state in its own words, and the held people's failure said only where it is true
+    const resumeWith = async (key: string, shape: readonly RowShape[], over: Partial<ControlDeps>, who: ControlActor = reader, count = 10) => {
+      const cc = await campaign(w, key, { path: ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"], count });
+      await rows(w, cc.id, shape);
+      const a = seen(await impl.resume(cc.id, who, ctrlDeps(impl, over)));
+      return { a, status: (await campaignOf(cc.id)).status, row: (await auditOf(CTRL.CAMPAIGN_RESUMED_ACTION, cc.id))[0]?.payload };
+    };
+    const twoHeld = (sent: number): RowShape[] => [...many(2, { status: "HELD", failureClass: "gate_unanswered", attempts: 3 }), ...many(sent, { status: "SENT" })];
+    const movedOn = (to: "PAUSED" | "DONE"): Partial<ControlDeps> => ({
+      recipients: {
+        ...CTRL.CONTROL_DEPS.recipients,
+        requeueHeld: async (id: string, at: string) => {
+          const t = iso(T_NOW - MIN);
+          const patch = to === "PAUSED" ? { pausedAt: t, stopReason: "officer_paused" } : { finishedAt: t };
+          await db.smsCampaign.transition(id, { from: ["RUNNING"], to, patch: patch as never, draftRevision: null, at: t });
+          return CTRL.CONTROL_DEPS.recipients.requeueHeld(id, at);
+        },
+      },
+    });
+    const pausedLater = await resumeWith("t5p", twoHeld(8), movedOn("PAUSED"));
+    const doneLater = await resumeWith("t5d", twoHeld(8), movedOn("DONE"));
+    const laterOk = pausedLater.a.ok && pausedLater.a.message === COPY.LIVE_CHANGED.pausedAfterResume && pausedLater.status === "PAUSED"
+      && doneLater.a.ok && doneLater.a.message === COPY.LIVE_CHANGED.finishedAfterResume && doneLater.status === "DONE";
+    // the read after the move fails: the move landed and the held people were put back — its own words, never a failure
+    let landedYet = false;
+    const rereadDown: Partial<ControlDeps> = {
+      campaigns: {
+        ...CTRL.CONTROL_DEPS.campaigns,
+        transition: async (id, t) => { const m = await CTRL.CONTROL_DEPS.campaigns.transition(id, t); if (m !== null) landedYet = true; return m; },
+        find: async (id) => { if (landedYet) throw new Error("the read after the move is down (fixture)"); return CTRL.CONTROL_DEPS.campaigns.find(id); },
+      },
+    };
+    const reread = await resumeWith("t5t", twoHeld(8), rereadDown);
+    const rereadOk = reread.a.ok && reread.a.message === COPY.LIVE_DONE.resume && reread.status === "RUNNING" && json(reread.row) === json({ requeuedHeld: 2, to: "RUNNING" });
+    // a re-queue that fails with nobody HELD says nothing of held people; below the floor the words are a condition, HELD or not
+    const down: Partial<ControlDeps> = { recipients: { ...CTRL.CONTROL_DEPS.recipients, requeueHeld: async () => { throw new Error("the re-queue is down (fixture)"); } } };
+    const noneHeld = await resumeWith("t5z", [...many(5, { status: "PENDING" }), ...many(5, { status: "SENT" })], down);
+    const noneHeldOk = noneHeld.a.ok && noneHeld.a.message === COPY.LIVE_DONE.resume && json(noneHeld.row) === json({ requeuedHeld: null, to: "RUNNING" });
+    const hiddenSaid = `${COPY.LIVE_DONE.resume} ${COPY.LIVE_REQUEUE_FAILED_HIDDEN}`;
+    const maskedHeld = await resumeWith("t5m", twoHeld(7), down, growth, 9);
+    const maskedNone = await resumeWith("t5k", [...many(3, { status: "PENDING" }), ...many(6, { status: "SENT" })], down, growth, 9);
+    const maskedTen = await resumeWith("t5j", twoHeld(8), down, growth, 10);
+    const floorOk = maskedHeld.a.ok && maskedHeld.a.message === hiddenSaid && maskedNone.a.ok && maskedNone.a.message === hiddenSaid
+      && maskedTen.a.ok && maskedTen.a.message === `${COPY.LIVE_DONE.resume} ${COPY.LIVE_REQUEUE_FAILED}`;
+    const told = (x: { a: { ok: boolean; message?: string } }): string => (x.a.ok ? `"${(x.a.message ?? "").slice(-34)}"` : "refused");
+    return [landed && heldOff && busyOk && lostOk && survives && stoppedSaid && neverOk && laterOk && rereadOk && noneHeldOk && floorOk,
+      `${json(r)} · ${after.status} ${after.stopReason} · order ${json(order)} · HELD restarted ${restarted} · row ${json(rowsNow[0]?.payload)} · a step meanwhile ${m === null ? "never asked" : m.ok ? `${m.step.kind}${m.step.kind === "waiting" ? `:${m.step.busy ? "busy" : "other"}` : ""}` : m.reason} ran [${stepCalls.join(",")}] · busy ${busyOk} · lost to a Stop ${lostOk} · re-queue down ${survives} · stopped between ${stoppedSaid} · never finished → ${(await campaignOf(never.id)).status} "${n.ok ? n.message.slice(0, 30) : n.reason}" · paused after → ${pausedLater.status} ${told(pausedLater)} · finished after → ${doneLater.status} ${told(doneLater)} · the read after the move down ${rereadOk} ${json(reread.row)} · re-queue down, none held ${told(noneHeld)} · masked nine, held ${told(maskedHeld)} · none ${told(maskedNone)} · ten ${told(maskedTen)}`];
   });
 
   /* ── T6 · ⭐ Resume's count-based refusals ── */
@@ -1592,7 +1637,10 @@ async function runAssertions(impl: Impl): Promise<void> {
     const pureCopy = json(copyImports) === json(["@/lib/eat-day", "@/lib/marketing/campaign-status", "@/lib/utils", "type @/lib/server/store"]);
     let scripts: Record<string, string> = {};
     try { scripts = (JSON.parse(s.pkg) as { scripts?: Record<string, string> }).scripts ?? {}; } catch { scripts = {}; }
-    const wired = scripts["test:campaign-visuals"] === "tsx scripts/campaign-visuals.test.mts" && scripts["red:campaign-visuals"] === "tsx scripts/campaign-visuals.test.mts --prove-red";
+    // ⭐ the U47b-2 builder's hand-over · on the deploy chain, once (it was in none: a deploy shipped whatever it would catch)
+    const chain = (scripts.predeploy ?? "").split("&&").map((x) => x.trim());
+    const wired = scripts["test:campaign-visuals"] === "tsx scripts/campaign-visuals.test.mts" && scripts["red:campaign-visuals"] === "tsx scripts/campaign-visuals.test.mts --prove-red"
+      && chain.filter((x) => x === "npm run test:campaign-visuals").length === 1;
     return [doors && spelling && bare && reach && noSend && pureCopy && wired,
       `doors ${doors} · one spelling ${spelling} · bare ${bare} · importers control [${controlIn.join(",")}] live [${liveIn.join(",")}] copy [${copyIn.join(",")}] · no send ${noSend} · live-copy imports [${copyImports.join(", ")}] · scripts ${wired}`];
   });
@@ -1701,9 +1749,40 @@ if (!PROVE_RED) {
       impl: { resume: (id, a, d) => CTRL.resumeCampaign(id, a, { ...d, flights: () => freshFlights() }) } },
     { name: "R-T5c · the HELD rows re-queued BEFORE the move (as first built) — a Resume that loses to a Stop has rewritten a stopped campaign's rows", expect: [L.t5],
       impl: { resume: async (id, a, d) => { await d.recipients.requeueHeld(id, d.now().toISOString()); return CTRL.resumeCampaign(id, a, d); } } },
+    { name: "R-T5d · the read after the move unguarded (the check of 980e2ee7) — a Resume that landed throws when that read fails", expect: [L.t5],
+      impl: { resume: async (id, a, d) => {
+        let landed = false;
+        let escaped: unknown = null;
+        const r = await CTRL.resumeCampaign(id, a, { ...d, campaigns: { ...d.campaigns,
+          transition: async (cid, t) => { const m = await d.campaigns.transition(cid, t); if (m !== null) landed = true; return m; },
+          find: async (cid) => { try { return await d.campaigns.find(cid); } catch (e) { if (landed) escaped = e; throw e; } } } });
+        if (escaped !== null) throw escaped;
+        return r;
+      } } },
+    { name: "R-T5e · only a Stop said after the move (the check of 980e2ee7) — a Pause or the end landing after a Resume reads 'Sending again.'", expect: [L.t5],
+      impl: withCtrl((d) => {
+        let resumed = false;
+        return { ...d, campaigns: { ...d.campaigns,
+          transition: async (cid, t) => { const m = await d.campaigns.transition(cid, t); if (m !== null && t.from.includes("PAUSED") && (t.to === "RUNNING" || t.to === "PREPARING")) resumed = true; return m; },
+          find: async (cid) => { const c = await d.campaigns.find(cid); return resumed && c !== null && (c.status === "PAUSED" || c.status === "DONE") ? { ...c, status: "RUNNING" as const } : c; } } };
+      }) },
+    { name: "R-T5f · the held people's failure said whatever the counts (the check of 980e2ee7) — a Resume with nobody held says some held people could not be put back", expect: [L.t5],
+      impl: { resume: async (id, a, d) => {
+        let down = false;
+        const r = await CTRL.resumeCampaign(id, a, { ...d, recipients: { ...d.recipients,
+          requeueHeld: async (cid, at) => { try { return await d.recipients.requeueHeld(cid, at); } catch (e) { down = true; throw e; } } } });
+        return r.ok && down && r.message === COPY.LIVE_DONE.resume ? { ...r, message: `${r.message} ${COPY.LIVE_REQUEUE_FAILED}` } : r;
+      } } },
+    { name: "R-T5g · the held people's failure said blind to the floor (the check of 980e2ee7) — a masked viewer of nine learns whether anybody was held", expect: [L.t5],
+      impl: withCtrl((d) => {
+        let resumed = false;
+        return { ...d,
+          campaigns: { ...d.campaigns, transition: async (cid, t) => { const m = await d.campaigns.transition(cid, t); if (m !== null && t.from.includes("PAUSED") && (t.to === "RUNNING" || t.to === "PREPARING")) resumed = true; return m; } },
+          reach: (c, counts, reads) => (resumed ? LIVE.liveReach(c, counts, true) : d.reach(c, counts, reads)) };
+      }) },
     { name: "R-T6 · Resume priced on a figure, not the counts — a list longer than confirmed resumes", expect: [L.t6],
       impl: withCtrl((d) => ({ ...d, resumeCheck: (c, counts) => d.resumeCheck(c, { ...CS.zeroRecipientStatusCounts(), PENDING: counts.PENDING + counts.HELD }) })) },
-    { name: "R-T6b · Resume's copy advice ignores the floor — a masked viewer of a small list learns whether anybody was messaged", expect: [L.t6],
+    { name: "R-T6b · Resume's copy advice ignores the floor — a masked viewer of a small list learns whether anybody was messaged (and, the same `reach` deciding it, whether anybody is held — T5)", expect: [L.t5, L.t6],
       impl: withCtrl((d) => ({ ...d, reach: (c, counts) => LIVE.liveReach(c, counts, true) })) },
     { name: "R-T8 · the copy widens to the whole book — the audience never travels, the address is empty", expect: [L.t8],
       impl: withCtrl((d) => ({ ...d, travel: () => ({ ok: true, params: {}, filter: AUD.WHOLE_BOOK }) })) },
@@ -1745,6 +1824,8 @@ if (!PROVE_RED) {
       impl: () => withSources({ control: `${REAL_SOURCES.control}${NL}export async function startCampaignAction(id: string) { return id; }` }) },
     { name: "R-W1c · the services name a send of their own", expect: [L.w1],
       impl: () => withSources({ control: plantIn(REAL_SOURCES.control, "export async function stopCampaign(", "const viaWire = sendBatch;" + NL + "export async function stopCampaign(") }) },
+    { name: "R-W1d · the suite off the deploy chain (as it was before the U47b-2 hand-over) — a deploy ships whatever these claims would catch", expect: [L.w1],
+      impl: () => withSources({ pkg: plantIn(REAL_SOURCES.pkg, " && npm run test:campaign-visuals", "") }) },
     { name: "R-P1 · a Start refusal's object reaches the answer (its figures for every role)", expect: [L.p1],
       impl: { start: async (id, a, d) => { const r = await CTRL.startCampaign(id, a, d); return r.ok ? r : ({ ...r, refusal: { costTzs: 10_800 } } as typeof r); } } },
     /* ── U47b-2 · the page's own defects (scripts/lib/campaign-visuals-page.mts) ── */

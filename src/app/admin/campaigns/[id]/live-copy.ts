@@ -184,9 +184,11 @@ export function waitSentence(reason: string, until: string | null): string {
       return "Another campaign step is running — this page waits its turn.";
     case "before_send_unanswered":
       return "Waiting — the last check before sending couldn't be made, so nothing was sent. It tries again by itself; after three tries in a row the campaign pauses.";
-    // ⭐ The U47b-1 re-review · the engine answers it (U43b-2's send-age bound) and it had no sentence of its own.
+    // ⭐ The U47b-1 re-review · the engine answers it (U43b-2's send-age bound) and it had no sentence of its own. ⛔ The
+    // check of 980e2ee7 · no count and no group size here: the gate side pauses after three at the smallest group, the send
+    // side after three at any size (`tooSlowCounts`) — "if it keeps taking too long" is true of both.
     case "slice_too_slow":
-      return "Waiting — getting the last group of people ready to send took too long, so they were put back unsent. It tries again by itself, with a smaller group when it can; after three tries in a row at the smallest group the campaign pauses.";
+      return "Waiting — getting the last group of people ready to send took too long, so they were put back unsent. It tries again by itself, with a smaller group when it can; if it keeps taking too long, the campaign pauses.";
   }
   return `Waiting — engine reason: ${reason}.`;
 }
@@ -318,6 +320,8 @@ export const LIVE_DONE = {
 /** ⭐ The U47b-1 re-review · Resume's move landed and its held people could not be put back on the list: they stay parked
  *  (the campaign pauses for them once everyone else is done), said beside the act's own sentence. */
 export const LIVE_REQUEUE_FAILED = "Some people held back earlier could not be put back on the list — if the campaign pauses for them, press Resume again.";
+/** …said as a CONDITION to a viewer below the floor (E23: whether anybody is HELD is a per-state fact), whatever the counts. */
+export const LIVE_REQUEUE_FAILED_HIDDEN = "If anyone was held back earlier, they could not be put back on the list — if the campaign pauses for them, press Resume again.";
 
 /** ⭐ ruling 543 · the act landed and its audit row did not — said beside the act's own sentence, never instead of it. */
 export const LIVE_NOT_RECORDED = "⚠️ Its record could not be written to the audit log — tell whoever keeps the records.";
@@ -332,6 +336,9 @@ export const LIVE_CHANGED = {
   resumeBusy: "Another step of this campaign is running — press Resume again in a moment. Nothing was changed.",
   /** ⭐ Its re-review · Resume's move landed, and a Stop (which never waits for a flight) landed a moment after it. */
   stoppedAfterResume: "This campaign was resumed, then stopped a moment later — nothing new will start sending.",
+  /** …or a Pause did (the check of that fix), or the campaign finished in another step meanwhile. */
+  pausedAfterResume: "This campaign was resumed, then paused a moment later — nothing new starts sending until it is resumed again.",
+  finishedAfterResume: "This campaign was resumed and has finished — nobody on it is left to message.",
 } as const;
 
 export const LIVE_MISSING = "This campaign was not found.";

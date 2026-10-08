@@ -3147,9 +3147,10 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       bodies43.every((b) => b.length > 80 && !b.includes("UNCONFIRMED"))
         && [pClaim, pSettle, mClaim, mSettle].every((b) => b.includes(`status === "PENDING"`) || b.includes(`status: "PENDING"`)),
       bodies43.map((b) => b.length).join("/"));
-    ok("26.u43a.activity · lastActivity asks the rule set FIRST and is the newest claimedAt on the campaign — ONE aggregate _max in the Prisma twin (never the rows), the same maximum over instants in the memory twin",
-      before(pActivity, "assertActivityRead(campaignId)", ".aggregate(")
-        && pActivity.includes("aggregate({ where: { campaignId }, _max: { claimedAt: true } })") && !/findMany/.test(pActivity)
+    ok("26.u43a.activity · lastActivity asks the rule set FIRST and is the newest claimedAt on the campaign — ONE findFirst, newest first, in the Prisma twin (never the rows, and never an aggregate's _max: Prisma wraps that in a sub-select with an OFFSET, so Postgres read every row of the campaign — the check of 980e2ee7), the same maximum over instants in the memory twin",
+      before(pActivity, "assertActivityRead(campaignId)", ".findFirst(")
+        && pActivity.includes(`findFirst({ where: { campaignId, claimedAt: { not: null } }, orderBy: { claimedAt: "desc" }, select: { claimedAt: true } })`)
+        && pActivity.includes("return iso(newest?.claimedAt);") && !/findMany|\.aggregate\(|_max:/.test(pActivity)
         && before(mActivity, "assertActivityRead(campaignId)", "for (const r of store.smsCampaignRecipients.values())")
         && mActivity.includes("if (newest === null || Date.parse(r.claimedAt) > Date.parse(newest)) newest = r.claimedAt;"),
       `${flat43(pActivity).slice(0, 200)} | ${flat43(mActivity).slice(0, 200)}`);

@@ -39,7 +39,7 @@
  * Run: npm run test:sms-cost-guard
  */
 import { readFileSync } from "node:fs";
-import { sendBatch, smsBalanceSnapshot, refreshSmsBalance, smsRailProblem, smsConfigured, smsHealthSnapshot, lastOtpFailureAt, type SmsBalanceRead, type SmsRailProblem } from "../src/lib/server/sms.ts";
+import { sendBatch, smsBalanceSnapshot, refreshSmsBalance, smsRailProblem, smsConfigured, smsHealthSnapshot, type SmsBalanceRead, type SmsRailProblem } from "../src/lib/server/sms.ts";
 import { db } from "../src/lib/server/store.ts";
 import { getAuditPage, auditPending } from "../src/lib/server/audit.ts";
 import { smsCreditTile, eatClock, type SmsCreditTile } from "../src/app/admin/system/sms-credit-tile.ts";
@@ -701,7 +701,6 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   const realCreateMany = rowsDoor.createMany;
   const realNow = Date.now;
   const healthBefore = JSON.stringify(smsHealthSnapshot());
-  const otpBefore = lastOtpFailureAt();
   let clock = realNow();
   Date.now = () => clock;
   rowsDoor.createMany = async (rows: unknown[]) => { clock += 60_000; return realCreateMany.call(db.smsMessage, rows); };
@@ -714,10 +713,12 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
     calls === 0 && during !== null && !during.refused && during.results.length === 2 && during.results.every((r) => !r.ok && r.code === "DEADLINE_PASSED")
       && stored.length === 2 && stored.every((m) => m.status === "FAILED" && m.dlrStatus === null && m.failedAt !== null),
     `calls=${calls} codes=${(during?.results ?? []).map((r) => r.code).join(",")} rows=${stored.map((m) => m.status).join(",")}`);
-  // ⭐ the re-review of round 2 · a batch the deadline held back is no SMS failure: no health figure moves, no code is marked
+  // ⭐ the re-review of round 2 · a batch the deadline held back is no SMS failure: no health figure moves. (The login-code
+  // mark is not asked here: an all-MARKETING batch could never stamp it, so the claim held whatever the code did — the check
+  // of 980e2ee7. A marketing failure leaving the mark untouched is test:blackball-adapter §16's and test:marketing-engine S28's.)
   const healthAfter = JSON.stringify(smsHealthSnapshot());
-  ok("§11 ⭐ a batch the deadline held back counts in no SMS health figure and marks no login-code failure",
-    during !== null && healthAfter === healthBefore && lastOtpFailureAt() === otpBefore, `health ${healthBefore} → ${healthAfter} · OTP mark ${String(otpBefore)} → ${String(lastOtpFailureAt())}`);
+  ok("§11 ⭐ a batch the deadline held back counts in no SMS health figure",
+    during !== null && healthAfter === healthBefore, `health ${healthBefore} → ${healthAfter}`);
   await quiet();
 }
 

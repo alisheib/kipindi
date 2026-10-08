@@ -1540,6 +1540,15 @@ export const MUTATIONS = [
     expect: "26.u43a.parity · ⭐ BOTH twins define claim, claimedBy, settle, findStranded, requeueHeld and lastActivity — and smsMessage.findByTargets — a door in one twin only works in every suite and throws on production",
   },
   {
+    // 🔴 The check of 980e2ee7 · the activity read back to an aggregate: Prisma wraps `_max` in a sub-select with an OFFSET,
+    // so every watcher's poll reads every row of a 150,000-person campaign instead of one step down the index.
+    name: "prisma-dal.ts — lastActivity back to aggregate's _max (every row of the campaign read)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const newest = await pc().smsCampaignRecipient.findFirst({ where: { campaignId, claimedAt: { not: null } }, orderBy: { claimedAt: "desc" }, select: { claimedAt: true } });`,
+    to: `      const newest = await pc().smsCampaignRecipient.aggregate({ where: { campaignId }, _max: { claimedAt: true } });`,
+    expect: "26.u43a.activity · lastActivity asks the rule set FIRST and is the newest claimedAt on the campaign — ONE findFirst, newest first, in the Prisma twin (never the rows, and never an aggregate's _max: Prisma wraps that in a sub-select with an OFFSET, so Postgres read every row of the campaign — the check of 980e2ee7), the same maximum over instants in the memory twin",
+  },
+  {
     // 🔴 R-C1, in the twin every suite runs on: the memory claim takes rows another slice holds, so the five-driver
     // control and every engine suite stop meaning anything.
     name: "store.ts — the memory claim forgets its claimToken === null test",

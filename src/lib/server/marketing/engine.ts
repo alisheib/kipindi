@@ -42,9 +42,10 @@
  *
  * ── ⛔ THE SEND-AGE INVARIANT (E6's double-send guard — the U43b-2 review, its re-review, and the re-review of round 2) ──
  * A reaper — this process's or another's (a deploy's overlap) — judges a claim stranded at `REAP_AFTER_MS` (10 min), and
- * releases its people only when no message of the claim can have reached the wire — no message row, or one `sendBatch`
- * failed itself before its request: `sendBatch` writes its message rows BEFORE the wire (P2), so a claim whose rows were
- * handed on is settled from them (UNCONFIRMED at worst) and never released, never sent twice. The
+ * releases its people only when no message of the claim can have reached a handset — no message row, or one that failed
+ * with no receipt (`sendBatch` failed it before its request, or the gateway refused it outright): `sendBatch` writes its
+ * message rows BEFORE the wire (P2), so a claim whose rows were handed on is settled from them (UNCONFIRMED at worst) and
+ * never released, never sent twice. The
  * one gap was a claim whose rows did not exist yet when a reaper looked; a claim is therefore sendable only while it is
  * YOUNGER than `CLAIM_SEND_MAX_AGE_MS` (5 min, half of the reaper's age), checked THREE times on its way:
  *   1. `beforeSend` (`verifyClaims`) reads the claim's own stored instant: an older one is a WAIT `slice_too_slow`, every
@@ -54,9 +55,12 @@
  *      never meets one), read before its rows are written: past it, the batch is refused whole, nothing written
  *      (`DEADLINE_PASSED`, the same wait);
  *   3. …and again before each chunk's request: past it, the rows just written are FAILED with no request made.
+ *   Checks 2 and 3 are the SEND side: a stall in `sendBatch` that no smaller group cures, so three such waits in a row
+ *   PAUSE `slice_too_slow` at ANY size (`tooSlowCounts`).
  * So rows that a reaper could have missed are never followed by a request: a stall before them ends at check 3. In THIS
- * process the reaper is also held off a campaign whose slice is in flight (`insideFlight` — U47b's reap-only step for a
- * PAUSED · CANCELLED · DONE campaign is a second place it reaps) while the flight holds (`SLICE_FLIGHT_STALE_MS`, 20 min);
+ * process the reaper is also held off a campaign whose slice is in flight (`insideFlight` — U47b's step is a second place
+ * it reaps: a PREPARING campaign before its enqueue, a PAUSED · CANCELLED · DONE one alone) while the flight holds
+ * (`SLICE_FLIGHT_STALE_MS`, 20 min);
  * never across processes, where the three checks alone stand.
  * ⚠️ WHAT IS LEFT (none of it a second message on a healthy server): (a) a process frozen after check 3 sends LATE — its
  * rows already exist, so a reaper meanwhile settles them UNCONFIRMED and nobody is released; the one message still goes,
@@ -79,8 +83,8 @@
  * The RG line per refusal is `dispatchSlice`'s own (unchanged). ⛔ No phone number in any row, result or error.
  *
  * ── WHO CALLS IT ──────────────────────────────────────────────────────────────────────────────────────────────────────
- * U47b's step dispatcher ALONE (`campaign-control.ts`, §3.3: RUNNING → `runCampaignSlice`; PAUSED · CANCELLED · DONE →
- * `reapStrandedClaims`). `test:marketing-engine` S27 holds the callers to `ENGINE_CALLERS`, and ⛔ `insideFlight` — the
+ * U47b's step dispatcher ALONE (`campaign-control.ts`, §3.3: RUNNING → `runCampaignSlice`; PREPARING · PAUSED · CANCELLED ·
+ * DONE → `reapStrandedClaims`, PREPARING before its enqueue chunk). `test:marketing-engine` S27 holds the callers to `ENGINE_CALLERS`, and ⛔ `insideFlight` — the
  * reaper's pass beside a slice in flight — is named in this file only (the slice's own reap). SERVER-ONLY.
  *
  * Guard: `npm run test:marketing-engine` §S · §R · §C · §T · `npm run test:marketing-consent` U9 (the second driver) ·
@@ -118,9 +122,10 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { assertSettle, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
 import { recipientRows, zeroRecipientStatusCounts } from "@/lib/marketing/campaign-status";
 import {
-  AUDIT_DETAIL_MAX, MAX_ROW_ATTEMPTS, OTP_FAILURE_WAIT_MS, SLICE_GATE_BUDGET_MS, SLICE_MAX, SLICE_MIN, SLICE_START, SLICE_TOO_SLOW,
-  TRAIL_TEXT_MAX,
-  adaptSliceSize, cleanText, foldGateTime, isShopWide, otpFailureWaiting, railStopReason, reapVerdict, sendRecordOf, tooSlowCounts,
+  AUDIT_DETAIL_MAX, DEADLINE_PASSED, MAX_ROW_ATTEMPTS, OTP_FAILURE_WAIT_MS, SLICE_GATE_BUDGET_MS, SLICE_MAX, SLICE_MIN, SLICE_START,
+  SLICE_TOO_SLOW, TRAIL_TEXT_MAX,
+  adaptSliceSize, cleanText, foldGateTime, isShopWide, otpFailureWaiting, railStopReason, reapVerdict, sendErrorLog, sendRecordOf,
+  tooSlowCounts,
   settlementFor, sliceCheck, thrownSend,
 } from "@/lib/marketing/engine-rules";
 import type { EngineStopReason, ReapEvidence, SettleContext, ShopWide, SliceWait } from "@/lib/marketing/engine-rules";
@@ -145,9 +150,10 @@ export const BEFORE_SEND_UNANSWERED_MAX = 3;
  *  while YOUNGER than this — half of `REAP_AFTER_MS` — judged three times: `beforeSend` (a `slice_too_slow` wait), then
  *  `sendBatch`'s deadline before its rows are written and again before its request (`DEADLINE_PASSED`, the same wait). */
 export const CLAIM_SEND_MAX_AGE_MS = REAP_AFTER_MS / 2;
-/** ⭐ The U43b-2 re-review · after this many `slice_too_slow` waits IN A ROW at the SMALLEST group (`SLICE_MIN` people, or
- *  fewer left — counted there only, the re-review of round 2) the campaign PAUSES `slice_too_slow`: a gate slower than the
- *  bound even for five people re-asks them for ever otherwise, and nothing is ever sent. */
+/** ⭐ The U43b-2 re-review · after this many `slice_too_slow` waits IN A ROW the campaign PAUSES `slice_too_slow` — counted
+ *  (`tooSlowCounts`) on the gate side only at the SMALLEST group (`SLICE_MIN` people, or fewer left), on the send side
+ *  (`sendBatch`'s own deadline) at any size: either way, left uncounted, the same people are re-asked for ever and nothing
+ *  is ever sent. */
 export const SLICE_TOO_SLOW_MAX = 3;
 /** E10 · a slice in flight longer than this is taken to be lost, so it no longer holds every campaign of the process off,
  *  nor holds the reaper off its campaign (`insideFlight`). ⛔ Kept clearly APART from `REAP_AFTER_MS` — TWICE it (the U43b-2
@@ -196,7 +202,8 @@ export type EngineProcessState = {
   gateMsAvg: number | null;
   /** By campaign: how many slices running `beforeSend` could not answer. */
   unanswered: Record<string, number>;
-  /** By campaign: how many slices running waited `slice_too_slow` at the smallest group (the U43b-2 re-review). Optional:
+  /** By campaign: how many slices running waited `slice_too_slow` as `tooSlowCounts` counts them — the gate side at the
+   *  smallest group, the send side at any size (the U43b-2 re-review; the check of 980e2ee7). Optional:
    *  a state made by an older build in a hot-reloaded process has none yet. */
   tooSlow?: Record<string, number>;
   /** By campaign: the `pausedAt` the two streaks above were counted under (the re-review of round 2) — a new one, an
@@ -273,8 +280,10 @@ export type EngineDeps = {
     reapVerdict: typeof reapVerdict;
     adaptSliceSize: typeof adaptSliceSize;
     sendRecordOf: typeof sendRecordOf;
-    /** ⭐ Does a `slice_too_slow` wait count toward the pause (the smallest group alone)? */
+    /** ⭐ Does a `slice_too_slow` wait count toward the pause (by route: `tooSlowCounts`)? */
     tooSlowCounts: typeof tooSlowCounts;
+    /** The ONE log line a landed `send_error` pause writes (`sendErrorLog`). */
+    sendErrorLog: typeof sendErrorLog;
   };
   audit: AuditFn;
   now: () => Date;
@@ -332,7 +341,7 @@ export const ENGINE_DEPS: Readonly<EngineDeps> = Object.freeze({
   dispatch: dispatchSlice,
   gate: undefined,
   send: engineSend,
-  rules: Object.freeze({ isShopWide, settlementFor, reapVerdict, adaptSliceSize, sendRecordOf, tooSlowCounts }),
+  rules: Object.freeze({ isShopWide, settlementFor, reapVerdict, adaptSliceSize, sendRecordOf, tooSlowCounts, sendErrorLog }),
   audit,
   now: () => new Date(),
   clock: () => performance.now(),
@@ -831,12 +840,14 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   // The re-check before the wire that could not answer — a WAIT, and after BEFORE_SEND_UNANSWERED_MAX in a row a PAUSE
   if (shop.shopWide && shop.reason === "before_send_unanswered") state.unanswered[campaignId] = (state.unanswered[campaignId] ?? 0) + 1;
   else if (seen.hookAnswered) delete state.unanswered[campaignId];
-  // ⭐ The U43b-2 re-review · a slice too slow to send, counted IN A ROW — ⭐ and (the re-review of round 2) only at the
-  // SMALLEST group (`SLICE_MIN`, or fewer people left): above it the next slice is smaller and tries again uncounted, so a
-  // slow gate pauses only once even five people cannot be checked in time. Any slice that settles its people resets it.
+  // ⭐ The U43b-2 re-review · a slice too slow to send, counted IN A ROW (`tooSlowCounts`): the gate side only at the smallest
+  // group (the gate time is measured, so the next slice is smaller), the send side — `sendBatch`'s own DEADLINE_PASSED, a
+  // stall a smaller group does not cure — at any size (the check of round 2's fix: uncounted, it waited for ever). ⭐ Reset
+  // only by a slice that reached the check before the wire and got past it — never by one whose people were all refused,
+  // which never met the bound (the same rule as the unanswered streak's).
   if (shop.shopWide && shop.reason === SLICE_TOO_SLOW) {
-    if (deps.rules.tooSlowCounts(claimed.length)) tooSlow[campaignId] = (tooSlow[campaignId] ?? 0) + 1;
-  } else delete tooSlow[campaignId];
+    if (deps.rules.tooSlowCounts(claimed.length, shop.detail === DEADLINE_PASSED)) tooSlow[campaignId] = (tooSlow[campaignId] ?? 0) + 1;
+  } else if (seen.hookAnswered) delete tooSlow[campaignId];
 
   if (shop.shopWide && shop.pause) {
     const paused = await pauseFor(c, shop.reason as EngineStopReason, shop.detail, deps);
@@ -844,7 +855,7 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
     // holds the fact — the campaign and the error's code or name only (the re-review of round 2: never the transport's
     // words, which the failed route carries), and where the words are: the batch's `sms.failed` audit rows.
     if (shop.reason === "send_error" && paused.kind === "paused") {
-      console.error(`[marketing-engine] campaign ${campaignId} paused send_error: ${seen.threw ?? "UNKNOWN"} — the batch's sms.failed audit rows hold the transport's words`);
+      console.error(deps.rules.sendErrorLog(campaignId, seen.threw));
     }
     return paused;
   }
@@ -861,8 +872,9 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
       const w = await windowOf(deps);
       return { kind: "waiting", reason: "quiet_hours", until: w.open !== true && w.opensAt !== "" ? w.opensAt : null };
     }
-    // ⛔ The send-age bound: the claim grew too old to send — its people went back as they were, and the slow gate was
-    // measured above, so the next slice is smaller when it can be; at the smallest group, three in a row pause.
+    // ⛔ The send-age bound: the claim grew too old to send — its people went back as they were. On the GATE side the slow
+    // gate was measured above, so the next slice is smaller when it can be; three in a row pause at the smallest group, and
+    // on the SEND side (`sendBatch`'s own deadline — a stall no smaller group cures) three in a row pause at any size.
     if (shop.reason === SLICE_TOO_SLOW) {
       if ((tooSlow[campaignId] ?? 0) >= SLICE_TOO_SLOW_MAX) {
         delete tooSlow[campaignId];
