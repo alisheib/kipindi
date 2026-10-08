@@ -14,7 +14,7 @@ import { LIVE_REASON_ROWS, LIVE_TILE, LIVE_TILES, LIVE_TILE_COUNT, RESULTS_ROW_B
  * an officer opens this page in: the status card (chip, name, headline, audience, confirmation), the controls card (five
  * buttons at the KIT's size — `Button size="sm"`, which is `--tap-min` — and the line that says why; the review's NIT: the
  * ghost names the kit's token and invents no pixel rung of its own), the figures card (the bar and its caption, six tiles on
- * the page's own grid, the five reasons as the kit's bar list, and the status chips) and — U48a — the results card (its title,
+ * the page's own grid and the status chips; the five reasons are the results card's, printed once) and — U48a — the results card (its title,
  * the honesty line, and the rows every campaign has, the not-sent row carrying its five reasons). Its boxes are the real ones —
  * the figures' and the results' geometry is `live-geometry.ts`, read by both. ⛔ Heights that depend on the campaign (the audience line wrapping,
  * a callout, a campaign with nobody on its list yet, whose page has no figures card) are NOT equal by construction, said
@@ -72,11 +72,8 @@ export default function Loading() {
                   </div>
                 ))}
               </div>
-              <div className="space-y-2">
-                <SkBar className="h-[18px] w-[160px]" />
-                {/* The kit's own bar list with blank rows and empty tracks — its geometry, never a copy of it. */}
-                <AdminBarList rows={Array.from({ length: LIVE_REASON_ROWS }, () => ({ label: String.fromCharCode(160), value: 0 }))} format={() => String.fromCharCode(160)} />
-              </div>
+              {/* U48a · no reasons list here: while a campaign is being sent the figures card does not draw one (the results card does,
+                  once — its ghost below carries the kit's bar list). */}
               <div className="space-y-2">
                 <SkBar className="h-[18px] w-[200px]" />
                 <div className="flex flex-wrap gap-2">

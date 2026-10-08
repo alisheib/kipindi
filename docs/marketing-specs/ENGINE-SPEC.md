@@ -2747,8 +2747,8 @@ read. **Risks:** a receipt vocabulary beyond `DELIVRD` is still synthetic (BLACK
 is written, said once.** Files: `src/lib/server/marketing/campaign-results.ts` (new — the three reads, the rules, the stop walk and its
 memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `results` filled; `LiveViewDeps.results`),
 `src/app/admin/campaigns/[id]/results-card.tsx` (new), `live-copy.ts` (the words), `live-geometry.ts`, and — U47b-2's, kept small — `page.tsx`
-(one import and one block), `loading.tsx` (the ghost's block) and `live-client.tsx` (one word: `useLive` is exported); the DAL (below);
-`scripts/lib/campaign-visuals-results.mts` (R1–R12, run by `test:campaign-visuals`), the dev seed and the drive.
+(one import and one block), `loading.tsx` (the ghost's block, and no reasons rows in the figures card's) and `live-client.tsx` (`useLive` is exported, and the figures card's reasons list is guarded — Mount, below); the DAL (below);
+`scripts/lib/campaign-visuals-results.mts` (R1–R13, run by `test:campaign-visuals`), the dev seed and the drive.
 - ⭐ **Two NEW READ DOORS — the section's "Files" named none, and the spec's reads need them** (U47b-1's `countByOutcome` precedent):
   `smsCampaignRecipient.countSentBefore(campaignId, before)` — ONE count of the campaign's rows still SENT and handed over STRICTLY
   before the bound (E5's "older than 15 minutes"; a DELIVERED, receipt-failed, unanswered or other campaign's row never) — and
@@ -2791,13 +2791,20 @@ memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `result
   next view. A figure that could not be read (this one, the 15-minute count) is a dash and a sentence, never a zero, and never fails the view
   or stops its driver. A stop is therefore read up to 30 s late (the drive waits it out).
 - **Mount.** The card shares `LiveProvider`'s state through `useLive`; `page.tsx` draws `<LiveWhenResults>` after the figures, in the block
-  `live-results`, in an `AdminCard` titled "Results"; the ghost has the matching block. The figures card is unchanged and so still prints its
-  own "Not sent, by reason" list — the same list as the results' (one function worded it); dropping the first is a one-line change
-  (`view.results === null` around it) the lead may make once U47b-2's review settles.
-- **Proof:** `test:campaign-visuals` 53 claims (R1–R12 are U48a's — R1 drives the REAL DLR route, R4 the REAL opt-out service),
-  105 plants held (35 of them the results'; the four old plants R-S1/R-S2/R-S3/R-S4 also turn results claims red, and say so);
-  the suite's fixture numbers move to the next NDC past the hundredth world (a red run is one world per plant, and the eight-digit keys
-  `isGatewayMsisdn` refuses had begun to break the last plants); `test:campaign-models` 54 claims, red 100/100; `test:dal-parity` §26.u48a;
+  `live-results`, in an `AdminCard` titled "Results"; the ghost has the matching block. ✅ **The reasons are printed ONCE** (the merge with the
+  U47b-2 review's fix round, S14 2026-10-08): the figures card draws its own "Not sent, by reason" list only while the view has NO results
+  (`view.results === null`). Wherever a view carries the reasons it carries results as well — the floor hides both, and a campaign with
+  nobody on its list has no figures card — so in practice the results card prints the list and the figures card none: the figures card's
+  ghost lost its reasons rows to match, the drive reads whichever list is drawn (`[data-live-reasons]` or `[data-results-reasons]`) and
+  asserts there is one, and `test:campaign-visuals` R13 holds it (V7 holds a reader's figures card to the tiles and the chips).
+- **Proof:** `test:campaign-visuals` 59 claims on the merged tree (R1–R13 are U48a's — R1 drives the REAL DLR route, R4 the REAL opt-out
+  service), 174 plants held (38 of them the results'; the old plants R-S1/R-S2/R-S3/R-S4 also turn results claims red, and say so); the
+  suite's recipient keys are the review's `rowKeyOf`, its row part now a per-world COUNT of rows (the results' claims seed over a hundred
+  lists a world, and the first row part — the call's number times a thousand — grew a sixth digit at the hundredth call, a 13-digit number
+  `isGatewayMsisdn` refuses); V12 counts the step door's security rows BY IDENTITY, not by a before-and-after total (the in-memory audit
+  ring holds 10,000 entries, a red run of ~175 worlds fills it, and from then on the total no longer moves by one); `--only=<text>` runs a
+  SUBSET of the plants (said as one on its verdict line — the full run is the proof); `test:campaign-models` 54 claims, red 100/100;
+  `test:dal-parity` §26.u48a;
   the drive (`qa:marketing-live`): the results card at 1280 and 360 — written, `node --check`ed, its server side (seed → Start → the
   engine on the console rail → receipts POSTed at the real route → a stop by link → the staged states) exercised in one process; the five
   new `red:dal-parity` anchors run alone on a copy of the tree, as the harness does, each failing exactly the one claim it names; the

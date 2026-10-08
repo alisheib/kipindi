@@ -348,7 +348,9 @@ export function LiveProgress() {
         {k.waiting !== null && <Figure name="waiting" value={k.waiting} />}
       </div>
       {view.floor !== null && <p className="text-body-sm text-text-secondary" data-live-floor>{view.floor}</p>}
-      {view.notSentReasons !== null && (
+      {/* U48a · "Not sent, by reason" is printed ONCE: by the results card, whenever the view carries results (the same list, worded
+          once). This one is the figures card's own only while there are none to carry it. */}
+      {view.notSentReasons !== null && view.results === null && (
         <div className="space-y-2" data-live-reasons>
           <p className="text-body-sm text-text-secondary">{LIVE_BREAKDOWN_TITLE}</p>
           <AdminBarList

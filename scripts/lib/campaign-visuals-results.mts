@@ -19,7 +19,8 @@
  *   R9  the failed split, no answer and what is left — agreeing with the figures card, from the ONE groupBy asked ONCE;
  *   R10 the stop walk and its cost — chunks, memory, a failure said and never a zero, nothing asked when there is nobody to ask about;
  *   R11 the card itself — the spec's titles, the words, an unread count said, no arithmetic and no money in the browser's file;
- *   R12 the wiring — the doors by identity, the module's reach, the mount and the ghost.
+ *   R12 the wiring — the doors by identity, the module's reach, the mount and the ghost;
+ *   R13 the reasons are printed ONCE — by the results card; the figures card keeps its own list only for a view with no results.
  * ⛔ This file holds no backslash (an editing tool decodes them): patterns are built from character classes and codes.
  */
 import { readFileSync, readdirSync } from "node:fs";
@@ -73,6 +74,7 @@ export const LABELS = {
   r10: "R10 · THE STOP WALK AND ITS COST — walked in chunks (a list of an exact multiple of the chunk ends on an empty page), each chunk's stops asked in ONE query of at most a chunk of numbers, every person once; the real chunk is 1,000 and fits the bulk read's bound; production keeps a campaign's count for a short time and shares a walk in flight — a failed walk is never kept; a count that cannot be made is unread, never a zero, and never fails the view; a view never waits longer than its budget for the walk — one that is slower says unread THIS time and the memory finds it done for the next; nothing is asked of a campaign that handed nothing over",
   r11: "R11 · THE CARD — the spec's titles in the spec's order (Delivered · Handed over, no receipt yet · No receipt after 15 minutes · Failed with The network refused it and Not delivered (receipt) · Not sent — the checks refused them · No answer from the network · Stopped before sending · Stopped by their link since this campaign); the Delivered row prints Delivered and never Handed over (distinct numbers); the honesty and price lines are the spec's sentences; an unread count is a dash and its sentence; nothing is drawn below the floor; and the card's file does no arithmetic on a count, formats no money, reads no clock and reaches nothing of the server",
   r12: "R12 · THE WIRING — the view's results deps frozen and wired to the REAL doors by identity and by source; the results module names no send and writes nothing; only the live view imports it; the card is imported by the page alone, which mounts it behind LiveWhenResults in its own block under the figures; the ghost has the matching block; the client exports the one hook the card reads",
+  r13: "R13 · THE REASONS ARE PRINTED ONCE — over a reader's campaign above the floor the whole page (status, controls, figures and results) draws the five reasons in the results card and none in the figures card, and not the figures card's 'Not sent, by reason' title; the same view with its results taken away keeps the figures card's own list; a masked viewer on nine rows is drawn neither; the figures card's file guards its list on the view having no results",
 } as const;
 export type ResultsLabel = (typeof LABELS)[keyof typeof LABELS];
 
@@ -101,6 +103,8 @@ const REAL_SOURCES: ResultsSources = {
 export type ResultsImpl = {
   /** The results card inside the client provider and the app router, exactly as the page composes it. */
   render: (view: CampaignLiveView, o: { mayAct: boolean }) => string;
+  /** The whole page's bodies — status, controls, figures and results — as the page composes them (R13). */
+  renderPage: (view: CampaignLiveView, o: { mayAct: boolean }) => string;
   /** Whether this server can take a receipt (R7). */
   setUp: typeof RES.receiptsSetUp;
   /** The stop walk's memory (R10), and the walk with the deps its claims hand it (R4, R10). */
@@ -136,6 +140,7 @@ function renderWhole(view: CampaignLiveView, o: { mayAct: boolean }): string {
 
 export const REAL_RESULTS: ResultsImpl = {
   render: renderCard,
+  renderPage: renderWhole,
   setUp: RES.receiptsSetUp,
   memo: RES.memoByKey,
   walk: RES.stoppedByLinkOf,
@@ -881,6 +886,41 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     return [frozen && doors && quiet && mount && ghost && hook && geometry && reach,
       `deps frozen and wired ${frozen} · imported by value by [${importers.join(', ')}] ${reach} · the doors named ${doors} · reads only ${quiet} · mounted behind LiveWhenResults under the figures ${mount} · ghost block ${ghost} · useLive exported, the client names no card ${hook} · geometry ${geometry}`];
   });
+
+  /* ── R13 · the reasons are printed once ── */
+  await h.claim(L.r13, async () => {
+    const c = await h.campaign("rr13", { path: RUNNING, count: 14 });
+    await h.rows(c.id, [
+      ...h.many(6, { status: "SENT", sentAt: iso(T - 5 * MIN) }), ...h.many(3, { status: "SKIPPED", skipReason: "suppressed" }),
+      ...h.many(2, { status: "SKIPPED", skipReason: "no_consent" }), ...h.many(3, { status: "PENDING" }),
+    ]);
+    const reader = await results(c.id, READER);
+    const count = (text: string, part: string): number => text.split(part).length - 1;
+    // the whole page for a reader above the floor: the list is the results card's, and only there
+    const page = impl.renderPage(reader, viewerOf(READER));
+    h.see(page);
+    const pageText = textOf(page);
+    const listed = reasonsIn(page);
+    const wanted = reader.results?.notSent.reasons ?? [];
+    const total = listed.reduce((n, x) => n + x.count, 0);
+    const once = count(page, "data-live-reasons") === 0 && count(page, "data-results-reasons") === 1 && json(listed) === json(wanted) && listed.length >= 5
+      && total === 5 && total === reader.kpis.notSent && count(pageText, COPY.LIVE_BREAKDOWN_TITLE) === 0;
+    // the same view with its results taken away (a viewer who has none to read) keeps the figures card's own list
+    const bare = impl.renderPage({ ...reader, results: null }, viewerOf(READER));
+    h.see(bare);
+    const own = count(bare, "data-live-reasons") === 1 && count(bare, "data-results-reasons") === 0 && count(textOf(bare), COPY.LIVE_BREAKDOWN_TITLE) === 1
+      && !bare.includes("data-results");
+    // a masked viewer on nine rows: neither list — the floor's sentence alone
+    const nine = await h.campaign("rr13b", { path: RUNNING, count: 9 });
+    await h.rows(nine.id, [...h.many(5, { status: "SENT", sentAt: iso(T - 5 * MIN) }), ...h.many(4, { status: "SKIPPED", skipReason: "suppressed" })]);
+    const masked = impl.renderPage(await results(nine.id, GROWTH), viewerOf(GROWTH));
+    h.see(masked);
+    const neither = count(masked, "data-live-reasons") === 0 && count(masked, "data-results-reasons") === 0;
+    // the file: the figures card's list is guarded on the view having no results
+    const guard = impl.sources.client.includes("view.notSentReasons !== null && view.results === null && (");
+    return [once && own && neither && guard,
+      `the reader's page: figures-card lists ${count(page, "data-live-reasons")}, results lists ${count(page, "data-results-reasons")}, the five words once ${json(listed) === json(wanted)} (sum ${total} of ${reader.kpis.notSent}), the old title ${count(pageText, COPY.LIVE_BREAKDOWN_TITLE)}× · without results the figures card draws its own ${own} · masked: neither ${neither} · the guard in the file ${guard}`];
+  });
 }
 
 /** The text of the card's markup (tags out, entities decoded). */
@@ -981,7 +1021,16 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withSources({ live: plantIn(S.live, "results: RESULTS_DEPS,", "results: { ...RESULTS_DEPS },") }) },
     { name: "R-R12f · the browser's card imports the server module by value — the stop walk's reads reach the client's file", expect: [L.r12],
       impl: withSources({ importers: new Map([...S.importers, ["src/app/admin/campaigns/[id]/results-card.tsx", `import { campaignResults } from "@/lib/server/marketing/campaign-results";`]]) }) },
-    { name: "R-R13 · a phone number reaches the results card", expect: [phoneLabel],
+    { name: "R-R13 · the figures card prints its own list beside the results' — the reasons twice (the guard on the view having no results removed from the client's file)", expect: [L.r13],
+      impl: withSources({ client: plantIn(S.client, "view.notSentReasons !== null && view.results === null && (", "view.notSentReasons !== null && (") }) },
+    { name: "R-R13b · the page draws the figures card's list as well as the results' — a second 'Not sent, by reason' beside the card", expect: [L.r13],
+      impl: withResults({ renderPage: (view, o) => {
+        const html = base.renderPage(view, o);
+        return view.results === null ? html : `${html}<div data-live-reasons><p>${COPY.LIVE_BREAKDOWN_TITLE}</p></div>`;
+      } }) },
+    { name: "R-R13c · the figures card never draws its list — not even for a viewer whose view has no results", expect: [L.r13],
+      impl: withResults({ renderPage: (view, o) => base.renderPage({ ...view, notSentReasons: null }, o) }) },
+    { name: "R-P4 · a phone number reaches the results card", expect: [phoneLabel],
       impl: withResults({ render: (view, o) => `${base.render(view, o)}<p>+255712345678</p>` }) },
   ];
 }

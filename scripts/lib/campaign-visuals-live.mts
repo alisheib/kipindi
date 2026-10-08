@@ -204,7 +204,13 @@ async function doorChecks(M: Mods, S: PageSources, fx: DoorFx, h: PageHarness): 
   const post = (id: unknown, site: string | null = "same-origin", method = "POST") => ({ method, secFetchSite: site, campaignId: id });
   const roundTrip = (v: unknown): string => json(JSON.parse(json(v)));
   const ACTION = "marketing.campaign.step";
-  const blockedNow = async () => { await auditFlush(); return getAuditPage({ category: "SECURITY", limit: 10_000 }).filter((e) => e.action === "privilege_escalation_blocked" && e.targetId === ACTION).length; };
+  // ⭐ The security rows this door's refusals wrote, BY IDENTITY: the in-memory audit log is a ring of 10,000 entries (all categories), and a
+  // count taken before and after stops moving by one once the ring is full — the oldest row falls out as the new one comes in. A red run
+  // of ~175 worlds fills it. The rows that are NEW are the ones whose id was not there before.
+  const blockedIds = async (): Promise<Set<string>> => {
+    await auditFlush();
+    return new Set(getAuditPage({ category: "SECURITY", limit: 10_000 }).filter((e) => e.action === "privilege_escalation_blocked" && e.targetId === ACTION).map((e) => e.id));
+  };
   const noisy = console.error;
   console.error = () => {};
   try {
@@ -254,12 +260,12 @@ async function doorChecks(M: Mods, S: PageSources, fx: DoorFx, h: PageHarness): 
     ];
     for (const [name, s, factor, status, reason] of refusals) {
       reset();
-      const before = await blockedNow();
+      const before = await blockedIds();
       let threw: string | null = null;
       let a: Awaited<ReturnType<typeof door>> | null = null;
       try { a = await door(post(fx.campaignId), depsFor(s, factor)); } catch (err) { threw = errorName(err); }
       const body = a?.body ?? null;
-      const recorded = (await blockedNow()) - before;
+      const recorded = [...(await blockedIds())].filter((id) => !before.has(id)).length;
       const rowOk = reason === "role" ? recorded === 1 : recorded === 0;
       if (!(threw === null && a !== null && a.status === status && body !== null && !body.ok && body.reason === reason && spy.guard === 1 && spy.viewer === 0 && spy.step === 0 && rowOk)) {
         wrong.push(`${name}: ${a?.status ?? `threw ${threw}`} ${json(body)} guard ${spy.guard}, viewer ${spy.viewer}, step ${spy.step}, security rows ${recorded}`);

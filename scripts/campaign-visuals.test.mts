@@ -54,7 +54,7 @@
  *   R5  the reasons are U38b's five buckets, protected one line, for every role; R6 ⛔ E23 · the floor — no results below it;
  *   R7  whether receipts are set up is the DLR route's own rule; R8 ⛔ OD24 · the price line for a money reader only;
  *   R9  the failed split, no answer and what is left, agreeing with the figures; R10 the stop walk and its cost;
- *   R11 the card; R12 the wiring.
+ *   R11 the card; R12 the wiring; R13 the reasons are printed once (the results card's, never the figures card's as well).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` proves the baseline green first, then plants each defect IN MEMORY
  * (a dependency handed to a service or the view, a wrapper of a service, a source text replaced in memory) and requires
@@ -80,6 +80,8 @@ import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
+/** `--only=<text>` runs the plants whose name holds the text — a SUBSET, said as one on the verdict line; the full run is the proof. */
+const ONLY = (process.argv.find((a) => a.startsWith("--only=")) ?? "").slice("--only=".length);
 
 const CTRL = await import("../src/lib/server/marketing/campaign-control.ts");
 const LIVE = await import("../src/lib/server/marketing/campaign-live.ts");
@@ -1807,7 +1809,7 @@ if (!PROVE_RED) {
       impl: withView((d) => ({ ...d, recipients: { ...d.recipients, countByOutcome: async (id: string) => (await d.recipients.countByOutcome(id)).filter((g) => g.status !== "DELIVERED") } })) },
     { name: "R-S2 · protected itemised — an RG reason keeps its own key instead of the protected line (the results' list is the same one — R5 sees it too)", expect: [L.s2, L.r5],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, bucketOf: (r) => (typeof r === "string" && r.startsWith("rg_") ? (r as never) : d.rules.bucketOf(r)) } })) },
-    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, why it paused, and why it waits) — on the page too (V7)", expect: [L.s3, L.s8, L.s10, L.s11, L.v7, L.r6, L.r11],
+    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, why it paused, and why it waits) — on the page too (V7)", expect: [L.s3, L.s8, L.s10, L.s11, L.v7, L.r6, L.r11, L.r13],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, breakdownHidden: () => false } })) },
     { name: "R-S5 · who paused read from ANY row however old (the re-review: the `since` rule removed) — Juma named for Amina's pause", expect: [L.s5],
       impl: withView((d) => ({ ...d, actsOn: async (id: string) => (await d.actsOn(id)).map((e) => ({ ...e, createdAt: "2999-01-01T00:00:00.000Z" })) })) },
@@ -1930,7 +1932,7 @@ if (!PROVE_RED) {
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);
   let held = 0;
   const missed: string[] = [];
-  for (const plant of plants) {
+  for (const plant of plants.filter((p) => ONLY === "" || p.name.includes(ONLY))) {
     reset();
     let built: Impl;
     try {
@@ -1953,6 +1955,7 @@ if (!PROVE_RED) {
       console.log(`  FAIL  ${plant.name}${absent.length ? `${NL}        did not fail: ${absent.map((x) => x.slice(0, 70)).join(" | ")}` : ""}${extra.length ? `${NL}        also failed: ${extra.map((x) => x.slice(0, 70)).join(" | ")}` : ""}`);
     }
   }
-  console.log(`${NL}RED CONTROL — ${held} of ${plants.length} proofs held${missed.length ? `; ${missed.length} FAILED` : ""}`);
+  const ran = held + missed.length;
+  console.log(`${NL}RED CONTROL — ${held} of ${ran} proofs held${ONLY !== "" ? ` (a SUBSET: --only=${ONLY}; ${plants.length} plants in all — not the proof)` : ""}${missed.length ? `; ${missed.length} FAILED` : ""}`);
   process.exitCode = missed.length === 0 ? 0 : 1;
 }

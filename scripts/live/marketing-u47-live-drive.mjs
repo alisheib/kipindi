@@ -195,7 +195,9 @@ const readLive = (page) => page.evaluate(() => {
     const ps = el.querySelectorAll("p");
     kpis[el.getAttribute("data-live-kpi")] = { label: (ps[0]?.textContent ?? "").trim(), value: (ps[1]?.textContent ?? "").trim(), title: el.getAttribute("title") };
   }
-  const reasons = [...document.querySelectorAll("[data-live-reasons] [title]")].map((el) => {
+  // U48a · "Not sent, by reason" is printed ONCE: by the results card, and by the figures card itself only for a view with no results
+  const reasonsRoot = document.querySelector("[data-live-reasons]") ?? document.querySelector("[data-results-reasons]");
+  const reasons = (reasonsRoot === null ? [] : [...reasonsRoot.querySelectorAll("[title]")]).map((el) => {
     const t = el.getAttribute("title") ?? "";
     const at = t.lastIndexOf(": ");
     return { label: t.slice(0, at), count: t.slice(at + 2) };
@@ -712,6 +714,9 @@ async function drivePass(vp, viewport, i, stage) {
   await dialogShot(a.page, name, "start-dialog-admin", W.startDialog.admin.title);
   await a.page.keyboard.press("Escape");
   // ⭐ U48a · the owner reads the results of the staged RUNNING campaign — every row, and the price line (OD24: money for a money reader)
+  // ⛔ The owner's page MAY ACT and the staged audience is made up: every call it makes (the step door's, the actions') is held, so the
+  // driver steps nothing — the page stays as it rendered and the counts below are the seed's. The context is closed, never released.
+  await holdCalls(a.page);
   await openLive(a.page, stage.running.id);
   const ar = await readResults(a.page);
   ok(`${name} · RESULTS (staged RUNNING) · ADMIN · Delivered 120 (receipts), Handed over, no receipt yet 700 of which 680 were handed over more than 15 minutes ago, Failed 8, Not sent 60, No answer 2, Waiting 714 — and NO honesty line (a receipt has arrived)`,
@@ -719,11 +724,14 @@ async function drivePass(vp, viewport, i, stage) {
       && ar.rows.failed?.value === "8" && ar.rows.notSent?.value === "60" && ar.rows.noAnswer?.value === "2" && ar.rows.waiting?.value === "714"
       && ar.rows.stoppedByLink?.value === "0" && ar.honesty.length === 0,
     JSON.stringify(ar && { rows: Object.fromEntries(Object.entries(ar.rows).map(([k, v]) => [k, v.value])), honesty: ar.honesty }));
-  ok(`${name} · RESULTS (staged RUNNING) · ADMIN · the failed split (the network refused 8, receipts 0) and the five reasons, dominant first, protected ONE line — the figures card's own list`,
+  ok(`${name} · RESULTS (staged RUNNING) · ADMIN · the failed split (the network refused 8, receipts 0) and the five reasons, dominant first, protected ONE line — the results card's list (the figures card's own is gone while a view has results)`,
     !!ar && ar.failed.length === 2 && ar.failed[0].label === W.results.failed.wire && ar.failed[0].count === "8" && ar.failed[1].label === W.results.failed.receipt && ar.failed[1].count === "0"
       && ar.reasons.length === 6 && ar.reasons[0].label === W.reasons.suppressed && ar.reasons[0].count === "24"
       && ar.reasons.some((x) => x.label === W.reasons.protected && x.count === "13") && ar.reasons.reduce((n, x) => n + num(x.count), 0) === 60,
     JSON.stringify(ar && { failed: ar.failed, reasons: ar.reasons }));
+  ok(`${name} · RESULTS (staged RUNNING) · ADMIN · the reasons are printed ONCE — the results card draws the list, the figures card draws none beside it`,
+    (await a.page.locator("[data-results-reasons]").count()) === 1 && (await a.page.locator("[data-live-reasons]").count()) === 0,
+    JSON.stringify({ results: await a.page.locator("[data-results-reasons]").count(), figures: await a.page.locator("[data-live-reasons]").count() }));
   ok(`${name} · RESULTS (staged RUNNING) · ADMIN · the price line, exactly: "${W.results.spendStaged.slice(0, 90)}…" (820 handed over × TZS 6)`,
     !!ar && ar.spend === W.results.spendStaged, ar?.spend);
   await fitCheck(a.page, name, "results-admin");
