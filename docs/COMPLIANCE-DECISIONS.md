@@ -18,10 +18,14 @@ erasure sentence — the 2026-10-05 G10 sentence plus the record — and the not
 (Q8) — … HONOURED for every referee already given it … and RE-WORDED from today"*; *"The sign-up box (Q2) — REMOVED"*. The
 referees' new words are management's, § "2026-10-07 · Management's answers for the first marketing campaign — a small
 pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)", item 4.
-⏳ **The lead's words of 2026-10-07, on the review of these units — TO BE PUT TO ALI before integration** (marked ⏳
-below): §5's coded referee numbers bullet, §6's Erasure line, §9's coded-form sentences, the data-rights sentence as it
-now reads, and the note's AML sentence. Applied by Claude in the commits that carry this entry (marketing S14,
-final-rule units, and their review fixes).
+✅ **The lead's words of 2026-10-07, on the review of these units — APPROVED BY ALI on 2026-10-08** (marked ✅ below,
+where they were ⏳): §5's coded referee numbers bullet, §6's Erasure line, §9's coded-form sentences — with "(not the
+number itself)", the correction he was told of —, the data-rights sentence as it now reads, the note's AML sentence, and
+the profile switch's line for a promised referee's number (*"Off for good: 50pick has promised never to send offers to
+this number."*, `push.marketingReferee`, en/sw/zh). Put to him in the session as six wordings, each quoted in English
+with the Swahili and Chinese said to match; he answered *"here is my yes reply"*, pasting the six back (marketing S14,
+2026-10-08 ~16:10 EAT). Applied by Claude in the commits that carry this entry (marketing S14, final-rule units, and
+their review fixes).
 
 **/legal/privacy, in en/sw/zh (the English is binding).**
 - **§5, a new bullet** after "Marketing consent" — en: *"Records of marketing text messages (offers and news by SMS): at
@@ -36,16 +40,16 @@ final-rule units, and their review fixes).
   *"，但下文所述的短信优惠与资讯记录除外"*: without it the new bullet would contradict "removed at once". (Approved as
   written; it names only the marketing record — the SMS log of codes keeps the number too, and its retention is owed to
   U16b; the data-rights sentence below says so.)
-- ⏳ **§5, the coded referee numbers bullet** (after the record bullet) — en: *"A coded form of the phone number of each
+- ✅ **§5, the coded referee numbers bullet** (after the record bullet) — en: *"A coded form of the phone number of each
   agent referee named before version {V}: kept for as long as 50pick sends marketing messages, so that we never contact
   them for marketing (§9)"*; sw: *"Namba ya simu ya kila mdhamini wa wakala aliyetajwa kabla ya toleo la {V} la sera hii,
   ikiwa imegeuzwa kuwa msimbo: huhifadhiwa kwa muda wote ambao 50pick inatuma ujumbe wa matangazo, ili tusiwasiliane
   naye kamwe kwa matangazo (§9)"*; zh: *"本政策 {V} 版之前被提名的每位代理推荐人的电话号码（编码形式）：只要 50pick 仍在发送营销信息即予保留，以确保我们绝不会为营销目的联系他们（见第 9 条）"*.
-- ⏳ **§6, Erasure** — "subject to AML retention requirements" becomes en *"subject to the records the law requires us
+- ✅ **§6, Erasure** — "subject to AML retention requirements" becomes en *"subject to the records the law requires us
   to keep (see §5)"*; sw *"kwa kuzingatia kumbukumbu ambazo sheria inatulazimu kuhifadhi (angalia §5)"*; zh
   *"受法律要求我们保留的记录约束（见第 5 条）"*.
 - **§9, the referees.** The promise *"we never contact you for marketing"* is no longer made to every referee.
-  ⏳ The first paragraph's "we hold your details only to verify that application" gains en *"(and, as below, a coded
+  ✅ The first paragraph's "we hold your details only to verify that application" gains en *"(and, as below, a coded
   form of your number)"*, sw *"(na, kama ilivyoelezwa hapa chini, namba yako ikiwa imegeuzwa kuwa msimbo)"*, zh
   *"（以及如下文所述，您号码的一种编码形式）"*, so it stays true. The second paragraph says — en: *"Until version {V} of
   this policy we told every referee that we never contact them for marketing. If you were named as a referee before
@@ -60,7 +64,7 @@ final-rule units, and their review fixes).
   baada ya hapo: 50pick inaweza kukutumia ofa kwa SMS. Unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha
   kilicho katika kila ofa."*; zh: *"在本政策 {V} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。"*
   The two sentences after "If you are named as a referee after that:" are management's (approved); the rest of the
-  paragraph is ⏳.
+  paragraph is ✅ (Ali, 2026-10-08).
   ⚠️ **One parenthesis differs from the wording first put to Ali.** It read *"(it cannot be turned back into the
   number)"* (sw *"(msimbo huo hauwezi kugeuzwa kurudi kuwa namba)"*, zh *"（无法还原为该号码）"*), and now reads en *"(not
   the number itself)"*, sw *"(si namba yenyewe)"*, zh *"（并非号码本身）"*. Why: the coded form is an HMAC of the number
@@ -76,7 +80,7 @@ final-rule units, and their review fixes).
   7: it goes, with the link, in the commit that files the written confirmation).
 
 **The same record, said in the same commit.**
-- ⏳ **The data-rights file** (`privacy.ts`, `rights.erasure`, English only): *"…On a closed account we erase your
+- ✅ **The data-rights file** (`privacy.ts`, `rights.erasure`, English only): *"…On a closed account we erase your
   contact details (except as below), password, profile, in-app messages and the name and number on your identity record,
   and we replace any name shown beside your past comments. Your financial and audit records, and the images of your
   identity documents, are retained for 7 years from account closure under POCA Cap 423 §16 and cannot be erased before
@@ -95,7 +99,7 @@ final-rule units, and their review fixes).
   angalau miaka 7 kwa sheria ya AML. Kumbukumbu za ofa na habari tulizokutumia kwa SMS (namba, ujumbe, kilichotokea kwa
   ujumbe huo na kiungo cha “Acha”) zinahifadhiwa kwa angalau miaka 7; kufuta huondoa tu uhusiano wa kumbukumbu hizo na
   akaunti yako. Funga akaunti yako kwanza."*; zh *"删除会清除您的联系方式、密码、个人资料和消息。财务、身份和审计记录根据反洗钱法规至少保留 7 年。我们向您发送的短信优惠与资讯的记录（号码、短信内容、发送结果及停止接收链接）至少保留 7 年；删除仅会移除这些记录与您账户的关联。请先关闭账户。"*
-  The record sentence is the approved one; ⏳ the AML sentence lost "and erased when that period ends" (false, as above)
+  The record sentence is the approved one; ✅ (Ali, 2026-10-08) the AML sentence lost "and erased when that period ends" (false, as above)
   and gained "at least".
 
 **Why each is true.** Erasure's one write to a campaign recipient row clears the account link and nothing else (U16a,
