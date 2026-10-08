@@ -93,6 +93,10 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const WS = new RegExp("[" + String.fromCharCode(32, 9, 10, 13, 160) + "]+", "g");
 const squash = (s) => (s || "").replace(WS, " ").trim();
 const DOT = String.fromCharCode(0x2022);
+/** ⭐ The dot as the DevTools capture spells it (the second full run, 2026-10-08): the browser reads the RSC answer as
+ *  UTF-8 and the page shows "•", but the protocol hands Playwright the body DECODED as Windows-1252 — E2 80 A2 becomes
+ *  "â€¢" — even through `body()`. A capture is mapped back before it is read; the page itself never needs it. */
+const DOT_AS_CAPTURED = String.fromCharCode(0xe2, 0x20ac, 0xa2);
 const NL = String.fromCharCode(10);
 /** A masked number as a JSON payload may spell it: its dots raw, or each written as its escape. */
 const spellings = (masked) => [masked, masked.split(DOT).join(String.fromCharCode(92) + "u2022")];
@@ -266,10 +270,11 @@ const focusOf = (page) => page.evaluate((dlg) => {
   };
 }, DLG);
 
-/** ⭐ A response's bytes read AS UTF-8 (the first full run, 2026-10-08): an RSC answer comes as `text/x-component` with no
- *  charset, and Playwright's `text()` then read the mask's "•" (E2 80 A2) as three Latin-1 characters — the masks the
- *  screen showed rightly could not be found in the answer, and the controls failed on the reading, not on the page. */
-const utf8 = async (r) => Buffer.from(await r.body()).toString("utf8");
+/** ⭐ A response's text with its dots mapped back (the first two full runs, 2026-10-08): an RSC answer comes as
+ *  `text/x-component` with no charset, and the capture spells the mask's "•" as "â€¢" (`DOT_AS_CAPTURED`) whether read as
+ *  `text()` or as bytes — the masks the screen showed rightly could not be found in the answer, and the controls failed on
+ *  the reading, not on the page. Already-right text is left as it is. */
+const utf8 = async (r) => Buffer.from(await r.body()).toString("utf8").split(DOT_AS_CAPTURED).join(DOT);
 /** The page's RSC payload at the address it STANDS at — `new URL(page.url())`, its canonical one (a bare ?draft= redirects). */
 async function pagePayload(page) {
   const u = new URL(page.url());
@@ -478,13 +483,18 @@ async function refusalRearms(page, tag, label) {
   const seen = await watchDialog(page);
   await page.locator(D.confirm).click();
   await page.waitForSelector(D.notice, { timeout: 90000 }).catch(() => {});
+  // ⭐ …and every font the NEW words asked for (the second full run: the body still grew 16 px in one context of four
+  // after fonts were ready before the press — a weight first used by the re-armed text loads only once that text exists).
+  await page.evaluate(async () => { await document.fonts.ready; });
   const box1 = await boxOf(page, D.panel);
   const parts1 = await partsOf(page, D.panel);
+  const text1 = await textOf(page, D.panel);
   // ⭐ Photographed the moment the sentence lands — a remount would show its entrance, or nothing, here.
   await shoot(page, `${tag}-moved-rearmed-at-once`, null);
   await wait(700);
   const box2 = await boxOf(page, D.panel);
   const parts2 = await partsOf(page, D.panel);
+  const text2 = await textOf(page, D.panel);
   const watched = await seen();
   const f = await focusOf(page);
   const typed = await has(page, D.input);
@@ -495,10 +505,14 @@ async function refusalRearms(page, tag, label) {
     `${await textOf(page, D.notice)} · ${await dialogTitle(page)}`);
   ok(`${tag} · REFUSED · audience_moved · ⛔ the focus is back on the box (cleared) or on Cancel — never on Confirm`,
     !f.confirm && (typed ? f.input && (await page.locator(D.input).inputValue().catch(() => "x")) === "" : f.cancel), JSON.stringify(f));
-  // On a red, the detail names WHICH part of the panel moved (each direct child's height, before and after).
+  // On a red, the detail names WHICH part of the panel moved (each direct child's height, before and after) and where its
+  // words first differ (a late render shows as text; a late font swap as the same text, taller).
   const moved = parts1.map((h, i) => (Math.abs(h - (parts2[i] ?? -1)) > 1 ? `#${i}:${h}→${parts2[i]}` : "")).filter(Boolean);
+  let at = 0;
+  while (at < text1.length && at < text2.length && text1[at] === text2[at]) at++;
+  const textMoved = text1 === text2 ? "the same words" : `words differ at ${at}: "${text1.slice(Math.max(0, at - 20), at + 60)}" → "${text2.slice(Math.max(0, at - 20), at + 60)}"`;
   ok(`${tag} · REFUSED · audience_moved · the panel holds still once the sentence lands (top and height within 1px) — no entrance replayed`,
-    box1 !== null && box2 !== null && Math.abs(box1.top - box2.top) <= 1 && Math.abs(box1.h - box2.h) <= 1, `${JSON.stringify({ box1, box2 })} · moved [${moved.join(" ")}]`);
+    box1 !== null && box2 !== null && Math.abs(box1.top - box2.top) <= 1 && Math.abs(box1.h - box2.h) <= 1, `${JSON.stringify({ box1, box2 })} · moved [${moved.join(" ")}] · ${textMoved}`);
   await stateShot(page, tag, "moved-rearmed", movedNotice(was + 1, was), null);
   await fitCheck(page, tag, "moved-rearmed");
   await closeDialog(page);
