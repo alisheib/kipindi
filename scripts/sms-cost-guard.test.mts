@@ -39,7 +39,7 @@
  * Run: npm run test:sms-cost-guard
  */
 import { readFileSync } from "node:fs";
-import { sendBatch, smsBalanceSnapshot, refreshSmsBalance, smsRailProblem, smsConfigured, type SmsBalanceRead, type SmsRailProblem } from "../src/lib/server/sms.ts";
+import { sendBatch, smsBalanceSnapshot, refreshSmsBalance, smsRailProblem, smsConfigured, smsHealthSnapshot, lastOtpFailureAt, type SmsBalanceRead, type SmsRailProblem } from "../src/lib/server/sms.ts";
 import { db } from "../src/lib/server/store.ts";
 import { getAuditPage, auditPending } from "../src/lib/server/audit.ts";
 import { smsCreditTile, eatClock, type SmsCreditTile } from "../src/app/admin/system/sms-credit-tile.ts";
@@ -695,19 +695,29 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
     !loginCode.refused && loginCode.results[0]?.ok === true && !mixed.refused && mixed.results.every((r) => r.ok) && calls === 2,
     `otp ${loginCode.refused ?? "sent"} · mixed ${mixed.refused ?? "sent"} · calls=${calls}`);
 
-  // The deadline passes WHILE the rows are written: the write held 150 ms, the deadline 40 ms ahead of the call.
+  // The deadline passes WHILE the rows are written — ⭐ on a STOPPED clock (the re-review of round 2: a 40 ms deadline beside
+  // a 150 ms write failed on a loaded machine): the clock stands still until the row write, which moves it a minute on.
   const rowsDoor = db.smsMessage as unknown as { createMany: (rows: unknown[]) => unknown };
   const realCreateMany = rowsDoor.createMany;
-  rowsDoor.createMany = async (rows: unknown[]) => { await new Promise((r) => setTimeout(r, 150)); return realCreateMany.call(db.smsMessage, rows); };
+  const realNow = Date.now;
+  const healthBefore = JSON.stringify(smsHealthSnapshot());
+  const otpBefore = lastOtpFailureAt();
+  let clock = realNow();
+  Date.now = () => clock;
+  rowsDoor.createMany = async (rows: unknown[]) => { clock += 60_000; return realCreateMany.call(db.smsMessage, rows); };
   calls = 0;
   let during: Awaited<ReturnType<typeof sendBatch>> | null = null;
-  try { during = await sendBatch(marketing(2), { notAfter: Date.now() + 40 }); } finally { rowsDoor.createMany = realCreateMany; }
+  try { during = await sendBatch(marketing(2), { notAfter: clock + 40 }); } finally { rowsDoor.createMany = realCreateMany; Date.now = realNow; }
   const refs = (during?.results ?? []).map((r) => r.reference).filter((x) => x !== "");
   const stored = (await db.smsMessage.listRecent(10_000)).filter((m) => refs.includes(m.reference));
   ok("§11 ⭐ a deadline that passes while the rows are written makes NO request: those rows FAILED with no receipt, each answered DEADLINE_PASSED",
     calls === 0 && during !== null && !during.refused && during.results.length === 2 && during.results.every((r) => !r.ok && r.code === "DEADLINE_PASSED")
       && stored.length === 2 && stored.every((m) => m.status === "FAILED" && m.dlrStatus === null && m.failedAt !== null),
     `calls=${calls} codes=${(during?.results ?? []).map((r) => r.code).join(",")} rows=${stored.map((m) => m.status).join(",")}`);
+  // ⭐ the re-review of round 2 · a batch the deadline held back is no SMS failure: no health figure moves, no code is marked
+  const healthAfter = JSON.stringify(smsHealthSnapshot());
+  ok("§11 ⭐ a batch the deadline held back counts in no SMS health figure and marks no login-code failure",
+    during !== null && healthAfter === healthBefore && lastOtpFailureAt() === otpBefore, `health ${healthBefore} → ${healthAfter} · OTP mark ${String(otpBefore)} → ${String(lastOtpFailureAt())}`);
   await quiet();
 }
 

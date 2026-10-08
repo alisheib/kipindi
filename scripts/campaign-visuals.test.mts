@@ -18,6 +18,7 @@
  *   S8  ⛔ THE COPY ADVICE — once anybody was messaged, a copy messages them again; under the floor, a condition;
  *   S9  the audience in words through the list's ONE role-shaped describer (`campaignRowAudience`) and its words;
  *   S10 ⛔ E23 · WHY IT PAUSED, BELOW THE FLOOR — one sentence for every engine reason (the U47b-1 review);
+ *   S11 ⛔ E23 · THE WAITS AS SAID — every wait in its own words; below the floor one sentence (its re-review);
  *   T1  Start through the REAL check · T2 ⭐ every U49a Start refusal reaches its sentence · T3 ⭐ OD66 at Start ·
  *   T4  Pause · T5 ⭐ Resume's re-queue, inside the step flight · T6 ⭐ Resume's count-based refusals · T7 Stop (E25) ·
  *   T8  ⭐ Make a copy · T9 the lost races and the record (ruling 543);
@@ -58,6 +59,7 @@ const CS = await import("../src/lib/marketing/campaign-status.ts");
 const SC = await import("../src/lib/server/marketing/start-check.ts");
 const ENQ = await import("../src/lib/server/marketing/enqueue.ts");
 const ENGINE = await import("../src/lib/server/marketing/engine.ts");
+const RULES = await import("../src/lib/marketing/engine-rules.ts");
 const AUD = await import("../src/lib/server/marketing/audience.ts");
 const DRAFT = await import("../src/lib/server/marketing/campaign-draft.ts");
 // U13 · every slice this suite drives is handed a FIXED window (ENGINE-SPEC §5 rule 9; `test:marketing-window` W6).
@@ -111,17 +113,18 @@ const L = {
   s2: "S2 · U38b's FIVE WORDS — skipped rows across every gate reason read under 'Not sent' in AUDIENCE_REASON_LABEL's five words, PROTECTED ONE LINE (the six RG, age and account reasons together), no_basis beside no_consent, dominant first with ties in U38b's order, then 'Can't be sent to' and an unworded refusal only because there is one of each — adding up to 'Not sent', for a reader and a masked viewer alike above the floor — and no gate reason's key anywhere in the view",
   s3: "S3 · ⛔ E23 · THE FLOOR — a masked viewer on a campaign of 9 rows sees On campaign 9 and NOTHING split (every other KPI null, no reasons, no chips) and the floor's sentence; at 10 rows everything; a reader at 9 everything; and the floor counts ROWS — a campaign confirmed for 50 whose list holds 9 is floored",
   s4: "S4 · ⛔ OD24 · MONEY ONLY FOR A MONEY READER — a money reader's view carries the frozen estimate and limit and a Start dialog 'It can cost up to TZS 9,624 of the TZS 10,000 limit'; a GROWTH viewer's carries money null, a dialog 'It uses up to 1,604 SMS' and NO 'TZS' anywhere in the whole view",
-  s5: "S5 · THE HEADLINES AND WHY IT STOPPED — every status in the spec's words (DRAFT, CONFIRMED, PREPARING 'N of M people written', RUNNING 'N of M done', PAUSED 'Paused.', DONE 'Finished — nobody on this campaign is still waiting.' — true beside a 'No answer' too, CANCELLED 'Stopped by <name> at HH:MM EAT — N people were not messaged.' from the stop's own audit row and resumeOutstanding, said ONCE with no stop sentence beside it — a stop before Start leaves everyone confirmed unmessaged, a stop with nobody left reads '— nobody on it was still waiting.'); an officer's pause names them and the time — from ITS row, never an older one; an engine's pause says stopReasonLabel's words; the confirmation names its officer",
+  s5: "S5 · THE HEADLINES AND WHY IT STOPPED — every status in the spec's words (DRAFT, CONFIRMED, PREPARING 'N of M people written', RUNNING 'N of M done', PAUSED 'Paused.', DONE 'Finished — nobody on this campaign is left to message.' — true beside a 'No answer' too, CANCELLED 'Stopped by <name> at HH:MM EAT — N people were not messaged.' from the stop's own audit row and resumeOutstanding, said ONCE with no stop sentence beside it — a stop before Start leaves everyone confirmed unmessaged, a stop with nobody left reads '— nobody on it was left to message.'); an officer's pause names them and the time — from ITS row, never an older one by a real officer of another name (the re-review); an engine's pause says stopReasonLabel's words; the confirmation names its officer",
   s6: "S6 · THE CONTROLS — all five exist in every one of the seven statuses, each disabled with a reason and enabled exactly where §4.15 says (Start CONFIRMED · Pause PREPARING, RUNNING · Resume PAUSED · Stop any non-terminal · Make a copy any non-DRAFT); a view-only viewer has every one disabled with the role's reason; a closed switch disables Start 'Marketing SMS are switched off.' and drops its dialog; OD66 disables Start for a masked viewer on both populations; an audience no address can write disables Make a copy in its own words",
-  s7: "S7 · THE STANDING FACTS — the switch through THE gate (the console stub open; a Blackball rail with the switch closed shut, with it open open until its closing time); the window is the view's window; lastStepAt the newest claim; nobody driving for a RUNNING campaign with no claim or one 91 s old, not at 89 s, never for a paused one; keep this page open only for an acting viewer of PREPARING or RUNNING",
+  s7: "S7 · THE STANDING FACTS — the switch through THE gate (the console stub open; a Blackball rail with the switch closed shut, with it open open until its closing time); the window is the view's window; lastStepAt the newest claim; nobody driving for a RUNNING campaign with no claim or one 91 s old, not at 89 s, never for a paused one, never while the engine waits — the window shut, money busy or a money signal that throws, a code failed within two minutes either side of now (the engine's ONE reading, otpFailureWaiting); keep this page open only for an acting viewer of PREPARING or RUNNING",
   s9: "S9 · THE AUDIENCE IN WORDS, AS THE LIST SAYS IT — the list's ONE role-shaped describer (campaignRowAudience) and its words: a tag in describeAudience's phrase, the whole book 'Everyone in the contact book', a consent filter 'Consent: given' to a reader and hidden from a masked viewer, both populations hidden from a masked viewer, a stored filter that cannot be read said so — never a phone number",
   s8: "S8 · ⛔ THE COPY ADVICE — once anybody on a campaign was messaged, its copy-advising pause sentences (audience_unreadable, template_invalid) and the Stop dialog say a copy would message them again, as a FACT; with nobody messaged, the spec's own words; under the floor the SAME conditional words whether or not anybody was messaged; and a campaign that never ran reads the spec's words for every viewer",
-  s10: "S10 · ⛔ E23 · WHY IT PAUSED, BELOW THE FLOOR (the U47b-1 review) — a masked viewer of a campaign of 9 rows reads ONE sentence (LIVE_PAUSED_HIDDEN) for EVERY engine reason — the network's no and its silence, a send failed on our side, the last check unanswered, too slow to send, both credit floors, the provider unset, held rows, the switch, the credit unread, a list longer than confirmed found while sending, an unknown key — while the four copy-advising reasons keep their conditional words and an officer's pause names who; a reader at 9 rows and a masked viewer at 10 read each reason's own words; and the view says it through the ONE function the list will use (pausedReasonSentenceFor)",
+  s10: "S10 · ⛔ E23 · WHY IT PAUSED, BELOW THE FLOOR (the U47b-1 review) — a masked viewer of a campaign of 9 rows reads ONE sentence (LIVE_PAUSED_HIDDEN) for EVERY engine reason — the network's no and its silence, a send failed on our side, the last check unanswered, too slow to send, both credit floors, the provider unset, held rows, the switch, the credit unread, a list longer than confirmed found while sending, the confirmation unreadable, the settings, the sizes or the price unread, the provider unrecognised, an unknown key — while the four copy-advising reasons keep their conditional words and an officer's pause names who; FLOOR_SAFE_STOP_REASONS is exactly those six keys; a viewer who may only VIEW reads the sentence without 'press Resume' (LIVE_PAUSED_HIDDEN_VIEW); a reader at 9 rows and a masked viewer at 10 read each reason's own words; and the view says it through the ONE function the list will use (pausedReasonSentenceFor)",
+  s11: "S11 · ⛔ E23 · THE WAITS AS SAID (the U47b-1 re-review) — every wait the engine answers (SliceWait, read from its own type) has its OWN sentence, never 'engine reason:' — slice_too_slow included; a step answer's wait carries busy and until alone; below the floor a masked viewer reads ONE sentence (LIVE_WAIT_HIDDEN) for every wait but busy, while a reader at 5 rows and a masked viewer at 10 read each wait's own",
   t1: "T1 · START through the REAL check (the console stub) — a confirmed tag audience moves CONFIRMED → PREPARING with startedAt; ONE ADMIN marketing.campaign_started row by the officer { count, estimateSegments, freshCount, shrunkBy }; the answer LIVE_DONE.start, recorded; no recipient row written (the enqueue is the step's) and no refusal row",
   t2: "T2 · ⭐ START'S REFUSALS WIRED — every U49a Start reason (the source's own case list, each answered by a stand-in check) is refused in EXACTLY startRefusalSentence(r, viewer) — TZS for a money reader, none for anyone else — the campaign still CONFIRMED, ONE start_refused row per refusal whose payload is the reason, plus the figures for the money reasons alone (the rail's problem for rail_dead) and never a count; and the REAL check refuses a RUNNING campaign not_confirmed",
   t3: "T3 · ⭐ OD66 AT START — a masked viewer on a book ∪ players campaign is refused audience_refused in START_AUDIENCE_REFUSED's words BEFORE anything is counted (the check never asked), ONE start_refused row { reason, param: pop }; a reader on the same campaign reaches the check, and so does a masked viewer on a book audience",
   t4: "T4 · PAUSE — PREPARING and RUNNING → PAUSED officer_paused with pausedAt, ONE ADMIN row of the engine's ONE spelling of marketing.campaign_paused { reason: officer_paused } by the officer, the answer LIVE_DONE.pause; CONFIRMED, DONE and a DRAFT refused in their words with no row; a second Pause 'already paused'",
-  t5: "T5 · ⭐ RESUME'S RE-QUEUE (E8), INSIDE THE STEP FLIGHT (the U47b-1 review) — a paused campaign whose list finished, holding 3 HELD rows: ONE move to RUNNING (stopReason cleared), THEN they start over (PENDING, attempts 0, the hold's class cleared), ONE ADMIN marketing.campaign_resumed row { requeuedHeld: 3, to: RUNNING } and 'Sending again.'; a step asked while Resume works answers busy and runs nothing; a Resume while another step holds the flight is refused busy with nothing read or changed; a Resume that loses its race to a Stop touches no row; a re-queue that fails still answers the Resume that landed (requeuedHeld null); a list that never finished resumes to PREPARING with its own toast",
+  t5: "T5 · ⭐ RESUME'S RE-QUEUE (E8), INSIDE THE STEP FLIGHT (the U47b-1 review) — a paused campaign whose list finished, holding 3 HELD rows: ONE move to RUNNING (stopReason cleared), THEN they start over (PENDING, attempts 0, the hold's class cleared), ONE ADMIN marketing.campaign_resumed row { requeuedHeld: 3, to: RUNNING } and 'Sending again.'; a step asked while Resume works answers busy and runs nothing; a Resume while another step holds the flight is refused busy with nothing read or changed; a Resume that loses its race to a Stop touches no row; a re-queue that fails still answers the Resume that landed (requeuedHeld null) and says the held people stay parked; a Stop landing between the move and the re-queue is said (resumed, then stopped), never 'Sending again.'; a list that never finished resumes to PREPARING with its own toast",
   t6: "T6 · ⭐ RESUME'S COUNT-BASED REFUSALS — U49a's refusal fed the store's COUNTS: a list longer than confirmed under an OFFICER's pause is refused list_over_confirmed (the switch closed and the console stub alike) with nothing re-queued, the campaign still PAUSED and no resumed row; with someone already messaged its words say a copy would message them again; ⛔ E23 · a masked viewer below the floor reads the SAME conditional words whether or not anybody was messaged; an engine's copy-only pause (audience_moved) is refused first, before the switch; a list within its count resumes",
   t7: "T7 · STOP (E25) — CONFIRMED, PREPARING, RUNNING and PAUSED each → CANCELLED officer_stopped with finishedAt, ONE ADMIN marketing.campaign_stopped row { outstanding } = what was left (resumeOutstanding), the answer LIVE_DONE.stop, and EVERY row untouched; DONE, CANCELLED and a DRAFT refused with no row",
   t8: "T8 · ⭐ MAKE A COPY — a NEW DRAFT by the officer through the composer's one save: the same message, the same audience (the same canonical key), the name '<name> (copy)', ONE marketing.campaign_created and ONE marketing.campaign_copied { from, to }, the composer's address; once anybody was messaged its answer says the copy messages them again; REFUSED in its own words with NOTHING made for an audience no address can write and for a masked viewer on both populations; a DRAFT refused; ⭐ the name at the composer's 80 characters — one that fits takes ' (copy)', one that would not keeps itself, an untitled one reads 'Untitled campaign (copy)'; the draft door's refusal of the MESSAGE (message_cannot_travel, its problem in words) and a source line it could not read (source_unreadable, the door's words) each make nothing",
@@ -132,7 +135,7 @@ const L = {
   d4: "D4 · ⭐ END TO END on the memory twin — a confirmed tag audience of 6 (4 consenting players' book rows, 2 contacts with no consent): Start → a PREPARING step writes 6 rows and finishes RUNNING → a RUNNING step's slice hands 4 over on the STUB wire and refuses 2 (no consent) → the next step finishes DONE; each view says so (the bar 6 of 6, 'Not sent' 2 under 'No consent or recorded basis'); one wire call, no SmsMessage row for the campaign",
   d5: "D5 · THE REAPER ON MOUNT — a PAUSED campaign holding a claim stranded 11 minutes with no message: one step reaps it back to PENDING (attempts + 1, the claim cleared) — kind reaped 1 — and writes ONE SYSTEM marketing.campaign_reaped row",
   w1: "W1 · THE WIRING — CONTROL_DEPS and LIVE_VIEW_DEPS frozen and wired to the REAL doors by identity; the officer's pause writes the ONE spelling the engine and the enqueue write and the view reads; no directive and no exported *Action in the three files; nothing in src value-imports campaign-control (none until U47b-2), campaign-live only campaign-control, live-copy only the two; the services name no send; live-copy reaches the server for a type alone; test:/red:campaign-visuals resolve to this file",
-  p2: "P2 · ⛔ THE STEP ANSWER CARRIES NO FIGURE AND NO CURSOR (the U47b-1 review's MAJOR) — every step answer of the run, for every role, holds only kind, reason, until and status: no count and no cursor, so a padded tag below the floor never reads one person's gate verdict off a step",
+  p2: "P2 · ⛔ THE STEP ANSWER CARRIES NO FIGURE AND NO CURSOR (the U47b-1 review's MAJOR) — every step answer of the run, for every role, holds only kind, busy, until and status: no count, no cursor and ⭐ no reason (its re-review — a pause's or a wait's key named what the floor hides), so a padded tag below the floor never reads one person's gate verdict off a step",
   p1: "P1 · ⛔ NO PHONE NUMBER AND NO REFUSAL OBJECT — no 255… key and no +255… number in any view, answer or audit payload of the run; every service answer holds only ok, reason, message, recorded (and a copy's id and href)",
 } as const;
 type Label = (typeof L)[keyof typeof L];
@@ -650,9 +653,21 @@ async function runAssertions(impl: Impl): Promise<void> {
     seen(await impl.stop(early.id, reader, d));
     const ev = await viewOf(impl, early.id, READER);
     const at = (c: StoredSmsCampaign, k: "pausedAt" | "finishedAt") => COPY.eatClock(c[k]);
-    const olderAct = { id: "aud_u47b1_old", category: "ADMIN", action: LIVE.OFFICER_PAUSED_ACTION, actorId: "usr_u47b1_someone_else", targetType: "SmsCampaign",
+    // ⭐ the U47b-1 re-review · the older row is a REAL officer's, with a name of their own — a vacuous pin read "an officer"
+    // for a user who did not exist, whatever the `since` rule did.
+    const juma = `usr_u47b1_juma_${w.run}`;
+    const atJ = iso(T_NOW - 86_400_000);
+    await Promise.resolve(db.user.create({
+      id: juma, phoneE164: `+${keyOf("69", 8_000_000 + w.run)}`, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+      role: "GROWTH", status: "ACTIVE", locale: "SW", displayName: "Juma", dob: "1990-01-01", region: null,
+      acceptedTermsVersion: "v1", acceptedTermsAt: atJ, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+      createdAt: atJ, updatedAt: atJ, lastLoginAt: atJ, closedAt: null,
+    } as StoredUser));
+    const olderAct = { id: "aud_u47b1_old", category: "ADMIN", action: LIVE.OFFICER_PAUSED_ACTION, actorId: juma, targetType: "SmsCampaign",
       targetId: toPause.id, payload: { reason: "officer_paused" }, createdAt: iso(Date.parse(paused.pausedAt ?? "") - 2 * 60 * MIN), prevHash: "x", entryHash: "y" };
     const lost = await viewOf(impl, toPause.id, READER, { actsOn: async () => [olderAct] as never });
+    // …and the CONTROL: dated at the act, the same row names Juma (the pin can see a name)
+    const current = await viewOf(impl, toPause.id, READER, { actsOn: async () => [{ ...olderAct, createdAt: paused.pausedAt }] as never });
     // ⭐ the U47b-1 review · DONE beside a "No answer", and a stop with nobody left: words true of both
     const doneUnanswered = await campaign(w, "s5u", { path: ["CONFIRMED", "PREPARING", "RUNNING", "DONE"], count: 10 });
     await rows(w, doneUnanswered.id, [...many(8, { status: "SENT" }), ...many(2, { status: "UNCONFIRMED" })]);
@@ -668,16 +683,18 @@ async function runAssertions(impl: Impl): Promise<void> {
       running: rv.headline === "Sending — 7 of 12 done." && rv.stopSentence === null,
       officerPause: ov.headline === "Paused." && ov.stopSentence === `Paused by ${OFFICER_NAME} at ${at(paused, "pausedAt")} EAT.`,
       enginePause: engine.headline === "Paused." && engine.stopSentence === CS.stopReasonLabel("gateway_refused"),
-      done: done.headline === "Finished — nobody on this campaign is still waiting."
+      done: done.headline === "Finished — nobody on this campaign is left to message."
         && duv.headline === done.headline && duv.kpis.noAnswer === 2,
       stopped: sv.headline === `Stopped by ${OFFICER_NAME} at ${at(stopped, "finishedAt")} EAT — 8 people were not messaged.`
         && sv.stopSentence === null,
       early: ev.headline.endsWith("— 12 people were not messaged.") && ev.stopSentence === null,
-      nobodyLeft: zv.headline.endsWith("— nobody on it was still waiting.") && zv.headline.startsWith(`Stopped by ${OFFICER_NAME}`),
-      // ⭐ the U47b-1 review · the current pause's row LOST, an older officer's row there: never that officer's name
-      lostRow: lost.stopSentence === COPY.officerPausedSentence(COPY.LIVE_SOMEBODY, paused.pausedAt),
+      nobodyLeft: zv.headline.endsWith("— nobody on it was left to message.") && zv.headline.startsWith(`Stopped by ${OFFICER_NAME}`),
+      // ⭐ the U47b-1 review · the current pause's row LOST, an older officer's row there: never that officer's name — and
+      // (its re-review) the control: the same row dated at the act names Juma, so the pin can tell
+      lostRow: lost.stopSentence === COPY.officerPausedSentence(COPY.LIVE_SOMEBODY, paused.pausedAt) && !(lost.stopSentence ?? "").includes("Juma")
+        && current.stopSentence === COPY.officerPausedSentence("Juma", paused.pausedAt),
     };
-    return [Object.values(checks).every(Boolean), `${json(checks)} · "${ov.stopSentence}" · "${sv.headline}" · lost row: "${lost.stopSentence}"`];
+    return [Object.values(checks).every(Boolean), `${json(checks)} · "${ov.stopSentence}" · "${sv.headline}" · lost row: "${lost.stopSentence}" · at the act: "${current.stopSentence}"`];
   });
 
   /* ── S6 · the controls ── */
@@ -749,13 +766,19 @@ async function runAssertions(impl: Impl): Promise<void> {
     const busy = await viewOf(impl, c.id, READER, { moneyBusy: () => ({ busy: true, stale: [] }) });
     const otp = await viewOf(impl, c.id, READER, { otpLastFailureAt: () => T_NOW - 30_000 });
     const otpOld = await viewOf(impl, c.id, READER, { otpLastFailureAt: () => T_NOW - 3 * MIN });
-    const waits = !night.standing.nobodyDriving && !busy.standing.nobodyDriving && !otp.standing.nobodyDriving && otpOld.standing.nobodyDriving;
+    // ⭐ the U47b-1 re-review · the engine's ONE reading (④e): a failure dated AHEAD of the clock waits within two minutes
+    // and not past them; and a money signal that THROWS is busy (the view still renders), as the engine reads it
+    const otpAhead = await viewOf(impl, c.id, READER, { otpLastFailureAt: () => T_NOW + 30_000 });
+    const otpFarAhead = await viewOf(impl, c.id, READER, { otpLastFailureAt: () => T_NOW + 3 * MIN });
+    const moneyDown = await viewOf(impl, c.id, READER, { moneyBusy: () => { throw new Error("the money signal is down (fixture)"); } });
+    const waits = !night.standing.nobodyDriving && !busy.standing.nobodyDriving && !otp.standing.nobodyDriving && otpOld.standing.nobodyDriving
+      && !otpAhead.standing.nobodyDriving && otpFarAhead.standing.nobodyDriving && !moneyDown.standing.nobodyDriving;
     const p = await campaign(w, "s7p", { path: ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"] });
     const pv = await viewOf(impl, p.id, READER);
     const watch = await viewOf(impl, c.id, WATCHER);
     const keep = stub.standing.keepOpen && !watch.standing.keepOpen && !pv.standing.keepOpen && !pv.standing.nobodyDriving;
     return [switchFacts && windowFact && noClaim && driving && keep && waits,
-      `switch ${switchFacts} · window ${windowFact} · no claim ${noClaim} · 91 s ${old.standing.nobodyDriving} / 89 s ${fresh.standing.nobodyDriving} · keep open ${keep} · the engine's waits: night ${night.standing.nobodyDriving}, money ${busy.standing.nobodyDriving}, a code 30 s ago ${otp.standing.nobodyDriving}, 3 min ago ${otpOld.standing.nobodyDriving}`];
+      `switch ${switchFacts} · window ${windowFact} · no claim ${noClaim} · 91 s ${old.standing.nobodyDriving} / 89 s ${fresh.standing.nobodyDriving} · keep open ${keep} · the engine's waits: night ${night.standing.nobodyDriving}, money ${busy.standing.nobodyDriving}, a code 30 s ago ${otp.standing.nobodyDriving}, 3 min ago ${otpOld.standing.nobodyDriving}, 30 s ahead ${otpAhead.standing.nobodyDriving}, 3 min ahead ${otpFarAhead.standing.nobodyDriving}, money signal down ${moneyDown.standing.nobodyDriving}`];
   });
 
   /* ── S8 · ⛔ the copy advice ── */
@@ -814,9 +837,11 @@ async function runAssertions(impl: Impl): Promise<void> {
   /* ── S10 · ⛔ why it paused, below the floor ── */
   await claim(L.s10, async () => {
     const PAUSED_PATH: SmsCampaignStatus[] = ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"];
+    // ⭐ its re-review: every engine reason §3.4 lists, the credit check's causes and the confirmation included
     const ENGINE_REASONS = [
       "gateway_refused", "gateway_unanswered", "send_error", "before_send_unanswered", "slice_too_slow", "BALANCE_FLOOR", "MARKETING_FLOOR",
       "NOT_CONFIGURED", "held_rows", "live_switch_closed", "credit_unreadable", "list_over_confirmed_sending", "an_unknown_reason",
+      "confirmation_unreadable", "settings_unreadable", "sizes_unreadable", "price_unknown", "marketing_floor", "PROVIDER_UNRECOGNISED",
     ];
     const wrong: string[] = [];
     for (const [i, reason] of ENGINE_REASONS.entries()) {
@@ -845,12 +870,48 @@ async function runAssertions(impl: Impl): Promise<void> {
     // the ONE function the list will say it through: the view's sentence is its own, and production's deps hold it
     const probe = await campaignOf(`${w.cid("s10s0")}`);
     const counts = CS.outcomeStatusCounts(await db.smsCampaignRecipient.countByOutcome(probe.id));
-    const one = LIVE.pausedReasonSentenceFor({ reads: false }, probe, counts) === COPY.LIVE_PAUSED_HIDDEN
-      && LIVE.pausedReasonSentenceFor({ reads: true }, probe, counts) === CS.stopReasonLabel("gateway_refused")
+    const one = LIVE.pausedReasonSentenceFor({ reads: false, mayAct: true }, probe, counts) === COPY.LIVE_PAUSED_HIDDEN
+      && LIVE.pausedReasonSentenceFor({ reads: true, mayAct: true }, probe, counts) === CS.stopReasonLabel("gateway_refused")
       && LIVE.LIVE_VIEW_DEPS.rules.pausedReason === LIVE.pausedReasonSentenceFor;
-    const neutral = !/network|batch|credit|check|slow|switch/i.test(COPY.LIVE_PAUSED_HIDDEN);
-    return [wrong.length === 0 && named && one && neutral,
-      `wrong [${wrong.slice(0, 4).join("; ")}] · an officer's pause named ${named} · the one function ${one} · the sentence names no cause ${neutral}`];
+    // ⭐ its re-review · a viewer who may only VIEW is never told to press Resume — through the view and the function alike
+    const MASKED_WATCHER: LiveViewer = { userId: "usr_u47b1_masked_watcher", mayAct: false, reads: false, money: false };
+    const watcherView = await viewOf(impl, probe.id, MASKED_WATCHER);
+    const viewOnly = watcherView.stopSentence === COPY.LIVE_PAUSED_HIDDEN_VIEW && !COPY.LIVE_PAUSED_HIDDEN_VIEW.includes("Resume")
+      && LIVE.pausedReasonSentenceFor({ reads: false, mayAct: false }, probe, counts) === COPY.LIVE_PAUSED_HIDDEN_VIEW;
+    // ⭐ its re-review · the keys that keep their words are EXACTLY these six — a seventh needs a reason written in live-copy
+    const six = json([...COPY.FLOOR_SAFE_STOP_REASONS].sort())
+      === json(["audience_moved", "audience_unreadable", "list_over_confirmed", "officer_paused", "officer_stopped", "template_invalid"]);
+    const neutral = [COPY.LIVE_PAUSED_HIDDEN, COPY.LIVE_PAUSED_HIDDEN_VIEW].every((x) => !/network|batch|credit|check|slow|switch/i.test(x));
+    return [wrong.length === 0 && named && one && viewOnly && six && neutral,
+      `wrong [${wrong.slice(0, 4).join("; ")}] · an officer's pause named ${named} · the one function ${one} · view-only ${viewOnly} · six safe keys ${six} · the sentences name no cause ${neutral}`];
+  });
+
+  /* ── S11 · ⛔ the waits as said ── */
+  await claim(L.s11, async () => {
+    // every wait the engine can answer, read from its own type — a wait added there without a sentence here is red
+    const union = (code("src/lib/marketing/engine-rules.ts").match(/export type SliceWait =([^;]+);/) ?? ["", ""])[1];
+    const WAITS = [...union.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+    const until = iso(T_NOW + 5 * MIN);
+    const unworded = WAITS.filter((x) => COPY.waitSentence(x, until).startsWith("Waiting — engine reason:"));
+    const small = await campaign(w, "s11s", { path: ["CONFIRMED", "PREPARING", "RUNNING"], count: 5 });
+    await rows(w, small.id, many(5, { status: "PENDING" }));
+    const big = await campaign(w, "s11b", { path: ["CONFIRMED", "PREPARING", "RUNNING"], count: 10 });
+    await rows(w, big.id, many(10, { status: "PENDING" }));
+    const wrong: string[] = [];
+    for (const x of WAITS) {
+      const d = ctrlDeps(impl, { slice: async () => ({ kind: "waiting", reason: x, until }) as never });
+      const masked = seen(await impl.step(small.id, GROWTH, d));
+      const reader5 = seen(await impl.step(small.id, READER, d));
+      const masked10 = seen(await impl.step(big.id, GROWTH, d));
+      const mine = COPY.waitSentence(x, until);
+      const below = x === "busy" ? mine : COPY.LIVE_WAIT_HIDDEN;
+      if (!masked.ok || masked.said !== below) wrong.push(`${x}: masked under the floor "${masked.ok ? (masked.said ?? "null").slice(0, 30) : masked.reason}"`);
+      if (!reader5.ok || reader5.said !== mine || !masked10.ok || masked10.said !== mine) wrong.push(`${x}: not its own words for a reader or at ten`);
+      if (masked.ok && json(masked.step) !== json({ kind: "waiting", busy: x === "busy", until })) wrong.push(`${x}: step ${json(masked.step)}`);
+    }
+    const neutral = !/network|batch|credit|check|slow|switch|window|money|code/i.test(COPY.LIVE_WAIT_HIDDEN);
+    return [WAITS.length === 7 && unworded.length === 0 && wrong.length === 0 && neutral,
+      `waits [${WAITS.join(",")}] · without their own words [${unworded.join(",")}] · wrong [${wrong.slice(0, 3).join("; ")}] · the hidden wait names no cause ${neutral}`];
   });
 
   /* ── T1 · Start through the real check ── */
@@ -997,7 +1058,7 @@ async function runAssertions(impl: Impl): Promise<void> {
       && json(order) === json(["transition:RUNNING", "requeue"]) && rowsNow.length === 1 && rowsNow[0].actorId === w.officer
       && json(rowsNow[0].payload) === json({ requeuedHeld: 3, to: "RUNNING" });
     const m = meanwhile as Awaited<ReturnType<typeof CTRL.campaignStep>> | null;
-    const heldOff = m !== null && m.ok && m.step.kind === "waiting" && m.step.reason === "busy" && stepCalls.length === 0;
+    const heldOff = m !== null && m.ok && m.step.kind === "waiting" && m.step.busy === true && stepCalls.length === 0;
     // a Resume while ANOTHER step holds the campaign's flight: busy — nothing read, nothing changed
     const busyC = await campaign(w, "t5b", { path: ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"], count: 10 });
     await rows(w, busyC.id, [...many(2, { status: "HELD", failureClass: "gate_unanswered", attempts: 3 }), ...many(8, { status: "SENT" })]);
@@ -1026,14 +1087,31 @@ async function runAssertions(impl: Impl): Promise<void> {
     await rows(w, broken.id, [...many(2, { status: "HELD", failureClass: "gate_unanswered", attempts: 3 }), ...many(8, { status: "SENT" })]);
     const x = seen(await impl.resume(broken.id, reader, ctrlDeps(impl, { recipients: { ...CTRL.CONTROL_DEPS.recipients, requeueHeld: async () => { throw new Error("the re-queue is down (fixture)"); } } })));
     const xRows = await auditOf(CTRL.CAMPAIGN_RESUMED_ACTION, broken.id);
-    const survives = x.ok && x.message === COPY.LIVE_DONE.resume && (await campaignOf(broken.id)).status === "RUNNING"
+    // ⭐ the U47b-1 re-review · and it SAYS so: the held people stay parked until the next Resume
+    const survives = x.ok && x.message === `${COPY.LIVE_DONE.resume} ${COPY.LIVE_REQUEUE_FAILED}` && (await campaignOf(broken.id)).status === "RUNNING"
       && xRows.length === 1 && json(xRows[0].payload) === json({ requeuedHeld: null, to: "RUNNING" });
+    // ⭐ the U47b-1 re-review · a Stop landing BETWEEN the move and the re-queue (a Stop waits for no flight): the answer says
+    // the campaign was stopped, never "Sending again." beside "Stopped by …"
+    const late = await campaign(w, "t5l", { path: ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"], count: 10 });
+    await rows(w, late.id, [...many(2, { status: "HELD", failureClass: "gate_unanswered", attempts: 3 }), ...many(8, { status: "SENT" })]);
+    const stopBetween = ctrlDeps(impl, {
+      recipients: {
+        ...CTRL.CONTROL_DEPS.recipients,
+        requeueHeld: async (id: string, at: string) => {
+          const t = iso(T_NOW - MIN);
+          await db.smsCampaign.transition(id, { from: ["RUNNING"], to: "CANCELLED", patch: { finishedAt: t, stopReason: "officer_stopped" }, draftRevision: null, at: t });
+          return CTRL.CONTROL_DEPS.recipients.requeueHeld(id, at);
+        },
+      },
+    });
+    const l = seen(await impl.resume(late.id, reader, stopBetween));
+    const stoppedSaid = l.ok && l.message === COPY.LIVE_CHANGED.stoppedAfterResume && (await campaignOf(late.id)).status === "CANCELLED";
     const never = await campaign(w, "t5n", { path: ["CONFIRMED", "PREPARING", "PAUSED"], count: 10 });
     await rows(w, never.id, many(3, { status: "PENDING" }));
     const n = seen(await impl.resume(never.id, reader, ctrlDeps(impl)));
     const neverOk = n.ok && n.message === COPY.LIVE_DONE.resumePreparing && (await campaignOf(never.id)).status === "PREPARING";
-    return [landed && heldOff && busyOk && lostOk && survives && neverOk,
-      `${json(r)} · ${after.status} ${after.stopReason} · order ${json(order)} · HELD restarted ${restarted} · row ${json(rowsNow[0]?.payload)} · a step meanwhile ${m === null ? "never asked" : m.ok ? `${m.step.kind}${m.step.kind === "waiting" ? `:${m.step.reason}` : ""}` : m.reason} ran [${stepCalls.join(",")}] · busy ${busyOk} · lost to a Stop ${lostOk} · re-queue down ${survives} · never finished → ${(await campaignOf(never.id)).status} "${n.ok ? n.message.slice(0, 30) : n.reason}"`];
+    return [landed && heldOff && busyOk && lostOk && survives && stoppedSaid && neverOk,
+      `${json(r)} · ${after.status} ${after.stopReason} · order ${json(order)} · HELD restarted ${restarted} · row ${json(rowsNow[0]?.payload)} · a step meanwhile ${m === null ? "never asked" : m.ok ? `${m.step.kind}${m.step.kind === "waiting" ? `:${m.step.busy ? "busy" : "other"}` : ""}` : m.reason} ran [${stepCalls.join(",")}] · busy ${busyOk} · lost to a Stop ${lostOk} · re-queue down ${survives} · stopped between ${stoppedSaid} · never finished → ${(await campaignOf(never.id)).status} "${n.ok ? n.message.slice(0, 30) : n.reason}"`];
   });
 
   /* ── T6 · ⭐ Resume's count-based refusals ── */
@@ -1290,7 +1368,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     const mostThen = most;
     release();
     const [r1, r2] = await Promise.all([p1, p2]);
-    const kinds = [r1, r2].map((r) => (r.ok ? (r.step.kind === "waiting" ? `waiting:${r.step.reason}` : r.step.kind) : r.reason)).sort();
+    const kinds = [r1, r2].map((r) => (r.ok ? (r.step.kind === "waiting" ? `waiting:${r.step.busy ? "busy" : "other"}` : r.step.kind) : r.reason)).sort();
     const one = json(entered) === json([a.id]) && mostThen === 1 && json(kinds) === json(["waiting:busy", "wrote"]);
     // two DIFFERENT campaigns at once
     enqueued = [];
@@ -1327,7 +1405,9 @@ async function runAssertions(impl: Impl): Promise<void> {
     const nearAhead = await impl.step(a.id, READER, d);
     flights.flights.delete(a.id);
     const aheadOk = ahead.ok && ahead.step.kind === "wrote" && nearAhead.ok && nearAhead.step.kind === "waiting" && enqueued.length === 1;
-    // ⭐ the U47b-1 review · EVERY step: a RUNNING campaign's slice and a PAUSED campaign's reap, two at once, never overlap
+    // ⭐ the U47b-1 review · EVERY step: a RUNNING campaign's slice and a PAUSED campaign's reap, two at once, never overlap.
+    // ⭐ Its re-review: the steps that took the flight are counted at the campaign READ inside it (a step that finds the
+    // flight taken reads nothing) — never by the slice or the reap, so a plant that swaps those (R-D1) leaves the count true.
     const pairOnce = async (key: string, path: SmsCampaignStatus[]): Promise<boolean> => {
       const c = await campaign(w, key, { path });
       let open: () => void = () => {};
@@ -1336,8 +1416,12 @@ async function runAssertions(impl: Impl): Promise<void> {
       const own = freshFlights();
       const dd = ctrlDeps(impl, {
         flights: () => own,
-        slice: async () => { inside++; await hold; return { kind: "waiting", reason: "quiet_hours", until: null }; },
-        reap: async () => { inside++; await hold; return { ...ZERO_REAP }; },
+        campaigns: {
+          find: async (id: string) => { inside++; await hold; return db.smsCampaign.find(id); },
+          transition: CTRL.CONTROL_DEPS.campaigns.transition,
+        },
+        slice: async () => ({ kind: "waiting", reason: "quiet_hours", until: null }),
+        reap: async () => ({ ...ZERO_REAP }),
       });
       const x1 = impl.step(c.id, READER, dd);
       const x2 = impl.step(c.id, READER, dd);
@@ -1345,7 +1429,7 @@ async function runAssertions(impl: Impl): Promise<void> {
       const entered2 = inside;
       open();
       const ys = await Promise.all([x1, x2]);
-      const busy = ys.filter((y) => y.ok && y.step.kind === "waiting" && y.step.reason === "busy").length;
+      const busy = ys.filter((y) => y.ok && y.step.kind === "waiting" && y.step.busy === true).length;
       return entered2 === 1 && busy === 1 && own.flights.size === 0;
     };
     const runningOnce = await pairOnce("d2r", ["CONFIRMED", "PREPARING", "RUNNING"]);
@@ -1438,10 +1522,10 @@ async function runAssertions(impl: Impl): Promise<void> {
       && D.outstanding === SC.resumeOutstanding && D.enqueue === ENQ.enqueueStep && D.slice === ENGINE.runCampaignSlice
       && D.reap === ENGINE.reapStrandedClaims && D.view === LIVE.campaignLiveView && D.saveDraft === DRAFT.saveCampaignDraft
       && D.travel === LIVE.copyTravel && D.audienceRefusal === LIVE.startAudienceRefusedFor && D.flights === CTRL.campaignStepFlights && D.shape === CTRL.driverStep
-      && D.reach === LIVE.liveReach && D.flightStale === CTRL.stepFlightStale
+      && D.reach === LIVE.liveReach && D.flightStale === CTRL.stepFlightStale && D.said === CTRL.stepSaid
       && Object.isFrozen(V) && Object.isFrozen(V.recipients) && Object.isFrozen(V.rules) && V.window === liveSendWindow && V.liveGate === marketingLiveGate
       && V.rules.progress === CS.campaignProgress && V.rules.breakdownHidden === LIVE.liveBreakdownHidden && V.rules.outstanding === SC.resumeOutstanding
-      && V.rules.pausedReason === LIVE.pausedReasonSentenceFor
+      && V.rules.pausedReason === LIVE.pausedReasonSentenceFor && V.rules.otpWaiting === RULES.otpFailureWaiting
       && s.live.includes("db.smsCampaignRecipient.countByOutcome(campaignId)") && s.control.includes("db.smsCampaignRecipient.requeueHeld(campaignId, at)");
     const spelling = CTRL.CAMPAIGN_PAUSED_ACTION === ENGINE.ENGINE_PAUSED_ACTION && ENGINE.ENGINE_PAUSED_ACTION === ENQ.CAMPAIGN_PAUSED_ACTION
       && LIVE.OFFICER_PAUSED_ACTION === CTRL.CAMPAIGN_PAUSED_ACTION && CTRL.CAMPAIGN_STOPPED_ACTION === LIVE.OFFICER_STOPPED_ACTION;
@@ -1487,7 +1571,7 @@ async function runAssertions(impl: Impl): Promise<void> {
 
   /* ── P2 · ⛔ the step answer carries no figure and no cursor ── */
   await claim(L.p2, async () => {
-    const SHAPE = new Set(["kind", "reason", "until", "status"]);
+    const SHAPE = new Set(["kind", "busy", "until", "status"]);
     const steps = ANSWERS.filter((a) => a.ok === true && typeof a.step === "object" && a.step !== null).map((a) => a.step as Record<string, unknown>);
     const bad = steps.flatMap((st) => Object.entries(st).filter(([k, v]) => !SHAPE.has(k) || typeof v === "number").map(([k]) => k));
     const kinds = [...new Set(steps.map((st) => String(st.kind)))].sort();
@@ -1528,7 +1612,7 @@ if (!PROVE_RED) {
       impl: withView((d) => ({ ...d, window: () => ({ ...WIN.ALWAYS_OPEN() }), moneyBusy: () => ({ busy: false, stale: [] }), otpLastFailureAt: () => null })) },
     { name: "R-S3b · the floor at 0 rows (the U47b-1 review's MAJOR) — every confirmed campaign tells a masked viewer it has fewer than ten people", expect: [L.s3],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, breakdownHidden: (reads: boolean, rows: number) => reads !== true && rows < 10 } })) },
-    { name: "R-P2 · the step answered raw (the U47b-1 review's MAJOR) — its counts and its cursor reach every role, under the floor too", expect: [L.p2],
+    { name: "R-P2 · the step answered raw (the U47b-1 review's MAJOR) — its counts, its cursor and its reason reach every role, under the floor too (and with no `busy`, the driver's timing reads every wait as not busy — D2, T5 and S11 see it)", expect: [L.p2, L.d2, L.t5, L.s11],
       impl: { ctrlDeps: (d: ControlDeps) => ({ ...d, shape: (st: CTRL.StepOutcome) => st as unknown as CTRL.DriverStep }) } },
     { name: "R-V2 (the plan's own) · HELD counted settled — 4 SENT and 6 HELD read 10 of 10", expect: [L.v2],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, progress: (c, counts) => d.rules.progress(c, { ...counts, SENT: counts.SENT + counts.HELD, HELD: 0 }) } })) },
@@ -1542,8 +1626,14 @@ if (!PROVE_RED) {
       impl: withView((d) => ({ ...d, recipients: { ...d.recipients, countByOutcome: async (id: string) => (await d.recipients.countByOutcome(id)).filter((g) => g.status !== "DELIVERED") } })) },
     { name: "R-S2 · protected itemised — an RG reason keeps its own key instead of the protected line", expect: [L.s2],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, bucketOf: (r) => (typeof r === "string" && r.startsWith("rg_") ? (r as never) : d.rules.bucketOf(r)) } })) },
-    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, and why it paused)", expect: [L.s3, L.s8, L.s10],
+    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, why it paused, and why it waits)", expect: [L.s3, L.s8, L.s10, L.s11],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, breakdownHidden: () => false } })) },
+    { name: "R-S5 · who paused read from ANY row however old (the re-review: the `since` rule removed) — Juma named for Amina's pause", expect: [L.s5],
+      impl: withView((d) => ({ ...d, actsOn: async (id: string) => (await d.actsOn(id)).map((e) => ({ ...e, createdAt: "2999-01-01T00:00:00.000Z" })) })) },
+    { name: "R-S7c · the view's own reading of a code failure (no Math.abs) — one dated three minutes ahead reads as the engine waiting, and nobody driving is never said", expect: [L.s7],
+      impl: withView((d) => ({ ...d, rules: { ...d.rules, otpWaiting: (nowMs: number, at: number | null) => typeof at === "number" && nowMs - at < RULES.OTP_FAILURE_WAIT_MS } })) },
+    { name: "R-S11 · the waits said blind to the floor (its re-review) — a masked viewer of five reads 'the last check before sending couldn't be made'", expect: [L.s11],
+      impl: withCtrl((d) => ({ ...d, said: (step: CTRL.StepOutcome) => CTRL.stepSaid(step, false) })) },
     { name: "R-S10 · the floor forgets why it paused — a masked viewer under ten reads the network's 'no' and every engine reason in its own words", expect: [L.s10],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, pausedReason: (v, c, counts, h) => COPY.pausedReasonSentence(c.stopReason ?? "", LIVE.liveReach(c, counts, v.reads === true, h)) } })) },
     { name: "R-S10b · the floor kept for the batch reasons alone — the switch, the unread credit and held rows still say themselves, so the one sentence would say a batch was built", expect: [L.s10],
@@ -1590,7 +1680,7 @@ if (!PROVE_RED) {
       impl: withCtrl((d) => ({ ...d, audit: (e) => d.audit({ ...e, targetId: e.targetId ?? "cmp_posted_by_anyone" }) })) },
     { name: "R-T9c · ruling 543 forgotten — a Pause says it was recorded whatever the audit door answered", expect: [L.t9],
       impl: { pause: async (id, a, d) => { const r = await CTRL.pauseCampaign(id, a, d); return r.ok ? { ...r, recorded: true, message: COPY.LIVE_DONE.pause } : r; } } },
-    { name: "R-D1 · the dispatcher reaps nothing — a stranded claim stays stranded on mount (and D2's PAUSED pair sees no reap at all)", expect: [L.d1, L.d2, L.d5],
+    { name: "R-D1 · the dispatcher reaps nothing — a stranded claim stays stranded on mount", expect: [L.d1, L.d5],
       impl: withCtrl((d) => ({ ...d, reap: async () => ({ ...ZERO_REAP }) })) },
     { name: "R-D2 · the single-flight bypassed — every step (and Resume) takes a flight of its own", expect: [L.d2, L.t5],
       impl: withCtrl((d) => ({ ...d, flights: () => freshFlights() })) },

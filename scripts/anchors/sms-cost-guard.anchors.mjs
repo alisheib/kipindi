@@ -530,4 +530,13 @@ export const MUTATIONS = [
     to: `  const deadlineApplies = notAfter !== undefined;`,
     expect: `§11 ⭐ an OTP never meets a deadline: alone, and beside marketing, a passed deadline holds nothing`,
   },
+  {
+    // The re-review of round 2 · the deadline's other half: one that is not a figure taken as never passing — a malformed
+    // option opens the rail, as the credit floor's own anchor proves for `minimumBalanceTzs`.
+    name: "sms.ts — a deadline that is not a figure is taken as never passing",
+    file: "src/lib/server/sms.ts",
+    from: `  return !Number.isFinite(notAfter) || Date.now() >= notAfter;`,
+    to: `  return Date.now() >= notAfter;`,
+    expect: `§11 ⛔ a deadline that is not a figure holds the MARKETING batch: a malformed option never opens the rail`,
+  },
 ];

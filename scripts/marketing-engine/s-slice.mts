@@ -81,7 +81,7 @@ const L = {
   s24: "S24 · THE RAIL — a dead rail pauses NOT_CONFIGURED and an unrecognised provider pauses PROVIDER_UNRECOGNISED (never live_switch_closed, which the owner cannot fix) — BEFORE any claim",
   s25: "S25 · ⭐ E10 · ONE SLICE IN FLIGHT PER PROCESS — while one campaign's slice gates, a step of ANOTHER campaign answers waiting busy and claims nothing; once it has finished the other step runs; a flight eleven minutes old STILL holds (the flight is kept apart from REAP_AFTER_MS — twice it), one twenty-one minutes old no longer does",
   s26: "S26 · ⭐ DC-5 · NO PHONE NUMBER REFUSES A SETTLE — a gateway error and a gate detail that echo a number are settled with the number masked (four bullets and its last two digits), every trail string scrubbed — while a reference whose characters hold a phone-shaped run is kept WHOLE in the trail's source, as the rule set reads a source word by word; and a patch the rule set still refuses is SET ASIDE (its row keeps the claim, for the reaper) while the rest of the slice settles",
-  s27: "S27 · THE WIRING — ENGINE_DEPS is frozen and wired to the REAL doors (the ONE loop, the ONE renderer, the token door, the ONE gate by default, the store's doors, the window, money-busy, the OTP mark, the settings, the credit rule, the pure rules) and its send is engineSend; engineSend stamps purpose MARKETING through sendBatch; engine.ts never imports the enqueue, names no book reader and asks dispatchSlice; engine-rules.ts takes types alone from the server and one pure module; no src file but engine.ts calls or value-imports the engine beyond ENGINE_CALLERS (U47b-1's step dispatcher, campaign-control.ts, alone); the host runs §S, §R, §C and §T",
+  s27: "S27 · THE WIRING — ENGINE_DEPS is frozen and wired to the REAL doors (the ONE loop, the ONE renderer, the token door, the ONE gate by default, the store's doors, the window, money-busy, the OTP mark, the settings, the credit rule, the pure rules) and its send is engineSend; engineSend stamps purpose MARKETING through sendBatch; engine.ts never imports the enqueue, names no book reader and asks dispatchSlice; engine-rules.ts takes types alone from the server and one pure module; no src file but engine.ts calls or value-imports the engine beyond ENGINE_CALLERS (U47b-1's step dispatcher, campaign-control.ts, alone); ⭐ and no src file but engine.ts names `insideFlight`, the reaper's pass beside a slice in flight (the re-review of round 2); the host runs §S, §R, §C and §T",
   s28: "S28 · E12 · THE OTP MARK — an OTP that FAILS through the REAL sendBatch stamps the process's mark at that moment and the next step, through the SHIPPED reader, waits otp_failing until two minutes after it; a MARKETING failure and an ACCEPTED OTP stamp nothing",
   s29: "S29 · ⭐ THE OWNER'S SWITCH, JUDGED AGAIN AT THE LAST WORD BEFORE THE WIRE (the U43b-2 review — marketingLiveGate's own rule: a state read earlier is no licence for later) — the switch closed while the slice gated: beforeSend vetoes, ZERO wire calls, every claimed row back to PENDING unchanged, the campaign paused live_switch_closed with ONE paused row",
   s30: "S30 · ⭐ A SKIPPED ROW STAYS SKIPPED INSIDE A SHOP-WIDE SLICE — a refused batch (status:false) releases the people it was refused for (+1) and pauses ONCE, while the self-excluded player the gate refused in the same slice stays SKIPPED (attempts 0); after Resume the next slice sends the two and the RG line stays ONE — never a second line per Resume",
@@ -89,9 +89,11 @@ const L = {
   s32: "S32 · E7 · A FAILURE BEFORE THE REQUEST, BATCH-WIDE — every row failed NOT_CONFIGURED (a transport that would not start) is released +1 and the campaign pauses NOT_CONFIGURED (the code's own key, never gateway_refused); every row failed UNKNOWN (a transport that threw before its request) is released +1 and pauses send_error — nothing in either was sent or charged, and neither sentence says the network refused",
   s33: "S33 · ⛔ THE LIST CHECK RUNS FIRST — a list longer than its confirmed count, on a real carrier whose switch is closed, with the window closed, pauses list_over_confirmed_sending (never live_switch_closed, never a wait: no Resume could fix it); a confirmed count that is not a count, with a dead rail, pauses confirmation_unreadable (never NOT_CONFIGURED)",
   s34: "S34 · ⭐ A SEND THAT THREW (the U43b-2 review — never re-send what might have reached the network, release only what certainly did not) — one that threw before writing anything: its rows released +1 (no message names them), the campaign paused send_error with ONE paused row carrying the error's CODE or NAME only, never its words (the U43b-2 re-review: words can quote the call); one that threw AFTER its message rows were written: its rows UNCONFIRMED, never released, paused send_error; the sentence true of both, and never that the network refused",
-  s35: "S35 · ⭐ THE SEND'S DEADLINE (the U43b-2 re-review — sendBatch's notAfter) — the slice hands its send the oldest claim plus the send-age bound; a batch refused whole for a passed deadline, and one whose deadline passed while its rows were written (no request, the rows FAILED), each WAIT slice_too_slow with their people back as they were (+0), never a pause",
+  s35: "S35 · ⭐ THE SEND'S DEADLINE (the U43b-2 re-review — sendBatch's notAfter) — on a FIXED clock the slice hands its send EXACTLY the oldest claim plus the send-age bound (never a deadline that slides with the clock — its re-review); a batch refused whole for a passed deadline, and one whose deadline passed while its rows were written (no request, the rows FAILED), each WAIT slice_too_slow with their people back as they were (+0), never a pause",
   s36: "S36 · ⭐ TOO SLOW THREE TIMES IN A ROW PAUSES (the U43b-2 re-review) — two slice_too_slow waits, then the third pauses slice_too_slow with ONE paused row, in words that say so; nothing ever sent",
-  s37: "S37 · A FAILURE THAT NAMES NO CODE IS NO ANSWER (the U43b-2 re-review) — never read as certainly before the request: the rows UNCONFIRMED, never released, the campaign paused gateway_unanswered",
+  s37: "S37 · A FAILURE THAT NAMES NO CODE IS NO ANSWER (the U43b-2 re-review) — never read as certainly before the request: a failure with no code, and one whose code is EMPTY (the re-review of round 2), each leave the rows UNCONFIRMED, never released, the campaign paused gateway_unanswered",
+  s38: "S38 · ⭐ TOO SLOW COUNTS AT THE SMALLEST GROUP ONLY (the re-review of round 2) — three slice_too_slow waits with eight people claimed never pause (the next slice is smaller, uncounted); at the smallest group (five) the third in a row pauses slice_too_slow — and a slice that settles its people starts the count over",
+  s39: "S39 · ⭐ AN OFFICER'S PAUSE AND RESUME START THE STREAKS OVER (the re-review of round 2) — two slow waits at the smallest group, then a Pause and a Resume (a new pausedAt): two more slow waits do NOT pause, the third after the Resume does; the same for the check before the wire unanswered",
 } as const;
 
 /* ══ THE IMPLEMENTATION UNDER TEST — swapped piece by piece by the plants ══════════════════════════════════════════ */
@@ -943,7 +945,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
       && sh.settings === reloadMarketingSmsSettings && sh.provider === smsProviderResolution && sh.rail === smsRailProblem
       && sh.state === ENGINE.engineProcessState && sh.rules.isShopWide === RULES.isShopWide && sh.rules.settlementFor === RULES.settlementFor
       && sh.rules.reapVerdict === RULES.reapVerdict && sh.rules.adaptSliceSize === RULES.adaptSliceSize && sh.rules.sendRecordOf === RULES.sendRecordOf
-      && sh.tokenOf === currentOptOutToken;
+      && sh.rules.tooSlowCounts === RULES.tooSlowCounts && sh.tokenOf === currentOptOutToken;
     // engineSend through the console stub writes a MARKETING row for the recipient target
     const w = worldOf("s27");
     const target = `rcp_s27_probe_${w.run}`;
@@ -962,8 +964,10 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
       .map(([rel]) => rel).filter((rel) => !ENGINE_CALLERS.includes(rel));
     const host = ["./marketing-engine/s-slice.mts", "./marketing-engine/r-reaper.mts", "./marketing-engine/c-concurrency.mts", "./marketing-engine/t-contract.mts"]
       .every((m) => src.host.includes(m));
-    return [doors && marketing && shape && pure && callers.length === 0 && host,
-      `doors ${doors} · engineSend MARKETING ${marketing} · engine.ts shape ${shape} · engine-rules imports [${ruleImports.join(", ")}] pure ${pure} · undeclared callers [${callers.join(", ")}] · host runs the four ${host}`];
+    // ⭐ the re-review of round 2 · `insideFlight` lets a reap pass beside a slice in flight: the slice's own reap alone
+    const bypass = [...src.src.entries()].filter(([rel, text]) => rel !== ENGINE_REL && /insideFlight/.test(text)).map(([rel]) => rel);
+    return [doors && marketing && shape && pure && callers.length === 0 && host && bypass.length === 0,
+      `doors ${doors} · engineSend MARKETING ${marketing} · engine.ts shape ${shape} · engine-rules imports [${ruleImports.join(", ")}] pure ${pure} · undeclared callers [${callers.join(", ")}] · host runs the four ${host} · insideFlight outside engine.ts [${bypass.join(", ")}]`];
   });
 
   // ── S28 · the OTP mark, through the real sendBatch ──
@@ -1126,15 +1130,15 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
 
   // ── S35 · the send's deadline (the U43b-2 re-review) ──
   await claim(ok, L.s35, async () => {
-    // ① the deadline handed to the send: the slice's oldest claim plus the send-age bound
+    // ① the deadline handed to the send: the slice's oldest claim plus the send-age bound — ⭐ on a FIXED clock (the re-review
+    // of round 2), so a deadline sliding with the real clock (`Date.now()` + the bound) cannot pass for the claim's own
     const a = worldOf("s35a");
     await playersOn(a, 2);
     const wireA = stubWire();
-    const t0 = Date.now();
-    const rA = await stepWith(impl, a.cid, engineDeps(freshState(), wireA));
-    const t1 = Date.now();
+    const T = Date.parse("2026-10-07T09:00:00.000Z");
+    const rA = await stepWith(impl, a.cid, { ...engineDeps(freshState(), wireA), now: () => new Date(T) });
     const naA = (wireA.opts[0] as { notAfter?: unknown } | undefined)?.notAfter;
-    const handed = typeof naA === "number" && naA >= t0 + ENGINE.CLAIM_SEND_MAX_AGE_MS && naA <= t1 + ENGINE.CLAIM_SEND_MAX_AGE_MS;
+    const handed = naA === T + ENGINE.CLAIM_SEND_MAX_AGE_MS;
     // ② refused whole for a passed deadline: a WAIT, its people back as they were
     const b = worldOf("s35b");
     const seatsB = await playersOn(b, 2);
@@ -1175,7 +1179,79 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const seats = await playersOn(w, 2);
     const r = await stepWith(impl, w.cid, engineDeps(freshState(), stubWire({ answer: () => "nocode" })));
     const rows = await Promise.all(seats.map((x) => rowOf(x.id)));
-    return [rows.every((x) => x?.status === "UNCONFIRMED") && r.kind === "paused" && r.reason === "gateway_unanswered", `${said(r)} · rows ${statusesOf(rows)}`];
+    // ⭐ the re-review of round 2 · the `""` arm: a code that is there but EMPTY is no answer either
+    const e = worldOf("s37e");
+    const seatsE = await playersOn(e, 2);
+    const rE = await stepWith(impl, e.cid, engineDeps(freshState(), stubWire({ answer: () => "emptycode" })));
+    const rowsE = await Promise.all(seatsE.map((x) => rowOf(x.id)));
+    return [rows.every((x) => x?.status === "UNCONFIRMED") && r.kind === "paused" && r.reason === "gateway_unanswered"
+      && rowsE.every((x) => x?.status === "UNCONFIRMED") && rE.kind === "paused" && rE.reason === "gateway_unanswered",
+      `no code: ${said(r)} · rows ${statusesOf(rows)} · empty code: ${said(rE)} · rows ${statusesOf(rowsE)}`];
+  });
+
+  // ── S38 · too slow counts at the smallest group only ──
+  await claim(ok, L.s38, async () => {
+    const w = worldOf("s38");
+    await playersOn(w, 8);
+    const state = freshState();
+    const wire = stubWire({ refused: "DEADLINE_PASSED" });
+    // eight people claimed at a time (the size held there, so the group never shrinks under the test's feet)
+    const big = { ...engineDeps(state, wire), rules: { ...engineDeps(state, wire).rules, adaptSliceSize: () => 8 } };
+    const b1 = await stepWith(impl, w.cid, big);
+    const b2 = await stepWith(impl, w.cid, big);
+    const b3 = await stepWith(impl, w.cid, big);
+    const uncounted = [b1, b2, b3].every((x) => x.kind === "waiting" && x.reason === "slice_too_slow") && (state.tooSlow?.[w.cid] ?? 0) === 0;
+    // the smallest group: five at a time — the third in a row pauses
+    const small = { ...engineDeps(state, wire), rules: { ...engineDeps(state, wire).rules, adaptSliceSize: () => ENGINE.SLICE_MIN } };
+    const s1 = await stepWith(impl, w.cid, small);
+    const s2 = await stepWith(impl, w.cid, small);
+    // …a slice that settles its people (an accepting wire) starts the count over
+    const okWire = stubWire();
+    const settledStep = await stepWith(impl, w.cid, { ...engineDeps(state, okWire), rules: { ...engineDeps(state, okWire).rules, adaptSliceSize: () => 1 } });
+    const afterReset = state.tooSlow?.[w.cid] ?? 0;
+    const s3 = await stepWith(impl, w.cid, small);
+    const s4 = await stepWith(impl, w.cid, small);
+    const s5 = await stepWith(impl, w.cid, small);
+    const paused = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, w.cid);
+    return [uncounted && s1.kind === "waiting" && s2.kind === "waiting" && settledStep.kind === "sent" && afterReset === 0
+      && s3.kind === "waiting" && s4.kind === "waiting" && s5.kind === "paused" && s5.reason === "slice_too_slow" && paused.length === 1,
+      `eight at a time: ${[b1, b2, b3].map(said).join(" · ")} (count ${state.tooSlow?.[w.cid] ?? 0}) · five: ${said(s1)} · ${said(s2)} · settled ${said(settledStep)} (count ${afterReset}) · ${said(s3)} · ${said(s4)} · ${said(s5)} · paused rows ${paused.length}`];
+  });
+
+  // ── S39 · an officer's Pause and Resume start the streaks over ──
+  await claim(ok, L.s39, async () => {
+    const pauseResume = async (cid: string, at: string): Promise<void> => {
+      await db.smsCampaign.transition(cid, { from: ["RUNNING"], to: "PAUSED", patch: { pausedAt: at, stopReason: "officer_paused" }, draftRevision: null, at });
+      await db.smsCampaign.transition(cid, { from: ["PAUSED"], to: "RUNNING", patch: { stopReason: null }, draftRevision: null, at });
+    };
+    // too slow
+    const w = worldOf("s39");
+    await playersOn(w, 2);
+    const state = freshState();
+    const wire = stubWire({ refused: "DEADLINE_PASSED" });
+    const d = engineDeps(state, wire);
+    const a1 = await stepWith(impl, w.cid, d);
+    const a2 = await stepWith(impl, w.cid, d);
+    await pauseResume(w.cid, new Date(Date.now() - 1000).toISOString());
+    const a3 = await stepWith(impl, w.cid, d);
+    const a4 = await stepWith(impl, w.cid, d);
+    const a5 = await stepWith(impl, w.cid, d);
+    const slowOk = [a1, a2, a3, a4].every((x) => x.kind === "waiting" && x.reason === "slice_too_slow") && a5.kind === "paused" && a5.reason === "slice_too_slow";
+    // the check before the wire unanswered
+    // (S22's own way to blind the re-read: the claims cannot be read just before the wire)
+    const u = worldOf("s39u");
+    await playersOn(u, 2);
+    const stateU = freshState();
+    const blindU = engineDeps(stateU, stubWire(), { gate: CLEARS_ALL, recipients: { ...ENGINE.ENGINE_DEPS.recipients, claimedBy: async () => { throw new Error("claims unreadable (fixture)"); } } });
+    const u1 = await stepWith(impl, u.cid, blindU);
+    const u2 = await stepWith(impl, u.cid, blindU);
+    await pauseResume(u.cid, new Date(Date.now() - 500).toISOString());
+    const u3 = await stepWith(impl, u.cid, blindU);
+    const u4 = await stepWith(impl, u.cid, blindU);
+    const u5 = await stepWith(impl, u.cid, blindU);
+    const unansweredOk = [u1, u2, u3, u4].every((x) => x.kind === "waiting" && x.reason === "before_send_unanswered") && u5.kind === "paused" && u5.reason === "before_send_unanswered";
+    return [slowOk && unansweredOk,
+      `too slow: ${[a1, a2, "· pause + resume ·", a3, a4, a5].map((x) => (typeof x === "string" ? x : said(x))).join(" · ")} · unanswered: ${[u1, u2, "· pause + resume ·", u3, u4, u5].map((x) => (typeof x === "string" ? x : said(x))).join(" · ")}`];
   });
 }
 
@@ -1199,8 +1275,8 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     impl: withDeps((d) => ({ ...d, rules: { ...d.rules, isShopWide: (outs) => d.rules.isShopWide(outs.map((o) => (o.outcome === "failed" && o.code === "DEADLINE_PASSED" ? { ...o, code: "REJECTED" } : o))) } })),
   },
   {
-    name: "R-S36 · too slow never escalates — at the smallest group the same people are re-asked for ever",
-    expect: [L.s36],
+    name: "R-S36 · too slow never escalates — at the smallest group the same people are re-asked for ever (S38 and S39 count on the escalation too)",
+    expect: [L.s36, L.s38, L.s39],
     impl: withDeps((d) => ({ ...d, state: () => { const st = d.state(); delete st.tooSlow; return st; } })),
   },
   {
@@ -1208,6 +1284,31 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     expect: [L.s37],
     impl: withDeps((d) => outcomesMapped(d, (o) => (o.outcome === "unconfirmed" && (o as { code?: unknown }).code === undefined && typeof (o as { reference?: unknown }).reference === "string"
       ? ({ ref: o.ref, outcome: "failed", code: "UNKNOWN", error: null } as SliceOutcome) : o))),
+  },
+  {
+    name: "R-S37b · an EMPTY code taken for a code (the re-review of round 2) — the batch read as the network's refusal, its people released",
+    expect: [L.s37],
+    impl: withDeps((d) => outcomesMapped(d, (o) => (o.outcome === "unconfirmed" && (o as { code?: unknown }).code === undefined && typeof (o as { reference?: unknown }).reference === "string"
+      ? ({ ref: o.ref, outcome: "failed", code: "", error: null } as unknown as SliceOutcome) : o))),
+  },
+  {
+    name: "R-S35c · a deadline that slides with the clock (Date.now() + the bound, never the oldest claim's) — a stalled slice keeps its licence",
+    expect: [L.s35],
+    impl: withDeps((d) => ({ ...d, send: (m, o) => d.send(m, { ...o, notAfter: Date.now() + ENGINE.CLAIM_SEND_MAX_AGE_MS }) })),
+  },
+  {
+    name: "R-S38 · every slow slice counted, at any size — eight people too slow three times pause a campaign whose next slice could still shrink",
+    expect: [L.s38],
+    impl: withDeps((d) => ({ ...d, rules: { ...d.rules, tooSlowCounts: () => true } })),
+  },
+  {
+    name: "R-S39 · the streaks survive an officer's Pause and Resume — one slow slice after a Resume pauses the campaign at once",
+    expect: [L.s39],
+    impl: withDeps((d) => ({ ...d, campaigns: { ...d.campaigns, find: async (id: string) => {
+      const c = await d.campaigns.find(id);
+      if (c !== null) (d.state().runMark ??= {})[id] = c.pausedAt ?? "";
+      return c;
+    } } })),
   },
   {
     name: "R-S1 · the trail without its render entry (six entries — what went out is no longer on the record)",
@@ -1286,8 +1387,8 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     impl: withDeps((d) => ({ ...d, liveGate: () => ({ ok: true, via: "open" }) })),
   },
   {
-    name: "R-S9 (the spec's) · beforeSend removed — a campaign paused while it gated still sends",
-    expect: [L.s9, L.s18, L.s22, L.s29],
+    name: "R-S9 (the spec's) · beforeSend removed — a campaign paused while it gated still sends (and S39's blinded re-read never fails)",
+    expect: [L.s9, L.s18, L.s22, L.s29, L.s39],
     impl: withDeps((d) => ({ ...d, dispatch: (rows, sd) => d.dispatch(rows, { ...sd, beforeSend: undefined }) })),
   },
   {
@@ -1320,8 +1421,8 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     impl: withDeps((d) => ({ ...d, otpLastFailureAt: () => null })),
   },
   {
-    name: "R-S14 · the slice size fixed at 20 (a slow gate never shrinks it)",
-    expect: [L.s14],
+    name: "R-S14 · the slice size fixed at 20 (a slow gate never shrinks it — so S38's smallest group is never reached)",
+    expect: [L.s14, L.s38],
     impl: () => ({ adapt: () => 20, deps: (d) => ({ ...d, rules: { ...d.rules, adaptSliceSize: () => 20 } }) }),
   },
   {
@@ -1395,8 +1496,8 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     impl: withDeps((d) => ({ ...d, credit: () => ({ ok: true }) })),
   },
   {
-    name: "R-S22 · the unanswered re-check never escalates — a hook that always fails is a silent, permanent stall",
-    expect: [L.s22],
+    name: "R-S22 · the unanswered re-check never escalates — a hook that always fails is a silent, permanent stall (S39 counts on it too)",
+    expect: [L.s22, L.s39],
     impl: withDeps((d) => {
       const inner = d.state();
       const forgetful = new Proxy(inner, {
@@ -1467,6 +1568,11 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     name: "R-S27b · the engine's one send loses its purpose (sendBatch called with the messages as they came)",
     expect: [L.s27],
     impl: () => ({ sources: { ...REAL_SOURCES, engine: REAL_SOURCES.engine.split('purpose: "MARKETING"').join("purpose: m.purpose") } }),
+  },
+  {
+    name: "R-S27c · a declared caller passes the reaper's bypass (the re-review of round 2: a reap-only step beside a slice in flight)",
+    expect: [L.s27],
+    impl: () => ({ sources: { ...REAL_SOURCES, src: new Map([...REAL_SOURCES.src, ["src/lib/server/marketing/campaign-control.ts", `${REAL_SOURCES.src.get("src/lib/server/marketing/campaign-control.ts") ?? ""}${NL}export const reapBeside = (id: string) => reapStrandedClaims(id, undefined, { insideFlight: 1 });`]]) } }),
   },
   {
     name: "R-S28 · the OTP mark read from a module of its own (a second instance never sees it)",

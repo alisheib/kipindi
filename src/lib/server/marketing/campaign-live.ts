@@ -67,7 +67,7 @@ import { officerLabel } from "@/lib/server/actor-label";
 import { lastOtpFailureAt, smsProviderResolution } from "@/lib/server/sms";
 import { moneyBusy } from "@/lib/server/money-busy";
 import type { MoneyBusy } from "@/lib/server/money-busy";
-import { OTP_FAILURE_WAIT_MS } from "@/lib/marketing/engine-rules";
+import { otpFailureWaiting } from "@/lib/marketing/engine-rules";
 import type { SmsProviderResolution } from "@/lib/server/sms";
 import { marketingLiveGate, readMarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
 import type { MarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
@@ -91,7 +91,7 @@ import {
   CAMPAIGNS_AUDIENCE_EVERYONE, CAMPAIGNS_AUDIENCE_HIDDEN, CAMPAIGNS_AUDIENCE_UNREADABLE,
 } from "@/app/admin/campaigns/campaigns-copy";
 import {
-  FLOOR_SAFE_STOP_REASONS, LIVE_DISABLED, LIVE_FLOOR, LIVE_HEADLINE, LIVE_PAUSED_HIDDEN, LIVE_SOMEBODY, NOT_SENT_EXTRA,
+  FLOOR_SAFE_STOP_REASONS, LIVE_DISABLED, LIVE_FLOOR, LIVE_HEADLINE, LIVE_PAUSED_HIDDEN, LIVE_PAUSED_HIDDEN_VIEW, LIVE_SOMEBODY, NOT_SENT_EXTRA,
   RECIPIENT_STATUS_LABEL, START_AUDIENCE_REFUSED, copyCantTravelSentence, eatClock, officerPausedSentence, pausedReasonSentence,
   preparingHeadline, sendingHeadline, startDialog, stopDialog, stoppedHeadline,
 } from "@/app/admin/campaigns/[id]/live-copy";
@@ -206,18 +206,21 @@ export function liveReach(
  * reason through (the live page here; U47b-2 routes the campaigns LIST's line through it too — the U47b-1 review). Below
  * the floor (`hidden`) every ENGINE reason reads ONE sentence (`LIVE_PAUSED_HIDDEN`): some can only be written once
  * somebody on the list passed the checks for the wire, and a sentence kept for those alone would say so by being said. The
- * reasons found before anybody is checked keep their words (`FLOOR_SAFE_STOP_REASONS` — the copy advice then as a
- * condition, `liveReach`). Above the floor, and for a reader: `pausedReasonSentence` by reach.
+ * reasons that read no person keep their words (`FLOOR_SAFE_STOP_REASONS` — the copy advice then as a condition,
+ * `liveReach`). Above the floor, and for a reader: `pausedReasonSentence` by reach. ⭐ Its re-review: a viewer who may
+ * only VIEW reads the neutral sentence without "press Resume" (`LIVE_PAUSED_HIDDEN_VIEW`).
  */
 export function pausedReasonSentenceFor(
-  viewer: Pick<LiveViewer, "reads">,
+  viewer: Pick<LiveViewer, "reads" | "mayAct">,
   c: Pick<StoredSmsCampaign, "stopReason" | "enqueuedAt">,
   counts: SmsCampaignRecipientStatusCounts,
   hidden: (viewerReads: boolean, rows: number) => boolean = liveBreakdownHidden,
 ): string {
   const reads = viewer?.reads === true;
   const key = typeof c.stopReason === "string" ? c.stopReason.trim() : "";
-  if (hidden(reads, recipientRows(counts)) && !FLOOR_SAFE_STOP_REASONS.includes(key)) return LIVE_PAUSED_HIDDEN;
+  if (hidden(reads, recipientRows(counts)) && !FLOOR_SAFE_STOP_REASONS.includes(key)) {
+    return viewer?.mayAct === true ? LIVE_PAUSED_HIDDEN : LIVE_PAUSED_HIDDEN_VIEW;
+  }
   return pausedReasonSentence(key, liveReach(c, counts, reads, hidden));
 }
 
@@ -278,6 +281,8 @@ export type LiveViewDeps = {
     outstanding: typeof resumeOutstanding;
     /** ⛔ E23 · a paused reason as this viewer may read it (`pausedReasonSentenceFor`). */
     pausedReason: typeof pausedReasonSentenceFor;
+    /** E12 · the engine's ONE reading of a code failure (`otpFailureWaiting`, step ④e's own). */
+    otpWaiting: typeof otpFailureWaiting;
   };
   now: () => Date;
 };
@@ -302,7 +307,7 @@ export const LIVE_VIEW_DEPS: Readonly<LiveViewDeps> = Object.freeze({
   actsOn: async (campaignId: string) => (await getAuditForTargetDurable("SmsCampaign", campaignId, { limit: LIVE_ACTS_READ })).entries,
   rules: Object.freeze({
     progress: campaignProgress, breakdownHidden: liveBreakdownHidden, moneyVisible: liveMoneyVisible, bucketOf: notSentBucketOf,
-    outstanding: resumeOutstanding, pausedReason: pausedReasonSentenceFor,
+    outstanding: resumeOutstanding, pausedReason: pausedReasonSentenceFor, otpWaiting: otpFailureWaiting,
   }),
   now: () => new Date(),
 });
@@ -442,7 +447,7 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
       headline = LIVE_HEADLINE.PAUSED;
       stopSentence = reasonKey === "officer_paused"
         ? officerPausedSentence(await actorOfAct(c.id, OFFICER_PAUSED_ACTION, deps, c.pausedAt), c.pausedAt)
-        : deps.rules.pausedReason({ reads }, c, counts, deps.rules.breakdownHidden);
+        : deps.rules.pausedReason({ reads, mayAct }, c, counts, deps.rules.breakdownHidden);
       break;
     case "DONE":
       headline = LIVE_HEADLINE.DONE;
@@ -453,7 +458,7 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
       headline = stoppedHeadline(who, c.finishedAt, left ?? outstandingRows(counts));
       // ⭐ The U47b-1 review · an officer's Stop is said ONCE — the headline names who and when; any other reason is said as a
       // paused one is, through the floor.
-      stopSentence = reasonKey === "officer_stopped" ? null : deps.rules.pausedReason({ reads }, c, counts, deps.rules.breakdownHidden);
+      stopSentence = reasonKey === "officer_stopped" ? null : deps.rules.pausedReason({ reads, mayAct }, c, counts, deps.rules.breakdownHidden);
       break;
     }
     default:
@@ -470,10 +475,15 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
   // ⭐ The U47b-1 review · "nobody driving" only while the engine would be SENDING: the window open, money not busy, no login
   // code failed in the last two minutes — else an officer's page that is correctly waiting (every night, for one) reads as
   // nobody sending.
-  const otpAt = deps.otpLastFailureAt();
-  const engineWaits = sendWindow.open !== true || deps.moneyBusy().busy === true
-    // The engine's own reading (④e): a failure dated either side of now by less than the wait.
-    || (typeof otpAt === "number" && Number.isFinite(otpAt) && Math.abs(nowMs - otpAt) < OTP_FAILURE_WAIT_MS);
+  // ⛔ Its re-review: a money signal that THROWS is busy, as the engine reads it (④d — waiting costs only time), never a
+  // view that fails for every viewer; a code failure through the engine's ONE reading (④e, `otpFailureWaiting`).
+  let moneyWaits: boolean;
+  try {
+    moneyWaits = deps.moneyBusy().busy === true;
+  } catch {
+    moneyWaits = true;
+  }
+  const engineWaits = sendWindow.open !== true || moneyWaits || deps.rules.otpWaiting(nowMs, deps.otpLastFailureAt());
   const nobodyDriving = status === "RUNNING" && !engineWaits && (!Number.isFinite(lastMs) || nowMs - lastMs >= NOBODY_DRIVING_AFTER_MS);
 
   // ── the controls — always present, each disabled with its reason (decision 4) ──
