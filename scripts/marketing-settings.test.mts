@@ -93,7 +93,7 @@ const L = {
   s5d: "S5d · ⭐ THE FIFTH REVIEW — a readable proof is never thrown away, and one rule says what an opening is: a look that finds no row proves the row gone though the first read failed, and the close is recorded though every read after fails (F1) — and with somebody's opening landing after that look, recorded and reopened; a retry's compare-and-delete that finds nothing proves it gone (F2); with no final read, whether an opening stands comes from the look that proved the row gone — reopened, never off (F3); an opening stamped ahead of this clock kept through failed deletes is still_open_after_close, and one landing after a clean 'no row' is reopened_meanwhile (F6)",
   s5b: "S5b · no database answers no_database before anything is written; the ops door's by and reason are screened — a phone number in brackets, dots, slashes, dashes, full-width, Arabic-Indic, circled or Ethiopic numerals, a blank, 121 characters, a line break, a bidi override, a line separator, a combining grapheme joiner, the Hangul filler and a lone surrogate are refused; six numerals pass and seven do not, in one field AND across the two; NFKC is applied; named in the row and the payload with no actor; the card needs its officer",
   s6: "S6 · the three actions call requireOwner FIRST — before any other await, in the decommented source — the switch-on action reads only the duration from the form (the form is named only as its parameter and in minutesOf, which reads getAll(\"minutes\") alone; who switched it on is the session's officer), and the switch-off action takes and reads no form at all",
-  s7: "S7 · the writer population, across every source extension in src/ and scripts/ (tests aside; the loopback Postgres probe and the U49s-2 drive allowed by name — the drive only while it refuses a non-loopback database before it connects) — MARKETING_LIVE_SWITCH_KEY and sms.live appear only in live-switch.ts; only the card's actions and the ops door call the two writers; marketing.sms.settings appears only in its own module, and only the card's action calls saveMarketingSmsSettings",
+  s7: "S7 · the writer population, across every source extension in src/ and scripts/ (tests aside; the loopback Postgres probe, the U49s-2 drive and U52a's four read-only tools allowed by name — the tools only while their core opens a READ ONLY transaction; the drive only while it refuses a non-loopback database before it connects) — MARKETING_LIVE_SWITCH_KEY and sms.live appear only in live-switch.ts; only the card's actions and the ops door call the two writers; marketing.sms.settings appears only in its own module, and only the card's action calls saveMarketingSmsSettings",
   s8: "S8 · the settings bounds — every boundary accepted and its neighbour refused under its own field (price 1–1,000 with at most two decimals, the reserve from the platform floor to 10,000,000, the limit 100–10,000,000, start 07:00–19:00 and end 09:00–21:00 on the quarter hour); every problem at once; the reserve's minimum follows the floor; under 2 h is refused under the end; the limit's refusal binds each 'TZS' to its amount (a no-break space)",
   s9: "S9 · the store — a partial post, an unknown key and a blank officer are refused with nothing written; a good save writes exactly the record and its ADMIN row; a stale page is refused; a no-change save writes nothing; a row it cannot read in full (a bad field, another shape, a window under 2 h) reads defaults where it failed — the window as a pair — answers readable:false and refuses every save",
   s9r: "S9r · ⛔ U13 · R1 · A PUBLISHED PROMISE HOLDS THE HOURS — new send hours are refused (published_hours, naming the time, nothing written) while a public policy line names a time they would drop: 09:00–18:00 or 08:00–21:00 under a line naming 08:00 and 20:00, and any new hours under a line naming 9 o'clock; hours that keep every named time save; a change that leaves the hours as they are is never held; lines that cannot be read refuse new hours (published_unread) but no other change",
@@ -371,6 +371,11 @@ const ACTIONS_SRC = "src/app/admin/system/actions.ts";
 const OPS_SRC = "scripts/ops/marketing-live-switch.mts";
 const PROBE_SRC = "scripts/live/marketing-settings-pg-probe.mts";
 const DRIVE_SRC = "scripts/live/marketing-u49s-settings-drive.mjs";
+/** U52a's read-only tools (the STEP 54 merge): they NAME the switch's and the settings' keys in their SELECTs — by exact path,
+ *  and only while their core opens every read in a READ ONLY transaction (`test:marketing-preflight` pins the rest). */
+const U52A_CORE = "scripts/lib/marketing-u52a.mjs";
+const U52A_READERS: readonly string[] = [U52A_CORE, "scripts/live/marketing-preflight.mjs", "scripts/live/marketing-campaign-evidence.mjs", "scripts/live/marketing-u52a-pg-probe.mts"];
+const U52A_READ_ONLY = "$executeRaw`SET TRANSACTION READ ONLY`";
 const PAGE_SRC = "src/app/admin/system/page.tsx";
 /** The drive's refusal of any database that is not this machine's — the reason it may name the switch's keys at all. */
 const DRIVE_GUARD = 'if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(dbHost)) {';
@@ -772,7 +777,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const setterCallers: string[] = [];
     // The loopback probe and the U49s-2 drive may NAME the keys (they seed and read rows on a scratch cluster) — by exact
     // path, and the drive only while it refuses any other database before it connects. Neither may call a writer.
-    const byName = (rel: string): boolean => rel === PROBE_SRC || rel === DRIVE_SRC;
+    const byName = (rel: string): boolean => rel === PROBE_SRC || rel === DRIVE_SRC || U52A_READERS.includes(rel);
     for (const [rel, text] of impl.sources) {
       if (rel !== LIVE_SRC && !byName(rel) && (/\bMARKETING_LIVE_SWITCH_KEY\b/.test(text) || text.includes("sms.live"))) keyNamed.push(rel);
       if (rel !== SETTINGS_SRC && !byName(rel) && (/\bMARKETING_SMS_SETTINGS_KEY\b/.test(text) || text.includes("sms.settings"))) settingsKeyNamed.push(rel);
@@ -787,10 +792,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const guardAt = drive.indexOf(DRIVE_GUARD);
     const exitAt = guardAt < 0 ? -1 : drive.indexOf("process.exit(2)", guardAt);
     const driveLoopback = guardAt > 0 && exitAt > guardAt && drive.indexOf("await sql.connect()") > exitAt;
+    const u52aReadOnly = (impl.sources.get(U52A_CORE) ?? "").includes(U52A_READ_ONLY);
     ok(p(L.s7),
       keyNamed.length === 0 && settingsKeyNamed.length === 0 && callers.every((c) => allowed.has(c)) && callers.includes(OPS_SRC)
         && setterCallers.every((c) => c === ACTIONS_SRC || c === PROBE_SRC)
-        && /export const MARKETING_LIVE_SWITCH_KEY = "marketing\.sms\.live";/.test(liveSrc) && wired && driveLoopback,
+        && /export const MARKETING_LIVE_SWITCH_KEY = "marketing\.sms\.live";/.test(liveSrc) && wired && driveLoopback && u52aReadOnly,
       `switch key named in [${keyNamed.join(", ")}] · settings key in [${settingsKeyNamed.join(", ")}] · writer callers [${callers.join(", ")}] · setter callers [${setterCallers.join(", ")}] · shipped deps wired ${wired} · the drive refuses a non-loopback database before it connects ${driveLoopback}`);
   }
 
@@ -1637,6 +1643,9 @@ if (!PROVE_RED) {
     { name: "R-S7d · the switch's key named in another scripts/live drive (the exemption is by exact path, not by folder)", expect: /^S7 ·/,
       impl: { ...REAL, sources: withSource("scripts/live/sneak-drive.mjs", () => 'const KEY = "marketing.sms.live";\n') },
       landed: () => true, landedAs: "another drive names marketing.sms.live" },
+    { name: "R-S7f · U52a's core no longer opens its reads READ ONLY (a tool that names the keys could write them)", expect: /^S7 ·/,
+      impl: { ...REAL, sources: withSource(U52A_CORE, (t) => t.split(U52A_READ_ONLY).join("$executeRaw" + String.fromCharCode(96) + "SET TRANSACTION READ WRITE" + String.fromCharCode(96))) },
+      landed: () => (SOURCES.get(U52A_CORE) ?? "").includes(U52A_READ_ONLY), landedAs: "U52a's tools read in a writable transaction" },
     { name: "R-S7e · the U49s-2 drive's loopback refusal removed", expect: /^S7 ·/,
       impl: { ...REAL, sources: withSource(DRIVE_SRC, (t) => t.replace(DRIVE_GUARD, "if (false) {")) },
       landed: () => (SOURCES.get(DRIVE_SRC) ?? "").includes(DRIVE_GUARD), landedAs: "the drive would write into any database" },
