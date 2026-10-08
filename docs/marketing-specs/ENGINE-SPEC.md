@@ -2321,7 +2321,9 @@ grid, read by the page and its ghost);
   the poll, which every page that is not driving makes every 10 s. `softRequireStaff` would refuse a role that may only LOOK
   (AUDITOR with Growth view) on every poll and write each refusal up as `privilege_escalation_blocked` — a watcher turned into
   a stream of attempted escalations by its own page. `softViewStaff` asks the same things in the same order (session → STORED
-  role → second factor in words) with the view grant; a role with no view grant is still refused and still written up. The
+  role → second factor in words) with the view grant; a role with no view grant is still refused and still written up (its
+  row carries `grant: "view"`, so it never reads as the act guard's — and `red:admin-soft-gate`'s plants, which anchor on
+  THAT block, still resolve exactly once). The
   step takes `softCheckStaff` (= `softRequireStaff` + `refuseSecondFactor`, V5's "step uses `refuseSecondFactor`"); the five
   presses `softRequireStaff` (a press keeps the step-up redirect, as a Save does). All seven take ONE parameter, the
   campaign's id; the viewer is `liveViewerFor(userId)` — the stored role's three cells, failing closed (L2).

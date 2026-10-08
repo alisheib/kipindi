@@ -240,13 +240,15 @@ export async function softViewStaff(
   const me = await db.user.findById(session.userId);
   if (!me) redirect("/auth/admin");
   if (me.role !== "ADMIN" && !(await canView(me.role as Role, domain))) {
+    // `grant: "view"` says WHICH grant was missing — the row `softRequireStaff` writes for a missing ACT grant carries no such
+    // key (and `red:admin-soft-gate` plants into THAT block, so the two must never read the same).
     audit({
       category: "SECURITY",
       action: "privilege_escalation_blocked",
       actorId: session.userId,
       targetType: "Action",
       targetId: action,
-      payload: { role: me.role, domain, action },
+      payload: { role: me.role, domain, action, grant: "view" },
     });
     return { ok: false, error: refusal };
   }
