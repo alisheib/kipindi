@@ -26,7 +26,7 @@
 import React from "react";
 import { transformSync } from "esbuild";
 import { mountHook, fakeClock } from "./hooks-host.mts";
-import type { FakeClock } from "./hooks-host.mts";
+import type { FakeClock, HostOptions } from "./hooks-host.mts";
 import {
   LABELS as PAGE_LABELS, REAL_PAGE, REAL_SOURCES, PATHS, ACTS, bodyOf, plantIn, tagAt, attrOf, textOfHtml, unescapeHtml, viewAt, OK_STEP, OK_VIEW,
 } from "./campaign-visuals-page.mts";
@@ -48,6 +48,7 @@ const NAVGROUPS = await import("../../src/components/admin/admin-nav-groups.ts")
 const RUNADMIN = await import("../../src/lib/client/run-admin-action.ts");
 const NEXT = await import("next/server");
 const ADMISSION = await import("../../src/lib/server/admission.ts");
+const RATELIMIT = await import("../../src/lib/server/rate-limit.ts");
 const { db } = await import("../../src/lib/server/store.ts");
 const { getAuditPage, auditFlush } = await import("../../src/lib/server/audit.ts");
 
@@ -60,11 +61,12 @@ type Mods = PageImpl["mods"];
 /* ══ THE LABELS ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 export const LIVE_LABELS = {
-  v12: "V12 · ⭐ THE STEP DOOR (the review's MAJOR) — POST /api/admin/campaigns/<id>/step takes the driver's step out of Next's one-at-a-time action queue and is built as a DOOR: POST only (any other method a 405 naming POST), never cross-site (Sec-Fetch-Site from anywhere but this origin a 403, asked before the session is read; a header-less client let through), the id from the path with the body never read, the guard (softCheckStaff, growth, the stored role's ACT grant) the first thing that touches anything — viewer and service not asked on any refusal — the STORED role and not the cookie's claim, a lapsed or never-set-up second factor refused IN WORDS with the step-up link, a visitor with no session told in words (401 signed_out with the sign-in address) and never redirected, the answer the service's own as JSON (identical, role-shaped: no money for GROWTH, no phone number anywhere), an unexpected throw — the guard's or the step's — a typed unfinished (500, never a page; the log names the error's type), an unknown campaign 404 not_found; production's dependencies frozen with the guard and service by identity; and the route called as Next calls it: 405 + Allow, 403, a typed JSON answer for every other request, Cache-Control no-store on each, the body never consumed, no export but POST",
+  v12: "V12 · ⭐ THE STEP DOOR (the review's MAJOR) — POST /api/admin/campaigns/<id>/step takes the driver's step out of Next's one-at-a-time action queue and is built as a DOOR: POST only (any other method a 405 naming POST), never cross-site (Sec-Fetch-Site from anywhere but this origin a 403, asked before the session is read; a client that sends none is let through that check) and carrying the page's own X-Kp-Step: 1 (absent or wrong a 403 that asks nothing of the session, the viewer or the service — the very header postLiveStep sends, held to the door by the seam between them), the id from the path with the body never read, the guard (softCheckStaff, growth, the stored role's ACT grant) the first thing that touches anything — viewer and service not asked on any refusal — the STORED role and not the cookie's claim, a lapsed or never-set-up second factor refused IN WORDS with the step-up link, a visitor with no session told in words (401 signed_out with the sign-in address) and never redirected, the answer the service's own as JSON (identical, role-shaped: no money for GROWTH, no phone number anywhere), an unexpected throw — the guard's or the step's — a typed unfinished (500, never a page; the production log names the error's TYPE alone — never its message, which can hold a number), an unknown campaign 404 not_found; production's dependencies frozen with the guard and service by identity; and the route called as Next calls it: 405 + Allow, 403, a typed JSON answer for every other request, Cache-Control no-store on each, the body never consumed, no export but POST",
   v13: "V13 · ⭐ THE DRIVER'S HOOK, EXECUTED (the review's MINOR 3) — the real useLiveDriver on a minimal hooks host with a fake clock: it steps at once, again after 2 s when work was done, after the wait's until (12 s here) and after 5 s when another step held the flight, and ends on DONE with no timer left; React's development double-run makes ONE step call, not two; a page that leaves while a step is in flight makes no further call and sets no state, and one that leaves while the loop sleeps leaves no timer behind; a viewer who may not act polls every 10 s and makes no step call; a status that keeps the mode (PREPARING → RUNNING) does not restart the loop and skip the gap; a flip to another mode starts exactly one loop and does not run the reaper again; a stopped driver stays stopped until Try again; refresh reads the campaign at once; and the compiled real source passes the same scenarios (the control)",
-  v14: "V14 · ⭐ THE PRESSES, EXECUTED (the review's MAJOR and MINORS 1, 2, 6) — the real useLivePresses: two clicks in one tick make ONE call (the guard is a ref, not state), a press in flight disables its own control only (Stop is pressable while Pause waits), a viewer who may not act presses nothing, a landed act sets the campaign it answered with (or asks for it when the answer had none), its toast fades when it is the act's plain sentence and STAYS (warning, durationMs 0) when it carries a warning or advice, a refusal stays until the next press clears it, an act that threw is unfinished with the reload words and a request for the campaign, a copy never takes a DRIVING page away (a link for a new tab) and navigates any other, the mode read is the latest when the answer lands, a throw out of a setter leaves no control pending for good, and the compiled real source passes the same scenarios (the control)",
-  v15: "V15 · ⭐ WHAT THE PAGE SAYS AND WHEN (the review's MINORS 1, 2, 4, 5, 8) — the pure decisions the components call: liveMay needs both the server and the console's gate; a control's state is its view's AND its own press in flight, never another's; the reasons PRINTED are a role's once for all five, the status's expected control's, and any that is not the plain 'not in this state' — the rest named to assistive technology — and every disabled control's aria-describedby names an element that is in the markup, carrying its reason; 'Nobody is sending' reaches an actor only after its own driver stopped (never above 'Keep this page open' on a first paint) and a watcher whenever it is the data's fact, PREPARING's in its own words; the closed send window and the switch's closing time reach a viewer who is not driving; a stopped driver's wait is gone; the toast of a plain act fades and every other stays; a copy while driving is a link; the page's ONE live region is always mounted, polite, and says the headline when the status CHANGES — never on mount, never for a headline that moved without it; the components call these functions and make no such decision inline; and the compiled real source passes the same (the control)",
+  v14: "V14 · ⭐ THE PRESSES, EXECUTED (the review's MAJOR and MINORS 1, 2, 6) — the real useLivePresses: two clicks in one tick make ONE call (the guard is a ref, not state), a press in flight disables its own control only (Stop is pressable while Pause waits), a viewer who may not act presses nothing, a landed act sets the campaign it answered with (or asks for it when the answer had none), its toast fades when it is the act's plain sentence and STAYS (warning, durationMs 0) when it carries a warning or advice, a refusal stays until the next press clears it, an act that threw is unfinished with the reload words and a request for the campaign, a copy never takes a DRIVING page away (a link for a new tab) and navigates any other — but never once the page has been left (the answer skips only the navigate; React's development double-run still ends mounted) — the link a copy leaves behind stays through every other press and goes with the next Make a copy, the mode read is the latest when the answer lands, a throw out of a setter leaves no control pending for good, and the compiled real source passes the same scenarios (the control)",
+  v15: "V15 · ⭐ WHAT THE PAGE SAYS AND WHEN (the review's MINORS 1, 2, 4, 5, 8) — the pure decisions the components call: liveMay needs both the server and the console's gate; a control's state is its view's AND its own press in flight, never another's; the reasons PRINTED are a role's once for all five, the status's expected control's, and any that is not the plain 'not in this state' — the rest named to assistive technology — and every disabled control's aria-describedby names an element that is in the markup, carrying its reason; 'Nobody is sending' reaches an actor only after its own driver stopped (never above 'Keep this page open' on a first paint) and a watcher whenever it is the data's fact, PREPARING's in its own words; the closed send window and the switch's closing time reach a viewer who is not driving; a stopped driver's wait is gone; the toast of a plain act fades and every other stays; a copy while driving is a link; the page's ONE live region is always mounted, polite, and says the headline when the status CHANGES — never on mount, never for a headline that moved without it; the dialog a settled press closes is that press's own (a Pause answering leaves the Stop dialog, a refused Start leaves no dialog over its refusal — dialogAfterSettled, which the Provider calls); every callout of the controls card — a driver stop of each of its seven kinds (the step-up page at both of its addresses), a press's refusal and a copy's link — is drawn alone and read: its sentence, its one way on (the step-up link with the right text, Try again, Reload), target=_blank with rel=noopener noreferrer on every link that opens another tab, role=alert on every alert; the trail names the campaign (AdminCrumbLabel) and the ghost's buttons keep the kit's --tap-min; the components call these functions and make no such decision inline; and the compiled real source passes the same (the control)",
   v16: "V16 · ⭐ THE DEV SEED (the review's MINOR 9 and NIT) — ?busy= is re-entrant: two holds, then ?busy=0, put the admission gate's limits back exactly (a second hold never records the first's raised limits as the original); ?run= and ?stages= refuse (409) and make nothing unless the rail is the console stub, and make their campaign when it is; and every sentence the drive asserts against (each W.<path> its source names) is served by ?words=; and the compiled real source passes the same (the control)",
+  v17: "V17 · THE COPY SPENDS THE OFFICER'S SAVE BUDGET (the first round's leftover) — Make a copy IS a saved draft: the copy action, compiled and run with stand-ins, asks the budget exactly once — for this officer, on the real marketing.campaignSave rule (a bucket the rate limiter does not know fails OPEN) — AFTER its guard and BEFORE the service, answers rate_limited with copyRateLimitedSentence(retryAfterSec) and runs nothing when it is refused, does not ask at all when the guard refuses, and no other press and not the poll spends it; and the compiled real source passes the same (the control)",
 } as const;
 export type LiveLabel = (typeof LIVE_LABELS)[keyof typeof LIVE_LABELS];
 
@@ -201,7 +203,8 @@ async function doorChecks(M: Mods, S: PageSources, fx: DoorFx, h: PageHarness): 
     log: (err: unknown) => { spy.logs.push(errorName(err)); },
     ...over,
   }) as never;
-  const post = (id: unknown, site: string | null = "same-origin", method = "POST") => ({ method, secFetchSite: site, campaignId: id });
+  const post = (id: unknown, site: string | null = "same-origin", method = "POST", header: string | null = "1") =>
+    ({ method, secFetchSite: site, stepHeader: header, campaignId: id });
   const roundTrip = (v: unknown): string => json(JSON.parse(json(v)));
   const ACTION = "marketing.campaign.step";
   // ⭐ The security rows this door's refusals wrote, BY IDENTITY: the in-memory audit log is a ring of 10,000 entries (all categories), and a
@@ -248,6 +251,32 @@ async function doorChecks(M: Mods, S: PageSources, fx: DoorFx, h: PageHarness): 
     reset();
     const headerless = await door(post(fx.campaignId, null), depsFor(sessionOf(fx.ids.grw, "GROWTH")));
     if (headerless.status !== 200) wrong.push(`a client that sends no Sec-Fetch-Site was refused (${headerless.status})`);
+
+    // 2b · …but never without the page's OWN header (the checker's NIT — the belt for exactly that client): absent or wrong, a 403 that asks
+    // nothing of the session, the viewer or the service; present with same-origin, the step is asked
+    for (const header of [null, "", "0", "true", "2", "yes", "1 "]) {
+      reset();
+      const a = await door(post(fx.campaignId, "same-origin", "POST", header), depsFor(sessionOf(fx.ids.grw, "GROWTH")));
+      if (!(a.status === 403 && a.body === null && spy.guard === 0 && spy.viewer === 0 && spy.step === 0)) wrong.push(`X-Kp-Step ${json(header)}: ${a.status} body ${json(a.body)} guard ${spy.guard}, viewer ${spy.viewer}, step ${spy.step}`);
+    }
+    reset();
+    const bare2 = await door(post(fx.campaignId, null, "POST", null), depsFor(sessionOf(fx.ids.grw, "GROWTH")));
+    if (!(bare2.status === 403 && bare2.body === null && spy.guard === 0 && spy.step === 0)) wrong.push(`no Sec-Fetch-Site and no X-Kp-Step: ${bare2.status}, guard ${spy.guard}, step ${spy.step}`);
+    reset();
+    const marked = await door(post(fx.campaignId, "same-origin", "POST", "1"), depsFor(sessionOf(fx.ids.grw, "GROWTH")));
+    if (!(marked.status === 200 && spy.guard === 1 && spy.viewer === 1 && spy.step === 1)) wrong.push(`same-origin with the header: ${marked.status}, guard ${spy.guard}, viewer ${spy.viewer}, step ${spy.step}`);
+    // the SEAM: what the driver's client sends is what the door accepts (a header the client dropped or renamed is a page that cannot step)
+    let sent: Record<string, string> = {};
+    const recordingFetch = (async (_input: unknown, init?: { headers?: Record<string, string> }) => {
+      sent = { ...(init?.headers ?? {}) };
+      return { status: 200, json: async () => JSON.parse(json(okGrowth.body)) } as unknown as Response;
+    }) as unknown as typeof fetch;
+    await M.driver.postLiveStep(fx.campaignId, recordingFetch);
+    const sentName = Object.keys(sent).find((k) => k.toLowerCase() === "x-kp-step") ?? null;
+    reset();
+    const viaClient = await door(post(fx.campaignId, "same-origin", "POST", sentName === null ? null : sent[sentName]), depsFor(sessionOf(fx.ids.grw, "GROWTH")));
+    if (!(sentName !== null && viaClient.status === 200 && spy.step === 1)) wrong.push(`the driver's request carries ${json(sent)}; the door answered it ${viaClient.status} (step calls ${spy.step})`);
+    reset();
 
     // 3 · the guard first; the viewer and the service are not asked on ANY refusal; the STORED role decides
     const refusals: Array<[string, Sess, string, number, string]> = [
@@ -316,24 +345,38 @@ async function doorChecks(M: Mods, S: PageSources, fx: DoorFx, h: PageHarness): 
     const D = M.door.LIVE_STEP_DOOR_DEPS;
     const wired = Object.isFrozen(D) && D.guard === GUARD.softCheckStaff && D.step === CTRL.campaignStep;
     if (!wired) wrong.push(`production's deps: frozen ${Object.isFrozen(D)}, guard is softCheckStaff ${D.guard === GUARD.softCheckStaff}, step is campaignStep ${D.step === CTRL.campaignStep}`);
+    // 5b · the production log names the error's TYPE alone — the message can carry a number, and none is ever printed (the checker's NIT; M28)
+    const printed: string[] = [];
+    const quiet = console.error;
+    console.error = (...args: unknown[]) => { printed.push(args.map((x) => (typeof x === "string" ? x : json(x))).join(" ")); };
+    try {
+      D.log(new TypeError("the database said +255712345678 could not be found"));
+    } finally {
+      console.error = quiet;
+    }
+    const line = printed.join(" | ");
+    if (!(printed.length === 1 && line.includes("TypeError") && !line.includes("255712345678") && !line.includes("could not be found") && !line.includes("database"))) wrong.push(`the production log printed ${json(printed)} (want the error's type alone)`);
 
     // 6 · the door's source: the two request checks, then the guard — and nothing is asked before it
     const body = bodyOf(S.door, "campaignStepDoor") ?? "";
     const at1 = body.indexOf('if (req.method !== "POST")');
     const at2 = body.indexOf("if (!sameOriginRequest(req.secFetchSite))");
+    const atHeader = body.indexOf('if (req.stepHeader !== "1")');
     const atGuard = body.indexOf('deps.guard("growth", "marketing.campaign.step", LIVE_ROLE_REFUSAL)');
     const atViewer = body.indexOf("deps.viewer(");
     const atStep = body.indexOf("deps.step(");
-    const order = at1 >= 0 && at2 > at1 && atGuard > at2 && atViewer > atGuard && atStep > atViewer && !body.slice(0, atGuard).includes("deps.viewer") && !body.slice(0, atGuard).includes("deps.step");
-    if (!order) wrong.push(`the door's order: method ${at1}, site ${at2}, guard ${atGuard}, viewer ${atViewer}, step ${atStep}`);
+    const order = at1 >= 0 && at2 > at1 && atHeader > at2 && atGuard > atHeader && atViewer > atGuard && atStep > atViewer && !body.slice(0, atGuard).includes("deps.viewer") && !body.slice(0, atGuard).includes("deps.step");
+    if (!order) wrong.push(`the door's order: method ${at1}, site ${at2}, header ${atHeader}, guard ${atGuard}, viewer ${atViewer}, step ${atStep}`);
 
     // 7 · the route, called as Next calls it: a typed answer for every request, no-store on each, the body never consumed
     const route = M.route;
     const ctx = { params: Promise.resolve({ id: fx.campaignId }) };
     const url = `http://localhost/api/admin/campaigns/${fx.campaignId}/step`;
     const wrongMethod = await route.POST(new Request(url, { method: "GET" }), ctx);
-    const crossSite = await route.POST(new Request(url, { method: "POST", headers: { "sec-fetch-site": "cross-site" } }), ctx);
-    const withBody = new Request(url, { method: "POST", headers: { "sec-fetch-site": "same-origin" }, body: json({ userId: "usr_posted", mayAct: true }) });
+    const crossSite = await route.POST(new Request(url, { method: "POST", headers: { "sec-fetch-site": "cross-site", "x-kp-step": "1" } }), ctx);
+    // the page's own header, handed from the request to the door: without it a same-origin POST is refused empty; with it the guard is reached
+    const unmarked = await route.POST(new Request(url, { method: "POST", headers: { "sec-fetch-site": "same-origin" } }), ctx);
+    const withBody = new Request(url, { method: "POST", headers: { "sec-fetch-site": "same-origin", "x-kp-step": "1" }, body: json({ userId: "usr_posted", mayAct: true }) });
     // no request scope here, so the real guard cannot read a cookie: the route must still answer — typed, as JSON — and not throw
     let bare: Response | null = null;
     let bareText = "";
@@ -354,14 +397,15 @@ async function doorChecks(M: Mods, S: PageSources, fx: DoorFx, h: PageHarness): 
     const exported = Object.keys(route).filter((k) => k !== "default" && k !== "__esModule").sort().join();
     const routeOk = wrongMethod.status === 405 && wrongMethod.headers.get("allow") === "POST" && noStore(wrongMethod)
       && crossSite.status === 403 && noStore(crossSite) && (await crossSite.text()) === ""
+      && unmarked.status === 403 && noStore(unmarked) && (await unmarked.text()) === ""
       && bareThrew === null && bare !== null && [401, 403, 500].includes(bare.status) && noStore(bare) && /application[/]json/.test(bare.headers.get("content-type") ?? "") && typed
       && withBody.bodyUsed === false && exported === "POST,dynamic,runtime";
-    if (!routeOk) wrong.push(`the route: GET ${wrongMethod.status} allow ${wrongMethod.headers.get("allow")}, cross-site ${crossSite.status}, no scope ${bareThrew ?? bare?.status} ${bareText.slice(0, 80)} no-store ${noStore(bare)}, body used ${withBody.bodyUsed}, exports ${exported}`);
+    if (!routeOk) wrong.push(`the route: GET ${wrongMethod.status} allow ${wrongMethod.headers.get("allow")}, cross-site ${crossSite.status}, no header ${unmarked.status}, with the header and no scope ${bareThrew ?? bare?.status} ${bareText.slice(0, 80)} no-store ${noStore(bare)}, body used ${withBody.bodyUsed}, exports ${exported}`);
     const rsrc = S.route;
     // the request's own body or query: `req.json()`, `request.text()`, `req.body` … (NextResponse.json is the RESPONSE, and fine)
     const BODY_READ = new RegExp("(^|[^A-Za-z0-9_])(req|request)[.](json|text|formData|arrayBuffer|blob|body)([^A-Za-z0-9_]|$)");
     const readsBody = BODY_READ.test(rsrc) || rsrc.includes("searchParams");
-    if (readsBody || !rsrc.includes("campaignStepDoor(") || !rsrc.includes("LIVE_STEP_DOOR_DEPS") || !/no-store/.test(rsrc)) wrong.push(`the route's source: reads a body or a query ${readsBody}, no-store ${/no-store/.test(rsrc)}`);
+    if (readsBody || !rsrc.includes("campaignStepDoor(") || !rsrc.includes("LIVE_STEP_DOOR_DEPS") || !/no-store/.test(rsrc) || !rsrc.includes('headers.get("x-kp-step")')) wrong.push(`the route's source: reads a body or a query ${readsBody}, no-store ${/no-store/.test(rsrc)}, hands the page's header to the door ${rsrc.includes('headers.get("x-kp-step")')}`);
   } finally {
     console.error = noisy;
   }
@@ -579,7 +623,7 @@ const landed = (message: string, view: CampaignLiveView | null = viewAt("RUNNING
 
 async function pressScenarios(Pm: Mods["presses"]): Promise<string[]> {
   const wrong: string[] = [];
-  const mk = (over: Record<string, unknown> = {}) => {
+  const mk = (over: Record<string, unknown> = {}, opts: HostOptions = {}) => {
     const log = { calls: [] as string[], views: [] as string[], refreshes: 0, toasts: [] as ToastSpec[], navigated: [] as string[], settled: [] as string[] };
     const answers: Record<string, () => Promise<LiveActAnswer>> = {};
     const calls = Object.fromEntries(ACTS.map((a) => [a, async (id: string) => { log.calls.push(`${a}:${id}`); return answers[a] ? answers[a]() : landed(`${a} done`); }]));
@@ -592,7 +636,7 @@ async function pressScenarios(Pm: Mods["presses"]): Promise<string[]> {
       onSettled: (a: string) => { log.settled.push(a); },
       ...over,
     };
-    return { m: mountHook(Pm.useLivePresses, host as never), log, answers, host };
+    return { m: mountHook(Pm.useLivePresses, host as never, opts), log, answers, host };
   };
 
   // ── no double press: two clicks in one tick make ONE call; the next press, once it answered, is allowed ──
@@ -714,11 +758,44 @@ async function pressScenarios(Pm: Mods["presses"]): Promise<string[]> {
       && watch.log.navigated.join() === href && watch.m.result().copyLink === null
       && late.log.navigated.length === 0 && late.m.result().copyLink === "/admin/campaigns/new?draft=cmp_late";
     if (!ok) wrong.push(`a copy: while driving navigated ${json(drive.log.navigated)} link ${json(drive.m.result().copyLink)}; while watching navigated ${json(watch.log.navigated)}; mode changed meanwhile navigated ${json(late.log.navigated)} link ${json(late.m.result().copyLink)}`);
-    // …and the link goes with the next press
+    // …the link a copy leaves behind STAYS through every other press (the checker's NIT: it is no refusal, and a Pause pressed beside it
+    // has no business taking it down) …
     drive.answers.pause = async () => landed("Paused.", viewAt("PAUSED"));
     drive.m.result().press("pause");
     await flushAll();
-    if (drive.m.result().copyLink !== null) wrong.push("the link a copy left behind stayed after the next press");
+    const keptThroughPause = drive.m.result().copyLink === href;
+    // …and goes with the next Make a copy: gone while that press is in flight, replaced by its own link when it lands
+    const second = defer<LiveActAnswer>();
+    drive.answers.copy = () => second.promise;
+    drive.m.result().press("copy");
+    await flushAll();
+    const goneWhilePending = drive.m.result().copyLink === null;
+    second.resolve(landed("A copy was made as a new draft.", viewAt("RUNNING"), { href: "/admin/campaigns/new?draft=cmp_again" }));
+    await flushAll();
+    const replaced = drive.m.result().copyLink === "/admin/campaigns/new?draft=cmp_again";
+    if (!(keptThroughPause && goneWhilePending && replaced)) wrong.push(`the link a copy leaves behind: kept through a Pause ${keptThroughPause}, gone while the next copy is in flight ${goneWhilePending}, replaced by that copy's link ${replaced}`);
+  }
+
+  // ── an answer that lands after the page was LEFT does not navigate — and skips nothing else; React's development double-run ends MOUNTED ──
+  {
+    const href = "/admin/campaigns/new?draft=cmp_late";
+    const left = mk({ mode: "watch" });
+    const gate = defer<LiveActAnswer>();
+    left.answers.copy = () => gate.promise;
+    left.m.result().press("copy");
+    await flushAll();
+    left.m.unmount();
+    gate.resolve(landed("A copy was made as a new draft.", viewAt("DONE"), { href }));
+    await flushAll();
+    const strict = mk({ mode: "watch" }, { strict: true });
+    strict.answers.copy = async () => landed("A copy was made as a new draft.", viewAt("DONE"), { href });
+    strict.m.result().press("copy");
+    await flushAll();
+    const skippedOnlyTheNavigate = left.log.navigated.length === 0 && left.log.toasts.length === 1 && left.log.views.join() === "DONE" && left.log.settled.join() === "copy";
+    const mountedUnderStrictMode = strict.log.navigated.join() === href;
+    if (!(skippedOnlyTheNavigate && mountedUnderStrictMode)) {
+      wrong.push(`a copy answered after the page left: navigated ${json(left.log.navigated)}, ${left.log.toasts.length} toast(s), views ${json(left.log.views)}, settled ${json(left.log.settled)} (want [], 1, ["DONE"], ["copy"]); under React's double-run a page that stayed navigated ${json(strict.log.navigated)} (want [${href}])`);
+    }
   }
 
   // ── an act that threw: unfinished, the reload words, and a request for the campaign ──
@@ -781,6 +858,13 @@ async function decisionChecks(M: Mods, S: PageSources, h: PageHarness, tag: stri
   // who may act
   const may = [Dm.liveMay(true, true), Dm.liveMay(true, false), Dm.liveMay(false, true), Dm.liveMay(false, false)];
   if (json(may) !== json([true, false, false, false])) wrong.push(`liveMay(server, gate): ${json(may)} (want true, false, false, false)`);
+
+  // which dialog is open once a press has been answered: only the one that press belongs to closes (M22: any closes · M23: none does)
+  const dialogs = [
+    Dm.dialogAfterSettled("stop", "pause"), Dm.dialogAfterSettled("start", "start"), Dm.dialogAfterSettled("stop", "stop"), Dm.dialogAfterSettled(null, "start"),
+    Dm.dialogAfterSettled("start", "resume"), Dm.dialogAfterSettled("stop", "copy"), Dm.dialogAfterSettled("start", "pause"),
+  ];
+  if (json(dialogs) !== json(["stop", null, null, null, "start", "stop", "start"])) wrong.push(`dialogAfterSettled: ${json(dialogs)} (want a Pause leaves the Stop dialog, a settled Start closes the Start dialog, a settled Stop closes the Stop dialog, and nothing open stays shut)`);
 
   // a control's state: its view's AND its own press — never another's
   const real = await h.campaign(`pv15${tag}r`, { path: PATHS.RUNNING, count: 12 });
@@ -852,7 +936,10 @@ async function decisionChecks(M: Mods, S: PageSources, h: PageHarness, tag: stri
   if (!(switchedOff.switchOff === true && finished.switchOff === false && both.refusal === true && both.copyLink === true)) wrong.push("the switch-off, refusal or copy-link callout's condition is wrong");
 
   // what a landed act does
-  const plain = [COPY.LIVE_DONE.start, COPY.LIVE_DONE.pause, COPY.LIVE_DONE.resume, COPY.LIVE_DONE.resumePreparing, COPY.LIVE_DONE.stop, COPY.LIVE_DONE.stopBeforeSending, COPY.copyDoneSentence("none")];
+  const plain = [
+    COPY.LIVE_DONE.start, COPY.LIVE_DONE.pause, COPY.LIVE_DONE.pauseBeforeSending, COPY.LIVE_DONE.resume, COPY.LIVE_DONE.resumePreparing, COPY.LIVE_DONE.stop,
+    COPY.LIVE_DONE.stopBeforeSending, COPY.copyDoneSentence("none"),
+  ];
   const advice = [
     `${COPY.LIVE_DONE.pause} ${COPY.LIVE_NOT_RECORDED}`, COPY.copyDoneSentence("reached"), COPY.copyDoneSentence("hidden"), COPY.LIVE_CHANGED.stoppedAfterResume,
     COPY.LIVE_CHANGED.pausedAfterResume, COPY.LIVE_CHANGED.finishedAfterResume, `${COPY.LIVE_DONE.resume} ${COPY.LIVE_REQUEUE_FAILED}`, `${COPY.LIVE_DONE.resume} ${COPY.LIVE_REQUEUE_FAILED_HIDDEN}`,
@@ -887,17 +974,119 @@ async function decisionChecks(M: Mods, S: PageSources, h: PageHarness, tag: stri
   if (!(onMount === "" && sameStatus === "" && moved === "Paused. Paused by Amina at 14:10 EAT." && unchanged === moved)) wrong.push(`the live region said ${json([onMount, sameStatus, moved, unchanged])} (want nothing on mount, nothing for a headline that moved with the status, the headline when the status moved, and no repeat)`);
 
   // the components CALL these functions and decide none of this inline
-  const calls = ["liveMay(", "controlState(", "reasonModel(", "reasonIdFor(", "calloutsFor(", "useLivePresses(", "useStatusAnnouncement(", "postLiveStep"].filter((t) => !S.client.includes(t));
+  const calls = ["liveMay(", "controlState(", "reasonModel(", "reasonIdFor(", "calloutsFor(", "dialogAfterSettled(", "useLivePresses(", "useStatusAnnouncement(", "postLiveStep"].filter((t) => !S.client.includes(t));
   const ACTING = new RegExp("[^A-Za-z]acting[^A-Za-z]");
   const inline = ["standing.nobodyDriving", "standing.window", "standing.switchOpen", "standing.switchClosesAt", "standing.keepOpen", "durationMs", "useTransition", "isPending", "driver.ran"].filter((t) => S.client.includes(t));
   if (ACTING.test(S.client)) inline.push("acting");
   const statusRoles = S.client.split(`role=${DQ}status${DQ}`).length - 1;
   if (calls.length > 0 || inline.length > 0 || statusRoles !== 1) wrong.push(`the client: does not call [${calls.join(", ")}], decides inline [${inline.join(", ")}], role="status" written ${statusRoles} time(s) (want exactly one — the live region)`);
+  // the Provider's glue: a settled press closes ITS OWN dialog, through the decision V15 just ran (M22: onSettled closes any · M23: onSettled does nothing)
+  if (!S.client.includes("onSettled: (act) => setDialog((open) => dialogAfterSettled(open, act)),")) wrong.push("the Provider's onSettled does not close a settled press's own dialog through dialogAfterSettled");
+  // the trail names the campaign, not its cmp_ id (M15), and the ghost's buttons keep the kit's tap size (M16)
+  const crumb = S.page.includes('import { AdminCrumbLabel } from "@/components/admin/admin-crumbs";')
+    && S.page.includes("<AdminCrumbLabel segment={load.view.id} label={load.view.name.trim() === " + DQ + DQ + " ? CAMPAIGNS_UNTITLED : load.view.name} />");
+  const ghostTap = S.loading.includes('{BUTTON_W.map((w, i) => <SkBar key={i} className={`h-[var(--tap-min)] rounded-md ${w}`} />)}');
+  if (!crumb || !ghostTap) wrong.push(`the page names the campaign in the trail ${crumb}; the ghost's buttons take the kit's --tap-min ${ghostTap}`);
   // `may` is wired: the driver and the presses get the server's decision AND the console's gate (liveMay), never the server's alone
   const PRESSES_MAY = new RegExp("useLivePresses[(][{][^}]*[ ]may,");
   if (!S.client.includes("useLiveDriver({ id: initial.id, mayAct: may,") || !PRESSES_MAY.test(S.client) || !S.client.includes("const may = liveMay(mayAct, shellMayAct);")) {
     wrong.push("the client does not hand the driver and the presses `may` = liveMay(the server's decision, the console's gate)");
   }
+  return wrong;
+}
+
+/**
+ * ⭐ THE CHECKER'S MINOR · EVERY CALLOUT OF THE CONTROLS CARD, DRAWN ALONE WITH THE REAL COMPONENT AND READ: a driver stop of each of
+ * its seven kinds (the step-up page at both of its addresses, so nine drawings), a press's refusal and a copy's link. What each must
+ * say, and the one way on that can work: a lapsed 2-step its step-up link and Try again; a sign-in that ended the SIGN-IN link
+ * (never the step-up one) and Try again; every other stop a Reload and no retry. ⛔ A link that opens ANOTHER tab opens it with
+ * `target=_blank` and `rel="noopener noreferrer"` — the page keeps its place, and the new tab gets no handle on it. Every alert
+ * is `role=alert`; the copy's link is a note.
+ */
+function calloutChecks(P: PageImpl, h: PageHarness): string[] {
+  const wrong: string[] = [];
+  const count = (html: string, part: string): number => html.split(part).length - 1;
+  const alerts = (html: string): number => count(html, ` role=${DQ}alert${DQ}`);
+  const VERIFY = "/admin/totp-verify";
+  const SETUP = "/admin/2fa/setup";
+  const SIGN_IN = "/auth/admin?next=%2Fadmin%2Fcampaigns";
+  /** A link that opens another tab: where it goes, what it says, and how it opens. */
+  const newTabLink = (html: string, stamp: string, href: string, text: string): string | null => {
+    const tag = tagAt(html, stamp);
+    const said = textOfElement(html, stamp, "</a>");
+    if (tag === null || attrOf(tag, "href") !== href || said !== text) return `its link ${json({ href: attrOf(tag, "href"), text: said })} (want ${json({ href, text })})`;
+    if (attrOf(tag, "target") !== "_blank") return `its link opens ${json(attrOf(tag, "target"))}, not a new tab`;
+    if (attrOf(tag, "rel") !== "noopener noreferrer") return `its link has rel ${json(attrOf(tag, "rel"))}, not "noopener noreferrer"`;
+    return null;
+  };
+  const button = (html: string, stamp: string, text: string): boolean => html.includes(stamp) && textOfElement(html, stamp, "</button>") === text;
+
+  // ── every driver stop ──
+  type Stop = { kind: string; sentence?: string; href?: string };
+  const stops: Array<[string, Stop, string]> = [
+    ["out_of_date", { kind: "out_of_date" }, COPY.LIVE_OUT_OF_DATE],
+    ["second_factor (lapsed)", { kind: "second_factor", sentence: "Your 2-step sign-in has lapsed.", href: VERIFY }, "Your 2-step sign-in has lapsed."],
+    ["second_factor (never set up)", { kind: "second_factor", sentence: "Set up 2-step sign-in first.", href: SETUP }, "Set up 2-step sign-in first."],
+    ["signed_out", { kind: "signed_out", sentence: COPY.LIVE_SIGNED_OUT, href: SIGN_IN }, COPY.LIVE_SIGNED_OUT],
+    ["role", { kind: "role", sentence: "Your role can no longer act on campaigns." }, "Your role can no longer act on campaigns."],
+    ["view_refused", { kind: "view_refused", sentence: "Your role can no longer view campaigns." }, "Your role can no longer view campaigns."],
+    ["gone", { kind: "gone", sentence: COPY.LIVE_MISSING }, COPY.LIVE_MISSING],
+    ["unfinished", { kind: "unfinished", sentence: COPY.LIVE_STEP_UNFINISHED }, COPY.LIVE_STEP_UNFINISHED],
+  ];
+  for (const [name, stop, sentence] of stops) {
+    const html = P.callouts.stop(stop as never);
+    h.see(html);
+    const problems: string[] = [];
+    if (alerts(html) !== 1) problems.push(`${alerts(html)} element(s) marked role=alert (want exactly one)`);
+    if (textOfElement(html, `data-live-stopped=${DQ}${stop.kind}${DQ}`) !== sentence) problems.push(`its sentence is ${json(textOfElement(html, "data-live-stopped"))}`);
+    const asksFactor = stop.kind === "second_factor" || stop.kind === "signed_out";
+    if (asksFactor) {
+      const bad = newTabLink(html, "data-live-factor-link", stop.href ?? "", stop.kind === "signed_out" ? COPY.LIVE_SIGN_IN_LINK : COPY.LIVE_FACTOR_LINK);
+      if (bad !== null) problems.push(bad);
+      if (!button(html, "data-live-try-again", COPY.LIVE_TRY_AGAIN)) problems.push("no Try again");
+      if (html.includes("data-live-reload")) problems.push("a Reload beside a link that can work");
+    } else {
+      if (!button(html, "data-live-reload", COPY.LIVE_RELOAD)) problems.push("no Reload");
+      if (html.includes("data-live-factor-link") || html.includes("data-live-try-again")) problems.push("a retry that cannot work");
+    }
+    if (problems.length > 0) wrong.push(`the stop ${name}: ${problems.join("; ")}`);
+  }
+
+  // ── a press's refusal ──
+  const refusals: Array<[string, { act: string; reason: string; message: string; href: string | null }]> = [
+    ["a refusal with no way on", { act: "start", reason: "switch_closed", message: "Marketing SMS are switched off.", href: null }],
+    ["a lapsed 2-step", { act: "pause", reason: "second_factor", message: "Your 2-step sign-in has lapsed.", href: VERIFY }],
+    ["a 2-step never set up", { act: "stop", reason: "second_factor", message: "Set up 2-step sign-in first.", href: SETUP }],
+    ["an act that threw", { act: "resume", reason: "unfinished", message: COPY.LIVE_ACT_UNFINISHED_NO_VIEW, href: null }],
+    ["a copy refused for the save budget", { act: "copy", reason: "rate_limited", message: COPY.copyRateLimitedSentence(120), href: null }],
+  ];
+  for (const [name, r] of refusals) {
+    const html = P.callouts.refusal(r as never);
+    h.see(html);
+    const problems: string[] = [];
+    if (alerts(html) !== 1) problems.push(`${alerts(html)} element(s) marked role=alert (want exactly one)`);
+    const tag = tagAt(html, "data-live-refusal=");
+    if (attrOf(tag, "data-live-refusal") !== r.act || attrOf(tag, "data-live-refusal-reason") !== r.reason || textOfElement(html, "data-live-refusal=") !== r.message) problems.push(`its stamp or sentence ${json([attrOf(tag, "data-live-refusal"), attrOf(tag, "data-live-refusal-reason"), textOfElement(html, "data-live-refusal=")])}`);
+    if (r.reason === "second_factor") {
+      const bad = newTabLink(html, "data-live-refusal-link", r.href ?? "", COPY.LIVE_FACTOR_LINK);
+      if (bad !== null) problems.push(bad);
+    } else if (html.includes("data-live-refusal-link")) problems.push("a step-up link on a refusal that is not the second factor");
+    if (r.reason === "unfinished") {
+      if (!button(html, "data-live-reload", COPY.LIVE_RELOAD)) problems.push("no Reload");
+    } else if (html.includes("data-live-reload")) problems.push("a Reload on a refusal that is not unfinished");
+    if (problems.length > 0) wrong.push(`the refusal (${name}): ${problems.join("; ")}`);
+  }
+
+  // ── a copy's link ──
+  const href = "/admin/campaigns/new?draft=cmp_new";
+  const copy = P.callouts.copyLink(href);
+  h.see(copy);
+  const copyProblems: string[] = [];
+  if (textOfElement(copy, "data-live-copy-elsewhere") !== COPY.LIVE_COPY_ELSEWHERE) copyProblems.push(`its sentence is ${json(textOfElement(copy, "data-live-copy-elsewhere"))}`);
+  const bad = newTabLink(copy, "data-live-copy-link", href, COPY.LIVE_COPY_OPEN_DRAFT);
+  if (bad !== null) copyProblems.push(bad);
+  if (alerts(copy) !== 0 || count(copy, ` role=${DQ}note${DQ}`) !== 1) copyProblems.push(`it is ${alerts(copy)} alert(s) and ${count(copy, ` role=${DQ}note${DQ}`)} note(s) (want a note — a copy was made, nothing is wrong)`);
+  if (copyProblems.length > 0) wrong.push(`the copy's link: ${copyProblems.join("; ")}`);
   return wrong;
 }
 
@@ -932,6 +1121,8 @@ async function markupChecks(P: PageImpl, h: PageHarness): Promise<string[]> {
     }
   }
   if (described < 55) wrong.push(`only ${described} disabled controls were checked (the population shrank)`);
+
+  wrong.push(...calloutChecks(P, h));
 
   // MINORS 4 and 5, on the page: what a first paint says to an actor and to a watcher, in its own words
   const prep = await h.campaign("pv15mprep", { path: PATHS.PREPARING, count: 12 });
@@ -1029,6 +1220,71 @@ async function seedChecks(M: Mods, S: PageSources, h: PageHarness): Promise<stri
   return wrong;
 }
 
+/* ══ V17 · THE COPY SPENDS THE OFFICER'S SAVE BUDGET ════════════════════════════════════════════════════════════════ */
+
+type ActionsFx = { ran: string[]; budget: { allowed: boolean; retryAfterSec: number }; guard: { ok: boolean } };
+
+/** `actions.ts` compiled with stand-ins for everything it reaches: the guards (they answer who they were told to), the save budget
+ *  (it records its ask and answers as told), the services and the runner (they record what they were handed). Every call lands in
+ *  `ran`, in order — so "after the guard and before the service" is a fact about a list, not about a layout. */
+function compiledActions(src: string, fx: ActionsFx): Record<string, (campaignId: string) => Promise<Record<string, unknown>>> {
+  const guard = async (_domain: string, action: string) => {
+    fx.ran.push(`guard:${action}`);
+    return fx.guard.ok ? { ok: true as const, userId: "usr_v17", sessionId: "s_v17" } : { ok: false as const, error: "no" };
+  };
+  const service = (name: string) => async (id: string) => { fx.ran.push(`service:${name}:${id}`); return { ok: true as const, message: name, recorded: true }; };
+  return evalModule(src, {
+    "@/lib/server/rbac-guard": { softCheckStaff: guard, softRequireStaff: guard, softViewStaff: guard },
+    "@/lib/server/rate-limit": {
+      rateCheckAsync: async (user: string, bucket: string) => {
+        fx.ran.push(`budget:${user}:${bucket}`);
+        return fx.budget.allowed ? { allowed: true, remaining: 29, retryAfterSec: 0 } : { allowed: false, remaining: 0, retryAfterSec: fx.budget.retryAfterSec };
+      },
+    },
+    "@/lib/server/marketing/campaign-control": {
+      copyCampaign: service("copy"), pauseCampaign: service("pause"), resumeCampaign: service("resume"), startCampaign: service("start"), stopCampaign: service("stop"),
+    },
+    "@/lib/server/marketing/campaign-live": { campaignLiveView: async () => null },
+    "./live-viewer": { liveViewerFor: async () => ({ userId: "usr_v17", mayAct: true, reads: true, money: true }) },
+    "./live-run": {
+      actRefused: RUN.actRefused, actRefusedBy: RUN.actRefusedBy, refusedBy: RUN.refusedBy, resumeWithRetry: RUN.resumeWithRetry,
+      runAct: async (id: string, _user: string, tag: string) => { fx.ran.push(`runAct:${tag}:${id}`); return { ok: true, message: tag, recorded: true, href: null, view: null }; },
+    },
+    "./live-copy": COPY,
+  }) as unknown as Record<string, (campaignId: string) => Promise<Record<string, unknown>>>;
+}
+
+/** Every V17 check, against one source of `actions.ts`. Returns what went wrong, in words. */
+async function copyBudgetChecks(src: string): Promise<string[]> {
+  const wrong: string[] = [];
+  const fresh = (over: Partial<ActionsFx> = {}): ActionsFx => ({ ran: [], budget: { allowed: true, retryAfterSec: 0 }, guard: { ok: true }, ...over });
+  const BUCKET = "marketing.campaignSave";
+  // 1 · the budget allows: the guard, then the budget (THIS officer, the real rule), then the service — in that order
+  const a = fresh();
+  const allowed = await compiledActions(src, a).copyCampaignAction("cmp_x");
+  const wanted = ["guard:marketing.campaign.copy", `budget:usr_v17:${BUCKET}`, "runAct:copy:cmp_x"];
+  if (json(a.ran) !== json(wanted) || allowed.ok !== true) wrong.push(`a copy with budget: ${json(a.ran)} (want ${json(wanted)}), answer ${json(allowed)}`);
+  // …on a rule the rate limiter KNOWS: a bucket it does not know fails OPEN — every copy allowed, whatever the officer has spent
+  if (!(BUCKET in RATELIMIT.RATE_RULES)) wrong.push(`${BUCKET} is no rule of the rate limiter (it would let every copy through)`);
+  // 2 · the budget spent: the rate-limited refusal in its sentence, and the service is never asked
+  const b = fresh({ budget: { allowed: false, retryAfterSec: 130 } });
+  const refused = await compiledActions(src, b).copyCampaignAction("cmp_x");
+  if (!(json(b.ran) === json([wanted[0], wanted[1]]) && refused.ok === false && refused.reason === "rate_limited" && refused.message === COPY.copyRateLimitedSentence(130) && refused.view === null && refused.href === null)) {
+    wrong.push(`a copy with the budget spent: ${json(b.ran)} (want the guard and the budget only), answer ${json(refused)}`);
+  }
+  // 3 · the guard comes first: an officer it refuses spends nothing
+  const c = fresh({ guard: { ok: false } });
+  const barred = await compiledActions(src, c).copyCampaignAction("cmp_x");
+  if (!(json(c.ran) === json([wanted[0]]) && barred.ok === false && barred.reason === "role")) wrong.push(`a copy by a refused officer: ${json(c.ran)} (want the guard alone), answer ${json(barred)}`);
+  // 4 · no other press, and not the poll, spends the save budget
+  for (const name of ["startCampaignAction", "pauseCampaignAction", "resumeCampaignAction", "stopCampaignAction", "campaignViewAction"]) {
+    const other = fresh();
+    await compiledActions(src, other)[name]("cmp_x");
+    if (other.ran.some((x) => x.startsWith("budget:"))) wrong.push(`${name} spends the save budget (${json(other.ran)})`);
+  }
+  return wrong;
+}
+
 /* ══ THE CLAIMS ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 export async function liveClaims(impl: PageImpl, h: PageHarness): Promise<void> {
@@ -1080,6 +1336,13 @@ export async function liveClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     const wrong = await seedChecks(P.mods, S, h);
     const control = await seedChecks(controlMods(), REAL_SOURCES, h);
     return verdict(wrong, control, "?busy= re-entrant · the rail guard on ?run= and ?stages= · every sentence path the drive asks is served");
+  });
+
+  /* ── V17 · the copy spends the officer's save budget ── */
+  await h.claim(L.v17, async () => {
+    const wrong = await copyBudgetChecks(S.actions);
+    const control = await copyBudgetChecks(REAL_SOURCES.actions);
+    return verdict(wrong, control, "the budget asked once, for this officer, on a real rule, after the guard and before the service · refused with copyRateLimitedSentence and nothing run · not asked when the guard refuses · no other press and not the poll spends it");
   });
 }
 
@@ -1140,6 +1403,24 @@ export function livePlants(): LivePlant[] {
   const V6 = PAGE_LABELS.v6;
   const edit = (kind: Kind, ...edits: Edit[]) => () => planted(kind, edits);
   const clientEdit = (from: string, to: string) => () => ({ page: { ...REAL_PAGE, sources: { ...REAL_SOURCES, client: plantIn(REAL_SOURCES.client, from, to) } } });
+  /** A page whose `file` source has one edit written in (a file only SCANNED by the claims, not compiled). */
+  const sourceEdit = (file: "page" | "loading" | "actions", from: string, to: string) => () =>
+    ({ page: { ...REAL_PAGE, sources: { ...REAL_SOURCES, [file]: plantIn(REAL_SOURCES[file], from, to) } } });
+  /** The markup with one element cut out — from the start of the tag holding `stamp` to the end of its closing tag. */
+  const dropElement = (html: string, stamp: string, close: string): string => {
+    const tag = tagAt(html, stamp);
+    if (tag === null) throw new Error(`plant anchor not found: ${stamp}`);
+    const from = html.indexOf(tag);
+    return html.slice(0, from) + html.slice(html.indexOf(close, from) + close.length);
+  };
+  /** The markup without a piece of it (an attribute, a role). */
+  const without = (html: string, part: string): string => {
+    if (!html.includes(part)) throw new Error(`plant anchor not found: ${part}`);
+    return html.split(part).join("");
+  };
+  /** A page whose callouts are the real components' markup with one defect written in. */
+  const withCallouts = (over: Partial<PageImpl["callouts"]>) => () => ({ page: { ...REAL_PAGE, callouts: { ...REAL_PAGE.callouts, ...over } } });
+  const real = REAL_PAGE.callouts;
   const FINALLY = ["      } finally {", "        inFlight.current.delete(act);", "        setPending(new Set(inFlight.current));", "      }"].join(NL);
   const NO_FINALLY = ["      } catch (err) { throw err; }", "      inFlight.current.delete(act);", "      setPending(new Set(inFlight.current));"].join(NL);
   return [
@@ -1208,7 +1489,7 @@ export function livePlants(): LivePlant[] {
     { name: "R-V14d · a refusal outlives the next press", expect: [L.v14],
       impl: edit("presses", ["setRefusal(null);", "void 0;"]) },
     { name: "R-V14e · a copy always leaves the page — a driving tab navigates away and the only driver ends", expect: [L.v14],
-      impl: edit("presses", ['if (settled.copy.kind === "navigate") now.navigate(settled.copy.href);', "if (true) now.navigate(settled.copy.href);"]) },
+      impl: edit("presses", ['if (settled.copy.kind === "navigate") { if (mounted.current) now.navigate(settled.copy.href); }', "if (true) now.navigate(settled.copy.href);"]) },
     { name: "R-V14f · the mode is read when the press began — a copy decided on a stale mode", expect: [L.v14],
       impl: edit("presses", ["hostRef.current.mode);", "h.mode);"]) },
     { name: "R-V14g · a thrown action is taken for an answer — the officer sees nothing and the page learns nothing", expect: [L.v14],
@@ -1255,5 +1536,79 @@ export function livePlants(): LivePlant[] {
       impl: edit("seed", ["outOfDate: LIVE_OUT_OF_DATE,", ""]) },
     { name: "R-V16d · the drive asks for a sentence the seed does not serve", expect: [L.v16],
       impl: () => ({ page: { ...REAL_PAGE, sources: { ...REAL_SOURCES, drive: `${REAL_SOURCES.drive}${NL}const stray = W.noSuchSentence.here;` } } }) },
+    /* ══ THE CHECKER'S ROUND (S14 2026-10-08) — what it found no light claim for, and the claim that now holds each ══ */
+    /* ── V12 · the page's own header (a CSRF belt), the seam with the client, the production log ── */
+    { name: "R-V12o · the door needs no header from the page — a request without X-Kp-Step is let through", expect: [L.v12],
+      impl: edit("door", ['  if (req.stepHeader !== "1") return { status: 403, body: null };', "  void 0;"]) },
+    { name: "R-V12p · the door takes ANY header — a present X-Kp-Step is enough, whatever it says", expect: [L.v12],
+      impl: edit("door", ['if (req.stepHeader !== "1")', "if (req.stepHeader === null)"]) },
+    { name: "R-V12q · the route does not hand the page's header to the door — every same-origin step is refused", expect: [L.v12],
+      impl: edit("route", ['stepHeader: req.headers.get("x-kp-step"),', "stepHeader: null,"]) },
+    { name: "R-V12r · the header is checked AFTER the guard — a request without it still asks the session", expect: [L.v12],
+      impl: edit("door", [`  if (req.stepHeader !== "1") return { status: 403, body: null };${NL}`, ""],
+        ["  if (!g.ok) return { status: 403, body: refusedBy(g) };", `  if (req.stepHeader !== "1") return { status: 403, body: null };${NL}  if (!g.ok) return { status: 403, body: refusedBy(g) };`]) },
+    { name: "R-V12s · the driver's request carries no X-Kp-Step — every step the page asks is refused", expect: [L.v12],
+      impl: edit("driver", [', "X-Kp-Step": "1" }', " }"]) },
+    { name: "R-V12t · the production log prints the whole error (M28: String(err)) — a message that holds a number is written to the log", expect: [L.v12],
+      impl: edit("door", ['threw:", errorName(err));', 'threw:", String(err));']) },
+    /* ── V14 · an answer after the page left, and the link a copy leaves ── */
+    { name: "R-V14i · an answer that lands after the page was left still navigates — the push pulls the officer back", expect: [L.v14],
+      impl: edit("presses", ['{ if (mounted.current) now.navigate(settled.copy.href); }', "{ now.navigate(settled.copy.href); }"]) },
+    { name: "R-V14j · the mounted ref is cleared by the cleanup and never set again — under React's double-run no copy ever navigates", expect: [L.v14],
+      impl: edit("presses", ["useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);", "useEffect(() => () => { mounted.current = false; }, []);"]) },
+    { name: "R-V14k · every press clears the link a copy left — a Pause takes the new draft's link down", expect: [L.v14],
+      impl: edit("presses", ['if (act === "copy") setCopyLink(null);', "setCopyLink(null);"]) },
+    { name: "R-V14l · no press clears the link a copy left — the next copy shows the old draft's link beside the new", expect: [L.v14],
+      impl: edit("presses", ['if (act === "copy") setCopyLink(null);', "void 0;"]) },
+    /* ── V15 · the dialogs, the Pause sentence, the callouts, the trail and the ghost ── */
+    { name: "R-V15p · M22 — a settled press closes ANY dialog: a Pause answering closes the Stop dialog the officer is reading", expect: [L.v15],
+      impl: edit("decide", ["return open === act ? null : open;", "return null;"]) },
+    { name: "R-V15q · M23 — a settled press closes NO dialog: a refused Start leaves its dialog over the refusal", expect: [L.v15],
+      impl: edit("decide", ["return open === act ? null : open;", "return open;"]) },
+    { name: "R-V15r · M22 in the Provider — onSettled closes whatever dialog is open", expect: [L.v15],
+      impl: clientEdit("onSettled: (act) => setDialog((open) => dialogAfterSettled(open, act)),", "onSettled: () => setDialog(null),") },
+    { name: "R-V15s · M23 in the Provider — onSettled does nothing", expect: [L.v15],
+      impl: clientEdit("onSettled: (act) => setDialog((open) => dialogAfterSettled(open, act)),", "onSettled: () => {},") },
+    { name: "R-V15t · the Pause of a campaign that had not begun sending is not in the plain list — its toast stays on screen as a warning", expect: [L.v15],
+      impl: () => {
+        const base = REAL_PAGE;
+        const S = REAL_SOURCES;
+        const copy = { ...COPY, liveDoneIsPlain: (m: string) => m !== COPY.LIVE_DONE.pauseBeforeSending && COPY.liveDoneIsPlain(m) };
+        const decide = evalModule(S.decide, { "./live-copy": copy }) as unknown as Mods["decide"];
+        return { page: { ...base, mods: { ...base.mods, decide, presses: compiledPresses(S.presses, decide), announce: compiledAnnounce(S.announce, decide) } } };
+      } },
+    { name: "R-V15u · M15 — the page does not name the campaign in the trail (the cmp_ id is what the crumb reads)", expect: [L.v15],
+      impl: sourceEdit("page", "<AdminCrumbLabel segment={load.view.id}", "<AdminCrumbLabel segment={load.view.name}") },
+    { name: "R-V15v · M16 — the ghost's buttons invent a height of their own instead of the kit's --tap-min", expect: [L.v15],
+      impl: sourceEdit("loading", "className={`h-[var(--tap-min)] rounded-md ${w}`}", "className={`h-[44px] rounded-md ${w}`}") },
+    { name: "R-V15w · a lapsed 2-step stops the driver and shows no step-up link — the officer is told and cannot act on it", expect: [L.v15],
+      impl: withCallouts({ stop: (s) => (s.kind === "second_factor" ? dropElement(real.stop(s), "data-live-factor-link", "</a>") : real.stop(s)) }) },
+    { name: "R-V15x · a sign-in that ended offers the 2-step link's words — 'Open the 2-step sign-in' to a visitor who must sign in again", expect: [L.v15],
+      impl: withCallouts({ stop: (s) => (s.kind === "signed_out" ? real.stop(s).split(COPY.LIVE_SIGN_IN_LINK).join(COPY.LIVE_FACTOR_LINK) : real.stop(s)) }) },
+    { name: "R-V15y · an out-of-date page has no Reload — nothing can work", expect: [L.v15],
+      impl: withCallouts({ stop: (s) => (s.kind === "out_of_date" ? dropElement(real.stop(s), "data-live-reload", "</button>") : real.stop(s)) }) },
+    { name: "R-V15z · the step-up link of a stop opens with a handle on the page — no rel=noopener", expect: [L.v15],
+      impl: withCallouts({ stop: (s) => (s.kind === "second_factor" || s.kind === "signed_out" ? without(real.stop(s), ` rel=${DQ}noopener noreferrer${DQ}`) : real.stop(s)) }) },
+    { name: "R-V15aa · a driver stop is not an alert — a screen reader is not told the page stopped", expect: [L.v15],
+      impl: withCallouts({ stop: (s) => without(real.stop(s), ` role=${DQ}alert${DQ}`) }) },
+    { name: "R-V15ab · a second-factor refusal shows no step-up link", expect: [L.v15],
+      impl: withCallouts({ refusal: (r) => (r.reason === "second_factor" ? dropElement(real.refusal(r), "data-live-refusal-link", "</a>") : real.refusal(r)) }) },
+    { name: "R-V15ac · the refusal's step-up link replaces this tab — the page keeps no place (no target=_blank)", expect: [L.v15],
+      impl: withCallouts({ refusal: (r) => (r.reason === "second_factor" ? without(real.refusal(r), ` target=${DQ}_blank${DQ}`) : real.refusal(r)) }) },
+    { name: "R-V15ad · the refusal's step-up link opens with a handle on the page — no rel=noopener", expect: [L.v15],
+      impl: withCallouts({ refusal: (r) => (r.reason === "second_factor" ? without(real.refusal(r), ` rel=${DQ}noopener noreferrer${DQ}`) : real.refusal(r)) }) },
+    { name: "R-V15ae · a refusal is not an alert — a screen reader is not told a press was refused", expect: [L.v15],
+      impl: withCallouts({ refusal: (r) => without(real.refusal(r), ` role=${DQ}alert${DQ}`) }) },
+    { name: "R-V15af · the copy's link replaces this tab — the only driver ends (no target=_blank)", expect: [L.v15],
+      impl: withCallouts({ copyLink: (href) => without(real.copyLink(href), ` target=${DQ}_blank${DQ}`) }) },
+    { name: "R-V15ag · the copy's link opens with a handle on the page — no rel=noopener", expect: [L.v15],
+      impl: withCallouts({ copyLink: (href) => without(real.copyLink(href), ` rel=${DQ}noopener noreferrer${DQ}`) }) },
+    /* ── V17 · the copy spends the save budget ── */
+    { name: "R-V17 · the copy spends no budget — the rateCheckAsync(marketing.campaignSave) lines are gone from the action", expect: [L.v17],
+      impl: sourceEdit("actions", ['  const rate = await rateCheckAsync(g.userId, "marketing.campaignSave");', '  if (!rate.allowed) return actRefused("rate_limited", copyRateLimitedSentence(rate.retryAfterSec));'].join(NL) + NL, "") },
+    { name: "R-V17b · the budget is asked and its refusal ignored — a copy past the budget is made anyway", expect: [L.v17],
+      impl: sourceEdit("actions", 'if (!rate.allowed) return actRefused(', 'if (false) return actRefused(') },
+    { name: "R-V17c · the bucket is one the rate limiter does not know — it fails OPEN and every copy is allowed", expect: [L.v17],
+      impl: sourceEdit("actions", '"marketing.campaignSave"', '"marketing.campaignSav"') },
   ];
 }

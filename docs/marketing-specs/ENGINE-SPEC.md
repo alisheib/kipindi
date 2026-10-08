@@ -2417,7 +2417,7 @@ grid, read by the page and its ghost);
   held full; the window is `marketing-send-window`'s clock; the watcher is AUDITOR with Growth view (`?u23grant=view-only`).
 - ✅ **THE U47b-2 REVIEW'S FIX ROUND (S14, 2026-10-08 — 1 MAJOR, 9 MINOR, 8 NIT, no blocker): what it changed in this section.**
   - ⭐ **MAJOR · the step is a route, not an action** (decision 3, amended above). `live-step-door.ts` holds every decision —
-    pure and drivable in-process — and `src/app/api/admin/campaigns/[id]/step/route.ts` is thin (three facts in, the door's
+    pure and drivable in-process — and `src/app/api/admin/campaigns/[id]/step/route.ts` is thin (four facts in, the door's
     answer out, `Cache-Control: private, no-store`, no body read, exports `POST`/`dynamic`/`runtime` and nothing else).
     `campaignStepAction` is gone (`actions.ts` holds six). The driver's `postLiveStep` is a `fetch`: POST, this origin's
     cookies, no body, no cache; a typed refusal is an ANSWER whatever its HTTP status, and a body it does not know THROWS (the
@@ -2461,7 +2461,8 @@ grid, read by the page and its ghost);
   - ⚠️ **What a Pause can stop**, said once and true of every tab: everything that has not passed its last check. A slice still
     gating is vetoed by its own re-read before the wire (E6); a group ALREADY past its last check still goes (at most one,
     `SLICE_MAX`) — which the Pause and Stop toasts and the Stop dialog say. The step leaving the action queue is what lets a
-    Pause land while a slice is still gating; it never recalls a message the wire has.
+    Pause land while a slice is still gating; it never recalls a message the wire has. (A campaign still PREPARING has sent nothing:
+    its Pause says so, as its Stop does — `pauseBeforeSending`, the checker's round below.)
   - **Proof.** `test:campaign-visuals` 46 claims (V12–V16 new) with 136 plants held, `test:campaigns-page` 40 (5k, 5m and 1e
     re-pinned), red 30/30. V12 drives the door in-process on spies (POST only; cross-site refused before the session is read;
     the guard first and the viewer and the service not asked on any refusal; the STORED role against a cookie that claims ADMIN;
@@ -2480,6 +2481,27 @@ grid, read by the page and its ghost);
     beside a pending Pause, a second driving tab, the session ending under a driving page, a watcher's blip, the step door over
     real HTTP — and syntax-checked only), the full `admin-section-gate` suite (it drives a browser) and the planting reds
     (`red:admin-soft-gate`, `red:layout-staleness`).
+  - ✅ **THE INDEPENDENT CHECKER'S ROUND (S14, 2026-10-08 — no BLOCKER, no MAJOR; 11 mutations had survived every light suite).** What
+    it changed, and the claim that now holds each (all in `test:campaign-visuals`):
+    · the Provider's `onSettled` is `dialogAfterSettled(open, act)` (live-decide.ts): only the dialog the settled press belongs to closes —
+      a Pause answering no longer closes the Stop dialog the officer is reading, and a refused Start leaves no dialog over its refusal
+      (V15 runs the function and holds the Provider's call; M22, M23);
+    · `StopCallout` (all seven stop kinds, the step-up page at both its addresses), `RefusalCallout` and `CopyLinkCallout` are exported
+      and V15 draws each alone: the sentence, the one way on (the step-up link with the right words, Try again, Reload), `target="_blank"`
+      with `rel="noopener noreferrer"` on every link that opens another tab, and `role="alert"` on every alert;
+    · the trail names the campaign (`AdminCrumbLabel`, M15) and the ghost's buttons keep the kit's `--tap-min` (M16) — V15's source pins;
+    · the step door also requires the page's own header, `X-Kp-Step: 1` (`postLiveStep` sends it, the route hands it to the door): absent or
+      wrong is a 403 that asks nothing of the session, the viewer or the service — the belt for a client that sends no
+      `Sec-Fetch-Site`; V12 holds it, and the seam between what the client sends and what the door accepts;
+    · the door's production log names the error's TYPE alone (V12 calls it with a message that holds a number; M28);
+    · a Pause of a campaign still PREPARING says "Paused — nothing has been sent, and nothing will be until you resume."
+      (`pauseBeforeSending`, in `liveDoneIsPlain`) — `sendingStarted(c)` decides, as for the Stop (T4, V15);
+    · an answer that lands after the page was left no longer navigates (a mounted ref set in the effect, safe under React's double-run;
+      only the navigate is skipped); the link a copy leaves behind stays through every other press and goes with the next Make a copy (V14);
+    · the copy action's save budget — the guard, then `rateCheckAsync(userId, "marketing.campaignSave")` on a rule the rate limiter
+      knows, then the service; refused → `rate_limited`; no other press spends it — is held by V17, which compiles `actions.ts` with stand-ins.
+    Not run by the builder (heavy): `tsc`; `qa:marketing-live` (its door-over-HTTP now sends the header, and its copy-link step now
+    expects the link to stay through a Pause).
 
 **Premises checked.** The six doors and the page gate rules (`admin-section-gate.test.mjs` §0b′: one return, a literal
 title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:campaigns-page` 5f/5k
@@ -2530,7 +2552,8 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
    the server at 8 s), and the step is the one call that takes seconds — so as an action it made every press wait behind it:
    the driving tab's own Pause arrived when the slice it was pressed to stop had returned. The door is built like
    `contactsExportDoor` and the preview doors: POST only (405 naming POST), never cross-site (`Sec-Fetch-Site`, asked before
-   the session is read), the id from the PATH and the body never read, the same guard as the action had FIRST
+   the session is read) and carrying the page's own header (`X-Kp-Step: 1`, the belt for a client that sends no `Sec-Fetch-Site`; absent
+   or wrong, a 403 that asks nothing), the id from the PATH and the body never read, the same guard as the action had FIRST
    (`softCheckStaff`, growth — a lapsed 2-step refused in words with the step-up link, a visitor with no session told in words
    with the section as the way back, never a redirect), the viewer from the STORED role, the same service, the same answer as
    JSON with `Cache-Control: no-store`, and a throw a typed `unfinished` (never a 500 page). ⚠️ **What a Pause can stop**,
@@ -2568,7 +2591,7 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
 | `src/app/admin/campaigns/[id]/loading.tsx` | create | ghost = real blocks |
 | `src/app/admin/campaigns/[id]/actions.ts` | create | `campaignViewAction`, `startCampaignAction`, `pauseCampaignAction`, `resumeCampaignAction`, `stopCampaignAction`, `copyCampaignAction` (✅ the review's MAJOR: the step is no action — next two rows) |
 | `src/app/admin/campaigns/[id]/live-step-door.ts` | create | ✅ `campaignStepDoor` — every decision of the step door (POST only, same-origin, guard first, stored-role viewer, typed answers) |
-| `src/app/api/admin/campaigns/[id]/step/route.ts` | create | ✅ `POST /api/admin/campaigns/<id>/step` — thin: three facts in, the door's answer out, no-store |
+| `src/app/api/admin/campaigns/[id]/step/route.ts` | create | ✅ `POST /api/admin/campaigns/<id>/step` — thin: four facts in, the door's answer out, no-store |
 | `src/app/admin/campaigns/[id]/live-client.tsx` | create | KPIs, bars, chips, controls, dialogs, the standing callouts |
 | `src/app/admin/campaigns/[id]/live-driver.tsx` | create | the loop, the step door's client (`postLiveStep`), the hook |
 | `src/app/admin/campaigns/[id]/live-decide.ts` | create | ✅ the pure decisions the components call (who may act, a control's state, which reasons are printed, every callout's condition, a toast, where a copy goes, the live region's words) |
@@ -2797,8 +2820,8 @@ memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `result
   nobody on its list has no figures card — so in practice the results card prints the list and the figures card none: the figures card's
   ghost lost its reasons rows to match, the drive reads whichever list is drawn (`[data-live-reasons]` or `[data-results-reasons]`) and
   asserts there is one, and `test:campaign-visuals` R13 holds it (V7 holds a reader's figures card to the tiles and the chips).
-- **Proof:** `test:campaign-visuals` 59 claims on the merged tree (R1–R13 are U48a's — R1 drives the REAL DLR route, R4 the REAL opt-out
-  service), 174 plants held (38 of them the results'; the old plants R-S1/R-S2/R-S3/R-S4 also turn results claims red, and say so); the
+- **Proof:** `test:campaign-visuals` 60 claims on the merged tree (R1–R13 are U48a's — R1 drives the REAL DLR route, R4 the REAL opt-out
+  service), 206 plants held (38 of them the results'; the old plants R-S1/R-S2/R-S3/R-S4 also turn results claims red, and say so); the
   suite's recipient keys are the review's `rowKeyOf`, its row part now a per-world COUNT of rows (the results' claims seed over a hundred
   lists a world, and the first row part — the call's number times a thousand — grew a sixth digit at the hundredth call, a 13-digit number
   `isGatewayMsisdn` refuses); V12 counts the step door's security rows BY IDENTITY, not by a before-and-after total (the in-memory audit

@@ -2,7 +2,8 @@
  * POST /api/admin/campaigns/[id]/step — the live campaign page's driver step, as JSON (U47b-2, the review's MAJOR).
  *
  * ⛔ THIN ON PURPOSE. Every decision is `campaignStepDoor` in `src/app/admin/campaigns/[id]/live-step-door.ts`, where
- * `test:campaign-visuals` V12 drives it in-process: POST only, never cross-site (asked before the session is read), the guard
+ * `test:campaign-visuals` V12 drives it in-process: POST only, never cross-site and carrying the page's own `X-Kp-Step: 1` header
+ * (both asked before the session is read), the guard
  * first (`softCheckStaff`, growth — the stored role's act grant; a lapsed 2-step refused in words, never redirected to), the
  * viewer from the STORED role, the service `campaignStep`, and a typed `unfinished` answer for a step that threw — never a 500
  * page. The id is the path's; ⛔ THE BODY IS NEVER READ (this file calls neither `req.json()` nor `req.formData()`).
@@ -21,7 +22,10 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const door = await campaignStepDoor({ method: req.method, secFetchSite: req.headers.get("sec-fetch-site"), campaignId: id }, LIVE_STEP_DOOR_DEPS);
+  const door = await campaignStepDoor(
+    { method: req.method, secFetchSite: req.headers.get("sec-fetch-site"), stepHeader: req.headers.get("x-kp-step"), campaignId: id },
+    LIVE_STEP_DOOR_DEPS,
+  );
   const res = door.body === null ? new NextResponse(null, { status: door.status }) : NextResponse.json(door.body, { status: door.status });
   res.headers.set("Cache-Control", "private, no-store, max-age=0");
   if (door.allow !== undefined) res.headers.set("Allow", door.allow);

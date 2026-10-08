@@ -374,7 +374,8 @@ export async function startCampaign(campaignId: string, actor: ControlActor, dep
 /* ══ PAUSE ══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** ⭐ PAUSE — PREPARING · RUNNING → PAUSED, the officer's reason; ONE ADMIN `marketing.campaign_paused` row. A slice already
- *  past its last check sends; one still gating is vetoed by its own re-read before the wire (E6). */
+ *  past its last check sends; one still gating is vetoed by its own re-read before the wire (E6). ⭐ A campaign still PREPARING has
+ *  sent nothing (the checker's NIT), so its answer does not warn of a group on its way (`pauseBeforeSending`, as the Stop's). */
 export async function pauseCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<ControlResult<PauseControlRefusal>> {
   const officer = officerOf(actor, "pauseCampaign");
   if (actor?.mayAct !== true) return roleRefusal();
@@ -397,7 +398,7 @@ export async function pauseCampaign(campaignId: string, actor: ControlActor, dep
     category: "ADMIN", action: CAMPAIGN_PAUSED_ACTION, actorId: officer, targetType: "SmsCampaign", targetId: c.id,
     payload: { reason: OFFICER_PAUSED },
   });
-  return { ok: true, message: withRecord(LIVE_DONE.pause, recorded), recorded };
+  return { ok: true, message: withRecord(sendingStarted(c) ? LIVE_DONE.pause : LIVE_DONE.pauseBeforeSending, recorded), recorded };
 }
 
 /* ══ RESUME ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */

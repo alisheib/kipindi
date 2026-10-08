@@ -961,9 +961,10 @@ async function realRun(vp, viewport, i, id) {
   ok(`${name} · RUN · Pause acts at once: PAUSED, "${W.done.pause}", and the page names who and when from the act's own audit row`,
     s.status === "PAUSED" && pausedSentence.test(s.stop) && (await toastShown(page, W.done.pause)), JSON.stringify({ status: s.status, stop: s.stop }));
   // ⭐ The review's MINOR 8 · the page's one live region says the new state when the status CHANGED (headline, then why) — and the
-  // copy link a press leaves behind goes with the next press.
+  // copy link a press leaves behind STAYS through the other presses (the checker's NIT) — only the next Make a copy takes it down.
   ok(`${name} · RUN · ⭐ the live region announces the change of status: "${s.headline} ${s.stop}"`, s.announce === `${s.headline} ${s.stop}` && s.announceCount === 1, JSON.stringify({ said: s.announce, n: s.announceCount }));
-  ok(`${name} · RUN · the copy link went with the next press`, s.copyLink === null && s.copyElsewhere === "", JSON.stringify({ link: s.copyLink }));
+  ok(`${name} · RUN · the copy link STAYS through the Pause — a Pause beside it is no reason to take the new draft's link down`,
+    !!s.copyLink && s.copyLink.startsWith("/admin/campaigns/new") && s.copyElsewhere === W.copy.elsewhere, JSON.stringify({ link: s.copyLink, line: s.copyElsewhere }));
   const stepsAtPause = (await readLive(page)).driver?.steps ?? -1;
   await wait(7000);
   ok(`${name} · RUN · while PAUSED the driver makes no step call (it watches: one poll every ten seconds, no step)`,
@@ -1367,6 +1368,8 @@ async function doorOverHttp(vp, viewport, stage) {
   const anon = await browser.newContext();
   const door = (id) => `${BASE}/api/admin/campaigns/${encodeURIComponent(id)}/step`;
   const same = { "sec-fetch-site": "same-origin" };
+  // ⭐ The checker's NIT · the page's own header, which `postLiveStep` sends: the door answers nothing without it
+  const marked = { ...same, "x-kp-step": "1" };
   try {
     // A method the route does not export never reaches it: Next answers a 405 itself, and OPTIONS with the methods the route has —
     // POST alone, never GET. (The door's own 405 with Allow: POST is the belt over those braces; V12 holds it in-process.)
@@ -1375,15 +1378,17 @@ async function doorOverHttp(vp, viewport, stage) {
     const allowed = options.headers()["allow"] ?? "";
     ok(`${name} · DOOR · a GET is a 405 and the only method the route answers is POST (OPTIONS: "${allowed}")`,
       get.status() === 405 && /POST/.test(allowed) && !/GET/.test(allowed), `${get.status()} allow=${allowed}`);
-    const cross = await g.page.request.post(door("cmp_nobody_made_this"), { headers: { "sec-fetch-site": "cross-site" } });
+    const cross = await g.page.request.post(door("cmp_nobody_made_this"), { headers: { "sec-fetch-site": "cross-site", "x-kp-step": "1" } });
     ok(`${name} · DOOR · a cross-site POST is a 403 with nothing in it — refused before the session is read`, cross.status() === 403 && (await cross.text()) === "", `${cross.status()}`);
-    const missing = await g.page.request.post(door("cmp_nobody_made_this"), { headers: same });
+    const unmarked = await g.page.request.post(door("cmp_nobody_made_this"), { headers: same });
+    ok(`${name} · DOOR · a same-origin POST WITHOUT the page's own X-Kp-Step header is a 403 with nothing in it — refused before the session is read`, unmarked.status() === 403 && (await unmarked.text()) === "", `${unmarked.status()}`);
+    const missing = await g.page.request.post(door("cmp_nobody_made_this"), { headers: marked });
     const missingBody = await missing.json().catch(() => null);
     ok(`${name} · DOOR · a campaign that is not there is a typed 404 (not_found), in words`, missing.status() === 404 && missingBody?.ok === false && missingBody.reason === "not_found" && missingBody.error === W.missing, JSON.stringify(missingBody));
-    const look = await w.page.request.post(door(stage.confirmed.id), { headers: same });
+    const look = await w.page.request.post(door(stage.confirmed.id), { headers: marked });
     const lookBody = await look.json().catch(() => null);
     ok(`${name} · DOOR · a role that may only LOOK is refused with a typed 403 (role) — and no step ran`, look.status() === 403 && lookBody?.ok === false && lookBody.reason === "role", JSON.stringify(lookBody));
-    const none = await anon.request.post(door("cmp_x"), { headers: same });
+    const none = await anon.request.post(door("cmp_x"), { headers: marked });
     const noneBody = await none.json().catch(() => null);
     ok(`${name} · DOOR · no session is a typed 401 (signed_out) in words, with the SECTION as the way back — never a redirect, never the id`,
       none.status() === 401 && noneBody?.ok === false && noneBody.reason === "signed_out" && noneBody.error === W.signedOut && noneBody.href === `/auth/admin?next=${encodeURIComponent("/admin/campaigns")}`

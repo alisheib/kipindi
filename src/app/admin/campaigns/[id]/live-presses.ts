@@ -15,11 +15,14 @@
  * ⛔ A press that landed says so (the toast — `toastFor`: a warning stays until dismissed), a refusal stays beside the controls
  * until the next press (`refusal`, cleared when ANY press starts), and an act that threw is `unfinished` — it may or may not
  * have happened, so the page asks for the campaign and never offers a blind retry.
- * ⭐ MAKE A COPY never takes a DRIVING tab away (the review's MINOR 2): the new draft is a link (`copyLink`) for a new tab.
+ * ⭐ MAKE A COPY never takes a DRIVING tab away (the review's MINOR 2): the new draft is a link (`copyLink`) for a new tab, which
+ * stays through every other press and goes with the next Make a copy (the checker's NIT: it is no refusal, and a Pause pressed
+ * beside it has no business taking it down). ⛔ An answer that lands after the page was LEFT never navigates (the officer is
+ * elsewhere; the push would pull them back) — and skips nothing else.
  *
  * Guard: `npm run test:campaign-visuals` §page (V14) · Red: `npm run red:campaign-visuals`.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import type { CampaignLiveView } from "@/lib/server/marketing/campaign-live";
 import type { DriverMode } from "./live-driver";
@@ -68,6 +71,10 @@ export function useLivePresses(host: LivePressHost): LivePresses {
   // The latest host, read when an answer LANDS (the mode may have changed while the press was in flight).
   const hostRef = useRef(host);
   hostRef.current = host;
+  // ⭐ Set IN the effect, not only at creation: React's development double-run (mount, clean up, mount) would otherwise leave a
+  // ref whose first cleanup ran as `false` for the rest of the page's life, and no copy would ever navigate in development.
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const press = useCallback((act: ActName) => {
     const h = hostRef.current;
@@ -75,7 +82,7 @@ export function useLivePresses(host: LivePressHost): LivePresses {
     inFlight.current.add(act);
     setPending(new Set(inFlight.current));
     setRefusal(null);
-    setCopyLink(null);
+    if (act === "copy") setCopyLink(null);
     void (async () => {
       try {
         const settled = settlePress(act, answerOf(await runAdminAction(() => hostRef.current.calls[act](hostRef.current.id))), hostRef.current.mode);
@@ -86,7 +93,7 @@ export function useLivePresses(host: LivePressHost): LivePresses {
         if (settled.toast !== null) now.toast(settled.toast);
         if (settled.refusal !== null) setRefusal(settled.refusal);
         if (settled.copy !== null) {
-          if (settled.copy.kind === "navigate") now.navigate(settled.copy.href);
+          if (settled.copy.kind === "navigate") { if (mounted.current) now.navigate(settled.copy.href); }
           else setCopyLink(settled.copy.href);
         }
         now.onSettled(act);

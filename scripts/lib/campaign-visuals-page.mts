@@ -65,6 +65,7 @@ type LiveViewer = import("../../src/lib/server/marketing/campaign-live.ts").Live
 type StoredUser = import("../../src/lib/server/store.ts").StoredUser;
 type LoopOptions = import("../../src/app/admin/campaigns/[id]/live-driver.tsx").LoopOptions;
 type DriverStop = import("../../src/app/admin/campaigns/[id]/live-driver.tsx").DriverStop;
+type Refusal = import("../../src/app/admin/campaigns/[id]/live-decide.ts").Refusal;
 
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
@@ -108,6 +109,13 @@ export const REAL_SOURCES: PageSources = {
 export type PageImpl = {
   /** The static markup of the page's three bodies (status · controls · figures) for a view and whether its viewer may act. */
   render: (view: CampaignLiveView, o: { mayAct: boolean }) => string;
+  /** ⭐ The checker's MINOR · the controls card's callouts, each drawn ALONE with the real component: a driver stop of any kind, a
+   *  press's refusal, a copy's link (V15 reads their words, their links and their roles). */
+  callouts: {
+    stop: (stop: DriverStop) => string;
+    refusal: (refusal: Refusal) => string;
+    copyLink: (href: string) => string;
+  };
   loop: typeof DRIVER.runLiveLoop;
   gap: typeof DRIVER.stepGap;
   mode: typeof DRIVER.driverMode;
@@ -148,6 +156,11 @@ function renderPage(view: CampaignLiveView, o: { mayAct: boolean }): string {
 
 export const REAL_PAGE: PageImpl = {
   render: renderPage,
+  callouts: {
+    stop: (stop) => renderToStaticMarkup(createElement(CLIENT.StopCallout, { stop, driver: { retry() {} } as never })),
+    refusal: (refusal) => renderToStaticMarkup(createElement(CLIENT.RefusalCallout, { refusal })),
+    copyLink: (href) => renderToStaticMarkup(createElement(CLIENT.CopyLinkCallout, { href })),
+  },
   loop: DRIVER.runLiveLoop,
   gap: DRIVER.stepGap,
   mode: DRIVER.driverMode,

@@ -334,6 +334,9 @@ export const LIVE_DONE = {
   // ⭐ The U47b-1 re-review · a slice already past its last check still sends its group (at most one, `SLICE_MAX`): "nobody
   // more" was false in that moment — said as what is true.
   pause: "Paused — nothing new starts sending until you resume. A group already being sent may still go out.",
+  /** …for a campaign that had not begun sending (the U47b-2 checker's NIT, as the Stop's below): the list is still being prepared, so
+   *  nothing has been sent and no group can be on its way. */
+  pauseBeforeSending: "Paused — nothing has been sent, and nothing will be until you resume.",
   resume: "Sending again.",
   /** ⭐ The U47b-1 review · a Resume of a list that never finished goes back to PREPARING, where the page says "Preparing the
    *  list" — never "Sending again." beside it. */
@@ -348,12 +351,13 @@ export const LIVE_DONE = {
  * way to say it. Anything the services put beside it — the audit row that did not land, a copy that would message people
  * again, a Resume overtaken by a Stop, a Pause or the end, held people who could not be put back — is a warning or advice, and
  * a warning that fades in four seconds is one an officer can miss: the page keeps it until it is dismissed. The test is the
- * six plain `LIVE_DONE` sentences and the plain copy sentence, so a sentence added later defaults to STAYING, which is the
+ * plain `LIVE_DONE` sentences (seven) and the plain copy sentence, so a sentence added later defaults to STAYING, which is the
  * safe side.
  */
 export function liveDoneIsPlain(message: string): boolean {
   const plain: readonly string[] = [
-    LIVE_DONE.start, LIVE_DONE.pause, LIVE_DONE.resume, LIVE_DONE.resumePreparing, LIVE_DONE.stop, LIVE_DONE.stopBeforeSending,
+    LIVE_DONE.start, LIVE_DONE.pause, LIVE_DONE.pauseBeforeSending, LIVE_DONE.resume, LIVE_DONE.resumePreparing, LIVE_DONE.stop,
+    LIVE_DONE.stopBeforeSending,
     copyDoneSentence("none"),
   ];
   return plain.includes(message);
