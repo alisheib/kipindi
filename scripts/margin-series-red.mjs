@@ -58,8 +58,12 @@ const PLANTS = [
   {
     name: "the card re-advertises the 7–10% band it cannot honour",
     file: FINANCE,
-    from: `sw="Faida ya mfumo · cumulative to date · 28-day window"`,
-    to: `sw="Faida ya mfumo · 28-day · band 7–10%"`,
+    /* ⚠️ RE-ANCHORED 2026-10-08, AND IT HAD BEEN DEAD SINCE 24dca6aa (2026-09-25), which made the subtitle follow
+       the SELECTED window — sw={`… · ${range.label}`} — so the literal "… · 28-day window" this plant looked
+       for was gone: "plant located" FAILED, the harness scored 5/6, and the guard above it stayed green.
+       Same defect in today's spelling: before A6 the card read `Faida ya mfumo · <window> · band 7–10%`. */
+    from: "sw={`Faida ya mfumo · cumulative to date · ${range.label}`}",
+    to: "sw={`Faida ya mfumo · ${range.label} · band 7–10%`}",
   },
 ];
 
