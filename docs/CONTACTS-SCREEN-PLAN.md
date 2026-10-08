@@ -71,7 +71,7 @@ then: "the contacts screen"):
 | # | Step | State |
 |---|---|---|
 | C1 | The lane claimed and this plan written | ✅ LIVE `28fd214e` |
-| C2 | Audit of the LIVE screen: tiles at 360 / 768 / 1280 / 1440 (the console is English-only — `admin/layout.tsx` pins it), every field's validation, every failure path (a server error, a slow network, a double press, two tabs) → the defects fixed | ⏳ queued (lock) |
+| C2 | Audit of the LIVE screen — 43 viewport tiles at 360 / 768 / 1280 / 1440 (the console is English-only), GROWTH and ADMIN, the add dialog's states, bulk, the hard-case rows, the error state: no page overflow anywhere. FOUND AND FIXED: **F1** a number TYPED as `+254 712 345 678` read "a landline in Katavi, Mbeya…" (the box drops the "+") → judged as written once its digits leave +255 (`contactNumberVerdict` typedPlus; `test:contacts-form` 1.5c + plant); **F2** at 360 the sideways-scrolling table showed names only → the masked number and operator under the name below 640px, from the server's masked projection (U19's one render kept); **F3** "20 selected" broke over two lines → the count keeps its measure; **F4** the bulk note promised consent recording "which this page doesn't take yet" → true under the final rule (a list reaches a non-player). NOT CHANGED (recorded): the filter rail is long at 360 for ADMIN; the KPI tiles stack one per row at 360 (the platform's band). PROVEN: the four suites + their reds, typecheck, `next build`, the U20 drive 487/0, and 12 browser checks of F1–F4 at 360 and 1280 (C2-verify) | ✅ pushed (this commit) |
 | C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | 🔨 building (`contacts-import-build`) |
 | C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | 🔨 building |
 | C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks), the list step | 🔨 building |
@@ -174,6 +174,13 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 
 ## §3 — LOG (newest first)
 
+- **2026-10-09 · C2** — the live screen audited (43 tiles) and four defects fixed on branch `contacts-c2` (F1–F4 in §1);
+  suites contacts-form 54/0, contacts-page 52/0, contacts-bulk 46/0, contacts-export 44/0 with their in-memory reds
+  complete, typecheck 0, `next build` 0; on a fresh local server the U20 drive 487 passed / 0 failed and the targeted
+  C2 checks 12/0 (typed +254 refused as foreign at 360 and 1280; +255 and 0712 unchanged; the masked number under the
+  name shown at 360, hidden at 1280; the count on one line; the new consent note). The importer
+  (C3–C5) is written on `contacts-import-build` (both halves, the test files, merged with main `391a48cf`) and goes
+  through its first battery next.
 - **2026-10-09 ~01:45 EAT** — the design (§4) and the contract written and pushed (`750175c2`, branch
   `contacts-import`); two builders started in `C:\kipindi-s15` (`contacts-import-build`); the test-file generator being
   written. Ali asked four questions (§0). Found: the import was never reachable (no dialog, no actions) — the readers,
