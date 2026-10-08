@@ -2868,6 +2868,63 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       !'groupBy({ by: ["status", "skipReason", "failureClass"], _count: { _all: true } })'.includes(ONE_GROUPBY));
   }
 
+  // ══ 26.u48a · THE RESULTS' TWO READS (U48a, S14 2026-10-08 — ENGINE-SPEC §4.16, E5 and E30) ═════════════════════════════
+  // ⭐ WHY THEY ARE HELD HERE. The live page's results ask two things its one groupBy cannot: how many of a campaign's SENT
+  // rows were handed over before a cutoff (`countSentBefore` — "no receipt after 15 minutes"), and the campaign's handed-over
+  // people by number (`handedOverPage` — the stopped-by-link walk's pages, each asked of §25's `findActiveAmong`).
+  // `test:campaign-visuals` R3/R4/R10 drive the MEMORY twin; a Prisma twin that loses its half is green in memory and wrong
+  // — or slow — live: a count without the campaign (every campaign's SENT rows as this one's), the rows read and counted in
+  // JavaScript (every recipient of a 150,000-person campaign on every poll), a page that selects whole rows (a token, a
+  // reference, a gate trail per person), one with no cursor (the walk never ends) or no campaign (the whole table). Their
+  // behaviour on Postgres is `db:probe-campaign-models` §14's. ⛔ No backslash anywhere in this block.
+  {
+    const flat48 = (s: string) => s.split(String.fromCharCode(13)).join("").split(String.fromCharCode(10)).map((l) => l.trim()).join(" ");
+    const U48A = ["countSentBefore", "handedOverPage"];
+    const pBefore = delegateMethod("smsCampaignRecipient", "countSentBefore");
+    const pPage = delegateMethod("smsCampaignRecipient", "handedOverPage");
+    const mBefore = memberText(rMem, "countSentBefore");
+    const mPage = memberText(rMem, "handedOverPage");
+    ok("26.u48a.parity · ⭐ BOTH twins define countSentBefore and handedOverPage — a door in one twin only works in every suite and throws on production",
+      U48A.every((n) => members(rPri).includes(n) && members(rMem).includes(n)),
+      `prisma=[${members(rPri)}] memory=[${members(rMem)}]`);
+    const U48A_SIGS: Array<[string, string]> = [
+      [rMem, "countSentBefore: (campaignId: string, before: string): number =>"],
+      [rMem, "handedOverPage: (campaignId: string, after: string | null, limit: number): SmsCampaignHandedOver[] =>"],
+      [rPri, "countSentBefore: async (campaignId: string, before: string): Promise<number> =>"],
+      [rPri, "handedOverPage: async (campaignId: string, after: string | null, limit: number): Promise<SmsCampaignHandedOver[]> =>"],
+    ];
+    const offSigs48 = U48A_SIGS.filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+    const exported48 = storeSrc.includes("export type SmsCampaignHandedOver =");
+    const imported48 = storeImport.includes("  SmsCampaignHandedOver,");
+    ok("26.u48a.named · both doors name their parameter and return types in BOTH twins (never an inline literal) — SmsCampaignHandedOver exported by store.ts, imported by prisma-dal.ts",
+      offSigs48.length === 0 && exported48 && imported48, `signatures off: [${offSigs48}] · exported ${exported48} · imported ${imported48}`);
+    ok("26.u48a.rules · ⛔ each door asks the rule set FIRST, in both twins — a missing campaign id is NO CONDITION on Postgres (every campaign's rows)",
+      before(mBefore, "assertSentBeforeRead(campaignId, before);", "for (const r of") && before(pBefore, "assertSentBeforeRead(campaignId, before);", ".count(")
+        && before(mPage, "assertHandedOverRead(campaignId, after, limit);", "for (const r of") && before(pPage, "assertHandedOverRead(campaignId, after, limit);", ".findMany("),
+      flat48(pBefore).slice(0, 200));
+    const COUNT_WHERE = 'count({ where: { campaignId, status: "SENT", sentAt: { lt: new Date(before) } } })';
+    ok("26.u48a.count.prisma · ⛔ the Prisma countSentBefore is ONE count WHERE the campaign is the one asked, the row is still SENT and its OWN sentAt is strictly before the bound — never the rows, never a groupBy",
+      pBefore.includes(COUNT_WHERE) && (pBefore.match(/[.]count[(]/g) ?? []).length === 1 && !/findMany|groupBy|aggregate/.test(pBefore),
+      flat48(pBefore).slice(0, 300));
+    ok("26.u48a.count.memory · the memory countSentBefore counts ONE campaign's rows that are still SENT, with an instant, whose sentAt is strictly before the bound — compared as instants",
+      mBefore.includes('r.campaignId !== campaignId || r.status !== "SENT" || r.sentAt === null') && mBefore.includes("Date.parse(r.sentAt) < bound"),
+      flat48(mBefore).slice(0, 300));
+    const PAGE_WHERE = 'where: { campaignId, status: { in: ["SENT", "DELIVERED"] }, sentAt: { not: null }, ...(after === null ? {} : { msisdn: { gt: after } }) },';
+    ok("26.u48a.page.prisma · ⛔ the Prisma handedOverPage is ONE findMany of THIS campaign's SENT and DELIVERED rows with an instant, keyset on the number (gt the cursor), ordered by it, at most the limit, selecting the number and the instant ALONE",
+      pPage.includes(PAGE_WHERE) && pPage.includes('orderBy: { msisdn: "asc" },') && pPage.includes("take: limit,") && pPage.includes("select: { msisdn: true, sentAt: true },")
+        && (pPage.match(/[.]findMany[(]/g) ?? []).length === 1 && !/[.]count[(]|groupBy|skip:/.test(pPage),
+      flat48(pPage).slice(0, 300));
+    ok("26.u48a.page.memory · the memory handedOverPage walks ONE campaign's SENT and DELIVERED rows that carry an instant, past the cursor, by number, at most the limit — { msisdn, sentAt } and nothing else",
+      mPage.includes('r.campaignId !== campaignId || (r.status !== "SENT" && r.status !== "DELIVERED") || r.sentAt === null') && mPage.includes("if (after !== null && r.msisdn <= after) continue;")
+        && mPage.includes("people.push({ msisdn: r.msisdn, sentAt: r.sentAt });") && mPage.includes(".slice(0, limit)"),
+      flat48(mPage).slice(0, 300));
+    // ── CONTROLS — each matcher above can reject the defect it exists for ──
+    ok("26.u48a.c1 · CONTROL · a count without the campaign, and a page without its cursor or its select, are NOT the ones 26.u48a looks for",
+      !'count({ where: { status: "SENT", sentAt: { lt: new Date(before) } } })'.includes(COUNT_WHERE)
+        && !'where: { campaignId, status: { in: ["SENT", "DELIVERED"] }, sentAt: { not: null } },'.includes(PAGE_WHERE)
+        && !'orderBy: { msisdn: "asc" }, take: limit,'.includes("select: { msisdn: true, sentAt: true },"));
+  }
+
   // ══ 26.status · THE RECIPIENT STATUS SET, ONE IN BOTH TWINS (U43-0, S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4) ═══
   // ⭐ WHY IT IS HELD HERE. UNCONFIRMED reaches Postgres through its own ADD VALUE migration, one deploy before any writer
   // (55P04). The memory twin types its rows with store.ts's union; the Prisma twin reads Postgres' enum through the

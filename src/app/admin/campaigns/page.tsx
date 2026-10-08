@@ -3,9 +3,11 @@
  * "SMS campaigns" nav badge in admin-shell.tsx).
  *
  * WHAT THIS PAGE IS TODAY, so nobody reads more into it: a list of the campaigns in the table, server-paged, sortable
- * by name, creation and last activity, filterable by status from one rail. Nothing can be written, started, paused or
- * opened from here yet — writing a campaign is U37 and a campaign's own page is U47 — and the page links to neither
- * until it exists (`CAMPAIGN_SCREENS`, ruling 432(h)).
+ * by name, creation and last activity, filterable by status from one rail. Nothing is written, started, paused or stopped
+ * from here — a campaign is written in the composer (U37) and run on its own page (U47b-2) — and the page links to each
+ * only because it exists (`CAMPAIGN_SCREENS`, ruling 432(h)).
+ * ⭐ U47b-2 · ONE LINK RULE: a DRAFT row's name opens the composer at the draft's own address (it is written there); every
+ * other row's name opens the campaign's live page. A draft's id opened at the live page's address goes to the composer.
  *
  * ⭐ THE SIX DOORS (U17 measured six, not five): the Growth nav item "SMS campaigns", its ROUTE_KEYS row, the
  * ROUTE_DOMAINS row (THE section's visibility — `test:rbac` §7b holds it equal to the nav item's domain), the section
@@ -17,7 +19,12 @@
  * never a timer, never an animation that moves on its own (OD34, OD38). A campaign with nothing to measure shows "—",
  * never a 0 % bar. The list is a snapshot, and a row in flight says when it was read, beside a Refresh.
  * ⛔ NO MONEY ON THE LIST (OD24): no TZS, no budget, no estimate — GROWTH reads this page. ⛔ No raw audience filter
- * and no raw stop-reason key (`stopReasonLabel`). ⛔ No pulse anywhere (OD38).
+ * and no raw stop-reason key. ⛔ No pulse anywhere (OD38).
+ * ⭐ U47b-2 · A PAUSED ROW SAYS ITS REASON AS THE LIVE PAGE DOES — through `pausedReasonSentenceFor`, the ONE function, given
+ * the viewer's two cells decided on the server (may they read a number, may they act) and the row's own counts: below E23's
+ * floor a masked viewer reads the one neutral sentence (and one who may only look is not told to press Resume), the
+ * copy-advising reasons say whether anybody was messaged only to a viewer who may read it, and every other reason is
+ * `stopReasonLabel`'s words — an unknown key still reads "Engine reason: <key>", never the key alone.
  * ⭐ U38b · M8 · EACH ROW SAYS ITS AUDIENCE IN WORDS under its name (`campaignRowAudience` — the ONE describer, role-shaped
  * exactly as the composer shapes it: a viewer who may not read a number gets the words only when the campaign door's role
  * rule passes the filter, else "Audience hidden for your role."). The line never widens its column: it wraps inside the
@@ -40,12 +47,14 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import type { StoredSmsCampaign, SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById } from "@/lib/server/store";
 import {
   CAMPAIGN_SCREENS, CAMPAIGN_SCREEN_ROUTES, CAMPAIGN_STATUS_VIEW, campaignDetailHref, campaignProgress, campaignTotal,
-  stopReasonLabel, zeroRecipientStatusCounts,
+  zeroRecipientStatusCounts,
 } from "@/lib/marketing/campaign-status";
+import { pausedReasonSentenceFor } from "@/lib/server/marketing/campaign-live";
 import { formatClock, formatDate } from "@/lib/utils";
 import { viewerReadsContacts } from "@/app/admin/contacts/contacts-loader";
 import { loadCampaigns, campaignsSort, campaignRowAudience } from "./campaigns-loader";
 import { draftAddressFor } from "./new/composer-loader";
+import { viewerMayActOnCampaigns } from "./[id]/live-viewer";
 import type { CampaignsParams, CampaignsView, CampaignRowAudience } from "./campaigns-loader";
 import { campaignRail, campaignsHref, campaignsLinkSp } from "./campaigns-rail";
 import { CampaignStatusRail } from "./campaign-status-rail";
@@ -81,18 +90,18 @@ function ProgressCell({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaign
   );
 }
 
-function CampaignRow({ c, counts, audience, draftHref }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts; audience: CampaignRowAudience; draftHref: string }) {
+function CampaignRow({ c, counts, audience, draftHref, viewer }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts; audience: CampaignRowAudience; draftHref: string; viewer: { reads: boolean; mayAct: boolean } }) {
   const view = CAMPAIGN_STATUS_VIEW[c.status];
   const name = c.name.trim() === ""
     ? <span className="text-text-tertiary">{CAMPAIGNS_UNTITLED}</span>
     : <span className="text-text">{c.name}</span>;
   return (
     <tr data-campaign-row data-campaign-id={c.id}>
-      {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): plain text until U47 lands /admin/campaigns/[id] and flips the flag. */}
+      {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): each is drawn behind the flag of the page it opens. */}
       {/* ⭐ A SAVED DRAFT REOPENS FROM HERE: a DRAFT row links to the composer at its own ?draft= address (behind the
-          compose flag); every other row stays plain text until U47 lands its page and flips `detail`. */}
+          compose flag); every other row links to the campaign's live page (behind `detail`, U47b-2). */}
       <td>
-        {CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route} className="hover:underline">{name}</Link> : name}
+        {c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route} className="hover:underline">{name}</Link> : name) : CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : name}
         {/* ⭐ U38b · M8 · the audience in words, role-shaped. A zero width with a full minimum: it wraps inside the column
             the name sets and never widens it. */}
         <span className="mt-0.5 block w-0 min-w-full break-words text-body-sm text-text-tertiary" data-campaign-audience={audience.kind}>
@@ -101,9 +110,10 @@ function CampaignRow({ c, counts, audience, draftHref }: { c: StoredSmsCampaign;
       </td>
       <td>
         <Chip size="sm" variant={view.chip}><span className="whitespace-nowrap">{view.label}</span></Chip>
-        {/* ⛔ The engine's reason in words — an unknown key reads "Engine reason: <key>", never the key alone. */}
+        {/* ⛔ The reason in words, as the live page says it (E23's floor and the viewer's act grant included) — an unknown key
+            reads "Engine reason: <key>", never the key alone. */}
         {c.status === "PAUSED" && c.stopReason !== null && (
-          <p data-stop-reason className="mt-1 text-body-sm text-text-tertiary">{stopReasonLabel(c.stopReason)}</p>
+          <p data-stop-reason className="mt-1 text-body-sm text-text-tertiary">{pausedReasonSentenceFor(viewer, c, counts)}</p>
         )}
       </td>
       <td className="tabular-nums">
@@ -135,6 +145,8 @@ async function AdminCampaignsContent({ searchParams }: { searchParams: Promise<C
   // ⭐ U38b · M8 · D19 · the viewer's read cell, decided on the server (failing closed) — each row's audience words are
   // shaped by it, exactly as the composer's card is.
   const reads = await viewerReadsContacts().catch(() => false);
+  // ⭐ U47b-2 · and the viewer's act grant — a paused row's sentence has a form for a viewer who may only look. Failing closed.
+  const mayAct = await viewerMayActOnCampaigns().catch(() => false);
   // ⭐ A WHOLE-TABLE FACT, never the page: the rail and the empty row both read it.
   const emptyTable = view !== null && campaignTotal(view.counts) === 0;
   const rows = view?.result.rows ?? [];
@@ -195,7 +207,7 @@ async function AdminCampaignsContent({ searchParams }: { searchParams: Promise<C
                     action={<a href={campaignsHref(sp, { status: null })} className="btn btn-ghost btn-sm">{CAMPAIGNS_SHOW_ALL}</a>}
                   />
                 ) : (
-                  rows.map((c) => <CampaignRow key={c.id} c={c} counts={recipients[c.id] ?? zeroRecipientStatusCounts()} audience={campaignRowAudience(c, reads)} draftHref={draftAddressFor(c, reads)} />)
+                  rows.map((c) => <CampaignRow key={c.id} c={c} counts={recipients[c.id] ?? zeroRecipientStatusCounts()} audience={campaignRowAudience(c, reads)} draftHref={draftAddressFor(c, reads)} viewer={{ reads, mayAct }} />)
                 )}
               </tbody>
             </table>

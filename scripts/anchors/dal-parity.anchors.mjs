@@ -2087,4 +2087,47 @@ export const MUTATIONS = [
     to: `  for (const r of rows) byKey.set(r.id, r);`,
     expect: "27.wire · the wiring ONLY the probe executes, pinned in both twins — the book rows keyed by NUMBER (Prisma byKey.set(r.msisdn, r); memory rows.set(msisdn, c)) and read back by the asked key; the memberships grouped by CONTACT id and read back by the row's id; the list ids derived from those memberships alone",
   },
+  {
+    // 🔴 U48a · the results' "no receipt after 15 minutes" counted over the WHOLE recipient table: every campaign's SENT
+    // rows handed over before the cutoff are this one's.
+    name: "prisma-dal.ts — countSentBefore counts every campaign's rows",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'return pc().smsCampaignRecipient.count({ where: { campaignId, status: "SENT", sentAt: { lt: new Date(before) } } });',
+    to: 'return pc().smsCampaignRecipient.count({ where: { status: "SENT", sentAt: { lt: new Date(before) } } });',
+    expect: "26.u48a.count.prisma · ⛔ the Prisma countSentBefore is ONE count WHERE the campaign is the one asked, the row is still SENT and its OWN sentAt is strictly before the bound — never the rows, never a groupBy",
+  },
+  {
+    // U48a · the memory twin counts a row at, or after, the cutoff: "after 15 minutes" is then "within 15 minutes" too.
+    name: "store.ts — the memory countSentBefore counts rows that are not older than the bound",
+    file: "src/lib/server/store.ts",
+    from: "if (Date.parse(r.sentAt) < bound) older++;",
+    to: "older++;",
+    expect: "26.u48a.count.memory · the memory countSentBefore counts ONE campaign's rows that are still SENT, with an instant, whose sentAt is strictly before the bound — compared as instants",
+  },
+  {
+    // 🔴 U48a · the stop walk's page selects whole rows: every person's token, reference and gate trail read per chunk.
+    name: "prisma-dal.ts — handedOverPage selects whole rows",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        take: limit,
+        select: { msisdn: true, sentAt: true },`,
+    to: "        take: limit,",
+    expect: "26.u48a.page.prisma · ⛔ the Prisma handedOverPage is ONE findMany of THIS campaign's SENT and DELIVERED rows with an instant, keyset on the number (gt the cursor), ordered by it, at most the limit, selecting the number and the instant ALONE",
+  },
+  {
+    // 🔴 U48a · the Prisma page loses its cursor: every chunk is the first, and the walk never ends (or counts the first
+    // chunk's stops again and again).
+    name: "prisma-dal.ts — handedOverPage forgets its cursor",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "sentAt: { not: null }, ...(after === null ? {} : { msisdn: { gt: after } }) },",
+    to: "sentAt: { not: null } },",
+    expect: "26.u48a.page.prisma · ⛔ the Prisma handedOverPage is ONE findMany of THIS campaign's SENT and DELIVERED rows with an instant, keyset on the number (gt the cursor), ordered by it, at most the limit, selecting the number and the instant ALONE",
+  },
+  {
+    // U48a · the memory page loses its cursor: the same.
+    name: "store.ts — the memory handedOverPage forgets its cursor",
+    file: "src/lib/server/store.ts",
+    from: "if (after !== null && r.msisdn <= after) continue;",
+    to: "",
+    expect: "26.u48a.page.memory · the memory handedOverPage walks ONE campaign's SENT and DELIVERED rows that carry an instant, past the cursor, by number, at most the limit — { msisdn, sentAt } and nothing else",
+  },
 ];

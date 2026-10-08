@@ -26,6 +26,7 @@ import {
   claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
   assertReceipt, receiptWrite, receiptMiss, SMS_RECEIPT_FROM,
   assertSendRecord, sendRecordWrite, SMS_SEND_RECORD_FROM,
+  assertSentBeforeRead, assertHandedOverRead,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
 // statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
@@ -718,6 +719,18 @@ export type SmsRecipientSendRecord = {
 /** What the send record did: `written` only when the row was still owed it. */
 export type SmsRecipientSendRecordResult = {
   written: boolean;
+};
+
+/* ── U48a · THE RESULTS' TWO READS — `countSentBefore` and `handedOverPage` (ENGINE-SPEC §4.16, E5 and E30;
+ * `test:dal-parity` §26.u48a, `test:campaign-models` §2.33). ⚠️ NAMED, NOT INLINE: the `SmsDlrResult` note above. ── */
+/**
+ * ⭐ ONE PERSON A CAMPAIGN HANDED A MESSAGE TO — the bare number and the instant it was handed over, and nothing else: what
+ * the stopped-by-link walk asks the stops list about (E30). Only SENT and DELIVERED rows with an instant are among them
+ * (`handedOverPage`). ⛔ SERVER-SIDE ONLY: the number is a key the walk reads by and never a figure any view carries.
+ */
+export type SmsCampaignHandedOver = {
+  msisdn: string;
+  sentAt: string;
 };
 
 declare global {
@@ -4432,6 +4445,35 @@ const memoryDb = {
         if (newest === null || Date.parse(r.claimedAt) > Date.parse(newest)) newest = r.claimedAt;
       }
       return newest;
+    },
+    /** U48a · E5 — "NO RECEIPT AFTER 15 MINUTES": how many of the campaign's rows are STILL SENT (no receipt has moved them)
+     *  and were handed over STRICTLY before `before` — their own `sentAt`, compared as instants, never `updatedAt` or a claim.
+     *  A DELIVERED row has its receipt, an UNCONFIRMED one no hand-over instant, and a row of another campaign is none of this
+     *  one's. The rule set is asked first. The memory twin walks; the Prisma twin asks ONE count. */
+    countSentBefore: (campaignId: string, before: string): number => {
+      assertSentBeforeRead(campaignId, before);
+      const bound = Date.parse(before);
+      let older = 0;
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId !== campaignId || r.status !== "SENT" || r.sentAt === null) continue;
+        if (Date.parse(r.sentAt) < bound) older++;
+      }
+      return older;
+    },
+    /** U48a · E30 — THE STOPPED-BY-LINK WALK'S PAGE: the campaign's SENT and DELIVERED rows that carry a hand-over instant, by
+     *  number (the campaign holds a number once), the numbers strictly after `after` (null: from the start), at most `limit`
+     *  — `{ msisdn, sentAt }` and nothing else. Keyset, never an offset: a walk of a 150,000-person list reads each row once.
+     *  A FAILED row never reached its person, an UNCONFIRMED one carries no instant to date a stop against. The rule set is
+     *  asked first. */
+    handedOverPage: (campaignId: string, after: string | null, limit: number): SmsCampaignHandedOver[] => {
+      assertHandedOverRead(campaignId, after, limit);
+      const people: SmsCampaignHandedOver[] = [];
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId !== campaignId || (r.status !== "SENT" && r.status !== "DELIVERED") || r.sentAt === null) continue;
+        if (after !== null && r.msisdn <= after) continue;
+        people.push({ msisdn: r.msisdn, sentAt: r.sentAt });
+      }
+      return people.sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0)).slice(0, limit);
     },
     /** U46a · ⭐ THE RECEIPT DOOR (E28) — a delivery receipt settles ITS row and no other: written only where the row is the
      *  one named, holds the MESSAGE's number and either no reference yet or the receipt's own (the identity), AND is in a
