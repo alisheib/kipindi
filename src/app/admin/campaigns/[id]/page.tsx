@@ -69,7 +69,16 @@ async function AdminCampaignLiveContent({ params }: LivePageProps) {
       <AdminBody>
         {load === null ? (
           <div data-block="live-status"><AdminCard><AdminLoadError what="this SMS campaign" /></AdminCard></div>
-        ) : load.kind === "missing" ? (
+        ) : load.kind === "ready" ? (
+          <LiveProvider initial={load.view} mayAct={load.mayAct}>
+            <div data-block="live-status"><AdminCard><LiveStatus /></AdminCard></div>
+            <div data-block="live-controls"><AdminCard><LiveControls /></AdminCard></div>
+            <LiveWhenListed>
+              <div data-block="live-progress"><AdminCard><LiveProgress /></AdminCard></div>
+            </LiveWhenListed>
+          </LiveProvider>
+        ) : (
+          // A campaign that is not there. (A draft never gets here: it was redirected to the composer above.)
           <div data-block="live-status">
             <AdminCard>
               <div className="space-y-3">
@@ -80,14 +89,6 @@ async function AdminCampaignLiveContent({ params }: LivePageProps) {
               </div>
             </AdminCard>
           </div>
-        ) : (
-          <LiveProvider initial={load.view} mayAct={load.mayAct}>
-            <div data-block="live-status"><AdminCard><LiveStatus /></AdminCard></div>
-            <div data-block="live-controls"><AdminCard><LiveControls /></AdminCard></div>
-            <LiveWhenListed>
-              <div data-block="live-progress"><AdminCard><LiveProgress /></AdminCard></div>
-            </LiveWhenListed>
-          </LiveProvider>
         )}
       </AdminBody>
     </>
