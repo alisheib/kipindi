@@ -4178,7 +4178,9 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */
-.kp-hero__rail { color: var(--text); font-weight: 500; }
+/* A wallet's name is one name: "Airtel Money" and "Mixx by Yas" broke across lines at 320–1024 in all three languages
+   (WP12's tiles, 2026-10-08). The joiners between the names still let the list wrap. */
+.kp-hero__rail { color: var(--text); font-weight: 500; white-space: nowrap; }
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 
@@ -5976,6 +5978,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__card :where(a, button, summary):focus-visible { outline-offset: -2px; }
 .kp-hub__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: var(--sp-2) var(--sp-4); border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
 .kp-hub__row:hover { background: var(--bg-overlay); }
+/* The card clips its rows to its rounded corners, so a square ring on the first or last row lost its corners there
+   (WP12's tiles, 2026-10-08: the "Pochi" row's ring broke open at both top corners). An outline follows the element's
+   radius, so the end rows take the card's inner curve and the ring stays whole. */
+.kp-hub__card > li:first-child .kp-hub__row { border-top-left-radius: calc(var(--r-lg) - 1px); border-top-right-radius: calc(var(--r-lg) - 1px); }
+.kp-hub__card > li:last-child .kp-hub__row { border-bottom-left-radius: calc(var(--r-lg) - 1px); border-bottom-right-radius: calc(var(--r-lg) - 1px); }
 .kp-hub__glyph { flex-shrink: 0; display: inline-flex; color: var(--text-muted); }
 .kp-hub__text { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
 .kp-hub__label { font-size: var(--type-body); font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
@@ -5995,7 +6002,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__tick { flex-shrink: 0; display: inline-flex; width: 16px; color: var(--brand-300); }
 /* The Needle's own menu row, given the hub's height. */
 .kp-hub__needle { display: flex; align-items: center; min-height: var(--h-control-xl); padding: var(--sp-1) var(--sp-2); }
-.kp-hub__needle > button { min-height: var(--h-control-md); }
+/* …and the hub's type: the shared menu row is set at body-sm for the account menu, where every row is; among the
+   hub's body-size labels it read a size smaller than its siblings (WP12's tiles, 2026-10-08). */
+.kp-hub__needle > button { min-height: var(--h-control-md); font-size: var(--type-body); }
 /* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door. */
 .kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .kp-hub__exit:hover { background: var(--bg-overlay); }
@@ -6025,7 +6034,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* ⚠️ minmax(0, 1fr), NOT 1fr: a bare 1fr is minmax(auto, 1fr), so a column grows to fit its label and the pair
    stops being equal — measured 134.9 vs 136.1px in English ("Withdraw" is the longer word). Equal by construction. */
 
-.kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border-radius: var(--r-lg); background: var(--bg-inset); max-width: 560px; }
+/* The box has an edge: the hero's ground (--bg-overlay) is the very colour of --bg-inset, so the frozen notice drew no
+   box at all, only its padding — two lines indented 16px from everything above and below them, reading as stray text
+   (WP12's tiles, 2026-10-08). */
+.kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-inset); max-width: 560px; }
 .kp-mine__held-t { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); line-height: 1.25; color: var(--text); }
 .kp-mine__held-b { font-size: var(--type-small); line-height: 1.45; color: var(--text-muted); }
 .kp-mine__limits { display: inline-flex; align-items: center; gap: var(--sp-1); align-self: flex-start; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
@@ -6305,6 +6317,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 }
 .kp-rail__item[data-on] { color: var(--text); }
 .kp-rail__item:hover { color: var(--text); }
+/* The ring sits INSIDE the slot: the catch-all ring is drawn 2px outside, and the rail's end slots touch the screen's
+   edges, so the last tab's ring lost its right and bottom sides off-screen (WP12's tiles, 2026-10-08, 390 in all three
+   languages) — as `[data-section-rail]` already learned. The coin keeps its own ring. */
+.kp-rail__item:not(.kp-rail__item--coin):focus-visible { outline-offset: -2px; }
 .kp-rail__pip {
   position: relative;
   display: inline-flex;

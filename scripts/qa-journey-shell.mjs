@@ -568,11 +568,21 @@ const RING_PROBE = (sel) => {
   return { style: cs.outlineStyle, width: cs.outlineWidth, offset: cs.outlineOffset, shadow: cs.boxShadow };
 };
 
-/** What has focus, whether it is the element `sel` names, and the ring it wears. */
+/**
+ * What has focus, whether it is the element `sel` names, and the ring it wears — and whether that ring is ON THE SCREEN.
+ * ⭐ `onScreen` (2026-10-08): the ring's outer edge (the box grown by offset + width) inside the viewport. WP12's tiles
+ * showed the rail's Akaunti tab wearing exactly the ring this cell asked for — 2px at +2px — while its right and bottom
+ * sides were drawn past the screen's edges: a ring can be correct and still not be seen.
+ */
 const FOCUS_PROBE = (sel) => {
   const a = document.activeElement;
   if (!a || a === document.body) return null;
   const cs = getComputedStyle(a);
+  const r = a.getBoundingClientRect();
+  const grow = (parseFloat(cs.outlineOffset) || 0) + (parseFloat(cs.outlineWidth) || 0);
+  const vw = Math.min(window.innerWidth, document.documentElement.clientWidth || window.innerWidth);
+  const vh = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+  const ring = { left: r.left - grow, top: r.top - grow, right: r.right + grow, bottom: r.bottom + grow };
   return {
     isTarget: a === document.querySelector(sel),
     tag: a.tagName,
@@ -583,6 +593,9 @@ const FOCUS_PROBE = (sel) => {
     width: cs.outlineWidth,
     offset: cs.outlineOffset,
     shadow: cs.boxShadow,
+    onScreen: ring.left >= 0 && ring.top >= 0 && ring.right <= vw && ring.bottom <= vh,
+    ringBox: [ring.left, ring.top, ring.right, ring.bottom].map((n) => Math.round(n * 10) / 10).join(','),
+    viewport: `${vw}x${vh}`,
   };
 };
 
@@ -1272,8 +1285,9 @@ async function noHub(vw) {
 /**
  * One focus cell: the target’s ring at rest, then focus on the control before it, one real Tab, and the ring it
  * wears: :focus-visible, a 2px solid outline at `offset` (globals.css: the `:where(a, button, …):focus-visible`
- * catch-all, `.btn:focus-visible` and motion.css’s `.gilt-metal:focus-visible` at 2px; `.kp-hub__card`’s rows at -2px),
- * and a ring that was not drawn at rest. A box-shadow alone is never a ring: the capsule and the gilt pill wear one at rest.
+ * catch-all, `.btn:focus-visible` and motion.css’s `.gilt-metal:focus-visible` at 2px; `.kp-hub__card`’s rows and the
+ * rail's slots at -2px), a ring that was not drawn at rest, and all of it inside the viewport (`FOCUS_PROBE.onScreen`).
+ * A box-shadow alone is never a ring: the capsule and the gilt pill wear one at rest.
  */
 async function focusStep(page, cell, step) {
   await page.mouse.move(2, Math.round(viewport(cell.width).height / 2)).catch(() => {});
@@ -1286,9 +1300,9 @@ async function focusStep(page, cell, step) {
     f = await page.evaluate(FOCUS_PROBE, step.sel);
   }
   const changed = !!rest && !!f && (rest.style !== f.style || rest.width !== f.width || rest.offset !== f.offset || rest.shadow !== f.shadow);
-  const ring = !!f && f.isTarget && f.visible && f.style === 'solid' && f.width === '2px' && f.offset === step.offset && changed;
-  ok(`${tagOf(cell)} · Tab lands on ${step.what} with a :focus-visible ring, a 2px solid outline at ${step.offset} not drawn at rest`,
-    ring, placed !== 'ok' ? `could not put focus before it: ${placed}` : ring ? `${f.style} ${f.width} at ${f.offset}` : JSON.stringify({ rest, focused: f }));
+  const ring = !!f && f.isTarget && f.visible && f.style === 'solid' && f.width === '2px' && f.offset === step.offset && changed && f.onScreen;
+  ok(`${tagOf(cell)} · Tab lands on ${step.what} with a :focus-visible ring, a 2px solid outline at ${step.offset} not drawn at rest, all of it on the screen`,
+    ring, placed !== 'ok' ? `could not put focus before it: ${placed}` : ring ? `${f.style} ${f.width} at ${f.offset}, ring ${f.ringBox} in ${f.viewport}` : JSON.stringify({ rest, focused: f }));
 }
 
 /** The Arifa row and its badge in view, judged and tiled; answers what the badge read. */
@@ -1702,7 +1716,8 @@ async function focusSection() {
   const steps = [
     { width: 390, state: 'focus-capsule', sel: CAPSULE, offset: '2px', what: 'the captioned balance' },
     { width: 390, state: 'focus-pill', sel: PILL, offset: '2px', what: 'the gold + Weka pesa' },
-    { width: 390, state: 'focus-tab', sel: `${RAIL} a.kp-rail__item[href='/account']`, offset: '2px', what: 'the Akaunti tab' },
+    // ⭐ -2px since 2026-10-08: the rail's end slots touch the screen's edges, so the slot's ring is drawn inside it.
+    { width: 390, state: 'focus-tab', sel: `${RAIL} a.kp-rail__item[href='/account']`, offset: '-2px', what: 'the Akaunti tab' },
     { width: 1280, state: 'focus-link', sel: `${JOURNEY_BAR} nav.kp-jnav .kp-jnav__link`, offset: '2px', what: 'the first desktop link' },
   ];
   for (const locale of LOCALES) {

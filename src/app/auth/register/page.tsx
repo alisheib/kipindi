@@ -99,7 +99,6 @@ export default async function RegisterPage({
     dobHint: t.auth.dobHint,
     age18Confirm: t.auth.age18Confirm,
     termsAccept: t.auth.termsAccept,
-    optionalUpdates: t.auth.optionalUpdates,
     terms: t.footer.terms,
     privacy: t.footer.privacy,
     responsibleGambling: t.common.responsibleGambling,
@@ -183,8 +182,9 @@ export default async function RegisterPage({
           {/* ⭐ The refusal panel and the form live in ONE client component, so a refusal returns to the form the
               player is looking at and loses nothing (register-form.tsx). These are its first children. */}
           <RegisterForm copy={copy} phoneDefault={phoneDefault} emailDefault={emailDefault} nextOk={nextOk} dobMax={dobMax}>
-            {/* D2 · the language THIS form was drawn in, so the consent ledger stores the sentence the person
-                actually ticked, even if the cookie changes before they submit (actions.ts `shownLocale`). */}
+            {/* D2 · the language THIS form was drawn in, so the new account's language (`User.locale`) is the one the
+                person read, even if the cookie changes before they submit (actions.ts `shownLocale`). Until 2026-10-07
+                it also chose which sentence of the SMS-offers box the consent ledger stored; that box is removed. */}
             <input type="hidden" name="shownLocale" value={locale} />
             {referral && <input type="hidden" name="ref" value={refCode} />}
             {invite && <input type="hidden" name="invite" value={inviteCode} />}

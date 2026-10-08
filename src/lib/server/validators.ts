@@ -139,7 +139,8 @@ export const RegisterSchema = z.object({
   dob: dateOfBirth,
   acceptTerms: z.literal(true, { message: "You must accept the Terms" }),
   acceptAge: z.literal(true, { message: "You must confirm you are 18+" }),
-  marketingOptIn: z.boolean().optional().default(false),
+  // ⛔ No `marketingOptIn`: the sign-up SMS-offers box was REMOVED on 2026-10-07 (COMPLIANCE-DECISIONS § "2026-10-07 ·
+  // Marketing SMS go to anyone with a phone — consent is not a condition"), so sign-up records no marketing choice.
 });
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 

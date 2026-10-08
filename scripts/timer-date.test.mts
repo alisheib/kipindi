@@ -23,6 +23,17 @@
  * asserts each `<Countdown>`'s `at=` is built from the SAME expression as its `to=` —
  * rule 5b, assert the call site, not the symbol.
  *
+ * ⭐ §L4 (2026-10-08) — AND THE DATE IS IN THE READER'S WORDS. `formatDeadline` is an
+ * "en-GB" formatter, so a Swahili ticket read "Imewekwa 8 Oct, 15:18" and a Chinese one
+ * "下注于 8 Oct, 15:18". Every player surface that printed a date through it, or through
+ * `formatDayTime` / `formatDateTime` / `formatDayShort`, now uses the receipts' helper,
+ * `formatEatDateTime` (`formatEatDate` for a day) in `src/lib/eat-day.ts`: the month words
+ * of `t.common.monthsShort`, the East Africa clock, and the same year rule — the year
+ * appears when the instant leaves the reader's EAT year (Chinese always carries it). §3
+ * holds each surface it names to that helper and to the instant each date names, and
+ * fences every converted file against the English helpers coming back. `formatDeadline`
+ * itself stays, for the admin console (English by design), so §1/§2 still drive it.
+ *
  * Run: npm run test:timer-date
  */
 import { readFileSync } from "node:fs";
@@ -111,46 +122,76 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
   ok("3: Countdown derives no format of its own",
      !/toLocale(Date|Time)?String|toISOString\(\)\s*\.slice/.test(countdown));
 
+  // ⭐ §L4 · THE READER'S DATE. Every date below goes through `formatEatDateTime` (`formatEatDate` for a day) with the
+  // reader's month words and locale as its last two arguments — `t.common.monthsShort, locale` — never an English helper.
+  // `eatCalls` lists each call with its arguments as written; it balances (), [] and {}, so `Date.parse(x)` and an
+  // inline list are one argument each. Patterns are spelt with character classes, so no escape is typed in them.
+  const eatCalls = (src: string) => [...src.matchAll(/(?<![A-Za-z0-9_$.])formatEat(DateTime|Date)[(]/g)].map((m) => {
+    const args: string[] = [];
+    let depth = 1, start = (m.index ?? 0) + m[0].length, i = start;
+    for (; i < src.length && depth > 0; i++) {
+      const c = src[i];
+      if (c === "(" || c === "[" || c === "{") depth++;
+      else if (c === ")" || c === "]" || c === "}") { depth--; if (depth === 0) args.push(src.slice(start, i).trim()); }
+      else if (c === "," && depth === 1) { args.push(src.slice(start, i).trim()); start = i + 1; }
+    }
+    return { fn: `formatEat${m[1]}`, args };
+  });
+  const inReaderWords = (c: { args: string[] }) => c.args.length === 4 && c.args[2] === "t.common.monthsShort" && c.args[3] === "locale";
+  const showCalls = (cs: { fn: string; args: string[] }[]) => cs.map((c) => `${c.fn}(${c.args.join(", ")})`).join(" | ");
+  // Any use of an English helper: a call, an import, or an alias (`const fmtTime = formatDateTime` was the market page's).
+  // (formatDateTimeSafe, formatDateShort and formatDate joined the list with the second pass, the same afternoon.)
+  const ENGLISH_HELPER = /(?<![A-Za-z0-9_$.])(formatDeadline|formatDayTime|formatDateTime|formatDayShort|formatDateTimeSafe|formatDateShort|formatDate)(?![A-Za-z0-9_$])/g;
+  const englishIn = (src: string) => [...src.matchAll(ENGLISH_HELPER)].map((m) => m[1]);
+
   const market = read("../src/app/markets/[id]/page.tsx");
   const sites = [...market.matchAll(/<Countdown\b([^>]*)>/g)].map((m) => m[1]);
   ok("3: the market page renders exactly the two timers item #6 names", sites.length === 2, `found ${sites.length}`);
 
+  // The one shape a timer's date may take: the reader's helper, over the very instant `to=` names, with the reader's words.
+  const AT_RULE = /^formatEatDateTime[(]Date[.]parse[(]([^()]+)[)], ([^,()]+(?:[(][)])?), t[.]common[.]monthsShort, locale[)]$/;
   for (const attrs of sites) {
     const to = attrs.match(/\bto=\{([^}]+)\}/)?.[1]?.trim();
     const at = attrs.match(/\bat=\{([^}]+)\}/)?.[1]?.trim();
     ok(`3: timer to={${to}} passes an absolute date`, !!at, at ?? "MISSING");
+    const shape = at?.match(AT_RULE);
+    ok(`3: ...in the reader's month words, through formatEatDateTime (timer to={${to}})`, !!shape, `at=${at}`);
     // ⭐ THE ASSERTION WITH TEETH: the date must be built from the SAME expression the
     // clock counts to. A date naming a different instant is a confident wrong deadline
     // on a money page, and it reads as correct.
     ok("3: ...and it names the SAME instant the clock counts to",
-       at === `formatDeadline(${to})`, `at=${at} to=${to}`);
+       !!shape && shape[1].trim() === to, `at=${at} to=${to}`);
   }
 
-  // ⛔ ONE HOME PER FACT. Nothing may show a deadline through the raw same-year
-  // formatter any more, or the product carries two answers to one question.
+  // ⛔ ONE HOME PER FACT, AND IT IS THE READER'S. The three surfaces this section names — the market page, /positions
+  // and the journey's ticket card — date every deadline through the localized helper, in the reader's month words, each
+  // over a parsed instant; none of them may show one through an English helper (the fence below holds that, file by file).
   for (const [file, src] of [
     ["markets/[id]/page.tsx", market],
     ["positions/page.tsx", read("../src/app/positions/page.tsx")],
     // ⭐ S6 WP9 — the journey's ticket card states the same two instants to a preview reader.
     ["journey ticket-card.tsx", read("../src/components/journey/tickets/ticket-card.tsx")],
   ] as const) {
-    ok(`3: ${file} routes every deadline through formatDeadline`, !/\bformatDayTime\(/.test(src));
+    const calls = eatCalls(src);
+    ok(`3: ${file} dates every deadline through formatEatDateTime/formatEatDate, in the reader's month words`,
+      calls.length > 0 && calls.every((c) => inReaderWords(c) && /^Date[.]parse[(][^()]+[)]$/.test(c.args[0])) && englishIn(src).length === 0,
+      `${showCalls(calls)}${englishIn(src).length ? ` · English: ${englishIn(src).join(", ")}` : ""}`);
   }
 
   // ⭐ S6 WP9 · THE JOURNEY'S TICKET CARD STATES TWO INSTANTS — when the ticket was placed and when selection closes —
-  // and, like the market page's timers, each date must name the instant it is about: every `formatDeadline(` on the
-  // card sits inside a `<time dateTime={X}>` whose X is the very expression it formats, asked with the render's own
-  // `serverNow` (so the year rule reads the server's clock). ⛔ And the card formats on the server: no directive, and
-  // no locale formatter of its own. Patterns are spelt with character classes, so no escape is typed here.
+  // and, like the market page's timers, each date must name the instant it is about: every date on the card is a
+  // `formatEatDateTime(Date.parse(X), serverNow, t.common.monthsShort, locale)` inside a `<time dateTime={X}>` naming
+  // that very X, asked with the render's own `serverNow` (so the year rule reads the server's clock) and the reader's
+  // month words (§L4). ⛔ And the card formats on the server: no directive, and no locale formatter of its own.
   const card = read("../src/components/journey/tickets/ticket-card.tsx");
-  const dated = [...card.matchAll(/<time dateTime=[{]([^}]+)[}][^>]*>[{]formatDeadline[(]([^,)]+), serverNow[)][}]<[/]time>/g)];
+  const dated = [...card.matchAll(/<time dateTime=[{]([^}]+)[}][^>]*>[{]formatEatDateTime[(]Date[.]parse[(]([^()]+)[)], serverNow, t[.]common[.]monthsShort, locale[)][}]<[/]time>/g)];
   ok("3: the journey ticket card dates both of its instants (placed, selection closes)", dated.length === 2, `found ${dated.length}`);
   for (const m of dated) {
     ok(`3: ...its <time dateTime={${m[1].trim()}}> names the SAME instant it formats`, m[1].trim() === m[2].trim(),
       `dateTime=${m[1]} formats ${m[2]}`);
   }
-  ok("3: ...and the card formats no date outside those two", card.split("formatDeadline(").length - 1 === dated.length,
-    `${card.split("formatDeadline(").length - 1} formatDeadline calls`);
+  ok("3: ...and the card formats no date outside those two", eatCalls(card).length === dated.length && englishIn(card).length === 0,
+    `${eatCalls(card).length} localized calls, English: ${englishIn(card).join(", ") || "none"}`);
   ok("3: the journey ticket card formats on the server, never with a locale formatter of its own",
     card.length > 0 && !card.trimStart().startsWith(`"use client"`) && !/toLocale(Date|Time)?String/.test(card));
   ok("3: ...and its close line names the instant its Sell button closes at",
@@ -171,7 +212,54 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
       && /<span role="timer"[^>]*>[{]graceLabel[}]<[/]span>/.test(sellButton));
   ok("3: the Sell button formats no time of its own — no locale formatter, no date helper, no Intl",
     sellButton.length > 0 && !/toLocale(Date|Time)?String/.test(sellButton)
-      && !/format(Clock|Deadline|DayTime|DateTime|Time|Date)[(]/.test(sellButton) && !sellButton.includes("Intl."));
+      && !/format(Clock|Deadline|DayTime|DateTime|Time|Date|EatDateTime|EatDate|EatDay)[(]/.test(sellButton) && !sellButton.includes("Intl."));
+
+  // ⭐ §L4 · THE FENCE (2026-10-08). These are every player surface — `src/app/**` and `src/components/**` outside the
+  // English-only admin console — that printed a date through `formatDeadline`, `formatDayTime`, `formatDateTime` or
+  // `formatDayShort`, so a Swahili or Chinese reader got English month names. All of them were converted to the localized
+  // helper in one change, and each is held to two things:
+  //   · it uses NO English date helper again — no call, no import, and no alias (the market page's `fmtTime` WAS
+  //     `formatDateTime` under another name, which a grep for a call never sees);
+  //   · it still dates through `formatEatDateTime`/`formatEatDate` in the reader's month words — so a date deleted, or
+  //     formatted some other way, cannot pass the first check by default.
+  // ⛔ And a CLIENT file reads the year rule off an instant the server handed it, never `Date.now()`: the browser's clock
+  // is a different number, and the first render must be the server's (a hydration mismatch otherwise, around a New Year).
+  const CONVERTED = [
+    "app/markets/[id]/page.tsx",
+    "app/positions/page.tsx",
+    "components/journey/tickets/ticket-card.tsx",
+    "components/markets/resolution-panel.tsx",
+    "components/markets/position-card.tsx",
+    "app/profile/responsible-gambling/page.tsx",
+    "app/watchlist/page.tsx",
+    "app/wallet/deposit/page.tsx",
+    "app/profile/sessions/page.tsx",
+    "app/positions/performance/page.tsx",
+    // The second pass (2026-10-08): the rest of the player dates, through formatDateTimeSafe, formatDateShort, formatDate.
+    "app/fairness/page.tsx",
+    "app/agent/page.tsx",
+    "app/agent/status/page.tsx",
+    "app/agent/invite/[token]/page.tsx",
+    "app/profile/source-of-funds/page.tsx",
+  ];
+  /* ⚠️ TWO CLIENT FILES WHOSE YEAR RULE READS THE DEVICE CLOCK, BY THEIR OWN DESIGN — held to the first two checks, not
+     the third: the comment thread's date is the fallback of a relative time ("5m", "3h") that is the device clock's
+     already, and the wallet card's bonus expiry sits in a file whose transaction row (`TxnRow`) reads it the same way.
+     Neither is handed a server instant; the year can differ from the server's only across a New Year. */
+  const DEVICE_CLOCK = ["components/markets/comments-thread.tsx", "app/wallet/wallet-client.tsx"];
+  for (const rel of [...CONVERTED, ...DEVICE_CLOCK]) {
+    const src = read(`../src/${rel}`);
+    const english = englishIn(src);
+    ok(`3: fence · ${rel} uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)`,
+      src.length > 0 && english.length === 0, english.join(", "));
+    const calls = eatCalls(src);
+    ok(`3: fence · ${rel} dates through formatEatDateTime/formatEatDate, in the reader's month words`,
+      calls.length > 0 && calls.every(inReaderWords), showCalls(calls) || "no localized call");
+    if (src.trimStart().startsWith(`"use client"`) && !DEVICE_CLOCK.includes(rel)) {
+      ok(`3: fence · ${rel} is a client file: its year rule reads the server's instant, never Date.now()`,
+        calls.length > 0 && calls.every((c) => c.args.length === 4 && !/Date[.]now/.test(c.args[1])), showCalls(calls));
+    }
+  }
 
   const utils = read("../src/lib/utils.ts");
   // ⚠️ `\bformatDayTime\(` also matches its own `export function` line, so count CALL
@@ -185,6 +273,21 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
   const rule = utils.slice(utils.indexOf("function sameZonedYear"));
   ok("3: the year test reads the platform zone, never a literal",
      /timeZone:\s*tz\(\)/.test(rule) && !/Africa\/Dar_es_Salaam/.test(rule));
+}
+
+// §4 · an instant that is not one reads "—" — every player page now dates through eat-day, and its key reaches
+// `toISOString`, which throws on an invalid date: one unreadable timestamp would take a whole page down.
+{
+  const eat = await import("../src/lib/eat-day.ts");
+  const MONTHS = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ago", "Sep", "Okt", "Nov", "Des"];
+  const now = Date.parse("2026-10-08T12:00:00Z");
+  const said = (f: () => string) => { try { return f(); } catch (e) { return `THREW ${(e as Error).message}`; } };
+  ok("4: formatEatDateTime of NaN reads the missing-value mark, it does not throw",
+     said(() => eat.formatEatDateTime(Number.NaN, now, MONTHS, "sw")) === "—", said(() => eat.formatEatDateTime(Number.NaN, now, MONTHS, "sw")));
+  ok("4: …and formatEatDate of NaN too", said(() => eat.formatEatDate(Number.NaN, now, MONTHS, "zh")) === "—");
+  ok("4: CONTROL — a real instant still reads in the reader's month words",
+     said(() => eat.formatEatDateTime(Date.parse("2026-10-08T12:18:00Z"), now, MONTHS, "sw")) === "8 Okt, 15:18",
+     said(() => eat.formatEatDateTime(Date.parse("2026-10-08T12:18:00Z"), now, MONTHS, "sw")));
 }
 
 console.log(`\ntimer-date: ${pass} passed, ${fail} failed`);

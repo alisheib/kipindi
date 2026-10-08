@@ -2193,6 +2193,11 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      added the reader and 0.260.1 went red on the release branch at once — the guard doing its job. */
   "src/lib/server/invite-rewards-switch.ts": "the invite Payable switch's own COMPLIANCE trail (affiliate.payable.on / .off), read by action and reduced to ONE number — the highest confirmed record seq — so /admin/affiliate can flag an older restored record; no row is handed on",
   "src/lib/server/kyc-risk.ts": "the KYC withdrawal refusals and the aml approvals, read by action and folded into counts and a recommendation",
+  /* Classified 2026-10-08, read from the source (`actsOn` → `actorOfAct`): the marketing lane's STEP 52 (the engine,
+     U47b-1) added the reader and 0.260.1 went red on `main` — caught by STEP 53's lock turn, the guard doing its job. */
+  "src/lib/server/marketing/campaign-live.ts": "the live campaign page's \"Paused by … / Stopped by …\": ONE campaign's own rows (target SmsCampaign), the officer's act found by action at or after the act's instant and reduced to that officer's display name — no row, payload or house action is handed on",
+  /* Classified 2026-10-08, read from the source (`handledContacts`): the final-rule gate U33r added the reader. */
+  "src/lib/server/marketing/referee-exclusion.ts": "the referee-key census's hand steps: the COMPLIANCE rows of the `key` / `reviewed` steps for the applications it is given (target AgentApplication, by action), reduced to a set of (application, referee place) keys inside the module — no row, payload or number is handed on",
   /* Classified 2026-09-26, read from the source (`readExclusionRecord`): the marketing lane's `f1ad4417` added the
      reader and 0.260.1 went red on `main` at once, which is the guard doing its job. */
   "src/lib/server/marketing/rg.ts": "the marketing RG standing: one player's two self-exclusion actions (rg.self_exclusion.activated / reopened), read by action and reduced to two instants; no row is handed on",
@@ -2233,6 +2238,8 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/house-bot/oversight.ts": "folded",
   "src/lib/server/invite-rewards-switch.ts": "folded",
   "src/lib/server/kyc-risk.ts": "handedOn",
+  "src/lib/server/marketing/campaign-live.ts": "handedOn",
+  "src/lib/server/marketing/referee-exclusion.ts": "folded",
   "src/lib/server/marketing/rg.ts": "folded",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",

@@ -43,7 +43,10 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 // which no longer interpolates a rate. An import kept "just in case" is how a deleted rate
 // quietly comes back. ⚠️ `fill` STAYS: `similarTimeLeft` passes it to `timeLeftLabel`, a use
 // tsc caught the moment the import was removed on the strength of a grep for `fill(`.
-import { formatDateTime, formatDeadline, formatTzsCompact, formatTzs, fill } from "@/lib/utils";
+import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
+// Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
+// `formatDeadline` printed English months in every locale.
+import { formatEatDateTime } from "@/lib/eat-day";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { sideWord, outcomeWord } from "@/lib/side-label";
@@ -111,8 +114,6 @@ export async function generateMetadata(
     },
   };
 }
-
-const fmtTime = formatDateTime;
 
 export default async function MarketDetail({
   params,
@@ -740,7 +741,7 @@ export default async function MarketDetail({
               <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h2>
               <p className="mt-3 text-body-sm text-text-muted leading-snug">
                 {t.market.newPredictionsNotAccepted}
-                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatDeadline(m.resolutionAt)}.`}
+                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)}.`}
               </p>
             </div>
           ) : closedByTime ? (
@@ -804,7 +805,7 @@ export default async function MarketDetail({
                 note on the function below. */}
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
-            <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono className="col-span-2 sm:col-span-1" />
+            <KPI label={t.market.resolves}   value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} mono className="col-span-2 sm:col-span-1" />
           </div>
 
           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
@@ -833,7 +834,7 @@ export default async function MarketDetail({
           {!isResolved && (
             <div className="glass-panel p-4 space-y-2.5">
               {m.selectionClosedAt && !isSelectionClosed(m) && (
-                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatDeadline(m.selectionClosedAt)} />
+                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)} />
               )}
               {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
                 <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
@@ -841,7 +842,7 @@ export default async function MarketDetail({
                   {t.market.selectionClosedWaiting}
                 </div>
               )}
-              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatDeadline(m.resolutionAt)} />
+              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} />
             </div>
           )}
 
@@ -904,7 +905,7 @@ export default async function MarketDetail({
                         <I.clock s={10} className="opacity-70 shrink-0" />
                         {/* The date is one unit after the word: a narrow phone breaks the line before it, never inside it
                             (it read "Imefunguliwa 4 Oct 2026, / 13:55" at 320; test:sell-grace-truth 5.opened). */}
-                        <span>{t.market.opened}{" "}<span className="whitespace-nowrap">{fmtTime(p.placedAt)}</span></span>
+                        <span>{t.market.opened}{" "}<span className="whitespace-nowrap">{formatEatDateTime(Date.parse(p.placedAt), Date.now(), t.common.monthsShort, locale)}</span></span>
                       </p>
                     </div>
                     {(liveValue !== null || sellShut) && (

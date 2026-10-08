@@ -5,7 +5,7 @@
  *
  * ⭐ WHAT IT RECORDS. Not a preference — a decision, with a name and an instant against it: from this moment 50pick may
  * text a player who has not stopped its offers, and a contact on a list recorded under the licence. Until it is open,
- * only consent reaches anybody. That is why opening is refused while any of the four checks fails
+ * only consent reaches anybody. That is why opening is refused while any of the five checks fails
  * (`outreachOpenProblems`), and why both acts are audited under COMPLIANCE rather than as a settings change.
  *
  * ⛔ ABSENT MEANS CLOSED, AND SO DOES ANYTHING THAT IS NOT EXACTLY AN OPEN ROW — the live-switch rule
@@ -18,7 +18,7 @@
  * reader rightly calls malformed, which reads CLOSED while the card says open. `mergeWhole` replaces, and R4b (open →
  * close → open) is the case that fails the moment somebody restores the spread.
  *
- * ⛔ AND A RECORD THIS PROCESS CANNOT READ IN FULL REFUSES TO OPEN AT ALL. The four checks are read off the saved policy
+ * ⛔ AND A RECORD THIS PROCESS CANNOT READ IN FULL REFUSES TO OPEN AT ALL. The three public checks are read off the saved policy
  * lines; while `policyLinesReadable()` is false every line looks unsaved, so three checks would be named that may all in
  * fact be satisfied — a true refusal told as three false reasons. It refuses as `unreadable` instead, and says so.
  * ⚠️ OWED TO U33a-G: the same `policyLinesReadable()` must refuse every licence SEND, not only an opening (spec §5.3).
@@ -33,8 +33,8 @@ import { defineConfig } from "../define-config";
 import { audit } from "../audit";
 import { policyLinesReadable, savedPolicyLines } from "../legal/policy-lines";
 import {
-  OUTREACH_CHECK_SENTENCE, OUTREACH_OPEN_CHECKS, outreachOpenProblems,
-  type OutreachOpenCheck, type PreLedgerOffs,
+  OUTREACH_CHECK_SENTENCE, OUTREACH_OPEN_CHECKS, outreachOpenProblems, refereeKeysState,
+  type OutreachOpenCheck, type PreLedgerOffs, type RefereeKeysRecord, type RefereeKeysState,
 } from "@/lib/marketing/outreach-open-checks";
 
 /** The SystemConfig key. */
@@ -49,6 +49,51 @@ export const LICENCE_OUTREACH_AUDIT = { action: "config.outreach_updated", targe
  * states that an engineering step was completed once, and nobody should be able to assert it from a form.
  */
 export const PRE_LEDGER_OFFS: PreLedgerOffs = "reconciled";
+
+/**
+ * ⛔ U33r · PRODUCTION'S REFEREE-KEY BACKFILL, AS RECORDED — `null` until the commit that copies in the RECORD line
+ * `railway run --service 50pick npm run ops:marketing-referee-keys -- backfill` printed on production (`RefereeKeysRecord`;
+ * its `environment` says "production" only under Railway's production markers, and a scratch run's RECORD never reconciles
+ * — the re-review's MINOR-1). While it is null — or records a number still missing or a contact still unreadable — the fifth
+ * check (`referee_keys`) fails, licence outreach cannot be opened and neither can the live-send switch (`live-switch.ts`):
+ * until then every referee named before the exclusion existed is a stranger to the gate. A CODE constant, as
+ * `PRE_LEDGER_OFFS` is: it states that an engineering step was completed once, on production, and nobody should be able
+ * to assert it from a form. ⚠️ The backfill runs AFTER the deploy that applies the migration, BEFORE outreach or the live
+ * switch opens, BEFORE `REFEREE_NEW_WORDS_LIVE_AT` is set (`test:privacy-notice` §4i refuses the cutoff while this is
+ * outstanding), and AGAIN after any rollback to a build without U33r and the redeploy that follows (that build keyed
+ * nobody it named).
+ */
+export const REFEREE_KEYS_ON_PRODUCTION: RefereeKeysRecord | null = {"environment":"production","ranAt":"2026-10-08T15:11:39.458Z","status":{"applications":0,"promised":0,"withContact":0,"numbers":0,"emails":0,"missing":0,"unreadable":0,"reviewed":0,"notMobile":0,"emailOnlyUnmatched":0},"backfill":{"applications":0,"promised":0,"withContact":0,"numbers":0,"emails":0,"missing":0,"unreadable":0,"reviewed":0,"notMobile":0,"emailOnlyUnmatched":0,"written":0}};
+
+/** The hosts a developer's own database answers on — a scratch cluster, a local server. */
+const LOOPBACK_HOSTS: readonly string[] = ["127.0.0.1", "localhost", "::1", "[::1]"];
+
+/**
+ * ⭐ WHERE THE REFEREE CHECK BINDS: production — the server Next runs there (`NODE_ENV=production`), every door run
+ * through `railway run` against it (`RAILWAY_ENVIRONMENT_NAME=production`, the ops doors' own test) — AND ANY PROCESS WHOSE
+ * DATABASE IS NOT ON THIS MACHINE (the re-review's MINOR-1): a `next dev` or a `tsx` script pointed at production's
+ * database through its public proxy carries neither marker, and its seed routes and doors would otherwise open outreach
+ * on production's data with the check read as done. A `DATABASE_URL` that cannot be read binds too — never on a guess.
+ * Only a developer's machine with no database, or with a LOOPBACK one (a scratch cluster), reads the record as done: no
+ * production referee exists there to be keyed, and `NODE_ENV` is already this platform's line between the two.
+ */
+export function refereeKeysCheckBinds(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  if (env.NODE_ENV === "production" || env.RAILWAY_ENVIRONMENT_NAME === "production") return true;
+  const url = env.DATABASE_URL;
+  if (typeof url !== "string" || url.trim() === "") return false;
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return true;
+  }
+  return !LOOPBACK_HOSTS.includes(host);
+}
+
+/** ⭐ The fifth check's state HERE, NOW: the recorded production backfill where the check binds, "reconciled" elsewhere. */
+export function refereeKeysNow(env: Readonly<Record<string, string | undefined>> = process.env): RefereeKeysState {
+  return refereeKeysCheckBinds(env) ? refereeKeysState(REFEREE_KEYS_ON_PRODUCTION) : "reconciled";
+}
 
 /** The record as it is stored. A closed row keeps who closed it; the default has neither. */
 export type LicenceOutreachRecord = {
@@ -100,11 +145,13 @@ type OutreachStore = {
 };
 
 type OutreachDeps = {
-  /** The saved policy lines the four checks read — injected so the test drives the real checks over a planted record. */
+  /** The saved policy lines the three public checks read — injected so the test drives the real checks over a planted record. */
   readonly readPolicyLines?: typeof savedPolicyLines;
   readonly policyReadable?: typeof policyLinesReadable;
   readonly preLedgerOffs?: PreLedgerOffs;
-  /** ⚠️ TEST SEAM ONLY (the `policy-lines.ts` `rules` precedent) — the four checks and the whole-row merge, so
+  /** U33r · the fifth check's state — injected so the test drives an OUTSTANDING backfill; live reads `refereeKeysNow()`. */
+  readonly refereeKeys?: RefereeKeysState;
+  /** ⚠️ TEST SEAM ONLY (the `policy-lines.ts` `rules` precedent) — the five checks and the whole-row merge, so
    *  `red:licence-outreach` can plant ONE of them and prove the assertion that names it actually turns red. Application
    *  code never passes either: `live` is built with neither, so what ships is the real pair. */
   readonly openProblems?: typeof outreachOpenProblems;
@@ -168,14 +215,15 @@ function storeOver(
     if (!policyReadable()) {
       return { ok: false, reason: "unreadable", error: OUTREACH_REFUSAL_SENTENCE.unreadable, failing: [] };
     }
-    const failing = openProblems(readPolicyLines(), preLedgerOffs);
+    // ⛔ U33r · the fifth check is read AT THE OPEN, never cached at boot: the state it states is the code's own.
+    const failing = openProblems(readPolicyLines(), preLedgerOffs, deps.refereeKeys ?? refereeKeysNow());
     if (failing.length > 0) {
       return { ok: false, reason: "checks", error: OUTREACH_REFUSAL_SENTENCE.checks, failing };
     }
     const recordedAt = typeof nowIso === "string" ? nowIso : new Date().toISOString();
     const res = await cfg.setVerified({ state: "open", recordedBy: officerId, recordedAt }, officerId);
     if (!res.ok) return { ok: false, reason: "not_saved", error: res.error, failing: [] };
-    // ⭐ The four checks AS THEY PASSED — the evidence that the decision was taken on a lawful footing, and the only
+    // ⭐ The five checks AS THEY PASSED — the evidence that the decision was taken on a lawful footing, and the only
     // place it is recorded. No free text, no number: the check ids and the instant (spec §8).
     await audit({
       category: "COMPLIANCE",
@@ -246,20 +294,20 @@ export function closeLicenceOutreach(officerId: string, nowIso?: string): Promis
   return live.close(officerId, nowIso);
 }
 
-/** The four checks as the card must show them now: each failing one, with its sentence. `[]` means it may be opened. */
+/** The five checks as the card must show them now: each failing one, with its sentence. `[]` means it may be opened. */
 export function licenceOutreachBlockers(): { check: OutreachOpenCheck; sentence: string }[] {
   if (!policyLinesReadable()) {
     return OUTREACH_OPEN_CHECKS.map((check) => ({ check, sentence: OUTREACH_CHECK_SENTENCE[check] }));
   }
-  return outreachOpenProblems(savedPolicyLines(), PRE_LEDGER_OFFS).map((check) => ({ check, sentence: OUTREACH_CHECK_SENTENCE[check] }));
+  return outreachOpenProblems(savedPolicyLines(), PRE_LEDGER_OFFS, refereeKeysNow()).map((check) => ({ check, sentence: OUTREACH_CHECK_SENTENCE[check] }));
 }
 
 /**
  * ⚠️ TEST SEAM ONLY — never call this from application code.
  *
  * A SECOND instance built by the same `makeStore`, so `test:licence-outreach` drives the code that ships (the reader,
- * both writers, the factory's read-back and its hydration gate) with the policy record and the pre-ledger constant
- * planted, rather than a re-implementation of them.
+ * both writers, the factory's read-back and its hydration gate) with the policy record, the pre-ledger constant and the
+ * referee-key state planted, rather than a re-implementation of them.
  */
 export function __licenceOutreachForTest(opts: OutreachDeps & { factoryDeps?: Parameters<typeof defineConfig>[0]["deps"] } = {}): OutreachStore {
   const { factoryDeps, ...deps } = opts;

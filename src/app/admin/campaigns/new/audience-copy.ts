@@ -5,7 +5,8 @@
  *
  * ⛔ NEUTRAL INK (OD40): "not receiving" is the consent gate working, never a failure — no word here says failed or error
  * about a person. ⛔ NO MONEY WORD (OD24): GROWTH reads this card. ⛔ PROTECTED IS ONE LINE for every role: the reasons
- * inside it (a self-exclusion, a break, a harm marker, an age, the account's status) are never named apart (D19).
+ * inside it (a self-exclusion, a break, a harm marker, an age, the account's status, and — U33r — an agent applicant's
+ * referee promised no marketing) are never named apart (D19).
  * ⛔ PURE — no "use client" and no server import (a TYPE is erased): the server card and the client composer import it.
  * ⭐ Every sentence renders at the 13px reading floor or larger (`test:type-scale` §3).
  */
@@ -61,7 +62,9 @@ export const AUDIENCE_REASON_LABEL: Readonly<Record<AudienceBucket, string>> = {
   no_consent: "No consent or recorded basis",
   withdrawn: "Withdrew consent",
   age_unknown: "Age not confirmed",
-  protected: "Protected (responsible gambling, age or account status)",
+  // U33r · the line names every kind of reason it holds, the promised agent referee among them, so it stays true without
+  // ever counting one apart (D19).
+  protected: "Protected (responsible gambling, age, account status or agent referee)",
 };
 /** The gate could not answer for these numbers — they join "Not receiving", and are asked again at send. */
 export const AUDIENCE_UNANSWERED_LABEL = "Couldn't be checked — checked again when sent";

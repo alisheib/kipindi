@@ -128,6 +128,9 @@ const REACH: Record<MarketingSkipReason, string> = {
   rg_under25_history: "Not reachable",
   age_minor: "Not reachable",
   account_status: "Not reachable",
+  // U33r · a promised agent referee reads like every protected reason — "Not reachable", never named apart (the U33r
+  // review's MINOR-5: the split's rule for readers too). Only a typed test's audit row ever records the reason precisely.
+  agent_referee: "Not reachable",
 };
 
 async function reachOf(c: StoredMarketingContact): Promise<{ ok: boolean; label: string }> {

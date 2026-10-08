@@ -227,6 +227,10 @@ const GATE_SENTENCE: Readonly<Record<MarketingSkipReason, string>> = {
   age_minor: "Your account's date of birth is under 18, so no marketing SMS can reach your number.",
   age_unknown: "Your account has no readable date of birth, so the consent check can't clear your number — add it to your own account, then test again.",
   account_status: "Your account's status stops marketing SMS to your number, so no test can be sent to it.",
+  /* U33r · this one CAN happen to the officer's own number: an agent applicant may have named it as a referee. ⛔ Said in
+     the PROTECTED words every surface uses for it (the U33r review's MINOR-5) — the reason itself is the audit row's — and
+     with the only remedy there is: nothing on their profile can change it, the promise is kept for good. */
+  agent_referee: "Your number is protected from marketing SMS, so no test can be sent to it — test on another number.",
 };
 export function testGateSentence(reason: MarketingSkipReason): string {
   return GATE_SENTENCE[reason] ?? GATE_SENTENCE.no_consent;
@@ -237,16 +241,31 @@ export type TypedReaderReason = "suppressed" | "consent_withdrawn" | "no_consent
 const TYPED_READER_SENTENCE: Readonly<Record<TypedReaderReason, string>> = {
   suppressed: "No test was sent: this number is on the stop list, and a stop is kept for good.",
   consent_withdrawn: "No test was sent: the person at this number stopped 50pick offers.",
-  no_consent: "No test was sent: the account at this number has its offers switched off.",
+  /* ⭐ U33r · Q9 reversed: with licence outreach open — which every typed test needs — no player is refused `no_consent`
+     any more (a lapsed player is reached too), so this arises only when the record closed between the test's own check
+     and the gate's: said for both kinds of number, never as "the account". */
+  no_consent: "No test was sent: nothing authorises a marketing SMS to this number right now — licence outreach may have just been switched off.",
   no_basis: "No test was sent: no recorded basis reaches this number — an erased record is never reached by licence outreach.",
   age_unknown: "No test was sent: the account at this number has no readable date of birth.",
-  protected: "No test was sent: the account at this number is protected by its responsible-gambling standing, its age or its status.",
+  /* ⛔ U33r · the ONE protected line holds a promised agent referee too (the U33r review's MINOR-5: the split's rule, for
+     readers as well), so its words name every kind it stands for — and still say none of them apart. A referee's number
+     need not belong to an account, so it no longer says "the account at this number". */
+  protected: "No test was sent: this number is protected — by its account's responsible-gambling standing, age or status, or as an agent referee's.",
 };
-/** ⛔ The responsible-gambling reasons, the age and the account status are ONE reason to every viewer: `protected`. */
+/** ⛔ The responsible-gambling reasons, the age, the account status and — U33r — a promised agent referee are ONE reason to
+ *  every viewer: `protected` (the split's rule, `AUDIENCE_BUCKET_OF`, D19). A masked viewer sees only `typed_refused`; the
+ *  audit row keeps `agent_referee` precise (`auditedReasonOf`), and only that one. */
 export function typedReaderReason(reason: MarketingSkipReason): TypedReaderReason {
   return reason === "suppressed" || reason === "consent_withdrawn" || reason === "no_consent" || reason === "no_basis" || reason === "age_unknown"
     ? reason
     : "protected";
+}
+/** ⭐ U33r · WHAT A TYPED REFUSAL'S AUDIT ROW RECORDS: the reason the reader is told — except a promised agent referee,
+ *  which the row names PRECISELY (`agent_referee`) for every viewer. It is a promise about the number, never an account's
+ *  responsible-gambling standing (whose precise reason is the COMPLIANCE line's, against the account), so recording it
+ *  discloses nothing the audit chain should not hold — and the officer who asks why a test was refused can be answered. */
+export function auditedReasonOf(reason: MarketingSkipReason): string {
+  return reason === "agent_referee" ? "agent_referee" : typedReaderReason(reason);
 }
 export function typedReaderSentence(reason: TypedReaderReason): string {
   return TYPED_READER_SENTENCE[reason];
@@ -451,10 +470,13 @@ export async function sendCampaignTest(
   };
   /** ⛔ D19 · S23 · a gate refusal of a TYPED number: one sentence for a masked viewer, the reason (protected collapsed)
    *  for a reader — and the audit row the collapsed reason either way, never the precise RG one (that is the COMPLIANCE
-   *  line's, against the account). */
+   *  line's, against the account). ⭐ U33r · the one exception is the audit row of a promised agent referee, which records
+   *  `agent_referee` precisely; the screen collapses it like every protected reason (the U33r review's MINOR-5). */
   const typedRefusal = (skip: MarketingSkipReason) => {
     const said = typedReaderReason(skip);
-    return viewerReads ? refuse(said, typedReaderSentence(said)) : refuse("typed_refused", TEST_TYPED_REFUSED, {}, said);
+    // U33r · the audit row keeps a promised referee precise, for every viewer (`auditedReasonOf`); the screen never does.
+    const audited = auditedReasonOf(skip);
+    return viewerReads ? refuse(said, typedReaderSentence(said), {}, audited) : refuse("typed_refused", TEST_TYPED_REFUSED, {}, audited);
   };
 
   // ── 1 · the officer's budget, before anything else is read. ⛔ A refused attempt writes no row (see the header). ──

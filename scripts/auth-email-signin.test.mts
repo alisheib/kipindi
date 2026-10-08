@@ -428,7 +428,7 @@ for (const [label, input] of [
   const shapes = [
     at1("ALREADY_EXISTS"), at1("EMAIL_EXISTS"), at1("RATE_LIMITED", { retryAfterSec: 9 }), at1(undefined),
     // ⛔ a result that carries the server's sentence and form values must not pass any of them through
-    at1("INVALID", { reason: "password_weak", error: "That password is in the public breach list", dob: "1990-01-01", marketingOptIn: true, password: "12345678" }),
+    at1("INVALID", { reason: "password_weak", error: "That password is in the public breach list", dob: "1990-01-01", acceptAge: true, password: "12345678" }),
   ];
   const offShape = shapes.filter((s) => !isDeepStrictEqual(Object.keys(s).sort(), KEYS));
   ok("7.5 ⛔ every refusal has exactly the keys at, code, email, phone, reason, retryAfterSec — no server sentence, no birth date, no password, no tick",

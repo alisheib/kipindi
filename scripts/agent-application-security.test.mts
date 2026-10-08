@@ -417,7 +417,12 @@ async function fullDraft(uid: string, feeRef: string) {
    */
   const SOURCES = ["agent-application-service.ts", "wallet-service.ts"] as const;
   const svc = SOURCES.map((f) => readFileSync(new URL(`../src/lib/server/${f}`, import.meta.url), "utf8")).join("\n");
-  const audited = [...new Set([...svc.matchAll(/action: "(agent\.[a-z_.]+)"/g)].map((m) => m[1]))].sort();
+  // U33r · the ops door's hand steps on an application's referee contact (the re-review's MINOR-4) write to the SAME case
+  // file (targetType AgentApplication) from referee-exclusion.ts, under named constants — so they are read from there too.
+  const refereeSrc = readFileSync(new URL("../src/lib/server/marketing/referee-exclusion.ts", import.meta.url), "utf8");
+  const handActions = [...refereeSrc.matchAll(/export const REFEREE_[A-Z_]+_ACTION = "(marketing[.][a-z_.]+)";/g)].map((m) => m[1]);
+  const audited = [...new Set([...[...svc.matchAll(/action: "(agent[.][a-z_.]+)"/g)].map((m) => m[1]), ...handActions])].sort();
+  ok("8.hand · …and the referee hand steps written to the same case file (two, from referee-exclusion.ts)", handActions.length === 2, handActions.join(", "));
   ok("8.population · the scan reaches the service's audited actions (a vacuous pass is not a pass)", audited.length >= 25, String(audited.length));
   ok("8.sources · …and it reaches the WALLET rail too, not just the application service", audited.includes("agent.fee.paid_from_wallet"), audited.join(", "));
 

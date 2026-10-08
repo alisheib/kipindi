@@ -9,6 +9,137 @@
 ---
 
 
+## 2026-10-07 · Privacy v2026-10-07 — §5 states the 7-year record of marketing text messages and the coded referee numbers, §9 keeps the referee promise only for referees already given it, and the sign-up box is removed
+
+**Authority.** Ali's approvals of 2026-10-07, recorded in § "2026-10-07 · Marketing SMS go to anyone with a phone —
+consent is not a condition (the owner's FINAL rule), and his approvals given in the session": *"The 7-year campaign
+record, said publicly — approved"* (the §5 bullet, the erasure clause's "except as stated below", the data-rights file's
+erasure sentence — the 2026-10-05 G10 sentence plus the record — and the note under "Erase my data"); *"Agents' referees
+(Q8) — … HONOURED for every referee already given it … and RE-WORDED from today"*; *"The sign-up box (Q2) — REMOVED"*. The
+referees' new words are management's, § "2026-10-07 · Management's answers for the first marketing campaign — a small
+pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)", item 4.
+✅ **The lead's words of 2026-10-07, on the review of these units — APPROVED BY ALI on 2026-10-08** (marked ✅ below,
+where they were ⏳): §5's coded referee numbers bullet, §6's Erasure line, §9's coded-form sentences — with "(not the
+number itself)", the correction he was told of —, the data-rights sentence as it now reads, the note's AML sentence, and
+the profile switch's line for a promised referee's number (*"Off for good: 50pick has promised never to send offers to
+this number."*, `push.marketingReferee`, en/sw/zh). Put to him in the session as six wordings, each quoted in English
+with the Swahili and Chinese said to match; he answered *"here is my yes reply"*, pasting the six back (marketing S14,
+2026-10-08 ~16:10 EAT). Applied by Claude in the commits that carry this entry (marketing S14, final-rule units, and
+their review fixes).
+
+**/legal/privacy, in en/sw/zh (the English is binding).**
+- **§5, a new bullet** after "Marketing consent" — en: *"Records of marketing text messages (offers and news by SMS): at
+  least 7 years. For each message they hold the number it was sent to, the message, what happened to it and the stop
+  link it carried. If you ask us to erase a closed account, we remove which account they belonged to and keep the
+  rest"*; sw: *"Kumbukumbu za SMS za ofa na habari: angalau miaka 7. Kwa kila ujumbe tunahifadhi namba ya simu, maandishi
+  ya ujumbe, kilichotokea kwa ujumbe huo na kiungo cha “Acha” kilichokuwa ndani yake. Ukituomba kufuta akaunti
+  iliyofungwa, uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa"*; zh:
+  *"短信优惠与资讯的记录：至少 7 年。我们为每条短信保存所发往的号码、短信内容、发送结果，以及短信中用于停止接收的链接。如您要求删除已注销的账户，我们将删除这些记录与您账户的关联，其余内容予以保留"*.
+- **§5, the first bullet's erasure clause** — "…are removed at once" gains en *", except as stated below for marketing
+  text messages"*, sw *", isipokuwa kama ilivyoelezwa hapa chini kuhusu SMS za ofa na habari"*, zh
+  *"，但下文所述的短信优惠与资讯记录除外"*: without it the new bullet would contradict "removed at once". (Approved as
+  written; it names only the marketing record — the SMS log of codes keeps the number too, and its retention is owed to
+  U16b; the data-rights sentence below says so.)
+- ✅ **§5, the coded referee numbers bullet** (after the record bullet) — en: *"A coded form of the phone number of each
+  agent referee named before version {V}: kept for as long as 50pick sends marketing messages, so that we never contact
+  them for marketing (§9)"*; sw: *"Namba ya simu ya kila mdhamini wa wakala aliyetajwa kabla ya toleo la {V} la sera hii,
+  ikiwa imegeuzwa kuwa msimbo: huhifadhiwa kwa muda wote ambao 50pick inatuma ujumbe wa matangazo, ili tusiwasiliane
+  naye kamwe kwa matangazo (§9)"*; zh: *"本政策 {V} 版之前被提名的每位代理推荐人的电话号码（编码形式）：只要 50pick 仍在发送营销信息即予保留，以确保我们绝不会为营销目的联系他们（见第 9 条）"*.
+- ✅ **§6, Erasure** — "subject to AML retention requirements" becomes en *"subject to the records the law requires us
+  to keep (see §5)"*; sw *"kwa kuzingatia kumbukumbu ambazo sheria inatulazimu kuhifadhi (angalia §5)"*; zh
+  *"受法律要求我们保留的记录约束（见第 5 条）"*.
+- **§9, the referees.** The promise *"we never contact you for marketing"* is no longer made to every referee.
+  ✅ The first paragraph's "we hold your details only to verify that application" gains en *"(and, as below, a coded
+  form of your number)"*, sw *"(na, kama ilivyoelezwa hapa chini, namba yako ikiwa imegeuzwa kuwa msimbo)"*, zh
+  *"（以及如下文所述，您号码的一种编码形式）"*, so it stays true. The second paragraph says — en: *"Until version {V} of
+  this policy we told every referee that we never contact them for marketing. If you were named as a referee before
+  then, that promise stands: we never contact you for marketing. To keep it, we keep a coded form of your phone number
+  (not the number itself) for as long as 50pick sends marketing messages; asking us to destroy your
+  information removes everything else, but not this coded form, because without it we could not keep the promise. If
+  you are named as a referee after that: 50pick may send you offers by SMS. You can stop them at any time with the link
+  in every offer."*; sw: *"Hadi toleo la {V} la sera hii tuliwaambia wadhamini wote kwamba hatuwasiliani nao kamwe kwa
+  matangazo. Kama ulitajwa kuwa mdhamini kabla ya hapo, ahadi hiyo inabaki: hatuwasiliani nawe kamwe kwa matangazo. Ili
+  kuitimiza, tunahifadhi namba yako ya simu ikiwa imegeuzwa kuwa msimbo (si namba yenyewe) kwa muda wote ambao 50pick inatuma ujumbe wa matangazo; ukituomba tuharibu taarifa zako, kila kitu kingine
+  huondolewa, lakini si msimbo huu, kwa sababu bila huo tusingeweza kutimiza ahadi hiyo. Kama umetajwa kuwa mdhamini
+  baada ya hapo: 50pick inaweza kukutumia ofa kwa SMS. Unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha
+  kilicho katika kila ofa."*; zh: *"在本政策 {V} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。"*
+  The two sentences after "If you are named as a referee after that:" are management's (approved); the rest of the
+  paragraph is ✅ (Ali, 2026-10-08).
+  ⚠️ **One parenthesis differs from the wording first put to Ali.** It read *"(it cannot be turned back into the
+  number)"* (sw *"(msimbo huo hauwezi kugeuzwa kurudi kuwa namba)"*, zh *"（无法还原为该号码）"*), and now reads en *"(not
+  the number itself)"*, sw *"(si namba yenyewe)"*, zh *"（并非号码本身）"*. Why: the coded form is an HMAC of the number
+  under the server's pepper, and whoever holds the pepper can hash every Tanzanian mobile number and compare — so "cannot
+  be turned back" overclaimed (the lead's correction, 2026-10-07). Ali had not answered the first wording; the corrected
+  one is the one put to him. ⛔ Never call the coded form irreversible, in any language: `test:privacy-notice` §4k
+  refuses it.
+- **{V}, the referees' line, is ONE constant** — `REFEREE_PROMISE_REWORDED_IN` (`src/lib/legal/privacy-referees.ts`),
+  2026-10-07 for now, printed in §5 and §9 in all three languages. It is named by its label, never "this version", which
+  would move with every later version and the promise with it. ⛔ At integration it is set to the version production
+  prints when the re-worded §9 first goes live (with META, `codeVersion`, the version and hash pins and this heading),
+  and it is NEVER moved after. The stop sentence stands only while every offer carries its stop link (management's item
+  7: it goes, with the link, in the commit that files the written confirmation).
+
+**The same record, said in the same commit.**
+- ✅ **The data-rights file** (`privacy.ts`, `rights.erasure`, English only): *"…On a closed account we erase your
+  contact details (except as below), password, profile, in-app messages and the name and number on your identity record,
+  and we replace any name shown beside your past comments. Your financial and audit records, and the images of your
+  identity documents, are retained for 7 years from account closure under POCA Cap 423 §16 and cannot be erased before
+  then. We also keep your phone number in our record of your marketing choices, so that we never send you marketing
+  again, and in the records of the marketing text messages we sent to it: those records (the number, the message, what
+  happened to it and the stop link it carried) are kept for at least 7 years, as the record GN 478T reg 51(1) requires;
+  erasure removes which account they belonged to and keeps the rest. The records of the security codes we texted to your
+  number, and your payment records, which the law requires us to keep, keep it too. …"* Dropped: *"they are erased when
+  that period ends"* (false — money and audit rows are never deleted, DATA-RETENTION §1) and G10's *"only"* (false — the
+  number is kept in more than one record).
+- **The note under "Erase my data"** (`profile.privacyRequestErasureNote`) — en *"Erasure removes your contact details,
+  password, profile and messages. Financial, identity and audit records are kept for at least 7 years under AML law.
+  Records of offers and news we sent you by SMS (the number, the message, what happened to it and its stop link) are kept
+  for at least 7 years; erasure removes only which account they belonged to. Close your account first."*; sw *"Kufuta
+  huondoa mawasiliano yako, nenosiri, wasifu na jumbe. Kumbukumbu za fedha, utambulisho na ukaguzi zinahifadhiwa kwa
+  angalau miaka 7 kwa sheria ya AML. Kumbukumbu za ofa na habari tulizokutumia kwa SMS (namba, ujumbe, kilichotokea kwa
+  ujumbe huo na kiungo cha “Acha”) zinahifadhiwa kwa angalau miaka 7; kufuta huondoa tu uhusiano wa kumbukumbu hizo na
+  akaunti yako. Funga akaunti yako kwanza."*; zh *"删除会清除您的联系方式、密码、个人资料和消息。财务、身份和审计记录根据反洗钱法规至少保留 7 年。我们向您发送的短信优惠与资讯的记录（号码、短信内容、发送结果及停止接收链接）至少保留 7 年；删除仅会移除这些记录与您账户的关联。请先关闭账户。"*
+  The record sentence is the approved one; ✅ (Ali, 2026-10-08) the AML sentence lost "and erased when that period ends" (false, as above)
+  and gained "at least".
+
+**Why each is true.** Erasure's one write to a campaign recipient row clears the account link and nothing else (U16a,
+`unlinkCampaignRecipients` → `smsCampaignRecipient.unlinkUser`); no code deletes a recipient row; `DATA-RETENTION.md`
+keeps the campaign and opt-out-link rows 7 years (rows "SMS campaigns and their recipients" and "Marketing opt-out
+links", GN 478T reg 51(1)). For §9: nothing can send a marketing SMS while licence outreach is closed and the engine is
+unbuilt, and the final-rule gate's referee exclusion — which keeps a coded form of the number of every referee named
+before its cutoff, and refuses them — lands before licence outreach opens, its cutoff the instant the re-worded §9 first
+went live. ⚠️ The coded-form sentences describe that gate's keys: they are true once it is merged, not on this branch
+alone. ⟶ MERGED 2026-10-07 (`marketing-s14-final`: the gate, its review fixes and these texts in one branch): the keys
+are the coded form and nothing else, and `test:privacy-notice` §4i now tells §9's OLD unconditional promise from these
+NEW conditional words — the old words in any language hold the cutoff at null; the new words in every language let it
+be set, but only once production's referee-key backfill is recorded (the U33r review's MAJOR-2).
+
+**The sign-up box (Q2), removed.** `/auth/register` asks nothing about offers: no `marketingOptIn` box, field, schema
+key or ledger append, and no `auth.optionalUpdates` key in any language. A new account starts with the offers switch off
+and NO consent-ledger row. No consent sentence was reworded, so nothing is appended to `consent-wording.ts`: the box's
+three sentences stay pinned there, because a yes recorded under them from 2026-09-28 still counts.
+
+**The pins moved.** `test:privacy-notice`: the version (v2026-10-07 in en/sw/zh) and the English hash; §5f's planted
+label, now derived from the version pin; new §4j — §5's three bullets, §6's Erasure line, §9's two paragraphs and the
+note in all three languages, and the data-rights sentence, each PINNED WHOLE by hash (never by fragments), and the record
+tied to the unlink, the absence of a delete and the retention rows; new §4k (`refereeWordsDefects`, named apart from the
+final-rule gate's §4i) — §9 printing the ONE constant in every language, the constant recorded by a "Privacy v…" heading
+and never later than the page's version, the old promise made to nobody new, the kept promise, management's sentences,
+the coded referee number never called irreversible in any language, and the stop sentence tied to the footer's stop link
+(⚠️ to be re-tied to the stop-link setting when U43b makes the link one setting) — each with its planted controls. `POLICY_PAGES.privacy.codeVersion` 2026-10-07 (`test:policy-lines` L0).
+The box's absence: `test:marketing-consent-ledger` 6, 7f, 7g and 8g; `test:registration-contact` 1.2 and 6.1.
+
+**Translations.** Copied byte for byte from the drafts Ali approved: §5's record bullet and first-bullet clause in sw
+and zh, and the note's record sentence in sw and zh. Written by Claude, with no separately approved wording: everything
+else in sw and zh here (§5's coded-number bullet, §6, §9's two paragraphs, the note's AML sentence). The Swahili is
+accepted as written (management's item 5); the Chinese has had no review; both reuse the approved Privacy §4 phrases
+for the stop sentence (spec `U33a-U37c-OD58.md` Appendix B.3/B.4).
+
+⛔ Do not restore: the sign-up box, its key or its ledger row; "we never contact you for marketing" as a promise to
+referees named after version 2026-10-07 — or its withdrawal from any referee named before it.
+
+---
+
 ## 2026-10-07 · A deposit asks no email; a confirmed email is required to withdraw; receipts in the app (owner ruling)
 
 **Authority.** Ali, 2026-10-07, in the Claude session (money-doors lane, OMEGA-COMPILE01), spelling corrected:
@@ -195,7 +326,11 @@ It confirms and widens his rulings OD57 and OD58 of 2026-10-03 (outreach under t
 - **Licence outreach (`marketing.outreach.licence`) is to be OPENED** as soon as its opening checks hold — the session
   builds what stands between it and opening, saves the owner's approved texts, then opens it.
 - **The sign-up box (Q2) is reworded** so it no longer reads as the only route to being messaged: it becomes a box to
-  STOP offers, its sentence APPENDED to the consent-wording ledger like every consent sentence.
+  STOP offers, its sentence APPENDED to the consent-wording ledger like every consent sentence. ⟶ **Superseded the same
+  day: REMOVED** — there is no marketing box at sign-up (*"The sign-up box (Q2) — REMOVED"*, the approvals below; done
+  in § "2026-10-07 · Privacy v2026-10-07 — §5 states the 7-year record of marketing text messages and the coded referee
+  numbers, §9 keeps the referee promise only for referees already given it, and the sign-up box is removed"). No box to
+  stop offers was built and no sentence was appended.
 
 **What it does NOT change, and why** (recorded so that no session removes either by reading "anyone" literally):
 1. **A person's own STOP is honoured, and every message keeps its stop link.** This is not a consent rule: the
@@ -305,9 +440,43 @@ rather than guessed at.
 - **G6 / OQ11 · A "yes" under the OLD wording does NOT count as SMS consent** (built default). Those sentences named no
   SMS, no sender and no number. Such a person is reached only under the licence (per Q1), never recorded as consented.
 - **Q9 · A LAPSED consent is NOT reached by the licence** (built default, and shipped in U33a-G today): somebody who
-  switched off after once saying yes is nearer a stop than to never having been asked.
+  switched off after once saying yes is nearer a stop than to never having been asked. ⟶ REVERSED 2026-10-07 by the
+  owner's final rule (§ "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition (the owner's
+  FINAL rule), and his approvals given in the session"): the gate reaches a lapsed player on the licence while the record
+  is open, and refuses them exactly as before while it is closed (the final-rule gate, built with U33r; `test:marketing-consent`
+  G4 and G4b).
 - **Q8 · The promise made to agent referees IS to be enforced in code.** ⚠️ OWED — the exclusion is NOT built. Until it
-  is, a referee can be reached, which contradicts a promise 50pick made them in writing.
+  is, a referee can be reached, which contradicts a promise 50pick made them in writing. ⟶ BUILT 2026-10-07 (marketing
+  U33r): every promised referee's number is kept as a coded form, not the number itself — without the server's pepper it
+  cannot be turned back — and NOTHING else: no instant, no name, no application id (`AgentRefereeKey`); the gate refuses it
+  `agent_referee` before any
+  basis; only a referee named before the re-worded §9 goes live is ever keyed — §9 (Privacy v2026-10-07) keeps the
+  promise for every referee named before version `REFEREE_PROMISE_REWORDED_IN`, and §5 states their coded numbers — so
+  the cutoff (`REFEREE_NEW_WORDS_LIVE_AT`, null today: every referee) is the instant that version first went live, set in
+  the commit that records the backfill. ⚠️ The referees named before the deploy are keyed by `npm run
+  ops:marketing-referee-keys -- backfill` — after the deploy, BEFORE licence outreach or the live-send switch opens
+  (both refuse until its counts are recorded in the code, the fifth opening check `referee_keys`), BEFORE the cutoff is
+  set, and again after any rollback to a build without U33r and the redeploy that follows. ⚠️ A referee named after the
+  new words go live but before that commit is deployed is keyed too (the go-live instant cannot be known in advance; the
+  table is append-only): they are never sent offers, and keep a coded form like a promised referee's — keep the window
+  short. ⚠️ RESIDUALS, STATED TRULY (the re-review's MINOR-5, 2026-10-07): (1) a referee named by e-mail is keyed under
+  the numbers held under that address WHEN a writer runs — the naming, the applicant's erasure, the backfill — and,
+  since the third pass (MINOR-2), under the ADDRESS itself, so an account that signs up later with it, at any number, is
+  refused by the gate, and so is a contact-book row IMPORTED later with it at a number no account holds (built on the
+  lead's go-ahead; the cost: one indexed read per send for the book row, a keyed read only when it has an address, and
+  one query per chunk in the audience preview) — so §9's "that promise stands" holds for both. (2) The reader
+  keys in the safe direction: the strict readings first, and only when none reads, the generous ones (a digit too many,
+  digits behind a prefix it does not know); it also reads the Tanzanian number inside a foreign one written with spaces —
+  such a key may be a stranger's number, excluded for good, so the player's switch line says only what is true of every
+  key: *"Off for good: 50pick has promised never to send offers to this number."* (3) A referee replaced, or an applicant
+  erased, before U33r's deploy left no number in the live database; it may remain for up to 90 days in the encrypted
+  backups, which nothing reads to key it. (4) No column links a key to an application or an applicant, but a key written
+  at a naming or an erasure lands near that act's own rows in the database's write order (every writer writes its keys in
+  one pass, sorted by key). ⭐ A contact the reader cannot read no longer blocks for ever: a person clears it through the
+  door (`key --application <id>` keys the number they read; `reviewed --application <id> --reason "…"` records it holds
+  none), with ONE COMPLIANCE audit row naming the application, never a number (MINOR-4); and only a RECORD printed under
+  Railway's production markers can reconcile the fifth check, which also binds on any process whose database is not on
+  its own machine (MINOR-1).
 - **Q7 · A list's recorded basis does NOT expire** (built default). ⚠️ Accepted residual risk, stated plainly: Tanzanian
   operators recycle numbers, so a basis recorded for a previous holder can authorise a message to a new one. The stop
   list remains the protection.

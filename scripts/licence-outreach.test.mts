@@ -2,7 +2,7 @@
  * test:licence-outreach — U33a-R's guard: THE LICENCE-OUTREACH RECORD (spec `docs/marketing-specs/U33a-U37c-OD58.md`
  * §5.3 · §6 U33a-R · §7.7 · §8 · §9 U33a-R; OD57 · OD58).
  *
- * ⭐ DRIVEN, NOT READ. The store under test is the REAL one — the reader, both writers and the four checks of
+ * ⭐ DRIVEN, NOT READ. The store under test is the REAL one — the reader, both writers and the five checks of
  * `src/lib/server/marketing/outreach-record.ts`, built by its own `makeStore` over a second instance of the real
  * `defineConfig` factory (`__licenceOutreachForTest`) against an in-memory row that answers like Postgres (every write
  * kept as a JSON copy, every read a copy back), so the read-back and the hydration gate run as in production:
@@ -46,8 +46,8 @@ const ok = (label: string, cond: boolean, detail = "") => {
 
 const L = {
   r1: "R1 · the reader — the default, a closed row and every malformed row (not an object, an array, open without recordedBy, a recordedAt that is not an instant, an extra key, a misspelt state) read CLOSED; only the exact open row reads OPEN",
-  r2: "R2 · opening is refused for each failing check, each one named with its own sentence — nothing is written and there is no audit row; a blank officer and an unreadable policy record are refused too",
-  r3: "R3 · opening with every check passing reads OPEN in the same process, writes the COMPLIANCE row with the four checks, and a reload reads it back",
+  r2: "R2 · opening is refused for each failing check, each one named with its own sentence — nothing is written and there is no audit row; a blank officer and an unreadable policy record are refused too; and (U33r, MAJOR-2) an OUTSTANDING referee-key backfill refuses on its own, by name",
+  r3: "R3 · opening with every check passing reads OPEN in the same process, writes the COMPLIANCE row with the five checks, and a reload reads it back",
   r4: "R4 · closing reads CLOSED at once and is audited — and is never refused for a failing check",
   r4b: "R4b · open, close, then open again reads OPEN — the row is replaced whole, so no closedBy survives into the new open row",
   r5: "R5 · the real gate — a never-asked player is refused while closed, allowed once it opens, and refused again after it closes",
@@ -207,9 +207,22 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     await settle();
     const pre = await outstanding.open(OFFICER, AT);
     const preledgerOk = !pre.ok && pre.reason === "checks" && JSON.stringify([...pre.failing]) === JSON.stringify(["preledger"]);
+    /* ⛔ U33r · CHECK 5, DRIVEN ON ITS OWN, as check 4 is: every public line saved and the switch-offs reconciled, so an
+       OUTSTANDING referee-key backfill is the only thing still refusing — and it must, alone and by name. */
+    const refereeOutstanding = __licenceOutreachForTest({
+      factoryDeps: memoryStore().deps,
+      readPolicyLines: () => copy(PASSING) as never,
+      policyReadable: () => true,
+      refereeKeys: "outstanding",
+      openProblems: impl.openProblems,
+    });
+    await settle();
+    const ref = await refereeOutstanding.open(OFFICER, AT);
+    const refereeOk = !ref.ok && ref.reason === "checks" && JSON.stringify([...ref.failing]) === JSON.stringify(["referee_keys"])
+      && refereeOutstanding.read().state === "closed";
 
-    ok(p(L.r2), refused && three && sentences && wroteNothing && blankOk && unreadOk && preledgerOk,
-      `refused ${refused} · named ${named.join(",") || "none"} · writes ${mem.writes()} · blank ${blankOk} · unreadable ${unreadOk} · preledger alone ${preledgerOk}`);
+    ok(p(L.r2), refused && three && sentences && wroteNothing && blankOk && unreadOk && preledgerOk && refereeOk,
+      `refused ${refused} · named ${named.join(",") || "none"} · writes ${mem.writes()} · blank ${blankOk} · unreadable ${unreadOk} · preledger alone ${preledgerOk} · referee keys alone ${refereeOk}`);
   }
 
   // ── R3 · OPENING WITH EVERY CHECK PASSING ───────────────────────────────────────────────────────────────────────
@@ -318,8 +331,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const pre = scripts.predeploy ?? "";
     const order = pre.indexOf("npm run test:policy-lines") >= 0
       && pre.indexOf("npm run test:licence-outreach") === pre.indexOf("npm run test:policy-lines") + "npm run test:policy-lines && ".length;
-    // The four checks, in the spec's order, each with the spec's own sentence and none empty.
-    const ordered = JSON.stringify([...OUTREACH_OPEN_CHECKS]) === JSON.stringify(["privacy_gateway", "privacy_lawful", "rg_age", "preledger"]);
+    // The five checks, in the spec's order, each with the spec's own sentence and none empty.
+    const ordered = JSON.stringify([...OUTREACH_OPEN_CHECKS]) === JSON.stringify(["privacy_gateway", "privacy_lawful", "rg_age", "preledger", "referee_keys"]);
     const sentences = OUTREACH_OPEN_CHECKS.every((c) => (OUTREACH_CHECK_SENTENCE[c] ?? "").length > 20);
     // ⛔ The pure half imports nothing from the server half.
     const pure = readFileSync(join(ROOT, "src/lib/marketing/outreach-open-checks.ts"), "utf8");
@@ -361,7 +374,7 @@ function cases(): { name: string; expect: string; impl: Impl }[] {
       },
     },
     {
-      name: "the four checks are waved through — opening with every one failing",
+      name: "the five checks are waved through — opening with every one failing",
       expect: L.r2,
       impl: { ...REAL, openProblems: () => [] },
     },
@@ -369,7 +382,12 @@ function cases(): { name: string; expect: string; impl: Impl }[] {
       name: "PRE_LEDGER_OFFS is ignored",
       expect: L.r2,
       // The checks run, but the fourth is dropped — so an outstanding reconciliation no longer refuses.
-      impl: { ...REAL, openProblems: (record, _offs) => outreachOpenProblems(record, "reconciled") },
+      impl: { ...REAL, openProblems: (record, _offs, keys) => outreachOpenProblems(record, "reconciled", keys) },
+    },
+    {
+      name: "⛔ U33r · MAJOR-2 · the referee-key backfill is ignored — outreach opens while promised referees are strangers to the gate",
+      expect: L.r2,
+      impl: { ...REAL, openProblems: (record, offs) => outreachOpenProblems(record, offs, "reconciled") },
     },
     {
       name: "the factory's shallow spread is restored — a close leaves its keys in the next open row",

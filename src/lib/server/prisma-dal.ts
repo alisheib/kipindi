@@ -114,6 +114,7 @@ import type {
   StoredMessagingConsent, StoredSuppression, MessagingKey,
   MessagingKeyBatch,
   MarketingContactPresenceQuery,
+  MarketingContactEmailEntry,
   PlayerWalkQuery,
   PlayerWalk,
   StoredMarketingOptOutToken,
@@ -492,6 +493,32 @@ async function bookStandings(keys: readonly string[]): Promise<BookStandingEntry
     const cover: OutreachBasisCover | null = found === undefined ? null : { basisId: found.id, listId: found.listId, recordedAt: found.recordedAt.toISOString() };
     return { msisdn, standing: { row: "live", cover } };
   });
+}
+
+// U33r · the agent-referee keys' types — an import from the store beside the code that reads them (type-only, so the
+// store's import of this module is no cycle) — and the ONE rule set both twins ask before every read or write (pure, types
+// only from the store: no cycle either).
+import type { StoredAgentRefereeKey, AgentRefereeKeyEntry } from "./store";
+import { assertRefereeKeyRows, assertRefereeKeys } from "@/lib/server/marketing/referee-key-model";
+
+/** U33r · the KEY-ONLY row `refereeHeld` reads — named, so the query's result is checked against it. */
+type RefereeKeyRow = { refereeKey: string };
+
+/**
+ * U33r · THE ONE DEFINITION OF A REFEREE KEY'S ANSWER ON POSTGRES — `holds` and `heldAmong` both ask it, so the single
+ * read and the bulk read cannot disagree; the memory twin's `refereeHeld` takes the same steps (`test:dal-parity` §28).
+ * Keys in (already deduplicated by the caller, and checked by the rule set), one entry per key out — a key no row holds
+ * included, as `held: false` — ordered by key. ONE query, served by the primary key, and an empty set answered before it.
+ */
+async function refereeHeld(keys: readonly string[]): Promise<AgentRefereeKeyEntry[]> {
+  if (keys.length === 0) return [];
+  assertRefereeKeys("agentRefereeKey.held", keys);
+  const rows: RefereeKeyRow[] = await pc().agentRefereeKey.findMany({
+    where: { refereeKey: { in: [...keys] } },
+    select: { refereeKey: true },
+  });
+  const held = new Set(rows.map((r) => r.refereeKey));
+  return [...keys].sort().map((refereeKey): AgentRefereeKeyEntry => ({ refereeKey, held: held.has(refereeKey) }));
 }
 
 // U29 · the staging types — a second import from the store, kept beside the code that reads them (type-only, so the
@@ -4211,6 +4238,17 @@ export const prismaDb = {
       });
       return rows.map((r) => r.msisdn).sort();
     },
+    /** U33r · the third pass's MINOR-2 · the ADDRESS each of these numbers' book rows holds — ONE query on the unique
+     *  `msisdn`, selecting the number and the address only (never the row); a row with no address is left out. */
+    emailsAmong: async (msisdns: string[]): Promise<MarketingContactEmailEntry[]> => {
+      const keys = bulkKeys(msisdns, "marketingContact.emailsAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().marketingContact.findMany({ where: { msisdn: { in: keys } }, select: { msisdn: true, email: true } });
+      return rows
+        .filter((r) => typeof r.email === "string" && r.email.trim() !== "")
+        .map((r) => ({ msisdn: r.msisdn, email: r.email as string }))
+        .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
+    },
     /** Every book row LINKED to an account — erasure's reach (U18b). `userId` is indexed. */
     listByUserId: async (userId: string): Promise<StoredMarketingContact[]> => {
       const rows = await pc().marketingContact.findMany({
@@ -4218,6 +4256,16 @@ export const prismaDb = {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       });
       return rows.map(toStoredMarketingContact);
+    },
+    /** U33r · the book's numbers held under ONE e-mail address, case-insensitive — KEY-ONLY (the number alone, never the
+     *  row), sorted. A referee named only by e-mail is keyed under every number the book holds for that address (the
+     *  U33r review's MINOR-1). A blank address answers nothing, with no query. */
+    msisdnsByEmail: async (email: string): Promise<string[]> => {
+      const norm = email.trim().toLowerCase();
+      if (!norm) return [];
+      // ONE line on purpose: §25's red anchor plants the presence read's own `select` line, which must stay unique.
+      const rows = await pc().marketingContact.findMany({ where: { email: { equals: norm, mode: "insensitive" } }, select: { msisdn: true } });
+      return rows.map((r) => r.msisdn).sort();
     },
     /** ⛔ `msisdn` is not patchable (see `MarketingContactPatch`), so the unique index can
      *  never need re-pointing here. `updatedAt` is passed EXPLICITLY rather than left to
@@ -4667,6 +4715,35 @@ export const prismaDb = {
            and c."userId" is null
            and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text`;
       return { live: Number(rows[0]?.live ?? 0), covered: Number(rows[0]?.covered ?? 0) };
+    },
+  },
+
+  /* ═══ U33r · THE AGENT-REFEREE KEYS (Q8) ══════════════════════════════════════════════════════════════════
+   * ⛔ APPEND-ONLY: `record` is ONE `createMany` with `skipDuplicates` — Postgres's ON CONFLICT DO NOTHING over the primary
+   * key, so a key already held is skipped and nothing is ever moved — and there is NO update member and NO delete member
+   * (`test:dal-parity` §28). ⛔ EVERY member asks the ONE rule set (`referee-key-model.ts`) before its first query, as the
+   * memory twin does, so a raw number handed in as a key — or a row carrying anything beside its key — is refused by both.
+   * ⛔ The ONE writer is `referee-exclusion.ts` (`test:dal-parity` §28.writers). */
+  agentRefereeKey: {
+    /** The batch checked WHOLE first; an empty batch is answered 0 with no query; then ONE insert of every key, BY NAME,
+     *  skipping a key already held. Answers how many rows were written (0 on a re-run). */
+    record: async (rows: StoredAgentRefereeKey[]): Promise<number> => {
+      assertRefereeKeyRows(rows);
+      if (rows.length === 0) return 0;
+      const created = await pc().agentRefereeKey.createMany({
+        data: rows.map((r) => ({ refereeKey: r.refereeKey })),
+        skipDuplicates: true,
+      });
+      return created.count;
+    },
+    /** Whether a row holds this key — the ONE definition, asked of one key (one query). */
+    holds: async (refereeKey: string): Promise<boolean> => (await refereeHeld([refereeKey]))[0].held,
+    /** §25's bound and shape: at most `BULK_KEYED_READ_MAX` distinct keys, REFUSED above — never cut off — duplicates
+     *  folded, an empty set answered with nothing and no query; then the ONE definition, one entry per key. */
+    heldAmong: async (refereeKeys: string[]): Promise<AgentRefereeKeyEntry[]> => {
+      const keys = bulkKeys(refereeKeys, "agentRefereeKey.heldAmong");
+      if (keys.length === 0) return [];
+      return refereeHeld(keys);
     },
   },
 

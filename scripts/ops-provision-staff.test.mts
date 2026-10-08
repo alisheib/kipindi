@@ -16,7 +16,9 @@
  * No database is ever reached: every DATABASE_URL here points at a closed loopback port.
  *
  * ⛔ The red control (`--prove-red`) runs the same claims against MUTATED COPIES of the script written OUTSIDE the repo
- * (the OS temp dir, its imports pointed back at this checkout), so no file in the checkout is touched.
+ * (the OS temp dir, its imports pointed back at this checkout), so no file in the checkout is touched. The plants are
+ * DECLARED in `scripts/anchors/ops-provision-staff.anchors.mjs`, so `test:red-anchors` §3 audits that each still
+ * resolves exactly once in the script (writing the copies keeps this harness out of §4's in-process class).
  *
  * Run: `npm run test:ops-provision-staff` · Red: `npm run red:ops-provision-staff`
  */
@@ -25,6 +27,7 @@ import { spawnSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { MUTATIONS as PLANTS } from "./anchors/ops-provision-staff.anchors.mjs";
 
 process.exitCode = 1;
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -132,21 +135,10 @@ if (PROVE_RED) {
     const real = readFileSync(SCRIPT, "utf8");
     const at = (rel: string) => pathToFileURL(join(ROOT, rel)).href;
     const relocate = (src: string) => src.replace(/"\.\.\/src\/([^"]+)"/g, (_m, p) => `"${at(`src/${p}`)}"`);
+    // The plants are declared data (see the header); each replaces its anchor's FIRST occurrence, as before.
     type Plant = { name: string; expect: string[]; mutate: (s: string) => string };
-    const plants: Plant[] = [
-      { name: "the no-database refusal removed", expect: ["P1"],
-        mutate: (s) => s.replace("if (!process.env.DATABASE_URL) {", "if (false) {") },
-      { name: "the production-environment refusal removed", expect: ["P2a", "P2b"],
-        mutate: (s) => s.replace('if (has("--execute")) {', "if (false) {") },
-      { name: "the git-ignore check always says yes", expect: ["P3a", "P3b"],
-        mutate: (s) => s.replace("function outsideOrIgnored(path: string): boolean {", "function outsideOrIgnored(path: string): boolean {\n  return true;") },
-      { name: "a second password allowed into the secrets file", expect: ["P3d"],
-        mutate: (s) => s.replace("_PASSWORD=`, \"m\").test(", "_PASSWORD=NEVER`, \"m\").test(") },
-      { name: "the store imported statically, before the rewrite", expect: ["P4"],
-        mutate: (s) => s.replace('import type { StoredUser, StoredWallet } from "../src/lib/server/store.ts";', 'import { db as _early, type StoredUser, type StoredWallet } from "../src/lib/server/store.ts";') },
-      { name: "the password printed in the secrets mode too", expect: ["P4b"],
-        mutate: (s) => s.replace("for (const c of created) console.log(`   ${c.role.padEnd(11)} ${c.phone}   ${c.id}`);", "for (const c of created) console.log(`   ${c.role.padEnd(11)} ${c.phone}   ${c.tempPassword}`);") },
-    ];
+    const plants: Plant[] = (PLANTS as { name: string; expect: string[]; from: string; to: string }[])
+      .map((m) => ({ name: m.name, expect: m.expect, mutate: (s: string) => s.replace(m.from, () => m.to) }));
     let held = 0;
     const missed: string[] = [];
     console.log(`${NL}RED CONTROL — each defect planted in a copy must fire its own claim${NL}`);

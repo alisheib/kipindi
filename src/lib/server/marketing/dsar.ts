@@ -100,6 +100,13 @@ export type MarketingDsarSection = {
    *  under what. A consenting person gets `null` — their basis is the consent rows already listed above — and so does
    *  anyone the switch does not reach. `since` is the instant the record was opened, which is when it became true. */
   outreach: { basis: "LICENCE_PLAYER"; since: string } | null;
+  /** ⭐ U33r · whether THIS ACCOUNT'S OWN NUMBER is held in the agent-referee exclusion — the coded form of the number
+   *  50pick keeps (not the number itself; without the server's pepper it cannot be turned back) so that it never sends that
+   *  number marketing, because it was given as an agent applicant's referee. ⛔ A yes or a no, never the coded form itself, and never who named the number
+   *  or when — nothing of that is kept (the U33r review's NIT: a person whose own number is held is told so, in both access
+   *  doors). `null`: the switch could not be read just now. Read FROM THE SWITCH (`marketingToggleState`), as `outreach`
+   *  is, so the screen and the file answer it one way. */
+  agentRefereeExclusion: boolean | null;
   /** U16a · the campaign messages that reached the network, newest first. `sentAt` null: the hand-over time was not
    *  recorded (no answer from the network); `deliveredAt` null: no delivery receipt came. */
   campaignMessages: Array<{ sentAt: string | null; status: CampaignMessageStatus; message: string; deliveredAt: string | null }>;
@@ -121,8 +128,9 @@ export type CampaignMessageStatus = "handed over" | "delivered" | "no answer fro
 export const CAMPAIGN_HISTORY_CUT =
   "There are more campaign messages than this file can list; the oldest are not included.";
 
-/** Every reason inside U38a's PROTECTED bucket reads as this ONE value (U20's REACH ruling, D19). */
-const PROTECTED_WORDS = "protected (responsible gambling, age or account status)";
+/** Every reason inside U38a's PROTECTED bucket reads as this ONE value (U20's REACH ruling, D19) — U33r's promised agent
+ *  referee among them, so the words name it too and stay true for every reason they stand for. */
+const PROTECTED_WORDS = "protected (responsible gambling, age, account status or agent referee)";
 
 /**
  * U16a · a refusal AT SENDING, in U38a's five buckets (`AUDIENCE_BUCKET_OF`, `audience-split.ts`): the stop list, no
@@ -145,6 +153,8 @@ export const NOT_SENT_REASON: Readonly<Record<MarketingSkipReason, string>> = {
   account_status: PROTECTED_WORDS,
   // U33a-G · the split's `no_consent` bucket ("No consent or recorded basis", S6) — the same words, as P8 requires.
   no_basis: "no consent or recorded basis",
+  // U33r · the split's ONE protected line (`AUDIENCE_BUCKET_OF`), so the same ONE value — P8 holds the partition.
+  agent_referee: PROTECTED_WORDS,
 };
 
 /** U16a · the words for a row that sent nothing without a known refusal at sending. */
@@ -200,7 +210,12 @@ function notSentReason(r: StoredSmsCampaignRecipient, campaign: Pick<StoredSmsCa
   return campaign.status === "CANCELLED" ? NOT_SENT_OTHER.campaignStopped : NOT_SENT_OTHER.waiting;
 }
 
-export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164" | "createdAt">): Promise<MarketingDsarSection> {
+/** ⛔ The account carries what the profile switch reads (`marketingToggleState`: its status, its own choice, its e-mail) —
+ *  typed, never cast: a cast let a caller hand over an account without them, and the export would then have read the
+ *  switch on fields that were not there (STEP 53's typecheck). */
+export async function marketingDsarView(
+  user: Pick<StoredUser, "id" | "phoneE164" | "createdAt" | "status" | "marketingOptIn"> & { email?: string | null },
+): Promise<MarketingDsarSection> {
   const accountNumber = marketingKeyOf(user.phoneE164);
   const since = user.createdAt;
 
@@ -237,10 +252,12 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
 
   /* ⭐ U33a-P · READ FROM THE SWITCH, never recomputed here. The screen and this export answer the same question —
      "do offers reach you without your consent?" — and two readings of one fact is how they come to disagree. */
-  const toggle = await marketingToggleState(user as Parameters<typeof marketingToggleState>[0]).catch(() => null);
+  const toggle = await marketingToggleState(user).catch(() => null);
   const record = toggle?.outreach === true ? await Promise.resolve(licenceOutreach()) : null;
   const outreach: MarketingDsarSection["outreach"] =
     record !== null && record.state === "open" ? { basis: "LICENCE_PLAYER", since: record.recordedAt } : null;
+  // U33r · the same switch answers whether the account's own number is a promised referee's — never a second reading.
+  const agentRefereeExclusion: MarketingDsarSection["agentRefereeExclusion"] = toggle === null ? null : toggle.referee === true;
 
   // U29b · the staged import rows holding the person's numbers, from the account's creation — through the same allowlist.
   const staged: MarketingDsarSection["staged"] = [];
@@ -327,6 +344,7 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
     suppression,
     staged,
     outreach,
+    agentRefereeExclusion,
     campaignMessages,
     notSent,
     optOutLinks,

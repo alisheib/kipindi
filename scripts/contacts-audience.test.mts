@@ -23,8 +23,8 @@
  *   §4 the KEYSET walk survives a row written between two calls; §5 the audit and describe forms never print a number.
  *   §6 (commit 2) THE CACHE: `consentState` and `suppressedAt` are a copy of the ledger and the stop list, so every src
  *      writer of either store calls `mirrorContactCache` (the population, over the real tree) — and each writer is
- *      EXECUTED: a stop and a start-again through a contact's link, the profile switch, a sign-up by an imported
- *      number, an erasure, and the mirror itself.
+ *      EXECUTED: a stop and a start-again through a contact's link, the profile switch, the ledger's one append for a
+ *      number imported before its holder signed up, an erasure, and the mirror itself.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a synthetic file in the scanner's Map,
  * a planted translation handed to `contactAudience`, a parser or key variant — and requires the MATCHING assertion
@@ -306,7 +306,7 @@ const L6 = {
   l61: "6.1 · ⭐ a STOP through a contact's link leaves its book row WITHDRAWN and suppressed at the stop's OWN time — and an `already` stop repairs a row left stale",
   l62: "6.2 · ⭐ START AGAIN leaves the row GIVEN and unsuppressed",
   l63: "6.3 · the profile switch for a player whose number is in the book: ON lifts their stop and the row reads GIVEN, unsuppressed; OFF reads WITHDRAWN",
-  l64: "6.4 · a ledger append — a sign-up by a number imported before — is mirrored onto the row",
+  l64: "6.4 · a ledger append — the switch turned on by a player whose number was imported before they signed up — is mirrored onto the row",
   l65: "6.5 · erasure's emptied row carries the active stop's time, not only the consent",
   l66: "6.6 · the mirror itself: none for a number not in the book; unchanged (updatedAt kept) on a true row; a stale row is put back from the truth, the stop included, through a +255 spelling — and ⛔ OD56 the put-back keeps the row's OWN updatedAt (a refresh is not an edit, so the edit dialog's token never moves on one)",
 };
@@ -811,10 +811,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && off.ok && afterOff?.consentState === "WITHDRAWN" && afterOff.suppressedAt === null,
       `on=${JSON.stringify(on)} → ${afterOn?.consentState}/${afterOn?.suppressedAt}; off=${JSON.stringify(off)} → ${afterOff?.consentState}/${afterOff?.suppressedAt}`);
 
-    // 6.4 · a number imported before its holder signed up.
+    // 6.4 · a number imported before its holder signed up, then turned on under Profile → Notifications (since 2026-10-07
+    // sign-up itself records no consent: the SMS-offers box is removed).
     await book6(id6("signup"), 3, {});
     const appended = await impl.cache.append({
-      phoneE164: `+${bare(3)}`, locale: "SW", status: "GIVEN", source: "REGISTRATION", site: "REGISTRATION", evidence: "terms:v1", recordedBy: null,
+      phoneE164: `+${bare(3)}`, locale: "SW", status: "GIVEN", source: "PROFILE", site: "PROFILE", evidence: "/profile/notifications", recordedBy: null,
     });
     const afterSignup = await row6(id6("signup"));
     ok(p(L6.l64), appended && afterSignup?.consentState === "GIVEN" && afterSignup.suppressedAt === null,
@@ -1071,7 +1072,7 @@ if (!PROVE_RED) {
       impl: { ...REAL, cache: { ...REAL_CACHE, erase: withoutMirror(eraseMarketingFor, "suppressedAt") } },
     },
     {
-      name: "R18 · the ledger's one append leaves the book as it was — a sign-up by an imported number stays UNKNOWN",
+      name: "R18 · the ledger's one append leaves the book as it was — an imported number whose holder turned offers on stays UNKNOWN",
       expect: [L6.l64],
       impl: { ...REAL, cache: { ...REAL_CACHE, append: withoutMirror(appendMarketingConsent) } },
     },

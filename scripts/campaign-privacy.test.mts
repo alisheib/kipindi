@@ -263,7 +263,8 @@ const iso = (ms: number) => new Date(ms).toISOString();
 /** A staff id that must never reach a person's file. */
 const OFFICER = "usr_officer_SENTINEL_u16a";
 const PINNED_SW = SMS_CONSENT_WORDINGS.find((x) => x.site === "PROFILE" && x.locale === "SW")?.wording ?? "";
-const PROTECTED = "protected (responsible gambling, age or account status)";
+/** U33r · the ONE protected value names the promised agent referee too — the split counts it in that line (D19). */
+const PROTECTED = "protected (responsible gambling, age, account status or agent referee)";
 let RUN = 0;
 
 /** A bare key on NDC 71, distinct per run and per role: 255 7 1 then seven digits — the role in the thousands, the RUN

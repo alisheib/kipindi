@@ -19,6 +19,13 @@
  *        locales, with the session cap, the sign-out note's lifetime and the preview pass's hours read from the
  *        code, not retyped.
  *   §4h · zh typography: no space after full-width punctuation (a {" "} after "：" printed a gap in §1).
+ *   §4j · v2026-10-07 · what erasure keeps, said publicly: §5's three bullets, §6's Erasure line, §9's two paragraphs,
+ *        the note under "Erase my data" and the data-rights file's sentence, each PINNED WHOLE by hash in every language;
+ *        and the record they state held to the code (erasure only unlinks it, nothing deletes it, DATA-RETENTION 7 years).
+ *   §4k · v2026-10-07 · §9: referees named before REFEREE_PROMISE_REWORDED_IN keep "we never contact you for
+ *        marketing"; those named after it are told management's two sentences — the stop sentence only while every offer
+ *        carries its link; and the coded referee number is never called irreversible ("not the number itself").
+ *        (§4i is the final-rule gate's own section; these two are named apart from it.)
  *
  * ⭐ U33p (2026-10-04) · THREE BULLETS ARE ADMIN-EDITED LINES NOW (`legal.policy_lines`): the §3 Consent bullet, a new §3
  * licence bullet, and the §4 Blackball bullet. The page wraps each in a `PolicyLine` element whose children are today's
@@ -38,7 +45,14 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { stripPolicyLineTags } from "./lib/policy-line-source.mts";
-import { ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, SMS_GATEWAY_WORDS } from "../src/lib/legal/policy-lines.ts";
+import {
+  ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, SMS_GATEWAY_WORDS, comparePolicyVersions, isPolicyVersion,
+} from "../src/lib/legal/policy-lines.ts";
+// §4j reads the note under "Erase my data" from the dictionary; §4k reads whether every offer carries its stop link, and
+// the ONE constant §5 and §9 print as the referees' line.
+import { dict } from "../src/lib/i18n-dict.ts";
+import { OPTOUT_PATH, footerMeasurementToken, marketingFooter } from "../src/lib/marketing/footer.ts";
+import { REFEREE_PROMISE_REWORDED_IN } from "../src/lib/legal/privacy-referees.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
@@ -53,9 +67,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-10-01";
+const PRIVACY_VERSION = "2026-10-07";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "45c8e6d42132";
+const PRIVACY_EN_SHA = "88b049bf80b1";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -472,7 +486,8 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-10-01 ·', 'sw: "Toleo 2026-09-26 ·');
+// ⭐ Derived from the pin, so moving PRIVACY_VERSION at integration moves this plant with it.
+const plantVersion = pageSrc.replace(`sw: "Toleo ${PRIVACY_VERSION} ·`, 'sw: "Toleo 2026-09-26 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -721,6 +736,381 @@ const zhGaps = (src: string) => [...code(blocks(src).zh).matchAll(/[：。，；
 ok("§4h zh puts no space after a full-width colon, stop, comma or closing bracket", zhGaps(pageSrc).length === 0, zhGaps(pageSrc).join(" | "));
 const plantZhGap = pageSrc.replace("达累斯萨拉姆。联系方式：", '达累斯萨拉姆。联系方式：{" "}');
 ok("§5am control · the §1 {\" \"} after \"联系方式：\" put back is reported", plantZhGap !== pageSrc && zhGaps(plantZhGap).length > 0);
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4i · U33r · §9's PROMISE TO REFEREES IS KEPT BY THE GATE (2026-10-07) — the final-rule gate's own section.
+ * §9 says "we never contact you for marketing" in TWO ways, and they bind the gate's cut-off (`REFEREE_NEW_WORDS_LIVE_AT`)
+ * differently:
+ *   · THE OLD WORDS (v2026-10-01 and before) made the promise to EVERY referee, unconditionally. While ANY locale's §9
+ *     still says it outside the conditional paragraph, the re-wording is not live there, so the cut-off must be null — a
+ *     referee named after it would be messaged while that page promises "never";
+ *   · THE NEW WORDS (Privacy v2026-10-07, §4k's) keep the same sentence ON PURPOSE, for the referees named before
+ *     `REFEREE_PROMISE_REWORDED_IN` — inside ONE paragraph that opens with the version marker, the constant as each
+ *     locale renders it ("Until version {V} of this policy" · "Hadi toleo la {V} la sera hii" · "在本政策 {V} 版之前"),
+ *     read here as §4k reads it. Once EVERY locale says it that way, the cut-off MAY be set — but only once production's
+ *     referee-key backfill is recorded with nothing missing and nothing unreadable (`REFEREE_KEYS_ON_PRODUCTION`, the
+ *     fifth licence-outreach check; the U33r review's MAJOR-2): an old referee saved again after the cut-off is
+ *     re-stamped past it, and a backfill run then would read them as never promised.
+ * And whatever §9 says, the gate must still refuse a promised referee (`agent_referee`, step 1b).
+ * ⛔ BLOCK-SCOPED, as §4j and §4k are: nothing here is a module-level name another section could collide with.
+ * ⛔ No backslash in this section. */
+console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees is kept by the gate — old words hold the cut-off at null, new words let it wait for the backfill");
+{
+  const WS4I = new RegExp("[ " + String.fromCharCode(9, 10, 13) + "]+", "g");
+  const refereeExclusionSrc = code(read("src/lib/server/marketing/referee-exclusion.ts"));
+  const consentGateSrc = code(read("src/lib/server/marketing/consent.ts"));
+  // The two constants themselves, and the ONE rule that judges the record — read as the code reads them, never re-parsed.
+  const { REFEREE_NEW_WORDS_LIVE_AT } = await import("../src/lib/server/marketing/referee-exclusion.ts");
+  const { REFEREE_KEYS_ON_PRODUCTION } = await import("../src/lib/server/marketing/outreach-record.ts");
+  const { refereeKeysState } = await import("../src/lib/marketing/outreach-open-checks.ts");
+  /** The promise as each locale's §9 words it — read with its whitespace collapsed. */
+  const NEVER_MARKET: Record<Loc, string> = {
+    en: "we never contact you for marketing",
+    sw: "hatuwasiliani nawe kamwe kwa matangazo",
+    zh: "我们绝不会为营销目的联系您",
+  };
+  /** ⭐ What makes the promise CONDITIONAL — the version constant as each locale renders it, in the source as §4k reads it
+   *  (the JSX expression, never a typed label). The promise counts as the new words only AFTER this, in the same paragraph. */
+  const CONDITIONAL_MARKER: Record<Loc, string> = {
+    en: "Until version {REFEREE_PROMISE_REWORDED_IN} of this policy",
+    sw: "Hadi toleo la {REFEREE_PROMISE_REWORDED_IN} la sera hii",
+    zh: "在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前",
+  };
+  const CUT_NULL = "export const REFEREE_NEW_WORDS_LIVE_AT: string | null = null;";
+  const GATE_REFUSES = 'return refuse("agent_referee", REFEREE_DETAIL);';
+  const GATE_ASKS = "if (await Promise.resolve(reads.refereeHeld(identifier))) {";
+  /** The third pass's MINOR-2 · the second question: the account's e-mail, for a referee named by e-mail who signs up later. */
+  const GATE_ASKS_EMAIL = "if (await Promise.resolve(reads.refereeEmailHeld(";
+  /** …and the third: the contact-book row at the number (MINOR-2's last part, on the lead's go-ahead). */
+  const GATE_ASKS_BOOK = "if (await Promise.resolve(reads.refereeBookEmailHeld(identifier))) {";
+  /** §9's paragraphs in one locale, whitespace collapsed — split on the tags, so no pattern needs an escape. */
+  const paragraphs9 = (block: string): string[] =>
+    section(block, "9").split("<p>").slice(1).map((p) => p.split("</p>")[0].replace(WS4I, " "));
+  /** ⭐ WHICH WORDS A LOCALE'S §9 SAYS: "old" — the promise anywhere outside the conditional paragraph (made to everyone);
+   *  "new" — the promise only after the marker, in the marker's own paragraph (kept for the referees named before the
+   *  version); "none" — neither (the referee words are gone). */
+  const wordsOf = (page: string, l: Loc): "old" | "new" | "none" => {
+    const paras = paragraphs9(blocks(page)[l]);
+    const unconditional = paras.some((p) => {
+      const at = p.indexOf(CONDITIONAL_MARKER[l]);
+      return at < 0 ? p.includes(NEVER_MARKET[l]) : p.slice(0, at).includes(NEVER_MARKET[l]);
+    });
+    if (unconditional) return "old";
+    const conditional = paras.some((p) => {
+      const at = p.indexOf(CONDITIONAL_MARKER[l]);
+      return at >= 0 && p.slice(at).includes(NEVER_MARKET[l]);
+    });
+    return conditional ? "new" : "none";
+  };
+  const refereeDefects = (page: string, referee: string, gate: string, cutoff: string | null, backfill: string): string[] => {
+    const d: string[] = [];
+    const words = LOCS.map((l) => [l, wordsOf(page, l)] as const);
+    const cutSet = cutoff !== null || !referee.includes(CUT_NULL);
+    const old = words.filter(([, w]) => w === "old").map(([l]) => l);
+    const none = words.filter(([, w]) => w === "none").map(([l]) => l);
+    if (cutSet && old.length > 0) {
+      d.push(`§9 still promises EVERY referee "never" (${old.join(", ")}) while REFEREE_NEW_WORDS_LIVE_AT is set — a referee named after it would be messaged`);
+    }
+    if (cutSet && none.length > 0) {
+      d.push(`REFEREE_NEW_WORDS_LIVE_AT is set but §9 does not keep the promise, conditionally, in ${none.join(", ")} — the cut-off names a re-wording that locale does not print`);
+    }
+    if (!gate.includes(GATE_REFUSES) || !gate.includes(GATE_ASKS) || !gate.includes(GATE_ASKS_EMAIL) || !gate.includes(GATE_ASKS_BOOK)) {
+      d.push("consent.ts no longer refuses a promised referee (agent_referee — step 1b by the number, 1b′ by the book row's address, step 2 by the account's address)");
+    }
+    if (cutSet && backfill !== "reconciled") {
+      d.push("REFEREE_NEW_WORDS_LIVE_AT is set while production's referee-key backfill is not recorded (REFEREE_KEYS_ON_PRODUCTION) — an old referee saved again after the cut-off would never be keyed");
+    }
+    return d;
+  };
+  const BACKFILL_NOW = refereeKeysState(REFEREE_KEYS_ON_PRODUCTION);
+  /** ⭐ §4i.b's rule, CONDITIONAL ON THE RECORD (the re-review's NIT) — so recording production's counts never loosens it:
+   *  while the record is null the backfill MUST read outstanding (a rule that reconciled nothing would be a defect), and
+   *  WHATEVER the record, the cut-off is set only once the backfill reads reconciled. */
+  const cutoffWaits = (record: unknown, state: string, cutoff: string | null): boolean =>
+    (record === null ? state === "outstanding" : true) && (cutoff === null || state === "reconciled");
+  const today = LOCS.map((l) => `${l}:${wordsOf(pageSrc, l)}`);
+  ok("§4i every locale's §9 keeps the promise CONDITIONALLY (the new words, for the referees named before the version) — and with the cut-off null the gate still refuses a promised referee",
+    refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).length === 0
+      && LOCS.every((l) => wordsOf(pageSrc, l) === "new"),
+    `${today.join(" · ")} · ${refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).join("; ")}`);
+  ok("§4i.b ⛔ U33r · MAJOR-2 · the referee cut-off waits for the backfill — while production's record is null the backfill reads outstanding, and whatever the record says the cut-off is set only once it reads reconciled",
+    cutoffWaits(REFEREE_KEYS_ON_PRODUCTION, BACKFILL_NOW, REFEREE_NEW_WORDS_LIVE_AT)
+      && !refereeDefects(pageSrc, refereeExclusionSrc, consentGateSrc, REFEREE_NEW_WORDS_LIVE_AT, BACKFILL_NOW).some((x) => x.includes("not recorded")),
+    `record ${REFEREE_KEYS_ON_PRODUCTION === null ? "null" : "set"} · backfill ${BACKFILL_NOW} · cut-off ${String(REFEREE_NEW_WORDS_LIVE_AT)}`);
+  // ── the controls ──
+  const CUT = "2026-10-20T00:00:00.000Z";
+  const plantCut = refereeExclusionSrc.replace(CUT_NULL, `export const REFEREE_NEW_WORDS_LIVE_AT: string | null = "${CUT}";`);
+  // The OLD words put back into ONE locale (en): the promise in §9's first paragraph, to everyone, with no marker.
+  const plantOldEn = pageSrc.replace("immediately if the application is refused; and you may ask us to", "immediately if the application is refused; we never contact you for marketing; and you may ask us to");
+  // The marker typed away in ONE locale (zh): the same sentence, but nothing says it holds only before the version.
+  const plantNoMarkerZh = pageSrc.replace("在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，", "");
+  // The conditional paragraph dropped from ONE locale (sw): no promise at all.
+  const swSecond = paragraphs9(blocks(pageSrc).sw)[1] ?? "";
+  const plantNoneSw = pageSrc.replace("Hadi toleo la {REFEREE_PROMISE_REWORDED_IN} la sera hii", "Hadi sasa").replace("hatuwasiliani nawe kamwe kwa matangazo", "hatukutumii matangazo");
+  // Every refusal goes — the number's (1b) and the address's (2-0) — never only the first.
+  const plantNoRefusal = consentGateSrc.split(GATE_REFUSES).join("return null;");
+  const plantNoEmailAsk = consentGateSrc.split(GATE_ASKS_EMAIL).join("if (false && (");
+  const plantNoBookAsk = consentGateSrc.split(GATE_ASKS_BOOK).join("if (false) {");
+  ok("§5ap control · planted §4i copies found their targets",
+    [plantCut !== refereeExclusionSrc, plantOldEn !== pageSrc, plantNoMarkerZh !== pageSrc, plantNoneSw !== pageSrc, plantNoRefusal !== consentGateSrc, swSecond.length > 100].every(Boolean));
+  ok("§5aq control · the gate's referee refusal removed is reported — and so is the account's-address question alone (the third pass)",
+    refereeDefects(pageSrc, refereeExclusionSrc, plantNoRefusal, null, "reconciled").some((x) => x.includes("no longer refuses"))
+      && plantNoEmailAsk !== consentGateSrc
+      && refereeDefects(pageSrc, refereeExclusionSrc, plantNoEmailAsk, null, "reconciled").some((x) => x.includes("no longer refuses"))
+      && plantNoBookAsk !== consentGateSrc
+      && refereeDefects(pageSrc, refereeExclusionSrc, plantNoBookAsk, null, "reconciled").some((x) => x.includes("no longer refuses")));
+  ok("§5ar control · the OLD words in ONE locale (en) with the cut-off set are reported — even with the backfill recorded — and the same words with the cut-off null are not, on that count",
+    wordsOf(plantOldEn, "en") === "old"
+      && refereeDefects(plantOldEn, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("still promises EVERY referee") && x.includes("en"))
+      && !refereeDefects(plantOldEn, refereeExclusionSrc, consentGateSrc, null, "outstanding").some((x) => x.includes("still promises")));
+  ok("§5as control · the NEW words with the cut-off set and the backfill RECORDED are not reported at all",
+    refereeDefects(pageSrc, plantCut, consentGateSrc, CUT, "reconciled").length === 0);
+  ok("§5at control · the NEW words with the cut-off set and the backfill OUTSTANDING are reported — and only on that count",
+    JSON.stringify(refereeDefects(pageSrc, plantCut, consentGateSrc, CUT, "outstanding").map((x) => x.includes("not recorded"))) === JSON.stringify([true]));
+  ok("§5au control · the marker typed away in ONE locale (zh) reads as the OLD words, and with the cut-off set is reported",
+    wordsOf(plantNoMarkerZh, "zh") === "old"
+      && refereeDefects(plantNoMarkerZh, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("still promises EVERY referee") && x.includes("zh")));
+  ok("§5av control · the promise dropped from ONE locale (sw) with the cut-off set is reported — the cut-off names a re-wording sw does not print",
+    wordsOf(plantNoneSw, "sw") === "none"
+      && refereeDefects(plantNoneSw, plantCut, consentGateSrc, CUT, "reconciled").some((x) => x.includes("does not keep the promise") && x.includes("sw")));
+  ok("§5aw control · §4i.b's rule holds whatever the record says — null and outstanding with no cut-off passes, null read as reconciled fails, a set record outstanding with the cut-off set fails, reconciled with it set passes, outstanding with none passes",
+    cutoffWaits(null, "outstanding", null) && !cutoffWaits(null, "reconciled", null)
+      && !cutoffWaits({ environment: "production" }, "outstanding", CUT) && cutoffWaits({ environment: "production" }, "reconciled", CUT)
+      && cutoffWaits({ environment: "production" }, "outstanding", null));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4j · WHAT ERASURE KEEPS, SAID PUBLICLY — v2026-10-07 (COMPLIANCE-DECISIONS "Privacy v2026-10-07"). The words are
+ * PINNED WHOLE, by hash, in every language — never by fragments, which let a change elsewhere in a sentence through:
+ *   · §5's first bullet (its "except as stated below") and the 7-year record bullet — approved by Ali in the session;
+ *   · §5's coded referee numbers bullet, §6's Erasure line, §9's two paragraphs, the note under "Erase my data" in three
+ *     languages, and the data-rights file's erasure sentence (English only) — the lead's words of 2026-10-07, to be put to
+ *     Ali. A change to any of them is a change to published words: it moves its pin here, and the version with it.
+ * And the record they state is held to the code: erasure's ONE write to a recipient row clears the account link
+ * (U16a's `unlinkUser`, through `erase.ts`), no code deletes a recipient row, and DATA-RETENTION keeps the campaign and
+ * opt-out-link rows at 7 years. ⛔ BLOCK-SCOPED: nothing here is a module-level name another section could collide with.
+ * ⚠️ §9's second paragraph ends with the stop sentence, which is true only while every offer carries its stop link: when
+ * U43b makes the link ONE setting and the link goes (management's item 7), the sentence goes with it, these three §9
+ * pins move with the words, and §4k's tie is re-tied to that setting.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and the data-rights file, pinned whole, and the record held to the code");
+{
+  const eraseSrc = code(read("src/lib/server/marketing/erase.ts"));
+  /** The rights.erasure sentence as the bundle prints it: its string pieces joined, the address left as written. */
+  const erasureSentence = (src: string): string => {
+    const s = src.replace(/\r\n/g, "\n");
+    const at = s.indexOf("erasure: `Request erasure");
+    const end = s.indexOf("portability:", at);
+    if (at < 0 || end < 0) return "";
+    return [...s.slice(at, end).matchAll(/`([^`]*)`|"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1] ?? m[2]).join("");
+  };
+  const dsarSentence = erasureSentence(read("src/lib/server/privacy.ts"));
+  const retentionDoc = read("docs/DATA-RETENTION.md");
+  const erasureNotes: Record<Loc, string> = {
+    en: dict.en.profile.privacyRequestErasureNote, sw: dict.sw.profile.privacyRequestErasureNote, zh: dict.zh.profile.privacyRequestErasureNote,
+  };
+  const collapse = (t: string) => t.replace(/\s+/g, " ").trim();
+  const sha12 = (t: string) => createHash("sha256").update(collapse(t)).digest("hex").slice(0, 12);
+  /** The inner source of the ONE `<li>` of a section that starts with `head` — "" when none does, or more than one. */
+  const liStarting = (sectionSrc: string, head: string): string => {
+    const items = [...sectionSrc.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]).filter((t) => t.startsWith(head));
+    return items.length === 1 ? items[0] : "";
+  };
+  /** The inner source of a section's n-th `<p>` (0-based) — "" when there is none. */
+  const paragraph = (sectionSrc: string, n: number): string => [...sectionSrc.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1])[n] ?? "";
+  /** Where each pinned page text starts, per language — the source's own first words. */
+  const HEAD: Record<"s5first" | "s5record" | "s5referees" | "s6erasure", Record<Loc, string>> = {
+    s5first: { en: "Account and identity (KYC) records:", sw: "Kumbukumbu za akaunti na utambulisho (KYC):", zh: "账户与身份（KYC）记录：" },
+    s5record: { en: "Records of marketing text messages", sw: "Kumbukumbu za SMS za ofa na habari:", zh: "短信优惠与资讯的记录：" },
+    s5referees: { en: "A coded form of the phone number of each agent referee", sw: "Namba ya simu ya kila mdhamini wa wakala", zh: "本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前被提名的" },
+    s6erasure: { en: '<strong className="text-text">Erasure</strong>', sw: '<strong className="text-text">Kufuta</strong>', zh: '<strong className="text-text">删除权</strong>' },
+  };
+  /** Every pinned text, as its source holds it: the page's (stripped of PolicyLine tags), the dictionary's, the bundle's. */
+  const pinnedTexts = (page: string, notes: Record<Loc, string>, dsar: string): Record<string, string> => {
+    const bl = blocks(page);
+    const out: Record<string, string> = {};
+    for (const l of LOCS) {
+      out[`${l} §5 first bullet`] = liStarting(section(bl[l], "5"), HEAD.s5first[l]);
+      out[`${l} §5 record bullet`] = liStarting(section(bl[l], "5"), HEAD.s5record[l]);
+      out[`${l} §5 referee numbers bullet`] = liStarting(section(bl[l], "5"), HEAD.s5referees[l]);
+      out[`${l} §6 Erasure`] = liStarting(section(bl[l], "6"), HEAD.s6erasure[l]);
+      out[`${l} §9 first paragraph`] = paragraph(section(bl[l], "9"), 0);
+      out[`${l} §9 second paragraph`] = paragraph(section(bl[l], "9"), 1);
+      out[`${l} the note under "Erase my data"`] = notes[l];
+    }
+    out["en the data-rights erasure sentence"] = dsar;
+    return out;
+  };
+  /** ⛔ THE PINS — sha256 (12 hex) of each text, whitespace-collapsed. Moving one is a change of published words. */
+  const TEXT_PINS: Record<string, string> = {
+    "en §5 first bullet": "d849b2d90cce", "sw §5 first bullet": "4e3f0109a8fb", "zh §5 first bullet": "0f83ff42c325",
+    "en §5 record bullet": "3c32b3b9f11d", "sw §5 record bullet": "f4ca0a478d04", "zh §5 record bullet": "fe70c2ffced3",
+    "en §5 referee numbers bullet": "759980721b5f", "sw §5 referee numbers bullet": "cd5575e2769c", "zh §5 referee numbers bullet": "724a23800660",
+    "en §6 Erasure": "d92355281cf7", "sw §6 Erasure": "89c0ca55cb2b", "zh §6 Erasure": "ef70992f350e",
+    "en §9 first paragraph": "85aa1bcc73a0", "sw §9 first paragraph": "3ec321fcfaf5", "zh §9 first paragraph": "877ece96400b",
+    "en §9 second paragraph": "655a862c8ac1", "sw §9 second paragraph": "5079ce41cd8c", "zh §9 second paragraph": "6384d026c548",
+    'en the note under "Erase my data"': "4c0b74e089f4", 'sw the note under "Erase my data"': "88d387d24b5b", 'zh the note under "Erase my data"': "d5d322ec1b8b",
+    "en the data-rights erasure sentence": "63c74d586aa8",
+  };
+  /** What the data-rights file (English only) must say, and must no longer say — read in words, beside its pin. */
+  const DSAR_RECORD = [
+    "we erase your contact details (except as below)",
+    "and cannot be erased before then. We also keep your phone number in our record of your marketing choices, so that we never send you marketing again, and in the records of the marketing text messages we sent to it",
+    "are kept for at least 7 years",
+    "erasure removes which account they belonged to and keeps the rest",
+    "The records of the security codes we texted to your number, and your payment records, which the law requires us to keep, keep it too.",
+  ];
+  const DSAR_RETIRED = ["they are erased when that period ends", "We keep your phone number only"];
+  const RECIPIENT_DELETE = /\bsmsCampaignRecipient\.(?:delete|deleteMany|remove|purge)\w*\s*\(/;
+  const campaignRecordDefects = (page: string, erase: string, dsar: string, notes: Record<Loc, string>, doc: string, files: Array<{ path: string; src: string }>): string[] => {
+    const d: string[] = [];
+    for (const [key, text] of Object.entries(pinnedTexts(page, notes, dsar))) {
+      if (text === "") { d.push(`${key} was not found exactly once — its pinned text is gone or doubled`); continue; }
+      if (sha12(text) !== TEXT_PINS[key]) d.push(`${key} reads ${sha12(text)}, pinned ${TEXT_PINS[key] ?? "(no pin)"} — published words changed: put them to Ali, move the version and this pin together`);
+    }
+    for (const w of DSAR_RECORD) if (!dsar.includes(w)) d.push(`the data-rights file's rights.erasure (privacy.ts) does not say "${w}"`);
+    for (const w of DSAR_RETIRED) if (dsar.includes(w)) d.push(`the data-rights file's rights.erasure (privacy.ts) says "${w}" again — false: money and audit rows are never deleted, and the number is kept in more than one record`);
+    if (!/\bdb\.smsCampaignRecipient\.unlinkUser\(/.test(erase)) d.push("erase.ts no longer clears the account link through smsCampaignRecipient.unlinkUser — §5 says erasure removes which account the records belonged to");
+    const deleters = files.filter((f) => RECIPIENT_DELETE.test(f.src)).map((f) => relative(ROOT, f.path));
+    if (deleters.length > 0) d.push(`a recipient row can be deleted (${deleters.join(", ")}) — §5 says the record is kept at least 7 years`);
+    for (const row of ["| SMS campaigns and their recipients |", "| Marketing opt-out links"]) {
+      const line = doc.split(/\r?\n/).find((x) => x.startsWith(row)) ?? "";
+      if (!line.includes("| **7 years** |")) d.push(`DATA-RETENTION.md has no 7-year row starting "${row}" — §5's period must agree with it`);
+    }
+    return d;
+  };
+  ok("§4j en/sw/zh §5's three bullets, §6's Erasure line, §9's two paragraphs and the erasure note — and the data-rights sentence — are the pinned words, whole; erasure only unlinks the record; nothing deletes it; DATA-RETENTION agrees",
+    campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).length === 0,
+    campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).join("; "));
+  const plantP2Sw = pageSrc.replace("(si namba yenyewe)", "(ni namba yenyewe)");
+  const plantNoteZh = { ...erasureNotes, zh: erasureNotes.zh.replace("至少保留 7 年。我们", "保留 7 年，期满后删除。我们") };
+  const plantS6Sw = pageSrc.replace("kwa kuzingatia kumbukumbu ambazo sheria inatulazimu kuhifadhi (angalia §5)", "kwa kuzingatia masharti ya uhifadhi ya AML");
+  const plantRefereesZh = pageSrc.replace(/\n[ \t]*<li>本政策 \{REFEREE_PROMISE_REWORDED_IN\} 版之前被提名的[^\n]*<\/li>/, "");
+  const plantDsarOnly = dsarSentence.replace("We also keep your phone number in our record", "We keep your phone number only in our record");
+  const plantEraseDelete = eraseSrc.replace("db.smsCampaignRecipient.unlinkUser(", "db.smsCampaignRecipient.deleteForUser(");
+  const plantDeleter = { path: join(ROOT, "src/lib/server/marketing/planted.ts"), src: "export const p = (db: any, id: string) => db.smsCampaignRecipient.deleteMany({ where: { userId: id } });\n" };
+  ok("§4j control · planted copies found their targets",
+    [plantP2Sw !== pageSrc, plantNoteZh.zh !== erasureNotes.zh, plantS6Sw !== pageSrc, plantRefereesZh !== pageSrc, plantDsarOnly !== dsarSentence, plantEraseDelete !== eraseSrc].every(Boolean));
+  ok("§4j control · ONE word changed in the Swahili §9 second paragraph is reported by its pin",
+    campaignRecordDefects(plantP2Sw, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("sw §9 second paragraph reads")));
+  ok("§4j control · the Chinese erasure note telling the old story (erased when the period ends) is reported by its pin",
+    campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, plantNoteZh, retentionDoc, srcFiles).some((x) => x.startsWith('zh the note under "Erase my data" reads')));
+  ok("§4j control · the Swahili §6 Erasure line put back to \"AML retention requirements\" is reported by its pin",
+    campaignRecordDefects(plantS6Sw, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("sw §6 Erasure reads")));
+  ok("§4j control · the referee numbers bullet dropped from ONE language (zh) is reported",
+    campaignRecordDefects(plantRefereesZh, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("zh §5 referee numbers bullet was not found")));
+  ok("§4j control · the data-rights sentence's \"only\" put back (false beside the other records) is reported",
+    campaignRecordDefects(pageSrc, eraseSrc, plantDsarOnly, erasureNotes, retentionDoc, srcFiles).some((x) => x.includes("says \"We keep your phone number only\" again")));
+  ok("§4j control · erasure deleting the recipient rows instead of unlinking them is reported",
+    campaignRecordDefects(pageSrc, plantEraseDelete, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.includes("unlinkUser")));
+  ok("§4j control · a src file that deletes recipient rows is reported",
+    campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, erasureNotes, retentionDoc, [...srcFiles, plantDeleter]).some((x) => x.includes("can be deleted")));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4k · §9, THE REFEREES' WORDS — v2026-10-07 (Ali's Q8, COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone
+ * with a phone — consent is not a condition"; management's item 4, § "2026-10-07 · Management's answers for the first
+ * marketing campaign"). The old promise "we never contact you for marketing" stands for every referee named before
+ * version REFEREE_PROMISE_REWORDED_IN — kept with a coded form of each such number, which §5 and §9 state — and is no
+ * longer made to anyone named after it, who is told management's two sentences. ⛔ The version is ONE constant
+ * (`src/lib/legal/privacy-referees.ts`), printed in §5 and §9 in every language and never typed as a literal there, named
+ * by its LABEL (never "this version", which would move with every later version, and the promise with it); it must have
+ * its COMPLIANCE "Privacy v…" heading and may never name a version later than the one the page prints.
+ * (The final-rule gate's own section reads §9 too; this block is named apart from it — §4k, `refereeWordsDefects`.)
+ * ⛔ THE CODED FORM IS "NOT THE NUMBER ITSELF" — NEVER CALLED IRREVERSIBLE, in any language, anywhere on the page. It is an
+ * HMAC of the number under the server's pepper, and whoever holds the pepper can hash every Tanzanian mobile number and
+ * compare: "(it cannot be turned back into the number)" overclaimed, and was replaced on 2026-10-07 (the lead's decision;
+ * COMPLIANCE-DECISIONS "Privacy v2026-10-07").
+ * ⚠️ THE STOP SENTENCE IS TIED TO `marketingFooter()` FOR NOW — true only while every offer carries its stop link. When
+ * U43b makes the link ONE setting (management's item 7: it goes, with these words, in the commit that files the written
+ * confirmation), RE-TIE this check to that setting, so §9's stop sentence goes exactly when the link does.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4k · §9: the referee promise kept for those named before the label, management's sentences for those named after");
+{
+  const REFEREE_SENTENCES = { offers: "50pick may send you offers by SMS.", stop: "You can stop them at any time with the link in every offer." } as const;
+  /** The kept promise, as §9 states it to the referees named before the label. */
+  const KEPT_PROMISE_EN = "that promise stands: we never contact you for marketing.";
+  /** The old promise as each locale printed it until v2026-10-01 — made to EVERYONE, which it may no longer be. */
+  const OLD_REFEREE_PROMISE: Record<Loc, string> = {
+    en: "we never contact you for marketing;",
+    sw: "hatuwasiliani nawe kamwe kwa matangazo;",
+    zh: "我们绝不会为营销目的联系您；",
+  };
+  const LABEL_IN_SOURCE = "{REFEREE_PROMISE_REWORDED_IN}";
+  /** ⛔ The claims the coded referee number may never carry: that it cannot be turned back, reversed or undone. Read in each
+   *  locale's whole block, comments stripped and whitespace collapsed, so a wrapped line cannot hide one. */
+  const CODE_OVERCLAIM: Record<Loc, readonly RegExp[]> = {
+    en: [/\bcan(?:not|'t| not) be (?:turned back|reversed|undone)\b/i, /\birreversib/i],
+    sw: [/kugeuzwa kurudi/i, /wezi kugeuzwa/i],
+    zh: [/无法还原/, /不可逆/, /不能还原/],
+  };
+  const metaVersion =(src: string) => src.match(/en: "Version ([0-9]{4}-[0-9]{2}-[0-9]{2}(?:\.[0-9]+)?) · /)?.[1] ?? "";
+  const stopLinkInOffers = (footer: string) => footer.includes(`${OPTOUT_PATH}${footerMeasurementToken()}`);
+  const refereeWordsDefects = (page: string, footer: string, label: string, decisions: string): string[] => {
+    const d: string[] = [];
+    const bl = blocks(page);
+    const s9 = (l: Loc) => section(bl[l], "9").replace(/\s+/g, " ");
+    for (const l of LOCS) {
+      // ⛔ The label comes from the ONE constant, in §9 and in §5's referee bullet — never typed as a literal there.
+      const s5 = section(bl[l], "5").split(/<li>/).find((li) => li.includes(LABEL_IN_SOURCE)) ?? "";
+      if (!s9(l).includes(LABEL_IN_SOURCE)) d.push(`${l} §9 does not print the label from REFEREE_PROMISE_REWORDED_IN`);
+      if (s5 === "") d.push(`${l} §5 has no referee-numbers bullet printing the label from REFEREE_PROMISE_REWORDED_IN`);
+      if (/\b20[0-9]{2}-[0-9]{2}-[0-9]{2}\b/.test(s9(l))) d.push(`${l} §9 types a version label instead of printing REFEREE_PROMISE_REWORDED_IN — two labels drift apart`);
+      if (s9(l).includes(OLD_REFEREE_PROMISE[l])) d.push(`${l} §9 still promises every referee "${OLD_REFEREE_PROMISE[l]}"`);
+      const prose = code(bl[l]).replace(/\s+/g, " ");
+      for (const re of CODE_OVERCLAIM[l]) {
+        const hit = prose.match(re)?.[0];
+        if (hit) d.push(`${l} calls the coded referee number irreversible ("${hit}") — it is an HMAC under the server's pepper, which can try every number: say it is not the number itself`);
+      }
+    }
+    if (!isPolicyVersion(label)) d.push(`REFEREE_PROMISE_REWORDED_IN "${label}" is not a version label`);
+    else {
+      const printed = metaVersion(page);
+      if (!isPolicyVersion(printed) || comparePolicyVersions(label, printed) > 0) d.push(`REFEREE_PROMISE_REWORDED_IN names ${label}, later than the version the page prints (${printed || "unread"}) — a promise line in the future`);
+      if (!new RegExp(`^## [0-9-]+.*Privacy v${label.replace(/\./g, "\\.")}`, "m").test(decisions)) d.push(`COMPLIANCE-DECISIONS.md has no "Privacy v${label}" heading — the version §9 names has no record`);
+    }
+    if (!s9("en").includes(KEPT_PROMISE_EN)) d.push(`en §9 does not tell the referees named before the label "${KEPT_PROMISE_EN}"`);
+    if (!s9("en").includes(REFEREE_SENTENCES.offers)) d.push(`en §9 does not tell new referees "${REFEREE_SENTENCES.offers}"`);
+    if (/\bthis version\b/i.test(s9("en"))) d.push("en §9 names the line as \"this version\" — a later version would move it");
+    const says = s9("en").includes(REFEREE_SENTENCES.stop);
+    if (stopLinkInOffers(footer) && !says) d.push(`en §9 does not tell new referees "${REFEREE_SENTENCES.stop}" while every offer carries its stop link`);
+    if (!stopLinkInOffers(footer) && says) d.push(`en §9 promises "${REFEREE_SENTENCES.stop}" but the offer footer carries no stop link`);
+    return d;
+  };
+  const offerFooter = marketingFooter(footerMeasurementToken(), "SW");
+  ok(`§4k en/sw/zh §9 keep the old promise only for referees named before ${REFEREE_PROMISE_REWORDED_IN} (one constant, printed in §5 and §9, recorded, never ahead of the page), and tell those named after management's two sentences while the stop link exists`,
+    refereeWordsDefects(pageSrc, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).length === 0,
+    refereeWordsDefects(pageSrc, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).join("; "));
+  const plantOldPromiseSw = pageSrc.replace("na mara moja maombi yakikataliwa; na unaweza", "na mara moja maombi yakikataliwa; hatuwasiliani nawe kamwe kwa matangazo; na unaweza");
+  const plantTypedLabelZh = pageSrc.replace("在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，", `在本政策 ${REFEREE_PROMISE_REWORDED_IN} 版之前，`);
+  const plantRelative = pageSrc.replace("Until version {REFEREE_PROMISE_REWORDED_IN} of this policy", "Until this version of this policy");
+  // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
+  const plantNoStop = pageSrc.replace("          You can stop them at any time with the link in every offer.", "");
+  const footerWithoutLink = offerFooter.replace(`${OPTOUT_PATH}${footerMeasurementToken()}`, "");
+  // The parenthesis as it read before 2026-10-07's correction, put back into ONE language at a time.
+  const plantOverclaimEn = pageSrc.replace("(not the number itself)", "(it cannot be turned back into the number)");
+  const plantOverclaimZh = pageSrc.replace("（并非号码本身）", "（无法还原为该号码）");
+  ok("§4k control · planted §9 copies found their targets",
+    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantNoStop !== pageSrc, footerWithoutLink !== offerFooter,
+      plantOverclaimEn !== pageSrc, plantOverclaimZh !== pageSrc].every(Boolean));
+  ok("§4k control · the coded number called irreversible again (en: \"it cannot be turned back into the number\") is reported",
+    refereeWordsDefects(plantOverclaimEn, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("en calls the coded referee number irreversible")));
+  ok("§4k control · the coded number called irreversible again in ONE language (zh: \"无法还原为该号码\") is reported",
+    refereeWordsDefects(plantOverclaimZh, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("zh calls the coded referee number irreversible")));
+  ok("§4k control · the old promise made to everyone again (sw) is reported",
+    refereeWordsDefects(plantOldPromiseSw, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("sw §9 still promises")));
+  ok("§4k control · the label typed into ONE language (zh) instead of printed from the constant is reported",
+    refereeWordsDefects(plantTypedLabelZh, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("zh §9")));
+  ok("§4k control · the line named as \"this version\" (en) is reported",
+    refereeWordsDefects(plantRelative, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("this version")));
+  ok("§4k control · a label later than the page's version, with no COMPLIANCE heading, is reported",
+    refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("later than the version the page prints"))
+      && refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("has no \"Privacy v2099-01-01\" heading")));
+  ok("§4k control · the stop sentence dropped while the stop link exists is reported",
+    refereeWordsDefects(plantNoStop, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
+  ok("§4k control · the stop sentence kept after the footer loses its link is reported",
+    refereeWordsDefects(pageSrc, footerWithoutLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
+}
 
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

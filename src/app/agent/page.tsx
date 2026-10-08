@@ -18,7 +18,8 @@ import { LipaQrPanel } from "@/components/pay/lipa-qr-panel";
 import { applicantView, feeBreakdown } from "@/lib/server/agent-application-service";
 import { inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
-import { fill, formatTzs, formatDateShort } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
+import { formatEatDate } from "@/lib/eat-day";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import { startApplicationAction } from "./apply/actions";
 import { fillNodes } from "@/lib/fill-nodes";
@@ -48,7 +49,7 @@ export const dynamic = "force-dynamic";
 export default async function AgentProgrammePage({ searchParams }: { searchParams: Promise<{ refused?: string }> }) {
   const sp = await searchParams;
   const cfg = getAgentConfig();
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const session = await currentSession();
   const view = session ? await applicantView(session.userId) : null;
   /**
@@ -110,7 +111,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
     withholdingPct: cfg.agentWithholdingTaxPct,
   };
   const mb = Math.round(MAX_DOC_BYTES / (1024 * 1024));
-  const fmtDate = (iso: string) => formatDateShort(iso);
+  const fmtDate = (iso: string) => formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale);
 
   // ── The one CTA, decided by state ─────────────────────────────────────────
   type Cta = { kind: "signin" } | { kind: "kyc" } | { kind: "apply" } | { kind: "continue" } | { kind: "status" } | { kind: "dashboard" } | { kind: "none" };

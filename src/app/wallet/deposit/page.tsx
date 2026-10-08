@@ -27,7 +27,8 @@ import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
 import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
-import { fill, formatDateTime } from "@/lib/utils";
+import { fill } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { readFlash } from "@/lib/server/flash-message";
 import { pathWithQuery } from "@/lib/safe-next";
 
@@ -58,7 +59,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   const session = await currentSession();
   // The whole address survives the sign-in — `?from=low-balance` (the funnel's source tag) and anything carried.
   if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit", await searchParams))}`);
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   // A player about to put money IN has the most right to know we cannot get it out.
   const payouts = await getPayoutStatus();
@@ -194,12 +195,13 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           ⭐ AND A BREAK IS DRAWN BEFORE BOTH (2026-10-06) — the player's own decision, with a date (the server refuses the
           held wallet first; both refuse). Its sentence is the RG page's: `rg.breakActive` for a cooling-off (the end date,
           that it cannot be shortened, that withdrawals are not stopped), `rg.exclusionActive` for a self-exclusion, which
-          promises neither sign-in nor withdrawals. The date carries its time, as the server's refusal does. No button:
+          promises neither sign-in nor withdrawals. The date carries its time, as the server's refusal does, in the reader's
+          month words on the East Africa clock (`formatEatDateTime`, §L4; `formatDateTime` printed English months). No button:
           there is nothing to do here until the date, and nothing on this page may invite a deposit before it. */}
       {breakUntil ? (
         <div data-testid="deposit-break">
           <Callout tone="warning" layout="stack" glyph="lock" role="status" titleAs="h2" title={t.wallet.depositPausedTitle}>
-            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: formatDateTime(breakUntil) })}</p>
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: formatEatDateTime(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) })}</p>
           </Callout>
         </div>
       ) : walletHeld ? (

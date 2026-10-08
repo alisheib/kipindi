@@ -3498,6 +3498,28 @@ model ContactListBasis {
   @@index([recordedAt])
 }
 
+/// U33r · THE AGENT-REFEREE EXCLUSION (Q8; COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
+/// consent is not a condition (the owner's FINAL rule), and his approvals given in the session"). /legal/privacy §9
+/// promised every agent applicant's referee "we never contact you for marketing" until v2026-10-07, and the owner ruled the
+/// promise HONOURED for every referee already given it — §9 keeps it for every referee named before that version. A referee's contact is free text on `AgentApplication`, so each Tanzanian mobile
+/// number a PROMISED referee's contact leads to is kept here as a keyed hash, and the send gate refuses a number whose key
+/// is held, before any basis (consent.ts 1b).
+///
+/// ⛔ THE KEY AND NOTHING ELSE (the U33r review's MAJOR-1): thirty-two letters a–p — an HMAC of the number under the
+/// server's pepper (`refereeKeyOf`, referee-exclusion.ts), never the number and never a digit. No instant of any kind: an
+/// applicant's `refereeConsentAt` joined on one would link a referee's key back to the applicant who named them. No name,
+/// no application id, and no column links it to the applicant: the applicant's erasure leaves nothing of theirs here, and the referee's
+/// protection outlives it (docs/DATA-RETENTION.md). WHETHER a referee was given the old promise is the writer's decision,
+/// when it writes — only a promised referee is ever written.
+/// ⛔ APPEND-ONLY BY THE DATA LAYER: a key already held is skipped (ON CONFLICT DO NOTHING), and neither twin has an update
+/// or a delete member (`test:dal-parity` §28). Hand-written migration 20261007150000_agent_referee_key; the rows that
+/// predate it are written by `npm run ops:marketing-referee-keys` (the pepper lives in the application, never in SQL).
+model AgentRefereeKey {
+  /// Thirty-two letters a–p — `refereeKeyOf(msisdn)`. Both twins refuse any other spelling, and any field beside it
+  /// (`referee-key-model.ts`).
+  refereeKey String @id
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════════
 // CONTACT IMPORT STAGING (marketing U29 — OD26 · OD30; decisions X1 · X2 · X18–X20 · X23 · X28 · X29)
 //

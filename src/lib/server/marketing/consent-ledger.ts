@@ -23,8 +23,14 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * told apart from one that does not.
  */
 
-/** The surfaces that can record a marketing consent decision today. */
-export type MarketingConsentSite = "REGISTRATION" | "PROFILE";
+/**
+ * The surfaces that can record a marketing consent decision today: ONE — the player's own switch under Profile →
+ * Notifications. ⛔ "REGISTRATION" IS GONE (2026-10-07): the sign-up SMS-offers box was REMOVED (the owner's final rule,
+ * COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition"), so
+ * sign-up records nothing. The rows it wrote from 2026-09-28 keep their `source: "REGISTRATION"`, and their three
+ * sentences stay pinned in `consent-wording.ts` — a yes given under them still counts. Never put the site back.
+ */
+export type MarketingConsentSite = "PROFILE";
 
 /** Named because it is a function parameter — see the note in `store.ts` about `region()`. */
 export type AppendMarketingConsentInput = {
@@ -52,8 +58,9 @@ export function messagingLocaleOf(raw: string | null | undefined): MessagingLoca
 }
 
 /**
- * D2 · THE LANGUAGE THE FORM WAS DRAWN IN, as the form itself posts it back (the sign-up form's hidden
- * `shownLocale` field; the profile switch's own `useT().locale`). ⭐ It beats the cookie because the cookie
+ * D2 · THE LANGUAGE THE FORM WAS DRAWN IN, as the form itself posts it back (the profile switch's own
+ * `useT().locale`; the sign-up form's hidden `shownLocale` field, which since the sign-up box was removed on
+ * 2026-10-07 decides only the new account's `User.locale`). ⭐ It beats the cookie because the cookie
  * can change between drawing and submitting — the language provider rewrites it on mount without
  * redrawing the server's page, and another tab can switch language — so a Swahili tick was stored as the
  * English sentence. ⛔ Exactly "en" | "sw" | "zh", nothing else (not "EN", not " sw"): anything else is
@@ -71,22 +78,25 @@ export function renderedLocaleOf(posted: unknown): MessagingLocale | null {
  * never to English — a record that says the player read English copy they were never shown
  * is a false record, not a harmless default.
  * ⭐ OQ11: only the sentences pinned in `consent-wording.ts` count as SMS consent at the gate.
+ * ⛔ One site since 2026-10-07 (`MarketingConsentSite`, the type that admits no other): the profile switch's title and
+ * body, as the switch shows them. The removed sign-up box's sentence is read from nowhere — its dictionary key is
+ * deleted, and only the pinned list still holds its three sentences, as evidence.
  */
-export function marketingConsentWording(site: MarketingConsentSite, locale: MessagingLocale): string {
+export function marketingConsentWording(_site: MarketingConsentSite, locale: MessagingLocale): string {
   const d = locale === "EN" ? dict.en : locale === "ZH" ? dict.zh : dict.sw;
-  return site === "REGISTRATION"
-    ? d.auth.optionalUpdates
-    : `${d.push.marketingTitle} — ${d.push.marketingBody}`;
+  return `${d.push.marketingTitle} — ${d.push.marketingBody}`;
 }
 
 /**
  * Append one row. ⛔ Never updates and never deletes — the DAL exposes no method to do either
  * (`test:dal-parity` §17 asserts the absence in both stores).
  *
- * ⚠️ A FAILURE HERE MUST NOT FAIL THE PLAYER'S ACTION, AND MUST NOT BE SILENT. Refusing a
- * player's own withdrawal because a ledger insert failed would leave them marketable against
- * their stated wish; swallowing it quietly would leave a consent change with no record. So it
- * is caught and reported, the way `retention.ts` reports its own lapse failures.
+ * ⚠️ A FAILURE HERE NEVER THROWS, AND IS NEVER SILENT: it is caught and reported, the way
+ * `retention.ts` reports its own lapse failures, and the caller is told `false`. ⛔ WHAT THE CALLER
+ * DOES WITH `false` IS ITS OWN RULE — and since Q9 was reversed (2026-10-07) the profile switch's OFF
+ * writes THIS row FIRST and changes nothing when it did not land (`recordPlayerMarketingChoice`, the
+ * U33r review's MAJOR-3): a switch cleared over a latest GIVEN reads as the two-year LAPSE, which an
+ * open licence record reaches, so a "no" with no row behind it would become licence outreach.
  */
 export async function appendMarketingConsent(input: AppendMarketingConsentInput): Promise<boolean> {
   const identifier = toMsisdn255(input.phoneE164);

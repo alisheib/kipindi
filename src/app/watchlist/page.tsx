@@ -35,7 +35,7 @@ import { playerMarketsByIds, isClosedByTime, isSelectionClosed } from "@/lib/ser
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
-import { formatDateTime } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { PageContainer } from "@/components/layout/page-container";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { WatchlistBar, type FollowCounts } from "./watchlist-bar";
@@ -66,7 +66,7 @@ export default async function WatchlistPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/watchlist");
 
@@ -234,9 +234,11 @@ export default async function WatchlistPage({
               // §L3 — this read "Imetatuliwa YES" / "已结算 YES": a translated label closing
               // around the stored token. The VOID arm was already localised, which is what made
               // the other two stand out. `outcomeWord` covers all three.
+              // §L4 — the date is in the reader's month words on the East Africa clock (`formatEatDateTime`);
+              // `formatDateTime` printed English months in every locale.
               const timeLeft = resolved
                 ? (m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}`)
-                : formatDateTime(m.resolutionAt);
+                : formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale);
               return (
                 // ⛔ NO `data-row-id` WRAPPER HERE, AND THAT IS CHECKED RATHER THAN ASSUMED:
                 //    `market-card.tsx:509` already emits `data-row-id={id}` on the card's own

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Chip } from "@/components/ui/chip";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import type { Dict, Locale } from "@/lib/i18n-dict";
 import { sideWord } from "@/lib/side-label";
 // ⛔ NEVER THE RAW SERVER STRING. `docs/FAILURE-INVENTORY.md` §1.5 counts twelve surfaces
 // that put `r.error` — English audit prose — in front of the player, and §1.6 records what
@@ -23,23 +24,24 @@ import { haptics } from "@/lib/haptics";
 import { Avatar } from "@/components/ui/avatar";
 import { postCommentAction, reportCommentAction, deleteCommentAction } from "@/app/markets/actions";
 import type { CommentView } from "@/lib/server/comments-store";
-import { formatDateShort } from "@/lib/utils";
+import { formatEatDate } from "@/lib/eat-day";
 
 // Mirror of the server cap (comments-store.COMMENT_MAX_LEN). Inlined so this
 // client component doesn't pull the server store chain into the browser bundle.
 const COMMENT_MAX_LEN = 500;
 
-function relTime(iso: string, nowLabel: string): string {
+function relTime(iso: string, t: Dict, locale: Locale): string {
   const ms = Date.now() - Date.parse(iso);
   const s = Math.floor(ms / 1000);
-  if (s < 45) return nowLabel;
+  if (s < 45) return t.common.now;
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d`;
-  return formatDateShort(iso);
+  // A week and older is a date, in the reader's month words (it was English "11 Jun" for every reader).
+  return formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale);
 }
 
 export function CommentsThread({
@@ -96,7 +98,7 @@ export function CommentsThread({
   const [body, setBody] = useState("");
   const [pending, startTransition] = useTransition();
   const { toast } = useToast();
-  const { t } = useT();
+  const { t, locale } = useT();
 
   const submit = () => {
     const text = body.trim();
@@ -299,7 +301,7 @@ export function CommentsThread({
                       {t.market.holds} {sideWord(t, c.side, "MARKET")}
                     </Chip>
                   )}
-                  <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt, t.common.now)}</span>
+                  <span className="font-mono text-[10.5px] text-text-subtle">{relTime(c.createdAt, t, locale)}</span>
                   {c.hidden ? (
                     <Chip variant="warning" size="sm">{t.market.commentHidden}</Chip>
                   ) : c.reports > 0 && !c.mine ? (

@@ -15,6 +15,8 @@
  * (`scripts/ops/marketing-live-switch.mts`, run through `railway run` on Ali's G1 delegation — Claude never signs in as
  * Ali or Jay) and, from U49s-2, the owner's card on Admin → System (`src/app/admin/system/actions.ts`, `requireOwner`
  * first). `test:marketing-settings` S7 pins that population, and the key's only writer is this file.
+ *   · ⛔ U33r · OPEN IS REFUSED (`referee_keys`) BEFORE ANYTHING IS READ while the fifth licence-outreach check is
+ *     outstanding — production's agent-referee backfill not yet recorded with nothing missing (`outreach-record.ts`).
  *   · OPEN reads first — never over an opening, never over a switch it cannot read — then ⛔ RECORDS FIRST: the
  *     COMPLIANCE row `marketing.live_switch_opening` (who, until when, through which door) is written and confirmed BEFORE
  *     the row exists, so there is no instant at which the switch can read open — on any container — without a record
@@ -70,6 +72,10 @@ import { hasDatabase, prisma } from "@/lib/server/prisma";
 import { audit } from "@/lib/server/audit";
 import type { SmsProviderResolution } from "@/lib/server/sms";
 import { LIVE_SWITCH_MAX_OPEN_MS, LIVE_SWITCH_MIN_OPEN_MS } from "@/lib/marketing/sms-settings";
+// U33r · the fifth licence-outreach check, asked by the switch-on too — one statement of whether every promised agent
+// referee has been keyed (`outreach-record.ts`), so neither door to a marketing send opens while it is outstanding.
+import { refereeKeysNow } from "@/lib/server/marketing/outreach-record";
+import type { RefereeKeysState } from "@/lib/marketing/outreach-open-checks";
 
 /** E13 · how long one opening may last (30 min – 24 h, 2 h unless chosen). The durations live in the PURE module so the
  *  owner's card offers exactly what this writer accepts; they are re-exported here for the ops door and the suite. */
@@ -183,6 +189,9 @@ export type LiveSwitchWriteDeps = {
   hasDatabase: () => boolean;
   /** The pause between attempts (a blip is usually over in a moment). */
   sleep: (ms: number) => Promise<void>;
+  /** U33r · the referee-key check's state (`refereeKeysNow`) — optional, so a stand-in that leaves it out asks the real
+   *  one: a missing member is never a passing check. */
+  refereeKeys?: () => RefereeKeysState;
 };
 
 /** The shipped deps — exported so the Postgres probe can drive the REAL writers with one fault planted. */
@@ -196,6 +205,7 @@ export const LIVE_SWITCH_WRITE_DEPS: Readonly<LiveSwitchWriteDeps> = Object.free
   now: () => Date.now(),
   hasDatabase,
   sleep: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+  refereeKeys: () => refereeKeysNow(),
 });
 
 /** How many times a rollback or a close tries before it says it could not confirm. */
@@ -204,7 +214,7 @@ const CONFIRM_PAUSE_MS = 250;
 
 /** Why a write was refused (and the close's two "nothing for me to do" answers). */
 export type LiveSwitchRefusal =
-  | "bad_duration" | "no_officer" | "bad_ops_text" | "no_database" | "already_open" | "cannot_read" | "record_failed"
+  | "bad_duration" | "no_officer" | "bad_ops_text" | "referee_keys" | "no_database" | "already_open" | "cannot_read" | "record_failed"
   | "changed_meanwhile" | "save_failed" | "not_open_after_save" | "audit_failed" | "other_open" | "unconfirmed_off"
   | "still_open_after_close" | "close_unconfirmed" | "reopened_meanwhile" | "already_closed";
 
@@ -228,6 +238,8 @@ export const LIVE_SWITCH_REFUSAL_SENTENCE: Readonly<Record<LiveSwitchRefusal, st
   no_officer: "Sign in again to switch marketing SMS on or off.",
   bad_ops_text:
     "Say who and why in plain words of at most 120 characters each — no phone number: no more than six digits across the two, so leave dates out.",
+  referee_keys:
+    "Marketing SMS can't be switched on yet: the agent referees named before their marketing exclusion existed haven't all been excluded (an engineering step) — it stays off.",
   no_database: "This server has no database, so the switch can't be stored (local development) — it stays off.",
   already_open: "Marketing SMS are already on — switch them off first if you want a different closing time.",
   cannot_read: "The switch couldn't be read just now, so nothing was changed — reload the page and try again.",
@@ -388,6 +400,11 @@ export async function openMarketingLiveSwitch(
   }
   const who = whoOf(i);
   if (!who.ok) return refuse(who.reason);
+  // ⛔ U33r · NOT WHILE A PROMISED REFEREE IS STILL A STRANGER TO THE GATE. The fifth licence-outreach check
+  // (`referee_keys`) — production's referee-key backfill recorded with nothing missing and nothing unreadable — is asked
+  // here too, before anything is read or written: a switch-on is a send to whoever the gate clears, and until the backfill
+  // every referee named before the exclusion existed is cleared like anybody else. Never on a guess: only "reconciled" passes.
+  if ((deps.refereeKeys ?? refereeKeysNow)() !== "reconciled") return refuse("referee_keys");
   // ⛔ With no database nothing can be stored and the read-back would answer "absent": said plainly, before anything runs.
   if (!deps.hasDatabase()) return refuse("no_database");
   // ⭐ READ FIRST: an opening is never laid over another, and a switch that cannot be read is never written over.

@@ -73,39 +73,62 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-08 ~14:35 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+**⏳ IN FLIGHT (updated 2026-10-08 ~20:30 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
 that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). Ali
 (2026-10-07/08): *"keep going … keep pushing live"*, *"we don't want to be idle"* — each piece goes live once its core is
 proven, the rest runs after it, anything found is fixed forward, and lock-free work fills every wait. Done: A8i-2 and
 A8j LIVE (above); **the S6 close-out's three owed items, all passing** (§0i "S6 STOPPED HERE"); QA Mobile 01 signs in on
 production again (its password reset through the console's own Reset password, with Ali's approval; the new one is in
 `F:\kipindi-main\.env.qa.local`). **WP12, the last S6 package, is LIVE: `17693fdc` (2026-10-08 08:28Z)** — §0i, with its
-proof: typecheck at three bases, every suite and red WP12 touches green, **parity: no served byte changes**, production
-`qa:live` 348/348 (its first signed-in run, as mobile01). **Turn A2 (WP12 + the `db:scratch` fix, 2026-10-08):** typecheck
-0; `test:all` 453/471 with **all 13 database suites green** in a junctioned worktree (0 postgres left over); every
-remaining failure also fails ALONE on main (18 suites, each run on both) — none is WP12's; the reds turn A failed or read
-DIRTY: the 16 DIRTY ones pass, the rest fail on main too or were repaired on main the same day. **Fixed on main for every
-lane, 2026-10-07/08** (each with its proof in the commit): `red:all`'s Windows timeout let a timed-out harness run on
-beside the next (`b2e9db81`); `db:scratch`'s sweep was blind to its own `io_worker` in a junctioned worktree and reached
-siblings' live clusters (`018e77e3`); eight red harnesses that proved nothing on main — `updown-digest`,
-`updown-chain-stats`, `updown-handover`, `updown-bet-feedback`, `updown-result-announce` (its stake plant had been
-unguarded: suite 3.4 now reads the win celebration), `decomment` (CRLF), `policy-lines` (L0 rotted with the RG
-re-version), `bar-geometry` (`5b89b32b`); `test:updown-digest`, `test:payout-view`, `test:updown-source-class` green again
-(stale pins, `5b89b32b` `bd7147eb`); three private comment strippers onto the shared one (`042b52e4`;
-`campaign-models`' moves with marketing's STEP 52); **a money guard that could not fail:** `test:programme-isolation`'s
-agent arm ran with the invite-rewards switch off, so an agent paid a first-bet prize would have read green — it now runs
-with the switch on and its red proves 3/3 (`b994ef03`). More of main's dead reds are being repaired (ai-cycles,
-cert-expiry, bonus-one-side, icon-sizes, tab-anchors, contrast). ⚠️ This session stopped overnight (the account's usage
-limit) while its read-back grabber held the lock, 2026-10-07 21:39Z – 10-08 08:33Z; marketing's turn waited. **Queued
-under the lock** (each turn stops if the one before did not end well): marketing's turn C, then B2 — the S6 v2 compare at
-WP12 (its first run's dev server did not start: Turbopack's Google-font fetch) and the header fit with its reds; C — the
-335 tiles (read one by one), the preview drive, the footer four ways; D — the landmark seal both ways, local `qa:live`,
-G1 and its prove-red; E — the A8j drive in WebKit; F — S7 WP0's reds and bar probe, and the A8i-2 drive under reduced
-motion; then S6 closes (§1, NEXT-PLAN) and S7 WP0 goes live. **S7 WP0 has started, by Ali's choice** (S7-PLAN's narrower
-overrule): branch `vodacom-s7` (`75f9cb99`, on main `f89dcdb9`): red:ticker-honesty's cases declared and judged by the
-whole check id, test:stacking's primer checks renumbered, and `red:ops-provision-staff`'s plants declared (main read 66
-against the red-anchors ceiling of 65 since `4bd4c728`; with both, 64 against 64). **If this session is gone:** WP12's run
-list is in its S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
+proof (parity: no served byte changes; production `qa:live` 348/348). **Its owed runs, 2026-10-08:** A2 — typecheck 0,
+`test:all` 453/471 with all 13 database suites green, every other failure main's own; B2 — **the S6 v2 compare: every
+difference in all 224 cells attributed, NO UNEXPECTED S6 DIFFERENCE**, the header fit 6/6 and its reds; C — 1643 checks
+and 333 of 335 tiles (two Up & Down tiles BLOCKED: no local price feed), the footer as designed; D — the landmark seal
+276 cells and `--journey` 504 cells, 0 problems; local `qa:live` 334/334; G1's prove-red caught; G — **the hydration
+fix in a real browser: on its parent 4 of 4 loads threw "Hydration failed" (en and sw, 390 and 1280), on the fix 4 of 4
+clean with the server's HTML stating "Chini 5 · Juu 120" as the browser does**, the tabs section 271/0 with 15.1 green,
+`qa:journey-preview` 33/33 twice (§5's one stop in C was the kit Modal taking focus back from a field already chosen, below — not a click before hydration, as this line first said; the drive's new wait for React is a precondition, not that stop's cause), G1
+14/14, the footer's journey control caught 5 — every WP12 owed run is now done except E, F and the production seal.
+**The 333 tiles were read one by one (eight readers) and every
+finding checked against the code — and against the pixels where a reader estimated a position** (one "capsule at the
+edge" measured fine). Real ones, fixed on branches and proved together in turn H before they go live: **the
+responsible-gambling page failed to hydrate on every load** (`2b98b99e`: the kit Field could not see its bounds through
+a lazy-wrapped child on the server; `test:ui-consistency` K3g + control K3h); **dates in English month words for sw and
+zh** on tickets, the market page and 15 more player surfaces (26 calls onto eat-day's localized formatters, which now
+read "—" for a missing instant instead of throwing a page);
+the frozen-wallet notice drawing no box; the rail's edge tab losing its focus ring off-screen (and `qa:journey-shell` §6
+now needs every ring on the screen — it had read PASS over it); the hub card's corner clipping its first row's ring; the
+Needle row a size small; wallet names broken across lines; the withdraw page's balance in the display face (§M4).
+**All of it is LIVE: `8e0f1e69`** (turn H: typecheck 0, `test:all` 467/474 with every failure main's own, local
+`qa:live` 334/334, 1645/0 over 333 tiles; production `qa:live` 343/343 as mobile01; the Swahili market page serves "Okt").
+E — the A8j drive in WebKit 15/15 (its Z reads only the WebKit dev server's chunk noise, which main reads too); F — S7
+WP0's reds 28/28 and 37/37, the bar probe clean, A8i-2 under reduced motion 24/24. **S7 WP0 is LIVE: `ce2c3afa`**
+(`test:red-anchors` 4865/0 on main). **Ali, 2026-10-08: "only perfect visual and logical results are accepted … visual
+perfection is above anything"** — so nothing the readers found is deferred: four helpers fix the rest (cards and
+filters, the hub and profile, tickets and empty states, the header and money pages), each finding measured first, then
+everything is re-tiled and read again until a read finds nothing; S6 closes after that pass (§0h point 64). **The pass so far, on branch `vodacom-visual` (on main `e16f9353`), each commit with its measurements and suites:** G1 — the featured card's top row in Swahili, Chinese titles that split "200 / 毫米" (`keepUnits`), the filter strips' fades, a divider stranded at a row's end, the Needle resting over text, a state pill 2px taller, the carousel caption cut; G4 — the money forms' extra 24px at the top (a hidden input without `hidden`), the legal nav's active label 2px off, a held wallet's figure gold in the journey's Wallet, the chat bubble on a notched iPhone's rail; G5 — **the owner's rule that the header's edge is the page's edge at every width**: the journey header pads 16 below 1024 and 32 from it, like every page (design call 10 and A5 amended; the least header slack is now 10.7px, sw at 320); `/`'s hero and bands follow in the journey only, by the shell's server-rendered mark, so classic viewers are served what they were; and **one logic bug the edge-scenario plan found: the journey's Wallet offered Weka pesa to a player on a break**, which `/wallet/deposit` refuses — it now offers Toa pesa alone. G2 (the hub and profile) and G3 (tickets and empty states) are still working. Then three lock turns on the combined branch: **M1** typecheck, `test:all` with the database suites, the journey header fit and its red, the landmark seal in both shells, needle-rest, the preview drive, local `qa:live`; **M2** the 335 journey tiles and the classic parity, a baseline at main against the branch; **M3** 532 edge-scenario tiles (a break, self-exclusion, a 40-character name, the longest title, slow 3G, not-found, odd viewports, 130% text, offline, TZS 0). Every tile is read and measured before anything goes live. The drives
+found one more real bug: the kit Modal took focus back from a field already chosen in the dialog (the preview link's
+reason typed into its label, 2 of 3 runs) — **LIVE: `e16f9353`** (turn L: the preview drive 33/33 three times with the button armed after the fills each time, `qa:enter-where-pressed` 24/0 in Chromium — WebKit's only failure its dev server's HMR chunk, as on main — and `qa:implicit-submit` 15/0). Held for S12 (§0h point 3, a
+live-word correction): Swahili "masaa 1 yamebaki" → "saa 1 imebaki" (S4-COPY-AUDIT, `bb9c951d`; branch
+`vodacom-s12-timeleft`, `1468d7cc`). **Fixed on main for every lane, 2026-10-07/08** (each with its proof in the commit): `red:all`'s Windows
+timeout (`b2e9db81`); `db:scratch`'s sweep in a junctioned worktree (`018e77e3`); eight dead red harnesses
+(`5b89b32b`); stale pins (`5b89b32b` `bd7147eb`); three private comment strippers (`042b52e4`); **a money guard that
+could not fail** — `test:programme-isolation`'s agent arm (`b994ef03`); ai-cycles, cert-expiry, bonus-one-side,
+icon-sizes, tab-anchors, margin-series, admin-charts, contrast, tap-target; **`test:live-target-safe`: nine scripts
+defaulted to production — two sign in as the QA player** (`51aae5a9`); the five `red:social-*` harnesses' inverted exit
+codes and `test:stacking` 6.1 (`dfd0072e`); eyebrow-roles, holder-lifecycle and most of orphans (`b1dec89b`);
+**`test:failure-reasons`: the agent application's referee refusals now read in the applicant's language** (`a042dc65`,
+live; its new Swahili line signed off in S4-COPY-AUDIT item 5); `test:kyc-copy-truth` (`318b8881`);
+`test:type-scale` (`6e4d4f0a`: 28 small-text sites recorded as a work order). ⚠️ This session stopped overnight (the account's usage limit) while its read-back grabber held the lock,
+2026-10-07 21:39Z – 10-08 08:33Z; marketing's turn waited. **Queued under the lock** (each turn stops if the one before
+did not end well): I — S7 WP1's calibration, running (parity v3 `--prove-red` 114/122: the ticker strip moved between
+two captures of one cell — frozen for the capture in `9bcb22f7`; then the baseline and a null compare, the
+served-skeleton null pair, the first-load build); then the visual pass's M1–M3 (above), then I2, WP1's second
+calibration on `9bcb22f7`. **S7 WP1 is written**
+(branch `vodacom-s7-wp1`: parity v3 with the classic bodies, and A9's three tools — `qa:served-skeleton`,
+`qa:first-load`, `qa:chunks-prod`, which reads production 6/6 PASS; each self-test green and shown to fail when broken);
+it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **If this session is gone:** WP12's run list is in its
+S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
 **Next:** (1) S6 — WP12 is LIVE (`17693fdc`, §0i); its remaining runs (§0 IN FLIGHT) close S6, then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
@@ -1342,11 +1365,22 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   `--prove-red` exit 0, a null compare 39/39), **the compare at the tip 39/39: no served byte changes**. **Production:**
   `dpl=17693fdc` on www.50pick.tz and 50pick.tz from 08:31:31Z, `/api/health` 200 on both, and `qa:live` — its first
   signed-in run, as mobile01 through the real form — **348/348** (the shell-visible control is officer-only on
-  production: decision 7). **Owed, queued (§0 IN FLIGHT):** the v2 compare at main (its first run's dev server did not
-  start: Turbopack's Google-font fetch), the header fit and its reds, the 335 tiles read one by one, the preview drive,
-  the footer four ways, the landmark seal both ways, local `qa:live`, G1 and its prove-red, the A8j drive in WebKit,
-  the A8i-2 drive under reduced motion; a production landmark seal (decision 7, an Owner's link); the bell's stale clause
-  (S15). DESIGN_AUTHORITY rule 8c's "first run … owed" clause goes once G1 is green.
+  production: decision 7). **The owed runs, 2026-10-08 on OMEGA-COMPILE01:** A2 — typecheck 0, `test:all` 453/471
+  with all 13 database suites green, every other failure also failing alone on main; B2 — **the v2 compare at main:**
+  against `parity-v2-7c859cdf-omega.json` (the v2 baseline re-captured at `7c859cdf` on this PC, its `--prove-red` and
+  a null compare clean), A18 refused the base (eight merges from other lanes since `7c859cdf`); with `--allow-base`
+  37/38 — 4.1's 224 cells differ, and every difference is attributed: the rail reserve (S6 WP11's own,
+  `footer-rail-h`), the helpline gone (`0652f61f`) and the email bar gone (`012cccbc`), both the owner's rulings, and an
+  invisible Suspense marker before the guest sign-in link (`791afa8d`) — **no unexpected S6 difference**; 4.2–4.6 and
+  every Sell expectation pass; the header fit 6/6 over 66 cells, its two reds caught; C — `qa:journey-shell` 1643 checks
+  and 333 of 335 tiles (the two Up & Down round tiles BLOCKED: this PC's price feed published no open price), every
+  tile read (§0h point 64), `qa:footer-reachable` four ways as designed (102/102 and 108/108, both controls caught 5);
+  D — `qa:landmark-seal` 276 cells and `--journey` 504, 0 problems; local `qa:live` 334/334; G1's `--prove-red`
+  caught; G — G1 14/14; `qa:journey-preview` 33/33 twice (C's one stop at §5 was a click before hydration: the drive
+  now waits for React); E — the A8j drive in WebKit, all 15 of its checks, its Z reading only the WebKit dev server's lazy-chunk failure (the Needle's chunk, and WebKit's "access control" fetch message), which the same drive reads on unmodified main `586c5183` too; F — S7 WP0's reds on its tip (`red:ticker-honesty` alone 28/28, `red:simple-journey-flag` 37/37), the bar probe (no problems, en and zh at 390), and the A8i-2 drive under reduced motion 24/24. The tiles' findings were fixed and are LIVE `8e0f1e69` (§0h point 64), proved
+  as one branch: typecheck 0, `test:all` 467/474 (every failure run alone on both trees: main's own), local `qa:live` 334/334 and
+  `qa:journey-shell` 1645/0 over 333 tiles (turn H/H2), then production `qa:live` 343/343 as mobile01 after the deploy. DESIGN_AUTHORITY rule 8c's owed clause is gone (G1 green). **Still owed:** a production landmark
+  seal (decision 7, an Owner's link); the bell's stale clause (S15).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1966,6 +2000,29 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     (c) Two WP12 pieces were stale against the ruling of 2026-10-07 and were fixed before their runs: the tile drive's
     §12 (its classic control expected the deleted email bar) and the shortfall test's header (a 300 shortfall offering
     [500, …], "the code comes first").
+64. **WP12's 333 tiles, read one by one — what they found and what was done (S6 WP12, for every player).** Eight
+    readers opened every tile; each finding was checked against the code, and against the pixels where a reader had
+    estimated a position. Fixed, LIVE `8e0f1e69`: (a) `/profile/responsible-gambling` failed to hydrate on every load, in
+    English and Swahili, in all three engines — the kit Field read its bounds from a child that the server's Flight
+    client handed over inside a lazy wrapper, so the server's HTML had no "Min 5 · Max 120" where the browser's did (in
+    a real browser, on the parent 4 of 4 loads failed; on the fix 4 of 4 clean); (b) dates in English month words for
+    Swahili and Chinese readers on 17 player surfaces — 26 calls onto eat-day's localized formatters, which now read
+    "—" for a missing instant instead of throwing the page. It ships now, not with S12: it shows the dictionary's own
+    month words (point 3 holds back corrections to written words); (c) six visual items — the frozen-wallet notice drew
+    no box, the rail's edge tab lost its focus ring off-screen (and `qa:journey-shell` §6 now requires every ring on the
+    screen: it had read PASS over this one), the hub card clipped its first row's ring at the corners, the Needle row
+    sat a size small, wallet names broke across lines, and the withdraw balance was set in the display face (§M4).
+    Held for S12 under point 3: Swahili "masaa 1 yamebaki" → "saa 1 imebaki" (S4-COPY-AUDIT; branch
+    `vodacom-s12-timeleft`). Checked and not bugs: a held capsule "at the edge" (measured at x=373, as every capsule),
+    a player's empty Matokeo (the archive's designed five-minute cache), the Needle's places and stand-downs. **Everything
+    else the readers found is being fixed, not deferred** — the owner's rule of 2026-10-08: *"only perfect visual and
+    logical results are accepted … visual perfection is above anything"*: the featured card's top row in Swahili, the
+    hub's INAKUJA row and the guest Msaada line, the two-column hub's bands, the channels panel's ×, the ticket payout
+    cell, empty-state and title orphans, CJK breaks, clipped filter rows, the header's gutter at 320, the money pages'
+    blank space, the chat bubble's reach, and the rest (four groups, one branch each), then re-tiled and read again
+    until a read finds nothing. One more real bug the drives found: the kit Modal's opening took focus back from a
+    field already chosen in the dialog (qa:journey-preview §5, 2 of 3 runs) — fixed on `vodacom-modal-focus`. S6
+    closes after the pass.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

@@ -31,7 +31,8 @@ import {
   sortAttestations,
   type AttestationRow,
 } from "@/lib/fairness/attestations";
-import { formatDateTimeSafe, fill } from "@/lib/utils";
+import { fill } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { durationHours } from "@/lib/duration-phrase";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -90,7 +91,6 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
   );
 }
 
-const fmtTime = (iso: string | null) => formatDateTimeSafe(iso);
 
 export default async function FairnessPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, locale } = await getServerT();
@@ -375,7 +375,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                         <span>{signoffWord(t.common, m.signoff ?? "one")}</span>
                       </div>
                     </td>
-                    <td role="cell" data-th={t.common.thResolved} className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">{fmtTime(m.resolvedAtMs ? new Date(m.resolvedAtMs).toISOString() : null)}</td>
+                    <td role="cell" data-th={t.common.thResolved} className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">{formatEatDateTime(m.resolvedAtMs ? m.resolvedAtMs : Number.NaN, Date.now(), t.common.monthsShort, locale)}</td>
                     <td role="cell" data-th={t.common.thSource} className="p-3">
                       <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-brand-300 hover:text-brand-200 underline">
                         {t.common.thSource}

@@ -20,7 +20,9 @@
  * its own exact post-close figure.
  * ⛔ THE STATE'S COLOUR IS `positionStatusChip`, the one rule the classic position card calls too.
  * ⛔ EVERY DATE IS FORMATTED HERE, ON THE SERVER, FROM ITS INSTANT, and each sits in a `<time>` naming that instant
- * (`test:timer-date` §3); `formatDeadline` adds the year only when the instant is not in this year.
+ * (`test:timer-date` §3): `formatEatDateTime`, in the reader's month words and the East Africa clock, with the year only
+ * when the instant is not in this EAT year (Chinese always carries it). `formatDeadline` printed English months in every
+ * locale ("Imewekwa 8 Oct, 15:18", §L4).
  * ⛔ THE FREE-SELL INSTANT IS THE SERVER'S (A8): `freeExitEndsAt`, asked about this bet's own placement and the market
  * as read, and bound once. The Sell button counts down to it and, in the journey's look (WP10), names it as a clock time:
  * `formatClock` of that same binding, read here on the server in the platform's zone — never the placement plus a grace
@@ -41,7 +43,8 @@ import { SellButton } from "@/components/markets/sell-button";
 import { cardTitle } from "@/lib/markets/short-title";
 import { positionStatusWord, sideWord } from "@/lib/side-label";
 import { positionStatusChip } from "@/lib/status-tone";
-import { formatClock, formatDeadline, formatTzs } from "@/lib/utils";
+import { formatClock, formatTzs } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { freeExitEndsAt, isSelectionClosed, type StoredPosition } from "@/lib/server/market-service";
 import type { PositionCardMarket } from "@/lib/server/market-dal";
 import type { Dict, Locale } from "@/lib/i18n-dict";
@@ -103,7 +106,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
         <p className="flex items-center gap-1.5 break-all font-mono"><I.ticket s={14} className="shrink-0" />{p.id}</p>
         <p className="flex items-center gap-1.5">
           <I.clock s={14} className="shrink-0" />
-          <span>{placedBefore}<time dateTime={p.placedAt} className="whitespace-nowrap tabular-nums">{formatDeadline(p.placedAt, serverNow)}</time>{placedAfter}</span>
+          <span>{placedBefore}<time dateTime={p.placedAt} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(p.placedAt), serverNow, t.common.monthsShort, locale)}</time>{placedAfter}</span>
         </p>
         {open && (
           <p className="flex items-center gap-1.5">
@@ -111,7 +114,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
             {closed ? (
               <span>{t.positions.selectionClosed}</span>
             ) : (
-              <span>{t.positions.selectionCloses}{" "}<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatDeadline(cutoffIso, serverNow)}</time></span>
+              <span>{t.positions.selectionCloses}{" "}<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)}</time></span>
             )}
           </p>
         )}

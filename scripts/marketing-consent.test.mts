@@ -51,6 +51,11 @@ import { decomment } from "./lib/decomment.mts";
 import { REAL_BASIS, assertConsentBasis, basisModel, basisCases } from "./marketing-consent/consent-basis.mts";
 // U33a-G · the licence decision table, run over one seeded world with the record closed and open.
 import { REAL_LICENCE, assertLicenceBasis, licenceGateWithDefect, licenceCases } from "./marketing-consent/licence-basis.mts";
+// U33r · the referee keys: the REAL writer seeds the switch's referee rows, and the section that holds the writer, the
+// erasure and the backfill to the promise.
+import { recordRefereeKeys } from "../src/lib/server/marketing/referee-exclusion.ts";
+import { withLock } from "../src/lib/server/locks.ts";
+import { REAL_REFEREE, assertRefereeExclusion, refereeCases } from "./marketing-consent/referee-exclusion.mts";
 // U43b-2 · the contract's SECOND DRIVER — the campaign engine over real recipient rows (ENGINE-SPEC §4.13 decision 4).
 import { runCampaignSlice } from "../src/lib/server/marketing/engine.ts";
 import type { EngineDeps, SliceStepResult } from "../src/lib/server/marketing/engine.ts";
@@ -1580,8 +1585,105 @@ async function runToggleAssertions(impl: ToggleImpl, run: number, tag: string): 
   const o6state = await impl.state(await user(o6.id));
   ok(p("T-O6 · ⚠️ CONTROL — the CONSENT path is unchanged: an OPERATOR stop leaves a consenting player's switch ON, exactly as before U33a-P (the platform's decision is not the player's consent)"),
     o6state.on === true && o6state.outreach === false, JSON.stringify(o6state));
+
+  // ── T-O7 · ⭐ Q9 REVERSED — the LAPSE reads ON while the record is open (the gate reaches it), OFF while it is closed ──
+  const o7 = await mkNever(7);
+  await Promise.resolve(db.messagingConsent.create({
+    id: `tgol${run}-7`, channel: "SMS", identifier: o7.msisdn, category: "MARKETING", status: "GIVEN", source: "REGISTRATION",
+    wording: PINNED_SW, locale: "SW", evidence: "fixture", recordedBy: null, createdAt: "2024-06-01T00:00:00.000Z",
+  }));
   setRecord(false);
+  const o7closed = await impl.state(await user(o7.id));
+  setRecord(true);
+  const o7open = await impl.state(await user(o7.id));
+  const r7 = await impl.choose({ userId: o7.id, marketingOptIn: false, locale: "SW" });
+  const o7row = await Promise.resolve(db.messagingConsent.latestFor(o7.key));
+  const o7after = await impl.state(await user(o7.id));
+  ok(p(T_O7),
+    !o7closed.on && o7open.on && o7open.outreach && r7.ok && o7row?.status === "WITHDRAWN" && o7row.source === "PROFILE" && !o7after.on,
+    `closed ${JSON.stringify(o7closed)} · open ${JSON.stringify(o7open)} · tap OFF → ${o7row?.status}/${o7row?.source} · after ${o7after.on}`);
+
+  // ── T-O8 · U33r — a promised referee's switch reads OFF and LOCKED, for every player, consenting or not (the review) ──
+  const o8 = await mkNever(8);
+  const o8c = await mkp(56); // ⛔ not 48: mkNever(8) above holds phoneFor(run, 48)
+  await recordRefereeKeys({ contacts: [`+${o8.msisdn}`, `0${o8c.msisdn.slice(3)}`], namedAt: "2026-09-08T10:00:00.000Z" });
+  const o8state = await impl.state(await user(o8.id));
+  const o8consenting = await impl.state(await user(o8c.id));
+  const o8gate = [await gateSays(o8.msisdn), await gateSays(o8c.msisdn)];
+  ok(p(T_O8),
+    o8gate.every((g) => g === "agent_referee") && !o8state.on && o8state.referee === true && !o8state.outreach
+      && !o8consenting.on && o8consenting.referee === true && !o8consenting.outreach,
+    `gate ${o8gate.join("/")} · never asked ${JSON.stringify(o8state)} · consenting ${JSON.stringify(o8consenting)}`);
+  // ── T-O8b · as D4b: an ON from a referee's number writes NOTHING and says why; an OFF is still recorded ──
+  const rowsO8 = async (k: typeof o8.key) => (await Promise.resolve(db.messagingConsent.listFor(k))).length;
+  const before8b = await rowsO8(o8.key);
+  const r8b = await impl.choose({ userId: o8.id, marketingOptIn: true, locale: "SW" });
+  const after8b = await rowsO8(o8.key);
+  const flag8b = (await user(o8.id)).marketingOptIn;
+  const r8off = await impl.choose({ userId: o8c.id, marketingOptIn: false, locale: "SW" });
+  const o8cRow = await Promise.resolve(db.messagingConsent.latestFor(o8c.key));
+  ok(p(T_O8B),
+    !r8b.ok && r8b.referee === true && !r8b.changed && r8b.on === false && after8b === before8b && flag8b === false
+      && r8off.changed === true && o8cRow?.status === "WITHDRAWN" && (await user(o8c.id)).marketingOptIn === false,
+    `ON ${JSON.stringify(r8b)} · rows ${before8b} → ${after8b} · flag ${flag8b} · OFF ${JSON.stringify(r8off)} → ${o8cRow?.status}`);
+
+  // ── T-O9 · MAJOR-3 — an OFF whose WITHDRAWN row does not land changes NOTHING, and says so — closed, then open ──
+  const o9 = await mkp(57);
+  setRecord(false);
+  const ledger9 = db.messagingConsent as unknown as { create: (...a: unknown[]) => unknown };
+  const realCreate9 = ledger9.create;
+  let rO9: PlayerMarketingChoice | null = null;
+  ledger9.create = () => { throw new Error("fixture: the ledger refused the row"); };
+  try { rO9 = await impl.choose({ userId: o9.id, marketingOptIn: false, locale: "SW" }); } finally { ledger9.create = realCreate9; }
+  const o9user = await user(o9.id);
+  const o9row = await Promise.resolve(db.messagingConsent.latestFor(o9.key));
+  const o9closed = await impl.state(o9user);
+  setRecord(true);
+  const o9open = await impl.state(await user(o9.id));
+  const o9gate = await mayReceiveMarketingSms(o9.msisdn);
+  ok(p(T_O9),
+    rO9 !== null && rO9.ok === false && rO9.changed === false && rO9.on === true && o9user.marketingOptIn === true && o9row?.status === "GIVEN"
+      && o9closed.on === true && o9open.on === true && o9open.outreach === false && o9gate.ok === true && o9gate.basis === "CONSENT",
+    `answer ${JSON.stringify(rO9)} · flag ${o9user.marketingOptIn} · latest ${o9row?.status} · closed ${JSON.stringify(o9closed)} · open ${JSON.stringify(o9open)} · gate ${o9gate.ok ? o9gate.basis : o9gate.skipReason}`);
+  setRecord(false);
+
+  // ── T-O10 · the re-review's MINOR-2 — an OFF and an ON in flight TOGETHER, both orders: the LAST decision wins ──
+  // From a switch reading OFF over a "yes" in the old wording with the flag still on — the state where both taps write.
+  const o10: string[] = [];
+  let o10ok = true;
+  for (const [n, order] of [[58, "OFF,ON"], [59, "ON,OFF"]] as const) {
+    const c = await mkp(n, {}, undefined, OLD_SIGNUP_SW);
+    setRecord(false);
+    const startC = await impl.state(await user(c.id));
+    const off = () => impl.choose({ userId: c.id, marketingOptIn: false, locale: "SW" });
+    const on = () => impl.choose({ userId: c.id, marketingOptIn: true, locale: "SW" });
+    const answers = order === "OFF,ON" ? await Promise.all([off(), on()]) : await Promise.all([on(), off()]);
+    const lastOn = order === "OFF,ON";
+    const cu = await user(c.id);
+    const latest = await Promise.resolve(db.messagingConsent.latestFor(c.key));
+    const closedC = await impl.state(cu);
+    setRecord(true);
+    const openC = await impl.state(cu);
+    const gateC = await mayReceiveMarketingSms(c.msisdn);
+    setRecord(false);
+    const ledgerAgrees = (cu.marketingOptIn === true) === (latest?.status === "GIVEN");
+    const lastWins = lastOn
+      ? cu.marketingOptIn === true && latest?.status === "GIVEN" && latest.source === "PROFILE" && closedC.on && openC.on && !openC.outreach
+        && gateC.ok && gateC.basis === "CONSENT" && answers[1].ok && answers[1].on === true
+      : cu.marketingOptIn === false && latest?.status === "WITHDRAWN" && latest.source === "PROFILE" && !closedC.on && !openC.on
+        && !gateC.ok && answers[1].ok && answers[1].on === false;
+    const fine = startC.on === false && ledgerAgrees && lastWins;
+    o10ok = o10ok && fine;
+    o10.push(`${order}: start ${startC.on} · answers ${JSON.stringify(answers)} · flag ${cu.marketingOptIn} · latest ${latest?.status}/${latest?.source} · switch closed ${closedC.on} open ${openC.on}${openC.outreach ? "/outreach" : ""} · gate open ${gateC.ok ? gateC.basis : gateC.skipReason}`);
+  }
+  ok(p(T_O10), o10ok, o10.join(" || "));
 }
+/** U33r / Q9 · the two switch rows the final rule adds — named once, so each red case expects exactly what the run says. */
+const T_O7 = "T-O7 · ⭐ Q9 REVERSED · a player switched off by the two-year LAPSE (the flag cleared, the latest row still GIVEN) reads OFF while the record is CLOSED and ON with outreach:true once it is OPEN — the gate reaches them — and an OFF tapped there records their stop (a WITHDRAWN PROFILE row) and reads OFF after";
+const T_O8 = "T-O8 · ⛔ U33r · a promised agent referee's switch reads OFF and LOCKED (referee:true) for every player — never asked, or CONSENTING — because the gate refuses agent_referee before any basis: the switch never says offers reach them";
+const T_O8B = "T-O8b · ⛔ U33r · as D4b, an ON tapped from a promised referee's number writes NOTHING and answers referee (no GIVEN that can never act, no flag set) — and an OFF is still recorded, a no is never refused";
+const T_O10 = "T-O10 · ⛔ MINOR-2 · an OFF and an ON tapped TOGETHER (two tabs, a double tap) are decided ONE AT A TIME, in both orders: the LAST decision wins and the ledger agrees with the flag — never a cleared flag over a latest GIVEN, the lapse the open record reaches on the licence after the player said no";
+const T_O9 = "T-O9 · ⛔ MAJOR-3 · an OFF whose WITHDRAWN row does not land changes NOTHING and SAYS SO — ok:false, the flag and the latest GIVEN left as they were, the switch reading ON with the record closed — so when the record opens the player is reached on their own CONSENT, never on the licence behind a switch that told them it was OFF";
 
 /* ══ THE CONSENT CARD — what the player SEES when a save fails, a read fails, or a break is running ══════
  * Source-level (a client component needs a browser), each rule read where it lives, each with a red plant
@@ -1592,9 +1694,9 @@ const REAL_CARD: CardSources = {
   card: readSrc("src/app/profile/notifications/marketing-consent.tsx"),
   action: readSrc("src/app/profile/notifications/actions.ts"),
   page: readSrc("src/app/profile/notifications/page.tsx"),
-  lines: [dict.en, dict.sw, dict.zh].flatMap((d) => [d.push.marketingPaused, d.push.marketingHeld, d.push.marketingHeldNoDate]),
+  lines: [dict.en, dict.sw, dict.zh].flatMap((d) => [d.push.marketingPaused, d.push.marketingHeld, d.push.marketingHeldNoDate, d.push.marketingReferee]),
   // consent-02 · the zh lines this page renders `break-keep` — each must carry its own phrase breaks.
-  zhKeep: [dict.zh.push.marketingPaused, dict.zh.push.marketingHeld, dict.zh.push.marketingHeldNoDate, dict.zh.push.marketingUnavailable, dict.zh.watchlist.alertsHint],
+  zhKeep: [dict.zh.push.marketingPaused, dict.zh.push.marketingHeld, dict.zh.push.marketingHeldNoDate, dict.zh.push.marketingUnavailable, dict.zh.watchlist.alertsHint, dict.zh.push.marketingReferee],
 };
 /** A call to switch gambling offers back on, or a word saying the setting will resume by itself. */
 const NUDGE = /Switch it on to|opt in again|Paused|Iwashe|ukubali tena|Imesitishwa|开启即表示|已暂停/i;
@@ -1611,8 +1713,8 @@ const longestKeepRun = (line: string): string =>
 
 function assertConsentCard(s: CardSources, tag: string): void {
   const p = (n: string) => `${tag}${n}`;
-  ok(p("C0 · ⚠️ CONTROL — the card, its action and its page were read, and the nine RG lines exist"),
-    s.card.length > 1_000 && s.action.length > 500 && s.page.length > 1_000 && s.lines.length === 9 && s.lines.every((l) => l.length > 20),
+  ok(p("C0 · ⚠️ CONTROL — the card, its action and its page were read, and the twelve lines exist (the RG nine and U33r's referee three)"),
+    s.card.length > 1_000 && s.action.length > 500 && s.page.length > 1_000 && s.lines.length === 12 && s.lines.every((l) => l.length > 20),
     `${s.card.length}/${s.action.length}/${s.page.length} chars · ${s.lines.length} lines`);
   ok(p("C1 · ⭐ the consent sentence is ALWAYS on screen — a failure never replaces it (the retry is tapped beside the sentence the ledger records as shown)"),
     /<p className="[^"]*">\{t\.push\.marketingBody\}<\/p>/.test(s.card) && !/t\.error\.somethingDidntWork/.test(s.card));
@@ -1646,9 +1748,16 @@ function assertConsentCard(s: CardSources, tag: string): void {
       && /<p className="[^"]*\bbreak-keep \[overflow-wrap:anywhere\][^"]*">\{t\.watchlist\.alertsHint\}<\/p>/.test(s.page));
   const runs = s.zhKeep.map(longestKeepRun);
   ok(p(`C11 · consent-02 · every zh line rendered break-keep carries its phrase breaks — no unbreakable run over ${KEEP_MAX} glyphs (the 360 column holds ~13)`),
-    s.zhKeep.length === 5 && s.zhKeep.every((l) => l.includes(ZWSP)) && runs.every((r) => hanCount(r) <= KEEP_MAX),
+    s.zhKeep.length === 6 && s.zhKeep.every((l) => l.includes(ZWSP)) && runs.every((r) => hanCount(r) <= KEEP_MAX),
     runs.map((r) => `${hanCount(r)}:${r}`).join(" · "));
+  ok(p(C12),
+    s.page.includes("held={marketing.held || marketing.referee}") && s.page.includes("referee={marketing.referee}")
+      && s.card.includes("{referee ? t.push.marketingReferee") && s.card.includes('r.reason === "referee" ? t.push.marketingReferee')
+      && s.card.includes('r.reason === "held" || r.reason === "referee"')
+      && s.action.includes('reason: r.held ? "held" : r.referee ? "referee" : "error"'));
 }
+/** U33r · the card row the review added — named once, so its red case expects exactly what the run says. */
+const C12 = "C12 · ⛔ U33r · a promised referee's switch is LOCKED like a hold and SAYS WHY, for good — the page passes the lock and the reason, the held note shows the referee line, and a refused ON is told as referee and re-read, never as 'try again'";
 
 /* ══ consent-01 · THE HELD DATE, EXECUTED — the formatter the page calls, on a fixed clock ══════════════════ */
 type HeldFmt = (iso: string, locale: "en" | "sw" | "zh", nowMs: number) => string | null;
@@ -1686,6 +1795,14 @@ type ToggleDefect = {
   outreachOverStop?: boolean;   // an outreach ON survives an active OPERATOR stop (the switch lies about the gate)
   outreachWhileClosed?: boolean; // outreach ON although the licence record is closed
   outreachWritesGiven?: boolean; // "nothing to do" writes a GIVEN anyway — a consent invented from a tap
+  // ── the owner's FINAL rule (2026-10-07) ──
+  lapseReadsOff?: boolean;      // Q9 un-reversed on the switch: a lapsed player reads OFF while the gate reaches them
+  refereeReadsOn?: boolean;     // U33r · the switch ignores the promise: a referee reads ON while the gate refuses
+  // ── the U33r review (2026-10-07) ──
+  refereeWritesGiven?: boolean; // an ON from a referee's number is written as a GIVEN that can never act
+  offClearsFirst?: boolean;     // MAJOR-3 undone: the flag cleared first, the WITHDRAWN row after, the answer read off the flag
+  // ── the U33r re-review (2026-10-07) ──
+  noLock?: boolean;             // MINOR-2 undone: no per-account lock, so two taps in flight read the same switch and interleave
 };
 /**
  * ⛔ `liftsAnyReason` IS PLANTED ACROSS BOTH LAYERS (2026-09-27). The store's own `suppression.lift` now refuses
@@ -1714,9 +1831,20 @@ function toggleModel(d: ToggleDefect): ToggleImpl {
         return { on: true, paused: false, held: false, heldUntil: null, outreach: true };
       }
     }
+    // U33r · the promise ignored: a referee's switch reads as though no key were held — ON, on whichever basis.
+    if (d.refereeReadsOn && s.referee) return { ...s, referee: false, on: true, outreach: u.marketingOptIn !== true };
+    /* The final rule's lapse plant acts only on the licence path (a player who never consented), so the consent path's
+       own assertions stay green and the plant turns red the line that names it. */
+    if (d.lapseReadsOff && u.marketingOptIn !== true) {
+      const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
+      const latest = await Promise.resolve(db.messagingConsent.latestFor(key));
+      if (d.lapseReadsOff && s.on && s.outreach && latest?.status === "GIVEN") {
+        return { on: false, paused: false, held: false, heldUntil: null, outreach: false };
+      }
+    }
     return d.heldReadsOn && s.held ? { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null, outreach: false } : s;
   };
-  const choose: ToggleImpl["choose"] = async ({ userId, marketingOptIn, locale }) => {
+  const decide: ToggleImpl["choose"] = async ({ userId, marketingOptIn, locale }) => {
     const want = marketingOptIn === true;
     let liftedStop = false;
     let changed = false;
@@ -1724,9 +1852,19 @@ function toggleModel(d: ToggleDefect): ToggleImpl {
       const u = (await Promise.resolve(db.user.findById(userId))) as StoredUser;
       const before = await state(u);
       if (want && before.held && !d.heldWrites) return { ok: false, on: false, changed, liftedStop, held: true };
+      if (want && before.referee && !d.refereeWritesGiven) return { ok: false, on: false, changed, liftedStop, referee: true };
       const nothing = d.booleanOnlyWrite ? u.marketingOptIn === want : (want ? before.on : (!before.on && u.marketingOptIn !== true));
       if (nothing && !(d.outreachWritesGiven && want)) return { ok: true, on: want, changed, liftedStop };
       const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
+      if (!want && !d.offClearsFirst) {
+        // MAJOR-3 · the "no" recorded FIRST; the flag cleared only once it has landed; a row that did not land changes nothing.
+        const withdrawn = await appendMarketingConsent({ phoneE164: u.phoneE164, locale, status: "WITHDRAWN", source: "PROFILE", site: "PROFILE", evidence: "/profile/notifications", recordedBy: null });
+        if (!withdrawn) return { ok: false, on: (await state(u)).on, changed, liftedStop };
+        changed = true;
+        if (u.marketingOptIn !== false) await Promise.resolve(db.user.update(u.id, { marketingOptIn: false }));
+        const afterOff = await state({ ...u, marketingOptIn: false });
+        return { ok: afterOff.on === false, on: afterOff.on, changed, liftedStop };
+      }
       if (want && !d.noLift) {
         const stop = await Promise.resolve(db.suppression.find(key));
         if (stop && (d.liftsAnyReason || isPersonCreatedSuppression(stop.reason))) {
@@ -1750,6 +1888,9 @@ function toggleModel(d: ToggleDefect): ToggleImpl {
       return { ok: on === want, on, changed, liftedStop };
     }
   };
+  // MINOR-2 · one decision at a time per account, under the shipped writer's own key — unless the plant takes the lock away.
+  const choose: ToggleImpl["choose"] = (input) =>
+    d.noLock ? decide(input) : withLock(`marketing-choice:${input.userId}`, () => decide(input));
   return { choose, state };
 }
 
@@ -1774,6 +1915,8 @@ if (!PROVE_RED) {
   assertConsentBasis(REAL_BASIS, "", ok);
   console.log("\n── U33a-G · the licence decision table (§3.2), executed with the record CLOSED and OPEN\n");
   await assertLicenceBasis(REAL_LICENCE, "", ok);
+  console.log("\n── U33r · the agent-referee exclusion, written — the reader, the key, setReferees, the erasure, the backfill, the loop\n");
+  await assertRefereeExclusion(REAL_REFEREE, 0, "", ok);
   console.log(`\nmarketing-consent: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;
 } else {
@@ -2111,6 +2254,31 @@ if (!PROVE_RED) {
 
   const TOGGLE_CASES: Array<{ name: string; defect: ToggleDefect; expect: string }> = [
     {
+      name: "⛔ Q9 un-reversed on the switch — a lapsed player reads OFF while the open record reaches them",
+      defect: { lapseReadsOff: true },
+      expect: T_O7,
+    },
+    {
+      name: "U33r · the switch ignores the referee promise — it reads ON while the gate refuses agent_referee",
+      defect: { refereeReadsOn: true },
+      expect: T_O8,
+    },
+    {
+      name: "U33r · an ON from a referee's number written as a GIVEN that can never act (no refusal, as D4b's was missing)",
+      defect: { refereeWritesGiven: true },
+      expect: T_O8B,
+    },
+    {
+      name: "⛔ MAJOR-3 undone — the flag cleared first and the answer read off it: a failed WITHDRAWN row is told 'turned off', and an open record then reaches the player on the licence",
+      defect: { offClearsFirst: true },
+      expect: T_O9,
+    },
+    {
+      name: "⛔ MINOR-2 undone — no per-account lock: an OFF and an ON in flight together leave the flag cleared over a latest GIVEN, which the open record reaches on the licence",
+      defect: { noLock: true },
+      expect: T_O10,
+    },
+    {
       name: "U33a-P · an outreach ON survives an active OPERATOR stop",
       defect: { outreachOverStop: true },
       expect: "T-O2 · ⛔ ANY active stop reads OFF here, an OPERATOR stop included — stricter than the consent path on purpose: nobody said yes, so the switch must never read ON while the gate refuses",
@@ -2186,6 +2354,11 @@ if (!PROVE_RED) {
     return planted;
   };
   const CARD_CASES: Array<{ name: string; src: CardSources; expect: string }> = [
+    {
+      name: "U33r · the page no longer locks a referee's switch — an ON tapped there is sent, and refused",
+      src: plant("page", "held={marketing.held || marketing.referee}", "held={marketing.held}"),
+      expect: C12,
+    },
     {
       name: "🔴 the pre-fix failure SWAPS the consent sentence for 'Something didn't work. Try again.'",
       src: plant("card", ">{t.push.marketingBody}</p>", ">{failed ? t.error.somethingDidntWork : t.push.marketingBody}</p>"),
@@ -2325,6 +2498,23 @@ if (!PROVE_RED) {
 `);
   }
 
+  // ── U33r · the referee exclusion's writers: the shipped pieces green, then one wrong piece at a time ──
+  pass = 0; fail = 0; failed.length = 0;
+  await assertRefereeExclusion(REAL_REFEREE, 700, "refbase:", ok);
+  if (fail !== 0) problems.push(`REFEREE BASELINE: the shipped writers are already red (${failed.join(" | ")})`);
+  console.log(`\n§0 referee baseline · referee-exclusion.ts and its callers: ${pass} passed, ${fail} failed\n`);
+  const REFEREE_CASES = refereeCases();
+  for (const [i, c] of REFEREE_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    const tag = `refred${i + 1}:`;
+    console.log(`── referee case ${i + 1}: ${c.name}`);
+    await assertRefereeExclusion(c.impl, 701 + i, tag, ok);
+    const wanted = `${tag}${c.expect}`;
+    if (fail === 0) problems.push(`referee case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(wanted)) problems.push(`referee case ${i + 1} (${c.name}): red, but not on its own row — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect.slice(0, 70)}…\n`);
+  }
+
   const caughtGate = CASES.length - problems.filter((x) => x.startsWith("case")).length;
   const caughtLoop = LOOP_CASES.length - problems.filter((x) => x.startsWith("loop case")).length;
   const caughtHook = HOOK_CASES.length - problems.filter((x) => x.startsWith("hook case")).length;
@@ -2332,9 +2522,15 @@ if (!PROVE_RED) {
   const caughtCard = CARD_CASES.length - problems.filter((x) => x.startsWith("card case")).length;
   const caughtHeld = HELD_CASES.length - problems.filter((x) => x.startsWith("held case")).length;
   const caughtBasis = BASIS_CASES.length - problems.filter((x) => x.startsWith("basis case")).length;
-  const caught = caughtGate + caughtLoop + caughtHook + caughtToggle + caughtCard + caughtHeld + caughtBasis;
-  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · hook ${caughtHook}/${HOOK_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length} · basis ${caughtBasis}/${BASIS_CASES.length}`);
-  console.log(`${caught}/${CASES.length + LOOP_CASES.length + HOOK_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length + BASIS_CASES.length} caught`);
+  // U33r · the licence table's and the referee section's cases are counted too (the licence cases were reported only as
+  // problems before — never in the tally); U43b-2's hook cases beside them.
+  const caughtLicence = LICENCE_CASES.length - problems.filter((x) => x.startsWith("licence case")).length;
+  const caughtReferee = REFEREE_CASES.length - problems.filter((x) => x.startsWith("referee case")).length;
+  const caught = caughtGate + caughtLoop + caughtHook + caughtToggle + caughtCard + caughtHeld + caughtBasis + caughtLicence + caughtReferee;
+  const total = CASES.length + LOOP_CASES.length + HOOK_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length
+    + BASIS_CASES.length + LICENCE_CASES.length + REFEREE_CASES.length;
+  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · hook ${caughtHook}/${HOOK_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length} · basis ${caughtBasis}/${BASIS_CASES.length} · licence ${caughtLicence}/${LICENCE_CASES.length} · referee ${caughtReferee}/${REFEREE_CASES.length}`);
+  console.log(`${caught}/${total} caught`);
   if (problems.length) {
     console.log("\nPROBLEMS:");
     for (const x of problems) console.log(`  ✗ ${x}`);

@@ -16,6 +16,11 @@
  * `test:marketing-consent-ledger` pins a hash of the entries below and asserts every sentence the
  * dictionary shows TODAY is in the list — so a copy change fails the suite until it is appended here.
  *
+ * ⛔ THE SIGN-UP BOX WAS REMOVED ON 2026-10-07 (COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a
+ * phone — consent is not a condition"): no page shows the three REGISTRATION sentences any more, their dictionary key
+ * (`auth.optionalUpdates`) is deleted and nothing records a new row under them — and they STAY here, because a yes
+ * recorded under them from 2026-09-28 is still a yes. `ConsentWordingSite` keeps "REGISTRATION" for the same reason.
+ *
  * Pure and import-free, so a screen can reach it.
  */
 

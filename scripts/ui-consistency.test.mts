@@ -756,6 +756,7 @@ const kitFailures = await (async (): Promise<number> => {
   // eslint-free on purpose: this file is not type-checked (tsconfig includes scripts/**/*.ts only).
   let h: (type: unknown, props?: unknown, ...children: unknown[]) => unknown;
   let render: (el: unknown) => string;
+  let renderAll: (el: unknown) => Promise<string>;
   let kit: Record<string, any>;
   let parseTypedCount: (raw: string) => number | null;
   /** A copy of `src/<rel>` with each [from, to] planted (every `from` must occur exactly once), optionally cut to the
@@ -772,6 +773,12 @@ const kitFailures = await (async (): Promise<number> => {
     const router = { push() {}, replace() {}, refresh() {}, back() {}, forward() {}, prefetch() {} };
     h = (type, props, ...children) => React.createElement(type, props, ...children);
     render = (el) => toMarkup(h(AppRouterContext.Provider, { value: router }, h(I18nProvider, { initial: "en" }, el)));
+    const { prerender } = await import("react-dom/static");
+    /* As the server renders a page: it waits for whatever a part of it suspends on, then gives the whole HTML. */
+    renderAll = async (el) => {
+      const { prelude } = await prerender(h(AppRouterContext.Provider, { value: router }, h(I18nProvider, { initial: "en" }, el)) as any);
+      return await new Response(prelude as any).text();
+    };
     kit = {
       ...(await import("../src/components/ui/input.tsx")),
       ...(await import("../src/components/ui/textarea.tsx")),
@@ -858,6 +865,30 @@ const kitFailures = await (async (): Promise<number> => {
     const text = textOf(render(h(a.Field, { label: "Reality check (minutes)" }, h(Passthrough, { name: "rc", type: "number", min: 5, max: 120 }))));
     return { pass: text.includes("Min 5 · Max 120"), text };
   };
+  const throughALazy = async (a: Atoms) => {
+    /* As the SERVER's Flight client hands a Server Component page's element over when something the element names had
+       not arrived as it was read: inside a lazy wrapper, whose `_init(_payload)` gives the element or throws what it
+       waits on. Both ways: loaded already when the Field renders, and loaded a moment later (the renderer waits, as the
+       server's does). The browser is handed the bare element, which states the bounds — so a Field that cannot see
+       through the wrapper writes different HTML on the two sides, and React throws the page's tree away. */
+    const element = h(a.Input, { name: "rc", type: "number", min: 5, max: 120 });
+    /* The wrapper as the Flight client builds it: its payload is the chunk (`status`, `value`, `then`), and `_init`
+       reads it as `readChunk` does. */
+    type Chunk = { status: string; value: unknown; then?: (done: () => void) => void };
+    const lazy = (chunk: Chunk) => ({
+      $$typeof: Symbol.for("react.lazy"), _payload: chunk,
+      _init: (c: Chunk) => { if (c.status === "fulfilled") return c.value; throw c; },
+    });
+    const field = (child: unknown) => h(a.Field, { label: "Reality check (minutes)" }, child);
+    const loaded = textOf(render(field(lazy({ status: "fulfilled", value: element }))));
+    const later: Chunk = {
+      status: "blocked", value: null,
+      then(done) { setTimeout(() => { later.status = "fulfilled"; later.value = element; done(); }, 5); },
+    };
+    const waited = textOf(await renderAll(field(lazy(later))));
+    const says = (text: string) => text.includes("Min 5 · Max 120");
+    return { pass: says(loaded) && says(waited), text: JSON.stringify({ loaded, waited }) };
+  };
   const NBSP = String.fromCharCode(0x00a0);
   const countGate = (armed: (hard: boolean, word: string, entry: string) => boolean) =>
     ["2,981", "2 981", `2${NBSP}981`, "2981"].every((entry) => armed(true, "2981", entry) === true);
@@ -880,10 +911,11 @@ const kitFailures = await (async (): Promise<number> => {
   {
     const kitCopy = await tryPlanted("components/ui/input.tsx", []);
     const gateCopy = await tryPlanted("components/ui/modal.tsx", [], ["export function isCountWord(", "export function ConfirmModal("], { parseTypedCount });
+    const lazyFaithful = kitCopy.mod !== null && (await throughALazy(kitCopy.mod as Atoms)).pass;
     const faithful = kitCopy.mod !== null && gateCopy.mod !== null
-      && errorLine(kitCopy.mod as Atoms).pass && throughAnotherType(kitCopy.mod as Atoms).pass && noticeRegion(kitCopy.mod as Atoms).pass
+      && errorLine(kitCopy.mod as Atoms).pass && throughAnotherType(kitCopy.mod as Atoms).pass && lazyFaithful && noticeRegion(kitCopy.mod as Atoms).pass
       && countGate(gateCopy.mod.confirmGateArmed);
-    pin("K0b the in-memory copies with NOTHING planted — input.tsx, and modal.tsx's gate — pass K1, K3d, K7 and K8, so a red plant below is the plant",
+    pin("K0b the in-memory copies with NOTHING planted — input.tsx, and modal.tsx's gate — pass K1, K3d, K3g, K7 and K8, so a red plant below is the plant",
       faithful, `${kitCopy.why} ${gateCopy.why}`.trim());
   }
 
@@ -937,11 +969,17 @@ const kitFailures = await (async (): Promise<number> => {
     pin("K3d ⭐ the bounds are read from the child's PROPS: a numeric box whose element type is not the Input itself (a Server Component page's lazy reference) still states them",
       lazy.pass, lazy.text);
     const plant = await tryPlanted("components/ui/input.tsx", [[
-      "if (!React.isValidElement(children)) return null;",
-      "if (!React.isValidElement(children) || children.type !== Input) return null;",
+      "if (child === null) return null;",
+      "if (child === null || child.type !== Input) return null;",
     ]]);
     pin("K3e CONTROL · a copy of input.tsx that checks the child's TYPE (the first build) fails K3d's judge — no bound on a server page",
       plant.mod !== null && !throughAnotherType(plant.mod as Atoms).pass, plant.why || "the planted copy still states the bounds");
+    const opened = await throughALazy({ Field, Input });
+    pin("K3g ⭐ a numeric box handed over INSIDE A LAZY WRAPPER — as the server's Flight client hands a Server Component page's element when something it names had not arrived — still states its bounds, loaded already or a moment later: the server's HTML says what the browser's does (the responsible-gambling page threw its tree away on every load, 2026-10-08)",
+      opened.pass, opened.text);
+    const unopened = await tryPlanted("components/ui/input.tsx", [["const opened = React.Children.toArray(children);", "const opened: React.ReactNode[] = [];"]]);
+    pin("K3h CONTROL · a copy of input.tsx that does not open the wrapper (the build before) fails K3g's judge",
+      unopened.mod !== null && !(await throughALazy(unopened.mod as Atoms)).pass, unopened.why || "the planted copy still states the bounds");
     const free = textOf(render(h(Field, { label: "Note" }, h(Input, { name: "note", min: "1" }))));
     pin("K3f a box that is not numeric states no bounds", !free.includes("Min"), free);
   }

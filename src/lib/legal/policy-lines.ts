@@ -136,7 +136,7 @@ export type PolicyPageSpec = {
    widen it to a string). */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-01", versionKey: "version.privacy" },
+  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-07", versionKey: "version.privacy" },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);

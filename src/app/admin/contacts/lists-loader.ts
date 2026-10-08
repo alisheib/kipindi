@@ -36,6 +36,10 @@ export type ListsCardView = {
   /** The saved 18+ sentence, which LABELS the checkbox — the officer ticks the words they are attesting to, never a
    *  paraphrase this file invented. Null while unsaved. */
   readonly adultLabel: string | null;
+  /** ⛔ 3b · That sentence's VERSION. The card holds its tick against it and posts it with a recording, so the writer
+   *  records the confirmation against the words the officer read — or refuses words reworded since the page loaded
+   *  (`attestation_stale`). Null while unsaved. */
+  readonly adultVersion: number | null;
 };
 
 export async function listsCardView(): Promise<ListsCardView> {
@@ -56,5 +60,10 @@ export async function listsCardView(): Promise<ListsCardView> {
       },
     });
   }
-  return { rows, wordingsSaved: wording !== null && adult !== null, adultLabel: adult?.text ?? null };
+  return {
+    rows,
+    wordingsSaved: wording !== null && adult !== null,
+    adultLabel: adult?.text ?? null,
+    adultVersion: adult?.v ?? null,
+  };
 }

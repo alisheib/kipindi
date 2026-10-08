@@ -226,6 +226,9 @@ const OD54 = {
   axis: "13b · 🔴 OD54 · roleRefusal refuses suppressed — yes and no alike — to a masked viewer with the ROLE_REFUSAL_REASON and allows it to a reader; the loader refuses a masked ?suppressed=yes and ?op=HONORA&suppressed=no by role with NO row read, a reader gets the stopped row and the rest, and a masked viewer's \"Showing contacts:\" line names no stop",
 } as const;
 
+/** U33r · the referee's Will receive word — named once, so its red case expects exactly what the run says. */
+const L9R = "9r · ⛔ U33r · MINOR-5 · a number promised no marketing as an agent applicant's referee reads ONLY 'Not reachable', exactly like every protected reason — never named apart, to a reader or anybody else (the split's ONE protected line, here too)";
+
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const p = (n: string) => `${tag}${n}`;
 
@@ -321,6 +324,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const protectedKeys = ["rg_self_excluded", "rg_cooling_off", "rg_harm_marker", "rg_under25_history", "age_minor", "account_status"];
   ok(p("9 · ⛔ a self-exclusion, a break, a harm marker, an age or an account status reads only \"Not reachable\""),
     protectedKeys.every((k) => reach.includes(`${k}: "Not reachable",`)), reach.slice(0, 80));
+  // ── 9r · U33r · the promised agent referee reads like every protected reason (the U33r review's MINOR-5) ──
+  ok(p(L9R),
+    reach.includes('agent_referee: "Not reachable",') && !/referee/i.test(reach.split("agent_referee:").join("")),
+    reach.slice(reach.indexOf("agent_referee"), reach.indexOf("agent_referee") + 60));
 
   // ── 9b · 🔴 D19 · NO ROW-BY-ROW PLAYER SIGNAL FOR A ROLE THAT MAY NOT READ A NUMBER ───────────────
   const readsSeen = (await impl.load({})).viewerReads;
@@ -785,6 +792,11 @@ if (!PROVE_RED) {
       name: "the Will receive column names a self-exclusion to GROWTH",
       expect: "9 · ⛔ a self-exclusion, a break, a harm marker, an age or an account status reads only \"Not reachable\"",
       impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace('rg_self_excluded: "Not reachable",', 'rg_self_excluded: "Self-excluded",') } },
+    },
+    {
+      name: "⛔ U33r · MINOR-5 undone — the promised referee NAMED apart in the Will receive cell",
+      expect: L9R,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace('agent_referee: "Not reachable",', 'agent_referee: "Agent referee (no marketing)",') } },
     },
     {
       name: "U24 · a filter that cannot be read falls back to the whole book (the silent widening)",

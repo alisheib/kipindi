@@ -386,7 +386,21 @@ export function Modal({
     };
     openLayer(layer);
     openLayerRef.current = layer;
-    const timer = setTimeout(focusIn, 30);
+    /* ⭐ 2026-10-08 · THE OPENING NEVER TAKES FOCUS BACK FROM A CONTROL ALREADY CHOSEN IN THIS DIALOG. In the 30 ms before
+       this runs, a reader (a fast tap, assistive technology, autofill, a tool filling the form) can reach a field of the
+       dialog itself; the opening then pulled focus back to the first target, and what was typed next landed in the wrong
+       field — qa:journey-preview §5 caught it: the reason typed into the link's label (focus moved to the textarea at
+       +27 ms and back to the label at +28 ms), so "Create the link" never armed. When focus is already on a control
+       inside the panel, it stays there; the beat is armed all the same, so the first moment still presses nothing. */
+    const openFocus = () => {
+      const active = document.activeElement;
+      if (isTopLayer(layer) && active instanceof HTMLElement && active !== panelRef.current && panelRef.current?.contains(active)) {
+        armBeat(rootRef.current, performance.now()); // the opening's beat, as focusIn arms it
+        return;
+      }
+      focusIn();
+    };
+    const timer = setTimeout(openFocus, 30);
     const onKey = (e: KeyboardEvent) => {
       /* ⭐ S6 A8i-2 · ONLY THE TOP DIALOG ANSWERS A KEY. Every open dialog listens here, and every one answered: one Escape
          closed the win seal AND the confirm under it, the lower one first, and the trap of a dialog underneath pulled

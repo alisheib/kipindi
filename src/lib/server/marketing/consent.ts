@@ -18,6 +18,11 @@ import { isSmsConsentWording } from "@/lib/marketing/consent-wording";
 // U33w · an import attestation is recognised against the SAVED wording history (S14), never against today's code
 // default — a row made under last month's words is still the attestation it was.
 import { isImportAttestationSaved } from "@/lib/server/marketing/wordings";
+// U33r · the agent-referee exclusion: the keyed read. ⛔ The gate never hashes a number or reads the table itself —
+// `reads.refereeHeld` does, so the split can hand in a chunk's answers — and it never asks WHEN a referee was named: only
+// a promised referee is ever keyed (the writer decides, `referee-exclusion.ts`), so a key held is the whole answer.
+import { isPromisedReferee, isPromisedRefereeBookAddress, isPromisedRefereeEmail, isRefereeKeyable } from "@/lib/server/marketing/referee-exclusion";
+import { withLock } from "@/lib/server/locks";
 
 /**
  * U7 · THE ONE GATE. Nothing sends a marketing SMS without asking this first.
@@ -48,6 +53,21 @@ import { isImportAttestationSaved } from "@/lib/server/marketing/wordings";
  * Gaming Board approval step: Ali ruled 2026-09-26 that marketing SMS is not part of its approval — OQ1.)
  * ⛔ AND IT IS ASKED BY THE LOOP, NOT BY A LIST: `dispatch.ts` (U9) asks it per recipient immediately
  * before the send, so somebody who opts out in minute two does not receive minute four's message.
+ *
+ * ⭐ THE OWNER'S FINAL RULE (2026-10-07, COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a phone —
+ * consent is not a condition (the owner's FINAL rule), and his approvals given in the session"): anyone with a Tanzanian
+ * mobile number may be sent offers under the licence while the licence-outreach record is open; consent is recorded when
+ * given and decides nothing. Two things in this file follow from it:
+ *   · Q9 IS REVERSED — a player whose offers were switched off after a consent with no withdrawal recorded (the two-year
+ *     lapse, `retention.ts`) is reached under the licence like a player never asked (2a′); while the record is CLOSED they
+ *     are refused exactly as before. A lapse is the platform clearing a flag, never the person's "no" — their own stop
+ *     (a WITHDRAWN row, a stop link) is still a stop.
+ *   · U33r (Q8) — a number given as an agent applicant's referee who was promised "we never contact you for marketing"
+ *     (/legal/privacy §9 made it to every referee until version `REFEREE_PROMISE_REWORDED_IN`, and keeps it for every
+ *     referee named before that version) is refused `agent_referee` right after the stop list (1b): before any basis is
+ *     asked, consent and an open record included. ⚠️ Step 1b is one keyed read in EVERY state, so a closed record now costs that one read more than before,
+ *     and a promised referee is refused `agent_referee` rather than `no_consent` while it is closed.
+ *     ⛔ And what the rule does NOT change: the stop, self-exclusion, under-18s and RG standing still refuse.
  */
 
 /** ⭐ Named, and each value is a `skipped` reason — never a failure (§5.6). A refusal is the
@@ -68,7 +88,16 @@ export type MarketingSkipReason =
    *  own reason, never folded into `no_consent` — "nobody ever said yes" and "we looked for a licence basis and there
    *  is none" are different facts about the platform, and an officer reading the second as the first would go looking
    *  for a consent that was never the point. */
-  | "no_basis";
+  | "no_basis"
+  /** U33r · the number was given to 50pick as an agent applicant's referee, and that referee was promised "we never
+   *  contact you for marketing" (/legal/privacy §9, Q8 — kept since v2026-10-07 for every referee named before that version).
+   *  Refused like a stop — right after the stop list, before any basis,
+   *  consent included. ⛔ Its own reason, never folded into a stop: no stop row exists and nobody can lift this one.
+   *  ⛔ D19, AND THE U33r REVIEW'S MINOR-5 · NO VIEWER SEES IT APART: the split counts it in its ONE protected line
+   *  (`audience-split.ts`), the contacts page says "Not reachable", a typed test says `protected` to a reader and
+   *  `typed_refused` to a masked viewer — only a typed test's audit row records it precisely. It never starts `rg_`, so
+   *  no RG line is ever written for it (`dispatch.ts` `auditRgRefusal`). */
+  | "agent_referee";
 
 /**
  * U33a-G · WHAT MADE THE SEND LAWFUL, carried out of the gate so the audit row can say it (OD57 · OD58).
@@ -86,15 +115,19 @@ export type MarketingGateVerdict =
 const refuse = (skipReason: MarketingSkipReason, detail: string, userId?: string): MarketingGateVerdict =>
   (userId ? { ok: false, skipReason, detail, userId } : { ok: false, skipReason, detail });
 
-/* The three refusals the open record introduces, each written once so the gate and its suite cannot drift. */
-const LAPSE_DETAIL =
-  "the player's offers are switched off after a consent with no withdrawal recorded (a lapse) — the licence basis does not reach it";
+/* The refusals the open record introduces, each written once so the gate and its suite cannot drift. ⭐ No lapse refusal
+   among them since 2026-10-07: Q9 is reversed (the header), so a lapsed player is reached under the licence, never refused
+   for the lapse. */
 const ERASED_DETAIL =
   "this number's book record was erased — no licence basis reaches it; only a new consent does";
 const NO_BASIS_DETAIL =
   "no consent, and no list recorded under the licence outreach basis covers this number";
 const NO_ADULT_DETAIL =
   "no 18+ confirmation is on record for this number — no covering list basis, no import attestation, no test attestation";
+/** U33r · the referee refusal's internal detail — ⛔ NO instant, no number, no hash (the U33r review's MAJOR-1): U43b will
+ *  store a refusal's detail beside the recipient's number, and an instant there would date the referee's naming. */
+const REFEREE_DETAIL =
+  `given to 50pick as an agent applicant's referee, who was promised "we never contact you for marketing" — refused before any basis, consent included`;
 
 /**
  * 🔴 THE TWO PHONE FORMATS THIS PLATFORM ACTUALLY HAS, AND WHY THIS FUNCTION EXISTS.
@@ -176,6 +209,18 @@ export type MarketingGateReads = {
   outreach: () => Promise<LicenceOutreach> | LicenceOutreach;
   /** U33a-G · the number's standing in the book: none · live (with its covering list basis, if any) · erased. */
   bookStanding: (msisdn: string) => Promise<BookStanding> | BookStanding;
+  /** U33r · is this number a PROMISED agent referee's — its keyed hash held in the table (`referee-exclusion.ts`), never
+   *  the free text asked. ⛔ It takes the gate's key and answers a yes or a no: no number, no hash and no instant ever leaves
+   *  it. Past the split's time budget it throws like the other database reads (`unchecked`). */
+  refereeHeld: (msisdn: string) => Promise<boolean> | boolean;
+  /** U33r · the third pass's MINOR-2 · is this ACCOUNT's e-mail address a promised referee's — its keyed hash held (the
+   *  writers key every address written in a promised referee's contact). A blank address answers no, with no read. ⛔ A
+   *  yes or a no, never the address or its hash. Past the split's time budget it throws like the other reads. */
+  refereeEmailHeld: (email: string | null) => Promise<boolean> | boolean;
+  /** U33r · the third pass's MINOR-2 · does the contact-book row AT THIS NUMBER hold a promised referee's address — ONE
+   *  indexed read (the row by its number), and a keyed read only when it has an address. ⛔ A yes or a no. Past the split's
+   *  time budget it throws like the other reads. */
+  refereeBookEmailHeld: (msisdn: string) => Promise<boolean> | boolean;
 };
 
 /** The default — the store's own single-key reads, asked AT CALL TIME, so the twin `db` resolves to is the one read.
@@ -186,6 +231,9 @@ export const DB_GATE_READS: Readonly<MarketingGateReads> = Object.freeze({
   latestConsent: (key: MessagingKey) => db.messagingConsent.latestFor(key),
   outreach: () => licenceOutreach(),
   bookStanding: (msisdn: string) => db.contactListBasis.standingFor(msisdn),
+  refereeHeld: (msisdn: string) => isPromisedReferee(msisdn),
+  refereeEmailHeld: (email: string | null) => isPromisedRefereeEmail(email),
+  refereeBookEmailHeld: (msisdn: string) => isPromisedRefereeBookAddress(msisdn),
 });
 
 /**
@@ -302,14 +350,42 @@ export async function mayReceiveMarketingSms(
     return refuse("suppressed", `suppressed ${suppressed.reason.toLowerCase()} on ${suppressed.createdAt}`);
   }
 
+  // ── 1b · U33r · AN AGENT APPLICANT'S REFEREE — PROMISED "we never contact you for marketing" (Q8) ────────────────
+  // ⛔ BEFORE ANY BASIS, LIKE A STOP: the promise was 50pick's own, made in writing to a person who is not our customer,
+  // so neither a consent given later at this number nor an open licence-outreach record outranks it. Asked after the
+  // stop list, so a stopped number keeps saying "suppressed". Every referee named before the re-worded §9 went live is
+  // excluded — today, with no new words live, every referee. ⛔ The gate never asks WHEN: the writer keys only a referee
+  // given the old promise (`refereePromiseHolds`, asked as it writes), so a key held is the whole answer. No `userId`: the
+  // refusal is about the number's promise, never an account's standing.
+  if (await Promise.resolve(reads.refereeHeld(identifier))) {
+    return refuse("agent_referee", REFEREE_DETAIL);
+  }
+  // ── 1b′ · U33r · THE BOOK ROW AT THIS NUMBER HOLDS A PROMISED REFEREE'S ADDRESS (the third pass's MINOR-2) ───────────────
+  // ⛔ A referee named only by e-mail and imported LATER into the contact book, at a number no account holds: §9 told them
+  // "that promise stands". Asked here, before any basis and before a player is known, as 1b is: ONE indexed read per send
+  // (the book row by its number, the unique index), and a keyed read more only when that row has an address.
+  if (await Promise.resolve(reads.refereeBookEmailHeld(identifier))) {
+    return refuse("agent_referee", REFEREE_DETAIL);
+  }
+
   // ── 2 · IF THE NUMBER BELONGS TO A PLAYER, THE PLAYER GOVERNS ───────────────────────────
   const user = await Promise.resolve(reads.userByPhone(userPhoneKeyFor(identifier)));
   if (user) {
+    // ── 2-0 · U33r · THE ACCOUNT'S E-MAIL IS A PROMISED REFEREE'S (the third pass's MINOR-2) ─────────────────────────────
+    // ⛔ A referee named only by E-MAIL who signs up later, at any number, with that address: §9 told them "that promise
+    // stands", so the account's e-mail is asked of the same keys BEFORE ANY BASIS, exactly as step 1b asks the number —
+    // ONE keyed read more, and only for an account that has an address (the account itself is the read below, already
+    // made). No `userId`, as at 1b: the refusal is about the promise, never the account's standing.
+    if (await Promise.resolve(reads.refereeEmailHeld(typeof user.email === "string" ? user.email : null))) {
+      return refuse("agent_referee", REFEREE_DETAIL);
+    }
     // ── 2a · CONSENT — the toggle AND an SMS-naming GIVEN row as the latest ledger entry (D3, see
     // `playerConsentRefusal`). Asked before RG because it is two cheap reads, and the RG step below
     // is the costly one.
     /* ⭐ `seen` is filled ONLY when the ledger was actually read (the toggle was on). While the record is CLOSED the
-       reads below never run, so a closed record costs exactly today's reads and answers exactly today's answers (S5). */
+       reads below never run, so a closed record costs exactly today's reads and answers exactly today's answers (S5) —
+       ⚠️ bar U33r's ONE keyed referee read at step 1b, asked in both states before a player is known (a referee is
+       refused `agent_referee` there, whatever the record says). */
     const seen: { latest?: StoredMessagingConsent | null } = {};
     const noConsent = await playerConsentRefusal(user, key, reads, seen);
     let basis: MarketingBasisKind = "CONSENT";
@@ -324,10 +400,12 @@ export async function mayReceiveMarketingSms(
       if (latest?.status === "WITHDRAWN") {
         return refuse("consent_withdrawn", `consent withdrawn on ${latest.createdAt} — the licence basis never overrides a stop`, user.id);
       }
-      // ⛔ A LAPSE IS NOT SILENCE EITHER. The switch is off after a consent that was never withdrawn (the two-year
-      // lapse): the person did once say yes and then turned it off, which is nearer a stop than to never having been
-      // asked. The licence basis does not reach it.
-      if (user.marketingOptIn === false && latest?.status === "GIVEN") return refuse("no_consent", LAPSE_DETAIL, user.id);
+      // ⭐ Q9 REVERSED (the owner's FINAL rule, 2026-10-07): A LAPSE IS REACHED. The switch is off after a consent that was
+      // never withdrawn — the two-year lapse (`retention.ts` clears the flag and writes no row): the platform clearing a
+      // flag, never the person's "no". Consent decides nothing under the final rule, so this player is reached on the
+      // licence like a player never asked — and RG, age, under-25 and status below run exactly as they do for them.
+      // ⛔ Their own stop still refuses: a WITHDRAWN row above, a stop link at step 1. ⚠️ U16b owes the lapse a ledger row
+      // (`RETENTION_LAPSE`): it must not be read as a stop here, or Q9 comes back by the back door.
       basis = "LICENCE_PLAYER";
       basisRef = `outreach:${outreach.recordedAt}`;
     }
@@ -389,8 +467,8 @@ export async function mayReceiveMarketingSms(
     const outreach = await Promise.resolve(reads.outreach());
     if (outreach.state !== "open") {
       // ⛔ CLOSED: refused BEFORE the book is read, so a closed record costs exactly today's reads (S5) and says
-      // exactly today's sentence. OD7's "there is no lawful basis but consent" is retired as a universal, but it is
-      // still the whole truth while the record is closed.
+      // exactly today's sentence (bar U33r's one referee read at step 1b, asked in both states). OD7's "there is no
+      // lawful basis but consent" is retired as a universal, but it is still the whole truth while the record is closed.
       return refuse("no_consent", latest
         ? "the latest consent row does not name SMS marketing"
         : "no consent has ever been recorded for this number");
@@ -436,6 +514,11 @@ export async function mayReceiveMarketingSms(
  * the break ended. Asked FIRST and for every player, consenting or not, because an ON tapped mid-break is void
  * whoever taps it — the switch is locked for the duration and the screen says why.
  *
+ * ⛔ U33r (2026-10-07, the U33r review) · A PROMISED AGENT REFEREE reads OFF and LOCKED, FOR GOOD — asked FIRST and for
+ * every player, consenting or not, exactly as D4b asks a break: the gate refuses the number `agent_referee` before any
+ * basis (step 1b), so ON here would be the D4 lie, and an ON tapped is void whoever taps it. The screen says why
+ * (`referee`), in its own words, with no date — the promise has none.
+ *
  * ⛔ READ ONLY. Harm markers are not consent (and cost up to 10,000 rows), so they are not asked here.
  */
 export type MarketingToggleState = {
@@ -450,9 +533,14 @@ export type MarketingToggleState = {
    *  because licence outreach is open. The screen says so in its own line, because a switch that reads ON identically
    *  in both cases would be telling a person they agreed to something they never agreed to. */
   outreach: boolean;
+  /** ⛔ U33r · OFF for good: the number is a promised agent referee's (its key is held, `referee-exclusion.ts`), and the
+   *  gate refuses it before any basis — no "yes" can ever count. */
+  referee: boolean;
 };
 
-const TOGGLE_OFF: MarketingToggleState = { on: false, paused: false, held: false, heldUntil: null, outreach: false };
+const TOGGLE_OFF: MarketingToggleState = { on: false, paused: false, held: false, heldUntil: null, outreach: false, referee: false };
+/** U33r · a promised referee's switch: OFF and locked, with no date. */
+const TOGGLE_REFEREE: MarketingToggleState = { ...TOGGLE_OFF, referee: true };
 /** `selfExclusionStandingOf` stores "permanent" as now + 100 years and reads anything past ten as permanent. */
 const PERMANENT_AFTER_MS = 10 * 365 * 86400_000;
 
@@ -462,16 +550,23 @@ function holdOf(rg: MarketingRgStanding, now: Date): MarketingToggleState | null
   if (rg.ok || rg.consentLapsed || rg.skipReason === "rg_harm_marker") return null;
   const ms = rg.until ? Date.parse(rg.until) : NaN;
   const dated = Number.isFinite(ms) && ms > now.getTime() && ms - now.getTime() < PERMANENT_AFTER_MS;
-  return { on: false, paused: false, held: true, heldUntil: dated ? new Date(ms).toISOString() : null, outreach: false };
+  return { ...TOGGLE_OFF, held: true, heldUntil: dated ? new Date(ms).toISOString() : null };
 }
 
 export async function marketingToggleState(
-  user: Pick<StoredUser, "id" | "status" | "phoneE164" | "marketingOptIn">,
+  user: Pick<StoredUser, "id" | "status" | "phoneE164" | "marketingOptIn"> & { email?: string | null },
   now: Date = new Date(),
 ): Promise<MarketingToggleState> {
   // The ledger's own key (`consent-ledger.ts` writes by `toMsisdn255`), so the read finds its rows.
   const identifier = toMsisdn255(user.phoneE164);
   const key: MessagingKey = { channel: "SMS", identifier, category: "MARKETING" };
+  // ⛔ U33r · A PROMISED REFEREE FIRST — the gate's own read (step 1b), for every player: refused whatever the basis, so
+  // the switch is OFF and locked whatever the ledger says. A number that is not a gate key cannot be a referee's.
+  if (isRefereeKeyable(identifier) && (await Promise.resolve(DB_GATE_READS.refereeHeld(identifier)))) return TOGGLE_REFEREE;
+  // …and the account's e-mail, as the gate's step 2 asks it (the third pass's MINOR-2).
+  if (await Promise.resolve(DB_GATE_READS.refereeEmailHeld(typeof user.email === "string" ? user.email : null))) return TOGGLE_REFEREE;
+  // …and the book row at this number, as the gate's step 1b′ asks it.
+  if (isRefereeKeyable(identifier) && (await Promise.resolve(DB_GATE_READS.refereeBookEmailHeld(identifier)))) return TOGGLE_REFEREE;
   const rg = await marketingRgStanding(user, identifier, now.getTime(), { ...MARKETING_RG_DEPS, harmFlags: async () => [] });
   const held = holdOf(rg, now);
   if (held) return held;
@@ -488,7 +583,9 @@ export async function marketingToggleState(
     if (suppressed) return TOGGLE_OFF;
     const latest = seen.latest !== undefined ? seen.latest : await Promise.resolve(db.messagingConsent.latestFor(key));
     if (latest?.status === "WITHDRAWN") return TOGGLE_OFF;
-    if (user.marketingOptIn === false && latest?.status === "GIVEN") return TOGGLE_OFF;
+    // ⭐ Q9 REVERSED (2026-10-07): a switch turned off by the two-year LAPSE — the flag cleared with the latest row still
+    // GIVEN — reads ON here once the record is open, because the gate now reaches it on the licence. Reading OFF would be
+    // the D4 lie in reverse: offers arriving under a switch that says they will not. An OFF tapped now records their stop.
     const record = await Promise.resolve(licenceOutreach());
     if (record.state !== "open") return TOGGLE_OFF;
     // A break that ENDED with no yes since is the one refusal the person's own tap can lift — it reads PAUSED, as
@@ -505,8 +602,9 @@ export async function marketingToggleState(
 /** `ok` — the switch now shows what was asked. `changed` — a consent record was written (the action
  *  audits it), which can be true even when `ok` is false: a write that landed is never hidden.
  *  `on` — the state READ after the act; null only when even a fresh read failed (never a guess).
- *  `held` — refused because a break or self-exclusion is in force; nothing was written. */
-export type PlayerMarketingChoice = { ok: boolean; on: boolean | null; changed: boolean; liftedStop: boolean; held?: boolean };
+ *  `held` — refused because a break or self-exclusion is in force; nothing was written.
+ *  `referee` — U33r · refused because the number is a promised agent referee's; nothing was written. */
+export type PlayerMarketingChoice = { ok: boolean; on: boolean | null; changed: boolean; liftedStop: boolean; held?: boolean; referee?: boolean };
 
 /** A fresh read of the switch for the catch below — null when that read fails too. */
 async function rereadToggle(userId: string): Promise<boolean | null> {
@@ -527,15 +625,29 @@ async function rereadToggle(userId: string): Promise<boolean | null> {
  * true — the only way RG §4's "opt in again after it ends" can actually be done.
  *   · ON  → lift a suppression the PERSON created (their stop link — ⛔ never COMPLAINT, OPERATOR or
  *           SELF_EXCLUSION), `marketingOptIn = true`, and a GIVEN row in the sentence shown.
- *   · OFF → `marketingOptIn = false` and a WITHDRAWN row in the sentence shown.
- * ⭐ It answers with the state AFTER the writes: a ledger append that failed leaves the switch OFF and
- * the caller told so, never a success the gate would contradict.
+ *   · OFF → ⛔ a WITHDRAWN row in the sentence shown FIRST, and `marketingOptIn = false` only once it has landed.
+ * ⭐ It answers with the state AFTER the writes: a GIVEN that failed leaves the switch OFF and the caller told so,
+ * never a success the gate would contradict.
+ * ⛔ THE U33r REVIEW'S MAJOR-3 (2026-10-07) · AN OFF WHOSE WITHDRAWN ROW DID NOT LAND CHANGES NOTHING, AND SAYS SO
+ * (`ok: false`, the switch left exactly as it was). The flag used to be cleared first and the row appended after, with
+ * the answer read off the cleared flag — so a row that failed left a player told "turned off", with a switch reading OFF
+ * and no record of their "no". Since Q9 was reversed, a cleared switch over a latest GIVEN is the two-year LAPSE, which
+ * the open licence record REACHES: their stop would have been silently turned into licence outreach. Told it failed, the
+ * player tries again; their consent stands meanwhile, and the switch says so.
  * ⛔ D4b · an ON while a break or self-exclusion is in force writes NOTHING (`held`): the gate would count
  * only a consent given after it ends, so a GIVEN row now records a consent that can never act. An OFF is
  * still written — a "no" is never refused.
+ * ⛔ U33r · and an ON from a promised agent referee's number writes NOTHING (`referee`), for the same reason and for good.
  * ⭐ AND IT NEVER GUESSES (2026-09-27). The catch answered `on: !want` even when the writes had landed and
  * only the final read threw — so a recorded OFF snapped back to ON. It now reads the state again, and says
  * "unknown" (null) when it cannot.
+ * ⛔ ONE DECISION AT A TIME, PER ACCOUNT (the U33r re-review's MINOR-2, 2026-10-07) · `withLock("marketing-choice:<user>")`,
+ * as `setReferees` serialises an application. Each call reads the switch, then writes against what it read; two taps in
+ * flight together (two tabs, a double tap) each read the SAME before, and their writes interleaved: from a switch reading
+ * OFF over a "yes" in the old wording, an OFF and an ON together left the flag cleared over a latest GIVEN — the two-year
+ * LAPSE, which the open licence record REACHES, so the player who tapped OFF was reached on the licence. Serialised, the
+ * second call reads what the first wrote: the LAST decision wins, and the ledger agrees with the flag.
+ * The lock only orders the calls; each write still lands on its own, so the rules above hold inside it unchanged.
  */
 export async function recordPlayerMarketingChoice(input: {
   userId: string;
@@ -544,49 +656,94 @@ export async function recordPlayerMarketingChoice(input: {
   locale: MessagingLocale;
 }): Promise<PlayerMarketingChoice> {
   const want = input.marketingOptIn === true;
-  let changed = false;
-  let liftedStop = false;
+  // What the writes did, kept OUTSIDE the lock: an answer given after the lock itself failed still tells the truth.
+  const trail: ChoiceTrail = { changed: false, liftedStop: false };
+  try {
+    return await withLock(`marketing-choice:${input.userId}`, () => choosePlayerMarketing(input, want, trail));
+  } catch (err) {
+    // The decision answers its own failures inside the lock; only the lock itself (a pool or transaction failure) lands here.
+    return answerAfterThrow(err, input.userId, want, trail);
+  }
+}
+
+/** What a choice has written so far — read by the answer whichever way the call ends. */
+type ChoiceTrail = { changed: boolean; liftedStop: boolean };
+
+/** The answer after a throw: the writes may have landed first, so what the switch shows is READ, never assumed. */
+async function answerAfterThrow(err: unknown, userId: string, want: boolean, trail: ChoiceTrail): Promise<PlayerMarketingChoice> {
+  console.error("[marketing-consent] profile choice failed:", (err as Error)?.message ?? err);
+  const on = await rereadToggle(userId);
+  return { ok: on === want, on, changed: trail.changed, liftedStop: trail.liftedStop };
+}
+
+/** The decision itself, run under the account's lock by `recordPlayerMarketingChoice` (see its docblock). */
+async function choosePlayerMarketing(
+  input: { userId: string; locale: MessagingLocale },
+  want: boolean,
+  trail: ChoiceTrail,
+): Promise<PlayerMarketingChoice> {
   try {
     const user = await Promise.resolve(db.user.findById(input.userId));
-    if (!user) return { ok: false, on: null, changed, liftedStop };
+    if (!user) return { ok: false, on: null, changed: trail.changed, liftedStop: trail.liftedStop };
     const before = await marketingToggleState(user);
-    if (want && before.held) return { ok: false, on: false, changed, liftedStop, held: true };
+    if (want && before.held) return { ok: false, on: false, changed: trail.changed, liftedStop: trail.liftedStop, held: true };
+    // ⛔ U33r · as D4b, for good: the gate refuses a promised referee's number before any basis, so a GIVEN row would
+    // record a consent that can never act — and the switch would read ON over a refusal (the U33r review).
+    if (want && before.referee) return { ok: false, on: false, changed: trail.changed, liftedStop: trail.liftedStop, referee: true };
     // An OFF is still written when the switch already shows OFF but the boolean reads true (a lapse,
     // or the old wording): the player said no, and the record should say so.
     const nothingToDo = want ? before.on : (!before.on && user.marketingOptIn !== true);
-    if (nothingToDo) return { ok: true, on: want, changed, liftedStop };
+    if (nothingToDo) return { ok: true, on: want, changed: trail.changed, liftedStop: trail.liftedStop };
     const key: MessagingKey = { channel: "SMS", identifier: toMsisdn255(user.phoneE164), category: "MARKETING" };
-    if (want) {
-      const stop = await Promise.resolve(db.suppression.find(key));
-      if (stop && isPersonCreatedSuppression(stop.reason)) {
-        liftedStop = (await Promise.resolve(db.suppression.lift(key, "profile", new Date().toISOString()))) !== null;
-        changed = changed || liftedStop;
-        // U24 commit 2 · the book row stops reading "suppressed" NOW — a lift whose ledger append below then
-        // fails still leaves the cache true (the append mirrors again when it lands).
-        await mirrorContactCache(key.identifier);
+    if (!want) {
+      // ⛔ MAJOR-3 · THE "NO" IS RECORDED FIRST, and the switch cleared only once it has landed (see the docblock).
+      // ⛔ Append-only: a withdrawal is a NEW row, never an edit of the row that granted consent.
+      const withdrawn = await appendMarketingConsent({
+        phoneE164: user.phoneE164,
+        locale: input.locale,
+        status: "WITHDRAWN",
+        source: "PROFILE",
+        site: "PROFILE",
+        evidence: "/profile/notifications",
+        recordedBy: null,
+      });
+      if (!withdrawn) {
+        // Nothing was written, so the switch is exactly where it was — READ, and said, never assumed OFF.
+        const unchanged = await marketingToggleState(user);
+        return { ok: false, on: unchanged.on, changed: trail.changed, liftedStop: trail.liftedStop };
       }
+      trail.changed = true;
+      if (user.marketingOptIn !== false) await Promise.resolve(db.user.update(user.id, { marketingOptIn: false }));
+      const afterOff = await marketingToggleState({ ...user, marketingOptIn: false });
+      return { ok: afterOff.on === false, on: afterOff.on, changed: trail.changed, liftedStop: trail.liftedStop };
+    }
+    const stop = await Promise.resolve(db.suppression.find(key));
+    if (stop && isPersonCreatedSuppression(stop.reason)) {
+      trail.liftedStop = (await Promise.resolve(db.suppression.lift(key, "profile", new Date().toISOString()))) !== null;
+      trail.changed = trail.changed || trail.liftedStop;
+      // U24 commit 2 · the book row stops reading "suppressed" NOW — a lift whose ledger append below then
+      // fails still leaves the cache true (the append mirrors again when it lands).
+      await mirrorContactCache(key.identifier);
     }
     if (user.marketingOptIn !== want) {
       await Promise.resolve(db.user.update(user.id, { marketingOptIn: want }));
-      changed = true;
+      trail.changed = true;
     }
-    // ⛔ Append-only: a withdrawal is a NEW row, never an edit of the row that granted consent.
     const appended = await appendMarketingConsent({
       phoneE164: user.phoneE164,
       locale: input.locale,
-      status: want ? "GIVEN" : "WITHDRAWN",
+      status: "GIVEN",
       source: "PROFILE",
       site: "PROFILE",
       evidence: "/profile/notifications",
       recordedBy: null,
     });
-    changed = changed || appended;
+    trail.changed = trail.changed || appended;
     const after = await marketingToggleState({ ...user, marketingOptIn: want });
-    return { ok: after.on === want, on: after.on, changed, liftedStop };
+    return { ok: after.on === want, on: after.on, changed: trail.changed, liftedStop: trail.liftedStop };
   } catch (err) {
-    console.error("[marketing-consent] profile choice failed:", (err as Error)?.message ?? err);
-    // The writes above may have landed before the throw: what the switch shows is READ, not assumed.
-    const on = await rereadToggle(input.userId);
-    return { ok: on === want, on, changed, liftedStop };
+    // The writes above may have landed before the throw: what the switch shows is READ, not assumed (inside the lock,
+    // so the answer is the state THIS call left).
+    return answerAfterThrow(err, input.userId, want, trail);
   }
 }

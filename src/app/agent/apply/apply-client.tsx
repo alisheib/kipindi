@@ -288,11 +288,21 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
                 let r: Awaited<ReturnType<typeof setRefereesAction>>;
                 try { r = await setRefereesAction(fd); } catch { r = { ok: false, error: t.error.somethingDidntWork }; }
                 if (!r.ok) {
+                  /* ⭐ IN THE APPLICANT'S LANGUAGE (2026-10-08). The service's refusals are English sentences, and they
+                     were shown as they came, in the toast and on the box, to a Swahili or Chinese applicant
+                     (`test:failure-reasons` §10). Each refusal names its field, and the dictionary already holds each
+                     field's rule (the boxes' own `title`), so the field picks the line. A refusal with no field is the
+                     application's state (not started, under review, closed): the page is read again, and it says which. */
+                  const said = r.field === "oneName" || r.field === "twoName" ? t.agent.refNameRule
+                    : r.field === "oneContact" || r.field === "twoContact" ? t.agent.refContactRule
+                    : r.field === "consent" ? t.agent.refConsentRule
+                    : t.error.somethingDidntWork;
                   // ⭐ ON the field, and scrolled to. The toast stays as the ANNOUNCEMENT (a
                   // screen reader needs one), but it is no longer the only place the applicant
                   // can learn what to fix.
-                  if (r.field) { setFieldErr({ name: r.field, message: r.error }); focusFirstInvalid(formRef.current, [r.field]); }
-                  toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" });
+                  if (r.field) { setFieldErr({ name: r.field, message: said }); focusFirstInvalid(formRef.current, [r.field]); }
+                  else router.refresh();
+                  toast({ title: t.toast.couldntSubmit, description: said, variant: "danger" });
                   return;
                 }
                 setFieldErr(null);

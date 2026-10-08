@@ -56,6 +56,22 @@ async function overflow(page) {
   return page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
 }
 
+/** The sign-up form's ticks, shot at the terms box. ⛔ The SMS-offers box was REMOVED on 2026-10-07 (COMPLIANCE-DECISIONS
+ *  § "2026-10-07 · Marketing SMS go to anyone with a phone — consent is not a condition"): a `marketingOptIn` box found on
+ *  the page makes the capture invalid, and a page with no terms box is not the form. */
+async function registerTicks(page, file, at) {
+  const boxes = await page.locator('input[name="marketingOptIn"]').count().catch(() => 0);
+  const terms = page.locator('input[name="acceptTerms"]');
+  const found = await terms.count().catch(() => 0);
+  const label = found ? await terms.first().locator("xpath=ancestor::label[1]").innerText().catch(() => "") : "";
+  await tile(page, file, found ? terms : null);
+  note({ ...at, page: "/auth/register ticks", marketingBoxes: boxes, termsBox: found, overflowPx: await overflow(page), label: label.replace(/\s+/g, " ").slice(0, 200) });
+  if (boxes > 0 || found === 0) {
+    badShots.push(`register ${at.where} ${at.loc} ${at.w}`);
+    console.log(`!! ${boxes > 0 ? "THE REMOVED SMS-OFFERS BOX IS ON THE PAGE" : "NOT THE SIGN-UP FORM"}: ${at.where} ${at.loc} ${at.w}`);
+  }
+}
+
 // ── PRODUCTION (public, read-only) ─────────────────────────────────────────────────────────
 async function prod(browser) {
   for (const [w, h] of WIDTHS) {
@@ -70,10 +86,7 @@ async function prod(browser) {
       note({ where: "prod", page: "/legal/responsible-gambling §4", loc, w, status: r?.status(), overflowPx: await overflow(page), s4: s4.replace(/\s+/g, " ").slice(0, 400) });
       if (loc !== "zh") {
         const rr = await page.goto(`${PROD}/auth/register`, { waitUntil: "networkidle" });
-        const box = page.locator('input[name="marketingOptIn"]');
-        const label = await box.first().locator("xpath=ancestor::label[1]").innerText().catch(() => "");
-        await tile(page, `prod-register-consent-${loc}-${w}`, box);
-        note({ where: "prod", page: "/auth/register consent", loc, w, status: rr?.status(), overflowPx: await overflow(page), label: label.replace(/\s+/g, " ").slice(0, 200) });
+        await registerTicks(page, `prod-register-ticks-${loc}-${w}`, { where: "prod", loc, w, status: rr?.status() });
       }
       await ctx.close();
     }
@@ -118,15 +131,12 @@ async function player(browser) {
       }, [w - 6, 400]).catch(() => null);
       await tile(page, `local-profile-notifications-${loc}-${w}`, page.getByText(/SMS|短信/i));
       note({ where: "local", page: "/profile/notifications", loc, w, status: r?.status(), switches: count, overflowPx: await overflow(page), rightEdgeProbe: probe, main: body.replace(/\s+/g, " ").slice(0, 700) });
-      // Sign-up consent (signed-out context).
+      // The sign-up form's ticks (signed-out context) — no SMS-offers box since 2026-10-07.
       const ctx2 = await browser.newContext({ viewport: { width: w, height: h }, userAgent: UA });
       await ctx2.addCookies([{ name: "kp-locale", value: loc, url: LOCAL }]);
       const p2 = await ctx2.newPage();
       const rr = await p2.goto(`${LOCAL}/auth/register`, { waitUntil: "load", timeout: 90_000 }); await sleep(1500);
-      const box = p2.locator('input[name="marketingOptIn"]');
-      const label = await box.first().locator("xpath=ancestor::label[1]").innerText().catch(() => "");
-      await tile(p2, `local-register-consent-${loc}-${w}`, box);
-      note({ where: "local", page: "/auth/register consent", loc, w, status: rr?.status(), overflowPx: await overflow(p2), label: label.replace(/\s+/g, " ") });
+      await registerTicks(p2, `local-register-ticks-${loc}-${w}`, { where: "local", loc, w, status: rr?.status() });
       // Help FAQ helpline + privacy processors + RG §4.
       for (const [path, find, tag] of [["/help", /0800/, "help"], ["/legal/privacy", /Blackball/i, "privacy"], ["/legal/responsible-gambling", /^\s*4\./, "rg"]]) {
         const r3 = await p2.goto(`${LOCAL}${path}`, { waitUntil: "load", timeout: 90_000 }); await sleep(1200);

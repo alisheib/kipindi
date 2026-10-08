@@ -53,6 +53,9 @@ import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
 // U33a-L · the list basis's ONE rule set — this twin asks it before every read or write of the table, exactly as the
 // Prisma twin does (`test:dal-parity` §27.model). It takes only TYPES back from this file, so there is no cycle.
 import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";
+// U33r · the agent-referee keys' ONE rule set — this twin asks it before every read or write of the table, exactly as the
+// Prisma twin does (`test:dal-parity` §28.model). It takes only TYPES back from this file, so there is no cycle.
+import { assertRefereeKeyRows, assertRefereeKeys } from "@/lib/server/marketing/referee-key-model";
 
 export type StoredUser = {
   id: string;
@@ -965,6 +968,35 @@ export type ListBasisCoverage = {
   covered: number;
 };
 
+/* ═══ U33r · THE AGENT-REFEREE EXCLUSION — `AgentRefereeKey` (Q8; COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to
+ * anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the session") ═══
+ * ⭐ WHY IT EXISTS. /legal/privacy §9 promised every agent applicant's referee "we never contact you for marketing" until
+ * version `REFEREE_PROMISE_REWORDED_IN` (v2026-10-07), and the owner ruled that promise HONOURED for every referee already
+ * given it — §9 keeps it for every referee named before that version, and §5 says a coded form of each such number is kept. A referee's contact is free text on
+ * `AgentApplication` — no gate can ask a spreadsheet of free text about a number — so each Tanzanian mobile number a
+ * PROMISED referee's contact leads to is kept here as a KEYED HASH (`refereeKeyOf`, `referee-exclusion.ts`), and the send
+ * gate asks this table by key (`consent.ts`, step 1b): a key held is a refusal.
+ * ⛔ THE KEY AND NOTHING ELSE (the U33r review's MAJOR-1): thirty-two letters a–p — an HMAC under the server's pepper, never
+ * the number, never a digit, and nothing without the pepper maps it back. No instant (when a referee was named, when the
+ * row was written): an applicant's `refereeConsentAt` joined on an instant would link the referee's key back to the
+ * applicant. No name, no application id, and no column links it to the applicant — so the applicant's erasure leaves nothing of theirs
+ * here, and the referee's protection outlives it. WHETHER a referee was given the old promise is decided by the WRITER,
+ * when it writes, and only a promised referee is ever written.
+ * ⛔ APPEND-ONLY, IN BOTH TWINS: `record` inserts a key not yet held and skips one already held — Postgres's ON CONFLICT DO
+ * NOTHING — and there is NO update member and NO delete member (`test:dal-parity` §28). Every DAL signature below is
+ * NAMED: dal-parity's `region()` would read an inline literal as the body. */
+
+/** ONE ROW: a promised referee's number as a keyed hash — the primary key, and the whole row. */
+export type StoredAgentRefereeKey = {
+  /** Thirty-two letters a–p — `refereeKeyOf(msisdn)`, refused in any other spelling by both twins (`referee-key-model.ts`). */
+  refereeKey: string;
+};
+/** One key's answer in a read: whether a row holds it. */
+export type AgentRefereeKeyEntry = {
+  refereeKey: string;
+  held: boolean;
+};
+
 /** ⛔ `id`, `msisdn`, `createdAt` and `createdBy` are NOT patchable: the key and the
  *  provenance of a row are not editable facts. A number that changed is a different person's
  *  row, created and (if need be) the old one suppressed. */
@@ -1083,6 +1115,12 @@ export type ContactTagCount = { tag: string; count: number };
 export type MarketingContactPresenceQuery = {
   msisdns: string[];
   excludeSourceRef: string | null;
+};
+/** U33r · the third pass's MINOR-2 · one book row's ADDRESS in `marketingContact.emailsAmong`'s answer — its number and
+ *  the e-mail as stored, nothing else of the row. */
+export type MarketingContactEmailEntry = {
+  msisdn: string;
+  email: string;
 };
 /**
  * U38a · THE PLAYER ARM OF A CAMPAIGN AUDIENCE, as a KEYSET on the account id (decision X8) — `user.playerWalk`.
@@ -1848,6 +1886,8 @@ declare global {
     recipientsByCampaignMsisdn: Map<string, string>;
     /** U33a-L · the recorded list bases, by id. ⛔ Append-only: never deleted, revoked once. */
     contactListBases: Map<string, StoredContactListBasis>;
+    /** U33r · the agent-referee keys, by `refereeKey` — the primary key, and the whole row. ⛔ Append-only. */
+    agentRefereeKeys: Map<string, StoredAgentRefereeKey>;
   } | undefined;
 }
 
@@ -1890,6 +1930,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   smsCampaignRecipients: new Map(),
   recipientsByCampaignMsisdn: new Map(),
   contactListBases: new Map(),
+  agentRefereeKeys: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -1926,6 +1967,7 @@ if (!store.smsCampaigns)               store.smsCampaigns = new Map();
 if (!store.smsCampaignRecipients)      store.smsCampaignRecipients = new Map();
 if (!store.recipientsByCampaignMsisdn) store.recipientsByCampaignMsisdn = new Map();
 if (!store.contactListBases)           store.contactListBases = new Map();
+if (!store.agentRefereeKeys)           store.agentRefereeKeys = new Map();
 
 /* ═══ U24 · THE MEMORY TWIN'S ONE AUDIENCE TRANSLATION ═════════════════════════════════════
  * ⭐ The Prisma twin's `toPrismaContactWhere` predicate for predicate, so a count on the suites' backend is
@@ -2031,6 +2073,18 @@ function bookStandings(keys: readonly string[]): BookStandingEntry[] {
     const cover: OutreachBasisCover | null = found === undefined ? null : { basisId: found.id, listId: found.listId, recordedAt: found.recordedAt };
     return { msisdn, standing: { row: "live", cover } };
   });
+}
+
+/**
+ * U33r · THE ONE DEFINITION OF A REFEREE KEY'S ANSWER IN THIS TWIN — `holds` and `heldAmong` both ask it, so the single
+ * read and the bulk read cannot disagree, and the Prisma twin's `refereeHeld` takes the same steps (`test:dal-parity`
+ * §28). Keys in (already deduplicated by the caller, and checked by the rule set), one entry per key out — a key no row
+ * holds included, as `held: false` — ordered by key.
+ */
+function refereeHeld(keys: readonly string[]): AgentRefereeKeyEntry[] {
+  if (keys.length === 0) return [];
+  assertRefereeKeys("agentRefereeKey.held", keys);
+  return [...keys].sort().map((refereeKey): AgentRefereeKeyEntry => ({ refereeKey, held: store.agentRefereeKeys.has(refereeKey) }));
 }
 
 /** U38a · THE MEMORY TWIN'S PLAYER ARM — the Prisma twin's `playerWalk` where, predicate for predicate. Every key is
@@ -3565,12 +3619,37 @@ const memoryDb = {
       }
       return out.sort();
     },
+    /** U33r · the third pass's MINOR-2 · the ADDRESS each of these numbers' book rows holds — `findByMsisdn` asked of a set,
+     *  through the same index, answering the number and the address only (never the row); a row with no address is left
+     *  out. Ordered by number. The audience preview asks it so its "will receive" agrees with the gate. */
+    emailsAmong: (msisdns: string[]): MarketingContactEmailEntry[] => {
+      const keys = bulkKeys(msisdns, "marketingContact.emailsAmong");
+      if (keys.length === 0) return [];
+      const out: MarketingContactEmailEntry[] = [];
+      for (const m of keys) {
+        const id = store.contactsByMsisdn.get(m);
+        const c = id ? store.marketingContacts.get(id) : undefined;
+        if (c && typeof c.email === "string" && c.email.trim() !== "") out.push({ msisdn: m, email: c.email });
+      }
+      return out.sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
+    },
     /** Every book row LINKED to an account — erasure's reach (U18b). Usually one; a player who changed
      *  number can have the old one in the book too. */
     listByUserId: (userId: string): StoredMarketingContact[] =>
       Array.from(store.marketingContacts.values())
         .filter((c) => c.userId === userId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
+    /** U33r · the book's numbers held under ONE e-mail address, case-insensitive — KEY-ONLY (the number alone, never the
+     *  row), sorted. A referee named only by e-mail is keyed under every number the book holds for that address (the
+     *  U33r review's MINOR-1). A blank address answers nothing. */
+    msisdnsByEmail: (email: string): string[] => {
+      const norm = email.trim().toLowerCase();
+      if (!norm) return [];
+      return Array.from(store.marketingContacts.values())
+        .filter((c) => (c.email ?? "").trim().toLowerCase() === norm)
+        .map((c) => c.msisdn)
+        .sort();
+    },
     /** ⛔ `msisdn` is not patchable (see `MarketingContactPatch`), so the unique index can
      *  never need re-pointing here — which is why this does not touch `contactsByMsisdn`. */
     update: (id: string, patch: MarketingContactPatch, at: string): StoredMarketingContact | null => {
@@ -3872,6 +3951,38 @@ const memoryDb = {
         if (bound !== null && Date.parse(m.addedAt) <= bound) out.covered++;
       }
       return out;
+    },
+  },
+
+  /* ═══ U33r · THE AGENT-REFEREE KEYS (Q8) ══════════════════════════════════════════════════════════════════
+   * ⛔ APPEND-ONLY: `record` writes a key not yet held and SKIPS one already held — Postgres's ON CONFLICT DO NOTHING in the
+   * other twin, so nothing is ever moved — and there is NO update member and NO delete member (`test:dal-parity` §28).
+   * ⛔ EVERY member asks the ONE rule set (`referee-key-model.ts`) before it reads or writes, as the Prisma twin does, so a
+   * raw number handed in as a key — or a row carrying anything beside its key — is refused by both. ⛔ The ONE writer is
+   * `referee-exclusion.ts` (`test:dal-parity` §28.writers); the ONE reader the gate's (`DB_GATE_READS`) and the split's
+   * prefetch, both through that module. */
+  agentRefereeKey: {
+    /** The batch checked WHOLE first; then each key not yet held is written by NAME — never a spread — and one already
+     *  held is skipped. Answers how many rows were written: 0 on a re-run, which is what makes the backfill re-runnable. */
+    record: (rows: StoredAgentRefereeKey[]): number => {
+      assertRefereeKeyRows(rows);
+      let written = 0;
+      for (const r of rows) {
+        if (store.agentRefereeKeys.has(r.refereeKey)) continue;
+        const stored: StoredAgentRefereeKey = { refereeKey: r.refereeKey };
+        store.agentRefereeKeys.set(stored.refereeKey, stored);
+        written++;
+      }
+      return written;
+    },
+    /** Whether a row holds this key — the ONE definition, asked of one key. */
+    holds: (refereeKey: string): boolean => refereeHeld([refereeKey])[0].held,
+    /** §25's bound and shape: at most `BULK_KEYED_READ_MAX` distinct keys, REFUSED above — never cut off — duplicates
+     *  folded, an empty set answered with nothing; then the ONE definition, one entry per key. */
+    heldAmong: (refereeKeys: string[]): AgentRefereeKeyEntry[] => {
+      const keys = bulkKeys(refereeKeys, "agentRefereeKey.heldAmong");
+      if (keys.length === 0) return [];
+      return refereeHeld(keys);
     },
   },
 

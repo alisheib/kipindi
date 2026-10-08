@@ -8,16 +8,20 @@
  * that cannot answer the question it exists to answer (GN 478T reg 51(1)).
  *
  * ⭐ SINCE 2026-09-26 IT ALSO PROVES WHAT THE ROW SAYS WAS SHOWN (D2) AND WHICH ROWS COUNT (OQ11, D3):
- * §6 drives the REAL registration service in English and Chinese and reads the row back — the path
- * that wrote "Nipe matangazo (hiari)." for every registrant whatever they read; §7 pins that both consent
- * forms post the language they were DRAWN in (2026-09-27: the cookie alone could change between drawing
- * and submitting), that the actions validate it to en/sw/zh before the cookie fallback, and runs that
- * validator; 7f–7h (2026-10-06) pin the sign-up form that now keeps what was typed on a refusal (a client
- * form, `register-form.tsx`): its SMS-offers sentence is drawn by the server, its box is never pre-ticked,
- * and the refusal it gets back (`refusal.ts`) echoes no tick; §8 proves every consent sentence the dictionary
- * shows today is one of the literal SMS-naming sentences the gate accepts (`consent-wording.ts`),
- * that no withdrawal or pre-2026-09-26 sentence is, that the pinned list was only ever appended to, and
- * that the three consent points call the consent by ONE name in each language (D1).
+ * §6 drives the REAL registration service in English and Chinese — the path that once wrote "Nipe matangazo
+ * (hiari)." for every registrant whatever they read, and that since 2026-10-07 writes NO row at all: the
+ * sign-up SMS-offers box is REMOVED (COMPLIANCE-DECISIONS § "2026-10-07 · Marketing SMS go to anyone with a
+ * phone — consent is not a condition"), so §6 proves a registration records no consent, even from a page
+ * served before the removal that still posts its tick, while the account's language is still the one shown;
+ * §7 pins that the consent forms post the language they were DRAWN in (2026-09-27: the cookie alone could
+ * change between drawing and submitting), that the actions validate it to en/sw/zh before the cookie
+ * fallback, and runs that validator; 7f–7h pin the sign-up form (a client form since 2026-10-06,
+ * `register-form.tsx`): the box is gone from the page, the form, the action and the service (7f), no box
+ * left on it is pre-ticked (7g), and the refusal it gets back (`refusal.ts`) echoes no tick (7h); §8 proves
+ * every consent sentence the dictionary shows today is one of the literal SMS-naming sentences the gate
+ * accepts (`consent-wording.ts`), that no withdrawal or pre-2026-09-26 sentence is, that the pinned list was
+ * only ever appended to, that the consent points call the consent by ONE name in each language (D1), and
+ * that the removed box left no dictionary key behind while its three sentences stay pinned (8g).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants the defective implementations IN MEMORY and
  * requires the MATCHING assertion to fire — not merely "something failed". This file makes no
@@ -39,6 +43,7 @@ import { ledgerStamp } from "../src/lib/server/marketing/ledger-stamp.ts";
 import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
 import { registerWithPassword } from "../src/lib/server/auth-service.ts";
 import type { PasswordRegisterInput } from "../src/lib/server/auth-service.ts";
+import { dict } from "../src/lib/i18n-dict.ts";
 import { db } from "../src/lib/server/store.ts";
 import type { StoredSuppression, MessagingLocale } from "../src/lib/server/store.ts";
 import { decomment } from "./lib/decomment.mts";
@@ -73,6 +78,8 @@ type Impl = {
   isPinned: (wording: string) => boolean;
   /** D2 · the validator for the language a form posts back as the one it was drawn in. */
   rendered: (posted: unknown) => MessagingLocale | null;
+  /** 8g · the dictionary's `auth` keys in one language — a removed box must leave no key behind. */
+  authKeys: (locale: "en" | "sw" | "zh") => string[];
   sources: Sources;
 };
 
@@ -83,6 +90,7 @@ const REAL: Impl = {
   register: registerWithPassword,
   isPinned: isSmsConsentWording,
   rendered: renderedLocaleOf,
+  authKeys: (locale) => Object.keys(dict[locale].auth),
   sources: REAL_SOURCES,
 };
 
@@ -93,9 +101,13 @@ const ok = (l: string, c: boolean, x = "") => {
   console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`);
 };
 
-/** What the sign-up page SHOWS in Swahili today — the real resolver, so a planted resolver is measured against it. */
-const SIGNUP_SW = marketingConsentWording("REGISTRATION", "SW");
+/** What the profile switch SHOWS in Swahili today — the real resolver, so a planted resolver is measured against it.
+ *  ⛔ The switch is the one surface that records a consent since the sign-up box was removed (2026-10-07). */
+const SWITCH_SW = marketingConsentWording("PROFILE", "SW");
 const LOCALES: MessagingLocale[] = ["SW", "EN", "ZH"];
+/** ⛔ The removed sign-up box's three sentences, as they shipped on 2026-09-28 — read from the pinned list itself, never
+ *  retyped: they must stay pinned (a yes recorded under them still counts) while no page shows them (8g). */
+const SIGNUP_BOX_SENTENCES = SMS_CONSENT_WORDINGS.filter((w) => w.site === "REGISTRATION").map((w) => w.wording);
 
 /**
  * ⭐ THE APPEND-ONLY PIN. A hash of the first entries of `SMS_CONSENT_WORDINGS` as they shipped on
@@ -125,15 +137,18 @@ const OLD_SENTENCES = [
  * Drive the real registration SERVICE as far as it goes in a plain script. A successful sign-up mints
  * a session cookie, which needs a Next request scope — the same constraint `auth-email-integrity`
  * documents — so the throw there means "it got all the way", and the rows it wrote are read back.
+ * ⛔ It hands the service the removed box's field, ticked — what a page served before 2026-10-07 would still post — so
+ * §6 measures that a stray tick records nothing, not merely that nobody sent one.
  */
 async function registerAs(impl: Impl, phone: string, email: string, locale: MessagingLocale | undefined): Promise<void> {
   const PW = "Str0ng!Passw0rd#2026";
+  const staleTick = { marketingOptIn: true } as Record<string, unknown>;
   try {
     await impl.register({
       phone, email, password: PW, passwordConfirm: PW, dob: "1990-01-01",
-      acceptTerms: true, acceptAge: true, marketingOptIn: true,
+      acceptTerms: true, acceptAge: true, ...staleTick,
       ...(locale ? { locale } : {}),
-    });
+    } as PasswordRegisterInput);
   } catch { /* the session cookie — everything before it has run */ }
 }
 
@@ -152,40 +167,44 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   ok(p("0 · baseline · the ledger holds nothing for this number before anything runs"),
     (await Promise.resolve(db.messagingConsent.listFor(KEY))).length === 0);
 
+  // ⭐ The switch under Profile → Notifications — since 2026-10-07 the ONE surface that records a consent decision.
   const wrote = await impl.append({
     phoneE164: phone, locale: "SW", status: "GIVEN",
-    source: "REGISTRATION", site: "REGISTRATION", evidence: "v1", recordedBy: null,
+    source: "PROFILE", site: "PROFILE", evidence: "/profile/notifications", recordedBy: null,
   });
   ok(p("1 · the append reports success"), wrote === true);
   const rows1 = await Promise.resolve(db.messagingConsent.listFor(KEY));
   ok(p("1b · EXECUTED · exactly one row landed, found by the normalised phone key"), rows1.length === 1, `${rows1.length} rows`);
-  ok(p("1c · the sign-up wording is the SWAHILI sentence, stored verbatim"),
-    rows1[0]?.wording === SIGNUP_SW, JSON.stringify(rows1[0]?.wording ?? null));
+  ok(p("1c · the switch's wording is the SWAHILI sentence, stored verbatim"),
+    rows1[0]?.wording === SWITCH_SW, JSON.stringify(rows1[0]?.wording ?? null));
 
+  // The withdrawal is made on an ENGLISH page: its row must carry the English sentence, whatever the first row said.
   await impl.append({
-    phoneE164: phone, locale: "SW", status: "WITHDRAWN",
+    phoneE164: phone, locale: "EN", status: "WITHDRAWN",
     source: "PROFILE", site: "PROFILE", evidence: "/profile/notifications", recordedBy: null,
   });
   const rows2 = await Promise.resolve(db.messagingConsent.listFor(KEY));
   ok(p("2 · APPEND-ONLY · the withdrawal ADDED a row rather than replacing one"), rows2.length === 2, `${rows2.length} rows`);
   ok(p("2b · the original GIVEN row survives, with the wording it was written with"),
-    rows2.some((r) => r.status === "GIVEN" && r.wording === SIGNUP_SW));
+    rows2.some((r) => r.status === "GIVEN" && r.wording === SWITCH_SW));
   const latest = await Promise.resolve(db.messagingConsent.latestFor(KEY));
   ok(p("2c · latestFor answers WITHDRAWN — the question U7's gate will ask"), latest?.status === "WITHDRAWN", String(latest?.status));
-  ok(p("2d · the profile row carries the TOGGLE's copy, not the sign-up form's"),
-    latest?.wording === marketingConsentWording("PROFILE", "SW"), JSON.stringify(latest?.wording ?? null));
+  ok(p("2d · the withdrawal carries the sentence of ITS OWN act — the English switch, locale EN — not the first row's"),
+    latest?.wording === marketingConsentWording("PROFILE", "EN") && latest?.locale === "EN",
+    `${JSON.stringify(latest?.wording ?? null)} · ${latest?.locale}`);
 
   // ⛔ THE WORDING MUST TRACK THE LANGUAGE AND THE SURFACE. A record that says the player read
   // English copy they were never shown is a FALSE record, not a harmless default.
-  ok(p("3 · EN and SW wording differ"), impl.wording("REGISTRATION", "EN") !== impl.wording("REGISTRATION", "SW"));
-  ok(p("3b · the two surfaces' wording differ"), impl.wording("PROFILE", "SW") !== impl.wording("REGISTRATION", "SW"));
+  ok(p("3 · EN and SW wording differ"), impl.wording("PROFILE", "EN") !== impl.wording("PROFILE", "SW"));
+  ok(p("3b · the two surfaces' wording differ — the profile switch and the /s/ page's start-again"),
+    impl.wording("PROFILE", "SW") !== optOutWording("RESUME", "SW"));
   ok(p("3c · an unknown locale falls to SWAHILI, the platform default — never to English"),
-    impl.wording("REGISTRATION", "XX" as MessagingLocale) === impl.wording("REGISTRATION", "SW"));
+    impl.wording("PROFILE", "XX" as MessagingLocale) === impl.wording("PROFILE", "SW"));
 
   ok(p("4 · an unusable identifier is REFUSED, not written as a row nobody can look up"),
     (await impl.append({
       phoneE164: "123", locale: "SW", status: "GIVEN",
-      source: "REGISTRATION", site: "REGISTRATION", evidence: null, recordedBy: null,
+      source: "PROFILE", site: "PROFILE", evidence: null, recordedBy: null,
     })) === false);
 
   const first = await impl.suppress({
@@ -207,9 +226,11 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
       reason: "WITHDRAWN", evidence: null, recordedBy: null, createdAt: "2026-09-25T00:00:00.000Z",
     })).id === `${tag}sup-3`);
 
-  // ── 6 · D2 · THE REAL REGISTRATION PATH RECORDS THE LANGUAGE IT SHOWED ─────────────────────
-  // 🔴 Both registration paths passed `locale: "SW"`, so an English or Chinese registrant was recorded
-  // as having read "Nipe matangazo (hiari)." — false evidence, in an append-only store.
+  // ── 6 · THE REAL REGISTRATION PATH RECORDS NO CONSENT, AND THE LANGUAGE IT SHOWED ──────────
+  // ⛔ 2026-10-07 · THE SIGN-UP BOX IS REMOVED (the owner's final rule): sign-up asks nothing about offers, so it records
+  // nothing — no ledger row and the switch off — even when a page served before the removal posts the old tick
+  // (`registerAs` sends it). 🔴 And D2 still holds for the account itself: both registration paths once passed
+  // `locale: "SW"`, recording an English or Chinese registrant as having read Swahili.
   const national = id.slice(3); // 9 digits
   const regPhone = (ndc: string) => `+255${ndc}${national.slice(2)}`;
   const reg = async (ndc: string, locale: MessagingLocale | undefined) => {
@@ -217,23 +238,23 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
     await registerAs(impl, ph, `reg${ph.slice(1)}@example.com`, locale);
     const key = { channel: "SMS" as const, identifier: ph.slice(1), category: "MARKETING" as const };
     return {
-      row: await Promise.resolve(db.messagingConsent.latestFor(key)),
+      rows: await Promise.resolve(db.messagingConsent.listFor(key)),
       user: await Promise.resolve(db.user.findByPhone(ph)),
     };
   };
   const en = await reg("74", "EN");
-  ok(p("6 · ⭐ D2 · an ENGLISH registration stores the English sentence it showed, with locale EN"),
-    en.row?.wording === marketingConsentWording("REGISTRATION", "EN") && en.row?.locale === "EN",
-    `${JSON.stringify(en.row?.wording ?? null)} · ${en.row?.locale}`);
+  ok(p("6 · ⛔ THE SIGN-UP BOX IS GONE (2026-10-07) · an ENGLISH registration records NO consent — no ledger row, the switch off — though its page posted the old tick"),
+    !!en.user && en.rows.length === 0 && en.user.marketingOptIn === false,
+    `${en.rows.length} ledger row(s) · marketingOptIn ${en.user?.marketingOptIn}`);
   ok(p("6b · …and the account's User.locale is EN from its first day (OD42 reads it)"), en.user?.locale === "EN", `${en.user?.locale}`);
   const zh = await reg("75", "ZH");
-  ok(p("6c · a CHINESE registration stores the Chinese sentence, with locale ZH"),
-    zh.row?.wording === marketingConsentWording("REGISTRATION", "ZH") && zh.row?.locale === "ZH" && zh.user?.locale === "ZH",
-    `${JSON.stringify(zh.row?.wording ?? null)} · ${zh.row?.locale} · user ${zh.user?.locale}`);
+  ok(p("6c · a CHINESE registration records no consent either, and its User.locale is ZH"),
+    !!zh.user && zh.rows.length === 0 && zh.user.marketingOptIn === false && zh.user.locale === "ZH",
+    `${zh.rows.length} ledger row(s) · marketingOptIn ${zh.user?.marketingOptIn} · user ${zh.user?.locale}`);
   const none = await reg("76", undefined);
-  ok(p("6d · ⚠️ CONTROL — with no shown language the row is SWAHILI, the platform default (never English)"),
-    none.row?.wording === SIGNUP_SW && none.row?.locale === "SW" && none.user?.locale === "SW",
-    `${JSON.stringify(none.row?.wording ?? null)} · ${none.row?.locale}`);
+  ok(p("6d · ⚠️ CONTROL — with no shown language the account is SWAHILI, the platform default (never English), with no consent recorded"),
+    !!none.user && none.rows.length === 0 && none.user.locale === "SW",
+    `${none.rows.length} ledger row(s) · user ${none.user?.locale}`);
   ok(p("6e · ⚠️ CONTROL — the three registrations really created three accounts"),
     !!en.user && !!zh.user && !!none.user, `${!!en.user} ${!!zh.user} ${!!none.user}`);
 
@@ -263,47 +284,48 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
     ["en", "EN"], ["sw", "SW"], ["zh", "ZH"],
     ["EN", null], ["Sw", null], [" sw", null], ["en-GB", null], ["fr", null], ["", null],
     [null, null], [undefined, null], [1, null], [{}, null], ["<b>en</b>", null],
-    ["Send me 50pick offers and news by SMS (optional).", null],
+    ["Offers and news by SMS", null],
   ];
   const wrongRendered = table.filter(([x, want]) => impl.rendered(x) !== want)
     .map(([x, want]) => `${JSON.stringify(x) ?? String(x)} → ${impl.rendered(x)} (want ${want})`);
   ok(p("7e · ⛔ EXECUTED · a posted language counts only as exactly en / sw / zh — case, padding and free text are refused"),
     wrongRendered.length === 0, wrongRendered.join(" | "));
-  ok(p("7c · ⛔ no registration site in auth-service writes a literal \"SW\" locale any more"),
-    !/\blocale:\s*"SW"\s*,/.test(s.authService) && (s.authService.match(/messagingLocaleOf\(/g) ?? []).length >= 2,
+  ok(p("7c · ⛔ the registration site in auth-service writes no literal \"SW\" locale — the account's language is the one shown"),
+    !/\blocale:\s*"SW"\s*,/.test(s.authService) && (s.authService.match(/messagingLocaleOf\(/g) ?? []).length >= 1,
     `${(s.authService.match(/messagingLocaleOf\(/g) ?? []).length} messagingLocaleOf call(s)`);
-  // ── 7f–7h · THE SIGN-UP FORM IS A CLIENT FORM NOW (route audit C1, 2026-10-06) ─────────────────────────────
-  // A refusal returns to the mounted form instead of remounting the page, so the form lives in `register-form.tsx`.
-  // ⭐ Its sentence still comes from the server, in the language the page posts as shownLocale (7a): a client lookup
-  // could disagree with that language once the provider rewrites the cookie, and the ledger would store a sentence
-  // the person never saw.
-  ok(p("7f · ⭐ the SMS-offers sentence is drawn by the server (optionalUpdates: t.auth.optionalUpdates) and shown as {copy.optionalUpdates} — the client form never calls useT("),
-    s.registerPage.includes("optionalUpdates: t.auth.optionalUpdates") && s.registerForm.includes("{copy.optionalUpdates}")
-      && !s.registerForm.includes("useT("));
-  // ⛔ A consent box is evidence of what the person did. Pre-ticked, it records a choice nobody made.
-  const optInBox = (() => {
-    const at = s.registerForm.indexOf('name="marketingOptIn"');
-    if (at < 0) return "";
-    const from = s.registerForm.lastIndexOf("<Checkbox", at);
-    const to = s.registerForm.indexOf("/>", at);
-    return from < 0 || to < 0 ? "" : s.registerForm.slice(from, to + 2);
-  })();
-  ok(p("7g · ⛔ the SMS-offers box is never pre-ticked — its <Checkbox name=\"marketingOptIn\"> carries neither defaultChecked nor checked"),
-    optInBox.length > 0 && !/defaultChecked|(?<![A-Za-z])checked(?![A-Za-z])/.test(optInBox),
-    optInBox.replace(/\s+/g, " ").slice(0, 160) || "the box was not found");
+  // ── 7f–7h · THE SIGN-UP FORM (a client form since route audit C1, 2026-10-06: `register-form.tsx`) ─────────────
+  // ⛔ 7f · THE BOX IS GONE (2026-10-07, the owner's final rule): the page draws no SMS-offers sentence, the form holds no
+  // `marketingOptIn` box, the action reads no such field and the service appends no ledger row — each of the four places
+  // a box could come back by. Every sentence the form shows is still drawn by the server in the language the page posts
+  // as shownLocale (7a): the client form never calls useT(.
+  const boxBack = [
+    s.registerPage.includes("optionalUpdates") ? "the page draws optionalUpdates" : "",
+    /optionalUpdates|name="marketingOptIn"/.test(s.registerForm) ? "the form holds the box" : "",
+    s.registerActions.includes("marketingOptIn") ? "the action reads marketingOptIn" : "",
+    /appendMarketingConsent\s*\(/.test(s.authService) ? "the service appends a ledger row" : "",
+    s.registerForm.includes("useT(") ? "the client form calls useT(" : "",
+  ].filter(Boolean);
+  ok(p("7f · ⛔ THE SIGN-UP BOX IS GONE (2026-10-07): no optionalUpdates sentence on the page or the form, no marketingOptIn box, no marketingOptIn read by the action, no ledger append in the service — and the client form never calls useT("),
+    boxBack.length === 0, boxBack.join(" · "));
+  // ⛔ A box is evidence of what the person did. Pre-ticked, it records a choice nobody made.
+  const boxes = [...s.registerForm.matchAll(/<Checkbox\b[\s\S]*?\/>/g)].map((m) => m[0]);
+  const preTicked = boxes.filter((b) => /defaultChecked|(?<![A-Za-z])checked(?![A-Za-z])/.test(b));
+  ok(p("7g · ⛔ no box on the sign-up form is pre-ticked — its two <Checkbox>es (acceptAge, acceptTerms) carry neither defaultChecked nor checked"),
+    boxes.length === 2 && ['name="acceptAge"', 'name="acceptTerms"'].every((n) => boxes.some((b) => b.includes(n))) && preTicked.length === 0,
+    `${boxes.length} box(es) · ${preTicked.map((b) => b.replace(/\s+/g, " ").slice(0, 80)).join(" | ") || "none pre-ticked"}`);
   // ⛔ And the refusal the form gets back carries no tick (or any other form value) to re-apply: the form stays mounted,
   // so every box holds exactly what the player did.
-  const FORM_VALUES = ["acceptAge", "acceptTerms", "marketingOptIn", "dob", "password", "passwordConfirm"];
+  const FORM_VALUES = ["acceptAge", "acceptTerms", "dob", "password", "passwordConfirm"];
   const echoed = FORM_VALUES.filter((k) => new RegExp(`(?<![A-Za-z0-9_$.])${k}\\s*\\??\\s*:|[{,]\\s*${k}\\s*[,}]`).test(s.registerRefusal));
-  ok(p("7h · ⛔ a sign-up refusal echoes no tick, no birth date and no password — refusal.ts declares none of acceptAge, acceptTerms, marketingOptIn, dob, password, passwordConfirm"),
+  ok(p("7h · ⛔ a sign-up refusal echoes no tick, no birth date and no password — refusal.ts declares none of acceptAge, acceptTerms, dob, password, passwordConfirm"),
     s.registerRefusal.includes("export type RegisterRefusal") && echoed.length === 0, echoed.join(", "));
 
   // ── 8 · OQ11 · THE SENTENCES THE GATE COUNTS ───────────────────────────────────────────────
   // ⭐ Every consent sentence the dictionary shows TODAY must be pinned literally, so a copy change
   // cannot silently stop (or start) counting consents: it fails here until it is appended.
+  // (Two consent points since 2026-10-07: the sign-up box is removed, and 8g holds its sentences.)
   const shown: Array<[string, string]> = [];
   for (const L of LOCALES) {
-    shown.push([`REGISTRATION ${L}`, impl.wording("REGISTRATION", L)]);
     shown.push([`PROFILE ${L}`, impl.wording("PROFILE", L)]);
     shown.push([`OPT_OUT_RESUME ${L}`, optOutWording("RESUME", L)]);
   }
@@ -334,7 +356,6 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   const misnamed: string[] = [];
   for (const L of LOCALES) {
     const points: Array<[string, string]> = [
-      ["REGISTRATION", impl.wording("REGISTRATION", L)],
       ["PROFILE", impl.wording("PROFILE", L)],
       ["OPT_OUT_RESUME", optOutWording("RESUME", L)],
     ];
@@ -345,6 +366,14 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   }
   ok(p("8f · ⭐ ONE NAME — every consent point names the same sender, content and channel in its language (D1)"),
     misnamed.length === 0, misnamed.join(" | "));
+  // ⛔ 8g · THE REMOVED BOX (2026-10-07) LEFT NO KEY BEHIND, AND ITS EVIDENCE STAYS. `auth.optionalUpdates` is gone from
+  // all three languages (a dead key is a sentence some page could start showing again), while the three sentences it
+  // showed from 2026-09-28 stay pinned — a yes recorded under them is still a yes.
+  const deadKey = (["en", "sw", "zh"] as const).filter((l) => impl.authKeys(l).includes("optionalUpdates"));
+  const dropped = SIGNUP_BOX_SENTENCES.filter((w) => !impl.isPinned(w));
+  ok(p("8g · ⛔ the removed sign-up box left no dictionary key in any language, and its three sentences STAY pinned (a yes recorded under them still counts)"),
+    deadKey.length === 0 && SIGNUP_BOX_SENTENCES.length === 3 && dropped.length === 0,
+    `dead key in ${deadKey.join(",") || "none"} · ${SIGNUP_BOX_SENTENCES.length} pinned · ${dropped.length} unpinned`);
 
   /* ═══ §9 · THE TIE (S10, 2026-10-01) — the latest word wins, even inside one millisecond ═══
    * 🔴 The defect S8 measured: the id was `randomUUID()`, so a same-millisecond tie on `createdAt`
@@ -438,7 +467,7 @@ if (!PROVE_RED) {
     {
       name: "the wording is re-rendered from ENGLISH copy whatever the player read (§5.7)",
       phone: "0712345601",
-      expect: "1c · the sign-up wording is the SWAHILI sentence, stored verbatim",
+      expect: "1c · the switch's wording is the SWAHILI sentence, stored verbatim",
       impl: {
         ...REAL,
         wording: (site) => marketingConsentWording(site, "EN"),
@@ -481,8 +510,28 @@ if (!PROVE_RED) {
     {
       name: "🔴 D2 · registration hard-codes the Swahili locale again, whatever the page showed",
       phone: "0712345605",
-      expect: "6 · ⭐ D2 · an ENGLISH registration stores the English sentence it showed, with locale EN",
+      expect: "6b · …and the account's User.locale is EN from its first day (OD42 reads it)",
       impl: { ...REAL, register: (input) => registerWithPassword({ ...input, locale: "SW" }) },
+    },
+    {
+      name: "⛔ 2026-10-07 · the removed box revived in the service — a registration whose page posts the old tick records a GIVEN row again",
+      phone: "0712345620",
+      expect: "6 · ⛔ THE SIGN-UP BOX IS GONE (2026-10-07) · an ENGLISH registration records NO consent — no ledger row, the switch off — though its page posted the old tick",
+      impl: {
+        ...REAL,
+        register: async (input) => {
+          try {
+            return await registerWithPassword(input);
+          } finally {
+            if ((input as Record<string, unknown>).marketingOptIn === true) {
+              await appendMarketingConsent({
+                phoneE164: input.phone, locale: input.locale ?? "SW", status: "GIVEN",
+                source: "REGISTRATION", site: "PROFILE", evidence: "v1", recordedBy: null,
+              });
+            }
+          }
+        },
+      },
     },
     {
       name: "🔴 D2 · the profile toggle reads User.locale again (never written after sign-up, so always SW)",
@@ -517,7 +566,7 @@ if (!PROVE_RED) {
     {
       name: "🔴 D2 · a registration site writes the literal \"SW\" again",
       phone: "0712345607",
-      expect: "7c · ⛔ no registration site in auth-service writes a literal \"SW\" locale any more",
+      expect: "7c · ⛔ the registration site in auth-service writes no literal \"SW\" locale — the account's language is the one shown",
       impl: { ...REAL, sources: { ...REAL_SOURCES, authService: REAL_SOURCES.authService.replace("messagingLocaleOf(input.locale),", "\"SW\",") } },
     },
     {
@@ -566,22 +615,52 @@ if (!PROVE_RED) {
       },
     },
     {
-      name: "🔴 C1 · the client sign-up form looks its SMS-offers sentence up in the browser — it can disagree with the language the page posts",
+      name: "⛔ 2026-10-07 · the SMS-offers box comes back on the sign-up form",
       phone: "0712345617",
-      expect: "7f · ⭐ the SMS-offers sentence is drawn by the server (optionalUpdates: t.auth.optionalUpdates) and shown as {copy.optionalUpdates} — the client form never calls useT(",
-      impl: { ...REAL, sources: { ...REAL_SOURCES, registerForm: plant("7f", REAL_SOURCES.registerForm, "{copy.optionalUpdates}", "{t.auth.optionalUpdates}") } },
+      expect: "7f · ⛔ THE SIGN-UP BOX IS GONE (2026-10-07): no optionalUpdates sentence on the page or the form, no marketingOptIn box, no marketingOptIn read by the action, no ledger append in the service — and the client form never calls useT(",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerForm: plant("7f-form", REAL_SOURCES.registerForm, "<SubmitButton", '<Checkbox name="marketingOptIn" label={copy.terms} />\n        <SubmitButton') } },
     },
     {
-      name: "⛔ C1 · the SMS-offers box comes pre-ticked — a consent nobody gave",
+      name: "⛔ 2026-10-07 · the register action reads the removed box's field again",
+      phone: "0712345621",
+      expect: "7f · ⛔ THE SIGN-UP BOX IS GONE (2026-10-07): no optionalUpdates sentence on the page or the form, no marketingOptIn box, no marketingOptIn read by the action, no ledger append in the service — and the client form never calls useT(",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerActions: plant("7f-action", REAL_SOURCES.registerActions, "const acceptAge = ", 'const marketingOptIn = formData.get("marketingOptIn") === "on";\n  const acceptAge = ') } },
+    },
+    {
+      name: "⛔ 2026-10-07 · sign-up appends a consent-ledger row again",
+      phone: "0712345622",
+      expect: "7f · ⛔ THE SIGN-UP BOX IS GONE (2026-10-07): no optionalUpdates sentence on the page or the form, no marketingOptIn box, no marketingOptIn read by the action, no ledger append in the service — and the client form never calls useT(",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, authService: plant("7f-service", REAL_SOURCES.authService, "const testerPhones = new Set(", "await appendMarketingConsent({} as never);\n  const testerPhones = new Set(") } },
+    },
+    {
+      name: "🔴 C1 · the client sign-up form looks its words up in the browser — they can disagree with the language the page posts",
+      phone: "0712345623",
+      expect: "7f · ⛔ THE SIGN-UP BOX IS GONE (2026-10-07): no optionalUpdates sentence on the page or the form, no marketingOptIn box, no marketingOptIn read by the action, no ledger append in the service — and the client form never calls useT(",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerForm: plant("7f-useT", REAL_SOURCES.registerForm, "const [refusal, formAction, isPending] = ", "const t = useT();\n  const [refusal, formAction, isPending] = ") } },
+    },
+    {
+      name: "⛔ C1 · the age box comes pre-ticked — a confirmation nobody gave",
       phone: "0712345618",
-      expect: "7g · ⛔ the SMS-offers box is never pre-ticked — its <Checkbox name=\"marketingOptIn\"> carries neither defaultChecked nor checked",
-      impl: { ...REAL, sources: { ...REAL_SOURCES, registerForm: plant("7g", REAL_SOURCES.registerForm, 'name="marketingOptIn"', 'name="marketingOptIn" defaultChecked={true}') } },
+      expect: "7g · ⛔ no box on the sign-up form is pre-ticked — its two <Checkbox>es (acceptAge, acceptTerms) carry neither defaultChecked nor checked",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerForm: plant("7g", REAL_SOURCES.registerForm, 'name="acceptAge"', 'name="acceptAge" defaultChecked={true}') } },
     },
     {
-      name: "⛔ C1 · the refusal carries the SMS-offers tick back to the form, which could re-tick it",
+      name: "⛔ C1 · the refusal carries the age tick back to the form, which could re-tick it",
       phone: "0712345619",
-      expect: "7h · ⛔ a sign-up refusal echoes no tick, no birth date and no password — refusal.ts declares none of acceptAge, acceptTerms, marketingOptIn, dob, password, passwordConfirm",
-      impl: { ...REAL, sources: { ...REAL_SOURCES, registerRefusal: plant("7h", REAL_SOURCES.registerRefusal, "at: number;", "at: number;\n  marketingOptIn: boolean;") } },
+      expect: "7h · ⛔ a sign-up refusal echoes no tick, no birth date and no password — refusal.ts declares none of acceptAge, acceptTerms, dob, password, passwordConfirm",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerRefusal: plant("7h", REAL_SOURCES.registerRefusal, "at: number;", "at: number;\n  acceptAge: boolean;") } },
+    },
+    {
+      name: "⛔ 2026-10-07 · the removed box's key comes back to the dictionary (a sentence some page could show again)",
+      phone: "0712345624",
+      expect: "8g · ⛔ the removed sign-up box left no dictionary key in any language, and its three sentences STAY pinned (a yes recorded under them still counts)",
+      impl: { ...REAL, authKeys: (locale) => [...Object.keys(dict[locale].auth), "optionalUpdates"] },
+    },
+    {
+      name: "⛔ 2026-10-07 · the box's sentences are unpinned with it — every yes recorded under them stops counting",
+      phone: "0712345625",
+      expect: "8g · ⛔ the removed sign-up box left no dictionary key in any language, and its three sentences STAY pinned (a yes recorded under them still counts)",
+      impl: { ...REAL, isPinned: (w) => isSmsConsentWording(w) && !SIGNUP_BOX_SENTENCES.includes(w) },
     },
   ];
 

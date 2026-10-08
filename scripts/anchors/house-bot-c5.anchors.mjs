@@ -534,8 +534,11 @@ export const MUTATIONS = [
   {
     name: "c5-s5:S5-M111 · ⛔ D19 · every audit row a console file reads — every file under src/app/admin/, src/app/api/admin/ and src/components/admin/,…",
     file: ADMIN_PAGE,
-    from: "await houseAuditForConsole(session?.userId ?? null, \"/admin\", getAuditPage({ limit: 12 }))",
-    to: "getAuditPage({ limit: 12 })",
+    /* ⚠️ RE-ANCHORED 2026-10-07 (marketing OD61): the overview reads the whole ring for its feed and filters it for the
+       viewer (`admin-overview-feed.ts`), so the read's limit is `OVERVIEW_FEED_SCAN`, no longer 12. Same plant, same
+       defect: the reader no longer handed to houseAuditForConsole. */
+    from: "await houseAuditForConsole(session?.userId ?? null, \"/admin\", getAuditPage({ limit: OVERVIEW_FEED_SCAN }))",
+    to: "getAuditPage({ limit: OVERVIEW_FEED_SCAN })",
     expect: "0.260.1 · ⛔ D19 · every audit row a console file reads — every file under src/app/admin/, src/app/api/admin/ and src/components/admin/, read from disk, and every row reader the audit module exports, its exports classified to the last name — goes straight to houseAuditForConsole; EVERY call of every gate export names the signed-in viewer and the file's own console route; the three struck display readers (D20) are called NOWHERE; no console file reaches the audit module or the gate by import(), a namespace or a re-export, and none imports a house read module — or keeps what one returns — outside the system page's engine card (only the fire-and-forget holder and money hooks read nothing back); and every file OUTSIDE the console that calls a row reader is classified",
     suite: "reports-mem",
   },

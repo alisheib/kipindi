@@ -2474,6 +2474,25 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const plantedBatch = storeSrc.replace("export type MessagingKeyBatch = {", `export type MessagingKeyBatch = {${NL25}  plantedKey: string;`);
   ok("25.c6 · CONTROL · a key PLANTED in MessagingKeyBatch is seen by the parser and fails 25.named's exact set",
     storedKeys("MessagingKeyBatch", plantedBatch).includes("plantedKey") && !sameSet(storedKeys("MessagingKeyBatch", plantedBatch), BATCH_KEYS));
+
+  // ── 25.emails · MINOR-2's last part (U33r, the lead's go-ahead) · the book's ADDRESSES for a set of numbers ──
+  const memE = memberOf(ns(storeSrc, "marketingContact"), "emailsAmong");
+  const priE = memberOf(ns(dalSrc, "marketingContact"), "emailsAmong");
+  const E_KEYS = 'const keys = bulkKeys(msisdns, "marketingContact.emailsAmong");';
+  const emailsOk = (mem: string, pri: string): boolean => {
+    const fm = flat25(mem), fp = flat25(pri);
+    return mem.includes("emailsAmong: (msisdns: string[]): MarketingContactEmailEntry[] =>")
+      && pri.includes("emailsAmong: async (msisdns: string[]): Promise<MarketingContactEmailEntry[]> =>")
+      && before(fm, E_KEYS, EMPTY) && before(fp, E_KEYS, EMPTY) && before(fp, EMPTY, "pc()")
+      && fp.includes("select: { msisdn: true, email: true }") && !pri.includes("toStoredMarketingContact(")
+      && fm.includes("out.push({ msisdn: m, email: c.email });") && !/out[.]push[(]c[^A-Za-z0-9_]/.test(mem);
+  };
+  ok("25.emails · ⭐ MINOR-2's last part · marketingContact.emailsAmong in BOTH twins — named (MarketingContactEmailEntry is EXACTLY msisdn and email, exported by store.ts and imported by prisma-dal.ts), through bulkKeys, an empty set answered before any query, ONE select of the number and the address (never the row), a row with no address left out",
+    emailsOk(memE, priE) && storeImport25.includes("  MarketingContactEmailEntry,") && storeSrc.includes("export type MarketingContactEmailEntry = {")
+      && sameSet(storedKeys("MarketingContactEmailEntry"), ["msisdn", "email"]),
+    `memory ${memE.length} · prisma ${priE.length}`);
+  ok("25.c7 · CONTROL · an emailsAmong that selects the whole row, or skips bulkKeys, FAILS 25.emails",
+    !emailsOk(memE, priE.split("select: { msisdn: true, email: true }").join("")) && !emailsOk(memE.split(E_KEYS).join(""), priE));
 }
 
 /* ═══ §26 · The campaign tables — SmsCampaign / SmsCampaignRecipient in both twins (U35b, S10 2026-10-02; decision X1) ═══ */
@@ -3764,6 +3783,255 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("27.c12 · CONTROL · a rule set whose text check forgets the NUL FAILS 27.model's needles, and a twin that asks the rules AFTER its write fails the order",
     !MODEL_NEEDLES27.every((n) => modelSrc.replace('typeof v === "string" && !v.includes(NUL);', 'typeof v === "string";').includes(n))
       && !before27("store.contactListBases.set(row.id, stored); assertListBasisSeed(row);", "assertListBasisSeed(row);", "store.contactListBases.set("));
+}
+
+/* ═══ §28 · The agent-referee keys — AgentRefereeKey in both twins (U33r, S14 2026-10-07; Q8, the owner's FINAL rule) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. An AgentRefereeKey row is 50pick's promise to an agent applicant's referee, "we never contact
+  // you for marketing", in the only form the send gate can ask: a keyed hash of the number — and, since the U33r review's
+  // MAJOR-1, NOTHING ELSE: no instant, because an application's refereeConsentAt beside a key would link the referee back to
+  // the applicant. Every behavioural suite runs on the MEMORY twin, so a Prisma twin that lost its half — a key read from the
+  // wrong column, a createMany without skipDuplicates (one re-run of the backfill would then throw P2002), a held read that
+  // answered "held" for a key nobody wrote, a bulk read cut off — would be a promised referee messaged on production while
+  // every suite stayed green. This section holds the TWO twins to one shape, the ONE rule set, the ONE writer and the
+  // migration to the model — and the book's e-mail lookup U33r follows a referee's e-mail with (MINOR-1) to one rule.
+  // ⚠️ BLIND SPOTS, stated rather than implied: it reads TEXT (as §27 does); the behaviour on Postgres is executed by
+  // `npm run db:probe-referee-keys` — the same scenario on both twins, answer for answer, after every migration from EMPTY.
+  // ⛔ No backslash anywhere in this section (§27's rule): line breaks are built with String.fromCharCode, every matcher is
+  // an `includes`, an order or a character class.
+  const NL28 = String.fromCharCode(10);
+  const CR28 = String.fromCharCode(13);
+  const BS28 = String.fromCharCode(92);
+  const lf28 = (s: string) => s.split(CR28).join("");
+  const NEXT_MEMBER28 = new RegExp(NL28 + " {4}[A-Za-z0-9_]+ *:");
+  const memberOf28 = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL28}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER28);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const before28 = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const membersOf28 = (block: string): string[] => Array.from(block.matchAll(/^ {4}([A-Za-z0-9_]+) *:/gm)).map((m) => m[1]).sort();
+  const priNs = region(dalSrc, `${NL28}  agentRefereeKey: {`);
+  const memNs = region(storeSrc, `${NL28}  agentRefereeKey: {`);
+  const NAMES28 = ["record", "holds", "heldAmong"] as const;
+  type Member28 = (typeof NAMES28)[number];
+  const pri28 = Object.fromEntries(NAMES28.map((n) => [n, memberOf28(priNs, n)])) as Record<Member28, string>;
+  const mem28 = Object.fromEntries(NAMES28.map((n) => [n, memberOf28(memNs, n)])) as Record<Member28, string>;
+  const priDef = region(dalSrc, "async function refereeHeld(");
+  const memDef = region(storeSrc, "function refereeHeld(");
+  const modelSrc = decomment(readFileSync(join(SRC, "lib/server/marketing/referee-key-model.ts"), "utf8"));
+
+  // ── 28.0 · THE PARSER ──
+  const KEYS28 = ["refereeKey"];
+  const sKeys = storedKeys("StoredAgentRefereeKey");
+  const eKeys = storedKeys("AgentRefereeKeyEntry");
+  ok("28.0 · the parser sees StoredAgentRefereeKey's ONE key and AgentRefereeKeyEntry's 2, and both namespaces, both definitions and the rule set resolve",
+    sameSet(sKeys, KEYS28) && sameSet(eKeys, ["refereeKey", "held"]) && priNs.length > 400 && memNs.length > 400
+      && priDef.length > 200 && memDef.length > 150 && modelSrc.length > 600 && NAMES28.every((n) => pri28[n].length > 40 && mem28[n].length > 40),
+    `stored [${setDiff(KEYS28, sKeys) || sKeys.length}] · entry [${eKeys}] · regions ${[priNs, memNs, priDef, memDef, modelSrc].map((r) => r.length).join("/")}`);
+
+  // ── 28.1 · record: the batch checked whole, the key alone written, a key already held skipped, never an upsert ──
+  const PRI_DATA28 = "data: rows.map((r) => ({ refereeKey: r.refereeKey })),";
+  /** 28.1.prisma's predicate — a function, so 28.c2 can hand it a planted body. */
+  const recordPri28 = (body: string): boolean =>
+    before28(body, "assertRefereeKeyRows(rows);", "if (rows.length === 0) return 0;") && before28(body, "if (rows.length === 0) return 0;", "pc().agentRefereeKey.createMany(")
+      && body.includes(PRI_DATA28) && body.includes("skipDuplicates: true,") && body.includes("return created.count;")
+      && !/upsert|update|delete|namedAt|recordedAt|new Date/i.test(body);
+  ok("28.1.prisma · ⭐ record asks the rule set FIRST, answers an empty batch 0 with NO query, then ONE createMany writing the KEY ALONE (no instant of any kind) with skipDuplicates — Postgres's ON CONFLICT DO NOTHING over the primary key, so a re-run of the backfill writes nothing and never throws P2002 — and answers the rows written; never an upsert",
+    recordPri28(pri28.record), `${pri28.record.length} chars`);
+  /** 28.1.memory's predicate — a function, so 28.c2 can hand it a planted body. */
+  const recordMem28 = (body: string): boolean =>
+    before28(body, "assertRefereeKeyRows(rows);", "store.agentRefereeKeys.set(")
+      && body.includes("const stored: StoredAgentRefereeKey = { refereeKey: r.refereeKey };")
+      && before28(body, "if (store.agentRefereeKeys.has(r.refereeKey)) continue;", "store.agentRefereeKeys.set(stored.refereeKey, stored);")
+      && body.includes("return written;") && !body.includes("...r") && !/namedAt|recordedAt|new Date/.test(body);
+  ok("28.1.memory · ⭐ the memory record asks the rule set FIRST, writes each row as its KEY ALONE — never a spread, never an instant — keyed by the key itself, SKIPS a key already held BEFORE it writes, and answers the rows written",
+    recordMem28(mem28.record), `${mem28.record.length} chars`);
+
+  // ── 28.2 · ⛔ NO UPDATE MEMBER AND NO DELETE MEMBER, IN EITHER TWIN ──
+  const forbidden28 = (block: string): string[] => membersOf28(block).filter((m) => /^(update|delete|upsert|remove|set|clear|purge|forget)/i.test(m));
+  ok("28.2 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17 and §27.3) — both twins expose EXACTLY record, holds and heldAmong: no update member and no delete member, and neither namespace deletes, clears or upserts a row — a promise is never taken back",
+    sameSet(membersOf28(priNs), [...NAMES28]) && sameSet(membersOf28(memNs), [...NAMES28]) && forbidden28(priNs).length === 0 && forbidden28(memNs).length === 0
+      && !/delete|upsert|destroy|[.]clear[(]|updateMany/i.test(priNs + memNs),
+    `prisma=[${membersOf28(priNs)}] memory=[${membersOf28(memNs)}]`);
+
+  // ── 28.3 · the ONE definition: whether each asked key is held ──
+  const KEYS_BULK28 = 'const keys = bulkKeys(refereeKeys, "agentRefereeKey.heldAmong");';
+  const EMPTY28 = "if (keys.length === 0) return [];";
+  const SORTED28 = "return [...keys].sort().map((refereeKey): AgentRefereeKeyEntry => ({ refereeKey, held: ";
+  /** 28.3's per-twin predicates — functions, so 28.c2 can hand them a planted body. */
+  const heldMem28 = (d: string): boolean =>
+    before28(d, EMPTY28, 'assertRefereeKeys("agentRefereeKey.held", keys);') && d.includes(SORTED28)
+      && d.includes("held: store.agentRefereeKeys.has(refereeKey) }));");
+  const heldPri28 = (d: string): boolean =>
+    before28(d, EMPTY28, 'assertRefereeKeys("agentRefereeKey.held", keys);') && before28(d, 'assertRefereeKeys("agentRefereeKey.held", keys);', "pc()")
+      && d.includes(SORTED28) && d.includes("const held = new Set(rows.map((r) => r.refereeKey));") && d.includes("held: held.has(refereeKey) }));");
+  ok("28.3 · ⭐ the ONE definition, in both twins — holds asks it of one key and heldAmong of §25's set (bulkKeys: deduplicated, REFUSED above the bound, never cut off; an empty set answered before it); it asks the rule set before any read and answers ONE entry per key — held only where a row holds THAT key — ordered by key",
+    pri28.holds.includes("(await refereeHeld([refereeKey]))[0].held,") && mem28.holds.includes("refereeHeld([refereeKey])[0].held,")
+      && [pri28.heldAmong, mem28.heldAmong].every((s) => before28(s, KEYS_BULK28, EMPTY28) && before28(s, EMPTY28, "return refereeHeld(keys);"))
+      && heldMem28(memDef) && heldPri28(priDef)
+      && !/[.]slice[(]|[.]splice[(]/.test(pri28.heldAmong + mem28.heldAmong + priDef + memDef),
+    `${priDef.length}/${memDef.length} chars`);
+
+  // ── 28.4 · KEY-ONLY, AND ONE `in` ──
+  ok("28.4 · the Prisma definition reads KEYS, never anything else — select { refereeKey }, where refereeKey in the asked keys: ONE query, served by the primary key, and no `OR` built from a list",
+    priDef.includes("where: { refereeKey: { in: [...keys] } },") && priDef.includes("select: { refereeKey: true },")
+      && priDef.split("{ in: ").length - 1 === 1 && !priDef.includes("OR:") && (priDef.match(/pc[(][)]/g) ?? []).length === 1);
+
+  // ── 28.named · 28.store ──
+  const SIGS28: Array<[Member28, string, string]> = [
+    ["record", "record: (rows: StoredAgentRefereeKey[]): number =>", "record: async (rows: StoredAgentRefereeKey[]): Promise<number> =>"],
+    ["holds", "holds: (refereeKey: string): boolean =>", "holds: async (refereeKey: string): Promise<boolean> =>"],
+    ["heldAmong", "heldAmong: (refereeKeys: string[]): AgentRefereeKeyEntry[] =>", "heldAmong: async (refereeKeys: string[]): Promise<AgentRefereeKeyEntry[]> =>"],
+  ];
+  const offSigs28 = SIGS28.filter(([n, m, p]) => !mem28[n].includes(m) || !pri28[n].includes(p)).map(([n]) => n);
+  ok("28.named · every member names its types in BOTH twins (never an inline literal), and so does the definition — StoredAgentRefereeKey and AgentRefereeKeyEntry exported by store.ts and imported by prisma-dal.ts",
+    offSigs28.length === 0 && storeSrc.includes("export type StoredAgentRefereeKey = {") && storeSrc.includes("export type AgentRefereeKeyEntry = {")
+      && dalSrc.includes('import type { StoredAgentRefereeKey, AgentRefereeKeyEntry } from "./store";')
+      && memDef.includes("function refereeHeld(keys: readonly string[]): AgentRefereeKeyEntry[] {")
+      && priDef.includes("async function refereeHeld(keys: readonly string[]): Promise<AgentRefereeKeyEntry[]> {"),
+    `signatures off [${offSigs28}]`);
+  ok("28.store · the memory map agentRefereeKeys is in the global store's type, its initializer and its hot-reload guard — so a store left by an older build gains it, as every other map does",
+    storeSrc.includes("    agentRefereeKeys: Map<string, StoredAgentRefereeKey>;") && storeSrc.includes("  agentRefereeKeys: new Map(),")
+      && storeSrc.includes("if (!store.agentRefereeKeys)") && storeSrc.includes("store.agentRefereeKeys = new Map();"));
+
+  // ── 28.model · ONE rule set, asked first, in both twins ──
+  const RULES_IMPORT28 = 'import { assertRefereeKeyRows, assertRefereeKeys } from "@/lib/server/marketing/referee-key-model";';
+  const MODEL_NEEDLES28 = [
+    "export const REFEREE_KEY = /^[a-p]{32}$/;",
+    "export const REFEREE_KEY_RECORD_MAX = 2000;",
+    "if (rows.length > REFEREE_KEY_RECORD_MAX)",
+    'if (fields.length !== 1 || fields[0] !== "refereeKey")',
+    "if (!isKey((r as StoredAgentRefereeKey).refereeKey))",
+    "for (const k of keys) if (!isKey(k))",
+  ];
+  const modelImports28 = Array.from(modelSrc.matchAll(/^import .*$/gm)).map((m) => m[0]);
+  ok("28.model · ⭐ ONE RULE SET, ASKED FIRST, IN BOTH TWINS — referee-key-model.ts refuses a key that is not thirty-two letters a–p (a raw number above all), a row carrying ANY field beside its key (an instant above all — MAJOR-1), and a batch over 2,000 — and imports TYPES only; both twins import it and ask it BEFORE their first read or write",
+    MODEL_NEEDLES28.every((n) => modelSrc.includes(n)) && !/namedAt|recordedAt|isInstant/.test(modelSrc)
+      && modelImports28.length >= 1 && modelImports28.every((l) => l.startsWith("import type "))
+      && storeSrc.includes(RULES_IMPORT28) && dalSrc.includes(RULES_IMPORT28),
+    `rule lines missing [${MODEL_NEEDLES28.filter((n) => !modelSrc.includes(n)).map((n) => n.slice(0, 40))}] · imports [${modelImports28.map((l) => l.slice(0, 24))}]`);
+
+  // ── 28.onedoor · 28.writers · read over the REAL src (ROOT) ──
+  const walk28 = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk28(join(dir, e.name)) : /[.](ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
+  const src28 = join(ROOT, "src");
+  const rel28 = (f: string) => f.slice(src28.length + 1).split(BS28).join("/");
+  const RAW_DELEGATE28 = /(?<!db)[.]agentRefereeKey *[.] *(create|createMany|createManyAndReturn|update|updateMany|updateManyAndReturn|upsert|delete|deleteMany|findMany|findFirst|findFirstOrThrow|findUnique|findUniqueOrThrow|groupBy|count|aggregate) *[(]/;
+  const RAW_SQL28 = /[$](queryRaw|executeRaw)(Unsafe)?[^;]*?"AgentRefereeKey"/;
+  const CALL28 = /db[.]agentRefereeKey[.](record|holds|heldAmong) *[(]/;
+  const ALIAS28 = [/db[.]agentRefereeKey(?![.A-Za-z0-9_])/, /[{][^{}]*agentRefereeKey[^{}]*[}] *= *db(?![.A-Za-z0-9_])/];
+  /** ⛔ THE ONE DOOR, BY NAME: `referee-exclusion.ts` writes the keys (setReferees, the erasure and the backfill call it) and
+   *  answers the gate's and the split's reads. Any second caller of the table is a second definition of the promise. */
+  const CALLERS28: string[] = ["lib/server/marketing/referee-exclusion.ts"];
+  const walked28 = walk28(src28);
+  const texts28 = walked28.map((f) => [rel28(f), readFileSync(f, "utf8")] as const)
+    .filter(([, raw]) => raw.includes("gentRefereeKey") || raw.includes("msisdnsByEmail"))
+    .map(([f, raw]) => [f, decomment(raw)] as const);
+  const doors28 = texts28.filter(([, t]) => RAW_DELEGATE28.test(t) || RAW_SQL28.test(t)).map(([f]) => f).sort();
+  const callers28 = texts28.filter(([, t]) => CALL28.test(t)).map(([f]) => f).sort();
+  const aliases28 = texts28.filter(([, t]) => ALIAS28.some((re) => re.test(t))).map(([f]) => f).sort();
+  ok("28.onedoor · ⛔ no src file but prisma-dal.ts calls an agentRefereeKey delegate or names the table in raw SQL — the append-only rule and the ONE definition of a held key cannot be walked round",
+    walked28.length > 300 && doors28.join(",") === "lib/server/prisma-dal.ts" && !RAW_SQL28.test(dalSrc), `callers=[${doors28}] · ${walked28.length} files walked, ${texts28.length} name the table`);
+  ok("28.writers · ⛔ the DAL's three members are called by EXACTLY referee-exclusion.ts — the gate (consent.ts), the split, setReferees and the erasure all go through it — and no file hands the namespace on bare or destructures it from db",
+    sameSet(callers28, CALLERS28) && aliases28.length === 0, `callers=[${callers28}] · aliases=[${aliases28}]`);
+  // ── 28.emailkey · the third pass's MINOR-2 · a promised referee's ADDRESS is keyed into the SAME one-column table ──
+  const exclusion28 = decomment(readFileSync(join(ROOT, "src", "lib", "server", "marketing", "referee-exclusion.ts"), "utf8"));
+  const emailKey28 = (src: string): boolean =>
+    src.includes('return pepperedLetters("marketing-referee-email", norm, 32);') && src.includes('return pepperedLetters("marketing-referee", msisdn, 32);')
+      && (src.match(/pepperedLetters[(]/g) ?? []).length === 2;
+  ok("28.emailkey · ⭐ the third pass's MINOR-2 · a promised referee's e-mail ADDRESS is kept as its own keyed hash — pepperedLetters under its OWN domain (marketing-referee-email, so no address can ever key like a number), thirty-two letters a–p that 28.model's rule set takes and a raw address it refuses — in the SAME one-column table, through the SAME door (28.writers): no new table, no column, no instant, no link",
+    emailKey28(exclusion28) && !/^[a-p]{32}$/.test("zawadi@example.com") && /^[a-p]{32}$/.test("p".repeat(32)),
+    `pepper calls ${(exclusion28.match(/pepperedLetters[(]/g) ?? []).length}`);
+  ok("28.c7 · CONTROL · the address keyed under the NUMBER's domain — so an address and a number could share a key — breaks 28.emailkey",
+    !emailKey28(exclusion28.split('"marketing-referee-email"').join('"marketing-referee"')));
+
+  // ── 28.email · MINOR-1 · the book's e-mail lookup — one rule in both twins, key-only, one caller ──
+  const priBook = region(dalSrc, `${NL28}  marketingContact: {`);
+  const memBook = region(storeSrc, `${NL28}  marketingContact: {`);
+  const priByEmail = memberOf28(priBook, "msisdnsByEmail");
+  const memByEmail = memberOf28(memBook, "msisdnsByEmail");
+  const NORM28 = "const norm = email.trim().toLowerCase();";
+  const BLANK28 = "if (!norm) return [];";
+  const emailPri28 = (b: string): boolean =>
+    b.includes("msisdnsByEmail: async (email: string): Promise<string[]> =>") && before28(b, NORM28, BLANK28) && before28(b, BLANK28, "pc()")
+      && b.includes('findMany({ where: { email: { equals: norm, mode: "insensitive" } }, select: { msisdn: true } });')
+      && b.includes("return rows.map((r) => r.msisdn).sort();") && !b.includes("toStoredMarketingContact");
+  const emailMem28 = (b: string): boolean =>
+    b.includes("msisdnsByEmail: (email: string): string[] =>") && before28(b, NORM28, BLANK28)
+      && b.includes('.filter((c) => (c.email ?? "").trim().toLowerCase() === norm)') && b.includes(".map((c) => c.msisdn)") && b.includes(".sort();");
+  const emailCallers28 = texts28.filter(([, t]) => /marketingContact[.]msisdnsByEmail *[(]/.test(t)).map(([f]) => f).sort();
+  ok("28.email · ⭐ MINOR-1 · marketingContact.msisdnsByEmail is ONE rule in both twins — the address trimmed and lower-cased, a blank one answered with nothing (no query), matched case-insensitively, the NUMBER alone handed back (key-only, never a book row), sorted — and referee-exclusion.ts is its only caller",
+    emailPri28(priByEmail) && emailMem28(memByEmail) && sameSet(emailCallers28, CALLERS28),
+    `prisma ${priByEmail.length} chars · memory ${memByEmail.length} chars · callers [${emailCallers28}]`);
+
+  // ── 28.schema · the model, the migration and the stored shape name ONE column (read from ROOT) ──
+  const model28 = schemaModel(prismaSchemaSrc, "AgentRefereeKey");
+  const MIG_DIR28 = join(ROOT, "prisma", "migrations");
+  const migDirs28 = readdirSync(MIG_DIR28).filter((d) => d.endsWith("_agent_referee_key"));
+  const migSql28 = migDirs28.length === 1 ? lf28(readFileSync(join(MIG_DIR28, migDirs28[0], "migration.sql"), "utf8")) : "";
+  const createdColumns28 = (sql: string, table: string): string[] => {
+    const lines = sql.split(NL28);
+    const at = lines.findIndex((l) => l.startsWith(`CREATE TABLE "${table}" (`));
+    const out: string[] = [];
+    for (let i = at + 1; at >= 0 && i < lines.length && !lines[i].startsWith(");"); i++) {
+      const t = lines[i].trim();
+      if (t.startsWith('"')) out.push(t.slice(1, t.indexOf('"', 1)));
+    }
+    return out;
+  };
+  const statements28 = (sql: string): string[] => sql.split(NL28).filter((l) => !l.trim().startsWith("--")).join(NL28)
+    .split(";").map((s) => s.split(NL28).map((l) => l.trim()).filter(Boolean).join(" ")).filter((s) => s.length > 0);
+  /** 28.schema's predicate — a function, so 28.c6 can hand it a planted model and migration. */
+  const schemaOk28 = (model: string, sql: string, folders: number): boolean => {
+    const scalars = schemaScalars(model);
+    const collapsed = lf28(model).split(NL28).map((l) => l.trim().split(" ").filter(Boolean).join(" "));
+    const statements = statements28(sql);
+    return sameSet([...scalars.keys()], KEYS28) && scalars.get("refereeKey") === "text"
+      && collapsed.includes("refereeKey String @id") && !model.includes("@@id") && !model.includes("@relation")
+      && !/applicationId|namedAt|recordedAt|DateTime/.test(model)
+      && folders === 1 && sameSet(createdColumns28(sql, "AgentRefereeKey"), KEYS28)
+      && statements.length === 1 && statements[0].startsWith('CREATE TABLE "AgentRefereeKey" (') && !/TIMESTAMP/i.test(statements[0])
+      && sql.includes('"refereeKey" TEXT NOT NULL,') && sql.includes('CONSTRAINT "AgentRefereeKey_pkey" PRIMARY KEY ("refereeKey")');
+  };
+  ok("28.schema · ONE column — AgentRefereeKey's only scalar field in schema.prisma is StoredAgentRefereeKey's one key, a String that IS the primary key, with NO instant, NO relation and no application link (MAJOR-1); exactly one migration folder ends _agent_referee_key, its CREATE TABLE names exactly that column, NOT NULL, and its ONE statement creates the table and its primary key and touches nothing else",
+    schemaOk28(model28, migSql28, migDirs28.length),
+    `fields [${setDiff(KEYS28, [...schemaScalars(model28).keys()]) || schemaScalars(model28).size}] · folders ${migDirs28.length} · columns [${setDiff(KEYS28, createdColumns28(migSql28, "AgentRefereeKey")) || "1"}] · statements ${statements28(migSql28).length}`);
+
+  // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+  const planted28 = storeSrc.replace("export type StoredAgentRefereeKey = {", "export type StoredAgentRefereeKey = {" + NL28 + "  applicationId: string;");
+  ok("28.c1 · CONTROL · a key PLANTED in StoredAgentRefereeKey (an application link) is seen by the parser and breaks 28.0's exact set",
+    storedKeys("StoredAgentRefereeKey", planted28).includes("applicationId") && !sameSet(storedKeys("StoredAgentRefereeKey", planted28), KEYS28));
+  ok("28.c2 · CONTROL · the REAL bodies with ONE defect planted each FAIL their predicate — a Prisma createMany without skipDuplicates, a Prisma row that keeps an instant, a memory write that spreads the row, a memory write before the held-key check, and a definition that answers every key held",
+    recordPri28(pri28.record) && !recordPri28(pri28.record.split("skipDuplicates: true,").join(""))
+      && !recordPri28(pri28.record.split("({ refereeKey: r.refereeKey })").join("({ refereeKey: r.refereeKey, namedAt: new Date() })"))
+      && recordMem28(mem28.record) && !recordMem28(mem28.record.split("{ refereeKey: r.refereeKey };").join("{ ...r, refereeKey: r.refereeKey };"))
+      && !recordMem28(mem28.record.split("if (store.agentRefereeKeys.has(r.refereeKey)) continue;").join("") + "if (store.agentRefereeKeys.has(r.refereeKey)) continue;")
+      && heldMem28(memDef) && !heldMem28(memDef.split("held: store.agentRefereeKeys.has(refereeKey) }));").join("held: true }));"))
+      && heldPri28(priDef) && !heldPri28(priDef.split("held: held.has(refereeKey) }));").join("held: true }));")));
+  ok("28.c3 · CONTROL · an update member IS seen by 28.2, by the member set and by its name",
+    membersOf28("  agentRefereeKey: {" + NL28 + "    update: (k: string): null => null," + NL28 + "  },").includes("update")
+      && forbidden28("    forgetReferee: async () => null,").length === 1);
+  ok("28.c4 · CONTROL · a raw delegate call and raw SQL naming the table ARE caught by 28.onedoor and the DAL door is not; a call through db IS caught by 28.writers, and the bare namespace by its alias rule",
+    RAW_DELEGATE28.test("await pc().agentRefereeKey.deleteMany({});") && RAW_SQL28.test('await pc().$executeRawUnsafe(`delete from "AgentRefereeKey"`);')
+      && !RAW_DELEGATE28.test("await db.agentRefereeKey.record(rows);") && CALL28.test("await db.agentRefereeKey.holds(k);")
+      && ALIAS28[0].test("const t = db.agentRefereeKey;") && ALIAS28[1].test("const { agentRefereeKey } = db;"));
+  const KEY28 = /^[a-p]{32}$/;
+  ok("28.c5 · CONTROL · the key pattern 28.model pins means what it says — thirty-two letters a–p pass; a phone number, upper case, thirty-one or thirty-three letters and a q are refused",
+    KEY28.test("a".repeat(32)) && !KEY28.test("255712345678") && !KEY28.test("A".repeat(32)) && !KEY28.test("a".repeat(31)) && !KEY28.test("a".repeat(33))
+      && !KEY28.test(`${"a".repeat(31)}q`) && String(KEY28) === "/^[a-p]{32}$/");
+  const instantModel28 = model28.split("refereeKey String @id").join("refereeKey String @id" + NL28 + "  namedAt DateTime @db.Timestamptz(3)");
+  const instantSql28 = migSql28.split('"refereeKey" TEXT NOT NULL,').join('"refereeKey" TEXT NOT NULL,' + NL28 + '    "namedAt" TIMESTAMPTZ(3) NOT NULL,');
+  ok("28.c6 · CONTROL · ⛔ MAJOR-1 · an INSTANT planted back beside the key — in the model, or in the migration — breaks 28.schema; and the e-mail lookup's predicates refuse a case-sensitive match and a whole book row",
+    schemaOk28(model28, migSql28, migDirs28.length) && instantModel28 !== model28 && !schemaOk28(instantModel28, migSql28, 1)
+      && instantSql28 !== migSql28 && !schemaOk28(model28, instantSql28, 1)
+      && emailPri28(priByEmail) && !emailPri28(priByEmail.split(', mode: "insensitive"').join(""))
+      && !emailPri28(priByEmail.split(", select: { msisdn: true }").join("")) && emailMem28(memByEmail)
+      && !emailMem28(memByEmail.split(".trim().toLowerCase() === norm").join(" === norm")));
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

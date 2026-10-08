@@ -15,7 +15,8 @@
  *   · will receive — the gate said yes, NOW. A forecast: the gate is asked again at send (§5.6).
  *   · not receiving — the gate's refusals in FIVE buckets, plus `unanswered` (a gate that could not answer — asked again
  *     at send). ⛔ PROTECTED STANDING IS ONE LINE FOR EVERY ROLE: self-exclusion, a break, a harm marker, the under-25
- *     promise, a minor and the account's status all read `protected`, never itemised (U20's REACH ruling; D19).
+ *     promise, a minor and the account's status all read `protected`, never itemised (U20's REACH ruling; D19) — and so
+ *     does U33r's promised agent referee (`agent_referee`), so no count ever says how many referees an audience holds.
  *   · unchecked — past the time budget the gate is asked WITHOUT reads: it still names an unsendable number, and every
  *     other is `unchecked` — shown "≥ N", never guessed, never counted as will receive.
  *
@@ -37,6 +38,11 @@ import type {
 } from "@/lib/server/store";
 // U33a-G · the record the split prices ONCE per chunk, and its type.
 import { licenceOutreach, type LicenceOutreach } from "@/lib/server/marketing/outreach-record";
+// U33r · the referee keys a chunk asks about in ONE keyed read, and the shape of its answer.
+import {
+  normalRefereeEmail, promisedRefereeBookAddressesAmong, promisedRefereeEmailsAmong, promisedRefereesAmong, type RefereeEmailHeldEntry,
+  type RefereeHeldEntry,
+} from "@/lib/server/marketing/referee-exclusion";
 import { mayReceiveMarketingSms, userPhoneKeyFor, DB_GATE_READS } from "@/lib/server/marketing/consent";
 import type { MarketingGateReads, MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { walkCampaignAudience, contactAudienceKey, campaignAudienceRefusal, campaignAudienceCount, CAMPAIGN_WALK_MAX } from "@/lib/server/marketing/audience";
@@ -81,6 +87,11 @@ export const AUDIENCE_BUCKET_OF: Readonly<Record<MarketingSkipReason, "unsendabl
   rg_under25_history: "protected",
   age_minor: "protected",
   account_status: "protected",
+  /* U33r · a promised agent referee lands in the ONE protected line — collapsed like the protected reasons (D19): the split
+     is the count a later surface shows a viewer who may not read a number (U47b/U48a, above E23's floor), and a line of
+     its own would say how many referees a padded tag holds. ⛔ And for a READER too (the U33r review's MINOR-5): the
+     contacts page says "Not reachable" and a typed test "protected" — only a typed test's audit row names it. */
+  agent_referee: "protected",
 };
 
 /** What asking the gate about one number produced: its verdict, or no verdict (past the budget; the gate threw). */
@@ -214,6 +225,15 @@ export type AudienceSplitDeps = {
   standings: (msisdns: string[]) => Promise<BookStandingEntry[]>;
   /** U33a-G · the licence-outreach record, read once per chunk. No query — this process's config cache. */
   outreach: () => Promise<LicenceOutreach> | LicenceOutreach;
+  /** U33r · the chunk's numbers asked of the referee keys, ONE keyed read (`promisedRefereesAmong`) — every number,
+   *  players and contacts alike: the gate asks it before it knows which a number is. */
+  referees: (msisdns: string[]) => Promise<RefereeHeldEntry[]>;
+  /** U33r · the third pass's MINOR-2 · the chunk's ACCOUNT e-mail addresses asked of the referee keys, ONE keyed read
+   *  (`promisedRefereeEmailsAmong`) — and none at all for a chunk whose accounts hold no address. */
+  refereeEmails: (emails: string[]) => Promise<RefereeEmailHeldEntry[]>;
+  /** U33r · the third pass's MINOR-2 · the chunk's numbers asked whether their BOOK ROW holds a promised referee's address:
+   *  ONE query for the chunk's book addresses (`marketingContact.emailsAmong`) and one keyed read for them. */
+  refereeBookEmails: (msisdns: string[]) => Promise<RefereeHeldEntry[]>;
   slotOf: typeof audienceSlotOf;
   figures: typeof audienceSplitFigures;
   shape: typeof audienceSplitForViewer;
@@ -228,6 +248,9 @@ export const AUDIENCE_SPLIT_DEPS: Readonly<AudienceSplitDeps> = Object.freeze({
   consents: async (b: MessagingKeyBatch) => db.messagingConsent.latestAmong(b),
   standings: async (msisdns: string[]) => db.contactListBasis.standingAmong(msisdns),
   outreach: () => licenceOutreach(),
+  referees: async (msisdns: string[]) => promisedRefereesAmong(msisdns),
+  refereeEmails: async (emails: string[]) => promisedRefereeEmailsAmong(emails),
+  refereeBookEmails: async (msisdns: string[]) => promisedRefereeBookAddressesAmong(msisdns),
   slotOf: audienceSlotOf,
   figures: audienceSplitFigures,
   shape: audienceSplitForViewer,
@@ -237,12 +260,13 @@ export const AUDIENCE_SPLIT_DEPS: Readonly<AudienceSplitDeps> = Object.freeze({
 /* ═══ THE READS — a chunk's answers, handed to the gate ════════════════════════════════════════════════════════ */
 
 /**
- * The gate's three reads for one chunk, answered from three bulk reads (one query each, one after another). A key the
- * chunk did not ask about falls back to the store's own single read — so a mismatch costs a query, never a wrong answer.
+ * The gate's three reads for one chunk, answered from three bulk reads (one query each, one after another) — and U33a-G's
+ * book standing and U33r's referee keys, one keyed read each. A key the chunk did not ask about falls back to the store's
+ * own single read — so a mismatch costs a query, never a wrong answer.
  * ⛔ The keys are the gate's own (`parseTzNumber(...).msisdn`, and `+` that for the account); an unsendable number is
  * not asked about — the gate refuses it before any read.
  */
-export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<AudienceSplitDeps, "suppressions" | "users" | "consents" | "standings" | "outreach"> = AUDIENCE_SPLIT_DEPS): Promise<MarketingGateReads> {
+export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<AudienceSplitDeps, "suppressions" | "users" | "consents" | "standings" | "outreach" | "referees" | "refereeEmails" | "refereeBookEmails"> = AUDIENCE_SPLIT_DEPS): Promise<MarketingGateReads> {
   const keys: string[] = [];
   for (const m of msisdns) {
     const parsed = parseTzNumber(m);
@@ -267,6 +291,17 @@ export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<A
      about a number an account holds would be a query bought for an answer nobody reads. */
   const accountless = unique.filter((m) => !accountOf.has(userPhoneKeyFor(m)));
   const standingOf = new Map((accountless.length > 0 ? await deps.standings(accountless) : []).map((e) => [e.msisdn, e.standing] as const));
+  /* ⭐ U33r · EVERY key of the chunk is asked of the referee keys, in ONE read — the gate asks it right after the stop list,
+     before it knows a player from a contact. ⛔ A key the answer leaves out is NOT "not a referee": it falls back to the
+     single read below, so a short answer costs a query and never lets a referee through. */
+  const heldOf = new Map((await deps.referees(unique)).map((e) => [e.msisdn, e.held] as const));
+  /* ⭐ The third pass's MINOR-2 · the chunk's ACCOUNT e-mails, asked of the same keys in ONE read (none when no account has
+     an address). An address the answer leaves out falls back to the single read, as every member here does. */
+  const addresses = Array.from(new Set(accounts.map((u) => normalRefereeEmail(u.email)).filter((e): e is string => e !== null)));
+  const emailHeldOf = new Map((addresses.length > 0 ? await deps.refereeEmails(addresses) : []).map((e) => [e.email, e.held] as const));
+  /* ⭐ The third pass's MINOR-2 · every key's BOOK ROW asked for a promised referee's address — ONE query per chunk and one
+     keyed read — so the preview's "will receive" agrees with the gate's step 1b′. A key left out falls back to the single read. */
+  const bookHeldOf = new Map((await deps.refereeBookEmails(unique)).map((e) => [e.msisdn, e.held] as const));
   const ours = (k: MessagingKey) => k.channel === "SMS" && k.category === "MARKETING" && known.has(k.identifier);
   return {
     suppression: (k) => (ours(k) ? stopOf.get(k.identifier) ?? null : DB_GATE_READS.suppression(k)),
@@ -275,6 +310,13 @@ export async function prefetchGateReads(msisdns: readonly string[], deps: Pick<A
     outreach: () => outreachOnce,
     // ⛔ A key missing from the map falls back to the single read: it costs a query and can never give a wrong answer.
     bookStanding: (m) => standingOf.get(m) ?? DB_GATE_READS.bookStanding(m),
+    refereeHeld: (m) => (heldOf.has(m) ? heldOf.get(m) === true : DB_GATE_READS.refereeHeld(m)),
+    refereeEmailHeld: (e) => {
+      const norm = normalRefereeEmail(e);
+      if (norm === null) return false;
+      return emailHeldOf.has(norm) ? emailHeldOf.get(norm) === true : DB_GATE_READS.refereeEmailHeld(e);
+    },
+    refereeBookEmailHeld: (m) => (bookHeldOf.has(m) ? bookHeldOf.get(m) === true : DB_GATE_READS.refereeBookEmailHeld(m)),
   };
 }
 
@@ -290,6 +332,10 @@ const refuseRead = (): never => {
 const BUDGET_READS: MarketingGateReads = {
   suppression: refuseRead, userByPhone: refuseRead, latestConsent: refuseRead,
   outreach: () => licenceOutreach(), bookStanding: refuseRead,
+  // U33r · a database read like the three above: past the budget it throws, so a referee is never guessed at.
+  refereeHeld: refuseRead,
+  refereeEmailHeld: refuseRead,
+  refereeBookEmailHeld: refuseRead,
 };
 
 async function askGate(row: CampaignAudienceRow, now: Date, reads: MarketingGateReads, deps: AudienceSplitDeps): Promise<AudienceGateOutcome> {

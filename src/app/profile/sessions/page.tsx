@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { IpReveal } from "@/components/profile/ip-reveal";
 import { getSession } from "@/lib/server/session";
-import { formatDateTime } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { logoutAction } from "@/app/auth/logout/actions";
@@ -33,14 +33,16 @@ function timeAgo(ms: number, t: Dict): string {
 }
 
 export default async function SessionsPage() {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/profile/sessions");
 
   const h = await headers();
   const userAgent = h.get("user-agent") ?? "";
   const ip = h.get("x-forwarded-for")?.split(",")[0].trim() ?? h.get("x-real-ip") ?? "unknown";
-  const expires = formatDateTime(new Date(session.exp).toISOString());
+  // `exp` is already an epoch instant (ms). In the reader's month words on the East Africa clock (§L4) —
+  // `formatDateTime` printed English months in every locale.
+  const expires = formatEatDateTime(session.exp, Date.now(), t.common.monthsShort, locale);
 
   const ua = userAgent.toLowerCase();
   const isMobile = /iphone|android|ipad|mobile/.test(ua);

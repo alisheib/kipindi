@@ -72,8 +72,10 @@ export default async function NotificationSettingsPage({
         <MarketingConsent
           initialOn={marketing.on}
           initialPaused={marketing.paused}
-          held={marketing.held}
+          held={marketing.held || marketing.referee}
           heldUntil={marketing.heldUntil ? formatHeldUntil(marketing.heldUntil, locale, t.common.monthsShort) : null}
+          /* U33r · a promised agent referee's number: locked like a hold (above), and its note says why, for good. */
+          referee={marketing.referee}
           /* U33a-P · the admin-edited line, read per request, and only when this switch is ON on the LICENCE basis.
              A blank line (the default, until an admin saves one) passes null and nothing is printed. */
           outreachNote={marketing.outreach ? (policyLine("profile.outreachNote", policyLocaleOf(locale)) || null) : null}

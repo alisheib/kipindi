@@ -4,7 +4,8 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
-import { formatTzsAbs, formatTzsSigned, formatDayShort } from "@/lib/utils";
+import { formatTzsAbs, formatTzsSigned } from "@/lib/utils";
+import { formatEatDate } from "@/lib/eat-day";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
 import { PnlChart } from "@/components/charts/pnl-chart";
@@ -162,7 +163,9 @@ export default async function PerformancePage({
       // never missing here — only unasked for.
       side: m ? sideWord(t, p.side, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") : null,
       stake: p.stake,
-      date: formatDayShort(d.toISOString()),
+      // §L4 — the day in the reader's month words on the East Africa clock, with the year only when it is not this
+      // EAT year (`formatEatDate`); `formatDayShort` printed English months in every locale.
+      date: formatEatDate(d.getTime(), Date.now(), t.common.monthsShort, locale),
       pnl: pnlOf(p), statusLabel: statusLabel(p.status),
     };
   });
