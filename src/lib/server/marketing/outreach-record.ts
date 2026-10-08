@@ -63,7 +63,7 @@ export const PRE_LEDGER_OFFS: PreLedgerOffs = "reconciled";
  * outstanding), and AGAIN after any rollback to a build without U33r and the redeploy that follows (that build keyed
  * nobody it named).
  */
-export const REFEREE_KEYS_ON_PRODUCTION: RefereeKeysRecord | null = null;
+export const REFEREE_KEYS_ON_PRODUCTION: RefereeKeysRecord | null = {"environment":"production","ranAt":"2026-10-08T15:11:39.458Z","status":{"applications":0,"promised":0,"withContact":0,"numbers":0,"emails":0,"missing":0,"unreadable":0,"reviewed":0,"notMobile":0,"emailOnlyUnmatched":0},"backfill":{"applications":0,"promised":0,"withContact":0,"numbers":0,"emails":0,"missing":0,"unreadable":0,"reviewed":0,"notMobile":0,"emailOnlyUnmatched":0,"written":0}};
 
 /** The hosts a developer's own database answers on — a scratch cluster, a local server. */
 const LOOPBACK_HOSTS: readonly string[] = ["127.0.0.1", "localhost", "::1", "[::1]"];

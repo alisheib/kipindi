@@ -5,7 +5,8 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
 switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 53, the
-final-rule units (the agent-referee exclusion U33r, Privacy v2026-10-07, the sign-up box removed), pushed 2026-10-08 (S14);
+final-rule units (the agent-referee exclusion U33r, Privacy v2026-10-07, the sign-up box removed), LIVE `d77442f5`
+2026-10-08 (S14), production's referee keys recorded (STEP 53b);
 before it STEP 52, the engine (nothing reachable until U47b-2's page), LIVE `21244826`, and STEP 51, U40b, LIVE `41eb8fb2`. Ali's
 FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S14
 in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campaign: about 12–14 October if Ali's answers come in time.**
@@ -40,10 +41,8 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: production's referee-key backfill (`ops:marketing-referee-keys` `status`, then `backfill`, through Railway), its
-  RECORD line copied into `REFEREE_KEYS_ON_PRODUCTION` and `REFEREE_NEW_WORDS_LIVE_AT` set to the instant STEP 53 went
-  live — one small push. Then Ali's approved texts saved on PRODUCTION through the owner door (G5, G4, G10 — from a
-  machine whose clock is right; the exact lines in `scripts/ops/marketing-owner-save.mts`'s header). Then, as each is
+▶ NEXT: Ali's approved texts saved on PRODUCTION through the owner door (G5, G4, G10 — from a machine whose clock is
+  right; the exact lines in `scripts/ops/marketing-owner-save.mts`'s header). Then, as each is
   verified (`docs/marketing-specs/ENGINE-SPEC.md` §0.1's order): U47b-2, the live page (its review's fixes) → U48a, its
   results → (U48b) → licence outreach opened (an owner act, on Ali's delegation) → U52a, the live drive on production.
   WHAT IS LEFT TO THE FIRST REAL CAMPAIGN — each its own unit, commit and live proof (hours: the spec's estimates; what
@@ -79,7 +78,7 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push a unit named
-  here. NOW (18:10 EAT · 2026-10-08) — where each piece is, for a session on ANY machine (another PC: every commit
+  here. NOW (18:20 EAT · 2026-10-08) — where each piece is, for a session on ANY machine (another PC: every commit
   below is on origin as a backup branch, `origin/backup/marketing-s14-*`). Ali, 2026-10-07: "keep going and putting
   progress updated until you're done, I'll be away. Keep pushing live." — and "take decisions and fix for perfection".
   · U38b, U13, STEP 50 (the owner door, U40a, U46a, the U38b save fixes), STEP 51 (U40b) and STEP 52 (THE ENGINE) LIVE
@@ -109,11 +108,12 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
     route handler, so Pause and Stop never wait behind it). Then a check of the fixes, tsc and its drive — STEP 54.
   · U48a (results on the live page) — `marketing-s14-u48a` (`F:\kipindi-m14q`, cut at `47c088c1`): BEING BUILT (Sonnet).
   · Then U52a (the live drive on production: at most 6 real SMS to the approved test number) — after Ali's go.
-  · THE FINAL-RULE UNITS — PUSHED (STEP 53 below). OWED NOW, before licence outreach or the live switch can open:
-    production's referee-key backfill — `railway run --service 50pick npm run ops:marketing-referee-keys -- status`, then
-    `-- backfill` (it writes only coded keys; a re-run writes nothing new; a contact its reader cannot read is keyed BY A
-    PERSON at a real console, `key`, never by Claude's shell) — its RECORD line copied into `REFEREE_KEYS_ON_PRODUCTION`
-    (`outreach-record.ts`) and `REFEREE_NEW_WORDS_LIVE_AT` set to the instant STEP 53 went live, in one small push.
+  · THE FINAL-RULE UNITS — LIVE (STEP 53, served as `d77442f5`, 15:09Z 2026-10-08: /legal/privacy prints "Version
+    2026-10-07" with "(not the number itself)"). Production's referee keys RECORDED (STEP 53b below): the census and the
+    backfill ran on production — 0 agent applications, so 0 keys, the RECORD reconciled — copied into
+    `REFEREE_KEYS_ON_PRODUCTION`, so the fifth opening check passes. ⚠️ `REFEREE_NEW_WORDS_LIVE_AT` STAYS null — every
+    referee excluded, the safe side (the new words say offers MAY come): setting it turns test:marketing-consent G22, G23,
+    R8 and test:privacy-notice §5ap, §5ar red, whose fixtures assume null. OWED: rebase them on a set cutoff, then set it.
   · ✅ ALI, 2026-10-08: YES to the SIX public wordings (recorded in COMPLIANCE-DECISIONS on `marketing-s14-final`,
     `aa1841bb`). "Create your own users, delete them when done testing" and "you have full permission": Claude's own GROWTH
     login "QA Growth (Claude)" provisioned on production through the audited door (`usr_ad90e82c52580e31ba36f50f`,
@@ -121,9 +121,10 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
     test contact, when the live testing is done. He wants the whole engine finished and sealed end to end before he is
     reported to, then the admin guide v2 as a PDF on his Desktop and the repository cleaned. ⛔ Still: Ali is TOLD before
     the first real SMS (U52a), which goes only to the approved test number, within the ledger cap.
-  · Order to land now: production's referee-key backfill, recorded (a small push) → Ali's texts saved on production
-    (from a machine whose clock is right) → U47b-2 (STEP 54) → U48a → licence outreach opened (an owner act, on Ali's
-    delegation) → U52a → the admin guide v2 (PDF on Ali's Desktop) → the clean-up.
+  · Order to land now: Ali's texts saved on production (from a machine whose clock is right) → U47b-2 (STEP 54) → U48a
+    → licence outreach opened (an owner act, on Ali's delegation) → the engine's dry-fire stress run (Ali, 2026-10-08:
+    "stress test … dry fire it … on data sets of your own") → U52a → the admin guide v2 (PDF on Ali's Desktop) → the
+    clean-up and the handover.
   · THE LOCK: the Vodacom and money-doors sessions run beside this one on the same PC. Every heavy job (tsc, builds,
     dev servers and drives, scratch Postgres, batteries) takes `F:/kipindi-locks/heavy-node.lock` (a `mkdir` mutex;
     the owner line's first word is the session) and queues with ONE note, `F:/kipindi-locks/heavy-node.wait`: a note
@@ -135,7 +136,13 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
     helper: `F:/kipindi-locks/withlock.sh`. This lane uses ports 3101-3109 and scratch Postgres 5461-5463.
   ▸ 10:08 EAT: S14's first session closed mid-task; a second session on the same PC continues S14 in the same worktree
   (Ali: "proceed with the sms campaign plan … check what's left and proceed").
-  STEP 53 · THE FINAL-RULE UNITS PUSHED — `marketing-s14-final` (merged with main as `2db2d2d4`; Ali's FINAL rule of
+  STEP 53b · PRODUCTION'S REFEREE KEYS RECORDED — `ops:marketing-referee-keys` through Railway on production, after STEP 53
+  went live: `status` then `backfill` — 0 agent applications, 0 promised, 0 keys written, 0 missing, 0 unreadable — and
+  its RECORD (environment production, ranAt 2026-10-08T15:11:39Z by this PC's clock, ~98 s early) copied into
+  `REFEREE_KEYS_ON_PRODUCTION`: the fifth licence-outreach / live-switch check (`referee_keys`) now passes. With it the
+  door's own fix (`70e9ba96`): its first census failed off Railway — the store was loaded by a STATIC import before the
+  public-proxy rewrite; now ONE dynamic import below the rewrite, R10 pinning the order with a plant (172/172 caught).
+  STEP 53 · THE FINAL-RULE UNITS PUSHED — LIVE `d77442f5` (15:09Z 2026-10-08, /api/health ok, the migration applied) — `marketing-s14-final` (merged with main as `2db2d2d4`; Ali's FINAL rule of
   2026-10-07 and his YES of 2026-10-08 to the six public wordings, recorded in COMPLIANCE-DECISIONS `aa1841bb`): ① U33r, THE
   AGENT-REFEREE EXCLUSION (Q8) — every referee named before Privacy v2026-10-07 is kept as a coded form of the number
   (an HMAC under the server's pepper, never the number) and refused by the ONE gate on every path (the engine, the
