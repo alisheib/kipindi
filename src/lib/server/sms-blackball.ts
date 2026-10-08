@@ -174,6 +174,10 @@ export function senderIdProblem(senderId: string | undefined | null): string | n
 export type BlackballOutcome = {
   /** The gateway's own verdict — the `status` boolean, NEVER `res.ok`. */
   ok: boolean;
+  /** U43b-2 · the `status` boolean EXACTLY as the reply carried it — null when it carried none: no response, a body that
+   *  died, an HTML page or an empty body, JSON without the field. A fact, reported faithfully; `sms.ts` decides what it
+   *  means (only the gateway's own `false` below a 5xx is a refusal — anything else not accepted is ambiguous). */
+  verdict: boolean | null;
   /** 0 when the request never completed. */
   httpStatus: number;
   message: string;
@@ -181,9 +185,30 @@ export type BlackballOutcome = {
   balance: number | null;
   /** Field name → complaint, flattened from whichever shape `data` arrived in. */
   fieldErrors: Record<string, string>;
-  /** Set only when the request never produced a response (abort, DNS, reset). */
+  /** Set only when no complete reply arrived: the request never produced a response (abort, DNS, reset), or — U43b-1 —
+   *  its body died while it was read (`httpStatus` then keeps the status line that did arrive). */
   transport: string | null;
 };
+
+/**
+ * ⛔ U43b-1 · E3 · F2 · A REPLY WHOSE BODY DIES MID-READ IS AMBIGUOUS, NOT A THROW. The abort timer is still armed while the
+ * body streams in, and a body that died then (that abort, a reset, a truncated chunk) used to throw out of the two calls
+ * below — for a send, into `sendBatch`'s chunk catch, which writes the row FAILED: terminal, so a late DELIVRD receipt was
+ * discarded, and FAILED invites a retry, a second SMS at a second charge. The gateway had the WHOLE request and had begun
+ * to answer, so this is the lost-reply case: `transport` is set — the one ambiguity signal `sms.ts` reads (the row stays
+ * UNKNOWN, the result is TRANSPORT; a balance read is `unreachable`). The error's message only: the body is never kept.
+ */
+function replyBodyUnreadable(httpStatus: number, err: unknown): BlackballOutcome {
+  return {
+    ok: false,
+    verdict: null,
+    httpStatus,
+    message: "transport failure",
+    balance: null,
+    fieldErrors: {},
+    transport: `reply body unreadable: ${String((err as Error)?.message ?? err)}`.slice(0, 200),
+  };
+}
 
 /** `data` arrives as an array of one-key objects, a bare object, or null. Take all three. */
 function readFieldErrors(data: unknown): Record<string, string> {
@@ -215,6 +240,7 @@ export function parseBlackballBody(raw: string, httpStatus: number): BlackballOu
   const o = json && typeof json === "object" ? (json as Record<string, unknown>) : {};
   return {
     ok: o.status === true,
+    verdict: typeof o.status === "boolean" ? o.status : null,
     httpStatus,
     message:
       typeof o.message === "string" && o.message
@@ -286,6 +312,7 @@ export async function blackballSend(
       // retry blindly, which would be a second SMS at a second charge.
       return {
         ok: false,
+        verdict: null,
         httpStatus: 0,
         message: "transport failure",
         balance: null,
@@ -295,7 +322,15 @@ export async function blackballSend(
     }
     // Read as TEXT then parse, like `selcomFetch`: a non-JSON reply is exactly the
     // case where the raw shape is the evidence, and `res.json()` would throw it away.
-    return parseBlackballBody(await res.text(), res.status);
+    // ⛔ U43b-1 · …and read INSIDE A TRY, with the abort still armed: a body that dies here is a
+    // lost reply, never a refusal (see `replyBodyUnreadable`).
+    let raw: string;
+    try {
+      raw = await res.text();
+    } catch (err) {
+      return replyBodyUnreadable(res.status, err);
+    }
+    return parseBlackballBody(raw, res.status);
   } finally {
     clearTimeout(timer);
   }
@@ -330,6 +365,7 @@ export async function blackballBalance(env: BlackballEnv): Promise<BlackballOutc
     } catch (err) {
       return {
         ok: false,
+        verdict: null,
         httpStatus: 0,
         message: "transport failure",
         balance: null,
@@ -337,7 +373,15 @@ export async function blackballBalance(env: BlackballEnv): Promise<BlackballOutc
         transport: String((err as Error)?.message ?? err).slice(0, 200),
       };
     }
-    return parseBlackballBody(await res.text(), res.status);
+    // ⛔ U43b-1 · the same read inside the same kind of try, for symmetry: a balance reply that
+    // dies mid-read is `unreachable` to `sms.ts`, never a throw.
+    let raw: string;
+    try {
+      raw = await res.text();
+    } catch (err) {
+      return replyBodyUnreadable(res.status, err);
+    }
+    return parseBlackballBody(raw, res.status);
   } finally {
     clearTimeout(timer);
   }

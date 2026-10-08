@@ -27,6 +27,11 @@
  * §2.30 ⛔ it never moves a settled row and never a row that is not the message's (number, reference), and a reference
  * another row holds is P2002; §2.31 its rule set refuses before the door reads, and `receiptWrite` writes exactly its
  * columns. A receipt only moves a row OUT of UNCONFIRMED, so §3.2's pin stays empty for it.
+ * COMMIT F (U43b-2, S14 2026-10-07 — ENGINE-SPEC §4.13 decisions 3 and 6): the engine declares itself — §3.1's
+ * MARKETING_WRITERS gains `engine.ts` (its one send, purpose MARKETING) and §3.2's UNCONFIRMED_WRITERS gains
+ * `engine-rules.ts` (the settle and the reaper's patches to UNCONFIRMED); and §2.32 executes DC-4's send record on the
+ * memory twin — written only into a row a receipt settled under the same claim with no trail yet, exactly its six columns,
+ * never the status, its rule set first.
  *
  * ⭐ WHY A SUITE OF ITS OWN: `red:dal-parity` can never plant a defect in schema.prisma or a migration (it reads them
  * from ROOT, not KP_SRC), so a shape that lives in SQL needs an in-process suite that is HANDED the text and can be
@@ -53,6 +58,7 @@ import type {
   StoredSmsCampaign, StoredSmsCampaignRecipient, SmsCampaignRecipientSeed, SmsCampaignRecipientStatus,
   SmsCampaignDraftPatch, SmsCampaignDraftGuard, SmsCampaignTransition, SmsCampaignTransitionPatch,
   SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage, SmsRecipientReceipt, SmsRecipientReceiptResult,
+  SmsRecipientSendRecord, SmsRecipientSendRecordResult,
 } from "../src/lib/server/store.ts";
 
 // ⛔ BEFORE THE STORE IS IMPORTED — see the header.
@@ -106,11 +112,13 @@ function srcTexts(): Array<{ path: string; text: string }> {
 
 /**
  * ⛔ THE FILES ALLOWED TO SEND WITH `purpose: "MARKETING"`. U37b's test send declared itself here in the change that
- * built it (behind the closed `marketing.sms.live` switch, DECISIONS X14); U43's slice declares itself next — a send under
- * the new purpose from anywhere else is a campaign path nobody reviewed.
+ * built it (behind the closed `marketing.sms.live` switch, DECISIONS X14); U43b-2's slice declared itself in its own
+ * commit (`engine.ts` — `engineSend`, ENGINE-SPEC §4.13 decision 3) — a send under the purpose from anywhere else is a
+ * campaign path nobody reviewed.
  */
 export const MARKETING_WRITERS: readonly string[] = [
   "src/lib/server/marketing/campaign-test-send.ts",
+  "src/lib/server/marketing/engine.ts",
 ];
 
 /**
@@ -124,8 +132,13 @@ export const MARKETING_WRITERS: readonly string[] = [
  * ⭐ U43a widened it to its settle door's own spelling: a patch's `to: "UNCONFIRMED"` followed by a comma or a brace (the
  * house's trailing-comma style) is a write — a TYPE's `to: "UNCONFIRMED";` is not — so U43b's settle and reaper cannot
  * hand the door the value undeclared. The door itself writes `status` from a variable and so is not a writer here.
+ * ⭐ U43b-2 (ENGINE-SPEC §4.13 decision 3): its first writer — the engine's pure settlement table and reaper,
+ * `engine-rules.ts`, whose patches move a row to UNCONFIRMED (E3 · E4 · E6); `engine.ts` hands them to the door and spells
+ * the value only in a comparison.
  */
-export const UNCONFIRMED_WRITERS: readonly string[] = [];
+export const UNCONFIRMED_WRITERS: readonly string[] = [
+  "src/lib/marketing/engine-rules.ts",
+];
 
 /* ═══ THE WORLD — the texts §1 reads and the twin §2 drives, each swappable by a red case ═══════════════════════ */
 
@@ -145,6 +158,9 @@ type Rules = {
   settleWrite: typeof CM.settleWrite;
   assertReceipt: typeof CM.assertReceipt;
   receiptWrite: typeof CM.receiptWrite;
+  /** U43b-2 · DC-4's send record — its rules and write (§2.32). */
+  assertSendRecord: typeof CM.assertSendRecord;
+  sendRecordWrite: typeof CM.sendRecordWrite;
 };
 type World = {
   migrations: Migration[];
@@ -168,6 +184,7 @@ const REAL: World = {
   rules: {
     assertTransitionShape: CM.assertTransitionShape, assertDraftPatch: CM.assertDraftPatch, assertNewCampaign: CM.assertNewCampaign,
     assertSettle: CM.assertSettle, settleWrite: CM.settleWrite, assertReceipt: CM.assertReceipt, receiptWrite: CM.receiptWrite,
+    assertSendRecord: CM.assertSendRecord, sendRecordWrite: CM.sendRecordWrite,
   },
 };
 
@@ -205,7 +222,8 @@ const L = {
   s11: "1.1 ⛔ exactly ONE migration adds MARKETING to SmsPurpose, and that file holds NO other statement (55P04)",
   s12: "1.2 the ADD VALUE migration sorts BEFORE the campaign tables' migration — the tables ship one migration later",
   s13: "1.3 exactly ONE migration creates the two tables and the three new types (SmsCampaignStatus, SmsCampaignRecipientStatus, SmsEncoding), and no other migration creates any of them",
-  s14: "1.4 every OTHER index the two models declare is in the migration under Prisma's own name, and the migration holds none the schema lacks (the one key is 2.1's)",
+  s14: "1.4 every OTHER index the two models declare is in the migrations under its name — Prisma's own, or the schema's map — the tables migration's or a later one's, and the migrations hold none the schema lacks (the one key is 2.1's)",
+  s14b: "1.4b ⭐ the live page's two reads, each with its index (the U47b-1 review and its re-review): the recipient model declares (campaignId, status, skipReason, failureClass) by its map name and (campaignId, claimedAt), and the ONE migration that names the outcome index holds EXACTLY those two CREATE INDEX IF NOT EXISTS, in that order, and nothing else (no DROP, no CONCURRENTLY: prisma migrate runs a file in one transaction)",
   s15: "1.5 the schema's two models and the migration's two tables declare the SAME columns — name, type, nullability and default, one by one",
   s16: "1.6 ⛔ no CASCADE link: the campaign link is RESTRICT and contactId / userId are SET NULL — in the migration AND the schema, under Prisma's constraint names",
   s17: "1.7 ⛔ expand-only: the tables migration only CREATEs types, tables and indexes and ADDs the recipient's foreign keys — no DROP, RENAME, ALTER TYPE, CONCURRENTLY or MARKETING",
@@ -249,9 +267,10 @@ const L = {
   s228: "2.28 ⛔ THE SETTLE'S WRITE (U16a PE-01, PE-08): for every lawful patch settleWrite writes EXACTLY its row of the table, the status and the caller's stamp — never userId, the account link only erasure clears, nor the number or the contact, even when a patch carries them — and every send instant as the patch carries it (sentAt is the hand-over copied from the message), never the settle's clock; the trail copied",
   s229: "2.29 ⭐ THE RECEIPT DOOR (U46a · E28): a DELIVERED receipt moves a SENT row, an UNCONFIRMED row (its reference written where it had none, E4) and a row a slice still holds (PENDING, D5) to DELIVERED, and a FAILED receipt moves one to FAILED with its class receipt:<token> and its words — each at the receipt's own instant, the claim kept, nothing else written — and the slice's later settle of the held row is lost",
   s230: "2.30 ⛔ MONOTONIC AND IDENTITY-CHECKED: a receipt never moves a DELIVERED, FAILED, SKIPPED or HELD row (settled) — a late FAILED after its DELIVERED among them — nor a row of another number or one holding another message's reference (mismatch), nor a row that is not there (not_found); nothing is written in each, and a reference another row holds is refused whole with Prisma's code P2002",
+  s232: "2.32 ⭐ DC-4 · THE SEND RECORD (U43b-2): into a row a receipt settled before the slice's settle — DELIVERED or FAILED, under the slice's claim, no trail yet — recordSend writes EXACTLY the trail, the token, the variant, the size, the length and the hand-over instant (null for an unanswered message) and the stamp, never the status, the reference, the receipt's own instant, class and words or the claim; a second record, a SENT or a still-PENDING row, another claim's record and a row that is not there write nothing; its rule set refuses first (a lost id, a key it does not have or one missing, a claim of another shape, a trail holding a phone number or none, a token with a space, a variant, a size, a length or an instant in another form), by the door before it reads; and sendRecordWrite writes exactly its columns",
   s231: "2.31 the receipt's rule set first: a lost id, a key a receipt does not have or one missing, a number in another spelling, a verdict other than DELIVERED or FAILED, an instant in another spelling, a FAILED token untrimmed, empty, too long or a phone number, a FAILED description over 200 characters or holding a phone number — each REFUSED, and by the door before it reads; every lawful receipt passes; and receiptWrite writes EXACTLY its columns — never the claim, sentAt, attempts, the account link, the number or the contact",
-  s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (U37b's test send; U43's slice next)",
-  s32: "3.2 ⛔ no src file writes a recipient's status as UNCONFIRMED unless it is a declared UNCONFIRMED_WRITER (none yet: the value ships one deploy before U43b, its first writer) — and the pin sees a key, an assignment, SQL and a settle patch's `to:` (U43a), and not a comparison, a read or a type",
+  s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (U37b's test send, U43b-2's slice)",
+  s32: "3.2 ⛔ no src file writes a recipient's status as UNCONFIRMED unless it is a declared UNCONFIRMED_WRITER (U43b-2's settlement table and reaper, its first writer — the value shipped one deploy before) — and the pin sees a key, an assignment, SQL and a settle patch's `to:` (U43a), and not a comparison, a read or a type",
 };
 
 /* ═══ THE TEXT READERS (§1) ═══════════════════════════════════════════════════════════════════════════════════ */
@@ -271,8 +290,9 @@ function schemaModel(schema: string, name: string): string {
   const end = schema.indexOf("\n}", at);
   return end < 0 ? "" : schema.slice(at, end + 2);
 }
-/** Prisma comments (`//` and `///`) out of one line. */
-const uncomment = (line: string) => line.replace(/\/\/.*$/, "");
+/** Prisma comments (`//` and `///`) out of one line — through the house's ONE stripper (`decomment`, which also keeps a
+ *  `//` inside a string), never a private regex (`test:decomment` 2.1). */
+const uncomment = (line: string) => decomment(line);
 /** The values of `enum X { … }` in declared order. */
 function schemaEnum(schema: string, name: string): string[] {
   const m = new RegExp(`\\benum ${name} \\{([^}]*)\\}`).exec(schema);
@@ -385,7 +405,8 @@ const schemaEnumNames = (schema: string) => new Set(Array.from(schema.matchAll(/
 
 type Idx = { unique: boolean; name: string; cols: string[] };
 const idxText = (i: Idx) => `${i.unique ? "UNIQUE " : ""}${i.name}(${i.cols.join(",")})`;
-/** The indexes a model declares, NAMED as Prisma names them (`<Table>_<cols>_idx` / `_key`). */
+/** The indexes a model declares, NAMED as Prisma names them (`<Table>_<cols>_idx` / `_key`) — or by the block's own
+ *  `map: "…"` when it gives one (U47b-1's outcome index: Prisma's own name would pass Postgres's 63 characters). */
 function schemaIndexes(model: string, table: string): Idx[] {
   const out: Idx[] = [];
   for (const raw of model.split("\n")) {
@@ -393,7 +414,8 @@ function schemaIndexes(model: string, table: string): Idx[] {
     const block = /^@@(unique|index)\(\[([^\]]+)\]/.exec(line);
     if (block) {
       const cols = block[2].split(",").map((c) => c.trim());
-      out.push({ unique: block[1] === "unique", cols, name: `${table}_${cols.join("_")}_${block[1] === "unique" ? "key" : "idx"}` });
+      const mapped = /\bmap:\s*"(\w+)"/.exec(line);
+      out.push({ unique: block[1] === "unique", cols, name: mapped ? mapped[1] : `${table}_${cols.join("_")}_${block[1] === "unique" ? "key" : "idx"}` });
       continue;
     }
     const field = /^([A-Za-z_]\w*)\s+\S+.*\s@unique\b/.exec(line);
@@ -401,13 +423,23 @@ function schemaIndexes(model: string, table: string): Idx[] {
   }
   return out;
 }
+/** Every `CREATE [UNIQUE] INDEX [IF NOT EXISTS] "name" ON "Table"(…)` of one table in a migration's statements. */
 function migrationIndexes(sql: string, table: string): Idx[] {
   const out: Idx[] = [];
-  for (const m of sqlStatements(sql).matchAll(/CREATE (UNIQUE )?INDEX "(\w+)" ON "(\w+)"\(([^)]*)\)/g)) {
+  for (const m of sqlStatements(sql).matchAll(/CREATE (UNIQUE )?INDEX (?:IF NOT EXISTS )?"(\w+)" ON "(\w+)"\(([^)]*)\)/g)) {
     if (m[3] === table) out.push({ unique: !!m[1], name: m[2], cols: m[4].split(",").map((c) => c.trim().replace(/"/g, "")) });
   }
   return out;
 }
+/** ⭐ U47b-1 · the outcome index — its map name, its columns in order, and the ONE migration that creates it. */
+const OUTCOME_INDEX = "SmsCampaignRecipient_outcome_idx";
+const OUTCOME_COLS = ["campaignId", "status", "skipReason", "failureClass"] as const;
+/** ⭐ Its re-review · the view's other read (`lastActivity`, the newest claim) — Prisma's own name, the same file. */
+const CLAIMED_INDEX = "SmsCampaignRecipient_campaignId_claimedAt_idx";
+const CLAIMED_COLS = ["campaignId", "claimedAt"] as const;
+/** The migrations AFTER the tables migration that name either campaign table at all (an index migration, or worse). */
+const laterTableMigrations = (w: World, tablesFolder: string): Migration[] =>
+  w.migrations.filter((m) => m.folder > tablesFolder && /"SmsCampaign(Recipient)?"/.test(sqlStatements(m.sql)));
 type Fk = { name: string; col: string; ref: string; onDelete: string };
 function migrationFks(sql: string, table: string): Fk[] {
   const out: Fk[] = [];
@@ -518,14 +550,38 @@ async function run(w: World, tag: string): Promise<void> {
   // ── §1.4 · every other index, under Prisma's names ─────────────────────────────────────────
   await check(p(L.s14), () => {
     const diffs: string[] = [];
+    // ⭐ U47b-1 · the tables migration's indexes AND every later migration's on the two tables (the outcome index's file)
+    const later = tables === null ? [] : laterTableMigrations(w, tables.folder);
     for (const t of TABLES) {
       const want = schemaIndexes(schemaModel(w.schema, t), t).filter((i) => i.name !== ONE_KEY).map(idxText);
-      const got = migrationIndexes(tsql, t).filter((i) => i.name !== ONE_KEY).map(idxText);
-      for (const x of want) if (!got.includes(x)) diffs.push(`${t}: schema has ${x}, the migration does not`);
-      for (const x of got) if (!want.includes(x)) diffs.push(`${t}: the migration has ${x}, the schema does not`);
+      const got = [tsql, ...later.map((m) => m.sql)].flatMap((sql) => migrationIndexes(sql, t)).filter((i) => i.name !== ONE_KEY).map(idxText);
+      for (const x of want) if (!got.includes(x)) diffs.push(`${t}: schema has ${x}, the migrations do not`);
+      for (const x of got) if (!want.includes(x)) diffs.push(`${t}: the migrations have ${x}, the schema does not`);
       if (want.length === 0) diffs.push(`${t}: no index parsed from the schema`);
     }
     return [diffs.length === 0, diffs.join(" · ") || "indexes agree"];
+  });
+
+  // ── §1.4b · ⭐ the outcome index — one file, one statement ────────────────────────────────
+  await check(p(L.s14b), () => {
+    const indexes = schemaIndexes(schemaModel(w.schema, "SmsCampaignRecipient"), "SmsCampaignRecipient");
+    const declared = indexes.find((i) => i.name === OUTCOME_INDEX);
+    const declaredClaimed = indexes.find((i) => i.name === CLAIMED_INDEX);
+    const later = tables === null ? [] : laterTableMigrations(w, tables.folder);
+    // ⭐ The file is found by the outcome index's NAME (its re-review): a later contract migration on the same tables —
+    // the redundant (campaignId, status) index's drop, one day — must not turn this claim red by being there.
+    const file = later.find((m) => sqlStatements(m.sql).includes(`"${OUTCOME_INDEX}"`)) ?? null;
+    const stmts = file === null ? [] : sqlStatements(file.sql).split(";").map((x) => x.trim()).filter(Boolean);
+    const quoted = (cols: readonly string[]) => cols.map((c) => `"${c}"`).join(", ");
+    const want = [
+      `CREATE INDEX IF NOT EXISTS "${OUTCOME_INDEX}" ON "SmsCampaignRecipient"(${quoted(OUTCOME_COLS)})`,
+      `CREATE INDEX IF NOT EXISTS "${CLAIMED_INDEX}" ON "SmsCampaignRecipient"(${quoted(CLAIMED_COLS)})`,
+    ];
+    const schemaOk = declared !== undefined && !declared.unique && declared.cols.join(",") === OUTCOME_COLS.join(",")
+      && declaredClaimed !== undefined && !declaredClaimed.unique && declaredClaimed.cols.join(",") === CLAIMED_COLS.join(",");
+    const fileOk = file !== null && JSON.stringify(stmts) === JSON.stringify(want) && !/CONCURRENTLY|DROP/i.test(sqlStatements(file.sql));
+    return [schemaOk && fileOk,
+      `schema ${declared ? idxText(declared) : "declares no outcome index"} · ${declaredClaimed ? idxText(declaredClaimed) : "no claimedAt index"} · file ${file?.folder ?? "none names the outcome index"} · statements ${stmts.length}: ${stmts.map((s) => s.slice(0, 70)).join(" | ") || "none"}`];
   });
 
   // ── §1.5 · the columns, one by one ─────────────────────────────────────────────────────────
@@ -1562,6 +1618,85 @@ async function run(w: World, tag: string): Promise<void> {
     return [rules && doorFirst && writes, `${why} · the door asks it first ${doorFirst} · receiptWrite writes [${keysD}] and [${keysF}]`];
   });
 
+  /* ── §2.32 · U43b-2 · DC-4 · THE SEND RECORD, EXECUTED ON THE MEMORY TWIN (ENGINE-SPEC §4.13 decision 6) ─────────────────
+   * Every row reaches its state through the doors (claim → receipt → send record; claim → settle), never a hand-set map. ── */
+  await check(p(L.s232), async () => {
+    const id = "cmp_send_record";
+    const ids = await campaignOf(id, 6, 24400);
+    const key = (i: number) => keyOf(24400 + i);
+    const T = "tok_srec_0001";
+    await R.claim(id, 6, T, at(350));
+    // rows 0 (DELIVERED), 1 (FAILED) and 4 (DELIVERED): a receipt beat the slice's settle; row 2 SENT by the settle; 3 and 5 claimed
+    await R.recordReceipt(ids[0], receipt("sms_srec_0", key(0), "DELIVERED", { at: at(352) }));
+    await R.recordReceipt(ids[1], receipt("sms_srec_1", key(1), "FAILED", { at: at(352) }));
+    await R.recordReceipt(ids[4], receipt("sms_srec_4", key(4), "DELIVERED", { at: at(352) }));
+    await R.settle([sent(ids[2], T, "sms_srec_2")], at(353));
+    const record = (o: Partial<SmsRecipientSendRecord> = {}): SmsRecipientSendRecord => ({
+      claimToken: T, gateTrail: TRAIL("ok"), optOutToken: "K7MXP2QR", locale: "SW", segments: 1, bodyLen: 72, sentAt: at(351), ...o,
+    });
+    const before = new Map(rowsOf(id).map((r): [string, StoredSmsCampaignRecipient] => [r.id, { ...r }]));
+    const w0 = await R.recordSend(ids[0], record(), at(354));
+    const w1 = await R.recordSend(ids[1], record({ sentAt: null, locale: null }), at(354));
+    const SIX = ["gateTrail", "optOutToken", "locale", "segments", "bodyLen", "sentAt", "updatedAt"];
+    const r0 = rowOf(ids[0]);
+    const r1 = rowOf(ids[1]);
+    const intoDelivered = w0.written && r0?.status === "DELIVERED" && r0.deliveredAt === at(352) && r0.smsReference === "sms_srec_0" && r0.claimToken === T
+      && r0.sentAt === at(351) && r0.optOutToken === "K7MXP2QR" && r0.locale === "SW" && r0.segments === 1 && r0.bodyLen === 72 && r0.updatedAt === at(354)
+      && JSON.stringify(r0.gateTrail) === JSON.stringify(TRAIL("ok")) && sameBut(r0, before.get(ids[0]), SIX);
+    const intoFailed = w1.written && r1?.status === "FAILED" && r1.failureClass === "receipt:UNDELIV" && r1.error === "Absent subscriber"
+      && r1.failedAt === at(352) && r1.sentAt === null && r1.claimToken === T && sameBut(r1, before.get(ids[1]), SIX);
+    const keep = snap(ids);
+    const misses: Array<[string, SmsRecipientSendRecordResult]> = [
+      ["a second record over the first (its trail is no longer null)", await R.recordSend(ids[0], record({ gateTrail: TRAIL("again") }), at(355))],
+      ["a SENT row (the settle landed)", await R.recordSend(ids[2], record(), at(355))],
+      ["a row still PENDING under the claim", await R.recordSend(ids[3], record(), at(355))],
+      ["another claim's record", await R.recordSend(ids[4], record({ claimToken: "tok_srec_9999" }), at(355))],
+      ["a row that is not there", await R.recordSend("rcp_send_record_nobody", record(), at(355))],
+    ];
+    const missedWrites = misses.filter(([, x]) => x.written).map(([n]) => n);
+    const unchanged = snap(ids) === keep;
+    // ── the rule set first ──
+    const refusesS = (rid: unknown, s: unknown): boolean => {
+      try { w.rules.assertSendRecord(rid as string, s as SmsRecipientSendRecord, at(360)); return false; } catch { return true; }
+    };
+    const withoutS = (k: string): Record<string, unknown> => Object.fromEntries(Object.entries(record()).filter(([key]) => key !== k));
+    const RID = "rcp_srec_rule_0001";
+    const [rules, why] = verdicts([
+      ["a lost id", refusesS(undefined, record())],
+      ["an empty id", refusesS("", record())],
+      ["⛔ a record carrying the status", refusesS(RID, { ...record(), status: "SENT" })],
+      ["⛔ a record carrying userId — the account link only erasure clears", refusesS(RID, { ...record(), userId: "usr_erased_0001" })],
+      ["a record carrying a reference", refusesS(RID, { ...record(), smsReference: "sms_x" })],
+      ["no hand-over key at all", refusesS(RID, withoutS("sentAt"))],
+      ["no trail", refusesS(RID, withoutS("gateTrail"))],
+      ["a claim of another shape", refusesS(RID, record({ claimToken: "tok srec" }))],
+      ["an empty trail", refusesS(RID, record({ gateTrail: [] }))],
+      ["⛔ a phone number in the trail", refusesS(RID, record({ gateTrail: [{ check: "gate", verdict: "sent to 0712 345 678", wording: null, source: null }] }))],
+      ["a token with a space", refusesS(RID, record({ optOutToken: "K7MX P2QR" }))],
+      ["a variant in another spelling", refusesS(RID, record({ locale: "sw" as never }))],
+      ["a size of 0", refusesS(RID, record({ segments: 0 }))],
+      ["a length that is not whole", refusesS(RID, record({ bodyLen: 72.5 }))],
+      ["a hand-over instant in another spelling", refusesS(RID, record({ sentAt: "2026-10-02 09:05" }))],
+    ], [
+      ["a lawful record", refusesS(RID, record())],
+      ["every nullable column null (an unanswered message)", refusesS(RID, record({ optOutToken: null, locale: null, segments: null, bodyLen: null, sentAt: null }))],
+      ["a trail whose source is a reference holding digits", refusesS(RID, record({ gateTrail: [{ check: "dispatch", verdict: "handed_over", wording: null, source: "sms_0712345678abcdef01234567" }] }))],
+    ]);
+    // ⛔ THE DOOR ASKS IT FIRST: a lost id and a number in the trail each refused before anything is read
+    const doorFirst = [
+      await throws(() => R.recordSend(undefined as unknown as string, record(), at(361))),
+      await throws(() => R.recordSend(ids[5], record({ gateTrail: [{ check: "gate", verdict: "call 0712 345 678", wording: null, source: null }] }), at(361))),
+    ].every(Boolean) && snap(ids) === keep;
+    // ⛔ THE WRITE: exactly its columns — a careless caller's extras never reach a column, and the trail is copied
+    const careless = { ...record(), status: "SENT", claimToken: null, smsReference: "sms_y", attempts: 9, userId: "usr_erased_0001" } as unknown as SmsRecipientSendRecord;
+    const wr = w.rules.sendRecordWrite(careless, at(362));
+    const keys = Object.keys(wr.set).sort().join(",");
+    const writes = keys === "bodyLen,gateTrail,locale,optOutToken,segments,sentAt,updatedAt" && wr.attemptsBy === 0 && wr.set.updatedAt === at(362)
+      && wr.set.gateTrail !== careless.gateTrail && JSON.stringify(wr.set.gateTrail) === JSON.stringify(careless.gateTrail);
+    return [intoDelivered && intoFailed && missedWrites.length === 0 && unchanged && rules && doorFirst && writes,
+      `into DELIVERED ${intoDelivered} · into FAILED ${intoFailed} · wrote where it must not [${missedWrites.join("; ")}] · nothing else changed ${unchanged} · ${why} · the door asks it first ${doorFirst} · sendRecordWrite writes [${keys}]`];
+  });
+
   // ── §3.1 · the MARKETING writer population ─────────────────────────────────────────────────
   const writers = w.src.filter((f) => /purpose\s*:\s*["']MARKETING["']/.test(f.text)).map((f) => f.path);
   const undeclared = writers.filter((f) => !MARKETING_WRITERS.includes(f));
@@ -1621,6 +1756,12 @@ if (!PROVE_RED) {
   const withTablesSql = (edit: (sql: string) => string): World => ({
     ...REAL, migrations: REAL.migrations.map((m) => (m.folder === tablesFolder ? { ...m, sql: edit(lf(m.sql)) } : m)),
   });
+  /** ⭐ U47b-1 · the outcome index's ONE file, edited in memory (LF-normalised, as the tables plant is). */
+  const outcomeFolder = REAL.migrations.find((m) => m.folder.endsWith("_sms_recipient_outcome_index"))?.folder ?? "";
+  const withOutcomeFile = (edit: (sql: string) => string): World => {
+    if (outcomeFolder === "") throw new Error("no _sms_recipient_outcome_index migration — U47b-1's file is missing");
+    return { ...REAL, migrations: REAL.migrations.map((m) => (m.folder === outcomeFolder ? { ...m, sql: edit(lf(m.sql)) } : m)) };
+  };
   const withCampaign = (o: Partial<CampaignNs>): World => ({ ...REAL, twin: { ...REAL.twin, campaign: { ...REAL.twin.campaign, ...o } } });
   const withRecipient = (o: Partial<RecipientNs>): World => ({ ...REAL, twin: { ...REAL.twin, recipient: { ...REAL.twin.recipient, ...o } } });
   const withRules = (o: Partial<Rules>): World => ({ ...REAL, rules: { ...REAL.rules, ...o } });
@@ -1701,6 +1842,21 @@ if (!PROVE_RED) {
       if (o.writeReference === false) delete (wr.set as Record<string, unknown>).smsReference;
       applyWrite(row, wr);
       return { changed: true, reason: "applied" };
+    };
+
+  /* ── U43b-2's plant helper ── */
+  /** A planted send record: the rule set asked, then each guard the plant names LEFT OUT — the claim, the receipt's
+   *  statuses, the trail not yet written. */
+  const plantedSend = (o: { claim?: false; status?: false; trail?: false }): RecipientNs["recordSend"] =>
+    async (rid, s, stamp) => {
+      CM.assertSendRecord(rid, s, stamp);
+      const row = mem().smsCampaignRecipients.get(rid);
+      if (row === undefined) return { written: false };
+      if (o.claim !== false && row.claimToken !== s.claimToken) return { written: false };
+      if (o.status !== false && !CM.SMS_SEND_RECORD_FROM.includes(row.status)) return { written: false };
+      if (o.trail !== false && row.gateTrail !== null) return { written: false };
+      applyWrite(row, CM.sendRecordWrite(s, stamp));
+      return { written: true };
     };
 
   const CASES: Array<{ name: string; expect: string; build: () => World }> = [
@@ -1870,6 +2026,37 @@ if (!PROVE_RED) {
       expect: L.s17,
       build: () => withTablesSql((sql) => `${sql}\nDROP INDEX "SmsCampaign_createdAt_idx";\n`),
     },
+    /* ── U47b-1 · the outcome index (the review's MINOR 4): its schema line, its ONE file, its ONE statement ── */
+    {
+      name: "R-47b1-idx-1 · the outcome index's migration is missing — the schema declares an index no migration creates",
+      expect: L.s14b,
+      build: () => ({ ...REAL, migrations: REAL.migrations.filter((m) => m.folder !== outcomeFolder) }),
+    },
+    {
+      name: "R-47b1-idx-2 · the outcome index built CONCURRENTLY — refused inside the one transaction prisma migrate runs a file in",
+      expect: L.s14b,
+      build: () => withOutcomeFile((sql) => plant(sql, `CREATE INDEX IF NOT EXISTS "${OUTCOME_INDEX}"`, `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${OUTCOME_INDEX}"`)),
+    },
+    {
+      name: "R-47b1-idx-3 · the outcome file also drops the (campaignId, status) index — no longer one additive statement",
+      expect: L.s14b,
+      build: () => withOutcomeFile((sql) => `${sql}${NL}DROP INDEX "SmsCampaignRecipient_campaignId_status_idx";${NL}`),
+    },
+    {
+      name: "R-47b1-idx-4 · the outcome index's columns out of the groupBy's order — (campaignId, skipReason, status, failureClass)",
+      expect: L.s14,
+      build: () => withOutcomeFile((sql) => plant(sql, `("campaignId", "status", "skipReason", "failureClass")`, `("campaignId", "skipReason", "status", "failureClass")`)),
+    },
+    {
+      name: "R-47b1-idx-5 · the schema's map name and the file's name differ — the probe's drift diff would name it",
+      expect: L.s14,
+      build: () => withModel("SmsCampaignRecipient", `map: "${OUTCOME_INDEX}"`, `map: "${OUTCOME_INDEX}x"`),
+    },
+    {
+      name: "R-47b1-idx-6 · the claimedAt index left out of the file (its re-review) — lastActivity reads every row again",
+      expect: L.s14b,
+      build: () => withOutcomeFile((sql) => plant(sql, `CREATE INDEX IF NOT EXISTS "${CLAIMED_INDEX}" ON "SmsCampaignRecipient"("campaignId", "claimedAt");`, "")),
+    },
     {
       name: "a copied person column — the recipient model gains displayName (D16: a link, never a copy)",
       expect: L.s111,
@@ -1979,12 +2166,12 @@ if (!PROVE_RED) {
       }),
     },
     {
-      name: "R3.2 · ⭐ a src file writes a recipient's status as UNCONFIRMED while UNCONFIRMED_WRITERS is empty — a writer in the deploy that adds its value",
+      name: "R3.2 · ⭐ an UNDECLARED src file writes a recipient's status as UNCONFIRMED — a writer nobody reviewed",
       expect: L.s32,
       build: () => ({ ...REAL, src: [...REAL.src, { path: "src/lib/server/marketing/rogue-settle.ts", text: 'await db.smsCampaignRecipient.settle(id, { status: "UNCONFIRMED", smsReference: ref });' }] }),
     },
     {
-      name: "R3.2b · ⭐ a src file hands U43a's settle door a patch to UNCONFIRMED while UNCONFIRMED_WRITERS is empty — the door's own spelling, seen",
+      name: "R3.2b · ⭐ an UNDECLARED src file hands U43a's settle door a patch to UNCONFIRMED — the door's own spelling, seen",
       expect: L.s32,
       build: () => ({ ...REAL, src: [...REAL.src, { path: "src/lib/marketing/rogue-rules.ts", text: 'export const reaped = (id: string, claimToken: string) => ({ id, claimToken, to: "UNCONFIRMED", smsReference: null, optOutToken: null, locale: null, segments: null, bodyLen: null, gateTrail: [] });' }] }),
     },
@@ -2372,6 +2559,37 @@ if (!PROVE_RED) {
           return { ...wr, set: { ...wr.set, sentAt: r.at } };
         },
       }),
+    },
+    /* ── U43b-2 · DC-4's send record: each defect as somebody would write it ── */
+    {
+      name: "⭐ R-43b-1 · the send record without its trail-null guard — a second record overwrites the first one's trail (or the reaper's)",
+      expect: L.s232,
+      build: () => withRecipient({ recordSend: plantedSend({ trail: false }) }),
+    },
+    {
+      name: "⭐ R-43b-2 · the send record without its status guard — a SENT row's, and a still-claimed row's, columns rewritten",
+      expect: L.s232,
+      build: () => withRecipient({ recordSend: plantedSend({ status: false }) }),
+    },
+    {
+      name: "R-43b-3 · the send record without its claim — another slice's record lands on the row",
+      expect: L.s232,
+      build: () => withRecipient({ recordSend: plantedSend({ claim: false }) }),
+    },
+    {
+      name: "⭐ R-43b-4 · sendRecordWrite writes the status too — the receipt's DELIVERED turned back into SENT",
+      expect: L.s232,
+      build: () => withRules({
+        sendRecordWrite: (s, stamp) => {
+          const wr = CM.sendRecordWrite(s, stamp);
+          return { ...wr, set: { ...wr.set, status: "SENT" } };
+        },
+      }),
+    },
+    {
+      name: "R-43b-5 · the send record's rule set lets a phone number through the trail (§5.14)",
+      expect: L.s232,
+      build: () => withRules({ assertSendRecord: lets(CM.assertSendRecord, (_id, s) => JSON.stringify(s?.gateTrail ?? null).includes("0712")) }),
     },
   ];
 

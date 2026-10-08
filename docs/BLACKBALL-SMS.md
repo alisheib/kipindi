@@ -117,6 +117,33 @@ UCS2 holds 70 characters per segment instead of 160.
 | A success carries **no per-message id** | `{"status":true,"message":"Successfully submitted 1 message(s) to broker.","data":null,"balance":250.0}` |
 | The balance endpoint words its auth error differently | `"Invalid credentials used"` |
 
+### 1.7 ⛔ A refusal is the gateway's own `status:false` — anything else unanswered is AMBIGUOUS (marketing U43b-2, 2026-10-07)
+
+`sms.ts` reads a send's reply in exactly three ways (`BlackballOutcome.verdict` carries the `status` boolean as the reply
+had it, null when it had none):
+
+| The reply | The `SmsMessage` row | The result code | What a caller may do |
+|---|---|---|---|
+| `status:true` | `ACCEPTED` (`sentAt`) | — (ok) | nothing: the receipt settles delivery |
+| `status:false` on a status line **below 500** — every refusal measured (§1.1: bad keys, a schema complaint), decided before anything is queued | `FAILED` (`failedAt`) | `REJECTED` | nothing was charged: the campaign engine releases the batch (+1) and pauses ONCE; a re-send after Resume is not a second charge |
+| **anything else** not accepted — no response, a body that died mid-read (U43b-1), a **5xx** (a proxy's 504 can arrive AFTER the gateway took the batch), an HTML or empty body, JSON without the boolean | `UNKNOWN` (no `failedAt`) | `TRANSPORT` | ⛔ never re-send by itself: the gateway may hold it and bill for it. A late receipt still settles the row |
+
+A **throw** out of the transport happens only BEFORE the request (an `SmsError` the transport raises on purpose —
+`NOT_CONFIGURED` — or `blackballSend`'s own input guards): the row is `FAILED` and the code is the error's own, or
+`UNKNOWN` for one that is not an `SmsError` (it was `TRANSPORT` — "the gateway may have it" — while the row said it never
+left). Each caller, as of this rule:
+
+- **The login code** (`requestLoginOtp`) answers the player byte-for-byte as before in every mode — `SMS_UNDELIVERABLE`,
+  the code consumed, the resend allowance refunded (`test:otp-delivery` §10, run also against the old `sms.ts`); only the
+  audit's `code` and the message row say which failure it was.
+- **The campaign engine** settles TRANSPORT rows UNCONFIRMED and pauses `gateway_unanswered` when a whole batch is
+  unanswered; releases a REJECTED batch (+1) and pauses `gateway_refused`; a pre-request UNKNOWN pauses `send_error`.
+- **The test send** says "unconfirmed — don't resend" for TRANSPORT, "the network refused" only for REJECTED, and that the
+  message "couldn't be handed to the SMS network" for a failure before the request.
+- ⚠️ **Invites** mark every not-accepted entry `FAILED` at once (unchanged), but an invite answered with a 5xx now leaves
+  its message row `UNKNOWN`, not `FAILED` — so a late receipt CAN still move the entry to `DELIVERED` or `BOUNCED`
+  (the receipt arm, `api/webhooks/blackball`): a record corrected by the network's own answer, never a second send.
+
 ---
 
 ## 2 · Request and response
@@ -746,9 +773,9 @@ Answered already: sender ID, price, success body, `coding` values, balance endpo
 |---|---|
 | `npm run live:blackball` | the live drive — one hard-coded number, a send ledger capped by `TOTAL_SEND_CEILING` (spent; raising it is Ali's call), balance read before and after, raw reply captured |
 | `node scripts/live/ops/sms-receipts.cjs [ref]` | read-only: SMS and receipt audit rows on production, cross-checked against `/api/health` |
-| `test:blackball` / `red:blackball` | the transport: HTTP-400 trap, `data` shapes, sender cap, reference floor, batching, timeouts, `coding`, balance endpoint |
+| `test:blackball` / `red:blackball` | the transport: HTTP-400 trap, `data` shapes, sender cap, reference floor, batching, timeouts, `coding`, balance endpoint; §13–§14 a body that dies mid-read is a lost reply (U43b-1); §15 the refusal/ambiguity rule of §1.7 through the real `sendBatch` (a 400 `status:false` refused, a 504 page, a 5xx saying false, a reply with no boolean ambiguous, a pre-request throw UNKNOWN with its row FAILED) and §16 the OTP-failure mark (U43b-2), each planted by an anchor (R-BB2…R-BB5) |
 | `test:sms-dlr` / `red:sms-dlr` | the receiver: auth, exact reply body, unknown references, msisdn cross-check, monotonicity, no-guess rule, the observed DELIVRD receipt, no empty-callback audit |
-| `test:otp-delivery` / `red:otp-delivery` | the login path: refusal before minting, await, consume-on-failure, rate refund, locale, wire-form msisdn, UNKNOWN on a lost reply |
+| `test:otp-delivery` / `red:otp-delivery` | the login path: refusal before minting, await, consume-on-failure, rate refund, locale, wire-form msisdn, UNKNOWN on a lost reply; §10 every failure mode of §1.7 answers the player byte-for-byte alike — the code consumed, the allowance refunded — only the record says which (U43b-2) |
 | `test:sms-cost-guard` / `red:sms-cost-guard` | the floor: OTP exemption, the refusal-balance latch, staleness, balance-endpoint refresh, edge-triggered alarm; since 2026-09-26 also the live read (budget, one read in flight, the pause after a failure and why it failed, the low-reading re-check before a refusal), `/api/health`'s refresh, the officers' alarm (bell + email, the restart alarm), and the Admin → System "SMS credit" tile's states; since 2026-09-27 also the floor crossing, the low episode (`sms.balance_recovered`) across a restart, who the alarm reaches (a COMPLIANCE officer gets none by default), the late-reading guard, the `refused` / `unreachable` / `unexpected` verdicts, `smsRailProblem` agreeing with `smsConfigured`, and the tile's no-SMS-can-send, sends-failing and seven-figure states; and since the final visual review
 (2026-09-27) the provenance line under the figure, both real key names drawn whole (`<wbr>` after an
 underscore only), "Healthy · alert at …", the chip's one fact "since server start", a stale figure below the

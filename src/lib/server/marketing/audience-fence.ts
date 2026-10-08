@@ -88,10 +88,12 @@ export type MembersKeyScope = { campaignId: string; draftRevision: number };
  * ⭐ THE KEYED NAME OF A LISTED AUDIENCE, FOR ONE DRAFT — the first 32 hex characters of HMAC-SHA256(the fence's key,
  * `"kp-audience-members:<campaignId>:<draftRevision>:<canonical>"`). `canonical` is `canonicalMembers`' output (the sorted
  * bare keys, each once, joined by commas — digits and commas only, so the colons cannot be read two ways): the
- * confirmation and U42's Start both call THIS with THAT, so they can never build two different names for the same people.
+ * confirmation, Start and U42's enqueue all call THIS with THAT, so they can never build two different names for the same
+ * people.
  * ⛔ BOUND TO THE DRAFT (see the header): two drafts never share a key; the same draft at the same revision always does.
- * ⭐ U42 recomputes it at Start from the CONFIRMED row's own `id` and its frozen `draftRevision` — no save moves a
- * revision once the row has left DRAFT — so the key Start computes names the draft the confirmation stored a key for.
+ * ⭐ Start (U49a, ENGINE-SPEC E19) and U42's enqueue (§4.9 decision 4) recompute it from the CONFIRMED row's own `id` and
+ * its frozen `draftRevision` — no save moves a revision once the row has left DRAFT — so the key either computes names the
+ * draft the confirmation stored a key for.
  * ⛔ Its input is raw phone numbers: it is computed here, on the server, and only its output ever leaves.
  */
 export function membersKeyOf(scope: MembersKeyScope, canonical: string): string {

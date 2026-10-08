@@ -458,4 +458,85 @@ export const MUTATIONS = [
     to: `  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5`,
     expect: `§4c ⛔ …and never to an officer whose role cannot open that page: no bell, no email for compliance`,
   },
+
+  // ══ 2026-10-07 · U49a — the credit kept for login and withdrawal codes (`sendBatch`'s `minimumBalanceTzs`, §10) ══════
+  {
+    // The plan's RED, undone: the engine asks for the credit kept for codes and the send path never looks.
+    name: "sms.ts — the marketing floor option is ignored",
+    file: "src/lib/server/sms.ts",
+    from: `    if (keptForCodes !== undefined && prepared.every((p) => p.out.purpose === "MARKETING")) {`,
+    to: `    if (false) {`,
+    expect: `§10 ⭐ below the credit kept for codes a MARKETING batch is REFUSED MARKETING_FLOOR before any request, every message reported refused and no row written`,
+  },
+  {
+    // "every" become "some": a login code sent beside marketing is held by a floor that exists to protect it.
+    name: "sms.ts — the marketing floor judges a batch that carries a login code",
+    file: "src/lib/server/sms.ts",
+    from: `&& prepared.every((p) => p.out.purpose === "MARKETING")) {`,
+    to: `&& prepared.some((p) => p.out.purpose === "MARKETING")) {`,
+    expect: `§10 ⭐ in the SAME state an OTP batch still sends, and so does a batch carrying a login code beside marketing: the marketing floor judges only an all-MARKETING batch`,
+  },
+  {
+    // Unknown read as low on the SHARED rail: one failed balance read would hold every campaign batch. Failing closed on
+    // an unreadable credit is the engine's rule, never this path's.
+    name: "sms.ts — an unknown or stale balance is read as below the credit kept for codes",
+    file: "src/lib/server/sms.ts",
+    from: `  return s.tzs !== null && !s.stale && s.tzs < keptTzs;`,
+    to: `  return s.tzs === null || s.stale || s.tzs < keptTzs;`,
+    expect: `§10 ⛔ an unreadable or a stale balance does NOT hold a MARKETING batch inside sendBatch: unknown is not low, the engine fails closed before it (E16)`,
+  },
+  {
+    // "TZS 15,000 on the card → top up → send" held on a figure the top-up had already made false.
+    name: "sms.ts — a low reading is trusted by the marketing floor without a re-check",
+    file: "src/lib/server/sms.ts",
+    from: `      if (belowKeptForCodes(keptForCodes)) await refreshSmsBalance({ maxAgeMs: LOW_READING_RECHECK_MS });`,
+    to: `      /* no re-check before the marketing floor refuses */`,
+    expect: `§10 a LOW reading over a minute old is re-checked before the marketing floor refuses: a top-up is honoured`,
+  },
+  {
+    // NaN compares false with everything, so a malformed floor would read as no floor at all.
+    name: "sms.ts — a malformed floor is read as no floor",
+    file: "src/lib/server/sms.ts",
+    from: `      if (!Number.isFinite(keptForCodes) || keptForCodes < 0) {`,
+    to: `      if (false) {`,
+    expect: `§10 ⛔ a floor that is not a figure holds the MARKETING batch: a malformed option never opens the rail (and 0, a figure, sends)`,
+  },
+  {
+    // U43b-2 re-review · a passed deadline ignored before the rows: the batch is written and sent though a reaper may already
+    // have released its people for another slice to send (the double send the deadline exists to close).
+    name: "sms.ts — the caller's deadline is not checked before the rows are written",
+    file: "src/lib/server/sms.ts",
+    from: `  if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+    return refuse("DEADLINE_PASSED",`,
+    to: `  if (false) {
+    return refuse("DEADLINE_PASSED",`,
+    expect: `§11 ⭐ a MARKETING batch whose deadline has passed is REFUSED DEADLINE_PASSED whole: no row written and no request`,
+  },
+  {
+    // U43b-2 re-review · the deadline not re-read before the request: a row write that stalled past it still reaches the wire.
+    name: "sms.ts — the caller's deadline is not checked again before the request",
+    file: "src/lib/server/sms.ts",
+    from: `    if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+      const detail = "the deadline for this batch passed while its rows were written — no request was made";`,
+    to: `    if (false) {
+      const detail = "the deadline for this batch passed while its rows were written — no request was made";`,
+    expect: `§11 ⭐ a deadline that passes while the rows are written makes NO request: those rows FAILED with no receipt, each answered DEADLINE_PASSED`,
+  },
+  {
+    // U43b-2 re-review · the deadline judges a batch that carries a login code: a slow marketing slice could hold an OTP.
+    name: "sms.ts — the caller's deadline judges a batch that carries a login code",
+    file: "src/lib/server/sms.ts",
+    from: `  const deadlineApplies = notAfter !== undefined && prepared.every((p) => p.out.purpose === "MARKETING");`,
+    to: `  const deadlineApplies = notAfter !== undefined;`,
+    expect: `§11 ⭐ an OTP never meets a deadline: alone, and beside marketing, a passed deadline holds nothing`,
+  },
+  {
+    // The re-review of round 2 · the deadline's other half: one that is not a figure taken as never passing — a malformed
+    // option opens the rail, as the credit floor's own anchor proves for `minimumBalanceTzs`.
+    name: "sms.ts — a deadline that is not a figure is taken as never passing",
+    file: "src/lib/server/sms.ts",
+    from: `  return !Number.isFinite(notAfter) || Date.now() >= notAfter;`,
+    to: `  return Date.now() >= notAfter;`,
+    expect: `§11 ⛔ a deadline that is not a figure holds the MARKETING batch: a malformed option never opens the rail`,
+  },
 ];

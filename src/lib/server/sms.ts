@@ -120,6 +120,25 @@ declare global {
   var __50PICK_SMS_BALANCE: { tzs: number; at: number } | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_SMS_BALANCE_READ: { inflight: Promise<boolean> | null; failedAt: number | null; error: SmsBalanceError | null } | undefined;
+  /** U43b-2 · the newest instant (epoch ms) an OTP-purpose `SmsMessage` row went FAILED or UNKNOWN in this process. */
+  // eslint-disable-next-line no-var
+  var __50PICK_OTP_LAST_FAILURE_AT: number | undefined;
+}
+
+/**
+ * ⭐ U43b-2 · THE OTP-FAILURE MARK (ENGINE-SPEC §4.13, E12): login and withdrawal codes share the rail with marketing, so
+ * the campaign slice WAITS two minutes after a code failed or went unknown. Stamped where an OTP row is written FAILED or
+ * UNKNOWN, on `globalThis` (the slice runs in a server action's module instance, the OTP path in another — the money-busy
+ * lesson). ⛔ NO BEHAVIOUR CHANGE: one assignment that cannot throw, and nothing in this file reads it.
+ */
+function noteOtpFailure(purpose: SmsPurpose | undefined): void {
+  if (purpose === "OTP") globalThis.__50PICK_OTP_LAST_FAILURE_AT = Date.now();
+}
+
+/** U43b-2 · the newest OTP failure this process saw (epoch ms), or null — the campaign slice's one reader. */
+export function lastOtpFailureAt(): number | null {
+  const at = globalThis.__50PICK_OTP_LAST_FAILURE_AT;
+  return typeof at === "number" && Number.isFinite(at) ? at : null;
 }
 
 /** ⛔ ON `globalThis`, NOT A MODULE-SCOPE `let`. Every other counter in this repo is
@@ -482,9 +501,14 @@ const blackballTransport: SmsTransport = {
     const problem = senderIdProblem(env.senderId);
     if (problem) throw new SmsError("NOT_CONFIGURED", `blackball: sender ID ${problem}`);
     const r = await blackballSend(env, msgs);
-    // `transport` is set ONLY when no response arrived — the authoritative signal for "we do
-    // not know whether the gateway has this batch".
-    return { ok: r.ok, ambiguous: r.transport !== null, detail: describeBlackball(r), message: r.message, balance: r.balance };
+    // ⛔ U43b-2 · A REFUSAL IS THE GATEWAY'S OWN `status:false`, ON A STATUS LINE BELOW 500 — measured: every refusal the
+    // gateway makes (bad keys, a schema complaint) is a 400 carrying the boolean, decided before anything is queued, so it
+    // charged nothing and a re-send is not a second charge. Anything else that is not an acceptance is AMBIGUOUS: no
+    // response (`transport`), a body that died, a 5xx (a proxy's 504 can arrive AFTER the gateway took the batch), an HTML
+    // page or an empty body, JSON without the boolean — we do not know whether the gateway has the batch, so the row is
+    // UNKNOWN (a late receipt can still settle it) and the result TRANSPORT, never a refusal a caller may re-send.
+    const refusedByGateway = r.verdict === false && r.httpStatus < 500;
+    return { ok: r.ok, ambiguous: !r.ok && !refusedByGateway, detail: describeBlackball(r), message: r.message, balance: r.balance };
   },
   async balance(): Promise<BalanceReply> {
     const env = blackballEnv();
@@ -519,11 +543,18 @@ export type SmsFailureCode =
   | "NOT_CONFIGURED"
   | "PROVIDER_UNRECOGNISED"
   | "BALANCE_FLOOR"
+  /** U49a · an all-MARKETING batch held at the credit kept for login and withdrawal codes — only when its caller set
+   *  `minimumBalanceTzs` (`SmsBatchOptions`). Whole batch, before any row or request, like `BALANCE_FLOOR`. */
+  | "MARKETING_FLOOR"
   /** The number is not one a gateway can dial — refused here, before a row exists. See `sendBatch`. */
   | "BAD_MSISDN"
   | "REJECTED"
   | "TRANSPORT"
-  | "UNKNOWN";
+  | "UNKNOWN"
+  /** U43b-2 review · an all-MARKETING batch whose caller's deadline (`SmsBatchOptions.notAfter`) passed before its
+   *  request: refused whole before any row is written, or — when it passed while the rows were being written — those rows
+   *  FAILED with no request made. Never an OTP: an OTP never meets a deadline. */
+  | "DEADLINE_PASSED";
 
 /** A typed failure, so a caller can branch without regex-ing prose. */
 export class SmsError extends Error {
@@ -588,6 +619,42 @@ export type SmsBatchOutcome = {
   refused?: SmsFailureCode;
 };
 
+/**
+ * ⭐ U49a · WHAT A CALLER MAY ASK OF ONE BATCH BEYOND ITS MESSAGES (ENGINE-SPEC §4.12 decision 1, E16).
+ * Leave it out and `sendBatch` behaves exactly as it always has: every existing caller (the OTP path, invites, the
+ * campaign test send) passes nothing.
+ */
+export type SmsBatchOptions = {
+  /**
+   * The credit kept for login and withdrawal codes, in TZS — the campaign engine's LAST line (its slice checks the
+   * credit before it claims anyone). It judges ONLY a batch whose every message is MARKETING, after the platform floor,
+   * and holds the whole batch `MARKETING_FLOOR` on a CONFIRMED reading below it. ⛔ An OTP never passes it.
+   */
+  minimumBalanceTzs?: number;
+  /**
+   * ⛔ U43b-2 review · THE CALLER'S DEADLINE, in epoch milliseconds — the campaign engine's send-age bound: the oldest claim
+   * of its slice plus `CLAIM_SEND_MAX_AGE_MS`, after which a reaper may release that claim (it finds no row) and a second
+   * slice would send the same people again. It judges ONLY a batch whose every message is MARKETING (an OTP, an invite or a
+   * test never passes it, and a batch carrying one is never held by it), checked TWICE: just before the rows are written
+   * — passed: the whole batch refused `DEADLINE_PASSED`, nothing written, no request — and just before each request —
+   * passed (the write itself stalled): no request, those rows FAILED (no receipt token, so the reaper releases them).
+   * ⛔ A deadline that is not a finite figure holds the batch: a malformed option never opens the rail.
+   */
+  notAfter?: number;
+};
+
+/** U43b-2 review · has the caller's deadline passed (a malformed one has)? Only ever asked for an all-MARKETING batch. */
+function deadlinePassed(notAfter: number): boolean {
+  return !Number.isFinite(notAfter) || Date.now() >= notAfter;
+}
+
+/** U49a · a CONFIRMED reading under the credit kept for codes: a live figure (one past the TTL is stale) strictly
+ *  below it. ⛔ UNKNOWN IS NOT LOW — no reading, or a stale one, never holds a batch here (the engine fails closed). */
+function belowKeptForCodes(keptTzs: number): boolean {
+  const s = smsBalanceSnapshot();
+  return s.tzs !== null && !s.stale && s.tzs < keptTzs;
+}
+
 const chunk = <T,>(xs: T[], size: number): T[][] => {
   const out: T[][] = [];
   for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
@@ -610,8 +677,11 @@ const chunk = <T,>(xs: T[], size: number): T[][] => {
  * ⚠️ A TRANSPORT FAILURE LEAVES THE ROW `UNKNOWN`, NOT `FAILED`. The gateway may
  * hold the batch and bill for it; we simply lost the reply. Calling that a failure
  * invites a retry, and a retry is a second SMS at a second charge.
+ *
+ * ⭐ U49a · `opts.minimumBalanceTzs` (`SmsBatchOptions`) adds ONE check after the platform
+ * floor, for an all-MARKETING batch only. With no option this function is what it was.
  */
-export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcome> {
+export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions): Promise<SmsBatchOutcome> {
   if (messages.length === 0) return { results: [], balanceTzs: smsBalanceSnapshot().tzs };
 
   const transport = pickTransport();
@@ -717,6 +787,38 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
         `SMS credit is below the TZS ${balanceFloor()} floor — non-critical messages are held so login codes keep sending`,
       );
     }
+    // ⛔ U49a · THE CREDIT KEPT FOR LOGIN AND WITHDRAWAL CODES (ENGINE-SPEC §4.12 decision 1, E16) — ADDITIVE, judged
+    // after the platform floor above, and ONLY when the caller set `minimumBalanceTzs` AND every prepared message is
+    // MARKETING: a batch that carries a login code beside marketing is never held by it, and an OTP-only batch never
+    // reaches this block at all. A CONFIRMED reading below it holds the WHOLE batch, as the floor does — re-checked first
+    // when it is over a minute old (a top-up is honoured, exactly as the floor's re-check honours one).
+    // ⛔ UNKNOWN STAYS "NOT LOW" HERE, as everywhere in this file: failing closed on an unreadable credit is the ENGINE's
+    // rule (its slice pauses `credit_unreadable` before it claims anyone), never the shared send path's.
+    // ⛔ A floor that is not a figure of 0 or more (NaN, a string, a negative) holds the batch: a malformed option never
+    // opens the rail.
+    const keptForCodes = opts?.minimumBalanceTzs;
+    if (keptForCodes !== undefined && prepared.every((p) => p.out.purpose === "MARKETING")) {
+      if (!Number.isFinite(keptForCodes) || keptForCodes < 0) {
+        return refuse("MARKETING_FLOOR", "the credit kept for login and withdrawal codes is not a usable figure, so marketing messages are held");
+      }
+      if (belowKeptForCodes(keptForCodes)) await refreshSmsBalance({ maxAgeMs: LOW_READING_RECHECK_MS });
+      if (belowKeptForCodes(keptForCodes)) {
+        return refuse(
+          "MARKETING_FLOOR",
+          `SMS credit is below the ${formatTzs(keptForCodes)} kept for login and withdrawal codes — marketing messages are held so codes keep sending`,
+        );
+      }
+    }
+  }
+
+  // ⛔ U43b-2 review · THE CALLER'S DEADLINE (`notAfter`) — CHECK 1 OF 2, before any row is written. Judged ONLY when the
+  // caller set it AND every prepared message is MARKETING (an OTP, an invite or a test never passes it, and a batch carrying
+  // one is never held by it). Passed — or not a figure: the WHOLE batch refused `DEADLINE_PASSED`, nothing written, no
+  // request (the engine reads it as its `slice_too_slow` wait: its people go back as they were).
+  const notAfter = opts?.notAfter;
+  const deadlineApplies = notAfter !== undefined && prepared.every((p) => p.out.purpose === "MARKETING");
+  if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+    return refuse("DEADLINE_PASSED", "the deadline for this batch passed before it was written — nothing was written or sent");
   }
 
   const nowIso = new Date().toISOString();
@@ -757,6 +859,28 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
   let balance = smsBalanceSnapshot().tzs;
 
   for (const group of chunk(prepared, BATCH_MAX)) {
+    // ⛔ U43b-2 review · THE CALLER'S DEADLINE — CHECK 2 OF 2, immediately before the request: the row write itself may have
+    // stalled past it (an INSERT waiting on a lock or a half-open socket — the one wait here with no bound of its own), and a
+    // request made now could reach people a reaper has meanwhile released for another slice to send. So NO request: those
+    // rows FAILED with no receipt token — nothing left the building, and the reaper's rule releases such a row (+1).
+    // ⛔ No health count and no OTP-failure mark: the network was never asked, and the batch is MARKETING only.
+    if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+      const detail = "the deadline for this batch passed while its rows were written — no request was made";
+      const failedAt = new Date().toISOString();
+      for (const p of group) {
+        await db.smsMessage.update(p.reference, { status: "FAILED", providerMsg: detail, failedAt });
+        results[p.index] = { reference: p.reference, to: p.out.to, ok: false, error: detail, code: "DEADLINE_PASSED", targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
+      }
+      audit({
+        category: "SYSTEM",
+        action: "sms.failed",
+        actorId: null,
+        targetType: null,
+        targetId: null,
+        payload: { provider: transport.name, count: group.length, code: "DEADLINE_PASSED", detail },
+      });
+      continue;
+    }
     let outcome: ChunkOutcome;
     // The reply's balance is as of this request, so it is stamped with when it was asked (see recordBalance).
     const askedAt = Date.now();
@@ -765,10 +889,17 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
         group.map((p) => ({ msisdn: p.msisdn, text: p.out.body, reference: p.reference })),
       );
     } catch (err) {
-      const code = err instanceof SmsError ? err.code : "TRANSPORT";
+      // ⛔ U43b-2 · A THROW IS A FAILURE BEFORE THE WIRE, AND ITS ROW AND ITS CODE SAY THE SAME THING. The transports throw
+      // only before a request is made — an `SmsError` they raise on purpose (NOT_CONFIGURED), or `blackballSend`'s own
+      // programming-error guards (an empty or oversized batch, a short reference); a reply that is lost or dies comes back
+      // as `transport` and is the AMBIGUOUS path below, never this one. So the row is FAILED and the code is the error's own
+      // — or UNKNOWN for a throw that is not an `SmsError`. ⛔ Never TRANSPORT here: that code means "the gateway may have it"
+      // (`dispatchSlice` settles it UNCONFIRMED, never re-sent), while this row says FAILED and no receipt can ever move it.
+      const code = err instanceof SmsError ? err.code : "UNKNOWN";
       const detail = String((err as Error)?.message ?? err).slice(0, 200);
       for (const p of group) {
         health().failed++;
+        noteOtpFailure(p.out.purpose);
         await db.smsMessage.update(p.reference, { status: "FAILED", providerMsg: detail, failedAt: new Date().toISOString() });
         results[p.index] = { reference: p.reference, to: p.out.to, ok: false, error: detail, code, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
       }
@@ -806,6 +937,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
         results[p.index] = { reference: p.reference, to: p.out.to, ok: true, targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
       } else {
         health().failed++;
+        noteOtpFailure(p.out.purpose);
         await db.smsMessage.update(p.reference, {
           status: ambiguous ? "UNKNOWN" : "FAILED",
           providerMsg: outcome.message.slice(0, 200),

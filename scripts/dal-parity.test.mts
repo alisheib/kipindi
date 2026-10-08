@@ -2833,6 +2833,41 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
         && !'groupBy({ by: ["campaignId", "status"], _count: { _all: true } })'.includes("where: { campaignId: { in: [...ids] } }"));
   }
 
+  // ══ 26.u47b · THE LIVE PAGE'S ONE GROUPBY (U47b-1, S14 2026-10-07 — ENGINE-SPEC §4.15 decision 8) ═══════════════════
+  // ⭐ WHY IT IS HELD HERE. The live page's KPIs, its chips, its bar and its "not sent" reasons are ONE read —
+  // `countByOutcome`, the recipient rows grouped by (status, skipReason, failureClass) — so no two figures can disagree and
+  // no counter is kept (OD26). `test:campaign-visuals` drives the MEMORY twin; a Prisma twin that loses its half is green in
+  // memory and wrong live: the rows read and counted in JavaScript (every recipient of a 150k campaign on every poll), a
+  // groupBy without the campaign (the whole table), or one answered through a tally of its own (another order, a null
+  // group dropped). The behaviour on Postgres is `db:probe-campaign-models` §13's. ⛔ No backslash anywhere in this block.
+  {
+    const flat47 = (s: string) => s.split(String.fromCharCode(13)).join("").split(String.fromCharCode(10)).map((l) => l.trim()).join(" ");
+    const pOutcome = delegateMethod("smsCampaignRecipient", "countByOutcome");
+    const mOutcome = memberText(rMem, "countByOutcome");
+    const U47B_SIGS: Array<[string, string]> = [
+      [rMem, "countByOutcome: (campaignId: string): SmsCampaignRecipientOutcomeCount[] =>"],
+      [rPri, "countByOutcome: async (campaignId: string): Promise<SmsCampaignRecipientOutcomeCount[]> =>"],
+    ];
+    const offSigs47 = U47B_SIGS.filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+    const exported47 = storeSrc.includes("export type SmsCampaignRecipientOutcomeCount =");
+    const imported47 = storeImport.includes("  SmsCampaignRecipientOutcomeCount,");
+    ok("26.u47b.named · countByOutcome names its parameter and return types in BOTH twins (never an inline literal) — SmsCampaignRecipientOutcomeCount exported by store.ts, imported by prisma-dal.ts",
+      offSigs47.length === 0 && exported47 && imported47,
+      `signatures off: [${offSigs47}] · exported ${exported47} · imported ${imported47}`);
+    const ONE_GROUPBY = 'groupBy({ by: ["status", "skipReason", "failureClass"], where: { campaignId }, _count: { _all: true } })';
+    ok("26.u47b.outcome.prisma · ⛔ the Prisma countByOutcome is ONE groupBy by (status, skipReason, failureClass) WHERE the campaign is the one asked — never the rows, never a count — answered through tallyRecipientOutcomes",
+      pOutcome.includes(ONE_GROUPBY) && (pOutcome.match(/[.]groupBy[(]/g) ?? []).length === 1 && pOutcome.includes("tallyRecipientOutcomes(")
+        && !/findMany|[.]count[(]|aggregate/.test(pOutcome),
+      flat47(pOutcome).slice(0, 300));
+    ok("26.u47b.outcome.memory · the memory countByOutcome answers ONE campaign's rows — filtered to it — through the same tallyRecipientOutcomes",
+      mOutcome.includes(".filter((r) => r.campaignId === campaignId)") && mOutcome.includes("tallyRecipientOutcomes(")
+        && mOutcome.includes("skipReason: r.skipReason, failureClass: r.failureClass"),
+      flat47(mOutcome).slice(0, 300));
+    // ── CONTROL — the matcher above can reject a groupBy that lost its campaign ──
+    ok("26.u47b.c1 · CONTROL · a groupBy over the whole table (no where) is NOT the one 26.u47b.outcome.prisma looks for",
+      !'groupBy({ by: ["status", "skipReason", "failureClass"], _count: { _all: true } })'.includes(ONE_GROUPBY));
+  }
+
   // ══ 26.status · THE RECIPIENT STATUS SET, ONE IN BOTH TWINS (U43-0, S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4) ═══
   // ⭐ WHY IT IS HELD HERE. UNCONFIRMED reaches Postgres through its own ADD VALUE migration, one deploy before any writer
   // (55P04). The memory twin types its rows with store.ts's union; the Prisma twin reads Postgres' enum through the
@@ -3131,9 +3166,10 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       bodies43.every((b) => b.length > 80 && !b.includes("UNCONFIRMED"))
         && [pClaim, pSettle, mClaim, mSettle].every((b) => b.includes(`status === "PENDING"`) || b.includes(`status: "PENDING"`)),
       bodies43.map((b) => b.length).join("/"));
-    ok("26.u43a.activity · lastActivity asks the rule set FIRST and is the newest claimedAt on the campaign — ONE aggregate _max in the Prisma twin (never the rows), the same maximum over instants in the memory twin",
-      before(pActivity, "assertActivityRead(campaignId)", ".aggregate(")
-        && pActivity.includes("aggregate({ where: { campaignId }, _max: { claimedAt: true } })") && !/findMany/.test(pActivity)
+    ok("26.u43a.activity · lastActivity asks the rule set FIRST and is the newest claimedAt on the campaign — ONE findFirst, newest first, in the Prisma twin (never the rows, and never an aggregate's _max: Prisma wraps that in a sub-select with an OFFSET, so Postgres read every row of the campaign — the check of 980e2ee7), the same maximum over instants in the memory twin",
+      before(pActivity, "assertActivityRead(campaignId)", ".findFirst(")
+        && pActivity.includes(`findFirst({ where: { campaignId, claimedAt: { not: null } }, orderBy: { claimedAt: "desc" }, select: { claimedAt: true } })`)
+        && pActivity.includes("return iso(newest?.claimedAt);") && !/findMany|\.aggregate\(|_max:/.test(pActivity)
         && before(mActivity, "assertActivityRead(campaignId)", "for (const r of store.smsCampaignRecipients.values())")
         && mActivity.includes("if (newest === null || Date.parse(r.claimedAt) > Date.parse(newest)) newest = r.claimedAt;"),
       `${flat43(pActivity).slice(0, 200)} | ${flat43(mActivity).slice(0, 200)}`);
@@ -3269,6 +3305,87 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       !before(`${APPLY46} ${MISS46}`, MISS46, APPLY46) && /"(PENDING|SENT|UNCONFIRMED|HELD|SKIPPED)"/.test(`status: { in: ["PENDING", "SENT", "UNCONFIRMED"] }`));
     ok("26.u46a.c3 · CONTROL · a door in one twin only IS seen: with recordReceipt renamed in the Prisma block, the parity check no longer finds it there while the memory block's does",
       !members(rPri.split("recordReceipt: async").join("recordDelivery: async")).includes("recordReceipt") && members(rMem).includes("recordReceipt"));
+  }
+
+  // ══ 26.u43b · DC-4 · THE SEND RECORD (U43b-2, S14 2026-10-07 — ENGINE-SPEC §4.13 decision 6) ═══════════════════════════
+  // ⭐ WHY IT IS HELD HERE. When a receipt beats the slice's settle, the slice writes what its lost patch carried through ONE
+  // narrow door, and every behavioural suite (`test:campaign-models` §2.32, `test:marketing-engine` S16) drives the MEMORY
+  // twin. A Prisma twin that loses its half rewrites the campaign record on production alone: a WHERE without the trail's
+  // null (a second record — or the reaper's — overwritten), without the claim (another slice's record lands), without the
+  // receipt's statuses (a SENT row's or a still-claimed row's columns rewritten), a status list of its own, or the rule set
+  // not asked (a lost id is NO CONDITION). So the door's SHAPE is held in both twins, plantable through KP_SRC
+  // (`red:dal-parity`; the cases are in scripts/anchors/dal-parity.anchors.mjs). ⚠️ The Json-null filter (`AnyNull`) is a
+  // fact about Postgres: `db:probe-campaign-models` §12 runs it there.
+  // ⛔ No backslash anywhere in this block: a line break is String.fromCharCode, and every matcher is an `includes`, a
+  // `before` or a character class.
+  {
+    const NL43B = String.fromCharCode(10);
+    const flat43b = (s: string) => s.split(String.fromCharCode(13)).join("").split(NL43B).map((l) => l.trim()).join(" ");
+    const pSend = delegateMethod("smsCampaignRecipient", "recordSend");
+    const mSend = memberText(rMem, "recordSend");
+    const count43b = (body: string, needle: string): number => body.split(needle).length - 1;
+    const keysOf43b = (typeName: string): string[] => {
+      const body = region(storeSrc, `export type ${typeName} = {`);
+      return Array.from(body.slice(body.indexOf("{") + 1).matchAll(/([A-Za-z]+)[?]?[ ]*:/g), (m) => m[1]);
+    };
+
+    ok("26.u43b.parity · ⭐ BOTH twins define smsCampaignRecipient.recordSend — a door in one twin only works in every suite and throws on production",
+      members(rPri).includes("recordSend") && members(rMem).includes("recordSend"),
+      `prisma=[${members(rPri)}] memory=[${members(rMem)}]`);
+
+    const SIG_MEM43B = "recordSend: (id: string, s: SmsRecipientSendRecord, at: string): SmsRecipientSendRecordResult =>";
+    const SIG_PRI43B = "recordSend: async (id: string, s: SmsRecipientSendRecord, at: string): Promise<SmsRecipientSendRecordResult> =>";
+    const NAMED43B = ["SmsRecipientSendRecord", "SmsRecipientSendRecordResult"];
+    const RECORD_KEYS43B = ["claimToken", "gateTrail", "optOutToken", "locale", "segments", "bodyLen", "sentAt"];
+    ok("26.u43b.named · the send record names its parameter and return types in BOTH twins (never an inline literal) — SmsRecipientSendRecord and SmsRecipientSendRecordResult, exported by store.ts with exactly the spec's keys and imported by prisma-dal.ts",
+      rMem.includes(SIG_MEM43B) && rPri.includes(SIG_PRI43B)
+        && NAMED43B.every((t) => storeSrc.includes(`export type ${t} =`) && storeImport.includes(`  ${t},`))
+        && sameSet(keysOf43b("SmsRecipientSendRecord"), RECORD_KEYS43B) && sameSet(keysOf43b("SmsRecipientSendRecordResult"), ["written"]),
+      `memory ${rMem.includes(SIG_MEM43B)} · prisma ${rPri.includes(SIG_PRI43B)} · record [${keysOf43b("SmsRecipientSendRecord")}] · result [${keysOf43b("SmsRecipientSendRecordResult")}]`);
+
+    // ── the Prisma door: the rule set, ONE conditional write whose WHERE is the claim, the receipt's statuses AND no trail ──
+    const WHERE43B = `where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } }, data: smsRecipientData(sendRecordWrite(s, at)),`;
+    ok("26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+      before(pSend, "assertSendRecord(id, s, at)", ".updateMany(") && flat43b(pSend).includes(WHERE43B)
+        && count43b(pSend, ".updateMany(") === 1 && pSend.includes("return { written: owed.count > 0 };")
+        && !/[.](update|upsert|create|createMany|delete|deleteMany|findMany|findFirst|findUnique)[(]|[$](transaction|executeRaw|queryRaw)/.test(pSend)
+        && !/"(PENDING|SENT|UNCONFIRMED|HELD|SKIPPED|DELIVERED|FAILED)"/.test(pSend),
+      flat43b(pSend).slice(0, 360));
+
+    // ── the memory door: the rule set, the claim, the statuses and the trail BEFORE the one apply ──
+    const CLAIM43B = "if (owedTo === undefined || owedTo.claimToken !== s.claimToken) return { written: false };";
+    const GUARD43B = "if (!SMS_SEND_RECORD_FROM.includes(owedTo.status) || owedTo.gateTrail !== null) return { written: false };";
+    const APPLY43B = "writeRecipient(owedTo, sendRecordWrite(s, at));";
+    ok("26.u43b.memory · ⛔ the memory send record asks assertSendRecord FIRST, tests the claim, the status through SMS_SEND_RECORD_FROM AND the trail still null BEFORE it writes, and writes the rule set's sendRecordWrite through the ONE apply — no status of its own spelling",
+      before(mSend, "assertSendRecord(id, s, at)", "store.smsCampaignRecipients.get(id)") && mSend.includes(CLAIM43B) && mSend.includes(GUARD43B)
+        && before(mSend, CLAIM43B, APPLY43B) && before(mSend, GUARD43B, APPLY43B) && count43b(mSend, "writeRecipient(") === 1
+        && !/[.](delete|clear|set)[(]/.test(mSend) && !/"(PENDING|SENT|UNCONFIRMED|HELD|SKIPPED|DELIVERED|FAILED)"/.test(mSend),
+      flat43b(mSend).slice(0, 360));
+
+    // ── ONE rule set for both twins, and ONE writer ──
+    const RULES43B = "@/lib/server/marketing/campaign-model";
+    const importOf43b = (src: string): string => {
+      const end = src.indexOf(`} from "${RULES43B}";`);
+      return end < 0 ? "" : src.slice(src.lastIndexOf("import {", end), end);
+    };
+    const NAMES43B = ["assertSendRecord", "sendRecordWrite", "SMS_SEND_RECORD_FROM"];
+    const named43b = (text: string, n: string): boolean => new RegExp(`[^A-Za-z_]${n}[^A-Za-z_]`).test(text);
+    const ruleImports43b = [importOf43b(storeSrc), importOf43b(dalSrc)];
+    ok("26.u43b.rules · ONE rule set for both twins: store.ts and prisma-dal.ts each import assertSendRecord, sendRecordWrite and SMS_SEND_RECORD_FROM from campaign-model.ts — and the send record writes through the ONE recipient writer",
+      ruleImports43b.every((t) => NAMES43B.every((n) => named43b(t, n))) && pSend.includes("smsRecipientData(sendRecordWrite(s, at))"),
+      ruleImports43b.map((t) => NAMES43B.filter((n) => !named43b(t, n)).join(",") || "all").join(" | "));
+
+    // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+    ok("26.u43b.c1 · CONTROL · a send-record WHERE without the trail's null, one without the claim and one without its statuses each FAIL 26.u43b.prisma's matcher",
+      ![
+        `where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] } }, data: smsRecipientData(sendRecordWrite(s, at)),`,
+        `where: { id, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } }, data: smsRecipientData(sendRecordWrite(s, at)),`,
+        `where: { id, claimToken: s.claimToken, gateTrail: { equals: PrismaRuntime.AnyNull } }, data: smsRecipientData(sendRecordWrite(s, at)),`,
+      ].some((t) => t.includes(WHERE43B)));
+    ok("26.u43b.c2 · CONTROL · a memory send record that writes before it tests FAILS before(), and a status list spelled in a twin IS seen",
+      !before(`${APPLY43B} ${GUARD43B}`, GUARD43B, APPLY43B) && /"(PENDING|SENT|UNCONFIRMED|HELD|SKIPPED|DELIVERED|FAILED)"/.test(`status: { in: ["DELIVERED", "FAILED"] }`));
+    ok("26.u43b.c3 · CONTROL · a door in one twin only IS seen: with recordSend renamed in the Prisma block, the parity check no longer finds it there while the memory block's does",
+      !members(rPri.split("recordSend: async").join("recordSending: async")).includes("recordSend") && members(rMem).includes("recordSend"));
   }
 }
 

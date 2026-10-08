@@ -72,7 +72,7 @@
  * (`scripts/lib/send-window.mts`, ENGINE-SPEC §5 rule 9), so the suite is green at any hour; §18.33 closes it on purpose:
  * the test is refused held in the window's own sentence before a token, a row or the wire (M12), and the saved line
  * invites no test while the window note stands (§16.15).
- * ⛔ §18.34 (U33r, 2026-10-07) · A PROMISED AGENT REFEREE. A typed test to a number an applicant gave as a referee is refused
+ * ⛔ §18.36 (U33r, 2026-10-07) · A PROMISED AGENT REFEREE. A typed test to a number an applicant gave as a referee is refused
  * by the ONE gate before a token or the wire — `typed_refused` to a masked viewer, the ONE `protected` reason to a reader
  * (the U33r review's MINOR-5: collapsed for readers too, as the split collapses it), the precise `agent_referee` ONLY in the
  * audit row — and an officer's own number that is a referee's is told it is protected, in the own-number words.
@@ -1329,7 +1329,7 @@ const TEST = await import("../src/lib/server/marketing/campaign-test-send.ts");
 const LIVE = await import("../src/lib/server/marketing/live-switch.ts");
 const { dispatchSlice, auditRgRefusal } = await import("../src/lib/server/marketing/dispatch.ts");
 const { recordPlayerMarketingChoice, mayReceiveMarketingSms, DB_GATE_READS } = await import("../src/lib/server/marketing/consent.ts");
-// U33r · the REAL writer keys §18.34's referee numbers, exactly as setReferees does.
+// U33r · the REAL writer keys §18.36's referee numbers, exactly as setReferees does.
 const { recordRefereeKeys } = await import("../src/lib/server/marketing/referee-exclusion.ts");
 const { ensureOptOutToken, mintOptOutToken, stopMarketing } = await import("../src/lib/server/marketing/optout-service.ts");
 /** U37c · §18.19's self-excluded player is made by the platform's own writer, never a hand-built row. */
@@ -1430,7 +1430,7 @@ function u37bTemplate(row: StoredRow): CampaignTemplate {
 type Outbound = { to: string; body: string; targetType?: string; targetId?: string };
 type SendSpy = { calls: number; messages: Outbound[] };
 /** A transport stand-in: it records the batch and answers as told — taken, held by the credit floor, a lost reply, or a throw. */
-function u37bSpy(answer: "accept" | "floor" | "transport" | "throw" = "accept"): { send: TestDeps["send"]; spy: SendSpy } {
+function u37bSpy(answer: "accept" | "floor" | "transport" | "throw" | "rejected" | "unknown" = "accept"): { send: TestDeps["send"]; spy: SendSpy } {
   const spy: SendSpy = { calls: 0, messages: [] };
   const send = async (ms: Outbound[]) => {
     spy.calls++;
@@ -1442,6 +1442,13 @@ function u37bSpy(answer: "accept" | "floor" | "transport" | "throw" = "accept"):
     }
     if (answer === "transport") {
       return { results: ms.map((m) => ({ ...keyed(m), reference: `sms_lost_${spy.calls}`, ok: false, code: "TRANSPORT", error: "reply lost" })), balanceTzs: null };
+    }
+    // U43b-2 review · the gateway's own "no", and sendBatch's chunk catch for a transport that threw before its request
+    if (answer === "rejected") {
+      return { results: ms.map((m) => ({ ...keyed(m), reference: `sms_refused_${spy.calls}`, ok: false, code: "REJECTED", error: "Invalid credentials" })), balanceTzs: null };
+    }
+    if (answer === "unknown") {
+      return { results: ms.map((m) => ({ ...keyed(m), reference: `sms_prewire_${spy.calls}`, ok: false, code: "UNKNOWN", error: "a fault before the request (fixture)" })), balanceTzs: null };
     }
     return { results: ms.map((m, i) => ({ ...keyed(m), reference: `sms_fixture_${spy.calls}_${i}`, ok: true })), balanceTzs: null };
   };
@@ -1462,6 +1469,8 @@ type ComposeImpl = {
   testDeps: TestDeps;
   /** campaign-test-send.ts as text — §18.14 pins the wires it is built from. */
   testSendSource: string;
+  /** U43b-1 · the send step itself (`dispatchSlice`) — §18.34 asks it how a lost reply arrives, alone and under the test. */
+  dispatch: typeof dispatchSlice;
   /** The composer's Audience card (`composeAudienceView`) — §17.8 asks it for a masked viewer, the save's own rule. */
   audienceView: typeof LOADER.composeAudienceView;
   /** U37s · the line the composer's counter prices (`composerSourcePhrase`) — §17.16. */
@@ -1480,6 +1489,7 @@ const REAL_COMPOSE: ComposeImpl = {
   liveGate: LIVE.marketingLiveGate, ensureToken: ensureOptOutToken,
   testDeps: TEST.CAMPAIGN_TEST_DEPS,
   testSendSource: readFileSync(new URL("../src/lib/server/marketing/campaign-test-send.ts", import.meta.url), "utf8"),
+  dispatch: dispatchSlice,
   audienceView: LOADER.composeAudienceView,
   sourceLine: LOADER.composerSourcePhrase,
   staleLine: LOADER.composerSourceLineStale,
@@ -2683,7 +2693,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `own ${reasonOf(own)}${own.ok ? "" : `: ${own.error}`} · typed ${reasonOf(typed)} · late ${reasonOf(late)} · gate asked ${gates} · tokens ${tokensClosed} · rows ${smsRowsFor(id).length} · audit ${JSON.stringify(rows.map((a) => a.payload ?? null))} · window reads ${reads}`];
   });
 
-  await claim(S18_34, async () => {
+  await claim(S18_36, async () => {
     const id = await phrasedDraft();
     const refKey = u37bKey();
     // Keyed by the REAL writer, from the contact spelled the way an applicant types it.
@@ -2712,10 +2722,52 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       && seen.calls === 0 && minted === 0,
       `masked ${reasonOf(masked)} · reader ${reasonOf(reader)} · audit ${JSON.stringify(rows.map((a) => a.payload?.reason ?? null))} · own ${reasonOf(ownR)} · sends ${seen.calls} · tokens ${minted}`];
   });
+
+  /* ── U43b-1 · E3 · F1 — the send step used to answer a lost reply (TRANSPORT) as `failed`, and the test send turned it
+   *    back into `unconfirmed` by hand. The step now says so itself, for every caller; the test send's answer is unchanged. ── */
+  await claim("§18.34 ⭐ U43b-1 · E3 · A LOST REPLY ARRIVES UNCONFIRMED BY CONSTRUCTION — the send step itself answers a TRANSPORT result 'unconfirmed', keeping the wire's reference and the gate's basis (never 'failed', which invites a second charge), and the test send through that step is unchanged: 'unconfirmed', don't resend, and its masked row still records TRANSPORT for a lost reply and no_answer for a send that threw", async () => {
+    const o34 = await officer();
+    const id = await u37bDraft();
+    // The step alone, as the engine will call it: one cleared row, a wire that lost its reply.
+    const step = await impl.dispatch([{ ref: `cmp_u43b1_step_${u37bSeq}`, msisdn: o34.key, body: "50pick: fixture" }], { send: u37bSpy("transport").send, window: ALWAYS_OPEN });
+    // The test send through the same step, with the step's own answers observed.
+    const seen: Array<Record<string, unknown>> = [];
+    const observed: TestDeps["dispatch"] = async (rows, d) => {
+      const out = await impl.dispatch(rows, d);
+      seen.push(...(out as unknown as Array<Record<string, unknown>>));
+      return out;
+    };
+    const start = audits.length;
+    const lost = await send({ campaignId: id, variant: "SW" }, o34.id, { send: u37bSpy("transport").send, dispatch: observed });
+    const threw = await send({ campaignId: id, variant: "SW" }, o34.id, { send: u37bSpy("throw").send, dispatch: observed });
+    const rows = audits.slice(start).filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION && a.actorId === o34.id);
+    const s = step[0] as unknown as Record<string, unknown> | undefined;
+    return [s?.outcome === "unconfirmed" && s.reference === "sms_lost_1" && s.code === "TRANSPORT" && s.basis === "CONSENT"
+      && seen.length === 2 && seen[0]?.outcome === "unconfirmed" && seen[0]?.reference === "sms_lost_1"
+      && seen[1]?.outcome === "unconfirmed" && seen[1]?.reference === undefined
+      && !lost.ok && lost.outcome === "unconfirmed" && lost.error === TEST.TEST_UNCONFIRMED && !threw.ok && threw.outcome === "unconfirmed"
+      && rows.length === 2 && rows[0].payload?.outcome === "unconfirmed" && rows[0].payload?.reason === "TRANSPORT"
+      && rows[1].payload?.outcome === "unconfirmed" && rows[1].payload?.reason === "no_answer",
+      `the step ${String(s?.outcome ?? "none")}${s?.code ? ` ${String(s.code)}` : ""} ref ${String(s?.reference ?? "none")} · under the test ${seen.map((o) => `${String(o.outcome)}:${String(o.reference ?? "-")}`).join(" ")} · lost ${reasonOf(lost)} · threw ${reasonOf(threw)} · audit ${JSON.stringify(rows.map((a) => a.payload?.reason ?? null))}`];
+  });
+
+  /* ── U43b-2 review · only the network's own "no" (REJECTED) says the network refused; a failure sendBatch met BEFORE its
+   *    request (UNKNOWN — its chunk catch) never claims the network was asked. Nothing reached the phone either way. ── */
+  await claim("§18.35 U43b-2 review · ONLY THE NETWORK'S OWN NO SAYS IT REFUSED — a REJECTED answer is refused 'failed' saying the network refused the message; an UNKNOWN one (a failure before the request) is refused 'failed' saying it couldn't be handed to the SMS network, never that the network refused; and each says nothing reached the phone", async () => {
+    const o35 = await officer();
+    const id = await u37bDraft();
+    const refused = await send({ campaignId: id, variant: "SW" }, o35.id, { send: u37bSpy("rejected").send });
+    const prewire = await send({ campaignId: id, variant: "SW" }, o35.id, { send: u37bSpy("unknown").send });
+    const words = (r: TestResult): string => (r.ok ? "" : r.error);
+    return [!refused.ok && refused.outcome === "refused" && reasonOf(refused) === "failed" && words(refused).startsWith("The network refused the message (REJECTED)")
+      && !prewire.ok && prewire.outcome === "refused" && reasonOf(prewire) === "failed" && words(prewire).includes("couldn't be handed to the SMS network")
+      && !words(prewire).includes("refused") && words(refused).includes("nothing reached your phone") && words(prewire).includes("nothing reached your phone"),
+      `REJECTED: ${reasonOf(refused)} "${words(refused)}" · UNKNOWN: ${reasonOf(prewire)} "${words(prewire)}"`];
+  });
   return failed;
 }
-/** U33r · §18.34's claim — named once, so its red case expects exactly what the run says. */
-const S18_34 = "§18.34 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets the ONE protected reason and sentence (MINOR-5: collapsed for readers too, as the split collapses it), the audit row ALONE records agent_referee, for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is told it is protected, in the own-number words";
+/** U33r · §18.36's claim — named once, so its red case expects exactly what the run says. */
+const S18_36 = "§18.36 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets the ONE protected reason and sentence (MINOR-5: collapsed for readers too, as the split collapses it), the audit row ALONE records agent_referee, for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is told it is protected, in the own-number words";
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════ */
 
@@ -4296,6 +4348,14 @@ if (!PROVE_RED) {
       const r = await realTest(input, officerId, deps);
       return r.outcome === "unconfirmed" ? { ok: true, outcome: "handed_over", via: "open", text: r.text, maskedTo: r.maskedTo, at: r.at, reference: "sms_assumed" } : r;
     };
+    /** U43b-2 review · the sentence before the review: every failed code said as the network's refusal — a failure before the
+     *  request (UNKNOWN) claims the network was asked. */
+    const everyCodeRefused: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => {
+      const r = await realTest(input, officerId, deps);
+      if (r.ok || r.outcome !== "refused" || r.reason !== "failed") return r;
+      const code = /[(]([A-Z_]+)/.exec(r.error)?.[1] ?? "UNKNOWN";
+      return { ...r, error: `The network refused the message (${code}) — nothing reached your phone.` };
+    };
     /** No budget — every test allowed. */
     const noBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, { ...deps, rate: ALLOW });
     /** A confirmed campaign tested anyway — the draft check gone. */
@@ -4366,7 +4426,7 @@ if (!PROVE_RED) {
     /** A.8 · the confirmation honoured for a player — the gate's player branch skipped on a typed test. */
     const playerSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, userByPhone: () => null } }, options);
-    /** U33r · §18.34 · a typed test whose gate never asks the referee keys — the promise skipped on the test path. */
+    /** U33r · §18.36 · a typed test whose gate never asks the referee keys — the promise skipped on the test path. */
     const refereeSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, refereeHeld: () => false } }, options);
     /** A.8 · a typed refusal itemised for a masked viewer. */
@@ -4464,6 +4524,12 @@ if (!PROVE_RED) {
     /** U13 · M12 · the test send that ignores its send window — a test goes out at any hour. */
     const windowIgnored: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, window: ALWAYS_OPEN }, options);
+
+    /** U43b-1 · R-S2 · the send step before E3: a lost reply (TRANSPORT) settled as a refusal, `failed`. */
+    const transportFailed: typeof dispatchSlice = async (rows, d) => (await dispatchSlice(rows, d)).map((o) =>
+      (o.outcome === "unconfirmed" && o.code === "TRANSPORT"
+        ? { ref: o.ref, outcome: "failed" as const, code: "TRANSPORT", error: "reply lost", basis: o.basis, basisRef: o.basisRef }
+        : o));
 
     /** A.5 · the typed gate built from a stand-in — the source no longer asks the ONE gate. */
     const GATE_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
@@ -4739,7 +4805,7 @@ if (!PROVE_RED) {
       },
       {
         name: "U33r · a typed test whose gate never asks the referee keys — a promised agent referee tested on",
-        expect: [/^§18[.]34 ⛔/], impl: { ...R, test: refereeSkipped },
+        expect: [/^§18[.]36 ⛔/], impl: { ...R, test: refereeSkipped },
         landed: async () => {
           const o = await u37bOfficer();
           const id = await phrased();
@@ -4989,6 +5055,30 @@ if (!PROVE_RED) {
           return !real.ok && real.outcome === "refused" && real.reason === "held" && planted.ok;
         },
         landedAs: "with the window closed the real test is refused held, and the plant's is handed over",
+      },
+      {
+        name: "U43b-1 · R-S2 · the send step answers a lost reply (TRANSPORT) 'failed' again — the shape before E3, which only the test send's own mapping papered over",
+        expect: [/^§18[.]34 /], impl: { ...R, dispatch: transportFailed },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const rows = [{ ref: `cmp_u43b1_landed_${u37bSeq}`, msisdn: o.key, body: "50pick: fixture" }];
+          const real = await dispatchSlice(rows, { send: u37bSpy("transport").send, window: ALWAYS_OPEN });
+          const planted = await transportFailed(rows, { send: u37bSpy("transport").send, window: ALWAYS_OPEN });
+          return real[0]?.outcome === "unconfirmed" && planted[0]?.outcome === "failed";
+        },
+        landedAs: "the real step answers a lost reply unconfirmed, and the plant's answers it failed",
+      },
+      {
+        name: "U43b-2 review · every failed code said as the network's refusal — a failure before the request claims the network was asked",
+        expect: [/^§18[.]35 /], impl: { ...R, test: everyCodeRefused },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const real = await realTest({ campaignId: id, variant: "SW" } as TestInput, o.id, landedDeps({ send: u37bSpy("unknown").send }));
+          const planted = await everyCodeRefused({ campaignId: id, variant: "SW" } as TestInput, o.id, landedDeps({ send: u37bSpy("unknown").send }));
+          return !real.ok && !real.error.includes("network refused") && !planted.ok && planted.error.includes("The network refused the message (UNKNOWN)");
+        },
+        landedAs: "the real test says an UNKNOWN failure couldn't be handed to the network, and the plant's says the network refused it",
       },
     ];
     for (const p of testPlants) {

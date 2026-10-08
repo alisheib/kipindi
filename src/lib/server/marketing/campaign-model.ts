@@ -71,6 +71,13 @@
  * door's is, and keeps the claim. `test:campaign-models` §2.29–§2.31 execute it; `test:dal-parity` §26.u46a holds both
  * twins' shape; `test:sms-dlr` §12 drives it through the route.
  *
+ * ── U43b-2 · DC-4 · THE SEND RECORD (ENGINE-SPEC §4.13 decision 6 — the slice is its one caller) ──────────────────────────
+ * When a receipt beats the slice's settle, the row is DELIVERED or FAILED under the slice's claim and the SENT patch is
+ * `lost`; ONE narrow door (`assertSendRecord`, `sendRecordWrite`, the list `SMS_SEND_RECORD_FROM`) writes what the patch
+ * carried — the trail, the token, the variant, the size, the length, the hand-over instant — and NEVER the status, only
+ * where the row still holds THAT claim, is DELIVERED or FAILED and its trail is still null. `test:campaign-models` §2.32
+ * executes it; `test:dal-parity` §26.u43b holds both twins' shape; `test:marketing-engine` S16 drives it through a slice.
+ *
  * ⛔ PURE, AND NOTHING AT RUNTIME COMES FROM THE STORE OR THE CONSOLE'S UI LIBRARIES. `store.ts` and `prisma-dal.ts`
  * both import this file, so a runtime import back into `store.ts` would be a cycle through the DAL switch: types only
  * (erased). `campaign-confirm.ts` is reached for its TYPE only, and `test:campaign-models` 2.11 holds the watermark
@@ -85,7 +92,7 @@ import type {
   StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignDraftPatch, SmsCampaignDraftGuard,
   SmsCampaignTransition, SmsCampaignTransitionPatch, SmsCampaignRecipientSeed, SmsCampaignRecipientCount,
   StoredSmsCampaignRecipient, SmsCampaignRecipientSettle, SmsCampaignGateTrail, StoredSmsMessage, MessagingLocale,
-  SmsRecipientReceipt, SmsRecipientReceiptResult,
+  SmsRecipientReceipt, SmsRecipientReceiptResult, SmsRecipientSendRecord,
 } from "@/lib/server/store";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import type { ConfirmTierColumn } from "@/lib/marketing/campaign-confirm";
@@ -942,4 +949,59 @@ export function receiptMiss(row: StoredSmsCampaignRecipient | null, r: SmsRecipi
   if (row === null) return "not_found";
   if (row.msisdn !== r.msisdn || (row.smsReference !== null && row.smsReference !== r.reference)) return "mismatch";
   return "settled";
+}
+
+/* ══ U43b-2 · DC-4 · THE SEND RECORD — what a slice still owes a row a receipt settled first (ENGINE-SPEC §4.13 decision 6) ══ */
+
+/**
+ * ⭐ THE STATUSES A SEND RECORD WRITES INTO — a receipt's two (§3.2). A receipt that lands between the wire and the slice's
+ * settle moves the still-claimed PENDING row to DELIVERED or FAILED and KEEPS the claim (`receiptWrite`); the slice's SENT
+ * patch then comes back `lost`, and this narrow door writes what that patch carried. ONE list: the Prisma twin spreads it
+ * into its WHERE and the memory twin asks it.
+ */
+export const SMS_SEND_RECORD_FROM: readonly SmsCampaignRecipientStatus[] = Object.freeze(["DELIVERED", "FAILED"] as SmsCampaignRecipientStatus[]);
+/** A send record's keys, EXACTLY — `satisfies` the store's type, so a key added there and not here is a compile error. */
+const SEND_RECORD_KEY_SET = {
+  claimToken: true, gateTrail: true, optOutToken: true, locale: true, segments: true, bodyLen: true, sentAt: true,
+} as const satisfies Record<keyof SmsRecipientSendRecord, true>;
+
+/**
+ * `recordSend` · THE RULE SET FIRST, before either twin reads or writes: the row named (Prisma reads `where: { id:
+ * undefined }` as NO CONDITION — one record would be written into every row a receipt settled); the record carrying
+ * exactly its seven keys, every one present; the claim the row must still hold, of a claim token's shape; the gate trail
+ * E20's 1 to 24 checks, never a phone number (§5.14); the token a key the system minted, the variant OD42's, the size and
+ * the length positive whole numbers — each or null; the hand-over instant and `at` in `toISOString()`'s spelling (the
+ * instant may be null: an unanswered message has none). ⛔ It refuses, never scrubs: the engine scrubs first (DC-5).
+ * ⛔ A refusal names a key, never a value.
+ */
+export function assertSendRecord(id: string, s: SmsRecipientSendRecord, at: string): void {
+  const where = "smsCampaignRecipient.recordSend";
+  if (!isNonEmpty(id)) refuse(where, "a send record names its row — a missing id would reach every settled row on Postgres");
+  if (s === null || typeof s !== "object") refuse(where, "the send record is not an object");
+  for (const k of Object.keys(s)) if (!own(SEND_RECORD_KEY_SET, k)) refuse(where, `the send record carries "${k}" — not a column it writes`);
+  const o = s as unknown as Record<string, unknown>;
+  for (const k of Object.keys(SEND_RECORD_KEY_SET)) if (!own(o, k) || o[k] === undefined) refuse(where, `the send record is missing "${k}"`);
+  if (!isClaimToken(s.claimToken)) refuse(where, "a send record names the claim the row must still hold");
+  if (!isTrail(s.gateTrail)) refuse(where, "the gate trail is 1 to 24 checks, each { check, verdict, wording, source } and never a phone number (§5.14)");
+  if (!orNull(isKeyText)(s.optOutToken)) refuse(where, "the opt-out token is a key the system minted, or null");
+  if (!orNull(isLocale)(s.locale)) refuse(where, "the variant is OD42's, or null");
+  if (!orNull(isPositive)(s.segments) || !orNull(isPositive)(s.bodyLen)) refuse(where, "the size and the length are positive whole numbers, or null");
+  if (!orNull(isInstant)(s.sentAt)) refuse(where, "the hand-over instant is an instant in toISOString's spelling, or null");
+  if (!isInstant(at)) refuse(where, "at is an instant in toISOString's spelling");
+}
+
+/**
+ * The send record's write, from a record the rule set has passed (`assertSendRecord` first): EXACTLY the six columns the
+ * lost patch carried — the trail (copied), the token, the variant, the size, the length, the hand-over instant — and the
+ * stamp. ⛔ NEVER the status, the reference or the receipt's own instant and class (the receipt's, and right), never the
+ * claim (kept: it is how the door found the row), never `attempts`, the account link, the number or the contact.
+ */
+export function sendRecordWrite(s: SmsRecipientSendRecord, at: string): SmsRecipientWrite {
+  return {
+    set: {
+      gateTrail: s.gateTrail.map((g) => ({ ...g })), optOutToken: s.optOutToken, locale: s.locale, segments: s.segments,
+      bodyLen: s.bodyLen, sentAt: s.sentAt, updatedAt: at,
+    },
+    attemptsBy: 0,
+  };
 }

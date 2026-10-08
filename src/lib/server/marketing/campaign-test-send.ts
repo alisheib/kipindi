@@ -199,10 +199,15 @@ export function typedRateLimitedOfficer(retryAfterSec: number): string {
   const hours = Math.max(1, Math.ceil(retryAfterSec / 3600));
   return `That is your limit of tests to other numbers for now — send yourself a test, or try again in ${hours} h.`;
 }
+/** ⛔ The U43b-2 review · only REJECTED is the network's own "no" (the gateway's `status:false`); every other code a
+ *  `failed` outcome carries was written by `sendBatch` BEFORE its request (its chunk catch: the transport's own code, or
+ *  UNKNOWN for any other throw; BAD_MSISDN refused before a row exists) — the network was never asked, so the sentence
+ *  must not say it refused. Nothing reached the phone either way. */
 function failedSentence(code: string, target: CampaignTestTarget): string {
-  return target === "typed"
-    ? `The network refused the message (${code}) — nothing reached the phone.`
-    : `The network refused the message (${code}) — nothing reached your phone.`;
+  const phone = target === "typed" ? "the phone" : "your phone";
+  if (code === "REJECTED") return `The network refused the message (${code}) — nothing reached ${phone}.`;
+  if (code === "BAD_MSISDN") return `The number can't be dialled (${code}) — nothing was sent, and nothing reached ${phone}.`;
+  return `The message couldn't be handed to the SMS network (${code} — a failure on our side, before it was sent) — nothing reached ${phone}.`;
 }
 
 /** The gate's refusal of the officer's OWN number, with the remedy. ⛔ One sentence for every responsible-gambling reason. */
@@ -615,9 +620,11 @@ export async function sendCampaignTest(
       return refuse("held", heldSentence(out.reason, sendWindow));
     }
     // ⛔ A transport that lost its reply may still have sent it: unconfirmed, never retried, never "handed over" (OD23).
+    // U43b-1 · E3 · dispatch now says so itself (a TRANSPORT result arrives `unconfirmed`, its code kept); this mapping stays
+    // as defence in depth, and the masked row still records TRANSPORT for a lost reply and no_answer for no result at all.
     if (out?.outcome === "failed" && out.code !== "TRANSPORT") return refuse("failed", failedSentence(out.code, target));
     await floor();
-    await record("unconfirmed", out?.outcome === "failed" ? out.code : "no_answer");
+    await record("unconfirmed", out?.outcome === "failed" || out?.outcome === "unconfirmed" ? (out.code ?? "no_answer") : "no_answer");
     return { ok: false, outcome: "unconfirmed", error: target === "typed" ? TEST_TYPED_UNCONFIRMED : TEST_UNCONFIRMED, text: shown, maskedTo: to, at, target };
   } catch (err) {
     // ⛔ S25 · BY CONSTRUCTION: a typed outcome decided at the gate or after it — a throw included — waits for the floor

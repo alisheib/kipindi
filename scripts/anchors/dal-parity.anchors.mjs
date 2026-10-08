@@ -1369,6 +1369,23 @@ export const MUTATIONS = [
     expect: "26.u36.bycampaign.memory · the memory countsByCampaign answers exactly the ids named — filtered to them, zero-filled — and {} for none",
   },
   {
+    // 🔴 U47b-1 · the live page's ONE groupBy over the WHOLE recipient table on every poll — every campaign's rows counted
+    // as this one's.
+    name: "prisma-dal.ts — countByOutcome groups the whole recipient table",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'groupBy({ by: ["status", "skipReason", "failureClass"], where: { campaignId }, _count: { _all: true } })',
+    to: 'groupBy({ by: ["status", "skipReason", "failureClass"], _count: { _all: true } })',
+    expect: "26.u47b.outcome.prisma · ⛔ the Prisma countByOutcome is ONE groupBy by (status, skipReason, failureClass) WHERE the campaign is the one asked — never the rows, never a count — answered through tallyRecipientOutcomes",
+  },
+  {
+    // U47b-1 · the memory twin counts every campaign's rows as this one's: green in memory only by luck of the fixtures.
+    name: "store.ts — the memory countByOutcome stops filtering to its campaign",
+    file: "src/lib/server/store.ts",
+    from: ".filter((r) => r.campaignId === campaignId)",
+    to: ".filter(() => true)",
+    expect: "26.u47b.outcome.memory · the memory countByOutcome answers ONE campaign's rows — filtered to it — through the same tallyRecipientOutcomes",
+  },
+  {
     // ⛔ A dev switch reaching the production twin: one flag away from every officer seeing "Couldn't load".
     name: "prisma-dal.ts — the Prisma campaign page reads the dev read fault",
     file: "src/lib/server/prisma-dal.ts",
@@ -1523,6 +1540,15 @@ export const MUTATIONS = [
     expect: "26.u43a.parity · ⭐ BOTH twins define claim, claimedBy, settle, findStranded, requeueHeld and lastActivity — and smsMessage.findByTargets — a door in one twin only works in every suite and throws on production",
   },
   {
+    // 🔴 The check of 980e2ee7 · the activity read back to an aggregate: Prisma wraps `_max` in a sub-select with an OFFSET,
+    // so every watcher's poll reads every row of a 150,000-person campaign instead of one step down the index.
+    name: "prisma-dal.ts — lastActivity back to aggregate's _max (every row of the campaign read)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const newest = await pc().smsCampaignRecipient.findFirst({ where: { campaignId, claimedAt: { not: null } }, orderBy: { claimedAt: "desc" }, select: { claimedAt: true } });`,
+    to: `      const newest = await pc().smsCampaignRecipient.aggregate({ where: { campaignId }, _max: { claimedAt: true } });`,
+    expect: "26.u43a.activity · lastActivity asks the rule set FIRST and is the newest claimedAt on the campaign — ONE findFirst, newest first, in the Prisma twin (never the rows, and never an aggregate's _max: Prisma wraps that in a sub-select with an OFFSET, so Postgres read every row of the campaign — the check of 980e2ee7), the same maximum over instants in the memory twin",
+  },
+  {
     // 🔴 R-C1, in the twin every suite runs on: the memory claim takes rows another slice holds, so the five-driver
     // control and every engine suite stop meaning anything.
     name: "store.ts — the memory claim forgets its claimToken === null test",
@@ -1670,6 +1696,64 @@ export const MUTATIONS = [
       writeRecipient(row, receiptWrite(r));`,
     to: `      writeRecipient(row, receiptWrite(r));`,
     expect: "26.u46a.memory · ⛔ the memory receipt asks assertReceipt FIRST, tests the identity — the message's number, the reference null or the receipt's own — AND the status through SMS_RECEIPT_FROM BEFORE it writes, refuses a reference another row holds before the write (the memory twin of P2002), writes the rule set's receiptWrite through the ONE apply, and answers every miss through receiptMiss",
+  },
+  /* ── §26 · U43b-2 · DC-4's send record (S14 2026-10-07 — ENGINE-SPEC §4.13 decision 6) ─────────────────────────────── */
+  {
+    // ⭐ THE TRAIL'S NULL LEAVES THE WHERE, on Postgres only: a second send record — or one landing after the reaper's
+    // settle — overwrites the trail already written, while every suite, on the memory twin, stays green.
+    name: "prisma-dal.ts — the send record's WHERE forgets that the trail must still be null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    to: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] } },`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // ⭐ THE CLAIM LEAVES THE WHERE: another slice's record lands on a row this slice never held.
+    name: "prisma-dal.ts — the send record's WHERE forgets the claim",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    to: `        where: { id, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // ⭐ THE STATUSES LEAVE THE WHERE: a SENT row's (or a still-claimed row's) trail and token rewritten by a lost patch.
+    name: "prisma-dal.ts — the send record's WHERE forgets the statuses a receipt settles to",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    to: `        where: { id, claimToken: s.claimToken, gateTrail: { equals: PrismaRuntime.AnyNull } },`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // 🔴 THE NO-CONDITION TRAP REOPENED, on Postgres only: a send record whose id was lost is `where: { id: undefined }`.
+    name: "prisma-dal.ts — the Prisma send record stops asking the rule set first",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      assertSendRecord(id, s, at);`,
+    to: `      // (the rule set not asked)`,
+    expect: "26.u43b.prisma · ⛔ the Prisma send record asks assertSendRecord FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the lost patch's CLAIM, a status a receipt settles to (SMS_SEND_RECORD_FROM, spread — never a list of its own) AND a trail still null (the Json AnyNull), its data the rule set's sendRecordWrite through the map; the count alone decides — no other statement",
+  },
+  {
+    // ⭐ A DOOR IN ONE TWIN ONLY: the slice's send record works in every suite and throws on production.
+    name: "prisma-dal.ts — the Prisma recipient namespace loses recordSend (a door in one twin only)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    recordSend: async (id: string, s: SmsRecipientSendRecord, at: string): Promise<SmsRecipientSendRecordResult> => {`,
+    to: `    recordSending: async (id: string, s: SmsRecipientSendRecord, at: string): Promise<SmsRecipientSendRecordResult> => {`,
+    expect: "26.u43b.parity · ⭐ BOTH twins define smsCampaignRecipient.recordSend — a door in one twin only works in every suite and throws on production",
+  },
+  {
+    // In the twin every suite runs on: the trail's null forgotten, so no suite can see a second record overwrite the first.
+    name: "store.ts — the memory send record stops testing that the trail is still null",
+    file: "src/lib/server/store.ts",
+    from: `      if (!SMS_SEND_RECORD_FROM.includes(owedTo.status) || owedTo.gateTrail !== null) return { written: false };`,
+    to: `      if (!SMS_SEND_RECORD_FROM.includes(owedTo.status)) return { written: false };`,
+    expect: "26.u43b.memory · ⛔ the memory send record asks assertSendRecord FIRST, tests the claim, the status through SMS_SEND_RECORD_FROM AND the trail still null BEFORE it writes, and writes the rule set's sendRecordWrite through the ONE apply — no status of its own spelling",
+  },
+  {
+    // …and the claim, so the record of which slice held the row is rewritten by another's.
+    name: "store.ts — the memory send record stops testing the claim",
+    file: "src/lib/server/store.ts",
+    from: `      if (owedTo === undefined || owedTo.claimToken !== s.claimToken) return { written: false };`,
+    to: `      if (owedTo === undefined) return { written: false };`,
+    expect: "26.u43b.memory · ⛔ the memory send record asks assertSendRecord FIRST, tests the claim, the status through SMS_SEND_RECORD_FROM AND the trail still null BEFORE it writes, and writes the rule set's sendRecordWrite through the ONE apply — no status of its own spelling",
   },
   /* ── §23 · vb7 (review m1) · the bound Remove, all or nothing ─────────────────────────────────────────────────── */
   {
