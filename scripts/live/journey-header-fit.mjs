@@ -61,7 +61,10 @@ export const STATES = [
  */
 export const RULES = [
   { id: "bar-height", sel: "", props: ["height"], want: () => "56px", when: "all" },
-  { id: "gutter", sel: ".kp-jhdr__row", props: ["padding-left", "padding-right"], want: (w) => (w < 360 ? "12px" : w < 640 ? "16px" : "24px"), when: "all" },
+  // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The gutter is PageContainer's
+  // and the footer's (`px-3 lg:px-6`): 16px below 1024, 32px from it. It was 12 / 16 / 24 from 0 / 360 / 640 (S4 and
+  // the classic bar's step), which put the header 4px outside the content at 320 and 8px off it from 640.
+  { id: "gutter", sel: ".kp-jhdr__row", props: ["padding-left", "padding-right"], want: (w) => (w < 1024 ? "16px" : "32px"), when: "all" },
   { id: "row-gap", sel: ".kp-jhdr__row", props: ["column-gap"], want: (w) => (w < 640 ? "6px" : w < 1024 ? "20px" : w < 1280 ? "12px" : "20px"), when: "all" },
   { id: "cluster-gap", sel: ".kp-jhdr__cluster", props: ["column-gap"], want: (w) => (w < 640 ? "6px" : "12px"), when: "all" },
   { id: "home-borrow", sel: ".kp-jhdr__home", props: ["margin-left", "margin-right"], want: () => "-9px", when: "all" },

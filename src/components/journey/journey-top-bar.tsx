@@ -17,10 +17,11 @@
  * ── ⭐ THE S4 FIT RULES ARE STYLESHEET RULES, NOT NUMBERS HERE ──────────────────────────────────────────────────
  * The phone row was measured in Chromium with the real fonts (`VODACOM-PLAN.md` §0g design call 10): 6px gaps, the
  * 26px mark in a 44px link that borrows 9px of gutter each side, 10px capsule padding, 12/10 on the pill; below 360
- * a 12px gutter, no "+" glyph and a 12px figure. From 640 the row takes the classic bar's own steps (WP6a step 1): its
- * gutter and gaps, and its right-hand controls grouped as one cluster with the cluster's own spacing, which is why
- * they sit in one wrapper here. Each is a rule in `globals.css` (the journey header's family and the capsule's), so
- * `test:journey-shell` §7 reads them as written and WP6b's header-fit gate reads them as computed (A5).
+ * no "+" glyph and a 12px figure. The row's gutter is the page's own, 16px below 1024 and 32px from it (2026-10-08,
+ * the owner's rule: the header's edge is the page's edge at every width). From 640 the row takes the classic bar's
+ * own gaps (WP6a step 1), and its right-hand controls grouped as one cluster with the cluster's own spacing, which is
+ * why they sit in one wrapper here. Each is a rule in `globals.css` (the journey header's family and the capsule's),
+ * so `test:journey-shell` §7 reads them as written and WP6b's header-fit gate reads them as computed (A5).
  * ⛔ No inline style here: an inline number is one a probe cannot tell from a decision.
  *
  * ── ⭐ THE "+" IS ITS OWN SPAN ───────────────────────────────────────────────────────────────────────────────────

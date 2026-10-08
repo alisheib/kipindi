@@ -520,10 +520,15 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   at 360, so 360 is tighter than 320's 18.7px); en 39.6px, zh 63.6px there. TZS 9.9M and TZS 0 leave the same room
   (sw 33px at 320), by design: the capsule reserves the hidden-balance mask's width, so a short figure never narrows
   it and hiding balances never moves the header. From 768 nothing is near the edge (≥ 96px at 1024, the tightest
-  desktop width). The rail: sw "Tiketi zangu" takes two lines at 320 and one from 360, en and zh one everywhere, none
-  cut — §0h point 18's model, confirmed. The first runs found three faults in the PROBES, none in the header (a shown
+  desktop width). ⚠️ **2026-10-08, the owner's rule: the header's edge is the page's edge at every width** — the row's
+  gutter is now the page's, 16px below 1024 and 32px from it (§0g design call 10), so these slacks are the old
+  gutters' (12 / 16 / 24): 320 loses 8px (sw TZS 999,999 and hidden balances ≈ 10.7px, now the least; sw TZS 9.9M and
+  TZS 0 ≈ 25; en ≈ 33, zh ≈ 57 at TZS 999,999; a guest ≥ 60 — read off the G5 tiles, ±0.5px), 360–639 is unchanged,
+  640–1023 gains 16px and from 1024 loses 16px (≥ 80px at 1024). The rule probe now asks 16px / 32px, and the twin's
+  gutter mutations plant the old values (ten mutations, from nine). The rail: sw "Tiketi zangu" takes two lines at 320
+  and one from 360, en and zh one everywhere, none cut — §0h point 18's model, confirmed. The first runs found three faults in the PROBES, none in the header (a shown
   span and the "+" compute `flex`, not `inline-flex`: a flex item's display is blockified; the slack had been the
-  always-zero gap after the pushed cluster; the verdict cut its list at six), each fixed in the drive itself. Its red twin makes nine single-line `globals.css` mutations, each
+  always-zero gap after the pushed cluster; the verdict cut its list at six), each fixed in the drive itself. Its red twin makes nine (ten from 2026-10-08) single-line `globals.css` mutations, each
   one rule the RULE probe must break in some cell, and a CSS witness makes an unserved mutation read BROKEN. ⛔ It runs
   only as `npm run red:journey-header-fit -- --alone`: without `--alone`, or inside `red:all` (which now marks every
   harness it starts with KP_RED_ALL), it refuses with exit 2 before writing anything. `test:journey-shell` §10 holds
@@ -2126,9 +2131,16 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     - **Rule from 360 up:** the product's own 26-px mark, its link still 44 px tall and widened to 44 px by a −9-px
       margin into the gutter; 6-px gaps; 10-px balance-pill padding; 12/10-px padding on "+ Weka pesa". This fits
       every case from 360 up.
-    - **Rule below 360:** 12-px side gutter, "Weka pesa" without the "+" glyph, and a 12-px balance figure. This fits
-      every case at 320, Swahili at TZS 10,000,000 included (exactly 320). The 390 frames now use the 360-up rule.
-    - S6's header-fit gate asserts both rules.
+    - **Rule below 360:** "Weka pesa" without the "+" glyph, and a 12-px balance figure. As measured here it also took
+      a 12-px side gutter, and fitted every case at 320, Swahili at TZS 10,000,000 included (exactly 320). The 390
+      frames now use the 360-up rule.
+    - **2026-10-08, the owner's rule: the header's edge is the page's edge at every width.** The side gutter is no longer
+      a fit rule: it is the page's own (PageContainer's and the footer's `px-3 lg:px-6`), 16 px below 1024 and 32 px
+      from it, at 320 too. The 12-px gutter (and the classic bar's 24 px from 640) put the header 4 px outside the
+      content at 320 and 8 px off it from 640 (the G5 tiles). 320 pays 8 px for it: the least slack there goes from
+      18.7 to about 10.7 px (Swahili, TZS 999,999 or hidden balances — the widest a wallet now shows, since
+      `formatBalancePill` compacts from TZS 1,000,000); every other cell keeps more. The "+" and the 12-px figure stay.
+    - S6's header-fit gate asserts both rules, and the gutter as the page's edge.
 11. **Card buttons (brief item 3), measured the same way.** Labels were checked at 320/360/390/412 in sw/en/zh.
     - The second line may wrap to two lines. Both buttons then grow together, from 64 to 74 px.
     - At 320, even "Shinda ≈2.8× dau" wraps (so does the English). "Shinda zaidi ya 100× dau" wraps at every width.

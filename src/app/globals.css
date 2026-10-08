@@ -6457,21 +6457,30 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 
    ⭐ THE S4 FIT RULES, WRITTEN AS MEASURED (VODACOM-PLAN.md §0g design call 10, Chromium with the real fonts).
    On a phone: 6px gaps, the 26px mark in a 44px home link that borrows 9px of gutter on each side, 10px capsule
-   padding (the capsule's own rule, `.kp-jbal`), 12/10 on the pill and a 16px gutter. Below 360: a 12px gutter, no
-   "+", an even 12px on the pill and a 12px figure (`.kp-jbal__fig`). Each number below is the exact value WP6b's
-   header-fit rule probe compares against (A5), and `test:journey-shell` §7 reads them as written: do not move one
-   without re-measuring the matrix.
-   ⭐ FROM 640, THE CLASSIC BAR'S OWN STEPS (S6-PLAN WP6a step 1; the kit wins where the canvas drifts, §0h point 7).
-   The S4 numbers are a phone's. From 640 the row takes the classic bar's gutter (24px) and its gaps between groups
-   (20px, 12px from 1024 where the destinations take the room, 20px again from 1280), and the right-hand cluster its
-   own 12px. The values are the spacing tokens at the pixels the classic bar's utilities paint, and §7 also reads the
-   classic bar's spellings, so the two bars cannot drift apart silently.
+   padding (the capsule's own rule, `.kp-jbal`) and 12/10 on the pill. Below 360: no "+", an even 12px on the pill
+   and a 12px figure (`.kp-jbal__fig`). Each number below is the exact value WP6b's header-fit rule probe compares
+   against (A5), and `test:journey-shell` §7 reads them as written: do not move one without re-measuring the matrix.
+   ⭐ THE ROW'S EDGE IS THE PAGE'S EDGE (2026-10-08, the owner's rule: the header's edge is the page's edge at every
+   width). The gutter is the one every page and the footer pad with — PageContainer's `px-3 lg:px-6`, 16px below 1024
+   and 32px from it on this repo's scale — so the mark and the last control stand on the lines the cards and headings
+   stand on. It was 12px below 360 (S4), 16px to 640 and the classic bar's 24px from 640, which the G5 tiles measured
+   4px outside the content at 320, 8px inside it from 640 to 1023 and 8px outside it from 1024 (wp12/tiles-h: 043 at
+   320 against cards at 16; 257 at 1024, 194 and 176 at 1280 against cards at 32; 640–1023 read from PageContainer's
+   code, no tile there). 320 pays 8px of the row's room: its least slack goes from 18.7px to about 10.7px (sw,
+   TZS 999,999 or hidden balances). §7 holds the page's own spelling (7.gutter), so the two cannot drift apart.
+   ⚠️ The landing's own bands (its hero and the sections under it) pad 24px from 768 and are not PageContainer: on
+   `/` alone the edge still differs by 8px from 768 (G5; tiles 017 to 020 measure them at 24).
+   ⭐ FROM 640, THE CLASSIC BAR'S OWN GAPS (S6-PLAN WP6a step 1; the kit wins where the canvas drifts, §0h point 7).
+   The S4 numbers are a phone's. From 640 the row takes the classic bar's gaps between groups (20px, 12px from 1024
+   where the destinations take the room, 20px again from 1280), and the right-hand cluster its own 12px. The values
+   are the spacing tokens at the pixels the classic bar's utilities paint, and §7 also reads the classic bar's
+   spellings, so the two bars' gaps cannot drift apart silently. Its gutter is no longer the journey's (above).
    ⭐ MOBILE-FIRST, `min-width` ONLY: a phone-only rule would be a rule the density contract has to fence.
    ⛔ NOTHING HERE SETS `display` ON AN ELEMENT THAT ALSO WEARS A WIDTH UTILITY. These rules come after the utilities,
    so at equal specificity they win and the utility is ignored — the classic bar's `.btn` lesson, measured at 360.
    The nav and the desktop-only wrappers take their display from their utilities and nothing else. */
 .kp-jhdr { height: 56px; background: var(--panel); border-bottom: 1px solid var(--border); }
-.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-3); }
+.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }
 /* The right-hand controls, grouped as the classic bar groups them: one gap on a phone, the cluster's own from 640. */
 .kp-jhdr__cluster { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
 .kp-jhdr__home { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; min-height: var(--h-control-md); margin-inline: -9px; padding-inline: 9px; transition: opacity var(--t-quick) ease-out; }
@@ -6482,12 +6491,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The bell's slot keeps the bell's 40px box while the bell itself waits for the width to be known, so the cluster
    does not move when it arrives (`one-poller.ts`). */
 .kp-jhdr__bell { justify-content: center; min-width: var(--h-control-sm); }
-@media (min-width: 360px) { .kp-jhdr__row { padding-inline: var(--sp-4); } }
 @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
 @media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
-@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); padding-inline: var(--sp-6); } }
+@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }
 @media (min-width: 640px) { .kp-jhdr__cluster { gap: var(--sp-3); } }
-@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); } }
+@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); padding-inline: var(--sp-8); } }
 @media (min-width: 1280px) { .kp-jhdr__row { gap: var(--sp-5); } }
 
 /* ⭐ THE DESTINATIONS FROM 1024 — the kit's SECTION language (§0h point 7; DESIGN_AUTHORITY §K rule 7c, "the underline

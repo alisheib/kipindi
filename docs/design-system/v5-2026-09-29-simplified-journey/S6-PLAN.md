@@ -410,7 +410,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
 **Steps.**
 1. **journey-top-bar.tsx** ('use client').
    - Root: `<header className='sticky top-0 z-30 app-topbar kp-jhdr' data-testid='journey-top-bar'>`. It is 56px tall with --panel and a --border bottom, as in globals.css, never inline (decision 1). HeaderScrollCast keeps working.
-   - Row `.kp-jhdr__row`, mobile-first: padding-inline var(--sp-3) and gap 6px; var(--sp-4) from min-width 360px; the classic sm/lg/xl values from 640.
+   - Row `.kp-jhdr__row`, mobile-first: padding-inline var(--sp-3) and gap 6px; var(--sp-4) from min-width 360px; the classic sm/lg/xl values from 640. (2026-10-08, the owner's rule: the header's edge is the page's edge at every width — the gutter is now var(--sp-4) at every width and var(--sp-8) from 1024, PageContainer's edge; the gaps keep the classic values. A5's amendment.)
    - A 44px home link `.kp-jhdr__home`: margin-inline −9px, padding-inline 9px. It holds FiftyMark 26 below xl and FiftyLockup 22 from xl, with the classic span classes. brand.tsx is untouched.
    - `<span className='kp-rg__18'>{t.footer.eighteenPlus}</span>`, with no aria-label (the app-shell.tsx:601 rule).
 2. **Desktop nav** (`hidden lg:flex`, aria-label t.nav.primary). It maps JOURNEY_TABS to `<Link className='kp-navlink kp-jnav__link' aria-current={activeTabFor(pathname) === key ? 'page' : undefined}>`.
@@ -445,7 +445,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
 **Flag gating.** Three new files that nothing imports yet. globals.css only gains class names no classic element carries. Classic files and served output are unchanged.
 
 **Tests.**
-- test:journey-shell §7 (new): the two S4 rules, read from globals.css — base gutter --sp-3 then --sp-4 at min-width 360px; '+' hidden at base and shown from 360; figure text-label then xs:text-body; gap 6px; home link −9px; guest pills btn-md. Plus one plant per rule.
+- test:journey-shell §7 (new): the two S4 rules, read from globals.css — base gutter --sp-3 then --sp-4 at min-width 360px; '+' hidden at base and shown from 360; figure text-label then xs:text-body; gap 6px; home link −9px; guest pills btn-md. Plus one plant per rule. (2026-10-08, the owner's rule: the header's edge is the page's edge at every width — 7.gutter now reads --sp-4 then --sp-8 at min-width 1024px against PageContainer's spelling, and its plants put the old 12px and 24px back. A5's amendment.)
 - test:journey-shell §8 (new): exactly the four JOURNEY_TABS hrefs; no NavMore, coin or dot in journey-tabs.tsx; the guest Tiketi is a `<button>`; the Akaunti link has no aria-label. Plus plants.
 - test:stacking: new ROOT_SURFACES rows
 - 'journey-top-bar' (`/"sticky top-0 z-(/d+) app-topbar kp-jhdr"/`, z 30);
@@ -547,7 +547,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
    - **Cells:** 320/360/390/768/1024/1150/1279 × sw/en/zh × {pass guest, pass player at TZS 999,999 — the widest real string, since formatBalancePill compacts at ≥1M}, plus held, masked and zero at 320 and 1024.
    - **Per cell:** CLIP_PROBE, plus a new GUTTER_PROBE: rightmost visible header control ≤ vw − the row's computed padding-right, and header scrollWidth ≤ clientWidth.
    - **Witness:** `.kp-jhdr__row` scrollWidth.
-   - **Mutations** (single-line, unique): plus-shows-below-360, gutter-16-below-360, figure-14-below-360, gap-6-becomes-8, home-link-loses-negative-margin, guest-pills-pad-20, lockup-from-lg (xl:hidden→2xl:hidden in journey-top-bar.tsx).
+   - **Mutations** (single-line, unique): plus-shows-below-360, gutter-16-below-360, figure-14-below-360, gap-6-becomes-8, home-link-loses-negative-margin, guest-pills-pad-20, lockup-from-lg (xl:hidden→2xl:hidden in journey-top-bar.tsx). (2026-10-08, the owner's rule: the header's edge is the page's edge at every width — gutter-16-below-360 planted what is now the rule; it is gutter-12-returns, beside gutter-24-from-640-returns and edge-32-from-1024-lost. A5's amendment.)
    - Each must sever ≥1 cell. Restore, then check the tree is byte-identical.
    - A MISSED mutation means the rule has slack with real balances. Record the measured slack in §0i; never shrink the matrix.
 7. **qa-journey-preview.mjs**: widen the 1.3/3.3 trace regex to journey-top-bar|journey-tabs. Add pass-holder tiles at 390 and 1280: 4 tabs, the captioned header, no classic rail.
@@ -1569,7 +1569,9 @@ the served-byte changes S6 makes for classic viewers, all listed.
 reason in the test comment, then `test:red-anchors`.
 
 **A5 · G5 — header-fit is two probes.** (1) A RULE probe per cell reading computed values against fixed tokens: row
-padding-inline 12px below 360 and 16px from 360; the "+" glyph `display:none` below 360; figure 12px then 14px; gap 6px;
+padding-inline 16px below 1024 and 32px from 1024, the page's own edge (2026-10-08, the owner's rule: the header's edge
+is the page's edge at every width; it was 12px below 360 and 16px from 360); the "+" glyph `display:none` below 360;
+figure 12px then 14px; gap 6px;
 home-link margin −9px. Each mutation must fail the rule probe in ≥1 cell — deterministic, and the red criterion. (2) A
 CLIP probe (clip + scrollWidth) on the clean tree only, for "fits". Cells include the widest compact balance strings
 `TZS 999,999` and `TZS 1.25M` (`formatBalancePill` compacts at ≥ 1,000,000); per-cell slack is measured and recorded.
@@ -1580,6 +1582,19 @@ takes the classic bar's own steps (WP6a step 1): `.kp-jhdr__row` padding-inline 
 rule probe reads those at its 768–1279 cells. `test:journey-shell` 7.steps holds them against the classic bar's own
 spellings, so the two bars cannot drift apart silently.
 
+*Amended 2026-10-08, the owner's rule: the header's edge is the page's edge at every width (G5 of the visual pass).*
+Measured on the header tiles (`wp12/tiles-h`), the 12 / 16 / 24px gutter put the header 4px outside the content at
+320, 8px inside it from 640 to 1023 and 8px outside it from 1024, where every page (PageContainer, `px-3 lg:px-6`) and
+the footer stand at 16px below 1024 and 32px from it. The row's gutter is now that edge: `padding-inline: var(--sp-4)`
+at every width and `var(--sp-8)` from 1024, in one step (no 360 or 640 step). The gaps keep the classic bar's steps
+(20 / 12 / 20 and the cluster's 12). `test:journey-shell` 7.gutter holds the row to PageContainer's spelling and the
+scale's 16 / 32 / 1024; 7.steps holds only the gaps against the classic bar, class by class (its gutter is no longer
+the journey's). The rule probe asks 16px below 1024 and 32px from it; the twin's gutter mutations are
+`gutter-12-returns`, `gutter-24-from-640-returns` and `edge-32-from-1024-lost` (ten in all). 320 pays 8px of its row:
+the least slack there goes from 18.7 to about 10.7px (sw, TZS 999,999 or hidden balances), still a fit. ⚠️ The
+landing's own bands (its hero and the sections under it) pad 24px from 768 and are not PageContainer, so on `/` alone
+the edge still differs by 8px from 768 — owed, a decision about the landing's composition.
+
 **A6 · G6 — never `red:all` against a dev server.** Always `red:all -- --skip results-filter,header-fit`, then
 `red:header-fit` and `red:journey-header-fit` standalone, detached, under the lock, then `git diff --exit-code`. The new
 harness restores every mutated file on SIGINT/SIGTERM/exit and self-limits its runtime, printing INCONCLUSIVE rather
@@ -1588,7 +1603,8 @@ than being killed.
 *As built (WP6b, 2026-10-02; A5 and A6, with the WP6b review's corrections):* the rules, the matrix and the probes are
 written once, in `scripts/live/journey-header-fit.mjs`, and both `qa:journey-header-fit` (the clean matrix: the RULE
 probe, the clip, the overflow, each cell's slack — the row's free space — and below 1024 the rail labels A17 owes) and
-`red:journey-header-fit` import them. The red criterion is the RULE probe alone, and each of the nine mutations
+`red:journey-header-fit` import them. The red criterion is the RULE probe alone, and each of the nine mutations (ten
+from 2026-10-08, A5's amendment above)
 (`scripts/anchors/journey-header-fit.anchors.mjs`) names the rule that must break. A rule is asked only where its
 element is drawn: a KP_ROUTE on the deposit screen or its return skips the pill's rules there, by the header's own
 rule, whose copy in the drives `test:journey-shell` §10 holds to `journeyHeaderState`; the twin refuses such a route,

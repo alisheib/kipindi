@@ -9,8 +9,9 @@
  *
  * ── WHAT THESE MUTATIONS ARE ─────────────────────────────────────────────────────────────────────────────────────
  * Each puts ONE S4 fit rule of the journey header's stylesheet (VODACOM-PLAN §0g design call 10; from 640 the classic
- * bar's own steps) back to a value the S4 measurement refused, and names in `expect` the rule of the RULE probe
- * (`live/journey-header-fit.mjs`, RULES) that must break in at least one cell. Each is a single line.
+ * bar's own gaps; the gutter, the page's own edge — 2026-10-08, the owner's rule: the header's edge is the page's edge
+ * at every width) back to a value the S4 measurement or that rule refused, and names in `expect` the rule of the RULE
+ * probe (`live/journey-header-fit.mjs`, RULES) that must break in at least one cell. Each is a single line.
  * ⭐ RULES, NOT CLIPPING (A5). The real balances leave slack — TZS 999,999 is the widest figure a wallet shows, and the
  * S4 measurement was made with TZS 10,000,000 — so a proof that waited for a control to clip would miss most of these.
  * A rule read as a computed value against its fixed token cannot.
@@ -42,14 +43,17 @@ export const MUTATIONS = [
     from: ".kp-jhdr__plus { display: none; }",
     to: `.kp-jhdr__plus { display: inline-flex; ${witness("plus-shows-below-360")} }`,
   },
+  // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The gutter is now the page's
+  // (16px below 1024, 32px from it), so the three gutter mutations plant what it was: the S4 12px (it was
+  // `gutter-16-below-360`, which planted today's value), the classic bar's 24px from 640, and the 1024 step lost.
   {
-    name: "gutter-16-below-360",
-    why: "the row's gutter is 16px below 360 — 8px of the 320 row's room given to its edges",
+    name: "gutter-12-returns",
+    why: "the row's old 12px gutter comes back (S4's rule below 360) — the header 4px outside the page's 16px edge",
     expect: "gutter",
     file: CSS,
     suite: "journey-header-fit",
-    from: ".kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-3); }",
-    to: `.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); ${witness("gutter-16-below-360")} }`,
+    from: ".kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }",
+    to: `.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-3); ${witness("gutter-12-returns")} }`,
   },
   {
     name: "figure-14-below-360",
@@ -106,12 +110,21 @@ export const MUTATIONS = [
     to: `.kp-jhdr__pill { flex-shrink: 0; padding: 0 16px; ${witness("pill-pads-16-below-360")} }`,
   },
   {
-    name: "steps-from-640-lost",
-    why: "from 640 the row keeps the phone's 16px gutter instead of the classic bar's 24px (A5's as-built note)",
+    name: "gutter-24-from-640-returns",
+    why: "from 640 the row takes the classic bar's 24px gutter again — the header 8px inside the page's 16px edge to 1024",
     expect: "gutter",
     file: CSS,
     suite: "journey-header-fit",
-    from: "@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); padding-inline: var(--sp-6); } }",
-    to: `@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); ${witness("steps-from-640-lost")} } }`,
+    from: "@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }",
+    to: `@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); padding-inline: var(--sp-6); ${witness("gutter-24-from-640-returns")} } }`,
+  },
+  {
+    name: "edge-32-from-1024-lost",
+    why: "from 1024 the row keeps the phone's 16px gutter — the header 16px outside the page's 32px edge (it was steps-from-640-lost)",
+    expect: "gutter",
+    file: CSS,
+    suite: "journey-header-fit",
+    from: "@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); padding-inline: var(--sp-8); } }",
+    to: `@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); ${witness("edge-32-from-1024-lost")} } }`,
   },
 ];

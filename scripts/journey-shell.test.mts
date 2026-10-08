@@ -36,9 +36,11 @@
  *      second poller — and a count is shown only to the viewer it was read for (critic G1). Only the journey's client
  *      components load the hook, and the classic bell loads neither file.
  *   §7 THE HEADER (WP6a) — the S4 fit rules read from `globals.css` as written, at the exact values WP6b's rule probe
- *      reads as computed (A5): a 12px gutter below 360 and 16px from it, 6px gaps, the 44px home link borrowing 9px on
+ *      reads as computed (A5): the page's own gutter, 16px below 1024 and 32px from it, held against PageContainer's
+ *      spelling (2026-10-08, the owner's rule: the header's edge is the page's edge at every width; it was 12px below
+ *      360 and 16px from it), 6px gaps, the 44px home link borrowing 9px on
  *      each side, the "+" hidden below 360, the pill's 12 and 12/10, the capsule's 10 and its 12px/14px figure, the
- *      guest pills' 14px at 13px type; from 640 the classic bar's own steps, held against the classic bar's spellings;
+ *      guest pills' 14px at 13px type; from 640 the classic bar's own gaps, held against the classic bar's spellings;
  *      the right-hand controls one cluster; no width-capping query anywhere in the shell's rules; the bar renders
  *      `journeyHeaderState`'s answers with no inline style; the destinations from 1024 take aria-current from
  *      `tabAriaCurrent` and speak the kit's underline language; and test:stacking's journey rows hold, judged by the
@@ -1315,37 +1317,57 @@ function g7Header(W: World, ok: Ok) {
     frame === "" ? "no .kp-jhdr rule" : frame);
   const row = baseRule(css, ".kp-jhdr__row");
   const row360 = minWidthRule(css, 360, ".kp-jhdr__row");
-  ok("7.gutter · the row's gutter is 12px below 360 and 16px from 360 to 640 (A5) — the spacing tokens, at those values",
-    row.includes("padding-inline: var(--sp-3)") && row360.includes("padding-inline: var(--sp-4)")
-      && tokenValue(css, "sp-3") === "12px" && tokenValue(css, "sp-4") === "16px",
-    show({ row, row360, sp3: tokenValue(css, "sp-3"), sp4: tokenValue(css, "sp-4") }));
-  const cluster = baseRule(css, ".kp-jhdr__cluster");
-  ok("7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — the 360 step moves only the gutter",
-    row.includes("gap: 6px;") && row.includes("display: flex") && !row360.includes("gap")
-      && cluster.includes("gap: 6px;") && cluster.includes("display: flex") && cluster.includes("flex-shrink: 0"),
-    show({ row, row360, cluster }));
-  // From 640, the classic bar's own steps (WP6a step 1) — held against the classic bar's spellings, so the two move together.
-  const classic = text(W, "src/components/layout/top-app-bar.tsx");
-  const steps = {
+  // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The row pads exactly as every
+  // page (PageContainer) does — `px-3 lg:px-6`, 16px below 1024 and 32px from it on this repo's scale — in ONE step,
+  // at the page's own breakpoint. It was 12px below 360 (S4), 16px to 640 and the classic bar's 24px from 640, which
+  // the G5 tiles measured 4px outside the content at 320 and 8px off it from 640.
+  const PAGE = "src/components/layout/page-container.tsx";
+  const edge = {
     row640: minWidthRule(css, 640, ".kp-jhdr__row"),
     row1024: minWidthRule(css, 1024, ".kp-jhdr__row"),
     row1280: minWidthRule(css, 1280, ".kp-jhdr__row"),
+    page: text(W, PAGE).includes(`pad === "page" && "px-3 lg:px-6 py-6",`),
+    scale: W.tailwind.includes(`"3": "16px"`) && W.tailwind.includes(`"6": "32px"`) && W.tailwind.includes(`lg: "1024px"`),
+  };
+  ok("7.gutter · the row's gutter is the page's edge at every width: 16px below 1024 and 32px from it, one step and no other, the spacing tokens at those values and PageContainer still padding px-3 lg:px-6 on that scale (the owner's rule, 2026-10-08)",
+    row.includes("padding-inline: var(--sp-4)") && row360 === ""
+      && !edge.row640.includes("padding") && edge.row1024.includes("padding-inline: var(--sp-8)") && !edge.row1280.includes("padding")
+      && count(css, ".kp-jhdr__row {") === 4
+      && tokenValue(css, "sp-4") === "16px" && tokenValue(css, "sp-8") === "32px" && edge.page && edge.scale,
+    show({ row, row360, ...edge, sp4: tokenValue(css, "sp-4"), sp8: tokenValue(css, "sp-8") }));
+  const cluster = baseRule(css, ".kp-jhdr__cluster");
+  ok("7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — no step on the row moves them before 640",
+    row.includes("gap: 6px;") && row.includes("display: flex") && !row360.includes("gap")
+      && cluster.includes("gap: 6px;") && cluster.includes("display: flex") && cluster.includes("flex-shrink: 0"),
+    show({ row, row360, cluster }));
+  // From 640, the classic bar's own GAPS (WP6a step 1) — held against the classic bar's spellings, so the two move
+  // together. Its gutter is no longer the journey's (7.gutter, 2026-10-08), so the classic row is read class by class:
+  // exactly its four gap classes, whatever its padding says.
+  const classic = text(W, "src/components/layout/top-app-bar.tsx");
+  const steps = {
+    row640: edge.row640,
+    row1024: edge.row1024,
+    row1280: edge.row1280,
     cluster640: minWidthRule(css, 640, ".kp-jhdr__cluster"),
   };
+  const CLASSIC_ROW = `"mx-auto max-w-board flex items-center h-full `;
+  const classicRowAt = classic.indexOf(CLASSIC_ROW);
+  const classicRow = classicRowAt < 0 ? [] : classic.slice(classicRowAt + 1, classic.indexOf(`"`, classicRowAt + 1)).split(" ");
+  const classicGaps = classicRow.filter((c) => /(^|:)gap-/.test(c));
   const classicSpells = {
-    row: classic.includes(`"mx-auto max-w-board flex items-center h-full gap-2 px-2 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4"`),
+    row: count(classic, CLASSIC_ROW) === 1 && show(classicGaps) === show(["gap-2", "sm:gap-4", "lg:gap-2", "xl:gap-4"]),
     cluster: classic.includes(`"shrink-0 flex items-center gap-1 sm:gap-2"`),
-    scale: W.tailwind.includes(`"2": "12px"`) && W.tailwind.includes(`"4": "20px"`) && W.tailwind.includes(`"5": "24px"`),
+    scale: W.tailwind.includes(`"2": "12px"`) && W.tailwind.includes(`"4": "20px"`),
   };
-  ok("7.steps · from 640 the classic bar's own steps: a 24px gutter, the row's gaps 20 / 12 / 20 at 640 / 1024 / 1280 and the cluster's 12 — the classic row and cluster still spelling those values",
-    steps.row640.includes("padding-inline: var(--sp-6)") && steps.row640.includes("gap: var(--sp-5)")
-      && steps.row1024.includes("gap: var(--sp-3)") && !steps.row1024.includes("padding")
-      && steps.row1280.includes("gap: var(--sp-5)") && !steps.row1280.includes("padding")
+  ok("7.steps · from 640 the classic bar's own gaps: the row's 20 / 12 / 20 at 640 / 1024 / 1280 and the cluster's 12 — the classic row and cluster still spelling those values",
+    steps.row640.includes("gap: var(--sp-5)")
+      && steps.row1024.includes("gap: var(--sp-3)")
+      && steps.row1280.includes("gap: var(--sp-5)")
       && steps.cluster640.includes("gap: var(--sp-3)")
-      && count(css, ".kp-jhdr__row {") === 5 && count(css, ".kp-jhdr__cluster {") === 2
-      && tokenValue(css, "sp-5") === "20px" && tokenValue(css, "sp-6") === "24px"
+      && count(css, ".kp-jhdr__cluster {") === 2
+      && tokenValue(css, "sp-5") === "20px" && tokenValue(css, "sp-3") === "12px"
       && classicSpells.row && classicSpells.cluster && classicSpells.scale,
-    show({ ...steps, classicSpells }));
+    show({ ...steps, classicGaps, classicSpells }));
   const home = baseRule(css, ".kp-jhdr__home");
   ok("7.home · the home link stays 44px tall and borrows 9px of gutter on each side (A5) — the bar's home link wears the rule",
     home.includes("min-height: var(--h-control-md)") && home.includes("margin-inline: -9px") && home.includes("padding-inline: 9px")
@@ -2598,7 +2620,16 @@ ${s}`);
       return at < 0 || end < 0 ? css : css.slice(0, at) + css.slice(at, end).replace(from, to) + css.slice(end);
     };
     const plusAt320 = withCss(inRule(".kp-jhdr__plus", "display: none", "display: inline-flex"));
-    const gutter16 = withCss(inRule(".kp-jhdr__row", "padding-inline: var(--sp-3)", "padding-inline: var(--sp-4)"));
+    // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. The gutter plants put back
+    // what the row padded before (the S4 12px, the classic bar's 24px from 640), lose the page's 1024 step, bring a
+    // 360 step back, and move the page's own padding under a header that keeps the old one.
+    const gutter12 = withCss(inRule(".kp-jhdr__row", "padding-inline: var(--sp-4)", "padding-inline: var(--sp-3)"));
+    const gutter24From640 = withCss(inMedia(640, ".kp-jhdr__row", "gap: var(--sp-5);", "gap: var(--sp-5); padding-inline: var(--sp-6);"));
+    const edgeLostFrom1024 = withCss(inMedia(1024, ".kp-jhdr__row", " padding-inline: var(--sp-8);", ""));
+    const step360Returns = withCss((s) => s.replace("@media (min-width: 360px) { .kp-jhdr__plus {",
+      `@media (min-width: 360px) { .kp-jhdr__row { padding-inline: var(--sp-3); } }${LF}@media (min-width: 360px) { .kp-jhdr__plus {`));
+    const PAGE_CONTAINER = "src/components/layout/page-container.tsx";
+    const pageGutterMoves = withFile(WORLD, PAGE_CONTAINER, (s) => s.replace(`"px-3 lg:px-6 py-6"`, `"px-3 lg:px-5 py-6"`));
     const figure14 = withCss(inRule(".kp-jbal__fig", "font-size: 12px", "font-size: 14px"));
     const gap8 = withCss(inRule(".kp-jhdr__row", "gap: 6px;", "gap: 8px;"));
     const homeFlush = withCss(inRule(".kp-jhdr__home", "margin-inline: -9px", "margin-inline: 0"));
@@ -2609,7 +2640,7 @@ ${s}`);
     const clusterGap4 = withCss(inRule(".kp-jhdr__cluster", "gap: 6px;", "gap: 4px;"));
     const flatFrom640 = withCss(inMedia(640, ".kp-jhdr__row", "gap: var(--sp-5); ", ""));
     const CLASSIC_BAR = "src/components/layout/top-app-bar.tsx";
-    const classicGutterMoves = withFile(WORLD, CLASSIC_BAR, (s) => s.replace("sm:gap-4 sm:px-5 lg:gap-2", "sm:gap-4 sm:px-6 lg:gap-2"));
+    const classicGapMoves = withFile(WORLD, CLASSIC_BAR, (s) => s.replace("sm:gap-4 sm:px-5 lg:gap-2", "sm:gap-5 sm:px-5 lg:gap-2"));
     const pillForAnyPlayer = withFile(WORLD, JHDR, (s) => s.replace("{state.pill && (", "{user.isAuthed && ("));
     const pipsLifted = withCss(inRule(".kp-rail--journey .kp-rail__item", "justify-content: flex-start", "justify-content: center"));
     const dotAlways = withFile(WORLD, JTABS, (s) => s.replace(
@@ -2927,8 +2958,18 @@ ${s}`);
       // §7 — the header (WP6a): one plant per S4 rule, then the bar's markup
       { name: "the + shows below 360", expect: at("7.plus ·"),
         world: plusAt320, landed: cssChanged(plusAt320), landedAs: "the 320 row carries the glyph S4 measured it could not afford" },
-      { name: "a 16px gutter below 360", expect: at("7.gutter ·"),
-        world: gutter16, landed: cssChanged(gutter16), landedAs: "8px of the 320 row's slack gone to its edges" },
+      // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. This was "a 16px gutter
+      // below 360", which planted today's value; the old 12px is the defect now.
+      { name: "the old 12px gutter returns", expect: at("7.gutter ·"),
+        world: gutter12, landed: cssChanged(gutter12), landedAs: "the header 4px outside the page's 16px edge" },
+      { name: "the classic bar's 24px gutter returns from 640", expect: at("7.gutter ·"),
+        world: gutter24From640, landed: cssChanged(gutter24From640), landedAs: "the header 8px inside the page's edge from 640 to 1023" },
+      { name: "the page's 32px step from 1024 is lost", expect: at("7.gutter ·"),
+        world: edgeLostFrom1024, landed: cssChanged(edgeLostFrom1024), landedAs: "the header 16px outside the page's 32px edge on a desktop" },
+      { name: "a 360 step comes back to the row", expect: at("7.gutter ·"),
+        world: step360Returns, landed: cssChanged(step360Returns), landedAs: "two gutters below 1024, where the page has one" },
+      { name: "the pages move their edge and the header keeps the old one", expect: at("7.gutter ·"),
+        world: pageGutterMoves, landed: changed(pageGutterMoves, PAGE_CONTAINER), landedAs: "one screen, two edges" },
       { name: "a 14px figure below 360", expect: at("7.figure ·"),
         world: figure14, landed: cssChanged(figure14), landedAs: "TZS 999,999 two characters wider at 320" },
       { name: "the gap becomes 8px", expect: at("7.gap ·"),
@@ -2937,8 +2978,10 @@ ${s}`);
         world: clusterGap4, landed: cssChanged(clusterGap4), landedAs: "the capsule and the pill closer than the row was measured with" },
       { name: "the row keeps its phone gap from 640", expect: at("7.steps ·"),
         world: flatFrom640, landed: cssChanged(flatFrom640), landedAs: "a desktop header 6px between groups the classic bar spaces 20px apart" },
-      { name: "the classic bar moves its gutter and the journey keeps the old one", expect: at("7.steps ·"),
-        world: classicGutterMoves, landed: changed(classicGutterMoves, CLASSIC_BAR), landedAs: "two bars, one product, two gutters" },
+      // 2026-10-08: the classic bar's GUTTER is no longer the journey's (the page's is, 7.gutter), so this plant moves a
+      // gap instead — the coupling 7.steps still holds.
+      { name: "the classic bar moves its gap and the journey keeps the old one", expect: at("7.steps ·"),
+        world: classicGapMoves, landed: changed(classicGapMoves, CLASSIC_BAR), landedAs: "two bars, one product, two spacings" },
       { name: "the home link loses its negative margin", expect: at("7.home ·"),
         world: homeFlush, landed: cssChanged(homeFlush), landedAs: "the 44px link takes 18px of the row it was lent" },
       { name: "the guest pills pad 20px", expect: at("7.auth ·"),
