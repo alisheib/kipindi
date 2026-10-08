@@ -30,18 +30,38 @@ then: "the contacts screen"):
     import-adopt, import-preflight, import-file, import-mapping, import-mapping-next, import-apply, import-commit,
     import-done, and the dev seed POST /api/dev-test/marketing-contacts-seed?u30=1.
 
-▶ NOW: C1 (this file, the claim) → C2, the audit of what is live on the screen today.
+▶ NOW (2026-10-09 ~01:45 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
+  · C1 LIVE (`28fd214e`): the lane claimed.
+  · THE DESIGN (§4) and THE CONTRACT `src/lib/contacts/import-flow.ts` — committed `750175c2` on branch
+    `contacts-import` (pushed to origin; NOT on main: nothing calls the contract yet).
+  · BUILDING (agents writing files, nothing run yet), in the worktree `C:\kipindi-s15`, branch `contacts-import-build`
+    (cut from `750175c2`): the SERVER half (DAL members in both twins, the migration `ContactImport.targetListId`,
+    import-check.ts, import-commit.ts, import-actions.ts, the check/commit suites, a dal-parity section, the `?u30=1`
+    seed world) and the BROWSER half (import-read.ts, import-loop.ts, the dialog and its panels, the page-head button,
+    the flow suite, the drive `scripts/live/contacts-import-drive.mjs`). When they land: ONE battery under the lock,
+    an adversarial review, fixes, then push to main as C3–C5 with this file updated.
+  · THE TEST FILES — `scripts/contacts-import/real-world-files.mts` (a generator: every Excel/CSV/vCard/paste variant,
+    the broken ones, 150,000-row and 40 MB files, and a 40-row production check set tagged `qa-import-check`) is being
+    written on branch `contacts-import`.
+  · C2 (the visual audit of the LIVE screen) is queued behind this PC's heavy-node lock (the Vodacom session held it);
+    shots go to `.qa-shots/contacts-screen/C2/` (git-ignored) — findings will be written HERE, not left in shots.
+  · ⏳ ASKED Ali (2026-10-09 ~01:15 EAT; defaults if unanswered = (a)): 1 who imports (a: Growth + Admin) · 2 several
+    numbers per person (a: each its own contact; the build starts with main-number-only, S15-4) · 3 a "pick from this
+    phone" button (a: no) · 4 a live check on production with Claude's own temporary login and a 40-row file, deleted
+    afterwards (a: yes — every production write still needs his click on the permission prompt).
+  ⛔ If this PC is gone: the branches `contacts-import` and (once pushed) `contacts-import-build` on origin hold
+    everything; the agents' unfinished files exist only here until the lead commits them — re-run the builds from §4.
 ```
 
 ## §1 — STEPS (each its own commit, push and live proof)
 
 | # | Step | State |
 |---|---|---|
-| C1 | The lane claimed and this plan written | 🔨 this push |
-| C2 | Audit of the LIVE screen: tiles at 360 / 768 / 1280 / 1440 in en / sw / zh, every field's validation, every failure path (a server error, a slow network, a double press, two tabs) → the defects fixed | ⬜ |
-| C3 | The importer, part 1 — the file, the columns, the pre-flight (U30 + U31-B): staging only, nothing written to the book | ⬜ |
-| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | ⬜ |
-| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · update · skip), Add contact's duplicate | ⬜ |
+| C1 | The lane claimed and this plan written | ✅ LIVE `28fd214e` |
+| C2 | Audit of the LIVE screen: tiles at 360 / 768 / 1280 / 1440 (the console is English-only — `admin/layout.tsx` pins it), every field's validation, every failure path (a server error, a slow network, a double press, two tabs) → the defects fixed | ⏳ queued (lock) |
+| C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | 🔨 building (`contacts-import-build`) |
+| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | 🔨 building |
+| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks), the list step | 🔨 building |
 | C6 | Stress: large files at the limits, a large book, two imports at once, a crash mid-commit and its resume | ⬜ |
 | C7 | U34b — an export read back through the importer, row for row | ⬜ |
 
@@ -140,4 +160,8 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 
 ## §3 — LOG (newest first)
 
+- **2026-10-09 ~01:45 EAT** — the design (§4) and the contract written and pushed (`750175c2`, branch
+  `contacts-import`); two builders started in `C:\kipindi-s15` (`contacts-import-build`); the test-file generator being
+  written. Ali asked four questions (§0). Found: the import was never reachable (no dialog, no actions) — the readers,
+  staging and `decide()` were built and tested in S10 (U25–U29, U31-A) but nothing connected them to a screen.
 - **2026-10-09 · C1** — the lane split recorded; this plan written.
