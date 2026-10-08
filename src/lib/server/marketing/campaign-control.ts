@@ -84,7 +84,8 @@ import {
 } from "@/lib/server/marketing/campaign-live";
 import type { CampaignLiveView, LiveViewer } from "@/lib/server/marketing/campaign-live";
 import {
-  LIVE_CHANGED, LIVE_DISABLED, LIVE_DONE, LIVE_MISSING, LIVE_NOT_RECORDED, LIVE_REQUEUE_FAILED, START_AUDIENCE_REFUSED, copyCantTravelSentence,
+  LIVE_CHANGED, LIVE_DISABLED, LIVE_DONE, LIVE_MISSING, LIVE_NOT_RECORDED, LIVE_REQUEUE_FAILED, LIVE_REQUEUE_FAILED_HIDDEN, START_AUDIENCE_REFUSED,
+  copyCantTravelSentence,
   LIVE_WAIT_HIDDEN, copyDoneSentence, copyMessageRefusedSentence, resumeCopyOnlyHiddenSentence, waitSentence,
 } from "@/app/admin/campaigns/[id]/live-copy";
 import { CAMPAIGNS_UNTITLED } from "@/app/admin/campaigns/campaigns-copy";
@@ -471,12 +472,25 @@ async function resumeInFlight(id: string, officer: string, viewer: RefusalViewer
   // ⭐ The U47b-1 re-review · the answer says what is TRUE NOW: a Stop does not wait for Resume's flight, so one can land
   // between the move and the re-queue (the rows it then re-queued stay owed — E25, a Stop rewrites nothing and counts them);
   // and a re-queue that failed leaves the held people parked until the next Resume. A read that fails says the move alone.
+  // ⭐ The check of that fix: each later state in its own words — a Stop, a Pause, or the campaign finished meanwhile.
   let message: string = to === "RUNNING" ? LIVE_DONE.resume : LIVE_DONE.resumePreparing;
+  let movedOn = false;
   try {
     const now = await deps.campaigns.find(c.id);
-    if (now !== null && now.status !== to) message = isTerminal(now.status) ? LIVE_CHANGED.stoppedAfterResume : message;
+    if (now !== null && now.status !== to) {
+      const later = now.status === "CANCELLED" ? LIVE_CHANGED.stoppedAfterResume
+        : now.status === "PAUSED" ? LIVE_CHANGED.pausedAfterResume
+          : now.status === "DONE" ? LIVE_CHANGED.finishedAfterResume : null;
+      if (later !== null) { message = later; movedOn = true; }
+    }
   } catch { /* the move landed; its own words stand */ }
-  if (requeued === null && message !== LIVE_CHANGED.stoppedAfterResume) message = `${message} ${LIVE_REQUEUE_FAILED}`;
+  // ⛔ The held people who could not be put back: said only when there are some — and below the floor as a condition,
+  // whatever the counts (E23: whether anybody is HELD is a per-state fact).
+  if (requeued === null && !movedOn) {
+    const masked = deps.reach(c, counts, viewer.reads) === "hidden";
+    if (masked) message = `${message} ${LIVE_REQUEUE_FAILED_HIDDEN}`;
+    else if (counts.HELD > 0) message = `${message} ${LIVE_REQUEUE_FAILED}`;
+  }
   return { ok: true, message: withRecord(message, recorded), recorded };
 }
 

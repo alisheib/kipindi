@@ -19,7 +19,8 @@
  *     `MARKETING_FLOOR` and the engine's own vetoes before the wire — `list_over_confirmed_sending` ·
  *     `confirmation_unreadable` · `live_switch_closed` — PAUSE the campaign; `quiet_hours` · `window_unreadable` ·
  *     `not_running` · `before_send_unanswered` · `slice_too_slow` are a WAIT here — the engine PAUSES the last two after
- *     three in a row (its own counts: `BEFORE_SEND_UNANSWERED_MAX`, `SLICE_TOO_SLOW_MAX` at the smallest group).
+ *     three in a row (its own counts: `BEFORE_SEND_UNANSWERED_MAX`; `SLICE_TOO_SLOW_MAX` by route, `tooSlowCounts` — the
+ *     gate side at the smallest group, the send side at any size).
  *   · `held` about one person    → `gate_unanswered`, `prepare:<reason>` (and ⭐ ANY reason this table does not know — a
  *     reason added later is bounded, never a silent loop): attempts + 1 below `MAX_ROW_ATTEMPTS` → PENDING (+1); at it →
  *     HELD (E8). Outstanding either way.
@@ -100,11 +101,30 @@ export const GATE_TIME_WEIGHT = 0.3;
  *  view may not import the engine (`test:marketing-engine` S27) — `engine.ts` re-exports it, never written twice. */
 export const OTP_FAILURE_WAIT_MS = 2 * 60_000;
 
-/** ⭐ The re-review of U43b-2's round 2 · does a `slice_too_slow` wait COUNT toward the pause? Only at the SMALLEST group —
- *  `SLICE_MIN` people, or fewer left to claim: above it the next slice is smaller and tries again uncounted, so a slow gate
- *  pauses the campaign only once even five people cannot be checked in time. */
-export function tooSlowCounts(claimed: number): boolean {
+/** ⭐ Does a `slice_too_slow` wait COUNT toward the pause? Two routes (the re-review of U43b-2's round 2, and the check of its
+ *  fix): the GATE side — `beforeSend` found the claim too old, the time spent checking people — counts only at the SMALLEST
+ *  group (`SLICE_MIN` people, or fewer left to claim): the gate time is measured, so the next slice IS smaller and tries
+ *  again uncounted; the SEND side — `sendBatch`'s own deadline (`DEADLINE_PASSED`: its row writes stalled) — counts at ANY
+ *  size: that time is not the gate's, a smaller group does not cure it, and left uncounted it would wait for ever. */
+export function tooSlowCounts(claimed: number, sendSide: boolean): boolean {
+  if (sendSide === true) return true;
   return Number.isSafeInteger(claimed) && claimed >= 1 && claimed <= SLICE_MIN;
+}
+
+/**
+ * ⭐ THE ONE LOG LINE a `send_error` pause writes once it has LANDED (its sentence sends the officer to the developer and
+ * the server log — the U43b-2 re-review; the check of its round-2 fix). ⛔ Never a phone number and never a transport's
+ * words: the THROWN route (`threw`, the error's code or name as the engine read it) logs it MADE LAWFUL here and cut
+ * (`cleanText` — a code that is a phone number is masked) and says that is all that is kept (no `sms.failed` row exists
+ * when the send itself threw); the FAILED route (`threw` null) logs UNKNOWN alone and points to the batch's `sms.failed`
+ * rows, which hold the words.
+ */
+export function sendErrorLog(campaignId: string, threw: string | null): string {
+  const what = threw !== null
+    ? `${cleanText(threw, AUDIT_DETAIL_MAX)} — the send threw; its code or name is all that is kept`
+    : "UNKNOWN — the batch's sms.failed audit rows hold the transport's words";
+  // The campaign's id is the server's own (`cmp_` + hex), never a person's: printed as it is, so the log can be searched.
+  return `[marketing-engine] campaign ${campaignId} paused send_error: ${what}`;
 }
 
 /** ⭐ E12 · does marketing step aside for a login or withdrawal code that failed at `lastOtp`? Dated either side of now by

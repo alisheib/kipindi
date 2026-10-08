@@ -5128,13 +5128,16 @@ export const prismaDb = {
       const requeued = await pc().smsCampaignRecipient.updateMany({ where: { campaignId, status: "HELD" }, data: smsRecipientData(requeueWrite(at)) });
       return requeued.count;
     },
-    /** U43a · "NOBODY IS DRIVING" — the newest `claimedAt` on the campaign as ONE aggregate (`_max`), never the rows; null
-     *  when nothing was ever claimed. A settled or held row keeps its claim, and a released or requeued row keeps the
-     *  instant of its last claim (D15), so the answer never moves backwards while a page claims and releases. */
+    /** U43a · "NOBODY IS DRIVING" — the newest `claimedAt` on the campaign: ONE row, newest first, read down
+     *  `SmsCampaignRecipient_campaignId_claimedAt_idx` from its end; null when nothing was ever claimed. ⛔ Never
+     *  `aggregate`'s `_max` (the check of 980e2ee7): Prisma wraps an aggregate in a sub-select with an OFFSET, which
+     *  Postgres cannot see through, so it read every row of the campaign. A settled or held row keeps its claim, and a
+     *  released or requeued row keeps the instant of its last claim (D15), so the answer never moves backwards while a
+     *  page claims and releases. */
     lastActivity: async (campaignId: string): Promise<string | null> => {
       assertActivityRead(campaignId);
-      const newest = await pc().smsCampaignRecipient.aggregate({ where: { campaignId }, _max: { claimedAt: true } });
-      return iso(newest._max.claimedAt);
+      const newest = await pc().smsCampaignRecipient.findFirst({ where: { campaignId, claimedAt: { not: null } }, orderBy: { claimedAt: "desc" }, select: { claimedAt: true } });
+      return iso(newest?.claimedAt);
     },
     /** U46a · ⭐ THE RECEIPT DOOR (E28) — ONE conditional `updateMany`, so Postgres decides once and never a read-then-write:
      *  written only WHERE the row is the one named, holds the MESSAGE's number, holds no reference yet or the receipt's own

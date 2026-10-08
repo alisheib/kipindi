@@ -738,8 +738,14 @@ async function toRunning(id: string): Promise<void> {
     const cutoff = at43(100_000);
     const strandedPlan = await pg.$queryRawUnsafe<Array<{ "QUERY PLAN": string }>>(
       `explain (analyze, buffers) select * from "SmsCampaignRecipient" where "campaignId" = '${SCALE}' and "status" = 'PENDING' and "claimToken" is not null and "claimedAt" < '${cutoff}' order by "claimedAt" asc, "id" asc limit ${CM43.SMS_RECIPIENT_BATCH_MAX}`);
+    // ⭐ The check of 980e2ee7 · the activity read in the SHAPE Prisma sends for it: `findFirst` is a top-level ORDER BY …
+    // LIMIT … OFFSET, so Postgres reads one step down the claimedAt index from its end. The aggregate it replaced is
+    // recorded beside it in ITS shape (Prisma wraps `_max` in a sub-select with an OFFSET, a fence the planner cannot see
+    // through): that plan reads every row of the campaign.
     const activityPlan = await pg.$queryRawUnsafe<Array<{ "QUERY PLAN": string }>>(
-      `explain (analyze, buffers) select max("claimedAt") from "SmsCampaignRecipient" where "campaignId" = '${SCALE}'`);
+      `explain (analyze, buffers) select "claimedAt" from "SmsCampaignRecipient" where "campaignId" = '${SCALE}' and "claimedAt" is not null order by "claimedAt" desc limit 1 offset 0`);
+    const aggregatePlan = await pg.$queryRawUnsafe<Array<{ "QUERY PLAN": string }>>(
+      `explain (analyze, buffers) select max("claimedAt") from (select "claimedAt" from "SmsCampaignRecipient" where "campaignId" = '${SCALE}' offset 0) as "sub"`);
     const t1 = Date.now();
     const stranded = await db.smsCampaignRecipient.findStranded(SCALE, cutoff, CM43.SMS_RECIPIENT_BATCH_MAX);
     const strandedMs = Date.now() - t1;
@@ -752,14 +758,22 @@ async function toRunning(id: string): Promise<void> {
     console.log("   10j · the reaper's read (findStranded) at the same scale:");
     for (const line of strandedPlan) console.log(`     ${line["QUERY PLAN"]}`);
     console.log(`   10j · findStranded took ${strandedMs} ms`);
-    console.log("   10j · the activity read (lastActivity) at the same scale:");
+    console.log("   10j · the activity read (lastActivity, findFirst newest first) at the same scale:");
     for (const line of activityPlan) console.log(`     ${line["QUERY PLAN"]}`);
     console.log(`   10j · lastActivity took ${activityMs} ms`);
+    console.log("   10j · for the record, the aggregate it replaced (Prisma's _max sub-select) at the same scale:");
+    for (const line of aggregatePlan) console.log(`     ${line["QUERY PLAN"]}`);
     const want = Array.from({ length: 50 }, (_, i) => `probe_sc_${String(i + 1).padStart(6, "0")}`);
     ok("10j · RECORDED · 150,000 PENDING rows on one campaign: the plans of the claim's candidate read, the reaper's read and the activity read are printed above for U45 (the indexes are U45's to decide); the claim still takes exactly the FIRST 50 by id, the reaper's read answers those 50 and the activity read their claim's instant",
       inserted === 150000 && plan.length > 0 && strandedPlan.length > 0 && activityPlan.length > 0 && json(first.map((r) => r.id)) === json(want)
         && json(stranded.map((r) => r.id)) === json(want) && last === at43(400),
       `${inserted} inserted · plans ${plan.length}/${strandedPlan.length}/${activityPlan.length} line(s) · the claim ${claimMs} ms, findStranded ${strandedMs} ms (${stranded.length} rows), lastActivity ${activityMs} ms (${last}) · first ${first[0]?.id ?? "none"} … ${first[first.length - 1]?.id ?? "none"}`);
+    // ⭐ The check of 980e2ee7 · what the migration, the schema and the spec say of the activity read, now measured: one
+    // step down the claimedAt index from its end — a backward scan of it, no sort and no aggregate over the rows.
+    const activityText = activityPlan.map((l) => l["QUERY PLAN"]).join("\n");
+    ok("10j′ · the activity read at 150,000 rows is ONE step down SmsCampaignRecipient_campaignId_claimedAt_idx from its end — a backward index scan, no Sort and no Aggregate — never every row",
+      /Index (Only )?Scan Backward using "?SmsCampaignRecipient_campaignId_claimedAt_idx"?/.test(activityText) && !/\bSort\b|Aggregate/.test(activityText),
+      activityText.split("\n").slice(0, 3).map((l) => l.trim()).join(" | ").slice(0, 300));
   }
 }
 
