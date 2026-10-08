@@ -423,7 +423,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                               projection — the row's own `masked` (`contactSelectionRow`), never a second read of the number,
                               so U19's one render holds. A reader's reveal stays the Number column's, one control per row.
                               Hidden from 640 up, where the Number column is on screen. */}
-                          <span className="mt-0.5 block font-mono text-micro text-text-tertiary sm:hidden" data-contact-sub>
+                          <span className="mt-0.5 block font-mono text-body-sm text-text-tertiary sm:hidden" data-contact-sub>
                             {pageRows[i].masked} · {operatorBrand(c.ndc) ?? "—"}
                           </span>
                         </td>
