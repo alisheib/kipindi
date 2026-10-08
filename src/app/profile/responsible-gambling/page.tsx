@@ -120,7 +120,11 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           eyebrow={t.rg.playerProtection}
           title={t.profile.responsibleGambling}
         />
-        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
+        {/* text-balance (round 3, 2026-10-09, tile 179): "Weka mipaka ya amana na muda, pumzika au" / "jizuie." left the
+            last word alone at 390. Balanced, the two lines read "Weka mipaka ya amana na" / "muda, pumzika au jizuie."
+            (164 and 152px of 308 — measured with the repo's Inter); en "Set deposit and time limits," / "take a break,
+            or self-exclude.". */}
+        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose text-balance">
           {t.rg.pageDescription}
         </p>
       </PageHero>
@@ -131,7 +135,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <RgSunriseArt size={44} className="shrink-0 text-success-fg" />
         <div className="min-w-0">
           <p className="font-display text-[14px] font-semibold text-success-fg">{t.rg.supportAvailable}</p>
-          <p className="mt-1 text-body-sm text-text-muted leading-snug">
+          {/* text-balance (round 3, 2026-10-09, tile 179): the link stood alone on line 2, "Msaada wa kimataifa kupitia" /
+              "begambleaware.org.". Balanced it reads "Msaada wa kimataifa" / "kupitia begambleaware.org." (en
+              "International support" / "at begambleaware.org."). Only the wrap changes; the words and the link do not. */}
+          <p className="mt-1 text-body-sm text-text-muted leading-snug text-balance">
             {/* ⛔ No helpline line since the owner's ruling of 2026-10-06 (docs/COMPLIANCE-DECISIONS.md). */}
             {t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-success-fg underline underline-offset-2">begambleaware.org</a>.
           </p>

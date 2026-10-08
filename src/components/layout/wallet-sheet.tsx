@@ -37,6 +37,7 @@ import { Cash, CashEye, useCashHidden } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
+import { keepLastWords } from "@/components/ui/keep-words";
 
 export function WalletSheet({
   open,
@@ -97,7 +98,10 @@ export function WalletSheet({
       {held ? (
         <div className="kp-wsheet__held" role="status">
           <p className="kp-wsheet__held-t">{t.kycGate.frozenTitle}</p>
-          <p className="kp-wsheet__held-b">{t.kycGate.frozenBody}</p>
+          {/* Its last two words break together (round 3, 2026-10-09, tile 092): "…itakueleza" / "kinachofuata." left the
+              last word alone at 390. The notice's line is 248px at 320 and the pair at most 150 ("itakueleza
+              kinachofuata."), so it always fits. */}
+          <p className="kp-wsheet__held-b">{keepLastWords(t.kycGate.frozenBody)}</p>
         </div>
       ) : (
         <div className={onBreak ? "kp-wsheet__pair kp-wsheet__pair--one" : "kp-wsheet__pair"}>

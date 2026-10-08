@@ -27,6 +27,9 @@ import { readFileSync } from "node:fs";
 const IDENTITY_SURFACES = [
   "src/components/ui/identity-avatar.tsx",
   "src/components/updown/updown-card.tsx",
+  // 2026-10-09 (round 3, tiles 177 178 203): the leaderboard's ribbon struck its top TIER in `text-gold-300` — "Fedha",
+  // silver, in the money ink. The ribbon states ranks, counts and rates; its gold accent is gone, and this keeps it gone.
+  "src/components/layout/page-ribbon.tsx",
 ];
 
 /** The tokens the money surfaces own. Matching `--gold-N` covers the aliases' targets too. */

@@ -17,6 +17,7 @@ import { useModalLock } from "@/lib/use-modal-lock";
 // ⛔ ONE HOME for how a kind looks (§0a). The page renders the same rows; a second map here
 // would let a win be gold in the bell and grey on the page, and nothing would say so.
 import { iconFor, tintFor } from "@/lib/notification-appearance";
+import { readableNotificationBody } from "@/lib/notification-text";
 
 /** The SAME list `<Modal>` (ui/modal.tsx) and `<FilterSheet>` (markets/filter-sheet.tsx)
  *  trap against — copied verbatim so the product's three focus traps cannot drift apart. */
@@ -56,10 +57,12 @@ function pickTitle(n: StoredNotification, locale: string): string {
   if (locale === "zh") return n.titleZh || n.titleEn;
   return n.titleEn;
 }
+/** …read through `readableNotificationBody`: a row written before round 3 (2026-10-09) still carries a raw " · pos_…"
+ *  and a doubled full stop, and is shown without them (notification-text.ts). */
 function pickBody(n: StoredNotification, locale: string): string {
-  if (locale === "sw") return n.bodySw || n.bodyEn;
-  if (locale === "zh") return n.bodyZh || n.bodyEn;
-  return n.bodyEn;
+  if (locale === "sw") return readableNotificationBody(n.bodySw || n.bodyEn);
+  if (locale === "zh") return readableNotificationBody(n.bodyZh || n.bodyEn);
+  return readableNotificationBody(n.bodyEn);
 }
 
 export function NotificationsPanel() {

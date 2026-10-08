@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Toggle } from "@/components/ui/toggle";
+import { I } from "@/components/ui/glyphs";
 import { useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -68,7 +69,7 @@ function NeedleMark({ size = 16, className }: { size?: number; className?: strin
   );
 }
 
-export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu-row" | "settings" }) {
+export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu-row" | "hub-row" | "settings" }) {
   const { locale } = useT();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -129,6 +130,20 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
         <span className="flex-1">{t("The Needle", "Sindano", "指针玩具")}</span>
         <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className="text-text-subtle"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </button>
+    ) : variant === "hub-row" ? (
+      /* ⭐ ONE OF THE AKAUNTI HUB'S ROWS (2026-10-09, round 3, tiles 122–130 158 264–275 294 295). The hub drew the account
+         menu's row inside a padded list item, so it was built unlike every row around it: its chevron 2px left and 8–10px
+         tall against the hub's 11–12, its mark 2px right, its value in mono capitals 2px short of the column, the row 55px
+         against 56. It now wears the hub's own row, word for word: the 56px rung, the 20px glyph slot in the glyph ink, the
+         body label, the value in the value's type, the hub's 18px chevron. The mark at 20px strokes 1.6px, as the hub's
+         glyphs do (1.9 on 24); its state is the value's word, as the language row's is. `.kp-hub__*` are the hub's classes
+         (globals.css), and this branch is the only place outside the hub's own files that wears them. */
+      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="kp-hub__row">
+        <span className="kp-hub__glyph" aria-hidden><NeedleMark size={20} /></span>
+        <span className="kp-hub__text"><span className="kp-hub__label">{t("The Needle", "Sindano", "指针玩具")}</span></span>
+        <span className="kp-hub__value">{shownLabel}</span>
+        <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />
       </button>
     ) : (
       <button

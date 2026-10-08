@@ -11,8 +11,12 @@
  * defect class as a doc citing a deleted file.
  *
  * Stats render as a horizontal row of slim "pill" capsules, mono
- * numerals, gilt accents on the most important number. Wraps on
- * narrow viewports.
+ * numerals. Wraps on narrow viewports.
+ *
+ * ⛔ NO GOLD ACCENT (2026-10-09, round 3, tiles 177 178 203). It had one, and its one use was the leaderboard's top tier:
+ * "Fedha" — silver — struck in the money ink. Gold marks money that was earned and nothing else (DESIGN_AUTHORITY Q5);
+ * a ribbon that states ranks, counts and rates has nothing gold to say, so the option is gone rather than left to be
+ * reached for. `test:gold-is-money` holds this file among the identity surfaces.
  */
 
 import { cn } from "@/lib/utils";
@@ -21,7 +25,7 @@ export type RibbonStat = {
   label: string;
   sw?: string;
   value: string;
-  accent?: "gold" | "yes" | "no" | "default";
+  accent?: "yes" | "no" | "default";
 };
 
 export function PageRibbon({
@@ -54,7 +58,6 @@ export function PageRibbon({
           <p
             className={cn(
               "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none",
-              s.accent === "gold" && "text-gold-300",
               s.accent === "yes" && "text-yes-300",
               s.accent === "no" && "text-no-300",
               (!s.accent || s.accent === "default") && "text-text",

@@ -7,7 +7,7 @@
  * sample data is generated for the empty demo store in non-production only.
  */
 import { ROOT_OPEN_GRAPH } from "../layout";
-import { fill } from "@/lib/utils";
+import { cn, fill } from "@/lib/utils";
 import { db } from "@/lib/server/store";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
@@ -325,7 +325,11 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         <>
       <PageRibbon
         stats={[
-          { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze"), accent: "gold" },
+          /* ⛔ PLAIN INK, NEVER GOLD (2026-10-09, round 3, tiles 177 178 203). The top tier was struck in the money ink
+             (`text-gold-300`, measured 243,203,122), so the word "Fedha" — SILVER — stood in gold: the word and its colour
+             disagreed, and gold marks money that was earned and nothing else (DESIGN_AUTHORITY Q5, `test:gold-is-money`,
+             which now holds `page-ribbon.tsx` among the identity surfaces). A rank is identity; the metal is the badge's. */
+          { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze") },
           { label: t.leaderboard.bestRoi, value: `${rows[0]?.roi.toFixed(1) ?? "0"}%`, accent: "yes" },
           /**
            * 🔴 THIS PRINTED THE BOARD SIZE UNDER THE LABEL "PREDICTORS". `rows` is the ranking,
@@ -397,7 +401,12 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         * identically here — same fused direction button, same tri-state, same reset-to-natural on
         * choosing a new key.
         */}
-      <div className={QUERY_BAR_ROW2_CLASS}>
+      {/* ⭐ THE PAGE'S RHYTHM, NOT THE BAR'S (2026-10-09, round 3, tiles 177 178). The row class carries the sticky bar's
+          own padding (8px over, 10px under), which is right between a bar's two rows and wrong here, where the sort is a
+          block of the page's 32px stack: the pills stood 40px over the sort and the sort 42px over the podium (48px over it,
+          and a rule 16px under it, in the round-3 tiles, taken while the landing board's `.kp-qrow` padding and border still
+          reached this row). `py-0` hands the spacing back to the stack — 32 above and 32 below, like every other gap here. */}
+      <div className={cn(QUERY_BAR_ROW2_CLASS, "py-0")}>
         <QuerySort
           label={t.common.sort}
           value={sortLabel(state.sort)}

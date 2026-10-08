@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Cash } from "@/components/ui/cash";
+import { DotSeq } from "@/components/ui/dot-seq";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
 import { formatTzs } from "@/lib/utils";
@@ -23,9 +24,10 @@ export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: H
   if (row.kind === "language") return <LanguageRow />;
   if (row.kind === "cardSize") return <CardSizeRow />;
   if (row.kind === "needle") {
+    // The hub's own row (the drawer's `hub-row` trigger), not the account menu's in a padded item (round 3, 2026-10-09).
     return (
-      <li className="kp-hub__needle">
-        <NeedleControlsDrawer variant="menu-row" />
+      <li>
+        <NeedleControlsDrawer variant="hub-row" />
       </li>
     );
   }
@@ -61,20 +63,10 @@ export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: H
 
 /**
  * A row's second line. One that names several things — "Maswali ya kawaida · Simu · Barua pepe" — is drawn as those
- * things, so it breaks only BETWEEN them and never on a dangling "·" (WP12's tiles 276, 277, 2026-10-08;
- * `.kp-hub__seq`). The words are the dictionary's own, split at its own " · "; the dots are drawn, not read.
+ * things, so it breaks only BETWEEN them and never on a dangling "·" (WP12's tiles 276, 277, 2026-10-08). The mechanism
+ * is `DotSeq` (dot-seq.tsx) since round 3 (2026-10-09), when the legal header and the invite page needed it too. The
+ * words are the dictionary's own, split at its own " · "; the dots are drawn, not read.
  */
 function HubSub({ text }: { text: string }) {
-  const parts = text.split(" · ");
-  if (parts.length < 2) return <span className="kp-hub__sub">{text}</span>;
-  return (
-    <span className="kp-hub__sub kp-hub__seq">
-      {parts.map((part, i) => (
-        <span key={i} className="kp-hub__seq-item">
-          {i > 0 && <span className="kp-hub__seq-dot" aria-hidden>·</span>}
-          {part}
-        </span>
-      ))}
-    </span>
-  );
+  return <DotSeq text={text} className="kp-hub__sub" />;
 }

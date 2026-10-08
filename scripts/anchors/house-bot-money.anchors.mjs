@@ -321,8 +321,10 @@ export const MUTATIONS = [
   {
     name: "D19-1 · a holder's WIN notice names the house stake again",
     file: SVC,
-    from: "m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));",
-    to: "m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"));",
+    // 2026-10-09 (round 3 of the visual pass): the win's label is the market's name alone — the " · ${p.id}" it carried
+    // was a raw id in the sentence — so the anchor is the new call's tail; the defect put back is the same one.
+    from: "localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id));",
+    to: "localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"));",
     expect: "8.2 · …and its English body is the plain template",
     suite: "money-mem",
   },

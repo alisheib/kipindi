@@ -185,8 +185,8 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
       && (meta.match(/<span className="mcardp-src__part">/g) ?? []).length === 2
       && /\{closesOn && <span className="mcardp-src__dot">\{" · "\}<\/span>\}\s*\{settlesPre\}/.test(meta)
       && !/\{closesOn && sourceName \? " · " : null\}/.test(meta)
-      && css.includes("\n.kp-hub__seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }")
-      && css.includes("\n.kp-hub__seq-dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }")
+      && css.includes("\n.kp-seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--seq-gap, var(--sp-3)); clip-path: inset(-100vmax -100vmax -100vmax 0); }")
+      && css.includes("\n.kp-seq__dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--seq-gap, var(--sp-3)); text-align: center; }")
       && css.includes("\n.mcardp-src:lang(zh) { word-break: keep-all; }"),
     meta.slice(0, 160));
   check("2.14-control the slice is the real meta line (it holds the source part the gate reads)",

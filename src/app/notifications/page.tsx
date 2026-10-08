@@ -48,6 +48,7 @@ import { pageForUser } from "@/lib/server/notification-service";
 import { getServerT } from "@/lib/i18n-server";
 import { cn } from "@/lib/utils";
 import { iconFor, tintFor } from "@/lib/notification-appearance";
+import { readableNotificationBody } from "@/lib/notification-text";
 import {
   parseFilter, parseSort,
   type NotificationFilter, type NotificationSort,
@@ -109,8 +110,10 @@ export default async function NotificationsPage({
 
   const pickTitle = (n: (typeof items)[number]) =>
     locale === "sw" ? (n.titleSw || n.titleEn) : locale === "zh" ? (n.titleZh || n.titleEn) : n.titleEn;
+  /* Read through `readableNotificationBody` (round 3, 2026-10-09, tile 192): a row written before it still carries a raw
+     " · pos_…" and the old template's doubled full stop, and is shown without them (notification-text.ts). */
   const pickBody = (n: (typeof items)[number]) =>
-    locale === "sw" ? (n.bodySw || n.bodyEn) : locale === "zh" ? (n.bodyZh || n.bodyEn) : n.bodyEn;
+    readableNotificationBody(locale === "sw" ? (n.bodySw || n.bodyEn) : locale === "zh" ? (n.bodyZh || n.bodyEn) : n.bodyEn);
 
   /* ⛔ `FILTER_LABEL` / `SORT_LABEL` MOVED TO `notifications-bar.tsx` RATHER THAN BEING COPIED
      THERE. Both were declared here and consumed only by the two pill rails the bar replaced;

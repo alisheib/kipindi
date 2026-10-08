@@ -1334,6 +1334,37 @@ async function arifaTile(page, locale, width) {
   return row;
 }
 
+/**
+ * ⭐ THE UNREAD SIGN A SIGNED-IN PLAYER'S TILE OWES, AWAITED BEFORE IT IS SHOT (round 3, 2026-10-09). The round-3 tiles
+ * showed no Akaunti dot on 157 173 179, no bell "25" on 158 174 180, the hub's Arifa "25" beside a bare bell on 266, and
+ * no sign at all on the en hub (260–265) — none of it a regression (no file on the unread path changed on the branch).
+ * Each counter makes its own read when it mounts (`unread-count.ts`, `notifications-panel.tsx`); the dot mounts below
+ * 1024 and the bell from 1024 (`one-poller.ts`), so a resize to 1280 mounts a bell with no count yet; Server Actions run
+ * one at a time per tab, so a slow first read holds the next one; a failed read waits 21–39 s before it tries again; and
+ * the hub's Arifa row reads ONCE (A1) and is refreshed only by `50pick:refresh-notifications`. The tiles were shot
+ * 0.5–1 s after the resize or the load. So for the demo player, who always has unread notices, the shot now waits for
+ * the counter mounted at its width (the dot below 1024, the bell from 1024 — `DOT_SHOWN`, `BELL_AT_LEAST`, the unread
+ * section's own probes) for up to 45 s, one failed read's retry included; and, asked for, for the Arifa row's badge,
+ * asking the row once to read again (the event it listens for) if its one read did not land. A sign still missing is
+ * SAID, never failed: the unread section (§3) is where the counts are judged.
+ */
+const UNREAD_WAIT_MS = 45_000;
+async function unreadLanded(page, width, { arifa = false } = {}) {
+  const lgUp = width >= 1024;
+  const seen = (fn, arg, timeout) => page.waitForFunction(fn, arg, { timeout }).then(() => true).catch(() => false);
+  const sign = lgUp ? await seen(BELL_AT_LEAST, 1, UNREAD_WAIT_MS) : await seen(DOT_SHOWN, null, UNREAD_WAIT_MS);
+  let row = true;
+  if (arifa && (await page.evaluate((sel) => !!document.querySelector(sel), ARIFA))) {
+    const badge = (sel) => !!document.querySelector(`${sel} .count-badge`);
+    row = await seen(badge, ARIFA, 15_000);
+    if (!row) {
+      await page.evaluate(() => window.dispatchEvent(new Event('50pick:refresh-notifications')));
+      row = await seen(badge, ARIFA, 15_000);
+    }
+  }
+  if (!sign || !row) say(`  · after the wait at ${width}: the ${lgUp ? 'bell' : 'dot'} ${sign ? 'shows its count' : 'shows NO count'}${arifa ? `, the Arifa row ${row ? 'shows its badge' : 'shows NO badge'}` : ''}`);
+}
+
 /** The hub, screen by screen: its top, then each card (or the sign-out row) the last screen did not show whole. */
 async function hubWalk(page, base) {
   await toTop(page);
@@ -1465,6 +1496,8 @@ async function tabTour(v, viewer, widths, list) {
     for (const width of widths) {
       await resize(page, width);
       await toTop(page);
+      // The demo player always has unread notices: the dot (or, from 1024, the bell) is part of this tile (round 3).
+      if (viewer === 'player') await unreadLanded(page, width);
       const cell = { section: 'tabs', route: c.route, pathname, viewer, state: 'active-tab', locale: 'sw', width };
       await checkShell(page, cell, { journey: true });
       await shoot(page, cell, heading);
@@ -1908,6 +1941,8 @@ async function hubSection() {
           JSON.stringify(h ? { id: h.id, exit: h.exit, prompt: h.prompt && fold(h.prompt), staff: h.staff && fold(h.staff), rows: h.rows.length } : null));
         for (const width of HUB_WIDTHS) {
           await resize(v.page, width);
+          // The demo player's hub owes its unread signs — the dot or the bell, and the Arifa row's badge (round 3).
+          if (vw.id === 'player') await unreadLanded(v.page, width, { arifa: true });
           const base = { section: 'hub', route: 'account', pathname: '/account', viewer: vw.id, state: 'hub', locale, width };
           if (HUB_WALK.includes(width)) {
             await hubWalk(v.page, base);
@@ -2034,6 +2069,9 @@ async function viewerSection() {
     await page.locator(`${HUB} a.kp-hub__row[href='/results']`).first().click({ timeout: 15_000 });
     await page.waitForFunction(() => location.pathname === '/results', null, { timeout: 60_000 });
     await page.waitForSelector('#main-content h1', { state: 'attached', timeout: 60_000 });
+    // ⛔ The pointer leaves the row it pressed (round 3, 2026-10-09, tile 326): it stayed at the hub row's centre, where
+    // /results draws its outcome pills, so "HAPANA 2" was shot in its HOVER fill (#03002D, x188–280) beside a bare "NDIO 3".
+    await page.mouse.move(2, Math.round(viewport(390).height / 2)).catch(() => {});
     await settle(page, 600);
     // 3 · A’s session ends: the same account signs in elsewhere (one session per account).
     await demo('', null, 'a second sign-in of the demo account, which ends A’s session');

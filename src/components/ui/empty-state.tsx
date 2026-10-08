@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
+import { emptyStateBody } from "./empty-state-text";
 
 type Kind =
   | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
@@ -78,24 +79,10 @@ export function EmptyState({
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{title}</p>
-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{dashOnItsWord(body)}</p>}
+      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
-}
-
-/**
- * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
- * — tiketi yako itaonekana hapa." broke at the space BEFORE its dash, so line 2 began "— tiketi yako…" (en: "— your
- * ticket shows up here."). The words are the dictionary's and stay so; only the break before the dash is taken away:
- *   · a spaced dash (sw, en) — the space before it becomes a no-break space, so the dash ends its line with its word;
- *   · an unspaced dash (zh "否——您") — a word joiner (U+2060, zero-width) holds it to the character before.
- * A break AFTER the dash is untouched, and an unspaced en dash ("1–5", a range) is left alone.
- */
-const NO_BREAK_SPACE = String.fromCharCode(0x00a0);
-const WORD_JOINER = String.fromCharCode(0x2060);
-function dashOnItsWord(text: string): string {
-  return text.replace(/[ \t]+(?=[—–])/g, NO_BREAK_SPACE).replace(/([^\s—])(?=—)/g, `$1${WORD_JOINER}`);
 }
 
 /** Compact error-state — same chrome, no-rose accent. */
@@ -133,6 +120,27 @@ export function ErrorState({
   );
 }
 
+/**
+ * ⭐ EACH DRAWING'S BOX STARTS WHERE ITS INK STARTS (2026-10-09, round 3, tiles 165 166 241). Every drawing is a 56px square,
+ * but its ink does not reach the square's top: the compass begins 8.25px down, the briefcase 14.25px. The box's padding is
+ * 48px on both sides, so with a call to action under the body (whose ink ends where its box ends) the content stood 56 and
+ * 62px under the dashed top against 48px over its bottom — 4px and 7px below the box's centre, measured on Juu/Chini's
+ * history (box y333–647, ink y390–598) and on Tiketi zangu's (ink y396–594 in y333–643). So each viewBox starts at its
+ * drawing's first ink row (the topmost stroke, less half the 1.5px stroke, rounded down) and the svg is that much shorter:
+ * the ink now opens 48px under the border, as the button closes 48px above it. The scale is unchanged (one unit, one
+ * pixel), the width stays 56, and nothing below the ink moves, so each drawing keeps its gap to the title.
+ * ⚠️ A NEW DRAWING NEEDS ITS ROW HERE — `test:visual-pass-r3c` §2 reads each case's topmost coordinate and fails on a
+ * number that is not its ink top. An `illustration` handed in by a caller is drawn as it comes.
+ */
+const INK_TOP: Record<Kind, number> = {
+  markets: 14, positions: 14, leaderboard: 12, notifications: 13, audit: 7, sources: 10,
+  proposals: 8, kyc: 12, fairness: 14, rg: 12, admin: 8, default: 8,
+};
+/** The svg's frame for a drawing whose ink starts `top` units down its 56-unit square. */
+function frame(top: number) {
+  return { viewBox: `0 ${top} 56 ${56 - top}`, width: 56, height: 56 - top };
+}
+
 /** Line-art illustrations — gilt-line etching on dark glass; one gold accent per scene. */
 function DefaultIllustration({ kind }: { kind: Kind }) {
   const s = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -140,7 +148,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
   switch (kind) {
     case "markets":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.markets)} {...s}>
           {/* Tilted scales weighing a YES/NO pip pair — the tipping metaphor;
               gilt pivot diamond. Left pan holds a filled YES pip, right pan a
               hollow NO ring, so the pair reads without relying on colour. */}
@@ -162,7 +170,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "positions":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.positions)} {...s}>
           {/* Closed briefcase, gilt latch. */}
           <rect x="10" y="21" width="36" height="25" rx="3" />
           <path d="M22 21 V17.5 Q22 15 24.5 15 H31.5 Q34 15 34 17.5 V21" />
@@ -173,7 +181,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "leaderboard":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.leaderboard)} {...s}>
           {/* Empty podium, gilt spark above first place. */}
           <rect x="21" y="26" width="14" height="20" />
           <rect x="7" y="33" width="14" height="13" />
@@ -184,7 +192,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "notifications":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.notifications)} {...s}>
           {/* Bell at rest — gilt clapper; ground line. */}
           <path d="M19 36 V27 A9 9 0 0 1 37 27 V36 L40.5 41 H15.5 L19 36 Z" />
           <path d="M26 16 a2 2 0 0 1 4 0" />
@@ -194,7 +202,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "audit":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.audit)} {...s}>
           {/* Document under a lens, gilt glint. */}
           <path d="M14 8 H32 L38 14 V38 H14 Z" />
           <path d="M32 8 V14 H38" />
@@ -207,7 +215,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "sources":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.sources)} {...s}>
           {/* Globe with meridians — gilt dot on Tanzania. */}
           <circle cx="28" cy="28" r="17" />
           <ellipse cx="28" cy="28" rx="7.5" ry="17" />
@@ -219,7 +227,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "proposals":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.proposals)} {...s}>
           {/* Ballot box receiving a folded paper + quill — "propose & earn";
               gilt nib. */}
           <path d="M11 30 L15 24 H41 L45 30" />
@@ -234,7 +242,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "kyc":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.kyc)} {...s}>
           {/* ID card above a progress rail — two steps done, one live (gilt),
               one to go. */}
           <rect x="13" y="13" width="30" height="19" rx="3" />
@@ -251,7 +259,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "fairness":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.fairness)} {...s}>
           {/* Provably-fair chain: commit → reveal → attest (gilt node + check). */}
           <circle cx="15" cy="30" r="7" />
           <circle cx="28" cy="30" r="7" />
@@ -265,7 +273,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "rg":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.rg)} {...s}>
           {/* Calm sunrise over a horizon — self-care, never gambling imagery;
               gilt sun core. */}
           <line x1="10" y1="40" x2="46" y2="40" />
@@ -280,7 +288,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     case "admin":
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.admin)} {...s}>
           {/* Clipboard under a lens — a generic admin console at rest;
               gilt glint. */}
           <rect x="14" y="12" width="24" height="32" rx="3" />
@@ -295,7 +303,7 @@ function DefaultIllustration({ kind }: { kind: Kind }) {
       );
     default:
       return (
-        <svg viewBox="0 0 56 56" {...s} width="56" height="56">
+        <svg {...frame(INK_TOP.default)} {...s}>
           {/* Compass rose, gilt north point. */}
           <circle cx="28" cy="28" r="19" />
           <path d="M28 9 L31 25 L47 28 L31 31 L28 47 L25 31 L9 28 L25 25 Z" />

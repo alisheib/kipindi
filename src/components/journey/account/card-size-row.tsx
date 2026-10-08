@@ -15,6 +15,7 @@
 import { useId, useSyncExternalStore } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
+import { keepLastWords } from "@/components/ui/keep-words";
 import { useT } from "@/lib/i18n";
 import { applyCardSpacing, currentCardSpacing, subscribeCardSpacing } from "@/lib/card-spacing";
 
@@ -35,15 +36,20 @@ export function CardSizeRow() {
         aria-label={`${t.journey.hubCardSize}: ${t.nav.densityCompact}`}
         aria-describedby={hintId}
         onClick={() => applyCardSpacing(compact ? "comfortable" : "compact")}
-        className="kp-hub__row"
+        className="kp-hub__row kp-hub__row--switch"
       >
+        {/* ⭐ THE RAIL ROW'S LAYOUT, AS ITS HEADER PROMISES (round 3, 2026-10-09, tiles 124 127 256 264 294 295 298 302 306
+            331): label and value beside the switch, the hint under all three. The hint used to share its line with the
+            value and the switch, so it had 183px at 390 and 113px at 320 and left a word alone at every phone width —
+            "Kwa simu tu. Hakuna" / "kinachofichwa.", "Phones only. Nothing is" / "hidden.", and three lines at 320. Under
+            the whole row it has 222px at 320 and 292px at 390 (the hub's row less its glyph slot): one line at 360 and up
+            in every language, and at sw 320 "Kwa simu tu." / "Hakuna kinachofichwa." — the last two words kept together
+            (`keepLastWords`), so it breaks between its sentences and not before its last word. */}
         <span className="kp-hub__glyph" aria-hidden><I.layoutGrid s={20} /></span>
-        <span className="kp-hub__text">
-          <span className="kp-hub__label">{t.journey.hubCardSize}</span>
-          <span id={hintId} className="kp-hub__sub">{t.nav.cardSpacingHint}</span>
-        </span>
+        <span className="kp-hub__label">{t.journey.hubCardSize}</span>
         <span className="kp-hub__value">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
         <Toggle on={compact} decorative />
+        <span id={hintId} className="kp-hub__sub kp-hub__row-hint">{keepLastWords(t.nav.cardSpacingHint)}</span>
       </button>
     </li>
   );

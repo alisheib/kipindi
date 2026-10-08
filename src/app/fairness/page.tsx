@@ -36,6 +36,7 @@ import { formatEatDateTime } from "@/lib/eat-day";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { durationHours } from "@/lib/duration-phrase";
 import { EmptyState } from "@/components/ui/empty-state";
+import { keepLastWords } from "@/components/ui/keep-words";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
 import { pickLocalized } from "@/lib/localized";
@@ -183,8 +184,11 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
         <PageHero glow="info">
           <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
         </PageHero>
+        {/* Its last two words break together (round 3, 2026-10-09, tiles 187 204): at 390 the lead's eighth line was
+            "lifungwe." alone. Measured with the repo's Inter at 15px in its 358px measure, it now ends "…inayohamishwa" /
+            "hadi lifungwe."; the en close is "every flag.", and zh keeps its own rules. */}
         <p className="text-[15px] leading-relaxed text-text-muted max-w-[68ch]">
-          {fill(t.common.fairnessIntro, { hours: durationHours(locale, objectionWindowHours) })}
+          {keepLastWords(fill(t.common.fairnessIntro, { hours: durationHours(locale, objectionWindowHours) }))}
         </p>
       </header>
 

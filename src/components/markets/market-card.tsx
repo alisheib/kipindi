@@ -391,7 +391,7 @@ export function MarketCard({
      and the market page links the source. */
   /* ⭐ TWO PARTS, AND THE LINE BREAKS ONLY BETWEEN THEM (round 3's tiles 029 059 074 084 097 109, 2026-10-08). As one run
      of text, Chinese broke it anywhere: at 320 "2026年10月9日 截止 · 结算来 / 源：CoinGecko" split 来源. Each part is now a
-     flex item (`.mcardp-src__seq`, the hub's own idiom beside `.kp-hub__seq`), and the " · " before the source hangs in
+     flex item (`.mcardp-src__seq`, the dotted-sequence idiom beside `.kp-seq`, dot-seq.tsx), and the " · " before the source hangs in
      the gap to its left, so a part that opens a line carries its dot outside the line, where the clip hides it — no
      line ends on "·" or starts with one. The dot keeps the sentence's own " · ", so a screen reader hears the line as
      before. */

@@ -10,6 +10,7 @@ import { AgentDashboard } from "./agent-dashboard";
 import QRCode from "qrcode";
 import { FiftyMark, GiltCorner } from "@/components/brand";
 import { Chip } from "@/components/ui/chip";
+import { DotSeq } from "@/components/ui/dot-seq";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -288,14 +289,21 @@ export default async function InvitePage({
           className="pointer-events-none absolute inset-0"
           style={{ background: `radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--${paid ? "gold" : "royal"}-500) 12%, transparent), transparent 60%)` }}
         />
-        <div className="relative flex items-center gap-4">
+        {/* ⭐ THE CALL HAS THE CARD'S WIDTH ON A PHONE (round 3, 2026-10-09, tile 181). Beside the 96px dial the 19px call
+            had 191px at 390 (121 at 320), so "Shiriki kiungo chako · uone wanaojiunga" broke as "Shiriki kiungo" / "chako ·
+            uone" / "wanaojiunga" — its two phrases mixed on one line and its last word alone — and at 320 its longest word
+            was wider than the column. Below `sm` the dial keeps its caption beside it (the caption names what the dial
+            counts) and the call takes the row under both, at the card's full width (308px at 390, 238 at 320), drawn as
+            its two phrases (`DotSeq`): "Shiriki kiungo chako" over "uone wanaojiunga" at every phone width, and on one
+            line, as before, wherever both fit. From `sm` the row is the one it was: dial, then caption over call. */}
+        <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:flex">
           <EarningsRing value={ringValue} label={ringLabel} tone={paid ? "gold" : "royal"} />
-          <div className="min-w-0 flex-1">
-            <Cap className={`mb-1.5 ${paid ? "!text-gold-300" : "!text-royal-300"}`}>
+          <div className="contents sm:block sm:min-w-0 sm:flex-1">
+            <Cap className={`sm:mb-1.5 ${paid ? "!text-gold-300" : "!text-royal-300"}`}>
               {paid ? t.profile.inviteEarn : t.profile.friendsJoined}
             </Cap>
-            <p className="font-display text-[19px] font-bold leading-tight">
-              {paid ? t.profile.inviteEarnSub : t.profile.inviteFriendsSub}
+            <p className="col-span-2 font-display text-[19px] font-bold leading-tight text-balance">
+              <DotSeq text={paid ? t.profile.inviteEarnSub : t.profile.inviteFriendsSub} />
             </p>
           </div>
         </div>

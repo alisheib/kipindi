@@ -4136,7 +4136,11 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          notifyWin(p.userId, payout, localizedText(`${m.titleEn} · ${p.id}`, m.titleSw ? `${m.titleSw} · ${p.id}` : null, m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));
+          notifyWin(p.userId, payout, localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id));
+          // ⭐ ↑ The market's name alone (round 3 of the visual pass, 2026-10-09): " · pos_…" was appended to it, a raw id
+          // in the sentence ("<title> · pos_… kimelipa."). The link is this position's own permalink, so two wins on one
+          // market already stay two notices. (Written UNDER the call: `test:updown-digest` §5 looks 400 characters back
+          // from it for the `perEventNotificationsSuppressed` gate, and a note above would push the gate out of reach.)
           // SEAM:emailWin — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
           if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
             to: email,

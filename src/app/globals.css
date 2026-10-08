@@ -952,6 +952,13 @@ html {
   scroll-padding-bottom: calc(var(--rail-h) + env(safe-area-inset-bottom, 0px));
 }
 
+/* ⛔ CHINESE IS NEVER SLANTED (round 3, 2026-10-09, tile 275). No Chinese face has an italic, so an `italic` over Chinese
+   is the browser shearing the glyphs itself: the footer's 如果博彩不再有趣，请停止。 leaned on every zh page, and so did the
+   page subtitles and the Needle drawer's note, which wear `italic` in every language. A zh page draws no synthesized
+   oblique at all — the italic stays a property, and the glyphs stand upright (Chromium 97, Firefox 111, Safari 16.4;
+   an older engine shears as before). The app loads no italic face of its own, so nothing real is lost. */
+html:lang(zh) { font-synthesis-style: none; }
+
 * { box-sizing: border-box; }
 
 body {
@@ -3556,20 +3563,35 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    first paint and the hydrated strip at scroll 0 are the same picture — nothing changes when the script lands.
    ⭐ `scroll-padding-inline` keeps a chip that keyboard focus scrolls into view clear of both fades, so its
    ring (D63, below) is never drawn dimmed. Mobile only, as before: from `lg` the strip wraps. */
+/* ⭐ 2026-10-09 · round 3 [319] · …AND THE STRIP HAS ROOM FOR WHAT A SELECTED PILL DRAWS AROUND ITSELF. A box that scrolls
+   on one axis clips on both, and the strip was exactly as tall as its pills and began exactly at the content edge, so the
+   pressed pill's halo (`--glow-selected`: 12px of blur, 1px of spread in, so it reaches 11px out) was cut flat at x16, y343
+   and y386 on Tiketi zangu at 390 — a round pill in a square glow. The strip now carries 12px of padding above, below and
+   before its pills and takes the same 12px back as negative margin, so every pill sits on the pixel it sat on and the
+   row is as tall as it was, while the halo is drawn whole inside the strip's own box. (The trailing side already had its
+   12px: `pr-2`.) The leading fade moves in by the same 12px — it starts at the strip's first pill, not in the gutter, so
+   a chip scrolled off the start still fades from the content edge exactly as before — and so does the scroll padding
+   that keeps a focused chip clear of it. */
 @media (max-width: 1023.98px) {
+  .kp-strip-fade {
+    padding-block: var(--sp-3);
+    margin-block: calc(-1 * var(--sp-3));
+    padding-left: var(--sp-3);
+    margin-left: calc(-1 * var(--sp-3));
+  }
   .kp-strip-fade,
   .kp-strip-fade[data-edges="end"] {
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
     mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
-    scroll-padding-inline: 32px 40px;
+    scroll-padding-inline: 44px 40px;
   }
   .kp-strip-fade[data-edges="start"] {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
-    mask-image: linear-gradient(to right, transparent, #000 32px);
+    -webkit-mask-image: linear-gradient(to right, transparent 12px, #000 44px);
+    mask-image: linear-gradient(to right, transparent 12px, #000 44px);
   }
   .kp-strip-fade[data-edges="both"] {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
-    mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 40px), transparent calc(100% - 8px));
+    -webkit-mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 40px), transparent calc(100% - 8px));
+    mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 40px), transparent calc(100% - 8px));
   }
   .kp-strip-fade[data-edges="none"] {
     -webkit-mask-image: none;
@@ -5312,6 +5334,13 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* letter-spacing: §T3's 0.14em — in the shared eyebrow rule beside `.amount`. */
 .admin-tbl thead { font-family: var(--font-mono); font-size: var(--type-label); text-transform: uppercase; color: var(--text-subtle); background: var(--bg-overlay); border-bottom: 1px solid var(--border); }
 .admin-tbl th { padding: 10px 16px; font-weight: 500; white-space: nowrap; }
+/* ⭐ A RIGHT-ALIGNED HEADING ENDS WHERE ITS FIGURES END (2026-10-09, round 3, tiles 177 178). The head is tracked 0.14em (the
+   eyebrow rule above), and a browser adds that spacing after the LAST letter too, so a right-aligned heading stopped one
+   letter-space short of its column: on /leaderboard "ROI" ended at x528 over figures ending at x530, "MFULULIZO" at 959
+   over 961–962, "IMETATULIWA" at 1124 over 1126. An empty inline after the heading takes the trailing space back, so its
+   last letter's advance meets the cell's content edge, where the figures' advances meet it. What remains (about 1px) is
+   the letters' own side bearings inside their monospace cells, not spacing. Left-aligned and centred heads are untouched. */
+.admin-tbl thead th.text-right::after { content: ""; display: inline-block; margin-right: -0.14em; }
 .admin-tbl td { padding: 12px 16px; vertical-align: middle; }
 /* A cell, or a row, that asks to align its contents to the top GETS it. The rule above is unlayered and outranked the
    utility, so a figure sat level with the middle of a tall wrapped label instead of on its line (measured on
@@ -6187,6 +6216,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__card :where(a, button, summary):focus-visible { outline-offset: -2px; }
 .kp-hub__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: var(--sp-2) var(--sp-4); border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
 .kp-hub__row:hover { background: var(--bg-overlay); }
+/* The card-size switch row (`card-size-row.tsx`, round 3, 2026-10-09) is laid out as the rail menu's row it copies: glyph,
+   label, value and switch on the first line, the hint under the last three. The hint shared the first line with the value
+   and the switch and had 113–183px, so it left a word alone at every phone width; under them it has the row's width less
+   the glyph slot — 222px at 320, 292 at 390 — and reads on one line from 360 in every language. The glyph spans both
+   lines, centred on the row as every two-line row's glyph is. */
+.kp-hub__row--switch { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--sp-3); row-gap: 2px; }
+.kp-hub__row--switch > .kp-hub__glyph { grid-row: 1 / span 2; }
+.kp-hub__row--switch > .kp-hub__row-hint { grid-column: 2 / -1; grid-row: 2; }
 /* The card clips its rows to its rounded corners, so a square ring on the first or last row lost its corners there
    (WP12's tiles, 2026-10-08: the "Pochi" row's ring broke open at both top corners). An outline follows the element's
    radius, so the end rows take the card's inner curve and the ring stays whole. */
@@ -6200,18 +6237,21 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    2026-10-08: 仅限手机，不会隐藏任何内 / 容。). keep-all breaks a Chinese line at its punctuation instead
    (仅限手机， / 不会隐藏任何内容。); a run longer than its line still breaks rather than overflow. */
 .kp-hub__sub:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
-/* A second line that names several things breaks only BETWEEN them (WP12's tiles 276, 277, 2026-10-08): at 320
+/* A line that names several things breaks only BETWEEN them (WP12's tiles 276, 277, 2026-10-08): at 320
    "Maswali ya kawaida · Simu ·" ended its first line on a dangling dot, and at 360 "Barua pepe" left "pepe" alone.
-   Each thing is one flex item (`HubSub`, hub-row.tsx) and the dot before it hangs in the gap to its left, so a thing
-   that opens a line carries its dot outside the box, where the clip hides it: one line reads as before, two read
-   "Maswali ya kawaida · Simu" over "Barua pepe". The clip cuts the LEFT edge only, so a word wider than its line
-   still shows whole on the right, as the plain line always did.
+   Each thing is one flex item (`DotSeq`, dot-seq.tsx — the hub's `HubSub` until round 3 gave the legal header's version
+   line and the invite page's call the same defect, 2026-10-09) and the dot before it hangs in the gap to its left, so a
+   thing that opens a line carries its dot outside the box, where the clip hides it: one line reads as before, two read
+   "Maswali ya kawaida · Simu" over "Barua pepe". The clip cuts the LEFT edge only, so a word wider than its line still
+   shows whole on the right, as the plain line always did. The gap is the dot's room: 12px for Inter and Sora (a spaced
+   dot measures 11–13px there), 3ch in a monospace face (`--mono`), which is exactly " · " in it.
    ⭐ ONE IDIOM, TWO HOOKS: the featured card's meta line ("2026年10月9日 截止 · 结算来源：CoinGecko", `.mcardp-src__seq`,
    market-card.tsx) is drawn the same way (round 3's tiles 029 059 074 084 097 109: at 320 Chinese it broke
    "…结算来 / 源：CoinGecko", splitting 来源). Its dot keeps the sentence's own " · " for a screen reader. */
-.kp-hub__seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }
-.kp-hub__seq-item, .mcardp-src__part { position: relative; min-width: 0; }
-.kp-hub__seq-dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }
+.kp-seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--seq-gap, var(--sp-3)); clip-path: inset(-100vmax -100vmax -100vmax 0); }
+.kp-seq--mono { --seq-gap: 3ch; }
+.kp-seq__item, .mcardp-src__part { position: relative; min-width: 0; }
+.kp-seq__dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--seq-gap, var(--sp-3)); text-align: center; }
 /* The proposals row's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08). In the row's trailing slot it took
    84px from the label, and "Pendekeza na upate zawadi" folded in two at 390 though the label alone fits. Now the two
    share one wrapping line: side by side, the flag at the row's end as before, where both fit (English and Chinese at
@@ -6233,11 +6273,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__opt:hover { background: var(--bg-overlay); }
 .kp-hub__opt[aria-selected="true"] { background: var(--pill-active); color: var(--text); font-weight: 600; }
 .kp-hub__tick { flex-shrink: 0; display: inline-flex; width: 16px; color: var(--brand-300); }
-/* The Needle's own menu row, given the hub's height. */
-.kp-hub__needle { display: flex; align-items: center; min-height: var(--h-control-xl); padding: var(--sp-1) var(--sp-2); }
-/* …and the hub's type: the shared menu row is set at body-sm for the account menu, where every row is; among the
-   hub's body-size labels it read a size smaller than its siblings (WP12's tiles, 2026-10-08). */
-.kp-hub__needle > button { min-height: var(--h-control-md); font-size: var(--type-body); }
+/* The Needle's row is the hub's own row (`NeedleControlsDrawer variant="hub-row"`, round 3, 2026-10-09): it wore the
+   account menu's row inside a padded item, sized up here, and stood 2px off every column of the card. No rule of its own. */
 /* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door. */
 .kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .kp-hub__exit:hover { background: var(--bg-overlay); }
@@ -6713,7 +6750,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
    line (sw "Ingia uone tiketi zako", 219px, tile 113; zh, tile 119; every language from 360) is unchanged. */
-.kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
+/* ⭐ …AND ITS FIRST LINE STANDS ON THE ×'S LINE (round 3, 2026-10-09, tiles 113–121 and 156). The Modal pins its close
+   control 16px under the panel's padding edge in a 48px box (`absolute right-3 top-3 h-8 w-8` on this repo's scale), so
+   the × is centred 40px down; the title starts 32px down (12 + the 4px grab + the 16px gap below 1024; 32px of padding,
+   grab hidden, from 1024) and its 25px line is centred 44.5px down — the × stood 4–4.5px above the title's line at every
+   width and in every language (1280: × ink y409–418, title cap y410–424). The title rises by the difference — the top
+   margin below, -4.5px — the channels panel's fix (G2: its title centred on its close control's box): the first line's
+   centre meets the ×'s centre, and a title that wraps keeps its first line there. Everything under it moves up with it. */
+.kp-jsheet__title { margin: calc(var(--sp-10) - var(--sp-8) - var(--type-h3) * 1.25 / 2) 0 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
 /* ⭐ TIKETI ZANGU'S CARDS SHARE THEIR ROWS, NOT ONLY THEIR HEIGHT (2026-10-09, the visual pass's round 3, tile 168 at
    1280). A pair already shares a height (the grid's stretch, `tickets-view.tsx`), but each card laid its own rows out,
    so a two-line question beside a one-line one put DAU at y714 in the first card and y694 in its neighbour, and left

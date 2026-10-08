@@ -574,13 +574,17 @@ section("§8 · no house wording on outcome notices, in any language");
   await w.svc.settleMarket(market.id, { force: true });
   await sleep(500);
   const m1 = await w.svc.getMarket(market.id);
-  const win = (await rows(b.userId, "WIN")).find((n) => n.bodyEn.includes(r.data.positionId));
+  // ⭐ Found by its LINK, this position's own permalink: since round 3 of the visual pass (2026-10-09) the position id is
+  // not written into the sentence any more (" · pos_…" was a raw id in prose; notification-text.ts), and the permalink is
+  // what keeps two wins on one market two notices.
+  const win = (await rows(b.userId, "WIN")).find((n) => n.href === `/positions/${r.data.positionId}`);
   ok("8.1 · the holder's WIN notice for a house stake exists and carries no house word in any language", !!win && leaks(win).length === 0, j(leaks(win)));
   // The LINK is as visible as the words (a mutation that labelled only the href passed a body-only check — measured).
   ok("8.2 · …and its English body is the plain template, byte for byte, and its link is the plain permalink",
-    !!win && win.bodyEn === `${m1.titleEn} · ${r.data.positionId} paid out. Tap to view.` && win.href === `/positions/${r.data.positionId}`, `${win?.bodyEn ?? "no WIN row"} · ${win?.href}`);
-  ok("8.3 · …and its Swahili and Chinese bodies end exactly as any player's do",
-    !!win && win.bodySw.endsWith(`· ${r.data.positionId} kimelipa. Bonyeza kuona.`) && win.bodyZh.endsWith(`· ${r.data.positionId} 已赔付。点击查看。`), `${win?.bodySw} | ${win?.bodyZh}`);
+    !!win && win.bodyEn === `${m1.titleEn} paid out. Tap to view.` && win.href === `/positions/${r.data.positionId}`, `${win?.bodyEn ?? "no WIN row"} · ${win?.href}`);
+  ok("8.3 · …and its Swahili and Chinese bodies end exactly as any player's do, with no position id in the words",
+    !!win && win.bodySw.endsWith(" kimelipa. Bonyeza kuona.") && win.bodyZh.endsWith(" 已赔付。点击查看。")
+      && ![win.bodyEn, win.bodySw, win.bodyZh].some((s: string) => s.includes(r.data.positionId)), `${win?.bodySw} | ${win?.bodyZh}`);
   const loss = (await rows(player, "LOSS"))[0];
   ok("8.4 · CONTROL · the player's LOSS notice on the same market exists and carries no house word", !!loss && leaks(loss).length === 0, loss?.bodyEn ?? "no LOSS row");
 
@@ -669,8 +673,10 @@ section("§8 · no house wording on outcome notices, in any language");
     const pcPos = await w.svc.buyPosition(pc, { marketId: mc.id, side: "YES", stake: STAKE, idempotencyKey: crypto.randomUUID() });
     const voided = await w.svc.emergencyVoidMarket({ marketId: mc.id, officerId: OFFICER, reason: "HB-LC-11 fixture" });
     await sleep(500);
-    const hcRow = (await rows(hc.userId, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(rc.data.positionId));
-    const pcRow = (await rows(pc, "DEPOSIT")).find((n: Any) => n.bodyEn.includes(pcPos.data.positionId));
+    // Each row is found by its LINK, which opens its own ticket (`#<position id>`) — since round 3 of the visual pass
+    // (2026-10-09) the id rides the link and not the sentence (notification-text.ts).
+    const hcRow = (await rows(hc.userId, "DEPOSIT")).find((n: Any) => String(n.href ?? "").includes(rc.data.positionId));
+    const pcRow = (await rows(pc, "DEPOSIT")).find((n: Any) => String(n.href ?? "").includes(pcPos.data.positionId));
     ok("8.14 · HB-LC-11 fixture · the cancelled market really refunded both, and BOTH notices EXIST — the rows are asserted PRESENT before anything is asserted absent from them",
       voided.ok === true && !!hcRow && !!pcRow, j({ voided: show(voided), holder: !!hcRow, player: !!pcRow }));
     ok("8.15 · HB-LC-11 · the holder's MARKET CANCELLED notice carries no house word in any of the three languages, link included",
@@ -688,8 +694,8 @@ section("§8 · no house wording on outcome notices, in any language");
     await w.svc.resolveMarket({ marketId: mo.id, outcome: "YES", officerId: OFFICER });
     await w.svc.settleMarket(mo.id, { force: true });
     await sleep(500);
-    const hoRow = (await rows(ho.userId, "WIN")).find((n: Any) => n.bodyEn.includes(ro2.data.positionId));
-    const poRow = (await rows(po, "WIN")).find((n: Any) => n.bodyEn.includes(poPos.data.positionId));
+    const hoRow = (await rows(ho.userId, "WIN")).find((n: Any) => String(n.href ?? "").includes(ro2.data.positionId));
+    const poRow = (await rows(po, "WIN")).find((n: Any) => String(n.href ?? "").includes(poPos.data.positionId));
     ok("8.17 · HB-LC-11 fixture · with every stake on ONE side both readers got the full-refund notice — asserted PRESENT first, because an absence proved over a missing row proves nothing",
       !!hoRow && !!poRow && hoRow.titleEn.startsWith("Full refund") && poRow.titleEn.startsWith("Full refund"),
       j({ holder: hoRow?.titleEn, player: poRow?.titleEn }));
