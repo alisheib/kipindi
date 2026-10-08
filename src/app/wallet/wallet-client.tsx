@@ -15,9 +15,9 @@ import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import type { FirstDepositNotice } from "@/lib/kyc-notice";
-import { formatDateTimeSafe, formatTzs, formatNumber, cn } from "@/lib/utils";
+import { formatTzs, formatNumber, cn } from "@/lib/utils";
 import { playerStatusInk } from "@/lib/status-tone";
-import { formatEatDateTime } from "@/lib/eat-day";
+import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
 import { useT } from "@/lib/i18n";
@@ -233,7 +233,7 @@ const GRANTS_SHOWN = 5;
 function BonusWalletCard({
   bonusBalance, activeCount, grants, currency, featureLive = false, showAllGrants = false, grantsToggleHref,
 }: { bonusBalance: number; activeCount: number; grants: (BonusGrantView & { status?: string })[]; currency: string; featureLive?: boolean; showAllGrants?: boolean; grantsToggleHref?: string }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   /* THE TOTALS COUNT ONLY LIVE GRANTS, and with finished ones now listed that stopped being a
      formality: summing an EXPIRED grant's wagering requirement into "play X more to unlock" would
      quote a player a target for money that is gone. The LIST shows history; the BAR shows what is
@@ -395,7 +395,7 @@ function BonusWalletCard({
                           </div>
                           <div className="mt-1 flex items-center justify-between font-mono text-[9.5px] text-gold-200/55">
                             <span>{formatTzs(g.wageredTzs)} / {formatTzs(g.wagerRequiredTzs)} {t.common.played}</span>
-                            {g.expiresAt && <span>{t.common.exp} {formatDateTimeSafe(g.expiresAt).split(",")[0]}</span>}
+                            {g.expiresAt && <span>{t.common.exp} {formatEatDate(Date.parse(g.expiresAt), Date.now(), t.common.monthsShort, locale)}</span>}
                           </div>
                         </>
                       )}

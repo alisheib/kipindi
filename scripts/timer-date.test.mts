@@ -140,7 +140,8 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
   const inReaderWords = (c: { args: string[] }) => c.args.length === 4 && c.args[2] === "t.common.monthsShort" && c.args[3] === "locale";
   const showCalls = (cs: { fn: string; args: string[] }[]) => cs.map((c) => `${c.fn}(${c.args.join(", ")})`).join(" | ");
   // Any use of an English helper: a call, an import, or an alias (`const fmtTime = formatDateTime` was the market page's).
-  const ENGLISH_HELPER = /(?<![A-Za-z0-9_$.])(formatDeadline|formatDayTime|formatDateTime|formatDayShort)(?![A-Za-z0-9_$])/g;
+  // (formatDateTimeSafe, formatDateShort and formatDate joined the list with the second pass, the same afternoon.)
+  const ENGLISH_HELPER = /(?<![A-Za-z0-9_$.])(formatDeadline|formatDayTime|formatDateTime|formatDayShort|formatDateTimeSafe|formatDateShort|formatDate)(?![A-Za-z0-9_$])/g;
   const englishIn = (src: string) => [...src.matchAll(ENGLISH_HELPER)].map((m) => m[1]);
 
   const market = read("../src/app/markets/[id]/page.tsx");
@@ -234,16 +235,27 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
     "app/wallet/deposit/page.tsx",
     "app/profile/sessions/page.tsx",
     "app/positions/performance/page.tsx",
+    // The second pass (2026-10-08): the rest of the player dates, through formatDateTimeSafe, formatDateShort, formatDate.
+    "app/fairness/page.tsx",
+    "app/agent/page.tsx",
+    "app/agent/status/page.tsx",
+    "app/agent/invite/[token]/page.tsx",
+    "app/profile/source-of-funds/page.tsx",
   ];
-  for (const rel of CONVERTED) {
+  /* ⚠️ TWO CLIENT FILES WHOSE YEAR RULE READS THE DEVICE CLOCK, BY THEIR OWN DESIGN — held to the first two checks, not
+     the third: the comment thread's date is the fallback of a relative time ("5m", "3h") that is the device clock's
+     already, and the wallet card's bonus expiry sits in a file whose transaction row (`TxnRow`) reads it the same way.
+     Neither is handed a server instant; the year can differ from the server's only across a New Year. */
+  const DEVICE_CLOCK = ["components/markets/comments-thread.tsx", "app/wallet/wallet-client.tsx"];
+  for (const rel of [...CONVERTED, ...DEVICE_CLOCK]) {
     const src = read(`../src/${rel}`);
     const english = englishIn(src);
-    ok(`3: fence · ${rel} uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort)`,
+    ok(`3: fence · ${rel} uses no English date helper (formatDeadline, formatDayTime, formatDateTime, formatDayShort, formatDateTimeSafe, formatDateShort, formatDate)`,
       src.length > 0 && english.length === 0, english.join(", "));
     const calls = eatCalls(src);
     ok(`3: fence · ${rel} dates through formatEatDateTime/formatEatDate, in the reader's month words`,
       calls.length > 0 && calls.every(inReaderWords), showCalls(calls) || "no localized call");
-    if (src.trimStart().startsWith(`"use client"`)) {
+    if (src.trimStart().startsWith(`"use client"`) && !DEVICE_CLOCK.includes(rel)) {
       ok(`3: fence · ${rel} is a client file: its year rule reads the server's instant, never Date.now()`,
         calls.length > 0 && calls.every((c) => c.args.length === 4 && !/Date[.]now/.test(c.args[1])), showCalls(calls));
     }

@@ -12,7 +12,8 @@ import { currentSession } from "@/lib/server/auth-service";
 import { applicantView } from "@/lib/server/agent-application-service";
 import { inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
-import { fill, formatTzs, formatDateShort } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
+import { formatEatDate } from "@/lib/eat-day";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import type { AgentApplicationStatus, AgentRejectReason } from "@/lib/server/store";
 import { startApplicationAction } from "../apply/actions";
@@ -38,9 +39,9 @@ export const dynamic = "force-dynamic";
 export default async function AgentStatusPage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/agent/status");
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const view = await applicantView(session.userId);
-  const d = (iso: string) => formatDateShort(iso);
+  const d = (iso: string) => formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale);
 
   // An approved agent's home is the dashboard — through the ONE gate every /profile/invite link
   // sits beside (`test:withdrawn-features` §7). A paused agent goes back to /agent, which says so.

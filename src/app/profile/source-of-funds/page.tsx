@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { Chip } from "@/components/ui/chip";
 import { submitSourceOfFundsAction } from "./actions";
-import { formatDate } from "@/lib/utils";
+import { formatEatDate } from "@/lib/eat-day";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
@@ -26,7 +26,7 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ reason?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   const SOURCES: { id: string; label: string; glyph: keyof typeof I }[] = [
     { id: "salary",       label: t.profile.sofSalary,      glyph: "sofSalary" },
@@ -111,7 +111,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
           <div className="flex items-center gap-2">
             <Pill tone={statusTone as "success" | "danger" | "warning"}>{statusLabel}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-              {t.common.submitted} {formatDate(existing.submittedAt)}
+              {t.common.submitted} {formatEatDate(Date.parse(existing.submittedAt), Date.now(), t.common.monthsShort, locale)}
             </p>
           </div>
           <p className="text-body-sm text-text-muted leading-snug">

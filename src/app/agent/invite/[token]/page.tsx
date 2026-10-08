@@ -7,7 +7,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { invitationPreview } from "@/lib/server/agent-application-service";
-import { fill, formatDateShort } from "@/lib/utils";
+import { fill } from "@/lib/utils";
+import { formatEatDate } from "@/lib/eat-day";
 import { InviteClient } from "./invite-client";
 
 export async function generateMetadata() {
@@ -24,7 +25,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function AgentInvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   // ⭐ The viewer is read BEFORE the preview so the identity match can be decided against the
   // real address inside the service, rather than by string-matching the mask out here.
   const session = await currentSession();
@@ -51,7 +52,7 @@ export default async function AgentInvitePage({ params }: { params: Promise<{ to
             address it just widens the letters for no reason. `break-all` because a long
             address must not push the panel wider than the measure at 360px. */}
         <p className={`font-mono text-title-sm font-bold text-text ${preview.channel === "PHONE" ? "tabular-nums" : "break-all"}`}>{preview.addressMasked}</p>
-        <p className="text-body-sm text-text-muted">{fill(t.agent.inviteExpires, { date: formatDateShort(preview.expiresAt) })}</p>
+        <p className="text-body-sm text-text-muted">{fill(t.agent.inviteExpires, { date: formatEatDate(Date.parse(preview.expiresAt), Date.now(), t.common.monthsShort, locale) })}</p>
       </section>
       <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.inviteKycNote}</p>
       <InviteClient
