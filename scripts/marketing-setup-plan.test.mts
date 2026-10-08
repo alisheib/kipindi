@@ -427,10 +427,10 @@ if (!process.argv.includes("--prove-red")) {
     const hit = idRows(doc, "U").find((l) => statusOf(l) === "⬜");
     return hit ? rowCells(hit)[0] : "U9";
   };
-  /** The first unit id the ▶ NEXT line actually names — that is the one §4 is about. */
-  const unitNamedByNext = (doc: string): string => {
+  /** The first unit id the ▶ NEXT line actually names — that is the one §4 is about — or null when it names none. */
+  const unitNamedByNext = (doc: string): string | null => {
     const line = (doc.match(/^\s*▶ NEXT:.*$/m) || [""])[0];
-    return (line.match(/U\d+/) || ["U9"])[0];
+    return (line.match(/U\d+/) || [null])[0];
   };
   /** A defect whose OWNING unit is still ⬜ — the only shape "✅ before its unit" can take. */
   const defectAheadOfItsUnit = (doc: string): string => {
@@ -442,6 +442,17 @@ if (!process.argv.includes("--prove-red")) {
     return "D1";
   };
 
+  /** The first defect §1 lists with its owning unit — what "a defect ✅ while its unit is ⬜" plants when no defect is
+   *  ahead of its unit already. */
+  const firstOwnedDefect = (doc: string): { d: string; u: string } | null => {
+    for (const m of doc.matchAll(/^- \*\*(D\d+)\s·[^\n]*\*\*(U\d+)\*\*/gm)) return { d: m[1], u: m[2] };
+    return null;
+  };
+  /** The first ✅ unit on the board — what "▶ NEXT naming a finished unit" writes when ▶ NEXT names none. */
+  const firstUnitDone = (doc: string): string => {
+    const hit = idRows(doc, "U").find((l) => statusOf(l).includes("✅"));
+    return hit ? rowCells(hit)[0] : "U1";
+  };
   const withDone = (id: string, extra: Partial<Record<number, string>> = {}) => (w: World): World => {
     const doc = setRow(w.doc, id, (c) => done(c, extra));
     return { ...w, doc, board: bumpBoard(w.board, doneUnitsIn(doc), doneDefectsIn(doc)) };
@@ -507,14 +518,30 @@ if (!process.argv.includes("--prove-red")) {
       // ⛔ THE BOARD IS BUMPED TO THE COUNTS THE PLANTED DOC HAS, so §5 stays quiet and the
       // ONE break this plant makes is the one that gets reported. A plant that also breaks the
       // counts is a plant whose failure could be attributed to either.
+      // ⭐ THE PLANT MAKES ITS OWN LIE (S14, 2026-10-08): once every unit that owns a defect was
+      // under way, no defect sat ahead of a ⬜ unit, the fallback D1 was already ✅, and the plant
+      // reported "PLANT DID NOT APPLY" (26/28 on clean main). So a defect that sits ahead of a ⬜
+      // unit is still used when there is one; else the first owned defect is set ✅ AND its owning
+      // unit ⬜ — whatever the board says today.
       apply: (w) => {
-        const doc = setRow(w.doc, defectAheadOfItsUnit(w.doc), (c) => { c[2] = "✅"; return c; });
+        const ahead = defectAheadOfItsUnit(w.doc);
+        const pair = ahead !== "D1" ? null : firstOwnedDefect(w.doc);
+        let doc = setRow(w.doc, pair === null ? ahead : pair.d, (c) => { c[2] = "✅"; return c; });
+        if (pair !== null) doc = setRow(doc, pair.u, (c) => { c[2] = "⬜"; return c; });
         return { ...w, doc, board: bumpBoard(w.board, doneUnitsIn(doc), doneDefectsIn(doc)) };
       } },
     // ⛔ THE UNIT ▶ NEXT ACTUALLY NAMES, read from the document. Hard-coding `U1` meant this
     // plant marked a unit ▶ NEXT has not named since session 1 — it broke nothing §4 looks at.
+    // ⭐ AND WHEN ▶ NEXT NAMES NO UNIT (S14, 2026-10-08 — it named an owner step, the texts on
+    // production), the fallback U9 was already ✅ and the plant changed nothing: MISSED on clean
+    // main. Then the plant WRITES a finished unit into the ▶ NEXT line — exactly the lie §4 catches.
     { name: "▶ NEXT naming a finished unit", expect: /which is not finished/,
-      apply: (w) => withDone(unitNamedByNext(w.doc))(w) },
+      apply: (w) => {
+        const named = unitNamedByNext(w.doc);
+        if (named !== null) return withDone(named)(w);
+        const finished = firstUnitDone(w.doc);
+        return { ...w, doc: w.doc.replace(/^(\s*▶ NEXT:)/m, (m) => `${m} ${finished} —`) };
+      } },
     { name: "NEXT-PLAN counts that disagree", expect: /units done agree/, apply: (w) => ({ ...w, board: bumpBoard(w.board, 3) }) },
     { name: "a NEXT-PLAN row that never links the plan", expect: /that row links this plan/,
       apply: (w) => ({ ...w, board: w.board.split(`(${PLAN_FILE})`).join("(elsewhere.md)") }) },
