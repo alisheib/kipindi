@@ -334,7 +334,8 @@ function ChatRootInner({
         style={{
           position: "fixed",
           right: 16,
-          // 80 clears the phone rail, whose reserve is `--rail-h` (globals.css): move this with that token.
+          // 80 clears the phone rail, whose reserve is `--rail-h` (globals.css): move this with that token. The
+          // home-indicator inset the rail adds on top is added to the bubble by `.cm-fab`'s margin (globals.css).
           bottom: isMobile ? 80 : 16,
           zIndex: 60,
         }}

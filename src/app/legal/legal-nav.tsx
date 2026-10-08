@@ -102,6 +102,11 @@ export function LegalNav({ items, ariaLabel }: { items: LegalNavItem[]; ariaLabe
            ⚠️ `px-3.5` (14px) is the SAME off-scale key on the horizontal axis and is left
            alone deliberately: this row is the tap floor, and a width change is a different
            decision with a different blast radius. Reported, not smuggled. */
+        /* ⭐ 2026-10-08 · THE ACTIVE ROW'S LABEL STAYS ON ITS SIBLINGS' LINE (WP12 tiles 206–210). The left rule above is
+           a real 2px border, and a border sits OUTSIDE the padding, so the active label started 2px right of the others
+           (measured at 390: x 33 against 31). The active row gives those 2px back from its left padding — 2 + 12 = the
+           14px of `px-3.5` — so every label starts on one edge and the rule stays the row's non-colour signal (§A4).
+           `pl-[12px]` is a literal because `pl-2` is 12px only on this repo's overridden scale; the literal reads true. */
         return (
           <Link
             key={n.href}
@@ -109,7 +114,7 @@ export function LegalNav({ items, ariaLabel }: { items: LegalNavItem[]; ariaLabe
             aria-current={active ? "page" : undefined}
             style={active ? { background: "var(--pill-active)" } : undefined}
             className={`block px-3.5 py-3 transition-colors ${i > 0 ? "border-t border-border" : ""} ${
-              active ? "border-l-2 border-l-brand-500" : "hover:bg-bg-overlay"
+              active ? "border-l-2 border-l-brand-500 pl-[12px]" : "hover:bg-bg-overlay"
             }`}
           >
             {/* ⭐ DG-P-11 — THE ACTIVE INK WAS `--brand-300`, WHICH NAVIGATION ALREADY SPENT ON

@@ -27,7 +27,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import { Cash, CashEye } from "@/components/ui/cash";
+import { Cash, CashEye, useCashHidden } from "@/components/ui/cash";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
@@ -45,12 +45,23 @@ export function WalletSheet({
   balance: number;
   held: boolean;
   anchorRef: React.RefObject<HTMLElement | null>;
-  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa". Omitted, today's words. */
+  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa", and its figure takes the capsule's
+   *  ink (gold on a live balance only). Omitted, today's words and today's ink. */
   journey?: boolean;
 }) {
   const { t } = useT();
   const depVia = React.useId();
   const wdVia = React.useId();
+  const hidden = useCashHidden();
+  /* ⭐ 2026-10-08 · THE JOURNEY'S WALLET READS ITS FIGURE IN THE CAPSULE'S INK (WP12 tiles 088–092). DESIGN_AUTHORITY
+     rule 8a: the captioned balance is gold on a live balance only, plain ink when held or masked (its rule in
+     globals.css: gold marks money you can use). A frozen wallet's capsule read "TZS 100,000" in plain ink and the Wallet it opened read the same figure in
+     gold (measured: #F5F8FF against #F3CB7A), so one balance spoke two inks a tap apart. The figure now answers the
+     same two states the capsule's rule names (`.kp-wsheet__amt` in globals.css).
+     ⛔ The journey's Wallet only: the classic capsule's figure is gold in every state and its Wallet matches it, and
+     classic readers' pages do not change during S6/S7. */
+  const plainHeld = journey && held;
+  const plainMasked = journey && hidden;
 
   return (
     <Modal
@@ -68,7 +79,7 @@ export function WalletSheet({
       <div data-testid="wallet-sheet">
         <p className="kp-wsheet__label">{held ? t.common.balanceFrozen : t.wallet.available}</p>
         <div className="kp-wsheet__bal">
-          <p className="kp-wsheet__amt"><Cash>{formatTzs(balance)}</Cash></p>
+          <p className="kp-wsheet__amt" data-held={plainHeld ? "" : undefined} data-masked={plainMasked ? "" : undefined}><Cash>{formatTzs(balance)}</Cash></p>
           <CashEye size={16} />
         </div>
       </div>

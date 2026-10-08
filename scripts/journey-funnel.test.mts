@@ -276,7 +276,8 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
     /if \(outcome\.credited && outcome\.txn\) \{[\s\S]*?runOutsideLock\(\(\) => \{\s*void import\("\.\/journey-funnel"\)\.then\(\(m\) => m\.countDepositFunnel\(t\)\)/.test(wallet)
       && /origin: \(parse\.data as \{ origin\?: "low_balance" \}\)\.origin \?\? null,/.test(wallet));
   ok("9.form · the deposit page adds the origin only for from=low-balance; the action accepts only low_balance and carries it through a failure",
-    impl.depPage.includes('{sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}')
+    // 2026-10-08: the input carries `hidden` so the form's space-y-5 does not count it (WP12 tile 068); the pin is the same field.
+    impl.depPage.includes('{sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}')
       && impl.depAction.includes('const origin = formData.get("origin") === "low_balance" ? ("low_balance" as const) : undefined;')
       && impl.depAction.includes('if (origin) carry.set("from", "low-balance");'));
   ok("9.create-only · the origin is written on create and skipped by BOTH update paths; its migration adds one nullable column under the lock-retry block",

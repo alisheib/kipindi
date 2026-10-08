@@ -1579,6 +1579,13 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
 
 .cm-fab {
   transition: opacity var(--t-quick) var(--m-glide), transform var(--t-quick) var(--m-glide);
+  /* 2026-10-08 (WP12 item 4) · THE BUBBLE CLEARS THE HOME INDICATOR, AS THE RAIL UNDER IT DOES. ChatRoot places it with
+     an inline `bottom` (80 over a phone rail, 16 without one — test:stacking's locator pins that line), and the rail
+     grows by `env(safe-area-inset-bottom)` (`.kp-rail`; layout.tsx sets viewport-fit=cover). On a notched iPhone
+     (inset ≈34px) the rail's top sits about 99px up while the bubble's foot sat at 80: its lower 19px lay on the
+     rail's last tab for the 3s D75 leaves it up. A margin on a fixed box lifts it off its `bottom` by the same inset
+     the rail adds. ⚠️ Inert wherever the inset is 0 — Android, desktop and every Playwright frame. */
+  margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-scrolling] .cm-fab:not(.cm-fab--open):not(:focus-within),
@@ -5972,6 +5979,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-wsheet__label { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
 .kp-wsheet__bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-1); }
 .kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
+/* 2026-10-08 (WP12 tiles 088–092) · the journey capsule's Wallet, held or masked, reads its figure in plain ink, as the
+   capsule that opened it does (`.kp-jbal:is([data-held], [data-masked])` below; DESIGN_AUTHORITY rule 8a). Only the
+   journey's Wallet sets these attributes (wallet-sheet.tsx), so the classic Wallet keeps its gold. */
+.kp-wsheet__amt:is([data-held], [data-masked]) { color: var(--text); }
 .kp-wsheet__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
 .kp-wsheet__col { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); min-width: 0; }
 /* 56 on the sheet (thumb reach, the delivery's 54 rounded UP to the --h-control-xl rung), 48 in the panel. */

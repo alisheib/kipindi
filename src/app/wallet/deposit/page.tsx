@@ -232,8 +232,10 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
             a new key; a double tap or a lost response on the SAME screen still dedupes. */}
         <IdempotencyKeyField key={sp.error ?? ""} />
-        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. */}
-        {sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}
+        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so.
+            `hidden` keeps it out of the form's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
+            without it a low-balance deposit put the 24px gap back above the method chooser. */}
+        {sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}
         <fieldset>
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.choosePaymentMethod}
