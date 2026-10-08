@@ -56,6 +56,88 @@ then: "the contacts screen"):
 - **Designs on file** (written 2026-10-01/02, BEFORE U25–U29 were built — re-read against the code before building):
   `docs/marketing-specs/U29.md` … `U34.md`, `DECISIONS-U29-U40.md`, `CRITIC-U29-U40.md`.
 
+## §4 — THE IMPORTER: the design (S15, 2026-10-09)
+
+### §4.1 — Ali's requirements, in his words
+"I don't have any files — create your own, use it, then delete the data you imported" · "super sophisticated to handle
+any extreme normal-life scenarios from all types of imports, Excels, contact lists from phones" · "extreme UI handling
+and user leading and safety and ease of use" · "push live when done — we cannot have undone work on this PC".
+And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small and could be large" — both ends.
+
+### §4.2 — What the officer sees (one dialog, one step at a time, never a dead end)
+1. **Contacts → Import contacts** (`contacts-import`, beside Add contact and Export). If the officer has an unfinished
+   import, the dialog opens ON it ("You have an import that isn't finished — 1,847 of 5,912 rows done · Resume ·
+   Discard") — a closed tab, a reload, a crash or a deploy never loses a file's progress.
+2. **Choose a file** (`import-entrance`): drop or pick — Excel (.xlsx), CSV (any delimiter, any of the encodings Excel
+   writes), a phone's contacts export (.vcf from iPhone, Android, Google), or **paste** (from Excel or a chat). The
+   sample sheet is one tap away. Files the importer can't read (old .xls, .ods, .numbers, PDF, a picture) are named and
+   told how to save them as .xlsx or CSV.
+3. **Reading** — in the browser, streamed; the bar counts rows read. An Excel file is read by the server (≤ 700 KB;
+   larger ones are told how to save as CSV, which has no such limit).
+4. **The columns** (`import-mapping`): each column of the file, its first values, and what it will be read as (Phone ·
+   Name · Email · Tags · Notes · Not used), matched automatically in English and Swahili; the officer can change any.
+   A file with **no header row** is recognised ("Your file starts with a contact, not column names — column B will be
+   read as the phone number") and imported from its first row.
+5. **Uploading** — the rows go to the server in batches of ≤ 2,000 rows / 200 KB; the bar counts rows staged. Nothing
+   is in the contact book yet.
+6. **The check** (`import-preflight`): five boxes that add up to the file — **New to the book · Already in the book ·
+   Repeated in this file** (the first row wins) **· Not a mobile number · Could not be read** — each problem row listed
+   with its row number in the officer's own spreadsheet and one plain sentence ("Row 14: this is a Kenyan number").
+   "Nothing has been written to the book yet."
+7. **Numbers already in the book** (only when there are some): **Keep what's in the book** (recommended) · **Use the
+   file's version** · **Only fill in what's missing** — each with its live count; the changes listed ("Row 9 · Asha →
+   Asha Mwakalinga"), a page at a time, each with its own exception. A blank cell never erases anything; numbers on the
+   stop list and erased people are never changed.
+8. **The list** (`import-apply` area): add the contacts to an existing list, a new list, or none — and whether that
+   list is ready for offers (its basis and 18+ recorded on the Lists card) or what to do so it is.
+9. **Import** (`import-commit`): the bar counts rows DONE as the server reports them — never a timer. Stop / Resume. A
+   closed window stops after the current batch; reopening resumes. Bets always come first (the import waits when the
+   betting engine is busy).
+10. **The result** (`import-done`): Added · Updated · Kept as they were · Couldn't be imported (each with its row and
+    reason, a page at a time) · "Show the contacts this import added" · the list's state.
+
+### §4.3 — Decisions taken in S15 (on Ali's delegation of technical calls; each with its reason)
+- **S15-1 · No consent step in the import.** Ali's FINAL rule (2026-10-07, COMPLIANCE-DECISIONS) makes consent decide
+  nothing; a non-member is reached through a LIST whose licence basis and 18+ confirmation are recorded on the Lists
+  card (`consent.ts` contact branch: `standing.cover`). So the import writes no consent (OD10 holds) and asks for no
+  basis: U33b's picker and U32's `no_basis` refusal are retired; the import ends at "which list", and the list's own
+  card carries the basis.
+- **S15-2 · The check has five boxes, not six — no "has a 50pick account" box for any role.** Every client is already a
+  contact (`08add760`), so a player's number reads "already in the book" like any other; a separate count would be the
+  membership oracle OD65–OD67 closed for the campaign (padding defeats any floor). D19 is closed by shape.
+- **S15-3 · Kept rows split by reason only for a viewer who may read numbers** (OD54: a stop per row is a player
+  signal). Everyone else reads one "kept as they were".
+- **S15-4 · One phone number per person (pending Ali's answer to question 2 of 2026-10-09).** The readers already take
+  a card's or a cell's main number; the result says how many people had another number that was not imported. If Ali
+  chooses "every mobile number", that ships as its own step.
+- **S15-5 · Headerless files are accepted** when the first row reads as a contact (`autoMapHeaders().headerless`):
+  synthetic column names, the phone column found, the officer confirms — instead of the old "Add a header row" refusal.
+- **S15-6 · The commit is time-boxed per step, not budget-measured.** Each step settles at most 500 rows in ONE
+  transaction (compare-and-set on `committedThrough`, X3), refuses `busy` while bets queue, and the bar moves only on
+  the server's cursor. This replaces U32's production ping measurement (`unmeasured`), which needed an admin session on
+  production before any import could run.
+- **S15-7 · The first-row rule at scale.** A step loads "the first decidable line of each of these numbers in this run"
+  with ONE grouped read (`contactImportRow.firstLinesAmong`), never by re-walking up to 200,000 staged rows per step.
+- **S15-8 · Settled rows are blanked** (data minimisation, tracker owed item): once a row is settled its name, email,
+  notes, tags and raw phone are emptied in the staging table — the line, key, outcome and the failure sentence stay.
+- **S15-9 · Nobody is ever stuck.** A paused or unfinished run can always be resumed or cancelled by its starter or an
+  admin; cancelling after the start keeps the rows already written and says how many.
+
+### §4.4 — The build (files; each step committed and pushed when proven)
+- Contract: `src/lib/contacts/import-flow.ts` (pure — the types and sentences both sides share).
+- Server: `src/app/admin/contacts/import/import-actions.ts` (the ONE action file, X17) over
+  `src/lib/server/contacts/import-check.ts` (the check + the changes pages + the facts loader),
+  `src/lib/server/contacts/import-commit.ts` (start, step, pause, resume, cancel, failures, result), new DAL members
+  in both twins (`contactImport.commitBatch`, `contactImport.freezeDecision`, `contactImportRow.firstLinesAmong`,
+  `contactImportRow.failedPage`, `marketingContact.snapshotsAmong`) with a `test:dal-parity` section, and one additive
+  migration (`ContactImport.targetListId`).
+- Browser: `src/app/admin/contacts/import/contacts-import-dialog.tsx` and its step panels, `src/lib/contacts/import-read.ts`
+  (file → rows, streamed; paste → rows), `src/lib/contacts/import-loop.ts` (the ONE driver for the upload and the
+  commit), the button in the page head.
+- Proof: `scripts/contacts-import/real-world-files.mts` (the files — Ali has none), the suites' new sections, the browser
+  drive over every generated file at 360 and 1280, the stress run (150,000 rows; a 40 MB vCard), and the live check on
+  production with a 40-contact file that is deleted afterwards.
+
 ## §3 — LOG (newest first)
 
 - **2026-10-09 · C1** — the lane split recorded; this plan written.
