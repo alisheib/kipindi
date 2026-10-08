@@ -72,4 +72,33 @@ export const MUTATIONS = [
     to: ` as={featured ? "img" : undefined} />`,
     expect: "2.4",
   },
+  // Round 3 (2026-10-08): the meta line's break and the empty state's reading floor.
+  {
+    name: "the meta line's dot goes back into the running text (a line can end on '·' again)",
+    file: "src/components/markets/market-card.tsx",
+    from: `          {closesOn && <span className="mcardp-src__dot">{" · "}</span>}`,
+    to: `          {closesOn ? " · " : null}`,
+    expect: "2.14",
+  },
+  {
+    name: "Chinese breaks the meta line's parts anywhere again (结算来 / 源 at 320)",
+    file: "src/app/globals.css",
+    from: `.mcardp-src:lang(zh) { word-break: keep-all; }`,
+    to: `.mcardp-src:lang(zh) { word-break: normal; }`,
+    expect: "2.14",
+  },
+  {
+    name: "the no-bets line loses its measured 15px box (the cold-start card grows 4.5px past its skeleton)",
+    file: "src/app/globals.css",
+    from: `  line-height: 15px;`,
+    to: `  line-height: 1.5;`,
+    expect: "2.15",
+  },
+  {
+    name: "the invitation drops back to the trader row's 10px count type",
+    file: "src/app/globals.css",
+    from: `.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }`,
+    to: `.mcardp-traders .mcardp-befirst { color: var(--brand-300); }`,
+    expect: "2.15",
+  },
 ];

@@ -208,7 +208,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/components/admin/admin-shell.tsx", 3],               // 3× hand-typed letterSpacing. −1 recorded 2026-09-03 (PV-13c): the entry was already STALE at HEAD — this file is untouched by that row, the ratchet had simply not been lowered when one value was fixed earlier
   ["src/components/updown/round-countdown.tsx", 3],
   ["src/app/positions/performance/page.tsx", 2],             // raw-oklch radial gradients
-  ["src/components/layout/live-ticker.tsx", 2],              // oklch fade beside var(--bg-inset)
+  ["src/components/layout/live-ticker.tsx", 1],              // the end cap's oklch fade beside var(--bg-inset). 2 → 1 on 2026-10-08 (round 3): the LIVE label's fade moved into `.ticker-label` in globals.css, where the journey's leading-edge rule can reach it
   // ⬇️ 2 → 1 on 2026-08-25. The capsule rebuild added a hairline seam and an eye hover
   // tint, and this gate caught them as RAW colours — correctly. Both now read
   // `color-mix(in oklab, var(--gold-300) N%, transparent)`, i.e. they CONSUME the token

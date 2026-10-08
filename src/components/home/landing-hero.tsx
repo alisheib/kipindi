@@ -168,9 +168,17 @@ function Claim({ t }: { t: Dict }) {
  * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
  * designed lines, never "NDIO" alone over "au HAPANA?".
  * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
- * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale; the fallback
- * below only keeps a malformed string readable.
+ * ⭐ A LINE THAT OPENS ON A STRAIGHT STEM IS SET BACK BY ITS SIDE BEARING (round 3, 2026-10-08): "NDIO" and "HAPANA"
+ * began 3–5px right of the page's edge (0.07em of Sora 800, measured — `.kp-hero__grp[data-stem]` in globals.css), where
+ * "YES" and 是 sit on it. Decided from the SIDE WORDS, so it follows the buttons' words and never a locale: a group
+ * that can open a line and starts on a measured stem takes `data-stem`, and the group before a set-back one takes
+ * `data-stem-next`, which gives the width back at its end — so on one line nothing between the groups moves.
+ * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale, and §2c the set-back; the
+ * fallback below only keeps a malformed string readable.
  */
+/** Capitals whose left edge is a straight stem with the bearing measured on the tiles. ⛔ Measure before adding one. */
+const STEM_START = /^[HN]/u;
+
 function Ask({ t }: { t: Dict }) {
   const yes = sideWord(t, "YES", "MARKET");
   const no = sideWord(t, "NO", "MARKET");
@@ -181,15 +189,19 @@ function Ask({ t }: { t: Dict }) {
   const between = s.slice(a + "{yes}".length, b);
   const conn = between.trimEnd();
   const gap = between.slice(conn.length);
+  // The first group opens the h1's first line only when nothing is written before it; the second opens a line
+  // whenever the h1 wraps at its gap, so it is set back whenever its word starts on a stem.
+  const lead = s.slice(0, a).trim() === "" && STEM_START.test(yes);
+  const next = STEM_START.test(no);
   return (
     <h1 className="kp-hero__headline">
       {s.slice(0, a)}
-      <span className="kp-hero__grp">
+      <span className="kp-hero__grp" data-stem={lead ? "" : undefined} data-stem-next={next ? "" : undefined}>
         <span className="kp-hero__side" data-side="yes">{yes}</span>
         <span className="kp-hero__conn">{conn}</span>
       </span>
       {gap}
-      <span className="kp-hero__grp">
+      <span className="kp-hero__grp" data-stem={next ? "" : undefined}>
         <span className="kp-hero__side" data-side="no">{no}</span>
         <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
       </span>
@@ -497,10 +509,14 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
   const noPicks = !!picks && picks.open === 0 && picks.awaiting === 0 && picks.paidThisWeekTzs === 0;
   // At zero the empty-balance prompt already says what to do next; the no-picks sentence beside it said it twice.
   const emptyWallet = !held && balance !== null && balance <= 0;
+  // ⛔ AND A FROZEN WALLET IS NOT INVITED TO PICK (round 3's tiles 090 091 095 096 099 100, 2026-10-08): "Choose a side
+  // on a market to make your first" stood directly above "Your wallet is frozen" — an invitation the platform refuses.
+  // The held notice speaks alone, as the Wallet and the journey header withhold their money invitations for a held
+  // wallet (`wallet-sheet.tsx`, `header-state.ts`). No new words: the sentence is simply not shown.
   return (
     <div className="kp-mine" data-testid="landing-mine">
       {picks && (noPicks ? (
-        emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
+        held || emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
       ) : (
         <div>
           <p className="kp-mine__eyebrow">{t.home.yourPicks}</p>

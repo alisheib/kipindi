@@ -173,6 +173,37 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
     !/source-registry/.test(card) && !/new URL\(/.test(card) && !/sourceHost\(/.test(card));
   check("2.13 a cashed-out live card names its empty pool (the D29 word, never 'No bets yet')",
     /\{live && noPrice && !neverBet && <div className="mcardp-nobets" data-market-part="state">\{t\.market\.noPoolYet\}<\/div>\}/.test(card));
+
+  // Round 3 (2026-10-08) — two measured tile defects a later edit could quietly bring back.
+  const css = read("src/app/globals.css").replace(/\r\n/g, "\n");
+  const metaAt = card.indexOf("const metaLine = ");
+  const meta = metaAt < 0 ? "" : card.slice(metaAt, card.indexOf(") : null;", metaAt));
+  // 2.14 · zh 320 broke "…结算来 / 源：CoinGecko": the meta line is two parts that break only between them, the " · "
+  // hanging in the gap before the source (the hub's idiom, one rule for both), and a Chinese part keeps its words.
+  check("2.14 the meta line breaks only BETWEEN its two parts, its dot hangs in the gap (no line ends or starts on '·'), and Chinese keeps 来源 whole",
+    /<span className="mcardp-src__seq">/.test(meta)
+      && (meta.match(/<span className="mcardp-src__part">/g) ?? []).length === 2
+      && /\{closesOn && <span className="mcardp-src__dot">\{" · "\}<\/span>\}\s*\{settlesPre\}/.test(meta)
+      && !/\{closesOn && sourceName \? " · " : null\}/.test(meta)
+      && css.includes("\n.kp-hub__seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }")
+      && css.includes("\n.kp-hub__seq-dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }")
+      && css.includes("\n.mcardp-src:lang(zh) { word-break: keep-all; }"),
+    meta.slice(0, 160));
+  check("2.14-control the slice is the real meta line (it holds the source part the gate reads)",
+    /data-market-part="source"/.test(meta) && meta.length < 1_500, String(meta.length));
+  // 2.15 · the empty-state copy measured cap height 7–8px (10–11px type) and "Hakuna dau bado" 4.21:1 — reading copy under
+  // §T4's floor and §A1's 4.5. It reads at `--type-small`, untracked, and the no-bets line keeps the 15px box the card's
+  // measured base (`--mcard-base`) was taken with, so the card and its skeleton keep their height.
+  const nbAt = css.indexOf("\n.mcardp-nobets {");
+  const nobets = nbAt < 0 ? "" : css.slice(nbAt, css.indexOf("}", nbAt));
+  check("2.15 the empty state reads at the reading floor — no bets, be the first, and the featured no-pool words at --type-small; the no-bets line in --text-subtle on its measured 15px box",
+    nobets.includes("font-size: var(--type-small);") && nobets.includes("line-height: 15px;") && nobets.includes("color: var(--text-subtle);")
+      && !/letter-spacing/.test(nobets)
+      && css.includes("\n.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }")
+      && css.includes("\n.mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }")
+      && /<span data-market-part="pool" className=\{fresh \? "mcardp-nopool" : undefined\}>\{fresh \? t\.market\.noPoolYet : formatTzs\(volume\)\}<\/span>/.test(card),
+    nobets.replace(/\s+/g, " ").slice(0, 200));
+  check("2.15-control the no-bets rule is found (its slice holds the line's own centring)", nobets.includes("text-align: center;"));
 }
 
 // ── §3 · call sites ────────────────────────────────────────────────────────────────────────────────

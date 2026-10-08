@@ -389,19 +389,25 @@ export function MarketCard({
      The name is its own span — the part the gate reads — set inside the dictionary's sentence, so each
      locale keeps its own word order. Text, never a link: the card is one stretched link already (WP17),
      and the market page links the source. */
+  /* ⭐ TWO PARTS, AND THE LINE BREAKS ONLY BETWEEN THEM (round 3's tiles 029 059 074 084 097 109, 2026-10-08). As one run
+     of text, Chinese broke it anywhere: at 320 "2026年10月9日 截止 · 结算来 / 源：CoinGecko" split 来源. Each part is now a
+     flex item (`.mcardp-src__seq`, the hub's own idiom beside `.kp-hub__seq`), and the " · " before the source hangs in
+     the gap to its left, so a part that opens a line carries its dot outside the line, where the clip hides it — no
+     line ends on "·" or starts with one. The dot keeps the sentence's own " · ", so a screen reader hears the line as
+     before. */
   const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
   const metaLine = closesOn || sourceName ? (
-    <>
-      {closesOn}
-      {closesOn && sourceName ? " · " : null}
+    <span className="mcardp-src__seq">
+      {closesOn && <span className="mcardp-src__part">{closesOn}</span>}
       {sourceName && (
-        <>
+        <span className="mcardp-src__part">
+          {closesOn && <span className="mcardp-src__dot">{" · "}</span>}
           {settlesPre}
           <span className="mcardp-srcname" data-market-part="source">{sourceName}</span>
           {settlesPost}
-        </>
+        </span>
       )}
-    </>
+    </span>
   ) : null;
   /* ⭐ WP3 · THE PREDICTOR FLOOR (R7): the featured card — the page's lead market — withholds its count and
      its crest row below `FEATURED_PREDICTOR_FLOOR` ("2 watabiri" there reads as a dead market). It says so
@@ -663,7 +669,8 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        <span data-market-part="pool">{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
+        {/* `mcardp-nopool`: the words, not a figure — read at 13px on the featured card (globals.css, round 3). */}
+        <span data-market-part="pool" className={fresh ? "mcardp-nopool" : undefined}>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
         {comments != null && comments > 0 && (
           <>
             <span className="dot" />

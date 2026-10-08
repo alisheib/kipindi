@@ -1456,8 +1456,44 @@ body {
   will-change: transform;
 }
 /* The clipping box around the marquee. ⛔ It used to carry `overflow: hidden` as an INLINE style, which
-   no rule can override — so the calm branch below could not turn it into a scroller. Moved here. */
-.ticker-viewport { overflow: hidden; }
+   no rule can override — so the calm branch below could not turn it into a scroller. Moved here.
+   Its layout followed it on 2026-10-08 (the same trap, one property over): the journey's leading fade below has to
+   move `padding-left`. The values are the ones the inline style carried — the 8px is the air between the LIVE label's
+   fade and item 1 at rest (live-ticker.tsx). */
+.ticker-viewport { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; padding-left: 8px; overflow: hidden; }
+/* The fixed LIVE label (live-ticker.tsx), moved here from its inline style for the same reason and with the same values:
+   16px in, 24px of trailing padding, solid ground to 70% that fades out across that padding. */
+.ticker-label {
+  flex: 0 0 auto;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+  padding-right: 24px;
+  background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) 70%, oklch(11% 0.11 268 / 0) 100%);
+}
+/* ⭐ THE JOURNEY'S STRIP (2026-10-08, round 3's tiles; classic viewers are served what they were — VODACOM-PLAN §0i —
+   so every rule here is scoped by the shell's server-rendered mark, `shell-mark.ts`, like the hero's edge rule).
+   ① THE LEADING EDGE FADES LIKE THE TRAILING ONE. The run was clipped hard at the viewport's left edge, right after the
+      label, so a glyph stood cut at full ink there (x115 on tiles 198 201 202 318 322 326 327 329 at 390; 194 at 1280),
+      while the end cap fades the run's last 40px. The label's trailing 24px now lies OVER the run (the cap's own
+      overlap, mirrored): solid to the end of the word, fading to nothing across the padding, and the viewport starts
+      under it with 24px more padding, so item 1 still rests 8px clear of the fade and nothing moves at rest or in motion.
+   ② THE SEPARATOR SITS MID-GAP. Each item ends `gap 8 + dot margin 12` before its dot and `pr-8`'s 48 after it, so the
+      dot read 19px from one item and 47px from the next (tile 145: "Saturday?" ends 413, dot 433–436, "TZS 8K" 484). The
+      dot's margin is the spacing scale's 24, and the item's trailing padding its 32: 32 on each side. The item is 4px
+      narrower, so the run is too (the strip's 70s loop covers that slightly shorter distance).
+   ③ FROM 1024 THE STRIP'S CONTENT KEEPS THE PAGE'S EDGE — 32px, and inside the 1280 board on a wider screen — as the
+      header's row does (`.kp-jhdr__row`: `--w-board`, 32px from 1024). The label is 16px in and the pause glyph's ink
+      ends 16px from the strip's end, so the strip pads 16 more each side: on tile 145 (1280) "LIVE" began at x16 and
+      the pause glyph ended at x1263 under a header running 33–1247. Below 1024 both already sit on the 16px edge. */
+:root:has(#kp-journey-shell) .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
+:root:has(#kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }
+:root:has(#kp-journey-shell) .ticker-item { padding-right: var(--sp-8); }
+:root:has(#kp-journey-shell) .ticker-sep { margin-left: var(--sp-6); }
+@media (min-width: 1024px) {
+  :root:has(#kp-journey-shell) .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }
+}
 /* ⚠️ AND THE SAME TRAP CAUGHT THE DUPLICATE COPY, one commit after it was written down for the box above.
    This wrapper carried `style={{ display: "contents" }}` INLINE, so the calm branch's `display: none` could
    not touch it — verified on production: `dupDisplay` read `contents` under `prefers-reduced-motion` and the
@@ -4244,8 +4280,20 @@ html[data-sheet-open] .route-enter { animation: none; }
   font-size: var(--type-small);
   line-height: 1.5;
   color: var(--text-muted);
+  /* A row that wraps wraps EVEN, never one word under a full line (round 3's tiles, 2026-10-08): the licence row left
+     "Tanzania." alone under "Leseni ya Bodi ya Michezo ya Kubahatisha" at 360 and 390 and under "Licensed by the
+     Gaming Board of" at 320, in both shells. Balanced, the two lines share the words. Balance, not pretty: Firefox and
+     older Safari ignore pretty (`trust-band.tsx`). A row that fits one line is untouched. */
+  text-wrap: balance;
 }
 .kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
+/* ⚠️ Chinese may break between any two characters, so at 1024 the wallet row ended "…Mixx by Yas 充值和提 / 现。" — 提现
+   split and "现。" alone (round 3's tiles 034 064 075 086 099 111). keep-all breaks it only at its spaces and after its
+   commas (、), so a word stays whole, and balance shares the two lines: "可通过 M-Pesa、Airtel Money、" over
+   "HaloPesa或Mixx by Yas 充值和提现。" at every width that needs two. The licence row carries its own break points
+   (`footer.licensedByGbt`'s zero-width spaces). A run longer than its line still breaks rather than overflow — the
+   `.kp-hub__sub:lang(zh)` rule. */
+.kp-hero__trust:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */
@@ -4334,9 +4382,21 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--hero-text-strong);
   margin: 0;
   text-wrap: balance;
+  /* The left side bearing of a straight-stem capital in Sora 800 — see `.kp-hero__grp[data-stem]` below. */
+  --hero-stem: 0.07em;
 }
 .kp-hero__headline:lang(zh) { letter-spacing: 0; line-height: 1.1; }
 .kp-hero__grp { white-space: nowrap; }
+/* ⭐ A LINE THAT STARTS ON A STRAIGHT STEM STARTS AT THE PAGE'S EDGE (round 3's tiles, 2026-10-08). Sora draws N and H
+   with a side bearing, so "NDIO au / HAPANA?" sat right of the edge every other line keeps: measured from the first
+   inked column's coverage, 3.0px at 44px (tiles 013–016), 4.4px at 60px (017, 018) and 5.2px at 72px (020) — 0.068 to
+   0.073em, so 0.07em, within 0.2px of each. The English Y (0.3–0.45px) and the Chinese 是 (1.2px) start where they are.
+   `Ask` (landing-hero.tsx) decides it from the SIDE WORDS, never the locale: a group whose word starts on a measured
+   stem (H, N) and that can begin a line is set back by the bearing; the group before a set-back one gives the same
+   width back at its end, so on one line ("YES or NO?", or "NDIO au HAPANA?" at 768) the gap between the groups is
+   exactly what it was, and only a group that opens a line moves. Measure a letter before adding it to `STEM_START`. */
+.kp-hero__grp[data-stem] { margin-inline-start: calc(-1 * var(--hero-stem)); }
+.kp-hero__grp[data-stem-next] { margin-inline-end: var(--hero-stem); }
 .kp-hero__side[data-side="yes"] { color: var(--hero-yes-accent); }
 .kp-hero__side[data-side="no"] { color: var(--hero-no-accent); }
 .kp-hero__conn { font-weight: 400; color: var(--text-muted); }
@@ -5012,17 +5072,27 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-pct--no { color: var(--no-400); }
 .mcardp-pct--void { color: var(--text-muted); }
 .mcardp-pctcap--result { color: var(--text-subtle); }
+/* ⭐ THE STATE IS READ AT THE READING FLOOR (round 3's tiles, 2026-10-08). "Hakuna dau bado" was 10px mono in
+   `--text-faint`, tracked 0.06em: cap height 7px and a measured peak of 4.21:1 (tile 014) and 4.30:1 (091), under §A1's
+   4.5. It is a sentence, not a microlabel, so §T4's remedy applies — the lowest rung above the 12.5px floor
+   (`--type-small`, 13px), no tracking — in the board row's own voice for the same words (`.kp-qrow__unit--label`:
+   mono, 13px, `--text-subtle`, 6.36:1 on this wash). ⚠️ THE LINE BOX STAYS 15px, which is 10px × the body's 1.5 — the
+   box `--mcard-base` was measured with (347.44px at 360, the cold-start card this line sits on), so the card and its
+   skeleton keep their height in both densities, and the words keep the centre they had. */
 .mcardp-nobets {
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-size: var(--type-small);
+  line-height: 15px;
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-subtle);
   margin-top: 6px;
 }
 /* The invitation. Brand blue = chrome, deliberately NOT gold: gold means money
-   you have earned (RULES law 3), and nobody has earned anything here yet. */
+   you have earned (RULES law 3), and nobody has earned anything here yet.
+   At the reading floor too (round 3): "Kuwa wa kwanza kutabiri" was the trader row's 10px count type (cap height 8px).
+   13px in the row's own 1.5 is 19.5px, inside the row's 24px (22px Compact) `--mcard-traders-h`, so nothing moves. */
 .mcardp-befirst { color: var(--brand-300); }
+.mcardp-traders .mcardp-befirst { font-size: var(--type-small); }
 
 /* ── One-sided (landing v3 · WP6, 2026-09-27) ─────────────────────────────────
    Money on ONE side has no price (MOBILE-VISUAL ruling 13): the card keeps the
@@ -5097,6 +5167,10 @@ html[data-sheet-open] .route-enter { animation: none; }
   text-wrap: pretty;
 }
 .mcardp-srcname { color: var(--text-muted); }
+/* Its two parts — the close and the source — are the line's only break (`.mcardp-src__seq`, beside `.kp-hub__seq`), and a
+   part that must wrap inside itself in Chinese breaks at its spaces and after its colon, never inside 结算来源 or 截止
+   (keep-all; `overflow-wrap: anywhere` above stays the floor for a run longer than the line). */
+.mcardp-src:lang(zh) { word-break: keep-all; }
 /* The featured card's line is a child of the CARD, after the question and before the pick in the
    reading order (K36). Below 640 it is SHOWN under the YES/NO row — the first screen at 360 has no room
    above it (V15, hero v3 §7) — by `order`, which moves no focusable thing (it is text). From 640 it sits
@@ -5104,6 +5178,12 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-src--featured { margin-top: 0; order: 1; }
 .mcardp--featured > .mcardp-meta,
 .mcardp--featured > .mcardp-foot { order: 2; }
+/* "Hakuna bwawa bado" in the featured card's pool slot is a sentence too (round 3: 11px, cap height 8px), so it takes
+   the same 13px as the line above. FEATURED ONLY, and measured: the featured row holds the words and the 44px info
+   button alone (its time is top-right), 133 + 7 + 44 = 184px against 256 at 320. A grid card's row also holds an 11px
+   countdown — "masaa 21 yamebaki", 112px — and at 360 the words at 13px would need 302 of 296px, so its one-line meta
+   row (`.mcardp-meta`, D35) would wrap and the card would grow a row. The row is 44px tall either way. */
+.mcardp--featured .mcardp-meta > .mcardp-nopool { font-size: var(--type-small); }
 @media (min-width: 640px) {
   .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
   .mcardp--featured > .mcardp-meta,
@@ -6115,10 +6195,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    Each thing is one flex item (`HubSub`, hub-row.tsx) and the dot before it hangs in the gap to its left, so a thing
    that opens a line carries its dot outside the box, where the clip hides it: one line reads as before, two read
    "Maswali ya kawaida · Simu" over "Barua pepe". The clip cuts the LEFT edge only, so a word wider than its line
-   still shows whole on the right, as the plain line always did. */
-.kp-hub__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }
-.kp-hub__seq-item { position: relative; min-width: 0; }
-.kp-hub__seq-dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }
+   still shows whole on the right, as the plain line always did.
+   ⭐ ONE IDIOM, TWO HOOKS: the featured card's meta line ("2026年10月9日 截止 · 结算来源：CoinGecko", `.mcardp-src__seq`,
+   market-card.tsx) is drawn the same way (round 3's tiles 029 059 074 084 097 109: at 320 Chinese it broke
+   "…结算来 / 源：CoinGecko", splitting 来源). Its dot keeps the sentence's own " · " for a screen reader. */
+.kp-hub__seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); clip-path: inset(-100vmax -100vmax -100vmax 0); }
+.kp-hub__seq-item, .mcardp-src__part { position: relative; min-width: 0; }
+.kp-hub__seq-dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--sp-3); text-align: center; }
 /* The proposals row's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08). In the row's trailing slot it took
    84px from the label, and "Pendekeza na upate zawadi" folded in two at 390 though the label alone fits. Now the two
    share one wrapping line: side by side, the flag at the row's end as before, where both fit (English and Chinese at
@@ -6154,14 +6237,24 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* ── WP14 part 2 · THE SIGNED-IN HERO (the delivery's §4a/§4c) ─────────────────────────────────
    Your picks → the balance with the same Deposit/Withdraw pair (or the empty-balance prompt) →
    Set limits. The pair is the Wallet's: one rung, one box, only the skin differs (V19). */
-.kp-mine { display: flex; flex-direction: column; gap: var(--sp-5); }
+.kp-mine { display: flex; flex-direction: column; gap: var(--sp-5); --mine-measure: calc(34 * var(--type-h4)); }
 .kp-mine__eyebrow { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
 .kp-mine__stats { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-8); margin-top: var(--sp-2); }
 .kp-mine__stat { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
 .kp-mine__n { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text); overflow-wrap: anywhere; }
 .kp-mine__n--gold { color: var(--gold-300); }
 .kp-mine__l { font-size: var(--type-small); line-height: 1.35; color: var(--text-muted); }
-.kp-mine__lead { font-size: var(--type-h4); line-height: 1.5; color: var(--text-muted); max-width: 34em; }
+/* ⭐ ONE MEASURE FOR THE BLOCK (round 3's tile 091, 2026-10-08): the lead was capped at 34em (578px) and the frozen
+   notice at 560px, so at 1280 the lead's first line ran to x607 over a box that ended at x591 — two right edges in one
+   column. Both take the lead's reading measure, 34 × the lead's 17px (`--mine-measure`, on `.kp-mine` above). */
+/* Balanced (round 3's tiles 056 073 095 107): at 1024 English left "first." alone under "No picks yet. Choose a side on
+   a market to make your". */
+.kp-mine__lead { font-size: var(--type-h4); line-height: 1.5; color: var(--text-muted); max-width: var(--mine-measure); text-wrap: balance; }
+/* Chinese breaks between any two characters, so at 1024 the leads split their last word: "…完成您的第一次选 / 择。" and
+   "…即可进行下一 / 次选择。" (round 3's tiles 075 086 099 111). keep-all ends a line only at 。and ，— each of these
+   sentences is two or three short clauses, so a line holds whole clauses (the `.kp-hub__sub:lang(zh)` and
+   `.kp-udrule` rule). */
+.kp-mine__lead:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
 /* ⭐ R17 (2026-09-28) · THE BLOCK'S TWO QUIET DOORS, SIDE BY SIDE — My positions and Set limits. It held
    ONE link (`align-self: flex-start` inside the column), so a second would have stacked under it and read
    as two separate rows rather than one footer to the block. ⛔ `gap`, never `column-gap`: in Swahili the
@@ -6178,7 +6271,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The box has an edge: the hero's ground (--bg-overlay) is the very colour of --bg-inset, so the frozen notice drew no
    box at all, only its padding — two lines indented 16px from everything above and below them, reading as stray text
    (WP12's tiles, 2026-10-08). */
-.kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-inset); max-width: 560px; }
+.kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-inset); max-width: var(--mine-measure); }
 .kp-mine__held-t { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); line-height: 1.25; color: var(--text); }
 .kp-mine__held-b { font-size: var(--type-small); line-height: 1.45; color: var(--text-muted); }
 .kp-mine__limits { display: inline-flex; align-items: center; gap: var(--sp-1); align-self: flex-start; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }

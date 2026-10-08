@@ -1341,8 +1341,9 @@ function g7Header(W: World, ok: Ok) {
   // on hydration), they keep the header's edge: the base rules' 16px to 1023 and 32px from 1024. Classic viewers keep
   // their 24 (VODACOM-PLAN §0i: served what they were).
   const SHELL_SCOPE = ":root:has(#kp-journey-shell)";
+  // Read per container: the journey's 1024 step also holds the LIVE strip's edge (7.ticker-edge), in a block of its own.
   const journeyEdge = (px: number) => mediaBlocks(css)
-    .filter((b) => b.cond === `(min-width: ${px}px)` && b.body.includes(SHELL_SCOPE))
+    .filter((b) => b.cond === `(min-width: ${px}px)` && b.body.includes(SHELL_SCOPE) && b.body.includes(".kp-hero__inner"))
     .map((b) => b.body.replace(/\s+/g, " ").trim());
   const landingEdge = (sp: string) => `${SHELL_SCOPE} .kp-hero__inner, ${SHELL_SCOPE} .kp-band__inner { padding-inline: var(--sp-${sp}); }`;
   const landing = {
@@ -1355,6 +1356,43 @@ function g7Header(W: World, ok: Ok) {
       && landing.at768.length === 1 && landing.at768[0] === landingEdge("4")
       && landing.at1024.length === 1 && landing.at1024[0] === landingEdge("8") && landing.mark,
     show(landing));
+  // ⭐ THE LIVE STRIP, ROUND 3 (2026-10-08). It is shared with the classic shell (`live-ticker.tsx`, in AppShell), so every
+  // journey rule rides the same server-rendered mark and classic viewers are served what they were (VODACOM-PLAN §0i).
+  // The label's and the run's layout moved out of inline styles into `.ticker-label` / `.ticker-viewport` with the
+  // same values, because an inline style beats every rule below.
+  const ticker = text(W, "src/components/layout/live-ticker.tsx");
+  const one = (sel: string) => {
+    const at = css.indexOf(`${LF}${SHELL_SCOPE} ${sel} {`);
+    return at < 0 || css.indexOf(`${LF}${SHELL_SCOPE} ${sel} {`, at + 1) >= 0 ? "" : css.slice(at + 1, css.indexOf("}", at) + 1);
+  };
+  const strip = {
+    label: baseRule(css, ".ticker-label"), viewport: baseRule(css, ".ticker-viewport"),
+    edge: mediaBlocks(css).filter((b) => b.cond === "(min-width: 1024px)" && b.body.includes(".ticker-strip")).map((b) => b.body.replace(/\s+/g, " ").trim()),
+    fade: one(".ticker-label"), runPad: one(".ticker-viewport"), item: one(".ticker-item"), sep: one(".ticker-sep"),
+    sp4: tokenValue(css, "sp-4"), sp6: tokenValue(css, "sp-6"), sp8: tokenValue(css, "sp-8"), board: tokenValue(css, "w-board"),
+    labelMarkup: ticker.includes(`<div className="ticker-label">`) && !/paddingLeft: (?:16|8)\b|paddingRight: 24\b/.test(ticker),
+    itemMarkup: ticker.includes(`className="ticker-item inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap"`),
+    sepMarkup: ticker.includes(`className="ticker-sep opacity-40 ml-2"`),
+    gap: W.tailwind.includes(`"1.5": "8px"`),
+  };
+  // ③ From 1024 the strip's content keeps the page's edge: the label's own 16 plus 16, inside the 1280 board on a wider
+  // screen, as the header's row is (tile 145: "LIVE" at x16 and the pause glyph to x1263 under a header at 33–1247).
+  ok("7.ticker-edge · from 1024 the journey's LIVE strip keeps the page's edge — 16px more each side of the label's own 16 (and of the pause glyph's own 16), inside the 1280 board, one journey-scoped block, the label's padding no longer inline (round 3, 2026-10-08)",
+    strip.edge.length === 1 && strip.edge[0] === `${SHELL_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`
+      && strip.label.includes("padding-left: 16px;") && strip.sp4 === "16px" && strip.board === "1280px" && strip.labelMarkup,
+    show(strip));
+  // ① The leading edge fades like the trailing one: the label's 24px of trailing padding lies OVER the run (solid to the
+  // word's end, then nothing), and the run starts 24px further under it, so item 1 still rests 8px clear of the fade.
+  ok("7.ticker-fade · the journey's run fades in under the LIVE label's trailing 24px as it fades out under the end cap — the label overlaps the run by exactly its padding and the run's rest position does not move (round 3, tiles 194 198 201 202 318 322 326 327 329)",
+    strip.label.includes("padding-right: 24px;") && strip.label.includes("var(--bg-inset) 70%,") && strip.sp6 === "24px"
+      && strip.fade === `${SHELL_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6)); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }`
+      && strip.viewport.includes("padding-left: 8px;") && strip.runPad === `${SHELL_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`,
+    show(strip));
+  // ② The separator sits mid-gap: gap 8 + the dot's 24 before it, the item's 32 after it (it read 19 and 47 on tile 145).
+  ok("7.ticker-dot · the journey's separator dot sits mid-gap — the item's 8px gap plus the dot's 24px margin before it equals the item's 32px trailing padding after it (round 3, tile 145)",
+    strip.item === `${SHELL_SCOPE} .ticker-item { padding-right: var(--sp-8); }` && strip.sep === `${SHELL_SCOPE} .ticker-sep { margin-left: var(--sp-6); }`
+      && strip.itemMarkup && strip.sepMarkup && strip.gap && 8 + parseInt(strip.sp6, 10) === parseInt(strip.sp8, 10),
+    show(strip));
   const cluster = baseRule(css, ".kp-jhdr__cluster");
   ok("7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — no step on the row moves them before 640",
     row.includes("gap: 6px;") && row.includes("display: flex") && !row360.includes("gap")
@@ -2658,6 +2696,15 @@ ${s}`);
     const homeUnscoped = withCss((s) => s.replace(`${HOME_SCOPE} .kp-hero__inner,`, ".kp-hero__inner,"));
     const SHELL_MARK = "src/lib/journey/shell-mark.ts";
     const markRenamed = withFile(WORLD, SHELL_MARK, (s) => s.replace(`= "kp-journey-shell";`, `= "kp-journey-mark";`));
+    // 7.ticker-*'s plants (round 3): the strip's edge unscoped (the classic strip would move) or lost, the label's padding
+    // inline again (no rule can reach it), the leading fade gone, item 1 moved under the fade, the dot back off-centre.
+    const TICKER = "src/components/layout/live-ticker.tsx";
+    const tickerEdgeUnscoped = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip {`, ".ticker-strip {"));
+    const tickerEdgeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }`, ""));
+    const tickerInline = withFile(WORLD, TICKER, (s) => s.replace(`<div className="ticker-label">`, `<div className="ticker-label" style={{ paddingLeft: 16 }}>`));
+    const tickerFadeLost = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-label { margin-right: calc(-1 * var(--sp-6));`, `${HOME_SCOPE} .ticker-label { margin-right: 0;`));
+    const tickerRestMoves = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-viewport { padding-left: calc(8px + var(--sp-6)); }`, `${HOME_SCOPE} .ticker-viewport { padding-left: 8px; }`));
+    const tickerDotOff = withCss((s) => s.replace(`${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-6); }`, `${HOME_SCOPE} .ticker-sep { margin-left: var(--sp-5); }`));
     const figure14 = withCss(inRule(".kp-jbal__fig", "font-size: 12px", "font-size: 14px"));
     const gap8 = withCss(inRule(".kp-jhdr__row", "gap: 6px;", "gap: 8px;"));
     const homeFlush = withCss(inRule(".kp-jhdr__home", "margin-inline: -9px", "margin-inline: 0"));
@@ -3006,6 +3053,18 @@ ${s}`);
         world: homeUnscoped, landed: cssChanged(homeUnscoped), landedAs: "the classic hero moves for every player" },
       { name: "the shell's mark is renamed under the rule that reads it", expect: at("7.landing-edge ·"),
         world: markRenamed, landed: changed(markRenamed, SHELL_MARK), landedAs: "the rule waits for a span no page writes" },
+      { name: "the LIVE strip's edge rule loses its journey scope", expect: at("7.ticker-edge ·"),
+        world: tickerEdgeUnscoped, landed: cssChanged(tickerEdgeUnscoped), landedAs: "the classic strip moves 16px in for every player" },
+      { name: "the LIVE strip's 1024 edge is lost", expect: at("7.ticker-edge ·"),
+        world: tickerEdgeLost, landed: cssChanged(tickerEdgeLost), landedAs: "LIVE at x16 under a header at x32 again" },
+      { name: "the LIVE label's padding goes back inline", expect: at("7.ticker-edge ·"),
+        world: tickerInline, landed: changed(tickerInline, TICKER), landedAs: "an inline style no journey rule can reach" },
+      { name: "the label stops overlapping the run", expect: at("7.ticker-fade ·"),
+        world: tickerFadeLost, landed: cssChanged(tickerFadeLost), landedAs: "a glyph cut at full ink right after LIVE again" },
+      { name: "the run starts under the label without its extra padding", expect: at("7.ticker-fade ·"),
+        world: tickerRestMoves, landed: cssChanged(tickerRestMoves), landedAs: "item 1 rests under the fade, 24px left of where it was" },
+      { name: "the separator dot's margin leaves the scale's 24", expect: at("7.ticker-dot ·"),
+        world: tickerDotOff, landed: cssChanged(tickerDotOff), landedAs: "28px before the dot and 32 after it" },
       { name: "a 14px figure below 360", expect: at("7.figure ·"),
         world: figure14, landed: cssChanged(figure14), landedAs: "TZS 999,999 two characters wider at 320" },
       { name: "the gap becomes 8px", expect: at("7.gap ·"),

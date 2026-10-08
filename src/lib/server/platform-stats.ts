@@ -183,9 +183,22 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // plausible 50, and the card gates on the pool rather than on a guess. null now means UNKNOWN
   // and the hero withholds the slot; a real zero still prints, because a platform that has paid
   // out nothing yet should say so.
-  const paidOutTzs = await Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"]))
-    .catch(() => null);
+  const paidOutTzs = await readPaidOutTzs();
   const value: PlatformStats = { settledCount: resolved.length, recentSettlements: settlements, paidOutTzs };
   globalThis.__50PICK_PLATFORM_STATS = { at: now, value };
   return value;
+}
+
+/**
+ * Σ CONFIRMED payouts + cash-outs, read NOW — the memo's own read above, and its one home.
+ *
+ * ⭐ EXPORTED FOR ONE CASE (2026-10-08, round 3): the landing reads it again, past the memo, only when the cached
+ * figure is below what the signed-in reader alone was paid this week (`paidOutBehind`, landing-picks.ts). Every win
+ * and cash-out writes its CONFIRMED txn with the position (market-service.ts: inside the settlement's money
+ * transaction; after the cash-out's credit), so a fresh total is never below one player's own payouts — the memo's
+ * age (`TTL_MS`) is the gap, and a real player can meet it only while their payouts are most of what the platform
+ * has paid. null = the read failed, never a zero.
+ */
+export async function readPaidOutTzs(): Promise<number | null> {
+  return Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"])).catch(() => null);
 }

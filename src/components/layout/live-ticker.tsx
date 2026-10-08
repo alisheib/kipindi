@@ -62,7 +62,8 @@ function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix
   return (
     <>
       {events.map((ev) => (
-        <span key={`${prefix}-${ev.id}`} className="inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
+        // `ticker-item` / `ticker-sep`: the journey's hooks — it centres the dot between two items (globals.css, ②).
+        <span key={`${prefix}-${ev.id}`} className="ticker-item inline-flex items-center gap-1.5 shrink-0 font-mono text-[12px] pr-8 whitespace-nowrap">
           {/* A VOID CARRIES NO FIGURE AND NO SIDE — we kept nothing and every stake was
               refunded, so there is no amount that describes what happened, and no winning
               side to name. Stated neutrally, never as an error: licence condition 4 / §C4,
@@ -82,7 +83,7 @@ function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix
           {/* Stage 9b — kit <Dot>. `color` rather than `tone="gold"`: the separator is
               gold-400, one stop lighter than the tone's gold-500, and a consolidation
               does not get to change a hue on the way past. */}
-          <Dot color="var(--gold-400)" size={3} className="opacity-40 ml-2" />
+          <Dot color="var(--gold-400)" size={3} className="ticker-sep opacity-40 ml-2" />
         </span>
       ))}
     </>
@@ -248,12 +249,11 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
           underneath the label. Flex makes the track start wherever the label
           actually ends, in every locale, with no measurement. The gradient is now
           solid across the label and fades only in its trailing padding, so nothing
-          is ever legible beneath the text. */}
-      <div style={{
-        flex: "0 0 auto", zIndex: 10,
-        display: "flex", alignItems: "center", paddingLeft: 16, paddingRight: 24,
-        background: "linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) 70%, oklch(11% 0.11 268 / 0) 100%)",
-      }}>
+          is ever legible beneath the text.
+          Its style is `.ticker-label` in globals.css since 2026-10-08, with the same values: the journey's
+          strip lays that trailing padding OVER the run, so the leading edge fades as the end cap does — a
+          rule an inline style would have beaten. */}
+      <div className="ticker-label">
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           {/* Stage 9b — kit <Dot pulse>, which IS `.live-dot`: same 6px, same
               `--live-400`, same 2600ms breathe, and the same gating at all three
@@ -284,7 +284,8 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
           instrument's is how the next reader "protects" behaviour nothing ever needed. */}
       {/* ⛔ `overflow` LIVES IN THE STYLESHEET NOW, NOT HERE. An inline style beats any rule, and the
           reduced-motion branch has to be able to turn this box into a scroller — see `.ticker-viewport`
-          in globals.css. Everything else stays inline because it is layout this component owns. */}
+          in globals.css. ⚠️ Its layout followed on 2026-10-08 (the 8px of air included): the journey's leading
+          fade moves its `padding-left`, and an inline style would have beaten that rule too. */}
       {/* ⭐ A TAP ANYWHERE ON THE RUN STOPS IT, OR STARTS IT AGAIN. The strip is 32px tall and the
           platform's finger floor is 40 (`--tap-min`, Law 9), so the control at the end cannot reach the
           floor inside the strip — but the whole run can, being the full width. This is the phone's way
@@ -311,7 +312,6 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
           if (p && (Math.abs(e.clientX - p.x) > 6 || e.currentTarget.scrollLeft !== p.scrollLeft)) return;
           toggle();
         }}
-        style={{ flex: "1 1 auto", minWidth: 0, display: "flex", alignItems: "center", paddingLeft: 8 }}
       >
         <div
           ref={trackRef}

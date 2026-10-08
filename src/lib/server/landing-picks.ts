@@ -52,6 +52,22 @@ export function tallyPicks(rows: readonly PickRow[], markets: ReadonlyMap<string
   return { open, awaiting, paidThisWeekTzs: paid };
 }
 
+/**
+ * True when the platform's "paid out to players" figure is provably BEHIND this reader's own read — below what they
+ * alone were paid this week. Pure.
+ *
+ * ⭐ WHY (round 3, 2026-10-08): one screen said "TZS 48,208 paid to you this week" over "TZS 0 paid out to players"
+ * (tiles 133 135 137, a seeded demo store). The platform figure is memoised for a minute (`getPlatformStats`) and the
+ * picks are read per request, so after a player's first win the two can disagree in production too, while that
+ * player's payouts are most of what the platform has ever paid. The page then reads the total again past the memo
+ * (`readPaidOutTzs`); a total STILL behind means the ledger and the positions disagree, and the slot is withheld
+ * rather than contradict the reader's own figure (B-1: a figure known to be incomplete is not printed). A failed read
+ * on either side decides nothing.
+ */
+export function paidOutBehind(platformPaidOutTzs: number | null, picks: LandingPicks | null): boolean {
+  return platformPaidOutTzs !== null && picks !== null && picks.paidThisWeekTzs > platformPaidOutTzs;
+}
+
 export async function landingPicks(userId: string, nowMs: number): Promise<LandingPicks> {
   const positions = await listPositionsForUser(userId, 5_000, "MARKET");
   const weekStart = eatWeekStartMs(nowMs);

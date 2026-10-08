@@ -9,7 +9,7 @@ import { listSources, sourceNameFor, type TrustedSource } from "@/lib/server/sou
 
 import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
-import { getPlatformStats } from "@/lib/server/platform-stats";
+import { getPlatformStats, readPaidOutTzs } from "@/lib/server/platform-stats";
 import { LandingHero, LandingProof, QuestionBoard } from "@/components/home/landing-hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { TopicTiles } from "@/components/home/topic-tiles";
@@ -25,7 +25,7 @@ import { landingComposition } from "@/lib/markets/landing";
 import { getServerT } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { ratesFrom } from "@/app/legal/rules/_shared";
-import { landingPicks } from "@/lib/server/landing-picks";
+import { landingPicks, paidOutBehind } from "@/lib/server/landing-picks";
 import { db } from "@/lib/server/store";
 import { getKillSwitches } from "@/lib/server/payment-ops";
 import { heroRailNames, heroRails } from "@/lib/server/payout-rails";
@@ -248,6 +248,14 @@ export default async function LandingPage({ searchParams }: {
         held: !!wallet && wallet.status !== "ACTIVE",
       }))
     : null;
+  // ⛔ ONE SCREEN, NOT TWO TRUTHS ABOUT ONE LEDGER (round 3, 2026-10-08). The proof band's "paid out to players" is
+  // memoised for a minute; the reader's "paid to you this week" is read now. When the memo is below what this reader
+  // alone was paid, it predates their payout — read the total again, and if it is still behind, withhold the slot
+  // rather than print a figure the screen itself contradicts (`paidOutBehind`, landing-picks.ts).
+  const ownPicks = mine?.picks ?? null;
+  const paidOutTzs = paidOutBehind(stats.paidOutTzs, ownPicks)
+    ? await readPaidOutTzs().then((fresh) => (paidOutBehind(fresh, ownPicks) ? null : fresh))
+    : stats.paidOutTzs;
 
   // ⚠️ `timeLeftStr` LEFT THIS FILE WITH THE GRID (WP9). It was the shared wrapper around
   // `timeLeftLabel` for the grid cards; the featured card and the board rows each build their own
@@ -273,7 +281,7 @@ export default async function LandingPage({ searchParams }: {
       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
           board. Directly under the hero since v3, so the hero's first screen is the pitch and a
           live market (WP2 / V15). */}
-      <LandingProof figures={figures} t={t} paidOutTzs={stats.paidOutTzs} />
+      <LandingProof figures={figures} t={t} paidOutTzs={paidOutTzs} />
 
       {/* ── §1a″ THE BOARD — the landing's ONE market list (WP9 · R15). Its section header and its
           ordering rail are `QuestionBoard`'s; the rail's two lenses are computed on the server from

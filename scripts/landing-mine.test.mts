@@ -6,8 +6,11 @@
  *      PAID only what a win or a cash-out paid since Monday 00:00 EAT.
  * §2 · THE WEEK — `eatWeekStartMs` on both sides of the Sunday→Monday midnight in Dar es Salaam.
  * §3 · THE HERO'S CONTRACT — a failed read renders nothing (never a zero), no picks is one sentence,
- *      the pair is the Wallet's pair (same rung, same box), a frozen wallet gets no money buttons, and
- *      the trust lines stay above it.
+ *      the pair is the Wallet's pair (same rung, same box), a frozen wallet gets no money buttons and no
+ *      invitation to pick, and the trust lines stay above it — and round 3's wrap rules (2026-10-08): the trust
+ *      rows and the lead wrap even, Chinese keeps its words whole there, and the block keeps one measure.
+ * §4 · ONE SCREEN, ONE LEDGER — the proof band's "paid out to players" is never shown below what the reader
+ *      alone was paid this week (`paidOutBehind`): the page re-reads the total past the memo, then withholds.
  *
  * Run: npm run test:landing-mine
  */
@@ -20,7 +23,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
-const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-picks.ts");
+const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/server/landing-picks.ts");
 
 // ── 2 · the week (asserted first: §1 leans on it) ──────────────────────────────
 {
@@ -91,7 +94,47 @@ const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-p
   ok("3: no picks at all is ONE sentence, not three zeros", /<p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/.test(act));
   ok("3: …and at zero balance the empty-balance prompt says it alone (the two sentences said it twice)",
      /emptyWallet \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}/.test(act) && /const emptyWallet = !held && balance !== null && balance <= 0/.test(act));
-  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
+  // ⛔ Round 3 (2026-10-08, tiles 090 091 095 096 099 100): "Choose a side on a market to make your first" stood directly
+  // above "Your wallet is frozen". A held wallet is not invited to pick — the notice speaks alone, no new words.
+  const HELD_QUIET = /held \|\| emptyWallet \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/;
+  ok("3: ⛔ a frozen wallet is not invited to pick — the no-picks sentence is withheld when held, as at zero",
+     HELD_QUIET.test(act));
+  ok("3-control: …and the pre-fix line (the invitation over the frozen notice) IS caught by that matcher",
+     !HELD_QUIET.test('emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>'));
+  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8").replace(/\r\n/g, "\n");
+  /** A base rule's declarations: the rule written at a line start, `sel {` exactly. */
+  const ruleOf = (src: string, sel: string) => { const at = src.indexOf(`\n${sel} {`); return at < 0 ? "" : src.slice(at, src.indexOf("}", at)); };
+  // Round 3's wrap rules for the hero's intro and the player's block — each a measured tile defect a later edit could undo.
+  const wrap = (src: string) => ({
+    // F3 · the licence row left "Tanzania." alone (sw 360/390, en 320, the classic home too): balanced rows.
+    trust: ruleOf(src, ".kp-hero__trust").includes("text-wrap: balance;"),
+    // F1 · zh 1024 split 提现 and left "现。" alone: keep-all, with anywhere as the floor.
+    trustZh: /\n\.kp-hero__trust:lang\(zh\) \{ word-break: keep-all; overflow-wrap: anywhere; \}/.test(src),
+    // F4 · en 1024 left "first." alone: the lead is balanced.
+    lead: ruleOf(src, ".kp-mine__lead").includes("text-wrap: balance"),
+    // F1 · zh 1024 split 选择 and 下一次: keep-all on the lead.
+    leadZh: /\n\.kp-mine__lead:lang\(zh\) \{ word-break: keep-all; overflow-wrap: anywhere; \}/.test(src),
+    // F12 · one measure: the lead (34em) and the frozen notice (560px) ended 16px apart at 1280.
+    measure: ruleOf(src, ".kp-mine").includes("--mine-measure: calc(34 * var(--type-h4))")
+      && ruleOf(src, ".kp-mine__lead").includes("max-width: var(--mine-measure)")
+      && ruleOf(src, ".kp-mine__held").includes("max-width: var(--mine-measure)"),
+  });
+  const w = wrap(css);
+  ok("3: the trust rows wrap even (no word alone under a full line) and Chinese keeps its words whole there (round 3, F3 + F1)",
+     w.trust && w.trustZh, JSON.stringify(w));
+  ok("3: the player's lead wraps even and keeps Chinese words whole (round 3, F4 + F1)", w.lead && w.leadZh, JSON.stringify(w));
+  ok("3: ⭐ the block's lead and frozen notice share ONE measure (round 3, F12)", w.measure, JSON.stringify(w));
+  {
+    const planted = [
+      ["the trust rows unbalanced", css.replace("  text-wrap: balance;\n}\n.kp-hero__trust > li {", "}\n.kp-hero__trust > li {"), "trust"],
+      ["zh trust rows break anywhere", css.replace(".kp-hero__trust:lang(zh) { word-break: keep-all;", ".kp-hero__trust:lang(zh) { word-break: normal;"), "trustZh"],
+      ["the lead unbalanced", css.replace("max-width: var(--mine-measure); text-wrap: balance; }", "max-width: var(--mine-measure); }"), "lead"],
+      ["the frozen notice back on its own 560px", css.replace("background: var(--bg-inset); max-width: var(--mine-measure); }", "background: var(--bg-inset); max-width: 560px; }"), "measure"],
+    ] as const;
+    const caught = planted.filter(([, src, key]) => src !== css && !wrap(src)[key]).map(([n]) => n);
+    ok("3-control: each wrap rule, planted away, IS caught (a guard that cannot fail is decoration)",
+       caught.length === planted.length, `caught ${caught.length}/${planted.length}: ${caught.join(" · ")}`);
+  }
   const sheet = decomment(readFileSync(join(ROOT, "src/components/layout/wallet-sheet.tsx"), "utf8"));
   /* ⭐ R17 (Ali, 2026-09-28) · THE SIGNED-IN HERO HOLDS NO MONEY CONTROL AND NO BALANCE, and the six
      assertions below are that absence made checkable. They replace "Deposit and Withdraw at the SAME
@@ -132,6 +175,27 @@ const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-p
      /landingPicks\(session\.userId, nowMs\)\.catch\(\(\) => null\)/.test(page) &&
      /balance: wallet === undefined \? null :/.test(page));
   ok("3: the hero's balance is the header's wallet row (db.wallet.findByUserId)", /db\.wallet\.findByUserId\(session\.userId\)/.test(page));
+
+  // ⛔ ROUND 3 (2026-10-08, tiles 133 135 137): "TZS 48,208 paid to you this week" over "TZS 0 paid out to players".
+  // The platform figure is memoised for a minute and the picks are read now; every win and cash-out writes its CONFIRMED
+  // txn with the position, so a fresh total below one reader's own payouts means a stale memo (a real player's first
+  // days) or a ledger the positions disagree with (a seeded store). The page re-reads once, then withholds.
+  const p = (paid: number) => ({ open: 0, awaiting: 0, paidThisWeekTzs: paid });
+  ok("4: the platform figure is BEHIND only when it is below what this reader alone was paid this week",
+     paidOutBehind(0, p(48_208)) && paidOutBehind(48_207, p(48_208)));
+  ok("4-control: equal, above, or a failed read on either side decides nothing (never a withheld slot by accident)",
+     !paidOutBehind(48_208, p(48_208)) && !paidOutBehind(66_000, p(48_208)) && !paidOutBehind(null, p(48_208))
+     && !paidOutBehind(0, null) && !paidOutBehind(0, p(0)));
+  const stats = decomment(readFileSync(join(ROOT, "src/lib/server/platform-stats.ts"), "utf8"));
+  const RE_READ = /const paidOutTzs = paidOutBehind\(stats\.paidOutTzs, ownPicks\)\s*\?\s*await readPaidOutTzs\(\)\.then\(\(fresh\) => \(paidOutBehind\(fresh, ownPicks\) \? null : fresh\)\)\s*:\s*stats\.paidOutTzs;/;
+  ok("4: the page re-reads a total that is behind the reader, withholds one still behind, and the proof band prints THAT",
+     /const ownPicks = mine\?\.picks \?\? null;/.test(page) && RE_READ.test(page)
+     && /<LandingProof figures=\{figures\} t=\{t\} paidOutTzs=\{paidOutTzs\} \/>/.test(page));
+  ok("4-control: the pre-fix wiring (the memo straight to the band) IS caught",
+     !/<LandingProof figures=\{figures\} t=\{t\} paidOutTzs=\{paidOutTzs\} \/>/.test("<LandingProof figures={figures} t={t} paidOutTzs={stats.paidOutTzs} />"));
+  ok("4: ONE read of the total — the memo and the re-read share `readPaidOutTzs`, and nothing else sums the ledger here",
+     (stats.match(/sumConfirmedByTypes\(/g) ?? []).length === 1 && /const paidOutTzs = await readPaidOutTzs\(\);/.test(stats)
+     && /export async function readPaidOutTzs\(\)/.test(stats));
 }
 
 console.log(`\nlanding-mine: ${pass} passed, ${fail} failed`);
