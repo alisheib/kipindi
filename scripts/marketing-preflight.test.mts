@@ -118,6 +118,7 @@ const L = {
   p6c: "P6c · ⭐ THE SETTINGS READER IS THE APP'S — over 12 stored records the port answers the real readSettingsRow's fields (defaults filled) and its dropped list, and `readable` is the engine's rule",
   p6d: "P6d · ⭐ THE GATE'S CONSENT-AND-BASIS HALF IS THE REAL GATE'S — over 384 scenarios (a contact: stop × newest ledger row × licence record × book standing; an account: switch × newest row × record × age × status) the port clears and refuses exactly as mayReceiveMarketingSms does, with the same skip reason; the age band agrees with marketingAge; ⭐ U33r, the REFEREE dimension (1,056 more: a promised agent referee held by the number, by the book row's e-mail, by the account's e-mail) — the real gate refuses `suppressed` first, else `agent_referee`, whatever the consent, the record and the book say, and the port (which does NOT judge the exclusion) never reads a GO without carrying it in `unjudged`",
   p6e: "P6e · ⭐ THE FOUR SYSTEMCONFIG KEYS ARE THE APP'S — KEY_LIVE_SWITCH, KEY_SETTINGS, KEY_OUTREACH and KEY_WORDINGS equal the app's own constants (MARKETING_LIVE_SWITCH_KEY, MARKETING_SMS_SETTINGS_KEY, LICENCE_OUTREACH_KEY, MARKETING_WORDINGS_KEY), the literals of the pre-flight's config statement are exactly those four, and the evidence's live-switch audit read asks for the app's switch key (a typo'd key reads an OPEN switch as 'closed - no row stored' and the table says GO)",
+  p6f: "P6f · ⭐ THE OFFICER'S-PAUSE PROOF IS THE APP'S — the evidence's rule for `--expect-audit=marketing.campaign_paused` is run on the app's own constants (CAMPAIGN_PAUSED_ACTION and OFFICER_PAUSED of campaign-control.ts): a row of that action with an actor and that reason holds, the same row with another reason, or with no actor, does not (a renamed reason in the app would otherwise make the officer's real Pause fail the proof, or the engine's own pause pass it)",
   p7: "P7 · ⭐ THE SQL, NOT ONLY ITS NAMES — every table and column the tools' SQL names exists in schema.prisma (or is _prisma_migrations's own); every statement in the sources was run by this suite; every statement keeps its CONTRACT (the filters, the equalities, the ORDER BY and its direction: newest first where 'newest' is meant, the table-qualified seq); ⭐ every statement keeps its SELECT LIST exactly (a column dropped is a field the tool reads as undefined in production, and the stand-in cannot see it), and the rows the stand-in answers with carry exactly those output names; no bare ORDER BY name equals an AS alias of its own SELECT (PostgreSQL would read it as the OUTPUT column); and every call was BOUND to the right values (the number with its plus, the campaign asked about, the member lists' ids)",
   p8: "P8 · the migration list is held to the folder — each named migration is a directory of prisma/migrations, and every migration whose SQL names a marketing table is in the list",
   p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm command of the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them)",
@@ -1122,6 +1123,26 @@ async function runAssertions(impl: Impl): Promise<void> {
     const base = scenarios.length - heldScenarios;
     return [diffs.length === 0 && (stricter === 0 || stricter === 18) && ageDiffs.length === 0 && bandWrong.length === 0 && base === 384 && heldScenarios === 1056 && heldOrder.length === 0 && silentGo.length === 0 && heldGoes > 0,
       `${base} scenarios with no referee · ${diffs.length} differences [${diffs.slice(0, 3).join("; ")}] · ${stricter} of them in the one named family where the port is STRICTER than the gate (Q9 lapse, 18 or 0) · ${heldScenarios} with a held referee: the real gate's order wrong in ${heldOrder.length} [${heldOrder.slice(0, 2).join("; ")}], the port read GO in ${heldGoes} (all carrying the exclusion in unjudged: ${silentGo.length === 0}) [${silentGo.slice(0, 2).join("; ")}] · age differences [${ageDiffs.join("; ")}] · the band table is wrong for [${bandWrong.join("; ")}]`];
+  });
+
+  /* ── P6f · the officer's-pause proof is run on the app's own constants ── */
+  await claim(L.p6f, async () => {
+    const CONTROL = await import("../src/lib/server/marketing/campaign-control.ts");
+    const action: string = CONTROL.CAMPAIGN_PAUSED_ACTION;
+    const reason: string = CONTROL.OFFICER_PAUSED;
+    const parts = (impl.parts ?? (impl.evTool as { PARTS?: unknown } | undefined)?.PARTS ?? EV.PARTS) as unknown as { auditChecks: (f: object, a: object) => Array<{ holds: boolean; n: number }> };
+    const ask = (rows: object[]) => parts.auditChecks({ audit: rows }, { expectAudit: [action] })[0];
+    const officer = ask([{ action, actor_id: "usr_officer_0001", payload: { reason } }]);
+    const engine = ask([{ action, actor_id: null, payload: { reason: "rail_dead" } }]);
+    const wrongReason = ask([{ action, actor_id: "usr_officer_0001", payload: { reason: "rail_dead" } }]);
+    const noActor = ask([{ action, actor_id: null, payload: { reason } }]);
+    const wrong: string[] = [];
+    if (!officer.holds || officer.n !== 1) wrong.push(`the officer's own pause (${action}, reason ${reason}) does not hold`);
+    if (engine.holds) wrong.push("the engine's own pause holds");
+    if (wrongReason.holds) wrong.push("a pause with an actor and another reason holds");
+    if (noActor.holds) wrong.push("a pause with the officer's reason and no actor holds");
+    if (action !== "marketing.campaign_paused" || reason !== "officer_paused") wrong.push(`the app's action is "${action}" and its reason "${reason}"`);
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
   /* ── P7 · the SQL names ── */
@@ -2529,7 +2550,7 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }) => ({ label: e.outcome, holds: true, why: "planted" }), stopViolations: () => [], sendCounts: (f: unknown, l: unknown) => { const s = EV_.PARTS.sendCounts(f, l) as { chargeable: number }; return s; } } } },
     { name: "R-V8 · a stop is 'in force' whenever the Suppression row is not lifted (its date and the ledger are ignored) — a stop made AFTER the message is flagged", expect: [L.e2],
       impl: { parts: { ...EV.PARTS, stopViolations: (people: Array<{ ledger: unknown[]; suppressions: Array<{ lifted_at: unknown }> }>) => (EV.PARTS.stopViolations as (p: unknown, f: unknown) => unknown)(people.map((p) => ({ ...p, ledger: [] })), (_at: number, sup: Array<{ lifted_at: unknown }>) => ({ inForce: sup.some((x) => x.lifted_at === null || x.lifted_at === undefined), by: "suppression", at: 0 })) } } },
-    { name: "R-V13 · an audit expectation always holds (the rows are not looked at)", expect: [L.e1, L.e9],
+    { name: "R-V13 · an audit expectation always holds (the rows are not looked at)", expect: [L.e1, L.e9, L.p6f],
       impl: { parts: { ...EV.PARTS, auditChecks: (_f: unknown, a: { expectAudit?: string[] }) => (a.expectAudit ?? []).map((action) => ({ action, holds: true, n: 1 })) } } },
     { name: "R-V14 · `stopped` does not look at the ORDER against the message — a stop made BEFORE it holds (V1 of the review)", expect: [L.e2],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { recipient: unknown } | null, l: unknown) => EV_.judgeExpectation(e, e.outcome === "stopped" && p ? { ...p, recipient: null } : p, l) } } },
@@ -2775,8 +2796,10 @@ if (!PROVE_RED) {
       impl: () => withCoreText(`const SEPARATORS = "[^A-Za-z0-9]{0,6}";`, `const SEPARATORS = "[^A-Za-z0-9]{0,3}";`) },
     { name: "R-M7d · the generic pass allows only a space, a bracket, a dot and a hyphen between a number's groups (the old pattern: no slash, underscore, en dash, tab or zero-width mark)", expect: [L.p2],
       impl: () => withCoreText('if (!GENERIC_GAP.test(gap) || s[groups[j].start] === "+") break;', 'if (!/^[ ().-]{1,2}$/.test(gap) || s[groups[j].start] === "+") break;') },
-    { name: "R-M8 · an expected audit action is satisfied by ANY row of it (the engine's own pause proves the officer's Pause)", expect: [L.e9],
+    { name: "R-M8 · an expected audit action is satisfied by ANY row of it (the engine's own pause proves the officer's Pause)", expect: [L.e9, L.p6f],
       impl: { parts: { ...EV.PARTS, auditChecks: (f: { audit?: Array<{ action: string }> }, a: { expectAudit?: string[] }) => (a.expectAudit ?? []).map((action) => { const n = (f.audit ?? []).filter((r) => r.action === action).length; return { action, holds: n > 0, n, others: 0, words: null }; }) } } },
+    { name: "R-K7 · the evidence's officer-pause reason is mistyped (the officer's real Pause would fail the proof)", expect: [L.e1, L.e9, L.p6f],
+      impl: () => withEvText('payloadOf(r)?.reason === "officer_paused"', 'payloadOf(r)?.reason === "officer_pause"') },
     { name: "R-M10 · a SystemConfig value stored as text is parsed into an object (a row the engine refuses reads fine)", expect: [L.p1b],
       impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, config: Object.fromEntries(Object.entries(f.config).map(([k, v]) => { if (typeof v === "string") { try { return [k, JSON.parse(v)]; } catch { return [k, v]; } } return [k, v]; })) }, c, l) } },
   ];
