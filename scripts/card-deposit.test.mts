@@ -117,8 +117,12 @@ const okOrder = () => ({
 
   // Exactly three fields are base64 on the wire.
   const dec = (v: unknown) => Buffer.from(String(v), "base64").toString("utf8");
-  ok("redirect_url is base64", dec(b.redirect_url) === CARD_OPTS.redirectUrl, dec(b.redirect_url));
-  ok("cancel_url is base64", dec(b.cancel_url) === CARD_OPTS.cancelUrl);
+  // ⭐ 2026-10-09 · and both carry OUR order id: Selcom appends only payment_status + transid, so without it the return
+  // leg cannot say which deposit came back (MONEY-GATE §3.2; `test:card-return-order`).
+  ok("redirect_url is base64, and carries our order_id",
+    dec(b.redirect_url) === `${CARD_OPTS.redirectUrl}?order_id=dep_abc123`, dec(b.redirect_url));
+  ok("cancel_url is base64, and carries our order_id after its own marker",
+    dec(b.cancel_url) === `${CARD_OPTS.cancelUrl}&order_id=dep_abc123`, dec(b.cancel_url));
   ok("webhook is base64", dec(b.webhook) === ENV.webhookUrl);
   ok("buyer_email is NOT base64-encoded", b.buyer_email === "asha@example.com");
   ok("order_id is NOT base64-encoded", b.order_id === "dep_abc123");
