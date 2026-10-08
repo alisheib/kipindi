@@ -1654,7 +1654,9 @@ if (!PROVE_RED) {
     { name: "a button drawn ahead of WithdrawConfirm in the withdraw form — before the page wakes, Enter presses it and posts", expect: /^4[.]5 /,
       world: () => one(WITHDRAW_PAGE, "        {canSubmit ? <WithdrawConfirm", "        <button>Max</button>{canSubmit ? <WithdrawConfirm") },
     { name: "a kit Button of no type drawn AFTER WithdrawConfirm in the withdraw form — WebKit skips the guard's disabled control and presses it before the page wakes", expect: /^4[.]5 /,
-      world: () => one(WITHDRAW_PAGE, L("disabled={!canSubmit} />}", "      </form>"), L("disabled={!canSubmit} />}", "        <Button variant=" + Q("ghost") + ">Back</Button>", "      </form>")) },
+      // 2026-10-09: the form's rhythm moved onto an inner wrapper (329d1ad7: React's $ACTION_ID_ input), so the guard's
+      // line is now followed by the wrapper's </div>; the planted Button goes where a later edit would add it — inside.
+      world: () => one(WITHDRAW_PAGE, L("disabled={!canSubmit} />}", "        </div>", "      </form>"), L("disabled={!canSubmit} />}", "          <Button variant=" + Q("ghost") + ">Back</Button>", "        </div>", "      </form>")) },
     { name: "a second guarded dialog in the RG break form — the two would refuse each other's confirm", expect: /^4[.]5 /,
       world: () => one(RG_PAGE, "          <RgConfirmSubmit label={t.common.startABreak}",
         L("          <RgConfirmSubmit label={t.common.selfExclude} body={t.rg.selfExcludeDescription} />", "          <RgConfirmSubmit label={t.common.startABreak}")) },
