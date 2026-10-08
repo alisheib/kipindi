@@ -5,9 +5,11 @@
  * only where `NODE_ENV` is not `production`, which on this platform means a developer's own machine. ⛔ 409 on a
  * database-backed dev server: the staged states below are written straight into the IN-MEMORY store (no DAL door settles a
  * row to a state a slice would have left), which a Postgres-backed server does not read.
- * ⛔ IT SENDS NOTHING AND CAN SEND NOTHING: no SMS module is imported, no message row is written, no purpose is named. The
- * one campaign it makes RUNNABLE (`?run=`) is sent by the page's own driver, through the engine, on the server's SMS rail —
- * and the drive refuses to start unless that rail is the console stub (messages go to the server log, never to a phone).
+ * ⛔ IT SENDS NOTHING AND CAN SEND NOTHING: no message row is written and no purpose is named, and the SMS module is imported
+ * for ONE read — which rail the server is on (`smsProviderResolution`, an environment read). The campaigns it makes (`?run=`,
+ * `?stages=`) are sent by the page's own driver, through the engine, on the server's SMS rail — so the seed itself REFUSES
+ * (409) unless that rail is the console stub (messages go to the server log, never to a phone), and the drive checks the same
+ * (the review's NIT: the seed no longer leaves it to the drive alone).
  *
  * ⭐ EVERY RECORD GOES IN THROUGH THE PLATFORM'S OWN WRITERS, so the gate answers each exactly as it will a real one: an
  * account through the user store, every yes through `recordPlayerMarketingChoice` (the profile switch's writer — the
@@ -29,7 +31,10 @@
  *                               five (E23's floor). ⛔ Their audiences are made up: the drive loads them with the window
  *                               pinned shut, or as a viewer who cannot act, so no step ever runs on them.
  *   POST ?busy=<ms>           — hold the platform's bet-admission gate full for <ms> (at most 60,000) so the engine reads
- *                               "money first" — the page's money-busy wait; 0 lets it go. The gate's limits are put back.
+ *                               "money first" — the page's money-busy wait; 0 lets EVERY hold go. The gate's limits are put back
+ *                               once the last hold is over, however many holds were taken and in whatever order (re-entrant: the
+ *                               review's MINOR 9 — each hold has its own release in a closure, and the original limits are
+ *                               captured only when no hold is active).
  *   POST ?words=1             — the page's own sentences, as `live-copy.ts` says them (the drive asserts against these).
  *   POST ?lines=<campaign>&n=<N>&status=<TOKEN>[&skip=<M>]
  *                             — U48a · the body of a delivery-receipt callback for N of a campaign's SENT rows (skipping M, in id
@@ -61,12 +66,16 @@ import { WHOLE_BOOK, contactAudienceKey } from "@/lib/server/marketing/audience"
 import { startRefusalSentence } from "@/lib/server/marketing/start-check";
 import { liveSendWindow } from "@/lib/server/marketing/dispatch";
 import { STOPPED_BY_LINK_TTL_MS } from "@/lib/server/marketing/campaign-results";
+import { smsProviderResolution } from "@/lib/server/sms";
 import { getAdmissionLimits, setAdmissionLimits, withAdmission } from "@/lib/server/admission";
+import type { AdmissionLimits } from "@/lib/server/admission";
 import {
-  LIVE_ACT_UNFINISHED, LIVE_BACK, LIVE_CONTROL_LABEL, LIVE_DIALOG_ACTIONS, LIVE_DISABLED, LIVE_DONE, LIVE_FLOOR, LIVE_HEADLINE,
-  LIVE_KEEP_OPEN, LIVE_KPI, LIVE_MISSING, LIVE_OUT_OF_DATE, LIVE_RELOAD, LIVE_SW, LIVE_SWITCH_OFF, LIVE_TITLE, LIVE_TRY_AGAIN,
-  LIVE_PAUSED_HIDDEN, LIVE_PAUSED_HIDDEN_VIEW, LIVE_WAIT_HIDDEN, NOT_SENT_EXTRA, RESULTS_FAILED, RESULTS_HONESTY, RESULTS_ROW, RESULTS_TITLE,
-  RESULTS_UNREAD, copyDoneSentence, eatClock, resultsSpendLine, startDialog, stopDialog, waitSentence,
+  LIVE_ACT_UNFINISHED, LIVE_ACT_UNFINISHED_NO_VIEW, LIVE_BACK, LIVE_CONTROL_LABEL, LIVE_COPY_ELSEWHERE, LIVE_COPY_OPEN_DRAFT,
+  LIVE_DIALOG_ACTIONS, LIVE_DISABLED, LIVE_DONE, LIVE_FLOOR, LIVE_HEADLINE, LIVE_KEEP_OPEN, LIVE_KPI, LIVE_MISSING,
+  LIVE_OUT_OF_DATE, LIVE_PAUSED_HIDDEN, LIVE_PAUSED_HIDDEN_VIEW, LIVE_RELOAD, LIVE_SIGN_IN_LINK, LIVE_SIGNED_OUT, LIVE_STEP_UNFINISHED,
+  LIVE_SW, LIVE_SWITCH_OFF, LIVE_TITLE, LIVE_TRY_AGAIN, LIVE_WAIT_HIDDEN, NOT_SENT_EXTRA, RESULTS_FAILED, RESULTS_HONESTY, RESULTS_ROW,
+  RESULTS_TITLE, RESULTS_UNREAD, copyDoneSentence, eatClock, liveWindowSentence, nobodyDrivingSentence, resultsSpendLine, startDialog,
+  stopDialog, waitSentence,
 } from "@/app/admin/campaigns/[id]/live-copy";
 import { stopReasonLabel } from "@/lib/marketing/campaign-status";
 import { AUDIENCE_REASON_LABEL } from "@/app/admin/campaigns/new/audience-copy";
@@ -277,25 +286,43 @@ const STAGES: readonly Stage[] = [
 
 const idOf = (run: string, key: string) => `cmp_u47live_${run}_${key}`;
 
-/* ── money busy: the platform's own gate, held full ── */
-let release: (() => void) | null = null;
-let restoreLimits: (() => void) | null = null;
+/* ── money busy: the platform's own gate, held full ──
+ * ⭐ RE-ENTRANT (the U47b-2 review's MINOR 9). The first build kept ONE release handle and ONE restore in module variables and
+ * captured the limits at every hold: a second `?busy=` while the first ran captured the FIRST hold's raised-to-1 limits as "the
+ * original", dropped the first hold, and later "restored" maxInFlight to 1 for good — the whole dev server's bets then queued
+ * one at a time. Now each hold keeps its own release in a closure, a set holds the ones that are live, and the limits are
+ * captured ONLY when no hold is active and put back when the last one is over. */
+type Hold = { release: () => void };
+const holds = new Set<Hold>();
+let limitsBefore: AdmissionLimits | null = null;
 
 function holdBusy(ms: number): void {
-  dropBusy();
-  const was = getAdmissionLimits();
-  setAdmissionLimits({ ...was, maxInFlight: 1 });
+  if (holds.size === 0) {
+    limitsBefore = getAdmissionLimits();
+    setAdmissionLimits({ ...limitsBefore, maxInFlight: 1 });
+  }
   let timer: ReturnType<typeof setTimeout> | null = null;
+  const hold: Hold = { release: () => {} };
   const held = new Promise<void>((resolve) => {
-    release = () => { if (timer) clearTimeout(timer); resolve(); };
+    hold.release = () => { if (timer) clearTimeout(timer); resolve(); };
     timer = setTimeout(resolve, ms);
   });
-  restoreLimits = () => { setAdmissionLimits(was); };
-  void withAdmission(() => held).catch(() => {}).finally(() => { restoreLimits?.(); release = null; restoreLimits = null; });
+  holds.add(hold);
+  void withAdmission(() => held).catch(() => {}).finally(() => {
+    holds.delete(hold);
+    if (holds.size === 0 && limitsBefore !== null) {
+      setAdmissionLimits(limitsBefore);
+      limitsBefore = null;
+    }
+  });
 }
+/** Let EVERY hold go (each releases its own); the limits come back once the last has finished. */
 function dropBusy(): void {
-  release?.();
+  for (const hold of [...holds]) hold.release();
 }
+
+/** ⛔ The campaigns this seed makes are sent by the page's own driver on the server's rail: only the console stub is allowed. */
+const railIsConsole = (): boolean => smsProviderResolution() === "console";
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
@@ -325,7 +352,8 @@ export async function POST(req: Request) {
         control: LIVE_CONTROL_LABEL,
         dialog: LIVE_DIALOG_ACTIONS,
         startDialog: { growth: dialog(null), admin: dialog({ costTzs: staged.count * 6, limitTzs: 10_000 }) },
-        stopDialog: { none: stopDialog("none"), reached: stopDialog("reached"), hidden: stopDialog("hidden") },
+        // `before`: a campaign that has not begun sending (confirmed, or still writing its list) — no group in flight to warn of.
+        stopDialog: { none: stopDialog("none"), reached: stopDialog("reached"), hidden: stopDialog("hidden"), before: stopDialog("none", false) },
         startRefusals: { audience_unreadable: startRefusalSentence({ reason: "audience_unreadable" }, { money: false, reads: false }) },
         kpi: LIVE_KPI,
         reasons: AUDIENCE_REASON_LABEL,
@@ -342,9 +370,14 @@ export async function POST(req: Request) {
         // and the engine reason a reader of the split (or a campaign over the floor) is told, in the engine's words.
         pausedHidden: LIVE_PAUSED_HIDDEN, pausedHiddenView: LIVE_PAUSED_HIDDEN_VIEW,
         pausedList: { gateway_refused: stopReasonLabel("gateway_refused"), officer_paused: stopReasonLabel("officer_paused") },
+        // The window, said to a viewer whose page is not stepping the campaign (the same words a driver's step carries).
+        window: { shut: liveWindowSentence({ open: false, opensAt: sendWindow.opensAt, reason: "quiet_hours" }) },
+        // "Nobody is sending / preparing …" without its "(Last step …)" tail — a prefix the page's sentence starts with.
+        nobody: { running: nobodyDrivingSentence(null, "RUNNING"), preparing: nobodyDrivingSentence(null, "PREPARING") },
         keepOpen: LIVE_KEEP_OPEN, switchOff: LIVE_SWITCH_OFF, outOfDate: LIVE_OUT_OF_DATE, reload: LIVE_RELOAD, tryAgain: LIVE_TRY_AGAIN,
-        unfinished: LIVE_ACT_UNFINISHED,
-        copy: { done: copyDoneSentence("none") },
+        signedOut: LIVE_SIGNED_OUT, signInLink: LIVE_SIGN_IN_LINK, stepUnfinished: LIVE_STEP_UNFINISHED,
+        unfinished: LIVE_ACT_UNFINISHED, unfinishedNoView: LIVE_ACT_UNFINISHED_NO_VIEW,
+        copy: { done: copyDoneSentence("none"), elsewhere: LIVE_COPY_ELSEWHERE, openDraft: LIVE_COPY_OPEN_DRAFT },
         // U48a · the results card's words, and the price line for the staged RUNNING campaign (820 handed over × TZS 6).
         results: {
           title: RESULTS_TITLE, rows: RESULTS_ROW, failed: RESULTS_FAILED, honesty: RESULTS_HONESTY, unread: RESULTS_UNREAD,
@@ -408,6 +441,12 @@ export async function POST(req: Request) {
     if (ms === 0) dropBusy();
     else holdBusy(ms);
     return NextResponse.json({ ok: true, busyMs: ms });
+  }
+
+  // ⛔ The review's NIT · BOTH campaign makers refuse unless the rail is the console stub — a staged RUNNING campaign opened by an
+  // officer who may act would be stepped by the page's driver, and a real rail would be handed made-up numbers.
+  if ((url.searchParams.get("run") !== null || url.searchParams.get("stages") !== null) && !railIsConsole()) {
+    return NextResponse.json({ ok: false, error: "This seed makes campaigns that the page's driver would send; the SMS rail here is not the console stub (SMS_PROVIDER=console), so it makes none." }, { status: 409 });
   }
 
   const runParam = url.searchParams.get("run");

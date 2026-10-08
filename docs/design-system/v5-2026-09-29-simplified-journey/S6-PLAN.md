@@ -70,7 +70,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
    - **Matrix:** 360/768/1024/1280 × en/sw.
    - **Routes:** `/`, `/markets`, `/positions`, `/wallet`, `/profile`, `/account`.
    - **Captured per cell:**
-     - normalized outerHTML of `header.app-topbar`, `nav.kp-rail`, `footer` and `[data-testid=email-verify-banner]`;
+     - normalized outerHTML of `header.app-topbar`, `nav.kp-rail`, `footer` and `[data-testid=email-verify-banner]` (deleted by the owner's ruling of 2026-10-07: 2.9 reads which tree it runs on);
      - the set of fixed overlays present after 3 s;
      - computed footer padding-bottom and html scroll-padding-bottom;
      - /account's HTTP status and main text.
@@ -588,7 +588,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
 **Steps.**
 1. **app-shell.tsx.**
    - Add `{journeyShown && <JourneyFlag />}` beside the `data-kp-funnel` span.
-   - :425 becomes `{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}`. This is a per-viewer server decision, so it is stable across soft navigation. The deposit page's own EmailVerifyGate still gates.
+   - :425 becomes `{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}`. This is a per-viewer server decision, so it is stable across soft navigation. The deposit page's own EmailVerifyGate still gates. (⛔ the owner's ruling of 2026-10-07, NEXT-PLAN ▶ 0e: the app-wide email bar and the deposit's email gate are deleted for every viewer, and a deposit asks no email question)
 2. **needle.tsx.** Add `const journeyOn = useJourneyOn();` with the hooks. :792 becomes `const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname));`, and journeyOn joins the deps.
 3. **channels-panel.tsx.**
    - After :191: `const journeyHidden = useJourneyOn() && isJourneySurface(pathname);`.
@@ -602,7 +602,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
    - the consent prompt (:520, ungated: privacy-notice §4f) and the install invite;
    - the first-visit primer and the ticker, which §3.2 and §3.8 place in S7;
    - the sheet-presence attribute, which waits for S8.
-   SHELVED rows: EmailVerifyBanner for journey viewers; the Needle, channels panel and chat bubble on journey surfaces.
+   SHELVED rows: EmailVerifyBanner for journey viewers (deleted with the bar, 2026-10-07); the Needle, channels panel and chat bubble on journey surfaces.
 
 **Flag gating.** JourneyFlag renders only when journeyShown, so a classic page never carries data-journey. useJourneyOn's server snapshot and its no-attribute value are both false, so each stand-down term reduces to today's expression. The email-bar condition is unchanged whenever journeyShown is false. qa:classic-shell-parity --compare must show 0 diffs, including overlay presence.
 
@@ -613,7 +613,7 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
 - the consent mount is ungated;
 - JourneyFlag is mounted only behind journeyShown.
 Plus one plant each.
-- test:simple-journey-flag '10.shell.emailbar' (new): the bar is present for classic and absent for journey. No gate pinned this bar before: searching scripts/ for EmailVerifyBanner finds nothing. Plus the plant 'the email bar is dropped for classic viewers'.
+- test:simple-journey-flag '10.shell.emailbar' (new): the bar is present for classic and absent for journey. (Flipped by money doors' release with the owner's ruling of 2026-10-07: no shell mounts the bar, for any viewer.) No gate pinned this bar before: searching scripts/ for EmailVerifyBanner finds nothing. Plus the plant 'the email bar is dropped for classic viewers'.
 - test:social-panel + red:social-panel
 - test:marketing-optout + red:marketing-optout
 - test:chat-availability + red:chat-availability
@@ -944,6 +944,57 @@ gains no server-bound harness. Verified as the VODACOM-PLAN §0i bullet records.
 - test:all, red:all, test:red-anchors
 - every drive listed under verification
 
+*As built (WP12, drafted 2026-10-04 — the code and records that do not wait on the final commits; the results are
+VODACOM-PLAN §0i's):*
+- **qa:live** (`scripts/pre-deploy-live-check.mjs`). [E2] now also holds `/` and `/markets`, for a signed-out visitor
+  while the rollout is short of ACTIVE, free of every trace of the journey shell — any `journey-*` or `tickets-guest-*`
+  test id, the shell mark, the journey flag, a funnel scope of "new", in the HTML and in the RSC payload — and holds
+  `/account` to the not-found page against an unmatched path read in the same context (its main text and title the
+  control's, noindex in the bytes sent, no journey trace; its status printed, never judged: A3's 200). Each page
+  counts only as the route named (no redirect). A new [E3] asks both of a signed-in player: on production the QA player
+  `mobile01`, through the harness's `loginOnce` and the real form (never an admin; one attempt, and a failed sign-in
+  stops the run), locally the demo player (a failed demo sign-in is a failure, and [F] still runs). Before any
+  absence is asked, locally, the readers are seen to SEE the shell: `/` with a staff preview pass must carry the
+  journey header, its tabs and the shell mark through both reads (behind `premise` and a console with
+  DISABLE_ADMIN_TOTP=true; a SKIP anywhere else). Under ACTIVE both sections are printed SKIPs. The production run's
+  one write is the sign-in; CLAUDE.md's qa:live line says so.
+- **qa:landmark-seal `--journey`** (`scripts/landmark-seal.mjs`). Every context carries a pass that counts and each
+  cell first proves it did (the journey header and its tabs on the page); the widths are the header-fit matrix's
+  (`JHF_WIDTHS`, 320–1279) and `/account` joins PUBLIC in this mode only. The pass: locally `mintStaffPass` behind
+  `premise`; on production an Owner-issued link in PREVIEW_URL (decision 7), refused without one while the rollout is
+  STAFF_PREVIEW, none needed under ACTIVE — and there the reader is `mobile01`, the one QA player production still has,
+  and `/profile/kyc` is left out (a GET there starts a reader's identity check). Without the flag the seal runs
+  exactly as before.
+- **A1 (1), G1's drive** — `scripts/live/journey-unread-handover-drive.mjs` (`qa:journey-unread-handover`). Player A
+  on a preview pass, on `/account` then `/markets`; A's own cookie re-signed 25 h idle and `/markets`' refresh run, so
+  the shell turns guest in place under the session-ended notice; B signs in through the header's link and the form;
+  B's first unread answer, then the Arifa row's, is held four seconds (`route.fetch`, wait, `fulfill`) while a
+  MutationObserver records every state of the dot and the row. A pure verdict with its own synthetic controls: no
+  count at all from A's end until each answer lands, B's count after, never A's, B's shell seen inside the window, one
+  document throughout (a reload is BLOCKED: the case never arose). `--prove-red` plants A's count in the window and
+  must be caught by 3.held alone.
+- **A1 (2), the bell** — `scripts/bell-untouched.mjs` (`qa:bell-untouched`): A1's command as written; then the same
+  diff from the plan's own commit — found by git as the commit that added this file (`5a820b9c`), because S6 reached
+  main package by package and the merge base with `origin/main` is now the last pushed commit, so A1's diff covers
+  only what is unpushed; then the working tree. Its controls: every revision resolves, the bell exists at each, and
+  the same diff sees S6's change to `app-shell.tsx` and the bell's own last change before the plan. A change in S6's
+  range made only by commits that do not name the plan is READ EACH (exit 3), never a pass and never a blame (A1:
+  another lane may fix the bell). Never in predeploy and not a test key, for A1's reason.
+- **A6** was already true at the base: `scripts/journey-header-fit-red.mjs` restores on exit, on an error and on four
+  signals (lines 110–127) and races every wait against RED_BUDGET_S (lines 59, 129–142, 267).
+- **Records:** DESIGN_AUTHORITY §K rule 8, the four kit additions effective at the S15 flip, with a provenance
+  CHANGELOG entry of the same date; SHELVED gains the classic pieces S6 hid without a row (the capsule's eye, caret
+  and door words, the two loading pictures, the classic empty state, the Utendaji link's place). The error pages'
+  words keep their one fate in VODACOM-PLAN §3's S15 rename list. Open, for a ruling before the flip: the sign-out
+  confirm's claret tone (rule 8c).
+- **The tile drive:** WP6b step 5's drive, the plan's `qa:journey-shell`, is written in WP12's second commit
+  (`scripts/qa-journey-shell.mjs`; its run is VODACOM-PLAN §0i's). Its §12 reads which tree it runs on, as parity's 2.9
+  does: with the email bar deleted (the owner's ruling of 2026-10-07) neither the journey reader nor the classic one
+  whose address is unconfirmed may be shown one, and the classic half is no longer a control. And `scripts/qa-journey-preview.mjs`'s step 7 is done
+  in WP12 too: 1.3 and 3.3 hold a viewer without a pass free of the journey shell's test ids as well (attribute or JSON
+  prop, never a chunk's file name), 2.5c proves that reading can fire, and the pass holder's tiles at 1280 and 390 are
+  held to the journey header and its four tabs with no classic bar or coin (2.5b, 2.5d).
+
 ## New dictionary keys (journey.*)
 
 - journey.balanceCaption: sw 'Salio' / en 'Balance' / zh '余额' (plan §3 table)
@@ -1062,7 +1113,7 @@ New files keep them unique; run test:red-anchors after every package.
 - **Canvas drift from the kit.** The canvas draws: a 64px header; pill-shaped desktop links; a --bg-elevated capsule; segmented capsules for the Tiketi switch and card size; a 68px rail; round bordered language and bell buttons. The kit wins (DESIGN_AUTHORITY). Each deviation is recorded in §0h. S7's above-the-fold budget must use 56.
 - **Helpline vs our desk.** The canvas's Msaada sub-line puts 0800 11 0011 (the national problem-gambling helpline, support-config.ts:120) under 50pick's help desk. test:support-contact §8 also bans support-contact literals outside support-config.ts.
 - **The break flag fails open.** promoSuppressed fails OPEN on an RG read error, so '+ Weka pesa' can show during a break after a failed read. This is LAW 1 (it gates an offer, never a refusal) and is stated, not hidden.
-- **No email bar for journey viewers before S9's inline code.** Hiding EmailVerifyBanner leaves the deposit page's own EmailVerifyGate in place. But the agent-application fee (agent-application-service.ts:688) loses its standing reminder for preview viewers.
+- **No email bar for journey viewers before S9's inline code.** (⛔ Superseded by the owner's ruling of 2026-10-07: no viewer has the bar, and S9 asks no code.) Hiding EmailVerifyBanner leaves the deposit page's own EmailVerifyGate in place. But the agent-application fee (agent-application-service.ts:688) loses its standing reminder for preview viewers.
 - **Classic words on journey desktop until the S15 sweep:** the avatar menu's hard-coded 'Nafasi' row (avatar-menu.tsx:368) and the bell's rose CountBadge.
 - **Pre-existing reds must be re-derived in WP0**, so S6 is neither blamed nor credited for them. The ones recorded so far: type-scale; red-anchors 4.1/4.2 (66 vs 65); house-bot-disclosure 5.1, red by construction on a dictionary change; tap-target; decomment; section-rail offenders.
 - **Cross-lane conflict.** MOBILE-VISUAL-PLAN U21 (branch mobile-visual) plans its own --rail-h and a 48px short-screen rail. Two definitions would drift.
@@ -1086,7 +1137,7 @@ PARTLY REFUTED: the architecture holds, but 1 blocker and 9 majors must be fixed
 - These keys and functions exist: `notif.unreadOne/unreadN` (:2028), `performance.viewPerformance`, `formatClock` (utils.ts:358, EAT tz).
 - `/auth/demo` supports `?deposit=0`, `?hold=officer` and `?email=unverified`. seed-wallet ADDS to the balance, so 0 + 999,999 works.
 - The away-summary defect is real: the link is `/positions?filter=settled` at away-summary-bar.tsx:141, and `parsePortfolioParams` reads only `tab`.
-- No gate pins EmailVerifyBanner (grep of scripts/ finds nothing).
+- No gate pins EmailVerifyBanner (grep of scripts/ finds nothing). (WP7 then pinned it, `10.shell.emailbar`; the bar is deleted on 2026-10-07.)
 - Every existing script key the plan names exists in package.json.
 
 **What fails.** Three classes of problem:
@@ -1494,6 +1545,10 @@ WP12: on a preview session, end A through the idle (E-381) path, sign B in throu
 Akaunti dot and the Arifa row never show A's count before B's first answer lands. (2) WP12 proves the bell untouched by
 S6: `git diff --exit-code "$(git merge-base origin/main HEAD)" HEAD -- src/components/layout/notifications-panel.tsx`
 (not a hash in a predeploy test: another lane may fix the bell, and that must not turn predeploy red).
+
+*As built (WP12, drafted 2026-10-04):* (1) is `scripts/live/journey-unread-handover-drive.mjs`, run as
+`npm run qa:journey-unread-handover`; (2) is `scripts/bell-untouched.mjs`, run as `npm run qa:bell-untouched` — A1's
+command, plus the same diff from the plan's own commit, since S6's merges moved the merge base (WP12's as-built note).
 
 **A2 · G2 — `/account` metadata obeys the switch.** `generateMetadata` calls `resolveSimpleJourney()` first and returns
 the not-found title (and `robots: noindex`) when the journey is off. Pinned in `test:journey-account` with a plant.

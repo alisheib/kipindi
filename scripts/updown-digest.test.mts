@@ -292,9 +292,13 @@ ok("…and offers a way back to every day", /udAllDays/.test(histPage));
 // showed "no rounds" with nothing saying what had been filtered and no way to clear it.
 // One typo, one dead end. The filter, the chip and the empty state must all key off the
 // SAME validated value.
+// ⚠️ RE-ANCHORED: `4f9abedc` moved the validation INTO `parseUdParams` and deleted the
+// `const dayKey = dayWindow ? rawDay : null` this used to pattern-match, so the assertion failed on
+// every tree, fixed or not. The same rule now reads: the validator the page hands the parser must
+// still reject what `eatDayWindow` rejects, and `dayKey` must come from the parser's `state.day`.
 ok("one validated day drives the filter, the chip AND the empty state",
-  /const dayKey = dayWindow \? rawDay : null/.test(histPage) &&
-  !/isInEatDay\([^)]*rawDay\)/.test(histPage),
+  /parseUdParams\([^;]*!!eatDayWindow\(d\)/.test(histPage) &&
+  /const dayKey = state\.day \|\| null/.test(histPage),
   "the page filters on the raw query param again — `?day=lol` will empty the page");
 
 console.log(`\nupdown-digest (E-37 + E-43): ${pass} passed, ${fail} failed`);

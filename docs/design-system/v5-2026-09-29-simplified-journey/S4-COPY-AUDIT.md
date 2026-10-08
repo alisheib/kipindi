@@ -54,10 +54,10 @@
 - errDepositLimit "Amana hii ingepita kikomo cha amana ulichojiwekea. Unaweza kukagua vikomo vyako chini ya Uchezaji Salama."
 - errSofRequired "Amana hii inahitaji tamko la chanzo cha fedha lililokubaliwa na timu yetu. Jaza tamko kutoka kwenye wasifu wako; utaweza kuweka amana hii baada ya kukubaliwa."
 - Frozen: errWalletFrozen "Pochi yako imegandishwa. Wasiliana na msaada ili kutatua."; kycGate.frozenCta "Wasiliana na msaada".
-- 500 minimum note NO STRING. DEPOSIT_MIN 500, MAX 2,000,000. Deposit quick ladder 1,000/5,000/10,000/25,000/50,000/100,000 (page shows "1K"…).
+- 500 minimum note NO STRING. DEPOSIT_MIN 500 (⚠️ TZS 1,000 since the owner's ruling of 2026-10-07), MAX 2,000,000. Deposit quick ladder 1,000/5,000/10,000/25,000/50,000/100,000 (page shows "1K"…).
 
 ## Deposit
-- Email gate today is LINK-based: verifyGateTitle "Thibitisha barua pepe yako ili kuweka fedha"; verifyGateBody "Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa — hii ni hatua ya mara moja kabla ya amana yako ya kwanza."
+- Email gate today is LINK-based: verifyGateTitle "Thibitisha barua pepe yako ili kuweka fedha"; verifyGateBody "Tumekutumia kiungo cha uthibitisho. Kifungue, kisha rudi hapa — hii ni hatua ya mara moja kabla ya amana yako ya kwanza." (⛔ the owner's ruling of 2026-10-07, NEXT-PLAN ▶ 0e: the app-wide email bar and the deposit's email gate are deleted for every viewer, and a deposit asks no email question)
   Code UI NO STRING; reusable: "Ingiza msimbo wa tarakimu 6", "Tumetuma msimbo kwa", "Msimbo mpya umetumwa.", "Tuma msimbo tena", "Inathibitisha…",
   "Msimbo si sahihi — jaribu tena.", "Msimbo umeisha muda — omba mpya.", "Majaribio mengi sana — subiri kidogo.", "Unaweza kuomba msimbo mpya baada ya" + countdown,
   agent.inviteOtpSent "Msimbo umetumwa kwa {address}", inviteOtpHint "Tarakimu sita, kutoka kwenye barua pepe tuliyotuma". "Tuma msimbo" NO STRING.
@@ -126,12 +126,21 @@ rule as above: they ship with S12, never earlier.
 - `failSelectionClosed` / "Soko limefungwa" → "Swali hili limefungwa" / "Muda wa kuchagua umekwisha. Sasa tunasubiri matokeo."
 - Cash-out: "Toka bila gharama · Hakuna ada" → "Uza bila ada hadi {saa}"; "TZS {n} pesa yote" → "Rudishiwa TZS {n} kamili".
 - `errDepositLimit` / `errSofRequired` · "Amana hii…" → the C11 sentences (the deposit has not happened yet; SJ-19 "kuweka pesa").
-- `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens).
+- `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens). (`verifyGateTitle`'s change is moot since 2026-10-07: the gate is deleted.)
 - Payout delayed body · "— inaweza tu kutofika mara moja." → "— pesa zinaweza tu kuchelewa kufika."
 - Market chart "Uwezekano wa NDIYO kwa muda" → "NDIO"; market KPI "Kiasi" (pool) → "Bwawa"; "Inaisha {date}" → "Matokeo {date}".
 - Akaunti · "Maswali · Simu · Barua pepe" → "Maswali ya kawaida · Simu · Barua pepe" (no number: VODACOM-PLAN §0h point 10 reversed the panel here — 0800 11 0011 is the national helpline, not our desk, and keeps its own labelled row); "Nafasi ya kadi" → "Ukubwa wa kadi"; "Mipaka · Kujitenga" → "Mipaka · Pumzika · Jizuie".
 - Juu/Chini · "Kiasi" → "Dau lako"; "Gusa Juu au Chini" → "Bonyeza Juu au Chini".
 - Chinese How-to · side words quoted 「是」「否」 in running text; "赢家平分奖池" (split equally — false) → "赢家按投注比例分享奖池".
+
+**Found 2026-10-08 by Claude as Ali's Swahili reviewer, reading WP12's 333 tiles — the card's time left.** `market.timeLeftH`
+"masaa {n} yamebaki" put a colloquial ma- plural, and its plural agreement, on every count, so one hour left read
+"masaa 1 yamebaki". *Saa* is the standard noun, the same word for one hour or many (N-class, as *siku* and *dakika*
+already are beside it), and one of anything takes the singular verb. Ships with S12, with the formatter's singular
+templates (prepared on branch `vodacom-s12-timeleft`, its guard in `test:time-left`):
+- `timeLeftH` · "masaa {n} yamebaki" → "saa {n} zimebaki"; new `timeLeftH1` · "saa {n} imebaki" (n = 1).
+- `timeLeftD` stays "siku {n} zimebaki"; new `timeLeftD1` · "siku {n} imebaki". `timeLeftM` stays "dakika {n} zimebaki";
+  new `timeLeftM1` · "dakika {n} imebaki". (en and zh have no number agreement: their singular keys repeat the plural.)
 
 ## S6 drafts (2026-10-01) — for the native review
 
@@ -248,3 +257,12 @@ Both ship with A8c, live strings for every player, and not with S12, because the
 corrections to ones players see today. Chinese for the same keys: "价格已变为 {value}。您的投注未卖出——您可以按新价格卖出。" and
 "我们这边出现错误，您的投注暂时无法卖出。请联系客服。" — formal 您, and 卖出, the failure registry's word for sell; the second takes the
 platform's own 我们这边出现错误 and 请联系客服.
+
+**5. The agent application's referee step (2026-10-08, `a042dc65`) — one new live key, approved as written:**
+`agent.refConsentRule` · "Weka alama kwenye kisanduku kuthibitisha kwamba wadhamini wote wawili wamekubali kutajwa." —
+shown, in the toast and on the box, when the consent box was left empty. *Weka alama kwenye kisanduku* is "tick the box"
+(*kisanduku*, class 7, a small box); *kuthibitisha kwamba* "to confirm that"; *wadhamini wote wawili wamekubali* repeats
+the box's own label (`refConsent`: "Wadhamini wote wawili … wamekubali …"), so the line names what the box says;
+*kutajwa*, the passive of *kutaja*, "to be named". The step's other refusals now show the two rules the boxes already
+carry as their titles (`refNameRule`, `refContactRule`), live words unchanged. A new sentence, not a correction, so it
+shipped with its fix rather than with S12. Chinese: "请勾选此框，确认两位推荐人均同意被提名。" — 勾选 for ticking a box, and the label's own 两位推荐人 and 提名.

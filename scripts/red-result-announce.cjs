@@ -33,14 +33,24 @@ const MUTATIONS = [
   {
     name: "⭐ void-treated-as-loss — a refunded player is told they lost (FALSE MONEY STATEMENT)",
     file: ANN,
-    find: `      if (res.status === "VOID") {`,
-    with: `      if (false) {`,
+    // ⚠️ This said `if (res.status === "VOID") {`, a stand-alone arm that ended in `continue`.
+    // `eb887f9d` (PRESENCE-4, 2026-09-05) folded the three outcomes into one lane chain, so the
+    // arm is now `} else if (routing.channel === "TOAST" && res.status === "VOID") {` and the next
+    // arm, `else if (routing.channel === "TOAST")`, is the LOSS toast. The defect is unchanged:
+    // kill the VOID arm and a refunded player falls into the loss toast. (Only a WIN can be
+    // routed to CEREMONY, and the LEDGER arm is handed `kind: res.status`, so the TOAST lane is
+    // the one place a live refund can be misread.) 3.2 wants `status === "VOID"` in the effect.
+    find: `      } else if (routing.channel === "TOAST" && res.status === "VOID") {`,
+    with: `      } else if (false) {`,
   },
   {
     name: "⭐ sends-an-email — silently reverses Ali's 2026-07-24 decision",
     file: ANN,
-    find: `      if (res.status === "WIN") {`,
-    with: `      if (res.status === "WIN") {\n        void sendEmailToUser;`,
+    // ⚠️ This said `if (res.status === "WIN") {`; `eb887f9d` made the win arm conditional on the
+    // CEREMONY lane too. The plant still goes first thing inside the win arm, in code (not in a
+    // comment), where §4's comment-stripped `4.sendEmailToUser` reads it.
+    find: `      if (routing.channel === "CEREMONY" && res.status === "WIN") {`,
+    with: `      if (routing.channel === "CEREMONY" && res.status === "WIN") {\n        void sendEmailToUser;`,
   },
   {
     name: "fires-on-mount — every page load re-congratulates you (an ambush, not a moment)",
@@ -51,8 +61,17 @@ const MUTATIONS = [
   {
     name: "celebrates the STAKE instead of the realised payout",
     file: ANN,
-    find: `          amount: res.payout,`,
-    with: `          amount: res.stake,`,
+    // ⚠️ THE ANCHOR CARRIES `kind: "WIN",` ON PURPOSE. Since `eb887f9d` the away-ledger's
+    // `recordAway({ … amount: res.payout … })` spells the same line, so `amount: res.payout,` alone
+    // matches TWICE: `String.replace` planted at the first (the celebration, by luck of order) and
+    // `scripts/red-anchor.mjs` would refuse it as ambiguous. This pair is unique and names the site.
+    //
+    // ⛔ IF THIS READS ✗ MISSED, THE ANCHOR IS NOT WHY — THE SUITE IS. Suite 3.4 asks
+    // `/amount:\s*res\.payout/` of the WHOLE effect, and the ledger's line satisfies it while
+    // `dispatchWinCelebration` headlines the stake. It must look at that call alone. Planting at
+    // BOTH sites would turn this red (3.4) but would prove the ledger line, not the celebration.
+    find: `          kind: "WIN",\n          amount: res.payout,`,
+    with: `          kind: "WIN",\n          amount: res.stake,`,
   },
   {
     name: "the loss stops naming the amount (the euphemism RG forbids)",

@@ -21,6 +21,8 @@
  *   §3  ★ B1b — a FREE CANCELLATION takes its turnover credit back with it
  *   §4  ★ the whole exploit, driven end to end: the pre-fix routes cannot clear a grant
  *   §5  and honest play is UNHARMED — one side, many bets, full credit, grant fulfils
+ *   §6  ★ a HOUSE leg is not the holder's hedge — an open engine stake on the other side, on a designated
+ *       account, leaves the holder's OWN real-money stake accruing in full
  *
  * ⚠️ EVERY SECTION READS `wageredTzs` OFF THE GRANT, not a service return value. A rule
  * about turnover that is checked against the function that computes turnover proves only
@@ -38,6 +40,8 @@ import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { creditBonus } from "../src/lib/server/bonus-service.ts";
+import { positionStore } from "../src/lib/server/market-dal.ts";
+import { loadWorld, OFFICER } from "./lib/house-bot-world.mts";
 
 import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
@@ -222,6 +226,59 @@ console.log("\n§5 · a player who takes a view is not penalised");
   ok("5.2 · ★ the grant FULFILLED and the bonus became real, withdrawable balance",
      g.status === "FULFILLED" && (await realBal("os_honest")) > 50_000,
      `status=${g.status} balance=${await realBal("os_honest")}`);
+}
+
+// ── §6 · a HOUSE leg is not the holder's hedge ───────────────────────────────
+console.log("\n§6 · an open engine stake does not suppress the holder's own turnover");
+{
+  // ⛔ WHY THIS SECTION EXISTS (2026-10-08). `red:bonus-one-side` planted the 2026-09-21 defect back — drop
+  // `p.houseBotId == null` from the `opposite` predicate — and THIS SUITE STAYED GREEN: every position §1–§5 creates
+  // is a player's own, so nothing in this file could tell an engine leg from a hedge. The read behind `opposite` is
+  // UNFILTERED and returns house-marked rows, and a designated account holds BOTH its holder's own positions and the
+  // engine's, so an OPEN house leg on the other side made the holder's own real-money stake accrue ZERO — turnover
+  // withheld from a player who took no hedge, on a leg they cannot close.
+  //
+  // ⭐ THE LEG IS PLACED THE WAY THE PRODUCT PLACES IT — `placeHouseBet` through the house seam, by the shared house-bot
+  // world — not a row written by hand, so the marker under test is the one the engine really stamps.
+  // ⛔ AND IT GOES IN FIRST: the seam refuses an engine stake once the holder has an own position open on the market
+  // (H2 · OWNER_POSITION), so "the engine's leg, then the holder's own bet" is the only order the product allows.
+  // ⚠️ `red:bonus-one-side` pins its `house-position-counts-as-the-holders-hedge` plant to assertion 6.4 BY NUMBER —
+  // renumber it and that harness reports "caught by the wrong assertion" instead of going quiet.
+  const w = await loadWorld();
+  await w.user({ id: OFFICER, role: "ADMIN" });
+  await w.limits();
+  await w.switchOn();
+  const bot = await w.bot(); // a designated, ACTIVE house account — its holder also plays for themselves
+  await creditBonus(bot.userId, { amountTzs: 10_000, source: "ADMIN", wagerMultiplier: 5 }); // req 50,000
+  const m = await makeMarket();
+
+  const staked = await w.place(bot, await w.intent(bot, m.id, { kind: "OPENER", side: "NO", stakeTzs: 5_000 }));
+  const leg = staked.ok ? await positionStore.get(staked.data.positionId) : null;
+  ok("6.1 · CONTROL · the engine's leg is really there — OPEN, on NO, house-marked, on the holder's own account",
+     staked.ok && leg?.userId === bot.userId && leg?.status === "OPEN" && leg?.side === "NO" && leg?.houseBotId === bot.botId,
+     staked.ok ? `status=${leg?.status} side=${leg?.side} houseBotId=${leg?.houseBotId}` : `REFUSED — ${staked.error}`);
+  ok("6.2 · …and it accrued NOTHING toward the holder's bonus (PLAN I7 — the sanctioned half of the rule is untouched)",
+     (await wagered(bot.userId)) === 0, `wagered=${await wagered(bot.userId)}`);
+
+  const own = await buyPosition(bot.userId, { marketId: m.id, side: "YES", stake: 10_000 });
+  ok("6.3 · the holder's OWN bet on the other side is accepted", own.ok, own.ok ? "" : own.error);
+  ok("6.4 · ★★ …and accrues in FULL — a stake the holder did not place is not a hedge they made",
+     (await wagered(bot.userId)) === 10_000,
+     `wagered=${await wagered(bot.userId)} (must be 10,000 — 0 means the engine's leg was counted as their hedge)`);
+  const more = await buyPosition(bot.userId, { marketId: m.id, side: "YES", stake: 5_000 });
+  ok("6.5 · ★ …and so does a top-up on that same side — the open leg does not make the rule sticky",
+     more.ok && (await wagered(bot.userId)) === 15_000, `wagered=${await wagered(bot.userId)} (must be 15,000)`);
+
+  // ⭐ THE CONTROL THAT KEEPS THIS TO ONE AXIS. The SAME account, the SAME grant, the same shape — but the opposite leg
+  // is the HOLDER'S OWN, unmarked. That one must still suppress: the filter takes the engine's leg out of the predicate,
+  // not the rule out of the account. Without it, 6.4 would also pass for a "fix" that stopped counting any hedge at all
+  // on a designated account.
+  const m2 = await makeMarket();
+  await buyPosition(bot.userId, { marketId: m2.id, side: "YES", stake: 10_000 });
+  const before = await wagered(bot.userId);
+  const hedge = await buyPosition(bot.userId, { marketId: m2.id, side: "NO", stake: 10_000 });
+  ok("6.6 · CONTROL · …while the holder's OWN opposite leg, on this same account, still suppresses — only the marker differs",
+     hedge.ok && (await wagered(bot.userId)) === before, `${before} → ${await wagered(bot.userId)}`);
 }
 
 console.log(`\nbonus-one-side: ${pass} passed, ${fail} failed`);

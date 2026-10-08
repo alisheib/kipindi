@@ -133,8 +133,12 @@ ok("3.1 WIN is handled", /status\s*===\s*"WIN"/.test(effect));
 ok("3.2 VOID is handled SEPARATELY from LOSS", /status\s*===\s*"VOID"/.test(effect));
 ok("3.3 the win fires the kit's existing celebration, not a bespoke popup",
    /dispatchWinCelebration\(/.test(effect));
+// ⛔ SCOPED TO THE CELEBRATION CALL, NOT THE EFFECT. Since PRESENCE-4 (eb887f9d) the away-ledger's
+// `recordAway({ … amount: res.payout … })` sits in the same effect and carries the same text, so
+// the whole-effect regex stayed green while `dispatchWinCelebration` headlined the STAKE.
+const celebration = sliceBraces(effect, "dispatchWinCelebration({");
 ok("3.4 …headlining the REALISED payout, not the stake or an estimate",
-   /amount:\s*res\.payout/.test(effect));
+   celebration != null && /amount:\s*res\.payout/.test(celebration));
 ok("3.5 the loss names the amount (an unnamed number is the euphemism RG forbids)",
    /formatTzs\(res\.stake\)/.test(effect));
 // ⚠️ RG: the loss must NOT be the win's mirror. No glow, no counter, no haptic.

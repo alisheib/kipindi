@@ -69,8 +69,14 @@ const ok = (label, cond, detail = "") => {
   else { fails.push(label); console.log(`  FAIL ${label}${detail ? ` — ${detail}` : ""}`); }
 };
 
+/**
+ * A8i-2's owed "reduced motion" (S6 WP12): `REDUCED_MOTION=1` runs every case with the OS asking for no motion. Then a
+ * closing dialog unmounts at once (`exitBeatMs` is 0 under `prefers-reduced-motion`), so there is no leaving ghost, and
+ * the cases built on the seal's exit (W2, SQ) meet the arming beat alone.
+ */
+const REDUCED = process.env.REDUCED_MOTION === "1";
 const browser = await playwright[ENGINE].launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: REDUCED ? "reduce" : "no-preference" });
 await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
 const page = await ctx.newPage();
 const errs = [];
@@ -146,7 +152,7 @@ const sellDialog = page.getByRole("dialog", { name: "Cash out" });
 const seal = page.getByRole("dialog", { name: "You won" });
 const keepPredicting = page.getByRole("button", { name: "Keep predicting" });
 
-console.log(`enter-where-pressed drive — ${BASE} · ${ENGINE}`);
+console.log(`enter-where-pressed drive — ${BASE} · ${ENGINE}${REDUCED ? " · REDUCED MOTION (prefers-reduced-motion: reduce)" : ""}`);
 await fetch(BASE + "/api/dev-test/seed-markets", { method: "POST" }).catch(() => {});
 await page.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" });
 await page.goto(BASE + "/markets", { waitUntil: "domcontentloaded" });

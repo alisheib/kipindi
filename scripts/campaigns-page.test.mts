@@ -256,7 +256,7 @@ const L = {
   s1b: "1b · ⛔ NO SECOND 'Campaigns': no nav item anywhere is labelled 'Campaigns' in any case, and 'SMS campaigns' names exactly one item",
   s1c: "1c · /admin/campaigns, /admin/campaigns/new and /admin/campaigns/smc_0123 each highlight the campaigns item (ROUTE_KEYS), and every route key is owned",
   s1d: "1d · the same three paths resolve to growth (ROUTE_DOMAINS — never the ops fall-through), and the nav shows SMS campaigns to GROWTH and hides it from FINANCE, SUPPORT, MODERATOR, AUDITOR and COMPLIANCE",
-  s1e: "1e · the crumb, and so the refusal heading, say 'SMS campaigns' (CRUMB_LABELS) — never the title-cased 'Campaigns'",
+  s1e: "1e · the crumb, and so the refusal heading, say 'SMS campaigns' (CRUMB_LABELS) — never the title-cased 'Campaigns'; ⭐ the U47b-2 review's NIT: a campaign's own trail never reads its cmp_ id (the section's neutral word 'Campaign' stands, ID_CRUMB) and a refused officer is sent back to the list, not to the record (adminNextDest)",
   s1f: "1f · the literal title in layout.tsx (AdminSectionGate), page.tsx (AdminPageGate, AdminPageHead, metadata) and loading.tsx (AdminPageHead) is CAMPAIGNS_TITLE, with the copied gloss 'Kampeni' — and no 'Campaigns' literal",
   s2a: "2a · EXECUTED · newest first by default; a tie on createdAt breaks on id in the same direction; name and last activity sort both ways",
   s2b: "2b · EXECUTED · ?status= narrows to its rail's statuses (drafts = DRAFT + CONFIRMED, sending = PREPARING + RUNNING, paused, finished = DONE + CANCELLED); an unknown key lists every row with All in force",
@@ -338,7 +338,14 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   await check(p(L.s1e), () => {
     const top = impl.crumbs("/admin/campaigns");
     const sub = impl.crumbs("/admin/campaigns/new");
-    return [top.at(-1) === COPY.CAMPAIGNS_TITLE && sub[1] === COPY.CAMPAIGNS_TITLE, `${top.join(" / ")} · ${sub.join(" / ")}`];
+    // ⭐ The U47b-2 review's NIT: a campaign's trail never reads its `cmp_…` id — the section's neutral word stands (the live page
+    // names the campaign itself, on the client, once it is up) — and a refused officer is sent to the list, not to the record.
+    const id = "cmp_u47b2_0123456789abcdef";
+    const live = impl.crumbs(`/admin/campaigns/${id}`);
+    const back = NAV.adminNextDest(`/admin/campaigns/${id}?tab=x`);
+    return [top.at(-1) === COPY.CAMPAIGNS_TITLE && sub[1] === COPY.CAMPAIGNS_TITLE
+      && live.length === 3 && live[1] === COPY.CAMPAIGNS_TITLE && live[2] === "Campaign" && !live.join("/").includes(id) && back === "/admin/campaigns",
+      `${top.join(" / ")} · ${sub.join(" / ")} · ${live.join(" / ")} · back ${back}`];
   });
   await check(p(L.s1f), () => {
     const T = COPY.CAMPAIGNS_TITLE;
@@ -654,7 +661,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const detail = S.detail;
     const tryAt = detail.indexOf("try {");
     const catchAt = detail.indexOf("} catch (err) {");
-    const redirectAt = detail.indexOf("redirect(campaignDraftHref(id) as never)");
+    // ⭐ The U47b-2 review's NIT: the redirect goes to the composer's CANONICAL address for the viewer (`draftAddressFor`, which the
+    // loader builds — V11 holds it executed), never to the bare ?draft= one; this page only follows what the loader answered.
+    const redirectAt = detail.indexOf("redirect(load.href as never)");
     const toDetail = page.includes(": CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route}")
       && redirectAt > catchAt && catchAt > tryAt && tryAt > 0 && detail.includes('load.kind === "draft"');
     const href = CS.campaignDraftHref("cmp x");
@@ -749,8 +758,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && page.includes("const reads = await viewerReadsContacts().catch(() => false);")
       && page.includes("const mayAct = await viewerMayActOnCampaigns().catch(() => false);")
       && page.includes("viewer={{ reads, mayAct }}");
+    // ⭐ The U47b-2 review's NIT: the list's act cell asks the ACT grant ALONE (`liveMayActFor` — V's L2 executes it, failing closed),
+    // not the whole viewer with a money decider among its three cells.
     const closed = S.viewer.includes("export async function viewerMayActOnCampaigns(): Promise<boolean> {")
-      && S.viewer.includes("if (!session) return false;") && S.viewer.includes("return (await liveViewerFor(session.userId)).mayAct;");
+      && S.viewer.includes("if (!session) return false;") && S.viewer.includes("return liveMayActFor(session.userId);")
+      && S.viewer.includes("export async function liveMayActFor(") && !S.viewer.includes("return (await liveViewerFor(session.userId)).mayAct;");
     return [paused.length === 2 && JSON.stringify(reader) === JSON.stringify(own) && actor.every((s) => s === LIVE_COPY.LIVE_PAUSED_HIDDEN)
       && looker.every((s) => s === LIVE_COPY.LIVE_PAUSED_HIDDEN_VIEW) && !looker.some((s) => /Resume/.test(s))
       && officer.every((s) => s === CS.stopReasonLabel("officer_paused")) && wired && closed,
@@ -775,6 +787,12 @@ if (!PROVE_RED) {
   /** The crumb as the title-caser builds it with no CRUMB_LABELS row. */
   const titleCased = (path: string) =>
     ["Admin", ...path.replace(/^[/]admin[/]?/, "").split("/").filter(Boolean).map((s) => s.replace(/-/g, " ").replace(/^./, (ch) => ch.toUpperCase()))];
+  /** The trail as the first build of the live page drew it: the campaign's raw `cmp_…` id in its place. */
+  const idPainted = (path: string): string[] => {
+    const trail = NAV.crumbsFromPath(path);
+    const seg = path.split("/").filter(Boolean).at(-1) ?? "";
+    return /^cmp_/.test(seg) ? [...trail.slice(0, -1), seg] : trail;
+  };
   /** A loader that counts the rail from the page it just read. */
   const countsFromPage = async (sp: CampaignsParams): Promise<CampaignsView> => {
     const v = await loadCampaigns(sp);
@@ -843,7 +861,7 @@ if (!PROVE_RED) {
   const draftUnflagged = REAL_SOURCES.page.replace('{c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? ', '{c.status === "DRAFT" ? (true ? ');
   // U47b-2 · a draft's name sent to the live page (which would redirect it back), and a draft id left on the live page.
   const draftToDetail = REAL_SOURCES.page.replace('{c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? ', '{false ? (CAMPAIGN_SCREENS.compose ? ');
-  const draftStays = REAL_SOURCES.detail.replace("redirect(campaignDraftHref(id) as never)", "void id");
+  const draftStays = REAL_SOURCES.detail.replace("redirect(load.href as never)", "void load");
   // U47b-2 · the paused line: back to the engine's raw words (floor-blind), the act grant or the read cell said yes for every
   // viewer, and the act cell open when no session can be read.
   const pausedRaw = REAL_SOURCES.page.replace("{pausedReasonSentenceFor(viewer, c, counts)}", "{stopReasonLabel(c.stopReason)}");
@@ -878,6 +896,7 @@ if (!PROVE_RED) {
     { name: "the compose flag off while its page is on disk", expect: L.s5f, impl: { ...REAL, screens: { compose: false, detail: true } } },
     /* ── and the rest of the spec's plants ── */
     { name: "the crumb title-cased from the segment (no CRUMB_LABELS row)", expect: L.s1e, impl: { ...REAL, crumbs: titleCased } },
+    { name: "the campaign's raw cmp_ id painted in the trail (the U47b-2 review's NIT)", expect: L.s1e, impl: { ...REAL, crumbs: idPainted } },
     { name: "the requested page used as asked — page 9 of ten rows says 'no matches'", expect: L.s2c, impl: { ...REAL, load: noClamp } },
     { name: "an empty campaign painted as 0 of 0", expect: L.s3c, impl: { ...REAL, progress: zeroForEmpty } },
     { name: "a campaign confirmed then cancelled before its first row reads '0 of 300 prepared' (U36 review F1)", expect: L.s3c, impl: { ...REAL, progress: preparedFromNothing } },

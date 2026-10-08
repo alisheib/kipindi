@@ -38,6 +38,9 @@
  *     it refuses; at it confirms.
  * ⭐ MONEY WORDS ONLY FOR A MONEY READER (`viewer.money` — the caller asks `campaignMoneyVisible`): the view's figures and
  * the `over_limit` sentence carry TZS only then; anyone else reads the same refusal without a figure.
+ * ⭐ U40b · THE COMPOSER'S CONFIRM CARD AND ITS ACTION ASK TWO MORE THINGS HERE: who is looking (`confirmViewerFor` — the
+ * stored role, read once, both cells; fails closed) and the estimate's money in words (`confirmMoneyLine` — null, with no
+ * TZS, for anyone the view gave no money). The composer's own files name no money (`test:campaign-compose` §16.5).
  *
  * ── WHAT A VIEWER WHO MAY NOT READ A NUMBER SEES (OD65 · OD67) ───────────────────────────────────────────────────
  * ⛔ THE COUNT ALONE, at every size, before a campaign sends: `split` is the count-alone view (`audienceCountView`) over the
@@ -79,11 +82,13 @@ import {
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { audienceSplit } from "@/lib/server/marketing/audience-split";
 import type { AudienceSplitResult } from "@/lib/server/marketing/audience-split";
-import { audienceFence, readCampaignAudience, signFence, verifyFence } from "@/lib/server/marketing/audience-fence";
+import { CONFIRM_SLOT_WAIT_MS, audienceFence, readCampaignAudience, signFence, verifyFence } from "@/lib/server/marketing/audience-fence";
 import type { AudienceFence, FenceSampleRow } from "@/lib/server/marketing/audience-fence";
 import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings";
 import type { SettingsReload } from "@/lib/server/marketing/sms-settings";
-import { loadSegmentCost } from "@/lib/server/marketing/estimate";
+import { campaignMoneyVisible, loadSegmentCost } from "@/lib/server/marketing/estimate";
+import { mayReveal } from "@/lib/server/rbac";
+import type { Role } from "@/lib/server/roles";
 import { CAMPAIGN_AUDIENCE_UNREADABLE, readSavedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
 import type { SourcePhraseRead } from "@/lib/server/marketing/campaign-draft";
 import { CONFIRM_REFUSAL_COPY, CONFIRM_TIER_COLUMN, confirmWriteRefusal, decideConfirm } from "@/lib/marketing/campaign-confirm";
@@ -92,6 +97,7 @@ import { campaignEstimate, savedVariantSizes } from "@/lib/marketing/campaign-es
 import type { BalanceFigure } from "@/lib/marketing/campaign-estimate";
 import type { SegmentCostMeasure } from "@/lib/marketing/segment-cost";
 import { breakdownVisible } from "@/lib/marketing/campaign-status";
+import { formatPriceTzs } from "@/lib/marketing/sms-settings";
 import { audienceCountView, audienceSplitView } from "@/app/admin/campaigns/new/audience-view-model";
 import type { AudienceSplitView } from "@/app/admin/campaigns/new/audience-view-model";
 import { formatTzs } from "@/lib/utils";
@@ -104,8 +110,56 @@ export const CAMPAIGN_CONFIRM_REFUSED_ACTION = "marketing.campaign_confirm_refus
 /* ══ THE SHAPES ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** Who is looking: may they read a number (`identity.contact` = read), may they read money (`campaignMoneyVisible`)?
- *  ⛔ Decided by the caller from the viewer's STORED role, every time — there is no default. */
+ *  ⛔ Decided by the caller from the viewer's STORED role, every time — there is no default. The page and the action
+ *  both ask `confirmViewerFor` (U40b), so a view and the confirmation pressed on it are decided alike. */
 export type ConfirmViewer = { reads: boolean; money: boolean };
+
+/** U40b · the reads `confirmViewerFor` asks — swappable for the suite's in-process red plants; production never passes them. */
+export type ConfirmViewerDeps = {
+  /** The officer's STORED role: one read of their own row (never the cookie's claim). */
+  role: (userId: string) => Promise<Role | null>;
+  /** May this role read a number? `identity.contact` read (`mayReveal`) — the cell that reveals one. */
+  reads: (role: Role) => Promise<boolean>;
+  /** May this role read campaign money? `campaignMoneyVisible`, the ONE decider. */
+  money: (role: Role) => Promise<boolean>;
+};
+
+/** Frozen: production's reads — nothing may reassign a member in-process (a suite hands in its own copy instead). */
+export const CONFIRM_VIEWER_DEPS: Readonly<ConfirmViewerDeps> = Object.freeze({
+  role: async (userId: string): Promise<Role | null> => (await db.user.findById(userId))?.role ?? null,
+  reads: (role: Role) => mayReveal(role, "identity.contact"),
+  money: (role: Role) => campaignMoneyVisible(role),
+});
+
+/**
+ * ⭐ U40b · WHO IS CONFIRMING — `ConfirmViewer` from the officer's STORED row, read ONCE, then asked of its two cells: a
+ * number (`identity.contact` read) and money (`campaignMoneyVisible`). The composer's Confirm card counts its view for this
+ * answer and the action confirms with it, so what an officer was shown and what their press is judged by are one decision
+ * — and two reads of the role can never disagree inside it.
+ * ⛔ NEVER THE BROWSER'S WORD, AND IT FAILS CLOSED: no officer, no row, no role, a read or a decider that fails — no number
+ * and no money (OD65 · OD67: the count alone and the typed tier; E15: no TZS).
+ */
+export async function confirmViewerFor(userId: string | null, deps: ConfirmViewerDeps = CONFIRM_VIEWER_DEPS): Promise<ConfirmViewer> {
+  const closed: ConfirmViewer = { reads: false, money: false };
+  const id = typeof userId === "string" ? userId.trim() : "";
+  if (id === "") return closed;
+  let found: Role | null = null;
+  try {
+    found = await deps.role(id);
+  } catch {
+    return closed;
+  }
+  if (found === null) return closed;
+  const role: Role = found;
+  const ask = async (cell: (r: Role) => Promise<boolean>): Promise<boolean> => {
+    try {
+      return (await cell(role)) === true;
+    } catch {
+      return false;
+    }
+  };
+  return { reads: await ask(deps.reads), money: await ask(deps.money) };
+}
 
 /** The refusals only this service can see (the header). The pure ones are `ConfirmOutcomeReason`. */
 export type ConfirmServiceRefusal =
@@ -194,6 +248,32 @@ export const CONFIRM_SERVICE_COPY: Readonly<Record<ConfirmServiceRefusal, (n: Co
       ? `This campaign could cost up to ${formatTzs(n.costTzs)} — more than the ${formatTzs(n.limitTzs)} one campaign may spend. Narrow the audience, or the owner raises the limit on Admin → System → Marketing SMS. Nothing was confirmed.`
       : "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the owner to raise the limit. Nothing was confirmed.",
 });
+
+const NB = String.fromCharCode(0xa0);
+/** A figure that must not break inside ("TZS 9,624" never splits from its number). */
+const keepWhole = (s: string): string => s.split(" ").join(NB);
+/** Breaks may fall before the dot, never after it (U39's estimate line, `campaign-estimate.ts`). */
+const MONEY_SEP = ` ·${NB}`;
+
+/**
+ * ⭐ U40b · THE ESTIMATE'S MONEY, IN WORDS — for the confirmation modal of a viewer who may read money, and for nobody
+ * else: the view hands `estimate.money` to a money reader only (`campaignConfirmView`), so for anyone else this is null —
+ * no figure, and no "TZS" — before a page is ever built (ENGINE-SPEC §4.6 decision 3):
+ *   "Up to TZS 9,624 · limit TZS 10,000 · price TZS 6 per SMS, configured, not yet measured"
+ * ⛔ An unknown figure is said as unknown, never as TZS 0. A price may be fractional (a measured median): it keeps its
+ * decimals (`formatPriceTzs`), never rounded to a whole shilling. One SMS is one segment while `SMS_MAX_SEGMENTS` is 1.
+ * ⛔ The composer's own files name no money (OD24 · `test:campaign-compose` §16.5): its Confirm card prints this line as it
+ * comes, and writes none of its own.
+ */
+export function confirmMoneyLine(money: CampaignConfirmEstimate["money"]): string | null {
+  if (money === null) return null;
+  const cost = money.costTzs === null ? "Cost unknown" : `Up to ${keepWhole(formatTzs(money.costTzs))}`;
+  const limit = money.limitTzs === null ? "limit unknown" : `limit ${keepWhole(formatTzs(money.limitTzs))}`;
+  const price = money.priceTzs === null || money.priceKind === "unknown"
+    ? "price per SMS not known yet"
+    : `price ${keepWhole(formatPriceTzs(money.priceTzs))} per SMS, ${money.priceKind === "measured" ? "measured from our own recent sends" : "configured, not yet measured"}`;
+  return [cost, limit, price].join(MONEY_SEP);
+}
 
 /* ══ THE RULES — exported, and handed in, so the suite can plant each one's absence ══════════════════════════════ */
 
@@ -299,8 +379,8 @@ export type ConfirmDeps = {
   refusal: typeof campaignAudienceRefusal;
   /** May this viewer see a breakdown before the campaign sends? (`breakdownVisible`, OD65 — the read cell alone.) */
   breakdown: typeof breakdownVisible;
-  /** The split door, asked for a reader only (`audienceSplit`). */
-  split: (f: ContactAudienceFilter, viewerReads: boolean) => Promise<AudienceSplitResult>;
+  /** The split door, asked for a reader only (`audienceSplit`) — U40b: with what is left of the read's wait for a slot. */
+  split: (f: ContactAudienceFilter, viewerReads: boolean, waitMs?: number) => Promise<AudienceSplitResult>;
   /** E18 (`sourceLineRefusal`). */
   sourceRule: typeof sourceLineRefusal;
   /** The saved source line READ FRESH (`readSavedSourcePhrase`) — by the view and by the confirmation alike. */
@@ -333,7 +413,7 @@ export const CONFIRM_DEPS: Readonly<ConfirmDeps> = Object.freeze({
   decide: decideConfirm,
   refusal: campaignAudienceRefusal,
   breakdown: breakdownVisible,
-  split: (f: ContactAudienceFilter, viewerReads: boolean) => audienceSplit(f, { viewerReads }),
+  split: (f: ContactAudienceFilter, viewerReads: boolean, waitMs?: number) => audienceSplit(f, { viewerReads, waitMs }),
   sourceRule: sourceLineRefusal,
   freshLine: readSavedSourcePhrase,
   settings: reloadMarketingSmsSettings,
@@ -428,12 +508,13 @@ const moneyWords = (viewer: ConfirmViewer, s: Pick<Spend, "costTzs" | "limitTzs"
 /**
  * ⭐ OD65 · THE AUDIENCE AS THIS VIEWER MAY SEE IT. A viewer who may not read a number: the count alone, over the FENCE's
  * count — the gate is never asked (the split door is not called). A reader: U38b's ONE view-model over the split door,
- * or null when the split failed — never zeros.
+ * or null when the split failed — never zeros. ⭐ U40b · the split waits for a slot at most `waitMs` (what is left of the
+ * read's `CONFIRM_SLOT_WAIT_MS`): no slot in time is a split that failed — the count without its figures.
  */
-async function audienceViewFor(filter: ContactAudienceFilter, count: number, viewer: ConfirmViewer, deps: ConfirmDeps): Promise<AudienceSplitView | null> {
+async function audienceViewFor(filter: ContactAudienceFilter, count: number, viewer: ConfirmViewer, deps: ConfirmDeps, waitMs?: number): Promise<AudienceSplitView | null> {
   if (!deps.breakdown(viewer.reads)) return audienceCountView(contactAudienceKey(filter), count);
   try {
-    const r = await deps.split(filter, viewer.reads);
+    const r = await deps.split(filter, viewer.reads, waitMs);
     return r.ok ? audienceSplitView(r.split, viewer.reads) : null;
   } catch {
     return null;
@@ -464,9 +545,14 @@ export async function campaignConfirmView(campaignId: string, viewer: ConfirmVie
   if (deps.refusal(filter, viewer.reads) !== null) return uncounted("audience_refused", CONFIRM_SERVICE_COPY.audience_refused(none));
 
   // ⛔ OD67 · what this viewer may see of the fence — a viewer who may not read a number: typed, no key, no list.
-  const seen = deps.shape(await deps.fence(row), viewer.reads);
+  // ⭐ U40b · the read WAITS for the split door's slots CONFIRM_SLOT_WAIT_MS in all: the fence's count first (no slot in
+  // time THROWS `AudienceSlotBusy`), then a reader's split with what is left once the count's WAIT is charged — its walk,
+  // and the first keys', never (the third pass: a large audience's walk would leave a reader's figures no bound at all).
+  const fenced = await deps.fence(row);
+  const seen = deps.shape(fenced, viewer.reads);
   const count = seen.claim.count;
-  const split = await audienceViewFor(filter, count, viewer, deps);
+  const left = Math.max(0, CONFIRM_SLOT_WAIT_MS - (fenced.waitedMs ?? 0));
+  const split = await audienceViewFor(filter, count, viewer, deps, left);
   const spend = await spendOf(row, count, deps);
   const line = deps.sourceRule(row, filter, await freshLineOf(deps));
   // The order is the confirmation's: nobody (the gate's first answer), then E18, then the estimate.

@@ -1,5 +1,29 @@
 # Changelog (reconstructed)
 
+## 2026-10-07 (design-system · the simplified journey) — four kit additions, written as §K rule 8, effective at the S15 flip
+
+**`docs/DESIGN_AUTHORITY.md` §K rule 8 (8a–8d) states four parts the Vodacom plan's S6 built behind the journey flag**,
+as the code ships them, so the S15 flip — the commit that shows the journey to every player — finds them ruled
+already, not ruled after the fact:
+- **8a · the captioned balance** — `WalletBalanceCaptioned` (`src/components/layout/wallet-balance-pill.tsx`), the
+  `.kp-jbal` rules;
+- **8b · the four-slot journey rail** — `JourneyTabs` (`src/components/journey/journey-tabs.tsx`) and `JOURNEY_TABS`
+  (`src/lib/nav/active-tab.ts`), the `.kp-rail--journey`, `.kp-jtab__label` and `.kp-rail__badge` rules;
+- **8c · the hub rows** — `hubRowsFor` and `HubRowItem` (`src/components/journey/account/`), the `.kp-hub` rules;
+- **8d · the guest Tiketi sheet** — `TicketsGuestSheet` (`src/components/journey/tickets-guest-sheet.tsx`), the kit
+  `Modal` wearing the Wallet's `.kp-wsheet` classes.
+
+**⚠️ Each stands BESIDE its classic part until the flip, not as a prop on it** — the Definition of Done's test for a
+new state. S6's rule that a classic viewer is served today's markup byte for byte kept every classic component's
+served markup unchanged; a part both looks open takes the journey as an opt-in prop that draws nothing new for a
+classic viewer (the Wallet's `journey`: its door words). What a pair shares, it shares by construction, never by copy: the two capsules roll and flash through one
+hook (`useBalanceRoll`), the journey rail wears the classic rail's slot, pip and label, and the guest sheet the
+Wallet's sheet classes. At S15 the classic parts are shelved (`docs/SHELVED.md`), so one of each pair is in use (§B9).
+
+None of the four has a spec under `02-components/`: §K rule 8 and the component files are its record. One point is
+left open by the rule, to be ruled before the flip: the sign-out confirm's claret tone (8c), which §B4/§B4a do not
+license.
+
 ## 2026-10-07 (design-system · dialogs) — Enter acts only where it is pressed
 
 **The money dialogs act on Enter only where it is pressed** (DESIGN_AUTHORITY §A8, S6 A8i, for every player in both looks):

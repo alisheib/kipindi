@@ -57,7 +57,11 @@
  */
 import { LOCALE_COOKIE, assertLang } from "./qa-locale.mjs";
 
-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
+// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This drive SIGNS IN as the QA player `mobile01` through the
+// real form on any non-local target, so a run with no target used to sign in on production without anyone choosing
+// it. Loopback is the default now (the shared harness's own), where it takes the dev-only /auth/demo door instead;
+// production is reached by NAMING it, as the examples at the top do.
+const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
 
 /**
  * ⛔ THE HARNESS READS ITS TARGET FROM `LIVE_BASE`, AND THIS DRIVER READS ITS OWN FROM argv.

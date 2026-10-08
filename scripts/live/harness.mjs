@@ -46,7 +46,8 @@ import { LOCAL_STAFF, LOCAL_STAFF_PASSWORD, LOCAL_ADMIN } from "../local-staff.m
  * invocation, and a wrong-target run that FAILS VISIBLY (nothing is listening on 3001) is recoverable in seconds.
  * The failure that is not recoverable is the silent one in the other direction. So the target is printed on every
  * run, and production is reachable only by naming it.
- * ⛔ `pre-deploy-live-check.mjs` is unaffected: it reads its own `BASE` env var and never imports this file.
+ * ⛔ `pre-deploy-live-check.mjs` reads its own `BASE` env var. It loads this file in one place only — section [E3]'s
+ * production sign-in as the QA player — and sets LIVE_BASE to its BASE first, then checks that the two agree.
  */
 export const BASE = process.env.LIVE_BASE ?? "http://localhost:3001";
 {

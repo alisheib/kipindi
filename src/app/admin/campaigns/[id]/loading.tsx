@@ -12,7 +12,8 @@ import { LIVE_REASON_ROWS, LIVE_TILE, LIVE_TILES, LIVE_TILE_COUNT, RESULTS_ROW_B
  * page swaps in; the U47b-2 drive measures it at 1280 and 360.
  * ⭐ THE GHOST IS THE REAL BLOCKS, in the real order, drawn as the page draws them while a campaign is being sent — the state
  * an officer opens this page in: the status card (chip, name, headline, audience, confirmation), the controls card (five
- * buttons at the console's 44px rung, and the line that says why), the figures card (the bar and its caption, six tiles on
+ * buttons at the KIT's size — `Button size="sm"`, which is `--tap-min` — and the line that says why; the review's NIT: the
+ * ghost names the kit's token and invents no pixel rung of its own), the figures card (the bar and its caption, six tiles on
  * the page's own grid, the five reasons as the kit's bar list, and the status chips) and — U48a — the results card (its title,
  * the honesty line, and the rows every campaign has, the not-sent row carrying its five reasons). Its boxes are the real ones —
  * the figures' and the results' geometry is `live-geometry.ts`, read by both. ⛔ Heights that depend on the campaign (the audience line wrapping,
@@ -49,7 +50,7 @@ export default function Loading() {
           <div className="glass-panel p-4">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                {BUTTON_W.map((w, i) => <SkBar key={i} className={`h-[44px] rounded-md ${w}`} />)}
+                {BUTTON_W.map((w, i) => <SkBar key={i} className={`h-[var(--tap-min)] rounded-md ${w}`} />)}
               </div>
               <SkBar className="h-[18px] w-[280px] max-w-full" />
             </div>

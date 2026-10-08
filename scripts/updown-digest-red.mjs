@@ -78,20 +78,42 @@ const MUTATIONS = [
     to: `  return Number.isFinite(at);`,
   },
   {
+    // ⚠️ RE-ANCHORED 2026-10-08. `4f9abedc` (PLAYER QUERY 4.1, 2026-09-08) deleted the
+    // `allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayKey))` this case planted
+    // into: the page now groups rounds first and cuts them through ONE `inDay` closure that
+    // `filterUd` / `udCounts` / `udEmptyCause` all receive. That closure is the only place the
+    // page touches the shared day predicate, so it is where a local copy of the offset would
+    // land. The plant is unchanged — a decoy `3 * 60 * 60 * 1000` beside the shared call — so
+    // that it isolates §7's "has not re-derived the EAT offset locally" and nothing else.
     name: "page-reimplements-the-offset (the two disagree around midnight)",
     file: "src/app/updown/history/page.tsx",
-    from: `    ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayKey))`,
-    to: `    ? allRows.filter((r) => { const EAT = 3 * 60 * 60 * 1000; void EAT; return isInEatDay(r.settledAt ?? r.placedAt, dayKey); })`,
+    from: `  const inDay = (row: HistoryRow, day: string) => isInEatDay(new Date(row.binnedAtMs).toISOString(), day);`,
+    to: `  const inDay = (row: HistoryRow, day: string) => { const EAT = 3 * 60 * 60 * 1000; void EAT; return isInEatDay(new Date(row.binnedAtMs).toISOString(), day); };`,
+    expect: "has not re-derived the EAT offset locally",
   },
   {
     // 🔴 The bug the LIVE run caught and no unit test would have: filtering on the raw
     // query param instead of the validated one. `?day=lol` then hides every card while
     // the chip — which keys off the validated value — does not render, so the player
     // gets an empty page with nothing explaining it and no way back.
+    //
+    // ⚠️ RE-ANCHORED 2026-10-08. `4f9abedc` removed `const dayKey = dayWindow ? rawDay : null`:
+    // the validation moved INTO `parseUdParams` (`day: isValidDay(rawDay) ? rawDay : ""`) and the
+    // page now supplies the validator — `(d) => !!d && !!eatDayWindow(d)` — so the same defect
+    // is the page handing the parser a validator that lets `lol` through, after which
+    // `state.day` IS the raw param and drives the filter, the chip and the empty state.
+    //
+    // ⛔ AS OF 2026-10-08 THIS CASE CANNOT BE PROVEN: §7's assertion for it is stale. It still
+    // pattern-matches the deleted `const dayKey = dayWindow ? rawDay : null`, so it fails on the
+    // UNTOUCHED tree and fails identically with this plant — the suite cannot tell the defect
+    // from the fix. The runner below scores every case as a DELTA against the baseline and so
+    // reports this one as MISSED until that assertion is re-anchored to today's page (it should
+    // then fail on this plant, by the label named in `expect`). Delete this paragraph when it does.
     name: "raw-param-filter (?day=lol empties the page with no way out)",
     file: "src/app/updown/history/page.tsx",
-    from: `  const dayKey = dayWindow ? rawDay : null;`,
-    to: `  const dayKey = rawDay;`,
+    from: `  const state = parseUdParams(sp, assetIds, durIds, (d) => !!d && !!eatDayWindow(d));`,
+    to: `  const state = parseUdParams(sp, assetIds, durIds, (d) => !!d);`,
+    expect: "one validated day drives the filter",
   },
 ];
 
@@ -102,15 +124,12 @@ const MUTATIONS = [
 // Normalise before comparing; the original bytes are restored verbatim either way.
 const lf = (s) => s.replace(/\r\n/g, "\n");
 
-let proven = 0;
-for (const m of MUTATIONS) {
-  const original = readFileSync(m.file, "utf8");
-  const normalised = lf(original);
-  if (!normalised.includes(lf(m.from))) {
-    console.log(`⚠️  ${m.name}: anchor not found in ${m.file} — the source moved, fix this script`);
-    continue;
-  }
-  writeFileSync(m.file, normalised.replace(lf(m.from), lf(m.to)));
+/**
+ * One run of the guard: whether it exited non-zero, its closing tally, and the LABEL of every
+ * assertion that failed. The suite's `ok()` prints `FAIL <label>` at the start of a line, and the
+ * label is the only id an assertion has here.
+ */
+function runGuard() {
   let out = "";
   let red = false;
   try {
@@ -118,14 +137,67 @@ for (const m of MUTATIONS) {
   } catch (e) {
     red = true;
     out = `${e.stdout ?? ""}${e.stderr ?? ""}`;
+  }
+  const failing = (out.match(/^FAIL (.+)$/gm) ?? []).map((l) => l.slice(5).trim());
+  const tail = (out.match(/updown-digest \(E-37 \+ E-43\): (\d+) passed, (\d+) failed/) ?? [])[0]
+    ?? out.trim().split("\n").slice(-1)[0];
+  return { red, failing, tail };
+}
+
+// ⛔ THE BASELINE FIRST (2026-10-08). "The suite exited non-zero" proves nothing when it was going
+// to exit non-zero anyway — and it was. From `4f9abedc` (2026-09-08) §7's assertion for the
+// raw-param case pattern-matched a line that commit deleted, so `test:updown-digest` failed on the
+// UNTOUCHED tree and this script printed a ✓ for every case it could still apply, including one
+// the suite could no longer detect at all. So the guard is run once with nothing planted, and every
+// case below is a DELTA: it counts only if it makes an assertion fail that was NOT already failing
+// (and, where a case names its assertion with `expect`, only if that one is the new failure).
+const base = runGuard();
+const problems = [];
+if (base.red || base.failing.length > 0) {
+  const names = base.failing.length > 0 ? base.failing.map((l) => `"${l}"`).join("; ") : "it crashed";
+  problems.push(`the guard is ALREADY RED on the untouched tree (${names}) — repair the suite before trusting any ✓ below`);
+  console.log(`baseline · ${base.tail} — RED BEFORE ANY PLANT`);
+  for (const l of base.failing) console.log(`         · ${l}`);
+  console.log("         every verdict below is a DELTA against this; a case whose own assertion is in it cannot be proven\n");
+} else {
+  console.log(`baseline · ${base.tail} — green, so a red below is a DELTA\n`);
+}
+
+let proven = 0;
+for (const m of MUTATIONS) {
+  const original = readFileSync(m.file, "utf8");
+  const normalised = lf(original);
+  // The anchor must land EXACTLY ONCE: `replace` plants at the first of two and leaves the other
+  // intact, so the suite could go red for a different reason than the case claims.
+  const hits = normalised.split(lf(m.from)).length - 1;
+  if (hits !== 1) {
+    console.log(`⚠️  ${m.name}: anchor ${hits === 0 ? "not found" : `matches ${hits}×`} in ${m.file} — the source moved, fix this script`);
+    continue;
+  }
+  writeFileSync(m.file, normalised.replace(lf(m.from), lf(m.to)));
+  let run;
+  try {
+    run = runGuard();
   } finally {
     writeFileSync(m.file, original); // always restore, even if the run threw
   }
-  const tail = (out.match(/updown-digest \(E-37 \+ E-43\): (\d+) passed, (\d+) failed/) ?? [])[0]
-    ?? out.trim().split("\n").slice(-1)[0];
-  console.log(`${red ? "✓ RED " : "✗ GREEN"}  ${m.name}\n         ${tail}`);
-  if (red) proven++;
+  const fresh = run.failing.filter((l) => !base.failing.includes(l));
+  const hit = m.expect ? fresh.filter((l) => l.includes(m.expect)) : fresh;
+  if (hit.length > 0) {
+    proven++;
+    console.log(`✓ RED   ${m.name}\n         ${run.tail} — new: ${hit[0]}${hit.length > 1 ? ` (+${hit.length - 1} more)` : ""}`);
+    continue;
+  }
+  const why = m.expect && base.failing.some((l) => l.includes(m.expect))
+    ? `its own assertion ("${m.expect}") is ALREADY failing on the untouched tree, so it cannot tell this defect from the fix`
+    : m.expect ? `the named assertion ("${m.expect}") did not fail`
+    : "no assertion failed that was not already failing";
+  console.log(`✗ MISS  ${m.name}\n         ${run.tail} — ${why}`);
 }
 
 console.log(`\n${proven}/${MUTATIONS.length} defects caught by the guard`);
-process.exit(proven === MUTATIONS.length ? 0 : 1);
+if (problems.length > 0) {
+  console.error("\nRED HARNESS CANNOT BE TRUSTED:");
+  for (const p of problems) console.error(`  !! ${p}`);
+}
+process.exit(problems.length === 0 && proven === MUTATIONS.length ? 0 : 1);

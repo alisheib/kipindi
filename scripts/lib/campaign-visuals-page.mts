@@ -9,10 +9,13 @@
  *       not add up (a derived number would show) and read in the source;
  *   V4  ⭐ the controls exist in every state — all five drawn in all seven statuses for three kinds of viewer, each disabled WITH
  *       its reason in `title`, enabled exactly where §4.15 says; never conditionally rendered;
- *   V5  ⭐ every action's guard is its FIRST statement, domain growth — the step takes `softCheckStaff` (a lapsed second factor is
- *       refused in words), the poll `softViewStaff` (the VIEW grant: a watcher is never an attempted escalation), the five
- *       presses `softRequireStaff` — and the view guard EXECUTED on the roles it must tell apart;
- *   V6  ⭐ the driver, executed: every gap, the stops, the mount's one step — a thrown call ends the loop and is never retried;
+ *   V5  ⭐ every action's guard is its FIRST statement, domain growth — the poll `softViewStaff` (the VIEW grant: a watcher is
+ *       never an attempted escalation), Start, Resume and Make a copy `softRequireStaff`, Pause and Stop `softCheckStaff` (a
+ *       lapsed second factor refused in words, never the redirect that loses the press) — and the view guard EXECUTED on the
+ *       roles it must tell apart (the step's guard is its door's: V12);
+ *   V6  ⭐ the driver, executed: every gap, the stops, the mount's one step — a thrown STEP ends the loop and is never retried, a
+ *       thrown poll is asked again after 10 s, 20 s and 40 s; and the door's client (`postLiveStep`) posts, reads, and refuses
+ *       what it does not know;
  *   V7  ⛔ E23 · the floor hides the split — rendered for a masked viewer under ten, nothing drawn for a figure that is null;
  *   V8  ⛔ OD24 · no money word on a GROWTH page, in its data, its markup or its source;
  *   V9  `CAMPAIGN_SCREENS.detail` is true exactly when the page exists;
@@ -37,13 +40,19 @@ const json = (v: unknown): string => JSON.stringify(v);
 const rawRead = (rel: string): string => readFileSync(join(ROOT, ...rel.split("/")), "utf8").split(CR).join("");
 const code = (rel: string): string => decomment(rawRead(rel));
 
-const DIR = "src/app/admin/campaigns/[id]/";
+export const DIR = "src/app/admin/campaigns/[id]/";
 const DRIVER = await import("../../src/app/admin/campaigns/[id]/live-driver.tsx");
 const RUN = await import("../../src/app/admin/campaigns/[id]/live-run.ts");
 const LOADER = await import("../../src/app/admin/campaigns/[id]/live-loader.ts");
 const VIEWER = await import("../../src/app/admin/campaigns/[id]/live-viewer.ts");
 const CLIENT = await import("../../src/app/admin/campaigns/[id]/live-client.tsx");
 const COPY = await import("../../src/app/admin/campaigns/[id]/live-copy.ts");
+const DOOR = await import("../../src/app/admin/campaigns/[id]/live-step-door.ts");
+const PRESSES = await import("../../src/app/admin/campaigns/[id]/live-presses.ts");
+const ANNOUNCE = await import("../../src/app/admin/campaigns/[id]/live-announce.ts");
+const DECIDE = await import("../../src/app/admin/campaigns/[id]/live-decide.ts");
+const ROUTE = await import("../../src/app/api/admin/campaigns/[id]/step/route.ts");
+const SEED = await import("../../src/app/api/dev-test/marketing-live-seed/route.ts");
 const GUARD = await import("../../src/lib/server/rbac-guard.ts");
 const RBAC = await import("../../src/lib/server/rbac.ts");
 const STATUS = await import("../../src/lib/marketing/campaign-status.ts");
@@ -62,14 +71,14 @@ type DriverStop = import("../../src/app/admin/campaigns/[id]/live-driver.tsx").D
 export const LABELS = {
   v1: "V1 · ⛔ EVERY FIGURE ON THE PAGE IS A VIEW-MODEL FIELD (OD26, OD34) — rendered over figures that do not add up (1,234 on the campaign, 100 + 20 + 5 + 1 + 9 beside them, a bar at 321 of 1,234) each tile, the bar and its caption print exactly their own field and no sum, difference or percentage appears; and no file that prints a figure (client, page, ghost) does arithmetic on a count, reads a clock for the bar or formats money",
   v4: "V4 · ⭐ THE CONTROLS EXIST IN EVERY STATE — all five drawn, in the spec's order, in all seven statuses for a reader, a GROWTH officer and a viewer who may not act; each disabled WITH its reason in title (the view's own words, the role's for a watcher), enabled exactly where §4.15 says (Start CONFIRMED · Pause PREPARING, RUNNING · Resume PAUSED · Stop any non-terminal · Make a copy any non-draft); drawn by one map over all five, never behind a condition",
-  v5: "V5 · ⭐ EVERY ACTION'S GUARD IS ITS FIRST STATEMENT, DOMAIN GROWTH — seven exports and no other; the step takes softCheckStaff (a lapsed second factor is refused in words), the poll softViewStaff, the five presses softRequireStaff; each guard before any viewer, rate check or service; the view guard EXECUTED: a role with Growth VIEW alone passes and writes no security row (where the act guard refuses it and writes one), a role with no VIEW grant is refused with a SECURITY row, the Owner passes, a lapsed or never-set-up second factor is refused in words and never redirected to, the role is judged before the factor, a cookie's claim of ADMIN over a stored role is refused, and no session goes to the sign-in page",
-  v6: "V6 · ⭐ THE DRIVER, EXECUTED — a page that may act on a running campaign steps at once and again after 2 s when work was done, after the wait's until (never under 5 s, never over 30 s) when the engine waits, after 5 s when another step held the flight; a viewer who may not act polls every 10 s and makes NO step call; the mount of a paused, stopped or finished campaign steps ONCE (decided when a page's first loop starts, and after a retry — never by a status change); the loop ends on a terminal status and when the status needs another mode; ⛔ a thrown call ends it with the out-of-date state and is NEVER retried (one call, no sleep); a lapsed second factor, a role that may not act, a view that may not be read and a campaign that is gone each stop it with their sentence; a cancelled loop makes no further call; never two calls at once",
+  v5: "V5 · ⭐ EVERY ACTION'S GUARD IS ITS FIRST STATEMENT, DOMAIN GROWTH — six exports and no other (the driver's step is a guarded door, V12, since the review's MAJOR); the poll takes softViewStaff, Start, Resume and Make a copy softRequireStaff, Pause and Stop softCheckStaff (a lapsed or never-set-up second factor is refused in words with the step-up link — never the redirect that loses the press); each guard before any viewer, rate check or service; the view guard EXECUTED: a role with Growth VIEW alone passes and writes no security row (where the act guard refuses it and writes one), a role with no VIEW grant is refused with a SECURITY row, the Owner passes, a lapsed or never-set-up second factor is refused in words and never redirected to, the role is judged before the factor, a cookie's claim of ADMIN over a stored role is refused, and no session goes to the sign-in page",
+  v6: "V6 · ⭐ THE DRIVER, EXECUTED — a page that may act on a running campaign steps at once and again after 2 s when work was done, after the wait's until (never under 5 s, never over 30 s) when the engine waits, after 5 s when another step held the flight; a viewer who may not act polls every 10 s and makes NO step call; the mount of a paused, stopped or finished campaign steps ONCE (decided when a page's first loop starts, and after a retry — never by a status change); the loop ends on a terminal status and when the status needs another mode; ⛔ a thrown STEP ends it with the out-of-date state and is NEVER retried (one call, no sleep); ⭐ a thrown POLL (a read) is asked again after 10 s, 20 s and 40 s and only then is out of date, and a retry that lands carries on; a lapsed second factor, a sign-in that ended, a step the server could not finish, a role that may not act, a view that may not be read and a campaign that is gone each stop it with their sentence; a cancelled loop makes no further call; never two calls at once; ⭐ the door's client (postLiveStep) POSTs to /api/admin/campaigns/<id>/step with this origin's cookies, no body and no cache, takes a typed refusal as an answer whatever its HTTP status, and THROWS on a body that is not JSON or JSON this build does not know (the page is then out of date)",
   v7: "V7 · ⛔ E23 · THE FLOOR HIDES THE SPLIT, ON THE PAGE — a masked viewer on a campaign of 9 rows is drawn On campaign 9 and the floor's sentence and NOTHING else: no other tile, no reason, no chip; a reader of the same 9 is drawn all six tiles, the reasons and the chips and no sentence; the client draws a tile only for a figure that is not null (never a zero in its place)",
   v8: "V8 · ⛔ OD24 · NO 'TZS' ON A GROWTH PAGE — the view of a campaign with a frozen estimate and limit carries no money and no TZS for GROWTH, its page markup has none, and none of the page's files formats money or asks the decider; the reader's Start dialog says the cost and the limit (the control)",
   v9: "V9 · CAMPAIGN_SCREENS.detail is true exactly when /admin/campaigns/[id]/page.tsx exists (and compose exactly when the composer's does) — the list links only to a page that is there (test:campaigns-page 5f holds the list's side)",
   v10: "V10 · THE PAGE GATE'S SHAPE (admin-section-gate §0b′) — one return, a literal title 'SMS campaign' equal to LIVE_TITLE on a gate whose only child is self-closing; the head and the ghost draw the same literal title and the copied gloss 'Kampeni' (LIVE_SW); a static metadata title and no generateMetadata; the four inert spellings the gate suite plants are refused and the canonical one accepted",
-  v11: "V11 · THE FIRST RENDER AND EVERY ACT'S ANSWER — the load: ready (carrying whether the viewer may act, from the stored role), a draft told apart, a campaign that is not there 'missing', and a read that FAILS rejected — never 'missing', never a zero; an act that landed invalidates the list ONCE and answers with the campaign as it is now, a refusal invalidates nothing; a service that THREW after it was handed the campaign answers 'unfinished' in LIVE_ACT_UNFINISHED's words with the campaign beside it (the log names the error's type alone); a view that cannot be read leaves the act's answer whole; Resume answered busy is asked ONCE more after a second, any other answer once, and a second busy is said",
-  l2: "L2 · THE VIEWER IS THE STORED ROLE'S, FAILING CLOSED — liveViewerFor reads the officer's own row once and asks its three cells of THAT role (a stored GROWTH may act and may not read a number or money; the Owner may all three; a role with no growth grant may not act); no officer, no row, a role that cannot be read and each cell that throws or answers anything but true are the closed viewer; every action hands the services THAT viewer (never a field the browser posted — the actions take one parameter, the campaign's id)",
+  v11: "V11 · THE FIRST RENDER AND EVERY ACT'S ANSWER — the load: ready (carrying whether the viewer may act, from the stored role), a draft told apart, a campaign that is not there 'missing', and a read that FAILS rejected — never 'missing', never a zero; an act that landed invalidates the list ONCE and answers with the campaign as it is now, a refusal invalidates nothing; a service that THREW after it was handed the campaign answers 'unfinished' in LIVE_ACT_UNFINISHED's words with the campaign beside it — and, when the campaign could not be read either, in LIVE_ACT_UNFINISHED_NO_VIEW's (reload: 'this page now shows where the campaign is' would be false) — the log naming the error's type alone; a view that cannot be read leaves the act's answer whole; ⭐ a draft opened here is sent to the composer's canonical address for the viewer (draftAddressFor, STD-1), the bare address only when none can be built, and a copy's address is the same; Resume answered busy is asked ONCE more after a second, any other answer once, and a second busy is said",
+  l2: "L2 · THE VIEWER IS THE STORED ROLE'S, FAILING CLOSED — liveViewerFor reads the officer's own row once and asks its three cells of THAT role (a stored GROWTH may act and may not read a number or money; the Owner may all three; a role with no growth grant may not act); no officer, no row, a role that cannot be read and each cell that throws or answers anything but true are the closed viewer; every action hands the services THAT viewer (never a field the browser posted — the actions take one parameter, the campaign's id); ⭐ the campaigns list's act cell (liveMayActFor) reads the stored role once and asks the ACT grant alone — not the number cell, not the money decider — failing closed the same way",
 } as const;
 export type PageLabel = (typeof LABELS)[keyof typeof LABELS];
 /** The suite's own P1 label — R-P3 must turn exactly that claim red; the suite hands it over before the plants are built. */
@@ -81,11 +90,19 @@ export function setPhoneLabel(label: string): void { P1_LABEL = label; }
 export type PageSources = {
   actions: string; client: string; driver: string; page: string; loading: string; run: string; loader: string; viewer: string;
   copy: string; status: string;
+  /** The U47b-2 review's fix round: the step door and its route, the pure decisions, the presses' and the announcement's hooks. */
+  door: string; route: string; decide: string; presses: string; announce: string; crumbs: string; nav: string;
+  /** The dev seed route and the drive that asserts against its sentences (V16). */
+  seed: string; drive: string;
 };
-const REAL_SOURCES: PageSources = {
+export const REAL_SOURCES: PageSources = {
   actions: code(`${DIR}actions.ts`), client: code(`${DIR}live-client.tsx`), driver: code(`${DIR}live-driver.tsx`),
   page: code(`${DIR}page.tsx`), loading: code(`${DIR}loading.tsx`), run: code(`${DIR}live-run.ts`), loader: code(`${DIR}live-loader.ts`),
   viewer: code(`${DIR}live-viewer.ts`), copy: code(`${DIR}live-copy.ts`), status: code("src/lib/marketing/campaign-status.ts"),
+  door: code(`${DIR}live-step-door.ts`), route: code("src/app/api/admin/campaigns/[id]/step/route.ts"), decide: code(`${DIR}live-decide.ts`),
+  presses: code(`${DIR}live-presses.ts`), announce: code(`${DIR}live-announce.ts`), crumbs: code("src/components/admin/admin-crumbs.tsx"),
+  nav: code("src/components/admin/admin-nav-groups.ts"),
+  seed: code("src/app/api/dev-test/marketing-live-seed/route.ts"), drive: code("scripts/live/marketing-u47-live-drive.mjs"),
 };
 
 export type PageImpl = {
@@ -94,12 +111,25 @@ export type PageImpl = {
   loop: typeof DRIVER.runLiveLoop;
   gap: typeof DRIVER.stepGap;
   mode: typeof DRIVER.driverMode;
+  /** The driver's client for the step door. */
+  postStep: typeof DRIVER.postLiveStep;
   load: typeof LOADER.loadLive;
   runAct: typeof RUN.runAct;
   resumeRetry: typeof RUN.resumeWithRetry;
   viewerFor: typeof VIEWER.liveViewerFor;
+  /** The campaigns list's act cell: the stored role's ACT grant alone. */
+  mayActFor: typeof VIEWER.liveMayActFor;
   /** The VIEW guard (`softViewStaff`) — the poll's. */
   viewGuard: typeof GUARD.softViewStaff;
+  /** ⭐ The page's HOOKS, decisions, door, route and dev seed as modules — the real ones, or a plant's source compiled and
+   *  evaluated (V12–V16; `scripts/lib/campaign-visuals-live.mts`). */
+  mods: {
+    driver: typeof DRIVER; presses: typeof PRESSES; announce: typeof ANNOUNCE; decide: typeof DECIDE;
+    /** The driver's step DOOR (`POST /api/admin/campaigns/<id>/step`) and the route that wraps it. */
+    door: typeof DOOR; route: typeof ROUTE;
+    /** The drive's dev seed route. */
+    seed: typeof SEED;
+  };
   screens: { compose: boolean; detail: boolean };
   sources: PageSources;
 };
@@ -121,11 +151,14 @@ export const REAL_PAGE: PageImpl = {
   loop: DRIVER.runLiveLoop,
   gap: DRIVER.stepGap,
   mode: DRIVER.driverMode,
+  postStep: DRIVER.postLiveStep,
   load: LOADER.loadLive,
   runAct: RUN.runAct,
   resumeRetry: RUN.resumeWithRetry,
   viewerFor: VIEWER.liveViewerFor,
+  mayActFor: VIEWER.liveMayActFor,
   viewGuard: GUARD.softViewStaff,
+  mods: { driver: DRIVER, presses: PRESSES, announce: ANNOUNCE, decide: DECIDE, door: DOOR, route: ROUTE, seed: SEED },
   screens: STATUS.CAMPAIGN_SCREENS,
   sources: REAL_SOURCES,
 };
@@ -145,12 +178,14 @@ export type PageHarness = {
   /** Keep a rendered page or an answer for the phone-number sweep (P1). */
   see: (text: string) => void;
   run: number;
+  /** The services' dependencies for this run — a fixed clock and a fixed-open window — so a door's step is deterministic. */
+  ctrlDeps: () => import("../../src/lib/server/marketing/campaign-control.ts").ControlDeps;
 };
 
 const UNESCAPES: Array<[string, string]> = [["&#x27;", "'"], ["&quot;", DQ], ["&lt;", "<"], ["&gt;", ">"], ["&amp;", "&"]];
-const unescapeHtml = (s: string): string => UNESCAPES.reduce((t, [from, to]) => t.split(from).join(to), s);
+export const unescapeHtml = (s: string): string => UNESCAPES.reduce((t, [from, to]) => t.split(from).join(to), s);
 /** The opening tag that carries `needle`. */
-function tagAt(html: string, needle: string): string | null {
+export function tagAt(html: string, needle: string): string | null {
   const at = html.indexOf(needle);
   if (at < 0) return null;
   const open = html.lastIndexOf("<", at);
@@ -158,7 +193,7 @@ function tagAt(html: string, needle: string): string | null {
   return open < 0 || close < 0 ? null : html.slice(open, close + 1);
 }
 /** An attribute's (unescaped) value, "" for a boolean one, null when it is not there. */
-function attrOf(tag: string | null, name: string): string | null {
+export function attrOf(tag: string | null, name: string): string | null {
   if (tag === null) return null;
   const key = ` ${name}=${DQ}`;
   const at = tag.indexOf(key);
@@ -167,24 +202,24 @@ function attrOf(tag: string | null, name: string): string | null {
   return unescapeHtml(tag.slice(from, tag.indexOf(DQ, from)));
 }
 /** The markup with every tag taken out. */
-const textOfHtml = (html: string): string => html.split("<").map((p, i) => (i === 0 ? p : p.slice(p.indexOf(">") + 1))).join("");
+export const textOfHtml = (html: string): string => html.split("<").map((p, i) => (i === 0 ? p : p.slice(p.indexOf(">") + 1))).join("");
 /** The text of a control: from the end of its opening tag to the next closing button tag. */
-function buttonText(html: string, act: string): string | null {
+export function buttonText(html: string, act: string): string | null {
   const tag = tagAt(html, `data-live-control=${DQ}${act}${DQ}`);
   if (tag === null) return null;
   const from = html.indexOf(tag) + tag.length;
   return unescapeHtml(textOfHtml(html.slice(from, html.indexOf("</button>", from))));
 }
-const ACTS = ["start", "pause", "resume", "stop", "copy"] as const;
-type Act = (typeof ACTS)[number];
+export const ACTS = ["start", "pause", "resume", "stop", "copy"] as const;
+export type Act = (typeof ACTS)[number];
 const LABEL_OF: Record<Act, string> = { start: "Start…", pause: "Pause", resume: "Resume", stop: "Stop…", copy: "Make a copy" };
 
 /** Enabled controls by status — §4.15 decision 4, written out. */
-const ON: Record<string, Act[]> = {
+export const ON: Record<string, Act[]> = {
   DRAFT: [], CONFIRMED: ["start", "stop", "copy"], PREPARING: ["pause", "stop", "copy"], RUNNING: ["pause", "stop", "copy"],
   PAUSED: ["resume", "stop", "copy"], DONE: ["copy"], CANCELLED: ["copy"],
 };
-const PATHS: Record<string, string[]> = {
+export const PATHS: Record<string, string[]> = {
   DRAFT: [], CONFIRMED: ["CONFIRMED"], PREPARING: ["CONFIRMED", "PREPARING"], RUNNING: ["CONFIRMED", "PREPARING", "RUNNING"],
   PAUSED: ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"], DONE: ["CONFIRMED", "PREPARING", "RUNNING", "DONE"], CANCELLED: ["CONFIRMED", "CANCELLED"],
 };
@@ -196,7 +231,7 @@ export const plantIn = (src: string, from: string, to: string): string => {
 };
 
 /** The brace-matched body of `export async function name(` — null when it is not there. */
-function bodyOf(src: string, name: string): string | null {
+export function bodyOf(src: string, name: string): string | null {
   const at = src.indexOf(`export async function ${name}(`);
   if (at < 0) return null;
   const open = src.indexOf("{", src.indexOf(")", at));
@@ -209,10 +244,10 @@ function bodyOf(src: string, name: string): string | null {
 }
 
 /** A fake view for the loop, which reads nothing of it but the status. */
-const viewAt = (status: string): CampaignLiveView => ({ status } as unknown as CampaignLiveView);
-const OK_STEP = (status: string, step: Record<string, unknown>, said: string | null = null) =>
+export const viewAt = (status: string): CampaignLiveView => ({ status } as unknown as CampaignLiveView);
+export const OK_STEP = (status: string, step: Record<string, unknown>, said: string | null = null) =>
   ({ ok: true as const, step: step as never, said, view: viewAt(status) });
-const OK_VIEW = (status: string) => ({ ok: true as const, view: viewAt(status) });
+export const OK_VIEW = (status: string) => ({ ok: true as const, view: viewAt(status) });
 
 /** One run of the loop with stand-in calls: every sleep recorded (and not slept), every call counted, every stop kept. */
 async function loopRun(impl: PageImpl, o: {
@@ -298,7 +333,12 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     const bar = attrOf(barTag, "aria-valuenow") === "321" && attrOf(barTag, "aria-valuemax") === "1234" && attrOf(barTag, "aria-valuetext") === "321 of 1,234 processed";
     // no sum (135), no remainder (1,099), no percentage (26%) is PRINTED anywhere (the kit's bar fill carries its own width
     // in a style attribute — that is the kit's determinate bar, and not what an officer reads)
-    const shown = textOfHtml(html);
+    // ⭐ The audience line is the campaign's own TAG, which carries the suite's run number (`u47b1-r135-pv1`): it is not a figure, and a
+    // red run is ~135 runs long, so at run 135 the sum "135" appeared in it. It is taken out before the figures are looked for.
+    const audienceTag = tagAt(html, "data-live-audience");
+    const audienceAt = audienceTag === null ? -1 : html.indexOf(audienceTag);
+    const withoutAudience = audienceAt < 0 ? html : html.slice(0, audienceAt) + html.slice(html.indexOf("</p>", audienceAt) + 4);
+    const shown = textOfHtml(withoutAudience);
     const derived = ["135", "1,099", "1,108", "26%", "74%"].filter((d) => shown.includes(d));
     // the source: no arithmetic on a figure in a file that PRINTS one; the driver holds no figure at all
     const PRINTS: Array<[string, string]> = [["live-client.tsx", S.client], ["page.tsx", S.page], ["loading.tsx", S.loading]];
@@ -362,10 +402,12 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
   /* ── V5 · the guards ── */
   await h.claim(L.v5, async () => {
     const src = S.actions;
+    // ⭐ The U47b-2 review: the STEP is no action (a guarded door, V12); PAUSE and STOP — the brake — take the non-redirecting
+    // check, so a 2-step sign-in that lapsed refuses them IN WORDS and never throws the officer's page (and press) away.
     const want: Array<[string, string, string]> = [
-      ["campaignStepAction", "softCheckStaff", "step"], ["campaignViewAction", "softViewStaff", "view"],
-      ["startCampaignAction", "softRequireStaff", "start"], ["pauseCampaignAction", "softRequireStaff", "pause"],
-      ["resumeCampaignAction", "softRequireStaff", "resume"], ["stopCampaignAction", "softRequireStaff", "stop"],
+      ["campaignViewAction", "softViewStaff", "view"],
+      ["startCampaignAction", "softRequireStaff", "start"], ["pauseCampaignAction", "softCheckStaff", "pause"],
+      ["resumeCampaignAction", "softRequireStaff", "resume"], ["stopCampaignAction", "softCheckStaff", "stop"],
       ["copyCampaignAction", "softRequireStaff", "copy"],
     ];
     const exported = Array.from(src.matchAll(/export async function ([A-Za-z0-9_]+)[(]/g), (m) => m[1]).sort();
@@ -381,8 +423,22 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
       if (guardAt < 0) wrong.push(`${name}: no guard`);
       const later = ["liveViewerFor(", "rateCheckAsync(", "runAct(", "campaignStep(", "campaignLiveView(", "Campaign("].map((t) => body.indexOf(t)).filter((x) => x >= 0);
       if (later.some((x) => x < guardAt + head.length)) wrong.push(`${name}: a viewer, rate check or service comes before its guard ends`);
-      if (name !== "campaignStepAction" && body.includes("refuseSecondFactor")) wrong.push(`${name}: a press must keep the step-up (no refuseSecondFactor)`);
+      // no action spells the guard's option itself: the family (softRequireStaff / softCheckStaff / softViewStaff) holds the decision
+      if (body.includes("refuseSecondFactor") || body.includes("canAct(") || body.includes("canView(")) wrong.push(`${name}: it makes a guard decision of its own`);
     }
+    // the second-factor refusals of the two brake presses carry the step-up link (and never a redirect): Pause and Stop answer
+    // through actRefusedBy, the others through the plain role refusal
+    const brake = ["pauseCampaignAction", "stopCampaignAction"].every((n) => (bodyOf(src, n) ?? "").includes("if (!g.ok) return actRefusedBy(g);"))
+      && ["startCampaignAction", "resumeCampaignAction", "copyCampaignAction"].every((n) => (bodyOf(src, n) ?? "").includes("if (!g.ok) return actRefused("));
+    if (!brake) wrong.push("a press does not refuse the way its guard does (the brake in words with the step-up link, the rest as a role)");
+    // executed: a second-factor refusal of a press carries the link, a role refusal none
+    const lapsedAnswer = RUN.actRefusedBy({ error: GUARD.SECOND_FACTOR_LAPSED, secondFactor: true });
+    const unsetAnswer = RUN.actRefusedBy({ error: GUARD.SECOND_FACTOR_NOT_SET_UP, secondFactor: true });
+    const roleAnswer = RUN.actRefusedBy({ error: COPY.LIVE_ROLE_REFUSAL });
+    const linked = !lapsedAnswer.ok && lapsedAnswer.reason === "second_factor" && lapsedAnswer.href === RUN.LIVE_FACTOR_VERIFY && lapsedAnswer.message === GUARD.SECOND_FACTOR_LAPSED
+      && !unsetAnswer.ok && unsetAnswer.reason === "second_factor" && unsetAnswer.href === RUN.LIVE_FACTOR_SETUP
+      && !roleAnswer.ok && roleAnswer.reason === "role" && roleAnswer.href === null;
+    if (!linked) wrong.push("a press refused for its second factor does not carry the step-up page (or a role refusal does)");
     const domainOk = VIEWER.LIVE_DOMAIN === "growth";
     // ── the view guard, EXECUTED on the roles it must tell apart ──
     const at = "2026-10-08T08:00:00.000Z";
@@ -495,8 +551,22 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     // ── ⛔ a thrown call: ONE call, no sleep, the out-of-date stop — never retried ──
     const thrown = await loopRun(P, { mode: "drive", mayAct: true, now: NOW, steps: [new Error("a deploy's new action ids"), OK_STEP("RUNNING", wrote), OK_STEP("RUNNING", wrote)] });
     if (json(thrown.calls) !== json(["step"]) || thrown.sleeps.length !== 0 || json(thrown.stops) !== json([{ kind: "out_of_date" }])) wrong.push(`a thrown step: calls ${thrown.calls.join(",")} sleeps ${json(thrown.sleeps)} stops ${json(thrown.stops)}`);
-    const thrownPoll = await loopRun(P, { mode: "watch", mayAct: false, pollFirst: true, now: NOW, polls: [new Error("offline"), OK_VIEW("RUNNING")] });
-    if (json(thrownPoll.calls) !== json(["poll"]) || json(thrownPoll.stops) !== json([{ kind: "out_of_date" }])) wrong.push(`a thrown poll: calls ${thrownPoll.calls.join(",")} stops ${json(thrownPoll.stops)}`);
+    // ── ⭐ the review's MINOR 7 · a POLL is a read: a thrown one is asked again after 10 s, 20 s and 40 s, and only then is the page
+    //    out of date; one that lands on a retry carries on. (The STEP above is never asked again.) ──
+    const offline = () => new Error("offline");
+    const exhausted = await loopRun(P, { mode: "watch", mayAct: false, pollFirst: true, now: NOW, polls: [offline(), offline(), offline(), offline(), OK_VIEW("RUNNING")] });
+    if (json(exhausted.calls) !== json(["poll", "poll", "poll", "poll"]) || json(exhausted.sleeps) !== json([10_000, 20_000, 40_000]) || json(exhausted.stops) !== json([{ kind: "out_of_date" }])) {
+      wrong.push(`a poll that never answers: calls ${exhausted.calls.length} sleeps ${json(exhausted.sleeps)} stops ${json(exhausted.stops)}`);
+    }
+    const healed = await loopRun(P, { mode: "watch", mayAct: false, pollFirst: true, now: NOW, polls: [offline(), offline(), OK_VIEW("RUNNING"), OK_VIEW("DONE")] });
+    if (json(healed.calls) !== json(["poll", "poll", "poll", "poll"]) || json(healed.sleeps) !== json([10_000, 20_000, 10_000]) || healed.stops.length !== 0) {
+      wrong.push(`a poll that answers on its third try: calls ${healed.calls.length} sleeps ${json(healed.sleeps)} stops ${json(healed.stops)}`);
+    }
+    // a retry of a poll never turns into a retry of a step, and a cancelled loop is not retried
+    const droveBlind = await loopRun(P, { mode: "drive", mayAct: true, now: NOW, steps: [offline(), OK_STEP("RUNNING", wrote)], polls: [OK_VIEW("RUNNING")] });
+    if (json(droveBlind.calls) !== json(["step"])) wrong.push(`a thrown step was followed by ${droveBlind.calls.join(",")}`);
+    const quit = await loopRun(P, { mode: "watch", mayAct: false, pollFirst: true, now: NOW, cancelAfterSleeps: 0, polls: [offline(), OK_VIEW("RUNNING")] });
+    if (json(quit.calls) !== json(["poll"]) || quit.stops.length !== 0) wrong.push(`a cancelled loop asked a poll again: ${quit.calls.join(",")} stops ${json(quit.stops)}`);
     // ── the refusals, each with its sentence ──
     const refuse = async (answer: unknown, mode: "drive" | "watch") =>
       loopRun(P, { mode, mayAct: mode === "drive", pollFirst: mode === "watch", now: NOW, steps: [answer, OK_STEP("RUNNING", wrote)], polls: [answer, OK_VIEW("RUNNING")] });
@@ -504,19 +574,55 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     const role = await refuse({ ok: false, reason: "role", error: "Your role can't act." }, "drive");
     const looks = await refuse({ ok: false, reason: "role", error: "Your role can't look." }, "watch");
     const gone = await refuse({ ok: false, reason: "not_found", error: "This campaign was not found." }, "drive");
+    // ⭐ the door's two refusals the action never had: a sign-in that ended (in words, with the sign-in page) and a step the server
+    // could not finish (a group may or may not have gone out — the loop stops, it never asks again by itself)
+    const signedOut = await refuse({ ok: false, reason: "signed_out", error: "Your sign-in has ended.", href: "/auth/admin?next=%2Fadmin%2Fcampaigns%2Fcmp_x" }, "drive");
+    const unfinished = await refuse({ ok: false, reason: "unfinished", error: "The server stopped partway." }, "drive");
     const stopsOk = json(factor.stops) === json([{ kind: "second_factor", sentence: "Your 2-step sign-in has lapsed.", href: "/admin/totp-verify" }])
       && json(role.stops) === json([{ kind: "role", sentence: "Your role can't act." }])
       && json(looks.stops) === json([{ kind: "view_refused", sentence: "Your role can't look." }])
       && json(gone.stops) === json([{ kind: "gone", sentence: "This campaign was not found." }])
-      && [factor, role, looks, gone].every((r) => r.calls.length === 1 && r.sleeps.length === 0);
-    if (!stopsOk) wrong.push(`a refusal's stop: ${json([factor.stops, role.stops, looks.stops, gone.stops])}`);
+      && json(signedOut.stops) === json([{ kind: "signed_out", sentence: "Your sign-in has ended.", href: "/auth/admin?next=%2Fadmin%2Fcampaigns%2Fcmp_x" }])
+      && json(unfinished.stops) === json([{ kind: "unfinished", sentence: "The server stopped partway." }])
+      && [factor, role, looks, gone, signedOut, unfinished].every((r) => r.calls.length === 1 && r.sleeps.length === 0);
+    if (!stopsOk) wrong.push(`a refusal's stop: ${json([factor.stops, role.stops, looks.stops, gone.stops, signedOut.stops, unfinished.stops])}`);
     // ── cancelled: no call after it ──
     const cancelled = await loopRun(P, { mode: "drive", mayAct: true, now: NOW, cancelAfterSleeps: 1, steps: [OK_STEP("RUNNING", wrote), OK_STEP("RUNNING", wrote), OK_STEP("RUNNING", wrote)] });
     if (cancelled.calls.length !== 2) wrong.push(`a cancelled loop kept calling (${cancelled.calls.length} calls)`);
     // ── the gap function on its own: the spec's three ──
     const gaps = [P.gap({ kind: "sent" }, NOW), P.gap(wait(at(8_000)), NOW), P.gap(wait(at(500)), NOW), P.gap(wait(at(999_999)), NOW), P.gap(busy, NOW), P.gap(wait("not a date"), NOW)];
     if (json(gaps) !== json([2_000, 8_000, 5_000, 30_000, 5_000, 5_000])) wrong.push(`stepGap ${json(gaps)}`);
-    const constants = DRIVER.STEP_GAP_MS === 2_000 && DRIVER.WAIT_MIN_MS === 5_000 && DRIVER.WAIT_MAX_MS === 30_000 && DRIVER.BUSY_GAP_MS === 5_000 && DRIVER.POLL_GAP_MS === 10_000;
+    const constants = DRIVER.STEP_GAP_MS === 2_000 && DRIVER.WAIT_MIN_MS === 5_000 && DRIVER.WAIT_MAX_MS === 30_000 && DRIVER.BUSY_GAP_MS === 5_000 && DRIVER.POLL_GAP_MS === 10_000
+      && json(DRIVER.POLL_RETRY_MS) === json([10_000, 20_000, 40_000]);
+    // ── ⭐ the door's client: a POST with no body and no cache, this origin's cookies; a typed refusal is an ANSWER whatever its
+    //    HTTP status (403, 404); a body it does not know — a proxy's error page, a newer build's shape — THROWS (out of date) ──
+    const seen: Array<{ url: string; init: Record<string, unknown> }> = [];
+    const stubFetch = (status: number, body: unknown, notJson = false): typeof fetch => (async (input: unknown, init?: Record<string, unknown>) => {
+      seen.push({ url: String(input), init: init ?? {} });
+      return { status, json: async () => { if (notJson) throw new SyntaxError("not json"); return body; } } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const okBody = { ok: true, step: { kind: "sent" }, said: null, view: { status: "RUNNING" } };
+    const answered = await P.postStep("cmp_x y", stubFetch(200, okBody));
+    const refusedRole = await P.postStep("cmp_x", stubFetch(403, { ok: false, reason: "role", error: "no" }));
+    const refusedFactor = await P.postStep("cmp_x", stubFetch(403, { ok: false, reason: "second_factor", error: "lapsed", href: "/admin/totp-verify" }));
+    const refusedGone = await P.postStep("cmp_x", stubFetch(404, { ok: false, reason: "not_found", error: "gone" }));
+    const unknown: string[] = [];
+    for (const [name, f] of [
+      ["an HTML page", stubFetch(502, null, true)], ["an unknown shape", stubFetch(200, { ok: "maybe" })], ["null", stubFetch(200, null)],
+      ["a sign-in refusal with no address", stubFetch(401, { ok: false, reason: "signed_out", error: "x" })],
+      ["a refusal this build has no word for", stubFetch(403, { ok: false, reason: "teapot", error: "x" })],
+      ["a step with no view", stubFetch(200, { ok: true, step: { kind: "sent" }, said: null })],
+    ] as Array<[string, typeof fetch]>) {
+      let threw = false;
+      try { await P.postStep("cmp_x", f); } catch { threw = true; }
+      if (!threw) unknown.push(name);
+    }
+    const first = seen[0];
+    const posts = first !== undefined && first.url === "/api/admin/campaigns/cmp_x%20y/step" && first.init.method === "POST" && first.init.credentials === "same-origin"
+      && first.init.cache === "no-store" && !("body" in first.init) && seen.every((s) => s.init.method === "POST" && !("body" in s.init));
+    const client = posts && answered.ok === true && refusedRole.ok === false && refusedRole.reason === "role" && refusedFactor.ok === false && refusedFactor.reason === "second_factor"
+      && refusedFactor.href === "/admin/totp-verify" && refusedGone.ok === false && refusedGone.reason === "not_found" && unknown.length === 0;
+    if (!client) wrong.push(`the door's client: posts ${posts} (${json(first)}) · did not throw on [${unknown.join(", ")}]`);
     // ── the hook is keyed on the MODE: a status within a mode must not restart the loop and skip the gap after a step ──
     const keyed = S.driver.includes("[id, mode, mayAct, step, poll, attempt, stop]");
     // ── …and the reaper is the MOUNT's: decided when a page's first loop starts (and again after a retry), never when a status
@@ -558,7 +664,10 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     h.see(htmlGrowth);
     const clean = !json(growth).includes("TZS") && growth.money === null && !htmlGrowth.includes("TZS");
     const control = json(reader.money) === json({ estimateTzs: 9624, budgetTzs: 10_000 }) && (reader.startDialog?.body ?? "").includes("TZS 9,624") && (reader.startDialog?.body ?? "").includes("TZS 10,000");
-    const files: Array<[string, string]> = [["live-client.tsx", S.client], ["page.tsx", S.page], ["loading.tsx", S.loading], ["live-driver.tsx", S.driver], ["actions.ts", S.actions]];
+    const files: Array<[string, string]> = [
+      ["live-client.tsx", S.client], ["page.tsx", S.page], ["loading.tsx", S.loading], ["live-driver.tsx", S.driver], ["actions.ts", S.actions],
+      ["live-decide.ts", S.decide], ["live-presses.ts", S.presses], ["live-announce.ts", S.announce], ["live-step-door.ts", S.door], ["step/route.ts", S.route],
+    ];
     const moneyIn = files.filter(([, text]) => /formatTzs|formatTzsCompact|campaignMoneyVisible|loadEstimateInputsFor|TZS|budgetTzs|estimateTzs/.test(text)).map(([f]) => f);
     return [clean && control && moneyIn.length === 0, `GROWTH clean ${clean} · reader's dialog carries the cost and limit ${control} · money named in [${moneyIn.join(",")}]`];
   });
@@ -604,20 +713,32 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     const wrong: string[] = [];
     const viewer = (mayAct: boolean): LiveViewer => ({ userId: "usr_x", mayAct, reads: false, money: false });
     const asked: Array<string | null> = [];
-    const loadDeps = (view: CampaignLiveView | null | Error, mayAct = true) => ({
+    const addressed: Array<[string, boolean]> = [];
+    const CANONICAL = "/admin/campaigns/new?draft=cmp_x&tag=vip";
+    const loadDeps = (view: CampaignLiveView | null | Error, mayAct = true, address: "canonical" | "throws" | "blank" = "canonical") => ({
       userId: async () => "usr_x",
       viewer: async (id: string | null) => { asked.push(id); return viewer(mayAct); },
       view: async () => { if (view instanceof Error) throw view; return view; },
+      draftAddress: async (id: string, reads: boolean) => {
+        addressed.push([id, reads]);
+        if (address === "throws") throw new Error("the row cannot be read");
+        return address === "blank" ? "" : CANONICAL;
+      },
     });
     const ready = await P.load("cmp_x", loadDeps(viewAt("RUNNING")));
     const watcher = await P.load("cmp_x", loadDeps(viewAt("RUNNING"), false));
     const draft = await P.load("cmp_x", loadDeps(viewAt("DRAFT")));
+    const draftBlind = await P.load("cmp_x", loadDeps(viewAt("DRAFT"), true, "throws"));
+    const draftBlank = await P.load("cmp_x", loadDeps(viewAt("DRAFT"), true, "blank"));
     const missing = await P.load("cmp_x", loadDeps(null));
     let failed: string | null = null;
     try { await P.load("cmp_x", loadDeps(new Error("the read is down"))); } catch (err) { failed = String((err as Error).message); }
     const anon = await P.load("cmp_x", { ...loadDeps(viewAt("RUNNING")), userId: async () => null });
     if (!(ready.kind === "ready" && ready.mayAct === true && watcher.kind === "ready" && watcher.mayAct === false)) wrong.push("a ready load does not carry whether the viewer may act");
-    if (draft.kind !== "draft") wrong.push("a draft is not told apart");
+    // ⭐ the review's NIT (STD-1): a draft goes to the composer's CANONICAL address for this viewer; when none can be built, the bare one
+    if (!(draft.kind === "draft" && draft.href === CANONICAL && addressed.some(([id, reads]) => id === "cmp_x" && reads === false))) wrong.push(`a draft is not sent to the composer's own address (${json(draft)})`);
+    const bare = STATUS.campaignDraftHref("cmp_x");
+    if (!(draftBlind.kind === "draft" && draftBlind.href === bare && draftBlank.kind === "draft" && draftBlank.href === bare)) wrong.push(`a draft whose address cannot be built is not sent to the bare one (${json([draftBlind, draftBlank])})`);
     if (missing.kind !== "missing") wrong.push("a campaign that is not there is not 'missing'");
     if (failed !== "the read is down") wrong.push(`a failed read was answered ${failed === null ? "(as a value — a zero)" : failed}`);
     if (!(anon.kind === "ready" && asked[asked.length - 1] === null)) wrong.push("no officer was not handed to the viewer read as null");
@@ -630,21 +751,31 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
       revalidate: () => { revalidated.n++; },
       log: (tag: string, err: unknown) => { log.push(`${tag}:${(err as Error).name}`); },
       sleep: async () => {},
+      draftAddress: async (id: string) => `${CANONICAL.replace("cmp_x", id)}`,
       ...over,
     }) as never;
     const landed = await P.runAct("cmp_x", "usr_x", "pause", async () => ({ ok: true as const, message: "Paused — nobody more is messaged until you resume.", recorded: true }), deps());
     const landedOk = landed.ok === true && landed.recorded === true && landed.href === null && landed.view !== null && landed.view.status === "PAUSED" && revalidated.n === 1;
     const refusedA = await P.runAct("cmp_x", "usr_x", "pause", async () => ({ ok: false as const, reason: "already_paused", message: "This campaign is already paused." }), deps());
-    const refusedOk = refusedA.ok === false && refusedA.reason === "already_paused" && refusedA.message === "This campaign is already paused." && revalidated.n === 1 && refusedA.view !== null;
+    const refusedOk = refusedA.ok === false && refusedA.reason === "already_paused" && refusedA.message === "This campaign is already paused." && revalidated.n === 1 && refusedA.view !== null && refusedA.href === null;
     const boom = new TypeError("the database dropped the connection");
     const unfinished = await P.runAct("cmp_x", "usr_x", "stop", async () => { throw boom; }, deps());
     const unfinishedOk = unfinished.ok === false && unfinished.reason === "unfinished" && unfinished.message === COPY.LIVE_ACT_UNFINISHED && unfinished.view !== null
       && revalidated.n === 1 && json(log) === json(["stop:TypeError"]);
+    // ⭐ the review's NIT · when the campaign could not be read either, "this page now shows where the campaign is" would be false
+    const unfinishedBlind = await P.runAct("cmp_x", "usr_x", "stop", async () => { throw boom; }, deps({ view: async () => { throw new Error("the read is down"); } }));
+    const unfinishedBlindOk = unfinishedBlind.ok === false && unfinishedBlind.reason === "unfinished" && unfinishedBlind.view === null
+      && unfinishedBlind.message === COPY.LIVE_ACT_UNFINISHED_NO_VIEW && unfinishedBlind.message !== COPY.LIVE_ACT_UNFINISHED && !unfinishedBlind.message.includes("now shows where");
     const blind = await P.runAct("cmp_x", "usr_x", "start", async () => ({ ok: true as const, message: "Started.", recorded: false }), deps({ view: async () => { throw new Error("the read is down"); } }));
     const blindOk = blind.ok === true && blind.recorded === false && blind.view === null && revalidated.n === 2;
-    const copied = await P.runAct("cmp_x", "usr_x", "copy", async () => ({ ok: true as const, id: "cmp_new", href: "/admin/campaigns/new?draft=cmp_new", message: "A copy was made as a new draft.", recorded: true }), deps());
-    const copiedOk = copied.ok === true && copied.href === "/admin/campaigns/new?draft=cmp_new";
-    if (!(landedOk && refusedOk && unfinishedOk && blindOk && copiedOk)) wrong.push(`acts: landed ${landedOk} refused ${refusedOk} unfinished ${unfinishedOk} unreadable view ${blindOk} copy ${copiedOk}`);
+    // ⭐ the review's NIT (STD-1) · a copy's address is the composer's CANONICAL one; the service's bare address when none can be built
+    const copyRun = (over: Record<string, unknown> = {}) => P.runAct("cmp_x", "usr_x", "copy", async () => ({ ok: true as const, id: "cmp_new", href: "/admin/campaigns/new?draft=cmp_new", message: "A copy was made as a new draft.", recorded: true }), deps(over));
+    const copied = await copyRun();
+    const copiedBare = await copyRun({ draftAddress: async () => { throw new Error("the row cannot be read"); } });
+    const copiedBlank = await copyRun({ draftAddress: async () => "" });
+    const copiedOk = copied.ok === true && copied.href === "/admin/campaigns/new?draft=cmp_new&tag=vip"
+      && copiedBare.ok === true && copiedBare.href === "/admin/campaigns/new?draft=cmp_new" && copiedBlank.ok === true && copiedBlank.href === "/admin/campaigns/new?draft=cmp_new";
+    if (!(landedOk && refusedOk && unfinishedOk && unfinishedBlindOk && blindOk && copiedOk)) wrong.push(`acts: landed ${landedOk} refused ${refusedOk} unfinished ${unfinishedOk} unfinished with no view ${unfinishedBlindOk} unreadable view ${blindOk} copy ${copiedOk} (${json([copied.ok ? copied.href : null, copiedBare.ok ? copiedBare.href : null])})`);
     // ── Resume, once more after a busy ──
     const resumeCalls = async (answers: Array<{ ok: boolean; reason?: string }>) => {
       const slept: number[] = [];
@@ -683,6 +814,25 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     await row("a cell throws", "usr_a", { ...allYes, reads: async () => { throw new Error("down"); } }, { userId: "usr_a", mayAct: true, reads: false, money: true });
     await row("a cell answers something but true", "usr_a", { ...allYes, money: async () => 1 as never }, { userId: "usr_a", mayAct: true, reads: true, money: false });
     for (const [name, got, want] of table) if (json(got) !== json(want)) wrong.push(`${name}: ${json(got)}`);
+    // ⭐ the review's NIT · the campaigns list's act cell: the stored role read ONCE and the ACT grant alone asked of it — neither the
+    // number cell nor the money decider — and every failure closed
+    const asked: string[] = [];
+    const spy = (over: Record<string, unknown> = {}) => ({
+      role: async () => { asked.push("role"); return "GROWTH" as never; },
+      mayAct: async () => { asked.push("mayAct"); return true; },
+      reads: async () => { asked.push("reads"); return true; },
+      money: async () => { asked.push("money"); return true; },
+      ...over,
+    }) as never;
+    const yesCell = await P.mayActFor("usr_a", spy());
+    const askedOnce = json(asked) === json(["role", "mayAct"]);
+    const noCell = await P.mayActFor("usr_a", spy({ mayAct: async () => false }));
+    const closedCells = [
+      await P.mayActFor(undefined, spy()), await P.mayActFor("  ", spy()), await P.mayActFor("usr_a", spy({ role: async () => null })),
+      await P.mayActFor("usr_a", spy({ role: async () => { throw new Error("down"); } })), await P.mayActFor("usr_a", spy({ mayAct: async () => { throw new Error("down"); } })),
+      await P.mayActFor("usr_a", spy({ mayAct: async () => 1 as never })),
+    ];
+    if (!(yesCell === true && askedOnce && noCell === false && closedCells.every((c) => c === false))) wrong.push(`the list's act cell: yes ${yesCell} asked ${json(asked.slice(0, 2))} no ${noCell} closed ${json(closedCells)}`);
     // the stored roles, through the real cells
     const at = "2026-10-08T08:00:00.000Z";
     const stored = async (id: string, role: StoredUser["role"], n: number) => {
@@ -707,14 +857,14 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     if (!(!u.mayAct && !u.reads)) wrong.push(`an AUDITOR with no growth grant is ${json(u)}`);
     // the actions: one parameter (the id), the viewer from the stored role
     const src = S.actions;
-    const names = ["campaignStepAction", "campaignViewAction", "startCampaignAction", "pauseCampaignAction", "resumeCampaignAction", "stopCampaignAction", "copyCampaignAction"];
+    const names = ["campaignViewAction", "startCampaignAction", "pauseCampaignAction", "resumeCampaignAction", "stopCampaignAction", "copyCampaignAction"];
     const oneParam = names.every((n) => src.includes(`export async function ${n}(campaignId: string)`));
-    const fromRole = ["campaignStepAction", "campaignViewAction"].every((n) => (bodyOf(src, n) ?? "").includes("const viewer = await liveViewerFor(g.userId);"))
+    const fromRole = ["campaignViewAction"].every((n) => (bodyOf(src, n) ?? "").includes("const viewer = await liveViewerFor(g.userId);"))
       && ["startCampaignAction", "pauseCampaignAction", "resumeCampaignAction", "stopCampaignAction", "copyCampaignAction"].every((n) => (bodyOf(src, n) ?? "").includes("return runAct(id, g.userId,"))
       && S.run.includes("viewer: (userId: string) => liveViewerFor(userId),") && !src.includes("mayAct: true");
     if (!oneParam) wrong.push("an action takes more than the campaign's id");
     if (!fromRole) wrong.push("an action does not hand the services the stored role's viewer");
-    return [wrong.length === 0, wrong.length === 0 ? "closed in six cases · Owner, GROWTH and AUDITOR from their stored rows · seven actions take one parameter and the stored viewer" : wrong.join(" | ")];
+    return [wrong.length === 0, wrong.length === 0 ? "closed in six cases · the list's act cell asks the act grant alone · Owner, GROWTH and AUDITOR from their stored rows · six actions take one parameter and the stored viewer" : wrong.join(" | ")];
   });
 }
 
@@ -733,7 +883,8 @@ export function pagePlants(): PagePlant[] {
   const withPage = (over: Partial<PageImpl>): { page: PageImpl } => ({ page: { ...base, ...over } });
   const withSources = (over: Partial<PageSources>): { page: PageImpl } => withPage({ sources: { ...S, ...over } });
   const startBody = bodyOf(S.actions, "startCampaignAction") ?? "";
-  const stepGuard = 'softCheckStaff("growth", "marketing.campaign.step"';
+  const pauseGuard = 'softCheckStaff("growth", "marketing.campaign.pause"';
+  const stopGuard = 'softCheckStaff("growth", "marketing.campaign.stop"';
   const viewGuard = 'softViewStaff("growth", "marketing.campaign.view"';
   const gateReturn = 'return <AdminPageGate title="SMS campaign"><AdminCampaignLiveContent params={props.params} /></AdminPageGate>;';
   const head = '<AdminPageHead title="SMS campaign" sw="Kampeni" />';
@@ -744,7 +895,7 @@ export function pagePlants(): PagePlant[] {
     '  if (!g.ok) return actRefused("role", g.error);',
     '  return runAct(id, g.userId, "start", (actor) => startCampaign(id, actor));', "",
   ].join(NL);
-  const stepViewer = ["const viewer = await liveViewerFor(g.userId);", "  const r = await campaignStep("].join(NL + "  ").replace(NL + "    ", NL + "  ");
+  const pollViewer = ["const viewer = await liveViewerFor(g.userId);", "  const view = await campaignLiveView("].join(NL);
   return [
     { name: "R-V1 · a figure worked out in the browser — Waiting is the campaign's people less the ones that failed", expect: [L.v1],
       impl: withSources({ client: plantIn(S.client, '<Figure name="waiting" value={k.waiting} />', '<Figure name="waiting" value={k.onCampaign - k.failed} />') }) },
@@ -764,8 +915,12 @@ export function pagePlants(): PagePlant[] {
       impl: withSources({ actions: plantIn(S.actions, startBody, lateGuard) }) },
     { name: "R-V5b · the poll takes the ACT grant — a watcher is refused on every poll and written up as an attempted escalation", expect: [L.v5],
       impl: withSources({ actions: plantIn(S.actions, viewGuard, 'softCheckStaff("growth", "marketing.campaign.view"') }) },
-    { name: "R-V5c · the step without the non-redirecting second factor — a lapsed 2-step throws an open page away", expect: [L.v5],
-      impl: withSources({ actions: plantIn(S.actions, stepGuard, 'softRequireStaff("growth", "marketing.campaign.step"') }) },
+    { name: "R-V5c · Pause takes the redirecting step-up — a lapsed 2-step throws the officer's page, and the press, away", expect: [L.v5],
+      impl: withSources({ actions: plantIn(S.actions, pauseGuard, 'softRequireStaff("growth", "marketing.campaign.pause"') }) },
+    { name: "R-V5e · Stop takes the redirecting step-up — the brake lost to a lapsed 2-step", expect: [L.v5],
+      impl: withSources({ actions: plantIn(S.actions, stopGuard, 'softRequireStaff("growth", "marketing.campaign.stop"') }) },
+    { name: "R-V5f · Pause refused for its second factor without the step-up link — the officer is told and left nowhere to go", expect: [L.v5],
+      impl: withSources({ actions: plantIn(S.actions, "if (!g.ok) return actRefusedBy(g);", 'if (!g.ok) return actRefused("second_factor", g.error);') }) },
     { name: "R-V5d · the view guard asks the ACT grant (a copy of softCheckStaff)", expect: [L.v5],
       impl: withPage({ viewGuard: ((d, a, r, req) => GUARD_CHECK(d, a, r, req)) as PageImpl["viewGuard"] }) },
     { name: "R-V6 · the driver retries a thrown step — once more, blind", expect: [L.v6],
@@ -780,6 +935,16 @@ export function pagePlants(): PagePlant[] {
       impl: withSources({ driver: plantIn(S.driver, "[id, mode, mayAct, step, poll, attempt, stop]", "[id, mode, mayAct, step, poll, attempt, stop, view.status]") }) },
     { name: "R-V6f · the reaper on every start — a campaign the page drove to its end is stepped once more after its last", expect: [L.v6],
       impl: withSources({ driver: plantIn(S.driver, "const reap = mayAct && fresh.current && reapsOnMount(statusRef.current);", "const reap = mayAct && reapsOnMount(statusRef.current);") }) },
+    { name: "R-V6g · a poll that throws is asked again at once, ten times, with no gap", expect: [L.v6],
+      impl: withPage({ loop: (o) => base.loop({ ...o, poll: async (id) => { for (let i = 0; i < 10; i++) { try { return await o.poll(id); } catch { /* again, at once */ } } return o.poll(id); } }) }) },
+    { name: "R-V6h · a poll that throws is never asked again — a blip on a flaky connection takes the page out of date", expect: [L.v6],
+      impl: withPage({ loop: (o) => base.loop({ ...o, poll: async (id) => { try { return await o.poll(id); } catch (err) { o.onStop({ kind: "out_of_date" }); throw Object.assign(new Error("stop"), { digest: "NEXT_REDIRECT;stop", cause: err }); } } }) }) },
+    { name: "R-V6i · the step is posted as a GET — a link anyone can make an officer's browser follow", expect: [L.v6],
+      impl: withPage({ postStep: (id, f) => base.postStep(id, ((i: RequestInfo | URL, init?: RequestInit) => (f ?? fetch)(i, { ...init, method: "GET" })) as typeof fetch) }) },
+    { name: "R-V6j · the step is posted with a body — the browser says something about who is acting", expect: [L.v6],
+      impl: withPage({ postStep: (id, f) => base.postStep(id, ((i: RequestInfo | URL, init?: RequestInit) => (f ?? fetch)(i, { ...init, body: json({ mayAct: true }) })) as typeof fetch) }) },
+    { name: "R-V6k · an answer this build does not know is taken as a step answer", expect: [L.v6],
+      impl: withPage({ postStep: async (id, f) => { try { return await base.postStep(id, f); } catch { return { ok: true, step: { kind: "idle" }, said: null, view: viewAt("RUNNING") } as never; } } }) },
     { name: "R-V7 · the client draws a zero in place of a hidden figure", expect: [L.v7],
       impl: withSources({ client: plantIn(S.client, '{k.handedOver !== null && <Figure name="handedOver" value={k.handedOver} />}', '<Figure name="handedOver" value={k.handedOver ?? 0} />') }) },
     { name: "R-V8 · a money word in the client — the page formats a TZS figure", expect: [L.v8],
@@ -804,8 +969,22 @@ export function pagePlants(): PagePlant[] {
       impl: withPage({ runAct: async (id, user, tag, run, deps) => { const r = await base.runAct(id, user, tag, run, deps); if (!r.ok) deps?.revalidate(); return r; } }) },
     { name: "R-V11e · a read that failed is told to the officer as 'not found'", expect: [L.v11],
       impl: withPage({ load: async (id, deps) => { try { return await base.load(id, deps); } catch { return { kind: "missing" }; } } }) },
-    { name: "R-L2 · a step that trusts the browser — the viewer is whatever the request says it is", expect: [L.l2],
-      impl: withSources({ actions: plantIn(S.actions, stepViewer, ["const viewer = { userId: g.userId, mayAct: true, reads: true, money: true };", "  const r = await campaignStep("].join(NL)) }) },
+    { name: "R-V11f · a draft is sent to the bare ?draft= address though the composer's canonical one exists (STD-1)", expect: [L.v11],
+      impl: withPage({ load: async (id, deps) => { const r = await base.load(id, deps); return r.kind === "draft" ? { kind: "draft", href: STATUS.campaignDraftHref(id) } : r; } }) },
+    { name: "R-V11g · an act that threw, with no view of the campaign, says the page 'now shows where the campaign is'", expect: [L.v11],
+      impl: withPage({ runAct: async (id, user, tag, run, deps) => { const r = await base.runAct(id, user, tag, run, deps); return !r.ok && r.reason === "unfinished" ? { ...r, message: COPY.LIVE_ACT_UNFINISHED } : r; } }) },
+    { name: "R-V11h · a copy goes to the service's bare address, not the composer's canonical one", expect: [L.v11],
+      impl: withPage({ runAct: (id, user, tag, run, deps) => base.runAct(id, user, tag, run, deps === undefined ? undefined : { ...deps, draftAddress: async (_id, _reads, fallback) => fallback }) }) },
+    { name: "R-L2 · a poll that trusts the browser — the viewer is whatever the request says it is", expect: [L.l2],
+      impl: withSources({ actions: plantIn(S.actions, pollViewer, ["const viewer = { userId: g.userId, mayAct: true, reads: true, money: true };", "  const view = await campaignLiveView("].join(NL)) }) },
+    { name: "R-L2c · the list's act cell asks all three cells, a money decider among them, to use one", expect: [L.l2],
+      impl: withPage({ mayActFor: async (id, deps) => { const v = await base.viewerFor(id, deps); return v.mayAct; } }) },
+    { name: "R-L2d · the list's act cell opens when the role cannot be read", expect: [L.l2],
+      impl: withPage({ mayActFor: async (id, deps) => {
+        const answer = await base.mayActFor(id, deps);
+        if (answer || deps === undefined || typeof id !== "string" || id.trim() === "") return answer;
+        try { return (await deps.role(id.trim())) === null ? true : answer; } catch { return true; }
+      } }) },
     { name: "R-L2b · a viewer that opens when its role cannot be read", expect: [L.l2],
       impl: withPage({ viewerFor: async (id, deps) => { const v = await base.viewerFor(id, deps); return v.userId !== "" && !v.mayAct && !v.reads && !v.money ? { ...v, mayAct: true } : v; } }) },
     { name: "R-P3 · a phone number reaches the page", expect: [P1_LABEL],

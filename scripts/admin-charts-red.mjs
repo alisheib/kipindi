@@ -40,8 +40,12 @@ const eol = (s, crlf) => (crlf ? s.replace(/\r?\n/g, "\r\n") : s.replace(/\r\n/g
 const PLANTS = [
   {
     name: "A4 — the y-axis drops its tick step and rounds every label to an integer",
-    from: `              {compact(t, range / 4)}`,
-    to: `              {compact(t)}`,
+    /* ⚠️ RE-ANCHORED 2026-10-08, AND IT HAD BEEN DEAD SINCE fdba7cad (2026-08-29). DG-A-15 moved the axis labels
+       out of the stretched SVG into an HTML layer, and the tick text is now computed once in `yTickRows`
+       (`text: compact(t, range / 4)`) instead of being interpolated into a JSX child — so the old
+       `{compact(t, range / 4)}` anchor matched nothing and A4 had not been planted since. Same call, same defect. */
+    from: `text: compact(t, range / 4),`,
+    to: `text: compact(t),`,
   },
   {
     name: "A5 — a zero stacked segment paints 0.5px again",

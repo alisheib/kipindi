@@ -26,10 +26,16 @@ export const MUTATIONS = [
   },
   {
     /* ⛔ THE VACUITY CASE. A scanner that finds nothing reports a serene pass over an empty set,
-       which is the failure mode this repo pays for most often. */
+       which is the failure mode this repo pays for most often.
+       ⚠️ RE-DERIVED 2026-10-08, AND THIS CASE HAD BEEN A SILENT NO-OP SINCE 3b17b03e (2026-09-18). The plant lands
+       (one link stops matching) but it only proves the floor while the floor EQUALS the population: a third link
+       arrived with C7 step 3 and the floor stayed at 2, so losing one link left two, cleared the floor, and the
+       gate exited 0 — this control correctly reported it blind. `FLOOR` in `tab-anchors.test.mts` is 3 again
+       (the population), and `expect` names the assertion WITHOUT its number so that re-deriving the floor next
+       time cannot strand this case a second time. */
     name: "⛔ THE SCANNER GOES BLIND · no anchored link is found at all",
     file: "src/lib/server/ai-usage.ts",
-    expect: "at least 2 anchored link(s)",
+    expect: "anchored link(s) — the scanner still finds them",
     from: '"/admin/ai-usage#ai-cycle-gate"',
     to: '"/admin/ai-usage_NOPE"',
   },

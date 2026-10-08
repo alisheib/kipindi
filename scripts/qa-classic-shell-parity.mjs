@@ -156,6 +156,16 @@ if (!rollout || typeof rollout.state !== "string" || rollout.state === "ACTIVE")
 // ── the tree the server runs, and its base (A18) ──────────────────────────────────────────────────────────
 const TREE = process.env.KP_TREE ?? fileURLToPath(new URL("..", import.meta.url));
 const MAIN = process.env.KP_PARITY_MAIN ?? "origin/main";
+/**
+ * ⭐ THE EMAIL BAR, AND THE OWNER'S RULING OF 2026-10-07 (NEXT-PLAN ▶ 0e, money doors): a deposit asks no email question,
+ * and the app-wide email bar is DELETED (`src/components/layout/email-verify-banner.tsx` goes). The tree the server runs
+ * says which world a capture is in. With the bar's component there (every tree before that change, the pre-S6 v2
+ * baseline's included), 2.9 holds the old rule: the unconfirmed email sees the bar on /, the player does not. With it
+ * gone, 2.9 holds that NO viewer sees one, in any cell. A compare across the change reports the unconfirmed email's cells
+ * losing their bar as a difference, named by its commit in §0's served-commit list (another lane's, like the helpline
+ * link's): it is not one of S6's EXPECTED_DIFFS.
+ */
+const EMAIL_BAR_GONE = !existsSync(join(TREE, "src/components/layout/email-verify-banner.tsx"));
 /** What the server SERVES: a change under any of these is in the capture whether or not it is committed. */
 const SERVED = ["src", "public", "next.config.ts", "tailwind.config.ts", "postcss.config.mjs", "package.json", "package-lock.json"];
 // --no-optional-locks: a status or a diff never takes index.lock, so these reads cannot collide with a battery on the tree.
@@ -761,8 +771,11 @@ function populationChecks(cells, store) {
       fails: auth.filter(([k, c]) => partsOf(k).v !== "guest" && c.landed.split("?")[0] !== partsOf(k).r).map(([k, c]) => `${k} → ${c.landed}`) },
     { id: "2.8", name: "the held viewer is held — no header deposit control at 1280, where the player has one",
       fails: [...(!held ? ["held|en|1280|/ has no header"] : held.includes(DEPOSIT) ? ["held|en|1280|/ has it"] : []), ...(player.includes(DEPOSIT) ? [] : ["player|en|1280|/ has none"])] },
-    { id: "2.9", name: "the unverified viewer sees the email bar on /, and the player does not",
-      fails: [...(bar("unverified") === 1 ? [] : [`unverified|en|360|/ shows ${bar("unverified") ?? "?"}`]), ...(bar("player") === 0 ? [] : [`player|en|360|/ shows ${bar("player") ?? "?"}`])] },
+    EMAIL_BAR_GONE
+      ? { id: "2.9", name: "no viewer sees an email bar, in any cell — the bar is deleted (the owner's ruling of 2026-10-07), the unconfirmed email included",
+          fails: bad((k, c) => (c.regions?.emailBar?.count ?? 0) !== 0) }
+      : { id: "2.9", name: "the unverified viewer sees the email bar on /, and the player does not",
+          fails: [...(bar("unverified") === 1 ? [] : [`unverified|en|360|/ shows ${bar("unverified") ?? "?"}`]), ...(bar("player") === 0 ? [] : [`player|en|360|/ shows ${bar("player") ?? "?"}`])] },
     { id: "2.10", name: "below 1024 the rail is among the fixed overlays — the census sees what is there",
       fails: bad((k, c) => partsOf(k).w < 1024 && !c.overlays.some((o) => RAIL_OVERLAY.test(o))) },
     { id: "2.11", name: `the signed-in viewers' ${BODY_ROUTE} captured its page body`,
@@ -870,7 +883,7 @@ function syntheticCapture() {
       landed: guest && AUTH.includes(r) ? `/auth/login?next=${encodeURIComponent(r)}` : r,
       regions: {
         header: region(v.id === "player" ? "hdrDeposit" : "hdr"), rail: region(), footer: region(),
-        emailBar: v.id === "unverified" ? region() : none(),
+        emailBar: v.id === "unverified" && !EMAIL_BAR_GONE ? region() : none(),
         ...(!guest && r === BODY_ROUTE ? { main: region() } : {}),
       },
       overlays: w < 1024 ? ["nav[aria-label=Primary].kp-rail z=40"] : [],
@@ -1519,8 +1532,11 @@ async function proveRed() {
     ["2.7", "a signed-in viewer sent to sign-in", (m) => { at(m, "held", "sw", 768, "/profile").landed = "/auth/login?next=%2Fprofile"; }],
     ["2.8", "a held viewer with the header deposit control", (m) => { at(m, "held", "en", 1280, "/").regions.header.html = "hdrDeposit"; }],
     ["2.8", "a player without it", (m) => { at(m, "player", "en", 1280, "/").regions.header.html = "hdr"; }],
-    ["2.9", "the unconfirmed email without its bar", (m) => { at(m, "unverified", "en", 360, "/").regions.emailBar = nothing(); }],
-    ["2.9", "the player shown the email bar", (m) => { at(m, "player", "en", 360, "/").regions.emailBar.count = 1; }],
+    ...(EMAIL_BAR_GONE
+      ? [["2.9", "an email bar drawn after its deletion, for the unconfirmed email", (m) => { at(m, "unverified", "en", 360, "/").regions.emailBar.count = 1; }],
+         ["2.9", "an email bar drawn after its deletion, for the player on another page", (m) => { at(m, "player", "sw", 1280, "/markets").regions.emailBar.count = 1; }]]
+      : [["2.9", "the unconfirmed email without its bar", (m) => { at(m, "unverified", "en", 360, "/").regions.emailBar = nothing(); }],
+         ["2.9", "the player shown the email bar", (m) => { at(m, "player", "en", 360, "/").regions.emailBar.count = 1; }]]),
     ["2.10", "no rail among the overlays at 360", (m) => { at(m, "guest", "sw", 360, "/markets").overlays = []; }],
     ["2.11", "a signed-in /positions without its body", (m) => { delete at(m, "player", "en", 768, "/positions").regions.main; }],
     ["2.13", "a real page error filed as DEV-only (it would never be compared)", (m) => { at(m, "player", "en", 360, "/").devOnly = ["TypeError: Cannot read properties of undefined (reading 'balance')"]; }],

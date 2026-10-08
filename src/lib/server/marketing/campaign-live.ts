@@ -110,7 +110,8 @@ import type { LiveReach } from "@/app/admin/campaigns/[id]/live-copy";
 
 /* ══ THE NUMBERS ════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** "Nobody is driving": a RUNNING campaign with no claim this long (§4.15 "Standing callouts"). */
+/** "Nobody is driving": a RUNNING campaign with no claim this long — or a PREPARING one with no chunk written this long, the
+ *  review's MINOR 5 (§4.15 "Standing callouts"). */
 export const NOBODY_DRIVING_AFTER_MS = 90_000;
 /** How many of the campaign's newest audit rows are read to name who paused or stopped it. */
 export const LIVE_ACTS_READ = 50;
@@ -236,6 +237,16 @@ export function liveReach(
   if (typeof c.enqueuedAt !== "string" || c.enqueuedAt === "") return "none";
   if (hidden(viewerReads, recipientRows(counts))) return "hidden";
   return messagedRows(counts) > 0 ? "reached" : "none";
+}
+
+/**
+ * ⭐ COULD A GROUP BE ON ITS WAY? (the U47b-2 review's NIT) — only a campaign that has begun SENDING: RUNNING, or PAUSED after
+ * its list was finished (`enqueuedAt`). A confirmed campaign, or one still writing its list, has no slice that could be past
+ * its last check, so a Stop dialog and a Stop toast that warned of "a group already being sent" were saying something false.
+ */
+export function sendingStarted(c: Pick<StoredSmsCampaign, "status" | "enqueuedAt">): boolean {
+  if (c.status === "RUNNING") return true;
+  return c.status === "PAUSED" && typeof c.enqueuedAt === "string" && c.enqueuedAt !== "";
 }
 
 /**
@@ -526,7 +537,12 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
     moneyWaits = true;
   }
   const engineWaits = sendWindow.open !== true || moneyWaits || deps.rules.otpWaiting(nowMs, deps.otpLastFailureAt());
-  const nobodyDriving = status === "RUNNING" && !engineWaits && (!Number.isFinite(lastMs) || nowMs - lastMs >= NOBODY_DRIVING_AFTER_MS);
+  // ⭐ The U47b-2 review's MINOR 5 · a PREPARING campaign is "driven" by chunks, not claims (nothing is claimed before RUNNING):
+  // its newest chunk is the instant the enqueue last moved its cursor — the campaign row's `updatedAt` (Start's own move
+  // before the first). The same 90 s as RUNNING's. The enqueue waits for nothing (no window, no money), so no exemption.
+  const chunkMs = Date.parse(c.updatedAt);
+  const stale = (ms: number): boolean => !Number.isFinite(ms) || nowMs - ms >= NOBODY_DRIVING_AFTER_MS;
+  const nobodyDriving = status === "RUNNING" ? !engineWaits && stale(lastMs) : status === "PREPARING" ? stale(chunkMs) : false;
 
   // ── the controls — always present, each disabled with its reason (decision 4) ──
   const draft = status === "DRAFT";
@@ -580,7 +596,8 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
       switchOpen,
       switchClosesAt: live.state === "open" ? live.closesAt : null,
       window: sendWindow,
-      lastStepAt,
+      // RUNNING: the newest claim. PREPARING: the newest chunk (the row's `updatedAt` — see `nobodyDriving`).
+      lastStepAt: status === "PREPARING" ? (Number.isFinite(chunkMs) ? c.updatedAt : null) : lastStepAt,
       nobodyDriving,
       keepOpen: mayAct && (status === "PREPARING" || status === "RUNNING"),
     },
@@ -593,7 +610,7 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
           money: money ? { costTzs: c.estimateTzs, limitTzs: c.budgetTzs } : null,
         })
       : null,
-    stopDialog: stopDialog(reach),
+    stopDialog: stopDialog(reach, sendingStarted(c)),
     floor: hidden ? LIVE_FLOOR : null,
     money: moneyView,
     // ⭐ U48a · the results — the same rows, the same reasons, the same floor; null below it (campaign-results.ts).

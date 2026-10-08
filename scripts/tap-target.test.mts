@@ -21,9 +21,10 @@
  *      under src/app/admin/ — not one is a finger, primary or money control". That was
  *      PROSE with nothing behind it. §2 turns it into a check: `btn-xs`,
  *      `<Button size="xs">`, `<Select size="xs">` and `var(--h-control-xs)` may appear
- *      only on an admin surface (plus the three kit files that DEFINE the rung).
- *      A 32px control on a phone is not a dense console row; it is a missed tap on a
- *      money product.
+ *      only on an admin surface (plus the three kit files that DEFINE the rung, and the one
+ *      shared filter that maps a caller's `rank="dense"` onto it — see §2, where the CALLERS
+ *      of that opt-in are held to the same law). A 32px control on a phone is not a dense
+ *      console row; it is a missed tap on a money product.
  *
  *   2. `--tap-min` is **40**, and 44 is preferred. WCAG 2.5.5 (AAA) asks 44; 2.5.8
  *      (AA, the level this product commits to) asks 24. Ali's ruling on 2026-08-14
@@ -197,12 +198,27 @@ console.log("\n§2 · EXCEPTION 1, as law — the 32px rung is ADMIN and MOUSE-O
  * ⚠️ `size="xs"` on its own is NOT a signal: `Chip`, `Avatar` and `ProposalsStateBadge`
  * carry their own `xs`, and none of them is a control. Only the CONTROL components are
  * matched, by name.
+ *
+ * ⭐ A FOURTH FILE MAPS THE SAME OPT-IN, AND IS KEPT HONEST BY ITS CALLERS (2026-10-08).
+ *   ui/datetime-range-filter.tsx — its Clear / Apply actions take `.btn-xs` only when a caller passes
+ *   `rank="dense"` and keep `btn-sm` (40px = --tap-min) otherwise; the default rank is the player one.
+ * It is listed beside `button.tsx` and `select.tsx` for the reason they are: a shared primitive that maps
+ * an opt-in PROP onto the rung carries the class in its own file by construction, and §2.1's question —
+ * does the rung reach a FINGER surface — is answered at the CALL SITE. That is why the file scan alone
+ * convicted it from 24dca6aa (2026-09-25) onward, with every one of its callers under src/app/admin/.
+ * ⛔ AND THE EXEMPTION MUST NOT OPEN A HOLE: exempting the file would otherwise leave a player page free to
+ * render `<DateTimeRangeFilter rank="dense">`, which `<Button size="xs">` is not. So the opt-in is a SIGNAL
+ * like the other two, and `red:tap-floor` plants it on a player surface and demands 2.1 name it.
  */
-const XS_DEFINERS = new Set(["src/app/globals.css", "src/components/ui/button.tsx", "src/components/ui/select.tsx"]);
+const XS_DEFINERS = new Set([
+  "src/app/globals.css", "src/components/ui/button.tsx", "src/components/ui/select.tsx",
+  "src/components/ui/datetime-range-filter.tsx",
+]);
 const XS_SIGNALS: Array<[RegExp, string]> = [
   [/\bbtn-xs\b/, "the `btn-xs` class"],
   [/<Button[^>]{0,400}?size="xs"/s, '<Button size="xs">'],
   [/<Select[^>]{0,400}?size="xs"/s, '<Select size="xs">'],
+  [/<DateTimeRangeFilter[^>]{0,400}?rank="dense"/s, '<DateTimeRangeFilter rank="dense">'],
   [/var\(--h-control-xs\)/, "var(--h-control-xs)"],
 ];
 
@@ -442,9 +458,14 @@ console.log("\n§5 · DG-A-08 — THE ADMIN SURFACE, WHICH §3 EXCLUDES BY CONST
         const end = endOfOpenTag(body, at);
         if (end < 0) continue;
         const open = body.slice(at, end);
-        const cm = /className=\{?["'`]([\s\S]*?)["'`]/.exec(open);
+        /* ⛔ THE LITERAL ENDS AT THE DELIMITER THAT OPENED IT (`\1`), NOT AT THE FIRST QUOTE OF ANY KIND. The
+           class list may carry its own quotes inside a `${}`: `className={`btn ${size === "xs" ? "btn-xs" : "btn-sm"}`}`
+           (admin/reports/generate-button.tsx, since 24dca6aa 2026-09-25). Stopping at the first `"` truncated it to
+           `btn btn-ghost ${size ===`, so NAMES_XS never saw the rung the call site names and 5.1 convicted a
+           control that does exactly what its own exemption asks. Same lexical lesson as §0, one scope up. */
+        const cm = /className=\{?(["'`])([\s\S]*?)\1/.exec(open);
         if (!cm) continue;
-        const cn = cm[1].replace(/\s+/g, " ").trim();
+        const cn = cm[2].replace(/\s+/g, " ").trim();
         const line = body.slice(0, at).split("\n").length;
         const hs = declaredHeights(open);
 

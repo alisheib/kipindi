@@ -58,6 +58,7 @@ import {
   CONFIRM_ENUMERATE_MAX, MEMBERS_KEY_HEX_CHARS, buildFenceClaim, canonicalMembers, parseFenceClaim,
 } from "@/lib/marketing/campaign-confirm";
 import type { FenceClaim } from "@/lib/marketing/campaign-confirm";
+import { audienceWalkCount } from "@/lib/server/marketing/audience-split";
 import { maskPhone } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 
@@ -155,8 +156,24 @@ export type FenceSampleRow = { masked: string; operator: string | null };
 
 /** What the server counted: the claim it signs, when, and the walk's first rows (masked) — for a listed audience, all
  *  of them. ⛔ The fence answers for the AUDIENCE, whoever asks: what a viewer may see of it is the service's to decide
- *  (`fenceForViewer` — OD67: a viewer who may not read a number gets no list and no members key). */
-export type AudienceFence = { claim: FenceClaim; countedAt: string; sample: FenceSampleRow[] };
+ *  (`fenceForViewer` — OD67: a viewer who may not read a number gets no list and no members key).
+ *  ⭐ U40b · `waitedMs` — how long its count WAITED for one of the split door's slots (never its walk): what the trigger's
+ *  read charges against `CONFIRM_SLOT_WAIT_MS` before a reader's split asks for one (the third pass). Server-side only. */
+export type AudienceFence = { claim: FenceClaim; countedAt: string; sample: FenceSampleRow[]; waitedMs?: number };
+
+/**
+ * ⭐ U40b · THE MOST A CONFIRMATION WAITS FOR ONE OF THE SPLIT DOOR'S SLOTS — ONE constant, for the trigger's read (its count,
+ * and what is left of it for a reader's split) and for the confirmation's own count (the U40b re-review's MINOR 3). Past it
+ * nothing is counted: `AudienceSlotBusy`, said as "busy" — never a zero, and never a dialog that cannot be closed while the
+ * line moves.
+ */
+export const CONFIRM_SLOT_WAIT_MS = 15_000;
+
+/** ⭐ U40b · how the fence's count takes its slot: its OWN count, never joined (MINOR 2 — a count already running for this
+ *  audience, an officer's or another draft's, may have begun before a contact was added, and the old typed number would
+ *  confirm the old count: OD27's own case), its slot waited for at most `CONFIRM_SLOT_WAIT_MS` (MINOR 3). */
+export type FenceSlot = { join: boolean; waitMs: number };
+export const FENCE_SLOT: Readonly<FenceSlot> = Object.freeze({ join: false, waitMs: CONFIRM_SLOT_WAIT_MS });
 
 /** The reads and rules the fence asks — swappable for the suite's in-process red plants; production never passes them. */
 export type FenceDeps = {
@@ -169,6 +186,8 @@ export type FenceDeps = {
   /** The keyed name of a listed audience, for its draft (`membersKeyOf`). */
   membersKey: (scope: MembersKeyScope, canonical: string) => string;
   now: () => Date;
+  /** U40b · how the count takes its slot (`FENCE_SLOT` when absent). */
+  slot?: FenceSlot;
 };
 /** Frozen: production's fence — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const FENCE_DEPS: Readonly<FenceDeps> = Object.freeze({
@@ -177,6 +196,7 @@ export const FENCE_DEPS: Readonly<FenceDeps> = Object.freeze({
   unfiltered: isUnfilteredCampaignAudience,
   membersKey: membersKeyOf,
   now: () => new Date(),
+  slot: FENCE_SLOT,
 });
 
 /**
@@ -224,7 +244,13 @@ export async function audienceFence(
   const read = readCampaignAudience(c.audienceFilter);
   if (!read.ok) throw new Error(`audience fence: the saved audience could not be read (${read.param})`);
   const filter = read.filter;
-  const count = await deps.count(filter);
+  // ⭐ U40b · THE COUNT TAKES THE SPLIT DOOR'S SLOTS (`audienceWalkCount`): at most AUDIENCE_SPLITS_PER_PROCESS walks at
+  // once — the pool is shared with bets. Its OWN count, never joined, its slot waited for at most CONFIRM_SLOT_WAIT_MS
+  // (`FENCE_SLOT`): past it `AudienceSlotBusy` THROWS — nothing counted. Still the ONE walk's count.
+  const slot = deps.slot ?? FENCE_SLOT;
+  // How long the count WAITED for its slot (the door tells it) — the read's budget is charged this, never the walk.
+  let waitedMs = 0;
+  const count = await audienceWalkCount(filter, deps.count, { join: slot.join, waitMs: slot.waitMs, waited: (ms) => { waitedMs = ms; } });
   const keys = await firstKeys(filter, deps.walk);
   const unfiltered = deps.unfiltered(filter);
   const canonical = unfiltered ? null : canonicalMembers(keys, count);
@@ -240,5 +266,5 @@ export async function audienceFence(
     masked: maskPhone(k),
     operator: parseTzNumber(k).operator?.brand ?? null,
   }));
-  return { claim, countedAt: deps.now().toISOString(), sample };
+  return { claim, countedAt: deps.now().toISOString(), sample, waitedMs };
 }
