@@ -80,7 +80,7 @@ import { campaignDraftHref, outstandingRows, zeroRecipientStatusCounts } from "@
 import { CAMPAIGN_NAME_MAX_CHARS } from "@/lib/marketing/campaign-template";
 import { charCount } from "@/lib/contacts/contact-fields";
 import {
-  OFFICER_STOPPED_ACTION, campaignLiveView, copyTravel, liveReach, startAudienceRefusedFor,
+  OFFICER_STOPPED_ACTION, campaignLiveView, copyTravel, liveReach, sendingStarted, startAudienceRefusedFor,
 } from "@/lib/server/marketing/campaign-live";
 import type { CampaignLiveView, LiveViewer } from "@/lib/server/marketing/campaign-live";
 import {
@@ -132,7 +132,8 @@ export type CopyResult = { ok: true; id: string; href: string; message: string; 
 /** What one step did (§4.15's APIs). */
 export type StepOutcome = SliceStepResult | EnqueueStepResult | { kind: "reaped"; reaped: number } | { kind: "idle" };
 /**
- * ⭐ THE STEP ACTION'S ANSWER (§4.15's APIs; U47b-2's `campaignStepAction` returns it, adding `second_factor` from its guard).
+ * ⭐ THE STEP'S ANSWER (§4.15's APIs; U47b-2's STEP DOOR, `POST /api/admin/campaigns/<id>/step` — a route, not a server action
+ * since the review's MAJOR — answers it as JSON, adding `second_factor` and `signed_out` from its guard).
  * ⭐ As built: `said` — a wait in words, as THIS viewer may read it (`stepSaid`), else null — so the page prints the step's
  * own sentence.
  */
@@ -524,7 +525,9 @@ export async function stopCampaign(campaignId: string, actor: ControlActor, deps
     category: "ADMIN", action: CAMPAIGN_STOPPED_ACTION, actorId: officer, targetType: "SmsCampaign", targetId: c.id,
     payload: { outstanding },
   });
-  return { ok: true, message: withRecord(LIVE_DONE.stop, recorded), recorded };
+  // ⭐ The U47b-2 review's NIT · "a group already being sent may still go out" is said only of a campaign that had begun sending
+  // (`sendingStarted`, read on the row as it stood BEFORE the move) — a confirmed one has nothing in flight.
+  return { ok: true, message: withRecord(sendingStarted(c) ? LIVE_DONE.stop : LIVE_DONE.stopBeforeSending, recorded), recorded };
 }
 
 /* ══ MAKE A COPY ════════════════════════════════════════════════════════════════════════════════════════════════════ */

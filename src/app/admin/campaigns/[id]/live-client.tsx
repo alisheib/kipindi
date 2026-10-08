@@ -5,7 +5,7 @@
  *
  * ⭐ THE CARDS ARE THE SERVER'S, THE STATE IS OURS. The page renders each `AdminCard` (its chrome lives in `admin-shell`,
  * which a client module must never import — it reaches the store), and `LiveProvider`, a client provider wrapped around
- * them, holds what they share: the campaign as the driver last read it, the driver's stop, the press in flight and the last
+ * them, holds what they share: the campaign as the driver last read it, the driver's stop, the presses in flight and the last
  * refusal. The three bodies (`LiveStatus`, `LiveControls`, `LiveProgress`) read it through one hook; `LiveWhenListed`
  * draws its card only once the campaign has people on its list.
  * ⛔ NO ARITHMETIC ON A COUNT IN THE BROWSER. Every figure on this page — each tile, the bar, a reason, a chip, a headline's
@@ -16,15 +16,20 @@
  * ⛔ NO MONEY WORD HERE (OD24): the Start dialog is the one place a TZS figure can appear, and the view hands it the money
  * only for a viewer who may read it. ⛔ NEVER "DELIVERED" FOR A HAND-OVER (OD41): the words are `live-copy.ts`'s.
  * ⭐ THE CONTROLS ARE NEVER HIDDEN (decision 4): all five are drawn in every state, each disabled with its reason in `title`
- * — and, for the one the status asks for, said in words beside them (a phone has no hover). Start and Stop open a kit
- * `ConfirmModal` (medium tier, focus on Cancel — the modal's own rule); Pause and Resume act at once. A press that landed
- * says so in a toast; a refusal stays on the page, in words, until the next press. ⛔ An act that threw is `unfinished` —
- * it may or may not have happened, so the page shows where the campaign is and never offers a blind retry.
+ * — and, in words (the review's MINOR 8: a phone has no hover and a disabled button takes no focus), the reasons that matter
+ * beside them (`reasonModel`), every other one named to assistive technology. Start and Stop open a kit `ConfirmModal`
+ * (medium tier, focus on Cancel — the modal's own rule); Pause and Resume act at once. A press that landed says so in a toast
+ * — a warning or advice stays until it is dismissed; a refusal stays on the page, in words, until the next press. ⛔ An act
+ * that threw is `unfinished` — it may or may not have happened, so the page shows where the campaign is and never offers a
+ * blind retry.
+ * ⭐ A PRESS IN FLIGHT DISABLES ITS OWN CONTROL ONLY (the review's MAJOR): Stop stays pressable while Pause waits. The decisions
+ * — who may act, which callout, what a landed act does — are `live-decide.ts`'s pure functions; the state is `live-presses.ts`
+ * and the driver's; this file is the markup, and V13–V15 execute what it calls.
  * ⛔ AN ACT CONTROL: `useMayAct()` disables every press for a view-only role, and the actions re-check on the server.
  *
- * Guard: `npm run test:campaign-visuals` §page (V1 · V3 · V4 · V7 · V8) · Red: `npm run red:campaign-visuals`.
+ * Guard: `npm run test:campaign-visuals` §page (V1 · V3 · V4 · V7 · V8 · V13–V15) · Red: `npm run red:campaign-visuals`.
  */
-import { createContext, useContext, useState, useTransition } from "react";
+import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -36,34 +41,28 @@ import { Stat } from "@/components/ui/stat";
 import { useToast } from "@/components/ui/toast";
 import { useMayAct } from "@/components/admin/act-gate";
 import { AdminBarList } from "@/components/admin/admin-charts";
-import { runAdminAction } from "@/lib/client/run-admin-action";
 import { formatNumber } from "@/lib/utils";
 import type { CampaignLiveView } from "@/lib/server/marketing/campaign-live";
 import { CAMPAIGNS_UNTITLED, progressCaption, progressLabel } from "../campaigns-copy";
-import {
-  campaignStepAction, campaignViewAction, copyCampaignAction, pauseCampaignAction, resumeCampaignAction,
-  startCampaignAction, stopCampaignAction,
-} from "./actions";
+import { campaignViewAction, copyCampaignAction, pauseCampaignAction, resumeCampaignAction, startCampaignAction, stopCampaignAction } from "./actions";
 import type { LiveActAnswer } from "./live-run";
 import { LIVE_TILE, LIVE_TILES } from "./live-geometry";
-import { useLiveDriver } from "./live-driver";
+import { postLiveStep, useLiveDriver } from "./live-driver";
 import type { DriverStop, LiveDriver } from "./live-driver";
+import { useLivePresses } from "./live-presses";
+import { useStatusAnnouncement } from "./live-announce";
+import { ACTS, calloutsFor, controlName, controlState, liveMay, reasonIdFor, reasonModel } from "./live-decide";
+import type { ActName, DialogName, Refusal } from "./live-decide";
 import {
-  LIVE_ACT_UNFINISHED, LIVE_BREAKDOWN_TITLE, LIVE_CHIPS_LEAD, LIVE_CONTROL_LABEL, LIVE_DIALOG_ACTIONS, LIVE_DISABLED,
-  LIVE_FACTOR_LINK, LIVE_KEEP_OPEN, LIVE_KPI, LIVE_OUT_OF_DATE, LIVE_RELOAD, LIVE_SWITCH_OFF, LIVE_TRY_AGAIN,
+  LIVE_BREAKDOWN_TITLE, LIVE_CHIPS_LEAD, LIVE_CONTROL_LABEL, LIVE_COPY_ELSEWHERE, LIVE_COPY_OPEN_DRAFT, LIVE_DIALOG_ACTIONS,
+  LIVE_FACTOR_LINK, LIVE_KEEP_OPEN, LIVE_KPI, LIVE_OUT_OF_DATE, LIVE_RELOAD, LIVE_SIGN_IN_LINK, LIVE_SWITCH_OFF, LIVE_TRY_AGAIN,
   liveAudienceLine, liveChipText, liveConfirmedLine, liveReasonTitle, nobodyDrivingSentence,
 } from "./live-copy";
 
 /* ══ THE SHARED STATE ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 
-type ActName = "start" | "pause" | "resume" | "stop" | "copy";
-/** The two presses that ask first. */
-type DialogName = "start" | "stop";
-/** The last refusal, by the press that met it — printed beside the controls until the next press. */
-type Refusal = { act: ActName; reason: string; message: string };
-
 /** Each press's action — the doors `actions.ts` holds, each guarded there. */
-const ACT_CALL: Readonly<Record<ActName, (campaignId: string) => Promise<LiveActAnswer>>> = {
+const LIVE_ACT_CALLS: Readonly<Record<ActName, (campaignId: string) => Promise<LiveActAnswer>>> = {
   start: startCampaignAction,
   pause: pauseCampaignAction,
   resume: resumeCampaignAction,
@@ -71,16 +70,16 @@ const ACT_CALL: Readonly<Record<ActName, (campaignId: string) => Promise<LiveAct
   copy: copyCampaignAction,
 };
 
-/** The five controls, in the order they are drawn. */
-const ACTS: readonly ActName[] = ["start", "pause", "resume", "stop", "copy"];
-
 type Live = {
   view: CampaignLiveView;
   /** The server's decision AND the console's act gate — a page that is not told it may act never acts. */
   mayAct: boolean;
   driver: LiveDriver;
-  acting: ActName | null;
+  /** The presses in flight — each disables its own control, never another. */
+  pending: ReadonlySet<ActName>;
   refusal: Refusal | null;
+  /** The new draft's address, while this page keeps sending (a copy never takes a driving tab away). */
+  copyLink: string | null;
   press: (act: ActName) => void;
   ask: (dialog: DialogName) => void;
 };
@@ -93,73 +92,61 @@ function useLive(): Live {
   return c;
 }
 
-/** A thrown action comes back from `runAdminAction` as `{ ok: false, error }` — it may or may not have happened. */
-function answerOf(r: LiveActAnswer | { ok: false; error: string }): LiveActAnswer {
-  return "error" in r ? { ok: false, reason: "unfinished", message: LIVE_ACT_UNFINISHED, view: null } : r;
-}
-
 export function LiveProvider({ initial, mayAct, children }: { initial: CampaignLiveView; mayAct: boolean; children: ReactNode }) {
   const router = useRouter();
   const shellMayAct = useMayAct();
   const { toast } = useToast();
-  const may = mayAct && shellMayAct;
-  const driver = useLiveDriver({ id: initial.id, mayAct: may, initial, step: campaignStepAction, poll: campaignViewAction });
+  const may = liveMay(mayAct, shellMayAct);
+  // ⭐ The STEP is a fetch to its door (`postLiveStep`), the poll a server action: a step that takes seconds no longer holds
+  // the presses (Next 16 runs a page's actions one at a time).
+  const driver = useLiveDriver({ id: initial.id, mayAct: may, initial, step: postLiveStep, poll: campaignViewAction });
   const [dialog, setDialog] = useState<DialogName | null>(null);
-  const [acting, setActing] = useState<ActName | null>(null);
-  const [refusal, setRefusal] = useState<Refusal | null>(null);
-  const [, startAct] = useTransition();
+  const presses = useLivePresses({
+    id: initial.id,
+    may,
+    mode: driver.mode,
+    calls: LIVE_ACT_CALLS,
+    setView: driver.setView,
+    refresh: driver.refresh,
+    toast,
+    navigate: (href) => router.push(href as never),
+    // Only the dialog the settled press belongs to closes — a Pause answering never closes a Stop dialog the officer is reading.
+    onSettled: (act) => setDialog((open) => (open === act ? null : open)),
+  });
   const view = driver.view;
+  const announcement = useStatusAnnouncement(view);
 
-  /** One press: the action, then the campaign as it answered, then the words. ⛔ Never two at once. */
-  const press = (act: ActName) => {
-    if (acting !== null || !may) return;
-    setActing(act);
-    setRefusal(null);
-    startAct(async () => {
-      const r = answerOf(await runAdminAction(() => ACT_CALL[act](view.id)));
-      // The answer carries the campaign as it is now; one that could not be read is asked for at once.
-      if (r.view !== null) driver.setView(r.view);
-      else driver.refresh();
-      if (r.ok) {
-        toast({ title: r.message, variant: "success" });
-        if (act === "copy" && r.href !== null) router.push(r.href as never);
-      } else {
-        setRefusal({ act, reason: r.reason, message: r.message });
-      }
-      setDialog(null);
-      setActing(null);
-    });
-  };
-
-  const value: Live = { view, mayAct: may, driver, acting, refusal, press, ask: setDialog };
+  const value: Live = { view, mayAct: may, driver, pending: presses.pending, refusal: presses.refusal, copyLink: presses.copyLink, press: presses.press, ask: setDialog };
   return (
     <LiveCtx.Provider value={value}>
       {children}
+      {/* ⭐ THE PAGE'S ONE LIVE REGION (the review's MINOR 8): always mounted, polite, and silent but for a change of status. */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-live-announce>{announcement}</div>
       {/* ⭐ Outside every card, medium tier: focus opens on Cancel (the modal's own rule), and a press in flight holds it
           open — scrim, Esc and the cross are refused until the server has answered. */}
       <ConfirmModal
         open={dialog === "start" && view.startDialog !== null}
         onClose={() => setDialog(null)}
-        onConfirm={() => press("start")}
+        onConfirm={() => presses.press("start")}
         title={view.startDialog?.title ?? ""}
         body={view.startDialog?.body ?? ""}
         confirmLabel={LIVE_DIALOG_ACTIONS.start}
         cancelLabel={LIVE_DIALOG_ACTIONS.cancel}
         tone="brand"
         tier="medium"
-        loading={acting === "start"}
+        loading={presses.pending.has("start")}
       />
       <ConfirmModal
         open={dialog === "stop"}
         onClose={() => setDialog(null)}
-        onConfirm={() => press("stop")}
+        onConfirm={() => presses.press("stop")}
         title={view.stopDialog.title}
         body={view.stopDialog.body}
         confirmLabel={LIVE_DIALOG_ACTIONS.stop}
         cancelLabel={LIVE_DIALOG_ACTIONS.cancel}
         tone="claret"
         tier="medium"
-        loading={acting === "stop"}
+        loading={presses.pending.has("stop")}
       />
     </LiveCtx.Provider>
   );
@@ -194,22 +181,20 @@ export function LiveStatus() {
 
 /* ══ THE CONTROLS CARD ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** The control the status asks for — the one whose reason is also said in words beside the row. */
-const EXPECTED: Readonly<Record<string, ActName | undefined>> = {
-  CONFIRMED: "start", PREPARING: "pause", RUNNING: "pause", PAUSED: "resume",
-};
-
 /** One driver stop, in its words, with the one way on that can work — never a retry that cannot. */
 function StopCallout({ stop, driver }: { stop: DriverStop; driver: LiveDriver }) {
   const reload = (
     <Button type="button" size="sm" variant="ghost" onClick={() => window.location.reload()} data-live-reload>{LIVE_RELOAD}</Button>
   );
-  if (stop.kind === "second_factor") {
+  // A lapsed 2-step, and a sign-in that ended: the way on is in ANOTHER tab (this page keeps its place), then "Try again".
+  if (stop.kind === "second_factor" || stop.kind === "signed_out") {
     return (
       <Callout tone="warning" role="alert">
-        <span className="block" data-live-stopped="second_factor">{stop.sentence}</span>
+        <span className="block" data-live-stopped={stop.kind}>{stop.sentence}</span>
         <span className="mt-2 flex flex-wrap items-center gap-2">
-          <a href={stop.href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-factor-link>{LIVE_FACTOR_LINK}</a>
+          <a href={stop.href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-factor-link>
+            {stop.kind === "signed_out" ? LIVE_SIGN_IN_LINK : LIVE_FACTOR_LINK}
+          </a>
           <Button type="button" size="sm" variant="ghost" onClick={driver.retry} data-live-try-again>{LIVE_TRY_AGAIN}</Button>
         </span>
       </Callout>
@@ -225,24 +210,15 @@ function StopCallout({ stop, driver }: { stop: DriverStop; driver: LiveDriver })
 }
 
 export function LiveControls() {
-  const { view, mayAct, driver, acting, refusal, press, ask } = useLive();
-  const { stop, said } = driver;
-  // Each control: the view's verdict (decided on the server from the STORED role), then this page's own — a press in flight,
-  // or an act gate that says view-only. A reason is always said, never a bare grey button.
-  const state = (act: ActName): { enabled: boolean; reason: string | null } => {
-    const c = view.controls[act];
-    if (!mayAct) return { enabled: false, reason: c.reason ?? LIVE_DISABLED.role };
-    return { enabled: c.enabled && acting === null, reason: c.enabled ? null : c.reason };
-  };
+  const { view, mayAct, driver, pending, refusal, copyLink, press, ask } = useLive();
+  const model = reasonModel(view, mayAct);
+  const c = calloutsFor({
+    view, mayAct, mode: driver.mode, stop: driver.stop, said: driver.said, refusal: refusal !== null, copyLink: copyLink !== null,
+  });
   const onClick: Record<ActName, () => void> = {
     start: () => ask("start"), pause: () => press("pause"), resume: () => press("resume"), stop: () => ask("stop"), copy: () => press("copy"),
   };
   const variant: Record<ActName, "primary" | "ghost"> = { start: "primary", pause: "ghost", resume: "primary", stop: "ghost", copy: "ghost" };
-  const expected = EXPECTED[view.status];
-  const expectedReason = expected === undefined ? null : state(expected).reason;
-  // "Nobody is sending" is the data's fact: an acting viewer whose own driver is running is the one sending.
-  const nobody = view.standing.nobodyDriving && (!mayAct || !driver.ran || stop !== null);
-  const switchOff = !view.standing.switchOpen && view.status !== "DRAFT" && view.status !== "DONE" && view.status !== "CANCELLED";
 
   return (
     // The driver's own stamps, for the drive: what it is doing and how many calls it has made (a page that may not act
@@ -250,16 +226,17 @@ export function LiveControls() {
     <div className="space-y-3" data-live-controls data-live-driver={driver.mode} data-live-steps={driver.steps} data-live-polls={driver.polls}>
       <div className="flex flex-wrap items-center gap-2">
         {ACTS.map((act) => {
-          const s = state(act);
+          const s = controlState(view, act, mayAct, pending);
           return (
             <Button
               key={act}
               type="button"
-              size="md"
+              size="sm"
               variant={variant[act]}
               disabled={!s.enabled}
-              loading={acting === act}
+              loading={pending.has(act)}
               title={s.reason ?? undefined}
+              aria-describedby={s.reason !== null ? reasonIdFor(model, act) : undefined}
               onClick={onClick[act]}
               data-live-control={act}
             >
@@ -268,29 +245,68 @@ export function LiveControls() {
           );
         })}
       </div>
-      {expectedReason !== null && <p className="text-body-sm text-text-secondary" data-live-reason={expected}>{expectedReason}</p>}
-      {refusal !== null && (
+      {/* ⭐ The reasons that matter, in words (the review's MINOR 8); every other disabled control is described to assistive
+          technology by an element a screen reader reads and the eye does not. */}
+      {model.lines.length > 0 && (
+        <ul className="space-y-1 text-body-sm text-text-secondary" data-live-reason-list>
+          {model.lines.map((l) => (
+            <li key={l.id} id={l.id} data-live-reason={l.acts.length === ACTS.length ? "all" : l.acts.join(" ")}>
+              {model.lines.length > 1 && l.acts.length < ACTS.length ? `${l.acts.map(controlName).join(", ")} — ${l.text}` : l.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {model.quiet.map((q) => <span key={q.id} id={q.id} className="sr-only">{q.text}</span>)}
+      {c.refusal && refusal !== null && (
         <Callout tone={refusal.reason === "unfinished" ? "danger" : "warning"} role="alert">
           <span className="block" data-live-refusal={refusal.act} data-live-refusal-reason={refusal.reason}>{refusal.message}</span>
+          {refusal.reason === "second_factor" && refusal.href !== null && (
+            <span className="mt-2 flex flex-wrap items-center gap-2">
+              <a href={refusal.href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-refusal-link>{LIVE_FACTOR_LINK}</a>
+            </span>
+          )}
+          {refusal.reason === "unfinished" && (
+            <span className="mt-2 block">
+              <Button type="button" size="sm" variant="ghost" onClick={() => window.location.reload()} data-live-reload>{LIVE_RELOAD}</Button>
+            </span>
+          )}
         </Callout>
       )}
-      {stop !== null && <StopCallout stop={stop} driver={driver} />}
-      {said !== null && (
-        <Callout tone="info" role="status">
-          <span className="block" data-live-wait>{said}</span>
+      {c.copyLink && copyLink !== null && (
+        <Callout tone="info" role="note">
+          <span className="block" data-live-copy-elsewhere>{LIVE_COPY_ELSEWHERE}</span>
+          <span className="mt-2 flex flex-wrap items-center gap-2">
+            <a href={copyLink} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-copy-link>{LIVE_COPY_OPEN_DRAFT}</a>
+          </span>
         </Callout>
       )}
-      {nobody && (
-        <Callout tone="warning" role="status">
-          <span className="block" data-live-nobody>{nobodyDrivingSentence(view.standing.lastStepAt)}</span>
+      {c.stop && driver.stop !== null && <StopCallout stop={driver.stop} driver={driver} />}
+      {c.said && driver.said !== null && (
+        <Callout tone="info" role="note">
+          <span className="block" data-live-wait>{driver.said}</span>
         </Callout>
       )}
-      {switchOff && (
-        <Callout tone="info" role="status">
+      {c.nobody && (
+        <Callout tone="warning" role="note">
+          <span className="block" data-live-nobody>{nobodyDrivingSentence(view.standing.lastStepAt, view.status)}</span>
+        </Callout>
+      )}
+      {c.window !== null && (
+        <Callout tone="info" role="note">
+          <span className="block" data-live-window>{c.window}</span>
+        </Callout>
+      )}
+      {c.switchCloses !== null && (
+        <Callout tone="info" role="note">
+          <span className="block" data-live-switch-closes>{c.switchCloses}</span>
+        </Callout>
+      )}
+      {c.switchOff && (
+        <Callout tone="info" role="note">
           <span className="block" data-live-switch-off>{LIVE_SWITCH_OFF}</span>
         </Callout>
       )}
-      {view.standing.keepOpen && (
+      {c.keepOpen && (
         <Callout tone="info" role="note">
           <span className="block" data-live-keep-open>{LIVE_KEEP_OPEN}</span>
         </Callout>

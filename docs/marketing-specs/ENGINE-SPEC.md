@@ -2343,7 +2343,7 @@ RETURN — pure, no directive; U47b-2 adds the page's own words to it), `scripts
 
 ✅ **AS BUILT — U47b-2 (S14, 2026-10-08): every place the build reads this section, says what it added, or reads it more
 widely than it is written, said once.** Files, all under `src/app/admin/campaigns/[id]/`: `page.tsx`, `loading.tsx`,
-`actions.ts` (the seven doors and nothing else), `live-run.ts` (how an act is run and answered — the part of a door that is
+`actions.ts` (the six actions and nothing else — the step is a ROUTE since the review's fix round, below), `live-run.ts` (how an act is run and answered — the part of a door that is
 not its guard — and the doors' answer types, which the driver reads from here because `test:admin-act-gate` takes a client
 module that names the actions file, even for a type, for an acting control), `live-loader.ts` (the first render),
 `live-viewer.ts` (the viewer from the STORED role), `live-client.tsx`, `live-driver.tsx`, `live-geometry.ts` (the figures'
@@ -2358,9 +2358,12 @@ grid, read by the page and its ghost);
   role → second factor in words) with the view grant; a role with no view grant is still refused and still written up (its
   row carries `grant: "view"`, so it never reads as the act guard's — and `red:admin-soft-gate`'s plants, which anchor on
   THAT block, still resolve exactly once). The
-  step takes `softCheckStaff` (= `softRequireStaff` + `refuseSecondFactor`, V5's "step uses `refuseSecondFactor`"); the five
-  presses `softRequireStaff` (a press keeps the step-up redirect, as a Save does). All seven take ONE parameter, the
-  campaign's id; the viewer is `liveViewerFor(userId)` — the stored role's three cells, failing closed (L2).
+  step takes `softCheckStaff` (= `softRequireStaff` + `refuseSecondFactor`, V5's "step uses `refuseSecondFactor`"); ✅ as
+  amended by the review's fix round: so do Pause and Stop (the brake is never lost to a lapsed 2-step — it is refused in words
+  with the step-up link, never the redirect that throws the officer's page and press away), while Start, Resume and Make a copy
+  keep `softRequireStaff` (a press keeps the step-up redirect, as a Save does). All six actions take ONE parameter, the
+  campaign's id; the step door takes it from its PATH; the viewer is `liveViewerFor(userId)` — the stored role's three
+  cells, failing closed (L2).
 - **The driver watches more than the spec says it polls.** Decision 3: "a viewer who may not act polls". Built: EVERY page that
   is not driving polls — also an acting viewer on a CONFIRMED or PAUSED campaign — so a page never goes stale beside an officer
   who started, paused or resumed the campaign somewhere else. The loop is keyed on the MODE (drive / watch / off), not the
@@ -2369,8 +2372,10 @@ grid, read by the page and its ghost);
   a campaign the page drove to its end is not stepped once more after its last; it starts on a tick so React's development
   double-run makes one call.
   The gaps are the spec's: 2 s after work, the wait's `until` (5–30 s), 5 s when busy — read off `DriverStep.busy` / `.until`
-  alone (the re-review removed the reason). A thrown call ends the loop as "out of date" and is NEVER retried; a refusal
-  stops it with its own sentence (a lapsed 2-step with the step-up page's link in ANOTHER tab and a "Try again").
+  alone (the re-review removed the reason). A thrown STEP ends the loop as "out of date" and is NEVER retried (it may or may
+  not have reached the server); ✅ as amended by the review's fix round, a thrown POLL — a read — is asked again after 10 s,
+  20 s and 40 s before the page says so; a refusal stops it with its own sentence (a lapsed 2-step with the step-up page's
+  link in ANOTHER tab and a "Try again"; a sign-in that ended with the sign-in link; a step the server could not finish).
 - **Acts answer with the campaign as it is now, and say what happened where it can be read.** A press that landed is a toast
   (the service's sentence, then the audit-log warning when its row did not land — ruling 543); a REFUSAL stays beside the
   controls in a callout until the next press (it names the way on, and a toast would be gone before it was read); an act whose
@@ -2381,7 +2386,9 @@ grid, read by the page and its ghost);
   it runs inside the campaign's step flight, so a double press or this page's own step mid-flight finds it taken. A second
   `busy` is said.
 - **Make a copy spends the officer's `marketing.campaignSave` budget** (a copy IS a saved draft) and, when it lands, goes to the
-  composer at the new draft's address with the toast; a refusal for the budget is `rate_limited` in `copyRateLimitedSentence`.
+  composer at the new draft's address with the toast — ✅ except from a page that is DRIVING (the fix round: it would end the
+  only driver, silently), which stays and offers the draft as a link for a new tab; a refusal for the budget is
+  `rate_limited` in `copyRateLimitedSentence`.
 - **The status-expected control's reason is also printed** (Start on CONFIRMED, Pause on PREPARING / RUNNING, Resume on PAUSED
   — when it is disabled): decision 4 says the reason lives in `title`, which a phone does not show. **The figures card exists
   only once the list has people** (`LiveWhenListed`): a CONFIRMED campaign has nothing to count and no "0" is drawn. A tile
@@ -2390,7 +2397,8 @@ grid, read by the page and its ghost);
   own grid (`live-geometry.ts`); only the first card's TOP EDGE is claimed equal (the drive measures it at 1280 and 360), the
   card heights are recorded, not claimed — they depend on the campaign.
 - **The list.** A DRAFT row links to the composer, every other row to `campaignDetailHref`; a DRAFT id at the live address
-  redirects to `campaignDraftHref` (outside the read's `try`). ⭐ **A PAUSED row's reason goes through
+  redirects to the composer's canonical address for the viewer (`draftAddressFor`, STD-1 — ✅ the fix round; the first build
+  sent it to the bare `?draft=` one), outside the read's `try`. ⭐ **A PAUSED row's reason goes through
   `pausedReasonSentenceFor({ reads, mayAct }, c, counts)`** — the live page's one function — with the row's own counts and the
   viewer's two cells decided on the server (`viewerReadsContacts`, unchanged; and `viewerMayActOnCampaigns`, failing closed),
   so below E23's floor a masked viewer reads the one neutral sentence and one who may only look is not told to press Resume.
@@ -2444,21 +2452,38 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
    counted) — `checkStart`'s fence counts both arms whoever asks. U47b's to build.
 2. **The view-model** (`campaign-live.ts`) — ONE function, used by the page's first render AND returned by every step and
    poll, so the browser never computes a figure. Role-shaped: E23's floor; money only for `campaignMoneyVisible`.
-3. **The driver** (`live-driver.tsx`, client): while the status is PREPARING or RUNNING and the viewer may act, it calls
-   `campaignStepAction(id)` — next call after `STEP_GAP_MS` (2,000 ms) when work was done, after the wait's `until` (capped
-   at 30 s, at least 5 s) when waiting, after 5 s when busy; it stops on a terminal status. A viewer who may not act polls
-   `campaignViewAction(id)` every 10 s. On mount for PAUSED/CANCELLED/DONE an acting viewer calls the step once (reap). A
-   thrown call (deploy skew, network) stops the loop and shows "This page is out of date or lost its connection — reload it
-   to keep sending. Nothing is lost." with a Reload button. A lapsed 2-step stops it with the second-factor sentence and
-   link. `document.hidden` slows nothing on purpose (the browser does).
+3. **The driver** (`live-driver.tsx`, client): while the status is PREPARING or RUNNING and the viewer may act, it POSTs to the
+   **step door** — `POST /api/admin/campaigns/<id>/step` (`postLiveStep`) — next call after `STEP_GAP_MS` (2,000 ms) when work
+   was done, after the wait's `until` (capped at 30 s, at least 5 s) when waiting, after 5 s when busy; it stops on a terminal
+   status. A viewer who may not act polls `campaignViewAction(id)` every 10 s. On mount for PAUSED/CANCELLED/DONE an acting
+   viewer calls the step once (reap). A thrown STEP (deploy skew, network) stops the loop and shows "This page is out of date
+   or lost its connection — reload it to keep sending. Nothing is lost." with a Reload button; a thrown POLL is asked again
+   after 10 s, 20 s and 40 s first. A lapsed 2-step stops it with the second-factor sentence and link.
+   `document.hidden` slows nothing on purpose (the browser does).
+   ✅ **AMENDED (the U47b-2 review's MAJOR, S14 2026-10-08): the step is a ROUTE, not a server action.** Next 16 runs the server
+   actions a page invokes ONE AT A TIME, in the order they were called (measured: a Pause clicked 3 s into an 8 s slice reached
+   the server at 8 s), and the step is the one call that takes seconds — so as an action it made every press wait behind it:
+   the driving tab's own Pause arrived when the slice it was pressed to stop had returned. The door is built like
+   `contactsExportDoor` and the preview doors: POST only (405 naming POST), never cross-site (`Sec-Fetch-Site`, asked before
+   the session is read), the id from the PATH and the body never read, the same guard as the action had FIRST
+   (`softCheckStaff`, growth — a lapsed 2-step refused in words with the step-up link, a visitor with no session told in words
+   with the section as the way back, never a redirect), the viewer from the STORED role, the same service, the same answer as
+   JSON with `Cache-Control: no-store`, and a throw a typed `unfinished` (never a 500 page). ⚠️ **What a Pause can stop**,
+   from this tab or any other: everything that has not passed its last check; a group already past it still goes (at most
+   one, `SLICE_MAX`) — which the Pause and Stop toasts and the Stop dialog say. Taking the step out of the queue is what lets
+   a Pause land while a slice is still gating.
 4. **Controls** — never hidden, disabled with the reason in `title`: Start (CONFIRMED) · Pause (PREPARING, RUNNING) · Resume
    (PAUSED) · Stop (any non-terminal) · Make a copy (any non-DRAFT). Start and Stop open a kit `ConfirmModal` (medium tier,
    focus on Cancel); Pause and Resume act at once with a toast.
+   ✅ As amended by the U47b-2 review: a press in flight disables ITS OWN control only (Stop is pressable while a Pause waits);
+   a disabled control's reason is printed in words where it matters and named to assistive technology otherwise, never
+   title-only; a toast that carries a warning or advice stays until dismissed.
 5. **The list:** a DRAFT row keeps linking to the composer; every other row links to the detail page; `CAMPAIGN_SCREENS.detail`
    flips to true in this commit, with the `REACHED_WITHOUT_NAV` row and 5f/5k re-pinned; a DRAFT id opened at the detail
-   address redirects to `campaignDraftHref`.
+   address redirects to the composer (✅ as built: its canonical address for the viewer, `draftAddressFor`).
 6. **The composer's confirmed line** links to the detail page (U40b D4).
-7. **Who acts:** growth act grant (`softRequireStaff("growth", …)`); the owner's control is the switch (E27).
+7. **Who acts:** growth act grant (`softRequireStaff("growth", …)`; ✅ as built, Pause, Stop and the step take
+   `softCheckStaff`, which refuses a lapsed 2-step in words); the owner's control is the switch (E27).
 8. **Live progress, as the brief asks:** the KPIs are waiting (queued) · handed over (sent) · failed · not sent (skipped by
    the checks) · no answer; under "Not sent", the reasons in the five U38b words (`AUDIENCE_BUCKET_OF`, protected one line),
    dominant first, each with its count — all from ONE `groupBy` over `(status, skipReason, failureClass)` for the campaign,
@@ -2476,14 +2501,20 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
 | `src/lib/server/marketing/campaign-live.ts` | create | `campaignLiveView` |
 | `src/app/admin/campaigns/[id]/page.tsx` | create | own `AdminPageGate title="SMS campaign"`; server render of the view; `AdminLoadError`; missing → words + "Back to SMS campaigns" |
 | `src/app/admin/campaigns/[id]/loading.tsx` | create | ghost = real blocks |
-| `src/app/admin/campaigns/[id]/actions.ts` | create | `campaignStepAction`, `campaignViewAction`, `startCampaignAction`, `pauseCampaignAction`, `resumeCampaignAction`, `stopCampaignAction`, `copyCampaignAction` |
+| `src/app/admin/campaigns/[id]/actions.ts` | create | `campaignViewAction`, `startCampaignAction`, `pauseCampaignAction`, `resumeCampaignAction`, `stopCampaignAction`, `copyCampaignAction` (✅ the review's MAJOR: the step is no action — next two rows) |
+| `src/app/admin/campaigns/[id]/live-step-door.ts` | create | ✅ `campaignStepDoor` — every decision of the step door (POST only, same-origin, guard first, stored-role viewer, typed answers) |
+| `src/app/api/admin/campaigns/[id]/step/route.ts` | create | ✅ `POST /api/admin/campaigns/<id>/step` — thin: three facts in, the door's answer out, no-store |
 | `src/app/admin/campaigns/[id]/live-client.tsx` | create | KPIs, bars, chips, controls, dialogs, the standing callouts |
-| `src/app/admin/campaigns/[id]/live-driver.tsx` | create | the loop |
+| `src/app/admin/campaigns/[id]/live-driver.tsx` | create | the loop, the step door's client (`postLiveStep`), the hook |
+| `src/app/admin/campaigns/[id]/live-decide.ts` | create | ✅ the pure decisions the components call (who may act, a control's state, which reasons are printed, every callout's condition, a toast, where a copy goes, the live region's words) |
+| `src/app/admin/campaigns/[id]/live-presses.ts` | create | ✅ the five presses' state: per-control pending, the last refusal, the copy link |
+| `src/app/admin/campaigns/[id]/live-announce.ts` | create | ✅ the page's one live region |
 | `src/app/admin/campaigns/[id]/live-copy.ts` | create | every sentence |
 | `src/lib/marketing/campaign-status.ts` | modify | `CAMPAIGN_SCREENS.detail = true`; `officer_paused`/`officer_stopped` sentences |
 | `src/app/admin/campaigns/page.tsx` | modify | the link rule (D5) |
 | `src/app/admin/campaigns/new/composer-loader.ts`/`composer-client.tsx` | modify | the confirmed line's link |
 | `scripts/campaign-visuals.test.mts` | create | `test:campaign-visuals` + `--prove-red` |
+| `scripts/lib/campaign-visuals-page.mts`, `scripts/lib/campaign-visuals-live.mts`, `scripts/lib/hooks-host.mts` | create | ✅ the page's claims (V1, V4–V11, L2); the fix round's V12–V16 (the door, the hooks EXECUTED on a minimal hooks host with a fake clock, the decisions, the seed — plants are the file's source with one defect, compiled); the host |
 | `scripts/campaigns-page.test.mts`, `scripts/admin-nav.test.mts` | modify | 5f/5k; the REACHED row |
 | `scripts/live/marketing-u47-live-drive.mjs` | create | `qa:marketing-live` |
 
@@ -2509,6 +2540,8 @@ export type CampaignLiveView = {
 };
 export async function campaignLiveView(id: string, viewer: { userId: string; mayAct: boolean; reads: boolean; money: boolean }): Promise<CampaignLiveView | null>;
 export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepResult | { kind: "reaped"; reaped: number } | { kind: "idle" }; view: CampaignLiveView } | { ok: false; reason: "role" | "second_factor" | "not_found"; error: string };
+// ✅ As built: the step is `DriverStep` (no figure, no cursor, no reason), carries `said`, and the step DOOR's JSON also holds
+// { ok: false; reason: "signed_out" | "unfinished"; error: string; href?: string } — LiveStepAnswer, live-run.ts.
 ```
 
 **States and sentences** (`live-copy.ts`).

@@ -205,10 +205,28 @@ export const LIVE_KEEP_OPEN = "Keep this page open while it sends — sending co
 export const LIVE_SWITCH_OFF = "Marketing SMS are switched off — this campaign waits until the owner switches them on.";
 export const LIVE_OUT_OF_DATE = "This page is out of date or lost its connection — reload it to keep sending. Nothing is lost.";
 
-/** Nobody driving (RUNNING, no claim for 90 s) — with the last step's time when there was one. */
-export function nobodyDrivingSentence(lastStepAt: string | null): string {
+/** Nobody driving (RUNNING, no claim for 90 s; PREPARING, no chunk for 90 s) — with the last step's time when there was one. */
+export function nobodyDrivingSentence(lastStepAt: string | null, status: string = "RUNNING"): string {
   const t = eatClock(lastStepAt);
-  return `Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open.${t === null ? "" : ` (Last step ${t} EAT.)`}`;
+  const doing = status === "PREPARING" ? "preparing this campaign's list" : "sending this campaign";
+  return `Nobody is ${doing} right now. Open it as an officer who can send, and keep the page open.${t === null ? "" : ` (Last step ${t} EAT.)`}`;
+}
+
+/**
+ * ⭐ THE SEND WINDOW, said to a viewer whose page is NOT stepping the campaign (a role that may only look, or a driver that
+ * stopped) — a driver is told the same by the step itself (`waitSentence`). Null while the window is open: there is nothing to
+ * explain. The words are the engine's own wait sentences, so a campaign never reads one way to a driver and another to a watcher.
+ */
+export function liveWindowSentence(w: { open: boolean; opensAt: string; reason: string | null }): string | null {
+  if (w.open === true) return null;
+  return w.reason === "quiet_hours" ? waitSentence("quiet_hours", w.opensAt === "" ? null : w.opensAt) : waitSentence("window_unreadable", null);
+}
+
+/** …and the switch's closing time, when the owner opened it for a while: "Marketing SMS stay switched on until 14:00 EAT on 9 Oct 2026." */
+export function liveSwitchClosesSentence(closesAt: string | null): string | null {
+  const t = eatClock(closesAt);
+  const d = eatDate(closesAt);
+  return t === null || d === null ? null : `Marketing SMS stay switched on until ${t} EAT on ${d}, then sending waits until the owner switches them on again.`;
 }
 
 /* ══ THE FIGURES ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -285,11 +303,16 @@ export function startDialog(o: {
   return { title, body: parts.join(" ") };
 }
 
-/** The Stop dialog (§4.15) — its "make a copy" advice says, once anybody was messaged, that the copy messages them again. */
-export function stopDialog(reach: LiveReach): { title: string; body: string } {
+/** The Stop dialog (§4.15) — its "make a copy" advice says, once anybody was messaged, that the copy messages them again.
+ *  `sending` is whether a group could be on its way (`sendingStarted`): a campaign that has not started sending — confirmed,
+ *  or still writing its list — has no group in flight, and the review's NIT was a dialog that warned of one. */
+export function stopDialog(reach: LiveReach, sending: boolean = true): { title: string; body: string } {
   // ⭐ The U47b-1 re-review · true of the group a slice has already passed its last check for — it still goes (at most one
-  // group, `SLICE_MAX`), so "nobody more" was false in that moment.
-  const head = "Nothing new will start sending. A group already being sent may still go out, and messages already handed to the network are not recalled.";
+  // group, `SLICE_MAX`), so "nobody more" was false in that moment — from ANY tab: a stop lands at once, a slice already past
+  // its last check is not recalled. ⭐ The U47b-2 review's NIT: said only of a campaign that has begun sending.
+  const head = sending
+    ? "Nothing new will start sending. A group already being sent may still go out, and messages already handed to the network are not recalled."
+    : "Nothing has been sent, and nothing will be.";
   // ⭐ The U47b-1 review · "everyone it reaches AGAIN" said everyone is messaged twice — only those already messaged are.
   const tail = reach === "reached"
     ? "A stopped campaign can't be restarted. A copy would message everyone it reaches — including, again, the people this campaign already messaged."
@@ -315,7 +338,29 @@ export const LIVE_DONE = {
    *  list" — never "Sending again." beside it. */
   resumePreparing: "Resumed — the list is being prepared. Keep this page open while it sends.",
   stop: "Stopped — nothing new will start sending. A group already being sent may still go out.",
+  /** …for a campaign that had not begun sending (the U47b-2 review's NIT): there is no group to go out. */
+  stopBeforeSending: "Stopped — nothing was sent, and nothing will be.",
 } as const;
+
+/**
+ * ⭐ THE U47b-2 REVIEW'S MINOR 1 · IS THIS ANSWER JUST THE ACT'S OWN PLAIN SENTENCE? Only then is a toast that fades the right
+ * way to say it. Anything the services put beside it — the audit row that did not land, a copy that would message people
+ * again, a Resume overtaken by a Stop, a Pause or the end, held people who could not be put back — is a warning or advice, and
+ * a warning that fades in four seconds is one an officer can miss: the page keeps it until it is dismissed. The test is the
+ * five plain sentences and the plain copy sentence, so a sentence added later defaults to STAYING, which is the safe side.
+ */
+export function liveDoneIsPlain(message: string): boolean {
+  const plain: readonly string[] = [
+    LIVE_DONE.start, LIVE_DONE.pause, LIVE_DONE.resume, LIVE_DONE.resumePreparing, LIVE_DONE.stop, LIVE_DONE.stopBeforeSending,
+    copyDoneSentence("none"),
+  ];
+  return plain.includes(message);
+}
+
+/** What a screen reader is told when the campaign's status changes (the page's ONE live region): the headline, and why. */
+export function liveAnnouncement(v: { headline: string; stopSentence: string | null }): string {
+  return v.stopSentence === null ? v.headline : `${v.headline} ${v.stopSentence}`;
+}
 
 /** ⭐ The U47b-1 re-review · Resume's move landed and its held people could not be put back on the list: they stay parked
  *  (the campaign pauses for them once everyone else is done), said beside the act's own sentence. */
@@ -460,6 +505,27 @@ export const LIVE_VIEW_REFUSAL = "Your role can't view SMS campaigns — this pa
 /** An act whose service threw after it was handed the campaign: it may or may not have happened — never "nothing was done". */
 export const LIVE_ACT_UNFINISHED =
   "The server stopped before it answered, so this may or may not have happened — this page now shows where the campaign is. Check it before you press again.";
+/** …and when the page could not read the campaign afterwards either (a lost connection, a new build's page): the first
+ *  sentence is NOT true then — the review's NIT. The page does not show where the campaign is; it says to reload. */
+export const LIVE_ACT_UNFINISHED_NO_VIEW =
+  "The request stopped before it answered, so this may or may not have happened — reload this page to see where the campaign is, and check it before you press again.";
+/** The sentence for an unfinished act, by whether the answer carries the campaign as it is now. */
+export function unfinishedActSentence(viewKnown: boolean): string {
+  return viewKnown ? LIVE_ACT_UNFINISHED : LIVE_ACT_UNFINISHED_NO_VIEW;
+}
+
+/** ⭐ The step door's two typed refusals the old action never needed (U47b-2 review, MAJOR): the door answers JSON, so a
+ *  signed-out visitor is told in words — never a redirect to a page the driver's fetch would read as its answer. */
+export const LIVE_SIGNED_OUT = "Your sign-in has ended, so this page has stopped sending. Sign in again and reopen this campaign to carry on — nothing is lost.";
+export const LIVE_SIGN_IN_LINK = "Sign in again";
+/** …and a step the server could not finish: a group may or may not have gone out, so the loop does not ask again by itself. */
+export const LIVE_STEP_UNFINISHED =
+  "The server stopped partway through a step, so this page has stopped sending — a group may or may not have gone out. Reload to see where the campaign is; it carries on from there.";
+
+/** Make a copy while THIS page is the one sending (PREPARING, RUNNING): the page must not leave — leaving would end the only
+ *  driver — so the new draft opens in a new tab, from a link (a tab opened after the answer would be a blocked popup). */
+export const LIVE_COPY_ELSEWHERE = "This page is sending, so it stays here — the new draft opens in a new tab.";
+export const LIVE_COPY_OPEN_DRAFT = "Open the new draft";
 
 /** Make a copy refused for the officer's save budget — a copy IS a saved draft (the composer's own budget,
  *  `marketing.campaignSave`). */

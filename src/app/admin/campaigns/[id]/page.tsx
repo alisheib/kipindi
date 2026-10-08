@@ -14,9 +14,9 @@
  * ⭐ THE GATES: the section layout's `AdminSectionGate` ("SMS campaigns", growth), and this page's OWN `AdminPageGate`
  * below — a flight request can skip a layout, never the page. All seven actions re-check (`softRequireStaff`,
  * `softCheckStaff`, `softViewStaff`), and each service refuses a role that may not act again.
- * ⭐ A DRAFT HAS NO PAGE HERE: it is written in the composer, so a draft's id opened at this address goes there
- * (`campaignDraftHref`). A campaign that is not there is said in words, with one way on — never a blank page; a read that
- * fails is `AdminLoadError`, never a zero.
+ * ⭐ A DRAFT HAS NO PAGE HERE: it is written in the composer, so a draft's id opened at this address goes there — to the
+ * composer's own canonical address for the viewer (`draftAddressFor`, STD-1). A campaign that is not there is said in words,
+ * with one way on — never a blank page; a read that fails is `AdminLoadError`, never a zero.
  * ⛔ NO MONEY on this page but the Start dialog's, and only for a viewer who may read it (OD24). ⛔ No phone number anywhere
  * (§5.14). ⛔ NO SMS LEAVES FROM A RENDER: the only way to the wire is the engine's, through the step.
  *
@@ -28,9 +28,10 @@ import type { Route } from "next";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody } from "@/components/admin/admin-body";
+import { AdminCrumbLabel } from "@/components/admin/admin-crumbs";
 import { Callout } from "@/components/ui/callout";
-import { campaignDraftHref } from "@/lib/marketing/campaign-status";
 import { campaignsHref } from "../campaigns-rail";
+import { CAMPAIGNS_UNTITLED } from "../campaigns-copy";
 import { loadLive } from "./live-loader";
 import type { LiveLoad } from "./live-loader";
 import { LiveControls, LiveProgress, LiveProvider, LiveStatus, LiveWhenListed } from "./live-client";
@@ -58,8 +59,8 @@ async function AdminCampaignLiveContent({ params }: LivePageProps) {
     // ⛔ A failed read is AdminLoadError below — never a zero, and never "not found". The log line names the error's TYPE alone.
     console.error("[admin/campaigns/[id]] read failed:", (err as Error)?.name ?? "error");
   }
-  // ⛔ Outside the try: a redirect is never swallowed as a failed read.
-  if (load !== null && load.kind === "draft") redirect(campaignDraftHref(id) as never);
+  // ⛔ Outside the try: a redirect is never swallowed as a failed read. ⭐ To the composer's own canonical address (STD-1).
+  if (load !== null && load.kind === "draft") redirect(load.href as never);
 
   return (
     <>
@@ -71,6 +72,8 @@ async function AdminCampaignLiveContent({ params }: LivePageProps) {
           <div data-block="live-status"><AdminCard><AdminLoadError what="this SMS campaign" /></AdminCard></div>
         ) : load.kind === "ready" ? (
           <LiveProvider initial={load.view} mayAct={load.mayAct}>
+            {/* The trail reads the campaign's name, never its `cmp_…` id (the review's NIT). */}
+            <AdminCrumbLabel segment={load.view.id} label={load.view.name.trim() === "" ? CAMPAIGNS_UNTITLED : load.view.name} />
             <div data-block="live-status"><AdminCard><LiveStatus /></AdminCard></div>
             <div data-block="live-controls"><AdminCard><LiveControls /></AdminCard></div>
             <LiveWhenListed>

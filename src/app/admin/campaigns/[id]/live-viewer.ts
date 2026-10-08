@@ -76,15 +76,31 @@ export async function liveViewerFor(userId: string | null | undefined, deps: Liv
 }
 
 /**
+ * ⭐ ONE CELL OF THE VIEWER — may this officer ACT on a campaign? The STORED role read once and ONLY the act grant asked of it
+ * (the U47b-2 review's NIT: the campaigns list needs this one cell and was asking all three, a money decider among them, to
+ * throw two answers away). The same `LiveViewerDeps` the whole viewer reads, so the list and the page can never disagree
+ * about one officer. ⛔ Fails closed: no id, no row, a role read or a decider that throws or answers anything but true — no act.
+ */
+export async function liveMayActFor(userId: string | null | undefined, deps: LiveViewerDeps = LIVE_VIEWER_DEPS): Promise<boolean> {
+  const id = typeof userId === "string" ? userId.trim() : "";
+  if (id === "") return false;
+  try {
+    const role = await deps.role(id);
+    return role !== null && (await deps.mayAct(role)) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * ⭐ THE LIST'S SECOND CELL — may the officer looking at the campaigns LIST act on a campaign? The list says why a campaign
  * paused through the live page's one function (`pausedReasonSentenceFor`), and a viewer who may only LOOK must not be told to
  * "press Resume" (the U47b-1 re-review: the sentence has a view-only form). Its first cell, may they read a number, is the
- * list's own `viewerReadsContacts`. Decided here, on the server, from the STORED role through the same `liveViewerFor` the live
- * page uses — so the list and the page can never disagree about the same officer. ⛔ Fails closed: no session, no row, a role
- * or a decider that throws — no act.
+ * list's own `viewerReadsContacts`. Decided here, on the server, from the STORED role (`liveMayActFor`: the act grant alone).
+ * ⛔ Fails closed: no session, no row, a role or a decider that throws — no act.
  */
 export async function viewerMayActOnCampaigns(): Promise<boolean> {
   const session = await currentSession();
   if (!session) return false;
-  return (await liveViewerFor(session.userId)).mayAct;
+  return liveMayActFor(session.userId);
 }

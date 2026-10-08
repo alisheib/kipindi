@@ -22,12 +22,50 @@
  * page that was actually requested — that render IS a hard load, where the header is correct.
  */
 
+import { useEffect, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { crumbsFromPath } from "./admin-nav-groups";
 
+/**
+ * ⭐ A RECORD PAGE'S OWN NAME FOR ITS LAST CRUMB (the U47b-2 review's NIT: the live campaign page's trail read the raw `cmp_…`
+ * id). The trail is derived from the URL on the client (above), so the page cannot hand its name down through a layout; it
+ * registers it here, keyed by the LAST URL SEGMENT (decoded — what the trail itself has), and the trail shows it in the id's
+ * place. Until a page registers one — and for a campaign that is not there — the section's neutral word stands
+ * (`ID_CRUMB`), never the raw id. The name is an officer's own typed text, and the trail marks it so (`data-operator-text`).
+ */
+const crumbNames = new Map<string, string>();
+const crumbListeners = new Set<() => void>();
+const emitCrumbNames = (): void => { for (const l of crumbListeners) l(); };
+const subscribeCrumbNames = (l: () => void): (() => void) => { crumbListeners.add(l); return () => { crumbListeners.delete(l); }; };
+const lastSegmentOf = (pathname: string): string => {
+  const last = pathname.split("/").filter(Boolean).at(-1) ?? "";
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
+};
+
+/** Renders nothing: a record page's name, for the trail, while the page is mounted. */
+export function AdminCrumbLabel({ segment, label }: { segment: string; label: string }) {
+  useEffect(() => {
+    crumbNames.set(segment, label);
+    emitCrumbNames();
+    return () => {
+      if (crumbNames.get(segment) === label) {
+        crumbNames.delete(segment);
+        emitCrumbNames();
+      }
+    };
+  }, [segment, label]);
+  return null;
+}
+
 export function AdminCrumbs({ fallback }: { fallback: string[] }) {
   const pathname = usePathname();
-  const crumbs = pathname ? crumbsFromPath(pathname) : fallback;
+  const named = useSyncExternalStore(subscribeCrumbNames, () => (pathname ? crumbNames.get(lastSegmentOf(pathname)) ?? null : null), () => null);
+  const base = pathname ? crumbsFromPath(pathname) : fallback;
+  const crumbs = named !== null && base.length > 1 ? [...base.slice(0, -1), named] : base;
   return (
     /* ⚠️ CLIPPING — DO NOT SIMPLIFY THIS BOX MODEL. `nav` carries `min-w-0 overflow-hidden` and
        each crumb carries `truncate`, but the per-crumb WRAPPER in between must carry `min-w-0`
@@ -40,7 +78,7 @@ export function AdminCrumbs({ fallback }: { fallback: string[] }) {
         return (
           <span key={i} className="flex items-center gap-2 min-w-0">
             {i > 0 && <span className="text-text-tertiary opacity-50 shrink-0">/</span>}
-            <span className={isLast ? "font-semibold text-text truncate" : "truncate"}>{c}</span>
+            <span className={isLast ? "font-semibold text-text truncate" : "truncate"} data-operator-text={isLast && named !== null ? "label" : undefined}>{c}</span>
           </span>
         );
       })}

@@ -6,9 +6,12 @@
  * everything it may and may not do is a number or a rule in this file.
  *
  * ── WHAT IT DOES ───────────────────────────────────────────────────────────────────────────────────────────────────────
- *   · DRIVE — a viewer who may act, on a PREPARING or RUNNING campaign: `campaignStepAction` at once, then again after
- *     `STEP_GAP_MS` (2 s) when work was done, after the wait's `until` — at least `WAIT_MIN_MS` (5 s), at most `WAIT_MAX_MS`
- *     (30 s) — when the engine is waiting, and after `BUSY_GAP_MS` (5 s) when another step of the campaign held the flight.
+ *   · DRIVE — a viewer who may act, on a PREPARING or RUNNING campaign: the STEP DOOR (`POST /api/admin/campaigns/<id>/step`,
+ *     `postLiveStep`) at once, then again after `STEP_GAP_MS` (2 s) when work was done, after the wait's `until` — at least
+ *     `WAIT_MIN_MS` (5 s), at most `WAIT_MAX_MS` (30 s) — when the engine is waiting, and after `BUSY_GAP_MS` (5 s) when another
+ *     step of the campaign held the flight.
+ *     ⭐ A `fetch`, NOT A SERVER ACTION (the review's MAJOR): Next 16 runs a page's server actions one at a time, so a step that
+ *     takes seconds held every press — Pause, Stop — behind it; the presses are still actions, and no longer queue behind a step.
  *   · WATCH — everyone else, and everyone on a campaign that is not being sent (CONFIRMED, PAUSED): `campaignViewAction` every
  *     `POLL_GAP_MS` (10 s), so a page never goes stale beside an officer who started, paused or resumed it elsewhere. A viewer
  *     who may not act never makes a step call.
@@ -19,20 +22,25 @@
  *   the end), the loop returns and the hook starts the mode the status now needs — `useLiveDriver` re-keys on the mode.
  *
  * ── WHAT IT NEVER DOES ─────────────────────────────────────────────────────────────────────────────────────────────────
- *   · ⛔ RETRY BLIND. A call that THROWS (a deploy's new action ids, a lost connection) ends the loop and the page says it is
- *     out of date, with a Reload: the request may or may not have reached the server, and a step is not safe to replay on a
- *     guess. The same for a refusal: a second factor that lapsed stops it with the guard's sentence and the step-up link
- *     (and "Try again" starts it once the officer has confirmed); a role that may no longer act, a campaign that is gone.
+ *   · ⛔ RETRY A STEP BLIND. A step that THROWS (a lost connection, an answer this build does not know) ends the loop and the
+ *     page says it is out of date, with a Reload: the request may or may not have reached the server, and a step is not safe to
+ *     replay on a guess. The same for a refusal: a second factor that lapsed stops it with the guard's sentence and the step-up
+ *     link (and "Try again" starts it once the officer has confirmed); a role that may no longer act, a campaign that is gone,
+ *     a sign-in that ended, a step the server could not finish.
+ *     ⭐ A POLL IS A READ, so a watcher's failed poll IS asked again — after 10 s, 20 s and 40 s — before the page says it is out
+ *     of date (the review's MINOR 7): a tab on a flaky connection must not go stale for a blip.
  *   · ⛔ COMPUTE. It holds no figure: every count comes back in the view, which the page prints. `document.hidden` slows
  *     nothing on purpose — the browser throttles a background tab, and the page says to keep it open.
  *   · ⛔ OVERLAP ITSELF: one call at a time, the next only after the last answered and its gap slept; a loop that is replaced
- *     (a new mode, a retry) drops the answer of the call it left in flight.
+ *     (a new mode, a retry) or whose page left drops the answer of the call it left in flight and sets nothing after it.
  *
  * ── THE LOOP IS A FUNCTION, THE HOOK ONLY WIRES IT ─────────────────────────────────────────────────────────────────────
  * `runLiveLoop` takes its calls, its clock and its sleep as arguments, so `test:campaign-visuals` V6 drives the very loop the
- * page runs — every gap, every stop, the mount's one step — with stand-ins and no timer.
+ * page runs — every gap, every stop, the mount's one step — with stand-ins and no timer. `startLiveLoop` is the hook's whole
+ * effect (the starter tick, the `live` flag that stops a replaced loop from setting state, the wake-up of its sleeps) as a
+ * function that returns the effect's cleanup, and V13 runs the REAL hook on a minimal hooks host with a fake clock.
  *
- * Guard: `npm run test:campaign-visuals` §page (V6) · Red: `npm run red:campaign-visuals`.
+ * Guard: `npm run test:campaign-visuals` §page (V6 · V13) · Red: `npm run red:campaign-visuals`.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CampaignLiveView } from "@/lib/server/marketing/campaign-live";
@@ -52,6 +60,8 @@ export const WAIT_MAX_MS = 30_000;
 export const BUSY_GAP_MS = 5_000;
 /** A watching page asks for the campaign this often. */
 export const POLL_GAP_MS = 10_000;
+/** A poll that THREW is asked again after each of these, in turn — then the page says it is out of date. A step is never. */
+export const POLL_RETRY_MS: readonly number[] = [10_000, 20_000, 40_000];
 
 /* ══ THE SHAPES ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -62,9 +72,11 @@ export type DriverMode = "drive" | "watch" | "off";
 export type DriverStop =
   | { kind: "out_of_date" }
   | { kind: "second_factor"; sentence: string; href: string }
+  | { kind: "signed_out"; sentence: string; href: string }
   | { kind: "role"; sentence: string }
   | { kind: "view_refused"; sentence: string }
-  | { kind: "gone"; sentence: string };
+  | { kind: "gone"; sentence: string }
+  | { kind: "unfinished"; sentence: string };
 
 /** ⭐ THE MODE a status needs. An acting viewer drives what is being sent; everything else that can still change is watched;
  *  a campaign that is over is left alone. */
@@ -99,9 +111,46 @@ function isRedirect(err: unknown): boolean {
 
 /** A refusal, as the loop stops on it. A step's `role` is "may no longer act"; a poll's is "may no longer view". */
 function stopOf(refused: LiveRefused, call: "step" | "poll"): DriverStop {
-  if (refused.reason === "second_factor") return { kind: "second_factor", sentence: refused.error, href: refused.href };
-  if (refused.reason === "not_found") return { kind: "gone", sentence: refused.error };
-  return call === "step" ? { kind: "role", sentence: refused.error } : { kind: "view_refused", sentence: refused.error };
+  switch (refused.reason) {
+    case "second_factor": return { kind: "second_factor", sentence: refused.error, href: refused.href };
+    case "signed_out": return { kind: "signed_out", sentence: refused.error, href: refused.href };
+    case "not_found": return { kind: "gone", sentence: refused.error };
+    case "unfinished": return { kind: "unfinished", sentence: refused.error };
+    default: return call === "step" ? { kind: "role", sentence: refused.error } : { kind: "view_refused", sentence: refused.error };
+  }
+}
+
+/* ══ THE STEP DOOR'S CLIENT ═════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** The step door's address — the campaign's id, as the path says it. */
+export const stepPath = (id: string): string => `/api/admin/campaigns/${encodeURIComponent(id)}/step`;
+
+const REFUSED_REASONS: readonly string[] = ["role", "not_found", "unfinished", "second_factor", "signed_out"];
+
+/** Is this JSON a step answer this build knows? Anything else — a proxy's error page, a newer build's shape — is out of date. */
+export function isStepAnswer(body: unknown): body is LiveStepAnswer {
+  if (body === null || typeof body !== "object") return false;
+  const a = body as Record<string, unknown>;
+  if (a.ok === true) {
+    const step = a.step as Record<string, unknown> | null | undefined;
+    const view = a.view as Record<string, unknown> | null | undefined;
+    return step !== null && typeof step === "object" && typeof step.kind === "string"
+      && view !== null && typeof view === "object" && typeof view.status === "string" && (a.said === null || typeof a.said === "string");
+  }
+  if (a.ok !== false || typeof a.reason !== "string" || !REFUSED_REASONS.includes(a.reason) || typeof a.error !== "string") return false;
+  return (a.reason !== "second_factor" && a.reason !== "signed_out") || typeof a.href === "string";
+}
+
+/**
+ * ⭐ ONE STEP, THROUGH THE DOOR: a POST with no body to the path above, with this origin's cookies. The answer is the step
+ * door's JSON whatever its HTTP status (a refusal is a 403, a missing campaign a 404 — each a typed body). ⛔ A request that
+ * fails, a body that is not JSON, or JSON this build does not know THROWS — the loop stops "out of date" and never asks again.
+ */
+export async function postLiveStep(id: string, fetchImpl: typeof fetch = (input, init) => globalThis.fetch(input, init)): Promise<LiveStepAnswer> {
+  const res = await fetchImpl(stepPath(id), { method: "POST", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
+  const body: unknown = await res.json();
+  if (!isStepAnswer(body)) throw new Error("the step door answered something this page does not know");
+  return body;
 }
 
 /* ══ THE LOOP ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -132,16 +181,34 @@ export type LoopOptions = {
 
 type Turn = { over: true } | { over: false; view: CampaignLiveView; gap: number };
 
-/** One call, and what the page does with its answer. ⛔ A throw ends the loop; nothing here asks twice. */
-async function turn(o: LoopOptions, call: "step" | "poll"): Promise<Turn> {
-  o.onCall(call);
-  let answer: LiveStepAnswer | LiveViewAnswer;
-  try {
-    answer = call === "step" ? await o.step(o.id) : await o.poll(o.id);
-  } catch (err) {
-    if (!isRedirect(err) && !o.cancelled()) o.onStop({ kind: "out_of_date" });
-    return { over: true };
+/** One call, asked as many times as its kind allows: a step ONCE, a poll again after each of `POLL_RETRY_MS`'s gaps. The answer,
+ *  or `over` — the page left, a redirect is under way, or the call failed for good (`out_of_date` is stopped here). */
+async function ask(o: LoopOptions, call: "step" | "poll"): Promise<{ answer: LiveStepAnswer | LiveViewAnswer } | { over: true }> {
+  let failures = 0;
+  for (;;) {
+    o.onCall(call);
+    try {
+      return { answer: call === "step" ? await o.step(o.id) : await o.poll(o.id) };
+    } catch (err) {
+      if (isRedirect(err) || o.cancelled()) return { over: true };
+      if (call === "poll" && failures < POLL_RETRY_MS.length) {
+        await o.sleep(POLL_RETRY_MS[failures]);
+        failures += 1;
+        if (o.cancelled()) return { over: true };
+        continue;
+      }
+      o.onStop({ kind: "out_of_date" });
+      return { over: true };
+    }
   }
+}
+
+/** One call, and what the page does with its answer. ⛔ A step that throws ends the loop; nothing here asks twice. A POLL that
+ *  throws is asked again after `POLL_RETRY_MS`'s gaps, in turn, before the page says it is out of date. */
+async function turn(o: LoopOptions, call: "step" | "poll"): Promise<Turn> {
+  const asked = await ask(o, call);
+  if ("over" in asked) return { over: true };
+  const answer = asked.answer;
   if (o.cancelled()) return { over: true };
   if (!answer.ok) {
     o.onStop(stopOf(answer, call));
@@ -177,6 +244,60 @@ export async function runLiveLoop(o: LoopOptions): Promise<void> {
     if (driverMode(t.view.status, o.mayAct) !== o.mode) return;
     gap = t.gap;
   }
+}
+
+/* ══ THE HOOK'S EFFECT, AS A FUNCTION ═══════════════════════════════════════════════════════════════════════════════ */
+
+/** What `startLiveLoop` is handed: the loop's inputs, and the page's setters. */
+export type LiveLoopHost = {
+  id: string;
+  mode: DriverMode;
+  mayAct: boolean;
+  pollFirst: boolean;
+  step: (id: string) => Promise<LiveStepAnswer>;
+  poll: (id: string) => Promise<LiveViewAnswer>;
+  /** Decided when the loop STARTS (on its tick), never when the effect is scheduled: is this the page's mount? */
+  reap: () => boolean;
+  setView: (view: CampaignLiveView) => void;
+  setSaid: (said: string | null) => void;
+  setStop: (stop: DriverStop) => void;
+  count: (call: "step" | "poll") => void;
+  setRan: () => void;
+};
+
+/**
+ * ⭐ THE EFFECT: start the loop on a tick, and give back its cleanup. ⛔ STARTED ON A TICK, NOT IN THE EFFECT: React's
+ * development double-run mounts, cleans up and mounts again, and a call made by the first would be a second step beside the
+ * first of the page that stayed (V13 runs it in strict mode and counts the calls). ⛔ EVERY SETTER IS BEHIND `live`: a loop
+ * that was replaced, or whose page left, sets nothing — an answer that lands after the cleanup is dropped. The cleanup also
+ * WAKES the loop's sleeps, so a replaced loop ends at once instead of holding a timer for 30 s.
+ */
+export function startLiveLoop(h: LiveLoopHost): () => void {
+  let live = true;
+  const wakers = new Set<() => void>();
+  const starter = setTimeout(() => {
+    void runLiveLoop({
+      id: h.id, mode: h.mode, mayAct: h.mayAct, reap: h.reap(), pollFirst: h.pollFirst, step: h.step, poll: h.poll,
+      sleep: (ms) => new Promise<void>((resolve) => {
+        const timer = setTimeout(() => { wakers.delete(wake); resolve(); }, ms);
+        const wake = () => { clearTimeout(timer); resolve(); };
+        wakers.add(wake);
+      }),
+      now: () => Date.now(),
+      cancelled: () => !live,
+      onView: (v) => { if (live) h.setView(v); },
+      onSaid: (s) => { if (live) h.setSaid(s); },
+      onStop: (s) => { if (live) h.setStop(s); },
+      onCall: (c) => { if (live) h.count(c); },
+      onStepped: () => { if (live) h.setRan(); },
+    });
+  }, 0);
+  return () => {
+    live = false;
+    clearTimeout(starter);
+    for (const wake of wakers) wake();
+    wakers.clear();
+  };
 }
 
 /* ══ THE HOOK ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -228,38 +349,22 @@ export function useLiveDriver(o: {
 
   useEffect(() => {
     if (stop !== null) return undefined;
-    let live = true;
-    const wakers = new Set<() => void>();
     const pollFirst = pollNow.current;
     pollNow.current = false;
     setSaid(null);
-    // ⭐ Started on a tick, not in the effect: React's development double-run mounts, cleans up and mounts again, and a call
-    // made by the first would be a second step beside the first of the page that stayed. (So the mount is decided here too.)
-    const starter = setTimeout(() => {
-      const reap = mayAct && fresh.current && reapsOnMount(statusRef.current);
-      fresh.current = false;
-      void runLiveLoop({
-        id, mode, mayAct, reap, pollFirst, step, poll,
-        sleep: (ms) => new Promise<void>((resolve) => {
-          const timer = setTimeout(() => { wakers.delete(wake); resolve(); }, ms);
-          const wake = () => { clearTimeout(timer); resolve(); };
-          wakers.add(wake);
-        }),
-        now: () => Date.now(),
-        cancelled: () => !live,
-        onView: (v) => { if (live) setViewState(v); },
-        onSaid: (s) => { if (live) setSaid(s); },
-        onStop: (s) => { if (live) setStop(s); },
-        onCall: (c) => { if (live) setCounts((n) => (c === "step" ? { ...n, steps: n.steps + 1 } : { ...n, polls: n.polls + 1 })); },
-        onStepped: () => { if (live) setRan(true); },
-      });
-    }, 0);
-    return () => {
-      live = false;
-      clearTimeout(starter);
-      for (const wake of wakers) wake();
-      wakers.clear();
-    };
+    return startLiveLoop({
+      id, mode, mayAct, pollFirst, step, poll,
+      reap: () => {
+        const reap = mayAct && fresh.current && reapsOnMount(statusRef.current);
+        fresh.current = false;
+        return reap;
+      },
+      setView: setViewState,
+      setSaid,
+      setStop,
+      count: (c) => setCounts((n) => (c === "step" ? { ...n, steps: n.steps + 1 } : { ...n, polls: n.polls + 1 })),
+      setRan: () => setRan(true),
+    });
   }, [id, mode, mayAct, step, poll, attempt, stop]);
 
   const setView = useCallback((v: CampaignLiveView) => { setViewState(v); }, []);
