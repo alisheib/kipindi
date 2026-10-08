@@ -1,0 +1,19 @@
+-- U47b-1 · THE LIVE PAGE'S ONE GROUPBY, ANSWERED FROM AN INDEX (the U47b-1 review's MINOR 4, S14 2026-10-08;
+-- docs/marketing-specs/ENGINE-SPEC.md §4.15 decision 8, as built). `countByOutcome` groups ONE campaign's recipient rows
+-- by (status, skipReason, failureClass), and the live page asks it for EVERY view: after every step a driver takes (about
+-- every two seconds) and every watcher's poll. `SmsCampaignRecipient_campaignId_status_idx` holds neither of the other
+-- two columns, so on a campaign of 150,000 people every view would read every row from the table. This index holds all
+-- four, in the groupBy's order: Postgres answers it from the index (an index-only scan where the pages are all-visible).
+--
+-- ⭐ ADDITIVE, AND SAFE WHILE THE OLD BUILD RUNS (the 60-second overlap): one CREATE INDEX — no column, no type and no row
+-- changes, and no query names an index. Built while production's recipient table is EMPTY (no campaign has run yet), so
+-- it is instant. ⛔ No CONCURRENTLY: `prisma migrate deploy` runs a file in ONE transaction, and CREATE INDEX
+-- CONCURRENTLY refuses to run inside one. IF NOT EXISTS lets a hand-applied run and the recorded one both succeed.
+-- The (campaignId, status) index stays: its columns now lead this one's, so it is redundant, and dropping it is a
+-- contract step of its own (test:migration-ownership), never part of an additive file.
+--
+-- ⛔ HAND-WRITTEN: `prisma migrate diff` sweeps in the trigram indexes and other lanes' objects (plan §0 TRAPS). Named by
+-- the schema's `map`: Prisma's own name would pass Postgres's 63-character limit. The evidence for this file is
+-- `test:campaign-models` 1.4 and 1.4b, and `db:probe-campaign-models` §13c — the index on Postgres after every migration,
+-- its four columns in this order — with the probe's drift diff naming nothing.
+CREATE INDEX IF NOT EXISTS "SmsCampaignRecipient_outcome_idx" ON "SmsCampaignRecipient"("campaignId", "status", "skipReason", "failureClass");

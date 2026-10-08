@@ -2256,6 +2256,14 @@ RETURN — pure, no directive; U47b-2 adds the page's own words to it), `scripts
     "Untitled campaign (copy)".
   - **Proof:** `test:campaign-visuals` 30 claims (S10 and T9 added; S3, S5, S7, T5, T7, T8, D2, D3 and W1 extended; P2 new)
     with 35 in-process plants, every one held.
+  - ⭐ **Schema: ONE additive index** (MINOR 4 — decision 9's "none" as built): `SmsCampaignRecipient_outcome_idx` on
+    (campaignId, status, skipReason, failureClass), the groupBy's own order, so `countByOutcome` — asked by EVERY view, after
+    every step and every watcher's poll — is answered from the index, never every row of a 150,000-person campaign.
+    Migration `20261008120000_sms_recipient_outcome_index`: one `CREATE INDEX IF NOT EXISTS`, hand-written, no
+    CONCURRENTLY (prisma migrate runs a file in one transaction), built while production's recipient table is EMPTY;
+    named by the schema's `map` (Prisma's own name passes Postgres's 63 characters). The (campaignId, status) index stays
+    (now redundant — dropping it is a contract step of its own). Held by `test:campaign-models` 1.4 / 1.4b (+ 5 red cases)
+    and `db:probe-campaign-models` 9i and 13c (the index on Postgres after every migration; neither drift diff names it).
 
 **Premises checked.** The six doors and the page gate rules (`admin-section-gate.test.mjs` §0b′: one return, a literal
 title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:campaigns-page` 5f/5k
@@ -2314,6 +2322,8 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
    never a counter (OD26). U48a later adds the receipt-based figures beside them. E23's floor applies.
 9. **Schema / deploy:** none. ⛔ Rule 8 of §5 begins here: never push while a campaign is PREPARING or RUNNING — pause it
    first (deploy skew would stop every open driver; the reaper heals, but a pause is cleaner).
+   ✅ As built (the U47b-1 review's MINOR 4): ONE additive index, `SmsCampaignRecipient_outcome_idx` — see the as-built
+   block above.
 
 **Files.**
 

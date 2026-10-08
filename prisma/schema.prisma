@@ -3837,6 +3837,11 @@ model SmsCampaignRecipient {
   /// `createMany({ skipDuplicates: true })`, which leans on this index and on nothing else.
   @@unique([campaignId, msisdn])
   @@index([campaignId, status])
+  /// ⭐ U47b-1 (the review's MINOR 4, S14 2026-10-08) · the live page's ONE groupBy — `countByOutcome`, by (status,
+  /// skipReason, failureClass) WHERE the campaign — answered from this index (an index-only scan), never every row: every
+  /// view asks it, after every step and every watcher's poll. Named by `map` (Prisma's own name passes Postgres's 63
+  /// characters); created by 20261008120000_sms_recipient_outcome_index alone (`test:campaign-models` 1.4b).
+  @@index([campaignId, status, skipReason, failureClass], map: "SmsCampaignRecipient_outcome_idx")
   @@index([msisdn])
   @@index([contactId])
   @@index([userId])

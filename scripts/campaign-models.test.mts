@@ -222,7 +222,8 @@ const L = {
   s11: "1.1 ⛔ exactly ONE migration adds MARKETING to SmsPurpose, and that file holds NO other statement (55P04)",
   s12: "1.2 the ADD VALUE migration sorts BEFORE the campaign tables' migration — the tables ship one migration later",
   s13: "1.3 exactly ONE migration creates the two tables and the three new types (SmsCampaignStatus, SmsCampaignRecipientStatus, SmsEncoding), and no other migration creates any of them",
-  s14: "1.4 every OTHER index the two models declare is in the migration under Prisma's own name, and the migration holds none the schema lacks (the one key is 2.1's)",
+  s14: "1.4 every OTHER index the two models declare is in the migrations under its name — Prisma's own, or the schema's map — the tables migration's or a later one's, and the migrations hold none the schema lacks (the one key is 2.1's)",
+  s14b: "1.4b ⭐ the live page's outcome index (the U47b-1 review): the recipient model declares (campaignId, status, skipReason, failureClass) by its map name, and EXACTLY ONE migration after the tables names the two tables — it holds ONE CREATE INDEX IF NOT EXISTS of those four columns in that order and nothing else (no DROP, no CONCURRENTLY: prisma migrate runs a file in one transaction)",
   s15: "1.5 the schema's two models and the migration's two tables declare the SAME columns — name, type, nullability and default, one by one",
   s16: "1.6 ⛔ no CASCADE link: the campaign link is RESTRICT and contactId / userId are SET NULL — in the migration AND the schema, under Prisma's constraint names",
   s17: "1.7 ⛔ expand-only: the tables migration only CREATEs types, tables and indexes and ADDs the recipient's foreign keys — no DROP, RENAME, ALTER TYPE, CONCURRENTLY or MARKETING",
@@ -403,7 +404,8 @@ const schemaEnumNames = (schema: string) => new Set(Array.from(schema.matchAll(/
 
 type Idx = { unique: boolean; name: string; cols: string[] };
 const idxText = (i: Idx) => `${i.unique ? "UNIQUE " : ""}${i.name}(${i.cols.join(",")})`;
-/** The indexes a model declares, NAMED as Prisma names them (`<Table>_<cols>_idx` / `_key`). */
+/** The indexes a model declares, NAMED as Prisma names them (`<Table>_<cols>_idx` / `_key`) — or by the block's own
+ *  `map: "…"` when it gives one (U47b-1's outcome index: Prisma's own name would pass Postgres's 63 characters). */
 function schemaIndexes(model: string, table: string): Idx[] {
   const out: Idx[] = [];
   for (const raw of model.split("\n")) {
@@ -411,7 +413,8 @@ function schemaIndexes(model: string, table: string): Idx[] {
     const block = /^@@(unique|index)\(\[([^\]]+)\]/.exec(line);
     if (block) {
       const cols = block[2].split(",").map((c) => c.trim());
-      out.push({ unique: block[1] === "unique", cols, name: `${table}_${cols.join("_")}_${block[1] === "unique" ? "key" : "idx"}` });
+      const mapped = /\bmap:\s*"(\w+)"/.exec(line);
+      out.push({ unique: block[1] === "unique", cols, name: mapped ? mapped[1] : `${table}_${cols.join("_")}_${block[1] === "unique" ? "key" : "idx"}` });
       continue;
     }
     const field = /^([A-Za-z_]\w*)\s+\S+.*\s@unique\b/.exec(line);
@@ -419,13 +422,20 @@ function schemaIndexes(model: string, table: string): Idx[] {
   }
   return out;
 }
+/** Every `CREATE [UNIQUE] INDEX [IF NOT EXISTS] "name" ON "Table"(…)` of one table in a migration's statements. */
 function migrationIndexes(sql: string, table: string): Idx[] {
   const out: Idx[] = [];
-  for (const m of sqlStatements(sql).matchAll(/CREATE (UNIQUE )?INDEX "(\w+)" ON "(\w+)"\(([^)]*)\)/g)) {
+  for (const m of sqlStatements(sql).matchAll(/CREATE (UNIQUE )?INDEX (?:IF NOT EXISTS )?"(\w+)" ON "(\w+)"\(([^)]*)\)/g)) {
     if (m[3] === table) out.push({ unique: !!m[1], name: m[2], cols: m[4].split(",").map((c) => c.trim().replace(/"/g, "")) });
   }
   return out;
 }
+/** ⭐ U47b-1 · the outcome index — its map name, its columns in order, and the ONE migration that creates it. */
+const OUTCOME_INDEX = "SmsCampaignRecipient_outcome_idx";
+const OUTCOME_COLS = ["campaignId", "status", "skipReason", "failureClass"] as const;
+/** The migrations AFTER the tables migration that name either campaign table at all (an index migration, or worse). */
+const laterTableMigrations = (w: World, tablesFolder: string): Migration[] =>
+  w.migrations.filter((m) => m.folder > tablesFolder && /"SmsCampaign(Recipient)?"/.test(sqlStatements(m.sql)));
 type Fk = { name: string; col: string; ref: string; onDelete: string };
 function migrationFks(sql: string, table: string): Fk[] {
   const out: Fk[] = [];
@@ -536,14 +546,29 @@ async function run(w: World, tag: string): Promise<void> {
   // ── §1.4 · every other index, under Prisma's names ─────────────────────────────────────────
   await check(p(L.s14), () => {
     const diffs: string[] = [];
+    // ⭐ U47b-1 · the tables migration's indexes AND every later migration's on the two tables (the outcome index's file)
+    const later = tables === null ? [] : laterTableMigrations(w, tables.folder);
     for (const t of TABLES) {
       const want = schemaIndexes(schemaModel(w.schema, t), t).filter((i) => i.name !== ONE_KEY).map(idxText);
-      const got = migrationIndexes(tsql, t).filter((i) => i.name !== ONE_KEY).map(idxText);
-      for (const x of want) if (!got.includes(x)) diffs.push(`${t}: schema has ${x}, the migration does not`);
-      for (const x of got) if (!want.includes(x)) diffs.push(`${t}: the migration has ${x}, the schema does not`);
+      const got = [tsql, ...later.map((m) => m.sql)].flatMap((sql) => migrationIndexes(sql, t)).filter((i) => i.name !== ONE_KEY).map(idxText);
+      for (const x of want) if (!got.includes(x)) diffs.push(`${t}: schema has ${x}, the migrations do not`);
+      for (const x of got) if (!want.includes(x)) diffs.push(`${t}: the migrations have ${x}, the schema does not`);
       if (want.length === 0) diffs.push(`${t}: no index parsed from the schema`);
     }
     return [diffs.length === 0, diffs.join(" · ") || "indexes agree"];
+  });
+
+  // ── §1.4b · ⭐ the outcome index — one file, one statement ────────────────────────────────
+  await check(p(L.s14b), () => {
+    const declared = schemaIndexes(schemaModel(w.schema, "SmsCampaignRecipient"), "SmsCampaignRecipient").find((i) => i.name === OUTCOME_INDEX);
+    const later = tables === null ? [] : laterTableMigrations(w, tables.folder);
+    const file = later.length === 1 ? later[0] : null;
+    const stmts = file === null ? [] : sqlStatements(file.sql).split(";").map((x) => x.trim()).filter(Boolean);
+    const want = `CREATE INDEX IF NOT EXISTS "${OUTCOME_INDEX}" ON "SmsCampaignRecipient"(${OUTCOME_COLS.map((c) => `"${c}"`).join(", ")})`;
+    const schemaOk = declared !== undefined && !declared.unique && declared.cols.join(",") === OUTCOME_COLS.join(",");
+    const fileOk = file !== null && stmts.length === 1 && stmts[0] === want && !/CONCURRENTLY|DROP/i.test(sqlStatements(file.sql));
+    return [schemaOk && fileOk,
+      `schema ${declared ? idxText(declared) : "declares no outcome index"} · ${later.length} later migration(s) on the tables [${later.map((m) => m.folder).join(", ")}] · statements ${stmts.length}: ${stmts.map((s) => s.slice(0, 70)).join(" | ") || "none"}`];
   });
 
   // ── §1.5 · the columns, one by one ─────────────────────────────────────────────────────────
@@ -1718,6 +1743,12 @@ if (!PROVE_RED) {
   const withTablesSql = (edit: (sql: string) => string): World => ({
     ...REAL, migrations: REAL.migrations.map((m) => (m.folder === tablesFolder ? { ...m, sql: edit(lf(m.sql)) } : m)),
   });
+  /** ⭐ U47b-1 · the outcome index's ONE file, edited in memory (LF-normalised, as the tables plant is). */
+  const outcomeFolder = REAL.migrations.find((m) => m.folder.endsWith("_sms_recipient_outcome_index"))?.folder ?? "";
+  const withOutcomeFile = (edit: (sql: string) => string): World => {
+    if (outcomeFolder === "") throw new Error("no _sms_recipient_outcome_index migration — U47b-1's file is missing");
+    return { ...REAL, migrations: REAL.migrations.map((m) => (m.folder === outcomeFolder ? { ...m, sql: edit(lf(m.sql)) } : m)) };
+  };
   const withCampaign = (o: Partial<CampaignNs>): World => ({ ...REAL, twin: { ...REAL.twin, campaign: { ...REAL.twin.campaign, ...o } } });
   const withRecipient = (o: Partial<RecipientNs>): World => ({ ...REAL, twin: { ...REAL.twin, recipient: { ...REAL.twin.recipient, ...o } } });
   const withRules = (o: Partial<Rules>): World => ({ ...REAL, rules: { ...REAL.rules, ...o } });
@@ -1981,6 +2012,32 @@ if (!PROVE_RED) {
       name: "the tables migration also drops an index — no longer expand-only",
       expect: L.s17,
       build: () => withTablesSql((sql) => `${sql}\nDROP INDEX "SmsCampaign_createdAt_idx";\n`),
+    },
+    /* ── U47b-1 · the outcome index (the review's MINOR 4): its schema line, its ONE file, its ONE statement ── */
+    {
+      name: "R-47b1-idx-1 · the outcome index's migration is missing — the schema declares an index no migration creates",
+      expect: L.s14b,
+      build: () => ({ ...REAL, migrations: REAL.migrations.filter((m) => m.folder !== outcomeFolder) }),
+    },
+    {
+      name: "R-47b1-idx-2 · the outcome index built CONCURRENTLY — refused inside the one transaction prisma migrate runs a file in",
+      expect: L.s14b,
+      build: () => withOutcomeFile((sql) => plant(sql, `CREATE INDEX IF NOT EXISTS "${OUTCOME_INDEX}"`, `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${OUTCOME_INDEX}"`)),
+    },
+    {
+      name: "R-47b1-idx-3 · the outcome file also drops the (campaignId, status) index — no longer one additive statement",
+      expect: L.s14b,
+      build: () => withOutcomeFile((sql) => `${sql}${NL}DROP INDEX "SmsCampaignRecipient_campaignId_status_idx";${NL}`),
+    },
+    {
+      name: "R-47b1-idx-4 · the outcome index's columns out of the groupBy's order — (campaignId, skipReason, status, failureClass)",
+      expect: L.s14,
+      build: () => withOutcomeFile((sql) => plant(sql, `("campaignId", "status", "skipReason", "failureClass")`, `("campaignId", "skipReason", "status", "failureClass")`)),
+    },
+    {
+      name: "R-47b1-idx-5 · the schema's map name and the file's name differ — the probe's drift diff would name it",
+      expect: L.s14,
+      build: () => withModel("SmsCampaignRecipient", `map: "${OUTCOME_INDEX}"`, `map: "${OUTCOME_INDEX}x"`),
     },
     {
       name: "a copied person column — the recipient model gains displayName (D16: a link, never a copy)",
