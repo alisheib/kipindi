@@ -203,11 +203,13 @@ async function shoot(page, name, scrollTo = null) {
   await wait(250);
   await page.screenshot({ path: join(SHOTS, `${name}.png`) });
 }
-/** ⛔ Every capture asserts what it photographs FIRST: the page's own heading, and the sentence the state is about. */
+/** ⛔ Every capture asserts what it photographs FIRST: the page's own heading, and the sentence the state is about. The text is
+ *  compared without case: `innerText` returns what the CSS renders, and a tile's label is drawn in capitals. */
 async function stateShot(page, vp, name, wantText, scrollTo = null, wantHeading = TITLE) {
   const h1 = await heading(page);
   const text = await mainText(page);
-  ok(`${vp} · ${name} · the capture shows the "${wantHeading}" heading and "${wantText.slice(0, 80)}"`, h1 === wantHeading && text.includes(wantText),
+  ok(`${vp} · ${name} · the capture shows the "${wantHeading}" heading and "${wantText.slice(0, 80)}"`,
+    h1 === wantHeading && text.toLowerCase().includes(squash(wantText).toLowerCase()),
     `h1="${h1}" text="${text.slice(0, 240)}"`);
   await shoot(page, `${vp}-${name}`, scrollTo);
 }
@@ -313,6 +315,15 @@ const dialogOf = (page) => page.evaluate(() => {
   };
 });
 
+/** ⛔ A capture of an OPEN dialog asserts the page's heading and the dialog's own title first, like every other capture. */
+async function dialogShot(page, vp, name, title) {
+  const h1 = await heading(page);
+  const dlg = await dialogOf(page);
+  ok(`${vp} · ${name} · the capture shows the "${TITLE}" heading with the dialog "${title.slice(0, 60)}" open`, h1 === TITLE && !!dlg && dlg.title === title,
+    `h1="${h1}" dialog=${JSON.stringify(dlg?.title ?? null)}`);
+  await shoot(page, `${vp}-${name}`);
+}
+
 const num = (s) => Number(String(s).replace(/,/g, ""));
 
 /* ═══ THE DRIVE ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -380,7 +391,7 @@ async function drivePass(vp, viewport, i, stage) {
   ok(`${name} · LIST · a PAUSED row says why in words, as the live page does — "${W.pausedList.gateway_refused.slice(0, 50)}…" for an engine reason (never its key), the officer's own, and below the floor the one neutral sentence for GROWTH (who may act)`,
     lines.engine === W.pausedList.gateway_refused && !/gateway_refused/.test(lines.engine) && lines.officer === W.pausedList.officer_paused && lines.floor === W.pausedHidden,
     JSON.stringify(lines));
-  await shoot(growth, `${name}-list-paused`);
+  await stateShot(growth, name, "list-paused", W.pausedHidden.slice(0, 60), null, "SMS campaigns");
   const fitList = await fitOf(growth);
   ok(`${name} · LIST · the paused rail with its long reason sentences: no sideways scroll of the page`, fitList.overflow === 0, JSON.stringify(fitList));
 
@@ -474,7 +485,7 @@ async function drivePass(vp, viewport, i, stage) {
     !!dlg && dlg.title === W.startDialog.growth.title && dlg.text.includes(W.startDialog.growth.body) && !/TZS/.test(dlg.text) && dlg.focus === W.dialog.cancel
       && dlg.buttons.includes(W.dialog.start) && dlg.buttons.includes(W.dialog.cancel),
     JSON.stringify(dlg));
-  await shoot(growth, `${name}-start-dialog`);
+  await dialogShot(growth, name, "start-dialog", W.startDialog.growth.title);
   await growth.keyboard.press("Escape");
   await wait(500);
   ok(`${name} · START DIALOG · Esc closes it, nothing was started`, (await dialogOf(growth)) === null && (await readLive(growth)).status === "CONFIRMED");
@@ -498,7 +509,7 @@ async function drivePass(vp, viewport, i, stage) {
   const adlg = await dialogOf(a.page);
   ok(`${name} · START DIALOG · ADMIN (money) · the frozen cost and the limit, in TZS`,
     !!adlg && adlg.title === W.startDialog.admin.title && adlg.text.includes(W.startDialog.admin.body) && /TZS/.test(adlg.text) && adlg.focus === W.dialog.cancel, JSON.stringify(adlg));
-  await shoot(a.page, `${name}-start-dialog-admin`);
+  await dialogShot(a.page, name, "start-dialog-admin", W.startDialog.admin.title);
   await a.page.keyboard.press("Escape");
   await a.ctx.close();
 
@@ -528,7 +539,7 @@ async function drivePass(vp, viewport, i, stage) {
     JSON.stringify({ controls: s.controls, driver: s.driver }));
   await fitCheck(w.page, name, "running-staged");
   await stateShot(w.page, name, "running-staged", "Sending — 890 of 1,604 done.");
-  await shoot(w.page, `${name}-running-staged-figures`, SEL.blockProgress);
+  await stateShot(w.page, name, "running-staged-figures", W.kpi.handedOver.label, SEL.blockProgress);
   for (const [key, want, shot] of [
     ["preparing", "Preparing the list — 600 of 1,604 people written.", "preparing-staged"],
     ["paused_engine", null, "paused-engine-staged"],
@@ -641,7 +652,7 @@ async function realRun(vp, viewport, i, id) {
     s.driver?.mode === "drive" && s.driver.steps >= 1 && s.nobody === "", JSON.stringify({ driver: s.driver, nobody: s.nobody }));
   await fitCheck(page, name, "run-running");
   await stateShot(page, name, "run-running-window-shut", W.waits.quiet_hours);
-  await shoot(page, `${name}-run-running-figures`, SEL.blockProgress);
+  await stateShot(page, name, "run-running-figures", W.kpi.handedOver.label, SEL.blockProgress);
   // PAUSE — at once, a toast, named
   await press(page, "pause");
   await waitStatus(page, "PAUSED", 20000);
@@ -675,7 +686,7 @@ async function realRun(vp, viewport, i, id) {
       && s.reasons.filter((r) => r.count === "0").length === 3, JSON.stringify(s.reasons));
   ok(`${name} · RUN · the bar is full: ${seeded.people} of ${seeded.people}`, !!s.bar && s.bar.now === seeded.people && s.bar.max === seeded.people, JSON.stringify(s.bar));
   ok(`${name} · RUN · ⛔ never "delivered" for a hand-over: the chip says "Handed over", and the words "delivered" and "Delivery" appear nowhere but the Handed over tile's hover`,
-    s.chips.some((c) => c.status === "SENT" && /Handed over/.test(c.text)) && !/[Dd]elivered/.test((await mainText(page)).replace(W.kpi.handedOver.title, "")));
+    s.chips.some((c) => c.status === "SENT" && /Handed over/.test(c.text)) && !/deliver/i.test((await mainText(page)).replace(W.kpi.handedOver.title, "")));
   ok(`${name} · RUN · no money word for GROWTH in the whole page`, !/TZS/.test(await mainText(page)));
   ok(`${name} · RUN · DONE: Start, Pause, Resume and Stop are off with their reasons; Make a copy is on`,
     s.controls.start.disabled && s.controls.pause.disabled && s.controls.resume.disabled && s.controls.stop.disabled && s.controls.stop.title === W.disabled.stop && !s.controls.copy.disabled,
@@ -685,7 +696,7 @@ async function realRun(vp, viewport, i, id) {
   ok(`${name} · RUN · the driver STOPPED on the terminal status: no server-action call in eight quiet seconds`, calls.n === before, `${before} → ${calls.n}`);
   await fitCheck(page, name, "run-done");
   await stateShot(page, name, "run-done", W.headline.DONE);
-  await shoot(page, `${name}-run-done-figures`, SEL.blockProgress);
+  await stateShot(page, name, "run-done-figures", W.kpi.handedOver.label, SEL.blockProgress);
   // MAKE A COPY — a toast, then the composer
   await press(page, "copy");
   await page.waitForURL((u) => u.pathname === "/admin/campaigns/new", { timeout: 60000 }).catch(() => {});
@@ -710,7 +721,7 @@ async function stopMidRun(vp, viewport, i, id) {
   const dlg = await dialogOf(page);
   ok(`${name} · STOP · the dialog asks first — "${W.stopDialog.none.title}" — with focus on CANCEL and the campaign's own advice`,
     !!dlg && dlg.title === W.stopDialog.none.title && dlg.text.includes(W.stopDialog.none.body) && dlg.focus === W.dialog.cancel && dlg.buttons.includes(W.dialog.stop), JSON.stringify(dlg));
-  await shoot(page, `${name}-stop-dialog`);
+  await dialogShot(page, name, "stop-dialog", W.stopDialog.none.title);
   await page.getByRole("button", { name: W.dialog.cancel }).first().click();
   await wait(500);
   ok(`${name} · STOP · Cancel keeps it running`, (await dialogOf(page)) === null && (await readLive(page)).status === "RUNNING");
@@ -728,7 +739,7 @@ async function stopMidRun(vp, viewport, i, id) {
   ok(`${name} · STOP · the driver STOPPED: no server-action call in eight quiet seconds`, calls.n === before, `${before} → ${calls.n}`);
   await fitCheck(page, name, "stopped");
   await stateShot(page, name, "run-stopped", "people were not messaged");
-  await shoot(page, `${name}-run-stopped-figures`, SEL.blockProgress);
+  await stateShot(page, name, "run-stopped-figures", W.kpi.handedOver.label, SEL.blockProgress);
   await ctx.close();
 }
 
