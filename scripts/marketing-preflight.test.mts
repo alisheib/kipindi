@@ -43,10 +43,17 @@
  *   The review's fixes (S14, 2026-10-08): P1d the drive list holds the test number ALONE; P7 the SQL's contract, no bare ORDER BY name
  *   equal to an AS alias, every call bound to the right values; P9 run through npm as the sheet prints it (`npm run -s`) a key prints
  *   no banner; P1b the source line and the database's clock; E2 the judgements one by one; P2/P5 the output filter ALONE.
+ *   The second review's fixes and the merge with U33r (the same day): P6d the REFEREE dimension (1,056 more scenarios) and the
+ *   agent-referee exclusion said to be NOT judged; P6e the four SystemConfig keys are the app's; P7 every SELECT list exactly, with the
+ *   stand-in rows carrying exactly those names; P1b the saved window and its 60-minute margin; P1d a list of two, a hidden name; P1f
+ *   `in-flight` and `elsewhere` (nothing else can send while the switch is open); P3 the private host in any spelling and the
+ *   database-class word; P2/P5 the scrub residue; B1 isMain by REAL path, run through a junction made in the temporary directory;
+ *   E8/E9 chargeable-only double sends, the standing marketing-elsewhere check, --expect-audience, the officer's pause; L1/L3 the
+ *   ledger rename's retry and a write that throws; every value flag is taken once.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` FIRST PROVES THE BASELINE GREEN, then plants each defect IN MEMORY (a
- * function of the shared core, the judge, the verdict parts, the transaction helper, a source text) and requires EXACTLY the
- * claims it names to fail. No file is written. No database is touched.
+ * function of the shared core, the judge, the verdict parts, the transaction helper, a source text, or the TEXT of a tool or of the
+ * core loaded from a data: URL) and requires EXACTLY the claims it names to fail. No file is written. No database is touched.
  * ⛔ This file holds no backslash (an editing tool decodes them): patterns are built from character classes and codes.
  *
  * Run: `npm run test:marketing-preflight` · Red: `npm run red:marketing-preflight`
@@ -85,12 +92,11 @@ const NL = String.fromCharCode(10);
 const rawRead = (rel: string): string => readFileSync(join(ROOT, ...rel.split("/")), "utf8").split(CR).join("");
 const code = (rel: string): string => decomment(rawRead(rel));
 const json = (v: unknown): string => JSON.stringify(v);
-/** The two calls the ledger's atomic write is made of, named by pieces: `test:red-anchors` calls a harness whose SOURCE holds a
- *  file-writing call 'not in-process', comments and strings included — this suite writes no file, and its source says so. */
-const FS_RENAME = ["rename", "Sync"].join("");
+/** The stand-in file system's write, named by pieces: `test:red-anchors` calls a harness whose SOURCE holds a file-writing call
+ *  'not in-process', comments and strings included - this suite writes no file (its stand-ins are plain objects), and its source says so. */
+const OP_WRITE = ["write", "File"].join("");
 /** A column no tool may read, named by pieces so this suite is not mistaken for a writer of an account fact (`test:house-bot-holder-lifecycle` 2.2 counts a quoted name). */
 const PW_COLUMN = ["password", "Hash"].join("");
-const FS_WRITE = ["writeFile", "Sync"].join("");
 
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
@@ -2121,7 +2127,8 @@ async function runAssertions(impl: Impl): Promise<void> {
     }
     // the checkout: right here is fine; elsewhere, or with no tsconfig.json, is a sentence - and the sentence is true
     if (boot.checkoutProblem(ROOT, preTool) !== null) wrong.push("the checkout itself was refused");
-    const elsewhereSays = boot.checkoutProblem(tmpdir(), preTool);
+    // (a sibling of the checkout that does not exist: it is outside the checkout wherever this suite is run, even inside the temporary directory)
+    const elsewhereSays = boot.checkoutProblem(join(dirname(ROOT), "a-folder-that-is-not-the-checkout"), preTool);
     if (elsewhereSays === null) wrong.push("a directory outside the checkout was accepted");
     else if (elsewhereSays.includes("does that for you") || !elsewhereSays.includes(ROOT) || !elsewhereSays.includes("same command again")) wrong.push(`the sentence for another directory is "${elsewhereSays.slice(0, 120)}"`);
     if (boot.checkoutProblem(join(ROOT, "scripts"), preTool) === null) wrong.push("a folder of the checkout (no tsconfig.json) was accepted");
@@ -2568,13 +2575,13 @@ if (!PROVE_RED) {
     { name: "R-L5 · the pre-send check always fits", expect: [L.l1, L.l2],
       impl: withLib({ checkRoom: (_ledger: unknown, sends: number) => ({ ok: true, used: 0, sends, room: 6 }) }) },
     { name: "R-L6 · the ledger is written in place (no temporary file, no rename)", expect: [L.l1],
-      impl: withLib({ fileLedgerIo: (path: string, ops: { mkdir: (p: string, o: object) => void; writeFile: (p: string, t: string, e: string) => void }) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => { ops.mkdir(dirname(path), { recursive: true }); ops.writeFile(path, text, "utf8"); } }) }) },
+      impl: withLib({ fileLedgerIo: (path: string, ops: Record<string, (...a: unknown[]) => void>) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => { ops.mkdir(dirname(path), { recursive: true }); ops[OP_WRITE](path, text, "utf8"); } }) }) },
     { name: "R-L11 · the ledger's rename is never tried again (a file Windows holds for a moment stops the drive)", expect: [L.l1],
-      impl: withLib({ fileLedgerIo: (path: string, ops: { mkdir: (p: string, o: object) => void; writeFile: (p: string, t: string, e: string) => void; rename: (a: string, b: string) => void }) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => { ops.mkdir(dirname(path), { recursive: true }); ops.writeFile(`${path}.tmp`, text, "utf8"); ops.rename(`${path}.tmp`, path); } }) }) },
+      impl: withLib({ fileLedgerIo: (path: string, ops: Record<string, (...a: unknown[]) => void>) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => { ops.mkdir(dirname(path), { recursive: true }); ops[OP_WRITE](`${path}.tmp`, text, "utf8"); ops.rename(`${path}.tmp`, path); } }) }) },
     { name: "R-L12 · the ledger's rename is tried again whatever went wrong (ENOENT too, and for good)", expect: [L.l1],
-      impl: withLib({ fileLedgerIo: (path: string, ops: { mkdir: (p: string, o: object) => void; writeFile: (p: string, t: string, e: string) => void; rename: (a: string, b: string) => void; sleep: (ms: number) => void }) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => {
+      impl: withLib({ fileLedgerIo: (path: string, ops: Record<string, (...a: unknown[]) => void>) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => {
         ops.mkdir(dirname(path), { recursive: true });
-        ops.writeFile(`${path}.tmp`, text, "utf8");
+        ops[OP_WRITE](`${path}.tmp`, text, "utf8");
         for (let tries = 0; ; tries++) { try { ops.rename(`${path}.tmp`, path); return; } catch (err) { if (tries >= 5) throw err; ops.sleep(50 * (tries + 1)); } }
       } }) }) },
     { name: "R-L8 · the ledger's strings reach the file unscrubbed (a number in a label or an outcome — the review's X2)", expect: [L.l3],
