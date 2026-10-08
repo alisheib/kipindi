@@ -1896,6 +1896,25 @@ deployed.
   `test:campaign-privacy` P10 (`recordSend` accounted, R-P10d re-aimed at `recordCost`, R-P10h new); `test:blackball`
   §15–§16 + anchors R-BB2…R-BB5; `test:otp-delivery` §10; at the review `test:campaign-compose` §18.35 + its plant (only
   REJECTED says the network refused).
+  ⭐ RE-REVIEW ROUND (2026-10-08, made by the lead — the builder agents stopped by the account's usage limit): ① THE SEND'S
+  DEADLINE — `SmsBatchOptions.notAfter` (sms.ts, additive), honoured ONLY for an all-MARKETING batch (an OTP alone or beside
+  marketing never meets it — proven), checked TWICE: before any row is written (passed, or not a figure: the whole batch
+  refused `DEADLINE_PASSED`, nothing written, no request) and again immediately before each request (the INSERT itself may
+  stall — the one unbounded wait on that path: no request, the rows FAILED with no receipt token, each answered
+  `DEADLINE_PASSED`). The engine hands it the slice's OLDEST claim + `CLAIM_SEND_MAX_AGE_MS` (an unreadable claim instant
+  makes it NaN, which sendBatch refuses). Either way it is the `slice_too_slow` WAIT (+0) — `DEADLINE_PASSED` an alias of
+  that wait in `holdKind`/`isShopWide`, never a failure that reached the wire (`reachedWire` excludes it), never a terminal
+  FAILED in `settlementFor`. This closes P1/P1b (`sendBatch` stalling ≥ 5 min before its first row write). ② THE REAPER
+  HELD OFF THIS PROCESS'S SLICE OF THE SAME CAMPAIGN: `reapStrandedClaims(id, deps, { insideFlight })` — a reap-only call
+  (U47b's, for PAUSED / CANCELLED / DONE) settles nothing while a slice of that campaign is in flight here; the slice's
+  own reap passes its ticket; a lost flight (≥ `SLICE_FLIGHT_STALE_MS`) no longer holds. ③ `slice_too_slow` ESCALATES:
+  `SLICE_TOO_SLOW_MAX` = 3 in a row PAUSES `slice_too_slow` (a new stop reason and sentence); any slice past the bound
+  resets the count. ④ The token read in the reaper caught (a failed read settles the row without its token). ⑤ A thrown
+  send records its CODE or NAME only (never its words), and pausing `send_error` logs one line (the campaign and that
+  code) so the sentence's "the server log" is true. ⑥ `dispatchSlice`: a failure that names NO code is no answer
+  (`unconfirmed`), never read as "certainly before the request". GUARDS: `test:sms-cost-guard` §11 (5 claims) + three
+  anchors; `test:marketing-engine` S35–S37 + R-S35, R-S35b, R-S36, R-S37; R11–R12 + R-R11 (R12's catch sits inside
+  engine.ts: no in-memory plant reaches it); 88 claims, red 118/118.
 
 **Premises checked.** P1–P3, P5–P7, P13–P15, F1–F5, F8; the U9 second-driver contract (§9 U43: "call it, do not rewrite it");
 `MARKETING_WRITERS` (P19); `SliceOutcome` gains `basis`/`basisRef` with U33a-G (spec §3.5); `renderForRecipient`,
@@ -2252,8 +2271,9 @@ export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepRe
   can be. It tries again by itself; if this stays, check Admin → System → Marketing SMS." · the last check unanswered
   (`before_send_unanswered`) "Waiting — the last check before sending couldn't be made, so nothing was sent. It tries again
   by itself; after three tries in a row the campaign pauses." · too slow to send (`slice_too_slow`) "Waiting — checking
-  the last group of people took too long, so they were put back unsent. The next group is smaller; it tries again by
-  itself."
+  the last group of people took too long, so they were put back unsent. It tries again by itself, with a smaller group
+  when it can; after three tries in a row the campaign pauses." (The U43b-2 re-review: "the next group is smaller" was
+  false at the smallest group, five; the third wait in a row PAUSES `slice_too_slow` — `SLICE_TOO_SLOW_MAX`.)
 - Standing callouts: keep open (RUNNING/PREPARING) "Keep this page open while it sends — sending continues only while a page
   like this one is open." · nobody driving (RUNNING, no claim for 90 s, viewer cannot act or the driver has not run yet)
   "Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open. (Last step 14:02

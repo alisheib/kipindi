@@ -88,7 +88,10 @@ const L = {
   s31: "S31 · ⭐ A HOLD REASON THE TABLE DOES NOT KNOW IS ABOUT ONE PERSON — held for a reason nobody listed, the row goes back +1, then +2, and is HELD at the third (its class the reason) while the others are SENT: bounded, never a silent loop",
   s32: "S32 · E7 · A FAILURE BEFORE THE REQUEST, BATCH-WIDE — every row failed NOT_CONFIGURED (a transport that would not start) is released +1 and the campaign pauses NOT_CONFIGURED (the code's own key, never gateway_refused); every row failed UNKNOWN (a transport that threw before its request) is released +1 and pauses send_error — nothing in either was sent or charged, and neither sentence says the network refused",
   s33: "S33 · ⛔ THE LIST CHECK RUNS FIRST — a list longer than its confirmed count, on a real carrier whose switch is closed, with the window closed, pauses list_over_confirmed_sending (never live_switch_closed, never a wait: no Resume could fix it); a confirmed count that is not a count, with a dead rail, pauses confirmation_unreadable (never NOT_CONFIGURED)",
-  s34: "S34 · ⭐ A SEND THAT THREW (the U43b-2 review — never re-send what might have reached the network, release only what certainly did not) — one that threw before writing anything: its rows released +1 (no message names them), the campaign paused send_error with ONE paused row carrying the error's words; one that threw AFTER its message rows were written: its rows UNCONFIRMED, never released, paused send_error; the sentence true of both, and never that the network refused",
+  s34: "S34 · ⭐ A SEND THAT THREW (the U43b-2 review — never re-send what might have reached the network, release only what certainly did not) — one that threw before writing anything: its rows released +1 (no message names them), the campaign paused send_error with ONE paused row carrying the error's CODE or NAME only, never its words (the U43b-2 re-review: words can quote the call); one that threw AFTER its message rows were written: its rows UNCONFIRMED, never released, paused send_error; the sentence true of both, and never that the network refused",
+  s35: "S35 · ⭐ THE SEND'S DEADLINE (the U43b-2 re-review — sendBatch's notAfter) — the slice hands its send the oldest claim plus the send-age bound; a batch refused whole for a passed deadline, and one whose deadline passed while its rows were written (no request, the rows FAILED), each WAIT slice_too_slow with their people back as they were (+0), never a pause",
+  s36: "S36 · ⭐ TOO SLOW THREE TIMES IN A ROW PAUSES (the U43b-2 re-review) — two slice_too_slow waits, then the third pauses slice_too_slow with ONE paused row, in words that say so; nothing ever sent",
+  s37: "S37 · A FAILURE THAT NAMES NO CODE IS NO ANSWER (the U43b-2 re-review) — never read as certainly before the request: the rows UNCONFIRMED, never released, the campaign paused gateway_unanswered",
 } as const;
 
 /* ══ THE IMPLEMENTATION UNDER TEST — swapped piece by piece by the plants ══════════════════════════════════════════ */
@@ -1115,9 +1118,63 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const sentence = impl.stopLabel("send_error");
     const words = sentence.includes("on our side") && sentence.includes("never sent again by themselves") && !sentence.includes("refused");
     return [rA.kind === "paused" && rA.reason === "send_error" && wireA.sent.length === 0
-      && rowsA.every((x) => x?.status === "PENDING" && x.attempts === 1 && x.claimToken === null) && pausedA.length === 1 && detail.includes("could not be written")
+      && rowsA.every((x) => x?.status === "PENDING" && x.attempts === 1 && x.claimToken === null) && pausedA.length === 1 && detail === "Error" && !detail.includes("could not be written")
       && rB.kind === "paused" && rB.reason === "send_error" && rowsB.every((x) => x?.status === "UNCONFIRMED" && x.attempts === 0) && words,
       `before anything: ${said(rA)} rows ${statusesOf(rowsA)}/${rowsA.map((x) => x?.attempts).join("")} paused ${pausedA.length} "${detail.slice(0, 60)}" · after its rows: ${said(rB)} rows ${statusesOf(rowsB)} · words ${words}`];
+  });
+
+  // ── S35 · the send's deadline (the U43b-2 re-review) ──
+  await claim(ok, L.s35, async () => {
+    // ① the deadline handed to the send: the slice's oldest claim plus the send-age bound
+    const a = worldOf("s35a");
+    await playersOn(a, 2);
+    const wireA = stubWire();
+    const t0 = Date.now();
+    const rA = await stepWith(impl, a.cid, engineDeps(freshState(), wireA));
+    const t1 = Date.now();
+    const naA = (wireA.opts[0] as { notAfter?: unknown } | undefined)?.notAfter;
+    const handed = typeof naA === "number" && naA >= t0 + ENGINE.CLAIM_SEND_MAX_AGE_MS && naA <= t1 + ENGINE.CLAIM_SEND_MAX_AGE_MS;
+    // ② refused whole for a passed deadline: a WAIT, its people back as they were
+    const b = worldOf("s35b");
+    const seatsB = await playersOn(b, 2);
+    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire({ refused: "DEADLINE_PASSED" })));
+    const rowsB = await Promise.all(seatsB.map((x) => rowOf(x.id)));
+    // ③ the deadline passed while the rows were written (no request; sendBatch wrote them FAILED): the same wait
+    const c = worldOf("s35c");
+    const seatsC = await playersOn(c, 2);
+    const rC = await stepWith(impl, c.cid, engineDeps(freshState(), stubWire({ answer: () => "deadline" })));
+    const rowsC = await Promise.all(seatsC.map((x) => rowOf(x.id)));
+    const back = (rows: ReadonlyArray<Awaited<ReturnType<typeof rowOf>>>): boolean => rows.every((x) => x?.status === "PENDING" && x.attempts === 0 && x.claimToken === null);
+    const pausedNone = (await auditRows(ENGINE.ENGINE_PAUSED_ACTION, b.cid)).length === 0 && (await auditRows(ENGINE.ENGINE_PAUSED_ACTION, c.cid)).length === 0;
+    return [rA.kind === "sent" && handed && rB.kind === "waiting" && rB.reason === "slice_too_slow" && back(rowsB)
+      && rC.kind === "waiting" && rC.reason === "slice_too_slow" && back(rowsC) && pausedNone,
+      `deadline handed ${handed ? "yes" : `NO (${String(naA)})`} · refused whole: ${said(rB)} rows ${statusesOf(rowsB)} · failed in the write: ${said(rC)} rows ${statusesOf(rowsC)} · no paused row ${pausedNone}`];
+  });
+
+  // ── S36 · too slow three times in a row PAUSES ──
+  await claim(ok, L.s36, async () => {
+    const w = worldOf("s36");
+    await playersOn(w, 2);
+    const state = freshState();
+    const wire = stubWire({ refused: "DEADLINE_PASSED" });
+    const r1 = await stepWith(impl, w.cid, engineDeps(state, wire));
+    const r2 = await stepWith(impl, w.cid, engineDeps(state, wire));
+    const r3 = await stepWith(impl, w.cid, engineDeps(state, wire));
+    const paused = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, w.cid);
+    const sentence = impl.stopLabel("slice_too_slow");
+    const words = sentence.includes("too long three times running") && sentence.includes("nothing more was sent");
+    return [r1.kind === "waiting" && r1.reason === "slice_too_slow" && r2.kind === "waiting" && r2.reason === "slice_too_slow"
+      && r3.kind === "paused" && r3.reason === "slice_too_slow" && paused.length === 1 && words && wire.sent.length === 0,
+      `${said(r1)} · ${said(r2)} · ${said(r3)} · paused rows ${paused.length} · words ${words} · sent ${wire.sent.length}`];
+  });
+
+  // ── S37 · a failure that names no code is no answer ──
+  await claim(ok, L.s37, async () => {
+    const w = worldOf("s37");
+    const seats = await playersOn(w, 2);
+    const r = await stepWith(impl, w.cid, engineDeps(freshState(), stubWire({ answer: () => "nocode" })));
+    const rows = await Promise.all(seats.map((x) => rowOf(x.id)));
+    return [rows.every((x) => x?.status === "UNCONFIRMED") && r.kind === "paused" && r.reason === "gateway_unanswered", `${said(r)} · rows ${statusesOf(rows)}`];
   });
 }
 
@@ -1130,6 +1187,27 @@ const outcomesMapped = (d: EngineDeps, f: (o: SliceOutcome) => SliceOutcome): En
 });
 
 export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
+  {
+    name: "R-S35 · the send's deadline not handed to sendBatch — a stalled row write sends to people a reaper has released",
+    expect: [L.s35],
+    impl: withDeps((d) => ({ ...d, send: (m, o) => d.send(m, o.minimumBalanceTzs === undefined ? {} : { minimumBalanceTzs: o.minimumBalanceTzs }) })),
+  },
+  {
+    name: "R-S35b · a deadline failure read as the wire refusing it — the campaign paused and its people released, though nothing was sent",
+    expect: [L.s35],
+    impl: withDeps((d) => ({ ...d, rules: { ...d.rules, isShopWide: (outs) => d.rules.isShopWide(outs.map((o) => (o.outcome === "failed" && o.code === "DEADLINE_PASSED" ? { ...o, code: "REJECTED" } : o))) } })),
+  },
+  {
+    name: "R-S36 · too slow never escalates — at the smallest group the same people are re-asked for ever",
+    expect: [L.s36],
+    impl: withDeps((d) => ({ ...d, state: () => { const st = d.state(); delete st.tooSlow; return st; } })),
+  },
+  {
+    name: "R-S37 · a failure with no code read as certainly before the request — released, and sent again after a Resume",
+    expect: [L.s37],
+    impl: withDeps((d) => outcomesMapped(d, (o) => (o.outcome === "unconfirmed" && (o as { code?: unknown }).code === undefined && typeof (o as { reference?: unknown }).reference === "string"
+      ? ({ ref: o.ref, outcome: "failed", code: "UNKNOWN", error: null } as SliceOutcome) : o))),
+  },
   {
     name: "R-S1 · the trail without its render entry (six entries — what went out is no longer on the record)",
     expect: [L.s1, L.s6, L.s16],
@@ -1150,7 +1228,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S3 (the spec's) · a refused batch settled FAILED row by row (the shop-wide verdict blind to a status:false batch)",
-    expect: [L.s3, L.s20, L.s30, L.s32],
+    expect: [L.s3, L.s20, L.s30, L.s32, L.s35],
     impl: withDeps((d) => ({
       ...d,
       rules: { ...d.rules, isShopWide: (os) => { const v = d.rules.isShopWide(os); return v.shopWide && v.match.outcome === "failed" ? { shopWide: false } : v; } },
@@ -1295,7 +1373,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S19 · an unanswered batch not paused — an outage turns the whole audience into no answer, slice after slice",
-    expect: [L.s19, L.s20],
+    expect: [L.s19, L.s20, L.s37],
     impl: withDeps((d) => ({
       ...d,
       rules: { ...d.rules, isShopWide: (os) => { const v = d.rules.isShopWide(os); return v.shopWide && v.reason === "gateway_unanswered" ? { shopWide: false } : v; } },
@@ -1429,7 +1507,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S32 · the code-key branch removed — a failure before the request paused as the network's refusal",
-    expect: [L.s32],
+    expect: [L.s32, L.s35],
     impl: withDeps((d) => ({
       ...d,
       rules: { ...d.rules, isShopWide: (os) => { const v = d.rules.isShopWide(os); return v.shopWide && v.match.outcome === "failed" ? { ...v, reason: "gateway_refused" } : v; } },

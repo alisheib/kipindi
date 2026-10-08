@@ -295,6 +295,10 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   held_rows: "Paused — some people could not be checked or prepared. Resume to try them again, or Stop.",
   before_send_unanswered:
     "Paused — the last check before sending could not be made three times running, so nothing more was sent. Resume to try again.",
+  // ⭐ The U43b-2 re-review · the send-age bound met three slices in a row (at the smallest group, the check before each
+  // message is slower than the time a group may take).
+  slice_too_slow:
+    "Paused — checking people just before their message took too long three times running, so nothing more was sent and those people were put back unsent. Resume to try again; if it happens again, ask the developer.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */

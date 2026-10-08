@@ -196,7 +196,7 @@ export async function auditFor(targetId: string): Promise<AuditEntry[]> {
  *  gateway's own `status:false` (REJECTED), a number it cannot dial (BAD_MSISDN), no result at all for it — or, as
  *  `sendBatch`'s chunk catch answers a transport that threw BEFORE its request, UNKNOWN (any throw) or NOT_CONFIGURED (an
  *  `SmsError` the transport raised on purpose). */
-export type WireAnswer = "ok" | "transport" | "rejected" | "bad_msisdn" | "missing" | "unknown" | "not_configured";
+export type WireAnswer = "ok" | "transport" | "rejected" | "bad_msisdn" | "missing" | "unknown" | "not_configured" | "deadline" | "nocode";
 
 export type Wire = {
   calls: number;
@@ -259,6 +259,10 @@ export function stubWire(o: {
       else if (a === "rejected") results.push({ ...base, reference, ok: false, code: "REJECTED", error: "Invalid credentials" });
       else if (a === "unknown") results.push({ ...base, reference, ok: false, code: "UNKNOWN", error: "a fault before the request (stub)" });
       else if (a === "not_configured") results.push({ ...base, reference, ok: false, code: "NOT_CONFIGURED", error: "blackball: sender ID not set" });
+      // the U43b-2 re-review · sendBatch's deadline passed while its rows were written: no request, the row FAILED
+      else if (a === "deadline") results.push({ ...base, reference, ok: false, code: "DEADLINE_PASSED", error: "the deadline passed while the rows were written (stub)" });
+      // a failure that names NO code (SmsResult.code is optional)
+      else if (a === "nocode") results.push({ ...base, reference, ok: false, error: "a failure with no code (stub)" });
       else results.push({ ...base, reference: "", ok: false, code: "BAD_MSISDN", error: "not a number this gateway can dial" });
     }
     return { results: results.reverse(), balanceTzs: 100 };

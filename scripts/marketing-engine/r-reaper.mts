@@ -29,6 +29,8 @@ const L = {
   r1: "R1 · ⭐ EVERY ROW OF THE REAP TABLE (E6), pure and driven — no message → PENDING with attempts + 1 and the claim cleared; QUEUED and UNKNOWN → UNCONFIRMED with the reference kept; ACCEPTED → SENT dated by the message's own hand-over instant; DELIVERED → DELIVERED at the message's instant; ⭐ a FAILED sms.ts wrote itself (no receipt token — the gateway's own no, or a throw before the request) → PENDING + 1, never a terminal FAILED for a message that never reached a handset (the U43b-2 review); one a receipt wrote → FAILED class receipt:<token> with the receipt's words; each settled row with a reaper's trail; ⭐ every row whose message reached the wire carries the number's opt-out token, read back (never minted); and the result counts each kind",
   r2: "R2 · ⭐ E6's DOUBLE-SEND GUARD — a stalled claimant whose claims were reaped while it gated resumes, beforeSend keeps NONE of them, and the wire is called ZERO times: the rows stay where the reaper put them",
   r2b: "R2b · ⭐ E6 · THE SEND-AGE BOUND (the U43b-2 review) — a slice whose gating took 9 min 59 s finds its claim older than CLAIM_SEND_MAX_AGE_MS (half of REAP_AFTER_MS) at its last re-read and is VETOED: ZERO wire calls, its rows back PENDING unchanged, the step waits slice_too_slow — so a reap landing between that re-read and the wire (ten minutes and a millisecond after the claim) never yields a second message: the next slice sends each person exactly ONCE; a slice that gated 4 min 59 s still sends",
+  r11: "R11 · ⭐ THE REAPER HELD OFF A SLICE IN FLIGHT HERE (the U43b-2 re-review: P1b) — a reap-only call while this process's slice of the SAME campaign is in flight settles nothing; the slice's own reap (its ticket), a lost flight and another campaign's flight do not hold it",
+  r12: "R12 · A FAILED TOKEN READ NEVER ABORTS A REAP (the U43b-2 re-review) — the row whose message reached the wire still settles SENT, without its token",
   r3: "R3 · a claim YOUNGER than REAP_AFTER_MS is never reaped — nor one exactly ten minutes old (strictly older than the cutoff); one a millisecond older is",
   r4: "R4 · THE REAPER RUNS FOR A PAUSED AND A CANCELLED CAMPAIGN (§3.3: they are only reaped) — their stranded claims settled from the evidence, so a stopped campaign never shows not sent for a message that went",
   r5: "R5 · ⭐ DC-1 · A MESSAGE MADE BEFORE THE CLAIM IS NO EVIDENCE FOR IT — an earlier attempt's FAILED (a receipt's verdict on a message this claim never sent) leaves the row PENDING (+1), never FAILED for a message this claim never sent; the same receipt on a message made after the claim is the claim's: FAILED receipt:<token>",
@@ -202,6 +204,39 @@ async function runSectionR(impl: RImpl, ok: Check): Promise<void> {
       `${said(first)} · rows ${afterFirst.map((x) => `${x?.status}/${x?.attempts}`).join(",")} · the reap between the re-read and the wire ${reaped === null ? "never reached (nothing went to the wire)" : json(reaped)} · next: ${said(second)} · wire ${wire.sent.length} message(s) for ${counts.size} number(s) · 4 min 59 s: ${said(quick)}`];
   });
 
+  // ── R11 · the reaper held off a slice in flight in this process (the U43b-2 re-review: P1b) ──
+  await claim(ok, L.r11, async () => {
+    const at = (state: ReturnType<typeof freshState>): EngineDeps => impl.deps(engineDeps(state, stubWire(), { now: () => new Date(T), gate: CLEARS_ALL }));
+    const a = worldOf("r11a");
+    await stranded(a, 1, T - 15 * MIN);
+    const stateA = freshState();
+    stateA.flight = { campaignId: a.cid, since: T - MIN, ticket: 7 };
+    const held = await impl.reap(a.cid, at(stateA));
+    const own = await impl.reap(a.cid, at(stateA), { insideFlight: 7 });
+    const b = worldOf("r11b");
+    await stranded(b, 1, T - 15 * MIN);
+    const stateB = freshState();
+    stateB.flight = { campaignId: b.cid, since: T - ENGINE.SLICE_FLIGHT_STALE_MS - 1, ticket: 9 };
+    const lost = await impl.reap(b.cid, at(stateB));
+    const c = worldOf("r11c");
+    await stranded(c, 1, T - 15 * MIN);
+    const stateC = freshState();
+    stateC.flight = { campaignId: "cmp_another", since: T - MIN, ticket: 3 };
+    const other = await impl.reap(c.cid, at(stateC));
+    return [held.reaped === 0 && own.reaped === 1 && lost.reaped === 1 && other.reaped === 1,
+      `beside its slice ${held.reaped} · its own reap ${own.reaped} · a lost flight ${lost.reaped} · another campaign's flight ${other.reaped}`];
+  });
+
+  // ── R12 · a failed token read never aborts a reap ──
+  await claim(ok, L.r12, async () => {
+    const w = worldOf("r12");
+    const ids = await stranded(w, 1, T - 15 * MIN);
+    await evidence(ids[0], w.key(0), "ACCEPTED", { createdAt: iso(T - 14 * MIN), sentAt: iso(T - 14 * MIN + 300) });
+    const r = await impl.reap(w.cid, impl.deps(depsAt(T, { tokenOf: async () => { throw new Error("token store down (stub)"); } })));
+    const row = await rowOf(ids[0]);
+    return [r.reaped === 1 && r.toSent === 1 && row?.status === "SENT", `reaped ${r.reaped} · sent ${r.toSent} · ${row?.status} · token ${String(row?.optOutToken)}`];
+  });
+
   // ── R3 · young claims are never reaped ──
   await claim(ok, L.r3, async () => {
     const out: string[] = [];
@@ -296,6 +331,11 @@ async function runSectionR(impl: RImpl, ok: Check): Promise<void> {
 
 export const R_PLANTS: ReadonlyArray<EnginePlant<RImpl>> = [
   {
+    name: "R-R11 · the reaper blind to this process's flight — a reap-only step releases the people a slice here is still sending",
+    expect: [L.r11],
+    impl: () => ({ deps: (d: EngineDeps) => ({ ...d, state: () => ({ ...d.state(), flight: null }) }) }),
+  },
+  {
     name: "R-R1 (the spec's) · a QUEUED stranded claim returned to PENDING — a message that may have gone is sent again",
     expect: [L.r1, L.r6, L.r7, L.r8],
     impl: () => {
@@ -344,7 +384,7 @@ export const R_PLANTS: ReadonlyArray<EnginePlant<RImpl>> = [
     name: "R-R4 · the reaper only for a RUNNING campaign — a stopped campaign keeps its stranded claims, and shows not sent for a message that went",
     expect: [L.r4],
     impl: () => ({
-      reap: async (id, d) => ((await db.smsCampaign.find(id))?.status === "RUNNING" ? ENGINE.reapStrandedClaims(id, d)
+      reap: async (id, d, o) => ((await db.smsCampaign.find(id))?.status === "RUNNING" ? ENGINE.reapStrandedClaims(id, d, o)
         : { reaped: 0, toPending: 0, toSent: 0, toUnconfirmed: 0, toFailed: 0, toDelivered: 0 }),
     }),
   },
@@ -360,8 +400,8 @@ export const R_PLANTS: ReadonlyArray<EnginePlant<RImpl>> = [
     name: "R-R6 · a reaped row written for every reap, nobody settled or not",
     expect: [L.r6],
     impl: () => ({
-      reap: async (id, d) => {
-        const r = await ENGINE.reapStrandedClaims(id, d);
+      reap: async (id, d, o) => {
+        const r = await ENGINE.reapStrandedClaims(id, d, o);
         if (r.reaped === 0) await d.audit({ category: "SYSTEM", action: ENGINE.ENGINE_REAPED_ACTION, actorId: null, targetType: "SmsCampaign", targetId: id, payload: { ...r } });
         return r;
       },

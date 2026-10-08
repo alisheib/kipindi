@@ -121,7 +121,7 @@ export type EngineStopReason =
   | "live_switch_closed" | "NOT_CONFIGURED" | "PROVIDER_UNRECOGNISED" | "BALANCE_FLOOR" | "MARKETING_FLOOR" | "marketing_floor"
   | "credit_unreadable" | "settings_unreadable" | "sizes_unreadable" | "price_unknown"
   | "gateway_refused" | "gateway_unanswered" | "send_error" | "template_invalid" | "held_rows"
-  | "list_over_confirmed_sending" | "confirmation_unreadable" | "before_send_unanswered";
+  | "list_over_confirmed_sending" | "confirmation_unreadable" | "before_send_unanswered" | "slice_too_slow";
 
 /** Why a step WAITS (claims nobody, pauses nothing) — the page says when it tries again. ⭐ `slice_too_slow` (the U43b-2
  *  review): the slice took so long between its claim and the wire that its claim was too old to send (the engine's
@@ -153,6 +153,14 @@ const HOLD_PAUSES: Readonly<Record<string, EngineStopReason>> = Object.freeze({
 const HOLD_WAITS: readonly ShopWideWait[] = Object.freeze(
   ["quiet_hours", "window_unreadable", "not_running", "before_send_unanswered", "slice_too_slow"] as ShopWideWait[],
 );
+/** ⭐ The U43b-2 re-review · `sendBatch`'s own word for the send-age bound: a batch whose deadline (`notAfter` — the oldest
+ *  claim plus `CLAIM_SEND_MAX_AGE_MS`) passed before its request. Refused whole (a hold) or its rows FAILED with no request
+ *  (a failure that never reached the wire), it is the engine's `slice_too_slow` WAIT either way: its people go back as
+ *  they were (+0), and nobody was messaged. */
+export const DEADLINE_PASSED = "DEADLINE_PASSED";
+/** A hold reason that is a WAIT under another name. */
+const HOLD_WAIT_ALIASES: Readonly<Record<string, ShopWideWait>> = Object.freeze({ [DEADLINE_PASSED]: "slice_too_slow" });
+
 /** ⭐ A failure code `sendBatch` writes for a failure BEFORE its request (its chunk catch: the transport's own `SmsError`
  *  code, or UNKNOWN for any other throw), each paused with its own true words; any other code the whole batch shares
  *  (REJECTED — the gateway's own "no") is the gateway refusing it: `gateway_refused`. */
@@ -171,7 +179,7 @@ const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.c
 export function holdKind(reason: string): "pause" | "wait" | "person" | "lost" {
   if (reason === CLAIM_LOST) return "lost";
   if (own(HOLD_PAUSES, reason)) return "pause";
-  if ((HOLD_WAITS as readonly string[]).includes(reason)) return "wait";
+  if ((HOLD_WAITS as readonly string[]).includes(reason) || own(HOLD_WAIT_ALIASES, reason)) return "wait";
   return "person";
 }
 
@@ -301,7 +309,7 @@ export type ShopWide =
 /** Did the row reach the wire? A hand-over, an unanswered one, or a failure the wire gave back — never `BAD_MSISDN`,
  *  which `sendBatch` refuses per message BEFORE the wire. */
 const reachedWire = (o: SliceOutcome): boolean =>
-  o.outcome === "handed_over" || o.outcome === "unconfirmed" || (o.outcome === "failed" && o.code !== "BAD_MSISDN");
+  o.outcome === "handed_over" || o.outcome === "unconfirmed" || (o.outcome === "failed" && o.code !== "BAD_MSISDN" && o.code !== DEADLINE_PASSED);
 
 /**
  * ⭐ E7 · IS THIS SLICE'S ENDING ONE FACT ABOUT THE SHOP, NOT ABOUT ITS PEOPLE? In this order:
@@ -322,8 +330,14 @@ export function isShopWide(outcomes: readonly SliceOutcome[]): ShopWide {
   }
   for (const o of outcomes) {
     if (o.outcome === "held" && holdKind(o.reason) === "wait") {
-      return { shopWide: true, reason: o.reason as ShopWideWait, detail: cleanText(o.reason, AUDIT_DETAIL_MAX), pause: false, release: true, attemptsDelta: 0, match: { outcome: "held", reason: o.reason } };
+      const reason: ShopWideWait = own(HOLD_WAIT_ALIASES, o.reason) ? HOLD_WAIT_ALIASES[o.reason] : (o.reason as ShopWideWait);
+      return { shopWide: true, reason, detail: cleanText(o.reason, AUDIT_DETAIL_MAX), pause: false, release: true, attemptsDelta: 0, match: { outcome: "held", reason: o.reason } };
     }
+  }
+  // ⭐ The U43b-2 re-review · the deadline passed WHILE the rows were written: no request was made, so the rows (written FAILED
+  // by sendBatch, no receipt token) go back as they were — the same `slice_too_slow` wait, never a failure of the wire.
+  if (outcomes.some((o) => o.outcome === "failed" && o.code === DEADLINE_PASSED)) {
+    return { shopWide: true, reason: "slice_too_slow", detail: DEADLINE_PASSED, pause: false, release: true, attemptsDelta: 0, match: { outcome: "failed", code: DEADLINE_PASSED } };
   }
   const wired = outcomes.filter(reachedWire);
   if (wired.length === 0) return { shopWide: false };
@@ -445,6 +459,8 @@ export function settlementFor(
       };
     }
     case "failed": {
+      // ⛔ The U43b-2 re-review · no request was made for it (its deadline passed first): back as it was, never FAILED.
+      if (o.code === DEADLINE_PASSED) return release(0);
       const failedAt = instantOf(ctx.wireAt);
       // ⛔ A failure with no instant from the send is not a failure this slice can date: it goes back as it was.
       if (failedAt === null) return release(0);

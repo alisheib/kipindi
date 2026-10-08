@@ -501,4 +501,33 @@ export const MUTATIONS = [
     to: `      if (false) {`,
     expect: `§10 ⛔ a floor that is not a figure holds the MARKETING batch: a malformed option never opens the rail (and 0, a figure, sends)`,
   },
+  {
+    // U43b-2 re-review · a passed deadline ignored before the rows: the batch is written and sent though a reaper may already
+    // have released its people for another slice to send (the double send the deadline exists to close).
+    name: "sms.ts — the caller's deadline is not checked before the rows are written",
+    file: "src/lib/server/sms.ts",
+    from: `  if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+    return refuse("DEADLINE_PASSED",`,
+    to: `  if (false) {
+    return refuse("DEADLINE_PASSED",`,
+    expect: `§11 ⭐ a MARKETING batch whose deadline has passed is REFUSED DEADLINE_PASSED whole: no row written and no request`,
+  },
+  {
+    // U43b-2 re-review · the deadline not re-read before the request: a row write that stalled past it still reaches the wire.
+    name: "sms.ts — the caller's deadline is not checked again before the request",
+    file: "src/lib/server/sms.ts",
+    from: `    if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+      const detail = "the deadline for this batch passed while its rows were written — no request was made";`,
+    to: `    if (false) {
+      const detail = "the deadline for this batch passed while its rows were written — no request was made";`,
+    expect: `§11 ⭐ a deadline that passes while the rows are written makes NO request: those rows FAILED with no receipt, each answered DEADLINE_PASSED`,
+  },
+  {
+    // U43b-2 re-review · the deadline judges a batch that carries a login code: a slow marketing slice could hold an OTP.
+    name: "sms.ts — the caller's deadline judges a batch that carries a login code",
+    file: "src/lib/server/sms.ts",
+    from: `  const deadlineApplies = notAfter !== undefined && prepared.every((p) => p.out.purpose === "MARKETING");`,
+    to: `  const deadlineApplies = notAfter !== undefined;`,
+    expect: `§11 ⭐ an OTP never meets a deadline: alone, and beside marketing, a passed deadline holds nothing`,
+  },
 ];

@@ -133,6 +133,9 @@ export const BEFORE_SEND_UNANSWERED_MAX = 3;
  *  this — half of `REAP_AFTER_MS`, so `sendBatch` has the other half to write its message rows before any reaper may judge
  *  the claim stranded. `beforeSend` vetoes an older claim (`slice_too_slow`, a wait). */
 export const CLAIM_SEND_MAX_AGE_MS = REAP_AFTER_MS / 2;
+/** ⭐ The U43b-2 re-review · after this many `slice_too_slow` waits IN A ROW the campaign PAUSES `slice_too_slow`: at the floor
+ *  size a gate slower than the bound re-asks the same five people for ever otherwise, and nothing is ever sent. */
+export const SLICE_TOO_SLOW_MAX = 3;
 /** E10 · a slice in flight longer than this is taken to be lost, so it no longer holds every campaign of the process off.
  *  ⛔ Kept clearly APART from `REAP_AFTER_MS` — TWICE it (the U43b-2 review): this process's own next step, the one place
  *  it reaps, must never start beside a slice that could still send, and a claim stops being sendable at HALF of it. */
@@ -179,6 +182,9 @@ export type EngineProcessState = {
   gateMsAvg: number | null;
   /** By campaign: how many slices running `beforeSend` could not answer. */
   unanswered: Record<string, number>;
+  /** By campaign: how many slices running waited `slice_too_slow` (the U43b-2 re-review). Optional: a state made by an
+   *  older build in a hot-reloaded process has none yet. */
+  tooSlow?: Record<string, number>;
 };
 
 declare global {
@@ -188,7 +194,7 @@ declare global {
 
 /** The process's own engine state (created on first use). */
 export function engineProcessState(): EngineProcessState {
-  return (globalThis.__50PICK_MARKETING_ENGINE ??= { flight: null, ticket: 0, sliceSize: SLICE_START, gateMsAvg: null, unanswered: {} });
+  return (globalThis.__50PICK_MARKETING_ENGINE ??= { flight: null, ticket: 0, sliceSize: SLICE_START, gateMsAvg: null, unanswered: {}, tooSlow: {} });
 }
 
 /** Every read, rule and write one step makes — swappable for the suites' in-process plants; production passes none. */
@@ -565,9 +571,15 @@ function evidenceOf(m: StoredSmsMessage | undefined): ReapEvidence {
  * campaign in ANY status (§3.3: a PAUSED, CANCELLED or DONE campaign is only reaped, so a stranded claim never shows "not
  * sent" for a message that went). ONE SYSTEM row, only when it settled anybody.
  */
-export async function reapStrandedClaims(campaignId: string, deps: EngineDeps = ENGINE_DEPS): Promise<ReapResult> {
+export async function reapStrandedClaims(campaignId: string, deps: EngineDeps = ENGINE_DEPS, opts?: { insideFlight?: number }): Promise<ReapResult> {
   const counts: ReapResult = { reaped: 0, toPending: 0, toSent: 0, toUnconfirmed: 0, toFailed: 0, toDelivered: 0 };
   const nowMs = deps.now().getTime();
+  // ⛔ The U43b-2 re-review · NEVER BESIDE THIS PROCESS'S OWN SLICE OF THE SAME CAMPAIGN. A reap-only step (U47b's, for a
+  // PAUSED / CANCELLED / DONE campaign — an officer's Pause lands while a slice is mid-send) must not release a claim the
+  // slice in flight here is still sending: that slice settles its own rows. Only the slice itself, reaping first inside its
+  // own flight (`insideFlight` = its ticket), passes. A lost flight (older than SLICE_FLIGHT_STALE_MS) no longer holds.
+  const f = deps.state().flight;
+  if (f !== null && f.campaignId === campaignId && f.ticket !== opts?.insideFlight && Math.abs(nowMs - f.since) < SLICE_FLIGHT_STALE_MS) return counts;
   const at = iso(nowMs);
   const stranded = await deps.recipients.findStranded(campaignId, iso(nowMs - REAP_AFTER_MS), REAP_BATCH);
   if (stranded.length === 0) return counts;
@@ -579,7 +591,8 @@ export async function reapStrandedClaims(campaignId: string, deps: EngineDeps = 
     let p = deps.rules.reapVerdict(row, ev, at);
     // A row whose message reached the wire, holding no token: read the one that message carried, and settle it with that.
     if ((p.to === "SENT" || p.to === "DELIVERED" || p.to === "UNCONFIRMED") && row.optOutToken === null && deps.tokenOf !== undefined) {
-      const token = await deps.tokenOf(row.msisdn);
+      // ⛔ A failed read settles the row without its token — never the whole reap (it only serves E30's record).
+      const token = await deps.tokenOf(row.msisdn).catch(() => null);
       if (token !== null) p = deps.rules.reapVerdict({ ...row, optOutToken: token }, ev, at);
     }
     const lawful = lawfulPatch(p, at);
@@ -630,7 +643,7 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   if (c.status !== "RUNNING") return { kind: "not_running", status: c.status };
 
   // ③ E6 · the reaper first
-  const reaped = await reapStrandedClaims(campaignId, deps);
+  const reaped = await reapStrandedClaims(campaignId, deps, { insideFlight: state.flight?.ticket });
 
   // ④a ⛔ FIRST — the list no longer than confirmed, before anything else is read: no Resume can fix either
   if (!isCount(c.audienceCount) || c.audienceCount < 1) return pauseFor(c, "confirmation_unreadable", "the confirmed count cannot be read", deps);
@@ -708,15 +721,22 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
     sendStartedAt: number | null; sendMs: number; wireAt: string | null; hookAnswered: boolean; threw: string | null;
   } = { sendStartedAt: null, sendMs: 0, wireAt: null, hookAnswered: false, threw: null };
   const started = deps.clock();
+  // ⛔ The U43b-2 re-review · THE SEND'S DEADLINE: the slice's OLDEST claim plus `CLAIM_SEND_MAX_AGE_MS` — after it a reaper may
+  // judge the claim stranded, so `sendBatch` writes nothing and asks nothing past it (checked before its rows and again before
+  // its request). An instant that cannot be read makes it NaN, which sendBatch refuses: fail closed.
+  const claimMs = claimed.map((r) => Date.parse(r.claimedAt ?? ""));
+  const notAfter = claimMs.length > 0 && claimMs.every(Number.isFinite) ? Math.min(...claimMs) + CLAIM_SEND_MAX_AGE_MS : Number.NaN;
   const sliceDeps: SliceDeps = {
     send: async (messages) => {
       const t0 = deps.clock();
       seen.sendStartedAt = t0;
       try {
-        return await deps.send(messages, keptForCodes === undefined ? {} : { minimumBalanceTzs: keptForCodes });
+        return await deps.send(messages, { ...(keptForCodes === undefined ? {} : { minimumBalanceTzs: keptForCodes }), notAfter });
       } catch (err) {
         // `dispatchSlice` answers every row of a thrown send `unconfirmed`, as it must; the slice reads the evidence (⑦).
-        seen.threw = String((err as Error)?.message ?? err) || "the send threw";
+        // ⛔ The error's CODE or NAME only — never its words, which can quote the call (the DLR route's precedent).
+        const e = err as { code?: unknown; name?: unknown } | null;
+        seen.threw = typeof e?.code === "string" && e.code !== "" ? e.code : typeof e?.name === "string" && e.name !== "" ? e.name : "Error";
         throw err;
       } finally {
         seen.sendMs = deps.clock() - t0;
@@ -782,8 +802,17 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
   // The re-check before the wire that could not answer — a WAIT, and after BEFORE_SEND_UNANSWERED_MAX in a row a PAUSE
   if (shop.shopWide && shop.reason === "before_send_unanswered") state.unanswered[campaignId] = (state.unanswered[campaignId] ?? 0) + 1;
   else if (seen.hookAnswered) delete state.unanswered[campaignId];
+  // ⭐ The U43b-2 re-review · a slice too slow to send, counted IN A ROW; any slice that gets past the bound resets it.
+  const tooSlow = (state.tooSlow ??= {});
+  if (shop.shopWide && shop.reason === SLICE_TOO_SLOW) tooSlow[campaignId] = (tooSlow[campaignId] ?? 0) + 1;
+  else delete tooSlow[campaignId];
 
-  if (shop.shopWide && shop.pause) return pauseFor(c, shop.reason as EngineStopReason, shop.detail, deps);
+  if (shop.shopWide && shop.pause) {
+    // ⭐ `send_error`'s sentence sends the officer to the developer and the server log: the log must then hold the fact —
+    // the campaign and the error's code or name only (no number, no words that could quote the call).
+    if (shop.reason === "send_error") console.error(`[marketing-engine] campaign ${campaignId} paused send_error: ${shop.detail}`);
+    return pauseFor(c, shop.reason as EngineStopReason, shop.detail, deps);
+  }
   if (shop.shopWide && !shop.pause) {
     if (shop.reason === "not_running") return notRunning(campaignId, deps);
     if (shop.reason === "before_send_unanswered") {
@@ -799,7 +828,13 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
     }
     // ⛔ The send-age bound: the claim grew too old to send — its people went back as they were, and the slow gate was
     // measured above, so the next slice is smaller.
-    if (shop.reason === SLICE_TOO_SLOW) return { kind: "waiting", reason: "slice_too_slow", until: null };
+    if (shop.reason === SLICE_TOO_SLOW) {
+      if ((tooSlow[campaignId] ?? 0) >= SLICE_TOO_SLOW_MAX) {
+        delete tooSlow[campaignId];
+        return pauseFor(c, "slice_too_slow", `${SLICE_TOO_SLOW_MAX} slices running too slow to send at size ${state.sliceSize}`, deps);
+      }
+      return { kind: "waiting", reason: "slice_too_slow", until: null };
+    }
     return { kind: "waiting", reason: "window_unreadable", until: null };
   }
   return {

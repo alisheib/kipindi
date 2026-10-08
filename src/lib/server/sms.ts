@@ -550,7 +550,11 @@ export type SmsFailureCode =
   | "BAD_MSISDN"
   | "REJECTED"
   | "TRANSPORT"
-  | "UNKNOWN";
+  | "UNKNOWN"
+  /** U43b-2 review · an all-MARKETING batch whose caller's deadline (`SmsBatchOptions.notAfter`) passed before its
+   *  request: refused whole before any row is written, or — when it passed while the rows were being written — those rows
+   *  FAILED with no request made. Never an OTP: an OTP never meets a deadline. */
+  | "DEADLINE_PASSED";
 
 /** A typed failure, so a caller can branch without regex-ing prose. */
 export class SmsError extends Error {
@@ -627,7 +631,22 @@ export type SmsBatchOptions = {
    * and holds the whole batch `MARKETING_FLOOR` on a CONFIRMED reading below it. ⛔ An OTP never passes it.
    */
   minimumBalanceTzs?: number;
+  /**
+   * ⛔ U43b-2 review · THE CALLER'S DEADLINE, in epoch milliseconds — the campaign engine's send-age bound: the oldest claim
+   * of its slice plus `CLAIM_SEND_MAX_AGE_MS`, after which a reaper may release that claim (it finds no row) and a second
+   * slice would send the same people again. It judges ONLY a batch whose every message is MARKETING (an OTP, an invite or a
+   * test never passes it, and a batch carrying one is never held by it), checked TWICE: just before the rows are written
+   * — passed: the whole batch refused `DEADLINE_PASSED`, nothing written, no request — and just before each request —
+   * passed (the write itself stalled): no request, those rows FAILED (no receipt token, so the reaper releases them).
+   * ⛔ A deadline that is not a finite figure holds the batch: a malformed option never opens the rail.
+   */
+  notAfter?: number;
 };
+
+/** U43b-2 review · has the caller's deadline passed (a malformed one has)? Only ever asked for an all-MARKETING batch. */
+function deadlinePassed(notAfter: number): boolean {
+  return !Number.isFinite(notAfter) || Date.now() >= notAfter;
+}
 
 /** U49a · a CONFIRMED reading under the credit kept for codes: a live figure (one past the TTL is stale) strictly
  *  below it. ⛔ UNKNOWN IS NOT LOW — no reading, or a stale one, never holds a batch here (the engine fails closed). */
@@ -792,6 +811,16 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
     }
   }
 
+  // ⛔ U43b-2 review · THE CALLER'S DEADLINE (`notAfter`) — CHECK 1 OF 2, before any row is written. Judged ONLY when the
+  // caller set it AND every prepared message is MARKETING (an OTP, an invite or a test never passes it, and a batch carrying
+  // one is never held by it). Passed — or not a figure: the WHOLE batch refused `DEADLINE_PASSED`, nothing written, no
+  // request (the engine reads it as its `slice_too_slow` wait: its people go back as they were).
+  const notAfter = opts?.notAfter;
+  const deadlineApplies = notAfter !== undefined && prepared.every((p) => p.out.purpose === "MARKETING");
+  if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+    return refuse("DEADLINE_PASSED", "the deadline for this batch passed before it was written — nothing was written or sent");
+  }
+
   const nowIso = new Date().toISOString();
   const senderId = (process.env.SMS_SENDER_ID ?? "").trim();
   // 🔴 THE STORED MSISDN MUST BE THE WIRE FORM, NOT THE STORED E.164.
@@ -830,6 +859,28 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
   let balance = smsBalanceSnapshot().tzs;
 
   for (const group of chunk(prepared, BATCH_MAX)) {
+    // ⛔ U43b-2 review · THE CALLER'S DEADLINE — CHECK 2 OF 2, immediately before the request: the row write itself may have
+    // stalled past it (an INSERT waiting on a lock or a half-open socket — the one wait here with no bound of its own), and a
+    // request made now could reach people a reaper has meanwhile released for another slice to send. So NO request: those
+    // rows FAILED with no receipt token — nothing left the building, and the reaper's rule releases such a row (+1).
+    // ⛔ No health count and no OTP-failure mark: the network was never asked, and the batch is MARKETING only.
+    if (deadlineApplies && notAfter !== undefined && deadlinePassed(notAfter)) {
+      const detail = "the deadline for this batch passed while its rows were written — no request was made";
+      const failedAt = new Date().toISOString();
+      for (const p of group) {
+        await db.smsMessage.update(p.reference, { status: "FAILED", providerMsg: detail, failedAt });
+        results[p.index] = { reference: p.reference, to: p.out.to, ok: false, error: detail, code: "DEADLINE_PASSED", targetType: p.out.targetType ?? null, targetId: p.out.targetId ?? null };
+      }
+      audit({
+        category: "SYSTEM",
+        action: "sms.failed",
+        actorId: null,
+        targetType: null,
+        targetId: null,
+        payload: { provider: transport.name, count: group.length, code: "DEADLINE_PASSED", detail },
+      });
+      continue;
+    }
     let outcome: ChunkOutcome;
     // The reply's balance is as of this request, so it is stamped with when it was asked (see recordBalance).
     const askedAt = Date.now();
