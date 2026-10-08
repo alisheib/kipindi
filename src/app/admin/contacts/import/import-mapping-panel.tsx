@@ -72,7 +72,11 @@ export function ImportMappingPanel({
   const verdict = validateMapping(reading.headers, mapping);
   const canTurnFirstRow = !source.list && file.format !== "vcard" && reading.refusal === null && file.rows.length > 0;
   const changed = !sameMapping(mapping, initial.mapping) || reading.headerless !== initial.headerless;
-  const held = reading.refusal ?? (verdict.ok ? (total === 0 ? ENTRANCE.empty : null) : verdict.sentence);
+  // ⭐ No phone column found: U28's own sentence (it names the columns found — a cover sheet read in place of the contacts
+  // is recognised by them), and the panel's way on beside it.
+  const noPhone = mapping.phone === undefined;
+  const phoneHeld = noPhone && reading.phoneProblem !== null ? `${reading.phoneProblem} ${MAPPING.pickPhone}` : null;
+  const held = reading.refusal ?? (total === 0 ? ENTRANCE.empty : phoneHeld ?? (verdict.ok ? null : verdict.sentence));
   const nextReason = !mayAct ? (actReason ?? null) : held;
 
   /** The officer's word on the first row: the columns are read again from it, and the mapping starts over. */
@@ -117,6 +121,11 @@ export function ImportMappingPanel({
         </Callout>
       )}
       {file.format === "vcard" && <p className="text-body-sm text-text-secondary">{MAPPING.vcard}</p>}
+      {/* ⭐ A workbook whose first visible sheet holds no phone column (a cover sheet): the reader read that sheet, and
+          the officer is told which one is read and how to put the contacts first. */}
+      {file.format === "xlsx" && noPhone && !reading.headerless && reading.refusal === null && (
+        <Callout tone="warning" role="status">{MAPPING.sheetHint}</Callout>
+      )}
 
       {canTurnFirstRow && (
         <Checkbox

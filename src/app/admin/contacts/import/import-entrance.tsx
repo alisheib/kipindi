@@ -73,7 +73,7 @@ export function ImportEntrance({
     <div className="space-y-4" data-block="import-entrance" data-state={mode.kind}>
       {resume !== null ? (
         <Callout tone="info" role="status">
-          <Parts parts={RESUME_FILE.lead(resume.format === "paste" ? null : resume.fileName, resume.nextFrom ?? resume.stagedThrough + 1)} />
+          <Parts parts={RESUME_FILE.lead(resume.format === "paste", resume.fileName, resume.nextFrom ?? resume.stagedThrough + 1)} />
         </Callout>
       ) : (
         <p className="text-body-sm text-text-secondary">{ENTRANCE.lead}</p>

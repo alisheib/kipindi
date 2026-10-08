@@ -14,7 +14,7 @@
 import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
 import type { PreflightBucket } from "@/lib/contacts/import-flow";
-import { formatFileSize, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
+import { formatFileSize, PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
 
 /* ══ PARTS — a sentence with figures in it ═══════════════════════════════════════════════════════ */
 
@@ -87,14 +87,17 @@ export const ENTRANCE = {
   readingStop: "Stop reading",
   xlsx: "Reading the Excel file on the server…",
   xlsxGarbled: "The server's reading of this workbook didn't arrive in one piece. Choose the file again.",
+  /** After a CSV the reader refused for its structure: the second way on, for an officer who cannot find the row. The ONE
+   *  phone-format remedy is interpolated (A1.6), never retyped. */
+  csvFix: `If you can't find it, open the file in Excel or Google Sheets and save it again as CSV UTF-8 — before you save, ${PHONE_FORMAT_REMEDY} — then choose it again.`,
   empty: "This file has no contacts in it. Choose the file that holds the contacts.",
   guardBody: "A file is being read or a paste is waiting. Leaving now discards it — nothing has been imported.",
 } as const;
 
 /** The entrance when an unfinished upload is being carried on: the same file must be chosen again. */
 export const RESUME_FILE = {
-  lead: (name: string | null, nextRow: number): Part[] => [
-    name === null ? "Paste the same text again" : `Choose ${name} again`,
+  lead: (pasted: boolean, name: string | null, nextRow: number): Part[] => [
+    pasted ? "Paste the same text again" : name === null ? "Choose the same file again" : `Choose ${name} again`,
     " — it is read again here, and the upload carries on from row ",
     fig(nextRow),
     ".",
@@ -109,7 +112,7 @@ export const RESUME_FILE = {
 export const ADOPT = {
   lead: "Nothing is lost when a tab closes, the page reloads or the platform is updated — carry on, or stop it here.",
   startedBy: (who: string, when: string): string => (who === "you" ? `Started by you ${when}.` : `Started by ${who} ${when}.`),
-  file: (name: string | null): string => (name === null ? "Pasted contacts" : name),
+  file: (pasted: boolean, name: string | null): string => (pasted ? "Pasted contacts" : name ?? "A contacts file"),
   staging: (staged: number, total: number): Part[] => [
     "Uploading stopped after ", fig(staged), " of ", fig(total), ` ${plural(total, "row", "rows")}. Nothing is in the contact book yet.`,
   ],
@@ -144,6 +147,8 @@ export const MAPPING = {
   notUsed: "Not used",
   noValues: "Empty",
   unnamed: "No column name",
+  pickPhone: "Or use Change on the column that holds the phone numbers.",
+  sheetHint: "An Excel file is read from its first visible sheet. If the contacts are on another sheet, move that sheet to the front or hide the sheets before it, save, and choose the file again.",
   nameWins: "The Name column is used, so this one is not read.",
   cannotRead: "This column can't be read.",
   tableLabel: "The file's columns",
@@ -281,8 +286,9 @@ export const LIST = {
   newList: "A new list",
   newListLabel: "Name of the new list",
   members: (n: number): Part[] => [fig(n), ` ${plural(n, "member", "members")}`],
-  covered: "Basis recorded",
-  notCovered: "No basis recorded",
+  /** The list's NEWEST basis recording is in force — for its members today (`owed` says what the import's new ones need). */
+  covered: "Ready for offers",
+  notCovered: "Not ready — record its basis on the Lists card",
   exists: "A list with this name already exists, so the contacts are added to it.",
   loading: "Loading your lists…",
   failed: "Your lists couldn't be loaded. You can import without a list, or try again.",

@@ -526,9 +526,10 @@ export async function commitContactImportStep(officerId: string, input: unknown,
     return importRefusal("server_error", await importRunView(officerId, run, deps));
   };
 
-  let plan = await planStep(run, window, choice, overrides, officerId, at, deps);
-  if (plan === null) return unplanned();
-  let result = await deps.commitBatch(batchOf(plan));
+  const firstPlan = await planStep(run, window, choice, overrides, officerId, at, deps);
+  if (firstPlan === null) return unplanned();
+  let plan: StepPlan = firstPlan;
+  let result: ContactImportCommitResult = await deps.commitBatch(batchOf(plan));
   let redecided = 0;
   let movedRows = 0;
   while (result.kind === "conflict" && redecided < deps.maxRedecides) {

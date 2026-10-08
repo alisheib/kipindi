@@ -360,12 +360,17 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       });
     } catch {
       // The browser could not read the file (it moved, or permission went): choosing it again is the way on.
-      out = { kind: "refused", sentence: IMPORT_FAULT };
+      out = { kind: "refused", sentence: IMPORT_FAULT, cause: "format" };
     }
     if (abortRead.current === controller) abortRead.current = null;
     if (!alive.current) return;
     if (out.kind === "aborted") return go({ at: "entrance", resume, mode: IDLE });
-    if (out.kind === "refused") return go({ at: "entrance", resume, mode: IDLE }, { tone: "danger", text: out.sentence, actions: [] });
+    if (out.kind === "refused") {
+      // ⭐ The reader's own sentence (it names the row and the fix); a CSV refused for its structure gets the second way on
+      // — saving it again from a spreadsheet — for an officer who cannot find that row. The entrance below is the third.
+      const text = out.cause === "csv" ? `${out.sentence} ${ENTRANCE.csvFix}` : out.sentence;
+      return go({ at: "entrance", resume, mode: IDLE }, { tone: "danger", text, actions: [] });
+    }
     if (out.kind === "parsed") {
       prepare({ file: out.file, digest: out.digest, name: file.name || null, list: false, extraNumbers: out.extraNumbers, extraUnit: "card" }, resume);
       return;

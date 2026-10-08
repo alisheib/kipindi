@@ -79,6 +79,8 @@ export type ImportRunView = {
   createdAt: string;
   updatedAt: string;
   pausedAt: string | null;
+  /** S15 (the server builder) · named as `startedBy` is — "you", the officer's display name, or "another officer" —
+   *  never an id. Null when the run was never paused. */
   pausedBy: string | null;
   finishedAt: string | null;
   decision: ImportRunDecision | null;

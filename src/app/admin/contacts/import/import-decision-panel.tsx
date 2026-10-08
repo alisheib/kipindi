@@ -254,7 +254,7 @@ export function ImportDecisionPanel({
                   <label
                     key={c}
                     data-import-choice={c}
-                    className={`flex min-h-[var(--tap-min)] cursor-pointer items-start gap-[10px] rounded-md border px-3 py-2.5 text-body-sm transition-colors ${
+                    className={`flex min-h-[var(--tap-min)] cursor-pointer items-start gap-[10px] rounded-md border px-3 py-[10px] text-body-sm transition-colors ${
                       on ? "border-royal-700 bg-royal-500/10" : "border-border hover:border-border-strong"
                     }`}
                   >
@@ -488,7 +488,7 @@ function ListCard({
   return (
     <label
       data-import-list-option={value}
-      className={`flex min-h-[var(--tap-min)] cursor-pointer items-start gap-[10px] rounded-md border px-3 py-2.5 text-body-sm transition-colors ${
+      className={`flex min-h-[var(--tap-min)] cursor-pointer items-start gap-[10px] rounded-md border px-3 py-[10px] text-body-sm transition-colors ${
         checked ? "border-royal-700 bg-royal-500/10" : "border-border hover:border-border-strong"
       }`}
     >

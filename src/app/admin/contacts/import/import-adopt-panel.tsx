@@ -50,7 +50,7 @@ export function ImportAdoptPanel({
     <div className="space-y-4" data-block="import-adopt" data-run-status={view.status}>
       <p className="text-body-sm text-text-secondary">{ADOPT.lead}</p>
       <div className="space-y-1 rounded-md border border-border-subtle p-3">
-        <p className="text-body font-semibold text-text break-words" data-import-file-name>{ADOPT.file(view.format === "paste" ? null : view.fileName)}</p>
+        <p className="text-body font-semibold text-text break-words" data-import-file-name>{ADOPT.file(view.format === "paste", view.fileName)}</p>
         <p className="text-body-sm text-text-secondary">{startedLine}</p>
         {view.status === "PAUSED" && view.pausedBy !== null && (
           <p className="text-body-sm text-text-secondary">{ADOPT.paused(view.pausedBy, whenText(when(view.pausedAt)))}</p>

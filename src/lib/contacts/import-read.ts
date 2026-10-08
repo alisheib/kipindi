@@ -156,14 +156,18 @@ export function bytesToBase64(bytes: Uint8Array): string {
 export type ReadProgress = (read: number, total: number | null, rows: number) => void;
 export type ReadOptions = { readonly onProgress: ReadProgress; readonly signal?: AbortSignal };
 
+/** Why a file was refused: not a kind any reader takes ("format"), a CSV whose structure the reader refused ("csv": a
+ *  quotation mark never closed, a cell past Excel's limit), or past a cap ("size"). The dialog adds its way on for each. */
+export type ReadRefusalCause = "format" | "csv" | "size";
+
 export type ReadOutcome =
   | { readonly kind: "parsed"; readonly file: ParsedContactsFile; readonly digest: string; readonly extraNumbers: number }
   | { readonly kind: "xlsx"; readonly base64: string; readonly digest: string; readonly fileName: string }
-  | { readonly kind: "refused"; readonly sentence: string }
+  | { readonly kind: "refused"; readonly sentence: string; readonly cause: ReadRefusalCause }
   /** The caller's signal stopped the read (the officer pressed Stop, or closed the dialog). Nothing is kept. */
   | { readonly kind: "aborted" };
 
-const refused = (sentence: string): ReadOutcome => ({ kind: "refused", sentence });
+const refused = (sentence: string, cause: ReadRefusalCause = "format"): ReadOutcome => ({ kind: "refused", sentence, cause });
 
 /** A file named for Apple Numbers. Its bytes are a zip, which only the server's zip walk could tell from a workbook, so
  *  the name decides — in the copy table's own words for a file that is not a workbook (C18). */
@@ -244,7 +248,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
   if (detected.kind === "xlsx") {
     if (namedNumbers(name)) return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
     // ⛔ OVER THE CAP: refused here, before a byte is uploaded — the server would answer 413 in Next's own words.
-    if (size > XLSX_MAX_BYTES) return refused(xlsxRefusalSentence("too_large", { bytes: size }));
+    if (size > XLSX_MAX_BYTES) return refused(xlsxRefusalSentence("too_large", { bytes: size }), "size");
     opts.onProgress(size, size, 0);
     return { kind: "xlsx", base64: bytesToBase64(head), digest: await sha256Hex(head), fileName: name ?? "workbook.xlsx" };
   }
@@ -291,7 +295,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
       }
       // ⛔ CRASH CONTROL — past the run's cap (a header row allowed for), the read stops and says why.
       if (recordsSoFar() > IMPORT_MAX_ROWS + 1) {
-        stopped = refused(READ_TOO_MANY_ROWS);
+        stopped = refused(READ_TOO_MANY_ROWS, "size");
         break;
       }
       report(false);
@@ -313,12 +317,12 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
     parsed = { ...card, notes: note === null ? [...card.notes] : [...card.notes, note] };
   } else if (csvReader !== null) {
     const result = csvReader.end();
-    if (!result.ok) return refused(result.sentence);
+    if (!result.ok) return refused(result.sentence, "csv");
     parsed = result.file;
   } else {
     return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
   }
-  if (parsed.rows.length + parsed.unreadable.length > IMPORT_MAX_ROWS + 1) return refused(READ_TOO_MANY_ROWS);
+  if (parsed.rows.length + parsed.unreadable.length > IMPORT_MAX_ROWS + 1) return refused(READ_TOO_MANY_ROWS, "size");
 
   // ⭐ THE DIGEST IS OVER THE EXACT BYTES — read once more, whole, after the streamed parse: `crypto.subtle` has no
   // incremental digest, and a second read of the same File is the same bytes.
@@ -570,6 +574,10 @@ export type FileMapping = {
   readonly synthetic: boolean;
   /** A refusal no column choice can fix (a masked export), in U28's words — or null. */
   readonly refusal: string | null;
+  /** No column was recognised as the phone number: U28's own sentence for it (it names the columns found, which is how
+   *  an officer recognises a cover sheet read in place of the contacts) — or null. NOT a refusal: the officer may pick
+   *  the column on the panel; `validateMapping` holds Next until one is chosen. */
+  readonly phoneProblem: string | null;
   /** Each column as the panel first draws it: its status and U28's note. */
   readonly columns: readonly MappedColumn[];
 };
@@ -676,13 +684,18 @@ export function mappingFor(file: ParsedContactsFile, opts: MappingOptions = {}):
   if (opts.list === true && file.format === "paste") {
     const headers = [labelOf("phone"), labelOf("name")];
     const mapping: ColumnMapping = { phone: 0, name: 1 };
-    return { headers, mapping, headerRows: 0, headerless: false, synthetic: true, refusal: null, columns: columnsFor(headers, mapping) };
+    return {
+      headers, mapping, headerRows: 0, headerless: false, synthetic: true, refusal: null, phoneProblem: null, columns: columnsFor(headers, mapping),
+    };
   }
   const firstRow = file.rows[0]?.cells ?? [];
   if (file.format === "vcard") {
     const auto = autoMapFile("vcard", firstRow);
     const headers = auto.columns.map((c) => c.header);
-    return { headers, mapping: { ...auto.mapping }, headerRows: 0, headerless: false, synthetic: true, refusal: auto.refusal, columns: auto.columns };
+    return {
+      headers, mapping: { ...auto.mapping }, headerRows: 0, headerless: false, synthetic: true, refusal: auto.refusal, phoneProblem: null,
+      columns: auto.columns,
+    };
   }
   const width = Math.max(file.width, firstRow.length);
   const padded = Array.from({ length: width }, (_, i) => firstRow[i] ?? "");
@@ -695,9 +708,17 @@ export function mappingFor(file: ParsedContactsFile, opts: MappingOptions = {}):
   if (headerless) {
     const headers = Array.from({ length: width }, (_, i) => syntheticHeader(i));
     const mapping = guessHeaderless(file);
-    return { headers, mapping, headerRows: 0, headerless: true, synthetic: true, refusal: null, columns: columnsFor(headers, mapping) };
+    return {
+      headers, mapping, headerRows: 0, headerless: true, synthetic: true, refusal: null, phoneProblem: null, columns: columnsFor(headers, mapping),
+    };
   }
-  return { headers: padded, mapping: { ...auto.mapping }, headerRows: 1, headerless: false, synthetic: false, refusal: hard, columns: auto.columns };
+  // U28's "no Phone column" sentence, kept as the reason Next waits — never its headerless sentence, which only reads
+  // when the officer has said the first row IS column names.
+  const phoneProblem = hard === null && auto.mapping.phone === undefined && !auto.headerless ? auto.refusal : null;
+  return {
+    headers: padded, mapping: { ...auto.mapping }, headerRows: 1, headerless: false, synthetic: false, refusal: hard, phoneProblem,
+    columns: auto.columns,
+  };
 }
 
 /* ══ THE PREVIEW — the only way the panel shows a cell ════════════════════════════════════════════ */
