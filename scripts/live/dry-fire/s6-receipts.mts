@@ -65,9 +65,21 @@ export async function receipts(h: Harness, n: number): Promise<Record<string, un
     return out;
   };
   const posts: { lines: number; status: number; body: string }[] = [];
+  // after EVERY callback every recipient is read again: a status may only ever move forward, step by step — a row that flips to FAILED and
+  // back to DELIVERED would look like a plain SENT → DELIVERED at the end
+  const lastSeen = new Map(rows0.map((r) => [r.id, r.status]));
+  const flips: string[] = [];
+  const watch = async (what: string): Promise<void> => {
+    for (const r of await h.reader.recipients(id)) {
+      const was = lastSeen.get(r.id);
+      if (was !== undefined && !ALLOWED[was].includes(r.status)) flips.push(`${was} → ${r.status} (${what})`);
+      lastSeen.set(r.id, r.status);
+    }
+  };
   const post = async (lines: ReceiptLine[], o: { token?: string | null } = {}): Promise<void> => {
     const res = await postReceipts(h, lines, o);
     posts.push({ lines: lines.length, status: res.status, body: res.body });
+    await watch(`callback ${posts.length}`);
   };
   // the vendor posts several lines to a callback; chunk each group in threes and fifties alike
   const chunked = async (lines: ReceiptLine[]): Promise<void> => {
@@ -101,6 +113,7 @@ export async function receipts(h: Harness, n: number): Promise<Record<string, un
   // the wrong secret, and no secret
   const bad = await postReceipts(h, [line(g.delivered[0], "UNDELIV", "forged")], { token: "not-the-secret-0123456789" });
   const none = await postReceipts(h, [line(g.delivered[0], "UNDELIV", "forged")], { token: null });
+  await watch("the forged callbacks");
 
   const rows1 = await h.reader.recipients(id);
   const after = new Map(rows1.map((r) => [r.id, r]));
@@ -131,7 +144,7 @@ export async function receipts(h: Harness, n: number): Promise<Record<string, un
     const a = after.get(rid);
     if (a === undefined || !ALLOWED[b.status].includes(a.status)) backwards.push(`${b.status} → ${a?.status}`);
   }
-  claimNow(h, "S6.forward", "every recipient's status only ever moved forward — to DELIVERED or FAILED from SENT or UNCONFIRMED — and none went back to PENDING", backwards.length === 0, backwards.length === 0 ? `${num(before.size)} rows checked` : [...new Set(backwards)].join(", "));
+  claimNow(h, "S6.forward", "every recipient's status only ever moved forward, callback by callback — to DELIVERED or FAILED from SENT or UNCONFIRMED, never across, never back to PENDING", backwards.length === 0 && flips.length === 0, backwards.length === 0 && flips.length === 0 ? `${num(before.size)} rows checked after each of ${posts.length + 2} callbacks` : [...new Set([...backwards, ...flips])].slice(0, 4).join(", "));
 
   const audit = (await h.reader.audit(h.startedAt)).filter((e) => e.action === "sms.dlr.received");
   const withLines = posts.filter((p) => p.lines > 0).length;

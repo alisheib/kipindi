@@ -35,6 +35,8 @@ async function until(cond: () => boolean, what: string): Promise<void> {
 /** Three steps that die in three different places, each after claiming its people. */
 async function crashRound(h: Harness, id: string, tag: string): Promise<Round> {
   const { S } = h;
+  // this round's claims are the ones taken from here on: an earlier round's claim that a broken reaper never settled is not one of them
+  const roundStart = h.clock.now();
   const real = S.engine.ENGINE_DEPS;
   // c1 · dies after the claim, before the gate
   const X1 = h.fresh(`${tag}1`);
@@ -55,7 +57,7 @@ async function crashRound(h: Harness, id: string, tag: string): Promise<Round> {
   X3.tweak({ recipients: { ...real.recipients, settle: async () => { throw new CrashError("the process died before the settle (dry-fire)"); } } });
   const died3 = await X3.control.slice(id).then(() => null, (e: unknown) => e);
   if (!(died1 instanceof CrashError) || !(died3 instanceof CrashError)) throw new Error("dry-fire crash: a doomed step did not die where it was meant to");
-  const stranded = (await h.reader.recipients(id)).filter((r) => r.status === "PENDING" && r.claimToken !== null);
+  const stranded = (await h.reader.recipients(id)).filter((r) => r.status === "PENDING" && r.claimToken !== null && Date.parse(r.claimedAt ?? "") >= roundStart);
   const tokens = [...new Set(stranded.sort((a, b) => Date.parse(a.claimedAt ?? "") - Date.parse(b.claimedAt ?? "") || (a.id < b.id ? -1 : 1)).map((r) => r.claimToken as string))];
   if (tokens.length !== 3) throw new Error(`dry-fire crash: expected three stranded claims, found ${tokens.length}`);
   const msgs = await h.reader.messagesOf(stranded.map((r) => r.id));
@@ -143,7 +145,8 @@ export async function crash(h: Harness, n: number): Promise<Record<string, unkno
   claimNow(h, "S5.once", "after both rounds every sendable person reached the carrier EXACTLY once — released people are sent once, UNCONFIRMED people are never re-sent, SENT-from-evidence people never again — and everyone refused stayed refused",
     wrong.length === 0 && camp?.status === "DONE" && end.end === "terminal", wrong.length === 0 ? `${statusLine(counts)}; ${num(handed.size)} numbers handed once` : wrong.slice(0, 4).join("; "));
 
-  // the RG lines of people a crashed step had already refused are written again when they are gated again (a refusal acted on twice)
+  // the RG lines of people a crashed step had already refused (its gate ran and wrote the line, its settle never came) are one more than
+  // their rows: written once at the crash and again when the reaper has released them and they are gated again — a refusal acted on twice
   const regated = [...A.c2.rows, ...A.c3.rows, ...B.c2.rows, ...B.c3.rows].filter((r) => {
     const p = personOf(r);
     return !p.expect.send && "reason" in p.expect && p.expect.reason.startsWith("rg_") && !hadMsg(groupsAll, r);

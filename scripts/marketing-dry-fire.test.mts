@@ -24,7 +24,8 @@
  * a failure anywhere else is reported, never counted as a catch. Every invariant must be bitten by at least one plant.
  * ⛔ IN-PROCESS: no file is written, no database is touched (the database variables are removed below, before the first server module
  * loads), no SMS can leave (the rail is the harness's fake carrier at an address that cannot resolve).
- * ⛔ HEAVY JOBS: none. `--plant=R3,R7` runs the named plants only.
+ * ⛔ HEAVY JOBS: none. `--plant=R3,R7` runs the named plants only; `--detail` prints what each failing invariant and claim said;
+ * `--explore` skips the suite baseline (for building a plant — it never exits 0).
  * ⛔ This file holds no backslash (an editing tool decodes them): line breaks and patterns are built from codes and classes.
  *
  * Run: `npm run test:marketing-dry-fire` · Red: `npm run red:marketing-dry-fire`
@@ -45,6 +46,9 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
 const PROVE_RED = process.argv.includes("--prove-red");
+const DETAIL = process.argv.includes("--detail");
+/** Exploring a plant: the suite baseline is skipped (each plant still demands the green baseline of its own scenarios). Never for a verdict. */
+const EXPLORE = process.argv.includes("--explore");
 const plantArg = process.argv.find((a) => a.startsWith("--plant="));
 const ONLY_PLANTS: string[] | null = plantArg === undefined ? null : plantArg.slice("--plant=".length).split(",").map((x) => x.trim()).filter((x) => x !== "");
 
@@ -401,7 +405,7 @@ const PLANTS: Plant[] = [
   {
     id: "R1", name: "the engine's send reaches the wire twice (a retry wrapper that sends the batch again after every reply)", only: [1],
     seams: () => ({ engine: (d) => ({ ...d, send: async (messages, opts) => { await d.send(messages, opts); return d.send(messages, opts); } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV1"], claims: ["S1.wire"] },
   },
   {
     id: "R2", name: "the transport delivers every request to the carrier twice (a proxy that retries the POST; the engine sees one reply)", only: [1],
@@ -417,29 +421,35 @@ const PLANTS: Plant[] = [
         return () => { globalThis.fetch = inner; };
       },
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV1"], claims: ["S1.wire"] },
   },
   {
     id: "R3", name: "the reaper releases a row whose message exists (it settles from 'no message' whatever the evidence says)", only: [5],
     seams: () => ({ engine: (d) => ({ ...d, rules: { ...d.rules, reapVerdict: (row, _evidence, at) => d.rules.reapVerdict(row, null, at) } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV1"], claims: ["S5.once", "S5.reap"] },
   },
   {
-    id: "R4", name: "the claim is not exclusive (a second process re-takes rows another still holds)", only: [2],
-    seams: () => ({
-      engine: (d) => ({
-        ...d,
-        recipients: {
-          ...d.recipients,
-          claim: async (campaignId, limit, token, at) => {
-            const held = await d.recipients.findStranded(campaignId, FUTURE(), limit);
-            if (held.length > 0) await d.recipients.settle(held.map((r) => ({ id: r.id, claimToken: r.claimToken as string, to: "PENDING" as const, attemptsDelta: 0 as const })), at);
-            return d.recipients.claim(campaignId, limit, token, at);
+    id: "R4", name: "the claim is not exclusive (a second process re-takes rows another holds even once their messages are on the wire — each row once, so the run still ends)", only: [2],
+    seams: () => {
+      const taken = new Set<string>();
+      return {
+        engine: (d) => ({
+          ...d,
+          recipients: {
+            ...d.recipients,
+            claim: async (campaignId, limit, token, at) => {
+              const held = (await d.recipients.findStranded(campaignId, FUTURE(), limit)).filter((r) => !taken.has(r.id));
+              const onWire = new Set((await d.messages.findByTargets("SmsCampaignRecipient", held.map((r) => r.id))).map((m) => m.targetId));
+              const steal = held.filter((r) => onWire.has(r.id));
+              for (const r of steal) taken.add(r.id);
+              if (steal.length > 0) await d.recipients.settle(steal.map((r) => ({ id: r.id, claimToken: r.claimToken as string, to: "PENDING" as const, attemptsDelta: 0 as const })), at);
+              return d.recipients.claim(campaignId, limit, token, at);
+            },
           },
-        },
-      }),
-    }),
-    expect: { inv: [], claims: [] },
+        }),
+      };
+    },
+    expect: { inv: ["INV1"], claims: ["S2.procs.once", "S2.procs.overlap"] },
   },
   {
     id: "R5", name: "a lost reply is settled as 'not sent' (UNCONFIRMED rows are released back to PENDING and go again after Resume)", only: [4],
@@ -452,91 +462,94 @@ const PLANTS: Plant[] = [
         },
       }),
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV1"], claims: ["S4.lost.never", "S4.lost.unconfirmed", "S4.throw.after", "S4.throw.after.resume"] },
   },
   {
     id: "R22", name: "a send that threw cannot find its own messages (the evidence read answers 'none', so a row that reached the wire is released)", only: [4],
     seams: () => ({ engine: (d) => ({ ...d, messages: { findByTargets: async () => [] } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV1"], claims: ["S4.throw.after", "S4.throw.after.resume"] },
   },
   {
-    id: "R29", name: "the duplicate contact row survives the unique key (its number is written in the trunk-zero spelling, so it is a person of its own)", only: [1],
-    seams: () => {
-      const seen = new Set<string>();
-      return {
-        enqueue: (d) => ({
-          ...d,
-          recipients: {
-            ...d.recipients,
-            createMany: (seeds) => d.recipients.createMany(seeds.map((s) => {
-              const k = `${s.campaignId}|${s.msisdn}`;
-              if (!seen.has(k)) { seen.add(k); return s; }
-              return { ...s, msisdn: `${s.msisdn.slice(0, 3)}0${s.msisdn.slice(3)}` };
-            })),
-          },
-        }),
-      };
-    },
-    expect: { inv: [], claims: [] },
+    id: "R29", name: "the unique key is gone (the list keeps every seed, so a duplicate contact row is a second recipient of the same number)", only: [1],
+    seams: () => ({
+      store: (h) => {
+        const dal = h.S.db.smsCampaignRecipient as unknown as { createMany: (seeds: Array<Record<string, unknown>>) => { inserted: number; duplicates: number } };
+        const real = dal.createMany;
+        dal.createMany = (seeds) => {
+          const rows = IO.memStore().smsCampaignRecipients;
+          for (const s of seeds) {
+            rows.set(s.id as string, {
+              id: s.id, campaignId: s.campaignId, msisdn: s.msisdn, contactId: s.contactId, userId: s.userId, status: "PENDING", smsReference: null,
+              optOutToken: s.optOutToken, locale: null, failureClass: null, error: null, skipReason: null, skipDetail: null, claimToken: null,
+              claimedAt: null, attempts: 0, segments: null, bodyLen: null, costTzs: null, gateTrail: null, createdAt: s.createdAt, updatedAt: s.createdAt,
+              sentAt: null, deliveredAt: null, failedAt: null,
+            } as never);
+          }
+          return { inserted: seeds.length, duplicates: 0 };
+        };
+        return () => { dal.createMany = real; };
+      },
+    }),
+    expect: { inv: ["INV1", "INV2"], claims: ["S1.enqueue", "S1.wire"] },
   },
   /* ── INV2 · EVERY ROW TERMINAL ── */
   {
     id: "R6", name: "HELD rows are not counted when the campaign is finished (the count drops the status, so the campaign ends DONE with people parked)", only: [4],
     seams: () => ({ engine: (d) => ({ ...d, recipients: { ...d.recipients, countByStatus: async (id) => (await d.recipients.countByStatus(id)).map((c) => (c.status === "HELD" ? { ...c, count: 0 } : c)) } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV2"], claims: ["S4.held.pause", "S4.held.resume"] },
   },
   {
     id: "R7", name: "the reaper never finds a stranded claim (its question answers 'nobody'), so a dead step's rows stay claimed for ever", only: [5],
     seams: () => ({ engine: (d) => ({ ...d, recipients: { ...d.recipients, findStranded: async () => [] } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV2"], claims: ["S5.once", "S5.reap"] },
   },
   /* ── INV3 · NOBODY PROTECTED IS SENT ── */
   {
     id: "R8", name: "the gate skips the stop list (a suppressed number is cleared)", only: [1],
     seams: () => ({ gate: (real) => async (msisdn) => { const v = await real(msisdn); return !v.ok && v.skipReason === "suppressed" ? CLEARED : v; } }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV3"], claims: ["S1.outcomes", "S1.stops", "S1.wire"] },
   },
   {
     id: "R9", name: "the gate lets a self-excluded or cooling-off player through (a responsible-gambling refusal is cleared)", only: [1],
     seams: () => ({ gate: (real) => async (msisdn) => { const v = await real(msisdn); return !v.ok && v.skipReason.startsWith("rg_") ? CLEARED : v; } }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV3"], claims: ["S1.outcomes", "S1.wire"] },
   },
   /* ── INV4 · COUNTS ADD UP ── */
   {
     id: "R10", name: "the live page counts HELD as done (the plan's own red: people parked read as finished)", only: [4],
     seams: () => ({ view: (d) => ({ ...d, rules: { ...d.rules, progress: (c, counts) => d.rules.progress(c, { ...counts, SENT: counts.SENT + counts.HELD, HELD: 0 }) } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV4"], claims: ["S4.held.bar"] },
   },
   {
     id: "R11", name: "the live page's groupBy loses a status (SKIPPED), so its figures no longer add up to the rows", only: [1],
     seams: () => ({ view: (d) => ({ ...d, recipients: { ...d.recipients, countByOutcome: async (id) => (await d.recipients.countByOutcome(id)).filter((g) => g.status !== "SKIPPED") } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV4"], claims: [] },
   },
   {
     id: "R12", name: "the bar forgets DELIVERED (a receipt takes a person OUT of the done count, so the bar steps back)", only: [6],
     seams: () => ({ view: (d) => ({ ...d, rules: { ...d.rules, progress: (c, counts) => d.rules.progress(c, { ...counts, DELIVERED: 0 }) } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV4"], claims: [] },
   },
   /* ── INV5 · AUDIT ── */
   {
     id: "R13", name: "an engine pause writes no audit row", only: [4],
     seams: () => ({ engine: (d) => ({ ...d, audit: async (e) => (e.action === "marketing.campaign_paused" ? { recorded: true } : d.audit(e)) }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV5"], claims: ["S4.refuse.pause", "S4.slow.gate", "S4.throw.before"] },
   },
   {
     id: "R14", name: "every officer act is audited twice (Start, Pause, Resume and Stop each write their row two times)", only: [3],
     seams: () => ({ control: (d) => ({ ...d, audit: async (e) => { await d.audit(e); return d.audit(e); } }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV5"], claims: ["S3.stop.books"] },
   },
   {
     id: "R15", name: "the gate prints the number it is checking (a log line carries a phone number)", only: [1],
     seams: () => ({ gate: (real) => async (msisdn) => { console.log(`gate checking ${msisdn}`); return real(msisdn); } }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV5"], claims: [] },
   },
   {
     id: "R16", name: "a pause's audit detail carries a phone number (the gateway's words, unscrubbed)", only: [4],
     seams: () => ({ engine: (d) => ({ ...d, audit: async (e) => d.audit(e.action === "marketing.campaign_paused" ? { ...e, payload: { ...(e.payload ?? {}), detail: "the gateway said no to 255712345678" } } : e) }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV5"], claims: ["S4.refuse.pause"] },
   },
   {
     id: "R17", name: "a batch the gateway refused whole is settled row by row (E7 forgotten: N rows FAILED, no pause)", only: [4],
@@ -549,7 +562,7 @@ const PLANTS: Plant[] = [
         },
       }),
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV5"], claims: ["S4.refuse.pause", "S4.refuse.resume", "S4.refuse.rows"] },
   },
   /* ── INV6 · TIME ── */
   {
@@ -561,17 +574,18 @@ const PLANTS: Plant[] = [
         send: (messages, opts) => d.send(messages, { ...opts, notAfter: undefined }),
       }),
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV6"], claims: ["S4.slow.gate", "S4.slow.send", "S4.slow.write"] },
   },
   {
     id: "R23", name: "the send window is ignored (the engine reads every hour as open)", only: [4],
     seams: () => ({ engine: (d) => ({ ...d, window: async () => ALWAYS_OPEN() }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: ["INV6"], claims: ["S4.window.closed", "S4.window.edge"] },
   },
   /* ── SCENARIO CLAIMS THE SIX INVARIANTS DO NOT SEE ── */
   {
-    id: "R19", name: "Pause does not veto a new claim (the step's first read of the campaign still says RUNNING)", only: [3],
+    id: "R19", name: "Pause does not veto a new claim (a paused campaign is still handed to the slice, whose first read of it says RUNNING; only the re-read before the wire stops the send)", only: [3],
     seams: () => ({
+      control: (d) => ({ ...d, reap: async (id) => { const reaped = await d.reap(id); await d.slice(id); return reaped; } }),
       engine: (d) => {
         let first = true;
         return {
@@ -588,23 +602,32 @@ const PLANTS: Plant[] = [
         };
       },
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: [], claims: ["S3.pause.veto"] },
   },
   {
-    id: "R20", name: "a later receipt moves a decided row (the door re-opens a DELIVERED or FAILED row, so the second verdict wins)", only: [6],
+    id: "R20", name: "a later receipt moves a decided row (neither door remembers the first verdict: the message takes the second and the recipient follows it)", only: [6],
     seams: () => ({
       store: (h) => {
-        const dal = h.S.db.smsCampaignRecipient as unknown as { recordReceipt: (id: string, r: unknown) => unknown };
-        const real = dal.recordReceipt;
-        dal.recordReceipt = (id, r) => {
+        const recipients = h.S.db.smsCampaignRecipient as unknown as { recordReceipt: (id: string, r: unknown) => unknown };
+        const messages = h.S.db.smsMessage as unknown as {
+          recordDlr: (reference: string, o: { status: string | null }) => { changed: boolean; row: unknown };
+          findByReference: (reference: string) => unknown;
+        };
+        const realReceipt = recipients.recordReceipt;
+        const realDlr = messages.recordDlr;
+        recipients.recordReceipt = (id, r) => {
           const row = IO.memStore().smsCampaignRecipients.get(id);
           if (row !== undefined && (row.status === "DELIVERED" || row.status === "FAILED")) row.status = "SENT";
-          return real.call(dal, id, r);
+          return realReceipt.call(recipients, id, r);
         };
-        return () => { dal.recordReceipt = real; };
+        messages.recordDlr = (reference, o) => {
+          const out = realDlr.call(messages, reference, o);
+          return !out.changed && (o.status === "DELIVERED" || o.status === "FAILED") ? { changed: true, row: messages.findByReference(reference) } : out;
+        };
+        return () => { recipients.recordReceipt = realReceipt; messages.recordDlr = realDlr; };
       },
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: [], claims: ["S6.forward", "S6.order"] },
   },
   {
     id: "R21", name: "the receipt door accepts any secret (a forged callback is taken for the carrier's)", only: [6],
@@ -616,17 +639,17 @@ const PLANTS: Plant[] = [
         return post(new Request(url.toString(), { method: "POST", headers: { "content-type": "application/json" }, body }));
       },
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: [], claims: ["S6.audit", "S6.auth"] },
   },
   {
     id: "R24", name: "money first is forgotten (a slice goes ahead while a deposit or a settlement is running)", only: [4],
     seams: () => ({ engine: (d) => ({ ...d, moneyBusy: () => ({ busy: false, why: null, stale: [] }) as ReturnType<typeof d.moneyBusy> }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: [], claims: ["S4.money.waits"] },
   },
   {
     id: "R25", name: "a login code that just failed is ignored (marketing does not step aside)", only: [4],
     seams: () => ({ engine: (d) => ({ ...d, otpLastFailureAt: () => null }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: [], claims: ["S4.otp.waits"] },
   },
   {
     id: "R26", name: "Start ignores the per-campaign limit (an over-budget refusal is waved through)", only: [7],
@@ -639,17 +662,17 @@ const PLANTS: Plant[] = [
         },
       }),
     }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: [], claims: ["S7.limit.edge", "S7.limit.over"] },
   },
   {
-    id: "R27", name: "the slice size has no ceiling (the next group is 120 people, not at most 50)", only: [1],
-    seams: () => ({ engine: (d) => ({ ...d, rules: { ...d.rules, adaptSliceSize: () => 120 } }) }),
-    expect: { inv: [], claims: [] },
+    id: "R27", name: "the slice has no gentle start (the first group is the ceiling, 50 people, not 20)", only: [1],
+    seams: () => ({ engine: (d) => ({ ...d, rules: { ...d.rules, adaptSliceSize: () => 50 } }) }),
+    expect: { inv: [], claims: ["S1.slices"] },
   },
   {
     id: "R28", name: "the credit kept for login codes is not asked (every slice reads as affordable)", only: [7],
     seams: () => ({ engine: (d) => ({ ...d, credit: (() => ({ ok: true })) as unknown as typeof d.credit }) }),
-    expect: { inv: [], claims: [] },
+    expect: { inv: [], claims: ["S7.credit.mid.done", "S7.credit.mid.pause", "S7.credit.unread.run"] },
   },
 ];
 
@@ -657,13 +680,13 @@ const PLANTS: Plant[] = [
 
 async function proveRed(): Promise<void> {
   quiet = true;
-  await runSuite();
+  if (!EXPLORE) await runSuite();
   quiet = false;
   if (fail > 0) {
     console.log(`RED CONTROL — NOT RUN: the baseline is not green (${fail} claim(s) fail for the REAL code):${NL}  ${failed.join(`${NL}  `)}`);
     process.exit(1);
   }
-  console.log(`RED CONTROL — baseline green (${pass} claims pass for the real code)${NL}`);
+  console.log(EXPLORE ? `RED CONTROL — EXPLORING: the suite baseline was skipped; this run proves nothing${NL}` : `RED CONTROL — baseline green (${pass} claims pass for the real code)${NL}`);
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the invariants and scenario claims it names${NL}`);
 
   const chosen = ONLY_PLANTS === null ? PLANTS : PLANTS.filter((p) => ONLY_PLANTS.includes(p.id));
@@ -697,6 +720,12 @@ async function proveRed(): Promise<void> {
     const wantInv = [...new Set<string>(p.expect.inv)].sort();
     const wantClaims = [...new Set<string>(p.expect.claims)].sort();
     const seen = `${gotInv.length ? gotInv.join(",") : "no invariant"} · ${gotClaims.length ? gotClaims.join(", ") : "no claim"}`;
+    if (DETAIL) {
+      for (const s of got.scenarios) {
+        for (const i of s.invariants.filter((x) => !x.ok)) console.log(`          [S${s.n} ${i.id}] ${i.failures.slice(0, 4).join(" ;; ").slice(0, 700)}`);
+        for (const c of s.claims.filter((x) => !x.ok && x.known === undefined)) console.log(`          [${c.id}] ${c.detail.slice(0, 400)}`);
+      }
+    }
     if (json(gotInv) === json(wantInv) && json(gotClaims) === json(wantClaims)) {
       held += 1;
       for (const i of gotInv) bitten.set(i, [...(bitten.get(i) ?? []), p.id]);
@@ -723,7 +752,7 @@ async function proveRed(): Promise<void> {
     console.log(`  scenarios guarded by a plant: ${[...guarded].sort().join(",")}${unguarded.length ? ` — NOT guarded: ${unguarded.join(",")}` : ""}`);
     if (unbitten.length > 0 || unguarded.length > 0) missed.push(...unbitten.map((i) => `${i} never bitten`), ...unguarded.map((s) => `scenario ${s} unguarded`));
   }
-  process.exitCode = missed.length === 0 ? 0 : 1;
+  process.exitCode = missed.length === 0 && !EXPLORE ? 0 : 1;
 }
 
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
