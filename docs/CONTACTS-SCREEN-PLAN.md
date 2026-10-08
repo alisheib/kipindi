@@ -30,25 +30,14 @@ then: "the contacts screen"):
     import-adopt, import-preflight, import-file, import-mapping, import-mapping-next, import-apply, import-commit,
     import-done, and the dev seed POST /api/dev-test/marketing-contacts-seed?u30=1.
 
-▶ NOW (2026-10-09 ~01:45 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
-  · C1 LIVE (`28fd214e`): the lane claimed.
-  · THE DESIGN (§4) and THE CONTRACT `src/lib/contacts/import-flow.ts` — committed `750175c2` on branch
-    `contacts-import` (pushed to origin; NOT on main: nothing calls the contract yet).
-  · BUILDING (agents writing files, nothing run yet), in the worktree `C:\kipindi-s15`, branch `contacts-import-build`
-    (cut from `750175c2`): the SERVER half (DAL members in both twins, the migration `ContactImport.targetListId`,
-    import-check.ts, import-commit.ts, import-actions.ts, the check/commit suites, a dal-parity section, the `?u30=1`
-    seed world) and the BROWSER half (import-read.ts, import-loop.ts, the dialog and its panels, the page-head button,
-    the flow suite, the drive `scripts/live/contacts-import-drive.mjs`). When they land: ONE battery under the lock,
-    an adversarial review, fixes, then push to main as C3–C5 with this file updated.
-  · THE TEST FILES ✅ — `scripts/lib/real-world-contact-files.mts`, run as `npm run qa:contacts-import-files` (add
-    `-- --big` for the five big ones: 150,000-row CSV and vCard, a 200,001-row file, a 50,000-row workbook, a 42 MB
-    vCard with photos). Its first run (2026-10-09) wrote 28 files + `manifest.json` (the ground truth per row) into
-    `.qa-shots/contacts-screen/files/` (git-ignored — re-generate, never commit them); every phone value is checked
-    against `parseTzNumber` before a file is written. ⛔ It must NOT live in `scripts/contacts-import/` (that runner
-    imports every module there). The 40-row production set uses `+255 710 000 0NN` — possibly real people's numbers:
-    never send to them; delete them right after the live check (`?tag=qa-import-check`).
-  · C2 (the visual audit of the LIVE screen) is queued behind this PC's heavy-node lock (the Vodacom session held it);
-    shots go to `.qa-shots/contacts-screen/C2/` (git-ignored) — findings will be written HERE, not left in shots.
+▶ NOW (2026-10-09 ~03:20 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
+  · C1 LIVE (`28fd214e`) · C2 LIVE (`8adbdd9f`, served since 23:34 UTC 2026-10-08, health ok).
+  · THE IMPORTER (C3–C5) — design §4, contract `src/lib/contacts/import-flow.ts`. Integration branch
+    `contacts-import-int` (origin; in `C:\kipindi-marketing`): both halves + the generator + main incl. C2, first battery
+    fixed (`a0a2d609`: typecheck 0, contacts-import 275/0, red 287/287, dal-parity 2211/0). The REVIEW ROUND (decisions
+    S15-10…12, log below) is being built in `C:\kipindi-s15` on `contacts-import-build` (`3fd8bf74` = the integration
+    branch + the round's contract). Then: merge into `contacts-import-int`, the battery again, the Postgres probe
+    (`scripts/live/contacts-import-pg-probe.mts`, being written), the drive over the 28 files, push to main as C3–C5.
   · ⏳ ASKED Ali (2026-10-09 ~01:15 EAT; defaults if unanswered = (a)): 1 who imports (a: Growth + Admin) · 2 several
     numbers per person (a: each its own contact; the build starts with main-number-only, S15-4) · 3 a "pick from this
     phone" button (a: no) · 4 a live check on production with Claude's own temporary login and a 40-row file, deleted
@@ -156,6 +145,18 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
   notes, tags and raw phone are emptied in the staging table — the line, key, outcome and the failure sentence stay.
 - **S15-9 · Nobody is ever stuck.** A paused or unfinished run can always be resumed or cancelled by its starter or an
   admin; cancelling after the start keeps the rows already written and says how many.
+- **S15-10 · Only a role that can read numbers updates contacts already in the book from a file** (the review round,
+  2026-10-09; OD54 · OD65). Everyone else imports with "keep what's in the book": the check folds every kept row into one
+  number, shows no changes list, and a start with another choice is refused `update_needs_reader`. Why: an independent
+  review showed a GROWTH officer could import a ONE-line file with an invented name under "use the file's version" and read
+  "0 contacts change" exactly when that number was on the stop list or erased — a per-person fact OD54 gives readers only.
+  No count or floor can close that (OD65: padding defeats any floor); taking the choice away from non-readers does.
+- **S15-11 · An import never changes a contact linked to a 50pick account** (the review's finding 14): the account is the
+  source of its details; "use the file's version" would have overwritten a player's registration row, email included.
+  `decide()` keeps such a row (reason `account`, shown to readers).
+- **S15-12 · Unfinished runs end and can be reached.** A PAUSED or COMMITTING run idle 14 days is cancelled by the nightly
+  sweep (its unsettled rows deleted; the contacts already written stay — `docs/DATA-RETENTION.md`), and an ADMIN sees other
+  officers' unfinished imports in the dialog and can resume or cancel them (X18 made reachable).
 
 ### §4.4 — The build (files; each step committed and pushed when proven)
 - Contract: `src/lib/contacts/import-flow.ts` (pure — the types and sentences both sides share).
@@ -174,6 +175,16 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 
 ## §3 — LOG (newest first)
 
+- **2026-10-09 ~03:15 EAT · the importer, first run and review** — integrated as `contacts-import-int` (both halves,
+  the generator, main incl. C2). First battery: prisma generate 0, dal-parity 2211/0, contacts-staging 36/0,
+  contacts-boundary 35/0, red-anchors 4907/0; typecheck 2 errors and contacts-import 274/1 → fixed (`a0a2d609`):
+  contacts-import 275/0, red:contacts-import 287/287 (two plants made honest: flow P3, commit P5). An independent
+  adversarial review (read-only, of `391a48cf`): 1 BLOCKER (the type error, already fixed), 4 MAJOR (a non-reader could
+  read one number's stop or erasure through the check → S15-10; stuck runs and no admin adoption → S15-12; §29 never run on
+  Postgres → the pg probe; a refusal without a view showed the starting cursor), 9 MINOR (cancel's numbers, busy giving
+  up, an aged check's false sentence and lost choices, an unreachable "Show more", the erasure race inside a step, the
+  mirror outside the transaction, transient Postgres faults stopping the run, an orphaned new list, a player's row
+  overwritten → S15-11) and 5 NIT. All ruled and in a fix round with both builders (`3fd8bf74` carries the contract).
 - **2026-10-09 · C2** — the live screen audited (43 tiles) and four defects fixed on branch `contacts-c2` (F1–F4 in §1);
   suites contacts-form 54/0, contacts-page 52/0, contacts-bulk 46/0, contacts-export 44/0 with their in-memory reds
   complete, typecheck 0, `next build` 0; on a fresh local server the U20 drive 487 passed / 0 failed and the targeted
