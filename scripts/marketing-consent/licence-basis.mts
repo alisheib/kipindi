@@ -21,6 +21,9 @@
  * `gateWithDefect` matrix (G0 parity against the pre-change model, and its twelve source plants) is still owed, and the
  * tracker says so — this section is the decision table, not the whole of §9 U33a-G.
  */
+// house-bot: covered by L2 sweep — this seeds fixture accounts and one self-exclusion row straight through the store, so no in-app
+// hook fires; the holder sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2). It writes only to the
+// accounts it creates itself (`lu<n>`), which no bot holds, and it is imported only by `test:marketing-consent`.
 import { db } from "../../src/lib/server/store.ts";
 import type {
   BookStanding, MessagingLocale, StoredKyc, StoredResponsibleGambling, StoredUser,

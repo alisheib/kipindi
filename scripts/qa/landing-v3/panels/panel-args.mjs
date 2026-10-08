@@ -1,9 +1,13 @@
 // Builds the band panel's args from a drive's frames folder: node panel-args.mjs <label> [round] [priorFile]
 import { readdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 const label = process.argv[2];
 const round = Number(process.argv[3] || 1);
 const prior = process.argv[4] || "";
-const repo = "C:/kipindi-landing-v3";
+// The checkout this file sits in (scripts/qa/landing-v3/panels/ is four levels down) — it was the first laptop's
+// `C:/kipindi-landing-v3`, so on any other machine the frames folder below was not found.
+const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..").replace(/\\/g, "/");
 const dir = `${repo}/.qa-shots/landing-v3/${label}`;
 const framesDir = `${dir}/frames`;
 const STATE = {
