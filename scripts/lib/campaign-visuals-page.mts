@@ -333,7 +333,12 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     const bar = attrOf(barTag, "aria-valuenow") === "321" && attrOf(barTag, "aria-valuemax") === "1234" && attrOf(barTag, "aria-valuetext") === "321 of 1,234 processed";
     // no sum (135), no remainder (1,099), no percentage (26%) is PRINTED anywhere (the kit's bar fill carries its own width
     // in a style attribute — that is the kit's determinate bar, and not what an officer reads)
-    const shown = textOfHtml(html);
+    // ⭐ The audience line is the campaign's own TAG, which carries the suite's run number (`u47b1-r135-pv1`): it is not a figure, and a
+    // red run is ~135 runs long, so at run 135 the sum "135" appeared in it. It is taken out before the figures are looked for.
+    const audienceTag = tagAt(html, "data-live-audience");
+    const audienceAt = audienceTag === null ? -1 : html.indexOf(audienceTag);
+    const withoutAudience = audienceAt < 0 ? html : html.slice(0, audienceAt) + html.slice(html.indexOf("</p>", audienceAt) + 4);
+    const shown = textOfHtml(withoutAudience);
     const derived = ["135", "1,099", "1,108", "26%", "74%"].filter((d) => shown.includes(d));
     // the source: no arithmetic on a figure in a file that PRINTS one; the driver holds no figure at all
     const PRINTS: Array<[string, string]> = [["live-client.tsx", S.client], ["page.tsx", S.page], ["loading.tsx", S.loading]];

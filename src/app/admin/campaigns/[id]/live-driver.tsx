@@ -146,7 +146,7 @@ export function isStepAnswer(body: unknown): body is LiveStepAnswer {
  * door's JSON whatever its HTTP status (a refusal is a 403, a missing campaign a 404 — each a typed body). ⛔ A request that
  * fails, a body that is not JSON, or JSON this build does not know THROWS — the loop stops "out of date" and never asks again.
  */
-export async function postLiveStep(id: string, fetchImpl: typeof fetch = (input, init) => globalThis.fetch(input, init)): Promise<LiveStepAnswer> {
+export async function postLiveStep(id: string, fetchImpl: typeof fetch = (input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init)): Promise<LiveStepAnswer> {
   const res = await fetchImpl(stepPath(id), { method: "POST", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
   const body: unknown = await res.json();
   if (!isStepAnswer(body)) throw new Error("the step door answered something this page does not know");

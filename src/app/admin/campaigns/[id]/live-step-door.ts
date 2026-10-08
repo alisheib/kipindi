@@ -32,8 +32,9 @@
  *   · THE VIEWER IS THE STORED ROLE'S (`liveViewerFor`, failing closed) and the service is `campaignStep` — the very one the
  *     action called — so the answer is its answer, byte for byte, as JSON;
  *   · NOTHING ESCAPES AS A 500 PAGE: a step that throws after the guard passed is a typed `unfinished` answer (a group may or
- *     may not have gone out, so the driver stops and says so — it never asks again by itself), and the log line names the
- *     error's TYPE alone. Every response carries `Cache-Control: no-store`.
+ *     may not have gone out, so the driver stops and says so — it never asks again by itself); a GUARD that throws is the same
+ *     type in its own words (nothing was asked of the campaign, so nothing may have gone out — `LIVE_STEP_GUARD_FAILED`); the
+ *     log line names the error's TYPE alone. Every response carries `Cache-Control: no-store`.
  * ⛔ NO SMS LEAVES FROM HERE except through the step the engine already makes. No phone number is in any answer (the view
  * holds none); no money word reaches a viewer who may not read money (the view decides, once).
  *
@@ -48,7 +49,7 @@ import { adminNextDest } from "@/components/admin/admin-nav-groups";
 import { liveViewerFor } from "./live-viewer";
 import { refusedBy } from "./live-run";
 import type { LiveStepAnswer } from "./live-run";
-import { LIVE_MISSING, LIVE_ROLE_REFUSAL, LIVE_SIGNED_OUT, LIVE_STEP_UNFINISHED } from "./live-copy";
+import { LIVE_MISSING, LIVE_ROLE_REFUSAL, LIVE_SIGNED_OUT, LIVE_STEP_GUARD_FAILED, LIVE_STEP_UNFINISHED } from "./live-copy";
 
 /** Where a visitor with no session signs in. */
 const SIGN_IN = "/auth/admin";
@@ -79,7 +80,7 @@ export const LIVE_STEP_DOOR_DEPS: Readonly<LiveStepDoorDeps> = Object.freeze({
   viewer: (userId: string) => liveViewerFor(userId),
   step: campaignStep,
   log: (err: unknown) => {
-    console.error("[admin/campaigns/[id]/step] a step threw:", errorName(err));
+    console.error("[admin/campaigns/[id]/step] threw:", errorName(err));
   },
 });
 
@@ -106,8 +107,9 @@ export async function campaignStepDoor(req: LiveStepDoorRequest, deps: LiveStepD
     // The guard sends a visitor with no session to the sign-in page by throwing a redirect; a JSON caller is told in words.
     // ⛔ The way back is the console's own (`adminNextDest`, ruling 551(a)): the SECTION, never the record's `cmp_…` id.
     if (isRedirect(err)) return { status: 401, body: { ok: false, reason: "signed_out", error: LIVE_SIGNED_OUT, href: `${SIGN_IN}?next=${encodeURIComponent(adminNextDest(campaignDetailHref(id)))}` } };
+    // A guard that could not answer asked nothing of the campaign: its own words, not "a group may have gone out".
     deps.log(err);
-    return { status: 500, body: { ok: false, reason: "unfinished", error: LIVE_STEP_UNFINISHED } };
+    return { status: 500, body: { ok: false, reason: "unfinished", error: LIVE_STEP_GUARD_FAILED } };
   }
   if (!g.ok) return { status: 403, body: refusedBy(g) };
   try {

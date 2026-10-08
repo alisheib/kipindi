@@ -2415,6 +2415,71 @@ grid, read by the page and its ghost);
   link, one who never said yes) and staged rows for the states no engine run reaches cheaply; the page's own sentences come
   from the seed's `?words=1` (read from `live-copy.ts` — the drive copies none); money-busy is the platform's bet-admission gate
   held full; the window is `marketing-send-window`'s clock; the watcher is AUDITOR with Growth view (`?u23grant=view-only`).
+- ✅ **THE U47b-2 REVIEW'S FIX ROUND (S14, 2026-10-08 — 1 MAJOR, 9 MINOR, 8 NIT, no blocker): what it changed in this section.**
+  - ⭐ **MAJOR · the step is a route, not an action** (decision 3, amended above). `live-step-door.ts` holds every decision —
+    pure and drivable in-process — and `src/app/api/admin/campaigns/[id]/step/route.ts` is thin (three facts in, the door's
+    answer out, `Cache-Control: private, no-store`, no body read, exports `POST`/`dynamic`/`runtime` and nothing else).
+    `campaignStepAction` is gone (`actions.ts` holds six). The driver's `postLiveStep` is a `fetch`: POST, this origin's
+    cookies, no body, no cache; a typed refusal is an ANSWER whatever its HTTP status, and a body it does not know THROWS (the
+    page is out of date, and never asks again). The door adds two typed refusals the action never needed: `signed_out` (401 — no
+    session, in words, with the way back to sign in; the guard's redirect is caught, never followed) whose address is the
+    console's own scrubbed one (`adminNextDest`, ruling 551(a): the SECTION, never the campaign's `cmp_…` id — `campaigns` joins
+    `ID_CRUMB`, so the trail reads "Campaign" until the live page names the campaign itself with `AdminCrumbLabel`), and
+    `unfinished` (500 — a step that threw after the guard passed: a group may or may not have gone out, so the driver stops and
+    says so; a GUARD that could not answer is the same type in its own words, since nothing was asked of the campaign and
+    nothing may have gone out). Production's dependencies are frozen with the guard and the service by identity.
+  - **Presses (MAJOR's other half, MINORS 1, 2, 6).** A press in flight disables ITS OWN control (`live-presses.ts`: a ref guards
+    the double click, state shows the pending set); Stop is pressable beside a pending Pause, and a Pause answering never
+    closes the Stop dialog the officer is reading. A toast that carries a warning or advice — the audit row that did not land,
+    a copy that would message people again, a Resume overtaken by a Stop or a Pause or the end, held people who could not be
+    put back — is `warning` with `durationMs: 0` and stays until dismissed (`toastFor`: the act's own plain sentences fade, the
+    test being the six plain `LIVE_DONE` sentences and the plain copy one, so a sentence added later defaults to STAYING).
+    Make a copy from a page that is DRIVING (PREPARING / RUNNING, an actor's tab) stays and offers the draft as a link for a new
+    tab, in words (`LIVE_COPY_ELSEWHERE`); Pause and Stop take `softCheckStaff` (see decision 7).
+  - **What the page says (MINORS 4, 5, 8).** `live-decide.ts` is the page's decisions as pure functions and the components call
+    them. "Nobody is sending" reaches an ACTOR only once its own driver has stopped (never above "Keep this page open" on a
+    first paint) and a watcher whenever it is the data's fact; a PREPARING campaign's is "no chunk for 90 s" (the row's
+    `updatedAt`, which is also its last step) in its own words; the closed send window (the engine's own wait sentence) and
+    the switch's closing time reach a viewer who is not driving; a stopped driver's last wait is not shown. The page has ONE
+    live region (`live-announce.ts`: always mounted, polite, atomic) that says the headline and why when the STATUS changes —
+    never on mount, never every two seconds; no callout is `role="status"` any more. A disabled control's reason is printed in
+    words where it matters — a role's once for all five, the status's expected control's, and any that is not the plain "not
+    in this state" (Make a copy's too) — and every other one is named to assistive technology by the element
+    `aria-describedby` points at, never title-only.
+  - **The driver (MINOR 7).** A watcher's poll that fails in transit is asked again after 10 s, 20 s and 40 s before the page says
+    it is out of date; a step never is. The hook is split into `startLiveLoop` (the effect as a function with its cleanup) and
+    the hook that wires it.
+  - **The seed (MINOR 9 and a NIT).** `?busy=` is re-entrant: each hold keeps its own release in a closure and the original
+    limits are captured only while no hold is active, so two holds then `?busy=0` put the gate back at `maxInFlight` 36;
+    `?run=` and `?stages=` refuse (409) unless the rail is the console stub; `?words=` serves every sentence the drive asserts
+    (the new ones among them), and V16 holds that to the drive's own source.
+  - **NITs.** The Stop dialog and toast of a campaign that has not begun sending (`sendingStarted`: RUNNING, or PAUSED after its
+    list was finished) do not warn of "a group already being sent"; `LIVE_ACT_UNFINISHED` is said only when the answer carries
+    the campaign (else `LIVE_ACT_UNFINISHED_NO_VIEW`'s reload words); the draft redirect and a copy's address are the composer's
+    canonical one (`draftAddressFor`, STD-1); the list's act cell asks the ACT grant alone (`liveMayActFor`); the controls keep
+    the kit's `--tap-min` (no 44 px of our own — the ghost uses the token); the drive asserts reduced motion and a scrim click.
+  - ⚠️ **What a Pause can stop**, said once and true of every tab: everything that has not passed its last check. A slice still
+    gating is vetoed by its own re-read before the wire (E6); a group ALREADY past its last check still goes (at most one,
+    `SLICE_MAX`) — which the Pause and Stop toasts and the Stop dialog say. The step leaving the action queue is what lets a
+    Pause land while a slice is still gating; it never recalls a message the wire has.
+  - **Proof.** `test:campaign-visuals` 46 claims (V12–V16 new) with 136 plants held, `test:campaigns-page` 40 (5k, 5m and 1e
+    re-pinned), red 30/30. V12 drives the door in-process on spies (POST only; cross-site refused before the session is read;
+    the guard first and the viewer and the service not asked on any refusal; the STORED role against a cookie that claims ADMIN;
+    a lapsed and a never-set-up 2-step refused in words with their links; no session told, never redirected; the service's own
+    answer, role-shaped; a typed `unfinished` for a throw in the guard or the step) and the route as Next calls it. V13–V15 EXECUTE
+    the driver's and the presses' hooks and the announcement on `scripts/lib/hooks-host.mts` (a minimal hooks host over React
+    19's dispatcher, with React's development double-run and a fake clock) — the cadence, a page that leaves, a flip, Try again,
+    no double press, Stop beside Pause — and V15 renders the real client for every status and viewer. ⭐ A hook's plant is its
+    file's SOURCE with one defect written in, compiled with esbuild and evaluated with only the imports the file has; every
+    executing claim also runs the compiled real source as a control, so a broken compile path cannot turn every plant red for
+    the wrong reason. (A red run is one run per plant, and with ~135 of them it found two limits of the suite itself, hidden
+    while it was under 100 runs: a recipient row's key grew a 13th digit at run 100 — `rowKeyOf` holds 999 — and V1 looked for
+    the sum "135" in text that includes the campaign's TAG, which carries the run number, so at run 135 it failed on the tag;
+    the audience line is taken out before the figures are looked for.) Not run by the builder (heavy; the lead runs them under
+    the lock): `tsc`, `qa:marketing-live` (the drive was extended — step cadence, Pause pressed while a step is in flight, Stop
+    beside a pending Pause, a second driving tab, the session ending under a driving page, a watcher's blip, the step door over
+    real HTTP — and syntax-checked only), the full `admin-section-gate` suite (it drives a browser) and the planting reds
+    (`red:admin-soft-gate`, `red:layout-staleness`).
 
 **Premises checked.** The six doors and the page gate rules (`admin-section-gate.test.mjs` §0b′: one return, a literal
 title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:campaigns-page` 5f/5k

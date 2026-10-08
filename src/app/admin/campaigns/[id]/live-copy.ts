@@ -347,7 +347,8 @@ export const LIVE_DONE = {
  * way to say it. Anything the services put beside it — the audit row that did not land, a copy that would message people
  * again, a Resume overtaken by a Stop, a Pause or the end, held people who could not be put back — is a warning or advice, and
  * a warning that fades in four seconds is one an officer can miss: the page keeps it until it is dismissed. The test is the
- * five plain sentences and the plain copy sentence, so a sentence added later defaults to STAYING, which is the safe side.
+ * six plain `LIVE_DONE` sentences and the plain copy sentence, so a sentence added later defaults to STAYING, which is the
+ * safe side.
  */
 export function liveDoneIsPlain(message: string): boolean {
   const plain: readonly string[] = [
@@ -521,6 +522,10 @@ export const LIVE_SIGN_IN_LINK = "Sign in again";
 /** …and a step the server could not finish: a group may or may not have gone out, so the loop does not ask again by itself. */
 export const LIVE_STEP_UNFINISHED =
   "The server stopped partway through a step, so this page has stopped sending — a group may or may not have gone out. Reload to see where the campaign is; it carries on from there.";
+/** …and a guard that could not answer at all (the session store was down): nothing was asked of the campaign, so — unlike a step
+ *  that threw — nothing may have gone out, and saying it might would be false. */
+export const LIVE_STEP_GUARD_FAILED =
+  "The server could not check your sign-in just now, so this page has stopped sending. Nothing was asked of the campaign, so nothing was sent — reload to try again.";
 
 /** Make a copy while THIS page is the one sending (PREPARING, RUNNING): the page must not leave — leaving would end the only
  *  driver — so the new draft opens in a new tab, from a link (a tab opened after the answer would be a blocked popup). */

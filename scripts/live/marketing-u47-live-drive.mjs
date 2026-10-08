@@ -329,13 +329,14 @@ async function holdCalls(page) {
   return { held: () => held, off: () => page.unroute(CALLS, handler).catch(() => {}) };
 }
 /** Make the step door's requests fail in transit (a deploy, a lost connection) — the request never reaches the server. Or, with
- *  `kind: "action"`, the server actions: the watcher's poll. `onlyFirst` lets every call after the first n through. */
+ *  `kind: "action"`, the server actions: the watcher's poll. `first` or `until` lets the calls after them through. */
 async function abortCalls(page, kind = "step", o = {}) {
   let hits = 0;
   const handler = async (route) => {
     const req = route.request();
     const mine = kind === "step" ? isStep(req) : isAction(req);
-    if (mine && (o.first === undefined || hits < o.first)) { hits++; await route.abort("failed").catch(() => {}); return; }
+    // `first`: only the first n calls fail; `until`: every call before that instant fails — then the connection is back.
+    if (mine && (o.first === undefined || hits < o.first) && (o.until === undefined || Date.now() < o.until)) { hits++; await route.abort("failed").catch(() => {}); return; }
     await route.fallback().catch(() => {});
   };
   await page.route(CALLS, handler);
@@ -1154,11 +1155,13 @@ async function watcherBlip(vp, viewport, i, id) {
   const calls = countCalls(w.page);
   await pinWindow(NOON_EAT);
   await openLive(w.page, seeded.campaignId);
-  const abort = await abortCalls(w.page, "action", { first: 1 });
+  // The connection is gone for fifteen seconds: the first poll (at ~10 s) fails in transit, its retry (ten seconds later) is back.
+  const abort = await abortCalls(w.page, "action", { until: Date.now() + 15000 });
   await wait(27000);
   const s = await readLive(w.page);
-  ok(`${name} · WATCHER BLIP · ⭐ a poll that failed in transit is asked again (${abort.hits()} failed, ${calls.actions} polls made) and the page is NOT out of date`,
-    abort.hits() === 1 && calls.actions >= 2 && s.stopped === null && s.status === "CONFIRMED", JSON.stringify({ hits: abort.hits(), actions: calls.actions, stopped: s.stopped }));
+  ok(`${name} · WATCHER BLIP · ⭐ a poll that failed in transit is asked again (${abort.hits()} failed, ${calls.actions} calls made) and the page is NOT out of date`,
+    abort.hits() >= 1 && calls.actions >= 2 && (s.driver?.polls ?? 0) >= 2 && s.stopped === null && s.status === "CONFIRMED",
+    JSON.stringify({ hits: abort.hits(), actions: calls.actions, polls: s.driver?.polls, stopped: s.stopped }));
   await abort.off();
   await w.ctx.close();
 }
@@ -1174,8 +1177,13 @@ async function doorOverHttp(vp, viewport, stage) {
   const door = (id) => `${BASE}/api/admin/campaigns/${encodeURIComponent(id)}/step`;
   const same = { "sec-fetch-site": "same-origin" };
   try {
+    // A method the route does not export never reaches it: Next answers a 405 itself, and OPTIONS with the methods the route has —
+    // POST alone, never GET. (The door's own 405 with Allow: POST is the belt over those braces; V12 holds it in-process.)
     const get = await g.page.request.get(door("cmp_nobody_made_this"), { headers: same });
-    ok(`${name} · DOOR · a GET is a 405 that names POST, no-store`, get.status() === 405 && get.headers()["allow"] === "POST" && /no-store/.test(get.headers()["cache-control"] ?? ""), `${get.status()} ${JSON.stringify(get.headers())}`);
+    const options = await g.page.request.fetch(door("cmp_nobody_made_this"), { method: "OPTIONS", headers: same });
+    const allowed = options.headers()["allow"] ?? "";
+    ok(`${name} · DOOR · a GET is a 405 and the only method the route answers is POST (OPTIONS: "${allowed}")`,
+      get.status() === 405 && /POST/.test(allowed) && !/GET/.test(allowed), `${get.status()} allow=${allowed}`);
     const cross = await g.page.request.post(door("cmp_nobody_made_this"), { headers: { "sec-fetch-site": "cross-site" } });
     ok(`${name} · DOOR · a cross-site POST is a 403 with nothing in it — refused before the session is read`, cross.status() === 403 && (await cross.text()) === "", `${cross.status()}`);
     const missing = await g.page.request.post(door("cmp_nobody_made_this"), { headers: same });

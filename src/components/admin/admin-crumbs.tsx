@@ -63,9 +63,10 @@ export function AdminCrumbLabel({ segment, label }: { segment: string; label: st
 
 export function AdminCrumbs({ fallback }: { fallback: string[] }) {
   const pathname = usePathname();
+  // ⛔ The next line is `red:layout-staleness`'s anchor, VERBATIM (`the-crumbs-component-trusts-its-prop`): the pathname decides.
+  const crumbs = pathname ? crumbsFromPath(pathname) : fallback;
   const named = useSyncExternalStore(subscribeCrumbNames, () => (pathname ? crumbNames.get(lastSegmentOf(pathname)) ?? null : null), () => null);
-  const base = pathname ? crumbsFromPath(pathname) : fallback;
-  const crumbs = named !== null && base.length > 1 ? [...base.slice(0, -1), named] : base;
+  const trail = named !== null && crumbs.length > 1 ? [...crumbs.slice(0, -1), named] : crumbs;
   return (
     /* ⚠️ CLIPPING — DO NOT SIMPLIFY THIS BOX MODEL. `nav` carries `min-w-0 overflow-hidden` and
        each crumb carries `truncate`, but the per-crumb WRAPPER in between must carry `min-w-0`
@@ -73,8 +74,8 @@ export function AdminCrumbs({ fallback }: { fallback: string[] }) {
        34px past the nav in all three locales. `shrink-0` on the separator keeps "/" from being
        the thing that collapses. Preserved verbatim from `admin-shell.tsx`. */
     <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-2 text-body-sm text-text-tertiary min-w-0 overflow-hidden">
-      {crumbs.map((c, i) => {
-        const isLast = i === crumbs.length - 1;
+      {trail.map((c, i) => {
+        const isLast = i === trail.length - 1;
         return (
           <span key={i} className="flex items-center gap-2 min-w-0">
             {i > 0 && <span className="text-text-tertiary opacity-50 shrink-0">/</span>}

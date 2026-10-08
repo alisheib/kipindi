@@ -4,9 +4,12 @@
  *
  * ⭐ U47b-1 BUILDS §svc — the services (`campaign-control.ts`) and the view-model (`campaign-live.ts`), with the words both
  * return (`src/app/admin/campaigns/[id]/live-copy.ts`); every claim there is DRIVEN on the memory twin, never read off a
- * screen. ⭐ U47b-2 BUILDS §page — the live page itself: its client, driver, seven actions' guards and loads. Its claims
+ * screen. ⭐ U47b-2 BUILDS §page — the live page itself: its client, driver, six actions' guards and loads. Its claims
  * (V1 · V4–V11 · L2, below the list) are written in `scripts/lib/campaign-visuals-page.mts` and run HERE, in the same run, on
- * the same world with the same viewers, so one run and one red run cover both halves.
+ * the same world with the same viewers, so one run and one red run cover both halves. ⭐ ITS REVIEW'S FIX ROUND adds §live —
+ * V12–V16, in `scripts/lib/campaign-visuals-live.mts`, which EXECUTE what §page only read: the step door and its route, the
+ * driver's and the presses' hooks (on `scripts/lib/hooks-host.mts`, a minimal hooks host with a fake clock), the page's
+ * decisions and its one live region, and the dev seed. A hook's plant is its file's SOURCE with one defect, compiled and run.
  *   C0  controls — the fixture world walks where it says, the ONE groupBy answers a seeded list exactly, the rail is the stub;
  *   V2  ⭐ HELD IS OUTSTANDING (the plan's RED) — 4 SENT + 6 HELD read "4 of 10"; an empty campaign paints NO bar;
  *   V3  ⭐ THE COUNTS FROZEN SERVER-SIDE (OD34, the plan's RED) — two views ten seconds apart give the same bar, byte for byte;
@@ -34,6 +37,14 @@
  *   V7  ⛔ E23 · the floor hides the split on the page · V8 ⛔ OD24 · no TZS on a GROWTH page · V9 the screens flag is the page ·
  *   V10 the page gate's shape (admin-section-gate §0b′) · V11 the load and every act's answer, Resume's one retry after busy ·
  *   L2  the viewer is the STORED role's, failing closed;
+ *   §live (the review's fix round, `scripts/lib/campaign-visuals-live.mts`):
+ *   V12 ⭐ the step DOOR (POST /api/admin/campaigns/<id>/step) — POST only, never cross-site, the guard first, the stored role,
+ *       the service's own answer as JSON, a typed answer for every failure, no-store — and the route that wraps it;
+ *   V13 ⭐ the driver's HOOK executed — the cadence, the development double-run's one step, a page that left, a flip, Try again;
+ *   V14 ⭐ the PRESSES executed — no double press, Stop pressable beside a pending Pause, a warning's toast that stays, a copy
+ *       that never takes a driving page away;
+ *   V15 ⭐ what the page says and when — the decisions, every disabled control described in words, one live region;
+ *   V16 ⭐ the dev seed — the busy hold re-entrant, the rail guard, every sentence the drive asserts served;
  *   W1  the wiring — who imports the services (the actions alone), no send named, the doors by identity; P1 ⛔ no phone number,
  *       no refusal object (the page's markup too); P2 ⛔ no figure and no cursor in a step answer (the U47b-1 review).
  *
@@ -413,7 +424,7 @@ function walkDir(abs: string): string[] {
 const NAMING = new Map<string, string>();
 for (const abs of walkDir(join(ROOT, "src"))) {
   const raw = readFileSync(abs, "utf8");
-  if (/campaign-control|campaign-live|live-copy/.test(raw)) NAMING.set(relOf(abs), decomment(raw.split(CR).join("")));
+  if (/campaign-control|campaign-live|live-copy|live-step-door/.test(raw)) NAMING.set(relOf(abs), decomment(raw.split(CR).join("")));
 }
 const CONTROL_REL = "src/lib/server/marketing/campaign-control.ts";
 const LIVE_REL = "src/lib/server/marketing/campaign-live.ts";
@@ -426,6 +437,7 @@ const LIVE_PAGE_REL = "src/app/admin/campaigns/[id]/page.tsx";
 const LIST_PAGE_REL = "src/app/admin/campaigns/page.tsx";
 const LIVE_SEED_REL = "src/app/api/dev-test/marketing-live-seed/route.ts";
 const LIVE_DOOR_REL = "src/app/admin/campaigns/[id]/live-step-door.ts";
+const STEP_ROUTE_REL = "src/app/api/admin/campaigns/[id]/step/route.ts";
 const LIVE_DECIDE_REL = "src/app/admin/campaigns/[id]/live-decide.ts";
 const LIVE_PRESSES_REL = "src/app/admin/campaigns/[id]/live-presses.ts";
 const REAL_SOURCES: Sources = { control: code(CONTROL_REL), live: code(LIVE_REL), copy: code(COPY_REL), pkg: rawRead("package.json"), src: NAMING };
@@ -1658,13 +1670,16 @@ async function runAssertions(impl: Impl): Promise<void> {
     const controlIn = importersOf("campaign-control");
     const liveIn = importersOf("campaign-live");
     const copyIn = importersOf("live-copy");
+    // ⭐ the review's MAJOR · the step door is reached by its ROUTE and by nothing else: no page, action or helper calls the step
+    // service around the route's guard, its same-origin check and its typed answers
+    const doorIn = importersOf("live-step-door");
     // U47b-2 · the reach, pinned: the services are imported by the TWO doors that call them — the actions file (the five presses)
     // and the step door (the driver's step, since the review's MAJOR) — and by nothing else; the view by those actions, their
     // loader and act runner, the services themselves and the campaigns list (its paused line — one function); the words by the
     // readers of them (the decisions the page makes, the door, and the drive's dev seed route among them: it hands the drive the
     // page's sentences, so the drive asserts against live-copy and never against a copy of it) — and nothing else, so a new
     // importer is a decision someone makes here.
-    const reach = json(controlIn) === json([ACTIONS_REL, LIVE_DOOR_REL].sort())
+    const reach = json(controlIn) === json([ACTIONS_REL, LIVE_DOOR_REL].sort()) && json(doorIn) === json([STEP_ROUTE_REL])
       && json(liveIn) === json([CONTROL_REL, ACTIONS_REL, LIVE_LOADER_REL, LIVE_RUN_REL, LIST_PAGE_REL].sort())
       && json(copyIn) === json([CONTROL_REL, LIVE_REL, ACTIONS_REL, LIVE_CLIENT_REL, LIVE_DECIDE_REL, LIVE_PRESSES_REL, LIVE_RUN_REL, LIVE_DOOR_REL, LIVE_PAGE_REL, LIVE_SEED_REL].sort());
     const SEND = new RegExp("sendBatch|dispatchSlice|blackballSend|sendCampaignTest|engineSend");
@@ -1678,7 +1693,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     const wired = scripts["test:campaign-visuals"] === "tsx scripts/campaign-visuals.test.mts" && scripts["red:campaign-visuals"] === "tsx scripts/campaign-visuals.test.mts --prove-red"
       && chain.filter((x) => x === "npm run test:campaign-visuals").length === 1;
     return [doors && spelling && bare && reach && noSend && pureCopy && wired,
-      `doors ${doors} · one spelling ${spelling} · bare ${bare} · importers control [${controlIn.join(",")}] live [${liveIn.join(",")}] copy [${copyIn.join(",")}] · no send ${noSend} · live-copy imports [${copyImports.join(", ")}] · scripts ${wired}`];
+      `doors ${doors} · one spelling ${spelling} · bare ${bare} · importers control [${controlIn.join(",")}] door [${doorIn.join(",")}] live [${liveIn.join(",")}] copy [${copyIn.join(",")}] · no send ${noSend} · live-copy imports [${copyImports.join(", ")}] · scripts ${wired}`];
   });
 
   /* ── P1 · ⛔ no phone number, no refusal object ── */
@@ -1856,6 +1871,8 @@ if (!PROVE_RED) {
       impl: { stop: (id, a, d) => CTRL.stopCampaign(id, { ...a, mayAct: true }, d) } },
     { name: "R-W1 · the page's client value-imports the services — it reaches the server's door around the actions", expect: [L.w1],
       impl: withSources({ src: new Map([...REAL_SOURCES.src, [LIVE_CLIENT_REL, `${REAL_SOURCES.src.get(LIVE_CLIENT_REL) ?? ""}${NL}import { campaignStep } from "@/lib/server/marketing/campaign-control";`]]) }) },
+    { name: "R-W1e · a second caller of the step door (the review's MAJOR) — the page's client calls the door in-process, around the route's guard, same-origin check and typed answers", expect: [L.w1],
+      impl: withSources({ src: new Map([...REAL_SOURCES.src, [LIVE_CLIENT_REL, `${REAL_SOURCES.src.get(LIVE_CLIENT_REL) ?? ""}${NL}import { campaignStepDoor } from "@/app/admin/campaigns/[id]/live-step-door";`]]) }) },
     { name: "R-W1b · the services grow an action — an exported *Action in campaign-control.ts", expect: [L.w1],
       impl: () => withSources({ control: `${REAL_SOURCES.control}${NL}export async function startCampaignAction(id: string) { return id; }` }) },
     { name: "R-W1c · the services name a send of their own", expect: [L.w1],

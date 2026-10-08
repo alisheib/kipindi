@@ -295,8 +295,16 @@ async function doorChecks(M: Mods, S: PageSources, fx: DoorFx, h: PageHarness): 
     try { await door(post(fx.campaignId), depsFor(sessionOf(fx.ids.grw, "GROWTH"), "ok", { step: async () => { throw new TypeError("again"); } })); } catch (err) { stepEscaped = errorName(err); }
     const thrown = boom.status === 500 && boom.body !== null && !boom.body.ok && boom.body.reason === "unfinished" && boom.body.error === COPY.LIVE_STEP_UNFINISHED && json(afterBoom.logs) === json(["TypeError"])
       && guardEscaped === null && guardBoom !== null && guardBoom.status === 500 && guardBoom.body !== null && !guardBoom.body.ok && guardBoom.body.reason === "unfinished"
+      // a guard that could not answer asked nothing of the campaign: its own words, never "a group may have gone out"
+      && guardBoom.body.error === COPY.LIVE_STEP_GUARD_FAILED && !guardBoom.body.error.includes("may or may not have gone out")
       && afterGuardBoom.step === 0 && afterGuardBoom.first === "RangeError" && stepEscaped === null;
     if (!thrown) wrong.push(`a throw: step ${boom.status} ${json(boom.body)} logs ${json(afterBoom.logs)}; guard ${guardBoom?.status ?? `escaped ${guardEscaped}`} ${json(guardBoom?.body)} step calls ${afterGuardBoom.step}; step escaped ${stepEscaped}`);
+
+    // 4b · the SEAM with the driver's client: every body the door answered above — a step, a role, a lapsed and a never-set-up
+    // 2-step, no session, no campaign, a throw — is one `postLiveStep` accepts (anything else would read "out of date" and stop)
+    const bodies = [okGrowth.body, okOwner.body, lapsed.body, unset.body, out.body, missing.body, closed.body, boom.body, guardBoom?.body ?? null].filter((b) => b !== null);
+    const unknownToDriver = bodies.filter((b) => !M.driver.isStepAnswer(JSON.parse(json(b)))).map((b) => json(b).slice(0, 80));
+    if (bodies.length !== 9 || unknownToDriver.length > 0) wrong.push(`the driver's client does not know ${unknownToDriver.length} of the door's ${bodies.length} answers: ${unknownToDriver.join(" | ")}`);
 
     // 5 · production's dependencies: frozen, the guard and the service by identity
     const D = M.door.LIVE_STEP_DOOR_DEPS;
@@ -444,6 +452,20 @@ async function driverScenarios(D: Mods["driver"]): Promise<string[]> {
     const afterLeaving = clock.pending();
     await clock.advance(60_000);
     if (!(sleeping === 1 && afterLeaving === 0 && c.n.steps === 1)) wrong.push(`a sleeping loop: ${sleeping} timer while it slept, ${afterLeaving} after the page left, ${c.n.steps} step call(s) (want 1, 0, 1)`);
+  });
+
+  // ── D2 · the page leaves before the loop's first tick: nothing was started and no timer is left for it ──
+  await withClock(async (clock) => {
+    const c = stand();
+    c.queue.step = [OK_STEP("RUNNING", sent)];
+    const m = mountHook(D.useLiveDriver, props(c, true, "RUNNING"));
+    const scheduled = clock.pending();
+    m.unmount();
+    const left = clock.pending();
+    await clock.advance(60_000);
+    if (!(scheduled === 1 && left === 0 && c.n.steps === 0 && c.n.polls === 0 && m.staleSets() === 0)) {
+      wrong.push(`a page that left before the first tick: ${scheduled} timer(s) scheduled, ${left} left after it left, ${c.n.steps} step(s), ${c.n.polls} poll(s), ${m.staleSets()} stale set(s) (want 1, 0, 0, 0, 0)`);
+    }
   });
 
   // ── E · a viewer who may not act polls every 10 s and never steps ──
@@ -865,6 +887,11 @@ async function decisionChecks(M: Mods, S: PageSources, h: PageHarness, tag: stri
   if (ACTING.test(S.client)) inline.push("acting");
   const statusRoles = S.client.split(`role=${DQ}status${DQ}`).length - 1;
   if (calls.length > 0 || inline.length > 0 || statusRoles !== 1) wrong.push(`the client: does not call [${calls.join(", ")}], decides inline [${inline.join(", ")}], role="status" written ${statusRoles} time(s) (want exactly one — the live region)`);
+  // `may` is wired: the driver and the presses get the server's decision AND the console's gate (liveMay), never the server's alone
+  const PRESSES_MAY = new RegExp("useLivePresses[(][{][^}]*[ ]may,");
+  if (!S.client.includes("useLiveDriver({ id: initial.id, mayAct: may,") || !PRESSES_MAY.test(S.client) || !S.client.includes("const may = liveMay(mayAct, shellMayAct);")) {
+    wrong.push("the client does not hand the driver and the presses `may` = liveMay(the server's decision, the console's gate)");
+  }
   return wrong;
 }
 
@@ -1126,12 +1153,16 @@ export function livePlants(): LivePlant[] {
       impl: edit("door", ["encodeURIComponent(adminNextDest(campaignDetailHref(id)))", "encodeURIComponent(campaignDetailHref(id))"]) },
     { name: "R-V12f · a throw in the guard escapes the door — a 500 page, not a typed answer", expect: [L.v12],
       impl: edit("door", ["deps.log(err);", "throw err;"]) },
+    { name: "R-V12f2 · a guard that failed says a group may have gone out — nothing was asked of the campaign, so it is untrue", expect: [L.v12],
+      impl: edit("door", ['reason: "unfinished", error: LIVE_STEP_GUARD_FAILED }', 'reason: "unfinished", error: LIVE_STEP_UNFINISHED }']) },
     { name: "R-V12g · a throw in the step escapes the door — a group may have gone out and the driver is told nothing", expect: [L.v12],
       impl: edit("door", [`} catch (err) {${NL}    deps.log(err);`, `} catch (err) {${NL}    throw err;${NL}    deps.log(err);`]) },
     { name: "R-V12h · the answer is changed on its way out — not the service's own", expect: [L.v12],
       impl: edit("door", ["if (r.ok) return { status: 200, body: r };", `if (r.ok) return { status: 200, body: { ...r, said: r.said ?? ${DQ}${DQ} } };`]) },
     { name: "R-V12i · production's guard is not the guard — a stand-in that answers 'ok' sits in the door's dependencies", expect: [L.v12],
       impl: edit("door", ["guard: softCheckStaff,", 'guard: async () => ({ ok: true as const, userId: "usr_x", sessionId: "s_x" }),']) },
+    { name: "R-V12n · the 404 loses its words — a body the driver's client does not know, so a missing campaign reads 'out of date'", expect: [L.v12],
+      impl: edit("door", ['body: { ok: false, reason: "not_found", error: r.error || LIVE_MISSING }', 'body: { ok: false, reason: "not_found" } as never']) },
     { name: "R-V12j · the route reads the body — the browser says something about who is acting", expect: [L.v12],
       impl: edit("route", ["const { id } = await params;", `const { id } = await params;${NL}  void (await req.text());`]) },
     { name: "R-V12k · the route answers without no-store — a proxy may keep an officer's answer", expect: [L.v12],
@@ -1145,6 +1176,10 @@ export function livePlants(): LivePlant[] {
       impl: edit("driver", ["cancelled: () => !live,", "cancelled: () => false,"]) },
     { name: "R-V13b · the cleanup does not wake a sleeping loop — a timer is left behind by a page that left", expect: [L.v13],
       impl: edit("driver", ["for (const wake of wakers) wake();", "void wakers;"]) },
+    { name: "R-V13i · the cleanup never says the page left — the loop wakes and carries on stepping after the page is gone", expect: [L.v13],
+      impl: edit("driver", ["    live = false;", "    void 0;"]) },
+    { name: "R-V13j · the cleanup leaves the loop's first tick scheduled — a page that left before it starts a loop for nobody", expect: [L.v13],
+      impl: edit("driver", ["clearTimeout(starter);", "void starter;"]) },
     { name: "R-V13c · the loop starts in the effect, not on a tick — React's development double-run makes two steps", expect: [L.v13],
       impl: edit("driver", ["const starter = setTimeout(() => {", "const starter = ((run: () => void) => { run(); return 0 as unknown as ReturnType<typeof setTimeout>; })(() => {"]) },
     { name: "R-V13d · the loop is re-keyed on every status — PREPARING → RUNNING restarts it and skips the gap", expect: [L.v13, V6],
@@ -1201,6 +1236,8 @@ export function livePlants(): LivePlant[] {
       impl: edit("announce", ["if (next !== null) setSaid(next);", "setSaid(view.headline);"], ["}, [view.status]);", "});"]) },
     { name: "R-V15m · a second live region — a callout marked role=status", expect: [L.v15],
       impl: clientEdit('<Callout tone="info" role="note">', '<Callout tone="info" role="status">') },
+    { name: "R-V15o · the driver is handed the server's decision alone — a page the console's gate refuses still steps", expect: [L.v15],
+      impl: clientEdit("useLiveDriver({ id: initial.id, mayAct: may,", "useLiveDriver({ id: initial.id, mayAct,") },
     { name: "R-V15n · the client decides a callout inline — the first build's condition, back", expect: [L.v15],
       impl: () => ({ page: { ...REAL_PAGE, sources: { ...REAL_SOURCES, client: `${REAL_SOURCES.client}${NL}const inlineNobody = view.standing.nobodyDriving && !driver.ran;` } } }) },
     /* ── V16 · the seed ── */
