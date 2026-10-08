@@ -109,7 +109,11 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
+          {/* The cards of a row share its height (the grid's own stretch; 2026-10-08, tiles 213, 222, 225, 228, 168).
+              `items-start` let each card stop at its content, so a row with a two-line question beside a one-line one
+              ended ragged: measured at 1280, 16px under the taller card and 36px under the shorter, against the 16px gap
+              everywhere else. The card is a flex column whose detail lines grow, so the spare room sits above the Sell row. */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {paged.map((row) => {
               const p = positions.get(row.id);
               const m = markets.get(row.marketId);

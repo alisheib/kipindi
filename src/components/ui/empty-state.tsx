@@ -78,10 +78,24 @@ export function EmptyState({
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
       <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{title}</p>
-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{body}</p>}
+      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{dashOnItsWord(body)}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
+}
+
+/**
+ * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
+ * — tiketi yako itaonekana hapa." broke at the space BEFORE its dash, so line 2 began "— tiketi yako…" (en: "— your
+ * ticket shows up here."). The words are the dictionary's and stay so; only the break before the dash is taken away:
+ *   · a spaced dash (sw, en) — the space before it becomes a no-break space, so the dash ends its line with its word;
+ *   · an unspaced dash (zh "否——您") — a word joiner (U+2060, zero-width) holds it to the character before.
+ * A break AFTER the dash is untouched, and an unspaced en dash ("1–5", a range) is left alone.
+ */
+const NO_BREAK_SPACE = String.fromCharCode(0x00a0);
+const WORD_JOINER = String.fromCharCode(0x2060);
+function dashOnItsWord(text: string): string {
+  return text.replace(/[ \t]+(?=[—–])/g, NO_BREAK_SPACE).replace(/([^\s—])(?=—)/g, `$1${WORD_JOINER}`);
 }
 
 /** Compact error-state — same chrome, no-rose accent. */

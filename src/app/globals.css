@@ -6553,8 +6553,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    returns. `.kp-rail__item` itself is not edited. */
 .kp-rail--journey .kp-rail__item { justify-content: flex-start; }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
-/* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right. */
-.kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); }
+/* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
+   ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
+   and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
+   line (sw "Ingia uone tiketi zako", 219px, tile 113; zh, tile 119; every language from 360) is unchanged. */
+.kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
 
 /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the

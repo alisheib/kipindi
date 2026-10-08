@@ -24,9 +24,22 @@
 export const EMPTY_STATE_BOX =
   "rounded-xl border border-dashed border-border-strong bg-bg-elevated px-8 py-8 text-center";
 
+/**
+ * ⭐ CHINESE BREAKS BETWEEN WORDS, NOT INSIDE THEM (2026-10-08, the visual pass, tile 247). Chinese may break between
+ * any two characters, so a centred line of it split 显示 into "…将显 / 示在这里。". `keep-all` breaks it only where its
+ * punctuation and spaces do (after ，。 and the —— dash); Latin text is untouched by it. `break-word` is the floor
+ * under that: a run with no break in it that is wider than its box still breaks rather than overflows.
+ * ⚠️ Arbitrary properties, not `break-keep break-words`: tailwind-merge (`cn`) files both under ONE `break-*` group
+ * and would keep only the last of them.
+ */
+const CJK_WORDS = "[word-break:keep-all] [overflow-wrap:break-word]";
+
 /** The title line. `text-balance` is part of it because it changes where the line WRAPS, and a
  *  ghost that wraps differently from its page is a ghost with a different height. */
-export const EMPTY_STATE_TITLE = "font-display text-[15.5px] font-semibold text-balance";
+export const EMPTY_STATE_TITLE = `font-display text-[15.5px] font-semibold text-balance ${CJK_WORDS}`;
 
-/** The body line. Measured line box: 21.125px at `text-body-sm leading-relaxed`. */
-export const EMPTY_STATE_BODY = "mt-2 text-body-sm leading-relaxed";
+/** The body line. Measured line box: 21.125px at `text-body-sm leading-relaxed`.
+ *  ⭐ Balanced, like the title (2026-10-08, tiles 232, 233, 235, 236): it is centred, and the greedy fill left one word
+ *  under a full line — "Weka dau kwenye ubao na litaonekana / hapa.", "…and it appears / here." Balancing keeps the
+ *  number of lines and evens their lengths, so no height moves and nothing is left alone. */
+export const EMPTY_STATE_BODY = `mt-2 text-body-sm leading-relaxed text-balance ${CJK_WORDS}`;

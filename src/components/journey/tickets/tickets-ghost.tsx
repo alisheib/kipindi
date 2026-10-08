@@ -44,7 +44,8 @@ export function TicketsGhost({ t }: { t: Dict }) {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2" aria-hidden>
+      {/* The view's own grid and the card's own stake/payout split (2026-10-08): rows stretch, the payout takes 3 parts. */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track">
             <div className="flex items-center justify-between gap-2">
@@ -52,7 +53,7 @@ export function TicketsGhost({ t }: { t: Dict }) {
               <div className="h-5 w-[96px] rounded-pill bg-bg-overlay" />
             </div>
             <div className="mt-3 h-4 w-3/4 rounded bg-bg-overlay" />
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3">
               <div className="h-[44px] rounded bg-bg-overlay" />
               <div className="h-[44px] rounded bg-bg-overlay" />
             </div>

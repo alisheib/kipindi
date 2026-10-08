@@ -273,11 +273,15 @@ const RULE_CALL = "const payout = ticketPayout(p);";
 const FIGURE_LEAKS = ["potentialPayout", "selectionClosedNotifiedAt", "payoutIfWin", "payoutExactNote", `"exact"`];
 const CHIP_RULE = `status === "LOSS" ? "no" : (playerStatusChip(status) ?? "warning")`;
 const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as never}";
-/** The question's words: the short title, or the full one held to two lines by a clamp on the words themselves.
- *  `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line. */
-const TITLE_WORDS = `<span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span>`;
-/** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25). */
-const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">`;
+/**
+ * The question's words, WHOLE: the short title or the full question, straight inside the link and never clamped.
+ * ⚠️ Until 2026-10-08 this pinned a two-line clamp on the full question; the visual pass (tile 211) found it cutting the
+ * bet's own question at 320 ("…kutakuwa kijani…" with "kesho?" hidden), so the pin now holds the opposite: no clamp.
+ * `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line.
+ */
+const TITLE_WORDS = `hover:underline">{keepUnits(title.text)}</Link>`;
+/** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25), its lines balanced. */
+const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">`;
 /** The link's reach: the scale's step 2 of padding above and below, taken back by the same step as negative margin. */
 const TITLE_REACH = `className="-my-2 block py-2 hover:underline"`;
 /** Step 2 of the spacing scale as tailwind.config.ts overrides it: 12px, so a 20px line reaches 44px. */
@@ -310,14 +314,14 @@ function g2Card(I: Impl, W: World, ok: Ok) {
     arm.includes("value={t.journey.ticketPayoutAtResult}") && !arm.includes("formatTzs(") && !arm.includes("money")
       && count(card, RULE_CALL) === 1 && count(card, "<Stat") === 3 && leaks.length === 0,
     show({ leaks, stats: count(card, "<Stat"), arm: arm.slice(0, 160) }));
-  ok("2.title · the question is the card's only link — to its market — the short title where one is approved, the full one held to two lines",
+  ok("2.title · the question is the card's only link — to its market — the short title where one is approved, the full one otherwise, and either one WHOLE: no clamp cuts the bet's own question (2026-10-08)",
     count(card, "<Link") === 1 && card.includes(TITLE_LINK) && card.indexOf("<h2") < card.indexOf(TITLE_LINK)
       && card.indexOf(TITLE_LINK) < card.indexOf("</h2>") && card.includes("const title = cardTitle(locale, m);")
-      && card.includes(TITLE_WORDS) && card.includes("<article"),
-    show({ links: count(card, "<Link"), words: card.includes(TITLE_WORDS) }));
-  ok("2.reach · the question's link reaches 44px and moves nothing: 12px of padding each way (step 2 of this repo's scale) around its 20px line, taken back by the same negative margin — side-picker's absorber — with the two-line clamp on the words inside, never on the padded link",
+      && card.includes(TITLE_WORDS) && !card.includes("line-clamp") && card.includes("<article"),
+    show({ links: count(card, "<Link"), words: card.includes(TITLE_WORDS), clamp: card.includes("line-clamp") }));
+  ok("2.reach · the question's link reaches 44px and moves nothing: 12px of padding each way (step 2 of this repo's scale) around its 20px lines, taken back by the same negative margin — side-picker's absorber — with the words straight inside the padded link",
     card.includes(`${TITLE_LINK} ${TITLE_REACH}>`) && card.includes(TITLE_HEADING) && card.includes(TITLE_WORDS)
-      && !card.includes("line-clamp-2 hover:underline") && text(W, TW_CONFIG).includes(STEP_2),
+      && text(W, TW_CONFIG).includes(STEP_2),
     show({ reach: card.includes(TITLE_REACH), heading: card.includes(TITLE_HEADING), step2: text(W, TW_CONFIG).includes(STEP_2) }));
   const classic = text(W, CLASSIC_CARD);
   const tone = fnBody(text(W, TONE), "export function positionStatusChip(");
@@ -994,6 +998,7 @@ const stampedShowsExact = swap(CARD, UNRESOLVED_STAT,
   `m.selectionClosedNotifiedAt ? <Stat label={t.market.payoutIfWin} value={formatTzs(p.stake)} tone="gold" money hint={t.market.payoutExactNote} /> : ${UNRESOLVED_STAT}`);
 const cardIsALink = swap(CARD, "<h2 className=", `<Link href={"/markets" as never}>open</Link><h2 className=`);
 const reachDropped = swap(CARD, TITLE_REACH, `className="block py-2 hover:underline"`);
+const titleClamped = swap(CARD, "{keepUnits(title.text)}</Link>", `<span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span></Link>`);
 const chipCopied = swap(CARD, "variant={positionStatusChip(p.status)}", `variant={p.status === "LOSS" ? "no" : "warning"}`);
 const classicChipBack = swap(CLASSIC_CARD, "variant={positionStatusChip(status)}", `variant={status === "LOSS" ? "no" : "warning"}`);
 const numberGone = swap(CARD, "{p.id}</p>", "</p>");
@@ -1118,6 +1123,7 @@ const plants: Plant[] = [
   { name: "the card prints a figure on an open ticket", expect: ["2.render"], world: figureOnOpen, landed: changed(figureOnOpen, CARD) },
   { name: "the card shows the exact figure once the closing sweep has stamped the market (the classic card's rule)", expect: ["2.render"], world: stampedShowsExact, landed: changed(stampedShowsExact, CARD) },
   { name: "the card gains a second link", expect: ["2.title"], world: cardIsALink, landed: changed(cardIsALink, CARD) },
+  { name: "the full question is held to two lines again (at 320 it hid the end of the bet's own question)", expect: ["2.title"], world: titleClamped, landed: changed(titleClamped, CARD) },
   { name: "the question's link loses its pull-back (the card grows 24px)", expect: ["2.reach"], world: reachDropped, landed: changed(reachDropped, CARD) },
   { name: "the journey card spells the colour rule itself", expect: ["2.chip"], world: chipCopied, landed: changed(chipCopied, CARD) },
   { name: "the classic card goes back to its own ternary", expect: ["2.chip"], world: classicChipBack, landed: changed(classicChipBack, CLASSIC_CARD) },

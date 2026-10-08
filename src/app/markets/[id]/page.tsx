@@ -687,10 +687,14 @@ export default async function MarketDetail({
                 <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
                   {t.market.signInToPredict}
                 </p>
-                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
+                {/* ⭐ Balanced, both centred lines (2026-10-08, the visual pass, tile 199): at sw 390 the title's 292px
+                    measure held "Weka dau lako kwenye soko" (258px) and left "hili" alone; balanced it reads "Weka dau
+                    lako / kwenye soko hili". The note under it is balanced too, and its Chinese breaks only at its
+                    comma (keep-all, with break-word as the floor), never inside 手机号. */}
+                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight text-balance">
                   {t.market.placeYourStake}
                 </h2>
-                <p className="mt-1.5 text-body-sm text-text-muted leading-snug">
+                <p className="mt-1.5 text-body-sm text-text-muted leading-snug text-balance [word-break:keep-all] [overflow-wrap:break-word]">
                   {t.market.browseForFree}
                 </p>
                 {(() => {

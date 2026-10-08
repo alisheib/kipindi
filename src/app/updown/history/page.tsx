@@ -363,7 +363,13 @@ export default async function UpDownHistoryPage({ searchParams }: {
               a player who filtered to `Up wins` and saw nothing would have been told they had
               never played. Each exit carries a REAL cross-filtered count, so none of them leads
               to another empty page. */}
+          {/* ⭐ TIKETI ZANGU'S TWO KINDS DRAW ONE EMPTY STATE (2026-10-08, tiles 233, 236, 239 against 242, 245, 248): for a
+              journey reader this is the Juu/Chini tab beside Maswali, whose empty state fills the content width (PV-03:
+              it lines up with the switch and the name above it). Boxed, this one was a 360px card centred at 460-820
+              under a 1016px switch rail, and the box changed width as the reader changed tabs. Everybody else keeps
+              today's centred box. */}
           <EmptyState
+            fill={journey}
             title={
               cause === "no-rows" ? t.market.udNoHistory
               : cause === "search-miss" ? t.market.udNoRoundsThatDay

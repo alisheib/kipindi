@@ -7,12 +7,27 @@
  * while it is open, when selection closes; then the Sell button.
  *
  * ⭐ THE QUESTION IS THE SHORT TITLE where an officer approved one (S2's `cardTitle`, on the projection WP8 widened),
- * and otherwise the reader's own full question, held to two lines.
+ * and otherwise the reader's own full question — WHOLE, at every width (2026-10-08, the visual pass, tile 211). It was
+ * held to two lines, and at 320 that cut "Je, kufungwa kwa kila siku kwa Bitcoin kutakuwa kijani…" before "kesho?":
+ * the one card a player opens to see their bet named the bet only in part. The canvas draws the question unclamped
+ * (s4-9-tiketi-open's `<h2>`), the board's 2-line clamp (Q6) is a rule for browsing cards, not for a ticket, and the
+ * row's cards now share a height (`tickets-view.tsx`), so a longer question costs its row a line and hides nothing.
+ * Its lines are balanced, as the board's question is (`.mcardp-q`), so no word is left alone on the last ("…close be /
+ * green?" at en 390, tile 215).
  * ⭐ ITS LINK REACHES 44px AND THE CARD DOES NOT MOVE (Law 9's tap floor): twelve pixels of padding above and below the
  * question, taken back by the same twelve as negative margin — the absorber `side-picker.tsx` uses — so one line is a
  * 44px target and two lines 64px, while every line sits where it would without them. Its neighbours, the state chips
- * above and the stake and payout below, are 16px away and neither holds a control. The two-line clamp sits on the words
- * inside: on the padded link itself a third line would show through the padding.
+ * above and the stake and payout below, are 16px away and neither holds a control. ⚠️ The card is a flex column (so the
+ * Sell row can sit on its floor), which makes the heading a flex item: its margin no longer collapses with the link's
+ * negative one but holds it inside, and the arithmetic lands every line on the same pixel (16 below the chips, 16 above
+ * the stake), with the link's reach overhanging the heading's box by the same twelve each way.
+ * ⭐ THE PAYOUT CELL GETS THE ROOM THE STAKE DOES NOT NEED (2026-10-08, tiles 211, 214, 215). Two equal halves gave the
+ * open ticket's words — "Matokeo yakitoka" 129.6px, "When the result is in" 170.1px in 13.5px JetBrains Mono bold —
+ * a 115px cell at 320 and 150px at 390, so they broke "Matokeo / yakitoka" and "When the result is / in". The stake is
+ * never wider than "TZS 1,000,000" (105.3px; PLATFORM_MAX_STAKE), so the row splits 2 : 3, and the stake's column never
+ * narrows below its own figure (`minmax(max-content, …)`): a stake figure never breaks, and only the one-million stake at
+ * 320 takes the words back to two lines. The words' lines are balanced, so a wrap that remains is an even pair
+ * ("When the / result is in"), never a word alone.
  * ⛔ NO PAYOUT FIGURE ON ANY UNRESOLVED TICKET (SJ-4, DESIGN_AUTHORITY §C3, VODACOM-PLAN §0h point 22): "Malipo ·
  * Matokeo yakitoka" while betting is open, after selling closes, and after the closing sweep has stamped the market; the
  * figure arrives with the result ("Malipo ya mwisho"). `ticketPayout` holds the rule and `test:journey-tickets` §2
@@ -84,7 +99,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
     <article
       id={p.id}
       data-row-id={p.id}
-      className="ticket-target scroll-mt-[96px] rounded-xl border border-border bg-bg-elevated p-4"
+      className="ticket-target scroll-mt-[96px] flex flex-col rounded-xl border border-border bg-bg-elevated p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{sideWord(t, p.side, "MARKET")}</Chip>
@@ -92,13 +107,11 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
             open or refunded ticket's royal pill took the taller status metrics, and its card sat 2px low. */}
         <Chip size="sm" metrics="base" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
       </div>
-      <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text">
-        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">
-          {/* `keepUnits` (2026-10-08 · G1): a Chinese "200毫米" never breaks between the number and its unit. */}
-          <span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span>
-        </Link>
+      {/* `keepUnits` (2026-10-08 · G1): a Chinese "200毫米" never breaks between the number and its unit. */}
+      <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">
+        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">{keepUnits(title.text)}</Link>
       </h2>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3 text-balance">
         <Stat label={t.dialog.stakeLabel} value={formatTzs(p.stake)} money />
         {payout.kind === "atResult" ? (
           <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" />
@@ -106,7 +119,9 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
           <Stat label={t.journey.ticketFinalPayout} value={formatTzs(payout.amount)} tone={payout.won ? "gold" : "default"} struck={payout.won} money />
         )}
       </div>
-      <div className="mt-3 space-y-1 text-body-sm text-text-muted">
+      {/* `grow`: in a row of cards that share a height, the shorter card's spare room opens here, so its Sell row sits
+          on the card's floor, level with its neighbour's (2026-10-08, tiles 213, 222, 225, 228, 168). */}
+      <div className="mt-3 grow space-y-1 text-body-sm text-text-muted">
         <p className="flex items-center gap-1.5 break-all font-mono"><I.ticket s={14} className="shrink-0" />{p.id}</p>
         <p className="flex items-center gap-1.5">
           <I.clock s={14} className="shrink-0" />
