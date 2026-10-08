@@ -17,17 +17,20 @@ import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type Txn
 // Prisma twin through its column map, so the two cannot write different columns (`test:dal-parity` §26.u43a).
 // U46a · and before the receipt door — its write (`receiptWrite`), the one list of rows a receipt moves (`SMS_RECEIPT_FROM`)
 // and the one reading of a miss (`receiptMiss`) are the rule set's too (`test:dal-parity` §26.u46a).
+// U43b-2 · and before DC-4's send record — its write (`sendRecordWrite`) and the one list of rows it writes into
+// (`SMS_SEND_RECORD_FROM`) are the rule set's too (`test:dal-parity` §26.u43b).
 import {
   assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
   assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
   assertClaim, assertClaimRead, assertSettle, assertStrandedRead, assertRequeueHeld, assertActivityRead, assertTargetsRead,
   claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
   assertReceipt, receiptWrite, receiptMiss, SMS_RECEIPT_FROM,
+  assertSendRecord, sendRecordWrite, SMS_SEND_RECORD_FROM,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
 // statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
 // back from this file, so there is no cycle.
-import { tallyCampaignStatuses, tallyRecipientsByCampaign, wantsAttention } from "@/lib/marketing/campaign-status";
+import { tallyCampaignStatuses, tallyRecipientsByCampaign, tallyRecipientOutcomes, wantsAttention } from "@/lib/marketing/campaign-status";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import type { ConfirmTierColumn } from "@/lib/marketing/campaign-confirm";
 // ⛔ The same lens definitions the Prisma DAL reads — one home (§0a), so the two
@@ -572,6 +575,14 @@ export type SmsCampaignStatusCounts = Record<SmsCampaignStatus, number>;
 export type SmsCampaignRecipientStatusCounts = Record<SmsCampaignRecipientStatus, number>;
 /** Each campaign asked about, by id, with its recipients by status — and only those. */
 export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipientStatusCounts>;
+/** U47b-1 · ONE group of one campaign's recipient rows by (status, skipReason, failureClass) — `countByOutcome`, the live
+ *  page's ONE groupBy (ENGINE-SPEC §4.15 decision 8). ⛔ Never stored (OD26): always counted from the rows. */
+export type SmsCampaignRecipientOutcomeCount = {
+  status: SmsCampaignRecipientStatus;
+  skipReason: string | null;
+  failureClass: string | null;
+  count: number;
+};
 
 /* ── U43a · THE ENGINE'S RECIPIENT DOORS — claim, claimedBy, settle, findStranded, requeueHeld, lastActivity, and
  * `smsMessage.findByTargets` (ENGINE-SPEC §4.10; `test:dal-parity` §26.u43a, `test:campaign-models` §2.14–§2.28).
@@ -617,6 +628,8 @@ export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipient
  *   (DELIVERED or FAILED) and its trail is still null. ⛔ U43b builds it with its slice, before the slice settles a real row,
  *   calls it for each SENT patch lost to such a row, and asserts the DELIVERED row then carries its trail and `sentAt` (what
  *   U46a's D5 asserts today is the rest: the row DELIVERED, its claim kept, the slice's settle `lost`).
+ *   ✅ BUILT by U43b-2: `recordSend` (`SmsRecipientSendRecord`, below), called by the slice for each SENT — and each
+ *   UNCONFIRMED, whose receipt is its answer — patch reported `lost` (`test:marketing-engine` S16).
  */
 export type SmsCampaignRecipientSettle =
   | {
@@ -672,6 +685,36 @@ export type SmsRecipientReceiptResult = {
   /** `applied` (the row moved), `not_found` (no row of that id), `mismatch` (the row is another number's, or holds another
    *  message's reference) or `settled` (the row is in a status no receipt moves — `SMS_RECEIPT_FROM`, campaign-model.ts). */
   reason: "applied" | "not_found" | "mismatch" | "settled";
+};
+
+/* ── U43b-2 · DC-4 · THE SEND RECORD — `recordSend` (ENGINE-SPEC §4.13 decision 6; `test:dal-parity` §26.u43b,
+ * `test:campaign-models` §2.32, `test:marketing-engine` S16). ⚠️ NAMED, NOT INLINE: the `SmsDlrResult` note above — and one
+ * key per line, so the parity suite reads every key of both. ── */
+/**
+ * ⭐ WHAT A SLICE STILL OWES A ROW A RECEIPT SETTLED FIRST — the columns its lost SENT (or UNCONFIRMED) patch carried, and the
+ * claim the row must still hold. The door writes them ONLY where the row still holds THAT claim, is DELIVERED or FAILED
+ * (`SMS_SEND_RECORD_FROM`, campaign-model.ts) and its trail is still null — never the status, which is the receipt's.
+ * ⛔ LAWFUL BEFORE IT IS HANDED IN (DC-5): the rule set (`assertSendRecord`) refuses, never scrubs.
+ */
+export type SmsRecipientSendRecord = {
+  /** The claim the slice settled under — the row must still hold it (a receipt keeps the claim on the row it settles). */
+  claimToken: string;
+  /** E20's trail, as the lost patch carried it. */
+  gateTrail: SmsCampaignGateTrail;
+  /** The token in the message's footer (E1). */
+  optOutToken: string | null;
+  /** The OD42 variant that went out. */
+  locale: MessagingLocale | null;
+  /** The size the wire was given. */
+  segments: number | null;
+  /** The message's length. */
+  bodyLen: number | null;
+  /** The hand-over instant (PE-08: the slice's own send) — null for an unanswered message, which has none. */
+  sentAt: string | null;
+};
+/** What the send record did: `written` only when the row was still owed it. */
+export type SmsRecipientSendRecordResult = {
+  written: boolean;
 };
 
 declare global {
@@ -4138,6 +4181,15 @@ const memoryDb = {
         .filter((r) => wanted.has(r.campaignId))
         .map((r) => ({ campaignId: r.campaignId, status: r.status, count: 1 })));
     },
+    /** U47b-1 · THE LIVE PAGE'S ONE GROUPBY — one campaign's rows by (status, skipReason, failureClass), every group with
+     *  its count, through the ONE tally both twins answer with (`tallyRecipientOutcomes`: merged, none dropped, one
+     *  order). The memory twin tallies because it never serves production; the Prisma twin asks ONE groupBy. */
+    countByOutcome: (campaignId: string): SmsCampaignRecipientOutcomeCount[] => {
+      const rows: StoredSmsCampaignRecipient[] = Array.from(store.smsCampaignRecipients.values());
+      return tallyRecipientOutcomes(rows
+        .filter((r) => r.campaignId === campaignId)
+        .map((r) => ({ status: r.status, skipReason: r.skipReason, failureClass: r.failureClass, count: 1 })));
+    },
     /** U16a · THE ACCESS EXPORT'S READ — the rows about ONE number CREATED OR SENT on or after `sinceIso`, NEWEST first
      *  (`createdAt`, then `id`, both descending: the Prisma twin's `orderBy`), at most `SMS_RECIPIENTS_BY_NUMBER_MAX` + 1 —
      *  the one past the cap only tells the export that it cut (D10). The rule set is asked first
@@ -4295,6 +4347,20 @@ const memoryDb = {
       }
       writeRecipient(row, receiptWrite(r));
       return { changed: true, reason: "applied" };
+    },
+    /** U43b-2 · ⭐ DC-4 · THE SEND RECORD WHEN A RECEIPT WINS (ENGINE-SPEC §4.13 decision 6) — what a slice's lost SENT patch
+     *  carried, written ONLY where the row named still holds the patch's claim, is in a status a receipt settled it to
+     *  (`SMS_SEND_RECORD_FROM`: DELIVERED, FAILED) AND its trail is still null — so it is written once, and never over a trail
+     *  the settle or the reaper wrote. The rule set is asked first; the write is its `sendRecordWrite` (never the status,
+     *  the reference or the receipt's own columns), through the ONE apply. JavaScript runs this member to its end before any
+     *  other write, so the test and the write are one step, as the Prisma twin's conditional `updateMany` is one statement. */
+    recordSend: (id: string, s: SmsRecipientSendRecord, at: string): SmsRecipientSendRecordResult => {
+      assertSendRecord(id, s, at);
+      const owedTo: StoredSmsCampaignRecipient | undefined = store.smsCampaignRecipients.get(id);
+      if (owedTo === undefined || owedTo.claimToken !== s.claimToken) return { written: false };
+      if (!SMS_SEND_RECORD_FROM.includes(owedTo.status) || owedTo.gateTrail !== null) return { written: false };
+      writeRecipient(owedTo, sendRecordWrite(s, at));
+      return { written: true };
     },
   },
 };

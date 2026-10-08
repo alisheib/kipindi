@@ -49,7 +49,7 @@
  */
 import type {
   StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignStatusCounts,
-  SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById,
+  SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById, SmsCampaignRecipientOutcomeCount,
 } from "@/lib/server/store";
 
 /* ══ THE STATUS RAIL ═══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -178,6 +178,49 @@ export function tallyRecipientsByCampaign(
   return out;
 }
 
+/* ══ U47b-1 · THE LIVE PAGE'S ONE GROUPBY — a campaign's rows by (status, skipReason, failureClass) ═══════════════ */
+
+/** The text order of two group keys — none first, then byte order (never the locale's, so both twins sort alike). */
+const keyOrder = (a: string | null, b: string | null): number => (a === b ? 0 : a === null ? -1 : b === null ? 1 : a < b ? -1 : 1);
+
+/**
+ * ⭐ U47b-1 · ONE campaign's recipient rows grouped by (status, skipReason, failureClass) — what both twins'
+ * `countByOutcome` answer through, the live page's ONE groupBy (ENGINE-SPEC §4.15 decision 8; OD26: counted from the rows,
+ * never a counter). Groups of one key are merged, a group of none is dropped, and the answer is in ONE order — the
+ * schema's status order, then the skip reason, then the failure class (none first) — so the two twins answer alike.
+ * ⛔ A status this code does not know REFUSES, as every tally here does: a page that dropped those rows would read the
+ * campaign as smaller than it is.
+ */
+export function tallyRecipientOutcomes(
+  raw: ReadonlyArray<{ status: string; skipReason: string | null; failureClass: string | null; count: number }>,
+): SmsCampaignRecipientOutcomeCount[] {
+  const by = new Map<string, SmsCampaignRecipientOutcomeCount>();
+  for (const r of raw) {
+    if (!own(RECIPIENT_SIDE, r.status)) throw new Error(`[campaign-status] "${r.status}" is a recipient status this code does not know`);
+    const skipReason = typeof r.skipReason === "string" ? r.skipReason : null;
+    const failureClass = typeof r.failureClass === "string" ? r.failureClass : null;
+    const key = JSON.stringify([r.status, skipReason, failureClass]);
+    const was = by.get(key);
+    if (was !== undefined) was.count += r.count;
+    else by.set(key, { status: r.status as SmsCampaignRecipientStatus, skipReason, failureClass, count: r.count });
+  }
+  const rank = (s: SmsCampaignRecipientStatus): number => RECIPIENT_STATUSES.indexOf(s);
+  return [...by.values()]
+    .filter((g) => g.count > 0)
+    .sort((a, b) => rank(a.status) - rank(b.status) || keyOrder(a.skipReason, b.skipReason) || keyOrder(a.failureClass, b.failureClass));
+}
+
+/** U47b-1 · the rows by status, zero-filled, summed from the ONE groupBy's groups — never a second read. ⛔ An unknown
+ *  status REFUSES. */
+export function outcomeStatusCounts(groups: readonly SmsCampaignRecipientOutcomeCount[]): SmsCampaignRecipientStatusCounts {
+  const out = zeroRecipientStatusCounts();
+  for (const g of groups) {
+    if (!own(out, g.status)) throw new Error(`[campaign-status] "${String(g.status)}" is a recipient status this code does not know`);
+    out[g.status] += g.count;
+  }
+  return out;
+}
+
 /* ══ PROGRESS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 export type CampaignProgress = { phase: "preparing" | "sending"; value: number; max: number };
@@ -227,17 +270,84 @@ export function wantsAttention(
 
 /* ══ WHY A CAMPAIGN STOPPED ═════════════════════════════════════════════════════════════════════════════════════ */
 
+/** U49a · the floor's one sentence, whichever line caught it (`STOP_REASON_SENTENCE`, below). */
+const MARKETING_FLOOR_SENTENCE = "Paused — the SMS credit reached what is kept for login and withdrawal codes. Top up, then Resume.";
+
 /**
  * The engine's own reasons, in words an officer can act on. The first three are the shop-wide refusals `sendBatch`
  * returns before a request is made (`SmsFailureCode` in `sms.ts`) and `gate_unanswered` is `dispatchSlice`'s own: the
- * reasons a slice HOLDS rows for (`dispatch.ts`), which the engine turns into ONE pause (§9 U43). ⚠️ U41, U43 and U49
- * each add the keys they write — an unknown key is still shown, labelled as the engine's own words.
+ * reasons a slice HOLDS rows for (`dispatch.ts`), which the engine turns into ONE pause (§9 U43). ⭐ U42's enqueue
+ * (`enqueue.ts`, ENGINE-SPEC §3.4) adds the ones it pauses a campaign for: `audience_unreadable` (the saved audience can no
+ * longer be read — never read as "start again" or "done"), `audience_moved` (a listed confirmation's people changed after
+ * Start; nothing was written), and — failing closed, U42's review — `list_over_confirmed` (the list came out longer than
+ * the confirmed count before it ever ran; nothing was sent) and `list_over_confirmed_sending` (the same, found after another
+ * step had moved it to sending). None says Resume. The three paused before anything ran (the enqueue pauses only a
+ * PREPARING campaign) say Stop and confirm a new copy — `audience_unreadable` also the way out when the copy is refused, as
+ * a copy carries the same unreadable filter. ⛔ `list_over_confirmed_sending` prescribes NO copy (U42's re-review): some
+ * people may already have been messaged, a copy has the same filter and nothing de-duplicates across campaigns, so a copy
+ * would message them again — it says that, and Stop. ⚠️ U41, U43 and U49 each add the keys they write — an unknown key is
+ * still shown, labelled as the engine's own words.
+ * ⭐ U49a (ENGINE-SPEC §3.4, §4.12 decision 5): the credit kept for login and withdrawal codes — `MARKETING_FLOOR` is
+ * `sendBatch`'s own refusal (its last line), `marketing_floor` and `credit_unreadable` are the slice's own checks before it
+ * claims anyone (U43b writes all three; one sentence for the floor, whichever line caught it).
+ * ⭐ U43b-2 (ENGINE-SPEC §3.4, §4.13): the slice's own — `live_switch_closed` (the owner's switch off, lapsed or unreadable,
+ * found before the claim or just before the wire), `gateway_refused` (the network refused a batch with its own "no" —
+ * nothing was charged, so Resume sends it again), `template_invalid` (the saved message no longer passes its own check),
+ * `held_rows` (only people the engine could not check or prepare are left) — and, as built, `gateway_unanswered` (a batch
+ * the network never clearly answered: its people are "no answer" and are never sent again by themselves) and
+ * `before_send_unanswered` (the engine could not re-check its own claims just before the wire, three slices running). The
+ * slice also pauses with U42's `list_over_confirmed_sending` when it finds a list longer than confirmed itself (the U42
+ * re-review). ⭐ The U43b-2 review made every engine sentence TRUE of every way its key is written: `confirmation_unreadable`
+ * (a confirmed count that is not a count, MID-campaign — the word Resume refuses it with, never `audience_unreadable`,
+ * whose cause and remedy are the enqueue's), `send_error` (a send that failed on our side: whoever it certainly missed goes
+ * back on the list, whoever it may have reached is "no answer"), and the credit check's causes each in its own words —
+ * `settings_unreadable`, `sizes_unreadable`, `price_unknown`, `credit_unreadable` (now the credit read alone). ⛔ A pause
+ * that can land after people were messaged never prescribes a copy as if it reached nobody: a copy has the same filter
+ * and nothing de-duplicates across campaigns (`template_invalid`, `confirmation_unreadable`, as U42's own).
+ * ⭐ U47b-1 (ENGINE-SPEC §3.4): an officer's own two — `officer_paused` (Pause) and `officer_stopped` (Stop), written by
+ * `campaign-control.ts`. The live page names who and when from the act's audit row (`campaign-live.ts`); the list says
+ * these words.
  */
 const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
+  officer_paused: "Paused by an officer.",
+  officer_stopped: "Stopped by an officer.",
   BALANCE_FLOOR: "The SMS credit is below its floor. Top it up, then resume.",
   NOT_CONFIGURED: "SMS sending is not set up on the server.",
   PROVIDER_UNRECOGNISED: "The SMS provider setting is not one this platform knows.",
   gate_unanswered: "The consent check could not answer, so nobody more was messaged.",
+  MARKETING_FLOOR: MARKETING_FLOOR_SENTENCE,
+  marketing_floor: MARKETING_FLOOR_SENTENCE,
+  credit_unreadable: "Paused — the SMS credit couldn't be read, so sending stopped to protect login codes. Resume when Admin → System shows the credit again.",
+  audience_unreadable: "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused.",
+  audience_moved: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy.",
+  list_over_confirmed: "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy.",
+  list_over_confirmed_sending:
+    "Paused — more people are on this campaign's list than were confirmed, found after sending had started, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop this campaign.",
+  live_switch_closed:
+    "Paused — marketing SMS are not switched on: the owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume.",
+  gateway_refused: "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume.",
+  gateway_unanswered:
+    "Paused — the SMS network gave no clear answer for the last batch (no reply, or an error page instead of its answer), so those people are counted as no answer and are never sent again by themselves. Check Admin → System, then Resume.",
+  send_error:
+    "Paused — sending the last batch failed on our side. Everyone it certainly did not reach goes back on the list, and nothing was charged for them; anyone it may have reached is counted as no answer and is never sent again by themselves. Ask the developer to check the server log, then press Resume.",
+  template_invalid:
+    "Paused — the saved message no longer passes its own check, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop this campaign, and send a corrected copy only if that is what you want.",
+  confirmation_unreadable:
+    "Paused — this campaign's confirmation can't be read in full, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop it, or ask the developer.",
+  settings_unreadable:
+    "Paused — the Marketing SMS settings couldn't be read in full, so what this campaign may spend can't be checked against the credit kept for login codes. Resume once Admin → System shows them; if it happens again, ask the developer.",
+  sizes_unreadable:
+    "Paused — this campaign's saved message size can't be read, so what is left to send can't be priced against the credit kept for login codes. Stop it, or ask the developer.",
+  price_unknown:
+    "Paused — the price per SMS isn't known, so what is left to send can't be priced against the credit kept for login codes. The owner sets it on Admin → System → Marketing SMS, then Resume.",
+  held_rows: "Paused — some people could not be checked or prepared. Resume to try them again, or Stop.",
+  before_send_unanswered:
+    "Paused — the last check before sending could not be made three times running, so nothing more was sent. Resume to try again.",
+  // ⭐ The U43b-2 re-review · the send-age bound met three slices in a row, counted by route (`tooSlowCounts`, the check of
+  // 980e2ee7): on the gate side only at the smallest group — the check before each message slower than the time a group may
+  // take — and on the send side (`sendBatch`'s own deadline) at any size. ⛔ So the words name no group size and no count.
+  slice_too_slow:
+    "Paused — getting people ready to send kept taking too long, so nothing more was sent and those people were put back unsent. Resume to try again; if it happens again, ask the developer.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */

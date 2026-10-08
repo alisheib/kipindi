@@ -35,7 +35,8 @@ import {
   smsCodingFor,
   type BlackballEnv,
 } from "../src/lib/server/sms-blackball.ts";
-import { otpMessage } from "../src/lib/server/sms.ts";
+import { lastOtpFailureAt, otpMessage, sendBatch } from "../src/lib/server/sms.ts";
+import { db } from "../src/lib/server/store.ts";
 
 let pass = 0,
   fail = 0;
@@ -416,6 +417,277 @@ const OK_BODY = JSON.stringify({ status: true, message: "Queued", data: null, ba
   const bad = await blackballBalance(ENV);
   s2.restore();
   ok("§12 ⛔ refused credentials read as NOT ok: its 0.0 is not a balance", bad.ok === false && bad.message === "Invalid credentials used");
+}
+
+// ── §13 · ⛔ U43b-1 · E3 · F2 · A REPLY BODY THAT DIES MID-READ IS A LOST REPLY, NOT A THROW ──────────────────
+// The status line arrives and the first bytes of the body, then the connection drops. The read used to sit OUTSIDE the
+// adapter's try, so the throw escaped into sendBatch's chunk catch, which writes the row FAILED: terminal (a late receipt
+// is discarded) and an invitation to retry — a second SMS at a second charge — for a batch the gateway had whole.
+// `red:blackball` plants the read back outside the try, for the send and for the balance (R-BB1 · R-BB1b).
+/** A reply whose status line and first bytes arrive, then the body dies while it is being read. */
+const PARTIAL = '{"status":true,"message":"PARTIALBODY';
+const dyingReply = (): Response => {
+  let pulls = 0;
+  return new Response(new ReadableStream<Uint8Array>({
+    pull(c) {
+      if (pulls++ === 0) c.enqueue(new TextEncoder().encode(PARTIAL));
+      else c.error(new Error("socket reset mid-body"));
+    },
+  }), { status: 200, headers: { "content-type": "application/json" } });
+};
+{
+  const real = globalThis.fetch;
+  globalThis.fetch = (async () => dyingReply()) as typeof fetch;
+  let threw: string | null = null;
+  let out: Awaited<ReturnType<typeof blackballSend>> | null = null;
+  try {
+    out = await blackballSend(ENV, [{ msisdn: "255772619619", text: "x", reference: REF() }]);
+  } catch (e) {
+    threw = String((e as Error)?.message ?? e);
+  }
+  let balThrew: string | null = null;
+  let bal: Awaited<ReturnType<typeof blackballBalance>> | null = null;
+  try {
+    bal = await blackballBalance(ENV);
+  } catch (e) {
+    balThrew = String((e as Error)?.message ?? e);
+  }
+  globalThis.fetch = real;
+  ok(
+    "§13 ⛔ U43b-1 · a send reply whose body dies mid-read does NOT throw: ambiguous, transport set, the status line kept",
+    threw === null && out?.ok === false && out.transport === "reply body unreadable: socket reset mid-body" && out.httpStatus === 200,
+    threw !== null ? `threw="${threw}"` : `transport=${out?.transport} http=${out?.httpStatus}`,
+  );
+  const line = out ? describeBlackball(out) : "";
+  ok(
+    "§13 …and the log line calls it a transport failure, with no byte of the body in it",
+    /transport=reply body unreadable/.test(line) && !line.includes("PARTIALBODY"),
+    line || "(threw)",
+  );
+  ok(
+    "§13 ⛔ the balance read is the same: a body that dies mid-read does NOT throw, it comes back as a transport (unreachable to sms.ts)",
+    balThrew === null && bal?.ok === false && bal.balance === null && (bal.transport ?? "").startsWith("reply body unreadable:"),
+    balThrew !== null ? `threw="${balThrew}"` : `transport=${bal?.transport}`,
+  );
+}
+
+// ── §14 · …AND sendBatch WRITES THAT ROW UNKNOWN, NEVER FAILED (the facade end to end, on the memory store) ───────
+{
+  const label =
+    "§14 ⭐ sendBatch: that reply leaves its SmsMessage row UNKNOWN, never FAILED (result TRANSPORT, a late receipt can still settle it)";
+  if (process.env.DATABASE_URL) {
+    // ⛔ This case writes one SmsMessage row — on the memory store only, never into a database this run can see.
+    ok(label, false, "DATABASE_URL is set: run this suite without it (the store picks its twin when it is imported)");
+  } else {
+    const saved = { ...process.env };
+    process.env.SMS_PROVIDER = "blackball";
+    process.env.SMS_SENDER_ID = "50PICK";
+    process.env.BLACKBALL_CLIENT_ID = "cid";
+    process.env.BLACKBALL_CLIENT_SECRET = "csec";
+    process.env.BLACKBALL_API_URL = ENV.endpoint;
+    const real = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls++;
+      return dyingReply();
+    }) as typeof fetch;
+    let r: Awaited<ReturnType<typeof sendBatch>> | null = null;
+    try {
+      // An OTP: the rail this protects, and exempt from the credit floor, so no balance read is made.
+      r = await sendBatch([{ to: "255772619619", body: otpMessage("123456", "SW"), purpose: "OTP" }]);
+    } finally {
+      globalThis.fetch = real;
+      process.env = saved;
+    }
+    const res = r?.results[0];
+    const row = res?.reference ? await db.smsMessage.findByReference(res.reference) : null;
+    ok(
+      label,
+      calls === 1 && res?.ok === false && res.code === "TRANSPORT" && row?.status === "UNKNOWN" && row.failedAt === null,
+      `calls=${calls} · result ${res?.code ?? "none"} · row ${row?.status ?? "none"}, failedAt ${row?.failedAt ?? "null"}`,
+    );
+  }
+}
+
+// ── §15 · ⛔ U43b-2 · A REFUSAL IS THE GATEWAY'S OWN `status:false` BELOW A 5xx — ANYTHING ELSE UNANSWERED IS AMBIGUOUS ──
+// Every refusal the gateway makes (bad keys, a schema complaint) is a 4xx carrying the boolean, decided before anything is
+// queued: nothing was charged, the row is FAILED and the result REJECTED. Anything else that is not an acceptance — a 5xx
+// (a proxy's 504 can arrive AFTER the gateway took the batch), an HTML page, an empty body, JSON without the boolean — is
+// AMBIGUOUS: the row stays UNKNOWN (a late receipt can still settle it) and the result is TRANSPORT, which no caller re-sends
+// by itself (`dispatchSlice` answers it unconfirmed). And a THROW out of the transport happens only before any request, so
+// its row is FAILED and its code the error's own — UNKNOWN for one that is not an SmsError, never TRANSPORT.
+// `red:blackball` plants each back: the status line forgotten, the ambiguity read off `transport` alone, the throw TRANSPORT.
+type Through = { calls: number; ok: boolean; code: string | null; status: string | null; failedAt: string | null };
+/** One message through the REAL sendBatch on the memory store, the gateway answering `reply` (null: no request may be made
+ *  at all). ⛔ Never into a database: with DATABASE_URL set it refuses, and every claim that reads it fails saying why. */
+async function throughSendBatch(reply: (() => Response) | null, purpose: "OTP" | "MARKETING" = "OTP"): Promise<Through | null> {
+  if (process.env.DATABASE_URL) return null;
+  const saved = { ...process.env };
+  const savedBalance = globalThis.__50PICK_SMS_BALANCE;
+  process.env.SMS_PROVIDER = "blackball";
+  process.env.SMS_SENDER_ID = "50PICK";
+  process.env.BLACKBALL_CLIENT_ID = "cid";
+  process.env.BLACKBALL_CLIENT_SECRET = "csec";
+  process.env.BLACKBALL_API_URL = ENV.endpoint;
+  // A MARKETING send meets the credit floor first: a fresh reading well above it, and the balance endpoint answers too.
+  globalThis.__50PICK_SMS_BALANCE = { tzs: 100_000, at: Date.now() };
+  const real = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    if (String(input).includes("/api/account/balance")) {
+      return new Response(JSON.stringify({ status: true, message: "Account balance", data: null, balance: 100_000 }), { status: 200 });
+    }
+    calls++;
+    if (reply === null) throw new Error("no request may be made here");
+    return reply();
+  }) as typeof fetch;
+  let r: Awaited<ReturnType<typeof sendBatch>> | null = null;
+  try {
+    const body = purpose === "OTP" ? otpMessage("123456", "SW") : "50pick: ofa ya leo.";
+    r = await sendBatch([{ to: "255772619619", body, purpose }]);
+  } finally {
+    globalThis.fetch = real;
+    globalThis.__50PICK_SMS_BALANCE = savedBalance;
+    process.env = saved;
+  }
+  const res = r?.results[0];
+  const row = res?.reference ? await db.smsMessage.findByReference(res.reference) : null;
+  return { calls, ok: res?.ok === true, code: res?.code ?? null, status: row?.status ?? null, failedAt: row?.failedAt ?? null };
+}
+const through = (t: Through | null): string =>
+  t === null
+    ? "DATABASE_URL is set: run this suite without it (the store picks its twin when it is imported)"
+    : `calls=${t.calls} · result ${t.ok ? "ok" : (t.code ?? "none")} · row ${t.status ?? "none"}, failedAt ${t.failedAt ?? "null"}`;
+const ambiguousRow = (t: Through | null): boolean =>
+  t !== null && t.calls === 1 && !t.ok && t.code === "TRANSPORT" && t.status === "UNKNOWN" && t.failedAt === null;
+/** Captured verbatim from the live gateway, 2026-09-16 (§3). */
+const refused400 = () => new Response(JSON.stringify({ status: false, message: "Invalid credentials", data: null, balance: 0.0 }), { status: 400 });
+const proxy504 = () => new Response("<html><body>504 Gateway Time-out</body></html>", { status: 504 });
+const accepted200 = () => new Response(OK_BODY, { status: 200 });
+/** The one fault a test can raise inside the transport before its request: the abort controller cannot be made. */
+async function thrownBeforeTheRequest<T>(run: () => Promise<T>): Promise<T> {
+  const RealAbort = globalThis.AbortController;
+  globalThis.AbortController = class {
+    constructor() {
+      throw new Error("a fault before the request");
+    }
+  } as unknown as typeof AbortController;
+  try {
+    return await run();
+  } finally {
+    globalThis.AbortController = RealAbort;
+  }
+}
+{
+  const verdictOf = (raw: string, http: number) => parseBlackballBody(raw, http).verdict;
+  const real = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new Error("network down");
+  }) as typeof fetch;
+  const lost = await blackballSend(ENV, [{ msisdn: "255772619619", text: "x", reference: REF() }]);
+  globalThis.fetch = real;
+  const facts = {
+    yes: verdictOf(JSON.stringify({ status: true, message: "Queued" }), 200) === true,
+    no: verdictOf(JSON.stringify({ status: false, message: "Invalid credentials" }), 400) === false,
+    noOn500: verdictOf(JSON.stringify({ status: false, message: "x" }), 500) === false,
+    string: verdictOf(JSON.stringify({ status: "false", message: "x" }), 400) === null,
+    missing: verdictOf(JSON.stringify({ message: "Queued" }), 200) === null,
+    html: verdictOf("<html><body>502 Bad Gateway</body></html>", 502) === null,
+    empty: verdictOf("", 502) === null,
+    lost: lost.verdict === null,
+  };
+  ok(
+    "§15 the parser reports the status boolean EXACTLY as the reply carried it (`verdict`): true, false on any status line, and null for a string, a missing field, an HTML page, an empty body and a reply that never came",
+    Object.values(facts).every(Boolean),
+    JSON.stringify(facts),
+  );
+  const refused = await throughSendBatch(refused400);
+  ok(
+    "§15 ⭐ U43b-2 · the gateway's own status:false on a 400 (the measured refusal) stays a REFUSAL: the row FAILED and dated, the result REJECTED",
+    refused !== null && refused.calls === 1 && !refused.ok && refused.code === "REJECTED" && refused.status === "FAILED" && refused.failedAt !== null,
+    through(refused),
+  );
+  const html504 = await throughSendBatch(proxy504);
+  ok(
+    "§15 ⛔ U43b-2 · a 504 carrying a proxy's HTML page is AMBIGUOUS, never a refusal: the row UNKNOWN with no failedAt, the result TRANSPORT (a late receipt can still settle it, and nobody re-sends it)",
+    ambiguousRow(html504),
+    through(html504),
+  );
+  const false502 = await throughSendBatch(() => new Response(JSON.stringify({ status: false, message: "Bad gateway", data: null }), { status: 502 }));
+  ok(
+    "§15 ⛔ U43b-2 · …and a 5xx is ambiguous EVEN WHEN its body says status:false: a reply from behind a failing proxy is not the gateway's verdict on the batch",
+    ambiguousRow(false502),
+    through(false502),
+  );
+  const shapes: ReadonlyArray<readonly [string, () => Response]> = [
+    ["an HTML page on a 200", () => new Response("<html>queued?</html>", { status: 200 })],
+    ["JSON without the boolean", () => new Response(JSON.stringify({ message: "Queued" }), { status: 200 })],
+    ["the boolean spelled as a string", () => new Response(JSON.stringify({ status: "false", message: "x" }), { status: 400 })],
+    ["an empty 502", () => new Response("", { status: 502 })],
+  ];
+  const seen: string[] = [];
+  let allAmbiguous = true;
+  for (const [name, reply] of shapes) {
+    const t = await throughSendBatch(reply);
+    allAmbiguous = allAmbiguous && ambiguousRow(t);
+    seen.push(`${name}: ${through(t)}`);
+  }
+  ok(
+    "§15 ⛔ U43b-2 · a reply that carries no status boolean (an HTML page on a 200, JSON without the field, the boolean spelled as a string, an empty 502) is ambiguous too: every row UNKNOWN, every result TRANSPORT",
+    allAmbiguous,
+    seen.join(" | "),
+  );
+  const thrown = await thrownBeforeTheRequest(() => throughSendBatch(null));
+  ok(
+    "§15 ⛔ U43b-2 · a throw that is not an SmsError, raised inside the transport before any request, is code UNKNOWN with its row FAILED and dated: never TRANSPORT, which says the gateway may have it while the row says it never left",
+    thrown !== null && thrown.calls === 0 && !thrown.ok && thrown.code === "UNKNOWN" && thrown.status === "FAILED" && thrown.failedAt !== null,
+    through(thrown),
+  );
+}
+
+// ── §16 · ⭐ U43b-2 · THE OTP-FAILURE MARK (ENGINE-SPEC §4.13, E12) ──────────────────────────────────────────────
+// Login and withdrawal codes share the rail with marketing, so the campaign slice waits two minutes after a code failed or
+// went unknown. sendBatch stamps the mark where it writes an OTP row FAILED or UNKNOWN — and nowhere else; nothing in
+// sms.ts reads it. `red:blackball` plants the stamp dropped.
+{
+  const saved = globalThis.__50PICK_OTP_LAST_FAILURE_AT;
+  const stamped: string[] = [];
+  let everyStamp = true;
+  let untouched = false;
+  try {
+    const cases: ReadonlyArray<readonly [string, () => Promise<Through | null>]> = [
+      ["refused", () => throughSendBatch(refused400)],
+      ["unanswered (a 504)", () => throughSendBatch(proxy504)],
+      ["thrown before the request", () => thrownBeforeTheRequest(() => throughSendBatch(null))],
+    ];
+    for (const [name, run] of cases) {
+      globalThis.__50PICK_OTP_LAST_FAILURE_AT = undefined;
+      const before = Date.now();
+      const t = await run();
+      const after = Date.now();
+      const mark = lastOtpFailureAt();
+      const fresh = t !== null && !t.ok && mark !== null && mark >= before && mark <= after;
+      everyStamp = everyStamp && fresh;
+      stamped.push(`${name}: ${fresh ? "stamped" : `NOT stamped (mark ${mark ?? "null"}; ${through(t)})`}`);
+    }
+    globalThis.__50PICK_OTP_LAST_FAILURE_AT = 1_000;
+    const marketing = await throughSendBatch(refused400, "MARKETING");
+    const code = await throughSendBatch(accepted200, "OTP");
+    untouched = marketing !== null && !marketing.ok && code !== null && code.ok && lastOtpFailureAt() === 1_000;
+    stamped.push(`a MARKETING refusal and an accepted code: mark ${lastOtpFailureAt() ?? "null"} (${through(marketing)} · ${through(code)})`);
+  } finally {
+    globalThis.__50PICK_OTP_LAST_FAILURE_AT = saved;
+  }
+  ok(
+    "§16 ⭐ U43b-2 · an OTP that fails (refused, unanswered or thrown before the request) stamps the process's OTP-failure mark at that moment, read back through lastOtpFailureAt",
+    everyStamp,
+    stamped.slice(0, 3).join(" | "),
+  );
+  ok(
+    "§16 ⛔ U43b-2 · …and a MARKETING failure or an ACCEPTED code stamps nothing: the mark keeps what it held",
+    untouched,
+    stamped[3] ?? "(not reached)",
+  );
 }
 
 console.log(`\nblackball-adapter: ${pass} passed, ${fail} failed`);

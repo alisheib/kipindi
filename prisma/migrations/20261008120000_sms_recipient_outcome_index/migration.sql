@@ -1,0 +1,22 @@
+-- U47b-1 · THE LIVE PAGE'S TWO READS, EACH ANSWERED FROM AN INDEX (the U47b-1 review's MINOR 4 and its re-review, S14
+-- 2026-10-08; docs/marketing-specs/ENGINE-SPEC.md §4.15 decision 8, as built). The live page asks two reads of ONE
+-- campaign's recipient rows for EVERY view — after every step a driver takes (about every two seconds) and every watcher's
+-- poll — and `SmsCampaignRecipient_campaignId_status_idx` answers neither alone, so on a campaign of 150,000 people every
+-- view would read every row from the table:
+--   · `countByOutcome` groups the rows by (status, skipReason, failureClass): the first index holds all four columns in
+--     the groupBy's order, and Postgres answers it from the index (an index-only scan where the pages are all-visible);
+--   · `lastActivity` asks the newest `claimedAt` ("nobody driving"): the second index answers it one step down from its end.
+--
+-- ⭐ ADDITIVE, AND SAFE WHILE THE OLD BUILD RUNS (the 60-second overlap): two CREATE INDEX — no column, no type and no row
+-- changes, and no query names an index. Built while production's recipient table is EMPTY (no campaign has run yet), so
+-- both are instant. ⛔ No CONCURRENTLY: `prisma migrate deploy` runs a file in ONE transaction, and CREATE INDEX
+-- CONCURRENTLY refuses to run inside one. IF NOT EXISTS lets a hand-applied run and the recorded one both succeed.
+-- The (campaignId, status) index stays: its columns now lead the first one's, so it is redundant, and dropping it is a
+-- contract step of its own (test:migration-ownership), never part of an additive file.
+--
+-- ⛔ HAND-WRITTEN: `prisma migrate diff` sweeps in the trigram indexes and other lanes' objects (plan §0 TRAPS). The first
+-- index is named by the schema's `map` (Prisma's own name would pass Postgres's 63-character limit); the second carries
+-- Prisma's own name. The evidence for this file is `test:campaign-models` 1.4 and 1.4b, and `db:probe-campaign-models` 9i
+-- (neither drift diff names either index) and §13c (both on Postgres after every migration, their columns in this order).
+CREATE INDEX IF NOT EXISTS "SmsCampaignRecipient_outcome_idx" ON "SmsCampaignRecipient"("campaignId", "status", "skipReason", "failureClass");
+CREATE INDEX IF NOT EXISTS "SmsCampaignRecipient_campaignId_claimedAt_idx" ON "SmsCampaignRecipient"("campaignId", "claimedAt");

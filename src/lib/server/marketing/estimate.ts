@@ -5,7 +5,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canView, readCell } from "@/lib/server/rbac";
 import type { Role } from "@/lib/server/roles";
 import {
-  refreshSmsBalance, smsBalanceThresholds, smsProviderResolution, SMS_BALANCE_RENDER_BUDGET_MS,
+  refreshSmsBalance, smsProviderResolution, SMS_BALANCE_RENDER_BUDGET_MS,
 } from "@/lib/server/sms";
 import type { SmsBalanceRead } from "@/lib/server/sms";
 import { BATCH_MAX } from "@/lib/server/sms-blackball";
@@ -36,7 +36,8 @@ import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings"
  * view cannot produce a TZS string at all. The pace (a duration in milliseconds) is computed for everyone.
  * ⭐ The credit is ASKED, never remembered: `refreshSmsBalance` with a 60 s reuse (as Admin → System) and the render
  * budget. ⚠️ A "reused" reading can be a send reply's pre-charge figure, at most one batch high — fine for an estimate;
- * U49's Start refusal must read tighter. `balanceFigureOf` drops any figure the read could not confirm.
+ * U49a's Start reads on its own terms (`start-check.ts`: §4.12's "fresh, at most 60 s", waited for, live or refused).
+ * `balanceFigureOf` drops any figure the read could not confirm.
  * ⛔ The audience counts arrive from the CALLER — U38's campaign-audience count (the population this prices, X15/X9)
  * and its "will receive" forecast. This file imports no audience or contacts module, so it cannot count a second,
  * different audience behind the card's back.
@@ -47,6 +48,11 @@ import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings"
  * the owner's value (the U49s review). ⛔ The `SMS_PRICE_PER_SEGMENT_TZS`
  * environment read it replaces is gone — one source of truth (`test:marketing-settings` S10 holds that nothing in
  * `src/` reads it again).
+ * ⭐ U49a · THE RESERVE (ENGINE-SPEC §4.12 decision 4) is the credit kept for login and withdrawal codes — the settings'
+ * `codesReserveTzs`, RE-READ like the price (it was the platform floor until then). ⛔ A record it cannot read in full gives
+ * NO reserve, so the estimate says nothing about coverage rather than offer the codes' credit to a campaign. Start reads
+ * the credit on its own terms: `start-check.ts` waits for a reading at most a minute old (no render budget) and refuses
+ * on anything that is not live.
  * ⛔ Only `loadEstimateInputs` (which resolves the viewer's STORED role itself) may be called from `src/app`;
  * `loadEstimateInputsFor` takes a role and exists for the suite (`test:campaign-estimate` §6.2 holds it). ⭐ U49s-2 adds
  * ONE more entry of the same kind, `loadSmsMoneyForViewer` — Admin → System's Marketing SMS card and tab ask it whether
@@ -105,8 +111,9 @@ export type EstimateDeps = {
   recentSends(): Promise<CostWalkRow[]>;
   /** The owner's price per SMS from the Marketing SMS settings, read fresh (U49s); null when it cannot be read in full. */
   configuredTzs(): Promise<number | null> | number | null;
-  /** The credit kept back for login codes. U49 swaps in its marketing floor. */
-  reserveTzs(): number;
+  /** The credit kept for login and withdrawal codes — U49a: the Marketing SMS settings' `codesReserveTzs`, read fresh
+   *  (it was the platform floor until then); null when the record cannot be read in full, and then no coverage is said. */
+  reserveTzs(): Promise<number | null> | number | null;
   /** Whose sends the walk prices — the provider that would carry the campaign. */
   provider(): string;
   now(): number;
@@ -120,7 +127,10 @@ const DEFAULT_DEPS: EstimateDeps = {
     const r = await reloadMarketingSmsSettings();
     return r.ok && r.readable ? r.settings.pricePerSegmentTzs : null;
   },
-  reserveTzs: () => smsBalanceThresholds().floorTzs,
+  reserveTzs: async () => {
+    const kept = await reloadMarketingSmsSettings();
+    return kept.ok && kept.readable ? kept.settings.codesReserveTzs : null;
+  },
   provider: () => smsProviderResolution(),
   now: () => Date.now(),
 };
@@ -150,9 +160,14 @@ export async function loadEstimateInputsFor(
   const pace = rows === null ? null : measureChunkPace(rows, { provider, now, batchMax: BATCH_MAX });
   if (!visible) return { audience, pace, money: null };
 
-  const configured = await Promise.resolve().then(() => d.configuredTzs()).catch((): null => null);
+  // ⭐ The price and the credit kept for codes are asked side by side: the settings record shares a read already in
+  // flight (`define-config`), so the two normally come from one read. Each answers null on a record it cannot read.
+  const [configured, reserveTzs] = await Promise.all([
+    Promise.resolve().then(() => d.configuredTzs()).catch((): null => null),
+    Promise.resolve().then(() => d.reserveTzs()).catch((): null => null),
+  ]);
   const cost = segmentCostOf(rows, { provider, now, configuredTzs: configured });
-  return { audience, pace, money: { cost, balance: balanceFigureOf(balance), reserveTzs: d.reserveTzs() } };
+  return { audience, pace, money: { cost, balance: balanceFigureOf(balance), reserveTzs } };
 }
 
 /**

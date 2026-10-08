@@ -15,6 +15,9 @@
  */
 import { prisma } from "./prisma";
 import type { PrismaClient, Prisma } from "@prisma/client";
+// U43b-2 · DC-4 · the ONE runtime value this twin takes from the client: the Json-null sentinel a WHERE needs to ask "no
+// trail written yet" (`AnyNull` — a plain `null` is no Json filter on Postgres; see `ai-poll-generation.ts`).
+import { Prisma as PrismaRuntime } from "@prisma/client";
 
 // A money-path write can pass a Prisma transaction client (audit C3) so the
 // wallet mutation, its Transaction row, and its ledger entries commit together
@@ -34,17 +37,21 @@ import { sniffBase64ImageMime } from "./image-signature";
 // computes too: this twin drives them through `SMS_CAMPAIGN_RECIPIENT_COLUMN`, the memory twin applies them by name.
 // U46a · and before the receipt door — its write (`receiptWrite`, through the same map), the one list of rows a receipt
 // moves (`SMS_RECEIPT_FROM`, spread into the WHERE) and the one reading of a miss (`receiptMiss`).
+// U43b-2 · and before DC-4's send record — its write (`sendRecordWrite`, through the same map) and the one list of rows it
+// writes into (`SMS_SEND_RECORD_FROM`, spread into the WHERE).
 import {
   assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
   assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
   assertClaim, assertClaimRead, assertSettle, assertStrandedRead, assertRequeueHeld, assertActivityRead, assertTargetsRead,
   claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
   assertReceipt, receiptWrite, receiptMiss, SMS_RECEIPT_FROM,
+  assertSendRecord, sendRecordWrite, SMS_SEND_RECORD_FROM,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary: the attention count spreads its statuses (never a retyped list) and every
 // count is zero-filled through its tallies, exactly as the memory twin's are (`test:dal-parity` §26).
 import {
   ATTENTION_ALWAYS, ATTENTION_WHEN_OWED, OUTSTANDING_RECIPIENT_STATUSES, tallyCampaignStatuses, tallyRecipientsByCampaign,
+  tallyRecipientOutcomes,
 } from "@/lib/marketing/campaign-status";
 // ⛔ The lens definitions have ONE home. Re-listing MONEY_KINDS here is how a kind added to
 // the registry later stops appearing under the filter a player would look for it under.
@@ -92,10 +99,13 @@ import type {
   SmsCampaignPage,
   SmsCampaignStatusCounts,
   SmsCampaignRecipientCountsById,
+  SmsCampaignRecipientOutcomeCount,
   SmsCampaignRecipientSettle,
   SmsCampaignSettleResult,
   SmsRecipientReceipt,
   SmsRecipientReceiptResult,
+  SmsRecipientSendRecord,
+  SmsRecipientSendRecordResult,
   StoredAgentApplication,
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
@@ -732,8 +742,8 @@ const SMS_CAMPAIGN_RECIPIENT_COLUMN: Record<keyof StoredSmsCampaignRecipient, "d
 };
 
 /**
- * U43a · a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`, and U46a's `receiptWrite`,
- * campaign-model.ts) -> Prisma `data`, DRIVEN BY THE MAP — the very write the memory twin applies by name
+ * U43a · a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`, U46a's `receiptWrite` and U43b-2's
+ * `sendRecordWrite`, campaign-model.ts) -> Prisma `data`, DRIVEN BY THE MAP — the very write the memory twin applies by name
  * (`writeRecipient`), so the twins cannot write different columns. ⛔ An unmapped key THROWS, and so does a key the map
  * says these doors never write. `attempts` moves on as `{ increment }`, so a release adds to what Postgres holds at the
  * write — never a read-then-write.
@@ -5013,6 +5023,14 @@ export const prismaDb = {
       return tallyRecipientsByCampaign(ids, (groups as Array<{ campaignId: string; status: string; _count: { _all: number } }>)
         .map((g) => ({ campaignId: g.campaignId, status: g.status, count: g._count._all })));
     },
+    /** U47b-1 · THE LIVE PAGE'S ONE GROUPBY — ONE groupBy by (status, skipReason, failureClass) WHERE the campaign is this
+     *  one — never the rows, never a counter (OD26) — answered through the ONE tally the memory twin answers with
+     *  (`tallyRecipientOutcomes`: merged, none dropped, one order). A null reason or class is a group of its own. */
+    countByOutcome: async (campaignId: string): Promise<SmsCampaignRecipientOutcomeCount[]> => {
+      const outcomes = await pc().smsCampaignRecipient.groupBy({ by: ["status", "skipReason", "failureClass"], where: { campaignId }, _count: { _all: true } });
+      return tallyRecipientOutcomes((outcomes as Array<{ status: string; skipReason: string | null; failureClass: string | null; _count: { _all: number } }>)
+        .map((g) => ({ status: g.status, skipReason: g.skipReason, failureClass: g.failureClass, count: g._count._all })));
+    },
     /** U16a · THE ACCESS EXPORT'S READ — the rows about ONE number CREATED OR SENT on or after `sinceIso`, NEWEST first,
      *  ties broken on `id` the same way, at most `SMS_RECIPIENTS_BY_NUMBER_MAX` + 1 — the one past the cap only tells the
      *  export that it cut (D10) — `msisdn` is indexed. The rule set is asked first. ⛔ The bound is IN THE WHERE, never a
@@ -5110,13 +5128,16 @@ export const prismaDb = {
       const requeued = await pc().smsCampaignRecipient.updateMany({ where: { campaignId, status: "HELD" }, data: smsRecipientData(requeueWrite(at)) });
       return requeued.count;
     },
-    /** U43a · "NOBODY IS DRIVING" — the newest `claimedAt` on the campaign as ONE aggregate (`_max`), never the rows; null
-     *  when nothing was ever claimed. A settled or held row keeps its claim, and a released or requeued row keeps the
-     *  instant of its last claim (D15), so the answer never moves backwards while a page claims and releases. */
+    /** U43a · "NOBODY IS DRIVING" — the newest `claimedAt` on the campaign: ONE row, newest first, read down
+     *  `SmsCampaignRecipient_campaignId_claimedAt_idx` from its end; null when nothing was ever claimed. ⛔ Never
+     *  `aggregate`'s `_max` (the check of 980e2ee7): Prisma wraps an aggregate in a sub-select with an OFFSET, which
+     *  Postgres cannot see through, so it read every row of the campaign. A settled or held row keeps its claim, and a
+     *  released or requeued row keeps the instant of its last claim (D15), so the answer never moves backwards while a
+     *  page claims and releases. */
     lastActivity: async (campaignId: string): Promise<string | null> => {
       assertActivityRead(campaignId);
-      const newest = await pc().smsCampaignRecipient.aggregate({ where: { campaignId }, _max: { claimedAt: true } });
-      return iso(newest._max.claimedAt);
+      const newest = await pc().smsCampaignRecipient.findFirst({ where: { campaignId, claimedAt: { not: null } }, orderBy: { claimedAt: "desc" }, select: { claimedAt: true } });
+      return iso(newest?.claimedAt);
     },
     /** U46a · ⭐ THE RECEIPT DOOR (E28) — ONE conditional `updateMany`, so Postgres decides once and never a read-then-write:
      *  written only WHERE the row is the one named, holds the MESSAGE's number, holds no reference yet or the receipt's own
@@ -5137,6 +5158,21 @@ export const prismaDb = {
       if (moved.count > 0) return { changed: true, reason: "applied" };
       const row = await pc().smsCampaignRecipient.findUnique({ where: { id } });
       return { changed: false, reason: receiptMiss(row ? toStoredSmsCampaignRecipient(row) : null, r) };
+    },
+    /** U43b-2 · ⭐ DC-4 · THE SEND RECORD WHEN A RECEIPT WINS (ENGINE-SPEC §4.13 decision 6) — ONE conditional `updateMany`,
+     *  so Postgres decides once: written only WHERE the row named still holds the lost patch's claim, is in a status a receipt
+     *  settled it to (`SMS_SEND_RECORD_FROM`, spread — never retyped: DELIVERED, FAILED) AND its trail is still null (Json
+     *  `AnyNull`: the database's NULL — the one a row is born with — or a JSON null); the data is the rule set's
+     *  `sendRecordWrite` through the map, so the status, the reference and the receipt's own columns are never written.
+     *  Postgres re-checks that WHERE after any concurrent commit, so of two writers of one trail (this and the reaper) one
+     *  lands. The rule set is asked first: a missing id would be NO CONDITION. */
+    recordSend: async (id: string, s: SmsRecipientSendRecord, at: string): Promise<SmsRecipientSendRecordResult> => {
+      assertSendRecord(id, s, at);
+      const owed = await pc().smsCampaignRecipient.updateMany({
+        where: { id, claimToken: s.claimToken, status: { in: [...SMS_SEND_RECORD_FROM] }, gateTrail: { equals: PrismaRuntime.AnyNull } },
+        data: smsRecipientData(sendRecordWrite(s, at)),
+      });
+      return { written: owed.count > 0 };
     },
   },
 };
