@@ -712,6 +712,29 @@ function boundText(v: unknown): string | null {
   return Number.isSafeInteger(n) ? formatNumber(n) : s;
 }
 
+/** React's mark on a lazy wrapper. `Symbol.for`, so it is the same symbol whichever copy of React made the wrapper. */
+const REACT_LAZY = Symbol.for("react.lazy");
+
+/**
+ * The one element a Field was handed, opened if it came wrapped; `null` for anything else.
+ *
+ * 🔴 A LAZY WRAPPER IS THE ELEMENT, NOT YET OPENED (2026-10-08). On the SERVER, the Flight client that decodes a Server
+ * Component page hands an element over inside a lazy wrapper whenever something the element names had not arrived as
+ * it was read (its client module; in a dev build, its owner's record), and `isValidElement` is false for the wrapper.
+ * The browser had everything by then and was handed the bare element. So the server's HTML stated no bound where the
+ * browser stated "Min 5 · Max 120", and React threw the responsible-gambling page's tree away on every load ("Hydration
+ * failed", its reality-check box: qa:journey-shell's 15.1 and the A8j drives, in English and Swahili, in all three
+ * engines). `Children.toArray` opens a lazy the way React's renderer does: it gives the element, or, while the element
+ * is still loading, suspends this Field until it is there, as rendering the child would have a moment later. Both
+ * renders then read the same props (test:ui-consistency K3g).
+ */
+function handedElement(children: React.ReactNode): React.ReactElement | null {
+  if (React.isValidElement(children)) return children;
+  if (typeof children !== "object" || children === null || (children as { $$typeof?: unknown }).$$typeof !== REACT_LAZY) return null;
+  const opened = React.Children.toArray(children);
+  return opened.length === 1 && React.isValidElement(opened[0]) ? opened[0] : null;
+}
+
 /**
  * The bounds a Field states for the numeric box that is its direct child, or `null`.
  *
@@ -725,11 +748,13 @@ function boundText(v: unknown): string | null {
  * bound is stated, whatever renders it.
  * ⚠️ A min of 0 on a box that cannot go negative is not stated: the box already enforces it, and "Min 0" under every
  * amount would be noise. ⚠️ Read during render, so the server's HTML already carries the bound and nothing shifts on
- * hydration. A box nested deeper states nothing, which is the old behaviour.
+ * hydration. A box nested deeper states nothing, which is the old behaviour. The child may arrive wrapped, still to be
+ * opened: `handedElement` opens it.
  */
 export function fieldBounds(children: React.ReactNode): { min: string | null; max: string | null } | null {
-  if (!React.isValidElement(children)) return null;
-  const p = children.props as { type?: unknown; inputMode?: unknown; min?: unknown; max?: unknown; allowNegative?: unknown };
+  const child = handedElement(children);
+  if (child === null) return null;
+  const p = child.props as { type?: unknown; inputMode?: unknown; min?: unknown; max?: unknown; allowNegative?: unknown };
   if (!(p.type === "number" || p.inputMode === "numeric" || p.inputMode === "decimal")) return null;
   const minText = boundText(p.min);
   const min = minText !== null && !(Number(p.min) === 0 && p.allowNegative !== true) ? minText : null;
