@@ -4,10 +4,9 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. LIVE today: the contacts book
 (/admin/contacts — the list, filters, add and edit, bulk, the Lists card), the campaign list and the composer (a test to the
 officer's own number, or — once licence outreach opens — to another number with an 18+ confirmation, behind the CLOSED live
-switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 50, four
-pieces in one deploy — the owner door (`ops:marketing-owner-save`), U40a (the confirmation on the server), U46a (delivery
-receipts on the recipients) and the U38b save fixes — pushed 2026-10-07 (S14); before it STEP 49, U13 (the 08:00–20:00
-EAT send window), LIVE `b6652201`, and STEP 48, U38b (the audience card), LIVE `fefa358d`, 2026-10-07 (S14). Ali's
+switch), and the consent wordings, policy lines and licence-outreach record on Admin → System. Latest: STEP 51, U40b
+(the confirmation on screen), pushed 2026-10-08 (S14); before it STEP 50, four pieces in one deploy (the owner door,
+U40a, U46a, the U38b save fixes), LIVE `88792619`, and STEP 49, U13 (the 08:00–20:00 EAT send window), LIVE `b6652201`. Ali's
 FINAL rule of 2026-10-07 (anyone with a phone; consent decides nothing; the stop kept) is in COMPLIANCE-DECISIONS. ⏳ S14
 in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campaign: realistic window 18–25 October.**
 
@@ -53,9 +52,9 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
      1. U43a  ✅ LIVE (STEP 47, `89775271`, served as `0f1b143c`) — the recipient doors: claim, settle, find the stranded, requeue
      2. U38b  ✅ LIVE (STEP 48, `a5feb9f1`, served as `fefa358d`; its save fixes STEP 50) — who a campaign goes to: the audience card
      3. U13   ✅ LIVE (STEP 49, `53fd74ad`, served as `b6652201`) — the 08:00–20:00 EAT send window, enforced where messages are sent
-     4. U40a  ✅ PUSHED (STEP 50) — the confirmation on the server: the typed count over a sealed audience, the frozen estimate and budget
-     5. U46a  ✅ PUSHED (STEP 50) — delivery receipts reach the campaign recipients (inert until U43b sends)
-     6. U40b  BUILT, REVIEWED, FIXED (`8e861dd1`), under re-review — the confirmation on screen: the card and its modal
+     4. U40a  ✅ LIVE (STEP 50, served as `88792619`) — the confirmation on the server: the typed count over a sealed audience, the frozen estimate and budget
+     5. U46a  ✅ LIVE (STEP 50, served as `88792619`) — delivery receipts reach the campaign recipients (inert until U43b sends)
+     6. U40b  ✅ PUSHED (STEP 51) — the confirmation on screen: the card and its dialog, three review rounds closed
      7. U42   BUILT, REVIEWED, FIXED, RE-REVIEWED; last fixes running — enqueue: the rows, capped at the confirmed count
      8. U49a  BUILT, REVIEWED, FIXED, RE-REVIEWED; merged with U42 — the credit kept for codes, Start's and Resume's refusals
      9. U43b  the send engine: U43b-1 BUILT, REVIEWED, FIXED (`9b2aa51b`); U43b-2 (the engine) BEING BUILT
@@ -80,10 +79,15 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
 ⏳ IN FLIGHT: S14 — 2026-10-07 from ~10:00 EAT, OMEGA-COMPILE01 (`F:\kipindi-m14`, branch `marketing-s14` cut from
   `origin/main` at `9352de7c`), continuing S13's HANDOVER below (Ali, to this PC: "please proceed with the sms campaign
   plan … another machine was working earlier today"). ⛔ Another session must not start or push a unit named
-  here. NOW (22:50 EAT · 2026-10-07) — where each piece is, for a session on ANY machine (another PC: every commit
+  here. NOW (15:18 EAT · 2026-10-08) — where each piece is, for a session on ANY machine (another PC: every commit
   below is on origin as a backup branch, `origin/backup/marketing-s14-*`). Ali, 2026-10-07: "keep going and putting
   progress updated until you're done, I'll be away. Keep pushing live." — and "take decisions and fix for perfection".
-  · U38b, U13 LIVE (STEPS 48, 49) · THE OWNER DOOR, U40a, U46a and the U38b save fixes PUSHED (STEP 50 below).
+  · U38b, U13 and STEP 50 (the owner door, U40a, U46a, the U38b save fixes) LIVE · U40b PUSHED (STEP 51 below).
+  · ⛔ THE ACCOUNT'S WEEKLY OPUS LIMIT stopped every Opus builder and reviewer at ~22:40Z 2026-10-07 (it resets
+    2026-10-09 08:00 Beirut = 05:00 UTC). Sonnet agents still run: the independent re-reviews of U43b-2's round 2 and U47b-1's
+    fix round, the check of their fixes and the U47b-2 builder ran on Sonnet; an Opus pass follows once the limit resets.
+  · ⚠️ red:house-bot-console (484 defects, about two hours) outran its hour in turn B: its two defects in a file U40b
+    changes (rate-limit.ts) run with --only; the WHOLE drive is owed in a quiet turn, as red:house-bot-c5 is.
   · STEP 50 LIVE `88792619` (19:41Z: www and the apex, /api/health ok, the public pages 200).
   · ⛔ BLOCKED — ALI'S APPROVED TEXTS ON PRODUCTION (G5, G4, G10): `status` and `check` ran (production has no wordings
     and no policy lines saved yet; G5's check passes — "Namba yako ipo orodhani kwetu.", version 1), but the door REFUSES
@@ -99,16 +103,32 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
       overshoot the count; a refusal never advises a copy that would message people again; Resume with nothing left).
     - U43b-1 (the dispatch hooks, the transport fix) — `marketing-s14-u43b1` (`F:\kipindi-m14l`): `0b5b1730` + `9b2aa51b`
       (the review's fixes: every hook's answer read, never trusted).
-    - U43b-2 (THE ENGINE: the slice, the reaper, the settlement) — BUILT `73086586` in `F:\kipindi-m14m`
-      (`marketing-s14-u43b2`, with U42/U49a's last fixes merged `33786835`: test:marketing-engine 76, red 104/104),
-      REVIEWED — no blocker; two MAJORs in its fix round now (a reap landing between the last check and the send could
-      send twice; a "send a corrected copy" sentence that does not say a copy re-messages people already reached), plus
-      the owner's switch re-judged just before the wire. The codes path (sms.ts) is reviewed clean.
-    - U47b-1 (the live page's services and view-model) — BEING BUILT in `F:\kipindi-m14o` (`marketing-s14-u47b1`).
-    - U40b (the confirmation on screen) — `marketing-s14-u40b` (`F:\kipindi-m14i`, on main `4f8d20a1`): three review rounds,
-      every finding closed (`8e861dd1` · `2f31ebf3` · `5a48e843`: counted only on the press, its own fresh count inside
-      the two slots with a 15 s bound, a refusal re-arms without a remount, the dialog never opens by itself, every
-      sentence true); light suites green on main. Owed: typecheck, `qa:marketing-confirm`, its reds (the next lock turn).
+    - THE ENGINE PUSH (STEP 52), one tree: U42 + U49a + U43b-1 + U43b-2 + U47b-1 — `marketing-s14-u47b1`
+      (`F:\kipindi-m14o`, every branch below merged in). RE-REVIEWED (Sonnet, 2026-10-08: no BLOCKER, no MAJOR; every
+      MINOR and NIT fixed in `980e2ee7`). That fix's own check: 3 MINOR + NITs, fixed by the lead (the send side's stall
+      counted at any group size; Resume's words after a Pause or the end; the held people's failure said only when true;
+      one log line per send_error pause) — test:marketing-engine 91, red 125/125; commit next. Owed before it ships: ONE lock turn — tsc, the planting reds on the
+      files it changes, red:dal-parity, db:probe-campaign-models (§9i, §11–§13c), verify:backup-schema (it carries a
+      migration) — then the push. Nothing in it is reachable until U47b-2's page.
+    - U43b-2 (THE ENGINE: the slice, the reaper, the settlement) — `marketing-s14-u43b2` (`F:\kipindi-m14m`): `73086586`,
+      fixed `fc05a6f2`, re-reviewed; round 2 by the lead, `9ed4d451` (the send's deadline: sendBatch writes nothing and
+      asks nothing past the oldest claim + 5 min, refused DEADLINE_PASSED — the last double send closed; the reaper never
+      beside its own process's slice; three slow slices in a row pause `slice_too_slow`; a failure with no code is no
+      answer) + `a93c7269` (tsc); re-reviewed — the written invariant and the NITs fixed in `980e2ee7` (too slow counted at
+      the smallest group, the streaks reset by an officer's Pause and Resume). test:marketing-engine 90, red 123/123.
+    - U47b-1 (the live page's services and view-model) — `marketing-s14-u47b1` (`F:\kipindi-m14o`): `316c0727`, reviewed
+      (2 MAJOR, 6 MINOR, NITs) — EVERY finding fixed by the lead: `3d6d5e18` (no figure or cursor in a step answer; the
+      floor only over a split there is), `d68cc8ba` ("nobody driving" respects the engine's waits; Stop survives an
+      unread count; who acted read from this act's own row), `c545996b` (why it paused said neutrally under the floor;
+      Resume inside the step flight, moving first; every act role-gated; every sentence true), `a3d6436a` (ONE additive
+      index for the live page's groupBy, migration `20261008120000_sms_recipient_outcome_index`). campaign-visuals 30,
+      red 35/35; re-reviewed — 4 MINOR and the NITs fixed in `980e2ee7` (no reason in a step answer, the waits floor-aware,
+      a second index for the newest claim, Resume's words true after a Stop). campaign-visuals 31, red 38/38; tsc 0.
+    - U47b-2 (the live page itself) — `marketing-s14-u47b2` (`F:\kipindi-m14p`): BUILT `84167b81` (Sonnet,
+      merged with `980e2ee7`): the page, its seven doors (the poll on a new view-grant guard, softViewStaff), the driver,
+      a dev seed route, the drive `qa:marketing-live`; campaign-visuals 41 (red 65/65) and every light suite it touches
+      green. Owed: the engine tree's last fixes merged in, a review, tsc and its drive under the lock — then STEP 53.
+    - U40b (the confirmation on screen) — PUSHED (STEP 51).
     - Then U47b-1 → U47b-2 (the live campaign page) → U48a (results), then U52a (the live drive on production).
   · THE FINAL-RULE UNITS, MERGED — `marketing-s14-final` (`F:\kipindi-m14n`): the gate `4e8c80d0` + the texts `f46ebc38`
     (`9fc6830b`), §4i telling §9's old promise from the new conditional one (`2d172ecb`), on main (`7dad998c`); the
@@ -137,7 +157,20 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 17/52 units ✅ �
     helper: `F:/kipindi-locks/withlock.sh`. This lane uses ports 3101-3109 and scratch Postgres 5461-5463.
   ▸ 10:08 EAT: S14's first session closed mid-task; a second session on the same PC continues S14 in the same worktree
   (Ali: "proceed with the sms campaign plan … check what's left and proceed").
-  STEP 50 · FOUR PIECES IN ONE DEPLOY, PUSHED (the push tree `ed128b73`: `main` `b2e9db81` with each piece merged onto
+  STEP 51 · U40b PUSHED — THE CONFIRMATION ON SCREEN (ENGINE-SPEC §4.6; `d35fd5cd` + `8e861dd1` + `2f31ebf3` + `5a48e843`,
+  merged with main as `4f8d20a1`, THREE independent review rounds, every finding closed): the "Confirm audience…" card and
+  its dialog on the composer — the confirmation counted ONLY when the officer presses (never on a render), its own fresh
+  count (never joined to an older walk — OD27's case) inside the split's two per-process slots with a 15-second bound and a
+  true "Counting is busy right now"; ⭐ OD67 on screen: a viewer who may not read a number types the count, never a list,
+  the tier taken from the server's view only; a refusal re-arms the dialog without a remount (no blink); the dialog never
+  opens by itself on an answer the form no longer matches; the read action role-checked before any comparison (no
+  equality oracle), rate-limited per officer, audited under its own id; every sentence true for every reader.
+  CONFIRMED sends nothing. ⭐ PROVEN — light suites on the push tree: campaign-gates 58 claims (+1 pending, U42; red
+  84/84 after round 3), campaign-audience 41 (red 49/49), campaign-compose, campaign-confirm 46, campaigns-page 39,
+  contacts-audience 53, unsaved-changes, confirm-gate 9, popup-fit 13, ui-consistency, orphan-actions 9, feedback-law
+  150, design-frozen, read-tiers 83, redis-failopen 94, and the rest of the push tree's 28 — every one green. Under the
+  lock: typecheck 0; the drives qa:marketing-audience 144/0, qa:marketing-console 198/0, qa:marketing-typed 179/0, admin-section-gate 21/0, admin-action-gate 15/0 and qa:marketing-confirm 342/0 (its second full run); the planting reds blackball, sms-cost-guard, otp-delivery, sms-dlr, dal-parity, filter-language, confirm-gate, unsaved-changes, feedback-law, admin-soft-gate, reduce-motion 12/12, motion-ladder, keyframes, measure and read-tiers all caught; red:house-bot-console's full run outran its hour (owed in a quiet turn), its --only over rate-limit.ts 2/2 caught; db:probe-campaign-models 42/0.
+  STEP 50 · FOUR PIECES IN ONE DEPLOY, PUSHED — LIVE `88792619` (19:41Z 2026-10-07, www and the apex; /api/health ok) — (the push tree `ed128b73`: `main` `b2e9db81` with each piece merged onto
   it first) — ① THE OWNER DOOR `ops:marketing-owner-save` (`51a4acb0` + `8e508606` + `f5db4ea9`, reviewed twice, every
   finding fixed): Ali approves a text in the session and Claude saves it through an audited door, never with his login —
   `status` · `check` · `apply`; the approval a strict UTF-8 JSON file holding only its gate's keys (G4 the nine wordings,
@@ -685,7 +718,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U37 | visual | 🔵 | S10 | fb6cca81 | /admin/campaigns/new did not exist → the composer: one Message card with a worst-case counter per language, the save re-validated on the server (its own segments, compare-and-set, OD55 in every field), and the test send to the officer's own number only, through the one gate and behind the closed live switch | `test:campaign-compose` | yes — `red:campaign-compose` (in-process) · `red:campaign-models` | composer. U37a `0dc25b98` + U37b (§0 STEP 21) + U37s, the saved source line stamped on every draft save (§0 STEP 40) + U37c-1, the test to a typed number — the server path (§0 STEP 41) + U37c-2, the Test card: my own number or another, the 18+ tick bound to the number and its words, the typed preview and outcomes (§0 STEP 42). Pushed and serving — its live check needs an admin session on production (G7 / G11), and its first real test send needs G1. |
 | U38 | visual | 🔵 | S10 | bd097333 + a5feb9f1 | the campaign could only target the book → U38a: ONE resolver with a population axis, the player arm, ONE walk, and the will-receive split asked of the real gate, over §25's bulk reads | `test:campaign-audience` · `test:dal-parity` §21 §25 | yes — `red:campaign-audience` (in-process) · `red:dal-parity` §21 §25 | audience. U38a + §25 landed (§0 STEP 22). U38b pushed (§0 STEP 48, `a5feb9f1`): the card on the composer — who, the rail, ONE view-model's count; OD65 (a viewer who may not read a number sees the count alone, the gate never asked) and OD66 (no both-at-once for them); `qa:marketing-audience` 140/140 at 1280 and 360. 🔵 until a GROWTH session looks at it on production (G7). |
 | U39 | visual | 🟡 | S10 | 0dc25b98 | — | `test:read-tiers` | — | estimate. U39a landed (`0dc25b98`): the price from the difference of two delivered reads, the model, the server loader; `test:campaign-estimate`. U39b (the card) follows. |
-| U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) PUSHED (§0 STEP 50, `39a4fc50` + `6fd388df`): the typed count over a sealed audience, the members key bound to its draft, the frozen estimate and budget, OD67 — `test:campaign-gates`, `red:campaign-gates`. U40b (UI) follows. |
+| U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) PUSHED (§0 STEP 50, `39a4fc50` + `6fd388df`): the typed count over a sealed audience, the members key bound to its draft, the frozen estimate and budget, OD67 — `test:campaign-gates`, `red:campaign-gates`. U40b (UI) PUSHED (§0 STEP 51, `d35fd5cd` + three review rounds): the Confirm card and its dialog, counted on the press, OD67 on screen. |
 | U41 | guard | 🟡 | S10 | — | — | `test:campaign-gates` | — | officer authorisation — DECIDED (OD60, 2026-10-04): one officer's typed confirmation at any size, under the 2026-07-24 single-admin ruling; ✅ when U40a's push carries the guard (G7.1). |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
 | U43 | engine | 🟡 | S10 | bf166ff3 | — | `test:marketing-engine` | — | the slice. U43-0 landed (STEP 33): UNCONFIRMED, the migration alone + the code that knows the value, no writer; `test:campaign-models` §1.8c/§1.12/3.2, `db:probe-campaign-models` §9. U43y pushed 2026-10-07 (§0 STEP 46, `18e6192b`): money first — ONE busy signal (`money-busy.ts`) fed by one-line mirrors in the lifecycle pass, the deposit poll, market fires and Up & Down chain fires (`test:money-busy` 34 claims, `red:money-busy` in-process); nothing calls it until U43b. U43a LIVE 2026-10-07 (§0 STEP 47, `89775271`, read back as `0f1b143c`): the recipient doors in both twins — claim, claimedBy, settle, findStranded, requeueHeld, lastActivity, smsMessage.findByTargets — each asking the one rule set first (`test:campaign-models` §2.14–§2.27, `red:campaign-models` in-process; `test:dal-parity` §26.u43a; `db:probe-campaign-models` §10 on PostgreSQL, five truly concurrent claimers); `test:campaign-privacy` P10 sweeps rows the real doors settled; inert until U43b. U43b (the slice) follows. ⚠️ U43b owes DC-4 (ENGINE-SPEC §4.13 decision 6, recorded by U46a's review): when a receipt beats the slice's settle, a narrow send-record door in both twins (`recordSend`) still writes the row's gate trail, opt-out token, locale, segments, body length and `sentAt` — `test:marketing-engine` S16, before the slice settles a real row. |
