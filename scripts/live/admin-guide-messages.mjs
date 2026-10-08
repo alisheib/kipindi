@@ -110,13 +110,21 @@ export const SECTIONS = [
         shots: ["26-sms-credit"],
       },
       {
-        title: "The owner's settings and switch",
-        where: "System → Marketing SMS",
+        title: "The owner's switch",
+        where: "System → the “Marketing SMS sending” card",
         do: [
-          "The price per SMS, the credit kept for login and withdrawal codes, the most one campaign may cost, and the sending hours (08:00–20:00 EAT unless the owner changes them).",
-          "Nothing is sent while marketing SMS are switched off. The owner switches them on for a set time — 30 minutes to 24 hours — and they switch themselves off at the end.",
+          "Nothing is sent while marketing SMS are switched off — not a campaign, not a test.",
+          "The owner presses Switch on…, chooses how long (30 minutes to 24 hours) and confirms. It switches itself off at the end; Switch off now stops it at once.",
         ],
         shots: ["30-marketing-card", "31-switch-on"],
+      },
+      {
+        title: "The owner's settings",
+        where: "System → the “Marketing SMS” tab",
+        do: [
+          "The price per SMS, the credit kept for login and withdrawal codes, the most one campaign may cost, and the sending hours (08:00–20:00 EAT unless the owner changes them).",
+        ],
+        shots: ["32-marketing-settings"],
       },
     ],
   },

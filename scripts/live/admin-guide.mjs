@@ -342,6 +342,15 @@ async function runA() {
       await textButton(page, DIALOG, "Cancel").click().catch(() => {});
       await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
     });
+    await step("32-marketing-settings", async () => {
+      await page.goto(`${BASE}/admin/system?tab=marketing-sms`, { waitUntil: "networkidle" });
+      const card = page.locator("main").getByText("Marketing SMS", { exact: true }).first();
+      if ((await card.count()) === 0) throw new Error("the Marketing SMS settings are not on their tab");
+      await card.evaluate((n) => n.scrollIntoView({ block: "start" }));
+      await page.evaluate(() => window.scrollBy(0, -90));
+      await wait(400);
+      await shoot(page, "32-marketing-settings");
+    });
     await step("17-campaigns", async () => {
       await page.goto(`${BASE}/admin/campaigns`, { waitUntil: "networkidle" });
       await mark(page, 'main a[href="/admin/campaigns/new"]');
