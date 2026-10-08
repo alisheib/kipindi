@@ -94,6 +94,8 @@ export type StepObs = {
   status: SmsCampaignStatus | null;
   progress: { phase: string; value: number; max: number } | null;
   rows: number;
+  /** The rows the page's own KPIs say are decided (on campaign − waiting) — an independent reading of what the bar's value must be. */
+  kpiSettled: number | null;
   realMs: number;
 };
 
@@ -403,7 +405,7 @@ export async function step(h: Harness, proc: Process, campaignId: string, driver
   h.obs.steps.push({
     proc: driver, campaignId, step: r.ok ? r.step : null, said: r.ok ? r.said : null, status: view?.status ?? null,
     progress: view?.progress ? { phase: view.progress.phase, value: view.progress.value, max: view.progress.max } : null,
-    rows: view?.kpis.onCampaign ?? 0, realMs: h.clock.real() - t0,
+    rows: view?.kpis.onCampaign ?? 0, kpiSettled: view && view.kpis.waiting !== null ? view.kpis.onCampaign - view.kpis.waiting : null, realMs: h.clock.real() - t0,
   });
   return r;
 }

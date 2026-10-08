@@ -37,6 +37,9 @@ export async function controls(h: Harness, n: number): Promise<Record<string, un
   const thirty = Math.ceil(rowsN * 0.3);
   const fortyFive = Math.ceil(rowsN * 0.45);
   const seventy = Math.ceil(rowsN * 0.7);
+  // the stop is pressed at about 70 % — but never so late that the in-flight group is the last one (people must be left for the
+  // headline and the untouched-rows claims to mean something): at least two full slices are still to come when it is armed
+  const stopAt = Math.max(Math.ceil(rowsN * 0.5), Math.min(seventy, rowsN - 2 * S.engine.SLICE_MAX));
   claimNow(h, "S3.start", "the campaign starts and its list is written", L.started.ok && (await S.db.smsCampaign.find(id))?.status === "RUNNING", `${num(rowsN)} rows`);
 
   // ── 30 %: PAUSE — nothing new starts ──
@@ -96,14 +99,16 @@ export async function controls(h: Harness, n: number): Promise<Record<string, un
   const again2 = await resume(h, A, id);
 
   // ── 70 %: STOP, pressed while a group is in flight on the carrier ──
-  await drive(h, A, id, { until: (r) => r.view.progress?.phase === "sending" && r.view.progress.value >= seventy });
   let stopSeq = -1;
   let atStop: Awaited<ReturnType<typeof snap>> | null = null;
   let stopRes: Awaited<ReturnType<typeof stop>> | null = null;
+  // armed now, fired by the first request that goes out once about 70 % are settled AND somebody else is still waiting unclaimed
   h.carrier.onRequest = async (rec) => {
     if (stopSeq !== -1 || !rec.messages.some((m) => m.campaignId === id)) return;
+    const now = await snap(h, id);
+    if (settledOf(now.counts) < stopAt || now.counts.PENDING - now.claimed < 1) return;
     stopSeq = rec.seq;
-    atStop = await snap(h, id);
+    atStop = now;
     stopRes = await stop(h, A, id);
   };
   const finish = await drive(h, A, id, {});

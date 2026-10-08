@@ -303,6 +303,10 @@ async function inv4(h: Harness, data: Data[]): Promise<Inv> {
   for (const o of h.obs.steps) {
     if (o.progress === null) continue;
     samples += 1;
+    // the bar and the KPIs are two readings of the same rows: at every step the bar's value is the rows the KPIs call decided
+    if (o.progress.phase === "sending" && o.kpiSettled !== null && o.progress.value !== o.kpiSettled) {
+      failures.push(`${o.campaignId.slice(-12)}: a step's bar said ${o.progress.value} done while its KPIs call ${o.kpiSettled} rows decided`);
+    }
     const key = `${o.proc}|${o.campaignId}`;
     const was = lastBy.get(key);
     if (was !== undefined && was.phase === o.progress.phase && o.progress.value < was.value) {

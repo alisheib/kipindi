@@ -27,7 +27,7 @@ const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.m
 export const SCENARIOS: readonly Scenario[] = [
   { n: 1, key: "scale", name: "SCALE", size: (n) => Math.max(40, n), run: scale },
   { n: 2, key: "drivers", name: "TWO DRIVERS", size: (n) => clamp(n * 0.4, 80, 1500), run: drivers },
-  { n: 3, key: "controls", name: "PAUSE/RESUME/STOP", size: (n) => clamp(n * 0.4, 160, 1500), run: controls },
+  { n: 3, key: "controls", name: "PAUSE/RESUME/STOP", size: (n) => clamp(n * 0.4, 300, 1500), run: controls },
   { n: 4, key: "faults", name: "FAULTS", size: () => 200, run: faults },
   { n: 5, key: "crash", name: "CRASH AND REAP", size: (n) => clamp(n * 0.3, 300, 600), run: crash },
   { n: 6, key: "receipts", name: "RECEIPTS", size: (n) => clamp(n * 0.3, 300, 600), run: receipts },
