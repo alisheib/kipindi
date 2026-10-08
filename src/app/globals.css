@@ -897,7 +897,8 @@
    block declares the PHONE rhythm (32 / 64 / 96); this restores the kit's desktop rhythm
    (48 / 96 / 144) from 768 up, so nothing at or above tablet width changes by a pixel.
 
-   ⭐ 768, not 1024, deliberately: `.kp-band__inner` already changes its `padding-inline` at 768,
+   ⭐ 768, not 1024, deliberately: `.kp-band__inner` already changes its `padding-inline` at 768 (the classic
+   shell’s 24; the journey keeps its header’s 16 there and steps at 1024 — “THE JOURNEY’S EDGE ON `/`”),
    so 768 is the boundary this composition already turns on. Stepping at 1024 would also compress
    768–1023, which the tablet width does not need and which was never asked for.
    ⛔ THIS BLOCK MUST STAY IMMEDIATELY AFTER `:root` CLOSES. `:root` inside `@media` has the same
@@ -5534,6 +5535,23 @@ textarea::-webkit-resizer {
   padding-inline: var(--sp-4);
 }
 @media (min-width: 768px) { .kp-band__inner { padding-inline: var(--sp-6); } }
+/* THE JOURNEY’S EDGE ON `/` (2026-10-08, the owner’s rule: the header’s edge is the page’s edge at every width).
+   The journey header and every page (`PageContainer`, `px-3 lg:px-6` = 16 / 32) keep one gutter: 16 below 1024 and
+   32 from 1024. The hero and the bands step to 24 at 768 instead, so on `/` their content sat 8px inside the header
+   from 768 and 8px outside it from 1024 (the visual pass’s tiles 017/018 and 047/048). The hero and every band on `/`
+   use these two containers, so this one rule lines the whole page up.
+   ⭐ SCOPED TO THE JOURNEY BY ITS SERVER-RENDERED MARK (`shell-mark.ts`): the span is in the HTML before any script
+   runs, so the first paint already has these values and nothing moves on hydration. Classic viewers are served what
+   they were (VODACOM-PLAN §0i, `qa:classic-shell-parity`): the classic home keeps its 24. A browser without `:has()`
+   keeps 24 too, which is the classic look and not a break. */
+@media (min-width: 768px) {
+  :root:has(#kp-journey-shell) .kp-hero__inner,
+  :root:has(#kp-journey-shell) .kp-band__inner { padding-inline: var(--sp-4); }
+}
+@media (min-width: 1024px) {
+  :root:has(#kp-journey-shell) .kp-hero__inner,
+  :root:has(#kp-journey-shell) .kp-band__inner { padding-inline: var(--sp-8); }
+}
 
 /* A chapter break: a tinted surface, edged top and bottom. */
 .kp-band--overlay {
