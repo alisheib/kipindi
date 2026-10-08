@@ -56,7 +56,18 @@ async function watch(page, who) {
   page.on("console", (m) => { if (m.type() === "error" && !/favicon|Failed to load resource: the server responded with a status of 404/.test(m.text())) errors.push(`${who} console: ${m.text().slice(0, 200)}`); });
   return page;
 }
-const settle = async (page) => { await page.waitForLoadState("domcontentloaded"); await page.locator("main").first().waitFor({ timeout: 120_000 }); await page.waitForTimeout(900); };
+/* ⭐ HYDRATED, NOT ONLY DRAWN (2026-10-08). WP12's turn C stopped once in §5 on a "Create the link" button that stayed
+   disabled: the page's server HTML was up before React had attached, and the next two runs passed. A control is driven
+   only once React owns the page — a fiber on <main> — as qa:journey-shell's HYDRATED holds its header to. */
+const settle = async (page) => {
+  await page.waitForLoadState("domcontentloaded");
+  await page.locator("main").first().waitFor({ timeout: 120_000 });
+  await page.waitForFunction(() => {
+    const m = document.querySelector("main");
+    return !!m && Object.keys(m).some((k) => k.startsWith("__reactFiber$"));
+  }, null, { timeout: 120_000 });
+  await page.waitForTimeout(900);
+};
 const tile = async (page, name) => { await page.screenshot({ path: `${SHOTS}/${name}.png` }); };
 const markerCount = (page) => page.locator(MARKER).count();
 /**
