@@ -501,61 +501,66 @@ export default async function InvitePage({
       </section>
       )}
 
-      {/* Recruits */}
-      <Cap className="!mt-1">{paid ? t.profile.yourReferrals : t.profile.yourFriends}</Cap>
-      {/* ⛔ A PAGE OF A LIST SAYS SO. `recruitCount` is the true total and the dial prints it; this
-          array is capped by the read model. Without this line a reader counting rows would reach a
-          different number than the dial and have no way to know which was wrong — the silent
-          truncation `getAdminAffiliateStats` already records refusing. Rendered only when the two
-          genuinely differ, so nobody reads a caveat about a limit they have not reached. */}
-      {s.recruitCount > s.recruits.length && (
-        <p className="-mt-1 text-body-sm text-text-subtle">
-          {fill(t.profile.inviteListCapped, { shown: s.recruits.length, total: s.recruitCount })}
-        </p>
-      )}
-      {s.recruits.length > 0 ? (
-        <div className="overflow-hidden rounded-xl glass-panel">
-          {s.recruits.map((r, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-3 px-3.5 py-2.5 ${i < s.recruits.length - 1 ? "border-b border-border" : ""}`}
-            >
-              <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
-              <div className="min-w-0 flex-1">
-                <p className="font-mono text-[12.5px] font-medium">{r.maskedName}</p>
-                <p className="font-mono text-[10px] text-text-subtle">{t.common.joined} {fmtDate(r.joinedAt)}</p>
-              </div>
-              {/* ⛔ THE STATUS CHIP AND THE MONEY COLUMN ARE ONE DECISION AND THEY GO TOGETHER.
-                  `status` is "Signed up" / "First bet" / "Earning" — a ladder whose rungs are
-                  defined by reward rows, so with nothing accruing EVERY friend is permanently
-                  "Signed up" and the chip becomes a column of identical words that looks like a
-                  stalled process. The amount column is "—" for the same reason. A row that says
-                  who joined and when is the whole truth the unpaid programme has. */}
-              {paid && <Chip variant={r.earnedTzs > 0 ? "resolved" : "pending"}>{r.status}</Chip>}
-              {paid && (
-                <div className={`w-[64px] text-right font-mono text-[12.5px] font-semibold ${r.earnedTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
-                  {r.earnedTzs > 0 ? "+" + formatNumber(r.earnedTzs) : "—"}
+      {/* Recruits — the label, the capped note and the list are ONE block of the page's stack (2026-10-08,
+          WP12's tile 182). The label wore `!mt-1` as a sibling of the share block: 4px under the buttons above it
+          and 24px over the list it names — a label for the wrong thing. Now the block takes the stack's own 24px,
+          and inside it the label sits 12px over what it names, as "Kiungo chako cha rufaa" does over its field. */}
+      <div>
+        <Cap className="mb-2">{paid ? t.profile.yourReferrals : t.profile.yourFriends}</Cap>
+        {/* ⛔ A PAGE OF A LIST SAYS SO. `recruitCount` is the true total and the dial prints it; this
+            array is capped by the read model. Without this line a reader counting rows would reach a
+            different number than the dial and have no way to know which was wrong — the silent
+            truncation `getAdminAffiliateStats` already records refusing. Rendered only when the two
+            genuinely differ, so nobody reads a caveat about a limit they have not reached. */}
+        {s.recruitCount > s.recruits.length && (
+          <p className="mb-2 text-body-sm text-text-subtle">
+            {fill(t.profile.inviteListCapped, { shown: s.recruits.length, total: s.recruitCount })}
+          </p>
+        )}
+        {s.recruits.length > 0 ? (
+          <div className="overflow-hidden rounded-xl glass-panel">
+            {s.recruits.map((r, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-3 px-3.5 py-2.5 ${i < s.recruits.length - 1 ? "border-b border-border" : ""}`}
+              >
+                <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-[12.5px] font-medium">{r.maskedName}</p>
+                  <p className="font-mono text-[10px] text-text-subtle">{t.common.joined} {fmtDate(r.joinedAt)}</p>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          kind="leaderboard"
-          title={paid ? t.profile.noReferralsYet : t.profile.noFriendsYet}
-          body={paid ? t.profile.noReferralsBody : t.profile.noFriendsBody}
-          action={
-            <a href="#referral-share">
-              {/* ⛔ `variant="gold"` IS A MONEY TOKEN (§M3) — the primary royal button is the kit's
-                  ordinary call to action, and sharing a link is an ordinary action. */}
-              <Button variant={paid ? "gold" : "primary"} size="md" leading={<I.share s={14} />}>
-                {t.profile.shareWithFriends}
-              </Button>
-            </a>
-          }
-        />
-      )}
+                {/* ⛔ THE STATUS CHIP AND THE MONEY COLUMN ARE ONE DECISION AND THEY GO TOGETHER.
+                    `status` is "Signed up" / "First bet" / "Earning" — a ladder whose rungs are
+                    defined by reward rows, so with nothing accruing EVERY friend is permanently
+                    "Signed up" and the chip becomes a column of identical words that looks like a
+                    stalled process. The amount column is "—" for the same reason. A row that says
+                    who joined and when is the whole truth the unpaid programme has. */}
+                {paid && <Chip variant={r.earnedTzs > 0 ? "resolved" : "pending"}>{r.status}</Chip>}
+                {paid && (
+                  <div className={`w-[64px] text-right font-mono text-[12.5px] font-semibold ${r.earnedTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
+                    {r.earnedTzs > 0 ? "+" + formatNumber(r.earnedTzs) : "—"}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            kind="leaderboard"
+            title={paid ? t.profile.noReferralsYet : t.profile.noFriendsYet}
+            body={paid ? t.profile.noReferralsBody : t.profile.noFriendsBody}
+            action={
+              <a href="#referral-share">
+                {/* ⛔ `variant="gold"` IS A MONEY TOKEN (§M3) — the primary royal button is the kit's
+                    ordinary call to action, and sharing a link is an ordinary action. */}
+                <Button variant={paid ? "gold" : "primary"} size="md" leading={<I.share s={14} />}>
+                  {t.profile.shareWithFriends}
+                </Button>
+              </a>
+            }
+          />
+        )}
+      </div>
 
       {/* ⭐ THE PAGE SAYS OUT LOUD THAT IT PAYS NOTHING. The paid disclaimer explains WHEN a reward
           clears; its unpaid counterpart is not a softer version of that sentence but its opposite,

@@ -347,7 +347,11 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
           top padding — which is why the container carries no `pt-*`. */}
       <div aria-hidden className="claret-rule" />
 
-      <div className="flex items-start gap-3">
+      {/* 2026-10-08 (WP12's tiles 320, 321, 323, 324) — the title row is a row like the two below it: the title is
+          centred on the close control's 44px box, so the × sits on the title's line (it hung 13px under it, the
+          title pinned to the top of that box), and the title's centre stands one row pitch (46px) above the first
+          row's — the list's 2px top margin is the 2px between its rows. It was 62px. */}
+      <div className="flex items-center gap-3">
         <p
           id="channels-panel-title"
           className="min-w-0 flex-1 font-display text-body font-semibold leading-tight text-text"
@@ -365,7 +369,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
         </button>
       </div>
 
-      <ul className="mt-1 space-y-0.5">
+      <ul className="mt-0.5 space-y-0.5">
         {SOCIAL_LIVE.map((s, i) => {
           const Mark = SOCIAL_MARK[s.labelKey];
           const copy = PANEL_COPY[s.labelKey];

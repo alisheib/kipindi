@@ -193,6 +193,40 @@ export function hubRowsFor(v: HubViewer): HubGroup[] {
   return v.signedIn ? memberGroups(v) : guestGroups();
 }
 
+/**
+ * How many of a card's rows draw from 1024, where the hub has two columns: the language row hides there (the journey
+ * header carries the language menu) and the card-size row from 640 — each says so on its own `<li>`
+ * (`language-row.tsx`, `card-size-row.tsx`). `hubColumnCut` weighs the cards with it.
+ */
+export function wideRowCount(rows: readonly HubRow[]): number {
+  return rows.filter((r) => r.kind !== "language" && r.kind !== "cardSize").length;
+}
+
+/**
+ * WHERE THE HUB'S TWO COLUMNS PART, from 1024 (WP12's tiles 122-317, 2026-10-08). A row-major grid paired the cards by
+ * row, so a ~73px band opened under the shorter card of each pair against the 16px between cards everywhere else. The
+ * page now stacks the cards in two independent columns, and the columns are this ONE order cut once: the first `k`
+ * cards down the left, the rest down the right. So the DOM, the keyboard and the eye keep `hubRowsFor`'s order, and
+ * below 1024 the two columns stack back into the single one, unchanged.
+ * `k` leaves the two columns most nearly level, given each card's `wideRowCount`: a row is the 56px rung and its 1px
+ * hairline, a card adds its 2px border less the last hairline, and every card after the first in a column adds the
+ * 16px gap. A tie goes to the longer left column. With fewer than two cards there is no cut.
+ */
+export function hubColumnCut(rowCounts: readonly number[]): number {
+  const height = (counts: readonly number[]) =>
+    counts.reduce((h, n) => h + 57 * n + 1, 0) + 16 * Math.max(0, counts.length - 1);
+  let cut = rowCounts.length;
+  let tallest = Infinity;
+  for (let k = 1; k < rowCounts.length; k++) {
+    const h = Math.max(height(rowCounts.slice(0, k)), height(rowCounts.slice(k)));
+    if (h <= tallest) {
+      tallest = h;
+      cut = k;
+    }
+  }
+  return cut;
+}
+
 /** A word from a dictionary (`t`), or "" when the path is missing — `hubWordProblems` keeps that from happening. */
 export function hubWord(t: unknown, key: HubWord): string {
   let v: unknown = t;

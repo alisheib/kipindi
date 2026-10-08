@@ -234,9 +234,12 @@ export function PublicFooter({
         <FooterCol heading={t.footer.fairness}>
           <FooterLink href="/fairness">{t.footer.resolutionAttestation}</FooterLink>
           {/* Proposals: dropped from the footer entirely when DISABLED; otherwise
-              the current state flag rides the link (gilt / amber / none). */}
+              the current state flag rides the link (gilt / amber / none).
+              2026-10-08 (WP12's tiles 299, 307) — where the label and its flag cannot share a line (the 216px column
+              at 1024, the 160px one at 768), the line breaks are balanced: "Pendekeza masoko" over "upate pesa
+              INAKUJA", where a greedy break had left the flag alone on the second line. */}
           {proposalsState !== "DISABLED" && (
-            <FooterLink href="/proposals">
+            <FooterLink href="/proposals" balance>
               {t.footer.proposeGetPaid}
               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-1.5" />
             </FooterLink>
@@ -335,7 +338,8 @@ function SocialLink({
   );
 }
 
-function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
+/** `balance` evens a label that wraps, so a flag riding its end never takes a line of its own (the proposals link). */
+function FooterLink({ href, children, balance = false }: { href: string; children: React.ReactNode; balance?: boolean }) {
   return (
     <li>
       <Link
@@ -347,7 +351,7 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
            exactly 44, because `SocialLink` was given the rung and this component was not. */
         className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1 min-h-[44px] group"
       >
-        <span className="border-b border-transparent group-hover:border-text-subtle transition-colors">{children}</span>
+        <span className={`border-b border-transparent group-hover:border-text-subtle transition-colors${balance ? " text-balance" : ""}`}>{children}</span>
       </Link>
     </li>
   );

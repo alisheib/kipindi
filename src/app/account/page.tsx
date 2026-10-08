@@ -21,7 +21,7 @@ import { notFound } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { PageContainer } from "@/components/layout/page-container";
 import { HubRowItem } from "@/components/journey/account/hub-row";
-import { hubRowsFor, hubWord } from "@/components/journey/account/hub-rows";
+import { hubColumnCut, hubRowsFor, hubWord, wideRowCount, type HubGroup } from "@/components/journey/account/hub-rows";
 import { SignOutRow } from "@/components/journey/account/sign-out-row";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import { currentSession } from "@/lib/server/auth-service";
@@ -50,6 +50,17 @@ export default async function AccountHubPage() {
   const [{ t }, session] = await Promise.all([getServerT(), currentSession()]);
   const viewer = await loadHubViewer(session?.userId ?? null);
   const groups = hubRowsFor(viewer);
+  // ⭐ Two columns from 1024 that stack on their own (WP12's tiles, 2026-10-08): the cards in their one order, cut
+  // once where the columns stand most nearly level (`hubColumnCut`). The staff card is always last, so it closes the
+  // second column, weighed as the one row it is. Below 1024 the two columns stack into one, as before.
+  const weights = groups.map((g) => wideRowCount(g.rows));
+  if (viewer.signedIn && viewer.doors.staffConsole) weights.push(1);
+  const cut = hubColumnCut(weights);
+  const card = (g: HubGroup) => (
+    <ul key={g.key} className="kp-hub__card" aria-label={hubWord(t, g.label)}>
+      {g.rows.map((row) => <HubRowItem key={row.id} row={row} t={t} viewer={viewer} />)}
+    </ul>
+  );
 
   return (
     <PageContainer tier="reading">
@@ -67,25 +78,24 @@ export default async function AccountHubPage() {
           <p className="kp-hub__prompt">{t.journey.hubGuestPrompt}</p>
         )}
         <div className="kp-hub__grid">
-          {groups.map((g) => (
-            <ul key={g.key} className="kp-hub__card" aria-label={hubWord(t, g.label)}>
-              {g.rows.map((row) => <HubRowItem key={row.id} row={row} t={t} viewer={viewer} />)}
-            </ul>
-          ))}
-          {viewer.signedIn && viewer.doors.staffConsole && (
-            <ul className="kp-hub__card kp-hub__card--staff" aria-label={t.journey.hubGroupStaff}>
-              <li>
-                <a href="/admin" className="kp-hub__row">
-                  <span className="kp-hub__glyph" aria-hidden><I.server s={20} /></span>
-                  <span className="kp-hub__text">
-                    <span className="kp-hub__label">{t.common.staffConsole}</span>
-                    <span className="kp-hub__sub">{t.journey.hubStaffSub}</span>
-                  </span>
-                  <I.externalLink s={18} className="kp-hub__chev" aria-hidden />
-                </a>
-              </li>
-            </ul>
-          )}
+          <div className="kp-hub__col">{groups.slice(0, cut).map(card)}</div>
+          <div className="kp-hub__col">
+            {groups.slice(cut).map(card)}
+            {viewer.signedIn && viewer.doors.staffConsole && (
+              <ul className="kp-hub__card kp-hub__card--staff" aria-label={t.journey.hubGroupStaff}>
+                <li>
+                  <a href="/admin" className="kp-hub__row">
+                    <span className="kp-hub__glyph" aria-hidden><I.server s={20} /></span>
+                    <span className="kp-hub__text">
+                      <span className="kp-hub__label">{t.common.staffConsole}</span>
+                      <span className="kp-hub__sub">{t.journey.hubStaffSub}</span>
+                    </span>
+                    <I.externalLink s={18} className="kp-hub__chev" aria-hidden />
+                  </a>
+                </li>
+              </ul>
+            )}
+          </div>
         </div>
         {viewer.signedIn && <SignOutRow />}
       </div>
