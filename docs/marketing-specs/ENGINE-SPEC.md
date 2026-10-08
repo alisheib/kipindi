@@ -2220,6 +2220,42 @@ RETURN — pure, no directive; U47b-2 adds the page's own words to it), `scripts
   declare `campaign-control.ts`; nothing in `src` value-imports `campaign-control.ts` yet (W1 pins it empty until U47b-2).
 - **Proof:** `test:campaign-visuals` §svc — C0, V2, V3, S1–S9, T1–T8, D1–D5, W1, P1 (27 claims) with 20 in-process plants
   (`red:campaign-visuals`); V1 and V4–V10 are U47b-2's.
+- ✅ **THE U47b-1 REVIEW'S FIX ROUND (S14, 2026-10-08 — 2 MAJOR, 6 MINOR, the NITs; U47b-2 builds on these shapes):**
+  - ⛔ **The step answer is `DriverStep`** (`driverStep`, `ControlDeps.shape`): `kind`, a wait's `reason` / `until`, a pause's
+    `reason`, a status — NO count and NO cursor for any role (a slice's `skipped` beside a padded tag was one person's gate
+    verdict below the floor; an enqueue's `next` named a contact or an account). Every figure comes from the view.
+  - ⛔ **The floor hides only a split there is**: `!reads && rows > 0 && rows < 10` — a list not written yet (CONFIRMED, or
+    paused / stopped before its first chunk) has nothing to hide. Its words are about the LIST: "Fewer than 10 people are on
+    this campaign's list, so its breakdown is hidden for your role." (the Floor sentence below, as built).
+  - ⛔ **Why it paused, below the floor** (`pausedReasonSentenceFor(viewer, c, counts)` — the ONE function; U47b-2 routes the
+    campaigns LIST's paused line through it): every ENGINE reason reads ONE sentence, "Paused by the system, so nobody more
+    is messaged. The reason is hidden for your role while fewer than 10 people are on this campaign's list: press Resume to
+    try again — it says first if something must be fixed — and if it pauses again, ask an officer who may read phone
+    numbers." Some reasons can only be written once somebody passed the checks for the wire (`gateway_refused`,
+    `gateway_unanswered`, `send_error`, `before_send_unanswered`, `slice_too_slow`, `sendBatch`'s floors), `held_rows` says
+    who is left, and a sentence kept for those alone would say the same by being said — so it covers every engine reason.
+    The four found before anybody is checked keep their words (`FLOOR_SAFE_STOP_REASONS`: the enqueue's three and
+    `template_invalid`, the copy advice as a condition), and an officer's own act names who.
+  - **"Nobody driving"** is RUNNING, no claim for 90 s, AND the engine not waiting on purpose — the send window open, money
+    not busy, no login code failed in the last two minutes — else every night read as nobody sending (decision as amended).
+  - **Who paused / stopped** is read only from a row written at or after the act (`pausedAt` / `finishedAt`, 1 s grace):
+    a lost row never names an older officer. **Stop** survives a count it cannot read (`outstanding: null`, still recorded,
+    still "stopped"). **An officer's Stop is said once**: CANCELLED's `stopSentence` is null — the headline names who and when.
+  - ⭐ **Resume runs inside the campaign's step flight** and MOVES FIRST, then re-queues the HELD rows (E8): a Resume that
+    loses its race to a Stop touches no row; no step of this process can pause it again between the refusal it judged and
+    its move, nor find the list "only HELD" before the re-queue (another step holding the flight: `busy` — "Another step of
+    this campaign is running — press Resume again in a moment. Nothing was changed."); a re-queue that fails after the move
+    is recorded `requeuedHeld: null`, never a failure answer. Across processes the engine's re-checks hold it (④a, the
+    check before the wire, the enqueue failing closed). A Resume back to PREPARING toasts "Resumed — the list is being
+    prepared. Keep this page open while it sends."
+  - **Every act is role-gated in the service too** (`ControlActor.mayAct` — refused `role` before anything is read, no row).
+    The flight's staleness is `stepFlightStale` (a dependency, so a plant can prove the dated-ahead rule).
+  - **Words true in every case:** DONE "Finished — nobody on this campaign is still waiting." (true beside a "No answer");
+    a stop with nobody left "… — nobody on it was still waiting."; the Stop dialog's reached form "A copy would message
+    everyone it reaches — including, again, the people this campaign already messaged."; an untitled campaign's copy is
+    "Untitled campaign (copy)".
+  - **Proof:** `test:campaign-visuals` 30 claims (S10 and T9 added; S3, S5, S7, T5, T7, T8, D2, D3 and W1 extended; P2 new)
+    with 35 in-process plants, every one held.
 
 **Premises checked.** The six doors and the page gate rules (`admin-section-gate.test.mjs` §0b′: one return, a literal
 title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:campaigns-page` 5f/5k
@@ -2326,6 +2362,8 @@ export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepRe
 - Headlines: CONFIRMED "Ready to start — nothing has been sent." · PREPARING "Preparing the list — 600 of 1,604 people
   written." · RUNNING "Sending — 420 of 1,604 done." · PAUSED "Paused." + the reason · DONE "Finished — everyone on this
   campaign has an answer." · CANCELLED "Stopped by Amina at 14:10 EAT — 1,180 people were not messaged."
+  ✅ As built (the U47b-1 review): DONE "Finished — nobody on this campaign is still waiting." — a message the network never
+  answered is settled with no answer, so "everyone has an answer" was false beside a "No answer".
 - Waits (from the step): quiet hours "Waiting for the send window — sending resumes at 08:00 EAT." · money busy "Waiting a
   moment — the platform is paying out or taking bets, and money always goes first. Sending resumes by itself." · OTP "Waiting
   — a login or withdrawal code failed in the last two minutes, so marketing steps aside. It tries again at 14:32 EAT." · busy
@@ -2347,6 +2385,8 @@ export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepRe
   seconds.") · "Failed" · "Not sent (checks)" · "No answer" (title: "Handed to the network with no answer back — never
   re-sent automatically.") · "Waiting".
 - Floor (masked, < 10 people): "This campaign has fewer than 10 people, so its breakdown is hidden for your role."
+  ✅ As built (the U47b-1 review): "Fewer than 10 people are on this campaign's list, so its breakdown is hidden for your
+  role." — and only when the list holds 1–9 rows.
 - Start dialog: title "Start sending to up to 1,604 people?" · body "Each person is checked again just before their message:
   anyone who has stopped, withdrew or is protected is skipped. Messages go out between 08:00 and 20:00 EAT. [money:] It can
   cost up to TZS 9,624 of the TZS 10,000 limit. [others:] It uses up to 1,604 SMS. Keep this page open while it sends." ·

@@ -31,6 +31,9 @@
  * ⛔ AND THE WORDING NEVER LEAKS WHAT THE FLOOR HIDES: a sentence that advises a copy says "a copy would message them
  * again" as a FACT only when the viewer may see whether anybody was messaged; under the floor it says it as a CONDITION,
  * whatever the counts are (`liveReach`). A campaign that never ran (`enqueuedAt` null) reached nobody by construction.
+ * ⛔ NOR DOES WHY IT PAUSED (the U47b-1 review): below the floor every engine reason reads ONE sentence
+ * (`pausedReasonSentenceFor` — some reasons can only be written once somebody on the list passed the checks for the wire);
+ * the reasons found before anybody is checked keep their words.
  * ⛔ OD24 · MONEY only for `viewer.money` (the caller's `campaignMoneyVisible`): `money` is null, and the Start dialog
  * carries no TZS, for anyone else — no figure exists in their view for a render to leak.
  * ⛔ OD66 · A STORED AUDIENCE THIS VIEWER'S ROLE MAY NOT COUNT (`campaignAudienceRefusal` — both populations, a search, a
@@ -88,9 +91,9 @@ import {
   CAMPAIGNS_AUDIENCE_EVERYONE, CAMPAIGNS_AUDIENCE_HIDDEN, CAMPAIGNS_AUDIENCE_UNREADABLE,
 } from "@/app/admin/campaigns/campaigns-copy";
 import {
-  LIVE_DISABLED, LIVE_FLOOR, LIVE_HEADLINE, LIVE_SOMEBODY, NOT_SENT_EXTRA, RECIPIENT_STATUS_LABEL, START_AUDIENCE_REFUSED,
-  copyCantTravelSentence, eatClock, officerPausedSentence, officerStoppedSentence, pausedReasonSentence, preparingHeadline,
-  sendingHeadline, startDialog, stopDialog, stoppedHeadline,
+  FLOOR_SAFE_STOP_REASONS, LIVE_DISABLED, LIVE_FLOOR, LIVE_HEADLINE, LIVE_PAUSED_HIDDEN, LIVE_SOMEBODY, NOT_SENT_EXTRA,
+  RECIPIENT_STATUS_LABEL, START_AUDIENCE_REFUSED, copyCantTravelSentence, eatClock, officerPausedSentence, pausedReasonSentence,
+  preparingHeadline, sendingHeadline, startDialog, stopDialog, stoppedHeadline,
 } from "@/app/admin/campaigns/[id]/live-copy";
 import type { LiveReach } from "@/app/admin/campaigns/[id]/live-copy";
 
@@ -198,6 +201,26 @@ export function liveReach(
   return messagedRows(counts) > 0 ? "reached" : "none";
 }
 
+/**
+ * ⛔ E23 · WHY A CAMPAIGN PAUSED, AS THIS VIEWER MAY READ IT — the ONE function every surface says a paused campaign's
+ * reason through (the live page here; U47b-2 routes the campaigns LIST's line through it too — the U47b-1 review). Below
+ * the floor (`hidden`) every ENGINE reason reads ONE sentence (`LIVE_PAUSED_HIDDEN`): some can only be written once
+ * somebody on the list passed the checks for the wire, and a sentence kept for those alone would say so by being said. The
+ * reasons found before anybody is checked keep their words (`FLOOR_SAFE_STOP_REASONS` — the copy advice then as a
+ * condition, `liveReach`). Above the floor, and for a reader: `pausedReasonSentence` by reach.
+ */
+export function pausedReasonSentenceFor(
+  viewer: Pick<LiveViewer, "reads">,
+  c: Pick<StoredSmsCampaign, "stopReason" | "enqueuedAt">,
+  counts: SmsCampaignRecipientStatusCounts,
+  hidden: (viewerReads: boolean, rows: number) => boolean = liveBreakdownHidden,
+): string {
+  const reads = viewer?.reads === true;
+  const key = typeof c.stopReason === "string" ? c.stopReason.trim() : "";
+  if (hidden(reads, recipientRows(counts)) && !FLOOR_SAFE_STOP_REASONS.includes(key)) return LIVE_PAUSED_HIDDEN;
+  return pausedReasonSentence(key, liveReach(c, counts, reads, hidden));
+}
+
 /** The stored audience, as a copy carries it: read at the campaign's door, allowed to THIS viewer (the draft door holds a
  *  posted filter to the viewer's role rule), and writable as the composer's address exactly (`campaignAudienceParams`). */
 export type CopyTravel = { ok: true; params: Record<string, string>; filter: ContactAudienceFilter } | { ok: false };
@@ -253,6 +276,8 @@ export type LiveViewDeps = {
     moneyVisible: typeof liveMoneyVisible;
     bucketOf: typeof notSentBucketOf;
     outstanding: typeof resumeOutstanding;
+    /** ⛔ E23 · a paused reason as this viewer may read it (`pausedReasonSentenceFor`). */
+    pausedReason: typeof pausedReasonSentenceFor;
   };
   now: () => Date;
 };
@@ -277,7 +302,7 @@ export const LIVE_VIEW_DEPS: Readonly<LiveViewDeps> = Object.freeze({
   actsOn: async (campaignId: string) => (await getAuditForTargetDurable("SmsCampaign", campaignId, { limit: LIVE_ACTS_READ })).entries,
   rules: Object.freeze({
     progress: campaignProgress, breakdownHidden: liveBreakdownHidden, moneyVisible: liveMoneyVisible, bucketOf: notSentBucketOf,
-    outstanding: resumeOutstanding,
+    outstanding: resumeOutstanding, pausedReason: pausedReasonSentenceFor,
   }),
   now: () => new Date(),
 });
@@ -417,7 +442,7 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
       headline = LIVE_HEADLINE.PAUSED;
       stopSentence = reasonKey === "officer_paused"
         ? officerPausedSentence(await actorOfAct(c.id, OFFICER_PAUSED_ACTION, deps, c.pausedAt), c.pausedAt)
-        : pausedReasonSentence(reasonKey, reach);
+        : deps.rules.pausedReason({ reads }, c, counts, deps.rules.breakdownHidden);
       break;
     case "DONE":
       headline = LIVE_HEADLINE.DONE;
@@ -426,7 +451,9 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
       const who = await actorOfAct(c.id, OFFICER_STOPPED_ACTION, deps, c.finishedAt);
       const left = deps.rules.outstanding(c, counts);
       headline = stoppedHeadline(who, c.finishedAt, left ?? outstandingRows(counts));
-      stopSentence = reasonKey === "officer_stopped" ? officerStoppedSentence(who, c.finishedAt) : pausedReasonSentence(reasonKey, reach);
+      // ⭐ The U47b-1 review · an officer's Stop is said ONCE — the headline names who and when; any other reason is said as a
+      // paused one is, through the floor.
+      stopSentence = reasonKey === "officer_stopped" ? null : deps.rules.pausedReason({ reads }, c, counts, deps.rules.breakdownHidden);
       break;
     }
     default:
