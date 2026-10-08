@@ -43,6 +43,11 @@ const FILES = [
   "src/lib/server/marketing/contact-bulk.ts",
   // §27 · U33a-L (S10, 2026-10-04): the list basis's ONE rule set — §27.model reads it here, and two cases plant in it.
   "src/lib/server/marketing/list-basis-model.ts",
+  // §28 · U33r (S14, b514d5e9, 2026-10-07) reads the referee-key model through KP_SRC, and it was never listed here: from
+  // that commit every mutation run CRASHED on the missing file once the gate reached §28, so every case whose label sits
+  // in §28 or later (the importer's §29 among them) read "WRONG REASON — (no FAIL line)". Found by S15 (2026-10-09),
+  // reproduced by running the gate on an UNMUTATED scratch copy (ENOENT, then 2211/0 once listed).
+  "src/lib/server/marketing/referee-key-model.ts",
 ];
 
 const runGate = (srcDir) => {
