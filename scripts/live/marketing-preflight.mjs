@@ -425,7 +425,7 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   // test-fresh · no earlier campaign holds it
   const held = facts.test.campaigns ?? [];
   if (held.length === 0) add("test-fresh", true, "no earlier campaign holds the test number");
-  else add("test-fresh", false, `${held.length} earlier campaign row${held.length === 1 ? "" : "s"} hold the number: ${held.slice(0, 5).map((r) => `${lib.safeText(r.campaign_id, 30)} ${lib.safeText(r.status, 12)}`).join(" · ")}`);
+  else add("test-fresh", false, `${held.length} earlier campaign row${held.length === 1 ? " holds" : "s hold"} the number:${held.slice(0, 5).map((r) => `${lib.safeText(r.campaign_id, 30)} ${lib.safeText(r.status, 12)}`).join(" · ")}`);
 
   // control · an active stop on the control number
   if (!args.control) add("control", null, "no control number named — the §7 Q4 fallback: the refusal is proven on the test number before and after its stop, and the same-run control is NOT done (recorded)");

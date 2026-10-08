@@ -1197,8 +1197,8 @@ async function runAssertions(impl: Impl): Promise<void> {
       migrations: { each: [`("finished_at" IS NOT NULL) AS finished, ("rolled_back_at" IS NOT NULL) AS rolled FROM "_prisma_migrations"`] },
       // the four keys are the APP's own constants, not a copy typed here (P6e holds the tool's constants to the same four)
       config: { each: [`FROM "SystemConfig" WHERE "key" IN ('${LIVE.MARKETING_LIVE_SWITCH_KEY}', '${SETTINGS_SERVER.MARKETING_SMS_SETTINGS_KEY}', '${OUTREACH.LICENCE_OUTREACH_KEY}', '${WORDINGS_SERVER.MARKETING_WORDINGS_KEY}')`] },
-      contact: { each: [`FROM "MarketingContact" WHERE "msisdn" = ${ph("testKey")}`, `COALESCE("sourceRef" = 'erasure', false) AS erased`] },
-      lists: { each: [`FROM "ContactListMember" m JOIN "ContactList" l ON l."id" = m."listId" WHERE m."contactId" = ${ph("facts.test.contact.id")} ORDER BY l."id"`, `(SELECT count(*)::int FROM "ContactListMember" x WHERE x."listId" = l."id") AS members`] },
+      contact: { each: [`COALESCE("sourceRef" = 'erasure', false) AS erased`, `FROM "MarketingContact" WHERE "msisdn" = ${ph("testKey")}`] },
+      lists: { each: [`(SELECT count(*)::int FROM "ContactListMember" x WHERE x."listId" = l."id") AS members`, `FROM "ContactListMember" m JOIN "ContactList" l ON l."id" = m."listId" WHERE m."contactId" = ${ph("facts.test.contact.id")} ORDER BY l."id"`] },
       basis: { each: [`("revokedAt" IS NOT NULL) AS revoked FROM "ContactListBasis" WHERE "listId" = ${ph("l.list_id")} ORDER BY "recordedAt" DESC, "id" DESC LIMIT 1`] },
       suppression: { each: [`"liftedAt" AS lifted_at ${stopsFrom}`], union: [stops("testKey"), stops("controlKey")] },
       ledger: { each: [consent("testKey", "1")] },
@@ -1234,6 +1234,9 @@ async function runAssertions(impl: Impl): Promise<void> {
       if (texts.length === 0) { contractBad.push(`${tag}: the statement is gone`); continue; }
       for (const frag of rule.each) for (const t of texts) if (!t.includes(squash(frag))) contractBad.push(`${tag}: lacks «${frag.slice(0, 70)}…»`);
       for (const frag of rule.union ?? []) if (!texts.some((t) => t.includes(squash(frag)))) contractBad.push(`${tag}: no statement has «${frag.slice(-40)}»`);
+      // ⭐ ... and the statement ENDS with its contract: an ORDER BY direction, a condition or a clause appended to it is a different question
+      const tails = rule.union ?? [rule.each[rule.each.length - 1]];
+      for (const t of texts) if (!tails.some((f) => t.endsWith(squash(f)))) contractBad.push(`${tag}: does not END with its contract («${t.slice(-50)}»)`);
     }
     // ⭐ THE SELECT LISTS, EXACTLY. The stand-in answers whatever a statement selects, so a column dropped from (or added to) a SELECT is
     // invisible to every run - in production the tool would read `undefined` (dropping `"createdAt" AS created_at` from the person's ledger
@@ -2702,6 +2705,10 @@ if (!PROVE_RED) {
       impl: () => withPreText("if (!(minuteNow >= s.windowStartMinute && minuteNow < s.windowEndMinute))", "if (!(minuteNow >= 480 && minuteNow < 1200))") },
     { name: "R-W18 · the window's margin is never asked for (a start with one minute left is GO)", expect: [L.p1b],
       impl: { judge: (f: unknown, c: { args: object }, l: unknown) => PRE_.judgePreflight(f, { ...c, args: { ...c.args, minWindow: 0 } }, l) } },
+    { name: "R-S9 · the lists read is ordered newest-id-first (a direction APPENDED at the end of the statement: a substring check cannot see it)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `ORDER BY l."id"${BT}`, `ORDER BY l."id" DESC${BT}`) }) },
+    { name: "R-S10 · a condition is APPENDED to the elsewhere count (it skips the failed messages)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `AND "msisdn" <> ${"$"}{testKey}${BT}`, `AND "msisdn" <> ${"$"}{testKey} AND "status"::text <> 'FAILED'${BT}`) }) },
     { name: "R-W19 · a list of TWO members passes as a list of one (`<= 2`)", expect: [L.p1d],
       impl: () => withPreText("const alone = lists.filter((l) => Number(l.members) === 1);", "const alone = lists.filter((l) => Number(l.members) <= 2);") },
     { name: "R-W20 · a list of one whose name is hidden passes (the tool cannot name it, and says GO)", expect: [L.p1d],
