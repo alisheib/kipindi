@@ -244,82 +244,90 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
       ) : (
       <form
         action={withdrawAction}
-        className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${canSubmit ? "" : "opacity-60"}`}
+        className={`rounded-xl glass-panel p-5 lg:p-6 ${canSubmit ? "" : "opacity-60"}`}
       >
-        {/* 🔴 A refusal ends the attempt, so each signed `?error=` is a new key (2026-10-06) — the deposit page's note
-            says why: this page stays mounted across its own redirect, and a used key replays its row. */}
-        <IdempotencyKeyField key={sp.error ?? ""} />
-        <fieldset disabled={!canSubmit}>
-          <FieldLegend as="legend" className="mb-2">
-            {t.wallet.destination}
-          </FieldLegend>
-          <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} unavailableLabel={t.common.temporarilyUnavailable} />
-        </fieldset>
+        {/* ⭐ THE FORM'S RHYTHM LIVES ON THIS WRAPPER, NOT ON THE <form> (2026-10-08, the visual pass's round 3, tiles
+            067–069 / 173–174). React's server renderer writes `<input type="hidden" name="$ACTION_ID_…">` straight after
+            the <form> tag of a server-action form (react-dom-server: pushAdditionalFormField), with no `hidden`
+            attribute, so Tailwind 3's `space-y-5` on the form counted it as a sibling and put 24px above "MAHALI": 51px
+            from the card's border to its first line against the card's 24px sides. Inside this wrapper the first child has
+            no sibling before it whatever React adds to the form. */}
+        <div className="space-y-5">
+          {/* 🔴 A refusal ends the attempt, so each signed `?error=` is a new key (2026-10-06) — the deposit page's note
+              says why: this page stays mounted across its own redirect, and a used key replays its row. */}
+          <IdempotencyKeyField key={sp.error ?? ""} />
+          <fieldset disabled={!canSubmit}>
+            <FieldLegend as="legend" className="mb-2">
+              {t.wallet.destination}
+            </FieldLegend>
+            <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} unavailableLabel={t.common.temporarilyUnavailable} />
+          </fieldset>
 
-        {/* C2e — amount now routes through the shared deposit/withdraw kit
-            control (Input + quick-amount chips), instead of a bare number field. */}
-        <AmountField
-          label={t.wallet.amount}
-          // ⭐ THE HINT STATES THE MINIMUM THE FORM ENFORCES (owner ruling 2026-10-07): it said a typed "Min TZS 1,000"
-          // while the field — and the server — refused anything below the true minimum at the live fee. One figure, `withdrawMin`.
-          hint={fill(t.wallet.amountHint, { min: formatNumber(withdrawMin), max: formatNumber(WITHDRAW_MAX_TZS) })}
-          quickAmounts={WITHDRAW_QUICK}
-          // Derived from the LIVE fee rate, not WITHDRAW_MIN_TZS: the gateway's floor is on
-          // what it receives (net), so a gross minimum of 1,000 offers an amount we cannot
-          // actually send. See `withdrawMinFor`.
-          min={withdrawMin}
-          max={Math.min(WITHDRAW_MAX_TZS, wallet?.balance ?? 0)}
-          defaultValue={prevAmount || undefined}
-          disabled={!canSubmit}
-        />
+          {/* C2e — amount now routes through the shared deposit/withdraw kit
+              control (Input + quick-amount chips), instead of a bare number field. */}
+          <AmountField
+            label={t.wallet.amount}
+            // ⭐ THE HINT STATES THE MINIMUM THE FORM ENFORCES (owner ruling 2026-10-07): it said a typed "Min TZS 1,000"
+            // while the field — and the server — refused anything below the true minimum at the live fee. One figure, `withdrawMin`.
+            hint={fill(t.wallet.amountHint, { min: formatNumber(withdrawMin), max: formatNumber(WITHDRAW_MAX_TZS) })}
+            quickAmounts={WITHDRAW_QUICK}
+            // Derived from the LIVE fee rate, not WITHDRAW_MIN_TZS: the gateway's floor is on
+            // what it receives (net), so a gross minimum of 1,000 offers an amount we cannot
+            // actually send. See `withdrawMinFor`.
+            min={withdrawMin}
+            max={Math.min(WITHDRAW_MAX_TZS, wallet?.balance ?? 0)}
+            defaultValue={prevAmount || undefined}
+            disabled={!canSubmit}
+          />
 
-        {/* 🔴 `E-215` · THE DESTINATION IS STATED, NOT TYPED — and it is not a disabled
-            input either. Until 2026-08-25 this was a free-text field and the server compared
-            it to nothing: 7 of 25 lifetime withdrawals went to a number other than the
-            account's, 6 CONFIRMED, one of them a DIGIT TRANSPOSITION (`…979354` → `…939754`)
-            — a player who mistyped their own number and paid a stranger.
+          {/* 🔴 `E-215` · THE DESTINATION IS STATED, NOT TYPED — and it is not a disabled
+              input either. Until 2026-08-25 this was a free-text field and the server compared
+              it to nothing: 7 of 25 lifetime withdrawals went to a number other than the
+              account's, 6 CONFIRMED, one of them a DIGIT TRANSPOSITION (`…979354` → `…939754`)
+              — a player who mistyped their own number and paid a stranger.
 
-            ⛔ NOT `disabled`, ON THE OWNER'S EXPLICIT INSTRUCTION. A greyed-out box says
-            *you may not* without ever saying *why*, so the player is left to guess whether
-            the form is broken. This shows the number, names it as the registered one, and
-            states the rule in the player's own language.
+              ⛔ NOT `disabled`, ON THE OWNER'S EXPLICIT INSTRUCTION. A greyed-out box says
+              *you may not* without ever saying *why*, so the player is left to guess whether
+              the form is broken. This shows the number, names it as the registered one, and
+              states the rule in the player's own language.
 
-            ⚠️ THE HIDDEN INPUT IS NOT THE CONTROL. `WithdrawConfirm.validate()` reads
-            `fd.get("msisdn")` and the payee-name lookup posts it, so the form must still
-            carry the value; but nothing here is what makes the rule true. The seal is
-            `payoutDestinationFor` inside `wallet-service.withdraw()`, which refuses a
-            mismatch before a shilling is moved — this markup is manners, the server is the
-            law. Rewriting the hidden value in devtools changes nothing. */}
-        <div className="rounded-xl border border-border bg-bg-inset/60 px-3.5 py-3">
-          {/* 2026-09-13 · the row WRAPS AS UNITS, nothing wraps inside a unit. At 360 the label
-              and the chip were squeezed side by side, so both broke onto two lines, the chip
-              inside its own capsule. Now the chip drops below the label when they cannot share
-              a line, and the chip never breaks. The inline style is needed because Chip sets
-              whiteSpace normal inline (G-7), which no class can beat. */}
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <FieldLegend>{t.wallet.destinationPhone}</FieldLegend>
-            <Chip variant="neutral" size="sm" style={{ whiteSpace: "nowrap" }}>{t.wallet.destinationRegistered}</Chip>
+              ⚠️ THE HIDDEN INPUT IS NOT THE CONTROL. `WithdrawConfirm.validate()` reads
+              `fd.get("msisdn")` and the payee-name lookup posts it, so the form must still
+              carry the value; but nothing here is what makes the rule true. The seal is
+              `payoutDestinationFor` inside `wallet-service.withdraw()`, which refuses a
+              mismatch before a shilling is moved — this markup is manners, the server is the
+              law. Rewriting the hidden value in devtools changes nothing. */}
+          <div className="rounded-xl border border-border bg-bg-inset/60 px-3.5 py-3">
+            {/* 2026-09-13 · the row WRAPS AS UNITS, nothing wraps inside a unit. At 360 the label
+                and the chip were squeezed side by side, so both broke onto two lines, the chip
+                inside its own capsule. Now the chip drops below the label when they cannot share
+                a line, and the chip never breaks. The inline style is needed because Chip sets
+                whiteSpace normal inline (G-7), which no class can beat. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <FieldLegend>{t.wallet.destinationPhone}</FieldLegend>
+              <Chip variant="neutral" size="sm" style={{ whiteSpace: "nowrap" }}>{t.wallet.destinationRegistered}</Chip>
+            </div>
+            {/* 🔴 ONE HOME FOR THE 3-3-3 GROUPING. This line used to carry its own regex, which agreed
+                with the phone field on every nine-digit input and diverged on everything else: no
+                nine-digit cap, and it grouped every run of three rather than 3-3-3 specifically, so a
+                stored wire-form `255712345678` rendered "255 712 345 678". Two formatters that agree on
+                the happy path and differ on the malformed one are the pair nothing ever catches. */}
+            <p className="mt-1.5 font-mono text-body-lg tabular-nums text-text">
+              +255 {formatTzPhone(registeredMsisdn)}
+            </p>
+            <p className="mt-1.5 text-body-sm leading-snug text-text-muted">{t.wallet.destinationLockedBody}</p>
+            <input type="hidden" name="msisdn" value={registeredMsisdn} />
           </div>
-          {/* 🔴 ONE HOME FOR THE 3-3-3 GROUPING. This line used to carry its own regex, which agreed
-              with the phone field on every nine-digit input and diverged on everything else: no
-              nine-digit cap, and it grouped every run of three rather than 3-3-3 specifically, so a
-              stored wire-form `255712345678` rendered "255 712 345 678". Two formatters that agree on
-              the happy path and differ on the malformed one are the pair nothing ever catches. */}
-          <p className="mt-1.5 font-mono text-body-lg tabular-nums text-text">
-            +255 {formatTzPhone(registeredMsisdn)}
-          </p>
-          <p className="mt-1.5 text-body-sm leading-snug text-text-muted">{t.wallet.destinationLockedBody}</p>
-          <input type="hidden" name="msisdn" value={registeredMsisdn} />
-        </div>
 
-        {/* C2e — the withdraw notices merged into ONE iconized panel (was two
-            separate info/warning strips). */}
-        <div className="rounded-xl border border-border bg-bg-elevated/50 divide-y divide-border/60">
-          <NoticeRow icon={<I.shieldcheck s={15} className="text-info-fg" />} title={t.wallet.securedByKyc} body={t.wallet.securedBody} />
-          <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={fill(t.wallet.taxBody, { pct: pctNum(wcfg.withdrawalFeeRate) })} />
-        </div>
+          {/* C2e — the withdraw notices merged into ONE iconized panel (was two
+              separate info/warning strips). */}
+          <div className="rounded-xl border border-border bg-bg-elevated/50 divide-y divide-border/60">
+            <NoticeRow icon={<I.shieldcheck s={15} className="text-info-fg" />} title={t.wallet.securedByKyc} body={t.wallet.securedBody} />
+            <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={fill(t.wallet.taxBody, { pct: pctNum(wcfg.withdrawalFeeRate) })} />
+          </div>
 
-        {canSubmit ? <WithdrawConfirm feeRate={wcfg.withdrawalFeeRate} /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} disabled={!canSubmit} />}
+          {canSubmit ? <WithdrawConfirm feeRate={wcfg.withdrawalFeeRate} /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} disabled={!canSubmit} />}
+        </div>
       </form>
       )}
     </PageContainer>

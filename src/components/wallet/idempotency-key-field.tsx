@@ -21,6 +21,9 @@ import { useRef } from "react";
  * at the top of the card (measured 50px above "CHAGUA NJIA YA KULIPA" / "MAHALI" against 27px above the hero's eyebrow
  * and 24px at the card's sides). With `hidden` the selector skips it, so the card's padding is the only space above
  * its first line. A `hidden` input is still submitted with its form; nothing else about it changes.
+ * ⚠️ It was not the only such input: React writes its own `$ACTION_ID_…` hidden input first in every server-action form,
+ * so the two money forms now keep their rhythm on an inner wrapper (round 3, 2026-10-08). This attribute still keeps
+ * THIS input from counting inside that wrapper.
  */
 export function IdempotencyKeyField({ name = "idempotencyKey" }: { name?: string }) {
   const key = useRef<string>(crypto.randomUUID());

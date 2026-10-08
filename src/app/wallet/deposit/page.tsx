@@ -225,75 +225,83 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           </Callout>
         </div>
       ) : (
-      <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">
-        {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
-            intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the
-            router's state key ignores the query), so a retry re-sent the SAME key — and a used key replays its row: a
-            synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
-            a new key; a double tap or a lost response on the SAME screen still dedupes. */}
-        <IdempotencyKeyField key={sp.error ?? ""} />
-        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so.
-            `hidden` keeps it out of the form's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
-            without it a low-balance deposit put the 24px gap back above the method chooser. */}
-        {sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}
-        <fieldset>
-          <FieldLegend as="legend" className="mb-2">
-            {t.wallet.choosePaymentMethod}
-          </FieldLegend>
-          {/* Brand names stay literal; "Card" is a word, so it comes from the dictionary (id unchanged). */}
-          <ProviderRadioGrid
-            providers={PROVIDERS.map((p) => (p.id === "CARD" ? { ...p, name: t.wallet.methodCard } : p))}
-            defaultProvider={prevProvider}
-            unavailableLabel={t.common.temporarilyUnavailable}
-          />
-        </fieldset>
+      <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6">
+        {/* ⭐ THE FORM'S RHYTHM LIVES ON THIS WRAPPER, NOT ON THE <form> (2026-10-08, the visual pass's round 3, tiles
+            067–069 / 173–174). React's server renderer writes `<input type="hidden" name="$ACTION_ID_…">` straight after
+            the <form> tag of a server-action form (react-dom-server: pushAdditionalFormField), with no `hidden`
+            attribute, so Tailwind 3's `space-y-5` on the form counted it as a sibling and put 24px above "CHAGUA NJIA YA KULIPA": 51px
+            from the card's border to its first line against the card's 24px sides. Inside this wrapper the first child has
+            no sibling before it whatever React adds to the form. */}
+        <div className="space-y-5">
+          {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
+              intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the
+              router's state key ignores the query), so a retry re-sent the SAME key — and a used key replays its row: a
+              synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
+              a new key; a double tap or a lost response on the SAME screen still dedupes. */}
+          <IdempotencyKeyField key={sp.error ?? ""} />
+          {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so.
+              `hidden` keeps it out of the wrapper's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
+              without it a low-balance deposit put the 24px gap back above the method chooser. */}
+          {sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}
+          <fieldset>
+            <FieldLegend as="legend" className="mb-2">
+              {t.wallet.choosePaymentMethod}
+            </FieldLegend>
+            {/* Brand names stay literal; "Card" is a word, so it comes from the dictionary (id unchanged). */}
+            <ProviderRadioGrid
+              providers={PROVIDERS.map((p) => (p.id === "CARD" ? { ...p, name: t.wallet.methodCard } : p))}
+              defaultProvider={prevProvider}
+              unavailableLabel={t.common.temporarilyUnavailable}
+            />
+          </fieldset>
 
-        <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
+          <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
 
-        {/* Handset number — mobile-money rails only. Hidden (not unmounted) for
-            CARD, where the buyer enters their details on Selcom's page instead
-            and there is no USSD prompt to push anywhere. No html `required`: it
-            would block submit while hidden. depositAction enforces it.
-            ⭐ THE KIT PhoneInput (2026-10-09, the Vodacom plan §2 / S9), as on sign-up and sign-in. The raw box it
-            replaces had maxLength 9 and pattern \d{9}: "0712 345 678", the way a number is written here, stopped at
-            "071234567", which the server refuses. This one takes 07…, 7…, 255…, +255… and 00255…, shows
-            "712 345 678", and posts the nine digits in a hidden field named msisdn (`test:deposit-phone`). */}
-        <div className="group-has-[#provider-CARD:checked]/deposit:hidden">
-          <FieldLegend as="label" htmlFor="msisdn" className="block mb-2">
-            {t.wallet.mobileMoneyNumber}
-          </FieldLegend>
-          <PhoneInput id="msisdn" name="msisdn" placeholder="712 345 678" defaultValue={prevMsisdn} />
-          <p className="mt-1.5 text-body-sm text-text-subtle text-balance">{t.wallet.mobileMoneyNumberHint}</p>
-          {/* 🔴 `E-215`'s OTHER HALF. Withdrawal states its destination and refuses any
-              other; deposit OFFERS one, because money arriving from a friend's handset is
-              ordinary and blocking it would break real top-ups. The prefill alone was not
-              enough: a box that already holds your own number reads as settled rather than
-              editable, so the player who needs a different number never thinks to try. */}
-          <DepositNumberChoice
-            registered={normalizeTzLocalDigits(session.phoneE164)}
-            current={prevMsisdn}
-            copy={{ useAnother: t.wallet.useAnotherNumber, useMine: t.wallet.useMyNumber }}
+          {/* Handset number — mobile-money rails only. Hidden (not unmounted) for
+              CARD, where the buyer enters their details on Selcom's page instead
+              and there is no USSD prompt to push anywhere. No html `required`: it
+              would block submit while hidden. depositAction enforces it.
+              ⭐ THE KIT PhoneInput (2026-10-09, the Vodacom plan §2 / S9), as on sign-up and sign-in. The raw box it
+              replaces had maxLength 9 and pattern \d{9}: "0712 345 678", the way a number is written here, stopped at
+              "071234567", which the server refuses. This one takes 07…, 7…, 255…, +255… and 00255…, shows
+              "712 345 678", and posts the nine digits in a hidden field named msisdn (`test:deposit-phone`). */}
+          <div className="group-has-[#provider-CARD:checked]/deposit:hidden">
+            <FieldLegend as="label" htmlFor="msisdn" className="block mb-2">
+              {t.wallet.mobileMoneyNumber}
+            </FieldLegend>
+            <PhoneInput id="msisdn" name="msisdn" placeholder="712 345 678" defaultValue={prevMsisdn} />
+            <p className="mt-1.5 text-body-sm text-text-subtle text-balance">{t.wallet.mobileMoneyNumberHint}</p>
+            {/* 🔴 `E-215`'s OTHER HALF. Withdrawal states its destination and refuses any
+                other; deposit OFFERS one, because money arriving from a friend's handset is
+                ordinary and blocking it would break real top-ups. The prefill alone was not
+                enough: a box that already holds your own number reads as settled rather than
+                editable, so the player who needs a different number never thinks to try. */}
+            <DepositNumberChoice
+              registered={normalizeTzLocalDigits(session.phoneE164)}
+              current={prevMsisdn}
+              copy={{ useAnother: t.wallet.useAnotherNumber, useMine: t.wallet.useMyNumber }}
+            />
+          </div>
+
+          {/* Billing details — CARD only. Selcom rejects card orders without them. */}
+          <CardBillingFields
+            copy={{
+              legend: t.wallet.billingLegend,
+              why: t.wallet.billingWhy,
+              firstName: t.wallet.billingFirstName,
+              lastName: t.wallet.billingLastName,
+              address: t.wallet.billingAddress,
+              city: t.wallet.billingCity,
+              region: t.wallet.billingRegion,
+              postcode: t.wallet.billingPostcode,
+            }}
+            defaults={prevBilling}
           />
+
+          {/* Deposit confirms before dispatch (audit M9), matching bet + withdraw.
+              Money-in → gold trigger (micro-spec §1). */}
+          <DepositConfirm />
         </div>
-
-        {/* Billing details — CARD only. Selcom rejects card orders without them. */}
-        <CardBillingFields
-          copy={{
-            legend: t.wallet.billingLegend,
-            why: t.wallet.billingWhy,
-            firstName: t.wallet.billingFirstName,
-            lastName: t.wallet.billingLastName,
-            address: t.wallet.billingAddress,
-            city: t.wallet.billingCity,
-            region: t.wallet.billingRegion,
-            postcode: t.wallet.billingPostcode,
-          }}
-          defaults={prevBilling}
-        />
-
-        {/* Deposit confirms before dispatch (audit M9), matching bet + withdraw.
-            Money-in → gold trigger (micro-spec §1). */}
-        <DepositConfirm />
       </form>
       )}
 
