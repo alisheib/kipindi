@@ -43,6 +43,9 @@ const { campaignAttentionBadge } = await import("../src/lib/server/marketing/cam
 const { loadCampaigns, campaignsSort, campaignRowAudience } = await import("../src/app/admin/campaigns/campaigns-loader.ts");
 const { campaignRail, campaignsHref, campaignsLinkSp } = await import("../src/app/admin/campaigns/campaigns-rail.ts");
 const COPY = await import("../src/app/admin/campaigns/campaigns-copy.ts");
+// U47b-2 · the live page's ONE function for a paused campaign's reason, which the list's line now goes through (§5m).
+const { pausedReasonSentenceFor } = await import("../src/lib/server/marketing/campaign-live.ts");
+const LIVE_COPY = await import("../src/app/admin/campaigns/[id]/live-copy.ts");
 const NAV = await import("../src/components/admin/admin-nav-groups.ts");
 const { ADMIN_DOMAINS, defaultGrant, domainForPath } = await import("../src/lib/server/roles.ts");
 const { PER_PAGE } = await import("../src/components/admin/admin-pagination.tsx");
@@ -175,6 +178,8 @@ type Sources = {
   shell: string; seed: string; gate: string;
   /** U47b-2 · the live page, for the draft's redirect (5k). */
   detail: string;
+  /** U47b-2 · the viewer reads the live page and the list share, for the list's act cell (5m). */
+  viewer: string;
 };
 const REAL_SOURCES: Sources = {
   page: read("src/app/admin/campaigns/page.tsx"),
@@ -188,6 +193,7 @@ const REAL_SOURCES: Sources = {
   seed: read("src/app/api/dev-test/marketing-campaigns-seed/route.ts"),
   gate: rawRead("scripts/filter-language.test.mts"),
   detail: read("src/app/admin/campaigns/[id]/page.tsx"),
+  viewer: read("src/app/admin/campaigns/[id]/live-viewer.ts"),
 };
 
 type Impl = {
@@ -207,6 +213,8 @@ type Impl = {
   tally: typeof CS.tallyRecipientsByCampaign;
   /** U38b · M8 · a row's audience in words, role-shaped — §5l. */
   rowAudience: typeof campaignRowAudience;
+  /** U47b-2 · a paused row's reason as this viewer may read it — §5m. */
+  pausedWhy: typeof pausedReasonSentenceFor;
   sources: Sources;
 };
 const REAL: Impl = {
@@ -221,6 +229,7 @@ const REAL: Impl = {
   twinAttention: () => db.smsCampaign.attentionCount(),
   tally: CS.tallyRecipientsByCampaign,
   rowAudience: campaignRowAudience,
+  pausedWhy: pausedReasonSentenceFor,
   sources: REAL_SOURCES,
 };
 
@@ -270,7 +279,7 @@ const L = {
   s4f: "4f · every key getSidebarBadges returns is a nav key — the campaigns badge lands on the SMS campaigns item",
   s4g: "4g · an empty count is NO badge — undefined, never '0' — and the shell's object carries no campaigns key unless there is a count",
   s5a: "5a · ⛔ NO MONEY ON THE LIST (OD24): no formatTzs, no TZS, no budget and no estimate in the page, its rail, its loader or its copy",
-  s5b: "5b · ⛔ no raw audienceFilter and no raw stop-reason key on the page — a PAUSED row's reason goes through stopReasonLabel",
+  s5b: "5b · ⛔ no raw audienceFilter and no raw stop-reason key on the page — a PAUSED row's reason goes through pausedReasonSentenceFor (whose every other word is stopReasonLabel's: an unknown key still reads 'Engine reason: <key>'), never stopReasonLabel straight and never the key",
   s5c: "5c · ⛔ the bar is the server's count: ProgressBar value and max from campaignProgress — no client directive, no timer and no clock in the page or the rail (OD34)",
   s5d: "5d · ⛔ no pulse and no animate-pulse in any file of the campaigns section (OD38)",
   s5e: "5e · a failed read renders AdminLoadError for the SMS campaigns with the rail still drawn — gated on the WHOLE table, never the page's rows — and a rail built without counts carries none",
@@ -281,6 +290,7 @@ const L = {
   s5i: "5i · the rail file is a dumb server renderer — ONE data-filter-rail campaign-status, ONE FilterPill at the dense rank (tab semantics, replace, no scroll), a FilterGroupKey, no client directive, no route or label typed — and filter-language declares it in ADMIN_SURFACES",
   s5j: "5j · every rail href is the ONE builder's: it keeps the sort, never page or a stray parameter; exactly one pill is in force; counts are the whole table's, and absent when the read failed",
   s5l: "5l · ⭐ U38b · M8 · each row says its audience in words under its name — the ONE describer, role-shaped as the composer's card: a masked viewer is told it is hidden for their role while a reader reads 'Consent: given'; the page asks campaignRowAudience with the viewer's read cell decided on the server, renders campaignAudienceWords, and the line cannot widen its column",
+  s5m: "5m · ⭐ U47b-2 · ⛔ E23 · A PAUSED ROW SAYS ITS REASON AS THE LIVE PAGE DOES — EXECUTED over the fixtures' paused rows (four people each, under the floor): a viewer who reads a number reads stopReasonLabel's words, a masked viewer who may act reads LIVE_PAUSED_HIDDEN, one who may only look reads LIVE_PAUSED_HIDDEN_VIEW (never 'press Resume'), and an officer's own pause keeps its words for all three; the page asks pausedReasonSentenceFor with its row's counts and the viewer's two cells, the act cell decided on the server and failing closed",
 } as const;
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
@@ -594,9 +604,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   });
   await check(p(L.s5b), () => {
     const page = S.page;
-    return [!page.includes("audienceFilter") && !page.includes("{c.stopReason}") && page.includes("stopReasonLabel(c.stopReason)")
-      && CS.stopReasonLabel("mystery_key") === "Engine reason: mystery_key",
-      `audienceFilter ${page.includes("audienceFilter")} · raw reason ${page.includes("{c.stopReason}")}`];
+    return [!page.includes("audienceFilter") && !page.includes("{c.stopReason}") && page.includes("pausedReasonSentenceFor(viewer, c, counts)")
+      && !page.includes("stopReasonLabel") && CS.stopReasonLabel("mystery_key") === "Engine reason: mystery_key",
+      `audienceFilter ${page.includes("audienceFilter")} · raw reason ${page.includes("{c.stopReason}")} · through the live page's function ${page.includes("pausedReasonSentenceFor(viewer, c, counts)")}`];
   });
   await check(p(L.s5c), () => {
     const TIMERS = ["setInterval", "setTimeout", "Date.now(", "requestAnimationFrame", '"use client"', "useEffect"];
@@ -720,6 +730,32 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && players === "Player accounts · Operator: TTCL" && unreadable === "The saved audience can't be read." && wired,
       JSON.stringify({ masked: [...new Set(maskedWords)], reader: [...new Set(readerWords)], whole, players, unreadable, wired })];
   });
+  // ⭐ U47b-2 · E23 — EXECUTED over the fixtures' paused rows (f: a known reason, g: an unknown key — four people each, under
+  // the floor), then the page and the act cell's source read for their wiring.
+  await check(p(L.s5m), async () => {
+    const view = await impl.load({});
+    const paused = view.result.rows.filter((c) => c.status === "PAUSED" && c.stopReason !== null);
+    const said = (reads: boolean, mayAct: boolean) =>
+      paused.map((c) => impl.pausedWhy({ reads, mayAct }, c, view.recipients[c.id] ?? CS.zeroRecipientStatusCounts()));
+    const reader = said(true, true);
+    const actor = said(false, true);
+    const looker = said(false, false);
+    const own = paused.map((c) => CS.stopReasonLabel(c.stopReason ?? ""));
+    const officer = [{ reads: true, mayAct: true }, { reads: false, mayAct: true }, { reads: false, mayAct: false }]
+      .map((v) => impl.pausedWhy(v, { stopReason: "officer_paused", enqueuedAt: null }, CS.zeroRecipientStatusCounts()));
+    const page = S.page;
+    const wired = page.includes('import { pausedReasonSentenceFor } from "@/lib/server/marketing/campaign-live";')
+      && page.includes("{pausedReasonSentenceFor(viewer, c, counts)}")
+      && page.includes("const reads = await viewerReadsContacts().catch(() => false);")
+      && page.includes("const mayAct = await viewerMayActOnCampaigns().catch(() => false);")
+      && page.includes("viewer={{ reads, mayAct }}");
+    const closed = S.viewer.includes("export async function viewerMayActOnCampaigns(): Promise<boolean> {")
+      && S.viewer.includes("if (!session) return false;") && S.viewer.includes("return (await liveViewerFor(session.userId)).mayAct;");
+    return [paused.length === 2 && JSON.stringify(reader) === JSON.stringify(own) && actor.every((s) => s === LIVE_COPY.LIVE_PAUSED_HIDDEN)
+      && looker.every((s) => s === LIVE_COPY.LIVE_PAUSED_HIDDEN_VIEW) && !looker.some((s) => /Resume/.test(s))
+      && officer.every((s) => s === CS.stopReasonLabel("officer_paused")) && wired && closed,
+      `${paused.length} paused rows · reader = stopReasonLabel ${JSON.stringify(reader) === JSON.stringify(own)} · masked who may act hidden ${actor.every((s) => s === LIVE_COPY.LIVE_PAUSED_HIDDEN)} · masked who may look ${looker.every((s) => s === LIVE_COPY.LIVE_PAUSED_HIDDEN_VIEW)} · officer's own kept ${officer.every((s) => s === CS.stopReasonLabel("officer_paused"))} · page ${wired} · act cell fails closed ${closed}`];
+  });
 }
 
 if (!PROVE_RED) {
@@ -808,6 +844,12 @@ if (!PROVE_RED) {
   // U47b-2 · a draft's name sent to the live page (which would redirect it back), and a draft id left on the live page.
   const draftToDetail = REAL_SOURCES.page.replace('{c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? ', '{false ? (CAMPAIGN_SCREENS.compose ? ');
   const draftStays = REAL_SOURCES.detail.replace("redirect(campaignDraftHref(id) as never)", "void id");
+  // U47b-2 · the paused line: back to the engine's raw words (floor-blind), the act grant or the read cell said yes for every
+  // viewer, and the act cell open when no session can be read.
+  const pausedRaw = REAL_SOURCES.page.replace("{pausedReasonSentenceFor(viewer, c, counts)}", "{stopReasonLabel(c.stopReason)}");
+  const actForAll = REAL_SOURCES.page.replace("viewer={{ reads, mayAct }}", "viewer={{ reads, mayAct: true }}");
+  const readsForAll = REAL_SOURCES.page.replace("viewer={{ reads, mayAct }}", "viewer={{ reads: true, mayAct }}");
+  const actCellOpen = REAL_SOURCES.viewer.replace("if (!session) return false;", "if (!session) return true;");
   // ⛔ A source plant that found nothing to replace proves nothing — each must differ from the shipped text.
   const sourcePlants: Array<[string, string, string]> = [
     ["a timer-driven bar", timerPage, REAL_SOURCES.page],
@@ -817,6 +859,10 @@ if (!PROVE_RED) {
     ["a draft link drawn without the compose flag", draftUnflagged, REAL_SOURCES.page],
     ["a draft's name linked to the live page", draftToDetail, REAL_SOURCES.page],
     ["a draft id left on the live page", draftStays, REAL_SOURCES.detail],
+    ["the paused line back to stopReasonLabel", pausedRaw, REAL_SOURCES.page],
+    ["the act grant said yes for every viewer", actForAll, REAL_SOURCES.page],
+    ["the read cell said yes for every viewer", readsForAll, REAL_SOURCES.page],
+    ["the act cell open without a session", actCellOpen, REAL_SOURCES.viewer],
   ];
   for (const [name, planted, shipped] of sourcePlants) if (planted === shipped) problems.push(`PLANT "${name}" did not apply — its anchor is gone`);
 
@@ -849,6 +895,12 @@ if (!PROVE_RED) {
     { name: "a recipient status this code does not know dropped instead of refused (P8 undone)", expect: L.s3f, impl: { ...REAL, tally: dropsUnknown } },
     /* ── U38b · M8 · the row's words are role-shaped (D19) ── */
     { name: "🔴 a masked viewer handed the reader's words — the list says 'Consent: given' to a role that may not read a number", expect: L.s5l, impl: { ...REAL, rowAudience: (c) => campaignRowAudience(c, true) } },
+    /* ── U47b-2 · E23 · a paused row's reason is the live page's words, the floor and the act grant included ── */
+    { name: "🔴 the paused line back to stopReasonLabel — a masked viewer below the floor reads the engine's reason in its own words", expect: L.s5m, impl: { ...REAL, sources: { ...REAL_SOURCES, page: pausedRaw } } },
+    { name: "🔴 the act grant said yes for every viewer — a role that may only look is told to press Resume", expect: L.s5m, impl: { ...REAL, sources: { ...REAL_SOURCES, page: actForAll } } },
+    { name: "🔴 the read cell said yes for every viewer — a masked viewer reads what the floor hides", expect: L.s5m, impl: { ...REAL, sources: { ...REAL_SOURCES, page: readsForAll } } },
+    { name: "🔴 the paused sentence blind to the act grant — one who may only look reads 'press Resume'", expect: L.s5m, impl: { ...REAL, pausedWhy: (v, c, counts, h) => pausedReasonSentenceFor({ ...v, mayAct: true }, c, counts, h) } },
+    { name: "🔴 the act cell open when no session can be read — an anonymous list reads as an officer who may act", expect: L.s5m, impl: { ...REAL, sources: { ...REAL_SOURCES, viewer: actCellOpen } } },
   ];
 
   for (const [i, c] of CASES.entries()) {

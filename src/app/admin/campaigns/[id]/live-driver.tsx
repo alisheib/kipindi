@@ -36,6 +36,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CampaignLiveView } from "@/lib/server/marketing/campaign-live";
+import type { DriverStep } from "@/lib/server/marketing/campaign-control";
 import type { SmsCampaignStatus } from "@/lib/server/store";
 import type { LiveRefused, LiveStepAnswer, LiveViewAnswer } from "./actions";
 
@@ -65,9 +66,6 @@ export type DriverStop =
   | { kind: "view_refused"; sentence: string }
   | { kind: "gone"; sentence: string };
 
-/** The step as the loop reads it: its kind, and — for a wait — whether another step held the flight and when to ask again. */
-type StepShape = { kind: string; busy?: boolean; until?: string | null };
-
 /** ⭐ THE MODE a status needs. An acting viewer drives what is being sent; everything else that can still change is watched;
  *  a campaign that is over is left alone. */
 export function driverMode(status: SmsCampaignStatus, mayAct: boolean): DriverMode {
@@ -87,10 +85,11 @@ export function waitGap(until: string | null | undefined, nowMs: number): number
   return Math.min(WAIT_MAX_MS, Math.max(WAIT_MIN_MS, at - nowMs));
 }
 
-/** ⭐ THE GAP AFTER A STEP — the spec's three: work done (2 s), a wait (until, 5–30 s), another step running (5 s). */
-export function stepGap(step: StepShape, nowMs: number): number {
+/** ⭐ THE GAP AFTER A STEP — the spec's three: work done (2 s), a wait (until, 5–30 s), another step running (5 s). The step is
+ *  the driver's own shape (`DriverStep`): a wait carries only whether it is `busy` and its `until` — never a reason. */
+export function stepGap(step: DriverStep, nowMs: number): number {
   if (step.kind !== "waiting") return STEP_GAP_MS;
-  return step.busy === true ? BUSY_GAP_MS : waitGap(step.until, nowMs);
+  return step.busy ? BUSY_GAP_MS : waitGap(step.until, nowMs);
 }
 
 /** A Next redirect thrown out of an action (the session ended): navigation is already under way, never "out of date". */

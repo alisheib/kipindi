@@ -47,7 +47,17 @@ import { ensureOptOutToken, stopMarketing } from "@/lib/server/marketing/optout-
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { newContactRow } from "@/lib/server/contacts/contact-write";
 import { WHOLE_BOOK, contactAudienceKey } from "@/lib/server/marketing/audience";
+import { startRefusalSentence } from "@/lib/server/marketing/start-check";
+import { liveSendWindow } from "@/lib/server/marketing/dispatch";
 import { getAdmissionLimits, setAdmissionLimits, withAdmission } from "@/lib/server/admission";
+import {
+  LIVE_ACT_UNFINISHED, LIVE_BACK, LIVE_CONTROL_LABEL, LIVE_DIALOG_ACTIONS, LIVE_DISABLED, LIVE_DONE, LIVE_FLOOR, LIVE_HEADLINE,
+  LIVE_KEEP_OPEN, LIVE_KPI, LIVE_MISSING, LIVE_OUT_OF_DATE, LIVE_RELOAD, LIVE_SW, LIVE_SWITCH_OFF, LIVE_TITLE, LIVE_TRY_AGAIN,
+  LIVE_PAUSED_HIDDEN, LIVE_PAUSED_HIDDEN_VIEW, LIVE_WAIT_HIDDEN, NOT_SENT_EXTRA, copyDoneSentence, eatClock, startDialog, stopDialog,
+  waitSentence,
+} from "@/app/admin/campaigns/[id]/live-copy";
+import { stopReasonLabel } from "@/lib/marketing/campaign-status";
+import { AUDIENCE_REASON_LABEL } from "@/app/admin/campaigns/new/audience-copy";
 
 const OFFICER_ID = "usr_u47live_officer";
 const OFFICER_NAME = "Amina";
@@ -235,6 +245,12 @@ const STAGES: readonly Stage[] = [
     key: "floor", name: "Five friends", path: ["CONFIRMED", "PREPARING", "RUNNING"], count: 5,
     mix: { SENT: 2, SKIPPED: 2, PENDING: 1 }, skips: { rg_self_excluded: 2 },
   },
+  // Paused by an engine reason on a list of five: below E23's floor the reason is one neutral sentence (and a role that may
+  // only look is not told to press Resume) — on this page and on the campaigns list.
+  {
+    key: "paused_floor", name: "Five friends, paused", path: ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"], count: 5, stopReason: "gateway_refused",
+    mix: { SENT: 3, PENDING: 2 },
+  },
 ];
 
 const idOf = (run: string, key: string) => `cmp_u47live_${run}_${key}`;
@@ -267,6 +283,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "This seed writes recipient states into the in-memory store; run next dev without a database." }, { status: 409 });
   }
   const url = new URL(req.url);
+
+  // ⭐ THE PAGE'S SENTENCES, as live-copy.ts says them — stateless; the drive reads them first and asserts against them, so no
+  // sentence is ever copied into the drive. The Start dialog is built from the staged CONFIRMED campaign's own figures and the
+  // send window as the engine reads it now (the same function the view uses).
+  if (url.searchParams.get("words") !== null) {
+    const window = await liveSendWindow();
+    const closes = eatClock(window.closesAt);
+    const hours = window.opensAtTime !== "" && closes !== null ? { opens: window.opensAtTime, closes } : null;
+    const staged = STAGES[0];
+    const dialog = (money: { costTzs: number; limitTzs: number } | null) =>
+      startDialog({ count: staged.count, segments: staged.count, window: hours, money });
+    return NextResponse.json({
+      ok: true,
+      words: {
+        title: LIVE_TITLE, sw: LIVE_SW, back: LIVE_BACK, missing: LIVE_MISSING,
+        headline: LIVE_HEADLINE,
+        disabled: LIVE_DISABLED,
+        control: LIVE_CONTROL_LABEL,
+        dialog: LIVE_DIALOG_ACTIONS,
+        startDialog: { growth: dialog(null), admin: dialog({ costTzs: staged.count * 6, limitTzs: 10_000 }) },
+        stopDialog: { none: stopDialog("none"), reached: stopDialog("reached"), hidden: stopDialog("hidden") },
+        startRefusals: { audience_unreadable: startRefusalSentence({ reason: "audience_unreadable" }, { money: false, reads: false }) },
+        kpi: LIVE_KPI,
+        reasons: AUDIENCE_REASON_LABEL,
+        notSentExtra: NOT_SENT_EXTRA,
+        floor: LIVE_FLOOR,
+        done: LIVE_DONE,
+        // The quiet-hours wait names when the window opens, as the engine's step does (`until` = the window's next opening while it
+        // is shut), so the drive asks again after it pins the window shut.
+        waits: {
+          quiet_hours: waitSentence("quiet_hours", window.open !== true && window.opensAt !== "" ? window.opensAt : null),
+          money_busy: waitSentence("money_busy", null), busy: waitSentence("busy", null), hidden: LIVE_WAIT_HIDDEN,
+        },
+        // A pause below E23's floor: the one neutral sentence, and its form for a role that may only look (no "press Resume");
+        // and the engine reason a reader of the split (or a campaign over the floor) is told, in the engine's words.
+        pausedHidden: LIVE_PAUSED_HIDDEN, pausedHiddenView: LIVE_PAUSED_HIDDEN_VIEW,
+        pausedList: { gateway_refused: stopReasonLabel("gateway_refused"), officer_paused: stopReasonLabel("officer_paused") },
+        keepOpen: LIVE_KEEP_OPEN, switchOff: LIVE_SWITCH_OFF, outOfDate: LIVE_OUT_OF_DATE, reload: LIVE_RELOAD, tryAgain: LIVE_TRY_AGAIN,
+        unfinished: LIVE_ACT_UNFINISHED,
+        copy: { done: copyDoneSentence("none") },
+      },
+    });
+  }
 
   const busy = url.searchParams.get("busy");
   if (busy !== null) {

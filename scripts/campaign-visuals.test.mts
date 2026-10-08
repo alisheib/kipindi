@@ -3,8 +3,10 @@
  * E10 · E22 · E23 · E24 · E25 · OD24 · OD26 · OD34 · OD41 · OD65 · OD66, and §4.15 decision 1 AS AMENDED).
  *
  * ⭐ U47b-1 BUILDS §svc — the services (`campaign-control.ts`) and the view-model (`campaign-live.ts`), with the words both
- * return (`src/app/admin/campaigns/[id]/live-copy.ts`). Nothing is reachable yet (no action, no page), so every claim here is
- * DRIVEN on the memory twin, never read off a screen. U47b-2 adds the page's own claims — V1 and V4–V10 — to this file.
+ * return (`src/app/admin/campaigns/[id]/live-copy.ts`); every claim there is DRIVEN on the memory twin, never read off a
+ * screen. ⭐ U47b-2 BUILDS §page — the live page itself: its client, driver, seven actions' guards and loads. Its claims
+ * (V1 · V4–V11 · L2, below the list) are written in `scripts/lib/campaign-visuals-page.mts` and run HERE, in the same run, on
+ * the same world with the same viewers, so one run and one red run cover both halves.
  *   C0  controls — the fixture world walks where it says, the ONE groupBy answers a seeded list exactly, the rail is the stub;
  *   V2  ⭐ HELD IS OUTSTANDING (the plan's RED) — 4 SENT + 6 HELD read "4 of 10"; an empty campaign paints NO bar;
  *   V3  ⭐ THE COUNTS FROZEN SERVER-SIDE (OD34, the plan's RED) — two views ten seconds apart give the same bar, byte for byte;
@@ -24,8 +26,16 @@
  *   T8  ⭐ Make a copy · T9 the lost races and the record (ruling 543);
  *   D1  the step dispatcher (§3.3) · D2 ⭐ its single-flight per campaign, for every step · D3 act-gated, every act too ·
  *       D4 ⭐ end to end on the memory twin (Start → enqueue → a slice on a stub wire → DONE) · D5 the reaper on mount;
- *   W1  the wiring — nothing reachable, no send named, the doors by identity; P1 ⛔ no phone number, no refusal object;
- *   P2  ⛔ no figure and no cursor in a step answer (the U47b-1 review).
+ *   §page (U47b-2, `scripts/lib/campaign-visuals-page.mts`):
+ *   V1  ⛔ every figure on the page is a view-model field — no arithmetic on a count in the browser, no timer-driven bar;
+ *   V4  ⭐ the controls exist in every state — all five drawn in all seven statuses, each disabled WITH its reason;
+ *   V5  ⭐ every action's guard is its first statement (the poll's is the VIEW grant), the view guard executed on the roles;
+ *   V6  ⭐ the driver, executed — every gap, the mount's one step, a thrown call ends the loop and is never retried;
+ *   V7  ⛔ E23 · the floor hides the split on the page · V8 ⛔ OD24 · no TZS on a GROWTH page · V9 the screens flag is the page ·
+ *   V10 the page gate's shape (admin-section-gate §0b′) · V11 the load and every act's answer, Resume's one retry after busy ·
+ *   L2  the viewer is the STORED role's, failing closed;
+ *   W1  the wiring — who imports the services (the actions alone), no send named, the doors by identity; P1 ⛔ no phone number,
+ *       no refusal object (the page's markup too); P2 ⛔ no figure and no cursor in a step answer (the U47b-1 review).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` proves the baseline green first, then plants each defect IN MEMORY
  * (a dependency handed to a service or the view, a wrapper of a service, a source text replaced in memory) and requires
@@ -72,8 +82,13 @@ const LIST_COPY = await import("../src/app/admin/campaigns/campaigns-copy.ts");
 const { liveSendWindow } = await import("../src/lib/server/marketing/dispatch.ts");
 const { marketingLiveGate } = await import("../src/lib/server/marketing/live-switch.ts");
 const { smsProviderResolution } = await import("../src/lib/server/sms.ts");
+// U47b-2 · THE PAGE'S CLAIMS (V1 · V4–V11 · L2) live in a library beside this suite and run in this run — on this world, with
+// these viewers — so one run and one red run cover both halves. ⛔ Imported here, after the store is chosen above, never
+// statically: a static import would load the store before this file's first line ran.
+const PAGE = await import("./lib/campaign-visuals-page.mts");
 
-type LiveViewer = import("../src/lib/server/marketing/campaign-live.ts").LiveViewer;
+type PageImpl = import("./lib/campaign-visuals-page.mts").PageImpl;
+type LiveViewer =import("../src/lib/server/marketing/campaign-live.ts").LiveViewer;
 type LiveViewDeps = import("../src/lib/server/marketing/campaign-live.ts").LiveViewDeps;
 type CampaignLiveView = import("../src/lib/server/marketing/campaign-live.ts").CampaignLiveView;
 type ControlDeps = import("../src/lib/server/marketing/campaign-control.ts").ControlDeps;
@@ -106,6 +121,7 @@ const json = (v: unknown): string => JSON.stringify(v);
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
 const L = {
+  ...PAGE.LABELS,
   c0: "C0 · CONTROLS — the memory twin and the console rail; a fixture campaign walks DRAFT → CONFIRMED → PREPARING → RUNNING → PAUSED / DONE / CANCELLED through the ONE transition door; the ONE groupBy (countByOutcome) answers a seeded list as written here by hand — merged, none dropped, one order — and its sum per status is countByStatus's; a tag audience and a sub-minute window both read at the campaign's door, and only the tag can be written as an address",
   v2: "V2 · ⭐ HELD IS OUTSTANDING (the plan's RED) — a RUNNING campaign of 4 SENT and 6 HELD reads progress 4 of 10 and 'Sending — 4 of 10 done.', 6 waiting and 4 handed over — never 10 of 10; an empty RUNNING campaign paints NO bar (progress null, 'Sending.'), and a CONFIRMED one none either",
   v3: "V3 · ⭐ THE COUNTS FROZEN SERVER-SIDE (OD34, the plan's RED) — two views of an unchanged campaign ten seconds apart carry the same bar, KPIs, chips, reasons, headline and controls byte for byte (only readAt moved, by ten seconds); one more row settled moves the bar by exactly one",
@@ -134,7 +150,7 @@ const L = {
   d3: "D3 · ACT-GATED — a view-only viewer's step is refused 'role' and runs nothing (no read, no enqueue, no slice, no reap); ⭐ so is every ACT of a view-only actor — Start, Pause, Resume, Stop and Make a copy each refused 'role' in the role's words before anything is read (no campaign read, nothing moved, no row); a campaign that is not there answers not_found",
   d4: "D4 · ⭐ END TO END on the memory twin — a confirmed tag audience of 6 (4 consenting players' book rows, 2 contacts with no consent): Start → a PREPARING step writes 6 rows and finishes RUNNING → a RUNNING step's slice hands 4 over on the STUB wire and refuses 2 (no consent) → the next step finishes DONE; each view says so (the bar 6 of 6, 'Not sent' 2 under 'No consent or recorded basis'); one wire call, no SmsMessage row for the campaign",
   d5: "D5 · THE REAPER ON MOUNT — a PAUSED campaign holding a claim stranded 11 minutes with no message: one step reaps it back to PENDING (attempts + 1, the claim cleared) — kind reaped 1 — and writes ONE SYSTEM marketing.campaign_reaped row",
-  w1: "W1 · THE WIRING — CONTROL_DEPS and LIVE_VIEW_DEPS frozen and wired to the REAL doors by identity; the officer's pause writes the ONE spelling the engine and the enqueue write and the view reads; no directive and no exported *Action in the three files; nothing in src value-imports campaign-control (none until U47b-2), campaign-live only campaign-control, live-copy only the two; the services name no send; live-copy reaches the server for a type alone; test:/red:campaign-visuals resolve to this file",
+  w1: "W1 · THE WIRING — CONTROL_DEPS and LIVE_VIEW_DEPS frozen and wired to the REAL doors by identity; the officer's pause writes the ONE spelling the engine and the enqueue write and the view reads; no directive and no exported *Action in the three files; campaign-control is value-imported by the actions file alone (U47b-2's one door), campaign-live by those actions, their loader and act runner, the services and the campaigns list, live-copy by the readers of its words (the drive's dev seed among them) and nothing else; the services name no send; live-copy reaches the server for a type alone; test:/red:campaign-visuals resolve to this file",
   p2: "P2 · ⛔ THE STEP ANSWER CARRIES NO FIGURE AND NO CURSOR (the U47b-1 review's MAJOR) — every step answer of the run, for every role, holds only kind, busy, until and status: no count, no cursor and ⭐ no reason (its re-review — a pause's or a wait's key named what the floor hides), so a padded tag below the floor never reads one person's gate verdict off a step",
   p1: "P1 · ⛔ NO PHONE NUMBER AND NO REFUSAL OBJECT — no 255… key and no +255… number in any view, answer or audit payload of the run; every service answer holds only ok, reason, message, recorded (and a copy's id and href)",
 } as const;
@@ -394,6 +410,13 @@ for (const abs of walkDir(join(ROOT, "src"))) {
 const CONTROL_REL = "src/lib/server/marketing/campaign-control.ts";
 const LIVE_REL = "src/lib/server/marketing/campaign-live.ts";
 const COPY_REL = "src/app/admin/campaigns/[id]/live-copy.ts";
+const ACTIONS_REL = "src/app/admin/campaigns/[id]/actions.ts";
+const LIVE_RUN_REL = "src/app/admin/campaigns/[id]/live-run.ts";
+const LIVE_LOADER_REL = "src/app/admin/campaigns/[id]/live-loader.ts";
+const LIVE_CLIENT_REL = "src/app/admin/campaigns/[id]/live-client.tsx";
+const LIVE_PAGE_REL = "src/app/admin/campaigns/[id]/page.tsx";
+const LIST_PAGE_REL = "src/app/admin/campaigns/page.tsx";
+const LIVE_SEED_REL = "src/app/api/dev-test/marketing-live-seed/route.ts";
 const REAL_SOURCES: Sources = { control: code(CONTROL_REL), live: code(LIVE_REL), copy: code(COPY_REL), pkg: rawRead("package.json"), src: NAMING };
 
 type Impl = {
@@ -408,6 +431,8 @@ type Impl = {
   stop: typeof CTRL.stopCampaign;
   copy: typeof CTRL.copyCampaign;
   step: typeof CTRL.campaignStep;
+  /** U47b-2 · the page — its client, driver, actions' guards and loads (`scripts/lib/campaign-visuals-page.mts`). */
+  page: PageImpl;
   sources: Sources;
 };
 const REAL: Impl = {
@@ -420,6 +445,7 @@ const REAL: Impl = {
   stop: CTRL.stopCampaign,
   copy: CTRL.copyCampaign,
   step: CTRL.campaignStep,
+  page: PAGE.REAL_PAGE,
   sources: REAL_SOURCES,
 };
 
@@ -1512,6 +1538,16 @@ async function runAssertions(impl: Impl): Promise<void> {
       `${json(r.ok ? r.step : r)} · the row ${row?.status} attempts ${row?.attempts} claim ${row?.claimToken === null ? "cleared" : "kept"} · reaped rows ${reapedRows.length}`];
   });
 
+  /* ── §page · U47b-2's claims — V1 · V4–V11 · L2 (scripts/lib/campaign-visuals-page.mts), on this world and these viewers ── */
+  await PAGE.pageClaims(impl.page, {
+    claim, run: w.run, READER, GROWTH, WATCHER,
+    view: (id, v) => viewOf(impl, id, v),
+    campaign: (key, shape) => campaign(w, key, shape as CShape),
+    rows: (id, shapes) => rows(w, id, shapes as RowShape[]),
+    many: (n, s) => many(n, s as RowShape),
+    see: (text) => { SEEN.push(text); },
+  });
+
   /* ── W1 · the wiring ── */
   await claim(L.w1, async () => {
     const s = impl.sources;
@@ -1542,7 +1578,14 @@ async function runAssertions(impl: Impl): Promise<void> {
     const controlIn = importersOf("campaign-control");
     const liveIn = importersOf("campaign-live");
     const copyIn = importersOf("live-copy");
-    const reach = json(controlIn) === json([]) && json(liveIn) === json([CONTROL_REL]) && json(copyIn) === json([CONTROL_REL, LIVE_REL]);
+    // U47b-2 · the reach, pinned: the services are imported by the actions file ALONE (the one door); the view by those actions,
+    // their loader and act runner, the services themselves and the campaigns list (its paused line — one function); the words
+    // by the readers of them (the drive's dev seed route among them: it hands the drive the page's sentences, so the drive
+    // asserts against live-copy and never against a copy of it) — and nothing else, so a new importer is a decision someone
+    // makes here.
+    const reach = json(controlIn) === json([ACTIONS_REL])
+      && json(liveIn) === json([CONTROL_REL, ACTIONS_REL, LIVE_LOADER_REL, LIVE_RUN_REL, LIST_PAGE_REL].sort())
+      && json(copyIn) === json([CONTROL_REL, LIVE_REL, ACTIONS_REL, LIVE_CLIENT_REL, LIVE_RUN_REL, LIVE_PAGE_REL, LIVE_SEED_REL].sort());
     const SEND = new RegExp("sendBatch|dispatchSlice|blackballSend|sendCampaignTest|engineSend");
     const noSend = !SEND.test(s.control) && !SEND.test(s.live) && !SEND.test(s.copy);
     const copyImports = Array.from(s.copy.matchAll(/^import (type )?[{][^}]*[}] from "([^"]+)";/gm)).map((m) => `${m[1] ? "type " : ""}${m[2]}`).sort();
@@ -1607,6 +1650,7 @@ if (!PROVE_RED) {
   const withSources = (patch: Partial<Sources>): Partial<Impl> => ({ sources: { ...REAL_SOURCES, ...patch } });
 
   type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl>) };
+  PAGE.setPhoneLabel(L.p1);
   const plants: Plant[] = [
     { name: "R-S7b · nobody driving blind to the engine's waits (the U47b-1 review) — every night a waiting page reads as nobody sending", expect: [L.s7],
       impl: withView((d) => ({ ...d, window: () => ({ ...WIN.ALWAYS_OPEN() }), moneyBusy: () => ({ busy: false, stale: [] }), otpLastFailureAt: () => null })) },
@@ -1626,7 +1670,7 @@ if (!PROVE_RED) {
       impl: withView((d) => ({ ...d, recipients: { ...d.recipients, countByOutcome: async (id: string) => (await d.recipients.countByOutcome(id)).filter((g) => g.status !== "DELIVERED") } })) },
     { name: "R-S2 · protected itemised — an RG reason keeps its own key instead of the protected line", expect: [L.s2],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, bucketOf: (r) => (typeof r === "string" && r.startsWith("rg_") ? (r as never) : d.rules.bucketOf(r)) } })) },
-    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, why it paused, and why it waits)", expect: [L.s3, L.s8, L.s10, L.s11],
+    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, why it paused, and why it waits) — on the page too (V7)", expect: [L.s3, L.s8, L.s10, L.s11, L.v7],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, breakdownHidden: () => false } })) },
     { name: "R-S5 · who paused read from ANY row however old (the re-review: the `since` rule removed) — Juma named for Amina's pause", expect: [L.s5],
       impl: withView((d) => ({ ...d, actsOn: async (id: string) => (await d.actsOn(id)).map((e) => ({ ...e, createdAt: "2999-01-01T00:00:00.000Z" })) })) },
@@ -1643,7 +1687,7 @@ if (!PROVE_RED) {
         const under = (h ?? LIVE.liveBreakdownHidden)(v.reads === true, CS.recipientRows(counts));
         return under && BATCH.includes(key) ? COPY.LIVE_PAUSED_HIDDEN : COPY.pausedReasonSentence(key, LIVE.liveReach(c, counts, v.reads === true, h));
       } } })) },
-    { name: "R-S4 · TZS for GROWTH — the view carries money whatever the decider said", expect: [L.s4],
+    { name: "R-S4 · TZS for GROWTH — the view carries money whatever the decider said (and the page prints it, V8)", expect: [L.s4, L.v8],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, moneyVisible: () => true } })) },
     { name: "R-T2 · Start goes ahead whatever U49a's check refused", expect: [L.t2],
       impl: withCtrl((d) => ({ ...d, check: async (c) => { const r = await d.check(c); return r.ok ? r : { ok: true, freshCount: c.audienceCount ?? 0, shrunkBy: 0, costTzs: 0 }; } })) },
@@ -1695,14 +1739,16 @@ if (!PROVE_RED) {
       impl: { step: (id, v, d) => CTRL.campaignStep(id, { ...v, mayAct: true }, d) } },
     { name: "R-D3b · the acts trust the guard (the U47b-1 review) — a view-only actor's Stop lands", expect: [L.d3],
       impl: { stop: (id, a, d) => CTRL.stopCampaign(id, { ...a, mayAct: true }, d) } },
-    { name: "R-W1 · a client component value-imports the services (U47b-2's client before its action exists)", expect: [L.w1],
-      impl: withSources({ src: new Map([...REAL_SOURCES.src, ["src/app/admin/campaigns/[id]/live-client.tsx", `"use client";${NL}import { campaignStep } from "@/lib/server/marketing/campaign-control";${NL}export const s = campaignStep;`]]) }) },
+    { name: "R-W1 · the page's client value-imports the services — it reaches the server's door around the actions", expect: [L.w1],
+      impl: withSources({ src: new Map([...REAL_SOURCES.src, [LIVE_CLIENT_REL, `${REAL_SOURCES.src.get(LIVE_CLIENT_REL) ?? ""}${NL}import { campaignStep } from "@/lib/server/marketing/campaign-control";`]]) }) },
     { name: "R-W1b · the services grow an action — an exported *Action in campaign-control.ts", expect: [L.w1],
       impl: () => withSources({ control: `${REAL_SOURCES.control}${NL}export async function startCampaignAction(id: string) { return id; }` }) },
     { name: "R-W1c · the services name a send of their own", expect: [L.w1],
       impl: () => withSources({ control: plantIn(REAL_SOURCES.control, "export async function stopCampaign(", "const viaWire = sendBatch;" + NL + "export async function stopCampaign(") }) },
     { name: "R-P1 · a Start refusal's object reaches the answer (its figures for every role)", expect: [L.p1],
       impl: { start: async (id, a, d) => { const r = await CTRL.startCampaign(id, a, d); return r.ok ? r : ({ ...r, refusal: { costTzs: 10_800 } } as typeof r); } } },
+    /* ── U47b-2 · the page's own defects (scripts/lib/campaign-visuals-page.mts) ── */
+    ...PAGE.pagePlants().map((p): Plant => ({ name: p.name, expect: p.expect as Label[], impl: p.impl })),
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);

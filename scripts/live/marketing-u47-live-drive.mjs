@@ -236,6 +236,16 @@ async function fitCheck(page, vp, name) {
     f.overflow === 0 && f.spillCount === 0 && f.pastMain.length === 0, JSON.stringify(f));
 }
 
+/** The campaigns list on its Paused rail, and the reason line of each campaign asked for (`{ key: id }` → `{ key: text }`). */
+async function pausedLines(page, ids) {
+  await page.goto(`${BASE}/admin/campaigns?status=paused`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("[data-campaign-row]", { timeout: 90000 }).catch(() => {});
+  await wait(700);
+  const out = {};
+  for (const [key, id] of Object.entries(ids)) out[key] = await textOf(page, `[data-campaign-id="${id}"] [data-stop-reason]`);
+  return out;
+}
+
 /** Open a campaign's live page and wait for its status stamp (or the missing / error / draft outcome named by `expect`). */
 async function openLive(page, id, expect = "live") {
   await page.goto(`${BASE}/admin/campaigns/${encodeURIComponent(id)}`, { waitUntil: "domcontentloaded" });
@@ -323,7 +333,7 @@ async function main() {
   await seedList("set=base");
   const stages = await seedLive(`stages=${RUN}`);
   const stage = Object.fromEntries(stages.stages.map((s) => [s.key, s]));
-  ok("the staged states are seeded (confirmed · confirmed on an unreadable audience · preparing · running · paused ×2 · done · stopped · floor)", stages.stages.length === 9, JSON.stringify(stages.stages.map((s) => s.key)));
+  ok("the staged states are seeded (confirmed · confirmed on an unreadable audience · preparing · running · paused ×2 · done · stopped · floor · paused below the floor)", stages.stages.length === 10, JSON.stringify(stages.stages.map((s) => s.key)));
   await holdMoney(0);
   await post("/api/dev-test/marketing-contacts-seed?u23grant=view-only");
   ok("the AUDITOR role is given Growth VIEW without ACT (U23's switch) — the watcher the page must serve", true);
@@ -364,6 +374,15 @@ async function drivePass(vp, viewport, i, stage) {
   ok(`${name} · LIST · every other row's name opens its live page`,
     !!liveLink && liveLink.href === "/admin/campaigns/cmp_seed_02" && links.filter((l) => l.href !== null && !l.href.includes("?draft=")).every((l) => l.href === `/admin/campaigns/${l.id}`),
     JSON.stringify(links.slice(0, 4)));
+  // A paused row says its reason as the live page does (one function): the engine's reason in its own words, an officer's pause
+  // in its own, and — below E23's floor, for a role that may act — the one neutral sentence ("press Resume").
+  const lines = await pausedLines(growth, { engine: stage.paused_engine.id, officer: stage.paused_officer.id, floor: stage.paused_floor.id });
+  ok(`${name} · LIST · a PAUSED row says why in words, as the live page does — "${W.pausedList.gateway_refused.slice(0, 50)}…" for an engine reason (never its key), the officer's own, and below the floor the one neutral sentence for GROWTH (who may act)`,
+    lines.engine === W.pausedList.gateway_refused && !/gateway_refused/.test(lines.engine) && lines.officer === W.pausedList.officer_paused && lines.floor === W.pausedHidden,
+    JSON.stringify(lines));
+  await shoot(growth, `${name}-list-paused`);
+  const fitList = await fitOf(growth);
+  ok(`${name} · LIST · the paused rail with its long reason sentences: no sideways scroll of the page`, fitList.overflow === 0, JSON.stringify(fitList));
 
   await openLive(growth, "cmp_seed_01", "any");
   await wait(1200);
@@ -542,6 +561,15 @@ async function drivePass(vp, viewport, i, stage) {
     }
     await stateShot(w.page, name, shot, headline.slice(0, 80));
   }
+  // A pause below E23's floor, read by a role that may only LOOK: the neutral sentence WITHOUT "press Resume" — on the page and
+  // on the list.
+  await openLive(w.page, stage.paused_floor.id);
+  const pf = await readLive(w.page);
+  ok(`${name} · PAUSED below the floor (staged) · a role that may only look reads the neutral sentence — the reason is hidden for its role — without "press Resume"`,
+    pf.status === "PAUSED" && pf.stop === W.pausedHiddenView && !/Resume/.test(pf.stop), pf.stop);
+  await stateShot(w.page, name, "paused-floor-view-only", W.pausedHiddenView.slice(0, 80));
+  const watcherLines = await pausedLines(w.page, { floor: stage.paused_floor.id });
+  ok(`${name} · LIST · the same pause on the campaigns list reads the same view-only sentence for the watcher`, watcherLines.floor === W.pausedHiddenView, watcherLines.floor);
   await w.ctx.close();
 
   /* ── E23's floor: a campaign of five ── */
@@ -553,6 +581,11 @@ async function drivePass(vp, viewport, i, stage) {
     s.kpis.onCampaign?.value === "5" && Object.keys(s.kpis).length === 1 && s.reasons.length === 0 && s.chips.length === 0 && s.floor === W.floor, JSON.stringify({ kpis: s.kpis, floor: s.floor }));
   await fitCheck(gf.page, name, "floor");
   await stateShot(gf.page, name, "floor-growth", W.floor, SEL.blockProgress);
+  await openLive(gf.page, stage.paused_floor.id);
+  s = await readLive(gf.page);
+  ok(`${name} · PAUSED below the floor (staged) · GROWTH, who may act, reads the one neutral sentence — "press Resume" and all`,
+    s.status === "PAUSED" && s.stop === W.pausedHidden, s.stop);
+  await stateShot(gf.page, name, "paused-floor-growth", W.pausedHidden.slice(0, 80));
   await held.off();
   await gf.ctx.close();
   const af = await staffCtx("admin", viewport, vp.reduced);
@@ -585,6 +618,8 @@ async function realRun(vp, viewport, i, id) {
   const { ctx, page } = await staffCtx("growth", viewport, vp.reduced);
   const calls = countActions(page);
   await pinWindow(NIGHT_EAT);
+  // The quiet-hours wait names when the window opens (as the engine's step does), so its words are asked with the window shut.
+  W.waits = (await seedLive("words=1")).words.waits;
   await openLive(page, seeded.campaignId);
   let s = await readLive(page);
   ok(`${name} · RUN · a CONFIRMED campaign of ${seeded.people}: Start is on, the page is not yet driving anything`,

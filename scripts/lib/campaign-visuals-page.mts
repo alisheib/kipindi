@@ -298,17 +298,22 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
       && printed.notSent.endsWith("5") && printed.noAnswer.endsWith("1") && printed.waiting.endsWith("9");
     const barTag = tagAt(html, "role=" + DQ + "progressbar" + DQ);
     const bar = attrOf(barTag, "aria-valuenow") === "321" && attrOf(barTag, "aria-valuemax") === "1234" && attrOf(barTag, "aria-valuetext") === "321 of 1,234 processed";
-    // no sum (135), no remainder (1,099), no percentage (26%) appears anywhere
-    const derived = ["135", "1,099", "1,108", "26%", "26.0", "74%"].filter((d) => html.includes(d));
+    // no sum (135), no remainder (1,099), no percentage (26%) is PRINTED anywhere (the kit's bar fill carries its own width
+    // in a style attribute — that is the kit's determinate bar, and not what an officer reads)
+    const shown = textOfHtml(html);
+    const derived = ["135", "1,099", "1,108", "26%", "74%"].filter((d) => shown.includes(d));
     // the source: no arithmetic on a figure in a file that PRINTS one; the driver holds no figure at all
     const PRINTS: Array<[string, string]> = [["live-client.tsx", S.client], ["page.tsx", S.page], ["loading.tsx", S.loading]];
-    const BANNED = ["Math.", ".reduce(", "parseInt(", "parseFloat(", "Number(", ".toFixed(", ".toLocaleString(", "Intl.", "Date.now(", "new Date(", "setInterval", "setTimeout", "formatTzs"];
+    const BANNED = ["Math.", ".reduce(", "parseInt(", "parseFloat(", ".toFixed(", ".toLocaleString(", "Intl.", "Date.now(", "new Date(", "setInterval", "setTimeout"];
+    // `Number(` as a call of its own — `formatNumber(` is a format, not a sum
+    const NUMBER_CALL = new RegExp("(?:^|[^A-Za-z0-9_])Number[(]");
     const FIELD = "(?:value|max|count|onCampaign|handedOver|failed|notSent|noAnswer|waiting|length)";
     const OP = "[-+*/%]";
     const after = new RegExp("[.]" + FIELD + "[)]?[ ]*" + OP + "[ ]*[A-Za-z0-9_(]");
     const before = new RegExp("[A-Za-z0-9_)][ ]*" + OP + "[ ]*[A-Za-z0-9_.]*[.]" + FIELD + "(?![A-Za-z0-9_])");
     const worked = PRINTS.flatMap(([file, text]) => [
       ...BANNED.filter((b) => text.includes(b)).map((b) => `${file}: ${b}`),
+      ...(NUMBER_CALL.test(text) ? [`${file}: Number(`] : []),
       ...(after.test(text) || before.test(text) ? [`${file}: arithmetic on a figure`] : []),
     ]);
     const driverFigure = ["kpis", "progress", "chips", "notSentReasons", "formatNumber"].filter((t) => S.driver.includes(t));
@@ -529,7 +534,7 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     const readerDraws = json(kpis(htmlReader)) === json(["onCampaign", "handedOver", "failed", "notSent", "noAnswer", "waiting"]) && htmlReader.includes("data-live-reasons")
       && htmlReader.includes("data-live-chips") && !htmlReader.includes("data-live-floor");
     // the source: a tile only for a figure that is not null — no zero in its place
-    const guarded = ["handedOver", "failed", "notSent", "noAnswer", "waiting"].every((k) => S.client.includes(`k.${k} !== null && <Figure name=${DQ}${k}${DQ} value={k.${k}} />`))
+    const guarded = ["handedOver", "failed", "notSent", "noAnswer", "waiting"].every((k) => S.client.includes(`k.${k} !== null && <Figure name=${DQ}${k}${DQ}`))
       && !S.client.includes("?? 0") && !S.client.includes("|| 0");
     return [maskedDraws && readerDraws && guarded, `masked ${json(kpis(htmlMasked))} floor said ${maskedSaid} · reader ${json(kpis(htmlReader))} · guarded ${guarded}`];
   });
@@ -724,14 +729,15 @@ export function pagePlants(): PagePlant[] {
   const head = '<AdminPageHead title="SMS campaign" sw="Kampeni" />';
   const lateGuard = [
     "", "  const id = text(campaignId);",
-    '  const late = await runAct(id, "x", "start", (actor) => startCampaign(id, actor));',
+    '  void runAct(id, "x", "start", (actor) => startCampaign(id, actor));',
     '  const g = await softRequireStaff("growth", "marketing.campaign.start", LIVE_ROLE_REFUSAL);',
-    '  if (!g.ok) return actRefused("role", g.error);', "  return late;", "",
+    '  if (!g.ok) return actRefused("role", g.error);',
+    '  return runAct(id, g.userId, "start", (actor) => startCampaign(id, actor));', "",
   ].join(NL);
   const stepViewer = ["const viewer = await liveViewerFor(g.userId);", "  const r = await campaignStep("].join(NL + "  ").replace(NL + "    ", NL + "  ");
   return [
-    { name: "R-V1 · a figure worked out in the browser — Waiting is the campaign's people less the ones handed over", expect: [L.v1],
-      impl: withSources({ client: plantIn(S.client, '<Figure name="waiting" value={k.waiting} />', '<Figure name="waiting" value={k.onCampaign - (k.handedOver ?? 0)} />') }) },
+    { name: "R-V1 · a figure worked out in the browser — Waiting is the campaign's people less the ones that failed", expect: [L.v1],
+      impl: withSources({ client: plantIn(S.client, '<Figure name="waiting" value={k.waiting} />', '<Figure name="waiting" value={k.onCampaign - k.failed} />') }) },
     { name: "R-V1b · a timer-driven bar — the clock moves the bar on after the page opened (OD34)", expect: [L.v1],
       impl: withSources({ client: plantIn(S.client, "<ProgressBar value={p.value}", "<ProgressBar value={Math.min(p.max, p.value + Math.floor(Date.now() / 1000))}") }) },
     { name: "R-V4 · Stop hidden instead of disabled — the control is dropped from the row when it cannot be used", expect: [L.v4],

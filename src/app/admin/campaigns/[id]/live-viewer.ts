@@ -19,6 +19,7 @@
  * Guard: `npm run test:campaign-visuals` L2 (the actions hand THIS to the services) · Red: `npm run red:campaign-visuals`.
  */
 import { db } from "@/lib/server/store";
+import { currentSession } from "@/lib/server/auth-service";
 import { domainForPath } from "@/lib/server/roles";
 import type { Role } from "@/lib/server/roles";
 import { canAct, mayReveal } from "@/lib/server/rbac";
@@ -72,4 +73,18 @@ export async function liveViewerFor(userId: string | null | undefined, deps: Liv
     }
   };
   return { userId: id, mayAct: await ask(deps.mayAct), reads: await ask(deps.reads), money: await ask(deps.money) };
+}
+
+/**
+ * ⭐ THE LIST'S SECOND CELL — may the officer looking at the campaigns LIST act on a campaign? The list says why a campaign
+ * paused through the live page's one function (`pausedReasonSentenceFor`), and a viewer who may only LOOK must not be told to
+ * "press Resume" (the U47b-1 re-review: the sentence has a view-only form). Its first cell, may they read a number, is the
+ * list's own `viewerReadsContacts`. Decided here, on the server, from the STORED role through the same `liveViewerFor` the live
+ * page uses — so the list and the page can never disagree about the same officer. ⛔ Fails closed: no session, no row, a role
+ * or a decider that throws — no act.
+ */
+export async function viewerMayActOnCampaigns(): Promise<boolean> {
+  const session = await currentSession();
+  if (!session) return false;
+  return (await liveViewerFor(session.userId)).mayAct;
 }
