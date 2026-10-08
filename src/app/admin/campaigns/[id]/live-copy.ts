@@ -16,7 +16,8 @@
  * (somebody was), or `hidden` — ⛔ E23: a viewer who may not read a number, on a campaign under the floor, must not learn
  * from the WORDING whether anyone was messaged, so they read the conditional form whatever the counts say.
  *
- * Guard: `npm run test:campaign-visuals` §svc (S4–S9, T1–T8 and D1 read these words through the services; W1 holds its imports).
+ * Guard: `npm run test:campaign-visuals` §svc (S4–S9, T1–T8 and D1 read these words through the services; W1 holds its imports)
+ * and §page (V4 · V7 · V8 render the page's parts in these words; V10 holds the page's literal title to `LIVE_TITLE`).
  */
 import type { SmsCampaignRecipientStatus } from "@/lib/server/store";
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
@@ -323,4 +324,85 @@ export function copyCantTravelSentence(reach: LiveReach): string {
 export function copyMessageRefusedSentence(problem: string): string {
   const said = problem.trim().replace(/[.]$/, "");
   return `This campaign can't be copied as it is: ${said}. Nothing was made.`;
+}
+
+/* ══ U47b-2 · THE PAGE'S OWN WORDS — the head, the controls, the figures' headings, the driver's stops ════════════════ */
+
+/** The page's head and its gate's title. ⛔ They are LITERALS in `page.tsx` and `loading.tsx` (`admin-section-gate.test.mjs`
+ *  §0b′ accepts no computed title on a gate); `test:campaign-visuals` V10 holds those literals equal to these. The gloss is
+ *  COPIED, never invented (§5.13): "Kampeni" is the list's own. */
+export const LIVE_TITLE = "SMS campaign";
+export const LIVE_SW = "Kampeni";
+/** A campaign that is not there — its one way on. */
+export const LIVE_BACK = "Back to SMS campaigns";
+
+/** The five controls, as their buttons say them. Start and Stop open a dialog first (the "…"); Pause, Resume and Make a
+ *  copy act at once. */
+export const LIVE_CONTROL_LABEL = {
+  start: "Start…",
+  pause: "Pause",
+  resume: "Resume",
+  stop: "Stop…",
+  copy: "Make a copy",
+} as const;
+
+/** The breakdown card's title, and the lead over the status chips. */
+export const LIVE_BREAKDOWN_TITLE = "Not sent, by reason";
+export const LIVE_CHIPS_LEAD = "Everyone on it, by status";
+
+/** A reason row's hover title (as U38b's card titles its own rows): "No consent or recorded basis: 2". */
+export function liveReasonTitle(label: string, count: number): string {
+  return `${label}: ${formatNumber(count)}`;
+}
+/** A status chip: "Waiting · 1,200". */
+export function liveChipText(label: string, count: number): string {
+  return `${label} · ${formatNumber(count)}`;
+}
+
+/** The stored audience, in one line: "Audience: Tag: vip · Consent: given" (the list's own words, joined as the list joins them). */
+export function liveAudienceLine(lines: readonly string[]): string {
+  return `Audience: ${lines.join(" · ")}`;
+}
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** "7 Oct 2026" on the EAT calendar, whatever the server's or the browser's zone — null for an instant that is not one. */
+export function eatDate(iso: string | null | undefined): string | null {
+  const ms = typeof iso === "string" ? Date.parse(iso) : Number.NaN;
+  if (!Number.isFinite(ms)) return null;
+  const day = new Date(ms + EAT_OFFSET_MS);
+  return `${day.getUTCDate()} ${MONTHS_SHORT[day.getUTCMonth()]} ${day.getUTCFullYear()}`;
+}
+
+/** The confirmation, in one line: "Confirmed for 1,604 people by Amina on 7 Oct 2026 at 14:10 EAT." — the count alone, at
+ *  every size (OD65: before and after sending, a count is not a breakdown). */
+export function liveConfirmedLine(c: { count: number; at: string; byName: string | null }): string {
+  const by = c.byName === null || c.byName.trim() === "" ? "" : ` by ${c.byName.trim()}`;
+  const day = eatDate(c.at);
+  return `Confirmed for ${peopleCount(c.count)}${by}${day === null ? "" : ` on ${day}`}${atClock(c.at)}.`;
+}
+
+/* ── the driver's stops (decision 3) ── */
+
+/** The page reloads itself on this — a new build's page, with the campaign exactly where it is. */
+export const LIVE_RELOAD = "Reload";
+/** After a lapsed 2-step sign-in is confirmed in the other tab, or a refusal the officer has dealt with: drive again. */
+export const LIVE_TRY_AGAIN = "Try again";
+/** The second factor's link — the step-up page, in ANOTHER tab (the guard's own sentence says so), so this page keeps its
+ *  place. */
+export const LIVE_FACTOR_LINK = "Open the 2-step sign-in";
+
+/** The step's and every act's gate refusal: a role that may not act in the campaign's domain (the act grant, decision 7). */
+export const LIVE_ROLE_REFUSAL = "Your role can't start, pause, resume, stop or copy SMS campaigns — ask an officer with growth access.";
+/** The poll's gate refusal: a role that may not even view the campaign's domain (`softViewStaff`) — the page stops updating. */
+export const LIVE_VIEW_REFUSAL = "Your role can't view SMS campaigns — this page has stopped updating.";
+/** An act whose service threw after it was handed the campaign: it may or may not have happened — never "nothing was done". */
+export const LIVE_ACT_UNFINISHED =
+  "The server stopped before it answered, so this may or may not have happened — this page now shows where the campaign is. Check it before you press again.";
+
+/** Make a copy refused for the officer's save budget — a copy IS a saved draft (the composer's own budget,
+ *  `marketing.campaignSave`). */
+export function copyRateLimitedSentence(retryAfterSec: number): string {
+  const minutes = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec / 60 : 1));
+  return `That is a lot of saves in a row — no copy was made. Try again in ${formatNumber(minutes)} min.`;
 }
