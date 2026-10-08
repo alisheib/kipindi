@@ -39,7 +39,7 @@
 import { formatRowList, type ParsedContactsFile, type ParsedRow, type UnreadableRecord } from "./parsed-file";
 import { DECODE_OPTIONS, createCsvReader, detectFormat, parseCsv, stripBom, type TextEncodingLabel } from "./import-parse";
 import { createVcardReader } from "./vcard";
-import { XLSX_MAX_BYTES, sniffSpreadsheetBytes, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
+import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
 import { CONTACT_FIELDS, autoMapFile, scrubPhoneRuns, type ColumnMapping, type ImportFieldKey, type MappedColumn } from "./contact-fields";
 import { IMPORT_MAX_ROWS } from "./import-limits";
 import { isSendableTzNumber, parseTzNumber } from "../tz-msisdn";
@@ -52,18 +52,24 @@ const LF = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
 /** CRLF, a lone CR (old Mac Excel) and LF each end a pasted line. */
 const LINE_BREAK = new RegExp(`${CR}${LF}|${CR}|${LF}`);
+const SPACE = 32;
 const PLUS = 43;
 const OPEN_PAREN = 40;
 const CLOSE_PAREN = 41;
+const OPEN_BRACKET = 91;
+const CLOSE_BRACKET = 93;
+const FULL_STOP = 46;
 /** What may stand between two digit groups of one number: spaces (the no-break ones too), a full stop, every dash and
  *  the brackets. ⛔ Never a solidus or a comma — a date written 12/03/2026 or "12, 14" is not a number. */
 const JOINERS: ReadonlySet<number> = new Set([
-  32, 0xa0, 0x2007, 0x2009, 0x202f, 46, 45, 0x2010, 0x2011, 0x2012, 0x2013, 0x2014, OPEN_PAREN, CLOSE_PAREN,
+  SPACE, 0xa0, 0x2007, 0x2009, 0x202f, FULL_STOP, 45, 0x2010, 0x2011, 0x2012, 0x2013, 0x2014, OPEN_PAREN, CLOSE_PAREN,
 ]);
 /** What a name loses at its two ends once the number is out of the line: spaces and the separators a list uses. */
 const EDGE_SEPARATORS: ReadonlySet<number> = new Set([
-  32, 9, 0xa0, 0x202f, 58, 44, 59, 45, 0x2013, 0x2014, 124, 47, 126, 46, 61, 62, 60, 42, 0x2022,
+  SPACE, 9, 0xa0, 0x202f, 58, 44, 59, 45, 0x2013, 0x2014, 124, 47, 126, FULL_STOP, 61, 62, 60, 42, 0x2022,
 ]);
+/** What a chat's date-and-time prefix is made of ("12/03/2026, 10:15"). */
+const STAMP_CHARS: ReadonlySet<number> = new Set([SPACE, 47, FULL_STOP, 58, 44, 45]);
 const isDigit = (c: number): boolean => c >= 48 && c <= 57;
 
 /** The most digits one Tanzanian mobile number is written with (00, 255 and nine). */
@@ -90,7 +96,7 @@ function grouped(n: number): string {
 
 /* ══ THE READER'S SENTENCES — rows named, never a cell ════════════════════════════════════════════ */
 
-/** ⛔ The run's cap, said before a byte is uploaded: the server would refuse the file at open for the same reason. */
+/** ⛔ The run's cap, said before a byte is uploaded: the server refuses such a file at open, in these words. */
 export const READ_TOO_MANY_ROWS =
   `This file has more than ${grouped(IMPORT_MAX_ROWS)} rows — the most one import can take. Split it into files of at most ${grouped(IMPORT_MAX_ROWS)} rows and import each one.`;
 /** A pasted line with no phone number in it (list mode). ⛔ Never quotes the line. */
@@ -120,9 +126,9 @@ const HEX = "0123456789abcdef";
 
 /** sha-256 of the bytes, 64 lower-case hex — what U29's open compares ("the same digest adopts"). */
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const view = new Uint8Array(bytes.byteLength);
-  view.set(bytes);
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", view.buffer));
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", copy.buffer));
   let out = "";
   for (const b of digest) out += HEX[b >> 4] + HEX[b & 15];
   return out;
@@ -167,13 +173,14 @@ function namedNumbers(name: string | null): boolean {
 
 /**
  * Decoded text in chunks, counting the bytes as they pass. ⭐ `TextDecoderStream` with the sniffed encoding and
- * `DECODE_OPTIONS` (C19: the mark passes through, `stripBom` removes it); where the platform has none for that encoding, a
- * `TextDecoder` in stream mode does the same job — and a label no decoder knows falls back to UTF-8, whose replacement
- * characters the CSV reader counts and names (a refusal here would be a dead end for a file the reader can still read).
+ * `DECODE_OPTIONS` (C19: the mark passes through, and `stripBom` in the reader removes it); where the platform has no
+ * stream decoder for that encoding, a `TextDecoder` in stream mode does the same job — and a label no decoder knows
+ * falls back to UTF-8, whose replacement characters the CSV reader counts and names (a refusal here would be a dead end
+ * for a file the reader can still read).
  */
 function decodedText(file: Blob, encoding: TextEncodingLabel, onBytes: (n: number) => void): ReadableStream<string> {
   const counted = file.stream().pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
+    new TransformStream<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>({
       transform(chunk, controller) {
         onBytes(chunk.byteLength);
         controller.enqueue(chunk);
@@ -181,12 +188,13 @@ function decodedText(file: Blob, encoding: TextEncodingLabel, onBytes: (n: numbe
     }),
   );
   if (typeof TextDecoderStream === "function") {
+    let stream: TextDecoderStream | null = null;
     try {
-      const stream = new TextDecoderStream(encoding, DECODE_OPTIONS);
-      return counted.pipeThrough(stream);
+      stream = new TextDecoderStream(encoding, DECODE_OPTIONS);
     } catch {
-      /* an encoding this platform's stream decoder lacks — the plain decoder below */
+      stream = null; // an encoding this platform's stream decoder lacks — the plain decoder below
     }
+    if (stream !== null) return counted.pipeThrough(stream);
   }
   let decoder: TextDecoder;
   try {
@@ -195,7 +203,7 @@ function decodedText(file: Blob, encoding: TextEncodingLabel, onBytes: (n: numbe
     decoder = new TextDecoder("utf-8", DECODE_OPTIONS);
   }
   return counted.pipeThrough(
-    new TransformStream<Uint8Array, string>({
+    new TransformStream<Uint8Array<ArrayBuffer>, string>({
       transform(chunk, controller) {
         const text = decoder.decode(chunk, { stream: true });
         if (text !== "") controller.enqueue(text);
@@ -240,12 +248,10 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
     opts.onProgress(size, size, 0);
     return { kind: "xlsx", base64: bytesToBase64(head), digest: await sha256Hex(head), fileName: name ?? "workbook.xlsx" };
   }
-  if (sniffSpreadsheetBytes(head) !== "other") return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
 
   const encoding: TextEncodingLabel = detected.encoding ?? "utf-8";
-  const vcard = detected.kind === "vcard";
-  const csvReader = vcard ? null : createCsvReader({ fileName: name });
-  const cardReader = vcard ? createVcardReader({ fileName: name }) : null;
+  const csvReader = detected.kind === "vcard" ? null : createCsvReader({ fileName: name });
+  const cardReader = detected.kind === "vcard" ? createVcardReader({ fileName: name }) : null;
   const recordsSoFar = (): number => {
     if (cardReader !== null) return cardReader.stats().cards;
     return csvReader === null ? 0 : csvReader.stats().rows;
@@ -265,6 +271,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
     bytesRead += n;
   }).getReader();
   let stopped: ReadOutcome | null = null;
+  let finished = false;
   try {
     for (;;) {
       if (signal?.aborted) {
@@ -272,7 +279,10 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
         break;
       }
       const next = await reader.read();
-      if (next.done) break;
+      if (next.done) {
+        finished = true;
+        break;
+      }
       if (cardReader !== null) cardReader.push(next.value);
       else if (csvReader !== null) {
         csvReader.push(next.value);
@@ -287,8 +297,8 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
       report(false);
     }
   } finally {
-    if (stopped !== null || signal?.aborted) await reader.cancel().catch(() => undefined);
-    else reader.releaseLock();
+    if (finished) reader.releaseLock();
+    else await reader.cancel().catch(() => undefined);
   }
   if (stopped !== null) return stopped;
   if (signal?.aborted) return { kind: "aborted" };
@@ -311,7 +321,7 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
   if (parsed.rows.length + parsed.unreadable.length > IMPORT_MAX_ROWS + 1) return refused(READ_TOO_MANY_ROWS);
 
   // ⭐ THE DIGEST IS OVER THE EXACT BYTES — read once more, whole, after the streamed parse: `crypto.subtle` has no
-  // incremental digest, and a re-read of the same File is the same bytes.
+  // incremental digest, and a second read of the same File is the same bytes.
   if (signal?.aborted) return { kind: "aborted" };
   const digest = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
   return { kind: "parsed", file: parsed, digest, extraNumbers };
@@ -412,22 +422,44 @@ function numbersOf(line: string): Found[] {
   return out;
 }
 
-/** A list's enumeration at the start of a line ("12. ", "3) ") — not part of a name. */
-function enumerationLength(text: string): number {
+/** How much of a name's start is not the name: a list's enumeration ("12. ", "3) "), a chat's bracketed stamp
+ *  ("[12/03/2026, 10:15] ") or a chat's dash-led stamp ("12/03/2026, 10:15 - "). */
+function prefixLength(text: string): number {
   let i = 0;
-  while (i < text.length && text.charCodeAt(i) === 32) i++;
-  const digitsAt = i;
-  while (i < text.length && isDigit(text.charCodeAt(i)) && i - digitsAt < 4) i++;
-  if (i === digitsAt || i >= text.length) return 0;
+  while (i < text.length && text.charCodeAt(i) === SPACE) i++;
+  const from = i;
+  // A bracketed stamp holds a digit; a bracketed word ("[VIP]") is part of the name.
+  if (text.charCodeAt(i) === OPEN_BRACKET) {
+    const close = text.indexOf(String.fromCharCode(CLOSE_BRACKET), i);
+    if (close > i) {
+      let stamp = false;
+      for (let k = i + 1; k < close; k++) if (isDigit(text.charCodeAt(k))) stamp = true;
+      if (stamp) return close + 1;
+    }
+    return 0;
+  }
+  // A dash-led stamp: only digits and / . : , - and spaces before " - ", within the first 25 characters.
+  const dash = text.indexOf(" - ", i);
+  if (dash > i && dash - i <= 25 && isDigit(text.charCodeAt(i))) {
+    let stamp = true;
+    for (let k = i; k < dash; k++) {
+      const c = text.charCodeAt(k);
+      if (!isDigit(c) && !STAMP_CHARS.has(c)) stamp = false;
+    }
+    if (stamp) return dash + 3;
+  }
+  // An enumeration: up to four digits, then "." or ")", then a space.
+  while (i < text.length && isDigit(text.charCodeAt(i)) && i - from < 4) i++;
+  if (i === from || i >= text.length) return 0;
   const mark = text.charCodeAt(i);
-  if (mark !== 46 && mark !== CLOSE_PAREN) return 0;
+  if (mark !== FULL_STOP && mark !== CLOSE_PAREN) return 0;
   i++;
-  if (i < text.length && text.charCodeAt(i) !== 32) return 0;
+  if (i < text.length && text.charCodeAt(i) !== SPACE) return 0;
   return i;
 }
 
-/** What is left of a line once its numbers are out: separators trimmed at both ends, spaces collapsed, an empty or
- *  fully bracketed remainder unwrapped, a leading enumeration dropped. */
+/** What is left of a line once its numbers are out: a leading enumeration or chat stamp dropped, separators trimmed at
+ *  both ends, spaces collapsed, an emptied pair of brackets dropped and a fully bracketed remainder unwrapped. */
 function nameOf(line: string, numbers: readonly Found[]): string {
   let text = "";
   let at = 0;
@@ -436,31 +468,34 @@ function nameOf(line: string, numbers: readonly Found[]): string {
     at = n.end;
   }
   text += line.slice(at);
-  text = text.slice(enumerationLength(text));
+  text = text.slice(prefixLength(text));
   let start = 0;
   let end = text.length;
   while (start < end && EDGE_SEPARATORS.has(text.charCodeAt(start))) start++;
   while (end > start && EDGE_SEPARATORS.has(text.charCodeAt(end - 1))) end--;
   let name = text.slice(start, end).split(" ").filter((w) => w !== "").join(" ");
-  // "(Asha)" → "Asha"; a pair of brackets left empty by a number is dropped.
-  name = name.split("()").join("").trim();
+  name = name.split("()").join("").split(" ").filter((w) => w !== "").join(" ");
   if (name.length >= 2 && name.charCodeAt(0) === OPEN_PAREN && name.charCodeAt(name.length - 1) === CLOSE_PAREN) {
     name = name.slice(1, -1).trim();
   }
   return name;
 }
 
+/** The pasted lines, a final line end making no empty last line. */
+function pastedLines(text: string): string[] {
+  const lines = text.split(LINE_BREAK);
+  return lines.length > 1 && lines[lines.length - 1] === "" ? lines.slice(0, -1) : lines;
+}
+
 /** A paste's lines and cells split by hand — the fallback for a tab-separated paste U25's reader refuses (a quote that
- *  never closes): a paste is never refused, its quote marks are kept as typed. */
+ *  never closes): a paste is never refused, and its quotation marks are kept as typed. */
 function plainTable(text: string): ParsedContactsFile {
   const rows: ParsedRow[] = [];
   let blankRows = 0;
   let width = 0;
-  text.split(LINE_BREAK).forEach((raw, index) => {
+  pastedLines(text).forEach((raw, index) => {
     const cells = raw.split(TAB);
     if (cells.every((c) => c.trim() === "")) {
-      // A final line end makes no empty line.
-      if (raw === "" && index === text.split(LINE_BREAK).length - 1) return;
       blankRows++;
       return;
     }
@@ -487,29 +522,24 @@ export function parsePastedText(text: string): ParsedContactsFile {
   const unreadable: UnreadableRecord[] = [];
   const multi: number[] = [];
   let blankRows = 0;
-  const lines = source.split(LINE_BREAK);
-  // A final line end makes no empty line.
-  const count = lines.length > 1 && lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
-  for (let index = 0; index < count; index++) {
-    const line = lines[index];
+  pastedLines(source).forEach((line, index) => {
     const lineNo = index + 1;
     if (line.trim() === "") {
       blankRows++;
-      continue;
+      return;
     }
     const numbers = numbersOf(line);
     if (numbers.length === 0) {
       unreadable.push({ line: lineNo, reason: PASTE_LINE_NO_NUMBER });
-      continue;
+      return;
     }
     const first = numbers.find((n) => n.sendable) ?? numbers[0];
     if (numbers.length > 1) multi.push(lineNo);
     rows.push({ line: lineNo, cells: [first.text, nameOf(line, numbers)] });
-  }
+  });
   const notes = rows.length > 0 ? [PASTE_LIST_NOTE] : [];
   if (multi.length > 0) notes.push(multiNumberNote(multi));
-  const width = rows.length > 0 ? 2 : 0;
-  return { format: "paste", fileName: null, rows, width, blankRows, notes, unreadable };
+  return { format: "paste", fileName: null, rows, width: rows.length > 0 ? 2 : 0, blankRows, notes, unreadable };
 }
 
 /** How many lines of a list paste held a second number (the result's S15-4 line); 0 for a table paste. */
@@ -517,7 +547,7 @@ export function pasteExtraNumbers(text: string): number {
   const source = stripBom(String(text ?? "")).text;
   if (!isListPaste(source)) return 0;
   let extra = 0;
-  for (const line of source.split(LINE_BREAK)) if (line.trim() !== "" && numbersOf(line).length > 1) extra++;
+  for (const line of pastedLines(source)) if (line.trim() !== "" && numbersOf(line).length > 1) extra++;
   return extra;
 }
 
@@ -543,6 +573,9 @@ export type FileMapping = {
 export type MappingOptions = {
   /** The file is a LIST paste (`isListPaste`): its two columns are the phone and the name, with no header row. */
   readonly list?: boolean;
+  /** The officer's own word on the first row, over the automatic reading: "contact" reads it as data (S15-5's synthetic
+   *  columns), "header" as column names. Omitted: the first row decides (`autoMapHeaders().headerless`). */
+  readonly firstRow?: "header" | "contact";
 };
 
 /** A spreadsheet's column letter: 0 → A, 25 → Z, 26 → AA. */
@@ -579,26 +612,27 @@ const isNameCell = (cell: string): boolean => {
   return t !== "" && LETTER.test(t) && !t.includes("@") && !DIGIT_RUN.test(t);
 };
 
-/** S15-5 · a headerless file's columns, guessed from their cells: the phone column first (most cells that ARE a
- *  Tanzanian mobile number), then the email and name columns by shape — each only where most filled cells fit. */
+/** S15-5 · a headerless file's columns, guessed from their cells: the phone column first (the most cells that ARE a
+ *  Tanzanian mobile number), then the email and name columns by shape — each only where most filled cells fit it. */
 function guessHeaderless(file: ParsedContactsFile): ColumnMapping {
   const sample = file.rows.slice(0, GUESS_SAMPLE_ROWS);
+  const width = Math.max(0, file.width);
   const score = (test: (cell: string) => boolean): number[] => {
-    const counts = new Array<number>(file.width).fill(0);
-    for (const row of sample) row.cells.forEach((cell, i) => {
-      if (i < counts.length && test(cell)) counts[i]++;
-    });
+    const counts = new Array<number>(width).fill(0);
+    for (const row of sample) {
+      for (let i = 0; i < row.cells.length && i < width; i++) if (test(row.cells[i])) counts[i]++;
+    }
     return counts;
   };
   const filled = score((cell) => cell.trim() !== "");
-  const best = (counts: number[], taken: ReadonlySet<number>, needHalf: boolean): number | null => {
-    let at: number | null = null;
-    counts.forEach((n, i) => {
-      if (taken.has(i) || n === 0) return;
-      if (needHalf && n * 2 < filled[i]) return;
-      if (at === null || n > counts[at]) at = i;
-    });
-    return at;
+  const best = (counts: readonly number[], taken: ReadonlySet<number>, needHalf: boolean): number | null => {
+    let at = -1;
+    for (let i = 0; i < counts.length; i++) {
+      if (taken.has(i) || counts[i] === 0) continue;
+      if (needHalf && counts[i] * 2 < filled[i]) continue;
+      if (at < 0 || counts[i] > counts[at]) at = i;
+    }
+    return at < 0 ? null : at;
   };
   const mapping: ColumnMapping = {};
   const taken = new Set<number>();
@@ -629,10 +663,10 @@ function columnsFor(headers: readonly string[], mapping: ColumnMapping): MappedC
 
 /**
  * ⭐ THE MAPPING PANEL'S STARTING POINT, for a whole parsed file. A list paste: Phone and Name, no header row. A vCard:
- * U28's fixed grid (A1.2). Anything else: U28's header match over the first row (`autoMapFile`) — and, S15-5, when that
- * row reads as a contact, synthetic "Column A…" headers, the phone, email and name columns found from the cells, and
- * no header row. A masked export stays refused (`refusal`); a missing phone column is not a refusal here — the officer
- * picks it on the panel, and `validateMapping` holds Next until one is chosen.
+ * U28's fixed grid (A1.2). Anything else: U28's header match over the first row, padded to the widest row
+ * (`autoMapFile`) — and, S15-5, when that row reads as a contact, synthetic "Column A…" headers, the phone, email and
+ * name columns found from the cells, and no header row. A masked export stays refused (`refusal`); a missing phone
+ * column is NOT a refusal here — the officer picks it on the panel, and `validateMapping` holds Next until one is chosen.
  */
 export function mappingFor(file: ParsedContactsFile, opts: MappingOptions = {}): FileMapping {
   if (opts.list === true && file.format === "paste") {
@@ -641,32 +675,25 @@ export function mappingFor(file: ParsedContactsFile, opts: MappingOptions = {}):
     return { headers, mapping, headerRows: 0, headerless: false, synthetic: true, refusal: null, columns: columnsFor(headers, mapping) };
   }
   const firstRow = file.rows[0]?.cells ?? [];
-  const auto = autoMapFile(file.format, firstRow);
   if (file.format === "vcard") {
+    const auto = autoMapFile("vcard", firstRow);
     const headers = auto.columns.map((c) => c.header);
     return { headers, mapping: { ...auto.mapping }, headerRows: 0, headerless: false, synthetic: true, refusal: auto.refusal, columns: auto.columns };
   }
   const width = Math.max(file.width, firstRow.length);
-  if (auto.headerless) {
+  const padded = Array.from({ length: width }, (_, i) => firstRow[i] ?? "");
+  const auto = autoMapFile(file.format, padded);
+  // ⛔ Only a refused (masked) column is a refusal here: its own note IS the refusal, while "no Phone column" is a
+  // choice the panel asks the officer for. It holds whatever the officer says about the first row — a masked export
+  // read "as contacts" would only stage masked numbers as rows.
+  const hard = auto.refusal !== null && auto.columns.some((c) => c.status === "notImported" && c.note === auto.refusal) ? auto.refusal : null;
+  const headerless = hard === null && (opts.firstRow === "contact" || (opts.firstRow !== "header" && auto.headerless));
+  if (headerless) {
     const headers = Array.from({ length: width }, (_, i) => syntheticHeader(i));
     const mapping = guessHeaderless(file);
     return { headers, mapping, headerRows: 0, headerless: true, synthetic: true, refusal: null, columns: columnsFor(headers, mapping) };
   }
-  const headers = Array.from({ length: width }, (_, i) => firstRow[i] ?? "");
-  const columns: MappedColumn[] = headers.map((header, index): MappedColumn => auto.columns[index] ?? {
-    index, header, status: "unknown", field: null, note: header.trim() === "" ? "This column has no name, so it is not read." : null,
-  });
-  // ⛔ Only a refused (masked) header is a refusal here — "no Phone column" is a choice the panel asks for.
-  const hard = auto.columns.some((c) => c.status === "notImported" && c.note === auto.refusal) && auto.mapping.phone !== undefined
-    ? auto.refusal
-    : auto.refusal !== null && isMaskedRefusal(headers, auto.refusal) ? auto.refusal : null;
-  return { headers, mapping: { ...auto.mapping }, headerRows: 1, headerless: false, synthetic: false, refusal: hard, columns };
-}
-
-/** Is this refusal the masked-export one — a refused column present in the header row (U28's `kind: "refused"`)? */
-function isMaskedRefusal(headers: readonly string[], refusal: string): boolean {
-  const auto = autoMapFile("csv", headers);
-  return auto.columns.some((c) => c.status === "notImported" && c.note === refusal);
+  return { headers: padded, mapping: { ...auto.mapping }, headerRows: 1, headerless: false, synthetic: false, refusal: hard, columns: auto.columns };
 }
 
 /* ══ THE PREVIEW — the only way the panel shows a cell ════════════════════════════════════════════ */

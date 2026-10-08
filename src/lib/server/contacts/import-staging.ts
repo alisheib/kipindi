@@ -52,6 +52,10 @@ export const SWEEPABLE_IMPORT_STATUSES: readonly ContactImportStatus[] = ["STAGI
 
 /** A run id as this module mints them: `ci_` and twenty letters. Anything else is not a run, without asking the store. */
 const IMPORT_ID = /^ci_[a-z]{20}$/;
+/** ⭐ S15 · the same shape test for the check and the commit (`import-check.ts`, `import-commit.ts`): one run-id rule. */
+export function isImportRunId(id: unknown): id is string {
+  return typeof id === "string" && IMPORT_ID.test(id);
+}
 /** A sha-256, as the browser writes it: 64 lower-case hex. */
 const DIGEST = /^[0-9a-f]{64}$/;
 const FILE_NAME_MAX = 255;
@@ -306,9 +310,17 @@ async function viewOf(run: StoredContactImport, viewerId: string): Promise<Conta
   };
 }
 
+/** X18 · the creator, or an ADMIN adopting — read off the STORED role. ⭐ S15: exported, so the check, the start, the
+ *  commit and their reads ask this SAME rule (`import-check.ts`, `import-commit.ts`), never a copy of it. */
+export async function mayDriveImport(
+  createdBy: string, officerId: string, isAdmin: (userId: string) => Promise<boolean>,
+): Promise<boolean> {
+  return createdBy === officerId || (await isAdmin(officerId));
+}
+
 /** X18 · the creator, or an ADMIN adopting. */
 async function mayDrive(run: StoredContactImport, officerId: string, deps: ImportStagingDeps): Promise<boolean> {
-  return run.createdBy === officerId || (await deps.isAdmin(officerId));
+  return mayDriveImport(run.createdBy, officerId, deps.isAdmin);
 }
 
 /** The file's name as a label: invisible and control characters out, spaces collapsed, bounded; empty is null. */
@@ -377,6 +389,7 @@ function newRun(id: string, req: OpenRequest, officerId: string, at: string): St
     decisionChoice: null, decisionOverrides: {}, decisionConfirmedAt: null, decisionConfirmedBy: null,
     consentBasis: null, consentWording: null, consentProofNote: null, adultAttestedAt: null, consentBasisSetBy: null,
     consentBasisSetAt: null, pausedAt: null, pausedBy: null, finishedAt: null, createdAt: at, createdBy: officerId, updatedAt: at,
+    targetListId: null,
   };
 }
 

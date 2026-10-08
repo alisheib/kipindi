@@ -176,6 +176,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // batches with it in the browser and the server measures each batch with it. It imports two constants from
     // xlsx-limits.ts and types from contact-fields.ts and parsed-file.ts, all pinned here.
     "lib/contacts/import-limits.ts",
+    // ⭐ ADDED 2026-10-09 (S15, decision M3). The importer's ONE contract — every request and answer between the import
+    // dialog and its server actions, and the refusal sentences the dialog shows verbatim. Types, constants and pure
+    // helpers only; it imports types alone, from contact-fields.ts, parsed-file.ts and import-decide.ts, all pinned here.
+    "lib/contacts/import-flow.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",
