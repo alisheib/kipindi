@@ -31,12 +31,22 @@
  * per-context constants (`GLYPH`, `plateGlyph`) in `src/components/ui/glyphs.tsx` are the home
  * a future collapse works from.
  *
- * Prove it can fail:  npm run red:icon-sizes
+ * Prove it can fail:  npm run red:icon-sizes         (a glyph size outside the frozen set, planted in memory)
+ *                     npm run red:icon-sizes-slack   (a frozen size nothing renders, planted in memory)
+ *
+ * ⛔ BOTH PROOFS EXIT 0 WHEN THEY WORK (2026-10-08). They used to run the real checks over the planted defect and exit 1 —
+ * "red" meant the PROCESS was red — while every other `red:*` in the fleet exits 0 when its guard catches the defect, and
+ * `red:all` reads any non-zero exit as a failed harness. So both read FAIL on a healthy main, and printed the ratchet's own
+ * instruction for a REAL slack ("delete it from FROZEN") over a value, 41, that was never in FROZEN: a planted message wearing
+ * a finding's clothes, which is how a green ratchet came to be read as a red one. Now each proof plants its defect IN MEMORY,
+ * runs the very `audit()` the real run prints, and exits 0 only when
+ *   (a) the untouched tree audits clean — otherwise a red below proves nothing — and
+ *   (b) the audit names EXACTLY the planted defect and nothing else.
+ * ⛔ IN-PROCESS BY CONSTRUCTION: this file makes no file-writing call, which is what keeps both proofs in `test:red-anchors`
+ * §4's in-process class instead of counting them as undeclared disk harnesses.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-
-const PROVE_RED = process.argv.includes("--prove-red");
 
 /**
  * The sizes in use on 2026-09-11, measured off the tree — not chosen, not designed.
@@ -55,64 +65,15 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+type Site = { file: string; line: number };
+type Source = { file: string; lines: string[] };
+
 const files = walk("src");
-const seen = new Map<number, { file: string; line: number }[]>();
-
-for (const f of files) {
-  const lines = readFileSync(f, "utf8").split(/\r?\n/);
-  lines.forEach((text, i) => {
-    for (const m of text.matchAll(/\bs=\{(\d+)\}/g)) {
-      const n = Number(m[1]);
-      if (!seen.has(n)) seen.set(n, []);
-      seen.get(n)!.push({ file: f.replace(/\\/g, "/"), line: i + 1 });
-    }
-  });
-}
-
-// ⭐ THE CONTROL. A guard nobody has watched go red is a green light of unknown wiring, so
-// `--prove-red` injects a size that is NOT frozen and nothing else. If the run below still
-// passes with this present, the detector is broken and its green means nothing.
-if (PROVE_RED) seen.set(37, [{ file: "src/__prove_red__.tsx", line: 1 }]);
-
-// ⛔ AND THE SECOND HALF NEEDS ITS OWN CONTROL, because the two halves fail for opposite
-// reasons and one passing proves nothing about the other. `--prove-red-slack` freezes a value
-// nothing renders; if that stays green, the no-slack half is decorative.
-if (process.argv.includes("--prove-red-slack")) FROZEN.add(41);
-
-let failed = 0;
-const bad = (m: string) => { failed++; console.log(`  ✗ ${m}`); };
-const ok = (m: string) => console.log(`  ✓ ${m}`);
-
-console.log(`\nICON SIZE RATCHET — ${files.length} .tsx files walked, ${seen.size} distinct sizes found\n`);
-
-// 1 · NO NEW SIZE.
-const introduced = [...seen.keys()].filter((n) => !FROZEN.has(n)).sort((a, b) => a - b);
-if (introduced.length === 0) {
-  ok(`no glyph size outside the frozen set (${FROZEN.size} values)`);
-} else {
-  for (const n of introduced) {
-    const at = seen.get(n)!;
-    bad(
-      `s={${n}} is NOT in the frozen set — ${at.length} site(s), first at ${at[0].file}:${at[0].line}. ` +
-      `Use a constant from \`GLYPH\` or \`plateGlyph()\` in src/components/ui/glyphs.tsx. ` +
-      `If this size is genuinely a new context, add it to FROZEN and say why in the commit.`,
-    );
-  }
-}
-
-// 2 · NO SLACK — the half that keeps this a ratchet. See the header.
-const unused = [...FROZEN].filter((n) => !seen.has(n)).sort((a, b) => a - b);
-if (unused.length === 0) {
-  ok("every frozen size is still used — the allow-list carries no slack");
-} else {
-  for (const n of unused) {
-    bad(
-      `s={${n}} is frozen but NO LONGER USED anywhere — delete it from FROZEN. ` +
-      `Leaving it licenses a re-entry for a value nothing renders; a ratchet that only ever ` +
-      `permits more than is needed cannot go red for the thing it was built to catch.`,
-    );
-  }
-}
+/** The population, read once: the real run audits it as it stands, a proof audits it with ONE defect added. */
+const population: Source[] = files.map((f) => ({
+  file: f.replace(/\\/g, "/"),
+  lines: readFileSync(f, "utf8").split(/\r?\n/),
+}));
 
 // 3 · THE PLATE THE GLYPH SITS ON HAS ONE HOME TOO.
 //
@@ -127,24 +88,138 @@ if (unused.length === 0) {
 // by searching for the PATTERN, which is the only way a hand-written list of eight could have
 // been checked at all. Hence: the population here is the pattern, never a list.
 const plateRe = /place-items-center\s+rounded-\[/;
-const handRolled: string[] = [];
-for (const f of files) {
-  const rel = f.replace(/\\/g, "/");
-  if (rel.endsWith("src/components/ui/icon-plate.tsx")) continue; // the atom's own prose describes the pattern
-  readFileSync(f, "utf8").split(/\r?\n/).forEach((text, i) => {
-    if (plateRe.test(text)) handRolled.push(`${rel}:${i + 1}`);
-  });
+
+/**
+ * EVERYTHING THE RATCHET ASSERTS, AS DATA: one scan of one population against one frozen set. The real run prints it and the
+ * red proofs read it, so a proof exercises the same code the guard runs — never a copy of it.
+ *   introduced  1 · sizes in use that are not frozen            (NO NEW SIZE)
+ *   unused      2 · frozen sizes nothing renders any more        (NO SLACK)
+ *   handRolled  3 · icon plates retyped outside `IconPlate`
+ */
+function audit(pop: Source[], frozen: ReadonlySet<number>) {
+  const seen = new Map<number, Site[]>();
+  const handRolled: string[] = [];
+  for (const { file, lines } of pop) {
+    lines.forEach((text, i) => {
+      for (const m of text.matchAll(/\bs=\{(\d+)\}/g)) {
+        const n = Number(m[1]);
+        if (!seen.has(n)) seen.set(n, []);
+        seen.get(n)!.push({ file, line: i + 1 });
+      }
+      // the atom's own prose describes the pattern
+      if (!file.endsWith("src/components/ui/icon-plate.tsx") && plateRe.test(text)) handRolled.push(`${file}:${i + 1}`);
+    });
+  }
+  const introduced = [...seen.keys()].filter((n) => !frozen.has(n)).sort((a, b) => a - b);
+  const unused = [...frozen].filter((n) => !seen.has(n)).sort((a, b) => a - b);
+  return { seen, introduced, unused, handRolled };
 }
-if (handRolled.length === 0) {
+type Audit = ReturnType<typeof audit>;
+
+const sizeMsg = (n: number, at: Site[]) =>
+  `s={${n}} is NOT in the frozen set — ${at.length} site(s), first at ${at[0].file}:${at[0].line}. ` +
+  `Use a constant from \`GLYPH\` or \`plateGlyph()\` in src/components/ui/glyphs.tsx. ` +
+  `If this size is genuinely a new context, add it to FROZEN and say why in the commit.`;
+const slackMsg = (n: number) =>
+  `s={${n}} is frozen but NO LONGER USED anywhere — delete it from FROZEN. ` +
+  `Leaving it licenses a re-entry for a value nothing renders; a ratchet that only ever ` +
+  `permits more than is needed cannot go red for the thing it was built to catch.`;
+const plateMsg = (site: string) =>
+  `${site} retypes the icon-plate pattern with a one-off radius. Use <IconPlate size={…}> ` +
+  `from src/components/ui/icon-plate.tsx — B10.2: each family has ONE radius, and an ` +
+  `arbitrary \`rounded-[…]\` is a second definition site.`;
+
+const real = audit(population, FROZEN);
+
+// ⭐ THE CONTROLS. A guard nobody has watched go red is a green light of unknown wiring, so each proof plants ONE defect IN
+// MEMORY and runs the very `audit()` above over it. A planted size is a line of SOURCE — `<Glyph s={37} />` in a file that does
+// not exist — fed through the same scan the tree goes through, so the proof exercises the regex as well as the comparison.
+// ⛔ AND THE TWO HALVES NEED A CONTROL EACH, because they fail for opposite reasons and one passing proves nothing about the
+// other: `--prove-red-slack` freezes a value nothing renders; if that stays green, the no-slack half is decorative.
+type Plant = {
+  flag: string;
+  /** which half of the ratchet must catch it */
+  half: "size" | "slack";
+  n: number;
+  what: string;
+  population: Source[];
+  frozen: ReadonlySet<number>;
+};
+const PLANTS: Plant[] = [
+  {
+    flag: "--prove-red", half: "size", n: 37, what: "a glyph size outside the frozen set",
+    population: [...population, { file: "src/__prove_red__.tsx", lines: ["export const Planted = () => <Glyph s={37} />;"] }],
+    frozen: FROZEN,
+  },
+  {
+    flag: "--prove-red-slack", half: "slack", n: 41, what: "a frozen size nothing renders",
+    population,
+    frozen: new Set([...FROZEN, 41]),
+  },
+];
+
+/** What an audit reports, one token per finding — so "exactly the planted defect" is a comparison, not a judgement. */
+const defectsOf = (a: Audit) => [
+  ...a.introduced.map((n) => `size:${n}`),
+  ...a.unused.map((n) => `slack:${n}`),
+  ...a.handRolled.map((site) => `plate:${site}`),
+];
+
+const proofs = PLANTS.filter((p) => process.argv.includes(p.flag));
+if (proofs.length > 0) {
+  console.log(`\nICON SIZE RATCHET — red proof: ${proofs.map((p) => p.flag).join(" ")} (planted IN MEMORY; the tree is never touched)\n`);
+  const baseline = defectsOf(real);
+  const baselineClean = baseline.length === 0;
+  console.log(baselineClean
+    ? `  ✓ CONTROL  the untouched tree audits clean — ${files.length} .tsx files, ${real.seen.size} distinct sizes, ${FROZEN.size} frozen`
+    : `  ✗ CONTROL  the untouched tree is ITSELF red (${baseline.join(", ")}) — a red below would prove nothing, so the proof is void`);
+  let caught = 0;
+  for (const p of proofs) {
+    const a = audit(p.population, p.frozen);
+    const got = defectsOf(a);
+    const want = `${p.half}:${p.n}`;
+    // A plant must be NEW: a value already frozen, or already rendered, introduces nothing for the ratchet to catch.
+    const isNew = !FROZEN.has(p.n) && !real.seen.has(p.n);
+    const hit = baselineClean && isNew && got.length === 1 && got[0] === want;
+    if (hit) caught++;
+    console.log(`  ${hit ? "✓ CAUGHT  " : "✗ MISSED  "} ${p.what} — s={${p.n}}`);
+    if (hit) {
+      console.log(`             the ratchet says: ${p.half === "size" ? sizeMsg(p.n, a.seen.get(p.n)!) : slackMsg(p.n)}`);
+    } else if (!isNew) {
+      console.log(`             s={${p.n}} is already frozen or rendered by the tree, so planting it proves nothing — pick another value`);
+    } else {
+      console.log(`             the audit reported [${got.join(", ") || "nothing"}], not exactly [${want}]${got.length === 0 ? " — the detector is broken and its green means nothing" : ""}`);
+    }
+  }
+  console.log(`\n${caught}/${proofs.length} planted ratchet defects caught${baselineClean ? "" : " — ⛔ but the untouched tree is itself red, so the proof is void"}\n`);
+  process.exit(caught === proofs.length && baselineClean ? 0 : 1);
+}
+
+let failed = 0;
+const bad = (m: string) => { failed++; console.log(`  ✗ ${m}`); };
+const ok = (m: string) => console.log(`  ✓ ${m}`);
+
+console.log(`\nICON SIZE RATCHET — ${files.length} .tsx files walked, ${real.seen.size} distinct sizes found\n`);
+
+// 1 · NO NEW SIZE.
+if (real.introduced.length === 0) {
+  ok(`no glyph size outside the frozen set (${FROZEN.size} values)`);
+} else {
+  for (const n of real.introduced) bad(sizeMsg(n, real.seen.get(n)!));
+}
+
+// 2 · NO SLACK — the half that keeps this a ratchet. See the header.
+if (real.unused.length === 0) {
+  ok("every frozen size is still used — the allow-list carries no slack");
+} else {
+  for (const n of real.unused) bad(slackMsg(n));
+}
+
+// 3 · no hand-rolled plates — see `plateRe` above.
+if (real.handRolled.length === 0) {
   ok("no hand-rolled icon plates — `IconPlate` is the only home for the family");
 } else {
-  for (const site of handRolled) {
-    bad(
-      `${site} retypes the icon-plate pattern with a one-off radius. Use <IconPlate size={…}> ` +
-      `from src/components/ui/icon-plate.tsx — B10.2: each family has ONE radius, and an ` +
-      `arbitrary \`rounded-[…]\` is a second definition site.`,
-    );
-  }
+  for (const site of real.handRolled) bad(plateMsg(site));
 }
 
 console.log(

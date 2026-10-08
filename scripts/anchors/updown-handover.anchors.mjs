@@ -29,11 +29,16 @@ const PAGE = "src/app/updown/[roundId]/page.tsx";
 export const MUTATIONS = [
   {
     // THE PRODUCT AS IT SHIPPED: no handover at all. Every surface falls back to "Round settled".
+    // ⚠️ RE-ANCHORED 2026-10-08. `a7da5f89` (U35 · D36) folded the hand-written
+    // `state === "resolved" || state === "void"` into `roundIsSettled(state)`, so the old anchor
+    // matched nothing and the case the suite's own header names as its bar (a constant idle
+    // return must break §2 through §7) printed ANCHOR NOT FOUND and proved NOTHING. The plant is
+    // the same: `handoverClock` answers "none" to every call, settled or not.
     name: "no-handover-at-all (the dead end, exactly as production served it)",
     file: RULE,
     suite: "updown-handover",
-    from: `  const settled = state === "resolved" || state === "void";\n  if (!settled) return { phase: "none", targetMs: null, counting: false, ready: false };`,
-    to: `  const settled = state === "resolved" || state === "void";\n  if (true) return { phase: "none", targetMs: null, counting: false, ready: false };\n  if (!settled) return { phase: "none", targetMs: null, counting: false, ready: false };`,
+    from: `  const settled = roundIsSettled(state);\n  if (!settled) return { phase: "none", targetMs: null, counting: false, ready: false };`,
+    to: `  const settled = roundIsSettled(state);\n  if (true) return { phase: "none", targetMs: null, counting: false, ready: false };\n  if (!settled) return { phase: "none", targetMs: null, counting: false, ready: false };`,
   },
   {
     // The naive reading of the brief: in `live`, count to the successor's OPEN. Measured on

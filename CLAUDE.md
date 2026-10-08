@@ -847,9 +847,20 @@ A strict Playwright gauntlet guards releases: `scripts/pre-deploy-live-check.mjs
   `SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars> npx next dev -p 3009`
   (no `DATABASE_URL` → memory store). `/auth/demo` mints a 100k authed session
   locally (404 in prod) so the authed section can drive History/wallet/invite
-  and the **locked betting dial**.
+  and the **locked betting dial**. Started with `DISABLE_ADMIN_TOTP=true` as well,
+  [E2] first proves its absence checks can SEE the journey shell — `/` read with a
+  staff preview pass minted on that local server (S6 WP12); without it that
+  control prints a SKIP, never a pass.
 - `BASE=https://kipindi-production.up.railway.app npm run qa:live` — read-only
-  subset against prod (auto-skips the local-only authed section). Run on a WARM
+  against prod EXCEPT section [E3] (S6 WP12): unless `/api/health` says the new
+  journey is ACTIVE (an unreadable answer counts as not ACTIVE), it signs the
+  QA player `mobile01` in ONCE through
+  the real form (`QA_MOBILE01_PASSWORD` in `.env.qa.local` at the checkout root).
+  A missing or wrong password stops the run (exit 1) and is never retried — each
+  wrong try counts toward the account's lockout (five, then thirty minutes). The
+  sign-in writes a session that ENDS any other `mobile01` session, so run it only
+  while no other drive uses `mobile01`. The local-only authed section ([F]) is
+  still skipped. Run on a WARM
   server — the gauntlet warms up, but a just-restarted instance can still race.
 - `npm run predeploy` — typecheck + `test:date` + build + `qa:live`.
   ⛔ **`predeploy` passes no `BASE`, so `qa:live` ALWAYS runs against localhost and `LOCAL` is

@@ -1,6 +1,7 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
 import { SkBar, SkBody, SkCard, SkChip, SkTitle } from "@/components/admin/admin-skeletons";
 import { AudienceFloorGhost } from "./audience-split-card";
+import { ConfirmCardGhost } from "./confirm-card-ghost";
 
 /**
  * The ghost for /admin/campaigns/new (U37b).
@@ -21,6 +22,12 @@ import { AudienceFloorGhost } from "./audience-split-card";
  * into the full figures when the page swaps in (`qa:marketing-audience` asserts GROWTH's count block equal at 1280 and
  * 360, and RECORDS the reader's growth; the keyed fallback is each role's own and equal for both). The rail's and the words' heights depend on the role, the book's
  * lists and tags and how the pills wrap, and are RECORDED.
+ * ⭐ U40b · THE CONFIRM CARD'S GHOST is the card's own (`ConfirmCardGhost` — the trigger's box, and the line under it in ONE
+ * box sized by an invisible copy of the honesty line, exactly as the card sizes its own; `confirm-card-ghost.tsx`, a
+ * server-safe file, so this ghost never waits on the card's client chunk), under the card's title: EQUAL BY
+ * CONSTRUCTION at every width while the card at rest shows the honesty line, the confirmed line or a reason no longer than
+ * it (a longer one — a long audience problem — grows the card, said rather than hidden). `qa:marketing-confirm` ASSERTS it
+ * at 1280 and 360 (within 2px), for a new composer and a saved draft.
  * ⛔ `data-skeleton` stamps are the drive's handles — never match on class strings. ⛔ No numeric scale key that the
  * spacing scale inverts: the spacing scale is overridden.
  */
@@ -52,6 +59,12 @@ export default function Loading() {
           </div>
         </div>
         <div data-skeleton="compose-test"><SkCard lines={4} sw={false} titleW="w-[80px]" /></div>
+        <div data-skeleton="compose-confirm">
+          <div className="glass-panel p-4">
+            <SkTitle titleW="w-[64px]" sw={false} className="mb-3" />
+            <ConfirmCardGhost />
+          </div>
+        </div>
       </SkBody>
     </>
   );

@@ -25,6 +25,9 @@
  * existing opt-out token for the preview (a GET mints nothing — until the first test the link shows as xxxxxxxx). The
  * preview is the SAVED draft rendered by THE ONE renderer, as an account recipient — exactly what a test sends.
  * ⛔ No money is read and none is passed (OD24).
+ * ⭐ WHAT THE FORM SHOWS AGAINST WHAT IS SAVED: the audience on screen is compared with the one the draft stores (`unsaved`).
+ * ⛔ U40b · THE CONFIRM CARD IS NOT COUNTED HERE: a render of the composer never walks the stored audience for it — its view
+ * is counted ON DEMAND, when the officer presses its trigger (`confirm-doors.ts`, behind `confirm-view-actions.ts`).
  */
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -115,8 +118,9 @@ export type ComposeAudienceView = {
   /**
    * ⭐ The audience ON SCREEN is not the one this saved DRAFT stores: its address names another (a rail pick not saved yet),
    * or one that cannot be read — so Save counts it as a change, never "Nothing to save" (the gap U40b found, 2026-10-07:
-   * a saved draft whose only change was its audience could not be saved). False with no saved draft, past DRAFT, or with
-   * no audience in the address (the stored one is kept).
+   * a saved draft whose only change was its audience could not be saved), and (U40b) the Confirm card will not open on it
+   * ("Save first"): a confirmation freezes the STORED audience. False with no saved draft, past DRAFT, or with no audience
+   * in the address (the stored one is kept).
    */
   unsaved: boolean;
 };

@@ -8,9 +8,9 @@
  * (`lib/server/market-service.ts`), then as `deposit()` runs them (`lib/server/wallet-service.ts`):
  *    1 maintenance · 2 self-exclusion / cooling-off (with the date) · 3 the session limit · 4 the account blocked ·
  *    5 the market not LIVE / selection closed · 6 the stake bounds · 7 the wallet not ACTIVE · 8 the loss limit ·
- *    9 ENOUGH · 10 a deposit already pending · 11 D = max(shortfall, DEPOSIT_MIN_TZS) · 12 an unconfirmed email (the
- *    code is the deposit screen's first step, still an ordinary deposit) · 13 the deposit-limit headroom ·
- *    14 source of funds · 15 deposit.
+ *    9 ENOUGH · 10 a deposit already pending · 11 D = max(shortfall, DEPOSIT_MIN_TZS) · 12 the deposit-limit
+ *    headroom · 13 source of funds · 14 deposit. ⛔ No email step: a deposit asks no email question (the owner's ruling
+ *    of 2026-10-07, NEXT-PLAN ▶ 0e), so the plan's old step 12 — an unconfirmed email meeting a code first — is gone.
  * Every input is a fact the server already reads for those gates (`getRgSettings`, `getLimitUsage`, `isLockedOut`,
  * `checkSessionTimeLimit`, the wallet row, the source-of-funds row); this module decides nothing they would decide
  * differently — `test:deposit-ceiling` drives the REAL `deposit()` and `checkLossLimit` to prove it.
@@ -23,7 +23,8 @@
  * THE DEPOSIT OFFER — D first and selected, then the next two amounts of `DEPOSIT_QUICK_AMOUNTS` strictly above D;
  * a chip above `depositCeilingFor` (DEPOSIT_MAX, the RG day/week/month headroom counting PROCESSING deposits, the
  * source-of-funds headroom) is dropped, never shown — and there is no per-rail ceiling (E-231). 3,000 → [3,000, 5,000,
- * 10,000]; 5,000 → [5,000, 10,000, 25,000]; 300 → [500, 1,000, 5,000] with `belowDepositMin`.
+ * 10,000]; 5,000 → [5,000, 10,000, 25,000]; 300 → [1,000, 5,000, 10,000] with `belowDepositMin` (the TZS 1,000
+ * minimum, the owner's ruling of 2026-10-07).
  *
  * "BET INSTEAD" — a second option, the bet the wallet CAN place now: min(spendable, the stake maximum, the loss
  * headroom), offered only when that is at least the market's minimum stake.
@@ -107,7 +108,6 @@ export type ShortfallInput = {
   loss: { dailyLossLimit: number | null; lossToday: number };
   /** The player's newest PROCESSING deposit, if one is still in flight. */
   pendingDeposit: { amount: number; txnId: string } | null;
-  emailVerified: boolean;
   deposit: {
     limits: DepositLimits;
     usage: DepositUsage;
@@ -130,8 +130,6 @@ export type DepositOption = {
   chips: number[];
   /** The shortfall is below DEPOSIT_MIN_TZS, so D is the minimum deposit, not the shortfall. */
   belowDepositMin: boolean;
-  /** The email is not confirmed: the deposit screen opens on its 6-digit code (still an ordinary deposit). */
-  emailCodeFirst: boolean;
 };
 export type BetInsteadOption = { kind: "betInstead"; stake: number };
 export type ShortfallOption = DepositOption | BetInsteadOption;
@@ -208,7 +206,6 @@ export function shortfallPlan(i: ShortfallInput): ShortfallPlan {
     amount: d,
     chips: depositChips(d, ceiling.max),
     belowDepositMin: shortfall < DEPOSIT_MIN_TZS,
-    emailCodeFirst: !i.emailVerified,
   };
   return { kind: "short", spendable, shortfall, options: [deposit, ...betInstead] };
 }

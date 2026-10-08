@@ -66,8 +66,15 @@ for (const [f, raw] of bodies) {
 }
 console.log(`\n§1 · ${links.length} anchored admin link(s) found`);
 /* ⛔ THE VACUITY FLOOR. If the link idiom changes, this gate would sweep an empty set and report
-   a serene pass. Re-derived 2026-09-02: two anchored admin links exist, both in ai-usage.ts. */
-const FLOOR = 2;
+   a serene pass. Re-derived 2026-10-08: THREE anchored admin links exist — two in ai-usage.ts and
+   `CONSOLE_LIMITS_FIRST_UNSET_HREF` in house-bot/console-routes.ts (added 2026-09-18, C7 step 3).
+   ⚠️ IT STAYED AT 2 AFTER THE THIRD ARRIVED (3b17b03e), which made the floor blind to a PARTIAL loss:
+   with three links and a floor of two, `red:tab-anchors`' "scanner goes blind" plant (one link stops
+   matching) left two, cleared the floor, and the control reported the gate blind to the thing it claims
+   to test. The floor is the POPULATION, not a fraction of it — if any one link stops being found, that
+   link is no longer verified, and that must read as a failure. Adding a link raises this number;
+   removing one is a decision someone makes here, never an accident the gate absorbs. */
+const FLOOR = 3;
 ok(`1.0 at least ${FLOOR} anchored link(s) — the scanner still finds them`, links.length >= FLOOR,
    `${links.length} — the link idiom moved and this gate went blind`);
 for (const l of links) console.log(`      · ${l.from} → ${l.href}`);

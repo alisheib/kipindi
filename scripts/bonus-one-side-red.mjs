@@ -35,10 +35,13 @@ const originals = new Map([[MARKET, readFileSync(MARKET, "utf8")]]);
 const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
 
 const CWD = new URL("..", import.meta.url);
-const suiteFails = () => {
-  try { execSync("npx tsx scripts/bonus-one-side.test.mts", { cwd: CWD, stdio: "pipe" }); return false; }
-  catch { return true; }
+// ⭐ `out` is the suite's stdout, so a mutation can be held to the ASSERTION it names (`caughtBy`) instead of to "something
+// went red": a crash, or a failure in some other section, would otherwise count as a catch and prove nothing.
+const runSuite = () => {
+  try { execSync("npx tsx scripts/bonus-one-side.test.mts", { cwd: CWD, stdio: "pipe" }); return { failed: false, out: "" }; }
+  catch (e) { return { failed: true, out: String(e.stdout ?? "") }; }
 };
+const suiteFails = () => runSuite().failed;
 
 restore();
 if (suiteFails()) {
@@ -77,6 +80,13 @@ const MUTATIONS = [
     why: "⛔ THE DEFECT FIXED 2026-09-21, planted back: drop `p.houseBotId == null` and an OPEN house position on the other side makes `opposite` truthy for the holder's own unmarked real-money stake, so their bonus wagering accrues ZERO — while the documented escape (close the opposite leg) is refused for a house leg, and a later void still REVERSES the turnover that never accrued",
     from: OPPOSITE,
     to: `    const opposite = mine.find((p) => p.status === "OPEN" && p.side !== opts.side);`,
+    // ⭐ 2026-10-08 · THIS PLANT WAS ADDED AT f41e632c (2026-09-21) WITH ITS ANCHOR MEASURED (0x → 1x) AND NO ASSERTION BEHIND
+    // IT: the suite was not touched, so the harness read 6/7 from that day. The anchor was sound — the SUITE could not see the
+    // defect, because every position §1–§5 creates is a player's own and nothing in them could tell an engine leg from a hedge.
+    // §6 of `bonus-one-side.test.mts` places a real house leg on a designated account; 6.4 is the assertion this plant trips
+    // (the holder's own stake accrues in full). Pinned HERE so the plant cannot start being "caught" by a crash, or by some
+    // other section, while 6.4 rots.
+    caughtBy: /^FAIL 6\.4 /m,
   },
   {
     name: "cashout-keeps-the-turnover",
@@ -130,8 +140,16 @@ for (const m of MUTATIONS) {
     problems.push(`${m.name} — HARNESS ERROR: anchor still present after write`); continue;
   }
 
-  if (suiteFails()) { caught++; console.log(`  ✓ RED  ${m.name} — ${m.why}`); }
-  else problems.push(`${m.name} — GUARD DID NOT CATCH IT (${m.why})`);
+  const run = runSuite();
+  const failedOn = [...run.out.matchAll(/^FAIL (\S+)/gm)].map((x) => x[1]);
+  if (!run.failed) problems.push(`${m.name} — GUARD DID NOT CATCH IT (${m.why})`);
+  else if (m.caughtBy && !m.caughtBy.test(run.out)) {
+    problems.push(`${m.name} — CAUGHT BY THE WRONG ASSERTION: the suite failed on [${failedOn.join(", ") || "no FAIL line — it exited non-zero"}], not on ${m.caughtBy}`);
+  } else {
+    caught++;
+    console.log(`  ✓ RED  ${m.name} — ${m.why}`);
+    console.log(`         ↳ the suite failed on: ${failedOn.join(", ") || "(no FAIL line — it exited non-zero)"}`);
+  }
 }
 
 restore();

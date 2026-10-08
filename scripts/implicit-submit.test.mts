@@ -280,6 +280,12 @@ const ALL: Engine[] = [...MODERN, "webkit-legacy"];
  * ⚠️ Every WebKit presses the first ENABLED submit control wherever it stands in the form, skipping a disabled one: so
  * one more submit control anywhere in a guarded form — after the guard's control as much as before it — is pressed by
  * Enter on an iPhone before the page wakes. That is why 4.5 allows none.
+ * ⭐ THE WEBKIT RULES HERE ARE THE STRICTER READING, KEPT ON PURPOSE. A real browser was kinder: in Playwright's WebKit
+ * 2272 (OMEGA-COMPILE01, 2026-10-07) a form of one text field whose only submit control is disabled did NOT submit on
+ * Enter before the page woke (`qa:implicit-submit` P1x, the second field taken out), while the same Enter on a form with
+ * no submit control at all did (its P1 on the tree before A8j). A device whose WebKit follows the source as read is held
+ * by the second field; one that honours the disabled control is held by the control alone. Modelling the stricter rule
+ * keeps the field required.
  */
 function enterSubmits(engine: Engine, cs: Control[]): boolean {
   const fields = cs.filter(isTextField).length;

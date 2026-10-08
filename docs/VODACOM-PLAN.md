@@ -33,7 +33,9 @@ money dialog lands on its way out (below); and A8j (`88fb1f41`): Enter in a form
 email question, and the minimum deposit and stake are TZS 1,000 — §3.6's S9 (an email code before the first deposit)
 will NOT be built (§3.6 and R2 marked superseded), and this plan's TZS 500 lines carry the new minimum. Still owed here:
 the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `emailCodeFirst` (when S9 is built), and
-`qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar.
+`qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
+the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
+email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
 
 **✅ A8j LIVE `88fb1f41` (2026-10-07) — Enter in a form never skips its confirm.** Enter, or a phone's Go key, in the
 withdraw amount box sent the withdrawal with no "Confirm withdrawal" (no fee, no "You receive", no recipient), and in the
@@ -71,41 +73,42 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-07 ~19:30 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
+**⏳ IN FLIGHT (updated 2026-10-08 ~14:35 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** (the other sessions on
 that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). Ali
-(2026-10-07, away): *"keep going and putting progress updated until you're done … keep pushing live"* — each piece goes
-live once its core is proven, the rest runs after it, and anything found is fixed forward. Done today: A8i-2 and A8j
-LIVE (above); A8j's WebKit runs; **the S6 close-out's three owed items, all passing** (§0i "S6 STOPPED HERE"); QA
-Mobile 01 signs in on production again (its password reset through the console's own Reset password, with Ali's
-approval; the new one is in `F:\kipindi-main\.env.qa.local`). Money doors' release is live (`012cccbc`: no email
-before a deposit, the email bar deleted, the TZS 1,000 minimum) and this lane's work sits on it. **Now: WP12, the last
-S6 package** — branch `vodacom-wp12` (pushed, NOT on main; worktree `F:\kipindi-wp12`), eleven commits on `012cccbc`:
-the bell's bytes put back (A1); the handover's WP12 change set (rule 8 dated the day it lands, six statements corrected
-by an independent read); the tile drive `qa:journey-shell`; A8j's WebKit follow-up (P1x reports the engine's rule);
-the S4 canvas brought to the owner's ruling; the Up & Down card's UD-16 comment made true; `qa:journey-preview`'s step
-7 (WP6b item 8); `qa:enter-where-pressed` with `REDUCED_MOTION=1` (A8i-2's owed "reduced motion"); parity 2.9 reading
-which tree it runs on (the email bar deleted → no viewer may see one); `shortfallPlan` without its email step; the
-plans' notes for the ruling, and the email bar's SHELVED row deleted. An independent review of the new commits found
-five slips, all fixed. Light gates equal main's; the suites they touch green. **Turn A is running** (since 18:55 EAT,
-on `ec4734af`): typecheck clean; `test:all` 437/467 — main's known failures, plus twelve database suites that could not
-start their cluster; `red:all` under way. **Found and fixed on the way:** `db:scratch`'s sweep cannot see its own
-leftover `io_worker` in a worktree whose `node_modules` is a junction (most worktrees on that PC), so after the first
-database suite every later start fails with "gave no reason". Run from the checkout the junctions point at, the old
-sweep matched the siblings' LIVE clusters. The fix (`da35f89c`, branch `vodacom-dbscratch`, on `b6652201`) knows a
-cluster by its data directory and its postmaster's pid, and a start that fails prints postgres's own reason; it goes to
-main once turn A2 has proven it. WP12 is rebased onto it (the patch identical). **Queued under the lock:** A2 — WP12
-rebased: typecheck, `test:all` with the database suites, and every harness turn A's `red:all` failed, again; B — parity
-(the v2 baseline re-captured from `7c859cdf`, WP12's fresh baseline at its parent, each calibrated, both compares);
-**then WP12 goes live**; then B2 — the header fit and its reds; C — the 335 tiles (read one by one), the preview drive, the footer
-four ways; D — the landmark seal both ways, local `qa:live`, G1 and its prove-red; E — the A8j drive in WebKit; F — S7
-WP0's reds and bar probe, and the A8i-2 drive under reduced motion; then `qa:live` on production (mobile01, once), and
-the records. **S7 WP0 has started, by Ali's choice** (before S6 closed, S7-PLAN's narrower overrule): branch
-`vodacom-s7` (`2f340ecd`): red:ticker-honesty's cases declared and judged by the whole check id, test:stacking's
-primer checks renumbered; its records and bar probe are drafted, and its runs are turn F. **If this session is gone:**
-WP12's run list is in its S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on
-`vodacom-handover`, `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC:
-`F:\kipindi-journey` keeps uncommitted edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — WP12 (above; A8j's WebKit runs and the S6 close-out are done), then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
+(2026-10-07/08): *"keep going … keep pushing live"*, *"we don't want to be idle"* — each piece goes live once its core is
+proven, the rest runs after it, anything found is fixed forward, and lock-free work fills every wait. Done: A8i-2 and
+A8j LIVE (above); **the S6 close-out's three owed items, all passing** (§0i "S6 STOPPED HERE"); QA Mobile 01 signs in on
+production again (its password reset through the console's own Reset password, with Ali's approval; the new one is in
+`F:\kipindi-main\.env.qa.local`). **WP12, the last S6 package, is LIVE: `17693fdc` (2026-10-08 08:28Z)** — §0i, with its
+proof: typecheck at three bases, every suite and red WP12 touches green, **parity: no served byte changes**, production
+`qa:live` 348/348 (its first signed-in run, as mobile01). **Turn A2 (WP12 + the `db:scratch` fix, 2026-10-08):** typecheck
+0; `test:all` 453/471 with **all 13 database suites green** in a junctioned worktree (0 postgres left over); every
+remaining failure also fails ALONE on main (18 suites, each run on both) — none is WP12's; the reds turn A failed or read
+DIRTY: the 16 DIRTY ones pass, the rest fail on main too or were repaired on main the same day. **Fixed on main for every
+lane, 2026-10-07/08** (each with its proof in the commit): `red:all`'s Windows timeout let a timed-out harness run on
+beside the next (`b2e9db81`); `db:scratch`'s sweep was blind to its own `io_worker` in a junctioned worktree and reached
+siblings' live clusters (`018e77e3`); eight red harnesses that proved nothing on main — `updown-digest`,
+`updown-chain-stats`, `updown-handover`, `updown-bet-feedback`, `updown-result-announce` (its stake plant had been
+unguarded: suite 3.4 now reads the win celebration), `decomment` (CRLF), `policy-lines` (L0 rotted with the RG
+re-version), `bar-geometry` (`5b89b32b`); `test:updown-digest`, `test:payout-view`, `test:updown-source-class` green again
+(stale pins, `5b89b32b` `bd7147eb`); three private comment strippers onto the shared one (`042b52e4`;
+`campaign-models`' moves with marketing's STEP 52); **a money guard that could not fail:** `test:programme-isolation`'s
+agent arm ran with the invite-rewards switch off, so an agent paid a first-bet prize would have read green — it now runs
+with the switch on and its red proves 3/3 (`b994ef03`). More of main's dead reds are being repaired (ai-cycles,
+cert-expiry, bonus-one-side, icon-sizes, tab-anchors, contrast). ⚠️ This session stopped overnight (the account's usage
+limit) while its read-back grabber held the lock, 2026-10-07 21:39Z – 10-08 08:33Z; marketing's turn waited. **Queued
+under the lock** (each turn stops if the one before did not end well): marketing's turn C, then B2 — the S6 v2 compare at
+WP12 (its first run's dev server did not start: Turbopack's Google-font fetch) and the header fit with its reds; C — the
+335 tiles (read one by one), the preview drive, the footer four ways; D — the landmark seal both ways, local `qa:live`,
+G1 and its prove-red; E — the A8j drive in WebKit; F — S7 WP0's reds and bar probe, and the A8i-2 drive under reduced
+motion; then S6 closes (§1, NEXT-PLAN) and S7 WP0 goes live. **S7 WP0 has started, by Ali's choice** (S7-PLAN's narrower
+overrule): branch `vodacom-s7` (`75f9cb99`, on main `f89dcdb9`): red:ticker-honesty's cases declared and judged by the
+whole check id, test:stacking's primer checks renumbered, and `red:ops-provision-staff`'s plants declared (main read 66
+against the red-anchors ceiling of 65 since `4bd4c728`; with both, 64 against 64). **If this session is gone:** WP12's run
+list is in its S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
+`handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
+edits from 2026-10-06, an early start that the handover draft supersedes.)
+**Next:** (1) S6 — WP12 is LIVE (`17693fdc`, §0i); its remaining runs (§0 IN FLIGHT) close S6, then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
 and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
 `/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
 52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
@@ -498,7 +501,8 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   other viewer each rule is today's, because `useJourneyOn` answers false without the flag and on the server. HIDE_ON,
   the analytics consent prompt (still asked of everybody) and the install invitation are untouched. A journey viewer
   gets no email-verify bar (§3.2 item 2): `{emailVerifyState && !journeyShown && …}`, decided per request. The deposit
-  screen's own email gate still refuses an unconfirmed address; what goes is the reminder on every other page (the agent
+  screen's own email gate still refuses an unconfirmed address (⛔ since the owner's ruling of 2026-10-07 neither exists,
+  for any viewer: money doors' release deletes the bar and the gate); what goes is the reminder on every other page (the agent
   application's fee also needs a confirmed address and loses it too) until S9 asks for the code in the flow. Gates:
   `test:journey-shell` §11 (each join as written beside today's half, the flag read once and the one list asked once,
   the chat keeping its conversation, the HIDE_ON patterns, the consent prompt ungated, the email bar gated, the flag
@@ -1318,6 +1322,31 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   climbing), `/api/health` ok with the database reachable, and `qa:live` against production 318/318. **Served bytes:**
   two hidden inputs inside each host form (no word, class or layout change); no other page changes. **Owed (recorded,
   not run):** a real iPhone's Go key; the drive in predeploy (it needs a server).
+- **WP12 — the proof tools and records that close S6 (LIVE `17693fdc`, 2026-10-08).** The handover's change set
+  (ALI-BLADE15: three reviews, a verifier 83/83) applied on OMEGA-COMPILE01: `qa:live` [E2]/[E3] (the classic pages free
+  of every journey trace for signed-out and signed-in players, after a control on real bytes), `qa:landmark-seal
+  --journey`, the G1 unread-handover drive, the bell proof, DESIGN_AUTHORITY rule 8 with its CHANGELOG entry, the
+  SHELVED rows, S6-PLAN's as-built notes; with one anchor moved, rule 8 dated the day it lands and six statements
+  corrected (§0h point 61). Beside it: the bell's bytes put back (A1); the tile drive `qa:journey-shell` (WP6b step 5;
+  its §12 reads the deleted email bar: neither reader may see one); A8j's WebKit follow-up (P1x reports the engine's
+  rule); the S4 canvas brought to the owner's ruling of 2026-10-07 (the short-of-the-minimum board offers TZS 1,000;
+  S9's six code boards marked superseded); the Up & Down card's UD-16 comment made true; `qa-journey-preview.mjs`'s
+  step 7 (WP6b item 8); `qa:enter-where-pressed` with `REDUCED_MOTION=1`; parity 2.9 reading which tree it runs on;
+  `shortfallPlan` without its email step. **Proof (OMEGA-COMPILE01):** typecheck 0 errors at three bases (`012cccbc`,
+  `b2e9db81`, `88792619`); `test:all` 437/467 with every suite WP12 touches green and the 30 failures main's own (12 of
+  them database suites on `db:scratch`'s junction blind spot, §0h point 63); `red:all` 185/234 with every red WP12
+  touches green (journey-shell 161/161, implicit-submit 61/61, enter-where-pressed 103/103, simple-journey-flag 37/37,
+  shortfall 12/12), the rest main's or the old runner's overlaps (point 63), all 2,151 declared red anchors resolving
+  the same on main and WP12, the tree unchanged after; **parity** — the v2 baseline re-captured at `7c859cdf` (224
+  cells; `--prove-red` exit 0, a null compare 39/39) and WP12's fresh baseline at its parent `a3312e74` (224 cells;
+  `--prove-red` exit 0, a null compare 39/39), **the compare at the tip 39/39: no served byte changes**. **Production:**
+  `dpl=17693fdc` on www.50pick.tz and 50pick.tz from 08:31:31Z, `/api/health` 200 on both, and `qa:live` — its first
+  signed-in run, as mobile01 through the real form — **348/348** (the shell-visible control is officer-only on
+  production: decision 7). **Owed, queued (§0 IN FLIGHT):** the v2 compare at main (its first run's dev server did not
+  start: Turbopack's Google-font fetch), the header fit and its reds, the 335 tiles read one by one, the preview drive,
+  the footer four ways, the landmark seal both ways, local `qa:live`, G1 and its prove-red, the A8j drive in WebKit,
+  the A8i-2 drive under reduced motion; a production landmark seal (decision 7, an Owner's link); the bell's stale clause
+  (S15). DESIGN_AUTHORITY rule 8c's "first run … owed" clause goes once G1 is green.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -1896,6 +1925,47 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     in the other arm of a ternary from the dialog (the withdraw page's disabled `SubmitButton`); a new `submitsForm`
     consumer joins the host table; imported helpers are read one hop deep. (g) A held Enter in these forms presses once
     (A8i-2's key guard): one warning toast at most, and a dialog closed with Enter held on Cancel stays closed.
+61. **WP12 — the proof tools and records that close S6 (S6 WP12, for every player only through what it proves).** The
+    calls taken: (a) THE CLASSIC BELL'S BYTES PUT BACK. A8i-2 (`586c5183`, this lane) corrected two lines of a comment in
+    `notifications-panel.tsx`, which A1 keeps untouched until S15 and A8i-2's draft had only reported; `qa:bell-untouched`
+    caught it, and WP12's first commit puts the file back byte for byte, its one stale clause ("`<Modal>` guards only
+    Shift+Tab", untrue since A8i-2) owed to S15, when the bell is next touched. Overrule: keep the corrected comment and
+    read the bell proof's TOUCHED as that comment. (b) RULE 8 DATED THE DAY IT LANDS: DESIGN_AUTHORITY §K rule 8 and its
+    provenance entry carry 2026-10-07, not the drafting day (2026-10-04), the entry above A8i's of the same day.
+    Overrule: the drafting date. (c) SIX STATEMENTS CORRECTED against today's code, by an independent read of about 165
+    claims: rule 8c's helpline row (gone since the owner's ruling of 2026-10-06), "kept the classic components
+    untouched" (their served markup is; the Wallet both looks open takes a journey prop), no overlay in a card, SHELVED's
+    empty-state row and the performance link's real words, and CLAUDE.md's [E3] line. (d) THE PARITY BASELINES: the
+    plan's v2 baseline (`parity-v2-7c859cdf.json`) lives only on ALI-BLADE15, so it was re-captured here from the same
+    pre-S6 commit `7c859cdf` (package-lock unchanged since), calibrated by prove-red and a null compare; WP12's own claim,
+    that it serves no new byte, is proven against a fresh baseline at its parent. Overrule: fetch the original file from
+    ALI-BLADE15 and compare against it as well. (e) `qa:live` SIGNS IN ON PRODUCTION: from WP12 on, a production run
+    signs the QA player mobile01 in once ([E3]) — its only production write (a session row that ends any other mobile01
+    session, two audit rows, the last sign-in time, a "Signed in" email to an address that cannot deliver); it needs
+    `.env.qa.local` at the worktree root, and two runs at once spoil each other. Overrule: [E3] local-only.
+62. **The journey hub's sign-out confirm keeps the avatar menu's claret tone — OPEN, to be ruled before the flip (rule
+    8c).** DESIGN_AUTHORITY licenses claret for §B4 (editorial) and §B4a (an irreversible operator ceremony); sign-out
+    is neither — it is recoverable, and a player's own act. Until ruled, the confirm stays as built (nothing served
+    changes). The choice: a neutral tone for sign-out in both looks (the avatar menu's too), or a licence for sign-out's
+    claret written into DESIGN_AUTHORITY. Asked of Ali, before S15.
+63. **Two shared tools could not be trusted on the shared PC — found proving WP12, fixed for every lane (one live, one
+    waiting on its proof).** (a) `db:scratch`'s sweep matched a postgres process by the checkout's path in its command
+    line, but a child's command line names only the binary, and in a worktree whose `node_modules` is a junction (most
+    on OMEGA-COMPILE01) that is the OTHER checkout: the first database suite's leftover `io_worker` held the cluster's
+    shared memory and the next twelve failed "with no reason"; run from the junction target, the same test matched the
+    siblings' LIVE clusters. Now a cluster is known by its `-D` and its postmaster's pid, `--reset` and initdb sweep
+    too, the stop is bounded (a dead postmaster made `--run` exit 0) and a failed start prints postgres's own reason
+    (`4c1a8dff`, branch `vodacom-dbscratch`; an independent review's seven findings fixed; to main once turn A2 has run
+    the database suites with it). (b) `red:all`'s timeout ends only npm's shell on Windows, so a timed-out harness ran
+    on beside the next, still mutating: in WP12's turn A `red:house-bot-console` (TIME at 300 s) made eleven harnesses
+    read DIRTY on its files and `red:house-bot-c5` refuse, until it was stopped through the status its restore guard
+    reads as a console stop (every target then equal to HEAD), and `red:kyc-gate` did the same later. Now the runner
+    waits for a timed-out harness before it reads the tree (a pid counts only with its exact start time; default
+    `--orphan-wait` 4 h) and stops the fleet rather than run beside one; a DIRTY report no longer prints `src/` as
+    `rc/` (LIVE `b2e9db81`; an independent review's five findings fixed). Overrule: none sought — both are defects.
+    (c) Two WP12 pieces were stale against the ruling of 2026-10-07 and were fixed before their runs: the tile drive's
+    §12 (its classic control expected the deleted email bar) and the shortfall test's header (a 300 shortfall offering
+    [500, …], "the code comes first").
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -2025,7 +2095,8 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
   - With one option the eyebrow is dropped. When no deposit is offered, the reason is today's refusal sentence, shown
     before the player tries.
 - Item 6 ✅ on the canvas (row "6 · Deposit", 19 frames). They are:
-  - the email-code step: sent, wrong, expired, too many tries, a new code sent, no email on file;
+  - the email-code step: sent, wrong, expired, too many tries, a new code sent, no email on file (⛔ superseded by the
+    owner's ruling of 2026-10-07, marked so on the canvas);
   - no history (nothing preselected; "Lipa" disabled), one wallet paused, an amount typed below the shortfall, and
     the payout-delayed notice;
   - the new waiting page: fresh, slow, long, paid, failed, held for return;
@@ -2683,7 +2754,8 @@ On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50p
     - Toka, through the existing ConfirmDialog → POST `/auth/logout`.
 
 **Chrome, words and records**
-- **SJ-18 Deposit chrome.** The journey deposit screen, its code step and `/wallet/deposit/waiting` use focused chrome:
+- **SJ-18 Deposit chrome.** The journey deposit screen, its code step (⛔ superseded 2026-10-07: no code step) and
+  `/wallet/deposit/waiting` use focused chrome:
   no header, no tabs, no footer, no ticker. Instead: a round "‹", the title "Weka pesa", and a minimal 18+ and
   helpline line.
 - **SJ-19 Words.**
@@ -2890,7 +2962,8 @@ Other rules:
 
 **Journey order at 360 (deck):**
 1. header
-2. transient system bars only: announcement, session-ended, away summary (no email-verify bar on journey)
+2. transient system bars only: announcement, session-ended, away summary (no email-verify bar on journey — nor on any page
+   since the owner's ruling of 2026-10-07 deleted it)
 3. How-to card
 4. headline
 5. chips
@@ -3038,7 +3111,7 @@ strip appears only when `?bet=` is valid.
 6. "Lipa kwa:" with the 4 rows
 7. "Namba ya simu" (`PhoneInput`)
 8. the PIN note
-9. the inline code step, if unverified
+9. the inline code step, if unverified (⛔ superseded by the owner's ruling of 2026-10-07: a deposit asks no email question)
 10. "Lipa TZS X"
 11. "Lipa kwa kadi"
 
@@ -3100,7 +3173,8 @@ Polling: every 3s for the first minute, then every 10s.
 deposit email door, the deposit page's `EmailVerifyGate` and the app-wide `EmailVerifyBanner` are removed by that lane —
 and a confirmed email is required to WITHDRAW instead (asked after identity, on /wallet/withdraw; a refused-funds return
 is exempt). The journey's deposit therefore carries no code step: the rest of this section is kept as the record of what
-was planned, and `shortfall.ts`'s `emailCodeFirst` and its docblock go when S9 is built (owed, this lane). R2 in the
+was planned, and `shortfall.ts`'s `emailCodeFirst` and its docblock are gone (WP12's batch: `shortfallPlan` asks no
+email step, `test:shortfall` 4.email holds the deposit option to its four fields). R2 in the
 INHERIT-MANIFEST is superseded with it.
 
 **Storage and security**
@@ -3237,7 +3311,7 @@ campaign tags. Version bumps land in the same commit as each item.
 | Card estimate | `market-card.tsx` journey + settled variants, `live/pulse-grid.tsx`, similar-markets; `estimatedWinningsRate` retired on polls | `test:one-sided` §8.9 (new) + red; V16 rewritten at the flip (estimate only with ≈, and the Makadirio line only in the sheet); V17, V18; `test:share-preview` (no multiplier) | §C3 (scoped), R3, L11, COMPLIANCE 2026-07-23 D3, RULES §4 |
 | Bet sheet | new `components/journey/bet-sheet*.tsx`, `BetSheetHost`. Shelved **in place**: `conviction-dial.tsx`, `bet-confirm-modal.tsx`, `side-picker.tsx`, `lib/dial-stake.ts`, `house-lean-warning.tsx` | `test:dial-stake` **unchanged** (shelved dial's unit test). New `test:bet-sheet` (+ V20 focus / Esc / safe area / Back / keyboard / Enter). `test:market-result-announce` DIAL becomes a list [dial, sheet]; `test:feedback-law`, `test:failure-reasons`, `test:popup-fit`, `test:stacking`; `qa:live` §[F] and `live-place-bet.mjs`, `live-rg-break.mjs` rewritten dual-mode (read rollout from `/api/health`) | CLAUDE.md "Betting flow invariant", "UX commitments", "Conviction dial" (at the flip); RULES §2.1/§2.3; manifest R2 |
 | Deposit | `wallet/deposit/page.tsx` journey mode, `/wallet/deposit/card` (classic moved), `/waiting`, `actions.ts`, `provider-radio-grid.tsx` (+rows/noDefault), `phone-normalize.ts`, `wallet-service.ts` (status core, ceilings), `payments.ts` card `order_id` | `test:deposit-gate`, `test:msisdn-prefill` (extended), `test:payments`, `e2e:money`, `test:kyc-at-withdrawal`, `test:gold-is-money`; new `test:deposit-return`, `test:deposit-status-read`, `test:deposit-ceiling` | MONEY-GATE §3.2; audit M9 (journey only) |
-| Email code | `email-verification.ts`, `store.ts`/`prisma-dal.ts` Otp, `erasure.ts:443`, `email.ts` template, `profile/actions.ts` | new `test:email-code` + red; `test:dal-parity`; `test:privacy-notice` | DATA-RETENTION |
+| Email code (⛔ superseded 2026-10-07: not built) | `email-verification.ts`, `store.ts`/`prisma-dal.ts` Otp, `erasure.ts:443`, `email.ts` template, `profile/actions.ts` | new `test:email-code` + red; `test:dal-parity`; `test:privacy-notice` | DATA-RETENTION |
 | How to Play | new `how-to-play-sheet.tsx`, `primer-keys.ts`; `first-visit-primer.tsx` + `how-it-works.tsx` shelved intact; slogan on ~12 surfaces (auth rail, root metadata, manifest, OG routes, `reports/brand.ts`, legal subtitle, `public/og/*.png`) | `test:popup-fit`, `test:stacking`, `test:marketing-optout`, `test:hero-copy` §5 moved to new surfaces | MOBILE-VISUAL U16 (D4 bullet only) and U18 (primer bullet only); LANDING-TEN §0 item 4 |
 | Short titles + competition | `schema.prisma` + hand-written additive migration, 5 create paths, audited admin edit, `ai-poll-generation.ts`, `market-sentinel.ts` agreement check, `chain-purge.ts`, `backup/core.ts`, `lib/localized.ts`, search fields | `test:dal-parity`, `test:migration-ownership`, `test:dead-schema`, `verify:backup-schema`, `test:chain-purge`, `test:ai-polls`, `test:sentinel-guards`, `test:trilingual`, new `test:short-title-fit` | DATA-RETENTION §7 |
 | Measures | `JourneyFunnelDay`, `/api/funnel`, `journey-funnel.ts` (Prisma + memory twins), `retention.ts` prune, `insights.ts` | new `test:journey-funnel`; `test:funnel-share` (no ratio > 100%); `test:insights` | Privacy §2/§7; E-103 amended |
@@ -3363,7 +3437,8 @@ retention/backup/DAL and the privacy lines.
 - The journey's own unread count (`useUnreadCount`, `src/lib/journey/use-unread-count.ts`; S6-PLAN A1) feeding the tab badge and the hub row. The classic bell keeps its own poll; a store shared with it waits for S15.
 - The Akaunti hub (SJ-17).
 - Tiketi zangu: rename, content, and a Maswali | Juu/Chini switch to `/updown/history`.
-- The `surfaces.ts` list; the EmailVerifyBanner rule; overlay stand-downs; the header-fit re-proof.
+- The `surfaces.ts` list; the EmailVerifyBanner rule (the bar deleted for every viewer since 2026-10-07); overlay stand-downs;
+  the header-fit re-proof.
 - **Done when:** every route keeps an entrance (census) and the header fits in all cells.
 
 **S7 — Home and cards (flagged):** §3.2 in full, plus the How-to card wired to a **static** How-to sheet.
@@ -3378,8 +3453,8 @@ retention/backup/DAL and the privacy lines.
 
 **S9 — Deposit, waiting and return (flagged):** the card `order_id` fix first, then §3.5. (§3.6, the email code, is
 superseded by the owner's ruling of 2026-10-07 and is not built.)
-- **Done when:** `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and
-  `test:email-code` pass.
+- **Done when:** `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) pass
+  (`test:email-code` went with §3.6, superseded).
 
 **S10 — Visitor path:** §3.7, plus `test:post-register-landing` in both flag states, plus `ref` carried through.
 
@@ -3464,7 +3539,7 @@ Design **is** needed for:
   - `Input` grouped + attention states;
   - focused deposit chrome;
   - pending-bet strip;
-  - email-code step;
+  - email-code step (⛔ superseded 2026-10-07: not built);
   - waiting states;
   - Akaunti hub;
   - guest Tiketi sheet;
