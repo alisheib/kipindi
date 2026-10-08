@@ -173,6 +173,8 @@ for (const fx of FX) {
 type Sources = {
   page: string; rail: string; railModel: string; loader: string; copy: string; layout: string; loading: string;
   shell: string; seed: string; gate: string;
+  /** U47b-2 · the live page, for the draft's redirect (5k). */
+  detail: string;
 };
 const REAL_SOURCES: Sources = {
   page: read("src/app/admin/campaigns/page.tsx"),
@@ -185,6 +187,7 @@ const REAL_SOURCES: Sources = {
   shell: read("src/components/admin/admin-shell.tsx"),
   seed: read("src/app/api/dev-test/marketing-campaigns-seed/route.ts"),
   gate: rawRead("scripts/filter-language.test.mts"),
+  detail: read("src/app/admin/campaigns/[id]/page.tsx"),
 };
 
 type Impl = {
@@ -272,7 +275,7 @@ const L = {
   s5d: "5d · ⛔ no pulse and no animate-pulse in any file of the campaigns section (OD38)",
   s5e: "5e · a failed read renders AdminLoadError for the SMS campaigns with the rail still drawn — gated on the WHOLE table, never the page's rows — and a rail built without counts carries none",
   s5f: "5f · ⛔ LINKS ONLY TO PAGES THAT EXIST (432(h)): CAMPAIGN_SCREENS.compose and .detail are true exactly when their page files exist, the page renders each link only behind its flag, and its ghost reserves the head's action behind the same flag",
-  s5k: "5k · ⭐ A SAVED DRAFT REOPENS FROM THE LIST: a DRAFT row's name links to the composer at its own address for this viewer (draftAddressFor — the canonical address, else the ?draft= one campaignDraftHref builds from the ONE route table), behind the compose flag — every other row stays plain while detail is false",
+  s5k: "5k · ⭐ A SAVED DRAFT REOPENS FROM THE LIST: a DRAFT row's name links to the composer at its own address for this viewer (draftAddressFor — the canonical address, else the ?draft= one campaignDraftHref builds from the ONE route table), behind the compose flag — every other row's name links to its live page (campaignDetailHref, behind the detail flag, U47b-2), and a DRAFT id opened at that page goes to the composer (campaignDraftHref, outside the read's try)",
   s5g: "5g · the empty and no-match states read the copy module — no-match offers Show all, the rail stands outside the rows — the pager is AdminPagination, and a row in flight says when it was read beside a Refresh",
   s5h: "5h · ⛔ the dev seed refuses production FIRST (404 before any await) and touches no SMS path — no sendBatch, no SmsMessage, no SMS module",
   s5i: "5i · the rail file is a dumb server renderer — ONE data-filter-rail campaign-status, ONE FilterPill at the dense rank (tab semantics, replace, no scroll), a FilterGroupKey, no client directive, no route or label typed — and filter-language declares it in ADMIN_SURFACES",
@@ -620,7 +623,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const composeExists = exists(CS.CAMPAIGN_SCREEN_ROUTES.compose);
     const detailExists = exists(CS.CAMPAIGN_SCREEN_ROUTES.detail);
     const page = S.page;
-    const gated = page.includes("{CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route}")
+    const gated = page.includes(": CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route}")
       && page.includes("actions={CAMPAIGN_SCREENS.compose ? <Link href={CAMPAIGN_SCREEN_ROUTES.compose as Route}")
       && !page.includes('"/admin/campaigns/new"') && !page.includes("`/admin/campaigns/")
       // U37b · and the ghost reserves the head's action behind the SAME flag, so the card's top edge holds at 360 too.
@@ -633,10 +636,22 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     // U38b · STD-1 · the link is the draft's own address for this viewer (`draftAddressFor` — the composer's canonical
     // address, else the bare ?draft= one from the ONE route table), so opening a draft from the list never meets the page's
     // redirect.
-    const linked = page.includes(': c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route}')
+    const linked = page.includes('{c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route}')
       && page.includes("draftHref={draftAddressFor(c, reads)}");
+    // U47b-2 · every other row's name is the live page's link (one rule: a draft is written in the composer, the rest are run
+    // on their own page), and a draft's id opened at that page redirects to the composer — OUTSIDE the try, so a redirect is
+    // never swallowed as a failed read.
+    const detail = S.detail;
+    const tryAt = detail.indexOf("try {");
+    const catchAt = detail.indexOf("} catch (err) {");
+    const redirectAt = detail.indexOf("redirect(campaignDraftHref(id) as never)");
+    const toDetail = page.includes(": CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route}")
+      && redirectAt > catchAt && catchAt > tryAt && tryAt > 0 && detail.includes('load.kind === "draft"');
     const href = CS.campaignDraftHref("cmp x");
-    return [linked && href === `${CS.CAMPAIGN_SCREEN_ROUTES.compose}?draft=cmp%20x` && href.startsWith("/admin/campaigns/new?draft="), `linked ${linked} · ${href}`];
+    const detailHref = CS.campaignDetailHref("cmp x");
+    return [linked && toDetail && href === `${CS.CAMPAIGN_SCREEN_ROUTES.compose}?draft=cmp%20x` && href.startsWith("/admin/campaigns/new?draft=")
+      && detailHref === "/admin/campaigns/cmp%20x",
+      `linked ${linked} · detail link ${toDetail} · ${href} · ${detailHref}`];
   });
   await check(p(L.s5g), () => {
     const page = S.page;
@@ -789,7 +804,10 @@ if (!PROVE_RED) {
     'getSidebarBadges(isOwner || viewDomains.includes("accounting"), false)',
   );
   const railOnRows = REAL_SOURCES.page.replace("{!emptyTable && <CampaignStatusRail rail={rail} />}", "{rows.length > 0 && !emptyTable && <CampaignStatusRail rail={rail} />}");
-  const draftUnflagged = REAL_SOURCES.page.replace(' : c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? ', ' : c.status === "DRAFT" ? ');
+  const draftUnflagged = REAL_SOURCES.page.replace('{c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? ', '{c.status === "DRAFT" ? (true ? ');
+  // U47b-2 · a draft's name sent to the live page (which would redirect it back), and a draft id left on the live page.
+  const draftToDetail = REAL_SOURCES.page.replace('{c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? ', '{false ? (CAMPAIGN_SCREENS.compose ? ');
+  const draftStays = REAL_SOURCES.detail.replace("redirect(campaignDraftHref(id) as never)", "void id");
   // ⛔ A source plant that found nothing to replace proves nothing — each must differ from the shipped text.
   const sourcePlants: Array<[string, string, string]> = [
     ["a timer-driven bar", timerPage, REAL_SOURCES.page],
@@ -797,6 +815,8 @@ if (!PROVE_RED) {
     ["one shell caller drops the growth answer", oneArgShell, REAL_SOURCES.shell],
     ["the rail gated on the page's rows", railOnRows, REAL_SOURCES.page],
     ["a draft link drawn without the compose flag", draftUnflagged, REAL_SOURCES.page],
+    ["a draft's name linked to the live page", draftToDetail, REAL_SOURCES.page],
+    ["a draft id left on the live page", draftStays, REAL_SOURCES.detail],
   ];
   for (const [name, planted, shipped] of sourcePlants) if (planted === shipped) problems.push(`PLANT "${name}" did not apply — its anchor is gone`);
 
@@ -808,7 +828,8 @@ if (!PROVE_RED) {
     { name: "the rail counted from the filtered page", expect: L.s2d, impl: { ...REAL, load: countsFromPage } },
     { name: "a timer-driven bar", expect: L.s5c, impl: { ...REAL, sources: { ...REAL_SOURCES, page: timerPage } } },
     { name: "formatTzs on the list", expect: L.s5a, impl: { ...REAL, sources: { ...REAL_SOURCES, page: moneyPage } } },
-    { name: "the detail flag on with no page", expect: L.s5f, impl: { ...REAL, screens: { compose: false, detail: true } } },
+    { name: "the detail flag off while its page is on disk — the list hides the link to a page that is there", expect: L.s5f, impl: { ...REAL, screens: { compose: true, detail: false } } },
+    { name: "the compose flag off while its page is on disk", expect: L.s5f, impl: { ...REAL, screens: { compose: false, detail: true } } },
     /* ── and the rest of the spec's plants ── */
     { name: "the crumb title-cased from the segment (no CRUMB_LABELS row)", expect: L.s1e, impl: { ...REAL, crumbs: titleCased } },
     { name: "the requested page used as asked — page 9 of ten rows says 'no matches'", expect: L.s2c, impl: { ...REAL, load: noClamp } },
@@ -820,6 +841,8 @@ if (!PROVE_RED) {
     { name: "one shell caller drops the growth answer", expect: L.s4e, impl: { ...REAL, sources: { ...REAL_SOURCES, shell: oneArgShell } } },
     { name: "the rail gated on the page's rows — a filter that matches nothing takes its own undo with it", expect: L.s5e, impl: { ...REAL, sources: { ...REAL_SOURCES, page: railOnRows } } },
     { name: "a draft link drawn without the compose flag", expect: L.s5k, impl: { ...REAL, sources: { ...REAL_SOURCES, page: draftUnflagged } } },
+    { name: "a draft's name linked to the live page — it opens a page that sends it back", expect: L.s5k, impl: { ...REAL, sources: { ...REAL_SOURCES, page: draftToDetail } } },
+    { name: "a draft id left on the live page — the officer meets a page with no campaign to run", expect: L.s5k, impl: { ...REAL, sources: { ...REAL_SOURCES, detail: draftStays } } },
     /* ── U43-0 · UNCONFIRMED is settled (E4), and an unknown status still refuses (P8) ── */
     { name: "UNCONFIRMED counted outstanding in the bar — 'a campaign with an unanswered message never finishes'", expect: L.s3f, impl: { ...REAL, progress: unconfirmedOutstanding } },
     { name: "UNCONFIRMED counted outstanding by the badge — a paused campaign with an unanswered message wants an officer for ever", expect: L.s3f, impl: { ...REAL, attention: unconfirmedOwed } },

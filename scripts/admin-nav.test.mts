@@ -84,7 +84,7 @@ const ok = (label: string, cond: boolean, extra = "") => {
     // that fails to highlight looks like a design choice, and on an Owner-only section it would look like a refusal.
     ["/admin/desk", "desk"],
     // U36 · the SMS campaign list, and the two sub-routes its later units add (U37's /new, U47's /[id]) — one item. U37b's
-    // /new has its REACHED_WITHOUT_NAV row in §7, landed WITH its page; U47 adds /[id]'s with its own (§7's staleness half
+    // /new and U47b-2's /[id] each have their REACHED_WITHOUT_NAV row in §7, landed WITH their page (§7's staleness half
     // refuses a row for a page that does not exist).
     ["/admin/campaigns", "campaigns"],
     ["/admin/campaigns/new", "campaigns"],
@@ -157,6 +157,8 @@ const ok = (label: string, cond: boolean, extra = "") => {
     "/admin/markets/new": "the 'New market' button on /admin/markets",
     // U37b (decision M8) · landed in the change that adds the page and flips CAMPAIGN_SCREENS.compose — never before it.
     "/admin/campaigns/new": "the SMS campaign composer — the 'New campaign' action in the head of /admin/campaigns, a real link exactly when this page exists (CAMPAIGN_SCREENS.compose, ruling 432(h))",
+    // U47b-2 (§4.15 decision 5) · landed in the change that adds the page and flips CAMPAIGN_SCREENS.detail — never before it.
+    "/admin/campaigns/[id]": "the SMS campaign's live page — the name on every row of /admin/campaigns that is not a draft, a real link exactly when this page exists (CAMPAIGN_SCREENS.detail, ruling 432(h)); a draft's id opened here goes to the composer",
     /* ⭐ C7-SPEC ruling 326's TWO rows, each landing in the commit that adds its own page — the account page at C7
      * step 4, the designation wizard at C7 step 6. Neither could land earlier: §7's staleness half is
      * `Object.keys(REACHED_WITHOUT_NAV).filter((p) => !pages.includes(p))`, so a row for a page the crawler cannot

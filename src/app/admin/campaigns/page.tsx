@@ -3,9 +3,11 @@
  * "SMS campaigns" nav badge in admin-shell.tsx).
  *
  * WHAT THIS PAGE IS TODAY, so nobody reads more into it: a list of the campaigns in the table, server-paged, sortable
- * by name, creation and last activity, filterable by status from one rail. Nothing can be written, started, paused or
- * opened from here yet — writing a campaign is U37 and a campaign's own page is U47 — and the page links to neither
- * until it exists (`CAMPAIGN_SCREENS`, ruling 432(h)).
+ * by name, creation and last activity, filterable by status from one rail. Nothing is written, started, paused or stopped
+ * from here — a campaign is written in the composer (U37) and run on its own page (U47b-2) — and the page links to each
+ * only because it exists (`CAMPAIGN_SCREENS`, ruling 432(h)).
+ * ⭐ U47b-2 · ONE LINK RULE: a DRAFT row's name opens the composer at the draft's own address (it is written there); every
+ * other row's name opens the campaign's live page. A draft's id opened at the live page's address goes to the composer.
  *
  * ⭐ THE SIX DOORS (U17 measured six, not five): the Growth nav item "SMS campaigns", its ROUTE_KEYS row, the
  * ROUTE_DOMAINS row (THE section's visibility — `test:rbac` §7b holds it equal to the nav item's domain), the section
@@ -88,11 +90,11 @@ function CampaignRow({ c, counts, audience, draftHref }: { c: StoredSmsCampaign;
     : <span className="text-text">{c.name}</span>;
   return (
     <tr data-campaign-row data-campaign-id={c.id}>
-      {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): plain text until U47 lands /admin/campaigns/[id] and flips the flag. */}
+      {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): each is drawn behind the flag of the page it opens. */}
       {/* ⭐ A SAVED DRAFT REOPENS FROM HERE: a DRAFT row links to the composer at its own ?draft= address (behind the
-          compose flag); every other row stays plain text until U47 lands its page and flips `detail`. */}
+          compose flag); every other row links to the campaign's live page (behind `detail`, U47b-2). */}
       <td>
-        {CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route} className="hover:underline">{name}</Link> : name}
+        {c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route} className="hover:underline">{name}</Link> : name) : CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : name}
         {/* ⭐ U38b · M8 · the audience in words, role-shaped. A zero width with a full minimum: it wraps inside the column
             the name sets and never widens it. */}
         <span className="mt-0.5 block w-0 min-w-full break-words text-body-sm text-text-tertiary" data-campaign-audience={audience.kind}>
