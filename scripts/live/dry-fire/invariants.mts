@@ -417,7 +417,7 @@ async function inv5(h: Harness, data: Data[]): Promise<Inv> {
   const rgSkips = data.reduce((n, d) => n + d.rows.filter((r) => r.status === "SKIPPED" && (r.skipReason ?? "").startsWith("rg_")).length, 0);
   const rgRows = entries.filter((e) => e.action === "marketing.suppressed.rg");
   rgLines = rgRows.length;
-  if (rgRows.length !== rgSkips) failures.push(`${rgSkips} RG refusal(s) acted on, ${rgRows.length} RG audit line(s)`);
+  if (rgRows.length !== rgSkips + h.rgRegated) failures.push(`${rgSkips} RG refusal(s) settled${h.rgRegated > 0 ? ` (+${h.rgRegated} acted on twice after a crash)` : ""}, ${rgRows.length} RG audit line(s)`);
   if (rgRows.some((e) => e.category !== "COMPLIANCE" || e.actorId !== null || e.targetType !== "User")) failures.push("an RG audit line is not a COMPLIANCE row against an account with no actor");
   // ⛔ no phone number in any audit row, and none in any line the server printed
   const nines = new Set([...h.numbers].map((k) => k.slice(3)));

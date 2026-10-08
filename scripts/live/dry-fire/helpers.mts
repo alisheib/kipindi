@@ -86,3 +86,44 @@ export function sliceFigures(h: Harness, campaignId: string, from = 0): SliceFig
 }
 
 export const sum = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0);
+
+/* ══ LAUNCHING A CAMPAIGN ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
+import { enqueueAll, start } from "./core.mts";
+import type { Process } from "./core.mts";
+import { buildWorld, confirmedCampaign } from "./world.mts";
+import type { WorldSpec } from "./world.mts";
+import type { StoredSmsCampaign } from "../../../src/lib/server/store.ts";
+
+export type Launch = {
+  key: string;
+  scn: number;
+  label: string;
+  /** Number block of the world (default: the next one). */
+  block?: number;
+  n: number;
+  mix?: WorldSpec["mix"];
+  duplicates?: number;
+  oldTokens?: number;
+  budgetTzs?: number;
+  priceTzs?: number;
+  bilingual?: boolean;
+  /** Stop after Start (leave the campaign PREPARING) instead of writing the list. */
+  noEnqueue?: boolean;
+  /** Do not press Start: leave the campaign CONFIRMED. */
+  noStart?: boolean;
+};
+
+/**
+ * ⭐ A world, its confirmed campaign, Start (the real check) and the whole enqueue — the campaign is RUNNING when this returns
+ * (or PREPARING with `noEnqueue`). Registered with the harness so the invariants read it.
+ */
+export async function launch(h: Harness, proc: Process, o: Launch): Promise<{ world: World; campaign: StoredSmsCampaign; started: { ok: boolean; reason?: string; message: string } }> {
+  const world = await buildWorld(h, { id: o.key, block: o.block, n: o.n, population: "book", mix: o.mix, duplicates: o.duplicates, oldTokens: o.oldTokens });
+  const campaign = await confirmedCampaign(h, { key: o.key, filter: world.filter, budgetTzs: o.budgetTzs, priceTzs: o.priceTzs, bilingual: o.bilingual, name: `Dry-fire ${o.label}` });
+  h.campaigns.push({ id: campaign.id, scn: o.scn, label: o.label, world });
+  if (o.noStart === true) return { world, campaign, started: { ok: true, message: "not started" } };
+  const started = await start(h, proc, campaign.id);
+  if (started.ok && o.noEnqueue !== true) await enqueueAll(h, proc, campaign.id);
+  return { world, campaign, started };
+}

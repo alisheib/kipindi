@@ -156,8 +156,8 @@ export function attestationWording(h: Harness): string {
 export type WorldSpec = {
   /** "s1", "s2a" … — in every id and number block. */
   id: string;
-  /** Number block, 1–9: the leading digit of the seven made-up digits, so two worlds never share a number. */
-  block: number;
+  /** Number block (1–99, from `h.nextBlock()` when absent): the leading digits of the seven made-up digits, so two worlds never share a number. */
+  block?: number;
   /** The walk's size in rows (people + duplicates). */
   n: number;
   population: "book" | "both";
@@ -197,6 +197,7 @@ export async function buildWorld(h: Harness, spec: WorldSpec): Promise<World> {
   const db = S.db;
   const rng = h.rng.fork(`world/${spec.id}`);
   const tag = `dryfire-r${h.runId}-${spec.id}`;
+  const block = spec.block ?? h.nextBlock();
   const mix: Partial<Record<Cls, number>> = { ...(spec.mix ?? MIX) };
   if (spec.population === "book") delete mix.player_only;
   const dups = spec.duplicates ?? Math.round(spec.n * DUP_FRACTION);
@@ -267,7 +268,7 @@ export async function buildWorld(h: Harness, spec: WorldSpec): Promise<World> {
   for (let i = 0; i < classes.length; i++) {
     const cls = classes[i];
     const ndc = cls === "unusable" ? DEAD_NDC : NDCS[hash32(`${h.seed}|${spec.id}|ndc|${i}`) % NDCS.length];
-    const key = `255${ndc}${pad(spec.block * 1_000_000 + i, 7)}`;
+    const key = `255${ndc}${pad(block * 100_000 + i, 7)}`;
     h.numbers.add(key);
     const named = rng.chance(0.78);
     const p: Person = {

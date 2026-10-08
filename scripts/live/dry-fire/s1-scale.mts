@@ -22,7 +22,7 @@ export async function scale(h: Harness, n: number): Promise<Record<string, unkno
   h.sw.openFor(6 * 3_600_000);
 
   const tBuild = h.clock.real();
-  const world = await buildWorld(h, { id: "s1", block: 1, n, population: "both" });
+  const world = await buildWorld(h, { id: "s1", n, population: "both" });
   const buildMs = h.clock.real() - tBuild;
   const camp = await confirmedCampaign(h, { key: "s1", filter: world.filter, name: "Dry-fire SCALE" });
   h.campaigns.push({ id: camp.id, scn: 1, label: "scale", world });
@@ -91,12 +91,12 @@ export async function scale(h: Harness, n: number): Promise<Record<string, unkno
   claimNow(h, "S1.outcomes", "every person ends as the gate owes: the sendable SENT, every other kind SKIPPED with its own reason, the unusable never a row", wrong.length === 0, wrong.length === 0 ? `${num(sentRight)} SENT, ${num(counts.SKIPPED)} SKIPPED, ${statusLine(counts)}` : wrong.slice(0, 4).join("; "));
 
   // ── the wire ──
-  const mine = h.carrier.requests.filter((r) => r.messages.some((m) => m.campaignId === camp.id));
+  const mine = h.carrier.requestsOf(camp.id);
   const wireMessages = sum(mine.map((r) => r.messages.length));
   const oversize = mine.filter((r) => r.messages.length > bounds.max);
   claimNow(h, "S1.wire", "the carrier saw exactly the sendable, each once, in requests of at most 50, all accepted, billed at 1 segment each", wireMessages === sendable.length - stopsApplied && oversize.length === 0
-    && mine.every((r) => r.answered === "accepted") && h.carrier.handedBy(camp.id).size === wireMessages && h.carrier.billed() === wireMessages * h.carrier.pricePerSegment,
-  `${num(wireMessages)} messages in ${mine.length} requests (largest ${Math.max(0, ...mine.map((r) => r.messages.length))}); sendable ${num(sendable.length)} − ${stopsApplied} who stopped; billed TZS ${num(h.carrier.billed())}`);
+    && mine.every((r) => r.answered === "accepted") && h.carrier.handedBy(camp.id).size === wireMessages && h.carrier.billedFor(camp.id) === wireMessages * h.carrier.pricePerSegment,
+  `${num(wireMessages)} messages in ${mine.length} requests (largest ${Math.max(0, ...mine.map((r) => r.messages.length))}); sendable ${num(sendable.length)} − ${stopsApplied} who stopped; billed TZS ${num(h.carrier.billedFor(camp.id))}`);
 
   // ── what each message said (E17: the origin is who holds the number now) ──
   const texts = h.carrier.texts;
@@ -149,7 +149,7 @@ export async function scale(h: Harness, n: number): Promise<Record<string, unkno
     buildMs: Math.round(buildMs), enqueueMs: Math.round(enqueueMs), enqueueSteps: enqObs.length, driveMs: Math.round(driveMs),
     totalMs: Math.round(buildMs + enqueueMs + driveMs), steps: run.steps,
     slices: figs.slices, sizes: figs.sizes, firstSizes: figs.firstSizes, gateMs: figs.gateMs, sendMs: figs.sendMs, waits: figs.waits,
-    carrierRequests: mine.length, carrierMessages: wireMessages, billedTzs: h.carrier.billed(),
+    carrierRequests: mine.length, carrierMessages: wireMessages, billedTzs: h.carrier.billedFor(camp.id),
     recipientsPerSecond: driveMs > 0 ? Math.round((rows.length / driveMs) * 1000) : null,
     sendableStopped: stoppedPeople.length,
   };

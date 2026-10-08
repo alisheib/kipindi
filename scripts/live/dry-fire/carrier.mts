@@ -98,6 +98,8 @@ export type Carrier = {
   pricePerSegment: number;
   setPlan(plan: Plan | null): void;
   setBalancePlan(plan: BalancePlan | (() => BalancePlan)): void;
+  /** Yield the event loop inside every send request, so concurrent drivers interleave. */
+  setYield(on: boolean): void;
   /** Run inside every send request, after it is on record and before it is answered — an officer's Stop pressed while a group is
    *  in flight is pressed here. */
   onRequest: ((rec: RequestRecord) => Promise<void> | void) | null;
@@ -107,6 +109,10 @@ export type Carrier = {
   handedBy(campaignId: string): Map<string, number>;
   /** Every request that carried the number for the campaign. */
   requestsFor(campaignId: string, msisdn: string): RequestRecord[];
+  /** Every request that carried at least one message of the campaign, in order. */
+  requestsOf(campaignId: string): RequestRecord[];
+  /** What the carrier billed for the campaign's messages (TZS): the batches it queued, a segment at a time. */
+  billedFor(campaignId: string): number;
   /** The delivery-receipt lines the real gateway would post for what it queued. */
   receiptLine(msisdn: string, reference: string, status: string, description: string | null): Record<string, string>;
   reset(): void;
@@ -125,6 +131,7 @@ export function makeCarrier(o: {
   yieldOnRequest?: boolean;
 }): Carrier {
   const clock = clockOf();
+  let yieldOnRequest = o.yieldOnRequest === true;
   let balance = o.balance ?? 1_000_000;
   let billed = 0;
   let plan: Plan | null = null;
@@ -142,6 +149,7 @@ export function makeCarrier(o: {
     pricePerSegment: o.price ?? 6,
     setPlan: (p) => { plan = p; },
     setBalancePlan: (p) => { balancePlan = p; },
+    setYield: (on) => { yieldOnRequest = on; },
     onRequest: null,
     texts: new Map(),
     handedBy: (campaignId) => {
@@ -153,6 +161,8 @@ export function makeCarrier(o: {
       return m;
     },
     requestsFor: (campaignId, msisdn) => carrier.requests.filter((r) => r.messages.some((w) => w.campaignId === campaignId && w.msisdn === msisdn)),
+    requestsOf: (campaignId) => carrier.requests.filter((r) => r.messages.some((w) => w.campaignId === campaignId)),
+    billedFor: (campaignId) => carrier.requests.filter((r) => r.carrierHasIt).reduce((n, r) => n + r.messages.filter((w) => w.campaignId === campaignId).reduce((a, w) => a + w.segments, 0), 0) * carrier.pricePerSegment,
     receiptLine: (msisdn, reference, status, description) => ({ status, reference, description: description ?? "", msisdn }),
     reset: () => {
       carrier.requests.length = 0;
@@ -201,7 +211,7 @@ export function makeCarrier(o: {
     const planned: Planned = plan?.({ seq, count: wire.length, messages: wire, campaignIds, nth: (c) => perCampaign.get(c) ?? 0 }) ?? { kind: "accept" };
     rec.behavior = planned.kind;
     if (planned.delayMs !== undefined) clock.advance(planned.delayMs);
-    if (o.yieldOnRequest) await yieldTurn();
+    if (yieldOnRequest) await yieldTurn();
     const queue = (): void => {
       const cost = wire.reduce((n, w) => n + w.segments, 0) * carrier.pricePerSegment;
       rec.carrierHasIt = true;

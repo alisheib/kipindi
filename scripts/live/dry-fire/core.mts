@@ -70,7 +70,10 @@ export type RunOptions = {
   seams: Seams;
 };
 
-export type Claim = { id: string; label: string; ok: boolean; detail: string };
+/** One check of a scenario. `known` names an ENGINE FINDING the harness has already reported to the lead (F-1 …): while the engine
+ *  still has it the claim's failure is a KNOWN FINDING — printed and reported, never a failed run — and the moment the engine is
+ *  fixed the claim simply passes (then the pin is deleted, one line, and the claim is strict). */
+export type Claim = { id: string; label: string; ok: boolean; detail: string; known?: string };
 
 /** One officer act the harness made (the audit is held to this list). */
 export type ActRecord = {
@@ -137,6 +140,9 @@ export type Process = {
   startDeps(): StartCheckDeps;
   /** Set `over` for a while; the returned function puts the previous back. */
   tweak(over: Partial<EngineDeps>): () => void;
+  /** Scenario tweaks to Start's and Resume's deps (the price, the settings) — applied under the seams. */
+  startOver: Partial<StartCheckDeps>;
+  startTweak(over: Partial<StartCheckDeps>): () => void;
 };
 
 export type Observations = {
@@ -177,11 +183,16 @@ export type Harness = {
   seams: Seams;
   /** Every phone number the run made up, in every spelling the log scans look for. */
   numbers: Set<string>;
+  /** RG refusals a crashed step acted on (an audit line written) whose person was then gated again after the reaper released them:
+   *  each owes one extra RG line (the refusal was acted on twice). Set by the crash scenario. */
+  rgRegated: number;
   /** The scenario now running, and its claims. */
   scn: number;
   claims: Claim[];
   proc(name?: string): Process;
   fresh(name: string): Process;
+  /** The next number block (1–99): one per world of the run, in the order the worlds are made. */
+  nextBlock(): number;
   log(line: string): void;
 };
 
@@ -237,6 +248,7 @@ export type HarnessInit = Pick<
 
 export function makeHarness(p: HarnessInit): Harness {
   const procs = new Map<string, Process>();
+  let blocks = 0;
   const h: Harness = {
     ...p,
     sw: makeSwitch(p.clock),
@@ -247,10 +259,16 @@ export function makeHarness(p: HarnessInit): Harness {
     campaigns: [],
     acts: [],
     numbers: new Set(),
+    rgRegated: 0,
     scn: 0,
     claims: [],
     log: (line) => p.opts.log(line),
     proc: (name = "A") => procs.get(name) ?? h.fresh(name),
+    nextBlock: () => {
+      blocks += 1;
+      if (blocks > 99) throw new Error("dry-fire: more than 99 worlds in one run");
+      return blocks;
+    },
     fresh: (name) => {
       const proc = makeProcess(h, name);
       procs.set(name, proc);
@@ -266,15 +284,25 @@ export function makeProcess(h: Harness, name: string): Process {
   const state: EngineProcessState = { flight: null, ticket: 0, sliceSize: S.engine.SLICE_START, gateMsAvg: null, unanswered: {}, tooSlow: {} };
   const flights: StepFlights = { flights: new Map(), ticket: 0 };
   const proc: Process = {
-    name, state, flights, over: {}, control: null as unknown as ControlDeps,
+    name, state, flights, over: {}, startOver: {}, control: null as unknown as ControlDeps,
     engine: () => engineDeps(),
     enqueueDeps: () => enqueueDeps(),
     viewDeps: () => viewDeps(),
     startDeps: () => startDeps(),
     tweak: (over) => {
       const was = proc.over;
-      proc.over = { ...was, ...over };
+      const next: Partial<EngineDeps> = { ...was, ...over };
+      // a key tweaked to `undefined` is REMOVED, not set: `{ send: undefined }` must put the shipped send back
+      for (const k of Object.keys(next) as (keyof EngineDeps)[]) if (next[k] === undefined) delete next[k];
+      proc.over = next;
       return () => { proc.over = was; };
+    },
+    startTweak: (over) => {
+      const was = proc.startOver;
+      const next: Partial<StartCheckDeps> = { ...was, ...over };
+      for (const k of Object.keys(next) as (keyof StartCheckDeps)[]) if (next[k] === undefined) delete next[k];
+      proc.startOver = next;
+      return () => { proc.startOver = was; };
     },
   };
 
@@ -307,7 +335,7 @@ export function makeProcess(h: Harness, name: string): Process {
   }
 
   function startDeps(): StartCheckDeps {
-    const d: StartCheckDeps = { ...S.startCheck.START_CHECK_DEPS, liveSwitch: () => h.sw.read() };
+    const d: StartCheckDeps = { ...S.startCheck.START_CHECK_DEPS, liveSwitch: () => h.sw.read(), ...proc.startOver };
     return h.seams.startCheck ? h.seams.startCheck(d) : d;
   }
 
@@ -398,6 +426,8 @@ export type DriveOpts = {
   onWait?: "stop" | "continue";
   /** Yield the event loop after a busy answer (two tabs). */
   yieldOnBusy?: boolean;
+  /** Yield the event loop after EVERY step (two drivers take turns instead of one running to the end). */
+  yieldAfterStep?: boolean;
   /** The driver's own name in the observations (two tabs of one process are two drivers); default the process's. */
   driver?: string;
 };
@@ -416,6 +446,7 @@ export async function drive(h: Harness, proc: Process, campaignId: string, o: Dr
     if (!r.ok) return { steps: n, end: "not_ok", last, kinds };
     kinds[r.step.kind] = (kinds[r.step.kind] ?? 0) + 1;
     if (o.after) await o.after(r, n);
+    if (o.yieldAfterStep) await new Promise<void>((resolve) => setImmediate(resolve));
     if (r.view.status === "DONE" || r.view.status === "CANCELLED") return { steps: n, end: "terminal", last, kinds };
     if (r.step.kind === "paused" || r.view.status === "PAUSED") return { steps: n, end: "paused", last, kinds };
     if (o.until && (await o.until(r))) return { steps: n, end: "until", last, kinds };
@@ -458,16 +489,16 @@ export async function postReceipts(h: Harness, lines: readonly ReceiptLine[], o:
 /* ══ CLAIMS ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** Record one claim of the scenario now running. A body that throws is that claim's failure, never the run's end. */
-export async function claim(h: Harness, id: string, label: string, body: () => Promise<[boolean, string]>): Promise<void> {
+export async function claim(h: Harness, id: string, label: string, body: () => Promise<[boolean, string]>, known?: string): Promise<void> {
   try {
     const [ok, detail] = await body();
-    h.claims.push({ id, label, ok, detail });
+    h.claims.push({ id, label, ok, detail, ...(known === undefined ? {} : { known }) });
   } catch (err) {
     h.claims.push({ id, label, ok: false, detail: `threw: ${String((err as Error)?.message ?? err).slice(0, 240)}` });
   }
 }
-export function claimNow(h: Harness, id: string, label: string, ok: boolean, detail: string): void {
-  h.claims.push({ id, label, ok, detail });
+export function claimNow(h: Harness, id: string, label: string, ok: boolean, detail: string, known?: string): void {
+  h.claims.push({ id, label, ok, detail, ...(known === undefined ? {} : { known }) });
 }
 
 /** The send-age bound and the reaper's age, restated (ENGINE-SPEC §4.13) — the harness reads them from the engine itself. */

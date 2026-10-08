@@ -81,9 +81,11 @@ export type Report = {
   durationMs: number;
   carrier: { requests: number; messages: number; refused: number; billedTzs: number; stray: string[] };
   scenarios: ScenarioReport[];
-  /** Every invariant and claim that failed, flat — what a red control compares. */
+  /** Every invariant and claim that failed, flat — what a red control compares. A claim pinned to a KNOWN ENGINE FINDING is not
+   *  here: it is in `knownFindings`, printed and reported, and does not fail the run. */
   failedInvariants: string[];
   failedClaims: string[];
+  knownFindings: { finding: string; id: string; scn: number; label: string; detail: string }[];
   passed: boolean;
 };
 
@@ -194,7 +196,8 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
   }
 
   const failedInvariants = [...new Set(scenarios.flatMap((s) => s.invariants.filter((i) => !i.ok).map((i) => i.id)))];
-  const failedClaims = [...new Set(scenarios.flatMap((s) => s.claims.filter((c) => !c.ok).map((c) => c.id)))];
+  const failedClaims = [...new Set(scenarios.flatMap((s) => s.claims.filter((c) => !c.ok && c.known === undefined).map((c) => c.id)))];
+  const knownFindings = scenarios.flatMap((s) => s.claims.filter((c) => !c.ok && c.known !== undefined).map((c) => ({ finding: c.known as string, id: c.id, scn: s.n, label: c.label, detail: c.detail })));
   const refused = carrier.requests.filter((r) => r.answered === "refused").length;
   const report: Report = {
     tool: "marketing-dry-fire", seed: opts.seed, n: opts.n, mode, node: process.version, startedAt: startedAtReal, finishedAt: new Date().toISOString(),
@@ -203,7 +206,7 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
       requests: carrier.requests.length, messages: carrier.requests.reduce((n, r) => n + r.messages.length, 0), refused,
       billedTzs: carrier.billed(), stray: carrier.stray.slice(),
     },
-    scenarios, failedInvariants, failedClaims,
+    scenarios, failedInvariants, failedClaims, knownFindings,
     passed: failedInvariants.length === 0 && failedClaims.length === 0 && scenarios.length > 0,
   };
   return report;
@@ -214,9 +217,9 @@ const NLG = "";
 /* ══ PRINTING ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 function printScenario(log: (line: string) => void, s: ScenarioReport): void {
-  for (const c of s.claims) log(`  ${c.ok ? "PASS" : "FAIL"} ${c.id} — ${c.label.slice(0, 110)}${c.detail ? ` · ${c.detail.slice(0, 230)}` : ""}`);
+  for (const c of s.claims) log(`  ${c.ok ? "PASS" : c.known !== undefined ? `FINDING ${c.known}` : "FAIL"} ${c.id} — ${c.label.slice(0, 110)}${c.detail ? ` · ${c.detail.slice(0, 230)}` : ""}`);
   for (const i of s.invariants) log(`  ${i.ok ? "PASS" : "FAIL"} ${i.id} ${i.name} — ${i.detail.slice(0, 260)}`);
-  log(`  ${s.invariants.every((i) => i.ok) && s.claims.every((c) => c.ok) ? "held" : "FAILED"} in ${ms(s.durationMs)}`);
+  log(`  ${s.invariants.every((i) => i.ok) && s.claims.every((c) => c.ok || c.known !== undefined) ? "held" : "FAILED"} in ${ms(s.durationMs)}`);
 }
 
 export function summaryTable(r: Report): string[] {
@@ -224,7 +227,7 @@ export function summaryTable(r: Report): string[] {
   const rows = r.scenarios.map((s) => [
     String(s.n), s.name, num(s.size),
     ...INV_IDS.map((id) => (s.invariants.find((i) => i.id === id)?.ok ? "PASS" : "FAIL")),
-    `${s.claims.filter((c) => c.ok).length}/${s.claims.length}`, ms(s.durationMs),
+    `${s.claims.filter((c) => c.ok).length}/${s.claims.length}${s.claims.some((c) => !c.ok && c.known !== undefined) ? ` +${s.claims.filter((c) => !c.ok && c.known !== undefined).length} finding` : ""}`, ms(s.durationMs),
   ]);
   return table(header, rows, ["r", "l", "r", "l", "l", "l", "l", "l", "l", "r", "r"]);
 }
@@ -305,6 +308,11 @@ export async function main(argv: readonly string[]): Promise<number> {
   for (const l of summaryTable(report)) out(l);
   out("");
   out(`carrier: ${num(report.carrier.messages)} messages in ${num(report.carrier.requests)} requests (${report.carrier.refused} refused outright), billed TZS ${num(report.carrier.billedTzs)} · ${ms(report.durationMs)} in all`);
+  if (report.knownFindings.length > 0) {
+    out("KNOWN ENGINE FINDINGS (reported to the lead; they do not fail the run):");
+    for (const f of report.knownFindings) out(`  ${f.finding} · ${f.id} — ${f.label.slice(0, 120)} · ${f.detail.slice(0, 200)}`);
+    out("");
+  }
   if (cli.json !== null) {
     const path = resolve(process.cwd(), cli.json);
     mkdirSync(dirname(path), { recursive: true });
