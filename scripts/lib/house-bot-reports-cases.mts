@@ -923,9 +923,12 @@ if (STORE === "memory") {
      * the form's path it writes after the function). Re-derived from the tree, not the delta: the seven
      * `db.txn.create(` lines now read 1619, 2887, 3358, 3827, 3959, 4100 and 4693, each the same write as before, in the same
      * order — so the controls' `:2838`/`:1570` move to `:2887`/`:1619`.
+     * ⭐ AND +4 ON THE LAST ONE (2026-10-09, the visual pass's round 3, R3-C): the win notice in `settleMarket` stopped
+     * appending the position id to its words and carries it in its link, four lines above the emergency void — so its
+     * `db.txn.create(` reads 4697 (main's 4693, byte for byte the same write); the six before it do not move.
      */
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1619", "market-service.ts:2887", "market-service.ts:3358", "market-service.ts:3827", "market-service.ts:3959", "market-service.ts:4100", "market-service.ts:4693"]), j(marked));
+      j(marked) === j(["market-service.ts:1619", "market-service.ts:2887", "market-service.ts:3358", "market-service.ts:3827", "market-service.ts:3959", "market-service.ts:4100", "market-service.ts:4697"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -2039,7 +2042,11 @@ export const PLAYER_NOTIFIERS = [
  * before step 5's code. ⛔ A change here is a change to a player's notice: re-measure only with the change reviewed as one.
  */
 export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
-  notifyMarketCancelled: "0feaad927016a8180cb40edf492b2c5710567d8b9fb716a2e93e9212449e1392",
+  // ⭐ RE-MEASURED 2026-10-09 WITH ITS CHANGE REVIEWED AS ONE (the visual pass's round 3, R3-C; main's 0feaad92… by the same
+  // measure): an officer's reason that already ends in "." no longer gets a second one (`endClause`), the " · pos_…"
+  // suffix left the words for the link (`ticketHref`, the refunded ticket, falling back to /wallet). No house reader, no
+  // house word, the same three sentences otherwise — the four other notifiers' hashes are unchanged.
+  notifyMarketCancelled: "303f06a9fa810c98f8e5864a2977161c8b9f8097f93d77c7ba7e843d3e0539f9",
   notifyObjectionDecided: "72d9f9fe6b0a919bde881b47fc2f7863b54d55b1f9c38a2239fd23c2e219e6a2",
   notifyVerdictRecorded: "42c58491831e558eb3e63b2c2bb1a17ad7637cf41a0bcb1c9b342f28a1c0b222",
   marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
