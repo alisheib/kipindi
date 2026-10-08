@@ -104,12 +104,15 @@ const VIEWPORTS = [
 ];
 /** Unique per run: five digits, so a re-run on the same server meets no earlier officer and no earlier campaign. */
 const RUN = String(Date.now() % 100000).padStart(5, "0");
-/** A PARTIAL run, for a diagnosis: `LIVE_DRIVE_ONLY=stopWhilePausePending` (comma-separated stage names) runs only those stages
- *  of each width, after the same world, each under the letter the full run gives it. Its summary says PARTIAL, so it can never
- *  be read as the drive's pass. */
-const STAGE_LETTERS = { realRun: "a", stopMidRun: "b", moneyWait: "c", outOfDate: "d", watcherFollows: "e", pauseNotQueued: "f", stopWhilePausePending: "g", twoDrivers: "h", signedOutMidRun: "j", watcherBlip: "k" };
+/** A PARTIAL run, for a diagnosis: `LIVE_DRIVE_ONLY=stopWhilePausePending` (comma-separated stage names) runs only those stages,
+ *  `LIVE_DRIVE_WIDTHS=360x780` only those widths — after the same world and the same console-rail proof, each stage under the
+ *  letter the full run gives it (`doorOverHttp` on the first width only, as in a full run). Its summary says PARTIAL, so it can
+ *  never be read as the drive's pass. */
+const STAGE_LETTERS = { realRun: "a", stopMidRun: "b", moneyWait: "c", outOfDate: "d", watcherFollows: "e", pauseNotQueued: "f", stopWhilePausePending: "g", twoDrivers: "h", signedOutMidRun: "j", watcherBlip: "k", doorOverHttp: "-" };
 const ONLY = (process.env.LIVE_DRIVE_ONLY ?? "").split(",").map((k) => k.trim()).filter(Boolean);
 for (const k of ONLY) if (!(k in STAGE_LETTERS)) throw new Error(`LIVE_DRIVE_ONLY: no stage "${k}" (${Object.keys(STAGE_LETTERS).join(", ")})`);
+const WIDTHS = (process.env.LIVE_DRIVE_WIDTHS ?? "").split(",").map((k) => k.trim()).filter(Boolean);
+for (const w of WIDTHS) if (!VIEWPORTS.some((v) => v.name === w)) throw new Error(`LIVE_DRIVE_WIDTHS: no width "${w}" (${VIEWPORTS.map((v) => v.name).join(", ")})`);
 const phoneFor = (nn) => `+25570${RUN}${String(nn).padStart(2, "0")}`;
 const OFFICERS = {
   growth: { role: "GROWTH", phone: phoneFor(11), name: "Asha Mwita" },
@@ -530,20 +533,19 @@ async function main() {
   ok("the AUDITOR role is given Growth VIEW without ACT (U23's switch) — the watcher the page must serve", true);
 
   for (const [i, vp] of VIEWPORTS.entries()) {
+    if (WIDTHS.length > 0 && !WIDTHS.includes(vp.name)) continue;
     console.log(`${NL}[u47b2] ${vp.name}`);
     const viewport = { width: vp.width, height: vp.height };
     await drivePass(vp, viewport, i, stage);
   }
 }
 
+/** The console rail is proven on the FIRST pass that runs (in a full run, the first width; in a partial one, whichever runs). */
+let railChecked = false;
+
 async function drivePass(vp, viewport, i, stage) {
   const name = vp.name;
   const run = (k) => `${RUN}${k}${i}`;
-  if (ONLY.length > 0) {
-    const stages = { realRun, stopMidRun, moneyWait, outOfDate, watcherFollows, pauseNotQueued, stopWhilePausePending, twoDrivers, signedOutMidRun, watcherBlip };
-    for (const k of ONLY) await stages[k](vp, viewport, i, run(STAGE_LETTERS[k]));
-    return;
-  }
   // ⭐ U48a · the staged RUNNING campaign's recent hand-overs are "a moment ago" again (a drive of three widths outlasts 15 minutes)
   await seedLive(`restamp=${RUN}`);
   const g = await staffCtx("growth", viewport, vp.reduced);
@@ -552,13 +554,23 @@ async function drivePass(vp, viewport, i, stage) {
   // The mode the run names is the mode the browser is in (the reduced-motion capture is of a page that honours it).
   const reducedNow = await growth.evaluate(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   ok(`${name} · prefers-reduced-motion is ${vp.reduced === "reduce" ? "ON" : "off"} in this run`, reducedNow === (vp.reduced === "reduce"));
-  if (i === 0) {
+  if (!railChecked) {
+    railChecked = true;
     const wrong = await checkRail(growth);
     if (wrong !== null) {
       ok("PASS needs the CONSOLE boot — the sender line must be the stub's sentence (no SMS may leave)", false, `sender line "${wrong}"`);
       await g.ctx.close();
       throw new Error("not the console rail — nothing was run");
     }
+  }
+  if (ONLY.length > 0) {
+    await g.ctx.close();
+    const stages = { realRun, stopMidRun, moneyWait, outOfDate, watcherFollows, pauseNotQueued, stopWhilePausePending, twoDrivers, signedOutMidRun, watcherBlip };
+    for (const k of ONLY) {
+      if (k === "doorOverHttp") { if (i === 0) await doorOverHttp(vp, viewport, stage); continue; }
+      await stages[k](vp, viewport, i, run(STAGE_LETTERS[k]));
+    }
+    return;
   }
 
   /* ── THE LIST'S LINKS, and the draft and the missing campaign ── */
@@ -1455,5 +1467,6 @@ try {
 }
 
 console.log(`${NL}measured (recorded, not asserted equal): ${JSON.stringify(measured)}`);
-console.log(`${NL}u47b2 live drive: ${ONLY.length > 0 ? `PARTIAL (only ${ONLY.join(", ")}) · ` : ""}${pass} passed, ${fail} failed${failed ? " (stopped early)" : ""}`);
+const partial = [ONLY.length > 0 ? `stages ${ONLY.join(", ")}` : "", WIDTHS.length > 0 ? `widths ${WIDTHS.join(", ")}` : ""].filter(Boolean).join(" · ");
+console.log(`${NL}u47b2 live drive: ${partial ? `PARTIAL (only ${partial}) · ` : ""}${pass} passed, ${fail} failed${failed ? " (stopped early)" : ""}`);
 process.exitCode = fail === 0 && failed === null ? 0 : 1;
