@@ -126,8 +126,35 @@ export type StepOutcome = SliceStepResult | EnqueueStepResult | { kind: "reaped"
  * ⭐ As built: `said` — a wait in words (`waitSentence`), else null — so the page prints the step's own sentence.
  */
 export type StepActionResult =
-  | { ok: true; step: StepOutcome; said: string | null; view: CampaignLiveView }
+  | { ok: true; step: DriverStep; said: string | null; view: CampaignLiveView }
   | { ok: false; reason: "role" | "second_factor" | "not_found"; error: string };
+
+/**
+ * ⛔ THE U47b-1 REVIEW · WHAT THE DRIVER IS HANDED OF A STEP — its kind and what decides the next call (a wait's reason and
+ * time, a pause's reason, a status), and NOTHING ELSE, for EVERY role: no count and no cursor. A slice's handedOver /
+ * skipped beside a padded tag would be one person's gate verdict below E23's floor, and an enqueue's `next` names a contact
+ * or an account. Every figure the page shows comes from the view, which is role-shaped.
+ */
+export type DriverStep =
+  | { kind: "sent" } | { kind: "finished" } | { kind: "wrote" } | { kind: "done" } | { kind: "reaped" } | { kind: "idle" }
+  | { kind: "paused"; reason: string }
+  | { kind: "waiting"; reason: string; until: string | null }
+  | { kind: "not_running" | "not_preparing"; status: SmsCampaignStatus };
+
+/** A step as the driver may be handed it (`DriverStep`): the figures and the cursor taken out. */
+export function driverStep(step: StepOutcome): DriverStep {
+  switch (step.kind) {
+    case "paused":
+      return { kind: "paused", reason: step.reason };
+    case "waiting":
+      return { kind: "waiting", reason: step.reason, until: step.until };
+    case "not_running":
+    case "not_preparing":
+      return { kind: step.kind, status: step.status };
+    default:
+      return { kind: step.kind };
+  }
+}
 
 /** E10 widened · the per-campaign step flights of this PROCESS, on `globalThis`. */
 export type StepFlights = { flights: Map<string, { since: number; ticket: number }>; ticket: number };
@@ -150,6 +177,9 @@ export type AuditFn = (entry: Parameters<typeof audit>[0]) => unknown;
 
 /** Every read, rule and write the services make — swappable for the suite's in-process plants; production passes none. */
 export type ControlDeps = {
+  /** ⛔ The step as the driver may be handed it (`driverStep`: no figure, no cursor) — a member only so the suite can plant
+   *  its absence; production's is the function itself. */
+  shape: (step: StepOutcome) => DriverStep;
   campaigns: {
     find: (id: string) => Promise<StoredSmsCampaign | null>;
     transition: (id: string, t: SmsCampaignTransition) => Promise<StoredSmsCampaign | null>;
@@ -190,6 +220,7 @@ export type ControlDeps = {
 
 /** Frozen: production's services — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const CONTROL_DEPS: Readonly<ControlDeps> = Object.freeze({
+  shape: driverStep,
   campaigns: Object.freeze({
     find: async (id: string) => db.smsCampaign.find(id),
     transition: async (id: string, t: SmsCampaignTransition) => db.smsCampaign.transition(id, t),
@@ -517,5 +548,5 @@ export async function campaignStep(campaignId: string, viewer: LiveViewer, deps:
   }
   const view = await deps.view(id, viewer);
   if (view === null) return { ok: false, reason: "not_found", error: LIVE_MISSING };
-  return { ok: true, step, said: stepSaid(step), view };
+  return { ok: true, step: deps.shape(step), said: stepSaid(step), view };
 }

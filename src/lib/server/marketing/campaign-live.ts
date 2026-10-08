@@ -156,9 +156,11 @@ export type CampaignLiveView = {
 
 /* ══ THE RULES — pure, exported, and handed in, so the suite can plant each one's absence ═══════════════════════════════ */
 
-/** ⛔ E23 · is the breakdown hidden from this viewer? Only from one who may not read a number, below the floor of ROWS. */
+/** ⛔ E23 · is the breakdown hidden from this viewer? Only from one who may not read a number, below the floor of ROWS —
+ *  and ⭐ only when there IS a split to hide (the U47b-1 review): a list not written yet (0 rows — a CONFIRMED campaign, or one
+ *  paused or stopped before its first chunk) has nothing in it to reveal, and zero KPIs leak nothing. */
 export function liveBreakdownHidden(viewerReads: boolean, rows: number): boolean {
-  return viewerReads !== true && rows < MASKED_BREAKDOWN_MIN;
+  return viewerReads !== true && rows > 0 && rows < MASKED_BREAKDOWN_MIN;
 }
 
 /** OD24 · may this view carry money? Exactly the caller's decider (`campaignMoneyVisible`), never a default. */

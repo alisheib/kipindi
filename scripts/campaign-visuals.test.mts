@@ -127,6 +127,7 @@ const L = {
   d4: "D4 · ⭐ END TO END on the memory twin — a confirmed tag audience of 6 (4 consenting players' book rows, 2 contacts with no consent): Start → a PREPARING step writes 6 rows and finishes RUNNING → a RUNNING step's slice hands 4 over on the STUB wire and refuses 2 (no consent) → the next step finishes DONE; each view says so (the bar 6 of 6, 'Not sent' 2 under 'No consent or recorded basis'); one wire call, no SmsMessage row for the campaign",
   d5: "D5 · THE REAPER ON MOUNT — a PAUSED campaign holding a claim stranded 11 minutes with no message: one step reaps it back to PENDING (attempts + 1, the claim cleared) — kind reaped 1 — and writes ONE SYSTEM marketing.campaign_reaped row",
   w1: "W1 · THE WIRING — CONTROL_DEPS and LIVE_VIEW_DEPS frozen and wired to the REAL doors by identity; the officer's pause writes the ONE spelling the engine and the enqueue write and the view reads; no directive and no exported *Action in the three files; nothing in src value-imports campaign-control (none until U47b-2), campaign-live only campaign-control, live-copy only the two; the services name no send; live-copy reaches the server for a type alone; test:/red:campaign-visuals resolve to this file",
+  p2: "P2 · ⛔ THE STEP ANSWER CARRIES NO FIGURE AND NO CURSOR (the U47b-1 review's MAJOR) — every step answer of the run, for every role, holds only kind, reason, until and status: no count and no cursor, so a padded tag below the floor never reads one person's gate verdict off a step",
   p1: "P1 · ⛔ NO PHONE NUMBER AND NO REFUSAL OBJECT — no 255… key and no +255… number in any view, answer or audit payload of the run; every service answer holds only ok, reason, message, recorded (and a copy's id and href)",
 } as const;
 type Label = (typeof L)[keyof typeof L];
@@ -590,11 +591,18 @@ async function runAssertions(impl: Impl): Promise<void> {
     const m10 = await viewOf(impl, ten.id, GROWTH);
     const r9 = await viewOf(impl, nine.id, READER);
     const ms = await viewOf(impl, shrunk.id, GROWTH);
+    // ⭐ the U47b-1 review · NO list yet, nothing to hide: a CONFIRMED campaign of 1,604, and one stopped before Start
+    const confirmed = await campaign(w, "s3d", { path: ["CONFIRMED"], count: 1604 });
+    const stoppedEarly = await campaign(w, "s3e", { path: ["CONFIRMED", "CANCELLED"], count: 1604 });
+    const mc = await viewOf(impl, confirmed.id, GROWTH);
+    const mx = await viewOf(impl, stoppedEarly.id, GROWTH);
     const hiddenAll = (v: CampaignLiveView, n: number) => json(v.kpis) === json({ onCampaign: n, handedOver: null, failed: null, notSent: null, noAnswer: null, waiting: null })
       && v.notSentReasons === null && v.chips === null && v.floor === COPY.LIVE_FLOOR;
     const shownAll = (v: CampaignLiveView) => v.kpis.handedOver !== null && v.notSentReasons !== null && v.chips !== null && v.floor === null;
-    return [hiddenAll(m9, 9) && shownAll(m10) && shownAll(r9) && hiddenAll(ms, 9),
-      `masked 9 ${json(m9.kpis)} · masked 10 shown ${shownAll(m10)} · reader 9 shown ${shownAll(r9)} · confirmed 50 with 9 rows ${json(ms.kpis)}`];
+    const noFloorAtZero = mc.floor === null && mx.floor === null && !json(mc).includes("Fewer than") && !json(mx).includes("Fewer than");
+    const aboutTheList = COPY.LIVE_FLOOR.includes("on this campaign's list");
+    return [hiddenAll(m9, 9) && shownAll(m10) && shownAll(r9) && hiddenAll(ms, 9) && noFloorAtZero && aboutTheList,
+      `masked 9 ${json(m9.kpis)} · masked 10 shown ${shownAll(m10)} · reader 9 shown ${shownAll(r9)} · confirmed 50 with 9 rows ${json(ms.kpis)} · no list yet: confirmed ${mc.floor === null ? "no floor" : "FLOOR"}, stopped early ${mx.floor === null ? "no floor" : "FLOOR"} · worded about the list ${aboutTheList}`];
   });
 
   /* ── S4 · ⛔ money only for a money reader ── */
@@ -1155,8 +1163,8 @@ async function runAssertions(impl: Impl): Promise<void> {
     const s1 = seen(await impl.step(c.id, READER, d));
     const s2 = seen(await impl.step(c.id, READER, d));
     const s3 = seen(await impl.step(c.id, READER, d));
-    const prepared = s1.ok && s1.step.kind === "done" && s1.step.total === 6 && s1.view.status === "RUNNING" && s1.view.kpis.waiting === 6;
-    const sent = s2.ok && s2.step.kind === "sent" && s2.step.handedOver === 4 && s2.step.skipped === 2
+    const prepared = s1.ok && s1.step.kind === "done" && s1.view.status === "RUNNING" && s1.view.kpis.waiting === 6;
+    const sent = s2.ok && s2.step.kind === "sent"
       && json(s2.view.progress) === json({ phase: "sending", value: 6, max: 6 }) && s2.view.kpis.handedOver === 4 && s2.view.kpis.notSent === 2
       && s2.view.notSentReasons?.[0]?.label === AUDIENCE_REASON_LABEL.no_consent && s2.view.notSentReasons?.[0]?.count === 2;
     const finished = s3.ok && s3.step.kind === "finished" && s3.view.status === "DONE" && s3.view.headline === COPY.LIVE_HEADLINE.DONE;
@@ -1174,7 +1182,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     const r = seen(await impl.step(c.id, READER, ctrlDeps(impl, { reap: (id: string) => ENGINE.reapStrandedClaims(id, eng) })));
     const row = mem().smsCampaignRecipients.get(ids[0]);
     const reapedRows = await auditOf(ENGINE.ENGINE_REAPED_ACTION, c.id);
-    return [r.ok && r.step.kind === "reaped" && r.step.reaped === 1 && row?.status === "PENDING" && row.attempts === 1 && row.claimToken === null
+    return [r.ok && r.step.kind === "reaped" && row?.status === "PENDING" && row.attempts === 1 && row.claimToken === null
       && reapedRows.length === 1 && reapedRows[0].category === "SYSTEM" && reapedRows[0].actorId === null && r.view.kpis.waiting === 1,
       `${json(r.ok ? r.step : r)} · the row ${row?.status} attempts ${row?.attempts} claim ${row?.claimToken === null ? "cleared" : "kept"} · reaped rows ${reapedRows.length}`];
   });
@@ -1188,7 +1196,7 @@ async function runAssertions(impl: Impl): Promise<void> {
       && D.resumeCheck === SC.resumeRefusal && D.startSentence === SC.startRefusalSentence && D.resumeSentence === SC.resumeRefusalSentence
       && D.outstanding === SC.resumeOutstanding && D.enqueue === ENQ.enqueueStep && D.slice === ENGINE.runCampaignSlice
       && D.reap === ENGINE.reapStrandedClaims && D.view === LIVE.campaignLiveView && D.saveDraft === DRAFT.saveCampaignDraft
-      && D.travel === LIVE.copyTravel && D.audienceRefusal === LIVE.startAudienceRefusedFor && D.flights === CTRL.campaignStepFlights
+      && D.travel === LIVE.copyTravel && D.audienceRefusal === LIVE.startAudienceRefusedFor && D.flights === CTRL.campaignStepFlights && D.shape === CTRL.driverStep
       && D.reach === LIVE.liveReach
       && Object.isFrozen(V) && Object.isFrozen(V.recipients) && Object.isFrozen(V.rules) && V.window === liveSendWindow && V.liveGate === marketingLiveGate
       && V.rules.progress === CS.campaignProgress && V.rules.breakdownHidden === LIVE.liveBreakdownHidden && V.rules.outstanding === SC.resumeOutstanding
@@ -1234,6 +1242,16 @@ async function runAssertions(impl: Impl): Promise<void> {
     return [!RAW.test(text) && !PLUS.test(text) && SEEN.length > 40 && payloads.length > 20 && answers.length > 40 && leaked.length === 0,
       `${SEEN.length} views and answers, ${payloads.length} audit payloads · a 255 key ${RAW.test(text)} · a +255 number ${PLUS.test(text)} · ${answers.length} service answers, extra keys [${[...new Set(leaked)].join(",")}]`];
   });
+
+  /* ── P2 · ⛔ the step answer carries no figure and no cursor ── */
+  await claim(L.p2, async () => {
+    const SHAPE = new Set(["kind", "reason", "until", "status"]);
+    const steps = ANSWERS.filter((a) => a.ok === true && typeof a.step === "object" && a.step !== null).map((a) => a.step as Record<string, unknown>);
+    const bad = steps.flatMap((st) => Object.entries(st).filter(([k, v]) => !SHAPE.has(k) || typeof v === "number").map(([k]) => k));
+    const kinds = [...new Set(steps.map((st) => String(st.kind)))].sort();
+    return [steps.length >= 8 && kinds.includes("sent") && kinds.includes("wrote") && bad.length === 0,
+      `${steps.length} step answers (kinds ${kinds.join(",")}) · a figure or extra key [${[...new Set(bad)].join(",")}]`];
+  });
 }
 
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -1264,6 +1282,10 @@ if (!PROVE_RED) {
 
   type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl>) };
   const plants: Plant[] = [
+    { name: "R-S3b · the floor at 0 rows (the U47b-1 review's MAJOR) — every confirmed campaign tells a masked viewer it has fewer than ten people", expect: [L.s3],
+      impl: withView((d) => ({ ...d, rules: { ...d.rules, breakdownHidden: (reads: boolean, rows: number) => reads !== true && rows < 10 } })) },
+    { name: "R-P2 · the step answered raw (the U47b-1 review's MAJOR) — its counts and its cursor reach every role, under the floor too", expect: [L.p2],
+      impl: { ctrlDeps: (d: ControlDeps) => ({ ...d, shape: (st: CTRL.StepOutcome) => st as unknown as CTRL.DriverStep }) } },
     { name: "R-V2 (the plan's own) · HELD counted settled — 4 SENT and 6 HELD read 10 of 10", expect: [L.v2],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, progress: (c, counts) => d.rules.progress(c, { ...counts, SENT: counts.SENT + counts.HELD, HELD: 0 }) } })) },
     { name: "R-V3 (the plan's own) · a timer-driven bar — the bar moves on with the clock since the page opened", expect: [L.v3],

@@ -203,7 +203,8 @@ export const NOT_SENT_EXTRA = {
 } as const;
 
 /** ⛔ E23 · the floor — a viewer who may not read a number, on a campaign of fewer than ten people. */
-export const LIVE_FLOOR = `This campaign has fewer than ${formatNumber(MASKED_BREAKDOWN_MIN)} people, so its breakdown is hidden for your role.`;
+// ⭐ About the LIST (the U47b-1 review): a campaign confirmed for 1,604 whose list holds a handful is not "fewer than 10 people".
+export const LIVE_FLOOR = `Fewer than ${formatNumber(MASKED_BREAKDOWN_MIN)} people are on this campaign's list, so its breakdown is hidden for your role.`;
 
 /* ══ THE CONTROLS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
