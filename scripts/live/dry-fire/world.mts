@@ -237,7 +237,9 @@ export async function buildWorld(h: Harness, spec: WorldSpec): Promise<World> {
     wallets.set(id, walletId);
     return id;
   };
-  const ledger = (key: string, status: "GIVEN" | "WITHDRAWN", source: string, words: string, recordedBy: string | null, at: number): Promise<unknown> =>
+  // ⛔ `source` is the schema's own enum (MessagingConsentSource): a word outside it is accepted by the memory twin and REFUSED by
+  // Postgres (STEP 54's heavy turn: "OPTOUT" for OPT_OUT_PAGE turned the scratch-Postgres dry-fire red in scenarios 1–3).
+  const ledger = (key: string, status: "GIVEN" | "WITHDRAWN", source: "REGISTRATION" | "PROFILE" | "OPT_OUT_PAGE" | "KEYWORD" | "IMPORT" | "OPERATOR" | "RETENTION_LAPSE", words: string, recordedBy: string | null, at: number): Promise<unknown> =>
     Promise.resolve(db.messagingConsent.create({
       id: nextId("lc"), channel: "SMS", identifier: key, category: "MARKETING", status, source, wording: words, locale: "SW",
       evidence: "dry-fire", recordedBy, createdAt: iso(at),
@@ -313,7 +315,7 @@ export async function buildWorld(h: Harness, spec: WorldSpec): Promise<World> {
       case "contact_withdrawn":
         p.contactId = await contact(key, null, "IMPORT");
         await ledger(key, "GIVEN", "IMPORT", wording, h.officer.id, now - 20 * DAY);
-        await ledger(key, "WITHDRAWN", "OPTOUT", "stop", null, now - 10 * DAY);
+        await ledger(key, "WITHDRAWN", "OPT_OUT_PAGE", "stop", null, now - 10 * DAY);
         p.expect = { send: false, reason: "consent_withdrawn" };
         break;
       case "contact_suppressed":

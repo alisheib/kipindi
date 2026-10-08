@@ -1662,7 +1662,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S21 · the per-slice credit check skipped (the reserve never judged)",
-    expect: [L.s21],
+    expect: [L.s21, L.s41, L.s42],
     impl: withDeps((d) => ({ ...d, credit: () => ({ ok: true }) })),
   },
   {
