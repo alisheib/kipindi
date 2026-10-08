@@ -11,14 +11,19 @@
  * database. This probe asks them, with the SHIPPED tools and the SHIPPED helper, so the first live pre-flight is not the first time
  * the SQL runs. The run sheet makes a green run of this probe, by the lead under the heavy-node lock, the first line of "Before the day".
  *
- *   0  the cluster is migrated: every migration the pre-flight names is finished in `_prisma_migrations`, the live switch row is
- *      absent, and no row anywhere names the probe's made-up numbers;
- *   1  the CONTACT world (no account holds the number; a covering list basis; an SMS-naming yes; the source line saved): the
- *      pre-flight is GO on every applicable row, the control row n/a without a control; a control WITH an active stop is GO, one
- *      without is NO-GO on its row alone; an open switch row (jsonb) is NO-GO by default and GO under --expect-switch=open; an
- *      ACCOUNT holding the number is GO on the account branch, and its own switch off is NO-GO on test-consent alone; a SECOND
- *      member on the drive list is NO-GO on test-lists alone; no saved wordings is NO-GO on source alone; a missing ledger file is
- *      NO-GO on ledger alone unless --new-ledger, which is refused over one that exists; the report says it used the DATABASE's clock;
+ *   0  the cluster is migrated: every migration the pre-flight names is finished in `_prisma_migrations`, none of the four SystemConfig
+ *      rows the tools read is there, and no row anywhere names the probe's made-up numbers;
+ *   1  the CONTACT world (no account holds the number; a covering list basis; an SMS-naming yes; the source line saved; the Marketing
+ *      SMS settings SAVED - price 7, reserve 21,000, the widest window 07:00-21:00, read through real jsonb): the pre-flight is GO on
+ *      every applicable row (`in-flight` and `elsewhere` included), the control row n/a without a control; a control WITH an active stop
+ *      is GO, one without is NO-GO on its row alone; an open switch row (jsonb) is NO-GO by default and GO under --expect-switch=open,
+ *      and the same record stored as a JSON STRING reads as malformed; an ACCOUNT holding the number is GO on the account branch, and its
+ *      own switch off is NO-GO on test-consent alone; the licence-outreach record (jsonb, OPEN) is read; a campaign that is not the
+ *      drive's own in each of the seven statuses of the real enum is NO-GO on in-flight alone for the four that can send, and GO when
+ *      named with --drive-campaign; a MARKETING message of the last day to another number is NO-GO on elsewhere alone (one 40 hours old is
+ *      not counted); the window row's margin (default 60, --min-window) follows the clock; a SECOND member on the drive list is NO-GO on
+ *      test-lists alone; no saved wordings is NO-GO on source alone; a missing ledger file is NO-GO on ledger alone unless --new-ledger,
+ *      which is refused over one that exists; the report says it used the DATABASE's clock and a loopback database;
  *   2  the evidence on campaign A (the composer test + one delivered send, the stop link shown once, the ledger created by
  *      --new-ledger), the stop tapped, B (SKIPPED `suppressed`, zero sends), ⭐ THE GATE REMOVED (the stopped number SENT:
  *      skipped:test FAILS, VIOLATION named, exit 1) and C (after "Start them again"): every verdict and exit code as the run sheet
@@ -87,9 +92,15 @@ const NOW = ((await q(`SELECT now() AS n`)).rows[0].n as Date).getTime();
 const DAY = 86_400_000;
 const SEEN: string[] = [];
 const OWN_KEYS: string[] = [W.TEST.key, W.CONTROL.key, W.OTHER_KEY];
-/** The default send window is 08:00-20:00 EAT; outside it the pre-flight's `window` row is NO-GO — a fact about the hour, not a finding. */
+/**
+ * The probe SAVES a send window (07:00-21:00 EAT, the widest the app allows), so the pre-flight's `window` row judges the SAVED record read
+ * through real jsonb, not the default 08:00-20:00. The row is GO only inside it with at least `--min-window` minutes left (60 by default):
+ * outside that the row is NO-GO - a fact about the hour, not a finding.
+ */
+const WIN = { start: 420, end: 1260, margin: 60 } as const;
 const EAT_MINUTE = (() => { const t = new Date(NOW + 3 * 3_600_000); return t.getUTCHours() * 60 + t.getUTCMinutes(); })();
-const WINDOW_OPEN = EAT_MINUTE >= 480 && EAT_MINUTE < 1200;
+const windowOpen = (margin: number): boolean => EAT_MINUTE >= WIN.start && EAT_MINUTE < WIN.end && WIN.end - EAT_MINUTE >= margin;
+const WINDOW_OPEN = windowOpen(WIN.margin);
 const expectedNoGo = (rows: string[]): string[] => [...rows, ...(WINDOW_OPEN ? [] : ["window"])].sort();
 const expectedCode = (rows: string[]): number => (expectedNoGo(rows).length === 0 ? 0 : 1);
 
@@ -170,8 +181,12 @@ const CAMP_B = "cmp_u52a_probe_bbbb";
 const CAMP_X = "cmp_u52a_probe_xxxx";
 const CAMP_C = "cmp_u52a_probe_cccc";
 const OFFICER = "usr_u52a_probe_officer";
+// ⭐ the probe's OWN copies of the four SystemConfig keys (not the tools' constants: a typo in a tool must not be mirrored by the seed)
 const SWITCH_KEY = "marketing.sms.live";
 const WORDINGS_KEY = "marketing.wordings";
+const SETTINGS_KEY = "marketing.sms.settings";
+const OUTREACH_KEY = "marketing.outreach.licence";
+const STRANGER = "cmp_u52a_probe_other";
 let auditN = 0;
 
 async function seedBook(): Promise<void> {
@@ -187,6 +202,12 @@ async function seedBook(): Promise<void> {
 /** The saved wordings of a platform ready for the drive: the source line and the typed-number test's 18+ sentence (jsonb). */
 const seedWordings = (): Promise<unknown> =>
   q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [WORDINGS_KEY, json(W.SAVED_WORDINGS)]);
+/** ⭐ The SAVED Marketing SMS settings (jsonb): not the defaults - a price of 7, a reserve of 21,000, a limit of 11,000 and the widest window (07:00-21:00). */
+const seedSettings = (): Promise<unknown> =>
+  q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [SETTINGS_KEY, json({ v: 1, pricePerSegmentTzs: 7, codesReserveTzs: 21000, campaignLimitTzs: 11000, windowStartMinute: WIN.start, windowEndMinute: WIN.end })]);
+/** ⭐ The licence-outreach record, OPEN (jsonb): exactly the three keys the app's reader accepts. */
+const seedOutreach = (): Promise<unknown> =>
+  q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [OUTREACH_KEY, json({ state: "open", recordedBy: OFFICER, recordedAt: iso(NOW - 10 * DAY) })]);
 /** One MessagingConsent row for the test number. An officer's entry carries a recorder; the person's own act and the link carry none. */
 async function seedLedger(id: string, status: string, source: string, at: number, evidence: string | null, wording: string, byOfficer: boolean): Promise<void> {
   await q(
@@ -195,12 +216,12 @@ async function seedLedger(id: string, status: string, source: string, at: number
     [id, W.TEST.key, status, source, wording, evidence, byOfficer ? OFFICER : null, iso(at)],
   );
 }
-async function seedCampaign(id: string, startedAt: number): Promise<void> {
+async function seedCampaign(id: string, startedAt: number, status = "DONE", audience = 1): Promise<void> {
   await q(
     `INSERT INTO "SmsCampaign" (id, name, status, "bodySw", "codingSw", "segmentsSw", "audienceFilter", "audienceCount", "confirmTier", "estimateSegments", "estimateTzs", "budgetTzs",
        "enqueueCursor", "enqueuedAt", "createdBy", "confirmedBy", "confirmedAt", "startedAt", "finishedAt", "createdAt")
-     VALUES ($1, 'U52a probe', 'DONE', '50pick probe', 'GSM7', 1, 'list', 1, 'ENUMERATE', 1, 6, 10000, 'done', $2, $3, $3, $4, $5, $6, $7)`,
-    [id, iso(startedAt + 1000), OFFICER, iso(startedAt - 60_000), iso(startedAt), iso(startedAt + 10_000), iso(startedAt - 600_000)],
+     VALUES ($1, 'U52a probe', $8::"SmsCampaignStatus", '50pick probe', 'GSM7', 1, 'list', $9, 'ENUMERATE', 1, 6, 10000, 'done', $2, $3, $3, $4, $5, $6, $7)`,
+    [id, iso(startedAt + 1000), OFFICER, iso(startedAt - 60_000), iso(startedAt), status === "DONE" ? iso(startedAt + 10_000) : null, iso(startedAt - 600_000), status, audience],
   );
 }
 async function seedAudit(targetType: string, target: string, action: string, category: string, actor: string | null, payload: unknown, at: number): Promise<void> {
@@ -228,11 +249,11 @@ async function seedRecipient(o: { id: string; campaign: string; status: string; 
     ],
   );
 }
-async function seedMessage(o: { ref: string; targetType: string; targetId: string; status: string; receipt?: string; at: number }): Promise<void> {
+async function seedMessage(o: { ref: string; targetType: string; targetId: string; status: string; receipt?: string; at: number; msisdn?: string }): Promise<void> {
   await q(
     `INSERT INTO "SmsMessage" (reference, msisdn, purpose, provider, "senderId", "bodyLen", status, "dlrStatus", "dlrDesc", "providerMsg", attempts, "targetType", "targetId", "createdAt", "sentAt", "deliveredAt", "balanceTzs")
      VALUES ($1, $2, 'MARKETING', 'blackball', 'probe', 87, $3, $4, $5, 'Message sent', 0, $6, $7, $8, $9, $10, 49994)`,
-    [o.ref, W.TEST.key, o.status, o.receipt ?? null, o.receipt ? "Delivered" : null, o.targetType, o.targetId, iso(o.at), iso(o.at + 1000), o.status === "DELIVERED" ? iso(o.at + 6000) : null],
+    [o.ref, o.msisdn ?? W.TEST.key, o.status, o.receipt ?? null, o.receipt ? "Delivered" : null, o.targetType, o.targetId, iso(o.at), iso(o.at + 1000), o.status === "DELIVERED" ? iso(o.at + 6000) : null],
   );
 }
 
@@ -263,18 +284,26 @@ try {
   const configHeld = (await q(`SELECT key FROM "SystemConfig" WHERE key IN ($1, $2, 'marketing.sms.settings', 'marketing.outreach.licence') ORDER BY key`, [SWITCH_KEY, WORDINGS_KEY])).rows.map((r) => String(r.key));
   ok("0 · the cluster is migrated (every migration the pre-flight names is finished), no row names the probe's numbers, and none of the four config rows the pre-flight reads is there",
     missing.length === 0 && heldBefore === 0 && configHeld.length === 0, `missing [${missing.join(", ")}] · rows naming the numbers ${heldBefore} · config rows [${configHeld.join(", ")}]`);
-  console.log(`INFO the cluster's clock says ${LIB.fmtEat(NOW).slice(11, 16)} EAT — the send window (08:00-20:00) is ${WINDOW_OPEN ? "OPEN: every GO below is a full GO" : "CLOSED: every pre-flight below is expected to be NO-GO on the window row, and ONLY that row beyond what each check names"}`);
+  console.log(`INFO the cluster's clock says ${LIB.fmtEat(NOW).slice(11, 16)} EAT — the SAVED send window (07:00-21:00, with 60 minutes to spare) is ${WINDOW_OPEN ? "OPEN: every GO below is a full GO" : "CLOSED: every pre-flight below is expected to be NO-GO on the window row, and ONLY that row beyond what each check names"}`);
 
   /* ── 1 · the pre-flight ── */
   await seeded("the contact book (list, contact, membership, a covering basis)", seedBook);
   await seeded("the saved wordings (source.phrase and adult.test, jsonb)", async () => { await seedWordings(); });
+  await seeded("the saved Marketing SMS settings (price 7, reserve 21,000, limit 11,000, window 07:00-21:00 - jsonb)", async () => { await seedSettings(); });
   await seeded("the ledger: an officer's yes naming SMS", () => seedLedger("led_probe_0001", "GIVEN", "OPERATOR", NOW - 5 * DAY, null, W.SMS_WORDING, true));
   const contactWorld = await runPre(preArgv());
   const contactRows = rowsOf(contactWorld.lines);
+  const rowReason = (lines: string[], id: string): string => lines.find((l) => new RegExp(`^ {2}(GO|NO-GO|n/a) +${id} `).test(l)) ?? "";
   ok("1a · the CONTACT world (no account; a covering basis; an SMS-naming yes; the source line saved; a list of one): every applicable row GO, the control row n/a — migrations, switch, settings, source and the ledger read for real",
     onlyNoGo(contactWorld, []) && contactRows.get("control") === "n/a" && contactRows.get("migrations") === "GO" && contactRows.get("source") === "GO" && contactRows.get("test-lists") === "GO"
-      && has(contactWorld.lines, "transaction read-only: on") && has(contactWorld.lines, "repeatable read") && has(contactWorld.lines, "clock: the database's") && has(contactWorld.lines, "campaign A must use this list"),
+      && contactRows.get("in-flight") === "GO" && contactRows.get("elsewhere") === "GO"
+      && has(contactWorld.lines, "transaction read-only: on") && has(contactWorld.lines, "repeatable read") && has(contactWorld.lines, "clock: the database's") && has(contactWorld.lines, "campaign A must use this list")
+      && has(contactWorld.lines, "database: loopback"),
     `exit ${contactWorld.code} · NO-GO [${noGo(contactWorld.lines).join(", ")}]`, contactWorld.lines);
+  ok("1a2 · ⭐ the SAVED settings are read through real jsonb: the price 7, the reserve 21,000 and the window 07:00-21:00 are what the settings and window rows judge (not the defaults 6, 20,000 and 08:00-20:00)",
+    rowReason(contactWorld.lines, "settings").includes("TZS 7 per SMS") && rowReason(contactWorld.lines, "settings").includes("TZS 21,000 kept") && rowReason(contactWorld.lines, "settings").includes("07:00–21:00 EAT")
+      && rowReason(contactWorld.lines, "window").includes("07:00–21:00 EAT") && rowsOf(contactWorld.lines).get("settings") === "GO",
+    `settings: ${rowReason(contactWorld.lines, "settings").slice(0, 140)} · window: ${rowReason(contactWorld.lines, "window").slice(0, 100)}`, contactWorld.lines);
 
   await seeded("a stop on the control number", async () => {
     await q(`INSERT INTO "Suppression" (id, channel, identifier, category, reason, evidence, "recordedBy", "createdAt") VALUES ('sup_probe_ctl', 'SMS', $1, 'MARKETING', 'OPERATOR', 'probe', $2, $3)`, [W.CONTROL.key, OFFICER, iso(NOW - 30 * DAY)]);
@@ -294,6 +323,16 @@ try {
     onlyNoGo(openDefault, ["switch"]) && onlyNoGo(openAsked, []) && has(openAsked.lines, `OPEN until ${LIB.fmtEat(iso(closesAt))} EAT`),
     `default [${noGo(openDefault.lines).join(", ")}] · asked [${noGo(openAsked.lines).join(", ")}] exit ${openAsked.code}`, openAsked.lines);
   await q(`DELETE FROM "SystemConfig" WHERE key = $1`, [SWITCH_KEY]);
+  // ⭐ the same record stored as a JSON STRING (jsonb 'string'): the app reads an object or nothing, so it is malformed - closed - and never parsed here
+  await seeded("a live-switch row stored as a JSON string (jsonb)", async () => {
+    await q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, to_jsonb($2::text), now())`, [SWITCH_KEY, json({ enabledBy: "ops", enabledAt: iso(NOW - 300_000), closesAt: iso(closesAt) })]);
+  });
+  const asText = await runPre(preArgv());
+  const asTextOpen = await runPre(preArgv(["--expect-switch=open"]));
+  ok("1d2 · a switch row stored as a JSON STRING reads as malformed (closed), as the app reads it: GO by default, NO-GO on the switch row when open is expected",
+    onlyNoGo(asText, []) && onlyNoGo(asTextOpen, ["switch"]) && has(asText.lines, "not in a shape the reader accepts"),
+    `default [${noGo(asText.lines).join(", ")}] · open asked [${noGo(asTextOpen.lines).join(", ")}]`, asText.lines);
+  await q(`DELETE FROM "SystemConfig" WHERE key = $1`, [SWITCH_KEY]);
 
   // the ACCOUNT world: an account holds the number (its own yes is newer than the officer's), linked to the book row
   await seeded("an account holding the number, its own yes, linked to the book row", async () => {
@@ -308,6 +347,38 @@ try {
   const switchOff = await runPre(preArgv());
   ok("1f · the account's own switch off is NO-GO on test-consent alone (the cycle row is GO: the link's yes switches it on again)", onlyNoGo(switchOff, ["test-consent"]), `[${noGo(switchOff.lines).join(", ")}]`, switchOff.lines);
   await q(`UPDATE "User" SET "marketingOptIn" = true WHERE id = 'usr_probe_holder'`);
+
+  // ⭐ the licence-outreach record, OPEN, read through real jsonb (after 1f: with the record open the port's judgement of a switched-off account is not the question here)
+  await seeded("the licence-outreach record, open (jsonb)", async () => { await seedOutreach(); });
+  const outreachOpen = await runPre(preArgv());
+  ok("1j · ⭐ the SAVED licence-outreach record is read through real jsonb: OPEN - the consent rows say so, and the source row now also wants adult.test (saved: GO)",
+    onlyNoGo(outreachOpen, []) && has(outreachOpen.lines, "licence outreach: open") && has(outreachOpen.lines, "(licence outreach is open)"),
+    `[${noGo(outreachOpen.lines).join(", ")}]`, outreachOpen.lines);
+
+  // ⭐ NOTHING ELSE CAN SEND: a campaign that is not the drive's own, in each status the real enum has (the `"status"::text IN (...)` meets a real enum)
+  await seeded("a stranger's campaign", () => seedCampaign(STRANGER, NOW - 600_000, "RUNNING"));
+  const statuses: Array<[string, boolean]> = [["CONFIRMED", true], ["PREPARING", true], ["RUNNING", true], ["PAUSED", true], ["DRAFT", false], ["DONE", false], ["CANCELLED", false]];
+  const flightBad: string[] = [];
+  for (const [status, flies] of statuses) {
+    await q(`UPDATE "SmsCampaign" SET status = $2::"SmsCampaignStatus" WHERE id = $1`, [STRANGER, status]);
+    const r = await runPre(preArgv());
+    const named = await runPre(preArgv([`--drive-campaign=${STRANGER}`]));
+    const wantNoGo = flies ? ["in-flight"] : [];
+    if (!onlyNoGo(r, wantNoGo) || !onlyNoGo(named, []) || (flies && !(has(r.lines, STRANGER) && has(r.lines, status)))) flightBad.push(`${status}: [${noGo(r.lines).join(", ")}] named [${noGo(named.lines).join(", ")}]`);
+  }
+  ok("1k · ⭐ a campaign other than the drive's own that could send (CONFIRMED, PREPARING, RUNNING, PAUSED) is NO-GO on in-flight alone, named with its id and status; DRAFT, DONE and CANCELLED are not; named with --drive-campaign it is the drive's own and the row is GO",
+    flightBad.length === 0, `wrong [${flightBad.join("; ")}]`);
+  await q(`DELETE FROM "SmsCampaign" WHERE id = $1`, [STRANGER]);
+
+  // ⭐ NOTHING ELSE IS SENDING: a MARKETING message to ANOTHER number in the last day (one 40 hours ago is not counted)
+  await seeded("a marketing message to another number 40 hours ago", () => seedMessage({ ref: "sms_probe_elsewhere_old_0000", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_elsewhere", status: "DELIVERED", receipt: "DELIVRD", at: NOW - 40 * 3_600_000, msisdn: W.OTHER_KEY }));
+  const oldOnly = await runPre(preArgv());
+  await seeded("a marketing message to another number 2 hours ago", () => seedMessage({ ref: "sms_probe_elsewhere_new_0000", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_elsewhere", status: "DELIVERED", receipt: "DELIVRD", at: NOW - 2 * 3_600_000, msisdn: W.OTHER_KEY }));
+  const recent = await runPre(preArgv());
+  ok("1l · ⭐ a MARKETING message created in the last 24 hours to a number but the test number is NO-GO on elsewhere alone (the count, in SQL); one 40 hours old is not counted",
+    onlyNoGo(oldOnly, []) && onlyNoGo(recent, ["elsewhere"]) && has(recent.lines, "1 MARKETING message was created"),
+    `old only [${noGo(oldOnly.lines).join(", ")}] · recent [${noGo(recent.lines).join(", ")}]`, recent.lines);
+  await q(`DELETE FROM "SmsMessage" WHERE reference IN ('sms_probe_elsewhere_old_0000', 'sms_probe_elsewhere_new_0000')`);
 
   // a SECOND member on the drive list: a campaign to it would message them too
   await seeded("a second contact on the drive list", async () => {
@@ -333,6 +404,15 @@ try {
   ok("1i · a MISSING ledger file is NO-GO on ledger alone; --new-ledger makes it GO; --new-ledger over a ledger that exists is NO-GO on ledger alone",
     onlyNoGo(lost, ["ledger"]) && onlyNoGo(fresh, []) && has(fresh.lines, "a NEW ledger") && onlyNoGo(refused, ["ledger"]),
     `missing [${noGo(lost.lines).join(", ")}] · new [${noGo(fresh.lines).join(", ")}] · over an existing one [${noGo(refused.lines).join(", ")}]`, [...lost.lines, ...refused.lines]);
+
+  // ⭐ the window's margin, judged against the SAVED window: 60 minutes by default, --min-window=0 asks only that it is open, 720 asks for twelve hours of it
+  const marginDefault = await runPre(preArgv());
+  const marginZero = await runPre(preArgv(["--min-window=0"]));
+  const marginHuge = await runPre(preArgv(["--min-window=720"]));
+  const winMark = (r: Ran): string => rowsOf(r.lines).get("window") ?? "none";
+  ok("1m · the window row: GO only inside the SAVED 07:00-21:00 with 60 minutes left by default, --min-window=0 asks only that it is open, --min-window=720 asks for twelve hours of it",
+    winMark(marginDefault) === (windowOpen(60) ? "GO" : "NO-GO") && winMark(marginZero) === (windowOpen(0) ? "GO" : "NO-GO") && winMark(marginHuge) === (windowOpen(720) ? "GO" : "NO-GO"),
+    `default ${winMark(marginDefault)} (expected ${windowOpen(60) ? "GO" : "NO-GO"}) · 0: ${winMark(marginZero)} · 720: ${winMark(marginHuge)} · at ${LIB.fmtEat(NOW).slice(11, 16)} EAT`, [rowReason(marginDefault.lines, "window"), rowReason(marginHuge.lines, "window")]);
 
   /* ── 2 · the evidence: A, the stop, B, the gate removed, the resume, C ── */
   // eight audit rows of the live switch FIRST, so a campaign's rows later straddle seq 9 and 10
@@ -360,8 +440,14 @@ try {
   const evA = await runEv(argsA);
   ok("2a · campaign A on Postgres: PROVEN (delivered:test, 2 chargeable sends, the audit rows), the stop link printed once, every message 'to the test number: yes', the ledger counts 2",
     evA.code === 0 && has(evA.lines, "RESULT: PROVEN") && evA.lines.filter((l) => l.includes("/s/ABCD2345")).length === 1 && has(evA.lines, "2 of 6 chargeable sends counted")
-      && has(evA.lines, "to the test number: yes") && has(evA.lines, "TO THE TEST NUMBER    clear") && has(evA.lines, "ONE MESSAGE PER ROW   clear"),
+      && has(evA.lines, "to the test number: yes") && has(evA.lines, "TO THE TEST NUMBER    clear") && has(evA.lines, "ONE MESSAGE PER ROW   clear") && has(evA.lines, "NO OTHER MARKETING SMS clear")
+      && has(evA.lines, "database: loopback"),
     `exit ${evA.code}`, evA.lines);
+  // ⭐ the audience, read BEFORE a Start: A is confirmed for 1 person
+  const audOk = await runEv([CAMP_A, `--test=${W.TEST.raw}`, "--look", "--expect-audience=1"]);
+  const audWrong = await runEv([CAMP_A, `--test=${W.TEST.raw}`, "--look", "--expect-audience=2"]);
+  ok("2a2 · ⭐ --look --expect-audience on Postgres: A is confirmed for 1 person (exit 0, says so); expecting 2 is exit 1 with DO NOT PRESS START",
+    audOk.code === 0 && has(audOk.lines, "the audience is the 1 expected") && audWrong.code === 1 && has(audWrong.lines, "DO NOT PRESS START"), `ok exit ${audOk.code} · wrong exit ${audWrong.code}`, [...audOk.lines, ...audWrong.lines]);
 
   // the stop link tapped, after A's message
   const stopAt = NOW - 2 * 3_600_000;
@@ -389,12 +475,18 @@ try {
     await seedCampaign(CAMP_X, xStart);
     await seedRecipient({ id: "rcp_probe_x", campaign: CAMP_X, status: "SENT", ref: "sms_xxxxxxxxxxxxxxxxxxxxxxxx", token: "ABCD2345", claimedAt: xStart + 2000, sentAt: xStart + 4000 });
     await seedMessage({ ref: "sms_xxxxxxxxxxxxxxxxxxxxxxxx", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_x", status: "ACCEPTED", at: xStart + 3000 });
+    // the ENGINE's own pause of this campaign (a SYSTEM row, no actor, another reason): the same action as the officer's, and not the Pause button
+    await seedCampaignAudit(CAMP_X, "marketing.campaign_paused", "SYSTEM", null, { reason: "rail_dead" }, xStart + 500);
   });
   const evX = await runEv([CAMP_X, `--test=${W.TEST.raw}`, "--expect=skipped:test", "--label=X"]);
   ok("2d · ⭐ THE GATE REMOVED on Postgres: the stopped number SENT — skipped:test FAILS, a stop VIOLATION is named, the exit is 1, NOT PROVEN",
     evX.code === 1 && has(evX.lines, "NOT refused") && has(evX.lines, "VIOLATION — ") && has(evX.lines, "RESULT: NOT PROVEN"), `exit ${evX.code}`, evX.lines);
   const lookX = await runEv([CAMP_X, `--test=${W.TEST.raw}`, "--look"]);
   ok("2d-look · the same campaign LOOKED at (no verdict asked) still exits 1, and the RESULT line says VIOLATION", lookX.code === 1 && has(lookX.lines, "RESULT: LOOK ONLY") && has(lookX.lines, "BUT 1 VIOLATION"), `exit ${lookX.code}`, lookX.lines);
+  const pauseX = await runEv([CAMP_X, `--test=${W.TEST.raw}`, "--expect-audit=marketing.campaign_paused"]);
+  ok("2d2 · ⭐ the engine's own pause is NOT the officer's: --expect-audit=marketing.campaign_paused FAILS on a campaign that only the engine paused, and says why",
+    pauseX.code === 1 && has(pauseX.lines, "EXPECT audit marketing.campaign_paused  FAILS — 0 rows of E24 on this campaign counting as the OFFICER's pause") && has(pauseX.lines, "1 other row of that action is not it"),
+    `exit ${pauseX.code}`, pauseX.lines);
 
   // "Start them again", then C
   const resumeAt = NOW - 1_200_000;
@@ -417,6 +509,15 @@ try {
   ok("2f · the ledger: A 2 + B 0 + X 1 (the removed gate's send is counted too) + C 1 = 4 of 6 counted; 3 more would pass the cap and exit 1",
     table.code === 0 && has(table.lines, "counted 4") && tooMany.code === 1 && has(tooMany.lines, "REFUSED"), `table exit ${table.code} · --sends=3 exit ${tooMany.code}`, [...table.lines, ...tooMany.lines]);
 
+  // ⭐ NOTHING ELSE IS SENDING, on the evidence side too: a recent MARKETING message to ANOTHER number turns a look of ANY campaign to exit 1
+  await seeded("a marketing message to another number, one hour ago", () => seedMessage({ ref: "sms_probe_elsewhere_ev_0000", targetType: "SmsCampaignRecipient", targetId: "rcp_probe_elsewhere", status: "DELIVERED", receipt: "DELIVRD", at: NOW - 3_600_000, msisdn: W.OTHER_KEY }));
+  const elsewhereLook = await runEv([CAMP_A, `--test=${W.TEST.raw}`, "--look"]);
+  await q(`DELETE FROM "SmsMessage" WHERE reference = 'sms_probe_elsewhere_ev_0000'`);
+  const elsewhereGone = await runEv([CAMP_A, `--test=${W.TEST.raw}`, "--look"]);
+  ok("2g · ⭐ a MARKETING message of the last day to another number: the look at campaign A exits 1 (NO OTHER MARKETING SMS: VIOLATION); with it gone the same look exits 0",
+    elsewhereLook.code === 1 && has(elsewhereLook.lines, "VIOLATION — 1 MARKETING message created in the last 24 hours went to a number that is NOT the test number") && has(elsewhereLook.lines, "BUT 1 VIOLATION") && elsewhereGone.code === 0,
+    `with it ${elsewhereLook.code} · without ${elsewhereGone.code}`, elsewhereLook.lines);
+
   /* ── 3 · the types the tools read, and the order they read in ── */
   await seeded("four more live-switch audit rows (the switch now has twelve)", async () => {
     for (let i = 9; i <= 12; i++) await seedSwitchAudit(i, NOW - 40 * DAY + i * 3_600_000);
@@ -432,14 +533,17 @@ try {
           && typeof pf.test.latest.recorded_by_officer === "boolean" && typeof pf.test.latest.via_link === "boolean" && isDate(pf.test.latest.created_at)
           && pf.test.user !== null && typeof pf.test.user.opt_in === "boolean" && isDate(pf.test.user.dob) && Array.isArray(pf.test.campaigns)
           && pf.test.lists[0].basis !== null && typeof pf.test.lists[0].basis.revoked === "boolean" && isDate(pf.test.lists[0].basis.recorded_at) && pf.control !== null
-          && pf.test.suppressions.length === 1 && isDate(pf.test.suppressions[0].lifted_at) && typeof pf.config[LIB.KEY_WORDINGS] === "object",
+          && pf.test.suppressions.length === 1 && isDate(pf.test.suppressions[0].lifted_at) && typeof pf.config[LIB.KEY_WORDINGS] === "object"
+          && typeof pf.config[LIB.KEY_SETTINGS] === "object" && typeof pf.config[LIB.KEY_OUTREACH] === "object"
+          && Array.isArray(pf.inFlight) && typeof pf.elsewhere === "number",
         `${pf.migrations.length} migrations`);
       ok("3b · the evidence's facts have the types the tools assume (seq as text, jsonb as objects, counts as numbers, stamps as Dates, to_test a boolean)",
         isDate(ef.now) && typeof ef.campaign.status === "string" && isDate(ef.campaign.started_at) && typeof ef.audit[0].seq === "string" && typeof ef.audit[0].payload === "object"
           && typeof ef.recipientCounts[0].n === "number" && typeof ef.messageCounts[0].n === "number" && Array.isArray(ef.recipients[0].gate_trail)
           && isDate(ef.recipients[0].claimed_at) && typeof ef.recipients[0].attempts === "number" && typeof ef.recipients[0].has_token === "boolean"
           && typeof ef.messages[0].balance_tzs === "string" && ef.stopToken === "ABCD2345" && typeof ef.people.test.suppressions[0].via_link === "boolean"
-          && typeof ef.campaign.estimate_tzs === "string" && ef.messages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean") && ef.testMessages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean"),
+          && typeof ef.campaign.estimate_tzs === "string" && ef.messages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean") && ef.testMessages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean")
+          && typeof ef.elsewhere === "number" && typeof ef.campaign.audience_count === "number",
         `${ef.audit.length} audit rows`);
 
       // ⭐ THE ORDER — campaign A's four rows straddle seq 9 and 10; the switch has twelve rows and the tool shows eight
