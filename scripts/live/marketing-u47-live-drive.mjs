@@ -90,8 +90,11 @@ const SENDER_STUB = "Sender: this server's SMS rail is the console stub — mess
 const TITLE = "SMS campaign";
 const COMPOSER_TITLE = "New SMS campaign";
 const LOAD_ERROR = "Couldn't load this SMS campaign";
-/** U13 · the instants the send window's clock is pinned at: 03:00 EAT (shut) and noon EAT (open), 7 October 2026. */
-const NIGHT_EAT = "2026-10-07T00:00:00.000Z";
+/** U13 · the instants the send window's clock is pinned at: 03:00 EAT (shut) and noon EAT (open, 7 October 2026).
+ *  ⭐ STEP 54's heavy turn · the night is pinned on the NEXT day, never on a fixed date: the opening the engine names (08:00 EAT that
+ *  day) must lie ahead of the BROWSER's clock, or the page — rightly — re-steps at its shortest wait (`WAIT_MIN_MS`, 5 s) instead
+ *  of sleeping 30 s. The fixed 7 October night, by then past, read as "2 → 4" in the twelve quiet seconds. */
+const NIGHT_EAT = (() => { const d = new Date(Date.now() + 24 * 3600_000); d.setUTCHours(0, 0, 0, 0); return d.toISOString(); })();
 const NOON_EAT = "2026-10-07T09:00:00.000Z";
 
 const VIEWPORTS = [
@@ -101,6 +104,12 @@ const VIEWPORTS = [
 ];
 /** Unique per run: five digits, so a re-run on the same server meets no earlier officer and no earlier campaign. */
 const RUN = String(Date.now() % 100000).padStart(5, "0");
+/** A PARTIAL run, for a diagnosis: `LIVE_DRIVE_ONLY=stopWhilePausePending` (comma-separated stage names) runs only those stages
+ *  of each width, after the same world, each under the letter the full run gives it. Its summary says PARTIAL, so it can never
+ *  be read as the drive's pass. */
+const STAGE_LETTERS = { realRun: "a", stopMidRun: "b", moneyWait: "c", outOfDate: "d", watcherFollows: "e", pauseNotQueued: "f", stopWhilePausePending: "g", twoDrivers: "h", signedOutMidRun: "j", watcherBlip: "k" };
+const ONLY = (process.env.LIVE_DRIVE_ONLY ?? "").split(",").map((k) => k.trim()).filter(Boolean);
+for (const k of ONLY) if (!(k in STAGE_LETTERS)) throw new Error(`LIVE_DRIVE_ONLY: no stage "${k}" (${Object.keys(STAGE_LETTERS).join(", ")})`);
 const phoneFor = (nn) => `+25570${RUN}${String(nn).padStart(2, "0")}`;
 const OFFICERS = {
   growth: { role: "GROWTH", phone: phoneFor(11), name: "Asha Mwita" },
@@ -360,7 +369,12 @@ async function pausedLines(page, ids) {
 async function openLive(page, id, expect = "live") {
   await page.goto(`${BASE}/admin/campaigns/${encodeURIComponent(id)}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("main#main-content h1", { timeout: 90000 });
-  if (expect === "live") await page.waitForSelector(SEL.status, { timeout: 60000 }).catch(() => {});
+  if (expect === "live") {
+    await page.waitForSelector(SEL.status, { timeout: 60000 }).catch(() => {});
+    // ⭐ STEP 54's heavy turn · the trail names the campaign from the CLIENT (`AdminCrumbLabel`, once hydrated): on a slow first
+    //    compile the generic "Campaign" still stood 800 ms after the paint. A live page is read once it is hydrated — its crumb named.
+    await waitFor(page, `(() => { const c = document.querySelector('nav[aria-label="Breadcrumb"] > span:last-child > span:last-child'); return !!c && c.textContent.trim() !== "Campaign"; })()`, 30000);
+  }
   if (expect === "missing") await page.waitForSelector("[data-live-missing]", { timeout: 60000 }).catch(() => {});
   await wait(expect === "any" ? 1500 : 800);
 }
@@ -392,13 +406,23 @@ function countCalls(page) {
  *  rendered and no step is ever asked of the made-up audiences. The drive closes the context instead of releasing it. */
 async function holdCalls(page) {
   let held = 0;
+  const pending = [];
   const handler = async (route) => {
     const req = route.request();
-    if (isStep(req) || isAction(req)) { held++; return; }
+    if (isStep(req) || isAction(req)) { held++; pending.push(route); return; }
     await route.fallback().catch(() => {});
   };
   await page.route(CALLS, handler);
-  return { held: () => held, off: () => page.unroute(CALLS, handler).catch(() => {}) };
+  // ⛔ STEP 54's heavy turn · lifting the hold ABORTS every call still held, then unroutes: a held step released late reached the
+  //    server and stepped a made-up audience (the staged RUNNING campaign moved 20 rows: 714 → 694 waiting, 60 → 80 not sent),
+  //    which turned every later read of that campaign red and kept the process's one flight busy for the real run.
+  return {
+    held: () => held,
+    off: async () => {
+      for (const r of pending.splice(0)) await r.abort().catch(() => {});
+      await page.unroute(CALLS, handler).catch(() => {});
+    },
+  };
 }
 /** Make the step door's requests fail in transit (a deploy, a lost connection) — the request never reaches the server. Or, with
  *  `kind: "action"`, the server actions: the watcher's poll. `first` or `until` lets the calls after them through. */
@@ -515,6 +539,11 @@ async function main() {
 async function drivePass(vp, viewport, i, stage) {
   const name = vp.name;
   const run = (k) => `${RUN}${k}${i}`;
+  if (ONLY.length > 0) {
+    const stages = { realRun, stopMidRun, moneyWait, outOfDate, watcherFollows, pauseNotQueued, stopWhilePausePending, twoDrivers, signedOutMidRun, watcherBlip };
+    for (const k of ONLY) await stages[k](vp, viewport, i, run(STAGE_LETTERS[k]));
+    return;
+  }
   // ⭐ U48a · the staged RUNNING campaign's recent hand-overs are "a moment ago" again (a drive of three widths outlasts 15 minutes)
   await seedLive(`restamp=${RUN}`);
   const g = await staffCtx("growth", viewport, vp.reduced);
@@ -533,7 +562,9 @@ async function drivePass(vp, viewport, i, stage) {
   }
 
   /* ── THE LIST'S LINKS, and the draft and the missing campaign ── */
-  await growth.goto(`${BASE}/admin/campaigns`, { waitUntil: "domcontentloaded" });
+  // Oldest first: the seed's rows (`set=base`, made before the staged states) are on the first page however many campaigns the
+  // stages and the runs add after them (STEP 54's heavy turn: the default newest-first page no longer reached them).
+  await growth.goto(`${BASE}/admin/campaigns?sort=created&dir=asc`, { waitUntil: "domcontentloaded" });
   await growth.waitForSelector("[data-campaign-row]", { timeout: 90000 }).catch(() => {});
   await wait(900);
   const links = await growth.evaluate(() => [...document.querySelectorAll("[data-campaign-row]")].map((tr) => ({
@@ -1079,7 +1110,9 @@ async function stopMidRun(vp, viewport, i, id) {
   ok(`${name} · STOP · the dialog asks first — "${W.stopDialog.none.title}" — with focus on CANCEL and the campaign's own advice`,
     !!dlg && dlg.title === W.stopDialog.none.title && dlg.text.includes(W.stopDialog.none.body) && dlg.focus === W.dialog.cancel && dlg.buttons.includes(W.dialog.stop), JSON.stringify(dlg));
   await dialogShot(page, name, "stop-dialog", W.stopDialog.none.title);
-  await page.getByRole("button", { name: W.dialog.cancel }).first().click();
+  // The dialog's own Cancel BUTTON, found by its words: the scrim behind the panel is also a button named "Cancel" (no text, out of
+  // the tab order) and comes first in the markup — a click aimed at it lands on the panel and never happens (STEP 54's heavy turn).
+  await page.locator('[role="alertdialog"] button', { hasText: W.dialog.cancel }).first().click();
   await wait(500);
   ok(`${name} · STOP · Cancel keeps it running`, (await dialogOf(page)) === null && (await readLive(page)).status === "RUNNING");
   await press(page, "stop");
@@ -1252,6 +1285,9 @@ async function stopWhilePausePending(vp, viewport, i, id) {
   ok(`${name} · PRESSES · ⭐ while Pause waits for its answer Pause is held (off, busy) and STOP IS STILL ON`,
     slow.held() && s.controls.pause.disabled === true && s.controls.stop.disabled === false, JSON.stringify({ held: slow.held(), pause: s.controls.pause, stop: s.controls.stop }));
   await page.locator(ctl("stop")).first().click();
+  // Read once the dialog has TAKEN focus (the kit moves it to Cancel when the panel is up): read at once, the Stop control just
+  // pressed was still the focused element (STEP 54's heavy turn). Bounded well inside the Pause's six held seconds.
+  await waitFor(page, `(() => { const d = document.querySelector('[role="alertdialog"]'); return !!d && d.contains(document.activeElement); })()`, 3000);
   const dlg = await dialogOf(page);
   ok(`${name} · PRESSES · ⭐ Stop opens its dialog beside a pending Pause`, !!dlg && dlg.title === W.stopDialog.none.title && dlg.focus === W.dialog.cancel, JSON.stringify(dlg));
   await waitStatus(page, "PAUSED", 20000);
@@ -1271,7 +1307,10 @@ async function twoDrivers(vp, viewport, i, id) {
   const name = vp.name;
   const seeded = await freshRun(id);
   const a = await staffCtx("growth", viewport, vp.reduced);
-  const b = await staffCtx("growth", viewport, vp.reduced);
+  // One officer's TWO TABS — one browser, one session. A second sign-in of the same officer in another browser ENDS the first
+  // (one active session per account, `session.ts`: STEP 54's heavy turn sent tab A to the sign-in page), so tab B opens beside A.
+  const b = { ctx: a.ctx, page: await a.ctx.newPage() };
+  b.page.on("dialog", (d) => { d.accept().catch(() => {}); });
   await pinWindow(NOON_EAT);
   await holdMoney(60000);
   await openLive(a.page, seeded.campaignId);
@@ -1303,7 +1342,6 @@ async function twoDrivers(vp, viewport, i, id) {
   ok(`${name} · TWO DRIVERS · each page made step calls of its own (A ${sa.driver?.steps}, B ${sb.driver?.steps}; "another step is running" seen ${busySeen} time(s) — recorded, not required)`,
     (sa.driver?.steps ?? 0) >= 1 && (sb.driver?.steps ?? 0) >= 1, JSON.stringify({ a: sa.driver, b: sb.driver }));
   await a.ctx.close();
-  await b.ctx.close();
 }
 
 /** ⭐ THE SESSION ENDS UNDER A DRIVING PAGE · the officer's cookies are cleared while the page keeps sending: the next step is
@@ -1417,5 +1455,5 @@ try {
 }
 
 console.log(`${NL}measured (recorded, not asserted equal): ${JSON.stringify(measured)}`);
-console.log(`${NL}u47b2 live drive: ${pass} passed, ${fail} failed${failed ? " (stopped early)" : ""}`);
+console.log(`${NL}u47b2 live drive: ${ONLY.length > 0 ? `PARTIAL (only ${ONLY.join(", ")}) · ` : ""}${pass} passed, ${fail} failed${failed ? " (stopped early)" : ""}`);
 process.exitCode = fail === 0 && failed === null ? 0 : 1;
