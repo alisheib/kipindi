@@ -86,15 +86,26 @@ console.log("\n[live-target-safe] §1 no script takes a production URL as its DE
    *     production to fourteen importers that never named it. STRICT, ceiling 0, no exemptions.
    *
    * (b) A STANDALONE ENTRY POINT that defaults to production without saying so in its name is the same SHAPE and a
-   *     smaller risk: somebody types its name, so somebody chose it. Five exist today. They are NOT exempted and
-   *     NOT silently fixed — changing five scripts' targets at once, without knowing which genuinely measure the
-   *     live bundle (`bundle-css-probe`, `perf-smoke`) and which are local capture tools, would trade a known
-   *     footgun for an unknown breakage. So they are PINNED: the count may only shrink, and every name is printed
-   *     on every run so the list cannot rot quietly into scenery.
+   *     smaller risk: somebody types its name, so somebody chose it. Five existed when this was written. They were
+   *     NOT exempted and NOT silently fixed — changing five scripts' targets at once, without knowing which genuinely
+   *     measure the live bundle (`bundle-css-probe`, `perf-smoke`) and which are local capture tools, would trade a
+   *     known footgun for an unknown breakage. So they were PINNED: the count may only shrink, and every name is
+   *     printed on every run so the list cannot rot quietly into scenery.
+   *
+   *     2026-10-08 · IT HAD GROWN INSTEAD, TO THIRTEEN. Eight scripts were added after the pin (cls-budget,
+   *     detail-order-and-hints, fairness-phone, focus-and-fit, ghost-landing, qa/landing-ten, qa/landing-v3/og-prod,
+   *     signup-funnel), all in the shape this rule counts. Three of the thirteen SIGN IN. detail-order-and-hints and
+   *     landing-ten sign in as the QA player `mobile01`, so with production as the default a bare run of either WAS a
+   *     production sign-in — the incident this file exists for. pager-wallet-shots signs in as a QA-fleet player
+   *     through the shared harness, which already defaulted to loopback, so it disagreed with itself about its target.
+   *     Those nine now default to loopback (`http://localhost:3001`, the safe line §3 below uses). FOUR remain, every
+   *     one a read-only probe of the live site whose own header says so: `bundle-css-probe` (reaches production only
+   *     under `--live`), `outcome-parity`, `perf-smoke`, and `timer-date-shots` (which names two live market ids).
+   *     The ceiling was lowered to four in the same change, which is the ratchet's own rule.
    */
   const SHARED = offenders.filter((o) => o.startsWith("scripts/live/harness") || o.includes("/lib/"));
   ok("§1a a SHARED module never defaults to a production origin", SHARED.length === 0, SHARED.join(" | "));
-  const ENTRY_CEILING = 5;
+  const ENTRY_CEILING = 4;
   const entry = offenders.filter((o) => !SHARED.includes(o));
   ok("§1b RATCHET · standalone entry points defaulting to production may only SHRINK (ceiling " + ENTRY_CEILING + ")",
     entry.length <= ENTRY_CEILING, entry.length + ": " + entry.join(" | "));

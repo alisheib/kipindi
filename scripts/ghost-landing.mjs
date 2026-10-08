@@ -47,7 +47,10 @@
 import { chromium } from "playwright";
 import { localisedContext, assertLang } from "./qa-locale.mjs";
 
-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
+// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
+// target measured production without anyone choosing it. Loopback is the default now; production is reached by
+// NAMING it, as the examples at the top do.
+const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
 const RED_GHOST = process.env.RED_GHOST === "1";
 const RED_STACK = process.env.RED_STACK === "1";
 const RED = RED_GHOST || RED_STACK;
