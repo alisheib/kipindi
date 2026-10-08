@@ -225,8 +225,12 @@ export const CONTACT_FORM = {
  * ⛔ THE FORM'S OWN SENTENCE ABOUT CONSENT — the one thing every viewer is told (A1.1). Nothing lawful can be chosen
  * on a form (OD9's basis and an 18+ attestation are U33's), so the add dialog states the list's own label, "Not
  * recorded" (C13), and this sentence; it never offers a choice.
+ * ⭐ REWORDED as U33a-U37c-OD58 §7.6 owed it to U33a-G's push: "a contact with no consent recorded is never sent marketing"
+ * stopped being true once a listed contact could be reached on its list's licence basis with no consent of its own (the
+ * gate's LICENCE_LIST branch, `consent.ts`) — and licence outreach has been open on production since 2026-10-08.
  */
-export const CONTACT_CONSENT_NOTE = "This form never records consent; a contact with no consent recorded is never sent marketing.";
+export const CONTACT_CONSENT_NOTE =
+  "This form never records consent. A contact is messaged only with their own recorded consent or through a list whose licence basis is recorded — and never after a stop.";
 /** The number field's resting help line, before anything is typed. */
 export const CONTACT_NUMBER_HINT = "A Tanzanian mobile number in any spelling: 0712 345 678, +255 712 345 678 or 255712345678.";
 /** The number field's hover text. ⭐ The caller's `title` wins over PhoneInput's own, which is the PLAYER locale's. */
