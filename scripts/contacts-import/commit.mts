@@ -480,6 +480,20 @@ const casLess = (inner: ImportCommitDeps["commitBatch"]): ImportCommitDeps["comm
   return inner({ ...b, fromCursor: from, toCursor: Math.max(from, b.toCursor) });
 };
 
+/**
+ * P5's store IGNORES its cursor's compare-and-set outright: the run's cursor is wound back to the batch's own before the
+ * real write, so a batch built on a cursor another driver already moved passes and is applied AGAIN — what two drivers do
+ * to a store with no compare-and-set. (`casLess` above cannot stand in here: it moves the batch onto the CURRENT cursor and
+ * still calls the guarded store, so the second driver met the real compare-and-set and M5 stayed green — the lead's first
+ * red run, 2026-10-09.) Memory twin only, which is where this suite runs.
+ */
+const casIgnored = (inner: ImportCommitDeps["commitBatch"]): ImportCommitDeps["commitBatch"] => async (b) => {
+  const mem = (globalThis as unknown as { __50PICK_STORE?: { contactImports?: Map<string, { committedThrough: number }> } }).__50PICK_STORE;
+  const run = mem?.contactImports?.get(b.importId);
+  if (run && run.committedThrough !== b.fromCursor) run.committedThrough = b.fromCursor;
+  return inner(b);
+};
+
 const plants: readonly RedPlant<CommitImpl>[] = [
   {
     name: "P1 · a step settles ten rows — the 40-row file takes four steps, not one",
@@ -513,9 +527,9 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     impl: () => withDeps({ commitBatch: casLess(REAL_DEPS.commitBatch) }),
   },
   {
-    name: "P5 · the same store without its compare-and-set, met by two drivers at once — both advance",
+    name: "P5 · a store that ignores its compare-and-set outright, met by two drivers at once — both advance",
     expect: L.M5,
-    impl: () => withDeps({ commitBatch: casLess(REAL_DEPS.commitBatch) }),
+    impl: () => withDeps({ commitBatch: casIgnored(REAL_DEPS.commitBatch) }),
   },
   {
     name: "P6 · the status transition writes nothing and answers the run — a pause that does not pause",

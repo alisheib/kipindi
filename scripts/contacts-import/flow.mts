@@ -109,7 +109,7 @@ export const L = {
   P1b: "P1b · a pasted line with no number is listed as unreadable with its row and the reader's sentence — never dropped",
   P1c: "P1c · ⭐ S15-4 · a line with a second number keeps the FIRST, and the paste's note names that row; a foreign number yields to a Tanzanian one on its line",
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
-  P3: "P3 · a list paste maps Phone and Name with no header row, and U28's validateMapping passes it",
+  P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
   M1: "M1 · ⭐ S15-5 · a file whose first row is a contact is READ: \"Column A…\" headers, the phone, email and name columns found from the cells, no header row — row 1 staged too",
   M2: "M2 · the officer's word on the first row turns the reading over both ways (\"header\" reads it as names again)",
   M3: "M3 · ⛔ a masked export stays refused in U28's words — even when the officer says its first row is a contact",
@@ -384,6 +384,7 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
 
   const listMap = impl.mappingFor(list, { list: true });
   ok(L.P3, listMap.headerRows === 0 && listMap.mapping.phone === 0 && listMap.mapping.name === 1 && listMap.refusal === null
+    && !listMap.headerless && !listMap.headers.some((h) => /^Column [A-Z]+$/.test(h))
     && validateMapping(listMap.headers, listMap.mapping).ok && stageRowsOf(list, listMap.mapping, listMap.headerRows).length === 6,
     `${JSON.stringify(listMap.headers)} · ${JSON.stringify(listMap.mapping)}`);
 

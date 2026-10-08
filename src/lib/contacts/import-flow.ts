@@ -145,7 +145,9 @@ export type StageImportInput = {
   importId: string;
   fileDigest: string;
   from: number;
-  rows: Array<{ line: number; cells: string[] } | { line: number; readError: string }>;
+  /** Read-only, as `stageRowsOf` hands them over (`StageRowInput`, import-limits.ts) — the server re-derives every row
+   *  from these named keys and never trusts anything else in them (`stagedRowFrom`). */
+  rows: ReadonlyArray<{ readonly line: number; readonly cells: readonly string[] } | { readonly line: number; readonly readError: string }>;
 };
 export type StageImportResult = ImportAnswer<{ view: ImportRunView }>;
 

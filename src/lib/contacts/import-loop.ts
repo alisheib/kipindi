@@ -320,7 +320,8 @@ export async function runCommit(deps: CommitDeps, start: ImportRunView): Promise
       busy = 0;
       // ⭐ Properties 1 and 6 — the answer's view IS the progress; a "moved" answer is adopted and counts nothing.
       if (!adopt(answer.view, from)) return { kind: "stalled", view };
-      if (answer.kind === "done" || view.status === "DONE") return { kind: "done", view, note: null };
+      // The answer's own view is asked: `adopt` replaced `view` inside a closure, which TypeScript's narrowing cannot see.
+      if (answer.kind === "done" || answer.view.status === "DONE") return { kind: "done", view, note: null };
       continue;
     }
     if (answer.reason === "busy") {
