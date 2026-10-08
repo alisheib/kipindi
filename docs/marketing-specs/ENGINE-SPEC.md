@@ -2645,6 +2645,66 @@ itemised · attribution ignoring a newer campaign.
 route for a finished campaign move "Delivered"; the honesty line before and after; the floor as GROWTH; 1280 · 360; tiles
 read. **Risks:** a receipt vocabulary beyond `DELIVRD` is still synthetic (BLACKBALL-SMS §8). **Owner decision:** none.
 
+✅ **AS BUILT — U48a (S14, 2026-10-08): every place the build reads this section, says what it added, or reads it more widely than it
+is written, said once.** Files: `src/lib/server/marketing/campaign-results.ts` (new — the three reads, the rules, the stop walk and its
+memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `results` filled; `LiveViewDeps.results`),
+`src/app/admin/campaigns/[id]/results-card.tsx` (new), `live-copy.ts` (the words), `live-geometry.ts`, and — U47b-2's, kept small — `page.tsx`
+(one import and one block), `loading.tsx` (the ghost's block) and `live-client.tsx` (one word: `useLive` is exported); the DAL (below);
+`scripts/lib/campaign-visuals-results.mts` (R1–R12, run by `test:campaign-visuals`), the dev seed and the drive.
+- ⭐ **Two NEW READ DOORS — the section's "Files" named none, and the spec's reads need them** (U47b-1's `countByOutcome` precedent):
+  `smsCampaignRecipient.countSentBefore(campaignId, before)` — ONE count of the campaign's rows still SENT and handed over STRICTLY
+  before the bound (E5's "older than 15 minutes"; a DELIVERED, receipt-failed, unanswered or other campaign's row never) — and
+  `handedOverPage(campaignId, after, limit)` — ONE keyset findMany of its SENT and DELIVERED rows that carry an instant, by number, on the
+  unique (campaignId, msisdn) index, selecting `{ msisdn, sentAt }` alone (E30's walk). Both twins, the named type `SmsCampaignHandedOver`,
+  the rule set first (`assertSentBeforeRead`, `assertHandedOverRead`; the page's bound `SMS_HANDED_OVER_PAGE_MAX` is §25's 2,000).
+  Held by `test:dal-parity` §26.u48a (+ five anchors), `test:campaign-models` §2.33 (+ 8 plants), `test:campaign-privacy`'s
+  `P10_ACCOUNTED` (two reads) and `db:probe-campaign-models` §14 (written, never run by the builder). **No schema and no index**:
+  the count is answered from the (campaignId, status) index and then each SENT row's instant, and is asked only when some row is SENT; a
+  `(campaignId, status, sentAt)` index would make it index-only — not added (decision "none"), for the integrator to weigh at U52a.
+- ⭐ **`results` is `null` below E23's floor and for a campaign with nobody on its list** (decision 3 and the brief's "the floor sentence
+  alone"): the figures card's `view.floor` is the one sentence the page says, nothing in the results can name a split, a reason, a price
+  or whether anybody was messaged, and `LiveWhenResults` draws no card. A viewer who may read money but not numbers is floored too.
+- **Decision 1's figures, as built.** Delivered = the rows a receipt moved to DELIVERED (`rules.delivered`) and nothing else. Handed over,
+  no receipt yet = SENT. No receipt after 15 minutes = the SENT rows whose own `sentAt` is STRICTLY older than now − 15 min (a sub-row of the
+  one above; shown while some are SENT). Failed = FAILED rows split by their class — no `receipt:` prefix = "the network refused it", a
+  `receipt:` prefix = "not delivered (receipt)"; every FAILED row is exactly one. Not sent = the figures card's OWN reasons list (handed
+  in, so the five words, protected ONE line, dominant first, zeros too are worded once — the kit's `AdminBarList` in its default ink,
+  which is "neutral" as U38b's card reads OD40: no danger colour). No answer = UNCONFIRMED. Waiting = PENDING + HELD, and for a CANCELLED
+  campaign "Stopped before sending" = the headline's own figure (`resumeOutstanding`, a list that never finished included). No answer and
+  Waiting/Stopped are drawn only when there is one; the rest always. Every figure is read off the view's ONE groupBy (asked once); only the
+  15-minute count, the stop walk and — for a money reader — the price are read besides.
+- ⭐ **Decision 2's lines, from the data.** The first (OD41) stands while something was handed over (SENT or UNCONFIRMED) and NO receipt of
+  any kind — delivered, or a failure's — has reached the campaign; gone by itself after one. The second stands in the same state when
+  `receiptsSetUp` is false — ⚠️ **made exact, not "the secret is set"**: it is the DLR route's own `authorized` rule (open in development
+  with no secret and the stub; a secret counts only at the route's 16-character floor, the rotation's previous secret too — `test:campaign-visuals`
+  R7 holds it equal to the route's real function over eleven environments). ⚠️ **Its tail is not the spec's**: "Admin → System → Diagnostics
+  says how to fix it" is false on this tree (the Diagnostics tab says nothing about receipts), so the line ends "— ask the developer to set
+  them up." — to be put back when a Diagnostics line exists. The price line is the spec's sentence word for word; its "handed over" is the
+  figures card's tile (SENT + DELIVERED) and its price the owner's settings read fresh (`ok` and `readable`, else no line); for a money reader
+  above the floor only, never while nothing is handed over.
+- ⭐ **Decision 4 (stopped by their link), and what it costs.** Handed-over = SENT and DELIVERED rows with an instant (a FAILED message never
+  reached its person; an UNCONFIRMED one carries no instant to date a stop against). The walk is in chunks of 1,000, each chunk's active
+  stops in ONE `findActiveAmong`; a stop counts when its reason is WITHDRAWN, its evidence starts `optout:` (the REAL opt-out service's —
+  R4 makes one with it) and it was created at or after the message; attribution (E30) asks `listByMsisdn` for each such stop and drops it when
+  ANOTHER campaign handed that number a SENT/DELIVERED message after this one's and no later than the stop. ⚠️ Known limits, said: a stop's
+  `createdAt` is when the person first said no (a stop lifted and made again keeps it), and a stop by a TEST send's link is not told apart.
+  ⭐ **It is the one expensive figure, so it is bounded:** production keeps a campaign's count for 30 s (single-flight; a failed read is never
+  kept) and a view waits for it at most 4 s — a slower walk says "couldn't be counted just now" this once and finishes in the memory for the
+  next view. A figure that could not be read (this one, the 15-minute count) is a dash and a sentence, never a zero, and never fails the view
+  or stops its driver. A stop is therefore read up to 30 s late (the drive waits it out).
+- **Mount.** The card shares `LiveProvider`'s state through `useLive`; `page.tsx` draws `<LiveWhenResults>` after the figures, in the block
+  `live-results`, in an `AdminCard` titled "Results"; the ghost has the matching block. The figures card is unchanged and so still prints its
+  own "Not sent, by reason" list — the same list as the results' (one function worded it); dropping the first is a one-line change
+  (`view.results === null` around it) the lead may make once U47b-2's review settles.
+- **Proof:** `test:campaign-visuals` 53 claims (R1–R12 are U48a's — R1 drives the REAL DLR route, R4 the REAL opt-out service),
+  105 plants held (35 of them the results'; the four old plants R-S1/R-S2/R-S3/R-S4 also turn results claims red, and say so);
+  the suite's fixture numbers move to the next NDC past the hundredth world (a red run is one world per plant, and the eight-digit keys
+  `isGatewayMsisdn` refuses had begun to break the last plants); `test:campaign-models` 54 claims, red 100/100; `test:dal-parity` §26.u48a;
+  the drive (`qa:marketing-live`): the results card at 1280 and 360 — written, `node --check`ed, its server side (seed → Start → the
+  engine on the console rail → receipts POSTed at the real route → a stop by link → the staged states) exercised in one process; the five
+  new `red:dal-parity` anchors run alone on a copy of the tree, as the harness does, each failing exactly the one claim it names; the
+  drive's first run and `db:probe-campaign-models` §14 are the integrator's, under the lock.
+
 ---
 
 ### 4.17 · U48b · The recipients table and the export

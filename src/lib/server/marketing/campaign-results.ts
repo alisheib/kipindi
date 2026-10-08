@@ -16,7 +16,9 @@
  *     1,000 (`handedOverPage`), each chunk's active stops in ONE query (§25's `findActiveAmong`, no new member), then the
  *     attribution below for the few that stopped. It is the one expensive figure, so production asks it through a
  *     single-flight memory of `STOPPED_BY_LINK_TTL_MS` per campaign (a 150,000-person campaign is not walked on every
- *     step and every watcher's poll; a read that failed is never kept);
+ *     step and every watcher's poll; a read that failed is never kept) — and a view waits for it at most
+ *     `RESULTS_READ_BUDGET_MS`: a walk still running says "couldn't be counted just now" this once and goes on without the
+ *     view, so the next view finds it done (the page never hangs on the biggest list);
  *   · the configured price — for a viewer who may read money only.
  * ⛔ A READ THAT FAILS IS SAID, NEVER A ZERO: the two counts above come back `null` and the card says "couldn't be counted
  * just now" — an auxiliary figure never stops the page or its driver (a thrown call stops the driver for good).
@@ -55,7 +57,7 @@
  * ⛔ No phone number in the view: the people are counts; the walk reads numbers and keeps none.
  *
  * ⛔ IT READS AND WRITES NOTHING ELSE: no transition, no audit row, no claim, no send.
- * Guard: `npm run test:campaign-visuals` §R (R1–R13) · Red: `npm run red:campaign-visuals` (in memory).
+ * Guard: `npm run test:campaign-visuals` §R (R1–R12) · Red: `npm run red:campaign-visuals` (in memory).
  */
 import { db } from "@/lib/server/store";
 import type {
@@ -83,9 +85,12 @@ export const STOP_WALK_PAGES_MAX = 2000;
 export const STOPPED_BY_LINK_TTL_MS = 30_000;
 /** Memory entries kept per process before settled ones past their time are swept. */
 const MEMO_MAX = 500;
+/** The longest ONE view waits for the stop walk. A walk that is slower is not abandoned — the single-flight memory keeps
+ *  running it, and a later view reads its answer — the view just does not hang on it (a first look at a very large list). */
+export const RESULTS_READ_BUDGET_MS = 4_000;
 
 /** What the opt-out link writes as a stop's reason and the start of its evidence (`stopMarketing`, optout-service.ts) — the
- *  suite's R4b makes a stop through the REAL service and holds these to it. */
+ *  suite's R4 makes a stop through the REAL service and holds these to it. */
 export const LINK_STOP_REASON = "WITHDRAWN";
 export const LINK_STOP_EVIDENCE_PREFIX = "optout:";
 
@@ -281,6 +286,21 @@ export function memoByKey<T>(
   };
 }
 
+/**
+ * A read given at most `ms` to answer: its answer, or null when the time ran out. ⛔ The read is NOT stopped — it goes on, and its
+ * memory (`memoByKey`) keeps what it finds — so the view that gave up and the next one that finds the answer are asking the one
+ * walk. A read that fails inside the time fails the same way (the caller says "unread").
+ */
+export function withinBudget<T>(read: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise<T | null>((resolve, reject) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    read.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_RESULTS_LINK: Map<string, Memo<number>> | undefined;
@@ -299,6 +319,8 @@ export type ResultsDeps = {
   /** The owner's price per SMS as configured (the settings, read fresh), or null when it cannot be read in full — asked for a
    *  viewer who may read money ONLY. */
   priceTzs: () => Promise<number | null>;
+  /** The longest a view waits for the stop walk, in ms (`RESULTS_READ_BUDGET_MS`). */
+  budgetMs: number;
   rules: {
     delivered: typeof deliveredRows;
     failedSplit: typeof failedSplitOf;
@@ -319,6 +341,7 @@ export const RESULTS_DEPS: Readonly<ResultsDeps> = Object.freeze({
     const r = await reloadMarketingSmsSettings();
     return r.ok && r.readable ? r.settings.pricePerSegmentTzs : null;
   },
+  budgetMs: RESULTS_READ_BUDGET_MS,
   rules: Object.freeze({ delivered: deliveredRows, failedSplit: failedSplitOf, honesty: honestyOf }),
 });
 
@@ -370,8 +393,7 @@ export async function campaignResults(i: ResultsInput, deps: ResultsDeps): Promi
       .catch((err) => readFailed("the count of messages with no receipt after 15 minutes", err));
   const stoppedByLink = c.SENT + c.DELIVERED === 0
     ? Promise.resolve<number | null>(0)
-    : Promise.resolve()
-      .then(() => deps.stoppedByLink(i.campaignId))
+    : withinBudget(Promise.resolve().then(() => deps.stoppedByLink(i.campaignId)), deps.budgetMs)
       .catch((err) => readFailed("the count of people who stopped by their link", err));
   const price = i.money && c.SENT + c.DELIVERED > 0
     ? Promise.resolve()

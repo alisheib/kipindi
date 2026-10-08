@@ -306,8 +306,14 @@ type RowShape = {
 async function rows(w: World, campaignId: string, shapes: readonly RowShape[]): Promise<string[]> {
   const base = ++w.n * 1000;
   const at = iso(T_NOW - 20 * MIN);
+  // ⭐ U48a · one NDC holds ten million keys, and a red run is a world per plant — past the hundredth the numbers moved on to 8 digits,
+  // which `isGatewayMsisdn` refuses: so the next world moves to the next NDC (64 to 69, no other fixture's), whole.
+  const numberOf = (i: number): string => {
+    const space = w.run * 100_000 + base + i;
+    return keyOf(space < 10_000_000 ? "71" : `6${4 + (Math.floor(space / 10_000_000) % 6)}`, space % 10_000_000);
+  };
   const seeds = shapes.map((_, i) => ({
-    id: `rcp_u47b1_${w.run}_${base + i}`, campaignId, msisdn: shapes[i].msisdn ?? keyOf("71", w.run * 100_000 + base + i), contactId: null, userId: null,
+    id: `rcp_u47b1_${w.run}_${base + i}`, campaignId, msisdn: shapes[i].msisdn ?? numberOf(i), contactId: null, userId: null,
     optOutToken: null, createdAt: at,
   }));
   if (seeds.length > 0) {

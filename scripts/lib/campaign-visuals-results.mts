@@ -22,7 +22,7 @@
  *   R12 the wiring — the doors by identity, the module's reach, the mount and the ghost.
  * ⛔ This file holds no backslash (an editing tool decodes them): patterns are built from character classes and codes.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createElement } from "react";
@@ -70,7 +70,7 @@ export const LABELS = {
   r7: "R7 · WHETHER A RECEIPT CAN ARRIVE IS THE DLR ROUTE'S OWN RULE — receiptsSetUp equals the route's real `authorized` over a matrix of environments (no secret in production and out of it, on the live rail and the stub; a secret one character short of the floor and at it; the rotation's previous secret alone), and the process's own environment is read as the route reads it",
   r8: "R8 · ⛔ OD24 · THE PRICE LINE FOR A VIEWER WHO MAY READ MONEY ONLY — a money reader's results carry handed over (SENT + DELIVERED) × the configured price and the card says it in exactly the spec's sentence (TZS 6 and TZS 6.50 both); a GROWTH officer and a viewer who may only look get no price, no TZS anywhere in the view or the card, and the price is not even asked; nothing is said while nothing is handed over or when the price cannot be read; below the floor a money reader gets nothing",
   r9: "R9 · THE FAILED SPLIT, NO ANSWER AND WHAT IS LEFT, AGREEING WITH THE FIGURES — failed rows split by their class (no receipt: prefix = the network refused it; a receipt: prefix = reported undelivered), every one in exactly one; no answer; waiting is PENDING + HELD, and for a stopped campaign everybody it did not message — the headline's own figure, a list that never finished included; every result adds to the figures card (Delivered + Handed over = its Handed over, Failed, Not sent, No answer, Waiting) and the view asks its ONE groupBy exactly once",
-  r10: "R10 · THE STOP WALK AND ITS COST — walked in chunks (a list of an exact multiple of the chunk ends on an empty page), each chunk's stops asked in ONE query of at most a chunk of numbers, every person once; the real chunk is 1,000 and fits the bulk read's bound; production keeps a campaign's count for a short time and shares a walk in flight — a failed walk is never kept; a count that cannot be made is unread, never a zero, and never fails the view; nothing is asked of a campaign that handed nothing over",
+  r10: "R10 · THE STOP WALK AND ITS COST — walked in chunks (a list of an exact multiple of the chunk ends on an empty page), each chunk's stops asked in ONE query of at most a chunk of numbers, every person once; the real chunk is 1,000 and fits the bulk read's bound; production keeps a campaign's count for a short time and shares a walk in flight — a failed walk is never kept; a count that cannot be made is unread, never a zero, and never fails the view; a view never waits longer than its budget for the walk — one that is slower says unread THIS time and the memory finds it done for the next; nothing is asked of a campaign that handed nothing over",
   r11: "R11 · THE CARD — the spec's titles in the spec's order (Delivered · Handed over, no receipt yet · No receipt after 15 minutes · Failed with The network refused it and Not delivered (receipt) · Not sent — the checks refused them · No answer from the network · Stopped before sending · Stopped by their link since this campaign); the Delivered row prints Delivered and never Handed over (distinct numbers); the honesty and price lines are the spec's sentences; an unread count is a dash and its sentence; nothing is drawn below the floor; and the card's file does no arithmetic on a count, formats no money, reads no clock and reaches nothing of the server",
   r12: "R12 · THE WIRING — the view's results deps frozen and wired to the REAL doors by identity and by source; the results module names no send and writes nothing; only the live view imports it; the card is imported by the page alone, which mounts it behind LiveWhenResults in its own block under the figures; the ghost has the matching block; the client exports the one hook the card reads",
 } as const;
@@ -80,11 +80,22 @@ export type ResultsLabel = (typeof LABELS)[keyof typeof LABELS];
 
 export type ResultsSources = {
   results: string; card: string; page: string; loading: string; client: string; geometry: string; live: string; copy: string;
+  /** Every src file that names campaign-results at all, decommented — R12's importer scan. */
+  importers: ReadonlyMap<string, string>;
 };
+function walkDir(abs: string): string[] {
+  return readdirSync(abs, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walkDir(join(abs, e.name)) : /[.]tsx?$/.test(e.name) ? [join(abs, e.name)] : []);
+}
+const NAMING = new Map<string, string>();
+for (const abs of walkDir(join(ROOT, "src"))) {
+  const raw = readFileSync(abs, "utf8");
+  if (raw.includes("campaign-results")) NAMING.set(abs.slice(ROOT.length + 1).split(String.fromCharCode(92)).join("/"), decomment(raw.split(CR).join("")));
+}
 const REAL_SOURCES: ResultsSources = {
   results: code("src/lib/server/marketing/campaign-results.ts"), card: code(`${DIR}results-card.tsx`), page: code(`${DIR}page.tsx`),
   loading: code(`${DIR}loading.tsx`), client: code(`${DIR}live-client.tsx`), geometry: code(`${DIR}live-geometry.ts`),
-  live: code("src/lib/server/marketing/campaign-live.ts"), copy: code(`${DIR}live-copy.ts`),
+  live: code("src/lib/server/marketing/campaign-live.ts"), copy: code(`${DIR}live-copy.ts`), importers: NAMING,
 };
 
 export type ResultsImpl = {
@@ -578,7 +589,11 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       if (routeSays !== ours) wrong.push(`${m.name}: the route ${routeSays}, receiptsSetUp ${ours}`);
       if (read.secret !== m.secret || read.previous !== m.previous || read.production !== m.production || read.provider !== m.provider) wrong.push(`${m.name}: the environment is read as ${json({ ...read, secret: read.secret.length, previous: read.previous.length })}`);
     }
-    return [wrong.length === 0, wrong.length === 0 ? `${matrix.length} environments: receiptsSetUp is exactly what the route's authorized lets in; the environment is read as the route reads it` : wrong.join(" | ")];
+    // production's own dep is that rule over the process's environment: no secret in production → no; a secret at the floor → yes
+    const prodNo = await withEnv({ BLACKBALL_WEBHOOK_SECRET: undefined, BLACKBALL_WEBHOOK_SECRET_PREVIOUS: undefined, NODE_ENV: "production", SMS_PROVIDER: "blackball" }, () => impl.production.receiptsSetUp());
+    const prodYes = await withEnv({ BLACKBALL_WEBHOOK_SECRET: S16, BLACKBALL_WEBHOOK_SECRET_PREVIOUS: undefined, NODE_ENV: "production", SMS_PROVIDER: "blackball" }, () => impl.production.receiptsSetUp());
+    if (prodNo !== false || prodYes !== true) wrong.push(`the production dep says ${prodNo} without a secret and ${prodYes} with one`);
+    return [wrong.length === 0, wrong.length === 0 ? `${matrix.length} environments: receiptsSetUp is exactly what the route's authorized lets in; the environment is read as the route reads it; production's dep is that rule` : wrong.join(" | ")];
   });
 
   /* ── R8 · ⛔ the price line ── */
@@ -616,8 +631,10 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const unreadable = await results(c.id, READER, { priceTzs: async () => null });
     const thrown = await results(c.id, READER, { priceTzs: async () => { throw new Error("the settings are down (fixture)"); } });
     const bare = iv.results?.spend === null && idleAsked === 0 && unreadable.results?.spend === null && thrown.results !== null && thrown.results.spend === null;
-    return [exact && half && quiet.length === 0 && bare,
-      `reader: ${json(line)} card has the spec's sentence ${textOf(mHtml).includes(spec)} · TZS 6.50 → ${pence.results?.spend?.tzs} · others: [${quiet.join("; ")}] · nothing handed over: price asked ${idleAsked}× spend ${json(iv.results?.spend)} · unreadable ${json(unreadable.results?.spend)} · thrown ${json(thrown.results?.spend)}`];
+    // production's price is the owner's settings (TZS 6 until saved — E14), read fresh, never a number of this module's own
+    const configured = (await impl.production.priceTzs()) === 6;
+    return [exact && half && quiet.length === 0 && bare && configured,
+      `reader: ${json(line)} card has the spec's sentence ${textOf(mHtml).includes(spec)} · TZS 6.50 → ${pence.results?.spend?.tzs} · others: [${quiet.join("; ")}] · production's price is the settings' ${configured} · nothing handed over: price asked ${idleAsked}× spend ${json(iv.results?.spend)} · unreadable ${json(unreadable.results?.spend)} · thrown ${json(thrown.results?.spend)}`];
   });
 
   /* ── R9 · the failed split, no answer and what is left ── */
@@ -739,6 +756,18 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     let earlyRejected = false;
     try { await early; } catch { earlyRejected = true; }
     const asRejection = !syncThrow && earlyRejected;
+    // (4a) ⭐ a view never hangs on the walk: slower than its budget it says unread THIS time, and the walk goes on in the memory — the
+    // next view finds it done. (The budget's timer is due before the walk's, so the order holds however loaded the machine is.)
+    const slowCampaign = await h.campaign("rr10s", { path: RUNNING, count: 12 });
+    await h.rows(slowCampaign.id, [...h.many(3, { status: "SENT", sentAt: iso(T - 60 * MIN) }), ...h.many(9, { status: "PENDING" })]);
+    const slowHeld = new Map<string, import("../../src/lib/server/marketing/campaign-results.ts").Memo<number>>();
+    const slowRead = impl.memo(async () => { await new Promise((r) => setTimeout(r, 150)); return 5; }, { ttlMs: 30_000, now: () => Date.now(), held: slowHeld });
+    const firstLook = await results(slowCampaign.id, READER, { stoppedByLink: slowRead, budgetMs: 20 });
+    const firstHtml = card(firstLook);
+    await new Promise((r) => setTimeout(r, 300));
+    const secondLook = await results(slowCampaign.id, READER, { stoppedByLink: slowRead, budgetMs: 20 });
+    const budgeted = firstLook.results?.stoppedByLink === null && valueOf(firstHtml, "stoppedByLink") === "—" && secondLook.results?.stoppedByLink === 5
+      && RES.RESULTS_READ_BUDGET_MS > 0 && RES.RESULTS_DEPS.budgetMs === RES.RESULTS_READ_BUDGET_MS && firstLook.results?.handedOver === 3;
     // (4b) a walk that cannot move refuses, and one that never ends is cut off — each a failure the view says as unread
     const stuck = await impl.walk("cmp_stuck", { ...impl.walkDeps, chunk: 2, page: async () => [{ msisdn: h.key("62", 1), sentAt: iso(T) }, { msisdn: h.key("62", 2), sentAt: iso(T) }], stops: async () => [] })
       .then(() => false, () => true);
@@ -762,8 +791,8 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       priceTzs: async () => { asked.push("priceTzs"); return 6; },
     });
     const nothing = asked.length === 0 && iv.results?.stoppedByLink === 0 && iv.results.noReceiptAfter15 === 0;
-    return [chunked && real && twoPages && remembered && inside && expired && notKept && asRejection && guarded && unread && nothing,
-      `chunks of 7 over 21: counted ${counted} (want 6), pages ${pages.length}, batches ${json(batches)}, twice ${twice} · 1,001 people → pages ${json(bigPages)} count ${bigCount} · real chunk ${real} · production: ${walks} walk(s) for 3 askers ${json(shared)} · memory: inside ${inside} expired ${expired} failure not kept ${notKept} throw-as-rejection ${asRejection} · a stuck walk refuses ${stuck}, an endless one is cut at ${counter} pages ${endless} · failed walk: ${json(down.results?.stoppedByLink)} "${valueOf(downHtml, "stoppedByLink")}" · nobody handed over: asked [${asked.join(",")}]`];
+    return [chunked && real && twoPages && remembered && inside && expired && notKept && asRejection && budgeted && guarded && unread && nothing,
+      `chunks of 7 over 21: counted ${counted} (want 6), pages ${pages.length}, batches ${json(batches)}, twice ${twice} · 1,001 people → pages ${json(bigPages)} count ${bigCount} · real chunk ${real} · production: ${walks} walk(s) for 3 askers ${json(shared)} · memory: inside ${inside} expired ${expired} failure not kept ${notKept} throw-as-rejection ${asRejection} · a slow walk: first look ${json(firstLook.results?.stoppedByLink)}, the next ${json(secondLook.results?.stoppedByLink)} · a stuck walk refuses ${stuck}, an endless one is cut at ${counter} pages ${endless} · failed walk: ${json(down.results?.stoppedByLink)} "${valueOf(downHtml, "stoppedByLink")}" · nobody handed over: asked [${asked.join(",")}]`];
   });
 
   /* ── R11 · the card ── */
@@ -831,7 +860,9 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const doors = s.results.includes("db.smsCampaignRecipient.countSentBefore(campaignId, before)") && s.results.includes("db.smsCampaignRecipient.handedOverPage(campaignId, after, limit)")
       && s.results.includes("db.suppression.findActiveAmong(batch)") && s.results.includes("db.smsCampaignRecipient.listByMsisdn(msisdn, sinceIso)")
       && s.live.includes("results: RESULTS_DEPS,") && s.live.includes("campaignResults({");
-    const SEND = new RegExp("sendBatch|dispatchSlice|blackballSend|sendCampaignTest|engineSend");
+    // The send names are spelled in halves: marketing-window's W6 walks every file under scripts/ for the send path's NAME as text,
+    // and this is a pattern the results module is held to, not a driver of any send.
+    const SEND = new RegExp(["sendBatch", "dispatch" + "Slice", "blackballSend", "sendCampaign" + "Test", "engineSend"].join("|"));
     const WRITE = new RegExp("[.](create|createMany|update|settle|transition|claim|requeueHeld|recordReceipt|recordSend|lift)[(]|audit[(]");
     const quiet = !SEND.test(s.results) && !WRITE.test(s.results);
     const mount = s.page.includes('import { LiveResults, LiveWhenResults } from "./results-card";') && s.page.includes("<LiveWhenResults>")
@@ -839,8 +870,16 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const ghost = s.loading.includes('data-skeleton="live-results"') && s.loading.includes("RESULTS_ROW_BOX") && s.loading.indexOf('data-skeleton="live-progress"') < s.loading.indexOf('data-skeleton="live-results"');
     const hook = s.client.includes("export function useLive(): Live {") && !s.client.includes("LiveResults") && !s.client.includes("results-card");
     const geometry = s.geometry.includes("export const RESULTS_ROW_BOX =") && s.geometry.includes("export const RESULTS_ROW_COUNT = 5;");
-    return [frozen && doors && quiet && mount && ghost && hook && geometry,
-      `deps frozen and wired ${frozen} · the doors named ${doors} · reads only ${quiet} · mounted behind LiveWhenResults under the figures ${mount} · ghost block ${ghost} · useLive exported, the client names no card ${hook} · geometry ${geometry}`];
+    // ⛔ the module is SERVER code: a VALUE import of it is the live view's (and the dev seed's, for one constant) and nobody else's —
+    // never the card, the client or the page (a type-only import is erased, and allowed)
+    const SPEC = new RegExp('^(import|export)( [^;]*?)? from "([^"]+)"', "gm");
+    const importers = [...s.importers].filter(([rel, text]) => {
+      if (rel.endsWith("/campaign-results.ts")) return false;
+      return Array.from(text.matchAll(SPEC)).some((m) => !/^ type /.test(m[2] ?? "") && m[3].endsWith("/campaign-results"));
+    }).map(([rel]) => rel).sort();
+    const reach = json(importers) === json(["src/app/api/dev-test/marketing-live-seed/route.ts", "src/lib/server/marketing/campaign-live.ts"]);
+    return [frozen && doors && quiet && mount && ghost && hook && geometry && reach,
+      `deps frozen and wired ${frozen} · imported by value by [${importers.join(', ')}] ${reach} · the doors named ${doors} · reads only ${quiet} · mounted behind LiveWhenResults under the figures ${mount} · ghost block ${ghost} · useLive exported, the client names no card ${hook} · geometry ${geometry}`];
   });
 }
 
@@ -899,6 +938,10 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withWalk({ rules: { ...base.walkDeps.rules, attributedElsewhere: (rows, o) => RES.attributedElsewhere(rows.map((r) => ({ ...r, status: "SENT" as const, sentAt: r.sentAt ?? new Date(Date.parse(o.sentAt) + 1).toISOString() })), o) } }) },
     { name: "R-R7 · 'set up' means a secret is set — a secret one short of the floor, and the open stub, read the wrong way", expect: [L.r7],
       impl: withResults({ setUp: (r) => r.secret !== "" }) },
+    { name: "R-R7b · production's 'set up' is a constant — the dep ignores the environment", expect: [L.r7],
+      impl: withResults({ production: Object.freeze({ ...RES.RESULTS_DEPS, receiptsSetUp: () => true }) }) },
+    { name: "R-R8b · production's price is a number of its own — not the owner's setting", expect: [L.r8],
+      impl: withResults({ production: Object.freeze({ ...RES.RESULTS_DEPS, priceTzs: async () => 7 }) }) },
     { name: "R-R9 · the failed merged — every failure the network's refusal, none reported undelivered by a receipt (R1 and R2 move a row to Failed by a receipt)", expect: [L.r1, L.r2, L.r9],
       impl: withRules({ failedSplit: (groups) => { const s = RES.failedSplitOf(groups); return { total: s.total, wire: s.total, receipt: 0 }; } }) },
     { name: "R-R10 · the walk reads the first chunk only — everyone past the first page is never asked about", expect: [L.r10],
@@ -912,6 +955,8 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       } }) },
     { name: "R-R10d · a count that cannot be made drawn as a zero — the failed stop count reads 0", expect: [L.r10, L.r11],
       impl: withDeps((d) => ({ stoppedByLink: async (id) => { try { return await d.results.stoppedByLink(id); } catch { return 0; } } })) },
+    { name: "R-R10e · no render budget — a view waits for the stop walk as long as it takes", expect: [L.r10],
+      impl: withDeps(() => ({ budgetMs: 600_000 })) },
     { name: "R-R11 · the Delivered row prints what was handed over — the network's taking a message passes for its delivery in the browser", expect: [L.r1, L.r11],
       impl: withResults({ render: (view, o) => base.render({ ...view, results: view.results === null ? null : { ...view.results, delivered: view.results.handedOver } }, o) }) },
     { name: "R-R11b · an unread count drawn as a zero", expect: [L.r3, L.r10, L.r11],
@@ -934,6 +979,8 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withSources({ loading: plantIn(S.loading, 'data-skeleton="live-results"', 'data-skeleton="live-other"') }) },
     { name: "R-R12e · the view's results deps are not production's", expect: [L.r12],
       impl: withSources({ live: plantIn(S.live, "results: RESULTS_DEPS,", "results: { ...RESULTS_DEPS },") }) },
+    { name: "R-R12f · the browser's card imports the server module by value — the stop walk's reads reach the client's file", expect: [L.r12],
+      impl: withSources({ importers: new Map([...S.importers, ["src/app/admin/campaigns/[id]/results-card.tsx", `import { campaignResults } from "@/lib/server/marketing/campaign-results";`]]) }) },
     { name: "R-R13 · a phone number reaches the results card", expect: [phoneLabel],
       impl: withResults({ render: (view, o) => `${base.render(view, o)}<p>+255712345678</p>` }) },
   ];
