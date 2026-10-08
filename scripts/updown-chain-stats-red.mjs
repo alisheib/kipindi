@@ -99,10 +99,17 @@ const MUTATIONS = [
   if ((s.feedFailRate ?? 0) > 0) return "feed-failing";`,
   },
   {
+    // ⚠️ RE-ANCHORED 2026-10-08. `758bbf8b` (2026-08-29, "/admin/updown fired 46 queries per
+    // render") replaced the per-chain `.list({ chainId: c.id, boundaryFrom: statsFrom, limit:
+    // STATS_CAP })` with ONE bulk read for every chain, so from that commit on the old anchor
+    // matched nothing and the only case guarding the TIME window could not inject (8/9, ANCHOR
+    // MISSING). The plant is the same defect on the new call: the round query loses
+    // `boundaryFrom`, so the sample is "the newest N rounds" again instead of "the last 7 days".
+    // Suite §4 ("the window is TIME-based") is the assertion that must fail.
     name: "count-window-not-time-window — two chains stop being comparable (E-58's enabler)",
     file: PAGE,
-    from: `          .list({ chainId: c.id, boundaryFrom: statsFrom, limit: STATS_CAP })`,
-    to: `          .list({ chainId: c.id, limit: STATS_CAP })`,
+    from: `roundStore.list({ chainIds, boundaryFrom: statsFrom, limit: GLOBAL_STATS_CAP })`,
+    to: `roundStore.list({ chainIds, limit: GLOBAL_STATS_CAP })`,
   },
   {
     name: "rates-report-zero-instead-of-null — 'no data' shown as 0% (A-5)",

@@ -54,7 +54,7 @@ console.log("\n[report-note-truth] §2 no note may contradict it");
   const noteLines = [];
   for (const [file, src] of [["catalogue.ts", catalogue], ["analytics.ts", analytics]]) {
     for (const line of src.split(/\r?\n/)) {
-      if (/GGR\s*=/.test(line) && !/^\s*\/\/ /.test(line.trim()) === false) { /* comments included deliberately */ }
+      // Comment lines are included deliberately: a note that states the formula is usually a comment.
       if (/GGR\s*=/.test(line)) noteLines.push([file, line.trim()]);
     }
   }

@@ -101,10 +101,16 @@ const ECHO  = { status: "OPEN", side: "NO"  as const, stake: 2_000, potentialPay
   // exactly how twelve real positions came to quote a payout while being refunded.
   ok("§4 ⭐ neither consumer is passed the VOID-stripped variable",
      !/payoutViewFor\(p, resolvedSide\)/.test(PAGE));
-  // …and `resolvedSide` must stay VOID-free, because `poolFee` prices loser-share off the
-  // losing side and a void has none.
-  ok("§4 resolvedSide is derived by stripping VOID, not by re-testing the outcome",
-     /const resolvedSide = outcome === "VOID" \? undefined : outcome/.test(PAGE));
+  // …and the FEE must never be priced off a void's "losing side": a void has none, and `poolFee`
+  // prices loser-share off the losing side. This used to pin `const resolvedSide = outcome ===
+  // "VOID" ? undefined : outcome`; landing v3 C1-H (fd16567b) removed that variable. Once there is
+  // a verdict the fee is now read through `chargedFee`, which mirrors settlement (a VOID or a
+  // one-sided pool takes the zero fee), handed the outcome itself; `poolFee` is only the
+  // outcome-neutral projection before one, and is handed no side at all.
+  ok("§4 after a verdict the fee is chargedFee's, handed the outcome itself (VOID included)",
+     /chargedFee\(\{[^}]*resolvedOutcome: outcome\s*\}/.test(PAGE));
+  ok("§4 …and poolFee is never handed a side derived from the outcome",
+     !/poolFee\([^)]*\b(?:outcome|resolvedSide)\b/.test(PAGE));
 
   // ⭐⭐ THE ASSERTION THIS SUITE WAS MISSING, AND THE REASON E-56 SHIPPED.
   // Every check above tests the PLUMBING — that `outcome` is computed once, early, and

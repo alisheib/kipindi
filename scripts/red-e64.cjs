@@ -23,11 +23,24 @@ const { spawnSync } = require("node:child_process");
 const FILE = "src/components/updown/use-quick-bet.ts";
 const SUITE = "scripts/updown-bet-feedback.test.mts";
 
+// ⚠️ EVERYTHING INSIDE THE CALL IS PART OF THE ANCHOR — COMMENT LINES TOO — AND IT HAS MOVED ONCE.
+// `b14c749f` (2026-08-21, design-perfection stage 06) replaced the literal `durationMs: 3000,` with
+// the named constant `DWELL_BET_PLACED_MS` (§F8 files every dwell in `feedback-timing.ts`) and put a
+// six-line comment above it. This anchor still said `3000`, so no-toast, no-duration and
+// moved-out-of-the-success-branch all reported "ANCHOR NOT FOUND" and the harness read 4/7 from then
+// on. The CRLF fallback in `resolve` forgives line endings only, never text: when the toast call is
+// edited again, copy the new text here byte for byte (backticks and `${` escaped).
 const TOAST_CALL = `          toast({
             title: copy.placed,
             description: \`\${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\`,
             variant: "success",
-            durationMs: 3000,
+            // §F8 · the dwell is named, not typed. The value is unchanged (3s — Ali:
+            // "keep placing bets popups normal"); what changed is that it is now filed
+            // beside the dwells it has to be read against instead of sitting here as a
+            // bare number. ⚠️ \`feedback-law\` rule 9.8 pins this value — it must read the
+            // constant from \`feedback-timing.ts\` the way rules 9.0–9.4 already do,
+            // rather than grepping this file for the literal.
+            durationMs: DWELL_BET_PLACED_MS,
           });`;
 
 const MUTATIONS = [
@@ -48,7 +61,10 @@ const MUTATIONS = [
   },
   {
     name: "no-duration — the pile-up on rapid taps returns, which is what removed it originally",
-    find: `            durationMs: 3000,`,
+    // ⚠️ This said `durationMs: 3000,` until `b14c749f` named the dwell. The guard resolves the
+    // constant out of `feedback-timing.ts` now (§2.5 wants a duration expression at the call
+    // site, §2.6 wants it to resolve to 2–4s), so deleting the line fails both, as it did before.
+    find: `            durationMs: DWELL_BET_PLACED_MS,`,
     with: ``,
   },
   {
@@ -81,7 +97,7 @@ const MUTATIONS = [
     with: ``,
     also: {
       find: `      } catch {`,
-      with: `        toast({ title: copy.placed, description: \`\${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\`, variant: "success", durationMs: 3000 });
+      with: `        toast({ title: copy.placed, description: \`\${side === "UP" ? copy.up : copy.down} · \${formatTzs(amount)}\`, variant: "success", durationMs: DWELL_BET_PLACED_MS });
       } catch {`,
     },
   },

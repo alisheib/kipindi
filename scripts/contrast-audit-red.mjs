@@ -14,7 +14,8 @@
  * ⛔ IT DOES NOT REWRITE THE STYLESHEETS. Two sessions share this working tree,
  * and the house mutate-then-restore pattern opens a window in which the other
  * session's `next build` reads a deliberately-broken stylesheet. Each mutation
- * is written to a COPY of the WHOLE CORPUS in the OS temp dir and the gate is
+ * is written to a COPY of EVERYTHING THE GATE READS — the corpus AND the `.ts`/`.tsx`
+ * source tree, see the root built below — in the OS temp dir and the gate is
  * aimed at it with `CONTRAST_ROOT`. The gate prints every path it read on every
  * run, so pointing it somewhere else can never be silent.
  *
@@ -29,7 +30,7 @@
  * not evidence on its own — the run must also name the check that failed, or a
  * typo in the script would read as a caught defect.
  */
-import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, cpSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, cpSync, rmSync, statSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -49,6 +50,8 @@ const ORIGINALS = new Map(CORPUS.map((f) => [f, readFileSync(join(cwd, f), "utf8
 const GLOBALS = join(cwd, "src/app/globals.css");
 const ORIGINAL = ORIGINALS.get("src/app/globals.css");
 const TMP = mkdtempSync(join(tmpdir(), "contrast-red-"));
+// The copy below is a full `src/` tree, not four stylesheets; never leave it behind, on any exit path.
+process.on("exit", () => { try { rmSync(TMP, { recursive: true, force: true }); } catch { /* best effort */ } });
 
 /**
  * `kind` says what a catch looks like, and they are NOT the same thing:
@@ -317,10 +320,74 @@ const MUTATIONS = [
 const lf = (s) => s.replace(/\r\n/g, "\n");
 const base = lf(ORIGINAL);
 
+/**
+ * ⭐ THE ROOT THE GATE IS AIMED AT MUST HOLD EVERYTHING THE GATE READS — AND IT READS MORE THAN STYLESHEETS.
+ * 2026-10-08: this harness scored 3/25, and the 22 misses were ONE cause, not 22 weak spots.
+ *
+ * `contrast-audit.mts` learned to read TypeScript, in two places, both relative to `CONTRAST_ROOT`: §P-u and
+ * §P-u2 (2026-08-30, 2026-09-03) walk every `.ts`/`.tsx` under `src/` for call-site alphas and for `opacity-NN`
+ * inside a solid money button — a sheets-only copy holds none, so §P-u2's own coverage floor already fails on it —
+ * and PV-13c (4732e602, 2026-09-03) scores the settled-market pill straight out of `src/components/ui/chip.tsx`
+ * (`tsxVariantValue`), at module scope. This file kept copying the four sheets and nothing else, so from that
+ * commit every mutation that got past the parser aimed the gate at a root with no chip.tsx, and the gate died on
+ * `ENOENT` and exited 1 before it scored a single pair. "Exit 1, no FAIL line" printed as a MISS — indistinguishable
+ * from a gate that had stopped working. The three catches were the mutations that throw while the sheets are still
+ * being parsed, BEFORE chip.tsx is read; the five `throw` mutations that fire later (the ramp, the filter, the
+ * gain, the chat ramp) hit the ENOENT first and read as misses too.
+ * It is the corpus-list trap of 2026-08-07 (21/21 → 0/21) one kind of input over: same gate, same harness, an
+ * input the copy did not know about.
+ *
+ * ⭐ SO THE COPY IS EVERY `.ts`/`.tsx` UNDER `src/` PLUS THE SHEETS — whatever the gate can walk, not the files
+ * it happens to name today — and THE HARNESS PROVES THE COPY BEFORE IT BELIEVES A VERDICT: the gate must be GREEN
+ * on the unmutated root, or no result about a mutation means anything and the run stops there. That control is
+ * the line that would have said so on 2026-09-03.
+ *
+ * ONE root, one sheet swapped in per mutation and swapped back out. The real tree is still never written.
+ */
+const ROOT_COPY = join(TMP, "root");
+cpSync(join(cwd, "src"), join(ROOT_COPY, "src"), {
+  recursive: true,
+  filter: (p) => statSync(p).isDirectory() || /\.tsx?$/.test(p),
+});
+for (const f of CORPUS) {
+  mkdirSync(join(ROOT_COPY, dirname(f)), { recursive: true });
+  cpSync(join(cwd, f), join(ROOT_COPY, f));
+}
+
+/** Run the shipping gate against a root: what it printed, and how it exited. */
+function runGate(root) {
+  try {
+    const out = execSync("npx tsx scripts/contrast-audit.mts", {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, CONTRAST_ROOT: root },
+    });
+    return { exitCode: 0, out };
+  } catch (e) {
+    return { exitCode: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
+  }
+}
+
+{
+  const c = runGate(ROOT_COPY);
+  const green = c.exitCode === 0 && c.out.includes(ROOT_COPY);
+  console.log(`  ${green ? "✓" : "✗"} CONTROL — the gate is GREEN on an UNMUTATED copy of everything it reads`);
+  if (!green) {
+    // Say WHY, not the stack: the first FAIL / Error lines, else the tail.
+    const lines = c.out.split("\n").map((l) => l.trim()).filter(Boolean);
+    const why = lines.filter((l) => /^(?:FAIL\b|\w*Error: )/.test(l)).slice(0, 6);
+    console.log((why.length ? why : lines.slice(-6)).map((l) => `      ${l.slice(0, 220)}`).join("\n"));
+    console.log("\n⛔ the harness's own copy is not green, so no verdict below would mean anything — none is given.");
+    console.log("   Either the gate gained an input this copy does not hold, or the tree itself is red: run `npm run test:contrast`.");
+    process.exit(1);
+  }
+}
+
 let caught = 0;
 const missed = [];
 
-for (const [i, m] of MUTATIONS.entries()) {
+for (const m of MUTATIONS) {
   // ⛔ A mutation may name ANY sheet in the corpus. Defaulting to globals kept the
   // old anchors working unchanged while letting the chat mutations exist at all.
   const file = m.file ?? "src/app/globals.css";
@@ -330,35 +397,18 @@ for (const [i, m] of MUTATIONS.entries()) {
     missed.push(`${m.name} (anchor missing)`);
     continue;
   }
-  // A ROOT per mutation, holding a copy of the whole corpus with exactly one
-  // sheet altered — so the gate under test is byte-for-byte the shipping gate.
-  const root = join(TMP, `root-${i}`);
-  for (const f of CORPUS) {
-    mkdirSync(join(root, dirname(f)), { recursive: true });
-    cpSync(join(cwd, f), join(root, f));
-  }
   const mutated = fileBase.replace(m.from, m.to);
   if (mutated === fileBase) {
     console.log(`  ✗ ${m.name}\n      ⛔ MUTATION IS A NO-OP — the harness is broken, not the gate.`);
     missed.push(`${m.name} (no-op)`);
     continue;
   }
-  writeFileSync(join(root, file), mutated);
-  const path = root;
-
-  let exitCode = 0;
-  let out = "";
-  try {
-    out = execSync("npx tsx scripts/contrast-audit.mts", {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, CONTRAST_ROOT: root },
-    });
-  } catch (e) {
-    exitCode = e.status ?? 1;
-    out = `${e.stdout ?? ""}${e.stderr ?? ""}`;
-  }
+  // The root holds a copy of everything the gate reads with exactly one sheet altered — so the gate
+  // under test is byte-for-byte the shipping gate. The sheet goes back the moment the gate has run.
+  writeFileSync(join(ROOT_COPY, file), mutated);
+  const path = ROOT_COPY;
+  const { exitCode, out } = runGate(ROOT_COPY);
+  writeFileSync(join(ROOT_COPY, file), ORIGINALS.get(file));
 
   // ⛔ "exit non-zero" alone is not evidence. A gate that crashed on a typo
   // would score as a catch. Demand the SHAPE the mutation should produce.
@@ -382,9 +432,14 @@ for (const [i, m] of MUTATIONS.entries()) {
     console.log(`  ✓ RED  ${m.name}\n         → ${why}`);
   } else {
     missed.push(m.name);
+    // A gate that DIED before scoring (ENOENT, a TypeError) is neither a catch nor a weak gate — say which it was,
+    // or 22 of these read as "the gate stopped working" and nobody can tell which.
+    const crashed = !named && !threw ? /(?:^|\n)((?:\w*Error): [^\n]+)/.exec(out)?.[1] : null;
     const why = !readTheCopy
       ? "the gate did NOT read the mutated copy — CONTRAST_ROOT was ignored"
-      : `exit ${exitCode}, expected a ${m.kind.toUpperCase()}`;
+      : crashed
+        ? `the gate CRASHED instead of scoring — ${crashed.slice(0, 160)} — the copy is missing an input the gate reads`
+        : `exit ${exitCode}, expected a ${m.kind.toUpperCase()}`;
     console.log(`  ✗ MISS ${m.name}\n         → ${why}`);
   }
 }

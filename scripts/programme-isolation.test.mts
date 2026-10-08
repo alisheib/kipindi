@@ -47,7 +47,17 @@ ok("0.setup · every player-promo reward is armed", armed.ok === true, JSON.stri
 
 try {
   // ── §1 · AN AGENT REFERRER on every hook ─────────────────────────────────────────────────
-  {
+  // 🔴 THE MONEY IS SWITCHED ON FOR THIS ARM TOO, EXACTLY AS FOR §2's CONTROL. The red harness found the hole
+  // (2026-10-08): with `flatRewards: true` planted on the AGENT policy this suite stayed GREEN. At the shipped
+  // state (ceiling OWNER, no stored record = Not payable) `payPrize` and `payBonus` return at their FIRST gate,
+  // `refreshInvitePayable()` — silently, no audit row — and an agent reaches them (the switch is asked on the
+  // PLAYER branch of `accrualContextFor` only), so each "paid the agent nothing" below read 0 whether or not
+  // the agent branch leaked. A refusal arm measured with the money off, beside a control (§2) with it forced
+  // on, proves nothing; the two arms share the money state, only the referrer differs.
+  // ⛔ Both overrides are cleared in the `finally`.
+  process.env.FEATURE_INVITEREWARDS = "ACTIVE";
+  process.env.FEATURE_INVITE = "ACTIVE";
+  try {
     await mkFixtureUser("iso_agent");
     const code = await approveFixtureAgent("iso_agent", { commissionPct: 20 });
     await mkFixtureUser("iso_rec");
@@ -66,6 +76,9 @@ try {
     ok("1.commission · the settlement pays commission — and ONLY commission — as cash", (await cashOf("iso_agent")) === netAfterWht(2_000) && (await bonusOf("iso_agent")) === 0, `cash=${await cashOf("iso_agent")} bonus=${await bonusOf("iso_agent")}`);
     const rows = await db.referralReward.listByReferrer("iso_agent");
     ok("1.rows · exactly one row, type COMMISSION, programme AGENT", rows.length === 1 && rows[0].type === "COMMISSION" && rows[0].programme === "AGENT", JSON.stringify(rows.map((r) => [r.type, r.programme, r.status])));
+  } finally {
+    delete process.env.FEATURE_INVITE;
+    delete process.env.FEATURE_INVITEREWARDS;
   }
 
   // ── §2 · CONTROL — a PLAYER referrer on the SAME hooks is paid the flat rewards ──────────

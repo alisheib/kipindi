@@ -51,6 +51,7 @@ import {
   kycStageLabel, kycStageVariant, fundedAxisLabel,
   accountStatusLabel, playerStatusVariant, presentedAccountStatus,
 } from "../src/components/admin/status-badge.tsx";
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = process.env.KP_SRC ?? join(ROOT, "src");
@@ -230,7 +231,7 @@ ok("§3c the only heldTzs comparison is against 0 — and there is at least one"
 console.log("\n§4 · the union tracks the database enum");
 const schema = readFileSync(join(ROOT, "prisma", "schema.prisma"), "utf8");
 const enumArms = (name: string) =>
-  (new RegExp(`enum\\s+${name}\\s*\\{([^}]*)\\}`).exec(schema)?.[1] ?? "").split("\n").map((l) => l.replace(/\/\/.*$/, "").trim()).filter(Boolean);
+  decomment(new RegExp(`enum\\s+${name}\\s*\\{([^}]*)\\}`).exec(schema)?.[1] ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
 const schemaArms = enumArms("KycStatus");
 ok("§4a the schema enum was parsed", schemaArms.length === 6, "", JSON.stringify(schemaArms));
 ok("§4b every schema arm is handled by the derivation", schemaArms.every((a) => stageSrc.includes(`"${a}"`)),

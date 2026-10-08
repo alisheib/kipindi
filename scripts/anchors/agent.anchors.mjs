@@ -29,6 +29,24 @@ export const MUTATIONS = [
     expect: "1.noprize",
   },
   {
+    // Added 2026-10-08 with the suite's §1 fix (its agent arm now runs with the money switched on, as §2's
+    // control does): the same leak by the other door — the policy is right, but the hook stops asking it.
+    gate: "programme-isolation",
+    name: "affiliate-service.ts — onRecruitBet stops branching on the policy (the FIRST_BET prize leak, by the hook)",
+    file: "src/lib/server/affiliate-service.ts",
+    from: `if (!policy.flatRewards) {`,
+    to: `if (false) {`,
+    expect: "1.noprize",
+  },
+  {
+    gate: "programme-isolation",
+    name: "affiliate-service.ts — the bind's SIGNUP bonus stops asking which programme recruited (an agent's recruit is paid it)",
+    file: "src/lib/server/affiliate-service.ts",
+    from: `  if (programme === "PLAYER" && cfg.enabled && cfg.bonus.enabled`,
+    to: `  if (cfg.enabled && cfg.bonus.enabled`,
+    expect: "1.nosignup",
+  },
+  {
     gate: "attribution-provenance",
     name: "affiliate-service.ts — the bind stamps every recruit AGENT regardless of the referrer's programme",
     file: "src/lib/server/affiliate-service.ts",
