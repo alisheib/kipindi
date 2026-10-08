@@ -33,8 +33,16 @@
  *       free-text field; E4 what counts as a chargeable send; E5 the slice timings, and the plain statement that the engine records
  *       no gate or send milliseconds; E6 ⛔ the stop link only under its flag; E7 ⛔ the audit rows through an allow-list, and no
  *       forbidden column in any statement;
+ *   E8  ⛔ the STANDING checks, asked or not — a double send on one recipient row; a message (the composer's tests included) to a
+ *       number that is not the test number; a look exits 1 when it finds either (or a message after a stop);
  *   L1  ⭐ THE LEDGER — a seventh send is REFUSED (not recorded, exit 1), a re-run counts nothing twice, a count never shrinks, a
- *       ledger that cannot be trusted stops the run; L2 the pre-send check (`--sends`, `--ledger`).
+ *       ledger that cannot be trusted stops the run; L2 the pre-send check (`--sends`, `--ledger`) and the pre-flight's never
+ *       writing the ledger; L3 ⭐ the ledger FILE is created only on purpose (`--new-ledger`), its absolute path and last write are
+ *       said every run, and no string reaches it without the number wall; B1 ⭐ BEFORE ANYTHING IS LOADED — the boot module (the
+ *       private Railway host to the public proxy, the working directory checked) comes first and the shared core by a dynamic import.
+ *   The review's fixes (S14, 2026-10-08): P1d the drive list holds the test number ALONE; P7 the SQL's contract, no bare ORDER BY name
+ *   equal to an AS alias, every call bound to the right values; P9 run through npm as the sheet prints it (`npm run -s`) a key prints
+ *   no banner; P1b the source line and the database's clock; E2 the judgements one by one; P2/P5 the output filter ALONE.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` FIRST PROVES THE BASELINE GREEN, then plants each defect IN MEMORY (a
  * function of the shared core, the judge, the verdict parts, the transaction helper, a source text) and requires EXACTLY the
@@ -103,7 +111,7 @@ const L = {
   p6d: "P6d · ⭐ THE GATE'S CONSENT-AND-BASIS HALF IS THE REAL GATE'S — over 384 scenarios (a contact: stop × newest ledger row × licence record × book standing; an account: switch × newest row × record × age × status) the port clears and refuses exactly as mayReceiveMarketingSms does, with the same skip reason; the age band agrees with marketingAge",
   p7: "P7 · ⭐ THE SQL, NOT ONLY ITS NAMES — every table and column the tools' SQL names exists in schema.prisma (or is _prisma_migrations's own); every statement in the sources was run by this suite; every statement keeps its CONTRACT (the filters, the equalities, the ORDER BY and its direction: newest first where 'newest' is meant, the table-qualified seq); no bare ORDER BY name equals an AS alias of its own SELECT (PostgreSQL would read it as the OUTPUT column); and every call was BOUND to the right values (the number with its plus, the campaign asked about, the member lists' ids)",
   p8: "P8 · the migration list is held to the folder — each named migration is a directory of prisma/migrations, and every migration whose SQL names a marketing table is in the list",
-  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm run in the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them)",
+  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm command of the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them)",
   e0: "E0 · CONTROLS — a good campaign A (the composer test + one delivered send) is PROVEN on --expect=delivered:test --expect-sends=2 and exits 0 with the ledger taking 2; a look has no verdict (exit 0, LOOK ONLY); no expectation and no look is exit 2; a campaign that is not there exits 1; a --label that holds a number (a run of five digits, or anything the number wall would change) is a usage error that names no digit; the masks print as +255••••NN",
   e1: "E1 · ⭐ THE DISCRIMINATION VERDICT AND ITS EXIT CODE (the plan's RED) — a good B (skipped suppressed, nothing on the wire) is PROVEN; with the GATE REMOVED (the stopped test number SENT) skipped:test FAILS and the exit is 1; a control SENT fails skipped:control; no row at all is not a refusal; a skip for another reason proves nothing; a refusal with a message on the wire fails; an unconfirmed or undelivered row fails sent / delivered; a wrong --expect-sends fails; the original pair sent:test + skipped:control passes only when both hold",
   e2: "E2 · ⛔ A MESSAGE HANDED TO A NUMBER AFTER ITS STOP WAS IN FORCE is a violation by itself — exit 1 though the asker expected sent, and exit 1 on a --look too (the RESULT line says VIOLATION); a stop made after the message, and one lifted before it, are not; stopInForceAt reads the ledger's newest row at the instant and the Suppression row's interval; an UNCONFIRMED row, or a message on a row that is not SENT, counts as handed over; `stopped` needs an active WITHDRAWN stop from the link made after the campaign's message, `resumed` needs the newest ledger row to be that yes",
@@ -176,6 +184,8 @@ type Impl = {
   folders?: string[];
   /** A plant's patience for the network: when set, it replaces the one a claim asks for. */
   timeoutMs?: number;
+  /** The evidence's whole judgement, when a plant swaps it (the unit claims call it directly). */
+  judgeEvidence?: unknown;
   /** A plant's wrapper around the stand-in network (between the tool and the recorder). */
   fetchWrap?: import("./lib/marketing-u52a-world.mts").RunOpts["fetchWrap"];
   /** A plant's rewrite of the values a statement is bound to. */
@@ -1070,11 +1080,13 @@ async function runAssertions(impl: Impl): Promise<void> {
     const sheet = from >= 0 && to > from ? spec.slice(from, to) : "";
     if (sheet.length < 3000) wrong.push("the run sheet was not found in the spec");
     const plain = sheet.split("npm run ").slice(1).filter((rest) => !(rest.startsWith("-s ") || rest.startsWith("-s`")));
-    if (plain.length > 0) wrong.push(`${plain.length} npm run in the run sheet without -s`);
+    if (plain.length > 0) wrong.push(`${plain.length} npm command(s) of the run sheet without -s`);
     const RAILWAY = "railway run --service 50pick ";
     const bare = [...sheet.matchAll(new RegExp("npm run -s ops:", "g"))].filter((m) => sheet.slice(Math.max(0, (m.index ?? 0) - RAILWAY.length), m.index ?? 0) !== RAILWAY);
     if (bare.length > 0) wrong.push(`${bare.length} command(s) of the run sheet do not go through ${RAILWAY.trim()}`);
     if (!sheet.includes("kipindi-m14-base")) wrong.push("the run sheet does not name the checkout the commands run from");
+    // the scratch-PostgreSQL probe is a REQUIRED step before production, not an option
+    if (!(sheet.includes("db:probe-marketing-u52a") && sheet.includes("REQUIRED before production") && sheet.includes("Step 0 is not run on production until it is green"))) wrong.push("the run sheet no longer requires the scratch probe before production");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}] · without -s the banner names the number: ${bannerShowsNumber}`];
   });
 
@@ -1089,6 +1101,11 @@ async function runAssertions(impl: Impl): Promise<void> {
     if (!has(a.lines, W.TEST.masked)) wrong.push("A: the mask is not printed");
     const look = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, ["--look"]));
     if (look.code !== 0 || !has(look.lines, "LOOK ONLY") || has(look.lines, "PROVEN")) wrong.push(`look: exit ${look.code}`);
+    // ... and the judged result of a look says so itself: no verdict (null) — never "proven" — whatever the facts hold (V16 of the review)
+    const bareFacts = { campaign: { id: W.CAMPAIGN }, recipients: [], recipientCounts: [], messages: [], messageCounts: [], testMessages: [], testMessageCounts: [], audit: [], switchAudit: [], people: {} };
+    const lookArgs = EV.parseEvidenceArgs([W.CAMPAIGN, "--look"], LIB);
+    const judged = lookArgs.ok ? (((impl.judgeEvidence ?? EV.judgeEvidence) as typeof EV.judgeEvidence)(bareFacts as never, lookArgs.args as never, impl.lib as never, (impl.parts ?? EV.PARTS) as never) as { proven: unknown }) : null;
+    if (!judged || judged.proven !== null) wrong.push(`a look carries a verdict (proven ${String(judged?.proven)})`);
     const none = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`]));
     if (none.code !== 2 || none.statements.length !== 0 || !has(none.lines, "nothing to prove")) wrong.push(`no expectation: exit ${none.code}`);
     const both = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--look", "--expect=sent:test"]));
@@ -1913,6 +1930,8 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown) => Array<{ kind: string }>)(f, a).filter((s) => s.kind !== "other_number") } } },
     { name: "R-V21 · a LOOK never exits 1 — its violations are counted as none (the review's X1)", expect: [L.e2, L.e8],
       impl: { parts: { ...EV.PARTS, lookViolations: () => 0 } } },
+    { name: "R-V22 · a look carries a verdict: its judged result says proven (V16 of the review)", expect: [L.e0],
+      impl: { judgeEvidence: ((f: unknown, a: unknown, l: unknown, p: unknown) => ({ ...(EV.judgeEvidence as unknown as (...x: unknown[]) => object)(f, a, l, p), proven: true })) as never } },
     { name: "R-V9 · the slice timings are never worked out", expect: [L.e5],
       impl: { parts: { ...EV.PARTS, sliceTimings: () => [] } } },
     { name: "R-V10 · the test and control rows are swapped (a person is judged on the other's row)", expect: [L.e1],
@@ -1997,6 +2016,8 @@ if (!PROVE_RED) {
       impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, "railway run --service 50pick npm run -s ops:marketing-preflight", "npm run -s ops:marketing-preflight") }) },
     { name: "R-W15 · the run sheet no longer names the checkout it runs from", expect: [L.p9],
       impl: () => withSources({ spec: REAL_SOURCES.spec.split("kipindi-m14-base").join("a-checkout") }) },
+    { name: "R-W16 · the run sheet makes the scratch-PostgreSQL probe optional again", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("REQUIRED before production").join("optional") }) },
     /* ── before anything is loaded ── */
     { name: "R-B1 · the private Railway host is NOT rewritten to the public proxy", expect: [L.b1],
       impl: { boot: { ...BOOT, boot: (toolUrl: string, _env: object, cwd: string, exists?: (p: string) => boolean) => { const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? { ok: true } : { ok: false, problem: p }; } } } },
@@ -2004,7 +2025,7 @@ if (!PROVE_RED) {
       impl: { boot: { ...BOOT, boot: (toolUrl: string, env: Record<string, string>, cwd: string, exists?: (p: string) => boolean) => { if (env.DATABASE_URL) env.DATABASE_URL = "postgresql://other:secret@turntable.proxy.rlwy.net:40357/postgres"; const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? { ok: true } : { ok: false, problem: p }; } } } },
     { name: "R-B3 · the working directory is never checked (a run from elsewhere dies in the module graph)", expect: [L.b1],
       impl: { boot: { ...BOOT, checkoutProblem: () => null } } },
-    { name: "R-B4 · a tool imports the shared core STATICALLY (evaluated before the public-proxy rewrite — ops:marketing-referee-keys, 70e9ba96)", expect: [L.b1],
+    { name: "R-B4 · a tool imports the shared core STATICALLY (evaluated before the public-proxy rewrite — the referee-keys door, 70e9ba96)", expect: [L.b1],
       impl: () => withSources({ pre: `import * as EARLY from "../lib/marketing-u52a.mjs";${NL}${REAL_SOURCES.pre}` }) },
     { name: "R-B5 · a tool never calls boot before it loads the core", expect: [L.b1],
       impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, "boot(import.meta.url)", "Boot(import.meta.url)") }) },

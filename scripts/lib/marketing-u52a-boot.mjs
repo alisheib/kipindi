@@ -2,7 +2,7 @@
  * U52a · WHAT A LIVE TOOL DOES BEFORE ANYTHING IS LOADED (spec `docs/marketing-specs/ENGINE-SPEC.md` §4.18, "AS BUILT - the run
  * sheet"). Both tools (`marketing-preflight.mjs`, `marketing-campaign-evidence.mjs`) call `boot()` FIRST and load the shared core
  * (and with it the repo's `.ts` modules) only after it, by a DYNAMIC import — a static import is evaluated before the file's first
- * line, which is the bug `ops:marketing-referee-keys` had on production (70e9ba96) and `ops:provision-staff` never had.
+ * line, which is the bug the marketing referee-keys door had on production (70e9ba96) and `ops:provision-staff` never had.
  *
  *   · THE PUBLIC PROXY. `railway run` hands this PC the app's PRIVATE database host (`postgres.railway.internal`), which resolves
  *     only inside Railway. `DATABASE_URL` is rewritten to the public proxy FIRST, exactly as `scripts/ops-provision-staff.mts`
@@ -18,7 +18,7 @@ import { existsSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The Postgres service's PUBLIC proxy — the same host and port `ops-provision-staff.mts` and `ops:marketing-referee-keys` use. */
+/** The Postgres service's PUBLIC proxy — the same host and port `ops-provision-staff.mts` and the referee-keys door use. */
 export const PUBLIC_PROXY_HOST = "turntable.proxy.rlwy.net:40357";
 
 /** The private Railway host rewritten to the public proxy; any other address comes back untouched. */

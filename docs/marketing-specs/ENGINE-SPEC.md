@@ -2761,7 +2761,7 @@ Both go through ONE Postgres transaction — REPEATABLE READ, so their dozen rea
 `SET TRANSACTION READ ONLY` (read back; nothing runs unless the database says `on`); every other statement is a SELECT.
 **Before anything is loaded**, each tool rewrites Railway's PRIVATE database host (`postgres.railway.internal`, which `railway run`
 hands this PC and only Railway resolves) to the public proxy — exactly as `ops:provision-staff` does, the user, password and
-database untouched — loads the shared core by a DYNAMIC import (a static import is evaluated first: the bug `ops:marketing-referee-keys`
+database untouched — loads the shared core by a DYNAMIC import (a static import is evaluated first: the bug the marketing referee-keys door
 had on production), and refuses in ONE line, exit 2, to start from a directory that is not the checkout it belongs to (the repo's
 imports resolve through that directory's `tsconfig.json`). `DATABASE_URL` is never printed. The numbers arrive as `--test=` and
 `--control=`, are judged by the repo's numbering plan, and print only as the repo's mask (`+255••••NN`); an output filter behind

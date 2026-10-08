@@ -3,6 +3,9 @@
  * stand-in network and the rows they answer with, so the two live tools run END TO END with no database and no network:
  *   · `fakePrisma` answers each SELECT by the tag comment it opens with (`u52a:<tag>`) from a plain-object world, and RECORDS
  *     every statement, so the suite can hold the first one to `SET TRANSACTION READ ONLY` and the rest to SELECT;
+ *   · it also records WHAT each tool asked: every statement's tag and the VALUES it was bound to (`checkBinds` holds them to the right
+ *     key and the right campaign — the stand-in answers whatever it is asked, so this is where a wrong key would show), the options
+ *     each transaction was opened with, every network call (verb and address) and every write to the ledger file;
  *   · `fakeFetch` answers the public home page and `/api/health` (or fails, or never answers);
  *   · `goodPreWorld` / `goodEvWorld` are worlds in which everything is right — a claim bends ONE thing and names what turns red.
  * ⛔ Every number here is a made-up Tanzanian mobile number (the numbering plan accepts it; no person holds it). Every "database

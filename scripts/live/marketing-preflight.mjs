@@ -48,7 +48,7 @@ import { boot } from "../lib/marketing-u52a-boot.mjs";
 
 /* ══ BEFORE ANYTHING ELSE IS LOADED ══════════════════════════════════════════════════════════════════════════════════ */
 // ⭐ The public proxy FIRST, then the checkout check, then the core by a DYNAMIC import (a static import is evaluated before this
-// file's first line — `ops:marketing-referee-keys` was built on the private host that way, 70e9ba96). See marketing-u52a-boot.mjs.
+// file's first line — the marketing referee-keys door was built on the private host that way, 70e9ba96). See marketing-u52a-boot.mjs.
 const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
 const AS_MAIN = import.meta.url === entryUrl;
 if (AS_MAIN) {
