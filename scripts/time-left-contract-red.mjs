@@ -9,6 +9,10 @@
  * i18n key rename would do it. So case 5 renames the key the gate looks for and asserts the gate
  * FAILS on 2.0 rather than reporting a clean sweep of nothing — the exact blindness that let a
  * third copy of this formatter live on `/markets` through two batches of documentation.
+ *
+ * Case 6 is the singular-forms census (§5): a caller that stops passing `hoursOne` still compiles and still
+ * renders, so nothing but the census can see it — Swahili would read "saa 1 zimebaki" for one hour again, with
+ * every other gate green.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -25,14 +29,17 @@ const DELEGATES = `    timeLeftLabel(Date.parse(iso), nowMs, {
       days: t.market.timeLeftD,
       hours: t.market.timeLeftH,
       minutes: t.market.timeLeftM,
+      daysOne: t.market.timeLeftD1,
+      hoursOne: t.market.timeLeftH1,
+      minutesOne: t.market.timeLeftM1,
     }, fill);`;
 
 const CASES = [
   {
     name: "the helper floors the minute branch with a plain Math.floor (renders 0m while open)",
     file: HELPER,
-    from: `  return fillFn(labels.minutes, { n: Math.max(1, Math.floor(ms / 60_000)) });`,
-    to: `  return fillFn(labels.minutes, { n: Math.floor(ms / 60_000) });`,
+    from: `  const m = Math.max(1, Math.floor(ms / 60_000));`,
+    to: `  const m = Math.floor(ms / 60_000);`,
     expect: "1.1",
   },
   {
@@ -64,6 +71,13 @@ const CASES = [
     from: `const MINUTES_KEY = "timeLeftM";`,
     to: `const MINUTES_KEY = "timeLeftMinutesRenamedAway";`,
     expect: "2.0",
+  },
+  {
+    name: "/live stops handing over the singular hour template (Swahili reads \"saa 1 zimebaki\" for ONE hour again)",
+    file: LIVE,
+    from: `      hoursOne: t.market.timeLeftH1,\n`,
+    to: ``,
+    expect: "5.2",
   },
 ];
 

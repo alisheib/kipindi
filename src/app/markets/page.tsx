@@ -333,6 +333,9 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
       days: t.market.timeLeftD,
       hours: t.market.timeLeftH,
       minutes: t.market.timeLeftM,
+      daysOne: t.market.timeLeftD1,
+      hoursOne: t.market.timeLeftH1,
+      minutesOne: t.market.timeLeftM1,
     }, fill);
 
   return (

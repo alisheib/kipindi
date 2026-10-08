@@ -1111,6 +1111,9 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
     days: t.market.timeLeftD,
     hours: t.market.timeLeftH,
     minutes: t.market.timeLeftM,
+    daysOne: t.market.timeLeftD1,
+    hoursOne: t.market.timeLeftH1,
+    minutesOne: t.market.timeLeftM1,
   }, fill);
 }
 

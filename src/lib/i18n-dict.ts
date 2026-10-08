@@ -821,6 +821,9 @@ export const dict = {
       // it rendered "23masaa yaliyobaki" on every card. Chinese correctly takes no
       // space at all — which is exactly why the join cannot live in the template.
       timeLeftD: "{n}d left", timeLeftH: "{n}h left", timeLeftM: "{n}m left",
+      // Exactly 1. `src/lib/markets/time-left.ts` takes these when the printed count is 1. English has no number
+      // agreement, so they repeat the plurals; Swahili does agree (see its block). Every locale carries the same keys.
+      timeLeftD1: "{n}d left", timeLeftH1: "{n}h left", timeLeftM1: "{n}m left",
       // V-7 — carousel SR labels, previously hardcoded English.
       showMarketN: "Show market {n}", prevMarket: "Previous market", nextMarket: "Next market", showResultN: "Show notable result {n}",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
@@ -3687,7 +3690,12 @@ export const dict = {
       // drafted, marked for native review; English is binding. The second sentence is rules §7's own.
       oneSidedNote: "Hakuna dau upande wa {side} bado. Kama upande mmoja tu una dau wakati wa kufunga, kila dau hurudishwa kamili.",
       closed: "imefungwa",
-      timeLeftD: "siku {n} zimebaki", timeLeftH: "masaa {n} yamebaki", timeLeftM: "dakika {n} zimebaki",
+      // "saa", not "masaa": the noun is N-class (one form for one hour and for many, as "siku" and "dakika" already
+      // are) and the verb agrees with the count - "saa 1 imebaki" for one, "saa 3 zimebaki" for more. The old
+      // "masaa {n} yamebaki" was a colloquial plural, so ONE hour read "masaa 1 yamebaki"; "saa" is also shorter, and
+      // this label sits in a tight row on a 390px phone. `test:time-left` pins these six strings.
+      timeLeftD: "siku {n} zimebaki", timeLeftH: "saa {n} zimebaki", timeLeftM: "dakika {n} zimebaki",
+      timeLeftD1: "siku {n} imebaki", timeLeftH1: "saa {n} imebaki", timeLeftM1: "dakika {n} imebaki",
       showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha matokeo maarufu {n}",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
       // landing v3 · WP3/WP4 — R8 native review (Tanzanian usage, the dictionary's own words): the subject is
@@ -6047,6 +6055,8 @@ export const dict = {
       oneSidedNote: "「{side}」方尚无投注。若截止时仅有一方持有下注，全部下注将全额退还。",
       closed: "已关闭",
       timeLeftD: "{n}天后", timeLeftH: "{n}小时后", timeLeftM: "{n}分钟后",
+      // Exactly 1: Chinese has no number agreement, so the singular forms read as the plurals do.
+      timeLeftD1: "{n}天后", timeLeftH1: "{n}小时后", timeLeftM1: "{n}分钟后",
       showMarketN: "显示市场 {n}", prevMarket: "上一个市场", nextMarket: "下一个市场", showResultN: "显示精选结果 {n}",
       similarMarkets: "相似市场", similarMarketsBody: "正在进行——无需返回即可再下一注。",
       // landing v3 · WP3/WP4 — reviewed (R8): 截止 as in `closingSoon`; 结算来源 as in `settledSourceNewTab`;

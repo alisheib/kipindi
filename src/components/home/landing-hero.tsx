@@ -272,6 +272,7 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
   const noWord = sideWord(t, "NO", "MARKET");
   const timeLeft = row.selectionClosed ? t.home.waitingForResults : timeLeftLabel(row.bettableUntilMs, nowMs, {
     closed: t.market.closed, days: t.market.timeLeftD, hours: t.market.timeLeftH, minutes: t.market.timeLeftM,
+    daysOne: t.market.timeLeftD1, hoursOne: t.market.timeLeftH1, minutesOne: t.market.timeLeftM1,
   }, fill);
   // The instant the countdown counts to, as a day (the Gaming Board's "a timer names its instant").
   const closes = fill(t.market.closesOn, { date: formatEatDate(row.bettableUntilMs, nowMs, t.common.monthsShort, locale) });
@@ -407,6 +408,9 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
                       days: t.market.timeLeftD,
                       hours: t.market.timeLeftH,
                       minutes: t.market.timeLeftM,
+                      daysOne: t.market.timeLeftD1,
+                      hoursOne: t.market.timeLeftH1,
+                      minutesOne: t.market.timeLeftM1,
                     }, fill)
               }
               // The same deadline and clock as the label, so SOON fires in every locale (L17).
