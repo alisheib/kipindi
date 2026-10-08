@@ -124,10 +124,11 @@ const L = {
   e6: "E6 · ⛔ THE STOP LINK ONLY UNDER ITS FLAG — without --show-stop-link no line holds the token or /s/ and no statement selects it; with it exactly one /s/<token> line for the test number, with its warning; the flag needs --test",
   e7: "E7 · ⛔ THE AUDIT ROWS THROUGH AN ALLOW-LIST — the officer's id shown, a name or free text hidden; and no statement of either tool selects ip, userAgent, a name, an e-mail, a hash, a message body or a note",
   e8: "E8 · ⛔ THE STANDING CHECKS, asked or not — a recipient row with more than one message is a double send, and with --test given a message of the campaign or a composer test to a number that is NOT the test number is a violation (the SQL computes a yes/no, never the number): each is printed as VIOLATION, fails the proof and turns a look's exit to 1; a clean campaign prints both checks as clear",
+  e9: "E9 · ⭐ THE LAST CHECKS BEFORE A START — `--look --expect-audience=<n>` judges the campaign's CONFIRMED count: the one expected is exit 0 and says so, another number (or a campaign never confirmed) is exit 1 with 'DO NOT PRESS START', on a look and on a verdict alike; `--expect-audit=marketing.campaign_paused` proves the OFFICER's pause - a row with an actor and the reason officer_paused - not the engine's own pause (the same action, a SYSTEM row with another reason, or no actor), which is named but not counted; the gate's `agent_referee` is a skip reason the evidence can be asked for (`skipped=agent_referee:test`) and explains when a row is skipped for it",
   l1: "L1 · ⭐ THE LEDGER — the cap is six; a seventh is REFUSED: the ledger is not updated, the evidence says LEDGER REFUSES and exits 1; a re-run of the same campaign counts nothing twice and a lower later count never shrinks the entry; a ledger file that is not JSON, names another cap or holds a bad entry stops the run (exit 2) and is never reset; the file is written atomically at the gitignored path",
   l2: "L2 · the pre-send check — the pre-flight's ledger row refuses a step whose sends would pass the cap (--sends, default 1) and --ledger [--sends=n] prints the table and exits 1 when they would not fit; it needs no database; the pre-flight only READS the ledger — not one write in any of its runs",
   l3: "L3 · ⭐ THE LEDGER FILE IS CREATED ONLY ON PURPOSE, AND SAID EVERY RUN — a missing file stops the evidence (exit 2, nothing read, nothing written) and the --ledger table too unless --new-ledger says the drive has not begun; --new-ledger over a ledger that exists is refused; with it the first run writes the file; every run prints the ledger's ABSOLUTE path and when it was last written; no string reaches the file without the number wall (a label that slipped past the parser is scrubbed on its way to the disk)",
-  b1: "B1 · ⭐ BEFORE ANYTHING IS LOADED — both tools call the boot module first (the private Railway host is rewritten to the public proxy, the user and password and database kept, any other host untouched) and load the shared core by a DYNAMIC import, never a static one, and never @prisma/client or the app's store statically; run from a directory that is not the checkout (or has no tsconfig.json) each tool says ONE friendly line and exits 2 — not a stack from inside the module graph",
+  b1: "B1 · ⭐ BEFORE ANYTHING IS LOADED — both tools call the boot module first (the private Railway host, in any letter case and with or without a trailing dot, is rewritten to the public proxy at port 40357, the user and password and database kept, any other host untouched) and load the shared core by a DYNAMIC import, never a static one, and never @prisma/client or the app's store statically; run from a directory that is not the checkout (or has no tsconfig.json) each tool says ONE friendly line - a true one - and exits 2, not a stack from inside the module graph; ⭐ the program is recognised by REAL path (isMain): a tool run THROUGH A JUNCTION in the temporary directory says the one line 'run it from the checkout it belongs to' and exits 2 - never silence",
   s1: "S1 · the sources — both tools' reports are built only from allowed fields: no statement names a column outside the schema's, the report builders never print the raw rows, and the tools' headers name their exit codes",
 } as const;
 type Label = (typeof L)[keyof typeof L];
@@ -269,6 +270,37 @@ function spawnKey(cmd: string, extra: string[], cwd: string = ROOT): { status: n
   const r = spawnSync(process.execPath, argv, { cwd, env, encoding: "utf8", timeout: 90_000 });
   const done = { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
   SPAWNED.set(memo, done);
+  return done;
+}
+
+/**
+ * ⭐ A JUNCTION made in the temporary directory for the length of ONE call, and removed with rmdir (a junction is removed as a link, never
+ * through a recursive delete) whatever happens. It points at this checkout: a tool run THROUGH it is the checker's MAJOR 1 - the program's path
+ * is the link's, the script's real URL is the checkout's, and a plain comparison of the two made the tool a silent no-op (exit 0, no output).
+ */
+function withJunction<T>(fn: (link: string) => T): T {
+  const dir = mkdtempSync(join(tmpdir(), "u52a-link-"));
+  const link = join(dir, "checkout");
+  try {
+    symlinkSync(ROOT, link, "junction");
+    return fn(link);
+  } finally {
+    try { rmdirSync(link); } catch { /* never made, or already gone */ }
+    try { rmdirSync(dir); } catch { /* not empty only if the link survived: left for the person to see */ }
+  }
+}
+/** A tool run as a child process with its working directory the junction and its script reached through it (memoised: a plant changes text, not files). */
+const SPAWNED_LINKED = new Map<string, { status: number | null; out: string }>();
+function spawnLinked(link: string, scriptRel: string, args: string[]): { status: number | null; out: string } {
+  const memo = JSON.stringify([scriptRel, args]);
+  const hit = SPAWNED_LINKED.get(memo);
+  if (hit) return hit;
+  const tsxCli = join(ROOT, "node_modules", "tsx", "dist", "cli.mjs");
+  const env: Record<string, string> = { PATH: process.env.PATH ?? "", SESSION_SECRET: process.env.SESSION_SECRET ?? "", OTP_PEPPER: process.env.OTP_PEPPER ?? "" };
+  if (process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
+  const r = spawnSync(process.execPath, [tsxCli, join(link, ...scriptRel.split("/")), ...args], { cwd: link, env, encoding: "utf8", timeout: 90_000 });
+  const done = { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+  SPAWNED_LINKED.set(memo, done);
   return done;
 }
 
@@ -1440,6 +1472,20 @@ async function runAssertions(impl: Impl): Promise<void> {
       ["--expect-sends 9", [W.CAMPAIGN, `--test=${W.TEST.raw}`, "--expect-sends=9"]],
       ["an audit token that is not an action", [W.CAMPAIGN, "--expect-audit=paused"]],
       ["--look with an audit expectation", [W.CAMPAIGN, "--look", "--expect-audit=marketing.campaign_started"]],
+      // ⭐ a value flag given twice is refused, whichever it is (only --expect and --expect-audit repeat) - a second --test is never silently dropped
+      ["--test twice", [W.CAMPAIGN, "--look", `--test=${W.TEST.raw}`, "--test=0622 000 222"]],
+      ["--test twice, the same number", [W.CAMPAIGN, "--look", `--test=${W.TEST.raw}`, `--test=${W.TEST.raw}`]],
+      ["--control twice", [W.CAMPAIGN, "--look", `--test=${W.TEST.raw}`, `--control=${W.CONTROL.raw}`, "--control=0688 000 333"]],
+      ["--label twice", [W.CAMPAIGN, "--look", "--label=A", "--label=B"]],
+      ["--expect-sends twice", [W.CAMPAIGN, `--test=${W.TEST.raw}`, "--expect-sends=1", "--expect-sends=2"]],
+      ["--sends twice", ["--ledger", "--sends=1", "--sends=2"]],
+      ["two campaign ids", [W.CAMPAIGN, `${W.CAMPAIGN}x`, "--look"]],
+      // ⭐ --expect-audience: one whole number of people, once, never with --ledger
+      ["--expect-audience twice", [W.CAMPAIGN, "--look", "--expect-audience=1", "--expect-audience=2"]],
+      ["--expect-audience not a number", [W.CAMPAIGN, "--look", "--expect-audience=one"]],
+      ["--expect-audience a phone number", [W.CAMPAIGN, "--look", "--expect-audience=0755000111"]],
+      ["--expect-audience past 9999", [W.CAMPAIGN, "--look", "--expect-audience=10000"]],
+      ["--expect-audience with --ledger", ["--ledger", "--expect-audience=1"]],
     ];
     for (const [name, argv] of usage) {
       const r = await ev(impl, W.evA(), argv);
@@ -1684,6 +1730,89 @@ async function runAssertions(impl: Impl): Promise<void> {
     const textOf = (tag: string): string => { const at = impl.sources.ev.indexOf(`/* u52a:${tag} */`); return at < 0 ? "" : impl.sources.ev.slice(at, impl.sources.ev.indexOf(BT_, at)); };
     const asked = ["messages", "test-messages"].map(textOf);
     if (asked.some((s) => s === "" || !s.includes('(m."msisdn" = ') || new RegExp('m[.]"msisdn"(?! = )').test(s))) wrong.push("a messages statement selects the number itself, or does not compare it");
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+  });
+
+  /* ── E9 · the last checks before a Start ── */
+  await claim(L.e9, async () => {
+    const wrong: string[] = [];
+    type EvW = ReturnType<typeof W.evA>;
+    const look = (audience: string[] = ["--expect-audience=1"]): string[] => [`--test=${W.TEST.raw}`, "--look", ...audience];
+    // the audience: confirmed for 1, expected 1
+    const good = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, look()));
+    if (good.code !== 0 || !has(good.lines, "EXPECT audience=1    HOLDS — the campaign is confirmed for 1 person") || !has(good.lines, "RESULT: LOOK ONLY — no verdict was asked; the audience is the 1 expected")) wrong.push(`a campaign confirmed for the 1 expected: exit ${good.code}`);
+    const two = W.evA();
+    (two.campaign as Record<string, unknown>).audience_count = 2;
+    const rTwo = await ev(impl, two, W.evArgv(W.CAMPAIGN, look()));
+    if (rTwo.code !== 1 || !has(rTwo.lines, "EXPECT audience=1    FAILS — the campaign is confirmed for 2 people - DO NOT PRESS START") || !has(rTwo.lines, "BUT the campaign is not confirmed for the 1 person expected - DO NOT PRESS START") || !has(rTwo.lines, "RESULT: LOOK ONLY")) wrong.push(`a campaign confirmed for 2: exit ${rTwo.code}`);
+    const never = W.evA();
+    (never.campaign as Record<string, unknown>).audience_count = null;
+    const rNever = await ev(impl, never, W.evArgv(W.CAMPAIGN, look()));
+    if (rNever.code !== 1 || !has(rNever.lines, "never confirmed")) wrong.push(`a campaign never confirmed: exit ${rNever.code}`);
+    const zero = W.evA();
+    (zero.campaign as Record<string, unknown>).audience_count = 0;
+    const rZero = await ev(impl, zero, W.evArgv(W.CAMPAIGN, look(["--expect-audience=0"])));
+    if (rZero.code !== 0) wrong.push(`an expected audience of 0, confirmed for 0: exit ${rZero.code}`);
+    const rZeroWrong = await ev(impl, zero, W.evArgv(W.CAMPAIGN, look()));
+    if (rZeroWrong.code !== 1) wrong.push(`an expected audience of 1, confirmed for 0: exit ${rZeroWrong.code}`);
+    // a look WITHOUT the expectation is unchanged, and a violation plus a wrong audience say both
+    const plain = await ev(impl, two, W.evArgv(W.CAMPAIGN, look([])));
+    if (plain.code !== 0 || has(plain.lines, "audience=")) wrong.push(`a look with no audience asked judged one: exit ${plain.code}`);
+    const both = W.evA();
+    (both.campaign as Record<string, unknown>).audience_count = 2;
+    both.elsewhere = 1;
+    const rBoth = await ev(impl, both, W.evArgv(W.CAMPAIGN, look()));
+    if (rBoth.code !== 1 || !has(rBoth.lines, "BUT 1 VIOLATION") || !has(rBoth.lines, "DO NOT PRESS START")) wrong.push(`a violation and a wrong audience: exit ${rBoth.code}`);
+    // on a VERDICT it is one more thing that must hold, alone or beside the others
+    const proven = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-audience=1"]));
+    if (proven.code !== 0 || !has(proven.lines, "RESULT: PROVEN")) wrong.push(`a verdict with the audience that holds: exit ${proven.code}`);
+    const notProven = await ev(impl, two, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-audience=1"]));
+    if (notProven.code !== 1 || !has(notProven.lines, "RESULT: NOT PROVEN")) wrong.push(`a verdict with an audience that does not: exit ${notProven.code}`);
+    const alone = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect-audience=1"]));
+    if (alone.code !== 0 || !has(alone.lines, "RESULT: PROVEN")) wrong.push(`--expect-audience alone as the thing to prove: exit ${alone.code}`);
+    // the judgement itself
+    const judged = ((impl.judgeEvidence ?? EV.judgeEvidence) as typeof EV.judgeEvidence)(W.evA() as never, { ...(EV.parseEvidenceArgs([W.CAMPAIGN, `--test=${W.TEST.raw}`, "--look", "--expect-audience=3"], LIB) as { args: object }).args } as never, impl.lib as never, (impl.parts ?? EV.PARTS) as never) as { audience: { expected: number; actual: number; holds: boolean } | null };
+    if (!judged.audience || judged.audience.expected !== 3 || judged.audience.actual !== 1 || judged.audience.holds !== false) wrong.push(`the judged audience is ${json(judged.audience)}`);
+
+    // ⭐ THE OFFICER'S PAUSE (the checker's MINOR 8): the action is shared with the engine, so the row must carry an actor AND the reason officer_paused
+    const pausedWorld = (rows: Array<Record<string, unknown>>): EvW => {
+      const w = W.evC();
+      w.audit = w.audit.filter((r) => r.action !== "marketing.campaign_paused").concat(rows);
+      return w;
+    };
+    const askPause = ["--expect=sent:test", "--expect-audit=marketing.campaign_paused"];
+    const run = async (name: string, w: EvW, wantCode: number, saying?: string) => {
+      const r = await ev(impl, w, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, ...askPause]));
+      if (r.code !== wantCode) wrong.push(`${name}: exit ${r.code}, wanted ${wantCode}`);
+      if (saying && !has(r.lines, saying)) wrong.push(`${name}: does not say "${saying}"`);
+      return r;
+    };
+    const officer = { seq: "1021", created_at: d(W.T0 + 3_600_500), category: "ADMIN", action: "marketing.campaign_paused", actor_id: "usr_qa_growth_0001", payload: { reason: "officer_paused" } };
+    const engine = { seq: "1020", created_at: d(W.T0 + 3_600_100), category: "SYSTEM", action: "marketing.campaign_paused", actor_id: null, payload: { reason: "rail_dead" } };
+    await run("the officer's pause", pausedWorld([officer]), 0, "1 row of E24 on this campaign counting as the OFFICER's pause");
+    const onlyEngine = await run("only the engine's own pause", pausedWorld([engine]), 1, "0 rows of E24 on this campaign counting as the OFFICER's pause");
+    if (!has(onlyEngine.lines, "1 other row of that action is not it")) wrong.push("the engine's pause is not named as 'not it'");
+    await run("a pause with an actor and ANOTHER reason", pausedWorld([{ ...engine, actor_id: "usr_qa_growth_0001" }]), 1);
+    await run("a pause with the officer's reason and NO actor", pausedWorld([{ ...officer, actor_id: null }]), 1);
+    await run("a pause with an empty actor", pausedWorld([{ ...officer, actor_id: "" }]), 1);
+    await run("an officer's pause beside the engine's own", pausedWorld([engine, officer]), 0, "(1 other row of that action is not it");
+    await run("an officer's pause whose payload is JSON text", pausedWorld([{ ...officer, payload: JSON.stringify({ reason: "officer_paused" }) }]), 0);
+    await run("a pause whose payload is unreadable text", pausedWorld([{ ...officer, payload: "not json" }]), 1);
+    await run("no pause row at all", pausedWorld([]), 1, "0 rows of E24");
+    // the other actions still count a row as it is (they carry no such rule)
+    const started = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-audit=marketing.campaign_started"]));
+    if (started.code !== 0 || !has(started.lines, "EXPECT audit marketing.campaign_started  HOLDS — 1 row of E24 on this campaign") || has(started.lines, "counting as")) wrong.push(`another action is judged by the pause's rule: exit ${started.code}`);
+
+    // ⭐ U33r · the pre-flight does not judge the agent-referee exclusion, so the evidence must be able to NAME it and say what it means
+    const parsed = EV.parseEvidenceArgs([W.CAMPAIGN, `--test=${W.TEST.raw}`, "--expect=skipped=agent_referee:test"], LIB);
+    if (!parsed.ok) wrong.push("--expect=skipped=agent_referee:test is not accepted");
+    const referee = W.evB();
+    referee.recipients[0] = { ...referee.recipients[0], skip_reason: "agent_referee", skip_detail: "given to 50pick as an agent applicant's referee" };
+    referee.people.test = { suppressions: [], ledger: [] };
+    const asked = await ev(impl, referee, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=skipped=agent_referee:test", "--expect-sends=0"]));
+    if (asked.code !== 0 || !has(asked.lines, "SKIPPED agent_referee") || !has(asked.lines, "RESULT: PROVEN")) wrong.push(`a row skipped agent_referee, asked for by name: exit ${asked.code}`);
+    const notStop = await ev(impl, referee, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=skipped:test"]));
+    if (notStop.code !== 1 || !has(notStop.lines, "agent applicant's referee") || !has(notStop.lines, "cannot be the drive's test number") || !has(notStop.lines, "proves nothing about the stop")) wrong.push(`a referee's skip taken for the stop: exit ${notStop.code}`);
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -1976,26 +2105,63 @@ async function runAssertions(impl: Impl): Promise<void> {
     const env: Record<string, string> = { DATABASE_URL: `postgresql://fake_user:${fakePw}@postgres.railway.internal:5432/railway` };
     boot.boot(preTool, env, ROOT);
     const u = new URL(env.DATABASE_URL);
-    if (!(u.hostname === "turntable.proxy.rlwy.net" && u.username === "fake_user" && u.password === fakePw && u.pathname === "/railway")) wrong.push("the private host was not rewritten to the public proxy, or the rest of the address changed");
-    const other = { DATABASE_URL: `postgresql://fake_user:${fakePw}@db.example.test:5432/x` };
-    boot.boot(preTool, other, ROOT);
-    if (other.DATABASE_URL !== `postgresql://fake_user:${fakePw}@db.example.test:5432/x`) wrong.push("another host was rewritten");
-    // the checkout: right here is fine; elsewhere, or with no tsconfig.json, is a sentence
+    // ⭐ the port is the PROXY'S (40357), not the private host's 5432: the rest of the address is kept
+    if (!(u.hostname === "turntable.proxy.rlwy.net" && u.port === "40357" && u.username === "fake_user" && u.password === fakePw && u.pathname === "/railway")) wrong.push("the private host was not rewritten to the public proxy (host and port 40357), or the rest of the address changed");
+    // ... in any letter case, with or without a trailing dot, a port or a query - and only the WHOLE host
+    for (const [host, tail] of [["POSTGRES.RAILWAY.INTERNAL:5432", "/railway"], ["postgres.railway.internal.:5432", "/railway"], ["Postgres.Railway.Internal", "/railway?sslmode=disable"], ["postgres.railway.internal", "/railway"]] as Array<[string, string]>) {
+      const e: Record<string, string> = { DATABASE_URL: `postgresql://fake_user:${fakePw}@${host}${tail}` };
+      boot.boot(preTool, e, ROOT);
+      const x = new URL(e.DATABASE_URL);
+      if (!(x.hostname === "turntable.proxy.rlwy.net" && x.port === "40357" && x.username === "fake_user" && x.password === fakePw && x.pathname === "/railway")) wrong.push(`the private host in another spelling (${host.length} chars) was not rewritten`);
+    }
+    for (const same of [`postgresql://fake_user:${fakePw}@db.example.test:5432/x`, `postgresql://fake_user:${fakePw}@postgres.railway.internal.evil.example:5432/x`, `postgresql://fake_user:${fakePw}@xpostgres.railway.internal:5432/x`, `postgresql://fake_user:${fakePw}@turntable.proxy.rlwy.net:40357/x`]) {
+      const o: Record<string, string> = { DATABASE_URL: same };
+      boot.boot(preTool, o, ROOT);
+      if (o.DATABASE_URL !== same) wrong.push("another host was rewritten");
+    }
+    // the checkout: right here is fine; elsewhere, or with no tsconfig.json, is a sentence - and the sentence is true
     if (boot.checkoutProblem(ROOT, preTool) !== null) wrong.push("the checkout itself was refused");
-    if (boot.checkoutProblem(tmpdir(), preTool) === null) wrong.push("a directory outside the checkout was accepted");
+    const elsewhereSays = boot.checkoutProblem(tmpdir(), preTool);
+    if (elsewhereSays === null) wrong.push("a directory outside the checkout was accepted");
+    else if (elsewhereSays.includes("does that for you") || !elsewhereSays.includes(ROOT) || !elsewhereSays.includes("same command again")) wrong.push(`the sentence for another directory is "${elsewhereSays.slice(0, 120)}"`);
     if (boot.checkoutProblem(join(ROOT, "scripts"), preTool) === null) wrong.push("a folder of the checkout (no tsconfig.json) was accepted");
     if (boot.checkoutProblem(ROOT, preTool, () => false) === null) wrong.push("a checkout with no tsconfig.json was accepted");
-    // both tools: boot first, the core by a dynamic import after it, and no static import of the core, of the client or of the store
+    // both tools: isMain, then boot, then the core by a dynamic import after it, and no static import of the core, of the client or of the store
     for (const [name, src] of [["pre-flight", impl.sources.pre], ["evidence", impl.sources.ev]] as const) {
       const statics = Array.from(src.matchAll(new RegExp('^import [^;]*from "([^"]+)";', "gm"))).map((m) => m[1]);
-      const allowed = ["node:path", "node:url", "../lib/marketing-u52a-boot.mjs"];
+      const allowed = ["../lib/marketing-u52a-boot.mjs"];
       const stray = statics.filter((s) => !allowed.includes(s));
       if (stray.length > 0) wrong.push(`${name} imports ${stray.join(", ")} statically`);
+      const mainAt = src.indexOf("isMain(import.meta.url)");
       const bootAt = src.indexOf("boot(import.meta.url)");
       const coreAt = src.indexOf('await import("../lib/marketing-u52a.mjs")');
       const clientAt = src.indexOf('await import("@prisma/client")');
-      if (!(bootAt > 0 && coreAt > bootAt && clientAt > coreAt)) wrong.push(`${name}: the order is boot ${bootAt} · core ${coreAt} · client ${clientAt}`);
+      if (!(mainAt > 0 && bootAt > mainAt && coreAt > bootAt && clientAt > coreAt)) wrong.push(`${name}: the order is isMain ${mainAt} · boot ${bootAt} · core ${coreAt} · client ${clientAt}`);
       if (src.split('await import("../lib/marketing-u52a.mjs")').length !== 2) wrong.push(`${name} loads the core more than once`);
+      // ⭐ the program is recognised by REAL path (isMain), never by comparing the script's URL with the typed path
+      if (src.includes("process.argv[1]") || src.includes("pathToFileURL")) wrong.push(`${name} compares the script's URL with the typed path itself (a junction makes it a silent no-op)`);
+    }
+    // ⭐ isMain compares REAL paths: the tool's own path is it, another tool is not, nothing and nonsense are not
+    const isMainFn = boot.isMain as typeof BOOT.isMain;
+    const preFile = join(ROOT, "scripts", "live", "marketing-preflight.mjs");
+    const evFile = join(ROOT, "scripts", "live", "marketing-campaign-evidence.mjs");
+    if (!isMainFn(preTool, preFile)) wrong.push("isMain: the tool's own path is not it");
+    if (isMainFn(preTool, evFile)) wrong.push("isMain: another tool is the pre-flight");
+    if (isMainFn(preTool, "") || isMainFn(preTool, null as never) || isMainFn(preTool, join(ROOT, "scripts", "live", "a-file-that-is-not-there.mjs"))) wrong.push("isMain: nothing, null or a missing file is it");
+    // ⭐ THE CHECKER'S MAJOR 1 - the tool reached THROUGH A JUNCTION: isMain sees the real path, and a run with that junction as its working
+    // directory is told ONE line - "run it from the checkout it belongs to" - and exits 2: never silence (exit 0, no output)
+    try {
+      withJunction((link) => {
+        if (!isMainFn(preTool, join(link, "scripts", "live", "marketing-preflight.mjs"))) wrong.push("isMain: the tool reached through a junction is not itself");
+        if (isMainFn(preTool, join(link, "scripts", "live", "marketing-campaign-evidence.mjs"))) wrong.push("isMain: another tool reached through a junction is the pre-flight");
+        for (const [name, script, args] of [["pre-flight", "scripts/live/marketing-preflight.mjs", [`--test=+${W.TEST.key}`, `--origin=${W.ORIGIN}`]], ["evidence", "scripts/live/marketing-campaign-evidence.mjs", ["--ledger"]]] as const) {
+          const r = spawnLinked(link, script, [...args]);
+          const said = r.out.split(NL).filter((l) => l.trim() !== "");
+          if (r.status !== 2 || said.length !== 1 || !said[0].startsWith("REFUSING: run it from the checkout it belongs to") || new RegExp("Error|    at ").test(r.out) || leakOf(r.out) !== null) wrong.push(`${name} run through a junction: exit ${r.status}, ${said.length} line(s) ("${(said[0] ?? "").slice(0, 60)}")`);
+        }
+      });
+    } catch (err) {
+      wrong.push(`a junction could not be made or removed in the temporary directory (${String((err as { code?: string }).code ?? err).slice(0, 40)})`);
     }
     // run from somewhere else, each tool says ONE friendly line and exits 2 — no stack from inside the module graph
     for (const [name, script, args] of [["pre-flight", "scripts/live/marketing-preflight.mjs", [`--test=+${W.TEST.key}`, `--origin=${W.ORIGIN}`]], ["evidence", "scripts/live/marketing-campaign-evidence.mjs", ["--ledger"]]] as const) {
@@ -2053,8 +2219,38 @@ async function runAssertions(impl: Impl): Promise<void> {
         }
       }
     }
-    return [leaks.length === 0 && SEEN.length > 400 && maskedSeen && wallLeaks.length === 0 && wallSays && survivors.length === 0,
-      `${SEEN.length} lines swept · leaks [${leaks.slice(0, 4).join(", ")}] · the mask was printed ${maskedSeen} · the filter alone: ${wallSays ? "says [number]" : "does not say [number]"}, leaks ${wallLeaks.length}, ${survivors.length} spelling(s) survived [${[...new Set(survivors)].slice(0, 3).join(" | ")}]`];
+    // ⭐ THE SCRUB RESIDUE (the checker's MINOR 7), each pinned by a spelling:
+    //  (1) up to SIX separators between the digits of a number the tool was GIVEN - dashes, spaces, a zero-width mark after each digit and a space after each mark;
+    //  (2) a number the tool was NOT given (the generic pass alone, no key): a slash, an underscore, an en dash, a minus sign, a tab, a no-break or thin space, a zero-width mark between its groups;
+    //  (3) a LINE BREAK through a number: the whole text is made safe before it is split into lines;
+    //  (4) a number or an address the 160-character cut of an error would have split: the message is made safe BEFORE it is cut.
+    const national = W.TEST.key.slice(3);
+    const ZW_ = String.fromCharCode(0x200b);
+    const TAB_ = String.fromCharCode(9);
+    const NBSP_ = String.fromCharCode(0xa0);
+    const THIN_ = String.fromCharCode(0x2009);
+    const EN_ = String.fromCharCode(0x2013);
+    const MINUS_ = String.fromCharCode(0x2212);
+    const SHY_ = String.fromCharCode(0xad);
+    const NL_ = String.fromCharCode(10);
+    const residue: string[] = [];
+    const digitsOf = (s: string): string => s.replace(new RegExp("[^0-9]", "g"), "");
+    for (const sep of ["------", " - - -", `${ZW_} ${ZW_} ${ZW_}`, `${TAB_}${TAB_}${TAB_}${TAB_}${TAB_}${TAB_}`, "/ / /", "_ _ _"]) {
+      const out = lib.safeLine(`x${national.split("").join(sep)}y`, {}, [W.TEST.key]);
+      if (digitsOf(out).includes(national.slice(0, 5)) || !out.includes("[number]")) residue.push(`a given number with ${sep.length} separators of one kind or another between its digits survived`);
+    }
+    for (const sep of ["/", "_", EN_, MINUS_, TAB_, NBSP_, THIN_, ZW_, SHY_, `${ZW_}/`, ` ${EN_} `]) {
+      const out = lib.scrubNumbers(`call 0${national.slice(0, 3)}${sep}${national.slice(3, 6)}${sep}${national.slice(6)} now`);
+      if (!out.includes("[number]") || digitsOf(out).includes(national.slice(3, 6))) residue.push(`a number NOT given, grouped with a separator of ${sep.length} character(s), survived the generic pass`);
+    }
+    const broken: string[] = [];
+    const breakIo = lib.makeIo((l: string) => broken.push(l), {}, [W.TEST.key]);
+    breakIo.line(`call 0${national.slice(0, 3)} ${national.slice(3, 6)}${NL_}${national.slice(6)} now and +255${national.slice(0, 3)}${NL_}${national.slice(3)}`);
+    if (broken.some((l) => digitsOf(l).includes(national.slice(3, 6))) || !broken.join(" ").includes("[number]")) residue.push("a number a line break runs through survived the output filter");
+    const cutNumber = lib.describeError(new Error(`${"x".repeat(150)} 0${national.slice(0, 3)} ${national.slice(3, 6)} ${national.slice(6)}`), {}, [W.TEST.key]);
+    if (digitsOf(cutNumber).includes(national.slice(0, 4))) residue.push(`a number the 160-character cut would have split left its front digits in the error line: "${cutNumber.replace(new RegExp("[0-9]", "g"), "#").slice(-30)}"`);
+    return [leaks.length === 0 && SEEN.length > 400 && maskedSeen && wallLeaks.length === 0 && wallSays && survivors.length === 0 && residue.length === 0,
+      `${SEEN.length} lines swept · leaks [${leaks.slice(0, 4).join(", ")}] · the mask was printed ${maskedSeen} · the filter alone: ${wallSays ? "says [number]" : "does not say [number]"}, leaks ${wallLeaks.length}, ${survivors.length} spelling(s) survived [${[...new Set(survivors)].slice(0, 3).join(" | ")}] · residue [${residue.slice(0, 3).join("; ")}]`];
   });
 
   /* ── P5 · no database address anywhere (after the failing runs of P3) ── */
@@ -2076,6 +2272,12 @@ async function runAssertions(impl: Impl): Promise<void> {
     const filter = (impl.lib as typeof LIB).makeIo((l: string) => shown.push(l), { DATABASE_URL: W.FAKE_DB_URL, SESSION_SECRET: "a-session-secret-0123456789" }, []);
     filter.line(`could not connect to ${W.FAKE_DB_URL} as ${W.DB_PIECES[3]} at ${W.DB_PIECES[2]} (password ${W.DB_PIECES[1]}) with a-session-secret-0123456789`);
     if (dbLeaks(shown).length || shown.some((l) => l.includes("a-session-secret"))) wrong.push("the output filter alone lets the address or a secret through");
+    // ⭐ a secret or an address the 160-character cut of an error would have split: the message is made safe BEFORE it is cut, so no front half is left
+    const describe = (impl.lib as typeof LIB).describeError;
+    const cutSecret = describe(new Error(`${"y".repeat(140)} a-session-secret-0123456789`), { SESSION_SECRET: "a-session-secret-0123456789" }, []);
+    if (cutSecret.includes("a-session-secret")) wrong.push("the front half of a secret survived the 160-character cut of an error");
+    const cutAddress = describe(new Error(`${"y".repeat(140)} ${W.DB_PIECES[2]}:5432/${W.DB_PIECES[3]}`), { DATABASE_URL: W.FAKE_DB_URL }, []);
+    if (cutAddress.includes(W.DB_PIECES[2].slice(0, 8)) || cutAddress.includes(W.DB_PIECES[3])) wrong.push("the database host or user survived the cut of an error");
     return [wrong.length === 0, `${SEEN.length} lines swept · wrong [${wrong.join("; ")}]`];
   });
 }
@@ -2108,13 +2310,34 @@ if (!PROVE_RED) {
   };
   /** A backtick, built from its code — a planted SQL statement is a template literal. */
   const BT = String.fromCharCode(96);
+  /**
+   * ⭐ A REPO MODULE WITH ONE TEXT ANCHOR REPLACED, loaded IN MEMORY: the text is changed, its relative imports are made absolute (a data: URL
+   * has no folder) and `import.meta.url` is its own real URL again, then it is imported from a data: URL - no file is written, nothing
+   * on disk changes. This is what lets a plant be a TEXT mutant of a tool or of the core and still be run end to end, with no seam in the code
+   * for it (a hard-coded window, a deleted line, a looser comparison). ⛔ An anchor that is not there THROWS, as `plantIn` does.
+   */
+  const plantedModule = async (rel: string, from: string, to: string): Promise<Record<string, unknown>> => {
+    const file = join(ROOT, ...rel.split("/"));
+    const text = readFileSync(file, "utf8").split(CR).join("");
+    if (!text.includes(from)) throw new Error(`plant anchor not found: ${from.slice(0, 60)}`);
+    const here = pathToFileURL(file).href;
+    const absolute = (spec: string): string => pathToFileURL(join(dirname(file), spec)).href;
+    const patched = text.replace(from, () => to)
+      .replace(new RegExp('"([.][.]?/[^"]+)"', "g"), (_m, spec: string) => JSON.stringify(absolute(spec)))
+      .split("import.meta.url").join(JSON.stringify(here));
+    const mod = await import(`data:text/javascript;base64,${Buffer.from(patched, "utf8").toString("base64")}`);
+    return { ...mod };
+  };
+  const withPreText = async (from: string, to: string): Promise<Partial<Impl>> => ({ preTool: await plantedModule("scripts/live/marketing-preflight.mjs", from, to) });
+  const withEvText = async (from: string, to: string): Promise<Partial<Impl>> => ({ evTool: await plantedModule("scripts/live/marketing-campaign-evidence.mjs", from, to) });
+  const withCoreText = async (from: string, to: string): Promise<Partial<Impl>> => ({ lib: await plantedModule("scripts/lib/marketing-u52a.mjs", from, to) });
   const withLib = (patch: Record<string, unknown>): Partial<Impl> => ({ lib: { ...LIB, ...patch } });
   const withSources = (patch: Partial<Sources>): Partial<Impl> => ({ sources: { ...REAL_SOURCES, ...patch } });
   const L_ = LIB as unknown as Record<string, (...a: unknown[]) => unknown>;
   const PRE_ = PRE as unknown as { judgePreflight: (f: unknown, c: unknown, l: unknown) => unknown };
   const EV_ = EV as unknown as { PARTS: Record<string, (...a: unknown[]) => unknown>; judgeExpectation: (...a: unknown[]) => { holds: boolean; why: string; label: string } };
 
-  type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl>) };
+  type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl> | Promise<Partial<Impl>>) };
   const plants: Plant[] = [
     /* ── the read-only transaction ── */
     { name: "R-RO1 · the helper never sets the transaction read-only (as if the first statement were dropped) — the first statement is the read-back, and P3's 'nothing else is asked' count is short", expect: [L.p3, L.p4],
@@ -2201,18 +2424,18 @@ if (!PROVE_RED) {
         safeLine: (text: string, env: Record<string, string>) => LIB.scrubNumbers(LIB.redactSecrets(text, env), []),
         makeIo: (sink: (l: string) => void, env: Record<string, string>) => { const lines: string[] = []; return { lines, line: (t: string) => { for (const part of String(t).split(NL)) { const safe = LIB.scrubNumbers(LIB.redactSecrets(part, env), []); lines.push(safe); sink(safe); } } }; },
       }) },
-    { name: "R-N3 · both walls down: the output filter and the error description leave the database address in a line", expect: [L.p3, L.p5],
+    { name: "R-N3 · both walls down: the output filter and the error description leave the database address in a line", expect: [L.p2, L.p3, L.p5],
       impl: withLib({
         makeIo: (sink: (l: string) => void, env: Record<string, string>, keys: string[]) => { const lines: string[] = []; return { lines, line: (t: string) => { for (const part of String(t).split(NL)) { const safe = LIB.scrubNumbers(part, keys); lines.push(safe); sink(safe); } } }; },
         describeError: (err: Error) => String(err?.message ?? err),
       }) },
-    { name: "R-N4 · a list's name is shown as it is (no label filter, no scrub)", expect: [L.e3],
+    { name: "R-N4 · a list's name is shown as it is (no label filter, no scrub)", expect: [L.e3, L.p1d],
       impl: withLib({ safeLabel: (v: unknown) => String(v) }) },
     { name: "R-N5 · free text from the database is shown as it is", expect: [L.e3],
       impl: withLib({ safeText: (v: unknown) => (v === null || v === undefined ? "—" : String(v)) }) },
     { name: "R-N6 · the audit payload is printed whole", expect: [L.e3, L.e7],
       impl: withLib({ safePayload: (p: unknown) => JSON.stringify(p) }) },
-    { name: "R-N7 · an error is described by its whole message — HELD BY THE SECOND WALL: the output filter still takes the address out", expect: [],
+    { name: "R-N7 · an error is described by its whole message with no filter of its own (in a run the output filter, the second wall, still takes the address out; the direct claims on describeError see it)", expect: [L.p2, L.p5],
       impl: withLib({ describeError: (err: Error & { u52aStatement?: string }) => `[read: ${err.u52aStatement}] ${String(err?.message ?? err)}` }) },
     /* ── the pre-flight's rules ── */
     { name: "R-J1 · a switch that is OPEN reads closed (the port ignores the row)", expect: [L.p1b, L.p6a],
@@ -2272,11 +2495,11 @@ if (!PROVE_RED) {
     { name: "R-J28 · --new-ledger is accepted over a ledger that already EXISTS", expect: [L.l3, L.p1e],
       impl: withLib({ ledgerGate: (read: { ok: boolean; existed?: boolean; ledger: object }, newLedger: boolean) => (read.ok && read.existed && newLedger === true ? { ok: true, kind: "existing", used: LIB.ledgerTotal(read.ledger as never) } : LIB.ledgerGate(read as never, newLedger)) }) },
     /* ── the evidence verdict ── */
-    { name: "R-V1 · a SKIPPED expectation holds whatever the row is (the gate removed — and the evidence still passes)", expect: [L.e1],
+    { name: "R-V1 · a SKIPPED expectation holds whatever the row is (the gate removed — and the evidence still passes)", expect: [L.e1, L.e9],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string; who: string }, p: unknown, l: unknown) => (e.outcome === "skipped" ? { label: "skipped", holds: true, why: "planted" } : EV_.judgeExpectation(e, p, l)) } } },
     { name: "R-V2 · a person with NO row counts as refused", expect: [L.e1],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { recipient: object | null } | null, l: unknown) => (p && !p.recipient && e.outcome === "skipped" ? { label: "skipped", holds: true, why: "planted" } : EV_.judgeExpectation(e, p, l)) } } },
-    { name: "R-V3 · a skip for ANY reason proves the stop", expect: [L.e1],
+    { name: "R-V3 · a skip for ANY reason proves the stop", expect: [L.e1, L.e9],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string; reason: string | null }, p: unknown, l: unknown) => EV_.judgeExpectation(e.outcome === "skipped" ? { ...e, reason: null } : e, p, l) } } },
     { name: "R-V4 · the stop-violation scan finds nothing", expect: [L.e2],
       impl: { parts: { ...EV.PARTS, stopViolations: () => [] } } },
@@ -2284,11 +2507,11 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { recipient: { status: string } | null } | null, l: unknown) => (e.outcome === "sent" && p && p.recipient && p.recipient.status === "UNCONFIRMED" ? { label: "sent", holds: true, why: "planted" } : EV_.judgeExpectation(e, p, l)) } } },
     { name: "R-V6 · --expect-sends is never compared (the counts the evidence reports and the ledger takes go with it)", expect: [L.e0, L.e1, L.e4, L.l1, L.l3],
       impl: { parts: { ...EV.PARTS, sendCounts: (facts: unknown, lib: unknown) => ({ ...(EV_.PARTS.sendCounts(facts, lib) as object), chargeable: 0 }) } } },
-    { name: "R-V7 · the verdict is always proven (every expectation holds, no violation is ever found)", expect: [L.e1, L.e2],
+    { name: "R-V7 · the verdict is always proven (every expectation holds, no violation is ever found)", expect: [L.e1, L.e2, L.e9],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }) => ({ label: e.outcome, holds: true, why: "planted" }), stopViolations: () => [], sendCounts: (f: unknown, l: unknown) => { const s = EV_.PARTS.sendCounts(f, l) as { chargeable: number }; return s; } } } },
     { name: "R-V8 · a stop is 'in force' whenever the Suppression row is not lifted (its date and the ledger are ignored) — a stop made AFTER the message is flagged", expect: [L.e2],
       impl: { parts: { ...EV.PARTS, stopViolations: (people: Array<{ ledger: unknown[]; suppressions: Array<{ lifted_at: unknown }> }>) => (EV.PARTS.stopViolations as (p: unknown, f: unknown) => unknown)(people.map((p) => ({ ...p, ledger: [] })), (_at: number, sup: Array<{ lifted_at: unknown }>) => ({ inForce: sup.some((x) => x.lifted_at === null || x.lifted_at === undefined), by: "suppression", at: 0 })) } } },
-    { name: "R-V13 · an audit expectation always holds (the rows are not looked at)", expect: [L.e1],
+    { name: "R-V13 · an audit expectation always holds (the rows are not looked at)", expect: [L.e1, L.e9],
       impl: { parts: { ...EV.PARTS, auditChecks: (_f: unknown, a: { expectAudit?: string[] }) => (a.expectAudit ?? []).map((action) => ({ action, holds: true, n: 1 })) } } },
     { name: "R-V14 · `stopped` does not look at the ORDER against the message — a stop made BEFORE it holds (V1 of the review)", expect: [L.e2],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { recipient: unknown } | null, l: unknown) => EV_.judgeExpectation(e, e.outcome === "stopped" && p ? { ...p, recipient: null } : p, l) } } },
@@ -2304,7 +2527,7 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown) => Array<{ kind: string }>)(f, a).filter((s) => s.kind !== "double_send") } } },
     { name: "R-V20 · the standing 'to the test number only' check finds nothing", expect: [L.e8],
       impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown) => Array<{ kind: string }>)(f, a).filter((s) => s.kind !== "other_number") } } },
-    { name: "R-V21 · a LOOK never exits 1 — its violations are counted as none (the review's X1)", expect: [L.e2, L.e8],
+    { name: "R-V21 · a LOOK never exits 1 — its violations are counted as none (the review's X1)", expect: [L.e2, L.e8, L.e9, L.l3],
       impl: { parts: { ...EV.PARTS, lookViolations: () => 0 } } },
     { name: "R-V22 · a look carries a verdict: its judged result says proven (V16 of the review)", expect: [L.e0],
       impl: { judgeEvidence: ((f: unknown, a: unknown, l: unknown, p: unknown) => ({ ...(EV.judgeEvidence as unknown as (...x: unknown[]) => object)(f, a, l, p), proven: true })) as never } },
@@ -2317,9 +2540,9 @@ if (!PROVE_RED) {
     { name: "R-V12 · the evidence reads the audit row's ip as well", expect: [L.e7],
       impl: { readFacts: async (tx: { $queryRaw: (s: TemplateStringsArray, ...v: unknown[]) => Promise<unknown> }, a: { campaignId: string }) => { const facts = await (EV.readEvidenceFacts as (t: unknown, x: unknown) => Promise<unknown>)(tx, a); await tx.$queryRaw`/* u52a:audit */ SELECT "ip", "seq"::text AS seq FROM "AuditLog" WHERE "targetType" = 'SmsCampaign' AND "targetId" = ${a.campaignId}`; return facts; } } },
     /* ── chargeable counts and the ledger ── */
-    { name: "R-C1 · only ACCEPTED and DELIVERED messages are chargeable", expect: [L.e4],
+    { name: "R-C1 · only ACCEPTED and DELIVERED messages are chargeable", expect: [L.e4, L.e8],
       impl: withLib({ isChargeable: (s: string) => s === "ACCEPTED" || s === "DELIVERED", countChargeable: (g: Array<{ status: string; n: number }>) => g.filter((x) => x.status === "ACCEPTED" || x.status === "DELIVERED").reduce((n, x) => n + x.n, 0) }) },
-    { name: "R-C2 · a FAILED message with no receipt is counted as a send", expect: [L.e4],
+    { name: "R-C2 · a FAILED message with no receipt is counted as a send", expect: [L.e4, L.e8],
       impl: withLib({ isChargeable: () => true, countChargeable: (g: Array<{ n: number }>) => g.reduce((n, x) => n + x.n, 0) }) },
     { name: "R-L1 · the ledger counts a seventh send (no cap)", expect: [L.l1],
       impl: withLib({ recordLedger: (ledger: { entries: Record<string, { chargeable: number }> }, id: string, entry: { chargeable: number }) => ({ ok: true, ledger: { ...ledger, entries: { ...ledger.entries, [id]: { ...entry } } }, total: 0 }) }) },
@@ -2345,10 +2568,18 @@ if (!PROVE_RED) {
     { name: "R-L5 · the pre-send check always fits", expect: [L.l1, L.l2],
       impl: withLib({ checkRoom: (_ledger: unknown, sends: number) => ({ ok: true, used: 0, sends, room: 6 }) }) },
     { name: "R-L6 · the ledger is written in place (no temporary file, no rename)", expect: [L.l1],
-      impl: () => withSources({ lib: plantIn(REAL_SOURCES.lib, `${FS_RENAME}(tmp, path);`, "") }) },
+      impl: withLib({ fileLedgerIo: (path: string, ops: { mkdir: (p: string, o: object) => void; writeFile: (p: string, t: string, e: string) => void }) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => { ops.mkdir(dirname(path), { recursive: true }); ops.writeFile(path, text, "utf8"); } }) }) },
+    { name: "R-L11 · the ledger's rename is never tried again (a file Windows holds for a moment stops the drive)", expect: [L.l1],
+      impl: withLib({ fileLedgerIo: (path: string, ops: { mkdir: (p: string, o: object) => void; writeFile: (p: string, t: string, e: string) => void; rename: (a: string, b: string) => void }) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => { ops.mkdir(dirname(path), { recursive: true }); ops.writeFile(`${path}.tmp`, text, "utf8"); ops.rename(`${path}.tmp`, path); } }) }) },
+    { name: "R-L12 · the ledger's rename is tried again whatever went wrong (ENOENT too, and for good)", expect: [L.l1],
+      impl: withLib({ fileLedgerIo: (path: string, ops: { mkdir: (p: string, o: object) => void; writeFile: (p: string, t: string, e: string) => void; rename: (a: string, b: string) => void; sleep: (ms: number) => void }) => ({ ...(LIB.fileLedgerIo as unknown as (p: string, o: unknown) => object)(path, ops), write: (text: string) => {
+        ops.mkdir(dirname(path), { recursive: true });
+        ops.writeFile(`${path}.tmp`, text, "utf8");
+        for (let tries = 0; ; tries++) { try { ops.rename(`${path}.tmp`, path); return; } catch (err) { if (tries >= 5) throw err; ops.sleep(50 * (tries + 1)); } }
+      } }) }) },
     { name: "R-L8 · the ledger's strings reach the file unscrubbed (a number in a label or an outcome — the review's X2)", expect: [L.l3],
       impl: withLib({ serializeLedger: (l: object) => `${JSON.stringify(l, null, 2)}${NL}` }) },
-    { name: "R-L9 · the pre-flight WRITES the ledger it reads (the same text back — S10 of the review)", expect: [L.l2],
+    { name: "R-L9 · the pre-flight WRITES the ledger it reads (the same text back — S10 of the review)", expect: [L.l2, L.l3],
       impl: withLib({ readLedger: (io: { read: () => string | null; write: (t: string) => void }) => { const t = io.read(); if (t !== null) io.write(t); return LIB.readLedger(io as never); } }) },
     { name: "R-L10 · the ledger file's absolute path and last write are not said", expect: [L.l3],
       impl: withLib({ ledgerFileLine: () => "" }) },
@@ -2405,16 +2636,132 @@ if (!PROVE_RED) {
       impl: () => withSources({ pre: `import * as EARLY from "../lib/marketing-u52a.mjs";${NL}${REAL_SOURCES.pre}` }) },
     { name: "R-B5 · a tool never calls boot before it loads the core", expect: [L.b1],
       impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, "boot(import.meta.url)", "Boot(import.meta.url)") }) },
+
+    /* ══ FIX ROUND 2 · the merged gate's referee, the junction, the pinned SQL, the standing reads, the margins, the scrub ══ */
+    /* ── U33r: the agent-referee exclusion (§4.18 option b: not judged, and said so) ── */
+    { name: "R-X1 · the consent rows stop saying that the agent-referee exclusion is not judged (the port would read a silent GO where the real gate refuses agent_referee)", expect: [L.p1d],
+      impl: withLib({ REFEREE_SAYING: "" }) },
+    { name: "R-X2 · a GO of the port stops carrying the referee exclusion in `unjudged` (P6d: the port reads GO where the real gate refuses, and does not say so)", expect: [L.p6d],
+      impl: withLib({ judgeEligibility: (f: object) => { const v = LIB.judgeEligibility(f as never) as { ok: boolean; unjudged?: string[] }; return v.ok ? { ...v, unjudged: (v.unjudged ?? []).filter((x) => x !== LIB.REFEREE_UNJUDGED) } : v; } }) },
+    { name: "R-X3 · the evidence cannot be asked for `skipped=agent_referee` (the reason is missing from the gate's list)", expect: [L.e9],
+      impl: { evParse: (argv: string[], lib: unknown) => (argv.some((a) => a.includes("agent_referee")) ? { ok: false, problems: ["--expect names a skip reason the gate does not have"] } : EV.parseEvidenceArgs(argv, lib as never)) } },
+    { name: "R-X4 · a referee's skip is explained like any other skip (no word about the agent referee)", expect: [L.e9],
+      impl: { parts: { ...EV.PARTS, judgeExpectation: (e: object, p: object | null, l: unknown) => { const r = EV_.judgeExpectation(e, p, l); return { ...r, why: r.why.split("agent applicant's referee").join("x").split("cannot be the drive's").join("is the drive's") }; } } } },
+    /* ── MAJOR 1: the junction, isMain, the boot sentence, the proxy ── */
+    { name: "R-B6 · a tool decides it is the program by comparing its URL with the typed path (the old expression: through a junction it is a silent no-op)", expect: [L.b1],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, "const AS_MAIN = isMain(import.meta.url);", "const AS_MAIN = import.meta.url === process.argv[1];") }) },
+    { name: "R-B7 · isMain compares the typed paths, not the real ones (through a junction the tool is not itself)", expect: [L.b1],
+      impl: { boot: { ...BOOT, isMain: (toolUrl: string, argv1: string) => typeof argv1 === "string" && argv1 !== "" && join(fileURLToPath(toolUrl)) === join(argv1) } } },
+    { name: "R-B8 · the boot sentence says again that npm cds for you (it does not)", expect: [L.b1],
+      impl: { boot: { ...BOOT, checkoutProblem: (cwd: string, toolUrl: string, exists?: (p: string) => boolean) => { const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? null : `${p} (npm run -s does that for you)`; } } } },
+    { name: "R-B9 · the private host is rewritten to the proxy's host but with the private host's port (5432)", expect: [L.b1],
+      impl: { boot: { ...BOOT, boot: (toolUrl: string, env: Record<string, string>, cwd: string, exists?: (p: string) => boolean) => { if (env.DATABASE_URL) env.DATABASE_URL = BOOT.publicProxyUrl(env.DATABASE_URL).split(":40357").join(":5432"); const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? { ok: true } : { ok: false, problem: p }; } } } },
+    { name: "R-B10 · the private host is matched in lower case and without a trailing dot only (the old pattern)", expect: [L.b1],
+      impl: { boot: { ...BOOT, boot: (toolUrl: string, env: Record<string, string>, cwd: string, exists?: (p: string) => boolean) => { if (env.DATABASE_URL) env.DATABASE_URL = env.DATABASE_URL.replace(new RegExp("@postgres[.]railway[.]internal(:[0-9]+)?"), "@turntable.proxy.rlwy.net:40357"); const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? { ok: true } : { ok: false, problem: p }; } } } },
+    { name: "R-H1 · the tools' private-host guard is case-sensitive and ignores the trailing dot (the old pattern)", expect: [L.p3],
+      impl: withLib({ isPrivateHost: (u: string) => new RegExp("[.]railway[.]internal(?::|[/]|$)").test(String(u)) }) },
+    { name: "R-H2 · the report calls every database a 'proxy'", expect: [L.p3],
+      impl: withLib({ databaseClass: () => "proxy" }) },
+    /* ── MAJOR 2: the SystemConfig keys, the SELECT lists, the window, the list of two, the ledger write, the repeated flag ── */
+    { name: "R-K1 · the live switch's key is mistyped in the core (an OPEN switch reads 'closed - no row stored')", expect: [L.p1b, L.p6e],
+      impl: withLib({ KEY_LIVE_SWITCH: "marketing.sms.lvie" }) },
+    { name: "R-K2 · the settings key is mistyped in the core (the saved record is never found: the defaults are judged)", expect: [L.p1b, L.p6e],
+      impl: withLib({ KEY_SETTINGS: "marketing.sms.setings" }) },
+    { name: "R-K3 · the licence-outreach key is mistyped in the core (an open record reads closed)", expect: [L.p1b, L.p1d, L.p6e],
+      impl: withLib({ KEY_OUTREACH: "marketing.outreach.license" }) },
+    { name: "R-K4 · the wordings key is mistyped in the core (nothing saved is ever found, so the `source` row is NO-GO in every world that should be GO)", expect: [L.l2, L.p0, L.p1a, L.p1b, L.p1c, L.p1d, L.p1e, L.p1f, L.p6e],
+      impl: withLib({ KEY_WORDINGS: "marketing.wording" }) },
+    { name: "R-K5 · the pre-flight's config statement asks for a key spelt wrongly (the stand-in answers anyway)", expect: [L.p6e, L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, "'marketing.sms.settings'", "'marketing.sms.settngs'") }) },
+    { name: "R-K6 · the evidence's live-switch audit read asks for another key", expect: [L.p6e, L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `"targetId" = 'marketing.sms.live'`, `"targetId" = 'marketing.sms.lvie'`) }) },
+    { name: "R-S1 · the person's ledger read loses `createdAt AS created_at` (the stop scan goes blind; the stand-in still answers)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `COALESCE("evidence" LIKE 'optout:%', false) AS via_link, "createdAt" AS created_at FROM "MessagingConsent"`, `COALESCE("evidence" LIKE 'optout:%', false) AS via_link FROM "MessagingConsent"`) }) },
+    { name: "R-S2 · the person's suppression read loses `createdAt AS created_at`", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `AS via_link, "createdAt" AS created_at, "liftedAt" AS lifted_at, COALESCE("liftedReason"`, `AS via_link, "liftedAt" AS lifted_at, COALESCE("liftedReason"`) }) },
+    { name: "R-S3 · the recipients read loses its 'id' (the messages cannot be matched to their rows)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `/* u52a:recipients */ SELECT "id", "msisdn"`, `/* u52a:recipients */ SELECT "msisdn"`) }) },
+    { name: "R-S4 · the message counts lose has_receipt (a refused attempt cannot be told from a charged one)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `/* u52a:message-counts */ SELECT m."status"::text AS status, (m."dlrStatus" IS NOT NULL) AS has_receipt, count(*)::int AS n`, `/* u52a:message-counts */ SELECT m."status"::text AS status, count(*)::int AS n`) }) },
+    { name: "R-S5 · the message counts lose 'status'", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `/* u52a:message-counts */ SELECT m."status"::text AS status, `, `/* u52a:message-counts */ SELECT `) }) },
+    { name: "R-S6 · the audit read loses its text cast on seq (the order trap comes back in another form)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `/* u52a:audit */ SELECT "seq"::text AS seq`, `/* u52a:audit */ SELECT "seq" AS seq`) }) },
+    { name: "R-S7 · the pre-flight's list read selects one more column than the tool uses", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `m."addedAt" AS added_at, (SELECT count(*)::int`, `m."addedAt" AS added_at, m."contactId" AS contact_id, (SELECT count(*)::int`) }) },
+    { name: "R-S8 · the user read selects the date of birth under another name (the tool reads `dob`)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `"marketingOptIn" AS opt_in, "dob" FROM "User"`, `"marketingOptIn" AS opt_in, "dob" AS birth FROM "User"`) }) },
+    { name: "R-W17 · the send window is the hard-coded 08:00-20:00, not the saved one", expect: [L.p1b],
+      impl: () => withPreText("if (!(minuteNow >= s.windowStartMinute && minuteNow < s.windowEndMinute))", "if (!(minuteNow >= 480 && minuteNow < 1200))") },
+    { name: "R-W18 · the window's margin is never asked for (a start with one minute left is GO)", expect: [L.p1b],
+      impl: { judge: (f: unknown, c: { args: object }, l: unknown) => PRE_.judgePreflight(f, { ...c, args: { ...c.args, minWindow: 0 } }, l) } },
+    { name: "R-W19 · a list of TWO members passes as a list of one (`<= 2`)", expect: [L.p1d],
+      impl: () => withPreText("const alone = lists.filter((l) => Number(l.members) === 1);", "const alone = lists.filter((l) => Number(l.members) <= 2);") },
+    { name: "R-W20 · a list of one whose name is hidden passes (the tool cannot name it, and says GO)", expect: [L.p1d],
+      impl: { judge: (f: { test: { lists?: Array<Record<string, unknown>> } }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, test: { ...f.test, lists: (f.test.lists ?? []).map((x) => ({ ...x, list_name: "Plain name" })) } }, c, l) } },
+    { name: "R-W21 · the repeated value flag is taken silently (the first --test wins)", expect: [L.p0, L.e0],
+      impl: withLib({ parseFlags: (argv: string[], spec: object) => { const r = LIB.parseFlags(argv, spec as never); return { ...r, problems: r.problems.filter((p: string) => !p.includes("more than once")) }; } }) },
+    { name: "R-W22 · any text is a campaign id (a phone number as the id, as a --drive-campaign)", expect: [L.p0, L.e0],
+      impl: withLib({ isCampaignId: () => true }) },
+    { name: "R-L13 · the ledger write that throws no longer stops the drive (`ledgerOk = false` deleted)", expect: [L.l3],
+      impl: () => withEvText(`ledgerOk = false;${NL}      io.line("LEDGER NOT WRITTEN:`, `io.line("LEDGER NOT WRITTEN:`) },
+    { name: "R-L14 · the failed ledger write tells the lead to write the count down by hand", expect: [L.l3],
+      impl: () => withEvText("Run this same evidence command again for this campaign until it says the ledger took the count (a re-run counts nothing twice), and take no further step before it does.", "Write the count down by hand before going on.") },
+    /* ── MAJOR 3: nothing else can send while the switch is open ── */
+    { name: "R-E1 · the evidence's standing check for marketing to other numbers finds nothing", expect: [L.e8, L.e9, L.l3],
+      impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown, l: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown, z: unknown) => Array<{ kind: string }>)(f, a, l).filter((s) => s.kind !== "elsewhere") } } },
+    { name: "R-E2 · the pre-flight's `elsewhere` row never looks at the count", expect: [L.p1f],
+      impl: { judge: (f: object, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, elsewhere: 0 }, c, l) } },
+    { name: "R-E3 · the pre-flight's `in-flight` row sees no campaign", expect: [L.p1f],
+      impl: { judge: (f: object, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, inFlight: [] }, c, l) } },
+    { name: "R-E4 · the pre-flight's `in-flight` row ignores --drive-campaign (the drive's own campaign is a stranger)", expect: [L.p1f],
+      impl: { judge: (f: unknown, c: { args: object }, l: unknown) => PRE_.judgePreflight(f, { ...c, args: { ...c.args, driveCampaigns: [] } }, l) } },
+    { name: "R-E5 · the pre-flight's `in-flight` row takes every campaign for the drive's own", expect: [L.p1f],
+      impl: { judge: (f: { inFlight?: Array<{ id: string }> }, c: { args: object }, l: unknown) => PRE_.judgePreflight(f, { ...c, args: { ...c.args, driveCampaigns: (f.inFlight ?? []).map((x) => x.id) } }, l) } },
+    { name: "R-E6 · the `elsewhere` count includes the test number's own messages (`=` for `<>`)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `AND "msisdn" <> ${"$"}{testKey}`, `AND "msisdn" = ${"$"}{testKey}`) }) },
+    { name: "R-E7 · the in-flight read leaves out PAUSED (a paused campaign can be resumed by anyone with the act)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `IN ('CONFIRMED', 'PREPARING', 'RUNNING', 'PAUSED')`, `IN ('CONFIRMED', 'PREPARING', 'RUNNING')`) }) },
+    { name: "R-A1 · --expect-audience is never judged (the audience check finds nothing)", expect: [L.e9],
+      impl: { parts: { ...EV.PARTS, audienceCheck: () => null } } },
+    { name: "R-A2 · a look never fails for the audience (only violations turn its exit to 1)", expect: [L.e9],
+      impl: { parts: { ...EV.PARTS, lookViolations: (v: { violations: unknown[]; standing: unknown[] }) => v.violations.length + v.standing.length } } },
+    /* ── the minors ── */
+    { name: "R-M4 · the double-send check counts every message row, chargeable or not (a refused first attempt and the retry read as a double send)", expect: [L.e8],
+      impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown, l: object) => (EV.PARTS.standingFindings as (x: unknown, y: unknown, z: unknown) => unknown)(f, a, { ...l, isChargeable: () => true }) } } },
+    { name: "R-M7a · the output filter splits a text into lines BEFORE it makes it safe (a number a line break runs through survives)", expect: [L.p2],
+      impl: withLib({ makeIo: (sink: (l: string) => void, env: Record<string, string>, keys: string[]) => { const lines: string[] = []; return { lines, line: (t: string) => { for (const part of String(t).split(NL)) { const safe = LIB.safeLine(part, env, keys); lines.push(safe); sink(safe); } } }; } }) },
+    { name: "R-M7b · an error is cut to 160 characters BEFORE it is made safe (the front half of a secret or a number survives the cut)", expect: [L.p2, L.p5],
+      impl: withLib({ describeError: (err: { message?: string; name?: string; code?: string; meta?: { code?: string }; u52aStatement?: string }, env: Record<string, string>, keys: string[]) => {
+        // the old function, as it was: the last line is CUT to 160 characters and only then made safe
+        const name = typeof err?.name === "string" ? err.name : "Error";
+        const code = typeof err?.code === "string" ? ` ${err.code}` : "";
+        const pg = typeof err?.meta?.code === "string" ? ` pg ${err.meta.code}` : "";
+        const last = String(err?.message ?? err ?? "").split(NL).map((l) => l.trim()).filter(Boolean).pop() ?? "";
+        const stmt = typeof err?.u52aStatement === "string" && /^[a-z?-]{1,30}$/.test(err.u52aStatement) ? ` [read: ${err.u52aStatement}]` : "";
+        return LIB.safeLine(`${name}${code}${pg}${stmt}${last ? `: ${last.slice(0, 160)}` : ""}`, env, keys);
+      } }) },
+    { name: "R-M7c · the given number's pattern allows three separators between its digits, not six", expect: [L.p2],
+      impl: () => withCoreText(`const SEPARATORS = "[^A-Za-z0-9]{0,6}";`, `const SEPARATORS = "[^A-Za-z0-9]{0,3}";`) },
+    { name: "R-M7d · the generic pass allows only a space, a bracket, a dot and a hyphen between a number's groups (the old pattern: no slash, underscore, en dash, tab or zero-width mark)", expect: [L.p2],
+      impl: () => withCoreText('if (!GENERIC_GAP.test(gap) || s[groups[j].start] === "+") break;', 'if (!/^[ ().-]{1,2}$/.test(gap) || s[groups[j].start] === "+") break;') },
+    { name: "R-M8 · an expected audit action is satisfied by ANY row of it (the engine's own pause proves the officer's Pause)", expect: [L.e9],
+      impl: { parts: { ...EV.PARTS, auditChecks: (f: { audit?: Array<{ action: string }> }, a: { expectAudit?: string[] }) => (a.expectAudit ?? []).map((action) => { const n = (f.audit ?? []).filter((r) => r.action === action).length; return { action, holds: n > 0, n, others: 0, words: null }; }) } } },
+    { name: "R-M10 · a SystemConfig value stored as text is parsed into an object (a row the engine refuses reads fine)", expect: [L.p1b],
+      impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, config: Object.fromEntries(Object.entries(f.config).map(([k, v]) => { if (typeof v === "string") { try { return [k, JSON.parse(v)]; } catch { return [k, v]; } } return [k, v]; })) }, c, l) } },
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);
   let held = 0;
   const missed: string[] = [];
+  // U52A_ONLY=R-W17,R-K plays only the plants whose name starts with one of the prefixes (a development aid; the real run plays them all)
+  const only = (process.env.U52A_ONLY ?? "").split(",").map((x) => x.trim()).filter((x) => x !== "");
   for (const plant of plants) {
+    if (only.length > 0 && !only.some((prefix) => plant.name.startsWith(prefix))) continue;
     reset();
     let built: Impl;
     try {
-      built = { ...REAL, ...(typeof plant.impl === "function" ? plant.impl() : plant.impl) };
+      built = { ...REAL, ...(typeof plant.impl === "function" ? await plant.impl() : plant.impl) };
     } catch (err) {
       missed.push(plant.name);
       console.log(`  FAIL  ${plant.name} — the plant could not be built: ${String((err as Error)?.message ?? err)}`);
@@ -2433,7 +2780,7 @@ if (!PROVE_RED) {
       console.log(`  FAIL  ${plant.name}${absent.length ? `${NL}        did not fail: ${absent.map((x) => x.slice(0, 60)).join(" | ")}` : ""}${extra.length ? `${NL}        also failed: ${extra.map((x) => `${x.slice(0, 6)} (${(failedDetail.get(x) ?? "").slice(0, 160)})`).join(" | ")}` : ""}${absent.length && process.env.U52A_DEBUG ? `${NL}        got: ${got.map((x) => `${x.slice(0, 6)} (${(failedDetail.get(x) ?? "").slice(0, 300)})`).join(" | ")}` : ""}`);
     }
   }
-  console.log(`${NL}RED CONTROL — ${held} of ${plants.length} proofs held${missed.length ? `; ${missed.length} FAILED` : ""}`);
+  console.log(`${NL}RED CONTROL — ${held} of ${only.length > 0 ? held + missed.length : plants.length} proofs held${missed.length ? `; ${missed.length} FAILED` : ""}${only.length > 0 ? " (a FILTERED run: U52A_ONLY)" : ""}`);
   process.exitCode = missed.length === 0 ? 0 : 1;
   exitNow();
 }

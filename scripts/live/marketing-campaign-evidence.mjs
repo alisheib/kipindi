@@ -615,7 +615,7 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
 
   L.push(`chargeable sends · ${verdict.sends.chargeable} (${verdict.sends.composerTests} composer test + ${verdict.sends.recipientSends} campaign) — compare with the Blackball portal's Out SMS COUNT for this window (the portal also counts login codes)`);
   if (verdict.sendsHolds !== null) L.push(`  EXPECT sends=${args.expectSends}      ${verdict.sendsHolds ? "HOLDS" : "FAILS"} — counted ${verdict.sends.chargeable}`);
-  for (const a of verdict.auditChecks) L.push(`  EXPECT audit ${lib.safeText(a.action, 48)}  ${a.holds ? "HOLDS" : "FAILS"} — ${a.n} row${a.n === 1 ? "" : "s"} of E24 on this campaign${a.words ? ` counting as ${a.words}` : ""}${a.others > 0 ? ` (${a.others} other row${a.others === 1 ? "" : "s"} of that action are not it: the engine writes the same action)` : ""}`);
+  for (const a of verdict.auditChecks) L.push(`  EXPECT audit ${lib.safeText(a.action, 48)}  ${a.holds ? "HOLDS" : "FAILS"} — ${a.n} row${a.n === 1 ? "" : "s"} of E24 on this campaign${a.words ? ` counting as ${a.words}` : ""}${a.others > 0 ? ` (${a.others} other row${a.others === 1 ? " of that action is" : "s of that action are"} not it: the engine writes the same action)` : ""}`);
   if (args.showStopLink) {
     if (facts.stopToken) {
       L.push("  ⚠ the stop link below is a live bearer link for the TEST number: use it for the stop step only, and never paste it into the tracker.");
