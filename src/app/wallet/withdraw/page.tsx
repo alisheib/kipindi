@@ -172,7 +172,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           />
           <div className="sm:text-right shrink-0">
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{walletHeld ? t.common.balanceFrozen : t.wallet.available}</p>
-            <Cash className="font-display font-bold text-[22px] tabular-nums text-text leading-none block">
+            {/* §M4 — an amount is `.amount` (mono, tabular, untracked): this one was the display face, the only amount
+                on a player page set that way (WP12's tiles, 2026-10-08). */}
+            <Cash className="amount font-bold text-[22px] text-text leading-none block">
               {formatTzs(wallet?.balance ?? 0)}
             </Cash>
             {(wallet?.hold ?? 0) > 0 && (
