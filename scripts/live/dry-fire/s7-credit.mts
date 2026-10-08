@@ -198,11 +198,13 @@ export async function credit(h: Harness, n: number): Promise<Record<string, unkn
       h.carrier.setBalance(reserve + cost + 500);
       forgetBalance();
       const { A, L, id } = await money("s7e");
-      await drive(h, A, id, { until: (r) => r.view.progress?.phase === "sending" && r.view.progress.value >= 60 });
+      // ⭐ the re-review · paced: each step 3 s on the virtual clock, so charges land between steps, 6 s after their replies
+      const paced = { after: () => { h.clock.advance(3_000); } };
+      await drive(h, A, id, { until: (r) => r.view.progress?.phase === "sending" && r.view.progress.value >= 60, ...paced });
       // another consumer spends the credit down — and what is still to be billed lands on top of it
       h.carrier.drainTo(reserve + 410);
       forgetBalance();
-      const run = await drive(h, A, id, {});
+      const run = await drive(h, A, id, { ...paced });
       h.clock.advance(60_000);
       const after = h.carrier.eventualBalance();
       const camp = await S.db.smsCampaign.find(id);

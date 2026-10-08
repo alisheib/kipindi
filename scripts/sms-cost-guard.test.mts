@@ -41,7 +41,7 @@
  * Run: npm run test:sms-cost-guard
  */
 import { readFileSync } from "node:fs";
-import { sendBatch, smsBalanceSnapshot, refreshSmsBalance, smsRailProblem, smsConfigured, smsHealthSnapshot, type SmsBalanceRead, type SmsRailProblem } from "../src/lib/server/sms.ts";
+import { sendBatch, smsBalanceSnapshot, refreshSmsBalance, smsRailProblem, smsConfigured, smsHealthSnapshot, SMS_BILLING_LAG_DEFAULT_MS, SMS_BILLING_LAG_MAX_MS, type SmsBalanceRead, type SmsRailProblem } from "../src/lib/server/sms.ts";
 import { db } from "../src/lib/server/store.ts";
 import { getAuditPage, auditPending } from "../src/lib/server/audit.ts";
 import { smsCreditTile, eatClock, type SmsCreditTile } from "../src/app/admin/system/sms-credit-tile.ts";
@@ -744,12 +744,18 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   const snap = () => smsBalanceSnapshot();
   try {
     delete process.env.SMS_BILLING_LAG_MS;
+    ok("§12 the window is a bounded figure: 30 s by default, never above 10 minutes",
+      SMS_BILLING_LAG_DEFAULT_MS >= 10_000 && SMS_BILLING_LAG_DEFAULT_MS <= 60_000 && SMS_BILLING_LAG_MAX_MS === 600_000, `${SMS_BILLING_LAG_DEFAULT_MS} · ${SMS_BILLING_LAG_MAX_MS}`);
     fresh(30_000);
-    reply = accepted(30_000);
+    let inFlight = -1;
+    reply = () => { inFlight = smsBalanceSnapshot().pendingSegments; return accepted(30_000)(); };
     calls = 0;
     const three = await sendBatch(marketing(3));
     ok("§12 ⭐ an accepted reply's figure is kept with what its batch handed over: 3 messages of one segment leave 3 not yet billed",
       !three.refused && calls === 1 && snap().tzs === 30_000 && snap().pendingSegments === 3, `calls=${calls} ${JSON.stringify(snap())}`);
+    ok("§12 ⭐ a reading taken while the request is still out already counts it: 3 while in flight",
+      inFlight === 3, `pending seen inside the request: ${inFlight}`);
+    reply = accepted(30_000);
 
     calls = 0;
     const many = await sendBatch(marketing(52));
@@ -794,6 +800,22 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
     const later = await refreshSmsBalance({ maxAgeMs: 0 });
     ok("§12 ⭐ once the window has passed they age out: a fresh read 32 seconds on counts 0",
       later.outcome === "fresh" && later.tzs === 29_640 && later.pendingSegments === 0 && snap().pendingSegments === 0, JSON.stringify(later));
+
+    // A reading reused for most of a minute after a lost reply still counts what it may not hold: kept for its own window.
+    fresh(30_000);
+    reply = accepted(30_000);
+    await sendBatch(marketing(50));
+    clock += 20_000;
+    reply = accepted(29_700);
+    await sendBatch(marketing(1));
+    clock += 45_000;
+    reply = () => new Response("<html><body><h1>504 Gateway Time-out</h1></body></html>", { status: 504, headers: { "content-type": "text/html" } });
+    await sendBatch(marketing(1));
+    clock += 10_000;
+    balanceCalls = 0;
+    const kept = await refreshSmsBalance({ maxAgeMs: 60_000 });
+    ok("§12 ⭐ a reading reused 55 seconds on, after a lost reply, still counts the 50 it may not hold: 52 not yet billed",
+      kept.outcome === "reused" && balanceCalls === 0 && kept.tzs === 29_700 && kept.pendingSegments === 52, JSON.stringify(kept));
 
     // Billing at acceptance (the window 0): each reply then holds every earlier request's charge, so only its own counts.
     process.env.SMS_BILLING_LAG_MS = "0";
