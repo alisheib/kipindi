@@ -1734,6 +1734,13 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     page.on("pageerror", fileError(pageErrors, devOnly));
     const { status, body: sent } = await open(page, bookRouteOf(route, similarId), plant);
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
+    /* ⭐ THE LIVE STRIP IS CAPTURED STILL (calibration, 2026-10-08). Its run is a CSS marquee, so two captures of one cell on
+       one server drew its items a few px apart: 60 of the strip's 73 element lines differed, and that noise sat outside
+       every plant's own field. It is read in the product's own still state — the readable list at scroll 0, which is the
+       marquee's first frame (live-ticker.tsx's header; globals.css `.ticker-strip[data-still] .ticker-track`). The
+       style lives in the document head, outside every captured region; the head field is read from the bytes. */
+    await page.addStyleTag({ content: ".ticker-track{animation:none!important;transform:none!important}" }).catch(() => {});
+    await page.evaluate(() => { for (const v of document.querySelectorAll(".ticker-viewport")) v.scrollLeft = 0; }).catch(() => {});
     const args = bookArgsOf(route);
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
