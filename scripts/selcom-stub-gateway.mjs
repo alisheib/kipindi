@@ -88,11 +88,16 @@ const server = createServer((req, res) => {
 
       // The stub's "hosted page" is just our own return URL — the buyer would
       // normally type a card in between. base64, exactly like the real gateway.
+      // ⭐ FAITHFUL TO THE REAL GATEWAY (2026-10-09): Selcom appends ONLY payment_status and transid to our
+      // redirect_url. This stub used to append an `order_id` of its own, so every card test passed while the real
+      // return leg carried no order id and a payer who had just been charged read "We couldn't find that payment"
+      // (MONEY-GATE §3.2). The order id now has to come from US — `withOrderId` in selcom.ts — here as in
+      // production. `test:card-return-order` §5.4 pins this line.
       const redirectBack = body.redirect_url
         ? Buffer.from(String(body.redirect_url), "base64").toString("utf8")
         : "http://127.0.0.1:3000/wallet/deposit/return";
       const sep = redirectBack.includes("?") ? "&" : "?";
-      const gatewayUrl = `${redirectBack}${sep}order_id=${encodeURIComponent(orderId)}&payment_status=${orders.get(orderId).status}&transid=STUBTX${Date.now()}`;
+      const gatewayUrl = `${redirectBack}${sep}payment_status=${orders.get(orderId).status}&transid=STUBTX${Date.now()}`;
 
       return send(res, 200, {
         reference: `STUB${Date.now()}`,

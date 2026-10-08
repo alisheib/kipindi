@@ -4,6 +4,8 @@
  * Selcom sends the buyer back here after the hosted card page, appending
  * `payment_status` and `transid`. We pre-seeded `order_id` into the redirect URL
  * ourselves (Selcom does not echo it), which is how we know WHICH deposit this is.
+ * 🔴 Only since 2026-10-09 (`withOrderId` in selcom.ts): before that the URL carried no
+ * `order_id`, and every card payer landed on "We couldn't find that payment" (MONEY-GATE §3.2).
  *
  * ⛔ MONEY-SAFETY — the single most important property of this page:
  * the query parameters are UNSIGNED and browser-supplied. Anyone can open
@@ -37,6 +39,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { methodLabel } from "@/lib/wallet/receipts";
+import { cardReturnOrderId } from "@/lib/wallet/card-return";
 import { settleDepositFromReturn } from "@/lib/server/wallet-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { Cash } from "@/components/ui/cash";
@@ -65,8 +68,8 @@ export default async function DepositReturnPage({
   const { t, locale } = await getServerT();
   const sp = await searchParams;
 
-  // The ONLY thing we take from the URL: which order to ask Selcom about.
-  const orderId = (sp.order_id ?? "").trim().slice(0, 64);
+  // The ONLY thing we take from the URL: which order to ask Selcom about (trimmed, capped, and cut at a stray `?`).
+  const orderId = cardReturnOrderId(sp.order_id);
   const outcome = await settleDepositFromReturn(session.userId, orderId);
 
   // ⭐ THE FIRST-DEPOSIT IDENTITY NOTICE, IN THE CONFIRMED STATE ONLY (2026-09-13). The ONE rule

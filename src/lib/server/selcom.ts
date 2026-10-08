@@ -30,6 +30,7 @@
 import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 import type { PaymentProvider } from "./payments";
 import { toMsisdn255 } from "@/lib/phone-normalize";
+import { withOrderId } from "@/lib/wallet/card-return";
 
 // ── Credentials ───────────────────────────────────────────────────────────────
 export type SelcomEnv = {
@@ -537,7 +538,9 @@ export async function selcomCardCheckout(
     buyerPhone: string;
     billing: SelcomBilling;
     /** Where Selcom returns the buyer after the card form. We pre-seed `order_id`
-     *  ourselves — Selcom does NOT append it (it appends payment_status + transid). */
+     *  ourselves — Selcom does NOT append it (it appends payment_status + transid). The caller passes the bare URL;
+     *  `withOrderId` below adds this order's id to it and to `cancelUrl` (until 2026-10-09 nothing did, and a charged
+     *  card payer read "We couldn't find that payment": MONEY-GATE §3.2, `test:card-return-order`). */
     redirectUrl: string;
     cancelUrl: string;
   },
@@ -553,8 +556,8 @@ export async function selcomCardCheckout(
     amount: Math.round(opts.amount),
     currency: "TZS",
     payment_methods: "CARD",
-    redirect_url: Buffer.from(opts.redirectUrl).toString("base64"),
-    cancel_url: Buffer.from(opts.cancelUrl).toString("base64"),
+    redirect_url: Buffer.from(withOrderId(opts.redirectUrl, opts.orderId)).toString("base64"),
+    cancel_url: Buffer.from(withOrderId(opts.cancelUrl, opts.orderId)).toString("base64"),
     "billing.firstname": b.firstName,
     "billing.lastname": b.lastName,
     "billing.address_1": b.address1,
