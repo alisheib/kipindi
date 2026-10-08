@@ -11,7 +11,7 @@
  *   · `calloutsFor` — every callout's condition, in one place: "Nobody is sending" is said to an ACTOR only once its own driver
  *     has stopped (never above "Keep this page open" on the first paint), the closed window and the switch's closing time to a
  *     viewer who is not driving, a stopped driver's stale wait not at all;
- *   · `settlePress` / `toastFor` / `copyDestination` — what an answer does: a warning or advice stays on screen until it is
+ *   · `settlePress` / `toastFor` / `copyDestination` / `dialogAfterSettled` — what an answer does: a warning or advice stays on screen until it is
  *     dismissed (`variant: "warning"`, `durationMs: 0`), a refusal stays beside the controls, and Make a copy never takes a
  *     DRIVING tab away (that would silently end the only driver) — it offers the new draft as a link for a new tab;
  *   · `announcementFor` — the page's ONE live region says the status when it CHANGES, not every two seconds.
@@ -209,6 +209,16 @@ export function settlePress(act: ActName, answer: LiveActAnswer, mode: DriverMod
     return { view: answer.view, refresh, refusal: null, toast: toastFor(answer), copy: act === "copy" ? copyDestination(answer.href, mode) : null };
   }
   return { view: answer.view, refresh, refusal: { act, reason: answer.reason, message: answer.message, href: answer.href }, toast: null, copy: null };
+}
+
+/**
+ * ⭐ THE CHECKER'S MINOR (M22 · M23) · WHICH DIALOG IS OPEN ONCE A PRESS HAS BEEN ANSWERED. Start and Stop ask first. When a press is
+ * answered — landed or refused — only the dialog IT belongs to closes: a refused Start leaves no dialog over the refusal the
+ * officer has to read, and a Pause answering never closes the Stop dialog they are reading. The Provider calls this for every
+ * settled press (`setDialog((open) => dialogAfterSettled(open, act))`); `test:campaign-visuals` V15 runs it and holds the call.
+ */
+export function dialogAfterSettled(open: DialogName | null, act: ActName): DialogName | null {
+  return open === act ? null : open;
 }
 
 /* ══ THE LIVE REGION ════════════════════════════════════════════════════════════════════════════════════════════════ */

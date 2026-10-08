@@ -51,7 +51,7 @@ import { postLiveStep, useLiveDriver } from "./live-driver";
 import type { DriverStop, LiveDriver } from "./live-driver";
 import { useLivePresses } from "./live-presses";
 import { useStatusAnnouncement } from "./live-announce";
-import { ACTS, calloutsFor, controlName, controlState, liveMay, reasonIdFor, reasonModel } from "./live-decide";
+import { ACTS, calloutsFor, controlName, controlState, dialogAfterSettled, liveMay, reasonIdFor, reasonModel } from "./live-decide";
 import type { ActName, DialogName, Refusal } from "./live-decide";
 import {
   LIVE_BREAKDOWN_TITLE, LIVE_CHIPS_LEAD, LIVE_CONTROL_LABEL, LIVE_COPY_ELSEWHERE, LIVE_COPY_OPEN_DRAFT, LIVE_DIALOG_ACTIONS,
@@ -111,8 +111,9 @@ export function LiveProvider({ initial, mayAct, children }: { initial: CampaignL
     refresh: driver.refresh,
     toast,
     navigate: (href) => router.push(href as never),
-    // Only the dialog the settled press belongs to closes — a Pause answering never closes a Stop dialog the officer is reading.
-    onSettled: (act) => setDialog((open) => (open === act ? null : open)),
+    // Only the dialog the settled press belongs to closes — a Pause answering never closes a Stop dialog the officer is reading, and a
+    // refused Start leaves no dialog over its refusal (`dialogAfterSettled`, live-decide.ts — V15 runs it and holds this call).
+    onSettled: (act) => setDialog((open) => dialogAfterSettled(open, act)),
   });
   const view = driver.view;
   const announcement = useStatusAnnouncement(view);
@@ -182,8 +183,9 @@ export function LiveStatus() {
 
 /* ══ THE CONTROLS CARD ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** One driver stop, in its words, with the one way on that can work — never a retry that cannot. */
-function StopCallout({ stop, driver }: { stop: DriverStop; driver: LiveDriver }) {
+/** One driver stop, in its words, with the one way on that can work — never a retry that cannot. Exported so V15 draws every kind
+ *  of it alone (a link that opens another tab opens it with `rel="noopener noreferrer"`; every stop is an alert). */
+export function StopCallout({ stop, driver }: { stop: DriverStop; driver: LiveDriver }) {
   const reload = (
     <Button type="button" size="sm" variant="ghost" onClick={() => window.location.reload()} data-live-reload>{LIVE_RELOAD}</Button>
   );
@@ -206,6 +208,39 @@ function StopCallout({ stop, driver }: { stop: DriverStop; driver: LiveDriver })
     <Callout tone="warning" role="alert">
       <span className="block" data-live-stopped={stop.kind}>{sentence}</span>
       <span className="mt-2 block">{reload}</span>
+    </Callout>
+  );
+}
+
+/** The last press's refusal, in words, beside the controls — and the one way on that can work (the step-up page in another tab, or a
+ *  reload). Exported so V15 draws it alone. */
+export function RefusalCallout({ refusal }: { refusal: Refusal }) {
+  return (
+    <Callout tone={refusal.reason === "unfinished" ? "danger" : "warning"} role="alert">
+      <span className="block" data-live-refusal={refusal.act} data-live-refusal-reason={refusal.reason}>{refusal.message}</span>
+      {refusal.reason === "second_factor" && refusal.href !== null && (
+        <span className="mt-2 flex flex-wrap items-center gap-2">
+          <a href={refusal.href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-refusal-link>{LIVE_FACTOR_LINK}</a>
+        </span>
+      )}
+      {refusal.reason === "unfinished" && (
+        <span className="mt-2 block">
+          <Button type="button" size="sm" variant="ghost" onClick={() => window.location.reload()} data-live-reload>{LIVE_RELOAD}</Button>
+        </span>
+      )}
+    </Callout>
+  );
+}
+
+/** A copy made while this page keeps sending: the new draft's address, as a link for a NEW tab (leaving would end the only driver).
+ *  Exported so V15 draws it alone. */
+export function CopyLinkCallout({ href }: { href: string }) {
+  return (
+    <Callout tone="info" role="note">
+      <span className="block" data-live-copy-elsewhere>{LIVE_COPY_ELSEWHERE}</span>
+      <span className="mt-2 flex flex-wrap items-center gap-2">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-copy-link>{LIVE_COPY_OPEN_DRAFT}</a>
+      </span>
     </Callout>
   );
 }
@@ -258,29 +293,8 @@ export function LiveControls() {
         </ul>
       )}
       {model.quiet.map((q) => <span key={q.id} id={q.id} className="sr-only">{q.text}</span>)}
-      {c.refusal && refusal !== null && (
-        <Callout tone={refusal.reason === "unfinished" ? "danger" : "warning"} role="alert">
-          <span className="block" data-live-refusal={refusal.act} data-live-refusal-reason={refusal.reason}>{refusal.message}</span>
-          {refusal.reason === "second_factor" && refusal.href !== null && (
-            <span className="mt-2 flex flex-wrap items-center gap-2">
-              <a href={refusal.href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-refusal-link>{LIVE_FACTOR_LINK}</a>
-            </span>
-          )}
-          {refusal.reason === "unfinished" && (
-            <span className="mt-2 block">
-              <Button type="button" size="sm" variant="ghost" onClick={() => window.location.reload()} data-live-reload>{LIVE_RELOAD}</Button>
-            </span>
-          )}
-        </Callout>
-      )}
-      {c.copyLink && copyLink !== null && (
-        <Callout tone="info" role="note">
-          <span className="block" data-live-copy-elsewhere>{LIVE_COPY_ELSEWHERE}</span>
-          <span className="mt-2 flex flex-wrap items-center gap-2">
-            <a href={copyLink} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" data-live-copy-link>{LIVE_COPY_OPEN_DRAFT}</a>
-          </span>
-        </Callout>
-      )}
+      {c.refusal && refusal !== null && <RefusalCallout refusal={refusal} />}
+      {c.copyLink && copyLink !== null && <CopyLinkCallout href={copyLink} />}
       {c.stop && driver.stop !== null && <StopCallout stop={driver.stop} driver={driver} />}
       {c.said && driver.said !== null && (
         <Callout tone="info" role="note">

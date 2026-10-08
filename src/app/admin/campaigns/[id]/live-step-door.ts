@@ -1,7 +1,7 @@
 /**
  * U47b-2 (the review's MAJOR) · THE DRIVER'S STEP DOOR — `POST /api/admin/campaigns/<id>/step`, answering the driver's step as
  * JSON (ENGINE-SPEC §4.15 decision 3). The route (`src/app/api/admin/campaigns/[id]/step/route.ts`) is THIN: it gathers the
- * request's three facts — the method, `Sec-Fetch-Site`, the id in the path — hands them to `campaignStepDoor` here, and turns
+ * request's four facts — the method, `Sec-Fetch-Site`, the page's own header, the id in the path — hands them to `campaignStepDoor` here, and turns
  * the answer into a response. Every decision is made here, where `test:campaign-visuals` V12 drives it in-process.
  *
  * ⭐ WHY A DOOR AND NOT AN ACTION. Next 16 runs the server actions a page invokes ONE AT A TIME, in the order they were
@@ -20,7 +20,12 @@
  *   · POST ONLY — any other method is a 405 that names POST, and reads nothing;
  *   · NEVER CROSS-SITE — `Sec-Fetch-Site` from anywhere but this origin is a 403, asked BEFORE the session is read (a request a
  *     browser made on another site's behalf would carry the officer's SameSite=Lax cookies on a top-level navigation; a
- *     header-less client — an old browser, a script — is let through, the preview door's own rule);
+ *     client that sends no `Sec-Fetch-Site` — an old browser, a script — is let through THIS check, the preview door's own rule, and
+ *     is held by the next);
+ *   · THE PAGE'S OWN HEADER — `X-Kp-Step: 1`, which `postLiveStep` sends and nothing else does (the checker's NIT: the belt for
+ *     the client that sends no `Sec-Fetch-Site`). A page on another site cannot add a custom header to a request without a CORS
+ *     preflight this route never answers, so a header that is missing or not "1" is a 403 that asks nothing of the session,
+ *     the viewer or the service;
  *   · THE ID COMES FROM THE PATH, and the body is never read: nothing the browser posts can say who is acting, what they may
  *     see, or which group to send;
  *   · THE GUARD IS THE FIRST THING THAT TOUCHES ANYTHING — `softCheckStaff("growth", "marketing.campaign.step", …)`, the very
@@ -54,8 +59,8 @@ import { LIVE_MISSING, LIVE_ROLE_REFUSAL, LIVE_SIGNED_OUT, LIVE_STEP_GUARD_FAILE
 /** Where a visitor with no session signs in. */
 const SIGN_IN = "/auth/admin";
 
-/** The route's three facts about a request — and nothing else: the body is never read. */
-export type LiveStepDoorRequest = { method: string; secFetchSite: string | null; campaignId: unknown };
+/** The route's four facts about a request — and nothing else: the body is never read. */
+export type LiveStepDoorRequest = { method: string; secFetchSite: string | null; stepHeader: string | null; campaignId: unknown };
 
 /** What the route sends back: a status, and — unless the request was refused before anything was asked — the typed answer. */
 export type LiveStepDoorAnswer = { status: number; body: LiveStepAnswer | null; allow?: "POST" };
@@ -91,7 +96,7 @@ function isRedirect(err: unknown): boolean {
 
 /**
  * ⭐ THE DOOR — see the header. Never throws; every path answers.
- *   1. POST only; never cross-site (asked before the session is read);
+ *   1. POST only; never cross-site; the page's own header (all asked before the session is read);
  *   2. the guard — the first thing that touches anything;
  *   3. the stored role's viewer, and the service;
  *   4. the answer as the service gave it, or `not_found`/`role` as its own refusals, or `unfinished`.
@@ -99,6 +104,7 @@ function isRedirect(err: unknown): boolean {
 export async function campaignStepDoor(req: LiveStepDoorRequest, deps: LiveStepDoorDeps = LIVE_STEP_DOOR_DEPS): Promise<LiveStepDoorAnswer> {
   if (req.method !== "POST") return { status: 405, body: null, allow: "POST" };
   if (!sameOriginRequest(req.secFetchSite)) return { status: 403, body: null };
+  if (req.stepHeader !== "1") return { status: 403, body: null };
   const id = typeof req.campaignId === "string" ? req.campaignId : "";
   let g: Awaited<ReturnType<typeof softCheckStaff>>;
   try {

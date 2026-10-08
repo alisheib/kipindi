@@ -147,7 +147,9 @@ export function isStepAnswer(body: unknown): body is LiveStepAnswer {
  * fails, a body that is not JSON, or JSON this build does not know THROWS — the loop stops "out of date" and never asks again.
  */
 export async function postLiveStep(id: string, fetchImpl: typeof fetch = (input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init)): Promise<LiveStepAnswer> {
-  const res = await fetchImpl(stepPath(id), { method: "POST", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } });
+  // ⭐ The checker's NIT · `X-Kp-Step: 1` is the page's own mark: the door refuses a request without it (a page on another site cannot add a
+  // custom header to a request without a preflight the route never answers), whatever `Sec-Fetch-Site` said or did not.
+  const res = await fetchImpl(stepPath(id), { method: "POST", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json", "X-Kp-Step": "1" } });
   const body: unknown = await res.json();
   if (!isStepAnswer(body)) throw new Error("the step door answered something this page does not know");
   return body;
