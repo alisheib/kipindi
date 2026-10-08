@@ -908,6 +908,11 @@ async function toRunning(id: string): Promise<void> {
       { check: "gate", verdict: "ok", wording: null, source: "basis:CONSENT" },
       { check: "dispatch", verdict: "SENT", wording: null, source: "probe_ref12" },
     ];
+    // ⭐ jsonb keeps an object's keys in ITS order (by length, then bytes), never the writer's: a trail read back from SQL is
+    // compared as canonical JSON (keys sorted at every level), or a correct write reads as a mismatch (STEP 52's probe run).
+    const canon = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) => (x !== null && typeof x === "object" && !Array.isArray(x)
+      ? Object.fromEntries(Object.entries(x as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : x));
     const C12 = "probe_u43b2";
     await db.smsCampaign.create(draft(C12));
     const ids = Array.from({ length: 6 }, (_, i) => `probe_u43b2_${String(i).padStart(3, "0")}`);
@@ -953,7 +958,7 @@ async function toRunning(id: string): Promise<void> {
       const r = await db.smsCampaignRecipient.recordSend(ids[0], record12(), at12(5));
       const after = await row12(ids[0]);
       ok("12a · recordSend on a DELIVERED row under its claim with a SQL NULL trail is written: the trail, token, variant, size and sentAt in SQL — still DELIVERED at the receipt's instant, its reference and claim kept",
-        r.written && after?.status === "DELIVERED" && json(after.gateTrail) === json(trail12) && after.optOutToken === "K7MXP2QR" && after.locale === "SW"
+        r.written && after?.status === "DELIVERED" && canon(after.gateTrail) === canon(trail12) && after.optOutToken === "K7MXP2QR" && after.locale === "SW"
           && after.segments === 1 && after.bodyLen === 72 && after.sentAt?.toISOString() === at12(2) && after.deliveredAt?.toISOString() === at12(3)
           && after.smsReference === ref12(0) && after.claimToken === tok12,
         `${json(r)} · ${json(after)}`);
@@ -971,14 +976,14 @@ async function toRunning(id: string): Promise<void> {
       const after = await row12(ids[2]);
       ok("12c · recordSend on a FAILED row a receipt settled is written, its failure class and failedAt kept",
         r.written && after?.status === "FAILED" && after.failureClass === `${CM12.SMS_RECEIPT_CLASS_PREFIX}UNDELIV` && after.failedAt?.toISOString() === at12(3)
-          && json(after.gateTrail) === json(trail12), `${json(r)} · ${json(after)}`);
+          && canon(after.gateTrail) === canon(trail12), `${json(r)} · ${json(after)}`);
     }
     // 12d · JSON null is null too (Prisma's AnyNull): row 5's 'null'::jsonb trail takes the record
     {
       const r = await db.smsCampaignRecipient.recordSend(ids[5], record12(), at12(8));
       const after = await row12(ids[5]);
       ok("12d · ⭐ the AnyNull WHERE on Postgres: a row whose trail is JSON null (not SQL NULL) takes the record like a SQL NULL one",
-        r.written && after?.status === "DELIVERED" && json(after.gateTrail) === json(trail12), `${json(r)} · ${json(after)}`);
+        r.written && after?.status === "DELIVERED" && canon(after.gateTrail) === canon(trail12), `${json(r)} · ${json(after)}`);
     }
     // 12e · the refusals that reach the database: another claim, a row the settle wrote, a PENDING row, an unknown id
     {
