@@ -543,7 +543,14 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
       && REFEREE_KEYS_DOOR_SENTENCE.not_a_terminal.includes("the number must be typed, never piped");
     const door = impl.sources.door;
     const imports = Array.from(door.matchAll(/^import [^;]*from "([^"]+)";/gm)).map((m) => m[1]);
-    const onlyExclusion = imports.length === 2 && imports.every((x) => x === "../../src/lib/server/marketing/referee-exclusion.ts");
+    // ⛔ STEP 53's first census on production · the store is loaded only AFTER the public-proxy rewrite: the one static
+    // import is a TYPE import (erased), and the module that loads the store comes by ONE dynamic import below the rewrite —
+    // a static value import is evaluated before the file's first line, on the private host Railway's machines alone resolve.
+    const EXCLUSION = "../../src/lib/server/marketing/referee-exclusion.ts";
+    const staticValueImports = Array.from(door.matchAll(/^import (?!type )[^;]*from "[^"]+";/gm)).length;
+    const dynamicAt = door.indexOf(`await import("${EXCLUSION}")`);
+    const onlyExclusion = imports.length === 1 && imports[0] === EXCLUSION && staticValueImports === 0
+      && dynamicAt > 0 && door.split("await import(").length === 2;
     const noWriter = !/db[.]|prisma|agentRefereeKey|PrismaClient|createHmac|pepperedLetters/.test(door);
     const verdictAt = door.indexOf("const verdict = refereeKeysDoorVerdict({");
     const refusal = door.indexOf("if (!verdict.ok) {");
@@ -559,7 +566,8 @@ export async function assertRefereeExclusion(impl: RefereeImpl, run: number, tag
     const proxyAt = door.indexOf('.replace(/@postgres[.]railway[.]internal(:[0-9]+)?/, "@turntable.proxy.rlwy.net:40357")');
     const mainAt = door.indexOf("async function main(");
     const quiet = !/console[.]log[(][^;]*(msisdn|refereeKey|email|userId|[.]id[^a-z])/.test(door);
-    const ordered = verdictAt > 0 && refusal > verdictAt && exit2 && firstRead > refusal && firstRead < Infinity && proxyAt > 0 && proxyAt < mainAt;
+    const ordered = verdictAt > 0 && refusal > verdictAt && exit2 && firstRead > refusal && firstRead < Infinity && proxyAt > 0 && proxyAt < mainAt
+      && proxyAt < dynamicAt && dynamicAt < mainAt;
     // ⛔ MINOR-4 · the third pass · what a person types — TWICE — is read without echo from a real console, and reaches the
     // writer alone: main names each once more (handed to keyRefereeNumberByHand), the door writes nothing to a stream but
     // the prompt and a line end, no console call ever names them, and the reader refuses anything but a console.
@@ -1046,6 +1054,18 @@ export function refereeCases(): { name: string; impl: RefereeImpl; expect: strin
     {
       name: "⛔ the re-review's MINOR-1 · the door's rule calls every run production — a --scratch rehearsal's RECORD would reconcile production",
       impl: { ...REAL, doorVerdict: (i) => { const v = refereeKeysDoorVerdict(i); return v.ok ? { ...v, environment: "production" } : v; } },
+      expect: REFEREE_LABELS.r10,
+    },
+    {
+      name: "⛔ STEP 53's first census on production · the store loaded BEFORE the public-proxy rewrite (as first written) — every read fails off Railway",
+      impl: (() => {
+        const d = REAL.sources.door;
+        const at = d.indexOf("if (process.env.DATABASE_URL) {");
+        const block = d.slice(at, d.indexOf("}", at) + 1);
+        const dyn = 'await import("../../src/lib/server/marketing/referee-exclusion.ts");';
+        if (at < 0 || !d.includes(dyn)) throw new Error("plant anchor not found: the proxy block or the dynamic import");
+        return { ...REAL, sources: { ...REAL.sources, door: d.split(block).join("").split(dyn).join(dyn + NL + block) } };
+      })(),
       expect: REFEREE_LABELS.r10,
     },
     {
