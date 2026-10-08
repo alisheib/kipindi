@@ -96,7 +96,9 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
           title={emptyTitle}
           body={emptyBody}
           action={firstTicket ? (
-            <Link href={"/" as never} className="btn btn-primary btn-sm">{t.journey.ticketsBrowse}</Link>
+            // btn-md: the 44px the canvas draws and the Juu/Chini tab's empty state beside it uses (2026-10-08, G3's
+            // tiles 233–248: one switch, two empty states, a 40px and a 44px call to action).
+            <Link href={"/" as never} className="btn btn-primary btn-md">{t.journey.ticketsBrowse}</Link>
           ) : exits.length > 0 ? (
             <div className="flex flex-wrap items-center justify-center gap-2">
               {exits.map((e) => (
