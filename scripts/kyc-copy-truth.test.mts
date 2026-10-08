@@ -346,8 +346,22 @@ const ALLOW: readonly Allow[] = [
     excerpt: "余额不足时请先按常规方式充值——无需上传收据，也无需填写参考号。",
     why: "the denial is about a fee receipt; identity is the agent application's own requirement, in another sentence",
   },
+  {
+    // ⭐ Found 2026-10-08 (main had been red on it since Vodacom S3b, 74e69b15, added the journey counts to the privacy
+    //   notice). Read in full and TRUE: the unit says the server counts a few steps of using 50pick — opening the bet
+    //   slip, being shown the short-balance message, placing a bet, a confirmed deposit — and that the totals carry "no
+    //   cookie, no IDENTIFIER and nothing that can identify you". `kitambulisho` there is a technical identifier in a
+    //   denial, not identity documents; `kuweka dau` and `kufungua` are steps being COUNTED, not something identity
+    //   opens. The en twin says "identifier", which rule 2's English identity pattern does not take; the zh twin trips
+    //   nothing. ⛔ Not reworded here: player copy is not this guard's to edit.
+    where: "src/app/legal/privacy/page.tsx · sw",
+    rule: 2,
+    sha: "1f256748f576b3ac",
+    excerpt: "Hesabu za safari: … kufungua karatasi ya dau … kuweka dau … jumla hizi hazina kidakuzi, kitambulisho wala chochote kinachoweza kukutambulisha",
+    why: "kitambulisho is a technical identifier the sentence DENIES keeping; betting and the bet slip are counted steps, not gated by identity",
+  },
 ];
-const ALLOW_SIZE = 1;
+const ALLOW_SIZE = 2;
 const used = new Set<Allow>();
 const shaOf = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
 
