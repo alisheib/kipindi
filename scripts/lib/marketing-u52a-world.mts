@@ -57,6 +57,10 @@ export type PreWorld = {
   latest: Row | null;
   user: Row | null;
   holds: Row[];
+  /** The campaigns that could send now (CONFIRMED, PREPARING, RUNNING, PAUSED): { id, status }. */
+  inFlight: Row[];
+  /** The MARKETING messages of the last day to a number but the test number (the count the database answers); null = no answer. */
+  elsewhere: number | null;
   control: { suppressions: Row[] } | null;
   health: Row | null;
   healthStatus: number;
@@ -89,6 +93,8 @@ export function goodPreWorld(): PreWorld {
     latest: { status: "GIVEN", source: "PROFILE", wording: SMS_WORDING, recorded_by_officer: false, via_link: false, created_at: d(NOW - 5 * 86400_000) },
     user: { role: "PLAYER", status: "ACTIVE", opt_in: true, dob: d(Date.parse("1990-01-01T00:00:00Z")) },
     holds: [],
+    inFlight: [],
+    elsewhere: 0,
     control: null,
     health: goodHealth(),
     healthStatus: 200,
@@ -136,6 +142,10 @@ export type RunOpts = {
   /** A plant's rewrite of the values a statement is BOUND to: the stand-in database records what it returns (and answers as before). */
   rebind?: (tag: string, values: unknown[]) => unknown[];
   ledgerText?: string | null;
+  /** The stand-in ledger file refuses every write (a locked file, a full disk): the write throws. */
+  ledgerWriteThrows?: boolean;
+  /** A tool loaded from PLANTED source text (the red harness): it replaces the real module for this run. */
+  tool?: Record<string, unknown>;
   now?: number;
   transactionMode?: string;
   throwOnQuery?: Error;
@@ -175,8 +185,8 @@ export function checkBinds(calls: Call[], c: BindCtx): string[] {
   const people = [c.testKey, c.controlKey].filter((k): k is string => k !== null);
   for (const { tag, values } of calls) {
     switch (tag) {
-      case "migrations": case "config": case "now": case "switch-audit": wants(tag, values, []); break;
-      case "contact": case "ledger": case "holds": wants(tag, values, [c.testKey]); break;
+      case "migrations": case "config": case "now": case "switch-audit": case "in-flight": wants(tag, values, []); break;
+      case "contact": case "ledger": case "holds": case "elsewhere": wants(tag, values, [c.testKey]); break;
       case "lists": wants(tag, values, [c.contactId]); break;
       case "basis": if (!(values.length === 1 && c.listIds.includes(String(values[0])))) bad.push(`basis was bound to ${show(values)}, wanted one of the member lists' ids`); break;
       case "suppression": case "person-suppression": case "person-ledger": if (!(values.length === 1 && people.includes(String(values[0])))) bad.push(`${tag} was bound to ${show(values)}, wanted the test or the control number`); break;
@@ -263,6 +273,8 @@ export function preHandlers(w: PreWorld): Record<string, (values: unknown[]) => 
     ledger: () => (w.latest ? [w.latest] : []),
     user: () => (w.user ? [w.user] : []),
     holds: () => w.holds,
+    "in-flight": () => w.inFlight,
+    elsewhere: () => (w.elsewhere === null ? [] : [{ n: w.elsewhere }]),
   };
 }
 
@@ -287,10 +299,14 @@ export function fakeFetch(w: PreWorld, calls?: Array<{ url: string; method: unkn
 }
 
 /** The stand-in ledger file: it reads and writes a string, says where it is and when it was written, and counts the writes. */
-function fakeLedgerIo(state: { text: string | null; writes: number }) {
+function fakeLedgerIo(state: { text: string | null; writes: number; throws?: boolean }) {
   return {
     read: () => state.text,
-    write: (t: string) => { state.text = t; state.writes += 1; },
+    write: (t: string) => {
+      state.writes += 1;
+      if (state.throws) throw Object.assign(new Error("EPERM: operation not permitted, rename"), { code: "EPERM" });
+      state.text = t;
+    },
     where: () => ({ path: "F:/stand-in/.qa-shots/marketing-setup/U52a/ledger.json", mtimeMs: state.text === null ? null : NOW - 3_600_000 }),
   };
 }
@@ -301,7 +317,7 @@ export async function runPre(w: PreWorld, o: RunOpts = {}): Promise<RunResult> {
   const calls: Call[] = [];
   const txOptions: unknown[] = [];
   const fetchCalls: Array<{ url: string; method: unknown }> = [];
-  const ledger = { text: o.ledgerText !== undefined ? o.ledgerText : w.ledgerText, writes: 0 };
+  const ledger = { text: o.ledgerText !== undefined ? o.ledgerText : w.ledgerText, writes: 0, throws: o.ledgerWriteThrows === true };
   const argv = o.argv ?? preArgv();
   const network = o.fetchImpl ?? fakeFetch(w, fetchCalls);
   const deps: Record<string, unknown> = {
@@ -316,7 +332,7 @@ export async function runPre(w: PreWorld, o: RunOpts = {}): Promise<RunResult> {
   };
   if (o.judge) deps.judge = o.judge;
   if (o.parseArgs) deps.parseArgs = o.parseArgs;
-  const code = await PRE.runPreflight(argv, deps);
+  const code = await ((o.tool ?? PRE) as typeof PRE).runPreflight(argv, deps);
   return { code, lines, statements, ledgerText: ledger.text, calls, txOptions, fetchCalls, ledgerWrites: ledger.writes, bindCtx: bindCtxOf(argv, w) };
 }
 
@@ -332,16 +348,20 @@ export type EvWorld = {
   switchAudit: Row[];
   people: { test: { suppressions: Row[]; ledger: Row[] }; control: { suppressions: Row[]; ledger: Row[] } };
   token: string | null;
+  /** The MARKETING messages of the last day to a number but the test number (the count the database answers); null = no answer. */
+  elsewhere: number | null;
   ledgerText: string | null;
 };
 
+/** A recipient row as the database returns it - exactly the columns the SQL selects (`key` is the fixture's own name for `msisdn`, not a column). */
 export function recipientRow(o: Row & { key: string; id: string }): Row {
+  const { key, ...rest } = o;
   return {
-    msisdn: o.key, status: "DELIVERED", skip_reason: null, skip_detail: null, failure_class: null, error: null, attempts: 0,
+    msisdn: key, status: "DELIVERED", skip_reason: null, skip_detail: null, failure_class: null, error: null, attempts: 0,
     sms_reference: null, has_token: true, locale: "SW", segments: 1, body_len: 87, cost_tzs: null, claim_token: "clm_token_one",
     claimed_at: d(T0 + 2_000), sent_at: d(T0 + 4_000), delivered_at: d(T0 + 9_000), failed_at: null,
     gate_trail: [{ check: "campaign", verdict: "RUNNING", wording: null, source: CAMPAIGN }, { check: "gate", verdict: "ok", wording: null, source: "CONSENT:ledger:abc" }, { check: "dispatch", verdict: "handed_over", wording: null, source: "sms_ref" }],
-    ...o,
+    ...rest,
   };
 }
 
@@ -372,6 +392,7 @@ export function baseEvWorld(): EvWorld {
     switchAudit: [{ seq: "99", created_at: d(T0 - 900_000), action: "marketing.live_switch_opened", payload: { closesAt: new Date(T0 + 7_200_000).toISOString(), via: "ops" } }],
     people: { test: { suppressions: [], ledger: [LEDGER_GIVEN] }, control: { suppressions: [], ledger: [] } },
     token: "ABCD2345",
+    elsewhere: 0,
     ledgerText: EMPTY_LEDGER_TEXT,
   };
 }
@@ -458,6 +479,7 @@ export function evHandlers(w: EvWorld): Record<string, (values: unknown[]) => un
     "person-suppression": (v) => (v[0] === CONTROL.key ? w.people.control.suppressions : w.people.test.suppressions),
     "person-ledger": (v) => (v[0] === CONTROL.key ? w.people.control.ledger : w.people.test.ledger),
     token: () => (w.token ? [{ token: w.token }] : []),
+    elsewhere: () => (w.elsewhere === null ? [] : [{ n: w.elsewhere }]),
   };
 }
 
@@ -468,7 +490,7 @@ export async function runEv(w: EvWorld, argv: string[], o: RunOpts = {}): Promis
   const lines: string[] = [];
   const calls: Call[] = [];
   const txOptions: unknown[] = [];
-  const ledger = { text: o.ledgerText !== undefined ? o.ledgerText : w.ledgerText, writes: 0 };
+  const ledger = { text: o.ledgerText !== undefined ? o.ledgerText : w.ledgerText, writes: 0, throws: o.ledgerWriteThrows === true };
   const deps: Record<string, unknown> = {
     env: o.env ?? { DATABASE_URL: FAKE_DB_URL },
     sink: (l: string) => lines.push(l),
@@ -481,7 +503,7 @@ export async function runEv(w: EvWorld, argv: string[], o: RunOpts = {}): Promis
   if (o.readFacts) deps.readFacts = o.readFacts;
   if (o.render) deps.render = o.render;
   if (o.parseArgs) deps.parseArgs = o.parseArgs;
-  const code = await EV.runEvidence(argv, deps);
+  const code = await ((o.tool ?? EV) as typeof EV).runEvidence(argv, deps);
   return { code, lines, statements, ledgerText: ledger.text, calls, txOptions, fetchCalls: [], ledgerWrites: ledger.writes, bindCtx: bindCtxOf(argv, { contact: null, lists: [] }) };
 }
 

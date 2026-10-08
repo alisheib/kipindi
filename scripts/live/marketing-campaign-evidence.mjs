@@ -4,8 +4,11 @@
  *
  *   railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…]
  *                                              --expect=sent:test[,skipped:control]  [--expect-sends=<n>]
+ *                                              [--expect-audit=<marketing.* action>]… [--expect-audience=<n>]
  *                                              [--label=A] [--show-stop-link] [--new-ledger]
- *   … -- <campaignId> --test=+255… --look     (look only, no verdict — but a violation below still exits 1)
+ *   … -- <campaignId> --test=+255… --look [--expect-audience=1]
+ *                                             (look only, no verdict — but a violation below still exits 1, and so does an audience that is
+ *                                              not the one expected: the sheet runs it BEFORE every Start)
  *   … -- --ledger [--sends=<n>]               (the ledger alone; needs no database)
  *   (from the checkout production runs; `-s` keeps npm from echoing the typed number in its banner)
  *
@@ -26,8 +29,13 @@
  * A MISSING ROW IS NEVER A REFUSAL: a person who is not on the campaign fails every outcome but `stopped`/`resumed`. With the gate
  * removed, `skipped:test` fails because the row is SENT. ⛔ And whatever was asked — a verdict OR a look — these are violations
  * that turn the exit non-zero by themselves: a message handed to a number AFTER its stop was in force; a recipient row with MORE
- * THAN ONE message (the engine sends one per row); a message to any number that is not the test number (the composer's tests
- * included — the SQL selects only whether each one went to the test number, never the number).
+ * THAN ONE chargeable message (the engine sends one per row; a first attempt the gateway refused, which never left, is not one); a
+ * message to any number that is not the test number (the composer's tests included — the SQL selects only whether each one went to
+ * the test number, never the number); ⭐ and ANY MARKETING message created in the last day to a number but the test number, of ANY
+ * campaign (counted in SQL: nothing else can be sending while the switch is open).
+ * ⭐ `--expect-audience=<n>` judges the campaign's CONFIRMED count (the people the confirmation fixed): before a Start it reads 1, or the
+ * Start is not pressed. ⭐ `--expect-audit=marketing.campaign_paused` proves the OFFICER's Pause - a row with an actor and the reason
+ * `officer_paused` - not the engine's own pause, which is the same action.
  *
  * ⭐ THE LEDGER (decision 6): every run counts the campaign's chargeable sends — the composer test's and the campaign's — into
  * `.qa-shots/marketing-setup/U52a/ledger.json` (gitignored). The cap is SIX and a seventh is REFUSED: the ledger is not
@@ -43,15 +51,14 @@
  * Exit: 0 every expectation holds and the ledger took the count · 1 not proven, a violation, the ledger refused, or no such
  * campaign · 2 not run (usage, no database, the database would not confirm read-only, an untrusted or missing ledger file).
  */
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
-import { boot } from "../lib/marketing-u52a-boot.mjs";
+import { boot, isMain } from "../lib/marketing-u52a-boot.mjs";
 
 /* ══ BEFORE ANYTHING ELSE IS LOADED ══════════════════════════════════════════════════════════════════════════════════ */
 // ⭐ The public proxy FIRST, then the checkout check, then the core by a DYNAMIC import (a static import is evaluated before this
 // file's first line — the marketing referee-keys door was built on the private host that way, 70e9ba96). See marketing-u52a-boot.mjs.
-const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
-const AS_MAIN = import.meta.url === entryUrl;
+// `isMain` compares REAL paths: through a junction or a symlink the program's path and this file's URL differ, and a plain comparison
+// would turn the tool into a silent no-op (exit 0, nothing printed).
+const AS_MAIN = isMain(import.meta.url);
 if (AS_MAIN) {
   const booted = boot(import.meta.url);
   if (!booted.ok) {
@@ -65,23 +72,26 @@ const { EXIT, SEND_CAP } = LIB;
 
 const USAGE = [
   "usage: railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…] --expect=<outcome>:<who>[,…]",
-  "                                                  [--expect-sends=<n>] [--expect-audit=<action>[,…]] [--label=<A|B|C|…>] [--show-stop-link] [--new-ledger]",
-  "       … -- <campaignId> --test=+255… --look",
+  "                                                  [--expect-sends=<n>] [--expect-audit=<action>[,…]] [--expect-audience=<n>] [--label=<A|B|C|…>]",
+  "                                                  [--show-stop-link] [--new-ledger]",
+  "       … -- <campaignId> --test=+255… --look [--expect-audience=<n>]",
   "       … -- --ledger [--sends=<n>] [--new-ledger]",
   "  outcomes: sent · delivered · skipped (the stop) · skipped=<reason> · stopped · resumed      who: test · control",
 ].join("\n");
 
+/** Value flags are taken ONCE (a second `--test` is refused, never silently ignored); only `--expect` and `--expect-audit` may be repeated. */
 export const EVIDENCE_FLAGS = Object.freeze({
-  values: ["test", "control", "expect", "expect-sends", "expect-audit", "label", "sends"],
+  values: ["test", "control", "expect", "expect-sends", "expect-audit", "expect-audience", "label", "sends"],
   flags: ["show-stop-link", "look", "ledger", "new-ledger"],
   positional: 1,
   repeat: ["expect", "expect-audit"],
 });
 
-const CAMPAIGN_ID = /^[A-Za-z0-9_-]{8,64}$/;
+// ⭐ Every skip reason the real gate has (`MarketingSkipReason`, consent.ts) - `agent_referee` (U33r) included: the pre-flight does not judge
+// that exclusion (§4.18), so the evidence must be able to NAME it (`--expect=skipped=agent_referee:test`) and says what it means.
 const GATE_REASONS = Object.freeze([
   "bad_msisdn", "suppressed", "no_consent", "consent_withdrawn", "rg_self_excluded", "rg_cooling_off", "rg_harm_marker",
-  "rg_under25_history", "age_minor", "age_unknown", "account_status", "no_basis",
+  "rg_under25_history", "age_minor", "age_unknown", "account_status", "no_basis", "agent_referee",
 ]);
 const OUTCOMES = Object.freeze(["sent", "delivered", "skipped", "stopped", "resumed"]);
 
@@ -112,7 +122,7 @@ export function parseEvidenceArgs(argv, lib = LIB) {
   const one = (name) => (f.values[name] ?? [])[0];
   const ledgerMode = f.flags.has("ledger");
   if (ledgerMode) {
-    for (const name of ["test", "control", "expect", "expect-sends", "expect-audit", "label"]) if (one(name) !== undefined) problems.push(`--${name} does not go with --ledger`);
+    for (const name of ["test", "control", "expect", "expect-sends", "expect-audit", "expect-audience", "label"]) if (one(name) !== undefined) problems.push(`--${name} does not go with --ledger`);
     for (const flag of ["show-stop-link", "look"]) if (f.flags.has(flag)) problems.push(`--${flag} does not go with --ledger`);
     if (f.positional.length > 0) problems.push("--ledger takes no campaign id");
     let sends = 0;
@@ -125,7 +135,7 @@ export function parseEvidenceArgs(argv, lib = LIB) {
   if (one("sends") !== undefined) problems.push("--sends goes with --ledger only");
   let campaignId = null;
   if (f.positional.length === 0) problems.push("the campaign id is required (or --ledger)");
-  else if (CAMPAIGN_ID.test(f.positional[0]) && /[A-Za-z]/.test(f.positional[0]) && lib.scrubNumbers(f.positional[0]) === f.positional[0]) campaignId = f.positional[0];
+  else if (lib.isCampaignId(f.positional[0])) campaignId = f.positional[0];
   else problems.push("the campaign id is not an id (8 to 64 letters, digits, - or _, with a letter in it — never a phone number)");
   let test = null;
   let control = null;
@@ -151,9 +161,15 @@ export function parseEvidenceArgs(argv, lib = LIB) {
       if (/^marketing[.][a-z_]{3,48}$/.test(token)) { if (!expectAudit.includes(token)) expectAudit.push(token); } else problems.push("--expect-audit holds a token that is not a marketing.* audit action");
     }
   }
+  // ⭐ the people the confirmation fixed: the sheet reads it BEFORE every Start (a campaign confirmed for the wrong list is not started)
+  let expectAudience = null;
+  if (one("expect-audience") !== undefined) {
+    if (/^[0-9]{1,4}$/.test(one("expect-audience"))) expectAudience = Number(one("expect-audience"));
+    else problems.push("--expect-audience must be a whole number of people from 0 to 9999");
+  }
   const look = f.flags.has("look");
-  if (look && (exp.expectations.length > 0 || expectSends !== null || expectAudit.length > 0)) problems.push("--look is a look with no verdict: it does not go with --expect, --expect-sends or --expect-audit");
-  if (!look && exp.expectations.length === 0 && expectSends === null && expectAudit.length === 0 && exp.problems.length === 0 && problems.length === 0) problems.push("nothing to prove: give --expect=<outcome>:<who>, --expect-sends=<n> or --expect-audit=<action>, or --look to only look");
+  if (look && (exp.expectations.length > 0 || expectSends !== null || expectAudit.length > 0)) problems.push("--look is a look with no verdict: it does not go with --expect, --expect-sends or --expect-audit (only --expect-audience may be asked of a look)");
+  if (!look && exp.expectations.length === 0 && expectSends === null && expectAudit.length === 0 && expectAudience === null && exp.problems.length === 0 && problems.length === 0) problems.push("nothing to prove: give --expect=<outcome>:<who>, --expect-sends=<n>, --expect-audit=<action> or --expect-audience=<n>, or --look to only look");
   let label = null;
   if (one("label") !== undefined) {
     // ⛔ A label is typed text that is printed and written to the ledger file: letters and digits, never a number — no run of five
@@ -166,7 +182,7 @@ export function parseEvidenceArgs(argv, lib = LIB) {
   const showStopLink = f.flags.has("show-stop-link");
   if (showStopLink && !test) problems.push("--show-stop-link needs --test (the link shown is the test number's)");
   if (problems.length) return { ok: false, problems };
-  return { ok: true, args: { mode: "campaign", campaignId, test, control, expectations: exp.expectations, expectSends, expectAudit, look, label, showStopLink, newLedger: f.flags.has("new-ledger") } };
+  return { ok: true, args: { mode: "campaign", campaignId, test, control, expectations: exp.expectations, expectSends, expectAudit, expectAudience, look, label, showStopLink, newLedger: f.flags.has("new-ledger") } };
 }
 
 /* ══ THE DATABASE READS — every statement a SELECT, the transaction read-only ════════════════════════════════════════ */
@@ -181,7 +197,8 @@ export function parseEvidenceArgs(argv, lib = LIB) {
  *                            segments, length, cost, the claim's token (to group slices, never shown), stamps, the gate trail
  *   SmsMessage               the messages of those rows and of the composer's tests: reference, whether it went to the TEST number
  *                            (a yes/no computed in SQL — never the number), purpose, status, receipt token and text, length,
- *                            stamps, the gateway's echoed balance (never the body — none is stored)
+ *                            stamps, the gateway's echoed balance (never the body — none is stored); and ONE COUNT of the MARKETING messages of
+ *                            the last day to any number but the test number (of any campaign - counted in SQL, no number selected)
  *   AuditLog                 this campaign's rows (targetType SmsCampaign): seq, time, category, action, the officer's id, payload
  *                            (shown through an allow-list) — and the live switch's last eight rows (SystemConfig marketing.sms.live)
  *   Suppression              the named people's stops: reason, from-the-link, created, lifted
@@ -212,6 +229,13 @@ export async function readEvidenceFacts(tx, { campaignId, testKey, controlKey, w
   // ORDER BY as the OUTPUT column first - the text - so 10 would sort before 9 (and "the newest eight" would be the wrong eight).
   facts.audit = await tx.$queryRaw`/* u52a:audit */ SELECT "seq"::text AS seq, "createdAt" AS created_at, "category"::text AS category, "action", "actorId" AS actor_id, "payload" FROM "AuditLog" WHERE "targetType" = 'SmsCampaign' AND "targetId" = ${campaignId} ORDER BY "AuditLog"."seq" LIMIT 200`;
   facts.switchAudit = await tx.$queryRaw`/* u52a:switch-audit */ SELECT "seq"::text AS seq, "createdAt" AS created_at, "action", "payload" FROM "AuditLog" WHERE "targetType" = 'SystemConfig' AND "targetId" = 'marketing.sms.live' ORDER BY "AuditLog"."seq" DESC LIMIT 8`;
+
+  // ⭐ NOTHING ELSE CAN BE SENDING WHILE THE SWITCH IS OPEN: one COUNT of the MARKETING messages created in the last day to any number but the
+  // test number - of any campaign, this one's included. Counted in SQL; the number of a message is never selected. (No `--test`, no comparison.)
+  if (testKey) {
+    const elsewhere = await tx.$queryRaw`/* u52a:elsewhere */ SELECT count(*)::int AS n FROM "SmsMessage" WHERE "purpose"::text = 'MARKETING' AND "createdAt" > now() - interval '1 day' AND "msisdn" <> ${testKey}`;
+    facts.elsewhere = elsewhere[0] ? elsewhere[0].n : null;
+  }
 
   facts.people = {};
   for (const [role, key] of [["test", testKey], ["control", controlKey]]) {
@@ -333,6 +357,7 @@ export function judgeExpectation(e, person, lib = LIB) {
     const noWire = person.messages.length === 0 && (r.sms_reference === null || r.sms_reference === undefined);
     const holds = reasonOk && noWire;
     if (holds) return { label, holds, why: `the ${e.who} row is SKIPPED ${e.reason} with no message on the wire — the refusal is there` };
+    if (r.status === "SKIPPED" && r.skip_reason === "agent_referee" && e.reason !== "agent_referee") return { label, holds: false, why: `the ${e.who} row is SKIPPED agent_referee, not ${e.reason} — the number is kept as an agent applicant's referee (promised no marketing), so it cannot be the drive's ${e.who} number; that proves nothing about the stop` };
     if (r.status === "SKIPPED" && r.skip_reason !== e.reason) return { label, holds: false, why: `the ${e.who} row is SKIPPED for ${dash(r.skip_reason)}, not ${e.reason} — that proves nothing about the stop` };
     if (reasonOk && !noWire) return { label, holds: false, why: `the ${e.who} row is SKIPPED yet a message of it exists on the wire` };
     return { label, holds: false, why: `the ${e.who} row is ${outcomeOf(r)} — NOT refused${(r.status === "SENT" || r.status === "DELIVERED") ? ": the gate let a stopped number through" : ""}` };
@@ -402,29 +427,53 @@ export function sendCounts(facts, lib = LIB) {
   return { composerTests, recipientSends, chargeable: composerTests + recipientSends };
 }
 
-/** The audit rows E24 says a step writes: each action named is there at least once (the engine's pause and an officer's share one name). */
+/** The payload of an audit row as an object (the database hands a jsonb back as one; a string is parsed), else null. */
+function payloadOf(row) {
+  let p = row ? row.payload : null;
+  if (typeof p === "string") { try { p = JSON.parse(p); } catch { return null; } }
+  return p !== null && typeof p === "object" && !Array.isArray(p) ? p : null;
+}
+
+/**
+ * ⭐ WHAT AN AUDIT ACTION HAS TO CARRY TO PROVE THE ACT IT NAMES. The engine and the enqueue write `marketing.campaign_paused` too (the SAME
+ * action: a rail that died, a budget that ran out), so the bare action proves nothing about the PAUSE BUTTON: an officer's Pause is the row
+ * with an ACTOR and the reason `officer_paused` (`campaign-control.ts`); the engine's own are SYSTEM rows with no actor and another reason.
+ */
+const AUDIT_PROOF = Object.freeze({
+  "marketing.campaign_paused": { words: "the OFFICER's pause (an actor and the reason officer_paused)", holds: (r) => Boolean(r.actor_id) && payloadOf(r)?.reason === "officer_paused" },
+});
+
+/** The audit rows E24 says a step writes: each action named is there at least once - and, for a pause, as the OFFICER's own (see `AUDIT_PROOF`). */
 export function auditChecks(facts, args) {
   return (args.expectAudit ?? []).map((action) => {
-    const n = (facts.audit ?? []).filter((r) => r.action === action).length;
-    return { action, holds: n > 0, n };
+    const rows = (facts.audit ?? []).filter((r) => r.action === action);
+    const proof = AUDIT_PROOF[action];
+    const n = proof ? rows.filter(proof.holds).length : rows.length;
+    return { action, holds: n > 0, n, others: proof ? rows.length - n : 0, words: proof ? proof.words : null };
   });
 }
 
 /**
  * ⭐ THE STANDING CHECKS — true of every campaign of this drive whatever was asked, and a violation by themselves (a look's exit
  * turns non-zero too):
- *   · ONE MESSAGE PER ROW: the engine sends one message per recipient row; a row with two is a double send. (Not only when
- *     `--expect-sends` happens to be given.)
+ *   · ONE CHARGEABLE MESSAGE PER ROW: the engine sends one message per recipient row; a row with two that may have been charged is a
+ *     double send. (Not only when `--expect-sends` happens to be given.) A first attempt the gateway refused - FAILED, no receipt -
+ *     never left, and the engine's retry of it is not a second message (`isChargeable`, the ledger's own rule).
  *   · THE TEST NUMBER ONLY: with `--test` given, every message of the campaign and every composer test went to the test number.
  *     The SQL computes a yes/no per message (`to_test`); the number itself is never selected.
+ *   · ⭐ NOTHING ELSE IS SENDING: with `--test` given, not one MARKETING message created in the last day went to any other number, of ANY
+ *     campaign (one COUNT in SQL). A count that was not read is a violation too: the check never passes by default.
  */
-export function standingFindings(facts, args) {
+export function standingFindings(facts, args, lib = LIB) {
   const out = [];
   const recipients = facts.recipients ?? [];
   const roleOf = (key) => (args.test && key === args.test.key ? "test" : args.control && key === args.control.key ? "control" : "other");
   const recipientOf = new Map(recipients.map((r) => [r.id, r]));
   const perRow = new Map();
-  for (const m of facts.messages ?? []) perRow.set(m.target_id, (perRow.get(m.target_id) ?? 0) + 1);
+  for (const m of facts.messages ?? []) {
+    if (!lib.isChargeable(m.status, m.dlr_status !== null && m.dlr_status !== undefined)) continue;
+    perRow.set(m.target_id, (perRow.get(m.target_id) ?? 0) + 1);
+  }
   for (const [target, n] of perRow) {
     if (n <= 1) continue;
     const r = recipientOf.get(target);
@@ -436,38 +485,49 @@ export function standingFindings(facts, args) {
     const composer = stray(facts.testMessages);
     if (campaign > 0) out.push({ kind: "other_number", where: "campaign", n: campaign });
     if (composer > 0) out.push({ kind: "other_number", where: "composer test", n: composer });
+    if (typeof facts.elsewhere !== "number") out.push({ kind: "elsewhere", n: null });
+    else if (facts.elsewhere > 0) out.push({ kind: "elsewhere", n: facts.elsewhere });
   }
   return out;
 }
 
-/** How many violations a verdict found — the number a LOOK's exit code is made of (a look asks for no verdict, not for silence). */
+/** The campaign's CONFIRMED count against `--expect-audience`: `null` when none was asked, else { expected, actual, holds }. */
+export function audienceCheck(facts, args) {
+  if (args.expectAudience === null || args.expectAudience === undefined) return null;
+  const actual = facts.campaign && typeof facts.campaign.audience_count === "number" ? facts.campaign.audience_count : null;
+  return { expected: args.expectAudience, actual, holds: actual === args.expectAudience };
+}
+
+/** How many things a verdict found wrong - the number a LOOK's exit code is made of (a look asks for no verdict, not for silence): violations, standing findings, an audience that is not the one expected. */
 export function lookViolations(verdict) {
-  return verdict.violations.length + verdict.standing.length;
+  return verdict.violations.length + verdict.standing.length + (verdict.audience && verdict.audience.holds === false ? 1 : 0);
 }
 
 /** The parts of the verdict, as one object, so a suite can hand in a defective one (and nothing else does). */
-export const PARTS = Object.freeze({ buildPeople, judgeExpectation, stopViolations, sendCounts, sliceTimings, auditChecks, standingFindings, lookViolations });
+export const PARTS = Object.freeze({ buildPeople, judgeExpectation, stopViolations, sendCounts, sliceTimings, auditChecks, standingFindings, audienceCheck, lookViolations });
 
 /**
  * The whole verdict. ⛔ Pure: facts and arguments in, a plain object out — the exit code follows from `proven` alone, and
- * `proven` is true only when every expectation holds, no stop was violated and any expected send count is exact.
+ * `proven` is true only when every expectation holds, no stop was violated, any expected send count is exact and any expected
+ * audience is the confirmed one.
  */
 export function judgeEvidence(facts, args, lib = LIB, parts = PARTS) {
-  if (!facts.campaign) return { found: false, proven: false, expectations: [], violations: [], standing: [], sends: null, sendsHolds: null, auditChecks: [], people: [], slices: [], failing: 1 };
+  if (!facts.campaign) return { found: false, proven: false, expectations: [], violations: [], standing: [], sends: null, sendsHolds: null, audience: null, auditChecks: [], people: [], slices: [], failing: 1 };
   const people = parts.buildPeople(facts, args);
   const byRole = Object.fromEntries(people.map((p) => [p.role, p]));
   const expectations = args.expectations.map((e) => parts.judgeExpectation(e, byRole[e.who] ?? null, lib));
   const violations = parts.stopViolations(people);
-  const standing = parts.standingFindings(facts, args);
+  const standing = parts.standingFindings(facts, args, lib);
   const sends = parts.sendCounts(facts, lib);
   let sendsHolds = null;
   if (args.expectSends !== null) sendsHolds = sends.chargeable === args.expectSends;
+  const audience = parts.audienceCheck(facts, args);
   const audits = parts.auditChecks(facts, args);
-  const failing = expectations.filter((x) => !x.holds).length + (sendsHolds === false ? 1 : 0) + audits.filter((x) => !x.holds).length + violations.length + standing.length;
+  const failing = expectations.filter((x) => !x.holds).length + (sendsHolds === false ? 1 : 0) + (audience && audience.holds === false ? 1 : 0) + audits.filter((x) => !x.holds).length + violations.length + standing.length;
   return {
     found: true,
     proven: args.look ? null : failing === 0,
-    expectations, violations, standing, sends, sendsHolds, auditChecks: audits, people,
+    expectations, violations, standing, sends, sendsHolds, audience, auditChecks: audits, people,
     slices: parts.sliceTimings(facts.recipients),
     failing,
   };
@@ -486,7 +546,7 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
   const L = [];
   const c = facts.campaign;
   L.push(`U52a campaign evidence · read-only · ${lib.fmtEat(ctx.nowMs)} EAT${args.label ? ` · step ${args.label}` : ""}`);
-  L.push(`transaction read-only: ${ctx.readOnly} · repeatable read`);
+  L.push(`transaction read-only: ${ctx.readOnly} · repeatable read${ctx.dbClass ? ` · database: ${ctx.dbClass}` : ""}`);
   if (ctx.clock) L.push(lib.clockLine(ctx.clock));
   if (ctx.ledgerFile) L.push(ctx.ledgerFile);
   if (!c) { L.push("campaign: NOT FOUND — no such campaign id"); return L; }
@@ -544,15 +604,18 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
   if (verdict.people.length) L.push(`  STOP-VIOLATION SCAN   ${verdict.violations.length === 0 ? "clear — no message was handed to a named number after a stop was in force" : verdict.violations.map((v) => `VIOLATION — the ${v.who} was handed a message although a stop made at ${lib.fmtEat(v.stopAt)} was in force when the engine took them up at ${lib.fmtEat(v.at)} (${v.by})`).join(" · ")}`);
   // ⭐ the standing checks: true of every campaign of this drive, asked or not
   const doubles = verdict.standing.filter((s) => s.kind === "double_send");
-  L.push(`  ONE MESSAGE PER ROW   ${doubles.length === 0 ? "clear — no recipient row has more than one message" : doubles.map((s) => `VIOLATION — the ${s.who} row has ${s.n} messages (the engine sends one message per row)`).join(" · ")}`);
+  L.push(`  ONE MESSAGE PER ROW   ${doubles.length === 0 ? "clear — no recipient row has more than one chargeable message" : doubles.map((s) => `VIOLATION — the ${s.who} row has ${s.n} chargeable messages (the engine sends one message per row; a first attempt the gateway refused, which never left, is not counted)`).join(" · ")}`);
   if (args.test) {
     const strays = verdict.standing.filter((s) => s.kind === "other_number");
     L.push(`  TO THE TEST NUMBER    ${strays.length === 0 ? "clear — every message of the campaign and every composer test went to the test number" : strays.map((s) => `VIOLATION — ${s.n} ${s.where} message${s.n === 1 ? "" : "s"} went to a number that is NOT the test number`).join(" · ")}`);
+    const elsewhere = verdict.standing.filter((s) => s.kind === "elsewhere");
+    L.push(`  NO OTHER MARKETING SMS ${elsewhere.length === 0 ? "clear — no MARKETING message created in the last 24 hours, of any campaign, went to a number but the test number" : elsewhere.map((s) => (s.n === null ? "VIOLATION — the count of the last day's marketing messages to other numbers was not read" : `VIOLATION — ${s.n} MARKETING message${s.n === 1 ? "" : "s"} created in the last 24 hours went to a number that is NOT the test number (any campaign: somebody else is sending, or an earlier test did)`)).join(" · ")}`);
   }
+  if (verdict.audience) L.push(`  EXPECT audience=${verdict.audience.expected}    ${verdict.audience.holds ? "HOLDS" : "FAILS"} — ${verdict.audience.actual === null ? "the campaign has no confirmed audience (it was never confirmed)" : `the campaign is confirmed for ${verdict.audience.actual} ${verdict.audience.actual === 1 ? "person" : "people"}`}${verdict.audience.holds ? "" : " - DO NOT PRESS START"}`);
 
   L.push(`chargeable sends · ${verdict.sends.chargeable} (${verdict.sends.composerTests} composer test + ${verdict.sends.recipientSends} campaign) — compare with the Blackball portal's Out SMS COUNT for this window (the portal also counts login codes)`);
   if (verdict.sendsHolds !== null) L.push(`  EXPECT sends=${args.expectSends}      ${verdict.sendsHolds ? "HOLDS" : "FAILS"} — counted ${verdict.sends.chargeable}`);
-  for (const a of verdict.auditChecks) L.push(`  EXPECT audit ${lib.safeText(a.action, 48)}  ${a.holds ? "HOLDS" : "FAILS"} — ${a.n} row${a.n === 1 ? "" : "s"} of E24 on this campaign`);
+  for (const a of verdict.auditChecks) L.push(`  EXPECT audit ${lib.safeText(a.action, 48)}  ${a.holds ? "HOLDS" : "FAILS"} — ${a.n} row${a.n === 1 ? "" : "s"} of E24 on this campaign${a.words ? ` counting as ${a.words}` : ""}${a.others > 0 ? ` (${a.others} other row${a.others === 1 ? " of that action is" : "s of that action are"} not it: the engine writes the same action)` : ""}`);
   if (args.showStopLink) {
     if (facts.stopToken) {
       L.push("  ⚠ the stop link below is a live bearer link for the TEST number: use it for the stop step only, and never paste it into the tracker.");
@@ -632,7 +695,8 @@ export async function runEvidence(argv, deps = realDeps()) {
     io.line("REFUSING: no DATABASE_URL — run through the runner, which sets the public proxy.");
     return EXIT.notRun;
   }
-  if (/[.]railway[.]internal(?::|[/]|$)/.test(String(d.env.DATABASE_URL))) {
+  const dbUrl = String(d.env.DATABASE_URL);
+  if (lib.isPrivateHost(dbUrl)) {
     io.line("REFUSING: DATABASE_URL is Railway's private host, which does not resolve off Railway — the runner must set the public proxy.");
     return EXIT.notRun;
   }
@@ -655,7 +719,7 @@ export async function runEvidence(argv, deps = realDeps()) {
   const clock = lib.clockOf(facts.now, d.now());
   const nowMs = clock.nowMs;
   const verdict = judgeEvidence(facts, args, lib, d.parts);
-  const ctx = { nowMs, clock, ledgerFile: lib.ledgerFileLine(ledgerIo), readOnly: "on" };
+  const ctx = { nowMs, clock, ledgerFile: lib.ledgerFileLine(ledgerIo), readOnly: "on", dbClass: lib.databaseClass(dbUrl) };
   for (const line of d.render(facts, verdict, args, ctx, lib)) io.line(line);
   if (!verdict.found) { io.line("RESULT: NOT PROVEN — there is no such campaign"); return EXIT.fail; }
 
@@ -682,20 +746,26 @@ export async function runEvidence(argv, deps = realDeps()) {
       ledgerIo.write(lib.serializeLedger(rec.ledger));
       io.line(`ledger · ${rec.total} of ${SEND_CAP} chargeable sends counted after this campaign (${SEND_CAP - rec.total} left)`);
     } catch {
+      // ⭐ The count is NOT on the disk, so the ledger is behind and the next step's cap check would be wrong. The remedy is the same command:
+      // a run of this evidence counts the campaign's sends again, and counts nothing twice. Never a count written down by hand.
       ledgerOk = false;
-      io.line("LEDGER NOT WRITTEN: the file could not be saved — write the count down by hand before going on.");
+      io.line("LEDGER NOT WRITTEN: the file could not be saved, so the count is NOT recorded and the cap check of the next step would be wrong. Run this same evidence command again for this campaign until it says the ledger took the count (a re-run counts nothing twice), and take no further step before it does.");
     }
   }
 
   if (args.look) {
-    // ⭐ A look asks for no verdict, but a VIOLATION it finds (a stop broken, a double send, a message to another number) is not
-    // something to look past: the exit is 1 and the line says so.
-    const violated = d.parts.lookViolations(verdict);
-    if (violated > 0) {
-      io.line(`RESULT: LOOK ONLY — no verdict was asked, BUT ${violated} VIOLATION${violated === 1 ? "" : "S"} above (a message after a stop, a double send, or a message to a number that is not the test number): the exit is 1 - STOP THE DRIVE and tell Ali${ledgerOk ? "" : "; the ledger problem above stops it too"}`);
+    // ⭐ A look asks for no verdict, but what it finds wrong is not something to look past: a VIOLATION (a stop broken, a double send, a
+    // message to another number, marketing going to anyone else) or an audience that is not the one expected - the exit is 1 and the line says so.
+    const violated = verdict.violations.length + verdict.standing.length;
+    const wrongAudience = verdict.audience !== null && verdict.audience.holds === false;
+    if (d.parts.lookViolations(verdict) > 0) {
+      const said = [];
+      if (violated > 0) said.push(`${violated} VIOLATION${violated === 1 ? "" : "S"} above (a message after a stop, a double send, a message to a number that is not the test number, or marketing going to another number)`);
+      if (wrongAudience) said.push(`the campaign is not confirmed for the ${verdict.audience.expected} ${verdict.audience.expected === 1 ? "person" : "people"} expected - DO NOT PRESS START`);
+      io.line(`RESULT: LOOK ONLY — no verdict was asked, BUT ${said.join(" and ") || "something above is wrong"}: the exit is 1 - STOP THE DRIVE and tell Ali${ledgerOk ? "" : "; the ledger problem above stops it too"}`);
       return EXIT.fail;
     }
-    io.line(`RESULT: LOOK ONLY — no verdict was asked${ledgerOk ? "" : " (the ledger problem above still stops the drive)"}`);
+    io.line(`RESULT: LOOK ONLY — no verdict was asked${verdict.audience ? `; the audience is the ${verdict.audience.expected} expected` : ""}${ledgerOk ? "" : " (the ledger problem above still stops the drive)"}`);
     return ledgerOk ? EXIT.ok : EXIT.fail;
   }
   const proven = verdict.proven === true && ledgerOk;
