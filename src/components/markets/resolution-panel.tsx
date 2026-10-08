@@ -25,7 +25,9 @@
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { cn, formatTzs } from "@/lib/utils";
-import { formatDateTime } from "@/lib/utils";
+// Every date here is in the reader's month words on the East Africa clock (§L4; `formatDateTime` printed English months),
+// with the year rule read off `serverNow` — the page's instant, so the browser's first render is the server's.
+import { formatEatDateTime } from "@/lib/eat-day";
 import { Callout } from "@/components/ui/callout";
 import { useT } from "@/lib/i18n";
 import { outcomeWord } from "@/lib/side-label";
@@ -114,7 +116,7 @@ export function ResolutionPanel({
   marketId, outcome, resolvedAt, twoOfficer, singleOfficer, correctedOnObjection = false, sourceUrl, objectionsClosedAt, serverNow,
   yesPool, noPool, fee, rates, evidence, settledAt, objection,
 }: Props) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const isVoid = outcome === "VOID";
   const gross = yesPool + noPool;
   // The money is HELD while the window is open and nothing has settled. This is a
@@ -167,7 +169,7 @@ export function ResolutionPanel({
           {resolvedAt && (
             <span className="inline-flex items-center gap-1.5 tabular-nums">
               <I.clock s={12} className="opacity-70" />
-              {formatDateTime(resolvedAt)}
+              {formatEatDateTime(Date.parse(resolvedAt), serverNow, t.common.monthsShort, locale)}
             </span>
           )}
           <a
@@ -204,7 +206,7 @@ export function ResolutionPanel({
           <p className="flex items-start gap-2">
             <I.hourglassHalf s={13} className="mt-[1px] shrink-0" />
             <span>
-              {t.market.resHeld} <span className="font-mono tabular-nums">{formatDateTime(objectionsClosedAt)}</span>.
+              {t.market.resHeld} <span className="font-mono tabular-nums">{formatEatDateTime(Date.parse(objectionsClosedAt), serverNow, t.common.monthsShort, locale)}</span>.
             </span>
           </p>
           {/* C4 ruling 158: never invite an objection the panel below refuses (the neutral NOT_ELIGIBLE state). */}
@@ -216,7 +218,7 @@ export function ResolutionPanel({
         // in the admin console. Do not narrate the payout run on a public surface.
         <p className="flex items-center gap-1.5 text-body-sm text-text-subtle">
           <I.check s={13} className="text-yes-300" />
-          {t.market.resPaidOut} <span className="font-mono tabular-nums">{formatDateTime(settledAt)}</span>
+          {t.market.resPaidOut} <span className="font-mono tabular-nums">{formatEatDateTime(Date.parse(settledAt), serverNow, t.common.monthsShort, locale)}</span>
         </p>
       ) : (
         /**

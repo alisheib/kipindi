@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { cn, formatDateTime, formatTzs } from "@/lib/utils";
+import { cn, formatTzs } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
 // The kit primitive, replacing this file's own local copy of it (one of three
@@ -46,6 +47,12 @@ type Props = {
   bettingClosed?: boolean;
   /** ISO timestamp the bet was placed — shown as a small "Opened …" meta line. */
   placedAt?: string;
+  /**
+   * The server's render instant (the page's `serverNow`) — the clock the opened date's year rule reads
+   * (`formatEatDateTime`). Handed down rather than read here: this is a client component, and a `Date.now()` of its own
+   * is a different number in the browser, so the first render would not be the server's.
+   */
+  serverNow: number;
   /** Position reference (e.g. pos_a1b2c3d4e5) — the ticket number quoted in emails. */
   positionId?: string;
   /** The viewer's affiliate code, so a share carries their referral link. */
@@ -53,8 +60,8 @@ type Props = {
   className?: string;
 };
 
-export function PositionCard({ marketId, marketTitle, side, productLine, stake, current, payout, status, bettingClosed, placedAt, positionId, refCode, className }: Props) {
-  const { t } = useT();
+export function PositionCard({ marketId, marketTitle, side, productLine, stake, current, payout, status, bettingClosed, placedAt, serverNow, positionId, refCode, className }: Props) {
+  const { t, locale } = useT();
   // §L2 — this local map was the second definition site for the position-status family;
   // `notify-poller` had no map at all and printed the enum. One lexicon now serves both.
   const statusLabel = positionStatusWord(t, status, productLine);
@@ -133,8 +140,9 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
           {placedAt && (
             <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
               <I.clock s={10} className="opacity-70 shrink-0" />
-              {/* The date is one unit after the word, as in the question page's holder block (5.opened). */}
-              <span>{t.market.opened}{" "}<span className="whitespace-nowrap">{formatDateTime(placedAt)}</span></span>
+              {/* The date is one unit after the word, as in the question page's holder block (5.opened) — in the reader's
+                  month words, on the East Africa clock (`formatEatDateTime`; `formatDateTime` printed English months). */}
+              <span>{t.market.opened}{" "}<span className="whitespace-nowrap">{formatEatDateTime(Date.parse(placedAt), serverNow, t.common.monthsShort, locale)}</span></span>
             </p>
           )}
         </div>

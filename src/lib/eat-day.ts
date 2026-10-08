@@ -81,9 +81,14 @@ export function formatEatDay(dayKey: string, monthsShort: readonly string[], loc
  * settled strip's "Settled 27 Sep" (WP13) and a market's "Closes 27 Sep" (WP3, WP4).
  */
 export function formatEatDate(atMs: number, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh"): string {
+  /* ⛔ AN INSTANT THAT IS NOT ONE READS "—", it never throws (2026-10-08): `eatDayKey` reaches `toISOString`, which
+     throws on an invalid date, and these formatters now date every player page — one unreadable timestamp would take
+     the whole page down where the English formatter they replaced printed "Invalid Date". "—" is the house's mark for
+     a missing value (the account page and the wallet row already guard their calls with it). */
+  if (!Number.isFinite(atMs)) return "—";
   const key = eatDayKey(atMs);
   const day = formatEatDay(key, monthsShort, locale);
-  return locale === "zh" || key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4) ? day : `${day} ${key.slice(0, 4)}`;
+  return locale === "zh" || (Number.isFinite(nowMs) && key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4)) ? day : `${day} ${key.slice(0, 4)}`;
 }
 
 /**
@@ -94,6 +99,7 @@ export function formatEatDate(atMs: number, nowMs: number, monthsShort: readonly
  * names in every locale (§L4).
  */
 export function formatEatDateTime(atMs: number, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh"): string {
+  if (!Number.isFinite(atMs)) return "—"; // as formatEatDate: a missing instant, never a thrown page
   const eat = new Date(atMs + EAT_OFFSET_MS);
   const clock = `${String(eat.getUTCHours()).padStart(2, "0")}:${String(eat.getUTCMinutes()).padStart(2, "0")}`;
   const day = formatEatDate(atMs, nowMs, monthsShort, locale);

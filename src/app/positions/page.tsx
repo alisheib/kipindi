@@ -8,7 +8,8 @@ import { PositionCard } from "@/components/markets/position-card";
 import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { SellButton } from "@/components/markets/sell-button";
-import { formatTzsCompact, formatDeadline } from "@/lib/utils";
+import { formatTzsCompact } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { listPositionsForUser, positionCardMarkets, cashOutValue, freeExitEndsAt, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
@@ -403,6 +404,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     payout={p.finalPayout ?? 0}
                     status={p.status as "WIN" | "LOSS" | "VOID" | "CASHED_OUT"}
                     placedAt={p.placedAt}
+                    serverNow={serverNow}
                     positionId={p.id}
                     refCode={myRefCode}
                   />
@@ -439,6 +441,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                     // every position, so it is the only honest witness that the freeze happened.
                     bettingClosed={closed && !!m.selectionClosedNotifiedAt}
                     placedAt={p.placedAt}
+                    serverNow={serverNow}
                     positionId={p.id}
                     refCode={myRefCode}
                   />
@@ -455,7 +458,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                         <I.calendarClock s={11} />
                         {closed
                           ? t.positions.selectionClosed
-                          : `${t.positions.selectionCloses} ${formatDeadline(cutoffIso, serverNow)}`}
+                          : `${t.positions.selectionCloses} ${formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)}`}
                       </p>
                     </div>
                   )}

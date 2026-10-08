@@ -121,6 +121,10 @@ const POSITIONS = "src/app/positions/page.tsx";
 const MARKET = "src/app/markets/[id]/page.tsx";
 /** 2026-10-06 · /positions' card, whose "opened" line 5.opened reads beside the holder block's. */
 const POSITION_CARD = "src/components/markets/position-card.tsx";
+/** §L4 (2026-10-08) · the two hosts' "opened" dates, as written: the reader's month words through `formatEatDateTime`, no
+ *  longer the English `fmtTime` / `formatDateTime`. 5.opened and its plants read these exact expressions. */
+const MARKET_OPENED = "formatEatDateTime(Date.parse(p.placedAt), Date.now(), t.common.monthsShort, locale)";
+const CARD_OPENED = "formatEatDateTime(Date.parse(placedAt), serverNow, t.common.monthsShort, locale)";
 /** S6 WP9 — the journey's ticket card renders the button on Tiketi zangu: a host like the two above, held to the same call. */
 const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
 /** S6 A8b — the page gutter both classic hosts sit in, which §5 reads. */
@@ -1601,8 +1605,8 @@ async function g5Fit(W: World) {
   {
     const OPENED_RUN = "{t.market.opened} {";
     const rows: { rel: string; want: string }[] = [
-      { rel: MARKET, want: `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{fmtTime(p.placedAt)}</span></span>` },
-      { rel: POSITION_CARD, want: `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{formatDateTime(placedAt)}</span></span>` },
+      { rel: MARKET, want: `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{${MARKET_OPENED}}</span></span>` },
+      { rel: POSITION_CARD, want: `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{${CARD_OPENED}}</span></span>` },
     ];
     const bad: string[] = [];
     for (const r of rows) {
@@ -2441,11 +2445,11 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, FIT_CONFIG, "g < 0 || g > 60)", "g < 0 || g > 120)") },
   // §5 — 2026-10-06: the ticket's opened line keeps its date whole
   { name: "the holder block's opened line runs its word and date as one text again (its date breaks inside at 320 in Swahili, as the tiles measured)", expect: ["5.opened"],
-    world: (w) => inFile(w, MARKET, `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{fmtTime(p.placedAt)}</span></span>`, "{t.market.opened} {fmtTime(p.placedAt)}") },
+    world: (w) => inFile(w, MARKET, `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{${MARKET_OPENED}}</span></span>`, `{t.market.opened} {${MARKET_OPENED}}`) },
   { name: "/positions' card loses the date's nowrap (its date may break inside on a narrow card)", expect: ["5.opened"],
-    world: (w) => inFile(w, POSITION_CARD, `<span className="whitespace-nowrap">{formatDateTime(placedAt)}</span>`, "<span>{formatDateTime(placedAt)}</span>") },
+    world: (w) => inFile(w, POSITION_CARD, `<span className="whitespace-nowrap">{${CARD_OPENED}}</span>`, `<span>{${CARD_OPENED}}</span>`) },
   { name: "the holder block's word and date become ONE nowrap unit (the line can no longer break at all and runs past the card at 320)", expect: ["5.opened"],
-    world: (w) => inFile(w, MARKET, `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{fmtTime(p.placedAt)}</span></span>`, `<span className="whitespace-nowrap">{t.market.opened}{" "}{fmtTime(p.placedAt)}</span>`) },
+    world: (w) => inFile(w, MARKET, `<span>{t.market.opened}{" "}<span className="whitespace-nowrap">{${MARKET_OPENED}}</span></span>`, `<span className="whitespace-nowrap">{t.market.opened}{" "}{${MARKET_OPENED}}</span>`) },
   // §4 — the wiring
   { name: "the suite drops out of predeploy", expect: ["4.wired"],
     world: (w) => ({ ...w, scripts: { ...w.scripts, predeploy: (w.scripts.predeploy ?? "").split("npm run test:sell-grace-truth && ").join("") } }) },

@@ -17,7 +17,8 @@ import { Select } from "@/components/ui/select";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
-import { formatTzs, formatDateTime, fill } from "@/lib/utils";
+import { formatTzs, fill } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
@@ -31,7 +32,7 @@ export async function generateMetadata() {
 export const dynamic = "force-dynamic";
 
 export default async function ResponsibleGamblingPage({ searchParams }: { searchParams: Promise<{ reason?: string; saved?: string }> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   const SELF_EXCLUSION_OPTIONS = [
     { id: "24h",  label: t.rg.dur24h },
@@ -103,11 +104,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           write now takes the furthest date; this is the half that tells them, and says plainly
           that it cannot be shortened so nobody has to discover it by trying.
           ⭐ The date carries its time (2026-10-06), as /wallet/deposit and the server's own refusal do: a
-          one-hour break that ends today read "until 6 Oct 2026", which says nothing about when. */}
+          one-hour break that ends today read "until 6 Oct 2026", which says nothing about when. And it is in the
+          reader's month words on the East Africa clock (`formatEatDateTime`, §L4) — `formatDateTime` printed English
+          months in every locale. */}
       {rg.selfExclusionUntil && Date.parse(rg.selfExclusionUntil) > Date.now() ? (
-        <Callout tone="warning">{fill(t.rg.exclusionActive, { date: formatDateTime(rg.selfExclusionUntil) })}</Callout>
+        <Callout tone="warning">{fill(t.rg.exclusionActive, { date: formatEatDateTime(Date.parse(rg.selfExclusionUntil), Date.now(), t.common.monthsShort, locale) })}</Callout>
       ) : rg.coolingOffUntil && Date.parse(rg.coolingOffUntil) > Date.now() ? (
-        <Callout tone="warning">{fill(t.rg.breakActive, { date: formatDateTime(rg.coolingOffUntil) })}</Callout>
+        <Callout tone="warning">{fill(t.rg.breakActive, { date: formatEatDateTime(Date.parse(rg.coolingOffUntil), Date.now(), t.common.monthsShort, locale) })}</Callout>
       ) : null}
 
       <PageHero glow="yes">
@@ -155,10 +158,11 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
                   <p className="font-display font-semibold text-text">
                     {c.label} · {c.to === null ? t.rg.pendingRemoval : <>{t.rg.pendingIncrease}{" "}{c.unit === "min" ? c.to : await formatTzs(c.to)}</>}
                   </p>
-                  {/* ⚠️ THIS DATE MUST BE ZONED — the end of the statutory cooling-off window. `formatDateTime`
-                      stamps the platform timezone; a bare toLocaleString on the server prints UTC, three hours early. */}
+                  {/* ⚠️ THIS DATE MUST BE ZONED — the end of the statutory cooling-off window. `formatEatDateTime`
+                      reads the East Africa clock (in the reader's month words); a bare toLocaleString on the server
+                      prints UTC, three hours early. */}
                   <p className="text-text-muted">
-                    {t.rg.effective}{" "}{formatDateTime(c.at)}{" "}{t.rg.coolingPeriodNote}
+                    {t.rg.effective}{" "}{formatEatDateTime(Date.parse(c.at), Date.now(), t.common.monthsShort, locale)}{" "}{t.rg.coolingPeriodNote}
                   </p>
                 </div>
               )))}

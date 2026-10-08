@@ -23,6 +23,14 @@
  * gate must fail on the COUNT assertion — the same blindness `red:time-left` case 5
  * exists for.
  *
+ * ⭐ §L4 (2026-10-08) — every date §3 names is the reader's: `formatEatDateTime` with
+ * `t.common.monthsShort, locale`, never the English `formatDeadline`. `english-call-back`
+ * is the defect the gate's fence was built for (an English helper back in a converted
+ * file); `english-alias-back` brings it back under another name, which a grep for a call
+ * never sees; `month-words-dropped` keeps the right function and throws the reader's
+ * words away; `client-reads-device-clock` is the hydration hazard; and
+ * `fence-control-formatted-elsewhere` is the fence's positive control.
+ *
  * ⚠️ SINGLE-LINE ANCHORS. This tree is CRLF and these declarations are LF, so a
  * multi-line anchor cannot match and the replace becomes a silent no-op — which reads
  * as "the guard failed to catch the defect" rather than "the harness never ran".
@@ -40,6 +48,11 @@ const GATE = "scripts/timer-date.test.mts";
 const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
 /** S6 WP10 — the Sell button, whose journey look names the free-sell instant beside its countdown. */
 const SELL_BUTTON = "src/components/markets/sell-button.tsx";
+/** §L4 (2026-10-08) — converted player files the fence holds to the localized date helper. */
+const RESOLUTION_PANEL = "src/components/markets/resolution-panel.tsx";
+const POSITIONS = "src/app/positions/page.tsx";
+const POSITION_CARD = "src/components/markets/position-card.tsx";
+const SESSIONS = "src/app/profile/sessions/page.tsx";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -48,7 +61,7 @@ export const MUTATIONS = [
     why: "⭐ THE PRE-2026-08-25 STATE, verbatim: the resolve timer counts down and never names the day it counts to, which is Jay item #6 in full",
     file: PAGE,
     suite: "timer-date",
-    from: `              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatDeadline(m.resolutionAt)} />`,
+    from: `              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} />`,
     to: `              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} />`,
     expect: "3: timer to={m.resolutionAt} passes an absolute date",
   },
@@ -57,8 +70,8 @@ export const MUTATIONS = [
     why: "⛔ the date beside the RESULTS clock names the SELECTION deadline instead — present, correctly formatted, correctly zoned, and about a different moment. A player reads a confident wrong date and nothing looks broken",
     file: PAGE,
     suite: "timer-date",
-    from: `              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatDeadline(m.resolutionAt)} />`,
-    to: `              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatDeadline(m.selectionClosedAt)} />`,
+    from: `              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} />`,
+    to: `              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)} />`,
     expect: "3: ...and it names the SAME instant the clock counts to",
   },
   {
@@ -111,18 +124,63 @@ export const MUTATIONS = [
     why: "⭐ S6 WP9 · the journey ticket's close line formats the RESOLUTION while its <time> claims the selection cutoff — present, formatted, zoned, and about a different moment, the wrong-instant case on a preview reader's ticket",
     file: JOURNEY_CARD,
     suite: "timer-date",
-    from: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatDeadline(cutoffIso, serverNow)}</time>`,
-    to: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatDeadline(m.resolutionAt, serverNow)}</time>`,
+    from: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)}</time>`,
+    to: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(m.resolutionAt), serverNow, t.common.monthsShort, locale)}</time>`,
     expect: "3: ...its <time dateTime={cutoffIso}> names the SAME instant it formats",
   },
   {
     name: "journey-card-year-blind",
-    why: "S6 WP9 · the journey ticket's placement date goes through the raw same-year formatter, so a ticket placed last year reads as this year's",
+    why: "S6 WP9 · the journey ticket's placement date goes back through the raw same-year English formatter: a ticket placed last year reads as this year's, and a Swahili reader reads 'Imewekwa 8 Oct' again (§L4)",
     file: JOURNEY_CARD,
     suite: "timer-date",
-    from: `{formatDeadline(p.placedAt, serverNow)}`,
+    from: `{formatEatDateTime(Date.parse(p.placedAt), serverNow, t.common.monthsShort, locale)}`,
     to: `{formatDayTime(p.placedAt)}`,
-    expect: "3: journey ticket-card.tsx routes every deadline through formatDeadline",
+    expect: "3: fence · components/journey/tickets/ticket-card.tsx uses no English date helper",
+  },
+  {
+    name: "english-call-back",
+    why: "⭐ §L4 · THE DEFECT THIS FENCE WAS BUILT FOR: a converted player file prints a date through `formatDateTime` again — an 'en-GB' formatter, so the resolution panel tells a Swahili or Chinese reader 'Oct' in English. The panel's other two dates stay localized, so only the fence's no-English half can catch it",
+    file: RESOLUTION_PANEL,
+    suite: "timer-date",
+    from: `{formatEatDateTime(Date.parse(resolvedAt), serverNow, t.common.monthsShort, locale)}`,
+    to: `{formatDateTime(resolvedAt)}`,
+    expect: "3: fence · components/markets/resolution-panel.tsx uses no English date helper",
+  },
+  {
+    name: "english-alias-back",
+    why: "§L4 · the English helper comes back under another name — the shape the market page shipped (`const fmtTime = formatDateTime`). A grep for a CALL of `formatDateTime(` never sees `fmtTime(…)`, so the fence reads every use of the name: an import alias here",
+    file: PAGE,
+    suite: "timer-date",
+    from: `import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";`,
+    to: `import { formatTzsCompact, formatTzs, fill, formatDateTime as fmtTime } from "@/lib/utils";`,
+    expect: "3: fence · app/markets/[id]/page.tsx uses no English date helper",
+  },
+  {
+    name: "month-words-dropped",
+    why: "§L4 · the localized helper is called with ENGLISH month words — the right function, the reader's language thrown away — so /positions' close line reads 'Oct' in every locale while every helper name looks correct",
+    file: POSITIONS,
+    suite: "timer-date",
+    from: `formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)`,
+    to: `formatEatDateTime(Date.parse(cutoffIso), serverNow, dict.en.common.monthsShort, "en")`,
+    expect: "3: positions/page.tsx dates every deadline through formatEatDateTime/formatEatDate, in the reader's month words",
+  },
+  {
+    name: "client-reads-device-clock",
+    why: "⛔ §L4 · a client card reads the year rule off the DEVICE clock. The server rendered with its own instant and the browser hydrates with another, so across a New Year the first render disagrees with the server's — a hydration error on /positions — and a phone with a wrong clock prints a wrong year",
+    file: POSITION_CARD,
+    suite: "timer-date",
+    from: `formatEatDateTime(Date.parse(placedAt), serverNow, t.common.monthsShort, locale)`,
+    to: `formatEatDateTime(Date.parse(placedAt), Date.now(), t.common.monthsShort, locale)`,
+    expect: "3: fence · components/markets/position-card.tsx is a client file: its year rule reads the server's instant, never Date.now()",
+  },
+  {
+    name: "fence-control-formatted-elsewhere",
+    why: "⭐ POSITIVE CONTROL for the fence's second half: a converted page formats its date some other way — no English helper, so the first half stays green — and only 'still dates through the localized helper' stands between that and an English, UTC date on /profile/sessions",
+    file: SESSIONS,
+    suite: "timer-date",
+    from: `const expires = formatEatDateTime(session.exp, Date.now(), t.common.monthsShort, locale);`,
+    to: `const expires = new Date(session.exp).toUTCString();`,
+    expect: "3: fence · app/profile/sessions/page.tsx dates through formatEatDateTime/formatEatDate, in the reader's month words",
   },
   {
     name: "journey-sell-label-names-another-instant",

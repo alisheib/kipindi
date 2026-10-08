@@ -17,7 +17,8 @@
  *      one rule both cards call, the ticket number stays, and the share button, the profit strip, the yes/no bar,
  *      search, sort, the countdown ring, the classic header and row 2 of the bar are shelved on this view (A19, WP9
  *      step 5).
- *   §3 THE DATES — the card is drawn on the server and dates every instant through `formatDeadline`, asked with the
+ *   §3 THE DATES — the card is drawn on the server and dates every instant through `formatEatDateTime`, in the reader's
+ *      month words (§L4: the English `formatDeadline` printed "Imewekwa 8 Oct" to a Swahili reader), asked with the
  *      render's own clock (`test:timer-date` §3 holds each date to the instant it names).
  *   §4 THE WORDS (A7) — no Swahili word the view reads says "nafasi" and no Chinese one says 持仓: the view's files, the
  *      bar's journey variant and every helper it calls, the journey arms of both error pages and the tab title; every
@@ -334,17 +335,20 @@ function g2Card(I: Impl, W: World, ok: Ok) {
 }
 
 /* ══ §3 · THE DATES ══════════════════════════════════════════════════════════════════════════════════════════ */
-/** What the card may not call: a locale's own formatter, a Date of its own, the raw deadline pieces, Intl. (Its one clock time is 3.clock's.) */
-const FORMATTERS = ["toLocale", "new Date(", "formatDateTime(", "formatDayTime(", "Intl."];
+/** What the card may not call: a locale's own formatter, a Date of its own, the English date helpers (§L4: "en-GB", so
+ *  English month names in every locale), the raw deadline pieces, Intl. (Its one clock time is 3.clock's.) */
+const FORMATTERS = ["toLocale", "new Date(", "formatDeadline(", "formatDateTime(", "formatDayTime(", "formatDayShort(", "Intl."];
+/** The one shape of a date on the card, after `formatEatDateTime(`: a parsed instant, the render's clock, the reader's words. */
+const CARD_DATE = /^Date[.]parse[(][^()]+[)], serverNow, t[.]common[.]monthsShort, locale[)]/;
 
 function g3Dates(W: World, ok: Ok) {
   const card = text(W, CARD);
-  const calls = card.split("formatDeadline(").slice(1);
+  const calls = card.split("formatEatDateTime(").slice(1);
   const own = FORMATTERS.filter((f) => card.includes(f));
-  ok("3.server · the card is drawn on the server and dates every instant through formatDeadline, asked with the render's own clock — never a formatter of its own",
+  ok("3.server · the card is drawn on the server and dates every instant through formatEatDateTime, in the reader's month words and asked with the render's own clock — never a formatter of its own, and never an English one",
     card.length > 0 && !isClient(card) && !isClient(text(W, VIEW)) && own.length === 0 && calls.length >= 2
-      && calls.every((c) => c.slice(0, c.indexOf(")")).endsWith(", serverNow")),
-    show({ own, calls: calls.map((c) => c.slice(0, c.indexOf(")"))) }));
+      && calls.every((c) => CARD_DATE.test(c)),
+    show({ own, calls: calls.map((c) => c.slice(0, 90)) }));
   ok("3.clock · its one clock time (WP10) is formatClock of the free-sell instant it hands the Sell button, read on the server — never the placement plus a grace",
     count(card, "formatClock(") === 1 && card.includes(CLOCK_LABEL) && count(card, HOST_BINDING) === 1, show({ clocks: count(card, "formatClock(") }));
 }
@@ -360,9 +364,12 @@ const BAR_JOURNEY = "export function PositionsBarJourney(";
 const RAIL_FN = "function PositionsRail(";
 const RAIL_ELEMENT = "<div data-filter-rail className={QUERY_BAR_CLASS}>{children}</div>";
 /** A dictionary word by its path, read by this suite's own walk. */
+/** The word at `path` — or, for a LIST of words (`common.monthsShort`, the twelve month names a date reads, §L4), all of
+ *  them joined, and "" if any one is missing: a list resolves only when every word in it does. */
 function wordAt(d: unknown, path: string): string {
   let v: unknown = d;
   for (const part of path.split(".")) v = v !== null && typeof v === "object" ? (v as Record<string, unknown>)[part] : undefined;
+  if (Array.isArray(v)) return v.length > 0 && v.every((x) => typeof x === "string" && x.trim() !== "") ? v.join(" ") : "";
   return typeof v === "string" ? v : "";
 }
 /** The text, plus every helper it calls that the bar or the lexicon defines — followed until none is left. */
@@ -909,7 +916,7 @@ function run(I: Impl, W: World, log: (l: string) => void): { failed: string[]; t
   g1Pages(W, ok);
   log(""); log("§2 · the card — no figure before the result, one link that reaches 44px, one colour rule, the number kept, the classic pieces shelved");
   g2Card(I, W, ok);
-  log(""); log("§3 · the dates — on the server, through formatDeadline, with the render's clock");
+  log(""); log("§3 · the dates — on the server, through formatEatDateTime in the reader's month words, with the render's clock");
   g3Dates(W, ok);
   log(""); log("§4 · the words — no nafasi in Swahili, no 持仓 in Chinese, every word in three languages, no result count, seven lenses");
   g4Words(W, ok);
@@ -994,8 +1001,12 @@ const row2Back = withFile(BAR, inFn(BAR_JOURNEY, (b) => b.replace("</QueryStrip>
 const headerBack = swap(SWITCH, "<PageHeader title={t.journey.tabTickets} />",
   "<PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />");
 // §3 — the dates
-const localeFormat = swap(CARD, "formatDeadline(p.placedAt, serverNow)", "new Date(p.placedAt).toLocaleString()");
-const noClock = swap(CARD, "formatDeadline(cutoffIso, serverNow)", "formatDeadline(cutoffIso)");
+const PLACED_DATE = "formatEatDateTime(Date.parse(p.placedAt), serverNow, t.common.monthsShort, locale)";
+const CUTOFF_DATE = "formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)";
+const localeFormat = swap(CARD, PLACED_DATE, "new Date(p.placedAt).toLocaleString()");
+const noClock = swap(CARD, CUTOFF_DATE, "formatEatDateTime(Date.parse(cutoffIso), Date.now(), t.common.monthsShort, locale)");
+const englishHelper = swap(CARD, PLACED_DATE, "formatDeadline(p.placedAt, serverNow)");
+const englishWords = swap(CARD, CUTOFF_DATE, `formatEatDateTime(Date.parse(cutoffIso), serverNow, dict.en.common.monthsShort, "en")`);
 // §4 — the words
 const barSaysNafasi = swap(BAR, "ariaLabel={t.journey.ticketsFilterAria}", "ariaLabel={t.positions.filterAria}");
 const barCounts = withFile(BAR, inFn(BAR_JOURNEY, (b) => b.replace("</QueryStrip>", "</QueryStrip><QueryResultCount count={0} phrase={t.positions.oneResult} />")));
@@ -1115,6 +1126,8 @@ const plants: Plant[] = [
   { name: "the classic header's words (its eyebrow says “Nafasi”) come back to the journey head", expect: ["2.shelved"], world: headerBack, landed: changed(headerBack, SWITCH) },
   { name: "a date is formatted in the browser's way", expect: ["3.server"], world: localeFormat, landed: changed(localeFormat, CARD) },
   { name: "a date is formatted without the render's clock", expect: ["3.server"], world: noClock, landed: changed(noClock, CARD) },
+  { name: "a date goes back through the English helper (“Imewekwa 8 Oct” to a Swahili reader, §L4)", expect: ["3.server"], world: englishHelper, landed: changed(englishHelper, CARD) },
+  { name: "a date is formatted with English month words instead of the reader's", expect: ["3.server"], world: englishWords, landed: changed(englishWords, CARD) },
   { name: "the journey bar names its strip with the classic word (“Kichujio cha nafasi”)", expect: ["4.nafasi", "4.count"], world: barSaysNafasi, landed: changed(barSaysNafasi, BAR) },
   { name: "the journey bar draws the result count (“Nafasi {n}”)", expect: ["4.count", "4.nafasi"], world: barCounts, landed: changed(barCounts, BAR) },
   { name: "a lens is dropped from the journey bar", expect: ["4.lenses"], world: lensDropped, landed: changed(lensDropped, BAR) },
