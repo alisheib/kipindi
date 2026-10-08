@@ -46,6 +46,45 @@ independent verifier's findings, and proven in Chromium and Firefox and, once th
 and the hidden second field proved a belt there — Playwright's WebKit honours the disabled default control, where
 WebKit's source was read to skip it (§0i "A8j", the drive's P1x).
 
+**✅ S9's two early fixes LIVE `684f72cb` `b0f490c8` (2026-10-09, built on ALI-BLADE15 while OMEGA-COMPILE01 holds
+this lane; nothing else of the lane was touched).** Ali, 2026-10-09: *"fix what you can here … push live … tell the
+other PC so tomorrow it knows"*. These are the two §2 rows that ship before the flip, for every player; **S9 itself
+stays ⬜** (§3.5, the waiting and return screens, and its "Done when" are untouched; the §1 row is unchanged on
+purpose). **(1) A card payer comes back to the deposit they made** (MONEY-GATE §3.2): Selcom appends only
+`payment_status` + `transid`, and the URL we handed it was the bare `/wallet/deposit/return`, so since the rail's first
+day (2026-07-18) a payer who had just been charged read "We couldn't find that payment" (the credit always arrived,
+by the fast-credit poll). `withOrderId` (new `src/lib/wallet/card-return.ts`) now puts our order id into the redirect
+and the cancel URL in `selcomCardCheckout`, the return page reads it through `cardReturnOrderId`, and
+`scripts/selcom-stub-gateway.mjs` is faithful (it appended an `order_id` of its own — why every card test passed).
+**(2) The deposit's number box is the kit `PhoneInput`:** the raw box (`maxLength` 9, pattern of nine digits) cut
+"0712 345 678" to "071234567" and "+255 754 321 000" to "255754321", numbers the server refuses. ⭐ `DepositNumberChoice`
+now writes through the native value setter: with `PhoneInput` and the old `el.value =`, the half-fix control showed
+"Use my registered number" putting 700000000 on screen while the form would post 712345678 (the prompt to another
+phone). **Guards:** `test:card-return-order` (26 checks) + `red:card-return-order` (10/10), `test:deposit-phone` +
+`red:deposit-phone` (7/7), all in process, all in `test:all` — deliberately NOT added to `predeploy` (one line every
+lane edits); `qa:deposit-phone` is the browser drive. **Proof** (on `3e352888`, code byte-identical to the pushed
+commits): typecheck 0; `test:all` 470/478 — every red check-for-check identical to main's own on this laptop (the 8
+below; `audit-drain` went green), the one new red `house-bot-caps` the laptop SLEEPING 13 minutes mid-transaction
+(Windows log 01:15:46 → 01:28:55 EAT; "783509 ms passed" in a 5000 ms transaction), green alone 3/3;
+`test:red-anchors` green; `test:card-deposit` 48/0, `e2e:card` 100/0, `test:deposit-gate` 77/0,
+`test:msisdn-prefill` 24/0, `test:payout-destination` 36/0, `test:selcom` 65/0; `qa:deposit-phone` on the pushed code
+29/0 — P1–P7 in Chromium, Firefox and WebKit (P6, a scripted paste, is n/a in Firefox, which gives a script-made paste
+event no text — probed every run; a person's paste carries it), the card return in en and sw ("Payment received" /
+"Malipo yamepokelewa", the receipt with the new balance); 12 tiles (320/360/390/1280 × sw/en/zh) read one by one, the
+box, hint and button whole at every width; the half-fix control (PhoneInput with the old buttons) failed P2 and P4 as
+predicted. Seen, not ours, left for the visual pass: on the return receipt at 390 a long transaction id or gateway
+reference leaves one or two characters alone on its second line (`ReceiptRow`). **Controls on the parent
+`28fd214e`:** typed "0712 345 678" → "071234567" posted, a pasted number → "0712345" and no deposit could be sent; the
+card return carried no `order_id` and read "We couldn't find that payment" / "Hatukuweza kupata malipo hayo";
+`e2e:card` 64/36 and `test:card-return-order` failing 3.2–4.8 and 5.1–5.2 on the old `selcom.ts`. **For your rebase of
+`vodacom-visual`:** the files touched are `src/lib/server/selcom.ts`, `src/app/wallet/deposit/page.tsx` (the msisdn
+block and its import; G4's money-form fix touches this file too), `src/app/wallet/deposit/return/page.tsx`,
+`src/components/wallet/deposit-number-choice.tsx`, `src/lib/wallet/card-return.ts` (new),
+`scripts/selcom-stub-gateway.mjs`, `scripts/card-deposit.test.mts`, `scripts/card-flow-e2e.test.mts`, and
+`package.json` (5 keys). **Still open:** the REAL gateway's return is unproven until a real card deposit on production
+(S14's real TZS 1,000 journey covers it). This laptop's baseline on `28fd214e` (main's own reds here, 8):
+admin-section-gate, audit-drain, house-bot-designation, motion, needle-rest, orphans, responsive, revoked-deadend.
+
 **✅ A8i-2 LIVE `586c5183` (2026-10-07) — a key held down presses once, wherever it is; nothing behind the top dialog
 takes a key; an uncovered money dialog lands on its way out.** Taken from the handover's unreviewed draft on
 OMEGA-COMPILE01, reviewed there in three lenses and changed by what they confirmed; proven in Chromium, Firefox and WebKit
@@ -2516,8 +2555,8 @@ player-visible changes before the flip, and each ships early on purpose:
 
 | Change | Session | Why it ships early |
 |---|---|---|
-| Card deposit return URL carries `order_id` | S9 | A live money defect (MONEY-GATE §3.2). Today a charged card payer can land on "payment not found". |
-| The classic deposit page's phone field becomes the kit `PhoneInput` (accepts 07…, 7…, 255…, +255…) | S9 | Today `maxLength=9` cuts "0712…" to "071234567" and the server refuses it. |
+| Card deposit return URL carries `order_id` | S9 — ✅ LIVE `684f72cb` (2026-10-09, ALI-BLADE15, §0) | A live money defect (MONEY-GATE §3.2). Until then a charged card payer landed on "We couldn't find that payment". |
+| The classic deposit page's phone field becomes the kit `PhoneInput` (accepts 07…, 7…, 255…, +255…) | S9 — ✅ LIVE `b0f490c8` (2026-10-09, ALI-BLADE15, §0) | Until then `maxLength=9` cut "0712…" to "071234567" and the server refused it. |
 | "NDIYO" → "NDIO" in the 7 Swahili strings that still misspell it | S12 | A spelling defect; the side word is "NDIO" everywhere else. |
 | Privacy notice: the staff preview cookie, and later the funnel totals | S1, S3b | The notice must name every cookie and stored total when it ships. |
 | Admin Approve/Reject buttons move from `btn-no` to `btn-danger` | S12 | Admin only; NO ink is for betting sides (§B2a). |
@@ -3510,7 +3549,8 @@ retention/backup/DAL and the privacy lines.
 - Checks whether `test:rg-doors` requires a limits link (SJ-22).
 - **Done when:** `test:bet-sheet`, V20 and the refusal matrix pass, and a staff real bet works on production.
 
-**S9 — Deposit, waiting and return (flagged):** the card `order_id` fix first, then §3.5. (§3.6, the email code, is
+**S9 — Deposit, waiting and return (flagged):** the card `order_id` fix first (✅ done ahead of S9: LIVE `684f72cb`,
+2026-10-09, with the deposit's phone box `b0f490c8` — §0 and §2; do not redo), then §3.5. (§3.6, the email code, is
 superseded by the owner's ruling of 2026-10-07 and is not built.)
 - **Done when:** `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) pass
   (`test:email-code` went with §3.6, superseded).
