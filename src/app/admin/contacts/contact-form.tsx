@@ -340,6 +340,10 @@ function ContactForm({
   const [digits, setDigits] = useState("");
   const [pasted, setPasted] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
+  // ⭐ C2 · a "+" typed into the EMPTY box: the number is being written internationally, so its digits are judged as
+  // written (`contactNumberVerdict`'s typedPlus) — a typed +254… is foreign, never "a landline in Mbeya". Cleared when a
+  // paste governs the box or the box empties (`+255` itself empties it: Tanzania's own code is stripped).
+  const [typedPlus, setTypedPlus] = useState(false);
   const [lookup, setLookup] = useState<Lookup>({ state: "idle" });
   // vb7 (review m3) · bumped by "Check again": the same number asked anew once the 2-step sign-in is put right.
   const [checkRound, setCheckRound] = useState(0);
@@ -373,7 +377,7 @@ function ContactForm({
   const focusAfter = useRef<"existing" | "number" | null>(null);
 
   const isAdd = mode.kind === "add";
-  const verdict = contactNumberVerdict({ value: digits, pasted, settled });
+  const verdict = contactNumberVerdict({ value: digits, pasted, settled, typedPlus });
   /** What the server parses: the paste as it was pasted when it produced the whole field (`governingPaste`), else the
    *  field's digits. */
   const numberText = pasted ?? digits;
@@ -411,6 +415,8 @@ function ContactForm({
   const onNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
     const paste = pendingPaste.current;
     pendingPaste.current = null;
+    // C2 · a paste replaces what was typed, and a box emptied after holding digits starts again (see `typedPlus`).
+    if (paste !== null || (e.target.value === "" && digits !== "")) setTypedPlus(false);
     setDigits(e.target.value);
     setPasted(governingPaste(paste, e.target.value));
     setSettled(false);
@@ -598,6 +604,8 @@ function ContactForm({
                 value={digits}
                 onChange={onNumberChange}
                 onPasteRaw={onPasteRaw}
+                onKeyDown={(e) => { if (e.key === "+" && digits === "") setTypedPlus(true); }}
+                onBeforeInput={(e) => { if (((e.nativeEvent as InputEvent).data ?? "").includes("+") && digits === "") setTypedPlus(true); }}
                 onBlur={() => setSettled(true)}
                 title={CONTACT_NUMBER_TITLE}
                 disabled={pending}

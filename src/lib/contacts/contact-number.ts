@@ -31,7 +31,7 @@
  * `test:client-graph-safe` (decision M3); guarded by `test:contacts-form` §1 and, for the search reading,
  * `test:contacts-page` 19 — each with in-process red plants.
  */
-import { parseTzNumber, ndcRow, TZ_OPERATORS } from "../tz-msisdn";
+import { parseTzNumber, ndcRow, TZ_OPERATORS, TZ_COUNTRY_CODE } from "../tz-msisdn";
 import type { TzVerdict } from "../tz-msisdn";
 import { normalizeTzLocalDigits } from "../phone-normalize";
 import { CONTACT_LIMITS, charCount } from "./contact-fields";
@@ -113,7 +113,16 @@ export function governingPaste(paste: string | null, fieldValue: string): string
   return paste !== null && normalizeTzLocalDigits(paste) === fieldValue ? paste : null;
 }
 
-export function contactNumberVerdict(input: { value: string; pasted?: string | null; settled?: boolean }): ContactNumberVerdict {
+/**
+ * ⭐ C2 (2026-10-09) · A NUMBER TYPED WITH ITS OWN "+" IS JUDGED AS WRITTEN. The box keeps digits only, so a "+" typed
+ * first vanished on the keystroke and `+254 712 345 678` reached the box as `254 712 345` — and the dialog told the
+ * officer it was "a landline in Katavi, Mbeya, Rukwa, Ruvuma and Songwe" (measured on the contacts audit at 360 and 1280).
+ * The paste path never had this defect (1.5); typing did. So the form reports `typedPlus` — the box was empty when a "+"
+ * was typed — and once the digits after it cannot be Tanzania's own code, the number is judged as international,
+ * with parseTzNumber's own foreign sentence. `+2` and `+25` are still on their way to `+255` and read as typing; `+255`
+ * itself is stripped by the box (`normalizeTzLocalDigits`), and the form clears the flag when that empties the box.
+ */
+export function contactNumberVerdict(input: { value: string; pasted?: string | null; settled?: boolean; typedPlus?: boolean }): ContactNumberVerdict {
   const digits = normalizeTzLocalDigits(String(input.value ?? ""));
 
   // ⭐ THE PASTE FIRST: judged before the field's nine-digit cap could make it lie.
@@ -131,6 +140,11 @@ export function contactNumberVerdict(input: { value: string; pasted?: string | n
   }
 
   if (digits === "") return { stage: "empty", digits, operator: null, verdict: null, sentence: null };
+  // ⭐ C2 · typed after its own "+": once the digits leave Tanzania's code, the number is foreign — said at once.
+  if (input.typedPlus === true && !TZ_COUNTRY_CODE.startsWith(digits.slice(0, TZ_COUNTRY_CODE.length))) {
+    const written = parseTzNumber(`+${digits}`);
+    return { stage: "refused", digits, operator: null, verdict: written.verdict, sentence: written.reason };
+  }
   const operator = contactOperatorChip(digits);
 
   if (digits.length < NATIONAL_DIGITS) {

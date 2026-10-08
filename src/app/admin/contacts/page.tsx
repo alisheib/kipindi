@@ -414,9 +414,18 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                         </td>
                         <td className="whitespace-nowrap">
                           {c.displayName
-                            ? <span className="text-text">{c.displayName}</span>
-                            : <span className="text-text-tertiary">No name</span>}
+                            ? <span className="text-text" data-contact-name>{c.displayName}</span>
+                            : <span className="text-text-tertiary" data-contact-name>No name</span>}
                           {reads && c.userId && <Chip size="sm" variant="info" className="ml-2">Player</Chip>}
+                          {/* ⭐ C2 (2026-10-09) · ON A PHONE THE NUMBER RIDES UNDER THE NAME. Below the small breakpoint the
+                              table scrolls sideways inside its card, and the audit's 360 tiles showed a column of names
+                              with nothing to say whose number each was. MASKED FOR EVERY ROLE, from the server's masked
+                              projection — the row's own `masked` (`contactSelectionRow`), never a second read of the number,
+                              so U19's one render holds. A reader's reveal stays the Number column's, one control per row.
+                              Hidden from 640 up, where the Number column is on screen. */}
+                          <span className="mt-0.5 block font-mono text-micro text-text-tertiary sm:hidden" data-contact-sub>
+                            {pageRows[i].masked} · {operatorBrand(c.ndc) ?? "—"}
+                          </span>
                         </td>
                         <td className="font-mono whitespace-nowrap"><Sensitive field="contactPhone" subjectId={c.id} value={c.msisdn} copyable /></td>
                         {/* ⛔ U21 · THE ONE TABLE, NEVER THE STORED STRING: the rail filters on the prefix (`ndc`), so the

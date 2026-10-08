@@ -1175,8 +1175,9 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     JSON.stringify(none.slice(0, 2)));
   ok(`${vp.name} · U23 NONE · no "Select all … matching" and no Clear before a tick, and the bar says why consent can't be recorded here`,
     (await page.locator(`${BAR} [data-bulk-matching]`).count()) === 0 && (await page.locator(`${BAR} [data-bulk-clear]`).count()) === 0
-      && /^Consent can.t be recorded here: a lawful record needs a basis and an 18\+ attestation/.test(await textOf(page, `${BAR} [data-bulk-consent-note]`)));
-  const names = (await page.locator("[data-contact-row] td:nth-child(2)").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
+      && /^Consent isn.t recorded in bulk\. A contact who isn.t a player is reached through a list/.test(await textOf(page, `${BAR} [data-bulk-consent-note]`)));
+  // C2 · the NAME itself (`data-contact-name`) — below 640px the cell also carries the masked number under it.
+  const names = (await page.locator("[data-contact-row] td:nth-child(2) [data-contact-name]").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
   const boxes = await rowBoxes(page);
   ok(`${vp.name} · U23 NONE · every row's box is named "Select <its name>" — a nameless row by its MASKED number, never a number — none ticked; the header box names the page`,
     boxes.length === 20 && names.length === 20
