@@ -430,8 +430,15 @@ export async function stopCampaign(campaignId: string, actor: ControlActor, deps
     draftRevision: null, at,
   });
   if (moved === null) return { ok: false, reason: "finished", message: LIVE_DISABLED.stop };
-  const counts = await countsOf(c.id, deps);
-  const outstanding = deps.outstanding(moved, counts) ?? outstandingRows(counts);
+  // ⛔ The U47b-1 review · THE STOP HAS LANDED: nothing after it may turn it into a failure. A count that cannot be read is
+  // recorded as not counted (`outstanding: null`), and the row is written and "stopped" answered all the same.
+  let outstanding: number | null = null;
+  try {
+    const counts = await countsOf(c.id, deps);
+    outstanding = deps.outstanding(moved, counts) ?? outstandingRows(counts);
+  } catch {
+    outstanding = null;
+  }
   const recorded = await recordedBy(deps, {
     category: "ADMIN", action: CAMPAIGN_STOPPED_ACTION, actorId: officer, targetType: "SmsCampaign", targetId: c.id,
     payload: { outstanding },

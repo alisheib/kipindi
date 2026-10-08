@@ -645,6 +645,9 @@ async function runAssertions(impl: Impl): Promise<void> {
     seen(await impl.stop(early.id, reader, d));
     const ev = await viewOf(impl, early.id, READER);
     const at = (c: StoredSmsCampaign, k: "pausedAt" | "finishedAt") => COPY.eatClock(c[k]);
+    const olderAct = { id: "aud_u47b1_old", category: "ADMIN", action: LIVE.OFFICER_PAUSED_ACTION, actorId: "usr_u47b1_someone_else", targetType: "SmsCampaign",
+      targetId: toPause.id, payload: { reason: "officer_paused" }, createdAt: iso(Date.parse(paused.pausedAt ?? "") - 2 * 60 * MIN), prevHash: "x", entryHash: "y" };
+    const lost = await viewOf(impl, toPause.id, READER, { actsOn: async () => [olderAct] as never });
     const checks = {
       draft: draft.headline === COPY.LIVE_HEADLINE.DRAFT && draft.confirmed === null && draft.stopSentence === null,
       confirmed: conf.headline === "Ready to start — nothing has been sent." && conf.confirmed?.count === 12 && conf.confirmed?.byName === OFFICER_NAME,
@@ -656,8 +659,10 @@ async function runAssertions(impl: Impl): Promise<void> {
       stopped: sv.headline === `Stopped by ${OFFICER_NAME} at ${at(stopped, "finishedAt")} EAT — 8 people were not messaged.`
         && sv.stopSentence === `Stopped by ${OFFICER_NAME} at ${at(stopped, "finishedAt")} EAT.`,
       early: ev.headline.endsWith("— 12 people were not messaged."),
+      // ⭐ the U47b-1 review · the current pause's row LOST, an older officer's row there: never that officer's name
+      lostRow: lost.stopSentence === COPY.officerPausedSentence(COPY.LIVE_SOMEBODY, paused.pausedAt),
     };
-    return [Object.values(checks).every(Boolean), `${json(checks)} · "${ov.stopSentence}" · "${sv.headline}"`];
+    return [Object.values(checks).every(Boolean), `${json(checks)} · "${ov.stopSentence}" · "${sv.headline}" · lost row: "${lost.stopSentence}"`];
   });
 
   /* ── S6 · the controls ── */
@@ -722,12 +727,20 @@ async function runAssertions(impl: Impl): Promise<void> {
     if (newest !== undefined) newest.claimedAt = iso(T_NOW - 89_000);
     const fresh = await viewOf(impl, c.id, READER);
     const driving = old.standing.nobodyDriving && old.standing.lastStepAt === iso(T_NOW - 91_000) && !fresh.standing.nobodyDriving;
+    // ⭐ the U47b-1 review · never "nobody driving" while the engine would be WAITING: the window shut (every night), money
+    // busy, a login code failed in the last two minutes — the same 91 s of quiet, each wait on its own
+    if (newest !== undefined) newest.claimedAt = iso(T_NOW - 91_000);
+    const night = await viewOf(impl, c.id, READER, { window: () => ({ ...WIN.ALWAYS_OPEN(), open: false }) });
+    const busy = await viewOf(impl, c.id, READER, { moneyBusy: () => ({ busy: true, stale: [] }) });
+    const otp = await viewOf(impl, c.id, READER, { otpLastFailureAt: () => T_NOW - 30_000 });
+    const otpOld = await viewOf(impl, c.id, READER, { otpLastFailureAt: () => T_NOW - 3 * MIN });
+    const waits = !night.standing.nobodyDriving && !busy.standing.nobodyDriving && !otp.standing.nobodyDriving && otpOld.standing.nobodyDriving;
     const p = await campaign(w, "s7p", { path: ["CONFIRMED", "PREPARING", "RUNNING", "PAUSED"] });
     const pv = await viewOf(impl, p.id, READER);
     const watch = await viewOf(impl, c.id, WATCHER);
     const keep = stub.standing.keepOpen && !watch.standing.keepOpen && !pv.standing.keepOpen && !pv.standing.nobodyDriving;
-    return [switchFacts && windowFact && noClaim && driving && keep,
-      `switch ${switchFacts} · window ${windowFact} · no claim ${noClaim} · 91 s ${old.standing.nobodyDriving} / 89 s ${fresh.standing.nobodyDriving} · keep open ${keep}`];
+    return [switchFacts && windowFact && noClaim && driving && keep && waits,
+      `switch ${switchFacts} · window ${windowFact} · no claim ${noClaim} · 91 s ${old.standing.nobodyDriving} / 89 s ${fresh.standing.nobodyDriving} · keep open ${keep} · the engine's waits: night ${night.standing.nobodyDriving}, money ${busy.standing.nobodyDriving}, a code 30 s ago ${otp.standing.nobodyDriving}, 3 min ago ${otpOld.standing.nobodyDriving}`];
   });
 
   /* ── S8 · ⛔ the copy advice ── */
@@ -989,7 +1002,15 @@ async function runAssertions(impl: Impl): Promise<void> {
     const refusals = !x1.ok && x1.message === COPY.LIVE_DISABLED.stop && !x2.ok && x2.message === COPY.LIVE_DISABLED.stop && !x3.ok
       && x3.message === COPY.LIVE_DISABLED.draft && (await auditOf(CTRL.CAMPAIGN_STOPPED_ACTION, done.id)).length === 0
       && (await auditOf(CTRL.CAMPAIGN_STOPPED_ACTION, conf.id)).length === 1;
-    return [wrong.length === 0 && refusals, `wrong [${wrong.join("; ")}] · refusals ${refusals}`];
+    // ⭐ the U47b-1 review · a Stop that LANDED survives a count that cannot be read: stopped, recorded, outstanding not counted
+    const blind = await campaign(w, "t7b", { path: ["CONFIRMED", "PREPARING", "RUNNING"], count: 10 });
+    const dBlind = ctrlDeps(impl, { recipients: { ...CTRL.CONTROL_DEPS.recipients, countByStatus: async () => { throw new Error("the count is down (fixture)"); } } });
+    const rb = seen(await impl.stop(blind.id, reader, dBlind));
+    const afterBlind = await campaignOf(blind.id);
+    const rowsBlind = await auditOf(CTRL.CAMPAIGN_STOPPED_ACTION, blind.id);
+    const survives = rb.ok && afterBlind.status === "CANCELLED" && rowsBlind.length === 1 && json(rowsBlind[0].payload) === json({ outstanding: null });
+    return [wrong.length === 0 && refusals && survives,
+      `wrong [${wrong.join("; ")}] · refusals ${refusals} · a landed stop with its count down: ${rb.ok ? "stopped" : "FAILED"}, ${afterBlind.status}, rows ${rowsBlind.length} ${json(rowsBlind[0]?.payload)}`];
   });
 
   /* ── T8 · ⭐ Make a copy ── */
@@ -1282,6 +1303,8 @@ if (!PROVE_RED) {
 
   type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl>) };
   const plants: Plant[] = [
+    { name: "R-S7b · nobody driving blind to the engine's waits (the U47b-1 review) — every night a waiting page reads as nobody sending", expect: [L.s7],
+      impl: withView((d) => ({ ...d, window: () => ({ ...WIN.ALWAYS_OPEN() }), moneyBusy: () => ({ busy: false, stale: [] }), otpLastFailureAt: () => null })) },
     { name: "R-S3b · the floor at 0 rows (the U47b-1 review's MAJOR) — every confirmed campaign tells a masked viewer it has fewer than ten people", expect: [L.s3],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, breakdownHidden: (reads: boolean, rows: number) => reads !== true && rows < 10 } })) },
     { name: "R-P2 · the step answered raw (the U47b-1 review's MAJOR) — its counts and its cursor reach every role, under the floor too", expect: [L.p2],

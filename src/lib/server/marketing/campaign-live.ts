@@ -61,7 +61,10 @@ import type {
 import { getAuditForTargetDurable } from "@/lib/server/audit";
 import type { AuditEntry } from "@/lib/server/audit";
 import { officerLabel } from "@/lib/server/actor-label";
-import { smsProviderResolution } from "@/lib/server/sms";
+import { lastOtpFailureAt, smsProviderResolution } from "@/lib/server/sms";
+import { moneyBusy } from "@/lib/server/money-busy";
+import type { MoneyBusy } from "@/lib/server/money-busy";
+import { OTP_FAILURE_WAIT_MS } from "@/lib/server/marketing/engine";
 import type { SmsProviderResolution } from "@/lib/server/sms";
 import { marketingLiveGate, readMarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
 import type { MarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
@@ -235,6 +238,11 @@ export type LiveViewDeps = {
   liveGate: typeof marketingLiveGate;
   /** U13 · the send window (`liveSendWindow` — fails closed). */
   window: () => SendWindowState | Promise<SendWindowState>;
+  /** ⭐ The U47b-1 review · the engine's own two waits a page cannot see from the rows — money first (E12, `moneyBusy`) and
+   *  a login code failed in the last `OTP_FAILURE_WAIT_MS` (`lastOtpFailureAt`) — so "nobody driving" is never said while
+   *  an officer's page is correctly waiting. */
+  moneyBusy: () => MoneyBusy;
+  otpLastFailureAt: () => number | null;
   /** An officer's display name, or null (the page then says "an officer"). */
   officerName: (userId: string) => Promise<string | null>;
   /** The campaign's newest audit rows, newest first — to name who paused or stopped it. */
@@ -260,6 +268,8 @@ export const LIVE_VIEW_DEPS: Readonly<LiveViewDeps> = Object.freeze({
   liveSwitch: () => readMarketingLiveSwitch(),
   liveGate: marketingLiveGate,
   window: liveSendWindow,
+  moneyBusy: () => moneyBusy(),
+  otpLastFailureAt: lastOtpFailureAt,
   officerName: async (userId: string) => {
     const name = await officerLabel(userId, { fallback: () => "" });
     return typeof name === "string" && name.trim() !== "" ? name.trim() : null;
@@ -307,11 +317,18 @@ async function nameOf(userId: string | null, deps: LiveViewDeps): Promise<string
   }
 }
 
-/** ⭐ WHO did an officer's act — the newest audit row of that action WITH an actor (an engine's row has none), named. */
-async function actorOfAct(campaignId: string, action: string, deps: LiveViewDeps): Promise<string> {
+/** ⭐ WHO did an officer's act — the newest audit row of that action WITH an actor (an engine's row has none), named.
+ *  ⛔ The U47b-1 review · only a row written AT OR AFTER the act it names (`since`: the row's `pausedAt`, or `finishedAt` for a
+ *  stop — a second's grace for the stamp): when the current act's row did not land, an OLDER officer's row would otherwise
+ *  name the wrong person. No row that fits → "an officer". */
+const ACT_GRACE_MS = 1_000;
+async function actorOfAct(campaignId: string, action: string, deps: LiveViewDeps, since: string | null): Promise<string> {
+  const sinceMs = typeof since === "string" ? Date.parse(since) : Number.NaN;
+  if (!Number.isFinite(sinceMs)) return LIVE_SOMEBODY;
   try {
     const acts = await deps.actsOn(campaignId);
-    const act = acts.find((e) => e.action === action && typeof e.actorId === "string" && e.actorId !== "");
+    const act = acts.find((e) => e.action === action && typeof e.actorId === "string" && e.actorId !== ""
+      && Number.isFinite(Date.parse(e.createdAt)) && Date.parse(e.createdAt) >= sinceMs - ACT_GRACE_MS);
     return (act ? await nameOf(act.actorId, deps) : null) ?? LIVE_SOMEBODY;
   } catch {
     return LIVE_SOMEBODY;
@@ -399,14 +416,14 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
     case "PAUSED":
       headline = LIVE_HEADLINE.PAUSED;
       stopSentence = reasonKey === "officer_paused"
-        ? officerPausedSentence(await actorOfAct(c.id, OFFICER_PAUSED_ACTION, deps), c.pausedAt)
+        ? officerPausedSentence(await actorOfAct(c.id, OFFICER_PAUSED_ACTION, deps, c.pausedAt), c.pausedAt)
         : pausedReasonSentence(reasonKey, reach);
       break;
     case "DONE":
       headline = LIVE_HEADLINE.DONE;
       break;
     case "CANCELLED": {
-      const who = await actorOfAct(c.id, OFFICER_STOPPED_ACTION, deps);
+      const who = await actorOfAct(c.id, OFFICER_STOPPED_ACTION, deps, c.finishedAt);
       const left = deps.rules.outstanding(c, counts);
       headline = stoppedHeadline(who, c.finishedAt, left ?? outstandingRows(counts));
       stopSentence = reasonKey === "officer_stopped" ? officerStoppedSentence(who, c.finishedAt) : pausedReasonSentence(reasonKey, reach);
@@ -423,7 +440,13 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
   const sendWindow = await windowOf(deps);
   const lastStepAt = await deps.recipients.lastActivity(c.id);
   const lastMs = lastStepAt === null ? Number.NaN : Date.parse(lastStepAt);
-  const nobodyDriving = status === "RUNNING" && (!Number.isFinite(lastMs) || nowMs - lastMs >= NOBODY_DRIVING_AFTER_MS);
+  // ⭐ The U47b-1 review · "nobody driving" only while the engine would be SENDING: the window open, money not busy, no login
+  // code failed in the last two minutes — else an officer's page that is correctly waiting (every night, for one) reads as
+  // nobody sending.
+  const otpAt = deps.otpLastFailureAt();
+  const engineWaits = sendWindow.open !== true || deps.moneyBusy().busy === true
+    || (typeof otpAt === "number" && Number.isFinite(otpAt) && nowMs - otpAt < OTP_FAILURE_WAIT_MS);
+  const nobodyDriving = status === "RUNNING" && !engineWaits && (!Number.isFinite(lastMs) || nowMs - lastMs >= NOBODY_DRIVING_AFTER_MS);
 
   // ── the controls — always present, each disabled with its reason (decision 4) ──
   const draft = status === "DRAFT";
