@@ -99,7 +99,7 @@ export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
  * ⛔ Guarded by `qa:tap-truth`'s DISJOINT/ATREST arms, which measure rendered boxes rather than
  * class strings — the reason this survived every source-scanning gate the repo already had.
  */
-export const QUERY_BAR_ROW2_CLASS = "kp-qrow flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
+export const QUERY_BAR_ROW2_CLASS = "kp-qbar-row flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
 
 /**
  * The LENS strip — rank-primary pills, scrolling below `lg`, wrapping above it.

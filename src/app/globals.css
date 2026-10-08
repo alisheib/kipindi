@@ -3555,7 +3555,10 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    line the rule lands 15px left of the row, and the row clips everything more than 12px to its left —
    wider than any focus ring (4px) or a selected pill's halo (≤11px), so nothing else is touched. Only rows
    that hold a divider change (`:has`), so the skeletons, which draw none, keep their spacing.
-   ⛔ A browser without `:has()` keeps the old in-flow rule, stray and all — the fallback is today's bar. */
+   ⛔ A browser without `:has()` keeps the old in-flow rule, stray and all — the fallback is today's bar.
+   ⛔ THE ROW'S HOOK IS `.kp-qbar-row`, NEVER `.kp-qrow` (round 3, 2026-10-08): `.kp-qrow` is the landing board's
+   question row (a grid with areas, 16px padding and a bottom border, defined below), and on the filter row it beat the
+   row's own utilities — /results at sw 390 dropped "Vichujio" to a line of its own over a 69px hole (tile 326). */
 .kp-qdiv { display: none; }
 @media (min-width: 1024px) {
   .kp-qdiv { display: block; flex-shrink: 0; width: 1px; height: 24px; margin: 0 2px; background: var(--border); }
@@ -3563,7 +3566,7 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
 @supports selector(:has(a)) {
   @media (min-width: 1024px) {
     .kp-qdiv { display: none; }
-    .kp-qrow:has(.kp-qdiv) { column-gap: 29px; clip-path: inset(-100vmax -100vmax -100vmax -12px); }
+    .kp-qbar-row:has(.kp-qdiv) { column-gap: 29px; clip-path: inset(-100vmax -100vmax -100vmax -12px); }
     .kp-qdiv + * { position: relative; }
     .kp-qdiv + *::before {
       content: ""; position: absolute; top: 50%; left: -15px;
