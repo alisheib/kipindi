@@ -45,17 +45,17 @@ const { EXIT, SEND_CAP } = LIB;
 
 const USAGE = [
   "usage: npm run ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…] --expect=<outcome>:<who>[,…]",
-  "                                                  [--expect-sends=<n>] [--label=<A|B|C|…>] [--show-stop-link]",
+  "                                                  [--expect-sends=<n>] [--expect-audit=<action>[,…]] [--label=<A|B|C|…>] [--show-stop-link]",
   "       npm run ops:marketing-campaign-evidence -- <campaignId> --look",
   "       npm run ops:marketing-campaign-evidence -- --ledger [--sends=<n>]",
   "  outcomes: sent · delivered · skipped (the stop) · skipped=<reason> · stopped · resumed      who: test · control",
 ].join("\n");
 
 export const EVIDENCE_FLAGS = Object.freeze({
-  values: ["test", "control", "expect", "expect-sends", "label", "sends"],
+  values: ["test", "control", "expect", "expect-sends", "expect-audit", "label", "sends"],
   flags: ["show-stop-link", "look", "ledger"],
   positional: 1,
-  repeat: ["expect"],
+  repeat: ["expect", "expect-audit"],
 });
 
 const CAMPAIGN_ID = /^[A-Za-z0-9_-]{8,64}$/;
@@ -92,7 +92,7 @@ export function parseEvidenceArgs(argv, lib = LIB) {
   const one = (name) => (f.values[name] ?? [])[0];
   const ledgerMode = f.flags.has("ledger");
   if (ledgerMode) {
-    for (const name of ["test", "control", "expect", "expect-sends", "label"]) if (one(name) !== undefined) problems.push(`--${name} does not go with --ledger`);
+    for (const name of ["test", "control", "expect", "expect-sends", "expect-audit", "label"]) if (one(name) !== undefined) problems.push(`--${name} does not go with --ledger`);
     for (const flag of ["show-stop-link", "look"]) if (f.flags.has(flag)) problems.push(`--${flag} does not go with --ledger`);
     if (f.positional.length > 0) problems.push("--ledger takes no campaign id");
     let sends = 0;
@@ -123,9 +123,17 @@ export function parseEvidenceArgs(argv, lib = LIB) {
     if (/^[0-9]$/.test(one("expect-sends")) && Number(one("expect-sends")) <= SEND_CAP) expectSends = Number(one("expect-sends"));
     else problems.push(`--expect-sends must be a whole number from 0 to ${SEND_CAP}`);
   }
+  const expectAudit = [];
+  for (const raw of f.values["expect-audit"] ?? []) {
+    for (const piece of String(raw).split(",")) {
+      const token = piece.trim();
+      if (token === "") continue;
+      if (/^marketing[.][a-z_]{3,48}$/.test(token)) { if (!expectAudit.includes(token)) expectAudit.push(token); } else problems.push("--expect-audit holds a token that is not a marketing.* audit action");
+    }
+  }
   const look = f.flags.has("look");
-  if (look && (exp.expectations.length > 0 || expectSends !== null)) problems.push("--look is a look with no verdict: it does not go with --expect or --expect-sends");
-  if (!look && exp.expectations.length === 0 && expectSends === null && exp.problems.length === 0) problems.push("nothing to prove: give --expect=<outcome>:<who> or --expect-sends=<n>, or --look to only look");
+  if (look && (exp.expectations.length > 0 || expectSends !== null || expectAudit.length > 0)) problems.push("--look is a look with no verdict: it does not go with --expect, --expect-sends or --expect-audit");
+  if (!look && exp.expectations.length === 0 && expectSends === null && expectAudit.length === 0 && exp.problems.length === 0 && problems.length === 0) problems.push("nothing to prove: give --expect=<outcome>:<who>, --expect-sends=<n> or --expect-audit=<action>, or --look to only look");
   let label = null;
   if (one("label") !== undefined) {
     if (/^[A-Za-z0-9 ._-]{1,12}$/.test(one("label"))) label = one("label");
@@ -134,7 +142,7 @@ export function parseEvidenceArgs(argv, lib = LIB) {
   const showStopLink = f.flags.has("show-stop-link");
   if (showStopLink && !test) problems.push("--show-stop-link needs --test (the link shown is the test number's)");
   if (problems.length) return { ok: false, problems };
-  return { ok: true, args: { mode: "campaign", campaignId, test, control, expectations: exp.expectations, expectSends, look, label, showStopLink } };
+  return { ok: true, args: { mode: "campaign", campaignId, test, control, expectations: exp.expectations, expectSends, expectAudit, look, label, showStopLink } };
 }
 
 /* ══ THE DATABASE READS — every statement a SELECT, the transaction read-only ════════════════════════════════════════ */
@@ -362,15 +370,23 @@ export function sendCounts(facts, lib = LIB) {
   return { composerTests, recipientSends, chargeable: composerTests + recipientSends };
 }
 
+/** The audit rows E24 says a step writes: each action named is there at least once (the engine's pause and an officer's share one name). */
+export function auditChecks(facts, args) {
+  return (args.expectAudit ?? []).map((action) => {
+    const n = (facts.audit ?? []).filter((r) => r.action === action).length;
+    return { action, holds: n > 0, n };
+  });
+}
+
 /** The parts of the verdict, as one object, so a suite can hand in a defective one (and nothing else does). */
-export const PARTS = Object.freeze({ buildPeople, judgeExpectation, stopViolations, sendCounts, sliceTimings });
+export const PARTS = Object.freeze({ buildPeople, judgeExpectation, stopViolations, sendCounts, sliceTimings, auditChecks });
 
 /**
  * The whole verdict. ⛔ Pure: facts and arguments in, a plain object out — the exit code follows from `proven` alone, and
  * `proven` is true only when every expectation holds, no stop was violated and any expected send count is exact.
  */
 export function judgeEvidence(facts, args, lib = LIB, parts = PARTS) {
-  if (!facts.campaign) return { found: false, proven: false, expectations: [], violations: [], sends: null, sendsHolds: null, people: [], slices: [], failing: 1 };
+  if (!facts.campaign) return { found: false, proven: false, expectations: [], violations: [], sends: null, sendsHolds: null, auditChecks: [], people: [], slices: [], failing: 1 };
   const people = parts.buildPeople(facts, args);
   const byRole = Object.fromEntries(people.map((p) => [p.role, p]));
   const expectations = args.expectations.map((e) => parts.judgeExpectation(e, byRole[e.who] ?? null, lib));
@@ -378,11 +394,12 @@ export function judgeEvidence(facts, args, lib = LIB, parts = PARTS) {
   const sends = parts.sendCounts(facts, lib);
   let sendsHolds = null;
   if (args.expectSends !== null) sendsHolds = sends.chargeable === args.expectSends;
-  const failing = expectations.filter((x) => !x.holds).length + (sendsHolds === false ? 1 : 0) + violations.length;
+  const audits = parts.auditChecks(facts, args);
+  const failing = expectations.filter((x) => !x.holds).length + (sendsHolds === false ? 1 : 0) + audits.filter((x) => !x.holds).length + violations.length;
   return {
     found: true,
     proven: args.look ? null : failing === 0,
-    expectations, violations, sends, sendsHolds, people,
+    expectations, violations, sends, sendsHolds, auditChecks: audits, people,
     slices: parts.sliceTimings(facts.recipients),
     failing,
   };
@@ -457,6 +474,7 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
 
   L.push(`chargeable sends · ${verdict.sends.chargeable} (${verdict.sends.composerTests} composer test + ${verdict.sends.recipientSends} campaign) — compare with the Blackball portal's Out SMS COUNT for this window (the portal also counts login codes)`);
   if (verdict.sendsHolds !== null) L.push(`  EXPECT sends=${args.expectSends}      ${verdict.sendsHolds ? "HOLDS" : "FAILS"} — counted ${verdict.sends.chargeable}`);
+  for (const a of verdict.auditChecks) L.push(`  EXPECT audit ${lib.safeText(a.action, 48)}  ${a.holds ? "HOLDS" : "FAILS"} — ${a.n} row${a.n === 1 ? "" : "s"} of E24 on this campaign`);
   if (args.showStopLink) {
     if (facts.stopToken) {
       L.push("  ⚠ the stop link below is a live bearer link for the TEST number: use it for the stop step only, and never paste it into the tracker.");
@@ -585,7 +603,7 @@ export async function runEvidence(argv, deps = realDeps()) {
 
   if (args.look) { io.line(`RESULT: LOOK ONLY — no verdict was asked${ledgerOk ? "" : " (the ledger problem above still stops the drive)"}`); return ledgerOk ? EXIT.ok : EXIT.fail; }
   const proven = verdict.proven === true && ledgerOk;
-  io.line(proven ? `RESULT: PROVEN — ${verdict.expectations.length + (verdict.sendsHolds === null ? 0 : 1)} expectation(s) hold, no stop was violated, the ledger took the count`
+  io.line(proven ? `RESULT: PROVEN — ${verdict.expectations.length + (verdict.sendsHolds === null ? 0 : 1) + verdict.auditChecks.length} expectation(s) hold, no stop was violated, the ledger took the count`
     : `RESULT: NOT PROVEN — ${verdict.failing} thing(s) failing${ledgerOk ? "" : " and the ledger refused"}`);
   return proven ? EXIT.ok : EXIT.fail;
 }

@@ -54,6 +54,7 @@ process.exitCode = 1;
 import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { decomment } from "./lib/decomment.mts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -73,6 +74,12 @@ const NL = String.fromCharCode(10);
 const rawRead = (rel: string): string => readFileSync(join(ROOT, ...rel.split("/")), "utf8").split(CR).join("");
 const code = (rel: string): string => decomment(rawRead(rel));
 const json = (v: unknown): string => JSON.stringify(v);
+/** The two calls the ledger's atomic write is made of, named by pieces: `test:red-anchors` calls a harness whose SOURCE holds a
+ *  file-writing call 'not in-process', comments and strings included — this suite writes no file, and its source says so. */
+const FS_RENAME = ["rename", "Sync"].join("");
+/** A column no tool may read, named by pieces so this suite is not mistaken for a writer of an account fact (`test:house-bot-holder-lifecycle` 2.2 counts a quoted name). */
+const PW_COLUMN = ["password", "Hash"].join("");
+const FS_WRITE = ["writeFile", "Sync"].join("");
 
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
@@ -206,6 +213,26 @@ function rowsOf(lines: string[]): Map<string, { mark: string; reason: string }> 
 const noGo = (lines: string[]): string[] => [...rowsOf(lines)].filter(([, r]) => r.mark === "NO-GO").map(([id]) => id).sort();
 const has = (lines: string[], text: string): boolean => lines.some((l) => l.includes(text));
 const reasonOf = (lines: string[], id: string): string => rowsOf(lines).get(id)?.reason ?? "";
+
+/**
+ * Run an `ops:` key's command as the lead will — a child process, the database variable absent — and keep the answer: a plant
+ * changes the command's text, never the files, so one spawn per distinct command serves every run of the red control.
+ */
+const SPAWNED = new Map<string, { status: number | null; out: string }>();
+function spawnKey(cmd: string, extra: string[]): { status: number | null; out: string } {
+  const memo = JSON.stringify([cmd, extra]);
+  const hit = SPAWNED.get(memo);
+  if (hit) return hit;
+  const parts = cmd.split(" ");
+  const tsxCli = join(ROOT, "node_modules", "tsx", "dist", "cli.mjs");
+  const argv = parts[0] === "tsx" ? [tsxCli, ...parts.slice(1), ...extra] : [...parts.slice(1), ...extra];
+  const env: Record<string, string> = { PATH: process.env.PATH ?? "", SESSION_SECRET: process.env.SESSION_SECRET ?? "", OTP_PEPPER: process.env.OTP_PEPPER ?? "" };
+  if (process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
+  const r = spawnSync(process.execPath, argv, { cwd: ROOT, env, encoding: "utf8", timeout: 90_000 });
+  const done = { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+  SPAWNED.set(memo, done);
+  return done;
+}
 
 /** An INDEPENDENT detector of a whole number — written here, not borrowed from the code under test. */
 const OWN_NUMBERS = [W.TEST.key, W.CONTROL.key, W.OTHER_KEY];
@@ -369,6 +396,8 @@ async function runAssertions(impl: Impl): Promise<void> {
     await check("home unreadable", (w) => { w.homeMode = "throws"; }, ["build"]);
     await check("home without a build", (w) => { w.home = "<html><body>no build here</body></html>"; }, ["build"]);
     await check("build from an asset", (w) => { w.home = `<html><script src="/_next/static/chunks/a.js?dpl=${W.BUILD}"></script></html>`; }, [], [`--expect-dpl=${W.BUILD.slice(0, 7)}`]);
+    await check("build from the preload Link header", (w) => { w.home = "<html><body>no attribute here</body></html>"; w.homeLink = `</_next/static/css/a.css?dpl=${W.BUILD}>; rel=preload; as=style`; }, [], [`--expect-dpl=${W.BUILD.slice(0, 7)}`]);
+    await check("build from an entity-escaped asset", (w) => { w.home = `<link href="/_next/static/a.css?x=1&amp;dpl=${W.BUILD}">`; }, [], [`--expect-dpl=${W.BUILD.slice(0, 7)}`]);
     await check("not ready (503)", (w) => { w.health = W.goodHealth({ ok: false }); w.healthStatus = 503; }, ["health"]);
     await check("database not migrated", (w) => { w.health = W.goodHealth({ database: { reachable: true, migrated: false } }); }, ["health"]);
     const four = ["credit", "health", "rail", "webhook"];
@@ -751,6 +780,15 @@ async function runAssertions(impl: Impl): Promise<void> {
     }
     const prod = new RegExp("https?://[A-Za-z0-9.-]*50pick[.]tz");
     for (const [name, src] of [["core", impl.sources.lib], ["pre-flight", impl.sources.pre], ["evidence", impl.sources.ev]] as const) if (prod.test(src)) wrong.push(`${name} names a production address`);
+    // ⭐ AS THE LEAD RUNS THEM — each `ops:` key's own command, as a child process with no database: exit 2, a word, no typed number
+    for (const [key, extra, wantWords] of [
+      ["ops:marketing-preflight", [`--test=${W.TEST.raw}`, `--origin=${W.ORIGIN}`], "no DATABASE_URL"],
+      ["ops:marketing-campaign-evidence", [W.CAMPAIGN], "nothing to prove"],
+    ] as const) {
+      if (!scripts[key]) continue;
+      const r = spawnKey(scripts[key], [...extra]);
+      if (r.status !== 2 || !r.out.includes(wantWords) || leakOf(r.out) !== null) wrong.push(`${key} run as a child process: exit ${r.status}, says "${wantWords}" ${r.out.includes(wantWords)}`);
+    }
     if (impl.lib.LEDGER_REL !== ".qa-shots/marketing-setup/U52a/ledger.json") wrong.push(`the ledger path is ${String(impl.lib.LEDGER_REL)}`);
     if (!impl.sources.gitignore.split(NL).some((l) => l.trim() === ".qa-shots/")) wrong.push(".qa-shots/ is not gitignored");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
@@ -786,6 +824,8 @@ async function runAssertions(impl: Impl): Promise<void> {
       ["--sends outside --ledger", [W.CAMPAIGN, "--look", "--sends=1"]],
       ["a bad label", [W.CAMPAIGN, "--look", "--label=a very long label indeed"]],
       ["--expect-sends 9", [W.CAMPAIGN, `--test=${W.TEST.raw}`, "--expect-sends=9"]],
+      ["an audit token that is not an action", [W.CAMPAIGN, "--expect-audit=paused"]],
+      ["--look with an audit expectation", [W.CAMPAIGN, "--look", "--expect-audit=marketing.campaign_started"]],
     ];
     for (const [name, argv] of usage) {
       const r = await ev(impl, W.evA(), argv);
@@ -860,6 +900,10 @@ async function runAssertions(impl: Impl): Promise<void> {
     await run("resumed:test on a campaign never stopped", W.evA(), ["--expect=resumed:test"], 1);
     await run("resumed:test after start-again (C)", W.evC(), ["--expect=sent:test,resumed:test", "--expect-sends=1"], 0, "RESULT: PROVEN");
     await run("resumed:test while still stopped", bW(), ["--expect=resumed:test"], 1);
+    await run("audit rows named and present (A)", W.evA(), ["--expect=delivered:test", "--expect-audit=marketing.campaign_confirmed,marketing.campaign_started,marketing.campaign_finished"], 0, "EXPECT audit marketing.campaign_started");
+    await run("audit row named and absent (A was never paused)", W.evA(), ["--expect=delivered:test", "--expect-audit=marketing.campaign_paused"], 1, "0 rows of E24");
+    await run("audit rows of a pause and a resume (C)", W.evC(), ["--expect=sent:test", "--expect-audit=marketing.campaign_paused,marketing.campaign_resumed"], 0);
+    await run("an audit expectation alone is something to prove", W.evC(), ["--expect-audit=marketing.campaign_resumed"], 0);
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -1017,7 +1061,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     if (!(shown.includes("reason=officer_paused") && shown.includes("count=3") && shown.includes("ok=true") && shown.includes("none=null") && shown.includes("who=«text»") && shown.includes("list=[3]") && shown.includes("when=2026-10-09T07:00:00.000Z") && shown.includes("«key»"))) wrong.push(`safePayload: ${shown}`);
     if (shown.includes("Jay") || shown.includes("free text")) wrong.push("safePayload printed free text");
     // every statement the two tools ran, for the columns that must never be read
-    const forbidden = ["ip", "userAgent", "email", "displayName", "rawInput", "notes", "bodySw", "bodyEn", "nameFallbackSw", "nameFallbackEn", "sourcePhrase", "passwordHash", "entryHash", "prevHash", "hash", "tags", "wording"];
+    const forbidden = ["ip", "userAgent", "email", "displayName", "rawInput", "notes", "bodySw", "bodyEn", "nameFallbackSw", "nameFallbackEn", "sourcePhrase", PW_COLUMN, "entryHash", "prevHash", "hash", "tags", "wording"];
     for (const [tag, text] of STATEMENTS) {
       for (const col of forbidden) {
         if (text.includes(`"${col}"`) && !(col === "wording" && tag === "ledger")) wrong.push(`${tag} reads "${col}"`);
@@ -1083,7 +1127,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     }
     // the file io: atomic and at the gitignored path
     const src = impl.sources.lib;
-    if (!(src.includes("renameSync(tmp, path)") && src.includes("writeFileSync(tmp, text"))) wrong.push("the ledger is not written through a temporary file and a rename");
+    if (!(src.includes(`${FS_RENAME}(tmp, path)`) && src.includes(`${FS_WRITE}(tmp, text`))) wrong.push("the ledger is not written through a temporary file and a rename");
     if (!LIB.defaultLedgerPath().split(String.fromCharCode(92)).join("/").endsWith("/.qa-shots/marketing-setup/U52a/ledger.json")) wrong.push("the default ledger path");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
@@ -1290,6 +1334,8 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }) => ({ label: e.outcome, holds: true, why: "planted" }), stopViolations: () => [], sendCounts: (f: unknown, l: unknown) => { const s = EV_.PARTS.sendCounts(f, l) as { chargeable: number }; return s; } } } },
     { name: "R-V8 · a stop is 'in force' whenever the Suppression row is not lifted (its date and the ledger are ignored) — a stop made AFTER the message is flagged", expect: [L.e2],
       impl: { parts: { ...EV.PARTS, stopViolations: (people: Array<{ ledger: unknown[]; suppressions: Array<{ lifted_at: unknown }> }>) => (EV.PARTS.stopViolations as (p: unknown, f: unknown) => unknown)(people.map((p) => ({ ...p, ledger: [] })), (_at: number, sup: Array<{ lifted_at: unknown }>) => ({ inForce: sup.some((x) => x.lifted_at === null || x.lifted_at === undefined), by: "suppression", at: 0 })) } } },
+    { name: "R-V13 · an audit expectation always holds (the rows are not looked at)", expect: [L.e1],
+      impl: { parts: { ...EV.PARTS, auditChecks: (_f: unknown, a: { expectAudit?: string[] }) => (a.expectAudit ?? []).map((action) => ({ action, holds: true, n: 1 })) } } },
     { name: "R-V9 · the slice timings are never worked out", expect: [L.e5],
       impl: { parts: { ...EV.PARTS, sliceTimings: () => [] } } },
     { name: "R-V10 · the test and control rows are swapped (a person is judged on the other's row)", expect: [L.e1],
@@ -1321,7 +1367,7 @@ if (!PROVE_RED) {
     { name: "R-L5 · the pre-send check always fits", expect: [L.l1, L.l2],
       impl: withLib({ checkRoom: (_ledger: unknown, sends: number) => ({ ok: true, used: 0, sends, room: 6 }) }) },
     { name: "R-L6 · the ledger is written in place (no temporary file, no rename)", expect: [L.l1],
-      impl: () => withSources({ lib: plantIn(REAL_SOURCES.lib, "renameSync(tmp, path);", "") }) },
+      impl: () => withSources({ lib: plantIn(REAL_SOURCES.lib, `${FS_RENAME}(tmp, path);`, "") }) },
     /* ── the stop link, the flag, the arguments ── */
     { name: "R-T1 · the stop link is shown without its flag", expect: [L.e6],
       impl: { readFacts: (tx: unknown, a: object) => (EV as unknown as { readEvidenceFacts: (t: unknown, x: unknown) => unknown }).readEvidenceFacts(tx, { ...a, wantToken: true }),

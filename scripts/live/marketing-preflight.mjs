@@ -42,7 +42,7 @@ const { EXIT, SEND_CAP } = LIB;
 
 const USAGE = [
   "usage: npm run ops:marketing-preflight -- --test=+255… --origin=https://<production host> [--control=+255…]",
-  "                                         [--expect-dpl=<build>] [--expect-switch=closed|open] [--sends=<1-6>]",
+  "                                         [--expect-dpl=<build>] [--expect-switch=closed|open] [--sends=<0-6>]",
 ].join("\n");
 
 export const PREFLIGHT_FLAGS = Object.freeze({
@@ -106,14 +106,16 @@ export async function fetchBounded(fetchImpl, url, timeoutMs, parse) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetchImpl(url, { method: "GET", signal: ctl.signal, headers: { accept: parse === "json" ? "application/json" : "text/html" }, cache: "no-store" });
+    const res = await fetchImpl(url, { method: "GET", signal: ctl.signal, headers: { accept: parse === "json" ? "application/json" : "text/html", "user-agent": "50pick-ops-preflight/U52a (read-only)" }, cache: "no-store" });
     if (!res || typeof res.status !== "number") return { ok: false, why: "no usable answer" };
     if (res.status >= 400 && !(parse === "json" && res.status === 503)) return { ok: false, why: `HTTP ${res.status}` };
     const text = await res.text();
     if (parse === "json") {
       try { return { ok: true, status: res.status, json: JSON.parse(text) }; } catch { return { ok: false, why: "the answer was not JSON" }; }
     }
-    return { ok: true, status: res.status, text };
+    // The preload `Link` header carries the same `?dpl=` on the assets it names — read beside the page, for the pages that lack the attribute.
+    const link = res.headers && typeof res.headers.get === "function" ? String(res.headers.get("link") ?? "") : "";
+    return { ok: true, status: res.status, text, link };
   } catch (err) {
     return { ok: false, why: ctl.signal.aborted ? `no answer within ${timeoutMs < 10_000 ? (timeoutMs / 1000).toFixed(1) : Math.round(timeoutMs / 1000)} s` : "the request failed" };
   } finally {
@@ -123,7 +125,7 @@ export async function fetchBounded(fetchImpl, url, timeoutMs, parse) {
 
 /** The build id from the home page: `data-dpl-id`, else `?dpl=` on an asset URL (the live drives' own two spellings). */
 export function dplFromHtml(html) {
-  const m = String(html).match(/data-dpl-id="([^"]+)"/) || String(html).match(/[?&]dpl=([A-Za-z0-9-]+)/);
+  const m = String(html).match(/data-dpl-id="([^"]+)"/) || String(html).match(/(?:[?&]|&amp;)dpl=([A-Za-z0-9-]+)/);
   return m ? m[1] : null;
 }
 
@@ -399,7 +401,7 @@ export async function runPreflight(argv, deps = realDeps()) {
     fetchBounded(d.fetch, `${args.origin}/`, d.timeoutMs, "html"),
     fetchBounded(d.fetch, `${args.origin}/api/health`, d.timeoutMs, "json"),
   ]);
-  const homeRead = home.ok ? { ok: true, dpl: dplFromHtml(home.text) } : home;
+  const homeRead = home.ok ? { ok: true, dpl: dplFromHtml(home.text) ?? dplFromHtml(home.link ?? "") } : home;
   const ledgerRead = lib.readLedger(d.ledgerIo());
   const ledger = ledgerRead.ok ? { ok: true, used: lib.ledgerTotal(ledgerRead.ledger), existed: ledgerRead.existed } : { ok: false, why: ledgerRead.why };
 

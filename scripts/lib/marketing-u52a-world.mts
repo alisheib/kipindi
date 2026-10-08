@@ -52,6 +52,8 @@ export type PreWorld = {
   healthStatus: number;
   healthMode: "ok" | "throws" | "hangs" | "html";
   home: string | null;
+  /** The preload `Link` header the home page answers with, if any. */
+  homeLink: string | null;
   homeMode: "ok" | "throws";
   ledgerText: string | null;
 };
@@ -82,6 +84,7 @@ export function goodPreWorld(): PreWorld {
     healthStatus: 200,
     healthMode: "ok",
     home: `<html data-dpl-id="${BUILD}"><body>home</body></html>`,
+    homeLink: null,
     homeMode: "ok",
     ledgerText: null,
   };
@@ -192,7 +195,7 @@ export function fakeFetch(w: PreWorld): (url: string, init?: { signal?: AbortSig
       if (mode === "html") return Promise.resolve({ status: 200, text: async () => "<html>not json</html>" });
       return Promise.resolve({ status: w.healthStatus, text: async () => JSON.stringify(w.health) });
     }
-    return Promise.resolve({ status: 200, text: async () => w.home ?? "" });
+    return Promise.resolve({ status: 200, text: async () => w.home ?? "", headers: { get: (k: string) => (k.toLowerCase() === "link" ? w.homeLink : null) } });
   };
 }
 
@@ -312,6 +315,9 @@ export function evC(): EvWorld {
   const w = baseEvWorld();
   w.recipients = [recipientRow({ key: TEST.key, id: "rcp_test_c", sms_reference: "sms_c0c0c0c0c0c0c0c0c0c0c0c0", claim_token: "clm_token_three", claimed_at: d(T0 + 3_600_000), sent_at: d(T0 + 3_602_000), delivered_at: d(T0 + 3_607_000) })];
   w.messages = [messageRow({ reference: "sms_c0c0c0c0c0c0c0c0c0c0c0c0", target_id: "rcp_test_c", created_at: d(T0 + 3_601_000), sent_at: d(T0 + 3_602_000), delivered_at: d(T0 + 3_607_000) })];
+  w.audit.splice(2, 0,
+    { seq: "1021", created_at: d(T0 + 3_600_500), category: "ADMIN", action: "marketing.campaign_paused", actor_id: "usr_qa_growth_0001", payload: { reason: "officer_paused" } },
+    { seq: "1022", created_at: d(T0 + 3_600_800), category: "ADMIN", action: "marketing.campaign_resumed", actor_id: "usr_qa_growth_0001", payload: { requeuedHeld: 0, to: "RUNNING" } });
   return withResume(w, "test", T0 + 1_140_000, T0 + 2_400_000);
 }
 
