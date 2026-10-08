@@ -66,7 +66,7 @@ process.env.SESSION_SECRET ??= "u52a-test-session-secret-0123456789abcdef";
 process.env.OTP_PEPPER ??= "u52a-test-pepper-0123456789";
 process.exitCode = 1;
 
-import { readFileSync, readdirSync, mkdtempSync, symlinkSync, rmdirSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, symlinkSync, rmdirSync, unlinkSync as dropLink } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, isAbsolute } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -291,7 +291,8 @@ function withJunction<T>(fn: (link: string) => T): T {
     symlinkSync(ROOT, link, "junction");
     return fn(link);
   } finally {
-    try { rmdirSync(link); } catch { /* never made, or already gone */ }
+    // a Windows junction goes with rmdir (never a recursive delete: that would follow it into the checkout); a symlink elsewhere with an unlink
+    try { rmdirSync(link); } catch { try { dropLink(link); } catch { /* never made, or already gone */ } }
     try { rmdirSync(dir); } catch { /* not empty only if the link survived: left for the person to see */ }
   }
 }
