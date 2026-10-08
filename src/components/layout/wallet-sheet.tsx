@@ -21,6 +21,12 @@
  * journey header's captioned balance. That capsule has no eye of its own: this sheet's eye and its Withdraw
  * are what keep both one tap from the capsule (V19, redefined). Without the flag the words are today's, so
  * the classic capsule's Wallet renders exactly as before.
+ * ⛔ 2026-10-08 · `onBreak` (the journey's Wallet only): a reader on a self-imposed break is offered no Deposit, the
+ * rule the journey header (no "+ Weka pesa", S4) and `/wallet` (`depositOpen`, 2026-10-06) already keep, because
+ * `/wallet/deposit` refuses one during a break. Withdraw stays, alone and full width: a break does not stop
+ * withdrawals. The flag is AppShell's `promoSuppressed`, which gates an OFFER and fails OPEN (`feature-state.ts` LAW 1)
+ * — after a failed read the Deposit shows and the deposit screen still refuses. No sentence is added: the shell hands
+ * the browser one boolean and never the break's date (app-shell.tsx), and the header drops its pill without one too.
  */
 
 import * as React from "react";
@@ -39,6 +45,7 @@ export function WalletSheet({
   held,
   anchorRef,
   journey = false,
+  onBreak = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -48,6 +55,9 @@ export function WalletSheet({
   /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa", and its figure takes the capsule's
    *  ink (gold on a live balance only). Omitted, today's words and today's ink. */
   journey?: boolean;
+  /** S6 · the reader is on a self-imposed break (AppShell's `promoSuppressed`): no Deposit, Withdraw alone. The journey
+   *  capsule passes it; omitted, both doors as today. */
+  onBreak?: boolean;
 }) {
   const { t } = useT();
   const depVia = React.useId();
@@ -90,20 +100,22 @@ export function WalletSheet({
           <p className="kp-wsheet__held-b">{t.kycGate.frozenBody}</p>
         </div>
       ) : (
-        <div className="kp-wsheet__pair">
-          <div className="kp-wsheet__col">
-            <Link
-              href="/wallet/deposit"
-              onClick={onClose}
-              aria-describedby={depVia}
-              className="btn gilt-metal btn-lg kp-wsheet__act"
-              data-testid="wallet-sheet-deposit"
-            >
-              <I.plus s={16} />
-              {journey ? t.journey.depositAction : t.common.deposit}
-            </Link>
-            <span id={depVia} className="kp-wsheet__via">{t.wallet.mobileMoney}</span>
-          </div>
+        <div className={onBreak ? "kp-wsheet__pair kp-wsheet__pair--one" : "kp-wsheet__pair"}>
+          {!onBreak && (
+            <div className="kp-wsheet__col">
+              <Link
+                href="/wallet/deposit"
+                onClick={onClose}
+                aria-describedby={depVia}
+                className="btn gilt-metal btn-lg kp-wsheet__act"
+                data-testid="wallet-sheet-deposit"
+              >
+                <I.plus s={16} />
+                {journey ? t.journey.depositAction : t.common.deposit}
+              </Link>
+              <span id={depVia} className="kp-wsheet__via">{t.wallet.mobileMoney}</span>
+            </div>
+          )}
           <div className="kp-wsheet__col">
             <Link
               href="/wallet/withdraw"

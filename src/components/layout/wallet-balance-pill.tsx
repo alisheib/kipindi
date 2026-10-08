@@ -462,7 +462,7 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
  * ⚠️ All paint is in globals.css (the kp-jbal rules), on tokens. The flash is a data attribute the stylesheet
  * answers, not an inline style, so the classic capsule's inline border stays the only one in this file.
  */
-export function WalletBalanceCaptioned({ balance, held = false }: { balance: number; held?: boolean }) {
+export function WalletBalanceCaptioned({ balance, held = false, onBreak = false }: { balance: number; held?: boolean; onBreak?: boolean }) {
   const { t } = useT();
   const [open, setOpen] = useState(false);
   const capsuleRef = useRef<HTMLButtonElement>(null);
@@ -504,7 +504,7 @@ export function WalletBalanceCaptioned({ balance, held = false }: { balance: num
           )}
         </span>
       </button>
-      <WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey />
+      <WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} />
     </>
   );
 }

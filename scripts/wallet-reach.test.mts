@@ -294,6 +294,18 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   const heldAt = sheet.indexOf("{held ? (");
   ok("7: ⛔ a FROZEN wallet gets no money buttons — the pair lives in the not-held branch",
      heldAt > 0 && heldAt < sheet.indexOf('href="/wallet/deposit"') && /t\.kycGate\.frozenTitle/.test(sheet));
+  // ⛔ …and a reader on a BREAK is offered no Deposit (2026-10-08): `/wallet/deposit` refuses one during a break, and the
+  //    journey header (no "+ Weka pesa", S4) and `/wallet` (`depositOpen`) already keep the rule. Withdraw stays, alone
+  //    and full width: a break does not stop withdrawals. §8c.1b holds the flag's way from the bar to here.
+  const breakAt = sheet.indexOf("{!onBreak && (");
+  const depAt = sheet.indexOf('href="/wallet/deposit"');
+  const wdAt = sheet.indexOf('href="/wallet/withdraw"');
+  const breakEnd = breakAt < 0 ? -1 : sheet.indexOf(")}", depAt);
+  ok("7: ⛔ a reader on a BREAK gets no Deposit — the column lives inside {!onBreak && (…)}, Withdraw outside it, alone at the full width",
+     breakAt > pairAt && breakAt < depAt && breakEnd > depAt && breakEnd < wdAt
+     && sheet.includes('className={onBreak ? "kp-wsheet__pair kp-wsheet__pair--one" : "kp-wsheet__pair"}')
+     && /\.kp-wsheet__pair--one\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\);\s*\}/.test(css),
+     `break ${breakAt} · deposit ${depAt} · its end ${breakEnd} · withdraw ${wdAt}`);
   ok("7: the balance obeys the eye — the Wallet masks through <Cash>, with its own eye",
      /<Cash>\{formatTzs\(balance\)\}<\/Cash>/.test(sheet) && /<CashEye\b/.test(sheet));
   // ⭐ R10 (Ali, 2026-09-28): "have balance always visible please because user should know he is 0".
@@ -339,7 +351,7 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      count(cap, "<button") === 1 && cap.includes('aria-haspopup="dialog"') && cap.includes("aria-expanded={open}")
      && cap.includes("onClick={() => setOpen(true)}") && cap.includes("ref={capsuleRef}"));
   ok("8.3 the Wallet it opens is anchored to it and speaks the journey's words — the classic capsule's Wallet does not",
-     cap.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey />")
+     cap.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} />")
      && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
   ok("8.4 no eye and no caret in the capsule ⛔ — hiding balances lives in the Wallet it opens (SJ-15)",
      !cap.includes("<CashEye") && !cap.includes("chevronDown"));
@@ -439,9 +451,14 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   const capsule = span('{state.capsule !== "none" && (', "<WalletBalanceCaptioned");
   ok("8c.1 the capsule is decided by the header state alone — nothing gates it by width, and it is fed the LIVE balance",
      capsule.length > 0 && !WIDTH_GATE.test(capsule)
-     && jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} />')
+     && jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} ')
      && jbar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"),
      capsule === "" ? "the capsule's guard was not found as written" : capsule.slice(0, 140));
+  ok("8c.1b ⛔ the break reaches the Wallet — the bar hands its onBreak to the capsule, and the capsule to the journey's Wallet (§7: no Deposit during a break); the classic Wallet is never told",
+     jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} />')
+     && pill.includes("export function WalletBalanceCaptioned({ balance, held = false, onBreak = false }: { balance: number; held?: boolean; onBreak?: boolean }) {")
+     && pill.includes("anchorRef={capsuleRef} journey onBreak={onBreak} />")
+     && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
   const pillBlock = span("{state.pill && (", "</Link>");
   ok("8c.2 + Weka pesa shows at EVERY width — the classic pill's yield below 1024 is the coin's, and this rail has none",
      pillBlock.length > 0 && !WIDTH_GATE.test(pillBlock) && pillBlock.includes('href="/wallet/deposit"')

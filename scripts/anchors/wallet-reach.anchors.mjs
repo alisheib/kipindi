@@ -162,8 +162,8 @@ export const MUTATIONS = [
     why: "the captioned capsule opens the Wallet WITHOUT the journey flag: the sheet says the classic Amana where the journey header says Weka pesa, two words for one action one tap apart",
     file: PILL,
     suite: "wallet-reach",
-    from: `anchorRef={capsuleRef} journey />`,
-    to: `anchorRef={capsuleRef} />`,
+    from: `anchorRef={capsuleRef} journey onBreak={onBreak} />`,
+    to: `anchorRef={capsuleRef} onBreak={onBreak} />`,
     expect: "8.3 the Wallet it opens is anchored to it",
   },
   {
@@ -282,5 +282,34 @@ export const MUTATIONS = [
     from: `<div className="kp-jhdr__cluster">`,
     to: `<div className="invisible lg:visible kp-jhdr__cluster">`,
     expect: "8c.5 …and nothing AROUND them yields by width either",
+  },
+  // ── 2026-10-08 · THE BREAK IN THE JOURNEY'S WALLET ──────────────────────────
+  // Three, each restoring one way a reader on a break is again offered a Deposit the deposit screen refuses.
+  {
+    name: "journey-wallet-offers-deposit-on-a-break",
+    why: "the sheet's Deposit column comes out of its break guard: a reader on a self-imposed break taps the balance and is offered Weka pesa, which /wallet/deposit then refuses with the break's sentence. The header (S4) and /wallet (depositOpen) both withhold that offer",
+    file: SHEET,
+    suite: "wallet-reach",
+    from: `{!onBreak && (`,
+    to: `{(`,
+    expect: "7: ⛔ a reader on a BREAK gets no Deposit",
+  },
+  {
+    name: "journey-bar-keeps-the-break-from-its-wallet",
+    why: "the bar stops handing its onBreak to the capsule: the sheet's guard reads clean and is never told, so the break's reader gets the Deposit again",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `held={state.capsule === "held"} onBreak={onBreak} />`,
+    to: `held={state.capsule === "held"} />`,
+    expect: "8c.1b ⛔ the break reaches the Wallet",
+  },
+  {
+    name: "captioned-capsule-drops-the-break",
+    why: "the capsule takes the flag and does not pass it on: the bar and the sheet both read clean, and the Wallet between them offers the Deposit",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `anchorRef={capsuleRef} journey onBreak={onBreak} />`,
+    to: `anchorRef={capsuleRef} journey />`,
+    expect: "8c.1b ⛔ the break reaches the Wallet",
   },
 ];

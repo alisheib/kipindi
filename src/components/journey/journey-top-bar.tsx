@@ -74,7 +74,8 @@ export function JourneyTopBar({
 }: {
   /** The classic bar's own viewer shape, built once by AppShell for whichever bar it renders. */
   user: TopAppBarUser;
-  /** The reader is on a self-imposed break (AppShell's `promoSuppressed`): no "+ Weka pesa" (S4). */
+  /** The reader is on a self-imposed break (AppShell's `promoSuppressed`): no "+ Weka pesa" (S4), and no Deposit in the
+   *  Wallet the capsule opens (2026-10-08, `wallet-sheet.tsx`). */
   onBreak: boolean;
   proposalsState: ProposalsState;
   inviteVisible?: boolean;
@@ -141,7 +142,7 @@ export function JourneyTopBar({
             while the row's groups take the row's. */}
         <div className="kp-jhdr__cluster">
           {state.capsule !== "none" && (
-            <WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} />
+            <WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} />
           )}
           {state.pill && (
             <Link
