@@ -3432,6 +3432,9 @@ model ContactList {
   /// U33a · the outreach bases recorded on this list (OD57 · OD58) — the back-relation only, so no SQL. ⛔ The link is
   /// RESTRICT on the basis side: a list that carries a basis cannot be deleted, because the basis is evidence.
   bases       ContactListBasis[]
+  /// S15 · the import runs adding their contacts to this list (`ContactImport.targetListId`) — the back-relation only,
+  /// so no SQL. SET NULL on the run's side: deleting a list stops an import adding to it, never the import.
+  importRuns  ContactImport[]
 
   @@index([createdAt])
 }
@@ -3627,6 +3630,12 @@ model ContactImport {
   /// The officer who started it — a soft key, as on the book. An ADMIN may adopt the run (X18).
   createdBy           String
   updatedAt           DateTime             @default(now()) @updatedAt @db.Timestamptz(3)
+  /// S15 · the contact list the import adds its contacts to — frozen by the start with the decision
+  /// (`contactImport.freezeDecision`); null for none. Hand-written additive migration
+  /// 20261009120000_contact_import_target_list. ⛔ SET NULL, never Cascade: a list deleted under a run stops the adding,
+  /// and the run — the record of what the import wrote — stays.
+  targetListId        String?
+  targetList          ContactList?         @relation(fields: [targetListId], references: [id], onDelete: SetNull)
 
   rows                ContactImportRow[]
 
@@ -3636,6 +3645,8 @@ model ContactImport {
   @@index([status, updatedAt])
   /// The retention purge.
   @@index([status, finishedAt])
+  /// S15 · the foreign key's own index, so a list's delete finds its runs without a scan.
+  @@index([targetListId])
 }
 
 /// ⭐ ONE RECORD OF THE FILE, as the SERVER drafted it (X2, X19). `ordinal` is its place in the run — 1, 2, 3 — and
