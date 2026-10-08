@@ -13,7 +13,7 @@ export const SECTIONS = [
       {
         title: "Sign in to the admin console",
         where: "https://50pick.tz/auth/admin",
-        do: ["Enter your staff phone number and password, then your 2-step code.", "Contacts and SMS campaigns are in the menu under Growth."],
+        do: ["Enter your staff phone number and password, then press Sign in.", "Contacts and SMS campaigns are in the menu under Growth."],
         shots: ["01-sign-in", "02-menu"],
       },
     ],
