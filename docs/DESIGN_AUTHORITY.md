@@ -2444,7 +2444,7 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      `docs/COMPLIANCE-DECISIONS.md`); Msaada's second line names no number (VODACOM-PLAN §0h point 10).
    - Guards: `test:journey-account` and `red:journey-account`, `test:journey-shell` §9 (the census), `test:popup-fit`
      (the sign-out dialog), `test:shell-boundary` §2b (the console link), and `qa:journey-unread-handover` (the Arifa
-     row and the tab's dot on a shared phone — its first run and its `--prove-red` are owed by WP12's run list).
+     row and the tab's dot on a shared phone — first run green 2026-10-08, 14/14, and its `--prove-red` caught).
 
    ### 8d — The guest Tiketi sheet (SJ-16)
 
