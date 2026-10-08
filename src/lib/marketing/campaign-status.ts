@@ -346,7 +346,7 @@ const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
   // ⭐ The U43b-2 re-review · the send-age bound met three slices in a row (at the smallest group, the check before each
   // message is slower than the time a group may take).
   slice_too_slow:
-    "Paused — checking people just before their message took too long three times running, so nothing more was sent and those people were put back unsent. Resume to try again; if it happens again, ask the developer.",
+    "Paused — getting even the smallest group of people ready to send took too long three times running, so nothing more was sent and those people were put back unsent. Resume to try again; if it happens again, ask the developer.",
 };
 
 /** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */

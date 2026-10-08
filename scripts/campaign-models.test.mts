@@ -223,7 +223,7 @@ const L = {
   s12: "1.2 the ADD VALUE migration sorts BEFORE the campaign tables' migration — the tables ship one migration later",
   s13: "1.3 exactly ONE migration creates the two tables and the three new types (SmsCampaignStatus, SmsCampaignRecipientStatus, SmsEncoding), and no other migration creates any of them",
   s14: "1.4 every OTHER index the two models declare is in the migrations under its name — Prisma's own, or the schema's map — the tables migration's or a later one's, and the migrations hold none the schema lacks (the one key is 2.1's)",
-  s14b: "1.4b ⭐ the live page's outcome index (the U47b-1 review): the recipient model declares (campaignId, status, skipReason, failureClass) by its map name, and EXACTLY ONE migration after the tables names the two tables — it holds ONE CREATE INDEX IF NOT EXISTS of those four columns in that order and nothing else (no DROP, no CONCURRENTLY: prisma migrate runs a file in one transaction)",
+  s14b: "1.4b ⭐ the live page's two reads, each with its index (the U47b-1 review and its re-review): the recipient model declares (campaignId, status, skipReason, failureClass) by its map name and (campaignId, claimedAt), and the ONE migration that names the outcome index holds EXACTLY those two CREATE INDEX IF NOT EXISTS, in that order, and nothing else (no DROP, no CONCURRENTLY: prisma migrate runs a file in one transaction)",
   s15: "1.5 the schema's two models and the migration's two tables declare the SAME columns — name, type, nullability and default, one by one",
   s16: "1.6 ⛔ no CASCADE link: the campaign link is RESTRICT and contactId / userId are SET NULL — in the migration AND the schema, under Prisma's constraint names",
   s17: "1.7 ⛔ expand-only: the tables migration only CREATEs types, tables and indexes and ADDs the recipient's foreign keys — no DROP, RENAME, ALTER TYPE, CONCURRENTLY or MARKETING",
@@ -433,6 +433,9 @@ function migrationIndexes(sql: string, table: string): Idx[] {
 /** ⭐ U47b-1 · the outcome index — its map name, its columns in order, and the ONE migration that creates it. */
 const OUTCOME_INDEX = "SmsCampaignRecipient_outcome_idx";
 const OUTCOME_COLS = ["campaignId", "status", "skipReason", "failureClass"] as const;
+/** ⭐ Its re-review · the view's other read (`lastActivity`, the newest claim) — Prisma's own name, the same file. */
+const CLAIMED_INDEX = "SmsCampaignRecipient_campaignId_claimedAt_idx";
+const CLAIMED_COLS = ["campaignId", "claimedAt"] as const;
 /** The migrations AFTER the tables migration that name either campaign table at all (an index migration, or worse). */
 const laterTableMigrations = (w: World, tablesFolder: string): Migration[] =>
   w.migrations.filter((m) => m.folder > tablesFolder && /"SmsCampaign(Recipient)?"/.test(sqlStatements(m.sql)));
@@ -560,15 +563,24 @@ async function run(w: World, tag: string): Promise<void> {
 
   // ── §1.4b · ⭐ the outcome index — one file, one statement ────────────────────────────────
   await check(p(L.s14b), () => {
-    const declared = schemaIndexes(schemaModel(w.schema, "SmsCampaignRecipient"), "SmsCampaignRecipient").find((i) => i.name === OUTCOME_INDEX);
+    const indexes = schemaIndexes(schemaModel(w.schema, "SmsCampaignRecipient"), "SmsCampaignRecipient");
+    const declared = indexes.find((i) => i.name === OUTCOME_INDEX);
+    const declaredClaimed = indexes.find((i) => i.name === CLAIMED_INDEX);
     const later = tables === null ? [] : laterTableMigrations(w, tables.folder);
-    const file = later.length === 1 ? later[0] : null;
+    // ⭐ The file is found by the outcome index's NAME (its re-review): a later contract migration on the same tables —
+    // the redundant (campaignId, status) index's drop, one day — must not turn this claim red by being there.
+    const file = later.find((m) => sqlStatements(m.sql).includes(`"${OUTCOME_INDEX}"`)) ?? null;
     const stmts = file === null ? [] : sqlStatements(file.sql).split(";").map((x) => x.trim()).filter(Boolean);
-    const want = `CREATE INDEX IF NOT EXISTS "${OUTCOME_INDEX}" ON "SmsCampaignRecipient"(${OUTCOME_COLS.map((c) => `"${c}"`).join(", ")})`;
-    const schemaOk = declared !== undefined && !declared.unique && declared.cols.join(",") === OUTCOME_COLS.join(",");
-    const fileOk = file !== null && stmts.length === 1 && stmts[0] === want && !/CONCURRENTLY|DROP/i.test(sqlStatements(file.sql));
+    const quoted = (cols: readonly string[]) => cols.map((c) => `"${c}"`).join(", ");
+    const want = [
+      `CREATE INDEX IF NOT EXISTS "${OUTCOME_INDEX}" ON "SmsCampaignRecipient"(${quoted(OUTCOME_COLS)})`,
+      `CREATE INDEX IF NOT EXISTS "${CLAIMED_INDEX}" ON "SmsCampaignRecipient"(${quoted(CLAIMED_COLS)})`,
+    ];
+    const schemaOk = declared !== undefined && !declared.unique && declared.cols.join(",") === OUTCOME_COLS.join(",")
+      && declaredClaimed !== undefined && !declaredClaimed.unique && declaredClaimed.cols.join(",") === CLAIMED_COLS.join(",");
+    const fileOk = file !== null && JSON.stringify(stmts) === JSON.stringify(want) && !/CONCURRENTLY|DROP/i.test(sqlStatements(file.sql));
     return [schemaOk && fileOk,
-      `schema ${declared ? idxText(declared) : "declares no outcome index"} · ${later.length} later migration(s) on the tables [${later.map((m) => m.folder).join(", ")}] · statements ${stmts.length}: ${stmts.map((s) => s.slice(0, 70)).join(" | ") || "none"}`];
+      `schema ${declared ? idxText(declared) : "declares no outcome index"} · ${declaredClaimed ? idxText(declaredClaimed) : "no claimedAt index"} · file ${file?.folder ?? "none names the outcome index"} · statements ${stmts.length}: ${stmts.map((s) => s.slice(0, 70)).join(" | ") || "none"}`];
   });
 
   // ── §1.5 · the columns, one by one ─────────────────────────────────────────────────────────
@@ -2038,6 +2050,11 @@ if (!PROVE_RED) {
       name: "R-47b1-idx-5 · the schema's map name and the file's name differ — the probe's drift diff would name it",
       expect: L.s14,
       build: () => withModel("SmsCampaignRecipient", `map: "${OUTCOME_INDEX}"`, `map: "${OUTCOME_INDEX}x"`),
+    },
+    {
+      name: "R-47b1-idx-6 · the claimedAt index left out of the file (its re-review) — lastActivity reads every row again",
+      expect: L.s14b,
+      build: () => withOutcomeFile((sql) => plant(sql, `CREATE INDEX IF NOT EXISTS "${CLAIMED_INDEX}" ON "SmsCampaignRecipient"("campaignId", "claimedAt");`, "")),
     },
     {
       name: "a copied person column — the recipient model gains displayName (D16: a link, never a copy)",

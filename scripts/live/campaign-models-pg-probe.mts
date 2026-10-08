@@ -39,9 +39,9 @@
  * settled-SENT row, a PENDING row and an unknown id write nothing. ⛔ No backslash in §12 either.
  * ⭐ §13 · U47b-1 (S14 2026-10-07 — ENGINE-SPEC §4.15 decision 8): the live page's ONE groupBy (`countByOutcome`) through the
  * REAL Prisma twin — one campaign's rows by (status, skipReason, failureClass), a null its own group, the tally's one order,
- * summing to `countByStatus`, never another campaign's rows; ⭐ and 13c (the U47b-1 review's MINOR 4, 2026-10-08): its own
- * index after every migration — `SmsCampaignRecipient_outcome_idx`, the four columns in the groupBy's order. ⛔ No
- * backslash in §13 either.
+ * summing to `countByStatus`, never another campaign's rows; ⭐ and 13c (the U47b-1 review's MINOR 4 and its re-review,
+ * 2026-10-08): the view's two reads' indexes after every migration — `SmsCampaignRecipient_outcome_idx` (the groupBy's
+ * four columns) and `SmsCampaignRecipient_campaignId_claimedAt_idx` (the newest claim). ⛔ No backslash in §13 either.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database, runs the Prisma CLI three times and creates and
  * drops a shadow database and a throwaway type — loopback only):
@@ -391,10 +391,11 @@ async function toRunning(id: string): Promise<void> {
       `prisma: ${added.join(" ;; ")} · file: ${mig.join(" ;; ")}`);
     ok("9g · the MIGRATED database differs from schema.prisma in nothing that names UNCONFIRMED — the migration built exactly the value the enum declares",
       liveDiff.status === 0 && !liveDiff.out.includes("UNCONFIRMED"), `${statements(liveDiff.out).length} statements of known drift, none of them ours`);
-    // ⭐ 9i · the U47b-1 review's MINOR 4 — the outcome index's hand-written file builds exactly what schema.prisma declares
-    ok("9i · ⭐ neither the migrated database nor every migration differs from schema.prisma in SmsCampaignRecipient_outcome_idx — its map name and its four columns built exactly as declared",
-      ran && !fullDiff.out.includes("SmsCampaignRecipient_outcome_idx") && !liveDiff.out.includes("SmsCampaignRecipient_outcome_idx"),
-      statements(fullDiff.out).concat(statements(liveDiff.out)).filter((s) => s.includes("outcome")).join(" | ") || "named in neither diff");
+    // ⭐ 9i · the U47b-1 review's MINOR 4 and its re-review — the hand-written file builds exactly what schema.prisma declares
+    const OURS = ["SmsCampaignRecipient_outcome_idx", "SmsCampaignRecipient_campaignId_claimedAt_idx"];
+    ok("9i · ⭐ neither the migrated database nor every migration differs from schema.prisma in SmsCampaignRecipient_outcome_idx or SmsCampaignRecipient_campaignId_claimedAt_idx — their names and columns built exactly as declared",
+      ran && OURS.every((n) => !fullDiff.out.includes(n) && !liveDiff.out.includes(n)),
+      statements(fullDiff.out).concat(statements(liveDiff.out)).filter((s) => OURS.some((n) => s.includes(n))).join(" | ") || "named in neither diff");
   } finally {
     rmSync(tmp, { recursive: true, force: true });
     await admin(`DROP DATABASE IF EXISTS "${SHADOW_DB}" WITH (FORCE)`).catch(() => {});
@@ -1045,13 +1046,15 @@ async function toRunning(id: string): Promise<void> {
     const other = await db.smsCampaignRecipient.countByOutcome(OTHER13);
     ok("13b · a campaign with no rows answers no group, and the other campaign answers only its own SENT row",
       json(empty) === json([]) && json(other) === json([{ status: "SENT", skipReason: null, failureClass: null, count: 1 }]), `${json(empty)} · ${json(other)}`);
-    // ⭐ 13c · the U47b-1 review's MINOR 4 · the groupBy's own index, after EVERY migration (20261008120000's one statement)
-    const idx = await pg.$queryRawUnsafe<Array<{ indexdef: string }>>(
-      `select indexdef from pg_indexes where schemaname = current_schema() and tablename = 'SmsCampaignRecipient' and indexname = 'SmsCampaignRecipient_outcome_idx'`,
-    );
-    const def = idx[0]?.indexdef ?? "";
-    ok("13c · ⭐ the outcome index is on Postgres after every migration — SmsCampaignRecipient_outcome_idx, a b-tree of (campaignId, status, skipReason, failureClass) in the groupBy's order, not unique",
-      idx.length === 1 && def.includes(`USING btree ("campaignId", status, "skipReason", "failureClass")`) && !def.includes("UNIQUE"), def || "no such index");
+    // ⭐ 13c · the U47b-1 review's MINOR 4 and its re-review · the view's two reads' indexes, after EVERY migration
+    const defOf = async (name: string): Promise<string> => (await pg.$queryRawUnsafe<Array<{ indexdef: string }>>(
+      `select indexdef from pg_indexes where schemaname = current_schema() and tablename = 'SmsCampaignRecipient' and indexname = $1`, name,
+    ))[0]?.indexdef ?? "";
+    const outcomeDef = await defOf("SmsCampaignRecipient_outcome_idx");
+    const claimedDef = await defOf("SmsCampaignRecipient_campaignId_claimedAt_idx");
+    ok("13c · ⭐ both indexes are on Postgres after every migration — SmsCampaignRecipient_outcome_idx, a b-tree of (campaignId, status, skipReason, failureClass) in the groupBy's order, and SmsCampaignRecipient_campaignId_claimedAt_idx of (campaignId, claimedAt) — neither unique",
+      outcomeDef.includes(`USING btree ("campaignId", status, "skipReason", "failureClass")`) && claimedDef.includes(`USING btree ("campaignId", "claimedAt")`)
+        && !outcomeDef.includes("UNIQUE") && !claimedDef.includes("UNIQUE"), `${outcomeDef || "no outcome index"} · ${claimedDef || "no claimedAt index"}`);
   } catch (e) {
     ok("13 · U47b-1 · the live page's groupBy ran on Postgres without throwing", false, firstLine(e));
   }

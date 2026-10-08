@@ -393,6 +393,7 @@ back, except U47a's future Retry (an operator's act, re-gated).
 | `confirmation_unreadable` | "Paused — this campaign's confirmation can't be read in full, so nobody more is messaged. Some people may already have been messaged, and a copy would message them again. Stop it, or ask the developer." | U43b (✅ as built, its review: a confirmed count that is not a count, mid-campaign — the word Resume refuses it with) |
 | `settings_unreadable` · `sizes_unreadable` · `price_unknown` | each in its own words — the settings, the saved size, the price — "… so what is left to send can't be priced/checked against the credit kept for login codes …" with the remedy Resume's own refusal gives (`campaign-status.ts`) | U43b (✅ as built, its review: the credit check's causes, never all `credit_unreadable`) |
 | `before_send_unanswered` | "Paused — the last check before sending could not be made three times running, so nothing more was sent. Resume to try again." | U43b (✅ as built) |
+| `slice_too_slow` | "Paused — getting even the smallest group of people ready to send took too long three times running, so nothing more was sent and those people were put back unsent. Resume to try again; if it happens again, ask the developer." | U43b (✅ as built, the re-review of round 2: three `slice_too_slow` waits in a row at the smallest group — `SLICE_TOO_SLOW_MAX` — counted afresh after an officer's Pause and Resume) |
 | `audience_unreadable` | "Paused — the saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused." | U42 (✅ as built, its re-review: a copy carries the same filter, and U47b's copy is refused when the filter cannot travel — the other way out is said too) |
 | `audience_moved` | "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it and confirm a new copy." | U42 |
 | `list_over_confirmed` | "Paused — more people are on this campaign's list than were confirmed. Nothing was sent. Stop it and confirm a new copy." | U42 (✅ as built, its review's MINOR 1: the enqueue fails closed before the list runs) |
@@ -1813,12 +1814,22 @@ deployed.
   judged AGAIN through `marketingLiveGate` → `live_switch_closed` (the review: a state read before the claim is no licence
   now); then the rows `claimedBy` this token — and ⛔ if any is older than `CLAIM_SEND_MAX_AGE_MS` (or its instant cannot
   be read) → `slice_too_slow`, a WAIT, every row back +0 (the send-age bound); else `keep` = those rows.
-- **⛔ The send-age invariant (E6's double-send guard, closed at the review).** A claim reaches the wire only while
-  younger than half of `REAP_AFTER_MS`, so `sendBatch` has the other half (five minutes) to write its message rows — the
-  reaper's evidence, written before the wire (P2) — before ANY reaper, this process's or another's, may judge the claim
-  stranded. This process's own next step (its one reaper) cannot run beside a slice in flight: the flight holds for twice
-  `REAP_AFTER_MS`. Not covered, and said so in `engine.ts`: a `sendBatch` that waits five minutes or more between its call
-  and its first row write (a database too sick to write anything).
+- **⛔ The send-age invariant (E6's double-send guard — closed at the review, its re-review, and the re-review of round 2;
+  `engine.ts`'s header says it word for word).** A reaper (this process's or another's) judges a claim stranded at
+  `REAP_AFTER_MS` (10 min) and releases its people only when no message of the claim can have reached the wire — no
+  message row, or one `sendBatch` failed itself before its request; `sendBatch` writes its message rows BEFORE the wire
+  (P2), so a claim whose rows were handed on is settled from them (UNCONFIRMED at worst), never released. A claim is
+  sendable only while younger than `CLAIM_SEND_MAX_AGE_MS` (5 min), checked THREE times: (1) `verifyClaims` (a
+  `slice_too_slow` wait); (2) `sendBatch`'s `notAfter` deadline before its rows are written (refused whole,
+  `DEADLINE_PASSED`, the same wait; all-MARKETING batches only — a login code never meets one); (3) again before each
+  chunk's request (the rows FAILED, no request). So rows a reaper could have missed are never followed by a request. In
+  THIS process the reaper is also held off a campaign whose slice is in flight (`insideFlight` — U47b's reap-only step is a
+  second place it reaps) while the flight holds (`SLICE_FLIGHT_STALE_MS`, 20 min); never across processes, where the three
+  checks alone stand. ⚠️ **What is left** (none of it a second message on a healthy server): (a) a process frozen after
+  check 3 sends LATE — its rows exist, so a reaper meanwhile settles them UNCONFIRMED and releases nobody; the one message
+  still goes and reads "no answer" until a receipt; (b) the request is bounded only by the transport's timeout
+  (`BLACKBALL_TIMEOUT_MS`, 8 s by default) — the same late case if an operator sets it near minutes; (c) every check reads
+  a clock: a wall clock stepped back, or two hosts skewed (DC-1), moves the claim's age against the reaper's.
 - **Reasons beyond the APIs block.** `EngineStopReason` adds `gateway_unanswered`, `list_over_confirmed_sending`,
   `before_send_unanswered`, and at the review `confirmation_unreadable` (replacing the build's `audience_unreadable`),
   `send_error`, `settings_unreadable`, `sizes_unreadable`, `price_unknown`; `SliceWait` adds `before_send_unanswered` and
@@ -2177,7 +2188,8 @@ RETURN — pure, no directive; U47b-2 adds the page's own words to it), `scripts
   below it. Under the floor a masked viewer keeps "On campaign", the bar and the headline's counts (no per-state split);
   every other KPI, the reasons and the chips are null, and the view's `floor` says why.
 - ⛔ **The copy advice by reach (`liveReach`).** Every sentence the services return that advises a copy (or a new campaign) —
-  the pause reasons `audience_unreadable` and `template_invalid` (the slice can set them after sending began), `audience_moved`
+  the pause reasons `template_invalid` (the slice can set it after sending began — its dry render reads no person) and the
+  enqueue's `audience_unreadable` (written only while it prepares — the U47b-1 re-review: the engine never writes it), `audience_moved`
   and `list_over_confirmed`, the Stop dialog, Make a copy's answer and its refusal — says a copy messages again everyone
   already messaged: as a FACT to a viewer who may see the split, as a CONDITION to a viewer below the floor (the same words
   whether or not anybody was), and the spec's own words for a campaign that never ran (`enqueuedAt` null). ⛔ And Resume's
@@ -2264,6 +2276,36 @@ RETURN — pure, no directive; U47b-2 adds the page's own words to it), `scripts
     named by the schema's `map` (Prisma's own name passes Postgres's 63 characters). The (campaignId, status) index stays
     (now redundant — dropping it is a contract step of its own). Held by `test:campaign-models` 1.4 / 1.4b (+ 5 red cases)
     and `db:probe-campaign-models` 9i and 13c (the index on Postgres after every migration; neither drift diff names it).
+  - ✅ **THE RE-REVIEWS (2026-10-08 — independent, on Sonnet while the account's Opus limit held; U47b-1's fix round and
+    U43b-2's round 2; no BLOCKER, no MAJOR; every finding fixed by the lead):**
+    - ⛔ **The step answer carries no REASON either**: `DriverStep` is `{ kind: "paused" }` for a pause and `{ kind: "waiting";
+      busy; until }` for a wait — a pause's or a wait's key named the cause the floor's words hide. **`said` is floor-aware**
+      (`stepSaid(step, hidden)`, a `ControlDeps` member): below the floor every wait but `busy` reads ONE sentence
+      (`LIVE_WAIT_HIDDEN` — "Waiting — nothing is sent just now, and it tries again by itself. The reason is hidden for
+      your role while fewer than 10 people are on this campaign's list."); every `SliceWait` has its own sentence
+      (`slice_too_slow` was missing).
+    - **A viewer who may only view**, below the floor, reads the neutral pause sentence without "press Resume"
+      (`LIVE_PAUSED_HIDDEN_VIEW`); `pausedReasonSentenceFor` takes `{ reads, mayAct }`.
+    - **The second index** (MINOR 4 again): every view also asks `lastActivity`, the newest claim — answered by
+      `SmsCampaignRecipient_campaignId_claimedAt_idx` (`@@index([campaignId, claimedAt])`), the same migration's second
+      statement. 1.4b finds that file by the outcome index's NAME (a later contract migration cannot turn it red).
+    - **Resume says what is true now**: a Stop landing between its move and its re-queue → "This campaign was resumed,
+      then stopped a moment later — nothing new will start sending."; a re-queue that failed → the move's words + "Some
+      people held back earlier could not be put back on the list — if the campaign pauses for them, press Resume again."
+    - **Words**: DONE "Finished — nobody on this campaign is left to message." (and a stop's "— nobody on it was left to
+      message."); the Pause and Stop toasts and the Stop dialog's head say "nothing new starts sending — a group already
+      being sent may still go out" (the one-slice residual (b), said instead of hidden).
+    - **The view** reads a money signal that throws as busy (the engine's ④d), never failing every viewer's page; and a
+      code failure through the engine's ONE reading, `otpFailureWaiting` (engine-rules; step ④e asks it too).
+    - **U43b-2**: the send-age invariant re-written in `engine.ts` and in §4.13 (three checks; what is left — a late send
+      after the last check, settled UNCONFIRMED, never a second message; the transport's timeout; clocks); `slice_too_slow`
+      counted at the SMALLEST group only (`tooSlowCounts`) and both streaks started over by an officer's Pause and Resume
+      (`runMark`); the `send_error` log line carries the code alone and is written once the pause has landed; §3.4 gains
+      the `slice_too_slow` row; `insideFlight` named in `engine.ts` only (S27).
+    - **Proof**: `test:campaign-visuals` 31 claims (S11 new; S5, S7, S10, T5, D2, W1, P2 extended), 38 plants held;
+      `test:marketing-engine` 90 (S38, S39 new; S27, S35, S37 extended), `red:marketing-engine` 123/123;
+      `test:campaign-models` 53, red 92/92; `test:sms-cost-guard` 111 (a stopped clock for the deadline-in-the-write case;
+      a held batch moves no health figure and marks no code) + one anchor; tsc 0.
 
 **Premises checked.** The six doors and the page gate rules (`admin-section-gate.test.mjs` §0b′: one return, a literal
 title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:campaigns-page` 5f/5k
@@ -2382,10 +2424,12 @@ export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepRe
   window unreadable (`window_unreadable`) "Waiting — the sending hours couldn't be read, so nothing is sent until they
   can be. It tries again by itself; if this stays, check Admin → System → Marketing SMS." · the last check unanswered
   (`before_send_unanswered`) "Waiting — the last check before sending couldn't be made, so nothing was sent. It tries again
-  by itself; after three tries in a row the campaign pauses." · too slow to send (`slice_too_slow`) "Waiting — checking
-  the last group of people took too long, so they were put back unsent. It tries again by itself, with a smaller group
-  when it can; after three tries in a row the campaign pauses." (The U43b-2 re-review: "the next group is smaller" was
-  false at the smallest group, five; the third wait in a row PAUSES `slice_too_slow` — `SLICE_TOO_SLOW_MAX`.)
+  by itself; after three tries in a row the campaign pauses." · too slow to send (`slice_too_slow`) "Waiting — getting
+  the last group of people ready to send took too long, so they were put back unsent. It tries again by itself, with a
+  smaller group when it can; after three tries in a row at the smallest group the campaign pauses." (The U43b-2
+  re-review: "the next group is smaller" was false at the smallest group, five; the third wait in a row there PAUSES
+  `slice_too_slow` — `SLICE_TOO_SLOW_MAX`, counted at the smallest group only since the re-review of round 2, which also
+  said "getting … ready": the time can go in the checks, the credit reads or the message rows, not only the last check.)
 - Standing callouts: keep open (RUNNING/PREPARING) "Keep this page open while it sends — sending continues only while a page
   like this one is open." · nobody driving (RUNNING, no claim for 90 s, viewer cannot act or the driver has not run yet)
   "Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open. (Last step 14:02

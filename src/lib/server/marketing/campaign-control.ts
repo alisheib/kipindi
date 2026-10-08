@@ -84,8 +84,8 @@ import {
 } from "@/lib/server/marketing/campaign-live";
 import type { CampaignLiveView, LiveViewer } from "@/lib/server/marketing/campaign-live";
 import {
-  LIVE_CHANGED, LIVE_DISABLED, LIVE_DONE, LIVE_MISSING, LIVE_NOT_RECORDED, START_AUDIENCE_REFUSED, copyCantTravelSentence,
-  copyDoneSentence, copyMessageRefusedSentence, resumeCopyOnlyHiddenSentence, waitSentence,
+  LIVE_CHANGED, LIVE_DISABLED, LIVE_DONE, LIVE_MISSING, LIVE_NOT_RECORDED, LIVE_REQUEUE_FAILED, START_AUDIENCE_REFUSED, copyCantTravelSentence,
+  LIVE_WAIT_HIDDEN, copyDoneSentence, copyMessageRefusedSentence, resumeCopyOnlyHiddenSentence, waitSentence,
 } from "@/app/admin/campaigns/[id]/live-copy";
 import { CAMPAIGNS_UNTITLED } from "@/app/admin/campaigns/campaigns-copy";
 
@@ -132,31 +132,35 @@ export type CopyResult = { ok: true; id: string; href: string; message: string; 
 export type StepOutcome = SliceStepResult | EnqueueStepResult | { kind: "reaped"; reaped: number } | { kind: "idle" };
 /**
  * ⭐ THE STEP ACTION'S ANSWER (§4.15's APIs; U47b-2's `campaignStepAction` returns it, adding `second_factor` from its guard).
- * ⭐ As built: `said` — a wait in words (`waitSentence`), else null — so the page prints the step's own sentence.
+ * ⭐ As built: `said` — a wait in words, as THIS viewer may read it (`stepSaid`), else null — so the page prints the step's
+ * own sentence.
  */
 export type StepActionResult =
   | { ok: true; step: DriverStep; said: string | null; view: CampaignLiveView }
   | { ok: false; reason: "role" | "second_factor" | "not_found"; error: string };
 
 /**
- * ⛔ THE U47b-1 REVIEW · WHAT THE DRIVER IS HANDED OF A STEP — its kind and what decides the next call (a wait's reason and
- * time, a pause's reason, a status), and NOTHING ELSE, for EVERY role: no count and no cursor. A slice's handedOver /
- * skipped beside a padded tag would be one person's gate verdict below E23's floor, and an enqueue's `next` names a contact
- * or an account. Every figure the page shows comes from the view, which is role-shaped.
+ * ⛔ THE U47b-1 REVIEW · WHAT THE DRIVER IS HANDED OF A STEP — its kind and what times the next call, and NOTHING ELSE, for
+ * EVERY role: no count and no cursor (a slice's handedOver / skipped beside a padded tag would be one person's gate verdict
+ * below E23's floor, and an enqueue's `next` names a contact or an account), and ⛔ its re-review: NO REASON either — a
+ * pause's or a wait's key named the cause the floor's words hide (`gateway_refused`, the check just before the wire, a
+ * group too slow to send can each come only once somebody passed the checks). A wait carries only whether it is `busy`
+ * (another step of this campaign — the driver's 5 s) and its `until`; a pause nothing. Every word comes from `said` and the
+ * view (`stopSentence`), each of them floor-aware; every figure from the view.
  */
 export type DriverStep =
   | { kind: "sent" } | { kind: "finished" } | { kind: "wrote" } | { kind: "done" } | { kind: "reaped" } | { kind: "idle" }
-  | { kind: "paused"; reason: string }
-  | { kind: "waiting"; reason: string; until: string | null }
+  | { kind: "paused" }
+  | { kind: "waiting"; busy: boolean; until: string | null }
   | { kind: "not_running" | "not_preparing"; status: SmsCampaignStatus };
 
-/** A step as the driver may be handed it (`DriverStep`): the figures and the cursor taken out. */
+/** A step as the driver may be handed it (`DriverStep`): the figures, the cursor and the reasons taken out. */
 export function driverStep(step: StepOutcome): DriverStep {
   switch (step.kind) {
     case "paused":
-      return { kind: "paused", reason: step.reason };
+      return { kind: "paused" };
     case "waiting":
-      return { kind: "waiting", reason: step.reason, until: step.until };
+      return { kind: "waiting", busy: step.reason === "busy", until: step.until };
     case "not_running":
     case "not_preparing":
       return { kind: step.kind, status: step.status };
@@ -195,6 +199,8 @@ export type ControlDeps = {
   /** ⛔ The step as the driver may be handed it (`driverStep`: no figure, no cursor) — a member only so the suite can plant
    *  its absence; production's is the function itself. */
   shape: (step: StepOutcome) => DriverStep;
+  /** ⛔ E23 · a step's sentence as this viewer may read it (`stepSaid`) — a member only so the suite can plant its absence. */
+  said: (step: StepOutcome, hidden: boolean) => string | null;
   campaigns: {
     find: (id: string) => Promise<StoredSmsCampaign | null>;
     transition: (id: string, t: SmsCampaignTransition) => Promise<StoredSmsCampaign | null>;
@@ -237,6 +243,7 @@ export type ControlDeps = {
 /** Frozen: production's services — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const CONTROL_DEPS: Readonly<ControlDeps> = Object.freeze({
   shape: driverStep,
+  said: stepSaid,
   campaigns: Object.freeze({
     find: async (id: string) => db.smsCampaign.find(id),
     transition: async (id: string, t: SmsCampaignTransition) => db.smsCampaign.transition(id, t),
@@ -369,7 +376,7 @@ export async function startCampaign(campaignId: string, actor: ControlActor, dep
 export async function pauseCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<ControlResult<PauseControlRefusal>> {
   const officer = officerOf(actor, "pauseCampaign");
   if (actor?.mayAct !== true) return roleRefusal();
-  const c =typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
+  const c = typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
   if (c === null) return { ok: false, reason: "not_found", message: LIVE_MISSING };
   const why = (s: SmsCampaignStatus): ControlResult<PauseControlRefusal> =>
     s === "DRAFT" ? { ok: false, reason: "draft", message: LIVE_DISABLED.draft }
@@ -461,7 +468,16 @@ async function resumeInFlight(id: string, officer: string, viewer: RefusalViewer
     category: "ADMIN", action: CAMPAIGN_RESUMED_ACTION, actorId: officer, targetType: "SmsCampaign", targetId: c.id,
     payload: { requeuedHeld: requeued, to },
   });
-  return { ok: true, message: withRecord(to === "RUNNING" ? LIVE_DONE.resume : LIVE_DONE.resumePreparing, recorded), recorded };
+  // ⭐ The U47b-1 re-review · the answer says what is TRUE NOW: a Stop does not wait for Resume's flight, so one can land
+  // between the move and the re-queue (the rows it then re-queued stay owed — E25, a Stop rewrites nothing and counts them);
+  // and a re-queue that failed leaves the held people parked until the next Resume. A read that fails says the move alone.
+  let message: string = to === "RUNNING" ? LIVE_DONE.resume : LIVE_DONE.resumePreparing;
+  try {
+    const now = await deps.campaigns.find(c.id);
+    if (now !== null && now.status !== to) message = isTerminal(now.status) ? LIVE_CHANGED.stoppedAfterResume : message;
+  } catch { /* the move landed; its own words stand */ }
+  if (requeued === null && message !== LIVE_CHANGED.stoppedAfterResume) message = `${message} ${LIVE_REQUEUE_FAILED}`;
+  return { ok: true, message: withRecord(message, recorded), recorded };
 }
 
 /* ══ STOP ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -471,7 +487,7 @@ async function resumeInFlight(id: string, officer: string, viewer: RefusalViewer
 export async function stopCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<ControlResult<StopControlRefusal>> {
   const officer = officerOf(actor, "stopCampaign");
   if (actor?.mayAct !== true) return roleRefusal();
-  const c =typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
+  const c = typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
   if (c === null) return { ok: false, reason: "not_found", message: LIVE_MISSING };
   if (c.status === "DRAFT") return { ok: false, reason: "draft", message: LIVE_DISABLED.draft };
   if (isTerminal(c.status)) return { ok: false, reason: "finished", message: LIVE_DISABLED.stop };
@@ -580,9 +596,15 @@ async function stepFor(c: StoredSmsCampaign, deps: ControlDeps): Promise<StepOut
   return { kind: "idle" };
 }
 
-/** A step's own sentence: a wait in words (`waitSentence`); everything else the view says. */
-export function stepSaid(step: StepOutcome): string | null {
-  return step.kind === "waiting" ? waitSentence(step.reason, step.until) : null;
+/**
+ * A step's own sentence: a wait in words (`waitSentence`); everything else the view says. ⛔ E23 · as THIS viewer may read
+ * it (the U47b-1 re-review): below the floor (`hidden` — the view's own `floor`) every wait but `busy` reads ONE sentence,
+ * `LIVE_WAIT_HIDDEN` — the check just before the wire and a group too slow to send come only once somebody passed the
+ * checks, and a sentence kept for those alone would tell by being said.
+ */
+export function stepSaid(step: StepOutcome, hidden: boolean): string | null {
+  if (step.kind !== "waiting") return null;
+  return hidden && step.reason !== "busy" ? LIVE_WAIT_HIDDEN : waitSentence(step.reason, step.until);
 }
 
 /**
@@ -610,5 +632,5 @@ export async function campaignStep(campaignId: string, viewer: LiveViewer, deps:
   }
   const view = await deps.view(id, viewer);
   if (view === null) return { ok: false, reason: "not_found", error: LIVE_MISSING };
-  return { ok: true, step: deps.shape(step), said: stepSaid(step), view };
+  return { ok: true, step: deps.shape(step), said: deps.said(step, view.floor !== null), view };
 }

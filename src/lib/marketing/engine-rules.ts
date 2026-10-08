@@ -18,7 +18,8 @@
  *   · `held`, a shop-wide reason → PENDING (+0) — `BALANCE_FLOOR` · `NOT_CONFIGURED` · `PROVIDER_UNRECOGNISED` ·
  *     `MARKETING_FLOOR` and the engine's own vetoes before the wire — `list_over_confirmed_sending` ·
  *     `confirmation_unreadable` · `live_switch_closed` — PAUSE the campaign; `quiet_hours` · `window_unreadable` ·
- *     `not_running` · `before_send_unanswered` · `slice_too_slow` are a WAIT (no pause).
+ *     `not_running` · `before_send_unanswered` · `slice_too_slow` are a WAIT here — the engine PAUSES the last two after
+ *     three in a row (its own counts: `BEFORE_SEND_UNANSWERED_MAX`, `SLICE_TOO_SLOW_MAX` at the smallest group).
  *   · `held` about one person    → `gate_unanswered`, `prepare:<reason>` (and ⭐ ANY reason this table does not know — a
  *     reason added later is bounded, never a silent loop): attempts + 1 below `MAX_ROW_ATTEMPTS` → PENDING (+1); at it →
  *     HELD (E8). Outstanding either way.
@@ -99,6 +100,20 @@ export const GATE_TIME_WEIGHT = 0.3;
  *  view may not import the engine (`test:marketing-engine` S27) — `engine.ts` re-exports it, never written twice. */
 export const OTP_FAILURE_WAIT_MS = 2 * 60_000;
 
+/** ⭐ The re-review of U43b-2's round 2 · does a `slice_too_slow` wait COUNT toward the pause? Only at the SMALLEST group —
+ *  `SLICE_MIN` people, or fewer left to claim: above it the next slice is smaller and tries again uncounted, so a slow gate
+ *  pauses the campaign only once even five people cannot be checked in time. */
+export function tooSlowCounts(claimed: number): boolean {
+  return Number.isSafeInteger(claimed) && claimed >= 1 && claimed <= SLICE_MIN;
+}
+
+/** ⭐ E12 · does marketing step aside for a login or withdrawal code that failed at `lastOtp`? Dated either side of now by
+ *  less than the wait — a failure stamped ahead of the clock waits as one just behind it. THE ONE READING: the slice's
+ *  step ④e and the live view's "nobody driving" both ask it (the U47b-1 re-review), so the two can never disagree. */
+export function otpFailureWaiting(nowMs: number, lastOtp: number | null): boolean {
+  return typeof lastOtp === "number" && Number.isFinite(lastOtp) && Number.isFinite(nowMs) && Math.abs(nowMs - lastOtp) < OTP_FAILURE_WAIT_MS;
+}
+
 /** The column bounds of the settle door, RESTATED here (the rule set is a server module): a trail string, free words, a
  *  code, the trail's length. `test:marketing-engine` holds each equal to `campaign-model.ts`'s. */
 export const TRAIL_TEXT_MAX = 200;
@@ -129,7 +144,7 @@ export type EngineStopReason =
 
 /** Why a step WAITS (claims nobody, pauses nothing) — the page says when it tries again. ⭐ `slice_too_slow` (the U43b-2
  *  review): the slice took so long between its claim and the wire that its claim was too old to send (the engine's
- *  send-age bound) — its people went back as they were, and the next slice is smaller. */
+ *  send-age bound) — its people went back as they were, and the next slice is smaller when it can be. */
 export type SliceWait =
   | "busy" | "quiet_hours" | "window_unreadable" | "money_busy" | "otp_failing" | "before_send_unanswered" | "slice_too_slow";
 
@@ -378,7 +393,8 @@ export function isShopWide(outcomes: readonly SliceOutcome[]): ShopWide {
  * ⭐ THE U43b-2 REVIEW · A SEND THAT THREW — one fact about the shop, and only the engine knows it (`dispatchSlice` answers
  * every row of a thrown send `unconfirmed`, as it must: it cannot tell either). Its rows are settled by their own outcome
  * (UNCONFIRMED) — except those the engine found no message for (`SettleContext.unsent`: certainly never on the wire) — and
- * the campaign pauses `send_error`. `detail` is the error's words, scrubbed and cut, for the pause's audit row.
+ * the campaign pauses `send_error`. `detail` is the error's CODE or NAME (the engine hands no words — they can quote the
+ * call: the U43b-2 re-review), made lawful and cut for the pause's audit row.
  */
 export function thrownSend(detail: string): ShopWide {
   return {
