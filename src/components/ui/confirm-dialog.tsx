@@ -110,8 +110,10 @@ type Props = {
    *     restoration (Firefox keeps no state for it at all), and React types `autoComplete` on an input, not on a
    *     button. It was safe only because these pages are served no-store, which Firefox never restores; now it is safe
    *     whatever a page is served as;
-   *   · A SECOND TEXT FIELD, unnamed, unseen and out of reach. WebKit (every browser on an iPhone) skips a disabled
-   *     submit control and submits a form of ONE text field anyway; a form of two it submits in no engine.
+   *   · A SECOND TEXT FIELD, unnamed, unseen and out of reach. WebKit (every browser on an iPhone) was read, from its
+   *     source, to skip a disabled submit control and submit a form of ONE text field anyway; Playwright's WebKit 2272
+   *     does not — there the disabled control alone holds Enter (`qa:implicit-submit` P1x, 2026-10-07). A form of two
+   *     it submits in no engine, so the field holds any WebKit that does skip the control: a belt, costing nothing.
    * ⚠️ WEBKIT BEFORE SAFARI 16.4 presses a submit control for Enter only if it is RENDERED, and a `hidden` one is not:
    * there Enter in these forms does NOTHING, before the page wakes and after — no submit and no dialog. Inert, never
    * unsafe: the trigger still opens the dialog. (Next 16 builds for Safari 16.4 and later, so such a device may never
@@ -129,9 +131,9 @@ type Props = {
    *     and a held-open dialog would spin over a round-trip that never started (§4.6);
    *   · NOTHING ELSE IN THE FORM MAY SUBMIT — no submit control of the form's own, ahead of this dialog or after it.
    *     Chromium and Firefox press the form's FIRST submit control, so one drawn ahead would be pressed instead of the
-   *     guard's; and WebKit skips the guard's disabled control and presses the first ENABLED submit control wherever it
-   *     stands, so one drawn anywhere would be pressed before the page wakes — a native post, no confirm (§4.5, the
-   *     host forms by name).
+   *     guard's; and WebKit, as its source was read (the stricter rule, kept), skips the guard's disabled control and
+   *     presses the first ENABLED submit control wherever it stands, so one drawn anywhere would be pressed before the
+   *     page wakes — a native post, no confirm (§4.5, the host forms by name).
    */
   submitsForm?: boolean;
 };

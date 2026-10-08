@@ -2,7 +2,7 @@
  * pre-deploy-live-check — strict adversarial browser gauntlet.
  *
  *   BASE=http://localhost:3009 node scripts/pre-deploy-live-check.mjs   # full (authed + mutating)
- *   BASE=https://kipindi-production.up.railway.app node scripts/...      # prod read-only subset
+ *   BASE=https://kipindi-production.up.railway.app node scripts/...      # prod: read-only but for [E3]'s one QA-player sign-in
  *
  * Rules: ANY console error (minus React dev eval noise), page error, Next.js
  * error overlay, broken internal link, layout overflow, clipped date segment,
@@ -12,6 +12,10 @@
  * prod) and assert the invite/History/wallet content. Prod runs skip those.
  * Every run (prod included) asks /api/health for the new journey's rollout and, short of ACTIVE, asserts that no
  * signed-out page carries the "Preview" marker — section [E2]; [F] asks the same of the signed-in demo player.
+ * ⭐ S6 WP12: short of ACTIVE, [E2] also holds `/` and `/markets` free of every trace of the journey SHELL for a signed-out
+ * visitor, and `/account` to the not-found page, after a LOCAL control that its readers see the shell when it is served;
+ * [E3] asks the same of a SIGNED-IN player — on production the QA player `mobile01` through the real form (never an
+ * admin; one attempt: a failed sign-in stops the run), locally the demo player through /auth/demo.
  */
 import { chromium } from "playwright";
 
@@ -338,12 +342,172 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
  * contract check failed) they still run: no marker on a signed-out page is the expectation in every state short of
  * ACTIVE, so an unknown state is no reason to stop looking.
  * `journeyRollout` is read ONCE, here, and section [F] asks the same answer for its signed-in player.
+ * ⭐ AND THE SHELL ITSELF (S6 WP12 step 1): short of ACTIVE, `/` and `/markets` carry no trace of the journey shell either
+ * — no journey test id, no shell mark, no journey flag (`journeyTracesIn`, below) — and `/account` is the not-found
+ * page, judged against a path no route matches; each page counts only as the route named, never one a redirect led
+ * to. Locally the readers are first shown a page the journey IS served on (`journeyShellControl`), so an absence
+ * means something. [E3] asks both of a signed-in player.
  */
-console.log("\n[E2] New journey rollout — /api/health contract + no preview marker on signed-out pages");
+console.log("\n[E2] New journey rollout — /api/health contract + no preview marker and no journey shell on signed-out pages, /account not found");
 const ROLLOUT_WORDS = ["WITHDRAWN", "STAFF_PREVIEW", "ACTIVE"]; // rank = index: WITHDRAWN < STAFF_PREVIEW < ACTIVE
 const PREVIEW_TESTIDS = ["journey-preview-marker", "journey-preview-exit"];
 /** Which of the preview marker's testids a page's HTML carries — the element, or the props in the RSC payload. */
 const previewMarksIn = (html) => PREVIEW_TESTIDS.filter((id) => html.includes(id));
+/**
+ * ⭐ AND THE JOURNEY SHELL ITSELF, NOT ONLY ITS MARKER (Vodacom plan S6, WP12 step 1; asked by [E2] and [E3]). A browser
+ * whose pass does not count — every visitor while the rollout is short of ACTIVE — is served the classic shell, so its
+ * page carries none of the shell's traces: no `journey-*` test id (the header `journey-top-bar`, the tabs
+ * `journey-tabs`, "+ Weka pesa" `journey-deposit`, the captioned balance `journey-balance`, the Akaunti hub
+ * `journey-account-hub`, the preview marker — and any journey part added later), no guest Tiketi sheet
+ * (`tickets-guest-*`), no shell mark (`#kp-journey-shell`, which AppShell writes into the server's HTML for a journey
+ * request alone), no journey flag (`data-journey` on the html element) and no funnel scope of "new"
+ * (`data-kp-funnel`). Read as HTML attributes and as the RSC payload's JSON, escaped or not:
+ * `qa:classic-shell-parity`'s raw-trace rule, widened to every part of the shell.
+ */
+const JOURNEY_TRACE = /(?:data-testid|testId)(?:=|\\?":)\\?"(?:journey-|tickets-guest-)[\w-]*|\bdata-journey(?![\w-])|\bid(?:=|\\?":)\\?"kp-journey-shell(?![\w-])|\bdata-kp-funnel(?:=|\\?":)\\?"new(?![\w-])/g;
+/** The journey traces a page's bytes carry, each named once. */
+const journeyTracesIn = (html) => [...new Set([...String(html ?? "").matchAll(JOURNEY_TRACE)].map((m) => {
+  const s = m[0];
+  if (s.includes("kp-journey-shell")) return "#kp-journey-shell";
+  if (s.includes("data-kp-funnel")) return "data-kp-funnel=new";
+  if (s.includes("data-journey")) return "data-journey";
+  return `testid:${s.slice(s.search(/journey-|tickets-guest-/))}`;
+}))].sort();
+/** The same traces in a rendered document, as one selector the page probe below is handed. */
+const JOURNEY_DOM = '[data-testid^="journey-"],[data-testid^="tickets-guest-"],[data-journey],#kp-journey-shell,[data-kp-funnel="new"]';
+/** The routes [E2] and [E3] hold free of the journey shell. */
+const JOURNEY_SHELL_ROUTES = ["/", "/markets"];
+/**
+ * In the page: what a visitor sees — the title, the main text, whether the app's header is there, whether this is a
+ * signed-in player's page (the classic balance capsule, and no session-ended notice) and every journey trace.
+ * Self-contained: Playwright serialises it, so it closes over nothing.
+ */
+const JOURNEY_PAGE_PROBE = (traceSel) => ({
+  title: document.title,
+  main: (document.querySelector("main")?.innerText ?? "").replace(/\s+/g, " ").trim(),
+  shell: !!document.querySelector("header.app-topbar"),
+  signedIn: !!document.querySelector('[data-testid="wallet-balance-capsule"]') && !document.querySelector('[data-testid="session-ended-notice"]'),
+  traces: [...document.querySelectorAll(traceSel)].map((e) => e.getAttribute("data-testid")
+    || (e.id === "kp-journey-shell" ? "#kp-journey-shell" : e.hasAttribute("data-journey") ? `${e.tagName.toLowerCase()}[data-journey]` : "data-kp-funnel=new")),
+});
+/**
+ * One page as a visitor gets it: the bytes the server sent (status, robots meta, journey traces), the path the browser
+ * ended on (`final` — a redirect or a sign-in bounce lands somewhere else, and that page is never this one) and the
+ * document they became, read once it has settled (two reads alike, as `qa:classic-shell-parity` reads a cell). An
+ * unread page comes back with `view` null, and every check below treats that as a failure, never as a clean page.
+ */
+async function readDocument(ctx, path) {
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on("pageerror", (e) => errs.push(`pageerror: ${e.message}`));
+  const got = { status: 0, final: "", err: "", raw: "", robots: [], traces: [], view: null, errs };
+  try {
+    const res = await page.goto(BASE + path, { waitUntil: "load" });
+    got.status = res ? res.status() : 0;
+    got.raw = res ? await res.text().catch(() => "") : "";
+    got.final = new URL(page.url()).pathname;
+    await page.locator("main").first().waitFor({ timeout: 60000 }).catch(() => {});
+    let view = await page.evaluate(JOURNEY_PAGE_PROBE, JOURNEY_DOM).catch(() => null);
+    for (let i = 0; i < 5; i++) {
+      await page.waitForTimeout(700);
+      const next = await page.evaluate(JOURNEY_PAGE_PROBE, JOURNEY_DOM).catch(() => null);
+      const settled = JSON.stringify(next) === JSON.stringify(view);
+      view = next;
+      if (settled) break;
+    }
+    got.view = view;
+  } catch (e) {
+    got.err = String(e?.message ?? e).split("\n")[0].slice(0, 160);
+  }
+  got.robots = [...got.raw.matchAll(/<meta name="robots" content="([^"]*)"/g)].map((m) => m[1]).sort();
+  got.traces = journeyTracesIn(got.raw);
+  await page.close().catch(() => {});
+  return got;
+}
+/** The path every `/account` reading is judged against: one no route matches, so a true 404 with the not-found body. */
+const NOT_FOUND_CONTROL = "/kp-qa-live-no-such-page";
+/**
+ * `/account` for a reader the journey is not shown to is the NOT-FOUND page (S6 A2, A3; critic G2 asked qa:live for its
+ * title): its main text and its title are the control's, it is noindex in the bytes the server sent, and neither the
+ * page nor those bytes carry a journey trace. Each page counts only where it was asked for — the control at its own
+ * path, `/account` at `/account` — so a redirect to the sign-in page can never pass as either. ⛔ Never judged by its
+ * status: the root loader streams first, so Next answers that body at HTTP 200 (a 200 is not a render, and neither is
+ * a 404); the status is PRINTED on every run instead, so the record can cite it. `signedIn` ([E3]) also holds both
+ * pages to a signed-in player's, or a session that quietly ended would pass here as a guest's page.
+ */
+async function accountNotFound(ctx, who, signedIn = false) {
+  const control = await readDocument(ctx, NOT_FOUND_CONTROL);
+  const account = await readDocument(ctx, "/account");
+  const cv = control.view;
+  const av = account.view;
+  const controlOk = control.status === 404 && control.final === NOT_FOUND_CONTROL && !!cv && cv.main.length > 20 && !!cv.title;
+  ok(`${who}: control · ${NOT_FOUND_CONTROL} is a true 404 with a not-found body and title`, controlOk,
+    control.err ? `(GET failed: ${control.err})` : `(HTTP ${control.status} at ${control.final || "?"}, title "${cv?.title ?? ""}", ${cv?.main.length ?? 0} chars of body)`);
+  const read = !!av && account.raw.length > 0 && account.final === "/account";
+  ok(`${who}: /account renders the not-found body (its main text is the control's)`, read && controlOk && av.main === cv.main,
+    !read ? `(the page named was not read${account.err ? `: ${account.err}` : ` — it ended on ${account.final || "?"}`} — nothing was checked)` : `(HTTP ${account.status}: "${av.main.slice(0, 80)}")`);
+  ok(`${who}: …under the not-found title`, read && controlOk && av.title === cv.title, `("${av?.title ?? ""}" against "${cv?.title ?? ""}")`);
+  ok(`${who}: …marked noindex in the bytes the server sent`, read && account.robots.some((r) => /noindex/i.test(r)), `(robots ${JSON.stringify(account.robots)})`);
+  ok(`${who}: …and no trace of the journey, in the page or in those bytes`, read && av.traces.length === 0 && account.traces.length === 0,
+    `(page: ${av?.traces.join(", ") || "none"}; bytes: ${account.traces.join(", ") || "none"})`);
+  if (signedIn) {
+    ok(`${who}: …read as the signed-in player both times (the balance capsule there, no session-ended notice)`, !!av?.signedIn && !!cv?.signedIn,
+      `(on /account ${!!av?.signedIn}, on the control ${!!cv?.signedIn})`);
+  }
+  ok(`${who}: …and no uncaught page error on either`, account.errs.length === 0 && control.errs.length === 0, [...account.errs, ...control.errs].slice(0, 2).join(" | "));
+  console.log(`  · ${who}: /account answered HTTP ${account.status || "—"} (A3 expects 200: the root loader streams first), the control HTTP ${control.status || "—"} — printed, never judged`);
+}
+/**
+ * ⭐ AND THE READERS ARE SEEN TO SEE (S6 WP12). Every check below proves "no trace of the journey", which means something
+ * only if the same reader, on the same server, SEES the journey when it is served — the matchers are proved above on
+ * hand-written strings, and this proves the readers on real bytes. LOCALLY, before any absence is asked, `/` is read
+ * with a staff preview pass (`mintStaffPass`, `live/journey-pass.mjs`: the door every journey drive uses) the two ways
+ * the checks read a page — [E2]'s own fetch, and the page reader [E3] and `/account` use — and each must carry the
+ * journey header, its tabs and the shell mark (a pass-holder's funnel scope is "off", so it is not asked).
+ * ⛔ LOCAL ONLY, behind `premise` (an in-memory `http://localhost:PORT` server whose rollout a pass can see) and a console
+ * that is not behind the two-step check (`/api/health` → `security.adminTotp`: the preview door needs it DISABLED).
+ * Anywhere else it prints a SKIP with its reason — never a pass, and never on production, where a pass is an
+ * officer's to mint (decision 7). Its one write is the local in-memory store's: a SUPPORT fixture and its pass.
+ */
+async function journeyShellControl() {
+  const label = "control · the readers SEE the journey shell when it is served — / with a staff preview pass, through [E2]'s fetch and through the page reader [E3] and /account use";
+  const skip = (why) => console.log(`  ⚠ SKIP  ${label} — ${why}. The absence checks below are proved on hand-written traces only, by this run.`);
+  if (!LOCAL) return skip("production: a preview pass is an officer's to mint (decision 7)");
+  const kit = await import("./live/journey-pass.mjs");
+  const pre = await kit.premise(BASE);
+  if (pre.refuse) return skip(pre.refuse);
+  const totp = pre.health?.security?.adminTotp;
+  if (totp !== "DISABLED") return skip(`the server keeps its console behind the two-step check (security.adminTotp = ${JSON.stringify(totp)}), so the preview door mints no pass — start it with DISABLE_ADMIN_TOTP=true`);
+  let previewPass = null;
+  let why = "";
+  try {
+    previewPass = await kit.mintStaffPass(browser, BASE);
+  } catch (e) {
+    why = String(e?.message ?? e).split("\n")[0].slice(0, 200);
+  }
+  if (!previewPass) {
+    ok(label, false, `(no preview pass was minted: ${why || "no cookie"})`);
+    return;
+  }
+  const MUST = ["testid:journey-top-bar", "testid:journey-tabs", "#kp-journey-shell"];
+  let status = 0;
+  let fetched = [];
+  try {
+    const r = await fetch(BASE + "/", { headers: { accept: "text/html", cookie: `${previewPass.name}=${previewPass.value}` }, redirect: "follow" });
+    status = r.status;
+    fetched = journeyTracesIn(await r.text());
+  } catch (e) {
+    why = String(e?.message ?? e).split("\n")[0].slice(0, 200);
+  }
+  const ctx = await enContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addCookies([previewPass]);
+  const d = await readDocument(ctx, "/");
+  await ctx.close();
+  const dom = d.view?.traces ?? [];
+  ok(label, status === 200 && MUST.every((x) => fetched.includes(x))
+      && d.status === 200 && d.final === "/" && MUST.every((x) => d.traces.includes(x)) && ["journey-top-bar", "journey-tabs"].every((x) => dom.includes(x)),
+    `(fetch: HTTP ${status}${why ? ` ${why}` : ""}, ${fetched.join(", ") || "no trace"} · page: HTTP ${d.status} at ${d.final || "?"}, bytes ${d.traces.join(", ") || "no trace"}, DOM ${dom.join(", ") || "no trace"})`);
+}
 const journeyRollout = await (async () => {
   let status = 0, body = null, err = "";
   try {
@@ -371,25 +535,134 @@ const journeyRollout = await (async () => {
     previewMarksIn(`<div data-testid="journey-preview-marker"><button data-testid="journey-preview-exit">`).length === 2
     && previewMarksIn(`self.__next_f.push([1,"{\\"testId\\":\\"journey-preview-exit\\"}"])`).length === 1);
   ok(`control · …and passes a page without them`, previewMarksIn(`<div data-testid="notice-bar">Preview</div>`).length === 0);
-  const JOURNEY_PUBLIC_ROUTES = ["/", "/markets"];
+  ok(`control · the journey-shell matcher catches every trace the shell leaves — its test ids, the shell mark, the flag and a "new" funnel scope, as HTML and as RSC JSON`,
+    journeyTracesIn(`<header class="sticky top-0 z-30 app-topbar kp-jhdr" data-testid="journey-top-bar"><a data-testid="journey-deposit"></a><button data-testid="journey-balance"></button></header><nav data-testid="journey-tabs"></nav><a data-testid="tickets-guest-signin"></a><span hidden="" id="kp-journey-shell"></span><span hidden="" data-kp-funnel="new"></span>`).length === 7
+    && journeyTracesIn(`<html lang="sw" data-journey="">`).join() === "data-journey"
+    && journeyTracesIn(`self.__next_f.push([1,"{\\"data-testid\\":\\"journey-account-hub\\"}"])`).join() === "testid:journey-account-hub"
+    && journeyTracesIn(`["$","span",null,{"hidden":true,"id":"kp-journey-shell"}]`).join() === "#kp-journey-shell");
+  ok(`control · …and passes the classic shell's own marks`,
+    journeyTracesIn(`<header class="sticky top-0 z-30 app-topbar"><a data-testid="deposit-header"></a><span data-testid="wallet-balance-capsule"></span></header><nav class="kp-rail"></nav><span hidden="" data-kp-funnel="old"></span><p>Your journey starts here</p><div data-journey-x="1"></div>`).length === 0);
+  const JOURNEY_PUBLIC_ROUTES = JOURNEY_SHELL_ROUTES;
   if (journeyRollout.state !== "ACTIVE") {
+    // ⭐ FIRST, THE READERS ARE SEEN TO SEE (S6 WP12): a page the journey IS served on, read the ways the checks read.
+    await journeyShellControl();
     for (const route of JOURNEY_PUBLIC_ROUTES) {
-      let status = 0, html = "", err = "";
+      let status = 0, html = "", err = "", landed = "";
       try {
         const r = await fetch(BASE + route, { headers: { accept: "text/html" }, redirect: "follow" });
         status = r.status;
+        // ⭐ The page named, and no other (S6 WP12): a redirect answers with another route's page, never this one.
+        if (r.redirected) landed = new URL(r.url).pathname;
         html = await r.text();
       } catch (e) { err = String(e?.message ?? e); }
-      const read = status === 200 && /<html[\s>]/i.test(html);
+      const read = status === 200 && !landed && /<html[\s>]/i.test(html);
       const marks = read ? previewMarksIn(html) : [];
       ok(`signed out: ${route} carries no preview marker (rollout ${journeyRollout.state ?? "UNKNOWN"})`, read && marks.length === 0,
         err ? `(GET ${route} failed: ${err})`
+          : landed ? `(redirected to ${landed} — not ${route}'s own page, so nothing was checked)`
           : !read ? `(HTTP ${status}, ${html.length} chars, not an HTML document — the page was not read, so nothing was checked)`
           : marks.length ? `(found ${marks.join(", ")} on a page that holds no preview pass)` : "");
+      // ⭐ AND NO TRACE OF THE JOURNEY SHELL (S6 WP12) — the same bytes, read for every part of the shell (`journeyTracesIn`).
+      const traces = read ? journeyTracesIn(html) : [];
+      const shellRead = read && html.includes("app-topbar");
+      ok(`signed out: ${route} carries no trace of the journey shell (rollout ${journeyRollout.state ?? "UNKNOWN"})`, shellRead && traces.length === 0,
+        err ? `(GET ${route} failed: ${err})`
+          : landed ? `(redirected to ${landed} — not ${route}'s own page, so nothing was checked)`
+          : !read ? `(HTTP ${status}, ${html.length} chars, not an HTML document — the page was not read, so nothing was checked)`
+          : !shellRead ? "(the HTML carries no app header — not the shell's page, so nothing was checked)"
+          : traces.length ? `(found ${traces.join(", ")} on a page that holds no preview pass)` : "");
+    }
+    // ⭐ AND /account IS THE NOT-FOUND PAGE for a signed-out visitor (S6 A2, A3), judged against a path no route matches.
+    {
+      const ctx = await enContext({ viewport: { width: 1280, height: 900 } });
+      await accountNotFound(ctx, "signed out");
+      await ctx.close();
     }
   } else {
-    console.log(`  ⚠ SKIP  the ${JOURNEY_PUBLIC_ROUTES.length} signed-out no-preview-marker checks (${JOURNEY_PUBLIC_ROUTES.join(", ")}) — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone, so the pre-launch promise that nobody outside the preview sees it no longer applies ${journeyRollout.detail}. NOT measured by this run.`);
+    console.log(`  ⚠ SKIP  the ${JOURNEY_PUBLIC_ROUTES.length} signed-out no-preview-marker checks, the ${JOURNEY_PUBLIC_ROUTES.length} no-journey-shell checks (${JOURNEY_PUBLIC_ROUTES.join(", ")}) and /account's not-found checks — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone, so the pre-launch promise that nobody outside the preview sees it no longer applies ${journeyRollout.detail}. NOT measured by this run.`);
   }
+}
+
+// ── E3. The new journey, signed in — the QA player (runs against production too) ──
+/**
+ * ⭐ [E2]'S PROMISE FOR A SIGNED-IN PLAYER, ON PRODUCTION AS WELL AS HERE (Vodacom plan S6, WP12 step 1). A player holds
+ * no preview pass either, so while the rollout is short of ACTIVE `/` and `/markets` carry no trace of the journey shell
+ * for them, and `/account` is the not-found page. [F]'s demo sign-in exists only on a dev server, so this section has a
+ * door of its own, chosen by the target and nothing else:
+ *   · LOCAL — the demo player through `/auth/demo` (404 in production), as [F] signs in;
+ *   · PRODUCTION — the QA player `mobile01` (`live/harness.mjs` PERSONA: a PLAYER, wallet 0, never funded) through the
+ *     real sign-in form, by the harness's own `loginOnce` — the one sign-in every production drive uses.
+ * ⛔ NEVER AN ADMIN, AND ONE ATTEMPT. On production a failed sign-in STOPS THE RUN (exit 1) instead of trying again: a
+ * second wrong attempt counts toward the account's lockout (five, then thirty minutes), and every other lane's
+ * production drive signs in as this player too. Locally the lockout does not apply, so a failed demo sign-in is
+ * recorded as a failure and the run goes on: [F] still reports. The password is QA_MOBILE01_PASSWORD in
+ * `.env.qa.local` at the repository root, read only here; a missing one stops the run before the form is touched.
+ * ⚠️ WHAT THE PRODUCTION RUN WRITES: this one sign-in, and only what any password sign-in writes — mobile01's session
+ * row (which ENDS any other mobile01 session: one session per account, so run it while no other drive is using
+ * mobile01), two audit rows (`user.login.password`, and `session.created` naming the session it ended), its
+ * last-sign-in time with the failed-login counter and the lock cleared, and the "Signed in" email to mobile01's own
+ * `.test` address, which cannot deliver. Everything after it is a page read.
+ * ⛔ The harness reads its target from LIVE_BASE, so this sets it to BASE before loading the harness and then compares
+ * the two: a sign-in on one host and a measurement on another reads exactly like a bad password.
+ * Under ACTIVE nothing here runs and nobody is signed in — a printed SKIP, never a pass. ⛔ Each page counts only as
+ * the route named (the browser ended there, at HTTP 200: a 404 or a redirect is another page) and as a signed-in
+ * player's page (the balance capsule there, no session-ended notice); an unread page is not a clean page.
+ */
+console.log("\n[E3] New journey shell — absent for the signed-in QA player (production: mobile01 through the real form)");
+if (journeyRollout.state !== "ACTIVE") {
+  const who = LOCAL ? "signed in (demo PLAYER)" : "signed in (QA player mobile01)";
+  let player = null;
+  let why = "";
+  try {
+    if (LOCAL) {
+      const c = await enContext({ viewport: { width: 390, height: 844 } });
+      const p = await c.newPage();
+      await p.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" });
+      await p.waitForTimeout(500);
+      player = await c.storageState();
+      await c.close();
+    } else {
+      process.env.LIVE_BASE = BASE;
+      const harness = await import("./live/harness.mjs");
+      if (harness.BASE !== BASE) throw new Error(`the harness would sign in on ${harness.BASE} while this run measures ${BASE}`);
+      // Throws before any request when the password is not on this machine: the form is never touched without it.
+      harness.qaEnv(harness.PERSONA.mobile01.secret);
+      player = await harness.loginOnce(browser, "mobile01");
+    }
+  } catch (e) {
+    why = String(e?.message ?? e).split("\n")[0].slice(0, 200);
+  }
+  const signedIn = !!player && player.cookies.some((c) => c.name === "kp_session" && !!c.value);
+  ok(`${who}: the sign-in held (a kp_session cookie)`, signedIn, why ? `(${why})` : signedIn ? "" : "(no kp_session cookie)");
+  if (!signedIn && !LOCAL) {
+    console.log(`\n⛔ STOPPED — the QA player's sign-in failed, and on production a failed sign-in stops the run: it is never tried twice (a second wrong attempt counts toward mobile01's lockout). Nothing after [E3] ran.`);
+    await browser.close();
+    console.log(`\n❌ FAILURES — ${pass} passed, ${failures.length} failed`);
+    console.log("\nFAILED:\n" + failures.map((f) => "  - " + f).join("\n"));
+    process.exit(1);
+  }
+  if (signedIn) {
+    const ctx = await browser.newContext({ storageState: player, viewport: { width: 390, height: 844 } });
+    await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
+    for (const route of JOURNEY_SHELL_ROUTES) {
+      const d = await readDocument(ctx, route);
+      const v = d.view;
+      const read = !!v && d.raw.length > 0 && v.shell && d.status === 200 && d.final === route;
+      const found = [...new Set([...(v?.traces ?? []), ...d.traces])];
+      ok(`${who}: ${route} carries no trace of the journey shell, in the page or in the bytes sent (rollout ${journeyRollout.state ?? "UNKNOWN"})`,
+        read && v.signedIn && found.length === 0,
+        !read ? `(HTTP ${d.status} at ${d.final || "?"}${d.err ? `: ${d.err}` : ""} — the page named was not read, or carried no app header: nothing was checked)`
+          : !v.signedIn ? "(not a signed-in page: no balance capsule, or the session-ended notice — this was not the player's page)"
+          : found.length ? `(found ${found.join(", ")} for a player who holds no preview pass)` : "");
+      ok(`${who}: ${route} no uncaught page error`, d.errs.length === 0, d.errs.slice(0, 2).join(" | "));
+    }
+    await accountNotFound(ctx, who, true);
+    await ctx.close();
+  } else {
+    console.log(`  ⚠ [E3]'s page checks NOT run — the demo sign-in did not hold (the failure above). Locally that stops nothing: [F] runs next and asks its own signed-in pages.`);
+  }
+} else {
+  console.log(`  ⚠ SKIP  [E3] — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone, so nobody is signed in to look for its absence ${journeyRollout.detail}. NOT measured by this run.`);
 }
 
 // ── F. Authed surfaces (LOCAL only — uses /auth/demo, 404 in prod) ──
