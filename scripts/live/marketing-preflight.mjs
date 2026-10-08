@@ -3,25 +3,32 @@
  * `docs/marketing-specs/ENGINE-SPEC.md` §4.18 decision 1; the run sheet is "AS BUILT — the run sheet" in the same section).
  *
  *   railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255… --origin=https://www.50pick.tz
- *                                      [--control=+255…] [--expect-dpl=<sha>] [--expect-switch=closed|open] [--sends=<n>] [--new-ledger]
+ *                                      [--control=+255…] [--expect-dpl=<sha>] [--expect-switch=closed|open] [--sends=<n>]
+ *                                      [--min-window=<minutes>] [--drive-campaign=<id>]… [--new-ledger]
  *   (from the checkout production runs; `-s` keeps npm from echoing the typed number in its banner)
  *
  * ⭐ WHAT IT ANSWERS, row by row, each with its reason (the exit code is 0 ONLY when every row is GO):
- *   build · health · migrations · switch · settings · source · window · rail · webhook · credit · ledger ·
+ *   build · health · migrations · switch · settings · source · window · rail · webhook · credit · ledger · in-flight · elsewhere ·
  *   test-number · test-book · test-lists · test-consent · test-cycle · test-fresh · control
  *   · the migrations the engine's tables come from are FINISHED (by name, `_prisma_migrations`);
  *   · the live switch is CLOSED, and when it closes (`--expect-switch=open` asks the opposite, for after step 1);
  *   · the Marketing SMS settings record: price, credit kept for codes, per-campaign limit, window — and that the send window
- *     is open NOW (every time rule reads the DATABASE's clock, `SELECT now()` in the same transaction);
+ *     is open NOW with at least `--min-window` minutes left (default 60: a drive started at 19:55 would be held at 20:00) — every time
+ *     rule reads the DATABASE's clock, `SELECT now()` in the same transaction;
+ *   · ⭐ NOTHING ELSE CAN SEND WHILE THE SWITCH IS OPEN: `in-flight` - no campaign is CONFIRMED, PREPARING, RUNNING or PAUSED other than the
+ *     drive's own (`--drive-campaign=<id>`, repeated for each; steps 0 and 1 name none), and `elsewhere` - no MARKETING message created in
+ *     the last day went to any number but the test number (counted in SQL, no number selected);
  *   · the SOURCE LINE: the newest saved `source.phrase` is not blank (the composer will not save a campaign without it) and, when
  *     licence outreach is open, the 18+ sentence of the typed-number test (`adult.test`) is saved too;
  *   · the receipt secret is SET (production's `/api/health` → `sms.webhookSecretSet`, a boolean, fetched with a timeout) and
  *     the real rail is configured; the SMS credit covers the cap; the build production serves (`?dpl=`, read from the home
  *     page without signing in) — equal to `--expect-dpl` when given;
  *   · the TEST number: a sendable Tanzanian mobile number (the repo's numbering plan), its contact-book row, ITS LIST — one that
- *     holds the test number ALONE (exactly one member), named as the one campaign A must use; a larger list is NO-GO, because a
- *     campaign to it would message everyone else on it — its consent-and-basis state judged as the gate judges it, and again AS IT
- *     WILL BE after the stop link's two acts, which is what campaign C meets — and that no earlier campaign holds it;
+ *     holds the test number ALONE (exactly one member) and whose name this tool can print, named as the one campaign A must use; a
+ *     larger list is NO-GO, because a campaign to it would message everyone else on it, and so is a list of one whose name is hidden
+ *     (rename it to a plain name) - its consent-and-basis state judged as the gate judges it (⭐ bar the agent-referee exclusion, which
+ *     is NOT judged and is said so on the row), and again AS IT WILL BE after the stop link's two acts, which is what campaign C meets
+ *     — and that no earlier campaign holds it;
  *   · the CONTROL number, when one is named: an ACTIVE stop on it. With none named it is not applicable (the §7 Q4 fallback).
  *   · the ledger (`.qa-shots/marketing-setup/U52a/ledger.json`): `--sends` more chargeable sends (default 1) still fit under 6.
  *     Its ABSOLUTE path and last write are printed every run; a MISSING file is NO-GO unless `--new-ledger` says the drive has not
@@ -36,21 +43,21 @@
  * ⛔ NO NUMBER IS PRINTED WHOLE: the two numbers arrive as arguments, are judged by `parseTzNumber`, and are shown only as the
  * repo's mask (`+255••••NN`). Every line goes through an output filter that also removes the database address and any secret.
  * ⛔ NOTHING DEFAULTS TO PRODUCTION: `--origin` is required, `DATABASE_URL` is set by the runner and never printed, and a
- * private Railway host (which does not resolve off Railway) is refused with a word, not echoed.
+ * private Railway host (which does not resolve off Railway) is refused with a word, not echoed. The report says ONE word for the
+ * database it read - `proxy`, `loopback` or `other` - never its address.
  *
  * Exit: 0 every row GO · 1 at least one NO-GO · 2 not run (usage, no database, or the database would not confirm read-only).
  * Guard: `npm run test:marketing-preflight` (the rules, the masks, the exit codes, the read-only first statement) ·
  * `npm run red:marketing-preflight`.
  */
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
-import { boot } from "../lib/marketing-u52a-boot.mjs";
+import { boot, isMain } from "../lib/marketing-u52a-boot.mjs";
 
 /* ══ BEFORE ANYTHING ELSE IS LOADED ══════════════════════════════════════════════════════════════════════════════════ */
 // ⭐ The public proxy FIRST, then the checkout check, then the core by a DYNAMIC import (a static import is evaluated before this
 // file's first line — the marketing referee-keys door was built on the private host that way, 70e9ba96). See marketing-u52a-boot.mjs.
-const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
-const AS_MAIN = import.meta.url === entryUrl;
+// `isMain` compares REAL paths: through a junction or a symlink the program's path and this file's URL differ, and a plain comparison
+// would turn the tool into a silent no-op (exit 0, nothing printed).
+const AS_MAIN = isMain(import.meta.url);
 if (AS_MAIN) {
   const booted = boot(import.meta.url);
   if (!booted.ok) {
@@ -64,14 +71,22 @@ const { EXIT, SEND_CAP } = LIB;
 
 const USAGE = [
   "usage: railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255… --origin=https://<production host> [--control=+255…]",
-  "                                         [--expect-dpl=<build>] [--expect-switch=closed|open] [--sends=<0-6>] [--new-ledger]",
+  "                                         [--expect-dpl=<build>] [--expect-switch=closed|open] [--sends=<0-6>] [--min-window=<minutes>]",
+  "                                         [--drive-campaign=<id>]… [--new-ledger]",
 ].join("\n");
 
+/** Value flags are taken ONCE (a second `--test` is refused, never silently ignored); only `--drive-campaign` may be repeated - one per campaign. */
 export const PREFLIGHT_FLAGS = Object.freeze({
-  values: ["test", "control", "origin", "expect-dpl", "expect-switch", "sends"],
+  values: ["test", "control", "origin", "expect-dpl", "expect-switch", "sends", "min-window", "drive-campaign"],
   flags: ["new-ledger"],
   positional: 0,
+  repeat: ["drive-campaign"],
 });
+
+/** The send window must still be open for this many minutes (default) when the drive starts: a start at 19:55 would be held at 20:00. */
+export const DEFAULT_MIN_WINDOW = 60;
+/** The most campaigns of the drive that may be named (A, B, C and their retries). */
+export const MAX_DRIVE_CAMPAIGNS = 8;
 
 /** The fetch's patience, in milliseconds. */
 export const FETCH_TIMEOUT_MS = 8_000;
@@ -117,8 +132,18 @@ export function parsePreflightArgs(argv, lib = LIB) {
     if (/^[0-9]$/.test(one("sends")) && Number(one("sends")) <= SEND_CAP) sends = Number(one("sends"));
     else problems.push(`--sends must be a whole number from 0 to ${SEND_CAP}`);
   }
+  let minWindow = DEFAULT_MIN_WINDOW;
+  if (one("min-window") !== undefined) {
+    if (/^[0-9]{1,3}$/.test(one("min-window")) && Number(one("min-window")) <= 720) minWindow = Number(one("min-window"));
+    else problems.push("--min-window must be a whole number of minutes from 0 to 720");
+  }
+  const driveCampaigns = [];
+  for (const raw of f.values["drive-campaign"] ?? []) {
+    if (lib.isCampaignId(raw)) { if (!driveCampaigns.includes(raw)) driveCampaigns.push(raw); } else problems.push("--drive-campaign is not a campaign id (8 to 64 letters, digits, - or _, with a letter in it - never a phone number)");
+  }
+  if (driveCampaigns.length > MAX_DRIVE_CAMPAIGNS) problems.push(`at most ${MAX_DRIVE_CAMPAIGNS} --drive-campaign ids`);
   if (problems.length) return { ok: false, problems };
-  return { ok: true, args: { test, control, origin, expectDpl, expectSwitch, sends, newLedger: f.flags.has("new-ledger") } };
+  return { ok: true, args: { test, control, origin, expectDpl, expectSwitch, sends, minWindow, driveCampaigns, newLedger: f.flags.has("new-ledger") } };
 }
 
 /* ══ THE NETWORK READS (public, unauthenticated, bounded) ════════════════════════════════════════════════════════════ */
@@ -168,6 +193,9 @@ export function dplFromHtml(html) {
  *   User                                  the account that holds the test number, if any: role, status, switch, date of birth
  *                                         (the date is judged to an age band and never shown)
  *   SmsCampaignRecipient                  the campaigns that already hold the test number: campaign id, status
+ *   SmsCampaign                           every campaign that could send now (CONFIRMED, PREPARING, RUNNING, PAUSED): its id and status
+ *   SmsMessage                            ONE COUNT: the MARKETING messages created in the last day to any number but the test number
+ *                                         (counted in SQL; the number of a message is never selected)
  */
 export async function readPreflightFacts(tx, { testKey, controlKey }) {
   const facts = { migrations: [], config: {}, test: {}, control: null };
@@ -175,11 +203,9 @@ export async function readPreflightFacts(tx, { testKey, controlKey }) {
   facts.now = clock[0] ? clock[0].now : null;
   facts.migrations = await tx.$queryRaw`/* u52a:migrations */ SELECT "migration_name" AS name, ("finished_at" IS NOT NULL) AS finished, ("rolled_back_at" IS NOT NULL) AS rolled FROM "_prisma_migrations"`;
   const configRows = await tx.$queryRaw`/* u52a:config */ SELECT "key", "value" FROM "SystemConfig" WHERE "key" IN ('marketing.sms.live', 'marketing.sms.settings', 'marketing.outreach.licence', 'marketing.wordings')`;
-  for (const r of configRows) {
-    let v = r.value;
-    if (typeof v === "string") { try { v = JSON.parse(v); } catch { /* a bare string stays a string: the readers refuse it */ } }
-    facts.config[r.key] = v;
-  }
+  // ⭐ The stored value exactly as the database holds it. A STRING-valued record is malformed, as the app's readers read it (they accept an
+  // object only): it is never parsed into one here, which would let a row the engine refuses look fine.
+  for (const r of configRows) facts.config[r.key] = r.value;
 
   const contacts = await tx.$queryRaw`/* u52a:contact */ SELECT "id", "consentState"::text AS consent_state, ("suppressedAt" IS NOT NULL) AS suppressed, ("userId" IS NOT NULL) AS linked, "source"::text AS source, COALESCE("sourceRef" = 'erasure', false) AS erased, "createdAt" AS created_at FROM "MarketingContact" WHERE "msisdn" = ${testKey}`;
   facts.test.contact = contacts[0] ?? null;
@@ -197,6 +223,10 @@ export async function readPreflightFacts(tx, { testKey, controlKey }) {
   const users = await tx.$queryRaw`/* u52a:user */ SELECT "role"::text AS role, "status"::text AS status, "marketingOptIn" AS opt_in, "dob" FROM "User" WHERE "phoneE164" = ${`+${testKey}`}`;
   facts.test.user = users[0] ?? null;
   facts.test.campaigns = await tx.$queryRaw`/* u52a:holds */ SELECT "campaignId" AS campaign_id, "status"::text AS status FROM "SmsCampaignRecipient" WHERE "msisdn" = ${testKey} ORDER BY "createdAt" LIMIT 20`;
+  // ⭐ NOTHING ELSE CAN SEND WHILE THE SWITCH IS OPEN: every campaign that could send now, and the count of the last day's marketing messages to anyone else
+  facts.inFlight = await tx.$queryRaw`/* u52a:in-flight */ SELECT "id", "status"::text AS status FROM "SmsCampaign" WHERE "status"::text IN ('CONFIRMED', 'PREPARING', 'RUNNING', 'PAUSED') ORDER BY "createdAt", "id" LIMIT 21`;
+  const elsewhere = await tx.$queryRaw`/* u52a:elsewhere */ SELECT count(*)::int AS n FROM "SmsMessage" WHERE "purpose"::text = 'MARKETING' AND "createdAt" > now() - interval '1 day' AND "msisdn" <> ${testKey}`;
+  facts.elsewhere = elsewhere[0] ? elsewhere[0].n : null;
 
   if (controlKey) {
     const rows = await tx.$queryRaw`/* u52a:suppression */ SELECT "reason"::text AS reason, COALESCE("evidence" LIKE 'optout:%', false) AS via_link, "createdAt" AS created_at, "liftedAt" AS lifted_at FROM "Suppression" WHERE "channel"::text = 'SMS' AND "category"::text = 'MARKETING' AND "identifier" = ${controlKey}`;
@@ -212,7 +242,7 @@ const clip = (s, n = 12) => String(s).slice(0, n);
 
 /** Which row ids exist, in order. A suite holds this list so a row cannot vanish unnoticed. */
 export const ROW_IDS = Object.freeze([
-  "build", "health", "migrations", "switch", "settings", "source", "window", "rail", "webhook", "credit", "ledger",
+  "build", "health", "migrations", "switch", "settings", "source", "window", "rail", "webhook", "credit", "ledger", "in-flight", "elsewhere",
   "test-number", "test-book", "test-lists", "test-consent", "test-cycle", "test-fresh", "control",
 ]);
 
@@ -278,10 +308,12 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   else if (outreachRecord.state === "open" && !adultTest) add("source", false, `source.phrase ${savedOn(sourceLine)}, but licence outreach is OPEN and no adult.test sentence is saved - the composer refuses a typed-number test up front without it`);
   else add("source", true, `source.phrase ${savedOn(sourceLine)}${outreachRecord.state === "open" ? ` · adult.test ${savedOn(adultTest)} (licence outreach is open)` : " · adult.test not needed (licence outreach is closed)"}`);
 
-  // window · now is inside the send window
+  // window · now is inside the send window, with room to run the drive (the window's END is exclusive, as the engine's)
   const minuteNow = lib.eatParts(nowMs).minuteOfDay;
-  if (minuteNow >= s.windowStartMinute && minuteNow < s.windowEndMinute) add("window", true, `it is ${lib.minuteLabel(minuteNow)} EAT, inside ${window} (${s.windowEndMinute - minuteNow} min left)`);
-  else add("window", false, `it is ${lib.minuteLabel(minuteNow)} EAT, outside ${window} — every send would be held`);
+  const left = s.windowEndMinute - minuteNow;
+  if (!(minuteNow >= s.windowStartMinute && minuteNow < s.windowEndMinute)) add("window", false, `it is ${lib.minuteLabel(minuteNow)} EAT, outside ${window} — every send would be held`);
+  else if (left < args.minWindow) add("window", false, `it is ${lib.minuteLabel(minuteNow)} EAT, inside ${window} but only ${left} min are left and the drive wants at least ${args.minWindow} (--min-window) - a send started now could be held when the window shuts`);
+  else add("window", true, `it is ${lib.minuteLabel(minuteNow)} EAT, inside ${window} (${left} min left; at least ${args.minWindow} wanted)`);
 
   // rail · the real carrier is configured
   const smsInfo = h && h.sms ? h.sms : null;
@@ -310,6 +342,23 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   else if (ctx.ledger.used + args.sends > SEND_CAP) add("ledger", false, `the ledger refuses: ${ctx.ledger.used} of ${SEND_CAP} chargeable sends already counted, and this step would add ${args.sends}`);
   else add("ledger", true, `${ctx.ledger.used} of ${SEND_CAP} chargeable sends counted${ctx.ledger.kind === "new" ? " (a NEW ledger: --new-ledger says the drive has not begun)" : ""} · room for this step's ${args.sends} (${SEND_CAP - ctx.ledger.used - args.sends} spare after it)`);
 
+  // in-flight · ⭐ nothing else can send while the switch is open: no campaign that could send now but the drive's own
+  const own = new Set(args.driveCampaigns ?? []);
+  const flying = Array.isArray(facts.inFlight) ? facts.inFlight : null;
+  const listed = (xs) => xs.slice(0, 5).map((r) => `${lib.safeText(r.id, 64)} ${lib.safeText(r.status, 12)}`).join(" · ") + (xs.length > 5 ? ` · …and ${xs.length - 5} more` : "");
+  if (flying === null) add("in-flight", false, "the campaigns that could send were not read");
+  else {
+    const others = flying.filter((r) => !own.has(r.id));
+    const ours = flying.filter((r) => own.has(r.id));
+    if (others.length > 0) add("in-flight", false, `${others.length}${flying.length > 20 ? " or more" : ""} campaign${others.length === 1 ? "" : "s"} other than the drive's own could send while the switch is open: ${listed(others)} - find out whose, and have them paused or stopped, before the switch is opened`);
+    else add("in-flight", true, flying.length === 0 ? "no campaign is CONFIRMED, PREPARING, RUNNING or PAUSED" : `no campaign is CONFIRMED, PREPARING, RUNNING or PAUSED besides the drive's own (${listed(ours)})`);
+  }
+
+  // elsewhere · ⭐ no marketing message of the last day went to anyone but the test number (any campaign, any test)
+  if (typeof facts.elsewhere !== "number") add("elsewhere", false, "the count of the last day's marketing messages to other numbers was not read");
+  else if (facts.elsewhere > 0) add("elsewhere", false, `${facts.elsewhere} MARKETING message${facts.elsewhere === 1 ? " was" : "s were"} created in the last 24 hours to a number that is NOT the test number - somebody else is sending, or an earlier test did; find out whose before the switch is opened`);
+  else add("elsewhere", true, "no MARKETING message created in the last 24 hours went to any number but the test number");
+
   // test-number · the numbering plan said ok when the argument was read
   add("test-number", true, `${args.test.masked} is a sendable Tanzanian mobile number${args.test.operator ? ` (prefix of ${args.test.operator})` : ""}`);
 
@@ -325,16 +374,17 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   else if (lists.length === 0) add("test-lists", false, `${args.test.masked} is on no list — a campaign to "a book list" cannot reach it`);
   else {
     // ⭐ THE DRIVE LIST MUST HOLD THE TEST NUMBER ALONE: campaign A is "to a book list", and every other member of that list would be messaged.
-    const labelOf = (l) => {
-      const shown = lib.safeLabel(l.list_name);
-      const plain = !shown.startsWith("«");
-      return `${shown}${plain ? "" : " (a name this tool will not print)"} (${l.members} member${Number(l.members) === 1 ? "" : "s"}${l.basis ? (l.basis.revoked ? ", newest basis revoked" : ", a basis is in force") : ""})`;
-    };
+    // ⭐ ... AND THE TOOL MUST BE ABLE TO NAME IT: a list of one whose name this tool will not print (an accent, a symbol, over 40 characters)
+    // cannot be pointed at on the sheet, so it is NO-GO - rename it to a plain name. (Its id is printed beside it, so it can be found.)
+    const plainName = (l) => !lib.safeLabel(l.list_name).startsWith("«");
+    const labelOf = (l) => `${lib.safeLabel(l.list_name)}${plainName(l) ? "" : ` [a name this tool will not print; id ${lib.safeText(l.list_id, 64)}]`} (${l.members} member${Number(l.members) === 1 ? "" : "s"}${l.basis ? (l.basis.revoked ? ", newest basis revoked" : ", a basis is in force") : ""})`;
     const alone = lists.filter((l) => Number(l.members) === 1);
-    const larger = lists.filter((l) => Number(l.members) !== 1);
+    const crowded = lists.filter((l) => Number(l.members) !== 1);
+    const named = alone.filter(plainName);
     const listed = (xs) => xs.slice(0, 5).map(labelOf).join(" · ") + (xs.length > 5 ? ` · …and ${xs.length - 5} more` : "");
-    if (alone.length === 0) add("test-lists", false, `no list holds the test number alone: ${listed(larger)} - the drive list must hold the test number alone, or campaign A would message everyone else on it`);
-    else add("test-lists", true, `campaign A must use ${alone.length === 1 ? "this list, which holds" : "one of these lists, which hold"} the test number alone: ${listed(alone)}${larger.length ? ` · it is also on ${larger.length} larger list${larger.length === 1 ? "" : "s"} - never pick ${listed(larger)}` : ""}`);
+    if (alone.length === 0) add("test-lists", false, `no list holds the test number alone: ${listed(crowded)} - the drive list must hold the test number alone, or campaign A would message everyone else on it`);
+    else if (named.length === 0) add("test-lists", false, `${alone.length === 1 ? "the only list that holds" : "the lists that hold"} the test number alone ${alone.length === 1 ? "has" : "have"} a name this tool will not print: ${listed(alone)} - rename ${alone.length === 1 ? "it" : "one of them"} to a plain name (letters, digits, spaces, . _ : # -, up to 40 characters) so the sheet can point campaign A at it`);
+    else add("test-lists", true, `campaign A must use ${named.length === 1 ? "this list, which holds" : "one of these lists, which hold"} the test number alone: ${listed(named)}${alone.length > named.length ? ` · ${alone.length - named.length} more list${alone.length - named.length === 1 ? "" : "s"} of one with a hidden name: ${listed(alone.filter((l) => !plainName(l)))}` : ""}${crowded.length ? ` · it is also on ${crowded.length} larger list${crowded.length === 1 ? "" : "s"} - never pick ${listed(crowded)}` : ""}`);
   }
 
   // test-consent / test-cycle · the gate's consent-and-basis half, now and after the stop link's two acts
@@ -358,16 +408,19 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   const holder = facts.test.user
     ? `an account holds it (${lib.safeText(facts.test.user.role, 12)}, ${lib.safeText(facts.test.user.status, 14)}, marketing switch ${facts.test.user.opt_in === true ? "on" : "off"}) · `
     : "no account holds it · ";
+  // ⭐ U33r · the agent-referee exclusion is NOT judged (§4.18: option b) and every consent row says so, GO or NO-GO: a number given as an
+  // agent applicant's referee is SKIPPED agent_referee at the send - the real gate asks it right after the stop list, before any basis.
+  const later = (v) => v.unjudged.filter((x) => x !== lib.REFEREE_UNJUDGED);
   const verdict = (v) => v.ok
-    ? `${holder}the gate would clear it on the ${v.branch === "account" ? "ACCOUNT" : "CONTACT"} branch (${v.basis})${v.unjudged.length ? ` — asked again at the send, not judged here: ${v.unjudged.join(", ")}` : ""}`
+    ? `${holder}the gate would clear it on the ${v.branch === "account" ? "ACCOUNT" : "CONTACT"} branch (${v.basis})${later(v).length ? ` — asked again at the send, not judged here: ${later(v).join(", ")}` : ""}`
     : `${holder}the gate would refuse it: ${v.skipReason} (${v.detail})`;
   const now = lib.judgeEligibility(eligFacts);
   // The licence-outreach record decides whether the composer may test a TYPED number (run sheet step 2), so it is said beside the verdict.
-  add("test-consent", now.ok, `${verdict(now)} · licence outreach: ${eligFacts.outreach}`);
+  add("test-consent", now.ok, `${verdict(now)} · licence outreach: ${eligFacts.outreach} · ${lib.REFEREE_SAYING}`);
   const after = lib.judgeEligibility(lib.factsAfterStopCycle(eligFacts, nowMs));
   add("test-cycle", after.ok, after.ok
-    ? `after the stop link's two acts (stop, then "Start them again") the gate would still clear it (${after.basis}) — campaign C can send`
-    : `after the stop link's two acts the gate would REFUSE it: ${after.skipReason} (${after.detail}) — campaign C would skip it`);
+    ? `after the stop link's two acts (stop, then "Start them again") the gate would still clear it (${after.basis}) — campaign C can send · ${lib.REFEREE_SAYING}`
+    : `after the stop link's two acts the gate would REFUSE it: ${after.skipReason} (${after.detail}) — campaign C would skip it · ${lib.REFEREE_SAYING}`);
 
   // test-fresh · no earlier campaign holds it
   const held = facts.test.campaigns ?? [];
@@ -391,7 +444,7 @@ export function renderPreflight(rows, ctx, lib = LIB) {
   const lines = [];
   lines.push(`U52a pre-flight · read-only · ${lib.fmtEat(ctx.nowMs)} EAT`);
   lines.push(`test ${ctx.args.test.masked} · ${ctx.args.control ? `control ${ctx.args.control.masked}` : "control not named (the Q4 fallback)"} · production ${ctx.args.origin.replace(/^https?:[/][/]/, "")}`);
-  lines.push(`transaction read-only: ${ctx.readOnly} · repeatable read`);
+  lines.push(`transaction read-only: ${ctx.readOnly} · repeatable read${ctx.dbClass ? ` · database: ${ctx.dbClass}` : ""}`);
   if (ctx.clock) lines.push(lib.clockLine(ctx.clock));
   if (ctx.ledgerFile) lines.push(ctx.ledgerFile);
   for (const r of rows) lines.push(`  ${mark(r.go)}  ${r.id.padEnd(12)} ${r.reason}`);
@@ -441,7 +494,8 @@ export async function runPreflight(argv, deps = realDeps()) {
     io.line("REFUSING: no DATABASE_URL — run through the runner, which sets the public proxy.");
     return EXIT.notRun;
   }
-  if (/[.]railway[.]internal(?::|[/]|$)/.test(String(d.env.DATABASE_URL))) {
+  const dbUrl = String(d.env.DATABASE_URL);
+  if (lib.isPrivateHost(dbUrl)) {
     io.line("REFUSING: DATABASE_URL is Railway's private host, which does not resolve off Railway — the runner must set the public proxy.");
     return EXIT.notRun;
   }
@@ -471,7 +525,7 @@ export async function runPreflight(argv, deps = realDeps()) {
 
   // ⭐ Every time rule reads the DATABASE's clock (`SELECT now()` from the same transaction), this machine's only as the fallback.
   const clock = lib.clockOf(facts.now, d.now());
-  const ctx = { nowMs: clock.nowMs, clock, args, home: homeRead, health, ledger, ledgerFile: lib.ledgerFileLine(ledgerIo), readOnly: "on" };
+  const ctx = { nowMs: clock.nowMs, clock, args, home: homeRead, health, ledger, ledgerFile: lib.ledgerFileLine(ledgerIo), readOnly: "on", dbClass: lib.databaseClass(dbUrl) };
   const rows = d.judge(facts, ctx, lib);
   for (const line of renderPreflight(rows, ctx, lib)) io.line(line);
   return rows.some((r) => r.go === false) ? EXIT.fail : EXIT.ok;

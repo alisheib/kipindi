@@ -25,6 +25,7 @@
 import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { databaseClass, isPrivateHost } from "./marketing-u52a-boot.mjs";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import { maskPhone } from "../../src/lib/phone-normalize.ts";
 import { isSmsConsentWording, SMS_CONSENT_WORDINGS } from "../../src/lib/marketing/consent-wording.ts";
@@ -63,11 +64,23 @@ export const ENGINE_MIGRATIONS = Object.freeze([
   "20261008120000_sms_recipient_outcome_index",
 ]);
 
-/** The SystemConfig keys the tools read (never write). */
+/** The SystemConfig keys the tools read (never write). ⭐ `test:marketing-preflight` P6e holds each to the APP's own constant
+ *  (`MARKETING_LIVE_SWITCH_KEY`, `MARKETING_SMS_SETTINGS_KEY`, `LICENCE_OUTREACH_KEY`, `MARKETING_WORDINGS_KEY`) and to the literals of
+ *  the pre-flight's SQL: a typo here reads an OPEN switch as "closed - no row stored". */
 export const KEY_LIVE_SWITCH = "marketing.sms.live";
 export const KEY_SETTINGS = "marketing.sms.settings";
 export const KEY_OUTREACH = "marketing.outreach.licence";
 export const KEY_WORDINGS = "marketing.wordings";
+
+/** The database a connection string names, as ONE word (`proxy` · `loopback` · `other`), and whether it is Railway's private host -
+ *  both defined with the boot module (which has to run before this one is loaded) and used by the tools through here. */
+export { databaseClass, isPrivateHost };
+
+/** The campaign id as the composer's address carries it (`?draft=<id>`): 8 to 64 letters, digits, - or _, with a letter in it, never a phone number. */
+export function isCampaignId(text) {
+  const s = typeof text === "string" ? text : "";
+  return /^[A-Za-z0-9_-]{8,64}$/.test(s) && /[A-Za-z]/.test(s) && scrubNumbers(s) === s;
+}
 
 /* ══ FLAGS ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -189,8 +202,16 @@ function asciiDigits(s) {
   });
 }
 
-/** Up to three characters that are neither a letter nor a digit between two digits: a space, a dash, a slash, a dot, a tab, a zero-width mark. */
-const SEPARATORS = "[^A-Za-z0-9]{0,3}";
+/** Up to SIX characters that are neither a letter nor a digit between two digits: spaces, dashes, a slash, dots, tabs, zero-width marks,
+ *  a line break - in any mixture (`7 - - 5`, a mark after every digit and a space after every mark). */
+const SEPARATORS = "[^A-Za-z0-9]{0,6}";
+
+/**
+ * What may stand BETWEEN two digit groups of a number the tool was NOT given (the generic pass): one to three of a space, a bracket, a dot,
+ * a hyphen, a slash, an underscore, an en dash or a minus sign, a tab, a no-break or thin space, a zero-width mark or a soft hyphen. A colon, a
+ * comma or a letter ends a number (a time, an amount and an id are left alone).
+ */
+const GENERIC_GAP = new RegExp("^[ ().\\-/_\\t\\u00a0\\u00ad\\u2009\\u200b-\\u200d\\u2013\\u2212\\u2060\\ufeff]{1,3}$");
 
 /**
  * ⭐ A NUMBER THE TOOL WAS GIVEN, in ANY spelling: its nine national digits with up to three non-alphanumerics between any two
@@ -230,7 +251,7 @@ export function scrubNumbers(text, keys = []) {
     for (let j = i; j < groups.length && j < i + 8; j++) {
       if (j > i) {
         const gap = s.slice(groups[j - 1].end, groups[j].start);
-        if (!/^[ ().-]{1,2}$/.test(gap) || s[groups[j].start] === "+") break;
+        if (!GENERIC_GAP.test(gap) || s[groups[j].start] === "+") break;
       }
       acc += groups[j].digits;
       if (acc.length > 15) break;
@@ -258,10 +279,11 @@ export function makeIo(sink, env = {}, keys = []) {
   return {
     lines,
     line(text = "") {
-      for (const part of String(text).split("\n")) {
-        const safe = safeLine(part, env, keys);
-        lines.push(safe);
-        sink(safe);
+      // ⭐ The WHOLE text is made safe first and split into lines after: a number (or a secret) that a line break runs through is still one
+      // thing to the filter, and a break is one of the separators a number may be spelled with.
+      for (const part of safeLine(String(text), env, keys).split("\n")) {
+        lines.push(part);
+        sink(part);
       }
     },
   };
@@ -275,7 +297,10 @@ export function describeError(err, env = {}, keys = []) {
   const name = typeof err?.name === "string" ? err.name : "Error";
   const code = typeof err?.code === "string" ? ` ${err.code}` : "";
   const pg = typeof err?.meta?.code === "string" ? ` pg ${err.meta.code}` : "";
-  const last = String(err?.message ?? err ?? "").split("\n").map((l) => l.trim()).filter(Boolean).pop() ?? "";
+  // ⭐ Made safe BEFORE it is cut: the whole message passes the filter first, so a database address or a secret that the 160-character
+  // cut would have split in two (leaving the front half of a password on the screen) is already gone, and so is a number that a line
+  // break would have separated from its last digits. The last line of the SAFE text is what is shown.
+  const last = safeLine(String(err?.message ?? err ?? ""), env, keys).split("\n").map((l) => l.trim()).filter(Boolean).pop() ?? "";
   const stmt = typeof err?.u52aStatement === "string" && /^[a-z?-]{1,30}$/.test(err.u52aStatement) ? ` [read: ${err.u52aStatement}]` : "";
   return safeLine(`${name}${code}${pg}${stmt}${last ? `: ${last.slice(0, 160)}` : ""}`, env, keys);
 }
@@ -520,6 +545,19 @@ export function newestWording(value, key) {
 
 /* ══ THE GATE'S CONSENT-AND-BASIS HALF ═══════════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * ⭐ U33r · THE ONE EXCLUSION NEITHER BRANCH OF THE PORT DECIDES. The real gate (`mayReceiveMarketingSms`, step 1b, right after the
+ * stop list and BEFORE any basis, consent included) refuses `agent_referee` for a number kept as an agent applicant's referee, who
+ * was promised "we never contact you for marketing". Judging it would mean computing the keyed hash of the number (and of the
+ * account's and the book row's e-mail) under the production pepper and reading `AgentRefereeKey` - secret material a read-only tool
+ * does not touch, and a second definition of a keyed read that could answer "not held" falsely. So the port does NOT judge it, and
+ * SAYS SO on every consent row: the safe direction is the real gate's own refusal at the send, which the evidence names. §4.18
+ * records the decision (option b of the merge round). `test:marketing-preflight` P6d requires, over a referee dimension, that the
+ * port never reads a GO the real gate refuses without carrying this entry in `unjudged`.
+ */
+export const REFEREE_UNJUDGED = "the agent-referee exclusion";
+export const REFEREE_SAYING = "the agent-referee exclusion is NOT judged here: a number given as an agent applicant's referee is SKIPPED agent_referee at the send, before any consent or basis (the evidence names that reason)";
+
 /** What the gate asks AFTER consent and basis for an account holder — read at the send, NOT judged by the preflight. */
 export const UNJUDGED_FOR_ACCOUNTS = Object.freeze([
   "self-exclusion", "cooling-off", "harm markers", "an identity check's final refusal", "under 25 with a break on record",
@@ -565,8 +603,8 @@ const refuse = (skipReason, detail) => ({ ok: false, skipReason, detail });
 /**
  * ⭐ THE CONSENT-AND-BASIS HALF OF `mayReceiveMarketingSms`, from facts read once (suppression, account, ledger, licence record,
  * book standing) — in the gate's own order, with the gate's own skip reasons. `test:marketing-preflight` P6 drives the REAL gate
- * with the same facts and requires the same answer. WHAT IT DOES NOT DECIDE is `UNJUDGED_FOR_ACCOUNTS`: the gate asks those at
- * the send, and an account holder's GO carries them as `unjudged`.
+ * with the same facts and requires the same answer. WHAT IT DOES NOT DECIDE is `REFEREE_UNJUDGED` (every number) and
+ * `UNJUDGED_FOR_ACCOUNTS` (an account holder): the gate asks those at the send, and a GO carries them as `unjudged`.
  *
  * facts = { suppression: bool (an ACTIVE stop), user: null | { status, optIn, adult }, latest: classified ledger row | null,
  *           outreach: "open" | "closed", book: { row: "none" | "live" | "erased", cover: bool } }
@@ -586,13 +624,15 @@ export function judgeEligibility(facts) {
     if (noConsent) {
       if (facts.outreach !== "open") return noConsent;
       if (latest && latest.status === "WITHDRAWN") return refuse("consent_withdrawn", "withdrawn; a licence basis never overrides a stop");
+      // ⚠️ KNOWN DIVERGENCE, IN THE SAFE DIRECTION (stricter than the gate): main's gate reversed Q9 and clears this account under an OPEN
+      // record; this port still refuses it. `test:marketing-preflight` P6d names the family (18 scenarios) and requires nothing else to differ.
       if (u.optIn === false && latest && latest.status === "GIVEN") return refuse("no_consent", "the switch is off after a consent that was never withdrawn");
       basis = "LICENCE_PLAYER";
     }
     if (u.adult === "unknown" || u.adult === "boundary") return refuse("age_unknown", u.adult === "boundary" ? "the account's birthday is within a day of 18" : "no readable date of birth");
     if (u.adult === "minor") return refuse("age_minor", "the account holder is under 18");
     if (!MARKETABLE_STATUS.has(u.status)) return refuse("account_status", `the account is ${safeText(String(u.status), 14).toLowerCase()}`);
-    return { ok: true, branch: "account", basis, unjudged: UNJUDGED_FOR_ACCOUNTS };
+    return { ok: true, branch: "account", basis, unjudged: [REFEREE_UNJUDGED, ...UNJUDGED_FOR_ACCOUNTS] };
   }
   // 3 · the contact branch — no account holds the number
   if (latest && latest.status === "WITHDRAWN") return refuse("consent_withdrawn", "consent was withdrawn");
@@ -608,7 +648,7 @@ export function judgeEligibility(facts) {
   }
   const adult = (latest !== null && latest.attestation === true) || book.cover === true;
   if (!adult) return refuse("age_unknown", "no 18+ evidence: no import attestation on the latest row and no covering list basis");
-  return { ok: true, branch: "contact", basis, unjudged: [] };
+  return { ok: true, branch: "contact", basis, unjudged: [REFEREE_UNJUDGED] };
 }
 
 /** The wording the stop link's "Start them again" stores (Swahili, the page's default language). */
@@ -707,7 +747,36 @@ export function defaultLedgerPath() {
   return fileURLToPath(new URL(`../../${LEDGER_REL}`, import.meta.url));
 }
 
-export function fileLedgerIo(path = defaultLedgerPath()) {
+/** How long (milliseconds) the ledger's rename waits between its tries when Windows holds the target for a moment (an antivirus scan, an
+ *  editor, the search indexer): EPERM and EBUSY are common there and pass in a moment. */
+export const RENAME_WAITS_MS = Object.freeze([50, 100, 200, 400, 800]);
+
+/** A synchronous wait: the ledger is written synchronously, as the last thing a run does. */
+function sleepMs(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * ⭐ `rename(from, to)`, tried again after a short wait while the target is HELD (EPERM, EBUSY) - up to `waits.length` more times - and
+ * any other failure at once. Returns how many times it had to wait; throws the last error when the file stays held. A ledger that
+ * could not be written is a stopped drive, so a hiccup of the file system must not be one.
+ */
+export function renameWithRetry(rename, from, to, sleep = sleepMs, waits = RENAME_WAITS_MS) {
+  for (let tries = 0; ; tries++) {
+    try {
+      rename(from, to);
+      return tries;
+    } catch (err) {
+      const held = err !== null && typeof err === "object" && (err.code === "EPERM" || err.code === "EBUSY");
+      if (!held || tries >= waits.length) throw err;
+      sleep(waits[tries]);
+    }
+  }
+}
+
+/** `ops` is the file system the io writes through (a suite hands in a stand-in: it writes no file). */
+export function fileLedgerIo(path = defaultLedgerPath(), ops = {}) {
+  const fsOps = { mkdir: mkdirSync, writeFile: writeFileSync, rename: renameSync, sleep: sleepMs, ...ops };
   return {
     path,
     read() {
@@ -717,10 +786,10 @@ export function fileLedgerIo(path = defaultLedgerPath()) {
       }
     },
     write(text) {
-      mkdirSync(dirname(path), { recursive: true });
+      fsOps.mkdir(dirname(path), { recursive: true });
       const tmp = `${path}.tmp`;
-      writeFileSync(tmp, text, "utf8");
-      renameSync(tmp, path);
+      fsOps.writeFile(tmp, text, "utf8");
+      renameWithRetry(fsOps.rename, tmp, path, fsOps.sleep);
     },
     /** Where the file is and when it was last written — said by every run, so a ledger in the wrong checkout shows at once. */
     where() {
