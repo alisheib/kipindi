@@ -177,8 +177,10 @@ export type Harness = {
   sw: SwitchModel;
   /** A number unique to this run — in every id, so two runs in one process never meet. */
   runId: number;
-  /** Virtual time the run began (the audit and the log scans read from here). */
+  /** Virtual time the run proper began, after its setup (the audit scans read from here). */
   startedAt: number;
+  /** Where the console tap stood when the setup ended: the log scans read the lines printed since. */
+  tapMark: number;
   campaigns: CampaignRef[];
   acts: ActRecord[];
   obs: Observations;
@@ -262,6 +264,7 @@ export function makeHarness(p: HarnessInit): Harness {
     acts: [],
     numbers: new Set(),
     rgRegated: 0,
+    tapMark: 0,
     scn: 0,
     claims: [],
     log: (line) => p.opts.log(line),

@@ -4,9 +4,11 @@
  *
  * ⛔ This file holds no backslash (an editing tool decodes them).
  */
-import type { SmsCampaignRecipientStatus, StoredSmsCampaignRecipient } from "../../../src/lib/server/store.ts";
-import type { Harness } from "./core.mts";
-import type { Person, World } from "./world.mts";
+import type { SmsCampaignRecipientStatus, StoredSmsCampaign, StoredSmsCampaignRecipient } from "../../../src/lib/server/store.ts";
+import { enqueueAll, start } from "./core.mts";
+import type { Harness, Process } from "./core.mts";
+import { buildWorld, confirmedCampaign } from "./world.mts";
+import type { Person, World, WorldSpec } from "./world.mts";
 import { summarize } from "./kit.mts";
 import type { Summary } from "./kit.mts";
 
@@ -88,12 +90,6 @@ export function sliceFigures(h: Harness, campaignId: string, from = 0): SliceFig
 export const sum = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0);
 
 /* ══ LAUNCHING A CAMPAIGN ═══════════════════════════════════════════════════════════════════════════════════════════ */
-
-import { enqueueAll, start } from "./core.mts";
-import type { Process } from "./core.mts";
-import { buildWorld, confirmedCampaign } from "./world.mts";
-import type { WorldSpec } from "./world.mts";
-import type { StoredSmsCampaign } from "../../../src/lib/server/store.ts";
 
 export type Launch = {
   key: string;

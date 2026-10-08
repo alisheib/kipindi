@@ -123,7 +123,7 @@ export async function receipts(h: Harness, n: number): Promise<Record<string, un
   claimNow(h, "S6.identity", "a line carrying ANOTHER number moves nothing; a campaign line carrying NO number settles the message but never the recipient",
     all(g.wrongNumber, "SENT") && all(g.noNumber, "SENT"), `${g.wrongNumber.length} wrong-number lines and ${g.noNumber.length} no-number lines left their recipients SENT`);
   claimNow(h, "S6.auth", "a callback with the wrong secret, or none, is refused (401) and changes nothing", bad.status === 401 && none.status === 401 && statusOf(g.delivered[0]) === "DELIVERED", `wrong secret → ${bad.status}, no secret → ${none.status}`);
-  claimNow(h, "S6.reply", "every authorised callback is answered with exactly {\"status\":\"Ok\"} — whatever its lines were", posts.every((p) => p.status === 200 && p.body === OK_BODY), `${posts.length} callbacks, ${num(posts.reduce((a, p) => a + p.lines, 0))} lines`);
+  claimNow(h, "S6.reply", "every authorised callback is answered with exactly the vendor's reply, status Ok (200, nothing else in the body) — whatever its lines were", posts.every((p) => p.status === 200 && p.body === OK_BODY), `${posts.length} callbacks, ${num(posts.reduce((a, p) => a + p.lines, 0))} lines`);
 
   // forward only, for every recipient of the campaign
   const backwards: string[] = [];

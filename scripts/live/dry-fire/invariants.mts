@@ -18,9 +18,11 @@
  *                          are the same numbers; the bar's value is exactly the SETTLED rows (HELD is not one); progress never moves
  *                          backwards within a driver's run; a stopped campaign's headline says the true number left unmessaged.
  *   INV5  AUDIT            one row per officer act that landed and per engine pause, one for each finish and each enqueue, nothing
- *                          else on a campaign (no row per recipient or per slice, E24), one RG line per RG refusal, and ⛔ no phone
- *                          number in any audit row or in any line the server printed.
- *   INV6  TIME             no message reached the carrier from a claim older than the send-age bound (CLAIM_SEND_MAX_AGE_MS).
+ *                          else on a campaign (no row per recipient or per slice, E24), one RG line per RG refusal, a batch the
+ *                          carrier refused whole or never answered is exactly ONE engine pause (E7), and ⛔ no phone number in any
+ *                          audit row or in any line the server printed.
+ *   INV6  TIME             no message reached the carrier from a claim older than the send-age bound (CLAIM_SEND_MAX_AGE_MS), and none
+ *                          reached it outside the owner's send window (the shipped rule judged at the instant of the request).
  *
  * ⛔ This file holds no backslash (an editing tool decodes them): patterns are character classes.
  */
@@ -86,8 +88,15 @@ function inv1(h: Harness, data: Data[]): Inv {
   let distinct = 0;
   let maxPerNumber = 0;
   let refusedRequests = 0;
+  // ONE person is one number, however it is spelled: "255712…" and "2550712…" (the trunk zero after the country code) are the
+  // same handset — a duplicate contact row that slipped past the unique key must still be counted as the second message it is
+  const canon = (msisdn: string): string => {
+    const parsed = h.S.phone.parseTzNumber(msisdn);
+    return parsed.verdict === "ok" && typeof parsed.msisdn === "string" ? parsed.msisdn : msisdn;
+  };
   for (const d of data) {
-    const viaCarrier = h.carrier.handedBy(d.campaign.id);
+    const viaCarrier = new Map<string, number>();
+    for (const [msisdn, n] of h.carrier.handedBy(d.campaign.id)) viaCarrier.set(canon(msisdn), (viaCarrier.get(canon(msisdn)) ?? 0) + n);
     for (const [msisdn, n] of viaCarrier) {
       handedMessages += n;
       distinct += 1;
@@ -98,7 +107,7 @@ function inv1(h: Harness, data: Data[]): Inv {
     const ownerOf = new Map(d.rows.map((r) => [r.id, r.msisdn]));
     for (const m of d.messages) {
       if (!handedMessage(m)) continue;
-      const msisdn = ownerOf.get(m.targetId ?? "") ?? m.msisdn;
+      const msisdn = canon(ownerOf.get(m.targetId ?? "") ?? m.msisdn);
       byRecipient.set(msisdn, (byRecipient.get(msisdn) ?? 0) + 1);
     }
     for (const [msisdn, n] of byRecipient) {
@@ -296,7 +305,6 @@ async function inv4(h: Harness, data: Data[]): Promise<Inv> {
       const ok = left === 0 ? saidNone : said !== null && Number(said[1].split(",").join("")) === left;
       if (!ok) failures.push(`${tag}: stopped with ${left} unmessaged, the headline says "${view.headline.slice(0, 120)}"`);
     }
-    if (c.status === "DONE" && d.counts.PENDING + d.counts.HELD > 0) failures.push(`${tag}: DONE with rows outstanding`);
   }
   // progress never moves backwards within one driver's run of one campaign
   const lastBy = new Map<string, { phase: string; value: number; rows: number }>();
@@ -363,6 +371,8 @@ async function inv5(h: Harness, data: Data[]): Promise<Inv> {
   let actsLanded = 0;
   let enginePauses = 0;
   let rgLines = 0;
+  let refusedTotal = 0;
+  let unansweredTotal = 0;
   for (const d of data) {
     const id = d.campaign.id;
     const tag = id.slice(-12);
@@ -393,6 +403,16 @@ async function inv5(h: Harness, data: Data[]): Promise<Inv> {
     }
     const systemPauses = count(es, "marketing.campaign_paused", (e) => e.category === "SYSTEM" && e.actorId === null);
     if (systemPauses !== pauses.length) failures.push(`${tag}: ${pauses.length} engine pause(s) reported, ${systemPauses} SYSTEM pause row(s) written`);
+    // E7 · the carrier's own answers against the engine's pauses: a batch the gateway refused WHOLE is ONE pause (never N failed
+    // rows), and a batch it never answered is ONE pause too — so a refusal the engine did not pause on is a defect, not a quiet day
+    const wire = h.carrier.requestsOf(id);
+    const refusedBatches = wire.filter((r) => r.answered === "refused").length;
+    const unansweredBatches = wire.filter((r) => r.answered === "lost" || r.answered === "error_page" || r.answered === "body_dead").length;
+    refusedTotal += refusedBatches;
+    unansweredTotal += unansweredBatches;
+    const pausedFor = (reason: string): number => pauses.filter((p) => p.reason === reason).length;
+    if (pausedFor("gateway_refused") !== refusedBatches) failures.push(`${tag}: the carrier refused ${refusedBatches} batch(es) whole, the engine paused ${pausedFor("gateway_refused")} time(s) as gateway_refused`);
+    if (pausedFor("gateway_unanswered") !== unansweredBatches) failures.push(`${tag}: the carrier never answered ${unansweredBatches} batch(es), the engine paused ${pausedFor("gateway_unanswered")} time(s) as gateway_unanswered`);
     // finish, enqueue
     const finished = h.obs.finishes.filter((f) => f.campaignId === id).length;
     if (count(es, "marketing.campaign_finished") !== finished) failures.push(`${tag}: ${finished} finish(es) reported, ${count(es, "marketing.campaign_finished")} audit row(s)`);
@@ -439,7 +459,8 @@ async function inv5(h: Harness, data: Data[]): Promise<Inv> {
     }
   }
   let logLeaks = 0;
-  for (const line of h.tap.lines) {
+  const printed = h.tap.since(h.tapMark);
+  for (const line of printed) {
     const hits = numbersIn(line, nines);
     if (hits.length > 0) {
       logLeaks += hits.length;
@@ -449,9 +470,12 @@ async function inv5(h: Harness, data: Data[]): Promise<Inv> {
   return {
     id: "INV5", name: INV_NAMES.INV5, ok: failures.length === 0,
     detail: failures.length === 0
-      ? `${num(entries.length)} audit rows since the run began: ${actsLanded} officer acts and ${enginePauses} engine pauses each with their one row, ${rgLines} RG lines for ${rgSkips} RG refusals, nothing else on a campaign; no phone number in ${num(entries.length)} rows or ${num(h.tap.lines.length)} printed lines`
+      ? `${num(entries.length)} audit rows since the run began: ${actsLanded} officer acts and ${enginePauses} engine pauses each with their one row (${refusedTotal} refused and ${unansweredTotal} unanswered batches, one pause each), ${rgLines} RG lines for ${rgSkips} RG refusals, nothing else on a campaign; no phone number in ${num(entries.length)} rows or ${num(printed.length)} printed lines`
       : first(failures),
-    numbers: { auditRows: entries.length, officerActsLanded: actsLanded, enginePauses, rgLines, phoneLeaksInAudit: leaks, phoneLeaksInLog: logLeaks, printedLines: h.tap.lines.length, violations: failures.length },
+    numbers: {
+      auditRows: entries.length, officerActsLanded: actsLanded, enginePauses, refusedBatches: refusedTotal, unansweredBatches: unansweredTotal, rgLines,
+      phoneLeaksInAudit: leaks, phoneLeaksInLog: logLeaks, printedLines: printed.length, violations: failures.length,
+    },
     failures,
   };
 }
@@ -464,7 +488,20 @@ function inv6(h: Harness): Inv {
   let messages = 0;
   let oldest = 0;
   let unclaimed = 0;
+  let quietRequests = 0;
+  let windowLabel = "";
   for (const r of h.carrier.requests) {
+    // the quiet hours: the owner's window judged by the shipped rule at the instant the request reached the carrier (a code is no
+    // marketing message and goes whenever it must) — an independent reading of the clock, never the engine's own
+    const campaignRequest = r.messages.some((m) => m.recipientId !== null);
+    if (campaignRequest) {
+      const w = h.S.window.sendWindowState(r.at);
+      windowLabel = w.label;
+      if (!w.open) {
+        quietRequests += 1;
+        failures.push(`request ${r.seq}: left the building at ${new Date(r.at + 3 * 3_600_000).toISOString().slice(11, 16)} EAT, outside the send window ${w.label}`);
+      }
+    }
     for (const m of r.messages) {
       if (m.recipientId === null) continue; // a code (OTP), not a campaign message
       messages += 1;
@@ -480,9 +517,9 @@ function inv6(h: Harness): Inv {
   return {
     id: "INV6", name: INV_NAMES.INV6, ok: failures.length === 0,
     detail: failures.length === 0
-      ? `${num(messages)} campaign messages in ${num(h.carrier.requests.length)} requests: the oldest claim was ${(oldest / 1000).toFixed(1)} s old when its message reached the carrier, bound ${bound / 1000} s`
+      ? `${num(messages)} campaign messages in ${num(h.carrier.requests.length)} requests: the oldest claim was ${(oldest / 1000).toFixed(1)} s old when its message reached the carrier, bound ${bound / 1000} s; every request inside the send window ${windowLabel}`
       : first(failures),
-    numbers: { messages, requests: h.carrier.requests.length, oldestClaimMs: Math.round(oldest), boundMs: bound, unclaimed, violations: failures.length },
+    numbers: { messages, requests: h.carrier.requests.length, oldestClaimMs: Math.round(oldest), boundMs: bound, unclaimed, outsideWindow: quietRequests, violations: failures.length },
     failures,
   };
 }

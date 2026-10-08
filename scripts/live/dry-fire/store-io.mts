@@ -80,9 +80,20 @@ export function guardEnvironment(env: NodeJS.ProcessEnv, pg: boolean): GuardVerd
  * tunnel to a real database (`railway connect` opens one); the data directory cannot lie about that.
  * Read-only: `SHOW data_directory` and two counts.
  */
-export async function assertScratchDatabase(): Promise<{ dataDirectory: string; campaigns: number; users: number }> {
-  const { prisma } = await import("../../../src/lib/server/prisma.ts");
-  const client = prisma();
+export type ScratchClient = {
+  $queryRawUnsafe: (sql: string) => Promise<unknown>;
+  smsCampaign: { count: () => Promise<number> };
+  user: { count: () => Promise<number> };
+};
+
+/** The scratch lock. `held` is a client handed in by the suite (a stub that answers like a server would); a run passes none, and
+ *  the store's own Prisma client is asked. */
+export async function assertScratchDatabase(held?: ScratchClient): Promise<{ dataDirectory: string; campaigns: number; users: number }> {
+  let client: ScratchClient | null = held ?? null;
+  if (client === null) {
+    const { prisma } = await import("../../../src/lib/server/prisma.ts");
+    client = prisma() as unknown as ScratchClient | null;
+  }
   if (client === null) throw new Error("dry-fire --pg: no database client — DATABASE_URL did not reach the store");
   const rows = (await client.$queryRawUnsafe("SHOW data_directory")) as Array<{ data_directory?: string }>;
   const dataDirectory = String(rows[0]?.data_directory ?? "");
@@ -177,11 +188,17 @@ function memoryReader(): Reader {
 const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
 const numOrNull = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
-async function pgReader(): Promise<Reader> {
-  const { prisma } = await import("../../../src/lib/server/prisma.ts");
-  const client = prisma();
+/** The Postgres reader. `held` and `page` are for the suite (a stub client that answers like Prisma, and a page small enough to
+ *  turn); a run passes neither and reads the store's own client in pages of 2,000. */
+export async function pgReader(held?: unknown, page = 2000): Promise<Reader> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let client: any = held ?? null;
+  if (client === null) {
+    const { prisma } = await import("../../../src/lib/server/prisma.ts");
+    client = prisma();
+  }
   if (client === null) throw new Error("dry-fire --pg: no database client");
-  const PAGE = 2000;
+  const PAGE = page;
   return {
     mode: "pg",
     recipients: async (campaignId) => {

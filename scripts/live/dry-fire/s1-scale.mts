@@ -141,7 +141,7 @@ export async function scale(h: Harness, n: number): Promise<Record<string, unkno
 
   // ── the slices ──
   const sizesOk = figs.sizes.count > 0 && (figs.sizes.min ?? 0) >= bounds.min && (figs.sizes.max ?? 0) <= bounds.max && figs.firstSizes[0] === bounds.start;
-  claimNow(h, "S1.slices", `every slice is between ${bounds.min} and ${bounds.max} people and the first is ${bounds.start} (E11)`, sizesOk && sum(figs.sizes.count ? [figs.sizes.sum] : [0]) >= settledOf(counts) - counts.SKIPPED * 0,
+  claimNow(h, "S1.slices", `every slice is between ${bounds.min} and ${bounds.max} people and the first is ${bounds.start} (E11), and together they claimed everybody the campaign settled`, sizesOk && figs.sizes.sum >= settledOf(counts),
     `${figs.slices} slices; sizes min ${figs.sizes.min} median ${figs.sizes.median} p95 ${figs.sizes.p95} max ${figs.sizes.max}; first ${figs.firstSizes.join(",")}`);
 
   return {

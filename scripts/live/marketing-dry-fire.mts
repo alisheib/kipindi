@@ -40,7 +40,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { clockOf, makeRng, ms, num, out, pad, table, tapConsole } from "./dry-fire/kit.mts";
+import { clockOf, makeRng, ms, num, out, table, tapConsole } from "./dry-fire/kit.mts";
 import { makeCarrier } from "./dry-fire/carrier.mts";
 import type { Attribution } from "./dry-fire/carrier.mts";
 import { assertScratchDatabase, guardEnvironment, makeReader, resetMemoryStore, resetProcessGlobals } from "./dry-fire/store-io.mts";
@@ -121,6 +121,8 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
     resetMemoryStore();
   }
   resetProcessGlobals();
+  // a run reads the audit since ITS first instant: two runs in one process (the suite's) never share a millisecond
+  clock.advance(2);
 
   const runId = (globalThis.__DRY_FIRE_RUNS__ = (globalThis.__DRY_FIRE_RUNS__ ?? 0) + 1);
   const startedAtReal = new Date().toISOString();
@@ -154,6 +156,10 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
     const wordings = await ensureWordings(h);
     if (!wordings.ok) throw new Error(`dry-fire cannot save the import wordings: ${wordings.why}`);
     if (opts.seams.store) restoreStore = opts.seams.store(h);
+    // the run proper begins here: what its setup wrote or printed (the wordings' first save, once per process) is not the run's
+    clock.advance(2);
+    h.startedAt = clock.now();
+    h.tapMark = tap.mark();
 
     const wanted = opts.only === null ? SCENARIOS : SCENARIOS.filter((s) => (opts.only as number[]).includes(s.n));
     for (const sc of wanted) {
@@ -170,7 +176,7 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
       clock.alignToWindow();
       h.sw.openFor(6 * 3_600_000);
       const size = sc.size(opts.n);
-      opts.log(`${NLG}[${sc.n}/${SCENARIOS.length}] ${sc.name} — ${num(size)} people`);
+      opts.log(`[${sc.n}/${SCENARIOS.length}] ${sc.name} — ${num(size)} people`);
       const ts = clock.real();
       let metrics: Record<string, unknown> = {};
       let crashed: string | null = null;
@@ -180,7 +186,7 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
         crashed = String((err as Error)?.stack ?? err).split(String.fromCharCode(10)).slice(0, 4).join(" | ").slice(0, 600);
         h.claims.push({ id: `S${sc.n}.run`, label: "the scenario ran to its end", ok: false, detail: `threw: ${crashed}` });
       }
-      const durationMs = clock.real() - ts;
+      const durationMs = Math.round(clock.real() - ts);
       const invariants = await evaluateInvariants(h);
       scenarios.push({ n: sc.n, key: sc.key, name: sc.name, size, durationMs, claims: h.claims.slice(), invariants, metrics, crashed });
       printScenario(opts.log, scenarios[scenarios.length - 1]);
@@ -212,7 +218,6 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
   return report;
 }
 
-const NLG = "";
 
 /* ══ PRINTING ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -220,6 +225,23 @@ function printScenario(log: (line: string) => void, s: ScenarioReport): void {
   for (const c of s.claims) log(`  ${c.ok ? "PASS" : c.known !== undefined ? `FINDING ${c.known}` : "FAIL"} ${c.id} — ${c.label.slice(0, 110)}${c.detail ? ` · ${c.detail.slice(0, 230)}` : ""}`);
   for (const i of s.invariants) log(`  ${i.ok ? "PASS" : "FAIL"} ${i.id} ${i.name} — ${i.detail.slice(0, 260)}`);
   log(`  ${s.invariants.every((i) => i.ok) && s.claims.every((c) => c.ok || c.known !== undefined) ? "held" : "FAILED"} in ${ms(s.durationMs)}`);
+}
+
+/** The invariant numbers that depend on the machine's speed, not on the seed (a claim's age is real time passing). */
+const TIMING_NUMBERS: ReadonlySet<string> = new Set(["oldestClaimMs"]);
+
+/** A fingerprint of a run's DETERMINISTIC outcome: every claim's verdict and, per invariant, every number that is a function of the
+ *  seed alone — the people, the rows by status, the messages the carrier saw, the audit rows. No time, no id. The suite holds two
+ *  runs of one seed to the same text, and two seeds to different ones. */
+export function digestOf(r: Report): string {
+  const lines: string[] = [`seed ${r.seed} n ${r.n} carrier ${r.carrier.requests}/${r.carrier.messages}/${r.carrier.refused}/${r.carrier.billedTzs}`];
+  for (const s of r.scenarios) {
+    lines.push(`S${s.n} size ${s.size} claims ${s.claims.map((c) => `${c.id}=${c.ok ? 1 : 0}`).join(",")}`);
+    for (const i of s.invariants) {
+      lines.push(`  ${i.id} ${i.ok ? 1 : 0} ${Object.entries(i.numbers).filter(([k]) => !TIMING_NUMBERS.has(k)).map(([k, v]) => `${k}=${v}`).join(" ")}`);
+    }
+  }
+  return lines.join(String.fromCharCode(10));
 }
 
 export function summaryTable(r: Report): string[] {
@@ -337,4 +359,3 @@ if (entry !== "" && resolve(entry) === self) {
   );
 }
 
-export { pad };
