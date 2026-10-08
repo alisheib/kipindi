@@ -16,3 +16,8 @@ export const LIVE_TILES = "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
 export const LIVE_TILE_COUNT = 6;
 /** How many reasons "Not sent" always lists (U38b's five words) — the ghost draws this many rows. */
 export const LIVE_REASON_ROWS = 5;
+
+/** U48a · one row of the results card: a hairline under it and its own room — the card and its ghost draw this very box. */
+export const RESULTS_ROW_BOX = "border-b border-border-subtle py-2 last:border-b-0";
+/** How many rows a campaign's results always has (Delivered, Handed over, Failed, Not sent, Stopped by their link) — the ghost draws this many. */
+export const RESULTS_ROW_COUNT = 5;

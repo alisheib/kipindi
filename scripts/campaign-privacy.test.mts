@@ -438,14 +438,17 @@ function holds(text: string, needle: string): boolean {
  *  fixture row; claim, settle and requeueHeld settle them — `settle()` above, `World.marks` handed to the real door;
  *  recordReceipt delivers and fails them as the DLR route does — `receipt()` above, U46a, on rows of a person erased
  *  afterwards; recordSend writes what a slice's lost patch carried when the receipt beat it — `raced()` above, U43b-2's
- *  DC-4, on a row of a person erased afterwards; unlinkUser is erasure's own write) and the eight READS, which write
+ *  DC-4, on a row of a person erased afterwards; unlinkUser is erasure's own write) and the ten READS, which write
  *  nothing (U47b-1's countByOutcome among them — the live page's ONE groupBy: counts by status, skip reason and failure
- *  class, never a person). A NEW member is a writer P10 has never seen. ⚠️ A member joins this list only in the commit that
+ *  class, never a person; U48a's countSentBefore — a count — and handedOverPage — a campaign's handed-over people by number,
+ *  read by the results' stop walk, which asks the stops list about them and keeps none). A NEW member is a writer P10 has
+ *  never seen. ⚠️ A member joins this list only in the commit that
  *  makes P10 sweep what it writes: route the fixture writes it takes over through it, BEFORE the erasure P10 follows, and
  *  prove the routing with a red case on every path it writes (R-P10e; R-P10f and R-P10g; R-P10h). */
 const P10_ACCOUNTED: readonly string[] = [
   "createMany", "claim", "settle", "requeueHeld", "recordReceipt", "recordSend", "unlinkUser",
   "find", "countByStatus", "countsByCampaign", "countByOutcome", "listByMsisdn", "claimedBy", "findStranded", "lastActivity",
+  "countSentBefore", "handedOverPage",
 ];
 /** A twin's `smsCampaignRecipient` members, read from its SOURCE: the namespace's brace matched to its close, then every
  *  name at the members' own indent (four spaces). Null when the namespace is not there exactly once. */

@@ -87,7 +87,8 @@ type Live = {
 
 const LiveCtx = createContext<Live | null>(null);
 
-function useLive(): Live {
+/** The campaign as the driver last read it, for the blocks drawn beside this file's (U48a's results card reads it here). */
+export function useLive(): Live {
   const c = useContext(LiveCtx);
   if (c === null) throw new Error("the live page's blocks render inside <LiveProvider>");
   return c;

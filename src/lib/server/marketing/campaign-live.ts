@@ -21,6 +21,15 @@
  * first, ties in U38b's order — then "Can't be sent to" (an unsendable number) and a refusal this code has no word for,
  * each only when there is one, so the lines always add up to "Not sent".
  *
+ * ── U48a · THE RESULTS (`results`, filled by campaign-results.ts) ──────────────────────────────────────────────────────────
+ * The receipts' half of the same rows (ENGINE-SPEC §4.16): "Delivered" is what a receipt said and nothing else, "handed over,
+ * no receipt yet" is the rest of what the network took, the failed split by where they failed, "not sent" by the SAME five
+ * words, "no answer", what is still to be messaged (or was not, once stopped), the people who stopped by their link since this
+ * campaign — and the honesty lines rendered from the data (OD41). It reads the ONE groupBy's groups and counts, handed in, and
+ * the "not sent" list this file words; it asks only the three things the groupBy cannot answer (a count of the SENT rows handed
+ * over before the 15-minute cutoff, the stop walk, and — for a money reader — the price). ⛔ Below E23's floor there are NO
+ * results: `null`, so the floor's sentence stands alone and nothing can name a split.
+ *
  * ── WHO SEES WHAT ──────────────────────────────────────────────────────────────────────────────────────────────────────
  * ⛔ E23 · THE FLOOR — a viewer whose `identity.contact` cell is not `read` (`viewer.reads` false), on a campaign with fewer
  * than `MASKED_BREAKDOWN_MIN` (10) rows, sees the count on the campaign and the bar, and NO per-state split: every KPI but
@@ -81,6 +90,8 @@ import { AUDIENCE_BUCKETS, AUDIENCE_BUCKET_OF } from "@/lib/server/marketing/aud
 import type { AudienceBucket } from "@/lib/server/marketing/audience-split";
 import type { MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { resumeOutstanding } from "@/lib/server/marketing/start-check";
+import { RESULTS_DEPS, campaignResults } from "@/lib/server/marketing/campaign-results";
+import type { ResultsDeps } from "@/lib/server/marketing/campaign-results";
 import {
   CAMPAIGN_STATUS_VIEW, MASKED_BREAKDOWN_MIN, campaignProgress, outcomeStatusCounts, outstandingRows, recipientRows,
 } from "@/lib/marketing/campaign-status";
@@ -117,8 +128,34 @@ export type ControlState = { enabled: boolean; reason: string | null };
  *  growth act grant (decision 7); `reads`: the `identity.contact` cell is `read`; `money`: `campaignMoneyVisible`. */
 export type LiveViewer = { userId: string; mayAct: boolean; reads: boolean; money: boolean };
 
-/** U48a fills it (ENGINE-SPEC §4.16, receipts); until then there is none, so `results` is always null. */
-export type CampaignResultsView = never;
+/**
+ * ⭐ U48a · WHAT BECAME OF THE MESSAGES (ENGINE-SPEC §4.16; campaign-results.ts builds it, results-card.tsx prints it). Counts
+ * of PEOPLE, summed on the server from the view's one groupBy — the browser adds nothing. `null` where the viewer is below
+ * E23's floor, and for a campaign with nobody on its list. ⛔ `delivered` is the rows a RECEIPT moved to DELIVERED and nothing
+ * else (OD41). A `null` count is a read that failed — said by the card, never drawn as a zero.
+ */
+export type CampaignResultsView = {
+  /** DELIVERED — a receipt said so. */
+  delivered: number;
+  /** SENT — handed over to the network; no receipt has moved them. */
+  handedOver: number;
+  /** …of them, handed over more than 15 minutes ago (E5); null when it could not be counted. */
+  noReceiptAfter15: number | null;
+  /** FAILED, split by where: the network refused them (`wire`) or reported them undelivered by a receipt (`receipt`). */
+  failed: { total: number; wire: number; receipt: number };
+  /** SKIPPED, by U38b's five words (+ the unsendable and the unworded, only when there are any) — the same list as the figures. */
+  notSent: { total: number; reasons: Array<{ label: string; count: number }> };
+  /** UNCONFIRMED — handed to the network with no answer back. */
+  noAnswer: number;
+  /** PENDING + HELD still to be messaged — or, once the campaign was stopped, everybody it did not message (the headline's figure). */
+  left: { count: number; stopped: boolean };
+  /** E30 · people who stopped by their link since this campaign's message; null when it could not be counted. */
+  stoppedByLink: number | null;
+  /** OD41 · which honesty lines stand, decided from the data. */
+  honesty: { noReceiptYet: boolean; notSetUp: boolean };
+  /** OD24 · handed over × the configured price — for a viewer who may read money ONLY, and null while nothing was handed over. */
+  spend: null | { tzs: number; handedOver: number; perSmsTzs: number };
+};
 
 /** "Not sent", by reason: one of U38b's five, an unsendable number, or a refusal this code has no word for. */
 export type NotSentBucket = AudienceBucket | "unsendable" | "other";
@@ -284,6 +321,8 @@ export type LiveViewDeps = {
     /** E12 · the engine's ONE reading of a code failure (`otpFailureWaiting`, step ④e's own). */
     otpWaiting: typeof otpFailureWaiting;
   };
+  /** ⭐ U48a · the results' own three reads and rules (campaign-results.ts). */
+  results: ResultsDeps;
   now: () => Date;
 };
 
@@ -309,6 +348,7 @@ export const LIVE_VIEW_DEPS: Readonly<LiveViewDeps> = Object.freeze({
     progress: campaignProgress, breakdownHidden: liveBreakdownHidden, moneyVisible: liveMoneyVisible, bucketOf: notSentBucketOf,
     outstanding: resumeOutstanding, pausedReason: pausedReasonSentenceFor, otpWaiting: otpFailureWaiting,
   }),
+  results: RESULTS_DEPS,
   now: () => new Date(),
 });
 
@@ -420,6 +460,8 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
   const reach = liveReach(c, counts, reads, deps.rules.breakdownHidden);
   const progress = deps.rules.progress(c, counts);
   const status = c.status;
+  // What a stopped campaign did not message — the headline's figure, and the results' (U48a): ONE definition (`resumeOutstanding`).
+  let stoppedBeforeSending = outstandingRows(counts);
   const view = CAMPAIGN_STATUS_VIEW[status];
 
   // ── the headline and why it stopped ──
@@ -454,8 +496,8 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
       break;
     case "CANCELLED": {
       const who = await actorOfAct(c.id, OFFICER_STOPPED_ACTION, deps, c.finishedAt);
-      const left = deps.rules.outstanding(c, counts);
-      headline = stoppedHeadline(who, c.finishedAt, left ?? outstandingRows(counts));
+      stoppedBeforeSending = deps.rules.outstanding(c, counts) ?? outstandingRows(counts);
+      headline = stoppedHeadline(who, c.finishedAt, stoppedBeforeSending);
       // ⭐ The U47b-1 review · an officer's Stop is said ONCE — the headline names who and when; any other reason is said as a
       // paused one is, through the floor.
       stopSentence = reasonKey === "officer_stopped" ? null : deps.rules.pausedReason({ reads, mayAct }, c, counts, deps.rules.breakdownHidden);
@@ -506,6 +548,8 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
     ? { count: c.audienceCount, at: c.confirmedAt, byName: await nameOf(c.confirmedBy, deps) }
     : null;
   const moneyView = money ? { estimateTzs: c.estimateTzs, budgetTzs: c.budgetTzs } : null;
+  // ── "not sent" by reason: ONE list, worded once — the figures card prints it, and the results hand it on (U48a) ──
+  const notSentReasons = hidden ? null : notSentReasonsOf(groups, deps.rules.bucketOf);
 
   return {
     id: c.id,
@@ -528,7 +572,7 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
           noAnswer: counts.UNCONFIRMED,
           waiting: counts.PENDING + counts.HELD,
         },
-    notSentReasons: hidden ? null : notSentReasonsOf(groups, deps.rules.bucketOf),
+    notSentReasons,
     chips: hidden ? null : (Object.keys(RECIPIENT_STATUS_LABEL) as SmsCampaignRecipientStatus[])
       .filter((s) => counts[s] > 0)
       .map((s) => ({ status: s, label: RECIPIENT_STATUS_LABEL[s], count: counts[s] })),
@@ -552,7 +596,10 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
     stopDialog: stopDialog(reach),
     floor: hidden ? LIVE_FLOOR : null,
     money: moneyView,
-    results: null,
+    // ⭐ U48a · the results — the same rows, the same reasons, the same floor; null below it (campaign-results.ts).
+    results: await campaignResults({
+      campaignId: c.id, status, groups, counts, hidden, money, notSentReasons: notSentReasons ?? [], stoppedBeforeSending, nowMs,
+    }, deps.results),
     readAt: new Date(nowMs).toISOString(),
   };
 }

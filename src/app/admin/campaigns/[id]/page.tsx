@@ -34,7 +34,8 @@ import { campaignsHref } from "../campaigns-rail";
 import { loadLive } from "./live-loader";
 import type { LiveLoad } from "./live-loader";
 import { LiveControls, LiveProgress, LiveProvider, LiveStatus, LiveWhenListed } from "./live-client";
-import { LIVE_BACK, LIVE_MISSING } from "./live-copy";
+import { LiveResults, LiveWhenResults } from "./results-card";
+import { LIVE_BACK, LIVE_MISSING, RESULTS_TITLE } from "./live-copy";
 
 export const metadata = { title: "SMS campaign · Admin" };
 export const dynamic = "force-dynamic";
@@ -76,6 +77,10 @@ async function AdminCampaignLiveContent({ params }: LivePageProps) {
             <LiveWhenListed>
               <div data-block="live-progress"><AdminCard><LiveProgress /></AdminCard></div>
             </LiveWhenListed>
+            {/* U48a · what became of the messages, in the receipts' words — drawn only while the view has results (never below E23's floor). */}
+            <LiveWhenResults>
+              <div data-block="live-results"><AdminCard title={RESULTS_TITLE}><LiveResults /></AdminCard></div>
+            </LiveWhenResults>
           </LiveProvider>
         ) : (
           // A campaign that is not there. (A draft never gets here: it was redirected to the composer above.)

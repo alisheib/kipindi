@@ -1,7 +1,7 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
 import { SkBar, SkBody, SkChip } from "@/components/admin/admin-skeletons";
 import { AdminBarList } from "@/components/admin/admin-charts";
-import { LIVE_REASON_ROWS, LIVE_TILE, LIVE_TILES, LIVE_TILE_COUNT } from "./live-geometry";
+import { LIVE_REASON_ROWS, LIVE_TILE, LIVE_TILES, LIVE_TILE_COUNT, RESULTS_ROW_BOX, RESULTS_ROW_COUNT } from "./live-geometry";
 
 /**
  * The ghost for /admin/campaigns/[id] (U47b-2).
@@ -12,9 +12,10 @@ import { LIVE_REASON_ROWS, LIVE_TILE, LIVE_TILES, LIVE_TILE_COUNT } from "./live
  * page swaps in; the U47b-2 drive measures it at 1280 and 360.
  * ⭐ THE GHOST IS THE REAL BLOCKS, in the real order, drawn as the page draws them while a campaign is being sent — the state
  * an officer opens this page in: the status card (chip, name, headline, audience, confirmation), the controls card (five
- * buttons at the console's 44px rung, and the line that says why) and the figures card (the bar and its caption, six tiles on
- * the page's own grid, the five reasons as the kit's bar list, and the status chips). Its boxes are the real ones — the
- * figures' geometry is `live-geometry.ts`, read by both. ⛔ Heights that depend on the campaign (the audience line wrapping,
+ * buttons at the console's 44px rung, and the line that says why), the figures card (the bar and its caption, six tiles on
+ * the page's own grid, the five reasons as the kit's bar list, and the status chips) and — U48a — the results card (its title,
+ * the honesty line, and the rows every campaign has, the not-sent row carrying its five reasons). Its boxes are the real ones —
+ * the figures' and the results' geometry is `live-geometry.ts`, read by both. ⛔ Heights that depend on the campaign (the audience line wrapping,
  * a callout, a campaign with nobody on its list yet, whose page has no figures card) are NOT equal by construction, said
  * rather than hidden: the drive RECORDS them at both widths. Only the card's top edge is claimed.
  * ⛔ `data-skeleton` stamps are the drive's handles — never match on class strings; each is the real block's `data-block`.
@@ -80,6 +81,32 @@ export default function Loading() {
                 <div className="flex flex-wrap gap-2">
                   {CHIP_W.map((w, i) => <SkChip key={i} className={`h-[23px] ${w}`} />)}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* U48a · the results card: the card's title, the honesty line's box, then the rows every campaign has — a title and its count
+            over one line of help — the not-sent row carrying the kit's bar list with its five blank rows. */}
+        <div data-skeleton="live-results">
+          <div className="glass-panel p-4">
+            <div className="space-y-3">
+              <SkBar className="h-[18px] w-[72px]" />
+              <SkBar className="h-[44px] w-full rounded-md" />
+              <div>
+                {Array.from({ length: RESULTS_ROW_COUNT }, (_, i) => (
+                  <div key={i} className={`space-y-1 ${RESULTS_ROW_BOX}`}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <SkBar className="h-[20px] w-[180px]" />
+                      <SkBar className="h-[20px] w-[40px]" />
+                    </div>
+                    <SkBar className="h-[18px] w-[300px] max-w-full" />
+                    {i === 3 && (
+                      <div className="pt-1">
+                        <AdminBarList rows={Array.from({ length: LIVE_REASON_ROWS }, () => ({ label: String.fromCharCode(160), value: 0 }))} format={() => String.fromCharCode(160)} />
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>

@@ -46,6 +46,7 @@ import {
   claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
   assertReceipt, receiptWrite, receiptMiss, SMS_RECEIPT_FROM,
   assertSendRecord, sendRecordWrite, SMS_SEND_RECORD_FROM,
+  assertSentBeforeRead, assertHandedOverRead,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary: the attention count spreads its statuses (never a retyped list) and every
 // count is zero-filled through its tallies, exactly as the memory twin's are (`test:dal-parity` §26).
@@ -106,6 +107,7 @@ import type {
   SmsRecipientReceiptResult,
   SmsRecipientSendRecord,
   SmsRecipientSendRecordResult,
+  SmsCampaignHandedOver,
   StoredAgentApplication,
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
@@ -5138,6 +5140,32 @@ export const prismaDb = {
       assertActivityRead(campaignId);
       const newest = await pc().smsCampaignRecipient.findFirst({ where: { campaignId, claimedAt: { not: null } }, orderBy: { claimedAt: "desc" }, select: { claimedAt: true } });
       return iso(newest?.claimedAt);
+    },
+    /** U48a · E5 — "NO RECEIPT AFTER 15 MINUTES": ONE count of the campaign's rows that are STILL SENT (no receipt has moved
+     *  them) and were handed over STRICTLY before the bound (`lt`: a row at the bound is not yet older) — their own `sentAt`,
+     *  never `updatedAt`. The rows are never read, and the rule set is asked first: a missing id would count every
+     *  campaign's SENT rows. Served by the (campaignId, status) index, then each SENT row's instant. */
+    countSentBefore: async (campaignId: string, before: string): Promise<number> => {
+      assertSentBeforeRead(campaignId, before);
+      return pc().smsCampaignRecipient.count({ where: { campaignId, status: "SENT", sentAt: { lt: new Date(before) } } });
+    },
+    /** U48a · E30 — THE STOPPED-BY-LINK WALK'S PAGE: ONE findMany of the campaign's SENT and DELIVERED rows that carry a
+     *  hand-over instant, by number — keyset on the unique (campaignId, msisdn) index (`gt` the cursor; null: from the start),
+     *  at most `limit`, selecting the number and the instant ALONE (never a row, a token or a reference). A FAILED row never
+     *  reached its person, an UNCONFIRMED one carries no instant to date a stop against. The rule set is asked first. */
+    handedOverPage: async (campaignId: string, after: string | null, limit: number): Promise<SmsCampaignHandedOver[]> => {
+      assertHandedOverRead(campaignId, after, limit);
+      const rows = await pc().smsCampaignRecipient.findMany({
+        where: { campaignId, status: { in: ["SENT", "DELIVERED"] }, sentAt: { not: null }, ...(after === null ? {} : { msisdn: { gt: after } }) },
+        orderBy: { msisdn: "asc" },
+        take: limit,
+        select: { msisdn: true, sentAt: true },
+      });
+      const people: SmsCampaignHandedOver[] = [];
+      for (const r of rows) {
+        if (r.sentAt !== null) people.push({ msisdn: r.msisdn, sentAt: r.sentAt.toISOString() });
+      }
+      return people;
     },
     /** U46a · ⭐ THE RECEIPT DOOR (E28) — ONE conditional `updateMany`, so Postgres decides once and never a read-then-write:
      *  written only WHERE the row is the one named, holds the MESSAGE's number, holds no reference yet or the receipt's own

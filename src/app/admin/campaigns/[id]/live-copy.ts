@@ -22,6 +22,7 @@
 import type { SmsCampaignRecipientStatus } from "@/lib/server/store";
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { MASKED_BREAKDOWN_MIN, stopReasonLabel } from "@/lib/marketing/campaign-status";
+import { formatPriceTzs } from "@/lib/marketing/sms-settings";
 import { formatNumber, formatTzs } from "@/lib/utils";
 
 /* ══ THE PIECES ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -466,4 +467,57 @@ export const LIVE_ACT_UNFINISHED =
 export function copyRateLimitedSentence(retryAfterSec: number): string {
   const minutes = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec / 60 : 1));
   return `That is a lot of saves in a row — no copy was made. Try again in ${formatNumber(minutes)} min.`;
+}
+
+/* ══ U48a · THE RESULTS CARD'S WORDS — every sentence true for every reader at that moment (ENGINE-SPEC §4.16) ══════════ */
+
+/**
+ * ⛔ NEVER "DELIVERED" FOR A HAND-OVER (OD41): the one word for a receipt's delivery is "Delivered", and it heads exactly one
+ * row — the rows a receipt moved. Everything the network merely took is "handed over". ⛔ Said only to a viewer who may see the
+ * split (E23): the card is not drawn below the floor, so none of these reaches a viewer who must not learn whether anybody
+ * was messaged. ⛔ No money word but the spend line, which is handed a figure for a money reader ONLY (OD24).
+ */
+export const RESULTS_TITLE = "Results";
+
+/** Each result: the spec's title, and the one line under it that says what the count is (and is not). */
+export const RESULTS_ROW = {
+  delivered: { label: "Delivered", help: "A delivery receipt came back for these." },
+  handedOver: {
+    label: "Handed over, no receipt yet",
+    help: "The network took these messages. Delivery is confirmed by a receipt, usually in seconds — none has come back for these yet.",
+  },
+  noReceipt: { label: "No receipt after 15 minutes", help: "Handed over more than 15 minutes ago, and still no delivery receipt." },
+  failed: { label: "Failed", help: "These did not reach their people, and they are not sent again by themselves." },
+  notSent: {
+    label: "Not sent — the checks refused them",
+    help: "The checks stopped these people just before sending — the system working, not a failure.",
+  },
+  noAnswer: { label: "No answer from the network", help: "Handed to the network with no answer back — never re-sent automatically." },
+  waiting: { label: "Waiting", help: "Still to be messaged." },
+  stopped: { label: "Stopped before sending", help: "The campaign was stopped before these people were messaged." },
+  stoppedByLink: {
+    label: "Stopped by their link since this campaign",
+    help: "Their opt-out link was used after this campaign's message was handed over to them. They are stopped now and will not be messaged.",
+  },
+} as const;
+
+/** The failed, split by where they failed (the spec's two titles). */
+export const RESULTS_FAILED = { wire: "The network refused it", receipt: "Not delivered (receipt)" } as const;
+
+/** ⭐ OD41 · THE HONESTY LINES, rendered from the data (the view decides which stand): while something was handed over and no
+ *  receipt has reached this campaign — gone by itself once one does — and, as well, while this server could not take a receipt
+ *  at all, which makes "Delivered will stay at zero" true when it is said. (The spec points the second at Admin → System →
+ *  Diagnostics; that tab says nothing about receipts, so the line asks for the developer instead — said rather than false.) */
+export const RESULTS_HONESTY = {
+  noReceiptYet: "No delivery receipt has arrived for this campaign yet — 'handed over' is not 'delivered'.",
+  notSetUp: "Delivery receipts aren't set up on this server, so 'Delivered' will stay at zero — ask the developer to set them up.",
+} as const;
+
+/** A count that could not be read: said, never drawn as a zero. */
+export const RESULTS_UNREAD = "Couldn't be counted just now.";
+
+/** ⛔ OD24 · the price line — for a viewer who may read money ONLY (the view hands the figure to no one else). An estimate, and
+ *  it says so: handed over × the owner's configured price, not measured; the SMS credit is the true figure. */
+export function resultsSpendLine(o: { tzs: number; perSmsTzs: number }): string {
+  return `Estimated spend: ${formatTzs(o.tzs)} (handed over × ${formatPriceTzs(o.perSmsTzs)} per SMS, configured, not yet measured) — the SMS credit on Admin → System is the true figure.`;
 }

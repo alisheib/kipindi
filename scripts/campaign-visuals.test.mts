@@ -35,7 +35,15 @@
  *   V10 the page gate's shape (admin-section-gate §0b′) · V11 the load and every act's answer, Resume's one retry after busy ·
  *   L2  the viewer is the STORED role's, failing closed;
  *   W1  the wiring — who imports the services (the actions alone), no send named, the doors by identity; P1 ⛔ no phone number,
- *       no refusal object (the page's markup too); P2 ⛔ no figure and no cursor in a step answer (the U47b-1 review).
+ *       no refusal object (the page's markup too); P2 ⛔ no figure and no cursor in a step answer (the U47b-1 review);
+ *   §R (U48a, `scripts/lib/campaign-visuals-results.mts`) — THE RESULTS ON THE LIVE PAGE (ENGINE-SPEC §4.16):
+ *   R1  ⭐ `accepted` is never delivered — only a receipt, through the real DLR route, moves "Delivered" (OD41);
+ *   R2  the honesty line, rendered from the data — present with no receipt, gone after one; R3 the 15-minute figure counts the rows
+ *       still SENT and handed over before the cutoff and nothing else (E5); R4 ⭐ stopped-by-link attribution (E30);
+ *   R5  the reasons are U38b's five buckets, protected one line, for every role; R6 ⛔ E23 · the floor — no results below it;
+ *   R7  whether receipts are set up is the DLR route's own rule; R8 ⛔ OD24 · the price line for a money reader only;
+ *   R9  the failed split, no answer and what is left, agreeing with the figures; R10 the stop walk and its cost;
+ *   R11 the card; R12 the wiring.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` proves the baseline green first, then plants each defect IN MEMORY
  * (a dependency handed to a service or the view, a wrapper of a service, a source text replaced in memory) and requires
@@ -86,8 +94,11 @@ const { smsProviderResolution } = await import("../src/lib/server/sms.ts");
 // these viewers — so one run and one red run cover both halves. ⛔ Imported here, after the store is chosen above, never
 // statically: a static import would load the store before this file's first line ran.
 const PAGE = await import("./lib/campaign-visuals-page.mts");
+// U48a · THE RESULTS' CLAIMS (R1–R12) live beside the page's, for the same reason, and run in this run too.
+const RESULTS = await import("./lib/campaign-visuals-results.mts");
 
 type PageImpl = import("./lib/campaign-visuals-page.mts").PageImpl;
+type ResultsImpl = import("./lib/campaign-visuals-results.mts").ResultsImpl;
 type LiveViewer =import("../src/lib/server/marketing/campaign-live.ts").LiveViewer;
 type LiveViewDeps = import("../src/lib/server/marketing/campaign-live.ts").LiveViewDeps;
 type CampaignLiveView = import("../src/lib/server/marketing/campaign-live.ts").CampaignLiveView;
@@ -122,6 +133,7 @@ const json = (v: unknown): string => JSON.stringify(v);
 
 const L = {
   ...PAGE.LABELS,
+  ...RESULTS.LABELS,
   c0: "C0 · CONTROLS — the memory twin and the console rail; a fixture campaign walks DRAFT → CONFIRMED → PREPARING → RUNNING → PAUSED / DONE / CANCELLED through the ONE transition door; the ONE groupBy (countByOutcome) answers a seeded list as written here by hand — merged, none dropped, one order — and its sum per status is countByStatus's; a tag audience and a sub-minute window both read at the campaign's door, and only the tag can be written as an address",
   v2: "V2 · ⭐ HELD IS OUTSTANDING (the plan's RED) — a RUNNING campaign of 4 SENT and 6 HELD reads progress 4 of 10 and 'Sending — 4 of 10 done.', 6 waiting and 4 handed over — never 10 of 10; an empty RUNNING campaign paints NO bar (progress null, 'Sending.'), and a CONFIRMED one none either",
   v3: "V3 · ⭐ THE COUNTS FROZEN SERVER-SIDE (OD34, the plan's RED) — two views of an unchanged campaign ten seconds apart carry the same bar, KPIs, chips, reasons, headline and controls byte for byte (only readAt moved, by ten seconds); one more row settled moves the bar by exactly one",
@@ -287,13 +299,15 @@ async function campaign(w: World, key: string, s: CShape): Promise<StoredSmsCamp
 
 type RowShape = {
   status: SmsCampaignRecipientStatus; skipReason?: string; failureClass?: string; claimedAt?: string; claimToken?: string; attempts?: number;
+  /** U48a · the hand-over instant, the gateway's reference and the person's number — what the results' claims read. */
+  sentAt?: string; smsReference?: string; msisdn?: string;
 };
 /** Rows on a campaign through the ONE seed door, then set to the shapes asked (the store's own map — a fixture only). */
 async function rows(w: World, campaignId: string, shapes: readonly RowShape[]): Promise<string[]> {
   const base = ++w.n * 1000;
   const at = iso(T_NOW - 20 * MIN);
   const seeds = shapes.map((_, i) => ({
-    id: `rcp_u47b1_${w.run}_${base + i}`, campaignId, msisdn: keyOf("71", w.run * 100_000 + base + i), contactId: null, userId: null,
+    id: `rcp_u47b1_${w.run}_${base + i}`, campaignId, msisdn: shapes[i].msisdn ?? keyOf("71", w.run * 100_000 + base + i), contactId: null, userId: null,
     optOutToken: null, createdAt: at,
   }));
   if (seeds.length > 0) {
@@ -305,7 +319,7 @@ async function rows(w: World, campaignId: string, shapes: readonly RowShape[]): 
     if (row === undefined) throw new Error("fixture: a seeded row is not in the store");
     Object.assign(row, {
       status: s.status, skipReason: s.skipReason ?? null, failureClass: s.failureClass ?? null, claimedAt: s.claimedAt ?? null,
-      claimToken: s.claimToken ?? null, attempts: s.attempts ?? 0,
+      claimToken: s.claimToken ?? null, attempts: s.attempts ?? 0, sentAt: s.sentAt ?? null, smsReference: s.smsReference ?? null,
     });
   });
   return seeds.map((s) => s.id);
@@ -414,6 +428,7 @@ const ACTIONS_REL = "src/app/admin/campaigns/[id]/actions.ts";
 const LIVE_RUN_REL = "src/app/admin/campaigns/[id]/live-run.ts";
 const LIVE_LOADER_REL = "src/app/admin/campaigns/[id]/live-loader.ts";
 const LIVE_CLIENT_REL = "src/app/admin/campaigns/[id]/live-client.tsx";
+const RESULTS_CARD_REL = "src/app/admin/campaigns/[id]/results-card.tsx";
 const LIVE_PAGE_REL = "src/app/admin/campaigns/[id]/page.tsx";
 const LIST_PAGE_REL = "src/app/admin/campaigns/page.tsx";
 const LIVE_SEED_REL = "src/app/api/dev-test/marketing-live-seed/route.ts";
@@ -433,6 +448,8 @@ type Impl = {
   step: typeof CTRL.campaignStep;
   /** U47b-2 · the page — its client, driver, actions' guards and loads (`scripts/lib/campaign-visuals-page.mts`). */
   page: PageImpl;
+  /** U48a · the results — the card, the walk, the receipts' rule (`scripts/lib/campaign-visuals-results.mts`). */
+  results: ResultsImpl;
   sources: Sources;
 };
 const REAL: Impl = {
@@ -446,6 +463,7 @@ const REAL: Impl = {
   copy: CTRL.copyCampaign,
   step: CTRL.campaignStep,
   page: PAGE.REAL_PAGE,
+  results: RESULTS.REAL_RESULTS,
   sources: REAL_SOURCES,
 };
 
@@ -1593,6 +1611,19 @@ async function runAssertions(impl: Impl): Promise<void> {
     see: (text) => { SEEN.push(text); },
   });
 
+  /* ── §R · U48a's claims — R1–R12 (scripts/lib/campaign-visuals-results.mts), on this world and these viewers ── */
+  await RESULTS.resultsClaims(impl.results, {
+    claim, run: w.run, READER, GROWTH, WATCHER,
+    view: (id, v, over) => viewOf(impl, id, v, over),
+    campaign: (key, shape) => campaign(w, key, shape as CShape),
+    rows: (id, shapes) => rows(w, id, shapes as RowShape[]),
+    many: (n, s) => many(n, s as RowShape),
+    see: (text) => { SEEN.push(text); },
+    mem: () => mem(),
+    at: T_NOW,
+    key: keyOf,
+  });
+
   /* ── W1 · the wiring ── */
   await claim(L.w1, async () => {
     const s = impl.sources;
@@ -1630,11 +1661,12 @@ async function runAssertions(impl: Impl): Promise<void> {
     // makes here.
     const reach = json(controlIn) === json([ACTIONS_REL])
       && json(liveIn) === json([CONTROL_REL, ACTIONS_REL, LIVE_LOADER_REL, LIVE_RUN_REL, LIST_PAGE_REL].sort())
-      && json(copyIn) === json([CONTROL_REL, LIVE_REL, ACTIONS_REL, LIVE_CLIENT_REL, LIVE_RUN_REL, LIVE_PAGE_REL, LIVE_SEED_REL].sort());
+      && json(copyIn) === json([CONTROL_REL, LIVE_REL, ACTIONS_REL, LIVE_CLIENT_REL, RESULTS_CARD_REL, LIVE_RUN_REL, LIVE_PAGE_REL, LIVE_SEED_REL].sort());
     const SEND = new RegExp("sendBatch|dispatchSlice|blackballSend|sendCampaignTest|engineSend");
     const noSend = !SEND.test(s.control) && !SEND.test(s.live) && !SEND.test(s.copy);
     const copyImports = Array.from(s.copy.matchAll(/^import (type )?[{][^}]*[}] from "([^"]+)";/gm)).map((m) => `${m[1] ? "type " : ""}${m[2]}`).sort();
-    const pureCopy = json(copyImports) === json(["@/lib/eat-day", "@/lib/marketing/campaign-status", "@/lib/utils", "type @/lib/server/store"]);
+    // U48a · the price line formats the owner's price with the settings module's own pure formatter (pinned client-safe)
+    const pureCopy = json(copyImports) === json(["@/lib/eat-day", "@/lib/marketing/campaign-status", "@/lib/marketing/sms-settings", "@/lib/utils", "type @/lib/server/store"]);
     let scripts: Record<string, string> = {};
     try { scripts = (JSON.parse(s.pkg) as { scripts?: Record<string, string> }).scripts ?? {}; } catch { scripts = {}; }
     // ⭐ the U47b-2 builder's hand-over · on the deploy chain, once (it was in none: a deploy shipped whatever it would catch)
@@ -1714,11 +1746,11 @@ if (!PROVE_RED) {
         const drift = Math.max(0, Math.floor((d.now().getTime() - T_NOW) / 1000));
         return p === null ? p : { ...p, value: Math.min(p.max, p.value + drift) };
       } } })) },
-    { name: "R-S1 · the groupBy loses a status (DELIVERED) — the KPIs no longer add up to the rows", expect: [L.s1],
+    { name: "R-S1 · the groupBy loses a status (DELIVERED) — the KPIs no longer add up to the rows (and every results claim that reads a DELIVERED row sees it)", expect: [L.s1, L.r1, L.r2, L.r8, L.r11],
       impl: withView((d) => ({ ...d, recipients: { ...d.recipients, countByOutcome: async (id: string) => (await d.recipients.countByOutcome(id)).filter((g) => g.status !== "DELIVERED") } })) },
-    { name: "R-S2 · protected itemised — an RG reason keeps its own key instead of the protected line", expect: [L.s2],
+    { name: "R-S2 · protected itemised — an RG reason keeps its own key instead of the protected line (the results' list is the same one — R5 sees it too)", expect: [L.s2, L.r5],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, bucketOf: (r) => (typeof r === "string" && r.startsWith("rg_") ? (r as never) : d.rules.bucketOf(r)) } })) },
-    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, why it paused, and why it waits) — on the page too (V7)", expect: [L.s3, L.s8, L.s10, L.s11, L.v7],
+    { name: "R-S3 · the floor removed — a masked viewer under ten rows sees the split (and the copy advice says whether anybody was messaged, why it paused, and why it waits) — on the page too (V7)", expect: [L.s3, L.s8, L.s10, L.s11, L.v7, L.r6, L.r11],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, breakdownHidden: () => false } })) },
     { name: "R-S5 · who paused read from ANY row however old (the re-review: the `since` rule removed) — Juma named for Amina's pause", expect: [L.s5],
       impl: withView((d) => ({ ...d, actsOn: async (id: string) => (await d.actsOn(id)).map((e) => ({ ...e, createdAt: "2999-01-01T00:00:00.000Z" })) })) },
@@ -1735,7 +1767,7 @@ if (!PROVE_RED) {
         const under = (h ?? LIVE.liveBreakdownHidden)(v.reads === true, CS.recipientRows(counts));
         return under && BATCH.includes(key) ? COPY.LIVE_PAUSED_HIDDEN : COPY.pausedReasonSentence(key, LIVE.liveReach(c, counts, v.reads === true, h));
       } } })) },
-    { name: "R-S4 · TZS for GROWTH — the view carries money whatever the decider said (and the page prints it, V8)", expect: [L.s4, L.v8],
+    { name: "R-S4 · TZS for GROWTH — the view carries money whatever the decider said (and the page prints it, V8; the price line, R8)", expect: [L.s4, L.v8, L.r8],
       impl: withView((d) => ({ ...d, rules: { ...d.rules, moneyVisible: () => true } })) },
     { name: "R-T2 · Start goes ahead whatever U49a's check refused", expect: [L.t2],
       impl: withCtrl((d) => ({ ...d, check: async (c) => { const r = await d.check(c); return r.ok ? r : { ok: true, freshCount: c.audienceCount ?? 0, shrunkBy: 0, costTzs: 0 }; } })) },
@@ -1830,6 +1862,8 @@ if (!PROVE_RED) {
       impl: { start: async (id, a, d) => { const r = await CTRL.startCampaign(id, a, d); return r.ok ? r : ({ ...r, refusal: { costTzs: 10_800 } } as typeof r); } } },
     /* ── U47b-2 · the page's own defects (scripts/lib/campaign-visuals-page.mts) ── */
     ...PAGE.pagePlants().map((p): Plant => ({ name: p.name, expect: p.expect as Label[], impl: p.impl })),
+    /* ── U48a · the results' own defects (scripts/lib/campaign-visuals-results.mts) ── */
+    ...RESULTS.resultsPlants(L.p1).map((p): Plant => ({ name: p.name, expect: p.expect as Label[], impl: p.impl as Partial<Impl> })),
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);
