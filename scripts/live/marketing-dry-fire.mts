@@ -144,6 +144,10 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
   let restoreStore: () => void = () => undefined;
   const scenarios: ScenarioReport[] = [];
   let h: Harness | null = null;
+  // ⭐ The fake carrier bills at ACCEPTANCE, so the rail's billing window is 0 — its exact model (`SMS_BILLING_LAG_MS`, sms.ts).
+  // Scenario 7e sets the production default itself, beside a carrier whose billing lags.
+  const lagWas = process.env.SMS_BILLING_LAG_MS;
+  process.env.SMS_BILLING_LAG_MS = "0";
   try {
     await assertRailIsFake();
     const officerId = `usr_df${runId}_officer`;
@@ -202,6 +206,8 @@ export async function runDryFire(opts: RunOptions): Promise<Report> {
     restoreStore();
     tap.stop();
     restoreRail();
+    if (lagWas === undefined) delete process.env.SMS_BILLING_LAG_MS;
+    else process.env.SMS_BILLING_LAG_MS = lagWas;
   }
 
   const failedInvariants = [...new Set(scenarios.flatMap((s) => s.invariants.filter((i) => !i.ok).map((i) => i.id)))];

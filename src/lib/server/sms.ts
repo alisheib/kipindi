@@ -118,9 +118,11 @@ declare global {
   // eslint-disable-next-line no-var
   var __50PICK_SMS_HEALTH: { sent: number; failed: number } | undefined;
   // eslint-disable-next-line no-var
-  /** `pendingSegments`: what a send reply's PRE-CHARGE figure (BLACKBALL-SMS §1.4) has not yet taken off — 0 for a reading
-   *  of the balance endpoint (see `recordBalance`). */
-  var __50PICK_SMS_BALANCE: { tzs: number; at: number; pendingSegments?: number } | undefined;
+  var __50PICK_SMS_BALANCE: { tzs: number; at: number } | undefined;
+  /** ⭐ F-2 · every chunk handed over in this process — accepted, or ambiguous (the gateway may have it) — as { at, segments },
+   *  kept while it may still be unbilled (`noteHandedOver`). */
+  // eslint-disable-next-line no-var
+  var __50PICK_SMS_SENT: Array<{ at: number; segments: number }> | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_SMS_BALANCE_READ: { inflight: Promise<boolean> | null; failedAt: number | null; error: SmsBalanceError | null } | undefined;
   /** U43b-2 · the newest instant (epoch ms) an OTP-purpose `SmsMessage` row went FAILED or UNKNOWN in this process. */
@@ -169,6 +171,40 @@ const balanceTtlMs = () => Number(process.env.SMS_BALANCE_TTL_MS) || 15 * 60_000
 /** After a FAILED balance read, callers are answered "failed" without a new request for this long, so a reload
  *  or a burst of renders cannot re-pay a hanging vendor's timeout on every hit. */
 const balanceRetryMs = () => Number(process.env.SMS_BALANCE_RETRY_MS) || 30_000;
+
+/**
+ * ⭐ HOW LONG A HANDED-OVER MESSAGE MAY GO UNBILLED (the engine's dry-fire, finding F-2, reworked after its review, 2026-10-08).
+ * A send reply's balance is PRE-CHARGE (BLACKBALL-SMS §1.4), and Blackball bills per DELIVERED message (the likelier model,
+ * same file): a charge can land seconds after its reply — after the next reply, after a balance read. So no reading is taken
+ * as holding what was handed over around it: every chunk the gateway accepted, or may have (an ambiguous reply), is kept for
+ * twice this window (`noteHandedOver`), and a reading counts as not yet charged every segment handed over from this long
+ * before it was ASKED (`unbilledSince` → `smsBalanceSnapshot().pendingSegments`). While billing lags by no more than the
+ * window, nothing handed over is ever missed; what was already billed inside it is counted twice — the safe side, which only
+ * matters near the credit kept for login codes. `SMS_BILLING_LAG_MS=0` is billing at acceptance (the dry-fire's exact model):
+ * a reading then counts only its own chunk and what came after it.
+ */
+export const SMS_BILLING_LAG_DEFAULT_MS = 30_000;
+const billingLagMs = (): number => {
+  const raw = process.env.SMS_BILLING_LAG_MS;
+  if (raw === undefined || raw.trim() === "") return SMS_BILLING_LAG_DEFAULT_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : SMS_BILLING_LAG_DEFAULT_MS;
+};
+/** One chunk handed over at `at` (when it was asked), kept until it can no longer be unbilled. */
+function noteHandedOver(at: number, segments: number): void {
+  if (!Number.isFinite(at) || !Number.isSafeInteger(segments) || segments <= 0) return;
+  const keepFrom = Date.now() - 2 * billingLagMs();
+  const kept = (globalThis.__50PICK_SMS_SENT ?? []).filter((e) => e.at >= keepFrom);
+  kept.push({ at, segments });
+  globalThis.__50PICK_SMS_SENT = kept;
+}
+/** The segments a reading asked at `readAt` may not yet hold: every chunk handed over from the window before it, and after. */
+function unbilledSince(readAt: number): number {
+  const from = readAt - billingLagMs();
+  let n = 0;
+  for (const e of globalThis.__50PICK_SMS_SENT ?? []) if (e.at >= from) n += e.segments;
+  return n;
+}
 
 /** How long `/admin/system` waits for a balance read before rendering what it has; the read carries on. */
 export const SMS_BALANCE_RENDER_BUDGET_MS = 2_500;
@@ -284,17 +320,16 @@ async function closeLowEpisodeFoundAtBoot(tzs: number, threshold: number): Promi
  * send reply recorded meanwhile is newer. A reading is stamped with when it was ASKED (`readAt`) and dropped if the
  * snapshot already holds a later one — otherwise an old figure re-armed the alarm, or undid a top-up.
  *
- * ⭐ A SEND REPLY'S FIGURE IS PRE-CHARGE (BLACKBALL-SMS §1.4), so it is kept with the segments it has not yet taken off
- * (`pendingSegments` — this batch's chunks so far; the balance endpoint's true figure carries 0). The campaign engine
- * prices them before its next slice: without it, the credit kept for login codes could be gone into by one slice (the
- * engine's dry-fire, finding F-2, 2026-10-08). The alarms read the figure as it is — one chunk early at worst.
+ * ⭐ NO READING HOLDS WHAT WAS HANDED OVER AROUND IT (F-2): a send reply's figure is pre-charge and billing lands per delivered
+ * message, so the snapshot's `pendingSegments` counts what was handed over from `billingLagMs()` before the reading was asked
+ * (`unbilledSince`) — the campaign engine and Start / Resume price them first. The alarms read the figure as it is.
  */
-function recordBalance(tzs: number | null, readAt = Date.now(), pendingSegments = 0): void {
+function recordBalance(tzs: number | null, readAt = Date.now()): void {
   if (tzs === null) return;
   const cur = globalThis.__50PICK_SMS_BALANCE;
   if (cur && cur.at > readAt) return;
   const prev = cur?.tzs ?? null;
-  globalThis.__50PICK_SMS_BALANCE = { tzs, at: readAt, pendingSegments: Number.isSafeInteger(pendingSegments) && pendingSegments > 0 ? pendingSegments : 0 };
+  globalThis.__50PICK_SMS_BALANCE = { tzs, at: readAt };
   const threshold = balanceAlert();
   const floor = balanceFloor();
   if (prev !== null && prev > threshold && tzs <= threshold) {
@@ -313,7 +348,7 @@ function recordBalance(tzs: number | null, readAt = Date.now(), pendingSegments 
 export function smsBalanceSnapshot(): {
   tzs: number | null;
   at: number | null;
-  /** Segments a send reply's pre-charge figure has not yet taken off (0 for the balance endpoint's reading). */
+  /** Segments handed over that this reading may not yet hold (`unbilledSince`) — 0 with no reading. */
   pendingSegments: number;
   stale: boolean;
   belowAlert: boolean;
@@ -329,7 +364,7 @@ export function smsBalanceSnapshot(): {
   return {
     tzs: b?.tzs ?? null,
     at: b?.at ?? null,
-    pendingSegments: b?.pendingSegments ?? 0,
+    pendingSegments: b === null ? 0 : unbilledSince(b.at),
     stale,
     // ⛔ UNKNOWN IS NOT LOW. Before the first reply we have no reading, and refusing
     // traffic on an absence would take the rail down on every cold start.
@@ -358,8 +393,9 @@ export type SmsBalanceRead = {
   stale: boolean;
   /** Set only with `failed`. The read is the platform's one free live credential check, so its verdict is kept. */
   error: SmsBalanceError | null;
-  /** ⭐ Segments `tzs` has not yet taken off: a send reply's figure is pre-charge (§1.4); the endpoint's reading is 0.
-   *  A caller deciding what it may still SPEND prices these first (the campaign engine's credit check, F-2). */
+  /** ⭐ Segments handed over that `tzs` may not yet hold — a send reply's figure is pre-charge (§1.4) and billing lands per
+   *  delivered message (`unbilledSince`). A caller deciding what it may still SPEND prices these first (the engine's credit
+   *  check and Start / Resume, F-2). */
   pendingSegments?: number;
 };
 
@@ -871,9 +907,6 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
   await db.smsMessage.createMany(rows);
 
   let balance = smsBalanceSnapshot().tzs;
-  // ⭐ F-2 · the segments THIS batch has handed over so far — what each accepted reply's pre-charge figure has not yet
-  // taken off (see recordBalance). A batch starts at 0: an earlier batch's charges have landed by its first reply.
-  let sentSegments = 0;
 
   for (const group of chunk(prepared, BATCH_MAX)) {
     // ⛔ U43b-2 review · THE CALLER'S DEADLINE — CHECK 2 OF 2, immediately before the request: the row write itself may have
@@ -934,13 +967,14 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
     // Only an ACCEPTED reply identifies the account — see recordBalance for why a
     // refusal's `balance: 0.0` must never reach the floor.
     if (outcome.ok) {
-      for (const p of group) sentSegments += sizeSms(p.out.body).segments;
-      recordBalance(outcome.balance, askedAt, sentSegments);
+      recordBalance(outcome.balance, askedAt);
       if (outcome.balance !== null) balance = outcome.balance;
     }
     const settledAt = new Date().toISOString();
     // A reply we could not complete is AMBIGUOUS; a reply that said no is a refusal.
     const ambiguous = !outcome.ok && outcome.ambiguous;
+    // ⭐ F-2 · what the gateway took — or may have taken — is not yet billed: every reading counts it (`noteHandedOver`).
+    if (outcome.ok || ambiguous) noteHandedOver(askedAt, group.reduce((n, p) => n + sizeSms(p.out.body).segments, 0));
 
     for (const p of group) {
       if (outcome.ok) {

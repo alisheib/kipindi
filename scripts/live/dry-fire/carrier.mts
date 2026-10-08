@@ -15,6 +15,10 @@
  *   body_dead  a 200 whose body dies mid-read; the carrier queued it.
  *   die        the CALLER's process died mid-request: the request is on record and nothing is ever answered.
  * plus `delayMs` — the answer takes that long on the VIRTUAL clock (a slow gateway).
+ * ⭐ BILLING: at acceptance by default — the reply is the PRE-charge figure and the charge lands with it (the measured case); with
+ * `setBillLag(ms)` each accepted batch's charge lands `ms` later on the virtual clock, as per-delivered-message billing can
+ * (BLACKBALL-SMS) — a reply and a balance read then hold only the charges that have landed (`eventualBalance` is the figure once
+ * every charge in flight has landed).
  *
  * ── WHAT IT KEEPS (the invariants read it; the engine never does) ──────────────────────────────────────────────────────────
  * Every request, with each message's wire number, its reference, and — looked up AT REQUEST TIME through the harness's own
@@ -93,6 +97,12 @@ export type Carrier = {
   balanceReads: number;
   balance(): number;
   setBalance(tzs: number): void;
+  /** The balance once every charge still in flight has landed (= `balance()` while billing is at acceptance). */
+  eventualBalance(): number;
+  /** Each accepted batch's charge lands this long after its reply (virtual ms); 0 = at acceptance. */
+  setBillLag(ms: number): void;
+  /** Another consumer spends the credit down so that, once every charge in flight lands, `tzs` is left. */
+  drainTo(tzs: number): void;
   /** What the carrier has billed so far (TZS). */
   billed(): number;
   pricePerSegment: number;
@@ -134,6 +144,16 @@ export function makeCarrier(o: {
   let yieldOnRequest = o.yieldOnRequest === true;
   let balance = o.balance ?? 1_000_000;
   let billed = 0;
+  let billLagMs = 0;
+  /** Charges accepted and not yet landed: { when it lands (virtual ms), how much }. */
+  const unbilled: Array<{ dueAt: number; cost: number }> = [];
+  const settle = (): void => {
+    const now = clock.now();
+    for (let i = unbilled.length - 1; i >= 0; i--) {
+      if (unbilled[i].dueAt <= now) { balance -= unbilled[i].cost; unbilled.splice(i, 1); }
+    }
+  };
+  const inFlight = (): number => unbilled.reduce((n, u) => n + u.cost, 0);
   let plan: Plan | null = null;
   let balancePlan: BalancePlan | (() => BalancePlan) = "ok";
   let seq = 0;
@@ -143,8 +163,11 @@ export function makeCarrier(o: {
     requests: [],
     stray: [],
     balanceReads: 0,
-    balance: () => balance,
+    balance: () => { settle(); return balance; },
     setBalance: (tzs) => { balance = tzs; },
+    eventualBalance: () => { settle(); return balance - inFlight(); },
+    setBillLag: (ms) => { billLagMs = Number.isFinite(ms) && ms > 0 ? ms : 0; },
+    drainTo: (tzs) => { settle(); balance = tzs + inFlight(); },
     billed: () => billed,
     pricePerSegment: o.price ?? 6,
     setPlan: (p) => { plan = p; },
@@ -172,6 +195,8 @@ export function makeCarrier(o: {
       perCampaign.clear();
       seq = 0;
       billed = 0;
+      billLagMs = 0;
+      unbilled.length = 0;
       plan = null;
       balancePlan = "ok";
       carrier.onRequest = null;
@@ -216,8 +241,10 @@ export function makeCarrier(o: {
       const cost = wire.reduce((n, w) => n + w.segments, 0) * carrier.pricePerSegment;
       rec.carrierHasIt = true;
       billed += cost;
-      balance -= cost;
+      if (billLagMs > 0) unbilled.push({ dueAt: clock.now() + billLagMs, cost });
+      else balance -= cost;
     };
+    settle();
     const preCharge = balance;
     switch (planned.kind) {
       case "accept":
@@ -253,6 +280,7 @@ export function makeCarrier(o: {
     const p = typeof balancePlan === "function" ? balancePlan() : balancePlan;
     if (p === "error") return new Response("Internal Server Error", { status: 500 });
     if (typeof p === "object") clock.advance(p.slowMs);
+    settle();
     return json(200, { status: true, message: "Account balance", data: { name: "dry-fire", currency: "TZS" }, balance: balance });
   }
 

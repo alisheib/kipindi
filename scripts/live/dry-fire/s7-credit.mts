@@ -9,7 +9,9 @@
  *   7c UNREADABLE  credit that cannot be read → Start refuses, and a running campaign pauses `credit_unreadable` before it claims
  *                  anybody (fail closed — for marketing only), Resume refuses while it is unreadable;
  *   7d MID-RUN     the shared credit drains while the campaign runs (login codes, another job): the slice that would take the credit
- *                  below the reserve is not sent — `marketing_floor` — and a top-up plus Resume finishes it.
+ *                  below the reserve is not sent — `marketing_floor` — and a top-up plus Resume finishes it;
+ *   7e LATE BILLING the same drain with each charge landing 6 s after its reply (per-delivered-message billing) and the rail's
+ *                  production window (30 s): the credit kept for login codes is still never gone into once billing catches up.
  * The carrier bills 6 TZS a segment and, like the real gateway, reports the PRE-charge balance on an accepted reply.
  */
 import { claimNow, drive, resume, start, step } from "./core.mts";
@@ -164,7 +166,7 @@ export async function credit(h: Harness, n: number): Promise<Record<string, unkn
     const trueBalance = h.carrier.balance();
     const shortfall = Math.max(0, reserve - trueBalance);
     const oneSlice = S.engine.SLICE_MAX * price;
-    claimNow(h, "S7.credit.mid.pause", "the shared credit drains mid-run: the campaign PAUSES `marketing_floor` with people still waiting, none claimed, and the credit never falls more than ONE slice's cost under the reserve (the gateway's balance reply is pre-charge, so the check lags by one batch)",
+    claimNow(h, "S7.credit.mid.pause", "the shared credit drains mid-run: the campaign PAUSES `marketing_floor` with people still waiting, none claimed, and the credit never falls more than ONE slice's cost under the reserve",
       run.end === "paused" && camp?.stopReason === "marketing_floor" && rows.some((x) => x.status === "PENDING") && rows.every((x) => !(x.status === "PENDING" && x.claimToken !== null)) && shortfall <= oneSlice,
       `paused ${camp?.stopReason}; credit now ${num(trueBalance)} against reserve ${num(reserve)} (under by ${num(shortfall)} ≤ one slice ${num(oneSlice)}); ${requestsFor(id) - reqBefore} more request(s) after the drain; ${statusLine(statusCounts(rows))}`);
     claimNow(h, "S7.credit.mid.strict", "…and not at all: the credit kept for login codes is never gone into — a slice whose send would take it under is not sent",
@@ -182,6 +184,38 @@ export async function credit(h: Harness, n: number): Promise<Record<string, unkn
     claimNow(h, "S7.credit.mid.done", "a top-up and Resume finish the campaign: everyone sent once, the bill within the frozen limit, the credit at or above the reserve again",
       rs.ok && end.end === "terminal" && c.SENT === m && [...h.carrier.handedBy(id).values()].every((k) => k === 1) && spent <= budget && h.carrier.balance() >= reserve,
       `${statusLine(c)}; billed ${num(spent)} ≤ limit ${num(budget)}; credit ${num(h.carrier.balance())}`);
+  }
+
+  // ── 7e · BILLING THAT LAGS (the credit fix's review, 2026-10-08) — each charge lands 6 s after its reply, as Blackball's
+  //    per-delivered-message billing can; the rail counts what its readings may not hold yet for its production window (30 s) ──
+  {
+    const lagWas = process.env.SMS_BILLING_LAG_MS;
+    delete process.env.SMS_BILLING_LAG_MS;
+    h.carrier.setBillLag(6_000);
+    try {
+      // what 7d sent ages out of the window first, so this campaign starts on its own figures
+      h.clock.advance(61_000);
+      h.carrier.setBalance(reserve + cost + 500);
+      forgetBalance();
+      const { A, L, id } = await money("s7e");
+      await drive(h, A, id, { until: (r) => r.view.progress?.phase === "sending" && r.view.progress.value >= 60 });
+      // another consumer spends the credit down — and what is still to be billed lands on top of it
+      h.carrier.drainTo(reserve + 410);
+      forgetBalance();
+      const run = await drive(h, A, id, {});
+      h.clock.advance(60_000);
+      const after = h.carrier.eventualBalance();
+      const camp = await S.db.smsCampaign.find(id);
+      const shortfall = Math.max(0, reserve - after);
+      claimNow(h, "S7.credit.lag.strict", "⭐ with each charge landing 6 s after its reply, a campaign the shared credit drains still PAUSES `marketing_floor` before the credit kept for login codes is gone into, once every charge has landed — the rail counts each send its readings may not hold yet",
+        L.started.ok && run.end === "paused" && camp?.stopReason === "marketing_floor" && shortfall === 0,
+        `${L.started.ok ? "started" : `not started (${L.started.reason})`}; paused ${camp?.stopReason}; once billing caught up the credit is ${num(after)} against reserve ${num(reserve)} (under by ${num(shortfall)})`);
+      out.lateBilling = { lagMs: 6_000, creditAfterBilling: after, shortfall };
+    } finally {
+      h.carrier.setBillLag(0);
+      if (lagWas === undefined) delete process.env.SMS_BILLING_LAG_MS;
+      else process.env.SMS_BILLING_LAG_MS = lagWas;
+    }
   }
   return out;
 }

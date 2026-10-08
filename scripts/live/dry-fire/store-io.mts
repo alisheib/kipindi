@@ -136,7 +136,7 @@ export function resetMemoryStore(): void {
 export function resetProcessGlobals(): void {
   const g = globalThis as unknown as Record<string, unknown>;
   for (const k of [
-    "__50PICK_SMS_BALANCE", "__50PICK_SMS_BALANCE_READ", "__50PICK_OTP_LAST_FAILURE_AT", "__50PICK_SMS_HEALTH",
+    "__50PICK_SMS_BALANCE", "__50PICK_SMS_BALANCE_READ", "__50PICK_SMS_SENT", "__50PICK_OTP_LAST_FAILURE_AT", "__50PICK_SMS_HEALTH",
     "__50PICK_MONEY_CHORES", "__50PICK_MARKETING_ENGINE", "__50PICK_CAMPAIGN_STEPS", "__50PICK_DLR_SEEN", "__50PICK_SEND_WINDOW_AT_MS",
   ]) delete g[k];
 }

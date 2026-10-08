@@ -94,8 +94,8 @@ const L = {
   s37: "S37 · A FAILURE THAT NAMES NO CODE IS NO ANSWER (the U43b-2 re-review) — never read as certainly before the request: a failure with no code, and one whose code is EMPTY (the re-review of round 2), each leave the rows UNCONFIRMED, never released, the campaign paused gateway_unanswered",
   s38: "S38 · ⭐ TOO SLOW, COUNTED BY ROUTE (the re-review of round 2 and the check of its fix) — the GATE side (the check before the wire finds the claim too old): forty people on the REAL slice size shrink below five, only the smallest group counts and the third wait there pauses, nothing sent; the SEND side (sendBatch's own deadline, a stall no smaller group cures): forty people pause on the third wait at ANY size; a slice that met the check and got past it starts the count over, one whose people were ALL refused does not; and the rule's table — 1 to 5 people count on the gate side, 0, 6, 7, 8 and anything not a whole count do not, any size counts on the send side",
   s39: "S39 · ⭐ AN OFFICER'S PAUSE AND RESUME START THE STREAKS OVER (the re-review of round 2) — two slow waits at the smallest group, then a Pause and a Resume (a new pausedAt): two more slow waits do NOT pause, the third after the Resume does; the same for the check before the wire unanswered",
-  s41: "S41 · ⭐ F-1 · A SLICE IS PRICED FOR THE PEOPLE IT CAN STILL CLAIM (the engine's dry-fire, 2026-10-08) — a list all sent, with the credit EXACTLY at the TZS 20,000 kept for codes, finishes DONE (never paused marketing_floor with nobody left, which Resume would pause again); 2 people still owed at TZS 6 are priced TZS 12, so TZS 20,012 sends them and TZS 20,011 pauses marketing_floor before any claim; and the rule: min(the slice, those PENDING), a count that is not a whole number of 0 or more pricing the whole slice (the safe side)",
-  s42: "S42 · ⭐ F-2 · A SEND REPLY'S FIGURE IS PRE-CHARGE: ITS PENDING SEGMENTS COME OFF FIRST (the engine's dry-fire, 2026-10-08) — TZS 20,200 read from a reply with 50 segments not yet taken off pauses marketing_floor before any claim (TZS 19,900 left at TZS 6, its sentence naming that figure), where the same TZS 20,200 with none pending sends; at a MEASURED TZS 8 the pending are priced at TZS 8 (TZS 20,400 with 50 pending pauses); and the rule: only a LIVE figure is reduced, by a whole number of pending segments at a price above 0 — an unreadable figure, NaN, negative or fractional pending, or a price of 0 or NaN leave it as it was",
+  s41: "S41 · ⭐ F-1 · A SLICE IS PRICED FOR THE PEOPLE IT CAN STILL CLAIM (the engine's dry-fire, 2026-10-08) — a list all sent, with the credit a shilling UNDER the TZS 20,000 kept for codes (login codes spent it after the last slice), finishes DONE — nobody is priced, so it is never paused marketing_floor with nobody left, which Resume would pause again; 2 people still owed at TZS 6 are priced TZS 12, so TZS 20,012 sends them and TZS 20,011 pauses marketing_floor before any claim; and the rule: min(the slice, those PENDING), a count that is not a whole number of 0 or more pricing the whole slice (the safe side)",
+  s42: "S42 · ⭐ F-2 · A SEND REPLY'S FIGURE IS PRE-CHARGE: ITS PENDING SEGMENTS COME OFF FIRST (the engine's dry-fire, 2026-10-08) — TZS 20,200 read from a reply with 50 segments not yet taken off pauses marketing_floor before any claim (TZS 19,900 left at TZS 6 — its record names that figure, the reading and the 50 taken off), where the same TZS 20,200 with none pending sends; at a MEASURED TZS 8 the pending are priced at TZS 8 (TZS 20,400 with 50 pending pauses); and the rule: only a LIVE figure is reduced, by a whole number of pending segments at a price above 0 — an unreadable figure, NaN, negative or fractional pending, or a price of 0 or NaN leave it as it was",
   s40: "S40 · THE send_error LOG LINE (the check of round 2's fix) — once the pause has landed, exactly ONE console.error line naming the campaign: on the thrown route the error's code made lawful (a code that is a phone number reaches the log masked, never a nine-digit run) and that this is all that is kept; on the failed route UNKNOWN and the sms.failed rows that hold the words; and NO line when the pause did not land (an officer's Pause won first)",
 } as const;
 
@@ -1333,12 +1333,13 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
 
   // ── S41 · ⭐ F-1 · a slice is priced for the people it can still claim ──
   await claim(ok, L.s41, async () => {
-    // ① everyone sent, then the credit lands EXACTLY on the line: nobody is owed, so nothing is priced and the campaign finishes
+    // ① everyone sent, then the credit a shilling UNDER the line: nobody is owed, so nothing is priced and the campaign finishes —
+    //   at the line itself a slice priced for nobody would pass the verdict too, so only this proves the early return
     const a = worldOf("s41a");
     await playersOn(a, 2);
     const r1 = await stepWith(impl, a.cid, engineDeps(freshState(), stubWire(), carrier(100_000)));
     const wireA = stubWire();
-    const r2 = await stepWith(impl, a.cid, engineDeps(freshState(), wireA, carrier(20_000)));
+    const r2 = await stepWith(impl, a.cid, engineDeps(freshState(), wireA, carrier(19_999)));
     const cA = await campaignOf(a.cid);
     const doneOk = r1.kind === "sent" && r1.handedOver === 2 && r2.kind === "finished" && cA?.status === "DONE" && wireA.calls === 0;
     // ② 2 people still owed at TZS 6 are TZS 12: on the line they are sent, a shilling under pauses before any claim
@@ -1355,7 +1356,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const rule: Array<[number | null, number]> = [[2, 2], [0, 0], [35, 20], [20, 20], [null, 20], [Number.NaN, 20], [-1, 20], [2.5, 20], [Number.POSITIVE_INFINITY, 20]];
     const ruleMiss = rule.filter(([pending, want]) => RULES.owedForSlice(20, pending) !== want).map(([pending]) => String(pending));
     return [doneOk && lineOk && ruleMiss.length === 0,
-      `all sent, then 20,000: ${said(r1)} → ${said(r2)} (${cA?.status}, ${wireA.calls} send(s)) · 2 owed at 20,012: ${said(rOn)} · at 20,011: ${said(rUnder)} · the rule wrong for [${ruleMiss.join(", ")}]`];
+      `all sent, then 19,999: ${said(r1)} → ${said(r2)} (${cA?.status}, ${wireA.calls} send(s)) · 2 owed at 20,012: ${said(rOn)} · at 20,011: ${said(rUnder)} · the rule wrong for [${ruleMiss.join(", ")}]`];
   });
 
   // ── S42 · ⭐ F-2 · a send reply's pending segments come off first ──
@@ -1371,7 +1372,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const cA = await campaignOf(a.cid);
     const pendingOk = rA.kind === "paused" && rA.reason === "marketing_floor" && cA?.stopReason === "marketing_floor" && claimedNone(a.cid) && wireA.calls === 0;
     const detail = (await auditRows(CAMPAIGN_PAUSED_ACTION, a.cid)).map((e) => String((e.payload as { detail?: unknown } | null)?.detail ?? "")).join(" | ");
-    const figureOk = detail.includes("credit 19900");
+    const figureOk = detail.includes("credit 19900 (read 20200, less 50 SMS that may not be billed yet)");
     // ② the same TZS 20,200 with nothing pending (the balance endpoint's own reading): sent
     const b = worldOf("s42b");
     await playersOn(b, 2);
@@ -1741,6 +1742,11 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     name: "R-S27c · a declared caller passes the reaper's bypass (the re-review of round 2: a reap-only step beside a slice in flight)",
     expect: [L.s27],
     impl: () => ({ sources: { ...REAL_SOURCES, src: new Map([...REAL_SOURCES.src, ["src/lib/server/marketing/campaign-control.ts", `${REAL_SOURCES.src.get("src/lib/server/marketing/campaign-control.ts") ?? ""}${NL}export const reapBeside = (id: string) => reapStrandedClaims(id, undefined, { insideFlight: 1 });`]]) } }),
+  },
+  {
+    name: "R-S27d · the engine SHIPS the pending-segment rule unwired (its shipped rules take a reading whole — F-2 lost in production alone)",
+    expect: [L.s27],
+    impl: () => ({ shipped: Object.freeze({ ...ENGINE.ENGINE_DEPS, rules: Object.freeze({ ...ENGINE.ENGINE_DEPS.rules, spendableBalance: (fig: Parameters<typeof RULES.spendableBalance>[0]) => fig }) }) }),
   },
   {
     name: "R-S28 · the OTP mark read from a module of its own (a second instance never sees it)",

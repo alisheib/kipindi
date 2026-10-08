@@ -129,14 +129,6 @@ export function sendErrorLog(campaignId: string, threw: string | null): string {
 }
 
 /**
- * ⭐ WHAT THE CREDIT REALLY IS BEFORE THE NEXT SLICE (the engine's dry-fire, finding F-2, 2026-10-08). A send reply's balance
- * is PRE-CHARGE (BLACKBALL-SMS §1.4): read just after a slice, it still held that slice's charge, so the next slice's check
- * ran one batch behind and could go into the credit kept for login codes by one slice. The segments the reading has not
- * yet taken off (`SmsBalanceRead.pendingSegments` — 0 for the balance endpoint's true reading) are priced at today's price
- * per segment and taken off here. An unreadable figure stays unreadable; a price that is not a positive figure takes
- * nothing off (the settings' price is validated upstream).
- */
-/**
  * ⭐ HOW MANY PEOPLE A SLICE IS PRICED FOR (the engine's dry-fire, finding F-1, 2026-10-08): those it can still CLAIM —
  * `min(size, PENDING)` — never a whole slice for nobody. A campaign whose list was all sent, with the credit exactly at the
  * reserve, priced a slice of 50, paused `marketing_floor` with nobody left and never reached DONE. A count that is not a
@@ -147,11 +139,19 @@ export function owedForSlice(size: number, pending: number | null): number {
   return Math.min(size, pending);
 }
 
+/**
+ * ⭐ WHAT THE CREDIT REALLY IS BEFORE THE NEXT SLICE (the engine's dry-fire, finding F-2, 2026-10-08; reworked after its review).
+ * A reading may not yet hold what was handed over around it: a send reply's balance is PRE-CHARGE (BLACKBALL-SMS §1.4) and
+ * billing lands per delivered message, so without this the next slice's check ran behind and could go into the credit kept
+ * for login codes. The segments the reading may not hold (`SmsBalanceRead.pendingSegments`, `sms.ts`'s `unbilledSince`) are
+ * priced at today's price per segment and taken off — never below zero, so no sentence prints a negative credit. An
+ * unreadable figure stays unreadable; a price that is not a positive figure takes nothing off (it is validated upstream).
+ */
 export function spendableBalance(fig: BalanceFigure, pendingSegments: number | undefined, tzsPerSegment: number): BalanceFigure {
   if (fig.kind !== "live") return fig;
   const n = typeof pendingSegments === "number" && Number.isSafeInteger(pendingSegments) && pendingSegments > 0 ? pendingSegments : 0;
   const price = Number.isFinite(tzsPerSegment) && tzsPerSegment > 0 ? tzsPerSegment : 0;
-  return n === 0 || price === 0 ? fig : { ...fig, tzs: fig.tzs - n * price };
+  return n === 0 || price === 0 ? fig : { ...fig, tzs: Math.max(0, fig.tzs - n * price) };
 }
 
 /** ⭐ E12 · does marketing step aside for a login or withdrawal code that failed at `lastOtp`? Dated either side of now by

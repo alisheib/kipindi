@@ -738,7 +738,34 @@ const PLANTS: Plant[] = [
   {
     id: "R28", name: "the credit kept for login codes is not asked (every slice reads as affordable)", only: [7],
     seams: () => ({ engine: (d) => ({ ...d, credit: (() => ({ ok: true })) as unknown as typeof d.credit }) }),
-    expect: { inv: [], claims: ["S7.credit.mid.done", "S7.credit.mid.pause", "S7.credit.mid.strict", "S7.credit.unread.run"] },
+    expect: { inv: [], claims: ["S7.credit.mid.done", "S7.credit.mid.pause", "S7.credit.mid.strict", "S7.credit.unread.run", "S7.credit.lag.strict"] },
+  },
+  {
+    id: "R30", name: "F-1 · a slice priced whole for whoever is left — the last partial group is never sent, and a list all sent never finishes", only: [7],
+    seams: () => ({ engine: (d) => ({ ...d, rules: { ...d.rules, owedForSlice: (size: number) => size } }) }),
+    expect: { inv: [], claims: ["S7.credit.edge", "S7.credit.edge.done", "S7.credit.edge.resume"] },
+  },
+  {
+    id: "R31", name: "F-2 · a reading taken whole — what it may not hold yet is never taken off the credit", only: [7],
+    seams: () => ({ engine: (d) => ({ ...d, rules: { ...d.rules, spendableBalance: (fig: Parameters<typeof d.rules.spendableBalance>[0]) => fig } }) }),
+    expect: { inv: [], claims: ["S7.credit.mid.strict", "S7.credit.lag.strict"] },
+  },
+  {
+    // The credit fix's review (MAJOR-1) · what F-2 first shipped: a reading counted only what came at or after it, as if every
+    // earlier send were already billed — exact at acceptance (7d holds), short when billing lags (7e must not).
+    id: "R32", name: "F-2 · the billing window ignored — a reading counts only what came after it, so late charges are spent twice", only: [7],
+    seams: () => ({
+      engine: (d) => ({
+        ...d,
+        readBalance: async () => {
+          const r = await d.readBalance();
+          const sent = (globalThis as { __50PICK_SMS_SENT?: Array<{ at: number; segments: number }> }).__50PICK_SMS_SENT ?? [];
+          const from = typeof r.at === "number" ? r.at : Number.POSITIVE_INFINITY;
+          return { ...r, pendingSegments: sent.filter((e) => e.at >= from).reduce((n, e) => n + e.segments, 0) };
+        },
+      }),
+    }),
+    expect: { inv: [], claims: ["S7.credit.lag.strict"] },
   },
 ];
 

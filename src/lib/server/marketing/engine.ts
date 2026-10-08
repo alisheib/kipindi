@@ -473,11 +473,16 @@ async function creditFor(c: StoredSmsCampaign, size: number, deps: EngineDeps): 
   // ⭐ F-2 (the engine's dry-fire, 2026-10-08) · a send reply's figure is pre-charge: its pending segments are priced at
   // today's price and taken off FIRST, so this slice never goes into the credit kept for codes on a one-batch-old figure.
   const perSegment = cost.kind === "unknown" ? configured : cost.tzsPerSegment;
-  const balance = deps.rules.spendableBalance(balanceFigureOf(read), read?.pendingSegments, perSegment);
+  const figure = balanceFigureOf(read);
+  const balance = deps.rules.spendableBalance(figure, read?.pendingSegments, perSegment);
   const v = deps.credit({ balance, costTzs, reserveTzs: reload.settings.codesReserveTzs });
   if (v.ok) return { ok: true, reserveTzs: reload.settings.codesReserveTzs };
+  // The figure judged is the reading less what may not be billed yet — said beside it, so the detail never reads as the tile's.
+  const takenOff = figure.kind === "live" && balance.kind === "live" && balance.tzs !== figure.tzs
+    ? ` (read ${figure.tzs}, less ${read?.pendingSegments ?? 0} SMS that may not be billed yet)`
+    : "";
   return v.reason === "credit_low"
-    ? { ok: false, reason: "marketing_floor", detail: `credit ${v.balanceTzs}, this slice up to ${v.costTzs}, kept for codes ${v.reserveTzs}` }
+    ? { ok: false, reason: "marketing_floor", detail: `credit ${v.balanceTzs}${takenOff}, this slice up to ${v.costTzs}, kept for codes ${v.reserveTzs}` }
     : { ok: false, reason: "credit_unreadable", detail: null };
 }
 
