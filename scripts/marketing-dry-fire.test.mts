@@ -13,7 +13,7 @@
  *   G2  a run in an unsafe shell refuses BEFORE it touches anything
  *   G3  the rail is the fake: `fetch` and the environment are put back, nothing real was called, a stray address is refused
  *   G4  no real SMS can leave: the harness names no gateway host and imports no socket, http or process module
- *   P1  no phone number in the report, the table or the SCALE block
+ *   P1  no phone number in the report, the table or the SCALE block · P2 the phone-number scan reads whole numbers
  *   L1  the `--pg` lock: only the repo's `.pgscratch` cluster, and only while it is empty (a stub client answers)
  *   L2  the `--pg` reader maps Prisma's rows and pages (a stub client answers)
  *   C1  the command line read as documented · C2 its exit codes (0 held · 1 an invariant failed · 2 refused · 4 bad flag) and its JSON report
@@ -58,6 +58,7 @@ const ONLY_PLANTS: string[] | null = plantArg === undefined ? null : plantArg.sl
 const H = await import("./live/marketing-dry-fire.mts");
 const IO = await import("./live/dry-fire/store-io.mts");
 const CAR = await import("./live/dry-fire/carrier.mts");
+const INVS = await import("./live/dry-fire/invariants.mts");
 const CORE = await import("./live/dry-fire/core.mts");
 
 type Report = import("./live/marketing-dry-fire.mts").Report;
@@ -296,6 +297,14 @@ async function runSuite(): Promise<void> {
     const digits = text.match(/[0-9]{9,}/g) ?? [];
     const longRuns = digits.filter((d) => /^255[0-9]{9,}$/.test(d) || /^0[67][0-9]{8}$/.test(d));
     return [longRuns.length === 0 && !/[+]255/.test(text) && text.length > 5000, `${num(text.length)} characters read, ${digits.length} digit runs of nine or more (none a number: ${longRuns.length === 0})`];
+  });
+
+  await claim("P2", "the phone-number scan reads whole numbers: all four spellings of a made-up number are caught, a number the world did not make is caught, and nine digits inside a longer id or timestamp are not mistaken for one", () => {
+    const nines = new Set(["712345678"]);
+    const hit = (text: string): number => INVS.numbersIn(text, nines).length;
+    const caught = ["to 255712345678 now", "call 0712345678", "+255712345678", "2550712345678", "712345678", '{"msisdn":"255712345678"}', "phone=255787654321", "255 712345678"].map((t) => hit(t));
+    const ignored = ["id 17712345678901", "rcp_1791712345678123", "sms_9e0712345679af", "255123456789", "+25565…", "...5678", "balance 19810"].map((t) => hit(t));
+    return [caught.every((k) => k >= 1) && ignored.every((k) => k === 0), `caught [${caught.join(",")}] (each at least once) · ignored [${ignored.join(",")}] (each none)`];
   });
 
   /* ── L · THE --pg LOCK AND READER, ANSWERED BY STUBS ── */
