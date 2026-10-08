@@ -93,8 +93,21 @@ async function shootTall(page, id, root = DIALOG) {
   await page.setViewportSize(vp);
   await wait(200);
 }
+/** The officer's page of the run: a step that fails leaves its picture as FAIL-<id>.png beside the others (never in the PDF) and
+ *  the words of any open dialog in its failure line, so a failure is read without a re-run. */
+let stepPage = null;
 async function step(id, fn) {
-  try { await fn(); } catch (err) { failures.push(`${id}: ${err?.message ?? err}`); }
+  try { await fn(); } catch (err) {
+    let seen = "";
+    if (stepPage) {
+      await stepPage.screenshot({ path: join(SHOTS, `FAIL-${id}.png`) }).catch(() => {});
+      seen = await stepPage.evaluate(() => {
+        const d = document.querySelector('[role="dialog"], [role="alertdialog"]');
+        return d ? ` · open dialog (${d.getAttribute("role")}, aria-modal ${d.getAttribute("aria-modal")}): ${(d.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 300)}` : " · no dialog open";
+      }).catch(() => "");
+    }
+    failures.push(`${id}: ${err?.message ?? err}${seen}`);
+  }
 }
 /** A real paste, dispatched on the focused box. */
 const paste = (page, text) => page.evaluate((t) => {
@@ -145,6 +158,7 @@ async function staff(viewport, phone = "+255700000301", name = "Asha Admin") {
   const r = await page.request.post(BASE + "/api/dev-test/seed-admin", { data: { role: "ADMIN", phone, name } });
   if (!r.ok()) throw new Error(`seed-admin failed: ${r.status()}`);
   await page.evaluate(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+  stepPage = page;
   return { ctx, page };
 }
 /** A POST to a dev-test route, outside any page. */
