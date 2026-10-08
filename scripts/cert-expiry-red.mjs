@@ -7,8 +7,14 @@
  * report the NAMED failure. Then a clean run must go green again.
  *
  * ── ⛔ WHY EACH OF THE THREE IS HERE ───────────────────────────────────────────────────────
- * 1. EXPIRY — `CERT_MIN_DAYS=60` against ~49 days of real runway. This is the assertion the
- *    whole file exists for, and it must fire for BOTH hosts, not one.
+ * 1. EXPIRY — `CERT_MIN_DAYS` set one day ABOVE the real runway, which is read from the baseline
+ *    run (see below). This is the assertion the whole file exists for, and it must fire for BOTH
+ *    hosts, not one. ⛔ IT WAS A FIXED 60 AGAINST "~49 DAYS", AND THAT WENT STALE ON 2026-10-08:
+ *    the origin certificates had been re-issued (67 days left), so demanding 60 was SATISFIED, the
+ *    watch correctly exited 0, and this harness reported a MISS for a defect the plant no longer
+ *    planted. The guard was right and the constant was a clock. Let's Encrypt certificates are
+ *    renewed about a month before they expire, so the real runway swings between ~30 and ~90
+ *    days and no fixed figure can sit above it for long.
  * 2. THE POSITIVE CONTROL — `CERT_ORIGIN_HOST=www.50pick.tz` dials the PROXIED name, so
  *    Cloudflare answers instead of Railway. Without this control the watch could silently start
  *    reading a certificate that renews itself and stay green through the exact outage it exists
@@ -51,6 +57,9 @@ const cases = [];
 console.log("\nred:cert-expiry — E-227, the origin-certificate watch.\n");
 
 // ── The mirror, first half: green on an untouched tree, or nothing below means anything. ────
+// The longest real origin runway (days) the baseline saw. ⭐ READ, NOT WRITTEN DOWN: it moves with every
+// renewal, and case 1 below has to demand more than it — see the header.
+let runway = 0;
 {
   const base = run();
   if (base.code !== 0) {
@@ -62,17 +71,26 @@ console.log("\nred:cert-expiry — E-227, the origin-certificate watch.\n");
     process.exit(1);
   }
   const hosts = /both origin hosts were checked \((\d+) of (\d+)/.exec(base.out);
-  console.log(`  baseline · the watch is GREEN on untouched source (${hosts ? `${hosts[1]} of ${hosts[2]} hosts` : "hosts unknown"})\n`);
+  console.log(`  baseline · the watch is GREEN on untouched source (${hosts ? `${hosts[1]} of ${hosts[2]} hosts` : "hosts unknown"})`);
+  const days = [...base.out.matchAll(/ORIGIN certificate has more than \d+ days left \((\d+)d,/g)].map((m) => Number(m[1]));
+  if (days.length === 0) {
+    // ⛔ NEVER GUESS A FIGURE. A threshold picked without the real runway is the fixed 60 again, one renewal later.
+    console.error("⛔ CANNOT READ THE REAL RUNWAY from the baseline run, so case 1 cannot demand more than it. The watch's");
+    console.error("   `ORIGIN certificate has more than N days left (Xd, …)` line has changed shape — update the pattern above.");
+    process.exit(1);
+  }
+  runway = Math.max(...days);
+  console.log(`  baseline · real origin runway ${days.map((d) => `${d}d`).join(", ")} — the threshold case demands ${runway + 1}\n`);
 }
 
 // ── 1 + 2 · driven entirely from the environment ────────────────────────────────────────────
 cases.push({
   name: "the-threshold-is-not-enforced",
-  env: { CERT_MIN_DAYS: "60" },
+  env: { CERT_MIN_DAYS: String(runway + 1) },
   check: "days left",
   both: true,
-  why: "the expiry assertion itself — 60 days demanded against ~49 of real runway, and it must "
-     + "fire for BOTH hosts rather than one",
+  why: `the expiry assertion itself — ${runway + 1} days demanded against ${runway} of real runway (read from the `
+     + "baseline, because the real figure moves), and it must fire for BOTH hosts rather than one",
 });
 cases.push({
   name: "the-watch-reads-the-EDGE-certificate",
