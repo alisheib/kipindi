@@ -209,6 +209,11 @@ export type ChangesPageRow = {
   masked: string;
   preview: Extract<DecisionPreview, { kind: "inBook" }>;
 };
+/**
+ * ⚠️ A PAGE IS BOUNDED BY THE WORK BEHIND IT, NOT ONLY BY ITS ROWS (S15, the server builder): one request walks at most
+ * a fixed number of staged rows, so a page can hold FEWER than `CHANGES_PAGE_ROWS` rows — even none — while
+ * `nextAfterLine` is not null. Ask again from `nextAfterLine` until it is null; only null means the list is complete.
+ */
 export type ChangesPage = {
   rows: ChangesPageRow[];
   /** The line to ask after for the next page, or null at the end. */
@@ -238,10 +243,22 @@ export type StartImportInput = {
    * since the check and its count differs, the start is refused `check_again` (the officer sees the new numbers first).
    */
   expected: { create: number; update: number; keep: number };
+  /**
+   * ⭐ S15 (the server builder) · the check this start was pressed from — `PreflightView.checkedAt`, posted back as it
+   * came. The check writes nothing on the run (it is advisory), so the start can only know how old the officer's numbers
+   * are from this: older than 30 minutes, unreadable or in the future, and the start is refused `check_again`. The counts
+   * in `expected` are re-decided on the server either way — this only stops a start from a screen left open for hours.
+   */
+  checkedAt: string;
 };
 export type StartImportResult = ImportAnswer<{ view: ImportRunView }>;
 
-/** The lists an import can add to (the Lists card's lists), by name. */
+/**
+ * The lists an import can add to (the Lists card's lists), by name, A to Z. `members` is the Lists card's own figure — the
+ * members whose book row is live and linked to no account (`ListBasisCoverage.live`). `covered`: the list's NEWEST basis
+ * recording on the Lists card is in force (recorded, not revoked). ⚠️ Members an import ADDS join after that recording,
+ * so they are covered only once the basis is recorded again — the result's `list.covered` says whether that is owed.
+ */
 export type ImportListOption = { id: string; name: string; members: number; covered: boolean };
 export type ImportListsResult = ImportAnswer<{ lists: ImportListOption[] }>;
 
@@ -278,7 +295,10 @@ export type ImportResultView = {
   view: ImportRunView;
   kept: KeptSplit;
   /** The list the contacts were added to, and whether that list is covered for offers (its basis and 18+ recorded on
-   *  the Lists card). Null when no list was chosen. */
+   *  the Lists card). Null when no list was chosen — or when the list has since been deleted.
+   *  ⭐ `covered` is true only when EVERY live member of the list is covered by its newest recording (the Lists card's
+   *  "covers N of N", N above 0): members the import added joined after any earlier recording, so it reads false until
+   *  the basis is recorded again on the Lists card. */
   list: { id: string; name: string; covered: boolean } | null;
 };
 export type ImportResultResult = ImportAnswer<{ result: ImportResultView }>;

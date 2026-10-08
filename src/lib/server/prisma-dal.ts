@@ -527,10 +527,28 @@ import type {
   StoredContactImport, StoredContactImportRow, ContactImportStageBatch, ContactImportStageResult, ContactImportTransition,
   ContactImportTotals, ContactImportIdleQuery, ContactImportFinishedPurge, ContactImportRowWindow,
 } from "./store";
+// §29 · S15 · the import's check and commit types — a third type-only import from the store, beside the code that reads them.
+import type {
+  MarketingContactSnapshot, ContactImportFirstLinesQuery, ContactImportFirstLine, ContactImportFailedQuery,
+  ContactImportFailedPage, ContactImportKeptCount, ContactImportFreeze, ContactImportCommitBatch, ContactImportCommitResult,
+} from "./store";
 
 /** U29 · the most rows one keyset page, and one access-export read for a number, hand back — the memory twin's bounds. */
 const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
 const CONTACT_IMPORT_ROWS_BY_NUMBER_MAX = 1000;
+/** §29 · the most failures one page hands back — the memory twin's `CONTACT_IMPORT_FAILED_PAGE_MAX`, the same number. */
+const CONTACT_IMPORT_FAILED_PAGE_MAX = 50;
+/** §29 · ONE commit step's transaction: at most 500 rows — one create statement, one conditional update per changed
+ *  contact, a few grouped settlements — measured in tens of milliseconds; the timeout is a ceiling, never a budget. */
+const CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS = 30_000;
+
+/** §29 · thrown INSIDE the commit's transaction when the unique index refused a create or a guard refused an update, so
+ *  Postgres rolls the whole step back — the cursor included — and the step answers `conflict` naming the rows. */
+class ContactImportBatchConflict extends Error {
+  constructor(readonly ordinals: number[]) {
+    super(`contactImport.commitBatch: ${ordinals.length} row(s) changed since they were decided — the step was rolled back`);
+  }
+}
 
 /** ContactImport row -> StoredContactImport (marketing U29). ⚠️ Named `…Record`, not `…Row`: `ContactImportRow` is a
  *  model of its own. The two JSON columns come back as whatever was written: the service validates before it drafts. */
@@ -541,7 +559,7 @@ type ContactImportRecord = {
   consentBasis: string | null; consentWording: string | null; consentProofNote: string | null; adultAttestedAt: Date | null;
   consentBasisSetBy: string | null; consentBasisSetAt: Date | null;
   pausedAt: Date | null; pausedBy: string | null; finishedAt: Date | null;
-  createdAt: Date; createdBy: string; updatedAt: Date;
+  createdAt: Date; createdBy: string; updatedAt: Date; targetListId: string | null;
 };
 function toStoredContactImport(r: ContactImportRecord): StoredContactImport {
   return {
@@ -571,6 +589,7 @@ function toStoredContactImport(r: ContactImportRecord): StoredContactImport {
     createdAt: iso(r.createdAt),
     createdBy: r.createdBy,
     updatedAt: iso(r.updatedAt),
+    targetListId: r.targetListId,
   };
 }
 
@@ -4249,6 +4268,24 @@ export const prismaDb = {
         .map((r) => ({ msisdn: r.msisdn, email: r.email as string }))
         .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
     },
+    /** §29 · S15 · THE BOOK ROWS BEHIND A SET OF NUMBERS — what the importer's decide() reads: ONE query on the unique
+     *  `msisdn`, a `select` of exactly the nine columns decide() needs (never the consent cache, the link or the raw input).
+     *  ⛔ THE ERASED TOMBSTONE IS INCLUDED (X22) — there is deliberately no sourceRef filter here. §25's bound through
+     *  bulkKeys; an empty set answered before any query. Ordered by number. */
+    snapshotsAmong: async (msisdns: string[]): Promise<MarketingContactSnapshot[]> => {
+      const keys = bulkKeys(msisdns, "marketingContact.snapshotsAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().marketingContact.findMany({
+        where: { msisdn: { in: keys } },
+        select: { id: true, msisdn: true, displayName: true, email: true, notes: true, tags: true, sourceRef: true, importId: true, updatedAt: true },
+      });
+      return rows
+        .map((r): MarketingContactSnapshot => ({
+          id: r.id, msisdn: r.msisdn, displayName: r.displayName, email: r.email, notes: r.notes, tags: r.tags,
+          sourceRef: r.sourceRef, importId: r.importId, updatedAt: r.updatedAt.toISOString(),
+        }))
+        .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0));
+    },
     /** Every book row LINKED to an account — erasure's reach (U18b). `userId` is indexed. */
     listByUserId: async (userId: string): Promise<StoredMarketingContact[]> => {
       const rows = await pc().marketingContact.findMany({
@@ -4783,6 +4820,7 @@ export const prismaDb = {
             createdAt: new Date(row.createdAt),
             createdBy: row.createdBy,
             updatedAt: new Date(row.updatedAt),
+            targetListId: row.targetListId ?? null,
           },
         });
         return toStoredContactImport(created);
