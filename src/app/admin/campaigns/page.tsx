@@ -50,6 +50,8 @@ import {
   zeroRecipientStatusCounts,
 } from "@/lib/marketing/campaign-status";
 import { pausedReasonSentenceFor } from "@/lib/server/marketing/campaign-live";
+import { currentSession } from "@/lib/server/auth-service";
+import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { formatClock, formatDate } from "@/lib/utils";
 import { viewerReadsContacts } from "@/app/admin/contacts/contacts-loader";
 import { loadCampaigns, campaignsSort, campaignRowAudience } from "./campaigns-loader";
@@ -75,64 +77,12 @@ export default async function AdminCampaignsPage(props: { searchParams: Promise<
 
 const COLS = 7;
 
-/** The bar, from the server's counts — or "—" when there is nothing to measure. */
-function ProgressCell({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts }) {
-  const p = campaignProgress(c, counts);
-  if (p === null) return <span className="text-text-tertiary">—</span>;
-  const caption = progressCaption(p);
-  // ⚖️ 152, not 180 (measured 2026-10-02 at 1280, the console's narrowest desktop): at 180 the seven columns ran 26px
-  // past the card and sixteen of twenty names wrapped. 152 still holds "1,847 of 5,912 processed" on one line; a
-  // longer caption wraps between its words, never inside a figure.
-  return (
-    <div className="w-[152px] max-w-full">
-      <ProgressBar value={p.value} max={p.max} label={progressLabel(c.name)} caption={caption} captionText={caption} />
-    </div>
-  );
-}
-
-function CampaignRow({ c, counts, audience, draftHref, viewer }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts; audience: CampaignRowAudience; draftHref: string; viewer: { reads: boolean; mayAct: boolean } }) {
-  const view = CAMPAIGN_STATUS_VIEW[c.status];
-  const name = c.name.trim() === ""
-    ? <span className="text-text-tertiary">{CAMPAIGNS_UNTITLED}</span>
-    : <span className="text-text">{c.name}</span>;
-  return (
-    <tr data-campaign-row data-campaign-id={c.id}>
-      {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): each is drawn behind the flag of the page it opens. */}
-      {/* ⭐ A SAVED DRAFT REOPENS FROM HERE: a DRAFT row links to the composer at its own ?draft= address (behind the
-          compose flag); every other row links to the campaign's live page (behind `detail`, U47b-2). */}
-      <td>
-        {c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route} className="hover:underline">{name}</Link> : name) : CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : name}
-        {/* ⭐ U38b · M8 · the audience in words, role-shaped. A zero width with a full minimum: it wraps inside the column
-            the name sets and never widens it. */}
-        <span className="mt-0.5 block w-0 min-w-full break-words text-body-sm text-text-tertiary" data-campaign-audience={audience.kind}>
-          {campaignAudienceWords(audience)}
-        </span>
-      </td>
-      <td>
-        <Chip size="sm" variant={view.chip}><span className="whitespace-nowrap">{view.label}</span></Chip>
-        {/* ⛔ The reason in words, as the live page says it (E23's floor and the viewer's act grant included) — an unknown key
-            reads "Engine reason: <key>", never the key alone. */}
-        {c.status === "PAUSED" && c.stopReason !== null && (
-          <p data-stop-reason className="mt-1 text-body-sm text-text-tertiary">{pausedReasonSentenceFor(viewer, c, counts)}</p>
-        )}
-      </td>
-      <td className="tabular-nums">
-        {c.audienceCount === null ? <span className="text-text-tertiary">{CAMPAIGNS_NOT_CONFIRMED}</span> : audienceLine(c.audienceCount)}
-      </td>
-      <td><ProgressCell c={c} counts={counts} /></td>
-      <td className="whitespace-nowrap">{segmentsLine(c.segmentsSw, c.segmentsEn)}</td>
-      <td className="whitespace-nowrap">{formatDate(c.createdAt)}</td>
-      {/* The day over its clock, so the column is no wider than "Created" beside it (one line of both was the widest
-          cell in the row) and the year is never dropped to save room. */}
-      <td className="whitespace-nowrap">
-        <span className="block">{formatDate(c.updatedAt)}</span>
-        <span className="block text-body-sm text-text-tertiary tabular-nums">{formatClock(c.updatedAt)}</span>
-      </td>
-    </tr>
-  );
-}
-
 async function AdminCampaignsContent({ searchParams }: { searchParams: Promise<CampaignsParams> }) {
+  // ⛔ D19 · ruling 259 (`test:house-bot-c5` 0.434) · this page imports from an audit reader whose ROWS are handed on
+  // (`campaign-live.ts`: the live page's "Paused by <officer>"), so it decides its audience on the viewer's STORED role before it
+  // reads anything — whatever the section's layout painted. `null` is the answer `/admin/kyc/refused` gives.
+  const session = await currentSession();
+  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/campaigns"))) return null;
   const sp = await searchParams;
   let view: CampaignsView | null = null;
   try {
@@ -217,5 +167,62 @@ async function AdminCampaignsContent({ searchParams }: { searchParams: Promise<C
         {view !== null && view.result.total > PER_PAGE && <AdminPagination total={view.result.total} page={view.page} baseHref={campaignsHref(sp)} />}
       </AdminBody>
     </>
+  );
+}
+
+/** The bar, from the server's counts — or "—" when there is nothing to measure. */
+function ProgressCell({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts }) {
+  const p = campaignProgress(c, counts);
+  if (p === null) return <span className="text-text-tertiary">—</span>;
+  const caption = progressCaption(p);
+  // ⚖️ 152, not 180 (measured 2026-10-02 at 1280, the console's narrowest desktop): at 180 the seven columns ran 26px
+  // past the card and sixteen of twenty names wrapped. 152 still holds "1,847 of 5,912 processed" on one line; a
+  // longer caption wraps between its words, never inside a figure.
+  return (
+    <div className="w-[152px] max-w-full">
+      <ProgressBar value={p.value} max={p.max} label={progressLabel(c.name)} caption={caption} captionText={caption} />
+    </div>
+  );
+}
+
+function CampaignRow({ c, counts, audience, draftHref, viewer }: { c: StoredSmsCampaign; counts: SmsCampaignRecipientStatusCounts; audience: CampaignRowAudience; draftHref: string; viewer: { reads: boolean; mayAct: boolean } }) {
+  const view = CAMPAIGN_STATUS_VIEW[c.status];
+  const name = c.name.trim() === ""
+    ? <span className="text-text-tertiary">{CAMPAIGNS_UNTITLED}</span>
+    : <span className="text-text">{c.name}</span>;
+  return (
+    <tr data-campaign-row data-campaign-id={c.id}>
+      {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): each is drawn behind the flag of the page it opens. */}
+      {/* ⭐ A SAVED DRAFT REOPENS FROM HERE: a DRAFT row links to the composer at its own ?draft= address (behind the
+          compose flag); every other row links to the campaign's live page (behind `detail`, U47b-2). */}
+      <td>
+        {c.status === "DRAFT" ? (CAMPAIGN_SCREENS.compose ? <Link href={draftHref as Route} className="hover:underline">{name}</Link> : name) : CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : name}
+        {/* ⭐ U38b · M8 · the audience in words, role-shaped. A zero width with a full minimum: it wraps inside the column
+            the name sets and never widens it. */}
+        <span className="mt-0.5 block w-0 min-w-full break-words text-body-sm text-text-tertiary" data-campaign-audience={audience.kind}>
+          {campaignAudienceWords(audience)}
+        </span>
+      </td>
+      <td>
+        <Chip size="sm" variant={view.chip}><span className="whitespace-nowrap">{view.label}</span></Chip>
+        {/* ⛔ The reason in words, as the live page says it (E23's floor and the viewer's act grant included) — an unknown key
+            reads "Engine reason: <key>", never the key alone. */}
+        {c.status === "PAUSED" && c.stopReason !== null && (
+          <p data-stop-reason className="mt-1 text-body-sm text-text-tertiary">{pausedReasonSentenceFor(viewer, c, counts)}</p>
+        )}
+      </td>
+      <td className="tabular-nums">
+        {c.audienceCount === null ? <span className="text-text-tertiary">{CAMPAIGNS_NOT_CONFIRMED}</span> : audienceLine(c.audienceCount)}
+      </td>
+      <td><ProgressCell c={c} counts={counts} /></td>
+      <td className="whitespace-nowrap">{segmentsLine(c.segmentsSw, c.segmentsEn)}</td>
+      <td className="whitespace-nowrap">{formatDate(c.createdAt)}</td>
+      {/* The day over its clock, so the column is no wider than "Created" beside it (one line of both was the widest
+          cell in the row) and the year is never dropped to save room. */}
+      <td className="whitespace-nowrap">
+        <span className="block">{formatDate(c.updatedAt)}</span>
+        <span className="block text-body-sm text-text-tertiary tabular-nums">{formatClock(c.updatedAt)}</span>
+      </td>
+    </tr>
   );
 }
