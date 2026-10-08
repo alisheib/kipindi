@@ -10,11 +10,14 @@
  *                    (`startRefusalSentence` — money words only for a money reader; ⛔ the refusal OBJECT never leaves this
  *                    file). Then CONFIRMED → PREPARING `{ startedAt }`.
  *   pauseCampaign  — PREPARING · RUNNING → PAUSED `{ pausedAt, stopReason: "officer_paused" }`.
- *   resumeCampaign — U49a's Resume refusal over the recipient COUNTS (`resumeRefusal(c, counts)` — never a figure; what
+ *   resumeCampaign — ⭐ INSIDE THE CAMPAIGN'S STEP FLIGHT (the U47b-1 review — another step holding it: `busy`, nothing
+ *                    read): U49a's Resume refusal over the recipient COUNTS (`resumeRefusal(c, counts)` — never a figure; what
  *                    only a new copy can fix is refused FIRST, the switch and the credit after; ⛔ E23 · its `reached` form is
- *                    said as a CONDITION to a viewer below the floor — `resumeCopyOnlyHiddenSentence`), then ⭐ the HELD rows
- *                    re-queued (E8 — BEFORE the move, so no slice can find the list "only HELD" and pause it again), then
- *                    PAUSED → RUNNING `{ stopReason: null }` — or PREPARING when the list never finished (`enqueuedAt` null).
+ *                    said as a CONDITION to a viewer below the floor — `resumeCopyOnlyHiddenSentence`), then PAUSED → RUNNING
+ *                    `{ stopReason: null }` — or PREPARING when the list never finished (`enqueuedAt` null) — and only THEN
+ *                    the HELD rows re-queued (E8): a Resume that lost its race to a Stop touches no row, and no slice of this
+ *                    process can run between the move and the re-queue to find the list "only HELD", nor pause it again for
+ *                    another reason between the refusal it judged and the move it makes.
  *   stopCampaign   — CONFIRMED · PREPARING · RUNNING · PAUSED → CANCELLED `{ finishedAt, stopReason: "officer_stopped" }`.
  *                    ⛔ E25 · STOP REWRITES NOTHING: the rows still owed a message stay PENDING / HELD; "stopped before
  *                    sending" is a count (`resumeOutstanding`, the ONE definition of what is left), recorded on the row.
@@ -37,14 +40,17 @@
  *   `REAP_AFTER_MS` (or dated ahead by as much) is a lost one and no longer holds; only its own ticket releases it.
  *   Across processes (a deploy's overlap) the enqueue FAILS CLOSED and the claim keeps every send single (§5 rule 8 pauses
  *   every campaign before a push anyway).
- *   The step is act-gated (`viewer.mayAct`, beside the action's own guard); a view-only role polls the view.
+ *   The step is act-gated (`viewer.mayAct`, beside the action's own guard); a view-only role polls the view. ⭐ So is every
+ *   act (the U47b-1 review — `ControlActor.mayAct`): refused `role` before anything is read, beside U47b-2's guard.
  *
  * ── E24 · THE AUDIT ROWS (ADMIN, the officer — one per act; the engine writes its own SYSTEM rows) ─────────────────────
  * `marketing.campaign_started` `{ count, estimateSegments, freshCount, shrunkBy }` · `marketing.campaign_start_refused`
  * `{ reason }` — the refusal's FIGURES only for the money reasons (`over_budget`, `credit_low`), the rail's problem for
  * `rail_dead`, the refused key for `audience_refused` · `marketing.campaign_paused` `{ reason: "officer_paused" }` (the
- * engine's spelling — ONE action) · `marketing.campaign_resumed` `{ requeuedHeld, to }` · `marketing.campaign_stopped`
- * `{ outstanding }` · `marketing.campaign_copied` `{ from, to }` (the draft save writes its own `marketing.campaign_created`).
+ * engine's spelling — ONE action) · `marketing.campaign_resumed` `{ requeuedHeld, to }` (null when the re-queue failed) ·
+ * `marketing.campaign_stopped` `{ outstanding }` (null when the count could not be read) · `marketing.campaign_copied`
+ * `{ from, to }` (the draft save writes its own `marketing.campaign_created`). ⛔ An act that LANDED is answered landed:
+ * nothing read or written after its move turns it into a failure (the U47b-1 review).
  * ⭐ ruling 543 · every act's answer carries `recorded`, and its sentence says the second half when the row did not land.
  * ⛔ No phone number in any row, answer or error.
  *
@@ -81,6 +87,7 @@ import {
   LIVE_CHANGED, LIVE_DISABLED, LIVE_DONE, LIVE_MISSING, LIVE_NOT_RECORDED, START_AUDIENCE_REFUSED, copyCantTravelSentence,
   copyDoneSentence, copyMessageRefusedSentence, resumeCopyOnlyHiddenSentence, waitSentence,
 } from "@/app/admin/campaigns/[id]/live-copy";
+import { CAMPAIGNS_UNTITLED } from "@/app/admin/campaigns/campaigns-copy";
 
 /* ══ THE ROWS IT WRITES (E24) ═══════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -100,16 +107,18 @@ export const OFFICER_STOPPED = "officer_stopped";
 
 /* ══ THE SHAPES ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** The officer who acts — from the session, every time: their id, may they read a number (`identity.contact` = read), may
- *  they read money (`campaignMoneyVisible`). ⛔ No default; the action's guard decided that they may act at all. */
-export type ControlActor = { userId: string; reads: boolean; money: boolean };
+/** The officer who acts — from the session, every time: their id, may they act at all (the growth act grant — decision 7),
+ *  may they read a number (`identity.contact` = read), may they read money (`campaignMoneyVisible`). ⛔ No default.
+ *  ⭐ `mayAct` (the U47b-1 review): the services refuse `role` too, beside the action's own guard — defence in depth. */
+export type ControlActor = { userId: string; mayAct: boolean; reads: boolean; money: boolean };
 
-/** Why Start was refused: U49a's reasons, OD66's, and a campaign that is not there. */
-export type StartControlRefusal = StartRefusal["reason"] | "audience_refused" | "not_found";
-export type PauseControlRefusal = "not_found" | "draft" | "already_paused" | "not_sending";
-export type ResumeControlRefusal = ResumeRefusal["reason"] | "not_found" | "draft" | "not_paused";
-export type StopControlRefusal = "not_found" | "draft" | "finished";
-export type CopyControlRefusal = "not_found" | "draft" | "audience_cannot_travel" | "message_cannot_travel" | "source_unreadable";
+/** Why Start was refused: U49a's reasons, OD66's, a campaign that is not there, and a role that may not act. */
+export type StartControlRefusal = StartRefusal["reason"] | "audience_refused" | "not_found" | "role";
+export type PauseControlRefusal = "not_found" | "draft" | "already_paused" | "not_sending" | "role";
+/** `busy`: another step of the campaign held its flight just then (Resume runs inside it). */
+export type ResumeControlRefusal = ResumeRefusal["reason"] | "not_found" | "draft" | "not_paused" | "role" | "busy";
+export type StopControlRefusal = "not_found" | "draft" | "finished" | "role";
+export type CopyControlRefusal = "not_found" | "draft" | "audience_cannot_travel" | "message_cannot_travel" | "source_unreadable" | "role";
 
 /** What an act answers: done (and whether its audit row landed — ruling 543), or refused — each in the sentence the page
  *  prints. ⛔ No refusal object, and no figure the viewer may not read, ever reaches an answer. */
@@ -126,8 +135,35 @@ export type StepOutcome = SliceStepResult | EnqueueStepResult | { kind: "reaped"
  * ⭐ As built: `said` — a wait in words (`waitSentence`), else null — so the page prints the step's own sentence.
  */
 export type StepActionResult =
-  | { ok: true; step: StepOutcome; said: string | null; view: CampaignLiveView }
+  | { ok: true; step: DriverStep; said: string | null; view: CampaignLiveView }
   | { ok: false; reason: "role" | "second_factor" | "not_found"; error: string };
+
+/**
+ * ⛔ THE U47b-1 REVIEW · WHAT THE DRIVER IS HANDED OF A STEP — its kind and what decides the next call (a wait's reason and
+ * time, a pause's reason, a status), and NOTHING ELSE, for EVERY role: no count and no cursor. A slice's handedOver /
+ * skipped beside a padded tag would be one person's gate verdict below E23's floor, and an enqueue's `next` names a contact
+ * or an account. Every figure the page shows comes from the view, which is role-shaped.
+ */
+export type DriverStep =
+  | { kind: "sent" } | { kind: "finished" } | { kind: "wrote" } | { kind: "done" } | { kind: "reaped" } | { kind: "idle" }
+  | { kind: "paused"; reason: string }
+  | { kind: "waiting"; reason: string; until: string | null }
+  | { kind: "not_running" | "not_preparing"; status: SmsCampaignStatus };
+
+/** A step as the driver may be handed it (`DriverStep`): the figures and the cursor taken out. */
+export function driverStep(step: StepOutcome): DriverStep {
+  switch (step.kind) {
+    case "paused":
+      return { kind: "paused", reason: step.reason };
+    case "waiting":
+      return { kind: "waiting", reason: step.reason, until: step.until };
+    case "not_running":
+    case "not_preparing":
+      return { kind: step.kind, status: step.status };
+    default:
+      return { kind: step.kind };
+  }
+}
 
 /** E10 widened · the per-campaign step flights of this PROCESS, on `globalThis`. */
 export type StepFlights = { flights: Map<string, { since: number; ticket: number }>; ticket: number };
@@ -145,11 +181,20 @@ export function campaignStepFlights(): StepFlights {
 /** ⭐ A step flight older than this (or dated ahead by as much) is a lost one: no step runs this long. */
 export const STEP_FLIGHT_STALE_MS = REAP_AFTER_MS;
 
+/** ⭐ Is a flight taken at `since` a LOST one at `nowMs`? Older than `STEP_FLIGHT_STALE_MS`, or dated AHEAD by as much (a
+ *  clock that jumped back) — and an instant that is not one never holds a campaign. */
+export function stepFlightStale(nowMs: number, since: number): boolean {
+  return !(Math.abs(nowMs - since) < STEP_FLIGHT_STALE_MS);
+}
+
 /** The audit door as these services use it. */
 export type AuditFn = (entry: Parameters<typeof audit>[0]) => unknown;
 
 /** Every read, rule and write the services make — swappable for the suite's in-process plants; production passes none. */
 export type ControlDeps = {
+  /** ⛔ The step as the driver may be handed it (`driverStep`: no figure, no cursor) — a member only so the suite can plant
+   *  its absence; production's is the function itself. */
+  shape: (step: StepOutcome) => DriverStep;
   campaigns: {
     find: (id: string) => Promise<StoredSmsCampaign | null>;
     transition: (id: string, t: SmsCampaignTransition) => Promise<StoredSmsCampaign | null>;
@@ -182,14 +227,16 @@ export type ControlDeps = {
   reap: (campaignId: string) => Promise<ReapResult>;
   /** The ONE view-model (`campaignLiveView`). */
   view: (id: string, viewer: LiveViewer) => Promise<CampaignLiveView | null>;
-  /** E10 widened · the per-campaign flights (`campaignStepFlights`). */
+  /** E10 widened · the per-campaign flights (`campaignStepFlights`), and when one is a lost one (`stepFlightStale`). */
   flights: () => StepFlights;
+  flightStale: typeof stepFlightStale;
   audit: AuditFn;
   now: () => Date;
 };
 
 /** Frozen: production's services — nothing may reassign a member in-process (a suite hands in its own copy instead). */
 export const CONTROL_DEPS: Readonly<ControlDeps> = Object.freeze({
+  shape: driverStep,
   campaigns: Object.freeze({
     find: async (id: string) => db.smsCampaign.find(id),
     transition: async (id: string, t: SmsCampaignTransition) => db.smsCampaign.transition(id, t),
@@ -214,6 +261,7 @@ export const CONTROL_DEPS: Readonly<ControlDeps> = Object.freeze({
   reap: reapStrandedClaims,
   view: campaignLiveView,
   flights: campaignStepFlights,
+  flightStale: stepFlightStale,
   audit,
   now: () => new Date(),
 });
@@ -229,6 +277,9 @@ function officerOf(actor: ControlActor, what: string): string {
 
 /** The viewer a U49a refusal sentence is said to. */
 const viewerOf = (actor: ControlActor): RefusalViewer => ({ money: actor?.money === true, reads: actor?.reads === true });
+
+/** ⛔ The U47b-1 review · an act by a role that may not act: refused before anything is read, in the role's own words. */
+const roleRefusal = (): { ok: false; reason: "role"; message: string } => ({ ok: false, reason: "role", message: LIVE_DISABLED.role });
 
 /** ⭐ ruling 543 · whether an awaited audit call left its row — a stand-in that throws, or a result without
  *  `recorded: true`, did not (the confirmation's own measurement, never a default). */
@@ -269,6 +320,8 @@ function refusalRecord(r: StartRefusal): Record<string, string | number> {
  */
 export async function startCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<ControlResult<StartControlRefusal>> {
   const officer = officerOf(actor, "startCampaign");
+  // ⛔ A role that may not act — the guard's own refusal, before anything is read (no row: nothing was asked of a campaign).
+  if (actor?.mayAct !== true) return roleRefusal();
   const viewer = viewerOf(actor);
   const refuse = async (reason: StartControlRefusal, message: string, targetId: string | null, record: Record<string, string | number> = {}): Promise<ControlResult<StartControlRefusal>> => {
     await recordedBy(deps, {
@@ -315,7 +368,8 @@ export async function startCampaign(campaignId: string, actor: ControlActor, dep
  *  past its last check sends; one still gating is vetoed by its own re-read before the wire (E6). */
 export async function pauseCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<ControlResult<PauseControlRefusal>> {
   const officer = officerOf(actor, "pauseCampaign");
-  const c = typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
+  if (actor?.mayAct !== true) return roleRefusal();
+  const c =typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
   if (c === null) return { ok: false, reason: "not_found", message: LIVE_MISSING };
   const why = (s: SmsCampaignStatus): ControlResult<PauseControlRefusal> =>
     s === "DRAFT" ? { ok: false, reason: "draft", message: LIVE_DISABLED.draft }
@@ -340,14 +394,33 @@ export async function pauseCampaign(campaignId: string, actor: ControlActor, dep
 /* ══ RESUME ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /**
- * ⭐ RESUME — U49a's refusal over the COUNTS (what only a new copy can fix first; nothing it reads is skipped while anything
- * is left), then the HELD rows re-queued, THEN the move: PAUSED → RUNNING, or PREPARING when the list never finished.
- * ONE ADMIN `marketing.campaign_resumed` row `{ requeuedHeld, to }`.
+ * ⭐ RESUME — inside the campaign's step flight: U49a's refusal over the COUNTS (what only a new copy can fix first; nothing
+ * it reads is skipped while anything is left), then the move — PAUSED → RUNNING, or PREPARING when the list never finished —
+ * and THEN the HELD rows re-queued (the header). ONE ADMIN `marketing.campaign_resumed` row `{ requeuedHeld, to }`.
  */
 export async function resumeCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<ControlResult<ResumeControlRefusal>> {
   const officer = officerOf(actor, "resumeCampaign");
-  const viewer = viewerOf(actor);
-  const c = typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
+  if (actor?.mayAct !== true) return roleRefusal();
+  const id = typeof campaignId === "string" ? campaignId : "";
+  if (id === "") return { ok: false, reason: "not_found", message: LIVE_MISSING };
+  // ⛔ The U47b-1 review · THE CAMPAIGN'S STEP FLIGHT, from the read to the last write (E10 widened): while Resume holds it no
+  // step of this campaign runs in this process — nothing pauses it again for another reason between the refusal judged
+  // below and the move made on it, and no slice finds the list "only HELD" between the move and the re-queue (E8). Across
+  // processes (a deploy's overlap) the engine's own re-checks hold it, as for every step: ④a, the check before the wire, the
+  // enqueue failing closed. Another step holding the flight: `busy`, nothing read and nothing changed.
+  const flights = deps.flights();
+  const ticket = takeStepFlight(flights, id, deps.now().getTime(), deps.flightStale);
+  if (ticket === null) return { ok: false, reason: "busy", message: LIVE_CHANGED.resumeBusy };
+  try {
+    return await resumeInFlight(id, officer, viewerOf(actor), deps);
+  } finally {
+    dropStepFlight(flights, id, ticket);
+  }
+}
+
+/** Resume's body, its flight held by the caller. */
+async function resumeInFlight(id: string, officer: string, viewer: RefusalViewer, deps: ControlDeps): Promise<ControlResult<ResumeControlRefusal>> {
+  const c = await deps.campaigns.find(id);
   if (c === null) return { ok: false, reason: "not_found", message: LIVE_MISSING };
   const why = (s: SmsCampaignStatus): ControlResult<ResumeControlRefusal> =>
     s === "DRAFT" ? { ok: false, reason: "draft", message: LIVE_DISABLED.draft }
@@ -367,20 +440,28 @@ export async function resumeCampaign(campaignId: string, actor: ControlActor, de
     };
   }
 
-  // ⭐ E8 · the HELD rows start over BEFORE the move: a slice that ran first would find only HELD rows and pause again.
+  // ⭐ THE MOVE FIRST — of a Resume and a Stop one wins, and the one that lost touches no row (the U47b-1 review).
   const at = deps.now().toISOString();
-  const requeued = await deps.recipients.requeueHeld(c.id, at);
   const to: SmsCampaignStatus = typeof c.enqueuedAt === "string" && c.enqueuedAt !== "" ? "RUNNING" : "PREPARING";
   const moved = await deps.campaigns.transition(c.id, { from: ["PAUSED"], to, patch: { stopReason: null }, draftRevision: null, at });
   if (moved === null) {
     const now = await deps.campaigns.find(c.id);
     return now === null ? { ok: false, reason: "not_found", message: LIVE_MISSING } : why(now.status);
   }
+  // ⭐ E8 · THEN the HELD rows start over — the flight keeps every slice of this process out until they have. ⛔ The move
+  // has LANDED: a re-queue that fails leaves them parked (recorded null) — the campaign sends everyone else, then pauses
+  // `held_rows` for them, and Resume re-queues them then — never a failure answer for a Resume that happened.
+  let requeued: number | null;
+  try {
+    requeued = await deps.recipients.requeueHeld(c.id, at);
+  } catch {
+    requeued = null;
+  }
   const recorded = await recordedBy(deps, {
     category: "ADMIN", action: CAMPAIGN_RESUMED_ACTION, actorId: officer, targetType: "SmsCampaign", targetId: c.id,
     payload: { requeuedHeld: requeued, to },
   });
-  return { ok: true, message: withRecord(LIVE_DONE.resume, recorded), recorded };
+  return { ok: true, message: withRecord(to === "RUNNING" ? LIVE_DONE.resume : LIVE_DONE.resumePreparing, recorded), recorded };
 }
 
 /* ══ STOP ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -389,7 +470,8 @@ export async function resumeCampaign(campaignId: string, actor: ControlActor, de
  *  `marketing.campaign_stopped` row `{ outstanding }` — everyone confirmed who had no answer when it stopped. */
 export async function stopCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<ControlResult<StopControlRefusal>> {
   const officer = officerOf(actor, "stopCampaign");
-  const c = typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
+  if (actor?.mayAct !== true) return roleRefusal();
+  const c =typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
   if (c === null) return { ok: false, reason: "not_found", message: LIVE_MISSING };
   if (c.status === "DRAFT") return { ok: false, reason: "draft", message: LIVE_DISABLED.draft };
   if (isTerminal(c.status)) return { ok: false, reason: "finished", message: LIVE_DISABLED.stop };
@@ -399,8 +481,15 @@ export async function stopCampaign(campaignId: string, actor: ControlActor, deps
     draftRevision: null, at,
   });
   if (moved === null) return { ok: false, reason: "finished", message: LIVE_DISABLED.stop };
-  const counts = await countsOf(c.id, deps);
-  const outstanding = deps.outstanding(moved, counts) ?? outstandingRows(counts);
+  // ⛔ The U47b-1 review · THE STOP HAS LANDED: nothing after it may turn it into a failure. A count that cannot be read is
+  // recorded as not counted (`outstanding: null`), and the row is written and "stopped" answered all the same.
+  let outstanding: number | null = null;
+  try {
+    const counts = await countsOf(c.id, deps);
+    outstanding = deps.outstanding(moved, counts) ?? outstandingRows(counts);
+  } catch {
+    outstanding = null;
+  }
   const recorded = await recordedBy(deps, {
     category: "ADMIN", action: CAMPAIGN_STOPPED_ACTION, actorId: officer, targetType: "SmsCampaign", targetId: c.id,
     payload: { outstanding },
@@ -410,9 +499,11 @@ export async function stopCampaign(campaignId: string, actor: ControlActor, deps
 
 /* ══ MAKE A COPY ════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** The copy's staff-only name: "<name> (copy)" when it fits the composer's limit, else the name as it is. */
+/** The copy's staff-only name: "<name> (copy)" when it fits the composer's limit, else the name as it is. ⭐ An untitled
+ *  campaign's copy is the list's own word for it, "Untitled campaign (copy)" — never a bare "(copy)" (the U47b-1 review). */
 export function copyNameOf(name: string): string {
-  const base = typeof name === "string" ? name.trim() : "";
+  const trimmed = typeof name === "string" ? name.trim() : "";
+  const base = trimmed === "" ? CAMPAIGNS_UNTITLED : trimmed;
   const named = `${base} (copy)`;
   return charCount(named) <= CAMPAIGN_NAME_MAX_CHARS ? named : base;
 }
@@ -424,6 +515,7 @@ export function copyNameOf(name: string): string {
  */
 export async function copyCampaign(campaignId: string, actor: ControlActor, deps: ControlDeps = CONTROL_DEPS): Promise<CopyResult> {
   const officer = officerOf(actor, "copyCampaign");
+  if (actor?.mayAct !== true) return roleRefusal();
   const reads = actor?.reads === true;
   const c = typeof campaignId === "string" && campaignId !== "" ? await deps.campaigns.find(campaignId) : null;
   if (c === null) return { ok: false, reason: "not_found", message: LIVE_MISSING };
@@ -457,10 +549,11 @@ export async function copyCampaign(campaignId: string, actor: ControlActor, deps
 /* ══ THE STEP ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** E10 widened · take THIS campaign's step flight, or say it is taken. A flight older than `STEP_FLIGHT_STALE_MS` (or
- *  dated ahead by as much) is a lost one and no longer holds. JavaScript runs this to its end before any other step can. */
-function takeStepFlight(s: StepFlights, campaignId: string, nowMs: number): number | null {
+ *  dated ahead by as much) is a lost one and no longer holds (`stale`). JavaScript runs this to its end before any other
+ *  step can. */
+function takeStepFlight(s: StepFlights, campaignId: string, nowMs: number, stale: typeof stepFlightStale): number | null {
   const f = s.flights.get(campaignId);
-  if (f !== undefined && Math.abs(nowMs - f.since) < STEP_FLIGHT_STALE_MS) return null;
+  if (f !== undefined && !stale(nowMs, f.since)) return null;
   const ticket = (s.ticket = (Number.isSafeInteger(s.ticket) ? s.ticket : 0) + 1);
   s.flights.set(campaignId, { since: nowMs, ticket });
   return ticket;
@@ -502,7 +595,7 @@ export async function campaignStep(campaignId: string, viewer: LiveViewer, deps:
   const id = typeof campaignId === "string" ? campaignId : "";
   if (id === "") return { ok: false, reason: "not_found", error: LIVE_MISSING };
   const flights = deps.flights();
-  const ticket = takeStepFlight(flights, id, deps.now().getTime());
+  const ticket = takeStepFlight(flights, id, deps.now().getTime(), deps.flightStale);
   let step: StepOutcome;
   if (ticket === null) {
     step = { kind: "waiting", reason: "busy", until: null };
@@ -517,5 +610,5 @@ export async function campaignStep(campaignId: string, viewer: LiveViewer, deps:
   }
   const view = await deps.view(id, viewer);
   if (view === null) return { ok: false, reason: "not_found", error: LIVE_MISSING };
-  return { ok: true, step, said: stepSaid(step), view };
+  return { ok: true, step: deps.shape(step), said: stepSaid(step), view };
 }

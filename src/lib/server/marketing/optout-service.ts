@@ -457,7 +457,20 @@ export async function ensureOptOutToken(raw: string): Promise<string | null> {
   // The mint's own boundary: the ONE key, and nothing for an unusable number.
   const identifier = toMsisdn255(raw);
   if (!identifier || identifier.length < 12) return null;
-  const existing = await Promise.resolve(db.marketingOptOutToken.listFor(identifier));
-  if (existing.length > 0) return existing[0].token;
+  const current = await currentOptOutToken(identifier);
+  if (current !== null) return current;
   return mintOptOutToken(identifier);
+}
+
+/**
+ * U43b-2 review · THE TOKEN A NUMBER'S MESSAGES CARRY NOW — the one `ensureOptOutToken` reuses (the newest), READ and never
+ * minted: null for a number that holds none, and for an unusable number. ⭐ The campaign engine's reaper gives a row whose
+ * message reached the wire this token (E30, the access export) — ONE number, ONE link, so it is the link that message
+ * offered. ⛔ Never a mint: E1 — a permanent link is made only for a number the gate has just cleared.
+ */
+export async function currentOptOutToken(raw: string): Promise<string | null> {
+  const identifier = toMsisdn255(raw);
+  if (!identifier || identifier.length < 12) return null;
+  const existing = await Promise.resolve(db.marketingOptOutToken.listFor(identifier));
+  return existing.length > 0 ? existing[0].token : null;
 }

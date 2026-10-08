@@ -26,14 +26,15 @@ import { BATCH_MAX } from "../../src/lib/server/sms-blackball.ts";
 import { dispatchSlice, MARKETING_RG_SUPPRESSED_ACTION, DISPATCH_TARGET_TYPE } from "../../src/lib/server/marketing/dispatch.ts";
 import type { SliceOutcome } from "../../src/lib/server/marketing/dispatch.ts";
 import { mayReceiveMarketingSms } from "../../src/lib/server/marketing/consent.ts";
-import { ensureOptOutToken } from "../../src/lib/server/marketing/optout-service.ts";
+import { currentOptOutToken, ensureOptOutToken } from "../../src/lib/server/marketing/optout-service.ts";
 import { renderForRecipient } from "../../src/lib/marketing/campaign-template.ts";
 import { creditVerdict } from "../../src/lib/marketing/credit-guard.ts";
 import { marketingLiveGate } from "../../src/lib/server/marketing/live-switch.ts";
 import { reloadMarketingSmsSettings } from "../../src/lib/server/marketing/sms-settings.ts";
 import { MARKETING_SMS_SETTINGS_DEFAULTS } from "../../src/lib/marketing/sms-settings.ts";
 import { sendWindowUnreadable } from "../../src/lib/marketing/window.ts";
-import { stopReasonLabel } from "../../src/lib/marketing/campaign-status.ts";
+import { stopReasonLabel, zeroRecipientStatusCounts } from "../../src/lib/marketing/campaign-status.ts";
+import { resumeRefusal, resumeRefusalSentence } from "../../src/lib/server/marketing/start-check.ts";
 import { selfExclude } from "../../src/lib/server/responsible-gambling.ts";
 import { sendBatch, lastOtpFailureAt, smsProviderResolution, smsRailProblem } from "../../src/lib/server/sms.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
@@ -44,7 +45,7 @@ import type { StoredSmsCampaignRecipient } from "../../src/lib/server/store.ts";
 import { ALWAYS_CLOSED, NOON_EAT_MS } from "../lib/send-window.mts";
 import {
   CLEARS_ALL, SOURCE_LINE, auditFor, auditRows, bookContact, campaignOf, claim, drive,
-  engineDeps, freshState, json, keyIn, mem, nextRun, officerPause, player, rowOf, rowsOn, runningCampaign, said, saidAll,
+  engineDeps, freshState, json, keyIn, mem, moveCampaign, nextRun, officerPause, player, rowOf, rowsOn, runningCampaign, said, saidAll,
   seat, stubWire,
 } from "./engine-world.mts";
 import type { Check, Seat, Wire } from "./engine-world.mts";
@@ -53,7 +54,7 @@ import type { EngineSection, EnginePlant } from "./f-credit.mts";
 /* ══ THE LABELS — each once, so a plant names exactly the claims it must turn red ═══════════════════════════════════ */
 
 const L = {
-  s0: "S0 · CONTROLS — the fixture world: a consenting player is cleared by the REAL gate and one without consent refused no_consent; the stub wire answers by target in reverse; and the constants are the spec's — SLICE_MAX 50 = BATCH_MAX = the claim door's ceiling, SLICE_START 20, SLICE_MIN 5, a gate budget of 10 s, REAP_AFTER_MS 10 min, the reaper's page = the settle door's batch, MAX_ROW_ATTEMPTS 3, OTP_FAILURE_WAIT_MS 2 min; the rules' column bounds equal the rule set's; the paused action is U42's own spelling",
+  s0: "S0 · CONTROLS — the fixture world: a consenting player is cleared by the REAL gate and one without consent refused no_consent; the stub wire answers by target in reverse; and the constants are the spec's — SLICE_MAX 50 = BATCH_MAX = the claim door's ceiling, SLICE_START 20, SLICE_MIN 5, a gate budget of 10 s, REAP_AFTER_MS 10 min, the reaper's page = the settle door's batch, MAX_ROW_ATTEMPTS 3, OTP_FAILURE_WAIT_MS 2 min, CLAIM_SEND_MAX_AGE_MS half of REAP_AFTER_MS and SLICE_FLIGHT_STALE_MS twice it; the rules' column bounds equal the rule set's; the paused action is U42's own spelling",
   s1: "S1 · ⭐ A RUNNING SLICE OVER CONSENTING PLAYERS settles every row SENT with its reference, its hand-over instant, its opt-out token, its variant, its size and its length, and a trail of 7 entries (campaign, live_switch, send_window, credit, the gate's ok with its basis, the render, the dispatch with the reference) — in ONE wire call, each message under the gate's key; the account's own first name printed for a usable one, the fallback for an unusable one; the step answers sent",
   s2: "S2 · ⭐ E3 · A TRANSPORT RESULT IS UNCONFIRMED, NEVER FAILED — the row whose reply was lost is UNCONFIRMED with the wire's reference kept (a late receipt can still find it), its token and size kept; the rows the wire answered are SENT; nothing is released or FAILED, and nothing pauses",
   s3: "S3 · ⭐ E7 · A status:false BATCH — every claimed row back to PENDING with attempts + 1 and its claim cleared, ZERO FAILED rows, ONE pause gateway_refused and ONE SYSTEM paused row whose detail is the gateway's words; the stop reason says nothing was charged",
@@ -61,7 +62,7 @@ const L = {
   s5: "S5 · ⭐ E8 · A GATE THAT THROWS FOR ONE PERSON — that row PENDING with attempts 1 while the others are SENT; the same person three steps running is HELD (attempts 3, class gate_unanswered) — outstanding, never settled, never sent",
   s6: "S6 · ⭐ E17 · WHO HOLDS THE NUMBER NOW DECIDES THE ORIGIN — a registered player walked by their BOOK row renders as account (their own first name, NO source line) and, on a campaign with a BLANK source line, is SENT, not refused; a number no account holds renders book (the fallback, the source line, Swahili); an English-language account gets the English body",
   s7: "S7 · ⭐ E1 · THE TOKEN IS ENSURED AT SEND, AFTER THE GATE — a person the gate refuses gets NO token row (and is SKIPPED with the gate's reason); a cleared person who already holds a token is sent THAT token and no second row is minted; a cleared person with none gets exactly one, carried on the row",
-  s8: "S8 · THE SWITCH CLOSING MID-CAMPAIGN — on a real carrier with the owner's switch closed, or open but past its closing time, the next step pauses live_switch_closed BEFORE any claim, with one paused row and the spec's sentence",
+  s8: "S8 · THE SWITCH CLOSING MID-CAMPAIGN — on a real carrier with the owner's switch closed, open but past its closing time, or unreadable (a read that throws), the next step pauses live_switch_closed BEFORE any claim, with one paused row; and its sentence is true of all three (switched off, ran out, couldn't be read)",
   s9: "S9 · ⭐ A PAUSE LANDING DURING GATING (the 3rd gate call pauses the campaign) — beforeSend vetoes the send: ZERO wire calls, every claimed row back to PENDING with its claim cleared and attempts unchanged, and the step answers not_running PAUSED",
   s10: "S10 · NOTHING OUTSTANDING → DONE with ONE finished row carrying the counts by status; only HELD rows left → paused held_rows (never DONE), with its sentence; PENDING rows another claim holds → waiting busy, nothing claimed",
   s11: "S11 · E9 · THE WINDOW CLOSED → waiting quiet_hours until it opens (08:00 EAT), ZERO claims and ZERO wire calls, the campaign still RUNNING; hours that cannot be read → waiting window_unreadable, nothing claimed",
@@ -70,18 +71,27 @@ const L = {
   s14: "S14 · E11 · THE SLICE SIZE ADAPTS — the pure rule: a slow gate halves it (20 → 10 → 5) and never below 5, a fast gate doubles it to 50 and never above, an unknown time keeps it, an unusable size restarts at 20; driven: a gate measured at a second a person shrinks the next claim from 20 to 10",
   s15: "S15 · E24 · NO AUDIT ROW PER RECIPIENT OR PER SLICE — a campaign run to DONE over three slices leaves exactly ONE row against the campaign (finished), NONE against any recipient row, and exactly ONE RG line for the one self-excluded player (dispatch's own, against the account)",
   s16: "S16 · ⭐ DC-4 · A RECEIPT BEATS THE SETTLE — the DELIVERED row still carries its gate trail, opt-out token, variant, size, length and hand-over instant, and so does the FAILED one; their status, reference and the receipt's own instant, class and words untouched, the claim kept; the row nobody receipted is SENT",
-  s17: "S17 · ⭐ THE LIST NO LONGER THAN CONFIRMED, BEFORE ANY CLAIM (U42's re-review) — a RUNNING list with more rows than its confirmed count pauses list_over_confirmed_sending, and one whose confirmed count is not a count pauses audience_unreadable: NOTHING claimed, ZERO wire calls, one paused row each, and each sentence says confirm a new copy",
-  s18: "S18 · ⭐ …AND AGAIN AT THE LAST WORD BEFORE THE WIRE — a row added past the confirmed count while the slice gates (or the count turned unreadable) is vetoed by beforeSend: ZERO wire calls, every claimed row back to PENDING unchanged, the campaign paused list_over_confirmed_sending (audience_unreadable), the late row never claimed",
-  s19: "S19 · ⭐ AS BUILT · AN UNANSWERED BATCH — every row the wire left without an answer (TRANSPORT, or a send that threw) is UNCONFIRMED (the reference kept where there was one), never released and never FAILED, and the campaign pauses gateway_unanswered with ONE paused row — so an outage costs one slice, never the audience",
+  s17: "S17 · ⭐ THE LIST NO LONGER THAN CONFIRMED, BEFORE ANY CLAIM (U42's re-review) — a RUNNING list with more rows than its confirmed count pauses list_over_confirmed_sending, and one whose confirmed count is not a count pauses confirmation_unreadable (its own key — never U42's audience_unreadable, whose cause and remedy are the enqueue's): NOTHING claimed, ZERO wire calls, one paused row each; neither sentence prescribes a copy as if it reached nobody — each says a copy would message people again; and Resume refuses the unreadable count with the same word, both saying ask the developer",
+  s18: "S18 · ⭐ …AND AGAIN AT THE LAST WORD BEFORE THE WIRE — a row added past the confirmed count while the slice gates (or the count turned unreadable) is vetoed by beforeSend: ZERO wire calls, every claimed row back to PENDING unchanged, the campaign paused list_over_confirmed_sending (confirmation_unreadable), the late row never claimed",
+  s19: "S19 · ⭐ AS BUILT · AN UNANSWERED BATCH — every row the wire left without a clear answer (TRANSPORT, or no result for it) is UNCONFIRMED (the reference kept where there was one), never released and never FAILED, and the campaign pauses gateway_unanswered with ONE paused row — so an outage costs one slice, never the audience",
   s20: "S20 · ⭐ THE REAL SEND PATH (sendBatch, a stubbed fetch, no network) — a 504 reply is ambiguous: the rows UNCONFIRMED under their SmsMessage references, those rows UNKNOWN (purpose MARKETING), the campaign paused gateway_unanswered; a status:false 400 is a refusal: the rows released with attempts 1, their SmsMessage rows FAILED, paused gateway_refused with the gateway's words; an accepted reply: the rows SENT under their ACCEPTED rows' references, the credit kept for codes handed to the batch",
-  s21: "S21 · ⭐ E16 · THE CREDIT KEPT FOR CODES, PER SLICE — on a real carrier with TZS 100,000 the slice sends and hands the TZS 20,000 kept to the batch (its trail says so); TZS 20,050 against a slice of 20 at TZS 6 pauses marketing_floor, a failed credit read or settings that cannot be read pause credit_unreadable — each BEFORE any claim; on the console stub neither the settings nor the credit is read and no floor is handed on",
+  s21: "S21 · ⭐ E16 · THE CREDIT KEPT FOR CODES, PER SLICE — on a real carrier with TZS 100,000 the slice sends and hands the TZS 20,000 kept to the batch (its trail says so); TZS 20,050 against a slice of 20 at TZS 6 pauses marketing_floor; and each cause that cannot be read pauses in its OWN words, the words Resume refuses with — a failed credit read credit_unreadable, settings that cannot be read settings_unreadable, saved sizes that cannot be read sizes_unreadable, no price price_unknown — each BEFORE any claim, each with its sentence; on the console stub neither the settings nor the credit is read and no floor is handed on",
   s22: "S22 · AS BUILT · THE RE-CHECK BEFORE THE WIRE COULD NOT ANSWER — every cleared row back to PENDING unchanged, ZERO wire calls, waiting before_send_unanswered; three slices running pauses before_send_unanswered with one paused row and its sentence; a slice that answers resets the count",
-  s23: "S23 · THE TEMPLATE'S OWN VERDICT — a stored message that no longer passes its own check pauses template_invalid BEFORE any claim, its sentence and a scrubbed detail; while a message refused for ONE person (a book number on a campaign with a blank source line) holds that person (+1) and pauses nothing",
+  s23: "S23 · THE TEMPLATE'S OWN VERDICT — a stored message that no longer passes its own check pauses template_invalid BEFORE any claim, with a scrubbed detail and a sentence that never prescribes a copy as if it reached nobody (a copy would message people again — only if that is what you want); while a message refused for ONE person (a book number on a campaign with a blank source line) holds that person (+1) and pauses nothing",
   s24: "S24 · THE RAIL — a dead rail pauses NOT_CONFIGURED and an unrecognised provider pauses PROVIDER_UNRECOGNISED (never live_switch_closed, which the owner cannot fix) — BEFORE any claim",
-  s25: "S25 · ⭐ E10 · ONE SLICE IN FLIGHT PER PROCESS — while one campaign's slice gates, a step of ANOTHER campaign answers waiting busy and claims nothing; once it has finished the other step runs; a flight older than ten minutes no longer holds",
+  s25: "S25 · ⭐ E10 · ONE SLICE IN FLIGHT PER PROCESS — while one campaign's slice gates, a step of ANOTHER campaign answers waiting busy and claims nothing; once it has finished the other step runs; a flight eleven minutes old STILL holds (the flight is kept apart from REAP_AFTER_MS — twice it), one twenty-one minutes old no longer does",
   s26: "S26 · ⭐ DC-5 · NO PHONE NUMBER REFUSES A SETTLE — a gateway error and a gate detail that echo a number are settled with the number masked (four bullets and its last two digits), every trail string scrubbed — while a reference whose characters hold a phone-shaped run is kept WHOLE in the trail's source, as the rule set reads a source word by word; and a patch the rule set still refuses is SET ASIDE (its row keeps the claim, for the reaper) while the rest of the slice settles",
   s27: "S27 · THE WIRING — ENGINE_DEPS is frozen and wired to the REAL doors (the ONE loop, the ONE renderer, the token door, the ONE gate by default, the store's doors, the window, money-busy, the OTP mark, the settings, the credit rule, the pure rules) and its send is engineSend; engineSend stamps purpose MARKETING through sendBatch; engine.ts never imports the enqueue, names no book reader and asks dispatchSlice; engine-rules.ts takes types alone from the server and one pure module; no src file but engine.ts calls or value-imports the engine beyond ENGINE_CALLERS (U47b-1's step dispatcher, campaign-control.ts, alone); the host runs §S, §R, §C and §T",
   s28: "S28 · E12 · THE OTP MARK — an OTP that FAILS through the REAL sendBatch stamps the process's mark at that moment and the next step, through the SHIPPED reader, waits otp_failing until two minutes after it; a MARKETING failure and an ACCEPTED OTP stamp nothing",
+  s29: "S29 · ⭐ THE OWNER'S SWITCH, JUDGED AGAIN AT THE LAST WORD BEFORE THE WIRE (the U43b-2 review — marketingLiveGate's own rule: a state read earlier is no licence for later) — the switch closed while the slice gated: beforeSend vetoes, ZERO wire calls, every claimed row back to PENDING unchanged, the campaign paused live_switch_closed with ONE paused row",
+  s30: "S30 · ⭐ A SKIPPED ROW STAYS SKIPPED INSIDE A SHOP-WIDE SLICE — a refused batch (status:false) releases the people it was refused for (+1) and pauses ONCE, while the self-excluded player the gate refused in the same slice stays SKIPPED (attempts 0); after Resume the next slice sends the two and the RG line stays ONE — never a second line per Resume",
+  s31: "S31 · ⭐ A HOLD REASON THE TABLE DOES NOT KNOW IS ABOUT ONE PERSON — held for a reason nobody listed, the row goes back +1, then +2, and is HELD at the third (its class the reason) while the others are SENT: bounded, never a silent loop",
+  s32: "S32 · E7 · A FAILURE BEFORE THE REQUEST, BATCH-WIDE — every row failed NOT_CONFIGURED (a transport that would not start) is released +1 and the campaign pauses NOT_CONFIGURED (the code's own key, never gateway_refused); every row failed UNKNOWN (a transport that threw before its request) is released +1 and pauses send_error — nothing in either was sent or charged, and neither sentence says the network refused",
+  s33: "S33 · ⛔ THE LIST CHECK RUNS FIRST — a list longer than its confirmed count, on a real carrier whose switch is closed, with the window closed, pauses list_over_confirmed_sending (never live_switch_closed, never a wait: no Resume could fix it); a confirmed count that is not a count, with a dead rail, pauses confirmation_unreadable (never NOT_CONFIGURED)",
+  s34: "S34 · ⭐ A SEND THAT THREW (the U43b-2 review — never re-send what might have reached the network, release only what certainly did not) — one that threw before writing anything: its rows released +1 (no message names them), the campaign paused send_error with ONE paused row carrying the error's CODE or NAME only, never its words (the U43b-2 re-review: words can quote the call); one that threw AFTER its message rows were written: its rows UNCONFIRMED, never released, paused send_error; the sentence true of both, and never that the network refused",
+  s35: "S35 · ⭐ THE SEND'S DEADLINE (the U43b-2 re-review — sendBatch's notAfter) — the slice hands its send the oldest claim plus the send-age bound; a batch refused whole for a passed deadline, and one whose deadline passed while its rows were written (no request, the rows FAILED), each WAIT slice_too_slow with their people back as they were (+0), never a pause",
+  s36: "S36 · ⭐ TOO SLOW THREE TIMES IN A ROW PAUSES (the U43b-2 re-review) — two slice_too_slow waits, then the third pauses slice_too_slow with ONE paused row, in words that say so; nothing ever sent",
+  s37: "S37 · A FAILURE THAT NAMES NO CODE IS NO ANSWER (the U43b-2 re-review) — never read as certainly before the request: the rows UNCONFIRMED, never released, the campaign paused gateway_unanswered",
 } as const;
 
 /* ══ THE IMPLEMENTATION UNDER TEST — swapped piece by piece by the plants ══════════════════════════════════════════ */
@@ -245,7 +255,8 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const out = await wire.send([{ to: yes.key, body: "x", targetType: DISPATCH_TARGET_TYPE, targetId: "a" }, { to: no.key, body: "x", targetType: DISPATCH_TARGET_TYPE, targetId: "b" }], {});
     const constants = ENGINE.SLICE_MAX === 50 && ENGINE.SLICE_MAX === BATCH_MAX && ENGINE.SLICE_MAX === CM.SMS_RECIPIENT_CLAIM_MAX
       && ENGINE.SLICE_START === 20 && ENGINE.SLICE_MIN === 5 && ENGINE.SLICE_GATE_BUDGET_MS === 10_000 && ENGINE.REAP_AFTER_MS === 10 * MIN
-      && ENGINE.REAP_BATCH === CM.SMS_RECIPIENT_BATCH_MAX && ENGINE.MAX_ROW_ATTEMPTS === 3 && ENGINE.OTP_FAILURE_WAIT_MS === 2 * MIN;
+      && ENGINE.REAP_BATCH === CM.SMS_RECIPIENT_BATCH_MAX && ENGINE.MAX_ROW_ATTEMPTS === 3 && ENGINE.OTP_FAILURE_WAIT_MS === 2 * MIN
+      && ENGINE.CLAIM_SEND_MAX_AGE_MS === ENGINE.REAP_AFTER_MS / 2 && ENGINE.SLICE_FLIGHT_STALE_MS === 2 * ENGINE.REAP_AFTER_MS;
     const bounds = RULES.TRAIL_TEXT_MAX === CM.SMS_RECIPIENT_TRAIL_TEXT_MAX && RULES.WORDS_MAX === CM.SMS_RECIPIENT_TEXT_MAX
       && RULES.CODE_MAX === CM.SMS_RECIPIENT_CODE_MAX && RULES.TRAIL_MAX === CM.SMS_RECIPIENT_TRAIL_MAX
       && RULES.RECEIPT_CLASS_PREFIX === CM.SMS_RECEIPT_CLASS_PREFIX && ENGINE.ENGINE_PAUSED_ACTION === CAMPAIGN_PAUSED_ACTION;
@@ -414,19 +425,25 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const now = Date.now();
     const closed = { state: "closed" as const, why: "absent" as const };
     const expired = { state: "open" as const, enabledBy: "the owner", enabledAt: iso(now - 3 * 60 * MIN), closesAt: iso(now - MIN) };
-    for (const live of [closed, expired]) {
+    const readings: Array<[string, EngineDeps["liveSwitch"]]> = [
+      ["closed", async () => closed],
+      ["ran out", async () => expired],
+      ["unreadable", async () => { throw new Error("the config row could not be read (fixture)"); }],
+    ];
+    for (const [name, liveSwitch] of readings) {
       const w = worldOf("s8");
       await playersOn(w, 2);
       const wire = stubWire();
-      const r = await stepWith(impl, w.cid, engineDeps(freshState(), wire, carrier(100_000, { liveSwitch: async () => live })));
+      const r = await stepWith(impl, w.cid, engineDeps(freshState(), wire, carrier(100_000, { liveSwitch })));
       const c = await campaignOf(w.cid);
       const paused = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, w.cid);
       holds = holds && r.kind === "paused" && r.reason === "live_switch_closed" && c?.stopReason === "live_switch_closed" && claimedNone(w.cid)
         && wire.calls === 0 && paused.length === 1;
-      out.push(`${live.state}: ${said(r)} claimed none ${claimedNone(w.cid)} paused ${paused.length}`);
+      out.push(`${name}: ${said(r)} claimed none ${claimedNone(w.cid)} paused ${paused.length}`);
     }
-    const words = impl.stopLabel("live_switch_closed") === "Paused — marketing SMS were switched off. The owner switches them on, then press Resume.";
-    return [holds && words, `${out.join(" · ")} · sentence ${words}`];
+    const sentence = impl.stopLabel("live_switch_closed");
+    const words = sentence.includes("switched them off") && sentence.includes("ran out") && sentence.includes("couldn't be read") && sentence.includes("press Resume");
+    return [holds && words, `${out.join(" · ")} · sentence true of all three ${words}`];
   });
 
   // ── S9 · a pause landing during gating: beforeSend vetoes, everything released, zero wire calls ──
@@ -608,9 +625,17 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const rB = await stepWith(impl, b.cid, engineDeps(freshState(), wire2));
     const cB = await campaignOf(b.cid);
     const pausedB = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, b.cid);
-    const words = impl.stopLabel("list_over_confirmed_sending").includes("a copy would message them again") && !impl.stopLabel("list_over_confirmed_sending").includes("confirm a new copy") && impl.stopLabel("audience_unreadable").includes("confirm a new copy");
+    const over = impl.stopLabel("list_over_confirmed_sending");
+    const unread = impl.stopLabel("confirmation_unreadable");
+    // ⭐ Resume agrees: the paused campaign's Resume is refused with the same word, and both say ask the developer
+    const counts = zeroRecipientStatusCounts();
+    for (const x of CM.fillRecipientCounts(await db.smsCampaignRecipient.countByStatus(b.cid))) counts[x.status] += x.count;
+    const resume = cB === null ? null : await resumeRefusal(cB, counts);
+    const agrees = resume?.reason === "confirmation_unreadable" && resumeRefusalSentence(resume, { money: false, reads: false }).includes("ask the developer");
+    const words = over.includes("a copy would message them again") && !over.includes("confirm a new copy")
+      && unread.includes("a copy would message them again") && unread.includes("ask the developer") && !unread.includes("confirm a new copy") && agrees;
     return [rA.kind === "paused" && rA.reason === "list_over_confirmed_sending" && cA?.stopReason === "list_over_confirmed_sending" && claimedNone(a.cid) && wire.calls === 0
-      && pausedA.length === 1 && rB.kind === "paused" && rB.reason === "audience_unreadable" && cB?.stopReason === "audience_unreadable" && claimedNone(b.cid)
+      && pausedA.length === 1 && rB.kind === "paused" && rB.reason === "confirmation_unreadable" && cB?.stopReason === "confirmation_unreadable" && claimedNone(b.cid)
       && wire2.calls === 0 && pausedB.length === 1 && words,
       `over: ${said(rA)} claimed none ${claimedNone(a.cid)} wire ${wire.calls} paused ${pausedA.length} · no count: ${said(rB)} claimed none ${claimedNone(b.cid)} wire ${wire2.calls} · words ${words}`];
   });
@@ -650,8 +675,8 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const cB = await campaignOf(b.cid);
     return [rA.kind === "paused" && rA.reason === "list_over_confirmed_sending" && wire.calls === 0
       && rows.every((x) => x?.status === "PENDING" && x.claimToken === null && x.attempts === 0) && late?.claimedAt === null
-      && cA?.stopReason === "list_over_confirmed_sending" && rB.kind === "paused" && rB.reason === "audience_unreadable" && wire2.calls === 0
-      && cB?.stopReason === "audience_unreadable",
+      && cA?.stopReason === "list_over_confirmed_sending" && rB.kind === "paused" && rB.reason === "confirmation_unreadable" && wire2.calls === 0
+      && cB?.stopReason === "confirmation_unreadable",
       `over: ${said(rA)} wire ${wire.calls} rows ${statusesOf(rows)} late claimed ${late?.claimedAt ?? "never"} · no count: ${said(rB)} wire ${wire2.calls}`];
   });
 
@@ -665,13 +690,13 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const pausedA = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, a.cid);
     const b = worldOf("s19b");
     const seatsB = await playersOn(b, 2);
-    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire({ throws: true })));
+    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire({ answer: () => "missing" })));
     const rowsB = await Promise.all(seatsB.map((s) => rowOf(s.id)));
-    const words = impl.stopLabel("gateway_unanswered").includes("never sent again by themselves");
+    const words = impl.stopLabel("gateway_unanswered").includes("never sent again by themselves") && impl.stopLabel("gateway_unanswered").includes("no clear answer");
     return [rA.kind === "paused" && rA.reason === "gateway_unanswered" && rows.every((x) => x?.status === "UNCONFIRMED" && x.smsReference === `ref_${x.id}` && x.attempts === 0)
       && cA?.stopReason === "gateway_unanswered" && pausedA.length === 1 && rB.kind === "paused" && rB.reason === "gateway_unanswered"
-      && rowsB.every((x) => x?.status === "UNCONFIRMED" && x.smsReference === null) && words,
-      `transport: ${said(rA)} rows ${statusesOf(rows)} paused ${pausedA.length} · threw: ${said(rB)} rows ${statusesOf(rowsB)} · words ${words}`];
+      && rowsB.every((x) => x?.status === "UNCONFIRMED" && x.smsReference === null && x.attempts === 0) && words,
+      `transport: ${said(rA)} rows ${statusesOf(rows)} paused ${pausedA.length} · no result: ${said(rB)} rows ${statusesOf(rowsB)} · words ${words}`];
   });
 
   // ── S20 · the REAL send path behind a stubbed fetch ──
@@ -731,15 +756,29 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const rB = await stepWith(impl, b.cid, engineDeps(freshState(), wireB, carrier(20_050)));
     const okB = rB.kind === "paused" && rB.reason === "marketing_floor" && claimedNone(b.cid) && wireB.calls === 0;
     out.push(`20,050: ${said(rB)}`);
-    // ③ a failed credit read, and ④ settings that cannot be read: credit_unreadable
-    const c = worldOf("s21c");
-    await playersOn(c, 1);
-    const rC = await stepWith(impl, c.cid, engineDeps(freshState(), stubWire(), carrier(0, { readBalance: async () => ({ tzs: null, at: null, outcome: "failed", stale: false, error: "unreachable" }) })));
-    const e = worldOf("s21e");
-    await playersOn(e, 1);
-    const rE = await stepWith(impl, e.cid, engineDeps(freshState(), stubWire(), carrier(100_000, { settings: async () => ({ ok: false, error: "down" }) })));
-    const okC = rC.kind === "paused" && rC.reason === "credit_unreadable" && claimedNone(c.cid) && rE.kind === "paused" && rE.reason === "credit_unreadable" && claimedNone(e.cid);
-    out.push(`unreadable credit: ${said(rC)} · unreadable settings: ${said(rE)}`);
+    // ③ each cause that cannot be read, in its OWN words: the credit, the settings, the saved sizes, the price
+    const causes: Array<[string, (cid: string) => Promise<void>, Partial<EngineDeps>]> = [
+      ["credit_unreadable", async () => undefined, { readBalance: async () => ({ tzs: null, at: null, outcome: "failed", stale: false, error: "unreachable" }) }],
+      ["settings_unreadable", async () => undefined, { settings: async () => ({ ok: false, error: "down" }) }],
+      ["sizes_unreadable", async (cid) => {
+        const stored = mem() as unknown as { smsCampaigns: Map<string, { segmentsSw: number | null }> };
+        const row = stored.smsCampaigns.get(cid);
+        if (row) row.segmentsSw = null;
+      }, {}],
+      ["price_unknown", async () => undefined, { cost: async () => ({ kind: "unknown", reason: "no-sends" }) }],
+    ];
+    let okC = true;
+    for (const [want, spoil, over] of causes) {
+      const c = worldOf("s21c");
+      await playersOn(c, 1);
+      await spoil(c.cid);
+      const wireC = stubWire();
+      const rC = await stepWith(impl, c.cid, engineDeps(freshState(), wireC, carrier(100_000, over)));
+      const sentence = impl.stopLabel(want);
+      okC = okC && rC.kind === "paused" && rC.reason === want && claimedNone(c.cid) && wireC.calls === 0
+        && sentence.startsWith("Paused — ") && !sentence.startsWith("Engine reason");
+      out.push(`${want}: ${said(rC)}`);
+    }
     // ⑤ the console stub: no settings or credit read, no floor handed on
     const f = worldOf("s21f");
     await playersOn(f, 1);
@@ -798,8 +837,10 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire(), { gate: CLEARS_ALL }));
     const rowB = await rowOf(b.rid(0));
     const cB = await campaignOf(b.cid);
+    const sentence = impl.stopLabel("template_invalid");
+    const words = sentence.includes("a copy would message them again") && sentence.includes("only if that is what you want");
     return [rA.kind === "paused" && rA.reason === "template_invalid" && claimedNone(a.cid) && wire.calls === 0 && pausedA.length === 1 && detail.length > 0
-      && impl.stopLabel("template_invalid").includes("send a corrected copy") && rB.kind === "sent" && rowB?.status === "PENDING" && rowB.attempts === 1 && cB?.status === "RUNNING",
+      && words && rB.kind === "sent" && rowB?.status === "PENDING" && rowB.attempts === 1 && cB?.status === "RUNNING",
       `stored: ${said(rA)} detail "${detail.slice(0, 60)}" · one person: ${said(rB)} row ${rowB?.status}/${rowB?.attempts} campaign ${cB?.status}`];
   });
 
@@ -834,13 +875,20 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     release();
     const done = await first;
     const after = await stepWith(impl, b.cid, engineDeps(state, stubWire(), { gate: CLEARS_ALL }));
+    // a flight eleven minutes old still holds (past REAP_AFTER_MS, inside twice it); one twenty-one minutes old does not
+    const y = worldOf("s25y");
+    await playersOn(y, 1);
+    const young = freshState();
+    young.flight = { campaignId: "cmp_slow", since: Date.now() - 11 * MIN, ticket: 6 };
+    const rYoung = await stepWith(impl, y.cid, engineDeps(young, stubWire(), { gate: CLEARS_ALL }));
     const c = worldOf("s25c");
     await playersOn(c, 1);
     const stale = freshState();
-    stale.flight = { campaignId: "cmp_lost", since: Date.now() - 11 * MIN, ticket: 7 };
+    stale.flight = { campaignId: "cmp_lost", since: Date.now() - 21 * MIN, ticket: 7 };
     const rStale = await stepWith(impl, c.cid, engineDeps(stale, stubWire(), { gate: CLEARS_ALL }));
-    return [meanwhile.kind === "waiting" && meanwhile.reason === "busy" && bUntouched && done.kind === "sent" && after.kind === "sent" && rStale.kind === "sent",
-      `meanwhile ${said(meanwhile)} (b untouched ${bUntouched}) · first ${said(done)} · after ${said(after)} · stale flight: ${said(rStale)}`];
+    return [meanwhile.kind === "waiting" && meanwhile.reason === "busy" && bUntouched && done.kind === "sent" && after.kind === "sent"
+      && rYoung.kind === "waiting" && rYoung.reason === "busy" && claimedNone(y.cid) && rStale.kind === "sent",
+      `meanwhile ${said(meanwhile)} (b untouched ${bUntouched}) · first ${said(done)} · after ${said(after)} · 11 min flight: ${said(rYoung)} · 21 min flight: ${said(rStale)}`];
   });
 
   // ── S26 · DC-5 ──
@@ -894,7 +942,8 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
       && sh.liveGate === marketingLiveGate && sh.gate === undefined && sh.send === ENGINE.engineSend && sh.otpLastFailureAt === lastOtpFailureAt
       && sh.settings === reloadMarketingSmsSettings && sh.provider === smsProviderResolution && sh.rail === smsRailProblem
       && sh.state === ENGINE.engineProcessState && sh.rules.isShopWide === RULES.isShopWide && sh.rules.settlementFor === RULES.settlementFor
-      && sh.rules.reapVerdict === RULES.reapVerdict && sh.rules.adaptSliceSize === RULES.adaptSliceSize && sh.rules.sendRecordOf === RULES.sendRecordOf;
+      && sh.rules.reapVerdict === RULES.reapVerdict && sh.rules.adaptSliceSize === RULES.adaptSliceSize && sh.rules.sendRecordOf === RULES.sendRecordOf
+      && sh.tokenOf === currentOptOutToken;
     // engineSend through the console stub writes a MARKETING row for the recipient target
     const w = worldOf("s27");
     const target = `rcp_s27_probe_${w.run}`;
@@ -945,6 +994,189 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
       globalThis.__50PICK_OTP_LAST_FAILURE_AT = saved;
     }
   });
+
+  // ── S29 · the owner's switch judged again just before the wire ──
+  await claim(ok, L.s29, async () => {
+    const w = worldOf("s29");
+    const seats = await playersOn(w, 2);
+    const now = Date.now();
+    let open = true;
+    const wire = stubWire();
+    const r = await stepWith(impl, w.cid, engineDeps(freshState(), wire, carrier(100_000, {
+      liveSwitch: async () => (open ? { state: "open", enabledBy: "the owner", enabledAt: iso(now - MIN), closesAt: iso(now + 60 * MIN) } : { state: "closed", why: "absent" }),
+      // the owner closes the switch while the slice gates
+      gate: async (m) => { open = false; return CLEARS_ALL(m); },
+    })));
+    const rows = await Promise.all(seats.map((s) => rowOf(s.id)));
+    const c = await campaignOf(w.cid);
+    const paused = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, w.cid);
+    return [r.kind === "paused" && r.reason === "live_switch_closed" && wire.calls === 0
+      && rows.every((x) => x?.status === "PENDING" && x.claimToken === null && x.attempts === 0) && c?.stopReason === "live_switch_closed" && paused.length === 1,
+      `${said(r)} · wire calls ${wire.calls} · rows ${statusesOf(rows)} attempts ${rows.map((x) => x?.attempts).join("")} · paused rows ${paused.length}`];
+  });
+
+  // ── S30 · a SKIPPED row stays SKIPPED inside a shop-wide slice (one RG line, whatever the Resumes) ──
+  await claim(ok, L.s30, async () => {
+    const w = worldOf("s30");
+    const seats = await playersOn(w, 3);
+    const excluded = seats[0].userId as string;
+    await selfExclude(excluded, "24h");
+    const r1 = await stepWith(impl, w.cid, engineDeps(freshState(), stubWire({ answer: () => "rejected" })));
+    const rows1 = await Promise.all(seats.map((s) => rowOf(s.id)));
+    const rg1 = (await auditRows(MARKETING_RG_SUPPRESSED_ACTION, excluded)).length;
+    await moveCampaign(w.cid, ["PAUSED"], "RUNNING", { stopReason: null });
+    const wire2 = stubWire();
+    const r2 = await stepWith(impl, w.cid, engineDeps(freshState(), wire2));
+    const rows2 = await Promise.all(seats.map((s) => rowOf(s.id)));
+    const rg2 = (await auditRows(MARKETING_RG_SUPPRESSED_ACTION, excluded)).length;
+    return [r1.kind === "paused" && r1.reason === "gateway_refused" && rows1[0]?.status === "SKIPPED" && rows1[0].attempts === 0
+      && rows1.slice(1).every((x) => x?.status === "PENDING" && x.attempts === 1) && rg1 === 1
+      && r2.kind === "sent" && wire2.sent.length === 2 && !wireKeys(wire2).includes(seats[0].key) && rows2[0]?.status === "SKIPPED"
+      && rows2.slice(1).every((x) => x?.status === "SENT") && rg2 === 1,
+      `refused: ${said(r1)} rows ${statusesOf(rows1)}/${rows1.map((x) => x?.attempts).join("")} RG ${rg1} · after Resume: ${said(r2)} rows ${statusesOf(rows2)} RG ${rg2}`];
+  });
+
+  // ── S31 · a hold reason the table does not know is about one person ──
+  await claim(ok, L.s31, async () => {
+    const w = worldOf("s31");
+    const seats = await playersOn(w, 3);
+    const odd = seats[1].id;
+    // dispatch keeps one row back with a reason nobody listed, and runs the rest as ever
+    const dispatch: EngineDeps["dispatch"] = async (rows, sd) => {
+      const rest = rows.filter((r) => r.ref !== odd);
+      const out = rest.length === 0 ? [] : await dispatchSlice(rest, sd);
+      const kept: SliceOutcome[] = rows.filter((r) => r.ref === odd).map((r) => ({ ref: r.ref, outcome: "held", reason: "mystery_hold", basis: "CONSENT", basisRef: "ledger:fixture" }));
+      return [...out, ...kept];
+    };
+    const d = engineDeps(freshState(), stubWire(), { gate: CLEARS_ALL, dispatch });
+    const first = await stepWith(impl, w.cid, d);
+    const after1 = await rowOf(odd);
+    const second = await stepWith(impl, w.cid, d);
+    const after2 = await rowOf(odd);
+    const third = await stepWith(impl, w.cid, d);
+    const held = await rowOf(odd);
+    const others = await Promise.all([rowOf(seats[0].id), rowOf(seats[2].id)]);
+    return [after1?.status === "PENDING" && after1.attempts === 1 && after2?.status === "PENDING" && after2.attempts === 2
+      && held?.status === "HELD" && held.attempts === 3 && held.failureClass === "mystery_hold" && others.every((x) => x?.status === "SENT"),
+      `${said(first)} → ${said(second)} → ${said(third)} · the row ${after1?.status}/${after1?.attempts} → ${after2?.status}/${after2?.attempts} → ${held?.status}/${held?.attempts}/${held?.failureClass} · others ${statusesOf(others)}`];
+  });
+
+  // ── S32 · a failure before the request, batch-wide: NOT_CONFIGURED and UNKNOWN ──
+  await claim(ok, L.s32, async () => {
+    const out: string[] = [];
+    let holds = true;
+    for (const [answer, want] of [["not_configured", "NOT_CONFIGURED"], ["unknown", "send_error"]] as const) {
+      const w = worldOf("s32");
+      const seats = await playersOn(w, 2);
+      const r = await stepWith(impl, w.cid, engineDeps(freshState(), stubWire({ answer: () => answer })));
+      const rows = await Promise.all(seats.map((s) => rowOf(s.id)));
+      const c = await campaignOf(w.cid);
+      const paused = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, w.cid);
+      holds = holds && r.kind === "paused" && r.reason === want && rows.every((x) => x?.status === "PENDING" && x.attempts === 1 && x.claimToken === null)
+        && c?.stopReason === want && paused.length === 1;
+      out.push(`${answer}: ${said(r)} rows ${statusesOf(rows)}/${rows.map((x) => x?.attempts).join("")} paused ${paused.length}`);
+    }
+    const error = impl.stopLabel("send_error");
+    const words = error.includes("on our side") && !error.includes("refused") && !impl.stopLabel("NOT_CONFIGURED").includes("refused");
+    return [holds && words, `${out.join(" · ")} · words ${words}`];
+  });
+
+  // ── S33 · the list check runs FIRST ──
+  await claim(ok, L.s33, async () => {
+    const a = worldOf("s33a");
+    await playersOn(a, 3, { count: 2 });
+    const wire = stubWire();
+    const rA = await stepWith(impl, a.cid, engineDeps(freshState(), wire, carrier(100_000, {
+      liveSwitch: async () => ({ state: "closed", why: "absent" }),
+      window: ALWAYS_CLOSED,
+    })));
+    const b = worldOf("s33b");
+    await playersOn(b, 2);
+    const stored = mem() as unknown as { smsCampaigns: Map<string, { audienceCount: number | null }> };
+    const row = stored.smsCampaigns.get(b.cid);
+    if (row) row.audienceCount = null;
+    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire(), { rail: () => "keys-not-set" }));
+    return [rA.kind === "paused" && rA.reason === "list_over_confirmed_sending" && claimedNone(a.cid) && wire.calls === 0
+      && rB.kind === "paused" && rB.reason === "confirmation_unreadable" && claimedNone(b.cid),
+      `over the count, switch closed, window closed: ${said(rA)} · no count, a dead rail: ${said(rB)}`];
+  });
+
+  // ── S34 · a send that threw: the evidence decides ──
+  await claim(ok, L.s34, async () => {
+    // ① it threw before writing anything: no message names the rows — certainly never on the wire
+    const a = worldOf("s34a");
+    const seatsA = await playersOn(a, 2);
+    const wireA = stubWire({ throwsBefore: true });
+    const rA = await stepWith(impl, a.cid, engineDeps(freshState(), wireA));
+    const rowsA = await Promise.all(seatsA.map((s) => rowOf(s.id)));
+    const pausedA = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, a.cid);
+    const detail = String((pausedA[0]?.payload as Record<string, unknown> | undefined)?.detail ?? "");
+    // ② it threw AFTER its message rows were written: the batch may be on the network — never released
+    const b = worldOf("s34b");
+    const seatsB = await playersOn(b, 2);
+    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire({ throws: true })));
+    const rowsB = await Promise.all(seatsB.map((s) => rowOf(s.id)));
+    const sentence = impl.stopLabel("send_error");
+    const words = sentence.includes("on our side") && sentence.includes("never sent again by themselves") && !sentence.includes("refused");
+    return [rA.kind === "paused" && rA.reason === "send_error" && wireA.sent.length === 0
+      && rowsA.every((x) => x?.status === "PENDING" && x.attempts === 1 && x.claimToken === null) && pausedA.length === 1 && detail === "Error" && !detail.includes("could not be written")
+      && rB.kind === "paused" && rB.reason === "send_error" && rowsB.every((x) => x?.status === "UNCONFIRMED" && x.attempts === 0) && words,
+      `before anything: ${said(rA)} rows ${statusesOf(rowsA)}/${rowsA.map((x) => x?.attempts).join("")} paused ${pausedA.length} "${detail.slice(0, 60)}" · after its rows: ${said(rB)} rows ${statusesOf(rowsB)} · words ${words}`];
+  });
+
+  // ── S35 · the send's deadline (the U43b-2 re-review) ──
+  await claim(ok, L.s35, async () => {
+    // ① the deadline handed to the send: the slice's oldest claim plus the send-age bound
+    const a = worldOf("s35a");
+    await playersOn(a, 2);
+    const wireA = stubWire();
+    const t0 = Date.now();
+    const rA = await stepWith(impl, a.cid, engineDeps(freshState(), wireA));
+    const t1 = Date.now();
+    const naA = (wireA.opts[0] as { notAfter?: unknown } | undefined)?.notAfter;
+    const handed = typeof naA === "number" && naA >= t0 + ENGINE.CLAIM_SEND_MAX_AGE_MS && naA <= t1 + ENGINE.CLAIM_SEND_MAX_AGE_MS;
+    // ② refused whole for a passed deadline: a WAIT, its people back as they were
+    const b = worldOf("s35b");
+    const seatsB = await playersOn(b, 2);
+    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire({ refused: "DEADLINE_PASSED" })));
+    const rowsB = await Promise.all(seatsB.map((x) => rowOf(x.id)));
+    // ③ the deadline passed while the rows were written (no request; sendBatch wrote them FAILED): the same wait
+    const c = worldOf("s35c");
+    const seatsC = await playersOn(c, 2);
+    const rC = await stepWith(impl, c.cid, engineDeps(freshState(), stubWire({ answer: () => "deadline" })));
+    const rowsC = await Promise.all(seatsC.map((x) => rowOf(x.id)));
+    const back = (rows: ReadonlyArray<Awaited<ReturnType<typeof rowOf>>>): boolean => rows.every((x) => x?.status === "PENDING" && x.attempts === 0 && x.claimToken === null);
+    const pausedNone = (await auditRows(ENGINE.ENGINE_PAUSED_ACTION, b.cid)).length === 0 && (await auditRows(ENGINE.ENGINE_PAUSED_ACTION, c.cid)).length === 0;
+    return [rA.kind === "sent" && handed && rB.kind === "waiting" && rB.reason === "slice_too_slow" && back(rowsB)
+      && rC.kind === "waiting" && rC.reason === "slice_too_slow" && back(rowsC) && pausedNone,
+      `deadline handed ${handed ? "yes" : `NO (${String(naA)})`} · refused whole: ${said(rB)} rows ${statusesOf(rowsB)} · failed in the write: ${said(rC)} rows ${statusesOf(rowsC)} · no paused row ${pausedNone}`];
+  });
+
+  // ── S36 · too slow three times in a row PAUSES ──
+  await claim(ok, L.s36, async () => {
+    const w = worldOf("s36");
+    await playersOn(w, 2);
+    const state = freshState();
+    const wire = stubWire({ refused: "DEADLINE_PASSED" });
+    const r1 = await stepWith(impl, w.cid, engineDeps(state, wire));
+    const r2 = await stepWith(impl, w.cid, engineDeps(state, wire));
+    const r3 = await stepWith(impl, w.cid, engineDeps(state, wire));
+    const paused = await auditRows(ENGINE.ENGINE_PAUSED_ACTION, w.cid);
+    const sentence = impl.stopLabel("slice_too_slow");
+    const words = sentence.includes("too long three times running") && sentence.includes("nothing more was sent");
+    return [r1.kind === "waiting" && r1.reason === "slice_too_slow" && r2.kind === "waiting" && r2.reason === "slice_too_slow"
+      && r3.kind === "paused" && r3.reason === "slice_too_slow" && paused.length === 1 && words && wire.sent.length === 0,
+      `${said(r1)} · ${said(r2)} · ${said(r3)} · paused rows ${paused.length} · words ${words} · sent ${wire.sent.length}`];
+  });
+
+  // ── S37 · a failure that names no code is no answer ──
+  await claim(ok, L.s37, async () => {
+    const w = worldOf("s37");
+    const seats = await playersOn(w, 2);
+    const r = await stepWith(impl, w.cid, engineDeps(freshState(), stubWire({ answer: () => "nocode" })));
+    const rows = await Promise.all(seats.map((x) => rowOf(x.id)));
+    return [rows.every((x) => x?.status === "UNCONFIRMED") && r.kind === "paused" && r.reason === "gateway_unanswered", `${said(r)} · rows ${statusesOf(rows)}`];
+  });
 }
 
 /* ══ THE PLANTS — each a defect as somebody would write it, swapped in memory ══════════════════════════════════════ */
@@ -956,6 +1188,27 @@ const outcomesMapped = (d: EngineDeps, f: (o: SliceOutcome) => SliceOutcome): En
 });
 
 export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
+  {
+    name: "R-S35 · the send's deadline not handed to sendBatch — a stalled row write sends to people a reaper has released",
+    expect: [L.s35],
+    impl: withDeps((d) => ({ ...d, send: (m, o) => d.send(m, o.minimumBalanceTzs === undefined ? {} : { minimumBalanceTzs: o.minimumBalanceTzs }) })),
+  },
+  {
+    name: "R-S35b · a deadline failure read as the wire refusing it — the campaign paused and its people released, though nothing was sent",
+    expect: [L.s35],
+    impl: withDeps((d) => ({ ...d, rules: { ...d.rules, isShopWide: (outs) => d.rules.isShopWide(outs.map((o) => (o.outcome === "failed" && o.code === "DEADLINE_PASSED" ? { ...o, code: "REJECTED" } : o))) } })),
+  },
+  {
+    name: "R-S36 · too slow never escalates — at the smallest group the same people are re-asked for ever",
+    expect: [L.s36],
+    impl: withDeps((d) => ({ ...d, state: () => { const st = d.state(); delete st.tooSlow; return st; } })),
+  },
+  {
+    name: "R-S37 · a failure with no code read as certainly before the request — released, and sent again after a Resume",
+    expect: [L.s37],
+    impl: withDeps((d) => outcomesMapped(d, (o) => (o.outcome === "unconfirmed" && (o as { code?: unknown }).code === undefined && typeof (o as { reference?: unknown }).reference === "string"
+      ? ({ ref: o.ref, outcome: "failed", code: "UNKNOWN", error: null } as SliceOutcome) : o))),
+  },
   {
     name: "R-S1 · the trail without its render entry (six entries — what went out is no longer on the record)",
     expect: [L.s1, L.s6, L.s16],
@@ -976,7 +1229,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S3 (the spec's) · a refused batch settled FAILED row by row (the shop-wide verdict blind to a status:false batch)",
-    expect: [L.s3, L.s20],
+    expect: [L.s3, L.s20, L.s30, L.s32, L.s35],
     impl: withDeps((d) => ({
       ...d,
       rules: { ...d.rules, isShopWide: (os) => { const v = d.rules.isShopWide(os); return v.shopWide && v.match.outcome === "failed" ? { shopWide: false } : v; } },
@@ -992,7 +1245,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S5 · a per-person hold never parked — the 3rd failure released again (a person the gate cannot answer is retried for ever)",
-    expect: [L.s5, L.s10],
+    expect: [L.s5, L.s10, L.s31],
     impl: withDeps((d) => ({
       ...d,
       rules: { ...d.rules, settlementFor: (o, row, ctx) => { const p = d.rules.settlementFor(o, row, ctx); return p !== null && p.to === "HELD" ? { id: p.id, claimToken: p.claimToken, to: "PENDING", attemptsDelta: 1 } : p; } },
@@ -1029,12 +1282,12 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S8 · the switch never read — THE gate answered open whatever the switch says",
-    expect: [L.s8],
+    expect: [L.s8, L.s29],
     impl: withDeps((d) => ({ ...d, liveGate: () => ({ ok: true, via: "open" }) })),
   },
   {
     name: "R-S9 (the spec's) · beforeSend removed — a campaign paused while it gated still sends",
-    expect: [L.s9, L.s18, L.s22],
+    expect: [L.s9, L.s18, L.s22, L.s29],
     impl: withDeps((d) => ({ ...d, dispatch: (rows, sd) => d.dispatch(rows, { ...sd, beforeSend: undefined }) })),
   },
   {
@@ -1093,7 +1346,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     // The pre-claim read sees a count that fits; only the re-read before the wire sees the real one — so the slice claims
     // the people of a list longer than confirmed before anything stops it.
     name: "R-S17 · the pre-claim count check removed (U42's re-review) — an over-count list is claimed before it is caught",
-    expect: [L.s17],
+    expect: [L.s17, L.s33],
     impl: withDeps((d) => {
       let first = true;
       return {
@@ -1121,7 +1374,7 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     name: "R-S19 · an unanswered batch not paused — an outage turns the whole audience into no answer, slice after slice",
-    expect: [L.s19, L.s20],
+    expect: [L.s19, L.s20, L.s37],
     impl: withDeps((d) => ({
       ...d,
       rules: { ...d.rules, isShopWide: (os) => { const v = d.rules.isShopWide(os); return v.shopWide && v.reason === "gateway_unanswered" ? { shopWide: false } : v; } },
@@ -1219,6 +1472,84 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
     name: "R-S28 · the OTP mark read from a module of its own (a second instance never sees it)",
     expect: [L.s28],
     impl: withDeps((d) => (d.otpLastFailureAt === ENGINE.ENGINE_DEPS.otpLastFailureAt ? { ...d, otpLastFailureAt: () => null } : d)),
+  },
+  {
+    // The switch read once, before the claim, and that reading reused at the last word before the wire.
+    name: "R-S29 · the owner's switch judged before the claim only — a switch closed while the slice gates still sends",
+    expect: [L.s29],
+    impl: withDeps((d) => {
+      let first: ReturnType<EngineDeps["liveSwitch"]> | null = null;
+      return { ...d, liveSwitch: () => (first ??= d.liveSwitch()) };
+    }),
+  },
+  {
+    name: "R-S30 · a shop-wide verdict releases every claimed row, the skipped too (a second RG line on every Resume)",
+    expect: [L.s30],
+    impl: withDeps((d) => ({
+      ...d,
+      rules: { ...d.rules, settlementFor: (o, row, ctx) => (o.outcome === "skipped" && ctx.shop.shopWide && ctx.shop.release
+        ? { id: row.id, claimToken: ctx.claimToken, to: "PENDING", attemptsDelta: ctx.shop.attemptsDelta }
+        : d.rules.settlementFor(o, row, ctx)) },
+    })),
+  },
+  {
+    // holdKind's default flipped for a reason nobody listed: back as it was, every slice, for ever.
+    name: "R-S31 · a hold reason the table does not know read as a wait — +0 every slice, a silent loop",
+    expect: [L.s31],
+    impl: withDeps((d) => {
+      const listed = (reason: string): boolean => reason === "gate_unanswered" || reason.startsWith("prepare:");
+      return {
+        ...d,
+        rules: { ...d.rules, settlementFor: (o, row, ctx) => (o.outcome === "held" && RULES.holdKind(o.reason) === "person" && !listed(o.reason)
+          ? { id: row.id, claimToken: ctx.claimToken, to: "PENDING", attemptsDelta: 0 }
+          : d.rules.settlementFor(o, row, ctx)) },
+      };
+    }),
+  },
+  {
+    name: "R-S32 · the code-key branch removed — a failure before the request paused as the network's refusal",
+    expect: [L.s32, L.s35],
+    impl: withDeps((d) => ({
+      ...d,
+      rules: { ...d.rules, isShopWide: (os) => { const v = d.rules.isShopWide(os); return v.shopWide && v.match.outcome === "failed" ? { ...v, reason: "gateway_refused" } : v; } },
+    })),
+  },
+  {
+    // The switch judged ahead of the list: a list longer than confirmed is paused as a closed switch, which a Resume
+    // would "fix" — and then send to the extra rows.
+    name: "R-S33 · the switch judged before the list check — an over-count list paused as a closed switch",
+    expect: [L.s33],
+    impl: () => ({
+      step: async (id, d) => {
+        const c = await d.campaigns.find(id);
+        const provider = d.provider();
+        if (c !== null && c.status === "RUNNING" && provider !== "unrecognised") {
+          let live: Awaited<ReturnType<EngineDeps["liveSwitch"]>>;
+          try {
+            live = await d.liveSwitch();
+          } catch {
+            live = { state: "closed", why: "unreadable" };
+          }
+          if (!d.liveGate(provider, live, d.now().getTime()).ok) {
+            const at = d.now().toISOString();
+            const moved = await d.campaigns.transition(id, { from: ["RUNNING"], to: "PAUSED", patch: { pausedAt: at, stopReason: "live_switch_closed" }, draftRevision: null, at });
+            if (moved !== null) {
+              await d.audit({ category: "SYSTEM", action: ENGINE.ENGINE_PAUSED_ACTION, actorId: null, targetType: "SmsCampaign", targetId: id, payload: { reason: "live_switch_closed" } });
+              return { kind: "paused", reason: "live_switch_closed" };
+            }
+          }
+        }
+        return ENGINE.runCampaignSlice(id, d);
+      },
+    }),
+  },
+  {
+    name: "R-S34 · a send that threw settled UNCONFIRMED whatever the evidence — people it never reached are never sent",
+    expect: [L.s34],
+    impl: withDeps((d) => ({
+      ...d,
+      rules: { ...d.rules, settlementFor: (o, row, ctx) => d.rules.settlementFor(o, row, { claimToken: ctx.claimToken, slice: ctx.slice, wireAt: ctx.wireAt, shop: ctx.shop }) },
+    })),
   },
 ];
 

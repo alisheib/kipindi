@@ -335,7 +335,11 @@ export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Pr
         // SMS at a second charge. Decided HERE, once, for every caller; the reference is kept so a receipt can find it.
         else if (res.code === "TRANSPORT") {
           outcomes.set(r.ref, { ref: r.ref, outcome: "unconfirmed", ...(res.reference ? { reference: res.reference } : {}), code: res.code, ...carried(r) });
-        } else outcomes.set(r.ref, { ref: r.ref, outcome: "failed", code: res.code ?? "UNKNOWN", error: res.error ?? null, ...carried(r) });
+        // ⛔ The U43b-2 re-review · a failure that names NO code is not known to have stayed home: `UNKNOWN` now means "certainly
+        // before the request" to the engine (released, sent again after a Resume), so a codeless failure is no answer instead.
+        } else if (typeof res.code !== "string" || (res.code as string) === "") {
+          outcomes.set(r.ref, { ref: r.ref, outcome: "unconfirmed", ...(res.reference ? { reference: res.reference } : {}), ...carried(r) });
+        } else outcomes.set(r.ref, { ref: r.ref, outcome: "failed", code: res.code, error: res.error ?? null, ...carried(r) });
       }
     }
   }

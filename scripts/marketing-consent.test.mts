@@ -54,7 +54,7 @@ import { REAL_LICENCE, assertLicenceBasis, licenceGateWithDefect, licenceCases }
 // U43b-2 · the contract's SECOND DRIVER — the campaign engine over real recipient rows (ENGINE-SPEC §4.13 decision 4).
 import { runCampaignSlice } from "../src/lib/server/marketing/engine.ts";
 import type { EngineDeps, SliceStepResult } from "../src/lib/server/marketing/engine.ts";
-import { engineDeps, freshState, runningCampaign, seat as seatRows } from "./marketing-engine/engine-world.mts";
+import { engineDeps, freshState, queuedEvidence, runningCampaign, seat as seatRows } from "./marketing-engine/engine-world.mts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
  * at the end scores GREEN when a promise never settles or the process exits early. */
@@ -634,7 +634,11 @@ const engineDriver = (o: { hoisted?: boolean } = {}): Driver => async (slices, b
   const suffix = `~d${drive}`;
   const rowOf = new Map<string, string>();
   const refOf = new Map<string, string>();
+  // ⭐ The engine's send stands for `sendBatch`, so it keeps sendBatch's own promise (P2): the message rows are written
+  // BEFORE the wire is asked — the evidence the engine reads after a send that threw (the U43b-2 review). The contract's
+  // own wire stands for the network beyond it.
   const send: EngineDeps["send"] = async (messages) => {
+    await queuedEvidence(messages);
     const r = await deps.send(messages.map((m) => ({ ...m, targetId: refOf.get(m.targetId ?? "") ?? m.targetId })));
     return {
       ...r,

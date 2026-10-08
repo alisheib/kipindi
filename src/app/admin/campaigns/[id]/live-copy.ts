@@ -56,7 +56,9 @@ export const LIVE_HEADLINE = {
   DRAFT: "This campaign is still a draft — nothing has been sent.",
   CONFIRMED: "Ready to start — nothing has been sent.",
   PAUSED: "Paused.",
-  DONE: "Finished — everyone on this campaign has an answer.",
+  // ⭐ The U47b-1 review · true beside the "No answer" KPI too: DONE is nobody PENDING or HELD, and a message the network never
+  // answered (UNCONFIRMED) is settled without an answer — "everyone has an answer" was false whenever there was one.
+  DONE: "Finished — nobody on this campaign is still waiting.",
 } as const;
 
 /** PREPARING — "Preparing the list — 600 of 1,604 people written." (rows WRITTEN over the confirmed count). */
@@ -74,7 +76,8 @@ export function sendingHeadline(progress: { value: number; max: number } | null)
  *  has no answer (`resumeOutstanding`, the ONE definition of what is left — E25's "stopped before sending"). */
 export function stoppedHeadline(who: string, atIso: string | null, notMessaged: number): string {
   const head = `Stopped by ${who}${atClock(atIso)}`;
-  if (notMessaged <= 0) return `${head} — everyone on it already had an answer.`;
+  // ⭐ The U47b-1 review · never "had an answer" (a message with no answer back is settled too) — DONE's own words.
+  if (notMessaged <= 0) return `${head} — nobody on it was still waiting.`;
   return `${head} — ${peopleCount(notMessaged)} ${notMessaged === 1 ? "was" : "were"} not messaged.`;
 }
 
@@ -84,10 +87,8 @@ export function stoppedHeadline(who: string, atIso: string | null, notMessaged: 
 export function officerPausedSentence(who: string, atIso: string | null): string {
   return `Paused by ${who}${atClock(atIso)}.`;
 }
-/** An officer's Stop, named from its audit row. */
-export function officerStoppedSentence(who: string, atIso: string | null): string {
-  return `Stopped by ${who}${atClock(atIso)}.`;
-}
+// ⭐ The U47b-1 review · an officer's Stop has NO sentence of its own: the CANCELLED headline already says "Stopped by <who>
+// at <time>" (`stoppedHeadline`), and the page says it once.
 
 /** The copy advice when somebody on the campaign was already messaged — a fact. */
 const REACHED_AGAIN =
@@ -127,13 +128,30 @@ const COPY_ADVICE: Readonly<Record<string, { reached: string; hidden: string }>>
 /** The keys `pausedReasonSentence` words by reach (for the suite: every one of them advises a copy). */
 export const COPY_ADVISING_STOP_REASONS: readonly string[] = Object.freeze(Object.keys(COPY_ADVICE));
 
-/** A PAUSED campaign's reason in words: the copy-advising ones by reach (above); every other key `stopReasonLabel`'s. */
+/** A PAUSED campaign's reason in words: the copy-advising ones by reach (above); every other key `stopReasonLabel`'s.
+ *  ⛔ Said to a viewer as `pausedReasonSentenceFor` (`campaign-live.ts`) decides — never straight to a masked viewer. */
 export function pausedReasonSentence(key: string, reach: LiveReach): string {
   const k = typeof key === "string" ? key.trim() : "";
   const advice = Object.prototype.hasOwnProperty.call(COPY_ADVICE, k) ? COPY_ADVICE[k] : undefined;
   if (advice === undefined || reach === "none") return stopReasonLabel(k);
   return reach === "reached" ? advice.reached : advice.hidden;
 }
+
+/**
+ * ⛔ E23 · THE STOP REASONS A VIEWER BELOW THE FLOOR STILL READS IN THEIR OWN WORDS (the U47b-1 review) — each is found
+ * before anybody on the list is checked, and its words say nothing about anybody on it: the four whose way out is a NEW
+ * COPY (the enqueue's three and the saved message's own check — said as a condition there, `COPY_ADVICE`'s `hidden`) and an
+ * officer's own two acts. EVERY OTHER REASON — the engine's — reads `LIVE_PAUSED_HIDDEN` below the floor: some can only be
+ * written once somebody on the list passed the checks for the wire (the network's "no" or silence, a send that failed on
+ * our side, the check just before the wire, a group too slow to send, the credit floor `sendBatch` met), `held_rows` says
+ * who is left, and a sentence kept for those reasons alone would say the same thing by being said.
+ */
+export const FLOOR_SAFE_STOP_REASONS: readonly string[] = Object.freeze([...COPY_ADVISING_STOP_REASONS, "officer_paused", "officer_stopped"]);
+
+/** ⛔ E23 · an engine's pause, said to a viewer below the floor — one sentence, whatever the reason (above). True of every
+ *  reason it stands for: Resume either tries again or says first what must be fixed (U49a's refusals, which hold the
+ *  switch, the rail, the credit and what only a copy can fix). */
+export const LIVE_PAUSED_HIDDEN = `Paused by the system, so nobody more is messaged. The reason is hidden for your role while fewer than ${formatNumber(MASKED_BREAKDOWN_MIN)} people are on this campaign's list: press Resume to try again — it says first if something must be fixed — and if it pauses again, ask an officer who may read phone numbers.`;
 
 /* ══ THE WAITS — what a step that claimed nobody says (`StepActionResult.said`) ═════════════════════════════════════ */
 
@@ -204,7 +222,8 @@ export const NOT_SENT_EXTRA = {
 } as const;
 
 /** ⛔ E23 · the floor — a viewer who may not read a number, on a campaign of fewer than ten people. */
-export const LIVE_FLOOR = `This campaign has fewer than ${formatNumber(MASKED_BREAKDOWN_MIN)} people, so its breakdown is hidden for your role.`;
+// ⭐ About the LIST (the U47b-1 review): a campaign confirmed for 1,604 whose list holds a handful is not "fewer than 10 people".
+export const LIVE_FLOOR = `Fewer than ${formatNumber(MASKED_BREAKDOWN_MIN)} people are on this campaign's list, so its breakdown is hidden for your role.`;
 
 /* ══ THE CONTROLS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -248,8 +267,9 @@ export function startDialog(o: {
 /** The Stop dialog (§4.15) — its "make a copy" advice says, once anybody was messaged, that the copy messages them again. */
 export function stopDialog(reach: LiveReach): { title: string; body: string } {
   const head = "Nobody more will be messaged. Messages already handed to the network are not recalled.";
+  // ⭐ The U47b-1 review · "everyone it reaches AGAIN" said everyone is messaged twice — only those already messaged are.
   const tail = reach === "reached"
-    ? "A stopped campaign can't be restarted. A copy would message everyone it reaches again — including the people this campaign already messaged."
+    ? "A stopped campaign can't be restarted. A copy would message everyone it reaches — including, again, the people this campaign already messaged."
     : reach === "hidden"
       ? "A stopped campaign can't be restarted — make a copy to send it again; if anyone on it was already messaged, the copy would message them again."
       : "A stopped campaign can't be restarted — make a copy to send it again.";
@@ -266,6 +286,9 @@ export const LIVE_DONE = {
   start: "Started — the list is being prepared. Keep this page open while it sends.",
   pause: "Paused — nobody more is messaged until you resume.",
   resume: "Sending again.",
+  /** ⭐ The U47b-1 review · a Resume of a list that never finished goes back to PREPARING, where the page says "Preparing the
+   *  list" — never "Sending again." beside it. */
+  resumePreparing: "Resumed — the list is being prepared. Keep this page open while it sends.",
   stop: "Stopped — nobody more will be messaged.",
 } as const;
 
@@ -278,6 +301,8 @@ export const LIVE_CHANGED = {
   stoppedElsewhere: "This campaign was stopped a moment ago — nothing was started.",
   alreadyPaused: "This campaign is already paused.",
   alreadySending: "This campaign is already sending.",
+  /** ⭐ The U47b-1 review · Resume runs inside the campaign's step flight, and another step held it just then. */
+  resumeBusy: "Another step of this campaign is running — press Resume again in a moment. Nothing was changed.",
 } as const;
 
 export const LIVE_MISSING = "This campaign was not found.";

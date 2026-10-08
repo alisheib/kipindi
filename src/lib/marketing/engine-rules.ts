@@ -10,13 +10,18 @@
  *   · `unconfirmed`              → UNCONFIRMED (the reference when the wire gave one) — E4: settled, never re-sent by itself.
  *   · `failed` BAD_MSISDN        → FAILED: this person's number cannot be dialled, whatever the gateway does.
  *   · `failed`, a row the shop-wide verdict touches (EVERY row that reached the wire failed with ONE other code — a
- *     `status:false` refusal) → PENDING (+1): a refusal charged nothing, so a re-send after Resume is not a second charge
- *     (E7). Failed with a code that is not shared by the whole batch → FAILED with that code.
+ *     `status:false` refusal, or a failure `sendBatch` met BEFORE its request) → PENDING (+1): neither reached anybody nor
+ *     was charged, so a re-send after Resume is not a second message (E7). The pause names its cause truly: the gateway's
+ *     own "no" (REJECTED) → `gateway_refused`; a transport that threw before its request (sendBatch's chunk catch: UNKNOWN)
+ *     → `send_error`; a code that is itself a stop reason (`NOT_CONFIGURED` …) → that key. Failed with a code the whole
+ *     batch does not share → FAILED with that code.
  *   · `held`, a shop-wide reason → PENDING (+0) — `BALANCE_FLOOR` · `NOT_CONFIGURED` · `PROVIDER_UNRECOGNISED` ·
- *     `MARKETING_FLOOR` and the engine's own vetoes `list_over_confirmed_sending` · `audience_unreadable` PAUSE the
- *     campaign; `quiet_hours` · `window_unreadable` · `not_running` · `before_send_unanswered` are a WAIT (no pause).
- *   · `held` about one person    → `gate_unanswered`, `prepare:<reason>` (and any reason this table does not know):
- *     attempts + 1 below `MAX_ROW_ATTEMPTS` → PENDING (+1); at it → HELD (E8). Outstanding either way.
+ *     `MARKETING_FLOOR` and the engine's own vetoes before the wire — `list_over_confirmed_sending` ·
+ *     `confirmation_unreadable` · `live_switch_closed` — PAUSE the campaign; `quiet_hours` · `window_unreadable` ·
+ *     `not_running` · `before_send_unanswered` · `slice_too_slow` are a WAIT (no pause).
+ *   · `held` about one person    → `gate_unanswered`, `prepare:<reason>` (and ⭐ ANY reason this table does not know — a
+ *     reason added later is bounded, never a silent loop): attempts + 1 below `MAX_ROW_ATTEMPTS` → PENDING (+1); at it →
+ *     HELD (E8). Outstanding either way.
  *   · `held` `claim_lost`        → NO PATCH: the row is someone else's now (a reaper, another slice).
  * ⛔ ONE shop-wide fact is never N failed rows, and the rows it did not touch keep their own verdicts: a row the gate refused
  * in the same slice is still SKIPPED (its refusal was acted on — `dispatchSlice` already wrote the RG line for it, so
@@ -25,6 +30,10 @@
  * 5xx after the gateway took the batch, a body nobody could read — `sms.ts` reads each of those AMBIGUOUS), its rows are
  * still settled UNCONFIRMED (never released: the gateway may hold them and bill for them) and the campaign PAUSES
  * `gateway_unanswered` — so an outage turns ONE slice into "no answer", never the whole audience.
+ * ⭐ U43b-2 REVIEW · A SEND THAT THREW (`thrownSend`): the slice cannot tell from the throw whether `sendBatch` reached its
+ * request, so it reads the evidence — ⛔ never re-send what MIGHT have reached the network, release only what CERTAINLY
+ * did not: a row no message of this claim names was never handed to the wire (`sendBatch` writes its rows BEFORE the wire,
+ * P2) → PENDING (+1); a row a message names → UNCONFIRMED. The campaign pauses `send_error`, whose words are true of both.
  *
  * ── THE TRAIL (E20, `gateTrailFor`) ────────────────────────────────────────────────────────────────────────────────────
  * Every settled row carries, in order: the slice's own checks (the campaign, the switch, the window, the credit), the
@@ -40,9 +49,14 @@
  * A claim older than `REAP_AFTER_MS` is settled from the EVIDENCE — the newest `SmsMessage` that names the row:
  *   no message, or one made BEFORE this claim (an earlier attempt's — DC-1) → PENDING (+1): provably never handed over
  *   by this claim, because `sendBatch` writes its rows BEFORE the wire (P2); QUEUED / UNKNOWN → UNCONFIRMED (the
- *   reference kept); ACCEPTED → SENT; DELIVERED → DELIVERED; FAILED → FAILED. ⛔ Every case where the wire may have been
- *   reached stays UNCONFIRMED — and so does a message whose own record cannot be read whole (an ACCEPTED row with no hand-
- *   over instant, a status this table does not know): the reaper never re-sends on evidence it cannot read.
+ *   reference kept); ACCEPTED → SENT; DELIVERED → DELIVERED; FAILED with a receipt's token → FAILED `receipt:<token>`
+ *   (it reached the network, and a handset never took it); ⭐ FAILED with NO receipt token → PENDING (+1) — `sms.ts`
+ *   wrote it itself, for the gateway's own `status:false` or a throw before the request: it never reached a handset and
+ *   nothing was charged, so settling it FAILED would turn ONE shop-wide fact into N terminal rows (E7, the U43b-2 review);
+ *   the next slice meets the refusal again and pauses ONCE. ⛔ Every case where the wire may have been reached stays
+ *   UNCONFIRMED — and so does a message whose own record cannot be read whole (an ACCEPTED row with no hand-over instant,
+ *   a status this table does not know): the reaper never re-sends on evidence it cannot read. ⭐ A row that reached the
+ *   wire keeps the opt-out token its message carried — the number's one reused token, read back by the engine (E30).
  *
  * ── THE SLICE SIZE (E11, `adaptSliceSize`) ─────────────────────────────────────────────────────────────────────────────
  * Start at `SLICE_START`, never above `SLICE_MAX` (= one `sendBatch` chunk, `BATCH_MAX`), never below `SLICE_MIN`, aimed
@@ -80,6 +94,10 @@ export const SLICE_GATE_BUDGET_MS = 10_000;
 export const MAX_ROW_ATTEMPTS = 3;
 /** E11 · the weight of the newest measurement in the in-process moving average of the per-recipient gate time. */
 export const GATE_TIME_WEIGHT = 0.3;
+/** E12 · after a login or withdrawal code failed or went unknown, marketing steps aside this long. ⭐ Declared HERE (the
+ *  U47b-1 review): the live view reads it to say "nobody driving" only when the engine is not waiting on purpose, and the
+ *  view may not import the engine (`test:marketing-engine` S27) — `engine.ts` re-exports it, never written twice. */
+export const OTP_FAILURE_WAIT_MS = 2 * 60_000;
 
 /** The column bounds of the settle door, RESTATED here (the rule set is a server module): a trail string, free words, a
  *  code, the trail's length. `test:marketing-engine` holds each equal to `campaign-model.ts`'s. */
@@ -93,45 +111,69 @@ export const AUDIT_DETAIL_MAX = 200;
 /* ══ THE VOCABULARY ═════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /**
- * Why the engine PAUSES a campaign — each key has its sentence in `campaign-status.ts` (`STOP_REASON_SENTENCE`, §3.4).
- * ⭐ U43b-2 as built adds four to the spec's list: `gateway_unanswered` (an unanswered batch), `before_send_unanswered`
- * (the engine could not re-check its own claims, three slices running), and U42's own `list_over_confirmed_sending` and
- * `audience_unreadable` (a list longer than confirmed, or a confirmed count that cannot be read, found by the slice — the
- * coordinator's U42 re-review requirement).
+ * Why the engine PAUSES a campaign — each key has its sentence in `campaign-status.ts` (`STOP_REASON_SENTENCE`, §3.4), and
+ * each sentence is TRUE of every way the engine writes its key.
+ * ⭐ U43b-2 as built adds to the spec's list: `gateway_unanswered` (an unanswered batch), `before_send_unanswered` (the
+ * engine could not re-check its own claims, three slices running), U42's `list_over_confirmed_sending` (a list longer than
+ * confirmed, found by the slice — the U42 re-review); and, at the U43b-2 review, `confirmation_unreadable` (a confirmed
+ * count that is not a count, mid-campaign — the word Resume answers it with; never U42's `audience_unreadable`, whose cause
+ * and remedy are another's), `send_error` (a send that failed on our side), and — the credit check's causes each in its
+ * own words, the words Resume refuses with — `settings_unreadable`, `sizes_unreadable`, `price_unknown` beside
+ * `credit_unreadable` (now the credit read alone).
  */
 export type EngineStopReason =
   | "live_switch_closed" | "NOT_CONFIGURED" | "PROVIDER_UNRECOGNISED" | "BALANCE_FLOOR" | "MARKETING_FLOOR" | "marketing_floor"
-  | "credit_unreadable" | "gateway_refused" | "gateway_unanswered" | "template_invalid" | "held_rows"
-  | "list_over_confirmed_sending" | "audience_unreadable" | "before_send_unanswered";
+  | "credit_unreadable" | "settings_unreadable" | "sizes_unreadable" | "price_unknown"
+  | "gateway_refused" | "gateway_unanswered" | "send_error" | "template_invalid" | "held_rows"
+  | "list_over_confirmed_sending" | "confirmation_unreadable" | "before_send_unanswered" | "slice_too_slow";
 
-/** Why a step WAITS (claims nobody, pauses nothing) — the page says when it tries again. */
-export type SliceWait = "busy" | "quiet_hours" | "window_unreadable" | "money_busy" | "otp_failing" | "before_send_unanswered";
+/** Why a step WAITS (claims nobody, pauses nothing) — the page says when it tries again. ⭐ `slice_too_slow` (the U43b-2
+ *  review): the slice took so long between its claim and the wire that its claim was too old to send (the engine's
+ *  send-age bound) — its people went back as they were, and the next slice is smaller. */
+export type SliceWait =
+  | "busy" | "quiet_hours" | "window_unreadable" | "money_busy" | "otp_failing" | "before_send_unanswered" | "slice_too_slow";
 
 /** The shop-wide holds that are a wait, never a pause: the rows go back as they were and the step tries again. */
-export type ShopWideWait = "quiet_hours" | "window_unreadable" | "not_running" | "before_send_unanswered";
+export type ShopWideWait = "quiet_hours" | "window_unreadable" | "not_running" | "before_send_unanswered" | "slice_too_slow";
 
 /** A row the slice no longer holds — `dispatchSlice`'s word for a row `beforeSend` did not keep. */
 export const CLAIM_LOST = "claim_lost";
+/** ⭐ The engine's veto when its claim is too old to reach the wire safely (`beforeSend`, the send-age bound — engine.ts). */
+export const SLICE_TOO_SLOW = "slice_too_slow";
 
 /** ⭐ The holds that PAUSE the campaign, each with its stop reason — `sendBatch`'s whole-batch refusals and the engine's own
- *  vetoes before the wire. */
+ *  vetoes before the wire (the list longer than confirmed, a confirmed count that is not one, the owner's switch closed
+ *  while the slice gated). */
 const HOLD_PAUSES: Readonly<Record<string, EngineStopReason>> = Object.freeze({
   BALANCE_FLOOR: "BALANCE_FLOOR",
   NOT_CONFIGURED: "NOT_CONFIGURED",
   PROVIDER_UNRECOGNISED: "PROVIDER_UNRECOGNISED",
   MARKETING_FLOOR: "MARKETING_FLOOR",
   list_over_confirmed_sending: "list_over_confirmed_sending",
-  audience_unreadable: "audience_unreadable",
+  confirmation_unreadable: "confirmation_unreadable",
+  live_switch_closed: "live_switch_closed",
 });
 /** The holds that are a WAIT. */
-const HOLD_WAITS: readonly ShopWideWait[] = Object.freeze(["quiet_hours", "window_unreadable", "not_running", "before_send_unanswered"] as ShopWideWait[]);
-/** A failure code that is itself a pause reason (a transport that threw NOT_CONFIGURED); any other shared code is the
- *  gateway refusing the batch. */
+const HOLD_WAITS: readonly ShopWideWait[] = Object.freeze(
+  ["quiet_hours", "window_unreadable", "not_running", "before_send_unanswered", "slice_too_slow"] as ShopWideWait[],
+);
+/** ⭐ The U43b-2 re-review · `sendBatch`'s own word for the send-age bound: a batch whose deadline (`notAfter` — the oldest
+ *  claim plus `CLAIM_SEND_MAX_AGE_MS`) passed before its request. Refused whole (a hold) or its rows FAILED with no request
+ *  (a failure that never reached the wire), it is the engine's `slice_too_slow` WAIT either way: its people go back as
+ *  they were (+0), and nobody was messaged. */
+export const DEADLINE_PASSED = "DEADLINE_PASSED";
+/** A hold reason that is a WAIT under another name. */
+const HOLD_WAIT_ALIASES: Readonly<Record<string, ShopWideWait>> = Object.freeze({ [DEADLINE_PASSED]: "slice_too_slow" });
+
+/** ⭐ A failure code `sendBatch` writes for a failure BEFORE its request (its chunk catch: the transport's own `SmsError`
+ *  code, or UNKNOWN for any other throw), each paused with its own true words; any other code the whole batch shares
+ *  (REJECTED — the gateway's own "no") is the gateway refusing it: `gateway_refused`. */
 const FAILED_PAUSES: Readonly<Record<string, EngineStopReason>> = Object.freeze({
   NOT_CONFIGURED: "NOT_CONFIGURED",
   PROVIDER_UNRECOGNISED: "PROVIDER_UNRECOGNISED",
   BALANCE_FLOOR: "BALANCE_FLOOR",
   MARKETING_FLOOR: "MARKETING_FLOOR",
+  UNKNOWN: "send_error",
 });
 
 const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
@@ -141,7 +183,7 @@ const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.c
 export function holdKind(reason: string): "pause" | "wait" | "person" | "lost" {
   if (reason === CLAIM_LOST) return "lost";
   if (own(HOLD_PAUSES, reason)) return "pause";
-  if ((HOLD_WAITS as readonly string[]).includes(reason)) return "wait";
+  if ((HOLD_WAITS as readonly string[]).includes(reason) || own(HOLD_WAIT_ALIASES, reason)) return "wait";
   return "person";
 }
 
@@ -153,9 +195,12 @@ export function railStopReason(rail: SmsRailProblem): EngineStopReason {
 
 /* ══ DC-5 · THE TEXT EVERY PATCH CARRIES ═════════════════════════════════════════════════════════════════════════════ */
 
-/** ⛔ DC-5 · free text made LAWFUL for a column: every phone run masked (`scrubPhoneRuns`), trimmed, cut to `max`. */
+/** ⛔ DC-5 · free text made LAWFUL for a column: every phone run masked (`scrubPhoneRuns`), trimmed, cut to `max` — and the
+ *  final, cut text read by the scrubber AGAIN, as `cleanSource`'s is (the U43b-2 review): the guarantee is then about the
+ *  words as they are handed in, not about the words before the cut. Masking never lengthens, so it stays within `max`. */
 export function cleanText(raw: unknown, max: number): string {
-  return scrubPhoneRuns(typeof raw === "string" ? raw : raw === null || raw === undefined ? "" : String(raw)).trim().slice(0, max).trim();
+  const once = scrubPhoneRuns(typeof raw === "string" ? raw : raw === null || raw === undefined ? "" : String(raw)).trim().slice(0, max);
+  return scrubPhoneRuns(once).trim().slice(0, max).trim();
 }
 /** A word of a trail's `source` that holds a letter or a low line — an id, a reference, an instant's `T…Z` — taken out WHOLE,
  *  exactly as the rule set reads a source (`isTrailSource`, campaign-model.ts). */
@@ -268,16 +313,18 @@ export type ShopWide =
 /** Did the row reach the wire? A hand-over, an unanswered one, or a failure the wire gave back — never `BAD_MSISDN`,
  *  which `sendBatch` refuses per message BEFORE the wire. */
 const reachedWire = (o: SliceOutcome): boolean =>
-  o.outcome === "handed_over" || o.outcome === "unconfirmed" || (o.outcome === "failed" && o.code !== "BAD_MSISDN");
+  o.outcome === "handed_over" || o.outcome === "unconfirmed" || (o.outcome === "failed" && o.code !== "BAD_MSISDN" && o.code !== DEADLINE_PASSED);
 
 /**
  * ⭐ E7 · IS THIS SLICE'S ENDING ONE FACT ABOUT THE SHOP, NOT ABOUT ITS PEOPLE? In this order:
- *   ① a hold that PAUSES (a whole-batch refusal, the engine's own over-count or unreadable-count veto);
- *   ② a hold that is a WAIT (the window, the campaign no longer running, `beforeSend` unanswered);
- *   ③ EVERY row that reached the wire failed with ONE code (not `BAD_MSISDN`) — a `status:false` reply: pause
- *      `gateway_refused` (or the code's own key when it is one), the rows back to PENDING (+1);
+ *   ① a hold that PAUSES (a whole-batch refusal; the engine's own vetoes before the wire: a list longer than confirmed, a
+ *      confirmed count that is not one, the owner's switch closed while the slice gated);
+ *   ② a hold that is a WAIT (the window, the campaign no longer running, `beforeSend` unanswered, a claim too old to send);
+ *   ③ EVERY row that reached the wire failed with ONE code (not `BAD_MSISDN`) — the gateway's `status:false`, or a failure
+ *      before the request: the rows back to PENDING (+1), and the pause named by the code (`FAILED_PAUSES`, else
+ *      `gateway_refused`);
  *   ④ EVERY row that reached the wire came back `unconfirmed` — pause `gateway_unanswered`, the rows settled UNCONFIRMED.
- * Otherwise none: every row is settled by its own outcome.
+ * Otherwise none: every row is settled by its own outcome. (A send that THREW is the engine's to read: `thrownSend`.)
  */
 export function isShopWide(outcomes: readonly SliceOutcome[]): ShopWide {
   for (const o of outcomes) {
@@ -287,8 +334,14 @@ export function isShopWide(outcomes: readonly SliceOutcome[]): ShopWide {
   }
   for (const o of outcomes) {
     if (o.outcome === "held" && holdKind(o.reason) === "wait") {
-      return { shopWide: true, reason: o.reason as ShopWideWait, detail: cleanText(o.reason, AUDIT_DETAIL_MAX), pause: false, release: true, attemptsDelta: 0, match: { outcome: "held", reason: o.reason } };
+      const reason: ShopWideWait = own(HOLD_WAIT_ALIASES, o.reason) ? HOLD_WAIT_ALIASES[o.reason] : (o.reason as ShopWideWait);
+      return { shopWide: true, reason, detail: cleanText(o.reason, AUDIT_DETAIL_MAX), pause: false, release: true, attemptsDelta: 0, match: { outcome: "held", reason: o.reason } };
     }
+  }
+  // ⭐ The U43b-2 re-review · the deadline passed WHILE the rows were written: no request was made, so the rows (written FAILED
+  // by sendBatch, no receipt token) go back as they were — the same `slice_too_slow` wait, never a failure of the wire.
+  if (outcomes.some((o) => o.outcome === "failed" && o.code === DEADLINE_PASSED)) {
+    return { shopWide: true, reason: "slice_too_slow", detail: DEADLINE_PASSED, pause: false, release: true, attemptsDelta: 0, match: { outcome: "failed", code: DEADLINE_PASSED } };
   }
   const wired = outcomes.filter(reachedWire);
   if (wired.length === 0) return { shopWide: false };
@@ -321,6 +374,19 @@ export function isShopWide(outcomes: readonly SliceOutcome[]): ShopWide {
   return { shopWide: false };
 }
 
+/**
+ * ⭐ THE U43b-2 REVIEW · A SEND THAT THREW — one fact about the shop, and only the engine knows it (`dispatchSlice` answers
+ * every row of a thrown send `unconfirmed`, as it must: it cannot tell either). Its rows are settled by their own outcome
+ * (UNCONFIRMED) — except those the engine found no message for (`SettleContext.unsent`: certainly never on the wire) — and
+ * the campaign pauses `send_error`. `detail` is the error's words, scrubbed and cut, for the pause's audit row.
+ */
+export function thrownSend(detail: string): ShopWide {
+  return {
+    shopWide: true, reason: "send_error", detail: cleanText(detail, AUDIT_DETAIL_MAX), pause: true, release: false, attemptsDelta: 0,
+    match: { outcome: "unconfirmed" },
+  };
+}
+
 /** Does the shop-wide verdict touch this outcome? */
 export function touchedBy(o: SliceOutcome, shop: ShopWide): boolean {
   if (!shop.shopWide) return false;
@@ -341,6 +407,9 @@ export type SettleContext = {
    *  settle's clock. */
   wireAt: string | null;
   shop: ShopWide;
+  /** ⭐ The U43b-2 review · after a send that THREW: the rows no message of this claim names — certainly never handed to
+   *  the wire (P2), so released (+1) rather than settled UNCONFIRMED. Absent: nothing is known to be unsent. */
+  unsent?: ReadonlySet<string>;
 };
 
 /**
@@ -385,6 +454,8 @@ export function settlementFor(
       return { id, claimToken, to: "SENT", smsReference: reference, sentAt, ...sent, gateTrail: trail() };
     }
     case "unconfirmed": {
+      // ⭐ The U43b-2 review · a send that threw and no message of this claim names the row: certainly never on the wire.
+      if (ctx.unsent !== undefined && ctx.unsent.has(o.ref)) return release(1);
       const m = o.meta;
       return {
         id, claimToken, to: "UNCONFIRMED", smsReference: keyOf(o.reference), optOutToken: keyOf(m?.token) ?? keyOf(row.optOutToken),
@@ -392,6 +463,8 @@ export function settlementFor(
       };
     }
     case "failed": {
+      // ⛔ The U43b-2 re-review · no request was made for it (its deadline passed first): back as it was, never FAILED.
+      if (o.code === DEADLINE_PASSED) return release(0);
       const failedAt = instantOf(ctx.wireAt);
       // ⛔ A failure with no instant from the send is not a failure this slice can date: it goes back as it was.
       if (failedAt === null) return release(0);
@@ -426,7 +499,8 @@ export function sendRecordOf(p: SmsCampaignRecipientSettle): SmsRecipientSendRec
 /**
  * The evidence a stranded claim is judged on: the newest message that names the row. ⭐ DC-1 · it keeps `createdAt` (a
  * message made before the claim is an earlier attempt's), and a receipt's own token and words (a FAILED a receipt wrote
- * is "not delivered", one the wire wrote is "refused") — beyond the spec's list (U43b-2 as built).
+ * reached the network and was not delivered; one `sms.ts` wrote itself never left — the U43b-2 review) — beyond the spec's
+ * list (U43b-2 as built). `providerMsg` is kept for the record; no verdict reads it now.
  */
 export type ReapEvidence = Pick<
   StoredSmsMessage,
@@ -481,13 +555,15 @@ export function reapVerdict(row: StoredSmsCampaignRecipient, evidence: ReapEvide
       };
     }
     case "FAILED": {
+      // ⭐ THE U43b-2 REVIEW · a FAILED row no receipt wrote is `sms.ts`'s own — the gateway's `status:false`, or a throw
+      // before the request: it never reached a handset and nothing was charged. Settling it FAILED would turn ONE shop-wide
+      // fact into N terminal rows (E7); released, the next slice meets the refusal again and the campaign pauses ONCE.
+      const byReceipt = typeof evidence.dlrStatus === "string" && evidence.dlrStatus.trim() !== "";
+      if (!byReceipt) return release;
       const failedAt = instantOf(evidence.failedAt) ?? instantOf(evidence.createdAt);
       if (failedAt === null) return unconfirmed();
-      const byReceipt = typeof evidence.dlrStatus === "string" && evidence.dlrStatus.trim() !== "";
-      const failureClass = byReceipt
-        ? codeOf(`${RECEIPT_CLASS_PREFIX}${String(evidence.dlrStatus).trim().toUpperCase()}`, `${RECEIPT_CLASS_PREFIX}UNKNOWN`)
-        : "FAILED";
-      const words = cleanText(byReceipt ? (evidence.dlrDesc ?? "") : (evidence.providerMsg ?? ""), WORDS_MAX);
+      const failureClass = codeOf(`${RECEIPT_CLASS_PREFIX}${String(evidence.dlrStatus).trim().toUpperCase()}`, `${RECEIPT_CLASS_PREFIX}UNKNOWN`);
+      const words = cleanText(evidence.dlrDesc ?? "", WORDS_MAX);
       return {
         id, claimToken, to: "FAILED", failureClass, error: words === "" ? null : words, failedAt, smsReference: reference,
         gateTrail: reapTrail(row, evidence, "failed"),

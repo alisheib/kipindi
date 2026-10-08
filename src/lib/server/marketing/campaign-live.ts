@@ -31,6 +31,9 @@
  * ⛔ AND THE WORDING NEVER LEAKS WHAT THE FLOOR HIDES: a sentence that advises a copy says "a copy would message them
  * again" as a FACT only when the viewer may see whether anybody was messaged; under the floor it says it as a CONDITION,
  * whatever the counts are (`liveReach`). A campaign that never ran (`enqueuedAt` null) reached nobody by construction.
+ * ⛔ NOR DOES WHY IT PAUSED (the U47b-1 review): below the floor every engine reason reads ONE sentence
+ * (`pausedReasonSentenceFor` — some reasons can only be written once somebody on the list passed the checks for the wire);
+ * the reasons found before anybody is checked keep their words.
  * ⛔ OD24 · MONEY only for `viewer.money` (the caller's `campaignMoneyVisible`): `money` is null, and the Start dialog
  * carries no TZS, for anyone else — no figure exists in their view for a render to leak.
  * ⛔ OD66 · A STORED AUDIENCE THIS VIEWER'S ROLE MAY NOT COUNT (`campaignAudienceRefusal` — both populations, a search, a
@@ -61,7 +64,10 @@ import type {
 import { getAuditForTargetDurable } from "@/lib/server/audit";
 import type { AuditEntry } from "@/lib/server/audit";
 import { officerLabel } from "@/lib/server/actor-label";
-import { smsProviderResolution } from "@/lib/server/sms";
+import { lastOtpFailureAt, smsProviderResolution } from "@/lib/server/sms";
+import { moneyBusy } from "@/lib/server/money-busy";
+import type { MoneyBusy } from "@/lib/server/money-busy";
+import { OTP_FAILURE_WAIT_MS } from "@/lib/marketing/engine-rules";
 import type { SmsProviderResolution } from "@/lib/server/sms";
 import { marketingLiveGate, readMarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
 import type { MarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
@@ -85,9 +91,9 @@ import {
   CAMPAIGNS_AUDIENCE_EVERYONE, CAMPAIGNS_AUDIENCE_HIDDEN, CAMPAIGNS_AUDIENCE_UNREADABLE,
 } from "@/app/admin/campaigns/campaigns-copy";
 import {
-  LIVE_DISABLED, LIVE_FLOOR, LIVE_HEADLINE, LIVE_SOMEBODY, NOT_SENT_EXTRA, RECIPIENT_STATUS_LABEL, START_AUDIENCE_REFUSED,
-  copyCantTravelSentence, eatClock, officerPausedSentence, officerStoppedSentence, pausedReasonSentence, preparingHeadline,
-  sendingHeadline, startDialog, stopDialog, stoppedHeadline,
+  FLOOR_SAFE_STOP_REASONS, LIVE_DISABLED, LIVE_FLOOR, LIVE_HEADLINE, LIVE_PAUSED_HIDDEN, LIVE_SOMEBODY, NOT_SENT_EXTRA,
+  RECIPIENT_STATUS_LABEL, START_AUDIENCE_REFUSED, copyCantTravelSentence, eatClock, officerPausedSentence, pausedReasonSentence,
+  preparingHeadline, sendingHeadline, startDialog, stopDialog, stoppedHeadline,
 } from "@/app/admin/campaigns/[id]/live-copy";
 import type { LiveReach } from "@/app/admin/campaigns/[id]/live-copy";
 
@@ -156,9 +162,11 @@ export type CampaignLiveView = {
 
 /* ══ THE RULES — pure, exported, and handed in, so the suite can plant each one's absence ═══════════════════════════════ */
 
-/** ⛔ E23 · is the breakdown hidden from this viewer? Only from one who may not read a number, below the floor of ROWS. */
+/** ⛔ E23 · is the breakdown hidden from this viewer? Only from one who may not read a number, below the floor of ROWS —
+ *  and ⭐ only when there IS a split to hide (the U47b-1 review): a list not written yet (0 rows — a CONFIRMED campaign, or one
+ *  paused or stopped before its first chunk) has nothing in it to reveal, and zero KPIs leak nothing. */
 export function liveBreakdownHidden(viewerReads: boolean, rows: number): boolean {
-  return viewerReads !== true && rows < MASKED_BREAKDOWN_MIN;
+  return viewerReads !== true && rows > 0 && rows < MASKED_BREAKDOWN_MIN;
 }
 
 /** OD24 · may this view carry money? Exactly the caller's decider (`campaignMoneyVisible`), never a default. */
@@ -191,6 +199,26 @@ export function liveReach(
   if (typeof c.enqueuedAt !== "string" || c.enqueuedAt === "") return "none";
   if (hidden(viewerReads, recipientRows(counts))) return "hidden";
   return messagedRows(counts) > 0 ? "reached" : "none";
+}
+
+/**
+ * ⛔ E23 · WHY A CAMPAIGN PAUSED, AS THIS VIEWER MAY READ IT — the ONE function every surface says a paused campaign's
+ * reason through (the live page here; U47b-2 routes the campaigns LIST's line through it too — the U47b-1 review). Below
+ * the floor (`hidden`) every ENGINE reason reads ONE sentence (`LIVE_PAUSED_HIDDEN`): some can only be written once
+ * somebody on the list passed the checks for the wire, and a sentence kept for those alone would say so by being said. The
+ * reasons found before anybody is checked keep their words (`FLOOR_SAFE_STOP_REASONS` — the copy advice then as a
+ * condition, `liveReach`). Above the floor, and for a reader: `pausedReasonSentence` by reach.
+ */
+export function pausedReasonSentenceFor(
+  viewer: Pick<LiveViewer, "reads">,
+  c: Pick<StoredSmsCampaign, "stopReason" | "enqueuedAt">,
+  counts: SmsCampaignRecipientStatusCounts,
+  hidden: (viewerReads: boolean, rows: number) => boolean = liveBreakdownHidden,
+): string {
+  const reads = viewer?.reads === true;
+  const key = typeof c.stopReason === "string" ? c.stopReason.trim() : "";
+  if (hidden(reads, recipientRows(counts)) && !FLOOR_SAFE_STOP_REASONS.includes(key)) return LIVE_PAUSED_HIDDEN;
+  return pausedReasonSentence(key, liveReach(c, counts, reads, hidden));
 }
 
 /** The stored audience, as a copy carries it: read at the campaign's door, allowed to THIS viewer (the draft door holds a
@@ -233,6 +261,11 @@ export type LiveViewDeps = {
   liveGate: typeof marketingLiveGate;
   /** U13 · the send window (`liveSendWindow` — fails closed). */
   window: () => SendWindowState | Promise<SendWindowState>;
+  /** ⭐ The U47b-1 review · the engine's own two waits a page cannot see from the rows — money first (E12, `moneyBusy`) and
+   *  a login code failed in the last `OTP_FAILURE_WAIT_MS` (`lastOtpFailureAt`) — so "nobody driving" is never said while
+   *  an officer's page is correctly waiting. */
+  moneyBusy: () => MoneyBusy;
+  otpLastFailureAt: () => number | null;
   /** An officer's display name, or null (the page then says "an officer"). */
   officerName: (userId: string) => Promise<string | null>;
   /** The campaign's newest audit rows, newest first — to name who paused or stopped it. */
@@ -243,6 +276,8 @@ export type LiveViewDeps = {
     moneyVisible: typeof liveMoneyVisible;
     bucketOf: typeof notSentBucketOf;
     outstanding: typeof resumeOutstanding;
+    /** ⛔ E23 · a paused reason as this viewer may read it (`pausedReasonSentenceFor`). */
+    pausedReason: typeof pausedReasonSentenceFor;
   };
   now: () => Date;
 };
@@ -258,6 +293,8 @@ export const LIVE_VIEW_DEPS: Readonly<LiveViewDeps> = Object.freeze({
   liveSwitch: () => readMarketingLiveSwitch(),
   liveGate: marketingLiveGate,
   window: liveSendWindow,
+  moneyBusy: () => moneyBusy(),
+  otpLastFailureAt: lastOtpFailureAt,
   officerName: async (userId: string) => {
     const name = await officerLabel(userId, { fallback: () => "" });
     return typeof name === "string" && name.trim() !== "" ? name.trim() : null;
@@ -265,7 +302,7 @@ export const LIVE_VIEW_DEPS: Readonly<LiveViewDeps> = Object.freeze({
   actsOn: async (campaignId: string) => (await getAuditForTargetDurable("SmsCampaign", campaignId, { limit: LIVE_ACTS_READ })).entries,
   rules: Object.freeze({
     progress: campaignProgress, breakdownHidden: liveBreakdownHidden, moneyVisible: liveMoneyVisible, bucketOf: notSentBucketOf,
-    outstanding: resumeOutstanding,
+    outstanding: resumeOutstanding, pausedReason: pausedReasonSentenceFor,
   }),
   now: () => new Date(),
 });
@@ -305,11 +342,18 @@ async function nameOf(userId: string | null, deps: LiveViewDeps): Promise<string
   }
 }
 
-/** ⭐ WHO did an officer's act — the newest audit row of that action WITH an actor (an engine's row has none), named. */
-async function actorOfAct(campaignId: string, action: string, deps: LiveViewDeps): Promise<string> {
+/** ⭐ WHO did an officer's act — the newest audit row of that action WITH an actor (an engine's row has none), named.
+ *  ⛔ The U47b-1 review · only a row written AT OR AFTER the act it names (`since`: the row's `pausedAt`, or `finishedAt` for a
+ *  stop — a second's grace for the stamp): when the current act's row did not land, an OLDER officer's row would otherwise
+ *  name the wrong person. No row that fits → "an officer". */
+const ACT_GRACE_MS = 1_000;
+async function actorOfAct(campaignId: string, action: string, deps: LiveViewDeps, since: string | null): Promise<string> {
+  const sinceMs = typeof since === "string" ? Date.parse(since) : Number.NaN;
+  if (!Number.isFinite(sinceMs)) return LIVE_SOMEBODY;
   try {
     const acts = await deps.actsOn(campaignId);
-    const act = acts.find((e) => e.action === action && typeof e.actorId === "string" && e.actorId !== "");
+    const act = acts.find((e) => e.action === action && typeof e.actorId === "string" && e.actorId !== ""
+      && Number.isFinite(Date.parse(e.createdAt)) && Date.parse(e.createdAt) >= sinceMs - ACT_GRACE_MS);
     return (act ? await nameOf(act.actorId, deps) : null) ?? LIVE_SOMEBODY;
   } catch {
     return LIVE_SOMEBODY;
@@ -397,17 +441,19 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
     case "PAUSED":
       headline = LIVE_HEADLINE.PAUSED;
       stopSentence = reasonKey === "officer_paused"
-        ? officerPausedSentence(await actorOfAct(c.id, OFFICER_PAUSED_ACTION, deps), c.pausedAt)
-        : pausedReasonSentence(reasonKey, reach);
+        ? officerPausedSentence(await actorOfAct(c.id, OFFICER_PAUSED_ACTION, deps, c.pausedAt), c.pausedAt)
+        : deps.rules.pausedReason({ reads }, c, counts, deps.rules.breakdownHidden);
       break;
     case "DONE":
       headline = LIVE_HEADLINE.DONE;
       break;
     case "CANCELLED": {
-      const who = await actorOfAct(c.id, OFFICER_STOPPED_ACTION, deps);
+      const who = await actorOfAct(c.id, OFFICER_STOPPED_ACTION, deps, c.finishedAt);
       const left = deps.rules.outstanding(c, counts);
       headline = stoppedHeadline(who, c.finishedAt, left ?? outstandingRows(counts));
-      stopSentence = reasonKey === "officer_stopped" ? officerStoppedSentence(who, c.finishedAt) : pausedReasonSentence(reasonKey, reach);
+      // ⭐ The U47b-1 review · an officer's Stop is said ONCE — the headline names who and when; any other reason is said as a
+      // paused one is, through the floor.
+      stopSentence = reasonKey === "officer_stopped" ? null : deps.rules.pausedReason({ reads }, c, counts, deps.rules.breakdownHidden);
       break;
     }
     default:
@@ -421,7 +467,14 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
   const sendWindow = await windowOf(deps);
   const lastStepAt = await deps.recipients.lastActivity(c.id);
   const lastMs = lastStepAt === null ? Number.NaN : Date.parse(lastStepAt);
-  const nobodyDriving = status === "RUNNING" && (!Number.isFinite(lastMs) || nowMs - lastMs >= NOBODY_DRIVING_AFTER_MS);
+  // ⭐ The U47b-1 review · "nobody driving" only while the engine would be SENDING: the window open, money not busy, no login
+  // code failed in the last two minutes — else an officer's page that is correctly waiting (every night, for one) reads as
+  // nobody sending.
+  const otpAt = deps.otpLastFailureAt();
+  const engineWaits = sendWindow.open !== true || deps.moneyBusy().busy === true
+    // The engine's own reading (④e): a failure dated either side of now by less than the wait.
+    || (typeof otpAt === "number" && Number.isFinite(otpAt) && Math.abs(nowMs - otpAt) < OTP_FAILURE_WAIT_MS);
+  const nobodyDriving = status === "RUNNING" && !engineWaits && (!Number.isFinite(lastMs) || nowMs - lastMs >= NOBODY_DRIVING_AFTER_MS);
 
   // ── the controls — always present, each disabled with its reason (decision 4) ──
   const draft = status === "DRAFT";
