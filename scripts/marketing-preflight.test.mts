@@ -775,11 +775,13 @@ async function runAssertions(impl: Impl): Promise<void> {
       "ops:marketing-campaign-evidence": "tsx scripts/live/marketing-campaign-evidence.mjs",
       "test:marketing-preflight": "tsx scripts/marketing-preflight.test.mts",
       "red:marketing-preflight": "tsx scripts/marketing-preflight.test.mts --prove-red",
+      // the lead's addition · the two tools end to end on a scratch PostgreSQL (loopback only, the lock's)
+      "db:probe-marketing-u52a": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/marketing-u52a-pg-probe.mts",
     };
     for (const [k, v] of Object.entries(want)) if (scripts[k] !== v) wrong.push(`${k} is "${scripts[k] ?? "missing"}"`);
     const chain = (scripts.predeploy ?? "").split("&&").map((x) => x.trim());
     for (const k of Object.keys(want)) if (chain.some((x) => x.includes(k))) wrong.push(`${k} is on the predeploy chain`);
-    for (const rel of ["scripts/live/marketing-preflight.mjs", "scripts/live/marketing-campaign-evidence.mjs", "scripts/lib/marketing-u52a.mjs", "scripts/lib/marketing-u52a-world.mts"]) {
+    for (const rel of ["scripts/live/marketing-preflight.mjs", "scripts/live/marketing-campaign-evidence.mjs", "scripts/lib/marketing-u52a.mjs", "scripts/lib/marketing-u52a-world.mts", "scripts/live/marketing-u52a-pg-probe.mts"]) {
       try { rawRead(rel); } catch { wrong.push(`${rel} is missing`); }
     }
     const prod = new RegExp("https?://[A-Za-z0-9.-]*50pick[.]tz");
