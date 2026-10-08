@@ -322,7 +322,9 @@ async function runA() {
       await shoot(page, "16-export");
       await unmark(page);
     });
-    await importShots(page);
+    // ⛔ 2026-10-09 · the lane split: the importer is S15's (docs/CONTACTS-SCREEN-PLAN.md) and not live yet — its pictures are taken
+    //    only where the contacts page has the Import button (S15 builds the dialog to `importShots`' data-block names).
+    if ((await page.locator('[data-block="contacts-import"]').count()) > 0) await importShots(page);
     await step("26-sms-credit", async () => {
       await page.goto(`${BASE}/admin/system`, { waitUntil: "networkidle" });
       // The first render may still be reading the stand-in: one reload shows the figure.
