@@ -180,6 +180,11 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // dialog and its server actions, and the refusal sentences the dialog shows verbatim. Types, constants and pure
     // helpers only; it imports types alone, from contact-fields.ts, parsed-file.ts and import-decide.ts, all pinned here.
     "lib/contacts/import-flow.ts",
+    // ⭐ ADDED 2026-10-09 (S15, decision M3). The browser's reader (a file or a paste → the one parsed shape, streamed) and
+    // the ONE loop driver (the upload and the commit, the actions handed in): the "use client" import dialog runs both.
+    // They import only src/lib/contacts modules, tz-msisdn.ts and phone-normalize.ts, all pinned here.
+    "lib/contacts/import-read.ts",
+    "lib/contacts/import-loop.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",

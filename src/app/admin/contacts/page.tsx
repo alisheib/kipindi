@@ -7,8 +7,8 @@
  * added or edited by hand (U22: "Add contact" in the page head, `?edit=<contact id>` for the dialog over the
  * list, opened from each row's "edit" link) — a selection acted on in bulk (U23: the select column and the bar —
  * tag, untag, add to a list, record a withdrawal, suppress, remove) — and every contact the filter matches downloaded
- * as a CSV file (U34a: "Export CSV" in the page head). There is no way to import a file yet (U25–U32) or to record a
- * consent (U33), and this page promises neither.
+ * as a CSV file (U34a: "Export CSV" in the page head) — and, since S15, a file or a paste imported through ONE dialog
+ * ("Import contacts" in the page head, `import/contacts-import-dialog.tsx`). No consent is recorded here (U33, S15-1).
  * ⭐ U34a · THE EXPORT LINK CARRIES THE LIST'S OWN FILTER (`contactsExportHref`: U24's ONE address writer, a relative
  * window already absolute), so the file is exactly what the list matched — never a ticked selection (X27). It is on
  * screen only when that read arrived WITH rows: no control on an empty book, a filter that matches nothing, a refused
@@ -90,6 +90,8 @@ import type { ContactsParams, ContactsView } from "./contacts-loader";
 import { contactRail } from "./contacts-rail";
 import { ContactFilters } from "./contact-filters";
 import { AddContactButton, ContactEditDialog } from "./contact-form";
+// S15 · the importer's button and its one dialog (`import/contacts-import-dialog.tsx`).
+import { ImportContactsButton } from "./import/contacts-import-dialog";
 import { ContactsSelectionProvider } from "./contacts-selection-provider";
 import { ContactRowSelect, ContactPageSelect } from "./contact-row-select";
 import { ContactsBulkBar } from "./contacts-bulk-bar";
@@ -271,6 +273,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
             {exportable !== null && exportHref !== null && (
               <ContactsExportControl href={exportHref} matched={exportable.result.total} reads={reads} />
             )}
+            {/* ⭐ S15 · "Import contacts" — disabled WITH its reason for a role that cannot act; its dialog opens on an
+                unfinished import when there is one (`import/contacts-import-dialog.tsx`). */}
+            <ImportContactsButton />
             <AddContactButton hrefParams={linkSp} editOpen={editLoad !== null} />
           </>
         )}
@@ -455,9 +460,12 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
             about. ⛔ Its figures are the DAL's own (`coveredCount`), the same read the gate decides from, so the screen
             cannot promise a reach the gate will not honour. D19 · nothing here is maskable: counts, names and instants. */}
         {listsCard !== null && (
-          <AdminCard title="Lists" sw="Orodha">
-            <ListsCard view={listsCard} />
-          </AdminCard>
+          // S15 · the anchor the import's result scrolls to when a list's new members still need its basis recorded.
+          <div id="contacts-lists" data-block="contacts-lists">
+            <AdminCard title="Lists" sw="Orodha">
+              <ListsCard view={listsCard} />
+            </AdminCard>
+          </div>
         )}
       </AdminBody>
 

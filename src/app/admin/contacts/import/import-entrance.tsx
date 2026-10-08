@@ -26,14 +26,16 @@ import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useActDisabledReason, useMayAct } from "@/components/admin/act-gate";
 import type { ImportRunView } from "@/lib/contacts/import-flow";
 import { SampleSheetButton } from "../sample-sheet-button";
-import { ENTRANCE, RESUME_FILE, partsText } from "./import-copy";
+import { ENTRANCE, MAPPING, RESUME_FILE, partsText } from "./import-copy";
 import { ImportAlert, Parts, type ImportAlertState } from "./import-parts";
 
 /** What the entrance is doing: waiting for a file, reading one in the browser, or waiting for the server to read one. */
 export type EntranceMode =
   | { readonly kind: "idle" }
   | { readonly kind: "reading"; readonly name: string; readonly read: number; readonly total: number | null; readonly rows: number }
-  | { readonly kind: "xlsx"; readonly name: string };
+  | { readonly kind: "xlsx"; readonly name: string }
+  /** A resumed upload's file was read again and the run is being re-opened on the server. */
+  | { readonly kind: "opening"; readonly name: string };
 
 /** The extensions the picker offers — the readable ones and the ones refused WITH a reason (so they can be chosen and told). */
 const PICKER_ACCEPT = ".csv,.tsv,.txt,.vcf,.vcard,.xlsx,.xlsm,.xls,.ods,.numbers,text/csv,text/vcard,text/x-vcard";
@@ -97,10 +99,12 @@ export function ImportEntrance({
         </div>
       )}
 
-      {mode.kind === "xlsx" && (
-        <div className="space-y-1" data-import-xlsx>
+      {(mode.kind === "xlsx" || mode.kind === "opening") && (
+        <div className="space-y-1" data-import-waiting={mode.kind}>
           <p className="text-body-sm text-text break-words">{mode.name}</p>
-          <p className="text-body-sm text-text-secondary" role="status" aria-live="polite">{ENTRANCE.xlsx}</p>
+          <p className="text-body-sm text-text-secondary" role="status" aria-live="polite">
+            {mode.kind === "xlsx" ? ENTRANCE.xlsx : MAPPING.opening}
+          </p>
         </div>
       )}
 

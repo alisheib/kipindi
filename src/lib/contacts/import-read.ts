@@ -386,6 +386,9 @@ function runsOf(line: string): Run[] {
  * The numbers a phone-shaped run holds: each stretch of its consecutive digit groups that THE ONE NUMBER RULE reads as a
  * Tanzanian mobile number, in order (two numbers written side by side are two). A run holding none is ONE number as
  * written — a foreign or mistyped one — so the server can say why it is refused.
+ * ⛔ A NUMBER FOUND MID-RUN MUST START LIKE ONE — with the trunk 0 or the country code 255. Only the run's own first group
+ * may be a bare nine-digit national number: inside "+254 712 345 678" the groups "712 345 678" read as a Tanzanian
+ * number, and taking them would import a STRANGER's number in place of a Kenyan one the server would have refused.
  */
 function numbersIn(line: string, run: Run): Found[] {
   const out: Found[] = [];
@@ -395,7 +398,8 @@ function numbersIn(line: string, run: Run): Found[] {
   while (i < gs.length) {
     let found = -1;
     let digits = "";
-    for (let j = i; j < gs.length; j++) {
+    const startsLikeANumber = i === 0 || gs[i].digits.startsWith("0") || gs[i].digits.startsWith("255");
+    for (let j = i; startsLikeANumber && j < gs.length; j++) {
       digits += gs[j].digits;
       if (digits.length > NUMBER_DIGITS_MAX) break;
       if (digits.length >= NUMBER_DIGITS_MIN && isSendableTzNumber((i === 0 && opensWithPlus ? "+" : "") + digits)) {

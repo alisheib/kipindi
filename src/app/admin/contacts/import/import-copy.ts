@@ -337,6 +337,16 @@ export const COMMIT = {
   ],
   cancelConfirm: "Cancel the rest",
   cancelKeep: "Keep the import",
+  finishing: "Counting the result…",
+} as const;
+
+/* ══ WHERE AN OPEN COMES BACK REFUSED — the ways on ═══════════════════════════════════════════════ */
+
+export const OPEN_WAYS = {
+  goToOpen: "Go to the unfinished import",
+  discardOpen: "Discard it and import this file",
+  discardStale: "Discard the unfinished import and start again",
+  chooseAnother: "Choose another file",
 } as const;
 
 /* ══ THE RESULT ═══════════════════════════════════════════════════════════════════════════════════ */

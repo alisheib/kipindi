@@ -29,6 +29,9 @@ import { SkBody, SkBar, SkChip, SkKpiRow, SkTableCard } from "@/components/admin
  * rather than hidden: an empty book, a filter that matches nothing and a failed read render NO export control, so at 360
  * their head is one row shorter than this ghost. A ghost cannot know the book is empty; the populated book is the state
  * the drive measures at delta 0, and it RECORDS the empty book's difference.
+ * ⭐ S15 · AND "IMPORT CONTACTS" BETWEEN THEM. The importer's button sits on the same 40px rung between Export and Add
+ * contact, and it is on screen in EVERY state (an empty book is exactly where an import starts), so the ghost reserves its
+ * box at about the label-and-glyph width — the head wraps at 360 as the real one does.
  * ⭐ U23 · THE BULK BAR'S GHOST sits under the rail's, as the bar sits above the table: the count line, the six action
  * buttons on the kit's 40px rung, and the one-line consent note, at the real bar's padding. The table gains the select
  * column (nine ghost columns: the reader's eight and the box). Like the rail, the bar's height is NOT equal by
@@ -47,6 +50,7 @@ export default function Loading() {
         actions={(
           <>
             <div data-skeleton="contacts-export"><SkChip className="h-[40px] w-[160px]" /></div>
+            <div data-skeleton="contacts-import"><SkChip className="h-[40px] w-[164px]" /></div>
             <div data-skeleton="contacts-add"><SkChip className="h-[40px] w-[124px]" /></div>
           </>
         )}

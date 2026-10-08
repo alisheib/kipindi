@@ -32,9 +32,9 @@ import type { BulkOutcome, BulkPreview, ContactBulkAction } from "@/lib/contacts
 
 export const CONTACTS_EMPTY = {
   title: "No contacts yet",
-  /** ⛔ States the present, promises nothing (D12): since U22 one contact can be added by hand — the button the
-   *  sentence names sits in the page head — and the importer (U25–U32) is still not live, so it is not offered. */
-  body: "The marketing address book is empty. Use Add contact to put a number in it; importing a file is not live yet.",
+  /** ⛔ States the present, promises nothing (D12): one contact is added by hand (U22), and a file or a paste through
+   *  the importer (S15) — both buttons the sentence names sit in the page head. */
+  body: "The marketing address book is empty. Use Import contacts to bring in a file or a pasted list, or Add contact to put in one number.",
 } as const;
 
 /** U20 · a search that matches nothing. ⛔ Says WHY a part of a number finds nothing: the book never

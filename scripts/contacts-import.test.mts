@@ -103,7 +103,10 @@ const REGISTRY: readonly Registered[] = [
   { file: "contacts-import/csv.mts", owner: "U25", covers: "src/lib/contacts/import-parse.ts — the CSV reader" },
   { file: "contacts-import/xlsx.mts", owner: "U27b", covers: "src/lib/server/contacts/{import-xlsx,import-xlsx-run}.ts — the XLSX reader and its officer wrapper" },
   { file: "contacts-import/field-rules.mts", owner: "vb5", covers: "src/lib/contacts/contact-fields.ts — the shared field rules: phone runs, the email rule, the form's problems, the filter's tag reader" },
-  // U32  · contacts-import/commit.mts, contacts-import/preflight.mts
+  // S15 (U30/U31-B/U32 as built) · the check (the pre-flight the decisions file called `preflight.mts`) and the commit,
+  // both driven on the memory twin through `scripts/lib/contacts-import-world.mts`.
+  { file: "contacts-import/check.mts", owner: "S15", covers: "src/lib/server/contacts/import-check.ts — the check's five boxes, the labels, the changes pages, the facts loader" },
+  { file: "contacts-import/commit.mts", owner: "S15", covers: "src/lib/server/contacts/import-commit.ts + import-actions.ts — the start, the commit step, pause · resume · cancel, the failures, the result" },
 ];
 
 /* ══ THE HARNESS ════════════════════════════════════════════════════════════════════════════════ */

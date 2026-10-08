@@ -5000,8 +5000,8 @@ export const prismaDb = {
                 createdAt: new Date(row.createdAt), createdBy: row.createdBy,
                 updatedAt: new Date(row.updatedAt), updatedBy: row.updatedBy,
               })),
-              skipDuplicates: true,
-              select: { msisdn: true },
+              // ONE line on purpose: §25's red anchor plants the presence read's own `select` line, which must stay unique.
+              skipDuplicates: true, select: { msisdn: true },
             });
             if (born.length !== b.creates.length) {
               const landed = new Set(born.map((r) => r.msisdn));

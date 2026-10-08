@@ -349,7 +349,7 @@ const L = {
   s6: "6.6 · the form is an act control and never names a number or an email: useMayAct and useActDisabledReason disable Add contact WITH the reason, the form is noValidate, no msisdn token and no .email accessor",
   s7: "6.7 · the page: Add contact in the head's actions, the dialog's number and email only through <Sensitive> slots, the close link the ONE builder without edit, the list's two c.msisdn reads unchanged",
   s8: "6.8 · ⛔ C9/M12 · edit never travels: the open link carries every filter and the sort into ?edit=, and the close link, the pager's base, SortTh's params and Clear filters all drop it (EXECUTED)",
-  s9: "6.9 · the copy tells the truth: the empty book names Add contact and promises no import, and the loading ghost reserves the head's 40px button box",
+  s9: "6.9 · the copy tells the truth: the empty book names Add contact and (S15) Import contacts and calls nothing \"not live\", and the loading ghost reserves the head's 40px button box",
   s10: "6.10 · ⭐ M5 · contactEmail is a registry field of its own: identity.contact, the MarketingContact target, masked like email, re-read by contact id (EXECUTED)",
   s11: "6.11 · PhoneInput's three props are ADDITIVE: the ref forwarded to the visible input, onPasteRaw heard before the strip, a caller's title winning — the hidden carrier still only with a name, the formatter's import line intact",
   s12: "6.12 · contact-number.ts is pure and pinned: no directive, it imports only tz-msisdn, phone-normalize and (vb7) contact-fields, and test:client-graph-safe pins it",
@@ -861,7 +861,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const at = head.indexOf(ADD_BOX);
     const end = at < 0 ? -1 : head.indexOf('px]" /></div>', at);
     const width = at < 0 || end < 0 ? "" : head.slice(at + ADD_BOX.length, end);
-    return [body.includes("Add contact") && !/Adding[^.]*not live/.test(body) && /importing a file is not live yet/.test(body)
+    // S15 · the importer is live, so the empty book names BOTH page-head buttons and promises nothing that is not live.
+    return [body.includes("Add contact") && body.includes("Import contacts") && !/not live/.test(body)
       && /^[0-9]+$/.test(width),
       body];
   });
