@@ -2103,6 +2103,22 @@ E11 bounds a slice by time; U52a measures. A deploy mid-slice: the reaper settle
 `test:otp-delivery`, `test:blackball`, `test:sms-dlr`, `test:sms-cost-guard` and `test:pii-logs`.
 **Owner decision:** none.
 
+**⭐ As built · the engine's dry-fire, F-1 and F-2 (2026-10-08).** `test:marketing-dry-fire` (seven scenarios over a fake
+Blackball that charges as the real one does) found two money-check defects in the per-slice credit check (E16); both are
+fixed, and its S7 claims are strict since:
+- **F-1 · a slice is priced for the people it can still claim.** It priced a whole slice even when nobody was left: a list
+  all sent, with the credit exactly at the reserve, paused `marketing_floor` with nobody waiting and never reached DONE
+  (Resume paused it again). Now `owedForSlice(size, PENDING)` = min(the slice, those PENDING); 0 goes straight to the
+  finish (DONE, `held_rows` or a wait); a count that cannot be read prices the whole slice, the safe side.
+- **F-2 · a send reply's figure is pre-charge (BLACKBALL-SMS §1.4).** Read straight after a slice, it still held that
+  slice's charge, so the next slice could go one batch into the credit kept for login codes. `sendBatch` now keeps, beside
+  each accepted reply's figure, the segments its batch has handed over so far (`pendingSegments`; the balance endpoint's
+  true figure carries 0, and a batch starts again from 0). `spendableBalance` takes them off at today's price (the measured
+  one when there is one) before `creditVerdict` judges the slice, and Start and Resume read the credit the same way, so a
+  Resume never lets through what the next slice would pause at once.
+Held by `test:marketing-engine` S41, S42 and F17 (plants R-S41, R-S42, R-S42b, R-F17, R-F10c), `test:sms-cost-guard` §12
+(four in-place anchors) and the dry-fire's S7 (R28).
+
 ---
 
 ### 4.14 · U46a · Receipts — the recipient arm, and rotating the secret

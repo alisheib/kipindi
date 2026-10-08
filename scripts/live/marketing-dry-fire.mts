@@ -39,8 +39,9 @@
  * Run it ONLY in this worktree's memory mode unless the heavy lock is yours (`--pg` boots a Postgres). Written 2026-10-08.
  * ⛔ This file holds no backslash (an editing tool decodes them).
  */
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { clockOf, makeRng, ms, num, out, table, tapConsole } from "./dry-fire/kit.mts";
 import { makeCarrier } from "./dry-fire/carrier.mts";
@@ -311,6 +312,20 @@ const HELP = [
 ];
 
 /** The command. `seams` and `emit` are for the suite (it plants a defect and reads what is printed); the command line passes neither. */
+/**
+ * A folder of the OS's own for one `--json` run, removed afterwards whatever happens. The suite's C2 asks the report writer
+ * through it, so the suite holds no file-writing call of its own and its red stays an IN-PROCESS proof (`test:red-anchors`
+ * §4: a `--prove-red` script that writes files is counted with the harnesses whose disk anchors nobody audits).
+ */
+export async function inScratchDir<T>(prefix: string, run: (dir: string) => Promise<T>): Promise<T> {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  try {
+    return await run(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 export async function main(argv: readonly string[], seams: Seams = {}, emit: (line: string) => void = out): Promise<number> {
   let cli: Cli;
   try {

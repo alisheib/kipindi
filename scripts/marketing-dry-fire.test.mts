@@ -6,7 +6,7 @@
  * ── THE SUITE (always) ───────────────────────────────────────────────────────────────────────────────────────────────────────
  *   B1  the real engine passes its own dry-fire at N=200: seven scenarios × six invariants, every claim holds
  *   B2  the report has the shape the lead reads — the SCALE figures, the summary table, the six invariants by name
- *   B3  the only known findings are the two reported to the lead (F-1, F-2), pinned to claims that exist
+ *   B3  the run reports NO known finding: F-1 and F-2 (Scenario 7's credit findings) were fixed in the engine, their claims strict
  *   B4  the world is not vacuous: every class of person is there, every invariant had something to hold
  *   D1  deterministic: one seed twice gives one fingerprint, another seed another
  *   G1  the guard's refusal matrix (production · Railway · a real rail · Redis · a remote database · --pg off loopback …)
@@ -42,8 +42,7 @@ if ((process.env.SESSION_SECRET ?? "").length < 32) process.env.SESSION_SECRET =
 if ((process.env.OTP_PEPPER ?? "").length < 16) process.env.OTP_PEPPER = "dry-fire-suite-pepper-0123456789";
 process.exitCode = 1;
 
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -150,11 +149,12 @@ async function runSuite(): Promise<void> {
     `scenarios [${names}] · SCALE block ${scale.length} lines · table ${table.length} lines · invariants ${ids} · per-slice figures ${figures}`];
   });
 
-  await claim("B3", "the only findings the run reports as known are the two the lead was told about (F-1, F-2), each pinned to a claim of Scenario 7 — and they fail nothing else", () => {
-    const pinned: Record<string, string> = { "S7.credit.edge.done": "F-1", "S7.credit.edge.resume": "F-1", "S7.credit.mid.strict": "F-2" };
-    const wrong = base.knownFindings.filter((f) => pinned[f.id] !== f.finding);
-    return [wrong.length === 0 && base.failedClaims.length === 0 && base.failedInvariants.length === 0,
-      `${base.knownFindings.length} known finding(s): ${base.knownFindings.map((f) => `${f.finding} ${f.id}`).join(", ") || "none (the engine was fixed — then delete the pins)"}`];
+  // ⭐ F-1 and F-2 (Scenario 7's credit findings) were fixed in the engine on 2026-10-08 — the credit priced for the people
+  // still owed, and a send reply's pre-charge figure less its pending segments — and their claims are strict since: the
+  // run must report NO known finding at all, and fail nothing.
+  await claim("B3", "the run reports NO known finding (F-1 and F-2 fixed in the engine, their claims strict) — and fails nothing", () => {
+    return [base.knownFindings.length === 0 && base.failedClaims.length === 0 && base.failedInvariants.length === 0,
+      `${base.knownFindings.length} known finding(s): ${base.knownFindings.map((f) => `${f.finding} ${f.id}`).join(", ") || "none"}`];
   });
 
   await claim("B4", "the world is not vacuous: every kind of person the gate must tell apart is in the SCALE audience (seventeen classes), and every invariant had something to hold", () => {
@@ -384,8 +384,8 @@ async function runSuite(): Promise<void> {
   });
 
   await claim("C2", "the command: exit 0 and a JSON report where asked when everything holds, 1 when an invariant fails (naming it and the flags that replay it), 2 when refused, 4 for a bad command line", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "dry-fire-suite-"));
-    try {
+    // The scratch folder is the command module's (`inScratchDir`): this suite holds no file-writing call, so its red stays in-process.
+    return H.inScratchDir("dry-fire-suite-", async (dir) => {
       const file = join(dir, "nested", "report.json");
       const small = ["--seed=1", "--n=60", "--only=1", "--quiet"];
       const okLines: string[] = [];
@@ -404,10 +404,8 @@ async function runSuite(): Promise<void> {
         && badCode === 1 && badLines.some((l) => l.startsWith("FAILED — invariants: INV3")) && badLines.some((l) => l.includes("replay with --seed=1 --n=60"))
         && refusedCode === 2 && refusedLines.some((l) => l.startsWith("REFUSED")) && refusedLines.some((l) => l.includes("DATABASE_URL is set"))
         && usageCode === 4 && usageLines.some((l) => l.startsWith("bad command line"));
-      return [ok, `exit codes ${okCode} (held, report written ${written.passed}) · ${badCode} (a planted stop-list gap: ${badLines.find((l) => l.startsWith("FAILED"))?.slice(0, 40) ?? "-"}) · ${refusedCode} (refused) · ${usageCode} (bad flag)`];
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+      return [ok, `exit codes ${okCode} (held, report written ${written.passed}) · ${badCode} (a planted stop-list gap: ${badLines.find((l) => l.startsWith("FAILED"))?.slice(0, 40) ?? "-"}) · ${refusedCode} (refused) · ${usageCode} (bad flag)`] as [boolean, string];
+    });
   });
 
   await claim("W1", "the scripts: qa:marketing-dry-fire (and its :pg twin through the scratch cluster), test:marketing-dry-fire and red:marketing-dry-fire exist as written and none is in the predeploy chain; the report folder is ignored by git", () => {
@@ -740,7 +738,7 @@ const PLANTS: Plant[] = [
   {
     id: "R28", name: "the credit kept for login codes is not asked (every slice reads as affordable)", only: [7],
     seams: () => ({ engine: (d) => ({ ...d, credit: (() => ({ ok: true })) as unknown as typeof d.credit }) }),
-    expect: { inv: [], claims: ["S7.credit.mid.done", "S7.credit.mid.pause", "S7.credit.unread.run"] },
+    expect: { inv: [], claims: ["S7.credit.mid.done", "S7.credit.mid.pause", "S7.credit.mid.strict", "S7.credit.unread.run"] },
   },
 ];
 

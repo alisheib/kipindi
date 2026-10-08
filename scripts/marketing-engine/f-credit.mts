@@ -19,7 +19,8 @@
  *   estimate's reserve · F9 the stop reasons · F10 the wiring · F11 a count that fails is retryable · F12 Resume before
  *   the list finished · F13 Resume's own reasons and words · F14 ⛔ OD66 no both-arms count for a viewer who may not read
  *   numbers · F15 ⛔ OD63 settings never priced from their defaults · F16 ⛔ Resume refuses what only a new copy can fix
- *   (U42's review, ENGINE-SPEC §4.15 decision 1 as amended — added at the U42 + U49a merge).
+ *   (U42's review, ENGINE-SPEC §4.15 decision 1 as amended — added at the U42 + U49a merge) · F17 ⭐ F-2 a send reply's
+ *   pending segments come off first, at Start and at Resume (the engine's dry-fire, 2026-10-08).
  * F0 runs the real code alone, so no plant can turn it: a control is never a catch.
  * ⭐ The fixtures' frozen `estimateTzs` was priced at TZS 5 a segment, and today's price is TZS 6: a check that priced
  * Start from the frozen figure instead of today's would read every money fixture differently (R-F2d).
@@ -40,6 +41,7 @@ import type {
   RefusalViewer, ResumeRefusal, StartCheck, StartCheckDeps, StartRefusal,
 } from "../../src/lib/server/marketing/start-check.ts";
 import { creditVerdict } from "../../src/lib/marketing/credit-guard.ts";
+import { spendableBalance } from "../../src/lib/marketing/engine-rules.ts";
 import { audienceFence, membersKeyOf, readCampaignAudience } from "../../src/lib/server/marketing/audience-fence.ts";
 import type { FenceDeps } from "../../src/lib/server/marketing/audience-fence.ts";
 import { contactAudienceKey, WHOLE_BOOK } from "../../src/lib/server/marketing/audience.ts";
@@ -91,12 +93,13 @@ const L = {
   f7: "F7 · THE STUB AND THE PROVIDER — on the console stub (no handset, no money) a campaign starts and resumes with the switch closed and NO credit read (U47b's local drive); an unrecognised provider is rail_dead (provider-unrecognised), never a closed switch, even when the rail reader says nothing; Blackball with the switch closed is switch_closed",
   f8: "F8 · THE ESTIMATE'S RESERVE IS THE CREDIT KEPT FOR CODES (decision 4) — through the shipped default it is the live Marketing SMS settings record's figure (TZS 20,000 kept, 20,000 reserved; never the platform floor of TZS 50, never the price); a reserve that cannot be read — null, NaN, negative or 0 — is UNREADABLE: no coverage figure (no spendable, covers or shortfall) and the covers tile says why, in the words of the credit kept for login and withdrawal codes, never a reserve of TZS 0; the source re-reads the settings for codesReserveTzs, null on a record it cannot read, and names no platform floor",
   f9: "F9 · THE STOP REASONS (decision 5, §3.4) — MARKETING_FLOOR and marketing_floor say the credit reached what is kept for login and withdrawal codes, credit_unreadable says it could not be read, each in the spec's words, and an unknown key is still named",
-  f10: "F10 · THE WIRING — Start's shipped reads are the real doors (the provider, the switch through THE gate, the rail, the settings re-read, the cost loader, the ONE fence, the credit rule, OD28's verdict); its credit is read at most a minute old (START_CREDIT_MAX_AGE_MS at most 60 s); credit-guard.ts stays pure: type imports alone, from the pure marketing modules",
+  f10: "F10 · THE WIRING — Start's shipped reads are the real doors (the provider, the switch through THE gate, the rail, the settings re-read, the cost loader, the ONE fence, the credit rule, the pending-segment rule, OD28's verdict); its credit is read at most a minute old (START_CREDIT_MAX_AGE_MS at most 60 s); credit-guard.ts stays pure: type imports alone, from the pure marketing modules",
   f11: "F11 · A COUNT THAT FAILS IS RETRYABLE — a fence that throws, or answers a count that is not one, is audience_uncounted (Try again in a minute; never confirm a new copy), while ONLY a stored filter that cannot be read is audience_unreadable",
   f12: "F12 · ⭐ RESUME BEFORE THE LIST FINISHED (enqueuedAt null) PRICES EVERYONE STILL OWED — paused at 0 rows written of 1,604 confirmed is credit_low with the whole price (TZS 9,624 against TZS 24,000), and so is 600 rows written; TZS 40,000 resumes it; resumeOutstanding is the confirmed count minus the settled rows there and PENDING + HELD once the list is finished; no confirmed count to start from is confirmation_unreadable — and so is a FINISHED list with no confirmed count, before any read (as Start reads it: the list's length cannot be judged without one — U49a's re-review)",
   f13: "F13 · RESUME'S OWN REASONS AND WORDS — saved sizes that cannot be read are sizes_unreadable (never price_unknown, which the owner could not fix); every Resume refusal says its own words, money only for a money reader, none says start, narrow the audience or Nothing was sent, and each ends Nobody more was messaged; and once anyone on the list was messaged, what only a new copy can fix says a copy would message them AGAIN and never prescribes one (U42's re-review)",
   f14: "F14 · ⛔ OD66 · NO BOTH-ARMS COUNT FOR A VIEWER WHO MAY NOT READ NUMBERS — audience_moved on a book ∪ players campaign says the audience grew with NO figure to such a viewer, and the figures to a reader; on a book or a players campaign the figures are OD65's count alone and go to every role; the refusal OBJECT names its population",
   f15: "F15 · ⛔ OD63 · SETTINGS THAT CANNOT BE READ ARE NEVER PRICED FROM THEIR DEFAULTS — a read that did not answer or threw is settings_unreadable and a record not read in full (its gaps holding the defaults) settings_incomplete, at Start and at Resume, with no price and no credit read, in a world where the defaults would START; settings_unreadable says try again, settings_incomplete names the developer and never says try again",
+  f17: "F17 · ⭐ F-2 · A SEND REPLY'S FIGURE IS PRE-CHARGE: ITS PENDING SEGMENTS COME OFF FIRST, AT START AND AT RESUME (the engine's dry-fire, 2026-10-08) — TZS 40,000 read from a send reply with 1,800 segments not yet taken off (TZS 10,800 at today's TZS 6) is credit_low with the TZS 29,200 left (29,200 · 9,624 · 20,000), where the same TZS 40,000 with none pending starts; 1,729 pending (TZS 29,626 left) starts and 1,730 (TZS 29,620) refuses; at Resume, 604 owed (TZS 3,624) at TZS 24,000 resumes with 62 pending (TZS 23,628 left) and is credit_low with 63 (TZS 23,622 left) — the line the engine's next slice holds, so a Resume never lets through what that slice would pause at once",
   f16: "F16 · ⛔ RESUME REFUSES WHAT ONLY A NEW COPY CAN FIX (U42's review; ENGINE-SPEC §4.15 decision 1 as amended) — a list LONGER than its confirmed count (1,605 rows of 1,604) is list_over_confirmed WHATEVER the stop reason (an officer's pause, none, the credit's own) and BEFORE ANY READ — with the switch closed and on the console stub too, the switch, the settings, the price and the credit never read; a campaign the enqueue paused audience_moved, audience_unreadable, list_over_confirmed or list_over_confirmed_sending is refused for that reason (list_over_confirmed for the last two) with its list within its count, again with nothing read; each refusal says whether anyone on the list was already messaged (reached: true after 1,000 SENT, false with nothing handed over); and the same row paused by an officer within its count resumes (the control)",
 } as const;
 
@@ -287,6 +290,7 @@ const depsOf = (w: World, calls: Calls): StartCheckDeps => ({
     return audienceFence(c, fenceDepsOf(w.audience));
   },
   credit: creditVerdict,
+  spendable: spendableBalance,
   audienceVerdict: startAudienceVerdict,
   now: () => NOW,
 });
@@ -703,6 +707,7 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
       provider: d.provider === smsProviderResolution, liveSwitch: d.liveSwitch === readMarketingLiveSwitch, gate: d.gate === marketingLiveGate,
       rail: d.rail === smsRailProblem, settings: d.settings === reloadMarketingSmsSettings, cost: d.cost === loadSegmentCost,
       fence: d.fence === audienceFence, credit: d.credit === creditVerdict, audienceVerdict: d.audienceVerdict === startAudienceVerdict,
+      spendable: d.spendable === spendableBalance,
     };
     const off = Object.entries(wiring).filter(([, v]) => !v).map(([k]) => k);
     const fresh = impl.sources.startCheck.includes("readBalance: () => refreshSmsBalance({ maxAgeMs: START_CREDIT_MAX_AGE_MS }),")
@@ -836,6 +841,24 @@ async function runSectionF(impl: FImpl, ok: Check): Promise<void> {
     const holds = longerOk && unsentOk && reasonsOk && earlyOk && control.refusal === null;
     const shown = (x: { refusal: ResumeRefusal | null; calls: Calls }): string => `${json(x.refusal)}${nothingRead(x.calls) ? "" : " (read)"}`;
     return [holds, `1,605 of 1,604 → ${longer.map(shown).join(", ")} · none handed over → ${shown(unsent)} · the enqueue's reasons → ${paused4.map(shown).join(", ")} · paused before a row was written → ${shown(early)} · an officer's pause within its count → ${resumed(control.refusal)}`];
+  });
+
+  /* ── F17 · ⭐ F-2 · a send reply's pending segments come off first, at Start and at Resume (the engine's dry-fire) ── */
+  await claim(ok, L.f17, async () => {
+    /** A send reply's figure, as the snapshot keeps it: pre-charge, with the segments it has not yet taken off. */
+    const replied = (tzs: number, pendingSegments: number): SmsBalanceRead => ({ ...credit(tzs), outcome: "reused", pendingSegments });
+    const s1800 = (await startIn(impl, withW({ balance: replied(40_000, 1_800) }))).check;
+    const s0 = (await startIn(impl, withW({ balance: replied(40_000, 0) }))).check;
+    const s1729 = (await startIn(impl, withW({ balance: replied(40_000, 1_729) }))).check;
+    const s1730 = (await startIn(impl, withW({ balance: replied(40_000, 1_730) }))).check;
+    const at = (pending: number): World => withW({ row: paused(), balance: replied(24_000, pending) });
+    const r62 = await resumeIn(impl, at(62), LEFT_604);
+    const r63 = await resumeIn(impl, at(63), LEFT_604);
+    const startOk = !s1800.ok && json(s1800.refusal) === json({ reason: "credit_low", balanceTzs: 29_200, costTzs: 9_624, reserveTzs: 20_000 })
+      && s0.ok && s1729.ok && !s1730.ok && s1730.refusal.reason === "credit_low";
+    const resumeOk = r62.refusal === null && json(r63.refusal) === json({ reason: "credit_low", balanceTzs: 23_622, costTzs: 3_624, reserveTzs: 20_000 });
+    return [startOk && resumeOk,
+      `40,000 with 1,800 pending → ${s1800.ok ? "START" : json(s1800.refusal)} · none pending → ${said(s0)} · 1,729 → ${said(s1729)} · 1,730 → ${said(s1730)} · Resume, 604 owed at 24,000: 62 pending → ${resumed(r62.refusal)} · 63 → ${json(r63.refusal)}`];
   });
 }
 
@@ -1034,6 +1057,16 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
         startCheck: plantIn(REAL_SOURCES.startCheck, "refreshSmsBalance({ maxAgeMs: START_CREDIT_MAX_AGE_MS })", "refreshSmsBalance({ maxAgeMs: 15 * 60_000 })"),
       },
     }),
+  },
+  {
+    name: "R-F10c · Start's shipped check takes a send reply's figure whole (the pending-segment rule not wired)",
+    expect: [L.f10],
+    impl: () => ({ shipped: Object.freeze({ ...SC.START_CHECK_DEPS, spendable: (fig: BalanceFigure) => fig }) }),
+  },
+  {
+    name: "R-F17 · Start and Resume take a send reply's pre-charge figure whole (F-2 — its pending segments never priced)",
+    expect: [L.f17],
+    impl: () => ({ deps: (d) => ({ ...d, spendable: (fig) => fig }) }),
   },
   {
     name: "R-F10b · credit-guard.ts imports a server module",

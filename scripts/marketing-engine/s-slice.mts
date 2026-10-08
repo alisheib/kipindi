@@ -75,7 +75,7 @@ const L = {
   s18: "S18 · ⭐ …AND AGAIN AT THE LAST WORD BEFORE THE WIRE — a row added past the confirmed count while the slice gates (or the count turned unreadable) is vetoed by beforeSend: ZERO wire calls, every claimed row back to PENDING unchanged, the campaign paused list_over_confirmed_sending (confirmation_unreadable), the late row never claimed",
   s19: "S19 · ⭐ AS BUILT · AN UNANSWERED BATCH — every row the wire left without a clear answer (TRANSPORT, or no result for it) is UNCONFIRMED (the reference kept where there was one), never released and never FAILED, and the campaign pauses gateway_unanswered with ONE paused row — so an outage costs one slice, never the audience",
   s20: "S20 · ⭐ THE REAL SEND PATH (sendBatch, a stubbed fetch, no network) — a 504 reply is ambiguous: the rows UNCONFIRMED under their SmsMessage references, those rows UNKNOWN (purpose MARKETING), the campaign paused gateway_unanswered; a status:false 400 is a refusal: the rows released with attempts 1, their SmsMessage rows FAILED, paused gateway_refused with the gateway's words; an accepted reply: the rows SENT under their ACCEPTED rows' references, the credit kept for codes handed to the batch",
-  s21: "S21 · ⭐ E16 · THE CREDIT KEPT FOR CODES, PER SLICE — on a real carrier with TZS 100,000 the slice sends and hands the TZS 20,000 kept to the batch (its trail says so); TZS 20,050 against a slice of 20 at TZS 6 pauses marketing_floor; and each cause that cannot be read pauses in its OWN words, the words Resume refuses with — a failed credit read credit_unreadable, settings that cannot be read settings_unreadable, saved sizes that cannot be read sizes_unreadable, no price price_unknown — each BEFORE any claim, each with its sentence; on the console stub neither the settings nor the credit is read and no floor is handed on",
+  s21: "S21 · ⭐ E16 · THE CREDIT KEPT FOR CODES, PER SLICE — on a real carrier with TZS 100,000 the slice sends and hands the TZS 20,000 kept to the batch (its trail says so); TZS 20,010 against the 2 people still owed at TZS 6 (TZS 12 — a slice is priced for the people it can still claim, F-1) pauses marketing_floor; and each cause that cannot be read pauses in its OWN words, the words Resume refuses with — a failed credit read credit_unreadable, settings that cannot be read settings_unreadable, saved sizes that cannot be read sizes_unreadable, no price price_unknown — each BEFORE any claim, each with its sentence; on the console stub neither the settings nor the credit is read and no floor is handed on",
   s22: "S22 · AS BUILT · THE RE-CHECK BEFORE THE WIRE COULD NOT ANSWER — every cleared row back to PENDING unchanged, ZERO wire calls, waiting before_send_unanswered; three slices running pauses before_send_unanswered with one paused row and its sentence; a slice that answers resets the count",
   s23: "S23 · THE TEMPLATE'S OWN VERDICT — a stored message that no longer passes its own check pauses template_invalid BEFORE any claim, with a scrubbed detail and a sentence that never prescribes a copy as if it reached nobody (a copy would message people again — only if that is what you want); while a message refused for ONE person (a book number on a campaign with a blank source line) holds that person (+1) and pauses nothing",
   s24: "S24 · THE RAIL — a dead rail pauses NOT_CONFIGURED and an unrecognised provider pauses PROVIDER_UNRECOGNISED (never live_switch_closed, which the owner cannot fix) — BEFORE any claim",
@@ -94,6 +94,8 @@ const L = {
   s37: "S37 · A FAILURE THAT NAMES NO CODE IS NO ANSWER (the U43b-2 re-review) — never read as certainly before the request: a failure with no code, and one whose code is EMPTY (the re-review of round 2), each leave the rows UNCONFIRMED, never released, the campaign paused gateway_unanswered",
   s38: "S38 · ⭐ TOO SLOW, COUNTED BY ROUTE (the re-review of round 2 and the check of its fix) — the GATE side (the check before the wire finds the claim too old): forty people on the REAL slice size shrink below five, only the smallest group counts and the third wait there pauses, nothing sent; the SEND side (sendBatch's own deadline, a stall no smaller group cures): forty people pause on the third wait at ANY size; a slice that met the check and got past it starts the count over, one whose people were ALL refused does not; and the rule's table — 1 to 5 people count on the gate side, 0, 6, 7, 8 and anything not a whole count do not, any size counts on the send side",
   s39: "S39 · ⭐ AN OFFICER'S PAUSE AND RESUME START THE STREAKS OVER (the re-review of round 2) — two slow waits at the smallest group, then a Pause and a Resume (a new pausedAt): two more slow waits do NOT pause, the third after the Resume does; the same for the check before the wire unanswered",
+  s41: "S41 · ⭐ F-1 · A SLICE IS PRICED FOR THE PEOPLE IT CAN STILL CLAIM (the engine's dry-fire, 2026-10-08) — a list all sent, with the credit EXACTLY at the TZS 20,000 kept for codes, finishes DONE (never paused marketing_floor with nobody left, which Resume would pause again); 2 people still owed at TZS 6 are priced TZS 12, so TZS 20,012 sends them and TZS 20,011 pauses marketing_floor before any claim; and the rule: min(the slice, those PENDING), a count that is not a whole number of 0 or more pricing the whole slice (the safe side)",
+  s42: "S42 · ⭐ F-2 · A SEND REPLY'S FIGURE IS PRE-CHARGE: ITS PENDING SEGMENTS COME OFF FIRST (the engine's dry-fire, 2026-10-08) — TZS 20,200 read from a reply with 50 segments not yet taken off pauses marketing_floor before any claim (TZS 19,900 left at TZS 6, its sentence naming that figure), where the same TZS 20,200 with none pending sends; at a MEASURED TZS 8 the pending are priced at TZS 8 (TZS 20,400 with 50 pending pauses); and the rule: only a LIVE figure is reduced, by a whole number of pending segments at a price above 0 — an unreadable figure, NaN, negative or fractional pending, or a price of 0 or NaN leave it as it was",
   s40: "S40 · THE send_error LOG LINE (the check of round 2's fix) — once the pause has landed, exactly ONE console.error line naming the campaign: on the thrown route the error's code made lawful (a code that is a phone number reaches the log masked, never a nine-digit run) and that this is all that is kept; on the failed route UNKNOWN and the sms.failed rows that hold the words; and NO line when the pause did not land (an officer's Pause won first)",
 } as const;
 
@@ -756,9 +758,9 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const b = worldOf("s21b");
     await playersOn(b, 2);
     const wireB = stubWire();
-    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), wireB, carrier(20_050)));
+    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), wireB, carrier(20_010)));
     const okB = rB.kind === "paused" && rB.reason === "marketing_floor" && claimedNone(b.cid) && wireB.calls === 0;
-    out.push(`20,050: ${said(rB)}`);
+    out.push(`20,010: ${said(rB)}`);
     // ③ each cause that cannot be read, in its OWN words: the credit, the settings, the saved sizes, the price
     const causes: Array<[string, (cid: string) => Promise<void>, Partial<EngineDeps>]> = [
       ["credit_unreadable", async () => undefined, { readBalance: async () => ({ tzs: null, at: null, outcome: "failed", stale: false, error: "unreachable" }) }],
@@ -946,7 +948,8 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
       && sh.settings === reloadMarketingSmsSettings && sh.provider === smsProviderResolution && sh.rail === smsRailProblem
       && sh.state === ENGINE.engineProcessState && sh.rules.isShopWide === RULES.isShopWide && sh.rules.settlementFor === RULES.settlementFor
       && sh.rules.reapVerdict === RULES.reapVerdict && sh.rules.adaptSliceSize === RULES.adaptSliceSize && sh.rules.sendRecordOf === RULES.sendRecordOf
-      && sh.rules.tooSlowCounts === RULES.tooSlowCounts && sh.rules.sendErrorLog === RULES.sendErrorLog && sh.tokenOf === currentOptOutToken;
+      && sh.rules.tooSlowCounts === RULES.tooSlowCounts && sh.rules.sendErrorLog === RULES.sendErrorLog && sh.tokenOf === currentOptOutToken
+      && sh.rules.spendableBalance === RULES.spendableBalance && sh.rules.owedForSlice === RULES.owedForSlice;
     // engineSend through the console stub writes a MARKETING row for the recipient target
     const w = worldOf("s27");
     const target = `rcp_s27_probe_${w.run}`;
@@ -1327,6 +1330,72 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
       console.error = realError;
     }
   });
+
+  // ── S41 · ⭐ F-1 · a slice is priced for the people it can still claim ──
+  await claim(ok, L.s41, async () => {
+    // ① everyone sent, then the credit lands EXACTLY on the line: nobody is owed, so nothing is priced and the campaign finishes
+    const a = worldOf("s41a");
+    await playersOn(a, 2);
+    const r1 = await stepWith(impl, a.cid, engineDeps(freshState(), stubWire(), carrier(100_000)));
+    const wireA = stubWire();
+    const r2 = await stepWith(impl, a.cid, engineDeps(freshState(), wireA, carrier(20_000)));
+    const cA = await campaignOf(a.cid);
+    const doneOk = r1.kind === "sent" && r1.handedOver === 2 && r2.kind === "finished" && cA?.status === "DONE" && wireA.calls === 0;
+    // ② 2 people still owed at TZS 6 are TZS 12: on the line they are sent, a shilling under pauses before any claim
+    const b = worldOf("s41b");
+    await playersOn(b, 2);
+    const rOn = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire(), carrier(20_012)));
+    const c = worldOf("s41c");
+    await playersOn(c, 2);
+    const wireC = stubWire();
+    const rUnder = await stepWith(impl, c.cid, engineDeps(freshState(), wireC, carrier(20_011)));
+    const lineOk = rOn.kind === "sent" && rOn.handedOver === 2
+      && rUnder.kind === "paused" && rUnder.reason === "marketing_floor" && claimedNone(c.cid) && wireC.calls === 0;
+    // ③ the rule itself
+    const rule: Array<[number | null, number]> = [[2, 2], [0, 0], [35, 20], [20, 20], [null, 20], [Number.NaN, 20], [-1, 20], [2.5, 20], [Number.POSITIVE_INFINITY, 20]];
+    const ruleMiss = rule.filter(([pending, want]) => RULES.owedForSlice(20, pending) !== want).map(([pending]) => String(pending));
+    return [doneOk && lineOk && ruleMiss.length === 0,
+      `all sent, then 20,000: ${said(r1)} → ${said(r2)} (${cA?.status}, ${wireA.calls} send(s)) · 2 owed at 20,012: ${said(rOn)} · at 20,011: ${said(rUnder)} · the rule wrong for [${ruleMiss.join(", ")}]`];
+  });
+
+  // ── S42 · ⭐ F-2 · a send reply's pending segments come off first ──
+  await claim(ok, L.s42, async () => {
+    const replied = (tzs: number, pendingSegments: number): Partial<EngineDeps> => ({
+      readBalance: async () => ({ tzs, at: Date.now() - 1_000, outcome: "reused", stale: false, error: null, pendingSegments }),
+    });
+    // ① TZS 20,200 with 50 pending at TZS 6: TZS 19,900 left, less TZS 12 for the 2 owed — under the line, before any claim
+    const a = worldOf("s42a");
+    await playersOn(a, 2);
+    const wireA = stubWire();
+    const rA = await stepWith(impl, a.cid, engineDeps(freshState(), wireA, carrier(0, replied(20_200, 50))));
+    const cA = await campaignOf(a.cid);
+    const pendingOk = rA.kind === "paused" && rA.reason === "marketing_floor" && cA?.stopReason === "marketing_floor" && claimedNone(a.cid) && wireA.calls === 0;
+    const detail = (await auditRows(CAMPAIGN_PAUSED_ACTION, a.cid)).map((e) => String((e.payload as { detail?: unknown } | null)?.detail ?? "")).join(" | ");
+    const figureOk = detail.includes("credit 19900");
+    // ② the same TZS 20,200 with nothing pending (the balance endpoint's own reading): sent
+    const b = worldOf("s42b");
+    await playersOn(b, 2);
+    const rB = await stepWith(impl, b.cid, engineDeps(freshState(), stubWire(), carrier(0, replied(20_200, 0))));
+    // ③ at a MEASURED TZS 8 the pending are priced at TZS 8: TZS 20,400 less 400 is TZS 20,000, less TZS 16 for the 2 owed
+    const m = worldOf("s42m");
+    await playersOn(m, 2);
+    const measured: Partial<EngineDeps> = {
+      cost: async () => ({ kind: "measured", tzsPerSegment: 8, sends: 12, pairs: 6, spread: { min: 8, max: 8 }, since: new Date(Date.now() - 86_400_000).toISOString() }),
+    };
+    const wireM = stubWire();
+    const rM = await stepWith(impl, m.cid, engineDeps(freshState(), wireM, carrier(0, { ...replied(20_400, 50), ...measured })));
+    const measuredOk = rM.kind === "paused" && rM.reason === "marketing_floor" && wireM.calls === 0;
+    // ④ the rule itself
+    const live = { kind: "live" as const, tzs: 20_200, at: 1 };
+    const same = (x: unknown): boolean => json(x) === json(live);
+    const ruleOk = json(RULES.spendableBalance(live, 50, 6)) === json({ ...live, tzs: 19_900 })
+      && same(RULES.spendableBalance(live, 0, 6)) && same(RULES.spendableBalance(live, undefined, 6))
+      && same(RULES.spendableBalance(live, Number.NaN, 6)) && same(RULES.spendableBalance(live, -5, 6)) && same(RULES.spendableBalance(live, 2.5, 6))
+      && same(RULES.spendableBalance(live, 50, 0)) && same(RULES.spendableBalance(live, 50, Number.NaN))
+      && json(RULES.spendableBalance({ kind: "unreadable", why: "failed", error: "unreachable" }, 50, 6)) === json({ kind: "unreadable", why: "failed", error: "unreachable" });
+    return [pendingOk && figureOk && rB.kind === "sent" && rB.handedOver === 2 && measuredOk && ruleOk,
+      `20,200 with 50 pending: ${said(rA)} ("${detail.slice(0, 90)}") · with none: ${said(rB)} · measured TZS 8, 20,400 with 50 pending: ${said(rM)} · the rule ${ruleOk}`];
+  });
 }
 
 /* ══ THE PLANTS — each a defect as somebody would write it, swapped in memory ══════════════════════════════════════ */
@@ -1338,6 +1407,21 @@ const outcomesMapped = (d: EngineDeps, f: (o: SliceOutcome) => SliceOutcome): En
 });
 
 export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
+  {
+    name: "R-S41 · a slice priced whole, for nobody (F-1) — a list all sent pauses marketing_floor at the line and never finishes",
+    expect: [L.s41],
+    impl: withDeps((d) => ({ ...d, rules: { ...d.rules, owedForSlice: (size) => size } })),
+  },
+  {
+    name: "R-S42 · a send reply's pre-charge figure taken whole (F-2) — its pending segments never priced, the codes' credit spent by one slice",
+    expect: [L.s42],
+    impl: withDeps((d) => ({ ...d, rules: { ...d.rules, spendableBalance: (fig) => fig } })),
+  },
+  {
+    name: "R-S42b · the pending segments priced at the owner's configured TZS 6, never today's measured price",
+    expect: [L.s42],
+    impl: withDeps((d) => ({ ...d, rules: { ...d.rules, spendableBalance: (fig, pending) => RULES.spendableBalance(fig, pending, MARKETING_SMS_SETTINGS_DEFAULTS.pricePerSegmentTzs) } })),
+  },
   {
     name: "R-S35 · the send's deadline not handed to sendBatch — a stalled row write sends to people a reaper has released",
     expect: [L.s35],

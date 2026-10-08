@@ -93,14 +93,14 @@ export async function credit(h: Harness, n: number): Promise<Record<string, unkn
       okStart.ok && c.SENT === L.world.expectedRows && L.world.expectedRows === m && h.carrier.balance() === reserve && [...h.carrier.handedBy(id).values()].every((k) => k === 1),
       `final credit ${num(h.carrier.balance())} vs reserve ${num(reserve)}; ${statusLine(c)}`);
     claimNow(h, "S7.credit.edge.done", "…and with nobody left to message the campaign ends DONE — it does not pause `marketing_floor` for a slice that has no people in it",
-      end?.status === "DONE", `campaign ${end?.status}${end?.stopReason ? ` (${end.stopReason})` : ""} with ${c.PENDING + c.HELD} people waiting`, "F-1");
+      end?.status === "DONE", `campaign ${end?.status}${end?.stopReason ? ` (${end.stopReason})` : ""} with ${c.PENDING + c.HELD} people waiting`);
     if (end?.status === "PAUSED") {
       // U49a's Resume lets a campaign with nobody left resume without a credit read ("the step finds nothing owed and finishes")…
       const back = await resume(h, A, id);
       const fin = await drive(h, A, id, {});
       const after = await S.db.smsCampaign.find(id);
       claimNow(h, "S7.credit.edge.resume", "…and Resume of such a campaign (nobody left) then FINISHES it — the step finds nothing owed — with no top-up",
-        back.ok && fin.end === "terminal" && after?.status === "DONE", `resume ${back.ok ? "ok" : back.reason}; the next step ended ${fin.end}, campaign ${after?.status}${after?.stopReason ? ` (${after.stopReason})` : ""}`, "F-1");
+        back.ok && fin.end === "terminal" && after?.status === "DONE", `resume ${back.ok ? "ok" : back.reason}; the next step ended ${fin.end}, campaign ${after?.status}${after?.stopReason ? ` (${after.stopReason})` : ""}`);
       if (after?.status !== "DONE") {
         // the way out the page names: top up, then Resume
         h.carrier.setBalance(reserve + 10_000);
@@ -168,7 +168,7 @@ export async function credit(h: Harness, n: number): Promise<Record<string, unkn
       run.end === "paused" && camp?.stopReason === "marketing_floor" && rows.some((x) => x.status === "PENDING") && rows.every((x) => !(x.status === "PENDING" && x.claimToken !== null)) && shortfall <= oneSlice,
       `paused ${camp?.stopReason}; credit now ${num(trueBalance)} against reserve ${num(reserve)} (under by ${num(shortfall)} ≤ one slice ${num(oneSlice)}); ${requestsFor(id) - reqBefore} more request(s) after the drain; ${statusLine(statusCounts(rows))}`);
     claimNow(h, "S7.credit.mid.strict", "…and not at all: the credit kept for login codes is never gone into — a slice whose send would take it under is not sent",
-      shortfall === 0, `credit ${num(trueBalance)} against reserve ${num(reserve)}: under by ${num(shortfall)}`, "F-2");
+      shortfall === 0, `credit ${num(trueBalance)} against reserve ${num(reserve)}: under by ${num(shortfall)}`);
     out.midRun = { reserve, creditAtPause: trueBalance, shortfall, sentBeforeDrain: sentBefore };
     // a top-up, and Resume finishes it
     h.carrier.setBalance(trueBalance + 10_000);

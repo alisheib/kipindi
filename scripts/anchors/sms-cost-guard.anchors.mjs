@@ -12,11 +12,12 @@ export const MUTATIONS = [
     // Blackball validates before it authenticates; recording it stores TZS 0 and trips the floor.
     name: "sms.ts — the balance is recorded from refused replies too",
     file: "src/lib/server/sms.ts",
-    // ⚠️ RE-ANCHORED 2026-09-27: the reply's balance is now stamped with when it was asked (`askedAt`).
+    // ⚠️ RE-ANCHORED 2026-09-27: the reply's balance is now stamped with when it was asked (`askedAt`); and 2026-10-08: its
+    // batch's pending segments are counted first (F-2).
     from: `    if (outcome.ok) {
-      recordBalance(outcome.balance, askedAt);`,
+      for (const p of group) sentSegments += sizeSms(p.out.body).segments;`,
     to: `    if (true) {
-      recordBalance(outcome.balance, askedAt);`,
+      for (const p of group) sentSegments += sizeSms(p.out.body).segments;`,
     expect: `§2 ⛔ the refusal's balance 0.0 is NOT recorded`,
   },
   {
@@ -538,5 +539,38 @@ export const MUTATIONS = [
     from: `  return !Number.isFinite(notAfter) || Date.now() >= notAfter;`,
     to: `  return Date.now() >= notAfter;`,
     expect: `§11 ⛔ a deadline that is not a figure holds the MARKETING batch: a malformed option never opens the rail`,
+  },
+  {
+    // F-2 (the engine's dry-fire, 2026-10-08) · a reply's pre-charge figure kept as the truth: the next slice spends the
+    // credit kept for login codes by one batch.
+    name: "sms.ts — a send reply is recorded with no pending segments",
+    file: "src/lib/server/sms.ts",
+    from: `      recordBalance(outcome.balance, askedAt, sentSegments);`,
+    to: `      recordBalance(outcome.balance, askedAt);`,
+    expect: `§12 ⭐ an accepted reply's figure is kept with the segments its batch handed over: 3 messages of one segment leave 3 pending`,
+  },
+  {
+    // F-2 · counted per message, never per segment: a two-segment campaign would leave half its charge unpriced.
+    name: "sms.ts — the pending segments counted one per message",
+    file: "src/lib/server/sms.ts",
+    from: `      for (const p of group) sentSegments += sizeSms(p.out.body).segments;`,
+    to: `      for (const p of group) sentSegments += 1;`,
+    expect: `§12 a message of two segments counts two, and the next batch starts again from 0: 2 such messages leave 4 pending, never 56`,
+  },
+  {
+    // F-2 · the snapshot loses them: every reader takes the pre-charge figure whole again.
+    name: "sms.ts — the snapshot drops the pending segments",
+    file: "src/lib/server/sms.ts",
+    from: `    pendingSegments: b?.pendingSegments ?? 0,`,
+    to: `    pendingSegments: 0,`,
+    expect: `§12 ⭐ an accepted reply's figure is kept with the segments its batch handed over: 3 messages of one segment leave 3 pending`,
+  },
+  {
+    // F-2 · the live read keeps them to itself: the engine and Start / Resume read the reply's figure whole.
+    name: "sms.ts — the live read hands no pending segments on",
+    file: "src/lib/server/sms.ts",
+    from: `    return { tzs: s.tzs, at: s.at, outcome, stale: s.tzs !== null && (s.stale || !confirmed), error, pendingSegments: s.pendingSegments };`,
+    to: `    return { tzs: s.tzs, at: s.at, outcome, stale: s.tzs !== null && (s.stale || !confirmed), error };`,
+    expect: `§12 the live read hands them on: a reused reading carries the reply's pending segments`,
   },
 ];

@@ -29,6 +29,7 @@
  * named whole, the chip is one fact, "Healthy" names the alert line, a stale figure under the floor is danger, and the
  * clock's month comes from a fixed list (a newer ICU spelt September "Sept" and turned §9 red on one machine).
  *
+ * 2026-10-08 (the engine's dry-fire, F-2): §12 a send reply's pre-charge figure is kept with its pending segments.
  * 2026-10-07 (U49a, ENGINE-SPEC §4.12 decision 1): §10 `sendBatch`'s optional `minimumBalanceTzs`, the credit kept for
  * login and withdrawal codes. ⭐ An all-MARKETING batch on a confirmed reading below it is held MARKETING_FLOOR while a
  * login code in the same state sends (alone, or beside marketing); a top-up is honoured within the re-check, and a
@@ -719,6 +720,60 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   const healthAfter = JSON.stringify(smsHealthSnapshot());
   ok("§11 ⭐ a batch the deadline held back counts in no SMS health figure",
     during !== null && healthAfter === healthBefore, `health ${healthBefore} → ${healthAfter}`);
+  await quiet();
+}
+
+/* ══ §12 · F-2 · A SEND REPLY'S FIGURE IS KEPT WITH THE SEGMENTS IT HAS NOT YET TAKEN OFF (the engine's dry-fire, 2026-10-08) ═══ */
+// BLACKBALL-SMS §1.4: an accepted reply's balance is PRE-CHARGE. The ONE snapshot keeps, beside it, the segments the batch
+// handed over so far (`pendingSegments`), so the campaign engine and Start / Resume take them off before the next slice;
+// the balance endpoint's true figure carries none. Placed after §7 so no alarm count runs after it; every figure here is far
+// above the TZS 150 alert line. ⚠️ Labels here carry no spaced dash: the red harness reads a FAIL line's label up to the first one.
+{
+  /** `n` MARKETING messages to distinct numbers; `body` sets their size (one segment by default). */
+  const marketing = (n: number, body = "Ofa ya 50pick") =>
+    Array.from({ length: n }, (_, i) => ({ to: `+2557727${String(i).padStart(5, "0")}`, body, purpose: "MARKETING" as const }));
+  /** A fresh reading of the endpoint's kind, set directly: no pending segments. */
+  const fresh = (tzs: number) => { resetBalance(); globalThis.__50PICK_SMS_BALANCE = { tzs, at: Date.now() }; };
+  const snap = () => smsBalanceSnapshot();
+
+  fresh(30_000);
+  reply = accepted(30_000);
+  calls = 0;
+  const three = await sendBatch(marketing(3));
+  ok("§12 ⭐ an accepted reply's figure is kept with the segments its batch handed over: 3 messages of one segment leave 3 pending",
+    !three.refused && calls === 1 && snap().tzs === 30_000 && snap().pendingSegments === 3, `calls=${calls} ${JSON.stringify(snap())}`);
+
+  fresh(30_000);
+  calls = 0;
+  const many = await sendBatch(marketing(52));
+  ok("§12 ⭐ across a batch's requests they add up: 52 messages in two requests leave 52 pending beside the last reply's figure",
+    !many.refused && calls === 2 && snap().tzs === 30_000 && snap().pendingSegments === 52, `calls=${calls} ${JSON.stringify(snap())}`);
+
+  // The next batch starts again from 0: an earlier batch's charges have landed by its first reply (sms.ts, sendBatch).
+  reply = accepted(29_688);
+  calls = 0;
+  const long = await sendBatch(marketing(2, "a".repeat(200)));
+  ok("§12 a message of two segments counts two, and the next batch starts again from 0: 2 such messages leave 4 pending, never 56",
+    !long.refused && calls === 1 && snap().tzs === 29_688 && snap().pendingSegments === 4, `calls=${calls} ${JSON.stringify(snap())}`);
+
+  reply = authRefused;
+  calls = 0;
+  const no = await sendBatch(marketing(1));
+  ok("§12 ⛔ a refused reply changes neither the figure nor its pending segments",
+    calls === 1 && no.results[0]?.ok === false && snap().tzs === 29_688 && snap().pendingSegments === 4, `calls=${calls} ${JSON.stringify(snap())}`);
+
+  balanceCalls = 0;
+  const reused = await refreshSmsBalance({ maxAgeMs: 60_000 });
+  ok("§12 the live read hands them on: a reused reading carries the reply's pending segments",
+    reused.outcome === "reused" && balanceCalls === 0 && reused.tzs === 29_688 && reused.pendingSegments === 4, JSON.stringify(reused));
+
+  globalThis.__50PICK_SMS_BALANCE_READ = undefined;
+  balanceReply = balanceIs(29_664);
+  balanceCalls = 0;
+  const read = await refreshSmsBalance({ maxAgeMs: 0 });
+  ok("§12 ⭐ the balance endpoint's true figure carries none: a fresh read leaves 0 pending, in the snapshot and in its answer",
+    read.outcome === "fresh" && balanceCalls === 1 && read.tzs === 29_664 && read.pendingSegments === 0 && snap().pendingSegments === 0,
+    `${JSON.stringify(read)} snapshot ${JSON.stringify(snap())}`);
   await quiet();
 }
 

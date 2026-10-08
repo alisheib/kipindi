@@ -43,6 +43,7 @@ import { audit, getAuditByActionsDurable } from "./audit";
 import { db, type SmsPurpose, type StoredSmsMessage } from "./store";
 import { randomId } from "./crypto";
 import { toMsisdn255, isGatewayMsisdn, maskPhone } from "@/lib/phone-normalize";
+import { sizeSms } from "@/lib/sms-compose";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
 import {
@@ -117,7 +118,9 @@ declare global {
   // eslint-disable-next-line no-var
   var __50PICK_SMS_HEALTH: { sent: number; failed: number } | undefined;
   // eslint-disable-next-line no-var
-  var __50PICK_SMS_BALANCE: { tzs: number; at: number } | undefined;
+  /** `pendingSegments`: what a send reply's PRE-CHARGE figure (BLACKBALL-SMS §1.4) has not yet taken off — 0 for a reading
+   *  of the balance endpoint (see `recordBalance`). */
+  var __50PICK_SMS_BALANCE: { tzs: number; at: number; pendingSegments?: number } | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_SMS_BALANCE_READ: { inflight: Promise<boolean> | null; failedAt: number | null; error: SmsBalanceError | null } | undefined;
   /** U43b-2 · the newest instant (epoch ms) an OTP-purpose `SmsMessage` row went FAILED or UNKNOWN in this process. */
@@ -280,13 +283,18 @@ async function closeLowEpisodeFoundAtBoot(tzs: number, threshold: number): Promi
  * ⛔ A LATE READING NEVER OVERWRITES A NEWER ONE (2026-09-27). A balance read can land seconds after it was asked, and a
  * send reply recorded meanwhile is newer. A reading is stamped with when it was ASKED (`readAt`) and dropped if the
  * snapshot already holds a later one — otherwise an old figure re-armed the alarm, or undid a top-up.
+ *
+ * ⭐ A SEND REPLY'S FIGURE IS PRE-CHARGE (BLACKBALL-SMS §1.4), so it is kept with the segments it has not yet taken off
+ * (`pendingSegments` — this batch's chunks so far; the balance endpoint's true figure carries 0). The campaign engine
+ * prices them before its next slice: without it, the credit kept for login codes could be gone into by one slice (the
+ * engine's dry-fire, finding F-2, 2026-10-08). The alarms read the figure as it is — one chunk early at worst.
  */
-function recordBalance(tzs: number | null, readAt = Date.now()): void {
+function recordBalance(tzs: number | null, readAt = Date.now(), pendingSegments = 0): void {
   if (tzs === null) return;
   const cur = globalThis.__50PICK_SMS_BALANCE;
   if (cur && cur.at > readAt) return;
   const prev = cur?.tzs ?? null;
-  globalThis.__50PICK_SMS_BALANCE = { tzs, at: readAt };
+  globalThis.__50PICK_SMS_BALANCE = { tzs, at: readAt, pendingSegments: Number.isSafeInteger(pendingSegments) && pendingSegments > 0 ? pendingSegments : 0 };
   const threshold = balanceAlert();
   const floor = balanceFloor();
   if (prev !== null && prev > threshold && tzs <= threshold) {
@@ -305,6 +313,8 @@ function recordBalance(tzs: number | null, readAt = Date.now()): void {
 export function smsBalanceSnapshot(): {
   tzs: number | null;
   at: number | null;
+  /** Segments a send reply's pre-charge figure has not yet taken off (0 for the balance endpoint's reading). */
+  pendingSegments: number;
   stale: boolean;
   belowAlert: boolean;
   belowFloor: boolean;
@@ -319,6 +329,7 @@ export function smsBalanceSnapshot(): {
   return {
     tzs: b?.tzs ?? null,
     at: b?.at ?? null,
+    pendingSegments: b?.pendingSegments ?? 0,
     stale,
     // ⛔ UNKNOWN IS NOT LOW. Before the first reply we have no reading, and refusing
     // traffic on an absence would take the rail down on every cold start.
@@ -347,6 +358,9 @@ export type SmsBalanceRead = {
   stale: boolean;
   /** Set only with `failed`. The read is the platform's one free live credential check, so its verdict is kept. */
   error: SmsBalanceError | null;
+  /** ⭐ Segments `tzs` has not yet taken off: a send reply's figure is pre-charge (§1.4); the endpoint's reading is 0.
+   *  A caller deciding what it may still SPEND prices these first (the campaign engine's credit check, F-2). */
+  pendingSegments?: number;
 };
 
 const balanceReadState = () => (globalThis.__50PICK_SMS_BALANCE_READ ??= { inflight: null, failedAt: null, error: null });
@@ -404,7 +418,7 @@ export async function refreshSmsBalance(opts: { maxAgeMs?: number; budgetMs?: nu
     const s = smsBalanceSnapshot();
     const confirmed = outcome === "fresh" || outcome === "reused";
     const error = outcome === "failed" ? (balanceReadState().error ?? "unreachable") : null;
-    return { tzs: s.tzs, at: s.at, outcome, stale: s.tzs !== null && (s.stale || !confirmed), error };
+    return { tzs: s.tzs, at: s.at, outcome, stale: s.tzs !== null && (s.stale || !confirmed), error, pendingSegments: s.pendingSegments };
   };
   const before = smsBalanceSnapshot();
   if (before.tzs !== null && before.at !== null && Date.now() - before.at < (opts.maxAgeMs ?? 60_000)) return answer("reused");
@@ -857,6 +871,9 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
   await db.smsMessage.createMany(rows);
 
   let balance = smsBalanceSnapshot().tzs;
+  // ⭐ F-2 · the segments THIS batch has handed over so far — what each accepted reply's pre-charge figure has not yet
+  // taken off (see recordBalance). A batch starts at 0: an earlier batch's charges have landed by its first reply.
+  let sentSegments = 0;
 
   for (const group of chunk(prepared, BATCH_MAX)) {
     // ⛔ U43b-2 review · THE CALLER'S DEADLINE — CHECK 2 OF 2, immediately before the request: the row write itself may have
@@ -917,7 +934,8 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
     // Only an ACCEPTED reply identifies the account — see recordBalance for why a
     // refusal's `balance: 0.0` must never reach the floor.
     if (outcome.ok) {
-      recordBalance(outcome.balance, askedAt);
+      for (const p of group) sentSegments += sizeSms(p.out.body).segments;
+      recordBalance(outcome.balance, askedAt, sentSegments);
       if (outcome.balance !== null) balance = outcome.balance;
     }
     const settledAt = new Date().toISOString();

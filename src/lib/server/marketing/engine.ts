@@ -125,7 +125,7 @@ import {
   AUDIT_DETAIL_MAX, DEADLINE_PASSED, MAX_ROW_ATTEMPTS, OTP_FAILURE_WAIT_MS, SLICE_GATE_BUDGET_MS, SLICE_MAX, SLICE_MIN, SLICE_START,
   SLICE_TOO_SLOW, TRAIL_TEXT_MAX,
   adaptSliceSize, cleanText, foldGateTime, isShopWide, otpFailureWaiting, railStopReason, reapVerdict, sendErrorLog, sendRecordOf,
-  tooSlowCounts,
+  tooSlowCounts, spendableBalance, owedForSlice,
   settlementFor, sliceCheck, thrownSend,
 } from "@/lib/marketing/engine-rules";
 import type { EngineStopReason, ReapEvidence, SettleContext, ShopWide, SliceWait } from "@/lib/marketing/engine-rules";
@@ -284,6 +284,10 @@ export type EngineDeps = {
     tooSlowCounts: typeof tooSlowCounts;
     /** The ONE log line a landed `send_error` pause writes (`sendErrorLog`). */
     sendErrorLog: typeof sendErrorLog;
+    /** ⭐ F-2 · the credit a slice may spend: a send reply's pre-charge figure less its pending segments (`spendableBalance`). */
+    spendableBalance: typeof spendableBalance;
+    /** ⭐ F-1 · how many people a slice is priced for: those it can still claim (`owedForSlice`). */
+    owedForSlice: typeof owedForSlice;
   };
   audit: AuditFn;
   now: () => Date;
@@ -341,7 +345,7 @@ export const ENGINE_DEPS: Readonly<EngineDeps> = Object.freeze({
   dispatch: dispatchSlice,
   gate: undefined,
   send: engineSend,
-  rules: Object.freeze({ isShopWide, settlementFor, reapVerdict, adaptSliceSize, sendRecordOf, tooSlowCounts, sendErrorLog }),
+  rules: Object.freeze({ isShopWide, settlementFor, reapVerdict, adaptSliceSize, sendRecordOf, tooSlowCounts, sendErrorLog, spendableBalance, owedForSlice }),
   audit,
   now: () => new Date(),
   clock: () => performance.now(),
@@ -466,7 +470,11 @@ async function creditFor(c: StoredSmsCampaign, size: number, deps: EngineDeps): 
   } catch {
     read = null;
   }
-  const v = deps.credit({ balance: balanceFigureOf(read), costTzs, reserveTzs: reload.settings.codesReserveTzs });
+  // ⭐ F-2 (the engine's dry-fire, 2026-10-08) · a send reply's figure is pre-charge: its pending segments are priced at
+  // today's price and taken off FIRST, so this slice never goes into the credit kept for codes on a one-batch-old figure.
+  const perSegment = cost.kind === "unknown" ? configured : cost.tzsPerSegment;
+  const balance = deps.rules.spendableBalance(balanceFigureOf(read), read?.pendingSegments, perSegment);
+  const v = deps.credit({ balance, costTzs, reserveTzs: reload.settings.codesReserveTzs });
   if (v.ok) return { ok: true, reserveTzs: reload.settings.codesReserveTzs };
   return v.reason === "credit_low"
     ? { ok: false, reason: "marketing_floor", detail: `credit ${v.balanceTzs}, this slice up to ${v.costTzs}, kept for codes ${v.reserveTzs}` }
@@ -722,12 +730,24 @@ async function sliceStep(campaignId: string, state: EngineProcessState, deps: En
     if (!dry.ok) return pauseFor(c, "template_invalid", dry.problems[0] ?? "the saved message failed its own check", deps);
   }
 
-  // ④g E16 · the credit kept for codes, for this slice — the console stub has no credit and spends none
+  // ④g E16 · the credit kept for codes, for this slice — the console stub has no credit and spends none. ⭐ F-1 (the
+  // engine's dry-fire, 2026-10-08): priced for the people this slice can still CLAIM, never a whole slice for nobody — a
+  // campaign whose list was all sent, with the credit exactly at the reserve, priced a slice of 50 and paused
+  // `marketing_floor` with nobody left, so it never reached DONE (and Resume paused it again). Nobody PENDING → the finish
+  // (DONE, `held_rows`, or a wait). A count that cannot be read prices the whole slice, the safe side, as before.
   const size = deps.rules.adaptSliceSize(state.sliceSize, null);
   let creditCheck = sliceCheck("credit", "not_read", "console");
   let keptForCodes: number | undefined;
   if (provider !== "console") {
-    const credit = await creditFor(c, size, deps);
+    let pending: number | null = null;
+    try {
+      pending = (await countsOf(c.id, deps)).PENDING;
+    } catch {
+      pending = null;
+    }
+    const owed = deps.rules.owedForSlice(size, pending);
+    if (owed <= 0) return finishOrWait(c, deps);
+    const credit = await creditFor(c, owed, deps);
     if (!credit.ok) return pauseFor(c, credit.reason, credit.detail, deps);
     keptForCodes = credit.reserveTzs;
     creditCheck = sliceCheck("credit", "ok", `kept-for-codes:${credit.reserveTzs}`);
