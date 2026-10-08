@@ -198,8 +198,12 @@ function ContactCard({
     tone === "success" ? "border-success-border bg-success-bg text-success-fg"
     : tone === "info"  ? "border-info-border bg-info-bg text-info-fg"
     :                    "border-aqua-500/50 bg-aqua-500/10 text-aqua-300";
+  // ⭐ ONE COLUMN, ONE CONTENT EDGE (2026-10-09, the visual pass's round 3, tiles 189, 190, 205). The hero and the FAQ
+  // pad `p-5 lg:p-6` (24px, 32px from 1024), and these cards padded 20: their icon and number stood at x37 under the
+  // hero's words at x41 on a phone, and x153 against x165 at 1280. They take the column's padding, as the quick links
+  // below do.
   const card = (
-    <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">
+    <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400 transition-colors h-full">
       <div className="flex items-center gap-2">
         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${tintCls}`}>
           {icon}
@@ -230,9 +234,11 @@ function QuickLinkCard({
     : tone === "info" ? "bg-info-bg text-info-fg"
     :                   "bg-aqua-500/10 text-aqua-300";
   return (
+    // The column's padding too (2026-10-09, tiles 189 and 190): 20px here put the glyph 4px (8px from 1024) inside the
+    // edge the hero, the contact cards and the FAQ above it share.
     <Link
       href={href as never}
-      className="flex items-center gap-3 rounded-xl glass-panel p-4 hover:border-brand-400 transition-colors"
+      className="flex items-center gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400 transition-colors"
     >
       {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215), so
           `h-9` was 64px: 24px larger than the 40px badge on this very same page. */}

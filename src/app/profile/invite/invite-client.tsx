@@ -67,7 +67,14 @@ function LinkField({ value, label }: { value: string; label: string }) {
       // ⛔ `break-all`, not the default word wrap. A URL has no spaces, so without it the
       // browser keeps the whole thing on one line and the textarea scrolls instead of
       // wrapping — the same defect in a taller box.
-      className="field-measure w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium leading-[1.5] text-text break-all brand-focus hover:border-border-strong transition-colors"
+      // ⭐ ONE LINE IS THE COPY BUTTON'S HEIGHT, AND NOTHING HANGS UNDER IT (2026-10-09, the visual pass's round 3,
+      // tile 182 at 1280): the field measured y702–747 (46px) beside "Nakili" at y706–749 (44px) — tops 4px apart,
+      // bottoms 2px, text centres 725.5 against 728. Two causes: `leading-[1.5]` made one line 19.5px, so the
+      // self-sized box was 19.5 + 2×12 + 2 = 45.5px; and a textarea is INLINE-BLOCK, so its wrapper's line box added
+      // the strut's descent under it and the row centred the button on that taller box. `block` drops the strut, and
+      // `text-body-sm`'s own 18px line makes one line 18 + 24 + 2 = 44px, the `btn-md` control height: one top, one
+      // bottom, one centre. A wrapped link still grows the field a line at a time (the fit below).
+      className="field-measure block w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium text-text break-all brand-focus hover:border-border-strong transition-colors"
     />
   );
 }

@@ -337,5 +337,26 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      `${semantics} pills · ${replaces} replace · ${noScroll} scroll={false}`);
 }
 
+/**
+ * ⭐ 12 · THE BOARD'S HEAD — the pills stand beside the title, the tagline runs under both (2026-10-09, the visual
+ * pass's round 3, tile 200 at sw 390). The board set its whole PageHeader in a flex row with the rules and history
+ * pills, so the tagline was squeezed into what they left and broke "Je, bei itakuwa / juu au chini muda ukiisha?"
+ * (92px over 164px) in a 357px column one ~260px line fits. PageHeader's `actions` put the pills in the heading's own row.
+ */
+{
+  const header = decomment(readFileSync(join(ROOT, "src/components/ui/page-header.tsx"), "utf8"));
+  const OLD_SHAPE = /<div className="flex items-start justify-between gap-3">\s*<PageHeader[^>]*subtitle=/;
+  ok("12: ⭐ the board hands its pills to PageHeader as `actions`, beside its tagline",
+     /<PageHeader\s+eyebrow=\{t\.market\.udStreaming\}\s+title=\{t\.market\.udTitle\}\s+subtitle=\{t\.market\.udTagline\}\s+actions=\{/.test(page));
+  ok("12: ⛔ …and never again sets a subtitled PageHeader beside them in a flex row", !OLD_SHAPE.test(page));
+  const rowEnd = header.indexOf(") : head}");
+  const sub = header.indexOf("{subtitle}");
+  ok("12: PageHeader's actions row holds the eyebrow and the title only; the subtitle renders once, under the row",
+     header.includes("<div>{head}</div>") && rowEnd > 0 && sub > rowEnd && header.split("{subtitle}").length - 1 === 1,
+     `row ends @${rowEnd} · subtitle @${sub}`);
+  ok("12: ⭐ CONTROL — the shape as it shipped is still recognised",
+     OLD_SHAPE.test(`<div className="flex items-start justify-between gap-3">\n  <PageHeader eyebrow={a} title={b} subtitle={c} />`));
+}
+
 console.log(`\nupdown-filter-sheet: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

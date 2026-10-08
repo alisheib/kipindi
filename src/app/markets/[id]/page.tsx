@@ -484,18 +484,8 @@ export default async function MarketDetail({
       {/* ── Back link ── */}
       <BackLink fallbackHref="/markets" label={t.common.markets} />
 
-      {/* ── Page header — title, badges, share ──
-          A7: faint 96px category-glyph watermark behind the question (isolate
-          keeps the -z-10 mark above the header bg but below the content). */}
-      <header className="relative isolate mt-3 mb-5">
-        {(() => {
-          const Cat = I[categoryGlyph(m.category)];
-          return (
-            <span aria-hidden className="pointer-events-none absolute right-1 bottom-0 -z-10 text-text opacity-[0.07]">
-              <Cat s={96} />
-            </span>
-          );
-        })()}
+      {/* ── Page header — title, badges, share ── */}
+      <header className="mt-3 mb-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
           {/* C1a hero state — LIVE only while actually accepting predictions
@@ -531,17 +521,25 @@ export default async function MarketDetail({
               is convicted and the prose link is not; the open question about inline links is
               recorded in the register for Ali rather than decided here.
               ⚠️ `-my-` absorbs the growth so the header row does not move. */}
-          <a
-            href={m.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 ml-auto min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
-          >
-            {t.common.source}
-            <I.ext s={12} />
-          </a>
-          <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
-          <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
+          {/* ⭐ THE THREE ACTIONS ARE ONE GROUP, AND THE GROUP WRAPS WHOLE (2026-10-09, the visual pass's round 3, tiles
+              161 and 199 at 390). Each used to be its own item in this wrapping row, with `ml-auto` on the source link
+              alone, so at 390 the row broke between them: "Chanzo" stayed up with the chips and the star and SHIRIKI
+              opened line 2 at the left — the star's glyph, with no visible box of its own, floating at x29–42 against
+              the chips' edge at 16 and SHIRIKI's at 68. Grouped, they share the right edge on whichever line they land:
+              beside the chips at 1280 exactly as before, and together under them on a phone. */}
+          <div className="ml-auto flex items-center gap-2">
+            <a
+              href={m.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
+            >
+              {t.common.source}
+              <I.ext s={12} />
+            </a>
+            <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
+            <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
+          </div>
         </div>
         {/* C1a — slim gilt hairline framing the question ("seal of the real") */}
         <div aria-hidden className="gilt-hairline mb-3" />
@@ -559,7 +557,26 @@ export default async function MarketDetail({
             `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
             every other page title, which is the opposite of what this page is for.
             2026-09-13 — balanced wrapping: sw titles left one word alone on line two. */}
-        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+        {/* A7 — the faint category glyph is a watermark BEHIND THE QUESTION, so it is drawn on the question's own box:
+            centred on it, two of its ems tall (56px under its 28px rung, 72px under 36), `isolate` keeping the -z-10
+            mark above the page and under the words.
+            ⭐ 2026-10-09 (the visual pass's round 3, tiles 161, 162, 199): it hung from the whole header's bottom-right
+            at 96px, taller than the question, so it climbed into the row above — the gilt hairline ran through the
+            weather cloud (y356 through its arc at y353–360 at 390; y273 across it at 1280) and the cloud's top sat
+            under SHIRIKI (y217–256). On the question's box, computed from the glyph paths (the 1.9 stroke included) for
+            a one-line question, the tightest case: the hairline keeps ≥5px of air (forex, whose arrows reach y0.85 of
+            24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room. */}
+        <div className="relative isolate">
+          {(() => {
+            const Cat = I[categoryGlyph(m.category)];
+            return (
+              <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -z-10 flex -translate-y-1/2 text-text opacity-[0.07] text-title-lg md:text-display-3">
+                <Cat s={56} className="h-[2em] w-[2em]" />
+              </span>
+            );
+          })()}
+          <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+        </div>
       </header>
 
       {/* ── Main two-column layout ──
@@ -603,8 +620,14 @@ export default async function MarketDetail({
             2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
             no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
             the stuck card slid under the header. loading.tsx mirrors it. */}
+        {/* ⭐ A FLEX COLUMN WITH A GAP, NOT `space-y-3` (2026-10-09, the visual pass's round 3, tile 162 at 1280, and
+            161 at 390). The signed-in branch opens on the D40 heading, which is `sr-only` — out of flow, taking no room
+            — and `space-y-*` counts siblings in DOM order, so the first card a player SEES still took the 16px rung
+            the heading "held" (DESIGN_AUTHORITY §S1's trap): the bet column began at y370 beside the probability bar's
+            y354, and 16px further from the question on a phone. `gap` spaces in-flow items only, and an absolutely
+            positioned child is not one, so the heading stays first in the region (D40) and costs nothing. */}
         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
-        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
           {bettingOpen ? (
             session ? (
               <>
@@ -802,14 +825,20 @@ export default async function MarketDetail({
             {/* "TZS 0" is factually true, but on a fresh market it reads as
                 failure rather than as an opening. Same words the card uses, so
                 the two surfaces say the same thing about the same state. */}
-            {/* ⭐ STAGE 9b — the first two are the kit <Stat>: `card` box (rounded-md,
-                border, bg-elevated, p-3), `widest` label (10px semibold 0.14em) and the
-                `xl` rung (18px, mt-1, leading-tight). A pixel-for-pixel mapping.
-                ⚠️ The THIRD is still the local `KPI` and that is deliberate — see the
-                note on the function below. */}
-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
-            <KPI label={t.market.resolves}   value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} mono className="col-span-2 sm:col-span-1" />
+            {/* ⭐ STAGE 9b — the kit <Stat>: `card` box (rounded-md, border, bg-elevated, p-3), `widest` label (10px
+                semibold 0.14em) and the `xl` rung (18px, mt-1, leading-tight).
+                ⭐ 2026-10-09 (the visual pass's round 3, tile 162): ALL THREE ARE THE KIT'S NOW, AND EVERY FIGURE IS MONO.
+                The pool figure "TZS 5K" was set in the display face (§M4: money is `.amount`, mono and untracked) and the
+                predictor count beside it too (§T5: every numeral is mono); the close time was the last tile on the
+                local `KPI` fork, with no glyph where its neighbours carry one and a 14px label row against their 15px,
+                so its value stood 2px above theirs (y468 against y470). It is the `sm-plain` rung that fork's own note
+                asked for (13px mono, regular, its rung's own 18px line), which puts its figures' tops within half a pixel
+                of the 18px ones: a timestamp stays quieter than the two figures, on their line. It keeps 13px because
+                18px does not fit its column: the Chinese date carries its year ("2026年10月9日 00:53", ~194px at 18px)
+                in a 145–163px tile from 1024. "No pool yet" is words, so it keeps the display face. */}
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? t.market.noPoolYet : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={String(m.predictorCount)} icon={<I.users s={14} />} />
+            <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.market.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
           </div>
 
           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
@@ -901,8 +930,12 @@ export default async function MarketDetail({
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                      <p className="font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
-                        <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
+                      {/* The ticket glyph stands off its number by the clock line's own 4px (`gap-1`), in the same flex
+                          shape: it sat inline with a 2px margin, so its ink came 2px from "pos_…" while the clock's came
+                          5px from its words (2026-10-09, the visual pass's round 3, tile 162: x174–183 → 186 against
+                          x361–369 → 375). The id may break (E-100). */}
+                      <p className="flex min-w-0 items-center gap-1 break-all font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+                        <I.ticket s={10} className="shrink-0 opacity-60" />
                         {p.id}
                       </p>
                       <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
@@ -1119,29 +1152,5 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
   }, fill);
 }
 
-/**
- * ⚠️ STAGE 9b — THIS FORK IS DOWN TO ONE CONSUMER AND IS NOT DELETED YET.
- *
- * Its `mono` branch is the reason. That branch paints the resolution time at **13px,
- * weight 400**, and `ui/stat` has neither: its nearest rung is `xs` at 13.5px, and it
- * applies `font-bold` to every value unconditionally. Migrating this call site would
- * make the timestamp half a pixel larger AND bold — a visible restyle of a live
- * surface, which is not what a consolidation is allowed to buy.
- *
- * ⛔ So the `!mono` branch is now dead code kept ONLY as the record of what the two
- * migrated tiles above render; do not add a third caller. The fix is one of:
- *   (a) a `sm-plain` rung in `ui/stat.tsx` (13px mono, weight 400), or
- *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
- * Either way it is a change to a file this pass does not own.
- */
-function KPI({ label, value, icon, mono, className }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean; className?: string }) {
-  return (
-    <div className={`rounded-md border border-border bg-bg-elevated p-3 ${className ?? ""}`}>
-      <div className="flex items-center gap-1.5 text-text-subtle">
-        {icon}
-        <p className="font-mono text-micro uppercase eyebrow font-semibold">{label}</p>
-      </div>
-      <p className={`mt-1 ${mono ? "font-mono text-[13px]" : "font-display text-[18px] font-bold"} tabular-nums text-text leading-tight`}>{value}</p>
-    </div>
-  );
-}
+/* The local `KPI` fork that stood here is gone (2026-10-09): its last tile, the close time, is the kit <Stat>'s
+   `sm-plain` rung — option (a) of the fork's own note — so the strip is one component again. */

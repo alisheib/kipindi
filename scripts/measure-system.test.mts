@@ -346,5 +346,41 @@ check("the ADMIN shell renders the landmark too — the console does not use App
 check("…and the admin shell carries its own skip-to-content link",
   /href="#main-content"/.test(adminShell));
 
+// ── 8. One column, one content edge (2026-10-09, the visual pass's round 3) ─────
+// Tiles 188, 190, 189/205, 195/196 and 332/333: cards stacked in one column started their words at different x —
+// /fairness's "How it works" at 158 under the hero's 165 (24px against 32), /help's contact cards at 153 under 165
+// (and 37 under 41 on a phone), /agent's fact tiles at 147 over the sections' 153 — and the back link's chevron stood
+// 3px inside the edge it heads (its glyph's own side bearing). Each now takes its column's edge.
+{
+  const src = (p: string) => decomment(readFileSync(join(SRC, ...p.split("/")), "utf8"));
+  const hero = src("components/ui/page-hero.tsx");
+  check("8. the hero still pads its words p-5 lg:p-6 — the edge the cards under it take",
+    hero.includes(`contentClassName = "relative z-10 p-5 lg:p-6"`));
+  const help = src("app/help/page.tsx");
+  check("8. /help: the contact cards and the quick links pad on the hero's edge, as the FAQ does",
+    help.includes(`"rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400`)
+      && help.includes(`"flex items-center gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400`)
+      && help.includes(`<section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">`) && !/glass-panel p-4\b/.test(help));
+  const fair = src("app/fairness/page.tsx");
+  check("8. /fairness: How it works pads on the hero's edge",
+    fair.includes(`<section className="glass-panel p-5 lg:p-6 space-y-4">`) && fair.includes("<PageHero"));
+  const agent = src("app/agent/page.tsx");
+  const tiles = (agent.match(/<Stat size="xl" boxed="glass" [^\n]*className="p-4"/g) ?? []).length;
+  const sections = (agent.match(/<section className="rounded-xl glass-panel p-4/g) ?? []).length;
+  check("8. /agent: the three fact tiles pad as the sections under them do (p-4 over the glass box's 14px)",
+    tiles === 3 && sections >= 3, `${tiles} tiles · ${sections} sections`);
+  // The chevron's side bearing, DERIVED from its path rather than remembered: its point sits at the path's least x,
+  // the 1.9 stroke reaches half its width past it, and the glyph is drawn at 11px of a 24-unit box.
+  const glyphs = readFileSync(join(SRC, "components", "ui", "glyphs.tsx"), "utf8");
+  const chevron = /chevronLeft: \(p: GlyphProps\) => <G \{\.\.\.p\}><path d="M(\d+) (\d+)l(-?\d+) (-?\d+) (-?\d+) (-?\d+)" \/><\/G>/.exec(glyphs);
+  const tipX = chevron ? Number(chevron[1]) + Number(chevron[3]) : NaN;
+  const bearing = Math.floor(((tipX - 1.9 / 2) / 24) * 11);
+  const back = src("components/ui/back-link.tsx");
+  check("8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads",
+    back.includes(`<I.chevronLeft s={11} className="-ml-[${bearing}px]" />`), `bearing ${bearing}px (tip x${tipX} of 24 at 11px)`);
+  check("8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9)", bearing === 3 && tipX === 9,
+    `tip x${tipX}, bearing ${bearing}`);
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILURE(S)`} — ${tsx.length} tsx files`);
 process.exit(fail ? 1 : 0);

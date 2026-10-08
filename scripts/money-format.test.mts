@@ -290,5 +290,71 @@ console.log("Money compaction grammar\n");
   ok("5: …and the DELIBERATE bare strip is not caught by it", bareStrips >= 1, `${bareStrips} bare strip(s)`);
 }
 
+// ── 6 · A FIGURE IN A FINISHED SENTENCE IS STILL MONEY (2026-10-09, the visual pass's round 3) ──
+/**
+ * Tiles 069 and 174: the deposit and withdraw limits line — "Kiwango cha chini TZS 1,015 · Kiwango cha juu
+ * TZS 5,000,000 kwa kila kutoa." — was set in the body face, the only amounts on either form not in mono (§M4), and
+ * the amount box's example read "10000", the one figure on the platform without its thousands separator. The sentence
+ * types its own "TZS" (the dictionary is `TZS\u00a0{min}`), and the deposit one states two thresholds as literal
+ * figures, so `fillNodes` cannot dress them: `moneyRuns` reads each "TZS" + figure WHOLE out of the finished sentence.
+ * This drives it over the real dictionary sentences in all three languages, and holds `AmountField` to calling it and
+ * to writing its example with `formatNumber`.
+ */
+{
+  const { readFileSync: rf } = await import("node:fs");
+  const { isValidElement } = await import("react");
+  const { moneyRuns } = await import("../src/lib/fill-nodes.tsx");
+  const { dict } = await import("../src/lib/i18n-dict.ts");
+  const { fill, formatNumber } = await import("../src/lib/utils.ts");
+  const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+  const FIGURE = /TZS[\u00a0 ]\d/g;
+  type Run = { amounts: string[]; words: string[]; whole: string };
+  const read = (nodes: unknown[]): Run => {
+    const amounts: string[] = [];
+    const words: string[] = [];
+    let whole = "";
+    for (const n of nodes) {
+      if (isValidElement(n)) {
+        const p = n.props as { className?: string; children?: unknown };
+        if (p.className === "amount" && typeof p.children === "string") amounts.push(p.children);
+        else words.push(`<?${String(p.className)}>`);
+        whole += String(p.children ?? "");
+      } else {
+        words.push(String(n));
+        whole += String(n);
+      }
+    }
+    return { amounts, words, whole };
+  };
+  const bounds = { min: formatNumber(1_015), max: formatNumber(5_000_000) };
+  for (const loc of ["sw", "en", "zh"] as const) {
+    const t = dict[loc];
+    for (const [key, sentence, figures] of [
+      ["wallet.amountHint", fill(t.wallet.amountHint, bounds), 2],
+      ["common.depositAmountHint", fill(t.common.depositAmountHint, bounds), 4],
+    ] as const) {
+      const run = read(moneyRuns(sentence));
+      const stray = run.words.filter((w) => new RegExp(FIGURE.source).test(w));
+      ok(`6: ${loc} ${key} — every figure is one .amount, "TZS" and digits together (${figures})`,
+        run.amounts.length === figures && run.amounts.every((a) => /^TZS[\u00a0 ]\d+(?:,\d{3})*$/.test(a)),
+        JSON.stringify(run.amounts));
+      ok(`6: …${loc} ${key} — no figure is left in the words, and nothing is lost or reworded`,
+        stray.length === 0 && run.whole === sentence && !run.words.some((w) => w.startsWith("<?")), JSON.stringify(stray));
+    }
+  }
+  // ⭐ CONTROLS: a sentence with no figure is one untouched string; a compact figure is still one figure.
+  ok("6: ⭐ a sentence with no figure comes back as itself", (() => { const r = moneyRuns("Hakuna ada."); return r.length === 1 && r[0] === "Hakuna ada."; })());
+  ok("6: ⭐ …and a compact figure is read whole", read(moneyRuns("Bwawa: TZS 9.9M leo")).amounts.join() === "TZS 9.9M");
+  ok("6: ⭐ …and a sentence's own comma after a figure stays in the sentence",
+    read(moneyRuns("deposits to TZS 5,000,000, needs")).amounts.join() === "TZS 5,000,000");
+
+  const field = rf(`${ROOT}/src/components/wallet/amount-field.tsx`, "utf8");
+  const RAW_EXAMPLE = /placeholder="\d{4,}"/;
+  ok("6: AmountField's hint goes through moneyRuns", field.includes("{moneyRuns(hint)}") && field.includes(`import { moneyRuns } from "@/lib/fill-nodes";`));
+  ok("6: …and its example is written as the platform writes a figure (formatNumber), never a bare digit run",
+    field.includes("const AMOUNT_EXAMPLE = formatNumber(10_000);") && field.includes("placeholder={AMOUNT_EXAMPLE}") && !RAW_EXAMPLE.test(field));
+  ok("6: ⭐ CONTROL — the raw-example matcher still sees the shape that shipped", RAW_EXAMPLE.test(`placeholder="10000"`));
+}
+
 console.log(`\nmoney-format: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

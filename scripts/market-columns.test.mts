@@ -86,5 +86,64 @@ const page = decomment(readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"),
   ok("4: …and the content column still follows it", /order-2 lg:order-1/.test(page));
 }
 
+// ── 5 · THE TWO COLUMNS START ON ONE LINE, AND THE HEADER'S PARTS KEEP TO THEIR OWN ROWS ──────────────────
+// 2026-10-09, the visual pass's round 3 (tiles 161, 162, 199). The bet column opened on the D40 heading, which is
+// `sr-only`, and `space-y-3` counts it, so the first card a player sees began 16px below the probability bar (y370
+// against y354). The category watermark hung from the whole header at 96px and climbed into the chips row: the gilt
+// hairline ran through it and its top sat under SHIRIKI. And the three actions wrapped one by one, leaving the star's
+// glyph at the left edge of line 2 on a phone.
+{
+  const asideAt = page.indexOf("<aside ");
+  const aside = asideAt < 0 ? "" : page.slice(asideAt, page.indexOf(">", asideAt));
+  ok("5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of",
+     /className="flex flex-col gap-3 lg:sticky/.test(aside) && !/space-y-/.test(aside), aside.slice(0, 90));
+  // The heading the fix is about must still be there, first in its branch — or the check above guards nothing.
+  ok("5: ⭐ …and the signed-in branch still opens on the D40 sr-only heading (the premise)",
+     /<h2 id=\{BET_PANEL_HEADING\} className="sr-only">/.test(page));
+  const h1At = page.indexOf("<h1 ");
+  const boxAt = h1At < 0 ? -1 : page.lastIndexOf(`<div className="relative isolate">`, h1At);
+  const box = boxAt < 0 ? "" : page.slice(boxAt, h1At);
+  ok("5: the category watermark is drawn on the question's own box — centred on it, two of its ems, behind it",
+     box.length > 0 && /absolute right-1 top-1\/2 -z-10 flex -translate-y-1\/2/.test(box)
+       && /text-title-lg md:text-display-3/.test(box) && /className="h-\[2em\] w-\[2em\]"/.test(box), `${box.length} chars between the box and the <h1>`);
+  ok("5: ⛔ …and never again from the whole header's bottom edge",
+     !/absolute right-1 bottom-0 -z-10/.test(page) && /<header className="mt-3 mb-5">/.test(page));
+  const groupAt = page.indexOf(`<div className="ml-auto flex items-center gap-2">`);
+  const group = groupAt < 0 ? "" : page.slice(groupAt, page.indexOf("</div>", groupAt));
+  ok("5: the source link, the star and SHARE are ONE right-aligned group, so they wrap together",
+     group.includes("{t.common.source}") && group.includes("<WatchStar") && group.includes("<ShareButton")
+       && !/ml-auto min-h-\[var\(--tap-min\)\]/.test(page), groupAt < 0 ? "no group" : "");
+}
+
+// ── 6 · THE KPI STRIP IS THE KIT'S, AND EVERY FIGURE IN IT IS MONO ─────────────────────────────────────────
+// Tile 162: the pool figure "TZS 5K" and the predictor count were set in the display face (§M4, §T5), and the close
+// time sat on a local fork with no glyph, its value 2px above its neighbours'.
+{
+  const stripAt = page.indexOf("label={t.market.volume}");
+  const strip = stripAt < 0 ? "" : page.slice(page.lastIndexOf("<Stat", stripAt), page.indexOf("</div>", stripAt));
+  ok("6: ⭐ the pool figure is an .amount on the mono face (words only when there is no pool yet)",
+     strip.includes(`font={freshMarket ? undefined : "mono"}`) && strip.includes(`<span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>`));
+  ok("6: …the predictor count is mono", /label=\{t\.market\.predictors\} font="mono"/.test(strip));
+  ok("6: …and the close time is a kit Stat on the sm-plain rung, with its glyph",
+     /<Stat size="sm-plain" labelStyle="widest" boxed="card" label=\{t\.market\.resolves\}/.test(strip)
+       && strip.includes("icon={<I.calendarClock s={14} />}"));
+  ok("6: ⛔ the local KPI fork is gone", !/function KPI\(/.test(page) && !/<KPI /.test(page));
+}
+
+// ── 7 · A TICKET NUMBER STANDS OFF ITS GLYPH AS THE CLOCK LINE'S WORDS DO ─────────────────────────────────
+// Tile 162: the ticket glyph sat inline with a 2px margin (ink x174–183, "pos_…" from 186) while the clock line's glyph
+// stood in a flex row with `gap-1` (ink x361–369, words from 375). One shape, here and on the classic position card.
+{
+  const card = decomment(readFileSync(join(ROOT, "src/components/markets/position-card.tsx"), "utf8"));
+  const SHAPE = /<p className="flex min-w-0 items-center gap-1 [^"]*">\s*<I\.ticket s=\{10\} className="shrink-0 opacity-60" \/>/;
+  ok("7: the question page's ticket line is the clock line's flex shape (4px)", SHAPE.test(page));
+  ok("7: …and so is the classic position card's", SHAPE.test(card));
+  ok("7: ⛔ no ticket glyph is set inline with a margin any more",
+     ![page, card].some((s) => /<I\.ticket s=\{10\} className="inline/.test(s)));
+  ok("7: ⭐ CONTROL — the shape matcher still reads the shape it is written for",
+     SHAPE.test(`<p className="flex min-w-0 items-center gap-1 font-mono">\n  <I.ticket s={10} className="shrink-0 opacity-60" />`)
+       && !SHAPE.test(`<p className="font-mono">\n  <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />`));
+}
+
 console.log(`\nmarket-columns: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

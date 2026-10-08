@@ -476,7 +476,9 @@ const NON_FILTER_PILL_RAILS: Array<{ file: string; why: string }> = [
  * ⭐ `<FilterGroupKey>` IS THE DISCRIMINATOR, and it is a fact about the design rather than a
  * heuristic: it is the primitive that gives a group of pills its NAME, so a file rendering it is
  * declaring "these pills are one axis". Re-derived across the six false positives — none renders
- * it; the KYC chooser renders exactly one.
+ * it; the KYC chooser rendered exactly one until 2026-10-09, when the visual pass removed it as a
+ * second, wrong label over a chooser its legend already names (that page's note) — its entry in
+ * NON_FILTER_PILL_RAILS below still states what the rail is, for the day a key comes back.
  *
  * ⚠️ AND IT IS THE TAG, NOT THE IMPORT. `results/page.tsx` imports `FilterGroupKey` and never
  * renders it, so keying on the identifier would have kept one of the six false positives. ⚠️ On

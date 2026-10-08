@@ -129,8 +129,11 @@ type World = {
   scripts: Readonly<Record<string, string>>;
   dicts: Readonly<Record<string, unknown>>;
 };
+/** The stylesheet, as written (2.rows reads the cards' shared rows there). Kept out of `SOURCES`: `decomment` is a
+ *  TypeScript reader, and a stylesheet is held here exactly as it is on disk. */
+const TICKETS_CSS = "src/app/globals.css";
 const WORLD: World = {
-  files: Object.fromEntries(SOURCES.map((rel) => [rel, decomment(read(rel))])),
+  files: { ...Object.fromEntries(SOURCES.map((rel) => [rel, decomment(read(rel))])), [TICKETS_CSS]: read(TICKETS_CSS) },
   scripts: (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts,
   dicts: { en: dict.en, sw: dict.sw, zh: dict.zh },
 };
@@ -330,6 +333,26 @@ function g2Card(I: Impl, W: World, ok: Ok) {
       && [card, classic].every((s) => !s.includes(`"LOSS" ? "no"`) && !s.includes(`?? "warning"`)),
     show({ tone: tone.length, card: count(card, "positionStatusChip("), classic: count(classic, "positionStatusChip(") }));
   ok("2.ticket · the ticket number stays (A19), on a line that may break so a narrow card never clips it", card.includes(TICKET_NUMBER));
+  // 2026-10-09, the visual pass's round 3 (tile 168 at 1280): a pair of cards shares its ROWS, not only its height, so a
+  // two-line question no longer puts its card's stake row 20px below its neighbour's (DAU at y714 against y694). From
+  // 768, behind `@supports`, each card's rows are the list's own tracks (subgrid): the span must be the card's row count,
+  // the list's 16px gap moves onto the cards from the second row, and the fifth row is always drawn so the card's bottom
+  // padding has a row to ride on.
+  const css = text(W, TICKETS_CSS);
+  const articleAt = card.indexOf("<article");
+  const article = articleAt < 0 ? "" : card.slice(articleAt, card.indexOf("</article>", articleAt));
+  const rows = (article.match(/^ {6}<(?:div|h2|p|section)\b/gm) ?? []).length;
+  const span = Number(/\.kp-ticket \{ display: grid; grid-row: span (\d+); grid-template-rows: subgrid; \}/.exec(css)?.[1] ?? NaN);
+  const subgrid = {
+    fenced: css.includes("@supports (grid-template-rows: subgrid) {") && css.includes("  @media (min-width: 768px) {"),
+    list: css.includes(".kp-tickets { row-gap: 0; }") && text(W, VIEW).includes(`className="kp-tickets grid grid-cols-1 gap-3 md:grid-cols-2"`),
+    gapBack: css.includes(".kp-ticket:nth-child(n + 3) { margin-top: var(--sp-4); }") && /--sp-4:\s*16px/.test(css) && text(W, TW_CONFIG).includes(`"3": "16px"`),
+    card: card.includes(`className="kp-ticket ticket-target `),
+    span: span === rows && rows === 5,
+    fifthRow: card.includes(`<div className={sellRow ? "mt-3 border-t border-border/60 pt-3" : undefined}>`) && !card.includes("{open && (liveValue !== null || sellShut) && ("),
+  };
+  ok("2.rows · from 768 a pair of tickets shares its rows (subgrid, fenced by @supports): the list's gap moves onto the cards, the span is the card's own five rows, and the fifth — the Sell row — is always drawn",
+    Object.values(subgrid).every(Boolean), show({ ...subgrid, rows, span }));
   const journeyBar = fnBody(text(W, BAR), BAR_JOURNEY);
   const scanned: Array<[string, string]> = [...[VIEW, CARD, SWITCH, RAIL, GHOST].map((f): [string, string] => [f, text(W, f)]),
     [`${BAR} (journey variant)`, journeyBar]];
@@ -1002,6 +1025,12 @@ const titleClamped = swap(CARD, "{keepUnits(title.text)}</Link>", `<span classNa
 const chipCopied = swap(CARD, "variant={positionStatusChip(p.status)}", `variant={p.status === "LOSS" ? "no" : "warning"}`);
 const classicChipBack = swap(CLASSIC_CARD, "variant={positionStatusChip(status)}", `variant={status === "LOSS" ? "no" : "warning"}`);
 const numberGone = swap(CARD, "{p.id}</p>", "</p>");
+// 2.rows's plants (2026-10-09): the shared rows dropped, a sixth row under a span of five, the Sell row conditional again,
+// and the list's gap left inside every card.
+const rowsOwnAgain = swap(TICKETS_CSS, ".kp-ticket { display: grid; grid-row: span 5; grid-template-rows: subgrid; }", "");
+const sixthRow = swap(CARD, "      <div className={sellRow ?", `      <div className="mt-3" />${LF}      <div className={sellRow ?`);
+const sellRowConditional = swap(CARD, `<div className={sellRow ? "mt-3 border-t border-border/60 pt-3" : undefined}>`, `<div className="mt-3 border-t border-border/60 pt-3">`);
+const listGapInside = swap(TICKETS_CSS, ".kp-tickets { row-gap: 0; }", "");
 const shareBack = withFile(CARD, (s) => `${s}${LF}const share = <PositionShare />;${LF}`);
 const row2Back = withFile(BAR, inFn(BAR_JOURNEY, (b) => b.replace("</QueryStrip>", "</QueryStrip><QuerySort />")));
 const headerBack = swap(SWITCH, "<PageHeader title={t.journey.tabTickets} />",
@@ -1128,6 +1157,10 @@ const plants: Plant[] = [
   { name: "the journey card spells the colour rule itself", expect: ["2.chip"], world: chipCopied, landed: changed(chipCopied, CARD) },
   { name: "the classic card goes back to its own ternary", expect: ["2.chip"], world: classicChipBack, landed: changed(classicChipBack, CLASSIC_CARD) },
   { name: "the ticket number is dropped", expect: ["2.ticket"], world: numberGone, landed: changed(numberGone, CARD) },
+  { name: "the cards stop sharing their rows (each lays its own out again: DAU 20px apart beside a two-line question)", expect: ["2.rows"], world: rowsOwnAgain, landed: changed(rowsOwnAgain, TICKETS_CSS) },
+  { name: "a sixth row joins the card under a span of five (its last row spills into the next pair's first)", expect: ["2.rows"], world: sixthRow, landed: changed(sixthRow, CARD) },
+  { name: "the Sell row is drawn only when there is something to sell (a settled card's bottom padding has no row to ride on)", expect: ["2.rows"], world: sellRowConditional, landed: changed(sellRowConditional, CARD) },
+  { name: "the list keeps its row gap (it opens inside every card's rows)", expect: ["2.rows"], world: listGapInside, landed: changed(listGapInside, TICKETS_CSS) },
   { name: "the share button comes back to the journey card", expect: ["2.shelved"], world: shareBack, landed: changed(shareBack, CARD) },
   { name: "the bar's journey variant grows row 2's sort again", expect: ["2.shelved"], world: row2Back, landed: changed(row2Back, BAR) },
   { name: "the classic header's words (its eyebrow says “Nafasi”) come back to the journey head", expect: ["2.shelved"], world: headerBack, landed: changed(headerBack, SWITCH) },

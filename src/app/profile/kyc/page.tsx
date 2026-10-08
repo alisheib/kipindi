@@ -10,7 +10,7 @@ import { db } from "@/lib/server/store";
 import { getKycStatus, startKyc } from "@/lib/server/kyc-service";
 import { DateSelect } from "@/components/ui/date-select";
 import { Input, Field as KitField } from "@/components/ui/input";
-import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { FilterPill } from "@/components/ui/filter-pill";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitIdentityAction, submitKycForReviewAction, restartKycAction } from "./actions";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
@@ -389,10 +389,13 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <div>
               <FieldLegend as="p" className="block mb-1.5">{t.profile.chooseIdType}</FieldLegend>
               <p className="mb-2.5 text-body-sm text-text-muted leading-snug">{t.profile.chooseIdTypeBody}</p>
+              {/* ⛔ NO GROUP KEY OVER THESE PILLS (2026-10-09, the visual pass's round 3, tiles 332 and 333). A
+                  `FilterGroupKey` reading "What to attach" / "Vya kuambatanisha" sat between the line above and the
+                  pills (y682–689 at 1280): a SECOND label for a group the legend already names ("Choose your ID
+                  document"), which the group's `aria-label` repeats, and a wrong one — these pills choose which
+                  document you hold; nothing is attached here (that is step 2). A key names a filter's axis; this rail is
+                  a form's chooser (`filter-language.test.mts` files it as a non-filter). The legend and its line say it. */}
               <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t.profile.chooseIdType}>
-                {/* Own line at EVERY width (2026-09-13): inline at 1280 the key took the first
-                    row with three chips and wrapped the fourth under itself. */}
-                <FilterGroupKey className="basis-full">{t.profile.idDocsNeeded}</FilterGroupKey>
                 {ID_DOC_TYPES.map((ty) => (
                   <FilterPill
                     key={ty}

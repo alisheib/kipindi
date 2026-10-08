@@ -188,8 +188,9 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
         </p>
       </header>
 
-      {/* How it works */}
-      <section className="glass-panel p-5 space-y-4">
+      {/* How it works — on the hero's padding, `p-5 lg:p-6` (2026-10-09, the visual pass's round 3, tile 188): at 1280
+          its heading stood at x158 under the hero's words at x165 (24px against 32px). One column, one content edge. */}
+      <section className="glass-panel p-5 lg:p-6 space-y-4">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
           <span className="font-mono text-caption eyebrow uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>

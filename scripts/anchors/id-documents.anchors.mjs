@@ -331,6 +331,17 @@ export const CASES = [
       to: `    findByNida: (n: string): StoredKyc | null => null,\n    findActiveByIdNumber: (`,
     }],
   },
+  {
+    // 2026-10-09, the visual pass's round 3 (tiles 332, 333): the second, wrong label over the chooser comes back.
+    name: "a group key reading 'What to attach' returns over the ID chooser",
+    gate: GATE_ID,
+    expect: "the chooser is named ONCE",
+    edits: [{
+      file: PAGE,
+      from: `                {ID_DOC_TYPES.map((ty) => (`,
+      to: `                <FilterGroupKey className="basis-full">{t.profile.idDocsNeeded}</FilterGroupKey>\n                {ID_DOC_TYPES.map((ty) => (`,
+    }],
+  },
 ];
 
 /**

@@ -56,7 +56,12 @@ export function BackLink({
       }}
       className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"
     >
-      <I.chevronLeft s={11} />
+      {/* ⭐ THE CHEVRON'S TIP SITS ON THE COLUMN'S EDGE (2026-10-09, the visual pass's round 3, tiles 332/333 and
+          067–069): the glyph draws its point at x9 of its 24-unit box, stroke 1.9, so at 11px its ink began 3.7px in
+          and "‹ WASIFU" / "‹ POCHI" stood 3px inside the card edge under it (x19 against 16 at 390, x355 against 352 at
+          1280). The 3px margin hands back that side bearing — the mark and its word move together, so their own
+          spacing is unchanged and the button's box still starts on the edge. */}
+      <I.chevronLeft s={11} className="-ml-[3px]" />
       {label}
     </button>
   );

@@ -12,6 +12,16 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { FieldLegend } from "@/components/ui/field-legend";
+import { moneyRuns } from "@/lib/fill-nodes";
+import { formatNumber } from "@/lib/utils";
+
+/**
+ * ⭐ THE EXAMPLE IS WRITTEN AS THE PLATFORM WRITES A FIGURE (2026-10-09, the visual pass's round 3, tiles 069 and 174).
+ * It read "10000", the one place a player met a figure with no thousands separator; every amount elsewhere is
+ * `formatNumber`'s "10,000". The box still takes the digits however they are typed — a comma is dropped on entry
+ * (`input.tsx`, strict numeric mode) — so the example teaches nothing the field refuses.
+ */
+const AMOUNT_EXAMPLE = formatNumber(10_000);
 
 const fmt = (v: number) => (v >= 1_000_000 ? `${v / 1_000_000}M` : v >= 1_000 ? `${v / 1_000}K` : String(v));
 
@@ -54,7 +64,7 @@ export function AmountField({
         name={name}
         inputMode="numeric"
         autoComplete="off"
-        placeholder="10000"
+        placeholder={AMOUNT_EXAMPLE}
         prefix="TZS"
         mono
         size="lg"
@@ -98,8 +108,10 @@ export function AmountField({
       )}
 
       {/* break-keep: Chinese breaks only at spaces and punctuation (text-balance alone split 最高 and 需先); it changes
-          nothing for Latin text, and overflow-wrap still wraps an over-long run. */}
-      {hint && <p className="mt-2 text-body-sm text-text-subtle text-balance break-keep [overflow-wrap:anywhere]">{hint}</p>}
+          nothing for Latin text, and overflow-wrap still wraps an over-long run.
+          ⭐ Its figures are money, so each is an `.amount` (§M4, `moneyRuns`): "TZS 1,015 … TZS 5,000,000" was set in the
+          body face (2026-10-09, tiles 069 and 174), the only amounts on either form not in mono. */}
+      {hint && <p className="mt-2 text-body-sm text-text-subtle text-balance break-keep [overflow-wrap:anywhere]">{moneyRuns(hint)}</p>}
     </div>
   );
 }

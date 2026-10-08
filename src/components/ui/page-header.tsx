@@ -26,6 +26,7 @@ export function PageHeader({
   icon,
   tone = "subtle",
   className,
+  actions,
 }: {
   /**
    * The small line over the heading, with `icon` inside it. ⭐ Optional since the Vodacom plan S6 (WP9): Tiketi zangu's
@@ -39,9 +40,18 @@ export function PageHeader({
   icon?: ReactNode;
   tone?: Tone;
   className?: string;
+  /**
+   * Controls that stand beside the eyebrow and the title (a page's own doors — Up & Down's rules and history pills).
+   * ⭐ BESIDE THE HEADING, NOT BESIDE THE WHOLE HEADER (2026-10-09, the visual pass's round 3, tile 200 at sw 390). The
+   * Up & Down page used to put this whole component in a flex row with its pills, so the tagline under the title was
+   * squeezed into what the pills left (~220px of a 357px column) and broke "Je, bei itakuwa / juu au chini muda
+   * ukiisha?" (92px over 164px) where one ~260px line fits. Here the row holds the eyebrow and the title, and the
+   * subtitle runs the column's full width under it. Without `actions` the markup is exactly what it was.
+   */
+  actions?: ReactNode;
 }) {
-  return (
-    <div className={className}>
+  const head = (
+    <>
       {eyebrow != null && (
         <p
           className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase eyebrow font-bold ${EYEBROW_TONE[tone]}`}
@@ -62,6 +72,16 @@ export function PageHeader({
       <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em] text-balance">
         {title}
       </h1>
+    </>
+  );
+  return (
+    <div className={className}>
+      {actions != null ? (
+        <div className="flex items-start justify-between gap-3">
+          <div>{head}</div>
+          {actions}
+        </div>
+      ) : head}
       {subtitle != null && (
         <p className="mt-1 text-[13px] italic text-text-subtle text-balance">{subtitle}</p>
       )}

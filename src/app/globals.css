@@ -1084,6 +1084,16 @@ body {
 .mcardp-oneside,
 .mcardp-pctcap { letter-spacing: 0.14em; }
 
+/* ⭐ A CHINESE STAT LABEL TAKES THE LADDER'S MICRO RUNG, UNTRACKED (2026-10-09, the visual pass's round 3, tiles 217
+   and 218: 投注额 / 赔付 on a ticket, drawn as 9px glyphs). `<Stat>`'s labels sit on §T3's sub-micro tier (9–10px,
+   tracked 0.10–0.14em), which the rule blesses for UPPERCASE mono microlabels ONLY: a Latin capital at 9px is a
+   6.5px letter of a few strokes. Chinese has no case, so the tier's premise does not hold — the same 9px is a full-em
+   ideograph of up to fifteen strokes, drawn by the device's fallback face (no CJK webfont, §T6). In Chinese the label
+   takes `--type-micro` (11px), the first rung above that tier on this file's ladder (§T7), and no tracking: tracking
+   spaces identifiers (§T3), and 0.1em between ideographs only loosens a word. Latin and Swahili labels are unchanged.
+   (0,2,0), so it outranks the label's own size and tracking utilities, which carry no responsive variant. */
+:lang(zh) .stat-label { font-size: var(--type-micro); letter-spacing: 0; }
+
 /* ===========================================================================
    Tipping rails + heraldic furniture
    =========================================================================== */
@@ -6636,8 +6646,27 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jhdr__pill { flex-shrink: 0; padding: 0 12px; }
 .kp-jhdr__auth { flex-shrink: 0; padding-inline: 14px; font-size: var(--type-small); }
 /* The bell's slot keeps the bell's 40px box while the bell itself waits for the width to be known, so the cluster
-   does not move when it arrives (`one-poller.ts`). */
-.kp-jhdr__bell { justify-content: center; min-width: var(--h-control-sm); }
+   does not move when it arrives (`one-poller.ts`).
+   ⭐ AND IT STANDS CENTRED BETWEEN ITS NEIGHBOURS (2026-10-09, the visual pass's round 3, tiles 038 and 162 at 1280,
+   048 at 1024). The avatar carries the classic bar's `sm:ml-1` (`avatar-menu.tsx`: the row's terminal control, set
+   4px apart), so the bell's ink sat 25px from the language box and 29px from the avatar's ring (1139 | 1165–1178 |
+   1208 at 1280; 883 | 909–922 | 952 at 1024). The slot takes the same 4px on its near side: 29 and 29, the bell's box
+   16px from each neighbour, and the room its count badge grows into (below). Only from 1024, where the slot is drawn;
+   below that the span is `hidden` and the 320 row's 10.7px of slack is untouched. */
+.kp-jhdr__bell { justify-content: center; min-width: var(--h-control-sm); margin-left: var(--sp-1); }
+/* ⭐ THE COUNT BADGE CLEARS THE BELL'S DOME (same tiles). The classic bell hangs its pip by its RIGHT edge, 3px down and
+   1px in (`notifications-panel.tsx`, inline), so a two-digit pip grew LEFT over the glyph: "25" filled x1169–1188,
+   y13–26 over a bell whose ink is x1165–1178, y21–36, and only the rim and clapper showed. In the journey the pip hangs
+   by its LEFT edge, 1px past the glyph's centre line (21px into the 40px button), and its top on the 44px controls'
+   top line (−2px, half of 44 − 40), so it grows right, into the slot's 4px and the 12px gap, and never back over the
+   dome. Computed from the bell's path (`glyphs.tsx`, a 5-unit dome at s=20) and the pip's box (18px, 2px ring): at
+   rest the ring clears the dome's stroke by 1px; at the `notif-badge-pulse` peak (1.25×, about its centre) the fill
+   still clears it, "99+" included, and only the background-coloured ring cuts the dome's shoulder — its job.
+   "99+" (30px) ends 5px short of the avatar's ring at rest and 1px short at the pulse's peak.
+   ⛔ `!important`, AND IT IS EARNED (the E-101c rule above `.ticket-target`): the classic position is an INLINE style,
+   which beats every selector without it, and that file is the classic bell every live player has, which S6 does not
+   touch (A1, `qa:bell-untouched`). The selector names the journey's slot, so the classic bar is served what it was. */
+.kp-jhdr__bell .count-badge { top: -2px !important; right: auto !important; left: 21px !important; }
 @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
 @media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
 @media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }
@@ -6685,6 +6714,27 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
    line (sw "Ingia uone tiketi zako", 219px, tile 113; zh, tile 119; every language from 360) is unchanged. */
 .kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
+/* ⭐ TIKETI ZANGU'S CARDS SHARE THEIR ROWS, NOT ONLY THEIR HEIGHT (2026-10-09, the visual pass's round 3, tile 168 at
+   1280). A pair already shares a height (the grid's stretch, `tickets-view.tsx`), but each card laid its own rows out,
+   so a two-line question beside a one-line one put DAU at y714 in the first card and y694 in its neighbour, and left
+   42px under the shorter card's last line against 22px under the taller one's. From 768, where the list is two
+   columns, each card's five rows (`ticket-card.tsx`: the chips, the question, the stake and payout, the details, the
+   Sell row) are the list's own row tracks (`subgrid`), so every row of a pair starts on one line and a shorter
+   question's room opens under it, not at the card's foot.
+   ⭐ THE MECHANICS. A subgrid's tracks ARE the list's, so a row gap on the list would open inside every card: the list
+   drops its row gap and each card from the second row on takes it back as a top margin (16px, the `gap-3` it was).
+   The card's border and padding ride on its first and last rows (the spec's "extra margin on the items at the edges"),
+   so the Sell row is always rendered, empty where nothing can be sold, and the bottom padding always has a row to sit on.
+   ⛔ `@supports` FENCES IT: a browser without subgrid (Chrome 111–116 sit inside the floor `color-mix()` already sets)
+   keeps today's layout exactly — the flex column, `grow` on the details, the list's gap. Below 768 one card is a row,
+   so nothing changes there either. */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 768px) {
+    .kp-tickets { row-gap: 0; }
+    .kp-ticket { display: grid; grid-row: span 5; grid-template-rows: subgrid; }
+    .kp-ticket:nth-child(n + 3) { margin-top: var(--sp-4); }
+  }
+}
 
 /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the

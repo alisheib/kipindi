@@ -91,6 +91,8 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
   const liveValue = price?.value ?? null;
   // Selling is shut once selection has closed or the exit window has passed: the classic page's own rule.
   const sellShut = closed || price?.sellable === false;
+  // The Sell row draws for an open ticket the page priced, or one whose selling has shut (it then says so).
+  const sellRow = open && (liveValue !== null || sellShut);
   // The free window's end, the server's own instant (A8), bound once: the button counts down to it, and its clock time,
   // read here on the server, is the time the journey's line names.
   const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);
@@ -99,7 +101,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
     <article
       id={p.id}
       data-row-id={p.id}
-      className="ticket-target scroll-mt-[96px] flex flex-col rounded-xl border border-border bg-bg-elevated p-4"
+      className="kp-ticket ticket-target scroll-mt-[96px] flex flex-col rounded-xl border border-border bg-bg-elevated p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{sideWord(t, p.side, "MARKET")}</Chip>
@@ -120,7 +122,8 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
         )}
       </div>
       {/* `grow`: in a row of cards that share a height, the shorter card's spare room opens here, so its Sell row sits
-          on the card's floor, level with its neighbour's (2026-10-08, tiles 213, 222, 225, 228, 168). */}
+          on the card's floor, level with its neighbour's (2026-10-08, tiles 213, 222, 225, 228, 168). From 768, in a
+          browser with subgrid, the rows themselves are shared (`.kp-ticket`) and this is the fallback's rule. */}
       <div className="mt-3 grow space-y-1 text-body-sm text-text-muted">
         <p className="flex items-center gap-1.5 break-all font-mono"><I.ticket s={14} className="shrink-0" />{p.id}</p>
         <p className="flex items-center gap-1.5">
@@ -138,8 +141,12 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
           </p>
         )}
       </div>
-      {open && (liveValue !== null || sellShut) && (
-        <div className="mt-3 border-t border-border/60 pt-3">
+      {/* ⭐ THE FIFTH ROW IS ALWAYS THERE, EMPTY WHEN NOTHING CAN BE SOLD (2026-10-09, tile 168). From 768 the card's rows
+          are the list's own tracks (`.kp-ticket`, subgrid), and the card's bottom padding rides on its last row: a
+          settled ticket with no row there would leave that padding nothing to sit on. Empty, it is a 0px box with no
+          margin, so a phone and a browser without subgrid draw exactly what they did. */}
+      <div className={sellRow ? "mt-3 border-t border-border/60 pt-3" : undefined}>
+        {sellRow && (
           <SellButton
             positionId={p.id}
             stake={p.stake}
@@ -152,8 +159,8 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
             look="journey"
             freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}
           />
-        </div>
-      )}
+        )}
+      </div>
     </article>
   );
 }

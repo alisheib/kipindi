@@ -1480,6 +1480,29 @@ function g7Header(W: World, ok: Ok) {
       && flat.includes(`</span></>)}</div></div>{!user.isAuthed && <TicketsGuestSheet`)
       && count(bar, "<LanguageMenu") === 1 && bar.includes(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`)
       && count(bar, "<AvatarMenu") === 1 && flat.includes(`<span className="hidden lg:inline-flex"><AvatarMenu`));
+  // 2026-10-09 (the visual pass's round 3, tiles 038, 048 and 162): the bell stands centred between the language box
+  // and the avatar — the avatar's own `sm:ml-1` set it 4px further off, so the bell's ink stood 25px from one and 29px
+  // from the other, and the slot now takes the same 4px on its near side — and its count badge hangs by its LEFT edge,
+  // 1px past the glyph's centre line, its top on the 44px controls' line, so "25" no longer fills over the dome. The
+  // override is written against the classic bell's own inline position (S6 does not touch that file: A1), so the
+  // numbers it answers are held here too: a 40px button, a 20px glyph, an 18px pip with a 2px ring at top 3 / right 1.
+  const AVATAR = "src/components/layout/avatar-menu.tsx";
+  const bellSlot = baseRule(css, ".kp-jhdr__bell");
+  const pip = baseRule(css, ".kp-jhdr__bell .count-badge");
+  const classicBell = text(W, BELL);
+  const bellFacts = {
+    slot: bellSlot.includes("margin-left: var(--sp-1)") && tokenValue(css, "sp-1") === "4px",
+    avatarApart: text(W, AVATAR).includes(`<div ref={ref} className="relative sm:ml-1">`) && W.tailwind.includes(`"1": "4px"`),
+    pip: pip.includes("top: -2px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important"),
+    controls: tokenValue(css, "h-control-sm") === "40px" && tokenValue(css, "h-control-md") === "44px",
+    classic: classicBell.includes(`"relative inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors"`)
+      && classicBell.includes("<I.bell s={20} />") && classicBell.includes(`size="md"`)
+      && classicBell.includes("top: 3,") && classicBell.includes("right: 1,"),
+    pipBox: text(W, "src/components/ui/count-badge.tsx").includes(`md: { box: { minWidth: 18, height: 18, padding: "0 4px" }, font: 10 },`),
+  };
+  ok("7.bell · the bell stands centred between the language box and the avatar (the slot's 4px answers the avatar's sm:ml-1), and its count badge hangs by its left edge 1px past the glyph's centre line, its top on the 44px controls' line, over the classic bell's inline 40px / 20px / 18px geometry it was measured against",
+    Object.values(bellFacts).every(Boolean),
+    show({ bellFacts, bellSlot, pip }));
   const blocks = mediaBlocks(css);
   const phoneOnly = blocks.filter((b) => CAPS_WIDTH.test(b.cond) && SHELL_CLASS.test(b.body)).map((b) => `@media ${b.cond}`);
   ok("7.first · every rule of the journey shell is mobile-first: no width-capping query holds one, however its block is written (nothing for the density contract to fence)",
@@ -2735,6 +2758,13 @@ ${s}`);
     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`, "<LanguageMenu />"));
     const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
     const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && <NotificationsPanel />}", "<NotificationsPanel />"));
+    // 7.bell's plants (2026-10-09): the slot loses its 4px, the pip hangs by its right edge again, the override loses
+    // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
+    const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
+    const pipOverDome = withCss(inRule(".kp-jhdr__bell .count-badge", "right: auto !important; left: 21px !important;", "right: 1px !important;"));
+    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -2px !important;", "top: -2px;"));
+    const avatarFlush = withFile(WORLD, "src/components/layout/avatar-menu.tsx", (s) => s.replace(`className="relative sm:ml-1"`, `className="relative"`));
+    const classicPipMoves = withFile(WORLD, BELL, (s) => s.replace("top: 3,", "top: 1,"));
     const tabsAt30 = withFile(WORLD, JTABS, (s) => s.replace("bottom-0 z-40 kp-rail kp-rail--journey", "bottom-0 z-30 kp-rail kp-rail--journey"));
     const moreReturns = withFile(WORLD, JTABS, (s) => s.replace("</ul>", `</ul><NavMore items={[]} label="" variant="rail" />`));
     const railSaysPage = withFile(WORLD, JTABS, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={on ? "page" : undefined}`));
@@ -3101,6 +3131,16 @@ ${s}`);
         world: pillFill, landed: cssChanged(pillFill), landedAs: "the capsule language on a section link (§0h point 7)" },
       { name: "an inline height on the header", expect: at("7.frame ·"),
         world: inlineHeight, landed: changed(inlineHeight, JHDR), landedAs: "the canvas's 64px, typed where no probe can tell it from a decision" },
+      { name: "the bell's slot loses its 4px", expect: at("7.bell ·"),
+        world: bellOffCentre, landed: cssChanged(bellOffCentre), landedAs: "the bell 25px from the language box and 29px from the avatar again" },
+      { name: "the count badge hangs by its right edge again", expect: at("7.bell ·"),
+        world: pipOverDome, landed: cssChanged(pipOverDome), landedAs: "\"25\" filled over the bell's dome, only the rim and clapper showing" },
+      { name: "the badge override loses its !important", expect: at("7.bell ·"),
+        world: pipInlineWins, landed: cssChanged(pipInlineWins), landedAs: "the classic inline position wins and the override paints nothing" },
+      { name: "the avatar drops the 4px the bell's slot answers", expect: at("7.bell ·"),
+        world: avatarFlush, landed: changed(avatarFlush, "src/components/layout/avatar-menu.tsx"), landedAs: "the bell 4px off-centre the other way" },
+      { name: "the classic bell moves its badge under the override", expect: at("7.bell ·"),
+        world: classicPipMoves, landed: changed(classicPipMoves, BELL), landedAs: "an override measured against a position that no longer exists" },
       // §8 — the tabs, the pollers, the guest sheet (WP6a; A13's four named plants among them)
       { name: "the journey tabs at z-30 (A13)", expect: at("8.stack ·"),
         world: tabsAt30, landed: changed(tabsAt30, JTABS), landedAs: "the rail level with its own header" },

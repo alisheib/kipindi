@@ -88,4 +88,32 @@ export const MUTATIONS = [
     to: `    const decimals = 0;`,
     expect: `4: sub-1 ticks keep enough decimals`,
   },
+  // ── §6, 2026-10-09 (the visual pass's round 3, tiles 069 and 174): money in a finished sentence ──
+  {
+    name: "the-limits-line-in-the-body-face-again",
+    why: "The deposit and withdraw limits line renders as one string again: \"TZS 1,015 … TZS 5,000,000\" in the paragraph's body face, the only amounts on either money form not in mono (§M4)",
+    file: "src/components/wallet/amount-field.tsx",
+    suite: "money-format",
+    from: `break-keep [overflow-wrap:anywhere]">{moneyRuns(hint)}</p>}`,
+    to: `break-keep [overflow-wrap:anywhere]">{hint}</p>}`,
+    expect: `6: AmountField's hint goes through moneyRuns`,
+  },
+  {
+    name: "the-example-loses-its-separator",
+    why: "The amount box's example goes back to \"10000\", the one figure on the platform written without its thousands separator",
+    file: "src/components/wallet/amount-field.tsx",
+    suite: "money-format",
+    from: `        placeholder={AMOUNT_EXAMPLE}`,
+    to: `        placeholder="10000"`,
+    expect: `6: …and its example is written as the platform writes a figure`,
+  },
+  {
+    name: "a-figure-swallows-the-sentence-comma",
+    why: "The figure matcher reads digits and commas greedily, so \"…to TZS 5,000,000, needs…\" sets the sentence's own comma in mono as part of the money",
+    file: "src/lib/fill-nodes.tsx",
+    suite: "money-format",
+    from: `const MONEY_RUN = /TZS[\\u00a0 ]\\d+(?:,\\d{3})*(?:\\.\\d+)?[KMB]?/g;`,
+    to: `const MONEY_RUN = /TZS[\\u00a0 ]\\d[\\d,]*(?:\\.\\d+)?[KMB]?/g;`,
+    expect: `6: ⭐ …and a sentence's own comma after a figure stays in the sentence`,
+  },
 ];

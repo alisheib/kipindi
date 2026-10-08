@@ -96,12 +96,19 @@ export default async function UpDownPage({
       {/* Rounds turn over in minutes, so the board refreshes itself. */}
       <RefreshPoller intervalMs={20_000} />
 
-      <div className="flex items-start justify-between gap-3">
-        <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
-        {/* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
+      {/* ⭐ THE PILLS STAND BESIDE THE TITLE, AND THE TAGLINE RUNS UNDER BOTH (2026-10-09, the visual pass's round 3,
+          tile 200 at sw 390). This page used to set the whole PageHeader in a flex row with the pills, so the tagline
+          was squeezed into what they left and broke in two ("Je, bei itakuwa / juu au chini muda ukiisha?", 92px over
+          164px) in a 357px column one ~260px line fits. `actions` puts them in the heading's own row. */}
+      <PageHeader
+        eyebrow={t.market.udStreaming}
+        title={t.market.udTitle}
+        subtitle={t.market.udTagline}
+        actions={
+        /* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
             history link beside it rather than a second idiom, so the header stays one row of
             equals. The label collapses to the glyph under `sm`, exactly as its neighbour does,
-            which is what keeps two pills off the title at 360. */}
+            which is what keeps two pills off the title at 360. */
         <div className="mt-1 flex shrink-0 items-center gap-2">
           <Link
             href="/legal/rules/up-down"
@@ -126,7 +133,8 @@ export default async function UpDownPage({
             <I.chevronRight s={11} />
           </Link>
         </div>
-      </div>
+        }
+      />
 
       {/* ── Price tape — real readings only; an asset with no confirmed price
              shows an em-dash rather than a plausible-looking zero. ─────────── */}

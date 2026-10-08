@@ -136,9 +136,11 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
           {/* E-100 · the same rule as the wallet's TICKET box: an identifier must be able to
               break, or a narrow card clips the end off the one string support asks for. */}
+          {/* The glyph stands off the number by the clock line's 4px, in the clock line's flex shape (2026-10-09, the
+              visual pass's round 3 — the question page's twin of this row measured 2px against the clock's 5px). */}
           {positionId && (
-            <p className="min-w-0 font-mono text-[10px] tracking-[0.06em] text-text-muted break-all">
-              <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
+            <p className="flex min-w-0 items-center gap-1 font-mono text-[10px] tracking-[0.06em] text-text-muted break-all">
+              <I.ticket s={10} className="shrink-0 opacity-60" />
               {positionId}
             </p>
           )}

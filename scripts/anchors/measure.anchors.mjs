@@ -118,4 +118,32 @@ export const MUTATIONS = [
     from: '  "src/app/proposals/page.tsx",           // py-12, on the DISABLED state only —',
     to: "  // DELETED BY THE RED HARNESS — a blind gate cannot notice this is missing:",
   },
+  // §8, 2026-10-09 (the visual pass's round 3): one column, one content edge.
+  {
+    name: "help-contact-cards-pad-20",
+    why: "the /help contact cards go back to p-4: their icon and number stand at x153 under the hero's and the FAQ's words at x165 on a desktop, and x37 under x41 on a phone",
+    file: "src/app/help/page.tsx",
+    suite: "measure",
+    check: "8. /help: the contact cards and the quick links pad on the hero's edge",
+    from: `    <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400 transition-colors h-full">`,
+    to: `    <div className="rounded-xl glass-panel p-4 space-y-2 hover:border-brand-400 transition-colors h-full">`,
+  },
+  {
+    name: "agent-fact-tile-pads-14",
+    why: "an /agent fact tile drops back to the glass box's 14px, its words at x147 over the sections' x153",
+    file: "src/app/agent/page.tsx",
+    suite: "measure",
+    check: "8. /agent: the three fact tiles pad as the sections under them do",
+    from: `        <Stat size="xl" boxed="glass" labelStyle="strong" className="p-4"`,
+    to: `        <Stat size="xl" boxed="glass" labelStyle="strong"`,
+  },
+  {
+    name: "back-link-chevron-inset",
+    why: "the back link's chevron keeps its glyph's 3px side bearing, so its tip stands 3px inside the edge of the card it heads (x19 against 16)",
+    file: "src/components/ui/back-link.tsx",
+    suite: "measure",
+    check: "8. the back link's chevron hands back its side bearing",
+    from: `      <I.chevronLeft s={11} className="-ml-[3px]" />`,
+    to: `      <I.chevronLeft s={11} />`,
+  },
 ];

@@ -62,7 +62,7 @@ const TONE: Record<StatTone, string> = {
  * `face` is the DEFAULT face for the rung; `money` overrides it to mono (M4).
  * `gap` is the space between label and value — part of the rung because the
  * dialects that grew a bigger value also grew the gap under the label. */
-export type StatSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
+export type StatSize = "xs" | "sm" | "sm-plain" | "md" | "lg" | "xl" | "2xl" | "3xl";
 
 /**
  * ⭐ DG-A-12/DG-P-05, RULED 2026-08-31 (Ali's call). Two of these seven rungs are now NAMED and
@@ -80,14 +80,30 @@ export type StatSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
  * ⚠️ A rung is a TUPLE — it also sets letter-spacing and line-height. `lead` overrides the
  * line-height below, and `money` forces `letterSpacing: normal` (§M4), so the two renames above
  * are inert on money figures and cost -0.05px/-0.36px of tracking on non-money ones.
+ *
+ * ⭐ `sm-plain` (2026-10-09, the visual pass's round 3, tile 162) is the rung the market page's
+ * local `KPI` fork asked for in its own note: 13px mono at REGULAR weight, for a timestamp that
+ * sits in a row of `xl` figures and must stay quieter than them. It keeps `text-body-sm`'s own
+ * 18px line (no `lead`), and that is the alignment: under the same `mt-1`, a 13px figure on an
+ * 18px line puts its cap tops within half a pixel of an 18px figure's on its 22.5px
+ * `leading-tight` line (JetBrains Mono: ascent 1.02, descent 0.30, cap 0.73 of the em), so the
+ * row's values read as one line. Every other rung is bold (`weight` absent).
+ *
+ * ⭐ AND EVERY HINT IS ON THE READING FLOOR (2026-10-09, tiles 195 and 196). `lg`, `xl` and `2xl`
+ * set their hint at `text-[10px]`, and a hint is a SENTENCE wherever a caller passes words
+ * ("kwa kila dau lililofungwa la wachezaji uliowaleta", "hukaguliwa na afisa wa uzingatiaji" on
+ * /agent — 10px from ascender to descender). §T4: reading copy is never below 12.5px, and a
+ * sentence takes `text-body-sm`, which every other rung's hint already used. The agent
+ * dashboard's `xl` "TZS" hint now matches its `3xl` neighbours' too.
  */
-const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: string; gap: string; hint: string }> = {
+const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: string; gap: string; hint: string; weight?: string }> = {
   /* the kit's own rung */                    xs:    { text: "text-[13.5px]", face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
   /* wallet SubStat */                        sm:    { text: "text-body",     face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
+  /* markets close time, beside xl figures */ "sm-plain": { text: "text-body-sm", face: "mono", lead: "",              gap: "mt-1",    hint: "text-body-sm", weight: "font-normal" },
   /* admin/payments Stat */                   md:    { text: "text-[15px]",   face: "mono",    lead: "leading-tight",   gap: "",        hint: "text-body-sm" },
-  /* activity MoneyTile */                    lg:    { text: "text-[17px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
-  /* profile Stat · markets KPI · perf Stat */xl:    { text: "text-title-sm", face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-[10px]" },
-  /* performance Kpi */                       "2xl": { text: "text-[21px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-[10px]" },
+  /* activity MoneyTile */                    lg:    { text: "text-[17px]",   face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-body-sm" },
+  /* profile Stat · markets KPI · perf Stat */xl:    { text: "text-title-sm", face: "display", lead: "leading-tight",   gap: "mt-1",    hint: "text-body-sm" },
+  /* performance Kpi */                       "2xl": { text: "text-[21px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-body-sm" },
   /* invite Kpi */                            "3xl": { text: "text-[24px]",   face: "mono",    lead: "leading-none",    gap: "mt-1.5",  hint: "text-body-sm" },
 };
 
@@ -197,7 +213,10 @@ export function Stat({
   const face = money ? "mono" : (font ?? sz.face);
   const labelRow = (
     <p
+      // `stat-label` is the hook for one rule in globals.css: in Chinese the label leaves the sub-micro tier for
+      // `--type-micro` and drops its tracking (§T3 blesses that tier for UPPERCASE microlabels only; tiles 217, 218).
       className={cn(
+        "stat-label",
         "font-mono uppercase",
         LABEL[labelStyle],
         labelTone === "yes" ? "text-yes-300" : labelTone === "no" ? "text-no-300" : null,
@@ -228,7 +247,8 @@ export function Stat({
       <p
         className={cn(
           face === "mono" ? "font-mono" : "font-display",
-          "font-bold tabular-nums",
+          sz.weight ?? "font-bold",
+          "tabular-nums",
           sz.text,
           sz.lead,
           sz.gap,

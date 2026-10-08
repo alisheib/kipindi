@@ -165,9 +165,12 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
       {notice && <Callout tone={notice.tone} size="md">{notice.text}</Callout>}
 
       {/* ⭐ THE THREE FACTS A PARTNER DECIDES ON, above the fold, from config. Gold + mono on the
-          two money tiles only (§M3); the time tile is neutral. */}
+          two money tiles only (§M3); the time tile is neutral.
+          ⭐ ON THE PAGE'S CONTENT EDGE (2026-10-09, the visual pass's round 3, tiles 195 and 196): the `glass` box pads
+          14px and every section below it pads 20 (`p-4`), so these tiles' words stood at x147 over the sections' x153 at
+          1280 and x31 over x37 at 390. `p-4` here, so one column keeps one edge. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold"
+        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
           label={t.agent.statEarn}
           value={<span className="amount">{fill(t.agent.statEarnValue, { pct: String(cfg.defaultCommissionPct) })}</span>}
           hint={t.agent.statEarnHint} icon={<I.percent s={14} />} iconAlign="end" />
@@ -175,11 +178,11 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
             unconditionally, so management's 2026-09-08 flip to EXCLUSIVE would have left the
             public page stating the opposite of what the applicant is charged. The figure
             above it is `fee.totalTzs` either way — what an applicant owes, never the net. */}
-        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold"
+        <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold" className="p-4"
           label={t.agent.statCost}
           value={<span className="amount">{formatTzs(fee.totalTzs)}</span>}
           hint={vatHint} icon={<I.coins s={14} />} iconAlign="end" />
-        <Stat size="xl" boxed="glass" labelStyle="strong"
+        <Stat size="xl" boxed="glass" labelStyle="strong" className="p-4"
           label={t.agent.statTime}
           value={fill(t.agent.statTimeValue, { days: String(cfg.reviewSlaDays) })}
           hint={t.agent.statTimeHint} icon={<I.clock s={14} />} iconAlign="end" />

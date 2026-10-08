@@ -515,6 +515,17 @@ section("11 · the surfaces read the catalogue rather than re-writing it");
     "DESIGN_AUTHORITY: hand-rolling a second control language is a documented refusal.");
   ok("🔴 the chooser puts the type in the URL, so a refused submit round-trips",
     /href=\{`\/profile\/kyc\?idType=\$\{ty\}`\}/.test(PAGE));
+  // 2026-10-09, the visual pass's round 3 (tiles 332, 333): a FilterGroupKey reading "What to attach" sat between the
+  // help line and the pills — a second label for a group its legend names (and its aria-label repeats), and a wrong one:
+  // these pills choose the document held; nothing is attached until step 2.
+  {
+    const at = PAGE.indexOf(`role="group" aria-label={t.profile.chooseIdType}`);
+    const group = at < 0 ? "" : PAGE.slice(at, PAGE.indexOf("</div>", at));
+    ok("the chooser is named ONCE — its legend, which the group's aria-label repeats — with no group key inside it",
+      group.length > 0 && /<FieldLegend as="p" className="block mb-1\.5">\{t\.profile\.chooseIdType\}<\/FieldLegend>/.test(PAGE)
+        && !/<FilterGroupKey/.test(group) && !/idDocsNeeded/.test(PAGE),
+      "A second label over the same pills, saying \"What to attach\" where nothing is attached.");
+  }
   ok("🔴 …and the FORM carries its own copy, so a stale link cannot pick the rule",
     /<input type="hidden" name="idType" value=\{chosenType\} \/>/.test(PAGE),
     "Validating against a query string lets a hand-edited `?idType=` check a passport\n" +

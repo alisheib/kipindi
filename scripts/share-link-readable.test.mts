@@ -96,5 +96,31 @@ const share = decomment(readFileSync(join(ROOT, "src/components/markets/share-bu
      /text-text-subtle break-all">\{url\.replace\(/.test(share));
 }
 
+// ── 4 · One line is the copy button's height, and nothing hangs under the field ───────────────
+// 2026-10-09, the visual pass's round 3 (tile 182 at 1280): the field measured y702–747 (46px) beside "Nakili" at
+// y706–749 (44px) — tops 4px apart, bottoms 2px. `leading-[1.5]` made one line 19.5px (a 45.5px box), and the textarea,
+// an inline-block, sat on its wrapper's line box with the strut's descent under it, so the row centred the button on a
+// taller box than the field. The arithmetic is read from the config, not remembered: line + 2 × padding + 2 × border.
+{
+  const tw = readFileSync(join(ROOT, "tailwind.config.ts"), "utf8");
+  const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
+  const bodySmLine = Number(/"body-sm":\s*\["13px",\s*\{\s*lineHeight:\s*"(\d+)px"/.exec(tw)?.[1] ?? NaN);
+  const py2 = Number(/"2":\s*"(\d+)px"/.exec(tw)?.[1] ?? NaN);
+  const control = Number(/--h-control-md:\s*(\d+)px/.exec(css)?.[1] ?? NaN);
+  const fits = (cls: string) => {
+    const toks = cls.split(/\s+/);
+    return toks.includes("block") && toks.includes("text-body-sm") && toks.includes("py-2") && toks.includes("border")
+      && !toks.some((t) => t.startsWith("leading-"));
+  };
+  const cls = /className="field-measure ([^"]*)"/.exec(invite)?.[1] ?? "";
+  ok("4: ⭐ the field is a block on text-body-sm's own line, 12px padding and a 1px border — no leading of its own",
+     fits(cls), cls);
+  ok("4: …and that one line is the copy button's height: line + 2 × padding + 2 × border = the btn-md control",
+     bodySmLine + 2 * py2 + 2 === control && /className="btn btn-ghost btn-md shrink-0/.test(invite),
+     `${bodySmLine} + 2×${py2} + 2 = ${bodySmLine + 2 * py2 + 2} vs --h-control-md ${control}`);
+  ok("4: ⭐ CONTROL — the field as it shipped (inline, leading-[1.5]) is refused",
+     !fits("w-full resize-none overflow-hidden rounded-lg border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm font-medium leading-[1.5] text-text break-all"));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

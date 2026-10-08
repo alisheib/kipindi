@@ -118,4 +118,23 @@ export const MUTATIONS = [
     to: `<LinkField value="" label={t.profile.yourReferralLink} />`,
     expect: "1: ⭐ POSITIVE CONTROL — the control is fed the real link",
   },
+  // §4, 2026-10-09 (the visual pass's round 3, tile 182): the field and its copy button share one top and one bottom.
+  {
+    name: "the-field-inline-again",
+    why: "the textarea goes back to the inline-block it is by default, so its wrapper's line box hangs the strut's descent under it and the row centres \"Nakili\" on a box taller than the field: tops 4px apart, bottoms 2px",
+    file: INVITE,
+    suite: "share-link-readable",
+    from: `className="field-measure block w-full`,
+    to: `className="field-measure w-full`,
+    expect: "4: ⭐ the field is a block on text-body-sm's own line",
+  },
+  {
+    name: "the-field-takes-its-own-leading",
+    why: "`leading-[1.5]` returns, so one line is 19.5px and the self-sized field 45.5px beside a 44px button",
+    file: INVITE,
+    suite: "share-link-readable",
+    from: `font-mono text-body-sm font-medium text-text`,
+    to: `font-mono text-body-sm font-medium leading-[1.5] text-text`,
+    expect: "4: ⭐ the field is a block on text-body-sm's own line",
+  },
 ];

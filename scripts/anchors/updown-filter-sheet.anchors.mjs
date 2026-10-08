@@ -174,4 +174,23 @@ export const MUTATIONS = [
     to: '        sheetTitle={"Filter the board"}',
     expect: "5: the page passes the sheet's copy from the dictionary",
   },
+  // §12, 2026-10-09 (the visual pass's round 3, tile 200): the board's head.
+  {
+    name: "pills-leave-the-heading-row",
+    why: "the board stops handing its pills to PageHeader as `actions`, the shape that set the whole header beside them and squeezed the tagline into two uneven lines",
+    file: PAGE,
+    suite: "updown-filter-sheet",
+    from: "        actions={",
+    to: "        data-actions={",
+    expect: "12: ⭐ the board hands its pills to PageHeader as `actions`",
+  },
+  {
+    name: "subtitle-squeezed-beside-the-pills",
+    why: "PageHeader renders the subtitle inside the narrowed column beside the actions, so a tagline that fits the page's width breaks against the pills again",
+    file: "src/components/ui/page-header.tsx",
+    suite: "updown-filter-sheet",
+    from: "          <div>{head}</div>",
+    to: "          <div>{head}{subtitle}</div>",
+    expect: "12: PageHeader's actions row holds the eyebrow and the title only",
+  },
 ];
