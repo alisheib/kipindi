@@ -39,6 +39,10 @@ in flight on OMEGA-COMPILE01 (§0), continuing S13's handover. First real campai
    commit) means another MARKETING session is in flight: stop and ask. Commits from other programmes on `main`
    (house bots, finance, mobile, invite) are normal and are not a stop.
 4. Work per §11. Close per §0a step 6.
+5. ⛔ LANE SPLIT (Ali, 2026-10-09): the CONTACTS SCREEN — the importer (U30, U31-B, U32, U34b), duplicate detection,
+   validation, visuals, crash control and stress — is S15's on Ali-Blade15, tracked in
+   [`CONTACTS-SCREEN-PLAN.md`](CONTACTS-SCREEN-PLAN.md). The campaign path below (▶ NEXT) stays S14's. Neither starts
+   or pushes the other's units.
 
 ```
 ▶ NEXT: Ali's approved texts saved on PRODUCTION through the owner door (G5, G4, G10 — from a machine whose clock is
