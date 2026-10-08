@@ -88,7 +88,8 @@ export function parseFlags(argv, spec) {
       if (eq >= 0) { out.problems.push(`--${name} takes no value`); continue; }
       out.flags.add(name);
     } else {
-      out.problems.push("an option this tool does not have was given");
+      // The option's NAME is shown only when it reads as a plain name — a number typed after two dashes is never echoed.
+      out.problems.push(/^[a-z][a-z-]{0,23}$/.test(name) ? `--${name} is not an option of this tool` : "an option this tool does not have was given");
     }
   }
   if (out.positional.length > spec.positional) out.problems.push(`at most ${spec.positional} argument${spec.positional === 1 ? "" : "s"} without a -- name`);
@@ -147,9 +148,9 @@ export function redactSecrets(text, env = {}) {
   return s.replace(/postgres(?:ql)?:[/][/][^\s'"`)]+/gi, HIDDEN);
 }
 
-/** True for a character that makes a digit run part of a longer word (an id, a reference). */
+/** True for a character that makes a digit run part of a longer word (a hex reference). An underscore is NOT one: `usr_0755…` is a number after a prefix. */
 function wordChar(c) {
-  return c !== undefined && /[A-Za-z0-9_]/.test(c);
+  return c !== undefined && /[A-Za-z0-9]/.test(c);
 }
 
 /** Does this digit string read as a Tanzanian mobile number in any spelling the gate accepts? */
@@ -504,7 +505,7 @@ export function judgeEligibility(facts) {
     }
     if (u.adult === "unknown" || u.adult === "boundary") return refuse("age_unknown", u.adult === "boundary" ? "the account's birthday is within a day of 18" : "no readable date of birth");
     if (u.adult === "minor") return refuse("age_minor", "the account holder is under 18");
-    if (!MARKETABLE_STATUS.has(u.status)) return refuse("account_status", `the account is ${String(u.status).toLowerCase()}`);
+    if (!MARKETABLE_STATUS.has(u.status)) return refuse("account_status", `the account is ${safeText(String(u.status), 14).toLowerCase()}`);
     return { ok: true, branch: "account", basis, unjudged: UNJUDGED_FOR_ACCOUNTS };
   }
   // 3 · the contact branch — no account holds the number

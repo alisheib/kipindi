@@ -105,8 +105,8 @@ export function parseEvidenceArgs(argv, lib = LIB) {
   if (one("sends") !== undefined) problems.push("--sends goes with --ledger only");
   let campaignId = null;
   if (f.positional.length === 0) problems.push("the campaign id is required (or --ledger)");
-  else if (CAMPAIGN_ID.test(f.positional[0])) campaignId = f.positional[0];
-  else problems.push("the campaign id is not an id (8 to 64 letters, digits, - or _)");
+  else if (CAMPAIGN_ID.test(f.positional[0]) && /[A-Za-z]/.test(f.positional[0]) && lib.scrubNumbers(f.positional[0]) === f.positional[0]) campaignId = f.positional[0];
+  else problems.push("the campaign id is not an id (8 to 64 letters, digits, - or _, with a letter in it — never a phone number)");
   let test = null;
   let control = null;
   if (one("test") !== undefined) { const t = lib.parseNumberArg("test", one("test")); if (t.ok) test = t; else problems.push(t.problem); }
@@ -202,9 +202,9 @@ const msOf = (v) => {
 /** A recipient row as one outcome word: SENT · DELIVERED · SKIPPED:<reason> · FAILED:<class> · UNCONFIRMED · PENDING · HELD. */
 export function outcomeOf(r) {
   if (!r) return null;
-  if (r.status === "SKIPPED") return `SKIPPED:${dash(r.skip_reason)}`;
-  if (r.status === "FAILED") return `FAILED:${dash(r.failure_class)}`;
-  return String(r.status);
+  if (r.status === "SKIPPED") return `SKIPPED:${LIB.safeText(r.skip_reason, 40)}`;
+  if (r.status === "FAILED") return `FAILED:${LIB.safeText(r.failure_class, 40)}`;
+  return LIB.safeText(r.status, 14);
 }
 
 const earliest = (list) => list.filter((t) => Number.isFinite(t)).reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY);
@@ -403,8 +403,8 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
   L.push(`U52a campaign evidence · read-only · ${lib.fmtEat(ctx.nowMs)} EAT${args.label ? ` · step ${args.label}` : ""}`);
   L.push(`transaction read-only: ${ctx.readOnly}`);
   if (!c) { L.push("campaign: NOT FOUND — no such campaign id"); return L; }
-  L.push(`campaign ${c.id} · ${c.status} · stop reason ${dash(c.stop_reason)} · confirmed for ${dash(c.audience_count)} (${dash(c.confirm_tier)}) · ≤ ${dash(c.estimate_segments)} SMS${c.budget_tzs !== null && c.budget_tzs !== undefined ? ` · budget TZS ${c.budget_tzs}` : ""}`);
-  L.push(`  by officer ${dash(c.created_by)} · confirmed by ${dash(c.confirmed_by)} at ${lib.fmtEat(c.confirmed_at)} · started ${lib.fmtEat(c.started_at)} · list written ${lib.fmtEat(c.enqueued_at)} · paused ${lib.fmtEat(c.paused_at)} · finished ${lib.fmtEat(c.finished_at)}`);
+  L.push(`campaign ${lib.safeText(c.id, 64)} · ${lib.safeText(c.status, 14)} · stop reason ${lib.safeText(c.stop_reason, 40)} · confirmed for ${dash(c.audience_count)} (${lib.safeText(c.confirm_tier, 12)}) · ≤ ${dash(c.estimate_segments)} SMS${c.budget_tzs !== null && c.budget_tzs !== undefined ? ` · budget TZS ${c.budget_tzs}` : ""}`);
+  L.push(`  by officer ${lib.safeText(c.created_by, 40)} · confirmed by ${lib.safeText(c.confirmed_by, 40)} at ${lib.fmtEat(c.confirmed_at)} · started ${lib.fmtEat(c.started_at)} · list written ${lib.fmtEat(c.enqueued_at)} · paused ${lib.fmtEat(c.paused_at)} · finished ${lib.fmtEat(c.finished_at)}`);
 
   const counts = (facts.recipientCounts ?? []).map((g) => `${g.status}${g.status === "SKIPPED" ? `:${dash(g.skip_reason)}` : g.status === "FAILED" ? `:${dash(g.failure_class)}` : ""} ${g.n}`);
   const total = (facts.recipientCounts ?? []).reduce((n, g) => n + g.n, 0);
@@ -419,7 +419,7 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
       const m = g && typeof g.source === "string" ? /^(CONSENT|LICENCE_[A-Z]+):/.exec(g.source) : null;
       return m ? ` basis ${m[1]}` : "";
     })();
-    L.push(`  ${role.padEnd(7)} ${lib.maskKey(r.msisdn)}  ${String(r.status).padEnd(11)} skip ${lib.safeText(r.skip_reason, 24)} · class ${lib.safeText(r.failure_class, 24)} · tries ${r.attempts} · ref ${lib.safeText(r.sms_reference, 40)} · stop link ${r.has_token ? "yes" : "no"} · ${dash(r.locale)} ${dash(r.segments)} seg ${dash(r.body_len)} chars${r.cost_tzs ? ` TZS ${r.cost_tzs}` : ""}${gate}`);
+    L.push(`  ${role.padEnd(7)} ${lib.maskKey(r.msisdn)}  ${lib.safeText(r.status, 14).padEnd(11)} skip ${lib.safeText(r.skip_reason, 24)} · class ${lib.safeText(r.failure_class, 24)} · tries ${r.attempts} · ref ${lib.safeText(r.sms_reference, 40)} · stop link ${r.has_token ? "yes" : "no"} · ${lib.safeText(r.locale, 4)} ${dash(r.segments)} seg ${dash(r.body_len)} chars${r.cost_tzs ? ` TZS ${r.cost_tzs}` : ""}${gate}`);
     L.push(`          claimed ${timeOf(r.claimed_at)} · handed over ${timeOf(r.sent_at)} · delivered ${timeOf(r.delivered_at)} · failed ${timeOf(r.failed_at)}${r.skip_detail ? ` · detail ${lib.safeText(r.skip_detail, 100)}` : ""}${r.error ? ` · error ${lib.safeText(r.error, 100)}` : ""}`);
     L.push(`          trail ${trailOf(r.gate_trail, lib)}`);
   }
@@ -496,13 +496,16 @@ export function realDeps() {
     },
     lib: LIB,
     parts: PARTS,
+    readFacts: readEvidenceFacts,
+    render: renderEvidence,
+    parseArgs: parseEvidenceArgs,
   };
 }
 
 export async function runEvidence(argv, deps = realDeps()) {
   const d = { ...realDeps(), ...deps };
   const lib = d.lib;
-  const parsed = parseEvidenceArgs(argv, lib);
+  const parsed = d.parseArgs(argv, lib);
   if (!parsed.ok) {
     const io0 = lib.makeIo(d.sink, d.env, []);
     for (const p of parsed.problems) io0.line(`REFUSING: ${p}`);
@@ -536,7 +539,7 @@ export async function runEvidence(argv, deps = realDeps()) {
   let prisma = null;
   try {
     prisma = await d.makePrisma();
-    facts = await lib.readOnlyTransaction(prisma, (tx) => readEvidenceFacts(tx, {
+    facts = await lib.readOnlyTransaction(prisma, (tx) => d.readFacts(tx, {
       campaignId: args.campaignId, testKey: args.test ? args.test.key : null, controlKey: args.control ? args.control.key : null, wantToken: args.showStopLink,
     }));
   } catch (err) {
@@ -549,7 +552,7 @@ export async function runEvidence(argv, deps = realDeps()) {
   const nowMs = d.now();
   const verdict = judgeEvidence(facts, args, lib, d.parts);
   const ctx = { nowMs, readOnly: "on" };
-  for (const line of renderEvidence(facts, verdict, args, ctx, lib)) io.line(line);
+  for (const line of d.render(facts, verdict, args, ctx, lib)) io.line(line);
   if (!verdict.found) { io.line("RESULT: NOT PROVEN — there is no such campaign"); return EXIT.fail; }
 
   // The ledger counts what the evidence found — a look included, a failed verdict included: the sends happened either way.

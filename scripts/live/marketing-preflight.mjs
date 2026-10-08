@@ -115,7 +115,7 @@ export async function fetchBounded(fetchImpl, url, timeoutMs, parse) {
     }
     return { ok: true, status: res.status, text };
   } catch (err) {
-    return { ok: false, why: ctl.signal.aborted ? `no answer within ${Math.round(timeoutMs / 1000)} s` : "the request failed" };
+    return { ok: false, why: ctl.signal.aborted ? `no answer within ${timeoutMs < 10_000 ? (timeoutMs / 1000).toFixed(1) : Math.round(timeoutMs / 1000)} s` : "the request failed" };
   } finally {
     clearTimeout(timer);
   }
@@ -303,11 +303,15 @@ export function judgePreflight(facts, ctx, lib = LIB) {
     user: userFacts,
     latest: lib.classifyLedgerRow(facts.test.latest, saved),
     outreach: lib.readOutreach(facts.config[lib.KEY_OUTREACH]).state,
-    book: { row: !c ? "none" : c.erased === true ? "erased" : "live", cover: !userFacts && lists.some(coverFor) },
+    // ⛔ an erased tombstone covers nothing, whatever its old memberships say (the app's `bookStandings` never reads them)
+    book: { row: !c ? "none" : c.erased === true ? "erased" : "live", cover: !userFacts && Boolean(c) && c.erased !== true && lists.some(coverFor) },
   };
+  const holder = facts.test.user
+    ? `an account holds it (${lib.safeText(facts.test.user.role, 12)}, ${lib.safeText(facts.test.user.status, 14)}, marketing switch ${facts.test.user.opt_in === true ? "on" : "off"}) · `
+    : "no account holds it · ";
   const verdict = (v) => v.ok
-    ? `the gate would clear it on the ${v.branch === "account" ? "ACCOUNT" : "CONTACT"} branch (${v.basis})${v.unjudged.length ? ` — asked again at the send, not judged here: ${v.unjudged.join(", ")}` : ""}`
-    : `the gate would refuse it: ${v.skipReason} (${v.detail})`;
+    ? `${holder}the gate would clear it on the ${v.branch === "account" ? "ACCOUNT" : "CONTACT"} branch (${v.basis})${v.unjudged.length ? ` — asked again at the send, not judged here: ${v.unjudged.join(", ")}` : ""}`
+    : `${holder}the gate would refuse it: ${v.skipReason} (${v.detail})`;
   const now = lib.judgeEligibility(eligFacts);
   add("test-consent", now.ok, verdict(now));
   const after = lib.judgeEligibility(lib.factsAfterStopCycle(eligFacts, nowMs));
@@ -363,13 +367,15 @@ export function realDeps() {
     },
     timeoutMs: FETCH_TIMEOUT_MS,
     lib: LIB,
+    judge: judgePreflight,
+    parseArgs: parsePreflightArgs,
   };
 }
 
 export async function runPreflight(argv, deps = realDeps()) {
   const d = { ...realDeps(), ...deps };
   const lib = d.lib;
-  const parsed = parsePreflightArgs(argv, lib);
+  const parsed = d.parseArgs(argv, lib);
   if (!parsed.ok) {
     const io0 = lib.makeIo(d.sink, d.env, []);
     for (const p of parsed.problems) io0.line(`REFUSING: ${p}`);
@@ -410,7 +416,7 @@ export async function runPreflight(argv, deps = realDeps()) {
   }
 
   const ctx = { nowMs: d.now(), args, home: homeRead, health, ledger, readOnly: "on" };
-  const rows = judgePreflight(facts, ctx, lib);
+  const rows = d.judge(facts, ctx, lib);
   for (const line of renderPreflight(rows, ctx, lib)) io.line(line);
   return rows.some((r) => r.go === false) ? EXIT.fail : EXIT.ok;
 }
