@@ -411,8 +411,11 @@ export const CONTACTS_BULK = {
   none: "Tick contacts to tag, list, withdraw, suppress or remove them.",
   /** Every action's hover line while nothing is ticked. */
   noneTitle: "Tick at least one contact",
-  /** ⛔ The bar says why there is no "record consent" (U33 adds it with a recorded basis and an 18+ attestation). */
-  consentNote: "Consent can't be recorded here: a lawful record needs a basis and an 18+ attestation, which this page doesn't take yet.",
+  /** ⛔ The bar says why there is no "record consent". C2 (2026-10-09): the owner's FINAL rule of 2026-10-07 made consent
+   *  decide nothing, and decision S15-1 retired the bulk consent recording U33b would have brought — a contact who is not a
+   *  player is reached through a LIST whose basis and 18+ confirmation are recorded on the Lists card. The old sentence
+   *  promised a feature that will not come ("which this page doesn't take yet"). */
+  consentNote: "Consent isn't recorded in bulk. A contact who isn't a player is reached through a list — its basis and 18+ confirmation are recorded on the Lists card below.",
   clear: "Clear",
   selectPage: "Select every contact on this page",
   selectRow: (label: string) => `Select ${label}`,

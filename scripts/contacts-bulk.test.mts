@@ -795,7 +795,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     BULK_COPY.suppress.consequence.includes("no one can lift this") && BULK_COPY.suppress.consequence.includes("later owner of this number")
       && BULK_COPY.remove.consequence.includes("consent and stop records are kept") && BULK_COPY.remove.consequence.includes("emptied by an erasure are kept")
       && !CONTACT_BULK_ACTIONS.some((a) => /consent/i.test(a) || /record consent|give consent/i.test(BULK_COPY[a].label))
-      && /Consent can't be recorded here/.test(CONTACTS_BULK.consentNote) && src.bar.includes("{CONTACTS_BULK.consentNote}")
+      // C2 (2026-10-09) · the sentence says why under the FINAL rule (S15-1): no bulk consent, a LIST reaches a non-player.
+      && /^Consent isn't recorded in bulk\./.test(CONTACTS_BULK.consentNote) && /reached through a list/.test(CONTACTS_BULK.consentNote)
+      && /Lists card/.test(CONTACTS_BULK.consentNote) && src.bar.includes("{CONTACTS_BULK.consentNote}")
       && src.bar.includes("{words.consequence}") && bulkResultLine({ action: "suppress", matched: 4, changed: 2, unchanged: 1, full: 0 }) === "2 suppressed · 1 already suppressed · 1 no longer in the book"
       && bulkResultLine({ action: "remove", matched: 3, changed: 3, unchanged: 0, full: 0 }) === "3 removed",
     `${BULK_COPY.suppress.consequence}`,

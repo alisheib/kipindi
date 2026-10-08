@@ -312,6 +312,7 @@ const L = {
   v4: "1.4 · no refusal while typing: a short mobile number reads \"N of 9 digits\" until the field is settled, then parseTzNumber's too-short sentence",
   v5: "1.5 · ⭐ a paste is judged BEFORE truncation: a pasted +254… is refused as foreign, never called a Mbeya landline (CONTROL: the truncated digits alone read as one)",
   v5b: "1.5b · ⛔ a paste MERGED into digits already in the box never governs — the box's own number is what the lookup and the save get — while a paste that made the whole field still does (the U22 review)",
+  v5c: "1.5c · ⭐ C2 · a number TYPED with its own \"+\" is judged as written: + then 254 is refused as foreign at its third digit, naming +254 and never Mbeya, and + then 1 at its first; + then 2 or 25 is still typing on its way to +255 (CONTROL: the same 254 712 345 typed without the + reads as the landline)",
   v6: "1.6 · the four spellings of one number give one verdict: the same stage, digits, chip and sentence",
   v7: "1.7 · every refusal is a person's sentence: non-empty, ending in a full stop, never a code",
   v8: "1.8 · ⛔ vb7 · a paste longer than any phone number is REFUSED before the lookup: 41 characters holding a valid number — and a sentence with a number in it — read CONTACT_PASTE_TOO_LONG and never ok (the lookup runs on ok alone), while a 40-character spaced number still parses (CONTROL: the 41 characters' own digits are a valid number)",
@@ -411,6 +412,18 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const none = impl.paste(null, "712345678");
       return [whole === "+254712345678" && merged === null && tail === null && none === null,
         `whole ${whole} · merged ${merged} · tail ${tail} · none ${none}`];
+    });
+    await check(p(L.v5c), () => {
+      const kenya = impl.verdict({ value: "254", typedPlus: true });
+      const usa = impl.verdict({ value: "1", typedPlus: true });
+      const two = impl.verdict({ value: "2", typedPlus: true });
+      const twentyFive = impl.verdict({ value: "25", typedPlus: true });
+      const control = impl.verdict({ value: "254712345" });
+      return [kenya.stage === "refused" && kenya.verdict === "foreign" && (kenya.sentence ?? "").includes("+254") && !(kenya.sentence ?? "").includes("Mbeya")
+        && usa.stage === "refused" && usa.verdict === "foreign"
+        && two.stage === "typing" && twentyFive.stage === "typing"
+        && control.verdict === "landline" && (control.sentence ?? "").includes("Mbeya"),
+        `+254 ${kenya.verdict}: ${kenya.sentence} | +1 ${usa.verdict} | +2 ${two.stage} | +25 ${twentyFive.stage} | control ${control.verdict}`];
     });
     await check(p(L.v6), () => {
       const spell = ["0712 345 678", "712345678", "+255712345678", "255712345678"].map((s) => impl.verdict({ value: s }));
@@ -1227,6 +1240,11 @@ if (!PROVE_RED) {
       name: "the paste judged after truncation — a Kenyan number called a Mbeya landline",
       expect: L.v5,
       impl: { ...REAL, verdict: (input) => contactNumberVerdict({ ...input, pasted: null }) },
+    },
+    {
+      name: "C2 · the typed \"+\" ignored — a Kenyan number typed with its plus called a Mbeya landline",
+      expect: L.v5c,
+      impl: { ...REAL, verdict: (input) => contactNumberVerdict({ ...input, typedPlus: false }) },
     },
     {
       name: "the U22 review · a paste always governs — the clipboard text is saved though the box shows a merged number",
