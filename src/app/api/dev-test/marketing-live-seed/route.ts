@@ -288,9 +288,9 @@ export async function POST(req: Request) {
   // sentence is ever copied into the drive. The Start dialog is built from the staged CONFIRMED campaign's own figures and the
   // send window as the engine reads it now (the same function the view uses).
   if (url.searchParams.get("words") !== null) {
-    const window = await liveSendWindow();
-    const closes = eatClock(window.closesAt);
-    const hours = window.opensAtTime !== "" && closes !== null ? { opens: window.opensAtTime, closes } : null;
+    const sendWindow = await liveSendWindow();
+    const closes = eatClock(sendWindow.closesAt);
+    const hours = sendWindow.opensAtTime !== "" && closes !== null ? { opens: sendWindow.opensAtTime, closes } : null;
     const staged = STAGES[0];
     const dialog = (money: { costTzs: number; limitTzs: number } | null) =>
       startDialog({ count: staged.count, segments: staged.count, window: hours, money });
@@ -313,7 +313,7 @@ export async function POST(req: Request) {
         // The quiet-hours wait names when the window opens, as the engine's step does (`until` = the window's next opening while it
         // is shut), so the drive asks again after it pins the window shut.
         waits: {
-          quiet_hours: waitSentence("quiet_hours", window.open !== true && window.opensAt !== "" ? window.opensAt : null),
+          quiet_hours: waitSentence("quiet_hours", sendWindow.open !== true && sendWindow.opensAt !== "" ? sendWindow.opensAt : null),
           money_busy: waitSentence("money_busy", null), busy: waitSentence("busy", null), hidden: LIVE_WAIT_HIDDEN,
         },
         // A pause below E23's floor: the one neutral sentence, and its form for a role that may only look (no "press Resume");
