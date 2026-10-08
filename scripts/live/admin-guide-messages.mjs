@@ -142,9 +142,9 @@ export const SECTIONS = [
         where: "Growth → SMS campaigns → New SMS campaign",
         do: [
           "Name the campaign — only staff see the name.",
-          "Write the Swahili message; it must begin with 50pick. {jina} prints the person's first name.",
+          "Write the Swahili message; it must begin with 50pick. {jina} prints the person's first name — then give the word printed when a name can't be used (for example rafiki).",
           "English is optional: players whose account language is English get it, everyone else gets Swahili.",
-          "The message must fit in ONE SMS. The counter shows the room left; the stop link is added for you and counted.",
+          "The message must fit in ONE SMS. The counter shows the room left: the stop link, the 12 characters kept for {jina} and the source line are counted for you.",
         ],
         shots: ["19-compose-filled"],
       },
@@ -319,9 +319,23 @@ export const SECTIONS = [
   },
 ];
 
-/** ⭐ The import chapter, filled in once the import screens are built (U30–U32) — `admin-guide.mjs` refuses to build while
- *  `SECTIONS` still holds the "IMPORT" placeholder and this is empty. */
-export const IMPORT_STEPS = [];
+/** ⭐ The import chapter — `admin-guide.mjs` puts it where `SECTIONS` holds the "IMPORT" placeholder.
+ *  ⛔ 2026-10-09 · the lane split (docs/CONTACTS-SCREEN-PLAN.md): the importer is S15's and NOT live yet, so the chapter says so
+ *  and gives the plan for the first imports. When it lands, its steps are written here from the live dialog, with the pictures
+ *  `importShots` takes (i1…i6, by the data-block names S15 builds the dialog to). */
+export const IMPORT_STEPS = [
+  {
+    title: "Importing a file is not live yet",
+    where: "Growth → Contacts",
+    do: [
+      "The Import button arrives in a coming update. Until then, add contacts one at a time with Add contact (chapter 2).",
+      "Your first import: a test file of 20 to 50 contacts. Open a few of them in the book before importing more.",
+      "Then import files of at most 2,000 rows, one at a time, checking each result before the next.",
+      "Press Export CSV before every import, so you keep a copy of the book as it was.",
+      "Never import while a campaign is being confirmed or started — new people in its audience stop it from starting.",
+    ],
+  },
+];
 
 export const BALANCE_STATES = [
   { shows: "A figure such as TZS 250,000, with no colour", meaning: "The live balance, read just now.", action: "Nothing — check it before a big campaign." },
@@ -356,7 +370,7 @@ export const MESSAGES = [
   { area: "Start", message: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent.", meaning: "The owner's switch is off.", action: "Ask the owner to switch them on, then Start." },
   { area: "Start", message: "At today's price this campaign could cost … — more than its limit of …. Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.", check: "Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.", meaning: "The campaign could cost more than its limit.", action: "Confirm a smaller copy, or ask the owner to raise the limit." },
   { area: "Start", message: "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit …, this campaign up to …, kept for codes …. Top up, or narrow the audience. Nothing was sent.", check: "Starting would leave less SMS credit than is kept for login and withdrawal codes", meaning: "Not enough credit for this campaign and the codes.", action: "Ask the owner to top up, or narrow the audience." },
-  { area: "Start", message: "The audience grew since it was confirmed — now …, confirmed …. Nothing was sent. Stop this campaign and confirm a new copy.", check: "The audience grew since it was confirmed", meaning: "People joined the audience after it was confirmed — an import, for example.", action: "Stop it and confirm a new copy." },
+  { area: "Start", message: "The audience grew since it was confirmed — now …, confirmed …. Nothing was sent. Stop this campaign and confirm a new copy.", check: "The audience grew since it was confirmed", meaning: "People joined the audience after it was confirmed — new contacts, for example.", action: "Stop it and confirm a new copy." },
   // ── while it sends
   { area: "Sending", message: "Keep this page open while it sends — sending continues only while a page like this one is open.", meaning: "This page is what keeps the campaign going.", action: "Leave the page open until it says Finished." },
   { area: "Sending", message: "Waiting for the send window — sending resumes at 08:00 EAT.", check: "Waiting for the send window — sending resumes at ", meaning: "Outside the sending hours.", action: "Nothing — it goes on by itself when the window opens." },

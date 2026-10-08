@@ -182,6 +182,7 @@ const field = (page, key) => page.locator(`${inDialog(`[data-field="${key}"] inp
 const SEL = {
   name: 'label[data-field="name"] input',
   bodySw: 'label[data-field="bodySw"] textarea',
+  fallbackSw: 'label[data-field="nameFallbackSw"] input',
   save: "[data-compose-save]",
   saved: "[data-compose-saved]",
   audience: '[data-block="compose-audience"]',
@@ -321,7 +322,9 @@ async function runA() {
       await shoot(page, "16-export");
       await unmark(page);
     });
-    await importShots(page);
+    // ⛔ 2026-10-09 · the lane split: the importer is S15's (docs/CONTACTS-SCREEN-PLAN.md) and not live yet — its pictures are taken
+    //    only where the contacts page has the Import button (S15 builds the dialog to `importShots`' data-block names).
+    if ((await page.locator('[data-block="contacts-import"]').count()) > 0) await importShots(page);
     await step("26-sms-credit", async () => {
       await page.goto(`${BASE}/admin/system`, { waitUntil: "networkidle" });
       // The first render may still be reading the stand-in: one reload shows the figure.
@@ -367,13 +370,14 @@ async function runA() {
     await step("18-compose", async () => {
       await page.goto(`${BASE}/admin/campaigns/new`, { waitUntil: "networkidle" });
       await page.locator(SEL.name).first().fill("October welcome");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri mechi za wikendi.");
+      await page.locator(SEL.fallbackSw).first().fill("rafiki");
       await wait(500);
       await shoot(page, "19-compose-filled");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri “leo”.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri “leo”.");
       await wait(500);
       await shoot(page, "20-compose-warning");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri mechi za wikendi.");
       await wait(400);
       await page.locator(SEL.save).first().click();
       await page.waitForSelector(SEL.saved, { timeout: 20_000 });
@@ -394,10 +398,63 @@ async function runA() {
   }
 }
 
-/** ⭐ THE IMPORT'S PICTURES (U30–U32) — taken in run a, once the import screens exist. */
-async function importShots(_page) {
-  // Filled in with the import screens: the button, the file and its columns, the pre-flight's buckets, the choice for
-  // numbers already in the book, the bar, and the result.
+/** The file the import pictures read — the world `marketing-contacts-seed?u30=1` makes: 0768 000 001 in the book (its name to
+ *  replace), 002 in the book and on the stop list, 003 a player's number, 004 erased; 010 and 011 new; a repeat, a row with no
+ *  number, one too short. */
+const IMPORT_CSV = [
+  "Phone,Name,Email,Tags,Notes",
+  "0768 000 010,Neema Mushi,,dar,",
+  '0768 000 001,Asha Mwakalinga,asha@example.com,"vip, dar",',
+  "0768 000 002,Chausiku Ally,,,",
+  "0768 000 003,Juma Said,,,",
+  "0768 000 004,Eva Peter,,,",
+  "+255 768 000 010,Neema M.,,arusha,",
+  ",Hassani,,,",
+  "12,Baraka,,,",
+  "0768 000 011,Rehema John,,,",
+].join(String.fromCharCode(13, 10)) + String.fromCharCode(13, 10);
+
+/** ⭐ THE IMPORT'S PICTURES (U30–U32) — run a: the button, the columns, the check, the choice; then the bar and the result. */
+async function importShots(page) {
+  await post("/api/dev-test/marketing-contacts-seed?u30=1");
+  await step("i1-import", async () => {
+    await page.goto(`${BASE}/admin/contacts`, { waitUntil: "networkidle" });
+    await mark(page, '[data-block="contacts-import"]');
+    await shoot(page, "i1-import-button");
+    await unmark(page);
+    await page.locator('[data-block="contacts-import"]').first().click();
+    await page.waitForSelector('[data-block="import-entrance"], [data-block="import-adopt"], [data-block="import-preflight"]', { timeout: 30_000 });
+    await wait(400);
+    await page.setInputFiles('input[data-block="import-file"]', { name: "contacts-october.csv", mimeType: "text/csv", buffer: Buffer.from(IMPORT_CSV, "utf8") });
+    await page.waitForSelector('[data-block="import-mapping"]', { timeout: 30_000 });
+    await wait(500);
+    await shootTall(page, "i2-columns");
+  });
+  await step("i3-check", async () => {
+    await page.locator('[data-block="import-mapping-next"]').first().click();
+    await page.waitForSelector('[data-block="import-preflight"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-block="import-apply"]', { timeout: 60_000 });
+    await wait(600);
+    await page.locator('[data-block="import-preflight"]').first().evaluate((n) => n.scrollIntoView({ block: "start" }));
+    await wait(300);
+    await shootTall(page, "i3-check");
+    await page.locator('[data-block="import-apply"]').first().evaluate((n) => n.scrollIntoView({ block: "center" }));
+    await wait(300);
+    await shootTall(page, "i4-decision");
+  });
+  await step("i5-import", async () => {
+    // ⏳ U32 · the bar and the result: pressed once the commit is built; until then the step says so.
+    const apply = page.locator('[data-block="import-apply"]').first();
+    if (await apply.isDisabled().catch(() => true)) throw new Error(`the Import button is held: ${(await apply.getAttribute("title").catch(() => null)) ?? "no reason given"}`);
+    await apply.click();
+    await page.waitForSelector('[data-block="import-commit"], [data-block="import-done"]', { timeout: 30_000 });
+    await shootTall(page, "i5-importing");
+    await page.waitForSelector('[data-block="import-done"]', { timeout: 120_000 });
+    await wait(600);
+    await shootTall(page, "i6-done");
+  });
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
 }
 
 /* ═══ RUN b · a campaign driven end to end (the console stub) ═════════════════════════════════════════════════════ */
@@ -459,7 +516,8 @@ async function runB() {
     // The audience first (the rail's own address, as its "weekend" pill writes it), then the words, then one save.
     await page.goto(`${BASE}/admin/campaigns/new?tag=weekend`, { waitUntil: "networkidle" });
     await page.locator(SEL.name).first().fill("Weekend offer");
-    await page.locator(SEL.bodySw).first().fill("50pick: Habari {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
+    await page.locator(SEL.bodySw).first().fill("50pick: Habari {jina}! Bashiri mechi za wikendi.");
+    await page.locator(SEL.fallbackSw).first().fill("rafiki");
     await wait(400);
     await page.locator(SEL.save).first().click();
     await page.waitForSelector(SEL.saved, { timeout: 20_000 });
