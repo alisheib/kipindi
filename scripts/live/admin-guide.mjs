@@ -394,10 +394,63 @@ async function runA() {
   }
 }
 
-/** ⭐ THE IMPORT'S PICTURES (U30–U32) — taken in run a, once the import screens exist. */
-async function importShots(_page) {
-  // Filled in with the import screens: the button, the file and its columns, the pre-flight's buckets, the choice for
-  // numbers already in the book, the bar, and the result.
+/** The file the import pictures read — the world `marketing-contacts-seed?u30=1` makes: 0768 000 001 in the book (its name to
+ *  replace), 002 in the book and on the stop list, 003 a player's number, 004 erased; 010 and 011 new; a repeat, a row with no
+ *  number, one too short. */
+const IMPORT_CSV = [
+  "Phone,Name,Email,Tags,Notes",
+  "0768 000 010,Neema Mushi,,dar,",
+  '0768 000 001,Asha Mwakalinga,asha@example.com,"vip, dar",',
+  "0768 000 002,Chausiku Ally,,,",
+  "0768 000 003,Juma Said,,,",
+  "0768 000 004,Eva Peter,,,",
+  "+255 768 000 010,Neema M.,,arusha,",
+  ",Hassani,,,",
+  "12,Baraka,,,",
+  "0768 000 011,Rehema John,,,",
+].join(String.fromCharCode(13, 10)) + String.fromCharCode(13, 10);
+
+/** ⭐ THE IMPORT'S PICTURES (U30–U32) — run a: the button, the columns, the check, the choice; then the bar and the result. */
+async function importShots(page) {
+  await post("/api/dev-test/marketing-contacts-seed?u30=1");
+  await step("i1-import", async () => {
+    await page.goto(`${BASE}/admin/contacts`, { waitUntil: "networkidle" });
+    await mark(page, '[data-block="contacts-import"]');
+    await shoot(page, "i1-import-button");
+    await unmark(page);
+    await page.locator('[data-block="contacts-import"]').first().click();
+    await page.waitForSelector('[data-block="import-entrance"], [data-block="import-adopt"], [data-block="import-preflight"]', { timeout: 30_000 });
+    await wait(400);
+    await page.setInputFiles('input[data-block="import-file"]', { name: "contacts-october.csv", mimeType: "text/csv", buffer: Buffer.from(IMPORT_CSV, "utf8") });
+    await page.waitForSelector('[data-block="import-mapping"]', { timeout: 30_000 });
+    await wait(500);
+    await shootTall(page, "i2-columns");
+  });
+  await step("i3-check", async () => {
+    await page.locator('[data-block="import-mapping-next"]').first().click();
+    await page.waitForSelector('[data-block="import-preflight"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-block="import-apply"]', { timeout: 60_000 });
+    await wait(600);
+    await page.locator('[data-block="import-preflight"]').first().evaluate((n) => n.scrollIntoView({ block: "start" }));
+    await wait(300);
+    await shootTall(page, "i3-check");
+    await page.locator('[data-block="import-apply"]').first().evaluate((n) => n.scrollIntoView({ block: "center" }));
+    await wait(300);
+    await shootTall(page, "i4-decision");
+  });
+  await step("i5-import", async () => {
+    // ⏳ U32 · the bar and the result: pressed once the commit is built; until then the step says so.
+    const apply = page.locator('[data-block="import-apply"]').first();
+    if (await apply.isDisabled().catch(() => true)) throw new Error(`the Import button is held: ${(await apply.getAttribute("title").catch(() => null)) ?? "no reason given"}`);
+    await apply.click();
+    await page.waitForSelector('[data-block="import-commit"], [data-block="import-done"]', { timeout: 30_000 });
+    await shootTall(page, "i5-importing");
+    await page.waitForSelector('[data-block="import-done"]', { timeout: 120_000 });
+    await wait(600);
+    await shootTall(page, "i6-done");
+  });
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
 }
 
 /* ═══ RUN b · a campaign driven end to end (the console stub) ═════════════════════════════════════════════════════ */

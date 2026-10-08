@@ -319,9 +319,69 @@ export const SECTIONS = [
   },
 ];
 
-/** ⭐ The import chapter, filled in once the import screens are built (U30–U32) — `admin-guide.mjs` refuses to build while
- *  `SECTIONS` still holds the "IMPORT" placeholder and this is empty. */
-export const IMPORT_STEPS = [];
+/** ⭐ The import chapter (U30–U32) — `admin-guide.mjs` puts it where `SECTIONS` holds the "IMPORT" placeholder. */
+export const IMPORT_STEPS = [
+  {
+    title: "Before a big import",
+    where: "Growth → Contacts",
+    do: [
+      "First a pilot: a file of 20 to 50 contacts. Check the result and open a few of them in the book.",
+      "Then files of at most 2,000 rows, one import at a time.",
+      "Press Export CSV first, so you keep a copy of the book as it was.",
+      "Never import while a campaign is being confirmed or prepared — new people in its audience stop it from starting.",
+    ],
+  },
+  {
+    title: "Prepare the file",
+    where: "On your computer",
+    do: [
+      "A CSV, Excel (.xlsx) or vCard (.vcf) file: one contact per row, the column names in the first row.",
+      "A phone number is the only thing a row needs, in any spelling. Name, e-mail, tags and notes are optional.",
+      "The import window offers a CSV or vCard sample to download if you are not sure of the layout.",
+    ],
+  },
+  {
+    title: "Choose the file and check its columns",
+    where: "Growth → Contacts → Import contacts",
+    do: [
+      "Choose the file, drop it on the window, or paste the rows from a spreadsheet. Nothing goes into the book yet.",
+      "Each column is shown with what it will be read as — Phone, Name, E-mail, Tags or Notes. Change any that is wrong; Not used leaves it out.",
+      "Press Check this file.",
+    ],
+    shots: ["i1-import-button", "i2-columns"],
+  },
+  {
+    title: "Read the check",
+    where: "Import contacts → Check before importing",
+    do: [
+      "Every row is counted: new to the book, already in the book, has a 50pick account, repeated in this file, can't be used, could not be read.",
+      "A number repeated in the file is imported once — its first row is used. The book never holds a number twice.",
+      "Open a list to see each row that can't be used and why. Fix the file and check it again if many can't be used.",
+    ],
+    shots: ["i3-check"],
+  },
+  {
+    title: "Choose what happens to numbers already in the book",
+    where: "Import contacts → What should the import do?",
+    do: [
+      "Keep what's in the book (recommended) — contacts already there stay exactly as they are; new numbers are added.",
+      "Take the file's version — the file's name, e-mail and notes replace the book's; tags are only added. You see every change before you confirm, and there is no undo.",
+      "Fill in blanks only — only a contact's empty details are filled.",
+      "A contact on the stop list always stays as it is, and an import never records consent or lifts a stop.",
+    ],
+    shots: ["i4-decision"],
+  },
+  {
+    title: "Import, and read the result",
+    where: "Import contacts → Import",
+    do: [
+      "The button says what will happen — for example “Import — 2 new · 0 updated · 4 kept”. Press it.",
+      "The bar counts the rows as they are written. If the window closes, open Import contacts again to carry on — nothing is written twice.",
+      "The result counts what was added, updated, kept and failed; each failure is listed with its row number and the reason.",
+    ],
+    shots: ["i5-importing", "i6-done"],
+  },
+];
 
 export const BALANCE_STATES = [
   { shows: "A figure such as TZS 250,000, with no colour", meaning: "The live balance, read just now.", action: "Nothing — check it before a big campaign." },
