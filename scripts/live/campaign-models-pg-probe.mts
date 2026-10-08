@@ -42,6 +42,12 @@
  * summing to `countByStatus`, never another campaign's rows; ⭐ and 13c (the U47b-1 review's MINOR 4 and its re-review,
  * 2026-10-08): the view's two reads' indexes after every migration — `SmsCampaignRecipient_outcome_idx` (the groupBy's
  * four columns) and `SmsCampaignRecipient_campaignId_claimedAt_idx` (the newest claim). ⛔ No backslash in §13 either.
+ * ⭐ §14 · U48a (S14 2026-10-08 — ENGINE-SPEC §4.16, E5 and E30): the results' two reads through the REAL Prisma twin —
+ * `countSentBefore` (ONE count: this campaign's rows still SENT and handed over STRICTLY before the bound — never a DELIVERED,
+ * a failed, an unanswered or a skipped row, a row without an instant, a row AT the bound, or another campaign's) and
+ * `handedOverPage` (ONE findMany: this campaign's SENT and DELIVERED rows with an instant, keyset by number, the number and the
+ * instant alone, an empty page at the end). ⚠️ Written by U48a's builder, who has no Postgres: its first run is the
+ * integrator's. ⛔ No backslash in §14 either.
  *
  * Run (through the heavy-node lock; it needs a migrated EMPTY database, runs the Prisma CLI three times and creates and
  * drops a shadow database and a throwaway type — loopback only):
@@ -1071,6 +1077,78 @@ async function toRunning(id: string): Promise<void> {
         && !outcomeDef.includes("UNIQUE") && !claimedDef.includes("UNIQUE"), `${outcomeDef || "no outcome index"} · ${claimedDef || "no claimedAt index"}`);
   } catch (e) {
     ok("13 · U47b-1 · the live page's groupBy ran on Postgres without throwing", false, firstLine(e));
+  }
+}
+
+// ── 14 · U48a · the results' two reads through the REAL Prisma twin (ENGINE-SPEC §4.16, E5 and E30). The statuses and instants
+//        are set by SQL, so the answers are checked against rows written here by hand. A throw is caught and FAILS 14 with
+//        its first line rather than ending the probe ──────────────────────────────────────────────────────────────────────
+{
+  const NL = String.fromCharCode(10);
+  const json = (v: unknown) => JSON.stringify(v);
+  const firstLine = (e: unknown) =>
+    (String((e as Error)?.message ?? e).split(NL).map((s) => s.trim()).find((s) => s !== "") ?? "(an error with no message)").slice(0, 200);
+  try {
+    const C14 = "probe_u48a";
+    const OTHER14 = "probe_u48a_other";
+    const EMPTY14 = "probe_u48a_empty";
+    await db.smsCampaign.create(draft(C14));
+    await db.smsCampaign.create(draft(OTHER14));
+    await db.smsCampaign.create(draft(EMPTY14));
+    const ids = Array.from({ length: 9 }, (_, i) => `probe_u48a_${String(i).padStart(3, "0")}`);
+    const numbers = ids.map((_, i) => keyOf(60000 + i));
+    await db.smsCampaignRecipient.createMany(ids.map((x, i) => seed(x, C14, numbers[i])));
+    await db.smsCampaignRecipient.createMany([seed("probe_u48a_other_000", OTHER14, keyOf(60100), {}), seed("probe_u48a_other_001", OTHER14, keyOf(60101), {})]);
+    const base = Date.parse("2026-10-08T09:00:00.000Z");
+    const ago = (min: number): string => new Date(base - min * 60_000).toISOString();
+    const set14 = async (id: string, status: string, sentAt: string | null, failureClass: string | null = null): Promise<void> => {
+      await pg.$executeRawUnsafe(
+        `update "SmsCampaignRecipient" set status = $2::"SmsCampaignRecipientStatus", "sentAt" = $3::timestamptz, "failureClass" = $4 where id = $1`,
+        id, status, sentAt, failureClass,
+      );
+    };
+    await set14(ids[0], "SENT", ago(16));                                       // older than 15 minutes: counted
+    await set14(ids[1], "SENT", ago(14));                                       // younger: not counted
+    await set14(ids[2], "SENT", null);                                          // no instant: never counted, never paged
+    await set14(ids[3], "DELIVERED", ago(30));                                  // a receipt moved it: not counted, paged
+    await set14(ids[4], "FAILED", ago(40), "receipt:UNDELIV");                  // never reached: neither
+    await set14(ids[5], "UNCONFIRMED", null);                                   // no answer, no instant: neither
+    await set14(ids[6], "SKIPPED", null);                                       // neither
+    await set14(ids[8], "SENT", ago(15));                                       // EXACTLY at the bound: not counted (strict), paged
+    await set14("probe_u48a_other_000", "SENT", ago(60));
+    await set14("probe_u48a_other_001", "SENT", ago(60));
+    const counts = [
+      await db.smsCampaignRecipient.countSentBefore(C14, ago(15)), await db.smsCampaignRecipient.countSentBefore(C14, ago(0)),
+      await db.smsCampaignRecipient.countSentBefore(C14, ago(16)), await db.smsCampaignRecipient.countSentBefore(OTHER14, ago(0)),
+      await db.smsCampaignRecipient.countSentBefore(EMPTY14, ago(0)),
+    ];
+    ok("14 · U48a · ⭐ countSentBefore on Postgres counts this campaign's rows that are STILL SENT and were handed over STRICTLY before the bound — the 16-minute row at a 15-minute bound (1), all three SENT rows with an instant at now (the 14, the 15 and the 16), none at the 16-minute row's own instant (strict), the other campaign's two beside its own, and none for a campaign with no rows",
+      json(counts) === json([1, 3, 0, 2, 0]), json(counts));
+    const all = await db.smsCampaignRecipient.handedOverPage(C14, null, 100);
+    const names = (xs: ReadonlyArray<{ msisdn: string }>): string => xs.map((x) => x.msisdn).join(",");
+    const first = await db.smsCampaignRecipient.handedOverPage(C14, null, 2);
+    const second = await db.smsCampaignRecipient.handedOverPage(C14, first[first.length - 1].msisdn, 2);
+    const third = await db.smsCampaignRecipient.handedOverPage(C14, second[second.length - 1].msisdn, 2);
+    const want = [numbers[0], numbers[1], numbers[3], numbers[8]];
+    ok("14a · U48a · ⭐ handedOverPage on Postgres is this campaign's SENT and DELIVERED rows that carry an instant, by number — { msisdn, sentAt } and nothing else, the instants as stored — pages of two walk them without a repeat and end on an empty page; a FAILED, an unanswered, a skipped, a pending or an instant-less row is never in it, nor the other campaign's",
+      names(all) === want.join(",") && all.every((x) => Object.keys(x).sort().join(",") === "msisdn,sentAt")
+        && json(all.map((x) => x.sentAt)) === json([ago(16), ago(14), ago(30), ago(15)])
+        && names(first) === [numbers[0], numbers[1]].join(",") && names(second) === [numbers[3], numbers[8]].join(",") && third.length === 0
+        && names(await db.smsCampaignRecipient.handedOverPage(OTHER14, null, 100)) === [keyOf(60100), keyOf(60101)].join(",")
+        && (await db.smsCampaignRecipient.handedOverPage(EMPTY14, null, 100)).length === 0,
+      `${names(all)} · ${json(all.map((x) => x.sentAt))} · pages ${first.length}/${second.length}/${third.length}`);
+    const refuse = async (run: () => Promise<unknown>): Promise<boolean> => { try { await run(); return false; } catch { return true; } };
+    const refused = [
+      await refuse(() => db.smsCampaignRecipient.countSentBefore(undefined as unknown as string, ago(1))),
+      await refuse(() => db.smsCampaignRecipient.countSentBefore(C14, "yesterday")),
+      await refuse(() => db.smsCampaignRecipient.handedOverPage("", null, 5)),
+      await refuse(() => db.smsCampaignRecipient.handedOverPage(C14, "0712 345 678", 5)),
+      await refuse(() => db.smsCampaignRecipient.handedOverPage(C14, null, 0)),
+    ];
+    ok("14b · U48a · each door asks the rule set before Postgres: a lost campaign, a bound that is not an instant, a cursor that is not the bare key and a page of 0 are each refused",
+      refused.every(Boolean), json(refused));
+  } catch (e) {
+    ok("14 · U48a · the results' two reads ran on Postgres without throwing", false, firstLine(e));
   }
 }
 

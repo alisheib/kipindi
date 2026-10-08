@@ -32,6 +32,10 @@
  * `engine-rules.ts` (the settle and the reaper's patches to UNCONFIRMED); and §2.32 executes DC-4's send record on the
  * memory twin — written only into a row a receipt settled under the same claim with no trail yet, exactly its six columns,
  * never the status, its rule set first.
+ * COMMIT G (U48a, S14 2026-10-08 — ENGINE-SPEC §4.16, E5 and E30): the results' two READS executed on the memory twin —
+ * §2.33 `countSentBefore` counts the rows still SENT and handed over strictly before a bound (a DELIVERED, failed, unanswered
+ * or other campaign's row never), and `handedOverPage` walks a campaign's SENT and DELIVERED people by number, past a cursor,
+ * as `{ msisdn, sentAt }` alone; both ask their rule set first, and the page's bound IS the bulk read's.
  *
  * ⭐ WHY A SUITE OF ITS OWN: `red:dal-parity` can never plant a defect in schema.prisma or a migration (it reads them
  * from ROOT, not KP_SRC), so a shape that lives in SQL needs an in-process suite that is HANDED the text and can be
@@ -63,7 +67,7 @@ import type {
 
 // ⛔ BEFORE THE STORE IS IMPORTED — see the header.
 delete process.env.DATABASE_URL;
-const { db } = await import("../src/lib/server/store.ts");
+const { db, BULK_KEYED_READ_MAX } = await import("../src/lib/server/store.ts");
 const CM = await import("../src/lib/server/marketing/campaign-model.ts");
 const { isGatewayMsisdn } = await import("../src/lib/phone-normalize.ts");
 const { MEMBERS_KEY_HEX_CHARS } = await import("../src/lib/marketing/campaign-confirm.ts");
@@ -161,6 +165,9 @@ type Rules = {
   /** U43b-2 · DC-4's send record — its rules and write (§2.32). */
   assertSendRecord: typeof CM.assertSendRecord;
   sendRecordWrite: typeof CM.sendRecordWrite;
+  /** U48a · the results' two reads — their rules (§2.33). */
+  assertSentBeforeRead: typeof CM.assertSentBeforeRead;
+  assertHandedOverRead: typeof CM.assertHandedOverRead;
 };
 type World = {
   migrations: Migration[];
@@ -185,6 +192,7 @@ const REAL: World = {
     assertTransitionShape: CM.assertTransitionShape, assertDraftPatch: CM.assertDraftPatch, assertNewCampaign: CM.assertNewCampaign,
     assertSettle: CM.assertSettle, settleWrite: CM.settleWrite, assertReceipt: CM.assertReceipt, receiptWrite: CM.receiptWrite,
     assertSendRecord: CM.assertSendRecord, sendRecordWrite: CM.sendRecordWrite,
+    assertSentBeforeRead: CM.assertSentBeforeRead, assertHandedOverRead: CM.assertHandedOverRead,
   },
 };
 
@@ -269,6 +277,7 @@ const L = {
   s230: "2.30 ⛔ MONOTONIC AND IDENTITY-CHECKED: a receipt never moves a DELIVERED, FAILED, SKIPPED or HELD row (settled) — a late FAILED after its DELIVERED among them — nor a row of another number or one holding another message's reference (mismatch), nor a row that is not there (not_found); nothing is written in each, and a reference another row holds is refused whole with Prisma's code P2002",
   s232: "2.32 ⭐ DC-4 · THE SEND RECORD (U43b-2): into a row a receipt settled before the slice's settle — DELIVERED or FAILED, under the slice's claim, no trail yet — recordSend writes EXACTLY the trail, the token, the variant, the size, the length and the hand-over instant (null for an unanswered message) and the stamp, never the status, the reference, the receipt's own instant, class and words or the claim; a second record, a SENT or a still-PENDING row, another claim's record and a row that is not there write nothing; its rule set refuses first (a lost id, a key it does not have or one missing, a claim of another shape, a trail holding a phone number or none, a token with a space, a variant, a size, a length or an instant in another form), by the door before it reads; and sendRecordWrite writes exactly its columns",
   s231: "2.31 the receipt's rule set first: a lost id, a key a receipt does not have or one missing, a number in another spelling, a verdict other than DELIVERED or FAILED, an instant in another spelling, a FAILED token untrimmed, empty, too long or a phone number, a FAILED description over 200 characters or holding a phone number — each REFUSED, and by the door before it reads; every lawful receipt passes; and receiptWrite writes EXACTLY its columns — never the claim, sentAt, attempts, the account link, the number or the contact",
+  s233: "2.33 ⭐ U48a · THE RESULTS' TWO READS (E5, E30): countSentBefore counts ONLY this campaign's rows that are STILL SENT and were handed over STRICTLY before the bound — never a DELIVERED, a receipt-failed, an unanswered (no instant), a skipped or a held row, never another campaign's, and not a row AT the bound; handedOverPage answers this campaign's SENT and DELIVERED rows that carry an instant, by number, past the cursor and at most the limit — { msisdn, sentAt } and nothing else, never a failed, unanswered or other campaign's row; and each asks its rule set first (a lost campaign id, a bound that is not an instant, a cursor that is not the bare key, a limit of 0 or above the bulk read's 2,000), the page's bound being the bulk read's",
   s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (U37b's test send, U43b-2's slice)",
   s32: "3.2 ⛔ no src file writes a recipient's status as UNCONFIRMED unless it is a declared UNCONFIRMED_WRITER (U43b-2's settlement table and reaper, its first writer — the value shipped one deploy before) — and the pin sees a key, an assignment, SQL and a settle patch's `to:` (U43a), and not a comparison, a read or a type",
 };
@@ -1697,6 +1706,63 @@ async function run(w: World, tag: string): Promise<void> {
       `into DELIVERED ${intoDelivered} · into FAILED ${intoFailed} · wrote where it must not [${missedWrites.join("; ")}] · nothing else changed ${unchanged} · ${why} · the door asks it first ${doorFirst} · sendRecordWrite writes [${keys}]`];
   });
 
+  /* ── §2.33 · U48a · THE RESULTS' TWO READS, EXECUTED ON THE MEMORY TWIN (ENGINE-SPEC §4.16, E5 and E30) ──────────────────────
+   * Every row reaches its state through the doors (claim → settle → receipt), never a hand-set map. ── */
+  await check(p(L.s233), async () => {
+    const id = "cmp_results_reads";
+    const ids = await campaignOf(id, 9, 25000);
+    const key = (i: number) => keyOf(25000 + i);
+    const T = "tok_rr_0001";
+    await R.claim(id, 9, T, at(400));
+    const handedAt = (i: number, ref: string, secs: number): SmsCampaignRecipientSettle => ({ ...sent(ids[i], T, ref), sentAt: at(secs) });
+    // 0 and 1 stay SENT (handed over at 100 s and 200 s); 2 and 3 are handed over (300 s, 400 s) and then moved by a receipt;
+    // 4 is unanswered (no instant), 5 skipped, 6 held; 7 and 8 stay claimed and PENDING
+    await R.settle([handedAt(0, "sms_rr_0", 100), handedAt(1, "sms_rr_1", 200), handedAt(2, "sms_rr_2", 300), handedAt(3, "sms_rr_3", 400),
+      unsure(ids[4], T, "sms_rr_4"), skipped(ids[5], T), held(ids[6], T)], at(401));
+    await R.recordReceipt(ids[2], receipt("sms_rr_2", key(2), "DELIVERED", { at: at(402) }));
+    await R.recordReceipt(ids[3], receipt("sms_rr_3", key(3), "FAILED", { at: at(402) }));
+    // another campaign's SENT rows, handed over long ago, and its own page of people
+    const other = "cmp_results_reads_other";
+    const otherIds = await campaignOf(other, 2, 25100);
+    await R.claim(other, 2, "tok_rr_0002", at(400));
+    await R.settle([{ ...sent(otherIds[0], "tok_rr_0002", "sms_rro_0"), sentAt: at(10) }, { ...sent(otherIds[1], "tok_rr_0002", "sms_rro_1"), sentAt: at(20) }], at(401));
+    const keep = snap(ids);
+    // ── countSentBefore: still SENT, an instant of its own, STRICTLY before the bound ──
+    const counts = [await R.countSentBefore(id, at(1000)), await R.countSentBefore(id, at(250)), await R.countSentBefore(id, at(200)),
+      await R.countSentBefore(id, at(150)), await R.countSentBefore(id, at(100)), await R.countSentBefore(id, at(50)), await R.countSentBefore(other, at(1000))];
+    const counted = JSON.stringify(counts) === JSON.stringify([2, 2, 1, 1, 0, 0, 2]);
+    // ── handedOverPage: SENT and DELIVERED with an instant, by number, past the cursor, at most the limit ──
+    const all = await R.handedOverPage(id, null, 100);
+    const first = await R.handedOverPage(id, null, 2);
+    const next = await R.handedOverPage(id, first[first.length - 1].msisdn, 2);
+    const done = await R.handedOverPage(id, next[next.length - 1].msisdn, 2);
+    const names = (xs: ReadonlyArray<{ msisdn: string }>): string => xs.map((x) => x.msisdn).join(",");
+    const paged = names(all) === [key(0), key(1), key(2)].join(",") && names(first) === [key(0), key(1)].join(",") && names(next) === key(2) && done.length === 0
+      && all.every((x) => Object.keys(x).sort().join(",") === "msisdn,sentAt") && all.map((x) => x.sentAt).join(",") === [at(100), at(200), at(300)].join(",")
+      && names(await R.handedOverPage(other, null, 100)) === [keyOf(25100), keyOf(25101)].join(",") && snap(ids) === keep;
+    // ── the rule set first, in each door ──
+    const asked = (run: () => unknown): boolean => { try { run(); return false; } catch { return true; } };
+    const refused: Array<[string, boolean]> = [
+      ["a count of no campaign", await throws(() => R.countSentBefore(undefined as unknown as string, at(1)))],
+      ["a count with a bound that is not an instant", await throws(() => R.countSentBefore(id, "yesterday"))],
+      ["a page of no campaign", await throws(() => R.handedOverPage("", null, 5))],
+      ["a cursor that is not the bare key", await throws(() => R.handedOverPage(id, "0712 345 678", 5))],
+      ["a cursor that is not text", await throws(() => R.handedOverPage(id, 7 as unknown as string, 5))],
+      ["a page of 0", await throws(() => R.handedOverPage(id, null, 0))],
+      ["a page above the bulk read's bound", await throws(() => R.handedOverPage(id, null, BULK_KEYED_READ_MAX + 1))],
+      ["a page that is not a whole number", await throws(() => R.handedOverPage(id, null, 2.5))],
+    ];
+    const letThrough = refused.filter(([, r]) => !r).map(([n]) => n);
+    const rules = asked(() => w.rules.assertSentBeforeRead("", at(1))) && asked(() => w.rules.assertSentBeforeRead(id, "now"))
+      && !asked(() => w.rules.assertSentBeforeRead(id, at(1))) && asked(() => w.rules.assertHandedOverRead("", null, 5))
+      && asked(() => w.rules.assertHandedOverRead(id, "0712", 5)) && asked(() => w.rules.assertHandedOverRead(id, null, 0))
+      && !asked(() => w.rules.assertHandedOverRead(id, null, 1)) && !asked(() => w.rules.assertHandedOverRead(id, key(1), BULK_KEYED_READ_MAX))
+      && asked(() => w.rules.assertHandedOverRead(id, null, BULK_KEYED_READ_MAX + 1));
+    const bound = CM.SMS_HANDED_OVER_PAGE_MAX === BULK_KEYED_READ_MAX;
+    return [counted && paged && letThrough.length === 0 && rules && bound,
+      `counts [${counts.join(",")}] (want 2,2,1,1,0,0,2) · pages [${first.length},${next.length},${done.length}] of ${all.length} · refused except [${letThrough.join("; ")}] · the rule set ${rules} · the page's bound is the bulk read's ${bound}`];
+  });
+
   // ── §3.1 · the MARKETING writer population ─────────────────────────────────────────────────
   const writers = w.src.filter((f) => /purpose\s*:\s*["']MARKETING["']/.test(f.text)).map((f) => f.path);
   const undeclared = writers.filter((f) => !MARKETING_WRITERS.includes(f));
@@ -2590,6 +2656,80 @@ if (!PROVE_RED) {
       name: "R-43b-5 · the send record's rule set lets a phone number through the trail (§5.14)",
       expect: L.s232,
       build: () => withRules({ assertSendRecord: lets(CM.assertSendRecord, (_id, s) => JSON.stringify(s?.gateTrail ?? null).includes("0712")) }),
+    },
+    /* ── U48a · the results' two reads: each defect as somebody would write it ── */
+    {
+      name: "⭐ R-48a-1 · countSentBefore without its campaign — every campaign's old SENT rows read as this one's 'no receipt after 15 minutes'",
+      expect: L.s233,
+      build: () => withRecipient({
+        countSentBefore: async (campaignId, before) => {
+          CM.assertSentBeforeRead(campaignId, before);
+          return memRows().filter((r) => r.status === "SENT" && r.sentAt !== null && Date.parse(r.sentAt) < Date.parse(before)).length;
+        },
+      }),
+    },
+    {
+      name: "R-48a-2 · countSentBefore counts a row AT the bound — a message at exactly 15 minutes is already 'after' them",
+      expect: L.s233,
+      build: () => withRecipient({
+        countSentBefore: async (campaignId, before) => {
+          CM.assertSentBeforeRead(campaignId, before);
+          return memRows().filter((r) => r.campaignId === campaignId && r.status === "SENT" && r.sentAt !== null && Date.parse(r.sentAt) <= Date.parse(before)).length;
+        },
+      }),
+    },
+    {
+      name: "⭐ R-48a-3 · countSentBefore counts the rows a receipt moved too — a DELIVERED message is 'no receipt'",
+      expect: L.s233,
+      build: () => withRecipient({
+        countSentBefore: async (campaignId, before) => {
+          CM.assertSentBeforeRead(campaignId, before);
+          return memRows().filter((r) => r.campaignId === campaignId && (r.status === "SENT" || r.status === "DELIVERED") && r.sentAt !== null && Date.parse(r.sentAt) < Date.parse(before)).length;
+        },
+      }),
+    },
+    {
+      name: "R-48a-4 · handedOverPage answers a message the receipt FAILED — a person who never got it is asked about their link",
+      expect: L.s233,
+      build: () => withRecipient({
+        handedOverPage: async (campaignId, after, limit) => {
+          CM.assertHandedOverRead(campaignId, after, limit);
+          return memRows().filter((r) => r.campaignId === campaignId && (r.status === "SENT" || r.status === "DELIVERED" || r.status === "FAILED") && r.sentAt !== null && (after === null || r.msisdn > after))
+            .map((r) => ({ msisdn: r.msisdn, sentAt: r.sentAt as string })).sort((a, b) => (a.msisdn < b.msisdn ? -1 : 1)).slice(0, limit);
+        },
+      }),
+    },
+    {
+      name: "⭐ R-48a-5 · handedOverPage's cursor is inclusive — the last person of one page is the first of the next, for ever",
+      expect: L.s233,
+      build: () => withRecipient({
+        handedOverPage: async (campaignId, after, limit) => {
+          CM.assertHandedOverRead(campaignId, after, limit);
+          return memRows().filter((r) => r.campaignId === campaignId && (r.status === "SENT" || r.status === "DELIVERED") && r.sentAt !== null && (after === null || r.msisdn >= after))
+            .map((r) => ({ msisdn: r.msisdn, sentAt: r.sentAt as string })).sort((a, b) => (a.msisdn < b.msisdn ? -1 : 1)).slice(0, limit);
+        },
+      }),
+    },
+    {
+      name: "R-48a-6 · handedOverPage ignores its limit — a page is the whole campaign",
+      expect: L.s233,
+      build: () => withRecipient({
+        handedOverPage: async (campaignId, after, limit) => {
+          CM.assertHandedOverRead(campaignId, after, limit);
+          return memRows().filter((r) => r.campaignId === campaignId && (r.status === "SENT" || r.status === "DELIVERED") && r.sentAt !== null && (after === null || r.msisdn > after))
+            .map((r) => ({ msisdn: r.msisdn, sentAt: r.sentAt as string })).sort((a, b) => (a.msisdn < b.msisdn ? -1 : 1));
+        },
+      }),
+    },
+    {
+      name: "R-48a-7 · the count's rule set lets a lost campaign through — Prisma reads undefined as NO CONDITION, and every campaign's rows are counted",
+      expect: L.s233,
+      build: () => withRules({ assertSentBeforeRead: lets(CM.assertSentBeforeRead, (id) => !id) }),
+    },
+    {
+      name: "R-48a-8 · the page's rule set lets a cursor that is not the bare key through — a walk that ends as if it were done",
+      expect: L.s233,
+      build: () => withRules({ assertHandedOverRead: lets(CM.assertHandedOverRead, (_id, after) => typeof after === "string" && !/^255/.test(after)) }),
     },
   ];
 

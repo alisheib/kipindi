@@ -31,6 +31,17 @@
  *   POST ?busy=<ms>           — hold the platform's bet-admission gate full for <ms> (at most 60,000) so the engine reads
  *                               "money first" — the page's money-busy wait; 0 lets it go. The gate's limits are put back.
  *   POST ?words=1             — the page's own sentences, as `live-copy.ts` says them (the drive asserts against these).
+ *   POST ?lines=<campaign>&n=<N>&status=<TOKEN>[&skip=<M>]
+ *                             — U48a · the body of a delivery-receipt callback for N of a campaign's SENT rows (skipping M, in id
+ *                               order): `{ statuses: [{ status, reference, description, msisdn }] }`, the very lines the vendor
+ *                               posts. The drive POSTs it at the LOCAL `/api/webhooks/blackball` — the route's own arm moves the
+ *                               rows — and reloads the page; this route writes nothing.
+ *   POST ?stop=<campaign>&n=<N>
+ *                             — U48a · N of the campaign's handed-over people stop by their link — through `ensureOptOutToken` +
+ *                               `stopMarketing`, the opt-out page's own path — so "Stopped by their link since this campaign" moves.
+ *   POST ?restamp=<run>       — U48a · the staged RUNNING campaign's hand-over instants put back relative to NOW (20 of its SENT rows
+ *                               two minutes ago, the rest an hour and a half ago), so "No receipt after 15 minutes" reads the
+ *                               same at every width of a long drive.
  *
  * The window's clock is `/api/dev-test/marketing-send-window`'s; the read fault is `marketing-campaigns-seed`'s `?fault=`; the
  * view-only role is `marketing-contacts-seed`'s `?u23grant=view-only|reset`.
@@ -49,12 +60,13 @@ import { newContactRow } from "@/lib/server/contacts/contact-write";
 import { WHOLE_BOOK, contactAudienceKey } from "@/lib/server/marketing/audience";
 import { startRefusalSentence } from "@/lib/server/marketing/start-check";
 import { liveSendWindow } from "@/lib/server/marketing/dispatch";
+import { STOPPED_BY_LINK_TTL_MS } from "@/lib/server/marketing/campaign-results";
 import { getAdmissionLimits, setAdmissionLimits, withAdmission } from "@/lib/server/admission";
 import {
   LIVE_ACT_UNFINISHED, LIVE_BACK, LIVE_CONTROL_LABEL, LIVE_DIALOG_ACTIONS, LIVE_DISABLED, LIVE_DONE, LIVE_FLOOR, LIVE_HEADLINE,
   LIVE_KEEP_OPEN, LIVE_KPI, LIVE_MISSING, LIVE_OUT_OF_DATE, LIVE_RELOAD, LIVE_SW, LIVE_SWITCH_OFF, LIVE_TITLE, LIVE_TRY_AGAIN,
-  LIVE_PAUSED_HIDDEN, LIVE_PAUSED_HIDDEN_VIEW, LIVE_WAIT_HIDDEN, NOT_SENT_EXTRA, copyDoneSentence, eatClock, startDialog, stopDialog,
-  waitSentence,
+  LIVE_PAUSED_HIDDEN, LIVE_PAUSED_HIDDEN_VIEW, LIVE_WAIT_HIDDEN, NOT_SENT_EXTRA, RESULTS_FAILED, RESULTS_HONESTY, RESULTS_ROW, RESULTS_TITLE,
+  RESULTS_UNREAD, copyDoneSentence, eatClock, resultsSpendLine, startDialog, stopDialog, waitSentence,
 } from "@/app/admin/campaigns/[id]/live-copy";
 import { stopReasonLabel } from "@/lib/marketing/campaign-status";
 import { AUDIENCE_REASON_LABEL } from "@/app/admin/campaigns/new/audience-copy";
@@ -207,10 +219,20 @@ async function stageRows(run: string, id: string, slot: number, mix: Mix, skips:
       row.status = status;
       if (status === "SKIPPED") row.skipReason = reasons[skipped++] ?? "suppressed";
       if (status === "HELD") row.failureClass = "gate_unanswered";
+      // U48a · a message handed over carries its instant (the 15-minute figure reads it): the first twenty a couple of minutes
+      // ago, the rest an hour and a half ago — `?restamp=` puts the first twenty back relative to now before each width.
+      if (status === "SENT") row.sentAt = iso(Date.now() - (j < RECENT_SENT ? 2 : 90) * MIN);
+      if (status === "DELIVERED") {
+        row.sentAt = iso(Date.now() - 180 * MIN);
+        row.deliveredAt = iso(Date.now() - 179 * MIN);
+      }
     }
   }
   return total;
 }
+
+/** U48a · how many of a staged campaign's SENT rows were handed over "a moment ago" (under the 15 minutes). */
+const RECENT_SENT = 20;
 
 type Stage = { key: string; name: string; path: Step[]; count: number; stopReason?: string | null; mix: Mix; skips?: Skips; unreadableAudience?: boolean };
 /** The staged set. Counts are the figures the drive asserts, written once. */
@@ -323,8 +345,61 @@ export async function POST(req: Request) {
         keepOpen: LIVE_KEEP_OPEN, switchOff: LIVE_SWITCH_OFF, outOfDate: LIVE_OUT_OF_DATE, reload: LIVE_RELOAD, tryAgain: LIVE_TRY_AGAIN,
         unfinished: LIVE_ACT_UNFINISHED,
         copy: { done: copyDoneSentence("none") },
+        // U48a · the results card's words, and the price line for the staged RUNNING campaign (820 handed over × TZS 6).
+        results: {
+          title: RESULTS_TITLE, rows: RESULTS_ROW, failed: RESULTS_FAILED, honesty: RESULTS_HONESTY, unread: RESULTS_UNREAD,
+          // how long the page keeps a campaign's stopped-by-link count (the drive asks again once it has passed)
+          linkTtlMs: STOPPED_BY_LINK_TTL_MS,
+          spendStaged: resultsSpendLine({ tzs: 820 * 6, perSmsTzs: 6 }),
+        },
       },
     });
+  }
+
+  // ⭐ U48a · THE RECEIPTS A DRIVE POSTS: the callback body for N of a campaign's SENT rows, as the vendor sends it. Reads only.
+  const linesParam = url.searchParams.get("lines");
+  if (linesParam !== null) {
+    const n = Math.max(1, Math.min(500, Math.floor(Number(url.searchParams.get("n")) || 1)));
+    const skip = Math.max(0, Math.floor(Number(url.searchParams.get("skip")) || 0));
+    const token = (url.searchParams.get("status") ?? "DELIVRD").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 20) || "DELIVRD";
+    const rows = [...memoryRecipients().values()]
+      .filter((r) => r.campaignId === linesParam && r.status === "SENT" && r.smsReference !== null)
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .slice(skip, skip + n);
+    return NextResponse.json({
+      ok: true,
+      statuses: rows.map((r) => ({ status: token, reference: r.smsReference, description: token === "DELIVRD" ? "Success" : "Undelivered", msisdn: r.msisdn })),
+    });
+  }
+
+  // ⭐ U48a · N of a campaign's handed-over people stop by their own link — the opt-out page's own path, nothing hand-written.
+  const stopParam = url.searchParams.get("stop");
+  if (stopParam !== null) {
+    const n = Math.max(1, Math.min(50, Math.floor(Number(url.searchParams.get("n")) || 1)));
+    const people = [...memoryRecipients().values()]
+      .filter((r) => r.campaignId === stopParam && (r.status === "SENT" || r.status === "DELIVERED") && r.sentAt !== null)
+      .sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0))
+      .slice(0, n);
+    let stopped = 0;
+    for (const p of people) {
+      const token = await ensureOptOutToken(p.msisdn);
+      if (token === null) continue;
+      const done = await stopMarketing(token, "SW");
+      if (done.ok) stopped++;
+    }
+    return NextResponse.json({ ok: true, asked: people.length, stopped });
+  }
+
+  // ⭐ U48a · the staged RUNNING campaign's hand-over instants, relative to now again (a drive of three widths outlasts 15 minutes).
+  const restampParam = url.searchParams.get("restamp");
+  if (restampParam !== null) {
+    const run = cleanRun(restampParam);
+    if (run === "") return NextResponse.json({ ok: false, error: "?restamp= wants letters and digits" }, { status: 400 });
+    const sent = [...memoryRecipients().values()]
+      .filter((r) => r.campaignId === idOf(run, "running") && r.status === "SENT")
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    sent.forEach((r, j) => { r.sentAt = iso(Date.now() - (j < RECENT_SENT ? 2 : 90) * MIN); });
+    return NextResponse.json({ ok: true, restamped: sent.length, recent: Math.min(RECENT_SENT, sent.length) });
   }
 
   const busy = url.searchParams.get("busy");

@@ -1,6 +1,8 @@
 /**
  * U47b-2 · /admin/campaigns/[id] — the LIVE SMS campaign page, driven and MEASURED, every state the unit names
- * (`npm run qa:marketing-live`).
+ * (`npm run qa:marketing-live`). ⭐ U48a extends it with THE RESULTS card (ENGINE-SPEC §4.16): receipts POSTed at the LOCAL
+ * webhook route for a finished campaign move "Delivered" (and nothing else does), the honesty line before and after, the stop by
+ * link, the price line for the owner, the floor as GROWTH — at 1280 and 360, every capture asserted before it is photographed.
  *
  * WHAT THIS PROVES, at 1280x800 and 360x780 (+ reduced motion at 360), with HeadlessChrome in the UA. Every capture asserts
  * the page's heading and the sentence its state is about BEFORE it photographs (`stateShot`, the S7c lesson). ⛔ NO SMS IS EVER
@@ -31,11 +33,24 @@
  *     split; no "TZS" in any GROWTH view.
  *   · STAGED STATES (seeded rows, U36's way): PREPARING (600 of 1,604 written — the bar), RUNNING (every KPI, the five
  *     reasons dominant first, the chips), PAUSED by the engine and by an officer, DONE with a "No answer", a stopped one.
+ *   · ⭐ U48a · THE RESULTS — a finished campaign of ten: Delivered 0 and Handed over, no receipt yet 8 with the honesty line
+ *     ("No delivery receipt has arrived for this campaign yet — handed over is not delivered") and no "delivered" anywhere
+ *     else on the page; receipts POSTed at the local `/api/webhooks/blackball` (three DELIVRD in one callback, then an UNDELIV)
+ *     move Delivered to 3, the handed over to 4, Failed to 1 "Not delivered (receipt)", and the honesty line is GONE by itself; two
+ *     of the people stop by their own link (the opt-out page's path) and "Stopped by their link since this campaign" reads 2;
+ *     the staged RUNNING campaign reads Delivered 120 / Handed over 700 (680 of them over 15 minutes) / Failed 8 / Not sent 60 by
+ *     reason / No answer 2 / Waiting 714, for the owner with the price line (and for GROWTH with no money word); a campaign of
+ *     five shows GROWTH no results at all (the floor's sentence alone) and ADMIN every row; a stopped campaign says "Stopped
+ *     before sending"; the ghost has the results block.
  *
  * Run (one boot, in-memory, zero prod risk; stop the last server and remove .next first — a stale .next 404s every
  * /api/dev-test route):
  *   SMS_PROVIDER=console SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars> DISABLE_ADMIN_TOTP=true npx next dev -p 3010
  *   BASE=http://localhost:3010 node scripts/live/marketing-u47-live-drive.mjs
+ * ⭐ U48a · the receipts are POSTed at the server's own webhook route. With `BLACKBALL_WEBHOOK_SECRET` UNSET (and the stub rail) the
+ *   route is open in development, as the vendor's callback is never sent here; with it SET (16+ characters — a made-up value, on
+ *   the server AND in this process's environment) the drive posts it as `?token=`, exactly as the vendor's URL carries it. A
+ *   secret shorter than 16 characters is refused by the route, and the card then says receipts are not set up (not driven here).
  * ⛔ A PC whose `.env.local` holds REAL Blackball keys (the office PC does): pin `SMS_PROVIDER=console` — never trust a
  *   default. The drive refuses to run on any other rail.
  * The drive moves the send window's clock and holds the admission gate; it puts the real clock back and lets the gate go
@@ -92,9 +107,11 @@ const SEL = {
   blockStatus: '[data-block="live-status"]',
   blockControls: '[data-block="live-controls"]',
   blockProgress: '[data-block="live-progress"]',
+  blockResults: '[data-block="live-results"]',
   ghostStatus: '[data-skeleton="live-status"]',
   ghostControls: '[data-skeleton="live-controls"]',
   ghostProgress: '[data-skeleton="live-progress"]',
+  ghostResults: '[data-skeleton="live-results"]',
 };
 const ACTS = ["start", "pause", "resume", "stop", "copy"];
 const ctl = (act) => `[data-live-control="${act}"]`;
@@ -195,6 +212,59 @@ const readLive = (page) => page.evaluate(() => {
     driver: root ? { mode: root.getAttribute("data-live-driver"), steps: Number(root.getAttribute("data-live-steps")), polls: Number(root.getAttribute("data-live-polls")) } : null,
   };
 });
+
+/** ⭐ U48a · everything the results card says, in one pass (its own `data-results-*` stamps): each row's count, whether it could
+ *  not be counted, its help line; which honesty lines stand; the reasons and the failed split as drawn; the price line. null when
+ *  the page draws no results block. */
+const readResults = (page) => page.evaluate(() => {
+  const sq = (v) => String(v ?? "").replace(new RegExp("[" + String.fromCharCode(32, 9, 10, 13, 160) + "]+", "g"), " ").trim();
+  const root = document.querySelector('[data-block="live-results"]');
+  if (!root) return null;
+  const rows = {};
+  for (const el of root.querySelectorAll("[data-results-row]")) {
+    rows[el.getAttribute("data-results-row")] = {
+      value: sq(el.querySelector("[data-results-value]")?.textContent),
+      unread: el.hasAttribute("data-results-unread"),
+      help: sq(el.querySelector("[data-results-help]")?.textContent),
+      label: sq(el.querySelector("[data-results-label]")?.textContent),
+    };
+  }
+  const titles = (sel) => [...root.querySelectorAll(sel + " [title]")].map((e) => {
+    const x = e.getAttribute("title") ?? "";
+    const at = x.lastIndexOf(": ");
+    return { label: x.slice(0, at), count: x.slice(at + 2) };
+  });
+  return {
+    title: sq(root.querySelector("p.font-display")?.textContent),
+    rows,
+    honesty: [...root.querySelectorAll("[data-results-honesty]")].map((e) => e.getAttribute("data-results-honesty")),
+    reasons: titles("[data-results-reasons]"),
+    failed: titles("[data-results-failed]"),
+    spend: sq(root.querySelector("[data-results-spend]")?.textContent),
+  };
+});
+/** The page's text without one block's — "what the page says apart from the results". */
+const mainTextOutside = async (page, selector) => squash(await page.evaluate((s) => {
+  const m = document.querySelector("main#main-content");
+  if (!m) return "";
+  const c = m.cloneNode(true);
+  c.querySelectorAll(s).forEach((e) => e.remove());
+  return c.textContent ?? "";
+}, selector));
+/** ⭐ U48a · the callback body for N of a campaign's SENT rows (the seed route reads, writes nothing), as the vendor posts it. */
+const receiptLines = async (campaignId, n, status, skip = 0) =>
+  (await seedLive(`lines=${encodeURIComponent(campaignId)}&n=${n}&status=${status}&skip=${skip}`)).statuses ?? [];
+/** POST a callback at the server's own webhook route — with the secret as `?token=` when this process's environment holds one. */
+async function postReceipts(statuses) {
+  const secret = process.env.BLACKBALL_WEBHOOK_SECRET || "";
+  const ctx = await browser.newContext();
+  try {
+    const r = await ctx.request.post(`${BASE}/api/webhooks/blackball${secret ? `?token=${encodeURIComponent(secret)}` : ""}`, { data: { statuses } });
+    return { status: r.status(), body: await r.text().catch(() => "") };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
 
 /** Viewport tiles only (never full-page): the top, or a block scrolled into view. */
 async function shoot(page, name, scrollTo = null) {
@@ -359,6 +429,8 @@ async function main() {
 async function drivePass(vp, viewport, i, stage) {
   const name = vp.name;
   const run = (k) => `${RUN}${k}${i}`;
+  // ⭐ U48a · the staged RUNNING campaign's recent hand-overs are "a moment ago" again (a drive of three widths outlasts 15 minutes)
+  await seedLive(`restamp=${RUN}`);
   const g = await staffCtx("growth", viewport, vp.reduced);
   const growth = g.page;
   ok(`${name} · UA carries HeadlessChrome`, /HeadlessChrome/.test(await growth.evaluate(() => navigator.userAgent)));
@@ -446,10 +518,14 @@ async function drivePass(vp, viewport, i, stage) {
   ok(`${name} · LOADING · the staged RUNNING campaign's name is a link on the Sending rail`, (await link.count()) === 1);
   await link.click();
   await growth.waitForSelector(SEL.ghostStatus, { timeout: 90000 }).catch(() => {});
-  const ghost = { status: await boxOf(growth, SEL.ghostStatus), controls: await boxOf(growth, SEL.ghostControls), progress: await boxOf(growth, SEL.ghostProgress) };
+  const ghost = {
+    status: await boxOf(growth, SEL.ghostStatus), controls: await boxOf(growth, SEL.ghostControls), progress: await boxOf(growth, SEL.ghostProgress),
+    results: await boxOf(growth, SEL.ghostResults),
+  };
   const realYet = await has(growth, SEL.status);
-  ok(`${name} · LOADING · the live page's OWN ghost is on screen — three blocks, status first — and the real page is not yet (chunks held: ${heldChunks})`,
-    !!ghost.status && !!ghost.controls && !!ghost.progress && ghost.status.top < ghost.controls.top && ghost.controls.top < ghost.progress.top && !realYet,
+  ok(`${name} · LOADING · the live page's OWN ghost is on screen — four blocks, status first, the results last — and the real page is not yet (chunks held: ${heldChunks})`,
+    !!ghost.status && !!ghost.controls && !!ghost.progress && !!ghost.results && ghost.status.top < ghost.controls.top && ghost.controls.top < ghost.progress.top
+      && ghost.progress.top < ghost.results.top && !realYet,
     JSON.stringify({ ghost, realYet, heldChunks }));
   ok(`${name} · LOADING · the ghost heads the page "${TITLE}" — never the list's ghost`, (await heading(growth)) === TITLE && !(await has(growth, '[data-skeleton="campaigns-card"]')), await heading(growth));
   await shoot(growth, `${name}-loading`);
@@ -457,10 +533,16 @@ async function drivePass(vp, viewport, i, stage) {
   await growth.waitForSelector(SEL.status, { timeout: 60000 }).catch(() => {});
   await growth.unroute(HOLD, holder).catch(() => {});
   await wait(900);
-  const real = { status: await boxOf(growth, SEL.blockStatus), controls: await boxOf(growth, SEL.blockControls), progress: await boxOf(growth, SEL.blockProgress) };
+  const real = {
+    status: await boxOf(growth, SEL.blockStatus), controls: await boxOf(growth, SEL.blockControls), progress: await boxOf(growth, SEL.blockProgress),
+    results: await boxOf(growth, SEL.blockResults),
+  };
   const delta = (k) => (ghost[k] && real[k] ? Math.round((real[k].h - ghost[k].h) * 100) / 100 : null);
   // ⚠️ RECORDED, NOT ASSERTED EQUAL: the blocks' heights depend on the campaign (loading.tsx says why).
-  measured[name] = { ghostTop: ghost.status?.top, realTop: real.status?.top, heightDelta: { status: delta("status"), controls: delta("controls"), progress: delta("progress") } };
+  measured[name] = {
+    ghostTop: ghost.status?.top, realTop: real.status?.top,
+    heightDelta: { status: delta("status"), controls: delta("controls"), progress: delta("progress"), results: delta("results") },
+  };
   ok(`${name} · LOADING · the first card's top edge does not move when the page swaps in (within 1px)`,
     !!ghost.status && !!real.status && Math.abs(ghost.status.top - real.status.top) <= 1, `${ghost.status?.top} vs ${real.status?.top}`);
 
@@ -511,6 +593,23 @@ async function drivePass(vp, viewport, i, stage) {
     !!adlg && adlg.title === W.startDialog.admin.title && adlg.text.includes(W.startDialog.admin.body) && /TZS/.test(adlg.text) && adlg.focus === W.dialog.cancel, JSON.stringify(adlg));
   await dialogShot(a.page, name, "start-dialog-admin", W.startDialog.admin.title);
   await a.page.keyboard.press("Escape");
+  // ⭐ U48a · the owner reads the results of the staged RUNNING campaign — every row, and the price line (OD24: money for a money reader)
+  await openLive(a.page, stage.running.id);
+  const ar = await readResults(a.page);
+  ok(`${name} · RESULTS (staged RUNNING) · ADMIN · Delivered 120 (receipts), Handed over, no receipt yet 700 of which 680 were handed over more than 15 minutes ago, Failed 8, Not sent 60, No answer 2, Waiting 714 — and NO honesty line (a receipt has arrived)`,
+    !!ar && ar.title === W.results.title && ar.rows.delivered?.value === "120" && ar.rows.handedOver?.value === "700" && ar.rows.noReceipt?.value === "680"
+      && ar.rows.failed?.value === "8" && ar.rows.notSent?.value === "60" && ar.rows.noAnswer?.value === "2" && ar.rows.waiting?.value === "714"
+      && ar.rows.stoppedByLink?.value === "0" && ar.honesty.length === 0,
+    JSON.stringify(ar && { rows: Object.fromEntries(Object.entries(ar.rows).map(([k, v]) => [k, v.value])), honesty: ar.honesty }));
+  ok(`${name} · RESULTS (staged RUNNING) · ADMIN · the failed split (the network refused 8, receipts 0) and the five reasons, dominant first, protected ONE line — the figures card's own list`,
+    !!ar && ar.failed.length === 2 && ar.failed[0].label === W.results.failed.wire && ar.failed[0].count === "8" && ar.failed[1].label === W.results.failed.receipt && ar.failed[1].count === "0"
+      && ar.reasons.length === 6 && ar.reasons[0].label === W.reasons.suppressed && ar.reasons[0].count === "24"
+      && ar.reasons.some((x) => x.label === W.reasons.protected && x.count === "13") && ar.reasons.reduce((n, x) => n + num(x.count), 0) === 60,
+    JSON.stringify(ar && { failed: ar.failed, reasons: ar.reasons }));
+  ok(`${name} · RESULTS (staged RUNNING) · ADMIN · the price line, exactly: "${W.results.spendStaged.slice(0, 90)}…" (820 handed over × TZS 6)`,
+    !!ar && ar.spend === W.results.spendStaged, ar?.spend);
+  await fitCheck(a.page, name, "results-admin");
+  await stateShot(a.page, name, "results-admin", W.results.spendStaged.slice(0, 60), SEL.blockResults);
   await a.ctx.close();
 
   /* ── the staged states, read as the AUDITOR (who cannot act — the page never steps) ── */
@@ -540,6 +639,13 @@ async function drivePass(vp, viewport, i, stage) {
   await fitCheck(w.page, name, "running-staged");
   await stateShot(w.page, name, "running-staged", "Sending — 890 of 1,604 done.");
   await stateShot(w.page, name, "running-staged-figures", W.kpi.handedOver.label, SEL.blockProgress);
+  // ⭐ U48a · the watcher reads the same results (the numbers are the view's, whoever looks), and the card agrees with the figures card
+  const wr = await readResults(w.page);
+  ok(`${name} · RESULTS (staged RUNNING) · the watcher · Delivered + Handed over, no receipt yet IS the figures card's "Handed over" (120 + 700 = 820), Failed 8, Not sent 60, No answer 2, Waiting 714`,
+    !!wr && num(wr.rows.delivered.value) + num(wr.rows.handedOver.value) === num(k.handedOver?.value) && wr.rows.failed.value === k.failed?.value
+      && wr.rows.notSent.value === k.notSent?.value && wr.rows.noAnswer.value === k.noAnswer?.value && wr.rows.waiting.value === k.waiting?.value,
+    JSON.stringify(wr && Object.fromEntries(Object.entries(wr.rows).map(([key, v]) => [key, v.value]))));
+  await stateShot(w.page, name, "results-staged-running", W.results.title, SEL.blockResults);
   for (const [key, want, shot] of [
     ["preparing", "Preparing the list — 600 of 1,604 people written.", "preparing-staged"],
     ["paused_engine", null, "paused-engine-staged"],
@@ -565,10 +671,18 @@ async function drivePass(vp, viewport, i, stage) {
     }
     if (key === "done") {
       ok(`${name} · DONE (staged) · "${W.headline.DONE}" — true beside a "No answer"`, t.status === "DONE" && t.headline === W.headline.DONE && t.kpis.noAnswer?.value === "2", JSON.stringify(t.kpis));
+      const dr = await readResults(w.page);
+      ok(`${name} · DONE (staged) · RESULTS · Delivered 6, Handed over, no receipt yet 30, Failed 1, Not sent 1, No answer 2 — and nobody left to message, so no Waiting or Stopped row`,
+        !!dr && dr.rows.delivered?.value === "6" && dr.rows.handedOver?.value === "30" && dr.rows.failed?.value === "1" && dr.rows.notSent?.value === "1"
+          && dr.rows.noAnswer?.value === "2" && !dr.rows.waiting && !dr.rows.stopped, JSON.stringify(dr && Object.fromEntries(Object.entries(dr.rows).map(([key2, v]) => [key2, v.value]))));
     }
     if (key === "stopped") {
       ok(`${name} · STOPPED (staged) · "Stopped by …" with how many were not messaged, said once (no stop sentence beside it)`,
         t.status === "CANCELLED" && /^Stopped by /.test(t.headline) && t.headline.endsWith("12 people were not messaged.") && t.stop === "", JSON.stringify({ headline: t.headline, stop: t.stop }));
+      const sr = await readResults(w.page);
+      ok(`${name} · STOPPED (staged) · RESULTS · "${W.results.rows.stopped.label}" 12 — the headline's own figure — and no "Waiting" row`,
+        !!sr && sr.rows.stopped?.value === "12" && sr.rows.stopped.label === W.results.rows.stopped.label && !sr.rows.waiting && sr.rows.handedOver?.value === "8",
+        JSON.stringify(sr && Object.fromEntries(Object.entries(sr.rows).map(([key2, v]) => [key2, v.value]))));
     }
     await stateShot(w.page, name, shot, headline.slice(0, 80));
   }
@@ -592,6 +706,11 @@ async function drivePass(vp, viewport, i, stage) {
     s.kpis.onCampaign?.value === "5" && Object.keys(s.kpis).length === 1 && s.reasons.length === 0 && s.chips.length === 0 && s.floor === W.floor, JSON.stringify({ kpis: s.kpis, floor: s.floor }));
   await fitCheck(gf.page, name, "floor");
   await stateShot(gf.page, name, "floor-growth", W.floor, SEL.blockProgress);
+  // ⛔ U48a · E23 · below the floor there are NO results: no block, no honesty line, nothing that names a split — the floor's sentence alone
+  const floorText = await mainText(gf.page);
+  ok(`${name} · FLOOR · GROWTH on a campaign of five · NO results block, no honesty line, no price, and the page never says "delivered"`,
+    !(await has(gf.page, SEL.blockResults)) && !(await has(gf.page, "[data-results]")) && !/deliver/i.test(floorText.replace(W.kpi.handedOver.title, "")) && !/TZS/.test(floorText),
+    floorText.slice(0, 200));
   await openLive(gf.page, stage.paused_floor.id);
   s = await readLive(gf.page);
   ok(`${name} · PAUSED below the floor (staged) · GROWTH, who may act, reads the one neutral sentence — "press Resume" and all`,
@@ -605,7 +724,12 @@ async function drivePass(vp, viewport, i, stage) {
   s = await readLive(af.page);
   ok(`${name} · FLOOR · ADMIN (a reader) on the same five sees every tile, the reasons and the chips — and no floor sentence`,
     Object.keys(s.kpis).length === 6 && s.reasons.length === 5 && s.chips.length > 0 && s.floor === "", JSON.stringify({ kpis: Object.keys(s.kpis), floor: s.floor }));
+  const fr = await readResults(af.page);
+  ok(`${name} · FLOOR · ADMIN on the same five · the results: Delivered 0, Handed over, no receipt yet 2, Failed 0, Not sent 2 — and the honesty line, since two were handed over and no receipt has come`,
+    !!fr && fr.rows.delivered?.value === "0" && fr.rows.handedOver?.value === "2" && fr.rows.failed?.value === "0" && fr.rows.notSent?.value === "2" && fr.honesty.join() === "no_receipt_yet",
+    JSON.stringify(fr && { rows: Object.fromEntries(Object.entries(fr.rows).map(([k2, v]) => [k2, v.value])), honesty: fr.honesty }));
   await stateShot(af.page, name, "floor-admin", "On campaign", SEL.blockProgress);
+  await stateShot(af.page, name, "floor-admin-results", W.results.honesty.noReceiptYet, SEL.blockResults);
   await af.ctx.close();
 
   /* ── THE RUN, REAL — Start → PREPARING → RUNNING (window shut) → Pause → Resume → the window opens → DONE ── */
@@ -685,8 +809,8 @@ async function realRun(vp, viewport, i, id) {
     s.reasons.length === 5 && s.reasons.some((r) => r.label === W.reasons.suppressed && r.count === "1") && s.reasons.some((r) => r.label === W.reasons.no_consent && r.count === "1")
       && s.reasons.filter((r) => r.count === "0").length === 3, JSON.stringify(s.reasons));
   ok(`${name} · RUN · the bar is full: ${seeded.people} of ${seeded.people}`, !!s.bar && s.bar.now === seeded.people && s.bar.max === seeded.people, JSON.stringify(s.bar));
-  ok(`${name} · RUN · ⛔ never "delivered" for a hand-over: the chip says "Handed over", and the words "delivered" and "Delivery" appear nowhere but the Handed over tile's hover`,
-    s.chips.some((c) => c.status === "SENT" && /Handed over/.test(c.text)) && !/deliver/i.test((await mainText(page)).replace(W.kpi.handedOver.title, "")));
+  ok(`${name} · RUN · ⛔ never "delivered" for a hand-over: the chip says "Handed over", and the words "delivered" and "Delivery" appear nowhere outside the results card but the Handed over tile's hover`,
+    s.chips.some((c) => c.status === "SENT" && /Handed over/.test(c.text)) && !/deliver/i.test((await mainTextOutside(page, SEL.blockResults)).replace(W.kpi.handedOver.title, "")));
   ok(`${name} · RUN · no money word for GROWTH in the whole page`, !/TZS/.test(await mainText(page)));
   ok(`${name} · RUN · DONE: Start, Pause, Resume and Stop are off with their reasons; Make a copy is on`,
     s.controls.start.disabled && s.controls.pause.disabled && s.controls.resume.disabled && s.controls.stop.disabled && s.controls.stop.title === W.disabled.stop && !s.controls.copy.disabled,
@@ -697,6 +821,58 @@ async function realRun(vp, viewport, i, id) {
   await fitCheck(page, name, "run-done");
   await stateShot(page, name, "run-done", W.headline.DONE);
   await stateShot(page, name, "run-done-figures", W.kpi.handedOver.label, SEL.blockProgress);
+  // ── ⭐ U48a · THE RESULTS: the gateway ACCEPTED eight messages — and not one is "delivered" until a RECEIPT says so ──
+  let rs = await readResults(page);
+  ok(`${name} · RESULTS · ${seeded.expected.handedOver} messages handed over and NO receipt: Delivered 0, "${W.results.rows.handedOver.label}" ${seeded.expected.handedOver}, Failed 0, Not sent 2, and the honesty line stands (the other one, "not set up", does not: this server takes receipts)`,
+    !!rs && rs.title === W.results.title && rs.rows.delivered?.value === "0" && rs.rows.handedOver?.value === String(seeded.expected.handedOver) && rs.rows.failed?.value === "0"
+      && rs.rows.notSent?.value === "2" && rs.honesty.join() === "no_receipt_yet" && rs.rows.stoppedByLink?.value === "0" && rs.spend === "",
+    JSON.stringify(rs && { rows: Object.fromEntries(Object.entries(rs.rows).map(([k2, v]) => [k2, v.value])), honesty: rs.honesty, spend: rs.spend }));
+  ok(`${name} · RESULTS · the honesty line is the spec's words and the "Delivered" row says nothing else: "${W.results.honesty.noReceiptYet}"`,
+    (await textOf(page, "[data-results-honesty]")) === W.results.honesty.noReceiptYet && rs?.rows.delivered?.label === W.results.rows.delivered.label && rs?.rows.delivered?.help === W.results.rows.delivered.help);
+  await fitCheck(page, name, "run-results");
+  await stateShot(page, name, "run-results-before-receipts", W.results.honesty.noReceiptYet, SEL.blockResults);
+  // three DELIVRD in ONE callback (the vendor batches), through the local route — then the page is asked again
+  const batch = await receiptLines(seeded.campaignId, 3, "DELIVRD");
+  const posted = await postReceipts(batch);
+  ok(`${name} · RESULTS · three DELIVRD receipts POSTed at the local route in one callback: it answers 200 and {"status":"Ok"}`,
+    batch.length === 3 && posted.status === 200 && posted.body.includes('"Ok"'), JSON.stringify({ lines: batch.length, status: posted.status, body: posted.body.slice(0, 80) }));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector(SEL.blockResults, { timeout: 60000 }).catch(() => {});
+  await wait(800);
+  rs = await readResults(page);
+  ok(`${name} · RESULTS · ⭐ the receipts moved EXACTLY their rows: Delivered 3, Handed over, no receipt yet ${seeded.expected.handedOver - 3} — and the honesty line is GONE by itself (a receipt has arrived)`,
+    !!rs && rs.rows.delivered?.value === "3" && rs.rows.handedOver?.value === String(seeded.expected.handedOver - 3) && rs.honesty.length === 0 && rs.rows.failed?.value === "0",
+    JSON.stringify(rs && { rows: Object.fromEntries(Object.entries(rs.rows).map(([k2, v]) => [k2, v.value])), honesty: rs.honesty }));
+  const kpisNow = (await readLive(page)).kpis;
+  ok(`${name} · RESULTS · the figures card still says Handed over ${seeded.expected.handedOver} (Delivered + the rest) — one number on two cards`,
+    kpisNow.handedOver?.value === String(seeded.expected.handedOver), JSON.stringify(kpisNow.handedOver));
+  await stateShot(page, name, "run-results-after-receipts", W.results.rows.delivered.label, SEL.blockResults);
+  // an UNDELIV: a failure's receipt is a receipt too — Failed 1, "Not delivered (receipt)" 1
+  const bad = await receiptLines(seeded.campaignId, 1, "UNDELIV");
+  const postedBad = await postReceipts(bad);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector(SEL.blockResults, { timeout: 60000 }).catch(() => {});
+  await wait(800);
+  rs = await readResults(page);
+  ok(`${name} · RESULTS · an UNDELIV receipt: Failed 1 split as "${W.results.failed.receipt}" 1 and "${W.results.failed.wire}" 0, Delivered 3, Handed over, no receipt yet ${seeded.expected.handedOver - 4}`,
+    postedBad.status === 200 && !!rs && rs.rows.failed?.value === "1" && rs.failed.length === 2 && rs.failed[0].label === W.results.failed.wire && rs.failed[0].count === "0"
+      && rs.failed[1].label === W.results.failed.receipt && rs.failed[1].count === "1" && rs.rows.delivered?.value === "3" && rs.rows.handedOver?.value === String(seeded.expected.handedOver - 4),
+    JSON.stringify(rs && { failed: rs.failed, delivered: rs.rows.delivered?.value, handedOver: rs.rows.handedOver?.value, status: postedBad.status }));
+  // two of the people stop by their own link — the opt-out page's path — and the page reads it. ⭐ The stop count is kept for a
+  // short time per campaign (the results' walk is the one expensive figure — campaign-results.ts), so the page is asked again
+  // once that time has passed; a stop is never read stale for longer.
+  const stoppedNow = await seedLive(`stop=${encodeURIComponent(seeded.campaignId)}&n=2`);
+  await wait(W.results.linkTtlMs + 1500);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector(SEL.blockResults, { timeout: 60000 }).catch(() => {});
+  await wait(800);
+  rs = await readResults(page);
+  ok(`${name} · RESULTS · two people stopped by their own link after the message: "${W.results.rows.stoppedByLink.label}" 2`,
+    stoppedNow.stopped === 2 && !!rs && rs.rows.stoppedByLink?.value === "2" && rs.rows.stoppedByLink.label === W.results.rows.stoppedByLink.label && !rs.rows.stoppedByLink.unread,
+    JSON.stringify({ stop: stoppedNow, row: rs?.rows.stoppedByLink }));
+  ok(`${name} · RESULTS · no money word for GROWTH on the whole page, results included`, !/TZS/.test(await mainText(page)));
+  await fitCheck(page, name, "run-results-final");
+  await stateShot(page, name, "run-results-final", W.results.rows.stoppedByLink.label, SEL.blockResults);
   // MAKE A COPY — a toast, then the composer
   await press(page, "copy");
   await page.waitForURL((u) => u.pathname === "/admin/campaigns/new", { timeout: 60000 }).catch(() => {});
@@ -739,6 +915,13 @@ async function stopMidRun(vp, viewport, i, id) {
   ok(`${name} · STOP · the driver STOPPED: no server-action call in eight quiet seconds`, calls.n === before, `${before} → ${calls.n}`);
   await fitCheck(page, name, "stopped");
   await stateShot(page, name, "run-stopped", "people were not messaged");
+  // ⭐ U48a · a campaign stopped before it sent anything: nothing handed over, so no honesty line; everybody "Stopped before sending"
+  const xr = await readResults(page);
+  ok(`${name} · STOP · RESULTS · "${W.results.rows.stopped.label}" ${seeded.people} — the headline's figure — Delivered 0, nothing handed over, and no honesty line (nothing to caution about)`,
+    !!xr && xr.rows.stopped?.value === String(seeded.people) && xr.rows.stopped.label === W.results.rows.stopped.label && !xr.rows.waiting && xr.rows.delivered?.value === "0"
+      && xr.rows.handedOver?.value === "0" && !xr.rows.noReceipt && xr.honesty.length === 0,
+    JSON.stringify(xr && { rows: Object.fromEntries(Object.entries(xr.rows).map(([k2, v]) => [k2, v.value])), honesty: xr.honesty }));
+  await stateShot(page, name, "run-stopped-results", W.results.rows.stopped.label, SEL.blockResults);
   await stateShot(page, name, "run-stopped-figures", W.kpi.handedOver.label, SEL.blockProgress);
   await ctx.close();
 }
