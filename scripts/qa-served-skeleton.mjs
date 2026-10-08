@@ -58,6 +58,13 @@
  * ⭐ NORMALISATIONS, ALWAYS ON (those shell-skeleton.py carried, :31-48, plus the server's own address):
  *   · chunk hashes            a run of 8+ hex digits in a /_next/static/ path, its %2F-encoded form, or a
  *                             next_static/ precedence key → "~"
+ *   · Turbopack's dev chunk hashes   the 7 characters Turbopack's dev server writes before "._.js" / "._.css" in a
+ *                             chunk's name, in the same three places: src_app_page_tsx_1133eyd._.js →
+ *                             src_app_page_tsx_~._.js. They are not hex ("0c.3d1v", "050~h13", "0b3_sbz"), so the rule
+ *                             above never read them, and they change with every server start: S7 WP1's calibration
+ *                             null pair (2026-10-08, two fresh servers at b644717d) differed in head and preloads in 13
+ *                             of its 14 cells on these alone. Exactly 7, and only right before "._.": a wider run would
+ *                             eat the module's own name ("…_tsx_1133eyd"), which is a real difference.
  *   · ?dpl=                   Next's asset query (next/dist/server/app-render/get-asset-query-string.js): ?dpl=… →
  *                             ?dpl=~, and its dev twin ?v=<the request's timestamp>, which `next dev --webpack` puts on
  *                             every stylesheet and which differs between two requests to ONE server → ?v=~
@@ -299,6 +306,8 @@ function scriptKind(el) {
 const BASE_NORMS = [
   ["chunk hashes", (s) => s.replace(/(\/_next\/static\/|%2F_next%2Fstatic%2F|next_static\/)([^"'\s)?#&]*)/gi,
     (m, p, rest) => p + rest.replace(/(^|[^0-9A-Za-z])[0-9a-f]{8,}(?![0-9A-Za-z])/g, "$1~"))],
+  ["Turbopack's dev chunk hashes", (s) => s.replace(/(\/_next\/static\/|%2F_next%2Fstatic%2F|next_static\/)([^"'\s)?#&]*)/gi,
+    (m, p, rest) => p + rest.replace(/_[0-9a-z._~-]{7}(\._\.(?:js|css))(?![0-9A-Za-z])/g, "_~$1"))],
   ["?dpl=", (s) => {
     const t = s.replace(/([?&](?:amp;)?)dpl=[^"'&\s#]*/g, "$1dpl=~");
     return /\/_next\/static\//.test(t) ? t.replace(/([?&](?:amp;)?)v=\d+/g, "$1v=~") : t;
@@ -778,6 +787,7 @@ function synth(v, { inline = false } = {}) {
     `<link rel="stylesheet" href="/_next/static/chunks/%5Broot-of-the-server%5D__${v.hash}._.css?v=${v.ts}" data-precedence="next_static/chunks/[root-of-the-server]__${v.hash}._.css"/>`,
     `<link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/src_components_layout_shell-lazy_tsx_${v.hash}._.js?dpl=${v.dpl}"/>`,
     `<script src="/_next/static/chunks/main-app-${v.hash16}.js?dpl=${v.dpl}" async=""></script>`,
+    `<script src="/_next/static/chunks/src_app_page_tsx_${v.tp}._.js" async=""></script>`,
     `<link rel="expect" href="#${v.rid}" blocking="render"/><title>50pick</title><meta name="description" content="Pick what happens next"/>`,
     `<meta property="og:url" content="https://www.50pick.tz/"/><meta property="og:image" content="http://localhost:${v.port}/og/og-1200x630.png"/>`,
     `<link rel="canonical" href="https://www.50pick.tz/"/></head><body class="font-sans antialiased"><div hidden=""><!--$--><!--/$--></div>`,
@@ -797,8 +807,8 @@ function synth(v, { inline = false } = {}) {
 function selfTest() {
   const rows = [];
   const ok = (field, name, cond, detail = "") => rows.push({ field, name, ok: !!cond, detail });
-  const NA = { hash: "0a1b2c3d", hash16: "0a1b2c3d4e5f6071", dpl: "dpl_A1", ts: "1700000000001", rid: "_R_1a_", avatar: "cm1x9k2", seg: "0", bnd: "0", port: "3041", mkt: "ab12cd34ef", time: "5<!-- --> min" };
-  const NB = { ...NA, hash: "9f8e7d6c", hash16: "9f8e7d6c5b4a3921", dpl: "dpl_B2", ts: "1700000099999", rid: "_R_9z_", avatar: "cmq4w2e", seg: "3", bnd: "2", port: "3042" };
+  const NA = { hash: "0a1b2c3d", hash16: "0a1b2c3d4e5f6071", dpl: "dpl_A1", tp: "1133eyd", ts: "1700000000001", rid: "_R_1a_", avatar: "cm1x9k2", seg: "0", bnd: "0", port: "3041", mkt: "ab12cd34ef", time: "5<!-- --> min" };
+  const NB = { ...NA, hash: "9f8e7d6c", hash16: "9f8e7d6c5b4a3921", dpl: "dpl_B2", tp: "0c.3d1v", ts: "1700000099999", rid: "_R_9z_", avatar: "cmq4w2e", seg: "3", bnd: "2", port: "3042" };
   const A = synth(NA), B = synth(NB);
   const ALL = new Set(Object.keys(EXTRAS));
   const MODES = [
@@ -836,6 +846,14 @@ function selfTest() {
     // ?v= is Next's dev cache-buster only on a /_next/static/ asset; anywhere else it is the product's own query.
     const feed = (n) => ({ ...A, html: A.html.replace("</head>", `<link rel="alternate" href="/feed.xml?v=${n}"/></head>`) });
     ok("null", "N.4 a ?v= outside /_next/static/ is never normalised", fieldsOf(feed(1), feed(2), { main: true }) === "head", fieldsOf(feed(1), feed(2), { main: true }));
+  }
+  {
+    // Turbopack's dev hash is read as noise; the module's NAME in front of it is not.
+    const renamed = { ...B, html: B.html.replace("src_app_page_tsx_", "src_app_pages_tsx_") };
+    const f = fieldsOf(A, renamed, { main: true });
+    ok("null", "N.5 a Turbopack dev chunk whose module name changes is still a difference — only the 7-character hash is noise", f === "head", f);
+    const tilde = { ...B, html: B.html.replace(`_${NB.tp}._.js`, "_050~h13._.js") };
+    ok("null", "N.6 a hash holding '~' (as Turbopack's do) is read as the same noise", fieldsOf(A, tilde, { main: true }) === "(none)", fieldsOf(A, tilde, { main: true }));
   }
   for (const name of [...BASE_NORMS.map(([n]) => n), ...ID_NORMS]) {
     const f = fieldsOf(A, B, { main: true, without: new Set([name]) });
