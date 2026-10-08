@@ -2122,6 +2122,13 @@ fixed, and its S7 claims are strict since:
   exact model). `spendableBalance` takes them off at today's price (the measured one when there is one, never below 0)
   before `creditVerdict` judges the slice, Start and Resume read the credit the same way (so a Resume never lets through
   what the next slice would pause at once), and the pause's record names the reading and what was taken off it.
+  ⭐ Its re-review (the same night; 75,000 seeded credit checks, no under-count but one hole): a chunk is noted at the ASK and
+  withdrawn only when it certainly never left (a throw before the wire, the gateway's own refusal), so a reading taken while
+  it is in flight counts it; the sends are kept as long as the reading in use may not hold them (a reading reused for a
+  minute after a lost reply — the hole), never longer than a reading lives; the bookkeeping never fails a send (the OTP
+  rail); the window is capped at 10 minutes. ⏳ Owed: the words when a pause is the window's ("wait a minute, then Resume"),
+  the reading and the pending in the refusal's record, a monotonic clock beside `at`, and — better than any window — what is
+  handed over and still without a receipt (Blackball bills per delivered message), once the real lag is measured.
 Held by `test:marketing-engine` S41 (a shilling under the line, nobody owed: DONE), S42 and F17 (a measured TZS 8 on both
 sides of the line; plants R-S41, R-S42, R-S42b, R-S27d, R-F17, R-F10c), `test:sms-cost-guard` §12 (the window: counted,
 aged out, ambiguous counted, refused not, two segments two, billing at acceptance; six in-place anchors) and the dry-fire's
