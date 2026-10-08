@@ -290,8 +290,9 @@ function schemaModel(schema: string, name: string): string {
   const end = schema.indexOf("\n}", at);
   return end < 0 ? "" : schema.slice(at, end + 2);
 }
-/** Prisma comments (`//` and `///`) out of one line. */
-const uncomment = (line: string) => line.replace(/\/\/.*$/, "");
+/** Prisma comments (`//` and `///`) out of one line — through the house's ONE stripper (`decomment`, which also keeps a
+ *  `//` inside a string), never a private regex (`test:decomment` 2.1). */
+const uncomment = (line: string) => decomment(line);
 /** The values of `enum X { … }` in declared order. */
 function schemaEnum(schema: string, name: string): string[] {
   const m = new RegExp(`\\benum ${name} \\{([^}]*)\\}`).exec(schema);
