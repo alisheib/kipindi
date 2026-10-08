@@ -31,6 +31,12 @@ then: "the contacts screen"):
     import-done, and the dev seed POST /api/dev-test/marketing-contacts-seed?u30=1.
 
 ▶ NOW: C1 (this file, the claim) → C2, the audit of what is live on the screen today.
+
+⭐ WORK IN PROGRESS IS NEWER THAN THIS COPY. Until the importer lands on main, the lane's plan, its design (§4, the
+  decisions S15-1…9) and its RESUME AT live on the branch `contacts-import` (origin) — read THIS FILE THERE:
+  `git fetch origin && git show origin/contacts-import:docs/CONTACTS-SCREEN-PLAN.md`. The builders' unfinished files
+  are on `contacts-import-build` once pushed. ⛔ Do not start the importer from the old specs (U30–U32.md): they
+  predate the code and the final rule; §4 on that branch replaces them.
 ```
 
 ## §1 — STEPS (each its own commit, push and live proof)
