@@ -18,9 +18,11 @@
  *   · the ledger (decision 6): every chargeable send counted, and a refusal to count beyond the cap of six.
  *
  * ⛔ NOTHING HERE WRITES TO A DATABASE, SENDS AN SMS OR READS A SECRET. The only file it writes is the gitignored ledger.
- * ⛔ This file imports the repo's pure modules by their `.ts` paths, so the tools run through `tsx` (the `ops:` keys).
+ * ⛔ This file imports the repo's pure modules by their `.ts` paths, so the tools run through `tsx` (the `ops:` keys) — and the
+ * tools load it by a DYNAMIC import, after `marketing-u52a-boot.mjs` has rewritten the database address to the public proxy and
+ * checked the working directory (a static import is evaluated first; see that file).
  */
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
@@ -165,12 +167,49 @@ function looksLikeTzNumber(d) {
   return null;
 }
 
+const BS = String.fromCharCode(92);
+const DIGIT_LIKE = new RegExp(`[${BS}p{Nd}${BS}p{No}]`, "gu");
+const IS_ND = new RegExp(`^${BS}p{Nd}$`, "u");
+
+/**
+ * Any Unicode decimal digit (Devanagari, Thai, Arabic-Indic, mathematical …) and any compatibility digit (subscript, circled, full-
+ * width) as the ASCII digit it stands for, so a number written in another script is read as the number it is. A decimal digit's
+ * value is its place in its run of ten (the Unicode blocks are contiguous tens). Text with no character beyond ASCII is untouched.
+ */
+function asciiDigits(s) {
+  if (![...s].some((ch) => ch.codePointAt(0) > 127)) return s;
+  return s.replace(DIGIT_LIKE, (c) => {
+    const folded = c.normalize("NFKD");
+    if (/^[0-9]+$/.test(folded)) return folded;
+    if (!IS_ND.test(c)) return c;
+    const cp = c.codePointAt(0);
+    let start = cp;
+    while (start > 0 && IS_ND.test(String.fromCodePoint(start - 1))) start -= 1;
+    return String((cp - start) % 10);
+  });
+}
+
+/** Up to three characters that are neither a letter nor a digit between two digits: a space, a dash, a slash, a dot, a tab, a zero-width mark. */
+const SEPARATORS = "[^A-Za-z0-9]{0,3}";
+
+/**
+ * ⭐ A NUMBER THE TOOL WAS GIVEN, in ANY spelling: its nine national digits with up to three non-alphanumerics between any two
+ * of them and NO word boundary (`772.619.619`, `7 7 2 - 6 1 9 / 6 1 9`, `x772619619y`, a zero-width mark after each digit), and
+ * the prefix in front of it when there is one (`0`, `255`, `+255`, `00255`, `+255 (0)`). Only this one number's own digits can
+ * match, so nothing else is damaged.
+ */
+function keyPattern(key) {
+  const national = key.slice(3).split("").join(SEPARATORS);
+  const prefix = `(?:(?:[+]|00)?255${SEPARATORS}(?:[(]?0[)]?${SEPARATORS})?|0${SEPARATORS})?`;
+  return new RegExp(prefix + national, "g");
+}
+
 /**
  * ⛔ NO WHOLE NUMBER LEAVES A TOOL. Every digit group that reads as a Tanzanian mobile number — however it is spelled
  * (`+255 772 619 619`, `0772-619-619`, `772619619`, full-width or Arabic-Indic digits), and two of them side by side — is
  * replaced with `[number]`. A bare 9- or 10-digit run inside a longer word (a reference, an id) is left alone: only a
- * `255…` run, which no id spells, is taken out wherever it stands. `keys` are the numbers the tool was given: their exact
- * digit strings go too, whatever stands around them.
+ * `255…` run, which no id spells, is taken out wherever it stands. `keys` are the numbers the tool was given: those are taken
+ * out FIRST, in any spelling at all (`keyPattern`), before the generic pass and whatever stands around them.
  */
 export function scrubNumbers(text, keys = []) {
   let s = String(text);
@@ -178,9 +217,10 @@ export function scrubNumbers(text, keys = []) {
     s = s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xff10 + 48));
     s = s.replace(/[٠-٩۰-۹]/g, (c) => String.fromCharCode(48 + (c.charCodeAt(0) & 0xf)));
   }
+  s = asciiDigits(s);
   for (const k of keys) {
     if (typeof k !== "string" || !/^255[67][0-9]{8}$/.test(k)) continue;
-    for (const v of [k, `0${k.slice(3)}`]) s = s.split(v).join(NUMBER);
+    s = s.replace(keyPattern(k), NUMBER);
   }
   const groups = [...s.matchAll(/[+]?[0-9]+/g)].map((m) => ({ start: m.index, end: m.index + m[0].length, digits: m[0].replace("+", "") }));
   const cuts = [];
@@ -329,6 +369,24 @@ const ms = (v) => {
   return iso === null ? Number.NaN : Date.parse(iso);
 };
 
+/**
+ * ⭐ THE CLOCK EVERY TIME RULE READS IS THE DATABASE'S. `dbNow` is `SELECT now()` from the same transaction as every other read;
+ * this machine's clock is only the fallback when that answer is missing (and the report says so). The switch's opening and closing
+ * times, the send window and the age band are all judged against it — the engine reads its own server's clock, never this PC's.
+ */
+export function clockOf(dbNow, machineMs) {
+  const db = ms(dbNow);
+  if (Number.isFinite(db)) return { nowMs: db, source: "database", skewMs: Number.isFinite(machineMs) ? machineMs - db : null };
+  return { nowMs: machineMs, source: "machine", skewMs: null };
+}
+
+/** The clock in one line: whose it is, and how far this machine's is from it (only when it is more than a few seconds). */
+export function clockLine(clock) {
+  if (clock.source !== "database") return "clock: THIS MACHINE'S - the database's clock could not be read, so every time rule below used it";
+  const skew = clock.skewMs === null ? 0 : Math.round(clock.skewMs / 1000);
+  return `clock: the database's (every time rule reads it)${Math.abs(skew) > 5 ? ` · this machine is ${Math.abs(skew)} s ${skew > 0 ? "ahead" : "behind"}` : ""}`;
+}
+
 /* ══ THE ONE READ-ONLY TRANSACTION ═══════════════════════════════════════════════════════════════════════════════════ */
 
 export class ReadOnlyRefused extends Error {
@@ -342,6 +400,9 @@ export class ReadOnlyRefused extends Error {
  * ⛔ READ ONLY BY CONSTRUCTION. One interactive transaction; its FIRST statement is `SET TRANSACTION READ ONLY`, the second
  * reads the setting back, and nothing runs unless the database says `on` — a write would then be refused by the database
  * itself. `body(tx)` gets the transaction handle. Every other statement either tool issues is a SELECT.
+ * ⭐ REPEATABLE READ: the dozen reads of one run see ONE snapshot, so a row that changes while the tool is reading (a campaign
+ * finishing, a receipt landing) cannot make the picture contradict itself. Prisma issues that `SET TRANSACTION ISOLATION LEVEL`
+ * first; `SET TRANSACTION READ ONLY` may follow it, because no query has run yet.
  */
 export async function readOnlyTransaction(prisma, body, opts = {}) {
   return prisma.$transaction(async (tx) => {
@@ -363,7 +424,7 @@ export async function readOnlyTransaction(prisma, body, opts = {}) {
       },
     };
     return body(reads, { readOnly: mode });
-  }, { timeout: opts.timeoutMs ?? 60_000, maxWait: opts.maxWaitMs ?? 10_000 });
+  }, { isolationLevel: "RepeatableRead", timeout: opts.timeoutMs ?? 60_000, maxWait: opts.maxWaitMs ?? 10_000 });
 }
 
 /* ══ THE THREE SYSTEMCONFIG RECORDS — ports of the app's own readers, pinned to them by the suite ═══════════════════ */
@@ -444,6 +505,17 @@ export function readSettings(value) {
 /** The saved consent-basis wordings (`marketing.wordings`), as the gate recognises an import attestation against them. */
 export function savedWordingsOf(value) {
   return savedBasisWordingsOf(readWordingHistories(value ?? null));
+}
+
+/**
+ * The NEWEST saved version of one wording (`source.phrase`, `adult.test` …) when its words are not blank, else null. A history
+ * the app's own reader cannot read in full reads as never saved (it fails closed, as the composer does). ⛔ Only the version
+ * number and the save date come back — never the words.
+ */
+export function newestWording(value, key) {
+  const history = readWordingHistories(value ?? null)[key];
+  const last = Array.isArray(history) && history.length > 0 ? history[history.length - 1] : null;
+  return last && typeof last.text === "string" && last.text.trim() !== "" ? { v: last.v, savedAt: toIso(last.savedAt) } : null;
 }
 
 /* ══ THE GATE'S CONSENT-AND-BASIS HALF ═══════════════════════════════════════════════════════════════════════════════ */
@@ -650,14 +722,56 @@ export function fileLedgerIo(path = defaultLedgerPath()) {
       writeFileSync(tmp, text, "utf8");
       renameSync(tmp, path);
     },
+    /** Where the file is and when it was last written — said by every run, so a ledger in the wrong checkout shows at once. */
+    where() {
+      try { return { path, mtimeMs: statSync(path).mtimeMs }; } catch { return { path, mtimeMs: null }; }
+    },
   };
 }
 
-export const serializeLedger = (ledger) => `${JSON.stringify(ledger, null, 2)}\n`;
+/** Every STRING in a value with any whole number taken out (the keys of an object are left alone: they are validated ids). */
+export function scrubStrings(value, keys = []) {
+  if (typeof value === "string") return scrubNumbers(value, keys);
+  if (Array.isArray(value)) return value.map((x) => scrubStrings(x, keys));
+  if (value !== null && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, scrubStrings(v, keys)]));
+  return value;
+}
+
+/** ⛔ The file text. Every string in the ledger passes the number wall once more on its way to the disk (a label, an outcome). */
+export const serializeLedger = (ledger) => `${JSON.stringify(scrubStrings(ledger), null, 2)}\n`;
 
 /** Read the ledger through an io. `{ ok: false }` when the file cannot be trusted — the caller refuses, never resets. */
 export function readLedger(io) {
   let text;
   try { text = io.read(); } catch { return { ok: false, why: "the ledger file could not be read" }; }
   return parseLedger(text);
+}
+
+/** The ledger file's ABSOLUTE path and last write, from the io (an in-memory io has neither). */
+export function ledgerWhere(io) {
+  try { return typeof io.where === "function" ? io.where() : { path: null, mtimeMs: null }; } catch { return { path: null, mtimeMs: null }; }
+}
+
+/** The one line both tools print on every run: where the ledger is and when it was last written. */
+export function ledgerFileLine(io) {
+  const w = ledgerWhere(io);
+  const state = w.mtimeMs === null || w.mtimeMs === undefined ? "not present" : `last written ${fmtEat(w.mtimeMs)} EAT`;
+  return `ledger file: ${w.path ?? "(in memory)"} · ${state}`;
+}
+
+/**
+ * ⭐ A LEDGER FILE IS CREATED ONLY ON PURPOSE. A missing file means "no send has been counted yet" ONLY when the person running the
+ * tool says so (`--new-ledger`: the drive's first runs, before the first send). Any later, a missing file means the counts were lost
+ * or this is another checkout — and a drive restarted from zero would send past the cap. The reverse is refused too: `--new-ledger`
+ * over a ledger that exists says the drive has not begun when it has. `read` is `readLedger(io)`.
+ */
+export function ledgerGate(read, newLedger) {
+  if (!read.ok) return { ok: false, kind: "untrusted", why: `the ledger cannot be trusted (${read.why}) - move it aside by hand; it is never reset for you` };
+  if (!read.existed && newLedger !== true) {
+    return { ok: false, kind: "missing", why: "there is no ledger file - give --new-ledger on the drive's first runs (before the first send) and never after: a ledger that is missing LATER means the counts were lost or this is another checkout, and the drive must STOP" };
+  }
+  if (read.existed && newLedger === true) {
+    return { ok: false, kind: "exists", why: "--new-ledger was given but a ledger file already exists (the drive has begun) - leave the flag out" };
+  }
+  return { ok: true, kind: read.existed ? "existing" : "new", used: ledgerTotal(read.ledger) };
 }

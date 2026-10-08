@@ -52,8 +52,9 @@ process.env.OTP_PEPPER ??= "u52a-test-pepper-0123456789";
 process.exitCode = 1;
 
 import { readFileSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
+import { join, dirname, isAbsolute } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { decomment } from "./lib/decomment.mts";
 
@@ -61,6 +62,7 @@ const PROVE_RED = process.argv.includes("--prove-red");
 
 const W = await import("./lib/marketing-u52a-world.mts");
 const { LIB, PRE, EV } = W;
+const BOOT = await import("./lib/marketing-u52a-boot.mjs");
 // The app's own readers and gate — the ports are held to these (P6). Imported AFTER the database variables above are gone.
 const LIVE = await import("../src/lib/server/marketing/live-switch.ts");
 const OUTREACH = await import("../src/lib/server/marketing/outreach-record.ts");
@@ -84,34 +86,37 @@ const FS_WRITE = ["writeFile", "Sync"].join("");
 /* ══ THE LABELS — each once, so a red case names exactly the claims it must turn red ═════════════════════════════════ */
 
 const L = {
-  p0: "P0 · CONTROLS — the good world is GO on all 17 rows in ROW_IDS order (the control row n/a without a control number, GO with an active stop) and exits 0; every usage error (no --test, no --origin, a bad number, the same number twice, a plain-http origin, a value-less or unknown option, --sends 7, an extra word) exits 2 with NOTHING read and the typed text never echoed; the masks print as +255••••NN",
+  p0: "P0 · CONTROLS — the good world is GO on all 18 rows in ROW_IDS order (the control row n/a without a control number, GO with an active stop) and exits 0; every usage error (no --test, no --origin, a bad number, the same number twice, a plain-http origin, a value-less or unknown option, a value on --new-ledger, --sends 7, an extra word) exits 2 with NOTHING read and the typed text never echoed; the masks print as +255••••NN",
   p1a: "P1a · ⛔ THE ENGINE'S MIGRATIONS, BY NAME — one missing, one started and never finished, one rolled back with no good retry are each NO-GO on the migrations row alone (exit 1), naming the migration; a rolled-back row followed by its finished retry is GO",
-  p1b: "P1b · ⛔ THE SWITCH, THE SETTINGS AND THE WINDOW — an open switch is NO-GO on the switch row alone (its closing time printed); absent, expired and malformed rows read closed and GO; --expect-switch=open wants it open with 20+ minutes left; a settings record that cannot be read in full is NO-GO naming what it dropped, a saved one GO with its figures; outside the saved window is NO-GO on the window row alone",
-  p1c: "P1c · ⛔ THE WEB READS — an unset receipt secret, the console rail, an unconfigured rail, a credit that is low / stale / unknown / one shilling short are each NO-GO on their own row (the exact edge GO); a build other than --expect-dpl, an unreadable home page, a page naming no build are NO-GO on build (an asset's ?dpl= is read); /api/health not ready, not JSON, unreachable or silent past the timeout is NO-GO on health and on every row that needed it — and the tool returns within the timeout",
-  p1d: "P1d · ⛔ THE TEST NUMBER — no book row, an erased one, no list, a stop, a withdrawal, no consent, an account that is a minor / suspended / switched off, an earlier campaign each NO-GO on their own rows only; ⭐ the trap — a contact whose 18+ rested on an attestation row passes NOW and is NO-GO on test-cycle ('Start them again' replaces the newest row), while a covering list basis keeps both GO",
-  p1e: "P1e · ⛔ THE CONTROL AND THE LEDGER — a named control with no stop or only a lifted one is NO-GO on control; an active stop is GO; a full ledger, --sends past the room and an untrustworthy ledger file are NO-GO on ledger alone",
-  p2: "P2 · ⛔ NO WHOLE NUMBER IN ANYTHING PRINTED — across every pre-flight run of the suite, with a number planted in the list name, the source, the consent cache, the campaign id and status of an earlier campaign and the control's stop reason: no output line holds the test or control number in any spelling, a bare 9-digit national number or a +255/0 run",
+  p1b: "P1b · ⛔ THE SWITCH, THE SETTINGS AND THE WINDOW — an open switch is NO-GO on the switch row alone (its closing time printed); absent, expired and malformed rows read closed and GO; --expect-switch=open wants it open with 20+ minutes left; a settings record that cannot be read in full is NO-GO naming what it dropped, a saved one GO with its figures; outside the saved window is NO-GO on the window row alone (the window's end is exclusive: 20:00 sharp is outside, 19:59 inside); ⭐ every time rule reads the DATABASE's clock — a machine clock hours off changes nothing; ⭐ the SOURCE row — GO only while the newest saved source.phrase is not blank, and, while licence outreach is open, adult.test is saved too",
+  p1c: "P1c · ⛔ THE WEB READS — an unset receipt secret, the console rail, an unconfigured rail, a credit that is low / stale / unknown / one shilling short are each NO-GO on their own row (the exact edge GO); a build other than --expect-dpl, an unreadable home page, a page naming no build are NO-GO on build (an asset's ?dpl= is read); /api/health not ready, not JSON, unreachable or silent past the timeout is NO-GO on health and on every row that needed it — and the tool returns within the timeout; ⭐ every network call is a GET of the home page or of /api/health, and nothing else",
+  p1d: "P1d · ⛔ THE TEST NUMBER — no book row, an erased one, no list, a stop, a withdrawal, no consent, an account that is a minor / suspended / switched off / on the day of its 18th birthday, an earlier campaign row in ANY status each NO-GO on their own rows only; ⭐ THE DRIVE LIST HOLDS THE TEST NUMBER ALONE — a list of many members (or of an unknown size) is NO-GO on test-lists, one of exactly one member is GO and NAMED as the list campaign A must use, and a larger list the number is also on is named as never to pick; ⭐ the trap — a contact whose 18+ rested on an attestation row passes NOW and is NO-GO on test-cycle ('Start them again' replaces the newest row), while a covering list basis keeps both GO",
+  p1e: "P1e · ⛔ THE CONTROL AND THE LEDGER — a named control with no stop or only a lifted one is NO-GO on control; an active stop is GO; a full ledger, --sends past the room and an untrustworthy ledger file are NO-GO on ledger alone; ⭐ a ledger file that is MISSING is NO-GO unless --new-ledger says the drive has not begun, and --new-ledger over a ledger that exists is NO-GO",
+  p2: "P2 · ⛔ NO WHOLE NUMBER IN ANYTHING PRINTED — across every pre-flight run of the suite, with a number planted in the list name, the source, the consent cache, the campaign id and status of an earlier campaign and the control's stop reason: no output line holds the test or control number in any spelling, a bare 9-digit national number or a +255/0 run; ⭐ and the output filter ALONE (makeIo) takes a number the tool was given out of any line in every spelling the fuzz found — dots, slashes, tabs, zero-width marks, dashes, digits spaced one by one, next to a letter or a digit",
   p3: "P3 · ⛔ NOT RUN IS EXIT 2 — no DATABASE_URL, Railway's private host, a database that answers anything but `on` to the read-only read-back (nothing else is asked), and a read that throws (its message carrying the database address) each exit 2, and the address, password, host and user never reach the screen",
-  p4: "P4 · ⭐ THE TRANSACTION IS READ ONLY — in both tools the FIRST statement is `SET TRANSACTION READ ONLY`, the second the read-back, every other a SELECT (no write verb in any); the helper refuses to run the body unless the database says `on`",
-  p4s: "P4s · ⭐ READ ONLY, READ FROM THE SOURCES — the shared helper's first await is `SET TRANSACTION READ ONLY`, then its read-back, then the body; the one $transaction and the one $executeRaw are in it; neither tool has $transaction, $executeRaw, an Unsafe raw call or a create/update/upsert/delete call; every $queryRaw statement in all three files is a SELECT with no write verb",
-  p5: "P5 · ⛔ NO DATABASE ADDRESS ANYWHERE — across every run of the suite (the failing ones included) no output line holds the DATABASE_URL, its password, its host or its user; the sources never print process.env or DATABASE_URL (a truthiness test and the private-host test are the only uses)",
+  p4: "P4 · ⭐ THE TRANSACTION IS READ ONLY — in both tools the FIRST statement is `SET TRANSACTION READ ONLY`, the second the read-back, every other a SELECT (no write verb in any); the helper refuses to run the body unless the database says `on`; the one transaction is opened REPEATABLE READ (one snapshot for every read)",
+  p4s: "P4s · ⭐ READ ONLY, READ FROM THE SOURCES — the shared helper's first await is `SET TRANSACTION READ ONLY`, then its read-back, then the body; the one $transaction and the one $executeRaw are in it, with the REPEATABLE READ option; neither tool has $transaction, $executeRaw, an Unsafe raw call or a create/update/upsert/delete call; every $queryRaw statement in all three files is a SELECT with no write verb; the pre-flight never calls a write on the ledger, and its one network verb is GET",
+  p5: "P5 · ⛔ NO DATABASE ADDRESS ANYWHERE — across every run of the suite (the failing ones included) no output line holds the DATABASE_URL, its password, its host or its user; the sources never print process.env or DATABASE_URL (a truthiness test and the private-host test are the only uses); ⭐ and the output filter ALONE takes the database address, its password, its host and its user out of any line",
   p6a: "P6a · ⭐ THE SWITCH READER IS THE APP'S — over 30 stored values and instants the port answers the real readMarketingLiveSwitch's state, why, closing time and opening time",
   p6b: "P6b · ⭐ THE OUTREACH READER IS THE APP'S — over 16 stored values the port answers the real readLicenceOutreachRow's state, why and instant",
   p6c: "P6c · ⭐ THE SETTINGS READER IS THE APP'S — over 12 stored records the port answers the real readSettingsRow's fields (defaults filled) and its dropped list, and `readable` is the engine's rule",
   p6d: "P6d · ⭐ THE GATE'S CONSENT-AND-BASIS HALF IS THE REAL GATE'S — over 384 scenarios (a contact: stop × newest ledger row × licence record × book standing; an account: switch × newest row × record × age × status) the port clears and refuses exactly as mayReceiveMarketingSms does, with the same skip reason; the age band agrees with marketingAge",
-  p7: "P7 · every table and column the tools' SQL names exists in schema.prisma (or is _prisma_migrations's own), and every statement in the sources was run by this suite",
+  p7: "P7 · ⭐ THE SQL, NOT ONLY ITS NAMES — every table and column the tools' SQL names exists in schema.prisma (or is _prisma_migrations's own); every statement in the sources was run by this suite; every statement keeps its CONTRACT (the filters, the equalities, the ORDER BY and its direction: newest first where 'newest' is meant, the table-qualified seq); no bare ORDER BY name equals an AS alias of its own SELECT (PostgreSQL would read it as the OUTPUT column); and every call was BOUND to the right values (the number with its plus, the campaign asked about, the member lists' ids)",
   p8: "P8 · the migration list is held to the folder — each named migration is a directory of prisma/migrations, and every migration whose SQL names a marketing table is in the list",
-  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out",
-  e0: "E0 · CONTROLS — a good campaign A (the composer test + one delivered send) is PROVEN on --expect=delivered:test --expect-sends=2 and exits 0 with the ledger taking 2; a look has no verdict (exit 0, LOOK ONLY); no expectation and no look is exit 2; a campaign that is not there exits 1; the masks print as +255••••NN",
+  p9: "P9 · the wiring — ops:marketing-preflight and ops:marketing-campaign-evidence run their scripts through tsx, test:/red:marketing-preflight resolve to this suite, none of the four is on the predeploy chain, both tools exist, neither names a production address to default to, and the ledger lives at .qa-shots/marketing-setup/U52a/ledger.json which .gitignore keeps out; ⭐ run through npm exactly as the sheet prints them (npm run -s) a key prints no banner and no line that names a number; ⭐ every npm run in the spec's run sheet is `npm run -s` (npm's banner echoes the arguments, the typed number with them)",
+  e0: "E0 · CONTROLS — a good campaign A (the composer test + one delivered send) is PROVEN on --expect=delivered:test --expect-sends=2 and exits 0 with the ledger taking 2; a look has no verdict (exit 0, LOOK ONLY); no expectation and no look is exit 2; a campaign that is not there exits 1; a --label that holds a number (a run of five digits, or anything the number wall would change) is a usage error that names no digit; the masks print as +255••••NN",
   e1: "E1 · ⭐ THE DISCRIMINATION VERDICT AND ITS EXIT CODE (the plan's RED) — a good B (skipped suppressed, nothing on the wire) is PROVEN; with the GATE REMOVED (the stopped test number SENT) skipped:test FAILS and the exit is 1; a control SENT fails skipped:control; no row at all is not a refusal; a skip for another reason proves nothing; a refusal with a message on the wire fails; an unconfirmed or undelivered row fails sent / delivered; a wrong --expect-sends fails; the original pair sent:test + skipped:control passes only when both hold",
-  e2: "E2 · ⛔ A MESSAGE HANDED TO A NUMBER AFTER ITS STOP WAS IN FORCE is a violation by itself — exit 1 though the asker expected sent; a stop made after the message, and one lifted before it, are not; stopInForceAt reads the ledger's newest row at the instant and the Suppression row's interval",
+  e2: "E2 · ⛔ A MESSAGE HANDED TO A NUMBER AFTER ITS STOP WAS IN FORCE is a violation by itself — exit 1 though the asker expected sent, and exit 1 on a --look too (the RESULT line says VIOLATION); a stop made after the message, and one lifted before it, are not; stopInForceAt reads the ledger's newest row at the instant and the Suppression row's interval; an UNCONFIRMED row, or a message on a row that is not SENT, counts as handed over; `stopped` needs an active WITHDRAWN stop from the link made after the campaign's message, `resumed` needs the newest ledger row to be that yes",
   e3: "E3 · ⛔ NO WHOLE NUMBER, NAME OR SECRET IN THE EVIDENCE — with numbers planted in the skip detail, the error, the gateway's words, the receipt text, an audit payload, an actor id and a failure class, and a name in an audit payload: no line holds a number in any spelling, the payload name is hidden, and the masks are the repo's",
   e4: "E4 · what counts as a chargeable send — every message row except a FAILED one with no receipt (QUEUED, UNKNOWN, ACCEPTED, DELIVERED and a receipt-failed row count); the campaign's and the composer test's are counted apart and together",
   e5: "E5 · the slice timings — per claim: people, claim → hand-over, the gap to the previous claim, nothing handed over for a refused slice; and the evidence says in so many words that the engine RECORDS NO gate or send milliseconds; the claim's token is never printed",
   e6: "E6 · ⛔ THE STOP LINK ONLY UNDER ITS FLAG — without --show-stop-link no line holds the token or /s/ and no statement selects it; with it exactly one /s/<token> line for the test number, with its warning; the flag needs --test",
   e7: "E7 · ⛔ THE AUDIT ROWS THROUGH AN ALLOW-LIST — the officer's id shown, a name or free text hidden; and no statement of either tool selects ip, userAgent, a name, an e-mail, a hash, a message body or a note",
+  e8: "E8 · ⛔ THE STANDING CHECKS, asked or not — a recipient row with more than one message is a double send, and with --test given a message of the campaign or a composer test to a number that is NOT the test number is a violation (the SQL computes a yes/no, never the number): each is printed as VIOLATION, fails the proof and turns a look's exit to 1; a clean campaign prints both checks as clear",
   l1: "L1 · ⭐ THE LEDGER — the cap is six; a seventh is REFUSED: the ledger is not updated, the evidence says LEDGER REFUSES and exits 1; a re-run of the same campaign counts nothing twice and a lower later count never shrinks the entry; a ledger file that is not JSON, names another cap or holds a bad entry stops the run (exit 2) and is never reset; the file is written atomically at the gitignored path",
-  l2: "L2 · the pre-send check — the pre-flight's ledger row refuses a step whose sends would pass the cap (--sends, default 1) and --ledger [--sends=n] prints the table and exits 1 when they would not fit; it needs no database",
+  l2: "L2 · the pre-send check — the pre-flight's ledger row refuses a step whose sends would pass the cap (--sends, default 1) and --ledger [--sends=n] prints the table and exits 1 when they would not fit; it needs no database; the pre-flight only READS the ledger — not one write in any of its runs",
+  l3: "L3 · ⭐ THE LEDGER FILE IS CREATED ONLY ON PURPOSE, AND SAID EVERY RUN — a missing file stops the evidence (exit 2, nothing read, nothing written) and the --ledger table too unless --new-ledger says the drive has not begun; --new-ledger over a ledger that exists is refused; with it the first run writes the file; every run prints the ledger's ABSOLUTE path and when it was last written; no string reaches the file without the number wall (a label that slipped past the parser is scrubbed on its way to the disk)",
+  b1: "B1 · ⭐ BEFORE ANYTHING IS LOADED — both tools call the boot module first (the private Railway host is rewritten to the public proxy, the user and password and database kept, any other host untouched) and load the shared core by a DYNAMIC import, never a static one, and never @prisma/client or the app's store statically; run from a directory that is not the checkout (or has no tsconfig.json) each tool says ONE friendly line and exits 2 — not a stack from inside the module graph",
   s1: "S1 · the sources — both tools' reports are built only from allowed fields: no statement names a column outside the schema's, the report builders never print the raw rows, and the tools' headers name their exit codes",
 } as const;
 type Label = (typeof L)[keyof typeof L];
@@ -150,9 +155,16 @@ const SEEN: string[] = [];
 const STATEMENTS = new Map<string, string>();
 const PRE_STATEMENTS: string[][] = [];
 const EV_STATEMENTS: string[][] = [];
+/** Every run that reached the database: the values each statement was bound to, and the options its transaction was opened with. */
+const BIND_RUNS: Array<{ who: string; calls: import("./lib/marketing-u52a-world.mts").Call[]; ctx: import("./lib/marketing-u52a-world.mts").BindCtx; txOptions: unknown[] }> = [];
+/** Every network call the pre-flight made in any run, and every write it made to the ledger. */
+const FETCHES: Array<{ url: string; method: unknown }> = [];
+let PRE_LEDGER_WRITES = 0;
 
 type Impl = {
   lib: Record<string, unknown>;
+  /** The boot module's functions (the public proxy, the checkout check). */
+  boot: Record<string, unknown>;
   judge: unknown;
   parts: unknown;
   readFacts: unknown;
@@ -164,21 +176,27 @@ type Impl = {
   folders?: string[];
   /** A plant's patience for the network: when set, it replaces the one a claim asks for. */
   timeoutMs?: number;
+  /** A plant's wrapper around the stand-in network (between the tool and the recorder). */
+  fetchWrap?: import("./lib/marketing-u52a-world.mts").RunOpts["fetchWrap"];
+  /** A plant's rewrite of the values a statement is bound to. */
+  rebind?: import("./lib/marketing-u52a-world.mts").RunOpts["rebind"];
   /** Source texts (decommented) the source claims read. */
   sources: Sources;
 };
-type Sources = { lib: string; pre: string; ev: string; pkg: string; schema: string; gitignore: string; header: { pre: string; ev: string } };
+type Sources = { lib: string; boot: string; pre: string; ev: string; pkg: string; schema: string; gitignore: string; spec: string; header: { pre: string; ev: string } };
 
 const REAL_SOURCES: Sources = {
   lib: code("scripts/lib/marketing-u52a.mjs"),
+  boot: code("scripts/lib/marketing-u52a-boot.mjs"),
   pre: code("scripts/live/marketing-preflight.mjs"),
   ev: code("scripts/live/marketing-campaign-evidence.mjs"),
   pkg: rawRead("package.json"),
   schema: rawRead("prisma/schema.prisma"),
   gitignore: rawRead(".gitignore"),
-  header: { pre: rawRead("scripts/live/marketing-preflight.mjs").slice(0, 6000), ev: rawRead("scripts/live/marketing-campaign-evidence.mjs").slice(0, 6000) },
+  spec: rawRead("docs/marketing-specs/ENGINE-SPEC.md"),
+  header: { pre: rawRead("scripts/live/marketing-preflight.mjs").slice(0, 6500), ev: rawRead("scripts/live/marketing-campaign-evidence.mjs").slice(0, 6500) },
 };
-const REAL: Impl = { lib: { ...LIB }, judge: undefined, parts: undefined, readFacts: undefined, render: undefined, preParse: undefined, evParse: undefined, sources: REAL_SOURCES };
+const REAL: Impl = { lib: { ...LIB }, boot: { ...BOOT }, judge: undefined, parts: undefined, readFacts: undefined, render: undefined, preParse: undefined, evParse: undefined, sources: REAL_SOURCES };
 
 const tagOf = (text: string): string => {
   const m = /u52a:([a-z-]+)/.exec(text);
@@ -186,17 +204,21 @@ const tagOf = (text: string): string => {
 };
 
 async function pre(impl: Impl, w: ReturnType<typeof W.goodPreWorld>, o: Partial<import("./lib/marketing-u52a-world.mts").RunOpts> = {}) {
-  const r = await W.runPre(w, { lib: impl.lib, judge: impl.judge, parseArgs: impl.preParse, ...o, ...(impl.timeoutMs !== undefined ? { timeoutMs: impl.timeoutMs } : {}) });
+  const r = await W.runPre(w, { lib: impl.lib, judge: impl.judge, parseArgs: impl.preParse, fetchWrap: impl.fetchWrap, rebind: impl.rebind, ...o, ...(impl.timeoutMs !== undefined ? { timeoutMs: impl.timeoutMs } : {}) });
   SEEN.push(...r.lines);
   PRE_STATEMENTS.push(r.statements);
   for (const s of r.statements) { const t = tagOf(s); if (t) STATEMENTS.set(t, s); }
+  if (r.calls.length > 0) BIND_RUNS.push({ who: "pre-flight", calls: r.calls, ctx: r.bindCtx, txOptions: r.txOptions });
+  FETCHES.push(...r.fetchCalls);
+  PRE_LEDGER_WRITES += r.ledgerWrites;
   return r;
 }
 async function ev(impl: Impl, w: ReturnType<typeof W.evA>, argv: string[], o: Partial<import("./lib/marketing-u52a-world.mts").RunOpts> = {}) {
-  const r = await W.runEv(w, argv, { lib: impl.lib, parts: impl.parts, readFacts: impl.readFacts, render: impl.render, parseArgs: impl.evParse, ...o });
+  const r = await W.runEv(w, argv, { lib: impl.lib, parts: impl.parts, readFacts: impl.readFacts, render: impl.render, parseArgs: impl.evParse, rebind: impl.rebind, ...o });
   SEEN.push(...r.lines);
   EV_STATEMENTS.push(r.statements);
   for (const s of r.statements) { const t = tagOf(s); if (t) STATEMENTS.set(t, s); }
+  if (r.calls.length > 0) BIND_RUNS.push({ who: "evidence", calls: r.calls, ctx: r.bindCtx, txOptions: r.txOptions });
   return r;
 }
 
@@ -219,19 +241,72 @@ const reasonOf = (lines: string[], id: string): string => rowsOf(lines).get(id)?
  * changes the command's text, never the files, so one spawn per distinct command serves every run of the red control.
  */
 const SPAWNED = new Map<string, { status: number | null; out: string }>();
-function spawnKey(cmd: string, extra: string[]): { status: number | null; out: string } {
-  const memo = JSON.stringify([cmd, extra]);
+function spawnKey(cmd: string, extra: string[], cwd: string = ROOT): { status: number | null; out: string } {
+  const memo = JSON.stringify([cmd, extra, cwd]);
   const hit = SPAWNED.get(memo);
   if (hit) return hit;
   const parts = cmd.split(" ");
   const tsxCli = join(ROOT, "node_modules", "tsx", "dist", "cli.mjs");
-  const argv = parts[0] === "tsx" ? [tsxCli, ...parts.slice(1), ...extra] : [...parts.slice(1), ...extra];
+  const argv = parts[0] === "tsx" ? [tsxCli, ...parts.slice(1).map((p) => (cwd === ROOT || p.startsWith("-") ? p : join(ROOT, p))), ...extra] : [...parts.slice(1), ...extra];
   const env: Record<string, string> = { PATH: process.env.PATH ?? "", SESSION_SECRET: process.env.SESSION_SECRET ?? "", OTP_PEPPER: process.env.OTP_PEPPER ?? "" };
   if (process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
-  const r = spawnSync(process.execPath, argv, { cwd: ROOT, env, encoding: "utf8", timeout: 90_000 });
+  const r = spawnSync(process.execPath, argv, { cwd, env, encoding: "utf8", timeout: 90_000 });
   const done = { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
   SPAWNED.set(memo, done);
   return done;
+}
+
+/**
+ * Run a key THROUGH NPM, as the sheet prints it (`npm run -s <key> -- <args>`), or without -s as a control: the answer is what
+ * reaches the lead's screen — npm's own banner included, which echoes the command line and the typed number with it. The
+ * arguments are plain (no space, no quote): on Windows the command goes through the shell.
+ */
+const SPAWNED_NPM = new Map<string, { status: number | null; out: string }>();
+function spawnNpm(silent: boolean, key: string, extra: string[]): { status: number | null; out: string } {
+  const memo = JSON.stringify([silent, key, extra]);
+  const hit = SPAWNED_NPM.get(memo);
+  if (hit) return hit;
+  const win = process.platform === "win32";
+  const env: Record<string, string> = {};
+  for (const k of ["PATH", "Path", "PATHEXT", "SystemRoot", "windir", "ComSpec", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP", "HOME"]) {
+    if (process.env[k] !== undefined) env[k] = String(process.env[k]);
+  }
+  env.SESSION_SECRET = process.env.SESSION_SECRET ?? "";
+  env.OTP_PEPPER = process.env.OTP_PEPPER ?? "";
+  const words = ["run", ...(silent ? ["-s"] : []), key, "--", ...extra];
+  // on Windows npm is a .cmd file and goes through the shell as ONE command line (arguments here are plain words)
+  const r = win
+    ? spawnSync(["npm.cmd", ...words].join(" "), { cwd: ROOT, env, encoding: "utf8", timeout: 120_000, shell: true })
+    : spawnSync("npm", words, { cwd: ROOT, env, encoding: "utf8", timeout: 120_000 });
+  const done = { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+  SPAWNED_NPM.set(memo, done);
+  return done;
+}
+
+/**
+ * Every spelling of one number the reviewer's fuzz found getting past the first filter, and the plain ones — an INDEPENDENT list,
+ * written here: dots, slashes, underscores, runs of spaces, a no-break or thin space, a tab, en dashes, minus signs, a zero-width mark
+ * or a soft hyphen inside, digits spaced one by one, a bracketed trunk zero. (The separators are built from codes: no backslash.)
+ */
+function spellingsOf(key: string): string[] {
+  const n = key.slice(3);
+  const g = [n.slice(0, 3), n.slice(3, 6), n.slice(6)];
+  const zero = (s: string): string => `0${g.join(s)}`;
+  const ZW = String.fromCharCode(0x200b);
+  const SHY = String.fromCharCode(0xad);
+  const EN = String.fromCharCode(0x2013);
+  const MINUS = String.fromCharCode(0x2212);
+  const NBSP = String.fromCharCode(0xa0);
+  const THIN = String.fromCharCode(0x2009);
+  const TAB = String.fromCharCode(9);
+  return [
+    key, `+${key}`, n, `0${n}`, `00${key}`,
+    g.join(" "), `+255 ${g.join(" ")}`, `0${n.slice(0, 2)} ${n.slice(2, 5)} ${n.slice(5)}`, `0${n.slice(0, 2)}${n.slice(2, 5)} ${n.slice(5)}`,
+    zero("-"), zero("."), zero("/"), zero("_"), zero("  "), zero("   "), zero(NBSP), zero(THIN), zero(TAB), zero(EN), zero(MINUS),
+    `(0${n.slice(0, 2)}) ${n.slice(2, 5)} ${n.slice(5)}`, `+255 (0) ${g.join(" ")}`, `255-0${n}`, `+255${g[0]} ${g[1]}${g[2]}`,
+    `0${n.slice(0, 4)} ${n.slice(4)}`, `0${n.slice(0, 2)} ${n.slice(2, 4)} ${n.slice(4, 6)} ${n.slice(6, 8)} ${n.slice(8)}`,
+    `0 ${n.split("").join(" ")}`, `0${n.split("").join(ZW)}`, `0${g[0]}${ZW}${g[1]}${g[2]}`, `0${g[0]}${SHY}${g[1]}${g[2]}`,
+  ];
 }
 
 /** An INDEPENDENT detector of a whole number — written here, not borrowed from the code under test. */
@@ -239,9 +314,7 @@ const OWN_NUMBERS = [W.TEST.key, W.CONTROL.key, W.OTHER_KEY];
 function leakOf(text: string): string | null {
   const stripped = text.replace(new RegExp("[0-9]{14}_[a-z_]+", "g"), "migration").replace(new RegExp("sms_[0-9a-f]+", "g"), "ref");
   for (const key of OWN_NUMBERS) {
-    const national = key.slice(3);
-    const spellings = [key, `+${key}`, national, `0${national}`, `${national.slice(0, 3)} ${national.slice(3, 6)} ${national.slice(6)}`, `0${national.slice(0, 2)}${national.slice(2, 5)} ${national.slice(5)}`, `+255 ${national.slice(0, 3)} ${national.slice(3, 6)} ${national.slice(6)}`];
-    for (const s of spellings) if (stripped.includes(s)) return s.replace(new RegExp("[0-9]", "g"), "#");
+    for (const s of spellingsOf(key)) if (stripped.includes(s)) return s.replace(new RegExp("[0-9]", "g"), "#");
   }
   const generic = [
     new RegExp("[+]?255 ?[67][0-9]{8}"),
@@ -276,6 +349,9 @@ async function runAssertions(impl: Impl): Promise<void> {
   PRE_STATEMENTS.length = 0;
   EV_STATEMENTS.length = 0;
   STATEMENTS.clear();
+  BIND_RUNS.length = 0;
+  FETCHES.length = 0;
+  PRE_LEDGER_WRITES = 0;
 
   /* ── P0 · controls ── */
   await claim(L.p0, async () => {
@@ -299,6 +375,7 @@ async function runAssertions(impl: Impl): Promise<void> {
       ["sends past the cap", [`--test=${W.TEST.raw}`, `--origin=${W.ORIGIN}`, `--sends=7`]],
       ["a stray word", [`--test=${W.TEST.raw}`, `--origin=${W.ORIGIN}`, `stray`]],
       ["a bad switch", [`--test=${W.TEST.raw}`, `--origin=${W.ORIGIN}`, `--expect-switch=maybe`]],
+      ["a value on --new-ledger", [`--test=${W.TEST.raw}`, `--origin=${W.ORIGIN}`, `--new-ledger=yes`]],
     ];
     const refusals: string[] = [];
     for (const [name, argv] of bad) {
@@ -307,7 +384,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     }
     const typed = await pre(impl, W.goodPreWorld(), { argv: [`--test=0755 000 1`, `--origin=${W.ORIGIN}`] });
     const noEcho = !typed.lines.some((l) => l.includes("0755 000 1") || l.includes("7550001"));
-    return [g.code === 0 && ids.length === 17 && json(ids) === json(PRE.ROW_IDS) && allGo && cGo && masks && refusals.length === 0 && noEcho && g.lines.some((l) => l.startsWith("RESULT: GO")),
+    return [g.code === 0 && ids.length === 18 && json(ids) === json(PRE.ROW_IDS) && allGo && cGo && masks && refusals.length === 0 && noEcho && g.lines.some((l) => l.startsWith("RESULT: GO")),
       `exit ${g.code} · ${ids.length} rows in order ${json(ids) === json(PRE.ROW_IDS)} · all GO ${allGo} · with a control ${cGo} · masks ${masks} · refusals [${refusals.join("; ")}] · typed text not echoed ${noEcho}`];
   });
 
@@ -368,6 +445,41 @@ async function runAssertions(impl: Impl): Promise<void> {
     edge.now = Date.parse("2026-10-09T05:00:00.000Z");
     const rg = await pre(impl, edge);
     if (noGo(rg.lines).length !== 0) wrong.push(`08:00 EAT sharp: ${json(noGo(rg.lines))}`);
+    // ⭐ the window's END is exclusive, as the engine's: 20:00 sharp is outside, 19:59 inside
+    const endSharp = W.goodPreWorld();
+    endSharp.now = Date.parse("2026-10-09T17:00:00.000Z");
+    const rEnd = await pre(impl, endSharp);
+    if (json(noGo(rEnd.lines)) !== json(["window"])) wrong.push(`20:00 EAT sharp: ${json(noGo(rEnd.lines))}`);
+    const lastMinute = W.goodPreWorld();
+    lastMinute.now = Date.parse("2026-10-09T16:59:00.000Z");
+    const rLast = await pre(impl, lastMinute);
+    if (noGo(rLast.lines).length !== 0) wrong.push(`19:59 EAT: ${json(noGo(rLast.lines))}`);
+    // ⭐ every time rule reads the DATABASE's clock (the world's `now`), not this machine's (the `now` the tool is handed)
+    const lateMachine = Date.parse("2026-10-09T18:00:00.000Z");
+    const dbInside = await pre(impl, W.goodPreWorld(), { now: lateMachine });
+    if (noGo(dbInside.lines).length !== 0) wrong.push(`a machine clock at 21:00 EAT with the database at 10:30: ${json(noGo(dbInside.lines))}`);
+    if (!has(dbInside.lines, "clock: the database's") || !has(dbInside.lines, "this machine is")) wrong.push("the report does not say whose clock it used, and how far the machine's is");
+    const dbLate = W.goodPreWorld();
+    dbLate.now = lateMachine;
+    const rDbLate = await pre(impl, dbLate, { now: W.NOW });
+    if (json(noGo(rDbLate.lines)) !== json(["window"])) wrong.push(`the database at 21:00 EAT with a machine at 10:30: ${json(noGo(rDbLate.lines))}`);
+    const openOnTheirClock = W.goodPreWorld();
+    openOnTheirClock.config[swKey] = W.liveSwitchRow(90);
+    const rOpen = await pre(impl, openOnTheirClock, { now: W.NOW + 10 * 3600_000, argv: W.preArgv(["--expect-switch=open"]) });
+    if (noGo(rOpen.lines).length !== 0 || !reasonOf(rOpen.lines, "switch").includes("OPEN until")) wrong.push(`an open switch judged on a machine clock ten hours ahead: ${json(noGo(rOpen.lines))}`);
+    // ⭐ THE SOURCE ROW — the campaign's source line, and (licence outreach open) the typed-number test's 18+ sentence
+    const wordKey = LIB.KEY_WORDINGS as string;
+    const outreachKey = LIB.KEY_OUTREACH as string;
+    const version = (text: string, v = 1) => ({ v, text, savedAt: "2026-10-07T08:00:00.000Z", savedBy: "usr_owner_0001" });
+    const sourceOnly = { "source.phrase": W.SAVED_WORDINGS["source.phrase"] };
+    await check("no wordings saved at all", (w) => { delete w.config[wordKey]; }, ["source"], [], ["source", "no source line is saved"]);
+    await check("source.phrase saved blank", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [version("")] }; }, ["source"]);
+    await check("source.phrase newest version blank", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [version("A first line"), version("", 2)] }; }, ["source"]);
+    await check("source.phrase history unreadable", (w) => { w.config[wordKey] = { ...W.SAVED_WORDINGS, "source.phrase": [{ v: 2, text: "x" }] }; }, ["source"]);
+    await check("source saved, outreach closed, no adult.test", (w) => { w.config[wordKey] = sourceOnly; }, [], [], ["source", "adult.test not needed"]);
+    await check("outreach open, adult.test saved", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; }, [], [], ["source", "adult.test v1"]);
+    await check("outreach open, adult.test missing", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; w.config[wordKey] = sourceOnly; }, ["source"], [], ["source", "adult.test"]);
+    await check("outreach open, adult.test blank", (w) => { w.config[outreachKey] = W.RECORD_OPEN_OUTREACH; w.config[wordKey] = { ...sourceOnly, "adult.test": [version("")] }; }, ["source"]);
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -404,6 +516,11 @@ async function runAssertions(impl: Impl): Promise<void> {
     await check("health not JSON", (w) => { w.healthMode = "html"; }, four);
     await check("health unreachable", (w) => { w.healthMode = "throws"; }, four);
     await check("health 404", (w) => { w.healthStatus = 404; }, four);
+    // ⭐ every network call is a GET of the home page or of /api/health — nothing else (no POST, no other path)
+    const goodRun = await pre(impl, W.goodPreWorld());
+    const asked = goodRun.fetchCalls.map((c) => c.url).sort();
+    if (json(asked) !== json([`${W.ORIGIN}/`, `${W.ORIGIN}/api/health`].sort())) wrong.push(`the network calls were ${json(asked)}`);
+    if (goodRun.fetchCalls.length === 0 || goodRun.fetchCalls.some((c) => c.method !== "GET")) wrong.push(`a network call was not a GET: ${json(goodRun.fetchCalls.map((c) => c.method))}`);
     // ⛔ a silent network must not hold the tool: the read gives up at its timeout (60 ms here) — raced against a guard of 3 s
     const t0 = Date.now();
     const guard = await Promise.race([
@@ -431,6 +548,18 @@ async function runAssertions(impl: Impl): Promise<void> {
     await check("player: no book row", player, (w) => { w.contact = null; w.lists = []; }, ["test-book", "test-lists"]);
     await check("player: erased book row", player, (w) => { (w.contact as Record<string, unknown>).erased = true; }, ["test-book", "test-lists"]);
     await check("player: on no list", player, (w) => { w.lists = []; }, ["test-lists"]);
+    // ⭐ THE DRIVE LIST HOLDS THE TEST NUMBER ALONE — campaign A is "to a book list": every other member would be messaged
+    const manyOnly = await check("player: only on a list of 40", player, (w) => { w.lists = [{ ...w.lists[0], members: 40 }]; }, ["test-lists"]);
+    if (!reasonOf(manyOnly.lines, "test-lists").includes("must hold the test number alone")) wrong.push("a list of many does not say the drive list must hold the number alone");
+    await check("player: on a list of an unknown size", player, (w) => { w.lists = [{ ...w.lists[0], members: null }]; }, ["test-lists"]);
+    const bigList = { list_id: "lst_all_contacts_01", list_name: "All contacts", added_at: d(W.NOW - 86400_000), members: 150000, basis: null };
+    const oneAndBig = await check("player: on a list of one AND a big list", player, (w) => { w.lists = [{ ...w.lists[0], members: 1 }, bigList]; }, []);
+    const oneAndBigSays = reasonOf(oneAndBig.lines, "test-lists");
+    if (!(oneAndBigSays.includes("campaign A must use this list") && oneAndBigSays.includes("U52a drive list") && oneAndBigSays.includes("never pick") && oneAndBigSays.includes("All contacts"))) wrong.push(`a list of one beside a big one: the row says "${oneAndBigSays.slice(0, 140)}"`);
+    const twoSolo = await check("player: on two lists of one", player, (w) => { w.lists = [{ ...w.lists[0], members: 1 }, { ...w.lists[0], list_id: "lst_u52a_0002", list_name: "Second drive list", members: 1 }]; }, []);
+    if (!reasonOf(twoSolo.lines, "test-lists").includes("one of these lists")) wrong.push("two lists of one are not named as 'one of these lists'");
+    const soloRow = await check("player: the list of one is named", player, () => {}, []);
+    if (!reasonOf(soloRow.lines, "test-lists").includes("campaign A must use this list")) wrong.push("a list of one is not named as the list campaign A must use");
     await check("player: switch off", player, (w) => { (w.user as Record<string, unknown>).opt_in = false; }, ["test-consent"]);
     await check("player: a minor", player, (w) => { (w.user as Record<string, unknown>).dob = d(Date.parse("2015-01-01T00:00:00Z")); }, ["test-consent", "test-cycle"]);
     await check("player: no date of birth", player, (w) => { (w.user as Record<string, unknown>).dob = null; }, ["test-consent", "test-cycle"]);
@@ -440,7 +569,13 @@ async function runAssertions(impl: Impl): Promise<void> {
     await check("player: an old consent wording", player, (w) => { (w.latest as Record<string, unknown>).wording = "Send me product updates"; }, ["test-consent"]);
     await check("player: an active stop", player, (w) => { w.suppressions = [{ reason: "WITHDRAWN", via_link: true, created_at: d(W.NOW - 3600_000), lifted_at: null }]; }, ["test-consent"]);
     await check("player: only a lifted stop", player, (w) => { w.suppressions = [{ reason: "WITHDRAWN", via_link: true, created_at: d(W.NOW - 7200_000), lifted_at: d(W.NOW - 3600_000) }]; }, []);
-    await check("player: an earlier campaign holds it", player, (w) => { w.holds = [{ campaign_id: "cmp_old_campaign_01", status: "DONE" }]; }, ["test-fresh"]);
+    // an earlier campaign row in ANY status holds the number (a recipient row's statuses — not a campaign's)
+    for (const status of ["DELIVERED", "SENT", "SKIPPED", "PENDING", "HELD", "FAILED", "UNCONFIRMED"]) {
+      await check(`player: an earlier campaign row ${status} holds it`, player, (w) => { w.holds = [{ campaign_id: "cmp_old_campaign_01", status }]; }, ["test-fresh"]);
+    }
+    // an account on the day of its 18th birthday is NOT cleared: the gate's own age is within a day of the line (the boundary band)
+    await check("player: its 18th birthday is today", player, (w) => { (w.user as Record<string, unknown>).dob = d(Date.parse("2008-10-09T00:00:00Z")); }, ["test-consent", "test-cycle"]);
+    await check("player: 18 since days", player, (w) => { (w.user as Record<string, unknown>).dob = d(Date.parse("2008-10-06T00:00:00Z")); }, []);
     await check("contact: nothing wrong (covering list basis)", contact, () => {}, []);
     await check("contact: no cover", contact, (w) => { w.lists[0].basis = null; }, ["test-consent", "test-cycle"]);
     await check("contact: cover revoked", contact, (w) => { (w.lists[0].basis as Record<string, unknown>).revoked = true; }, ["test-consent", "test-cycle"]);
@@ -452,7 +587,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     await check("contact: an active stop", contact, (w) => { w.suppressions = [{ reason: "OPERATOR", via_link: false, created_at: d(W.NOW - 3600_000), lifted_at: null }]; }, ["test-consent"]);
     // ⭐ THE TRAP — 18+ resting on an import attestation row, with no covering basis
     const attested = (w: World) => {
-      w.config[LIB.KEY_WORDINGS as string] = { "basis.OWN_FORM": [{ v: 1, text: "This person agreed on a 50pick form.", savedAt: "2026-10-01T08:00:00.000Z", savedBy: "usr_owner_0001" }], "adult.consent": [{ v: 1, text: "They told us they are 18 or older.", savedAt: "2026-10-01T08:00:00.000Z", savedBy: "usr_owner_0001" }] };
+      w.config[LIB.KEY_WORDINGS as string] = { ...W.SAVED_WORDINGS, "basis.OWN_FORM": [{ v: 1, text: "This person agreed on a 50pick form.", savedAt: "2026-10-01T08:00:00.000Z", savedBy: "usr_owner_0001" }], "adult.consent": [{ v: 1, text: "They told us they are 18 or older.", savedAt: "2026-10-01T08:00:00.000Z", savedBy: "usr_owner_0001" }] };
       w.latest = { status: "GIVEN", source: "IMPORT", wording: "This person agreed on a 50pick form. They told us they are 18 or older.", recorded_by_officer: true, via_link: false, created_at: d(W.NOW - 5 * 86400_000) };
       w.lists[0].basis = null;
     };
@@ -486,7 +621,17 @@ async function runAssertions(impl: Impl): Promise<void> {
     await check("sends 0 on a full ledger", () => {}, [], [...ARGV_CONTROL, "--sends=0"], ledgerWith([3, 3]));
     await check("a ledger that is not JSON", () => {}, ["ledger"], ARGV_CONTROL, "not json at all");
     await check("a ledger naming another cap", () => {}, ["ledger"], ARGV_CONTROL, json({ v: 1, cap: 100, entries: {} }));
-    await check("an empty ledger", () => {}, [], ARGV_CONTROL, null);
+    // ⭐ a ledger file is created only on purpose: missing is NO-GO unless --new-ledger, and --new-ledger over an existing one is NO-GO
+    await check("an existing empty ledger, no flag", () => {}, [], ARGV_CONTROL);
+    await check("no ledger file and no flag (counts lost, or another checkout)", () => {}, ["ledger"], ARGV_CONTROL, null);
+    await check("no ledger file, --new-ledger (the drive has not begun)", () => {}, [], [...ARGV_CONTROL, "--new-ledger"], null);
+    await check("an existing ledger, --new-ledger (the drive has begun)", () => {}, ["ledger"], [...ARGV_CONTROL, "--new-ledger"]);
+    const lost = await pre(impl, withControl(), { argv: ARGV_CONTROL, ledgerText: null });
+    if (!(reasonOf(lost.lines, "ledger").includes("--new-ledger") && reasonOf(lost.lines, "ledger").includes("must STOP"))) wrong.push("a missing ledger does not say what to do");
+    const begun = await pre(impl, withControl(), { argv: [...ARGV_CONTROL, "--new-ledger"] });
+    if (!reasonOf(begun.lines, "ledger").includes("already exists")) wrong.push("--new-ledger over an existing ledger does not say why it is refused");
+    const fresh = await pre(impl, withControl(), { argv: [...ARGV_CONTROL, "--new-ledger"], ledgerText: null });
+    if (!reasonOf(fresh.lines, "ledger").includes("a NEW ledger")) wrong.push("a new ledger is not said to be new");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -500,7 +645,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     const off = await pre(impl, W.goodPreWorld(), { transactionMode: "off" });
     if (off.code !== 2 || off.statements.length !== 2 || !has(off.lines, "NOT RUN")) wrong.push(`read-back off: exit ${off.code}, ${off.statements.length} statements`);
     const boom = await pre(impl, W.goodPreWorld(), { throwOnQuery: new Error(`could not connect to server at ${W.DB_PIECES[2]} as ${W.DB_PIECES[3]} using ${W.DB_PIECES[0]} for ${W.TEST.key}`) });
-    if (boom.code !== 2 || !has(boom.lines, "NOT RUN") || !has(boom.lines, "[read: migrations]") || dbLeaks(boom.lines).length || leaksIn(boom.lines).length) wrong.push(`read failure: exit ${boom.code}, leaks ${dbLeaks(boom.lines).length + leaksIn(boom.lines).length}`);
+    if (boom.code !== 2 || !has(boom.lines, "NOT RUN") || !has(boom.lines, "[read: now]") || dbLeaks(boom.lines).length || leaksIn(boom.lines).length) wrong.push(`read failure: exit ${boom.code}, leaks ${dbLeaks(boom.lines).length + leaksIn(boom.lines).length}`);
     const evOff = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=sent:test"]), { transactionMode: "off" });
     if (evOff.code !== 2 || evOff.statements.length !== 2) wrong.push(`evidence read-back off: exit ${evOff.code}`);
     const evNoUrl = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=sent:test"]), { env: {} });
@@ -538,6 +683,12 @@ async function runAssertions(impl: Impl): Promise<void> {
     let handed = "?";
     await (impl.lib.readOnlyTransaction as typeof LIB.readOnlyTransaction)(W.fakePrisma({}, [], {}) as never, async (tx: Record<string, unknown>) => { handed = typeof tx.$executeRaw; return 1; });
     if (handed !== "undefined") wrong.push(`the body is handed a transaction with $executeRaw (${handed})`);
+    // ⭐ the ONE transaction is REPEATABLE READ: one snapshot for every read of the run, so a row that changes while the tool is
+    // reading cannot make its picture contradict itself
+    for (const [name, opened] of [["pre-flight", p.txOptions], ["evidence", e.txOptions]] as const) {
+      const first = opened[0] as { isolationLevel?: string } | undefined;
+      if (opened.length !== 1 || !first || first.isolationLevel !== "RepeatableRead") wrong.push(`${name}: the transaction was opened with ${json(opened)}`);
+    }
     return [wrong.length === 0, `wrong [${wrong.join("; ")}] · pre-flight ${p.statements.length} statements, evidence ${e.statements.length}`];
   });
 
@@ -561,6 +712,12 @@ async function runAssertions(impl: Impl): Promise<void> {
       }
       if (!src.includes("readOnlyTransaction(")) wrong.push(`${name} does not go through readOnlyTransaction`);
     }
+    if (!helper.includes('isolationLevel: "RepeatableRead"')) wrong.push("the helper does not open its transaction REPEATABLE READ");
+    // the pre-flight only READS the ledger, and asks the network with GET alone
+    if (new RegExp("ledgerIo[^;]{0,12}[.]write[(]").test(S.pre) || S.pre.includes("serializeLedger") || S.pre.includes("recordLedger")) wrong.push("the pre-flight writes (or builds a write of) the ledger");
+    const verbs = [...S.pre.matchAll(new RegExp('method: "([A-Z]+)"', "g"))].map((m) => m[1]);
+    if (verbs.length !== 1 || verbs[0] !== "GET") wrong.push(`the pre-flight's network verbs are ${json(verbs)}`);
+    if (S.pre.includes("body:")) wrong.push("the pre-flight sends a request body");
     const stmtRe = new RegExp("[$]queryRaw`([^`]*)`", "g");
     const verbRe = new RegExp("(^|[^A-Za-z_])(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY|MERGE|CALL|LOCK|SET)([^A-Za-z_]|$)");
     let statementsSeen = 0;
@@ -711,7 +868,11 @@ async function runAssertions(impl: Impl): Promise<void> {
       const mine = (impl.lib.ageBand as typeof LIB.ageBand)(dob, W.NOW);
       if (mine !== real && mine !== "boundary") ageDiffs.push(`${dob}: real ${real} · port ${mine}`);
     }
-    return [diffs.length === 0 && ageDiffs.length === 0 && scenarios.length === 384, `${scenarios.length} scenarios · ${diffs.length} differences [${diffs.slice(0, 3).join("; ")}] · age differences [${ageDiffs.join("; ")}]`];
+    // ⭐ the 36-hour band is real: a birthday within a day or two of the line reads `boundary` — never adult or minor — while the dates
+    // beyond it read as the app reads them (the port refuses the boundary where the gate would clear: stricter, said, never looser)
+    const bands: Array<[string | null, string]> = [["1990-01-01", "adult"], ["2008-10-06", "adult"], ["2008-10-08", "boundary"], ["2008-10-09", "boundary"], ["2008-10-10", "boundary"], ["2008-10-12", "minor"], ["2015-06-01", "minor"], [null, "unknown"], ["not a date", "unknown"]];
+    const bandWrong = bands.filter(([dob, want]) => (impl.lib.ageBand as typeof LIB.ageBand)(dob, W.NOW) !== want).map(([dob, want]) => `${dob}: not ${want}`);
+    return [diffs.length === 0 && ageDiffs.length === 0 && bandWrong.length === 0 && scenarios.length === 384, `${scenarios.length} scenarios · ${diffs.length} differences [${diffs.slice(0, 3).join("; ")}] · age differences [${ageDiffs.join("; ")}] · the band table is wrong for [${bandWrong.join("; ")}]`];
   });
 
   /* ── P7 · the SQL names ── */
@@ -729,11 +890,38 @@ async function runAssertions(impl: Impl): Promise<void> {
     models.set("_prisma_migrations", new Set(["migration_name", "finished_at", "rolled_back_at"]));
     // every statement in the SOURCES, tag and all (a template literal after $queryRaw), checked against the schema
     const statements = new Map<string, string>();
-    const stmtRe = new RegExp("[$]queryRaw" + String.fromCharCode(96) + "([^" + String.fromCharCode(96) + "]*)" + String.fromCharCode(96), "g");
+    const BT_ = String.fromCharCode(96);
+    // a template literal read WHOLE, nested templates and ${…} expressions included (the user lookup holds one: ${`+${testKey}`})
+    const templateAt = (src: string, from: number): string => {
+      let i = from;
+      let out = "";
+      while (i < src.length) {
+        const c = src[i];
+        if (c === BT_) return out;
+        if (c === "$" && src[i + 1] === "{") {
+          let depth = 1;
+          out += "${";
+          i += 2;
+          while (i < src.length && depth > 0) {
+            if (src[i] === BT_) { const inner = templateAt(src, i + 1); out += BT_ + inner + BT_; i += inner.length + 2; continue; }
+            if (src[i] === "{") depth++;
+            if (src[i] === "}") depth--;
+            out += src[i];
+            i++;
+          }
+          continue;
+        }
+        out += c;
+        i++;
+      }
+      return out;
+    };
     for (const src of [impl.sources.pre, impl.sources.ev]) {
-      for (const m of src.matchAll(stmtRe)) {
-        const tag = tagOf(m[1]);
-        if (tag) statements.set(`${tag}#${statements.size}`, m[1]);
+      const needle = "$queryRaw" + BT_;
+      for (let at = src.indexOf(needle); at >= 0; at = src.indexOf(needle, at + 1)) {
+        const text = templateAt(src, at + needle.length);
+        const tag = tagOf(text);
+        if (tag) statements.set(`${tag}#${statements.size}`, text);
       }
     }
     const bad: string[] = [];
@@ -741,14 +929,79 @@ async function runAssertions(impl: Impl): Promise<void> {
       const noLiterals = text.replace(new RegExp("'[^']*'", "g"), "''");
       const quoted = [...noLiterals.matchAll(new RegExp('"([A-Za-z_][A-Za-z0-9_]*)"', "g"))].map((m) => m[1]);
       const tables = [...new Set(quoted.filter((q) => models.has(q)))];
-      if (tables.length === 0) bad.push(`${key}: no table found`);
+      if (tables.length === 0 && key.split("#")[0] !== "now") bad.push(`${key}: no table found`);
       const columns = new Set(tables.flatMap((t) => [...(models.get(t) ?? [])]));
       for (const q of quoted) if (!models.has(q) && !columns.has(q)) bad.push(`${key}: "${q}" is neither a model nor a column of ${tables.join("/")}`);
     }
-    // every tag in the sources was run by this suite, except the one a fixture never reaches (a named person beyond the first 41 rows)
+    // every tag in the sources was run by this suite (the named person beyond the first 41 rows included: E1 drives it)
     const tagsInSources = new Set([...statements.keys()].map((k) => k.split("#")[0]));
-    const unexercised = [...tagsInSources].filter((t) => !STATEMENTS.has(t) && t !== "recipient-named");
-    return [bad.length === 0 && models.size > 60 && statements.size >= 22 && unexercised.length === 0, `${models.size} models · ${statements.size} statements in the sources · bad [${bad.slice(0, 4).join("; ")}] · never run [${unexercised.join(", ")}]`];
+    const unexercised = [...tagsInSources].filter((t) => !STATEMENTS.has(t));
+
+    // ⭐ THE CONTRACT — a statement can name only real tables and columns and still ask the wrong thing (the oldest row for the newest,
+    // another campaign, a number without its plus). Each tag keeps the fragments that make it the question it is for.
+    const ph = (e: string): string => "$" + "{" + e + "}";
+    const stopsFrom = `FROM "Suppression" WHERE "channel"::text = 'SMS' AND "category"::text = 'MARKETING' AND "identifier" = `;
+    const stops = (who: string): string => stopsFrom + ph(who);
+    const consent = (who: string, tail: string): string => `FROM "MessagingConsent" WHERE "channel"::text = 'SMS' AND "category"::text = 'MARKETING' AND "identifier" = ${ph(who)} ORDER BY "createdAt" DESC, "id" DESC LIMIT ${tail}`;
+    const inCampaign = (more: string): string => `FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignRecipient' AND m."targetId" IN (SELECT r."id" FROM "SmsCampaignRecipient" r WHERE r."campaignId" = ${ph("campaignId")})${more}`;
+    const CONTRACT: Record<string, { each: string[]; union?: string[] }> = {
+      now: { each: ["SELECT now() AS now"] },
+      migrations: { each: [`("finished_at" IS NOT NULL) AS finished, ("rolled_back_at" IS NOT NULL) AS rolled FROM "_prisma_migrations"`] },
+      config: { each: [`FROM "SystemConfig" WHERE "key" IN ('marketing.sms.live', 'marketing.sms.settings', 'marketing.outreach.licence', 'marketing.wordings')`] },
+      contact: { each: [`FROM "MarketingContact" WHERE "msisdn" = ${ph("testKey")}`, `COALESCE("sourceRef" = 'erasure', false) AS erased`] },
+      lists: { each: [`FROM "ContactListMember" m JOIN "ContactList" l ON l."id" = m."listId" WHERE m."contactId" = ${ph("facts.test.contact.id")} ORDER BY l."id"`, `(SELECT count(*)::int FROM "ContactListMember" x WHERE x."listId" = l."id") AS members`] },
+      basis: { each: [`("revokedAt" IS NOT NULL) AS revoked FROM "ContactListBasis" WHERE "listId" = ${ph("l.list_id")} ORDER BY "recordedAt" DESC, "id" DESC LIMIT 1`] },
+      suppression: { each: [`"liftedAt" AS lifted_at ${stopsFrom}`], union: [stops("testKey"), stops("controlKey")] },
+      ledger: { each: [consent("testKey", "1")] },
+      user: { each: [`FROM "User" WHERE "phoneE164" = ${ph(`${BT_}+${ph("testKey")}${BT_}`)}`] },
+      holds: { each: [`FROM "SmsCampaignRecipient" WHERE "msisdn" = ${ph("testKey")} ORDER BY "createdAt" LIMIT 20`] },
+      campaign: { each: [`FROM "SmsCampaign" WHERE "id" = ${ph("campaignId")}`] },
+      recipients: { each: [`FROM "SmsCampaignRecipient" WHERE "campaignId" = ${ph("campaignId")} ORDER BY "id" LIMIT 41`] },
+      "recipient-named": { each: [`FROM "SmsCampaignRecipient" WHERE "campaignId" = ${ph("campaignId")} AND "msisdn" = ${ph("key")}`] },
+      "recipient-counts": { each: [`FROM "SmsCampaignRecipient" WHERE "campaignId" = ${ph("campaignId")} GROUP BY 1, 2, 3 ORDER BY 1, 2, 3`] },
+      messages: { each: [`(m."msisdn" = ${ph("probeKey")}) AS to_test`, inCampaign(` ORDER BY m."createdAt", m."reference" LIMIT 201`)] },
+      "message-counts": { each: [inCampaign(" GROUP BY 1, 2")] },
+      "test-messages": { each: [`(m."msisdn" = ${ph("probeKey")}) AS to_test`, `FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignTest' AND m."targetId" = ${ph("campaignId")} ORDER BY m."createdAt", m."reference" LIMIT 20`] },
+      "test-message-counts": { each: [`FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignTest' AND m."targetId" = ${ph("campaignId")} GROUP BY 1, 2`] },
+      audit: { each: [`FROM "AuditLog" WHERE "targetType" = 'SmsCampaign' AND "targetId" = ${ph("campaignId")} ORDER BY "AuditLog"."seq" LIMIT 200`] },
+      "switch-audit": { each: [`FROM "AuditLog" WHERE "targetType" = 'SystemConfig' AND "targetId" = 'marketing.sms.live' ORDER BY "AuditLog"."seq" DESC LIMIT 8`] },
+      "person-suppression": { each: [`"liftedAt" AS lifted_at, COALESCE("liftedReason" LIKE 'optout:%', false) AS lifted_via_link ${stops("key")}`] },
+      "person-ledger": { each: [consent("key", "50")] },
+      token: { each: [`FROM "SmsCampaignRecipient" WHERE "campaignId" = ${ph("campaignId")} AND "msisdn" = ${ph("testKey")} AND "optOutToken" IS NOT NULL`] },
+    };
+    const squash = (s: string): string => s.split(NL).join(" ").split(CR).join(" ").split(String.fromCharCode(9)).join(" ").split(" ").filter((x) => x !== "").join(" ");
+    const contractBad: string[] = [];
+    const tagTexts = new Map<string, string[]>();
+    for (const [key, text] of statements) {
+      const tag = key.split("#")[0];
+      tagTexts.set(tag, [...(tagTexts.get(tag) ?? []), squash(text)]);
+    }
+    for (const tag of tagsInSources) if (!CONTRACT[tag]) contractBad.push(`${tag}: a statement with no contract`);
+    for (const [tag, rule] of Object.entries(CONTRACT)) {
+      const texts = tagTexts.get(tag) ?? [];
+      if (texts.length === 0) { contractBad.push(`${tag}: the statement is gone`); continue; }
+      for (const frag of rule.each) for (const t of texts) if (!t.includes(squash(frag))) contractBad.push(`${tag}: lacks «${frag.slice(0, 70)}…»`);
+      for (const frag of rule.union ?? []) if (!texts.some((t) => t.includes(squash(frag)))) contractBad.push(`${tag}: no statement has «${frag.slice(-40)}»`);
+    }
+    // the generic rule: a bare ORDER BY name must never equal an AS alias of its own SELECT (PostgreSQL reads it as the OUTPUT column)
+    const aliasBad: string[] = [];
+    for (const [key, text] of statements) {
+      const t = squash(text);
+      const aliases = new Set([...t.matchAll(new RegExp("[ )]AS ([a-z_][a-z0-9_]*)", "g"))].map((m) => m[1].toLowerCase()));
+      const at = t.indexOf(" ORDER BY ");
+      if (at < 0) continue;
+      const clause = t.slice(at + " ORDER BY ".length).split(" LIMIT ")[0];
+      for (const term of clause.split(",")) {
+        const bare = new RegExp('^"([A-Za-z_][A-Za-z0-9_]*)"( ASC| DESC)?$').exec(term.trim());
+        if (bare && aliases.has(bare[1].toLowerCase())) aliasBad.push(`${key.split("#")[0]}: ORDER BY "${bare[1]}" is also an AS alias`);
+      }
+    }
+    // every call was BOUND to the right values (the stand-in database answers whatever it is asked, so this is held here)
+    const bindBad = [...new Set(BIND_RUNS.flatMap((run) => W.checkBinds(run.calls, run.ctx).map((p) => `${run.who}: ${p}`)))];
+    const boundTags = new Set(BIND_RUNS.flatMap((run) => run.calls.map((c) => c.tag)));
+    const unbound = Object.keys(CONTRACT).filter((t) => !boundTags.has(t));
+    return [bad.length === 0 && models.size > 60 && statements.size >= 25 && unexercised.length === 0 && contractBad.length === 0 && aliasBad.length === 0 && bindBad.length === 0 && unbound.length === 0,
+      `${models.size} models · ${statements.size} statements in the sources · bad [${bad.slice(0, 4).join("; ")}] · never run [${unexercised.join(", ")}] · contract [${contractBad.slice(0, 3).join("; ")}] · alias [${aliasBad.join("; ")}] · bound values [${bindBad.slice(0, 3).join("; ")}] · never bound [${unbound.join(", ")}]`];
   });
 
   /* ── P8 · the migration list ── */
@@ -781,7 +1034,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     for (const [k, v] of Object.entries(want)) if (scripts[k] !== v) wrong.push(`${k} is "${scripts[k] ?? "missing"}"`);
     const chain = (scripts.predeploy ?? "").split("&&").map((x) => x.trim());
     for (const k of Object.keys(want)) if (chain.some((x) => x.includes(k))) wrong.push(`${k} is on the predeploy chain`);
-    for (const rel of ["scripts/live/marketing-preflight.mjs", "scripts/live/marketing-campaign-evidence.mjs", "scripts/lib/marketing-u52a.mjs", "scripts/lib/marketing-u52a-world.mts", "scripts/live/marketing-u52a-pg-probe.mts"]) {
+    for (const rel of ["scripts/live/marketing-preflight.mjs", "scripts/live/marketing-campaign-evidence.mjs", "scripts/lib/marketing-u52a.mjs", "scripts/lib/marketing-u52a-boot.mjs", "scripts/lib/marketing-u52a-world.mts", "scripts/live/marketing-u52a-pg-probe.mts"]) {
       try { rawRead(rel); } catch { wrong.push(`${rel} is missing`); }
     }
     const prod = new RegExp("https?://[A-Za-z0-9.-]*50pick[.]tz");
@@ -797,7 +1050,32 @@ async function runAssertions(impl: Impl): Promise<void> {
     }
     if (impl.lib.LEDGER_REL !== ".qa-shots/marketing-setup/U52a/ledger.json") wrong.push(`the ledger path is ${String(impl.lib.LEDGER_REL)}`);
     if (!impl.sources.gitignore.split(NL).some((l) => l.trim() === ".qa-shots/")) wrong.push(".qa-shots/ is not gitignored");
-    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+    // ⭐ THROUGH NPM, exactly as the sheet prints it (`npm run -s <key> -- <args>`): no banner and no line that names a number. npm's
+    // own banner echoes the command line — the typed number with it — which is why every command of the sheet says -s. (The control,
+    // without -s, is run for the record: it shows what the flag keeps off the screen.)
+    let bannerShowsNumber = "not run";
+    if (scripts["ops:marketing-preflight"]) {
+      const typed = [`--test=+${W.TEST.key}`, `--origin=${W.ORIGIN}`];
+      const quiet = spawnNpm(true, "ops:marketing-preflight", typed);
+      if (quiet.status !== 2 || !quiet.out.includes("no DATABASE_URL")) wrong.push(`npm run -s ops:marketing-preflight: exit ${quiet.status}, says "no DATABASE_URL" ${quiet.out.includes("no DATABASE_URL")}`);
+      const banner = quiet.out.split(NL).filter((l) => l.trim().startsWith(">"));
+      if (banner.length > 0) wrong.push(`npm run -s still printed ${banner.length} banner line(s)`);
+      if (leakOf(quiet.out) !== null) wrong.push("npm run -s printed a line that names a number");
+      bannerShowsNumber = String(leakOf(spawnNpm(false, "ops:marketing-preflight", typed).out) !== null);
+    }
+    // ⭐ every `npm run` of the spec's run sheet is `npm run -s`, and every command of the sheet goes through `railway run --service 50pick`
+    const spec = impl.sources.spec;
+    const from = spec.indexOf("✅ **AS BUILT — the run sheet (");
+    const to = spec.indexOf(NL + "## 5 · Shared rules");
+    const sheet = from >= 0 && to > from ? spec.slice(from, to) : "";
+    if (sheet.length < 3000) wrong.push("the run sheet was not found in the spec");
+    const plain = sheet.split("npm run ").slice(1).filter((rest) => !(rest.startsWith("-s ") || rest.startsWith("-s`")));
+    if (plain.length > 0) wrong.push(`${plain.length} npm run in the run sheet without -s`);
+    const RAILWAY = "railway run --service 50pick ";
+    const bare = [...sheet.matchAll(new RegExp("npm run -s ops:", "g"))].filter((m) => sheet.slice(Math.max(0, (m.index ?? 0) - RAILWAY.length), m.index ?? 0) !== RAILWAY);
+    if (bare.length > 0) wrong.push(`${bare.length} command(s) of the run sheet do not go through ${RAILWAY.trim()}`);
+    if (!sheet.includes("kipindi-m14-base")) wrong.push("the run sheet does not name the checkout the commands run from");
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}] · without -s the banner names the number: ${bannerShowsNumber}`];
   });
 
   /* ── E0 · evidence controls ── */
@@ -829,6 +1107,10 @@ async function runAssertions(impl: Impl): Promise<void> {
       ["--show-stop-link without --test", [W.CAMPAIGN, "--look", "--show-stop-link"]],
       ["--sends outside --ledger", [W.CAMPAIGN, "--look", "--sends=1"]],
       ["a bad label", [W.CAMPAIGN, "--look", "--label=a very long label indeed"]],
+      ["a label that is a number", [W.CAMPAIGN, "--look", "--label=772619619"]],
+      ["a label of a run of five digits", [W.CAMPAIGN, "--look", "--label=ab12345"]],
+      ["a label that is a spaced number", [W.CAMPAIGN, "--look", "--label=0772 619 619"]],
+      ["a value on --new-ledger", [W.CAMPAIGN, "--look", "--new-ledger=yes"]],
       ["--expect-sends 9", [W.CAMPAIGN, `--test=${W.TEST.raw}`, "--expect-sends=9"]],
       ["an audit token that is not an action", [W.CAMPAIGN, "--expect-audit=paused"]],
       ["--look with an audit expectation", [W.CAMPAIGN, "--look", "--expect-audit=marketing.campaign_started"]],
@@ -836,7 +1118,10 @@ async function runAssertions(impl: Impl): Promise<void> {
     for (const [name, argv] of usage) {
       const r = await ev(impl, W.evA(), argv);
       if (r.code !== 2 || r.statements.length !== 0) wrong.push(`${name}: exit ${r.code}`);
+      if (new RegExp("[0-9]{5}").test(r.lines.join(" "))) wrong.push(`${name}: the refusal shows a run of digits`);
     }
+    const labelled = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=delivered:test", "--label=Step 3b"]));
+    if (labelled.code !== 0) wrong.push(`a plain label with a digit: exit ${labelled.code}`);
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -911,6 +1196,19 @@ async function runAssertions(impl: Impl): Promise<void> {
     await run("audit row named and absent (A was never paused)", W.evA(), ["--expect=delivered:test", "--expect-audit=marketing.campaign_paused"], 1, "0 rows of E24");
     await run("audit rows of a pause and a resume (C)", W.evC(), ["--expect=sent:test", "--expect-audit=marketing.campaign_paused,marketing.campaign_resumed"], 0);
     await run("an audit expectation alone is something to prove", W.evC(), ["--expect-audit=marketing.campaign_resumed"], 0);
+    // the named person is found even beyond the first 41 rows (the SQL asks for them by number) and judged like any other
+    const crowd = (): EvW => {
+      const w = W.evB();
+      const testRow = w.recipients[0];
+      const filler = Array.from({ length: 45 }, (_, i) => W.recipientRow({ key: `255761${String(100000 + i)}`, id: `rcp_fill_${String(100 + i)}`, status: "PENDING", skip_reason: null, skip_detail: null, sms_reference: null, has_token: false, sent_at: null, delivered_at: null, claim_token: null, claimed_at: null }));
+      w.recipients = [...filler, testRow];
+      return w;
+    };
+    await run("the test number beyond the first 41 rows is still judged", crowd(), ["--expect=skipped:test,stopped:test"], 0, "RESULT: PROVEN");
+    const crowdSent = crowd();
+    crowdSent.recipients[45] = { ...crowdSent.recipients[45], status: "SENT", skip_reason: null, sms_reference: "sms_b0b0b0b0b0b0b0b0b0b0b0b0", sent_at: d(W.T0 + 1_804_000) };
+    crowdSent.messages = [W.messageRow({ reference: "sms_b0b0b0b0b0b0b0b0b0b0b0b0", target_id: "rcp_test_b", status: "ACCEPTED", dlr_status: null, created_at: d(W.T0 + 1_803_000), sent_at: d(W.T0 + 1_804_000) })];
+    await run("the test number beyond the first 41 rows SENT after its stop is still caught", crowdSent, ["--expect=skipped:test"], 1, "NOT refused");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -952,6 +1250,78 @@ async function runAssertions(impl: Impl): Promise<void> {
     // a re-armed suppression: the Suppression row says "in force" from its first creation, a later yes says otherwise
     const rearmed = [{ created_at: d(T + 100), lifted_at: null }];
     if (f(T + 250, rearmed, [{ status: "GIVEN", created_at: d(T + 200) }, { status: "WITHDRAWN", created_at: d(T + 100) }]).inForce !== false) wrong.push("a yes after the stop did not end it");
+
+    // ⭐ A LOOK finds a violation too: it asks for no verdict, not for silence — the exit is 1 and the RESULT line says VIOLATION
+    const lookViolation = await ev(impl, w, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--look"]));
+    if (lookViolation.code !== 1 || !has(lookViolation.lines, "RESULT: LOOK ONLY") || !has(lookViolation.lines, "BUT 1 VIOLATION")) wrong.push(`a look at a campaign that messaged a stopped number: exit ${lookViolation.code}`);
+    const lookClean = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--look"]));
+    if (lookClean.code !== 0 || has(lookClean.lines, "VIOLATION — ") || has(lookClean.lines, "BUT ")) wrong.push(`a look at a clean campaign: exit ${lookClean.code}`);
+
+    // ⭐ THE JUDGEMENTS, one by one, on people built by hand (the parts are the ones under test)
+    const parts = (impl.parts ?? EV.PARTS) as unknown as { judgeExpectation: (e: object, p: object, l: unknown) => { holds: boolean }; stopViolations: (people: object[]) => unknown[] };
+    const person = (o: Record<string, unknown>) => ({ role: "test", masked: W.TEST.masked, key: W.TEST.key, recipient: null, messages: [] as object[], suppressions: [] as object[], ledger: [] as object[], ...o });
+    const row = (o: Record<string, unknown> = {}) => W.recipientRow({ key: W.TEST.key, id: "rcp_unit_0001", sms_reference: "sms_a0a0a0a0a0a0a0a0a0a0a0a0", ...o });
+    const msg = (o: Record<string, unknown> = {}) => W.messageRow({ reference: "sms_a0a0a0a0a0a0a0a0a0a0a0a0", target_id: "rcp_unit_0001", ...o });
+    const linkStop = { reason: "WITHDRAWN", via_link: true, created_at: d(W.T0 + 600_000), lifted_at: null, lifted_via_link: false };
+    const withdrew = { status: "WITHDRAWN", source: "OPT_OUT_PAGE", via_link: true, created_at: d(W.T0 + 600_000) };
+    const gave = (at: number) => ({ status: "GIVEN", source: "OPT_OUT_PAGE", via_link: true, created_at: d(at) });
+    const holds = (outcome: string, p: object): boolean => parts.judgeExpectation({ outcome, who: "test", reason: null }, p, impl.lib).holds;
+    // `stopped` means the stop link was tapped AFTER this campaign's message — a stop made BEFORE the message is not that
+    const stopBeforeMessage = person({ recipient: row({ claimed_at: d(W.T0 + 880_000), sent_at: d(W.T0 + 900_000) }), messages: [msg({ created_at: d(W.T0 + 890_000), sent_at: d(W.T0 + 900_000) })], suppressions: [linkStop], ledger: [withdrew] });
+    if (holds("stopped", stopBeforeMessage)) wrong.push("`stopped` held for a stop made BEFORE the campaign's message");
+    const stopAfterMessage = person({ recipient: row(), messages: [msg()], suppressions: [linkStop], ledger: [withdrew] });
+    if (!holds("stopped", stopAfterMessage)) wrong.push("`stopped` did not hold for a stop from the link made after the message");
+    // ... and it means an ACTIVE WITHDRAWN stop made from the link: an operator's stop is not "the stop link tapped"
+    const operatorStop = person({ recipient: row(), messages: [msg()], suppressions: [{ ...linkStop, reason: "OPERATOR", via_link: false }], ledger: [withdrew] });
+    if (holds("stopped", operatorStop)) wrong.push("`stopped` held for a stop that was not made from the link");
+    // `resumed` means the stop was lifted from the link AND the person's newest ledger row is that yes
+    const lifted = { ...linkStop, lifted_at: d(W.T0 + 700_000), lifted_via_link: true };
+    if (!holds("resumed", person({ recipient: row(), suppressions: [lifted], ledger: [gave(W.T0 + 700_000), withdrew] }))) wrong.push("`resumed` did not hold after a lift from the link with that yes as the newest row");
+    if (holds("resumed", person({ recipient: row(), suppressions: [lifted], ledger: [{ ...withdrew, created_at: d(W.T0 + 800_000) }, gave(W.T0 + 700_000), withdrew] }))) wrong.push("`resumed` held while the newest ledger row is a withdrawal");
+    // what counts as HANDED OVER to a stopped number: an UNCONFIRMED row (the request may have reached the carrier), and a message on the
+    // wire even for a row that is not SENT — and not a row that never left
+    const stoppedOnes = { suppressions: [linkStop], ledger: [withdrew] };
+    const gone = { sms_reference: null, sent_at: null, delivered_at: null, claimed_at: d(W.T0 + 900_000) };
+    if (parts.stopViolations([person({ ...stoppedOnes, recipient: row({ ...gone, status: "UNCONFIRMED" }) })]).length !== 1) wrong.push("an UNCONFIRMED row after a stop was not found handed over");
+    if (parts.stopViolations([person({ ...stoppedOnes, recipient: row({ ...gone, status: "FAILED" }), messages: [msg({ created_at: d(W.T0 + 905_000), sent_at: null })] })]).length !== 1) wrong.push("a message on the wire for a row that is not SENT was not found handed over");
+    if (parts.stopViolations([person({ ...stoppedOnes, recipient: row({ ...gone, status: "FAILED" }) })]).length !== 0) wrong.push("a FAILED row with no message counted as handed over");
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+  });
+
+  /* ── E8 · the standing checks ── */
+  await claim(L.e8, async () => {
+    const wrong: string[] = [];
+    const base = [`--test=${W.TEST.raw}`, "--expect=delivered:test"];
+    const clean = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, base));
+    if (clean.code !== 0 || !has(clean.lines, "ONE MESSAGE PER ROW   clear") || !has(clean.lines, "TO THE TEST NUMBER    clear") || has(clean.lines, "VIOLATION — ")) wrong.push(`a clean campaign: exit ${clean.code}`);
+    if (!clean.lines.some((l) => l.includes("to the test number: yes"))) wrong.push("a message line does not say whether it went to the test number");
+    // ONE MESSAGE PER ROW — a double send, whatever else was asked (no --expect-sends here)
+    const twice = W.evA();
+    twice.testMessages = [];
+    twice.messages.push(W.messageRow({ reference: "sms_dupdupdupdupdupdupdup01", target_id: "rcp_test_a", status: "ACCEPTED", dlr_status: null, created_at: d(W.T0 + 5_000), sent_at: d(W.T0 + 5_500) }));
+    const rTwice = await ev(impl, twice, W.evArgv(W.CAMPAIGN, base));
+    if (rTwice.code !== 1 || !has(rTwice.lines, "VIOLATION — the test row has 2 messages") || !has(rTwice.lines, "RESULT: NOT PROVEN")) wrong.push(`a double send: exit ${rTwice.code}`);
+    const lookTwice = await ev(impl, twice, W.evArgv(W.CAMPAIGN, ["--look"]));
+    if (lookTwice.code !== 1 || !has(lookTwice.lines, "RESULT: LOOK ONLY") || !has(lookTwice.lines, "BUT 1 VIOLATION")) wrong.push(`a look at a double send: exit ${lookTwice.code}`);
+    // TO THE TEST NUMBER — a campaign message to another number, and a composer test to another number
+    const stray = W.evA();
+    stray.messages[0] = { ...stray.messages[0], to_test: false };
+    const rStray = await ev(impl, stray, W.evArgv(W.CAMPAIGN, base));
+    if (rStray.code !== 1 || !has(rStray.lines, "VIOLATION — 1 campaign message went to a number that is NOT the test number")) wrong.push(`a campaign message to another number: exit ${rStray.code}`);
+    const strayTest = W.evA();
+    strayTest.testMessages[0] = { ...strayTest.testMessages[0], to_test: false };
+    const rStrayTest = await ev(impl, strayTest, W.evArgv(W.CAMPAIGN, base));
+    if (rStrayTest.code !== 1 || !has(rStrayTest.lines, "VIOLATION — 1 composer test message went to a number that is NOT the test number")) wrong.push(`a composer test to another number: exit ${rStrayTest.code}`);
+    const lookStray = await ev(impl, strayTest, W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--look"]));
+    if (lookStray.code !== 1 || !has(lookStray.lines, "BUT 1 VIOLATION")) wrong.push(`a look at a composer test to another number: exit ${lookStray.code}`);
+    // no --test, no comparison: the check is skipped, never guessed
+    const noTest = await ev(impl, strayTest, W.evArgv(W.CAMPAIGN, ["--look"]));
+    if (noTest.code !== 0 || has(noTest.lines, "TO THE TEST NUMBER")) wrong.push(`without --test the comparison is made anyway: exit ${noTest.code}`);
+    // the statements compute a yes/no and never select the number — read from the SOURCE of the two statements
+    const BT_ = String.fromCharCode(96);
+    const textOf = (tag: string): string => { const at = impl.sources.ev.indexOf(`/* u52a:${tag} */`); return at < 0 ? "" : impl.sources.ev.slice(at, impl.sources.ev.indexOf(BT_, at)); };
+    const asked = ["messages", "test-messages"].map(textOf);
+    if (asked.some((s) => s === "" || !s.includes('(m."msisdn" = ') || new RegExp('m[.]"msisdn"(?! = )').test(s))) wrong.push("a messages statement selects the number itself, or does not compare it");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -1154,14 +1524,92 @@ async function runAssertions(impl: Impl): Promise<void> {
     if (ok2.code !== 0 || !has(ok2.lines, "counted 4 · room 2") || !has(ok2.lines, "2 more FIT") || ok2.statements.length !== 0) wrong.push(`two fit: exit ${ok2.code}`);
     const no = await ev(impl, W.evA(), ["--ledger", "--sends=3"], { ledgerText: text, env: {} });
     if (no.code !== 1 || !has(no.lines, "REFUSED")) wrong.push(`three do not fit: exit ${no.code}`);
-    const bare = await ev(impl, W.evA(), ["--ledger"], { ledgerText: null, env: {} });
-    if (bare.code !== 0 || !has(bare.lines, "nothing counted yet")) wrong.push(`an empty ledger: exit ${bare.code}`);
+    const bare = await ev(impl, W.evA(), ["--ledger", "--new-ledger"], { ledgerText: null, env: {} });
+    if (bare.code !== 0 || !has(bare.lines, "nothing counted yet")) wrong.push(`a new ledger's table: exit ${bare.code}`);
+    const bareNoFlag = await ev(impl, W.evA(), ["--ledger"], { ledgerText: null, env: {} });
+    if (bareNoFlag.code !== 2 || !has(bareNoFlag.lines, "no ledger file")) wrong.push(`the table of a missing ledger, no flag: exit ${bareNoFlag.code}`);
     const mixed = await ev(impl, W.evA(), ["--ledger", `--test=${W.TEST.raw}`], { env: {} });
     if (mixed.code !== 2) wrong.push(`--ledger with --test: exit ${mixed.code}`);
     const pf = await pre(impl, W.goodPreWorld(), { ledgerText: text, argv: W.preArgv(["--sends=3"]) });
     if (json(noGo(pf.lines)) !== json(["ledger"]) || pf.code !== 1) wrong.push(`the pre-flight with --sends=3: ${json(noGo(pf.lines))}`);
     const pf1 = await pre(impl, W.goodPreWorld(), { ledgerText: text });
     if (noGo(pf1.lines).length !== 0) wrong.push("the pre-flight's default of one send should fit");
+    // ⭐ the pre-flight only READS the ledger: not one write in any run of the whole suite so far (a new ledger included)
+    await pre(impl, W.goodPreWorld(), { ledgerText: null, argv: W.preArgv(["--new-ledger"]) });
+    if (PRE_LEDGER_WRITES !== 0) wrong.push(`the pre-flight wrote the ledger ${PRE_LEDGER_WRITES} time(s)`);
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+  });
+
+  /* ── L3 · the ledger file is created only on purpose, and said every run ── */
+  await claim(L.l3, async () => {
+    const wrong: string[] = [];
+    const lib = impl.lib as typeof LIB;
+    const argv = [`--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-sends=2", "--label=A"];
+    // a missing file stops the evidence: nothing read, nothing written, exit 2, and the run says where it looked
+    const missing = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, argv), { ledgerText: null });
+    if (missing.code !== 2 || missing.statements.length !== 0 || missing.ledgerText !== null || !has(missing.lines, "no ledger file") || !has(missing.lines, "--new-ledger")) wrong.push(`a missing ledger: exit ${missing.code}, ${missing.statements.length} statements, written ${missing.ledgerText !== null}`);
+    if (!missing.lines.some((l) => l.startsWith("ledger file: ") && l.includes("not present"))) wrong.push("a missing ledger is not said to be missing, with its path");
+    // --new-ledger: the first run writes the file, with the count
+    const created = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [...argv, "--new-ledger"]), { ledgerText: null });
+    const parsed = lib.parseLedger(created.ledgerText);
+    if (created.code !== 0 || !(parsed.ok && lib.ledgerTotal(parsed.ledger) === 2)) wrong.push(`--new-ledger on a missing file: exit ${created.code}`);
+    // ... and over a ledger that already exists it is refused: nothing read, nothing written
+    const again = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [...argv, "--new-ledger"]), { ledgerText: created.ledgerText });
+    if (again.code !== 2 || again.statements.length !== 0 || again.ledgerText !== created.ledgerText || !has(again.lines, "already exists")) wrong.push(`--new-ledger over an existing ledger: exit ${again.code}`);
+    // every run says where the ledger is (ABSOLUTE) and when it was last written
+    const normal = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, argv));
+    const line = normal.lines.find((l) => l.startsWith("ledger file: ")) ?? "";
+    if (!(line.includes("ledger.json") && line.includes("last written 2026-10-09 09:30:00 EAT"))) wrong.push(`an ordinary run's ledger line is "${line.slice(0, 120)}"`);
+    const pf = await pre(impl, W.goodPreWorld());
+    if (!pf.lines.some((l) => l.startsWith("ledger file: ") && l.includes("last written"))) wrong.push("the pre-flight does not say where its ledger is");
+    const real = lib.fileLedgerIo();
+    const at = real.where();
+    if (!(isAbsolute(String(at.path)) && String(at.path).split(String.fromCharCode(92)).join("/").endsWith("/.qa-shots/marketing-setup/U52a/ledger.json"))) wrong.push("the real ledger io does not name an absolute path");
+    // no string reaches the file without the number wall: an entry that carries a number is scrubbed on its way to the disk
+    const dirty = lib.emptyLedger();
+    dirty.entries.cmp_scrub_check_01 = { chargeable: 1, label: `call ${W.TEST.raw}`, outcomes: { test: `row ${W.TEST.key}`, control: null }, verdict: "pass" };
+    const written = lib.serializeLedger(dirty);
+    if (leakOf(written) !== null || !written.includes("[number]")) wrong.push("a number reached the ledger file");
+    return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
+  });
+
+  /* ── B1 · before anything is loaded ── */
+  await claim(L.b1, async () => {
+    const wrong: string[] = [];
+    const boot = impl.boot as typeof BOOT;
+    const preTool = pathToFileURL(join(ROOT, "scripts", "live", "marketing-preflight.mjs")).href;
+    // the public proxy: only the PRIVATE host changes; the user, the password and the database stay, and another host is left alone
+    const fakePw = "fakepassword-0000";
+    const env: Record<string, string> = { DATABASE_URL: `postgresql://fake_user:${fakePw}@postgres.railway.internal:5432/railway` };
+    boot.boot(preTool, env, ROOT);
+    const u = new URL(env.DATABASE_URL);
+    if (!(u.hostname === "turntable.proxy.rlwy.net" && u.username === "fake_user" && u.password === fakePw && u.pathname === "/railway")) wrong.push("the private host was not rewritten to the public proxy, or the rest of the address changed");
+    const other = { DATABASE_URL: `postgresql://fake_user:${fakePw}@db.example.test:5432/x` };
+    boot.boot(preTool, other, ROOT);
+    if (other.DATABASE_URL !== `postgresql://fake_user:${fakePw}@db.example.test:5432/x`) wrong.push("another host was rewritten");
+    // the checkout: right here is fine; elsewhere, or with no tsconfig.json, is a sentence
+    if (boot.checkoutProblem(ROOT, preTool) !== null) wrong.push("the checkout itself was refused");
+    if (boot.checkoutProblem(tmpdir(), preTool) === null) wrong.push("a directory outside the checkout was accepted");
+    if (boot.checkoutProblem(join(ROOT, "scripts"), preTool) === null) wrong.push("a folder of the checkout (no tsconfig.json) was accepted");
+    if (boot.checkoutProblem(ROOT, preTool, () => false) === null) wrong.push("a checkout with no tsconfig.json was accepted");
+    // both tools: boot first, the core by a dynamic import after it, and no static import of the core, of the client or of the store
+    for (const [name, src] of [["pre-flight", impl.sources.pre], ["evidence", impl.sources.ev]] as const) {
+      const statics = Array.from(src.matchAll(new RegExp('^import [^;]*from "([^"]+)";', "gm"))).map((m) => m[1]);
+      const allowed = ["node:path", "node:url", "../lib/marketing-u52a-boot.mjs"];
+      const stray = statics.filter((s) => !allowed.includes(s));
+      if (stray.length > 0) wrong.push(`${name} imports ${stray.join(", ")} statically`);
+      const bootAt = src.indexOf("boot(import.meta.url)");
+      const coreAt = src.indexOf('await import("../lib/marketing-u52a.mjs")');
+      const clientAt = src.indexOf('await import("@prisma/client")');
+      if (!(bootAt > 0 && coreAt > bootAt && clientAt > coreAt)) wrong.push(`${name}: the order is boot ${bootAt} · core ${coreAt} · client ${clientAt}`);
+      if (src.split('await import("../lib/marketing-u52a.mjs")').length !== 2) wrong.push(`${name} loads the core more than once`);
+    }
+    // run from somewhere else, each tool says ONE friendly line and exits 2 — no stack from inside the module graph
+    for (const [name, script, args] of [["pre-flight", "scripts/live/marketing-preflight.mjs", [`--test=+${W.TEST.key}`, `--origin=${W.ORIGIN}`]], ["evidence", "scripts/live/marketing-campaign-evidence.mjs", ["--ledger"]]] as const) {
+      const r = spawnKey(`tsx ${script}`, [...args], tmpdir());
+      const said = r.out.split(NL).filter((l) => l.trim() !== "");
+      if (r.status !== 2 || said.length !== 1 || !said[0].startsWith("REFUSING:") || new RegExp("Error|    at ").test(r.out) || leakOf(r.out) !== null) wrong.push(`${name} run from another directory: exit ${r.status}, ${said.length} line(s)`);
+    }
     return [wrong.length === 0, `wrong [${wrong.join("; ")}]`];
   });
 
@@ -1173,7 +1621,9 @@ async function runAssertions(impl: Impl): Promise<void> {
       if (!(head.includes("Exit:") && head.includes("READ ONLY BY CONSTRUCTION") && head.includes("NO NUMBER IS PRINTED WHOLE"))) wrong.push(`${name}'s header does not state its exit codes, its read-only rule and its number rule`);
     }
     for (const [name, src] of [["pre-flight", S.pre], ["evidence", S.ev]] as const) {
-      if (new RegExp("console[.](log|error|warn)[(]").test(src.split("sink: (line) => console.log(line)").join(""))) wrong.push(`${name} prints through console directly, around the output filter`);
+      // the one console call allowed is the boot refusal's sentence (a fixed sentence about the working directory, said before the filter is even loaded)
+      const around = src.split("sink: (line) => console.log(line)").join("").split("console.log(`REFUSING: ${booted.problem}`);").join("");
+      if (new RegExp("console[.](log|error|warn)[(]").test(around)) wrong.push(`${name} prints through console directly, around the output filter`);
       if (new RegExp("JSON[.]stringify[(](facts|rows|r|recipient)").test(src)) wrong.push(`${name} stringifies a raw row`);
     }
     if (!S.lib.includes("makeIo(")) wrong.push("the core has no output filter");
@@ -1193,7 +1643,25 @@ async function runAssertions(impl: Impl): Promise<void> {
     await pre(impl, w, { argv: ARGV_CONTROL });
     const leaks = leaksIn(SEEN);
     const maskedSeen = SEEN.some((l) => l.includes(W.TEST.masked));
-    return [leaks.length === 0 && SEEN.length > 400 && maskedSeen, `${SEEN.length} lines swept · leaks [${leaks.slice(0, 4).join(", ")}] · the mask was printed ${maskedSeen}`];
+    // ⭐ THE OUTPUT FILTER ALONE (makeIo): a number the tool was given never leaves it, in any spelling the fuzz found — whatever stands
+    // beside it (a letter, a digit, a prefix), the digits taken out of the line leave no trace of the nine national digits
+    const lib = impl.lib as typeof LIB;
+    const shown: string[] = [];
+    const io = lib.makeIo((l: string) => shown.push(l), {}, [W.TEST.key, W.CONTROL.key]);
+    io.line(`call ${W.TEST.raw} or +${W.TEST.key} or 0${W.CONTROL.key.slice(3)} now`);
+    const wallLeaks = leaksIn(shown);
+    const wallSays = shown.length === 1 && shown[0].includes("[number]");
+    const survivors: string[] = [];
+    for (const spelling of spellingsOf(W.TEST.key)) {
+      for (const before of ["", "x", "tel:", "9", "y"]) {
+        for (const after of ["", "y", "9", " ok"]) {
+          const out = lib.safeLine(`${before}${spelling}${after}`, {}, [W.TEST.key]);
+          if (leakOf(out) !== null || out.replace(new RegExp("[^0-9]", "g"), "").includes(W.TEST.key.slice(3))) survivors.push(spelling.replace(new RegExp("[0-9]", "g"), "#"));
+        }
+      }
+    }
+    return [leaks.length === 0 && SEEN.length > 400 && maskedSeen && wallLeaks.length === 0 && wallSays && survivors.length === 0,
+      `${SEEN.length} lines swept · leaks [${leaks.slice(0, 4).join(", ")}] · the mask was printed ${maskedSeen} · the filter alone: ${wallSays ? "says [number]" : "does not say [number]"}, leaks ${wallLeaks.length}, ${survivors.length} spelling(s) survived [${[...new Set(survivors)].slice(0, 3).join(" | ")}]`];
   });
 
   /* ── P5 · no database address anywhere (after the failing runs of P3) ── */
@@ -1210,6 +1678,11 @@ async function runAssertions(impl: Impl): Promise<void> {
     // a run whose every dependency fails still prints no address
     const boom = await pre(impl, W.goodPreWorld(), { throwOnQuery: new Error(`FATAL: password authentication failed for user "${W.DB_PIECES[3]}" at ${W.DB_PIECES[2]} (${W.DB_PIECES[0]})`) });
     if (dbLeaks(boom.lines).length) wrong.push("an error carrying the address reached the screen");
+    // ⭐ the output filter ALONE takes the address, its password, its host, its user and any secret-named value out of any line
+    const shown: string[] = [];
+    const filter = (impl.lib as typeof LIB).makeIo((l: string) => shown.push(l), { DATABASE_URL: W.FAKE_DB_URL, SESSION_SECRET: "a-session-secret-0123456789" }, []);
+    filter.line(`could not connect to ${W.FAKE_DB_URL} as ${W.DB_PIECES[3]} at ${W.DB_PIECES[2]} (password ${W.DB_PIECES[1]}) with a-session-secret-0123456789`);
+    if (dbLeaks(shown).length || shown.some((l) => l.includes("a-session-secret"))) wrong.push("the output filter alone lets the address or a secret through");
     return [wrong.length === 0, `${SEEN.length} lines swept · wrong [${wrong.join("; ")}]`];
   });
 }
@@ -1276,14 +1749,65 @@ if (!PROVE_RED) {
     { name: "R-RO3 · the SET TRANSACTION READ ONLY line deleted from the shared helper's source", expect: [L.p4s],
       impl: () => withSources({ lib: plantIn(REAL_SOURCES.lib, "await tx.$executeRaw`SET TRANSACTION READ ONLY`;", "") }) },
     { name: "R-RO4 · an UPDATE planted in the evidence tool's SQL", expect: [L.p4s],
-      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, "const facts = { campaign: camp[0] ?? null };", "const facts = { campaign: camp[0] ?? null }; await tx.$queryRaw" + BT + 'UPDATE "SmsCampaign" SET "status" = 1' + BT + ";") }) },
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, "if (!facts.campaign) return facts;", "if (!facts.campaign) return facts; await tx.$queryRaw" + BT + 'UPDATE "SmsCampaign" SET "status" = 1' + BT + ";") }) },
     { name: "R-RO5 · a create call planted in the pre-flight", expect: [L.p4s],
       impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, "const facts = { migrations: [], config: {}, test: {}, control: null };", "const facts = { migrations: [], config: {}, test: {}, control: null }; await tx.suppression.create({});") }) },
+    { name: "R-RO7 · the transaction is not opened REPEATABLE READ (the option never reaches the database)", expect: [L.p4],
+      impl: withLib({ readOnlyTransaction: (prisma: { $transaction: (f: unknown, o: Record<string, unknown>) => Promise<unknown>; $disconnect: () => Promise<void> }, body: unknown, opts?: unknown) =>
+        (LIB.readOnlyTransaction as unknown as (p: unknown, b: unknown, o?: unknown) => Promise<unknown>)({ $transaction: (f: unknown, o: Record<string, unknown>) => prisma.$transaction(f, { ...o, isolationLevel: undefined }), $disconnect: () => prisma.$disconnect() }, body, opts) }) },
+    { name: "R-RO8 · the helper's source loses the REPEATABLE READ option", expect: [L.p4s],
+      impl: () => withSources({ lib: plantIn(REAL_SOURCES.lib, 'isolationLevel: "RepeatableRead", ', "") }) },
+    { name: "R-RO9 · the pre-flight asks the network with POST (S9 of the review: the method reaches the stand-in network as POST)", expect: [L.p1c],
+      impl: { fetchWrap: ((f: (url: string, init?: object) => Promise<unknown>) => (url: string, init?: object) => f(url, { ...init, method: "POST" })) as never } },
+    { name: "R-RO10 · the pre-flight's source asks with POST", expect: [L.p4s],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, 'method: "GET"', 'method: "POST"') }) },
+    { name: "R-RO11 · the pre-flight's source writes the ledger it was only to read (S10 of the review)", expect: [L.p4s],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, "const ledgerIo = d.ledgerIo();", 'const ledgerIo = d.ledgerIo(); ledgerIo.write("");') }) },
+    /* ── the SQL: its contract, its order, its bound values (the review's 15 text mutations, and the two ways the stand-in database cannot see them) ── */
+    { name: "R-Q1 · the newest consent row becomes the OLDEST (S1: ORDER BY … ASC on the ledger read)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, 'ORDER BY "createdAt" DESC, "id" DESC LIMIT 1', 'ORDER BY "createdAt" ASC, "id" ASC LIMIT 1') }) },
+    { name: "R-Q2 · the person's ledger timeline runs oldest-first (S2)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, 'ORDER BY "createdAt" DESC, "id" DESC LIMIT 50', 'ORDER BY "createdAt" ASC, "id" ASC LIMIT 50') }) },
+    { name: "R-Q3 · a list's NEWEST basis becomes its oldest (S3)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, 'ORDER BY "recordedAt" DESC, "id" DESC LIMIT 1', 'ORDER BY "recordedAt" ASC, "id" ASC LIMIT 1') }) },
+    { name: "R-Q4 · the stop read loses its category filter (S4)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `AND "category"::text = 'MARKETING' AND "identifier" = ${"$"}{testKey}${BT};`, `AND "identifier" = ${"$"}{testKey}${BT};`) }) },
+    { name: "R-Q5 · the audit read orders by the BARE name again (S5: the trap that was found — PostgreSQL reads it as the text output column)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, 'ORDER BY "AuditLog"."seq" LIMIT 200', 'ORDER BY "seq" LIMIT 200') }) },
+    { name: "R-Q6 · the live switch's 'newest eight' become the OLDEST eight (S6)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, 'ORDER BY "AuditLog"."seq" DESC LIMIT 8', 'ORDER BY "AuditLog"."seq" ASC LIMIT 8') }) },
+    { name: "R-Q7 · the recipients of ANOTHER campaign (S7: campaignId <>)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `FROM "SmsCampaignRecipient" WHERE "campaignId" = ${"$"}{campaignId} ORDER BY "id" LIMIT 41`, `FROM "SmsCampaignRecipient" WHERE "campaignId" <> ${"$"}{campaignId} ORDER BY "id" LIMIT 41`) }) },
+    { name: "R-Q8 · the book row of ANY OTHER number (S8: msisdn <>)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `FROM "MarketingContact" WHERE "msisdn" = ${"$"}{testKey}`, `FROM "MarketingContact" WHERE "msisdn" <> ${"$"}{testKey}`) }) },
+    { name: "R-Q9 · 'lifted' reads the wrong column (S13: liftedReason AS lifted_at)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, `"liftedAt" AS lifted_at FROM "Suppression" WHERE "channel"::text = 'SMS' AND "category"::text = 'MARKETING' AND "identifier" = ${"$"}{testKey}`, `"liftedReason" AS lifted_at FROM "Suppression" WHERE "channel"::text = 'SMS' AND "category"::text = 'MARKETING' AND "identifier" = ${"$"}{testKey}`) }) },
+    { name: "R-Q10 · the account lookup drops the plus (S14: the two-format trap)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, '"phoneE164" = ${`+${testKey}`}', '"phoneE164" = ${testKey}') }) },
+    { name: "R-Q11 · the message join counts the messages of OTHER campaigns' recipients (S15)", expect: [L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, `m."targetId" IN (SELECT r."id" FROM "SmsCampaignRecipient" r WHERE r."campaignId" = ${"$"}{campaignId}) ORDER BY m."createdAt", m."reference" LIMIT 201`, `m."targetId" IN (SELECT r."id" FROM "SmsCampaignRecipient" r WHERE r."campaignId" <> ${"$"}{campaignId}) ORDER BY m."createdAt", m."reference" LIMIT 201`) }) },
+    { name: "R-Q12 · a bare ORDER BY name equals an AS alias of its own SELECT (the generic rule, with the contract's fragment left intact)", expect: [L.p7],
+      impl: () => withSources({ pre: plantIn(REAL_SOURCES.pre, '"recordedAt" AS recorded_at', '"recordedAt" AS recordedat') }) },
+    { name: "R-Q13 · the account lookup is BOUND without its plus (the stand-in database answers anyway; only the bound values show it)", expect: [L.p7],
+      impl: { rebind: (tag: string, values: unknown[]) => (tag === "user" ? [String(values[0]).slice(1)] : values) } },
+    { name: "R-Q14 · the audit read is BOUND to another campaign", expect: [L.p7],
+      impl: { rebind: (tag: string, values: unknown[]) => (tag === "audit" ? ["cmp_some_other_campaign"] : values) } },
+    { name: "R-Q15 · the control's stop is looked up under the TEST number (both look-ups bound to the same person)", expect: [L.p7],
+      impl: { rebind: (tag: string, values: unknown[]) => (tag === "suppression" ? [W.TEST.key] : values) } },
+    { name: "R-Q16 · the composer test's statement selects the NUMBER ITSELF instead of a yes/no", expect: [L.e8, L.p7],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, '/* u52a:test-messages */ SELECT m."reference", (m."msisdn" = ${probeKey}) AS to_test,', '/* u52a:test-messages */ SELECT m."reference", m."msisdn" AS to_test,') }) },
     /* ── numbers, names, secrets ── */
     { name: "R-N1 · the number argument keeps the whole number as its mask (P2 holds: the output filter's second wall takes the key out of every line)", expect: [L.p0, L.e0, L.e3],
       impl: withLib({ parseNumberArg: (flag: string, raw: string) => { const r = L_.parseNumberArg(flag, raw) as { ok: boolean; key: string; masked: string }; return r.ok ? { ...r, masked: r.key } : r; }, maskKey: (k: string) => k }) },
-    { name: "R-N2 · the output filter lets numbers through — HELD BY THE FIRST WALL: every database text is already taken through safeText / safeLabel / safePayload before it is printed", expect: [],
+    { name: "R-N2 · the output filter lets every line through unchanged (numbers and the database address both) — the FIRST wall (safeText / safeLabel / safePayload on every database text) still keeps the suite's own runs clean, so it takes the direct claims on the filter to see it", expect: [L.p2, L.p5],
       impl: withLib({ makeIo: (sink: (l: string) => void) => { const lines: string[] = []; return { lines, line: (t: string) => { for (const part of String(t).split(NL)) { lines.push(part); sink(part); } } }; } }) },
+    { name: "R-N8 · the output filter's NUMBER wall is gone but its secret wall stays (S11 of the review: makeIo without the scrub)", expect: [L.p2],
+      impl: withLib({ makeIo: (sink: (l: string) => void, env: Record<string, string>) => { const lines: string[] = []; return { lines, line: (t: string) => { for (const part of String(t).split(NL)) { const safe = LIB.redactSecrets(part, env); lines.push(safe); sink(safe); } } }; } }) },
+    { name: "R-N9 · the number wall ignores the numbers the tool was GIVEN (the generic pass alone: a bare run beside a letter, dots, slashes, tabs, zero-width marks all get through)", expect: [L.p2],
+      impl: withLib({
+        safeLine: (text: string, env: Record<string, string>) => LIB.scrubNumbers(LIB.redactSecrets(text, env), []),
+        makeIo: (sink: (l: string) => void, env: Record<string, string>) => { const lines: string[] = []; return { lines, line: (t: string) => { for (const part of String(t).split(NL)) { const safe = LIB.scrubNumbers(LIB.redactSecrets(part, env), []); lines.push(safe); sink(safe); } } }; },
+      }) },
     { name: "R-N3 · both walls down: the output filter and the error description leave the database address in a line", expect: [L.p3, L.p5],
       impl: withLib({
         makeIo: (sink: (l: string) => void, env: Record<string, string>, keys: string[]) => { const lines: string[] = []; return { lines, line: (t: string) => { for (const part of String(t).split(NL)) { const safe = LIB.scrubNumbers(part, keys); lines.push(safe); sink(safe); } } }; },
@@ -1336,6 +1860,24 @@ if (!PROVE_RED) {
       impl: { judge: (f: { test: { contact: object | null } }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, test: { ...f.test, contact: f.test.contact ? { ...f.test.contact, erased: false } : f.test.contact } }, c, l) } },
     { name: "R-J18 · the network is waited for for an hour (the timeout is not applied)", expect: [L.p1c],
       impl: { timeoutMs: 3_600_000 } },
+    { name: "R-J20 · the size of a list is not looked at (every list passes as a list of one)", expect: [L.p1d],
+      impl: { judge: (f: { test: { lists?: object[] } }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, test: { ...f.test, lists: (f.test.lists ?? []).map((x) => ({ ...x, members: 1 })) } }, c, l) } },
+    { name: "R-J21 · the source row never looks at the saved wordings (it is always satisfied)", expect: [L.p1b],
+      impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, config: { ...f.config, [LIB.KEY_WORDINGS as string]: { ...((f.config[LIB.KEY_WORDINGS as string] as object) ?? {}), "source.phrase": W.SAVED_WORDINGS["source.phrase"], "adult.test": W.SAVED_WORDINGS["adult.test"] } } }, c, l) } },
+    { name: "R-J22 · licence outreach being OPEN does not ask for adult.test", expect: [L.p1b],
+      impl: { judge: (f: { config: Record<string, unknown> }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, config: { ...f.config, [LIB.KEY_WORDINGS as string]: { ...((f.config[LIB.KEY_WORDINGS as string] as object) ?? {}), "adult.test": W.SAVED_WORDINGS["adult.test"] } } }, c, l) } },
+    { name: "R-J23 · the time rules read THIS MACHINE's clock, not the database's", expect: [L.p1b],
+      impl: withLib({ clockOf: (_dbNow: unknown, machineMs: number) => ({ nowMs: machineMs, source: "machine", skewMs: null }) }) },
+    { name: "R-J24 · the send window's END is inclusive — 20:00 sharp is inside (V9 of the review)", expect: [L.p1b],
+      impl: { judge: (f: unknown, c: { nowMs: number }, l: unknown) => (PRE_.judgePreflight(f, c, l) as Array<{ id: string; go: boolean | null }>).map((r) => (r.id === "window" && LIB.eatParts(c.nowMs).minuteOfDay === 1200 ? { ...r, go: true } : r)) } },
+    { name: "R-J25 · test-fresh looks only at campaigns whose status is DONE (V18 of the review)", expect: [L.p1d],
+      impl: { judge: (f: { test: { campaigns?: Array<{ status: string }> } }, c: unknown, l: unknown) => PRE_.judgePreflight({ ...f, test: { ...f.test, campaigns: (f.test.campaigns ?? []).filter((r) => r.status === "DONE") } }, c, l) } },
+    { name: "R-J26 · the age band has no boundary: a birthday within a day of 18 reads adult (V12 of the review)", expect: [L.p1d, L.p6d],
+      impl: withLib({ ageBand: (dob: unknown, now: number) => { const b = LIB.ageBand(dob, now); return b === "boundary" ? "adult" : b; } }) },
+    { name: "R-J27 · a MISSING ledger file is trusted without --new-ledger (the drive restarts from zero and nobody said so)", expect: [L.l2, L.l3, L.p1e],
+      impl: withLib({ ledgerGate: (read: { ok: boolean; existed?: boolean }, newLedger: boolean) => (read.ok && !read.existed && newLedger !== true ? { ok: true, kind: "new", used: 0 } : LIB.ledgerGate(read as never, newLedger)) }) },
+    { name: "R-J28 · --new-ledger is accepted over a ledger that already EXISTS", expect: [L.l3, L.p1e],
+      impl: withLib({ ledgerGate: (read: { ok: boolean; existed?: boolean; ledger: object }, newLedger: boolean) => (read.ok && read.existed && newLedger === true ? { ok: true, kind: "existing", used: LIB.ledgerTotal(read.ledger as never) } : LIB.ledgerGate(read as never, newLedger)) }) },
     /* ── the evidence verdict ── */
     { name: "R-V1 · a SKIPPED expectation holds whatever the row is (the gate removed — and the evidence still passes)", expect: [L.e1],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string; who: string }, p: unknown, l: unknown) => (e.outcome === "skipped" ? { label: "skipped", holds: true, why: "planted" } : EV_.judgeExpectation(e, p, l)) } } },
@@ -1347,7 +1889,7 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, stopViolations: () => [] } } },
     { name: "R-V5 · an UNCONFIRMED row counts as sent", expect: [L.e1],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { recipient: { status: string } | null } | null, l: unknown) => (e.outcome === "sent" && p && p.recipient && p.recipient.status === "UNCONFIRMED" ? { label: "sent", holds: true, why: "planted" } : EV_.judgeExpectation(e, p, l)) } } },
-    { name: "R-V6 · --expect-sends is never compared (the counts the evidence reports and the ledger takes go with it)", expect: [L.e0, L.e1, L.e4, L.l1],
+    { name: "R-V6 · --expect-sends is never compared (the counts the evidence reports and the ledger takes go with it)", expect: [L.e0, L.e1, L.e4, L.l1, L.l3],
       impl: { parts: { ...EV.PARTS, sendCounts: (facts: unknown, lib: unknown) => ({ ...(EV_.PARTS.sendCounts(facts, lib) as object), chargeable: 0 }) } } },
     { name: "R-V7 · the verdict is always proven (every expectation holds, no violation is ever found)", expect: [L.e1, L.e2],
       impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }) => ({ label: e.outcome, holds: true, why: "planted" }), stopViolations: () => [], sendCounts: (f: unknown, l: unknown) => { const s = EV_.PARTS.sendCounts(f, l) as { chargeable: number }; return s; } } } },
@@ -1355,6 +1897,22 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, stopViolations: (people: Array<{ ledger: unknown[]; suppressions: Array<{ lifted_at: unknown }> }>) => (EV.PARTS.stopViolations as (p: unknown, f: unknown) => unknown)(people.map((p) => ({ ...p, ledger: [] })), (_at: number, sup: Array<{ lifted_at: unknown }>) => ({ inForce: sup.some((x) => x.lifted_at === null || x.lifted_at === undefined), by: "suppression", at: 0 })) } } },
     { name: "R-V13 · an audit expectation always holds (the rows are not looked at)", expect: [L.e1],
       impl: { parts: { ...EV.PARTS, auditChecks: (_f: unknown, a: { expectAudit?: string[] }) => (a.expectAudit ?? []).map((action) => ({ action, holds: true, n: 1 })) } } },
+    { name: "R-V14 · `stopped` does not look at the ORDER against the message — a stop made BEFORE it holds (V1 of the review)", expect: [L.e2],
+      impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { recipient: unknown } | null, l: unknown) => EV_.judgeExpectation(e, e.outcome === "stopped" && p ? { ...p, recipient: null } : p, l) } } },
+    { name: "R-V15 · `stopped` holds for ANY active stop — its reason and its source are not looked at (V14 of the review)", expect: [L.e2],
+      impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { suppressions: Array<{ reason: string; via_link: boolean }> } | null, l: unknown) => EV_.judgeExpectation(e, e.outcome === "stopped" && p ? { ...p, suppressions: p.suppressions.map((s) => ({ ...s, reason: "WITHDRAWN", via_link: true })) } : p, l) } } },
+    { name: "R-V16 · `resumed` does not need the newest ledger row to be that yes (V13 of the review)", expect: [L.e2],
+      impl: { parts: { ...EV.PARTS, judgeExpectation: (e: { outcome: string }, p: { ledger: object[] } | null, l: unknown) => EV_.judgeExpectation(e, e.outcome === "resumed" && p ? { ...p, ledger: [{ status: "GIVEN", via_link: true, created_at: new Date(Date.UTC(2099, 0, 1)) }, ...p.ledger] } : p, l) } } },
+    { name: "R-V17 · an UNCONFIRMED row is not 'handed over' after a stop (V3 of the review)", expect: [L.e2],
+      impl: { parts: { ...EV.PARTS, stopViolations: (people: Array<{ recipient: { status: string } | null }>) => (EV.PARTS.stopViolations as (p: unknown) => unknown)(people.map((p) => (p.recipient && p.recipient.status === "UNCONFIRMED" ? { ...p, recipient: { ...p.recipient, status: "PENDING" } } : p))) } } },
+    { name: "R-V18 · only the row's status says 'handed over' — a message on the wire for a row that is not SENT does not (V3b of the review)", expect: [L.e2],
+      impl: { parts: { ...EV.PARTS, stopViolations: (people: object[]) => (EV.PARTS.stopViolations as (p: unknown) => unknown)(people.map((p) => ({ ...p, messages: [] }))) } } },
+    { name: "R-V19 · the standing double-send check finds nothing", expect: [L.e8],
+      impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown) => Array<{ kind: string }>)(f, a).filter((s) => s.kind !== "double_send") } } },
+    { name: "R-V20 · the standing 'to the test number only' check finds nothing", expect: [L.e8],
+      impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown) => Array<{ kind: string }>)(f, a).filter((s) => s.kind !== "other_number") } } },
+    { name: "R-V21 · a LOOK never exits 1 — its violations are counted as none (the review's X1)", expect: [L.e2, L.e8],
+      impl: { parts: { ...EV.PARTS, lookViolations: () => 0 } } },
     { name: "R-V9 · the slice timings are never worked out", expect: [L.e5],
       impl: { parts: { ...EV.PARTS, sliceTimings: () => [] } } },
     { name: "R-V10 · the test and control rows are swapped (a person is judged on the other's row)", expect: [L.e1],
@@ -1393,6 +1951,12 @@ if (!PROVE_RED) {
       impl: withLib({ checkRoom: (_ledger: unknown, sends: number) => ({ ok: true, used: 0, sends, room: 6 }) }) },
     { name: "R-L6 · the ledger is written in place (no temporary file, no rename)", expect: [L.l1],
       impl: () => withSources({ lib: plantIn(REAL_SOURCES.lib, `${FS_RENAME}(tmp, path);`, "") }) },
+    { name: "R-L8 · the ledger's strings reach the file unscrubbed (a number in a label or an outcome — the review's X2)", expect: [L.l3],
+      impl: withLib({ serializeLedger: (l: object) => `${JSON.stringify(l, null, 2)}${NL}` }) },
+    { name: "R-L9 · the pre-flight WRITES the ledger it reads (the same text back — S10 of the review)", expect: [L.l2],
+      impl: withLib({ readLedger: (io: { read: () => string | null; write: (t: string) => void }) => { const t = io.read(); if (t !== null) io.write(t); return LIB.readLedger(io as never); } }) },
+    { name: "R-L10 · the ledger file's absolute path and last write are not said", expect: [L.l3],
+      impl: withLib({ ledgerFileLine: () => "" }) },
     /* ── the stop link, the flag, the arguments ── */
     { name: "R-T1 · the stop link is shown without its flag", expect: [L.e6],
       impl: { readFacts: (tx: unknown, a: object) => (EV as unknown as { readEvidenceFacts: (t: unknown, x: unknown) => unknown }).readEvidenceFacts(tx, { ...a, wantToken: true }),
@@ -1404,8 +1968,10 @@ if (!PROVE_RED) {
       } } },
     { name: "R-T3 · a phone number given as the campaign id is accepted", expect: [L.e0],
       impl: withLib({ parseFlags: (argv: string[], spec: object) => { const r = LIB.parseFlags(argv, spec as never); return { ...r, positional: r.positional.map((p: string) => (p === "0755000111" ? "cmp_u52a_campaign_AAAA" : p)) }; } }) },
-    { name: "R-T4 · the numbering plan is not asked (an invalid number is accepted as a number)", expect: [L.p0],
+    { name: "R-T4 · the numbering plan is not asked (an invalid number is accepted as a number — and then the database is asked about a number nobody typed)", expect: [L.p0, L.p7],
       impl: withLib({ parseNumberArg: (flag: string, raw: string) => { const r = LIB.parseNumberArg(flag, raw); return r.ok ? r : { ok: true, key: "255" + "6" + "00000000", masked: "+255" + "•".repeat(4) + "00", operator: null }; } }) },
+    { name: "R-T5 · a --label that is a number is accepted (the parser takes it for a plain label)", expect: [L.e0],
+      impl: { evParse: (argv: string[], lib: unknown) => EV.parseEvidenceArgs(argv.map((a) => (a.startsWith("--label=") ? "--label=A" : a)), lib as never) } },
     /* ── wiring ── */
     { name: "R-W1 · ops:marketing-preflight runs through plain node (the repo's .ts is not loaded)", expect: [L.p9],
       impl: () => withSources({ pkg: plantIn(REAL_SOURCES.pkg, '"ops:marketing-preflight": "tsx scripts/live/marketing-preflight.mjs"', '"ops:marketing-preflight": "node scripts/live/marketing-preflight.mjs"') }) },
@@ -1425,6 +1991,23 @@ if (!PROVE_RED) {
       impl: () => withSources({ pre: `${REAL_SOURCES.pre}${NL}console.log(rows);` }) },
     { name: "R-W9 · the pre-flight stringifies a raw row", expect: [L.s1],
       impl: () => withSources({ pre: `${REAL_SOURCES.pre}${NL}const dump = JSON.stringify(facts);` }) },
+    { name: "R-W13 · a command of the run sheet drops -s (npm's banner would echo the typed number)", expect: [L.p9],
+      impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, "npm run -s ops:marketing-preflight", "npm run ops:marketing-preflight") }) },
+    { name: "R-W14 · a command of the run sheet does not go through railway run", expect: [L.p9],
+      impl: () => withSources({ spec: plantIn(REAL_SOURCES.spec, "railway run --service 50pick npm run -s ops:marketing-preflight", "npm run -s ops:marketing-preflight") }) },
+    { name: "R-W15 · the run sheet no longer names the checkout it runs from", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("kipindi-m14-base").join("a-checkout") }) },
+    /* ── before anything is loaded ── */
+    { name: "R-B1 · the private Railway host is NOT rewritten to the public proxy", expect: [L.b1],
+      impl: { boot: { ...BOOT, boot: (toolUrl: string, _env: object, cwd: string, exists?: (p: string) => boolean) => { const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? { ok: true } : { ok: false, problem: p }; } } } },
+    { name: "R-B2 · the rewrite replaces the user, the password and the database too", expect: [L.b1],
+      impl: { boot: { ...BOOT, boot: (toolUrl: string, env: Record<string, string>, cwd: string, exists?: (p: string) => boolean) => { if (env.DATABASE_URL) env.DATABASE_URL = "postgresql://other:secret@turntable.proxy.rlwy.net:40357/postgres"; const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? { ok: true } : { ok: false, problem: p }; } } } },
+    { name: "R-B3 · the working directory is never checked (a run from elsewhere dies in the module graph)", expect: [L.b1],
+      impl: { boot: { ...BOOT, checkoutProblem: () => null } } },
+    { name: "R-B4 · a tool imports the shared core STATICALLY (evaluated before the public-proxy rewrite — ops:marketing-referee-keys, 70e9ba96)", expect: [L.b1],
+      impl: () => withSources({ pre: `import * as EARLY from "../lib/marketing-u52a.mjs";${NL}${REAL_SOURCES.pre}` }) },
+    { name: "R-B5 · a tool never calls boot before it loads the core", expect: [L.b1],
+      impl: () => withSources({ ev: plantIn(REAL_SOURCES.ev, "boot(import.meta.url)", "Boot(import.meta.url)") }) },
   ];
 
   console.log(`RED CONTROL — each defect planted in memory must fail EXACTLY the claims it names${NL}`);

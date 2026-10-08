@@ -31,6 +31,13 @@ export const CAMPAIGN = "cmp_u52a_campaign_AAAA";
 export const BUILD = "3f2a9c1d04ab7e6f5d4c3b2a190807f6e5d4c3b2";
 export const RESUME_WORDING = LIB.resumeWording();
 export const SMS_WORDING = RESUME_WORDING;
+/** A ledger file that EXISTS with nothing counted — a drive after its first evidence run. (A MISSING file is NO-GO unless `--new-ledger`.) */
+export const EMPTY_LEDGER_TEXT: string = LIB.serializeLedger(LIB.emptyLedger());
+/** The saved wordings of a platform ready for the drive: a source line and the typed-number test's 18+ sentence, each saved once. */
+export const SAVED_WORDINGS: Record<string, unknown> = {
+  "source.phrase": [{ v: 1, text: "From the 50pick sign-up form", savedAt: "2026-10-07T08:00:00.000Z", savedBy: "ops: Claude for Ali (G5)" }],
+  "adult.test": [{ v: 1, text: "I confirm that the person who uses this number is 18 or older.", savedAt: "2026-10-07T08:00:00.000Z", savedBy: "usr_owner_0001" }],
+};
 
 type Row = Record<string, unknown>;
 const d = (ms: number): Date => new Date(ms);
@@ -72,7 +79,7 @@ export function goodPreWorld(): PreWorld {
   return {
     now: NOW,
     migrations: LIB.ENGINE_MIGRATIONS.map((name: string) => ({ name, finished: true, rolled: false })),
-    config: {},
+    config: { [LIB.KEY_WORDINGS as string]: SAVED_WORDINGS },
     contact: { id: "ct_test_0001", consent_state: "GIVEN", suppressed: false, linked: true, source: "REGISTRATION", erased: false, created_at: d(NOW - 9 * 86400_000) },
     lists: [{ list_id: "lst_u52a_0001", list_name: "U52a drive list", added_at: d(NOW - 86400_000), members: 1, basis: null }],
     suppressions: [],
@@ -86,7 +93,7 @@ export function goodPreWorld(): PreWorld {
     home: `<html data-dpl-id="${BUILD}"><body>home</body></html>`,
     homeLink: null,
     homeMode: "ok",
-    ledgerText: null,
+    ledgerText: EMPTY_LEDGER_TEXT,
   };
 }
 
@@ -120,13 +127,86 @@ export type RunOpts = {
   parseArgs?: unknown;
   timeoutMs?: number;
   prisma?: Row;
-  fetchImpl?: (url: string, init?: { signal?: AbortSignal }) => Promise<unknown>;
+  fetchImpl?: (url: string, init?: FetchInit) => Promise<unknown>;
+  /** A plant's wrapper around the stand-in network: it sits BETWEEN the tool and the recorder, so what it changes is what is recorded. */
+  fetchWrap?: (f: (url: string, init?: FetchInit) => Promise<unknown>) => (url: string, init?: FetchInit) => Promise<unknown>;
+  /** A plant's rewrite of the values a statement is BOUND to: the stand-in database records what it returns (and answers as before). */
+  rebind?: (tag: string, values: unknown[]) => unknown[];
   ledgerText?: string | null;
   now?: number;
   transactionMode?: string;
   throwOnQuery?: Error;
 };
-export type RunResult = { code: number; lines: string[]; statements: string[]; ledgerText: string | null };
+type FetchInit = { signal?: AbortSignal; method?: string };
+export type Call = { tag: string; values: unknown[] };
+/** What the bound values of one run should be: the numbers typed, the campaign named, the ids the world holds. */
+export type BindCtx = { testKey: string | null; controlKey: string | null; campaignId: string | null; contactId: string | null; listIds: string[] };
+export type RunResult = {
+  code: number;
+  lines: string[];
+  statements: string[];
+  ledgerText: string | null;
+  /** Every tagged SELECT the tool ran, with the values it was bound to. */
+  calls: Call[];
+  /** The options each `$transaction` was opened with. */
+  txOptions: unknown[];
+  /** Every network call the tool made. */
+  fetchCalls: Array<{ url: string; method: unknown }>;
+  /** How many times the tool wrote the ledger file. */
+  ledgerWrites: number;
+  bindCtx: BindCtx;
+};
+
+/**
+ * ⭐ THE BOUND VALUES, per tag: every statement is answered from the world whatever it was bound to, so a statement that asked for the
+ * WRONG KEY (the number without its plus, another campaign) would be answered all the same. This holds each call to what it must
+ * have asked for. Returns a problem per wrong call; numbers are never printed (digits become #).
+ */
+export function checkBinds(calls: Call[], c: BindCtx): string[] {
+  const bad: string[] = [];
+  const show = (v: unknown[]): string => JSON.stringify(v).split("").map((ch) => (ch >= "0" && ch <= "9" ? "#" : ch)).join("").slice(0, 80);
+  const same = (a: unknown[], b: unknown[]): boolean => JSON.stringify(a) === JSON.stringify(b);
+  const wants = (tag: string, values: unknown[], want: unknown[]): void => {
+    if (!same(values, want)) bad.push(`${tag} was bound to ${show(values)}, wanted ${show(want)}`);
+  };
+  const people = [c.testKey, c.controlKey].filter((k): k is string => k !== null);
+  for (const { tag, values } of calls) {
+    switch (tag) {
+      case "migrations": case "config": case "now": case "switch-audit": wants(tag, values, []); break;
+      case "contact": case "ledger": case "holds": wants(tag, values, [c.testKey]); break;
+      case "lists": wants(tag, values, [c.contactId]); break;
+      case "basis": if (!(values.length === 1 && c.listIds.includes(String(values[0])))) bad.push(`basis was bound to ${show(values)}, wanted one of the member lists' ids`); break;
+      case "suppression": case "person-suppression": case "person-ledger": if (!(values.length === 1 && people.includes(String(values[0])))) bad.push(`${tag} was bound to ${show(values)}, wanted the test or the control number`); break;
+      case "user": wants(tag, values, [`+${c.testKey}`]); break;
+      case "campaign": case "recipients": case "recipient-counts": case "message-counts": case "test-message-counts": case "audit": wants(tag, values, [c.campaignId]); break;
+      case "recipient-named": if (!(values.length === 2 && values[0] === c.campaignId && people.includes(String(values[1])))) bad.push(`recipient-named was bound to ${show(values)}, wanted the campaign and a named number`); break;
+      case "messages": case "test-messages": wants(tag, values, [c.testKey ?? "", c.campaignId]); break;
+      case "token": wants(tag, values, [c.campaignId, c.testKey]); break;
+      default: bad.push(`a statement tagged "${tag}" has no rule for its bound values`);
+    }
+  }
+  // each named number is looked up exactly once by the reads that look a person up
+  const timesBound = (tag: string, key: string | null): number => calls.filter((x) => x.tag === tag && key !== null && x.values[0] === key).length;
+  for (const tag of ["suppression", "person-suppression", "person-ledger"]) {
+    if (calls.some((x) => x.tag === tag)) {
+      if (timesBound(tag, c.testKey) !== 1) bad.push(`${tag} looked the test number up ${timesBound(tag, c.testKey)} times, not once`);
+      if (timesBound(tag, c.controlKey) !== (c.controlKey === null ? 0 : 1)) bad.push(`${tag} looked the control number up ${timesBound(tag, c.controlKey)} times`);
+    }
+  }
+  return bad;
+}
+
+/** The bound values a run should show, from the arguments typed and the world's own ids. */
+function bindCtxOf(argv: string[], w: { contact?: Row | null; lists?: Array<Row> }): BindCtx {
+  const typed = (prefix: string): boolean => argv.some((a) => a.startsWith(prefix));
+  return {
+    testKey: typed("--test=") ? TEST.key : null,
+    controlKey: typed("--control=") ? CONTROL.key : null,
+    campaignId: argv.find((a) => !a.startsWith("--")) ?? null,
+    contactId: w.contact ? String(w.contact.id) : null,
+    listIds: (w.lists ?? []).map((l) => String(l.list_id)),
+  };
+}
 
 export const preArgv = (extra: string[] = [], base = [`--test=${TEST.raw}`, `--origin=${ORIGIN}`]): string[] => [...base, ...extra];
 
@@ -138,7 +218,7 @@ const tagOf = (text: string): string => {
 };
 
 /** `handlers[tag](values)` answers one tagged SELECT. Every statement text is recorded, tag and all. */
-export function fakePrisma(handlers: Record<string, (values: unknown[]) => unknown[]>, statements: string[], o: RunOpts = {}): Row {
+export function fakePrisma(handlers: Record<string, (values: unknown[]) => unknown[]>, statements: string[], o: RunOpts = {}, rec: { calls?: Call[]; txOptions?: unknown[] } = {}): Row {
   const tx = {
     async $executeRaw(strings: readonly string[]) {
       statements.push(strings.join("?"));
@@ -148,15 +228,17 @@ export function fakePrisma(handlers: Record<string, (values: unknown[]) => unkno
       const text = strings.join("?");
       statements.push(text);
       if (text.includes("transaction_read_only")) return [{ ro: o.transactionMode ?? "on" }];
-      if (o.throwOnQuery) throw o.throwOnQuery;
       const tag = tagOf(text);
+      rec.calls?.push({ tag, values: o.rebind ? o.rebind(tag, values) : values });
+      if (o.throwOnQuery) throw o.throwOnQuery;
       const h = handlers[tag];
       if (!h) throw new Error(`the stand-in database has no answer for the statement tagged "${tag}"`);
       return h(values);
     },
   };
   return {
-    async $transaction(fn: (tx: unknown) => Promise<unknown>) {
+    async $transaction(fn: (tx: unknown) => Promise<unknown>, options?: unknown) {
+      rec.txOptions?.push(options);
       return fn(tx);
     },
     async $disconnect() { /* nothing to close */ },
@@ -165,6 +247,7 @@ export function fakePrisma(handlers: Record<string, (values: unknown[]) => unkno
 
 export function preHandlers(w: PreWorld): Record<string, (values: unknown[]) => unknown[]> {
   return {
+    now: () => [{ now: new Date(w.now) }],
     migrations: () => w.migrations,
     config: () => Object.entries(w.config).map(([key, value]) => ({ key, value })),
     contact: () => (w.contact ? [w.contact] : []),
@@ -181,8 +264,9 @@ export function preHandlers(w: PreWorld): Record<string, (values: unknown[]) => 
 }
 
 /** The public network: the home page and `/api/health`, answering, failing or never answering (until aborted). */
-export function fakeFetch(w: PreWorld): (url: string, init?: { signal?: AbortSignal }) => Promise<unknown> {
+export function fakeFetch(w: PreWorld, calls?: Array<{ url: string; method: unknown }>): (url: string, init?: FetchInit) => Promise<unknown> {
   return (url, init) => {
+    calls?.push({ url: String(url), method: init?.method });
     const isHealth = String(url).endsWith("/api/health");
     const mode = isHealth ? w.healthMode : w.homeMode;
     if (mode === "throws") return Promise.reject(new Error("connect ECONNREFUSED prod.example.test:443"));
@@ -199,24 +283,38 @@ export function fakeFetch(w: PreWorld): (url: string, init?: { signal?: AbortSig
   };
 }
 
+/** The stand-in ledger file: it reads and writes a string, says where it is and when it was written, and counts the writes. */
+function fakeLedgerIo(state: { text: string | null; writes: number }) {
+  return {
+    read: () => state.text,
+    write: (t: string) => { state.text = t; state.writes += 1; },
+    where: () => ({ path: "F:/stand-in/.qa-shots/marketing-setup/U52a/ledger.json", mtimeMs: state.text === null ? null : NOW - 3_600_000 }),
+  };
+}
+
 export async function runPre(w: PreWorld, o: RunOpts = {}): Promise<RunResult> {
   const statements: string[] = [];
   const lines: string[] = [];
-  let ledgerText: string | null = o.ledgerText !== undefined ? o.ledgerText : w.ledgerText;
+  const calls: Call[] = [];
+  const txOptions: unknown[] = [];
+  const fetchCalls: Array<{ url: string; method: unknown }> = [];
+  const ledger = { text: o.ledgerText !== undefined ? o.ledgerText : w.ledgerText, writes: 0 };
+  const argv = o.argv ?? preArgv();
+  const network = o.fetchImpl ?? fakeFetch(w, fetchCalls);
   const deps: Record<string, unknown> = {
     env: o.env ?? { DATABASE_URL: FAKE_DB_URL },
     sink: (l: string) => lines.push(l),
     now: () => o.now ?? w.now,
-    fetch: o.fetchImpl ?? fakeFetch(w),
-    ledgerIo: () => ({ read: () => ledgerText, write: (t: string) => { ledgerText = t; } }),
-    makePrisma: async () => o.prisma ?? fakePrisma(preHandlers(w), statements, o),
+    fetch: o.fetchWrap ? o.fetchWrap(network) : network,
+    ledgerIo: () => fakeLedgerIo(ledger),
+    makePrisma: async () => o.prisma ?? fakePrisma(preHandlers(w), statements, o, { calls, txOptions }),
     timeoutMs: o.timeoutMs ?? 250,
     lib: o.lib ?? LIB,
   };
   if (o.judge) deps.judge = o.judge;
   if (o.parseArgs) deps.parseArgs = o.parseArgs;
-  const code = await PRE.runPreflight(o.argv ?? preArgv(), deps);
-  return { code, lines, statements, ledgerText };
+  const code = await PRE.runPreflight(argv, deps);
+  return { code, lines, statements, ledgerText: ledger.text, calls, txOptions, fetchCalls, ledgerWrites: ledger.writes, bindCtx: bindCtxOf(argv, w) };
 }
 
 /* ══ THE EVIDENCE WORLD ══════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -246,7 +344,7 @@ export function recipientRow(o: Row & { key: string; id: string }): Row {
 
 export function messageRow(o: Row & { reference: string; target_id: string }): Row {
   return {
-    purpose: "MARKETING", status: "DELIVERED", body_len: 87, dlr_status: "DELIVRD", dlr_desc: "Delivered", provider_msg: "Message sent",
+    to_test: true, purpose: "MARKETING", status: "DELIVERED", body_len: 87, dlr_status: "DELIVRD", dlr_desc: "Delivered", provider_msg: "Message sent",
     attempts: 0, created_at: d(T0 + 3_000), sent_at: d(T0 + 4_000), delivered_at: d(T0 + 9_000), failed_at: null, balance_tzs: "49994.00",
     ...o,
   };
@@ -271,7 +369,7 @@ export function baseEvWorld(): EvWorld {
     switchAudit: [{ seq: "99", created_at: d(T0 - 900_000), action: "marketing.live_switch_opened", payload: { closesAt: new Date(T0 + 7_200_000).toISOString(), via: "ops" } }],
     people: { test: { suppressions: [], ledger: [LEDGER_GIVEN] }, control: { suppressions: [], ledger: [] } },
     token: "ABCD2345",
-    ledgerText: null,
+    ledgerText: EMPTY_LEDGER_TEXT,
   };
 }
 
@@ -343,6 +441,7 @@ export function evHandlers(w: EvWorld): Record<string, (values: unknown[]) => un
     return [...m.values()];
   };
   return {
+    now: () => [{ now: new Date(w.now) }],
     campaign: (v) => (w.campaign && v[0] === w.campaign.id ? [w.campaign] : []),
     recipients: () => w.recipients.slice(0, 41),
     "recipient-named": (v) => w.recipients.filter((r) => r.msisdn === v[1]).slice(0, 1),
@@ -364,13 +463,15 @@ export const evArgv = (campaign: string, extra: string[]): string[] => [campaign
 export async function runEv(w: EvWorld, argv: string[], o: RunOpts = {}): Promise<RunResult> {
   const statements: string[] = [];
   const lines: string[] = [];
-  let ledgerText: string | null = o.ledgerText !== undefined ? o.ledgerText : w.ledgerText;
+  const calls: Call[] = [];
+  const txOptions: unknown[] = [];
+  const ledger = { text: o.ledgerText !== undefined ? o.ledgerText : w.ledgerText, writes: 0 };
   const deps: Record<string, unknown> = {
     env: o.env ?? { DATABASE_URL: FAKE_DB_URL },
     sink: (l: string) => lines.push(l),
     now: () => o.now ?? w.now,
-    ledgerIo: () => ({ read: () => ledgerText, write: (t: string) => { ledgerText = t; } }),
-    makePrisma: async () => o.prisma ?? fakePrisma(evHandlers(w), statements, o),
+    ledgerIo: () => fakeLedgerIo(ledger),
+    makePrisma: async () => o.prisma ?? fakePrisma(evHandlers(w), statements, o, { calls, txOptions }),
     lib: o.lib ?? LIB,
   };
   if (o.parts) deps.parts = o.parts;
@@ -378,7 +479,7 @@ export async function runEv(w: EvWorld, argv: string[], o: RunOpts = {}): Promis
   if (o.render) deps.render = o.render;
   if (o.parseArgs) deps.parseArgs = o.parseArgs;
   const code = await EV.runEvidence(argv, deps);
-  return { code, lines, statements, ledgerText };
+  return { code, lines, statements, ledgerText: ledger.text, calls, txOptions, fetchCalls: [], ledgerWrites: ledger.writes, bindCtx: bindCtxOf(argv, { contact: null, lists: [] }) };
 }
 
 export { LIB, PRE, EV };

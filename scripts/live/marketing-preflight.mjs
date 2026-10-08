@@ -2,29 +2,37 @@
  * U52a · THE PRE-FLIGHT — a read-only go/no-go table for the first live drive of the SMS campaign engine on production (spec
  * `docs/marketing-specs/ENGINE-SPEC.md` §4.18 decision 1; the run sheet is "AS BUILT — the run sheet" in the same section).
  *
- *   npm run ops:marketing-preflight -- --test=+255… --origin=https://www.50pick.tz [--control=+255…] [--expect-dpl=<sha>]
- *                                      [--expect-switch=closed|open] [--sends=<n>]
+ *   railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255… --origin=https://www.50pick.tz
+ *                                      [--control=+255…] [--expect-dpl=<sha>] [--expect-switch=closed|open] [--sends=<n>] [--new-ledger]
+ *   (from the checkout production runs; `-s` keeps npm from echoing the typed number in its banner)
  *
  * ⭐ WHAT IT ANSWERS, row by row, each with its reason (the exit code is 0 ONLY when every row is GO):
- *   build · health · migrations · switch · settings · window · rail · webhook · credit · ledger ·
+ *   build · health · migrations · switch · settings · source · window · rail · webhook · credit · ledger ·
  *   test-number · test-book · test-lists · test-consent · test-cycle · test-fresh · control
  *   · the migrations the engine's tables come from are FINISHED (by name, `_prisma_migrations`);
  *   · the live switch is CLOSED, and when it closes (`--expect-switch=open` asks the opposite, for after step 1);
  *   · the Marketing SMS settings record: price, credit kept for codes, per-campaign limit, window — and that the send window
- *     is open NOW;
+ *     is open NOW (every time rule reads the DATABASE's clock, `SELECT now()` in the same transaction);
+ *   · the SOURCE LINE: the newest saved `source.phrase` is not blank (the composer will not save a campaign without it) and, when
+ *     licence outreach is open, the 18+ sentence of the typed-number test (`adult.test`) is saved too;
  *   · the receipt secret is SET (production's `/api/health` → `sms.webhookSecretSet`, a boolean, fetched with a timeout) and
  *     the real rail is configured; the SMS credit covers the cap; the build production serves (`?dpl=`, read from the home
  *     page without signing in) — equal to `--expect-dpl` when given;
- *   · the TEST number: a sendable Tanzanian mobile number (the repo's numbering plan), its contact-book row, its lists,
- *     its consent-and-basis state judged as the gate judges it — and again AS IT WILL BE after the stop link's two acts,
- *     which is what campaign C meets — and that no earlier campaign holds it;
+ *   · the TEST number: a sendable Tanzanian mobile number (the repo's numbering plan), its contact-book row, ITS LIST — one that
+ *     holds the test number ALONE (exactly one member), named as the one campaign A must use; a larger list is NO-GO, because a
+ *     campaign to it would message everyone else on it — its consent-and-basis state judged as the gate judges it, and again AS IT
+ *     WILL BE after the stop link's two acts, which is what campaign C meets — and that no earlier campaign holds it;
  *   · the CONTROL number, when one is named: an ACTIVE stop on it. With none named it is not applicable (the §7 Q4 fallback).
  *   · the ledger (`.qa-shots/marketing-setup/U52a/ledger.json`): `--sends` more chargeable sends (default 1) still fit under 6.
+ *     Its ABSOLUTE path and last write are printed every run; a MISSING file is NO-GO unless `--new-ledger` says the drive has not
+ *     begun (the flag is for the first runs only, and is refused once a ledger exists).
  *
- * ⛔ READ ONLY BY CONSTRUCTION. Every database read is a SELECT inside ONE Postgres transaction whose first statement is
- * `SET TRANSACTION READ ONLY`, read back (`readOnlyTransaction`). The only network call is a GET of the public home page and
- * `/api/health` — no sign-in, no secret. It sends no SMS and writes no row; the one file it may touch is the gitignored
- * ledger, which it only READS.
+ * ⛔ READ ONLY BY CONSTRUCTION. Every database read is a SELECT inside ONE Postgres transaction (REPEATABLE READ: one snapshot)
+ * whose first statement is `SET TRANSACTION READ ONLY`, read back (`readOnlyTransaction`). It sends no SMS and writes no row of
+ * ours; the one file it may touch is the gitignored ledger, which it only READS. ⚠️ The only network calls are two GETs of the
+ * public site — the home page and `/api/health` — no sign-in, no secret; and the second one makes the SERVER refresh its cached
+ * SMS balance from the SMS vendor (a balance query, not a message; bounded and rate-limited on the server). That refresh is the
+ * only thing this tool can make anything else do.
  * ⛔ NO NUMBER IS PRINTED WHOLE: the two numbers arrive as arguments, are judged by `parseTzNumber`, and are shown only as the
  * repo's mask (`+255••••NN`). Every line goes through an output filter that also removes the database address and any secret.
  * ⛔ NOTHING DEFAULTS TO PRODUCTION: `--origin` is required, `DATABASE_URL` is set by the runner and never printed, and a
@@ -36,18 +44,32 @@
  */
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import * as LIB from "../lib/marketing-u52a.mjs";
+import { boot } from "../lib/marketing-u52a-boot.mjs";
+
+/* ══ BEFORE ANYTHING ELSE IS LOADED ══════════════════════════════════════════════════════════════════════════════════ */
+// ⭐ The public proxy FIRST, then the checkout check, then the core by a DYNAMIC import (a static import is evaluated before this
+// file's first line — `ops:marketing-referee-keys` was built on the private host that way, 70e9ba96). See marketing-u52a-boot.mjs.
+const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
+const AS_MAIN = import.meta.url === entryUrl;
+if (AS_MAIN) {
+  const booted = boot(import.meta.url);
+  if (!booted.ok) {
+    console.log(`REFUSING: ${booted.problem}`);
+    await new Promise((done) => process.stdout.write("", () => { process.exit(2); done(undefined); }));
+  }
+}
+const LIB = await import("../lib/marketing-u52a.mjs");
 
 const { EXIT, SEND_CAP } = LIB;
 
 const USAGE = [
-  "usage: npm run ops:marketing-preflight -- --test=+255… --origin=https://<production host> [--control=+255…]",
-  "                                         [--expect-dpl=<build>] [--expect-switch=closed|open] [--sends=<0-6>]",
+  "usage: railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255… --origin=https://<production host> [--control=+255…]",
+  "                                         [--expect-dpl=<build>] [--expect-switch=closed|open] [--sends=<0-6>] [--new-ledger]",
 ].join("\n");
 
 export const PREFLIGHT_FLAGS = Object.freeze({
   values: ["test", "control", "origin", "expect-dpl", "expect-switch", "sends"],
-  flags: [],
+  flags: ["new-ledger"],
   positional: 0,
 });
 
@@ -96,7 +118,7 @@ export function parsePreflightArgs(argv, lib = LIB) {
     else problems.push(`--sends must be a whole number from 0 to ${SEND_CAP}`);
   }
   if (problems.length) return { ok: false, problems };
-  return { ok: true, args: { test, control, origin, expectDpl, expectSwitch, sends } };
+  return { ok: true, args: { test, control, origin, expectDpl, expectSwitch, sends, newLedger: f.flags.has("new-ledger") } };
 }
 
 /* ══ THE NETWORK READS (public, unauthenticated, bounded) ════════════════════════════════════════════════════════════ */
@@ -132,7 +154,9 @@ export function dplFromHtml(html) {
 /* ══ THE DATABASE READS — every statement a SELECT, the transaction read-only ════════════════════════════════════════ */
 
 /**
- * What the pre-flight reads, and nothing else (no name, no e-mail, no address, no message body, no secret):
+ * What the pre-flight reads, and nothing else (no person's name, e-mail or address, no message body, no secret — the one name is
+ * a contact LIST's, shown only when it reads as a plain label):
+ *   now()                                 the database's own clock: every time rule below is judged against it
  *   _prisma_migrations                    migration_name, finished_at, rolled_back_at
  *   SystemConfig                          the four records by key: the live switch, the settings, the licence-outreach record,
  *                                         the saved wordings (read only to recognise an import attestation; never shown)
@@ -147,6 +171,8 @@ export function dplFromHtml(html) {
  */
 export async function readPreflightFacts(tx, { testKey, controlKey }) {
   const facts = { migrations: [], config: {}, test: {}, control: null };
+  const clock = await tx.$queryRaw`/* u52a:now */ SELECT now() AS now`;
+  facts.now = clock[0] ? clock[0].now : null;
   facts.migrations = await tx.$queryRaw`/* u52a:migrations */ SELECT "migration_name" AS name, ("finished_at" IS NOT NULL) AS finished, ("rolled_back_at" IS NOT NULL) AS rolled FROM "_prisma_migrations"`;
   const configRows = await tx.$queryRaw`/* u52a:config */ SELECT "key", "value" FROM "SystemConfig" WHERE "key" IN ('marketing.sms.live', 'marketing.sms.settings', 'marketing.outreach.licence', 'marketing.wordings')`;
   for (const r of configRows) {
@@ -186,12 +212,12 @@ const clip = (s, n = 12) => String(s).slice(0, n);
 
 /** Which row ids exist, in order. A suite holds this list so a row cannot vanish unnoticed. */
 export const ROW_IDS = Object.freeze([
-  "build", "health", "migrations", "switch", "settings", "window", "rail", "webhook", "credit", "ledger",
+  "build", "health", "migrations", "switch", "settings", "source", "window", "rail", "webhook", "credit", "ledger",
   "test-number", "test-book", "test-lists", "test-consent", "test-cycle", "test-fresh", "control",
 ]);
 
 /**
- * ctx = { nowMs, args, home: { ok, dpl?|why }, health: { ok, json?|why }, ledger: { ok, used, room? | why } }
+ * ctx = { nowMs (the DATABASE's clock), args, home: { ok, dpl?|why }, health: { ok, json?|why }, ledger: { ok, used, kind | why } }
  * Returns rows { id, go: true | false | null (not applicable), reason } in ROW_IDS order.
  */
 export function judgePreflight(facts, ctx, lib = LIB) {
@@ -243,6 +269,15 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   if (!st.readable) add("settings", false, `the saved record cannot be read in full (dropped: ${st.dropped.join(", ")}) — the engine would pause settings_unreadable; showing ${figures}`);
   else add("settings", true, `${st.stored ? "saved" : "defaults, nothing saved"}: ${figures}`);
 
+  // source · the campaign's source line is saved; with licence outreach open, the typed-number test's 18+ sentence is too
+  const outreachRecord = lib.readOutreach(facts.config[lib.KEY_OUTREACH]);
+  const sourceLine = lib.newestWording(facts.config[lib.KEY_WORDINGS], "source.phrase");
+  const adultTest = lib.newestWording(facts.config[lib.KEY_WORDINGS], "adult.test");
+  const savedOn = (w) => `v${w.v}${w.savedAt ? ` saved ${lib.fmtEat(w.savedAt).slice(0, 10)}` : ""}`;
+  if (!sourceLine) add("source", false, "no source line is saved (the newest source.phrase is blank, or was never saved) - the composer will not save a campaign without one; save it on Admin > System first");
+  else if (outreachRecord.state === "open" && !adultTest) add("source", false, `source.phrase ${savedOn(sourceLine)}, but licence outreach is OPEN and no adult.test sentence is saved - the composer refuses a typed-number test up front without it`);
+  else add("source", true, `source.phrase ${savedOn(sourceLine)}${outreachRecord.state === "open" ? ` · adult.test ${savedOn(adultTest)} (licence outreach is open)` : " · adult.test not needed (licence outreach is closed)"}`);
+
   // window · now is inside the send window
   const minuteNow = lib.eatParts(nowMs).minuteOfDay;
   if (minuteNow >= s.windowStartMinute && minuteNow < s.windowEndMinute) add("window", true, `it is ${lib.minuteLabel(minuteNow)} EAT, inside ${window} (${s.windowEndMinute - minuteNow} min left)`);
@@ -271,9 +306,9 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   else add("credit", true, `the SMS credit ${tzs(smsInfo.balanceTzs)} covers ${tzs(need)} (${tzs(s.codesReserveTzs)} kept for codes + ${remaining} sends × ${tzs(s.pricePerSegmentTzs)})`);
 
   // ledger · room for the next sends
-  if (!ctx.ledger.ok) add("ledger", false, `the ledger cannot be trusted (${ctx.ledger.why}) — move it aside by hand; it is never reset for you`);
+  if (!ctx.ledger.ok) add("ledger", false, ctx.ledger.why);
   else if (ctx.ledger.used + args.sends > SEND_CAP) add("ledger", false, `the ledger refuses: ${ctx.ledger.used} of ${SEND_CAP} chargeable sends already counted, and this step would add ${args.sends}`);
-  else add("ledger", true, `${ctx.ledger.used} of ${SEND_CAP} chargeable sends counted · room for this step's ${args.sends} (${SEND_CAP - ctx.ledger.used - args.sends} spare after it)`);
+  else add("ledger", true, `${ctx.ledger.used} of ${SEND_CAP} chargeable sends counted${ctx.ledger.kind === "new" ? " (a NEW ledger: --new-ledger says the drive has not begun)" : ""} · room for this step's ${args.sends} (${SEND_CAP - ctx.ledger.used - args.sends} spare after it)`);
 
   // test-number · the numbering plan said ok when the argument was read
   add("test-number", true, `${args.test.masked} is a sendable Tanzanian mobile number${args.test.operator ? ` (prefix of ${args.test.operator})` : ""}`);
@@ -288,7 +323,19 @@ export function judgePreflight(facts, ctx, lib = LIB) {
   const lists = facts.test.lists ?? [];
   if (!c || c.erased === true) add("test-lists", false, "no live book row, so no list membership");
   else if (lists.length === 0) add("test-lists", false, `${args.test.masked} is on no list — a campaign to "a book list" cannot reach it`);
-  else add("test-lists", true, lists.slice(0, 5).map((l) => `${lib.safeLabel(l.list_name)} (${l.members} member${l.members === 1 ? "" : "s"}${l.basis ? (l.basis.revoked ? ", newest basis revoked" : ", a basis is in force") : ""})`).join(" · ") + (lists.length > 5 ? ` · …and ${lists.length - 5} more` : ""));
+  else {
+    // ⭐ THE DRIVE LIST MUST HOLD THE TEST NUMBER ALONE: campaign A is "to a book list", and every other member of that list would be messaged.
+    const labelOf = (l) => {
+      const shown = lib.safeLabel(l.list_name);
+      const plain = !shown.startsWith("«");
+      return `${shown}${plain ? "" : " (a name this tool will not print)"} (${l.members} member${Number(l.members) === 1 ? "" : "s"}${l.basis ? (l.basis.revoked ? ", newest basis revoked" : ", a basis is in force") : ""})`;
+    };
+    const alone = lists.filter((l) => Number(l.members) === 1);
+    const larger = lists.filter((l) => Number(l.members) !== 1);
+    const listed = (xs) => xs.slice(0, 5).map(labelOf).join(" · ") + (xs.length > 5 ? ` · …and ${xs.length - 5} more` : "");
+    if (alone.length === 0) add("test-lists", false, `no list holds the test number alone: ${listed(larger)} - the drive list must hold the test number alone, or campaign A would message everyone else on it`);
+    else add("test-lists", true, `campaign A must use ${alone.length === 1 ? "this list, which holds" : "one of these lists, which hold"} the test number alone: ${listed(alone)}${larger.length ? ` · it is also on ${larger.length} larger list${larger.length === 1 ? "" : "s"} - never pick ${listed(larger)}` : ""}`);
+  }
 
   // test-consent / test-cycle · the gate's consent-and-basis half, now and after the stop link's two acts
   const userFacts = facts.test.user
@@ -344,7 +391,9 @@ export function renderPreflight(rows, ctx, lib = LIB) {
   const lines = [];
   lines.push(`U52a pre-flight · read-only · ${lib.fmtEat(ctx.nowMs)} EAT`);
   lines.push(`test ${ctx.args.test.masked} · ${ctx.args.control ? `control ${ctx.args.control.masked}` : "control not named (the Q4 fallback)"} · production ${ctx.args.origin.replace(/^https?:[/][/]/, "")}`);
-  lines.push(`transaction read-only: ${ctx.readOnly}`);
+  lines.push(`transaction read-only: ${ctx.readOnly} · repeatable read`);
+  if (ctx.clock) lines.push(lib.clockLine(ctx.clock));
+  if (ctx.ledgerFile) lines.push(ctx.ledgerFile);
   for (const r of rows) lines.push(`  ${mark(r.go)}  ${r.id.padEnd(12)} ${r.reason}`);
   const bad = rows.filter((r) => r.go === false);
   const applicable = rows.filter((r) => r.go !== null).length;
@@ -403,8 +452,10 @@ export async function runPreflight(argv, deps = realDeps()) {
     fetchBounded(d.fetch, `${args.origin}/api/health`, d.timeoutMs, "json"),
   ]);
   const homeRead = home.ok ? { ok: true, dpl: dplFromHtml(home.text) ?? dplFromHtml(home.link ?? "") } : home;
-  const ledgerRead = lib.readLedger(d.ledgerIo());
-  const ledger = ledgerRead.ok ? { ok: true, used: lib.ledgerTotal(ledgerRead.ledger), existed: ledgerRead.existed } : { ok: false, why: ledgerRead.why };
+  // The ledger is only READ here. A missing file is a NO-GO unless --new-ledger says the drive has not begun (lib.ledgerGate).
+  const ledgerIo = d.ledgerIo();
+  const gate = lib.ledgerGate(lib.readLedger(ledgerIo), args.newLedger);
+  const ledger = gate.ok ? { ok: true, used: gate.used, kind: gate.kind } : { ok: false, kind: gate.kind, why: gate.why };
 
   let facts;
   let prisma = null;
@@ -418,13 +469,14 @@ export async function runPreflight(argv, deps = realDeps()) {
     if (prisma && typeof prisma.$disconnect === "function") { try { await prisma.$disconnect(); } catch { /* the run is over either way */ } }
   }
 
-  const ctx = { nowMs: d.now(), args, home: homeRead, health, ledger, readOnly: "on" };
+  // ⭐ Every time rule reads the DATABASE's clock (`SELECT now()` from the same transaction), this machine's only as the fallback.
+  const clock = lib.clockOf(facts.now, d.now());
+  const ctx = { nowMs: clock.nowMs, clock, args, home: homeRead, health, ledger, ledgerFile: lib.ledgerFileLine(ledgerIo), readOnly: "on" };
   const rows = d.judge(facts, ctx, lib);
   for (const line of renderPreflight(rows, ctx, lib)) io.line(line);
   return rows.some((r) => r.go === false) ? EXIT.fail : EXIT.ok;
 }
 
-const entry = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
-if (import.meta.url === entry) {
+if (AS_MAIN) {
   process.exitCode = await runPreflight(process.argv.slice(2), realDeps());
 }

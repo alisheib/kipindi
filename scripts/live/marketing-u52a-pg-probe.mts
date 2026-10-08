@@ -3,44 +3,50 @@
  * client against a scratch PostgreSQL 18.3 migrated from empty and seeded with the drive's whole story (spec
  * `docs/marketing-specs/ENGINE-SPEC.md` §4.18, "AS BUILT — the run sheet").
  *
- * ⭐ WHY THIS EXISTS. `test:marketing-preflight` runs both tools over a stand-in database that answers each tagged SELECT from a
- * plain object: it proves the rules, the exit codes, the masks and the read-only first statement, and it checks every table and
- * column the SQL names against `schema.prisma` — but it cannot say whether Postgres PARSES the statements, whether an enum
- * compares to the text it is cast to, whether `jsonb` comes back as an object, a `bigint` as text, a `count(*)` as a number,
+ * ⭐ WHY THIS EXISTS — AND WHY IT IS REQUIRED BEFORE PRODUCTION. `test:marketing-preflight` runs both tools over a stand-in database
+ * that answers each tagged SELECT from a plain object: it proves the rules, the exit codes, the masks, the read-only first statement,
+ * each statement's contract and the values it was bound to — but it cannot say whether Postgres PARSES the statements, whether an
+ * enum compares to the text it is cast to, whether `jsonb` comes back as an object, a `bigint` as text, a `count(*)` as a number,
  * how a bare name in ORDER BY resolves, or whether the READ ONLY transaction really refuses a write. Those are facts about the
- * database. This probe asks them, with the SHIPPED tools and the SHIPPED helper, so the first live pre-flight is not the first
- * time the SQL runs.
+ * database. This probe asks them, with the SHIPPED tools and the SHIPPED helper, so the first live pre-flight is not the first time
+ * the SQL runs. The run sheet makes a green run of this probe, by the lead under the heavy-node lock, the first line of "Before the day".
  *
  *   0  the cluster is migrated: every migration the pre-flight names is finished in `_prisma_migrations`, the live switch row is
  *      absent, and no row anywhere names the probe's made-up numbers;
- *   1  the CONTACT world (no account holds the number; a covering list basis; an SMS-naming yes): the pre-flight is GO on every
- *      applicable row, the control row n/a without a control; a control WITH an active stop is GO, one without is NO-GO on its
- *      row alone; an open switch row (jsonb) is NO-GO by default and GO under --expect-switch=open; an ACCOUNT holding the
- *      number is GO on the account branch, and its own switch off is NO-GO on test-consent alone;
- *   2  the evidence on campaign A (the composer test + one delivered send, the stop link shown once), the stop tapped, B
- *      (SKIPPED `suppressed`, zero sends), ⭐ THE GATE REMOVED (the stopped number SENT: skipped:test FAILS, VIOLATION named,
- *      exit 1) and C (after "Start them again"): every verdict and exit code as the run sheet says; the ledger counts 4 and
- *      refuses 3 more;
+ *   1  the CONTACT world (no account holds the number; a covering list basis; an SMS-naming yes; the source line saved): the
+ *      pre-flight is GO on every applicable row, the control row n/a without a control; a control WITH an active stop is GO, one
+ *      without is NO-GO on its row alone; an open switch row (jsonb) is NO-GO by default and GO under --expect-switch=open; an
+ *      ACCOUNT holding the number is GO on the account branch, and its own switch off is NO-GO on test-consent alone; a SECOND
+ *      member on the drive list is NO-GO on test-lists alone; no saved wordings is NO-GO on source alone; a missing ledger file is
+ *      NO-GO on ledger alone unless --new-ledger, which is refused over one that exists; the report says it used the DATABASE's clock;
+ *   2  the evidence on campaign A (the composer test + one delivered send, the stop link shown once, the ledger created by
+ *      --new-ledger), the stop tapped, B (SKIPPED `suppressed`, zero sends), ⭐ THE GATE REMOVED (the stopped number SENT:
+ *      skipped:test FAILS, VIOLATION named, exit 1) and C (after "Start them again"): every verdict and exit code as the run sheet
+ *      says; the ledger counts 4 and refuses 3 more;
  *   3  the TYPES the tools read (booleans, Dates, numbers with no bigint, `seq` as text, jsonb as objects, the gate trail an
- *      array) and ⭐ THE ORDER: the audit rows of a campaign come back in NUMERIC seq order across the 9 to 10 boundary, and the
- *      live switch's "newest eight" are the eight with the greatest seq (a bare ORDER BY on the aliased text would sort them
- *      as text — the probe prints what the server does with that, for the record);
+ *      array, the clock a Date) and ⭐ THE ORDER: the audit rows of a campaign come back in NUMERIC seq order across the 9 to 10
+ *      boundary, and the live switch's "newest eight" are the eight with the greatest seq (a bare ORDER BY on the aliased text would
+ *      sort them as text — the probe prints what the server does with that, for the record);
  *   4  ⭐ READ ONLY: a write inside a transaction set READ ONLY is refused by the database itself (25006), a write handed to the
- *      shipped helper's `$queryRaw` is refused the same way and leaves no row, and a content fingerprint of EVERY table is
- *      identical before and after a run of each tool;
+ *      shipped helper's `$queryRaw` is refused the same way and leaves no row, the helper's transaction really is READ ONLY and
+ *      REPEATABLE READ, and a content fingerprint of EVERY table is identical before and after a run of each tool;
  *   5  nothing printed holds a whole number, the database address, its password or its user.
+ *
+ * ⏰ THE TOOLS READ THE DATABASE'S CLOCK, so the probe's story is told relative to the cluster's own `now()`. The send window
+ * (08:00-20:00 EAT by default, and a saved window may not be wider than 07:00-21:00) is a fact about the time of day the probe is
+ * run: outside it the `window` row is NO-GO in every pre-flight and the probe EXPECTS that (it says so in an INFO line).
  *
  * ⛔ A LOOPBACK CLUSTER ONLY: it writes rows. ⛔ No backslash anywhere in this file (the editing tools decode escapes).
  * ⛔ The AuditLog rows are raw inserts with made-up unique hashes (the chain is not verified here; the tools never read a hash).
  *
- * ⚠️ WRITTEN WITHOUT A DATABASE (U52a was built with none): its seeds were checked by eye against `schema.prisma` and the
- * migrations, the file was parsed, and nothing more — it has NEVER RUN. How to read a failure:
+ * ⚠️ WRITTEN WITHOUT A DATABASE (U52a was built with none): its seeds were checked against `schema.prisma` and the migrations,
+ * the file was parsed, and nothing more — it has NEVER RUN. How to read a failure:
  *   · a line starting `SEED ·` means the probe's OWN row was refused by Postgres — fix the probe's seed, the tools are not in it;
  *   · any other FAIL, with the seeds accepted, is a finding about a tool's SQL or a rule — fix the tool, and add the claim to
  *     `test:marketing-preflight` so the suite holds it from then on. `U52A_SHOW=1` prints every line each run printed.
  *
  * Run (through the heavy-node lock; it boots the scratch cluster):
- *   npm run db:probe-marketing-u52a   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
+ *   npm run -s db:probe-marketing-u52a   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this probe)
  */
 import pg from "pg";
 
@@ -76,10 +82,16 @@ const ok = (label: string, cond: boolean, detail = "", lines: string[] = []): vo
 const q = (text: string, params: unknown[] = []) => client.query(text, params);
 const iso = (ms: number): string => new Date(ms).toISOString();
 const json = (v: unknown): string => JSON.stringify(v);
-const NOW = W.NOW;
+/** The cluster's own clock — what every time rule of the tools reads. The story below is told relative to it. */
+const NOW = ((await q(`SELECT now() AS n`)).rows[0].n as Date).getTime();
 const DAY = 86_400_000;
 const SEEN: string[] = [];
 const OWN_KEYS: string[] = [W.TEST.key, W.CONTROL.key, W.OTHER_KEY];
+/** The default send window is 08:00-20:00 EAT; outside it the pre-flight's `window` row is NO-GO — a fact about the hour, not a finding. */
+const EAT_MINUTE = (() => { const t = new Date(NOW + 3 * 3_600_000); return t.getUTCHours() * 60 + t.getUTCMinutes(); })();
+const WINDOW_OPEN = EAT_MINUTE >= 480 && EAT_MINUTE < 1200;
+const expectedNoGo = (rows: string[]): string[] => [...rows, ...(WINDOW_OPEN ? [] : ["window"])].sort();
+const expectedCode = (rows: string[]): number => (expectedNoGo(rows).length === 0 ? 0 : 1);
 
 /** The probe's own rows: a refusal from Postgres here is the PROBE's fault, said first and said so, and it ends the run. */
 class SeedStop extends Error {}
@@ -95,18 +107,24 @@ async function seeded(stage: string, fn: () => Promise<void>): Promise<void> {
 
 /* ══ THE TWO TOOLS, THROUGH A REAL CLIENT ═════════════════════════════════════════════════════════════════════════════ */
 
-let ledgerText: string | null = null;
-const ledgerIo = () => ({ read: () => ledgerText, write: (t: string) => { ledgerText = t; } });
+/** A ledger file held in memory: the drive's "file exists, nothing counted" at the start; a throwaway one to test a missing file. */
+type LedgerState = { text: string | null };
+const sharedLedger: LedgerState = { text: LIB.serializeLedger(LIB.emptyLedger()) };
+const ledgerIoOf = (state: LedgerState) => () => ({
+  read: () => state.text,
+  write: (t: string) => { state.text = t; },
+  where: () => ({ path: "(the probe's in-memory ledger)", mtimeMs: state.text === null ? null : NOW }),
+});
 
 type Ran = { code: number; lines: string[] };
-async function runPre(argv: string[]): Promise<Ran> {
+async function runPre(argv: string[], ledger: LedgerState = sharedLedger): Promise<Ran> {
   const lines: string[] = [];
   const code = await PRE.runPreflight(argv, {
     env: { DATABASE_URL: URL_ },
     sink: (l: string) => lines.push(l),
     now: () => NOW,
     fetch: W.fakeFetch(W.goodPreWorld()),
-    ledgerIo,
+    ledgerIo: ledgerIoOf(ledger),
     makePrisma: async () => new PrismaClient(),
     timeoutMs: 3000,
   });
@@ -114,13 +132,13 @@ async function runPre(argv: string[]): Promise<Ran> {
   if (SHOW_ALL) console.log(`      ~ pre-flight · exit ${code} · ${lines.length} lines`);
   return { code, lines };
 }
-async function runEv(argv: string[]): Promise<Ran> {
+async function runEv(argv: string[], ledger: LedgerState = sharedLedger): Promise<Ran> {
   const lines: string[] = [];
   const code = await EV.runEvidence(argv, {
     env: { DATABASE_URL: URL_ },
     sink: (l: string) => lines.push(l),
     now: () => NOW,
-    ledgerIo,
+    ledgerIo: ledgerIoOf(ledger),
     makePrisma: async () => new PrismaClient(),
   });
   SEEN.push(...lines);
@@ -138,11 +156,14 @@ const rowsOf = (lines: string[]): Map<string, string> => {
 };
 const noGo = (lines: string[]): string[] => [...rowsOf(lines)].filter(([, v]) => v === "NO-GO").map(([k]) => k).sort();
 const has = (lines: string[], text: string): boolean => lines.some((l) => l.includes(text));
+/** Exactly the rows named are NO-GO (plus `window`, outside its hours), and the exit code follows. */
+const onlyNoGo = (run: Ran, rows: string[]): boolean => json(noGo(run.lines)) === json(expectedNoGo(rows)) && run.code === expectedCode(rows);
 
 /* ══ THE SEEDS ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 const LIST = "lst_u52a_probe_0001";
 const CONTACT = "ct_u52a_probe_0001";
+const CONTACT_2 = "ct_u52a_probe_0002";
 const BASIS = `lb_${"a".repeat(20)}`;
 const CAMP_A = "cmp_u52a_probe_aaaa";
 const CAMP_B = "cmp_u52a_probe_bbbb";
@@ -150,6 +171,7 @@ const CAMP_X = "cmp_u52a_probe_xxxx";
 const CAMP_C = "cmp_u52a_probe_cccc";
 const OFFICER = "usr_u52a_probe_officer";
 const SWITCH_KEY = "marketing.sms.live";
+const WORDINGS_KEY = "marketing.wordings";
 let auditN = 0;
 
 async function seedBook(): Promise<void> {
@@ -162,6 +184,9 @@ async function seedBook(): Promise<void> {
     [BASIS, LIST, OFFICER, iso(NOW - 3_600_000)],
   );
 }
+/** The saved wordings of a platform ready for the drive: the source line and the typed-number test's 18+ sentence (jsonb). */
+const seedWordings = (): Promise<unknown> =>
+  q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [WORDINGS_KEY, json(W.SAVED_WORDINGS)]);
 /** One MessagingConsent row for the test number. An officer's entry carries a recorder; the person's own act and the link carry none. */
 async function seedLedger(id: string, status: string, source: string, at: number, evidence: string | null, wording: string, byOfficer: boolean): Promise<void> {
   await q(
@@ -235,36 +260,38 @@ try {
           + (SELECT count(*) FROM "SmsMessage" WHERE msisdn = ANY($1)) + (SELECT count(*) FROM "User" WHERE "phoneE164" = ANY($2)) AS n`,
     [keysIn, keysIn.map((k) => `+${k}`)],
   )).rows[0].n);
-  const switchRows = Number((await q(`SELECT count(*) AS n FROM "SystemConfig" WHERE key = $1`, [SWITCH_KEY])).rows[0].n);
-  const otherConfig = (await q(`SELECT key FROM "SystemConfig" WHERE key IN ('marketing.sms.settings', 'marketing.outreach.licence', 'marketing.wordings') ORDER BY key`)).rows.map((r) => String(r.key));
-  ok("0 · the cluster is migrated (every migration the pre-flight names is finished), the live switch row is absent and no row names the probe's numbers",
-    missing.length === 0 && heldBefore === 0 && switchRows === 0, `missing [${missing.join(", ")}] · rows naming the numbers ${heldBefore} · switch rows ${switchRows}`);
-  if (otherConfig.length > 0) console.log(`INFO the cluster already holds config rows [${otherConfig.join(", ")}] — they are read by the pre-flight and may change what is GO below`);
+  const configHeld = (await q(`SELECT key FROM "SystemConfig" WHERE key IN ($1, $2, 'marketing.sms.settings', 'marketing.outreach.licence') ORDER BY key`, [SWITCH_KEY, WORDINGS_KEY])).rows.map((r) => String(r.key));
+  ok("0 · the cluster is migrated (every migration the pre-flight names is finished), no row names the probe's numbers, and none of the four config rows the pre-flight reads is there",
+    missing.length === 0 && heldBefore === 0 && configHeld.length === 0, `missing [${missing.join(", ")}] · rows naming the numbers ${heldBefore} · config rows [${configHeld.join(", ")}]`);
+  console.log(`INFO the cluster's clock says ${LIB.fmtEat(NOW).slice(11, 16)} EAT — the send window (08:00-20:00) is ${WINDOW_OPEN ? "OPEN: every GO below is a full GO" : "CLOSED: every pre-flight below is expected to be NO-GO on the window row, and ONLY that row beyond what each check names"}`);
 
   /* ── 1 · the pre-flight ── */
   await seeded("the contact book (list, contact, membership, a covering basis)", seedBook);
+  await seeded("the saved wordings (source.phrase and adult.test, jsonb)", async () => { await seedWordings(); });
   await seeded("the ledger: an officer's yes naming SMS", () => seedLedger("led_probe_0001", "GIVEN", "OPERATOR", NOW - 5 * DAY, null, W.SMS_WORDING, true));
   const contactWorld = await runPre(preArgv());
   const contactRows = rowsOf(contactWorld.lines);
-  ok("1a · the CONTACT world (no account; a covering basis; an SMS-naming yes): every applicable row GO, the control row n/a, exit 0 — migrations, switch and settings read for real",
-    contactWorld.code === 0 && noGo(contactWorld.lines).length === 0 && contactRows.get("control") === "n/a" && contactRows.get("migrations") === "GO" && has(contactWorld.lines, "transaction read-only: on"),
+  ok("1a · the CONTACT world (no account; a covering basis; an SMS-naming yes; the source line saved; a list of one): every applicable row GO, the control row n/a — migrations, switch, settings, source and the ledger read for real",
+    onlyNoGo(contactWorld, []) && contactRows.get("control") === "n/a" && contactRows.get("migrations") === "GO" && contactRows.get("source") === "GO" && contactRows.get("test-lists") === "GO"
+      && has(contactWorld.lines, "transaction read-only: on") && has(contactWorld.lines, "repeatable read") && has(contactWorld.lines, "clock: the database's") && has(contactWorld.lines, "campaign A must use this list"),
     `exit ${contactWorld.code} · NO-GO [${noGo(contactWorld.lines).join(", ")}]`, contactWorld.lines);
 
   await seeded("a stop on the control number", async () => {
     await q(`INSERT INTO "Suppression" (id, channel, identifier, category, reason, evidence, "recordedBy", "createdAt") VALUES ('sup_probe_ctl', 'SMS', $1, 'MARKETING', 'OPERATOR', 'probe', $2, $3)`, [W.CONTROL.key, OFFICER, iso(NOW - 30 * DAY)]);
   });
   const withControl = await runPre(preArgv([`--control=${W.CONTROL.raw}`]));
-  ok("1b · a named control WITH an active stop is GO on its row, exit 0", withControl.code === 0 && rowsOf(withControl.lines).get("control") === "GO", `exit ${withControl.code}`, withControl.lines);
+  ok("1b · a named control WITH an active stop is GO on its row", onlyNoGo(withControl, []) && rowsOf(withControl.lines).get("control") === "GO", `exit ${withControl.code}`, withControl.lines);
   const noStop = await runPre(preArgv([`--control=0688 000 333`]));
-  ok("1c · a named control with NO stop is NO-GO on its row alone, exit 1", noStop.code === 1 && json(noGo(noStop.lines)) === json(["control"]), `exit ${noStop.code} · [${noGo(noStop.lines).join(", ")}]`, noStop.lines);
+  ok("1c · a named control with NO stop is NO-GO on its row alone", onlyNoGo(noStop, ["control"]), `exit ${noStop.code} · [${noGo(noStop.lines).join(", ")}]`, noStop.lines);
 
+  const closesAt = NOW + 5_400_000;
   await seeded("an open live-switch row (jsonb)", async () => {
-    await q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [SWITCH_KEY, json({ enabledBy: "ops", enabledAt: iso(NOW - 300_000), closesAt: iso(NOW + 5_400_000) })]);
+    await q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [SWITCH_KEY, json({ enabledBy: "ops", enabledAt: iso(NOW - 300_000), closesAt: iso(closesAt) })]);
   });
   const openDefault = await runPre(preArgv());
   const openAsked = await runPre(preArgv(["--expect-switch=open"]));
   ok("1d · an OPEN switch row (jsonb) is NO-GO on the switch row by default, GO under --expect-switch=open, and its closing time is printed",
-    json(noGo(openDefault.lines)) === json(["switch"]) && noGo(openAsked.lines).length === 0 && openAsked.code === 0 && has(openAsked.lines, "OPEN until 2026-10-09 12:00:00 EAT"),
+    onlyNoGo(openDefault, ["switch"]) && onlyNoGo(openAsked, []) && has(openAsked.lines, `OPEN until ${LIB.fmtEat(iso(closesAt))} EAT`),
     `default [${noGo(openDefault.lines).join(", ")}] · asked [${noGo(openAsked.lines).join(", ")}] exit ${openAsked.code}`, openAsked.lines);
   await q(`DELETE FROM "SystemConfig" WHERE key = $1`, [SWITCH_KEY]);
 
@@ -276,11 +303,36 @@ try {
   });
   const accountWorld = await runPre(preArgv());
   ok("1e · with an ACCOUNT holding the number (switch on, adult, active, an SMS-naming yes) the pre-flight is GO on the account branch",
-    accountWorld.code === 0 && has(accountWorld.lines, "ACCOUNT branch"), `exit ${accountWorld.code} · [${noGo(accountWorld.lines).join(", ")}]`, accountWorld.lines);
+    onlyNoGo(accountWorld, []) && has(accountWorld.lines, "ACCOUNT branch"), `exit ${accountWorld.code} · [${noGo(accountWorld.lines).join(", ")}]`, accountWorld.lines);
   await q(`UPDATE "User" SET "marketingOptIn" = false WHERE id = 'usr_probe_holder'`);
   const switchOff = await runPre(preArgv());
-  ok("1f · the account's own switch off is NO-GO on test-consent alone (the cycle row is GO: the link's yes switches it on again)", json(noGo(switchOff.lines)) === json(["test-consent"]), `[${noGo(switchOff.lines).join(", ")}]`, switchOff.lines);
+  ok("1f · the account's own switch off is NO-GO on test-consent alone (the cycle row is GO: the link's yes switches it on again)", onlyNoGo(switchOff, ["test-consent"]), `[${noGo(switchOff.lines).join(", ")}]`, switchOff.lines);
   await q(`UPDATE "User" SET "marketingOptIn" = true WHERE id = 'usr_probe_holder'`);
+
+  // a SECOND member on the drive list: a campaign to it would message them too
+  await seeded("a second contact on the drive list", async () => {
+    await q(`INSERT INTO "MarketingContact" (id, msisdn, "rawInput", ndc, source, "consentState") VALUES ($1, $2, $3, '68', 'OPERATOR', 'GIVEN')`, [CONTACT_2, W.OTHER_KEY, "typed by an officer"]);
+    await q(`INSERT INTO "ContactListMember" ("listId", "contactId", "addedAt") VALUES ($1, $2, $3)`, [LIST, CONTACT_2, iso(NOW - DAY)]);
+  });
+  const crowded = await runPre(preArgv());
+  ok("1g · a SECOND member on the drive list is NO-GO on test-lists alone, and the reason says the list must hold the test number alone",
+    onlyNoGo(crowded, ["test-lists"]) && has(crowded.lines, "must hold the test number alone"), `[${noGo(crowded.lines).join(", ")}]`, crowded.lines);
+  await q(`DELETE FROM "ContactListMember" WHERE "contactId" = $1`, [CONTACT_2]);
+  await q(`DELETE FROM "MarketingContact" WHERE id = $1`, [CONTACT_2]);
+
+  // the saved wordings (the source line): gone, the row says so; back, it is GO
+  await q(`DELETE FROM "SystemConfig" WHERE key = $1`, [WORDINGS_KEY]);
+  const noWordings = await runPre(preArgv());
+  ok("1h · with no saved wordings the SOURCE row alone is NO-GO", onlyNoGo(noWordings, ["source"]) && has(noWordings.lines, "no source line is saved"), `[${noGo(noWordings.lines).join(", ")}]`, noWordings.lines);
+  await seeded("the saved wordings, back", async () => { await seedWordings(); });
+
+  // the ledger file: created only on purpose
+  const lost = await runPre(preArgv(), { text: null });
+  const fresh = await runPre(preArgv(["--new-ledger"]), { text: null });
+  const refused = await runPre(preArgv(["--new-ledger"]));
+  ok("1i · a MISSING ledger file is NO-GO on ledger alone; --new-ledger makes it GO; --new-ledger over a ledger that exists is NO-GO on ledger alone",
+    onlyNoGo(lost, ["ledger"]) && onlyNoGo(fresh, []) && has(fresh.lines, "a NEW ledger") && onlyNoGo(refused, ["ledger"]),
+    `missing [${noGo(lost.lines).join(", ")}] · new [${noGo(fresh.lines).join(", ")}] · over an existing one [${noGo(refused.lines).join(", ")}]`, [...lost.lines, ...refused.lines]);
 
   /* ── 2 · the evidence: A, the stop, B, the gate removed, the resume, C ── */
   // eight audit rows of the live switch FIRST, so a campaign's rows later straddle seq 9 and 10
@@ -298,9 +350,17 @@ try {
     await seedCampaignAudit(CAMP_A, "marketing.campaign_started", "ADMIN", OFFICER, { count: 1, estimateSegments: 1, freshCount: 1, shrunkBy: 0 }, aStart);
     await seedCampaignAudit(CAMP_A, "marketing.campaign_finished", "SYSTEM", null, { DELIVERED: 1 }, aStart + 10_000);
   });
-  const evA = await runEv([CAMP_A, `--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-sends=2", "--expect-audit=marketing.campaign_confirmed", "--expect-audit=marketing.campaign_started", "--expect-audit=marketing.campaign_finished", "--label=A", "--show-stop-link"]);
-  ok("2a · campaign A on Postgres: PROVEN (delivered:test, 2 chargeable sends, the audit rows), the stop link printed once, the ledger counts 2",
-    evA.code === 0 && has(evA.lines, "RESULT: PROVEN") && evA.lines.filter((l) => l.includes("/s/ABCD2345")).length === 1 && has(evA.lines, "2 of 6 chargeable sends counted"),
+  const argsA = [CAMP_A, `--test=${W.TEST.raw}`, "--expect=delivered:test", "--expect-sends=2", "--expect-audit=marketing.campaign_confirmed", "--expect-audit=marketing.campaign_started", "--expect-audit=marketing.campaign_finished", "--label=A", "--show-stop-link"];
+  // step 2's shape: the very first evidence run, with no ledger file yet — --new-ledger creates it, with the count
+  const brandNew: LedgerState = { text: null };
+  const created = await runEv([...argsA, "--new-ledger"], brandNew);
+  const createdTotal = (() => { const p = LIB.parseLedger(brandNew.text); return p.ok ? LIB.ledgerTotal(p.ledger) : -1; })();
+  ok("2a-new · the FIRST evidence run, with no ledger file and --new-ledger, creates the ledger with the count (2 of 6); the same run without the flag stops (exit 2)",
+    created.code === 0 && createdTotal === 2 && (await runEv(argsA, { text: null })).code === 2, `exit ${created.code} · counted ${createdTotal}`, created.lines);
+  const evA = await runEv(argsA);
+  ok("2a · campaign A on Postgres: PROVEN (delivered:test, 2 chargeable sends, the audit rows), the stop link printed once, every message 'to the test number: yes', the ledger counts 2",
+    evA.code === 0 && has(evA.lines, "RESULT: PROVEN") && evA.lines.filter((l) => l.includes("/s/ABCD2345")).length === 1 && has(evA.lines, "2 of 6 chargeable sends counted")
+      && has(evA.lines, "to the test number: yes") && has(evA.lines, "TO THE TEST NUMBER    clear") && has(evA.lines, "ONE MESSAGE PER ROW   clear"),
     `exit ${evA.code}`, evA.lines);
 
   // the stop link tapped, after A's message
@@ -333,6 +393,8 @@ try {
   const evX = await runEv([CAMP_X, `--test=${W.TEST.raw}`, "--expect=skipped:test", "--label=X"]);
   ok("2d · ⭐ THE GATE REMOVED on Postgres: the stopped number SENT — skipped:test FAILS, a stop VIOLATION is named, the exit is 1, NOT PROVEN",
     evX.code === 1 && has(evX.lines, "NOT refused") && has(evX.lines, "VIOLATION — ") && has(evX.lines, "RESULT: NOT PROVEN"), `exit ${evX.code}`, evX.lines);
+  const lookX = await runEv([CAMP_X, `--test=${W.TEST.raw}`, "--look"]);
+  ok("2d-look · the same campaign LOOKED at (no verdict asked) still exits 1, and the RESULT line says VIOLATION", lookX.code === 1 && has(lookX.lines, "RESULT: LOOK ONLY") && has(lookX.lines, "BUT 1 VIOLATION"), `exit ${lookX.code}`, lookX.lines);
 
   // "Start them again", then C
   const resumeAt = NOW - 1_200_000;
@@ -365,19 +427,19 @@ try {
       const pf = await LIB.readOnlyTransaction(prisma, (tx: unknown) => PRE.readPreflightFacts(tx, { testKey: W.TEST.key, controlKey: W.CONTROL.key }));
       const ef = await LIB.readOnlyTransaction(prisma, (tx: unknown) => EV.readEvidenceFacts(tx, { campaignId: CAMP_A, testKey: W.TEST.key, controlKey: W.CONTROL.key, wantToken: true }));
       const isDate = (v: unknown): boolean => v instanceof Date;
-      ok("3a · the pre-flight's facts have the types the tools assume (booleans, Dates, numbers, text; no bigint)",
-        typeof pf.migrations[0].finished === "boolean" && isDate(pf.test.contact.created_at) && typeof pf.test.lists[0].members === "number" && isDate(pf.test.lists[0].added_at)
+      ok("3a · the pre-flight's facts have the types the tools assume (booleans, Dates, numbers, text; no bigint; the database's clock a Date)",
+        isDate(pf.now) && typeof pf.migrations[0].finished === "boolean" && isDate(pf.test.contact.created_at) && typeof pf.test.lists[0].members === "number" && isDate(pf.test.lists[0].added_at)
           && typeof pf.test.latest.recorded_by_officer === "boolean" && typeof pf.test.latest.via_link === "boolean" && isDate(pf.test.latest.created_at)
           && pf.test.user !== null && typeof pf.test.user.opt_in === "boolean" && isDate(pf.test.user.dob) && Array.isArray(pf.test.campaigns)
           && pf.test.lists[0].basis !== null && typeof pf.test.lists[0].basis.revoked === "boolean" && isDate(pf.test.lists[0].basis.recorded_at) && pf.control !== null
-          && pf.test.suppressions.length === 1 && isDate(pf.test.suppressions[0].lifted_at),
+          && pf.test.suppressions.length === 1 && isDate(pf.test.suppressions[0].lifted_at) && typeof pf.config[LIB.KEY_WORDINGS] === "object",
         `${pf.migrations.length} migrations`);
-      ok("3b · the evidence's facts have the types the tools assume (seq as text, jsonb as objects, counts as numbers, stamps as Dates)",
-        typeof ef.campaign.status === "string" && isDate(ef.campaign.started_at) && typeof ef.audit[0].seq === "string" && typeof ef.audit[0].payload === "object"
+      ok("3b · the evidence's facts have the types the tools assume (seq as text, jsonb as objects, counts as numbers, stamps as Dates, to_test a boolean)",
+        isDate(ef.now) && typeof ef.campaign.status === "string" && isDate(ef.campaign.started_at) && typeof ef.audit[0].seq === "string" && typeof ef.audit[0].payload === "object"
           && typeof ef.recipientCounts[0].n === "number" && typeof ef.messageCounts[0].n === "number" && Array.isArray(ef.recipients[0].gate_trail)
           && isDate(ef.recipients[0].claimed_at) && typeof ef.recipients[0].attempts === "number" && typeof ef.recipients[0].has_token === "boolean"
           && typeof ef.messages[0].balance_tzs === "string" && ef.stopToken === "ABCD2345" && typeof ef.people.test.suppressions[0].via_link === "boolean"
-          && typeof ef.campaign.estimate_tzs === "string",
+          && typeof ef.campaign.estimate_tzs === "string" && ef.messages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean") && ef.testMessages.every((m: { to_test: unknown }) => typeof m.to_test === "boolean"),
         `${ef.audit.length} audit rows`);
 
       // ⭐ THE ORDER — campaign A's four rows straddle seq 9 and 10; the switch has twelve rows and the tool shows eight
@@ -435,6 +497,18 @@ try {
     ok("4b · a write handed to the shipped helper's $queryRaw is refused by the database and leaves no row", /25006|read-only/i.test(said) && left === 0, `refused ${/25006|read-only/i.test(said)} · rows left ${left}`);
   }
   {
+    const prisma = new PrismaClient();
+    let seen: { iso: string; ro: string } | null = null;
+    try {
+      const rows = await LIB.readOnlyTransaction(prisma, (tx: { $queryRaw: (s: TemplateStringsArray, ...v: unknown[]) => Promise<Array<{ iso: string; ro: string }>> }) =>
+        tx.$queryRaw`SELECT current_setting('transaction_isolation') AS iso, current_setting('transaction_read_only') AS ro`);
+      seen = rows[0] ?? null;
+    } finally {
+      await prisma.$disconnect();
+    }
+    ok("4c · the shipped helper's transaction really is REPEATABLE READ and READ ONLY on the server", seen !== null && seen.iso === "repeatable read" && seen.ro === "on", `isolation ${seen?.iso} · read only ${seen?.ro}`);
+  }
+  {
     const before = await fingerprints();
     await runPre(preArgv([`--control=${W.CONTROL.raw}`]));
     await runPre(preArgv(["--expect-switch=open"]));
@@ -443,7 +517,7 @@ try {
     await runEv([CAMP_X, `--test=${W.TEST.raw}`, "--expect=skipped:test"]);
     const after = await fingerprints();
     const moved = Object.keys(after).filter((t) => after[t] !== before[t]);
-    ok("4c · ⭐ a run of each tool, several ways, changes not one row of any table (a content fingerprint of every table is equal before and after)", moved.length === 0 && Object.keys(before).length > 60,
+    ok("4d · ⭐ a run of each tool, several ways, changes not one row of any table (a content fingerprint of every table is equal before and after)", moved.length === 0 && Object.keys(before).length > 60,
       `${Object.keys(before).length} tables fingerprinted · moved [${moved.join(", ")}]`);
   }
 

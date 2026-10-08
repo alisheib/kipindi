@@ -2,11 +2,12 @@
  * U52a · THE CAMPAIGN EVIDENCE — a read-only look at one campaign of the live drive, and the verdict on what it was given to
  * prove (spec `docs/marketing-specs/ENGINE-SPEC.md` §4.18 decisions 3, 5 and 6; the run sheet is "AS BUILT — the run sheet").
  *
- *   npm run ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…]
+ *   railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…]
  *                                              --expect=sent:test[,skipped:control]  [--expect-sends=<n>]
- *                                              [--label=A] [--show-stop-link]
- *   npm run ops:marketing-campaign-evidence -- <campaignId> --look           (look only, no verdict)
- *   npm run ops:marketing-campaign-evidence -- --ledger [--sends=<n>]        (the ledger alone; needs no database)
+ *                                              [--label=A] [--show-stop-link] [--new-ledger]
+ *   … -- <campaignId> --test=+255… --look     (look only, no verdict — but a violation below still exits 1)
+ *   … -- --ledger [--sends=<n>]               (the ledger alone; needs no database)
+ *   (from the checkout production runs; `-s` keeps npm from echoing the typed number in its banner)
  *
  * ⭐ WHAT IT SHOWS: the campaign's status and stop reason; its recipient rows (MASKED numbers) with status, skip reason, failure
  * class, references; the matching `SmsMessage` rows with their receipt tokens (and the composer test's); the audit rows of E24
@@ -23,37 +24,56 @@
  *     stopped   their stop link was tapped after this campaign's message (E30): an active stop, from the link
  *     resumed   their stop was lifted from the link ("Start them again"): the ledger's newest row is theirs, GIVEN
  * A MISSING ROW IS NEVER A REFUSAL: a person who is not on the campaign fails every outcome but `stopped`/`resumed`. With the gate
- * removed, `skipped:test` fails because the row is SENT. ⛔ And whatever was asked, a message handed to a number AFTER its stop
- * was in force is a violation that turns the exit non-zero by itself.
+ * removed, `skipped:test` fails because the row is SENT. ⛔ And whatever was asked — a verdict OR a look — these are violations
+ * that turn the exit non-zero by themselves: a message handed to a number AFTER its stop was in force; a recipient row with MORE
+ * THAN ONE message (the engine sends one per row); a message to any number that is not the test number (the composer's tests
+ * included — the SQL selects only whether each one went to the test number, never the number).
  *
  * ⭐ THE LEDGER (decision 6): every run counts the campaign's chargeable sends — the composer test's and the campaign's — into
  * `.qa-shots/marketing-setup/U52a/ledger.json` (gitignored). The cap is SIX and a seventh is REFUSED: the ledger is not
- * updated, the exit is non-zero, and the run stops there.
+ * updated, the exit is non-zero, and the run stops there. The file's ABSOLUTE path and last write are printed every run. A file
+ * that is MISSING stops the run (exit 2) unless `--new-ledger` says the drive has not begun — for its first runs only; the flag is
+ * refused once a ledger exists, and no label or outcome reaches the file without the number wall.
  *
- * ⛔ READ ONLY BY CONSTRUCTION (one `SET TRANSACTION READ ONLY` transaction, read back). ⛔ NO NUMBER IS PRINTED WHOLE (the repo's
- * mask, and an output filter behind it), no name, no secret, no `ip` or `userAgent`. The stop link's token is a bearer link for the
- * test number: it is selected, and printed, ONLY under `--show-stop-link`.
+ * ⛔ READ ONLY BY CONSTRUCTION (one `SET TRANSACTION READ ONLY` transaction, REPEATABLE READ, read back; every time rule on the
+ * database's own clock). ⛔ NO NUMBER IS PRINTED WHOLE (the repo's mask, and an output filter behind it), no person's name, no
+ * secret, no `ip` or `userAgent`. The stop link's token is a bearer link for the test number: it is selected, and printed,
+ * ONLY under `--show-stop-link`. It makes no network call at all.
  *
- * Exit: 0 every expectation holds and the ledger took the count · 1 not proven, a stop violation, the ledger refused, or no such
- * campaign · 2 not run (usage, no database, the database would not confirm read-only, an untrusted ledger file).
+ * Exit: 0 every expectation holds and the ledger took the count · 1 not proven, a violation, the ledger refused, or no such
+ * campaign · 2 not run (usage, no database, the database would not confirm read-only, an untrusted or missing ledger file).
  */
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import * as LIB from "../lib/marketing-u52a.mjs";
+import { boot } from "../lib/marketing-u52a-boot.mjs";
+
+/* ══ BEFORE ANYTHING ELSE IS LOADED ══════════════════════════════════════════════════════════════════════════════════ */
+// ⭐ The public proxy FIRST, then the checkout check, then the core by a DYNAMIC import (a static import is evaluated before this
+// file's first line — `ops:marketing-referee-keys` was built on the private host that way, 70e9ba96). See marketing-u52a-boot.mjs.
+const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
+const AS_MAIN = import.meta.url === entryUrl;
+if (AS_MAIN) {
+  const booted = boot(import.meta.url);
+  if (!booted.ok) {
+    console.log(`REFUSING: ${booted.problem}`);
+    await new Promise((done) => process.stdout.write("", () => { process.exit(2); done(undefined); }));
+  }
+}
+const LIB = await import("../lib/marketing-u52a.mjs");
 
 const { EXIT, SEND_CAP } = LIB;
 
 const USAGE = [
-  "usage: npm run ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…] --expect=<outcome>:<who>[,…]",
-  "                                                  [--expect-sends=<n>] [--expect-audit=<action>[,…]] [--label=<A|B|C|…>] [--show-stop-link]",
-  "       npm run ops:marketing-campaign-evidence -- <campaignId> --look",
-  "       npm run ops:marketing-campaign-evidence -- --ledger [--sends=<n>]",
+  "usage: railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <campaignId> --test=+255… [--control=+255…] --expect=<outcome>:<who>[,…]",
+  "                                                  [--expect-sends=<n>] [--expect-audit=<action>[,…]] [--label=<A|B|C|…>] [--show-stop-link] [--new-ledger]",
+  "       … -- <campaignId> --test=+255… --look",
+  "       … -- --ledger [--sends=<n>] [--new-ledger]",
   "  outcomes: sent · delivered · skipped (the stop) · skipped=<reason> · stopped · resumed      who: test · control",
 ].join("\n");
 
 export const EVIDENCE_FLAGS = Object.freeze({
   values: ["test", "control", "expect", "expect-sends", "expect-audit", "label", "sends"],
-  flags: ["show-stop-link", "look", "ledger"],
+  flags: ["show-stop-link", "look", "ledger", "new-ledger"],
   positional: 1,
   repeat: ["expect", "expect-audit"],
 });
@@ -100,7 +120,7 @@ export function parseEvidenceArgs(argv, lib = LIB) {
       if (/^[0-9]$/.test(one("sends")) && Number(one("sends")) <= SEND_CAP) sends = Number(one("sends"));
       else problems.push(`--sends must be a whole number from 0 to ${SEND_CAP}`);
     }
-    return problems.length ? { ok: false, problems } : { ok: true, args: { mode: "ledger", sends } };
+    return problems.length ? { ok: false, problems } : { ok: true, args: { mode: "ledger", sends, newLedger: f.flags.has("new-ledger") } };
   }
   if (one("sends") !== undefined) problems.push("--sends goes with --ledger only");
   let campaignId = null;
@@ -136,33 +156,43 @@ export function parseEvidenceArgs(argv, lib = LIB) {
   if (!look && exp.expectations.length === 0 && expectSends === null && expectAudit.length === 0 && exp.problems.length === 0 && problems.length === 0) problems.push("nothing to prove: give --expect=<outcome>:<who>, --expect-sends=<n> or --expect-audit=<action>, or --look to only look");
   let label = null;
   if (one("label") !== undefined) {
-    if (/^[A-Za-z0-9 ._-]{1,12}$/.test(one("label"))) label = one("label");
-    else problems.push("--label is up to 12 letters, digits, spaces, . _ or -");
+    // ⛔ A label is typed text that is printed and written to the ledger file: letters and digits, never a number — no run of five
+    // digits, and nothing the number wall would change.
+    const typed = one("label");
+    if (!/^[A-Za-z0-9 ._-]{1,12}$/.test(typed)) problems.push("--label is up to 12 letters, digits, spaces, . _ or -");
+    else if (/[0-9]{5,}/.test(typed) || lib.scrubNumbers(typed) !== typed) problems.push("--label may not hold a number (no run of five digits, nothing that reads as a phone number)");
+    else label = typed;
   }
   const showStopLink = f.flags.has("show-stop-link");
   if (showStopLink && !test) problems.push("--show-stop-link needs --test (the link shown is the test number's)");
   if (problems.length) return { ok: false, problems };
-  return { ok: true, args: { mode: "campaign", campaignId, test, control, expectations: exp.expectations, expectSends, expectAudit, look, label, showStopLink } };
+  return { ok: true, args: { mode: "campaign", campaignId, test, control, expectations: exp.expectations, expectSends, expectAudit, look, label, showStopLink, newLedger: f.flags.has("new-ledger") } };
 }
 
 /* ══ THE DATABASE READS — every statement a SELECT, the transaction read-only ════════════════════════════════════════ */
 
 /**
- * What the evidence reads, and nothing else (no name, no e-mail, no address, no message body, no `ip`, no `userAgent`, no hash):
+ * What the evidence reads, and nothing else (no name of anyone or anything, no e-mail, no address, no message body, no `ip`, no
+ * `userAgent`, no hash):
+ *   now()                    the database's own clock (the report's time and the ledger's stamp are its, not this machine's)
  *   SmsCampaign              the campaign's status, stop reason, confirmation figures, officer ids and stamps (not its name)
  *   SmsCampaignRecipient     this campaign's rows: status, skip reason and detail, failure class and error, attempts, reference,
  *                            whether an opt-out token exists (the token itself ONLY under --show-stop-link, for the test number),
  *                            segments, length, cost, the claim's token (to group slices, never shown), stamps, the gate trail
- *   SmsMessage               the messages of those rows and of the composer's tests: reference, purpose, status, receipt token and
- *                            text, length, stamps, the gateway's echoed balance (never the body — none is stored)
+ *   SmsMessage               the messages of those rows and of the composer's tests: reference, whether it went to the TEST number
+ *                            (a yes/no computed in SQL — never the number), purpose, status, receipt token and text, length,
+ *                            stamps, the gateway's echoed balance (never the body — none is stored)
  *   AuditLog                 this campaign's rows (targetType SmsCampaign): seq, time, category, action, the officer's id, payload
  *                            (shown through an allow-list) — and the live switch's last eight rows (SystemConfig marketing.sms.live)
  *   Suppression              the named people's stops: reason, from-the-link, created, lifted
  *   MessagingConsent         the named people's ledger timeline: status, source, from-the-link, time (no wording)
  */
 export async function readEvidenceFacts(tx, { campaignId, testKey, controlKey, wantToken }) {
+  const clock = await tx.$queryRaw`/* u52a:now */ SELECT now() AS now`;
+  // With no --test there is no test number to compare a message's recipient with: the comparison is against nothing, and the report skips it.
+  const probeKey = testKey ?? "";
   const camp = await tx.$queryRaw`/* u52a:campaign */ SELECT "id", "status"::text AS status, "stopReason" AS stop_reason, "audienceCount" AS audience_count, "confirmTier" AS confirm_tier, "estimateSegments" AS estimate_segments, "estimateTzs"::text AS estimate_tzs, "budgetTzs"::text AS budget_tzs, "segmentsSw" AS segments_sw, "segmentsEn" AS segments_en, ("enqueueCursor" = 'done') AS enqueued, "createdBy" AS created_by, "confirmedBy" AS confirmed_by, "confirmedAt" AS confirmed_at, "enqueuedAt" AS enqueued_at, "startedAt" AS started_at, "pausedAt" AS paused_at, "finishedAt" AS finished_at, "createdAt" AS created_at FROM "SmsCampaign" WHERE "id" = ${campaignId}`;
-  const facts = { campaign: camp[0] ?? null };
+  const facts = { now: clock[0] ? clock[0].now : null, campaign: camp[0] ?? null };
   if (!facts.campaign) return facts;
 
   facts.recipients = await tx.$queryRaw`/* u52a:recipients */ SELECT "id", "msisdn", "status"::text AS status, "skipReason" AS skip_reason, "skipDetail" AS skip_detail, "failureClass" AS failure_class, "error", "attempts", "smsReference" AS sms_reference, ("optOutToken" IS NOT NULL) AS has_token, "locale"::text AS locale, "segments", "bodyLen" AS body_len, "costTzs"::text AS cost_tzs, "claimToken" AS claim_token, "claimedAt" AS claimed_at, "sentAt" AS sent_at, "deliveredAt" AS delivered_at, "failedAt" AS failed_at, "gateTrail" AS gate_trail FROM "SmsCampaignRecipient" WHERE "campaignId" = ${campaignId} ORDER BY "id" LIMIT 41`;
@@ -173,9 +203,9 @@ export async function readEvidenceFacts(tx, { campaignId, testKey, controlKey, w
   }
   facts.recipientCounts = await tx.$queryRaw`/* u52a:recipient-counts */ SELECT "status"::text AS status, "skipReason" AS skip_reason, "failureClass" AS failure_class, count(*)::int AS n FROM "SmsCampaignRecipient" WHERE "campaignId" = ${campaignId} GROUP BY 1, 2, 3 ORDER BY 1, 2, 3`;
 
-  facts.messages = await tx.$queryRaw`/* u52a:messages */ SELECT m."reference", m."purpose"::text AS purpose, m."status"::text AS status, m."bodyLen" AS body_len, m."dlrStatus" AS dlr_status, m."dlrDesc" AS dlr_desc, m."providerMsg" AS provider_msg, m."attempts", m."targetId" AS target_id, m."createdAt" AS created_at, m."sentAt" AS sent_at, m."deliveredAt" AS delivered_at, m."failedAt" AS failed_at, m."balanceTzs"::text AS balance_tzs FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignRecipient' AND m."targetId" IN (SELECT r."id" FROM "SmsCampaignRecipient" r WHERE r."campaignId" = ${campaignId}) ORDER BY m."createdAt", m."reference" LIMIT 201`;
+  facts.messages = await tx.$queryRaw`/* u52a:messages */ SELECT m."reference", (m."msisdn" = ${probeKey}) AS to_test, m."purpose"::text AS purpose, m."status"::text AS status, m."bodyLen" AS body_len, m."dlrStatus" AS dlr_status, m."dlrDesc" AS dlr_desc, m."providerMsg" AS provider_msg, m."attempts", m."targetId" AS target_id, m."createdAt" AS created_at, m."sentAt" AS sent_at, m."deliveredAt" AS delivered_at, m."failedAt" AS failed_at, m."balanceTzs"::text AS balance_tzs FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignRecipient' AND m."targetId" IN (SELECT r."id" FROM "SmsCampaignRecipient" r WHERE r."campaignId" = ${campaignId}) ORDER BY m."createdAt", m."reference" LIMIT 201`;
   facts.messageCounts = await tx.$queryRaw`/* u52a:message-counts */ SELECT m."status"::text AS status, (m."dlrStatus" IS NOT NULL) AS has_receipt, count(*)::int AS n FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignRecipient' AND m."targetId" IN (SELECT r."id" FROM "SmsCampaignRecipient" r WHERE r."campaignId" = ${campaignId}) GROUP BY 1, 2`;
-  facts.testMessages = await tx.$queryRaw`/* u52a:test-messages */ SELECT m."reference", m."purpose"::text AS purpose, m."status"::text AS status, m."bodyLen" AS body_len, m."dlrStatus" AS dlr_status, m."dlrDesc" AS dlr_desc, m."providerMsg" AS provider_msg, m."attempts", m."targetId" AS target_id, m."createdAt" AS created_at, m."sentAt" AS sent_at, m."deliveredAt" AS delivered_at, m."failedAt" AS failed_at, m."balanceTzs"::text AS balance_tzs FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignTest' AND m."targetId" = ${campaignId} ORDER BY m."createdAt", m."reference" LIMIT 20`;
+  facts.testMessages = await tx.$queryRaw`/* u52a:test-messages */ SELECT m."reference", (m."msisdn" = ${probeKey}) AS to_test, m."purpose"::text AS purpose, m."status"::text AS status, m."bodyLen" AS body_len, m."dlrStatus" AS dlr_status, m."dlrDesc" AS dlr_desc, m."providerMsg" AS provider_msg, m."attempts", m."targetId" AS target_id, m."createdAt" AS created_at, m."sentAt" AS sent_at, m."deliveredAt" AS delivered_at, m."failedAt" AS failed_at, m."balanceTzs"::text AS balance_tzs FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignTest' AND m."targetId" = ${campaignId} ORDER BY m."createdAt", m."reference" LIMIT 20`;
   facts.testMessageCounts = await tx.$queryRaw`/* u52a:test-message-counts */ SELECT m."status"::text AS status, (m."dlrStatus" IS NOT NULL) AS has_receipt, count(*)::int AS n FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignTest' AND m."targetId" = ${campaignId} GROUP BY 1, 2`;
 
   // ⛔ ORDER BY "AuditLog"."seq", never a bare "seq": the select list ALIASES the cast as seq, and PostgreSQL reads a bare name in
@@ -380,28 +410,64 @@ export function auditChecks(facts, args) {
   });
 }
 
+/**
+ * ⭐ THE STANDING CHECKS — true of every campaign of this drive whatever was asked, and a violation by themselves (a look's exit
+ * turns non-zero too):
+ *   · ONE MESSAGE PER ROW: the engine sends one message per recipient row; a row with two is a double send. (Not only when
+ *     `--expect-sends` happens to be given.)
+ *   · THE TEST NUMBER ONLY: with `--test` given, every message of the campaign and every composer test went to the test number.
+ *     The SQL computes a yes/no per message (`to_test`); the number itself is never selected.
+ */
+export function standingFindings(facts, args) {
+  const out = [];
+  const recipients = facts.recipients ?? [];
+  const roleOf = (key) => (args.test && key === args.test.key ? "test" : args.control && key === args.control.key ? "control" : "other");
+  const recipientOf = new Map(recipients.map((r) => [r.id, r]));
+  const perRow = new Map();
+  for (const m of facts.messages ?? []) perRow.set(m.target_id, (perRow.get(m.target_id) ?? 0) + 1);
+  for (const [target, n] of perRow) {
+    if (n <= 1) continue;
+    const r = recipientOf.get(target);
+    out.push({ kind: "double_send", who: r ? roleOf(r.msisdn) : "other", n });
+  }
+  if (args.test) {
+    const stray = (rows) => (rows ?? []).filter((m) => m.to_test === false).length;
+    const campaign = stray(facts.messages);
+    const composer = stray(facts.testMessages);
+    if (campaign > 0) out.push({ kind: "other_number", where: "campaign", n: campaign });
+    if (composer > 0) out.push({ kind: "other_number", where: "composer test", n: composer });
+  }
+  return out;
+}
+
+/** How many violations a verdict found — the number a LOOK's exit code is made of (a look asks for no verdict, not for silence). */
+export function lookViolations(verdict) {
+  return verdict.violations.length + verdict.standing.length;
+}
+
 /** The parts of the verdict, as one object, so a suite can hand in a defective one (and nothing else does). */
-export const PARTS = Object.freeze({ buildPeople, judgeExpectation, stopViolations, sendCounts, sliceTimings, auditChecks });
+export const PARTS = Object.freeze({ buildPeople, judgeExpectation, stopViolations, sendCounts, sliceTimings, auditChecks, standingFindings, lookViolations });
 
 /**
  * The whole verdict. ⛔ Pure: facts and arguments in, a plain object out — the exit code follows from `proven` alone, and
  * `proven` is true only when every expectation holds, no stop was violated and any expected send count is exact.
  */
 export function judgeEvidence(facts, args, lib = LIB, parts = PARTS) {
-  if (!facts.campaign) return { found: false, proven: false, expectations: [], violations: [], sends: null, sendsHolds: null, auditChecks: [], people: [], slices: [], failing: 1 };
+  if (!facts.campaign) return { found: false, proven: false, expectations: [], violations: [], standing: [], sends: null, sendsHolds: null, auditChecks: [], people: [], slices: [], failing: 1 };
   const people = parts.buildPeople(facts, args);
   const byRole = Object.fromEntries(people.map((p) => [p.role, p]));
   const expectations = args.expectations.map((e) => parts.judgeExpectation(e, byRole[e.who] ?? null, lib));
   const violations = parts.stopViolations(people);
+  const standing = parts.standingFindings(facts, args);
   const sends = parts.sendCounts(facts, lib);
   let sendsHolds = null;
   if (args.expectSends !== null) sendsHolds = sends.chargeable === args.expectSends;
   const audits = parts.auditChecks(facts, args);
-  const failing = expectations.filter((x) => !x.holds).length + (sendsHolds === false ? 1 : 0) + audits.filter((x) => !x.holds).length + violations.length;
+  const failing = expectations.filter((x) => !x.holds).length + (sendsHolds === false ? 1 : 0) + audits.filter((x) => !x.holds).length + violations.length + standing.length;
   return {
     found: true,
     proven: args.look ? null : failing === 0,
-    expectations, violations, sends, sendsHolds, auditChecks: audits, people,
+    expectations, violations, standing, sends, sendsHolds, auditChecks: audits, people,
     slices: parts.sliceTimings(facts.recipients),
     failing,
   };
@@ -420,7 +486,9 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
   const L = [];
   const c = facts.campaign;
   L.push(`U52a campaign evidence · read-only · ${lib.fmtEat(ctx.nowMs)} EAT${args.label ? ` · step ${args.label}` : ""}`);
-  L.push(`transaction read-only: ${ctx.readOnly}`);
+  L.push(`transaction read-only: ${ctx.readOnly} · repeatable read`);
+  if (ctx.clock) L.push(lib.clockLine(ctx.clock));
+  if (ctx.ledgerFile) L.push(ctx.ledgerFile);
   if (!c) { L.push("campaign: NOT FOUND — no such campaign id"); return L; }
   L.push(`campaign ${lib.safeText(c.id, 64)} · ${lib.safeText(c.status, 14)} · stop reason ${lib.safeText(c.stop_reason, 40)} · confirmed for ${dash(c.audience_count)} (${lib.safeText(c.confirm_tier, 12)}) · ≤ ${dash(c.estimate_segments)} SMS${c.budget_tzs !== null && c.budget_tzs !== undefined ? ` · budget TZS ${c.budget_tzs}` : ""}`);
   L.push(`  by officer ${lib.safeText(c.created_by, 40)} · confirmed by ${lib.safeText(c.confirmed_by, 40)} at ${lib.fmtEat(c.confirmed_at)} · started ${lib.fmtEat(c.started_at)} · list written ${lib.fmtEat(c.enqueued_at)} · paused ${lib.fmtEat(c.paused_at)} · finished ${lib.fmtEat(c.finished_at)}`);
@@ -444,7 +512,8 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
   }
   if (total > 41) L.push(`  (the first 41 of ${total} rows; the named people are always shown)`);
 
-  const msgLine = (m, tag) => `  ${tag} ${lib.safeText(m.reference, 40)} · ${lib.safeText(m.purpose, 12)} · ${lib.safeText(m.status, 12)} · receipt ${lib.safeText(m.dlr_status, 16)}${m.dlr_desc ? ` (${lib.safeText(m.dlr_desc, 60)})` : ""} · ${dash(m.body_len)} chars · tries ${m.attempts} · queued ${timeOf(m.created_at)} · handed over ${timeOf(m.sent_at)} · delivered ${timeOf(m.delivered_at)} · failed ${timeOf(m.failed_at)}${m.balance_tzs ? ` · gateway balance after TZS ${m.balance_tzs}` : ""}${m.provider_msg ? ` · gateway said ${lib.safeText(m.provider_msg, 60)}` : ""}`;
+  const toTest = (m) => (args.test && typeof m.to_test === "boolean" ? ` · to the test number: ${m.to_test ? "yes" : "NO"}` : "");
+  const msgLine = (m, tag) => `  ${tag} ${lib.safeText(m.reference, 40)}${toTest(m)} · ${lib.safeText(m.purpose, 12)} · ${lib.safeText(m.status, 12)} · receipt ${lib.safeText(m.dlr_status, 16)}${m.dlr_desc ? ` (${lib.safeText(m.dlr_desc, 60)})` : ""} · ${dash(m.body_len)} chars · tries ${m.attempts} · queued ${timeOf(m.created_at)} · handed over ${timeOf(m.sent_at)} · delivered ${timeOf(m.delivered_at)} · failed ${timeOf(m.failed_at)}${m.balance_tzs ? ` · gateway balance after TZS ${m.balance_tzs}` : ""}${m.provider_msg ? ` · gateway said ${lib.safeText(m.provider_msg, 60)}` : ""}`;
   L.push(`composer tests · ${(facts.testMessages ?? []).length} message${(facts.testMessages ?? []).length === 1 ? "" : "s"} on the wire from this draft`);
   for (const m of facts.testMessages ?? []) L.push(msgLine(m, "test "));
   L.push(`campaign messages · ${(facts.messages ?? []).length} on the wire for this campaign's rows`);
@@ -473,6 +542,13 @@ export function renderEvidence(facts, verdict, args, ctx, lib = LIB) {
   }
   for (const x of verdict.expectations) L.push(`  EXPECT ${x.label.padEnd(18)} ${x.holds ? "HOLDS" : "FAILS"} — ${x.why}`);
   if (verdict.people.length) L.push(`  STOP-VIOLATION SCAN   ${verdict.violations.length === 0 ? "clear — no message was handed to a named number after a stop was in force" : verdict.violations.map((v) => `VIOLATION — the ${v.who} was handed a message although a stop made at ${lib.fmtEat(v.stopAt)} was in force when the engine took them up at ${lib.fmtEat(v.at)} (${v.by})`).join(" · ")}`);
+  // ⭐ the standing checks: true of every campaign of this drive, asked or not
+  const doubles = verdict.standing.filter((s) => s.kind === "double_send");
+  L.push(`  ONE MESSAGE PER ROW   ${doubles.length === 0 ? "clear — no recipient row has more than one message" : doubles.map((s) => `VIOLATION — the ${s.who} row has ${s.n} messages (the engine sends one message per row)`).join(" · ")}`);
+  if (args.test) {
+    const strays = verdict.standing.filter((s) => s.kind === "other_number");
+    L.push(`  TO THE TEST NUMBER    ${strays.length === 0 ? "clear — every message of the campaign and every composer test went to the test number" : strays.map((s) => `VIOLATION — ${s.n} ${s.where} message${s.n === 1 ? "" : "s"} went to a number that is NOT the test number`).join(" · ")}`);
+  }
 
   L.push(`chargeable sends · ${verdict.sends.chargeable} (${verdict.sends.composerTests} composer test + ${verdict.sends.recipientSends} campaign) — compare with the Blackball portal's Out SMS COUNT for this window (the portal also counts login codes)`);
   if (verdict.sendsHolds !== null) L.push(`  EXPECT sends=${args.expectSends}      ${verdict.sendsHolds ? "HOLDS" : "FAILS"} — counted ${verdict.sends.chargeable}`);
@@ -536,12 +612,18 @@ export async function runEvidence(argv, deps = realDeps()) {
   const keys = [args.test, args.control].filter(Boolean).map((n) => n.key);
   const io = lib.makeIo(d.sink, d.env, keys);
 
-  const ledgerRead = lib.readLedger(d.ledgerIo());
-  if (!ledgerRead.ok) {
-    io.line(`NOT RUN: the ledger cannot be trusted (${ledgerRead.why}) — move the file aside by hand; it is never reset for you.`);
+  // ⭐ A ledger file is created only on purpose: a missing one stops the run unless --new-ledger says the drive has not begun, and
+  // --new-ledger over a ledger that exists is refused too (lib.ledgerGate). Where the file is, and when it was written, is said every run.
+  const ledgerIo = d.ledgerIo();
+  const ledgerRead = lib.readLedger(ledgerIo);
+  const gate = lib.ledgerGate(ledgerRead, args.newLedger);
+  if (!gate.ok) {
+    io.line(lib.ledgerFileLine(ledgerIo));
+    io.line(`NOT RUN: ${gate.why}.`);
     return EXIT.notRun;
   }
   if (args.mode === "ledger") {
+    io.line(lib.ledgerFileLine(ledgerIo));
     renderLedger(ledgerRead.ledger, io, lib, args.sends);
     return lib.checkRoom(ledgerRead.ledger, args.sends).ok ? EXIT.ok : EXIT.fail;
   }
@@ -569,9 +651,11 @@ export async function runEvidence(argv, deps = realDeps()) {
     if (prisma && typeof prisma.$disconnect === "function") { try { await prisma.$disconnect(); } catch { /* the run is over either way */ } }
   }
 
-  const nowMs = d.now();
+  // ⭐ The report's time, and the ledger's stamp, are the DATABASE's clock (`SELECT now()` from the same transaction).
+  const clock = lib.clockOf(facts.now, d.now());
+  const nowMs = clock.nowMs;
   const verdict = judgeEvidence(facts, args, lib, d.parts);
-  const ctx = { nowMs, readOnly: "on" };
+  const ctx = { nowMs, clock, ledgerFile: lib.ledgerFileLine(ledgerIo), readOnly: "on" };
   for (const line of d.render(facts, verdict, args, ctx, lib)) io.line(line);
   if (!verdict.found) { io.line("RESULT: NOT PROVEN — there is no such campaign"); return EXIT.fail; }
 
@@ -595,7 +679,7 @@ export async function runEvidence(argv, deps = realDeps()) {
       : "LEDGER REFUSES: this campaign id cannot be recorded.");
   } else {
     try {
-      d.ledgerIo().write(lib.serializeLedger(rec.ledger));
+      ledgerIo.write(lib.serializeLedger(rec.ledger));
       io.line(`ledger · ${rec.total} of ${SEND_CAP} chargeable sends counted after this campaign (${SEND_CAP - rec.total} left)`);
     } catch {
       ledgerOk = false;
@@ -603,14 +687,23 @@ export async function runEvidence(argv, deps = realDeps()) {
     }
   }
 
-  if (args.look) { io.line(`RESULT: LOOK ONLY — no verdict was asked${ledgerOk ? "" : " (the ledger problem above still stops the drive)"}`); return ledgerOk ? EXIT.ok : EXIT.fail; }
+  if (args.look) {
+    // ⭐ A look asks for no verdict, but a VIOLATION it finds (a stop broken, a double send, a message to another number) is not
+    // something to look past: the exit is 1 and the line says so.
+    const violated = d.parts.lookViolations(verdict);
+    if (violated > 0) {
+      io.line(`RESULT: LOOK ONLY — no verdict was asked, BUT ${violated} VIOLATION${violated === 1 ? "" : "S"} above (a message after a stop, a double send, or a message to a number that is not the test number): the exit is 1 - STOP THE DRIVE and tell Ali${ledgerOk ? "" : "; the ledger problem above stops it too"}`);
+      return EXIT.fail;
+    }
+    io.line(`RESULT: LOOK ONLY — no verdict was asked${ledgerOk ? "" : " (the ledger problem above still stops the drive)"}`);
+    return ledgerOk ? EXIT.ok : EXIT.fail;
+  }
   const proven = verdict.proven === true && ledgerOk;
   io.line(proven ? `RESULT: PROVEN — ${verdict.expectations.length + (verdict.sendsHolds === null ? 0 : 1) + verdict.auditChecks.length} expectation(s) hold, no stop was violated, the ledger took the count`
     : `RESULT: NOT PROVEN — ${verdict.failing} thing(s) failing${ledgerOk ? "" : " and the ledger refused"}`);
   return proven ? EXIT.ok : EXIT.fail;
 }
 
-const entryUrl = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";
-if (import.meta.url === entryUrl) {
+if (AS_MAIN) {
   process.exitCode = await runEvidence(process.argv.slice(2), realDeps());
 }
