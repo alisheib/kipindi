@@ -891,12 +891,12 @@ const isUsableReserve = (r: number | null): boolean => typeof r === "number" && 
 export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
   {
     name: "R-F2 (the plan's RED) · the credit check skipped at Start",
-    expect: [L.f1, L.f2, L.f3],
+    expect: [L.f1, L.f2, L.f3, L.f17],
     impl: () => ({ start: (c, d) => SC.checkStart(c, { ...d, credit: () => ({ ok: true }) }) }),
   },
   {
     name: "R-F2d · Start priced from the confirmation's frozen estimate, not today's price",
-    expect: [L.f1, L.f2],
+    expect: [L.f1, L.f2, L.f17],
     impl: () => ({
       start: (c, d) => SC.checkStart(c, {
         ...d,
@@ -976,7 +976,7 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
   },
   {
     name: "R-F2c · the credit line read as at-or-below (landing on the line refused)",
-    expect: [L.f2],
+    expect: [L.f2, L.f17],
     impl: () => ({
       deps: (d) => ({
         ...d,
@@ -1004,7 +1004,7 @@ export const F_PLANTS: ReadonlyArray<EnginePlant<FImpl>> = [
   {
     // It also hands Resume a count of its own, so a list longer than confirmed is never seen (F16).
     name: "R-F6 · Resume prices the whole campaign, not the rows still owed a message",
-    expect: [L.f6, L.f16],
+    expect: [L.f6, L.f16, L.f17],
     impl: () => ({ resume: (c, counts, d) => SC.resumeRefusal(c, rows({ PENDING: c.audienceCount ?? outstandingOf(counts) }), d) }),
   },
   {
