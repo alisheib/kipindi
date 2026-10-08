@@ -182,6 +182,7 @@ const field = (page, key) => page.locator(`${inDialog(`[data-field="${key}"] inp
 const SEL = {
   name: 'label[data-field="name"] input',
   bodySw: 'label[data-field="bodySw"] textarea',
+  fallbackSw: 'label[data-field="nameFallbackSw"] input',
   save: "[data-compose-save]",
   saved: "[data-compose-saved]",
   audience: '[data-block="compose-audience"]',
@@ -367,13 +368,14 @@ async function runA() {
     await step("18-compose", async () => {
       await page.goto(`${BASE}/admin/campaigns/new`, { waitUntil: "networkidle" });
       await page.locator(SEL.name).first().fill("October welcome");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri mechi za wikendi.");
+      await page.locator(SEL.fallbackSw).first().fill("rafiki");
       await wait(500);
       await shoot(page, "19-compose-filled");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri “leo”.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri “leo”.");
       await wait(500);
       await shoot(page, "20-compose-warning");
-      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
+      await page.locator(SEL.bodySw).first().fill("50pick: Karibu {jina}! Bashiri mechi za wikendi.");
       await wait(400);
       await page.locator(SEL.save).first().click();
       await page.waitForSelector(SEL.saved, { timeout: 20_000 });
@@ -512,7 +514,8 @@ async function runB() {
     // The audience first (the rail's own address, as its "weekend" pill writes it), then the words, then one save.
     await page.goto(`${BASE}/admin/campaigns/new?tag=weekend`, { waitUntil: "networkidle" });
     await page.locator(SEL.name).first().fill("Weekend offer");
-    await page.locator(SEL.bodySw).first().fill("50pick: Habari {jina}! Mechi za wikendi ziko tayari, bashiri sasa kwenye 50pick.");
+    await page.locator(SEL.bodySw).first().fill("50pick: Habari {jina}! Bashiri mechi za wikendi.");
+    await page.locator(SEL.fallbackSw).first().fill("rafiki");
     await wait(400);
     await page.locator(SEL.save).first().click();
     await page.waitForSelector(SEL.saved, { timeout: 20_000 });
