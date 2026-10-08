@@ -1437,6 +1437,13 @@ async function runAssertions(impl: Impl): Promise<void> {
     if (!sheet.includes("kipindi-m14-base")) wrong.push("the run sheet does not name the checkout the commands run from");
     // the scratch-PostgreSQL probe is a REQUIRED step before production, not an option
     if (!(sheet.includes("db:probe-marketing-u52a") && sheet.includes("REQUIRED before production") && sheet.includes("Step 0 is not run on production until it is green"))) wrong.push("the run sheet no longer requires the scratch probe before production");
+    // ⭐ THE GATE is on the sheet (the cap and "nothing else can send" gate the drive, they are not only read afterwards): the pre-flight with the
+    // campaign about to start named, the ledger's room, the audience look - before step 2, each Start and any retry - and step 0 reads twenty rows
+    for (const gate of ["ops:marketing-campaign-evidence -- --ledger --sends=1", "--look --expect-audience=1", "--expect-switch=open --drive-campaign=<X>"]) {
+      if (!sheet.includes(gate)) wrong.push(`the run sheet no longer carries the gate command «${gate}»`);
+    }
+    if (!sheet.includes("and before ANY retry run G1, G2 and G3")) wrong.push("the run sheet no longer gates a retry");
+    if (!sheet.includes("RESULT: GO — 19 of 19 rows (1 not applicable)")) wrong.push("the run sheet's step 0 no longer reads 19 of 19 rows");
     return [wrong.length === 0, `wrong [${wrong.join("; ")}] · without -s the banner names the number: ${bannerShowsNumber}`];
   });
 
@@ -2635,6 +2642,14 @@ if (!PROVE_RED) {
       impl: () => withSources({ spec: REAL_SOURCES.spec.split("kipindi-m14-base").join("a-checkout") }) },
     { name: "R-W16 · the run sheet makes the scratch-PostgreSQL probe optional again", expect: [L.p9],
       impl: () => withSources({ spec: REAL_SOURCES.spec.split("REQUIRED before production").join("optional") }) },
+    { name: "R-W23 · the run sheet no longer reads the audience before a Start (the --look --expect-audience gate is gone)", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("--look --expect-audience=1").join("--look") }) },
+    { name: "R-W24 · the run sheet no longer gates the cap before a send (--ledger --sends=1 is gone)", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("ops:marketing-campaign-evidence -- --ledger --sends=1").join("ops:marketing-campaign-evidence -- --ledger") }) },
+    { name: "R-W25 · the run sheet's step 0 reads the old seventeen rows, and its gate no longer covers a retry", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("19 of 19 rows").join("17 of 17 rows").split("and before ANY retry run G1, G2 and G3").join("and run G1") }) },
+    { name: "R-W26 · the run sheet's pre-flight gate no longer names the campaign about to start (the in-flight row cannot tell it from a stranger)", expect: [L.p9],
+      impl: () => withSources({ spec: REAL_SOURCES.spec.split("--expect-switch=open --drive-campaign=<X>").join("--expect-switch=open") }) },
     /* ── before anything is loaded ── */
     { name: "R-B1 · the private Railway host is NOT rewritten to the public proxy", expect: [L.b1],
       impl: { boot: { ...BOOT, boot: (toolUrl: string, _env: object, cwd: string, exists?: (p: string) => boolean) => { const p = BOOT.checkoutProblem(cwd, toolUrl, exists); return p === null ? { ok: true } : { ok: false, problem: p }; } } } },
