@@ -40,9 +40,13 @@ then: "the contacts screen"):
     seed world) and the BROWSER half (import-read.ts, import-loop.ts, the dialog and its panels, the page-head button,
     the flow suite, the drive `scripts/live/contacts-import-drive.mjs`). When they land: ONE battery under the lock,
     an adversarial review, fixes, then push to main as C3–C5 with this file updated.
-  · THE TEST FILES — `scripts/contacts-import/real-world-files.mts` (a generator: every Excel/CSV/vCard/paste variant,
-    the broken ones, 150,000-row and 40 MB files, and a 40-row production check set tagged `qa-import-check`) is being
-    written on branch `contacts-import`.
+  · THE TEST FILES ✅ — `scripts/lib/real-world-contact-files.mts`, run as `npm run qa:contacts-import-files` (add
+    `-- --big` for the five big ones: 150,000-row CSV and vCard, a 200,001-row file, a 50,000-row workbook, a 42 MB
+    vCard with photos). Its first run (2026-10-09) wrote 28 files + `manifest.json` (the ground truth per row) into
+    `.qa-shots/contacts-screen/files/` (git-ignored — re-generate, never commit them); every phone value is checked
+    against `parseTzNumber` before a file is written. ⛔ It must NOT live in `scripts/contacts-import/` (that runner
+    imports every module there). The 40-row production set uses `+255 710 000 0NN` — possibly real people's numbers:
+    never send to them; delete them right after the live check (`?tag=qa-import-check`).
   · C2 (the visual audit of the LIVE screen) is queued behind this PC's heavy-node lock (the Vodacom session held it);
     shots go to `.qa-shots/contacts-screen/C2/` (git-ignored) — findings will be written HERE, not left in shots.
   · ⏳ ASKED Ali (2026-10-09 ~01:15 EAT; defaults if unanswered = (a)): 1 who imports (a: Growth + Admin) · 2 several
@@ -71,6 +75,7 @@ then: "the contacts screen"):
 | C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | 🔨 building (`contacts-import-build`) |
 | C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | 🔨 building |
 | C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks), the list step | 🔨 building |
+| C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | ⬜ (after C3–C5) |
 | C6 | Stress: large files at the limits, a large book, two imports at once, a crash mid-commit and its resume | ⬜ |
 | C7 | U34b — an export read back through the importer, row for row | ⬜ |
 
