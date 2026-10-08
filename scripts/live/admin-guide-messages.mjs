@@ -1,79 +1,57 @@
 /**
- * THE ADMIN GUIDE'S WORDS — the steps, the SMS balance's states and every message an admin can meet, for
- * `admin-guide.mjs`. ⛔ Each MESSAGES row is checked against the source before the guide builds (`check` is a fixed part
- * of a sentence that carries a number; `message` is the sentence otherwise): a reworded message fails the build, so the
- * guide never quotes a sentence the platform no longer says. Plain English for staff — no code words.
+ * THE ADMIN GUIDE'S WORDS (v2) — every step of the whole flow, from the contact book to a campaign's results, the SMS
+ * credit's states and every message an admin can meet, for `admin-guide.mjs`. ⛔ Each MESSAGES row is checked against the
+ * source before the guide builds (`check` is a fixed part of a sentence that carries a number; `message` is the sentence
+ * otherwise): a reworded message fails the build, so the guide never quotes a sentence the platform no longer says. Plain
+ * English for staff — no code words, no headings or notes a reader does not need.
  */
-
-export const INTRO = [
-  "These screens are for staff with the Admin or Growth role.",
-  "No SMS is sent from these screens until the owner switches sending on.",
-  "Every change you make is recorded with your name and the time.",
-  "Some roles see phone numbers partly hidden (like +255••••78) — that is on purpose.",
-];
 
 export const SECTIONS = [
   {
-    title: "1 · Signing in and finding the screens",
+    title: "1 · Sign in",
     steps: [
       {
         title: "Sign in to the admin console",
         where: "https://50pick.tz/auth/admin",
-        do: ["Open the address above.", "Enter your staff phone number and password, then your 2-step code if asked.", "You land on the admin console."],
-        shots: ["01-sign-in"],
-      },
-      {
-        title: "Find Contacts and SMS campaigns in the menu",
-        where: "The menu on the left → Growth → Contacts, and Growth → SMS campaigns",
-        do: ["On a computer the menu is on the left. On a phone, open it with the menu button at the top.", "Under Growth you will find Contacts (the book of numbers) and SMS campaigns (the messages)."],
-        shots: ["02-menu"],
+        do: ["Enter your staff phone number and password, then your 2-step code.", "Contacts and SMS campaigns are in the menu under Growth."],
+        shots: ["01-sign-in", "02-menu"],
       },
     ],
   },
   {
     title: "2 · The contact book",
-    lead: "Growth → Contacts is the book of phone numbers 50pick can reach. It shows how many contacts there are, lets you search and filter, and lets you add, edit, tag and export.",
     steps: [
       {
-        title: "Read the contact book",
+        title: "Read the book",
         where: "Growth → Contacts",
         do: [
-          "The tiles at the top count the book. Roles that may read numbers also see how many gave consent and how many are stopped.",
-          "The filters on the left (or at the top on a phone) narrow the list by operator, list or tag.",
-          "The search box finds a name, or a whole phone number in any spelling.",
+          "The tiles at the top count the book.",
+          "The filters narrow the list by operator, list or tag. The search box finds a name, or a whole phone number in any spelling.",
           "Each row is one contact. Tick rows to act on several at once.",
         ],
         shots: ["03-contacts"],
       },
       {
-        title: "Open Add contact",
-        where: "Growth → Contacts → Add contact (top right, marked in red)",
-        do: ["Press Add contact. The form opens over the list, with the cursor in the phone box."],
-        shots: ["04a-add-button"],
-      },
-      {
-        title: "Fill it in and save",
+        title: "Add one contact",
         where: "Growth → Contacts → Add contact",
         do: [
-          "Type or paste the phone number in any spelling — 0712 345 678, +255 712 345 678 or 255712345678. The box keeps the nine digits after +255.",
-          "As soon as the number is complete, the form shows its network (Vodacom, Airtel, Yas, Halotel…) and checks the book.",
-          "Add a name, an email, notes and tags if you have them — each is marked (optional), and the counters under the boxes show the room left.",
-          "Press Save contact. A message confirms it and the new contact appears in the list.",
+          "Type or paste the number in any spelling — 0712 345 678, +255 712 345 678 or 255712345678.",
+          "The form shows the network and checks the book as soon as the number is complete.",
+          "Name, email, notes and tags are optional. Press Save contact.",
         ],
-        shots: ["05-add-filled"],
+        shots: ["04a-add-button", "05-add-filled"],
       },
       {
-        title: "When the number is already in the book",
+        title: "A number already in the book",
         where: "Growth → Contacts → Add contact",
-        do: ["The form says the number is already in the book and offers “Open the existing contact →”.", "Open it and edit that contact instead of adding a second one."],
+        do: ["The form says so and offers “Open the existing contact →”. Edit that contact — the book never holds a number twice."],
         shots: ["07-duplicate"],
       },
       {
-        title: "When the form shows a problem",
-        where: "Growth → Contacts → Add contact (or a contact's Edit)",
+        title: "Fix what the form marks",
+        where: "Growth → Contacts → Add contact, or a contact's Edit",
         do: [
-          "Each box is checked as you type — an email when you leave its box — and a problem is written in red under its own field.",
-          "While anything needs fixing, Save waits, and the reason is written beside it (outlined in red). Fix what it says and Save comes back.",
+          "A problem is written in red under its own box, and Save waits with the reason beside it.",
           "A name or a tag can't hold a phone number — the number belongs in the phone box.",
         ],
         shots: ["08-form-errors"],
@@ -81,91 +59,84 @@ export const SECTIONS = [
       {
         title: "Edit a contact",
         where: "Growth → Contacts → the row's edit link",
-        do: [
-          "Press the edit link on the contact's row.",
-          "Change the name, email, notes or tags, then Save changes. The button waits until something has changed.",
-          "The phone number itself can't be changed — add a new number as a new contact.",
-        ],
+        do: ["Change the name, email, notes or tags, then Save changes.", "The number itself can't change — add a new number as a new contact."],
         shots: ["09-edit"],
       },
-    ],
-  },
-  {
-    title: "3 · Finding contacts",
-    steps: [
       {
-        title: "Search by name or by number",
-        where: "Growth → Contacts → the search box",
+        title: "Find contacts",
+        where: "Growth → Contacts → the search box and the filters",
         do: [
-          "Type part of a name to find matching contacts.",
-          "Type a WHOLE phone number, in any spelling, to find that one contact — the line under the box says “Whole number — matched exactly”. Part of a number never searches numbers (it keeps hidden numbers hidden).",
-          "The line above the table says what the list is showing.",
+          "Type part of a name, or a WHOLE number in any spelling (the line under the box says “Whole number — matched exactly”).",
+          "Press an operator, a list or a tag to show only those contacts; press it again, or Clear, to show everyone.",
         ],
-        shots: ["10-search-name", "11-search-number"],
+        shots: ["10-search-name", "12-filter"],
       },
       {
-        title: "Filter the list",
-        where: "Growth → Contacts → the filters",
-        do: ["Press an operator, a list or a tag to show only those contacts.", "Press it again, or Clear, to show everyone."],
-        shots: ["12-filter"],
-      },
-    ],
-  },
-  {
-    title: "4 · Working on many contacts at once",
-    steps: [
-      {
-        title: "Select contacts and choose an action",
+        title: "Act on many contacts: tag, list, stop, remove",
         where: "Growth → Contacts → tick rows → the bar that appears",
         do: [
-          "Tick the boxes on the rows you want (or “select all matching” to take every contact the filter shows).",
-          "The bar shows the actions: Tag, Untag, Add to list, Record a withdrawal, Suppress and Remove.",
+          "Tick the rows, or “select all matching” to take every contact the filter shows.",
+          "Choose Tag, Untag, Add to list, Record a withdrawal, Suppress or Remove.",
+          "Up to 50 rows, the confirmation names them; more than that, type the number the server counted. Then press the action's button.",
         ],
-        shots: ["13-bulk-bar"],
-      },
-      {
-        title: "Confirm — the server counts first",
-        where: "Growth → Contacts → an action → the confirmation",
-        do: [
-          "Up to 50 ticked rows: the confirmation names them. More than 50, or any “select all matching”: type the number of contacts the server counted.",
-          "Press the action's button. A message says how many changed.",
-        ],
-        shots: ["14-bulk-confirm"],
+        shots: ["13-bulk-bar", "14-bulk-confirm"],
         notes: [
-          "Suppress stops a number from EVER receiving marketing, and nobody can undo it — use it when a person or the Gaming Board asks 50pick to stop.",
-          "Remove deletes the contacts from the book; the records of consent and stops are kept.",
+          "Suppress stops a number from EVER receiving marketing, and it can't be undone — use it when a person asks 50pick to stop.",
+          "Remove deletes contacts from the book; the records of their consent and stops are kept.",
         ],
       },
       {
-        title: "Export the list",
-        where: "Growth → Contacts → Export CSV (top right)",
-        do: [
-          "Filter the list first if you want only part of it.",
-          "Press Export CSV. The file downloads to your computer.",
-          "Roles that can't read numbers get a file with the numbers hidden.",
-        ],
+        title: "Export the book",
+        where: "Growth → Contacts → Export CSV",
+        do: ["Filter first if you want only part of the book, then press Export CSV. Roles that can't read numbers get them hidden."],
         shots: ["16-export"],
       },
     ],
   },
   {
-    title: "5 · SMS campaigns",
-    lead: "Growth → SMS campaigns is where messages are written and kept. Today you can write, check, save and reopen drafts. Sending starts once the owner switches SMS on.",
+    title: "3 · Import contacts from a file",
+    steps: "IMPORT",
+  },
+  {
+    title: "4 · Before anything is sent",
     steps: [
       {
-        title: "See the campaigns",
-        where: "Growth → SMS campaigns",
-        do: ["Every campaign is listed with its status. A draft is a message still being written.", "Press New SMS campaign to start one."],
+        title: "Check the SMS credit",
+        where: "System → the “SMS credit” tile",
+        do: [
+          "The credit left with the SMS company, read live. Each SMS costs about TZS 6.",
+          "Login and withdrawal codes use the same credit. Part of it is kept for them, and a campaign pauses rather than spend it.",
+        ],
+        shots: ["26-sms-credit"],
+      },
+      {
+        title: "The owner's settings and switch",
+        where: "System → Marketing SMS",
+        do: [
+          "The price per SMS, the credit kept for login and withdrawal codes, the most one campaign may cost, and the sending hours (08:00–20:00 EAT unless the owner changes them).",
+          "Nothing is sent while marketing SMS are switched off. The owner switches them on for a set time — 30 minutes to 24 hours — and they switch themselves off at the end.",
+        ],
+        shots: ["30-marketing-card", "31-switch-on"],
+      },
+    ],
+  },
+  {
+    title: "5 · Write a campaign",
+    steps: [
+      {
+        title: "Start a new campaign",
+        where: "Growth → SMS campaigns → New SMS campaign",
+        do: ["Every campaign is listed with its status. A draft is still being written."],
         shots: ["17-campaigns"],
       },
       {
         title: "Write the message",
         where: "Growth → SMS campaigns → New SMS campaign",
         do: [
-          "Give the campaign a name (only staff see it).",
-          "Write the Swahili message — it is required, because every recipient can receive it. It must start with “50pick”.",
-          "English is optional: players whose account language is English get it; everyone else gets Swahili.",
-          "A campaign message must fit in ONE SMS. The counter under each message shows the room left before the footer; the stop link is added for you and counted.",
+          "Name the campaign — only staff see the name.",
+          "Write the Swahili message; it must begin with 50pick. {jina} prints the person's first name.",
+          "English is optional: players whose account language is English get it, everyone else gets Swahili.",
+          "The message must fit in ONE SMS. The counter shows the room left; the stop link is added for you and counted.",
         ],
         shots: ["19-compose-filled"],
       },
@@ -173,157 +144,222 @@ export const SECTIONS = [
         title: "Fix what the composer marks",
         where: "Growth → SMS campaigns → the message",
         do: [
-          "A character outside the plain SMS alphabet (a curly quote, an emoji) turns the message into Unicode, which fits far fewer characters. The composer names the character; press “Replace with plain characters” or retype it.",
-          "Too long for one SMS? The composer says how many characters you have before the required footer.",
+          "A curly quote or an emoji makes the message hold far fewer characters. Press “Replace with plain characters”, or retype it.",
+          "Too long? The composer says how many characters you have.",
         ],
         shots: ["20-compose-warning"],
       },
       {
-        title: "Choose who it is for",
+        title: "Choose who receives it",
         where: "Growth → SMS campaigns → Audience",
         do: [
-          "The audience is the contact book, or the part of it a filter on the Contacts page chose.",
+          "Choose the contact book, player accounts, or both, then narrow it with a list, a tag, an operator or the other filters.",
+          "The card counts who will receive it and who won't, with the reason for each (stopped, no consent, can't be sent to…).",
           "A campaign always goes to a group — never to one phone number.",
         ],
         shots: ["21-audience"],
       },
       {
-        title: "Save the draft",
-        where: "Growth → SMS campaigns → New SMS campaign → Save draft",
-        do: ["Press Save draft. The line beside it says when it was saved — and that nothing was sent."],
-        shots: ["22-saved"],
-      },
-      {
-        title: "Open a draft again",
-        where: "Growth → SMS campaigns → the draft's name in the list",
-        do: ["Every saved draft is in the list. Press its name to open it again, exactly as you left it."],
-        shots: ["23-campaigns-draft", "24-reopen"],
-      },
-      {
-        title: "The test send",
-        where: "Growth → SMS campaigns → a saved draft → Test send",
+        title: "Save, and send yourself a test",
+        where: "Growth → SMS campaigns → Save draft, then Test send",
         do: [
-          "The test sends the saved message to a phone so you can see it as a recipient will.",
-          "Until the owner switches SMS sending on, the test says so and sends nothing.",
+          "Press Save draft — the line beside it says when, and that nothing was sent.",
+          "The test sends the saved message to your own phone, exactly as a recipient will get it, while marketing SMS are switched on.",
+          "Saved drafts are in the list; press a draft's name to open it again.",
         ],
-        shots: ["25-test-send"],
+        shots: ["22-saved", "25-test-send"],
       },
     ],
   },
   {
-    title: "6 · The SMS balance",
+    title: "6 · Confirm and start",
     steps: [
       {
-        title: "See how much SMS credit is left",
-        where: "The menu → System → the “SMS credit” tile at the top",
+        title: "Confirm the audience",
+        where: "Growth → SMS campaigns → the saved draft → Confirm audience…",
         do: [
-          "The tile shows the credit left with the SMS company, in TZS, read live.",
-          "Each SMS costs about TZS 6. Login and withdrawal codes use the same credit, so never let it run out.",
-          "The table below explains every state the tile can show.",
+          "The server counts the audience now: who will receive it, who won't and why, how many SMS it uses and what it can cost.",
+          "Press Confirm audience. The message and the audience are frozen — a confirmed campaign can't be edited.",
+          "Then open the campaign to start it.",
         ],
-        shots: ["26-sms-credit"],
+        shots: ["40-confirm-dialog", "41-confirmed"],
+      },
+      {
+        title: "Start it",
+        where: "Growth → SMS campaigns → the campaign → Start…",
+        do: [
+          "The dialog says how many people, the sending hours and the most it can cost. Press Start sending.",
+          "Each person is checked again just before their message: anyone who stopped, withdrew or is protected is skipped.",
+        ],
+        shots: ["42-start-dialog"],
+      },
+      {
+        title: "Keep the page open while it sends",
+        where: "Growth → SMS campaigns → the campaign",
+        do: [
+          "The page first prepares the list, then sends, and shows how many are done.",
+          "Sending continues only while a page like this one is open. Close it and sending waits until someone opens it again.",
+          "Outside the sending hours it waits, and says when it will go on.",
+        ],
+        shots: ["44-waiting"],
       },
     ],
   },
   {
-    title: "7 · Licence outreach — who a campaign may reach",
-    lead: "A campaign reaches only people who agreed to receive messages, until the owner opens licence outreach. Opening it is a decision, not a setting: it is refused until four things are true, and both opening and closing are recorded with your name and the time.",
+    title: "7 · Watch, pause, resume, stop",
     steps: [
       {
-        title: "See where licence outreach stands",
-        where: "The menu → System → the “Public policy lines” tab → the “Licence outreach” card",
+        title: "Read the figures",
+        where: "The campaign's page",
         do: [
-          "The card says Open or Closed.",
-          "Closed is the normal state: campaigns go only to people who agreed to receive them.",
-          "Open means a campaign may ALSO reach players who have not stopped 50pick offers, and contacts on lists recorded under the licence. A stop is always kept, whatever the state.",
+          "On campaign — everyone on its list. Handed over — the network took the message. Failed — did not reach the person.",
+          "Not sent (checks) — the checks stopped them, the system working. No answer — never sent again by itself. Waiting — still to go.",
+          "“Not sent, by reason” lists why people were skipped.",
         ],
-        shots: ["29-licence-outreach"],
+        shots: ["45-running-figures"],
       },
       {
-        title: "The steps the card asks for first",
-        where: "The menu → System → Public policy lines",
+        title: "Pause and resume",
+        where: "The campaign's page → Pause, then Resume",
         do: [
-          "While anything is still missing, the card lists it and the Open button cannot be pressed.",
-          "Each line tells you which policy bullet to fix — they are on the same tab, just above the card.",
-          "Fix the lines, save them, then come back to the card: a step that is done disappears from the list.",
+          "Pause stops anything new from starting. A group already being sent may still go out.",
+          "Resume checks the switch, the SMS network and the credit for what is left, then goes on.",
+          "The page says who paused it and when.",
         ],
-        notes: [
-          "The checks are made again when you press Open, over the lines as they are at that moment — so a line someone changed in another tab is still caught.",
-        ],
+        shots: ["46-paused", "47-resumed"],
       },
       {
-        title: "Open it, or close it",
-        where: "The menu → System → Public policy lines → Licence outreach",
+        title: "When the system pauses a campaign",
+        where: "The campaign's page",
         do: [
-          "Press Open licence outreach. A box explains exactly what changes and asks you to confirm.",
-          "Press Close licence outreach to stop it. Closing takes effect at once and is never refused — if in doubt, close it.",
-          "Both are recorded in the audit log with your name, the time, and the four steps as they stood.",
+          "The page says why in plain words and what to do — for example, top up the credit, or wait for the switch.",
+          "Fix what it says, then press Resume.",
+        ],
+        shots: ["48-system-paused"],
+      },
+      {
+        title: "Stop for good",
+        where: "The campaign's page → Stop…",
+        do: [
+          "A stopped campaign can't be restarted. Messages already handed to the network are not recalled.",
+          "Press Stop campaign in the dialog. The page says who stopped it and how many were not messaged.",
+        ],
+        shots: ["49-stop-dialog", "50-stopped"],
+      },
+      {
+        title: "Make a copy",
+        where: "The campaign's page → Make a copy",
+        do: [
+          "A copy is a new draft with the same message and audience — check and confirm it like any campaign.",
+          "A copy messages again anyone the first campaign already reached.",
+        ],
+        shots: ["51-copy"],
+      },
+    ],
+  },
+  {
+    title: "8 · Results",
+    steps: [
+      {
+        title: "See what happened",
+        where: "The campaign's page → Results",
+        do: [
+          "Delivered — a delivery receipt came back. Handed over, no receipt yet — the network took it; receipts usually come in seconds.",
+          "Failed, and Not sent by reason, say who did not get it and why.",
+          "Stopped by their link — people who used the stop link after this campaign.",
+          "The estimated spend is shown to the roles that may see money; the SMS credit on System is the true figure.",
+        ],
+        shots: ["52-finished", "53-results"],
+      },
+    ],
+  },
+  {
+    title: "9 · Your first campaigns",
+    lead: "Do these in order before any big send.",
+    steps: [
+      {
+        title: "Test, then a pilot, then grow",
+        where: "Growth → SMS campaigns",
+        do: [
+          "Send yourself the test in Swahili and in English. Read it on the phone and check the name, the words and the stop link at the end.",
+          "Pilot: a list of 5 to 10 staff numbers who agreed. Confirm, start, keep the page open until Finished, and check Results shows Delivered.",
+          "First real campaign: 100 to 200 people. Check Results and the SMS credit afterwards.",
+          "Then grow step by step — 1,000, then 5,000 — checking the SMS credit before each one.",
+          "A campaign of 1,000 people uses about 1,000 SMS, about TZS 6,000. Each campaign is held to the owner's cost limit (TZS 10,000 unless the owner changed it — about 1,600 people); for a bigger one the owner raises it first.",
+          "Send in the day, well inside the sending hours, and never send the same message to the same people twice — a copy messages them again.",
         ],
       },
     ],
   },
   {
-    title: "8 · On a phone",
+    title: "10 · Safety",
     steps: [
       {
-        title: "The same screens on a phone",
-        where: "Any of the screens above, on a phone's browser",
-        do: ["Everything works on a phone: the filters move to the top, and the menu opens from the top bar."],
-        phoneShots: ["27-phone-contacts", "28-phone-compose"],
+        title: "What protects every send",
+        where: "Everywhere",
+        do: [
+          "Nothing is sent while the owner's switch is off, or outside the sending hours.",
+          "The credit kept for login and withdrawal codes is never spent on marketing — a campaign pauses first.",
+          "A campaign can't cost more than its limit; Start refuses it.",
+          "Each person is checked just before their message: stopped, withdrawn and self-excluded people are skipped.",
+          "Every message carries the stop link, and a stop is for good.",
+          "Your role decides what you see and do; every action is recorded with your name and the time.",
+          "If anything looks wrong, press Pause, then ask.",
+        ],
       },
     ],
   },
 ];
 
+/** ⭐ The import chapter, filled in once the import screens are built (U30–U32) — `admin-guide.mjs` refuses to build while
+ *  `SECTIONS` still holds the "IMPORT" placeholder and this is empty. */
+export const IMPORT_STEPS = [];
+
 export const BALANCE_STATES = [
-  { shows: "A figure such as TZS 250,000, with no colour", meaning: "The live balance, read just now.", action: "Nothing — keep an eye on it before a big campaign." },
+  { shows: "A figure such as TZS 250,000, with no colour", meaning: "The live balance, read just now.", action: "Nothing — check it before a big campaign." },
   { shows: "A figure in amber, “low”", meaning: "The credit is below the alert level.", action: "Ask the owner to top up soon." },
   { shows: "A figure in red, “below floor”", meaning: "The credit is below the floor kept for login and withdrawal codes; marketing must wait.", action: "Ask the owner to top up now." },
   { shows: "“Checking with Blackball… reload in a few seconds”", meaning: "The balance is being read.", action: "Reload the page after a few seconds." },
   { shows: "“Couldn't read the balance”", meaning: "The SMS company did not answer this time.", action: "Reload later. If it stays, tell the owner." },
-  { shows: "A red dash with a setup note (keys, sender ID, provider)", meaning: "The SMS connection is not set up correctly on the server.", action: "Tell the owner — this is a technical setting, and login codes may be affected." },
+  { shows: "A red dash with a setup note (keys, sender ID, provider)", meaning: "The SMS connection is not set up correctly on the server.", action: "Tell the owner — login codes may be affected." },
 ];
 
 export const MESSAGES = [
-  // ── licence outreach (the card on System → Public policy lines)
-  { area: "Licence outreach", message: "The Privacy Notice still says offers go only to people who agree. Update it first (Public policy lines → Privacy §4).", meaning: "The public Privacy Notice still promises that only people who agreed are messaged.", action: "Change that line on this same tab, save it, then come back." },
-  { area: "Licence outreach", message: "Add the Privacy Notice's licence line and review its consent line first (Public policy lines → Privacy §3).", meaning: "The Privacy Notice does not yet say 50pick also contacts people under its licence.", action: "Write the licence line in all three languages and tick the consent line as reviewed." },
-  { area: "Licence outreach", message: "The Responsible Gambling line must say how a non-player's age is confirmed before outreach can reach non-players. Update it first.", meaning: "The page does not say how staff confirm a non-member is 18 or over.", action: "Say it in the English line — it must name staff and 18." },
-  { area: "Licence outreach", message: "The switch-offs recorded before the consent ledger existed haven't been reconciled yet (an engineering step).", meaning: "An engineering step is outstanding. Nothing you can do on the page fixes it.", action: "Ask the developer — it is not an admin task." },
-  { area: "Licence outreach", message: "Licence outreach can't be opened yet — each remaining step is listed below.", meaning: "One or more of the four steps is still missing.", action: "Do what each listed line says, then press Open again." },
-  { area: "Licence outreach", message: "Sign in again to change licence outreach.", meaning: "Your session no longer names you.", action: "Sign in again, then repeat the change." },
   // ── the contact form
-  { area: "Add / edit contact", message: "This number is already in the book.", meaning: "The number is a contact already.", action: "Press “Open the existing contact →” and edit that one." },
-  { area: "Add / edit contact", message: "This number can't be added to the book.", meaning: "This number was erased from 50pick at the person's request.", action: "Do not add it again." },
-  { area: "Add / edit contact", message: "A name can't hold a phone number — remove the number from the name.", meaning: "Names show to every staff role, while numbers are hidden for some.", action: "Remove the digits from the name; the number goes in the phone box." },
-  { area: "Add / edit contact", message: "A tag can't hold a phone number.", meaning: "Tags show to every staff role.", action: "Use a word, not a number (e.g. “vip”, “event-oct”)." },
-  { area: "Add / edit contact", message: "A tag can hold only letters, digits, spaces, - and _.", meaning: "The tag has a character tags can't hold.", action: "Remove the character." },
-  { area: "Add / edit contact", message: "This doesn't look like an email address (name@example.com).", meaning: "The email is not a complete address.", action: "Fix it, or leave the email empty." },
-  { area: "Add / edit contact", message: "Someone changed this contact after you opened it, so nothing was saved. Reload to see the latest version, then make your change again.", meaning: "Two people edited the same contact.", action: "Reload, check their change, then make yours." },
-  { area: "Add / edit contact", message: "Your role can view contacts but not add or change them — ask an officer with Growth access.", meaning: "Your role is view-only here.", action: "Ask an officer with Growth access, or the owner." },
-  { area: "Add / edit contact", message: "That paste is longer than a phone number — paste the number alone.", meaning: "The paste held more than a number — words, or a second number.", action: "Copy just the number and paste it again." },
-  { area: "Add / edit contact", message: "Discard what you typed? Nothing has been saved yet.", meaning: "You pressed Cancel or ✕ with typing in the form.", action: "Keep editing to go back, or Discard to close without saving." },
-  // ── phone numbers
-  { area: "Phone number", message: "A Tanzanian number has nine digits after +255; this one has 8. Check whether some digits were cut off.", check: "Check whether some digits were cut off.", meaning: "A digit or more is missing.", action: "Check the number with the person and type it again." },
+  { area: "Contacts", message: "This number is already in the book.", meaning: "The number is a contact already.", action: "Press “Open the existing contact →” and edit that one." },
+  { area: "Contacts", message: "This number can't be added to the book.", meaning: "This number was erased from 50pick at the person's request.", action: "Do not add it again." },
+  { area: "Contacts", message: "A name can't hold a phone number — remove the number from the name.", meaning: "Names show to every staff role.", action: "Take the digits out of the name." },
+  { area: "Contacts", message: "A tag can't hold a phone number.", meaning: "Tags show to every staff role.", action: "Use a word (“vip”, “event-oct”)." },
+  { area: "Contacts", message: "This doesn't look like an email address (name@example.com).", meaning: "The email is not a complete address.", action: "Fix it, or leave it empty." },
+  { area: "Contacts", message: "Someone changed this contact after you opened it, so nothing was saved. Reload to see the latest version, then make your change again.", meaning: "Two people edited the same contact.", action: "Reload, check their change, then make yours." },
+  { area: "Contacts", message: "Your role can view contacts but not add or change them — ask an officer with Growth access.", meaning: "Your role is view-only here.", action: "Ask an officer with Growth access, or the owner." },
+  { area: "Phone number", message: "A Tanzanian number has nine digits after +255; this one has 8. Check whether some digits were cut off.", check: "Check whether some digits were cut off.", meaning: "A digit or more is missing.", action: "Check the number and type it again." },
   { area: "Phone number", message: "This is an international number outside Tanzania (country code +254…). 50pick sends only to Tanzanian mobile numbers.", check: "50pick sends only to Tanzanian mobile numbers.", meaning: "Only Tanzanian mobiles can be added.", action: "Ask for their Tanzanian mobile number." },
-  // ── many contacts at once
-  { area: "Bulk actions", message: "Type one tag at a time — a comma, ; or | separates tags.", meaning: "The bulk Tag box takes one tag.", action: "Type a single tag." },
-  { area: "Bulk actions", message: "A list name can't hold a phone number — remove the number from the name.", meaning: "List names show to every staff role.", action: "Name the list with words." },
-  { area: "Bulk actions", message: "Choose a list, or name a new one.", meaning: "Add to list needs a list.", action: "Pick a list in the box, or type a new list's name." },
-  { area: "Bulk actions", message: "The selection changed while it was being read: it now holds … contacts, not …. Nothing was changed; review it again.", check: "The selection changed while it was being read: it now holds ", meaning: "Contacts joined or left the selection between the count and the action.", action: "Review it again — the confirmation counts afresh." },
-  // ── export
-  // ── campaigns
-  { area: "SMS campaign", message: "Give the campaign a name — only staff see it.", meaning: "The name is empty.", action: "Type a name." },
-  { area: "SMS campaign", message: "The Swahili message is required — it is the one every recipient can be sent.", meaning: "The Swahili message is empty.", action: "Write the Swahili message." },
-  { area: "SMS campaign", message: "A campaign name can't hold a phone number — the digits ending 78 read as one, and campaigns are kept for good.", check: "A campaign name can't hold a phone number", meaning: "Campaigns are never deleted, so a number in a name would be kept for ever.", action: "Name the group it is for; write other figures with a comma or a slash." },
-  { area: "SMS campaign", message: "A campaign goes to a group, never to one phone number — take the number out of the audience. To see the message on a phone, use the test send: it goes to your own number.", meaning: "The audience is one phone number.", action: "Choose a group (a filter); use the test send for one phone." },
-  { area: "SMS campaign", message: "The character “…” is not in the GSM alphabet, which cuts a message from 160 characters to 70. Replacing it is usually enough.", check: "is not in the GSM alphabet, ", meaning: "A special character (curly quote, emoji…) makes the SMS hold far fewer characters.", action: "Press “Replace with plain characters”, or retype it." },
-  { area: "SMS campaign", message: "This is 2 messages, and the limit is 1 — you have … characters before the required footer, and this uses ….", check: "characters before the required footer, ", meaning: "The message is too long.", action: "Shorten it until the counter is within the limit." },
-  { area: "SMS campaign", message: "Nothing to save — no changes since the last save.", meaning: "The draft is already saved as it is.", action: "Nothing — your draft is safe." },
-  { area: "SMS campaign", message: "Your role can't write or test SMS campaigns — ask an officer with growth access.", meaning: "Your role can't use the composer.", action: "Ask an officer with Growth access, or the owner." },
-  // ── any screen
-  { area: "Any screen", message: "A message that says something failed — for example “Couldn't save — your text is still here. Try again.”", check: "Couldn't save — your text is still here. Try again.", meaning: "The server did not answer this time. Nothing you typed is lost.", action: "Try again. If it keeps failing, reload the page; if it still fails, tell the owner." },
-  // ── the test send
-  { area: "Test send", message: "Marketing SMS are not switched on yet. The owner switches them on before the first send.", meaning: "Sending is still off for everyone.", action: "Nothing — the owner switches it on before the first campaign." },
-  { area: "Test send", message: "Save first — the test sends the saved text.", meaning: "The test uses the saved version of the message.", action: "Press Save draft, then the test." },
+  { area: "Many contacts", message: "The selection changed while it was being read: it now holds … contacts, not …. Nothing was changed; review it again.", check: "The selection changed while it was being read: it now holds ", meaning: "Contacts joined or left the selection meanwhile.", action: "Review it again — the confirmation counts afresh." },
+  // ── writing a campaign
+  { area: "Writing", message: "The Swahili message is required — it is the one every recipient can be sent.", meaning: "The Swahili message is empty.", action: "Write the Swahili message." },
+  { area: "Writing", message: "A campaign goes to a group, never to one phone number — take the number out of the audience. To see the message on a phone, use the test send: it goes to your own number.", meaning: "The audience is one phone number.", action: "Choose a group; use the test send for one phone." },
+  { area: "Writing", message: "The character “…” is not in the GSM alphabet, which cuts a message from 160 characters to 70. Replacing it is usually enough.", check: "is not in the GSM alphabet, ", meaning: "A special character makes the SMS hold far fewer characters.", action: "Press “Replace with plain characters”." },
+  { area: "Writing", message: "This is 2 messages, and the limit is 1 — you have … characters before the required footer, and this uses ….", check: "characters before the required footer, ", meaning: "The message is too long.", action: "Shorten it until the counter fits." },
+  { area: "Test send", message: "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.", meaning: "Sending is off.", action: "Ask the owner to switch marketing SMS on." },
+  { area: "Test send", message: "Save first — the test sends the saved text.", meaning: "The test uses the saved message.", action: "Press Save draft, then the test." },
+  { area: "Confirm", message: "Nobody matches this audience yet.", meaning: "Nobody in this audience may receive the campaign.", action: "Choose a wider audience." },
+  // ── starting and resuming
+  { area: "Start", message: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent.", meaning: "The owner's switch is off.", action: "Ask the owner to switch them on, then Start." },
+  { area: "Start", message: "At today's price this campaign could cost … — more than its limit of …. Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.", check: "Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.", meaning: "The campaign could cost more than its limit.", action: "Confirm a smaller copy, or ask the owner to raise the limit." },
+  { area: "Start", message: "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit …, this campaign up to …, kept for codes …. Top up, or narrow the audience. Nothing was sent.", check: "Starting would leave less SMS credit than is kept for login and withdrawal codes", meaning: "Not enough credit for this campaign and the codes.", action: "Ask the owner to top up, or narrow the audience." },
+  { area: "Start", message: "The audience grew since it was confirmed — now …, confirmed …. Nothing was sent. Stop this campaign and confirm a new copy.", check: "The audience grew since it was confirmed", meaning: "People joined the audience after it was confirmed — an import, for example.", action: "Stop it and confirm a new copy." },
+  // ── while it sends
+  { area: "Sending", message: "Keep this page open while it sends — sending continues only while a page like this one is open.", meaning: "This page is what keeps the campaign going.", action: "Leave the page open until it says Finished." },
+  { area: "Sending", message: "Waiting for the send window — sending resumes at 08:00 EAT.", check: "Waiting for the send window — sending resumes at ", meaning: "Outside the sending hours.", action: "Nothing — it goes on by itself when the window opens." },
+  { area: "Sending", message: "Waiting a moment — the platform is paying out or taking bets, and money always goes first. Sending resumes by itself.", meaning: "Money work comes first.", action: "Nothing — it goes on by itself." },
+  { area: "Sending", message: "Waiting — a login or withdrawal code failed in the last two minutes, so marketing steps aside. It tries again at 14:10 EAT.", check: "so marketing steps aside. It tries again ", meaning: "Login codes come first.", action: "Nothing — it tries again by itself." },
+  { area: "Sending", message: "Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open.", check: "Open it as an officer who can send, and keep the page open.", meaning: "No page is open to keep it going.", action: "Open the campaign and keep the page open." },
+  { area: "Sending", message: "This page is out of date or lost its connection — reload it to keep sending. Nothing is lost.", meaning: "The page lost touch with the server.", action: "Reload the page." },
+  // ── why it paused
+  { area: "Paused", message: "Paused — the SMS credit reached what is kept for login and withdrawal codes. Top up, then Resume.", meaning: "The credit ran down to the part kept for codes.", action: "Ask the owner to top up, then Resume." },
+  { area: "Paused", message: "Paused — marketing SMS are not switched on: the owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume.", meaning: "The switch is off.", action: "Ask the owner to switch them on, then Resume." },
+  { area: "Paused", message: "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume.", meaning: "The SMS company said no to the last group.", action: "Check System; Resume when it is healthy." },
+  { area: "Paused", message: "Paused — some people could not be checked or prepared. Resume to try them again, or Stop.", meaning: "A few people couldn't be checked.", action: "Press Resume to try them again." },
+  { area: "Any screen", message: "Couldn't save — your text is still here. Try again.", meaning: "The server did not answer this time. Nothing is lost.", action: "Try again; if it keeps failing, reload, then tell the owner." },
 ];
