@@ -997,7 +997,7 @@ async function decisionChecks(M: Mods, S: PageSources, h: PageHarness, tag: stri
 
 /**
  * ⭐ THE CHECKER'S MINOR · EVERY CALLOUT OF THE CONTROLS CARD, DRAWN ALONE WITH THE REAL COMPONENT AND READ: a driver stop of each of
- * its seven kinds (the step-up page at both of its addresses, so nine drawings), a press's refusal and a copy's link. What each must
+ * its seven kinds (the step-up page at both of its addresses, so eight drawings), five refusals and a copy's link. What each must
  * say, and the one way on that can work: a lapsed 2-step its step-up link and Try again; a sign-in that ended the SIGN-IN link
  * (never the step-up one) and Try again; every other stop a Reload and no retry. ⛔ A link that opens ANOTHER tab opens it with
  * `target=_blank` and `rel="noopener noreferrer"` — the page keeps its place, and the new tab gets no handle on it. Every alert
