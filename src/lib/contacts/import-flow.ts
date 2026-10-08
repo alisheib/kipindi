@@ -107,6 +107,9 @@ export type ImportRefusalReason =
   | "not_staged" | "too_slow"
   // the start
   | "bad_choice" | "bad_exceptions" | "bad_list" | "list_name_taken" | "list_gone" | "already_started" | "check_again"
+  // S15 review round (2026-10-09): the check grew stale by TIME alone (not a book change) · a non-reader asked to
+  // update contacts already in the book (S15-10)
+  | "check_stale" | "update_needs_reader"
   // the commit
   | "paused" | "cancelled" | "done" | "moved" | "busy";
 
@@ -189,6 +192,15 @@ export type PreflightView = {
   changing: Readonly<Record<ImportChoice, number>>;
   /** When the book was read. The check is advisory: the commit decides again at write time. */
   checkedAt: string;
+  /**
+   * ⛔ S15-10 (the review round of 2026-10-09, on OD54 · OD65): may THIS viewer update contacts already in the book from a
+   * file? True only for a viewer whose identity.contact cell is `read` (the matrix, never a role name). For anyone else
+   * every number already in the book is KEPT as it is: `byChoice` holds KEEP's tally under all three keys with every
+   * keep folded into `chosen_keep` (no stop, repeat or no-change split), `changing` is zero, and the changes pages and a
+   * non-KEEP start are refused `update_needs_reader`. Why: a one-line file with an invented name under "use the file's
+   * version" read 0 updates exactly when that number was stopped or erased — a per-person fact OD54 gives readers only.
+   */
+  mayUpdateInBook: boolean;
 };
 export type PreflightResult = ImportAnswer<{ preflight: PreflightView; view: ImportRunView }>;
 
@@ -280,7 +292,13 @@ export type CommitStepResult = ImportAnswer<{
 /** Pause / resume / cancel. Cancel: before the start it discards the run; after it, the rows already written STAY
  *  (the result says how many) and the rest are left unimported. */
 export type RunActInput = { runId: string };
-export type RunActResult = ImportAnswer<{ view: ImportRunView }>;
+/** `notImported` (cancel only): the staged rows left unsettled at the moment of the cancel — counted BEFORE they are
+ *  deleted (`stagedThrough − committedThrough`), so the result can say how many rows were not imported. */
+export type RunActResult = ImportAnswer<{ view: ImportRunView; notImported?: number }>;
+
+/** ⭐ S15-9 · an ADMIN's way to the runs other officers left unfinished — STAGING, STAGED, COMMITTING or PAUSED — newest
+ *  first, at most 20, each adoptable through `importViewAction(runId)` (resume) or cancellable. Anyone else: forbidden. */
+export type ImportOpenRunsResult = ImportAnswer<{ runs: ImportRunView[] }>;
 
 /** The rows that could not be imported, a page at a time, by file row, with the sentence (never the raw value). */
 export const FAILURES_PAGE_ROWS = 50;
@@ -320,7 +338,7 @@ export const IMPORT_REFUSAL_SENTENCES: Readonly<Record<Exclude<ImportRefusalReas
   | "different_file" | "out_of_order" | "already_staged" | "batch_too_many_rows" | "batch_too_large" | "bad_rows"
   | "too_many_rows_for_run" | "committing" | "finished" | "superseded" | "xlsx_refused">, string>> = {
   forbidden: "Your role can't import contacts. Ask an administrator to give you contact rights.",
-  rate_limited: "You've checked a lot of files in a short time. Wait a moment, then try again.",
+  rate_limited: "That was a lot of requests in a short time. Wait a moment, then try again.",
   server_error: "Something went wrong on our side. Nothing was lost — try again in a moment.",
   xlsx_busy: "Another Excel file is being read right now. Try again in a few seconds.",
   not_staged: "This file hasn't finished uploading yet. Let it finish, then check it.",
@@ -332,9 +350,11 @@ export const IMPORT_REFUSAL_SENTENCES: Readonly<Record<Exclude<ImportRefusalReas
   list_gone: "The list you chose no longer exists. Choose another list.",
   already_started: "This import has already started. Its progress is shown here.",
   check_again: "The contact book changed since this file was checked. Look at the new numbers, then import.",
+  check_stale: "This file was checked more than 30 minutes ago, so it is being checked again against the book as it is now. Your choices are kept.",
+  update_needs_reader: "Contacts already in the book can only be updated from a file by a role that can see phone numbers. They will be kept as they are.",
   paused: "This import is paused. Resume it to carry on.",
   cancelled: "This import was cancelled. Rows already written stay in the book.",
   done: "This import has finished.",
   moved: "Another window moved this import on. Showing where it is now.",
-  busy: "The platform is busy right now — bets come first. Trying again shortly.",
+  busy: "The platform is busy right now — bets come first. The import carries on by itself as soon as it is free.",
 };
