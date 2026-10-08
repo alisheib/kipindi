@@ -3572,6 +3572,13 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    12px: `pr-2`.) The leading fade moves in by the same 12px — it starts at the strip's first pill, not in the gutter, so
    a chip scrolled off the start still fades from the content edge exactly as before — and so does the scroll padding
    that keeps a focused chip clear of it. */
+/* ⭐ 2026-10-09 · round 3 [326] · …AND THE TRAILING RAMP IS 64px, SO IT ALWAYS REACHES INK. At 32px it could fall wholly on
+   the padding of a chip that sits past the strip's end: on /results at sw 390 the fourth lens ("Batili 1") began at
+   x284 with its label from x300, the strip ending at 302 and its ramp transparent from 294, so the only thing the ramp
+   dimmed was HAPANA's "2" — the row read as finished, and its chips added up to 5 of the legend's 6. A 64px ramp (opaque
+   to 100% − 72px, transparent 8px inside the edge, as before) always lies over the last visible label, so "there is more
+   this way" shows whenever something is hidden. A strip with nothing hidden, or scrolled to its end, is still not
+   masked; the keyboard's scroll padding at the end grows to the ramp's 72px, so a focused chip stops clear of it. */
 @media (max-width: 1023.98px) {
   .kp-strip-fade {
     padding-block: var(--sp-3);
@@ -3581,17 +3588,17 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
   }
   .kp-strip-fade,
   .kp-strip-fade[data-edges="end"] {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
-    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent calc(100% - 8px));
-    scroll-padding-inline: 44px 40px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent calc(100% - 8px));
+    mask-image: linear-gradient(to right, #000 calc(100% - 72px), transparent calc(100% - 8px));
+    scroll-padding-inline: 44px 72px;
   }
   .kp-strip-fade[data-edges="start"] {
     -webkit-mask-image: linear-gradient(to right, transparent 12px, #000 44px);
     mask-image: linear-gradient(to right, transparent 12px, #000 44px);
   }
   .kp-strip-fade[data-edges="both"] {
-    -webkit-mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 40px), transparent calc(100% - 8px));
-    mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 40px), transparent calc(100% - 8px));
+    -webkit-mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 72px), transparent calc(100% - 8px));
+    mask-image: linear-gradient(to right, transparent 12px, #000 44px, #000 calc(100% - 72px), transparent calc(100% - 8px));
   }
   .kp-strip-fade[data-edges="none"] {
     -webkit-mask-image: none;

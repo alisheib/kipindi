@@ -248,7 +248,18 @@ section("3 · a filter strip has room for the selected pill's halo (tile 319)");
   const start = /\.kp-strip-fade\[data-edges="start"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent 12px, #000 44px\)/.test(css);
   const both = /\.kp-strip-fade\[data-edges="both"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent 12px, #000 44px,/.test(css);
   ok("3.4 · the leading fade moved in by the same 12px (transparent to 12, opaque from 44): a chip scrolled off the start fades from the content edge, as before",
-    start && both && /scroll-padding-inline:\s*44px 40px/.test(css));
+    start && both && /scroll-padding-inline:\s*44px 72px/.test(css));
+  // The trailing ramp (round 3, tile 326): at least 64px, ending 8px inside, in the "end" and "both" masks alike, and the
+  // keyboard's end padding covers it. Measured from the mask strings the stylesheet ships.
+  const ramps = (src: string) => [...src.matchAll(/#000 calc\(100% - (\d+)px\), transparent calc\(100% - (\d+)px\)/g)]
+    .map((m) => ({ ramp: Number(m[1]) - Number(m[2]), inset: Number(m[2]) }));
+  const real = ramps(css);
+  const endPad = Number(/scroll-padding-inline:\s*44px (\d+)px/.exec(css)?.[1] ?? NaN);
+  ok("3.5 · the trailing ramp is at least 64px and ends 8px inside the strip, in every mask that has one (4: end and both, -webkit- and plain), and the keyboard's end padding reaches past it",
+    real.length === 4 && real.every((r) => r.ramp >= 64 && r.inset === 8) && endPad >= Math.max(...real.map((r) => r.ramp + r.inset)), JSON.stringify({ real, endPad }));
+  const old = ramps(css.split("calc(100% - 72px)").join("calc(100% - 40px)"));
+  ok("3.5′ PLANT · G1's 32px ramp put back is reported (it fell wholly on a hidden chip's padding at sw 390, tile 326)",
+    old.length === 4 && old.some((r) => r.ramp < 64));
 }
 
 /* ══ §4 · /leaderboard ═══════════════════════════════════════════════════════════════════════════════════════════════ */
