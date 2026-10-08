@@ -245,7 +245,9 @@ export function LiveControls() {
   const switchOff = !view.standing.switchOpen && view.status !== "DRAFT" && view.status !== "DONE" && view.status !== "CANCELLED";
 
   return (
-    <div className="space-y-3" data-live-controls>
+    // The driver's own stamps, for the drive: what it is doing and how many calls it has made (a page that may not act
+    // makes no step call — the drive reads `steps` to prove it).
+    <div className="space-y-3" data-live-controls data-live-driver={driver.mode} data-live-steps={driver.steps} data-live-polls={driver.polls}>
       <div className="flex flex-wrap items-center gap-2">
         {ACTS.map((act) => {
           const s = state(act);
