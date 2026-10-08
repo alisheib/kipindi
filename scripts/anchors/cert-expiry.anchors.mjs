@@ -7,8 +7,9 @@
  *
  * ── ⭐ ONLY ONE MUTATION LIVES HERE, AND THE REASON IS THE POINT ───────────────────────────
  * Two of this guard's three failure modes are drivable from the OUTSIDE, with no source edit at
- * all — `CERT_MIN_DAYS=60` for the expiry assertion and `CERT_ORIGIN_HOST=www.50pick.tz` for the
- * positive control. That is deliberate design, not a gap: §[F] of `pre-deploy-live-check.mjs`
+ * all — `CERT_MIN_DAYS` one above the real runway (read from the baseline, never written down:
+ * a fixed 60 went stale on 2026-10-08) for the expiry assertion and `CERT_ORIGIN_HOST=www.50pick.tz`
+ * for the positive control. That is deliberate design, not a gap: §[F] of `pre-deploy-live-check.mjs`
  * hard-coded `daysLeft > 21`, so its own documented RED proof required EDITING THE FILE, and a
  * proof that needs an edit is one nobody runs. `red:cert-expiry` drives those two by env.
  *

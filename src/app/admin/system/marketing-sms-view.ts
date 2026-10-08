@@ -14,6 +14,9 @@
  * and nothing else.
  * ⛔ Every instant is said in EAT ("14:30 EAT", or "14:30 EAT on 7 Oct" when it is not today in Dar es Salaam), and who
  * switched the switch on is a NAME — the user row's, or the ops door's screened `by` — never a number.
+ * ⭐ 2026-10-07 · THE OPS-DOOR RULE IS SHARED (`opsDoorName`): the Marketing wordings and Public policy lines cards say who
+ * saved each version through `savedByView`, so a version the ops door saved on Ali's word reads "through the ops door
+ * (…)" there too — never "by an admin".
  * ⭐ WHICH BUTTONS THE CARD OFFERS is decided here, from the state as read (`offers`): "Switch on…" while it is off;
  * "Switch off now" while it is on — AND while it reads malformed (an opening stamped by a clock ahead of this one blocks
  * "Switch on…" as `already_open`, so the owner must be able to clear it) or cannot be read (a stop is never withheld for
@@ -88,13 +91,41 @@ export function eatLabel(ms: number, nowMs: number): string {
  *  "+1 (415) 555-0132"). */
 const couldBeANumber = (t: string): boolean => (t.match(/\p{N}/gu) ?? []).length > 6 || /\p{N}{4,}/u.test(t);
 
+/**
+ * ⭐ ONE RULE FOR AN OPS-DOOR STAMP (2026-10-07) — the live switch's `enabledBy`, and a marketing wording's or a public
+ * policy line's `savedBy`, alike: `ops: <by>` reads "the ops door (<by>)", or just "the ops door" when the `by` could be a
+ * number (the door screens its `by` as it writes; the card screens it again as it reads). Anything else is not a door
+ * stamp (`null`): it is a user id, and the caller resolves a name for it. ⛔ ONE place, so the switch card and the two
+ * Admin → System cards can never name the same door two ways.
+ */
+export function opsDoorName(stamp: string): string | null {
+  if (!stamp.startsWith("ops: ")) return null;
+  const by = stamp.slice("ops: ".length).trim();
+  return by !== "" && !couldBeANumber(by) ? `the ops door (${by})` : "the ops door";
+}
+
+/** Who saved a version, as the Marketing wordings and Public policy lines cards say it: `name` for the history row, and
+ *  `words` for the status line ("saved … by Asha", or "saved … through the ops door (Claude for Ali (G4))"). */
+export type SavedByView = { readonly name: string; readonly words: string };
+
+/**
+ * ⭐ WHO SAVED A WORDING'S OR A POLICY LINE'S VERSION (2026-10-07) — `savedBy` is the card's admin (a staff id) OR the ops
+ * door's stamp (`ops: <by>`, `src/lib/server/marketing/owner-save.ts`). ⛔ A door save is NEVER "by an admin": it reads
+ * "through the ops door (…)" by the rule above, and no user row is asked for it. A staff id reads its name from `names`
+ * (the page's one read per author), or "an admin" when none could be read — as before.
+ */
+export function savedByView(savedBy: string, names: ReadonlyMap<string, string>): SavedByView {
+  const door = opsDoorName(savedBy);
+  if (door !== null) return { name: door, words: `through ${door}` };
+  const name = names.get(savedBy) ?? "an admin";
+  return { name, words: `by ${name}` };
+}
+
 /** Who switched it on, in words — a name, or the ops door and the `by` it was given, each shown only when it could not be
  *  a number (the ops door screens its `by` as it writes; the card screens it again as it reads). */
 async function whoSwitchedOn(enabledBy: string, nameOf: (userId: string) => Promise<string | null>): Promise<string> {
-  if (enabledBy.startsWith("ops: ")) {
-    const by = enabledBy.slice("ops: ".length).trim();
-    return by !== "" && !couldBeANumber(by) ? `the ops door (${by})` : "the ops door";
-  }
+  const door = opsDoorName(enabledBy);
+  if (door !== null) return door;
   let name: string | null = null;
   try { name = await nameOf(enabledBy); } catch { name = null; }
   const t = (name ?? "").trim();

@@ -27,8 +27,10 @@
  * code default that changed since the words were saved, or a review of words the code has since replaced — each is said in
  * words under its line, so nothing published goes stale unseen. Each line's history opens below it (review F12).
  *
- * ⚠️ THE PROFILE NOTE IS STORED HERE AND PRINTED BY NOTHING YET — its printer is U33a-P, once licence outreach exists; its
- * hint says so, so nobody saves it and goes looking for it on /profile/notifications.
+ * ⭐ THE PROFILE NOTE IS PRINTED UNDER THE OFFERS SWITCH on /profile/notifications (U33a-P) — only for a player whose switch
+ * is ON on the licence basis — and on no legal page; its hint says so, so nobody goes looking for it anywhere else.
+ * ⭐ WHO SAVED A VERSION is the page's words (`savedByWords`): "by <name>", or "through the ops door (…)" for a version
+ * the ops door saved on Ali's word in the Claude session (2026-10-07) — never "by an admin".
  *
  * ⛔ A SEPARATE FILE, NOT `system-client.tsx`, ON PURPOSE (the U33w card's reason): `test:admin-act-gate` judges a whole
  * FILE, and `system-client.tsx` is a declared, ungated entry on its shrink-only allowlist. This card consults the gate itself
@@ -55,8 +57,8 @@ import {
 } from "@/lib/legal/policy-lines";
 import { savePolicyLinesAction } from "./actions";
 
-/** One saved version as the page hands it over — new words or a review marker, the admin's NAME and the save's time
- *  already in words. */
+/** One saved version as the page hands it over — new words or a review marker, who saved it and the save's time already
+ *  in words. */
 export type PolicyLineVersionView = {
   rev: number;
   kind: "words" | "review";
@@ -65,7 +67,10 @@ export type PolicyLineVersionView = {
   /** The fingerprint of the code default when it was saved (words) or reviewed (marker). */
   fingerprint: string;
   savedAtLabel: string;
+  /** The admin's NAME — or "the ops door (…)" for a version the ops door saved on Ali's word (2026-10-07). */
   savedByName: string;
+  /** The status line's own words for it: "by <name>", or "through the ops door (…)" — never "by an admin" (`savedByView`). */
+  savedByWords: string;
 };
 
 /** One line's saved versions, oldest first; `[]` when it was never saved. */
@@ -97,7 +102,7 @@ const LINE_COPY: Readonly<Record<PolicyLineKey, { label: string; hint: string }>
   },
   "profile.outreachNote": {
     label: "Profile · the note under the offers switch",
-    hint: "Stored now and printed nowhere yet: the offers switch on /profile/notifications shows it once licence outreach is built (a later update). Blank in all three means no note.",
+    hint: "On /profile/notifications, under the offers switch — shown only to a player whose offers come under our licence (the switch is on, though they never said yes). Blank in all three means no note.",
   },
 };
 
@@ -303,10 +308,10 @@ export function PolicyLinesForm({ rows, pages, sendWindow }: { rows: PolicyLineR
     if (latest !== null) {
       const revision = latest.rev > 1 ? ` (revision ${latest.rev})` : "";
       if (line.words === null) {
-        return { line: `Reviewed ${latest.savedAtLabel} by ${latest.savedByName}${revision} — the page prints today's words.`, saved: true };
+        return { line: `Reviewed ${latest.savedAtLabel} ${latest.savedByWords}${revision} — the page prints today's words.`, saved: true };
       }
       const blank = POLICY_LINE_SPEC[key].clearable && POLICY_LOCALES.every((l) => line.words?.[l] === "") ? " Blank — nothing is printed." : "";
-      return { line: `Saved ${latest.savedAtLabel} by ${latest.savedByName}${revision}.${blank}`, saved: true };
+      return { line: `Saved ${latest.savedAtLabel} ${latest.savedByWords}${revision}.${blank}`, saved: true };
     }
     if (POLICY_LINE_SPEC[key].clearable) return { line: "Not set — nothing is printed.", saved: false };
     return { line: "Not saved — the page prints today's words, shown here.", saved: false };

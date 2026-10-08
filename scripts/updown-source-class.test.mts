@@ -50,6 +50,33 @@ const CARD_CODE = code(CARD);
 const ROUND_CODE = code(ROUND);
 const BOARD_PAGE_CODE = code(BOARD_PAGE);
 
+/** The `{ … }` that opens at `open`'s first brace, braces balanced; null when `open` is absent. */
+const blockFrom = (text: string, open: string): string | null => {
+  const at = text.indexOf(open);
+  if (at < 0) return null;
+  const start = text.indexOf("{", at);
+  let depth = 0;
+  for (let i = start; i >= 0 && i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}" && --depth === 0) return text.slice(start, i + 1);
+  }
+  return null;
+};
+/** Every object literal that CONTAINS `marker`: from its enclosing `{` to the matching `}`. */
+const literalsWith = (text: string, marker: string): string[] => {
+  const out: string[] = [];
+  for (let at = text.indexOf(marker); at >= 0; at = text.indexOf(marker, at + marker.length)) {
+    let depth = 0, start = -1;
+    for (let i = at; i >= 0; i--) {
+      if (text[i] === "}") depth++;
+      else if (text[i] === "{") { if (depth === 0) { start = i; break; } depth--; }
+    }
+    const lit = start < 0 ? null : blockFrom(text.slice(start), "{");
+    if (lit) out.push(lit);
+  }
+  return out;
+};
+
 // ── §1 · the classifier answers with a KIND, from real symbols ─────────────────
 {
   for (const [symbol, expected] of [
@@ -70,8 +97,15 @@ const BOARD_PAGE_CODE = code(BOARD_PAGE);
 {
   // The board's exported asset shape and both places that build it.
   ok("§2 ⭐ the board payload carries sourceClass", /sourceClass: PublicSourceClass/.test(BOARD));
-  ok("§2 ⭐ …and never sourceDomain", !/sourceDomain/.test(BOARD_CODE),
-     "the domain in the payload is the leak — View Source finds it whatever the UI renders");
+  // ⛔ SCOPED TO THE PAYLOAD (2026-10-08). This was `!/sourceDomain/.test(BOARD_CODE)` over the whole module, and
+  // since the chart's vendor tier (c6f798b3, CHART-SPRINT-2) the module rightly hands the STORED asset's
+  // `sourceDomain` to `vendorBarsFor` on the server (`getAssetTerminalSeries`), which returns bars, never the domain
+  // — so the file-wide check failed on every tree, fixed or not, and its red twin's "caught" meant nothing. What must
+  // stay vendor-free is what reaches a player: the exported `BoardAsset` shape and the asset each builder returns.
+  const payload = [blockFrom(BOARD_CODE, "export type BoardAsset = {"), ...literalsWith(BOARD_CODE, "sourceClass: publicSourceClassFor(a)")];
+  ok("§2 ⭐ …and never sourceDomain — not in the BoardAsset shape, not in either builder's asset",
+     payload.length === 3 && payload.every((s) => s !== null && !/sourceDomain/.test(s)),
+     `the domain in the payload is the leak — View Source finds it whatever the UI renders (${payload.length} payload blocks read)`);
   ok("§2 both payload builders resolve the class",
      (BOARD_CODE.match(/sourceClass: publicSourceClassFor\(a\)/g) ?? []).length === 2,
      "getBoard and getRoundDetail each build an asset; one cleaned and one not is the E-56 shape");

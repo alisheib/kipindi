@@ -30,9 +30,11 @@
  * DEFAULT that prefills the card. ⛔ NOTHING IS EVER RECORDED UNDER A DEFAULT NOBODY SAVED (W1): the two functions
  * that compose and recognise an import attestation take the SAVED versions as a parameter (`SavedBasisWordings`) and
  * stay pure, and the ONE door refuses a first-party basis whose words are unsaved (`wording_unsaved`). The old
- * `CONSENT_BASIS_G4` switch is gone with OD50's static ban: G4 now means "an admin saved these words on the card, and
- * the save is audited" — Ali, or Claude on his word — and the intent is kept at runtime: nothing unconfirmed reaches
- * evidence (`test:marketing-wordings` W1 finds any basis writer that names a default, however it reaches one).
+ * `CONSENT_BASIS_G4` switch is gone with OD50's static ban: G4 now means "these words were SAVED, and the save is
+ * audited" — by an admin on the card, or (Ali's ruling of 2026-10-07) by Claude on Ali's word in the Claude session,
+ * through the audited ops door (`src/lib/server/marketing/owner-save.ts`, the same writer, never his login) — and the
+ * intent is kept at runtime: nothing unconfirmed reaches evidence (`test:marketing-wordings` W1 finds any basis writer
+ * that names a default, however it reaches one).
  * ⭐ M3 · THE FIELD SAYS WHAT IT HOLDS: an entry's words are its `defaultWording`, never a bare `wording` a writer could
  * take for the words to record — and W1 counts any read of `defaultWording` outside the two homes as reaching a
  * default, however it is spelled (chained off the lookup, a variable, a non-null assertion, destructured). The door's

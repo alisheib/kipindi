@@ -17,7 +17,9 @@
  *   K2  /wallet/withdraw · 20,000, Enter opens the confirm, Enter HELD on Cancel → it closes and STAYS closed; nothing sent
  *   D1  /wallet/deposit  · 5,000 typed, Enter in the amount box            → "Confirm deposit" opens; nothing is sent
  *   P1  /wallet/withdraw, every script held back · 20,000, Enter           → nothing is posted; no money moves
- *   P1x (WebKit only) P1 again, the server's HTML with the second text field taken out → the form POSTS: P1 goes red
+ *   P1x (WebKit only) P1 again, the server's HTML with the second text field taken out → REPORTS this WebKit's rule: a
+ *                                                                            post means the field holds it; none, that the
+ *                                                                            disabled default control alone does
  *   W3  /wallet/withdraw · the button, Shift+Tab to "Send funds", Enter    → the withdrawal action runs: the confirm still sends
  *   D2  /wallet/deposit  · the button, Shift+Tab to "Deposit", Enter       → the deposit action runs: the deposit confirm sends
  *   R1  /profile/responsible-gambling · read only, nothing pressed         → in the break and the self-exclusion form, the
@@ -29,9 +31,9 @@
  *   Z   no page error on the main page during the drive
  *
  * In W1, D1, C1 and R1 (awake) and in P1 and P2 (asleep) the page itself is also asked for EVERY submit control of the
- * form, in `form.elements`: the guard's own hidden default control must be the ONLY one (disabled while asleep). WebKit
- * skips that disabled control and presses the first ENABLED submit control wherever it stands in the form, ahead of the
- * dialog or after it — `test:implicit-submit` §4.5 reads the host's own JSX, this reads what the browser built, the
+ * form, in `form.elements`: the guard's own hidden default control must be the ONLY one (disabled while asleep). WebKit,
+ * as its source was read, skips that disabled control and presses the first ENABLED submit control wherever it stands in
+ * the form, ahead of the dialog or after it — `test:implicit-submit` §4.5 reads the host's own JSX, this reads what the browser built, the
  * components inside the form included (the amount field, the RG period Select). The hub's sign-out row is not driven.
  *
  * ⭐ ITS RED CONTROL, PER ENGINE: on a server built from the tree before A8j, W1 W2 K1 K2 P1 C2 C1 P2 fail — the form
@@ -39,18 +41,21 @@
  * demo account — D1 fails harmlessly (Enter did nothing there), R1 fails as a reading (no guard control in either form),
  * W3 and D2 pass, and C3 is SKIPPED (C1 has already closed the account). C2 runs BEFORE C1 so that it still fails by its
  * own check (the server bounces back with ?reason=); P2 is SKIPPED behind C1's closure too, so its own old-tree result is
- * hidden. Under ENGINE=webkit P1x FAILS there as well — the old form has no second field to take out and no guard control
- * — and its Enter posts the old form natively: ANOTHER 20,000 leaves the demo wallet. An old-tree run can spend all of it.
+ * hidden. Under ENGINE=webkit P1x FAILS there as well — its set-up needs the guard's control and the field, and the old
+ * form has neither — and its Enter posts the old form natively: ANOTHER 20,000 leaves the demo wallet. An old-tree run can
+ * spend all of it.
  * ⚠️ K1 AND K2 NEED A8i-2's KEY GUARD (a held key's auto-repeat swallowed page-wide; a fresh Enter inert for ARMING_MS
  * after a dialog takes focus or gives it back). Without it every repeat is a fresh implicit submission the guard turns
  * into the dialog's pre-flight: a warning toast each (K1), or the dialog reopened over Cancel (K2). They fail on a tree
  * without A8i-2 and are written for A8j rebased onto it. ARMING_MS is read from `src/lib/modal-stack.ts` (A8i-2's), else
  * 400; every key pressed in a dialog waits until the dialog's first focus has landed, then ARMING_MS + 50 ms.
- * ⚠️ THE WEBKIT HALF OF THE FIX (the second text field) AND FIREFOX'S DEFAULT-CONTROL RULE ARE PROVEN BY THE SUITE'S
- * ENGINE MODEL ONLY until this drive has run with ENGINE=webkit and ENGINE=firefox: in Chromium the disabled default
- * control alone stops Enter, so a Chromium run of P1 and P2 says nothing about the field. P1x is the proof that the
- * FIELD, not the model, holds an iPhone: with it taken out of the HTML, WebKit must post. Playwright's WebKit follows
- * WebKit's main branch; WebKit before Safari 16.4 is the suite's model alone (§2.5: there Enter is inert, and Next 16
+ * ⭐ WHAT THE ENGINES SHOWED (OMEGA-COMPILE01, 2026-10-07; Chromium 1217, Firefox 1511, WebKit 2272): before the page
+ * wakes, P1 and P2 hold in all three. In Chromium and Firefox the disabled default control alone stops Enter, and in
+ * Playwright's WebKit it does too: P1x, the second field taken out, posted nothing — while the same Enter on the tree
+ * before A8j, whose form has no submit control, posted and withdrew 20,000 (its P1), so the drive can see a WebKit post.
+ * This WebKit honours a disabled default control where WebKit's source was read to skip it; the suite's model keeps that
+ * stricter rule, so the field stays — a belt for any WebKit that skips the control — and P1x reports which rule the
+ * WebKit it ran in follows. WebKit before Safari 16.4 is the suite's model alone (§2.5: there Enter is inert, and Next 16
  * builds for Safari 16.4 on, so such a device may never wake the page at all).
  * ⚠️ FIREFOX AND WEBKIT RUNS: their user agents do not match the first-visit primer's automation check, so the primer is
  * marked seen before any page loads (it would open over the dialogs otherwise); and no case opens a second page while it
@@ -385,17 +390,25 @@ await runCase("P1", "before the page wakes (scripts held back), 20,000 and Enter
     JSON.stringify(r));
 });
 if (ENGINE === "webkit") {
-  await runCase("P1x", "control (WebKit) · the second text field taken out of the HTML — the same Enter now POSTS: P1 goes red", async () => {
+  await runCase("P1x", "WebKit's own rule · the second text field taken out of the HTML — does the disabled default control alone hold Enter?", async () => {
     let dropped = -1;
     const r = await enterAsleep((html) => { const d = dropSecondField(html); dropped = d.dropped; return d.out; });
-    const red = r.posts.length > 0 || r.now !== r.before || new URL(r.url).pathname !== "/wallet/withdraw";
-    // ⭐ The guard's default control is still there, still the only submit control and still disabled, so the post can
-    // only be the missing field's.
-    ok("P1x · control (WebKit) · the second text field taken out of the HTML — the same Enter now POSTS: P1 goes red, so the field, not the model, is what holds an iPhone",
-      dropped === 1 && !r.woke && r.only === "guard, disabled" && red, JSON.stringify({ dropped, ...r, moved: r.before - r.now }));
+    const posted = r.posts.length > 0 || r.now !== r.before || new URL(r.url).pathname !== "/wallet/withdraw";
+    // ⭐ A REPORT, NOT THE FIX'S VERDICT (P1 is that). The guard's default control is still there, still the only submit
+    // control and still disabled, so a post can only be the missing field's: this WebKit skips a disabled control and the
+    // field is what holds it. No post: the control alone holds it, and the field is a belt. The case fails only when its
+    // set-up does not hold, and then it names no rule (on the tree before A8j there is no control to skip). 2026-10-07,
+    // WebKit 2272: nothing posted.
+    const setUp = dropped === 1 && !r.woke && r.only === "guard, disabled";
+    ok(`P1x · WebKit's own rule · the second text field taken out of the HTML — ${!setUp
+      ? `its set-up does not hold (dropped ${dropped}, woke ${r.woke}, only ${JSON.stringify(r.only)}): no rule read`
+      : posted
+        ? "Enter POSTS: this WebKit skips a disabled default control, and the field is what holds it"
+        : "nothing is posted: the disabled default control alone holds this WebKit, and the field is a belt"}`,
+    setUp, JSON.stringify({ dropped, ...r, moved: r.before - r.now }));
   });
 } else {
-  skip("P1x", `the second-field control is WebKit's (ENGINE=webkit); in ${ENGINE} the disabled default control alone stops Enter`);
+  skip("P1x", `it reports WebKit's own rule (ENGINE=webkit); in ${ENGINE} the disabled default control alone stops Enter`);
 }
 await runCase("W3", "the confirm still sends: the button, Shift+Tab to Send funds, Enter — the withdrawal action runs", async () => {
   await fresh("/wallet/withdraw", amountBox);

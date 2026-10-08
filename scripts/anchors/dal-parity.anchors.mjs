@@ -1583,6 +1583,94 @@ export const MUTATIONS = [
     to: ``,
     expect: "26.u43a.claim.fresh · ⛔ A CLAIM TOKEN IS FRESH FOR EACH CLAIM in BOTH twins (D16): the Prisma claim asks the claimToken index whether ANY row holds the token (ONE findFirst, no campaign in its WHERE) and refuses through refuseHeldToken after the rule set and BEFORE its free read; the memory claim refuses a row holding the token in the same pass, before any write — so the won set read back by the token can only ever be this claim's rows",
   },
+  /* ── §26 · U46a · the receipt door (S14 2026-10-07 — ENGINE-SPEC §4.14, decision E28) ───────────────────────────── */
+  {
+    // ⭐ THE STATUS GUARD LEAVES THE WHERE, on Postgres only: a late FAILED rewrites a DELIVERED row, and a receipt for an
+    // earlier attempt's message moves a SKIPPED or HELD row — while every suite, on the memory twin, stays green.
+    name: "prisma-dal.ts — the receipt's WHERE forgets the statuses a receipt moves",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] },`,
+    to: `        where: { id, msisdn: r.msisdn, OR: [{ smsReference: null }, { smsReference: r.reference }] },`,
+    expect: "26.u46a.prisma · ⛔ the Prisma receipt asks assertReceipt FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the MESSAGE's number, a status a receipt moves (SMS_RECEIPT_FROM, spread — never a list of its own) AND the reference null or the receipt's own, its data the rule set's receiptWrite through the map; the count alone decides applied, and a miss is ONE findUnique of the row read through receiptMiss — no other statement",
+  },
+  {
+    // ⭐ THE NUMBER LEAVES THE WHERE: a message that named the wrong row settles a person who was never sent it.
+    name: "prisma-dal.ts — the receipt's WHERE forgets the message's number",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] },`,
+    to: `        where: { id, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] },`,
+    expect: "26.u46a.prisma · ⛔ the Prisma receipt asks assertReceipt FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the MESSAGE's number, a status a receipt moves (SMS_RECEIPT_FROM, spread — never a list of its own) AND the reference null or the receipt's own, its data the rule set's receiptWrite through the map; the count alone decides applied, and a miss is ONE findUnique of the row read through receiptMiss — no other statement",
+  },
+  {
+    // ⭐ THE REFERENCE ARM DROPPED: a second message naming a row overwrites the reference it already held — the record of
+    // which message reached the person, rewritten by another one's receipt.
+    name: "prisma-dal.ts — the receipt's WHERE forgets the reference it may hold",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] },`,
+    to: `        where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] } },`,
+    expect: "26.u46a.prisma · ⛔ the Prisma receipt asks assertReceipt FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the MESSAGE's number, a status a receipt moves (SMS_RECEIPT_FROM, spread — never a list of its own) AND the reference null or the receipt's own, its data the rule set's receiptWrite through the map; the count alone decides applied, and a miss is ONE findUnique of the row read through receiptMiss — no other statement",
+  },
+  {
+    // 🔴 A SECOND VOCABULARY on the production path: the Prisma twin retypes the list, and the next change to the rule
+    // set's list (or a status added beside it) moves one twin and not the other.
+    name: "prisma-dal.ts — the receipt's WHERE spells its own status list",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] },`,
+    to: `        where: { id, msisdn: r.msisdn, status: { in: ["PENDING", "SENT", "UNCONFIRMED"] }, OR: [{ smsReference: null }, { smsReference: r.reference }] },`,
+    expect: "26.u46a.prisma · ⛔ the Prisma receipt asks assertReceipt FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the MESSAGE's number, a status a receipt moves (SMS_RECEIPT_FROM, spread — never a list of its own) AND the reference null or the receipt's own, its data the rule set's receiptWrite through the map; the count alone decides applied, and a miss is ONE findUnique of the row read through receiptMiss — no other statement",
+  },
+  {
+    // 🔴 THE NO-CONDITION TRAP REOPENED, on Postgres only: a receipt whose id was lost is `where: { id: undefined }` — and
+    // with its number lost too, one receipt settles every open row in the table.
+    name: "prisma-dal.ts — the Prisma receipt stops asking the rule set first",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      assertReceipt(id, r);`,
+    to: `      // (the rule set not asked)`,
+    expect: "26.u46a.prisma · ⛔ the Prisma receipt asks assertReceipt FIRST, then is ONE conditional updateMany whose WHERE holds the row's id, the MESSAGE's number, a status a receipt moves (SMS_RECEIPT_FROM, spread — never a list of its own) AND the reference null or the receipt's own, its data the rule set's receiptWrite through the map; the count alone decides applied, and a miss is ONE findUnique of the row read through receiptMiss — no other statement",
+  },
+  {
+    // ⭐ THE SPEC'S OWN RED (a member in one twin only): the DLR route's campaign arm works in every suite and throws on
+    // production — caught by the route, so every campaign receipt is lost with a SYSTEM row each.
+    name: "prisma-dal.ts — the Prisma recipient namespace loses recordReceipt (a door in one twin only)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    recordReceipt: async (id: string, r: SmsRecipientReceipt): Promise<SmsRecipientReceiptResult> => {`,
+    to: `    recordDelivery: async (id: string, r: SmsRecipientReceipt): Promise<SmsRecipientReceiptResult> => {`,
+    expect: "26.u46a.parity · ⭐ BOTH twins define smsCampaignRecipient.recordReceipt — a door in one twin only works in every suite and throws on production",
+  },
+  {
+    // In the twin every suite runs on: the identity loses its reference arm, so no suite can see a second message's
+    // receipt overwrite the reference a row already held.
+    name: "store.ts — the memory receipt's identity forgets the reference",
+    file: "src/lib/server/store.ts",
+    from: `      const ours = row.msisdn === r.msisdn && (row.smsReference === null || row.smsReference === r.reference);`,
+    to: `      const ours = row.msisdn === r.msisdn;`,
+    expect: "26.u46a.memory · ⛔ the memory receipt asks assertReceipt FIRST, tests the identity — the message's number, the reference null or the receipt's own — AND the status through SMS_RECEIPT_FROM BEFORE it writes, refuses a reference another row holds before the write (the memory twin of P2002), writes the rule set's receiptWrite through the ONE apply, and answers every miss through receiptMiss",
+  },
+  {
+    // …and its status test, so the monotonic rule holds on Postgres and nowhere a suite can watch it.
+    name: "store.ts — the memory receipt stops testing the status",
+    file: "src/lib/server/store.ts",
+    from: `      const open = SMS_RECEIPT_FROM.includes(row.status);`,
+    to: `      const open = true;`,
+    expect: "26.u46a.memory · ⛔ the memory receipt asks assertReceipt FIRST, tests the identity — the message's number, the reference null or the receipt's own — AND the status through SMS_RECEIPT_FROM BEFORE it writes, refuses a reference another row holds before the write (the memory twin of P2002), writes the rule set's receiptWrite through the ONE apply, and answers every miss through receiptMiss",
+  },
+  {
+    // The memory twin of the unique index removed: a reference another row holds is written a second time in every suite,
+    // where Postgres refuses it (P2002) — so no suite can meet the route's refusal path.
+    name: "store.ts — the memory receipt's P2002 refusal removed",
+    file: "src/lib/server/store.ts",
+    from: `      for (const other of store.smsCampaignRecipients.values()) {
+        if (other.id !== id && other.smsReference === r.reference) {
+          throw Object.assign(
+            new Error("unique constraint: SmsCampaignRecipient.smsReference already held by another row (memory twin of P2002) — nothing was written"),
+            { code: "P2002" },
+          );
+        }
+      }
+      writeRecipient(row, receiptWrite(r));`,
+    to: `      writeRecipient(row, receiptWrite(r));`,
+    expect: "26.u46a.memory · ⛔ the memory receipt asks assertReceipt FIRST, tests the identity — the message's number, the reference null or the receipt's own — AND the status through SMS_RECEIPT_FROM BEFORE it writes, refuses a reference another row holds before the write (the memory twin of P2002), writes the rule set's receiptWrite through the ONE apply, and answers every miss through receiptMiss",
+  },
   /* ── §23 · vb7 (review m1) · the bound Remove, all or nothing ─────────────────────────────────────────────────── */
   {
     // 🔴 THE CHUNKS OUT OF THEIR TRANSACTION: each delete commits on its own, so a fault at chunk 37 leaves 36 removed.

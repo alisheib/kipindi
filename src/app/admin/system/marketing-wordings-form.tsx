@@ -50,8 +50,10 @@ import {
 } from "@/lib/marketing/marketing-wordings";
 import { saveMarketingWordingsAction } from "./actions";
 
-/** One saved version as the page hands it over — the admin's NAME and the save's time already in words. */
-export type WordingVersionView = { v: number; text: string; savedAtLabel: string; savedByName: string };
+/** One saved version as the page hands it over — who saved it and the save's time already in words: `savedByName` the
+ *  admin's NAME, or "the ops door (…)" for a version the ops door saved on Ali's word (2026-10-07); `savedByWords` the
+ *  status line's own words for it — "by <name>", or "through the ops door (…)", never "by an admin" (`savedByView`). */
+export type WordingVersionView = { v: number; text: string; savedAtLabel: string; savedByName: string; savedByWords: string };
 /** One wording's saved versions, oldest first; `[]` when it was never saved. */
 export type WordingRowView = { key: WordingKey; versions: WordingVersionView[] };
 
@@ -242,7 +244,7 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
     const n = newest(key);
     if (n !== null) {
       const cleared = WORDING_RULE[key].clearable && n.text === "" ? " No source line is set." : "";
-      return { line: `Version ${n.v}, saved ${n.savedAtLabel} by ${n.savedByName}.${cleared}`, saved: true };
+      return { line: `Version ${n.v}, saved ${n.savedAtLabel} ${n.savedByWords}.${cleared}`, saved: true };
     }
     if (WORDING_RULE[key].clearable) return { line: "Not set yet.", saved: false };
     return { line: "Not saved — this is a suggestion. Nothing is recorded with it until it is saved.", saved: false };

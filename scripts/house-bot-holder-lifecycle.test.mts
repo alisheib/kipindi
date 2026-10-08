@@ -172,7 +172,22 @@ ok("2.1 · ⭐ every script that writes an account fact is a suite, or carries t
  * commit, the way 23 → 24 was; it did not, and the count carried the debt until `test:all` was compared red-by-red
  * against clean `origin/main`.
  */
-const SCRIPT_CEILING = 25;
+/**
+ * ⚠️ 25 → 34 on 2026-10-08, by the rule above: each of the nine new members was READ before it was admitted. The count
+ * had been red on main since e14e4204 (2026-09-25), because no lane that added a member moved this number in its own
+ * commit. Every one writes account facts into the IN-MEMORY store of its own test process, to fixture accounts it makes
+ * itself; none reaches a database or a running server, so no bot holder can be behind any of them:
+ *   - marketing-consent.test.mts (e14e4204, 2026-09-25), and its section marketing-consent/licence-basis.mts (b5680d5d,
+ *     2026-10-05), which now carries the L2-sweep declaration (2.1);
+ *   - player-invite-unpaid.test.mts (46e227a1, 2026-09-25); withdrawn-features.test.mts (since 2026-09-06; 46e227a1
+ *     added a SELF_EXCLUDED write);
+ *   - simple-journey-flag.test.mts (41ec1703, 2026-09-30): it refuses a real DATABASE_URL, and its §12 child runs
+ *     against a fake one on port 1;
+ *   - deposit-ceiling.test.mts (67b150aa, 2026-10-01); campaign-audience.test.mts (bd097333, 2026-10-03);
+ *   - login-enumeration.test.mts (since 2026-07-31; d6f8260a, 2026-10-06, closes an account) and reset-identifier.test.mts
+ *     (since 2026-08-25; 14099375, 2026-10-06, sets an email and a password hash).
+ */
+const SCRIPT_CEILING = 34;
 ok(`2.2 · the script population is shrink-only (${scriptWriters.length} found, ceiling ${SCRIPT_CEILING})`, scriptWriters.length <= SCRIPT_CEILING,
   scriptWriters.map((s) => s.file).slice(0, 6).join(" · "));
 

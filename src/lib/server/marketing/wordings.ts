@@ -1,6 +1,7 @@
 /**
  * U33w · THE MARKETING WORDINGS, PERSISTED — `marketing.wordings`, the readers every basis writer must use, and the ONE
- * verified setter the "Marketing wordings" card on /admin/system calls.
+ * verified setter the "Marketing wordings" card on /admin/system calls — and, from 2026-10-07, the audited ops door that
+ * carries out the wordings Ali approves in the Claude session (`owner-save.ts`), through this same setter.
  *
  * ⭐ WHY THIS EXISTS (OD57 · OD58 · S14 · the owner rule of 2026-10-03). The basis wordings, the 18+ confirmations, the
  * bought-list notice and the source line are admin-edited config now, kept with an append-only history (the pure half,
@@ -91,6 +92,15 @@ export const WORDINGS_REFUSAL_SENTENCE: Readonly<Record<Exclude<WordingsRefusal,
  *  not answer. ⛔ `{ ok: false }` is never "nothing saved": a caller that stamps the wording refuses on it. */
 export type FreshWording = { readonly ok: true; readonly version: WordingVersion | null } | { readonly ok: false };
 
+/**
+ * The WHOLE row as it is now, from ONE re-read — every wording's history (a deep copy), whether a row is stored at all,
+ * and every entry that read had to leave out (M1). ⛔ `{ ok: false }` is a read that could not answer, never "nothing
+ * saved"; and a read that dropped anything is said so (`dropped`), never passed off as wordings nobody saved.
+ */
+export type WordingsReload =
+  | { readonly ok: true; readonly histories: WordingHistories; readonly stored: boolean; readonly dropped: readonly string[] }
+  | { readonly ok: false };
+
 /** What this file reads and writes — every reader and the setter, over ONE factory instance. */
 export type WordingsStore = {
   /** ⭐ The NEWEST SAVED version of a wording, or `null` when it was never saved — ⛔ never a suggestion. */
@@ -103,6 +113,8 @@ export type WordingsStore = {
   readonly isImportAttestationSaved: (row: ImportAttestationRow | null | undefined) => boolean;
   /** ⭐ U37s · the newest SAVED version AS THE ROW HOLDS IT NOW — re-read (`reload`), never this process's cache alone. */
   readonly freshWording: (key: WordingKey) => Promise<FreshWording>;
+  /** ⭐ The ops door's read (`owner-save.ts`) — the whole row as it is now, re-read, and whether it was read in full. */
+  readonly reloadHistories: () => Promise<WordingsReload>;
   /** ⛔ THE ONLY WRITER. */
   readonly saveMarketingWordings: (patch: unknown, officerId: string, nowIso?: string) => Promise<WordingsSaveResult>;
 };
@@ -243,7 +255,23 @@ function storeOver(cfg: WordingsConfig, seen: RowSeen, rules: WordingRules, merg
     return { ok: true, version: currentWording(key) };
   };
 
-  return { currentWording, wordingHistory, savedBasisWordings, isImportAttestationSaved, freshWording, saveMarketingWordings };
+  /**
+   * ⭐ THE OPS DOOR'S READ (2026-10-07, `owner-save.ts`) — the whole row as it is NOW, from ONE re-read (`reload` replaces
+   * the cache with what it read), so every history it answers comes from the same read: the door builds the card's own
+   * request from it (each base is the count saved now), finds a wording that already reads that way, and reads its own save
+   * back. ⛔ FAILS CLOSED like `freshWording`: a read that could not answer is `{ ok: false }`. ⛔ M1 · and a read that had
+   * to leave something out NAMES it (`dropped`), so the door refuses before it records anything and its status says
+   * "read only in part" — never "not saved" for a wording this file could not read. A row that is not stored drops nothing.
+   */
+  const reloadHistories = async (): Promise<WordingsReload> => {
+    const read = await cfg.reload().catch(() => ({ ok: false as const }));
+    if (!read.ok) return { ok: false };
+    return { ok: true, histories: merge(read.config, {}), stored: read.stored, dropped: read.stored ? [...seen.dropped] : [] };
+  };
+
+  return {
+    currentWording, wordingHistory, savedBasisWordings, isImportAttestationSaved, freshWording, reloadHistories, saveMarketingWordings,
+  };
 }
 
 type StoreOptions = {
@@ -291,6 +319,12 @@ export function freshWording(key: WordingKey): Promise<FreshWording> {
   return live.freshWording(key);
 }
 
+/** ⭐ The ops door's read — every wording's history as the ROW holds it now (one re-read), and what that read dropped
+ *  (M1) — ⛔ `{ ok: false }` when the read cannot answer. */
+export function reloadMarketingWordings(): Promise<WordingsReload> {
+  return live.reloadHistories();
+}
+
 /** Every saved version of a wording, oldest first — the card's history. */
 export function wordingHistory(key: WordingKey): WordingVersion[] {
   return live.wordingHistory(key);
@@ -312,6 +346,9 @@ export function isImportAttestationSaved(row: ImportAttestationRow | null | unde
  * (`readWordingsPatch`), every rule run first (`wordingProblems`), the server's own admission (`admissionProblems`), a
  * version appended only on change, the append-only check over the whole record, then the VERIFIED write and its audit
  * row. `nowIso` is the server's clock (tests pin it); the author is the session's officer.
+ * ⭐ 2026-10-07 · the ops door (`owner-save.ts`, run by `ops:marketing-owner-save`) calls this SAME writer to carry out a
+ * wording Ali approved in the Claude session: the card's own request, the author `ops: <by>` and the DATABASE's clock as
+ * `nowIso` — every rule above runs unchanged, and the card names such a version "the ops door (…)".
  */
 export function saveMarketingWordings(patch: unknown, officerId: string, nowIso?: string): Promise<WordingsSaveResult> {
   return live.saveMarketingWordings(patch, officerId, nowIso);

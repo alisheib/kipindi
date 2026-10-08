@@ -87,6 +87,8 @@ const BOOK_ONLY = "This narrows the contact book only — a player account has n
 const REMOVE_FILTER = "Remove the filter";
 const HIDDEN_ROW = "Audience hidden for your role.";
 const POP_WORDS = "Player accounts · Operator: Telxer or TTCL";
+/** The saved draft's audience after the AUDIENCE ONLY step re-saves it on Vodacom — the list must follow the saved change. */
+const POP_WORDS_AFTER = "Player accounts · Operator: Vodacom";
 const REASON = {
   suppressed: "Stopped (on the stop list)",
   no_consent: "No consent or recorded basis",
@@ -460,6 +462,46 @@ for (const role of ["GROWTH", "ADMIN"]) {
           // ⭐ STD-1 · the saved line is STILL on screen at the new address — no redirect unmounted the composer on the way.
           && (await has(page, S.saved)),
         `${page.url()} · ${await countState(page)} · the saved line still shown ${await has(page, S.saved)}`);
+
+      // ── AN AUDIENCE-ONLY CHANGE IS A CHANGE SAVE TAKES — never "Nothing to save" (the gap U40b found, 2026-10-07) ──────
+      await page.locator(S.rail).getByRole("link", { name: "Vodacom", exact: true }).first().click().catch(() => {});
+      await page.waitForFunction(() => new URL(location.href).searchParams.get("op") === "VODACOM", null, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      const saveOffered = await page.locator(S.save).isEnabled().catch(() => false);
+      const savedLineGone = !(await has(page, S.saved));
+      await page.locator(S.save).click().catch(() => {});
+      await page.waitForSelector(S.saved, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      await page.goto(`${BASE}/admin/campaigns/new?draft=${encodeURIComponent(savedDrafts[role].id)}`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => new URL(location.href).searchParams.has("pop"), null, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      const reopened = new URL(page.url());
+      ok(`${tag} · AUDIENCE ONLY · a saved draft whose only change is its audience: Save is offered (never "Nothing to save"), the saved line steps aside until it is saved, and the draft reopens on the NEW audience`,
+        saveOffered && savedLineGone && reopened.searchParams.get("op") === "VODACOM" && reopened.searchParams.get("pop") === "players",
+        `Save offered ${saveOffered} · saved line gone before the save ${savedLineGone} · reopened at ${page.url()}`);
+
+      // ── A DATE WINDOW BY PRESET: every save goes to the draft's own address (absolute from/to) — "Last 7 days" left in the
+      //    address would be resolved again the next minute and read the saved draft as unsaved (the U40b review's MAJOR) ──
+      await page.locator(S.rail).getByRole("link", { name: "7 days", exact: true }).first().click().catch(() => {});
+      await page.waitForFunction(() => new URL(location.href).searchParams.has("range"), null, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      await page.locator(S.save).click().catch(() => {});
+      await page.waitForFunction(() => { const u = new URL(location.href); return !u.searchParams.has("range") && u.searchParams.has("from"); }, null, { timeout: 30000 }).catch(() => {});
+      await page.waitForSelector(S.saved, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      const homed = new URL(page.url());
+      const savedShown = await has(page, S.saved);
+      const saveIdle = !(await page.locator(S.save).isEnabled().catch(() => true));
+      ok(`${tag} · WINDOW SAVED · "7 days" saved on a draft: the page goes to the draft's own address with the window it stored (from/to, no preset), the saved line shows and Save is at rest`,
+        !homed.searchParams.has("range") && homed.searchParams.has("from") && homed.searchParams.has("to") && savedShown && saveIdle,
+        `${page.url()} · saved line ${savedShown} · Save at rest ${saveIdle}`);
+      // ...and back to "All time", saved, so the list below reads the audience it expects.
+      await page.locator(S.rail).getByRole("link", { name: "All time", exact: true }).first().click().catch(() => {});
+      await page.waitForFunction(() => { const u = new URL(location.href); return !u.searchParams.has("from") && !u.searchParams.has("range"); }, null, { timeout: 30000 }).catch(() => {});
+      await settle(page);
+      await page.locator(S.save).click().catch(() => {});
+      await page.waitForSelector(S.saved, { timeout: 30000 }).catch(() => {});
+      await settle(page);
     }
 
     // ── THE LIST — each row's audience in words ─────────────────────────────────────────────────────────────────
@@ -469,7 +511,7 @@ for (const role of ["GROWTH", "ADMIN"]) {
     const own = savedDrafts[role];
     const ownWords = own ? await textOf(page, `tr[data-campaign-row][data-campaign-id="${own.id}"] [data-campaign-audience]`) : "";
     const seededWords = await textOf(page, 'tr[data-campaign-row][data-campaign-id="cmp_seed_22"] [data-campaign-audience]');
-    ok(`${tag} · LIST · the saved draft's row says its audience in words: "${POP_WORDS}"`, ownWords === POP_WORDS, ownWords);
+    ok(`${tag} · LIST · the saved draft's row says its audience in words — as last saved: "${POP_WORDS_AFTER}"`, ownWords === POP_WORDS_AFTER, ownWords);
     ok(`${tag} · LIST · a seeded campaign that asks consent reads ${reads ? '"Consent: given" to a reader' : `"${HIDDEN_ROW}" to a masked viewer (D19)`}`,
       seededWords === (reads ? "Consent: given" : HIDDEN_ROW), seededWords);
     if (vp.width === 1280) {

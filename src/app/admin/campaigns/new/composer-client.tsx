@@ -31,6 +31,9 @@
  * be saved as a new one; and the budget's, the role's and an unfinished save's sentences print alone, with no blind
  * retry. ⛔ A new draft keeps the audience on screen (`carry`), or is not offered — never the whole book by omission.
  * The saved line names the test below only when this page can send one.
+ * ⭐ U40b · THE CONFIRM CARD (`campaign-confirm.tsx`) READS THIS STATE (`useComposerSaved`) — it opens only on the SAVED
+ * draft — and an audience on screen that the draft does not store (`view.audience.unsaved`, a rail pick) is a change Save
+ * takes, never "Nothing to save".
  */
 import { createContext, useContext, useRef, useState, useTransition } from "react";
 import type { ReactNode, RefObject } from "react";
@@ -52,6 +55,7 @@ import type { CampaignDraftFields, CampaignVariant, TemplateVerdict } from "@/li
 import { foldToGsm7 } from "@/lib/sms-compose";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import type { CampaignDraftField } from "@/lib/server/marketing/campaign-draft";
+import type { SmsCampaignStatus } from "@/lib/server/store";
 import type { CampaignTestResult } from "@/lib/server/marketing/campaign-test-send";
 import { saveCampaignDraftAction, sendCampaignTestAction } from "./actions";
 import { ComposerCounter } from "./composer-counter";
@@ -181,6 +185,51 @@ function useComposer(): Composer {
   return c;
 }
 
+/** U40b · what the Confirm card reads of the shared state. */
+export type ComposerSaved = {
+  savedId: string | null;
+  /** The revision whose text this form holds, and the revision this page was last read at — two saves apart means another
+   *  tab saved the draft (the page is ahead), or this tab's save is still being read back (the form is ahead). */
+  savedRevision: number | null;
+  pageRevision: number | null;
+  /** The draft this page was read for, and its status as read (null for a new composer). */
+  pageDraftId: string | null;
+  status: SmsCampaignStatus | null;
+  dirty: boolean;
+  audienceUnsaved: boolean;
+  /** Why the audience on screen cannot be saved — the composer's own sentence (a refused save's, else the address's) — or null. */
+  audienceProblem: string | null;
+  /** The address keys of the audience on screen (null when the address carries none: the stored one is on screen) — what the
+   *  card's read posts, so the server counts nothing for an audience the draft does not store. */
+  audienceParams: Record<string, string> | null;
+  saving: boolean;
+  swBlank: boolean;
+};
+
+/**
+ * ⭐ U40b · IS WHAT THE FORM SHOWS THE SAVED DRAFT? — asked by the Confirm card (`campaign-confirm.tsx`), because the server
+ * confirms the STORED message and audience and cannot see this form (decision 1: "Save first — confirming freezes the saved
+ * message"): the saved draft's id and the revision the form holds against the page's, the page's draft and its status,
+ * unsaved text, an audience on screen the draft does not store (and its keys, which the card's read posts), the audience's
+ * problem, a save in flight, and a blank Swahili message. Read-only: the card can neither save nor edit through it.
+ */
+export function useComposerSaved(): ComposerSaved {
+  const c = useComposer();
+  return {
+    savedId: c.saved?.id ?? null,
+    savedRevision: c.saved?.draftRevision ?? null,
+    pageRevision: c.view.draft?.draftRevision ?? null,
+    pageDraftId: c.view.draft?.id ?? null,
+    status: c.view.draft?.status ?? null,
+    dirty: c.dirty,
+    audienceUnsaved: c.view.audience.unsaved,
+    audienceProblem: c.problemAt("audience") ?? c.view.audience.problem ?? null,
+    audienceParams: c.view.audience.params,
+    saving: c.saving,
+    swBlank: c.fields.bodySw.trim() === "",
+  };
+}
+
 export function ComposerProvider({ view, children }: { view: ReadyView; children: ReactNode }) {
   const router = useRouter();
   const mayAct = useMayAct();
@@ -252,7 +301,9 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
             }
           : null;
   // ⭐ U37s · a draft carrying another line than the one saved now is never "no changes": only a save re-stamps it.
-  const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
+  // ⭐ Nor is an audience on screen that the draft does not store (a rail pick): only a save keeps it (`audience.unsaved`) —
+  // and the Confirm card (U40b) will not open on it, since a confirmation freezes the STORED audience.
+  const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
   const saveBlocked: string | null = blocked?.reason ?? null;
   const blockedField: CampaignDraftField | null = blocked?.field ?? null;
   const canSave = saveBlocked === null && !saving;
@@ -308,10 +359,12 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
         setSaved({ id: r.id, draftRevision: r.draftRevision, savedAt: r.savedAt, fields: submitted });
         setServerProblems({});
         setTest({ kind: "idle" });
-        // ⭐ A new draft gets its address — the composer's own canonical one, built by the server (STD-1: a bare ?draft=<id>
-        // would meet the page's redirect inside this mounted page and unmount the composer) — so a reload reopens it; an
-        // edit re-reads the saved preview.
-        if (r.created) router.replace(r.href as never, { scroll: false });
+        // ⭐ Every save goes to the draft's own address — the composer's canonical one, built by the server (STD-1: a bare
+        // ?draft=<id> would meet the page's redirect inside this mounted page and unmount the composer) — so a reload reopens
+        // it, and an address that named its window by a preset becomes the window the save stored (else the next minute
+        // would read the saved draft as unsaved). Already there: re-read the saved preview.
+        const here = window.location.pathname + window.location.search;
+        if (r.href && r.href !== here) router.replace(r.href as never, { scroll: false });
         else router.refresh();
         return;
       }
@@ -403,7 +456,7 @@ export function ComposerMessage() {
   const enJina = enWritten && scanPlaceholders(fields.bodyEn).jina > 0;
   // ⛔ The saved line invites a test only when the test card beside it can send one — never one it would refuse.
   const canTest = view.test.liveNote === null && view.test.windowNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;
-  const savedLine = c.saved?.savedAt && !c.dirty ? composeSaved(c.saved.savedAt, canTest) : null;
+  const savedLine = c.saved?.savedAt && !c.dirty && !view.audience.unsaved ? composeSaved(c.saved.savedAt, canTest) : null;
   const showReason = c.saveBlocked !== null && !c.saving && !(savedLine !== null && c.saveBlocked === COMPOSE_NO_CHANGES);
 
   return (

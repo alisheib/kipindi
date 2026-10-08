@@ -1,8 +1,9 @@
 /**
  * THE PAGER'S EDGES AND THE WALLET DOOR, DRIVEN ON THE REAL PRODUCT.
  *
- *   npm run qa:pager-wallet                        # against production
- *   BASE=http://localhost:3000 npm run qa:pager-wallet
+ *   npm run qa:pager-wallet                        # a LOCAL dev server on :3001 (the harness's own default)
+ *   BASE=http://localhost:3000 LIVE_BASE=http://localhost:3000 npm run qa:pager-wallet
+ *   BASE=https://50pick.tz LIVE_BASE=https://50pick.tz npm run qa:pager-wallet   # PRODUCTION: name it, in both
  *
  * `test:pager-reach` and `test:wallet-reach` pin the RULES and the SOURCE. Neither can tell
  * you how many rows the pager occupies at 360 in Swahili, or whether adding 44px to the
@@ -39,7 +40,11 @@ import { clippedControls } from "./live/clip.mjs";
 // carries the trilingual button/success patterns a ZH driver needs (E-106's neighbour).
 import { loginOnce } from "./live/harness.mjs";
 
-const BASE = process.env.BASE || "https://50pick.tz";
+// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This drive signs in once as a QA-fleet player (below), and
+// its own target used to be production while the shared harness it signs in through already defaults to loopback:
+// two answers for one address. Loopback is the default now, matching the harness; production is reached by NAMING
+// it in BOTH places, BASE for the measurement and LIVE_BASE for the sign-in.
+const BASE = process.env.BASE || "http://localhost:3001";
 const WIDTHS = (process.env.WIDTHS || "360,393,768,1024,1280").split(",").map(Number);
 const LOCALES = (process.env.LOCALES || "en,sw,zh").split(",");
 const SHOTS = ".50pick-shots";

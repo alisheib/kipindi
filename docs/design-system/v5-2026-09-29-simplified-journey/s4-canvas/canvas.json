@@ -440,7 +440,7 @@
    "y": 11898,
    "w": 390,
    "h": 600,
-   "title": "Low balance · short by less than TZS 500"
+   "title": "Low balance · short by less than TZS 1,000 (the minimum since the owner's ruling of 2026-10-07)"
   },
   "s4-5-low-limit.dc.html": {
    "x": 940,
@@ -475,42 +475,42 @@
    "y": 13102,
    "w": 390,
    "h": 339,
-   "title": "Code step · sent"
+   "title": "⛔ Superseded 2026-10-07 (owner ruling: a deposit asks no email question; S9 not built) · Code step · sent"
   },
   "s4-6-code-wrong.dc.html": {
    "x": 470,
    "y": 13102,
    "w": 390,
    "h": 368,
-   "title": "Code step · wrong code"
+   "title": "⛔ Superseded 2026-10-07 (owner ruling: a deposit asks no email question; S9 not built) · Code step · wrong code"
   },
   "s4-6-code-expired.dc.html": {
    "x": 940,
    "y": 13102,
    "w": 390,
    "h": 368,
-   "title": "Code step · expired"
+   "title": "⛔ Superseded 2026-10-07 (owner ruling: a deposit asks no email question; S9 not built) · Code step · expired"
   },
   "s4-6-code-locked.dc.html": {
    "x": 1410,
    "y": 13102,
    "w": 390,
    "h": 368,
-   "title": "Code step · too many tries"
+   "title": "⛔ Superseded 2026-10-07 (owner ruling: a deposit asks no email question; S9 not built) · Code step · too many tries"
   },
   "s4-6-code-resent.dc.html": {
    "x": 1880,
    "y": 13102,
    "w": 390,
    "h": 368,
-   "title": "Code step · a new code sent"
+   "title": "⛔ Superseded 2026-10-07 (owner ruling: a deposit asks no email question; S9 not built) · Code step · a new code sent"
   },
   "s4-6-code-no-email.dc.html": {
    "x": 2350,
    "y": 13102,
    "w": 390,
    "h": 329,
-   "title": "Code step · no email on file"
+   "title": "⛔ Superseded 2026-10-07 (owner ruling: a deposit asks no email question; S9 not built) · Code step · no email on file"
   },
   "s4-6-dep-no-history.dc.html": {
    "x": 2820,
@@ -945,12 +945,12 @@
    "w": 420,
    "maxH": 330,
    "fill": "blue",
-   "text": "Each frame is a branch of shortfallPlan (lib/journey/shortfall.ts). The two-option state is the 50pick redraw in row 2. \"Weka dau la TZS 2,000 badala yake\" places the bet in one tap, so it carries its own estimate on a second line (SJ-11 amended); both option rows are the same height and the gold row has no glow. A held wallet never reaches this screen: the plan blocks it first. With one option the eyebrow is dropped. When no deposit is offered, the reason is shown before the player tries, in the info notice. Drafts: \"Kiasi cha chini cha kuweka ni TZS 500 — TZS 300 zitabaki kwenye salio lako.\", \"Malipo yako ya TZS 3,000 yanasubiri\", \"Fuatilia malipo\", \"Jaza tamko\"."
+   "text": "Each frame is a branch of shortfallPlan (lib/journey/shortfall.ts). The two-option state is the 50pick redraw in row 2. \"Weka dau la TZS 2,000 badala yake\" places the bet in one tap, so it carries its own estimate on a second line (SJ-11 amended); both option rows are the same height and the gold row has no glow. A held wallet never reaches this screen: the plan blocks it first. With one option the eyebrow is dropped. When no deposit is offered, the reason is shown before the player tries, in the info notice. Drafts: \"Kiasi cha chini cha kuweka ni TZS 500 — TZS 300 zitabaki kwenye salio lako.\" (⚠️ from the owner's ruling of 2026-10-07, a TZS 1,000 minimum: \"Kiasi cha chini cha kuweka ni TZS 1,000 — TZS 800 zitabaki kwenye salio lako.\", as the board now draws it), \"Malipo yako ya TZS 3,000 yanasubiri\", \"Fuatilia malipo\", \"Jaza tamko\"."
   },
   "rowdeposit": {
    "x": 0,
    "y": 12842,
-   "text": "6 · Deposit · the email code and the deposit variants",
+   "text": "6 · Deposit · the deposit variants (the email-code boards ⛔ superseded 2026-10-07: a deposit asks no email question)",
    "kind": "title1",
    "maxW": 2270
   },
@@ -960,7 +960,7 @@
    "w": 440,
    "maxH": 300,
    "fill": "blue",
-   "text": "The code step sits between the PIN note and \"Lipa\" (§3.5 order 9); one one-time-code input drawn as six cells; Lipa enables on success without re-entering anything. A wrong code is a form error in the kit's danger ink (the S2 ruling); every other state is neutral, including \"Msimbo mpya umetumwa.\". The payout notice uses the kit's info notice and shows the delayed words (F1). Phone numbers are Inter with tabular figures; only amounts are mono. Drafts: \"Tuma msimbo\", \"Thibitisha barua pepe yako ili uweke pesa\"."
+   "text": "⛔ The code step is superseded by the owner's ruling of 2026-10-07 (a deposit asks no email question; S9 is not built): its words below are kept as drawn, and the rest of this note still holds. The code step sits between the PIN note and \"Lipa\" (§3.5 order 9); one one-time-code input drawn as six cells; Lipa enables on success without re-entering anything. A wrong code is a form error in the kit's danger ink (the S2 ruling); every other state is neutral, including \"Msimbo mpya umetumwa.\". The payout notice uses the kit's info notice and shows the delayed words (F1). Phone numbers are Inter with tabular figures; only amounts are mono. Drafts: \"Tuma msimbo\", \"Thibitisha barua pepe yako ili uweke pesa\"."
   },
   "rowdeposit2": {
    "x": 0,

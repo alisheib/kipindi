@@ -17,7 +17,7 @@ import { POLICY_LINE_KEYS, POLICY_PAGE_KEYS, POLICY_PAGES, isReviewVersion, type
 // U49s-2 · the Marketing SMS sending card (the live switch, above the rail) and the Marketing SMS tab (its settings).
 import { MarketingSmsCard } from "./marketing-sms-card";
 import { MarketingSmsForm } from "./marketing-sms-form";
-import { marketingSmsCardView, marketingSmsFormView } from "./marketing-sms-view";
+import { marketingSmsCardView, marketingSmsFormView, opsDoorName, savedByView } from "./marketing-sms-view";
 import { readMarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
 import { reloadMarketingSmsSettings, type SettingsReload } from "@/lib/server/marketing/sms-settings";
 import { loadSmsMoneyForViewer } from "@/lib/server/marketing/estimate";
@@ -141,11 +141,14 @@ function bootstrapPhones(): string[] {
  * already in words, one user read per author, never per version. Read from this process's cache, so ⛔ it cannot fail
  * the page: a name that cannot be read says "an admin", and a process that never loaded the record shows every wording
  * as not saved, which is the truth there and the safe direction (nothing can be recorded from it).
+ * ⭐ 2026-10-07 · a version the ops door saved on Ali's word (`savedBy` = `ops: <by>`) is NOT a user: no user row is asked
+ * for it, and it reads "through the ops door (…)" — never "by an admin" (`savedByView`, the live switch card's own rule).
  */
 async function marketingWordingRows(): Promise<WordingRowView[]> {
   const histories = WORDING_KEYS.map((key) => ({ key, versions: wordingHistory(key) }));
   const names = new Map<string, string>();
   for (const id of new Set(histories.flatMap((h) => h.versions.map((v) => v.savedBy)))) {
+    if (opsDoorName(id) !== null) continue;
     // ⛔ try/await, never `.catch` on the call: the in-memory store answers synchronously (the tax page's lesson).
     let u: { displayName?: string | null } | null = null;
     try { u = await db.user.findById(id); } catch { u = null; }
@@ -153,12 +156,10 @@ async function marketingWordingRows(): Promise<WordingRowView[]> {
   }
   return histories.map(({ key, versions }) => ({
     key,
-    versions: versions.map((v) => ({
-      v: v.v,
-      text: v.text,
-      savedAtLabel: formatDateTimeSafe(v.savedAt),
-      savedByName: names.get(v.savedBy) ?? "an admin",
-    })),
+    versions: versions.map((v) => {
+      const who = savedByView(v.savedBy, names);
+      return { v: v.v, text: v.text, savedAtLabel: formatDateTimeSafe(v.savedAt), savedByName: who.name, savedByWords: who.words };
+    }),
   }));
 }
 
@@ -170,11 +171,14 @@ async function marketingWordingRows(): Promise<WordingRowView[]> {
  * (their own words). ⭐ U13 · and the send window's hours, read FRESH as the save reads them (`policySendWindow`, which
  * never throws), so the card judges a named time as the server will — null when they could not be read, and the card then
  * refuses any time a line names.
+ * ⭐ 2026-10-07 · a version the ops door saved on Ali's word (`savedBy` = `ops: <by>`) is NOT a user: no user row is asked
+ * for it, and it reads "through the ops door (…)" — never "by an admin" (`savedByView`, the live switch card's own rule).
  */
 async function policyLineRows(): Promise<{ rows: PolicyLineRowView[]; pages: PolicyPageVersionView[]; sendWindow: PolicySendWindow | null }> {
   const histories = POLICY_LINE_KEYS.map((key) => ({ key, versions: savedPolicyHistory(key) }));
   const names = new Map<string, string>();
   for (const id of new Set(histories.flatMap((h) => h.versions.map((v) => v.savedBy)))) {
+    if (opsDoorName(id) !== null) continue;
     // ⛔ try/await, never `.catch` on the call: the in-memory store answers synchronously (the tax page's lesson).
     let u: { displayName?: string | null } | null = null;
     try { u = await db.user.findById(id); } catch { u = null; }
@@ -182,14 +186,18 @@ async function policyLineRows(): Promise<{ rows: PolicyLineRowView[]; pages: Pol
   }
   const rows: PolicyLineRowView[] = histories.map(({ key, versions }) => ({
     key,
-    versions: versions.map((v): PolicyLineRowView["versions"][number] => ({
-      rev: v.rev,
-      kind: isReviewVersion(v) ? "review" : "words",
-      texts: isReviewVersion(v) ? null : { en: v.en, sw: v.sw, zh: v.zh },
-      fingerprint: isReviewVersion(v) ? v.reviewedDefault : v.codeDefault,
-      savedAtLabel: formatDateTimeSafe(v.savedAt),
-      savedByName: names.get(v.savedBy) ?? "an admin",
-    })),
+    versions: versions.map((v): PolicyLineRowView["versions"][number] => {
+      const who = savedByView(v.savedBy, names);
+      return {
+        rev: v.rev,
+        kind: isReviewVersion(v) ? "review" : "words",
+        texts: isReviewVersion(v) ? null : { en: v.en, sw: v.sw, zh: v.zh },
+        fingerprint: isReviewVersion(v) ? v.reviewedDefault : v.codeDefault,
+        savedAtLabel: formatDateTimeSafe(v.savedAt),
+        savedByName: who.name,
+        savedByWords: who.words,
+      };
+    }),
   }));
   const pages: PolicyPageVersionView[] = POLICY_PAGE_KEYS.map((page) => ({
     page, title: POLICY_PAGES[page].title, code: POLICY_PAGES[page].codeVersion, printed: policyVersion(page),

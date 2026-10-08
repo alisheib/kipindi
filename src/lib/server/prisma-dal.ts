@@ -32,11 +32,14 @@ import { sniffBase64ImageMime } from "./image-signature";
 // U16a · and before erasure's unlink and the access export's read — with the ONE bound that read shares with the memory twin.
 // U43a · and before the engine's doors — the claim, the settle, the reaper's reads and the requeue — whose WRITES it
 // computes too: this twin drives them through `SMS_CAMPAIGN_RECIPIENT_COLUMN`, the memory twin applies them by name.
+// U46a · and before the receipt door — its write (`receiptWrite`, through the same map), the one list of rows a receipt
+// moves (`SMS_RECEIPT_FROM`, spread into the WHERE) and the one reading of a miss (`receiptMiss`).
 import {
   assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts,
   assertRecipientUnlink, assertRecipientNumberRead, SMS_RECIPIENTS_BY_NUMBER_MAX,
   assertClaim, assertClaimRead, assertSettle, assertStrandedRead, assertRequeueHeld, assertActivityRead, assertTargetsRead,
   claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
+  assertReceipt, receiptWrite, receiptMiss, SMS_RECEIPT_FROM,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary: the attention count spreads its statuses (never a retyped list) and every
 // count is zero-filled through its tallies, exactly as the memory twin's are (`test:dal-parity` §26).
@@ -91,6 +94,8 @@ import type {
   SmsCampaignRecipientCountsById,
   SmsCampaignRecipientSettle,
   SmsCampaignSettleResult,
+  SmsRecipientReceipt,
+  SmsRecipientReceiptResult,
   StoredAgentApplication,
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
@@ -672,7 +677,7 @@ function toStoredSmsCampaign(cmp: SmsCampaignRow): StoredSmsCampaign {
  * ⭐ THE COLUMN MAP BESIDE IT (U43a, `SMS_CAMPAIGN_RECIPIENT_COLUMN`) drives every write the engine's doors make — the
  * claim, the settle, the requeue — from the ONE write the rule set computes (`smsRecipientData`): map-driven, never a
  * hand-written allow-list. `createMany` still writes the seed's keys by name (§26.createMany); U46a's receipt brings
- * its own write through the same map.
+ * its own write (`receiptWrite`) through the same map.
  * ⭐ THE STATUS IS CAST TO THE ONE NAMED UNION (`SmsCampaignRecipientStatus`, store.ts) — never an inline list — so the
  * value U43-0 added, UNCONFIRMED, is a status this twin names the moment the union does (`test:dal-parity`
  * 26.status). The cast checks nothing by itself: the generated client rejects a label it was not built with, and the
@@ -718,9 +723,10 @@ function toStoredSmsCampaignRecipient(rcp: SmsCampaignRecipientRow): StoredSmsCa
 
 /**
  * ⭐ U43a · EVERY StoredSmsCampaignRecipient KEY AND HOW THE ENGINE'S DOORS WRITE IT — typed `Record<keyof …>`, so a
- * column added to the stored shape and forgotten here is a `tsc` error. `null` = NEVER written by a claim, a settle or a
- * requeue: the id, the campaign and the number are the seed's; the two LINKS move only by erasure's unlink and
- * Postgres' SET NULL; `costTzs` is provider-reported and nothing reports it yet; `createdAt` is the seed's.
+ * column added to the stored shape and forgotten here is a `tsc` error. `null` = NEVER written by a claim, a settle, a
+ * requeue or a receipt (U46a): the id, the campaign and the number are the seed's; the two LINKS move only by erasure's
+ * unlink and Postgres' SET NULL; `costTzs` is provider-reported and nothing reports it yet (a receipt carries no price);
+ * `createdAt` is the seed's.
  * ⛔ A DateTime column MUST be "date" — an ISO string reaching Prisma throws on Postgres and nowhere else — and the gate
  * trail is "json": written as a value, never cleared.
  */
@@ -753,10 +759,11 @@ const SMS_CAMPAIGN_RECIPIENT_COLUMN: Record<keyof StoredSmsCampaignRecipient, "d
 };
 
 /**
- * U43a · a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`, campaign-model.ts) -> Prisma `data`,
- * DRIVEN BY THE MAP — the very write the memory twin applies by name (`writeRecipient`), so the twins cannot write
- * different columns. ⛔ An unmapped key THROWS, and so does a key the map says these doors never write. `attempts` moves
- * on as `{ increment }`, so a release adds to what Postgres holds at the write — never a read-then-write.
+ * U43a · a write the rule set computed (`claimWrite`, `settleWrite`, `requeueWrite`, and U46a's `receiptWrite`,
+ * campaign-model.ts) -> Prisma `data`, DRIVEN BY THE MAP — the very write the memory twin applies by name
+ * (`writeRecipient`), so the twins cannot write different columns. ⛔ An unmapped key THROWS, and so does a key the map
+ * says these doors never write. `attempts` moves on as `{ increment }`, so a release adds to what Postgres holds at the
+ * write — never a read-then-write.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function smsRecipientData(w: SmsRecipientWrite): Record<string, any> {
@@ -768,7 +775,7 @@ function smsRecipientData(w: SmsRecipientWrite): Record<string, any> {
     if (spec === undefined) {
       throw new Error(`[prisma-dal] smsCampaignRecipient: unmapped field "${k}" — add it to SMS_CAMPAIGN_RECIPIENT_COLUMN or it is a silent production no-op.`);
     }
-    if (spec === null) throw new Error(`[prisma-dal] smsCampaignRecipient: "${k}" is never written by a claim, a settle or a requeue.`);
+    if (spec === null) throw new Error(`[prisma-dal] smsCampaignRecipient: "${k}" is never written by a claim, a settle, a requeue or a receipt.`);
     if (spec === "json") {
       if (v === null) throw new Error(`[prisma-dal] smsCampaignRecipient: "${k}" is never cleared.`);
       data[k] = v as unknown as Prisma.InputJsonValue;
@@ -5187,6 +5194,26 @@ export const prismaDb = {
       assertActivityRead(campaignId);
       const newest = await pc().smsCampaignRecipient.aggregate({ where: { campaignId }, _max: { claimedAt: true } });
       return iso(newest._max.claimedAt);
+    },
+    /** U46a · ⭐ THE RECEIPT DOOR (E28) — ONE conditional `updateMany`, so Postgres decides once and never a read-then-write:
+     *  written only WHERE the row is the one named, holds the MESSAGE's number, holds no reference yet or the receipt's own
+     *  (the identity), AND is in a status a receipt moves (`SMS_RECEIPT_FROM`, spread — never retyped: PENDING, SENT,
+     *  UNCONFIRMED); the data is the rule set's `receiptWrite` through the map, so the claim stays on the row. Postgres
+     *  re-checks that WHERE after any concurrent commit, so a receipt and a settle racing for one claimed row take its lock
+     *  in turn and each sees the other's write: the receipt first leaves the settle `lost` (D5); the settle first (SENT,
+     *  the receipt's own reference) is followed by the receipt, as it would be a minute later. A statement that wrote
+     *  nothing is followed by ONE read of the row, answered through `receiptMiss` — the reading the memory twin shares. A
+     *  reference another row already holds is P2002 and writes nothing. The rule set is asked first: a missing id or number
+     *  would be NO CONDITION. */
+    recordReceipt: async (id: string, r: SmsRecipientReceipt): Promise<SmsRecipientReceiptResult> => {
+      assertReceipt(id, r);
+      const moved = await pc().smsCampaignRecipient.updateMany({
+        where: { id, msisdn: r.msisdn, status: { in: [...SMS_RECEIPT_FROM] }, OR: [{ smsReference: null }, { smsReference: r.reference }] },
+        data: smsRecipientData(receiptWrite(r)),
+      });
+      if (moved.count > 0) return { changed: true, reason: "applied" };
+      const row = await pc().smsCampaignRecipient.findUnique({ where: { id } });
+      return { changed: false, reason: receiptMiss(row ? toStoredSmsCampaignRecipient(row) : null, r) };
     },
   },
 };

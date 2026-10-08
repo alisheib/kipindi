@@ -31,6 +31,9 @@
  *     The referee keys are written by the REAL writer (`recordRefereeKeys`), and the gate reads them through the store's
  *     own read (`DB_GATE_READS.refereeHeld`) — so this is the keyed hash, end to end.
  */
+// house-bot: covered by L2 sweep — this seeds fixture accounts and one self-exclusion row straight through the store, so no in-app
+// hook fires; the holder sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2). It writes only to the
+// accounts it creates itself (`lu<n>`), which no bot holds, and it is imported only by `test:marketing-consent`.
 import { db } from "../../src/lib/server/store.ts";
 import type {
   BookStanding, MessagingLocale, StoredKyc, StoredResponsibleGambling, StoredUser,

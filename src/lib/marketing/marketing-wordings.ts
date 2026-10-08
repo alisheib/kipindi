@@ -9,6 +9,10 @@
  * the bought-list notice and the campaign source line were code constants an engineer had to change (owner gates G4
  * and G5). They are now persisted, validated, audited config (`marketing.wordings`), edited on one card. Code keeps the
  * KEYS, the RULES and the DEFAULTS; an admin's save is what makes a wording real — and the save IS the approval (G4).
+ * ⭐ 2026-10-07 (Ali's ruling): he may instead approve a wording IN THE CLAUDE SESSION, and Claude saves it for him through
+ * the audited ops door (`src/lib/server/marketing/owner-save.ts`) — never with his login. The door records his approval
+ * (COMPLIANCE `marketing.owner_save_applying`) BEFORE it saves, builds the request with this file's own `wordingsToSave`
+ * and `wordingsPostEntries`, and saves through the same server writer as the card, as `ops: <by>`.
  *
  * ⛔ W1 · A DEFAULT IS A SUGGESTION, NEVER EVIDENCE. Every basis writer takes its words from the SAVED history
  * (`currentWording`) and refuses when there is none, so nothing unsaved is ever recorded. `WORDING_DEFAULTS` exists to
@@ -88,7 +92,10 @@ export type WordingVersion = {
   readonly text: string;
   /** The save's instant (ISO), set by the server. ⭐ The date evidence carries — a default has none (U33.draft1). */
   readonly savedAt: string;
-  /** The admin who saved it (a staff id), set by the server from the session — never from the request. */
+  /** Who saved it, set by the server — never from the request: the card's admin (a staff id, from the session), or
+   *  `ops: <by>` for a version the ops door saved on Ali's word in the Claude session (2026-10-07, `owner-save.ts`) —
+   *  which the card names "the ops door (…)", never an admin. ⛔ So it is NOT always a user id: resolve a name only for
+   *  a value that is not a door stamp (`savedByView`, `src/app/admin/system/marketing-sms-view.ts`). */
   readonly savedBy: string;
 };
 

@@ -2347,6 +2347,118 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    below and its *"look at the screenshots"* clause. Claiming a gate over them would be a gate
    one level too shallow, which is indistinguishable from no gate.
 
+8. ⭐ **THE SIMPLIFIED JOURNEY'S FOUR KIT ADDITIONS — EFFECTIVE AT THE S15 FLIP** (added 2026-10-07, the Vodacom plan's
+   S6 WP12; `docs/VODACOM-PLAN.md`, `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`). Built in S6 and
+   drawn today only for a request the journey is shown to (a preview pass that counts, `resolveSimpleJourney`); every
+   other reader is served the classic chrome, unchanged. **At the S15 flip they become the kit every player meets**, and
+   the classic pieces they stand in for are shelved in `docs/SHELVED.md` and stay in the code.
+   ⚠️ **Each stands BESIDE its classic part until the flip, not as a prop on it.** S6's rule that a classic viewer is
+   served today's markup byte for byte kept every classic component's served markup unchanged, so none of the four could
+   be a new state of the old one (the Definition of Done's own test, below); a part both looks open is shared and takes
+   the journey as an opt-in prop that draws nothing new for a classic viewer (the Wallet's `journey`, its door words in
+   8a). What a pair has in common is shared, never copied: both
+   capsules roll and flash through one hook (`useBalanceRoll`), the journey rail wears the classic rail's slot, pip and
+   label, and the guest sheet wears the Wallet's sheet classes. From S15 the classic part is shelved, so one of each
+   pair is in use (§B9). Where the S4 canvas drifts from the kit, **the kit wins** (VODACOM-PLAN §0h point 7). Their
+   paint is the S6 blocks of `src/app/globals.css` named below; ⛔ no paint value is restated here (§0d) — the sizes
+   below are thresholds, each with its home. In this rule an A-number is an S6-PLAN amendment and an SJ-number a ruling
+   of the Vodacom plan. Provenance: `docs/design-system/v2-2026-07-27/07-provenance/CHANGELOG.md`, 2026-10-07.
+
+   ### 8a — The captioned balance (SJ-15)
+
+   `WalletBalanceCaptioned` in `src/components/layout/wallet-balance-pill.tsx`, drawn by the journey header; its rules
+   are the `.kp-jbal` family.
+   - **One button, two lines — the caption over the figure** ("Salio" over "TZS 2,000") — and it OPENS the Wallet:
+     the same `WalletSheet`, its two doors in the journey's words ("Weka pesa", "Toa pesa"). ⛔ **No eye and no
+     caret in the capsule:** hiding balances lives in the Wallet it opens, with Withdraw, so both stay one tap away.
+   - ⭐ **Its accessible name is its visible words** (A11; WCAG 2.5.3): the caption and the at-rest figure. A held
+     wallet's caption carries the frozen word, so its name does too; a masked balance says the hide-balances words and
+     never reads the dots aloud. ⛔ Never the classic "Wallet · …" name, which would contradict the caption.
+   - **The figure is one `formatBalancePill` string at every width** — the currency word never drops — compact from
+     TZS 1,000,000 (VODACOM-PLAN §0h point 14), and **its box is the wider of figure and mask**, so masking moves
+     nothing (MOBILE-VISUAL-PLAN D31).
+   - **Gold on a live balance only** — the classic capsule's own ink (its R1: the figure is money) and the money ink of
+     Q5 ("gold is money, and nothing else", under *Open design decisions*), as the S4 frames draw it; held or masked,
+     plain ink. The ±delta takes the caption's row for a moment and never shares it; a frozen wallet shows none.
+   - ⚠️ **Below 360 the figure is 12px** — under §T4's 12.5px floor for reading copy, and licensed for this figure
+     alone by design call 10's measured fit, the one size that fits every 320 case in every language (VODACOM-PLAN §0g
+     design call 10). Its home is the `.kp-jbal__fig` rule and the comment above it; ⛔ it licenses no other size.
+   - Guards: `test:wallet-reach` §8, `test:journey-shell` §7, and the journey header's RULE probe —
+     `qa:journey-header-fit`, proven by `red:journey-header-fit`.
+
+   ### 8b — The four-slot journey rail (SJ-16)
+
+   `JourneyTabs` in `src/components/journey/journey-tabs.tsx`; its one table is `JOURNEY_TABS` in
+   `src/lib/nav/active-tab.ts`; its own rules are `.kp-rail--journey`, `.kp-jtab__label` and `.kp-rail__badge`.
+   - **Four equal tracks** — Maswali, Juu/Chini, Tiketi zangu, Akaunti — on the classic rail's own surface, slot, pip
+     and label (`.kp-rail` and `.kp-rail__item`, worn unchanged from 360; below it, the label rule further down).
+     ⛔ **No centre coin, no More, no accent dot:** money-in is the header's "+ Weka pesa", and what More carried is a
+     row in Akaunti (8c).
+   - **The grid goes on the LIST** (A18): on the nav, the whole list would be one cell.
+   - **Which tab is lit comes from `activeTabFor`**, the table the desktop destinations read too, and
+     `aria-current="page"` is given only on a tab's own page, `"true"` across the rest of its section (A12).
+   - **A tab's visible label is its name** — no aria-label. The Akaunti tab's unread count joins that name in words,
+     and its picture is the kit's brand `Dot` on the pip's corner.
+   - **A guest's Tiketi zangu is a dialog button that opens the guest sheet (8d)** — ⛔ never a link whose navigation
+     is cancelled, which would start the progress bar for a tap that goes nowhere.
+   - ⛔ **One unread poller per width:** the tab's dot is MOUNTED below 1024 only and the header's bell from 1024 only,
+     neither while the width is unknown (`src/lib/journey/one-poller.ts`) — never merely hidden, because a hidden
+     counter still asks.
+   - ⚠️ **The one label allowed a second line:** below 360 a label may wrap (A17: "Tiketi zangu" needs more than a
+     quarter of a 320 phone), and there the slots stack from the top so no pip is lifted; from 360 the classic
+     one-line label and centred slot stand. ⛔ If copy ever lets every label fit at 320, the wrap goes in that same
+     commit — `test:journey-shell` 8.label.measure says so.
+   - The page clears the rail with `--rail-h`, the one name for its reserve (WP11) — ⛔ never a second literal for the
+     page's reserve. The chat bubble's 80 and the install card's 148 stay literal because gates pin them
+     (`test:stacking`'s chat-fab locator, `test:install-invite` 5.4), each naming `--rail-h` as its source.
+   - Guards: `test:journey-shell` §8, `red:journey-shell`, `qa:journey-header-fit` (the rail's labels below 1024),
+     `qa:footer-reachable` with `--journey`.
+
+   ### 8c — The hub rows (SJ-17)
+
+   The Akaunti hub, `src/app/account/page.tsx`. Its rows are DATA — `hubRowsFor` in
+   `src/components/journey/account/hub-rows.ts` — drawn by `HubRowItem` (`src/components/journey/account/hub-row.tsx`);
+   its rules are the `.kp-hub` family.
+   - **A card is a labelled list, never a landmark:** one `<ul>` named by its group word, so the page's landmarks and
+     the section-rail population stay as they are.
+   - **A row is the `--h-control-xl` rung**, and a second line makes it taller, never clipped. The second line takes
+     the small rung, not the canvas's 12px (§T4).
+   - ⭐ **Every door is a row of the data, or nowhere** — the route census reads `hubRowsFor` as a root. The page itself
+     writes only the two things that must not be data: the staff console, ONE plain document link (LIVE-QA-CAMPAIGN
+     E-70: a soft link into the console keeps the player chrome around it), and sign-out, a POST behind the kit
+     `ConfirmDialog` (an act, not a door). ⚠️ That confirm keeps the avatar menu's claret tone
+     (`src/components/journey/account/sign-out-row.tsx`, as `src/components/layout/avatar-menu.tsx` draws it), which
+     §B4/§B4a do not license: sign-out is recoverable, and it is not an operator's ceremony. **Its tone is an open
+     point, to be ruled before the flip**; ⛔ this rule does not make claret law for it.
+   - **The controls are switch rows and disclosures, never filter pills:** the card size is the rail menu's own switch
+     row (`src/components/journey/account/card-size-row.tsx`); the language opens its three choices in the page's own
+     flow (`src/components/journey/account/language-row.tsx`, one list with the header menu's); the Needle's drawer and
+     the sign-out dialog portal out of the page. No overlay sits in a card (the only parts placed absolutely are inside
+     their own controls: a kit Toggle's knob, the Arifa row's screen-reader count), and because a card clips its
+     corners, every focus ring inside it is drawn 2px inside its row — §A3's ring at the section rail's inset offset
+     (the `[data-section-rail]` rule in `src/app/globals.css`): a ring the card cuts away is no ring.
+   - **Arifa carries the reader's unread count** from the journey's own counter in its "once" mode (A1), spoken inside
+     the row's name, its picture the kit `CountBadge` in brand — and only ever for the reader it was read for.
+   - **Every money figure is neutral ink** (§M3: a balance in a list of doors is not earned money). ⛔ No phone number
+     is typed into a hub file, and the hub has no helpline row (the owner's ruling of 2026-10-06,
+     `docs/COMPLIANCE-DECISIONS.md`); Msaada's second line names no number (VODACOM-PLAN §0h point 10).
+   - Guards: `test:journey-account` and `red:journey-account`, `test:journey-shell` §9 (the census), `test:popup-fit`
+     (the sign-out dialog), `test:shell-boundary` §2b (the console link), and `qa:journey-unread-handover` (the Arifa
+     row and the tab's dot on a shared phone — its first run and its `--prove-red` are owed by WP12's run list).
+
+   ### 8d — The guest Tiketi sheet (SJ-16)
+
+   `TicketsGuestSheet` in `src/components/journey/tickets-guest-sheet.tsx`, opened by a guest's Tiketi zangu from the
+   rail or, from 1024, from the header's destinations.
+   - **The kit's sheet, not a new one:** the kit `Modal` as a sheet until 1024 and a centred dialog from there, wearing
+     the Wallet's panel, grab handle and two-up action row (`.kp-wsheet`). Unlike the Wallet it keeps the Modal's own
+     close button and a narrower panel, and it hangs under nothing. It portals to the document body, so it sits on the
+     dialog rung and never inside the stacking context of the bar or the rail that opened it.
+   - **Titled by its H2** ("Ingia uone tiketi zako"; `.kp-jsheet__title`, clear of the Modal's own close button), then
+     **Jisajili first** — the filled action, because a guest is most often new — and Ingia, each returning the reader
+     to Tiketi zangu once in, and each closing the sheet as it navigates (the bar and the rail outlive the page).
+   - Guards: `test:journey-shell` 8.sheet and 8.sheet.portal, and `test:popup-fit` through 8.popup.
+
 
 **Definition of Done — every design task, no exceptions:**
 

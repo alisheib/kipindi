@@ -68,9 +68,11 @@ U13 and U43b.
   `lifecycle.ts`, `market-scheduler.ts`) ∥ U42 (`enqueue.ts` new, `test:marketing-engine` new). ⚠️ U42 needs U16a
   DEPLOYED before it ships (M9), so build in parallel and push U16a first.
 - **Set D:** U43b (`engine.ts`, `dispatch.ts`, `sms-blackball.ts`, the U9 suite) ∥ U46a (the webhook route, the DAL
-  `recordReceipt`, `test:sms-dlr`). U46a's DAL member is serial after U43a's; U43b touches no DAL file.
+  `recordReceipt`, `test:sms-dlr`). U46a's DAL member is serial after U43a's; U43b-1 touches no DAL file, and U43b-2's
+  one DAL member — DC-4's send record (§4.13 decision 6) — is serial after U46a's.
 - **SERIAL ONLY:** any unit touching `store.ts`, `prisma-dal.ts`, `schema.prisma`, migrations, `dal-parity.test.mts` or its
-  anchors: U43-0 → U16a → U43a → U46a → U48b. `dispatch.ts`: U33a-G → U13 → U43b. The composer page: U37c → U38b → U40b.
+  anchors: U43-0 → U16a → U43a → U46a → U43b-2 (DC-4) → U48b. `dispatch.ts`: U33a-G → U13 → U43b. The composer page: U37c →
+  U38b → U40b.
   `/admin/campaigns/[id]`: U47b → U48a → U48b.
 - **MACHINE RULE (Ali-Blade15):** builders edit files statically; every typecheck, suite, red, migration-from-empty,
   probe and drive runs ONE at a time through `~/heavy-node-lock.sh`, file-mutating reds (`red:erasure`,
@@ -907,8 +909,10 @@ runs OUTSIDE any lock (OD21). `test:campaign-gates` does not exist.
 **Decisions.**
 1. **The fence** (`audience-fence.ts`): `campaignAudienceCount(filter)` (X9) and, when the count is 1–5 and the audience is
    filtered (`!isUnfilteredCampaignAudience`), the first 6 keys of `walkCampaignAudience` → `canonicalMembers` →
-   `membersKeyOf` = first 32 hex of HMAC-SHA256(session secret, `"kp-audience-members:" + canonical`) — KEYED, never a bare
-   digest. The browser holds a signed claim `aw1.<b64url(json)>.<HMAC("kp-audience-fence:" + json)>`, verified in constant
+   `membersKeyOf` = first 32 hex of HMAC-SHA256(session secret, `"kp-audience-members:" + id + ":" + draftRevision + ":" +
+   canonical`) — KEYED, never a bare digest, and ✅ AS BUILT (the U40a review's MAJOR) BOUND TO THE DRAFT it names, so two
+   drafts holding the same person never show the same key (it was an oracle for "is this contact a player?"). ⭐ OD67: a
+   viewer who may not read a number gets NO members key, no sample and the TYPED tier, in the view and the confirmation. The browser holds a signed claim `aw1.<b64url(json)>.<HMAC("kp-audience-fence:" + json)>`, verified in constant
    time; it is never stored (X13).
 2. **The service** (`campaign-confirm-service.ts`) runs, in order: find (DRAFT) → fresh fence → `decideConfirm` → E18 the
    source line (population null or both and `sourcePhrase` blank → refuse `needs_source_line`) → the estimate freeze
@@ -934,7 +938,7 @@ runs OUTSIDE any lock (OD21). `test:campaign-gates` does not exist.
 **APIs.**
 
 ```ts
-export function membersKeyOf(canonical: string): string; // 32 lowercase hex
+export function membersKeyOf(scope: { campaignId: string; draftRevision: number }, canonical: string): string; // 32 lowercase hex
 export function signFence(f: FenceClaim): string;
 export function verifyFence(token: string | null | undefined): FenceClaim | null;
 export async function audienceFence(c: Pick<StoredSmsCampaign, "id" | "draftRevision" | "audienceFilter">, deps?: FenceDeps):
@@ -1011,8 +1015,9 @@ cards and `readOnly` for a non-draft (`composer-loader.ts:235`).
    in `title` (never hidden): "Save first — confirming freezes the saved message." (unsaved edits) · "Nobody matches this
    audience yet." · "Write the Swahili message first." · "This campaign is already confirmed." · the service's blocked
    sentences.
-2. The trigger refreshes, then opens (fresh figures, U40.md). Enumerate tier (≤ 5, filtered): medium tier, every person as a
-   masked number + operator (no player flag, D19). Typed tier: hard tier `typedWord = confirmTypedWord(count)` with the new
+2. The trigger refreshes, then opens (fresh figures, U40.md). ⭐ The modal follows `view.tier` AS THE SERVER RETURNS IT — never a
+   tier recomputed in the browser from the count (OD67: a viewer who may not read a number is always TYPED, with no list).
+   Enumerate tier (a reader, ≤ 5, filtered): medium tier, every person as a masked number + operator (no player flag, D19). Typed tier: hard tier `typedWord = confirmTypedWord(count)` with the new
    additive `typedInputMode: "numeric"`.
 3. The modal shows the estimate: segments for every role ("Up to 1,604 SMS — one per person"), money only for a money
    reader ("Up to TZS 9,624 · limit TZS 10,000 · price TZS 6 per SMS, configured, not yet measured").
@@ -1225,7 +1230,8 @@ the book is exhausted and the players are next, then an empty page moves to the 
    `linkedUserId` — a link, set null on erasure), `optOutToken: null` (E1), `createdAt`.
 4. **The cap (E19):** before writing, the rows already on the campaign (`countByStatus` sum) + this chunk may not exceed
    `audienceCount`; the excess is not written and is reported as `overflow`, and the enqueue finishes. For an ENUMERATE
-   confirmation the step also re-derives the keyed members key over the rows it is about to write (≤ 5); if it differs from
+   confirmation the step also re-derives the keyed members key over the rows it is about to write (≤ 5), with the scope
+   `{ campaignId: row.id, draftRevision: row.draftRevision }` (the confirmed row's own id and frozen revision); if it differs from
    `audienceWatermark` (a change in the moments after Start's check), it writes nothing and pauses the campaign
    `audience_moved` (sentence: "Paused — the people on this campaign changed after it was started. Nothing was sent. Stop it
    and confirm a new copy.").
@@ -1424,7 +1430,8 @@ pending / failed / unavailable, `stale`), `balanceFigureOf` (`estimate.ts:63`), 
    segments × price) and per slice (cost = the slice's claim size × segments × price).
 3. **`start-check.ts` — the ONE list of Start refusals,** in this order: not confirmed · switch closed · rail dead · E18
    source line · audience unreadable · price unknown · over budget (today's price × `estimateSegments` > `budgetTzs`) · credit
-   (fresh read, ≤ 60 s, must be live) · OD28 (`campaignAudienceCount` + the members key for an enumerated confirmation →
+   (fresh read, ≤ 60 s, must be live) · OD28 (`campaignAudienceCount` + the members key for an enumerated confirmation, scoped
+   `{ campaignId: row.id, draftRevision: row.draftRevision }` →
    `startAudienceVerdict`). `resumeRefusal` = switch · rail · credit for the outstanding rows.
 4. The estimate's reserve becomes the credit kept for codes (`estimate.ts` `reserveTzs`, "U49 swaps in its marketing
    floor").
@@ -1538,13 +1545,24 @@ deployed.
         rows still claimed by this token → `keep`;
       - `engineSend(msgs)` = `sendBatch(msgs.map((m) => ({ ...m, purpose: "MARKETING" })), { minimumBalanceTzs: reserve })`;
    7. settle every outcome through `settlementFor` (pure) with its gate trail (E20); E7's shop-wide rule → release every
-      claimed row + ONE pause + ONE audit row; E8's per-person holds;
+      claimed row + ONE pause + ONE audit row; E8's per-person holds; a SENT patch the settle reports `lost` to a row a
+      receipt already moved (DELIVERED or FAILED, still under this claim) → DC-4's send record (decision 6);
    8. measure and fold the gate time into the slice size (E11); return the summary.
 3. **The engine declares itself** in `MARKETING_WRITERS` and `UNCONFIRMED_WRITERS`.
 4. **The U9 contract gets its second driver:** `test:marketing-consent` U9 runs the same opt-out / self-exclusion / break
    between two slices through `runCampaignSlice` over real recipient rows (a stubbed wire), passing U9.1–U9.13.
 5. **The transport fix:** `blackballSend` (and `blackballBalance`, for symmetry) read the body inside a try; a body that
    throws returns `transport: "reply body unreadable: …"` (ambiguous). `test:blackball` gains the case + an anchor.
+6. **DC-4 · the send record when a receipt wins** (recorded by U46a, 2026-10-07; owed HERE — the contract is written on
+   `SmsCampaignRecipientSettle`, `store.ts`). A receipt that lands between the wire and this slice's settle moves the
+   still-claimed PENDING row to DELIVERED or FAILED (U46a's `recordReceipt`, which KEEPS the claim), so the slice's SENT
+   patch comes back `lost` and the row would never carry its gate trail, opt-out token, locale, segments, body length or
+   `sentAt` (E20, E30, the access export). Before the slice settles a real row, U43b adds a second, narrow door in BOTH
+   twins — `smsCampaignRecipient.recordSend`, named types, its rule set in `campaign-model.ts` asked first — that writes
+   ONLY those six columns, never the status, WHERE the row still holds THIS claim, is DELIVERED or FAILED, and its trail
+   is still null; step 7 calls it for each SENT patch lost to such a row. It joins `P10_ACCOUNTED` in
+   `test:campaign-privacy` in the same commit (R-P10d, which plants that very name as "the next door", is re-aimed), and
+   `test:dal-parity` §26 holds both twins' shape. ⚠️ This makes U43b-2 DAL-serial after U46a (§0.2).
 
 **Files.**
 
@@ -1561,6 +1579,8 @@ deployed.
 | `scripts/campaign-models.test.mts` | modify | writer pins |
 | `scripts/blackball-adapter.test.mts` (+ `scripts/anchors/blackball.anchors.mjs`) | modify | the body-read case |
 | `scripts/campaign-compose.test.mts` | modify | §18: a TRANSPORT result now arrives as `unconfirmed` (the test send's handling unchanged) |
+| `src/lib/server/store.ts`, `src/lib/server/prisma-dal.ts`, `src/lib/server/marketing/campaign-model.ts` | modify | DC-4 (decision 6): `recordSend` in both twins, named types, its rule set first, through the one recipient writer |
+| `scripts/dal-parity.test.mts` (+ `scripts/anchors/dal-parity.anchors.mjs`), `scripts/campaign-privacy.test.mts` | modify | DC-4: §26's shape for `recordSend`; P10 drives it (`P10_ACCOUNTED`), R-P10d re-aimed at the next door |
 
 **APIs.**
 
@@ -1624,7 +1644,9 @@ name:<account|fallback>"]` · `["dispatch", <outcome>, null, <reference or null>
   audit row with counts); only HELD → pause `held_rows`; S11 the window closed → `waiting quiet_hours`, zero claims; S12
   money busy → `waiting money_busy`, zero claims; S13 an OTP failure 30 s ago → `waiting otp_failing` until +2 min; S14 the
   slice size adapts (a slow gate halves it, never below 5, never above 50); S15 no audit row per recipient or per slice
-  (the chain grows only by the events in E24).
+  (the chain grows only by the events in E24); S16 ⭐ DC-4: a receipt beats the settle → the DELIVERED row still carries
+  its gate trail, opt-out token, locale, segments, bodyLen and sentAt (and a FAILED one the same), its status and the
+  receipt's own columns untouched, the claim kept.
 - §R reaper: R1 every row of the reap table (none → PENDING; QUEUED/UNKNOWN → UNCONFIRMED; ACCEPTED → SENT; DELIVERED →
   DELIVERED; FAILED → FAILED); R2 ⭐ a stalled claimant resumes after its claim was reaped → `beforeSend` keeps none →
   zero wire calls (the double-send guard of E6); R3 a claim younger than 10 min is never reaped; R4 the reaper runs for a
@@ -1638,8 +1660,8 @@ R-S6 origin taken from the row kind · R-S7 the token minted before the gate · 
 campaign still sends) · R-R1 a QUEUED stranded claim returned to PENDING · R-R2 `beforeSend` trusting the claim it took at
 the start · R-C1 an unconditional claim (the memory twin's `claim` without the `claimToken === null` test — five drivers
 send duplicates) · R-C2 the unique key ignored in `createMany` (dal-parity's plant) · R-T1 the engine gating at claim time
-instead of in `dispatchSlice` (the opted-out number is sent — U9's own red) · (in-place) R-BB1 the body read moved back
-outside the try.
+instead of in `dispatchSlice` (the opted-out number is sent — U9's own red) · R-S16 the lost SENT patch dropped (DC-4 —
+the receipt's DELIVERED row keeps no trail and no `sentAt`) · (in-place) R-BB1 the body read moved back outside the try.
 
 **Schema / deploy:** none of its own; ⛔ it may be pushed only after U43-0's migration is live on production (it is the first
 UNCONFIRMED writer — 55P04's two-step) and after U33a-G (it consumes `basis`/`basisRef`). Overlap: the old build already

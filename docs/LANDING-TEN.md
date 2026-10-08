@@ -908,7 +908,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 ## Running it
 
 ```
-npm run qa:landing-ten                        # the whole matrix, against production
+BASE=https://www.50pick.tz npm run qa:landing-ten   # the whole matrix, against production (named: a bare run is local, :3001)
 node scripts/qa/landing-ten.mjs --cell=<id>   # one cell
 RED=V7 node scripts/qa/landing-ten.mjs --red --cell=base-1280-sw   # prove a class can fail
 RED_PART=time RED=V18 node scripts/qa/landing-ten.mjs --red --cell=base-360-sw   # V18: one part per run

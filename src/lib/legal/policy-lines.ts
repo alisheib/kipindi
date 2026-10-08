@@ -12,10 +12,15 @@
  *   · `privacy.lawfulConsent`  /legal/privacy §3, the Consent bullet;
  *   · `privacy.lawfulLicence`  /legal/privacy §3, a NEW bullet after Consent — blank by default, so it is not printed;
  *   · `privacy.smsGateway`     /legal/privacy §4, the Blackball bullet;
- *   · `profile.outreachNote`   the note under the profile's offers switch — ⚠️ STORED AND VALIDATED HERE, PRINTED BY NOTHING
- *                              YET: its printer is U33a-P, once the outreach record exists (the card says so).
+ *   · `profile.outreachNote`   the note under the offers switch on /profile/notifications — printed (U33a-P) only for a
+ *                              player whose switch is ON on the LICENCE basis (no yes given, licence outreach open), and
+ *                              blank by default, so nothing prints until it is saved (the card says so).
  * Code keeps the KEYS, the RULES and the DEFAULTS; an admin's save is what changes a public page — and the save IS the
  * approval (G4 · G10), recorded by the factory's audit row `config.policy_lines_updated`.
+ * ⭐ 2026-10-07 (Ali's ruling): he may instead approve a line IN THE CLAUDE SESSION, and Claude saves it for him through the
+ * audited ops door (`src/lib/server/marketing/owner-save.ts`) — never with his login. The door records his approval
+ * (COMPLIANCE `marketing.owner_save_applying`) BEFORE it saves, builds the request with this file's own `policyLinesToSave`
+ * and `policyLinesPostEntries`, and saves through the same server writer as the card, as `ops: <by>`.
  *
  * ⛔ NOTHING PRINTS DIFFERENTLY UNTIL AN ADMIN SAVES NEW WORDS. Each default is today's page text, byte for byte
  * (`test:policy-lines` L1 decodes the pages' own JSX and compares). And the pages do not print these strings while a line
@@ -259,7 +264,7 @@ const DEFAULTS: Record<PolicyLineKey, PolicyTexts> = {
     sw: "Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
     zh: "Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
   },
-  // ⚠️ Blank: no note until an admin writes one — and nothing prints it before U33a-P.
+  // ⚠️ Blank: no note until one is saved (Appendix B.6) — U33a-P prints it, under a switch ON on the licence basis.
   "profile.outreachNote": { en: "", sw: "", zh: "" },
 };
 
@@ -650,7 +655,9 @@ export type PolicyWordsVersion = {
   readonly zh: string;
   /** The fingerprint of the code default when these words were saved (`policyDefaultFingerprint`). */
   readonly codeDefault: string;
-  /** The save's instant (ISO) and author (a staff id) — both the server's. */
+  /** The save's instant (ISO) and author — both the server's. The author is the card's admin (a staff id, from the
+   *  session), or `ops: <by>` for words the ops door saved on Ali's word in the Claude session (2026-10-07,
+   *  `owner-save.ts`), which the card names "the ops door (…)". ⛔ Not always a user id (`savedByView`). */
   readonly savedAt: string;
   readonly savedBy: string;
 };
@@ -660,6 +667,7 @@ export type PolicyReviewVersion = {
   readonly rev: number;
   /** The fingerprint of the code default that was reviewed. Opening check 2 counts the review only while it matches. */
   readonly reviewedDefault: string;
+  /** As a WORDS version's: the server's instant, and the card's admin or `ops: <by>` (the ops door). */
   readonly savedAt: string;
   readonly savedBy: string;
 };
