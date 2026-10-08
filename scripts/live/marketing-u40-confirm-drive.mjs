@@ -137,7 +137,8 @@ const OVER_LIMIT_OWNER_HEAD = "This campaign could cost up to TZS ";
 const OVER_LIMIT_OWNER_LIMIT = "more than the TZS 100 one campaign may spend.";
 const FLOOR = "Your role sees how many people match, not who will receive it.";
 const SETTINGS_SAVED = "Saved — campaigns use these from their next step.";
-const ACT_GATE_HEAD = "Read-only: the AUDITOR role";
+/** The act gate's own sentence names the role by its LABEL (`roleLabel` — admin-section-gate.tsx), never its enum key. */
+const ACT_GATE_HEAD = "Read-only: the Auditor role";
 const confirmedToast = (n) => `Audience confirmed — ${people(n)}. Nothing has been sent.`;
 const movedNotice = (fresh, was) => `The audience changed while you were confirming. It is now ${people(fresh)} (was ${nf.format(was)}). Nothing was confirmed or sent.`;
 
@@ -244,6 +245,12 @@ const boxOf = (page, sel) => page.evaluate((s) => {
   const r = el.getBoundingClientRect();
   return { top: Math.round((r.top + window.scrollY) * 100) / 100, h: Math.round(r.height * 100) / 100 };
 }, sel);
+/** The heights of an element's parts, two levels down (its children's children, in order) — a red's diagnosis. */
+const partsOf = (page, sel) => page.evaluate((s) => {
+  const el = document.querySelector(s);
+  if (!el) return [];
+  return [...el.children].flatMap((c) => [...c.children]).map((c) => Math.round(c.getBoundingClientRect().height * 100) / 100);
+}, sel);
 
 /** Where the focus is, in the dialog's terms. ⛔ `confirm` must never be true when it opens or after a re-arm. */
 const focusOf = (page) => page.evaluate((dlg) => {
@@ -259,19 +266,24 @@ const focusOf = (page) => page.evaluate((dlg) => {
   };
 }, DLG);
 
+/** ⭐ A response's bytes read AS UTF-8 (the first full run, 2026-10-08): an RSC answer comes as `text/x-component` with no
+ *  charset, and Playwright's `text()` then read the mask's "•" (E2 80 A2) as three Latin-1 characters — the masks the
+ *  screen showed rightly could not be found in the answer, and the controls failed on the reading, not on the page. */
+const utf8 = async (r) => Buffer.from(await r.body()).toString("utf8");
 /** The page's RSC payload at the address it STANDS at — `new URL(page.url())`, its canonical one (a bare ?draft= redirects). */
 async function pagePayload(page) {
   const u = new URL(page.url());
   const r = await page.request.get(`${BASE}${u.pathname}${u.search}`, { headers: { RSC: "1" } });
-  return r.ok() ? await r.text() : "";
+  return r.ok() ? await utf8(r) : "";
 }
 /** The next server action's answer, as the browser receives it. ⛔ Asked for BEFORE the press that sends it. */
 function nextActionAnswer(page) {
   return page.waitForResponse((r) => r.request().method() === "POST" && Boolean(r.request().headers()["next-action"]), { timeout: 90000 })
-    .then((r) => r.text()).catch(() => "");
+    .then((r) => utf8(r)).catch(() => "");
 }
-/** The masks an answer lists (`"masked":"…"`). */
-const masksIn = (body) => [...body.matchAll(/"masked":"([^"]+)"/g)].map((m) => m[1]);
+/** The masks an answer lists (`"masked":"…"`), each ONCE and with its dots raw — an RSC answer can carry one row in more
+ *  than one place (the first full run read six masks for three people), and may write a dot as its escape. */
+const masksIn = (body) => [...new Set([...body.matchAll(/"masked":"([^"]+)"/g)].map((m) => m[1].split(String.fromCharCode(92) + "u2022").join(DOT)))];
 /** Does an answer carry this mask, in either spelling? */
 const carries = (body, masked) => spellings(masked).some((s) => body.includes(s));
 
@@ -459,14 +471,20 @@ async function refusalRearms(page, tag, label) {
   ok(`${tag} · REFUSED · audience_moved · the dialog opened on the "moved" tag`, (await has(page, DLG)) && Number.isFinite(was), await dialogTitle(page));
   await seed(page, "marketing-contacts-seed?u23moved=1");
   await typeCount(page);
+  // ⭐ Every web font in BEFORE the measured moment (the first full run read the panel +16 px taller 700 ms after the
+  // sentence, below the fold, in ONE of its four reduced-motion contexts — a late font swap re-wrapping a line is the
+  // likeliest cause, and that is the browser's, not the dialog's). The check's detail now names which part moved.
+  await page.evaluate(async () => { await document.fonts.ready; });
   const seen = await watchDialog(page);
   await page.locator(D.confirm).click();
   await page.waitForSelector(D.notice, { timeout: 90000 }).catch(() => {});
   const box1 = await boxOf(page, D.panel);
+  const parts1 = await partsOf(page, D.panel);
   // ⭐ Photographed the moment the sentence lands — a remount would show its entrance, or nothing, here.
   await shoot(page, `${tag}-moved-rearmed-at-once`, null);
   await wait(700);
   const box2 = await boxOf(page, D.panel);
+  const parts2 = await partsOf(page, D.panel);
   const watched = await seen();
   const f = await focusOf(page);
   const typed = await has(page, D.input);
@@ -477,8 +495,10 @@ async function refusalRearms(page, tag, label) {
     `${await textOf(page, D.notice)} · ${await dialogTitle(page)}`);
   ok(`${tag} · REFUSED · audience_moved · ⛔ the focus is back on the box (cleared) or on Cancel — never on Confirm`,
     !f.confirm && (typed ? f.input && (await page.locator(D.input).inputValue().catch(() => "x")) === "" : f.cancel), JSON.stringify(f));
+  // On a red, the detail names WHICH part of the panel moved (each direct child's height, before and after).
+  const moved = parts1.map((h, i) => (Math.abs(h - (parts2[i] ?? -1)) > 1 ? `#${i}:${h}→${parts2[i]}` : "")).filter(Boolean);
   ok(`${tag} · REFUSED · audience_moved · the panel holds still once the sentence lands (top and height within 1px) — no entrance replayed`,
-    box1 !== null && box2 !== null && Math.abs(box1.top - box2.top) <= 1 && Math.abs(box1.h - box2.h) <= 1, JSON.stringify({ box1, box2 }));
+    box1 !== null && box2 !== null && Math.abs(box1.top - box2.top) <= 1 && Math.abs(box1.h - box2.h) <= 1, `${JSON.stringify({ box1, box2 })} · moved [${moved.join(" ")}]`);
   await stateShot(page, tag, "moved-rearmed", movedNotice(was + 1, was), null);
   await fitCheck(page, tag, "moved-rearmed");
   await closeDialog(page);
