@@ -68,8 +68,9 @@ export function ConsentPrompt() {
       aria-labelledby="consent-prompt-title"
       data-testid="consent-prompt"
       data-invitation="analytics-consent"
-      /* InstallInvite's box (see its note on the 148px phone clearance and the lg corner), padded on the repo scale. */
-      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-40 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3 shadow-lg"
+      /* InstallInvite's box (see its note on the 148px phone clearance and the lg corner, and on its `z-50` over the
+         Needle), padded on the repo scale. */
+      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-50 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3 shadow-lg"
     >
       <div className="flex items-start gap-3">
         <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.chart s={18} /></span>

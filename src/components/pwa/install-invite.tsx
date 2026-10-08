@@ -227,8 +227,10 @@ export function InstallInvite() {
          fails silently. `lg:bottom-6` is 32px on this repo's OVERRIDDEN spacing scale, matching
          `lg:left-6` so the card sits in a square corner inset.
          ⛔ An inline `bottom` beats every class, so this must stay a class or the `lg:` rung is
-         unreachable — which is exactly how the 96 survived three weeks under a green guard. */
-      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-40 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3.5 shadow-lg"
+         unreachable — which is exactly how the 96 survived three weeks under a green guard.
+         ⭐ 2026-10-09 (R3-B) — `z-50`, over the Needle's 45 and under the chat bubble's 60: a fidget
+         never covers a dialog, and this card is one. The channels panel's note has the measurement. */
+      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-50 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3.5 shadow-lg"
     >
       <div className="flex items-start gap-3">
         <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.download s={18} /></span>

@@ -184,6 +184,7 @@
     "test:ui-consistency": "tsx scripts/ui-consistency.test.mts",
     "test:type-scale": "tsx scripts/type-scale.test.mts",
     "test:needle": "tsx scripts/needle-physics.test.mts",
+    "test:needle-host": "tsx scripts/needle-host.test.mts",
     "test:integrity": "tsx scripts/content-integrity.test.mts",
     "test:maintenance": "tsx scripts/maintenance-mode.test.mts",
     "test:emergency": "tsx scripts/emergency-void.test.mts",

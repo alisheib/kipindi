@@ -187,6 +187,13 @@ const ROOT_SURFACES: Surface[] = [
   { id: "avatar-menu-scrim",   file: "src/components/layout/avatar-menu.tsx",            find: /fixed inset-0 z-\[(\d+)\] bg-black\/45/,                     z:   60, note: "one rung under its own panel" },
   { id: "chat-fab",            file: "src/components/chat/ChatRoot.tsx",                 find: /bottom: isMobile \? 80 : 16,\s*\n\s*zIndex: (\d+),/,         z:   60, note: "the chat bubble floats with the menus, not with the bars" },
   { id: "pull-to-refresh",     file: "src/components/ui/pull-to-refresh.tsx",            find: /fixed left-1\/2 z-\[(\d+)\]/,                                z:   60, note: "the pull indicator crosses the top bar" },
+  /* NAMED 2026-10-09 (R3-B, the Vodacom visual pass, tile 321). The three floating invitation cards were `z-40` and named
+     nowhere — so nothing saw that the Needle (45) painted OVER them: the parked disc sat on the open channels panel and
+     hid its right border. Each is a dialog or a region a player is asked to read, so the Needle rule below holds them
+     over it; they stay under the chat bubble and every menu's scrim (60), which a player opened on purpose. */
+  { id: "channels-panel",      file: "src/components/social/channels-panel.tsx",         find: /fixed left-3 right-3 z-(\d+) lg:left-auto lg:right-6/,       z:   50, note: "the follow-us card, top-right: over the Needle, under every menu" },
+  { id: "install-invite",      file: "src/components/pwa/install-invite.tsx",            find: /lg:bottom-6 z-(\d+) lg:right-auto[^"]*p-3\.5 shadow-lg/,     z:   50, note: "the install card, bottom: the same rung" },
+  { id: "consent-prompt",      file: "src/components/analytics/consent-prompt.tsx",      find: /lg:bottom-6 z-(\d+) lg:right-auto[^"]*p-3 shadow-lg/,        z:   50, note: "the analytics consent card, in the install card's box: the same rung" },
   { id: "needle",              file: "src/components/layout/needle.css",                 find: /#needle-root #needle \{[^}]*z-index: (\d+);/,                z:   45, note: "ABOVE both nav bars so it can never be trapped under one, BELOW every menu/dialog so a fidget never covers a decision" },
   { id: "bottom-nav",          file: "src/components/layout/bottom-nav.tsx",             find: /lg:hidden fixed inset-x-0 bottom-0 z-(\d+) kp-rail/,         z:   40, note: "primary navigation on the phone" },
   { id: "admin-top-bar",       file: "src/components/admin/admin-shell.tsx",             find: /"relative z-(\d+) border-b border-border"/,                  z:   40, note: "elevated above the page body so the AI-toolkit dropdown overlays content" },
@@ -335,6 +342,12 @@ const LAWS: Array<[string, string, string]> = [
   ["avatar-menu-panel", "avatar-menu-scrim", "a panel is above its own scrim"],
   ["notifications-scrim", "needle",  "⭐ THE NEEDLE RULE: a fidget must never cover a decision"],
   ["chat-fab", "needle",             "⭐ THE NEEDLE RULE: a fidget must never cover a control"],
+  ["channels-panel", "needle",       "⭐ THE NEEDLE RULE: a fidget never covers an open card (321: the parked disc hid this panel's right border)"],
+  ["install-invite", "needle",       "⭐ THE NEEDLE RULE: the same, for the install card"],
+  ["consent-prompt", "needle",       "⭐ THE NEEDLE RULE: the same, for the analytics consent card"],
+  ["avatar-menu-scrim", "channels-panel", "a menu the player opened covers a card nobody asked for"],
+  ["chat-fab", "install-invite",     "the chat bubble stays over the bottom cards its 148px clearance was measured against"],
+  ["chat-fab", "consent-prompt",     "the same, for the consent card in the install card's box"],
   ["needle", "bottom-nav",           "⭐ THE NEEDLE RULE: the object passes OVER the bars so it can never be trapped under one"],
   ["needle", "top-app-bar",          "⭐ THE NEEDLE RULE: same, on desktop"],
   ["bottom-nav", "top-app-bar",      "the phone rail sits over the header when both are on screen"],
@@ -346,6 +359,17 @@ const LAWS: Array<[string, string, string]> = [
 for (const [above, below, why] of LAWS) {
   ok(`3.x ${above} (${zOf(above)}) > ${below} (${zOf(below)})`,
      Number.isFinite(zOf(above)) && Number.isFinite(zOf(below)) && zOf(above) > zOf(below), why, why);
+}
+
+// CONTROL (R3-B, 2026-10-09) — the card laws can fail. Planted back at its old `z-40` (in memory, never on disk), the
+// channels panel's own locator reads 40, and 40 is below the Needle: the shape tile 321 photographed.
+{
+  const card = ROOT_SURFACES.find((s) => s.id === "channels-panel");
+  const planted = card ? soleZ(src(card.file).replace("right-3 z-50 lg:left-auto", "right-3 z-40 lg:left-auto"), card.find) : null;
+  ok("3.c CONTROL — planted back at z-40, the channels panel reads 40 and BELOW the Needle (what tile 321 showed)",
+     !!planted && planted.hits === 1 && planted.z === 40 && !(planted.z > zOf("needle")),
+     `read ${JSON.stringify(planted)} against the Needle's ${zOf("needle")}`,
+     "the card law can fail");
 }
 
 // The trapped families, stated as the invariant rather than as a number: an anchored

@@ -353,6 +353,10 @@ const config: Config = {
          not one of them ever lands there: each is sealed inside its bar's stacking
          context (nav-more → 40 and 30, the admin AI toolkit → 40). Naming it would
          hand the next session a number that reads like a promise and is not one.
+         ⚠️ 2026-10-09: three surfaces DO land at a root 50 — the floating invitation cards
+         (channels panel, install card, consent card), over the Needle's 45 and under the
+         menus' 60. They write the number, so `test:stacking` reads and ranks it; the ladder
+         still names no `50`, because the four menus above would read it as theirs.
          In-card stickies use `raised`; there is no `sticky` rung for the same reason. */
       zIndex: {
         base: "0",                    // .mcardp-watermark — the floor of a card's own context

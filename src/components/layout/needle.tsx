@@ -18,7 +18,7 @@
  *     onRecord forwarded to analytics only and NEVER rendered.
  *
  * Hard rules honoured (CLAUDE-CODE-BRIEF §4): one instance, below every overlay/modal
- * (z 25 — see needle.css; 50pick modals are z 100, not the brief's assumed 1000), hidden
+ * (z 45 — see needle.css; the floating cards are 50, 50pick modals are z 100, not the brief's assumed 1000), hidden
  * on money surfaces, colour untouched, reduced-motion respected by the engine, personal
  * best never displayed.
  */
@@ -29,6 +29,7 @@ import { getPrefs, type NeedleTheme } from "@/lib/haptics";
 import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
+import { censusPad, decideRest, glowReach, hugs, paintsNothing, railRange, reseat, type Box, type Geometry } from "@/lib/needle-rest";
 import type { NeedleOptions } from "@/lib/needle-physics";
 import "./needle.css";
 
@@ -292,8 +293,19 @@ function mountNeedle(
     },
     onCross: () => haptic("cross"),
     // A rest glide (E-400 ①) ends in the engine's own park, so it lands here too: no haptic for it — the player did
-    // nothing — and no re-check, or a glide could chain into another.
-    onPark: () => { if (gliding) { gliding = false; glideQuietUntil = performance.now() + 2000; save(); return; } haptic("tuck"); save(); scheduleClear(); },
+    // nothing — and no re-check of its own, or a glide could chain into another. ⭐ R3-B: a check something ELSE asked
+    // for while it glided (a scroll under it, a resize, a route, a panel) runs now, on the page as it is.
+    onPark: () => {
+      if (gliding) {
+        gliding = false;
+        glideQuietUntil = performance.now() + 2000;
+        save();
+        if (recheckOnLand) { recheckOnLand = false; scheduleClear(); }
+        return;
+      }
+      recheckOnLand = false;
+      haptic("tuck"); save(); scheduleClear();
+    },
     // …and the sleep that follows a glide is silent too (measured: it buzzed once per glide before this).
     onSleep: () => { el.style.willChange = "auto"; if (performance.now() >= glideQuietUntil) { haptic("settled"); scheduleClear(); } save(); },
     onTrue: () => haptic("trueFound"),
@@ -349,31 +361,57 @@ function mountNeedle(
      (`target` + `parking`, exactly the path `parkTo` takes) — or snaps under reduced motion. If no clear position
      exists within reach it stays where it is. The engine is not edited: this is host logic, like `nearestEdge`.
      ⛔ Never while held, mid-throw, parking, suppressed, or on a top/bottom edge; never chained (a glide's own park
-     does not re-check); `test:needle-rest` reviews the glide frame by frame. */
+     does not re-check); `test:needle-rest` reviews the glide frame by frame.
+     ⭐ 2026-10-09 · R3-B · THE DECISION IS GEOMETRY NOW, IN `@/lib/needle-rest`: this host reads the page — the
+     controls, the open floating surfaces, the visible text near the rail — and hands it the boxes. The tiers (nothing
+     under the GLOW, not even a card's frame; then content and text clear of the glow; then the rim 8px clear; then 4px;
+     then off every control), the reseat on a viewport change and the record that stops a chained glide are
+     documented there, once, and `test:needle-host` proves them on the
+     vendored engine without a browser. Three triggers were added here: a check asked for mid-glide runs when the glide
+     lands, an open surface mounting or going asks for one, and a viewport change re-seats a disc on its way to a rest. */
   const INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="switch"],[role="checkbox"],[role="menuitem"],[tabindex]:not([tabindex="-1"])';
-  const CLEARANCE = 4;
+  /* ⭐ R3-B ③ · THE OPEN FLOATING SURFACES A PARKED DISC MUST NEVER COVER (tile 321: the disc on the open channels
+     panel, hiding its right border). The house's two markers — `data-needle-keepout` (the rails, the rail's coin, the
+     channels panel: until now an obstacle to a THROWN disc only) and `data-invitation` (every floating invitation card)
+     — and any popup that floats: a dialog, menu or listbox laid out fixed or absolute. One laid out in the flow is a
+     row of options (the hub's language row), and its options are counted as controls. Each counts WHOLE.
+     ⚠️ The role values are unquoted on purpose (the same selector): this file READS dialogs and renders none, and
+     `test:popup-fit` finds the popups it must review by the quoted role attribute a component renders. */
+  const SURFACES = "[data-needle-keepout],[data-invitation],[role=dialog],[role=alertdialog],[role=menu],[role=listbox],dialog[open]";
+  const MARKED = "[data-needle-keepout],[data-invitation]";
   let gliding = false;
   let glideQuietUntil = 0;
   let clearTimer: number | null = null;
+  /* ⭐ R3-B · A CHECK ASKED FOR WHILE A GLIDE IS IN FLIGHT IS NOT DROPPED. It was: `clearRestY` answered "not
+     parked" and the landing re-checks nothing, so a glide chosen for one scroll position landed after the page had
+     moved and stayed there — the disc on the preview strip's "Toka kwenye onyesho" pill at 1024, its rim at x992
+     against the pill's border at x991 (257, and 265 273 in the other two languages, all three at y≈64). The landing
+     still asks for nothing by itself (no chain); a scroll, a resize, a route or a surface DURING the glide does. */
+  let recheckOnLand = false;
+  type Band = { left: number; right: number };
+  const boxOf = (r: Box): Box => ({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
   /* The footprint from the ENGINE's pose, not the DOM: the disc's box (the tap pad sits inside it on a side rail),
      clipped to the viewport. ⚠️ Measured 2026-09-14: under reduced motion the app's universal clamp gives #needle a
      near-zero transition, so getBoundingClientRect() right after a paint still returned the previous position and the
      rest check looked at the wrong place. Geometry has no such lag. */
-  function footprint() {
+  function footprint(): Box {
     const v = viewport();
     return { left: Math.max(0, body.x), right: Math.min(v.w, body.x + body.size), top: body.y, bottom: body.y + body.size };
   }
+  /** How far the wake halo's glow reaches past the disc at this size (`glowReach`; `--halo` is `haloInset()`, a
+      negative %). Not `glow`: that name is the grab glow's element, above. */
+  const glowPx = () => glowReach(body.size, -haloInset() / 100);
   /* What must not be under the disc is a control's CONTENT — its text, icon or field — or the whole of a SMALL
      control (≤ 64px either way). Measured: on /markets and /live every rail height crosses a full-width card link, so
      "any control" left no clear position at all, while 16px of a 328px card's padding hides nothing a player needs.
      The session-96 cases were all content: a CTA's label end, the Rounds/Chart toggle, a footer link. */
   const SMALL_CONTROL = 64;
-  function contentRects(n: HTMLElement, band: { left: number; right: number }) {
-    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+  function contentRects(n: HTMLElement, band: Band) {
+    const out: Box[] = [];
     const r = n.getBoundingClientRect();
-    const inBand = (x: { left: number; right: number }) => x.right >= band.left - CLEARANCE && x.left <= band.right + CLEARANCE;
+    const inBand = (x: Box) => x.right >= band.left && x.left <= band.right;
     if (r.width <= SMALL_CONTROL || r.height <= SMALL_CONTROL || n.matches("input,select,textarea")) {
-      if (inBand(r)) out.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+      if (inBand(r)) out.push(boxOf(r));
       return out;
     }
     const walker = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
@@ -381,26 +419,41 @@ function mountNeedle(
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       if (!(node.textContent || "").trim() || node.parentElement?.closest("svg")) continue;
       range.selectNodeContents(node);
-      for (const t of range.getClientRects()) if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+      for (const t of range.getClientRects()) if (t.width > 0 && inBand(t)) out.push(boxOf(t));
     }
     for (const e of n.querySelectorAll("svg,img,video,canvas,input,select,textarea")) {
       if (e.parentElement?.closest("svg")) continue;
       const t = e.getBoundingClientRect();
-      if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+      if (t.width > 0 && inBand(t)) out.push(boxOf(t));
     }
     return out;
   }
-  function controlsInBand(fp: { left: number; right: number }) {
-    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+  /** Each control's content (as above) and, for a big one, its whole box: its frame, which only the best tier counts. */
+  function controlsInBand(band: Band) {
+    const content: Box[] = [];
+    const frames: Box[] = [];
     for (const n of document.querySelectorAll<HTMLElement>(INTERACTIVE)) {
       if (root.contains(n)) continue;
       const r = n.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
-      if (r.right < fp.left - CLEARANCE || r.left > fp.right + CLEARANCE) continue;
+      if (r.right < band.left || r.left > band.right) continue;
       if (r.bottom < -viewport().h || r.top > 2 * viewport().h) continue;
       const cs = getComputedStyle(n);
       if (cs.visibility === "hidden" || cs.pointerEvents === "none") continue;
-      out.push(...contentRects(n, fp));
+      content.push(...contentRects(n, band));
+      if (r.width > SMALL_CONTROL && r.height > SMALL_CONTROL) frames.push(boxOf(r));
+    }
+    return { content, frames };
+  }
+  function surfacesInBand(band: Band) {
+    const out: Box[] = [];
+    for (const n of document.querySelectorAll<HTMLElement>(SURFACES)) {
+      if (root.contains(n)) continue;
+      const r = n.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1 || r.right < band.left || r.left > band.right) continue;
+      if (!n.matches(MARKED) && !/^(fixed|absolute)$/.test(getComputedStyle(n).position)) continue;
+      if (!seen(n)) continue;
+      out.push(boxOf(r));
     }
     return out;
   }
@@ -410,10 +463,16 @@ function mountNeedle(
      reserves no room for the rest position, and never did: the `needle-rest.css` that `bottom-nav.tsx` cites was
      never written (no commit ever added it) — the rest position is this host logic, and it had a blind spot.
      So the visible text in the band is read as well: a TreeWalker over the page that skips the Needle, controls
-     (counted above, by their own rule), svg and script, and every subtree whose box neither reaches the band nor
-     overflows — so on a phone it reads the few elements at the right edge, not the page. Text that is not seen
-     (`visibility: hidden` slides, an `opacity: 0` ancestor, a 1px screen-reader-only box) is not counted. */
-  const TEXT_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "svg", "IFRAME", "CANVAS", "VIDEO", "IMG", "SELECT", "TEXTAREA"]);
+     (counted above, by their own rule), script, and every subtree whose box neither reaches the band nor overflows —
+     so on a phone it reads the few elements at the right edge, not the page. Text that is not seen
+     (`visibility: hidden` slides, an `opacity: 0` ancestor, a 1px screen-reader-only box) is not counted.
+     ⭐ R3-B · AND ITS INK, NOT JUST ITS GLYPHS: text in a box painted round it (a roundel, a pill, a chip, a badge)
+     counts as the box — the footer's 18+ roundel's ring was 0–1px from the disc at 1280 and 320 (301 309 310) while
+     its glyphs sat 6px further in. A small picture outside any control (an icon, a mark, an avatar, ≤ 64px) counts
+     as text; a larger one is a surface (art, a background, a chart's field). */
+  const TEXT_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "IFRAME", "SELECT", "TEXTAREA"]);
+  const MEDIA = new Set(["svg", "IMG", "CANVAS", "VIDEO"]);
+  const SMALL_MEDIA = 64;
   // Both spellings of the options: Chromium 105–120 read `checkOpacity`/`checkVisibilityCSS`, later engines the
   // `…Property` names; an engine ignores the pair it does not know.
   type CheckVisibility = (o?: { opacityProperty?: boolean; visibilityProperty?: boolean; checkOpacity?: boolean; checkVisibilityCSS?: boolean }) => boolean;
@@ -423,9 +482,18 @@ function mountNeedle(
       ? check.call(el, { opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
       : getComputedStyle(el).visibility === "visible";
   }
-  function textInBand(fp: { left: number; right: number }, rows: { top: number; bottom: number }) {
-    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
-    const inBand = (x: { left: number; right: number }) => x.right >= fp.left - CLEARANCE && x.left <= fp.right + CLEARANCE;
+  /** The box painted round a line of text, when one hugs it (`hugs`, needle-rest.ts) — else null. */
+  function paintedBox(el: Element, t: Box): Box | null {
+    const r = el.getBoundingClientRect();
+    if (!hugs(r, t)) return null;
+    const s = getComputedStyle(el);
+    const border = ["top", "right", "bottom", "left"].some((k) =>
+      parseFloat(s.getPropertyValue(`border-${k}-width`)) > 0 && !paintsNothing(s.getPropertyValue(`border-${k}-color`)));
+    return border || !paintsNothing(s.backgroundColor) || s.backgroundImage !== "none" || s.boxShadow !== "none" ? boxOf(r) : null;
+  }
+  function textInBand(band: Band, rows: { top: number; bottom: number }) {
+    const out: Box[] = [];
+    const inBand = (x: Box) => x.right >= band.left && x.left <= band.right;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
         if (n.nodeType === Node.TEXT_NODE) return (n.textContent || "").trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
@@ -436,73 +504,68 @@ function mountNeedle(
         if (r.width === 0 && r.height === 0) return getComputedStyle(el).display === "contents" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
         // Only the rows a rest within reach can occupy (the caller's window), so a long page costs nothing extra.
         const near = inBand(r) && r.bottom >= rows.top && r.top <= rows.bottom;
+        if (MEDIA.has(el.tagName)) {
+          // Counted here and never walked into: an svg's own <text> is part of its picture.
+          if (near && r.width > 1 && r.height > 1 && r.width <= SMALL_MEDIA && r.height <= SMALL_MEDIA && seen(el)) out.push(boxOf(r));
+          return NodeFilter.FILTER_REJECT;
+        }
         const overflows = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
         return near || overflows ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
       },
     });
     const range = document.createRange();
+    const inks = new Map<Element, Box | null>();
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const parent = node.parentElement;
       if (!parent) continue;
       range.selectNodeContents(node);
       let visible: boolean | null = null;
       for (const t of range.getClientRects()) {
-        if (t.width <= 1 || t.height <= 1 || !inBand(t)) continue;
+        if (t.width <= 1 || t.height <= 1) continue;
+        if (!inks.has(parent)) inks.set(parent, paintedBox(parent, t));
+        const ink = inks.get(parent) ?? boxOf(t);
+        if (!inBand(ink)) continue;
         visible ??= seen(parent);
         if (!visible) break;
-        out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+        out.push(ink);
       }
     }
     return out;
   }
-  /* A rest taken KNOWING text was under it (no gap in the text within reach): it is not re-decided until the page
-     moves under it. Without this, a rest chosen by the control-only floor below could, on the next scroll-idle,
-     find a text-clear spot within reach of its NEW height and glide again — a chain, which E-413 forbids
-     (`test:needle-rest` §1). Compared with 2px of slack: the park spring lands within a pixel of its target. */
-  let textAccepted: { y: number; sx: number; sy: number } | null = null;
-  const acceptText = (y: number) => { textAccepted = { y, sx: window.scrollX, sy: window.scrollY }; };
-  /** The y to rest at: `null` = already clear (or not applicable), `undefined` = nothing clear within reach. */
-  function clearRestY(): number | null | undefined {
+  /* The tier a rest was taken at, and where (its y and the page's scroll): the rest is not re-decided until the page
+     moves under it, or what is under it gets worse than that tier — E-413's rule (`test:needle-rest` §1) that a rest
+     never chains into a second glide. Compared with 2px of slack: the park spring lands within a pixel of its target. */
+  let accepted: { tier: number; y: number; sx: number; sy: number } | null = null;
+  /** The y to rest at, or `null` to stay (already at its best, nothing better within reach, or not applicable). */
+  function clearRestY(): number | null {
     if (!body.parked || body.held || body.parking || isSuppressed()) return null;
     if (body.edge !== "left" && body.edge !== "right") return null;
     const fp = footprint();
-    const under = (rects: Array<{ left: number; right: number; top: number; bottom: number }>) => (dy: number) => rects.some((r) =>
-      r.left < fp.right + CLEARANCE && r.right > fp.left - CLEARANCE
-      && r.top < fp.bottom + dy + CLEARANCE && r.bottom > fp.top + dy - CLEARANCE);
+    const g = glowPx();
+    const pad = censusPad(g);
+    const band = { left: fp.left - pad, right: fp.right + pad };
     const reach = viewport().h / 3;
-    const onControl = under(controlsInBand(fp));
-    const settled = textAccepted !== null && Math.abs(textAccepted.y - body.y) < 2
-      && textAccepted.sx === window.scrollX && textAccepted.sy === window.scrollY;
-    const onText: (dy: number) => boolean = settled ? () => false : under(textInBand(fp, { top: fp.top - reach - CLEARANCE, bottom: fp.bottom + reach + CLEARANCE }));
-    if (!onControl(0) && !onText(0)) return null;
     const L = body.limits();
-    const m = 14;
-    const minY = L.minY + m;
-    const maxY = Math.max(minY, L.maxY - m);
-    const nearest = (clear: (dy: number) => boolean) => {
-      for (let d = 2; d <= reach; d += 2) {
-        for (const sign of [-1, 1]) {
-          const y = body.y + sign * d;
-          if (y < minY || y > maxY) continue;
-          if (clear(y - body.y)) return y;
-        }
-      }
-      return undefined;
-    };
-    // First choice: the nearest rest with neither a control nor a line of text under it.
-    const clearOfAll = nearest((dy) => !onControl(dy) && !onText(dy));
-    if (clearOfAll !== undefined) { textAccepted = null; return clearOfAll; }
-    // ⛔ E-413's guarantee is the floor and text never weakens it: off a CONTROL even where no gap in the
-    // text is within reach (a dense page). Text alone with nowhere clear to go stays put, as before.
-    if (!onControl(0)) { acceptText(body.y); return undefined; }
-    const offControl = nearest((dy) => !onControl(dy));
-    if (offControl !== undefined) acceptText(offControl);
-    return offControl;
+    const { minY, maxY } = railRange({ minX: L.minX, maxX: L.maxX, minY: L.minY, maxY: L.maxY, size: body.size });
+    const here = accepted !== null && Math.abs(accepted.y - body.y) < 2
+      && accepted.sx === window.scrollX && accepted.sy === window.scrollY;
+    const census = controlsInBand(band);
+    const r = decideRest({
+      fp,
+      controls: [...census.content, ...surfacesInBand(band)],
+      frames: census.frames,
+      text: textInBand(band, { top: fp.top - reach - pad, bottom: fp.bottom + reach + pad }),
+      glow: g, reach, minY, maxY, y: body.y,
+      accepted: here && accepted ? accepted.tier : null,
+    });
+    accepted = r.tier === 0 ? null : { tier: r.tier, y: r.y ?? body.y, sx: window.scrollX, sy: window.scrollY };
+    return r.y;
   }
   function settleClear() {
     clearTimer = null;
+    if (gliding) { recheckOnLand = true; return; }
     const y = clearRestY();
-    if (y === null || y === undefined) return;
+    if (y === null) return;
     if (calmed) {
       body.y = y;
       body.snapPark(body.edge);
@@ -519,6 +582,11 @@ function mountNeedle(
   function scheduleClear(delay = 180) {
     if (clearTimer !== null) window.clearTimeout(clearTimer);
     clearTimer = window.setTimeout(settleClear, delay);
+  }
+  /** A glide that ends without its own park (a viewport change re-seated it): quiet, and nothing owed on landing. */
+  function endGlide() {
+    if (gliding) { gliding = false; glideQuietUntil = performance.now() + 2000; }
+    recheckOnLand = false;
   }
 
   let saved: { x?: number; y?: number; edge?: string } | null = null;
@@ -725,14 +793,43 @@ function mountNeedle(
   }) as EventListener);
   on(hit, "pointerleave", (() => { hoverTo = 0; start(); }) as EventListener);
 
+  /* ⭐ R3-B ① · A VIEWPORT CHANGE RE-SEATS A DISC ON ITS WAY TO A REST; IT NEVER STRANDS ITS TARGET. Measured on the
+     round-3 tiles, the hub drive resizing 320 → 360 → 390 → 1024 → 1280 in one document: a glide in flight at each
+     resize kept the tuck x of the width it started at — x≈293 at 360 (the 320 tuck, 295), x≈330 at 390 (the wall, 296)
+     — and after 390 → 1024 the engine saw the disc at x≈358 "not tucked", judged it by its centre (392 < 512) and sent
+     it LEFT, caught mid-way at x≈241 on the Toka button (299); `save()` then kept the left edge for every later page
+     (300–317, round 2's 299 and 304 the same). `reseat` (needle-rest.ts) decides; `laidOut` is the geometry the
+     pose and the target were set in, read BEFORE the change, because `limits()` already answers for the new one.
+     ⛔ And no `reclamp()` when nothing moved (a visualViewport scroll, a repeated event): it clamps any body that is
+     not parked into the travel box, and a disc gliding along its rail is outside the box on purpose — it popped 30px
+     inward at 390 and slid back out (`test:needle-host` 2.4). When the rail stays put, the glide keeps its x. */
+  let laidOut: Geometry | null = null;
+  const geometry = (): Geometry => {
+    const L = body.limits();
+    return { minX: L.minX, maxX: L.maxX, minY: L.minY, maxY: L.maxY, size: body.size };
+  };
   function applyViewport() {
+    const before = laidOut;
+    const x0 = body.x, y0 = body.y;
     const d = diameter();
     if (d !== body.size) body.setSize(d);
     el.style.setProperty("--nsize", d + "px");
     el.style.setProperty("--inlay", (2.6 * (88 / d)).toFixed(2));
     el.style.setProperty("--halo", haloInset() + "%");
     el.style.setProperty("--needlew", (4.4 * Math.max(1, 74 / d)).toFixed(2));
-    body.reclamp();
+    const after = geometry();
+    const changed = !before || before.minX !== after.minX || before.maxX !== after.maxX || before.minY !== after.minY
+      || before.maxY !== after.maxY || before.size !== after.size;
+    if (changed) {
+      body.reclamp();
+      if (before) {
+        const r = reseat({ before, after, edge: body.edge, parked: body.parked, parking: body.parking, held: !!body.held,
+          moving: body.moving, x: x0, y: y0, target: body.target });
+        if (r.kind === "rest") { body.y = r.y; body.snapPark(body.edge); endGlide(); save(); }
+        else if (r.kind === "aim") { body.x = r.x; body.target = r.target; }
+      }
+      laidOut = after;
+    }
     paint(0);
   }
   applyViewport();
@@ -747,6 +844,35 @@ function mountNeedle(
   on(document, "scroll", (() => scheduleClear()) as EventListener, { capture: true, passive: true });
   on(window, "resize", (() => scheduleClear(260)) as EventListener);
   scheduleClear(900);
+  /* ⭐ R3-B ③ · A SURFACE THAT OPENS OR GOES IS A REASON TO LOOK AGAIN. Scroll, resize, a route and a park were the
+     only triggers, and a panel opens with none of them — the channels panel, 45 s into a visit (321). A floating
+     surface mounting, unmounting, or gaining or losing its marker or role asks for a check once its entrance has
+     played (`.m-float-in` is --t-quick, 140ms). Filtered to those surfaces: a live ticker's re-render costs one
+     `matches` per added element. */
+  const SURFACE_SETTLE = 200;
+  const POPUP_ROLE = /^(dialog|alertdialog|menu|listbox)$/;
+  const surfaceObserver = new MutationObserver((records) => {
+    for (const r of records) {
+      if (r.type === "attributes") {
+        const t = r.target as Element;
+        const was = r.attributeName === "role" && POPUP_ROLE.test(r.oldValue ?? "");
+        const marker = r.attributeName === "data-needle-keepout" || r.attributeName === "data-invitation";
+        if (was || marker || t.matches(SURFACES) || t.querySelector(SURFACES)) { scheduleClear(SURFACE_SETTLE); return; }
+        continue;
+      }
+      for (const list of [r.addedNodes, r.removedNodes]) {
+        for (const n of list) {
+          if (n.nodeType !== Node.ELEMENT_NODE) continue;
+          const e = n as Element;
+          if (e.matches(SURFACES) || e.querySelector(SURFACES)) { scheduleClear(SURFACE_SETTLE); return; }
+        }
+      }
+    }
+  });
+  surfaceObserver.observe(document.body, {
+    subtree: true, childList: true, attributes: true, attributeOldValue: true,
+    attributeFilter: ["open", "hidden", "role", "data-needle-keepout", "data-invitation"],
+  });
 
   on(document, "visibilitychange", (() => {
     if (document.hidden) stop();
@@ -770,6 +896,10 @@ function mountNeedle(
   const api = {
     session: (minutes: number) => { if (body.setSession(minutes)) { paint(0); if (!isSuppressed()) start(); } },
     acknowledge: () => { if (body.acknowledge() && !isSuppressed()) start(); },
+    /** ⭐ R3-B · A READ FOR DRIVES, NEVER A CALL A PAGE MAKES: true when nothing about the rest is pending — tucked, no
+        check waiting, no glide, the loop asleep — or when the Needle is hidden. `qa:journey-shell` waits on it before a
+        tile, so a tile shows the rest and not a glide on its way there (round 3's 194 was one). */
+    resting: () => isSuppressed() || (body.parked && !body.held && !gliding && clearTimer === null && raf === null),
   };
   (window as unknown as { needle?: typeof api; __needle?: typeof body }).needle = api;
   (window as unknown as { needle?: typeof api; __needle?: typeof body }).__needle = body;
@@ -805,6 +935,7 @@ function mountNeedle(
   return () => {
     stop();
     if (clearTimer !== null) window.clearTimeout(clearTimer);
+    surfaceObserver.disconnect();
     motionGateObserver.disconnect();
     window.clearInterval(sessionTimer);
     for (const [t, type, h, opts] of listeners) t.removeEventListener(type, h, opts as EventListenerOptions);

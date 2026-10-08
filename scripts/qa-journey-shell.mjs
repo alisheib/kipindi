@@ -867,6 +867,17 @@ function watch(page, who) {
   });
 }
 
+/**
+ * The Needle at rest, or hidden, or absent (needle.tsx `window.needle.resting()`: tucked, no rest check pending, no
+ * glide, its loop asleep). A guest, a classic page and a build without the probe all answer true.
+ */
+const NEEDLE_RESTING = () => {
+  const n = window.needle;
+  return !n || typeof n.resting !== 'function' || n.resting() === true;
+};
+/** The rest check waits 180–900 ms, a glide settles in under 1.5 s, and one more check may follow it: 6 s is a chain. */
+const NEEDLE_REST_MS = 6_000;
+
 /** Two frames and a beat: a resize’s layout, and what mounts on it, have landed. */
 async function settle(page, ms = 300) {
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
@@ -1240,6 +1251,11 @@ async function shoot(page, cell, spec, { dialog = false, dialogProblem = null } 
   seq += 1;
   const file = `${[String(seq).padStart(3, '0'), cell.section, cell.route, cell.viewer, cell.state, cell.locale, cell.width].join('--')}${wrong ? '--WRONG-PAGE' : ''}.png`;
   await settle(page, 150);
+  // ⭐ R3-B (2026-10-09) · THE TILE SHOWS THE NEEDLE AT ITS REST, never a glide on its way there: round 3's 194 caught
+  // the disc mid-flight across the /markets stat line, and a reader cannot tell a glide from a rest in one frame. A
+  // Needle that has not come to rest by NEEDLE_REST_MS is a finding of its own — a rest that never comes is a chain.
+  const rested = await page.waitForFunction(NEEDLE_RESTING, null, { timeout: NEEDLE_REST_MS, polling: 100 }).then(() => true, () => false);
+  if (!rested) problems.push(`the Needle had not come to rest ${NEEDLE_REST_MS / 1000} s after the page settled`);
   try {
     await page.screenshot({ path: join(OUT, file), fullPage: false, caret: 'initial', timeout: 30_000 });
     count.tiles += 1;

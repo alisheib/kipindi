@@ -327,9 +327,15 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
          bottom-right, and the tab bar owns the bottom edge on phones. Moving this one to the top
          ENDS the competition instead of arbitrating it — which is what the single global slot
          was doing wrong.
-         ⚠️ Toasts also land top-right, but at `z-1800` against this card's `z-40`, so a toast
+         ⚠️ Toasts also land top-right, but at `z-1800` against this card's `z-50`, so a toast
          paints OVER it for its few seconds. That precedence is correct: a toast answers
          something the player just did; this card answers nothing.
+         ⭐ 2026-10-09 (R3-B, tile 321) — 50, ABOVE THE NEEDLE'S 45. At 40 the parked disc sat ON this
+         open card and hid its right border: the Needle's own rule is that a fidget never covers a
+         menu or a dialog, and this is a dialog. Every floating invitation card takes the same rung
+         (install-invite.tsx, consent-prompt.tsx), under the chat bubble and every menu's scrim at 60;
+         `test:stacking` names all three and holds them over the Needle. The disc also rests clear of
+         an open card (needle.tsx, `SURFACES`), so the rung only matters while it glides away.
          ⛔ `top` is an INLINE style here because it is MEASURED, not chosen — see `measureTop`.
          It is the one value on this element that cannot be a class, there is no responsive
          `top`, and so nothing can shadow it. Every static value stays a class.
@@ -339,7 +345,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
          compiled that prose into a real rule whose value held literal dots, which is invalid
          CSS, and one bad declaration failed the whole stylesheet parse so every route served
          500. A comment is not inert in a file the class scanner reads. */
-      className={`fixed left-3 right-3 z-40 lg:left-auto lg:right-6 lg:max-w-[400px] overflow-hidden rounded-xl mat-float px-3 pb-3 ${exiting ? "m-float-out" : "m-float-in"}`}
+      className={`fixed left-3 right-3 z-50 lg:left-auto lg:right-6 lg:max-w-[400px] overflow-hidden rounded-xl mat-float px-3 pb-3 ${exiting ? "m-float-out" : "m-float-in"}`}
       /* `.m-float-in` sets `transform-origin: top left`; this card grows from the top RIGHT. */
       style={{ top: `${topPx}px`, transformOrigin: "top right" }}
     >
