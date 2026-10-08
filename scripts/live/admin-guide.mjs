@@ -221,6 +221,7 @@ async function runA() {
   });
   await new Promise((r) => vendor.listen(VENDOR_PORT, "127.0.0.1", r));
   try {
+    await step("a-owner-world", ownerWorld);
     await step("01-sign-in", async () => {
       const ctx = await guideContext({ width: 1280, height: 800 });
       const page = await ctx.newPage();
@@ -483,6 +484,15 @@ function eatInstant(hourEat) {
 }
 const pinWindow = (hourEat) => post(`/api/dev-test/marketing-send-window?at=${encodeURIComponent(eatInstant(hourEat))}`);
 const seedLive = (query) => post(`/api/dev-test/marketing-live-seed?${query}`);
+/** ⭐ PRODUCTION'S OWNER SETTINGS, through the platform's own writers (`marketing-typed-test-seed`): the public policy lines
+ *  (G10), the `adult.test` wording (G4), the campaign source line (G5) and licence outreach OPEN — what Ali's approvals saved
+ *  on production on 2026-10-07/08. Without the source line a campaign to the contact book cannot be confirmed (STEP 54's
+ *  lock turn: run b's Confirm was held by "… must carry its source line — and this campaign has none yet"). */
+async function ownerWorld() {
+  let last = {};
+  for (const q of ["lines=1", "adult=1", "source=1", "open=1"]) last = await post(`/api/dev-test/marketing-typed-test-seed?${q}`);
+  if (String(last.outreach ?? "").toUpperCase() !== "OPEN") throw new Error(`licence outreach is not open: ${JSON.stringify(last).slice(0, 300)}`);
+}
 async function openCampaign(page, id) {
   await page.goto(`${BASE}/admin/campaigns/${encodeURIComponent(id)}`, { waitUntil: "networkidle" });
   await page.waitForSelector("[data-live-status]", { timeout: 30_000 });
@@ -500,6 +510,7 @@ async function campaignIdByName(page, name) {
 async function runB() {
   const { ctx, page } = await staff({ width: 1280, height: 800 });
   await pinWindow(12);
+  await step("b-owner-world", ownerWorld);
   // Ten people the engine can really message (eight agree, one stopped by their link, one never agreed), and the staged states.
   const seeded = await seedLive("run=guide");
   await seedLive("stages=guide");
@@ -551,6 +562,13 @@ async function runB() {
     await page.locator("[data-confirm-trigger]").first().click();
     await page.waitForSelector(`${inDialog("[data-confirm-figures]")}, ${inDialog("[data-confirm-body]")}`, { timeout: 30_000 });
     await wait(600);
+    // ⭐ More than five people: the dialog asks for the number typed first (the kit's hard tier) — the word to type is the
+    //    input's own placeholder. The picture is taken with the number in the box, as the officer will see it before pressing.
+    const typed = page.locator(inDialog("input")).first();
+    if ((await typed.count()) > 0) {
+      await typed.fill((await typed.getAttribute("placeholder")) ?? "");
+      await wait(400);
+    }
     await shootTall(page, "40-confirm-dialog");
     await page.locator(DIALOG).getByRole("button", { name: "Confirm audience", exact: true }).first().click();
     await page.waitForSelector("[data-confirm-confirmed]", { timeout: 30_000 });
