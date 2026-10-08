@@ -236,7 +236,8 @@ export function describeError(err, env = {}, keys = []) {
   const code = typeof err?.code === "string" ? ` ${err.code}` : "";
   const pg = typeof err?.meta?.code === "string" ? ` pg ${err.meta.code}` : "";
   const last = String(err?.message ?? err ?? "").split("\n").map((l) => l.trim()).filter(Boolean).pop() ?? "";
-  return safeLine(`${name}${code}${pg}${last ? `: ${last.slice(0, 160)}` : ""}`, env, keys);
+  const stmt = typeof err?.u52aStatement === "string" && /^[a-z?-]{1,30}$/.test(err.u52aStatement) ? ` [read: ${err.u52aStatement}]` : "";
+  return safeLine(`${name}${code}${pg}${stmt}${last ? `: ${last.slice(0, 160)}` : ""}`, env, keys);
 }
 
 /**
@@ -348,7 +349,20 @@ export async function readOnlyTransaction(prisma, body, opts = {}) {
     const ro = await tx.$queryRaw`SELECT current_setting('transaction_read_only') AS ro`;
     const mode = ro?.[0]?.ro;
     if (mode !== "on") throw new ReadOnlyRefused(mode);
-    return body(tx, { readOnly: mode });
+    // The body is handed SELECTs only (no $executeRaw), and a failing statement is NAMED by the tag its text opens with, so a
+    // database error on the first live run says which read it was without echoing the statement.
+    const reads = {
+      async $queryRaw(strings, ...values) {
+        const tag = /u52a:([a-z-]+)/.exec(Array.isArray(strings) ? strings.join(" ") : String(strings));
+        try {
+          return await tx.$queryRaw(strings, ...values);
+        } catch (err) {
+          if (err && typeof err === "object" && !err.u52aStatement) { try { err.u52aStatement = tag ? tag[1] : "?"; } catch { /* a frozen error keeps no tag */ } }
+          throw err;
+        }
+      },
+    };
+    return body(reads, { readOnly: mode });
   }, { timeout: opts.timeoutMs ?? 60_000, maxWait: opts.maxWaitMs ?? 10_000 });
 }
 

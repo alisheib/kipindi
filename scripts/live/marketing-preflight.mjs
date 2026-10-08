@@ -315,7 +315,8 @@ export function judgePreflight(facts, ctx, lib = LIB) {
     ? `${holder}the gate would clear it on the ${v.branch === "account" ? "ACCOUNT" : "CONTACT"} branch (${v.basis})${v.unjudged.length ? ` — asked again at the send, not judged here: ${v.unjudged.join(", ")}` : ""}`
     : `${holder}the gate would refuse it: ${v.skipReason} (${v.detail})`;
   const now = lib.judgeEligibility(eligFacts);
-  add("test-consent", now.ok, verdict(now));
+  // The licence-outreach record decides whether the composer may test a TYPED number (run sheet step 2), so it is said beside the verdict.
+  add("test-consent", now.ok, `${verdict(now)} · licence outreach: ${eligFacts.outreach}`);
   const after = lib.judgeEligibility(lib.factsAfterStopCycle(eligFacts, nowMs));
   add("test-cycle", after.ok, after.ok
     ? `after the stop link's two acts (stop, then "Start them again") the gate would still clear it (${after.basis}) — campaign C can send`

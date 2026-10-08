@@ -500,7 +500,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     const off = await pre(impl, W.goodPreWorld(), { transactionMode: "off" });
     if (off.code !== 2 || off.statements.length !== 2 || !has(off.lines, "NOT RUN")) wrong.push(`read-back off: exit ${off.code}, ${off.statements.length} statements`);
     const boom = await pre(impl, W.goodPreWorld(), { throwOnQuery: new Error(`could not connect to server at ${W.DB_PIECES[2]} as ${W.DB_PIECES[3]} using ${W.DB_PIECES[0]} for ${W.TEST.key}`) });
-    if (boom.code !== 2 || !has(boom.lines, "NOT RUN") || dbLeaks(boom.lines).length || leaksIn(boom.lines).length) wrong.push(`read failure: exit ${boom.code}, leaks ${dbLeaks(boom.lines).length + leaksIn(boom.lines).length}`);
+    if (boom.code !== 2 || !has(boom.lines, "NOT RUN") || !has(boom.lines, "[read: migrations]") || dbLeaks(boom.lines).length || leaksIn(boom.lines).length) wrong.push(`read failure: exit ${boom.code}, leaks ${dbLeaks(boom.lines).length + leaksIn(boom.lines).length}`);
     const evOff = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=sent:test"]), { transactionMode: "off" });
     if (evOff.code !== 2 || evOff.statements.length !== 2) wrong.push(`evidence read-back off: exit ${evOff.code}`);
     const evNoUrl = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect=sent:test"]), { env: {} });
@@ -534,6 +534,10 @@ async function runAssertions(impl: Impl): Promise<void> {
     let refused = false;
     try { await (impl.lib.readOnlyTransaction as typeof LIB.readOnlyTransaction)(prismaOff as never, async () => { ran.push("body"); return 1; }); } catch { refused = true; }
     if (!refused || ran.length) wrong.push(`the helper ran its body against a database that said off (refused ${refused})`);
+    // the body is handed SELECTs only: no way to execute a statement through the handle it gets
+    let handed = "?";
+    await (impl.lib.readOnlyTransaction as typeof LIB.readOnlyTransaction)(W.fakePrisma({}, [], {}) as never, async (tx: Record<string, unknown>) => { handed = typeof tx.$executeRaw; return 1; });
+    if (handed !== "undefined") wrong.push(`the body is handed a transaction with $executeRaw (${handed})`);
     return [wrong.length === 0, `wrong [${wrong.join("; ")}] · pre-flight ${p.statements.length} statements, evidence ${e.statements.length}`];
   });
 
@@ -1247,6 +1251,14 @@ if (!PROVE_RED) {
           if (ro?.[0]?.ro !== "on") throw new LIB.ReadOnlyRefused(ro?.[0]?.ro);
           return body(tx, { readOnly: "on" });
         }, {}) }) },
+    { name: "R-RO6 · the body is handed the raw transaction (it could execute a write; a failing read is no longer named)", expect: [L.p3, L.p4],
+      impl: withLib({ readOnlyTransaction: async (prisma: { $transaction: (f: (tx: unknown) => Promise<unknown>, o: unknown) => Promise<unknown> }, body: (tx: unknown, i: unknown) => Promise<unknown>) =>
+        prisma.$transaction(async (tx: { $executeRaw: (s: TemplateStringsArray) => Promise<unknown>; $queryRaw: (s: TemplateStringsArray) => Promise<Array<{ ro: string }>> }) => {
+          await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+          const ro = await tx.$queryRaw`SELECT current_setting('transaction_read_only') AS ro`;
+          if (ro?.[0]?.ro !== "on") throw new LIB.ReadOnlyRefused(ro?.[0]?.ro);
+          return body(tx, { readOnly: "on" });
+        }, {}) }) },
     { name: "R-RO2 · the helper runs the body whatever the database says (the read-back is not believed)", expect: [L.p3, L.p4],
       impl: withLib({ readOnlyTransaction: async (prisma: { $transaction: (f: (tx: unknown) => Promise<unknown>, o: unknown) => Promise<unknown> }, body: (tx: unknown, i: unknown) => Promise<unknown>) =>
         prisma.$transaction(async (tx: { $executeRaw: (s: TemplateStringsArray) => Promise<unknown>; $queryRaw: (s: TemplateStringsArray) => Promise<unknown> }) => {
@@ -1277,7 +1289,7 @@ if (!PROVE_RED) {
     { name: "R-N6 · the audit payload is printed whole", expect: [L.e3, L.e7],
       impl: withLib({ safePayload: (p: unknown) => JSON.stringify(p) }) },
     { name: "R-N7 · an error is described by its whole message — HELD BY THE SECOND WALL: the output filter still takes the address out", expect: [],
-      impl: withLib({ describeError: (err: Error) => String(err?.message ?? err) }) },
+      impl: withLib({ describeError: (err: Error & { u52aStatement?: string }) => `[read: ${err.u52aStatement}] ${String(err?.message ?? err)}` }) },
     /* ── the pre-flight's rules ── */
     { name: "R-J1 · a switch that is OPEN reads closed (the port ignores the row)", expect: [L.p1b, L.p6a],
       impl: withLib({ readSwitch: () => ({ state: "closed", why: "absent" }) }) },
