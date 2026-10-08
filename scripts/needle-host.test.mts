@@ -17,6 +17,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { decomment } from "./lib/decomment.mts";
 import { NeedleBody, CONST } from "../src/lib/needle-physics.js";
 import {
   EDGE_MARGIN, HALO_BREATHE, GLOW_GAP, RIM_CLEARANCE, FLOOR_CLEARANCE, REST_TIERS,
@@ -27,8 +28,9 @@ import {
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const rd = (p: string) => readFileSync(join(ROOT, p), "utf8");
 /** Comments blanked (block comments that start at a boundary, and line comments), as `test:stacking` reads code. */
-const code = (s: string) => s.replace(/(^|[\s{(,;=])\/\*[\s\S]*?\*\//g, (m, p1: string) => p1 + m.slice(p1.length).replace(/[^\n]/g, " "))
-  .replace(/(^|[^:"'`\w/])\/\/[^\n]*/g, "$1");
+// Source is read through the shared scanner (scripts/lib/decomment.mts): every newline survives, so nothing that
+// reads a line moves, and test:decomment's private-stripper ratchet stays where it was.
+const code = decomment;
 
 let pass = 0;
 const failures: string[] = [];

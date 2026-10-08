@@ -565,13 +565,15 @@ export default async function MarketDetail({
             weather cloud (y356 through its arc at y353–360 at 390; y273 across it at 1280) and the cloud's top sat
             under SHIRIKI (y217–256). On the question's box, computed from the glyph paths (the 1.9 stroke included) for
             a one-line question, the tightest case: the hairline keeps ≥5px of air (forex, whose arrows reach y0.85 of
-            24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room. */}
+            24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room.
+            The size is the box's `h-[2em] w-[2em]`; `s` is only the svg's own width/height before the stylesheet, and it
+            stays the frozen 96 the watermark always drew at (test:icon-sizes — a new value would grow the glyph set). */}
         <div className="relative isolate">
           {(() => {
             const Cat = I[categoryGlyph(m.category)];
             return (
               <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -z-10 flex -translate-y-1/2 text-text opacity-[0.07] text-title-lg md:text-display-3">
-                <Cat s={56} className="h-[2em] w-[2em]" />
+                <Cat s={96} className="h-[2em] w-[2em]" />
               </span>
             );
           })()}

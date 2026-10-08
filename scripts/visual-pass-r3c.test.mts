@@ -18,6 +18,7 @@
  *   §10 the capture waits for the unread sign it shoots, and its pointer leaves what it pressed
  */
 import { readFileSync } from "node:fs";
+import { decomment, decommentCss } from "./lib/decomment.mts";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { keepLastWords } from "../src/components/ui/keep-words.tsx";
@@ -38,8 +39,10 @@ const ok = (name: string, cond: boolean, detail = "") => {
 const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.max(0, 100 - s.length))}`);
 const read = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
 /** Comments out, so a rule quoted in a note is never mistaken for the rule. */
-const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
-const css = code(read("src/app/globals.css"));
+// Source and the stylesheet are read through the shared scanners (scripts/lib/decomment.mts) — test:decomment's
+// private-stripper ratchet; decommentCss for CSS, whose strings and urls a JS scanner must not judge.
+const code = decomment;
+const css = decommentCss(read("src/app/globals.css"));
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 const NBSP = String.fromCharCode(0x00a0);
 
