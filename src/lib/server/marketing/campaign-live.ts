@@ -67,7 +67,7 @@ import { officerLabel } from "@/lib/server/actor-label";
 import { lastOtpFailureAt, smsProviderResolution } from "@/lib/server/sms";
 import { moneyBusy } from "@/lib/server/money-busy";
 import type { MoneyBusy } from "@/lib/server/money-busy";
-import { OTP_FAILURE_WAIT_MS } from "@/lib/server/marketing/engine";
+import { OTP_FAILURE_WAIT_MS } from "@/lib/marketing/engine-rules";
 import type { SmsProviderResolution } from "@/lib/server/sms";
 import { marketingLiveGate, readMarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
 import type { MarketingLiveSwitch } from "@/lib/server/marketing/live-switch";
@@ -472,7 +472,8 @@ export async function campaignLiveView(id: string, viewer: LiveViewer, deps: Liv
   // nobody sending.
   const otpAt = deps.otpLastFailureAt();
   const engineWaits = sendWindow.open !== true || deps.moneyBusy().busy === true
-    || (typeof otpAt === "number" && Number.isFinite(otpAt) && nowMs - otpAt < OTP_FAILURE_WAIT_MS);
+    // The engine's own reading (④e): a failure dated either side of now by less than the wait.
+    || (typeof otpAt === "number" && Number.isFinite(otpAt) && Math.abs(nowMs - otpAt) < OTP_FAILURE_WAIT_MS);
   const nobodyDriving = status === "RUNNING" && !engineWaits && (!Number.isFinite(lastMs) || nowMs - lastMs >= NOBODY_DRIVING_AFTER_MS);
 
   // ── the controls — always present, each disabled with its reason (decision 4) ──

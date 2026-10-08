@@ -105,7 +105,8 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { assertSettle, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
 import { recipientRows, zeroRecipientStatusCounts } from "@/lib/marketing/campaign-status";
 import {
-  AUDIT_DETAIL_MAX, MAX_ROW_ATTEMPTS, SLICE_GATE_BUDGET_MS, SLICE_MAX, SLICE_MIN, SLICE_START, SLICE_TOO_SLOW, TRAIL_TEXT_MAX,
+  AUDIT_DETAIL_MAX, MAX_ROW_ATTEMPTS, OTP_FAILURE_WAIT_MS, SLICE_GATE_BUDGET_MS, SLICE_MAX, SLICE_MIN, SLICE_START, SLICE_TOO_SLOW,
+  TRAIL_TEXT_MAX,
   adaptSliceSize, cleanText, foldGateTime, isShopWide, railStopReason, reapVerdict, sendRecordOf,
   settlementFor, sliceCheck, thrownSend,
 } from "@/lib/marketing/engine-rules";
@@ -115,15 +116,13 @@ import type { EngineStopReason, ReapEvidence, SettleContext, ShopWide, SliceWait
 
 /** ⭐ The slice's constants — declared in the pure rules (`engine-rules.ts`, which sizes the slice and settles it) and
  *  re-exported here, never written twice. */
-export { SLICE_MAX, SLICE_START, SLICE_MIN, SLICE_GATE_BUDGET_MS, MAX_ROW_ATTEMPTS };
+export { SLICE_MAX, SLICE_START, SLICE_MIN, SLICE_GATE_BUDGET_MS, MAX_ROW_ATTEMPTS, OTP_FAILURE_WAIT_MS };
 export type { EngineStopReason, SliceWait };
 
 /** E6 · a claim older than this is stranded: settled from the evidence by the next step of its campaign. */
 export const REAP_AFTER_MS = 10 * 60_000;
 /** E6 · the most stranded claims one step settles — the reaper's page (the settle door's own batch ceiling). */
 export const REAP_BATCH = 200;
-/** E12 · after a login or withdrawal code failed or went unknown, marketing steps aside this long. */
-export const OTP_FAILURE_WAIT_MS = 2 * 60_000;
 /** E16 · how old a credit reading a slice may act on: one minute, as Start. */
 export const SLICE_CREDIT_MAX_AGE_MS = 60_000;
 /** ⭐ As built · after this many slices running whose re-check before the wire could not answer, the campaign PAUSES

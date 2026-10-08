@@ -94,6 +94,10 @@ export const SLICE_GATE_BUDGET_MS = 10_000;
 export const MAX_ROW_ATTEMPTS = 3;
 /** E11 · the weight of the newest measurement in the in-process moving average of the per-recipient gate time. */
 export const GATE_TIME_WEIGHT = 0.3;
+/** E12 · after a login or withdrawal code failed or went unknown, marketing steps aside this long. ⭐ Declared HERE (the
+ *  U47b-1 review): the live view reads it to say "nobody driving" only when the engine is not waiting on purpose, and the
+ *  view may not import the engine (`test:marketing-engine` S27) — `engine.ts` re-exports it, never written twice. */
+export const OTP_FAILURE_WAIT_MS = 2 * 60_000;
 
 /** The column bounds of the settle door, RESTATED here (the rule set is a server module): a trail string, free words, a
  *  code, the trail's length. `test:marketing-engine` holds each equal to `campaign-model.ts`'s. */
