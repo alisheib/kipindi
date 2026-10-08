@@ -81,7 +81,9 @@ card return carried no `order_id` and read "We couldn't find that payment" / "Ha
 block and its import; G4's money-form fix touches this file too), `src/app/wallet/deposit/return/page.tsx`,
 `src/components/wallet/deposit-number-choice.tsx`, `src/lib/wallet/card-return.ts` (new),
 `scripts/selcom-stub-gateway.mjs`, `scripts/card-deposit.test.mts`, `scripts/card-flow-e2e.test.mts`, and
-`package.json` (5 keys). **Still open:** the REAL gateway's return is unproven until a real card deposit on production
+`package.json` (5 keys). **Production:** serves `9f8deb27` (the two fixes and this record) since 01:48 EAT, the `?dpl=`
+read back 4.5 minutes after the push; health ok; signed out, `/wallet/deposit` and
+`/wallet/deposit/return?order_id=…` redirect to sign-in with the whole query kept. **Still open:** the REAL gateway's return is unproven until a real card deposit on production
 (S14's real TZS 1,000 journey covers it). This laptop's baseline on `28fd214e` (main's own reds here, 8):
 admin-section-gate, audit-drain, house-bot-designation, motion, needle-rest, orphans, responsive, revoked-deadend.
 
