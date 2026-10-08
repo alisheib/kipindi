@@ -14,8 +14,11 @@
  *   · the readers of the three records the engine reads from SystemConfig (the live switch, the settings, the licence
  *     outreach record), each a port of the app's own reader and PINNED to it by `test:marketing-preflight` P6;
  *   · `judgeEligibility` — the CONSENT-AND-BASIS half of the one gate (`mayReceiveMarketingSms`), PINNED to the real gate
- *     by `test:marketing-preflight` P6 over a table of scenarios;
- *   · the ledger (decision 6): every chargeable send counted, and a refusal to count beyond the cap of six.
+ *     by `test:marketing-preflight` P6 over a table of scenarios (the agent-referee exclusion is NOT judged and every GO carries it
+ *     in `unjudged` - see `REFEREE_UNJUDGED`);
+ *   · the ledger (decision 6): every chargeable send counted, and a refusal to count beyond the cap of six - written through a
+ *     temporary file and a rename that waits out a file Windows holds for a moment (`renameWithRetry`);
+ *   · the private-host guard and the one-word database class, defined with the boot module and re-exported here, and `isCampaignId`.
  *
  * ⛔ NOTHING HERE WRITES TO A DATABASE, SENDS AN SMS OR READS A SECRET. The only file it writes is the gitignored ledger.
  * ⛔ This file imports the repo's pure modules by their `.ts` paths, so the tools run through `tsx` (the `ops:` keys) — and the

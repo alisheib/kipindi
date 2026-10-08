@@ -2894,7 +2894,8 @@ never writes a count down by hand, and takes no further step before it does.
 4. **The QA Growth login** exists, role GROWTH, with the growth act grant (write, test, confirm, start). A login that cannot read
    numbers sees masked rows and, below ten people, only "On campaign 1" — the evidence tool is then the reader, not the page.
 5. **The test number is in the contact book, on a list of ONE** — the pre-flight's `test-lists` row names it — with a consent or basis
-   the gate clears, and one that SURVIVES the stop link's two acts (`test-cycle`). The list's name is the drive's own; its numbers are its own.
+   the gate clears, and one that SURVIVES the stop link's two acts (`test-cycle`). The list's name is the drive's own and PLAIN (letters,
+   digits, spaces, `.` `_` `:` `#` `-`, up to 40 characters — the tool will not print any other, and then the row is NO-GO); its numbers are its own.
 6. **The source line is saved** (`source`): the newest `source.phrase` is not blank — and, while licence outreach is open, `adult.test`.
 7. **The composer test's route is decided** (decision point, below).
 8. **The receipt secret is set** (`webhook`) and Ali or Jay can read the Blackball portal's Out SMS `COUNT` (segments) before and
@@ -2913,8 +2914,8 @@ tools reach the public proxy themselves; `-s` keeps npm's banner, which echoes t
 repeated (`--expect=…` twice) or take a comma list; **in PowerShell a comma outside quotes splits the argument, so the sheet repeats
 the flag.** Steps 0, 1 and 2 carry `--new-ledger` (no ledger exists before step 2's evidence writes it); no later step does.
 
-⭐ **The gate** — the cap and "nothing else can send" gate the drive; they are not only read afterwards. **Before step 2, before each Start
-(steps 3, 5 and 7) and before ANY retry, run both of these, and press nothing on a NO-GO, an exit 1 or an exit 2:**
+⭐ **The gate** — the cap and "nothing else can send" gate the drive; they are not only read afterwards. **Before step 2 run G1 and G2;
+before each Start (steps 3, 5 and 7) and before ANY retry run G1, G2 and G3 — and press nothing on a NO-GO, an exit 1 or an exit 2:**
 - **G1 · the room and the rows** — `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=open --drive-campaign=<X>`
   with `<X>` the campaign about to be started (before step 2: no `--drive-campaign`, and `--new-ledger`, the file not existing yet;
   before a retry: the retry's own id, and the ids of the campaigns that already ran are not named — they are DONE). Before steps 2 and 3
