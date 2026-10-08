@@ -2866,6 +2866,10 @@ browser checks or each logged NOT RUN.
 clicks are made by Jay (an ADMIN) on www.50pick.tz, signed in as himself, with Claude reading evidence read-only. Each
 chargeable SMS costs about TZS 6 (G3: the drive's cap is 6 sends = TZS 36). Run inside 08:00–20:00 EAT.
 
+> ✅ **AMENDED 2026-10-08 (Ali) — the clicks are Claude's, not Jay's.** Claude creates its own test users on production and signs in as
+> its own GROWTH login "QA Growth (Claude)"; the SMS still go only to the approved test number; there is no control number
+> (§7 Q4's "If none"). Read "AS BUILT — the run sheet" at the end of this section before this paragraph and decision 2.
+
 **Decisions.**
 1. **Pre-flight, read-only** — `npm run ops:marketing-preflight` (create; ONE `SET TRANSACTION READ ONLY` transaction
    through the Postgres public proxy, STEP 29's pattern): production serves the expected `?dpl=`; the U43-0 migration row is
@@ -2899,6 +2903,178 @@ chargeable SMS costs about TZS 6 (G3: the drive's cap is 6 sends = TZS 36). Run 
 2026-10-03).
 **Owner decisions.** The test number and Jay's time (Q4), the control number (Q4), the switch window (G1), the TZS 36 (G3),
 and after it — G2.
+
+✅ **AS BUILT — the run sheet (U52a's tools, S14, 2026-10-08; the review's fixes the same day).** Two read-only tools, their shared core and boot module, a ledger and this sheet are built and proven on a stand-in database (`test:marketing-preflight`; `red:marketing-preflight` plants each defect in memory and requires exactly the claims it names to fail). **Nobody has run them against production.** Their SQL has been read, mutated and independently reviewed, but has never met a real PostgreSQL: **`npm run -s db:probe-marketing-u52a` — both tools end to end on a scratch cluster — must be GREEN, run by the lead under the heavy-node lock, BEFORE step 0 touches production** ("Before the day" 1).
+
+**What changed since the decisions above were written (Ali, 2026-10-08).** Claude now creates its OWN test users on production and
+deletes them when testing is done. So the clicks of decision 2 are made by Claude, signed in as its own staff login **"QA Growth
+(Claude)"** (role GROWTH — never Ali's, never Jay's, never an ADMIN's). The SMS still go **only to the approved test number**
+(+255 772 619 619, a real phone nobody needs to touch). The "tap" on the stop link is made by opening the stop link's URL in a
+browser (`/s/<token>` is public — no sign-in), the URL read from the test number's row by the evidence tool. The suppressed
+**control** is §7 Q4's fallback ("If none"): there is no second number, and the refusal is proven on the test number itself —
+**sent while eligible (A) · refused after its stop (B) · sent again after "Start them again" (C)** — one number, one message, one
+list; the only thing that changed between A and B is the stop. The same-run control is recorded as NOT done. Wherever decision 2
+says "Jay", read "the test number"; its eight steps keep their order.
+
+**The tools** (both read-only, both exit non-zero unless what they were asked is true):
+
+| Tool | Key | Reads | Exit |
+|---|---|---|---|
+| `scripts/live/marketing-preflight.mjs` | `ops:marketing-preflight` | `now()` (the DATABASE's clock — every time rule is judged on it); `_prisma_migrations` (by name); `SystemConfig` (the live switch, the Marketing SMS settings, the licence-outreach record, the saved wordings — read to recognise an import attestation and to see that `source.phrase` and `adult.test` are saved); the test number's book row, its lists (name, member count), the newest basis per list, its stops, its newest ledger row, the holding account (role, status, switch, date of birth → an age band, never shown) and earlier campaign rows; the control's stops; the public home page (`?dpl=`) and `/api/health` (`sms.*`, a flag for the receipt secret — never the secret); the ledger file | 0 every row GO · 1 a NO-GO · 2 not run |
+| `scripts/live/marketing-campaign-evidence.mjs` | `ops:marketing-campaign-evidence` | `now()`; one campaign: its row, its recipient rows (masked), the `SmsMessage` rows of those rows and of the composer's tests (for each, only whether it went to the TEST number — a yes/no computed in SQL, never the number), its E24 audit rows (through an allow-list), the live switch's last eight audit rows, the named people's stops and ledger timeline; the stop token only under `--show-stop-link`; the ledger file. No network call | 0 every expectation holds and the ledger took the count · 1 not proven / a violation / the ledger refused / no such campaign · 2 not run |
+
+Both go through ONE Postgres transaction — REPEATABLE READ, so their dozen reads are one snapshot — whose first statement is
+`SET TRANSACTION READ ONLY` (read back; nothing runs unless the database says `on`); every other statement is a SELECT.
+**Before anything is loaded**, each tool rewrites Railway's PRIVATE database host (`postgres.railway.internal`, which `railway run`
+hands this PC and only Railway resolves) to the public proxy — exactly as `ops:provision-staff` does, the user, password and
+database untouched — loads the shared core by a DYNAMIC import (a static import is evaluated first: the bug the marketing referee-keys door
+had on production), and refuses in ONE line, exit 2, to start from a directory that is not the checkout it belongs to (the repo's
+imports resolve through that directory's `tsconfig.json`). `DATABASE_URL` is never printed. The numbers arrive as `--test=` and
+`--control=`, are judged by the repo's numbering plan, and print only as the repo's mask (`+255••••NN`); an output filter behind
+that takes any whole number the tool was given — in any spelling: dots, slashes, spaces, dashes, zero-width marks, another
+script's digits, next to a letter or a digit — the database address and every secret-named value out of any line. They select no
+person's name, e-mail, address, message body, `ip`, `userAgent` or hash; **the one name they select is a contact LIST's** (shown only
+when it reads as a plain label, else hidden). The pre-flight's only network calls are two GETs of the public site, the home page and
+`/api/health`; ⚠️ the second makes the SERVER refresh its cached SMS balance from the SMS vendor (a balance query, not a message,
+bounded and rate-limited on the server) — the only thing either tool can make anything else do. Both run through `tsx` (they import
+the repo's pure modules). **Run them through `npm run -s`: npm's banner echoes the whole command line — the typed number with it.**
+
+**The pre-flight's rows** (`build · health · migrations · switch · settings · source · window · rail · webhook · credit · ledger ·
+test-number · test-book · test-lists · test-consent · test-cycle · test-fresh · control`), each GO / NO-GO with its reason. The
+**control** row is n/a without `--control` (the fallback). Every time rule reads the database's clock; the report says whose clock it
+used and how far this machine's is from it.
+- **`source`** — the newest saved `source.phrase` is not blank (the composer will not save a campaign without a source line) and,
+  while licence outreach is OPEN, the 18+ sentence of the typed-number test (`adult.test`) is saved too (the composer refuses that test
+  up front without it). Only the version and the save date are shown, never the words.
+- **`test-lists`** — GO only when the test number is on a list with **EXACTLY ONE member**; that list is named as **the one campaign A
+  must use**, and any larger list the number is also on is named as **never to pick**. A larger list alone is NO-GO ("the drive list
+  must hold the test number alone"): a campaign "to a book list" messages everyone on it.
+- **`test-consent` is the gate's consent-and-basis half, ported and held
+  to the real `mayReceiveMarketingSms` over a table of scenarios in the suite (a contact: stop × newest ledger row × licence record ×
+  book standing; an account: switch × newest row × record × age × status); it does not judge what the gate asks again at the send for an
+  account holder — self-exclusion, cooling-off, harm markers, an identity check's final refusal, under 25 with a break on record.**
+  An account whose 18th birthday falls within a day or two of now reads as the boundary and is NO-GO (stricter than the gate, never looser).
+- ⭐ **`test-cycle` is the trap the stop link sets for campaign C:** "Start them again" writes a new newest ledger row (an SMS-naming
+  yes from the opt-out page, no officer behind it), so a CONTACT whose 18+ rested on an import-attestation row loses that evidence
+  at the moment of the lift — C would then be SKIPPED `age_unknown` — unless a list basis covers them (or an account holds the
+  number, whose age is the account's). The pre-flight models the two acts and says so BEFORE anything is sent.
+- **`test-fresh`** — NO-GO while any earlier campaign row, in any status, holds the test number.
+- **`ledger`** — see "The ledger": a missing file is NO-GO unless `--new-ledger`.
+
+**The evidence's expectations** — `--expect=<outcome>:<who>[,…]`, who = `test` | `control`: `sent` (SENT or DELIVERED, and a message of
+the row is on the wire) · `delivered` (a receipt moved the row) · `skipped` (SKIPPED `suppressed` with NO message on the wire;
+`skipped=<reason>` names another gate reason) · `stopped` (an active WITHDRAWN stop from the link, made after this campaign's message —
+E30) · `resumed` (that stop lifted from the link, and the newest ledger row is that yes). Also `--expect-sends=<n>` (the exact count
+of chargeable messages: the composer test's AND the campaign's), `--expect-audit=<marketing.* action>[,…]` (those E24 rows exist),
+`--label=<A|B|C|T>` (letters and digits, never a number: a run of five digits, or anything the number wall would change, is refused),
+`--look` (look, no verdict), `--show-stop-link`, `--new-ledger`. ⭐ **A missing row is never a refusal** (it fails every
+outcome but `stopped`/`resumed`); **a skip for another reason proves nothing about the stop**; and — **whatever was asked, a verdict or
+only a look** — these are VIOLATIONS that turn the exit to 1 by themselves, and the RESULT line says so: **a message handed to a
+named number after a stop was in force when the engine took them up; a recipient row with MORE THAN ONE message (the engine sends
+one per row); a message — the composer's tests included — to any number that is not the test number** (computed in SQL as a yes/no;
+the number is never selected). With the gate removed, B's `skipped:test` FAILS because the row is SENT (the plan's RED). The evidence says
+plainly that **the engine records no gate or send milliseconds** (the slice's `gateMs`/`sendMs` go to the page's driver and are not
+stored); what it prints is what the rows' own stamps give — people per claim, claim → hand-over, the gap between claims.
+
+**The ledger** — `.qa-shots/marketing-setup/U52a/ledger.json` (gitignored), written atomically by every evidence run: one entry per
+campaign id holding its chargeable count (the composer test's + the campaign's), its label, the test/control outcomes and the
+verdict; every string passes the number wall on its way to the disk. A message counts unless it provably never left (a FAILED row with
+no receipt); QUEUED, UNKNOWN, ACCEPTED, DELIVERED and a receipt-failed row all count. An entry is a high-water mark (a re-run counts
+nothing twice; a lower later read never shrinks it).
+**The cap is six and is a constant of the code: a run whose count would make a seventh is REFUSED — the file is not updated, the
+evidence says `LEDGER REFUSES`, the exit is 1 — and the drive stops.** A ledger file that is not JSON, names another cap or holds a
+bad entry stops the run (exit 2) and is never reset for you. **Every run prints the ledger's ABSOLUTE path and when it was last
+written, so a ledger in the wrong checkout shows at once. A MISSING file is created only on purpose:** the pre-flight's `ledger` row
+is NO-GO and the evidence stops (exit 2) unless `--new-ledger` says the drive has not begun — the flag belongs to the first runs only
+(steps 0, 1 and 2 of the sheet) and is REFUSED once a ledger exists; a ledger that goes missing later means the counts were lost or
+this is another checkout, and the drive STOPS. The pre-flight only reads the ledger; the first evidence run (step 2) writes it.
+`ops:marketing-campaign-evidence -- --ledger [--sends=n]` prints the table (the cross-campaign discrimination: A sent · B refused ·
+C sent) and, with `--sends`, whether n more would fit — it needs no database. The pre-flight's `--sends=n` (default 1) refuses a step
+whose sends would pass the cap.
+
+**Before the day** — each is a fact the pre-flight or the lead checks; none is assumed.
+1. **The scratch-PostgreSQL probe is green — REQUIRED.** `npm run -s db:probe-marketing-u52a`, run by the lead under the heavy-node lock
+   from the checkout that will run the tools (it boots the scratch cluster like the other `db:probe-*` keys, migrates it from empty,
+   seeds the drive's story with made-up numbers and runs BOTH shipped tools end to end through a real Prisma client): the pre-flight's
+   GO and NO-GO rows, the evidence's A / B / "gate removed" / C verdicts and exit codes, the types read, the audit order across seq
+   9 → 10, the READ ONLY refusal (25006), the REPEATABLE READ transaction and an every-table fingerprint equal before and after. It
+   touches no production. **It was written without a database and has not yet run**; a `SEED ·` line is the probe's own row refused,
+   any other FAIL is a finding about a tool. Step 0 is not run on production until it is green.
+2. **Ali's word**, before the first real SMS (the plan's line): the switch window (G1), the TZS 36 cap (G3), the day. Inside
+   08:00–20:00 EAT (the pre-flight's `window` row; the engine and the test both obey it).
+3. **The build**: production serves the tree the whole predeploy chain was run on (`--expect-dpl=<sha>`, read from the page).
+4. **The QA Growth login** exists, role GROWTH, with the growth act grant (write, test, confirm, start). A login that cannot read
+   numbers sees masked rows and, below ten people, only "On campaign 1" — the evidence tool is then the reader, not the page.
+5. **The test number is in the contact book, on a list of ONE** — the pre-flight's `test-lists` row names it — with a consent or basis
+   the gate clears, and one that SURVIVES the stop link's two acts (`test-cycle`). The list's name is the drive's own; its numbers are its own.
+6. **The source line is saved** (`source`): the newest `source.phrase` is not blank — and, while licence outreach is open, `adult.test`.
+7. **The composer test's route is decided** (decision point, below).
+8. **The receipt secret is set** (`webhook`) and Ali or Jay can read the Blackball portal's Out SMS `COUNT` (segments) before and
+   after, for the comparison.
+9. **The credit** covers the codes reserve plus the drive (`credit`).
+
+**The sheet.** `<A>`/`<B>`/`<C>` = the campaign ids — the `draft=` value in the composer's address after "Save draft", which is also the
+tail of `/admin/campaigns/<id>`; `<sha>` = the commit production should serve. **Run from the checkout of the commit production runs —
+after STEP 54 that is main: `cd F:\kipindi-m14-base`** — for the whole drive (the ledger lives beside it; the tools refuse to start
+from anywhere else). Every command is `railway run --service 50pick npm run -s ops:… -- …` (`railway run` sets `DATABASE_URL`; the
+tools reach the public proxy themselves; `-s` keeps npm's banner, which echoes the typed number, off the screen). A flag may be
+repeated (`--expect=…` twice) or take a comma list; **in PowerShell a comma outside quotes splits the argument, so the sheet repeats
+the flag.** Steps 0, 1 and 2 carry `--new-ledger` (no ledger exists before step 2's evidence writes it); no later step does.
+
+| # | When | Who | Page · the control | Read back | Evidence after it | Ledger |
+|---|---|---|---|---|---|---|
+| 0 | before anything is opened | the lead | — | — | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-dpl=<sha> --new-ledger` → **RESULT: GO — 17 of 17 rows (1 not applicable)** (`control` n/a); `test-lists` names the drive list | 0 |
+| 1 | switch opened for 2 h | the lead through the audited ops door on Ali's G1 word — or Ali on the card. **Never the QA login** (opening is owner-only) | Admin → System, the "Marketing SMS sending" card ("Switch on…" → duration → "Switch on"); or `railway run --service 50pick npm run -s ops:marketing-live-switch -- open --minutes 120 --by "Claude for Ali (G1)" --reason "U52a live drive"` | the card: "On until HH:MM EAT"; the door: `DONE: ON — opened at … it switches itself off at …` | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=open --new-ledger` → the `switch` row GO (20+ min left) | 0 |
+| 2 | the composer test — **send 1** | QA Growth | `/admin/campaigns/new` → Message card: name, Swahili message (it must begin "50pick", lower case; one segment) → "Save draft" → Test send card → "Send the test to" → the route below → "Send the Swahili test" | "Handed to the network at HH:MM — check your phone." (own) / "… ask the person to check their phone." (typed) — ⛔ never "delivered" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect-sends=1 --expect-audit=marketing.campaign_test --label=T --new-ledger` → writes the ledger (1 of 6); "to the test number: yes" on the message | 1 |
+| 3 | **Campaign A** — send 2 | QA Growth | the same draft: Audience card → Who "Contact book" → List "<the drive list the pre-flight named>" → "Save draft" → Confirm card "Confirm audience…" → dialog "Confirm this person?" → "Confirm audience" ("Confirmed — nothing has been sent. Start it from its own page.") → `/admin/campaigns/<A>` → "Start…" → dialog "Start sending to up to 1 person?" → "Start sending". **Keep the page open.** | "Preparing the list — 0 of 1 people written." → "Sending — 0 of 1 done." → "Finished — nobody on this campaign is left to message."; "Handed over 1"; the receipt moves the chip to "Delivered" in seconds | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect-sends=2 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=A --show-stop-link` (a `SENT` row before the receipt: wait a minute, run it again; no receipt after 15 minutes is a finding, not a retry) | 2 |
+| 4 | **the stop tap** | QA Growth's browser (no sign-in) | open `https://www.50pick.tz` + the `/s/<token>` line the step-3 command printed → "Acha ofa na habari kwa SMS" ("Stop offers and news by SMS" in English) | heading "Ofa na habari kwa SMS zimesimamishwa" / "Offers and news by SMS stopped"; "Imekamilika. Hutapokea tena …" / "Done. You will not get offers and news by SMS from 50pick again." | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect=stopped:test --expect-sends=2 --label=A` | 2 |
+| 5 | **Campaign B** — zero sends | QA Growth | `/admin/campaigns/<A>` → "Make a copy" ("A copy was made as a new draft.") → the composer → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<B>` → "Start…" → "Start sending" | "Finished — nobody on this campaign is left to message."; "Not sent (checks) 1" under "Stopped (on the stop list)" (if the login may read numbers) | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <B> --test=+255772619619 --expect=skipped:test --expect=stopped:test --expect-sends=0 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=B` | 2 |
+| 6 | **"Start them again"** | QA Growth's browser | the same `/s/<token>` page → "Anza kupokea tena" ("Start them again") | "Umechagua kupokea ofa na habari kwa SMS tena" / "You chose to get offers and news by SMS again"; "The stop on offers and news by SMS to this number is lifted, and your choice is recorded." | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <B> --test=+255772619619 --expect=skipped:test --expect=resumed:test --expect-sends=0 --label=B` | 2 |
+| 7 | **Campaign C** — send 3 | QA Growth | "Make a copy" of A or B → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<C>` → "Start…" → "Start sending" → **"Pause" the moment the headline reads "Preparing the list" or "Sending — 0 of 1 done"** (a one-person run is over in seconds) → "Resume" → finish | "Paused — nothing new starts sending until you resume. A group already being sent may still go out." → "Sending again." → "Finished — …" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <C> --test=+255772619619 --expect=delivered:test --expect=resumed:test --expect-sends=1 --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_paused --expect-audit=marketing.campaign_resumed --expect-audit=marketing.campaign_finished --label=C` | 3 |
+| 8 | the switch closed and read back | the lead through the ops door, or Ali on the card ("Switch off now") | `railway run --service 50pick npm run -s ops:marketing-live-switch -- close --by "Claude for Ali (G1)" --reason "U52a drive done"`, then `railway run --service 50pick npm run -s ops:marketing-live-switch -- status` | `DONE: switched off …` then `OFF (absent)` | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- --ledger` (the table: A sent · B refused · C sent; 3 of 6) and, for the switch row alone, `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=closed` (its other rows mean nothing after the drive — `test-fresh` is NO-GO by then) | 3 |
+
+**Spare:** three sends for ONE retry of any step (a retried step is a new campaign id and a new label: D). **Decision points and
+traps, read before step 2:**
+1. **The composer test's route.** The test card sends to "My own number — +255••••NN" (the QA login's ACCOUNT phone) or to "Another
+   number" (typed; it needs the 18+ box ticked — "the person who uses this number is 18 or older" — the licence-outreach record OPEN
+   (the pre-flight prints it beside `test-consent`), the saved `adult.test` wording and the campaign's source line set; it is
+   refused up front while any of them is missing). **Press "My own number" only if the masked number shown equals the test
+   number's mask.** If neither route reaches the test number without texting anyone else, step 2 is NOT made (the spare grows to
+   four) and the drive says so. Whichever route is pressed, step 2's evidence prints "to the test number: yes/no" for the test message,
+   and a "no" is a VIOLATION.
+2. **The 18+ trap** (above): a NO-GO on `test-cycle` is fixed BEFORE the switch is opened — by a covering list basis (U33b-L), or by
+   the number being an account's — never by skipping C.
+3. **The Pause in C is a race** with a one-person run. If the page finished before the press, `--expect-audit=…campaign_paused`
+   fails and the pause is not proven on C: that is a retry (D), not a pass.
+4. **A SKIPPED row costs nothing.** If A's test number is SKIPPED, the evidence prints the skip reason and detail; fix the cause;
+   the ledger has not moved.
+5. **Never press Start on a second campaign while another is PREPARING or RUNNING**, and never push while one is (§5 rule 8).
+6. **Campaign A's audience is the list the pre-flight named, and no other.** The list holds the test number alone; any other list
+   would message everyone on it.
+
+**Stop at once, and tell Ali,** on: a NO-GO you did not expect (a `ledger` NO-GO for a missing file included); an evidence run that is
+NOT PROVEN or says VIOLATION (a message after a stop, a double send, a message to another number — also on a `--look`); `LEDGER
+REFUSES`; an SMS to any number but the test number; a campaign that pauses for a reason the page states (read it; do not Resume
+blind); the window closing; the switch reading closed while a step is open.
+
+**After the drive.** (a) The ledger's total against the portal's `COUNT` for the same window (the portal also counts login codes —
+say so when comparing); (b) delete Claude's QA test users when done (Ali's permission) — the recipient and message rows stay (they
+are the record that we messaged somebody; GN 478T reg 51(1)), and the audit rows keep the officer's id; (c) **decision 4**: the
+evidence prints, per claim, how long the claim → hand-over took. One-person slices measure the single-recipient path — they can
+say "the path took X s", **not** what a 20-person gate costs, so they do NOT re-derive `SLICE_START` (20), `SLICE_GATE_BUDGET_MS`
+(10 s) or `REAP_AFTER_MS`, and `STEP_GAP_MS` (2 s, `live-driver.tsx`) is the driver's own: record the numbers in the plan; the
+constants change only by a commit; (d) record in the plan that the same-run control was NOT done (Q4's fallback).
+
+**What the builder did not do, and what a GO does not mean.** The SQL of both tools was checked against `schema.prisma` and run
+against stand-ins, never against a database — which is why the scratch probe of "Before the day" 1 is REQUIRED before production (a
+failing read is named — `NOT RUN … [read: contact]` — without echoing the statement). The suite now pins each statement's contract
+(its filters, its equalities, its ORDER BY and direction), refuses a bare `ORDER BY` name that is also an `AS` alias of its own
+SELECT, and holds every call to the values it must be bound to; the trap that led to those rules was found by reading, not by running:
+both audit reads select `"seq"::text AS seq`, and PostgreSQL resolves a bare `ORDER BY "seq"` to that OUTPUT column — text order, 10
+before 9, and "the newest eight" the wrong eight — so they order by `"AuditLog"."seq"`.
+`test-consent` GO means the consent-and-basis half clears the number and nothing the pre-flight can read refuses it; the RG half
+for an account holder is the gate's at the send. The credit and the build come from public endpoints, not the admin pages. The
+ledger counts message rows (the engine caps a message at one segment, so a send is a segment; the portal's `COUNT` is the check).
 
 ---
 
