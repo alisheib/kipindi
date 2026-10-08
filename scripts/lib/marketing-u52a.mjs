@@ -624,7 +624,9 @@ export function recordLedger(ledger, campaignId, entry) {
   const others = Object.entries(ledger.entries).filter(([id]) => id !== campaignId).reduce((n, [, e]) => n + e.chargeable, 0);
   const would = others + chargeable;
   if (would > SEND_CAP) return { ok: false, reason: "over_cap", would };
-  const next = { ...ledger, entries: { ...ledger.entries, [campaignId]: { ...entry, chargeable } } };
+  // A look carries no verdict and no label: it counts the sends and leaves what an earlier proof recorded.
+  const keep = entry.verdict === "look" && prev ? { label: prev.label ?? entry.label, outcomes: prev.outcomes ?? entry.outcomes, verdict: prev.verdict ?? entry.verdict } : {};
+  const next = { ...ledger, entries: { ...ledger.entries, [campaignId]: { ...entry, ...keep, chargeable } } };
   return { ok: true, ledger: next, total: would };
 }
 

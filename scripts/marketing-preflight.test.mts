@@ -904,6 +904,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     await run("resumed:test on a campaign never stopped", W.evA(), ["--expect=resumed:test"], 1);
     await run("resumed:test after start-again (C)", W.evC(), ["--expect=sent:test,resumed:test", "--expect-sends=1"], 0, "RESULT: PROVEN");
     await run("resumed:test while still stopped", bW(), ["--expect=resumed:test"], 1);
+    await run("repeated --expect and --expect-audit flags (PowerShell-safe)", bW(), ["--expect=skipped:test", "--expect=stopped:test", "--expect-audit=marketing.campaign_confirmed", "--expect-audit=marketing.campaign_started"], 0, "RESULT: PROVEN");
     await run("audit rows named and present (A)", W.evA(), ["--expect=delivered:test", "--expect-audit=marketing.campaign_confirmed,marketing.campaign_started,marketing.campaign_finished"], 0, "EXPECT audit marketing.campaign_started");
     await run("audit row named and absent (A was never paused)", W.evA(), ["--expect=delivered:test", "--expect-audit=marketing.campaign_paused"], 1, "0 rows of E24");
     await run("audit rows of a pause and a resume (C)", W.evC(), ["--expect=sent:test", "--expect-audit=marketing.campaign_paused,marketing.campaign_resumed"], 0);
@@ -1118,9 +1119,13 @@ async function runAssertions(impl: Impl): Promise<void> {
     const second = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, A_ARGS), { ledgerText: first.ledgerText });
     const total2 = (t: string | null) => { const p = LIB.parseLedger(t); return p.ok ? LIB.ledgerTotal(p.ledger) : -1; };
     if (total2(first.ledgerText) !== 2 || total2(second.ledgerText) !== 2) wrong.push(`a re-run counted ${total2(second.ledgerText)}`);
-    // a look is counted too (the sends happened either way)
+    // a look is counted too (the sends happened either way) — and it leaves a proof's label, outcomes and verdict as they were
     const lookRun = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, ["--look"]));
     if (total2(lookRun.ledgerText) !== 2) wrong.push("a look did not count the sends");
+    const afterProof = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, ["--look"]), { ledgerText: first.ledgerText });
+    const kept = LIB.parseLedger(afterProof.ledgerText);
+    const keptEntry = kept.ok ? kept.ledger.entries[W.CAMPAIGN] : null;
+    if (!(keptEntry && keptEntry.verdict === "pass" && keptEntry.label === "A")) wrong.push(`a look after a proof overwrote its verdict: ${keptEntry ? `${keptEntry.verdict}/${keptEntry.label}` : "no entry"}`);
     // a failing verdict is counted too
     const failRun = await ev(impl, W.evA(), W.evArgv(W.CAMPAIGN, [`--test=${W.TEST.raw}`, "--expect-sends=0"]));
     if (failRun.code !== 1 || total2(failRun.ledgerText) !== 2) wrong.push("a failing verdict did not count the sends");
@@ -1367,6 +1372,12 @@ if (!PROVE_RED) {
       impl: withLib({ recordLedger: (ledger: { entries: Record<string, { chargeable: number }> }, id: string, entry: { chargeable: number }) => {
         const others = Object.entries(ledger.entries).filter(([k]) => k !== id).reduce((n, [, e]) => n + e.chargeable, 0);
         return others + entry.chargeable > 6 ? { ok: false, reason: "over_cap", would: others + entry.chargeable } : { ok: true, ledger: { ...ledger, entries: { ...ledger.entries, [id]: { ...entry } } }, total: others + entry.chargeable };
+      } }) },
+    { name: "R-L7 · a look overwrites the verdict and the label of an earlier proof", expect: [L.l1],
+      impl: withLib({ recordLedger: (ledger: { entries: Record<string, { chargeable: number }> }, id: string, entry: { chargeable: number }) => {
+        const real = LIB.recordLedger(ledger as never, id, entry as never) as { ok: boolean; ledger?: { entries: Record<string, object> } };
+        if (!real.ok || !real.ledger) return real;
+        return { ...real, ledger: { ...real.ledger, entries: { ...real.ledger.entries, [id]: { ...entry, chargeable: (real.ledger.entries[id] as { chargeable: number }).chargeable } } } };
       } }) },
     { name: "R-L3 · a re-run counts the campaign again (entries add up)", expect: [L.l1],
       impl: withLib({ recordLedger: (ledger: { entries: Record<string, { chargeable: number }> }, id: string, entry: { chargeable: number }) => {

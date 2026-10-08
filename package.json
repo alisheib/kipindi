@@ -161,6 +161,7 @@
     "db:probe-contacts-remove-bound": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/contacts-remove-bound-pg-probe.mts",
     "db:probe-list-basis": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/list-basis-pg-probe.mts",
     "db:probe-marketing-settings": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/marketing-settings-pg-probe.mts",
+    "db:probe-marketing-u52a": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/marketing-u52a-pg-probe.mts",
     "ops:mint-qa-mobile": "node scripts/live/mint-qa-mobile.mjs",
     "qa:agent-drive": "node scripts/live/agent-programme-drive.mjs",
     "qa:agent-visual": "node scripts/live/agent-v1-visual.mjs",

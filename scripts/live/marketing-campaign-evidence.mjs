@@ -178,8 +178,10 @@ export async function readEvidenceFacts(tx, { campaignId, testKey, controlKey, w
   facts.testMessages = await tx.$queryRaw`/* u52a:test-messages */ SELECT m."reference", m."purpose"::text AS purpose, m."status"::text AS status, m."bodyLen" AS body_len, m."dlrStatus" AS dlr_status, m."dlrDesc" AS dlr_desc, m."providerMsg" AS provider_msg, m."attempts", m."targetId" AS target_id, m."createdAt" AS created_at, m."sentAt" AS sent_at, m."deliveredAt" AS delivered_at, m."failedAt" AS failed_at, m."balanceTzs"::text AS balance_tzs FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignTest' AND m."targetId" = ${campaignId} ORDER BY m."createdAt", m."reference" LIMIT 20`;
   facts.testMessageCounts = await tx.$queryRaw`/* u52a:test-message-counts */ SELECT m."status"::text AS status, (m."dlrStatus" IS NOT NULL) AS has_receipt, count(*)::int AS n FROM "SmsMessage" m WHERE m."targetType" = 'SmsCampaignTest' AND m."targetId" = ${campaignId} GROUP BY 1, 2`;
 
-  facts.audit = await tx.$queryRaw`/* u52a:audit */ SELECT "seq"::text AS seq, "createdAt" AS created_at, "category"::text AS category, "action", "actorId" AS actor_id, "payload" FROM "AuditLog" WHERE "targetType" = 'SmsCampaign' AND "targetId" = ${campaignId} ORDER BY "seq" LIMIT 200`;
-  facts.switchAudit = await tx.$queryRaw`/* u52a:switch-audit */ SELECT "seq"::text AS seq, "createdAt" AS created_at, "action", "payload" FROM "AuditLog" WHERE "targetType" = 'SystemConfig' AND "targetId" = 'marketing.sms.live' ORDER BY "seq" DESC LIMIT 8`;
+  // ⛔ ORDER BY "AuditLog"."seq", never a bare "seq": the select list ALIASES the cast as seq, and PostgreSQL reads a bare name in
+  // ORDER BY as the OUTPUT column first - the text - so 10 would sort before 9 (and "the newest eight" would be the wrong eight).
+  facts.audit = await tx.$queryRaw`/* u52a:audit */ SELECT "seq"::text AS seq, "createdAt" AS created_at, "category"::text AS category, "action", "actorId" AS actor_id, "payload" FROM "AuditLog" WHERE "targetType" = 'SmsCampaign' AND "targetId" = ${campaignId} ORDER BY "AuditLog"."seq" LIMIT 200`;
+  facts.switchAudit = await tx.$queryRaw`/* u52a:switch-audit */ SELECT "seq"::text AS seq, "createdAt" AS created_at, "action", "payload" FROM "AuditLog" WHERE "targetType" = 'SystemConfig' AND "targetId" = 'marketing.sms.live' ORDER BY "AuditLog"."seq" DESC LIMIT 8`;
 
   facts.people = {};
   for (const [role, key] of [["test", testKey], ["control", controlKey]]) {
