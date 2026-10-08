@@ -62,10 +62,6 @@
  * pepper, a write outside production's environment without --scratch, no application id, no referee place, a reason not
  * on the list, no `--by`, or `key` without a real console).
  */
-import {
-  backfillRefereeKeys, keyRefereeNumberByHand, recordRefereeContactReviewed, refereeKeyCensus, refereeKeysDoorVerdict,
-  unreadableRefereeApplications, REFEREE_KEYS_DOOR_SENTENCE,
-} from "../../src/lib/server/marketing/referee-exclusion.ts";
 import type { RefereeHandResult, RefereeKeyCensus } from "../../src/lib/server/marketing/referee-exclusion.ts";
 
 /** ⛔ The public proxy, before anything reads the database: `railway run` injects `postgres.railway.internal`, which does not
@@ -73,6 +69,13 @@ import type { RefereeHandResult, RefereeKeyCensus } from "../../src/lib/server/m
 if (process.env.DATABASE_URL) {
   process.env.DATABASE_URL = process.env.DATABASE_URL.replace(/@postgres[.]railway[.]internal(:[0-9]+)?/, "@turntable.proxy.rlwy.net:40357");
 }
+/** ⛔ …and only THEN the module that loads the store, by a DYNAMIC import: a static one is evaluated before this file's
+ *  first line, so the store was built on the private host and every read failed off Railway (STEP 53's first census on
+ *  production, 2026-10-08 — `ops:provision-staff`'s order, which never had the bug). The type import above is erased. */
+const {
+  backfillRefereeKeys, keyRefereeNumberByHand, recordRefereeContactReviewed, refereeKeyCensus, refereeKeysDoorVerdict,
+  unreadableRefereeApplications, REFEREE_KEYS_DOOR_SENTENCE,
+} = await import("../../src/lib/server/marketing/referee-exclusion.ts");
 
 const NL = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
