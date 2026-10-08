@@ -203,6 +203,13 @@ const ROOT_SURFACES: Surface[] = [
      wears this bar shares, so a z-index drift on ANY of them fails here — where before it could
      only see `/markets`. The rung, the note and every ranking assertion below are unchanged. */
   { id: "discovery-bar",       file: "src/components/ui/query-bar.tsx",                   find: /kp-discovery-bar sticky top-\[56px\] z-(\d+)/,               z:   20, note: "the shared query bar's filter rail — the lowest chrome rung" },
+  /* NAMED 2026-10-08. `test:stacking` 6.1 had been red on main since 2ab8830e ("The LIVE strip comes back", 2026-09-26),
+     which added this rule and named nothing. The strip's end cap (an inline flex item at z-index 10) overlaps the run's last
+     40px and paints a solid fade over the focus ring's right edge, so the focused scroller steps ONE over it. It is a real
+     root-plane value, not a local one: `.ticker-strip` is `position: relative` with NO z-index and AppShell's wrapper has none,
+     so nothing seals the strip and its members order against the chrome. What keeps that harmless is that it is the lowest
+     rung there is - under every bar (law 3.x below). Found by the sweep in §6, named here, and the boundary stayed at 10. */
+  { id: "ticker-focus-lift",   file: "src/app/globals.css",                               find: /\.ticker-viewport:focus-visible \{[^}]*z-index:\s*(\d+);/,   z:   11, note: "the LIVE strip's focus-ring lift — one over its own z-10 end cap, and under every bar" },
 ];
 
 /* A surface sealed inside another surface's stacking context: `Trapped`, in `./lib/stacking-rows.mts`. */
@@ -332,6 +339,7 @@ const LAWS: Array<[string, string, string]> = [
   ["needle", "top-app-bar",          "⭐ THE NEEDLE RULE: same, on desktop"],
   ["bottom-nav", "top-app-bar",      "the phone rail sits over the header when both are on screen"],
   ["top-app-bar", "discovery-bar",   "the board's filter rail scrolls under the header, not over it"],
+  ["discovery-bar", "ticker-focus-lift", "the strip's ring lift only has to clear the strip's own end cap; it must never rise to the chrome, so a focused strip scrolls under the bars like any other content"],
   // S6 · needle > journey-tabs > journey-top-bar > discovery-bar: the journey chrome sits where its classic twin sits.
   ...JOURNEY_LAWS,
 ];
@@ -678,20 +686,39 @@ for (const [file, why] of AWAITING_MOUNT) {
 console.log("\n§6 · the closed rung set — no new hand-typed z-index");
 // ===========================================================================
 /**
- * The root plane (z ≥ 20) is a CLOSED SET. Every value below is owned by a named
- * surface above, so a new literal anywhere in `src/` fails until it is given a name
- * and a place in the ladder. That is the whole anti-decay property: today's ~40
- * hand-typed literals were all added one reasonable-looking line at a time.
+ * The root plane (every z above LOCAL_PLANE_MAX, so 11 and up) is a CLOSED SET. Every value
+ * below is owned by a named surface above, so a new literal anywhere in `src/` fails until
+ * it is given a name and a place in the ladder. That is the whole anti-decay property:
+ * today's ~40 hand-typed literals were all added one reasonable-looking line at a time.
  *
  * The local plane (z ≤ 10) is deliberately NOT closed — those numbers order children
  * INSIDE one component's own stacking context (a card watermark, a sticky table head,
  * a chart readout) and never compete with the surfaces above.
+ *
+ * ⭐ 11 IS THE ONE RUNG BETWEEN THE TWO (the LIVE strip's focus-ring lift, `ticker-focus-lift`
+ * above), and the boundary did NOT move to fit it. Raising LOCAL_PLANE_MAX to make 6.1 green
+ * would have un-policed 11–19 for everything in `src/`; naming the one value that is real
+ * keeps 12 as red as it was. 6.1b holds that line.
  */
 const LOCAL_PLANE_MAX = 10;
 const KNOWN_ROOT_RUNGS = new Set<number>([
-  20, 30, 40, 45, 50, 60, 61, 70, 71, 79, 80,
+  11, 20, 30, 40, 45, 50, 60, 61, 70, 71, 79, 80,
   100, 120, 130, 150, 200, 1600, 1700, 1800, 2000, 9000, 9999,
 ]);
+
+/** The five spellings of a z-index the sweep reads: Tailwind arbitrary and scale, an inline style, a JSX prop, CSS. */
+const Z_PATTERNS = [
+  /(?:^|[\s"'`:{])z-\[(\d+)\]/g,
+  /(?:^|[\s"'`:{])z-(\d+)(?=[\s"'`}]|$)/g,
+  /zIndex:\s*(\d+)/g,
+  /zIndex\s*=\s*\{?(\d+)/g,
+  /z-index:\s*(\d+)/g,
+];
+/** Every z value a decommented body declares, in any of the five spellings. */
+const zValuesIn = (body: string): number[] => Z_PATTERNS.flatMap((p) => [...body.matchAll(p)].map((m) => Number(m[1])));
+/** The root-plane values that no named rung owns. 6.1 judges the tree by it and 6.1b judges a fixture by it. */
+const unnamedRootZs = (values: Iterable<number>): number[] =>
+  [...new Set(values)].filter((v) => v > LOCAL_PLANE_MAX && !KNOWN_ROOT_RUNGS.has(v)).sort((a, b) => a - b);
 
 const seen = new Map<number, string[]>();
 const allFiles: string[] = [];
@@ -705,28 +732,39 @@ const allFiles: string[] = [];
 
 for (const f of allFiles) {
   const r = relOf(f);
-  const body = decomment(readFileSync(f, "utf8"));
-  const pats = [
-    /(?:^|[\s"'`:{])z-\[(\d+)\]/g,
-    /(?:^|[\s"'`:{])z-(\d+)(?=[\s"'`}]|$)/g,
-    /zIndex:\s*(\d+)/g,
-    /zIndex\s*=\s*\{?(\d+)/g,
-    /z-index:\s*(\d+)/g,
-  ];
-  for (const p of pats) for (const m of body.matchAll(p)) {
-    const v = Number(m[1]);
+  for (const v of zValuesIn(decomment(readFileSync(f, "utf8")))) {
     const at = seen.get(v) ?? [];
     if (!at.includes(r)) at.push(r);
     seen.set(v, at);
   }
 }
 const rootValues = [...seen.keys()].filter((v) => v > LOCAL_PLANE_MAX).sort((a, b) => a - b);
-const unknown = rootValues.filter((v) => !KNOWN_ROOT_RUNGS.has(v));
+const unknown = unnamedRootZs(seen.keys());
 ok("6.1 every root-plane z in src/ is a named rung",
    unknown.length === 0,
    unknown.map((v) => `z=${v} (${(seen.get(v) ?? []).join(", ")})`).join(" · ") +
      " — name it in ROOT_SURFACES/TRAPPED and add it to KNOWN_ROOT_RUNGS, or reuse an existing rung",
    `${rootValues.length} rungs, all accounted for: ${rootValues.join(", ")}`);
+// CONTROL — 6.1 can fail. A sweep that cannot see an unnamed z is the disease this file exists for, and 6.1 sat red
+// on main from 2ab8830e until the ticker's 11 was named. Each of the five spellings is planted with a z
+// just above the local plane that nothing names (12 to 16) and must be reported; the ticker's real 11 must not be.
+// It also pins the boundary: widening LOCAL_PLANE_MAX to make 6.1 green would stop 12 being reported, and fail here.
+{
+  const spellings: Array<[number, string]> = [
+    [12, ".kp-plant { position: relative; z-index: 12; }"],
+    [13, '<div className="fixed z-[13]" />'],
+    [14, '<div className="relative z-14" />'],
+    [15, "<div style={{ zIndex: 15 }} />"],
+    [16, "<Modal zIndex={16} />"],
+  ];
+  const missed = spellings.filter(([z, body]) => unnamedRootZs(zValuesIn(decomment(body))).join() !== String(z)).map(([z]) => z);
+  ok("6.1b CONTROL — an unnamed z (12–16, one per spelling the sweep reads) is reported, and the ticker's named 11 is not",
+     missed.length === 0 && unnamedRootZs([11]).length === 0,
+     missed.length > 0
+       ? `the sweep did not report z=${missed.join(", ")}: 6.1 cannot go red for the thing it exists to catch`
+       : "11 (the ticker's focus-ring lift) is no longer a named rung",
+     "five spellings, all reported");
+}
 // The reverse direction — a rung the contract names but nothing paints at is fiction,
 // which is precisely how the Tailwind ladder rotted.
 const orphanRungs = [...KNOWN_ROOT_RUNGS].filter((v) => !seen.has(v)).sort((a, b) => a - b);
