@@ -323,6 +323,7 @@
     "test:contacts-staging-db": "tsx scripts/db-scratch.mts --run npx tsx scripts/live/contacts-staging-pg-probe.mts",
     "test:contacts-audience": "tsx scripts/contacts-audience.test.mts",
     "red:contacts-audience": "tsx scripts/contacts-audience.test.mts --prove-red",
+    "qa:contacts-import-files": "tsx scripts/lib/real-world-contact-files.mts",
     "test:contacts-import": "tsx scripts/contacts-import.test.mts",
     "red:contacts-import": "tsx scripts/contacts-import.test.mts --prove-red",
     "test:contacts-boundary": "tsx scripts/contacts-boundary.test.mts",

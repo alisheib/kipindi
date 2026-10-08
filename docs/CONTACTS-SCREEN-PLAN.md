@@ -30,18 +30,52 @@ then: "the contacts screen"):
     import-adopt, import-preflight, import-file, import-mapping, import-mapping-next, import-apply, import-commit,
     import-done, and the dev seed POST /api/dev-test/marketing-contacts-seed?u30=1.
 
-▶ NOW: C1 (this file, the claim) → C2, the audit of what is live on the screen today.
+▶ NOW (2026-10-09 ~01:45 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
+  · C1 LIVE (`28fd214e`): the lane claimed.
+  · THE DESIGN (§4) and THE CONTRACT `src/lib/contacts/import-flow.ts` — committed `750175c2` on branch
+    `contacts-import` (pushed to origin; NOT on main: nothing calls the contract yet).
+  · BUILDING (agents writing files, nothing run yet), in the worktree `C:\kipindi-s15`, branch `contacts-import-build`
+    (cut from `750175c2`): the SERVER half (DAL members in both twins, the migration `ContactImport.targetListId`,
+    import-check.ts, import-commit.ts, import-actions.ts, the check/commit suites, a dal-parity section, the `?u30=1`
+    seed world) and the BROWSER half (import-read.ts, import-loop.ts, the dialog and its panels, the page-head button,
+    the flow suite, the drive `scripts/live/contacts-import-drive.mjs`). When they land: ONE battery under the lock,
+    an adversarial review, fixes, then push to main as C3–C5 with this file updated.
+  · THE TEST FILES ✅ — `scripts/lib/real-world-contact-files.mts`, run as `npm run qa:contacts-import-files` (add
+    `-- --big` for the five big ones: 150,000-row CSV and vCard, a 200,001-row file, a 50,000-row workbook, a 42 MB
+    vCard with photos). Its first run (2026-10-09) wrote 28 files + `manifest.json` (the ground truth per row) into
+    `.qa-shots/contacts-screen/files/` (git-ignored — re-generate, never commit them); every phone value is checked
+    against `parseTzNumber` before a file is written. ⛔ It must NOT live in `scripts/contacts-import/` (that runner
+    imports every module there). The 40-row production set uses `+255 710 000 0NN` — possibly real people's numbers:
+    never send to them; delete them right after the live check (`?tag=qa-import-check`).
+  · C2 (the visual audit of the LIVE screen) is queued behind this PC's heavy-node lock (the Vodacom session held it);
+    shots go to `.qa-shots/contacts-screen/C2/` (git-ignored) — findings will be written HERE, not left in shots.
+  · ⏳ ASKED Ali (2026-10-09 ~01:15 EAT; defaults if unanswered = (a)): 1 who imports (a: Growth + Admin) · 2 several
+    numbers per person (a: each its own contact; the build starts with main-number-only, S15-4) · 3 a "pick from this
+    phone" button (a: no) · 4 a live check on production with Claude's own temporary login and a 40-row file, deleted
+    afterwards (a: yes — every production write still needs his click on the permission prompt).
+  ⛔ If this PC is gone: the branches `contacts-import` and `contacts-import-build` on origin hold everything —
+    `contacts-import-build` carries SNAPSHOT commits of the builders' unfinished files (e.g. `05f2e76c`, 2026-10-09
+    ~02:00 EAT: import-flow.ts, store.ts, prisma-dal.ts mid-edit) — never merge a snapshot alone; finish or re-run the
+    builds from §4 on top of it.
+  ⭐ AFTER A POWER-OFF OR REBOOT OF ALI-BLADE15 (Ali, 2026-10-09 ~02:00 EAT: "if the PC turns off, when I say proceed it
+    means we're up"): (1) `bash ~/heavy-node-lock.sh status` — if it names `contacts-c2` and no such job runs
+    (`Get-CimInstance Win32_Process` by command line), release it, re-reading the owner IMMEDIATELY before the `rm`;
+    (2) kill any `next dev` left on port 3101; (3) `git -C C:\kipindi-s15 status` — the builders' files on disk are newer
+    than the last snapshot: commit them as another snapshot and push before anything else; (4) the agents (the two
+    builders and the file generator) died with the PC — re-launch them from §4.4 and this block, telling each what is
+    already on disk; (5) re-queue C2.
 ```
 
 ## §1 — STEPS (each its own commit, push and live proof)
 
 | # | Step | State |
 |---|---|---|
-| C1 | The lane claimed and this plan written | 🔨 this push |
-| C2 | Audit of the LIVE screen: tiles at 360 / 768 / 1280 / 1440 in en / sw / zh, every field's validation, every failure path (a server error, a slow network, a double press, two tabs) → the defects fixed | ⬜ |
-| C3 | The importer, part 1 — the file, the columns, the pre-flight (U30 + U31-B): staging only, nothing written to the book | ⬜ |
-| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | ⬜ |
-| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · update · skip), Add contact's duplicate | ⬜ |
+| C1 | The lane claimed and this plan written | ✅ LIVE `28fd214e` |
+| C2 | Audit of the LIVE screen: tiles at 360 / 768 / 1280 / 1440 (the console is English-only — `admin/layout.tsx` pins it), every field's validation, every failure path (a server error, a slow network, a double press, two tabs) → the defects fixed | ⏳ queued (lock) |
+| C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | 🔨 building (`contacts-import-build`) |
+| C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | 🔨 building |
+| C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks), the list step | 🔨 building |
+| C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | ⬜ (after C3–C5) |
 | C6 | Stress: large files at the limits, a large book, two imports at once, a crash mid-commit and its resume | ⬜ |
 | C7 | U34b — an export read back through the importer, row for row | ⬜ |
 
@@ -140,4 +174,8 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 
 ## §3 — LOG (newest first)
 
+- **2026-10-09 ~01:45 EAT** — the design (§4) and the contract written and pushed (`750175c2`, branch
+  `contacts-import`); two builders started in `C:\kipindi-s15` (`contacts-import-build`); the test-file generator being
+  written. Ali asked four questions (§0). Found: the import was never reachable (no dialog, no actions) — the readers,
+  staging and `decide()` were built and tested in S10 (U25–U29, U31-A) but nothing connected them to a screen.
 - **2026-10-09 · C1** — the lane split recorded; this plan written.
