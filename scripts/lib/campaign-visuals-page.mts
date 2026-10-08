@@ -226,7 +226,6 @@ async function loopRun(impl: PageImpl, o: {
   const calls: string[] = [];
   let inFlight = 0;
   let overlap = false;
-  let reaped = 0;
   let stepped = 0;
   const steps = [...(o.steps ?? [])];
   const polls = [...(o.polls ?? [])];
@@ -254,7 +253,6 @@ async function loopRun(impl: PageImpl, o: {
     onStop: (s) => { stops.push(s); },
     onCall: () => {},
     onStepped: () => { stepped++; },
-    onReaped: () => { reaped++; },
   };
   let threw: string | null = null;
   try {
@@ -262,7 +260,7 @@ async function loopRun(impl: PageImpl, o: {
   } catch (err) {
     threw = String((err as Error)?.message ?? err);
   }
-  return { sleeps, stops, said, views, calls, overlap, reaped, stepped, threw };
+  return { sleeps, stops, said, views, calls, overlap, stepped, threw };
 }
 
 /* ══ THE CLAIMS ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -476,10 +474,10 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
       || P.mode("CONFIRMED", true) !== "watch" || P.mode("DONE", true) !== "off" || P.mode("CANCELLED", false) !== "off") wrong.push("the mode of a status is wrong");
     // ── MOUNT: one step for a paused, stopped or finished campaign — a paused one then watches, the others end ──
     const paused = await loopRun(P, { mode: "watch", mayAct: true, reap: true, now: NOW, steps: [OK_STEP("PAUSED", { kind: "reaped" })], polls: [OK_VIEW("DONE")] });
-    if (json(paused.calls) !== json(["step", "poll"]) || paused.reaped !== 1 || json(paused.sleeps) !== json([10_000])) wrong.push(`mount of a paused campaign: ${paused.calls.join(",")} reaped ${paused.reaped} sleeps ${json(paused.sleeps)}`);
+    if (json(paused.calls) !== json(["step", "poll"]) || json(paused.sleeps) !== json([10_000])) wrong.push(`mount of a paused campaign: ${paused.calls.join(",")} sleeps ${json(paused.sleeps)}`);
     for (const status of ["DONE", "CANCELLED"]) {
       const over = await loopRun(P, { mode: "off", mayAct: true, reap: true, now: NOW, steps: [OK_STEP(status, { kind: "reaped" })] });
-      if (json(over.calls) !== json(["step"]) || over.reaped !== 1 || over.sleeps.length !== 0) wrong.push(`mount of a ${status} campaign: ${over.calls.join(",")}`);
+      if (json(over.calls) !== json(["step"]) || over.sleeps.length !== 0) wrong.push(`mount of a ${status} campaign: ${over.calls.join(",")}`);
     }
     const idle = await loopRun(P, { mode: "off", mayAct: true, now: NOW });
     if (idle.calls.length !== 0 || idle.sleeps.length !== 0) wrong.push("an off loop called something");
@@ -513,8 +511,12 @@ export async function pageClaims(impl: PageImpl, h: PageHarness): Promise<void> 
     const constants = DRIVER.STEP_GAP_MS === 2_000 && DRIVER.WAIT_MIN_MS === 5_000 && DRIVER.WAIT_MAX_MS === 30_000 && DRIVER.BUSY_GAP_MS === 5_000 && DRIVER.POLL_GAP_MS === 10_000;
     // ── the hook is keyed on the MODE: a status within a mode must not restart the loop and skip the gap after a step ──
     const keyed = S.driver.includes("[id, mode, mayAct, step, poll, attempt, stop]");
-    return [wrong.length === 0 && constants && keyed,
-      `wrong [${wrong.join(" | ")}] · constants ${constants} · hook keyed on the mode ${keyed} · ${d.calls.length + w.calls.length} stand-in calls`];
+    // ── …and the reaper is the MOUNT's: decided when a page's first loop starts (and again after a retry), never when a status
+    //    changes — a campaign this page drove to its end has nothing stranded, and a step after its last would be a call after the end ──
+    const onceOnMount = S.driver.includes("const reap = mayAct && fresh.current && reapsOnMount(statusRef.current);")
+      && S.driver.includes("fresh.current = false;") && S.driver.includes("fresh.current = true; setStop(null);");
+    return [wrong.length === 0 && constants && keyed && onceOnMount,
+      `wrong [${wrong.join(" | ")}] · constants ${constants} · hook keyed on the mode ${keyed} · reap on mount only ${onceOnMount} · ${d.calls.length + w.calls.length} stand-in calls`];
   });
 
   /* ── V7 · the floor, on the page ── */
@@ -768,6 +770,8 @@ export function pagePlants(): PagePlant[] {
       impl: withPage({ loop: (o) => base.loop({ ...o, sleep: (ms) => o.sleep(o.mode === "watch" ? Math.min(ms, 1_000) : ms) }) }) },
     { name: "R-V6e · the loop restarted on every status — the gap after the step that did the work is skipped", expect: [L.v6],
       impl: withSources({ driver: plantIn(S.driver, "[id, mode, mayAct, step, poll, attempt, stop]", "[id, mode, mayAct, step, poll, attempt, stop, view.status]") }) },
+    { name: "R-V6f · the reaper on every start — a campaign the page drove to its end is stepped once more after its last", expect: [L.v6],
+      impl: withSources({ driver: plantIn(S.driver, "const reap = mayAct && fresh.current && reapsOnMount(statusRef.current);", "const reap = mayAct && reapsOnMount(statusRef.current);") }) },
     { name: "R-V7 · the client draws a zero in place of a hidden figure", expect: [L.v7],
       impl: withSources({ client: plantIn(S.client, '{k.handedOver !== null && <Figure name="handedOver" value={k.handedOver} />}', '<Figure name="handedOver" value={k.handedOver ?? 0} />') }) },
     { name: "R-V8 · a money word in the client — the page formats a TZS figure", expect: [L.v8],

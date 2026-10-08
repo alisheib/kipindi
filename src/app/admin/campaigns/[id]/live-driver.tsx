@@ -38,7 +38,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CampaignLiveView } from "@/lib/server/marketing/campaign-live";
 import type { DriverStep } from "@/lib/server/marketing/campaign-control";
 import type { SmsCampaignStatus } from "@/lib/server/store";
-import type { LiveRefused, LiveStepAnswer, LiveViewAnswer } from "./actions";
+import type { LiveRefused, LiveStepAnswer, LiveViewAnswer } from "./live-run";
 
 /* ══ THE NUMBERS (decision 3) ═══════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -128,8 +128,6 @@ export type LoopOptions = {
   onCall: (call: "step" | "poll") => void;
   /** A step answered (the mount's included): this page's own driver has run. */
   onStepped: () => void;
-  /** The mount's step answered. */
-  onReaped: () => void;
 };
 
 type Turn = { over: true } | { over: false; view: CampaignLiveView; gap: number };
@@ -167,7 +165,6 @@ export async function runLiveLoop(o: LoopOptions): Promise<void> {
   if (o.reap) {
     const t = await turn(o, "step");
     if (t.over) return;
-    o.onReaped();
     if (driverMode(t.view.status, o.mayAct) !== o.mode) return;
   }
   if (o.mode === "off") return;
@@ -218,7 +215,9 @@ export function useLiveDriver(o: {
   const [stop, setStop] = useState<DriverStop | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [counts, setCounts] = useState<{ steps: number; polls: number }>({ steps: 0, polls: 0 });
-  const reaped = useRef(false);
+  // True until the page's first loop has started (a mount), and again after a retry: the reaper runs only then — a campaign this
+  // page drove to its end, or paused, has nothing stranded for a mount to heal.
+  const fresh = useRef(true);
   const pollNow = useRef(false);
   const mode = driverMode(view.status, o.mayAct);
   // The effect below is keyed on the MODE, never on the status: a status that keeps the mode (PREPARING → RUNNING) must not
@@ -231,13 +230,14 @@ export function useLiveDriver(o: {
     if (stop !== null) return undefined;
     let live = true;
     const wakers = new Set<() => void>();
-    const reap = mayAct && !reaped.current && reapsOnMount(statusRef.current);
     const pollFirst = pollNow.current;
     pollNow.current = false;
     setSaid(null);
     // ⭐ Started on a tick, not in the effect: React's development double-run mounts, cleans up and mounts again, and a call
-    // made by the first would be a second step beside the first of the page that stayed.
+    // made by the first would be a second step beside the first of the page that stayed. (So the mount is decided here too.)
     const starter = setTimeout(() => {
+      const reap = mayAct && fresh.current && reapsOnMount(statusRef.current);
+      fresh.current = false;
       void runLiveLoop({
         id, mode, mayAct, reap, pollFirst, step, poll,
         sleep: (ms) => new Promise<void>((resolve) => {
@@ -252,7 +252,6 @@ export function useLiveDriver(o: {
         onStop: (s) => { if (live) setStop(s); },
         onCall: (c) => { if (live) setCounts((n) => (c === "step" ? { ...n, steps: n.steps + 1 } : { ...n, polls: n.polls + 1 })); },
         onStepped: () => { if (live) setRan(true); },
-        onReaped: () => { reaped.current = true; },
       });
     }, 0);
     return () => {
@@ -264,7 +263,7 @@ export function useLiveDriver(o: {
   }, [id, mode, mayAct, step, poll, attempt, stop]);
 
   const setView = useCallback((v: CampaignLiveView) => { setViewState(v); }, []);
-  const retry = useCallback(() => { setStop(null); setAttempt((n) => n + 1); }, []);
+  const retry = useCallback(() => { fresh.current = true; setStop(null); setAttempt((n) => n + 1); }, []);
   const refresh = useCallback(() => { pollNow.current = true; setAttempt((n) => n + 1); }, []);
 
   return { view, setView, said, ran, stop, mode, steps: counts.steps, polls: counts.polls, retry, refresh };

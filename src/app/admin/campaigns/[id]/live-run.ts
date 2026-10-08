@@ -23,11 +23,26 @@
 import { revalidatePath } from "next/cache";
 import { campaignLiveView } from "@/lib/server/marketing/campaign-live";
 import type { CampaignLiveView, LiveViewer } from "@/lib/server/marketing/campaign-live";
-import type { ControlResult, CopyResult } from "@/lib/server/marketing/campaign-control";
+import type { ControlResult, CopyResult, StepActionResult } from "@/lib/server/marketing/campaign-control";
 import { liveViewerFor } from "./live-viewer";
 import { LIVE_ACT_UNFINISHED } from "./live-copy";
 
-/* ══ THE ANSWERS (the page's client reads these as TYPES alone) ═════════════════════════════════════════════════════ */
+/* ══ THE ANSWERS (the page's client and driver read these as TYPES alone) ═══════════════════════════════════════════ */
+
+/**
+ * ⛔ WHY THESE LIVE HERE AND NOT IN `actions.ts`: a client module that names the actions file at all — even for a type — is an
+ * acting control to `test:admin-act-gate` (it matches the import's path, not its kind), and the driver is not one: it is wired
+ * by `live-client.tsx`, which consults the act gate. So the driver reads the shapes of the doors' answers from here.
+ */
+
+/** A refusal before the campaign was asked anything: no officer for it, no campaign, or a second factor to confirm first. */
+export type LiveRefused =
+  | { ok: false; reason: "role" | "not_found"; error: string }
+  | { ok: false; reason: "second_factor"; error: string; href: string };
+/** The driver's step: what `campaignStep` answers (the step as the driver may be handed it, and the view), or a refusal. */
+export type LiveStepAnswer = Extract<StepActionResult, { ok: true }> | LiveRefused;
+/** The poll: the campaign as this viewer may see it, or a refusal. */
+export type LiveViewAnswer = { ok: true; view: CampaignLiveView } | LiveRefused;
 
 /**
  * What every act answers — Start · Pause · Resume · Stop · Make a copy. `reason` is the service's own refusal key, or this

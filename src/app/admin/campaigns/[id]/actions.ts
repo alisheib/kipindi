@@ -27,22 +27,11 @@ import { rateCheckAsync } from "@/lib/server/rate-limit";
 import {
   campaignStep, copyCampaign, pauseCampaign, resumeCampaign, startCampaign, stopCampaign,
 } from "@/lib/server/marketing/campaign-control";
-import type { StepActionResult } from "@/lib/server/marketing/campaign-control";
 import { campaignLiveView } from "@/lib/server/marketing/campaign-live";
-import type { CampaignLiveView } from "@/lib/server/marketing/campaign-live";
 import { liveViewerFor } from "./live-viewer";
 import { actRefused, resumeWithRetry, runAct } from "./live-run";
-import type { LiveActAnswer } from "./live-run";
+import type { LiveActAnswer, LiveRefused, LiveStepAnswer, LiveViewAnswer } from "./live-run";
 import { LIVE_MISSING, LIVE_ROLE_REFUSAL, LIVE_VIEW_REFUSAL, copyRateLimitedSentence } from "./live-copy";
-
-/** A refusal before the campaign was asked anything: no officer for it, no campaign, or a second factor to confirm first. */
-export type LiveRefused =
-  | { ok: false; reason: "role" | "not_found"; error: string }
-  | { ok: false; reason: "second_factor"; error: string; href: string };
-/** The driver's step: what `campaignStep` answers (the step as the driver may be handed it, and the view), or a refusal. */
-export type LiveStepAnswer = Extract<StepActionResult, { ok: true }> | LiveRefused;
-/** The poll: the campaign as this viewer may see it, or a refusal. */
-export type LiveViewAnswer = { ok: true; view: CampaignLiveView } | LiveRefused;
 
 /** The step-up pages, opened in ANOTHER tab (the guard's own sentence says so) so the live page keeps its place. */
 const FACTOR_VERIFY = "/admin/totp-verify";
