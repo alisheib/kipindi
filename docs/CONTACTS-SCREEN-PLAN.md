@@ -49,8 +49,17 @@ then: "the contacts screen"):
     numbers per person (a: each its own contact; the build starts with main-number-only, S15-4) · 3 a "pick from this
     phone" button (a: no) · 4 a live check on production with Claude's own temporary login and a 40-row file, deleted
     afterwards (a: yes — every production write still needs his click on the permission prompt).
-  ⛔ If this PC is gone: the branches `contacts-import` and (once pushed) `contacts-import-build` on origin hold
-    everything; the agents' unfinished files exist only here until the lead commits them — re-run the builds from §4.
+  ⛔ If this PC is gone: the branches `contacts-import` and `contacts-import-build` on origin hold everything —
+    `contacts-import-build` carries SNAPSHOT commits of the builders' unfinished files (e.g. `05f2e76c`, 2026-10-09
+    ~02:00 EAT: import-flow.ts, store.ts, prisma-dal.ts mid-edit) — never merge a snapshot alone; finish or re-run the
+    builds from §4 on top of it.
+  ⭐ AFTER A POWER-OFF OR REBOOT OF ALI-BLADE15 (Ali, 2026-10-09 ~02:00 EAT: "if the PC turns off, when I say proceed it
+    means we're up"): (1) `bash ~/heavy-node-lock.sh status` — if it names `contacts-c2` and no such job runs
+    (`Get-CimInstance Win32_Process` by command line), release it, re-reading the owner IMMEDIATELY before the `rm`;
+    (2) kill any `next dev` left on port 3101; (3) `git -C C:\kipindi-s15 status` — the builders' files on disk are newer
+    than the last snapshot: commit them as another snapshot and push before anything else; (4) the agents (the two
+    builders and the file generator) died with the PC — re-launch them from §4.4 and this block, telling each what is
+    already on disk; (5) re-queue C2.
 ```
 
 ## §1 — STEPS (each its own commit, push and live proof)
