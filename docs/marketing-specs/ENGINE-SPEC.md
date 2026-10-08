@@ -2103,6 +2103,31 @@ E11 bounds a slice by time; U52a measures. A deploy mid-slice: the reaper settle
 `test:otp-delivery`, `test:blackball`, `test:sms-dlr`, `test:sms-cost-guard` and `test:pii-logs`.
 **Owner decision:** none.
 
+**⭐ As built · the engine's dry-fire, F-1 and F-2 (2026-10-08).** `test:marketing-dry-fire` (seven scenarios over a fake
+Blackball that charges as the real one does) found two money-check defects in the per-slice credit check (E16); both are
+fixed, and its S7 claims are strict since:
+- **F-1 · a slice is priced for the people it can still claim.** It priced a whole slice even when nobody was left: a list
+  all sent, with the credit exactly at the reserve, paused `marketing_floor` with nobody waiting and never reached DONE
+  (Resume paused it again). Now `owedForSlice(size, PENDING)` = min(the slice, those PENDING); 0 goes straight to the
+  finish (DONE, `held_rows` or a wait); a count that cannot be read prices the whole slice, the safe side.
+- **F-2 · no reading holds what was handed over around it.** A send reply's figure is pre-charge (BLACKBALL-SMS §1.4), so
+  read straight after a slice it still held that slice's charge, and the next slice could go one batch into the credit kept
+  for login codes. ⭐ Reworked after its independent review (the same day): the first fix kept a count beside each reading
+  and was exact only when a charge lands before the next reply — but Blackball bills per DELIVERED message, seconds later,
+  and under that lag consecutive slices could still dip the reserve (about TZS 190 per slice period of lag). Now `sms.ts`
+  keeps every chunk handed over — accepted, or ambiguous (the gateway may have it) — for twice `SMS_BILLING_LAG_MS` (30 s
+  by default), and a reading's `pendingSegments` is every segment handed over from that window before it was ASKED
+  (`unbilledSince`). While billing lags by no more than the window nothing is missed; what is already billed inside it is
+  counted twice — the safe side, felt only near the reserve. `SMS_BILLING_LAG_MS=0` is billing at acceptance (the dry-fire's
+  exact model). `spendableBalance` takes them off at today's price (the measured one when there is one, never below 0)
+  before `creditVerdict` judges the slice, Start and Resume read the credit the same way (so a Resume never lets through
+  what the next slice would pause at once), and the pause's record names the reading and what was taken off it.
+Held by `test:marketing-engine` S41 (a shilling under the line, nobody owed: DONE), S42 and F17 (a measured TZS 8 on both
+sides of the line; plants R-S41, R-S42, R-S42b, R-S27d, R-F17, R-F10c), `test:sms-cost-guard` §12 (the window: counted,
+aged out, ambiguous counted, refused not, two segments two, billing at acceptance; six in-place anchors) and the dry-fire's
+S7 — 7d at acceptance and ⭐ 7e with each charge landing 6 s late under the production window (plants R28, R30 F-1, R31
+F-2 a reading taken whole, R32 the window ignored: exact at acceptance, short under late billing).
+
 ---
 
 ### 4.14 · U46a · Receipts — the recipient arm, and rotating the secret

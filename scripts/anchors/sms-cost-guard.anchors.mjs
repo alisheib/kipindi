@@ -539,4 +539,53 @@ export const MUTATIONS = [
     to: `  return Date.now() >= notAfter;`,
     expect: `§11 ⛔ a deadline that is not a figure holds the MARKETING batch: a malformed option never opens the rail`,
   },
+  {
+    // F-2 (the engine's dry-fire, 2026-10-08) · a reply's pre-charge figure kept as the truth: the next slice spends the
+    // credit kept for login codes by one batch.
+    name: "sms.ts — what was handed over is never kept (every reading taken as already billed)",
+    file: "src/lib/server/sms.ts",
+    from: `    if (outcome.ok || ambiguous) noteHandedOver(askedAt, group.reduce((n, p) => n + sizeSms(p.out.body).segments, 0));`,
+    to: `    if (false) noteHandedOver(askedAt, 0);`,
+    expect: `§12 ⭐ an accepted reply's figure is kept with what its batch handed over: 3 messages of one segment leave 3 not yet billed`,
+  },
+  {
+    // F-2 · counted per message, never per segment: a two-segment campaign would leave half its charge unpriced.
+    name: "sms.ts — what was handed over counted one per message, not per segment",
+    file: "src/lib/server/sms.ts",
+    from: `group.reduce((n, p) => n + sizeSms(p.out.body).segments, 0)`,
+    to: `group.reduce((n) => n + 1, 0)`,
+    expect: `§12 a message of two segments counts two: two such messages add 4, making 59`,
+  },
+  {
+    // F-2 · the snapshot loses them: every reader takes the pre-charge figure whole again.
+    name: "sms.ts — the snapshot drops what is not yet billed",
+    file: "src/lib/server/sms.ts",
+    from: `    pendingSegments: b === null ? 0 : unbilledSince(b.at),`,
+    to: `    pendingSegments: 0,`,
+    expect: `§12 ⭐ an accepted reply's figure is kept with what its batch handed over: 3 messages of one segment leave 3 not yet billed`,
+  },
+  {
+    // F-2, its review · a request with no clear answer may have been taken (and billed): never left out.
+    name: "sms.ts — a request the gateway may have taken is left out",
+    file: "src/lib/server/sms.ts",
+    from: `    if (outcome.ok || ambiguous) noteHandedOver(`,
+    to: `    if (outcome.ok) noteHandedOver(`,
+    expect: `§12 ⭐ a request the gateway MAY have taken (no clear answer) counts too: one message adds 1, making 60`,
+  },
+  {
+    // F-2, its review · the window ignored: a reading counts only what came after it, as if billing were instant.
+    name: "sms.ts — the billing window ignored (a reading counts only what came after it)",
+    file: "src/lib/server/sms.ts",
+    from: `  const from = readAt - billingLagMs();`,
+    to: `  const from = readAt;`,
+    expect: `§12 ⭐ the balance endpoint's own figure may not hold them either: a fresh read a second later still counts the 60`,
+  },
+  {
+    // F-2 · the live read keeps them to itself: the engine and Start / Resume read the reply's figure whole.
+    name: "sms.ts — the live read hands no pending segments on",
+    file: "src/lib/server/sms.ts",
+    from: `    return { tzs: s.tzs, at: s.at, outcome, stale: s.tzs !== null && (s.stale || !confirmed), error, pendingSegments: s.pendingSegments };`,
+    to: `    return { tzs: s.tzs, at: s.at, outcome, stale: s.tzs !== null && (s.stale || !confirmed), error };`,
+    expect: `§12 the live read hands them on: a reused reading carries the 60 not yet billed`,
+  },
 ];

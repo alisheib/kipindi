@@ -29,6 +29,8 @@
  * named whole, the chip is one fact, "Healthy" names the alert line, a stale figure under the floor is danger, and the
  * clock's month comes from a fixed list (a newer ICU spelt September "Sept" and turned §9 red on one machine).
  *
+ * 2026-10-08 (the engine's dry-fire, F-2; reworked after its review): §12 what was handed over is counted by every reading until
+ * it can no longer be unbilled (`SMS_BILLING_LAG_MS`).
  * 2026-10-07 (U49a, ENGINE-SPEC §4.12 decision 1): §10 `sendBatch`'s optional `minimumBalanceTzs`, the credit kept for
  * login and withdrawal codes. ⭐ An all-MARKETING batch on a confirmed reading below it is held MARKETING_FLOOR while a
  * login code in the same state sends (alone, or beside marketing); a top-up is honoured within the re-check, and a
@@ -719,6 +721,94 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   const healthAfter = JSON.stringify(smsHealthSnapshot());
   ok("§11 ⭐ a batch the deadline held back counts in no SMS health figure",
     during !== null && healthAfter === healthBefore, `health ${healthBefore} → ${healthAfter}`);
+  await quiet();
+}
+
+/* ══ §12 · F-2 · WHAT WAS HANDED OVER MAY NOT BE BILLED YET — EVERY READING COUNTS IT (the engine's dry-fire; reworked after its review, 2026-10-08) ═══ */
+// BLACKBALL-SMS §1.4: an accepted reply's balance is PRE-CHARGE, and billing lands per DELIVERED message — seconds later, after
+// the next reply or a balance read. So every chunk the gateway took (or may have: no clear answer) is kept, and a reading's
+// `pendingSegments` counts what was handed over from `SMS_BILLING_LAG_MS` (30 s by default) before it was asked; the campaign
+// engine and Start / Resume take that off first. On this section's own clock (Date.now held, moved by hand). Placed after §7 so
+// no alarm count runs after it; every figure here is far above the TZS 150 alert line.
+// ⚠️ Labels here carry no spaced dash: the red harness reads a FAIL line's label up to the first one.
+{
+  /** `n` MARKETING messages to distinct numbers; `body` sets their size (one segment by default). */
+  const marketing = (n: number, body = "Ofa ya 50pick") =>
+    Array.from({ length: n }, (_, i) => ({ to: `+2557727${String(i).padStart(5, "0")}`, body, purpose: "MARKETING" as const }));
+  const realNow = Date.now;
+  const lagWas = process.env.SMS_BILLING_LAG_MS;
+  let clock = realNow();
+  Date.now = () => clock;
+  /** A fresh reading of the endpoint's kind, set directly, with nothing handed over before it. */
+  const fresh = (tzs: number) => { resetBalance(); globalThis.__50PICK_SMS_SENT = undefined; globalThis.__50PICK_SMS_BALANCE = { tzs, at: clock }; };
+  const snap = () => smsBalanceSnapshot();
+  try {
+    delete process.env.SMS_BILLING_LAG_MS;
+    fresh(30_000);
+    reply = accepted(30_000);
+    calls = 0;
+    const three = await sendBatch(marketing(3));
+    ok("§12 ⭐ an accepted reply's figure is kept with what its batch handed over: 3 messages of one segment leave 3 not yet billed",
+      !three.refused && calls === 1 && snap().tzs === 30_000 && snap().pendingSegments === 3, `calls=${calls} ${JSON.stringify(snap())}`);
+
+    calls = 0;
+    const many = await sendBatch(marketing(52));
+    ok("§12 ⭐ every request handed over inside the window counts until it ages out: 52 more in two requests make 55, beside the last reply's figure",
+      !many.refused && calls === 2 && snap().tzs === 30_000 && snap().pendingSegments === 55, `calls=${calls} ${JSON.stringify(snap())}`);
+
+    reply = accepted(29_688);
+    calls = 0;
+    const long = await sendBatch(marketing(2, "a".repeat(200)));
+    ok("§12 a message of two segments counts two: two such messages add 4, making 59",
+      !long.refused && calls === 1 && snap().tzs === 29_688 && snap().pendingSegments === 59, `calls=${calls} ${JSON.stringify(snap())}`);
+
+    reply = authRefused;
+    calls = 0;
+    const no = await sendBatch(marketing(1));
+    ok("§12 ⛔ a refused request adds nothing: neither the figure nor what is not yet billed moves",
+      calls === 1 && no.results[0]?.ok === false && snap().tzs === 29_688 && snap().pendingSegments === 59, `calls=${calls} ${JSON.stringify(snap())}`);
+
+    reply = () => new Response("<html><body><h1>504 Gateway Time-out</h1></body></html>", { status: 504, headers: { "content-type": "text/html" } });
+    calls = 0;
+    const unsure = await sendBatch(marketing(1));
+    ok("§12 ⭐ a request the gateway MAY have taken (no clear answer) counts too: one message adds 1, making 60",
+      calls === 1 && unsure.results[0]?.ok === false && snap().tzs === 29_688 && snap().pendingSegments === 60, `calls=${calls} ${JSON.stringify(snap())}`);
+
+    balanceCalls = 0;
+    const reused = await refreshSmsBalance({ maxAgeMs: 60_000 });
+    ok("§12 the live read hands them on: a reused reading carries the 60 not yet billed",
+      reused.outcome === "reused" && balanceCalls === 0 && reused.tzs === 29_688 && reused.pendingSegments === 60, JSON.stringify(reused));
+
+    globalThis.__50PICK_SMS_BALANCE_READ = undefined;
+    balanceReply = balanceIs(29_664);
+    clock += 1_000;
+    balanceCalls = 0;
+    const read = await refreshSmsBalance({ maxAgeMs: 0 });
+    ok("§12 ⭐ the balance endpoint's own figure may not hold them either: a fresh read a second later still counts the 60",
+      read.outcome === "fresh" && balanceCalls === 1 && read.tzs === 29_664 && read.pendingSegments === 60 && snap().pendingSegments === 60,
+      `${JSON.stringify(read)} snapshot ${JSON.stringify(snap())}`);
+
+    globalThis.__50PICK_SMS_BALANCE_READ = undefined;
+    balanceReply = balanceIs(29_640);
+    clock += 31_000;
+    const later = await refreshSmsBalance({ maxAgeMs: 0 });
+    ok("§12 ⭐ once the window has passed they age out: a fresh read 32 seconds on counts 0",
+      later.outcome === "fresh" && later.tzs === 29_640 && later.pendingSegments === 0 && snap().pendingSegments === 0, JSON.stringify(later));
+
+    // Billing at acceptance (the window 0): each reply then holds every earlier request's charge, so only its own counts.
+    process.env.SMS_BILLING_LAG_MS = "0";
+    fresh(30_000);
+    reply = () => { clock += 5; return accepted(30_000)(); };
+    calls = 0;
+    const atAccept = await sendBatch(marketing(52));
+    ok("§12 with billing at acceptance (SMS_BILLING_LAG_MS=0) the last reply holds the first request's charge: of 52 in two requests only its own 2 count",
+      !atAccept.refused && calls === 2 && snap().pendingSegments === 2, `calls=${calls} ${JSON.stringify(snap())}`);
+  } finally {
+    Date.now = realNow;
+    if (lagWas === undefined) delete process.env.SMS_BILLING_LAG_MS; else process.env.SMS_BILLING_LAG_MS = lagWas;
+    globalThis.__50PICK_SMS_SENT = undefined;
+    resetBalance();
+  }
   await quiet();
 }
 
