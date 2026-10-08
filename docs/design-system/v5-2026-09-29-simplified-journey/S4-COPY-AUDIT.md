@@ -133,6 +133,15 @@ rule as above: they ship with S12, never earlier.
 - Juu/Chini · "Kiasi" → "Dau lako"; "Gusa Juu au Chini" → "Bonyeza Juu au Chini".
 - Chinese How-to · side words quoted 「是」「否」 in running text; "赢家平分奖池" (split equally — false) → "赢家按投注比例分享奖池".
 
+**Found 2026-10-08 by Claude as Ali's Swahili reviewer, reading WP12's 333 tiles — the card's time left.** `market.timeLeftH`
+"masaa {n} yamebaki" put a colloquial ma- plural, and its plural agreement, on every count, so one hour left read
+"masaa 1 yamebaki". *Saa* is the standard noun, the same word for one hour or many (N-class, as *siku* and *dakika*
+already are beside it), and one of anything takes the singular verb. Ships with S12, with the formatter's singular
+templates (prepared on branch `vodacom-s12-timeleft`, its guard in `test:time-left`):
+- `timeLeftH` · "masaa {n} yamebaki" → "saa {n} zimebaki"; new `timeLeftH1` · "saa {n} imebaki" (n = 1).
+- `timeLeftD` stays "siku {n} zimebaki"; new `timeLeftD1` · "siku {n} imebaki". `timeLeftM` stays "dakika {n} zimebaki";
+  new `timeLeftM1` · "dakika {n} imebaki". (en and zh have no number agreement: their singular keys repeat the plural.)
+
 ## S6 drafts (2026-10-01) — for the native review
 
 Added by S6 WP1 (`S6-PLAN.md`). These Swahili strings entered `src/lib/i18n-dict.ts` as new keys of the `journey`
@@ -248,3 +257,12 @@ Both ship with A8c, live strings for every player, and not with S12, because the
 corrections to ones players see today. Chinese for the same keys: "价格已变为 {value}。您的投注未卖出——您可以按新价格卖出。" and
 "我们这边出现错误，您的投注暂时无法卖出。请联系客服。" — formal 您, and 卖出, the failure registry's word for sell; the second takes the
 platform's own 我们这边出现错误 and 请联系客服.
+
+**5. The agent application's referee step (2026-10-08, `a042dc65`) — one new live key, approved as written:**
+`agent.refConsentRule` · "Weka alama kwenye kisanduku kuthibitisha kwamba wadhamini wote wawili wamekubali kutajwa." —
+shown, in the toast and on the box, when the consent box was left empty. *Weka alama kwenye kisanduku* is "tick the box"
+(*kisanduku*, class 7, a small box); *kuthibitisha kwamba* "to confirm that"; *wadhamini wote wawili wamekubali* repeats
+the box's own label (`refConsent`: "Wadhamini wote wawili … wamekubali …"), so the line names what the box says;
+*kutajwa*, the passive of *kutaja*, "to be named". The step's other refusals now show the two rules the boxes already
+carry as their titles (`refNameRule`, `refContactRule`), live words unchanged. A new sentence, not a correction, so it
+shipped with its fix rather than with S12. Chinese: "请勾选此框，确认两位推荐人均同意被提名。" — 勾选 for ticking a box, and the label's own 两位推荐人 and 提名.
