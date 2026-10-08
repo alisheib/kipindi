@@ -210,7 +210,12 @@ function notSentReason(r: StoredSmsCampaignRecipient, campaign: Pick<StoredSmsCa
   return campaign.status === "CANCELLED" ? NOT_SENT_OTHER.campaignStopped : NOT_SENT_OTHER.waiting;
 }
 
-export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164" | "createdAt">): Promise<MarketingDsarSection> {
+/** ⛔ The account carries what the profile switch reads (`marketingToggleState`: its status, its own choice, its e-mail) —
+ *  typed, never cast: a cast let a caller hand over an account without them, and the export would then have read the
+ *  switch on fields that were not there (STEP 53's typecheck). */
+export async function marketingDsarView(
+  user: Pick<StoredUser, "id" | "phoneE164" | "createdAt" | "status" | "marketingOptIn"> & { email?: string | null },
+): Promise<MarketingDsarSection> {
   const accountNumber = marketingKeyOf(user.phoneE164);
   const since = user.createdAt;
 
@@ -247,7 +252,7 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
 
   /* ⭐ U33a-P · READ FROM THE SWITCH, never recomputed here. The screen and this export answer the same question —
      "do offers reach you without your consent?" — and two readings of one fact is how they come to disagree. */
-  const toggle = await marketingToggleState(user as Parameters<typeof marketingToggleState>[0]).catch(() => null);
+  const toggle = await marketingToggleState(user).catch(() => null);
   const record = toggle?.outreach === true ? await Promise.resolve(licenceOutreach()) : null;
   const outreach: MarketingDsarSection["outreach"] =
     record !== null && record.state === "open" ? { basis: "LICENCE_PLAYER", since: record.recordedAt } : null;
