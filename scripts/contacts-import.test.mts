@@ -110,6 +110,9 @@ const REGISTRY: readonly Registered[] = [
   { file: "contacts-import/flow.mts", owner: "S15", covers: "src/lib/contacts/{import-read,import-loop}.ts — the browser's reader and the one loop driver" },
   // S15 · C3b (2026-10-09) · G3 — the ONE phone-cell rule and its server callers (staging's key, the check's sentence, the commit's raw text).
   { file: "contacts-import/phone-cell.mts", owner: "S15", covers: "src/lib/contacts/phone-cell.ts — the first Tanzanian mobile of a several-number cell, its sentence, and its three server callers" },
+  // S15 · C3b-fix (2026-10-09) · D6 and D7 — the two pure rules every workbook and CSV reader shares (the server's and C3c's).
+  { file: "contacts-import/sheet-choice.mts", owner: "S15", covers: "src/lib/contacts/sheet-choice.ts — the sheet a workbook is read from, chosen by the mobile numbers its first rows hold, and its note" },
+  { file: "contacts-import/title-rows.mts", owner: "S15", covers: "src/lib/contacts/title-rows.ts — a title above the column names leaves the data, said in a note" },
 ];
 
 /* ══ THE HARNESS ════════════════════════════════════════════════════════════════════════════════ */
