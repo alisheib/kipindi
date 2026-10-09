@@ -7,7 +7,8 @@
  *   B1–B4b  THE SERVER COUNTS: the tier rule; a forged count of 3 for 60 ticked rows changes nothing (the Accept); a
  *           moved audience is refused with the new count; a filter is never ticks; an empty selection is nothing;
  *   B5–B10  each action, counted by the store: tag (U28's ONE rule, the 20-tag cap), untag, add to a list (a new name,
- *           a case-insensitive clash, the kept addedAt), suppress (an OPERATOR stop nobody can lift, C23), the per-number
+ *           a case-insensitive clash, the RACE past that check - B7b, the duplicate audit, ported in C8c - the kept
+ *           addedAt), suppress (an OPERATOR stop nobody can lift, C23), the per-number
  *           cap, record a withdrawal (the Accept: a player refused no_consent, a stranger consent_withdrawn), remove (the
  *           memory twin's emulated cascade and freed index; evidence kept; the erased tombstone in no audience, C3);
  *   B11–B16 one cap, one audit row through U24's describer, the parser's named keys, D19's role rule on a POSTed filter,
@@ -41,7 +42,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
-import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/lib/server/store.ts";
+import type { StoredContactList, StoredMarketingContact, StoredUser, MessagingKey } from "../src/lib/server/store.ts";
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import { isSmsConsentWording, SMS_CONSENT_WORDINGS } from "../src/lib/marketing/consent-wording.ts";
 import {
@@ -302,6 +303,7 @@ const L = {
   b6: "B6 · untag mirrors it: matched 5, changed 2, unchanged 3; a row without the tag keeps its stamp; the officer is updatedBy on the changed rows only",
   b6b: "B6b · ⭐ vb5 review M1 · a phone-number tag stored before the rule is still TAKEN OFF: untag “0712 345 678” over the two rows holding it changes 2 and leaves only their other tag; tagging with it is bad_tag in the rule's own sentence and writes nothing; parseBulkTag reads it for untag and refuses it for tag; a new list's name holding a number is refused, one holding a year is not",
   b7: "B7 · add to a list: a NEW name creates it (changed 5, the name returned); a re-run changes 0; an existing member keeps its ORIGINAL addedAt; \"arusha EVENT\" is refused list_exists and creates nothing; an unknown list is bad_list",
+  b7b: "B7b · ⭐ THE RACE (the duplicate audit, probe p6; ported in C8c · N3): officer two's name check reads the lists, officer one's create of the same name in another case lands, then officer two's create runs - it is refused list_exists in the bar's own sentence, writes no member, leaves ONE list of that name (officer one's), and the store itself refuses a case variant with null and answers a name in any case from findByName while a different name is still accepted",
   b8: "B8 · ⭐ C23 · suppress writes an OPERATOR stop NOBODY can lift: reason OPERATOR, the officer, the run's evidence; the row's suppressedAt is the stop's own time; the gate says suppressed; a person's old WITHDRAWN stop is taken over (createdAt kept) and its link can no longer lift it; an officer's stop is unchanged",
   b8b: "B8b · the per-number cap is asked BEFORE anything is written: with the cap at 3, a suppress over 4 is too_many_for_per_row with expected 4 — its preview too — and none of the 4 numbers has a stop",
   b9: "B9 · ⭐ THE ACCEPT · a withdrawal appends WITHDRAWN (source OPERATOR, the fixed officer wording, the officer, the run's evidence) and mirrors the row; then the player's number is refused no_consent (its switch turned off through syncPlayerToggle) and the stranger's consent_withdrawn — neither was before; an already-WITHDRAWN number gains no second row; the officer wording is no SMS consent sentence",
@@ -502,6 +504,39 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && !dup.ok && dup.reason === "list_exists" && lists === 2 && !unknown.ok && unknown.reason === "bad_list"
       && existing.ok && existing.changed === 4 && existing.unchanged === 1 && kept?.addedAt === LIST_AT,
       `${outcome(r1)} | ${r2 ? outcome(r2) : "no list"} | ${outcome(dup)} | ${outcome(unknown)} | ${outcome(existing)} | kept ${kept?.addedAt}`];
+  });
+  await fresh(L.b7b, async () => {
+    // ⭐ OFFICER TWO'S CHECK READS THE LISTS FIRST; OFFICER ONE'S CREATE (the same name, another case) LANDS RIGHT AFTER IT.
+    // The pre-check (listNameKey over listAll) therefore passes, and only the store can still refuse the second spelling.
+    const lists = db.contactList as unknown as { listAll: () => StoredContactList[] | Promise<StoredContactList[]> };
+    const realListAll = lists.listAll;
+    const race: { landed: StoredContactList | null } = { landed: null };
+    lists.listAll = async () => {
+      const seen = await realListAll();
+      if (race.landed === null) {
+        race.landed = await db.contactList.create({
+          id: "lst_b_race_one", name: "Race list", description: null, createdAt: LIST_AT, createdBy: "usr_officer_one", updatedAt: LIST_AT, updatedBy: "usr_officer_one",
+        });
+      }
+      return seen;
+    };
+    let raced: BulkOutcome | BulkRefusal;
+    try {
+      raced = await run({ action: "addToList", newListName: "RACE LIST", audience: { ids: five }, typed: null });
+    } finally {
+      lists.listAll = realListAll;
+    }
+    const all = await db.contactList.listAll();
+    const ofThatName = all.filter((l) => l.name.toLowerCase() === "race list");
+    const members = await Promise.all(five.map(async (id) => (await db.contactListMember.listMemberships(id)).filter((m) => m.listId === "lst_b_race_one" || ofThatName.some((l) => l.id === m.listId)).length));
+    // The store alone, no service in front of it: a case variant is null, a different name is a row, and the lookup ignores case.
+    const variant = await db.contactList.create({ id: "lst_b_race_two", name: "rAcE LiSt", description: null, createdAt: LIST_AT, createdBy: null, updatedAt: LIST_AT, updatedBy: null });
+    const other = await db.contactList.create({ id: "lst_b_race_three", name: "Race list 2", description: null, createdAt: LIST_AT, createdBy: null, updatedAt: LIST_AT, updatedBy: null });
+    const found = await db.contactList.findByName("RACE LIST");
+    return [race.landed !== null && !raced.ok && raced.reason === "list_exists" && raced.error === BULK_SENTENCES.listExists("RACE LIST")
+      && ofThatName.length === 1 && ofThatName[0].id === "lst_b_race_one" && ofThatName[0].name === "Race list" && all.length === 2 && members.every((n) => n === 0)
+      && variant === null && other !== null && found?.id === "lst_b_race_one",
+      `landed ${race.landed === null ? "no" : "yes"} · ${outcome(raced)} · lists [${all.map((l) => l.name)}] · members ${members} · variant ${variant === null ? "null" : "CREATED"} · other ${other === null ? "null" : "row"} · found ${found?.id}`];
   });
   await fresh(L.b8, async () => {
     const r = await run({ action: "suppress", audience: { ids: ["mc_b_010", "mc_b_stopped", "mc_b_operator"] }, typed: null });
@@ -1046,6 +1081,20 @@ if (!PROVE_RED) {
     };
     return () => { book.removeWhere = real; };
   };
+  /** The memory twin's own list create, wrapped for one case: the OLD key - exact-case, as the model's @unique reads it before
+   *  the lower(name) index - so "Race list" and "RACE LIST" are two lists. Put back in the case's `finally`. */
+  const exactCaseListCreate = (): (() => void) => {
+    const lists = db.contactList as unknown as { create: (row: StoredContactList) => StoredContactList | null };
+    const real = lists.create;
+    lists.create = (row) => {
+      const held = memory?.contactLists as Map<string, StoredContactList> | undefined;
+      if (!held) return real(row);
+      for (const l of held.values()) if (l.name === row.name) return null;
+      held.set(row.id, row);
+      return row;
+    };
+    return () => { lists.create = real; };
+  };
   const withSource = (key: keyof Sources, from: string, to: string): Sources => {
     const text = REAL_SOURCES[key];
     if (text.split(from).length - 1 !== 1) throw new Error(`plant anchor for ${key} does not resolve exactly once: ${from}`);
@@ -1295,6 +1344,13 @@ if (!PROVE_RED) {
           return { ok: true, action: req.action, matched: done.matched, changed: done.changed, unchanged: 0, full: 0, listName: null, tag: null };
         },
       }),
+    },
+    /* ── the duplicate audit (2026-10-08), ported in C8c · N3 ── */
+    {
+      name: "R36 · the duplicate audit p6 · the store's list key is exact-case again - the name another officer created a moment ago, in another case, makes a second list",
+      expect: L.b7b,
+      impl: () => REAL,
+      setup: exactCaseListCreate,
     },
   ];
 

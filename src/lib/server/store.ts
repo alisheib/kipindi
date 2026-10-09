@@ -1371,10 +1371,15 @@ export type ContactImportCommitUpdate = {
 export type ContactImportCommitOutcome = { ordinal: number; outcome: ImportOutcome; reason: string | null };
 /** S15-8 · the sentence a failed row keeps once its cells are blanked — written into `problems` BEFORE the blanking. */
 export type ContactImportFailSentence = { ordinal: number; sentence: string };
+/** ⭐ C8c · #13 · a settled row whose file tags were NOT all added (the contact reached the most tags a contact can have —
+ *  `mergeTags` adds what fits, up to the limit, and its `notAdded` are the rest): the tags left out, which the row keeps
+ *  after the blanking so the result can list it. */
+export type ContactImportTagsLeft = { ordinal: number; tags: string[] };
 /**
  * ⭐ X3 · ONE STEP OF THE COMMIT, AS ONE WRITE: the cursor moves `fromCursor` → `toCursor` by compare-and-set while the
  * run is COMMITTING, and in the same transaction the creates, the guarded updates, the failure sentences, the outcomes
- * with the blanking (S15-8), the list memberships, and DONE when `toCursor` is the run's `stagedThrough`.
+ * with the blanking (S15-8), the tags left out (C8c · #13), the list memberships, and DONE when `toCursor` is the run's
+ * `stagedThrough`.
  */
 export type ContactImportCommitBatch = {
   importId: string;
@@ -1389,6 +1394,10 @@ export type ContactImportCommitBatch = {
   listId: string | null;
   /** Contact ids to put on the list — the store adds only those that still exist and are not the erased tombstone. */
   members: string[];
+  /** ⭐ C8c · #13 · the step's rows whose file tags were not all added — each keeps exactly those tags once settled
+   *  (S15-8's one exception: the result lists them, `contactImportRow.tagsLeftPage`). OPTIONAL so a batch written before
+   *  C8c (a probe's, a replayed one) means "none". */
+  tagsLeft?: ContactImportTagsLeft[];
 };
 /** `advanced`: written · `moved`: the cursor was not `fromCursor` (or the run not COMMITTING) — NOTHING written ·
  *  `conflict`: a create the unique index refused, an update whose guard failed, or a staged row the step would settle
@@ -3991,15 +4000,32 @@ const memoryDb = {
   },
 
   contactList: {
+    /** ⭐ A LIST'S NAME IS UNIQUE WHATEVER ITS CASE (the duplicate audit, probe p6, 2026-10-08; ported in C8c · N3). Postgres
+     *  holds it as a unique index on `lower("name")` (migration `20261009180000_contact_list_name_lower_unique`), so "Arusha
+     *  event" and "ARUSHA EVENT" are one name there — and here: compared by the same lower-cased key, a second spelling is
+     *  refused with null, which the bulk service answers `list_exists`. The pre-check (`listNameKey`) is the rule; this is
+     *  the backstop for two officers naming one new list in the same second. `test:dal-parity` 19.listci.*,
+     *  `test:contacts-bulk` B7b. The importer's start creates its new list inside `contactImport.freezeDecision`, which
+     *  asks the same key (`test:dal-parity` 29.freeze). */
     create: (row: StoredContactList): StoredContactList | null => {
-      for (const l of store.contactLists.values()) if (l.name === row.name) return null;
+      const key = row.name.toLowerCase();
+      for (const l of store.contactLists.values()) if (l.name.toLowerCase() === key) return null;
       store.contactLists.set(row.id, row);
       return row;
     },
     find: (id: string): StoredContactList | null => store.contactLists.get(id) ?? null,
+    /** The list holding this name in ANY case — the unique key's own reading (the oldest, were a legacy pair to exist).
+     *  ⚠️ TEST-ONLY (the re-review's NIT, 2026-10-09): NO production code calls it — the bulk bar and the importer's start
+     *  ask `listNameKey` over `listAll()`, and the index refuses a second spelling. It is kept as the suites' and the
+     *  probe's reader of the case-insensitive key (`test:dal-parity` 19.listci.find, `test:contacts-bulk` B7b, the
+     *  audience probe's 7.4); a production caller must first be proved there. */
     findByName: (name: string): StoredContactList | null => {
-      for (const l of store.contactLists.values()) if (l.name === name) return l;
-      return null;
+      const key = name.toLowerCase();
+      let found: StoredContactList | null = null;
+      for (const l of store.contactLists.values()) {
+        if (l.name.toLowerCase() === key && (found === null || l.createdAt < found.createdAt || (l.createdAt === found.createdAt && l.id < found.id))) found = l;
+      }
+      return found;
     },
     listAll: (): StoredContactList[] =>
       Array.from(store.contactLists.values())
@@ -4265,17 +4291,19 @@ const memoryDb = {
     /** §29 · ⭐ THE START'S FREEZE (U32, S15) — a compare-and-set STAGED → COMMITTING that writes the choice, the
      *  overrides, who confirmed them and when, and the target list in the SAME step, or answers null and writes nothing:
      *  of two starts racing on one run, ONE freezes it. ⭐ R12 · a NEW list is created in this same step, AFTER the
-     *  status is asked — a start that lost the run creates no list — and a name the store already holds is refused as the
-     *  unique index refuses it (P2002), nothing written. ⛔ R17 · an EXISTING target list that is gone is refused as the
-     *  foreign key refuses it (P2003), nothing written — Postgres's own order: the status first, then the list. */
+     *  status is asked — a start that lost the run creates no list — and a name the store already holds IN ANY CASE is
+     *  refused as the unique index on `lower("name")` refuses it (P2002, C8c · N3 — the same lower-cased key as
+     *  `contactList.create`), nothing written. ⛔ R17 · an EXISTING target list that is gone is refused as the foreign key
+     *  refuses it (P2003), nothing written — Postgres's own order: the status first, then the list. */
     freezeDecision: (f: ContactImportFreeze): StoredContactImport | null => {
       const frozenRun = store.contactImports.get(f.importId);
       if (!frozenRun || frozenRun.status !== "STAGED") return null;
       const newList = f.newList ?? null;
       if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");
       if (newList !== null) {
+        const nameKey = newList.name.toLowerCase();
         for (const held of store.contactLists.values()) {
-          if (held.name === newList.name || held.id === newList.id) {
+          if (held.name.toLowerCase() === nameKey || held.id === newList.id) {
             throw Object.assign(new Error("unique: a contact list already holds this name (memory twin of P2002) — nothing was written"), { code: "P2002" });
           }
         }
@@ -4364,6 +4392,12 @@ const memoryDb = {
           ...row, outcome: o.outcome, outcomeReason: o.reason, rawPhone: "", displayName: null, email: null, notes: null, tags: [],
         });
       }
+      // ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags (the blanking above emptied
+      // them), so the result can list it — S15-8's one exception, the run's own retention.
+      for (const left of b.tagsLeft ?? []) {
+        const row = staged.get(left.ordinal);
+        if (row && row.outcome !== null && left.tags.length > 0) staged.set(left.ordinal, { ...row, tags: [...left.tags] });
+      }
       if (b.listId !== null) {
         for (const contactId of members) {
           const member = store.marketingContacts.get(contactId);
@@ -4448,6 +4482,20 @@ const memoryDb = {
         .slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)))
         .map((row) => ({ ...row, tags: [...row.tags], problems: row.problems.map((p) => ({ ...p })) }));
       return { rows: page, total: failed.length };
+    },
+    /** §29 · ⭐ C8c · #13 · the run's settled rows whose file tags were NOT all added (the contact reached its most tags): the
+     *  kept or updated rows still holding tags after the blanking — after `q.afterLine`, ascending by line, at most `q.limit`
+     *  (clamped to `CONTACT_IMPORT_FAILED_PAGE_MAX`), and the run's total of them counted separately. The failures page's
+     *  own shape. */
+    tagsLeftPage: (q: ContactImportFailedQuery): ContactImportFailedPage => {
+      const runRows: Map<number, StoredContactImportRow> = store.contactImportRows.get(q.importId) ?? new Map<number, StoredContactImportRow>();
+      const left = Array.from(runRows.values()).filter((row) => (row.outcome === "keep" || row.outcome === "update") && row.tags.length > 0);
+      const page = left
+        .filter((row) => row.line > q.afterLine)
+        .sort((a, b) => a.line - b.line)
+        .slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)))
+        .map((row) => ({ ...row, tags: [...row.tags], problems: row.problems.map((p) => ({ ...p })) }));
+      return { rows: page, total: left.length };
     },
     /** §29 · the run's KEPT rows counted by their stored reason — the result's split (S15-3), counted from the rows
      *  (OD26), never stored. Ordered by reason. */

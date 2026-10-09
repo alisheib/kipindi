@@ -612,6 +612,47 @@ export const MUTATIONS = [
     expect: `19.unique.memory.index · the memory create MAINTAINS the secondary index it refuses on`,
   },
   {
+    // 🔴 THE LIST KEY EXACT-CASE AGAIN (the duplicate audit, probe p6; ported in C8c · N3): "Race list" and "RACE LIST" are
+    // two lists in the memory twin, while Postgres (the lower(name) index) refuses the second - every memory suite green,
+    // production different.
+    name: "store.ts — the memory list create compares names exact-case again",
+    file: "src/lib/server/store.ts",
+    from: `      const key = row.name.toLowerCase();
+      for (const l of store.contactLists.values()) if (l.name.toLowerCase() === key) return null;`,
+    to: `      for (const l of store.contactLists.values()) if (l.name === row.name) return null;`,
+    expect: `19.listci.memory · the memory list create refuses a name already held IN ANY CASE - both names lower-cased before the comparison, which comes BEFORE the write - answers null and does not overwrite`,
+  },
+  {
+    // 🔴 …the Prisma create stops answering the unique violation with null: the second spelling THROWS, and the officer reads
+    // "something went wrong" where the bar has a sentence for exactly this.
+    name: "prisma-dal.ts — the Prisma list create lets the unique violation escape",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        return toStoredContactList(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;`,
+    to: `        return toStoredContactList(created);
+      } catch (err) {`,
+    expect: `19.listci.prisma · the Prisma list create still turns P2002 into null and does NOT upsert - the lower(name) index raises the very code the exact-case index did`,
+  },
+  {
+    // 🔴 …and the lookup goes back to the exact-case column, so "is there a list called this?" disagrees with the index.
+    name: "prisma-dal.ts — the Prisma list lookup by name is exact-case again",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `         where lower("name") = lower(\${name})`,
+    to: `         where "name" = \${name}`,
+    expect: `19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks the index's own expression lower("name") = lower($1), oldest first, and never mode: insensitive (ILIKE's wildcards - m8) nor findUnique - so the lookup agrees with the key`,
+  },
+  {
+    // 🔴 C8c · N3 · the importer's freeze compares its new list's name exact-case again: in the memory twin a list another
+    // officer named in another case a moment ago no longer refuses the start's new one - two lists of one name, every
+    // memory suite green, while Postgres's lower(name) index refuses it.
+    name: "store.ts — the memory freeze compares the new list's name exact-case again",
+    file: "src/lib/server/store.ts",
+    from: `          if (held.name.toLowerCase() === nameKey || held.id === newList.id) {`,
+    to: `          if (held.name === newList.name || held.id === newList.id) {`,
+    expect: `19.listci.freeze · ⭐ the importer's freeze refuses its NEW list's name IN ANY CASE in the memory twin too - the name lower-cased once, every held list compared by the same key, BEFORE the freeze writes anything (Postgres: the same lower(name) index refuses the insert inside the freeze's transaction)`,
+  },
+  {
     // 🔴 The silent-production-no-op in its original shape: the column is written but never
     // read back, so one twin answers with a field the other has lost.
     name: "prisma-dal.ts — the contact read mapper drops suppressedAt",
@@ -2177,6 +2218,24 @@ export const MUTATIONS = [
     from: `        take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)),`,
     to: `        take: Math.max(0, q.limit),`,
     expect: "29.failed · failedPage is a keyset on the line in both twins — outcome fail, line after afterLine, ascending, the page clamped to CONTACT_IMPORT_FAILED_PAGE_MAX (50 in both) and never skip — and the total COUNTED separately (Prisma count, memory every failed row)",
+  },
+  {
+    // 🔴 C8c · #13 · the Prisma tags-left page loses its outcome filter: on Postgres the result's "tags not added" list
+    // would hold any row still carrying tags — a FAILED row's, whose tags were never meant for the book.
+    name: "prisma-dal.ts — tagsLeftPage reads every row still holding tags, failed ones included",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false }, line: { gt: q.afterLine } },`,
+    to: `        where: { importId: q.importId, tags: { isEmpty: false }, line: { gt: q.afterLine } },`,
+    expect: "29.tags · ⭐ C8c · #13 · tagsLeftPage is the failures page's own keyset in both twins — the settled KEEP or UPDATE rows still holding tags (Prisma's text[] isEmpty false; memory a non-empty list), line after afterLine, ascending, clamped to CONTACT_IMPORT_FAILED_PAGE_MAX and never skip — and their total COUNTED separately",
+  },
+  {
+    // 🔴 C8c · #13 · the memory commit drops the tags left out: every memory suite would read "no tags not added" while
+    // Postgres keeps them — the result's list differs by twin.
+    name: "store.ts — the memory commit never keeps the tags a full contact could not take",
+    file: "src/lib/server/store.ts",
+    from: `        if (row && row.outcome !== null && left.tags.length > 0) staged.set(left.ordinal, { ...row, tags: [...left.tags] });`,
+    to: `        // (the tags left out are dropped)`,
+    expect: "29.tagsleft · ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags in both twins — written AFTER the blanking that empties them (Prisma inside the step's ONE transaction, after the settled rows are counted and before DONE; memory only on a row this batch settled), so the result can list it",
   },
   {
     // Two starts both freeze the run on Postgres: the second decision overwrites the first mid-commit.

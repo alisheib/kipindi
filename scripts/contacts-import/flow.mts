@@ -23,7 +23,9 @@
  * within the caps, contiguous.
  * ⭐ PROVED BY MUTATION: each plant below is a replacement bundle built in memory — the defect wrapped around the shipped
  * function — and names the ONE label it must turn red.
- * ⛔ IN-PROCESS: this module reads two sources and makes no file-changing call.
+ * ⭐ C8c · the list paste's plants put back ONE of its rules (`PASTE_RULES`) and run the REAL reader with it.
+ * ⛔ IN-PROCESS: this module reads six sources (the reader, the loop, the dialog and the three panels that show a paused
+ * run) and makes no file-changing call.
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -36,6 +38,7 @@ import {
   ADDED_PHONE_SOURCE_NOTE,
   PASTE_LINE_NO_NUMBER,
   PASTE_LIST_NOTE,
+  PASTE_RULES,
   READ_TOO_MANY_ROWS,
   extraNumbersNote,
   isListPaste,
@@ -44,11 +47,15 @@ import {
   parsePastedText,
   previewCell,
   readContactsFile,
+  writtenAsCode,
   type FileMapping,
+  type PasteRules,
   type ReadOutcome,
 } from "../../src/lib/contacts/import-read.ts";
-import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
-import { CHECK, DONE, partsText, sumCutOf } from "../../src/app/admin/contacts/import/import-copy.ts";
+import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellParts, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
+import {
+  CHECK, COMMIT, DECIDE, DONE, adoptPausedLine, partsText, pausedLine, refusalTone, sumCutOf,
+} from "../../src/app/admin/contacts/import/import-copy.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import {
   BUSY_BACKOFF_SEC,
@@ -64,13 +71,15 @@ import {
   type UploadOutcome,
 } from "../../src/lib/contacts/import-loop.ts";
 import { isParsedContactsFile, type ParsedContactsFile } from "../../src/lib/contacts/parsed-file.ts";
-import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, scrubPhoneRuns, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
+import { CONTACT_LIMITS, CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, scrubPhoneRuns, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
 import { maskPhone } from "../../src/lib/phone-normalize.ts";
 import { STAGE_BATCH_MAX_ROWS, stageRowsOf, type StageRowInput } from "../../src/lib/contacts/import-limits.ts";
-import { EMPTY_FILE_SENTENCE, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
+import { CSV_RULES, EMPTY_FILE_SENTENCE, buildCsvReader, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
+import { dropTitleRows } from "../../src/lib/contacts/title-rows.ts";
 import { XLSX_MAX_BYTES, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
 import {
   IMPORT_REFUSAL_SENTENCES,
+  STEP_CONFLICT_SENTENCE,
   type CommitStepInput,
   type CommitStepResult,
   type ImportRefusalReason,
@@ -99,10 +108,20 @@ export type FlowImpl = {
   readonly runCommit: typeof runCommit;
   readonly runUpload: typeof runUpload;
   readonly isSkew: typeof isDeploySkewError;
-  /** The reader, the loop and (C3b-fix · D3) the dialog that opens a run with S15-4's count — decommented. */
-  readonly sources: { readonly read: string; readonly loop: string; readonly dialog: string };
+  /** The reader, the loop and (C3b-fix · D3) the dialog that opens a run with S15-4's count — decommented; ⭐ and (the
+   *  re-review's MINOR-2) the three panels that show a paused run. */
+  readonly sources: {
+    readonly read: string; readonly loop: string; readonly dialog: string;
+    readonly commitPanel: string; readonly adoptPanel: string; readonly openRuns: string;
+  };
   /** C3b-fix · D5d · the check's and the result's sum lines, and the ONE rule for how they end. */
   readonly sums: { readonly check: typeof CHECK.sum; readonly done: typeof DONE.sum; readonly cutOf: typeof sumCutOf };
+  /** ⭐ C8c · n8 · the copy table's refusal tone, its changes list's words and the result's tags lead; ⭐ MINOR-2 · the ONE
+   *  rule for a paused run's line on the importing panel, and on the adopt panel and the open-runs list. */
+  readonly copy: {
+    readonly refusalTone: typeof refusalTone; readonly decide: typeof DECIDE; readonly tagsLead: typeof DONE.tagsLead;
+    readonly pausedLine: typeof pausedLine; readonly adoptPausedLine: typeof adoptPausedLine;
+  };
 };
 
 const read = (rel: string): string => decomment(readFileSync(join(REPO_ROOT, rel), "utf8")).split(CRLF).join(LF);
@@ -122,8 +141,12 @@ function real(): FlowImpl {
       read: read("src/lib/contacts/import-read.ts"),
       loop: read("src/lib/contacts/import-loop.ts"),
       dialog: read("src/app/admin/contacts/import/contacts-import-dialog.tsx"),
+      commitPanel: read("src/app/admin/contacts/import/import-commit-panel.tsx"),
+      adoptPanel: read("src/app/admin/contacts/import/import-adopt-panel.tsx"),
+      openRuns: read("src/app/admin/contacts/import/import-open-runs.tsx"),
     },
     sums: { check: CHECK.sum, done: DONE.sum, cutOf: sumCutOf },
+    copy: { refusalTone, decide: DECIDE, tagsLead: DONE.tagsLead, pausedLine, adoptPausedLine },
   };
   return cached;
 }
@@ -135,6 +158,11 @@ export const L = {
   P1: "P1 · ⭐ a LIST paste: each line's first number is the Phone cell and the rest of the line the Name (a chat's stamp, an enumeration and separators dropped), lines numbered as pasted, a blank line counted",
   P1b: "P1b · a pasted line with no number is listed as unreadable with its row and the reader's sentence — never dropped",
   P1c: "P1c · ⭐ S15-4 · a line with a second number keeps the FIRST, and the paste's note names that row; a foreign number yields to a Tanzanian one on its line",
+  P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — and (the review's MAJOR-2) a number never starts inside a run right after its own code: 'Otieno +254 0712 345 678', 'Otieno +254 (0) 712 345 678', 'Otieno 254 0712345678', 'Otieno +254-0712-345-678', 'Otieno 00254 0712345678', 'Okello +256 (0) 772 123 456' and 'Okello +256 0772 123456' stage the run whole, ONE foreign number — the server's own rule reads NO mobile in any of them and never a stranger's +255 number, its sentence the foreign or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, '12. 0712 345 678 Asha', '255, 0712 345 678 Asha', '0712 345 678 / 0754 111 222 Asha', '+254 712 345 678 0712 345 678' (a whole number before it), '12.03.2026 0712345678', '123. 0712345678' (an enumeration's digits never count) and '1 0712345678' their first mobile, and '0712 345 678 0754 111 222' and '+255 712 345 678 0754 111 222' still hold two numbers, as before; ⭐ M1 · a word between two separators is no cut — '1, Asha, 0712 345 678' reads 255712345678 with the name '1, Asha', and '1,Asha,0712345678,Arusha' keeps both names",
+  P1e: "P1e · ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE — a bare nine digits after a run WRITTEN AS A CODE ('+' or '00') is judged a PART, never a whole cell: 'Asha +254 (Kenya) 712 345 678', '+254: 712345678', 'Tel +254 / Mob 712 345 678', 'Okello +256: 772123456' and '00254: 712345678' stage the stretch from the code, which the server's one rule refuses in the foreign number's own words — never a stranger's +255 number — each name the line less that stretch; ⭐ the review's MAJOR-1 · CONTROLS: ANY other run before it is the row number, the date or the label live main reads — '1, Asha, 712345678', '1,Asha,712345678', '1;Asha;712345678', '12,Asha Juma,712345678', '1001,Asha,712345678', '12/03/2026,Asha,712345678', '1 Asha 712345678', '#1 Asha 712345678', '1.Asha 712345678', 'Asha Tel 1: 712345678', the 12-hour chat line '12/03/2026, 10:15 pm - Juma: 712345678' and a long name before it read 255712345678, the number its own cell and the name the line less it — with 'Asha 712 345 678', a chat stamp's and an enumeration's digits ('[12/03/2026, 10:15] Juma: …', '12. Asha …'), Tanzania's own code before it ('+255 (TZ) 712 345 678') and a complete number ('1, Asha, 0712 345 678'); ⚠️ the accepted leftover is pinned: a code written bare ('254: 712345678') reads as the bare nine digits",
+  P1f: "P1f · ⭐ C8c · the review's MAJOR-1 · A LINE'S NAME — a 12-hour phone's chat stamp is a stamp like any ('12/03/2026, 10:15 pm - Juma:', '… 10:15 PM …' after a narrow no-break space, '… 10:15:32 p.m. …', '… 10:15am …' → 'Juma'), and a round bracket a number's removal leaves stray is never part of a name ('Otieno (+254) 712 345 678' → 'Otieno', 'Asha (0712 345 678)' and 'Asha (+255 712 345 678)' → 'Asha'); CONTROLS: a bracketed word stays ('Asha (Mama Neema) 0712 345 678'), a fully bracketed name is unwrapped ('(Asha) 0712345678'), and letters that are no clock's mark keep the line's words ('12 Pam - 0712 345 678' → '12 Pam')",
+  N9: "N9 · ⭐ C8c · the re-review's MINOR-2 · A RUN THE DATABASE PAUSED SAYS SO — the importing panel's line is 'Paused on … — the database was busy. Resume to carry on.' (never 'Stopped.' under 'Import paused'), the adopt panel's and the open-runs list's 'Paused on … — the database was busy.' (never nothing); a run paused by you or another officer says who and when; a run nothing is driving that was never paused says it stopped (the panels) or nothing (the lists); and the three panels each ask the copy table's ONE rule (pausedLine, adoptPausedLine) — none decides on its own",
+  N8: "N8 · ⭐ C8c · the review's n8 · the words around #13's rows and a conflicted step's tone: refusalTone paints server_error with STEP_CONFLICT_SENTENCE as a WARNING (nothing lost, Resume in a minute) while a plain server_error stays danger, bets_busy and db_paused warnings, forbidden danger; the changes list's heading and table never say 'would change' of every row (a tags-only row changes under no choice) and its lead names both kinds; the result's tags lead says neither 'already' nor 'import again' — the way that works is the contact in the book; and (the re-review's MINOR-1) the re-check's line for the rows it let go says they no longer CHANGE under any choice — never 'no longer differ from the book', which a tags-only row still does",
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
   P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
@@ -158,6 +186,7 @@ export const L = {
   R8: "R8 · ⭐ C3b · G1 — a CSV File whose LAST record opens a quotation mark never closed is READ, not refused: its rows kept, that record listed unreadable on its own line with the reader's sentence, and both staged — ⭐ C3b-fix · D5: the outcome carries the row and the ONE line the quote swallowed, and the file's note says it",
   R9: "R9 · ⭐ C3b-fix · D5d — the check's and the result's sum lines never claim \"every row of your file is counted once\" when a quote never closed swallowed lines: they count every row UP TO that row and say how many lines after it were not read; a run this tab did not read whose CSV holds an unreadable record claims only the rows read; a quote that swallowed nothing, and every other run, keep the whole-file claim",
   R10: "R10 · ⭐ C3b-fix · D7 at the CSV door — a CSV File whose first row is a title reads from its column names (row 2 the header, row 3 its contact, ONE note naming row 1), and ⛔ D5e after the title leaves: a title, the column names and a broken quote with no data row before it is refused whole, in the reader's own sentence, never read as a file of no contacts",
+  R10c: "R10c · ⭐ C8c · D7 for an UNPADDED title at the CSV door (C3b-fix's open find 2): a hand-typed CSV whose line 1 is a bare title (no separator), line 2 blank and line 3 the column names reads TWO columns — rows 3–5 at their real lines, ONE note naming row 1 and never its words — and maps Phone and Name from line 3, one header row",
   C1: "C1 · ⛔ THE BAR IS THE SERVER'S CURSOR — every figure shown is a cursor the server answered with, never past the server's own",
   C2: "C2 · ⭐ STOP IS READ BETWEEN STEPS: the run is paused ON THE SERVER, then the loop stops — no step after the pause",
   C3: "C3 · ⛔ a refusal ends the loop with the server's refusal, verbatim (its reason and its sentence)",
@@ -528,7 +557,9 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     "3:0754 123 456|Baraka",
     "5:0688 111 222|Neema",
     "6:0765 432 109|Juma",
-    "7:0715 000 222|Kenya or",
+    // ⭐ C8c · "or" joins the Kenyan number and the Tanzanian one into ONE phone cell (`cellOf`), so it is the cell's, not
+    // the name's — the name was "Kenya or" before.
+    "7:0715 000 222|Kenya",
   ].join(" ; ");
   ok(L.P1, isListPaste(LIST_PASTE) && list.format === "paste" && list.fileName === null && isParsedContactsFile(list)
     && rowsOf(list) === want && list.blankRows === 1 && list.notes[0] === PASTE_LIST_NOTE,
@@ -541,6 +572,203 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   ok(L.P1c, /rows 5 and 7/i.test(multiNote) && list.rows.find((r) => r.line === 7)?.cells[0] === "0715 000 222"
     && !list.rows.some((r) => r.cells[0].replace(/\D/g, "").endsWith("712345678") && !r.cells[0].startsWith("+255")),
     multiNote);
+
+  // ── P1d · C8c · D4 in the list paste ──
+  const STRANGER = "255712345678";
+  /** A refused line's staged cell holds no mobile at all — so never a stranger's +255 number. */
+  const refusedWhole = (lines: ReadonlyArray<readonly [string, string, string, string]>): string[] => {
+    const bad: string[] = [];
+    for (const [line, cell, name, sentenceOf] of lines) {
+      const f = impl.parsePaste(line);
+      const staged = f.rows[0]?.cells[0] ?? "";
+      const stranger = mobilesIn(staged).map((m) => m.number.msisdn ?? "")[0] ?? null;
+      if (f.rows.length !== 1 || staged !== cell || f.rows[0]?.cells[1] !== name || firstMobileIn(staged) !== null || stranger !== null
+        || phoneCellRefusal(staged) !== parseTzNumber(sentenceOf).reason) {
+        bad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}${stranger !== null ? ` (A STRANGER: ${maskPhone(stranger)})` : ""}`);
+      }
+    }
+    return bad;
+  };
+  /** A control line reads `key`, its name `name` — and the cell staged for it is never longer than the phone field. */
+  const readsAsBefore = (lines: ReadonlyArray<readonly [string, string, string]>): string[] => {
+    const bad: string[] = [];
+    for (const [line, key, name] of lines) {
+      const f = impl.parsePaste(line);
+      const staged = f.rows[0]?.cells[0] ?? "";
+      if (f.rows.length !== 1 || firstMobileIn(staged)?.number.msisdn !== key || f.rows[0]?.cells[1] !== name || staged.length > CONTACT_LIMITS.phone) {
+        bad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}`);
+      }
+    }
+    return bad;
+  };
+  const HOLES: ReadonlyArray<readonly [string, string, string, string]> = [
+    // the line · the cell staged whole · the name · the text whose sentence the server gives
+    ["Asha +254, 712 345 678", "+254, 712 345 678", "Asha", "+254"],
+    ["254/712345678 Juma", "254/712345678", "Juma", "254/712345678"],
+    ["Baraka 00254; 712345678", "00254; 712345678", "Baraka", "00254"],
+    ["Neema +254 or 712 345 678", "+254 or 712 345 678", "Neema", "+254"],
+    // ⛔ the review's MAJOR-2 · a number never starts inside a run right after its own code: the run is ONE foreign number
+    ["Otieno +254 0712 345 678", "+254 0712 345 678", "Otieno", "+254 0712 345 678"],
+    ["Otieno +254 (0) 712 345 678", "+254 (0) 712 345 678", "Otieno", "+254 (0) 712 345 678"],
+    ["Otieno 254 0712345678", "254 0712345678", "Otieno", "254 0712345678"],
+    ["Otieno +254-0712-345-678", "+254-0712-345-678", "Otieno", "+254-0712-345-678"],
+    ["Otieno 00254 0712345678", "00254 0712345678", "Otieno", "00254 0712345678"],
+    ["Okello +256 (0) 772 123 456", "+256 (0) 772 123 456", "Okello", "+256 (0) 772 123 456"],
+    ["Okello +256 0772 123456", "+256 0772 123456", "Okello", "+256 0772 123456"],
+  ];
+  const holeBad = refusedWhole(HOLES);
+  const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
+    ["Asha 712 345 678", STRANGER, "Asha"],
+    ["712345678", STRANGER, ""],
+    ["12. 0712 345 678 Asha", STRANGER, "Asha"],
+    ["255, 0712 345 678 Asha", STRANGER, "Asha"],
+    ["0712 345 678 / 0754 111 222 Asha", STRANGER, "Asha"],
+    // ⭐ C8c · M1 · a row number and a name before the number, between commas: never one "cell" (", Asha, " is no cut) —
+    // the number read as before B1, and the name whole. (Its bare-nine-digit twin "1, Asha, 712345678" is in P1e.)
+    ["1, Asha, 0712 345 678", STRANGER, "1, Asha"],
+    // MAJOR-2's controls: a whole number before the start, a date, an enumeration and a one-digit row number still read
+    ["+254 712 345 678 0712 345 678", STRANGER, "+254 712 345 678"],
+    ["12.03.2026 0712345678", STRANGER, "12.03.2026"],
+    ["123. 0712345678", STRANGER, ""],
+    ["1 0712345678", STRANGER, "1"],
+  ];
+  const controlBad = readsAsBefore(CONTROLS);
+  // MAJOR-2 · two numbers side by side are still two — right after a number found, a number may start at once.
+  for (const line of ["0712 345 678 0754 111 222", "+255 712 345 678 0754 111 222"]) {
+    const f = impl.parsePaste(line);
+    if (f.rows.length !== 1 || firstMobileIn(f.rows[0]?.cells[0] ?? "")?.number.msisdn !== STRANGER || !f.notes.some((n) => n.includes("more than one phone number"))) {
+      controlBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)} · notes ${json(f.notes)}`);
+    }
+  }
+  // M1 · and a name on BOTH sides of the number keeps both (B1 kept only the last).
+  {
+    const line = "1,Asha,0712345678,Arusha";
+    const f = impl.parsePaste(line);
+    const name = f.rows[0]?.cells[1] ?? "";
+    if (f.rows.length !== 1 || firstMobileIn(f.rows[0]?.cells[0] ?? "")?.number.msisdn !== STRANGER || !name.includes("Asha") || !name.includes("Arusha")) {
+      controlBad.push(`${json(line)} → ${json(f.rows[0]?.cells ?? null)}`);
+    }
+  }
+  ok(L.P1d, holeBad.length === 0 && controlBad.length === 0,
+    [...holeBad, ...controlBad].join(" | ") || `${HOLES.length} lines staged whole and refused · ${CONTROLS.length} controls read as before`);
+
+  // ── P1e · C8c · m1 · D4 for a number standing ALONE after a code on its line ──
+  const ALONE: ReadonlyArray<readonly [string, string, string, string]> = [
+    // the line · the stretch staged · the name · the text whose sentence the server gives
+    ["Asha +254 (Kenya) 712 345 678", "+254 (Kenya) 712 345 678", "Asha", "+254 (Kenya) 712 345 678"],
+    ["+254: 712345678", "+254: 712345678", "", "+254: 712345678"],
+    ["Tel +254 / Mob 712 345 678", "+254 / Mob 712 345 678", "Tel", "+254 / Mob 712 345 678"],
+    ["Okello +256: 772123456", "+256: 772123456", "Okello", "+256: 772123456"],
+    ["00254: 712345678", "00254: 712345678", "", "00254: 712345678"],
+  ];
+  const aloneBad = refusedWhole(ALONE);
+  const ALONE_CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
+    // no digit run before it: Excel's dropped 0, as D4 keeps it
+    ["Asha 712 345 678", STRANGER, "Asha"],
+    // the digits of a chat stamp or an enumeration are the stamp's, never a number's
+    ["[12/03/2026, 10:15] Juma: 712345678", STRANGER, "Juma"],
+    ["12. Asha 712345678", STRANGER, "Asha"],
+    // Tanzania's own code before it spells the very number the bare reading gives (the stretch staged, so no name)
+    ["+255 (TZ) 712 345 678", STRANGER, ""],
+    // a complete number is never judged a part
+    ["1, Asha, 0712 345 678", STRANGER, "1, Asha"],
+    // ⭐ the review's MAJOR-1 · a run NOT written as a code is the row number, the date or the label live main reads:
+    // the number is its own cell — never the "this one has 10" m1 first gave, nor a Phone cell past the field's limit
+    ["1, Asha, 712345678", STRANGER, "1, Asha"],
+    ["1,Asha,712345678", STRANGER, "1,Asha"],
+    ["1;Asha;712345678", STRANGER, "1;Asha"],
+    ["12,Asha Juma,712345678", STRANGER, "12,Asha Juma"],
+    ["1001,Asha,712345678", STRANGER, "1001,Asha"],
+    ["12/03/2026,Asha,712345678", STRANGER, "12/03/2026,Asha"],
+    ["1 Asha 712345678", STRANGER, "1 Asha"],
+    ["#1 Asha 712345678", STRANGER, "#1 Asha"],
+    ["1.Asha 712345678", STRANGER, "1.Asha"],
+    ["Asha Tel 1: 712345678", STRANGER, "Asha Tel 1"],
+    ["12/03/2026, 10:15 pm - Juma: 712345678", STRANGER, "Juma"],
+    ["1, Asha Mwanaisha Mwakalinga Abdallah Hassani, 712345678", STRANGER, "1, Asha Mwanaisha Mwakalinga Abdallah Hassani"],
+    // ⚠️ THE ACCEPTED LEFTOVER (the integrator's option A, pinned so changing it is a decision): a code written BARE and
+    // kept apart by a colon reads as the bare nine digits — a bare "254" is as often a row or a plot number.
+    ["254: 712345678", STRANGER, "254"],
+  ];
+  aloneBad.push(...readsAsBefore(ALONE_CONTROLS));
+  ok(L.P1e, aloneBad.length === 0,
+    aloneBad.join(" | ") || `${ALONE.length} lines judged a part and refused · ${ALONE_CONTROLS.length} controls read as before`);
+
+  // ── P1f · C8c · the review's MAJOR-1 · a line's name: the 12-hour chat stamp, and a bracket left stray ──
+  {
+    const NNBSP = String.fromCharCode(0x202f);
+    const NAMES: ReadonlyArray<readonly [string, string]> = [
+      ["12/03/2026, 10:15 pm - Juma: 712345678", "Juma"],
+      [`12/03/2026, 10:15${NNBSP}PM - Juma: 0712 345 678`, "Juma"],
+      ["12/03/2026, 10:15:32 p.m. - Juma: 0712345678", "Juma"],
+      ["12/03/2026, 10:15am - Juma: 0712345678", "Juma"],
+      ["Otieno (+254) 712 345 678", "Otieno"],
+      ["Asha (0712 345 678)", "Asha"],
+      ["Asha (+255 712 345 678)", "Asha"],
+      // CONTROLS: a bracketed word stays, a fully bracketed name is unwrapped, and no clock's mark is read in "Pam"
+      ["Asha (Mama Neema) 0712 345 678", "Asha (Mama Neema)"],
+      ["(Asha) 0712345678", "Asha"],
+      ["12 Pam - 0712 345 678", "12 Pam"],
+    ];
+    const nameBad: string[] = [];
+    for (const [line, name] of NAMES) {
+      const f = impl.parsePaste(line);
+      if (f.rows.length !== 1 || f.rows[0]?.cells[1] !== name) nameBad.push(`${json(line)} → ${json(f.rows[0]?.cells[1] ?? null)}`);
+    }
+    // The Kenyan line stays refused whole, its name clean.
+    const otieno = impl.parsePaste("Otieno (+254) 712 345 678").rows[0]?.cells[0] ?? "";
+    if (firstMobileIn(otieno) !== null || mobilesIn(otieno).length > 0) nameBad.push(`"Otieno (+254) 712 345 678" staged ${json(otieno)}`);
+    ok(L.P1f, nameBad.length === 0, nameBad.join(" | ") || `${NAMES.length} names as written`);
+  }
+
+  // ── N8 · C8c · the review's n8 · the words around #13's rows, and a conflicted step painted as the wait it is ──
+  {
+    const tone = impl.copy.refusalTone;
+    const tones = {
+      conflict: tone({ reason: "server_error", message: STEP_CONFLICT_SENTENCE }),
+      fault: tone({ reason: "server_error", message: IMPORT_REFUSAL_SENTENCES.server_error }),
+      bets: tone({ reason: "bets_busy", message: IMPORT_REFUSAL_SENTENCES.bets_busy }),
+      dbPaused: tone({ reason: "db_paused", message: IMPORT_REFUSAL_SENTENCES.db_paused }),
+      forbidden: tone({ reason: "forbidden", message: IMPORT_REFUSAL_SENTENCES.forbidden }),
+    };
+    const d = impl.copy.decide;
+    const lead = partsText(impl.copy.tagsLead(2));
+    const leadOne = partsText(impl.copy.tagsLead(1));
+    const letGoOne = partsText(d.dropped(1));
+    const letGoMany = partsText(d.dropped(3));
+    ok(L.N8, tones.conflict === "warning" && tones.fault === "danger" && tones.bets === "warning" && tones.dbPaused === "warning" && tones.forbidden === "danger"
+      && !d.listHeading.includes("would change") && !d.tableLabel.includes("would change")
+      && d.listLead.includes("a choice would change it") && d.listLead.includes("too full of tags")
+      && [lead, leadOne].every((l) => !l.includes("already") && !l.includes("import again"))
+      && lead.includes("open each contact in the book") && leadOne.includes("open the contact in the book")
+      && letGoOne === "1 row you had set apart no longer changes under any choice, so it follows the choice above."
+      && letGoMany === "3 rows you had set apart no longer change under any choice, so they follow the choice above.",
+      `tones ${json(tones)} · list "${d.listHeading}" / "${d.tableLabel}" · tags lead "${lead.slice(0, 120)}" · let go "${letGoMany}"`);
+  }
+
+  // ── N9 · C8c · the re-review's MINOR-2 · a run the database paused says so, on every panel that shows it ──
+  {
+    const WHEN = "on 9 Oct 2026, 14:02";
+    const line = impl.copy.pausedLine;
+    const listLine = impl.copy.adoptPausedLine;
+    const byDatabase = { status: "PAUSED", pausedBy: null } as const;
+    const byYou = { status: "PAUSED", pausedBy: "you" } as const;
+    const byAmina = { status: "PAUSED", pausedBy: "Amina" } as const;
+    const stopped = { status: "COMMITTING", pausedBy: null } as const;
+    const said = {
+      database: line(byDatabase, WHEN), you: line(byYou, WHEN), other: line(byAmina, WHEN), stopped: line(stopped, WHEN),
+      listDatabase: listLine(byDatabase, WHEN), listOther: listLine(byAmina, WHEN), listStopped: listLine(stopped, WHEN),
+    };
+    const src = impl.sources;
+    const asksTheRule = src.commitPanel.includes("pausedLine(view, whenText(when(view.pausedAt)))") && !src.commitPanel.includes("COMMIT.stoppedHere")
+      && src.adoptPanel.includes("adoptPausedLine(view, whenText(when(view.pausedAt)))") && !src.adoptPanel.includes("ADOPT.paused(")
+      && src.openRuns.includes("adoptPausedLine(run, whenText(when(run.pausedAt)))") && !src.openRuns.includes("ADOPT.paused(");
+    ok(L.N9, said.database === "Paused on 9 Oct 2026, 14:02 — the database was busy. Resume to carry on."
+      && said.you === `Paused by you ${WHEN}.` && said.other === `Paused by Amina ${WHEN}.` && said.stopped === COMMIT.stoppedHere
+      && said.listDatabase === "Paused on 9 Oct 2026, 14:02 — the database was busy." && said.listOther === `Paused by Amina ${WHEN}.`
+      && said.listStopped === null && asksTheRule,
+      `${json(said)} · the panels ask the one rule: ${asksTheRule}`);
+  }
 
   const table = impl.parsePaste(TAB_PASTE);
   const tableMap = impl.mappingFor(table, { list: isListPaste(TAB_PASTE) });
@@ -724,6 +952,18 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
       && r10b.out.kind === "refused" && r10b.out.cause === "csv" && r10b.out.sentence === csvRefusalSentence("unterminated_quote", 3),
       `${r10File === null ? JSON.stringify(r10.out).slice(0, 120) : `lines ${json(r10File.rows.map((r) => r.line))} · notes ${json(r10File.notes)}`}`
       + ` · broken after a title: ${r10b.out.kind === "refused" ? r10b.out.sentence.slice(0, 80) : r10b.out.kind}`);
+
+    // ⭐ C8c · C3b-fix's open find 2 · an UNPADDED title, typed by hand: nothing but the words on line 1, a blank line, the
+    // column names on line 3 — once read as ONE column whole, so D7 found no names.
+    const bareTitled = `Contacts October${CRLF}${CRLF}Jina,Simu${CRLF}Asha,0712 345 678${CRLF}Baraka,0754 123 456${CRLF}`;
+    const r10c = await readOne(impl, new File([bytesOf(bareTitled)], "hand-typed.csv", { type: "text/csv" }));
+    const r10cFile = r10c.out.kind === "parsed" ? r10c.out.file : null;
+    const r10cMap = r10cFile === null ? null : impl.mappingFor(r10cFile);
+    ok(L.R10c, r10cFile !== null && json(r10cFile.rows.map((r) => [r.line, r.cells.length])) === json([[3, 2], [4, 2], [5, 2]])
+      && json(r10cFile.notes) === json([TITLE_NOTE_1]) && !json(r10cFile.notes).includes("October") && r10cFile.width === 2
+      && r10cMap !== null && r10cMap.headerRows === 1 && r10cMap.mapping.phone === 1 && r10cMap.mapping.name === 0 && r10cMap.phoneProblem === null,
+      r10cFile === null ? JSON.stringify(r10c.out).slice(0, 160)
+        : `rows ${json(r10cFile.rows.map((r) => [r.line, r.cells.length]))} · notes ${json(r10cFile.notes)} · mapping ${r10cMap === null ? "-" : json(r10cMap.mapping)}`);
   }
 
   // ── R9 · D5d · the sum lines ──────────────────────────────────────────────────────────────────
@@ -903,6 +1143,20 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
 
 /* ══ THE RED PLANTS — each defect wrapped around the shipped function, in memory ═════════════════════ */
 
+/** The list paste's shipped rules with exactly ONE swapped — the real reader runs with it (`parsePastedText(t, rules)`). */
+const withRule = (rule: Partial<PasteRules>): PasteRules => ({ ...PASTE_RULES, ...rule });
+/** The start rule as it shipped before the review's MAJOR-2: any group beginning with 0 or 255 may start a number. */
+const SHIPPED_START: PasteRules["startsMidRun"] = (_line, run, at) =>
+  at === 0 || run.groups[at].digits.startsWith("0") || run.groups[at].digits.startsWith("255");
+/** The paste's cut question as B1 shipped it, before M1: asked of the DIGIT-FILTERED parts, so a word between two
+ *  separators vanished into the "cut". */
+const partsCutCell = (gap: string): boolean => {
+  const s = String(gap ?? "");
+  if (s.length === 0 || s.length > CONTACT_LIMITS.phone || /[0-9]/.test(s)) return false;
+  const parts = phoneCellParts(`0${s}0`);
+  return parts.length === 2 && parts[0] === "0" && parts[1] === "0";
+};
+
 const PLANTS: readonly RedPlant<FlowImpl>[] = [
   {
     name: "import-read.ts imports the server store",
@@ -927,6 +1181,136 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
       parsePaste: (t) => {
         const f = parsePastedText(t);
         return { ...f, rows: f.rows.map((r) => (r.line === 7 ? { ...r, cells: ["+254 712 345 678", r.cells[1]] } : r)) };
+      },
+    }),
+  },
+  // ⭐ The paste's plants below run the REAL reader with exactly ONE of its rules put back as it shipped (`PASTE_RULES`).
+  {
+    // 🔴 C8c · D4's hole in the paste as it shipped: no digit run is ever joined to a number's cell, so "254/712345678"
+    // leaves the bare "712345678" standing alone, which the server reads WHOLE as a stranger's +255 number.
+    name: "the list paste joins nothing to a number's cell (cutsCell never cuts) — '254/712345678 Juma' imports a stranger",
+    expect: L.P1d,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ cutsCell: () => false })) }),
+  },
+  {
+    // 🔴 C8c · M1 · B1 as it shipped: the cut asked of the digit-filtered parts, so ", Asha, " read as a cut and the cell ran
+    // from the row number over the name — the name came back empty.
+    name: "C8c · M1 · the paste's cut asks the digit-filtered parts — '1, Asha, 0712 345 678' loses its name",
+    expect: L.P1d,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ cutsCell: partsCutCell })) }),
+  },
+  {
+    // 🔴 the review's MAJOR-2 · the start rule as it shipped: a number starts at ANY group beginning with 0 or 255, so the
+    // "0712 345 678" inside "+254 0712 345 678" is read as a stranger's +255 number.
+    name: "MAJOR-2 · a number starts mid-run at any trunk zero again — 'Otieno +254 0712 345 678' imports a stranger",
+    expect: L.P1d,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ startsMidRun: SHIPPED_START })) }),
+  },
+  {
+    // 🔴 MAJOR-2 without its bare clause: only a run written as a code is held — "254 0712345678" imports a stranger.
+    name: "MAJOR-2 · three digits written bare before a trunk zero are no code — 'Otieno 254 0712345678' imports a stranger",
+    expect: L.P1d,
+    impl: () => ({
+      ...real(),
+      parsePaste: (t) => parsePastedText(t, withRule({
+        startsMidRun: (line, run, at, since) => PASTE_RULES.startsMidRun(line, run, at, since)
+          || (since === 3 && !writtenAsCode(line, run) && SHIPPED_START(line, run, at, since)),
+      })),
+    }),
+  },
+  {
+    // 🔴 MAJOR-2 read too strictly: after a number found, a code-written run still waits for nine digits — the second of two
+    // numbers side by side is lost.
+    name: "MAJOR-2 · right after a number found, a code-written run still holds the next start — '+255 712 345 678 0754 111 222' loses its second",
+    expect: L.P1d,
+    impl: () => ({
+      ...real(),
+      parsePaste: (t) => parsePastedText(t, withRule({
+        startsMidRun: (line, run, at, since) => PASTE_RULES.startsMidRun(line, run, at, since)
+          && (at === 0 || !writtenAsCode(line, run) || since >= 9),
+      })),
+    }),
+  },
+  {
+    // 🔴 C8c · m1 as first shipped: ANY digit run before a bare nine digits makes it a part — "1, Asha, 712345678" refused
+    // with an untrue "this one has 10" (the review's MAJOR-1).
+    name: "MAJOR-1 · any digit run before a bare nine digits makes it a part — '1, Asha, 712345678' is refused",
+    expect: L.P1e,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ makesPart: () => true })) }),
+  },
+  {
+    // 🔴 C8c · m1 undone: no run makes a part — a colon after a country code, and the stranger's +255 number is imported.
+    name: "C8c · m1 · no run before a bare nine digits makes it a part — '+254: 712345678' imports a stranger",
+    expect: L.P1e,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ makesPart: () => false })) }),
+  },
+  {
+    // 🔴 MAJOR-1 · the chat stamp as it shipped: a 12-hour phone's "10:15 pm" is no stamp, so the name is the whole stamp.
+    name: "MAJOR-1 · a 12-hour clock's 'pm' ends no stamp — '12/03/2026, 10:15 pm - Juma:' is named by its stamp",
+    expect: L.P1f,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ meridiemAt: () => -1 })) }),
+  },
+  {
+    // 🔴 MAJOR-1 · a bracket the number's removal leaves stray stays in the name: "Otieno (".
+    name: "MAJOR-1 · a bracket left stray stays in the name — 'Otieno (+254) 712 345 678' is named 'Otieno ('",
+    expect: L.P1f,
+    impl: () => ({ ...real(), parsePaste: (t) => parsePastedText(t, withRule({ dropsStrayBrackets: false })) }),
+  },
+  {
+    // 🔴 the review's n8 · the tone read off the reason alone: the conflicted step's "nothing lost, press Resume" is
+    // painted as a fault.
+    name: "C8c · n8 · a refusal's tone is its reason's alone — the conflicted step's server_error is painted danger",
+    expect: L.N8,
+    impl: () => ({
+      ...real(),
+      copy: { ...real().copy, refusalTone: (r) => (r.reason === "server_error" ? "danger" : refusalTone(r)) },
+    }),
+  },
+  {
+    // 🔴 the re-review's MINOR-1 · the re-check's line as it shipped: the rows let go "no longer differ from the book" —
+    // untrue of a row on the pages only for the tags a full contact cannot take (it still differs).
+    name: "MINOR-1 · the rows a re-check lets go are said to no longer differ from the book",
+    expect: L.N8,
+    impl: () => ({
+      ...real(),
+      copy: {
+        ...real().copy,
+        decide: {
+          ...DECIDE,
+          dropped: (n: number) => [{ n }, ` ${n === 1 ? "row" : "rows"} you had set apart no longer ${n === 1 ? "differs" : "differ"} from the book, so ${n === 1 ? "it follows" : "they follow"} the choice above.`],
+        },
+      },
+    }),
+  },
+  {
+    // 🔴 the re-review's MINOR-2 · the importing panel's line as it shipped: a run paused by nobody (the database) reads
+    // "Stopped." under the title "Import paused".
+    name: "MINOR-2 · a run the database paused reads 'Stopped.' on the importing panel",
+    expect: L.N9,
+    impl: () => ({
+      ...real(),
+      copy: {
+        ...real().copy,
+        pausedLine: (run, when) => (run.status === "PAUSED" && run.pausedBy !== null ? COMMIT.pausedBy(run.pausedBy, when) : COMMIT.stoppedHere),
+      },
+    }),
+  },
+  {
+    // 🔴 MINOR-2 · the adopt panel and the open-runs list as they shipped: a run paused by nobody says nothing of it.
+    name: "MINOR-2 · a run the database paused carries no line on the adopt panel or the open-runs list",
+    expect: L.N9,
+    impl: () => ({ ...real(), copy: { ...real().copy, adoptPausedLine: (run, when) => (run.pausedBy === null ? null : adoptPausedLine(run, when)) } }),
+  },
+  {
+    // 🔴 MINOR-2 · the importing panel deciding on its own again, as it shipped — the one rule bypassed.
+    name: "MINOR-2 · the importing panel picks its paused line itself — the copy table's rule is not asked",
+    expect: L.N9,
+    impl: () => ({
+      ...real(),
+      sources: {
+        ...real().sources,
+        commitPanel: real().sources.commitPanel.split("pausedLine(view, whenText(when(view.pausedAt)))")
+          .join("view.pausedBy !== null ? COMMIT.pausedBy(view.pausedBy, whenText(when(view.pausedAt))) : COMMIT.stoppedHere"),
       },
     }),
   },
@@ -1192,6 +1576,20 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
         if (out.kind !== "parsed" || out.file.format !== "csv") return out;
         const asRead = parseCsv(stripBom(await f.text()).text, { fileName: f.name });
         return asRead.ok ? { ...out, file: asRead.file } : out;
+      },
+    }),
+  },
+  {
+    // 🔴 C8c undone at the door: the vote decides on the bare title — the file read as ONE column, D7 finds no names.
+    name: "C8c undone at the CSV door — an unpadded title makes the hand-typed file one column",
+    expect: L.R10c,
+    impl: () => ({
+      ...real(),
+      readFile: async (f, o) => {
+        const out = await readContactsFile(f, o);
+        if (out.kind !== "parsed" || out.file.format !== "csv") return out;
+        const asRead = buildCsvReader({ ...CSV_RULES, voteLooksPast: () => false }).parse(stripBom(await f.text()).text, { fileName: f.name });
+        return asRead.ok ? { ...out, file: dropTitleRows(asRead.file) } : out;
       },
     }),
   },

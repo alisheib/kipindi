@@ -261,7 +261,8 @@ async function resolveParams(req: ContactBulkRequest): Promise<{ ok: true; p: Bu
   }
   const named = parseListName(l.name);
   if (!named.ok) return refuse("bad_list", named.sentence, "list");
-  // ⭐ ONE LIST PER NAME TO A PERSON: the store's unique index is case-sensitive, so the clash is asked here.
+  // ⭐ ONE LIST PER NAME TO A PERSON: the clash is asked here by `listNameKey` (NFKC, then lower case) - the RULE. The store's
+  // unique index on lower(name) is the backstop for a name created between this read and the create below (B7b).
   const key = listNameKey(named.name);
   const clash = (await db.contactList.listAll()).find((x) => listNameKey(x.name) === key);
   if (clash) return refuse("list_exists", BULK_SENTENCES.listExists(clash.name), "list");
@@ -518,7 +519,8 @@ export async function runContactBulk(
       row = await db.contactList.create({
         id: newListId(), name: chosen.name, description: null, createdAt: at, createdBy: officerId, updatedAt: at, updatedBy: officerId,
       });
-      // ⛔ The unique index refused it: somebody created the name between the check and here.
+      // ⛔ The unique index refused it: somebody created the name - in any case - between the check and here (B7b). Nothing
+      // has been written yet, so the refusal leaves the book as it was.
       if (row === null) return refuse("list_exists", BULK_SENTENCES.listExists(chosen.name), "list");
       listCreated = true;
     }

@@ -4610,6 +4610,12 @@ export const prismaDb = {
   },
 
   contactList: {
+    /** ⭐ A LIST'S NAME IS UNIQUE WHATEVER ITS CASE (the duplicate audit, probe p6, 2026-10-08; ported in C8c · N3). The
+     *  model's `@unique` is exact-case; the migration `20261009180000_contact_list_name_lower_unique` adds a unique index on
+     *  `lower("name")`, so a second spelling of a name another officer created a moment ago is a P2002 here too — answered
+     *  null, which the bulk service turns into `list_exists`. The importer's freeze meets the same index inside its own
+     *  transaction (P2002 rolls the freeze back; the start says so). The memory twin compares the same lower-cased key
+     *  (`test:dal-parity` 19.listci.*). */
     create: async (row: StoredContactList): Promise<StoredContactList | null> => {
       try {
         const created = await pc().contactList.create({
@@ -4629,9 +4635,19 @@ export const prismaDb = {
       const row = await pc().contactList.findUnique({ where: { id } });
       return row ? toStoredContactList(row) : null;
     },
+    /** The list holding this name in ANY case — the unique key's own reading, `lower("name") = lower($1)` (the index's own
+     *  expression, so the index answers it), the oldest were a legacy pair to exist. ⛔ The review's m8 · never Prisma's
+     *  `mode: "insensitive"`, which Postgres may run as ILIKE: a "_", a "%" or a backslash in a name would match as a
+     *  wildcard, and oldest-first would then hand back ANOTHER list ("Race_1" answered by "RaceX1").
+     *  ⚠️ TEST-ONLY (the re-review's NIT): no production code calls it — see the memory twin's note (store.ts). */
     findByName: async (name: string): Promise<StoredContactList | null> => {
-      const row = await pc().contactList.findUnique({ where: { name } });
-      return row ? toStoredContactList(row) : null;
+      const rows = await pc().$queryRaw<ContactListRow[]>`
+        select "id", "name", "description", "createdAt", "createdBy", "updatedAt", "updatedBy"
+          from "ContactList"
+         where lower("name") = lower(${name})
+         order by "createdAt" asc, "id" asc
+         limit 1`;
+      return rows.length > 0 ? toStoredContactList(rows[0]) : null;
     },
     listAll: async (): Promise<StoredContactList[]> => {
       const rows = await pc().contactList.findMany({
@@ -4989,8 +5005,10 @@ export const prismaDb = {
      *  when, and an EXISTING target list in the same statement. Postgres re-checks the where after a racing commit, so of
      *  two starts ONE freezes the run; the loser counts 0 and is answered null, nothing written. An existing list deleted
      *  since the start read it is the foreign key refusing the update (P2003). ⭐ R12 · a NEW list is inserted only AFTER
-     *  the run was won, then made the target, in the same transaction: a held name is the unique index refusing the insert
-     *  (P2002), which rolls the freeze back with it — so a start that loses or throws leaves no list behind. */
+     *  the run was won, then made the target, in the same transaction: a name held IN ANY CASE is a unique index refusing the
+     *  insert (P2002 — the model's exact-case one, or since C8c · N3 the `lower("name")` one of migration
+     *  `20261009180000_contact_list_name_lower_unique`), which rolls the freeze back with it — so a start that loses or
+     *  throws leaves no list behind, and the run is left STAGED. */
     freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> => {
       const newList = f.newList ?? null;
       if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");
@@ -5122,6 +5140,19 @@ export const prismaDb = {
               throw new ContactImportBatchConflict((gone.length > 0 ? gone : g.ordinals).sort((x, y) => x - y));
             }
           }
+          // ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags (the blanking above
+          // emptied them), so the result can list it — S15-8's one exception, ONE statement per distinct list of tags.
+          const byTagsLeft = new Map<string, { tags: string[]; ordinals: number[] }>();
+          for (const left of b.tagsLeft ?? []) {
+            if (left.tags.length === 0) continue;
+            const key = JSON.stringify(left.tags);
+            const group = byTagsLeft.get(key) ?? { tags: [...left.tags], ordinals: [] };
+            group.ordinals.push(left.ordinal);
+            byTagsLeft.set(key, group);
+          }
+          for (const g of byTagsLeft.values()) {
+            await tx.contactImportRow.updateMany({ where: { importId: b.importId, ordinal: { in: g.ordinals } }, data: { tags: g.tags } });
+          }
           if (b.listId !== null && members.length > 0) {
             const live = await tx.marketingContact.findMany({
               where: { id: { in: members }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
@@ -5204,6 +5235,20 @@ export const prismaDb = {
         take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)),
       });
       const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: "fail" } });
+      return { rows: rows.map(toStoredContactImportRow), total };
+    },
+    /** §29 · ⭐ C8c · #13 · the run's settled rows whose file tags were NOT all added: kept or updated rows still holding
+     *  tags after the blanking (`tags` not empty — a Postgres text[] filter), after `q.afterLine`, ascending by line — a
+     *  keyset on the line, never `skip` — at most `q.limit` (clamped to `CONTACT_IMPORT_FAILED_PAGE_MAX`), and their total
+     *  COUNTED separately. */
+    tagsLeftPage: async (q: ContactImportFailedQuery): Promise<ContactImportFailedPage> => {
+      const rows = await pc().contactImportRow.findMany({
+        where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false }, line: { gt: q.afterLine } },
+        orderBy: { line: "asc" },
+        // The failures page's clamp, written min-of-max so a red anchor on failedPage's own line still resolves once.
+        take: Math.min(Math.max(0, q.limit), CONTACT_IMPORT_FAILED_PAGE_MAX),
+      });
+      const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false } } });
       return { rows: rows.map(toStoredContactImportRow), total };
     },
     /** §29 · the run's KEPT rows counted by their stored reason — ONE groupBy, never the rows (OD26). */

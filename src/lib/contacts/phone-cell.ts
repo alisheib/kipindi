@@ -29,9 +29,13 @@
  * text (the new contact's `rawInput`, so another person's number never rides into it), the check for the sentence of a
  * cell that yields no number (`classifyStagedRow`), the browser for the phone column it adds from a row's other phone
  * columns (G4, `import-read.ts` — it carries every distinct mobile of those columns, so this rule decides there too) and
- * for the sheet a workbook is read from (`sheet-choice.ts`), and the list paste chooses the first number on a line
- * through `firstMobileIndex`. The drafted `rawPhone` — the staged row's raw cell — keeps the whole cell; the staged key
- * is its one mobile's.
+ * for the sheet a workbook is read from (`sheet-choice.ts`), and the list paste chooses the first mobile on a line
+ * through `firstMobileIndex` — ⭐ C8c · over the line's CELLS, each its number with the digit runs this rule's own cut
+ * joins to it (`cutsCell`), so D4 holds in the paste too ("Asha +254, 712 345 678" is a Kenyan number, never a stranger's
+ * +255 712 345 678) — and (m1, as the review's MAJOR-1 settled it) a bare nine digits standing alone after a run WRITTEN
+ * AS A CODE is judged a PART there (`completePart`, "+254: 712345678"), while the paste's own reader never starts a
+ * number right after its code (MAJOR-2, "+254 0712 345 678"); `import-read.ts`'s header names the two shapes left on
+ * purpose. The drafted `rawPhone` — the staged row's raw cell — keeps the whole cell; the staged key is its one mobile's.
  * ⛔ C3b-fix · D1 — THE COST IS LINEAR AND BOUNDED, on the live money server (the review, 2026-10-09: a phone cell of
  * 200,000 spaces cost about 2·10¹⁰ steps, because the word test rescanned a run of blanks from EVERY blank in it):
  *   (a) `phoneCellParts` reads each run of blanks ONCE — when the separator-word test fails at a blank it would fail at
@@ -138,13 +142,16 @@ function longerThanSplitLimit(text: string): boolean {
 /* ══ THE PARTS, AND THE ONE CHOICE ═══════════════════════════════════════════════════════════════════════ */
 
 /**
- * The numbers a cell holds as written, in order: the cell cut at every separator (see the header), each piece trimmed,
- * and only the pieces holding a digit kept. One piece for a cell that holds one number — or none.
- * ⭐ THE CUT ALONE, LINEAR IN THE CELL'S LENGTH WHATEVER ITS LENGTH (D1a): each run of blanks and each run of colons is
- * read once. ⛔ It decides nothing: the functions below that choose a number never hand it a cell longer than the phone
- * field's limit (D1b) — they answer such a cell whole.
+ * ⭐ THE CUT ITSELF: a cell cut at every separator (see the header), each piece trimmed — EVERY piece kept, the labels and
+ * the words too ("home", "Asha"), an empty one where two separators meet. `phoneCellParts` keeps the pieces holding a
+ * digit; ⭐ C8c · M1 · `cutsCell` reads the pieces whole, so a word standing between two separators is a piece of its own
+ * and never vanishes into a "cut" (the review, 2026-10-09: ", Asha, " passed as a cut once the digit filter had dropped
+ * "Asha", and the paste lost the name of "1, Asha, 0712 345 678").
+ * ⭐ LINEAR IN THE CELL'S LENGTH WHATEVER ITS LENGTH (D1a): each run of blanks and each run of colons is read once.
+ * ⛔ It decides nothing: the functions below that choose a number never hand it a cell longer than the phone field's
+ * limit (D1b) — they answer such a cell whole.
  */
-export function phoneCellParts(cell: string): string[] {
+export function phoneCellPieces(cell: string): string[] {
   const s = String(cell ?? "");
   const pieces: string[] = [];
   let start = 0;
@@ -179,17 +186,46 @@ export function phoneCellParts(cell: string): string[] {
     start = i;
   }
   pieces.push(s.slice(start));
-  return pieces.map((p) => p.trim()).filter((p) => ANY_DIGIT.test(p));
+  return pieces.map((p) => p.trim());
 }
 
 /**
- * ⭐ S15-4 · the index of the FIRST of several numbers written in order that THE ONE NUMBER RULE (`parseTzNumber`) reads
- * as a Tanzanian mobile number, or -1 when none is — the list paste's choice for a pasted line (`import-read.ts`, whose
- * own reader finds the numbers on the line). ⛔ A phone CELL is never chosen here: `firstMobileIn` takes a number out of
- * a cell only when it holds exactly one distinct mobile (D3).
+ * The numbers a cell holds as written, in order: the cut's pieces (`phoneCellPieces`) holding a digit. One part for a
+ * cell that holds one number — or none.
  */
-export function firstMobileIndex(texts: readonly string[]): number {
-  for (let i = 0; i < texts.length; i++) if (parseTzNumber(texts[i]).verdict === "ok") return i;
+export function phoneCellParts(cell: string): string[] {
+  return phoneCellPieces(cell).filter((p) => ANY_DIGIT.test(p));
+}
+
+/**
+ * ⭐ C8c · THE LIST PASTE'S QUESTION, ASKED OF THIS RULE'S OWN CUT (the C3b-fix builder found D4 open in the paste: the
+ * paste's run reader stopped a number at a comma, so "Asha +254, 712 345 678" lost its "+254" and staged a stranger's
+ * +255 712 345 678). Does `gap` — the text between two digit runs of a pasted line — CUT a phone cell in two, as this
+ * module cuts one? True exactly when the cut (`phoneCellPieces`) of a digit on each side of it leaves those two digits
+ * and NOTHING ELSE — the empty pieces where separators meet aside: blanks around a separator character, Google's three
+ * colons or a separator word — never a space alone, a dash, a full stop, a bracket, a single colon, a letter, a digit, or
+ * ⭐ C8c · M1 · a WORD between two separators (", Asha, ", " | Asha | ", "; Asha; " — a name, which the paste keeps as the
+ * name). The paste then reads the runs on both sides as ONE cell (`import-read.ts`, `cellOf`), and `mobilesIn` applies D4
+ * to its parts.
+ */
+export function cutsCell(gap: string): boolean {
+  const s = String(gap ?? "");
+  if (s.length === 0 || s.length > SPLIT_MAX_CHARS || ANY_DIGIT.test(s)) return false;
+  const pieces = phoneCellPieces(`0${s}0`).filter((p) => p !== "");
+  return pieces.length === 2 && pieces[0] === "0" && pieces[1] === "0";
+}
+
+/**
+ * ⭐ S15-4 · the index of the FIRST of several phone CELLS written in order — a pasted line's, each the number with the
+ * runs this rule's cut joins to it (`cutsCell`) — that holds a Tanzanian mobile by THE ONE RULE (`mobilesIn`: the whole
+ * cell first, else its COMPLETE parts — D4), or -1 when none does: the list paste's choice for a line (`import-read.ts`).
+ * ⛔ C8c · before, it asked `parseTzNumber` of each number as the paste's own reader had cut it, so a bare nine-digit part
+ * whose country code the reader had cut off read as a Tanzanian mobile. ⛔ A FILE's phone cell is never chosen here:
+ * `firstMobileIn` takes a number out of a cell only when it holds exactly one distinct mobile (D3); the list paste keeps
+ * S15-4's first mobile of a line until step C3e.
+ */
+export function firstMobileIndex(cells: readonly string[]): number {
+  for (let i = 0; i < cells.length; i++) if (mobilesIn(cells[i]).length > 0) return i;
   return -1;
 }
 
@@ -204,8 +240,9 @@ export const SEVERAL_MOBILES_SENTENCE =
 /**
  * ⛔ D4 · is this part a COMPLETE number? Its digits begin with 0 (the trunk zero, or 00) or 255, or a "+" stands before
  * them — read the parser's way (`readAsciiDigits`), at most three digits looked at. A bare nine-digit part is not.
+ * ⭐ C8c · m1 · exported for the list paste, which asks it of a number standing alone after a code on its line.
  */
-function completePart(part: string): boolean {
+export function completePart(part: string): boolean {
   const text = readAsciiDigits(part);
   let digits = "";
   for (let i = 0; i < text.length && digits.length < 3; i++) {

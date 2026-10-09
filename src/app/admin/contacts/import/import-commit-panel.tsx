@@ -11,10 +11,12 @@
  * and says so under the bar in the server's own sentence ("…carries on by itself as soon as it is free"), with Stop live.
  * The run stays COMMITTING through the wait, so nothing here calls it paused. Stop is read between steps and between
  * waits: the run is paused on the server, then the loop stops.
- * ⭐ PAUSED (by this tab, by another officer, or left by a closed window) — or STOPPED, a run nothing is driving that was
- * never paused (a refusal, a dropped connection): who paused it and when, or that it stopped; how far, in the SERVER's
- * figures; Resume — and Cancel the rest, whose confirmation names both numbers (R5): the contacts already written (added
- * plus updated) stay in the book, and the rows not reached yet are not imported (S15-9).
+ * ⭐ PAUSED (by this tab, by another officer, left by a closed window, or ⭐ C8c · m2 by the DATABASE — a fault that would
+ * not clear, paused by nobody) — or STOPPED, a run nothing is driving that was never paused (a refusal, a dropped
+ * connection): who paused it and when, that the database did, or that it stopped (`pausedLine`, the copy table's ONE rule
+ * — never "Stopped." under "Import paused", the re-review's MINOR-2); how far, in the SERVER's figures; Resume — and
+ * Cancel the rest, whose confirmation names both numbers (R5): the contacts already written (added plus updated) stay in
+ * the book, and the rows not reached yet are not imported (S15-9).
  * ⛔ While rows are being written the dialog cannot be dismissed by a stray click or key, and leaving the page asks first.
  */
 import { useState, type RefObject } from "react";
@@ -25,7 +27,7 @@ import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useActDisabledReason, useMayAct } from "@/components/admin/act-gate";
 import type { ImportRunView } from "@/lib/contacts/import-flow";
 import type { BusyState } from "@/lib/contacts/import-loop";
-import { COMMIT, partsText, whenText } from "./import-copy";
+import { COMMIT, partsText, pausedLine, whenText } from "./import-copy";
 import { ActionsRow, ImportAlert, Parts, type ImportAlertState } from "./import-parts";
 
 export type CommitMode =
@@ -83,9 +85,8 @@ export function ImportCommitPanel({
 
       {mode.kind === "paused" && (
         <div className="space-y-1 text-body-sm text-text-secondary" data-import-paused>
-          {view.status === "PAUSED" && view.pausedBy !== null
-            ? <p>{COMMIT.pausedBy(view.pausedBy, whenText(when(view.pausedAt)))}</p>
-            : <p>{COMMIT.stoppedHere}</p>}
+          {/* ⭐ The ONE rule (import-copy.ts): who paused it, the database (m2 · MINOR-2), or that it stopped. */}
+          <p>{pausedLine(view, whenText(when(view.pausedAt)))}</p>
           <p className="text-text"><Parts parts={COMMIT.progress(done, total)} /></p>
         </div>
       )}

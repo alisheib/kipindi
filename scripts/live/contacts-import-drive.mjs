@@ -3,7 +3,7 @@
  * 1280×800 and 360×780, every step asserted before it is photographed.          (2026-10-09 · docs/CONTACTS-SCREEN-PLAN.md §4)
  *
  * WHAT IT PROVES, with HeadlessChrome in the UA and the in-memory twin behind the server:
- *   · EVERY FILE `scripts/contacts-import/real-world-files.mts` writes (its manifest read defensively — the generator may
+ *   · EVERY FILE `scripts/lib/real-world-contact-files.mts` writes (its manifest read defensively — the generator may
  *     still be landing): Excel's CSV UTF-8 and its semicolon windows-1252, Google's and Outlook's exports, a headerless
  *     numbers-only file (S15-5: "Your file starts with a contact"), Excel's Unicode Text, a messy real-life CSV, two
  *     workbooks (read by the server), an iPhone and an Android vCard and a truncated one, and a WhatsApp list through the
@@ -34,7 +34,19 @@
  *     officer's entrance shows no such list;
  *   · V1 · at 360 the start button's words stay inside it and nothing sticks out of the dialog sideways (measured on the
  *     dialog's own panel — a fixed overlay never shows in the page's width); the promise is its own line above a short
- *     button; no horizontal page overflow at 360, the dialog a full-height sheet there.
+ *     button; no horizontal page overflow at 360, the dialog a full-height sheet there;
+ *   · ⭐ C8c — NEW, WRITTEN WITHOUT A RUN (its builder may not run Playwright on OMEGA): every check it adds carries
+ *     "[C8c new]" in its label, so the integrator's first run reads them apart. (a) C3b-fix's D2/D5/D6/D7 restated over
+ *     the generator's four new files (28–31: a quote broken mid-file, Outlook's assistant and switchboard phones, a staff
+ *     sheet before a titled customers sheet, a hand-typed CSV under a bare title) — and D5 over messy-real-life.csv too:
+ *     the reader note, the record's sentence and both sum lines name the lines a quote swallowed; the title rows leave
+ *     with ONE note, never quoted, the rows keeping their real numbers; the sheet with the most mobiles is read and the
+ *     staff sheet named not read; Assistant's Phone and Company Main Phone are never read as the person's number. (b) #12,
+ *     the dialog paths never driven before: ✕ and Escape during a commit (Escape is ignored, ✕ asks, the run stays
+ *     resumable and the reopened dialog says so), Stop during an upload, Stop during a busy wait (the step's answer
+ *     rewritten into the bet queue's busy: Stop pauses at once), an EXISTING list chosen (and its name typed in other
+ *     capitals IS that list), an exception under KEEP forged for a masked officer and refused, the failures list's "Show
+ *     more", and "Show the contacts this import added".
  * Every capture is a viewport tile (never full page), with Next's dev overlay hidden. The check's five counts and the
  * result's four tiles of every file land in `.qa-shots/contacts-screen/C3/summary.json`.
  *
@@ -130,11 +142,18 @@ const C3B_FILES = new Map([
   ["excel-multi-sheet.xlsx", null],
   ["google-contacts.csv", "Phone 1 - Value"],
   ["outlook-contacts.csv", "Mobile Phone"],
+  // ⭐ [C8c new] · the four files C3b-fix's review asked the generator for (28–31): the same ground-truth lists — every
+  // record with no mobile listed, none read through G4 listed, exactly the broken records unreadable — run over them too.
+  ["broken-quote-mid-file.csv", null],
+  ["outlook-assistant-phones.csv", "Mobile Phone"],
+  ["excel-title-staff.xlsx", null],
+  ["hand-typed-title.csv", null],
 ]);
 /** Files whose ground truth holds a record the importer reads only through G4 (the person's other phone column) — the
  *  "never listed invalid" assertion must not be vacuous for them. ⛔ C3b-fix · D3: a cell of two DISTINCT mobiles (G3) is
- *  refused now, so the messy file's two-number row is no longer an improvement. */
-const C3B_IMPROVES = new Set(["google-contacts.csv", "outlook-contacts.csv"]);
+ *  refused now, so the messy file's two-number row is no longer an improvement. ⭐ [C8c new] · the Outlook file whose
+ *  Business / Home Phone holds the person's one mobile beside the assistant's or the switchboard's (D2). */
+const C3B_IMPROVES = new Set(["google-contacts.csv", "outlook-contacts.csv", "outlook-assistant-phones.csv"]);
 /** ⭐ C3b-fix · D2 · the person's OWN phone columns G4 may read beside the main one (Outlook's and Google's spellings). */
 const OWN_PHONE_COLUMNS = new Set([
   "Mobile Phone", "Business Phone", "Business Phone 2", "Home Phone", "Home Phone 2", "Other Phone", "Primary Phone", "Car Phone",
@@ -180,6 +199,121 @@ function c3bExpectations(truth, main) {
   }
   return { mustBeInvalid, improved, unreadable };
 }
+
+/* ═══ ⭐ [C8c new] · C3b-fix's D2, D5, D6 and D7 RESTATED OVER THE GROUND TRUTH — written without a run ═════════════
+ * Each takes a manifest entry and returns what the readers must say, or null when the file holds no such shape. The
+ * truth is the generator's (`swallowedLines`, `titleRows`, `sheets`, each phone's `source`) — never read back. */
+
+const C8C = "[C8c new]";
+const QUOTE_MARK = String.fromCharCode(34);
+const OPEN_QUOTE = String.fromCharCode(0x201c);
+const CLOSE_QUOTE = String.fromCharCode(0x201d);
+const EN_DASH = String.fromCharCode(0x2013);
+/** ⛔ D5d · the claim no sum line may make once a quotation mark never closed swallowed lines. */
+const EVERY_ROW_CLAIM = "every row of your file is counted once";
+/** A count as the readers' sentences group it ("1,234"). */
+const groupedNumber = (n) => {
+  const s = String(Math.trunc(n));
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 === 0) out += ",";
+    out += s.charAt(i);
+  }
+  return out;
+};
+
+/**
+ * ⭐ D5 · a CSV the reader keeps (G1 — not refused whole) whose broken record's truth says how many physical lines its
+ * open quotation mark swallowed: the row, the lines, and the words D5 decides — the reader note on the columns step
+ * (D5c), the record's sentence on the check (D5b: its digits kept within the six a staged reason may carry — past them
+ * the lines are said in words, `STAGED_REASON_DIGITS_MAX`), and how both sum lines end (D5d).
+ */
+function d5Expectation(truth) {
+  if (truth === null || truth.format !== "csv" || !Array.isArray(truth.people) || mayRefuseWhole(truth)) return null;
+  const broken = truth.people.find((p) => p && p.broken === true);
+  if (broken === undefined || typeof broken.line !== "number" || typeof broken.swallowedLines !== "number") return null;
+  const row = broken.line;
+  const lines = broken.swallowedLines;
+  const after = lines === 1 ? "the line after it" : `the ${groupedNumber(lines)} lines after it`;
+  const digits = String(row).length + (lines > 0 ? String(lines).length : 0);
+  const what = lines <= 0 ? "it" : digits > 6 ? "it and every line after it" : `it and ${after}`;
+  return {
+    row,
+    lines,
+    note: `Row ${row} opens a quote (${QUOTE_MARK}) that is never closed, so ${lines <= 0 ? "it was" : `it and ${after} were`} not read.`,
+    sentence: `Row ${row} opens a quote (${QUOTE_MARK}) that is never closed, so ${what} could not be read.`,
+    sumTail: lines <= 0
+      ? null
+      : `every row of your file up to row ${groupedNumber(row)} is counted once; the ${groupedNumber(lines)} ${lines === 1 ? "line" : "lines"} after it ${lines === 1 ? "was" : "were"} not read, because a quote in that row is never closed.`,
+  };
+}
+
+/**
+ * ⭐ D7 · a file whose truth lists rows ABOVE its column names: the ONE note the reader writes for them, first row to last
+ * ("Row 1, …, was not read — a title." / "Rows 1–2, …, were not read — a title."), their texts — which nothing on the
+ * columns step may quote — and the real column names Phone must be read from.
+ */
+function d7Expectation(truth) {
+  const rows = truth !== null && Array.isArray(truth.titleRows) ? truth.titleRows.filter((r) => r && typeof r.line === "number") : [];
+  if (rows.length === 0) return null;
+  const first = rows[0].line;
+  const last = rows[rows.length - 1].line;
+  return {
+    note: first === last
+      ? `Row ${first}, above the column names, was not read — a title.`
+      : `Rows ${first}${EN_DASH}${last}, above the column names, were not read — a title.`,
+    texts: rows.map((r) => String(r.text ?? "").trim()).filter((t) => t !== ""),
+    header: Array.isArray(truth.header) ? truth.header.filter((h) => typeof h === "string" && h.trim() !== "") : [],
+  };
+}
+
+/**
+ * ⭐ D6 · a workbook whose truth lists its sheets: the VISIBLE sheet with the most mobile cells is read (a tie → the
+ * earlier); the note names it and its place among the visible sheets, and every other visible sheet holding mobiles as
+ * NOT read with its way (as many → move it first, or save it alone; fewer → save it alone); a hidden sheet is never named.
+ */
+function d6Expectation(truth) {
+  if (truth === null || truth.format !== "xlsx" || !Array.isArray(truth.sheets)) return null;
+  const visible = truth.sheets.filter((s) => s && s.visible === true && typeof s.name === "string" && typeof s.mobiles === "number");
+  if (visible.length < 2) return null;
+  let read = visible[0];
+  for (const s of visible) if (s.mobiles > read.mobiles) read = s;
+  const quoted = (n) => `${OPEN_QUOTE}${n}${CLOSE_QUOTE}`;
+  const tied = visible.filter((s) => s !== read && s.mobiles > 0 && s.mobiles === read.mobiles);
+  const fewer = visible.filter((s) => s !== read && s.mobiles > 0 && s.mobiles < read.mobiles);
+  const sentences = [`Read the sheet ${quoted(read.name)} (sheet ${visible.indexOf(read) + 1} of ${visible.length}).`];
+  if (tied.length === 1) sentences.push(`The sheet ${quoted(tied[0].name)} holds as many mobile numbers and was not read: to import it, move it to the first place in Excel, or save it as its own file.`);
+  if (fewer.length === 1) sentences.push(`The sheet ${quoted(fewer[0].name)} also holds mobile numbers and was not read: to import it, save it as its own file.`);
+  return {
+    sheet: read.name,
+    sentences,
+    unread: [...tied, ...fewer].map((s) => quoted(s.name)),
+    hidden: truth.sheets.filter((s) => s && s.visible !== true && typeof s.name === "string").map((s) => s.name),
+  };
+}
+
+/** ⭐ D2 · the columns NO reader may take as the person's number — another person's line, or a shared one. */
+const NEVER_OWN_COLUMNS = [
+  "Assistant's Phone", "Company Main Phone", "Callback", "Pager", "Radio Phone", "ISDN", "Telex", "TTY/TDD Phone", "Business Fax",
+  "Home Fax", "Other Fax",
+];
+/** The never-own columns a file's truth holds a phone value in (by `source`) — the ones D2 is asked about. */
+function neverOwnHeld(truth) {
+  if (truth === null || !Array.isArray(truth.people)) return [];
+  const held = new Set();
+  for (const p of truth.people) {
+    for (const ph of Array.isArray(p?.phones) ? p.phones : []) {
+      if (typeof ph?.source === "string" && NEVER_OWN_COLUMNS.includes(ph.source)) held.add(ph.source);
+    }
+  }
+  return [...held];
+}
+
+/** Every column on the columns step: its first cell's words (its letter, then its header) and what it is read as. */
+const columnsShown = (page) => page.$$eval("[data-import-columns] tr[data-import-column]", (trs) => trs.map((tr) => ({
+  readAs: tr.getAttribute("data-read-as") ?? "",
+  text: ((tr.querySelector("td") && tr.querySelector("td").innerText) || "").replace(/\s+/g, " ").trim(),
+})));
 
 /** The rows a check list names, by its `data-import-row` stamps. */
 const listedRows = (page, list) =>
@@ -386,6 +520,42 @@ for (const vp of VIEWPORTS) {
         const said = await textOf(page, "[data-import-summary]");
         ok(`${vp.name} · ${name} · C3b · G1 · one broken quote costs ONE record, said on the columns — never the file`, /1 record couldn.t be read/.test(said), said.slice(0, 200));
       }
+      // ═══ ⭐ [C8c new] · C3b-fix's D5c, D7, D6 and D2 on the columns step, restated over the truth (unrun on OMEGA) ═══
+      const d5 = d5Expectation(truth);
+      const d7 = d7Expectation(truth);
+      const d6 = d6Expectation(truth);
+      const neverOwn = neverOwnHeld(truth);
+      const notesSaid = await textOf(page, "[data-import-notes]");
+      if (d5 !== null) {
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D5c · ONE reader note on the columns says the row and the ${d5.lines} line(s) its open quote swallowed`,
+          notesSaid.includes(d5.note) && notesSaid.split(d5.note).length === 2, notesSaid.slice(0, 260));
+      }
+      if (d7 !== null) {
+        const mappingSaid = await textOf(page, block("import-mapping"));
+        const phoneHead = await textOf(page, '[data-import-columns] tr[data-read-as="phone"] td:first-child');
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D7 · the rows above the column names leave the data with ONE note naming them`,
+          notesSaid.includes(d7.note) && notesSaid.split(d7.note).length === 2, notesSaid.slice(0, 260));
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D7 · a title is never quoted — not in a note, a column's name or its values`,
+          d7.texts.length > 0 && d7.texts.every((t) => !mappingSaid.includes(t)), `${d7.texts.length} title row(s) in the truth`);
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D7 · Phone is read from the REAL column names below the title`,
+          (await count(page, '[data-import-columns] tr[data-read-as="phone"]')) === 1 && d7.header.some((h) => phoneHead.endsWith(h)), phoneHead);
+      }
+      if (d6 !== null) {
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D6 · the visible sheet holding the most mobiles is read — the truth's sheet — and the note says which, and its place`,
+          truth.sheet === d6.sheet && notesSaid.includes(d6.sentences[0]), `restated ${d6.sheet} · the truth's ${truth.sheet} · ${notesSaid.slice(0, 260)}`);
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D6 · every other visible sheet holding mobiles is named NOT read, with the way that works; no hidden sheet is named`,
+          d6.unread.length > 0 && d6.unread.every((n) => notesSaid.includes(n)) && d6.sentences.every((s) => notesSaid.includes(s))
+            && d6.hidden.every((n) => !notesSaid.includes(n)), notesSaid.slice(0, 300));
+      }
+      if (neverOwn.length > 0) {
+        const shown = await columnsShown(page);
+        const phoneCols = shown.filter((c) => c.readAs === "phone");
+        const neverRows = shown.filter((c) => neverOwn.some((h) => c.text.endsWith(h)));
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D2 · the column read as Phone never reads ${neverOwn.join(" or ")}`,
+          phoneCols.length === 1 && neverOwn.every((h) => !phoneCols[0].text.includes(h)), phoneCols.map((c) => c.text).join(" | ").slice(0, 200));
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D2 · ${neverOwn.join(" and ")} — each on the columns step, read as nothing`,
+          neverRows.length === neverOwn.length && neverRows.every((c) => c.readAs === "none"), JSON.stringify(neverRows.map((c) => [c.text, c.readAs])).slice(0, 220));
+      }
       if (vp.name === "360") {
         ok(`${vp.name} · ${name} · no horizontal page overflow on the columns`, (await overflowOf(page)) === 0);
         ok(`${vp.name} · ${name} · nothing sticks out of the dialog sideways on the columns (V1)`, (await dialogOverflow(page)) === 0,
@@ -451,6 +621,24 @@ for (const vp of VIEWPORTS) {
           }
         }
       }
+      // ═══ ⭐ [C8c new] · C3b-fix's D5b, D5d and D7's real row numbers on the check (unrun on OMEGA) ═══
+      if (d5 !== null) {
+        const recordSaid = await textOf(page, `${block("import-preflight")} [data-import-list="unreadable"] [data-import-row="${d5.row}"]`);
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D5b · the broken record's sentence counts the lines its quote swallowed (the truth's ${d5.lines})`,
+          recordSaid.includes(d5.sentence), recordSaid.slice(0, 260));
+        const cutSaid = await page.locator("[data-import-sum]").first().getAttribute("data-import-sum-cut").catch(() => null);
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D5d · the check's sum line says the lines after row ${d5.row} were not read — never "${EVERY_ROW_CLAIM}"`,
+          d5.sumTail === null ? cutSaid === "0" : cutSaid === String(d5.lines) && sumLine.includes(d5.sumTail) && !sumLine.includes(EVERY_ROW_CLAIM),
+          `cut ${cutSaid} · "${sumLine.slice(0, 260)}"`);
+      }
+      if (d7 !== null) {
+        const repeatedShown = await page.$$eval(`${block("import-preflight")} [data-import-list="repeated"] [data-import-row]`, (els) =>
+          els.map((e) => ({ line: Number(e.getAttribute("data-import-row")), text: (e.innerText || "").replace(/\s+/g, " ").trim() })));
+        const repeatsTruth = (truth.people ?? []).filter((p) => p && !p.blank && !p.broken && p.duplicateOf !== null);
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D7 · below a title every row keeps its REAL number: each repeat listed under its own row, naming the row it repeats`,
+          repeatsTruth.length > 0 && repeatsTruth.every((p) => repeatedShown.some((r) => r.line === p.line && r.text.includes(`repeats row ${p.duplicateOf}`))),
+          `the truth ${JSON.stringify(repeatsTruth.map((p) => [p.line, p.duplicateOf]))} · listed ${JSON.stringify(repeatedShown.map((r) => r.line))}`);
+      }
       await shoot(page, dir, `${vp.name}-3-check`, block("import-preflight"), "Check before importing", block("import-preflight"));
       await shoot(page, dir, `${vp.name}-4-decision`, block("import-apply"), "Check before importing", block("import-decision"));
       if (vp.name === "360") {
@@ -487,6 +675,12 @@ for (const vp of VIEWPORTS) {
       record.result = result;
       record.outcome = "imported";
       ok(`${vp.name} · ${name} · the result's four tiles are on screen`, ["create", "update", "keep", "fail"].every((k) => typeof result[k] === "number"), JSON.stringify(result));
+      // ⭐ [C8c new] · C3b-fix · D5d on the RESULT: its sum line never claims every row of the file once lines were swallowed.
+      if (d5 !== null && d5.sumTail !== null) {
+        const doneSum = await textOf(page, `${block("import-done")} [data-import-sum]`);
+        ok(`${vp.name} · ${name} · ${C8C} · C3b-fix · D5d · the result's sum line says the lines after row ${d5.row} were not read — never "${EVERY_ROW_CLAIM}"`,
+          doneSum.includes(d5.sumTail) && !doneSum.includes(EVERY_ROW_CLAIM), doneSum.slice(0, 260));
+      }
       await shoot(page, dir, `${vp.name}-5-done`, block("import-done"), "Import finished");
       await closeDialog(page);
     } catch (e) {
@@ -842,6 +1036,393 @@ for (const end of ["resume", "cancel"]) {
   await closeDialog(g.page);
   await g.ctx.close();
 }
+
+/* ═══ 5 · ⭐ [C8c new] · #12 · THE DIALOG PATHS THE DRIVE NEVER EXECUTED ═══════════════════════════════════════
+ * ⚠️ WRITTEN WITHOUT A RUN: the C8c builder may not run Playwright on OMEGA, so the integrator's first run is these
+ * flows' first. Every label carries "[C8c new]"; each flow is wrapped so a fault in one is ONE failed check and the
+ * flows after it still run. Each step is asserted before it is photographed, as above. Fresh officers (+255700003110…)
+ * so no flow meets another's run; new numbers in ranges nothing else uses (07 63/64/65 + this run's tail). */
+
+/** The dialog's ✕ — the panel's own close button, found by its place (its label is the locale's word for Close). */
+const CLOSE_X = `${DIALOG} [data-rung="modal"] > button[aria-label]`;
+
+/** A staging batch's request: the batch's rows and the run's file digest (no other action posts both). */
+const isStageBody = (body) => body.includes('"rows":[') && body.includes('"fileDigest"');
+
+/** Hold the RESPONSE of the n-th POST whose body passes `test` — fetched, held until released, then fulfilled (`holdStep`'s
+ *  way, for any action: never an aborted request). */
+async function holdPost(page, n, test) {
+  let seen = 0;
+  let release = () => {};
+  const released = new Promise((r) => { release = r; });
+  let markHeld = () => {};
+  const held = new Promise((r) => { markHeld = r; });
+  const pattern = `${BASE}/admin/contacts**`;
+  await page.route(pattern, async (route) => {
+    const req = route.request();
+    if (req.method() !== "POST" || !test(req.postData() ?? "")) return route.continue();
+    seen++;
+    if (seen !== n) return route.continue();
+    const response = await route.fetch();
+    markHeld();
+    await released;
+    await route.fulfill({ response }).catch(() => {});
+  });
+  return { held, release: () => release(), stop: () => page.unroute(pattern).catch(() => {}) };
+}
+
+/** The bet queue's own sentence for a busy step (import-flow.ts, `IMPORT_REFUSAL_SENTENCES.busy`). */
+const BUSY_SENTENCE = "The platform is busy right now — bets come first. The import carries on by itself as soon as it is free.";
+
+/**
+ * The n-th commit step answered BUSY. The server DOES the step (its response is fetched); the answer the page reads is
+ * rewritten into the bet queue's `busy` refusal carrying the run's view AS THE STEP LEFT IT — so the page's next ask
+ * starts from the server's real cursor — and `retryAfterSec`. ⚠️ Only the action's flight row holding the answer (a
+ * JSON object with `ok: true` and a `view`) is replaced; every other row stays as Next wrote it. `rewritten` resolves
+ * false when no such row was found, and the flow then FAILS saying so — never a busy wait that was not one.
+ */
+async function busyStep(page, n, retryAfterSec) {
+  let seen = 0;
+  let settled = () => {};
+  const rewritten = new Promise((r) => { settled = r; });
+  const pattern = `${BASE}/admin/contacts**`;
+  await page.route(pattern, async (route) => {
+    const req = route.request();
+    if (req.method() !== "POST" || !(req.postData() ?? "").includes("fromCursor")) return route.continue();
+    seen++;
+    if (seen !== n) return route.continue();
+    const response = await route.fetch();
+    const text = await response.text();
+    let changed = false;
+    const rows = text.split(LF).map((row) => {
+      if (changed) return row;
+      const colon = row.indexOf(":");
+      if (colon <= 0 || !/^[0-9a-f]+$/.test(row.slice(0, colon))) return row;
+      let answer = null;
+      try {
+        answer = JSON.parse(row.slice(colon + 1));
+      } catch {
+        return row;
+      }
+      if (answer === null || typeof answer !== "object" || answer.ok !== true || !("view" in answer)) return row;
+      changed = true;
+      return `${row.slice(0, colon)}:${JSON.stringify({ ok: false, reason: "busy", message: BUSY_SENTENCE, view: answer.view, retryAfterSec })}`;
+    });
+    // The body is handed over whole and decoded: its old length, encoding and chunking no longer describe it.
+    const headers = { ...response.headers() };
+    for (const h of ["content-length", "content-encoding", "transfer-encoding"]) delete headers[h];
+    await route.fulfill({ status: response.status(), headers, body: changed ? rows.join(LF) : text }).catch(() => {});
+    settled(changed);
+  });
+  return { rewritten, stop: () => page.unroute(pattern).catch(() => {}) };
+}
+
+/** Wait until `sel` matches exactly `n` elements (or `ms` passes); true when it does. */
+async function waitForCount(page, sel, n, ms = 30_000) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    if ((await count(page, sel)) === n) return true;
+    await wait(250);
+  }
+  return (await count(page, sel)) === n;
+}
+
+/** Digits as letters (a list name, or a contact's, may not hold a run of digits). */
+const lettersOf = (digits) => [...String(digits)].map((d) => String.fromCharCode(97 + Number(d))).join("");
+/** `n` new contacts on a range nothing else uses — this run's tail keeps a re-run's numbers new to the in-memory book. */
+const freshCsv = (ndc, n, from = 0) => ["Phone,Name", ...Array.from({ length: n }, (_, i) =>
+  `${ndc} ${R7_TAIL.slice(0, 3)} ${String(from + i).padStart(3, "0")},Mteja ${lettersOf(from + i)}`)].join(CRLF) + CRLF;
+
+/** One #12 flow: a fault is ONE failed check with its capture, and the flows after it still run. */
+async function c8cFlow(title, dirName, role, phone, viewport, body) {
+  console.log(`${LF}── ${C8C} · ${title}`);
+  const dir = join(OUT, dirName);
+  mkdirSync(dir, { recursive: true });
+  const { ctx, page } = await staffCtx(role, phone, viewport);
+  try {
+    await body(page, dir);
+  } catch (e) {
+    ok(`${dirName} · ${C8C} · driven to its end without a drive error`, false, String(e?.message ?? e).slice(0, 200));
+    await page.screenshot({ path: join(dir, "error.png") }).catch(() => {});
+  }
+  await ctx.close().catch(() => {});
+}
+
+const WIDE = { width: 1280, height: 800 };
+
+// ── #12a · ✕ and Escape during a commit: Escape is ignored, ✕ ASKS, the run stays resumable — and the reopened dialog says so ──
+await c8cFlow("✕ and Escape during a commit", "c8c-close-during-commit", "GROWTH", "+255700003110", WIDE, async (page, dir) => {
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "drive-big-close.csv", BIG_CSV);
+  const hold = await holdStep(page, 2);
+  await page.locator(block("import-apply")).first().click();
+  await hold.held;
+  await wait(300);
+  await page.keyboard.press("Escape");
+  await wait(700);
+  const afterEscape = await commitState(page);
+  ok(`c8c-close-during-commit · ${C8C} · Escape during the commit is ignored: the dialog stays open and importing, nothing asked`,
+    (await count(page, DIALOG)) === 1 && (await count(page, CONFIRM)) === 0 && afterEscape.state === "importing", JSON.stringify(afterEscape));
+  await shoot(page, dir, "1-escape-ignored", block("import-commit"), "Importing contacts");
+  await page.locator(CLOSE_X).first().click();
+  await page.waitForSelector(`${CONFIRM} [data-import-confirm="stop"]`, { timeout: 10_000 }).catch(() => null);
+  const ask = await textOf(page, `${CONFIRM} [data-import-confirm="stop"]`);
+  ok(`c8c-close-during-commit · ${C8C} · ✕ during the commit ASKS first — and says the run can be resumed from Import contacts`,
+    /stops after the rows being written now/.test(ask) && /resume it from Import contacts/.test(ask), ask.slice(0, 200));
+  await page.screenshot({ path: join(dir, "2-close-asks.png") });
+  await confirmTop(page);
+  hold.release();
+  await hold.stop();
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 60_000 }).catch(() => null);
+  ok(`c8c-close-during-commit · ${C8C} · "Stop the import" closes the dialog once the rows being written are done`, (await count(page, DIALOG)) === 0);
+  await page.locator(block("contacts-import")).first().click();
+  await page.waitForSelector(block("import-adopt"), { timeout: 30_000 }).catch(() => null);
+  const adoptSaid = await textOf(page, block("import-adopt"));
+  const adoptStatus = await page.locator(block("import-adopt")).first().getAttribute("data-run-status").catch(() => null);
+  ok(`c8c-close-during-commit · ${C8C} · reopened, the dialog opens ON the run — paused by you, how far it got, with Resume`,
+    adoptStatus === "PAUSED" && /Paused by you/.test(adoptSaid) && /rows done/.test(adoptSaid)
+      && (await count(page, `${block("import-adopt")} [data-import-act="resume"]`)) === 1, `${adoptStatus} · ${adoptSaid.slice(0, 200)}`);
+  await shoot(page, dir, "3-reopened-paused", block("import-adopt"), "An import isn't finished");
+  await page.locator(`${block("import-adopt")} [data-import-act="resume"]`).first().click();
+  await page.waitForSelector(block("import-done"), { timeout: 300_000 });
+  await wait(500);
+  const result = await tilesIn(page, block("import-done"));
+  ok(`c8c-close-during-commit · ${C8C} · resumed to the end: every row of the file counted once`,
+    result.create + result.update + result.keep + result.fail === 3_000, JSON.stringify(result));
+  await shoot(page, dir, "4-done", block("import-done"), "Import finished");
+  summary.flows.push({ flow: "c8c-close-during-commit", afterEscape, adoptStatus, result });
+  await closeDialog(page);
+});
+
+// ── #12b · Stop during an upload: it stops after the batch being sent, the run waits on its adopt panel, Resume carries on ──
+await c8cFlow("Stop during an upload", "c8c-stop-upload", "GROWTH", "+255700003111", WIDE, async (page, dir) => {
+  await openContacts(page);
+  await openImport(page);
+  await page.setInputFiles(`input${block("import-file")}`, { name: "drive-big-upload.csv", mimeType: "text/csv", buffer: Buffer.from(BIG_CSV, "utf8") });
+  await page.waitForSelector(block("import-mapping"), { timeout: 60_000 });
+  const hold = await holdPost(page, 1, isStageBody);
+  await page.locator(block("import-mapping-next")).first().click();
+  await hold.held;
+  await wait(300);
+  ok(`c8c-stop-upload · ${C8C} · the upload is running, its bar on screen and its Stop live`,
+    (await count(page, "[data-import-uploading]")) === 1 && (await page.locator('[data-import-act="stop-upload"]').first().isEnabled().catch(() => false)));
+  await shoot(page, dir, "1-uploading", "[data-import-uploading]", "Check before importing");
+  await page.locator('[data-import-act="stop-upload"]').first().click();
+  await wait(200);
+  ok(`c8c-stop-upload · ${C8C} · Stop says it stops after the rows being sent now`, /Stopping after the rows being sent now/.test(await textOf(page, block("import-preflight"))));
+  hold.release();
+  await hold.stop();
+  await page.waitForSelector(block("import-adopt"), { timeout: 60_000 }).catch(() => null);
+  const said = await textOf(page, block("import-adopt"));
+  const status = await page.locator(block("import-adopt")).first().getAttribute("data-run-status").catch(() => null);
+  ok(`c8c-stop-upload · ${C8C} · stopped: still uploading on the server, how far it got, nothing in the book yet — and Resume`,
+    status === "STAGING" && /Uploading stopped after [0-9,]+ of 3,000 rows/.test(said) && /Nothing is in the contact book yet/.test(said)
+      && (await count(page, `${block("import-adopt")} [data-import-act="resume"]`)) === 1, `${status} · ${said.slice(0, 220)}`);
+  await shoot(page, dir, "2-stopped", block("import-adopt"), "An import isn't finished");
+  await page.locator(`${block("import-adopt")} [data-import-act="resume"]`).first().click();
+  await page.waitForSelector(block("import-apply"), { timeout: 180_000 });
+  await wait(500);
+  const check = await tilesIn(page, block("import-preflight"));
+  const rows = Object.values(check).reduce((a, b) => a + b, 0);
+  ok(`c8c-stop-upload · ${C8C} · resumed: the upload carried on to the check, and every row of the file is counted once`, rows === 3_000, JSON.stringify(check));
+  await shoot(page, dir, "3-resumed-check", block("import-preflight"), "Check before importing", block("import-preflight"));
+  await page.locator(`${block("import-decision")} [data-import-act="discard"]`).first().click();
+  await confirmTop(page);
+  await page.waitForSelector(block("import-entrance"), { timeout: 30_000 });
+  summary.flows.push({ flow: "c8c-stop-upload", status, check });
+  await closeDialog(page);
+});
+
+// ── #12c · Stop during a busy wait: the wait (30 s here) never holds a Stop back — the run pauses at once ──
+await c8cFlow("Stop during a busy wait", "c8c-stop-busy", "GROWTH", "+255700003112", WIDE, async (page, dir) => {
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "drive-big-busy.csv", BIG_CSV);
+  const busy = await busyStep(page, 2, 30);
+  await page.locator(block("import-apply")).first().click();
+  const rewrote = await Promise.race([busy.rewritten, wait(120_000).then(() => false)]);
+  ok(`c8c-stop-busy · ${C8C} · the second step's answer became the bet queue's busy (its flight row found and rewritten)`, rewrote === true);
+  const BUSY = `${block("import-commit")} [data-import-busy]`;
+  await page.waitForSelector(BUSY, { timeout: 30_000 }).catch(() => null);
+  const busyLine = await textOf(page, BUSY);
+  const waitSec = await page.locator(BUSY).first().getAttribute("data-wait-sec").catch(() => null);
+  ok(`c8c-stop-busy · ${C8C} · the wait is said in the server's own sentence — it carries on by itself — and Stop is live`,
+    busyLine.includes(BUSY_SENTENCE) && /You can still stop it here/.test(busyLine) && waitSec === "30"
+      && (await page.locator(`${block("import-commit")} [data-import-act="stop"]`).first().isEnabled().catch(() => false)), `${waitSec} s · ${busyLine.slice(0, 200)}`);
+  await shoot(page, dir, "1-busy-wait", BUSY, "Importing contacts");
+  const pressed = Date.now();
+  await page.locator(`${block("import-commit")} [data-import-act="stop"]`).first().click();
+  await page.waitForSelector(`${block("import-commit")}[data-state="paused"]`, { timeout: 60_000 }).catch(() => null);
+  const tookMs = Date.now() - pressed;
+  const paused = await commitState(page);
+  const runStatus = await page.locator(block("import-commit")).first().getAttribute("data-run-status").catch(() => null);
+  ok(`c8c-stop-busy · ${C8C} · Stop during the busy wait pauses the run at once — never after the 30 s wait`,
+    paused.state === "paused" && runStatus === "PAUSED" && tookMs < 15_000 && paused.done > 0 && paused.done < paused.total,
+    `${tookMs} ms · ${runStatus} · ${JSON.stringify(paused)}`);
+  await shoot(page, dir, "2-paused", block("import-commit"), "Import paused");
+  await busy.stop();
+  await page.locator(`${block("import-commit")} [data-import-act="resume"]`).first().click();
+  await page.waitForSelector(block("import-done"), { timeout: 300_000 });
+  await wait(500);
+  const result = await tilesIn(page, block("import-done"));
+  ok(`c8c-stop-busy · ${C8C} · resumed to the end from the server's cursor: every row counted once`,
+    result.create + result.update + result.keep + result.fail === 3_000, JSON.stringify(result));
+  await shoot(page, dir, "3-done", block("import-done"), "Import finished");
+  summary.flows.push({ flow: "c8c-stop-busy", tookMs, paused, result });
+  await closeDialog(page);
+});
+
+// ── #12d · an EXISTING list chosen — and (R12, N3) its name typed in other capitals IS that list ──
+await c8cFlow("choosing an EXISTING list", "c8c-existing-list", "ADMIN", "+255700003113", WIDE, async (page, dir) => {
+  const EXISTING = `Drive Existing ${lettersOf(R7_TAIL)}`;
+  const OPTION = `[data-import-list-option]:has-text("${EXISTING}")`;
+  // 1 · a first import makes the list.
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "existing-list-1.csv", freshCsv("0765", 3, 0));
+  await page.locator('[data-import-list-option="new"]').first().click();
+  await page.locator('[data-field="listName"] input').first().fill(EXISTING);
+  await page.locator(block("import-apply")).first().click();
+  if ((await page.waitForSelector(CONFIRM, { timeout: 1_500 }).catch(() => null)) !== null) await confirmTop(page);
+  await page.waitForSelector(block("import-done"), { timeout: 120_000 });
+  ok(`c8c-existing-list · ${C8C} · a first import made the list`, (await textOf(page, "[data-import-list-result]")).includes(EXISTING));
+  await closeDialog(page);
+  // 2 · the second import CHOOSES it among the lists.
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "existing-list-2.csv", freshCsv("0765", 3, 3));
+  await page.waitForSelector(OPTION, { timeout: 30_000 }).catch(() => null);
+  const optionSaid = await textOf(page, OPTION);
+  ok(`c8c-existing-list · ${C8C} · the list is offered among the lists, with its members counted`, /3 members/.test(optionSaid), optionSaid.slice(0, 200));
+  await page.locator(OPTION).first().click();
+  await wait(300);
+  const picked = await page.locator(`${OPTION} input[type="radio"]`).first().isChecked().catch(() => false);
+  ok(`c8c-existing-list · ${C8C} · the existing list is chosen — no new name asked`, picked && (await count(page, '[data-field="listName"]')) === 0);
+  await shoot(page, dir, "1-existing-chosen", "[data-import-list-step]", "Check before importing", "[data-import-list-step]");
+  await page.locator(block("import-apply")).first().click();
+  if ((await page.waitForSelector(CONFIRM, { timeout: 1_500 }).catch(() => null)) !== null) await confirmTop(page);
+  await page.waitForSelector(block("import-done"), { timeout: 120_000 });
+  await wait(500);
+  const listSaid = await textOf(page, "[data-import-list-result]");
+  ok(`c8c-existing-list · ${C8C} · the result says the contacts went on the EXISTING list`, listSaid.includes(EXISTING), listSaid.slice(0, 200));
+  await shoot(page, dir, "2-done-existing", "[data-import-list-result]", "Import finished");
+  await closeDialog(page);
+  // 3 · typed as a NEW list in other capitals, the name IS that list: the panel says so, and the contacts go on it.
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "existing-list-3.csv", freshCsv("0765", 3, 6));
+  await page.locator('[data-import-list-option="new"]').first().click();
+  await page.locator('[data-field="listName"] input').first().fill(EXISTING.toUpperCase());
+  await wait(400);
+  const hint = await textOf(page, '[data-field="listName"]');
+  ok(`c8c-existing-list · ${C8C} · R12 · the same name in other capitals IS the existing list, and the panel says so`,
+    /A list with this name already exists, so the contacts are added to it/.test(hint), hint.slice(0, 200));
+  await shoot(page, dir, "3-same-name-other-case", '[data-field="listName"]', "Check before importing", "[data-import-list-step]");
+  await page.locator(block("import-apply")).first().click();
+  if ((await page.waitForSelector(CONFIRM, { timeout: 1_500 }).catch(() => null)) !== null) await confirmTop(page);
+  await page.waitForSelector(block("import-done"), { timeout: 120_000 });
+  await wait(500);
+  const sameSaid = await textOf(page, "[data-import-list-result]");
+  ok(`c8c-existing-list · ${C8C} · N3 · the contacts went on the existing list, under its own spelling — no second list`,
+    sameSaid.includes(EXISTING) && !sameSaid.includes(EXISTING.toUpperCase()), sameSaid.slice(0, 200));
+  await shoot(page, dir, "4-done-same-name", "[data-import-list-result]", "Import finished");
+  summary.flows.push({ flow: "c8c-existing-list", list: EXISTING, optionSaid, listSaid, sameSaid });
+  await closeDialog(page);
+});
+
+// ── #12e · an exception under KEEP, refused for a masked officer (S15-10): forged into the start, refused by the server ──
+await c8cFlow("an exception under KEEP refused for a masked officer", "c8c-masked-exception", "GROWTH", "+255700003114", WIDE, async (page, dir) => {
+  await seed(page, "u30=1");
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "contacts-october-forged.csv", U30_CSV);
+  ok(`c8c-masked-exception · ${C8C} · GROWTH is offered no choice and no row to set apart (S15-10) — so the exception is forged`,
+    (await count(page, "[data-import-choice]")) === 0 && (await count(page, "[data-import-change-row]")) === 0
+      && (await page.locator(block("import-decision")).first().getAttribute("data-may-update")) === "no");
+  // The start's request is rewritten: one row (line 3 — the u30 world's contact 001, in the book) taken from the file
+  // under KEEP. The server must refuse it before it reads a row (S15-10: a non-reader starts with KEEP and no exception).
+  let forged = false;
+  const pattern = `${BASE}/admin/contacts**`;
+  await page.route(pattern, async (route) => {
+    const req = route.request();
+    const sent = req.postData() ?? "";
+    if (req.method() !== "POST" || forged || !sent.includes('"checkedAt"') || !sent.includes('"expected"')) return route.continue();
+    let args = null;
+    try {
+      args = JSON.parse(sent);
+    } catch {
+      return route.continue();
+    }
+    if (!Array.isArray(args) || args[0] === null || typeof args[0] !== "object" || args[0].choice !== "KEEP") return route.continue();
+    args[0].exceptions = { 3: "TAKE_FILE" };
+    forged = true;
+    return route.continue({ postData: JSON.stringify(args) });
+  });
+  await page.locator(block("import-apply")).first().click();
+  const REFUSED = `${block("import-decision")} [data-import-alert]:has-text("can only be updated from a file by a role that can see phone numbers")`;
+  await page.waitForSelector(REFUSED, { timeout: 60_000 }).catch(() => null);
+  await page.unroute(pattern).catch(() => {});
+  const said = await textOf(page, REFUSED);
+  ok(`c8c-masked-exception · ${C8C} · the forged start carried ONE exception under KEEP`, forged);
+  ok(`c8c-masked-exception · ${C8C} · refused in its own words: the file was checked again and nothing was imported`,
+    said.length > 0 && (await count(page, block("import-apply"))) === 1 && (await count(page, block("import-commit"))) === 0
+      && (await count(page, "[data-import-nothing-written]")) === 1, said.slice(0, 200));
+  await shoot(page, dir, "1-refused", REFUSED, "Check before importing", block("import-decision"));
+  await page.locator(`${block("import-decision")} [data-import-act="discard"]`).first().click();
+  await confirmTop(page);
+  await page.waitForSelector(block("import-entrance"), { timeout: 30_000 });
+  summary.flows.push({ flow: "c8c-masked-exception", forged, said });
+  await closeDialog(page);
+});
+
+// ── #12f · the failures list's "Show more", and "Show the contacts this import added" ──
+await c8cFlow("the failures page's Show more, and Show the contacts this import added", "c8c-failures-and-added", "GROWTH", "+255700003115", WIDE, async (page, dir) => {
+  const ADDED = 5;
+  const FAILED = 120;
+  const landlines = Array.from({ length: FAILED }, (_, i) => {
+    const rest = String(2_110_000 + i);
+    return `022 ${rest.slice(0, 3)} ${rest.slice(3)},Ofisi ${lettersOf(i)}`;
+  });
+  const csv = freshCsv("0763", ADDED, 0) + landlines.join(CRLF) + CRLF;
+  await openContacts(page);
+  await openImport(page);
+  await importBuffer(page, "failures-and-added.csv", csv);
+  await page.locator(block("import-apply")).first().click();
+  if ((await page.waitForSelector(CONFIRM, { timeout: 1_500 }).catch(() => null)) !== null) await confirmTop(page);
+  await page.waitForSelector(block("import-done"), { timeout: 120_000 });
+  await wait(500);
+  const result = await tilesIn(page, block("import-done"));
+  ok(`c8c-failures-and-added · ${C8C} · the result: ${ADDED} added, ${FAILED} couldn't be imported`, result.create === ADDED && result.fail === FAILED, JSON.stringify(result));
+  const ROWS = "[data-import-failures] tr[data-import-row]";
+  const MORE = '[data-import-act="failures-more"]';
+  const page1 = await waitForCount(page, ROWS, 50);
+  ok(`c8c-failures-and-added · ${C8C} · the failures list shows its first page of 50, with Show more`, page1 && (await count(page, MORE)) === 1, `${await count(page, ROWS)} rows`);
+  await shoot(page, dir, "1-failures-first-page", "[data-import-failures]", "Import finished", "[data-import-failures]");
+  await page.locator(MORE).first().click();
+  const page2 = await waitForCount(page, ROWS, 100);
+  ok(`c8c-failures-and-added · ${C8C} · Show more adds the next 50, in file order, none twice`, page2 && (await count(page, MORE)) === 1, `${await count(page, ROWS)} rows`);
+  await page.locator(MORE).first().click();
+  const page3 = await waitForCount(page, ROWS, FAILED);
+  const lines = await page.$$eval(ROWS, (els) => els.map((e) => Number(e.getAttribute("data-import-row"))));
+  const ordered = lines.every((l, i) => i === 0 || l > lines[i - 1]);
+  ok(`c8c-failures-and-added · ${C8C} · the last page ends the list: all ${FAILED} rows, ascending, and Show more is gone`,
+    page3 && ordered && new Set(lines).size === FAILED && (await count(page, MORE)) === 0
+      && (await textOf(page, "[data-import-failures]")).includes(`Showing ${FAILED} of ${FAILED}`), `${lines.length} rows`);
+  await shoot(page, dir, "2-failures-all", "[data-import-failures]", "Import finished", "[data-import-failures]");
+  ok(`c8c-failures-and-added · ${C8C} · "Show the contacts this import added" is offered`, (await count(page, '[data-import-act="show-added"]')) === 1);
+  await page.locator('[data-import-act="show-added"]').first().click();
+  await page.waitForURL((u) => u.searchParams.has("import"), { timeout: 30_000 }).catch(() => null);
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => null);
+  await page.waitForSelector('[data-rail-group="import"]', { timeout: 30_000 }).catch(() => null);
+  await wait(500);
+  const shownRows = await count(page, "tr[data-contact-row]");
+  ok(`c8c-failures-and-added · ${C8C} · the book opens filtered to this import — its pill, and exactly the ${ADDED} contacts it added`,
+    new URL(page.url()).searchParams.has("import") && (await count(page, '[data-rail-group="import"]')) === 1 && shownRows === ADDED,
+    `${page.url()} · ${shownRows} rows`);
+  await shoot(page, dir, "3-book-filtered", '[data-rail-group="import"]', null);
+  summary.flows.push({ flow: "c8c-failures-and-added", result, shownRows });
+});
 
 /* ═══ THE SUMMARY ═══════════════════════════════════════════════════════════════════════════════════════════ */
 

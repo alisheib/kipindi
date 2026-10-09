@@ -13,7 +13,10 @@
  */
 import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
-import { IMPORT_REFUSAL_SENTENCES, type PreflightBucket } from "@/lib/contacts/import-flow";
+import {
+  IMPORT_REFUSAL_SENTENCES, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence, type ImportRefusalReason, type ImportRunView,
+  type PreflightBucket,
+} from "@/lib/contacts/import-flow";
 import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
 import { SHEET_SAMPLE_ROWS } from "@/lib/contacts/sheet-choice";
 import { PHONE_FORMAT_REMEDY } from "@/lib/contacts/xlsx-limits";
@@ -59,6 +62,35 @@ function sumTail(cut: SumCut): Part[] {
     " — every row of your file up to row ", fig(cut.line), " is counted once; the ", fig(cut.lines),
     ` ${plural(cut.lines, "line", "lines")} after it ${plural(cut.lines, "was", "were")} not read, because a quote in that row is never closed.`,
   ];
+}
+
+/* ══ HOW A REFUSAL IS PAINTED ═════════════════════════════════════════════════════════════════════ */
+
+/** An alert's tone (`ImportAlertState["tone"]`, import-parts.tsx). */
+export type RefusalTone = "danger" | "warning" | "info";
+
+/** A wait or a re-check is not an error; everything else is said as one. */
+const REFUSAL_TONE: Partial<Record<ImportRefusalReason, RefusalTone>> = {
+  busy: "warning",
+  // C8c · #14b · the database refused every step for over a minute and the run paused itself: a wait, not a fault.
+  db_paused: "warning",
+  // C8c · m5 · bets kept the check (or the start) waiting past its deadline: a wait, not a fault of the file.
+  bets_busy: "warning",
+  rate_limited: "warning",
+  xlsx_busy: "warning",
+  check_again: "warning",
+  bad_exceptions: "warning",
+  check_stale: "info",
+  update_needs_reader: "info",
+};
+
+/** ⭐ C8c · the review's n8 · refusals told as a WAIT by their own words, whatever their reason: a step whose rows kept
+ *  moving ends as `server_error`, but its sentence says nothing was lost and to press Resume in a minute. */
+const WARNING_SENTENCES: ReadonlySet<string> = new Set([STEP_CONFLICT_SENTENCE]);
+
+/** ⭐ The ONE rule for a refusal's tone — the dialog's alerts ask it (`test:contacts-import` flow N8). */
+export function refusalTone(refusal: { readonly reason: ImportRefusalReason; readonly message: string }): RefusalTone {
+  return WARNING_SENTENCES.has(refusal.message) ? "warning" : REFUSAL_TONE[refusal.reason] ?? "danger";
 }
 
 /* ══ THE BUTTON AND THE DIALOG ════════════════════════════════════════════════════════════════════ */
@@ -169,6 +201,8 @@ export const ADOPT = {
   ],
   committing: (done: number, total: number): Part[] => [fig(done), " of ", fig(total), ` ${plural(total, "row", "rows")} done.`],
   paused: (who: string, when: string): string => (who === "you" ? `Paused by you ${when}.` : `Paused by ${who} ${when}.`),
+  /** ⭐ C8c · m2 · the re-review's MINOR-2 · a run the DATABASE paused (paused by nobody): said, never left unexplained. */
+  pausedByDatabase: (when: string): string => `Paused ${when} — the database was busy.`,
   resume: "Resume",
   discard: "Discard",
   cancelRest: "Cancel the rest",
@@ -290,8 +324,11 @@ export const DECIDE = {
   recommended: "Recommended",
   changes: (n: number): Part[] => (n === 0 ? ["No contact changes"] : [fig(n), ` ${plural(n, "contact changes", "contacts change")}`]),
   reassure: "A blank cell never erases anything. Numbers on the stop list and erased people are never changed.",
-  listHeading: "What would change",
-  listLead: "Each contact below differs from your file. Set one apart from the choice above if it should be treated differently.",
+  /** ⭐ C8c · n8 · the list holds every row some choice would change AND (#13) every contact too full of tags to take the
+   *  file's new ones — which no choice changes and nobody can set apart — so neither line says "would change" of them,
+   *  and the lead names the Set apart box as a contact's own: a tags-only row has none. */
+  listHeading: "Contacts that differ from your file",
+  listLead: "Each contact below differs from your file: a choice would change it, or it is too full of tags to take new ones. To treat a contact differently from the choice above, tick its box under Set apart.",
   /** V2 · no contact in the book differs from the file: one line, never a heading over an empty list. */
   noChanges: "Nothing already in the book changes with this choice.",
   loading: "Loading the changes…",
@@ -299,9 +336,11 @@ export const DECIDE = {
   /** ⭐ R8 · a page can come back empty while the list goes on (each request is bounded by the work behind it). */
   noneYet: "No differences in the rows read so far — Show more reads further into the file.",
   failed: "The changes couldn't be loaded. The choice above still applies to every row.",
-  /** ⭐ R7 · after a re-check, the rows set apart that no longer differ from the book were let go — said, never silent. */
+  /** ⭐ R7 · after a re-check, the rows set apart that NO CHOICE CHANGES any more were let go — said, never silent: gone
+   *  from the pages, or (C8c · m3) on them only for tags a full contact cannot take, which still DIFFERS from the book —
+   *  so the line never says "no longer differ" (the re-review's MINOR-1). */
   dropped: (n: number): Part[] => [
-    fig(n), ` ${plural(n, "row", "rows")} you had set apart no longer ${plural(n, "differs", "differ")} from the book, so ${plural(n, "it follows", "they follow")} the choice above.`,
+    fig(n), ` ${plural(n, "row", "rows")} you had set apart no longer ${plural(n, "changes", "change")} under any choice, so ${plural(n, "it follows", "they follow")} the choice above.`,
   ],
   name: (from: string, to: string): string => `Name: ${from} → ${to}`,
   nameNew: (to: string): string => `Name: ${to}`,
@@ -313,9 +352,10 @@ export const DECIDE = {
   colContact: "Contact",
   colChange: "With this choice",
   colApart: "Set apart",
-  tableLabel: "Contacts that would change",
+  tableLabel: "Contacts that differ from your file",
   tagsAdded: (tags: readonly string[]): string => `Tags added: ${tags.join(", ")}`,
-  tagsNotAdded: (tags: readonly string[]): string => `Not added, the contact is full of tags: ${tags.join(", ")}`,
+  /** ⭐ C8c · #13 · the contract's ONE sentence — the result's row says it in the same words. */
+  tagsNotAdded: (tags: readonly string[]): string => tagsNotAddedSentence(tags),
   noName: "No name",
   keepAsIs: "Leave this contact as it is",
   useFile: "Use the file's version for this contact",
@@ -415,6 +455,10 @@ export const COMMIT = {
   askUploadCancel: "Keep uploading",
   guardBody: "An import is running. Leaving this page stops it after the rows being written now — you can resume it later from Import contacts.",
   pausedBy: (who: string, when: string): string => (who === "you" ? `Paused by you ${when}.` : `Paused by ${who} ${when}.`),
+  /** ⭐ C8c · m2 · the re-review's MINOR-2 · a run the DATABASE paused (a fault that would not clear — paused by nobody):
+   *  never "Stopped." under the title "Import paused". */
+  pausedByDatabase: (when: string): string => `Paused ${when} — the database was busy. Resume to carry on.`,
+  /** A run nothing is driving that was never paused (a refusal, a dropped connection). */
   stoppedHere: "Stopped. Resume to carry on from where it stopped.",
   progress: (done: number, total: number): Part[] => [fig(done), " of ", fig(total), ` ${plural(total, "row", "rows")} done.`],
   resume: "Resume",
@@ -430,6 +474,26 @@ export const COMMIT = {
   cancelKeep: "Keep the import",
   finishing: "Counting the result…",
 } as const;
+
+/** The parts of a run its paused line reads. */
+type PausedRun = Pick<ImportRunView, "status" | "pausedBy">;
+
+/**
+ * ⭐ THE ONE RULE for the importing panel's first line under a stopped or paused run (the re-review's MINOR-2): who paused
+ * it and when; that the DATABASE paused it (C8c · m2 — paused by nobody); or, for a run nothing is driving that was never
+ * paused, that it stopped. `when` is `whenText` of the pause's instant. The panel asks it (`test:contacts-import` flow N9).
+ */
+export function pausedLine(run: PausedRun, when: string): string {
+  if (run.status !== "PAUSED") return COMMIT.stoppedHere;
+  return run.pausedBy === null ? COMMIT.pausedByDatabase(when) : COMMIT.pausedBy(run.pausedBy, when);
+}
+
+/** ⭐ The same rule on the adopt panel and the open-runs list: a PAUSED run's line — who paused it, or the database — or
+ *  null for a run that is not paused. */
+export function adoptPausedLine(run: PausedRun, when: string): string | null {
+  if (run.status !== "PAUSED") return null;
+  return run.pausedBy === null ? ADOPT.pausedByDatabase(when) : ADOPT.paused(run.pausedBy, when);
+}
 
 /* ══ WHERE AN OPEN COMES BACK REFUSED — the ways on ═══════════════════════════════════════════════ */
 
@@ -470,6 +534,15 @@ export const DONE = {
   failuresMore: "Show more",
   failuresLoading: "Loading the rows that couldn't be imported…",
   failuresFailed: "The rows that couldn't be imported didn't load. Try again.",
+  /** ⭐ C8c · #13 · a reader's list of the contacts that were imported WITHOUT all their new tags (each full of tags). */
+  tagsHeading: "Tags not added",
+  /** ⛔ n8 · never "already" (a contact may have filled up during this import) and never "import again" (a new import
+   *  under Keep adds no tag at all): the way that works is the contact's own page. */
+  tagsLead: (n: number): Part[] => [
+    fig(n), ` ${plural(n, "contact holds", "contacts hold")} the most tags a contact can have, so the tags listed with ${plural(n, "it", "each")} were not added. To add them, open ${plural(n, "the contact", "each contact")} in the book, remove tags it no longer needs, and add them there.`,
+  ],
+  tagsLoading: "Loading the contacts whose tags were not added…",
+  tagsFailed: "The contacts whose tags were not added didn't load. Try again.",
   showAdded: "Show the contacts this import added",
   listReady: (name: string): string => `Added to the list ${name} — every member is covered for offers.`,
   listOwed: (name: string): string =>
