@@ -78,8 +78,9 @@
  *      `React.lazy` split nothing: every module it named rode in every page's first load. So every lazily loaded part
  *      AppShell renders comes from ONE client module, `shell-lazy.tsx`, under the name it always had, each the one child
  *      of the Suspense boundary it always had — save the journey's header and tabs, which since R4-J (2026-10-09, E36)
- *      stand in none, so the page's first HTML draws them (12.shell.bare); AppShell imports none of the parts' own
- *      modules and no React `lazy`, and
+ *      stand in none, so the page's first HTML draws them (12.shell.bare), and the journey flag, bare beside them since
+ *      round 5's follow-up (R5-H, G-3) so it mounts in the commit that first paints them (12.shell.flag); AppShell
+ *      imports none of the parts' own modules and no React `lazy`, and
  *      imports the offline banner statically (its job is a connection that fails); that module is "use client", imports
  *      nothing statically but `next/dynamic`, declares exactly the parts table (each part one line, server render on, no
  *      option object, its loader ending in the lost-chunk guard, which takes a ChunkLoadError alone) and only AppShell
@@ -261,6 +262,10 @@ const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
  * that costs (the page's hydration waits for their chunks too) is written at their mount in AppShell.
  */
 const BARE_PARTS: readonly string[] = ["LazyJourneyTopBar", "LazyJourneyTabs"];
+/** The journey flag stands bare too (round 5's follow-up, R5-H, G-3): beside the header and the tabs, so a refresh that
+ *  switches the journey on mounts it in the commit that first paints them. It is the `journeyShown &&` arm itself — it
+ *  has no classic twin — so 12.shell.flag holds it, not 12.shell.bare's ternaries. */
+const BARE_FLAG = "LazyJourneyFlag";
 /** A part's one line in the shell's lazy module, exactly as it is written there. */
 const partLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
   `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
@@ -807,8 +812,10 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
   ok("5.nodirective · journey-on.ts carries no directive — it is a hook module, and its importers carry it",
     flagSrc.length > 0 && !isClient(flagSrc) && !/["']use server["']/.test(flagSrc));
   const comp = text(W, FLAG_COMPONENT);
-  ok("5.component · JourneyFlag is a client file that renders nothing and raises the flag in an effect whose cleanup lowers it",
-    isClient(comp) && comp.includes("useEffect(() => raiseJourneyFlag(), [])") && comp.includes("return null;"));
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-3): a LAYOUT effect — a passive one ran after the paint of the commit that
+  // swapped the shell, one frame of the old answer (R5-D). `test:visual-pass-r5h` §3 runs both directions' phases.
+  ok("5.component · JourneyFlag is a client file that renders nothing and raises the flag in a LAYOUT effect (before the paint of the commit that mounts it) whose cleanup lowers it",
+    isClient(comp) && comp.includes("useLayoutEffect(() => raiseJourneyFlag(), [])") && !comp.includes("useEffect(") && comp.includes("return null;"));
   const { loaders, bad } = unvouchedLoaders(W, G, FLAG_HOME);
   ok(`5.importers · every file loading journey-on.ts is client code — a "use client" file, or a hook module only client code loads (${loaders.length}: ${loaders.join(", ")})`,
     loaders.includes(FLAG_COMPONENT) && bad.length === 0, `NOT client code: ${bad.join(", ")}`);
@@ -823,7 +830,8 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
     show({ vouchedCase, refusedCase }));
   // ⭐ MOUNTED SINCE WP7: once, in AppShell, behind the resolver's own answer, through the shell's lazy binding (§11 holds
   // the binding). Nothing else renders it, so a page the server did not put in the journey never carries the flag.
-  const flagMount = "{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}";
+  // ⚠️ BARE SINCE ROUND 5'S FOLLOW-UP (R5-H, G-3): 12.shell.flag holds why.
+  const flagMount = "{journeyShown && <LazyJourneyFlag />}";
   const shellText = text(W, SHELL);
   const direct = [...W.files].filter(([p, s]) => p !== FLAG_COMPONENT && s.includes("<JourneyFlag")).map(([p]) => p);
   const lazyElsewhere = [...W.files].filter(([p, s]) => p !== SHELL && s.includes("<LazyJourneyFlag")).map(([p]) => p);
@@ -2347,13 +2355,16 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
     show([...imported].sort()) === show([...table].sort()) && notOnce.length === 0 && stray.length === 0 && !ownBinding,
     show({ imported, notOnce, stray, ownBinding }));
   const flat = squash(shell);
-  const unwrapped = table.filter((b) => !BARE_PARTS.includes(b) && [...flat.matchAll(wrappedPart(b))].length !== 1);
-  ok(`12.shell.wrapped · every part but the journey's header and tabs is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (${table.length - BARE_PARTS.length})`,
-    unwrapped.length === 0 && BARE_PARTS.every((b) => table.includes(b)), show({ unwrapped }));
+  const unwrapped = table.filter((b) => !BARE_PARTS.includes(b) && b !== BARE_FLAG && [...flat.matchAll(wrappedPart(b))].length !== 1);
+  ok(`12.shell.wrapped · every part but the journey's header, tabs and flag is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (${table.length - BARE_PARTS.length - 1})`,
+    unwrapped.length === 0 && BARE_PARTS.every((b) => table.includes(b)) && table.includes(BARE_FLAG), show({ unwrapped }));
   const chrome = BARE_PARTS.map((b) => ({ b, arm: count(flat, `{journeyShown ? <${b} `), boxed: [...flat.matchAll(wrappedPart(b))].length }));
   const emptyBox = count(flat, `className="kp-jhdr"`);
   ok("12.shell.bare · the journey's header and tabs stand in NO Suspense boundary: each is the journeyShown arm itself, so React 19.2 draws them in the page's first HTML instead of outlining them after the shell behind an empty box (R4-J, E36); and AppShell draws no empty header box",
     chrome.every((r) => r.arm === 1 && r.boxed === 0) && emptyBox === 0, show({ chrome, emptyBox }));
+  const flagArm = { arm: count(flat, `{journeyShown && <${BARE_FLAG} />}`), boxed: [...flat.matchAll(wrappedPart(BARE_FLAG))].length, tags: count(flat, `<${BARE_FLAG}`) };
+  ok("12.shell.flag · the journey flag stands in NO Suspense boundary either (round 5's follow-up, R5-H · G-3): the journeyShown arm itself, beside the header and the tabs, so a refresh that switches the journey on waits for its chunk as for theirs and mounts it in the commit that first paints them — and its layout effect raises the flag before that paint",
+    flagArm.arm === 1 && flagArm.boxed === 0 && flagArm.tags === 1, show(flagArm));
   const offline = {
     imported: importedNames(W, SHELL, OFFLINE_BANNER), mounted: count(flat, OFFLINE_MOUNT), tags: count(shell, "<OfflineBanner"),
     deferred: (G.out.get(SHELL_LAZY) ?? []).includes(OFFLINE_BANNER), loaders: [...(G.into.get(OFFLINE_BANNER) ?? [])].sort(),
@@ -2563,7 +2574,9 @@ if (!PROVE_RED) {
       withFile(WORLD, FLAG_HELPER, () => `import { useJourneyOn } from "./journey-on";\nexport const useFlagHelper = () => useJourneyOn();\n`),
       SHELL, (s) => `${s}\nimport { useFlagHelper } from "@/lib/journey/flag-helper";\n`);
     const flagClient = withFile(WORLD, FLAG_HOME, (s) => `"use client";\n${s}`);
-    const flagNoCleanup = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useEffect(() => raiseJourneyFlag(), [])", "useEffect(() => { raiseJourneyFlag(); }, [])"));
+    const flagNoCleanup = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useLayoutEffect(() => raiseJourneyFlag(), [])", "useLayoutEffect(() => { raiseJourneyFlag(); }, [])"));
+    const flagPassive = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useLayoutEffect(() => raiseJourneyFlag(), [])", "useEffect(() => raiseJourneyFlag(), [])").replace("import { useLayoutEffect } from \"react\";", "import { useEffect } from \"react\";"));
+    const flagBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <LazyJourneyFlag />}", "{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}"));
     const markForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}", "<span hidden id={JOURNEY_SHELL_MARK} />"));
     const markClient = withFile(WORLD, MARK_HOME, (s) => `"use client";${LF}${s}`);
     const markIgnored: Impl["flag"]["snapshot"] = () => document.documentElement.hasAttribute(FLAG.JOURNEY_FLAG_ATTR);
@@ -2571,7 +2584,7 @@ if (!PROVE_RED) {
 
     // §11 — the overlays (WP7): a stand-down widened to every reader, dropped or misplaced; the flag read another way;
     // a HIDE_ON pattern moved; the consent prompt gated; the email bar back for a journey viewer; the flag loaded eagerly.
-    const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}", "<Suspense fallback={null}><LazyJourneyFlag /></Suspense>"));
+    const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <LazyJourneyFlag />}", "<LazyJourneyFlag />"));
     const needleForAll = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace(`(${OVERLAY_TERM})`, "isJourneySurface(pathname)"));
     const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn, notFoundShown]);", "}, [hiddenPref, pathname]);"));
     const panelEligibleAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(" && !journeyHidden;", ";"));
@@ -3031,6 +3044,10 @@ ${s}`);
         world: flagClient, landed: changed(flagClient, FLAG_HOME), landedAs: "the hook module turns into a client boundary" },
       { name: "JourneyFlag's effect loses its cleanup", expect: at("5.component ·"),
         world: flagNoCleanup, landed: changed(flagNoCleanup, FLAG_COMPONENT), landedAs: "unmounting leaves data-journey on the page" },
+      { name: "JourneyFlag raises in a passive effect again (R5-H, G-3)", expect: at("5.component ·"),
+        world: flagPassive, landed: changed(flagPassive, FLAG_COMPONENT), landedAs: "a refresh that swaps the shell paints one frame of the old answer" },
+      { name: "JourneyFlag back in a Suspense boundary of its own (R5-H, G-3)", expect: at("12.shell.flag ·"),
+        world: flagBoxed, landed: changed(flagBoxed, SHELL), landedAs: "the flag can land a commit after the journey's header: its chrome painted while the overlays read the classic answer" },
       { name: "JourneyFlag mounted for everyone", expect: at("5.mount ·"),
         world: mountedForAll, landed: changed(mountedForAll, SHELL), landedAs: "a classic page carries data-journey" },
       { name: "the snapshot ignores the shell's mark", expect: at("5.mark ·"),

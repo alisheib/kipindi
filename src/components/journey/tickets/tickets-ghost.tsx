@@ -7,7 +7,10 @@
  * view's own heights: the name in the same `PageHeader` the view renders, the switch's underline rail, the lens strip on
  * the shared bar's classes (imported, never retyped) and ticket cards on the card's own surface. The Utendaji link sits
  * below the list, so the head has nothing beside the name to hold room for.
- * ⛔ A server component that reads nothing: the loading file that chose it hands it the words.
+ * ⛔ It reads nothing: it is handed the words. ⭐ Since round 5's follow-up (R5-H · G-2) it is drawn in the browser, by the
+ * journey's route ghost alone (`route-ghost.tsx`) — the root's, and the one `/positions`' and `/updown/history`'s loading
+ * files hand a journey reader pinned to their page — so no server file imports it and a classic reader is sent none of
+ * it (§0h point 21). It stays a module with no directive: only client code loads it.
  */
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
@@ -22,7 +25,10 @@ export function TicketsHeadGhost({ t }: { t: Dict }) {
   return (
     <div className="space-y-4">
       <PageHeader title={t.journey.tabTickets} />
-      <div className="flex items-end gap-1 border-b border-border" aria-hidden>
+      {/* `data-rail-ghost` (R5-B's hook, globals.css): the journey's rail rule draws this ghost as it draws the page's rail —
+          bled 12px into the gutter, the rule from the column's edge — so the switch lands where its ghost stood (R5-H · G-2b:
+          without it the ghost's boxes stood 12px right of the page's options). */}
+      <div className="flex items-end gap-1 border-b border-border" data-rail-ghost="" aria-hidden>
         <div className="h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track" />
         <div className="h-[44px] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track" />
       </div>

@@ -171,7 +171,9 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/app/profile/invite/page.tsx", 1],                    // −1, 2026-09-07: the share card reads --royal-950 like its agent sibling
   ["src/app/profile/page.tsx", 2],                           // −1, 2026-10-09 (R5-I): the hero's emerald → rose tilt (two radials) is PageHero's one info radial
   ["src/app/markets/[id]/page.tsx", 2],
-  ["src/app/wallet/loading.tsx", 1],
+  // Round 5's follow-up (R5-H, G-2): the wallet ghost's one budgeted literal — its balance card's royal gradient — moved
+  // with the drawing to `wallet-ghost.tsx` (client code beside the loading file); the count is the same.
+  ["src/app/wallet/wallet-ghost.tsx", 1],
   // `nav-progress.tsx` LEFT THIS LIST on 2026-10-09 (R5-C's gold audit): its hand-typed gold glow, oklch(72% 0.14 78), is a
   // glow mixed off `--brand-500` now (§E4) — the file holds no design value of its own.
   ["src/components/ui/toggle.tsx", 2],

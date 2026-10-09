@@ -1,18 +1,23 @@
+"use client";
+
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
+import { BackLinkGhost } from "@/components/ui/back-link";
 import { PageHero } from "@/components/ui/page-hero";
 import { I } from "@/components/ui/glyphs";
-import type { Dict } from "@/lib/i18n-dict";
+import { useT } from "@/lib/i18n";
 
 /**
  * B-29 / V-2 — the skeleton mirrors the FORM the page actually renders
  * (amount field → provider grid → phone field → confirm), instead of the
  * old centered spinner panel that repainted into a completely different shape.
- * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` (this folder) draws it
- * with the words it reads on the server, and the journey's root loading state (`components/journey/route-ghost.tsx`)
- * draws it in the browser on a move to /wallet/deposit. So it reads nothing itself, and its module may load there.
+ * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` (this folder) renders it,
+ * and the journey's root loading state (`components/journey/route-ghost.tsx`) draws it on a move to /wallet/deposit.
+ * ⭐ CLIENT CODE THAT READS ITS OWN WORDS (round 5's follow-up, R5-H · G-2): so the loading file hands it nothing and a
+ * refresh carries its reference, not this tree — `components/ui/page-loader.tsx` has the convention.
  */
-export function DepositGhost({ t }: { t: Dict }) {
+export function DepositGhost() {
+  const { t } = useT();
   /* ⭐ DG-P-04 · §S1 — THE RHYTHM IS DECLARED ON THE CONTAINER, NOT SPRINKLED PER ELEMENT.
      This read `<PageContainer tier="form">` + `<header className="mb-6">`, i.e. a 32px gap
      typed onto one child, while the page it stands in for (`page.tsx`, same directory)
@@ -32,12 +37,8 @@ export function DepositGhost({ t }: { t: Dict }) {
           the words are the page's, not a second copy of them. The h1 recipe was also
           `font-display text-[28px] font-bold text-text`, missing the `leading-tight
           tracking-[-0.02em]` `PageHeader` carries, so the heading changed line-height too. */}
-      {/* WIDTH IS A LITERAL, not `w-16` — the Tailwind spacing scale is OVERRIDDEN and
-          INVERTS at the keys it does not cover: `w-16` is stock 64px while `w-12` is an
-          overridden 128px, so the bigger number paints the smaller box. `test:spacing-scale`
-          derives that forbidden set from the two scales and ratchets it. Same 64px, on a key
-          that cannot invert. */}
-      <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+      {/* The back link: the BackLink's own 44px box (`BackLinkGhost`, R5-H · G-2b) — a 20px bar stood here, 24px short. */}
+      <BackLinkGhost />
 
       <PageHero>
         <PageHeader

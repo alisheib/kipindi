@@ -148,7 +148,9 @@ section("2 · F6 the journey's section rails start on the column edge (tiles 165
   const jnav = rule(CSS, ".kp-jnav__link"), jafter = rule(CSS, ".kp-jnav__link::after");
   ok("2.3 · it is the journey header's own line-tab geometry: `.kp-jnav__link` pads 12 a side and its underline is 12 in",
     /padding:\s*0 var\(--sp-3\)/.test(jnav) && /left:\s*var\(--sp-3\); right:\s*var\(--sp-3\)/.test(jafter) && pad === "--sp-3");
-  const ghost = read("src/app/wallet/loading.tsx");
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): /wallet's picture is drawn in the browser, by `wallet-ghost.tsx` beside the
+  // loading file (which asks the server the one thing the browser cannot: whether the bonus programme is live).
+  const ghost = read("src/app/wallet/wallet-ghost.tsx");
   const ghostShape = (s: string) => [
     !/<nav className="flex items-end gap-1 border-b border-border" data-rail-ghost="" aria-hidden>/.test(s) && "the ghost rail is not the rail's box with its hook",
     !/className="relative inline-flex h-\[44px\] items-center whitespace-nowrap px-4 text-body-sm font-semibold text-text-subtle"/.test(s) && "the ghost option is not the kit's option",
@@ -381,13 +383,19 @@ section("9 · F14 a count line under a bar has 12px of air on both sides (tile 1
   ok("9.1′ CONTROL · the old `gap-y-1` put the capitals 8.37 under the pills — tile 171's measured 8 (y697 → y706)", Math.abs(capAir(4) - 8.37) < 0.01);
   const mk = mediaBlock(CSS, "max-width: 639.98px", "grid-template-columns: minmax(160px, 1fr) auto auto");
   ok("9.2 · the /markets phone bar's count line takes the same 8px each way (R4-D)", /row-gap:\s*var\(--sp-2\);/.test(mk) && px("--sp-2") === 8);
-  const users = ["src/app/wallet/wallet-bar.tsx", "src/app/wallet/receipts/receipts-bar.tsx", "src/app/wallet/receipts/loading.tsx"].map((f) => [f, read(f)] as const);
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2b): the receipts ghost's bar is the money books' one bar ghost now — /wallet's
+  // too (its ghost had none) — with every pill as wide as the page's in every language (`test:visual-pass-r5h` §4).
+  const users = ["src/app/wallet/wallet-bar.tsx", "src/app/wallet/receipts/receipts-bar.tsx", "src/app/wallet/money-bar-ghost.tsx"].map((f) => [f, read(f)] as const);
   ok("9.3 · both money bars and the receipts ghost take the one constant; nobody retypes the wrap",
     users.every(([, s]) => /<div className=\{QUERY_BAR_ROW1_WRAP_CLASS\}>/.test(s) && !/gap-y-1 lg:flex-nowrap/.test(s)), users.filter(([, s]) => !/QUERY_BAR_ROW1_WRAP_CLASS/.test(s)).map(([f]) => f).join(", "));
   ok("9.3′ PLANT · a bar back on its own `gap-y-1` recipe is reported",
     /gap-y-1 lg:flex-nowrap/.test(users[0][1].replace("<div className={QUERY_BAR_ROW1_WRAP_CLASS}>", '<div className={cn(QUERY_BAR_ROW1_CLASS, "flex-wrap justify-end gap-y-1 lg:flex-nowrap")}>')));
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2b): the count is set in `QueryResultCount`'s own type with its words not shown —
+  // the line is the count's by construction (17.25 = 11.5 × 1.5), and its width the phrase's, which decides where row 1 wraps
+  // from lg.
   ok("9.4 · the ghost's count is as tall as the count's line (17.25), so row 2 lands where the page puts it",
-    /<div className="flex h-\[17\.25px\] shrink-0 items-center"><div className="h-3 w-\[80px\] rounded bg-bg-overlay" \/><\/div>/.test(users[2][1]) && 11.5 * 1.5 === 17.25);
+    /<p className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-transparent"><span className="rounded bg-bg-overlay">\{count\}<\/span><\/p>/.test(users[2][1])
+      && /className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-text-subtle"/.test(read("src/components/ui/query-bar.tsx")) && 11.5 * 1.5 === 17.25);
 }
 
 /* ══ §10 · §A5 · /notifications ON AN EMPTY INBOX ═══════════════════════════════════════════════════════════════ */

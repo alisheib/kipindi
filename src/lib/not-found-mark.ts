@@ -25,9 +25,10 @@
  * (`data-path`), the snapshot is that path, and the answer is "the mark's path IS the path being drawn"
  * (`isNotFoundFor`): the old page's span answers "no" for the new path in the very render that draws it. And arriving,
  * the mark announces itself in a LAYOUT effect, so the chrome's answer turns before that commit's first paint (React
- * flushes the update a layout effect schedules before it yields to the browser); its going is still announced after
- * React has taken the span out (a passive cleanup), which only brings the store up to date — the answer was already
- * "no" for every path but its own.
+ * flushes the update a layout effect schedules before it yields to the browser); its going is announced once React has
+ * taken the span out and before that commit's paint (round 5's follow-up, R5-H · G-3, the journey flag's phases:
+ * `announceNotFoundAfterCommit`) — for a move the answer was already "no" for every path but its own, and a refresh
+ * that finds the record at the same address no longer paints a frame of "not found" over it.
  * ⚠️ IT ASSUMES A PAGE THAT IS LEFT LEAVES THE DOCUMENT, in the commit that draws the next one — and so does the CSS rule
  * below. Next 16 keeps left pages mounted in a hidden `<Activity>` only with `cacheComponents` on, which this app does not
  * turn on; with it, the old span would stay, `getElementById` could find it, and the CSS would rest the next page's tab.
@@ -71,9 +72,19 @@ export function notFoundServerSnapshot(): string | null {
   return null;
 }
 
-/** Announce that the mark came or went: `NotFoundMark`'s effects, on mount and on cleanup. */
+/** Announce that the mark came or went: `NotFoundMark`'s layout effect, on mount (and on a move to another path). */
 export function announceNotFound(): void {
   window.dispatchEvent(new Event(NOT_FOUND_EVENT));
+}
+
+/**
+ * Announce the mark's going once the commit that takes it out is done, before the browser paints — `NotFoundMark`'s
+ * layout cleanup. React runs a removed component's layout cleanup before it removes the span, so an announcement made
+ * there would still read the old path; a microtask runs after the whole commit and before the paint (the journey
+ * flag's lowering, `lib/journey/journey-on.ts`, on the same phases — round 5's follow-up, R5-H · G-3).
+ */
+export function announceNotFoundAfterCommit(): void {
+  queueMicrotask(() => { if (typeof window !== "undefined") announceNotFound(); });
 }
 
 /** The one decision: a not-found page is on screen for `path` when the mark that is up was drawn for `path`. */

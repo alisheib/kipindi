@@ -1,3 +1,5 @@
+"use client";
+
 import { PageContainer } from "@/components/layout/page-container";
 
 /**
@@ -14,6 +16,8 @@ import { PageContainer } from "@/components/layout/page-container";
  * this is shape only, and the page states the truth when it resolves.
  *
  * States `receipt`, the SAME tier the page states (B7 rule 3).
+ * ⭐ CLIENT CODE (round 5's follow-up, R5-H · G-2): it reads nothing, so a refresh while the deposit is pending (every
+ * 10 s) carries its reference, not its tree — `components/ui/page-loader.tsx` has the convention.
  */
 export default function DepositReturnLoading() {
   return (

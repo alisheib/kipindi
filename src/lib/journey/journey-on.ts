@@ -50,14 +50,35 @@ export function journeyFlagServerSnapshot(): boolean {
   return false;
 }
 
-/** Raise the flag and announce it; the returned cleanup lowers it and announces that. `JourneyFlag`'s effect. */
+/**
+ * Raise the flag and announce it; the returned cleanup lowers it and announces that. `JourneyFlag`'s LAYOUT effect.
+ * ⭐ THE PHASES, BOTH WAYS (round 5's follow-up, R5-H · G-3), so the shell a `router.refresh()` swaps in is painted with
+ * the answer that matches it in its first frame:
+ *   · UP, before the journey shell's first paint. The flag mounts in the commit that draws the journey's header and
+ *     tabs (it stands bare beside them, so the transition waits for its chunk as for theirs); its layout effect runs
+ *     after that commit's mutations — the shell's mark is already in — and the announcement makes every subscribed
+ *     reader re-render, synchronously, before the browser paints.
+ *   · DOWN, before the classic shell's first paint. The cleanup runs in the commit that removes the journey's shell, and
+ *     React runs a removed component's layout cleanup BEFORE it removes the host nodes that follow it: the shell's mark is
+ *     still in the document there, so a reader asking then still reads "on". The attribute goes, and is announced, at
+ *     once; and the change is announced again once the commit is done — a microtask, which runs after the whole commit
+ *     and before the browser paints (the readers' re-render is a synchronous update, flushed in a microtask too).
+ * A passive effect and cleanup ran after the paint both ways: one painted frame of the old answer (R5-D). The not-found
+ * mark announces on the same phases (`lib/not-found-mark.ts`).
+ */
 export function raiseJourneyFlag(): () => void {
   document.documentElement.setAttribute(JOURNEY_FLAG_ATTR, "");
   window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT));
   return () => {
     document.documentElement.removeAttribute(JOURNEY_FLAG_ATTR);
     window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT));
+    queueMicrotask(announceJourneyFlagAfterCommit);
   };
+}
+
+/** The second announcement of a lowering, once the commit that took the shell's mark out is done (see above). */
+function announceJourneyFlagAfterCommit(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT));
 }
 
 /** True while the shell has put this page in the new journey. */

@@ -1,4 +1,5 @@
-import { getServerT } from "@/lib/i18n-server";
+"use client";
+
 import { PageContainer } from "@/components/layout/page-container";
 import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
 import {
@@ -47,9 +48,11 @@ import {
  * measured 458 and **guarded** — `qa:ghost-landing` fails this route if the board lands more
  * than 120px from where the ghost promised, which is what makes a single measured number safe to
  * keep here rather than a thing to remember.
+ * ⭐ CLIENT CODE THAT READS NOTHING (round 5's follow-up, R5-H · G-2): it asked the server for the words and drew none of
+ * them (R5-D found the same read in the question's skeleton) — so the read is gone, and a refresh of /results carries
+ * this drawing's reference, not its tree. `components/ui/page-loader.tsx` has the convention.
  */
-export default async function ResultsLoading() {
-  const { t } = await getServerT();
+export default function ResultsLoading() {
   // Width MUST match results/page.tsx (1280) — a mismatch reflows on every route transition.
   return (
     /* ⛔ THE WRAPPER STRUCTURE IS THE PAGE'S, NOT AN APPROXIMATION OF IT: `<PageContainer
@@ -106,7 +109,9 @@ export default async function ResultsLoading() {
               putting the board 56px too low. ⚠️ Unlike `/markets`, THIS bar does not opt into the
               phone grid (it carries no `data-bar-row`), so nothing rescues a row that wraps. */}
             <div className="kp-shimmer-track h-[44px] w-[182px] rounded-pill bg-bg-elevated" />
-            <div className="kp-shimmer-track h-[44px] w-[134px] rounded-pill bg-bg-elevated" />
+            {/* The Filters button is a phone's alone (`FilterSheet` is `lg:hidden`, filter-sheet.tsx) — R5-H · G-2b: the
+                ghost drew it at 1280 too, a 134px pill in a row the page does not have. */}
+            <div className="kp-shimmer-track h-[44px] w-[134px] rounded-pill bg-bg-elevated lg:hidden" />
             {/* ⛔ Desktop-only groups — the real ones carry `QUERY_GROUP_CLASS` (`hidden … lg:flex`),
               so a phone never receives them and neither does its ghost. */}
             {[88, 84].map((w, i) => (
@@ -120,7 +125,11 @@ export default async function ResultsLoading() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-5">
+        {/* ⭐ THE PAGE'S OWN TWO WRAPPERS (R5-H · G-2b): `results/page.tsx` stands the carousel and the grid in a BLOCK
+            (`min-w-0 flex-1`) inside a `flex flex-col gap-5 lg:flex-row` row of one child, so only the carousel's own
+            `mb-5` (24px) parts them. This was one `flex flex-col gap-5` AND the `mb-5` — 48px: the grid stood 24px low. */}
+        <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+        <div className="min-w-0 flex-1">
           {/* The notable-results carousel: a 44px arrow row over the featured result card.
           ⚠️ THE ONE MEASURED NUMBER IN THIS FILE (see the header). 458px is 360's; 320 renders
           497 and 414 renders 436, both inside `qa:ghost-landing`'s 120px tolerance. */}
@@ -172,6 +181,7 @@ export default async function ResultsLoading() {
               </div>
             ))}
           </div>
+        </div>
         </div>
       </div>
     </PageContainer>

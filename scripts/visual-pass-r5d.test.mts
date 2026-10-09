@@ -286,7 +286,9 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
 }
 {
   const ghost = code(GHOST);
-  const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails }: { rails: readonly string[] }) {")
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): the binding also takes `at`, the page a segment's own loading file pins it
+  // to (`/positions`, `/updown/history` — `test:visual-pass-r5h` §2 holds the two).
+  const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?: JourneyGhostPage }) {")
     && squash(s).includes("const { t, locale } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
   ok("2.1 · route-ghost.tsx is client code: the ghosts take the rails alone and read the words from the client dictionary (`useT`)", shape(ghost));
   ok("2.1′ PLANT · the ghosts drawn by a server component again (the directive gone) is reported", !shape(ghost.replace(/^\s*"use client";/, "")));
@@ -362,13 +364,27 @@ const { RoutePick } = req("../src/components/ui/route-pick.tsx") as { RoutePick:
 const { UpDownGhost } = req("../src/app/updown/updown-ghost.tsx") as { UpDownGhost: unknown };
 const { UpDownHistoryGhost } = req("../src/app/updown/history/history-ghost.tsx") as { UpDownHistoryGhost: unknown };
 const { DepositGhost } = req("../src/app/wallet/deposit/deposit-ghost.tsx") as { DepositGhost: unknown };
-const { TicketsGhost } = req("../src/components/journey/tickets/tickets-ghost.tsx") as { TicketsGhost: unknown };
+const { TicketsGhost, TicketsHeadGhost } = req("../src/components/journey/tickets/tickets-ghost.tsx") as { TicketsGhost: unknown; TicketsHeadGhost: unknown };
+const { LazyJourneyRouteGhost } = req("../src/components/journey/route-ghost-lazy.tsx") as { LazyJourneyRouteGhost: unknown };
 const MarketDetailLoading = (req("../src/app/markets/[id]/loading.tsx") as { default: unknown }).default;
 const DepositReturnLoading = (req("../src/app/wallet/deposit/return/loading.tsx") as { default: unknown }).default;
 const { JourneyRouteGhost } = req("../src/components/journey/route-ghost.tsx") as { JourneyRouteGhost: (p: { rails: readonly string[] }) => unknown };
 const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: (p: { initial: Locale; children: unknown }) => unknown };
 collectClientRefs();
 const GHOST_MARKUP = /kp-hero|kp-hub|kp-shimmer-track|kp-hghost|aria-busy/;
+/**
+ * What a client drawing returns, captured inside a React render (its `useT` needs one) at the reader's language: the tree
+ * a SERVER component drawing it would have written into the payload (round 5's follow-up, R5-H · G-2 — the drawings read
+ * their own words now, so a control can no longer call them as functions).
+ */
+function drawnTree(el: unknown, l: Locale): unknown {
+  const box: { tree?: unknown } = {};
+  const { type, props } = el as { type: (p: unknown) => unknown; props: unknown };
+  const Capture = () => { box.tree = type(props); return null; };
+  const { AppRouterContext: Router } = req("next/dist/shared/lib/app-router-context.shared-runtime") as { AppRouterContext: import("react").Context<unknown> };
+  renderToStaticMarkup(h(Router.Provider, { value: { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {} } }, h(I18nProvider as never, { initial: l } as never, h(Capture))));
+  return box.tree;
+}
 {
   const sizes: string[] = [];
   let worst = 0, refsOk = true, markupFree = true, propsOk = true;
@@ -387,15 +403,19 @@ const GHOST_MARKUP = /kp-hero|kp-hub|kp-shimmer-track|kp-hghost|aria-busy/;
     worst > 0 && worst < 200 && refsOk && markupFree && propsOk, j({ sizes, refsOk, markupFree, propsOk }));
   // CONTROL — the same serializer on the element as it was drawn before: RoutePick holding every page's ghost, drawn by
   // the server (the drawings themselves, imported from their modules: here they are server components).
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): the shared drawings are client code reading their own words, so the
+  // server-drawn shape is rebuilt from each one's own tree (`drawnTree`) — handed `{ t }` as before, a client reference
+  // would serialize the whole dictionary as a prop, a number that measures nothing.
   const t = dict.sw;
   const before = h(RoutePick as never, {
-    routes: { "/updown": h(UpDownGhost as never, { t }), "/positions": h(TicketsGhost as never, { t }), "/updown/history": h(UpDownHistoryGhost as never, { t, journey: true }),
-      "/wallet/deposit": h(DepositGhost as never, { t }), "/wallet/deposit/return": h(DepositReturnLoading as never) },
-    patterns: [["^/markets/[^/]+$", h(MarketDetailLoading as never)]], other: null,
+    routes: { "/updown": drawnTree(h(UpDownGhost as never), "sw"), "/positions": h(TicketsGhost as never, { t }),
+      "/updown/history": drawnTree(h(UpDownHistoryGhost as never, { journeyHead: h(TicketsHeadGhost as never, { t }) }), "sw"),
+      "/wallet/deposit": drawnTree(h(DepositGhost as never), "sw"), "/wallet/deposit/return": drawnTree(h(DepositReturnLoading as never), "sw") },
+    patterns: [["^/markets/[^/]+$", drawnTree(h(MarketDetailLoading as never), "sw")]], other: null,
   } as never);
   const beforeJson = j(await flight(before, new Set()));
   ok(`2.6′ CONTROL · the same serializer on the server-drawn shape (six of the nine ghosts — the home's, the hub's and the spinner left out): ${Buffer.byteLength(beforeJson)} B, every node of every ghost written out — the cost 2.6 holds gone`,
-    Buffer.byteLength(beforeJson) > 10_000 && GHOST_MARKUP.test(beforeJson), String(Buffer.byteLength(beforeJson)));
+    Buffer.byteLength(beforeJson) > 10_000 && Buffer.byteLength(beforeJson) < 40_000 && GHOST_MARKUP.test(beforeJson), String(Buffer.byteLength(beforeJson)));
   // The classic reader: the box, unchanged, and no ghost reference at all.
   REQ.journey = false;
   const classicNamed = new Set<string>();
@@ -449,14 +469,25 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
     ["/markets/mkt_any", "../src/app/markets/[id]/loading.tsx"],
     ["/positions", "../src/app/positions/loading.tsx"],
   ];
-  const differ: string[] = [];
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): a journey reader's /positions and /updown/history loading files hand back
+  // the journey's own binding pinned to their page (`at`), which a browser draws as `JourneyRouteGhost` once its chunk
+  // is in — drawn here as what it binds (2.10″ holds that it is that binding, and that page).
+  const asDrawn = (el: unknown) => {
+    const e = el as { type?: unknown; props?: Record<string, unknown> };
+    return e && e.type === LazyJourneyRouteGhost ? h(JourneyRouteGhost as never, e.props as never) : el;
+  };
+  const differ: string[] = [], pinned: string[] = [];
   for (const [path, file] of CASES) for (const l of LOCALES) {
     REQ.locale = l; REQ.path = path; REQ.journey = true;
-    const own = inApp(path, l, await load(file)());
+    const el = await load(file)() as { type?: unknown; props?: { at?: string } };
+    if (el.type === LazyJourneyRouteGhost) pinned.push(`${path}=${el.props?.at}`);
+    const own = inApp(path, l, asDrawn(el));
     if (own !== ghostAt(path, l)) differ.push(`${path} ${l}`);
   }
   ok(`2.10 · one drawing: each page's own loading file, RUN for a journey reader, and the root ghost at its address write the same bytes (${CASES.length} pages × 3 languages)`,
     differ.length === 0, differ.join(", "));
+  ok("2.10″ · …and where a journey reader's picture differs from a classic reader's (/positions, /updown/history) the loading file hands back the journey's own binding pinned to its own page — in every language",
+    j([...new Set(pinned)].sort()) === j(["/positions=/positions", "/updown/history=/updown/history"]), j([...new Set(pinned)]));
   REQ.locale = "sw"; REQ.journey = false;
   const classicHistory = inApp("/updown/history", "sw", await load("../src/app/updown/history/loading.tsx")());
   REQ.journey = true;
@@ -625,7 +656,8 @@ section("5 · F4's pattern · every useSyncExternalStore reader is classified, a
   // shape is named here with why it is, or is not, that defect; a new one is reported until it is classified.
   const READERS: Record<string, string> = {
     "src/lib/not-found-mark.ts": "a page's mark read by the chrome — answered for the path being drawn, arrival announced in a layout effect (F4)",
-    "src/lib/journey/journey-on.ts": "the shell's mark, layout-scoped: no soft navigation re-runs the root layout; a refresh that flips the server's answer is the staleness its note accepts (named to the integrator)",
+    // ⚠️ Re-classified in round 5's follow-up (R5-H, G-3): the refresh that flips the server's answer is answered before its paint.
+    "src/lib/journey/journey-on.ts": "the shell's mark and flag, layout-scoped: no soft navigation re-runs the root layout, and a refresh that swaps the shell raises the flag in the layout phase of the commit that draws the journey shell and announces its lowering once the commit that removes it is done — before either paint (R5-H, G-3; test:visual-pass-r5h §3)",
     "src/lib/invitation-slot.ts": "claims read beside the claimant's own in-render eligibility: a stale store can delay a card a frame, never show two",
     "src/components/ui/unsaved-changes.tsx": "a registry whose writers and painter all stand in one page, and leave it together",
     "src/components/layout/nav-more.tsx": "the reader's density (<html data-density>), not a page's state",

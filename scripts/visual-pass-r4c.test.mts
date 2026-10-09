@@ -165,7 +165,8 @@ const HANG_REST = restRule ? Number(restRule[1]) : NaN;
   const ghosts = [
     ["src/app/results/loading.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
     ["src/app/results/page.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
-    ["src/app/positions/loading.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
+    // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): today's /positions picture is drawn in the browser, beside its loading file.
+    ["src/app/positions/positions-ghost.tsx", /<div className=\{QUERY_SEARCH_BAND_CLASS\} aria-hidden>\s*<div className="search-box-wrap">[\s\S]{0,260}?<p className="mt-1\.5 min-h-\[17px\]" \/>/],
   ] as const;
   const lostGhosts = ghosts.filter(([f, re]) => !re.test(code(f))).map(([f]) => f);
   ok("1.6 · the three ghosts of a banded search draw the band — the box's height and its echo row in a search-box-wrap — over the bar's ghost",

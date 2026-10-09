@@ -30,10 +30,10 @@
  *               rows a plain signed-in player is shown (a guest's, for a guest).
  *   the journey's other pages — the ones `surfaces.ts` lists as the journey's own (`JOURNEY_ROUTE`): a question
  *               (`/markets/<id>`, the one pattern), Tiketi zangu's Up & Down list, the deposit screen and the provider's
- *               return — each the drawing its own loading file renders (the file itself where it reads nothing: the
- *               question's and the return's; the drawing it hands its words to where it reads them: the list's
- *               `history-ghost.tsx`, a journey reader's head, and the deposit's `deposit-ghost.tsx`), so the root's state
- *               and the page's are one drawing.
+ *               return — each the drawing its own loading file renders (the file itself, client code, where it needs no
+ *               server answer: the question's and the return's; else the drawing beside it: the list's
+ *               `history-ghost.tsx`, here with a journey reader's head, and the deposit's `deposit-ghost.tsx`), so the
+ *               root's state and the page's are one drawing.
  *   any other   the brand's spinner in a block as tall as the classic box, and no frame: a framed box promises a
  *               column, and the pages behind this branch use several; each page's own loading file (if it has one)
  *               draws its column as soon as the page starts to arrive.
@@ -62,13 +62,21 @@
  * (the console and the opt-out page are never the journey; the per-request resolver); everybody else is served the
  * classic SectionLoader, byte for byte. `/account` keeps no loading file of its own (A3): its ghost is here, behind the
  * same answer, so nothing streams to a classic visitor before the hub's gate.
+ * ⭐ A SEGMENT MAY PIN ITS PAGE (round 5's follow-up, R5-H · G-2). `/positions` and `/updown/history` draw the journey's
+ * picture for a journey reader from their OWN loading files too, and that file must not import it (a server file's
+ * client imports join its segment's first load for every reader — §0h point 21 sends a classic reader none of the
+ * journey's picture). So it hands back this binding with `at`, its page: the picture is the one drawn here for that
+ * address — whatever the address is when its boundary stands (`/positions`' boundary also stands over
+ * `/positions/performance` while a move there loads) — and the code is the chunk the root's element already loaded.
+ * Juu/Chini's, the deposit's and the round history's drawings read their own words now (`useT`), as their own loading
+ * files render them; Tiketi zangu's are drawn here alone and take them from here.
  * `test:visual-pass-r4j` §3 holds every part of this file to the page it stands for.
  */
 import type { ReactNode } from "react";
 import { BrandSpinner } from "@/components/brand";
 import { PageContainer } from "@/components/layout/page-container";
 import { RoutePick } from "@/components/ui/route-pick";
-import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
+import { TicketsGhost, TicketsHeadGhost } from "@/components/journey/tickets/tickets-ghost";
 import { UpDownGhost } from "@/app/updown/updown-ghost";
 import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";
 import MarketDetailLoading from "@/app/markets/[id]/loading";
@@ -79,19 +87,24 @@ import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, 
 import { useT } from "@/lib/i18n";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
-export function JourneyRouteGhost({ rails }: { rails: readonly string[] }) {
+/** The pages whose own loading file hands a journey reader this ghost, pinned (`at`) — see "A SEGMENT MAY PIN ITS PAGE". */
+export type JourneyGhostPage = "/positions" | "/updown/history";
+
+export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?: JourneyGhostPage }) {
   const { t, locale } = useT();
+  const routes = {
+    "/": <HomeGhost t={t} locale={locale} rails={rails} />,
+    "/updown": <UpDownGhost />,
+    "/positions": <TicketsGhost t={t} />,
+    "/account": <AccountGhost t={t} />,
+    "/updown/history": <UpDownHistoryGhost journeyHead={<TicketsHeadGhost t={t} />} />,
+    "/wallet/deposit": <DepositGhost />,
+    "/wallet/deposit/return": <DepositReturnLoading />,
+  };
+  if (at) return routes[at];
   return (
     <RoutePick
-      routes={{
-        "/": <HomeGhost t={t} locale={locale} rails={rails} />,
-        "/updown": <UpDownGhost t={t} />,
-        "/positions": <TicketsGhost t={t} />,
-        "/account": <AccountGhost t={t} />,
-        "/updown/history": <UpDownHistoryGhost t={t} journey />,
-        "/wallet/deposit": <DepositGhost t={t} />,
-        "/wallet/deposit/return": <DepositReturnLoading />,
-      }}
+      routes={routes}
       patterns={[["^/markets/[^/]+$", <MarketDetailLoading />]]}
       other={<AnyPageGhost />}
     />

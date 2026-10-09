@@ -66,3 +66,17 @@ export function BackLink({
     </button>
   );
 }
+
+/**
+ * THE BACK LINK WHILE ITS PAGE LOADS (round 5's follow-up, R5-H · G-2b) — the box `BackLink` draws (`min-h-[44px]`, its
+ * one 16px label line centred in it) with a bar for the label. Every loading ghost whose page opens on a back link draws
+ * this one: nine drew a 16–20px bar there (and the receipt's none), so each page landed 24–28px lower than its ghost
+ * promised. A shape, never a link: hidden from a screen reader, nothing to press.
+ */
+export function BackLinkGhost() {
+  return (
+    <div className="flex min-h-[44px] items-center" aria-hidden>
+      <div className="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track" />
+    </div>
+  );
+}

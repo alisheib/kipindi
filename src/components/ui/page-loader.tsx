@@ -1,11 +1,13 @@
+"use client";
+
 /**
  * PageLoader — the one shared route-loading skeleton, so every player page shows
  * a consistent, professional loader (BrandSpinner + locale-aware label + shimmer
  * rows) instead of an empty container. Width matches the page's tier so the real
  * content swaps in with no layout jump. Used by each route's loading.tsx.
  *
- * Reads kp-locale from cookies server-side so even skeletons render in the
- * user's selected language.
+ * Its words are the client dictionary's (`useT`), in the language the root layout hands the provider — the kp-locale
+ * cookie, read on the server — so even skeletons render in the user's selected language (the convention below).
  *
  * ⛔ TWO THINGS CHANGED HERE ON 2026-08-22, AND BOTH WERE INVISIBLE TO EVERY
  * STATIC GUARD THIS REPO HAS.                             DESIGN_AUTHORITY B7
@@ -25,13 +27,35 @@
  * It now states its measure the way every other page does: `<PageContainer tier>`.
  * The three widths in use (1080 / 640 / 1280) were already exactly `reading` /
  * `form` / `board`, so the migration was a zero-pixel change.
+ *
+ * ⭐ EVERY PLAYER LOADING DRAWING IS CLIENT CODE (2026-10-09, the visual pass round 5's follow-up, R5-H · G-2 — the
+ * convention for every `loading.tsx` a player can reach, as R5-D's G1 made it for the root's). Next sends a segment's
+ * loading element again with every payload that renders the segment: the document, each move into it, and every
+ * `router.refresh()` — the RefreshPoller's beat on the polled pages (every 15–60 s; 5 s on a round awaiting its
+ * result), each bet's refresh, a change of language. Drawn by a server component, every node of the drawing rode in
+ * each of those (measured: up to 9.6 KB of Flight JSON per refresh, /wallet/receipts). Drawn by a client component,
+ * the element is one reference and the few props only the server can answer; the drawing is code, fetched once with
+ * the segment and kept. So:
+ *   · the drawing is a "use client" component that reads its words with `useT()` — the client dictionary every page
+ *     already carries, at the provider's language, which is the cookie the server reads — so the server's HTML is
+ *     byte for byte what it was and the first paint is unchanged;
+ *   · a loading file that needs no server answer IS that drawing (`"use client"` at its top); one that needs one (the
+ *     journey answer, a feature state) stays a server file that asks it and hands the drawing only the answer, the
+ *     drawing beside it (`./<name>-ghost.tsx`, imported relatively, so `test:measure` still pairs the tiers);
+ *   · a JOURNEY picture is never a module a server file imports: a server file's client imports join its segment's
+ *     first load for every reader (VODACOM-PLAN §0h points 20, 21), so a journey reader's loading file hands back the
+ *     journey's route ghost pinned to its page (`LazyJourneyRouteGhost at=…`, R5-D's binding), whose code a journey
+ *     reader's browser already holds and a classic reader's never fetches.
+ * ⚠️ Only the transport changes: a plain client reference, which Flight starts fetching the moment a payload (or a
+ * link's prefetch) names it — not `next/dynamic`, which waits for the render; that suits the root's journey-only set,
+ * not a drawing every reader of the segment is shown. The chunks' sizes are a production build's to measure (a lock
+ * turn's). `test:visual-pass-r5h` §1 holds every player loading file to this and renders each one's markup.
  */
-import { cookies } from "next/headers";
 import { BrandSpinner } from "@/components/brand";
 import { PageContainer, type MeasureTier } from "@/components/layout/page-container";
-import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
+import { useT } from "@/lib/i18n";
 
-export async function PageLoader({
+export function PageLoader({
   tier = "reading",
   rows = 5,
   rowHeight = 64,
@@ -41,9 +65,7 @@ export async function PageLoader({
   rows?: number;
   rowHeight?: number;
 }) {
-  const jar = await cookies();
-  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
-  const t = dict[locale];
+  const { t } = useT();
   return (
     <PageContainer tier={tier} className="content-fade-in">
       <div className="rounded-xl border border-border bg-bg-elevated p-10 grid place-items-center">

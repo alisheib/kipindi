@@ -1,4 +1,7 @@
-import { getServerT } from "@/lib/i18n-server";
+"use client";
+
+import { useT } from "@/lib/i18n";
+import { BackLinkGhost } from "@/components/ui/back-link";
 
 /**
  * /updown/[roundId] loading skeleton.
@@ -9,19 +12,22 @@ import { getServerT } from "@/lib/i18n-server";
  * `xl:[grid-template-columns:minmax(0,1.55fr)_minmax(300px,1fr)]` layout — so on
  * desktop the entire page reflowed the moment content arrived, which is exactly the
  * "152px layout jump" B7 removed from the widths and this file reintroduced in the
- * columns. Same paddings, same grid, same slot order as `page.tsx`: back-link,
+ * columns. Same paddings, same grid (two columns from `lg`), same slot order as `page.tsx`: back-link,
  * header row (title block left, countdown pod right), then hero ghost left with the
  * pool + action ghosts stacked right. The proof ghost is deliberately absent — it
  * only exists once a round is decided, and a ghost for a panel that may never come
  * would promise a result (A-5).
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
  */
-export default async function UpDownRoundLoading() {
-  const { t } = await getServerT();
+export default function UpDownRoundLoading() {
+  const { t } = useT();
   return (
     <div className="mx-auto w-full max-w-board px-3 lg:px-6 pt-[22px] pb-14" aria-busy="true">
       <div className="flex flex-col gap-[18px]">
-        {/* back-link */}
-        <div className="h-4 w-[96px] rounded bg-bg-elevated kp-shimmer-track" aria-hidden />
+        {/* back-link — the BackLink's own 44px box (`BackLinkGhost`, R5-H · G-2b: a 20px bar stood here, 24px short) */}
+        <BackLinkGhost />
         {/* header: title block · countdown pod */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -35,12 +41,14 @@ export default async function UpDownRoundLoading() {
           </div>
           <div className="h-[52px] w-44 rounded-md border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />
         </div>
-        {/* grid: price hero (left) · pool + action rail (right) */}
-        <div className="grid grid-cols-1 items-start gap-4 xl:[grid-template-columns:minmax(0,1.55fr)_minmax(300px,1fr)]">
+        {/* grid: price hero (left) · action rail + pool (right). ⭐ R5-H · G-2b: two columns from `lg`, as the page (E-193;
+            `xl` stacked everything between 1024 and 1279), and the action panel FIRST, the pool after it (the page's order
+            since 2026-09-27 — a pick lands on #stake with the countdown in view). */}
+        <div className="grid grid-cols-1 items-start gap-4 lg:[grid-template-columns:minmax(0,1.55fr)_minmax(300px,1fr)]">
           <div className="h-[300px] rounded-xl border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />
           <div className="flex min-w-0 flex-col gap-4">
-            <div className="h-40 rounded-xl border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />
             <div className="h-56 rounded-xl border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />
+            <div className="h-40 rounded-xl border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />
           </div>
         </div>
       </div>

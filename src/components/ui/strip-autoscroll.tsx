@@ -25,7 +25,7 @@
  * tree — rather than turning the bar itself into a client component and pulling the whole
  * discovery contract into the browser bundle.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { centredScrollLeft } from "@/lib/strip-scroll";
 
 /**
@@ -74,6 +74,16 @@ export function StripAutoScroll() {
    * not share a memory, and a remount (a real navigation) SHOULD re-frame.
    */
   const framed = useRef(new WeakMap<HTMLElement, string>());
+
+  /* ⭐ THE EDGES ARE MARKED BEFORE THE FIRST PAINT (round 5's follow-up, R5-H · G-3 — the journey flag's phases, for every
+     DOM mark a first paint reads). `data-edges` decides the strip's fade, and the effect below runs after a
+     transition's paint: after every move, a strip whose chips all fit drew its first frame with its end faded (the
+     CSS's default for `.kp-strip-fade` with no mark, below lg), the last chip dimmed for a frame. So the mark is read
+     here, in the layout phase, against the strip's real width; the effect below still frames the pressed chip (a scroll
+     position, on the same phase as `Tabs`' framing) and reads the mark again after it scrolls. */
+  useLayoutEffect(() => {
+    for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) markEdges(rail);
+  });
 
   useEffect(() => {
     for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) {

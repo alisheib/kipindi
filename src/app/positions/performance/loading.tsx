@@ -1,18 +1,21 @@
-import { getServerT } from "@/lib/i18n-server";
+"use client";
+
+import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
+import { BackLinkGhost } from "@/components/ui/back-link";
 
-export default async function PerformanceLoading() {
-  const { t } = await getServerT();
+/**
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
+ */
+export default function PerformanceLoading() {
+  const { t } = useT();
   return (
     <PageContainer tier="reading" className="space-y-6">
-      {/* BackLink placeholder */}
-      {/* WIDTH IS A LITERAL, not `w-16` — the Tailwind spacing scale is OVERRIDDEN and
-          INVERTS at the keys it does not cover: `w-16` is stock 64px while `w-12` is an
-          overridden 128px, so the bigger number paints the smaller box. `test:spacing-scale`
-          derives that forbidden set from the two scales and ratchets it. Same 64px, on a key
-          that cannot invert. */}
-      <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+      {/* The back link: the BackLink's own 44px box (`BackLinkGhost`, R5-H · G-2b) — a 20px bar stood here, 24px short. */}
+      <BackLinkGhost />
 
       {/* ⚠️ THE TWO WERE SWAPPED. This skeleton drew the eyebrow "Performance" over the
           headline "Polls you've played"; the real page renders the parent destination as

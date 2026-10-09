@@ -255,20 +255,23 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // the loading file itself where it reads nothing (a question's, the provider's return), else the drawing the loading
   // file hands its words to (Juu/Chini's, the round history's, the deposit's) — and each loading file renders that same
   // drawing: one drawing, never redrawn. [the ghost's use, its import, the page's loading file, what that file renders]
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): the shared drawings read their own words (`useT`), so neither the root
+  // ghost nor the loading file hands them any; the round history takes the journey's head as `journeyHead` (its module
+  // loads nothing of the journey's), and a journey reader's /positions is the root ghost pinned to the page.
   const own: Array<[string, string, string, string]> = [
-    ['"/updown": <UpDownGhost t={t} />', 'import { UpDownGhost } from "@/app/updown/updown-ghost";', "src/app/updown/loading.tsx", "return <UpDownGhost t={t} />;"],
-    ['"/updown/history": <UpDownHistoryGhost t={t} journey />', 'import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";', "src/app/updown/history/loading.tsx", "return <UpDownHistoryGhost t={t} journey={journey} />;"],
-    ['"/wallet/deposit": <DepositGhost t={t} />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost t={t} />;"],
+    ['"/updown": <UpDownGhost />', 'import { UpDownGhost } from "@/app/updown/updown-ghost";', "src/app/updown/loading.tsx", "return <UpDownGhost />;"],
+    ['"/updown/history": <UpDownHistoryGhost journeyHead={<TicketsHeadGhost t={t} />} />', 'import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";', "src/app/updown/history/loading.tsx", "return <UpDownHistoryGhost />;"],
+    ['"/wallet/deposit": <DepositGhost />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost />;"],
     ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
     ['["^/markets/[^/]+$", <MarketDetailLoading />]', 'import MarketDetailLoading from "@/app/markets/[id]/loading";', "src/app/markets/[id]/loading.tsx", "export default function MarketDetailLoading() {"],
   ];
   const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));
   ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own drawing — the one its loading file renders — imported, never redrawn",
-    ghost.includes('"/positions": <TicketsGhost t={t} />') && ghost.includes('import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";')
-      && read("src/app/positions/loading.tsx").includes("if (journey) return <TicketsGhost t={t} />;") && oneDrawing(ghost).length === 0,
+    ghost.includes('"/positions": <TicketsGhost t={t} />') && ghost.includes('import { TicketsGhost, TicketsHeadGhost } from "@/components/journey/tickets/tickets-ghost";')
+      && read("src/app/positions/loading.tsx").includes('if (journey) return <LazyJourneyRouteGhost rails={heroRailNames(null)} at="/positions" />;') && oneDrawing(ghost).length === 0,
     JSON.stringify(oneDrawing(ghost).map((o) => o[2])));
   ok("3.4′ PLANT · a second copy of Juu/Chini's ghost drawn in the root ghost (the loading file's drawing no longer the one shown) is reported",
-    oneDrawing(ghost.replace('"/updown": <UpDownGhost t={t} />', '"/updown": <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true" />')).length === 1);
+    oneDrawing(ghost.replace('"/updown": <UpDownGhost />', '"/updown": <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6" aria-busy="true" />')).length === 1);
 }
 {
   // RoutePick, rendered: exact paths only, and never a key the object inherits.
@@ -412,15 +415,17 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok("5.1′ PLANT · the hook back to the span's presence (R4-J's: \"not found\" for the next page while the old span is up) is reported",
     !hookOk(lib.replace("return isNotFoundFor(markPath, path);", "return markPath !== null;")));
   const markOk = (s: string) => hasDirective(s, "use client") && s.includes('const path = usePathname() ?? "";')
-    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); }, [path]);") && squash(s).includes("useEffect(() => announceNotFound, []);")
+    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); }, [path]);") && squash(s).includes("useLayoutEffect(() => announceNotFoundAfterCommit, []);")
     && s.includes("return <span hidden id={NOT_FOUND_MARK} data-path={path} />;");
   const { PathnameContext: PathCtx } = createRequire(import.meta.url)("next/dist/shared/lib/hooks-client-context.shared-runtime") as {
     PathnameContext: import("react").Context<string | null>;
   };
   const drawnAt = renderToStaticMarkup(h(PathCtx.Provider, { value: "/markets/mkt_gone" }, h(NotFoundMark)));
-  ok("5.2 · NotFoundMark writes the hidden span with the path it was drawn for, announces its coming in a LAYOUT effect (before that commit's paint) and its going in a passive cleanup (after the span is out)",
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-3): its going is announced once the commit that takes the span out is done —
+  // a microtask queued from its layout cleanup — so before that commit's paint, as the journey flag's lowering is.
+  ok("5.2 · NotFoundMark writes the hidden span with the path it was drawn for, announces its coming in a LAYOUT effect (before that commit's paint) and its going once that commit is done, still before its paint (the span is out by then)",
     markOk(mark) && drawnAt === '<span hidden="" id="kp-not-found" data-path="/markets/mkt_gone"></span>', drawnAt);
-  ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("useEffect(() => announceNotFound, []);", "")));
+  ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("useLayoutEffect(() => announceNotFoundAfterCommit, []);", "")));
   ok("5.2″ PLANT · its coming announced by a passive effect again (a transition paints the not-found page with a tab lit first) is reported",
     !markOk(mark.replace("useLayoutEffect(() => { announceNotFound(); }, [path]);", "useEffect(() => { announceNotFound(); }, [path]);")));
   ok("5.2‴ PLANT · a mark that names no path (presence again) is reported", !markOk(mark.replace(" data-path={path} />", " />")));

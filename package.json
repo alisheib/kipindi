@@ -1031,6 +1031,7 @@
     "test:visual-pass-r4j": "tsx scripts/visual-pass-r4j.test.mts",
     "test:visual-pass-r5f": "tsx scripts/visual-pass-r5f.test.mts",
     "test:visual-pass-r5d": "tsx scripts/visual-pass-r5d.test.mts",
+    "test:visual-pass-r5h": "tsx scripts/visual-pass-r5h.test.mts",
     "red:notifications-page": "node scripts/notifications-page-red.mjs",
     "red:measure": "node scripts/measure-red.mjs",
     "red:decomment": "node scripts/decomment-red.mjs",

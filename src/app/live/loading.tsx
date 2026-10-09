@@ -1,4 +1,6 @@
-import { getServerT } from "@/lib/i18n-server";
+"use client";
+
+import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 
@@ -35,9 +37,12 @@ import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
  * arithmetic (`6 × leading-tight × 19px`) so it can be re-derived rather than re-guessed. The
  * hero now shows the TALLEST of the six on every slide (`featured-contest.tsx` stacks them),
  * so this is a stable target rather than whichever market happened to be up.
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
  */
-export default async function LiveLoading() {
-  const { t } = await getServerT();
+export default function LiveLoading() {
+  const { t } = useT();
   return (
     <PageContainer tier="board" className="space-y-5">
       {/* The `<div>` wrapper is load-bearing on the real page (it pairs the `sr-only` h1 with
@@ -45,7 +50,9 @@ export default async function LiveLoading() {
           here keeps the ghost's rhythm identical to the content's. */}
       <div>
         <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated" aria-hidden>
-          <div className="relative z-10 p-5">
+          {/* PageHero's own content padding, `p-5 lg:p-6` (page-hero.tsx) — R5-H · G-2b: `p-5` alone made the hero 16px
+              short from 1024, and the wall under it stood 16px high. */}
+          <div className="relative z-10 p-5 lg:p-6">
             {/* Eyebrow row — pulse + LIVE + the live/tipping count. */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">

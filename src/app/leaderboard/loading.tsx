@@ -1,10 +1,17 @@
+"use client";
+
 import { BrandSpinner } from "@/components/brand";
-import { getServerT } from "@/lib/i18n-server";
+import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 
-export default async function LeaderboardLoading() {
-  const { t } = await getServerT();
+/**
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
+ */
+export default function LeaderboardLoading() {
+  const { t } = useT();
   // Width MUST match leaderboard/page.tsx (1080). It was 1280, so the skeleton was
   // 200px wider than the board that replaced it — a visible snap on every visit.
   return (

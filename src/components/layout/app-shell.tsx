@@ -8,10 +8,12 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 // WP6c; VODACOM-PLAN §0h point 20). They are rendered below under the names they always had, where they always were,
 // with the same props, each in the Suspense boundary it always had, which is now that part's only one (next/dynamic
 // adds none): keep every part the one child of its own — save the journey's header and tabs, which stand in none, so
-// that the page's first HTML draws them (R4-J, 2026-10-09; the note at their mount). A part whose code never arrives is
-// left out rather than taking the page down (`nothingIfLost`, there). ⛔ NEVER A REACT LAZY HERE: this is a SERVER
-// component, and its own `React.lazy` bindings kept nothing out of the first load (production and a local build,
-// 2026-10-03): every module they named rode in the scripts every page loads first, for every visitor.
+// that the page's first HTML draws them (R4-J, 2026-10-09; the note at their mount), and the journey flag, which stands
+// bare beside them so that it mounts in the commit that first paints them (R5-H, G-3; the note at its mount). A part
+// whose code never arrives is left out rather than taking the page down (`nothingIfLost`, there). ⛔ NEVER A REACT
+// LAZY HERE: this is a SERVER component, and its own `React.lazy` bindings kept nothing out of the first load
+// (production and a local build, 2026-10-03): every module they named rode in the scripts every page loads first,
+// for every visitor.
 // `test:journey-shell` §12 holds this.
 import {
   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
@@ -430,11 +432,19 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* ⭐ THE JOURNEY FLAG (Vodacom plan S6, WP7) — for a request the resolver shows the journey to, and for no other.
           It renders nothing. While it is mounted the html element carries the journey's attribute, and that is how
           the Needle, the channels panel and the chat bubble (mounted where no prop reaches them) stand down on the
-          journey's own pages; a classic page never carries it. */}
-      {journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}
-      {/* ⭐ AND THE SHELL'S MARK, IN THE SERVER'S HTML (`lib/journey/shell-mark.ts`): the flag above arrives in its own
-          chunk, after hydration, and the Needle once drew for a few frames before it landed. With the mark on the page
-          from the first byte, every overlay reads the answer right after hydrating. A classic page never carries it. */}
+          journey's own pages; a classic page never carries it.
+          ⭐ BARE, BESIDE THE HEADER AND THE TABS (round 5's follow-up, R5-H · G-3): in no Suspense boundary of its own, so a
+          `router.refresh()` that switches the journey on waits for its chunk as it waits for theirs and mounts it in the
+          commit that first paints the journey's header — and its layout effect raises the flag before that paint
+          (`raiseJourneyFlag` has both directions). In a boundary of its own it could land a commit later, the journey's
+          chrome painted while the overlays still read the classic answer. It renders nothing, so the first HTML gains no
+          markup (only its boundary's two comment markers go); its chunk, a few hundred bytes, is preloaded in the head
+          beside the header's and the rail's, and the page's hydration waits for it as for theirs. */}
+      {journeyShown && <LazyJourneyFlag />}
+      {/* ⭐ AND THE SHELL'S MARK, IN THE SERVER'S HTML (`lib/journey/shell-mark.ts`): the flag above arrives with its own
+          chunk, at hydration at the earliest, and the Needle once drew for a few frames before it landed. With the mark
+          on the page from the first byte, every overlay reads the answer right after hydrating. A classic page never
+          carries it. */}
       {journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}
       {funnelScopeValue !== "off" && <FunnelUtm />}
       {/* ⭐ THE OFFLINE NOTICE — IN THE FLOW, UNDER THE HEADER, FIRST OF THE NOTICES (R4-G, 2026-10-09; edge scenario 9).

@@ -1,12 +1,20 @@
+"use client";
+
 import { BrandSpinner } from "@/components/brand";
-import { getServerT } from "@/lib/i18n-server";
+import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
+import { BackLinkGhost } from "@/components/ui/back-link";
 import { PageHero } from "@/components/ui/page-hero";
 import { I } from "@/components/ui/glyphs";
 
-export default async function WithdrawLoading() {
-  const { t } = await getServerT();
+/**
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
+ */
+export default function WithdrawLoading() {
+  const { t } = useT();
   /* ⭐ DG-P-04 · §S1 — see the note on `wallet/deposit/loading.tsx`. Same defect, same 8px:
      `mb-6` (32) typed onto one child against `page.tsx`'s container `space-y-5` (24). */
   return (
@@ -21,12 +29,8 @@ export default async function WithdrawLoading() {
           skeleton must NOT draw: it would be a number a player could read as their balance
           before one has been fetched (§C — the interface never states a money fact it does not
           have). The hero renders one child here and two there; that asymmetry is deliberate. */}
-      {/* WIDTH IS A LITERAL, not `w-16` — the Tailwind spacing scale is OVERRIDDEN and
-          INVERTS at the keys it does not cover: `w-16` is stock 64px while `w-12` is an
-          overridden 128px, so the bigger number paints the smaller box. `test:spacing-scale`
-          derives that forbidden set from the two scales and ratchets it. Same 64px, on a key
-          that cannot invert. */}
-      <div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+      {/* The back link: the BackLink's own 44px box (`BackLinkGhost`, R5-H · G-2b) — a 20px bar stood here, 24px short. */}
+      <BackLinkGhost />
 
       <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex items-end justify-between gap-4">
         <PageHeader

@@ -1,8 +1,15 @@
-import { getServerT } from "@/lib/i18n-server";
+"use client";
+
+import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 
-export default async function ProfileLoading() {
-  const { t } = await getServerT();
+/**
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
+ */
+export default function ProfileLoading() {
+  const { t } = useT();
   return (
     <PageContainer tier="reading" className="space-y-6">
       {/* 🔴 DG-P-04 · §S1 — THE WRAPPER IS LOAD-BEARING, and it must move with `page.tsx`.
@@ -49,7 +56,9 @@ export default async function ProfileLoading() {
       {/* Settings grid skeleton */}
       <section aria-hidden>
         <div className="h-3 w-[80px] rounded bg-bg-overlay mb-3 kp-shimmer-track" />
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        {/* The page's own grid gap, `gap-3` (profile/page.tsx) — R5-H · G-2b: `gap-2` drew 12px between rows where the
+            page has 16. */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated p-3.5 kp-shimmer-track">
               {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden

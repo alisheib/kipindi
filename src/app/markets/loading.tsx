@@ -1,4 +1,6 @@
-import { getServerT } from "@/lib/i18n-server";
+"use client";
+
+import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { MARKET_CARD_H } from "@/components/markets/card-geometry";
@@ -47,8 +49,13 @@ import {
  */
 export const STATUS_PILL_W = [64, 104, 60, 92, 84, 52];
 
-export default async function MarketsLoading() {
-  const { t } = await getServerT();
+/**
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
+ */
+export default function MarketsLoading() {
+  const { t } = useT();
   return (
     <PageContainer tier="board">
       {/* Header row — title left, the live-count + volume line right. The real page renders
@@ -107,7 +114,9 @@ export default async function MarketsLoading() {
               <div key={i} className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
             ))}
           </div>
-          <div className="kp-shimmer-track h-4 w-[80px] shrink-0 rounded bg-bg-elevated" data-result-count="" />
+          {/* The count as tall as its line — `QueryResultCount`'s 11.5px × 1.5 = 17.25px, its bar centred in it (R5-H · G-2b:
+              a 20px bar made the phone grid's count row 2.75px taller than the page's, the board 4px low). */}
+          <div className="flex h-[17.25px] shrink-0 items-center" data-result-count=""><div className="kp-shimmer-track h-3 w-[80px] rounded bg-bg-elevated" /></div>
         </div>
         <div className={QUERY_BAR_ROW2_CLASS} data-bar-row>
           {/* Sort + direction, and the phone's single filters button — the two controls this row
@@ -115,7 +124,9 @@ export default async function MarketsLoading() {
               sizes both from their own content, so these numbers only apply where the bar is
               genuinely two flex rows. */}
           <div className="kp-shimmer-track h-[44px] w-[210px] rounded-pill bg-bg-elevated" data-bar-cell="sort" />
-          <div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated" />
+          {/* The phone's Filters button — `lg:hidden`, as `FilterSheet` is (R5-H · G-2b: `.kp-fsheet` hides nothing at lg,
+              so the ghost drew a 170px pill at 1280 in a row the page does not have). */}
+          <div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated lg:hidden" />
           {/* ⛔ ODDS, POOL AND TOPIC ARE DESKTOP-ONLY. On a phone the real bar folds all three
               behind the button above (`FilterSheet`), and their desktop rows carry
               `QUERY_GROUP_CLASS`, which is `hidden … lg:flex`. Ghosting them unconditionally drew

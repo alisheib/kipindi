@@ -480,21 +480,26 @@ function ok(label: string, cond: boolean, extra?: string) {
 // exactly the window a render drive is least able to catch reliably.
 {
   const skeleton = readFileSync("src/app/wallet/loading.tsx", "utf8");
+  // ⚠️ Round 5's follow-up (R5-H, G-2): the loading file asks the feature seam on the server and hands the answer to the
+  // drawing beside it, which is client code (`feature-state.ts` is never imported into a client file).
+  const drawing = readFileSync("src/app/wallet/wallet-ghost.tsx", "utf8");
   const page = readFileSync("src/app/wallet/wallet-client.tsx", "utf8");
   const stripped = decomment(skeleton);
+  const drawn = decomment(drawing);
 
   ok("§5f the wallet skeleton reads the same feature seam as the page",
-     stripped.includes("bonusIsLiveFor"), "loading.tsx never consults feature-state");
+     stripped.includes("<WalletGhost bonusLive={bonusIsLiveFor()} />") && /bonusLive && "lg:grid-cols-2"/.test(drawn) && !drawn.includes("feature-state"),
+     "loading.tsx never consults feature-state, or the drawing does not follow its answer");
   // ⛔ Not a bare `lg:grid-cols-2` — it must be CONDITIONAL, exactly as the page's is.
   ok("§5f …and its column count is conditional, not hard-coded",
-     !/className="grid grid-cols-1 lg:grid-cols-2/.test(stripped),
+     !/className="grid grid-cols-1 lg:grid-cols-2/.test(stripped) && !/className="grid grid-cols-1 lg:grid-cols-2/.test(drawn),
      "the skeleton pins two columns regardless of state");
   ok("§5f CONTROL · the page itself is conditional too (the thing being mirrored)",
      /bonusCardVisible && "lg:grid-cols-2"/.test(decomment(page)),
      "wallet-client no longer gates its grid — this mirror has nothing to mirror");
   // ⛔ The bonus ghost is KEPT, not deleted: re-enablement needs it back, and a skeleton that
   // lost its second card would ship bare the day the programme returns.
-  ok("§5f the bonus ghost is retained for the ON path", stripped.includes("mat-raised"),
+  ok("§5f the bonus ghost is retained for the ON path", drawn.includes("mat-raised") && /\{bonusLive && \(/.test(drawn),
      "the bonus skeleton was deleted rather than gated");
 }
 

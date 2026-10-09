@@ -12,18 +12,20 @@
  * ⭐ ARRIVING IS ANNOUNCED IN A LAYOUT EFFECT: it runs in the commit that inserts the span, and the chrome's re-render it
  * causes is flushed before the browser paints — so no painted frame shows the not-found page with a tab lit. Re-run when
  * the path changes, should React keep this span across a move from one not-found address to another.
- * ⭐ GOING IS ANNOUNCED BY A PASSIVE CLEANUP, which runs after React has taken the span out of the page, so the answer
- * read then is "no mark" (a layout cleanup runs while the span is still there and would read the old path).
+ * ⭐ GOING IS ANNOUNCED ONCE THE COMMIT IS DONE, BEFORE ITS PAINT (round 5's follow-up, R5-H · G-3 — the journey flag's
+ * phases): the layout cleanup runs while the span is still there and would read the old path, so it queues the
+ * announcement for after the commit (`announceNotFoundAfterCommit`). It was a passive cleanup, which a transition's
+ * commit runs after the paint: a refresh that found the record at the same address painted one frame of "not found".
  * ⛔ Rendered by the shared not-found view only (`components/ui/not-found-view.tsx`), so every not-found answer carries
  * it and no other page can: `test:visual-pass-r4j` §5 holds both.
  */
-import { useEffect, useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { usePathname } from "next/navigation";
-import { NOT_FOUND_MARK, announceNotFound } from "@/lib/not-found-mark";
+import { NOT_FOUND_MARK, announceNotFound, announceNotFoundAfterCommit } from "@/lib/not-found-mark";
 
 export function NotFoundMark() {
   const path = usePathname() ?? "";
   useLayoutEffect(() => { announceNotFound(); }, [path]);
-  useEffect(() => announceNotFound, []);
+  useLayoutEffect(() => announceNotFoundAfterCommit, []);
   return <span hidden id={NOT_FOUND_MARK} data-path={path} />;
 }

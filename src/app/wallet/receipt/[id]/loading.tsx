@@ -1,5 +1,8 @@
+"use client";
+
 import { PageContainer } from "@/components/layout/page-container";
-import { getServerT } from "@/lib/i18n-server";
+import { BackLinkGhost } from "@/components/ui/back-link";
+import { useT } from "@/lib/i18n";
 
 /**
  * Receipt skeleton (POLISH-BACKLOG §1.9).
@@ -11,11 +14,17 @@ import { getServerT } from "@/lib/i18n-server";
  * States `receipt`, the SAME tier the page states (B7 rule 3). The Up & Down
  * round shipped a 1080 skeleton in front of a 1232 page — a 152px jump on every
  * load that nothing could see; `test:measure` now asserts the pair agrees.
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
  */
-export default async function ReceiptLoading() {
-  const { t } = await getServerT();
+export default function ReceiptLoading() {
+  const { t } = useT();
   return (
     <PageContainer tier="receipt" className="space-y-5">
+      {/* The back link the page opens on (R5-H · G-2b: this ghost drew none, so the receipt landed 68px lower than it
+          promised — the link's 44px and the rhythm's 24). */}
+      <BackLinkGhost />
       <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">
         {t.wallet.receiptEyebrow}
       </p>

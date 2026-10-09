@@ -10,11 +10,16 @@
  * WP6c this file rode in every page's first load with the shell's other lazy parts (VODACOM-PLAN §0h point 20).
  * ⭐ The cleanup lowers the flag and announces it: an Owner Stop or a pass ending swaps the shell on `router.refresh()`,
  * this unmounts, and every overlay comes back without a reload.
+ * ⭐ IN THE COMMIT THAT SWAPS THE SHELL, BEFORE ITS PAINT (round 5's follow-up, R5-H · G-3): a LAYOUT effect raises it
+ * and its cleanup lowers it, and AppShell mounts it bare beside the journey's header and tabs, so it lands in the very
+ * commit that first paints them — a `router.refresh()` that switches the journey on or off paints the matching answer
+ * in its first frame. `raiseJourneyFlag` has the two phases. It was a passive effect, which a transition's commit runs
+ * after the paint: one frame of the old answer either way (R5-D).
  */
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { raiseJourneyFlag } from "@/lib/journey/journey-on";
 
 export function JourneyFlag() {
-  useEffect(() => raiseJourneyFlag(), []);
+  useLayoutEffect(() => raiseJourneyFlag(), []);
   return null;
 }

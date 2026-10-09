@@ -6,7 +6,7 @@
  * that may only shrink. Declaring here is what keeps that ceiling at 67 instead of raising it
  * to 68 — and, more to the point, an inline anchor is one nobody can audit: three in
  * `updown-push-red.mjs` had silently rotted against rewritten code on 2026-08-22, and this
- * harness's own subjects (`positions/page.tsx`, `results/page.tsx`, `wallet/loading.tsx`) are
+ * harness's own subjects (`positions/page.tsx`, `results/page.tsx`, `wallet/wallet-ghost.tsx`) are
  * exactly the files the B7 migration is still moving.
  *
  * ⚠️ NO SIDE EFFECTS. Imported by a suite inside `test:all` — data only, repo-relative POSIX
@@ -42,7 +42,10 @@
 
 const POSITIONS = "src/app/positions/page.tsx";
 const RESULTS = "src/app/results/page.tsx";
-const WALLET_LOADING = "src/app/wallet/loading.tsx";
+/** ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): /wallet's skeleton is drawn in the browser, by `wallet-ghost.tsx` beside
+ *  its loading file — which `test:measure` reaches through its one hop to a same-directory module (`tierOf`), so the
+ *  tier the plant moves is there now. */
+const WALLET_LOADING = "src/app/wallet/wallet-ghost.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
 const GATE = "scripts/measure-system.test.mts";
 
