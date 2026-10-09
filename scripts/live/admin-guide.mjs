@@ -1,9 +1,15 @@
 /**
- * THE ADMIN GUIDE v2 · Contacts and SMS campaigns — the whole flow, as a PDF (S10, 2026-10-03; v2 2026-10-09).
- * Ali: "include screenshots on which pages the admin should go for each step" and (v2) "no unneeded titles and comments, only
+ * THE ADMIN GUIDE · Contacts and SMS campaigns — the whole flow, as a PDF (S10, 2026-10-03; rebuilt 2026-10-09).
+ * Ali: "include screenshots on which pages the admin should go for each step"; then "no unneeded titles and comments, only
  * perfect straightforward guidance on the whole flow from contacts … to all … contacts import directions … recommendation for
- * the first couple of tests before huge bulks … how much to import each time". So EVERY step carries the menu path, what to
- * do, and a picture of THAT page — taken here, on a local in-memory server (zero production risk), with made-up people.
+ * the first couple of tests before huge bulks … how much to import each time"; and, for the copy he hands to management
+ * (2026-10-09), "make sure the PDF doesn't have anything unnecessary — titles, headlines not needed, etc. I need it perfect".
+ * So every step carries the menu path, what to do, and a picture of THAT page wherever a picture shows what the words cannot —
+ * taken here, on a local in-memory server (zero production risk), with made-up people. ⛔ NO PICTURE THAT REPEATS ANOTHER: the
+ * contacts page is pictured once (the Add, Import and Export buttons are all in it), the check's one picture serves its two
+ * steps, and a step the words cover alone (Export, choosing the file) has none — so the capture takes no picture the PDF
+ * does not print. What the document itself leaves out (a cover page, a version stamp, a heading over a chapter's only step)
+ * is said at THE DOCUMENT below; the words' own rules are `admin-guide-messages.mjs`'s header.
  * ⛔ Every message the guide quotes is checked against the source first: a guide that quotes a sentence the platform no
  * longer says refuses to build (naming it).
  * ⭐ THE GUIDE'S MAIN EXAMPLE CAMPAIGN IS THE OWNER'S FIRST TEST (Ali, 2026-10-09): the draft it writes, tests, confirms and starts
@@ -20,9 +26,11 @@
  *   b · A CAMPAIGN, DRIVEN END TO END on the console stub (SMS_PROVIDER=console: messages go to the server log, never to a
  *       phone; the live seed refuses any other rail): tag, write, confirm, start, wait, pause, resume, finish, receipts and
  *       results; the staged campaigns for the figures, a system pause, a stop and a copy.
- *   pdf · the document, from the pictures of a and b.
+ *   pdf · the document, from the pictures of a and b — no server: a change to the words or the layout alone is rebuilt by
+ *         this phase by itself, from the pictures already in .qa-shots/admin-guide/.
  *     BASE=http://localhost:3010 node scripts/live/admin-guide.mjs a|b|pdf
- * Writes docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf (pictures in .qa-shots/admin-guide/).
+ * Writes docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf (pictures in .qa-shots/admin-guide/; OUT moves the
+ * PDF, GUIDE_DATE sets the date it carries, today by default).
  */
 import { chromium } from "playwright";
 import http from "node:http";
@@ -40,7 +48,7 @@ const BASE = process.env.BASE || "http://localhost:3010";
 const OUT = process.env.OUT || join("docs", "guides");
 const SHOTS = join(".qa-shots", "admin-guide");
 const PDF = join(OUT, "50pick-admin-guide-contacts-and-sms-campaigns.pdf");
-const VERSION = process.env.GUIDE_VERSION || "v2";
+/** The day the guide is printed as of, "YYYY-MM-DD" — the only stamp it carries (no version: it told a reader nothing). */
 const DATE = process.env.GUIDE_DATE || new Date().toISOString().slice(0, 10);
 const VENDOR_PORT = Number(process.env.GUIDE_VENDOR_PORT || 3997);
 /** The pictures shot whole as a dialog (printed tall), kept across the three runs. */
@@ -270,9 +278,6 @@ async function runA() {
       await shoot(page, "03-contacts");
     });
     await step("04-add", async () => {
-      await mark(page, '[data-block="contacts-add"]');
-      await shoot(page, "04a-add-button");
-      await unmark(page);
       await openAdd(page);
       await page.locator(NUMBER).first().focus();
       await paste(page, "0754 321 987");
@@ -285,18 +290,6 @@ async function runA() {
       await page.locator(SAVE).first().click();
       await page.waitForSelector(DIALOG, { state: "detached", timeout: 20_000 });
       await wait(700);
-    });
-    await step("07-duplicate", async () => {
-      await clearToasts(page);
-      await openAdd(page);
-      await page.locator(NUMBER).first().focus();
-      await paste(page, "0754 321 987");
-      await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15_000 });
-      await wait(300);
-      await mark(page, "[data-open-existing]");
-      await shootTall(page, "07-duplicate");
-      await unmark(page);
-      await closeDialog(page);
     });
     await step("08-form-errors", async () => {
       await clearToasts(page);
@@ -320,12 +313,6 @@ async function runA() {
       await wait(400);
       await shootTall(page, "09-edit");
       await closeDialog(page);
-    });
-    await step("10-search", async () => {
-      await page.goto(`${BASE}/admin/contacts?q=Neema`, { waitUntil: "networkidle" });
-      await mark(page, 'main input[type="search"], main [role="searchbox"]');
-      await shoot(page, "10-search-name");
-      await unmark(page);
     });
     await step("12-filter", async () => {
       await page.goto(`${BASE}/admin/contacts`, { waitUntil: "networkidle" });
@@ -352,13 +339,6 @@ async function runA() {
       await shoot(page, "14-bulk-confirm");
       await page.locator('[role="alertdialog"], [role="dialog"]').last().locator("button", { hasText: /^Tag/ }).last().click().catch(() => {});
       await wait(1500);
-    });
-    await step("16-export", async () => {
-      await page.goto(`${BASE}/admin/contacts`, { waitUntil: "networkidle" });
-      await page.locator('[data-block="contacts-export"]').first().scrollIntoViewIfNeeded();
-      await mark(page, '[data-block="contacts-export"]');
-      await shoot(page, "16-export");
-      await unmark(page);
     });
     // ⭐ The importer is S15's and LIVE (2026-10-09), built to `importShots`' data-block names: its pictures are always taken, so
     //    a missing Import button is a failed step, never a chapter quietly left without pictures.
@@ -398,12 +378,6 @@ async function runA() {
       await page.evaluate(() => window.scrollBy(0, -90));
       await wait(400);
       await shoot(page, "32-marketing-settings");
-    });
-    await step("17-campaigns", async () => {
-      await page.goto(`${BASE}/admin/campaigns`, { waitUntil: "networkidle" });
-      await mark(page, 'main a[href="/admin/campaigns/new"]');
-      await shoot(page, "17-campaigns");
-      await unmark(page);
     });
     await step("18-compose", async () => {
       await page.goto(`${BASE}/admin/campaigns/new`, { waitUntil: "networkidle" });
@@ -454,14 +428,16 @@ const IMPORT_CSV = [
   "0768 000 011,Rehema John,,,",
 ].join(String.fromCharCode(13, 10)) + String.fromCharCode(13, 10);
 
-/** ⭐ THE IMPORT'S PICTURES (U30–U32) — run a: the button, the columns, the check, the choice; then the bar and the result. */
+/**
+ * ⭐ THE IMPORT'S PICTURES (U30–U32) — run a: the columns, the check, the result. Three, not six (2026-10-09, the owner's "nothing
+ * unnecessary"): the Import button is in the contacts page's own picture; the check is ONE picture — `shootTall` takes the
+ * whole dialog, so a second shot scrolled to the choice was the same file byte for byte; and a nine-row import finishes before
+ * a picture of its bar can be taken — that shot was the result half loaded, under words about a bar.
+ */
 async function importShots(page) {
   await post("/api/dev-test/marketing-contacts-seed?u30=1");
-  await step("i1-import", async () => {
+  await step("i2-columns", async () => {
     await page.goto(`${BASE}/admin/contacts`, { waitUntil: "networkidle" });
-    await mark(page, '[data-block="contacts-import"]');
-    await shoot(page, "i1-import-button");
-    await unmark(page);
     await page.locator('[data-block="contacts-import"]').first().click();
     await page.waitForSelector('[data-block="import-entrance"], [data-block="import-adopt"], [data-block="import-preflight"]', { timeout: 30_000 });
     await wait(400);
@@ -478,18 +454,16 @@ async function importShots(page) {
     await page.locator('[data-block="import-preflight"]').first().evaluate((n) => n.scrollIntoView({ block: "start" }));
     await wait(300);
     await shootTall(page, "i3-check");
-    await page.locator('[data-block="import-apply"]').first().evaluate((n) => n.scrollIntoView({ block: "center" }));
-    await wait(300);
-    await shootTall(page, "i4-decision");
   });
-  await step("i5-import", async () => {
-    // ⏳ U32 · the bar and the result: pressed once the commit is built; until then the step says so.
+  await step("i6-done", async () => {
+    // U32 · the import pressed, and its result once every row is written.
     const apply = page.locator('[data-block="import-apply"]').first();
     if (await apply.isDisabled().catch(() => true)) throw new Error(`the Import button is held: ${(await apply.getAttribute("title").catch(() => null)) ?? "no reason given"}`);
     await apply.click();
-    await page.waitForSelector('[data-block="import-commit"], [data-block="import-done"]', { timeout: 30_000 });
-    await shootTall(page, "i5-importing");
     await page.waitForSelector('[data-block="import-done"]', { timeout: 120_000 });
+    // The rows that couldn't be imported load after the result: the picture waits for them (the dropped "importing" shot's
+    // time used to cover this wait), so it never shows "Loading the rows that couldn't be imported…".
+    await page.waitForFunction(() => !(document.querySelector('[data-block="import-done"]')?.textContent ?? "").includes("Loading the rows"), null, { timeout: 30_000 }).catch(() => {});
     await wait(600);
     await shootTall(page, "i6-done");
   });
@@ -695,66 +669,132 @@ async function runB() {
 
 /* ═══ THE DOCUMENT ════════════════════════════════════════════════════════════════════════════════════════════════ */
 
+/*
+ * ⭐ WHAT THE PDF LEAVES OUT, AND WHY (the owner, 2026-10-09: "nothing unnecessary — titles, headlines not needed, etc."):
+ *   · NO COVER PAGE: the title, the line under it and the date open page 1, and the guide starts under them — the cover was
+ *     a page holding three lines. No version stamp ("v2" told a reader nothing), no second web address beside the sign-in
+ *     page's own.
+ *   · NO HEADING OVER A CHAPTER'S ONLY STEP: a step without a `title` is printed under its chapter's heading, unnumbered, and
+ *     the titled steps are numbered within their chapter (2.1, 2.2 …) — the old running count put step "2" under chapter "2".
+ *   · NO TABLE CUT LOOSE FROM ITS STEP: what the SMS credit tile can show is printed under the tile's picture (it was an
+ *     unnumbered chapter after Safety), and the messages are the last chapter, one table per place they appear (a "Where"
+ *     column said "Contacts" seven times over).
+ * ⭐ WHAT IT KEEPS TOGETHER: a chapter's heading, its first step's words and that step's first picture are one block that
+ *   never splits, so no heading is left alone at a page's foot (STEP 54's PDF left "9 · Your first campaigns" there, and the
+ *   first draft of this one left "11 · Messages you may see" there); a group of messages never splits from its heading.
+ * ⭐ ONE SCALE PER KIND OF PICTURE, from each PNG's own size — never a percentage of the page, which printed the 400-px Start,
+ *   Stop and Switch-on dialogs at full size, their words bigger than the guide's own, while the 480-px forms shrank to 74% and
+ *   each took a page of its own between two empty margins (32 pages, eight of them half empty). Now a whole page prints
+ *   PAGE_SHOT_MM wide and every dialog at DIALOG_SCALE, so the words in every picture are one size; a step's first picture,
+ *   when it is a dialog, stands BESIDE the step's words; and two pictures that fit side by side (a page and the small dialog
+ *   it opens) share one row. The footer numbers the pages — the guide is discussed by page in a meeting.
+ */
+/** CSS pixels per millimetre (96 per inch): every picture is sized in px from its PNG. */
+const PX_PER_MM = 96 / 25.4;
+/** A whole-page picture (1280 × 800) prints this wide: 68% of the text, its words at about a third of their size on screen. */
+const PAGE_SHOT_MM = 124;
+/** Every dialog prints at this share of its size on screen — near the whole-page pictures' own, so all words match. */
+const DIALOG_SCALE = 0.42;
+/** A dialog at least this many times taller than wide is a TALL one — a form, the import's check: it never shares a row. */
+const TALL_RATIO = 1.4;
+/** The tallest a whole-page picture prints, and the tallest and widest a dialog does (beside the words, which keep 80 mm). */
+const MAX_PAGE_SHOT_MM = 200;
+const MAX_DIALOG_MM = 168;
+const MAX_DIALOG_W_MM = 96;
+/** The text's width on A4 (210 mm less the two side margins), and the gap between two pictures printed side by side. */
+const TEXT_WIDTH_MM = 182;
+const ROW_GAP_MM = 5;
+/** The page's margins — the stylesheet's `@page` and the printer's, one value; the footer's page number sits in the bottom one. */
+const PAGE_MARGIN = { top: "16mm", right: "14mm", bottom: "18mm", left: "14mm" };
+const FOOTER = `<div style="width:100%;text-align:center;font-family:'Segoe UI',Arial,sans-serif;font-size:8pt;color:#6b7280"><span class="pageNumber"></span></div>`;
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "2026-10-09" → "9 October 2026"; anything else is printed as given. */
+function longDate(iso) {
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(iso);
+  return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : iso;
+}
+/** A PNG's own size in pixels, from its header (the width at byte 16, the height at byte 20). */
+function pngSize(file) {
+  const b = readFileSync(file);
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+}
+
 function buildPdfHtml() {
   const sections = SECTIONS.map((sec) => (sec.steps === "IMPORT" ? { ...sec, steps: IMPORT_STEPS } : sec));
-  const unresolved = sections.filter((s) => !Array.isArray(s.steps) || s.steps.length === 0).map((s) => s.title);
+  const unresolved = sections.filter((s) => s.steps !== "MESSAGES" && (!Array.isArray(s.steps) || s.steps.length === 0)).map((s) => s.title);
   if (unresolved.length > 0 && process.env.GUIDE_ALLOW_EMPTY !== "1") {
     console.log(`⛔ a chapter has no steps yet: ${unresolved.join(" · ")}`);
     process.exit(1);
   }
   const shotPath = (id) => join(SHOTS, `${id}.png`);
-  const img = (id) => (existsSync(shotPath(id)) ? `<img src="data:image/png;base64,${readFileSync(shotPath(id)).toString("base64")}" alt="">` : `<div class="missing">Picture ${id} could not be taken</div>`);
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const figureHtml = (id) => `<figure${DIALOG_SHOTS.has(id) ? ' class="dialog"' : ""}>${img(id)}</figure>`;
-  /** A step's title, its "Where", its list and its FIRST picture are one block that never splits. */
-  const stepHtml = (s, n) => {
-    const shotsHtml = (s.shots ?? []).map(figureHtml);
-    const first = shotsHtml.length > 0 ? shotsHtml[0] : "";
-    return `
-    <section class="step">
-      <div class="lead-block">
-        <h3><span class="n">${n}</span>${esc(s.title)}</h3>
-        <p class="where">${esc(s.where)}</p>
-        ${s.do.length ? `<ol>${s.do.map((d) => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}
-        ${first}
-      </div>
-      ${shotsHtml.slice(1).join("")}
-      ${(s.notes ?? []).map((t) => `<p class="note">${esc(t)}</p>`).join("")}
-    </section>`;
+  /** One picture, sized from its own PNG: its printed width, whether it is a dialog, and whether a tall one. */
+  const figure = (id) => {
+    if (!existsSync(shotPath(id))) return { html: `<div class="missing">Picture ${esc(id)} could not be taken</div>`, dialog: false, tall: false, mm: TEXT_WIDTH_MM };
+    const { w, h } = pngSize(shotPath(id));
+    const dialog = DIALOG_SHOTS.has(id);
+    const scale = dialog
+      ? Math.min(DIALOG_SCALE, (MAX_DIALOG_MM * PX_PER_MM) / h, (MAX_DIALOG_W_MM * PX_PER_MM) / w)
+      : Math.min((PAGE_SHOT_MM * PX_PER_MM) / w, (MAX_PAGE_SHOT_MM * PX_PER_MM) / h);
+    const size = `width:${(w * scale).toFixed(1)}px;height:${(h * scale).toFixed(1)}px`;
+    return { html: `<figure><img src="data:image/png;base64,${readFileSync(shotPath(id)).toString("base64")}" style="${size}" alt=""></figure>`, dialog, tall: h / w >= TALL_RATIO, mm: (w * scale) / PX_PER_MM };
   };
-  let n = 0;
-  const body = sections.filter((s) => Array.isArray(s.steps)).map((sec) => `<h2>${esc(sec.title)}</h2>${sec.lead ? `<p class="lead">${esc(sec.lead)}</p>` : ""}${sec.steps.map((s) => stepHtml(s, ++n)).join("")}`).join("");
-  const balance = `<h2>The SMS credit tile</h2><table><thead><tr><th>It shows</th><th>It means</th><th>Do this</th></tr></thead><tbody>
-    ${BALANCE_STATES.map((b) => `<tr><td class="msg">${esc(b.shows)}</td><td>${esc(b.meaning)}</td><td>${esc(b.action)}</td></tr>`).join("")}</tbody></table>`;
-  const messages = `<h2>Messages you may see</h2>
-    <table><thead><tr><th>Where</th><th>Message</th><th>It means</th><th>Do this</th></tr></thead><tbody>
-    ${MESSAGES.map((m) => `<tr><td>${esc(m.area)}</td><td class="msg">${esc(m.message)}</td><td>${esc(m.meaning)}</td><td>${esc(m.action)}</td></tr>`).join("")}
-    </tbody></table>`;
+  const creditTable = `<table class="credit"><colgroup><col style="width:31%"><col style="width:41%"><col style="width:28%"></colgroup>
+    <thead><tr><th>The tile shows</th><th>It means</th><th>Do this</th></tr></thead><tbody>
+    ${BALANCE_STATES.map((b) => `<tr><td>${esc(b.shows)}</td><td>${esc(b.meaning)}</td><td>${esc(b.action)}</td></tr>`).join("")}</tbody></table>`;
+  /** The messages, one table per place they appear — each under its own heading, never split from it or across a page. */
+  const messageGroups = [...new Set(MESSAGES.map((m) => m.area))].map((a) => `<div class="group"><h3>${esc(a)}</h3><table>
+    <colgroup><col style="width:50%"><col style="width:25%"><col style="width:25%"></colgroup>
+    <thead><tr><th>Message</th><th>It means</th><th>Do this</th></tr></thead><tbody>
+    ${MESSAGES.filter((m) => m.area === a).map((m) => `<tr><td class="quote">${esc(m.message)}</td><td>${esc(m.meaning)}</td><td>${esc(m.action)}</td></tr>`).join("")}</tbody></table></div>`);
+  /** A step: its words and its first picture are one block that never splits — under its chapter's heading, for a first step.
+   *  A dialog stands beside the words; two pictures that fit side by side (a page and the small dialog it opens), neither a
+   *  tall one, are one row under them, so the dialog stays with its step. */
+  const stepHtml = (s, label, head) => {
+    const figs = (s.shots ?? []).map(figure);
+    const row = figs.length === 2 && !figs.some((f) => f.tall) && figs[0].mm + figs[1].mm + ROW_GAP_MM <= TEXT_WIDTH_MM;
+    const [first, ...rest] = row ? [{ html: `<div class="row">${figs[0].html}${figs[1].html}</div>`, dialog: false }] : figs;
+    const words = `${s.title ? `<h3>${label ? `<span class="n">${label}</span>` : ""}${esc(s.title)}</h3>` : ""}${s.where ? `<p class="where">${esc(s.where)}</p>` : ""}${s.do.length ? `<ol>${s.do.map((d) => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}`;
+    const lead = first?.dialog ? `${head}<div class="beside"><div class="words">${words}</div>${first.html}</div>` : `${head}${words}${first?.html ?? ""}`;
+    return `<section class="step"><div class="lead-block">${lead}</div>${rest.map((f) => f.html).join("")}${s.table === "SMS_CREDIT" ? creditTable : ""}${(s.notes ?? []).map((t) => `<p class="note">${esc(t)}</p>`).join("")}</section>`;
+  };
+  const body = sections.map((sec, i) => {
+    const head = `<h2><span class="n">${i + 1}</span>${esc(sec.title)}</h2>${sec.lead ? `<p class="lead">${esc(sec.lead)}</p>` : ""}`;
+    if (sec.steps === "MESSAGES") return `<section><div class="lead-block">${head}${messageGroups[0] ?? ""}</div>${messageGroups.slice(1).join("")}</section>`;
+    let k = 0;
+    return `<section>${sec.steps.map((s, j) => stepHtml(s, s.title ? `${i + 1}.${++k}` : "", j === 0 ? head : "")).join("")}</section>`;
+  }).join("");
   const missing = sections.filter((s) => Array.isArray(s.steps)).flatMap((s) => s.steps).flatMap((s) => s.shots ?? []).filter((id) => !existsSync(shotPath(id)));
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>50pick admin guide</title><style>
-    @page { size: A4; margin: 16mm 14mm; }
-    body { font-family: "Segoe UI", Arial, sans-serif; color: #1c1f26; font-size: 10.5pt; line-height: 1.45; }
-    .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
-    .cover h1 { font-size: 30pt; margin: 0 0 6mm; } .cover .sub { font-size: 14pt; color: #4a5160; }
-    .cover .meta { margin-top: 12mm; color: #6b7280; font-size: 10pt; }
-    h2 { font-size: 16pt; margin: 9mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #c9a227; break-after: avoid; page-break-after: avoid; }
-    h3 { font-size: 12pt; margin: 0 0 2mm; } h3 .n { display: inline-block; min-width: 7mm; color: #c9a227; }
-    .step { margin: 0 0 6mm; } h3 { break-after: avoid; page-break-after: avoid; }
-    .where, ol, figure, .note, .lead-block { break-inside: avoid; page-break-inside: avoid; }
-    .where { margin: 0 0 2mm; color: #374151; font-weight: 600; } ol { margin: 0 0 3mm 5mm; padding-left: 4mm; }
-    figure { margin: 2mm 0; text-align: center; }
-    figure img { max-width: 72%; max-height: 104mm; border: 1px solid #d1d5db; border-radius: 2mm; }
-    figure.dialog img { max-width: 62%; max-height: 205mm; }
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>50pick admin guide — Contacts and SMS campaigns</title><style>
+    @page { size: A4; margin: ${PAGE_MARGIN.top} ${PAGE_MARGIN.right} ${PAGE_MARGIN.bottom} ${PAGE_MARGIN.left}; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: #1c1f26; font-size: 10.5pt; line-height: 1.45; }
+    header h1 { font-size: 24pt; line-height: 1.2; margin: 0; }
+    header .sub { font-size: 13pt; color: #4a5160; margin: 1mm 0 0; }
+    header .date { font-size: 9.5pt; color: #6b7280; margin: 1.5mm 0 0; }
+    h2 { font-size: 16pt; margin: 8mm 0 3mm; padding-bottom: 2mm; border-bottom: 2px solid #c9a227; }
+    h3 { font-size: 12pt; margin: 0 0 1.5mm; }
+    h2 .n, h3 .n { color: #c9a227; margin-right: 3mm; }
+    .step { margin: 0 0 5mm; }
+    .lead-block, figure, .note, .group, table, tr { break-inside: avoid; page-break-inside: avoid; }
+    .group { margin: 0 0 5mm; } .group h3 { margin: 0 0 1mm; }
+    .where { margin: 0 0 1.5mm; color: #374151; font-weight: 600; }
+    .lead { margin: 0 0 3mm; color: #374151; }
+    ol { margin: 0 0 3mm 5mm; padding-left: 4mm; }
+    figure { margin: 2mm 0; }
+    figure img { display: block; margin: 0 auto; border: 1px solid #d1d5db; border-radius: 2mm; }
+    .row { display: flex; justify-content: center; align-items: center; gap: ${ROW_GAP_MM}mm; margin: 2mm 0; } .row figure { margin: 0; }
+    .beside { display: flex; gap: 6mm; align-items: flex-start; }
+    .beside .words { flex: 1 1 auto; min-width: 0; } .beside figure { flex: none; margin: 0; }
     .note { background: #fdf8e7; border-left: 3px solid #c9a227; padding: 2mm 3mm; margin: 2mm 0; }
-    /* A chapter's lead stays with its first step: STEP 54's PDF left "9 · Your first campaigns" and its lead alone at a page's foot. */
-    .lead { color: #374151; break-after: avoid; page-break-after: avoid; } .missing { padding: 8mm; border: 1px dashed #b91c1c; color: #b91c1c; }
-    table { width: 100%; border-collapse: collapse; font-size: 9pt; page-break-inside: auto; }
+    .missing { padding: 8mm; border: 1px dashed #b91c1c; color: #b91c1c; }
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    table.credit { margin: 3mm 0 0; }
     th, td { border: 1px solid #d1d5db; padding: 1.6mm 2mm; vertical-align: top; text-align: left; }
-    th { background: #f3f4f6; } tr { page-break-inside: avoid; } td.msg { font-style: italic; }
+    th { background: #f3f4f6; } td.quote { font-style: italic; }
   </style></head><body>
-    <div class="cover"><h1>50pick admin guide</h1><div class="sub">Contacts and SMS campaigns, step by step</div>
-    <div class="meta">${esc(VERSION)} · ${esc(DATE)} · https://50pick.tz/admin</div></div>
-    ${body}${balance}${messages}
+    <header><h1>50pick admin guide</h1><p class="sub">Contacts and SMS campaigns, step by step</p><p class="date">${esc(longDate(DATE))}</p></header>
+    ${body}
   </body></html>`;
   return { html, missing };
 }
@@ -774,7 +814,7 @@ writeFileSync(join(SHOTS, "guide.html"), html);
 const pdfBrowser = await chromium.launch();
 const pdfPage = await (await pdfBrowser.newContext()).newPage();
 await pdfPage.setContent(html, { waitUntil: "load" });
-await pdfPage.pdf({ path: PDF, format: "A4", printBackground: true, margin: { top: "16mm", bottom: "16mm", left: "14mm", right: "14mm" } });
+await pdfPage.pdf({ path: PDF, format: "A4", printBackground: true, displayHeaderFooter: true, headerTemplate: "<span></span>", footerTemplate: FOOTER, margin: PAGE_MARGIN });
 await pdfBrowser.close();
 console.log(`guide: ${MESSAGES.length} messages checked against the source · ${missing.length} missing picture(s)`);
 for (const m of missing) console.log(`  MISSING ${m}`);
