@@ -6,8 +6,12 @@
  *   · LOADING — the ghost's KPI band equals the real band's box, and the card's top edge does not move
  *     (`loading.tsx` explains why the rows below cannot be equal by construction);
  *   · POPULATED — a page of 20, every number masked `+255••••NN` for GROWTH with NO eye and NO copy;
- *   · SEARCH — a whole number in two spellings finds exactly one row; a PART of a number is no-match
- *     (with the clear action), never a number search — and (vb7) the no-match row says the parser's own sentence;
+ *   · SEARCH — 🔴 C8b (B3) · GROWTH's whole number, in two spellings, answers "This number is in the book." and lists NO
+ *     row (a reader's finds exactly the one row — the ADMIN block); ⭐ (the C8b review's MINOR 1) "Select this number"
+ *     selects it alone, Suppress and Record a withdrawal its ONLY enabled actions (the other four disabled with their
+ *     reason, the count line saying the number — the re-review's MN-1), and a number not in the book offers nothing;
+ *     a PART of a number is no-match (with the clear action), never a number search — and (vb7) the no-match row says
+ *     the parser's own sentence;
  *   · PAGE CLAMP — page 4 of a 5-row result renders the 5 rows;
  *   · ERROR — a failed read is "Couldn't load the contact book", never a zero;
  *   · ADMIN — the role that may reveal gets the eye AND Copy on every row, and the eye shows `+255…`;
@@ -48,12 +52,16 @@
  *       CHECKING — the duplicate lookup's RESPONSE held (fetched, held, fulfilled — never the request): the checking line
  *         and Save still disabled; SAVING — the add's response held: Save busy, the dialog aria-busy, Escape refused;
  *       SAVED — "Contact added", the dialog gone, the new row first, "In the book" up by exactly one;
- *       DUPLICATE (the Accept) — a number saved typed, then PASTED as +255…: ONE row, the duplicate sentence and its
- *         link, no "save anyway" anywhere; the link opens `?edit=<id>`;
+ *       DUPLICATE (the Accept) — a number saved typed, then PASTED as +255…: ONE row, the duplicate sentence, no "save
+ *         anyway" anywhere — and 🔴 C8b (B2) NO "Open the existing contact" link for GROWTH (a reader's control: the
+ *         ADMIN block gets it); GROWTH opens `?edit=<id>` from the new first row's own "edit" link;
  *       EDIT — GROWTH sees the number masked with no eye and no Copy, and NO consent chip (A1.1); ADMIN sees the eye,
  *         Copy, and the mirrored consent; STALE — two tabs, the second save refused with Reload;
  *       MISSING — `?edit=mc_nope` AND `?edit=` of the ERASED fixture read the same refusal (A1.7), and Close drops `edit`;
- *       ERASED — adding the erased number is refused with one sentence and no link (C3);
+ *       ERASED — 🔴 C8b (B1 · B2) · adding the erased number answers exactly "This number is already in the book." with
+ *         no link and Save disabled — for GROWTH and for ADMIN alike (the book blocks it; nothing to open; C3 · X22);
+ *         ⭐ (the re-review's NIT 9) ADMIN SEARCHING it lists no row, answers "This number is in the book." and offers
+ *         "Select this number", the bar taking Suppress and Record a withdrawal alone;
  *       A1.1 — GROWTH adding a seeded PLAYER's number (ledger GIVEN) is told no consent value at all, while ADMIN adding a
  *         number whose ledger says WITHDRAWN reads "Withdrawn" (the mirror);
  *       ERROR — the add fulfilled with HTTP 500: the danger line, the typing kept, Save available again;
@@ -128,6 +136,11 @@ const ok = (label, cond, detail = "") => {
   else { fail++; console.log(`  FAIL ${label}${detail ? " -- " + detail : ""}`); }
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+/** ⭐ THE LONGEST A STEP WAITS FOR A SERVER ROUND TRIP: a fresh dev server builds each server action on its first call —
+ *  the first reveal passed 15 s twice on 2026-10-09 (and the screenshot then hung on fonts while it built). Every context
+ *  takes it as its default; the waits that watch a passing state (the KPI skeleton, the lookup's "checking", the
+ *  "Tagging …" overlays, the optional list note) keep 15 s. */
+const SLOW = 120_000;
 const MASK = /^\+255•{4}\d{2}$/;
 /** U23 · THE SELECT COLUMN IS FIRST, so every data column moved one place right: Name 2, Number 3, Operator 4, and for a
  *  reader Consent 5 and Will receive 6 (U38b's word for the gate's yes). Named once, so no selector counts columns by hand. */
@@ -137,6 +150,7 @@ const browser = await chromium.launch();
 
 async function staffCtx(role, phone, viewport, reducedMotion = "no-preference") {
   const ctx = await browser.newContext({ viewport, reducedMotion });
+  ctx.setDefaultTimeout(SLOW);
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
   const r = await page.request.post(BASE + "/api/dev-test/seed-admin", { data: { role, phone, name: `QA ${role}` } });
@@ -164,6 +178,8 @@ const overflowOf = (page) => page.evaluate(() => Math.max(0, document.documentEl
 async function openContacts(page, query = "") {
   await page.goto(`${BASE}/admin/contacts${query}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('[data-block="contacts-card"]', { timeout: 30000 });
+  // The page's scripts loaded before the first click: on a fresh dev server a click before hydration is lost (2026-10-09).
+  await page.waitForLoadState("load", { timeout: SLOW });
   await wait(700);
 }
 
@@ -250,7 +266,7 @@ const addedRecently = async (page) => Number((/Added in the last 7 days\s*([\d,]
 
 async function openAddDialog(page) {
   await page.locator('[data-block="contacts-add"]').first().click();
-  await page.waitForSelector(`${DIALOG} ${ADD_FORM}`, { timeout: 15000 });
+  await page.waitForSelector(`${DIALOG} ${ADD_FORM}`, { timeout: SLOW });
   await wait(400);
 }
 /** ⛔ BY ITS TEXT, NEVER BY ITS ROLE NAME (U23, 2026-10-02): every Modal's scrim is a button NAMED "Cancel" too
@@ -298,7 +314,16 @@ async function holdNextAction(page, mode = "hold") {
     if (caught || req.method() !== "POST" || !req.headers()["next-action"]) { await route.continue().catch(() => {}); return; }
     caught = true;
     if (mode === "fail") { await route.fulfill({ status: 500, contentType: "text/plain", body: "planted failure (u22 drive)" }).catch(() => {}); return; }
-    const response = await route.fetch();
+    // A dev server can reset the connection under the fetch ("read ECONNRESET", 2026-10-09): that is the drive's own
+    // failure, said as ONE failed check with the action's url — never an unhandled rejection that ends the whole drive.
+    let response;
+    try {
+      response = await route.fetch();
+    } catch (e) {
+      ok(`the held server action reached the server (${req.url().replace(BASE, "")})`, false, String(e?.message ?? e).split("\n")[0]);
+      await route.abort().catch(() => {});
+      return;
+    }
     await gate;
     await route.fulfill({ response }).catch(() => {});
   };
@@ -390,7 +415,7 @@ for (const vp of VIEWPORTS) {
   await page.route("**src_app_admin_contacts_page_tsx**", async (route) => { await wait(5000); await route.continue().catch(() => {}); });
   await page.goto(BASE + "/admin/bonuses", { waitUntil: "domcontentloaded" });
   await wait(2500);
-  const anchor = await page.waitForSelector('a[href="/admin/contacts"]', { state: "attached", timeout: 15000 }).catch(() => null);
+  const anchor = await page.waitForSelector('a[href="/admin/contacts"]', { state: "attached", timeout: SLOW }).catch(() => null);
   ok(`${vp.name} · the Contacts nav anchor is in the DOM`, !!anchor);
   if (anchor) {
     await page.evaluate(() => document.querySelector('a[href="/admin/contacts"]').click());
@@ -486,13 +511,50 @@ for (const vp of VIEWPORTS) {
   await shoot(page, `${vp.name}-populated`);
   await shoot(page, `${vp.name}-populated-rows`, '[data-block="contacts-card"]');
 
-  // ── SEARCH ───────────────────────────────────────────────────────────────────────────────────
+  // ── SEARCH — 🔴 C8b (B3) · GROWTH reads no number, so a WHOLE number answers whether the book holds it, and no row ──
   for (const q of ["0711 000 000", "+255711000000"]) {
     await openContacts(page, `?q=${encodeURIComponent(q)}`);
-    ok(`${vp.name} · SEARCH · "${q}" finds exactly one contact`, (await rows.count()) === 1, String(await rows.count()));
+    const said = await mainText(page);
+    ok(`${vp.name} · SEARCH · C8b (B3) · "${q}" answers "This number is in the book." for GROWTH — NO row listed, a Clear search offered`,
+      (await rows.count()) === 0 && said.includes("This number is in the book.") && (await page.getByRole("link", { name: "Clear search" }).count()) === 1,
+      `${await rows.count()} row(s) · ${said.slice(0, 160)}`);
   }
   ok(`${vp.name} · SEARCH · the tiles still read the whole book`, /In the book\s*45/i.test(await mainText(page)));
-  await shoot(page, `${vp.name}-search-one`);
+  await shoot(page, `${vp.name}-search-presence`);
+  // ⭐ C8b review (MINOR 1) · the number in the book is the ONE selection a stop or a withdrawal acts on: "Select this
+  // number" selects it ALONE — the bar in matching mode, one contact — with Suppress and Record a withdrawal offered (the
+  // server refuses the bar's other actions over it, in words). ⚠️ The bar's helpers are declared further down (`BAR`),
+  // after this loop runs, so its selector is written out here. Nothing is pressed past the selection: no stop is written.
+  {
+    const bar = '[data-block="contacts-bulk-bar"]';
+    const selectOffered = (await page.locator('[data-number-presence="in"] [data-number-select]').count()) === 1;
+    if (selectOffered) await page.locator("[data-number-select]").first().click();
+    await wait(300);
+    const picked = {
+      mode: await attrOf(page, bar, "data-bulk-mode"),
+      count: Number((await attrOf(page, bar, "data-bulk-count")) ?? "-1"),
+      offered: await page.$$eval(`${bar} [data-bulk-action]`, (els) => els.filter((e) => !e.hasAttribute("disabled")).map((e) => e.getAttribute("data-bulk-action") || "")),
+      // ⭐ C8b re-review (MN-1) · the four that can never act on a number are disabled WITH their reason, and the count
+      // line says the number as itself.
+      refusedTitles: await page.$$eval(`${bar} [data-bulk-action][disabled]`, (els) => els.map((e) => e.getAttribute("title") || "")),
+      line: await textOf(page, `${bar} [data-bulk-line]`),
+    };
+    ok(`${vp.name} · SEARCH · C8b review (MINOR 1 · re-review MN-1) · "Select this number" selects the number ALONE for GROWTH — the bar in matching mode with ONE contact, ONLY Suppress and Record a withdrawal enabled (the other four disabled with "Only Suppress and Record a withdrawal act on a searched number"), the count line "This number is selected — …"`,
+      selectOffered && picked.mode === "matching" && picked.count === 1 && [...picked.offered].sort().join(",") === "suppress,withdraw"
+        && picked.refusedTitles.length === 4 && picked.refusedTitles.every((t) => t === "Only Suppress and Record a withdrawal act on a searched number")
+        && picked.line === "This number is selected — only Suppress and Record a withdrawal act on it.",
+      JSON.stringify(picked));
+    await shoot(page, `${vp.name}-search-presence-selected`);
+    if ((await page.locator(`${bar} [data-bulk-clear]`).count()) > 0) await page.locator(`${bar} [data-bulk-clear]`).first().click();
+    await wait(200);
+    // …and a whole number NOT in the book offers nothing to select (076 3 is a block no seed uses).
+    await openContacts(page, `?q=${encodeURIComponent("+255763999999")}`);
+    const outSaid = await mainText(page);
+    ok(`${vp.name} · SEARCH · C8b · a whole number NOT in the book answers "This number is not in the book." for GROWTH — no row, nothing to select`,
+      (await rows.count()) === 0 && outSaid.includes("This number is not in the book.") && (await page.locator("[data-number-select]").count()) === 0
+        && (await page.locator('[data-number-presence="out"]').count()) === 1,
+      outSaid.slice(0, 160));
+  }
   await openContacts(page, `?q=${encodeURIComponent("0711000")}`);
   const nm = await mainText(page);
   ok(`${vp.name} · NO MATCH · a PART of a number finds nothing, and the no-match row says the parser's own sentence ("this one has 6", cut-off digits — vb7), never "part of a number is not searched"`,
@@ -742,6 +804,13 @@ for (const vp of VIEWPORTS) {
   const adminChips = await adm.page.$$eval("[data-contact-row] span.whitespace-nowrap", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
   ok(`${vp.name} · ADMIN · Consent and Will receive chips each sit on ONE line`, adminChips.length === 40 && Math.max(...adminChips) <= 18, `${adminChips.length} chips, max ${Math.max(...adminChips)}px`);
   await shoot(adm.page, `${vp.name}-admin-rows`, '[data-block="contacts-card"]');
+  // ⭐ C8b (B3) · a READER's whole number still finds its row, in both spellings — the presence line is GROWTH's alone.
+  for (const q of ["0711 000 000", "+255711000000"]) {
+    await openContacts(adm.page, `?q=${encodeURIComponent(q)}`);
+    ok(`${vp.name} · ADMIN · SEARCH · "${q}" finds exactly one contact for a reader`, (await adm.page.locator("[data-contact-row]").count()) === 1,
+      String(await adm.page.locator("[data-contact-row]").count()));
+  }
+  await shoot(adm.page, `${vp.name}-admin-search-one`);
   // 🔴 OD54 · A READER KEEPS THE STOP: the Suppressed axis filters (in force on its own axis), every listed row's Will receive
   // cell says Suppressed, the "Showing contacts:" line says it, and the band keeps its Suppressed tile — nothing GROWTH lost.
   await openContacts(adm.page, "?suppressed=yes");
@@ -788,7 +857,7 @@ for (const vp of VIEWPORTS) {
   await railShot(adm.page, vp.name, "u21-reader-combined", ["consent", "suppressed", "op", "source", "tag"]);
   await openContacts(adm.page);
   await adm.page.locator('button[aria-label="Reveal Contact number"]').first().click();
-  await adm.page.waitForSelector('button[aria-label="Hide Contact number"]', { timeout: 15000 }).catch(() => {});
+  await adm.page.waitForSelector('button[aria-label="Hide Contact number"]', { timeout: SLOW }).catch(() => {});
   const shown = (await adm.page.locator('button[aria-label="Hide Contact number"]').first().innerText().catch(() => "")).trim();
   ok(`${vp.name} · ADMIN · the eye reveals the +255 spelling, after the audited round trip`, /^\+255[67][0-9]{8}$/.test(shown), shown);
   await shoot(adm.page, `${vp.name}-admin-reveal`, '[data-block="contacts-card"]');
@@ -866,7 +935,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     checking.lookup === "checking" && /Checking the book/.test(checking.text) && (await saveDisabled(page)), checking.text);
   await formShot(page, vp.name, "u22-checking", "Add a contact", "Checking the book");
   await lookupHold.release();
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   ok(`${vp.name} · U22 CHECKED · a fresh number is free: the operator's sentence, and Save enabled`,
     (await verdictLine(page)).lookup === "free" && !(await saveDisabled(page)), (await verdictLine(page)).text);
   await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill(`U22 Drive ${vp.name}`);
@@ -882,8 +951,8 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     busy === "true" && saveBusy === "true" && (await page.locator(DIALOG).count()) === 1, `dialog busy=${busy} save busy=${saveBusy}`);
   await formShot(page, vp.name, "u22-saving", "Add a contact");
   await saveHold.release();
-  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: 15000 }).catch(() => {});
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: SLOW }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   for (let i = 0; i < 30 && (await inTheBook(page)) !== bookBefore + 1; i++) await wait(300);
   const firstRow = await textOf(page, "[data-contact-row]");
   ok(`${vp.name} · U22 SAVED · "Contact added", the dialog gone, the new row FIRST, "In the book" up by exactly one`,
@@ -899,22 +968,25 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   // ── DUPLICATE (the Accept): typed once and saved, then PASTED as +255… — one row, the sentence, the link ──
   await openAddDialog(page);
   await typeNumber(page, fresh(2));
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await page.locator(SAVE).first().click();
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await wait(800);
   await openAddDialog(page);
   await pasteNumber(page, `+255${fresh(2).slice(1)}`);
-  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
   const dup = await verdictLine(page);
   const dupText = await dialogText(page);
-  ok(`${vp.name} · U22 DUPLICATE · the same number pasted as +255… reads "This number is already in the book." with the link, Save disabled, no "save anyway" anywhere`,
-    dup.lookup === "duplicate" && dup.text.includes("This number is already in the book.") && (await page.locator(`${DIALOG} a[data-open-existing]`).count()) === 1
+  // 🔴 C8b (B2) · GROWTH's answer carries NO contact id: "already in the book", and no Open link — a reader's control.
+  ok(`${vp.name} · U22 DUPLICATE · the same number pasted as +255… reads "This number is already in the book." — C8b (B2) with NO Open link for GROWTH — Save disabled, no "save anyway" anywhere`,
+    dup.lookup === "duplicate" && dup.text.includes("This number is already in the book.") && (await page.locator(`${DIALOG} a[data-open-existing]`).count()) === 0
       && (await saveDisabled(page)) && !/anyway/i.test(dupText), dup.text);
-  await formShot(page, vp.name, "u22-duplicate", "Add a contact", "Open the existing contact");
+  await formShot(page, vp.name, "u22-duplicate", "Add a contact", "already in the book");
+  await closeDialog(page);
 
-  // ── EDIT · the link opens ?edit=<id>: GROWTH sees the number masked, no eye, no Copy, and NO consent chip ──
-  await page.locator(`${DIALOG} a[data-open-existing]`).first().click();
+  // ── EDIT · the new first row's own "edit" link opens ?edit=<id>: GROWTH sees the number masked, no eye, no Copy, and NO
+  //    consent chip ──
+  await page.locator("[data-contact-row] a[data-edit-contact]").first().click();
   await page.waitForURL((u) => u.searchParams.has("edit"), { timeout: 30000 });
   await page.waitForSelector(`${DIALOG} ${EDIT_FORM}`, { timeout: 30000 });
   await wait(800);
@@ -934,10 +1006,10 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await tabB.waitForSelector(`${DIALOG} ${EDIT_FORM}`, { timeout: 30000 });
   await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Tab A");
   await page.locator(SAVE).first().click();
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await tabB.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Tab B");
   await tabB.locator(SAVE).first().click();
-  await tabB.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: 15000 }).catch(() => {});
+  await tabB.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: SLOW }).catch(() => {});
   const staleText = await dialogText(tabB);
   ok(`${vp.name} · U22 STALE · the second tab's save is refused — nothing overwritten — and offers Reload`,
     /Someone changed this contact/.test(staleText) && (await tabB.getByRole("button", { name: "Reload", exact: true }).count()) === 1, staleText.slice(0, 160));
@@ -961,25 +1033,27 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   ok(`${vp.name} · U22 MISSING · Close returns to the list's own address — the filter kept, edit dropped`,
     !new URL(page.url()).searchParams.has("edit") && new URL(page.url()).searchParams.get("op") === "VODACOM", page.url());
 
-  // ── ERASED · adding the erased number: one sentence, nothing to open (C3) ──
+  // ── ERASED · 🔴 C8b (B1 · B2) · the book BLOCKS the erased number and says so as it says a number already in it: the
+  //    duplicate sentence, nothing to open — never a sentence of its own (X22: a browser never learns a number was erased) ──
   await openContacts(page);
   await openAddDialog(page);
   await typeNumber(page, u22.erasedNumber || "0766000001");
-  await page.waitForSelector('[data-number-lookup="refused"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
   const erasedLine = await verdictLine(page);
-  ok(`${vp.name} · U22 ERASED · the erased number reads "This number can't be added to the book." with NO link, Save disabled`,
-    erasedLine.text.includes("This number can't be added to the book.") && (await page.locator(`${DIALOG} a[data-open-existing]`).count()) === 0 && (await saveDisabled(page)),
+  ok(`${vp.name} · U22 ERASED · C8b · the erased number reads exactly "This number is already in the book." — never "can't be added" — with NO link, Save disabled`,
+    erasedLine.lookup === "duplicate" && erasedLine.text.includes("This number is already in the book.") && !erasedLine.text.includes("can't be added")
+      && (await page.locator(`${DIALOG} a[data-open-existing]`).count()) === 0 && (await saveDisabled(page)),
     erasedLine.text);
-  await formShot(page, vp.name, "u22-erased-refused", "Add a contact", "can't be added to the book");
+  await formShot(page, vp.name, "u22-erased-blocked", "Add a contact", "already in the book");
   await closeDialog(page);
 
   // ── 🔴 A1.1 · GROWTH adds a seeded PLAYER's number (consent GIVEN at sign-up): no consent value anywhere ──
   await openAddDialog(page);
   await typeNumber(page, u22.players[vi] ?? "0766100000");
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await page.locator(SAVE).first().click();
-  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: 15000 }).catch(() => {});
-  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: SLOW }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await wait(800);
   ok(`${vp.name} · U22 A1.1 · GROWTH adding a seeded player's number is told no consent value — no "Consent: Given", no consent column`,
     (await page.getByText(/Consent: /).count()) === 0 && !/consent/i.test(await page.locator('[data-block="contacts-card"] thead').innerText()),
@@ -989,11 +1063,11 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   // ── ERROR · the add answered with HTTP 500: the danger line, the typing kept, Save available again ──
   await openAddDialog(page);
   await typeNumber(page, fresh(3));
-  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Kept after the error");
   const failing = await holdNextAction(page, "fail");
   await page.locator(SAVE).first().click();
-  await page.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: SLOW }).catch(() => {});
   const errText = await dialogText(page);
   ok(`${vp.name} · U22 ERROR · a 500 is said in the dialog, the typing is kept, and Save is available again`,
     /Server error/.test(errText) && (await page.locator(`${DIALOG} [data-field="displayName"] input`).first().inputValue()) === "Kept after the error" && !(await saveDisabled(page)),
@@ -1012,10 +1086,10 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await openContacts(adm.page);
   await openAddDialog(adm.page);
   await typeNumber(adm.page, u22.withdrawn[vi] ?? "0766200000");
-  await adm.page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await adm.page.waitForSelector('[data-number-lookup="free"]', { timeout: SLOW }).catch(() => {});
   await adm.page.locator(SAVE).first().click();
-  await adm.page.getByText(/Consent: Withdrawn/).first().waitFor({ timeout: 15000 }).catch(() => {});
-  await adm.page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await adm.page.getByText(/Consent: Withdrawn/).first().waitFor({ timeout: SLOW }).catch(() => {});
+  await adm.page.waitForSelector(DIALOG, { state: "detached", timeout: SLOW }).catch(() => {});
   await wait(1000);
   const adminFirstConsent = await textOfLoc(adm.page.locator("[data-contact-row]").first().locator(`td:nth-child(${COL.consent})`));
   ok(`${vp.name} · U22 ADMIN · a reader adding a number whose ledger says WITHDRAWN is told "Consent: Withdrawn", and the new first row reads Withdrawn`,
@@ -1030,6 +1104,51 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
       && (await adm.page.locator(`${DIALOG} button[aria-label="Copy Contact number"]`).count()) === 1
       && /not recorded/i.test(adminConsent) && /Source: Added by staff/i.test(adminConsent), adminConsent);
   await formShot(adm.page, vp.name, "u22-edit-admin", "Edit contact", "Source: Added by staff");
+  // ⭐ C8b (B2) · THE OPEN LINK IS A READER'S: the number GROWTH saved above reads "already in the book" WITH the link for
+  // ADMIN — and the erased number, which the book blocks, with none (there is no row to open).
+  await openContacts(adm.page);
+  await openAddDialog(adm.page);
+  await pasteNumber(adm.page, `+255${fresh(2).slice(1)}`);
+  await adm.page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
+  const adminDup = await verdictLine(adm.page);
+  const adminDupLinks = await adm.page.locator(`${DIALOG} a[data-open-existing]`).count();
+  await closeDialog(adm.page);
+  await openAddDialog(adm.page);
+  await typeNumber(adm.page, u22.erasedNumber || "0766000001");
+  await adm.page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: SLOW }).catch(() => {});
+  const adminErased = await verdictLine(adm.page);
+  const adminErasedLinks = await adm.page.locator(`${DIALOG} a[data-open-existing]`).count();
+  ok(`${vp.name} · U22 ADMIN · C8b (B2) · a reader's duplicate keeps its "Open the existing contact" link; the erased number reads the same sentence with NO link, Save disabled`,
+    adminDup.lookup === "duplicate" && adminDup.text.includes("This number is already in the book.") && adminDupLinks === 1
+      && adminErased.lookup === "duplicate" && adminErased.text.includes("This number is already in the book.") && adminErasedLinks === 0
+      && (await saveDisabled(adm.page)),
+    `${adminDup.lookup} (${adminDupLinks} link) · ${adminErased.lookup} (${adminErasedLinks} link)`);
+  await formShot(adm.page, vp.name, "u22-erased-admin", "Add a contact", "already in the book");
+  await closeDialog(adm.page);
+  // ⭐ C8b re-review (NIT 9) · the erased number SEARCHED by a reader lists no row (the tombstone is in no audience), so it
+  // answers "This number is in the book." with "Select this number" — and the bar offers that selection Suppress and Record
+  // a withdrawal alone, as it does GROWTH's presence. Nothing is pressed past the selection: no stop is written.
+  {
+    const bar = '[data-block="contacts-bulk-bar"]';
+    await openContacts(adm.page, `?q=${encodeURIComponent(u22.erasedNumber || "0766000001")}`);
+    const said = await mainText(adm.page);
+    const offeredSelect = (await adm.page.locator('[data-number-presence="blocked"] [data-number-select]').count()) === 1;
+    const listedRows = await adm.page.locator("[data-contact-row]").count();
+    if (offeredSelect) await adm.page.locator("[data-number-select]").first().click();
+    await wait(300);
+    const picked = {
+      mode: await attrOf(adm.page, bar, "data-bulk-mode"),
+      count: Number((await attrOf(adm.page, bar, "data-bulk-count")) ?? "-1"),
+      offered: await adm.page.$$eval(`${bar} [data-bulk-action]`, (els) => els.filter((e) => !e.hasAttribute("disabled")).map((e) => e.getAttribute("data-bulk-action") || "")),
+      line: await textOf(adm.page, `${bar} [data-bulk-line]`),
+    };
+    ok(`${vp.name} · ADMIN · C8b re-review (NIT 9) · the erased number searched by a READER lists no row and answers "This number is in the book." with "Select this number" — the number alone selected, Suppress and Record a withdrawal its only actions`,
+      listedRows === 0 && said.includes("This number is in the book.") && offeredSelect && picked.mode === "matching" && picked.count === 1
+        && [...picked.offered].sort().join(",") === "suppress,withdraw" && picked.line === "This number is selected — only Suppress and Record a withdrawal act on it.",
+      `${listedRows} row(s) · ${JSON.stringify(picked)} · ${said.slice(0, 120)}`);
+    await shoot(adm.page, `${vp.name}-admin-blocked-number-selected`);
+    if ((await adm.page.locator(`${bar} [data-bulk-clear]`).count()) > 0) await adm.page.locator(`${bar} [data-bulk-clear]`).first().click();
+  }
   await adm.ctx.close();
 }
 
@@ -1100,7 +1219,7 @@ async function pressBulk(page, action) {
   await wait(300);
 }
 async function waitForParam(page, action) {
-  await page.waitForSelector(`${DIALOG} [data-bulk-param="${action}"]`, { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(`${DIALOG} [data-bulk-param="${action}"]`, { timeout: SLOW }).catch(() => {});
   await wait(300);
 }
 const tagBox = (page) => page.locator(`${DIALOG} [data-field="tag"] input`).first();
@@ -1215,7 +1334,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
     page.url());
   await formShot(page, vp.name, "u23-edit-link", "Edit contact", "The number can't be changed");
   await closeDialog(page);
-  await page.waitForURL((u) => !u.searchParams.has("edit"), { timeout: 15000 }).catch(() => {});
+  await page.waitForURL((u) => !u.searchParams.has("edit"), { timeout: SLOW }).catch(() => {});
 
   // ── TICKED ACROSS PAGES — the pager is a client navigation, and the selection outlives it ──
   await openContacts(page);

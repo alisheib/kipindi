@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
 import { useActDisabledReason, useMayAct } from "@/components/admin/act-gate";
 import type { ImportRunView } from "@/lib/contacts/import-flow";
-import { ADOPT, CHECK, COMMIT, OTHERS, whenText, type Part } from "./import-copy";
+import { ADOPT, CHECK, COMMIT, OTHERS, adoptPausedLine, whenText, type Part } from "./import-copy";
 import { Parts, SectionHeading } from "./import-parts";
 
 /** The admin's list as the dialog holds it: still being read, nothing to show (refused, failed or empty), or the runs. */
@@ -69,8 +69,8 @@ export function ImportOpenRuns({
             >
               <p className="break-words text-body-sm font-semibold text-text">{ADOPT.file(run.format === "paste", run.fileName)}</p>
               <p className="text-body-sm text-text-secondary">{ADOPT.startedBy(run.startedBy, whenText(when(run.createdAt)))}</p>
-              {run.status === "PAUSED" && run.pausedBy !== null && (
-                <p className="text-body-sm text-text-secondary">{ADOPT.paused(run.pausedBy, whenText(when(run.pausedAt)))}</p>
+              {run.status === "PAUSED" && (
+                <p className="text-body-sm text-text-secondary">{adoptPausedLine(run, whenText(when(run.pausedAt)))}</p>
               )}
               <p className="text-body-sm text-text"><Parts parts={status} /></p>
               <div className="flex flex-wrap gap-2 pt-1">

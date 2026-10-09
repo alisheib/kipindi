@@ -107,7 +107,8 @@ const CONTROLS: Control[] = [
   { id: "bonus", when: /bonus/i, where: "feature-state.ts: bonus WITHDRAWN (if the bonus returns, re-check this promise)",
     holds: (w) => /bonus:\s*"WITHDRAWN"/.test(w.featureState) },
   // ⛔ Since the owner's ruling of 2026-10-06 the footer renders no helpline, so this control does NOT hold — a helpline
-  // promise put back on the page is a promise with nothing behind it, and §2.2 refuses it.
+  // promise put back on the page is a promise with nothing behind it, and §2.2 refuses it. (Since 2026-10-09 there is no
+  // `HELPLINE()` left to render either: the readers went with nothing left to call them — `where` names what it would take.)
   { id: "helpline", when: /helpline/i, where: "public-footer.tsx renders {HELPLINE()}",
     holds: (w) => /\{HELPLINE\(\)\}/.test(w.footer) },
   // ⭐ U13 · the send window OBEYED — the module exists, AND the send loop imports it, calls it and holds on it first —

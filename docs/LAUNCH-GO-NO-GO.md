@@ -51,7 +51,7 @@
 ## 4 · Decisions to confirm (👤 Ali, quick)
 - [x] **Phone OTP / SMS** — decided 2026-09-16 (corrected 2026-09-25). SMS is live on
       Blackball (`SMS_PROVIDER=blackball`, `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET`
-      / `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick`; `SMS_API_KEY` is read by
+      / `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick.tz` — `50pick` until 2026-10-09; `SMS_API_KEY` is read by
       nothing). Phone-code login is deliberately NOT offered (`OTP_ENABLED` unset): offering
       it is a product change on `/auth/login` first, not a variable. Sign-in is phone +
       password. See `BLACKBALL-SMS.md` §7 step 6 and CLAUDE.md "Auth — current state".

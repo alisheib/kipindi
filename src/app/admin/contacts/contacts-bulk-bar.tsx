@@ -31,6 +31,11 @@
  * since the confirmation asks the server again and reopens the confirmation with the new count and the server's own
  * sentence on top. A selection past the per-number cap says so in a line, not only in two tooltips.
  *
+ * ⭐ C8b re-review (MN-1) · A SEARCHED WHOLE NUMBER ALONE (`numberOnly` — a masked viewer's presence answer, or a reader's
+ * search of a number the book blocks) TAKES SUPPRESS AND RECORD A WITHDRAWAL ONLY: the server acts on that number for
+ * those two and refuses the other four, so the bar disables the four with their reason and its count line says so —
+ * never "All 1 matching selected" over six buttons of which four could never work.
+ *
  * Guard: `test:contacts-bulk` (this file's shape and the copy it renders) · red: `red:contacts-bulk`.
  */
 import * as React from "react";
@@ -98,9 +103,10 @@ export function ContactsBulkBar({ lists, tags }: { lists: Array<{ id: string; na
   const paramDirty = paramOpen && param !== null && (param.tag !== "" || param.newName !== "");
   // "Select all N matching" is offered once the whole page is ticked and the filter holds more than this page.
   const offerMatching = s.mode === "rows" && s.allOnPage && s.matching !== null && s.matching.total > s.count - s.offPage;
+  // ⭐ C8b re-review (MN-1) · a searched whole number alone is said as itself, never "All 1 matching selected".
   const line = s.count === 0
     ? CONTACTS_BULK.none
-    : s.mode === "matching" ? CONTACTS_BULK.allMatching(s.count) : CONTACTS_BULK.selected(s.count, s.offPage);
+    : s.mode === "matching" ? (s.numberOnly ? CONTACTS_BULK.numberSelected : CONTACTS_BULK.allMatching(s.count)) : CONTACTS_BULK.selected(s.count, s.offPage);
 
   /**
    * Ask the server for the selection's count; open the confirmation from ITS answer (`notice`, vb7: a sentence for its
@@ -252,7 +258,7 @@ export function ContactsBulkBar({ lists, tags }: { lists: Array<{ id: string; na
         </div>
         <div role="group" aria-label={CONTACTS_BULK.actionsLabel} className="flex flex-wrap items-center gap-2">
           {CONTACT_BULK_ACTIONS.map((a) => {
-            const state = bulkActionState(a, { mayAct, actReason, count: s.count, perRowMax: BULK_PER_ROW_MAX, busy: pending });
+            const state = bulkActionState(a, { mayAct, actReason, count: s.count, perRowMax: BULK_PER_ROW_MAX, busy: pending, numberOnly: s.numberOnly });
             return (
               <Button key={a} type="button" size="sm" variant="ghost" disabled={state.disabled} title={state.title} onClick={() => begin(a)} data-bulk-action={a}>
                 {BULK_COPY[a].label}

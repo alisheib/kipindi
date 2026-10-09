@@ -154,11 +154,11 @@ export const RATE_RULES: Record<string, RateRule> = {
   // endpoint is to learn that a crash happened — the tenth copy teaches nothing. 5 burst,
   // ~1/min steady is enough to catch a reload-crash-reload cycle without funding a flood.
   "clientError.ip": { capacity: 5, refillPerMin: 1 },
-  // The marketing opt-out page (`/s/<token>`, U8), per IP. ⛔ DELIBERATELY WIDE, and the reason
-  // is legal rather than generous: ETA s.32(1)(c) requires an opt-out in every message and has
-  // no rate-limit exception, so a refused STOP is a person who asked to leave and was told no.
-  // Tanzanian mobile networks put many real people behind one carrier NAT address; 30 burst and
-  // 10/min steady is nowhere near anybody tapping a link in their own SMS. ⭐ D6 (2026-09-26): only a
+  // The marketing opt-out page (`/s/<token>`, U8), per IP. ⛔ DELIBERATELY WIDE: a refused STOP is a
+  // person who asked to leave and was told no. (It was set when every message carried the link, ETA
+  // s.32(1)(c); since the owner's ruling of 2026-10-09 no message prints it, and the page serves every
+  // link sent before.) Tanzanian mobile networks put many real people behind one carrier NAT address;
+  // 30 burst and 10/min steady is nowhere near anybody tapping a link in their own SMS. ⭐ D6 (2026-09-26): only a
   // MISS spends it — an unresolvable token, on the page's GET or on either act — and a hit is refunded
   // (`optout-service.ts`), so it runs a token-walking script dry without ever charging a real STOP; the
   // same rule also caps each valid link's own acts under a hashed per-link key. ⚠️ A throttled act
@@ -173,7 +173,9 @@ export const RATE_RULES: Record<string, RateRule> = {
   // record or an unsaved wording drains neither). Per RECIPIENT, keyed `testTo:` + a salted hash of the gate's key (no
   // digit of the number in the store): 5 at once, then one every two hours — a person cannot be flooded by tests from
   // several officers. Per OFFICER, typed tests only: 10 at once, refilling 10 a day — without it an officer could run a
-  // quiet campaign of ~150 messages a day to strangers through "tests", outside the confirmation and U14's cap (A33).
+  // quiet campaign of ~150 messages a day to strangers through "tests", outside the confirmation (A33). (Since the
+  // owner's ruling of 2026-10-09 only the Owner and Compliance may type a number; U14's frequency cap is not built —
+  // management, 2026-10-07.)
   "marketing.testSendTo": { capacity: 5, refillPerMin: 1 / 120 },
   "marketing.testSendTyped": { capacity: 10, refillPerMin: 10 / 1440 },
   // The composer's save, per officer (U37b review m5): every create is a campaign row that is never deleted and an audit

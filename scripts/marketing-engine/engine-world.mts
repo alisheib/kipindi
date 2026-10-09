@@ -59,7 +59,8 @@ const T_PAST = "2024-06-01T00:00:00.000Z";
 /**
  * ⭐ A CONSENTING PLAYER, as the ONE gate clears one: a PLAYER account (adult, active, the toggle on, the number stored with
  * its plus, as registration stores it), an SMS-naming GIVEN ledger row for the number, and a wallet. `consent: false`
- * leaves the toggle off and writes no ledger row — a player the gate refuses `no_consent`.
+ * leaves the toggle off and writes no ledger row — a player the gate refuses `no_consent` while licence outreach is
+ * closed, as in this world (with it open, the owner's FINAL rule of 2026-10-07 reaches them on the licence).
  */
 export async function player(id: string, key: string, over: Partial<StoredUser> = {}, consent = true): Promise<{ id: string; key: string }> {
   const at = new Date().toISOString();

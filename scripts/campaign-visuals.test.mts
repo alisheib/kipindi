@@ -56,7 +56,8 @@
  *   R9  the failed split, no answer and what is left, agreeing with the figures; R10 the stop walk and its cost;
  *   R11 the card; R12 the wiring; R13 the reasons are printed once (the results card's, never the figures card's as well);
  *   R14 ⭐ every way a person stops counts, a number once, only a stop in force, and erasure-blind (E30 as re-ruled
- *       2026-10-09; X22); R15 ⭐ the platform's own writers move it, and the real erasure adds nobody and takes nobody out.
+ *       2026-10-09; X22); R15 ⭐ the platform's own writers move it, and the real erasure adds nobody and takes nobody out;
+ *   R16 ⛔ every label wraps, none is cut off — its count at the right of the first line, the same boxes at every width.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` proves the baseline green first, then plants each defect IN MEMORY
  * (a dependency handed to a service or the view, a wrapper of a service, a source text replaced in memory) and requires
@@ -112,7 +113,7 @@ const PAGE = await import("./lib/campaign-visuals-page.mts");
 // U47b-2 · THE REVIEW'S FIX ROUND (V12–V16): the step door, the driver's and the presses' hooks executed on a minimal hooks host,
 // the page's decisions and live region, the dev seed — `scripts/lib/campaign-visuals-live.mts`, run in this run as well.
 const LV = await import("./lib/campaign-visuals-live.mts");
-// U48a · THE RESULTS' CLAIMS (R1–R12) live beside the page's, for the same reason, and run in this run too.
+// U48a · THE RESULTS' CLAIMS (R1–R16) live beside the page's, for the same reason, and run in this run too.
 const RESULTS = await import("./lib/campaign-visuals-results.mts");
 
 type PageImpl = import("./lib/campaign-visuals-page.mts").PageImpl;
@@ -1670,7 +1671,7 @@ async function runAssertions(impl: Impl): Promise<void> {
    *    V16 the dev seed (scripts/lib/campaign-visuals-live.mts): executed, with the compiled real source as each one's control ── */
   await LV.liveClaims(impl.page, pageHarness);
 
-  /* ── §R · U48a's claims — R1–R12 (scripts/lib/campaign-visuals-results.mts), on this world and these viewers ── */
+  /* ── §R · U48a's claims — R1–R16 (scripts/lib/campaign-visuals-results.mts), on this world and these viewers ── */
   await RESULTS.resultsClaims(impl.results, {
     claim, run: w.run, READER, GROWTH, WATCHER,
     view: (id, v, over) => viewOf(impl, id, v, over),

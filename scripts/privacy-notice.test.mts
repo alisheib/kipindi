@@ -49,10 +49,10 @@ import {
   ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, POLICY_LINE_DEFAULTS, SMS_GATEWAY_WORDS, comparePolicyVersions,
   holdsRequiredWord, isPolicyVersion,
 } from "../src/lib/legal/policy-lines.ts";
-// §4j reads the note under "Erase my data" from the dictionary; §4k reads whether every offer carries its stop link, and
-// the ONE constant §5 and §9 print as the referees' line.
+// §4j reads the note under "Erase my data" from the dictionary; §4k reads whether every offer carries its stop link (an
+// offer as the one composer sends it), and the ONE constant §5 and §9 print as the referees' line.
 import { dict } from "../src/lib/i18n-dict.ts";
-import { OPTOUT_PATH, footerMeasurementToken, marketingFooter } from "../src/lib/marketing/footer.ts";
+import { OPTOUT_PATH, composeMarketing, footerMeasurementToken } from "../src/lib/marketing/footer.ts";
 import { REFEREE_PROMISE_REWORDED_IN } from "../src/lib/legal/privacy-referees.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1062,9 +1062,12 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
  * HMAC of the number under the server's pepper, and whoever holds the pepper can hash every Tanzanian mobile number and
  * compare: "(it cannot be turned back into the number)" overclaimed, and was replaced on 2026-10-07 (the lead's decision;
  * COMPLIANCE-DECISIONS "Privacy v2026-10-07").
- * ⚠️ THE STOP SENTENCE IS TIED TO `marketingFooter()` — true only while every offer carries its stop link. Since the owner's
- * ruling of 2026-10-09 (Privacy v2026-10-09) the footer is EMPTY: no offer carries the link, so §9 says no stop sentence,
- * and this tie keeps it gone — a footer that carries the link again needs the sentence back, with a new version.
+ * ⚠️ THE STOP SENTENCE IS TIED TO THE OFFER AS SENT — an officer's text through `composeMarketing`, the one composer the
+ * counter, the test send and the real send all go through, handed the stop page's token as every message is — true only
+ * while every offer carries its stop link. Since the owner's ruling of 2026-10-09 (Privacy v2026-10-09) nothing is
+ * appended: no offer carries the link, so §9 says no stop sentence, and this tie keeps it gone — an offer that carries
+ * the link again (by a footer, or any other way) needs the sentence back, with a new version. (Until that day the tie
+ * read the footer itself, `marketingFooter`, which takes no token since.)
  * ══════════════════════════════════════════════════════════════════════════ */
 console.log("\n§4k · §9: the referee promise kept for those named before the label, management's sentences for those named after");
 {
@@ -1086,8 +1089,8 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
     zh: [/无法还原/, /不可逆/, /不能还原/],
   };
   const metaVersion =(src: string) => src.match(/en: "Version ([0-9]{4}-[0-9]{2}-[0-9]{2}(?:\.[0-9]+)?) · /)?.[1] ?? "";
-  const stopLinkInOffers = (footer: string) => footer.includes(`${OPTOUT_PATH}${footerMeasurementToken()}`);
-  const refereeWordsDefects = (page: string, footer: string, label: string, decisions: string): string[] => {
+  const stopLinkInOffers = (offer: string) => offer.includes(`${OPTOUT_PATH}${footerMeasurementToken()}`);
+  const refereeWordsDefects = (page: string, offer: string, label: string, decisions: string): string[] => {
     const d: string[] = [];
     const bl = blocks(page);
     const s9 = (l: Loc) => section(bl[l], "9").replace(/\s+/g, " ");
@@ -1114,46 +1117,47 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
     if (!s9("en").includes(REFEREE_SENTENCES.offers)) d.push(`en §9 does not tell new referees "${REFEREE_SENTENCES.offers}"`);
     if (/\bthis version\b/i.test(s9("en"))) d.push("en §9 names the line as \"this version\" — a later version would move it");
     const says = s9("en").includes(REFEREE_SENTENCES.stop);
-    if (stopLinkInOffers(footer) && !says) d.push(`en §9 does not tell new referees "${REFEREE_SENTENCES.stop}" while every offer carries its stop link`);
-    if (!stopLinkInOffers(footer) && says) d.push(`en §9 promises "${REFEREE_SENTENCES.stop}" but the offer footer carries no stop link`);
+    if (stopLinkInOffers(offer) && !says) d.push(`en §9 does not tell new referees "${REFEREE_SENTENCES.stop}" while every offer carries its stop link`);
+    if (!stopLinkInOffers(offer) && says) d.push(`en §9 promises "${REFEREE_SENTENCES.stop}" but the offer as sent carries no stop link`);
     return d;
   };
-  const offerFooter = marketingFooter(footerMeasurementToken(), "SW");
+  /** An offer as it is sent: an officer's text through the one composer, handed the stop page's token as every message is. */
+  const offer = composeMarketing("50pick: Habari, ofa ya leo.", footerMeasurementToken(), "SW").text;
   ok(`§4k en/sw/zh §9 keep the old promise only for referees named before ${REFEREE_PROMISE_REWORDED_IN} (one constant, printed in §5 and §9, recorded, never ahead of the page), and tell those named after management's two sentences while the stop link exists`,
-    refereeWordsDefects(pageSrc, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).length === 0,
-    refereeWordsDefects(pageSrc, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).join("; "));
+    refereeWordsDefects(pageSrc, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).length === 0,
+    refereeWordsDefects(pageSrc, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).join("; "));
   const plantOldPromiseSw = pageSrc.replace("na mara moja maombi yakikataliwa; na unaweza", "na mara moja maombi yakikataliwa; hatuwasiliani nawe kamwe kwa matangazo; na unaweza");
   const plantTypedLabelZh = pageSrc.replace("在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，", `在本政策 ${REFEREE_PROMISE_REWORDED_IN} 版之前，`);
   const plantRelative = pageSrc.replace("Until version {REFEREE_PROMISE_REWORDED_IN} of this policy", "Until this version of this policy");
   // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
-  // ⭐ Since 2026-10-09 no offer carries a stop link (the footer is empty), so §9 says no stop sentence: the controls plant
-  // the sentence BACK, and a footer that carries a link again.
+  // ⭐ Since 2026-10-09 no offer carries a stop link (nothing is appended), so §9 says no stop sentence: the controls plant
+  // the sentence BACK, and an offer that carries a link again (the envelope as it stood until that day, on the offer).
   // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
   const plantStopBack = pageSrc.replace("          as a referee after that: 50pick may send you offers by SMS.", "          as a referee after that: 50pick may send you offers by SMS. You can stop them at any time with the link in every offer.");
-  const footerWithLink = `${offerFooter}\n50pick 18+ Acha: 50pick.tz${OPTOUT_PATH}${footerMeasurementToken()}`;
+  const offerWithLink = `${offer}\n50pick 18+ Acha: 50pick.tz${OPTOUT_PATH}${footerMeasurementToken()}`;
   // The parenthesis as it read before 2026-10-07's correction, put back into ONE language at a time.
   const plantOverclaimEn = pageSrc.replace("(not the number itself)", "(it cannot be turned back into the number)");
   const plantOverclaimZh = pageSrc.replace("（并非号码本身）", "（无法还原为该号码）");
   ok("§4k control · planted §9 copies found their targets",
-    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantStopBack !== pageSrc, footerWithLink !== offerFooter,
+    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantStopBack !== pageSrc, offerWithLink !== offer,
       plantOverclaimEn !== pageSrc, plantOverclaimZh !== pageSrc].every(Boolean));
   ok("§4k control · the coded number called irreversible again (en: \"it cannot be turned back into the number\") is reported",
-    refereeWordsDefects(plantOverclaimEn, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("en calls the coded referee number irreversible")));
+    refereeWordsDefects(plantOverclaimEn, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("en calls the coded referee number irreversible")));
   ok("§4k control · the coded number called irreversible again in ONE language (zh: \"无法还原为该号码\") is reported",
-    refereeWordsDefects(plantOverclaimZh, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("zh calls the coded referee number irreversible")));
+    refereeWordsDefects(plantOverclaimZh, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("zh calls the coded referee number irreversible")));
   ok("§4k control · the old promise made to everyone again (sw) is reported",
-    refereeWordsDefects(plantOldPromiseSw, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("sw §9 still promises")));
+    refereeWordsDefects(plantOldPromiseSw, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("sw §9 still promises")));
   ok("§4k control · the label typed into ONE language (zh) instead of printed from the constant is reported",
-    refereeWordsDefects(plantTypedLabelZh, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("zh §9")));
+    refereeWordsDefects(plantTypedLabelZh, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("zh §9")));
   ok("§4k control · the line named as \"this version\" (en) is reported",
-    refereeWordsDefects(plantRelative, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("this version")));
+    refereeWordsDefects(plantRelative, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("this version")));
   ok("§4k control · a label later than the page's version, with no COMPLIANCE heading, is reported",
-    refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("later than the version the page prints"))
-      && refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("has no \"Privacy v2099-01-01\" heading")));
-  ok("§4k control · the stop sentence missing while a footer carries its link again is reported",
-    refereeWordsDefects(pageSrc, footerWithLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
+    refereeWordsDefects(pageSrc, offer, "2099-01-01", decisionsSrc).some((x) => x.includes("later than the version the page prints"))
+      && refereeWordsDefects(pageSrc, offer, "2099-01-01", decisionsSrc).some((x) => x.includes("has no \"Privacy v2099-01-01\" heading")));
+  ok("§4k control · the stop sentence missing while an offer carries its link again is reported",
+    refereeWordsDefects(pageSrc, offerWithLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
   ok("§4k control · the stop sentence put back while no offer carries a link is reported",
-    refereeWordsDefects(plantStopBack, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
+    refereeWordsDefects(plantStopBack, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
 }
 
 

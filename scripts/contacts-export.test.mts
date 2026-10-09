@@ -74,10 +74,11 @@ import { maskPhone } from "../src/lib/phone-normalize.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { formatNumber } from "../src/lib/utils.ts";
 import {
-  CONSENT_LABEL, SOURCE_LABEL, CONTACTS_EXPORT, CONTACTS_FILTER_NOT_FOR_ROLE, contactsExportTooMany,
+  CONSENT_LABEL, SOURCE_LABEL, CONTACTS_EXPORT, CONTACTS_EXPORT_REFUSED, CONTACTS_FILTER_NOT_FOR_ROLE, contactsExportTooMany,
 } from "../src/app/admin/contacts/contacts-copy.ts";
 import { contactsHref, operatorBrand } from "../src/app/admin/contacts/contacts-query.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
+import { MASKED_NUMBER_SEARCH_REASON } from "../src/lib/server/contacts/number-search.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -351,6 +352,7 @@ const L = {
   r4: "R4 · ⛔ vb7 · an address key the page never writes is REFUSED (400, unknown_param), never dropped into the WHOLE book: ?operator=vodacom, ?tags=vip and a utm tag beside a real filter — through the door, nothing counted, one contacts.export_refused that counts the keys and names none, and the officer sent back to the list; exportStrayParams finds exactly the stray keys",
   r5: "R5 · ⛔ vb7 · a book that cannot be counted is a 503 in words (read_failed) with an export_refused row — never Next's bare 500 with nothing recorded — no file, no reveal, and the log names the fault's kind, never its text",
   r6: "R6 · vb7 · a selection in the address is told what an export takes — the page's filter, never ticked contacts — in the export's own sentence, never \"tick the contacts on the page again\"",
+  r7: "R7 · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH EXPORTS NOTHING: in any spelling (spaced, +255…, the bare key) it is a 403 in the one sentence BEFORE anything is counted — one contacts.export_refused (reason number_search, param q), no number in it, and the page's ?export= sentence says why; CONTROLS: the same viewer's NAME search exports, and a READER's whole-number search exports its one row",
   e1: "E1 · the page: the head's export control is built from the list's own filter, only when that read arrived WITH rows, before Add contact; labelled masked for a masked viewer; over the ceiling the kit's disabled Button with its reason beside it; no decider in the page, no number added",
   e2: "E2 · contactsExportHref (EXECUTED): every filter an address can carry reads back through the parser — a day later — to the same key, a relative window included; the whole book is the bare path; a selection or an empty any-of gets no link",
   e3: "E3 · the ghost reserves the export control's 40px box in the head, before Add contact's",
@@ -898,6 +900,27 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     return [allRight && floor && reader.status === 200 && readerRows.length === 1,
       `${answers.join(" ")} · floor ${floor} · reader ${reader.status}/${readerRows.length}`];
   });
+  await check(p(L.r7), async () => {
+    let counted = 0;
+    const counting = observed({ count: () => { counted++; } });
+    const spellings: Params[] = [{ q: "0712 345 678" }, { q: "+255712345678" }, { q: "255712345678" }];
+    const answers: string[] = [];
+    let allRefused = true;
+    for (const params of spellings) {
+      counted = 0;
+      const r = await runExport(impl, MASKED, params, { audience: counting });
+      answers.push(`${r.status}`);
+      const blob = JSON.stringify(r.audits.map((e) => e.payload));
+      if (!(r.status === 403 && r.text === `${MASKED_NUMBER_SEARCH_REASON} ${CONTACTS_EXPORT.nothingSent}` && counted === 0
+        && actions(r.audits) === "contacts.export_refused" && r.audits[0].payload.reason === "number_search" && r.audits[0].payload.param === "q"
+        && !blob.includes("712345678"))) allRefused = false;
+    }
+    const pageSays = CONTACTS_EXPORT_REFUSED.number_search.includes("whole number shows only whether it is in the book");
+    const byName = await runExport(impl, MASKED, { q: "Asha" });
+    const reader = await runExport(impl, READER, { q: "0712 345 678" });
+    return [allRefused && pageSays && byName.status === 200 && reader.status === 200 && (rowsOf(reader.text) ?? []).length === 2,
+      `masked ${answers.join("/")} · the page's sentence ${pageSays} · by name ${byName.status} · reader ${reader.status}/${(rowsOf(reader.text) ?? []).length - 1} row(s)`];
+  });
   await check(p(L.r3), () => {
     const u = new URL(`http://x${CONTACTS_EXPORT_PATH}?op=VODACOM&op=AIRTEL&q=asha&utm_source=x&__proto__=1&ids=mx_01&sort=name`);
     const got = exportParamsOf(u);
@@ -1144,6 +1167,11 @@ if (!PROVE_RED) {
       name: "R15 · 🔴 D19 · the role rule skipped — a masked viewer's consent filter is answered with a file",
       expect: L.r2,
       impl: () => ({ ...REAL, deps: { ...CONTACTS_EXPORT_DEPS, roleRefusal: () => null } }),
+    },
+    {
+      name: "R15b · ⛔ C8b · B3 not built at the export — a masked viewer's typed whole-number address downloads that number's row",
+      expect: L.r7,
+      impl: () => ({ ...REAL, deps: { ...CONTACTS_EXPORT_DEPS, numberSearch: () => null } }),
     },
     {
       name: "R16 · the parser drops an unknown value instead of refusing — ?op=NOKIA becomes the whole book",

@@ -19,6 +19,8 @@
  *              harm_marker      a player whose deposits trip the harm detector           → SKIPPED rg_harm_marker
  *              minor            an account whose date of birth is under 18               → SKIPPED age_minor
  *              suspended        an account that is not marketable                        → SKIPPED account_status
+ *   (⟶ 2026-10-07: these refusals are the CLOSED licence-outreach record's — this harness never opens it. With it open,
+ *   the owner's FINAL rule reaches `player_toggle_off` on the licence, and `contact_nocons` once a list's basis covers it.)
  *   UNWRITTEN  unusable         a contact whose number the numbering plan refuses (a dead NDC) → counted `unusable`, never a row
  *   AND        duplicates       a second contact row holding an already-listed number in another spelling (the trunk zero after
  *                               the country code, a legacy dirty row) → the second seed is skipped by the unique key
@@ -29,6 +31,12 @@
  * ⛔ No number is a real person's: they are `255` + a live NDC + seven digits made up from the world's index. ⛔ This file holds
  * no backslash (an editing tool decodes them).
  */
+// house-bot: covered by L2 sweep — this seeds made-up accounts (the officer, an ADMIN; players created ACTIVE, SELF_EXCLUDED,
+// COOLED_OFF or SUSPENDED) and their responsible-gambling rows (`rgRow`, the store's own upsert) straight through the store, so no
+// in-app hook fires; the holder sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2). It writes
+// only to the accounts it creates itself (`usr_df<run>_…` and the officer), in the memory twin or the LOOPBACK `.pgscratch`
+// Postgres the dry-fire refuses to leave (`guardEnvironment`, `assertScratchDatabase`): its world holds no house bot, so no bot
+// holder is behind any of them. Only the dry-fire's own files import it (`qa:marketing-dry-fire`, which `test:marketing-dry-fire` runs).
 import type { StoredMarketingContact, StoredResponsibleGambling, StoredSmsCampaign, StoredSuppression, StoredUser } from "../../../src/lib/server/store.ts";
 import type { ContactAudienceFilter } from "../../../src/lib/server/marketing/audience.ts";
 import type { Harness } from "./core.mts";

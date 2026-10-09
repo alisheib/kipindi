@@ -196,7 +196,7 @@ never on the bet/admission path; fail-open behind a breaker.
 **The operationally-loaded ones:** `SMS_PROVIDER=blackball` ✅ (corrected 2026-09-25: it
 read `console` at the 2026-09-04 measurement; Blackball has been live since 2026-09-16, with
 `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET` and
-`SMS_SENDER_ID=50pick`, and delivery receipts proven 2026-09-23 — see
+`SMS_SENDER_ID=50pick.tz` (`50pick` until 2026-10-09), and delivery receipts proven 2026-09-23 — see
 [`BLACKBALL-SMS.md`](BLACKBALL-SMS.md); re-derive from `/api/health` → `sms.provider`) ·
 `DISABLE_ADMIN_TOTP=true` 🔴 (campaign
 E-255) · `PAYMENT_AGGREGATOR=selcom` (live gateway) · `KYC_STORAGE=r2` ·
@@ -351,7 +351,7 @@ npm run test:backup-watchdog                # the alert-that-arrives proof, 24/2
 
 | | Item | Status |
 |---|---|---|
-| 1 | SMS provider | ✅ **DONE 2026-09-16** (corrected 2026-09-25) — `SMS_PROVIDER=blackball`, sender ID `50pick`; delivery receipts settle real rows since 2026-09-23 ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md) §4.8). Marketing SMS is a separate programme; no Gaming Board approval is needed (Ali, 2026-09-26 — [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) §4a, OQ1), so it waits only on the campaign engine |
+| 1 | SMS provider | ✅ **DONE 2026-09-16** (corrected 2026-09-25) — `SMS_PROVIDER=blackball`, sender ID `50pick.tz` since 2026-10-09 (`50pick` before); delivery receipts settle real rows since 2026-09-23 ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md) §4.8). Marketing SMS is a separate programme; no Gaming Board approval is needed (Ali, 2026-09-26 — [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) §4a, OQ1), so it waits only on the campaign engine |
 | 2 | `DISABLE_ADMIN_TOTP=true` | 🔴 open — campaign E-255; forced-enrolment flow EXISTS in code (exempt `/admin/2fa/setup`), lockout fear is contradicted by `admin/layout.tsx:110-122`, but the flow has never been driven; prove locally → flip → drive a QA admin through enrolment live |
 | 3 | Health endpoint can't fail | ✅ **FIXED on main** (`795d31c1` + `test:health-readiness`) |
 | 3b | Railway healthcheck/overlap/draining | 🟡 authored on `launch-1k-phase2` (.railway/railway.ts, plan verified) — merge + `railway config apply` (Ali) |

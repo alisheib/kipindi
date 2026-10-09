@@ -106,6 +106,8 @@ export const ENGINE_MIGRATIONS = Object.freeze([
   "20261008120000_sms_recipient_outcome_index",
   // S15's importer (2026-10-09): ContactImport.targetListId references "ContactList" — the list an import adds its contacts to.
   "20261009120000_contact_import_target_list",
+  // C8c · N3 (2026-10-09): a unique index on lower("name") of "ContactList" — a list's name is unique whatever its case.
+  "20261009180000_contact_list_name_lower_unique",
 ]);
 
 /** The SystemConfig keys the tools read (never write). ⭐ `test:marketing-preflight` P6e holds each to the APP's own constant
@@ -574,17 +576,6 @@ export function readSettings(value) {
 /** The saved consent-basis wordings (`marketing.wordings`), as the gate recognises an import attestation against them. */
 export function savedWordingsOf(value) {
   return savedBasisWordingsOf(readWordingHistories(value ?? null));
-}
-
-/**
- * The NEWEST saved version of one wording (`source.phrase`, `adult.test` …) when its words are not blank, else null. A history
- * the app's own reader cannot read in full reads as never saved (it fails closed, as the composer does). ⛔ Only the version
- * number and the save date come back — never the words.
- */
-export function newestWording(value, key) {
-  const history = readWordingHistories(value ?? null)[key];
-  const last = Array.isArray(history) && history.length > 0 ? history[history.length - 1] : null;
-  return last && typeof last.text === "string" && last.text.trim() !== "" ? { v: last.v, savedAt: toIso(last.savedAt) } : null;
 }
 
 /* ══ THE GATE'S CONSENT-AND-BASIS HALF ═══════════════════════════════════════════════════════════════════════════════ */

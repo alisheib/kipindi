@@ -11,7 +11,11 @@
  * Import, one freezes the run and the other is told `already_started`. A check older than 30 minutes (or unreadable, or
  * in the future) is refused `check_stale` and the screen checks again; counts the book has moved since are refused
  * `check_again`, so the officer sees the new numbers first. ⭐ A NEW list is created inside the freeze's own write (the
- * review round's R12), so a start that loses the run, or throws, leaves no list behind and its name stays free.
+ * review round's R12), so a start that loses the run, or throws, leaves no list behind and its name stays free. ⭐ C8c · N3:
+ * a list made meanwhile under the same name IN ANY CASE — by another officer, or the same one in another tab — is refused
+ * there by the store's unique index on `lower("name")` (both twins), the freeze rolled back, and the start says so in its
+ * own words (`LIST_MADE_MEANWHILE_SENTENCE`: the list already exists — choose it from the lists, read again, or type
+ * another name).
  * ⛔ S15-10: a viewer who may not read numbers starts with KEEP alone — another choice, or any exception, is refused
  * `update_needs_reader`. ⭐ S15-1: NO CONSENT STEP — the import writes no consent and asks for no basis; a list's licence
  * basis lives on the Lists card.
@@ -21,7 +25,11 @@
  * a step whose cursor moved — a reload, a second tab, an adopting admin — is answered `moved` with nothing counted
  * twice. Bets come first: a step is refused `busy` while the admission queue holds a bet (`admissionSnapshot`), and so
  * is a step the database itself turned away for now (a deadlock, a pool or a transaction timeout — R11), and the loop
- * asks again after `retryAfterSec`. Each step:
+ * asks again after `retryAfterSec`. ⭐ C8c · #14b · the database's "not now" is said in ITS words (`DB_BUSY_SENTENCE` —
+ * "bets come first" is the bet queue's alone), and `DB_FAULTS_TO_PAUSE` of them in a row on one run, over at least
+ * `DB_FAULT_SPAN_MS`, PAUSE the run (`db_paused`) — a persistent fault ends, it does not loop; a step whose rows kept
+ * moving ends in words the officer can act on (`STEP_CONFLICT_SENTENCE`). ⭐ #15 · pause and resume move a run only
+ * along `RUN_ACTS` — a STAGED run is never resumed (it has no frozen decision). Each step:
  *   1 · reads the staged rows of its range — (cursor, the range's last ordinal] — by keyset; an unreadable or invalid
  *       row settles `fail('invalid')` (its sentence kept for the failures list BEFORE its cells are blanked — S15-8);
  *   2 · reads each decidable number's FIRST decidable line in the whole run in ONE grouped read (S15-7,
@@ -35,7 +43,13 @@
  *       (the erasure reads the book before it deletes them — recorded for C8, not closed here);
  *   4 · writes: creates through THE ONE CREATE BUILDER (`newContactRow`, X6 — source IMPORT, `sourceRef` and `importId`
  *       the run), updates conditional on the book row's `updatedAt` and on it not being the erased tombstone, keeps with
- *       decide()'s SHOWN reason (⛔ X22: the word `erased` never lands in a stored row), the blanking, the list memberships;
+ *       decide()'s SHOWN reason (⛔ X22: the word `erased` never lands in a stored row), the blanking — ⭐ C8c · #13 · a row
+ *       whose file tags were not all added (the contact reached its most tags) keeps exactly those tags, so the result lists
+ *       it (`tagsLeft`, read back by `contactImportRow.tagsLeftPage`) — the list memberships
+ *       — ⛔ C8b (B4, Ali's ruling of 2026-10-09; the review's M1): for a run whose CREATOR or STARTER may not read
+ *       numbers, ONLY the contacts the run creates join its list; a kept row (an ordinary contact, a player's, a stopped
+ *       number) joining while an erased one never did let the masked officer read off `?list=` whether a number was in the
+ *       book and why — the starter, or the creator whose run an ADMIN started. A run of readers alone is unchanged;
  *   5 · on a `conflict` — a contact changed since it was read, or a staged row erasure deleted since (R9) — reads its
  *       range AGAIN and decides ONCE more from fresh facts (a row that is gone is not imported, so an erased number is
  *       never created); a row that moves again is kept as `changed_during_import` (E9: never failed) and the rest commit;
@@ -54,6 +68,8 @@
  * linked to an account (S15-11, decide()'s `account`), or touch the SMS rail — it imports nothing that sends, nothing from
  * the ledger's writers and nothing from the opt-out service.
  * ⛔ AUDIT under `contacts.import.*` (X23): ids, counts, reasons — never a number, a name, a cell or the file's name.
+ * ⭐ C8c · #14a · a refusal's row goes through `auditImportRefusal` alone: never for a "moved", and at most one a minute per
+ * officer, run and reason (`refusal-audit.ts`) — a script sending bad cursors no longer writes a row per call.
  * ⛔ D19 BY SHAPE: every answer is `import-flow.ts`'s — masked numbers, lines, sentences and counts; the kept rows are split
  * by reason ONLY for a viewer whose identity.contact cell is `read` (S15-3 · OD54), read off the matrix, never a role name.
  *
@@ -64,10 +80,11 @@ import { db, CONTACT_IMPORT_OPEN_RUNS_MAX } from "@/lib/server/store";
 import type {
   ContactImportCommitBatch, ContactImportCommitCreate, ContactImportCommitOutcome, ContactImportCommitResult,
   ContactImportCommitUpdate, ContactImportFailSentence, ContactImportFailedPage, ContactImportFailedQuery,
-  ContactImportFreeze, ContactImportKeptCount, ContactImportOthersQuery, ContactImportTransition, ListBasisCoverage,
-  StoredContactImport, StoredContactImportRow, StoredContactList, StoredContactListBasis,
+  ContactImportFreeze, ContactImportKeptCount, ContactImportOthersQuery, ContactImportStatus, ContactImportTagsLeft,
+  ContactImportTransition, ContactListJoinedQuery, ListBasisCoverageSplit, StoredContactImport,
+  StoredContactImportRow, StoredContactList, StoredContactListBasis,
 } from "@/lib/server/store";
-import { admissionSnapshot } from "@/lib/server/admission";
+import { listFiguresFor } from "./list-figures";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import type { ContactCacheOutcome } from "@/lib/server/marketing/contact-cache";
 import { newContactRow } from "./contact-write";
@@ -75,7 +92,7 @@ import { IMPORT_STAGING_DEPS, discardContactImport } from "./import-staging";
 import type { ImportStagingDeps } from "./import-staging";
 import {
   IMPORT_CHECK_DEPS, auditImportRefusal, bagOf, classifyStagedRow, importRefusal, importRefusalOf, importRunView,
-  isRowCursor, keysetPageRows, loadImportFacts, openImportRun, walkStagedRun,
+  isRowCursor, keysetPageRows, listCreatedOnlyFor, loadImportFacts, openImportRun, walkStagedRun,
 } from "./import-check";
 import type { ImportCheckDeps } from "./import-check";
 import { parseTzNumber } from "@/lib/tz-msisdn";
@@ -86,10 +103,12 @@ import {
   IMPORT_CHOICES, adjustTally, decideRows, parseImportChoice, parseRowOverrides,
 } from "@/lib/contacts/import-decide";
 import type { DecisionPreview, ImportCandidate, ImportChoice, RowOverrides } from "@/lib/contacts/import-decide";
-import { FAILURES_PAGE_ROWS } from "@/lib/contacts/import-flow";
+import {
+  DB_BUSY_SENTENCE, FAILURES_PAGE_ROWS, LIST_MADE_MEANWHILE_SENTENCE, START_BETS_SENTENCE, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence,
+} from "@/lib/contacts/import-flow";
 import type {
   CommitStepResult, FailuresResult, ImportListOption, ImportListsResult, ImportOpenRunsResult, ImportRefusal,
-  ImportRefusalReason, ImportResultResult, ImportRunView, KeptSplit, RunActResult, StartImportResult,
+  ImportRefusalReason, ImportResultResult, ImportResultView, ImportRunView, KeptSplit, RunActResult, StartImportResult,
 } from "@/lib/contacts/import-flow";
 
 /* ═══ THE PERIODS AND THE BOUNDS ═══════════════════════════════════════════════════════════════════════ */
@@ -116,8 +135,70 @@ const KEEP_ONLY: ImportChoice = "KEEP";
  * which — so the loop is told `busy` and asks again; never `server_error`.
  */
 export const RETRYABLE_DB_CODES: readonly string[] = ["P2034", "P2024", "P2028"];
+/**
+ * ⭐ C8c · #14b · A PERSISTENT "NOT NOW" ENDS, IT DOES NOT LOOP. Before, a P2028 or a P2024 that never cleared was retried for
+ * ever at the same 500 rows under the bet queue's sentence. Now, when a run's steps meet the database's "not now"
+ * `DB_FAULTS_TO_PAUSE` times IN A ROW (no step between them answered anything else) and the first of them was at least
+ * `DB_FAULT_SPAN_MS` ago, the step PAUSES the run and says so in its own words (`db_paused`): the officer resumes it in a
+ * few minutes, and nothing is lost (every step is all or nothing, the cursor says where it stands).
+ * WHY FIVE OVER A MINUTE: the loop waits 5, 10, 20 and 30 seconds between busy answers (`BUSY_BACKOFF_SEC`), so five faults
+ * in a row span at least 65 seconds even when each fails at once — a database that refused every step for over a minute.
+ * A deploy's restart or a failover (seconds) never pauses an import, and the span keeps a burst of quick faults (two tabs on
+ * one run, a retry storm) from pausing it either.
+ */
+export const DB_FAULTS_TO_PAUSE = 5;
+export const DB_FAULT_SPAN_MS = 60_000;
 
 const COMMIT_REFUSED = "contacts.import.commit_refused";
+
+/* ═══ #14b · EACH RUN'S STREAK OF THE DATABASE'S "NOT NOW" ═══════════════════════════════════════════════════════════ */
+
+/** One run's streak: how many steps in a row the database turned away, and when the first of them was. */
+export type DbFaultStreak = { readonly count: number; readonly since: number };
+
+/** ⭐ C8c · #14b · the streaks, per run. ⚠️ PER PROCESS (a liveness rule, not a safety one): a restart forgets a streak —
+ *  which is exactly when the database may be back — and N instances each count their own steps. */
+export type DbFaultStreaks = {
+  /** One more fault on this run, at `atMs`: the streak as it stands now. */
+  readonly record: (runId: string, atMs: number) => DbFaultStreak;
+  /** The DATABASE answered a step of this run — the step's own reads and write came back with no retryable fault: the
+   *  write landed (`advanced`, `done`) or was refused (the cursor moved under it: `moved`; rows that kept moving:
+   *  `server_error` in `STEP_CONFLICT_SENTENCE`), or the step's first lines would not hold (`server_error`) — or its
+   *  faults just paused the run: the streak is over. ⛔ The review's n5, as the re-review read it: an answer given BEFORE
+   *  the step itself runs — a bet-queue `busy`, a `moved` or paused cursor read off the run, a refusal of the cursor, the
+   *  run or its decision — and a fault that is not retryable (the action's catch) neither end nor extend it. */
+  readonly clear: (runId: string) => void;
+};
+
+/** The streaks, bounded: at most `maxRuns` remembered — forgetting one only delays a pause, never causes one. */
+export function dbFaultStreaks(maxRuns = 1000): DbFaultStreaks {
+  const streaks = new Map<string, DbFaultStreak>();
+  return {
+    record: (runId, atMs) => {
+      const held = streaks.get(runId);
+      const next = held === undefined ? { count: 1, since: atMs } : { count: held.count + 1, since: held.since };
+      if (held === undefined && streaks.size >= maxRuns) streaks.clear();
+      streaks.set(runId, next);
+      return next;
+    },
+    clear: (runId) => {
+      streaks.delete(runId);
+    },
+  };
+}
+
+/** Production's one set of streaks per process. */
+export const IMPORT_DB_FAULTS: DbFaultStreaks = dbFaultStreaks();
+
+/**
+ * ⭐ C8c · #15 · THE ONE TABLE OF WHAT PAUSE AND RESUME MOVE A RUN BETWEEN. ⛔ Resume moves a PAUSED run and nothing else:
+ * a STAGED run has no frozen decision — a commit from it would write with none — so its resume is refused (`check_again`,
+ * the dialog checks it again), and so is a pause of anything that is not COMMITTING.
+ */
+export const RUN_ACTS: Readonly<Record<"pause" | "resume", { readonly from: readonly ContactImportStatus[]; readonly to: ContactImportStatus }>> = {
+  pause: { from: ["COMMITTING"], to: "PAUSED" },
+  resume: { from: ["PAUSED"], to: "COMMITTING" },
+};
 
 /* ═══ THE DEPENDENCIES — swappable for the suite's in-process red plants; production never passes them ═══════════ */
 
@@ -126,8 +207,11 @@ const COMMIT_REFUSED = "contacts.import.commit_refused";
 export type ImportListStore = {
   all: () => Promise<StoredContactList[]>;
   find: (id: string) => Promise<StoredContactList | null>;
-  /** The Lists card's own figures (`contactListBasis.coveredCount`). */
-  coverage: (listId: string) => Promise<ListBasisCoverage>;
+  /** ⭐ C8b (B5) · the Lists card's own figures, split by the account link (`contactListBasis.coverageSplit`) — each viewer
+   *  is shown them through the ONE rule (`listFiguresFor`). */
+  split: (listId: string) => Promise<ListBasisCoverageSplit>;
+  /** ⭐ C8b review (MINOR 2) · how many contacts the run put on the list (`contactListMember.joinedFromImport`). */
+  joined: (q: ContactListJoinedQuery) => Promise<number>;
   /** The list's ONE standing: its newest basis recording, revoked or not (U33a-L, M1). */
   newestBasis: (listId: string) => Promise<StoredContactListBasis | null>;
 };
@@ -138,14 +222,14 @@ export type ImportCommitDeps = ImportCheckDeps & {
   transition: (t: ContactImportTransition) => Promise<StoredContactImport | null>;
   deleteUnsettled: (importId: string) => Promise<number>;
   failedPage: (q: ContactImportFailedQuery) => Promise<ContactImportFailedPage>;
+  /** ⭐ C8c · #13 · the settled rows whose file tags were not all added (`contactImportRow.tagsLeftPage`). */
+  tagsLeftPage: (q: ContactImportFailedQuery) => Promise<ContactImportFailedPage>;
   keptSplit: (importId: string) => Promise<ContactImportKeptCount[]>;
   lists: ImportListStore;
   /** S15-12 · an ADMIN's read of other officers' unfinished runs (`contactImport.listOpenByOthers`). */
   openRuns: (q: ContactImportOthersQuery) => Promise<StoredContactImport[]>;
   /** Staging's discard — a run cancelled before its start (U29b). */
   stagingDeps: ImportStagingDeps;
-  /** ⭐ Bets come first: how many bets wait for an admission slot right now. */
-  queueDepth: () => number;
   /** U24's ONE cache writer. */
   mirror: (msisdn: string, at: string) => Promise<ContactCacheOutcome>;
   /** X6 · THE ONE CREATE BUILDER. */
@@ -172,6 +256,16 @@ export type ImportCommitDeps = ImportCheckDeps & {
   finishCaches: (runId: string, at: string, deps: ImportCommitDeps) => Promise<number>;
   /** R5 · the staged rows a cancel leaves unimported, off the run's two cursors (`notImportedOf`) — read BEFORE the delete. */
   leftUnimported: (run: StoredContactImport) => number;
+  /** ⭐ C8c · #14b · each run's streak of the database's "not now", and when it pauses the run. */
+  dbFaults: DbFaultStreaks;
+  dbFaultsToPause: number;
+  dbFaultSpanMs: number;
+  /** ⭐ C8c · #15 · what pause and resume move a run between (`RUN_ACTS`). */
+  acts: typeof RUN_ACTS;
+  /** ⛔ C8b (B4 · the review's M1) · does this run put on its list ONLY the contacts it creates (`listCreatedOnly`: its
+   *  CREATOR or its STARTER may not read numbers)? `driver` is whoever asked for the step — named so a red plant can
+   *  mistake it for the starter. */
+  createdOnly: (run: StoredContactImport, driver: string, deps: ImportCommitDeps) => Promise<boolean>;
 };
 
 /** A new list's id: `cl_` and sixteen letters — the bulk bar's shape; no digit run that could read as a number. */
@@ -238,16 +332,17 @@ export const IMPORT_COMMIT_DEPS: ImportCommitDeps = {
   transition: async (t) => db.contactImport.transition(t),
   deleteUnsettled: async (importId) => db.contactImportRow.deleteUnsettled(importId),
   failedPage: async (q) => db.contactImportRow.failedPage(q),
+  tagsLeftPage: async (q) => db.contactImportRow.tagsLeftPage(q),
   keptSplit: async (importId) => db.contactImportRow.keptSplit(importId),
   lists: {
     all: async () => db.contactList.listAll(),
     find: async (id) => db.contactList.find(id),
-    coverage: async (listId) => db.contactListBasis.coveredCount(listId),
+    split: async (listId) => db.contactListBasis.coverageSplit(listId),
+    joined: async (q) => db.contactListMember.joinedFromImport(q),
     newestBasis: async (listId) => (await db.contactListBasis.listForList(listId))[0] ?? null,
   },
   openRuns: async (q) => db.contactImport.listOpenByOthers(q),
   stagingDeps: IMPORT_STAGING_DEPS,
-  queueDepth: () => admissionSnapshot().queueDepth,
   mirror: (msisdn, at) => mirrorContactCache(msisdn, at),
   newRow: newContactRow,
   decide: decideRows,
@@ -263,7 +358,24 @@ export const IMPORT_COMMIT_DEPS: ImportCommitDeps = {
   bestEffort,
   finishCaches: (runId, at, deps) => mirrorRunCreated(runId, at, deps),
   leftUnimported: (run) => notImportedOf(run),
+  dbFaults: IMPORT_DB_FAULTS,
+  dbFaultsToPause: DB_FAULTS_TO_PAUSE,
+  dbFaultSpanMs: DB_FAULT_SPAN_MS,
+  acts: RUN_ACTS,
+  createdOnly: (run, _driver, deps) => listCreatedOnly(run, deps),
 };
+
+/**
+ * ⛔ C8b (B4, Ali's ruling of 2026-10-09: "a GROWTH officer's import puts on a list only the contacts that run CREATED") ·
+ * a run whose CREATOR or STARTER may not read numbers (`createdBy`, and `decisionConfirmedBy` — the run's own facts) puts
+ * on its list only the contacts it creates — the ONE rule (`listCreatedOnlyFor`, import-check.ts), which the run's view
+ * asks too. ⭐ Never whoever drives the step: an ADMIN resuming a masked officer's run (X18) changes nothing. 🔴 And never
+ * the starter alone (the C8b review's M1): an ADMIN who STARTED a masked officer's staged run would have put the kept rows
+ * on the list, and the creator would have read from the list which of their file's numbers were erased. ⛔ Fails closed.
+ */
+export async function listCreatedOnly(run: StoredContactImport, deps: Pick<ImportCommitDeps, "readsNumbers">): Promise<boolean> {
+  return listCreatedOnlyFor([run.createdBy, run.decisionConfirmedBy ?? run.createdBy], deps);
+}
 
 /* ═══ SMALL PIECES ═════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -277,11 +389,14 @@ function stampAfter(at: string, guard: string): string {
 
 /**
  * ⛔ THE ACTIONS' CATCH: a failure the browser is told as `server_error` — never a throw, never the error's text — leaves
- * one refusal row (`contacts.import.<family>_refused`, X23) and one log line with the error's NAME and CODE only.
+ * one log line with the error's NAME and CODE only, and a refusal row (`contacts.import.<family>_refused`, X23) bounded
+ * like every refusal's (C8c · #14a, the review's n4): at most one a minute for the officer, the run, the reason and this
+ * failure's `step`, the next row carrying how many it stands for — so a failing step repeated by a loop is ONE row a
+ * minute, never one per call; a row the audit could not record never silences the minute.
  */
 export async function recordImportFailure(
   officerId: string, family: "stage" | "check" | "commit", importId: string | null, step: string, err: unknown,
-  deps: Pick<ImportCheckDeps, "audit"> = IMPORT_CHECK_DEPS,
+  deps: Pick<ImportCheckDeps, "audit" | "refusalAudit"> = IMPORT_CHECK_DEPS,
 ): Promise<ImportRefusal> {
   const kind = errorKind(err);
   console.error(`[contacts-import] ${step} failed (${kind}) — answered server_error`);
@@ -353,7 +468,8 @@ export async function startContactImport(officerId: string, input: unknown, deps
   if (list.kind === "new") {
     const named = parseListName(list.name);
     if (!named.ok) return refuse("bad_list", named.sentence);
-    // ⭐ ONE LIST PER NAME TO A PERSON (the bulk bar's rule): the store's unique index is case-sensitive, so ask here.
+    // ⭐ ONE LIST PER NAME TO A PERSON (the bulk bar's rule, `listNameKey`) — the RULE, asked here first. The store's unique
+    // index on lower(name) is the BACKSTOP for a list made between this read and the freeze below (C8c · N3).
     const key = listNameKey(named.name);
     if ((await deps.lists.all()).some((l) => listNameKey(l.name) === key)) return refuse("list_name_taken");
     newName = named.name;
@@ -383,6 +499,8 @@ export async function startContactImport(officerId: string, input: unknown, deps
     for (const p of page.plan.previews) if (deps.changeable(p)) changeable.add(p.line);
   });
   if (walked === "too_slow") return refuse("too_slow");
+  // ⭐ C8c · m5 · bets kept the walk waiting past its deadline: said in the platform's words, about pressing Import.
+  if (walked === "bets") return refuse("bets_busy", START_BETS_SENTENCE);
   // ⛔ An exception may name only an in-book row that a choice would change — never a row outside the file, a new
   // number, a repeat, or a row the book no longer differs from.
   const overrides: RowOverrides | null = parseRowOverrides(body.exceptions, changeable);
@@ -408,8 +526,13 @@ export async function startContactImport(officerId: string, input: unknown, deps
     frozen = await deps.freeze({ importId: run.id, choice, overrides, targetListId, newList, by: officerId, at });
   } catch (err) {
     const code = dbCode(err);
-    // The unique index took the name between the check above and the freeze; the foreign key found the list gone.
-    if (code === "P2002" && newList !== null) return refuse("list_name_taken");
+    // ⭐ C8c · N3 · a unique index took the name — in ANY case (the lower(name) index): a list made between the check above
+    // and the freeze (another officer, or this one in another tab), or (n2) an older one whose name the database's lower()
+    // folds where `listNameKey` does not. The freeze rolled back whole (the run is still STAGED, no list of this start
+    // exists), and the start says so in its own words — that the list ALREADY EXISTS, never when it was made; the dialog
+    // reads the lists again, and the officer chooses that list there (n2: never "press Import" — see the sentence's doc).
+    if (code === "P2002" && newList !== null) return refuse("list_name_taken", LIST_MADE_MEANWHILE_SENTENCE, { why: "raced" });
+    // The foreign key found the list gone.
     if (code === "P2003" && list.kind === "existing") return refuse("list_gone");
     throw err;
   }
@@ -441,19 +564,22 @@ type StepPlan = {
   members: Map<number, string>;
   /** The numbers created, for the cache mirror. */
   created: Map<number, string>;
+  /** ⭐ C8c · #13 · the rows whose file tags were not all added (a contact full of tags) — kept on the row for the result. */
+  tagsLeft: ContactImportTagsLeft[];
 };
 
 /**
  * ⭐ ONE STEP'S DECISIONS, from the rows it read. Unreadable and invalid rows fail `invalid` (an invalid row whose sentence
  * is not stored yet gets it written — S15-8); the decidable rows are decided with the FROZEN choice and overrides, the
  * WHOLE run's first lines (S15-7) and fresh facts. Null when a decidable number has no first line at or before its own
- * row — ⛔ the step refuses rather than guess which row of a number wins (OD33).
+ * row — ⛔ the step refuses rather than guess which row of a number wins (OD33). ⛔ C8b (B4) · `createdOnly` (a creator
+ * or a starter who may not read numbers): only a created contact joins the run's list.
  */
 async function planStep(
   run: StoredContactImport, window: readonly StoredContactImportRow[], choice: ImportChoice, overrides: RowOverrides,
-  officerId: string, at: string, deps: ImportCommitDeps,
+  officerId: string, at: string, deps: ImportCommitDeps, createdOnly: boolean,
 ): Promise<StepPlan | null> {
-  const plan: StepPlan = { creates: [], updates: [], outcomes: [], sentences: [], members: new Map(), created: new Map() };
+  const plan: StepPlan = { creates: [], updates: [], outcomes: [], sentences: [], members: new Map(), created: new Map(), tagsLeft: [] };
   const decidable: Array<{ row: StoredContactImportRow; candidate: ImportCandidate }> = [];
   for (const row of window) {
     const c = classifyStagedRow(row, deps.isSample);
@@ -496,11 +622,17 @@ async function planStep(
         patch: { ...d.patch },
       });
       plan.outcomes.push({ ordinal: row.ordinal, outcome: "update", reason: null });
-      if (listed) plan.members.set(row.ordinal, d.contactId);
+      if (listed && !createdOnly) plan.members.set(row.ordinal, d.contactId);
+      // ⭐ C8c · #13 · the tags a full contact could not take are LISTED in the result, never silently dropped.
+      if (d.tagsNotAdded.length > 0) plan.tagsLeft.push({ ordinal: row.ordinal, tags: [...d.tagsNotAdded] });
     } else {
       // ⛔ X22 · the SHOWN reason: an erased number is stored as the ordinary contact it reads as, never as `erased`.
       plan.outcomes.push({ ordinal: row.ordinal, outcome: "keep", reason: d.shown });
-      if (listed && d.contactId !== null && d.reason !== "erased") plan.members.set(row.ordinal, d.contactId);
+      // ⛔ C8b (B4) · a masked creator's or starter's run puts on the list ONLY what it created: a kept row joining (or an
+      // erased one not joining) would answer on `?list=` whether the number is in the book, and why.
+      if (listed && !createdOnly && d.contactId !== null && d.reason !== "erased") plan.members.set(row.ordinal, d.contactId);
+      // ⭐ C8c · #13 · a contact full of tags whose only difference is new tags reads `no_change` — and lists them too.
+      if (d.tagsNotAdded.length > 0) plan.tagsLeft.push({ ordinal: row.ordinal, tags: [...d.tagsNotAdded] });
     }
   });
   return plan;
@@ -523,6 +655,8 @@ function keepMoved(plan: StepPlan, ordinals: readonly number[], live: ReadonlySe
     sentences: plan.sentences.filter((s) => stays(s.ordinal)),
     members: new Map([...plan.members].filter(([o]) => stays(o) && !movedCreate.has(o))),
     created: new Map([...plan.created].filter(([o]) => stays(o) && !moved.has(o))),
+    // A row that moved again is kept as changed_during_import: its tags were never decided, so none are listed for it.
+    tagsLeft: plan.tagsLeft.filter((t) => stays(t.ordinal) && !moved.has(t.ordinal)),
   };
 }
 
@@ -588,17 +722,51 @@ function notSteppable(run: StoredContactImport): { reason: ImportRefusalReason; 
   return { reason: "not_staged", audited: true };
 }
 
-/** ⭐ R11 · the database turned the step away for now: `busy`, with the run as it stands when that can be read. */
+/** The run as it stands when it can be read — null when the database will not say (an answer is never a throw). */
+async function viewNow(officerId: string, run: StoredContactImport, deps: ImportCommitDeps): Promise<ImportRunView | null> {
+  try {
+    return await importRunView(officerId, (await deps.findRun(run.id)) ?? run, deps);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ⭐ R11 · the database turned the step away for now: `busy` — ⛔ C8c · #14b · in the database's own words
+ * (`DB_BUSY_SENTENCE`, never the bet queue's "bets come first") — with the run as it stands when that can be read.
+ * ⭐ #14b · the fault is counted on the run's streak; the `DB_FAULTS_TO_PAUSE`-th in a row, the first of them at least
+ * `DB_FAULT_SPAN_MS` ago, PAUSES the run (COMMITTING → PAUSED, one compare-and-set, audited `contacts.import.paused` with
+ * why "database") and answers `db_paused`: the loop stops, and the officer resumes in a few minutes. A pause the database
+ * will not write either is answered `busy` again, and the next fault asks once more.
+ * ⛔ The review's m2 · THE PAUSE IS NOBODY'S: the run is paused `by: null`, so neither panel says "Paused by you" above
+ * the database's own sentence — no officer pressed Stop. The audit row keeps the actor whose step met the fault, and why.
+ */
 async function retryLater(officerId: string, run: StoredContactImport, err: unknown, deps: ImportCommitDeps): Promise<CommitStepResult> {
+  const atMs = deps.now().getTime();
+  const streak = deps.dbFaults.record(run.id, atMs);
+  if (streak.count >= deps.dbFaultsToPause && atMs - streak.since >= deps.dbFaultSpanMs) {
+    let paused: StoredContactImport | null = null;
+    try {
+      paused = await deps.transition({ importId: run.id, from: ["COMMITTING"], to: "PAUSED", by: null, at: new Date(atMs).toISOString(), updatedBefore: null });
+    } catch {
+      paused = null;
+    }
+    if (paused !== null) {
+      deps.dbFaults.clear(run.id);
+      const pausedRun = paused;
+      await deps.bestEffort("the database pause's audit row", () => deps.audit({
+        category: "ADMIN", action: "contacts.import.paused", actorId: officerId, targetType: "ContactImport", targetId: run.id,
+        payload: {
+          committedThrough: pausedRun.committedThrough, adopted: run.createdBy !== officerId, why: "database", faults: streak.count,
+          error: errorKind(err),
+        },
+      }));
+      return importRefusal("db_paused", await viewNow(officerId, pausedRun, deps));
+    }
+  }
   await deps.bestEffort("the retry's audit row", () =>
     auditImportRefusal(deps, COMMIT_REFUSED, officerId, run.id, "busy", { step: "commit", why: "retryable", error: errorKind(err) }));
-  let view: ImportRunView | null = null;
-  try {
-    view = await importRunView(officerId, (await deps.findRun(run.id)) ?? run, deps);
-  } catch {
-    view = null;
-  }
-  return importRefusal("busy", view, undefined, BUSY_RETRY_SEC);
+  return importRefusal("busy", await viewNow(officerId, run, deps), DB_BUSY_SENTENCE, BUSY_RETRY_SEC);
 }
 
 /**
@@ -635,14 +803,18 @@ export async function commitContactImportStep(officerId: string, input: unknown,
     await auditImportRefusal(deps, COMMIT_REFUSED, officerId, run.id, "server_error", { step: "commit", why: "decision" });
     return importRefusal("server_error", await importRunView(officerId, run, deps));
   }
+  let answer: CommitStepResult;
   try {
-    return await settleStep(officerId, run, fromCursor, choice, overrides, startedAt, deps);
+    answer = await settleStep(officerId, run, fromCursor, choice, overrides, startedAt, deps);
   } catch (err) {
     // ⭐ R11 · the database's "not now": the step's transaction rolled back whole or landed whole — the cursor says which,
     // and the next ask from the same cursor is answered `moved` if it landed. Anything else is the action's catch.
     if (!deps.retryable(err)) throw err;
     return retryLater(officerId, run, err, deps);
   }
+  // ⭐ C8c · #14b · the database answered: the run's streak of "not now" is over.
+  deps.dbFaults.clear(run.id);
+  return answer;
 }
 
 /** The step itself, once the run, the cursor and the frozen decision are known to be right. */
@@ -662,16 +834,20 @@ async function settleStep(
   const listId = run.targetListId ?? null;
   const batchOf = (p: StepPlan): ContactImportCommitBatch => ({
     importId: run.id, fromCursor, toCursor, at, by: officerId, creates: p.creates, updates: p.updates, outcomes: p.outcomes,
-    sentences: p.sentences, listId, members: Array.from(new Set(p.members.values())),
+    sentences: p.sentences, listId, members: Array.from(new Set(p.members.values())), tagsLeft: p.tagsLeft,
   });
-  const refusedAs = async (why: string, rows = 0): Promise<CommitStepResult> => {
+  const refusedAs = async (why: string, rows = 0, message?: string): Promise<CommitStepResult> => {
     await auditImportRefusal(deps, COMMIT_REFUSED, officerId, run.id, "server_error", { step: "commit", why, rows });
-    return importRefusal("server_error", await importRunView(officerId, (await deps.findRun(run.id)) ?? run, deps));
+    return importRefusal("server_error", await importRunView(officerId, (await deps.findRun(run.id)) ?? run, deps), message);
   };
+  // ⛔ C8b (B4, Ali's ruling of 2026-10-09; the review's M1) · the run of a CREATOR or a STARTER who may not read numbers
+  // puts on its list ONLY the contacts it creates (`listCreatedOnly`) — their read cells, whoever drives the step, asked
+  // each step.
+  const createdOnly = await deps.createdOnly(run, officerId, deps);
 
-  let planned = await planStep(run, firstRead, choice, overrides, officerId, at, deps);
+  let planned = await planStep(run, firstRead, choice, overrides, officerId, at, deps, createdOnly);
   // A number whose first row erasure deleted between the read and its first-line read: the range is read once more.
-  if (planned === null) planned = await planStep(run, await reread(), choice, overrides, officerId, at, deps);
+  if (planned === null) planned = await planStep(run, await reread(), choice, overrides, officerId, at, deps, createdOnly);
   if (planned === null) return refusedAs("first_line");
   let plan: StepPlan = planned;
   let result: ContactImportCommitResult = await deps.commitBatch(batchOf(plan));
@@ -680,7 +856,7 @@ async function settleStep(
   while (result.kind === "conflict" && redecided < deps.maxRedecides) {
     redecided++;
     // X3 · decided ONCE more from FRESH facts — over a FRESH read of the range (R9).
-    const again = await planStep(run, await reread(), choice, overrides, officerId, at, deps);
+    const again = await planStep(run, await reread(), choice, overrides, officerId, at, deps, createdOnly);
     if (again === null) return refusedAs("first_line");
     plan = again;
     result = await deps.commitBatch(batchOf(plan));
@@ -692,8 +868,9 @@ async function settleStep(
     result = await deps.commitBatch(batchOf(plan));
   }
   if (result.kind === "conflict") {
-    // ⛔ Nothing was written (every conflict rolls the step back): the loop asks again, and the step decides afresh.
-    return refusedAs("conflict", result.ordinals.length);
+    // ⛔ Nothing was written (every conflict rolls the step back): the officer resumes, and the step decides afresh.
+    // ⭐ C8c · #14b · said in words the officer can act on (`STEP_CONFLICT_SENTENCE`), never "something went wrong".
+    return refusedAs("conflict", result.ordinals.length, STEP_CONFLICT_SENTENCE);
   }
   if (result.kind === "moved") {
     const now = result.run ?? (await deps.findRun(run.id)) ?? run;
@@ -740,16 +917,16 @@ async function runAct(
   const opened = await openImportRun(officerId, bagOf(input).runId, deps, COMMIT_REFUSED);
   if (!opened.ok) return opened.refusal;
   const run = opened.run;
-  const from = act === "pause" ? "COMMITTING" : "PAUSED";
-  const to = act === "pause" ? "PAUSED" : "COMMITTING";
+  // ⭐ C8c · #15 · the ONE table (`RUN_ACTS`): resume moves a PAUSED run only — a STAGED one is refused below.
+  const { from, to } = deps.acts[act];
   // ⭐ IDEMPOTENT: a second press finds the run already where it was sent.
   if (run.status === to) return { ok: true, view: await importRunView(officerId, run, deps) };
-  if (run.status !== from) {
+  if (!from.includes(run.status)) {
     await auditImportRefusal(deps, COMMIT_REFUSED, officerId, run.id, actRefusal(run), { step: act });
     return importRefusal(actRefusal(run), await importRunView(officerId, run, deps));
   }
   const at = deps.now().toISOString();
-  const moved = await deps.transition({ importId: run.id, from: [from], to, by: officerId, at, updatedBefore: null });
+  const moved = await deps.transition({ importId: run.id, from: [...from], to, by: officerId, at, updatedBefore: null });
   if (moved === null) {
     const current = (await deps.findRun(run.id)) ?? run;
     if (current.status === to) return { ok: true, view: await importRunView(officerId, current, deps) };
@@ -823,7 +1000,12 @@ export async function cancelContactImport(officerId: string, input: unknown, dep
 
 /* ═══ THE FAILURES · THE RESULT · THE LISTS · THE OPEN RUNS ════════════════════════════════════════════════ */
 
-/** The rows that could not be imported, a page at a time, by FILE row — each with its sentence, never its cell. */
+/**
+ * The rows that could not be imported, a page at a time, by FILE row — each with its sentence, never its cell.
+ * ⭐ C8c · #13 · with `list: "tags_not_added"`, the rows whose new tags a full contact could not take, each with the ONE
+ * sentence that names those tags (`tagsNotAddedSentence`) — ⛔ a READER's alone (S15-10: a masked officer sees no per-row
+ * changes at all; refused `update_needs_reader`). Any other `list` value is the failures list, as before.
+ */
 export async function contactImportFailures(officerId: string, input: unknown, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<FailuresResult> {
   const body = bagOf(input);
   const afterLine = body.afterLine;
@@ -833,8 +1015,14 @@ export async function contactImportFailures(officerId: string, input: unknown, d
   }
   const opened = await openImportRun(officerId, body.runId, deps, COMMIT_REFUSED);
   if (!opened.ok) return opened.refusal;
-  const page = await deps.failedPage({ importId: opened.run.id, afterLine, limit: FAILURES_PAGE_ROWS });
-  const rows = page.rows.map((row) => ({ line: row.line, sentence: deps.sentenceOf(row) }));
+  const tagsList = body.list === "tags_not_added";
+  if (tagsList && !(await deps.readsNumbers(officerId))) {
+    await auditImportRefusal(deps, COMMIT_REFUSED, officerId, opened.run.id, "update_needs_reader", { step: "tags_not_added" });
+    return importRefusal("update_needs_reader", await importRunView(officerId, opened.run, deps));
+  }
+  const query = { importId: opened.run.id, afterLine, limit: FAILURES_PAGE_ROWS };
+  const page = tagsList ? await deps.tagsLeftPage(query) : await deps.failedPage(query);
+  const rows = page.rows.map((row) => ({ line: row.line, sentence: tagsList ? tagsNotAddedSentence(row.tags) : deps.sentenceOf(row) }));
   const last = page.rows[page.rows.length - 1];
   return { ok: true, rows, total: page.total, nextAfterLine: page.rows.length >= FAILURES_PAGE_ROWS && last !== undefined ? last.line : null };
 }
@@ -857,31 +1045,57 @@ export function keptSplitOf(counts: readonly ContactImportKeptCount[]): Exclude<
  * `read` (S15-3 · OD54 — a stop per row is a player signal; everyone else reads one "kept as they were"), and the list the
  * contacts went on with whether EVERY live member of it is now covered by its basis — false until the basis is recorded
  * again on the Lists card, because the members this import added joined after any earlier recording.
+ * 🔴 C8b (B5) · "every live member" is the VIEWER's (`listFiguresFor`, the Lists card's own rule): a reader's figure is the
+ * members a list basis can reach — with how many more have a 50pick account beside it (`withAccount`) — and anyone
+ * else's is every live member, linked or not, with no such figure: the coverage sentence never tells a masked officer
+ * whether a member is a player's.
+ * ⭐ C8b review (MINOR 2) · AND HOW MANY CONTACTS THE RUN PUT ON THE LIST (`joined`, `contactListMember.joinedFromImport` —
+ * the memberships added between the run's start and its end whose contact the run created, or, unless the run is
+ * created-only, whose number its rows updated or kept): a masked officer's import of numbers ALL already in the book now
+ * puts nobody on its list (B4), and the result says so instead of "Added to the list".
  */
 export async function contactImportResult(officerId: string, runId: unknown, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportResultResult> {
   const opened = await openImportRun(officerId, runId, deps, COMMIT_REFUSED);
   if (!opened.ok) return opened.refusal;
   const run = opened.run;
   const view = await importRunView(officerId, run, deps);
-  const kept: KeptSplit = (await deps.readsNumbers(officerId)) ? keptSplitOf(await deps.keptSplit(run.id)) : null;
+  const reads = await deps.readsNumbers(officerId);
+  const kept: KeptSplit = reads ? keptSplitOf(await deps.keptSplit(run.id)) : null;
+  // ⭐ C8c · #13 · how many rows settled without all their new tags — a reader's alone (S15-10); the rows are paged
+  // through the failures action (`list: "tags_not_added"`).
+  const tagsNotAdded = reads ? (await deps.tagsLeftPage({ importId: run.id, afterLine: 0, limit: 1 })).total : null;
   const listId = run.targetListId ?? null;
   const row = listId === null ? null : await deps.lists.find(listId);
-  let list: { id: string; name: string; covered: boolean } | null = null;
+  let list: ImportResultView["list"] = null;
   if (row !== null) {
-    const coverage = await deps.lists.coverage(row.id);
-    list = { id: row.id, name: row.name, covered: coverage.live > 0 && coverage.covered === coverage.live };
+    const figures = listFiguresFor(await deps.lists.split(row.id), reads);
+    const createdOnly = await listCreatedOnly(run, deps);
+    const joined = run.decisionConfirmedAt === null ? 0 : await deps.lists.joined({
+      listId: row.id, importId: run.id, sinceIso: run.decisionConfirmedAt, untilIso: run.finishedAt ?? deps.now().toISOString(), createdOnly,
+    });
+    list = {
+      id: row.id, name: row.name, covered: figures.live > 0 && figures.covered === figures.live, withAccount: figures.withAccount,
+      joined, createdOnly,
+    };
   }
-  return { ok: true, result: { view, kept, list } };
+  return { ok: true, result: { view, kept, list, tagsNotAdded } };
 }
 
 /** The lists an import can add to — the Lists card's, A to Z — each with the card's member figure and whether its basis
- *  is in force (its newest recording, not revoked). Counts and names only: nothing here is a number. */
-export async function importListOptions(_officerId: string, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportListsResult> {
+ *  is in force (its newest recording, not revoked). Counts and names only: nothing here is a number. ⭐ C8b (B5) · the
+ *  member figure is the viewer's (`listFiguresFor`): a reader's the unlinked members and the linked beside them,
+ *  anyone else's every live member and no linked figure. ⛔ Fails closed: a read cell that cannot be read is a masked
+ *  viewer's (the picker still opens, with the figures every role may see). */
+export async function importListOptions(officerId: string, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportListsResult> {
+  const reads = await deps.readsNumbers(officerId).catch(() => false);
   const out: ImportListOption[] = [];
   for (const l of await deps.lists.all()) {
-    const coverage = await deps.lists.coverage(l.id);
+    const figures = listFiguresFor(await deps.lists.split(l.id), reads);
     const newest = await deps.lists.newestBasis(l.id);
-    out.push({ id: l.id, name: l.name, members: coverage.live, covered: newest !== null && newest.revokedAt === null });
+    out.push({
+      id: l.id, name: l.name, members: figures.live, withAccount: figures.withAccount,
+      covered: newest !== null && newest.revokedAt === null,
+    });
   }
   return { ok: true, lists: out.sort(compareListsByName) };
 }

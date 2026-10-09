@@ -29,7 +29,8 @@
  * ── THE SOURCE PHRASE — NOT PRINTED SINCE 2026-10-09 ─────────────────────────
  * ⛔ The owner's ruling (COMPLIANCE-DECISIONS § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as
  * the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)"): NOTHING is appended to a marketing SMS. The phrase
- * is still campaign data (`SmsCampaign.sourcePhrase`, stamped from the saved wording), but it is never printed, never
+ * is still campaign data (`SmsCampaign.sourcePhrase` — a row saved before the ruling keeps the line it was stamped with;
+ * no draft save stamps one since, and a new draft stores none), but it is never printed, never
  * priced by the counter and never required: no recipient is refused for its absence, and its wording no longer judges
  * the template. (Until then — DECISIONS M5 · OQ3, owner gate G5 — the footer carried it for every recipient that was not
  * exactly an account, the counter reserved its longest form, and the renderer refused a book recipient while it was
@@ -83,7 +84,8 @@ export type CampaignVariant = MarketingLocale;
 
 /**
  * What an OFFICER types. ⛔ No segments, coding or sender here — those are computed (`counterFor`) or set on the
- * server (`SMS_SENDER_ID`) — and no source phrase: that is OQ3's wording (owner gate G5), handed in by the server.
+ * server (`SMS_SENDER_ID`) — and no source phrase: that was OQ3's wording (owner gate G5), history only since the
+ * owner's ruling of 2026-10-09 (a stored one is handed in and printed nowhere).
  */
 export type CampaignDraftFields = {
   /** Staff-only label, never sent. */
@@ -97,16 +99,16 @@ export type CampaignDraftFields = {
 
 /**
  * What a campaign SENDS, as stored (U35's columns, DECISIONS X12): the officer's bodies and fallbacks, plus the
- * source phrase (M5) the campaign was priced and validated with.
+ * stored source phrase (M5) — history only since the owner's ruling of 2026-10-09: never sent, priced or validated.
  */
 export type CampaignTemplate = Omit<CampaignDraftFields, "name"> & {
-  /** M5 · OQ3's phrase for every non-account recipient. Blank until G5 supplies the wording. */
+  /** M5 · OQ3's phrase, as stored — printed for no recipient since 2026-10-09 (blank on every draft saved since). */
   sourcePhrase: string;
 };
 
 /**
- * Where a recipient's number came from. `account` = the player's own account (their own name may print, no source
- * phrase); `book` = the contact book (fallback name, source phrase).
+ * Where a recipient's number came from. `account` = the player's own account (their own name may print); `book` = the
+ * contact book (the fallback name — and, until the owner's ruling of 2026-10-09, the source phrase).
  */
 export type RecipientOrigin = "account" | "book";
 
@@ -396,7 +398,7 @@ export function counterFor(body: string, variant: CampaignVariant, fallback: str
     bodyUnits,
     budget: composed.budget,
     left: composed.budget - bodyUnits,
-    footerUnits: unitsIn(marketingFooter(token, v), encoding),
+    footerUnits: unitsIn(marketingFooter(), encoding),
     sourceUnits: 0,
     jinaReserve: scan.jina * unitsIn(worstCaseJina(), encoding),
     offenders,
@@ -540,8 +542,9 @@ function staleTemplateProblems(stale: TemplateVerdict["problems"]): string[] {
  * else. An EN recipient of a campaign with no English body gets the Swahili message (and the Swahili fallback).
  *
  * ⛔ ONE CAMPAIGN, ONE VERDICT. It re-runs the stored template's WHOLE verdict (`templateFieldVerdict` — everything
- * `validateCampaignTemplate` checks but the staff-only name): both languages' worst-case counters, both fallbacks, and
- * the source line AS STORED (untrimmed). A fault ANYWHERE refuses EVERY recipient, whatever their language or origin,
+ * `validateCampaignTemplate` checks but the staff-only name): both languages' worst-case counters and both fallbacks
+ * (the source line too, until the owner's ruling of 2026-10-09 — it judges nothing since). A fault ANYWHERE refuses
+ * EVERY recipient, whatever their language or origin,
  * with a sentence saying the stored template no longer passes its own check. So a stale or hand-edited row is never
  * half-sent — not to the Swahili readers while the English body is broken, not to the short names while the long ones
  * are refused — and U38/U40's counts never disagree with what went out (`test:campaign-compose` §15.13). The

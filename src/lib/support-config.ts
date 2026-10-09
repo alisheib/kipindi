@@ -8,9 +8,9 @@
  *     (email, phone), Tanzania's national problem-gambling helpline, and the licence number;
  *   • the derivations (`toDialTarget`, `toHelplineDial`, `toSupportDial`, `licenceProblem`) that the
  *     admin form previews and the server action stores, so what the console shows is what gets saved;
- *   • the readers `HELPLINE()`, `HELPLINE_TEL()` and `LICENCE_NUMBER()`, which return the SAVED
- *     value on the server AND in a browser bundle — see "HOW A SAVED VALUE REACHES A CLIENT
- *     COMPONENT" below.
+ *   • the reader `LICENCE_NUMBER()`, which returns the SAVED value on the server AND in a browser
+ *     bundle — see "HOW A SAVED VALUE REACHES A CLIENT COMPONENT" below. (The helpline had two
+ *     readers of its own, `HELPLINE()` and `HELPLINE_TEL()`, until 2026-10-09: nothing read them.)
  *
  * ⛔ The desk getters (`SUPPORT_EMAIL()`, `SUPPORT_PHONE()`) are read through
  * `@/lib/server/support-config` and reach client components as PROPS. Do NOT add them to the
@@ -26,7 +26,9 @@
  * ⭐ OWNER'S RULING, 2026-10-06 (`docs/COMPLIANCE-DECISIONS.md`): the Gaming Board confirmed nothing
  * obliges 50pick to show a helpline or to use a particular one — "let the admin put any numbers he
  * wants". So (1) no player surface shows the helpline any more (`test:support-contact` §15 keeps it
- * off); it stays editable here because the marketing SMS footer still carries it; and (2) every number
+ * off); it stays editable on the admin card — though since the owner's ruling of 2026-10-09 no marketing
+ * SMS carries it either (nothing is appended), so nothing prints the saved value, and nothing outside
+ * this config and the admin card names it: no reader, and no <html> attribute (§15.1, §15.8); and (2) every number
  * on the card saves as typed: the E-328 refusal of a helpline equal to our own desk is gone, and the
  * desk phone takes any number too (`toSupportDial`). The editable helpline keeps its own keys
  * (`nationalHelpline`, `nationalHelplineTel`): the stale `helpline` key in the live row is a leftover
@@ -39,7 +41,7 @@ export type SupportConfig = {
   phone: string;
   phoneTel: string;
   /** The helpline as it is printed, e.g. `0800 11 0011` — any number the admin saves (2026-10-06). Shown
-   *  on no player page; the marketing SMS footer carries it.
+   *  on no player page (2026-10-06), and carried by no SMS since the marketing footer was emptied (2026-10-09).
    *  ⛔ Never the key `helpline`: that key in the live row is a stale leftover of an old form (E-328). */
   nationalHelpline: string;
   /** …and as a tap DIALS it. Always `toHelplineDial(nationalHelpline)` — derived, never typed. */
@@ -57,8 +59,8 @@ export const SUPPORT_CONFIG_KEY = "support_config";
 /**
  * ⛔ THESE ARE NOT COSMETIC FALLBACKS. They are what the platform PUBLISHES whenever the row is
  * not in hand: a process between start and hydration, a de-hydrated process, a fresh database,
- * and **a restored backup that predates the row**. Every surface that prints a support line, the
- * helpline or the licence prints these in that state.
+ * and **a restored backup that predates the row**. Every surface that prints a support line or the
+ * licence prints these in that state (and the admin card shows the helpline's, which nothing prints).
  *
  * 🔴 WHAT THE DESK DEFAULTS USED TO BE, AND WHY IT MATTERED (owner's ruling, 2026-09-10):
  *   email    `support@50pick.tz`   — the live row has said `msaada@50pick.tz` since 2026-08-19
@@ -72,8 +74,8 @@ export const SUPPORT_CONFIG_KEY = "support_config";
  * control and derives the other through `toDialTarget` below. The helpline pair is the same shape,
  * derived through `toHelplineDial`.
  *
- * ⭐ The helpline and licence defaults are the values the owner ruled: the helpline 50pick already
- * publishes (OQ4, 2026-09-26) and the licence he supplied on 2026-09-10. `test:support-contact`
+ * ⭐ The helpline and licence defaults are the values the owner ruled: the helpline 50pick published
+ * (OQ4, 2026-09-26; shown nowhere since 2026-10-06) and the licence he supplied on 2026-09-10. `test:support-contact`
  * §12.1 pins the licence default against that ruling.
  */
 export const SUPPORT_DEFAULTS: SupportConfig = {
@@ -176,24 +178,31 @@ export function licenceProblem(input: string): string | null {
  * 🔴 HOW A SAVED VALUE REACHES A CLIENT COMPONENT — the problem the old pinning side-stepped.
  *
  * A `"use client"` module's state is the BROWSER bundle's, which no server-side load can reach
- * (E-226), so a client component cannot read `defineConfig`. And the helpline is rendered from
- * client code: the footer, the reality-check modal, the landing hero, the sign-in shell.
+ * (E-226), so a client component cannot read `defineConfig`. And the licence is rendered from client
+ * code (the public footer) — as the helpline was, until the owner's ruling of 2026-10-06 took it off
+ * every player surface.
  *
- * ⭐ So the root layout PUBLISHES the three facts as attributes on <html>, from the server's live
- * config, and in a browser the readers below take them from there. The <html> start tag is parsed
+ * ⭐ So the root layout PUBLISHES the public fact as an attribute on <html>, from the server's live
+ * config, and in a browser the reader below takes it from there. The <html> start tag is parsed
  * before any script runs, so the value is in place for the very first client render and hydration
  * agrees with the server HTML — no inline script, no ordering race, nothing for the CSP to allow.
  *
  * On the server, `server/support-config.ts` registers its live getter on `globalThis` when it
- * loads (the root layout imports it on every request) and the readers call that, so a server
- * component, an email and an SMS footer all read the saved row too.
+ * loads (the root layout imports it on every request) and the reader calls that, so a server
+ * component reads the saved row too.
  *
- * ⛔ `global-error.tsx` imports nothing, so it spells these attribute names itself;
- * `test:support-contact` §15 holds the two in step.
+ * ⛔ THE HELPLINE IS NOT PUBLISHED HERE (since 2026-10-09). It rode on <html> as two attributes, read
+ * back by `HELPLINE()` and `HELPLINE_TEL()` — but no player page shows it (the owner's ruling of
+ * 2026-10-06), and once the marketing SMS footer was emptied (2026-10-09) nothing read them: the number
+ * sat in every page's HTML for no reader. Readers and attributes went together; `test:support-contact`
+ * §15.8 holds that no attribute the layout spreads names the helpline or carries its number, and §15.1
+ * that no player file reads it by any name.
+ *
+ * ⛔ `global-error.tsx` imports nothing and reads no attribute: it spelled the helpline itself until the
+ * owner's ruling of 2026-10-06, and `test:support-contact` §15.3 now holds that it prints no helpline
+ * and reads no published one.
  */
 export const PUBLIC_FACT_ATTRS = {
-  nationalHelpline: "data-kp-helpline",
-  nationalHelplineTel: "data-kp-helpline-tel",
   licenceNumber: "data-kp-licence",
 } as const;
 
@@ -202,14 +211,12 @@ type PublicFact = keyof typeof PUBLIC_FACT_ATTRS;
 /** The attributes the root layout spreads onto <html>. */
 export function publicFactAttrs(c: Pick<SupportConfig, PublicFact>): Record<string, string> {
   return {
-    [PUBLIC_FACT_ATTRS.nationalHelpline]: c.nationalHelpline,
-    [PUBLIC_FACT_ATTRS.nationalHelplineTel]: c.nationalHelplineTel,
     [PUBLIC_FACT_ATTRS.licenceNumber]: c.licenceNumber,
   };
 }
 
 declare global {
-  /** Set by `server/support-config.ts` on load: the live config getter, for the server-side readers. */
+  /** Set by `server/support-config.ts` on load: the live config getter, for the server-side reader. */
   // eslint-disable-next-line no-var
   var __50PICK_SUPPORT_READ: (() => SupportConfig) | undefined;
 }
@@ -229,11 +236,6 @@ function publicFact(name: PublicFact): string {
   } catch { /* no document (a worker) — fall back to the default */ }
   return SUPPORT_DEFAULTS[name];
 }
-
-/** Tanzania's national problem-gambling helpline, as a player reads it. Saved in /admin/system. */
-export function HELPLINE() { return publicFact("nationalHelpline"); }
-/** …and as a tap dials it. */
-export function HELPLINE_TEL() { return publicFact("nationalHelplineTel"); }
 
 /**
  * The Gaming Board of Tanzania operating licence issued to 50pick Ltd. Saved in /admin/system.

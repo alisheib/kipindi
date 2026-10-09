@@ -27,7 +27,10 @@
  *      declare 1 KB — is refused by what it inflates to, never by what it declares; a size its inflation does not
  *      match is refused, as JSZip would refuse it, but here before the whole of it is held; .ods and Strict Open XML
  *      are read off their content; and every `<row` and `<c` element in the workbook is counted against the row cap
- *      and the cell cap — the inflate cap bounds bytes, and exceljs builds an object for every styled cell.
+ *      and the cell cap — the inflate cap bounds bytes, and exceljs builds an object for every styled cell. ⭐
+ *      C3c-merge-guard · every `<mergeCell>` is counted too: its rectangle's cells (exceljs allocates one Cell per
+ *      covered cell) against the cell cap, and the number of merges against XLSX_MAX_MERGES (exceljs reconciles them
+ *      O(merges²)), so a few-KB workbook with a vast or a flooded merge is refused here, never handed to the load.
  *   7. exceljs `xlsx.load`, in memory, in a try. A workbook it cannot parse is "unreadable" with the FIXED sentence —
  *      exceljs's own message can quote the file, and it is never surfaced.
  *   8. ⭐ C3b · G2 · THE SHEET, chosen by its CONTENT (C3b-fix · D6 — C3b's header-row rule read a header-only sheet or a
@@ -52,6 +55,10 @@
  * Date reads as ISO; rich text is joined; a hyperlink reads its display text; a boolean reads TRUE or FALSE; an
  * error value, a formula whose saved value is empty or missing, and the covered cells of a merge read blank, with a
  * note naming their rows.
+ * ⭐ C3c (2026-10-09) · THOSE RULES LIVE ONCE, IN `src/lib/contacts/xlsx-cells.ts` (`xlsxValueText`, `xlsxNumberText`,
+ * the notes): a workbook past 700 KB is read in the officer's browser by `xlsx-read.ts`, which imports the same
+ * functions, and `test:contacts-import`'s xlsx-browser section reads a corpus through both readers and requires the
+ * identical file. This reader's own steps — the size gate, the pre-pass, exceljs, the sheet — are unchanged.
  *
  * 🔴 EXCEL'S NUMERIC SHORTENED FORM (A1.3). A CSV holding Excel's display of a 12-digit number, re-saved as .xlsx,
  * stores the NUMBER 255713000000 — a valid-looking number that belongs to a stranger. So a NUMERIC value that is an
@@ -71,19 +78,35 @@
  */
 import ExcelJS from "exceljs";
 import { inflateRawSync } from "node:zlib";
-import { formatRowList } from "@/lib/contacts/parsed-file";
 import type { ParsedContactsFile, ParsedRow } from "@/lib/contacts/parsed-file";
 import { SHEET_SAMPLE_ROWS, chooseSheet, mobileCellsIn, type SheetChoice, type SheetSample } from "@/lib/contacts/sheet-choice";
 import { dropTitleRows } from "@/lib/contacts/title-rows";
+// ⭐ C3c · the cell rules and the notes live ONCE in the client-safe `xlsx-cells.ts`: the browser's reader of a workbook
+// past 700 KB (`xlsx-read.ts`) imports the very same functions, and `test:contacts-import`'s xlsx-browser section holds
+// the two readers to one reading of the same bytes.
+import {
+  xlsxCellNotes,
+  xlsxNumberText,
+  xlsxValueText,
+  type CellFlag,
+  type CellRead,
+  type NumberText,
+} from "@/lib/contacts/xlsx-cells";
 import {
   ODS_MIMETYPE,
   XLSX_MAX_BYTES,
   XLSX_MAX_ENTRIES,
+  XLSX_MAX_DEPTH,
+  XLSX_MAX_FORMAT_CODE,
+  XLSX_MAX_GRID_CELLS,
   XLSX_MAX_INFLATED_BYTES,
+  XLSX_MAX_MERGED_CELLS,
+  XLSX_MAX_MERGES,
   XLSX_MAX_ROWS,
   base64DecodedBytes,
   spreadsheetHeadKind,
   xlsxBase64OverCap,
+  xlsxMergeArea,
   xlsxRefusalSentence,
 } from "@/lib/contacts/xlsx-limits";
 import type { SpreadsheetHeadKind, WrongFormatKind, XlsxRefusal, XlsxRefusalContext } from "@/lib/contacts/xlsx-limits";
@@ -165,7 +188,18 @@ export type MeasureEntry = (entry: ZipEntryInfo, data: Uint8Array, budget: numbe
 
 /** The pre-pass's verdict. `detail` is a fixed word for the audit row and the suite — never shown to an officer. */
 export type XlsxInspection =
-  | { readonly ok: true; readonly entries: number; readonly inflatedBytes: number; readonly rowElements: number; readonly cellElements: number }
+  | {
+      readonly ok: true;
+      readonly entries: number;
+      readonly inflatedBytes: number;
+      readonly rowElements: number;
+      readonly cellElements: number;
+      /** C3c-merge-guard · the number of `<mergeCell>` ranges, and the cells and rows their rectangles cover (exceljs
+       *  allocates one Cell per covered cell and one Row per covered row) — all three bounded before this returns ok. */
+      readonly mergeCount: number;
+      readonly mergedCells: number;
+      readonly mergedRows: number;
+    }
   | {
       readonly ok: false;
       readonly refusal: XlsxRefusal;
@@ -195,6 +229,8 @@ const METHOD_DEFLATED = 8;
 const METHOD_AES = 99;
 /** exceljs reads the workbook part by this exact name, after dropping one leading slash. */
 const WORKBOOK_XML = "xl/workbook.xml";
+/** The workbook's relationships — where a `<sheet r:id>` resolves to its worksheet part (MAJOR 9c). */
+const WORKBOOK_RELS = "xl/_rels/workbook.xml.rels";
 /** Where Excel's binary workbook keeps its workbook part. */
 const WORKBOOK_BIN = "xl/workbook.bin";
 const MIMETYPE_ENTRY = "mimetype";
@@ -202,6 +238,21 @@ const MIMETYPE_ENTRY = "mimetype";
 const STRICT_NAMESPACE = "purl.oclc.org/ooxml/spreadsheetml/main";
 const ROW_OPEN = Buffer.from("<row", "latin1");
 const CELL_OPEN = Buffer.from("<c", "latin1");
+const MERGECELL_OPEN = Buffer.from("<mergeCell", "latin1");
+const GT = 0x3e;
+/** The worst a `<mergeCell>` tag can mean when its `ref` cannot be read: the whole grid (always finite). */
+const WORST_MERGE = { cells: XLSX_MAX_MERGED_CELLS + 1, rows: XLSX_MAX_ROWS + 1 };
+/** How far past `<mergeCell` to look for the tag's closing `>`: a real merge tag is tens of bytes, never a kilobyte.
+ *  Bounding the scan keeps a part of `"<mergeCell ".repeat(N)` (no `>` at all) from being O(content) per element. */
+const MERGE_TAG_WINDOW = 1024;
+/** ⭐ MAJOR 9b · the deepest element nesting the pre-pass admits — the ONE shared cap (NIT 1). saxes keeps a tag object
+ *  per open element, so 48 MiB of `<a>` ≈ 16M objects ≈ 2 GB; a real worksheet nests about eight deep. */
+const NUMFMT_OPEN = Buffer.from("<numFmt", "latin1");
+const COMMENT_CLOSE = Buffer.from("-->", "latin1");
+const CDATA_CLOSE = Buffer.from("]]>", "latin1");
+const PI_CLOSE = Buffer.from("?>", "latin1");
+/** exceljs reads the workbook's number formats from this part; the format-code guard is scoped to it (MAJOR 9a). */
+const STYLES_XML = "xl/styles.xml";
 
 /**
  * ⚠️ PROVISIONAL, like the caps in xlsx-limits.ts (the suite asserts it is at least twice the densest realistic
@@ -369,11 +420,256 @@ function countElements(content: Buffer, open: Buffer): number {
 }
 
 /**
- * ⭐ THE PRE-PASS (step 6). Walks the zip, refuses .xlsb and a zip that is no workbook by name, inflates EVERY entry for
- * real under one budget for the whole workbook — counting row and cell elements across every entry, whatever it is
- * named, because exceljs's own sheet pattern is unanchored — and then reads .ods and Strict Open XML off the content.
+ * ⭐ C3c-merge-guard · BLOCKER 2 — the `ref` attribute of one `<mergeCell …>` tag, as the cells/rows it covers
+ * (`xlsxMergeArea`, the ONE shared rule). The tag is TOKENIZED the way saxes reads attributes — name, `=`, a quoted
+ * value — and ONLY the attribute named EXACTLY `ref` is taken, so a decoy `x:ref`, `_ref`, `a-ref` or a `ref` buried in
+ * another value never fools it. ⛔ No `ref`, a SECOND `ref`, a value not closed inside the tag, or any malformed
+ * attribute → the WORST area (the whole grid), so a hostile tag is refused, never admitted as small. `start` is the
+ * index of the `<`; `limit` the exclusive end of the 1 KiB window (BLOCKER 3). Returns the ref and where to resume.
  */
-export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measureZipEntry): XlsxInspection {
+function mergeTagExtent(content: Buffer, start: number, limit: number): { readonly cells: number; readonly rows: number; readonly next: number } {
+  let i = start + MERGECELL_OPEN.length;
+  let refValue: string | null = null;
+  let seenRef = false;
+  const bad = (next: number) => ({ cells: WORST_MERGE.cells, rows: WORST_MERGE.rows, next });
+  const space = (c: number): boolean => c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d;
+  for (;;) {
+    while (i < limit && space(content[i])) i++;
+    if (i >= limit) return bad(limit); // no closing '>' within the window
+    const c = content[i];
+    if (c === GT) { i++; break; }
+    if (c === 0x2f) { // '/>' (or a stray '/')
+      i++;
+      continue;
+    }
+    // an attribute: name = "value"
+    const nameStart = i;
+    while (i < limit && !space(content[i]) && content[i] !== 0x3d && content[i] !== GT && content[i] !== 0x2f) i++;
+    if (i >= limit || i === nameStart) return bad(limit);
+    const name = content.toString("latin1", nameStart, i);
+    while (i < limit && space(content[i])) i++;
+    if (i >= limit || content[i] !== 0x3d) return bad(limit); // a bare attribute with no value — malformed
+    i++;
+    while (i < limit && space(content[i])) i++;
+    const quote = i < limit ? content[i] : -1;
+    if (quote !== 0x22 && quote !== 0x27) return bad(limit);
+    const close = content.indexOf(quote, i + 1);
+    if (close === -1 || close >= limit) return bad(limit); // value not closed inside the window
+    if (name === "ref") {
+      if (seenRef) return bad(close + 1); // a second ref — saxes would keep the last; we refuse
+      seenRef = true;
+      refValue = content.toString("latin1", i + 1, close);
+    }
+    i = close + 1;
+  }
+  if (refValue === null) return bad(i); // no ref attribute at all
+  const area = xlsxMergeArea(refValue);
+  return { cells: area.cells, rows: area.rows, next: i };
+}
+
+/**
+ * ⭐ C3c-merge-guard · every `<mergeCell>` in one part's inflated content: how many, and the cells/rows their rectangles
+ * cover (the Cell and Row objects exceljs allocates on load). ⛔ `<mergeCell` only — never the `<mergeCells>` container
+ * (its next byte is `s`). BLOCKER 3: the tag's `>` is sought only within a 1 KiB window (none → the worst area), the
+ * scan resumes AFTER the tag, and it STOPS the moment the count or either extent passes its cap — so a part of
+ * `"<mergeCell ".repeat(4_000_000)` costs a constant, not O(content²). Counts and extents saturate at cap + 1.
+ */
+function scanMergeCells(content: Buffer): { readonly count: number; readonly cells: number; readonly rows: number } {
+  let count = 0;
+  let cells = 0;
+  let rows = 0;
+  let at = content.indexOf(MERGECELL_OPEN);
+  while (at !== -1 && count <= XLSX_MAX_MERGES && cells <= XLSX_MAX_MERGED_CELLS && rows <= XLSX_MAX_ROWS) {
+    const after = content[at + MERGECELL_OPEN.length];
+    if (after === 0x20 || after === 0x09 || after === 0x0a || after === 0x0d || after === 0x2f || after === GT) {
+      count = Math.min(count + 1, XLSX_MAX_MERGES + 1);
+      const extent = mergeTagExtent(content, at, Math.min(content.length, at + MERGE_TAG_WINDOW));
+      cells = Math.min(cells + extent.cells, XLSX_MAX_MERGED_CELLS + 1);
+      rows = Math.min(rows + extent.rows, XLSX_MAX_ROWS + 1);
+      at = content.indexOf(MERGECELL_OPEN, Math.max(extent.next, at + MERGECELL_OPEN.length));
+    } else {
+      at = content.indexOf(MERGECELL_OPEN, at + MERGECELL_OPEN.length);
+    }
+  }
+  return { count, cells, rows };
+}
+
+/** The index just past a tag's unquoted `>`, from `from` (just past the element name), or -1 if the tag never closes.
+ *  Quoted stretches are skipped, so a `>` inside an attribute value (an Excel conditional format like `[>100]`) is not
+ *  mistaken for the tag's end. */
+function tagEnd(content: Buffer, from: number): number {
+  let i = from;
+  const len = content.length;
+  while (i < len) {
+    const c = content[i];
+    if (c === 0x22 || c === 0x27) {
+      const close = content.indexOf(c, i + 1);
+      if (close === -1) return -1;
+      i = close + 1;
+    } else if (c === GT) return i + 1;
+    else i++;
+  }
+  return -1;
+}
+
+/**
+ * ⭐ MAJOR 9a (re-review) · a forged number format, SCOPED to styles.xml's `<numFmt>` tags and TOKENISED like the merge
+ * tokeniser (`tagAttr`): the `formatCode` attribute is read whether it is double- OR single-quoted and whatever the
+ * whitespace around `=`, to its matching quote (so a `>` inside the format, and the whole 8 MiB of a forged value, are
+ * read correctly). A value longer than `max`, or a `<numFmt>` whose tag never closes, is forged — exceljs would run its
+ * date-format test over it for every styled cell (O(format × cells)). Scoped so a `formatCode="…"` in CELL TEXT or a
+ * shared string is NOT mistaken for a format (the browser reads such a workbook; so must the server — no divergence).
+ */
+function stylesHasForgedFormat(content: Buffer, max: number): boolean {
+  for (let at = content.indexOf(NUMFMT_OPEN); at !== -1;) {
+    const after = content[at + NUMFMT_OPEN.length];
+    // `<numFmt` must be the element itself (a boundary byte follows), not the `<numFmts>` container.
+    if (!(after === 0x20 || after === 0x09 || after === 0x0a || after === 0x0d || after === 0x2f || after === GT)) {
+      at = content.indexOf(NUMFMT_OPEN, at + NUMFMT_OPEN.length);
+      continue;
+    }
+    const end = tagEnd(content, at + NUMFMT_OPEN.length);
+    if (end === -1) return true; // the tag never closes → forged
+    const code = tagAttr(content, at, end, "formatCode");
+    if (code !== null && code.length > max) return true; // a value past Excel's limit → forged
+    at = content.indexOf(NUMFMT_OPEN, end);
+  }
+  return false;
+}
+
+/**
+ * ⭐ MAJOR 9b · the deepest element nesting in one part, as saxes would stack it — comments, CDATA and processing
+ * instructions skipped, self-closing tags counted flat. A conservative scan over OOXML (whose attribute values hold no
+ * `<` or `>`): it exists only to catch a `<a><a>…` depth bomb, so a slight miscount of exotic content is harmless.
+ */
+function maxElementDepth(content: Buffer): number {
+  let depth = 0;
+  let max = 0;
+  let i = 0;
+  const len = content.length;
+  while (i < len) {
+    const lt = content.indexOf(0x3c, i); // '<'
+    if (lt === -1 || lt + 1 >= len) break;
+    const c = content[lt + 1];
+    if (c === 0x21) { // '<!' — a comment, CDATA, or DOCTYPE
+      const cdata = content[lt + 2] === 0x5b; // '['
+      const comment = content[lt + 2] === 0x2d && content[lt + 3] === 0x2d; // '--'
+      const closer = comment ? COMMENT_CLOSE : cdata ? CDATA_CLOSE : undefined;
+      const end = closer ? content.indexOf(closer, lt + 2) : content.indexOf(0x3e, lt + 2);
+      i = end === -1 ? len : end + (closer ? closer.length : 1);
+      continue;
+    }
+    if (c === 0x3f) { // '<?' — a processing instruction
+      const end = content.indexOf(PI_CLOSE, lt + 2);
+      i = end === -1 ? len : end + PI_CLOSE.length;
+      continue;
+    }
+    const gt = content.indexOf(0x3e, lt + 1);
+    if (gt === -1) break;
+    if (c === 0x2f) depth--; // '</' — a close
+    else if (content[gt - 1] !== 0x2f) { // not a '/>' self-close
+      depth++;
+      if (depth > max) max = depth;
+    }
+    i = gt + 1;
+  }
+  return max;
+}
+
+const SHEET_OPEN = Buffer.from("<sheet", "latin1");
+const RELATIONSHIP_OPEN = Buffer.from("<Relationship", "latin1");
+/** The attribute value named exactly `name` in one element tag (bytes `start`..`end`), or null — a small, saxes-faithful
+ *  tokeniser (name = "value"), reused for `<sheet r:id>` and `<Relationship Id/Target>`. */
+function tagAttr(content: Buffer, start: number, end: number, name: string): string | null {
+  let i = start;
+  const space = (c: number): boolean => c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d;
+  // skip the element name
+  while (i < end && !space(content[i]) && content[i] !== GT && content[i] !== 0x2f) i++;
+  for (;;) {
+    while (i < end && space(content[i])) i++;
+    if (i >= end || content[i] === GT || content[i] === 0x2f) return null;
+    const nameStart = i;
+    while (i < end && !space(content[i]) && content[i] !== 0x3d && content[i] !== GT && content[i] !== 0x2f) i++;
+    const attrName = content.toString("latin1", nameStart, i);
+    while (i < end && space(content[i])) i++;
+    if (i >= end || content[i] !== 0x3d) return null;
+    i++;
+    while (i < end && space(content[i])) i++;
+    const quote = i < end ? content[i] : -1;
+    if (quote !== 0x22 && quote !== 0x27) return null;
+    const close = content.indexOf(quote, i + 1);
+    if (close === -1 || close >= end) return null;
+    if (attrName === name) return content.toString("latin1", i + 1, close);
+    i = close + 1;
+  }
+}
+
+/** The part name a workbook relationship Target resolves to, normalised as exceljs does. */
+function normalisedTarget(target: string): string {
+  return `xl/${target.replace(/^(\s|\/xl\/)+/, "")}`;
+}
+
+/**
+ * ⭐ MAJOR 9c · do two `<sheet>`s resolve to the SAME worksheet part? Several sheets sharing one r:id, or several
+ * relationships pointing at one Target, make exceljs load and reconcile that part once per sheet — O(sheets × part). The
+ * pre-pass reads the `<sheet r:id>`s from workbook.xml and the `Id → Target` map from its rels, resolves each (as
+ * exceljs normalises a Target), and refuses when any part is the target of more than one sheet.
+ */
+function sheetsFanOut(workbookXml: Buffer | null, relsXml: Buffer | null): boolean {
+  if (workbookXml === null) return false;
+  const rels = new Map<string, string>();
+  if (relsXml !== null) {
+    for (let at = relsXml.indexOf(RELATIONSHIP_OPEN); at !== -1; at = relsXml.indexOf(RELATIONSHIP_OPEN, at + 1)) {
+      const gt = relsXml.indexOf(0x3e, at);
+      if (gt === -1) break;
+      const id = tagAttr(relsXml, at, gt, "Id");
+      const target = tagAttr(relsXml, at, gt, "Target");
+      if (id !== null && target !== null) rels.set(id, normalisedTarget(target));
+    }
+  }
+  const parts = new Set<string>();
+  for (let at = workbookXml.indexOf(SHEET_OPEN); at !== -1; at = workbookXml.indexOf(SHEET_OPEN, at + 1)) {
+    const after = workbookXml[at + SHEET_OPEN.length];
+    if (!(after === 0x20 || after === 0x09 || after === 0x0a || after === 0x0d || after === 0x2f || after === GT)) continue; // not <sheets>
+    const gt = workbookXml.indexOf(0x3e, at);
+    if (gt === -1) break;
+    const rId = tagAttr(workbookXml, at, gt, "r:id");
+    const part = rId === null ? null : rels.get(rId);
+    if (part !== undefined && part !== null) {
+      if (parts.has(part)) return true; // two sheets → one part
+      parts.add(part);
+    }
+    at = gt;
+  }
+  return false;
+}
+
+/**
+ * ⭐ THE PRE-PASS (step 6). Walks the zip, refuses .xlsb and a zip that is no workbook by name, inflates EVERY entry for
+ * real under one budget for the whole workbook — counting row and cell elements, and (C3c-merge-guard) the `<mergeCell>`
+ * ranges with the cells AND rows they cover, across every entry, whatever it is named, because exceljs's own sheet
+ * pattern is unanchored — and then reads .ods and Strict Open XML off the content. A workbook with too many merges, or
+ * merge rectangles covering more cells or more rows than exceljs may allocate, is too_big_inflated before the load
+ * (XLSX_MAX_MERGES; the covered cells against XLSX_MAX_MERGED_CELLS, the covered rows against XLSX_MAX_ROWS). Each merge
+ * ref is read through the ONE shared rule `xlsxMergeArea` — a 1 KiB-windowed, attribute-tokenised scan that charges a
+ * malformed, decoy or out-of-grid ref the worst area and stops the moment a cap is passed — see xlsx-limits.ts.
+ * ⭐ MAJOR 9 · THE SAME DoS FAMILY, caught here too: a numFmt `formatCode` past Excel's 255 characters (scoped to
+ * styles.xml, quote- and whitespace-tolerant, so exceljs's per-cell date test cannot be reached and a `formatCode="…"`
+ * in cell text is not a false positive), element nesting past `XLSX_MAX_DEPTH` (saxes keeps a tag object per level), and
+ * two `<sheet>`s resolving to ONE worksheet part (exceljs would reconcile it once per sheet) are each `unreadable`
+ * before the load.
+ */
+/** The merge scan is a seam (default `scanMergeCells`) so the suite can plant the pre-fix quadratic/NaN/decoy versions. */
+export type MergeScan = (content: Buffer) => { readonly count: number; readonly cells: number; readonly rows: number };
+/** The format-code guard is a seam (default `stylesHasForgedFormat`) so the suite can plant the pre-fix byte scan. */
+export type FormatForged = (stylesContent: Buffer, max: number) => boolean;
+
+export function inspectXlsxZip(
+  bytes: Uint8Array,
+  measure: MeasureEntry = measureZipEntry,
+  scanMerges: MergeScan = scanMergeCells,
+  formatForged: FormatForged = stylesHasForgedFormat,
+): XlsxInspection {
   const walked = walkZip(bytes);
   if (!walked.ok) return { ok: false, refusal: walked.refusal, kind: walked.kind, detail: walked.detail, entries: 0, inflatedBytes: 0 };
   const entries = walked.entries;
@@ -390,8 +686,14 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
   let used = 0;
   let rowElements = 0;
   let cellElements = 0;
+  let mergeCount = 0;
+  let mergedCells = 0;
+  let mergedRows = 0;
   let ods = false;
   let strict = false;
+  let workbookXml: Buffer | null = null;
+  let relsXml: Buffer | null = null;
+  let stylesXml: Buffer | null = null;
   for (const e of entries) {
     const measured = measure(e, bytes.subarray(e.dataStart, e.dataStart + e.compressedSize), XLSX_MAX_INFLATED_BYTES - used);
     if (measured.kind === "over") return refused("too_big_inflated", "bomb", null, used);
@@ -401,15 +703,39 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
     const content = Buffer.from(measured.bytes.buffer, measured.bytes.byteOffset, measured.bytes.byteLength);
     rowElements += countElements(content, ROW_OPEN);
     cellElements += countElements(content, CELL_OPEN);
+    // ⭐ C3c-merge-guard · the merges exceljs will reconcile (O(merges²)) and the cells and rows they make it allocate,
+    // summed across every entry (its sheet pattern is unanchored, so count everywhere the rows and cells are counted).
+    const merges = scanMerges(content);
+    mergeCount = Math.min(mergeCount + merges.count, XLSX_MAX_MERGES + 1);
+    mergedCells = Math.min(mergedCells + merges.cells, XLSX_MAX_MERGED_CELLS + 1);
+    mergedRows = Math.min(mergedRows + merges.rows, XLSX_MAX_ROWS + 1);
+    // ⭐ MAJOR 9b · nesting deeper than saxes should ever stack is a tag-object bomb — refused before the load, per part.
+    if (maxElementDepth(content) > XLSX_MAX_DEPTH) return refused("unreadable", "depth", null, used);
     if (loweredName(e) === MIMETYPE_ENTRY && content.subarray(0, ODS_MIMETYPE.length).toString("latin1") === ODS_MIMETYPE) ods = true;
-    if (partName(e) === WORKBOOK_XML && content.indexOf(STRICT_NAMESPACE) !== -1) strict = true;
+    if (partName(e) === WORKBOOK_XML) {
+      if (content.indexOf(STRICT_NAMESPACE) !== -1) strict = true;
+      workbookXml = content;
+    }
+    if (partName(e) === WORKBOOK_RELS) relsXml = content;
+    if (partName(e) === STYLES_XML) stylesXml = content;
   }
   if (ods) return refused("wrong_format", "ods", "ods", used);
   if (!hasWorkbook) return refused("wrong_format", "not_a_workbook", "other", used);
   if (strict) return refused("wrong_format", "strict", "strict", used);
+  // ⭐ MAJOR 9a · a forged number format (over-long, scoped to styles.xml's <numFmt>) would make exceljs's date test an
+  // O(format × cells) hang — refused before the load; a `formatCode="…"` anywhere else (cell text) is not a format.
+  if (stylesXml !== null && formatForged(stylesXml, XLSX_MAX_FORMAT_CODE)) return refused("unreadable", "format", null, used);
   if (rowElements > XLSX_MAX_ROWS) return refused("too_many_rows", "rows", null, used);
   if (cellElements > XLSX_MAX_CELL_ELEMENTS) return refused("too_big_inflated", "cells", null, used);
-  return { ok: true, entries: entries.length, inflatedBytes: used, rowElements, cellElements };
+  // ⭐ C3c-merge-guard · too many merge elements (O(merges²) on load), or merge rectangles covering more cells or more
+  // rows than exceljs may allocate (a Cell per covered cell, a Row per covered row) — all three refuse before the load,
+  // in the copy table's own too_big_inflated words (MAJOR 10: a tall merge is a Row bomb as much as a Cell bomb).
+  if (mergeCount > XLSX_MAX_MERGES) return refused("too_big_inflated", "merges", null, used);
+  if (mergedCells > XLSX_MAX_MERGED_CELLS) return refused("too_big_inflated", "merge_area", null, used);
+  if (mergedRows > XLSX_MAX_ROWS) return refused("too_big_inflated", "merge_rows", null, used);
+  // ⭐ MAJOR 9c · two sheets resolving to ONE part make exceljs load and reconcile it once per sheet — refuse the fan-out.
+  if (sheetsFanOut(workbookXml, relsXml)) return refused("unreadable", "sheet_fanout", null, used);
+  return { ok: true, entries: entries.length, inflatedBytes: used, rowElements, cellElements, mergeCount, mergedCells, mergedRows };
 }
 
 /* ══ THE ONE CELL SWITCH ═════════════════════════════════════════════════════════════════════════ */
@@ -420,82 +746,34 @@ export function inspectXlsxZip(bytes: Uint8Array, measure: MeasureEntry = measur
  */
 export type XlsxCellLike = { readonly type: number; readonly value: unknown; readonly result?: unknown; readonly text: string };
 
-/** Why a cell read as blank although it held something — each becomes a note naming its rows. */
-export type CellFlag = "formula_without_result" | "error" | "merged";
-
-export type CellRead = { readonly text: string; readonly flag: CellFlag | null };
-
-export type NumberText = (v: number) => string;
-
-/** Excel holds 15 significant digits; whatever a double carries past them is binary noise, never data. */
-const EXCEL_DIGITS = 15;
-
-/**
- * A number as text: an integer exactly; float noise past Excel's 15 significant digits rounded away (712345678.0000001
- * reads 712345678, 0.1 + 0.2 reads 0.3); a genuine decimal kept (3.5). 🔴 A1.3 — an integer of at least 1e11 that is
- * divisible by 1e6 is written as Excel's scientific text, so U28's one detector refuses it: it is what a re-saved
- * `2.55713E+11` becomes, and as digits it reads as a stranger's valid number.
- */
-export function xlsxNumberText(v: number): string {
-  if (!Number.isFinite(v)) return "";
-  const n = Number.isInteger(v) ? v : Number(v.toPrecision(EXCEL_DIGITS));
-  if (!Number.isInteger(n)) return String(n);
-  if (n >= 1e11 && n % 1e6 === 0) return n.toExponential().toUpperCase();
-  return Number.isSafeInteger(n) ? String(n) : BigInt(n).toString();
-}
-
-/** A Date as ISO: the day alone at midnight, else the day and the time (exceljs reads the serial as UTC wall time). */
-function dateText(d: Date): string {
-  if (!Number.isFinite(d.getTime())) return "";
-  const iso = d.toISOString();
-  return iso.endsWith("T00:00:00.000Z") ? iso.slice(0, 10) : iso.slice(0, 19);
-}
-
-const BLANK: CellRead = { text: "", flag: null };
-
-const runText = (run: unknown): string =>
-  typeof run === "object" && run !== null && typeof (run as { text?: unknown }).text === "string" ? (run as { text: string }).text : "";
-
-function readValue(v: unknown, numberText: NumberText): CellRead {
-  if (v === null || v === undefined) return BLANK;
-  if (typeof v === "number") return { text: numberText(v), flag: null };
-  if (typeof v === "string") return { text: v, flag: null };
-  if (typeof v === "boolean") return { text: v ? "TRUE" : "FALSE", flag: null };
-  if (v instanceof Date) return { text: dateText(v), flag: null };
-  if (typeof v !== "object") return BLANK;
-  const o = v as Record<string, unknown>;
-  if ("error" in o) return { text: "", flag: "error" };
-  if (Array.isArray(o.richText)) return { text: o.richText.map(runText).join(""), flag: null };
-  if ("hyperlink" in o) return readValue(o.text, numberText);
-  if ("formula" in o || "sharedFormula" in o) {
-    return o.result === undefined || o.result === null ? { text: "", flag: "formula_without_result" } : readValue(o.result, numberText);
-  }
-  return BLANK;
-}
+// ⭐ C3c · the shared rules, re-exported where the server's callers and `test:contacts-import`'s xlsx section import them.
+export { xlsxNumberText };
+export type { CellFlag, CellRead, NumberText };
 
 /**
  * ⭐ THE switch — one cell to its text. A covered merge cell is blank (its value is the first cell's, and repeating it
  * would put one number on two lines); a formula is its CACHED result, read from `result` because exceljs's `value`
- * copy drops a result of 0; everything else by the shape of its value. A string is kept verbatim — never trimmed,
- * never "repaired": `2.55713E+11` stays exactly that, for U28's one detector.
+ * copy drops a result of 0; everything else by the shape of its value, through the ONE value rule both readers share
+ * (`xlsxValueText`, xlsx-cells.ts). A string is kept verbatim — never trimmed, never "repaired": `2.55713E+11` stays
+ * exactly that, for U28's one detector.
  */
 export function xlsxCellText(cell: XlsxCellLike, numberText: NumberText = xlsxNumberText): CellRead {
   if (cell.type === ExcelJS.ValueType.Merge) return { text: "", flag: "merged" };
   if (cell.type === ExcelJS.ValueType.Formula) {
     const result = cell.result;
-    return result === undefined || result === null ? { text: "", flag: "formula_without_result" } : readValue(result, numberText);
+    return result === undefined || result === null ? { text: "", flag: "formula_without_result" } : xlsxValueText(result, numberText);
   }
-  return readValue(cell.value, numberText);
+  return xlsxValueText(cell.value, numberText);
 }
 
 /* ══ THE RULES — every step a seam ═══════════════════════════════════════════════════════════════ */
 
 /**
- * ⚠️ The most cells the read sheet may span, counted to each row's LAST non-empty cell: twenty columns a row across
- * XLSX_MAX_ROWS. A row with one cell in the last column (16,384) spans 16,384, and the grid is laid out densely, so
- * without it 700 KB of far-right cells would ask for gigabytes. Real contact sheets are far inside it.
+ * ⚠️ The most cells the read sheet may span, counted to each row's LAST non-empty cell (see its comment in
+ * xlsx-limits.ts). ⭐ C3c · the constant moved to the client-safe copy table, so the browser's reader lays a sheet out
+ * under the SAME cap; re-exported here, where this reader's rules and its suite read it.
  */
-export const XLSX_MAX_GRID_CELLS = XLSX_MAX_ROWS * 20;
+export { XLSX_MAX_GRID_CELLS };
 
 /** Every base64 character, and at most two `=` of padding. */
 const BASE64_SHAPE = /^[A-Za-z0-9+/]*={0,2}$/;
@@ -563,27 +841,12 @@ function stripDataUrl(field: string): string | null {
   return field.slice(5, comma).toLowerCase().endsWith(";base64") ? field.slice(comma + 1) : null;
 }
 
-const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
-
-/**
+/*
  * The notes name ROWS — never a cell's value, and a sheet's title only in the sheet note, through the copy table's one
- * sheet-name rule (`chooseSheet` → `xlsxSheetChoiceNote` — §5.14). ⚠️ exceljs cannot tell a formula
- * whose saved value is an empty text (`=IF(A2="","",A2)`, written `<v></v>`) from one never calculated (a file
- * written by a library), so the sentence names both and makes the re-save conditional.
+ * sheet-name rule (`chooseSheet` → `xlsxSheetChoiceNote` — §5.14). ⭐ C3c · the cell notes' sentences live in
+ * `xlsx-cells.ts` (`xlsxCellNotes` — a formula with no saved value, an error, a merge), shared with the browser's reader,
+ * so a workbook says the same thing whichever reader read it.
  */
-function formulaNote(lines: readonly number[]): string {
-  const one = lines.length === 1;
-  return `${capital(formatRowList(lines))} ${one ? "has a formula whose saved value is" : "have formulas whose saved values are"} empty or missing, so ${one ? "it was" : "they were"} read as blank. If ${one ? "it" : "they"} should hold something, open the file in Excel, save it, and choose it again.`;
-}
-
-function errorNote(lines: readonly number[]): string {
-  const one = lines.length === 1;
-  return `${capital(formatRowList(lines))} ${one ? "holds an error value" : "hold error values"} (like #N/A), so ${one ? "it was" : "they were"} read as blank.`;
-}
-
-function mergedNote(lines: readonly number[]): string {
-  return `${capital(formatRowList(lines))} ${lines.length === 1 ? "has" : "have"} merged cells; only the first cell of each merge holds its value, so the others were read as blank.`;
-}
 
 /**
  * ⭐ C3b-fix · D6 · a visible sheet's SAMPLE as `chooseSheet` reads it: its first `rules.sampleRows` non-empty rows, each as
@@ -696,9 +959,8 @@ export function buildXlsxReader(rules: XlsxReaderRules): (input: XlsxReadInput) 
       const notes: string[] = [];
       // ⭐ C3b-fix · D6 · the sheet read, its place among the visible sheets, and the visible sheets with mobiles not read.
       if (choice.note !== null) notes.push(choice.note);
-      if (flagged.formula_without_result.length > 0) notes.push(formulaNote(flagged.formula_without_result));
-      if (flagged.error.length > 0) notes.push(errorNote(flagged.error));
-      if (flagged.merged.length > 0) notes.push(mergedNote(flagged.merged));
+      // ⭐ C3c · the cell notes, in their one order, from the rules both readers share.
+      notes.push(...xlsxCellNotes(flagged));
 
       const blankRows = rows[rows.length - 1].line - rows.length;
       const width = rows.reduce((widest, r) => Math.max(widest, r.cells.length), 0);

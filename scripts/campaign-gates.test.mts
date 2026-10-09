@@ -18,7 +18,8 @@
  *       campaign, nothing sent, X9's count, no raw key, the list is everybody (for a reader), no money for GROWTH, a lost
  *       reply (4.20) and one that is NOT this write's (4.20b: another officer's, and the same officer's twin in the same
  *       millisecond), and the record said in both halves (4.21);
- *   §G  §4.5's own — E18 the source line (and the stamp saved now), E15 the limit and the frozen budget (X15), a measured
+ *   §G  §4.5's own — E18 GONE (no source line is needed or judged at Confirm since 2026-10-09: G5.1, G5.1b), E15 the
+ *       limit and the frozen budget (X15), a measured
  *       price through the shipped loader, unreadable settings (OD63), OD65's count alone, OD66's refusal (nothing counted),
  *       OD67's typed tier and no list for a viewer who may not read a number (G6c), and U41's one officer;
  *   §6  the source — the fence's one door, the send boundary, no posted count, ONE writer of the confirm keys, the wiring;
@@ -397,7 +398,8 @@ type UiImpl = {
   sentence: typeof COPY.composeTriggerSentence;
   /** Who is looking (`confirmViewerFor`). */
   viewer: typeof SVC.confirmViewerFor;
-  /** The read's doors as production's (`CONFIRM_READ_DEPS`), the suite's view injected (its source line). */
+  /** The read's doors as production's (`CONFIRM_READ_DEPS`), the suite's view injected (no source line: the confirmation
+   *  reads none since the owner's ruling of 2026-10-09). */
   readDeps: (impl: Impl) => ConfirmReadDeps;
   /** The trigger's read (`readConfirmCardFor`) and the confirmation's body (`runConfirmFor`). */
   read: typeof DOORS.readConfirmCardFor;
@@ -494,7 +496,7 @@ const plantIn = (src: string, from: string, to: string): string => {
 };
 
 /** §UI · the read's doors as production's — its viewer, its find and its money line — with the view counted through the
- *  bundle under test and the suite's source line (so a reader's three are a list, not a stale stamp). */
+ *  bundle under test (no source line is read or judged since the owner's ruling of 2026-10-09 — G5.1). */
 const realReadDeps = (impl: Impl): ConfirmReadDeps => ({
   ...DOORS.CONFIRM_READ_DEPS,
   view: (campaignId, viewer) => impl.view(campaignId, viewer, depsOf(impl)),

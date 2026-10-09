@@ -13,7 +13,7 @@
  *
  *   0  the cluster is migrated: every migration the pre-flight names is finished in `_prisma_migrations`, none of the four SystemConfig
  *      rows the tools read is there, and no row anywhere names the probe's made-up numbers;
- *   1  the CONTACT world (no account holds the number; a covering list basis; an SMS-naming yes; the source line saved; the Marketing
+ *   1  the CONTACT world (no account holds the number; a covering list basis; an SMS-naming yes; the wordings saved; the Marketing
  *      SMS settings SAVED - price 7, reserve 21,000, the widest window 07:00-21:00, read through real jsonb): the pre-flight is GO on
  *      every applicable row (`in-flight` and `elsewhere` included), the control row n/a without a control; a control WITH an active stop
  *      is GO, one without is NO-GO on its row alone; an open switch row (jsonb) is NO-GO by default and GO under --expect-switch=open,
@@ -22,8 +22,9 @@
  *      drive's own in each of the seven statuses of the real enum is NO-GO on in-flight alone for the four that can send, and GO when
  *      named with --drive-campaign; a MARKETING message of the last day to another number is NO-GO on elsewhere alone (one 40 hours old is
  *      not counted); the window row's margin (default 60, --min-window) follows the clock; a SECOND member on the drive list is NO-GO on
- *      test-lists alone; no saved wordings is NO-GO on source alone; a missing ledger file is NO-GO on ledger alone unless --new-ledger,
- *      which is refused over one that exists; the report says it used the DATABASE's clock and a loopback database;
+ *      test-lists alone; with no saved wordings no row is NO-GO and none is `source` (the row was removed with the owner's approval of
+ *      2026-10-09: no message prints the source line); a missing ledger file is NO-GO on ledger alone unless --new-ledger, which is
+ *      refused over one that exists; the report says it used the DATABASE's clock and a loopback database;
  *   2  the evidence on campaign A (one delivered send — the sheet's path makes NO composer test since 2026-10-09, the GROWTH
  *      login's own number not being the test number — the stop link shown once, the ledger created by --new-ledger on the first
  *      evidence run, G3's look before A's Start), the stop made on the stop link's page (no SMS carries the link: the drive opens it
@@ -205,7 +206,11 @@ async function seedBook(): Promise<void> {
     [BASIS, LIST, OFFICER, iso(NOW - 3_600_000)],
   );
 }
-/** The saved wordings of a platform ready for the drive: the source line and the typed-number test's 18+ sentence (jsonb). */
+/**
+ * The saved wordings of a platform ready for the drive, as production holds them (jsonb): the source line and the typed-number
+ * test's 18+ sentence. No row asks for either — the `source` row was removed with the owner's approval of 2026-10-09 (1a, 1h, 1j) —
+ * and the pre-flight reads them only to recognise an import attestation; 3a holds their jsonb type.
+ */
 const seedWordings = (): Promise<unknown> =>
   q(`INSERT INTO "SystemConfig" (key, value, "updatedAt") VALUES ($1, $2::jsonb, now())`, [WORDINGS_KEY, json(W.SAVED_WORDINGS)]);
 /** ⭐ The SAVED Marketing SMS settings (jsonb): not the defaults - a price of 7, a reserve of 21,000, a limit of 11,000 and the widest window (07:00-21:00). */
@@ -309,8 +314,8 @@ try {
   const contactWorld = await runPre(preArgv());
   const contactRows = rowsOf(contactWorld.lines);
   const rowReason = (lines: string[], id: string): string => lines.find((l) => new RegExp(`^ {2}(GO|NO-GO|n/a) +${id} `).test(l)) ?? "";
-  ok("1a · the CONTACT world (no account; a covering basis; an SMS-naming yes; the source line saved; a list of one): every applicable row GO, the control row n/a — migrations, switch, settings, source and the ledger read for real",
-    onlyNoGo(contactWorld, []) && contactRows.get("control") === "n/a" && contactRows.get("migrations") === "GO" && contactRows.get("source") === "GO" && contactRows.get("test-lists") === "GO"
+  ok("1a · the CONTACT world (no account; a covering basis; an SMS-naming yes; the wordings saved; a list of one): every applicable row GO, the control row n/a, and NO `source` row (removed with the owner's approval of 2026-10-09) — migrations, switch, settings and the ledger read for real",
+    onlyNoGo(contactWorld, []) && contactRows.get("control") === "n/a" && contactRows.get("migrations") === "GO" && !contactRows.has("source") && contactRows.get("test-lists") === "GO"
       && contactRows.get("in-flight") === "GO" && contactRows.get("elsewhere") === "GO"
       && has(contactWorld.lines, "transaction read-only: on") && has(contactWorld.lines, "repeatable read") && has(contactWorld.lines, "clock: the database's") && has(contactWorld.lines, "campaign A must use this list")
       && has(contactWorld.lines, "database: loopback"),
@@ -366,8 +371,8 @@ try {
   // ⭐ the licence-outreach record, OPEN, read through real jsonb (after 1f: with the record open the port's judgement of a switched-off account is not the question here)
   await seeded("the licence-outreach record, open (jsonb)", async () => { await seedOutreach(); });
   const outreachOpen = await runPre(preArgv());
-  ok("1j · ⭐ the SAVED licence-outreach record is read through real jsonb: OPEN - the consent rows say so, and the source row now also wants adult.test (saved: GO)",
-    onlyNoGo(outreachOpen, []) && has(outreachOpen.lines, "licence outreach: open") && has(outreachOpen.lines, "(licence outreach is open)"),
+  ok("1j · ⭐ the SAVED licence-outreach record is read through real jsonb: OPEN - the consent rows say so, and no row asks for adult.test (the `source` row that did was removed with the owner's approval of 2026-10-09)",
+    onlyNoGo(outreachOpen, []) && has(outreachOpen.lines, "licence outreach: open") && !has(outreachOpen.lines, "adult.test") && !rowsOf(outreachOpen.lines).has("source"),
     `[${noGo(outreachOpen.lines).join(", ")}]`, outreachOpen.lines);
 
   // ⭐ NOTHING ELSE CAN SEND: a campaign that is not the drive's own, in each status the real enum has (the `"status"::text IN (...)` meets a real enum)
@@ -406,10 +411,12 @@ try {
   await q(`DELETE FROM "ContactListMember" WHERE "contactId" = $1`, [CONTACT_2]);
   await q(`DELETE FROM "MarketingContact" WHERE id = $1`, [CONTACT_2]);
 
-  // the saved wordings (the source line): gone, the row says so; back, it is GO
+  // the saved wordings: gone, and no row asks for them (the `source` row was removed with the owner's approval of 2026-10-09: no
+  // message prints the source line); back, as production holds them
   await q(`DELETE FROM "SystemConfig" WHERE key = $1`, [WORDINGS_KEY]);
   const noWordings = await runPre(preArgv());
-  ok("1h · with no saved wordings the SOURCE row alone is NO-GO", onlyNoGo(noWordings, ["source"]) && has(noWordings.lines, "no source line is saved"), `[${noGo(noWordings.lines).join(", ")}]`, noWordings.lines);
+  ok("1h · with no saved wordings NO row is NO-GO — no `source` row, and no line about a source line (the row was removed with the owner's approval of 2026-10-09)",
+    onlyNoGo(noWordings, []) && !rowsOf(noWordings.lines).has("source") && !has(noWordings.lines, "source line"), `[${noGo(noWordings.lines).join(", ")}]`, noWordings.lines);
   await seeded("the saved wordings, back", async () => { await seedWordings(); });
 
   // the ledger file: created only on purpose

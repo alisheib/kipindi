@@ -1,3 +1,4 @@
+✅ DONE — landed in `bc91921e` (`contacts-c8a-int`, the push of `contacts-c8a` `17df6956`), 2026-10-09; kept as the design record.
 # C8a — an erasure stands until a new consent (brief for the builder)
 
 ## Context — a LIVE data-protection defect

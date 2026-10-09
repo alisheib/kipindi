@@ -30,6 +30,7 @@ const storeModule = await import("../../src/lib/server/store.ts");
 export const staging = await import("../../src/lib/server/contacts/import-staging.ts");
 export const checkModule = await import("../../src/lib/server/contacts/import-check.ts");
 export const commitModule = await import("../../src/lib/server/contacts/import-commit.ts");
+export const refusalAuditModule = await import("../../src/lib/server/contacts/refusal-audit.ts");
 export const db = storeModule.db;
 
 /** True only when this process is on the memory twin — a section refuses to write anything otherwise. */
@@ -53,7 +54,12 @@ export const captureAudit = (async (entry: unknown) => {
   return { recorded: true } as never;
 }) as unknown as typeof auditFn;
 
-export const STAGING_DEPS: ImportStagingDeps = { ...staging.IMPORT_STAGING_DEPS, audit: captureAudit, now: () => NOW };
+/** ⭐ C8c · #14a · the refusal-audit gate on the suite's FIXED clock, reset by every fresh store — production's is one per
+ *  process on the wall clock, which would keep a later run's refusal row out for a minute. A section that proves the bound
+ *  itself builds its own gate over a clock it moves (`refusalAuditGate`). */
+export const TEST_REFUSAL_AUDIT = refusalAuditModule.refusalAuditGate(() => NOW.getTime());
+
+export const STAGING_DEPS: ImportStagingDeps = { ...staging.IMPORT_STAGING_DEPS, audit: captureAudit, refusalAudit: TEST_REFUSAL_AUDIT, now: () => NOW };
 
 /* ═══ THE FRESH STORE ══════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -83,7 +89,7 @@ function makeUser(id: string, phoneE164: string, role: StoredUser["role"], displ
 }
 
 /** Runs `fn` on EMPTY staging, book, ledger, stop-list, user and list maps — the four officers seeded — and puts every
- *  map back afterwards, whatever `fn` did or threw. The audit capture starts empty. */
+ *  map back afterwards, whatever `fn` did or threw. The audit capture starts empty, and so does the refusal-audit gate. */
 export async function inFreshStore<T>(fn: () => Promise<T>): Promise<T> {
   if (!onMemoryTwin()) throw new Error("a database is reachable — the import sections write and run on the memory twin only");
   const m = mem();
@@ -92,6 +98,7 @@ export async function inFreshStore<T>(fn: () => Promise<T>): Promise<T> {
   for (const k of FLAT) m[k]?.clear();
   m.contactImportRows.clear();
   captured.length = 0;
+  TEST_REFUSAL_AUDIT.reset();
   try {
     await db.user.create(makeUser(OFFICER, "+255754900101", "GROWTH", "Amina Officer"));
     await db.user.create(makeUser(OTHER, "+255754900102", "GROWTH", "Baraka Officer"));

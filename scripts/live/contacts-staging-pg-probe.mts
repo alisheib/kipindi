@@ -12,7 +12,8 @@
  *      a recount over the keyset, re-packs the rest of the same file from there and finishes it; then, on Postgres:
  *      the same digest adopting, two calls racing one batch at the store (exactly one lands), a line already staged
  *      rolling the whole batch back, two transitions racing (one winner), the keyset across a deleted middle row, the
- *      idle sweep (a PAUSED commit untouched) and the purge, a held id refused; and the p50/p95 of a 2,000-row batch.
+ *      idle sweep (S15-12's second rule: a commit left 20 days ended, one paused 13 days untouched) and the purge, a held
+ *      id refused; and the p50/p95 of a 2,000-row batch.
  * Every expectation is written HERE BY HAND — an oracle independent of either twin.
  *
  * Run (through the heavy-node lock: it applies every migration to an empty database and spawns two processes):
@@ -304,24 +305,34 @@ async function phaseB(): Promise<void> {
   await seed("probe_sweep_staging", ago(20), 1, []);
   await seed("probe_sweep_staged", ago(20), 2, []);
   await seed("probe_sweep_paused", ago(20), 2, ["COMMITTING", "PAUSED"]);
+  await seed("probe_sweep_committing", ago(20), 2, ["COMMITTING"]);
+  // S15-12 · the commit above settled its first row before it was left: that row is the record of a contact written.
+  await L.db.contactImport.commitBatch({
+    importId: "probe_sweep_committing", fromCursor: 0, toCursor: 1, at: ago(20), by: ADMIN, creates: [], updates: [],
+    outcomes: [{ ordinal: 1, outcome: "keep", reason: "chosen_keep" }], sentences: [], listId: null, members: [],
+  });
+  await seed("probe_sweep_paused_recent", ago(13), 2, ["COMMITTING", "PAUSED"]);
   await seed("probe_sweep_done_old", ago(95), 2, ["COMMITTING", "DONE"]);
   await seed("probe_sweep_done_recent", ago(85), 2, ["COMMITTING", "DONE"]);
   const swept = await S.sweepStaleContactImports(T0 + 3_600_000, deps);
   const statusOf = async (id: string) => (await L.db.contactImport.find(id))?.status ?? "GONE";
   const rowsOf = async (id: string) => (await recountRows(L, id)).length;
   const states = [];
-  for (const id of ["probe_sweep_staging", "probe_sweep_staged", "probe_sweep_paused", "probe_sweep_done_old", "probe_sweep_done_recent"]) {
+  for (const id of [
+    "probe_sweep_staging", "probe_sweep_staged", "probe_sweep_paused", "probe_sweep_committing", "probe_sweep_paused_recent",
+    "probe_sweep_done_old", "probe_sweep_done_recent",
+  ]) {
     states.push(`${await statusOf(id)}:${await rowsOf(id)}`);
   }
-  ok("B.9 · ⭐ the sweep on Postgres: the idle STAGING and STAGED runs CANCELLED with their rows deleted, the idle PAUSED commit UNTOUCHED, the run finished 95 days ago purged with its rows (the FK cascade), the one finished 85 days ago kept — and the live runs above untouched",
-    swept.cancelled === 2 && swept.rowsDeleted === 3 && swept.runsPurged === 1
-      && states.join(",") === "CANCELLED:0,CANCELLED:0,PAUSED:2,GONE:0,DONE:2" && (await statusOf(expected)) !== "CANCELLED",
+  ok("B.9 · ⭐ the sweep on Postgres (X29 · S15-12): idle 20 days, the STAGING and STAGED runs CANCELLED with their rows deleted, and the PAUSED and COMMITTING commits CANCELLED too (the second rule) — the row a commit already settled KEPT, the unsettled ones deleted — while a commit paused 13 days ago is UNTOUCHED; the run finished 95 days ago purged with its rows (the FK cascade), the one finished 85 days ago kept — and the live runs above untouched",
+    swept.cancelled === 4 && swept.rowsDeleted === 6 && swept.runsPurged === 1
+      && states.join(",") === "CANCELLED:0,CANCELLED:0,CANCELLED:0,CANCELLED:1,PAUSED:2,GONE:0,DONE:2" && (await statusOf(expected)) !== "CANCELLED",
     `${JSON.stringify(swept)} · ${states.join(",")}`);
 
   // ── B.10 · create never upserts: a held id is refused ──
-  const twice = await L.db.contactImport.create(runOf("probe_sweep_paused", ago(1)));
+  const twice = await L.db.contactImport.create(runOf("probe_sweep_paused_recent", ago(1)));
   ok("B.10 · a held id is refused with null (P2002), never upserted — the PAUSED run is unchanged",
-    twice === null && (await statusOf("probe_sweep_paused")) === "PAUSED");
+    twice === null && (await statusOf("probe_sweep_paused_recent")) === "PAUSED");
 
   // ── B.11 · ⭐ ONE BAD BYTE CANNOT WEDGE A RUN ON POSTGRES (review F2) — the one database that refuses a NUL in text ──
   const NULC = String.fromCharCode(0);

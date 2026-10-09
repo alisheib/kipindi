@@ -155,9 +155,9 @@ const TEST_NOT_DRAFT = "Only a draft can be tested.";
 const OLD_TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";
 /** Under the counter since the owner's ruling of 2026-10-09 (`COMPOSE_AS_WRITTEN`). */
 const AS_WRITTEN = "Sent exactly as written — nothing is added to it.";
-const LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.";
+const LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the Owner switches them on.";
 const NO_CONSENT = "Your number has no SMS offers consent on record — turn on SMS offers on your own profile, then test again.";
-const LIVE_CLOSED = "Marketing SMS are not switched on yet. The owner switches them on before the first send.";
+const LIVE_CLOSED = "Marketing SMS are not switched on yet. The Owner switches them on before the first send.";
 /** U13 · the Test card's window note and the test send's quiet-hours refusal, word for word (the default hours). */
 const WINDOW_NOTE = "Outside the send window (08:00–20:00 EAT) — a test can be sent from 08:00.";
 const QUIET_HOURS = "It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";

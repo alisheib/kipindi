@@ -236,11 +236,11 @@ export const CONFIRM_SERVICE_COPY: Readonly<Record<ConfirmServiceRefusal, (n: Co
   settings_unreadable: () =>
     "The Marketing SMS settings couldn't be read just now, so this campaign's cost can't be checked against its limit. Try again in a moment. Nothing was confirmed.",
   price_unknown: () =>
-    "The price per SMS isn't known, so this campaign's cost can't be checked against its limit. The owner sets it on Admin → System → Marketing SMS. Nothing was confirmed.",
+    "The price per SMS isn't known, so this campaign's cost can't be checked against its limit. The Owner sets it on Admin → System → Marketing SMS. Nothing was confirmed.",
   over_limit: (n) =>
     n.money && n.costTzs !== null && n.limitTzs !== null
-      ? `This campaign could cost up to ${formatTzs(n.costTzs)} — more than the ${formatTzs(n.limitTzs)} one campaign may spend. Narrow the audience, or the owner raises the limit on Admin → System → Marketing SMS. Nothing was confirmed.`
-      : "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the owner to raise the limit. Nothing was confirmed.",
+      ? `This campaign could cost up to ${formatTzs(n.costTzs)} — more than the ${formatTzs(n.limitTzs)} one campaign may spend. Narrow the audience, or the Owner raises the limit on Admin → System → Marketing SMS. Nothing was confirmed.`
+      : "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the Owner to raise the limit. Nothing was confirmed.",
 });
 
 const NB = String.fromCharCode(0xa0);

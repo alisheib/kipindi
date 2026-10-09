@@ -395,7 +395,10 @@ production send). Railway keeps HTTP logs only for the CURRENT deployment — th
 is the durable record. Live state, the go-live order and the open vendor questions:
 `docs/BLACKBALL-SMS.md`. Marketing/broadcast SMS is a separate programme, in build:
 `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` (no Gaming Board approval needed — Ali, 2026-09-26).
-⛔ **Its consent sentences are evidence.** The register box (`auth.optionalUpdates`), the profile
+Its rules in force are on one page, each with its source: `docs/MARKETING-RULES.md` — since 2026-10-09 a
+marketing SMS is sent exactly as the officer wrote it (no footer, stop link, 18+, helpline or source line).
+⛔ **Its consent sentences are evidence.** The sign-up box (`auth.optionalUpdates` — removed on 2026-10-07;
+its sentences stay pinned because a yes given under them still counts), the profile
 toggle (`push.marketingTitle`/`marketingBody`) and the opt-out page's resume are pinned as literals in
 `src/lib/marketing/consent-wording.ts`: rewording one means APPENDING the new sentences there in the
 same commit (never editing an entry), or every new opt-in stops counting as consent (OQ11).
@@ -621,8 +624,10 @@ full set (36 routes, all double-gated out of production).
    (`SMS_PROVIDER=blackball`) and delivery receipts settle real rows. *(This
    line said OTP was still on `console`, corrected 2026-09-25.)* Marketing
    SMS needs no Gaming Board approval (Ali, 2026-09-26 — the Board says it is
-   not part of its approval); it waits only on the campaign engine
-   (`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`).
+   not part of its approval); the campaign engine is built, and nothing sends
+   while the owner's live switch is closed — where it stands is the plan's §0
+   (`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`). *(This line said "it waits
+   only on the campaign engine" — corrected 2026-10-09.)*
 2. **GBT pre-application meeting** (regulator confirmation that the
    pari-mutuel pool model classifies as betting under their license).
    ⚠️ 2026-09-27: the licence itself is on file — `LICENCE_NUMBER()`

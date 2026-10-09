@@ -25,7 +25,8 @@
  * store and the chain unchanged across a split over RG-refused players.
  * ⛔ X25 / D19 · THE DOOR ASKS THE ROLE RULE FIRST (`campaignAudienceRefusal`): a viewer who may not read a number is
  * refused a search, and is handed a sample with no per-row detail — no contact or account id, no name, no verdict —
- * because a "will receive" row is today a player's (every contact-only number is refused until U33).
+ * because a "will receive" row may be a player's — the D19 fact (it was ALWAYS a player's until U33 and U33a made a
+ * contact-only number reachable: a consent recorded at import, or a list's recorded licence basis).
  * ⭐ THE POOL IS SHARED WITH BETS: one split runs per filter key at a time (a second asker joins it), and at most
  * `AUDIENCE_SPLITS_PER_PROCESS` run at once — a third waits for a slot (an asker may bound that wait and be answered
  * "busy": the confirmation's own count and its read — U40b). Each split's reads run one after another.

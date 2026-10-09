@@ -6,9 +6,10 @@
  *
  * ⭐ ONE DIALOG, ONE STEP AT A TIME, NEVER A DEAD END. Opening asks the server for the officer's unfinished import first
  * (`importViewAction(null)`) and opens ON it when there is one (`import-adopt`); otherwise: choose a file or paste
- * (`import-entrance`) → read in the browser, streamed (an Excel file is read by the server) → the columns
- * (`import-mapping`) → uploaded in batches, the bar counting rows STAGED → the check (`import-preflight`), numbers already
- * in the book, the list, and the start (`import-apply`) → importing, the bar counting rows DONE as the server reports
+ * (`import-entrance`) → read in the browser, streamed (an Excel file of 700 KB or less is read by the server; since C3c a
+ * bigger one is read in the browser too, `xlsx-read.ts`) → the columns (`import-mapping`) → uploaded in batches, the
+ * bar counting rows STAGED → the check (`import-preflight`), numbers already in the book, the list, and the start
+ * (`import-apply`) → importing, the bar counting rows DONE as the server reports
  * them (`import-commit`) → the result (`import-done`). Every refusal is said where it happened with its next step as a
  * control; a fault says "nothing was lost" and offers to try again; a deploy says "The platform was updated — reload this
  * page to resume", and the run is resumable because its progress lives on the server, never in this tab.
@@ -49,7 +50,6 @@ import { isParsedContactsFile, type ParsedContactsFile } from "@/lib/contacts/pa
 import {
   bucketsAdd,
   type ImportRefusal,
-  type ImportRefusalReason,
   type ImportResultView,
   type ImportRunView,
   type PreflightView,
@@ -110,6 +110,7 @@ import {
   OTHERS,
   RESUME_FILE,
   partsText,
+  refusalTone,
   stepLine,
   sumCutOf,
   type SumCut,
@@ -182,17 +183,6 @@ function headersCovering(headers: readonly string[], mapping: ColumnMapping): st
   return Array.from({ length: width }, (_, i) => headers[i] ?? "");
 }
 
-/** How a refusal is painted: a wait or a re-check is not an error; everything else is said as one. */
-const REFUSAL_TONE: Partial<Record<ImportRefusalReason, ImportAlertState["tone"]>> = {
-  busy: "warning",
-  rate_limited: "warning",
-  xlsx_busy: "warning",
-  check_again: "warning",
-  bad_exceptions: "warning",
-  check_stale: "info",
-  update_needs_reader: "info",
-};
-
 /* ═══ THE PAGE HEAD'S BUTTON ═══════════════════════════════════════════════════════════════════════ */
 
 /**
@@ -240,7 +230,8 @@ type Ready = {
   readonly extraUnit: ExtraNumbersUnit;
   /** C3b-fix · D5 · a CSV whose quotation mark never closed: its row and the lines it swallowed — null for any other file. */
   readonly unclosed: CsvUnclosedQuote | null;
-  /** C3b-fix · D8 · the server's reader said no visible sheet of the workbook holds a mobile — false for any other file. */
+  /** C3b-fix · D8 · the workbook's READER said no visible sheet holds a mobile — the server's for a workbook within the
+   *  700 KB upload cap, the browser's (C3c) for a bigger one; false for any other file. */
   readonly noMobileSheet: boolean;
 };
 
@@ -332,8 +323,10 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
   }, [go]);
 
   /** A refusal said in the phase it happened in: the server's sentence, verbatim, and the ways on. */
+  // ⭐ How a refusal is painted is the copy table's ONE rule (`refusalTone`): a wait or a re-check is not an error — the
+  // review's n8 · a step whose rows kept moving included, whatever its reason — and everything else is said as one.
   const refused = (refusal: ImportRefusal, actions: readonly AlertAction[] = []): ImportAlertState => ({
-    tone: REFUSAL_TONE[refusal.reason] ?? "danger",
+    tone: refusalTone(refusal),
     text: refusal.message,
     actions,
   });
@@ -486,11 +479,12 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
     if (out.kind === "parsed") {
       prepare({
         file: out.file, digest: out.digest, name: file.name || null, list: false, extraNumbers: out.extraNumbers, extraUnit: "card",
-        unclosed: out.unclosed, noMobileSheet: false,
+        unclosed: out.unclosed, noMobileSheet: out.noMobileSheet === true,
       }, resume);
       return;
     }
-    // ⭐ An Excel workbook: read by the server (U27b), checked here before a single row is shown.
+    // ⭐ An Excel workbook within the 700 KB upload cap: read by the server (U27b), checked here before a single row is
+    // shown. (A bigger one came back `parsed` above — C3c reads it in the browser.)
     const workbook = { base64: out.base64, fileName: out.fileName, digest: out.digest };
     go({ at: "entrance", resume, mode: { kind: "xlsx", name } });
     const r = await call(() => ACTIONS.readXlsx({ base64: workbook.base64, fileName: workbook.fileName }));
@@ -1115,7 +1109,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
               extraNumbers={extra.current.runId === phase.result.view.id ? extra.current.count : 0}
               extraUnit={extra.current.unit}
               cut={cutFor(phase.result.view)}
-              loadFailures={(runId, afterLine) => ACTIONS.failures({ runId, afterLine })}
+              loadFailures={(runId, afterLine, list) => ACTIONS.failures({ runId, afterLine, list })}
               onClose={onClose}
               onOpenLists={openLists}
               focusRef={buttonFocus}

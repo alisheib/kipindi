@@ -102,10 +102,15 @@ import {
 } from "../src/lib/sms-compose.ts";
 import { smsCodingFor } from "../src/lib/server/sms-blackball.ts";
 import {
-  marketingFooter, operatorBudget, composeMarketing, shortDomain, footerMeasurementToken,
-  SENDER_IDENTITY, statutorySmsHelpline,
+  marketingFooter, operatorBudget, composeMarketing, footerMeasurementToken,
+  SENDER_IDENTITY,
   type MarketingCompose,
 } from "../src/lib/marketing/footer.ts";
+// The published helpline, in dial form — what no message may carry (§9, §12) and what the old envelope printed. Read where
+// it is defined, from the client-safe module (it imports nothing; the SERVER config is loaded below only once
+// DATABASE_URL is gone): since 2026-10-09 neither the marketing modules nor any reader reads it, and on this memory twin
+// the number saved is the default.
+import { SUPPORT_DEFAULTS } from "../src/lib/support-config.ts";
 import {
   JINA, JINA_MAX_CHARS, CAMPAIGN_NAME_MAX_CHARS, SOURCE_PHRASE_MAX_CHARS,
   counterFor, renderForRecipient, renderBody, worstCaseJina, jinaFor, firstNameFor, scanPlaceholders,
@@ -113,12 +118,14 @@ import {
   type CampaignTemplate, type CampaignDraftFields, type CampaignVariant, type RecipientOrigin,
 } from "../src/lib/marketing/campaign-template.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
-import { appUrl } from "../src/lib/app-url.ts";
 import { decomment } from "./lib/decomment.mts";
 import { srcFiles, REPO_ROOT } from "./lib/tracked-files.mts";
 import { endOfOpenTag } from "./lib/jsx-open-tag.mts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+/** The published helpline in dial form (see its import above). */
+const PUBLISHED_HELPLINE_TEL = SUPPORT_DEFAULTS.nationalHelplineTel;
 
 process.exitCode = 1; // failure is the default
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -305,7 +312,9 @@ function check(size: Sizer, log: (l: string) => void): string[] {
 
 /* ══ U4 — THE STATUTORY ENVELOPE ════════════════════════════════════════════
  * Separate from `check` because these assertions are about the FOOTER, and the red control plants a
- * different thing here: a composer that sizes the body instead of the message. */
+ * different thing here: a composer that sizes the body instead of the message.
+ * ⟶ 2026-10-09: the envelope is EMPTY (the owner's ruling — nothing is appended to a marketing SMS); the checks
+ * below now prove that nothing is. */
 
 type Composer = (body: string, token: string) => MarketingCompose;
 
@@ -320,26 +329,23 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
   /* ── §9 · NOTHING IS APPENDED — the owner's ruling of 2026-10-09 (COMPLIANCE-DECISIONS) ── */
   log("\n§9 · NOTHING IS APPENDED — the message is sent exactly as the officer wrote it (2026-10-09)");
   {
-    const footers = [marketingFooter(TOKEN, "SW"), marketingFooter(TOKEN, "EN"), marketingFooter(TOKEN, "SW", "Namba yako ipo orodhani kwetu.")];
-    ok("§9 ⭐ the footer is EMPTY in both languages and with any source phrase", footers.every((f) => f === ""), JSON.stringify(footers));
+    // ⭐ The footer takes nothing since the ruling — no token, language or phrase is left for it to print.
+    const footer = marketingFooter();
+    ok("§9 ⭐ the footer is EMPTY", footer === "", JSON.stringify(footer));
     const sent = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
     ok("§9 ⭐ no stop link, no 18+, no helpline and no token in a composed message",
-      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(statutorySmsHelpline()) && !sent.text.includes(TOKEN)
+      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(PUBLISHED_HELPLINE_TEL) && !sent.text.includes(TOKEN)
         && !sent.text.includes("Acha"), JSON.stringify(sent.text));
   }
 
-  /* ── §10 · the budget is derived from the real deployment URL ──────────── */
+  /* ── §10 · the operator's budget — the whole message's cap ─────────────── */
+  // (Until 2026-10-09 §10 also held the stop link's domain DERIVED from the real `appUrl()` — `shortDomain()`. No message
+  // prints a link since, and the function went with its last caller.)
   log("\n§10 · THE OPERATOR'S BUDGET");
   {
     const budget = operatorBudget("SW");
     ok("§10 ⭐ the budget is the whole message — 160 characters, computed, in both languages",
       budget === SMS_LIMITS.GSM7.single && operatorBudget("EN") === budget, `${budget}`);
-    // ⭐ THE DOMAIN IS NOT TYPED ANYWHERE. If `appUrl()` ever changes, this is what notices.
-    ok("§10 ⭐ the short domain is DERIVED from the real appUrl(), not typed",
-      appUrl().replace(/^https?:\/\//, "").replace(/^www\./, "") === shortDomain(),
-      `appUrl ${appUrl()} → ${shortDomain()}`);
-    ok("§10 control · the derivation actually produced something",
-      shortDomain().length > 3 && !shortDomain().includes("/"), shortDomain());
     // ⛔ The source phrase is never printed (2026-10-09), so it costs nothing.
     const withSource = operatorBudget("SW", "Umetupa namba yako 50pick.");
     ok("§10 ⛔ a source phrase costs nothing — it is never printed", withSource === budget, `${withSource}`);
@@ -529,7 +535,8 @@ const REAL_TEMPLATE: TemplateImpl = {
 const TT = "a1b2c3d4";
 /** §10's realistic phrase — a TEST string. ⛔ The real wording is owner gate G5's (OQ3), never this suite's. */
 const PHRASE = "Umetupa namba yako 50pick.";
-/** The room a BLANK phrase keeps, restated BY HAND (the longest phrase, one septet a letter), as `worstTyped` restates the name's. */
+/** The room a BLANK phrase kept until 2026-10-09 (M5: the longest phrase, one septet a letter), restated BY HAND as
+ *  `worstTyped` restates the name's — nothing is reserved since the owner's ruling, so it no longer moves the room. */
 const RESERVE = "W".repeat(SOURCE_PHRASE_MAX_CHARS);
 /** A phrase of exactly the longest length — §10's fixture padded with x's. A TEST string, never wording. */
 const MAX_PHRASE = PHRASE + "x".repeat(Math.max(0, SOURCE_PHRASE_MAX_CHARS - unitsIn(PHRASE, "GSM7")));
@@ -796,7 +803,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       others.map((l) => impl.variantFor(withEn, l)).join(","));
     const enBlank = impl.renderForRecipient(tpl({ bodyEn: "" }), { variant: "EN", name: null, token: TT, origin: "account" });
     ok("§15.8 an EN recipient of a campaign with no English body is sent the SWAHILI message and its fallback (nothing appended, 2026-10-09)",
-      enBlank.ok && enBlank.text.startsWith(`50pick: Habari ${FB},`) && enBlank.text.endsWith(marketingFooter(TT, "SW")),
+      enBlank.ok && enBlank.text.startsWith(`50pick: Habari ${FB},`) && enBlank.text.endsWith(marketingFooter()),
       JSON.stringify(enBlank.text));
   }
 
@@ -947,7 +954,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const v15 = impl.validate(draft({ bodySw: UNI15 }), "");
     const seven15 = [0x2018, 0x2019, 0x201C, 0x201D, 0x2013, 0x2014, 0x2026].map((x) => cc(x)).join(" ");
     const many15 = impl.counterFor(`50pick ${seven15}`, "SW", FB, "");
-    // A six-letter source line leaves Unicode some room: the sentence then quotes it, and it is positive.
+    // A six-letter source line (priced until 2026-10-09, it changes nothing since): Unicode keeps its room, the sentence
+    // quotes it, and it is positive.
     const room15 = impl.counterFor(UNI15, "SW", FB, "Chanzo");
     const negatives = [...c15.problems, ...many15.problems, ...room15.problems, ...(v15.problems.bodySw ?? [])].filter((p) => NEG_NUMBER.test(p));
     const first15 = c15.problems[0] ?? "";
@@ -1625,7 +1633,7 @@ function checkComposerWords(w: WordsImpl, log: (l: string) => void): string[] {
         && w.bodyHint === `Begin with ${SENDER_IDENTITY} (lower case). ${JINA} prints the first name.`
         && w.saveUnfinished.includes("before saving again") && !/try again/i.test(w.saveUnfinished)
         && w.testUnfinished.includes("Check your phone") && !/try again/i.test(w.testUnfinished)
-        && w.ownNumberUnusable.includes("can't be changed") && w.ownNumberUnusable.includes("ask the owner")
+        && w.ownNumberUnusable.includes("can't be changed") && w.ownNumberUnusable.includes("ask the Owner")
         && w.ownNumberUnusable.includes("/admin/staff") && !/an account on your/i.test(w.ownNumberUnusable),
       JSON.stringify({ saved, noTest, hint: w.bodyHint, own: w.ownNumberUnusable }));
   }
@@ -2032,7 +2040,8 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const n = key.slice(3);
     return { local: `0${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}`, intl: `+255 ${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}` };
   };
-  /** A saved DRAFT carrying a source line (§10's fixture phrase), as U37s stamps one. */
+  /** A saved DRAFT carrying a source line (§10's fixture phrase), as U37s stamped one until 2026-10-09 (history only:
+   *  nothing stamps or reads it now). */
   const phrasedDraft = async (): Promise<string> => {
     const id = await u37bDraft();
     const set = await db.smsCampaign.update(id, { sourcePhrase: PHRASE }, { draftRevision: 0 }, new Date().toISOString());
@@ -3109,17 +3118,18 @@ if (!PROVE_RED) {
   type EnvPlant = { name: string; expect: RegExp; compose: Composer; landed: () => boolean; landedAs: string };
   const envPlants: EnvPlant[] = [
     {
-      // ⭐ THE OWNER'S RULING (2026-10-09): nothing is appended. A footer back on the message is a message nobody wrote.
+      // ⭐ THE OWNER'S RULING (2026-10-09): nothing is appended. A footer back on the message is a message nobody wrote —
+      // here the envelope as it stood until that day: the published helpline and the stop link on `50pick.tz`.
       name: "a footer appended again — the stop link, 18+ and the helpline back on every message",
       expect: /^§11 ⭐ the composed text IS the officer's text/,
-      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${statutorySmsHelpline()} Acha: ${shortDomain()}/s/${token}` }; },
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${PUBLISHED_HELPLINE_TEL} Acha: 50pick.tz/s/${token}` }; },
       landed: () => true,
       landedAs: "a composer that appends anything sends a message the officer did not write",
     },
     {
       name: "the stop link printed again — the token appended to the officer's text",
       expect: /^§9 ⭐ no stop link, no 18\+, no helpline and no token/,
-      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text} ${shortDomain()}/s/${token}` }; },
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text} 50pick.tz/s/${token}` }; },
       landed: () => true,
       landedAs: "the token in the text is the stop link the owner ruled out",
     },
@@ -3193,12 +3203,13 @@ if (!PROVE_RED) {
     const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     const BOARD = "0800110051";
     const composed12 = (body: string) => composeMarketing(body, "a1b2c3d4").text;
-    /** A footer with the old envelope's line back on it, carrying `number` — what a revert of the ruling would print. */
-    const footerWith = (number: string) => (token: string, locale: "SW" | "EN") => `${marketingFooter(token, locale)}${NL15}50pick 18+ ${number}`;
+    /** A footer with the old envelope's line back on it, carrying `number` — what a revert of the ruling would print (in
+     *  the shape `checkHelpline` asks a footer for, though the shipped one takes nothing since 2026-10-09). */
+    const footerWith = (number: string): ((token: string, locale: "SW" | "EN") => string) => () => `${marketingFooter()}${NL15}50pick 18+ ${number}`;
     const cases12 = [
       { name: "the Board's 0800110051 back in the footer (the number OQ4 ruled out, on a message the owner ruled bare)", number: BOARD,
         expect: /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/ },
-      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: statutorySmsHelpline(),
+      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: PUBLISHED_HELPLINE_TEL,
         expect: /^§12 ⭐ the published helpline is printed in no footer/ },
     ];
     for (const c of cases12) {
@@ -3272,11 +3283,13 @@ if (!PROVE_RED) {
 
   /* ── §15's plants: the renderer and the worst-case counter (U37a) ───────── */
   {
-    /** At the room with NO source line yet — the counter keeps the longest phrase's there (M5). */
+    /** At the room with NO source line — M5 kept the longest phrase's room there until 2026-10-09; since the owner's
+     *  ruling it is the whole message's, like the two below. */
     const atB = fillTo(HEAD, operatorBudget("SW", RESERVE));
     /** At the room with §10's phrase. */
     const atP = fillTo(HEAD, operatorBudget("SW", PHRASE));
-    /** At the room with NO phrase priced at all — what a counter that forgot M5 would offer. */
+    /** At the room with NO phrase priced at all — what a counter that forgot M5 would have offered; since 2026-10-09
+     *  the real counter's. */
     const atNone = fillTo(HEAD, operatorBudget("SW"));
     /** §15.13's stored body: 3 over in the worst case, though a short name's own message fits. */
     const over13 = tpl({ bodySw: `${atP}aaa`, sourcePhrase: PHRASE });
@@ -3502,7 +3515,7 @@ if (!PROVE_RED) {
         name: "P1 · the counter sizes something other than the message sent — the old 49-septet footer still priced on top",
         expect: [/^§15[.]6 ⭐/],
         impl: { ...R, counterFor: footerStillPriced },
-        landed: () => footerStillPriced(atP, "SW", FB, PHRASE).units - counterFor(atP, "SW", FB, PHRASE).units === 49 && marketingFooter(TT, "SW") === "",
+        landed: () => footerStillPriced(atP, "SW", FB, PHRASE).units - counterFor(atP, "SW", FB, PHRASE).units === 49 && marketingFooter() === "",
         landedAs: "the counter quotes 49 septets more than the message, which carries nothing on top",
       },
       {
@@ -4740,7 +4753,7 @@ if (!PROVE_RED) {
       let token = "";
       const measured = footerMeasurementToken();
       const r = await realTest(input, officerId, { ...deps, render: (t, rc) => { if (rc.token !== measured) token = rc.token; return deps.render(t, rc); } }, options);
-      return r.ok && r.target === "typed" && token !== "" ? { ...r, text: `${r.text} ${shortDomain()}/s/${token}` } : r;
+      return r.ok && r.target === "typed" && token !== "" ? { ...r, text: `${r.text} 50pick.tz/s/${token}` } : r;
     };
     /** A.8 · no per-recipient budget. */
     const noRecipientBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, { ...deps, rateTo: ALLOW }, options);

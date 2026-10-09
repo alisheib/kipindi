@@ -187,7 +187,18 @@ ok("2.1 · ⭐ every script that writes an account fact is a suite, or carries t
  *   - login-enumeration.test.mts (since 2026-07-31; d6f8260a, 2026-10-06, closes an account) and reset-identifier.test.mts
  *     (since 2026-08-25; 14099375, 2026-10-06, sets an email and a password hash).
  */
-const SCRIPT_CEILING = 34;
+/**
+ * ⚠️ 34 → 35 on 2026-10-09, by the same rule: the one new member was READ before it was admitted, and it is the only change
+ * to the population since 34 was set (b1dec89b, 2026-10-08 16:00) — nobody left, nobody else joined. It had held this suite
+ * red on BOTH counts (2.1 and 2.2) since it was added, in 37a93917 (2026-10-08 18:30) — its lane moved neither — and `main`
+ * with it (found on 118fc75c):
+ *   - live/dry-fire/world.mts, the marketing dry-fire's made-up population. It enters on its `rgRow` — the store's own
+ *     `responsible.upsert`, one responsible-gambling row for each self-excluded, cooling-off and under-25 person — and it
+ *     creates its accounts ACTIVE, SELF_EXCLUDED, COOLED_OFF or SUSPENDED (an ADMIN officer among them). It writes only to the
+ *     accounts it makes itself, in the memory twin or the LOOPBACK `.pgscratch` Postgres the dry-fire refuses to leave; its
+ *     world holds no house bot. It now carries the L2-sweep declaration (2.1), saying so.
+ */
+const SCRIPT_CEILING = 35;
 ok(`2.2 · the script population is shrink-only (${scriptWriters.length} found, ceiling ${SCRIPT_CEILING})`, scriptWriters.length <= SCRIPT_CEILING,
   scriptWriters.map((s) => s.file).slice(0, 6).join(" · "));
 

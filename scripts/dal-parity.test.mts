@@ -1579,6 +1579,81 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     /contactsByMsisdn\.set\(row\.msisdn/.test(cCreateMem),
     "a create that does not set the index makes the next duplicate pass");
 
+  // ── ⭐ A LIST'S NAME IS UNIQUE WHATEVER ITS CASE (the duplicate audit, probe p6, 2026-10-08; ported in C8c · N3) ─────
+  // The model's @unique is exact-case, so "Arusha event" and "ARUSHA EVENT" were two lists the moment two officers named one
+  // new list together: the bulk service's check (listNameKey over listAll) passes for both and both creates landed - and the
+  // importer's start, which inserts its new list inside its freeze, the same. The database now holds a UNIQUE index on
+  // lower("name") - a hand-written migration, because an expression index cannot be declared in schema.prisma, which
+  // therefore does not change. The memory twin refuses by the same lower-cased key in its create AND in the importer's
+  // freeze; the Prisma create turns the index's P2002 into null (the code the exact-case index raised) and the service
+  // answers list_exists. The migration is read from ROOT (the harness mutates src only); `test:contacts-bulk` B7b EXECUTES
+  // the race on the memory twin, `test:contacts-import` commit M26 the importer's start.
+  // ⛔ No backslash anywhere in this block: line breaks are built with String.fromCharCode, every matcher an includes.
+  const NL19 = String.fromCharCode(10);
+  const CR19 = String.fromCharCode(13);
+  const listMem19 = region(storeSrc, `${NL19}  contactList: {`);
+  const listMemCreate19 = region(listMem19, "create: (");
+  const listMemFind19 = region(listMem19, "findByName: (");
+  const listPriFind19 = delegateMethod("contactList", "findByName");
+  const freezeMem19 = region(region(storeSrc, `${NL19}  contactImport: {`), "freezeDecision: (");
+  const listCompare19 = "l.name.toLowerCase() === key";
+  const FREEZE_KEY19 = "const nameKey = newList.name.toLowerCase();";
+  const FREEZE_COMPARE19 = "held.name.toLowerCase() === nameKey";
+  ok("19.listci.memory · the memory list create refuses a name already held IN ANY CASE - both names lower-cased before the comparison, which comes BEFORE the write - answers null and does not overwrite",
+    listMemCreate19.includes("const key = row.name.toLowerCase();") && listMemCreate19.includes(listCompare19 + ") return null")
+      && listMemCreate19.indexOf(listCompare19) >= 0 && listMemCreate19.indexOf(listCompare19) < listMemCreate19.indexOf("store.contactLists.set(row.id, row)"),
+    listMemCreate19.split(NL19).map((l) => l.trim()).join(" ").slice(0, 170));
+  ok("19.listci.prisma · the Prisma list create still turns P2002 into null and does NOT upsert - the lower(name) index raises the very code the exact-case index did",
+    lCreate.includes("P2002") && lCreate.includes("return null") && !mentions(lCreate, "upsert"));
+  // ⭐ C8c · the review's m8 · the Prisma twin reads the index's OWN expression - never mode: "insensitive", which Postgres
+  // may run as ILIKE, where a "_" or a "%" in a name matches as a wildcard ("Race_1" answered by "RaceX1").
+  const LOOKUP_SQL19 = 'where lower("name") = lower(${name})';
+  const LOOKUP_ORDER19 = 'order by "createdAt" asc, "id" asc';
+  ok("19.listci.find · findByName reads a name in ANY CASE in both twins - the memory twin lower-cases both sides, the Prisma twin asks the index's own expression lower(\"name\") = lower($1), oldest first, and never mode: insensitive (ILIKE's wildcards - m8) nor findUnique - so the lookup agrees with the key",
+    listMemFind19.includes("const key = name.toLowerCase();") && listMemFind19.includes(listCompare19)
+      && listPriFind19.includes(LOOKUP_SQL19) && listPriFind19.includes(LOOKUP_ORDER19)
+      && !listPriFind19.includes('mode: "insensitive"') && !listPriFind19.includes("findUnique"),
+    listPriFind19.split(NL19).map((l) => l.trim()).join(" ").slice(0, 170));
+  ok("19.listci.freeze · ⭐ the importer's freeze refuses its NEW list's name IN ANY CASE in the memory twin too - the name lower-cased once, every held list compared by the same key, BEFORE the freeze writes anything (Postgres: the same lower(name) index refuses the insert inside the freeze's transaction)",
+    freezeMem19.includes(FREEZE_KEY19) && freezeMem19.includes(FREEZE_COMPARE19)
+      && freezeMem19.indexOf(FREEZE_COMPARE19) < freezeMem19.indexOf("store.contactLists.set(") && !freezeMem19.includes("held.name === newList.name"),
+    `${freezeMem19.length} chars`);
+  const LIST_INDEX_SQL19 = 'CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" (lower("name"));';
+  const LIST_GUARD_SQL19 = 'IF EXISTS (SELECT 1 FROM "ContactList" GROUP BY lower("name") HAVING count(*) > 1) THEN';
+  const listMigDirs19 = readdirSync(join(ROOT, "prisma", "migrations")).filter((d) => d.endsWith("_contact_list_name_lower_unique"));
+  const listMigSql19 = listMigDirs19.length === 1
+    ? readFileSync(join(ROOT, "prisma", "migrations", listMigDirs19[0], "migration.sql"), "utf8").split(CR19).join("") : "";
+  /** A migration's code on one line: comment lines out, every whitespace run one space. */
+  const sqlCode19 = (sql: string): string => sql.split(NL19).filter((l) => !l.trim().startsWith("--")).join(" ").split(" ").filter(Boolean).join(" ");
+  const listMigCode19 = sqlCode19(listMigSql19);
+  const BAD_SQL_WORDS19 = new Set(["DROP", "ALTER", "UPDATE", "DELETE", "INSERT", "TRUNCATE", "CONCURRENTLY"]);
+  const listMigBad19 = (code: string): boolean => code.toUpperCase().split(/[^A-Z]+/).some((w) => BAD_SQL_WORDS19.has(w));
+  /** ⭐ The folder sorts AFTER every other migration (C8c: a port given a timestamp after everything main held). */
+  const allMigDirs19 = readdirSync(join(ROOT, "prisma", "migrations")).filter((d) => /^[0-9]{14}_/.test(d)).sort();
+  // ⭐ C8c · the review's n1 · no window: the table's SHARE lock comes BEFORE the duplicate check, and a unique_violation the
+  // build still meets is caught as the same NOTICE - the migration truly can never stop a deploy.
+  const LIST_LOCK_SQL19 = 'LOCK TABLE "ContactList" IN SHARE MODE;';
+  const LIST_CAUGHT_SQL19 = "EXCEPTION WHEN unique_violation THEN RAISE NOTICE";
+  ok("19.listci.migration · exactly one migration folder creates the case-insensitive name index - a UNIQUE index on lower(\"name\") of \"ContactList\", IF NOT EXISTS, and only when no two lists already differ by case (a release can never stop on it: the table's SHARE lock taken BEFORE that check, and a unique_violation caught as a NOTICE - n1) - and NOTHING else: no DROP, ALTER, UPDATE, DELETE, INSERT, TRUNCATE or CONCURRENTLY; its timestamp is later than 20261009120000_contact_import_target_list's",
+    listMigDirs19.length === 1 && listMigCode19.includes(LIST_INDEX_SQL19) && listMigCode19.includes(LIST_GUARD_SQL19) && !listMigBad19(listMigCode19)
+      && listMigCode19.includes(LIST_LOCK_SQL19) && listMigCode19.indexOf(LIST_LOCK_SQL19) < listMigCode19.indexOf(LIST_GUARD_SQL19)
+      && listMigCode19.includes(LIST_CAUGHT_SQL19)
+      && allMigDirs19.indexOf(listMigDirs19[0]) > allMigDirs19.indexOf("20261009120000_contact_import_target_list"),
+    `folders ${listMigDirs19.length} · ${listMigCode19.slice(0, 140)}`);
+  ok("19.listci.schema · schema.prisma is UNCHANGED for the list name - the model keeps its exact-case @unique (an expression index cannot be declared there, and a generated migration will always list this one as drift: test:migration-ownership stops it being dropped)",
+    schemaModel(prismaSchemaSrc, "ContactList").split(NL19).some((l) => l.trim().split(" ").filter(Boolean).join(" ") === "name String @unique"));
+  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an ILIKE lookup (mode: insensitive), an index on the bare column, a migration that also drops, a check without its lock, a build whose unique_violation is not caught and an exact-case freeze are each reported by 19.listci.*",
+    !"for (const l of store.contactLists.values()) if (l.name === row.name) return null;".includes(listCompare19)
+      && "const row = await pc().contactList.findUnique({ where: { name } });".includes("findUnique")
+      && !'where: { name: { equals: name, mode: "insensitive" } },'.includes(LOOKUP_SQL19)
+      && !sqlCode19('CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" ("name");').includes(LIST_INDEX_SQL19)
+      && listMigBad19(sqlCode19(['DROP INDEX "ContactList_name_key";', LIST_INDEX_SQL19].join(NL19)))
+      && !listMigBad19(sqlCode19(["-- a comment that says DROP and CONCURRENTLY", LIST_INDEX_SQL19].join(NL19)))
+      && !sqlCode19([LIST_GUARD_SQL19, LIST_INDEX_SQL19].join(NL19)).includes(LIST_LOCK_SQL19)
+      // the re-review's NIT · a block that locks and checks but lets the build's unique_violation escape is caught too
+      && !sqlCode19([LIST_LOCK_SQL19, LIST_GUARD_SQL19, "ELSE", LIST_INDEX_SQL19, "END IF;"].join(NL19)).includes(LIST_CAUGHT_SQL19)
+      && !"if (held.name === newList.name || held.id === newList.id) {".includes(FREEZE_COMPARE19));
+
   // ── RE-ADDING A MEMBER KEEPS THE ORIGINAL addedAt ───────────────────────────────────
   // ⭐ When somebody joined a list is EVIDENCE, not a status flag — the rule
   // `Suppression.createdAt` already follows. An upsert here would walk the date forward on
@@ -2712,8 +2787,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     /findUnique\(\{ where: \{ id \} \}\)/.test(pFind) && /return row \? \{ \.\.\.row \} : null;/.test(memberText(cMem, "find"))
       && /gateTrail: row\.gateTrail === null \? null : row\.gateTrail\.map\(\(g\) => \(\{ \.\.\.g \}\)\)/.test(memberText(rMem, "find")));
   // ⭐ THE SET NULL LINK, MIRRORED. Postgres nulls `SmsCampaignRecipient.contactId` when a contact row is deleted (the FK's
-  // onDelete: SetNull); the memory twin deletes contacts in ONE place — U23's `removeWhere` — and must do the same, or
-  // every suite keeps a recipient pointing at a contact production no longer has.
+  // onDelete: SetNull); the memory twin's bulk Remove deletes contacts in ONE place — U23's `removeWhere` — and must do
+  // the same, or every suite keeps a recipient pointing at a contact production no longer has. (The one other delete, the
+  // tombstone's replacement `reviveTombstone`, makes the same move itself — held by §31.revive.)
   const mRemove = memberText(region(storeSrc, "\n  marketingContact: {"), "removeWhere");
   ok("26.setnull.memory · ⛔ the memory twin's contact removal sets a recipient's contactId to null and deletes no recipient — Postgres' SET NULL, mirrored",
     mRemove.length > 100 && /for \(const r of store\.smsCampaignRecipients\.values\(\)\) if \(r\.contactId === c\.id\) r\.contactId = null;/.test(mRemove)
@@ -3490,7 +3566,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const membersOf27 = (block: string): string[] => Array.from(block.matchAll(/^ {4}([A-Za-z0-9_]+) *:/gm)).map((m) => m[1]).sort();
   const priNs = region(dalSrc, `${NL27}  contactListBasis: {`);
   const memNs = region(storeSrc, `${NL27}  contactListBasis: {`);
-  const NAMES27 = ["create", "revoke", "listForList", "standingFor", "standingAmong", "coveredCount"] as const;
+  // ⭐ C8b (B5, 2026-10-09) · `coverageSplit` joins the namespace — a READ (the list's coverage split by the account link, what
+  // each viewer is shown); §31 holds its pair. Still no update and no delete member.
+  const NAMES27 = ["create", "revoke", "listForList", "standingFor", "standingAmong", "coveredCount", "coverageSplit"] as const;
   type Member27 = (typeof NAMES27)[number];
   const pri27 = Object.fromEntries(NAMES27.map((n) => [n, memberOf27(priNs, n)])) as Record<Member27, string>;
   const mem27 = Object.fromEntries(NAMES27.map((n) => [n, memberOf27(memNs, n)])) as Record<Member27, string>;
@@ -3554,7 +3632,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // ── 27.3 · ⛔ NO UPDATE MEMBER AND NO DELETE MEMBER, IN EITHER TWIN ──
   const MEMBERS27 = [...NAMES27].sort();
   const forbidden27 = (block: string): string[] => membersOf27(block).filter((m) => /^(update|delete|upsert|remove|set|clear)/i.test(m));
-  ok("27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong and coveredCount: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
+  ok("27.3 · ⛔ APPEND-ONLY, ASSERTED AS AN ABSENCE (as §17) — both twins expose EXACTLY create, revoke, listForList, standingFor, standingAmong, coveredCount and (C8b) coverageSplit: no update member and no delete member, and neither namespace deletes, clears or upserts a row",
     sameSet(membersOf27(priNs), MEMBERS27) && sameSet(membersOf27(memNs), MEMBERS27) && forbidden27(priNs).length === 0 && forbidden27(memNs).length === 0
       && !/delete|upsert|destroy|[.]clear[(]/i.test(priNs + memNs),
     `prisma=[${membersOf27(priNs)}] memory=[${membersOf27(memNs)}]`);
@@ -4091,7 +4169,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !emailMem28(memByEmail.split(".trim().toLowerCase() === norm").join(" === norm")));
 }
 
-/* ═══ §29 · The import's check and commit — snapshotsAmong · firstLinesAmong · failedPage · keptSplit · freezeDecision · commitBatch in both twins (S15, 2026-10-09; decisions X3 · S15-6/7/8) ═══ */
+/* ═══ §29 · The import's check and commit — snapshotsAmong · firstLinesAmong · failedPage · tagsLeftPage · keptSplit · freezeDecision · commitBatch in both twins (S15, 2026-10-09; decisions X3 · S15-6/7/8; C8c · #13) ═══ */
 {
   // ⭐ WHY THIS SECTION EXISTS. The importer's six DAL members carry the rules that keep a 200,000-row import exact, and
   // every behavioural suite (`test:contacts-import` sections check and commit) runs them on the MEMORY twin. So a Prisma
@@ -4125,11 +4203,13 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const memRun = region(storeSrc, `${NL29}  contactImport: {`);
   const priRow = region(dalSrc, `${NL29}  contactImportRow: {`);
   const memRow = region(storeSrc, `${NL29}  contactImportRow: {`);
-  const NAMES29 = ["snap", "first", "failed", "kept", "freeze", "commit", "open"] as const;
+  const NAMES29 = ["snap", "first", "failed", "kept", "freeze", "commit", "open", "tags"] as const;
   type Name29 = (typeof NAMES29)[number];
   const MEMBER29: Record<Name29, [string, "book" | "run" | "row"]> = {
     snap: ["snapshotsAmong", "book"], first: ["firstLinesAmong", "row"], failed: ["failedPage", "row"], kept: ["keptSplit", "row"],
     freeze: ["freezeDecision", "run"], commit: ["commitBatch", "run"], open: ["listOpenByOthers", "run"],
+    // C8c · #13 · the settled rows whose file tags were not all added.
+    tags: ["tagsLeftPage", "row"],
   };
   const blockOf = (twin: "pri" | "mem", where: "book" | "run" | "row"): string =>
     twin === "pri" ? (where === "book" ? priBook : where === "run" ? priRun : priRow) : (where === "book" ? memBook : where === "run" ? memRun : memRow);
@@ -4138,14 +4218,14 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
 
   // ── 29.0 · THE PARSER ──
   const SNAP_KEYS29 = ["id", "msisdn", "displayName", "email", "notes", "tags", "sourceRef", "importId", "updatedAt", "userId"];
-  const BATCH_KEYS29 = ["importId", "fromCursor", "toCursor", "at", "by", "creates", "updates", "outcomes", "sentences", "listId", "members"];
+  const BATCH_KEYS29 = ["importId", "fromCursor", "toCursor", "at", "by", "creates", "updates", "outcomes", "sentences", "listId", "members", "tagsLeft"];
   const FREEZE_KEYS29 = ["importId", "choice", "overrides", "targetListId", "newList", "by", "at"];
   const OTHERS_KEYS29 = ["excludeCreatedBy", "limit"];
-  ok("29.0 · the parser sees §29's named shapes — MarketingContactSnapshot's ten columns, ContactImportCommitBatch's eleven keys, the freeze's seven, the open-runs query's two — and all seven members resolve in BOTH twins",
+  ok("29.0 · the parser sees §29's named shapes — MarketingContactSnapshot's ten columns, ContactImportCommitBatch's twelve keys (C8c · #13's tagsLeft among them), the freeze's seven, the open-runs query's two — and all eight members resolve in BOTH twins",
     sameSet(storedKeys("MarketingContactSnapshot"), SNAP_KEYS29) && sameSet(storedKeys("ContactImportCommitBatch"), BATCH_KEYS29)
       && sameSet(storedKeys("ContactImportFreeze"), FREEZE_KEYS29) && sameSet(storedKeys("ContactImportOthersQuery"), OTHERS_KEYS29)
       && NAMES29.every((n) => pri29[n].length > 100 && mem29[n].length > 100),
-    `snapshot [${setDiff(SNAP_KEYS29, storedKeys("MarketingContactSnapshot")) || "10"}] · batch [${setDiff(BATCH_KEYS29, storedKeys("ContactImportCommitBatch")) || "11"}] · freeze [${setDiff(FREEZE_KEYS29, storedKeys("ContactImportFreeze")) || "7"}] · regions ${NAMES29.map((n) => `${pri29[n].length}/${mem29[n].length}`).join(" ")}`);
+    `snapshot [${setDiff(SNAP_KEYS29, storedKeys("MarketingContactSnapshot")) || "10"}] · batch [${setDiff(BATCH_KEYS29, storedKeys("ContactImportCommitBatch")) || "12"}] · freeze [${setDiff(FREEZE_KEYS29, storedKeys("ContactImportFreeze")) || "7"}] · regions ${NAMES29.map((n) => `${pri29[n].length}/${mem29[n].length}`).join(" ")}`);
 
   // ── 29.named ──
   const SIGS29: Record<Name29, [string, string]> = {
@@ -4156,6 +4236,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     freeze: ["freezeDecision: (f: ContactImportFreeze): StoredContactImport | null =>", "freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> =>"],
     commit: ["commitBatch: (b: ContactImportCommitBatch): ContactImportCommitResult =>", "commitBatch: async (b: ContactImportCommitBatch): Promise<ContactImportCommitResult> =>"],
     open: ["listOpenByOthers: (q: ContactImportOthersQuery): StoredContactImport[] =>", "listOpenByOthers: async (q: ContactImportOthersQuery): Promise<StoredContactImport[]> =>"],
+    tags: ["tagsLeftPage: (q: ContactImportFailedQuery): ContactImportFailedPage =>", "tagsLeftPage: async (q: ContactImportFailedQuery): Promise<ContactImportFailedPage> =>"],
   };
   const TYPES29 = [
     "MarketingContactSnapshot", "ContactImportFirstLinesQuery", "ContactImportFirstLine", "ContactImportFailedQuery", "ContactImportFailedPage",
@@ -4230,6 +4311,23 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     flat29(b).includes('if (row.outcome === "keep") counts.set(row.outcomeReason, (counts.get(row.outcomeReason) ?? 0) + 1);');
   ok("29.kept · keptSplit is counted from the rows in both twins — Prisma ONE groupBy on outcomeReason where outcome keep (never findMany); memory every keep row by its reason",
     keptPri29(pri29.kept) && keptMem29(mem29.kept), `${pri29.kept.length}/${mem29.kept.length} chars`);
+
+  // ── 29.tags · C8c · #13 · the tags a full contact could not take, kept on the settled row and read back ──
+  const TAGS_WHERE_PRI29 = 'where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false }, line: { gt: q.afterLine } },';
+  const TAGS_TOTAL_PRI29 = 'const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false } } });';
+  const tagsPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_WHERE_PRI29) && f.includes('orderBy: { line: "asc" },') && f.includes("take: Math.min(Math.max(0, q.limit), CONTACT_IMPORT_FAILED_PAGE_MAX),")
+      && f.includes(TAGS_TOTAL_PRI29) && !f.includes("skip:");
+  };
+  const TAGS_LEFT_MEM29 = 'const left = Array.from(runRows.values()).filter((row) => (row.outcome === "keep" || row.outcome === "update") && row.tags.length > 0);';
+  const tagsMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_LEFT_MEM29) && f.includes(".filter((row) => row.line > q.afterLine)") && f.includes(".sort((a, b) => a.line - b.line)")
+      && f.includes(".slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)))") && f.includes("return { rows: page, total: left.length };");
+  };
+  ok("29.tags · ⭐ C8c · #13 · tagsLeftPage is the failures page's own keyset in both twins — the settled KEEP or UPDATE rows still holding tags (Prisma's text[] isEmpty false; memory a non-empty list), line after afterLine, ascending, clamped to CONTACT_IMPORT_FAILED_PAGE_MAX and never skip — and their total COUNTED separately",
+    tagsPri29(pri29.tags) && tagsMem29(mem29.tags), `${pri29.tags.length}/${mem29.tags.length} chars`);
 
   // ── 29.freeze · the start's compare-and-set, and R12's new list born inside it ──
   const FREEZE_FIELDS29 = ['status: "COMMITTING",', "decisionChoice: f.choice", "decisionOverrides: ", "decisionConfirmedAt: ", "decisionConfirmedBy: f.by,"];
@@ -4371,6 +4469,22 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("29.gone · ⛔ R9 · every row a step settles must still be there, unsettled — Prisma counts each outcome group's update and THROWS a conflict naming the rows gone when it falls short (the step rolls back whole); memory checks every outcome's row before its first write — so a number erasure took away between the step's read and its write is never created",
     gonePri29(pri29.commit) && goneMem29(mem29.commit));
 
+  // ── 29.tagsleft · C8c · #13 · the write half of 29.tags (after 29.blank and 29.gone, whose anchors it is ordered by) ──
+  const TAGS_LOOP29 = "for (const left of b.tagsLeft ?? []) {";
+  const TAGS_WRITE_PRI29 = "await tx.contactImportRow.updateMany({ where: { importId: b.importId, ordinal: { in: g.ordinals } }, data: { tags: g.tags } });";
+  const TAGS_WRITE_MEM29 = "if (row && row.outcome !== null && left.tags.length > 0) staged.set(left.ordinal, { ...row, tags: [...left.tags] });";
+  const tagsLeftPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_LOOP29) && f.includes(TAGS_WRITE_PRI29) && before29(f, BLANK_PRI29, TAGS_WRITE_PRI29) && before29(f, GONE_PRI29, TAGS_WRITE_PRI29)
+      && before29(f, TAGS_WRITE_PRI29, 'data: { status: "DONE"');
+  };
+  const tagsLeftMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_LOOP29) && f.includes(TAGS_WRITE_MEM29) && before29(f, BLANK_MEM29, TAGS_WRITE_MEM29);
+  };
+  ok("29.tagsleft · ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags in both twins — written AFTER the blanking that empties them (Prisma inside the step's ONE transaction, after the settled rows are counted and before DONE; memory only on a row this batch settled), so the result can list it",
+    tagsLeftPri29(pri29.commit) && tagsLeftMem29(mem29.commit));
+
   // ── 29.bounds · R17 · the cursor moves forward, within the staged rows, in both twins ──
   const BOUNDS_PRI29 = "if (bounds === null || b.toCursor < b.fromCursor || b.toCursor > bounds.stagedThrough) {";
   const BOUNDS_MEM29 = 'if (b.toCursor < b.fromCursor || b.toCursor > batchRun.stagedThrough) throw new Error("commitBatch: the cursor must move forward, within the staged rows");';
@@ -4462,9 +4576,15 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ["a Prisma cursor moved past the staged rows", boundsPri29(pri29.commit) && !boundsPri29(planted29(pri29.commit, BOUNDS_PRI29, "if (bounds === null) {"))],
     ["open runs that include the viewer's own", openMem29(mem29.open) && !openMem29(planted29(mem29.open, OPEN_NOT_MINE29, ""))],
     ["open runs unbounded on Postgres", openPri29(pri29.open) && !openPri29(planted29(pri29.open, OPEN_TAKE29, "take: q.limit,"))],
+    // ── C8c · #13 ──
+    ["a tags-left page that also lists failed rows", tagsPri29(pri29.tags) && !tagsPri29(planted29(pri29.tags, 'outcome: { in: ["keep", "update"] }, tags', "tags"))],
+    ["a tags-left page by skip", !tagsPri29(planted29(pri29.tags, 'orderBy: { line: "asc" },', 'orderBy: { line: "asc" }, skip: q.afterLine,'))],
+    ["a memory tags-left page holding rows with no tags", tagsMem29(mem29.tags) && !tagsMem29(planted29(mem29.tags, " && row.tags.length > 0);", ");"))],
+    ["tags left written before the blanking", tagsLeftPri29(pri29.commit) && !tagsLeftPri29(planted29(planted29(pri29.commit, TAGS_WRITE_PRI29, ""), BLANK_PRI29, `${TAGS_WRITE_PRI29} ${BLANK_PRI29}`))],
+    ["a memory commit that never keeps the tags left", tagsLeftMem29(mem29.commit) && !tagsLeftMem29(planted29(mem29.commit, TAGS_WRITE_MEM29, ""))],
   ];
   const deaf29 = controls29.filter(([, held]) => !held).map(([name]) => name);
-  ok("29.c1 · CONTROL · every §29 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a snapshot without its select, leaving the tombstone out or dropping the account link, a first-line read without the problems filter or over every run, a failures page by skip, a kept split by findMany, a freeze without its status, writing first, inserting its new list before it wins, or without its unique index or foreign key, a commit without its cursor, creating first, out of lock order, settling rows that are gone or moving its cursor past the staged rows, an update without the NULL arm, blanking that keeps the raw cell, members twice, DONE without its bound, open runs holding the viewer's own or unbounded, a relation that cascades — FAILS its predicate",
+  ok("29.c1 · CONTROL · every §29 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a snapshot without its select, leaving the tombstone out or dropping the account link, a first-line read without the problems filter or over every run, a failures page by skip, a kept split by findMany, a freeze without its status, writing first, inserting its new list before it wins, or without its unique index or foreign key, a commit without its cursor, creating first, out of lock order, settling rows that are gone or moving its cursor past the staged rows, an update without the NULL arm, blanking that keeps the raw cell, members twice, DONE without its bound, open runs holding the viewer's own or unbounded, a relation that cascades, and (C8c · #13) a tags-left page that lists failed rows, pages by skip or holds rows with no tags, and tags left written before the blanking or never — FAILS its predicate",
     deaf29.length === 0, deaf29.join(" | ") || `${controls29.length} controls held`);
 }
 
@@ -4558,6 +4678,275 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const deaf30 = controls30.filter(([, held]) => !held).map(([name]) => name);
   ok("30.c1 · CONTROL · every §30 matcher can fail: the REAL bodies pass, and ONE defect planted in each — either twin's order without the id tiebreak, a Prisma read that filters the marker by itself, a twin that keeps each number's latest row, a rule that reads the latest row alone, a query on an empty set — FAILS its predicate",
     deaf30.length === 0, deaf30.join(" | ") || `${controls30.length} controls held`);
+}
+
+/* ═══ §31 · C8b — what a masked officer may know: the tombstone's revival, the list figures by viewer, "Added" put right (S14 2026-10-09; docs/CONTACTS-SCREEN-PLAN.md §4.7 B1 · B5 · B8) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. C8b adds three members to both twins, and every behavioural suite drives the MEMORY twin
+  // alone (`test:registration-contact` §3 and §7, `test:contacts-lists`, `test:contacts-import`), so a Prisma twin that
+  // revived a row that is no longer the tombstone, deleted the memberships outside its transaction, wrote over the
+  // number's mirrored caches, kept the tombstone's id or deleted the erased person's campaign records, re-dated a row its
+  // plan never saw, left the linked members out of the split, or counted a list's joiners outside the run would be green
+  // in every suite and wrong in production. This section holds the twins to ONE shape, as §30 does; their behaviour on
+  // Postgres is three probes' (db-scratch, run by the integrator): reviveTombstone in
+  // `scripts/live/contacts-import-pg-probe.mts` section 8 (and end to end through the backfill in
+  // `scripts/live/registration-contact-pg-probe.mts` 3c), joinedFromImport in the same import probe's section 11,
+  // coverageSplit in `scripts/live/list-basis-pg-probe.mts` 2l (the same scenario on the memory twin, answer for answer),
+  // redateAdded through its door in `scripts/live/registration-contact-pg-probe.mts` section 6 (the rollback in 6.4).
+  //   · reviveTombstone (B1, and the review's MINOR 8 · iii) — a row under the tombstone's own id refused before anything
+  //     is read; a compare-and-set FIRST (this id, this number, the erasure's mark, no link), null when it lost; then the
+  //     tombstone's memberships deleted, its campaign recipient rows unlinked (kept), the tombstone deleted and the
+  //     sign-up's row CREATED under its own fresh id, every field of it written but the number and the two caches — in
+  //     ONE transaction on Postgres, one synchronous step in memory;
+  //   · coverageSplit (B5) — coveredCount's newest-recording bound and tombstone exclusion, the members split by the link,
+  //     never the link used to drop a member;
+  //   · redateAdded (B8) — the ONE shape rule first, EVERY row compared before any is written, all or nothing, each row's
+  //     createdAt set and its updatedAt the later of its own and the new instant; its bound held equal to §25's (31.bound);
+  //   · joinedFromImport (the review's MINOR 2) — the memberships added inside the run's window, never the tombstone's,
+  //     the run's created contacts or (unless created-only) the numbers its rows updated or kept.
+  // ⛔ No backslash anywhere in this section (§27's rule): every matcher is an `includes` or an order.
+  const NL31 = String.fromCharCode(10);
+  const CR31 = String.fromCharCode(13);
+  const flat31 = (s: string) => s.split(CR31).join("").split(NL31).map((l) => l.trim()).filter(Boolean).join(" ");
+  const NEXT_MEMBER31 = new RegExp(NL31 + " {4}[A-Za-z0-9_]+ *:");
+  const memberOf31 = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL31}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER31);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const before31 = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const count31 = (body: string, needle: string): number => body.split(needle).length - 1;
+  const memBook31 = region(storeSrc, `${NL31}  marketingContact: {`);
+  const priBook31 = region(dalSrc, `${NL31}  marketingContact: {`);
+  const memBasis31 = region(storeSrc, `${NL31}  contactListBasis: {`);
+  const priBasis31 = region(dalSrc, `${NL31}  contactListBasis: {`);
+  const memRevive = flat31(memberOf31(memBook31, "reviveTombstone"));
+  const priRevive = flat31(memberOf31(priBook31, "reviveTombstone"));
+  const memRedate = flat31(memberOf31(memBook31, "redateAdded"));
+  const priRedate = flat31(memberOf31(priBook31, "redateAdded"));
+  const memSplit = flat31(memberOf31(memBasis31, "coverageSplit"));
+  const priSplit = flat31(memberOf31(priBasis31, "coverageSplit"));
+  const memMembers31 = region(storeSrc, `${NL31}  contactListMember: {`);
+  const priMembers31 = region(dalSrc, `${NL31}  contactListMember: {`);
+  const memJoined = flat31(memberOf31(memMembers31, "joinedFromImport"));
+  const priJoined = flat31(memberOf31(priMembers31, "joinedFromImport"));
+  const model31 = decomment(readFileSync(join(SRC, "lib/server/contacts/added-redate-model.ts"), "utf8"));
+
+  // ── 31.0 · the four members, named, in both twins ──
+  const SIGS31: Array<[string, string]> = [
+    [memRevive, "reviveTombstone: (revival: ContactTombstoneRevival): ContactTombstoneRevived | null =>"],
+    [priRevive, "reviveTombstone: async (revival: ContactTombstoneRevival): Promise<ContactTombstoneRevived | null> =>"],
+    [memRedate, "redateAdded: (rows: ContactAddedRedate[]): ContactAddedRedateResult =>"],
+    [priRedate, "redateAdded: async (rows: ContactAddedRedate[]): Promise<ContactAddedRedateResult> =>"],
+    [memSplit, "coverageSplit: (listId: string): ListBasisCoverageSplit =>"],
+    [priSplit, "coverageSplit: async (listId: string): Promise<ListBasisCoverageSplit> =>"],
+    [memJoined, "joinedFromImport: (q: ContactListJoinedQuery): number =>"],
+    [priJoined, "joinedFromImport: async (q: ContactListJoinedQuery): Promise<number> =>"],
+  ];
+  ok("31.0 · both twins implement marketingContact.reviveTombstone, marketingContact.redateAdded, contactListBasis.coverageSplit and (the C8b review's MINOR 2) contactListMember.joinedFromImport, each NAMED (ContactTombstoneRevival → ContactTombstoneRevived | null · ContactAddedRedate[] → ContactAddedRedateResult · a list id → ListBasisCoverageSplit · ContactListJoinedQuery → a count), and §19's and §27's member parity hold the namespaces equal",
+    SIGS31.every(([body, sig]) => body.includes(sig) && body.length > 200), SIGS31.map(([b]) => b.length).join("/"));
+
+  // ── 31.revive · B1, and the review's MINOR 8 (iii) — a FRESH row; the compare first; four moves in ONE step; the caches the number's ──
+  const REVIVE_FIELDS31 = ["rawInput", "displayName", "email", "ndc", "operator", "source", "sourceRef", "userId", "tags", "notes", "importId", "createdAt", "createdBy", "updatedAt", "updatedBy"];
+  const SAME_ID31 = 'if (revival.row.id === revival.id) throw new Error("marketingContact.reviveTombstone: the new row must be FRESH, never under the tombstone id — nothing was done.");';
+  const PRI_LOCK31 = 'where "id" = ${revival.id} and "msisdn" = ${revival.msisdn} and "sourceRef" = ${ERASURE_EVIDENCE} and "userId" is null for update`;';
+  const PRI_LOST31 = "if (held.length !== 1 || tomb === undefined) return null;";
+  const PRI_MEMBERS31 = "const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;";
+  const PRI_COUNT31 = "const recipientsUnlinked = await tx.smsCampaignRecipient.count({ where: { contactId: revival.id } });";
+  const PRI_DROP31 = "await tx.marketingContact.delete({ where: { id: revival.id } });";
+  const PRI_CREATE31 = "const row = await tx.marketingContact.create({ data: { id: r.id, msisdn: revival.msisdn,";
+  const PRI_CACHES31 = "consentState: tomb.consentState as never, suppressedAt: tomb.suppressedAt,";
+  const MEM_CAS31 = "if (!tomb || tomb.msisdn !== revival.msisdn || tomb.sourceRef !== ERASURE_EVIDENCE || tomb.userId !== null) return null;";
+  const MEM_TAKEN31 = "if (store.marketingContacts.has(r.id)) throw new Error(";
+  const MEM_MEMBERS31 = "if (m.contactId !== tomb.id) continue; store.contactListMembers.delete(k);";
+  const MEM_UNLINK31 = "if (rec.contactId !== tomb.id) continue; rec.contactId = null;";
+  const MEM_DROP31 = "store.marketingContacts.delete(tomb.id);";
+  const MEM_SET31 = "store.marketingContacts.set(next.id, next); store.contactsByMsisdn.set(next.msisdn, next.id);";
+  /** Every step present, each after the one before it. */
+  const inOrder31 = (body: string, steps: readonly string[]): boolean =>
+    steps.every((s, i) => (i === 0 ? body.includes(s) : before31(body, steps[i - 1], s)));
+  // ⭐ The Prisma twin unlinks the erased person's campaign records through the foreign key's own SET NULL (its delete of
+  // the tombstone) — so the schema and the one migration that made that key are held here too: a key that cascaded
+  // would DELETE the records the revival must keep (the 7-year record that we messaged the number).
+  const squash31 = (s: string): string => s.split(" ").filter(Boolean).join(" ");
+  const recipientSchema31 = squash31(flat31(schemaModel(prismaSchemaSrc, "SmsCampaignRecipient")));
+  const MIGS31 = join(ROOT, "prisma", "migrations");
+  const fkSql31 = readdirSync(MIGS31, { withFileTypes: true }).filter((e) => e.isDirectory())
+    .map((e) => { try { return readFileSync(join(MIGS31, e.name, "migration.sql"), "utf8"); } catch { return ""; } })
+    .join(NL31).split(NL31).filter((l) => l.includes("SmsCampaignRecipient_contactId_fkey"));
+  const FK_SCHEMA31 = "contact MarketingContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)";
+  const FK_SQL31 = 'ALTER TABLE "SmsCampaignRecipient" ADD CONSTRAINT "SmsCampaignRecipient_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "MarketingContact"("id") ON DELETE SET NULL ON UPDATE CASCADE;';
+  const setNullOk31 = (schemaText: string, sqlLines: readonly string[]): boolean =>
+    schemaText.includes(FK_SCHEMA31) && sqlLines.length === 1 && (sqlLines[0] ?? "").trim() === FK_SQL31;
+  const reviveOk31 = (m: string, p: string): boolean => {
+    const priFields = REVIVE_FIELDS31.every((k) => p.includes(`${k}: r.${k},`) || p.includes(`${k}: r.${k} as never,`) || p.includes(`${k}: new Date(r.${k}),`));
+    const memFields = REVIVE_FIELDS31.every((k) => m.includes(`${k}: r.${k},`) || m.includes(`${k}: [...r.${k}],`));
+    return before31(p, SAME_ID31, "pc()") && p.includes("return pc().$transaction(async (tx) => {") && count31(p, "pc()") === 1
+      && (p.split("tx.")[1] ?? "").startsWith("$queryRaw<")
+      && inOrder31(p, [PRI_LOCK31, PRI_LOST31, PRI_MEMBERS31, PRI_COUNT31, PRI_DROP31, PRI_CREATE31]) && p.includes(PRI_CACHES31) && priFields
+      && !p.includes("updateMany") && !p.includes("smsCampaignRecipient.delete") && !p.includes("smsCampaignRecipient.update")
+      && !p.includes('"SmsCampaignRecipient"') && !p.includes("consentState: r.consentState") && !p.includes("suppressedAt: r.suppressedAt")
+      && before31(m, SAME_ID31, MEM_CAS31) && inOrder31(m, [MEM_CAS31, MEM_TAKEN31, MEM_MEMBERS31, MEM_UNLINK31, MEM_DROP31, MEM_SET31])
+      && m.includes("consentState: tomb.consentState,") && m.includes("suppressedAt: tomb.suppressedAt,")
+      && m.includes("id: r.id,") && !m.includes("id: tomb.id,") && m.includes("msisdn: tomb.msisdn,") && memFields
+      && !m.includes("...r,") && !m.includes("...revival") && !m.includes("smsCampaignRecipients.delete(");
+  };
+  ok("31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
+    reviveOk31(memRevive, priRevive) && setNullOk31(recipientSchema31, fkSql31),
+    `${priRevive.slice(0, 120)} | ${memRevive.slice(0, 120)} | the key: ${recipientSchema31.includes(FK_SCHEMA31) ? "SetNull" : "NOT SetNull"}, ${fkSql31.length} migration line(s)`);
+
+  // ── 31.split · B5 — coveredCount's bound and exclusion, the members split by the link ──
+  const PRI_BOUND31 = "const splitBound = newestSplit !== null && newestSplit.revokedAt === null ? newestSplit.recordedAt.toISOString() : null;";
+  const PRI_ORDER31 = 'orderBy: [{ recordedAt: "desc" }, { id: "desc" }],';
+  const PRI_LIVE31 = '(count(*) filter (where c."userId" is null))::int as live,';
+  const PRI_COVERED31 = '(count(*) filter (where c."userId" is null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as covered,';
+  const PRI_LINKED31 = '(count(*) filter (where c."userId" is not null))::int as linked_live,';
+  const PRI_LINKED_COVERED31 = '(count(*) filter (where c."userId" is not null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as linked_covered';
+  const PRI_TOMB31 = 'where m."listId" = ${listId} and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text';
+  const MEM_TOMB31 = "if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;";
+  const MEM_SIDE31 = "const side = c.userId === null ? out.unlinked : out.linked;";
+  const MEM_BOUND31 = "const splitBound = newestSplit !== undefined && newestSplit.revokedAt === null ? Date.parse(newestSplit.recordedAt) : null;";
+  const splitOk31 = (m: string, p: string): boolean =>
+    p.includes(PRI_BOUND31) && p.includes(PRI_ORDER31) && p.includes(PRI_LIVE31) && p.includes(PRI_COVERED31) && p.includes(PRI_LINKED31)
+      && p.includes(PRI_LINKED_COVERED31) && p.includes(PRI_TOMB31) && !p.includes('and c."userId" is null')
+      && p.includes('assertListBasisKeys("contactListBasis.coverageSplit", [listId]);')
+      && m.includes(MEM_TOMB31) && m.includes(MEM_SIDE31) && m.includes(MEM_BOUND31) && m.includes(".sort(newestBasisFirst)[0];")
+      && m.includes("if (splitBound !== null && Date.parse(m.addedAt) <= splitBound) side.covered++;") && !m.includes("c.userId !== null)")
+      && m.includes('assertListBasisKeys("contactListBasis.coverageSplit", [listId]);');
+  ok("31.split · ⭐ C8b (B5) · THE LIST FIGURES SPLIT BY THE LINK, NEVER DROPPED BY IT — both twins bound by the list's NEWEST recording (none when it is revoked, M1), leave the tombstone out NULL-SAFELY, and count every live member on ONE side of the link — Prisma four filtered counts in ONE statement with no userId filter in its where, memory one pass choosing the side by the link — so a masked viewer's sum is every live member (the composer's count) and a reader's unlinked pair is coveredCount's own",
+    splitOk31(memSplit, priSplit), `${priSplit.slice(0, 120)} | ${memSplit.slice(0, 120)}`);
+
+  // ── 31.redate · B8 — the shape rule first, every row compared before any is written, all or nothing ──
+  const PRI_SET31 = 'set "createdAt" = ${r.createdAt}::timestamptz, "updatedAt" = greatest("updatedAt", ${r.createdAt}::timestamptz)';
+  const PRI_CMP31 = 'where "id" = ${r.id} and "createdAt" = ${r.expectedCreatedAt}::timestamptz';
+  const PRI_THROW31 = "if (n !== 1) throw new ContactAddedRedateChanged(r.id);";
+  const PRI_CATCH31 = 'if (err instanceof ContactAddedRedateChanged) return { ok: false, reason: "changed", id: err.id };';
+  const MEM_CHECK31 = 'if (!c || Date.parse(c.createdAt) !== Date.parse(r.expectedCreatedAt)) return { ok: false, reason: "changed", id: r.id };';
+  const MEM_LATER31 = "const updatedAt = Date.parse(c.updatedAt) >= Date.parse(to) ? c.updatedAt : to;";
+  const MEM_WRITE31 = "store.marketingContacts.set(r.id, { ...c, createdAt: to, updatedAt });";
+  const redateOk31 = (m: string, p: string, model: string): boolean =>
+    before31(p, "assertAddedRedates(rows);", "pc()") && p.includes("return await pc().$transaction(async (tx) => {") && count31(p, "pc()") === 1
+      && p.includes("const n = await tx.$executeRaw") && p.includes(PRI_SET31) && p.includes(PRI_CMP31) && before31(p, PRI_CMP31, PRI_THROW31)
+      && p.includes(PRI_CATCH31) && !p.includes("updatedBy")
+      && before31(m, "assertAddedRedates(rows);", MEM_CHECK31) && before31(m, MEM_CHECK31, MEM_WRITE31) && m.includes(MEM_LATER31)
+      && !m.includes("updatedBy") && store31Imports && dal31Imports
+      && model.includes("if (rows.length > ADDED_REDATE_MAX) refuse(") && model.includes('if (seen.has(row.id)) refuse("one contact is named twice");')
+      && model.includes("if (!Number.isFinite(from) || !Number.isFinite(to)) refuse(") && model.includes("if (to < from) refuse(");
+  const store31Imports = storeSrc.includes('import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";');
+  const dal31Imports = dalSrc.includes('import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";');
+  ok("31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
+    redateOk31(memRedate, priRedate, model31), `${priRedate.slice(0, 120)} | ${memRedate.slice(0, 120)}`);
+
+  // ── 31.bound · the C8b review's NIT — ADDED_REDATE_MAX is §25's BULK_KEYED_READ_MAX, the same number, HELD ──
+  // added-redate-model.ts cannot import the store's constant (the store imports the model), so it writes the number again;
+  // this holds the two equal, so a change to §25's bound that forgets the re-dating is red here.
+  const constOf31 = (src: string, name: string): number => {
+    const head = `export const ${name} = `;
+    const line = src.split(NL31).map((l) => l.trim()).find((l) => l.startsWith(head)) ?? "";
+    const raw = (line.slice(head.length).split(";")[0] ?? "").split("_").join("").trim();
+    return raw === "" ? Number.NaN : Number(raw);
+  };
+  const boundOk31 = (model: string, store: string): boolean => {
+    const a = constOf31(model, "ADDED_REDATE_MAX");
+    return Number.isInteger(a) && a > 0 && a === constOf31(store, "BULK_KEYED_READ_MAX");
+  };
+  ok("31.bound · ⛔ the C8b review's NIT · ADDED_REDATE_MAX (added-redate-model.ts, which cannot import the store) is the SAME number as §25's BULK_KEYED_READ_MAX (store.ts) — one batch bound, written twice and held equal here",
+    boundOk31(model31, storeSrc), `${constOf31(model31, "ADDED_REDATE_MAX")} · ${constOf31(storeSrc, "BULK_KEYED_READ_MAX")}`);
+
+  // ── 31.joined · the C8b review's MINOR 2 — how many contacts an import put on its list ──
+  const PRI_WINDOW31 = 'and m."addedAt" >= ${q.sinceIso}::timestamptz and m."addedAt" <= ${q.untilIso}::timestamptz';
+  const PRI_TOMB_J31 = 'and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text';
+  const PRI_OURS31 = 'and (c."importId" = ${q.importId}';
+  const PRI_ONLY31 = 'or (${q.createdOnly}::boolean = false and exists (';
+  const PRI_FILED31 = 'where r."importId" = ${q.importId} and r."msisdn" = c."msisdn" and r."outcome"::text in (' + "'update', 'keep')";
+  const MEM_WINDOW31 = "if (added < since || added > until) continue;";
+  const MEM_TOMB_J31 = "if (c === undefined || c.sourceRef === ERASURE_EVIDENCE) continue;";
+  const MEM_OURS31 = "if (c.importId === q.importId || filed.has(c.msisdn)) joined++;";
+  const MEM_ONLY31 = "if (!q.createdOnly) {";
+  const MEM_FILED31 = 'if (r.msisdn !== null && (r.outcome === "update" || r.outcome === "keep")) filed.add(r.msisdn);';
+  const joinedOk31 = (m: string, p: string): boolean =>
+    p.includes(PRI_WINDOW31) && p.includes(PRI_TOMB_J31) && p.includes(PRI_OURS31) && p.includes(PRI_ONLY31) && p.includes(PRI_FILED31)
+      && count31(p, "pc()") === 1
+      && m.includes(MEM_WINDOW31) && m.includes(MEM_TOMB_J31) && m.includes(MEM_OURS31) && m.includes(MEM_ONLY31) && m.includes(MEM_FILED31)
+      && before31(m, MEM_ONLY31, MEM_FILED31);
+  ok("31.joined · ⭐ C8b review (MINOR 2) · HOW MANY CONTACTS AN IMPORT PUT ON ITS LIST, ALIKE IN BOTH TWINS — the memberships added between the run's two instants, the tombstone left out NULL-SAFELY, whose contact the run created (its importId) or — only when the run is not created-only — whose number one of the run's own rows updated or kept; Prisma ONE statement (its only pc()), memory one pass",
+    joinedOk31(memJoined, priJoined), `${priJoined.slice(0, 120)} | ${memJoined.slice(0, 120)}`);
+
+  // ── 31.callers · read over the REAL src (ROOT) — each member has its declared callers and no other ──
+  const BS31 = String.fromCharCode(92);
+  const walk31 = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk31(join(dir, e.name)) : /[.](ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
+  const src31 = join(ROOT, "src");
+  const rel31 = (f: string) => f.slice(src31.length + 1).split(BS31).join("/");
+  const TWINS31 = ["lib/server/store.ts", "lib/server/prisma-dal.ts"];
+  /** ⛔ THE DECLARED CALLERS, BY NAME: the revival is the registration writer's alone (`REGISTRATION_BOOK.revive`), the
+   *  re-dating the ops door's alone (`ops:contacts-added-redate`), the split the Lists card's loader and the importer's list
+   *  figures. A second caller is a second writer of a tombstone or of "Added", or a second place a viewer's figure is made. */
+  const CALLERS31: Record<string, readonly string[]> = {
+    reviveTombstone: ["lib/server/marketing/registration-contact.ts"],
+    redateAdded: ["lib/server/contacts/added-redate.ts"],
+    coverageSplit: ["app/admin/contacts/lists-loader.ts", "lib/server/contacts/import-commit.ts"],
+    // C8b review (MINOR 2) · the import's result, alone.
+    joinedFromImport: ["lib/server/contacts/import-commit.ts"],
+  };
+  const texts31 = walk31(src31).map((f) => [rel31(f), readFileSync(f, "utf8")] as const)
+    .filter(([f, raw]) => !TWINS31.includes(f) && Object.keys(CALLERS31).some((n) => raw.includes(n)))
+    .map(([f, raw]) => [f, decomment(raw)] as const);
+  const callersOf31 = (texts: ReadonlyArray<readonly [string, string]>, name: string): string[] =>
+    texts.filter(([, t]) => t.includes(`.${name}(`)).map(([f]) => f).sort();
+  const callersOk31 = (texts: ReadonlyArray<readonly [string, string]>): boolean =>
+    Object.entries(CALLERS31).every(([n, want]) => sameSet(callersOf31(texts, n), [...want]));
+  ok("31.callers · ⛔ outside the twins each new member has EXACTLY its declared callers — marketingContact.reviveTombstone the registration writer (registration-contact.ts), marketingContact.redateAdded the Added door (contacts/added-redate.ts), contactListBasis.coverageSplit the Lists card's loader and the importer's list figures (lists-loader.ts, import-commit.ts), contactListMember.joinedFromImport the import's result (import-commit.ts)",
+    texts31.length >= 4 && callersOk31(texts31),
+    Object.keys(CALLERS31).map((n) => `${n}: [${callersOf31(texts31, n)}]`).join(" · "));
+
+  // ── CONTROLS — the REAL bodies, ONE defect planted in each, must FAIL their predicate ──
+  const planted31 = (body: string, from: string, to: string): string => body.split(from).join(to);
+  const controls31: Array<[string, boolean]> = [
+    ["a Prisma revival that does not ask the mark", reviveOk31(memRevive, priRevive)
+      && !reviveOk31(memRevive, planted31(priRevive, ' and "sourceRef" = ${ERASURE_EVIDENCE} and "userId" is null for update', " for update"))],
+    ["a Prisma revival that deletes the memberships outside its transaction", !reviveOk31(memRevive, planted31(priRevive, "(await tx.contactListMember.deleteMany(", "(await pc().contactListMember.deleteMany("))],
+    ["a memory revival that keeps the memberships", !reviveOk31(planted31(memRevive, MEM_MEMBERS31, ""), priRevive)],
+    ["a memory revival that writes the sign-up's caches over the number's", !reviveOk31(planted31(memRevive, "consentState: tomb.consentState,", "consentState: r.consentState,"), priRevive)],
+    ["a Prisma revival that writes the sign-up's caches over the number's", !reviveOk31(memRevive, planted31(priRevive, "consentState: tomb.consentState as never,", "consentState: r.consentState as never,"))],
+    ["a Prisma revival that keeps the tombstone's id — the in-place rewrite of before the review", !reviveOk31(memRevive, planted31(priRevive, "id: r.id, msisdn: revival.msisdn,", "id: revival.id, msisdn: revival.msisdn,"))],
+    ["a memory revival that keeps the tombstone's id", !reviveOk31(planted31(memRevive, "id: r.id,", "id: tomb.id,"), priRevive)],
+    ["a Prisma revival that DELETES the erased person's campaign records", !reviveOk31(memRevive, planted31(priRevive, PRI_COUNT31,
+      "const recipientsUnlinked = (await tx.smsCampaignRecipient.deleteMany({ where: { contactId: revival.id } })).count;"))],
+    ["a Prisma revival that unlinks through updateMany — the revival's instant stamped onto the erased person's records", !reviveOk31(memRevive, planted31(priRevive, PRI_COUNT31,
+      "const recipientsUnlinked = (await tx.smsCampaignRecipient.updateMany({ where: { contactId: revival.id }, data: { contactId: null } })).count;"))],
+    ["a Prisma revival that counts the records outside its transaction", !reviveOk31(memRevive, planted31(priRevive, "await tx.smsCampaignRecipient.count(", "await pc().smsCampaignRecipient.count("))],
+    ["a schema whose recipient link cascades — the tombstone's delete would DELETE the erased person's records", setNullOk31(recipientSchema31, fkSql31)
+      && !setNullOk31(planted31(recipientSchema31, FK_SCHEMA31, FK_SCHEMA31.split("SetNull").join("Cascade")), fkSql31)
+      && !setNullOk31(recipientSchema31, fkSql31.map((l) => planted31(l, "ON DELETE SET NULL", "ON DELETE CASCADE")))],
+    ["a memory revival that leaves the campaign records pointing at the deleted row", !reviveOk31(planted31(memRevive, MEM_UNLINK31, "if (rec.contactId !== tomb.id) continue;"), priRevive)],
+    ["a revival that takes a row under the tombstone's own id", !reviveOk31(memRevive, planted31(priRevive, SAME_ID31, "")) && !reviveOk31(planted31(memRevive, SAME_ID31, ""), priRevive)],
+    ["a memory revival that writes over a row already holding the fresh id", !reviveOk31(planted31(memRevive, MEM_TAKEN31, "if (false) throw new Error("), priRevive)],
+    ["a Prisma split that drops the linked members", splitOk31(memSplit, priSplit) && !splitOk31(memSplit, planted31(priSplit, PRI_TOMB31, `${PRI_TOMB31} and c."userId" is null`))],
+    ["a memory split that counts the tombstone", !splitOk31(planted31(memSplit, MEM_TOMB31, "if (c === undefined) continue;"), priSplit)],
+    ["a Prisma re-dating without its compare", redateOk31(memRedate, priRedate, model31) && !redateOk31(memRedate, planted31(priRedate, ' and "createdAt" = ${r.expectedCreatedAt}::timestamptz', ""), model31)],
+    ["a memory re-dating that writes before it has checked every row", !redateOk31(planted31(memRedate, MEM_CHECK31, ""), priRedate, model31)],
+    ["a shape rule that lets one contact be named twice", !redateOk31(memRedate, priRedate, planted31(model31, 'if (seen.has(row.id)) refuse("one contact is named twice");', ""))],
+    ["a re-dating bound one past §25's — the model's number moved alone", boundOk31(model31, storeSrc) && !boundOk31(planted31(model31,
+      `export const ADDED_REDATE_MAX = ${constOf31(model31, "ADDED_REDATE_MAX")};`, `export const ADDED_REDATE_MAX = ${constOf31(model31, "ADDED_REDATE_MAX") + 1};`), storeSrc)],
+    ["§25's bound moved alone — the store's number changed, the re-dating's not", !boundOk31(model31, planted31(storeSrc,
+      `export const BULK_KEYED_READ_MAX = ${constOf31(storeSrc, "BULK_KEYED_READ_MAX")};`, `export const BULK_KEYED_READ_MAX = ${constOf31(storeSrc, "BULK_KEYED_READ_MAX") * 2};`))],
+    ["a second writer of Added — a page action re-dating rows itself", callersOk31(texts31)
+      && !callersOk31([...texts31, ["app/admin/contacts/planted-actions.ts", "await db.marketingContact.redateAdded(rows);"] as const])],
+    ["the revival called from a second place — the importer reviving a tombstone", !callersOk31(texts31.map(([f, t]) =>
+      [f, f === "lib/server/contacts/import-commit.ts" ? `${t} db.marketingContact.reviveTombstone(x);` : t] as const))],
+    ["a Prisma join count without its window — every member the run's numbers ever had counted as joined", joinedOk31(memJoined, priJoined)
+      && !joinedOk31(memJoined, planted31(priJoined, PRI_WINDOW31, ""))],
+    ["a memory join count that counts the tombstone", !joinedOk31(planted31(memJoined, MEM_TOMB_J31, "if (c === undefined) continue;"), priJoined)],
+    ["a memory join count that ignores created-only — a masked run's kept rows counted", !joinedOk31(planted31(memJoined, MEM_ONLY31, "if (true) {"), priJoined)],
+  ];
+  const deaf31 = controls31.filter(([, held]) => !held).map(([name]) => name);
+  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, writes the caches (either twin), keeps the tombstone's id (either twin), deletes the erased person's campaign records, stamps them through updateMany, counts them outside its transaction, leaves them pointing at the deleted row, takes a row under the tombstone's own id, or writes over a taken id; a recipient link that cascades (the schema or its migration); a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a re-dating bound or §25's bound moved alone; a second caller of the re-dating or the revival; a join count without its window, counting the tombstone, or blind to created-only — FAILS its predicate",
+    deaf31.length === 0, deaf31.join(" | ") || `${controls31.length} controls held`);
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

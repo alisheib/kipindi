@@ -15,13 +15,19 @@
  * ⭐ THE GATE IS EXACT (A1.4). 716,800, 716,801 and 716,802 bytes all encode to the same 955,736 base64 characters,
  * so a length compare lets two over-cap sizes reach the decoder. `xlsxBase64OverCap` reads the decoded size off the
  * length and the padding (3·len/4 − padding) and refuses anything above 716,800 bytes before a byte is decoded.
+ * ⭐ C3c (2026-10-09) · THE CAP IS THE UPLOAD'S, NO LONGER THE OFFICER'S. A workbook past XLSX_MAX_BYTES is never
+ * uploaded: the import dialog reads it in the browser (`xlsx-read.ts`, the same cell rules as the server's reader —
+ * `xlsx-cells.ts` — and the same caps here) and stages its rows like a CSV's. So `too_large` is said only to a direct
+ * post over the cap (the server action's own gate) and to an old browser that cannot inflate a zip (no
+ * `DecompressionStream("deflate-raw")`), whose only way on is still CSV.
  *
  * ⭐ ONE SNIFFER, ONE COPY TABLE (decision C18). The CSV reader's format check (U25's detectFormat), the import
  * dialog (before it posts) and the server's reader all decide "is this a spreadsheet, and which kind" HERE, and
  * every refusal an officer reads about a spreadsheet comes from `xlsxRefusalSentence`. A second ".xls" sentence
  * anywhere else is the drift this file exists to prevent.
  *
- * ⛔ THE REMEDY CARRIES ITS OWN WARNING. "Save it as CSV" is the way past the cap — but Excel writes a 12-digit
+ * ⛔ THE REMEDY CARRIES ITS OWN WARNING. "Save it as CSV" was the way past the cap until C3c, and is still the way past
+ * a workbook too large to inflate here or an old browser — but Excel writes a 12-digit
  * number in General format to CSV as its DISPLAY, `2.55713E+11`, and the last digits are gone for good. So every
  * sentence here that sends an officer to CSV also carries the format step, `PHONE_FORMAT_REMEDY` — ONE clause
  * (A1.6), which the Phone column's hint and the shortened-number sentence read too, so the officer is never told
@@ -94,8 +100,99 @@ export function xlsxBase64OverCap(base64: string): boolean {
 export const XLSX_MAX_INFLATED_BYTES = 48 * 1024 * 1024;
 export const XLSX_MAX_ROWS = 200_000;
 
+/**
+ * ⚠️ The most cells the read sheet may span, counted to each row's LAST non-empty cell: twenty columns a row across
+ * XLSX_MAX_ROWS. A row with one cell in the last column (16,384) spans 16,384, and the grid is laid out densely, so
+ * without it a few hundred KB of far-right cells would ask for gigabytes. Real contact sheets are far inside it.
+ * ⭐ C3c · ONE constant for both workbook readers — the server's (U27b, where it was born) and the browser's for a
+ * workbook past `XLSX_MAX_BYTES` (`xlsx-read.ts`), which lays the chosen sheet out by the same rule.
+ */
+export const XLSX_MAX_GRID_CELLS = XLSX_MAX_ROWS * 20;
+
 /** The most zip entries a workbook may carry; a real contact sheet has a few dozen. */
 export const XLSX_MAX_ENTRIES = 1000;
+
+/**
+ * ⚠️ THE MERGE GUARD'S CAPS AND ITS ONE RULE — a merge is NOT free: exceljs materialises a Cell object for EVERY cell a
+ * merge rectangle covers AND a Row object for every row it spans (`getCell` over the whole rectangle, `doc/worksheet.js`
+ * `_mergeCellsInternal`), and reconciles each new merge against every merge already read — O(merges²). So a few-KB
+ * workbook carrying one vast `<mergeCell ref="A1:XFD1048576"/>`, a tall `A1:A1048576`, or a flood of tiny merges, can
+ * exhaust the live money server (the server reader) or freeze the officer's tab (the browser reader) before a single
+ * contact row is read.
+ * ⭐ THREE CAPS, CHARGED THE SAME WAY BY BOTH READERS, across every VISIBLE/loaded sheet of a workbook: the summed covered
+ * CELLS against `XLSX_MAX_MERGED_CELLS`, the summed spanned ROWS against `XLSX_MAX_ROWS` (exceljs allocates a Row per
+ * covered row, and the import never reads more than that many rows anyway), and the COUNT of merges against
+ * `XLSX_MAX_MERGES`.
+ * ⛔ WHY 1,000, BY MEASUREMENT (MINOR 11): exceljs reconciles each new `<mergeCell>` against every one already read
+ * (`_mergeCellsInternal`, O(merges²)). Measured on the live reader (`readXlsxContacts`): 1,000 merges 56 ms, 2,000
+ * 214 ms, 4,000 935 ms, 10,000 6.5 s — a 6.5 s stall on the bet-taking instance. 1,000 is 56 ms (U27.md:51 calls
+ * > ~1.5 s a finding), and is still a hundredfold beyond the handful of merged banners a real contact workbook carries.
+ * `test:contacts-import` time-boxes a full read of a cap-count workbook. Past any cap a workbook is `too_big_inflated` —
+ * refused by the server's pre-pass before exceljs loads it, by the browser's reader as it parses the sheet.
+ * ⛔ ONE RULE: both readers turn a `ref` into cells and rows through `xlsxMergeArea` below — the server over the `ref`
+ * its attribute tokenizer lifts from the raw tag, the browser over the `ref` its XML parser lifts — so the two cannot
+ * drift. (C3c-merge-guard, 2026-10-09.)
+ */
+export const XLSX_MAX_MERGES = 1_000;
+/** The covered-cell budget for merges — the Cell objects exceljs allocates; the same magnitude as the `<c>`-element cap. */
+export const XLSX_MAX_MERGED_CELLS = XLSX_MAX_ROWS * 5;
+
+/** ⭐ Excel's own limit on a number-format string (MAJOR 6 / 9a). A `formatCode` longer than this is forged: both
+ *  readers refuse it, so the date-format test (which scans the whole code) never runs on an 8 MiB string over a million
+ *  styles. 255 is the documented Excel maximum; a real custom format is a few dozen characters. */
+export const XLSX_MAX_FORMAT_CODE = 255;
+
+/** ⭐ The deepest element nesting EITHER reader admits (NIT 1 · ONE cap for both: the server's saxes keeps a tag object
+ *  per open element, the browser's scanner a stack entry). A real worksheet nests about eight deep, so 64 is generous;
+ *  past it the workbook is `unreadable` (detail `depth`) in both readers, so `<a><a><a>…` cannot grow memory without end. */
+export const XLSX_MAX_DEPTH = 64;
+
+/** Excel's own grid: columns A..XFD (16,384) by 1..1,048,576 rows — the most any cell address or merge corner can name. */
+export const EXCEL_MAX_COLUMN = 16384;
+export const EXCEL_MAX_ROW = 1048576;
+/** ⭐ The worst a missing, partial, malformed, reversed or OUT-OF-GRID merge ref could mean: the whole grid. Always a
+ *  finite number (never NaN/Infinity), so a hostile ref is charged big and refused, never admitted as small. */
+export const XLSX_FULL_GRID_CELLS = EXCEL_MAX_COLUMN * EXCEL_MAX_ROW;
+
+/** One A1 corner — upper-case letters (the column), then digits (the row), `$` skipped — or null unless BOTH are present,
+ *  nothing else follows, and each is inside Excel's grid (so `xlsxMergeArea` is always finite, never NaN). */
+function mergeCorner(s: string): { readonly col: number; readonly row: number } | null {
+  let i = 0;
+  let col = 0;
+  let row = 0;
+  let sawCol = false;
+  let sawRow = false;
+  while (i < s.length) {
+    const c = s.charCodeAt(i);
+    if (c === 36) { i++; continue; }
+    if (c >= 65 && c <= 90) { col = col * 26 + (c - 64); sawCol = true; i++; if (col > EXCEL_MAX_COLUMN) return null; } else break;
+  }
+  while (i < s.length) {
+    const c = s.charCodeAt(i);
+    if (c === 36) { i++; continue; }
+    if (c >= 48 && c <= 57) { row = row * 10 + (c - 48); sawRow = true; i++; if (row > EXCEL_MAX_ROW) return null; } else break;
+  }
+  return sawCol && sawRow && i === s.length && col >= 1 && row >= 1 ? { col, row } : null;
+}
+
+/**
+ * ⭐ THE ONE MERGE-REF RULE, shared by both Excel readers: a `ref` string → the cells it covers and the rows it spans.
+ * A single cell (no colon) is 1×1; a range is width×height with reversed corners taken by min/max; a missing, partial,
+ * malformed or out-of-grid ref is charged the WORST it could mean (the whole grid). ⛔ Always FINITE — a corner past the
+ * grid returns null from `mergeCorner`, so the result is never NaN or Infinity (which would slip under a `>` cap, A1.NaN).
+ */
+export function xlsxMergeArea(ref: string): { readonly cells: number; readonly rows: number } {
+  const whole = { cells: XLSX_FULL_GRID_CELLS, rows: EXCEL_MAX_ROW };
+  const r = typeof ref === "string" ? ref.trim() : "";
+  if (r === "") return whole;
+  const colon = r.indexOf(":");
+  if (colon < 0) return mergeCorner(r) === null ? whole : { cells: 1, rows: 1 };
+  const a = mergeCorner(r.slice(0, colon));
+  const b = mergeCorner(r.slice(colon + 1));
+  if (a === null || b === null) return whole;
+  const rows = Math.abs(a.row - b.row) + 1;
+  return { cells: (Math.abs(a.col - b.col) + 1) * rows, rows };
+}
 
 // ── THE SNIFFER ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -191,6 +288,7 @@ export type WrongFormatKind = "xls" | "protected" | "xlsb" | "ods" | "strict" | 
 /** Every way an Excel file can be refused, client-side check and server read alike. */
 export type XlsxRefusal =
   | "too_large"
+  | "old_browser"
   | "not_base64"
   | "wrong_format"
   | "too_big_inflated"
@@ -202,7 +300,7 @@ export type XlsxRefusal =
   | "forbidden";
 /** Every refusal, complete by construction: a new member of the union without an entry here fails to compile. */
 const REFUSAL_SET: Record<XlsxRefusal, true> = {
-  too_large: true, not_base64: true, wrong_format: true, too_big_inflated: true, too_many_rows: true,
+  too_large: true, old_browser: true, not_base64: true, wrong_format: true, too_big_inflated: true, too_many_rows: true,
   no_visible_sheet: true, empty: true, unreadable: true, busy: true, forbidden: true,
 };
 export const XLSX_REFUSALS = Object.keys(REFUSAL_SET) as readonly XlsxRefusal[];
@@ -290,14 +388,23 @@ export function xlsxRefusalSentence(r: XlsxRefusal, ctx: XlsxRefusalContext = {}
   const cap = formatFileSize(XLSX_MAX_BYTES);
   switch (r) {
     case "too_large": {
+      // ⛔ C3c · NOT the dialog's path: a workbook past the upload cap is read in the browser (xlsx-read.ts), so this is
+      //    said only to a DIRECT post over the server action's 1 MB body — a non-dialog caller, for whom the 700 KB
+      //    transport cap IS the limit. An old browser that cannot inflate is `old_browser` below, not this.
       const size = typeof ctx.bytes === "number" && Number.isFinite(ctx.bytes) && ctx.bytes > 0 ? formatFileSize(ctx.bytes) : null;
       const opening = size
         ? `This spreadsheet is ${size} — an Excel file can be up to ${cap} here.`
         : `This spreadsheet is too large — an Excel file can be up to ${cap} here.`;
       return `${opening} ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
     }
+    case "old_browser":
+      // ⭐ MINOR 13 · the browser cannot inflate a zip (no DecompressionStream "deflate-raw") — it is the browser that is
+      //   too old, NOT that Excel has a size limit. Name the remedy (a current browser) and keep CSV as a second way.
+      return `This browser is too old to open a large Excel file here. Open this page in an up-to-date Chrome, Edge, Firefox or Safari and choose the file again, or save it as CSV. ${IF_CSV_KEEP_EVERY_DIGIT}`;
     case "too_big_inflated":
-      return `This spreadsheet holds more data than an Excel file can carry here. ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
+      // ⭐ MAJOR 8 · what trips this now is the CELL count (the grid, the stored-object and merge caps), not a byte size,
+      //   so it no longer claims a file-size limit: it asks the officer to drop what the import does not read.
+      return `This workbook holds more cells than one import can read. Delete the columns and sheets the import doesn't need — it reads the phone, name, email, tags and notes — and unmerge any merged cells, then save it and choose it again. Or save it as CSV. ${IF_CSV_KEEP_EVERY_DIGIT}`;
     case "too_many_rows":
       // ⛔ C3b · never "save it as CSV": a CSV of the same rows is refused too (X28 — one import's row cap IS this one).
       return `This spreadsheet has more than ${groupThousands(XLSX_MAX_ROWS)} rows — the most one import can take. Delete any empty rows below the contacts, or split the list into files of at most ${groupThousands(XLSX_MAX_ROWS)} rows, then save it and choose it again.`;

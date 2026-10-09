@@ -46,18 +46,19 @@ import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import type { StoredMarketingContact, ContactBookSummary, ContactTagCount, StoredContactList } from "../src/lib/server/store.ts";
 import {
-  contactsSearch, toAudienceWhere, WHOLE_BOOK, ndcsForOperators, contactAudience, roleRefusal, ROLE_REFUSAL_REASON,
+  contactsSearch, toAudienceWhere, WHOLE_BOOK, ndcsForOperators, contactAudience, contactAudienceKey, roleRefusal, ROLE_REFUSAL_REASON,
 } from "../src/lib/server/marketing/audience.ts";
 import type { ContactAudienceFilter } from "../src/lib/server/marketing/audience.ts";
 import { contactSelectionRow } from "../src/lib/server/marketing/contact-bulk.ts";
 import { operatorBrand, contactsHref, contactsLinkSp, contactsClearFiltersHref } from "../src/app/admin/contacts/contacts-query.ts";
-import { loadContacts, contactEditView } from "../src/app/admin/contacts/contacts-loader.ts";
-import type { ContactsParams, ContactsView } from "../src/app/admin/contacts/contacts-loader.ts";
+import { loadContacts, contactEditView, spendNumberCheck } from "../src/app/admin/contacts/contacts-loader.ts";
+import type { ContactsDeps, ContactsParams, ContactsView, NumberCheckSpend } from "../src/app/admin/contacts/contacts-loader.ts";
+import { bookHoldsNumber } from "../src/lib/server/contacts/number-search.ts";
 import { contactRail, TAG_RAIL_CAP } from "../src/app/admin/contacts/contacts-rail.ts";
 import type { ContactRail, RailGroup, RailOption } from "../src/app/admin/contacts/contacts-rail.ts";
 import {
   CONSENT_LABEL, SOURCE_LABEL, RAIL_KEYS, RAIL_ANY, RAIL_UNKNOWN_LIST, RAIL_LABEL_MAX, railOperatorTitle,
-  CONTACTS_KPI_RECENT, CONTACTS_RECENT_DAYS,
+  CONTACTS_KPI_RECENT, CONTACTS_RECENT_DAYS, CONTACTS_NUMBER_PRESENCE, CONTACT_LOOKUP_RATE_LIMITED,
 } from "../src/app/admin/contacts/contacts-copy.ts";
 import { PER_PAGE } from "../src/components/admin/admin-pagination.tsx";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
@@ -65,6 +66,7 @@ import { contactSearchEcho, contactSearchNumber, SEARCH_WHOLE_NUMBER } from "../
 import { CONTACTS_NO_MATCH, CONTACTS_EXPORT, CONTACTS_EXPORT_REFUSED, contactsExportRefusalSentence } from "../src/app/admin/contacts/contacts-copy.ts";
 import { CONTACT_SEARCH, fieldNames } from "../src/lib/search/index.ts";
 import { DAY_MS } from "../src/lib/query/windows.ts";
+import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 
@@ -73,10 +75,15 @@ const read = (rel: string) => decomment(readFileSync(new URL(`../${rel}`, import
  *  stripper (it tracks strings, not regexes) could misread. §16 reads one array out of it, line-anchored instead. */
 const rawRead = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
-type Sources = { page: string; loader: string; rail: string; model: string; copy: string; gate: string; searchBox: string; kitBox: string };
+type Sources = {
+  page: string; loader: string; rail: string; model: string; copy: string; gate: string; searchBox: string; kitBox: string;
+  /** C8b review (MINOR 7) · the Add form's lookup action — whose number-check bucket the presence answer spends too. */
+  formActions: string;
+};
 const REAL_SOURCES: Sources = {
   page: read("src/app/admin/contacts/page.tsx"),
   loader: read("src/app/admin/contacts/contacts-loader.ts"),
+  formActions: read("src/app/admin/contacts/contact-form-actions.ts"),
   // ⭐ U21 · the rail's drawing, its model, the one vocabulary, and the gate that must declare the drawing.
   rail: read("src/app/admin/contacts/contact-filters.tsx"),
   model: read("src/app/admin/contacts/contacts-rail.ts"),
@@ -90,18 +97,25 @@ const REAL_SOURCES: Sources = {
 type Impl = {
   search: typeof contactsSearch;
   /** The page's loader. `reads` is D19's read cell — a script has no session, so it is injected; `now` (OD54) is the
-   *  load's one clock, injected so the masked band's seven days are a fixed window. */
-  load: (sp: ContactsParams, reads?: boolean, now?: number) => Promise<ContactsView>;
+   *  load's one clock, injected so the masked band's seven days are a fixed window; `extra` (C8b review) the spend of the
+   *  number-check bucket and the presence read, when a check counts them. */
+  load: (sp: ContactsParams, reads?: boolean, now?: number, extra?: ContactsDeps) => Promise<ContactsView>;
   href: typeof contactsHref;
   /** U21 · the page's rail builder. */
   rail: typeof contactRail;
   /** D19 / A1.1 / OD54 · the ONE role rule every door asks (`audience.ts`). */
   role: typeof roleRefusal;
+  /** C8b re-review (NIT) · the loader's own spend of the number-check bucket (`spendNumberCheck`) — asked with no session. */
+  spendCheck: typeof spendNumberCheck;
   sources: Sources;
 };
-const realLoad = (sp: ContactsParams, reads = false, now?: number) =>
-  loadContacts(sp, { reads: async () => reads, ...(now === undefined ? {} : { now: () => now }) });
-const REAL: Impl = { search: contactsSearch, load: realLoad, href: contactsHref, rail: contactRail, role: roleRefusal, sources: REAL_SOURCES };
+/** A script has no session: the number-check bucket's spend is injected, and allows — unless a check hands its own. */
+const ALLOW_SPEND = async (): Promise<NumberCheckSpend> => ({ allowed: true, retryAfterSec: 0 });
+const realLoad = (sp: ContactsParams, reads = false, now?: number, extra: ContactsDeps = {}) =>
+  loadContacts(sp, { reads: async () => reads, ...(now === undefined ? {} : { now: () => now }), spend: ALLOW_SPEND, ...extra });
+const REAL: Impl = {
+  search: contactsSearch, load: realLoad, href: contactsHref, rail: contactRail, role: roleRefusal, spendCheck: spendNumberCheck, sources: REAL_SOURCES,
+};
 
 let pass = 0, fail = 0;
 const failed: string[] = [];
@@ -215,7 +229,7 @@ const U21 = {
 const VB7 = {
   echo: "19 · ⭐ vb7 · THE SEARCH BOX SAYS WHAT IT WILL DO: a whole number in any spelling echoes \"Whole number — matched exactly\" (never \"3 words\"), a number attempt the parser refuses echoes ITS sentence (a 10-digit typo is told it has ten), a name or a year echoes the grammar's own words (EXECUTED) — and the box is a client wrapper handing the kit SearchBox that reading and the grammar's one field, which the kit puts in its echo row before the word count",
   empty: "19b · ⭐ vb7 · a refused number attempt that finds nobody says the parser's sentence in the empty state, never \"part of a number is not searched\" — EXECUTED: the 10-digit typo is read by the loader as a name search that finds no row, and the page builds the body from contactSearchNumber (a whole number that finds nobody keeps the general sentence)",
-  banner: "20 · ⭐ vb7 · A REFUSED EXPORT COMES BACK TO THE PAGE: ?export=<reason> is said above the list for each of the export's seven reasons, anything else (an unknown word, constructor, nothing) says nothing, and the page renders it in a Callout with a Dismiss link that is the ONE href builder's — no link carries export=",
+  banner: "20 · ⭐ vb7 · A REFUSED EXPORT COMES BACK TO THE PAGE: ?export=<reason> is said above the list for each of the export's eight reasons (C8b's number_search among them), anything else (an unknown word, constructor, nothing) says nothing, and the page renders it in a Callout with a Dismiss link that is the ONE href builder's — no link carries export=",
 } as const;
 
 /** 🔴 OD54's labels, ONCE — "D19 covers SUPPRESSION too" (S10): until the importer goes live a stop is a player's own
@@ -226,6 +240,14 @@ const OD54 = {
   axis: "13b · 🔴 OD54 · roleRefusal refuses suppressed — yes and no alike — to a masked viewer with the ROLE_REFUSAL_REASON and allows it to a reader; the loader refuses a masked ?suppressed=yes and ?op=HONORA&suppressed=no by role with NO row read, a reader gets the stopped row and the rest, and a masked viewer's \"Showing contacts:\" line names no stop",
 } as const;
 
+/** 🔴 C8b (B3) · the masked viewer's whole-number search — named once, so its red cases expect exactly what the run says. */
+const L1D = "1d · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS ONE ANSWER, NEVER ROWS: each spelling of a number the book holds answers presence \"in the book\" — with no page of rows read — a number it does not hold \"not in the book\", a list and a window beside the number change nothing (the answer is the whole book's), an ERASED person's number — its tombstone, and a marker on the ledger with no row — reads \"in the book\" exactly like a held one (the Add form's own answer, bookHoldsNumber), and a masked NAME search lists rows as before";
+/** C8b review (MINOR 7) · the presence answer spends the Add form's own number-check bucket. */
+const L1E = "1e · ⛔ C8b review (MINOR 7) · EACH MASKED PRESENCE ANSWER SPENDS THE ADD FORM'S OWN NUMBER-CHECK BUCKET: one spend per answer and none for a reader's whole number or a name search; a spent bucket answers the form's own wait (no presence, the seconds) with NO bit asked and no row read — the page titling it \"This number wasn't checked\" over the bucket's ONE sentence, never the sentence twice (the re-review's NIT); and the loader's own spend is the viewer's contacts.lookup — the very bucket the Add form's lookup action spends — which with NO session refuses (fails closed, EXECUTED outside a request)";
+/** C8b re-review (NIT 9) · a reader's whole number that the book blocks lists no row, and is selectable for a stop. */
+const L1G = "1g · ⭐ C8b re-review (NIT 9) · A READER'S WHOLE NUMBER THAT THE BOOK BLOCKS IS SELECTABLE FOR A STOP: a reader's search of an erased person's number — its tombstone, and a marker with no row — lists no row and is marked blockedNumber; a number the book does not hold, a held number (its row listed) and the blocked number beside a list are not; and the page answers it \"in the book\" with the number's select control, handing the selection the number alone counted one (numberOnly)";
+/** C8b review (MINOR 1) · a number in the book is selectable, so a stop given by phone can still be recorded for it. */
+const L1F = "1f · ⭐ C8b review (MINOR 1) · A NUMBER IN THE BOOK IS SELECTABLE FOR A STOP: the presence view carries the whole number ALONE as its audience (every other key null, even when the address held a list and a window — what a bulk Suppress or Record a withdrawal posts), the page hands the selection exactly that audience counted ONE and draws the number's select control for a number in the book only, and the in-book body says a stop or a withdrawal can still be recorded for it";
 /** U33r · the referee's Will receive word — named once, so its red case expects exactly what the run says. */
 const L9R = "9r · ⛔ U33r · MINOR-5 · a number promised no marketing as an agent applicant's referee reads ONLY 'Not reachable', exactly like every protected reason — never named apart, to a reader or anybody else (the split's ONE protected line, here too)";
 
@@ -234,17 +256,138 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
 
   ok(p("0 · CONTROL · the four fixtures are in the book"), (await db.marketingContact.count()) === 4);
 
-  // ── 1 · A WHOLE NUMBER, IN ANY SPELLING, IS ONE PERSON ─────────────────────────────────────────
+  // ── 1 · A WHOLE NUMBER, IN ANY SPELLING, IS ONE PERSON (a READER's search — C8b's B3 keeps a masked viewer from rows) ──
   const spellings = ["0712 345 678", "712345678", "+255712345678", "255712345678"];
   const found: string[] = [];
-  for (const q of spellings) found.push(ids(await impl.load({ q })));
-  ok(p("1 · ⭐ the four spellings of one number each find EXACTLY that contact (EXECUTED)"),
+  for (const q of spellings) found.push(ids(await impl.load({ q }, true)));
+  ok(p("1 · ⭐ the four spellings of one number each find EXACTLY that contact for a reader (EXECUTED)"),
     found.every((f) => f === A.id), found.join(" | "));
-  ok(p("1b · CONTROL · a different WHOLE number finds nothing"), ids(await impl.load({ q: "0712 999 999" })) === "");
+  ok(p("1b · CONTROL · a different WHOLE number finds nothing"), ids(await impl.load({ q: "0712 999 999" }, true)) === "");
   // ⭐ vb3 · the trunk zero written after the country code is the same person — never a name search that finds nobody.
-  const trunk = ids(await impl.load({ q: "+255 0712 345 678" }));
+  const trunk = ids(await impl.load({ q: "+255 0712 345 678" }, true));
   ok(p("1c · ⭐ vb3 · '+255 0712 345 678' — the trunk zero written after the country code — finds EXACTLY that contact, never a name search that finds nobody (EXECUTED)"),
     trunk === A.id, trunk);
+  // ── 1d · 🔴 C8b (B3) · a MASKED viewer's whole-number search: one answer about the whole book, never a row ──
+  {
+    const masked = await readsDuring(async () => {
+      const held: string[] = [];
+      for (const q of spellings) {
+        const v = await impl.load({ q }, false);
+        held.push(v.kind === "presence" ? (v.present ? "in" : "out") : `ROWS:${ids(v)}`);
+      }
+      const out = await impl.load({ q: "0712 999 999" }, false);
+      const narrowed = await impl.load({ q: "0712 345 678", list: "cl_t_dar", from: "2026-09-08" }, false);
+      return { held, out, narrowed };
+    });
+    // The number of an erased person, two ways: its tombstone, and a marker on the ledger with no book row — each in the
+    // book exactly as a held number is, asked of the ONE presence the loader asks. Put in for this check and taken out.
+    const mem = (globalThis as unknown as { __50PICK_STORE: Record<string, Map<string, unknown>> }).__50PICK_STORE;
+    const keep = ["marketingContacts", "contactsByMsisdn", "messagingConsents"].map((k) => [k, new Map(mem[k])] as const);
+    let erased = { tomb: false, marker: false, free: true };
+    try {
+      const tomb = row("mc_t_tomb", "0754 600 001", null, "WITHDRAWN", 6);
+      await db.marketingContact.create({ ...tomb, sourceRef: ERASURE_EVIDENCE, rawInput: tomb.msisdn });
+      await db.messagingConsent.create({
+        id: "ledger_t_marker", channel: "SMS", identifier: "255754600002", category: "MARKETING", status: "WITHDRAWN",
+        source: "OPERATOR", wording: "fixture", locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: null, createdAt: "2026-09-06T10:00:00.000Z",
+      });
+      const viewOf = async (q: string) => { const v = await impl.load({ q }, false); return v.kind === "presence" && v.present; };
+      erased = { tomb: await viewOf("0754 600 001"), marker: await viewOf("0754 600 002"), free: await viewOf("0754 600 003") };
+    } finally {
+      for (const [k, saved] of keep) { mem[k].clear(); for (const [key, v] of saved) mem[k].set(key, v); }
+    }
+    const nameRows = ids(await impl.load({ q: "baraka" }, false));
+    const v = masked.value;
+    ok(p(L1D),
+      v.held.every((h) => h === "in") && v.out.kind === "presence" && !v.out.present && v.narrowed.kind === "presence" && v.narrowed.present
+        && masked.pageCalls === 0 && erased.tomb && erased.marker && !erased.free && nameRows === B.id
+        && impl.sources.loader.includes('return { ...base, kind: "presence", present: await (deps.presence ?? bookHoldsNumber)(number), limitedSec: null, filter };'),
+      `spellings ${v.held.join(",")} · other number ${v.out.kind === "presence" ? (v.out.present ? "in" : "out") : "ROWS"} · beside a list and a window ${v.narrowed.kind === "presence" ? (v.narrowed.present ? "in" : "out") : "ROWS"} · page reads ${masked.pageCalls} · erased: tombstone ${erased.tomb}, marker ${erased.marker}, free ${erased.free} · by name ${nameRows}`);
+  }
+
+  // ── 1e · C8b review (MINOR 7) · each masked presence answer spends the Add form's own number-check bucket ──
+  {
+    let spends = 0;
+    let asked = 0;
+    const counting: ContactsDeps = {
+      spend: async () => { spends++; return { allowed: true, retryAfterSec: 0 }; },
+      presence: async (m) => { asked++; return bookHoldsNumber(m); },
+    };
+    const held = await impl.load({ q: "0712 345 678" }, false, undefined, counting);
+    const onePerAnswer = spends === 1 && asked === 1;
+    await impl.load({ q: "baraka" }, false, undefined, counting);
+    await impl.load({ q: "0712 345 678" }, true, undefined, counting);
+    const noneElse = spends === 1 && asked === 1;
+    let askedWhenSpent = 0;
+    const limited = await readsDuring(() => impl.load({ q: "0712 345 678" }, false, undefined, {
+      spend: async () => ({ allowed: false, retryAfterSec: 42 }),
+      presence: async (m) => { askedWhenSpent++; return bookHoldsNumber(m); },
+    }));
+    const lv = limited.value;
+    const src = impl.sources.loader;
+    const spendAt = src.indexOf("const spent = await (deps.spend ?? spendNumberCheck)();");
+    const askAt = src.indexOf("present: await (deps.presence ?? bookHoldsNumber)(number)");
+    const bucket = src.includes('const r = await rateCheckAsync(userId, "contacts.lookup");')
+      && impl.sources.formActions.includes('const rate = await rateCheckAsync(g.userId, "contacts.lookup");');
+    // ⛔ FAILS CLOSED (the re-review's NIT): a script has no request, so no session — the loader's own spend refuses.
+    const noSession = await impl.spendCheck();
+    // ⭐ The re-review's NIT · the spent bucket's title says what happened; its body is the bucket's ONE sentence.
+    const page = impl.sources.page;
+    const titled = page.includes("title={presence.present === null ? CONTACTS_NUMBER_PRESENCE.limitedTitle")
+      && page.includes("body={presence.present === null ? CONTACT_LOOKUP_RATE_LIMITED(presence.limitedSec ?? 60)")
+      && CONTACTS_NUMBER_PRESENCE.limitedTitle === "This number wasn't checked"
+      && !CONTACT_LOOKUP_RATE_LIMITED(42).toLowerCase().includes(CONTACTS_NUMBER_PRESENCE.limitedTitle.toLowerCase());
+    ok(p(L1E), held.kind === "presence" && held.present === true && onePerAnswer && noneElse
+      && lv.kind === "presence" && lv.present === null && lv.limitedSec === 42 && askedWhenSpent === 0 && limited.pageCalls === 0
+      && spendAt > 0 && askAt > spendAt && bucket && noSession.allowed === false && titled,
+      `spends ${spends} · presence asked ${asked} · a spent bucket ${lv.kind === "presence" ? `present ${lv.present}, wait ${lv.limitedSec}s` : lv.kind} · asked when spent ${askedWhenSpent} · page reads ${limited.pageCalls} · order ${spendAt}/${askAt} · the form's bucket ${bucket} · with no session ${noSession.allowed ? "ALLOWED" : "refused"} · titled ${titled}`);
+  }
+  // ── 1f · C8b review (MINOR 1) · a number in the book is selectable, so a stop given by phone can still be recorded ──
+  {
+    const narrowed = await impl.load({ q: "0712 345 678", list: "cl_t_dar", from: "2026-09-08" }, false);
+    const alone = narrowed.kind === "presence" ? contactAudienceKey(narrowed.filter) : `NOT PRESENCE (${narrowed.kind})`;
+    const want = contactAudienceKey({ ...WHOLE_BOOK, q: "255712345678" });
+    const page = impl.sources.page;
+    const matchingOne = page.includes(": presence !== null && presence.present === true")
+      && page.includes("? { key: contactFilterAudienceKey(presence.filter), identity: contactFilterIdentity(presence.filter, {}), total: 1, numberOnly: true }");
+    const drawnForInBook = page.includes("{presence.present === true && <ContactNumberSelect />}");
+    const says = CONTACTS_NUMBER_PRESENCE.body.includes("you can still record a stop or a withdrawal for it");
+    ok(p(L1F), alone === want && matchingOne && drawnForInBook && says,
+      `audience ${alone} · selection counted one ${matchingOne} · select control for a number in the book ${drawnForInBook} · the body says it ${says}`);
+  }
+  // ── 1g · C8b re-review (NIT 9) · a READER's whole number that the book blocks lists no row — and is selectable for a stop ──
+  {
+    const mem = (globalThis as unknown as { __50PICK_STORE: Record<string, Map<string, unknown>> }).__50PICK_STORE;
+    const keep = ["marketingContacts", "contactsByMsisdn", "messagingConsents"].map((k) => [k, new Map(mem[k])] as const);
+    let seen = { tomb: "-", marker: "-", free: "-", held: "-", beside: "-" };
+    try {
+      const tomb = row("mc_t_tomb_r", "0754 600 011", null, "WITHDRAWN", 6);
+      await db.marketingContact.create({ ...tomb, sourceRef: ERASURE_EVIDENCE, rawInput: tomb.msisdn });
+      await db.messagingConsent.create({
+        id: "ledger_t_marker_r", channel: "SMS", identifier: "255754600012", category: "MARKETING", status: "WITHDRAWN",
+        source: "OPERATOR", wording: "fixture", locale: "EN", evidence: ERASURE_EVIDENCE, recordedBy: null, createdAt: "2026-09-06T10:00:00.000Z",
+      });
+      const said = async (sp: ContactsParams): Promise<string> => {
+        const v = await impl.load(sp, true);
+        return v.kind === "ok" ? `${v.result.total}/${v.blockedNumber ? "blocked" : "open"}` : v.kind;
+      };
+      seen = {
+        tomb: await said({ q: "0754 600 011" }), marker: await said({ q: "0754 600 012" }), free: await said({ q: "0754 600 013" }),
+        held: await said({ q: "0712 345 678" }), beside: await said({ q: "0754 600 011", list: "cl_t_dar" }),
+      };
+    } finally {
+      for (const [k, saved] of keep) { mem[k].clear(); for (const [key, v] of saved) mem[k].set(key, v); }
+    }
+    const page = impl.sources.page;
+    const drawn = page.includes(") : listed !== null && listed.blockedNumber ? (")
+      && page.includes('<span className="flex flex-wrap justify-center gap-2" data-number-presence="blocked">')
+      && page.includes("title={CONTACTS_NUMBER_PRESENCE.inBook}") && page.includes("body={CONTACTS_NUMBER_PRESENCE.blockedBody}")
+      && page.includes("? { key: contactFilterAudienceKey(listed.filter), identity: contactFilterIdentity(listed.filter, sp), total: 1, numberOnly: true }");
+    const says = CONTACTS_NUMBER_PRESENCE.blockedBody.includes("you can still record a stop or a withdrawal for it");
+    ok(p(L1G), seen.tomb === "0/blocked" && seen.marker === "0/blocked" && seen.free === "0/open" && seen.held === "1/open"
+      && seen.beside === "0/open" && drawn && says,
+      `tombstone ${seen.tomb} · marker ${seen.marker} · not in the book ${seen.free} · held ${seen.held} · beside a list ${seen.beside} · drawn ${drawn} · says ${says}`);
+  }
 
   // ── 2 · ⛔ A PART OF A NUMBER IS NEVER A NUMBER SEARCH ─────────────────────────────────────────
   const part = impl.search("0712345");
@@ -707,7 +850,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const silent = [contactsExportRefusalSentence("nope"), contactsExportRefusalSentence("constructor"), contactsExportRefusalSentence(undefined),
     contactsExportRefusalSentence(["nope", "role"])];
   ok(p(VB7.banner),
-    reasons.length === 7 && said.every((x, i) => x === CONTACTS_EXPORT_REFUSED[reasons[i]] && typeof x === "string" && x.length > 20)
+    reasons.length === 8 && said.every((x, i) => x === CONTACTS_EXPORT_REFUSED[reasons[i]] && typeof x === "string" && x.length > 20)
       && silent.every((x) => x === null) && contactsExportRefusalSentence(["role", "nope"]) === CONTACTS_EXPORT_REFUSED.role
       && CONTACTS_EXPORT_REFUSED.selection === CONTACTS_EXPORT.noSelection && CONTACTS_EXPORT_REFUSED.unknown_param === CONTACTS_EXPORT.stray
       && page.includes("const exportRefused = contactsExportRefusalSentence(sp.export);")
@@ -857,6 +1000,117 @@ if (!PROVE_RED) {
       name: "vb7 · a refused export is never said on the page — the route sends the officer back to a list that says nothing",
       expect: VB7.banner,
       impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("const exportRefused = contactsExportRefusalSentence(sp.export);", "const exportRefused: string | null = null;") } },
+    },
+    {
+      // 🔴 The page before C8b: a masked viewer's whole-number search listed the number's row, its name, lists and Added.
+      name: "⛔ C8b · B3 not built — a masked viewer's whole-number search lists the row a reader would see",
+      expect: L1D,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
+          return v.kind === "presence" ? { ...(await realLoad(sp, true, now)), viewerReads: false } : v;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b · the presence asks the book's ROW alone — an erased person whose erasure left only the ledger's marker reads \"not in the book\" while Add contact says it is",
+      expect: L1D,
+      impl: {
+        ...REAL,
+        load: (sp, reads = false, now, extra = {}) => loadContacts(sp, {
+          reads: async () => reads, ...(now === undefined ? {} : { now: () => now }), spend: ALLOW_SPEND, ...extra,
+          presence: async (m) => (await db.marketingContact.findByMsisdn(m)) !== null,
+        }),
+      },
+    },
+    {
+      name: "⛔ C8b · the presence narrowed by the other filters — a list or a window beside the number answers for the row behind it",
+      expect: L1D,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
+          return v.kind === "presence" && (sp.list !== undefined || sp.from !== undefined) ? { ...v, present: false } : v;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b review · a spent number-check bucket still answers the bit — the search box an oracle faster than the Add form",
+      expect: L1E,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
+          if (v.kind !== "presence" || v.present !== null || v.filter.q === null) return v;
+          return { ...v, present: await bookHoldsNumber(v.filter.q), limitedSec: null };
+        },
+      },
+    },
+    {
+      name: "⛔ C8b review · the loader's spend switched to a bucket of its own — the Add form's number checks no longer bound the search",
+      expect: L1E,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, loader: REAL_SOURCES.loader.replace('rateCheckAsync(userId, "contacts.lookup")', 'rateCheckAsync(userId, "contacts.write")') } },
+    },
+    {
+      name: "⛔ C8b review · the presence keeps the address's other filters as its audience — a stop over \"this number\" posts a list and a window beside it",
+      expect: L1F,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
+          return v.kind === "presence" ? { ...v, filter: { ...v.filter, lists: ["cl_t_dar"] } } : v;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b review · the number's select control drawn for every presence — a number not in the book offered a stop it cannot take",
+      expect: L1F,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("{presence.present === true && <ContactNumberSelect />}", "{<ContactNumberSelect />}") } },
+    },
+    {
+      name: "⛔ C8b re-review (NIT) · the loader spends the number-check bucket on EVERY load — a reader's whole number and a name search drain the Add form's checks too",
+      expect: L1E,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
+          if (v.kind !== "presence" && extra.spend !== undefined) await extra.spend();
+          return v;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b re-review (NIT) · the loader's spend fails OPEN — with no session a number check is allowed",
+      expect: L1E,
+      impl: { ...REAL, spendCheck: async () => ({ allowed: true, retryAfterSec: 0 }) },
+    },
+    {
+      name: "⛔ C8b re-review (NIT) · the spent bucket titled with its own sentence — the wait said twice, once as the title",
+      expect: L1E,
+      impl: {
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          page: REAL_SOURCES.page.replace("title={presence.present === null ? CONTACTS_NUMBER_PRESENCE.limitedTitle", "title={presence.present === null ? CONTACT_LOOKUP_RATE_LIMITED(presence.limitedSec ?? 60)"),
+        },
+      },
+    },
+    {
+      name: "⛔ C8b re-review (NIT 9) · a reader's blocked number never marked — the reader reads \"No contacts match\" and cannot record a stop given by phone for it",
+      expect: L1G,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now, extra = {}) => {
+          const v = await realLoad(sp, reads, now, extra);
+          return v.kind === "ok" ? { ...v, blockedNumber: false } : v;
+        },
+      },
+    },
+    {
+      name: "⛔ C8b re-review (NIT 9) · the page draws no answer for a reader's blocked number — the flag arrives and nothing offers the stop",
+      expect: L1G,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace(") : listed !== null && listed.blockedNumber ? (", ") : false ? (") } },
     },
 
     /* ── U21 · the plan's RED line, each in memory ─────────────────────────────────────────────── */

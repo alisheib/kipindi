@@ -209,7 +209,8 @@ is a second implementation that will drift.
   - **12 wired**, never as `test:*`: `db:seed-kyc-stages-local`; `live:kyc-at-withdrawal` (signed-out,
     now reads the privacy version from the page source — it was red on a pin that moved on
     2026-09-22 — and shoots into `.qa-shots/`); `live:marketing-u1-phone-key`, `-u2-formatter`,
-    `-u5-helpline`, `-u6-consent-ledger`; `qa:marketing-u8-optout`; `qa:d36-d37-remeasure` (its
+    `-u5-helpline` (retired 2026-10-09 — it asserted a published helpline, and since the owner's ruling of 2026-10-06
+    no player page shows one), `-u6-consent-ledger`; `qa:marketing-u8-optout`; `qa:d36-d37-remeasure` (its
     `/s+/g` was missing the backslash and stripped every letter "s"), `qa:d37-tile-fit`,
     `qa:d42-ring-legend`, `qa:d45-d52-remeasure`, `qa:u34-wallet-pill`. ⚠️ The mobile/ops drives sign in
     as the shared `mobile01` persona on production — run them only when that lane is not driving.

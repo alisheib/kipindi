@@ -247,7 +247,7 @@ scheme, MNO channel codes, sandbox creds.
   placeholder `TZ-GBT-2026-XXXX`, shown in the public footer).
 - **`DISABLE_ADMIN_TOTP=true` stays** for now (Ali's call — admin 2FA to be enabled later).
 - ~~**`SMS_PROVIDER=console` stays** — launching without SMS~~ — *superseded 2026-09-16: SMS is live
-  on Blackball (`SMS_PROVIDER=blackball`, sender `50pick`; receipts proven 2026-09-23). Sign-in is still
+  on Blackball (`SMS_PROVIDER=blackball`, sender `50pick.tz` since 2026-10-09; receipts proven 2026-09-23). Sign-in is still
   phone+password — phone-code login is off by decision (`docs/BLACKBALL-SMS.md` §7 step 6). Corrected
   2026-09-25.*
 

@@ -37,9 +37,11 @@ export const SMS_WORDING = RESUME_WORDING;
 /** A ledger file that EXISTS with nothing counted — a drive after its first evidence run. (A MISSING file is NO-GO unless `--new-ledger`.) */
 export const EMPTY_LEDGER_TEXT: string = LIB.serializeLedger(LIB.emptyLedger());
 /**
- * The saved wordings of a platform ready for the drive: a source line and the typed-number test's 18+ sentence, each saved once.
- * (The pre-flight's `source` row still reads both. Since the owner's ruling of 2026-10-09 no message prints the source line and
- * nothing is refused without one, and a typed-number test is for ADMIN and COMPLIANCE only — never the drive's GROWTH login.)
+ * The saved wordings of a platform ready for the drive, as production holds them: a source line and the typed-number test's 18+
+ * sentence, each saved once. No pre-flight row asks for either: since the owner's ruling of 2026-10-09 no message prints the source
+ * line and nothing is refused without one, a typed-number test is for the Owner and Compliance only (never the drive's GROWTH
+ * login), and the `source` row that read both was removed with the owner's approval of the same day. The pre-flight reads the
+ * wordings only to recognise an import attestation (P1d's trap adds a basis wording to these; P1b takes them away).
  */
 export const SAVED_WORDINGS: Record<string, unknown> = {
   "source.phrase": [{ v: 1, text: "From the 50pick sign-up form", savedAt: "2026-10-07T08:00:00.000Z", savedBy: "ops: Claude for Ali (G5)" }],

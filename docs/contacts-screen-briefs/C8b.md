@@ -1,3 +1,4 @@
+✅ DONE — landing 2026-10-09 with S14's contacts push (branch `s14-c8b`, B1–B8: the owner answered B3, B4 and B8 at ~10:20 EAT, so they were built too; B8's production re-date is a run of the audited door `ops:contacts-added-redate`); kept as the design record.
 # C8b — what a masked officer may know: the technical half (brief for the builder)
 
 ## Context

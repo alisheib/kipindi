@@ -1,6 +1,12 @@
 # Critic · U29–U40 build specs
 
 > Cross-unit review of the twelve U29–U40 specs in this folder (2026-10-01). Conflicts are places where two or more specs disagree; missing items are work no spec owns; wrong claims are spec premises the critic refuted on HEAD. Scratch copy: the plan stays the authority.
+>
+> ⟶ **2026-10-09 · later rulings these findings predate** (`docs/COMPLIANCE-DECISIONS.md`): nothing is appended to a
+> marketing SMS (the top entry), so M5 and G5's source phrase is printed and priced nowhere (`DECISIONS-U29-U40.md` M5,
+> G5); and since the owner's FINAL rule of 2026-10-07 consent is no condition while licence outreach is open, so the
+> gate questions below that keep a list or an old "yes" from being messaged were overtaken (OD57/OD58,
+> `U33a-U37c-OD58.md`).
 
 | Section | Count |
 |---|---|

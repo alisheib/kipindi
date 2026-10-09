@@ -7,6 +7,8 @@
  * officer's message with `{jina}` filled in, and `test:campaign-compose` plants a footer to prove nothing is added.
  * What stays: the message must still BEGIN with "50pick" (the officer's own text, checked — the sender is named), and
  * the opt-out path and token length stay for the `/s/<token>` page, so a link already sent keeps working.
+ * What went with the footer's last readers: `statutorySmsHelpline()` — this file reads no helpline at all — and
+ * `shortDomain()`, the stop link's domain; neither had a caller left in src.
  * The envelope below is the history of what the engine appended until that ruling.
  *
  * ⭐ (UNTIL 2026-10-09) THE STATUTORY ENVELOPE — what every marketing SMS must carry, appended by the engine and
@@ -35,20 +37,18 @@
  * ⭐ `18+` is a symbol rather than prose deliberately: the shipped sentence "miaka 18 au zaidi" is
  * fifteen septets and this footer has forty-nine to spend in total.
  *
- * ── THE HELPLINE IS THE ONE `support-config.ts` PUBLISHES — OQ4 ANSWERED ───────
+ * ── THE HELPLINE WAS THE ONE `support-config.ts` PUBLISHES — OQ4 ANSWERED (UNTIL 2026-10-09) ───────
  * Until 2026-09-26 this footer carried the Gaming Board Advertising Code's `0800110051` while
  * `support-config.ts` publishes `0800 11 0011`, and that contradiction was OQ4 — deliberately left
  * unresolved until the owner answered. ⭐ Ali, 2026-09-26: *"the right helpline is ours."* So the footer
- * now reads the ONE published number from `support-config.ts` (its dial form, no spaces — the same ten
- * septets the Board's number took, so the 49-septet footer budget is unchanged). ⛔ Never a second
- * helpline literal here again: `test:campaign-compose` §12 asserts the footer IS the published number
- * and that the Board's number appears nowhere in it.
+ * read the ONE published number from `support-config.ts` (its dial form, no spaces — the same ten
+ * septets the Board's number took, so the 49-septet footer budget was unchanged). Since 2026-10-09 no
+ * message carries a helpline and this file reads none: `test:campaign-compose` §12 asserts that neither
+ * the published number nor the Board's appears in a message.
  *
  * Guard: `npm run test:campaign-compose`.
  */
-import { appUrl } from "@/lib/app-url";
 import { sizeSms, unitsIn, capUnits, SMS_MAX_SEGMENTS, type SmsEncoding, type SmsSize } from "@/lib/sms-compose";
-import { HELPLINE_TEL } from "@/lib/support-config";
 
 /** The opt-out path's token length. ⛔ The route itself is plan U8; this is the length it must mint. */
 export const OPTOUT_TOKEN_CHARS = 8;
@@ -56,50 +56,24 @@ export const OPTOUT_TOKEN_CHARS = 8;
 /** The opt-out path. `50pick.tz/s/<token>` — short because every character is a septet. */
 export const OPTOUT_PATH = "/s/";
 
-/** OURS — the number `support-config.ts` publishes, in dial form (OQ4, answered 2026-09-26).
- *  ⛔ A FUNCTION, NOT A CONSTANT: since 2026-10-03 the helpline is editable in /admin/system, and a
- *  value captured at import would keep the old number for the life of the process. */
-export function statutorySmsHelpline(): string {
-  return HELPLINE_TEL();
-}
-
 /** ETA s.32(1)(b): the sender must be identified, and at the START of the message. */
 export const SENDER_IDENTITY = "50pick";
 
 export type MarketingLocale = "SW" | "EN";
 
 /**
- * ⭐ THE SHORT DOMAIN IS DERIVED FROM `appUrl()`, NEVER TYPED.
- *
- * 🔴 A TYPED DOMAIN IS A BILL WAITING TO HAPPEN. If the deployment's public URL ever changes to
- * something longer, a typed `50pick.tz` would keep printing a link that no longer resolves, and a
- * typed longer domain would silently push every single-segment campaign into two. Deriving it means
- * a domain change shows up as a failing assertion at build time rather than as an invoice.
- *
- * `https://www.50pick.tz` → `50pick.tz`. The `www.` is dropped because the apex serves the app
- * directly (measured 2026-09-25: `https://50pick.tz/` answers 200) and four septets is four
- * characters an officer does not get to use. ⚠️ §3b: a `curl` 200 is not proof a BROWSER reaches a
- * page — U8's live drive confirms the opt-out link with a real browser before any message carries it.
- */
-export function shortDomain(): string {
-  return appUrl().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
-}
-
-/**
  * ⛔ EMPTY SINCE THE OWNER'S RULING OF 2026-10-09 — nothing is appended to a marketing SMS (see this file's header). It
- * stays a function with the arguments it always took, so every caller and every suite that sizes "the message as sent"
- * keeps ONE door; it answers the empty string for every token, language and phrase.
+ * stays ONE named door — every caller and every suite that sizes "the message as sent" asks it — and it takes nothing:
+ * there is no token, language or phrase left for it to print.
  * (Until that ruling it was `\n[<source phrase> ]50pick 18+ <helpline> Acha: 50pick.tz/s/<token>` — 49 septets, more with
  * a phrase.)
  */
-export function marketingFooter(token: string, locale: MarketingLocale = "SW", sourcePhrase = ""): string {
-  void token;
-  void locale;
-  void sourcePhrase;
+export function marketingFooter(): string {
   return "";
 }
 
-/** A token of the opt-out page's length — still handed in by the callers that once printed it. */
+/** A token of the opt-out page's length — the stand-in recipient token the renderer is handed for a dry render (the
+ *  counter, the composer's preview, the test send's and the engine's checks). No message prints a token since 2026-10-09. */
 export function footerMeasurementToken(): string {
   return "x".repeat(OPTOUT_TOKEN_CHARS);
 }
@@ -107,10 +81,14 @@ export function footerMeasurementToken(): string {
 /**
  * ⭐ WHAT AN OFFICER HAS TO WRITE IN — the whole message's cap (160 in the GSM alphabet, 70 in Unicode, times
  * `SMS_MAX_SEGMENTS`), since nothing is appended (the owner's ruling of 2026-10-09). Still computed through the footer,
- * which is empty, so the budget and the composed message can never disagree.
+ * which is empty, so the budget and the composed message can never disagree. `locale` and `sourcePhrase` are no longer
+ * read — nothing in a language or a phrase is appended — and stay so every caller keeps one signature (as the counter
+ * keeps its phrase).
  */
 export function operatorBudget(locale: MarketingLocale = "SW", sourcePhrase = "", encoding: SmsEncoding = "GSM7"): number {
-  return capUnits(encoding) - unitsIn(marketingFooter(footerMeasurementToken(), locale, sourcePhrase), encoding);
+  void locale;
+  void sourcePhrase;
+  return capUnits(encoding) - unitsIn(marketingFooter(), encoding);
 }
 
 export type MarketingCompose = {
@@ -141,8 +119,9 @@ export function composeMarketing(
 ): MarketingCompose {
   const trimmed = (body ?? "").trim();
   // ⛔ The owner's ruling of 2026-10-09: the text sent IS the officer's text. The footer is empty, so neither the token
-  // nor the phrase is printed (a link sent before the ruling keeps working through `/s/<token>`).
-  const text = `${trimmed}${marketingFooter(token, locale, sourcePhrase)}`;
+  // nor the phrase is printed (a link sent before the ruling keeps working through `/s/<token>`): the token is not read.
+  void token;
+  const text = `${trimmed}${marketingFooter()}`;
   const size = sizeSms(text);
   // ⭐ The budget in the encoding this message will actually go out in — a single ’ makes it UCS-2.
   const budget = operatorBudget(locale, sourcePhrase, size.encoding);

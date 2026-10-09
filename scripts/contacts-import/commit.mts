@@ -23,39 +23,79 @@ import { decomment } from "../lib/decomment.mts";
 import { REPO_ROOT } from "../lib/tracked-files.mts";
 import type { ImportSection, RedPlant, SectionContext } from "../contacts-import.test.mts";
 import type { ImportCommitDeps } from "../../src/lib/server/contacts/import-commit.ts";
-import type { ContactImportCommitBatch, StoredContactImport, StoredContactImportRow, StoredMarketingContact } from "../../src/lib/server/store.ts";
-import type { CommitStepResult, ImportResultResult, PreflightView, RunActResult, StartImportResult } from "../../src/lib/contacts/import-flow.ts";
+import type {
+  ContactImportCommitBatch, StoredContactImport, StoredContactImportRow, StoredContactList, StoredMarketingContact,
+} from "../../src/lib/server/store.ts";
+import type {
+  ChangesPageRow, CommitStepResult, ImportResultResult, PreflightView, RunActResult, StartImportResult,
+} from "../../src/lib/contacts/import-flow.ts";
+import {
+  DB_BUSY_SENTENCE, IMPORT_REFUSAL_SENTENCES, LIST_MADE_MEANWHILE_SENTENCE, START_BETS_SENTENCE, STEP_CONFLICT_SENTENCE, exceptionsLetGo,
+  tagsNotAddedSentence,
+} from "../../src/lib/contacts/import-flow.ts";
 import type { ImportChoice, ShownTally } from "../../src/lib/contacts/import-decide.ts";
 import { adjustTally } from "../../src/lib/contacts/import-decide.ts";
 import {
-  ADMIN, B, DIGEST, FIVE_THOUSAND_COUNTS, MAPPING, N, NOW, OFFICER, READER, captureAudit, captured, checkModule, commitModule, db,
-  fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, keyOf, mem, runOf, seedAccount, seedFiveThousandBook, seedFortyWorld,
-  seedWord, stageFile, stagedRows, truthCounts,
+  ADMIN, B, DIGEST, FIVE_THOUSAND_COUNTS, MAPPING, N, NOW, OFFICER, OTHER, READER, TEST_REFUSAL_AUDIT, bookRow, captureAudit, captured,
+  checkModule, commitModule, db, fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, keyOf, mem, refusalAuditModule, runOf, seedAccount,
+  seedBook, seedFiveThousandBook, seedFortyWorld, seedWord, stageFile, stagedRows, truthCounts,
 } from "../lib/contacts-import-world.mts";
 import type { StageRow } from "../lib/contacts-import-world.mts";
 import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
+import { DONE } from "../../src/app/admin/contacts/import/import-copy.ts";
 
 const { eraseMarketingFor } = await import("../../src/lib/server/marketing/erase.ts");
 const {
-  IMPORT_COMMIT_DEPS, cancelContactImport, commitContactImportStep, contactImportFailures, contactImportResult, failedRowSentence,
-  importOpenRuns, pauseContactImport, resumeContactImport, startContactImport,
+  IMPORT_COMMIT_DEPS, RUN_ACTS, cancelContactImport, commitContactImportStep, contactImportFailures, contactImportResult, failedRowSentence,
+  importListOptions, importOpenRuns, pauseContactImport, resumeContactImport, startContactImport,
 } = commitModule;
+// C8b (B5) · the campaign composer's own count for a list — what a masked viewer's list figure must equal.
+const { campaignAudienceCount, WHOLE_BOOK } = await import("../../src/lib/server/marketing/audience.ts");
+
+/** ⭐ C8c · N4 · a bet waiting for an admission slot — the real admission queue's own entry, as M12 has always queued one —
+ *  and the way it leaves (idempotent). */
+type AdmissionQueue = { queue: unknown[] };
+function queueBet(): { readonly leave: () => void; readonly queued: () => boolean } {
+  const admission = (globalThis as { __50PICK_ADMISSION?: AdmissionQueue }).__50PICK_ADMISSION;
+  const waiter = { resolve: () => undefined, timer: null, enqueuedAt: NOW.getTime(), settled: false };
+  admission?.queue.push(waiter);
+  return {
+    leave: () => {
+      const i = admission?.queue.indexOf(waiter) ?? -1;
+      if (admission && i >= 0) admission.queue.splice(i, 1);
+    },
+    queued: () => (admission?.queue.indexOf(waiter) ?? -1) >= 0,
+  };
+}
 const { checkContactImport, contactImportChanges } = checkModule;
 
 /* ══ THE BUNDLE UNDER TEST ══════════════════════════════════════════════════════════════════════════════════════ */
 
-type Sources = { readonly check: string; readonly commit: string; readonly actions: string };
+type Sources = { readonly check: string; readonly commit: string; readonly actions: string; readonly panel: string; readonly done: string };
 export type CommitImpl = {
   readonly deps: ImportCommitDeps;
   readonly sources: Sources;
+  /** ⭐ C8c · #14a · the refusal-audit gate's factory — M20, M27, M27b and M27c build their own (M20 and M27 over a clock
+   *  they move), and a plant swaps it. */
+  readonly gate: typeof refusalAuditModule.refusalAuditGate;
+  /** ⭐ C8c · m3 · the decision panel's reconcile after a re-check (the contract's `exceptionsLetGo`). */
+  readonly exceptionsLetGo: typeof exceptionsLetGo;
+  /** C8b review · the ONE created-only rule (`listCreatedOnlyFor`, import-check.ts) — the real one, or a plant that fails open. */
+  readonly createdOnlyFor: typeof checkModule.listCreatedOnlyFor;
+  /** C8b re-review · the result's sentences (`DONE`, import-copy.ts) — the real ones, or a plant's. */
+  readonly copy: typeof DONE;
 };
 
 const PATHS = {
   check: "src/lib/server/contacts/import-check.ts",
   commit: "src/lib/server/contacts/import-commit.ts",
   actions: "src/app/admin/contacts/import/import-actions.ts",
+  // C8b review (M1) · the decision panel draws the run's own created-only flag.
+  panel: "src/app/admin/contacts/import/import-decision-panel.tsx",
+  // C8b review (MINOR 2 · 4a) · the result's list line.
+  done: "src/app/admin/contacts/import/import-done-panel.tsx",
 } as const;
 const CRLF = String.fromCharCode(13, 10);
 const LF = String.fromCharCode(10);
@@ -64,13 +104,21 @@ const read = (rel: string): string => decomment(readFileSync(join(REPO_ROOT, rel
 const REAL_DEPS: ImportCommitDeps = {
   ...IMPORT_COMMIT_DEPS,
   audit: captureAudit,
+  refusalAudit: TEST_REFUSAL_AUDIT,
   now: () => NOW,
-  stagingDeps: { ...IMPORT_COMMIT_DEPS.stagingDeps, audit: captureAudit, now: () => NOW },
+  stagingDeps: { ...IMPORT_COMMIT_DEPS.stagingDeps, audit: captureAudit, refusalAudit: TEST_REFUSAL_AUDIT, now: () => NOW },
+  // ⭐ C8c · #14b · the suite's own streaks — never production's per-process ones.
+  dbFaults: commitModule.dbFaultStreaks(),
 };
 let cachedSources: Sources | null = null;
 function real(): CommitImpl {
-  cachedSources ??= { check: read(PATHS.check), commit: read(PATHS.commit), actions: read(PATHS.actions) };
-  return { deps: REAL_DEPS, sources: cachedSources };
+  cachedSources ??= {
+    check: read(PATHS.check), commit: read(PATHS.commit), actions: read(PATHS.actions), panel: read(PATHS.panel), done: read(PATHS.done),
+  };
+  return {
+    deps: REAL_DEPS, sources: cachedSources, gate: refusalAuditModule.refusalAuditGate, exceptionsLetGo,
+    createdOnlyFor: checkModule.listCreatedOnlyFor, copy: DONE,
+  };
 }
 const withDeps = (patch: Partial<ImportCommitDeps>): CommitImpl => ({ ...real(), deps: { ...REAL_DEPS, ...patch } });
 
@@ -96,12 +144,27 @@ export const L = {
   M17: "M17 · the failures pages: by FILE row, ascending, at most 50 a page, the true total on every page, nextAfterLine null only at the end — all 1,000 of the 5,000-row file's",
   M18: "M18 · ⭐ C4 · a created number the ledger or the stop list knows has its cache MIRRORED (N1 said yes → GIVEN; N4 is stopped → suppressedAt the stop's own time); one they do not know stays UNKNOWN with no stop",
   M19: "M19 · ⛔ what only the source can show: the cores import nothing that sends or writes consent (no sms, dispatch, opt-out, consent-ledger or ledger-stamp module, and — R16 — nothing from the gate's module at all) and call no ledger or stop writer; the action file is \"use server\" and exports EXACTLY the sixteen actions, each async",
-  M20: "M20 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) imports with KEEP alone: the check says mayUpdateInBook false, and a start with TAKE_FILE, FILL_BLANKS or any exception — even a KEEP one — is refused update_needs_reader, audited with counts only and nothing written; the same officer's KEEP start freezes",
+  M20: "M20 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) imports with KEEP alone: the check says mayUpdateInBook false, and a start with TAKE_FILE, FILL_BLANKS or any exception — even a KEEP one — is refused update_needs_reader, audited with counts only — FOUR rows, the refusal gate's clock a minute apart between them (C8c · m6: #14a bounds a burst, M26/M27's, never this record) — and nothing written; the same officer's KEEP start freezes",
   M21: "M21 · ⭐ S15-12 · an ADMIN sees the runs OTHER officers left open — STAGING, STAGED, COMMITTING, PAUSED, never DONE or CANCELLED, never their own — newest first, at most 20, each named by its starter and carrying no id; a GROWTH officer asking (the dialog asks for everyone) is answered ok with NO runs and ZERO audit rows — never a refusal",
   M22: "M22 · ⛔ R9 · the erasure race: a person erased between a step's read and its write — their staged row deleted, their number in no book row — is NOT created: the step reads its rows again, the conflict is decided once more, and the run finishes with the other rows imported",
   M23: "M23 · ⭐ R10 · after a step has LANDED its cache mirror and its audit rows cannot turn it into a refusal: a mirror that throws once and audit rows that throw leave the step done, and the run's end mirrors every created number the truth knows (N1 GIVEN, N4 stopped)",
   M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
+  M33: "M33 · ⛔ C8b (B4) · A MASKED OFFICER'S IMPORT PUTS ON ITS LIST ONLY THE CONTACTS IT CREATED: a GROWTH officer's 40-row KEEP run into an existing list adds its 22 new contacts and NONE of the file's numbers already in the book (an ordinary contact, a stopped one, a same-name one) — the list's earlier members (an ordinary row, a player's, the tombstone) as they were — even with an ADMIN driving every step (the creator's and the starter's read cells decide, never the driver's); a reader's run still lists its kept rows (M10)",
+  M33b: "M33b · ⛔ C8b review (M1) · AN ADMIN STARTING A MASKED OFFICER'S STAGED RUN STILL ADDS ONLY THE CREATED CONTACTS: a GROWTH officer's 40-row file, checked and STARTED by an ADMIN (the run adopted) into an existing list, puts on it its 22 new contacts and NONE of the file's numbers already in the book — the creator's read cell decides beside the starter's — and the run's view says so (listCreatedOnly) to that ADMIN before the start and after it, which is what the decision panel draws; ⛔ the ONE rule FAILS CLOSED: an officer whose read cell cannot be read counts as one who may not read; CONTROL: a reader's own run's view says nothing of the kind, and two readers whose cells answer are no created-only run",
+  M34: "M34 · ⛔ C8b (B5) · THE IMPORTER'S LIST FIGURES ARE THE VIEWER'S: the masked officer's picker counts EVERY live member of the list, the player's linked row included and the tombstone not — EXACTLY the campaign composer's count for it — with no linked figure (withAccount null), and so does their result; a reader's picker counts the members a basis can reach and, beside them, how many more have an account",
+  M35: "M35 · ⭐ C8b review (MINOR 2 · 4a) · THE RESULT SAYS HOW MANY CONTACTS THIS IMPORT PUT ON ITS LIST: a masked officer's run counts its 22 created contacts (a kept contact another officer added in the run's window is not its own — the run is created-only); a masked run of numbers ALL already in the book counts NONE, which the panel says as itself — \"only the contacts this import adds join the list, and it added none\" only when the run is created-only and created none (the re-review's MN-3: never a general rule), and never \"joined\" or \"covered\" over nobody; one new member owed coverage is said as one; a reader's run counts its kept rows that joined too and not the one already on the list (exactly the list's growth); and a reader whose list holds members with a 50pick account is told \"every member a list basis can reach is covered\"",
   M25: "M25 · ⛔ C8a · the commit reads the check's OWN fact, fresh at its step: an erasure that came to stand on a number with no book row AFTER the check and the start — its marker written since, alone or under an opt-out tap — keeps that row (nothing created; the row kept as the contact it reads as, chosen_keep), while the marker under a GIVEN written since still creates, and the run's other rows import",
+  // ── C8c (2026-10-09) · the live importer's robustness round ──
+  M26: "M26 · ⭐ C8c · N3 · the start's NEW list meets the case-insensitive refusal in its own words: a list another officer names in ANOTHER CASE between the start's check and its freeze → the start is refused list_name_taken with LIST_MADE_MEANWHILE_SENTENCE (never the pre-check's sentence; n2 · n3 · its words name no officer and never send the officer back to Import — 'Choose it from your lists'; the re-review's NIT · never 'a moment ago', which n2's old list makes untrue, and the other way on in the pre-check's own words, 'type another name'), the run still STAGED with no decision and no target, ONE list of that name (the other officer's) and none of this start's; the lists read again hold it, and a start naming it as an existing list freezes onto it",
+  M27: "M27 · ⛔ C8c · #14a · a flood of refusals writes ONE row a minute per officer, run and reason: 200 steps with a bad cursor → one bad_request row; 50 steps on a STAGED run → one check_again row for that officer, and another officer's refusal on the same run its own row; a minute later the next bad cursor writes again, carrying repeats 199 (the refusals kept out), the first row no repeats key; the run unchanged",
+  M27c: "M27c · ⛔ C8c · the review's n4 · the refusal gate's key holds the payload's STEP (a start and a commit step refused for one reason in one minute are two rows; the same step again is kept), and a row the audit did NOT record (recorded: false — audit() never rejects) never silences the minute: the next refusal writes at once, its repeats counting the unrecorded one — and (the re-review's NIT) the two refusals kept WHILE that write was failing (repeats 3, never 1)",
+  M27b: "M27b · ⛔ C8c · #14a · a moved is NEVER written: a cancel that finds the run moved on (resumed between its pause and its cancel) is answered moved with NO refusal row at all, and the gate keeps every moved out",
+  M28: "M28 · ⛔ C8c · #15 · a resume of a STAGED run is REFUSED check_again — its view STAGED, the run still STAGED with no frozen decision and no pause stamp, and a step on it refused check_again with nothing settled — while a PAUSED run's resume still carries on (COMMITTING)",
+  M29: "M29 · ⭐ C8c · #14b · a persistent database fault ENDS, it does not loop: a P2028 on every step is answered busy in the DATABASE's own sentence (never the bet queue's 'bets come first'), retryAfterSec 5, four times over 35 s; the fifth, 65 s after the first, PAUSES the run (paused by NOBODY — m2: no 'Paused by you' above the database's sentence, the run's and the view's pausedBy null; one contacts.import.paused row, its actor the officer, why database, faults 5) and answers db_paused 'The database is busy — the import has paused. Resume it in a few minutes.'; five quick faults within a minute on another run do NOT pause it; a step that lands ends a streak (four faults, a landed step, a fault 70 s after the first: busy, not paused); resumed, the paused run imports to done",
+  M29b: "M29b · ⭐ C8c · #14b · a step whose rows keep moving ends as server_error in words the officer can act on — STEP_CONFLICT_SENTENCE, never 'something went wrong' — nothing settled and the cursor unmoved, the run still COMMITTING, and the next step decides afresh and lands (the source answers the conflict branch with that sentence)",
+  M30: "M30 · ⭐ C8c · N4 · the START's re-decision walk yields to bets too: with a bet queued it reads NO staged page and waits — its own clock, inside its deadline — and once the bet has gone the start freezes the run with the label's counts; ⭐ m5 · a bet that never leaves ends the start at its own deadline in the platform's words about pressing Import — bets_busy 'The platform is busy with bets, so the import did not start. Nothing was written — press Import again in a minute.' — nothing frozen, the run STAGED (the source answers the walk's bets stop so)",
+  M32: "M32 · ⛔ C8c · m3 · a row on the changes pages ONLY for its tags not added (a full contact whose only difference is new tags — no choice updates it, no Set-apart box) can never trap the officer: the start refuses it set apart (bad_exceptions), so the re-check's reconcile lets it go (exceptionsLetGo: row 2 let go, row 3 — TAKE_FILE renames it — kept, and row 9, past the lines the pages were read through, kept for the server to judge), and row 3 set apart is accepted",
+  M31: "M31 · ⭐ C8c · #13 · the RESULT lists the tags a full contact could not take, for a reader: a TAKE_FILE import of a contact holding 20 tags whose only difference is two new tags (kept, no_change) and of one renamed with a tag that does not fit (updated) — each settled row keeps exactly its tags left out (every other row blanked, the book never past 20 tags), the result's tagsNotAdded is 2, and the failures action's tags_not_added list pages both rows in the one sentence (the failures list unchanged); a GROWTH officer's result says null and the list is refused update_needs_reader",
 } as const;
 
 /* ══ HELPERS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -321,6 +384,119 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     && masked !== null && masked.ok && masked.result.kept === null && masked.result.list === null,
     `reader ${splitOf(reader)} · admin ${splitOf(admin)} · growth ${splitOf(masked)}`);
 
+  // ── M33 · M34 · C8b · a MASKED officer's import into an EXISTING list — what joins it (B4), and the figures (B5) ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const SHARED = "cl_w_shared";
+    await db.contactList.create(listRow(SHARED, "Shared list"));
+    // The list's earlier members: an ordinary contact, the player's LINKED row and the erased tombstone.
+    for (const contactId of ["mc_w_b1", "mc_w_b5", "mc_w_b4"]) await db.contactListMember.add({ listId: SHARED, contactId, addedAt: LIST_AT, addedBy: null });
+    const runId = await stageFile(OFFICER, fortyRows());
+    const { start } = await checkAndStart(runId, impl.deps, "KEEP", { kind: "existing", listId: SHARED }, {}, OFFICER);
+    // ⭐ An ADMIN drives every step (X18) — the run is still the masked officer's.
+    const driven = await drive(runId, impl.deps, ADMIN);
+    const created = bookRows().filter((c) => c.importId === runId).map((c) => c.id);
+    const members = ([...mem().contactListMembers.values()] as Array<{ listId: string; contactId: string }>)
+      .filter((m) => m.listId === SHARED).map((m) => m.contactId);
+    const kept = ["mc_w_b2", "mc_w_b3", "mc_w_b6"];
+    ok(L.M33, start.ok && driven.last?.ok === true && created.length === 22 && members.length === 25
+      && created.every((id) => members.includes(id)) && kept.every((id) => !members.includes(id))
+      && ["mc_w_b1", "mc_w_b5", "mc_w_b4"].every((id) => members.includes(id)),
+      `start ${start.ok ? "ok" : start.reason} · driven ${driven.last?.ok ? "done" : "refused"} · created ${created.length} · members ${members.length} · kept rows on it ${kept.filter((id) => members.includes(id)).join(",") || "none"}`);
+
+    const optionsOf = async (who: string) => {
+      const r = await importListOptions(who, impl.deps);
+      return r.ok ? r.lists.find((l) => l.id === SHARED) ?? null : null;
+    };
+    const maskedOption = await optionsOf(OFFICER);
+    const readerOption = await optionsOf(READER);
+    const composer = await campaignAudienceCount({ ...WHOLE_BOOK, lists: [SHARED] });
+    const maskedResult = await contactImportResult(OFFICER, runId, impl.deps);
+    const resultList = maskedResult.ok ? maskedResult.result.list : null;
+    ok(L.M34, maskedOption !== null && maskedOption.members === 24 && maskedOption.members === composer && maskedOption.withAccount === null
+      && readerOption !== null && readerOption.members === 23 && readerOption.withAccount === 1
+      && resultList !== null && resultList.withAccount === null && resultList.covered === false
+      && !json([maskedOption, maskedResult.ok ? maskedResult.result.list : null]).includes("withAccount\":1"),
+      `masked picker ${maskedOption ? `${maskedOption.members} (account ${maskedOption.withAccount})` : "none"} · composer ${composer} · reader picker ${readerOption ? `${readerOption.members} + ${readerOption.withAccount}` : "none"} · masked result ${json(resultList)}`);
+  });
+
+  // ── M33b · C8b review (M1) · an ADMIN STARTS a masked officer's staged run (an open run, adopted) into a list ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const TAKEN = "cl_w_taken";
+    await db.contactList.create(listRow(TAKEN, "Taken over"));
+    const runId = await stageFile(OFFICER, fortyRows());
+    const before = await checkModule.importRunView(ADMIN, await runOf(runId), impl.deps);
+    const { start } = await checkAndStart(runId, impl.deps, "KEEP", { kind: "existing", listId: TAKEN }, {}, ADMIN);
+    const driven = await drive(runId, impl.deps, ADMIN);
+    const created = bookRows().filter((c) => c.importId === runId).map((c) => c.id);
+    const members = ([...mem().contactListMembers.values()] as Array<{ listId: string; contactId: string }>)
+      .filter((m) => m.listId === TAKEN).map((m) => m.contactId);
+    const kept = ["mc_w_b2", "mc_w_b3", "mc_w_b6"];
+    // CONTROL: a READER's own staged run is no created-only run, to its reader.
+    const readerRun = await stageFile(READER, fortyRows());
+    const readerView = await checkModule.importRunView(READER, await runOf(readerRun), impl.deps);
+    const panel = impl.sources.panel.includes('{pick.kind !== "none" && view.listCreatedOnly && <p className="text-body-sm text-text-secondary" data-import-list-created-only>{LIST.createdOnly}</p>}');
+    // ⛔ FAILS CLOSED: the ONE rule asked of a reader whose read cell THROWS answers created-only; CONTROL: two readers whose
+    // cells answer are no created-only run.
+    const unreadable = await impl.createdOnlyFor([READER], { readsNumbers: async () => { throw new Error("the read cell could not be read"); } });
+    const readers = await impl.createdOnlyFor([READER, ADMIN], { readsNumbers: async () => true });
+    ok(L.M33b, before.listCreatedOnly === true && start.ok && start.view.listCreatedOnly === true && driven.last?.ok === true
+      && created.length === 22 && members.length === 22 && created.every((id) => members.includes(id)) && kept.every((id) => !members.includes(id))
+      && readerView.listCreatedOnly === false && panel && unreadable === true && readers === false,
+      `view before ${before.listCreatedOnly} · start ${start.ok ? `ok, view ${start.view.listCreatedOnly}` : start.reason} · driven ${driven.last?.ok ? "done" : "refused"} · created ${created.length} · members ${members.length} · kept rows on it ${kept.filter((id) => members.includes(id)).join(",") || "none"} · a reader's own run ${readerView.listCreatedOnly} · the panel draws the run's flag ${panel} · an unreadable cell ${unreadable ? "created-only" : "READ AS A READER"} · two readers ${readers ? "CREATED-ONLY" : "not created-only"}`);
+  });
+
+  // ── M35 · C8b review (MINOR 2 · 4a) · how many contacts THIS import put on its list — and none said as itself ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const JOINED = "cl_w_joined";
+    await db.contactList.create(listRow(JOINED, "Joined list"));
+    // (a) a masked officer's run: its 22 new contacts join; a kept contact another officer adds within the run's window is
+    // not the run's (the run is created-only).
+    const masked = await stageFile(OFFICER, fortyRows());
+    await checkAndStart(masked, impl.deps, "KEEP", { kind: "existing", listId: JOINED }, {}, OFFICER);
+    await drive(masked, impl.deps, OFFICER);
+    await db.contactListMember.add({ listId: JOINED, contactId: "mc_w_b2", addedAt: NOW.toISOString(), addedBy: ADMIN });
+    const a = await contactImportResult(OFFICER, masked, impl.deps);
+    // (b) a masked run of numbers ALL already in the book: nobody joins its list.
+    const inBook = await stageFile(OFFICER, fortyRows().filter((r) => [3, 6, 10, 13, 15, 19].includes(r.line)));
+    await checkAndStart(inBook, impl.deps, "KEEP", { kind: "existing", listId: JOINED }, {}, OFFICER);
+    await drive(inBook, impl.deps, OFFICER);
+    const b = await contactImportResult(OFFICER, inBook, impl.deps);
+    // (c) a reader's run into a list one of whose numbers is on it already: its kept rows join, that one does not.
+    const READ_LIST = "cl_w_reader";
+    await db.contactList.create(listRow(READ_LIST, "Reader list"));
+    // On the list a week before the run (the fixture's LIST_AT is the run's own instant).
+    await db.contactListMember.add({ listId: READ_LIST, contactId: "mc_w_b1", addedAt: "2026-10-02T09:00:00.000Z", addedBy: null });
+    const membersOf = (listId: string) => ([...mem().contactListMembers.values()] as Array<{ listId: string }>).filter((m) => m.listId === listId).length;
+    const before = membersOf(READ_LIST);
+    const readerRun = await stageFile(READER, fortyRows());
+    await checkAndStart(readerRun, impl.deps, "KEEP", { kind: "existing", listId: READ_LIST }, {}, READER);
+    await drive(readerRun, impl.deps, READER);
+    const grown = membersOf(READ_LIST) - before;
+    const c = await contactImportResult(READER, readerRun, impl.deps);
+    const la = a.ok ? a.result.list : null;
+    const lb = b.ok ? b.result.list : null;
+    const lc = c.ok ? c.result.list : null;
+    // ⭐ The re-review's MN-3 and NIT: "it added none" is said of THIS import, never as a rule; one new member is one.
+    const C = impl.copy;
+    const words = C.listReady("Joined list", 3, true).includes("joined the list Joined list — every member a list basis can reach is covered for offers.")
+      && C.listReady("Joined list", 3, false).includes("every member is covered for offers.")
+      && C.listNone("Joined list", true) === "No contact joined the list Joined list — only the contacts this import adds join the list, and it added none."
+      && C.listNone("Joined list", false) === "No contact joined the list Joined list with this import."
+      && C.listOwed("Joined list", 1).startsWith("1 contact joined the list Joined list. The new member isn't covered for offers yet")
+      && C.listOwed("Joined list", 2).startsWith("2 contacts joined the list Joined list. The new members aren't covered for offers yet")
+      && ![C.listReady("X", 1, false), C.listOwed("X", 1), C.listNone("X", false)].some((s) => s.startsWith("Added to the list"));
+    const panel = impl.sources.done;
+    const drawn = panel.includes("{result.list.joined === 0 ? DONE.listNone(result.list.name, result.list.createdOnly && t.create === 0)")
+      && panel.includes(": result.list.covered ? DONE.listReady(result.list.name, result.list.joined, (result.list.withAccount ?? 0) > 0)")
+      && panel.includes("{result.list.joined > 0 && !result.list.covered && (");
+    ok(L.M35, la !== null && la.joined === 22 && la.createdOnly && lb !== null && lb.joined === 0 && lb.createdOnly
+      && lc !== null && !lc.createdOnly && grown > 0 && lc.joined === grown && words && drawn,
+      `masked run ${la ? `${la.joined} joined (created-only ${la.createdOnly})` : "no list"} · in-book run ${lb ? `${lb.joined} joined` : "no list"} · reader run ${lc ? `${lc.joined} joined, the list grew ${grown}` : "no list"} · words ${words} · panel ${drawn}`);
+  });
+
   // ── M6 · pause, resume, cancel (ten rows a step) — and cancel before the start ──
   await inFreshStore(async () => {
     await seedFortyWorld();
@@ -465,9 +641,15 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const checked = await checkContactImport(OFFICER, runId, impl.deps);
     const label = checked.ok ? labelOf(checked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
     const fresh = checked.ok ? checked.preflight.checkedAt : "";
+    // ⭐ m6 · the refusal gate's own clock moves a minute and a second between the asks, so each refusal is its own row (the
+    // gate's bound — one a minute per key — is M26/M27's; here every refusal is held to its row and its counts-only shape).
+    const gateClock = { ms: NOW.getTime() };
+    const deps20: ImportCommitDeps = { ...impl.deps, refusalAudit: impl.gate(() => gateClock.ms) };
     const ask = (o: Record<string, unknown>) => startContactImport(OFFICER, {
       runId, choice: "KEEP", exceptions: {}, list: { kind: "none" }, expected: label, checkedAt: fresh, ...o,
-    }, impl.deps);
+    }, deps20).finally(() => {
+      gateClock.ms += 61_000;
+    });
     captured.length = 0;
     const refused = [
       await ask({ choice: "TAKE_FILE" }),
@@ -651,6 +833,362 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       `${threw ? `threw "${threw}"` : first === null ? "no answer" : first.ok ? first.kind : `${first.reason} after ${first.retryAfterSec}s`} · cursor ${cursor} · audit ${busyRows.length} (code ${busyCode}) · then ${then.ok ? then.kind : then.reason}`);
   });
 
+  // ── M26 · C8c · N3 · the start's new list, named in another case by another officer meanwhile ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const runId = await stageFile(OFFICER, fortyRows());
+    const checked = await checkContactImport(OFFICER, runId, impl.deps);
+    const label = checked.ok ? labelOf(checked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
+    const body = (list: Record<string, unknown>) => ({
+      runId, choice: "KEEP", exceptions: {}, list, expected: label, checkedAt: checked.ok ? checked.preflight.checkedAt : "",
+    });
+    // AFTER this start's pre-check, BEFORE its freeze: another officer creates the same name in another case.
+    const raced = await startContactImport(OFFICER, body({ kind: "new", name: "October Wateja" }), {
+      ...impl.deps, freeze: async (f) => { await db.contactList.create(listRow("cl_other_officer", "OCTOBER WATEJA")); return impl.deps.freeze(f); },
+    });
+    const afterRace = await runOf(runId);
+    const ofThatName = ([...mem().contactLists.values()] as StoredContactList[]).filter((l) => l.name.toLowerCase() === "october wateja");
+    const offered = await importListOptions(OFFICER, impl.deps);
+    const theirs = offered.ok ? offered.lists.find((l) => l.name.toLowerCase() === "october wateja") : undefined;
+    const onto = theirs === undefined ? null : await startContactImport(OFFICER, body({ kind: "existing", listId: theirs.id }), impl.deps);
+    const frozen = await runOf(runId);
+    // ⛔ the review's n2 · n3 · the words never say who made the list (the same officer in another tab makes it too) and
+    // never send the officer back to Import (a second start could meet the same index) — they say to CHOOSE that list.
+    const words = raced.ok ? "" : raced.message;
+    ok(L.M26, !raced.ok && raced.reason === "list_name_taken" && raced.message === LIST_MADE_MEANWHILE_SENTENCE
+      && raced.message !== IMPORT_REFUSAL_SENTENCES.list_name_taken
+      && !words.includes("officer") && !words.includes("press Import") && words.includes("Choose it from your lists")
+      && !words.includes("a moment ago") && words.includes("type another name")
+      && IMPORT_REFUSAL_SENTENCES.list_name_taken.includes("type another name")
+      && afterRace.status === "STAGED" && afterRace.decisionChoice === null && afterRace.targetListId === null
+      && ofThatName.length === 1 && ofThatName[0].id === "cl_other_officer"
+      && theirs !== undefined && onto !== null && onto.ok && frozen.status === "COMMITTING" && frozen.targetListId === "cl_other_officer",
+      `raced ${raced.ok ? "FROZE" : `${raced.reason} (${raced.message === LIST_MADE_MEANWHILE_SENTENCE ? "its own words" : "other words"})`} · run ${afterRace.status} · lists of that name [${ofThatName.map((l) => l.id)}] · offered ${theirs?.id ?? "none"} · onto it ${onto === null ? "not asked" : onto.ok ? "froze" : onto.reason}`);
+  });
+
+  // ── M27 · C8c · #14a · a flood of refusals: one row a minute per officer, run and reason ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const clock = { ms: NOW.getTime() };
+    const deps27: ImportCommitDeps = { ...impl.deps, refusalAudit: impl.gate(() => clock.ms) };
+    const runId = await stageFile(OFFICER, fortyRows());
+    captured.length = 0;
+    for (let i = 0; i < 200; i++) await commitContactImportStep(OFFICER, { runId, fromCursor: -1 }, deps27);
+    for (let i = 0; i < 50; i++) await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, deps27);
+    await commitContactImportStep(ADMIN, { runId, fromCursor: 0 }, deps27);
+    const inTheMinute = captured.filter((x) => x.action === "contacts.import.commit_refused").length;
+    clock.ms += 61_000;
+    await commitContactImportStep(OFFICER, { runId, fromCursor: -1 }, deps27);
+    const rows = captured.filter((x) => x.action === "contacts.import.commit_refused");
+    const payload = (x: Record<string, unknown>) => x.payload as Record<string, unknown>;
+    const bad = rows.filter((x) => payload(x).reason === "bad_request");
+    const again = rows.filter((x) => payload(x).reason === "check_again");
+    ok(L.M27, inTheMinute === 3 && rows.length === 4 && bad.length === 2 && !("repeats" in payload(bad[0])) && payload(bad[1]).repeats === 199
+      && again.length === 2 && json(again.map((x) => x.actorId).sort()) === json([ADMIN, OFFICER].sort())
+      && (await runOf(runId)).status === "STAGED",
+      `rows in the minute ${inTheMinute} · after it ${rows.length} · bad_request ${bad.length} (repeats ${json(bad.map((x) => payload(x).repeats ?? "-"))}) · check_again by [${again.map((x) => x.actorId)}]`);
+  });
+
+  // ── M27b · C8c · #14a · a moved is never written ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const deps27b: ImportCommitDeps = { ...impl.deps, refusalAudit: impl.gate(() => NOW.getTime()) };
+    const runId = await stageFile(OFFICER, fortyRows());
+    await checkAndStart(runId, deps27b, "KEEP", { kind: "none" });
+    let flipped = false;
+    // Between the cancel's pause and its cancel, another tab resumes the run: the cancel finds it moved on.
+    const racing: ImportCommitDeps = {
+      ...deps27b,
+      transition: async (t) => {
+        const moved = await deps27b.transition(t);
+        if (!flipped && t.to === "PAUSED") {
+          flipped = true;
+          await deps27b.transition({ importId: t.importId, from: ["PAUSED"], to: "COMMITTING", by: ADMIN, at: t.at, updatedBefore: null });
+        }
+        return moved;
+      },
+    };
+    captured.length = 0;
+    const cancelled: RunActResult = await cancelContactImport(OFFICER, { runId }, racing);
+    const movedRows = captured.filter((x) => (x.payload as { reason?: unknown } | undefined)?.reason === "moved").length;
+    const direct = [1, 2, 3].map(() => deps27b.refusalAudit.admit({ action: "contacts.import.commit_refused", officerId: OFFICER, importId: runId, reason: "moved" }).write);
+    ok(L.M27b, flipped && !cancelled.ok && cancelled.reason === "moved" && movedRows === 0 && direct.every((w) => w === false)
+      && (await runOf(runId)).status === "COMMITTING",
+      `cancel ${cancelled.ok ? "ok" : cancelled.reason} · moved rows ${movedRows} · gate ${json(direct)} · run ${(await runOf(runId)).status}`);
+  });
+
+  // ── M27c · C8c · the review's n4 · the step is in the key, and a row the audit did not record never silences the minute ──
+  {
+    const gate = impl.gate(() => NOW.getTime());
+    const rows: Array<Record<string, unknown>> = [];
+    let recordNext = true;
+    const IMPORT_ID = "ci_probe_gate_n4";
+    const audit = (async (entry: unknown) => {
+      if (!recordNext) {
+        recordNext = true;
+        // ⭐ the re-review's NIT · two more refusals of the same key arrive WHILE this write is failing: the gate keeps them.
+        for (let k = 0; k < 2; k++) gate.admit({ action: "contacts.import.commit_refused", officerId: OFFICER, importId: IMPORT_ID, reason: "busy", step: "tags_not_added" });
+        return { recorded: false, unrecorded: "PERSIST_FAILED" };
+      }
+      rows.push(entry as Record<string, unknown>);
+      return { recorded: true };
+    }) as unknown as ImportCommitDeps["audit"];
+    const refuse = (step: string) =>
+      checkModule.auditImportRefusal({ audit, refusalAudit: gate }, "contacts.import.commit_refused", OFFICER, IMPORT_ID, "busy", { step });
+    await refuse("start");
+    await refuse("commit");
+    await refuse("commit");
+    const twoSteps = rows.length;
+    recordNext = false;
+    await refuse("tags_not_added");
+    await refuse("tags_not_added");
+    const tagRows = rows.filter((r) => (r.payload as { step?: unknown }).step === "tags_not_added");
+    const repeats = tagRows.length === 1 ? (tagRows[0].payload as { repeats?: unknown }).repeats : null;
+    ok(L.M27c, twoSteps === 2 && tagRows.length === 1 && repeats === 3,
+      `a start and a commit step refused for one reason in one minute: ${twoSteps} row(s) · after an unrecorded row (two more kept while it failed): ${tagRows.length} row(s), repeats ${String(repeats)}`);
+  }
+
+  // ── M28 · C8c · #15 · a resume of a STAGED run is refused ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const runId = await stageFile(OFFICER, fortyRows());
+    const resumed = await resumeContactImport(OFFICER, { runId }, impl.deps);
+    const after = await runOf(runId);
+    const step = await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, impl.deps);
+    const settled = (await stagedRows(runId)).filter((r) => r.outcome !== null).length;
+    // CONTROL · another officer's PAUSED run is resumed as ever.
+    const theirs = await stageFile(OTHER, fortyRows());
+    await checkAndStart(theirs, impl.deps, "KEEP", { kind: "none" }, {}, OTHER);
+    await pauseContactImport(OTHER, { runId: theirs }, impl.deps);
+    const control = await resumeContactImport(OTHER, { runId: theirs }, impl.deps);
+    ok(L.M28, !resumed.ok && resumed.reason === "check_again" && resumed.view?.status === "STAGED"
+      && after.status === "STAGED" && after.decisionChoice === null && after.pausedAt === null && after.committedThrough === 0
+      && !step.ok && step.reason === "check_again" && settled === 0
+      && control.ok && control.view.status === "COMMITTING",
+      `resume ${resumed.ok ? `MOVED to ${resumed.view.status}` : resumed.reason} · run ${after.status} (decision ${after.decisionChoice ?? "none"}) · step ${step.ok ? step.kind : step.reason} · settled ${settled} · control ${control.ok ? control.view.status : control.reason}`);
+  });
+
+  // ── M29 · C8c · #14b · a persistent database fault pauses the run ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const clock = { ms: NOW.getTime() };
+    const timeout = (): Error => Object.assign(new Error("Transaction API error: Transaction already closed"), { name: "PrismaClientKnownRequestError", code: "P2028" });
+    /** Every step of these runs meets the database's "not now"; `landing` lets the next one through. */
+    let landing = false;
+    const failing = (base: ImportCommitDeps): ImportCommitDeps => ({
+      ...base, now: () => new Date(clock.ms),
+      commitBatch: async (b) => {
+        if (landing) {
+          landing = false;
+          return base.commitBatch(b);
+        }
+        throw timeout();
+      },
+    });
+    const deps29 = failing({ ...impl.deps });
+    // (1) one run, the loop's own waits between asks: 0 · 5 · 10 · 20 · 30 s — the fifth fault comes 65 s after the first.
+    const runId = await stageFile(OFFICER, fortyRows());
+    await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" });
+    captured.length = 0;
+    const answers: CommitStepResult[] = [];
+    for (const wait of [0, 5_000, 10_000, 20_000, 30_000]) {
+      clock.ms += wait;
+      answers.push(await commitContactImportStep(OFFICER, { runId, fromCursor: 0 }, deps29));
+    }
+    const pausedRun = await runOf(runId);
+    const pausedRows = captured.filter((x) => x.action === "contacts.import.paused");
+    const pausedWhy = pausedRows.length === 1 ? (pausedRows[0].payload as { why?: unknown; faults?: unknown }) : null;
+    // m2 · the pause is nobody's: no "Paused by you" on either panel — the audit row keeps who met the fault.
+    const pausedActor = pausedRows.length === 1 ? pausedRows[0].actorId : null;
+    const busyFour = answers.slice(0, 4).every((a) => !a.ok && a.reason === "busy" && a.message === DB_BUSY_SENTENCE && a.retryAfterSec === 5 && a.view !== null);
+    const fifth = answers[4];
+    const neverBets = answers.every((a) => a.ok || !a.message.includes("bets come first"));
+    // (2) CONTROL · five QUICK faults on another run (two seconds apart) do not pause it.
+    const quick = await stageFile(OTHER, fortyRows());
+    await checkAndStart(quick, impl.deps, "KEEP", { kind: "none" }, {}, OTHER);
+    const quickAnswers: CommitStepResult[] = [];
+    for (let i = 0; i < 5; i++) {
+      clock.ms += 2_000;
+      quickAnswers.push(await commitContactImportStep(OTHER, { runId: quick, fromCursor: 0 }, deps29));
+    }
+    const quickRun = await runOf(quick);
+    // (3) A STEP THAT LANDS ENDS THE STREAK: four faults over 35 s, a landed step, then a fault 70 s after the first.
+    const third = await stageFile(READER, fortyRows());
+    await checkAndStart(third, impl.deps, "KEEP", { kind: "none" }, {}, READER);
+    const deps10 = failing({ ...impl.deps, stepRows: 10 });
+    const streakStart = clock.ms;
+    for (const wait of [0, 5_000, 10_000, 20_000]) {
+      clock.ms += wait;
+      await commitContactImportStep(READER, { runId: third, fromCursor: 0 }, deps10);
+    }
+    clock.ms += 5_000;
+    landing = true;
+    const landed = await commitContactImportStep(READER, { runId: third, fromCursor: 0 }, deps10);
+    clock.ms = streakStart + 70_000;
+    const afterLanding = await commitContactImportStep(READER, { runId: third, fromCursor: landed.ok ? landed.view.committedThrough : 10 }, deps10);
+    // (4) resumed, the paused run imports to done.
+    const resumed = await resumeContactImport(OFFICER, { runId }, impl.deps);
+    const finished = resumed.ok ? await drive(runId, impl.deps) : { steps: 0, last: null };
+    ok(L.M29, busyFour && !fifth.ok && fifth.reason === "db_paused" && fifth.message === IMPORT_REFUSAL_SENTENCES.db_paused
+      && fifth.message === "The database is busy — the import has paused. Resume it in a few minutes." && fifth.view?.status === "PAUSED"
+      && neverBets && pausedRun.status === "PAUSED" && pausedRun.pausedBy === null && fifth.view?.pausedBy === null && pausedRun.committedThrough === 0
+      && pausedWhy !== null && pausedWhy.why === "database" && pausedWhy.faults === 5 && pausedActor === OFFICER
+      && quickAnswers.every((a) => !a.ok && a.reason === "busy") && quickRun.status === "COMMITTING"
+      && landed.ok && landed.kind === "advanced" && !afterLanding.ok && afterLanding.reason === "busy" && (await runOf(third)).status === "COMMITTING"
+      && resumed.ok && finished.last?.ok === true && finished.last.kind === "done",
+      `four ${busyFour} · fifth ${fifth.ok ? fifth.kind : `${fifth.reason}: ${fifth.message.slice(0, 32)}`} · run ${pausedRun.status} by ${pausedRun.pausedBy ?? "nobody"} · paused rows ${pausedRows.length} ${json(pausedWhy)} · quick ${quickRun.status} · landed ${landed.ok ? landed.kind : landed.reason} then ${afterLanding.ok ? afterLanding.kind : afterLanding.reason} · resumed to ${finished.last?.ok ? finished.last.kind : "not done"}`);
+  });
+
+  // ── M29b · C8c · #14b · a step whose rows keep moving ends in words the officer can act on ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const runId = await stageFile(READER, fortyRows());
+    await checkAndStart(runId, impl.deps, "TAKE_FILE", { kind: "none" }, {}, READER);
+    // Every write is refused on every row it would settle — however often it is decided again.
+    const moving: ImportCommitDeps = { ...impl.deps, commitBatch: async (b) => ({ kind: "conflict", ordinals: b.outcomes.map((o) => o.ordinal) }) };
+    const stuck = await commitContactImportStep(READER, { runId, fromCursor: 0 }, moving);
+    const run29 = await runOf(runId);
+    const settled = (await stagedRows(runId)).filter((r) => r.outcome !== null).length;
+    const next = await commitContactImportStep(READER, { runId, fromCursor: 0 }, impl.deps);
+    const sourceSays = impl.sources.commit.includes('return refusedAs("conflict", result.ordinals.length, STEP_CONFLICT_SENTENCE);');
+    ok(L.M29b, !stuck.ok && stuck.reason === "server_error" && stuck.message === STEP_CONFLICT_SENTENCE && stuck.message !== IMPORT_REFUSAL_SENTENCES.server_error
+      && run29.status === "COMMITTING" && run29.committedThrough === 0 && settled === 0 && next.ok && next.kind === "done" && sourceSays,
+      `${stuck.ok ? stuck.kind : `${stuck.reason}: ${stuck.message.slice(0, 40)}`} · run ${run29.status} at ${run29.committedThrough} · settled ${settled} · next ${next.ok ? next.kind : next.reason} · the source ${sourceSays ? "answers it so" : "DOES NOT"}`);
+  });
+
+  // ── M30 · C8c · N4 · the start's walk yields to a queued bet ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const runId = await stageFile(OFFICER, fortyRows());
+    const checked = await checkContactImport(OFFICER, runId, impl.deps);
+    const label = checked.ok ? labelOf(checked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
+    const clock = { ms: NOW.getTime() };
+    const bet = queueBet();
+    let pauses = 0;
+    let readsWhileQueued = 0;
+    const deps30: ImportCommitDeps = {
+      ...impl.deps,
+      now: () => new Date(clock.ms),
+      // The start's ONLY wait: the clock moves by what it waits; the bet is admitted after the third wait (a safety stop at
+      // 400 waits lets a defective walk end instead of hanging the run).
+      sleep: async (ms) => {
+        pauses++;
+        clock.ms += ms;
+        if (pauses === 3 || pauses >= 400) bet.leave();
+      },
+      rowsAfter: async (w) => {
+        if (bet.queued()) readsWhileQueued++;
+        return impl.deps.rowsAfter(w);
+      },
+    };
+    let start: StartImportResult | null = null;
+    try {
+      start = await startContactImport(OFFICER, {
+        runId, choice: "KEEP", exceptions: {}, list: { kind: "none" }, expected: label, checkedAt: checked.ok ? checked.preflight.checkedAt : "",
+      }, deps30);
+    } finally {
+      bet.leave();
+    }
+    const frozen = await runOf(runId);
+    // ⭐ m5 · a bet that never leaves: the start ends at its OWN deadline, in the platform's words about pressing Import —
+    // nothing frozen, the run still STAGED.
+    const neverRun = await stageFile(OTHER, fortyRows());
+    const neverChecked = await checkContactImport(OTHER, neverRun, impl.deps);
+    const neverLabel = neverChecked.ok ? labelOf(neverChecked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
+    const stuckBet = queueBet();
+    let neverPauses = 0;
+    let never: StartImportResult | null = null;
+    try {
+      never = await startContactImport(OTHER, {
+        runId: neverRun, choice: "KEEP", exceptions: {}, list: { kind: "none" }, expected: neverLabel,
+        checkedAt: neverChecked.ok ? neverChecked.preflight.checkedAt : "",
+      }, {
+        ...impl.deps,
+        now: () => new Date(clock.ms),
+        sleep: async (ms) => {
+          neverPauses++;
+          clock.ms += ms;
+          if (neverPauses >= 2000) stuckBet.leave();
+        },
+      });
+    } finally {
+      stuckBet.leave();
+    }
+    const neverStatus = (await runOf(neverRun)).status;
+    const startSays = impl.sources.commit.includes('if (walked === "bets") return refuse("bets_busy", START_BETS_SENTENCE);');
+    ok(L.M30, start !== null && start.ok && pauses >= 3 && readsWhileQueued === 0 && frozen.status === "COMMITTING" && frozen.decisionChoice === "KEEP"
+      && never !== null && !never.ok && never.reason === "bets_busy" && never.message === START_BETS_SENTENCE
+      && never.message === "The platform is busy with bets, so the import did not start. Nothing was written — press Import again in a minute."
+      && neverStatus === "STAGED" && neverPauses < 2000 && startSays,
+      `start ${start === null ? "none" : start.ok ? "froze" : start.reason} · waits ${pauses} · pages read while the bet waited ${readsWhileQueued} · run ${frozen.status} · a bet that never leaves: ${never === null ? "no answer" : never.ok ? "FROZE" : `${never.reason} "${never.message.slice(0, 40)}"`} after ${neverPauses} waits, run ${neverStatus} · the source ${startSays ? "answers it so" : "DOES NOT"}`);
+  });
+
+  // ── M31 · C8c · #13 · the result lists the tags a full contact could not take ──
+  {
+    const FULL = Array.from({ length: 20 }, (_, i) => `t${String(i + 1).padStart(2, "0")}`);
+    const file: StageRow[] = [
+      { line: 2, cells: ["0757600001", "Full One", "", "new one, new two", ""] },
+      { line: 3, cells: ["0757600002", "Full Two Renamed", "", "vip", ""] },
+      { line: 4, cells: [N(1), "Fresh", "", "", ""] },
+    ];
+    const seen = (who: string, choice: ImportChoice) => inFreshStore(async () => {
+      await seedBook(bookRow("mc_full_1", "0757600001", { displayName: "Full One", tags: FULL }));
+      await seedBook(bookRow("mc_full_2", "0757600002", { displayName: "Full Two", tags: FULL }));
+      const runId = await stageFile(who, file);
+      const { start } = await checkAndStart(runId, impl.deps, choice, { kind: "none" }, {}, who);
+      const step = await commitContactImportStep(who, { runId, fromCursor: 0 }, impl.deps);
+      const rows = await stagedRows(runId);
+      const result = await contactImportResult(who, runId, impl.deps);
+      const tags = await contactImportFailures(who, { runId, afterLine: 0, list: "tags_not_added" }, impl.deps);
+      const failures = await contactImportFailures(who, { runId, afterLine: 0 }, impl.deps);
+      const book = (id: string) => mem().marketingContacts.get(id) as StoredMarketingContact | undefined;
+      return { start, step, rows, result, tags, failures, one: book("mc_full_1"), two: book("mc_full_2") };
+    });
+    const r = await seen(READER, "TAKE_FILE");
+    const g = await seen(OFFICER, "KEEP");
+    const row = (line: number) => r.rows.find((x) => x.line === line);
+    const tagRows = r.tags.ok ? r.tags.rows : [];
+    ok(L.M31, r.start.ok && r.step.ok && r.step.kind === "done"
+      && row(2)?.outcome === "keep" && row(2)?.outcomeReason === "no_change" && json(row(2)?.tags) === json(["new one", "new two"])
+      && row(3)?.outcome === "update" && json(row(3)?.tags) === json(["vip"]) && row(4)?.outcome === "create" && json(row(4)?.tags) === json([])
+      && r.rows.every((x) => x.displayName === null && x.rawPhone === "")
+      && r.one?.tags.length === 20 && r.two?.tags.length === 20 && r.two?.displayName === "Full Two Renamed"
+      && r.result.ok && r.result.result.tagsNotAdded === 2
+      && r.tags.ok && r.tags.total === 2 && r.tags.nextAfterLine === null
+      && json(tagRows) === json([{ line: 2, sentence: tagsNotAddedSentence(["new one", "new two"]) }, { line: 3, sentence: tagsNotAddedSentence(["vip"]) }])
+      && r.failures.ok && r.failures.total === 0
+      && g.result.ok && g.result.result.tagsNotAdded === null && !g.tags.ok && g.tags.reason === "update_needs_reader",
+      `reader: ${r.step.ok ? r.step.kind : r.step.reason} · rows ${[2, 3, 4].map((l) => `${l}:${row(l)?.outcome}/${json(row(l)?.tags)}`).join(" ")} · result ${r.result.ok ? r.result.result.tagsNotAdded : r.result.reason} · list ${r.tags.ok ? `${r.tags.total}: ${json(tagRows.map((x) => x.line))}` : r.tags.reason} · growth: result ${g.result.ok ? g.result.result.tagsNotAdded : g.result.reason}, list ${g.tags.ok ? "SHOWN" : g.tags.reason}`);
+  }
+
+  // ── M32 · C8c · m3 · a row listed ONLY for its tags not added never traps the officer ──
+  await inFreshStore(async () => {
+    const FULL = Array.from({ length: 20 }, (_, i) => `t${String(i + 1).padStart(2, "0")}`);
+    await seedBook(bookRow("mc_full_1", "0757600001", { displayName: "Full One", tags: FULL }));
+    await seedBook(bookRow("mc_full_2", "0757600002", { displayName: "Full Two", tags: FULL }));
+    const runId = await stageFile(READER, [
+      { line: 2, cells: ["0757600001", "Full One", "", "new one, new two", ""] },
+      { line: 3, cells: ["0757600002", "Full Two Renamed", "", "vip", ""] },
+      { line: 4, cells: [N(1), "Fresh", "", "", ""] },
+    ]);
+    const rows: ChangesPageRow[] = [];
+    let after = 0;
+    for (let i = 0; i < 50; i++) {
+      const page = await contactImportChanges(READER, { runId, afterLine: after }, impl.deps);
+      if (!page.ok) break;
+      rows.push(...page.page.rows);
+      if (page.page.nextAfterLine === null) break;
+      after = page.page.nextAfterLine;
+    }
+    // Rows 2 and 3 set apart, and a row 9 the re-check's pages did not reach (read through line 4).
+    const letGo = impl.exceptionsLetGo([2, 3, 9], rows, 4);
+    const trapped = await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" }, { 2: "TAKE_FILE" }, READER);
+    const kept = await checkAndStart(runId, impl.deps, "KEEP", { kind: "none" }, { 3: "TAKE_FILE" }, READER);
+    ok(L.M32, json(rows.map((r) => r.line)) === json([2, 3]) && json(letGo) === json([2])
+      && !trapped.start.ok && trapped.start.reason === "bad_exceptions" && kept.start.ok,
+      `listed ${json(rows.map((r) => r.line))} · let go ${json(letGo)} · row 2 set apart ${trapped.start.ok ? "ACCEPTED" : trapped.start.reason} · row 3 set apart ${kept.start.ok ? "accepted" : kept.start.reason}`);
+  });
+
   // ── the 5,000-row file, twice, by a reader: M2 M3 M4 M5 M17 ──
   let interrupted = { book: "", outcomes: "", totals: "", ok: false, detail: "" };
   let replayOk = false;
@@ -832,6 +1370,106 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     impl: () => withDeps({ commitBatch: async (b) => REAL_DEPS.commitBatch({ ...b, members: [] }) }),
   },
   {
+    name: "P-B4 · ⛔ C8b · B4 not built — a masked officer's kept rows join the list, so ?list= says which typed numbers are in the book",
+    expect: L.M33,
+    impl: () => withDeps({ createdOnly: async () => false }),
+  },
+  {
+    name: "P-B4b · ⛔ C8b · the rule read off the step's DRIVER — an ADMIN resuming a masked officer's run puts the kept rows on the list",
+    expect: L.M33,
+    impl: () => withDeps({ createdOnly: async (_run, driver, d) => !(await d.readsNumbers(driver)) }),
+  },
+  {
+    name: "P-B4c · ⛔ C8b review (M1) · only the STARTER is asked — an ADMIN who starts a masked officer's staged run puts the kept rows on the list, and the creator reads off it which of their numbers were erased",
+    expect: L.M33b,
+    impl: () => withDeps({ createdOnly: async (run, _driver, d) => !(await d.readsNumbers(run.decisionConfirmedBy ?? run.createdBy).catch(() => false)) }),
+  },
+  {
+    name: "P-B4e · ⛔ C8b review (NIT) · the ONE rule FAILS OPEN — an officer whose read cell cannot be read counts as a reader, so the kept rows join the list",
+    expect: L.M33b,
+    impl: () => ({
+      ...real(),
+      createdOnlyFor: async (officers, deps) => {
+        for (const id of new Set(officers)) {
+          let reads = true;
+          try { reads = await deps.readsNumbers(id); } catch { reads = true; }
+          if (!reads) return true;
+        }
+        return false;
+      },
+    }),
+  },
+  {
+    name: "P-B4d · ⛔ C8b review (M1) · the panel says it only to a viewer who may not read — the ADMIN taking over is never told the list gets only the new contacts",
+    expect: L.M33b,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, panel: r.sources.panel.replace("&& view.listCreatedOnly && <p", "&& !mayUpdate && <p") } };
+    },
+  },
+  {
+    name: "P-B5 · ⛔ C8b · the split's linked side dropped (coveredCount's pre-C8b figure) — the masked picker leaves the player out, and composer minus picker counts the players",
+    expect: L.M34,
+    impl: () => withDeps({
+      lists: {
+        ...REAL_DEPS.lists,
+        split: async (id) => ({ ...(await REAL_DEPS.lists.split(id)), linked: { live: 0, covered: 0 } }),
+      },
+    }),
+  },
+  {
+    name: "P-M2a · ⛔ C8b review (MINOR 2) · the run's joined read as the contacts it CREATED — a reader's kept rows that joined the list are never counted",
+    expect: L.M35,
+    impl: () => withDeps({
+      lists: { ...REAL_DEPS.lists, joined: async (q) => bookRows().filter((c) => c.importId === q.importId).length },
+    }),
+  },
+  {
+    name: "P-M2b · ⛔ C8b review (MINOR 2) · created-only ignored by the count — a kept contact someone else added in the window is counted as the masked run's own",
+    expect: L.M35,
+    impl: () => withDeps({ lists: { ...REAL_DEPS.lists, joined: async (q) => REAL_DEPS.lists.joined({ ...q, createdOnly: false }) } }),
+  },
+  {
+    name: "P-M2c · ⛔ C8b review (MINOR 2) · nobody joined and the panel still says the contacts joined the list and are covered",
+    expect: L.M35,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, done: r.sources.done.replace("{result.list.joined === 0 ? DONE.listNone(", "{false ? DONE.listNone(") } };
+    },
+  },
+  {
+    name: "P-M3a · ⛔ C8b re-review (MN-3) · the empty join said as a GENERAL rule (\"only the contacts an import adds join its list\") — false for a reader's import, and silent on what this one added",
+    expect: L.M35,
+    impl: () => ({
+      ...real(),
+      copy: { ...DONE, listNone: (name: string, addedNone: boolean) => (addedNone ? `No contact joined the list ${name} — only the contacts an import adds join its list.` : DONE.listNone(name, false)) },
+    }),
+  },
+  {
+    name: "P-M3b · ⛔ C8b re-review (NIT) · one new member owed coverage said as many (\"The new members aren't\")",
+    expect: L.M35,
+    impl: () => ({
+      ...real(),
+      copy: { ...DONE, listOwed: (name: string, joined: number) => DONE.listOwed(name, joined).replace("The new member isn't", "The new members aren't") },
+    }),
+  },
+  {
+    name: "P-M3c · ⛔ C8b re-review (MN-3) · the panel says \"it added none\" of a created-only run that DID create contacts",
+    expect: L.M35,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, done: r.sources.done.replace("result.list.createdOnly && t.create === 0)", "result.list.createdOnly)") } };
+    },
+  },
+  {
+    name: "P-M4a · ⛔ C8b review (MINOR 4a) · a reader's coverage claims EVERY member beside the members a list basis never reaches",
+    expect: L.M35,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, done: r.sources.done.replace("(result.list.withAccount ?? 0) > 0)", "false)") } };
+    },
+  },
+  {
     name: "P11 · every viewer reads as one who may read numbers — a GROWTH officer is shown the stop split (OD54)",
     expect: L.M11,
     impl: () => withDeps({ readsNumbers: async () => true }),
@@ -954,6 +1592,181 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     name: "P25 · C8a · the commit's facts never ask whether an erasure stands — an erasure written after the check is created over",
     expect: L.M25,
     impl: () => withDeps({ reads: { ...REAL_DEPS.reads, erasureStands: async () => [] } }),
+  },
+  /* ── C8c (2026-10-09) ── */
+  {
+    // 🔴 N3 in the importer: the freeze's new list meets only the OLD exact-case unique key — the case variant another
+    // officer created a moment ago does not refuse it, and the book holds two lists of one name.
+    name: "P26 · C8c · N3 · the start's freeze checks its new list's name exact-case — a list named in another case meanwhile does not refuse it",
+    expect: L.M26,
+    impl: () => withDeps({
+      freeze: async (f) => {
+        const fresh = f.newList ?? null;
+        if (fresh === null) return db.contactImport.freezeDecision(f);
+        const held = [...mem().contactLists.values()] as StoredContactList[];
+        if (held.some((l) => l.name === fresh.name)) throw Object.assign(new Error("unique (exact case): a contact list already holds this name"), { code: "P2002" });
+        const run = await db.contactImport.find(f.importId);
+        if (run === null || run.status !== "STAGED") return null;
+        mem().contactLists.set(fresh.id, { ...fresh });
+        return db.contactImport.freezeDecision({ ...f, newList: null });
+      },
+    }),
+  },
+  {
+    // 🔴 #14a as it shipped: every refusal written — 200 bad cursors are 200 rows.
+    name: "P27 · C8c · #14a · the refusal gate lets every refusal through — a flood of bad cursors writes a row per call",
+    expect: L.M27,
+    impl: () => ({ ...real(), gate: () => ({ admit: () => ({ write: true, repeats: 0, undo: () => undefined }), reset: () => undefined }) }),
+  },
+  {
+    // 🔴 the review's n4 · the gate's key without the step: a start's refusal silences a commit step's for the minute.
+    name: "P27c · C8c · n4 · the refusal gate ignores the payload's step — two steps refused for one reason share one row",
+    expect: L.M27c,
+    impl: () => ({
+      ...real(),
+      gate: (now, windowMs, maxKeys) => {
+        const inner = refusalAuditModule.refusalAuditGate(now, windowMs, maxKeys);
+        return { admit: (ask) => inner.admit({ ...ask, step: undefined }), reset: inner.reset };
+      },
+    }),
+  },
+  {
+    // 🔴 …or a row the audit failed to record still counts as written: the minute is silenced and nothing is on record.
+    name: "P27d · C8c · n4 · an unrecorded refusal row is never taken back — the minute stays silenced",
+    expect: L.M27c,
+    impl: () => ({
+      ...real(),
+      gate: (now, windowMs, maxKeys) => {
+        const inner = refusalAuditModule.refusalAuditGate(now, windowMs, maxKeys);
+        return { admit: (ask) => ({ ...inner.admit(ask), undo: () => undefined }), reset: inner.reset };
+      },
+    }),
+  },
+  {
+    // 🔴 the re-review's NIT · the undo as first shipped: the refusals of the key kept WHILE the failed write was in flight
+    // are lost with it — the next row's repeats counts the unrecorded one alone.
+    name: "P27e · C8c · n4 · an unrecorded write's undo forgets the refusals kept while it was failing",
+    expect: L.M27c,
+    impl: () => ({
+      ...real(),
+      gate: (now, windowMs, maxKeys) => {
+        const inner = refusalAuditModule.refusalAuditGate(now, windowMs, maxKeys);
+        const writing = new Set<string>();
+        return {
+          admit: (ask) => {
+            const key = refusalAuditModule.refusalAuditKey(ask);
+            if (writing.has(key)) return { write: false, repeats: 0, undo: () => undefined };
+            const verdict = inner.admit(ask);
+            if (!verdict.write) return verdict;
+            writing.add(key);
+            return { ...verdict, undo: () => { writing.delete(key); verdict.undo(); } };
+          },
+          reset: inner.reset,
+        };
+      },
+    }),
+  },
+  {
+    // 🔴 …or it bounds the flood but writes a "moved" — normal concurrency logged as an incident.
+    name: "P27b · C8c · #14a · the refusal gate writes a moved — a cancel that found its run moved on leaves a refusal row",
+    expect: L.M27b,
+    impl: () => ({
+      ...real(),
+      gate: (now) => {
+        const inner = refusalAuditModule.refusalAuditGate(now);
+        return { admit: (ask) => (ask.reason === "moved" ? { write: true, repeats: 0, undo: () => undefined } : inner.admit(ask)), reset: inner.reset };
+      },
+    }),
+  },
+  {
+    // 🔴 #15 · resume moves a STAGED run too — into COMMITTING with no frozen decision.
+    name: "P28 · C8c · #15 · resume moves a STAGED run as well as a PAUSED one — a run never started is committed with no decision",
+    expect: L.M28,
+    impl: () => withDeps({ acts: { ...RUN_ACTS, resume: { from: ["PAUSED", "STAGED"], to: "COMMITTING" } } }),
+  },
+  {
+    // 🔴 #14b as it shipped: a persistent fault is retried for ever under "busy".
+    name: "P29 · C8c · #14b · no number of database faults pauses the run — a persistent P2028 is retried for ever",
+    expect: L.M29,
+    impl: () => withDeps({ dbFaultsToPause: Number.POSITIVE_INFINITY }),
+  },
+  {
+    // 🔴 …or the streak is never ended by a step that lands, so faults hours apart add up to a pause.
+    name: "P29c · C8c · #14b · a landed step never ends the streak — four old faults and one new one pause a healthy run",
+    expect: L.M29,
+    impl: () => {
+      const inner = commitModule.dbFaultStreaks();
+      return withDeps({ dbFaults: { record: inner.record, clear: () => undefined } });
+    },
+  },
+  {
+    // 🔴 the review's m5 · the start's bets stop answered as the slow file's (too_slow: "…or split the file in two").
+    name: "P30b · C8c · m5 · the start's walk stopped by bets is answered too_slow (the source's own branch)",
+    expect: L.M30,
+    impl: () => {
+      const r = real();
+      return {
+        ...r,
+        sources: {
+          ...r.sources,
+          commit: r.sources.commit.split('if (walked === "bets") return refuse("bets_busy", START_BETS_SENTENCE);').join('if (walked === "bets") return refuse("too_slow");'),
+        },
+      };
+    },
+  },
+  {
+    // 🔴 the review's m3 · the reconcile as #13 shipped it: every row still on the pages counts as present, so a row listed
+    // only for its tags not added stays set apart — the start refuses it, the re-check keeps it, and so on.
+    name: "P32 · C8c · m3 · the re-check keeps every row still on the changes pages set apart — a tags-only row traps the start",
+    expect: L.M32,
+    impl: () => ({
+      ...real(),
+      exceptionsLetGo: (lines, rows, covered) => {
+        const still = new Set(rows.map((r) => r.line));
+        return lines.filter((l) => l <= covered && !still.has(l));
+      },
+    }),
+  },
+  {
+    // 🔴 the review's m2 · the database's pause is written in the officer's name: "Paused by you" above the database's
+    // own sentence, though nobody pressed Stop.
+    name: "P29d · C8c · m2 · the database pause is recorded as the officer's — the panel says 'Paused by you'",
+    expect: L.M29,
+    impl: () => withDeps({ transition: async (t) => REAL_DEPS.transition({ ...t, by: t.by ?? OFFICER }) }),
+  },
+  {
+    // 🔴 #14b · the conflict that never settles is answered "something went wrong" again (the source's own branch).
+    name: "P29b · C8c · #14b · the step's persistent conflict is answered in the generic server_error words",
+    expect: L.M29b,
+    impl: () => {
+      const r = real();
+      return {
+        ...r,
+        sources: {
+          ...r.sources,
+          commit: r.sources.commit.split('return refusedAs("conflict", result.ordinals.length, STEP_CONFLICT_SENTENCE);').join('return refusedAs("conflict", result.ordinals.length);'),
+        },
+      };
+    },
+  },
+  {
+    // 🔴 #13 as it shipped: the step never says which tags it left out, so the blanking empties them and the result is silent.
+    name: "P31 · C8c · #13 · the commit drops the tags left out — a full contact's tags vanish from the result",
+    expect: L.M31,
+    impl: () => withDeps({ commitBatch: async (b) => REAL_DEPS.commitBatch({ ...b, tagsLeft: [] }) }),
+  },
+  {
+    // 🔴 …or they are kept, and nothing reads them back.
+    name: "P31b · C8c · #13 · the result's tags-not-added read answers nothing — the rows kept for it are never shown",
+    expect: L.M31,
+    impl: () => withDeps({ tagsLeftPage: async () => ({ rows: [], total: 0 }) }),
+  },
+  {
+    // 🔴 N4 · the start's walk never asks the bet queue — it reads every page while a bet waits. (The same question is the
+    // commit step's, so M12 reddens beside it: one queue, one way of asking.)
+    name: "P30 · C8c · N4 · the bet queue reads empty to the importer — the start's walk reads pages while a bet waits",
+    expect: L.M30,
+    impl: () => withDeps({ queueDepth: () => 0 }),
   },
   {
     // ⭐ C8a's defect #2 inside the step: the commit decides from the ledger's LATEST word, so a tap above the marker lifts it.

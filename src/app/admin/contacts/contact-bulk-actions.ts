@@ -9,7 +9,9 @@
  * refusal as `privilege_escalation_blocked`, takes step-up 2FA, and answers in words — before the rate rule, the parser,
  * the service or the store is touched.
  * ⭐ THEN THE FORM'S RATE RULES, PER OFFICER (`rate-limit.ts`): a preview spends `contacts.lookup` — it answers "how many of
- * these are in the book?" — and a run spends `contacts.write`.
+ * these are in the book?" — and a run spends `contacts.write`. Each refuses in its bucket's ONE sentence (the C8b
+ * re-review's NIT): a preview the check bucket's (`CONTACT_LOOKUP_RATE_LIMITED`, the Add form's lookup's and the masked
+ * search's too), a run the write bucket's (`CONTACT_RATE_LIMITED`).
  * ⛔ NOTHING IS READ FROM THE BODY BUT THROUGH `parseBulkRequest`, which builds a NEW request from named keys: a posted
  * count, tier or officer never reaches a decision. The service recounts and decides (OD27/OD28).
  * 🔴 D19 / A1.1 / OD54 · the viewer's read cell goes to the service, which refuses a masked viewer's consent, source,
@@ -28,14 +30,14 @@ import { safeError } from "@/lib/server/safe-error";
 import { contactBulkReply, parseBulkRequest, previewContactBulk, runContactBulk } from "@/lib/server/marketing/contact-bulk";
 import type { BulkOutcome, BulkPreview, BulkRefusal } from "@/lib/contacts/bulk-rules";
 import { viewerReadsContacts } from "./contacts-loader";
-import { CONTACT_ROLE_REFUSAL, CONTACT_RATE_LIMITED, CONTACTS_BULK } from "./contacts-copy";
+import { CONTACT_ROLE_REFUSAL, CONTACT_RATE_LIMITED, CONTACT_LOOKUP_RATE_LIMITED, CONTACTS_BULK } from "./contacts-copy";
 
 /** How many contacts the selection holds NOW, the tier its confirmation takes, and — up to fifty ticked — who they are. */
 export async function previewContactBulkAction(input: unknown): Promise<BulkPreview | BulkRefusal> {
   const g = await softRequireStaff("growth", "contacts.bulk.preview", CONTACT_ROLE_REFUSAL);
   if (!g.ok) return { ok: false, reason: "forbidden", error: g.error };
   const rate = await rateCheckAsync(g.userId, "contacts.lookup");
-  if (!rate.allowed) return { ok: false, reason: "rate_limited", error: CONTACT_RATE_LIMITED(rate.retryAfterSec) };
+  if (!rate.allowed) return { ok: false, reason: "rate_limited", error: CONTACT_LOOKUP_RATE_LIMITED(rate.retryAfterSec) };
   try {
     const parsed = parseBulkRequest(input);
     if (!parsed.ok) return parsed;

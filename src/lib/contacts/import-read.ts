@@ -13,9 +13,15 @@
  * same path, and the bar moves on bytes actually read. A CSV the reader has already refused stops being read at once.
  * ⛔ A RECORD COUNT PAST THE RUN'S CAP STOPS THE READ (crash control): a file of a million rows is not held in the
  * browser only for the server to refuse it — `READ_TOO_MANY_ROWS` says so, and how to split the file.
- * ⛔ AN EXCEL FILE OVER THE CAP IS REFUSED BEFORE A BYTE IS UPLOADED, in xlsx-limits' own words (C18), and so is every
- * file no reader takes (an old .xls, an .ods, a protected workbook, a PDF, a picture, an Apple Numbers file) — each
- * sentence names the format and the way to save it as .xlsx or CSV. CONTENT BEATS THE NAME (`detectFormat`).
+ * ⭐ C3c (2026-10-09) · AN EXCEL FILE OVER THE UPLOAD CAP (`XLSX_MAX_BYTES`, 700 KB) IS READ HERE, in the browser, by
+ * `xlsx-read.ts` — streamed, the reading bar on its inflated bytes, Stop heard — and comes back `parsed` exactly like a
+ * CSV, its digest over the exact bytes. It used to be refused with "save it as CSV", the remedy that loses the last
+ * digits of every 12-digit General number. A workbook within the cap still goes to the server's exceljs reader,
+ * unchanged. A big workbook the reader refuses is said in the copy table's own words; an old browser that cannot
+ * inflate gets today's answer, the size refusal with its CSV remedy (the reader's own fallback).
+ * ⛔ Every file no reader takes (an old .xls, an .ods, a protected workbook, a PDF, a picture, an Apple Numbers file) is
+ * refused before a byte is uploaded — each sentence names the format and the way to save it as .xlsx or CSV (C18).
+ * CONTENT BEATS THE NAME (`detectFormat`).
  *
  * ⭐ THE PASTE (U30). Text holding a tab is an Excel or Sheets copy: read by U25's own reader with the tab as the
  * separator (quoted cells and line breaks inside them as Excel writes them), the first row header-matched like any file
@@ -24,7 +30,20 @@
  * first phone number the Phone cell and the rest of the line the Name cell. A line with no number is listed as unreadable
  * with its row; a line with a second number keeps the first and the paste's note names those rows (S15-4). ⭐ "First" is
  * the first Tanzanian mobile number on the line, chosen by the ONE phone-cell rule (`firstMobileIndex`,
- * `phone-cell.ts` — the staging's and the check's rule too): one person, one number.
+ * `phone-cell.ts` — the staging's and the check's rule too): one person, one number. ⛔ C8c · D4 IN THE PASTE — a country
+ * code written before a number is never cut off it, so no stranger's +255 number is read out of a foreign one:
+ *   · each number is read in the CELL it was written in (`cellOf` — with the digit runs the phone-cell rule's own cut
+ *     joins to it): "Asha +254, 712 345 678" is a Kenyan number;
+ *   · a bare nine digits standing alone after a run WRITTEN AS A CODE ("+254", "00254") is judged a PART of the stretch
+ *     from it (`partOf`): "+254: 712345678", "Tel +254 / Mob 712 345 678" — while any other run before it (a row number,
+ *     a date, "Tel 1:") leaves the number its own cell, as live main reads it (the review's MAJOR-1);
+ *   · a number never starts inside a run right after its own code (`startsMidRun`, the review's MAJOR-2): "+254 0712 345
+ *     678", "+256 (0) 772 123 456", "00254 0712345678" and a bare "254 0712345678" are ONE foreign number, as the file's
+ *     phone cell reads them — so three digits alone before a trunk zero are read as a code even when they are a box or
+ *     a plot number ("123 0712345678" is refused in the server's words; "123. 0712345678" is an enumeration, and reads).
+ *   ⚠️ LEFT ON PURPOSE: a code written BARE and kept apart from a bare nine digits by a word, a bracket or a colon ("254:
+ *   712345678"), and a bare code of one or two digits before a trunk zero ("27 0712345678") — read as the row and date
+ *   numbers such digits far more often are. Each decision is in `PASTE_RULES`, swappable by a red plant.
  * ⭐ C3b · G4 · SEVERAL PHONE COLUMNS — as the review round decided them (C3b-fix · D2, D3, 2026-10-09). Only the
  * person's OWN phone columns are read: a strong phone heading U28 knows, Outlook's Business / Home / Other / Primary /
  * Car Phone, Google's "Phone N - Value", the Swahili "second phone" — ⛔ never Assistant's Phone, Company Main Phone,
@@ -59,13 +78,14 @@ import {
 } from "./import-parse";
 import { dropTitleRows } from "./title-rows";
 import { createVcardReader } from "./vcard";
-import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
+import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence, type XlsxRefusal } from "./xlsx-limits";
+import { readXlsxInBrowser } from "./xlsx-read";
 import {
   CONTACT_FIELDS, CONTACT_LIMITS, autoMapFile, matchHeader, normaliseHeader,
   type AutoMapResult, type ColumnMapping, type ImportFieldKey, type MappedColumn,
 } from "./contact-fields";
 import { IMPORT_MAX_ROWS } from "./import-limits";
-import { firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
+import { completePart, cutsCell, firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
 import { TZ_COUNTRY_CODE, isSendableTzNumber, readAsciiDigits } from "../tz-msisdn";
 import { maskPhone } from "../phone-normalize";
 
@@ -198,6 +218,8 @@ export type ReadOutcome =
       readonly digest: string;
       readonly extraNumbers: number;
       readonly unclosed: CsvUnclosedQuote | null;
+      /** C3c · a big workbook read in the browser: D8's word (no visible sheet holds a mobile) — the server's for a small one. */
+      readonly noMobileSheet?: boolean;
     }
   | { readonly kind: "xlsx"; readonly base64: string; readonly digest: string; readonly fileName: string }
   | { readonly kind: "refused"; readonly sentence: string; readonly cause: ReadRefusalCause }
@@ -257,11 +279,31 @@ function decodedText(file: Blob, encoding: TextEncodingLabel, onBytes: (n: numbe
   );
 }
 
+/** The refusals of a big workbook that are about its SIZE (the dialog's cause), the rest being about its format. */
+const SIZE_REFUSALS: ReadonlySet<XlsxRefusal> = new Set<XlsxRefusal>(["too_large", "old_browser", "too_big_inflated", "too_many_rows"]);
+
+/**
+ * ⭐ C3c · A WORKBOOK PAST THE UPLOAD CAP, READ IN THE BROWSER (`xlsx-read.ts`): `parsed` exactly as a CSV is — the digest
+ * over the exact bytes (read once more, whole: `crypto.subtle` has no incremental digest), and `extraNumbers` 0, as the
+ * CSV path returns it (S15-4's count of a file's rows is the columns step's, never the reader's). Its file name is the
+ * one the server's reader is handed for a small workbook, so the same File reads the same whichever reader reads it. A
+ * refusal is the copy table's sentence; a Stop is `aborted`, nothing kept. Not exported (NIT 14) — `readContactsFile` is its only caller.
+ */
+async function readBigWorkbook(file: File, name: string | null, opts: ReadOptions): Promise<ReadOutcome> {
+  const out = await readXlsxInBrowser(file, { fileName: name ?? "workbook.xlsx", onProgress: opts.onProgress, signal: opts.signal });
+  if (out.kind === "aborted") return { kind: "aborted" };
+  if (out.kind === "refused") return refused(out.message, SIZE_REFUSALS.has(out.refusal) ? "size" : "format");
+  if (opts.signal?.aborted) return { kind: "aborted" };
+  const digest = await sha256Hex(new Uint8Array(await file.arrayBuffer()));
+  // A workbook has no unclosed CSV quote (C3b-fix · D5's `unclosed` is a CSV reader's alone).
+  return { kind: "parsed", file: out.file, digest, extraNumbers: 0, unclosed: null, noMobileSheet: out.noMobileSheet };
+}
+
 /**
  * ⭐ READ ONE FILE. The format from its bytes (`detectFormat` over the whole file up to the Excel cap — a protected
  * workbook's marker can sit past the first 4 KB), then: a workbook within the cap comes back as base64 for the server's
- * reader; a CSV or a vCard is streamed into its reader; anything else is refused with its sentence. The digest is over
- * the file's exact bytes.
+ * reader, and (C3c) a workbook past it is read here (`readBigWorkbook`); a CSV or a vCard is streamed into its reader;
+ * anything else is refused with its sentence. The digest is over the file's exact bytes.
  */
 export async function readContactsFile(file: File, opts: ReadOptions): Promise<ReadOutcome> {
   const signal = opts.signal;
@@ -284,8 +326,8 @@ export async function readContactsFile(file: File, opts: ReadOptions): Promise<R
 
   if (detected.kind === "xlsx") {
     if (namedNumbers(name)) return refused(xlsxRefusalSentence("wrong_format", { kind: "other" }));
-    // ⛔ OVER THE CAP: refused here, before a byte is uploaded — the server would answer 413 in Next's own words.
-    if (size > XLSX_MAX_BYTES) return refused(xlsxRefusalSentence("too_large", { bytes: size }), "size");
+    // ⭐ C3c · OVER THE CAP: never uploaded (the server would answer 413 in Next's own words) — READ HERE, in the browser.
+    if (size > XLSX_MAX_BYTES) return readBigWorkbook(file, name, opts);
     opts.onProgress(size, size, 0);
     return { kind: "xlsx", base64: bytesToBase64(head), digest: await sha256Hex(head), fileName: name ?? "workbook.xlsx" };
   }
@@ -382,11 +424,98 @@ export function isListPaste(text: string): boolean {
 }
 
 /** A digit group inside a run, by its offsets in the line. */
-type Group = { readonly start: number; readonly end: number; readonly digits: string };
+export type PasteGroup = { readonly start: number; readonly end: number; readonly digits: string };
 /** A phone-shaped run: an optional + or bracket, then digits and joiners. */
-type Run = { readonly start: number; readonly end: number; readonly groups: readonly Group[]; readonly digits: number };
+export type PasteRun = { readonly start: number; readonly end: number; readonly groups: readonly PasteGroup[]; readonly digits: number };
+type Group = PasteGroup;
+type Run = PasteRun;
 /** One number found in a line: its offsets and text, and whether it is a number this platform can send to. */
 type Found = { readonly start: number; readonly end: number; readonly text: string; readonly sendable: boolean };
+
+/**
+ * ⭐ THE LIST PASTE'S RULES — each a decision a review round took, named so a red plant can swap exactly ONE and leave the
+ * reader itself untouched (as `CSV_RULES` does for the CSV reader): `parsePastedText(text, rules)` runs the real reader
+ * with them (`test:contacts-import` flow P1d, P1e, P1f).
+ */
+export type PasteRules = {
+  /** ⛔ D4 · does the text between two digit runs CUT a phone cell, so the runs read as ONE cell? (`cellOf` — the ONE
+   *  phone-cell rule's own question, `cutsCell`) */
+  readonly cutsCell: (gap: string) => boolean;
+  /** ⛔ D4 · may a number START at group `at` of `run`, `since` being the digits of the run's groups after the last
+   *  number found in it (or after its start), the line's stamp or enumeration aside? (`startsMidRun`) */
+  readonly startsMidRun: (line: string, run: PasteRun, at: number, since: number) => boolean;
+  /** ⛔ D4 · does the run before a bare nine digits standing alone in its cell make that number a PART of the stretch
+   *  from it? (`partOf` — the review's MAJOR-1: only a run WRITTEN AS A CODE does, `writtenAsCode`) */
+  readonly makesPart: (line: string, before: PasteRun) => boolean;
+  /** ⭐ where a 12-hour clock's mark ("pm") ending a chat's dash-led stamp at `end` begins — or -1 (`meridiemAt`). */
+  readonly meridiemAt: (text: string, end: number) => number;
+  /** ⭐ a round bracket the numbers' removal left stray — without its pair, or a pair with nothing between — is not part
+   *  of the name (`withoutStrayBrackets`). */
+  readonly dropsStrayBrackets: boolean;
+};
+
+/**
+ * ⭐ A RUN WRITTEN AS A CODE: it opens with "+", or its first group with "00" — "+254", "(+256)", "00254". A bare "254" is
+ * not: it is as often a row, a plot or a box number as a country code written without its plus, and the line around it
+ * reads as it always did (the review's MAJOR-1, the integrator's option A, 2026-10-09).
+ */
+export function writtenAsCode(line: string, run: PasteRun): boolean {
+  return line.charCodeAt(run.start) === PLUS || (run.groups[0]?.digits.startsWith("00") ?? false);
+}
+
+/** ⛔ The digits of a country code written BARE before a number's trunk zero — every neighbour's has three (Kenya's 254,
+ *  Uganda's 256, Rwanda's 250, Zambia's 260). */
+const BARE_CODE_DIGITS = 3;
+
+/**
+ * ⛔ D4 · MAY A NUMBER START HERE, INSIDE A RUN? At the run's own start, always. Further in, only at a group that starts
+ * like a number — with the trunk 0 or Tanzania's 255 (a bare nine digits inside "+254 712 345 678" are a Kenyan number's
+ * tail) — and (the review's MAJOR-2) never right after what can be that number's own COUNTRY CODE:
+ *   · in a run WRITTEN AS A CODE (`writtenAsCode`), the digits after the "+" or the "00" are a foreign number until there
+ *     are at least `NUMBER_DIGITS_MIN` of them: "+254 0712 345 678", "+254 (0) 712 345 678", "+254-0712-345-678",
+ *     "00254 0712345678" and "+256 0772 123456" are ONE foreign number, as the file's phone cell reads them — while
+ *     "+254 712 345 678 0712 345 678" (a whole number before) and "+255 712 345 678 0754 111 222" (right after a number
+ *     found) still hold their second number;
+ *   · in any other run, exactly three digits since its start (or the last number found) before a trunk zero are a
+ *     country code written bare ("254 0712345678"): never a stranger's +255 number. Fewer or more digits are the row
+ *     number, the date or the time they usually are ("1 0712345678", "12.03.2026 0712345678").
+ * The line's stamp and enumeration never count ("123. 0712345678": `since` leaves them out).
+ */
+function startsMidRun(line: string, run: PasteRun, at: number, since: number): boolean {
+  if (at === 0) return true;
+  const digits = run.groups[at].digits;
+  if (!digits.startsWith("0") && !digits.startsWith("255")) return false;
+  if (writtenAsCode(line, run)) return since === 0 || since >= NUMBER_DIGITS_MIN;
+  return !(since === BARE_CODE_DIGITS && digits.startsWith("0"));
+}
+
+/**
+ * ⭐ A 12-HOUR CLOCK'S MARK ending a chat's dash-led stamp at `end` ("12/03/2026, 10:15 pm - Juma: …", WhatsApp's own
+ * export in a 12-hour phone): "am" or "pm" in either case, with or without its full stops, right after the time's last
+ * digit or after ONE space — a plain, a no-break or a narrow no-break one. Where it begins (its space included), or -1.
+ */
+function meridiemAt(text: string, end: number): number {
+  let k = end;
+  if (k > 0 && text.charCodeAt(k - 1) === FULL_STOP) k--;
+  if (k < 1 || (text.charCodeAt(k - 1) | 32) !== 109) return -1;
+  k--;
+  if (k > 0 && text.charCodeAt(k - 1) === FULL_STOP) k--;
+  const ap = k > 0 ? text.charCodeAt(k - 1) | 32 : -1;
+  if (ap !== 97 && ap !== 112) return -1;
+  k--;
+  const gap = k > 0 ? text.charCodeAt(k - 1) : -1;
+  if (gap === SPACE || gap === 0xa0 || gap === 0x202f) k--;
+  return k > 0 && isDigit(text.charCodeAt(k - 1)) ? k : -1;
+}
+
+/** ⭐ The list paste's rules as the reader ships them. */
+export const PASTE_RULES: PasteRules = {
+  cutsCell,
+  startsMidRun,
+  makesPart: writtenAsCode,
+  meridiemAt,
+  dropsStrayBrackets: true,
+};
 
 /** Every run of digits and joiners in a line (a + opens one only at its start). Shape only — no verdict. */
 function runsOf(line: string): Run[] {
@@ -433,20 +562,21 @@ function runsOf(line: string): Run[] {
  * The numbers a phone-shaped run holds: each stretch of its consecutive digit groups that THE ONE NUMBER RULE reads as a
  * Tanzanian mobile number, in order (two numbers written side by side are two). A run holding none is ONE number as
  * written — a foreign or mistyped one — so the server can say why it is refused.
- * ⛔ A NUMBER FOUND MID-RUN MUST START LIKE ONE — with the trunk 0 or the country code 255. Only the run's own first group
- * may be a bare nine-digit national number: inside "+254 712 345 678" the groups "712 345 678" read as a Tanzanian
- * number, and taking them would import a STRANGER's number in place of a Kenyan one the server would have refused.
+ * ⛔ A NUMBER FOUND MID-RUN MUST START LIKE ONE, AND NEVER RIGHT AFTER ITS OWN COUNTRY CODE (`rules.startsMidRun`): a
+ * stranger's +255 number is never read out of a Kenyan "+254 0712 345 678" or a Kenyan "+254 712 345 678". `since` counts
+ * the digits of the groups passed over since the last number found — the line's stamp or enumeration (`from`) aside.
  */
-function numbersIn(line: string, run: Run): Found[] {
+function numbersIn(line: string, run: Run, from: number, rules: PasteRules): Found[] {
   const out: Found[] = [];
   const gs = run.groups;
   const opensWithPlus = line.charCodeAt(run.start) === PLUS;
+  let since = 0;
   let i = 0;
   while (i < gs.length) {
     let found = -1;
     let digits = "";
-    const startsLikeANumber = i === 0 || gs[i].digits.startsWith("0") || gs[i].digits.startsWith("255");
-    for (let j = i; startsLikeANumber && j < gs.length; j++) {
+    const mayStart = rules.startsMidRun(line, run, i, since);
+    for (let j = i; mayStart && j < gs.length; j++) {
       digits += gs[j].digits;
       if (digits.length > NUMBER_DIGITS_MAX) break;
       if (digits.length >= NUMBER_DIGITS_MIN && isSendableTzNumber((i === 0 && opensWithPlus ? "+" : "") + digits)) {
@@ -455,11 +585,13 @@ function numbersIn(line: string, run: Run): Found[] {
       }
     }
     if (found < 0) {
+      if (gs[i].start >= from) since += gs[i].digits.length;
       i++;
       continue;
     }
     const start = i === 0 ? run.start : gs[i].start;
     out.push({ start, end: gs[found].end, text: line.slice(start, gs[found].end).trim(), sendable: true });
+    since = 0;
     i = found + 1;
   }
   if (out.length === 0) out.push({ start: run.start, end: run.end, text: line.slice(run.start, run.end).trim(), sendable: false });
@@ -467,15 +599,80 @@ function numbersIn(line: string, run: Run): Found[] {
 }
 
 /** Every number in a line, in order — from its phone-shaped runs only (a date, a time or a small count is not one). */
-function numbersOf(line: string): Found[] {
+function numbersOf(line: string, rules: PasteRules, runs: readonly Run[] = runsOf(line)): Found[] {
+  const from = prefixLength(line, rules);
   const out: Found[] = [];
-  for (const run of runsOf(line)) if (run.digits >= NUMBER_DIGITS_MIN) out.push(...numbersIn(line, run));
+  for (const run of runs) if (run.digits >= NUMBER_DIGITS_MIN) out.push(...numbersIn(line, run, from, rules));
+  return out;
+}
+
+/** The stretch of a line a number is read from, and its text. */
+type Cell = { readonly start: number; readonly end: number; readonly text: string };
+
+/**
+ * ⭐ C8c · D4 IN THE LIST PASTE — THE CELL A NUMBER WAS WRITTEN IN. The run reader above stops a number at a comma or a
+ * solidus (a date is not a number), so "Asha +254, 712 345 678" came apart: "+254" too short to be a number, "712 345 678"
+ * a bare nine digits read as a Tanzanian number — a STRANGER's +255 712 345 678 staged in place of a Kenyan number. So a
+ * number is read in its CELL: the number, and every digit run before it that the phone-cell rule's OWN cut joins to it
+ * (`rules.cutsCell` = `cutsCell` — a separator character, Google's colons or a separator word between them, nothing
+ * else; ⭐ C8c · M1 · never a word standing between two separators: "1, Asha, 0712 345 678" is a row number, a name and
+ * a number), as a phone cell of a file would hold them. The ONE rule (`mobilesIn`) then reads that cell — whole first, else its COMPLETE parts (D4) —
+ * so "+254, 712 345 678", "254/712345678" and "00254; 712345678" hold no Tanzanian mobile, and the staged cell is that
+ * whole text, which the server's same rule refuses in its own words. A number with nothing joined to it is its own cell,
+ * exactly as before (a whole cell of nine digits is Excel's dropped 0 — D4 keeps that reading).
+ */
+function cellOf(line: string, runs: readonly Run[], found: Found, rules: PasteRules): Cell {
+  let start = found.start;
+  for (let k = runs.length - 1; k >= 0; k--) {
+    const run = runs[k];
+    if (run.end > start) continue;
+    if (!rules.cutsCell(line.slice(run.end, start))) break;
+    start = run.start;
+  }
+  return { start, end: found.end, text: line.slice(start, found.end).trim() };
+}
+
+/**
+ * ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE (the review, 2026-10-09: "Asha +254 (Kenya) 712 345 678", "+254:
+ * 712345678" and "Tel +254 / Mob 712 345 678" staged a stranger's +255 712 345 678 — a word, a bracket or one colon
+ * between a country code and its tail is no cut, so the tail stood alone as a whole cell of nine digits). A number that
+ * is a Tanzanian mobile only when read WHOLE as a bare nine digits (no 0, 255, + or 00 before them — `completePart`),
+ * standing alone in its cell, is judged as a PART when the nearest digit run before it is WRITTEN AS A CODE — "+254",
+ * "00254", "(+256)" (`rules.makesPart` = `writtenAsCode`): the stretch from that run to the number's end is staged, and
+ * the server's one rule reads it as written — refused in the foreign number's own words, or, for Tanzania's own "+255",
+ * the very number the bare reading gives. Never a guess, never a stranger.
+ * ⭐ The review's MAJOR-1 (the integrator's option A, 2026-10-09): ANY other run before it — a row number, a date, a
+ * "Tel 1:" — leaves the number its own cell, as live main reads it: "1, Asha, 712345678", "12/03/2026,Asha,712345678" and
+ * "Asha Tel 1: 712345678" are +255 712 345 678 with their names (m1 as first shipped refused them with an untrue "this one
+ * has 10"). ⚠️ THE ACCEPTED LEFTOVER: a code written BARE and kept apart from the tail by a word, a bracket or a colon
+ * ("254: 712345678") reads as the bare nine digits — a bare "254" is as often a row or a plot number. The digits of the
+ * line's chat stamp or enumeration (`prefixLength`) are never "before" it.
+ */
+function partOf(line: string, runs: readonly Run[], found: Found, cell: Cell, from: number, rules: PasteRules): Cell {
+  if (cell.start !== found.start || completePart(found.text) || mobilesIn(found.text).length === 0) return cell;
+  let before: Run | null = null;
+  for (const run of runs) if (run.end <= found.start && run.start >= from) before = run;
+  if (before === null || !rules.makesPart(line, before)) return cell;
+  return { start: before.start, end: cell.end, text: line.slice(before.start, cell.end).trim() };
+}
+
+/** The cells' stretches of the line, overlapping ones merged — what the name loses (a separator between two numbers of
+ *  one cell is the cell's, never the name's). */
+function cellSpans(cells: readonly Cell[]): Array<{ readonly start: number; readonly end: number }> {
+  const sorted = [...cells].sort((a, b) => a.start - b.start);
+  const out: Array<{ start: number; end: number }> = [];
+  for (const c of sorted) {
+    const last = out[out.length - 1];
+    if (last !== undefined && c.start <= last.end) last.end = Math.max(last.end, c.end);
+    else out.push({ start: c.start, end: c.end });
+  }
   return out;
 }
 
 /** How much of a name's start is not the name: a list's enumeration ("12. ", "3) "), a chat's bracketed stamp
- *  ("[12/03/2026, 10:15] ") or a chat's dash-led stamp ("12/03/2026, 10:15 - "). */
-function prefixLength(text: string): number {
+ *  ("[12/03/2026, 10:15] ") or a chat's dash-led stamp ("12/03/2026, 10:15 - ", and ⭐ a 12-hour phone's
+ *  "12/03/2026, 10:15 pm - ": `rules.meridiemAt`). */
+function prefixLength(text: string, rules: PasteRules): number {
   let i = 0;
   while (i < text.length && text.charCodeAt(i) === SPACE) i++;
   const from = i;
@@ -489,11 +686,14 @@ function prefixLength(text: string): number {
     }
     return 0;
   }
-  // A dash-led stamp: only digits and / . : , - and spaces before " - ", within the first 25 characters.
+  // A dash-led stamp: only digits and / . : , - and spaces before " - " — its time's "pm" aside — within the first 25
+  // characters.
   const dash = text.indexOf(" - ", i);
   if (dash > i && dash - i <= 25 && isDigit(text.charCodeAt(i))) {
+    const mark = rules.meridiemAt(text, dash);
+    const timeEnd = mark > i ? mark : dash;
     let stamp = true;
-    for (let k = i; k < dash; k++) {
+    for (let k = i; k < timeEnd; k++) {
       const c = text.charCodeAt(k);
       if (!isDigit(c) && !STAMP_CHARS.has(c)) stamp = false;
     }
@@ -509,9 +709,44 @@ function prefixLength(text: string): number {
   return i;
 }
 
+/** The text with the separators at both of its ends trimmed and its spaces collapsed. */
+function trimmedName(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && EDGE_SEPARATORS.has(text.charCodeAt(start))) start++;
+  while (end > start && EDGE_SEPARATORS.has(text.charCodeAt(end - 1))) end--;
+  return text.slice(start, end).split(" ").filter((w) => w !== "").join(" ");
+}
+
+/** ⭐ The text less every round bracket a number's removal left STRAY — one without its pair ("Otieno (+254) 712 345 678"
+ *  leaves "Otieno (", "Asha (0712 345 678)" leaves "Asha )") or a pair with nothing left between ("Asha (+255 712 345
+ *  678)" leaves "Asha ( )"): such a bracket is never part of a name. */
+function withoutStrayBrackets(text: string): string {
+  const stray = new Set<number>();
+  const open: number[] = [];
+  for (let k = 0; k < text.length; k++) {
+    const c = text.charCodeAt(k);
+    if (c === OPEN_PAREN) open.push(k);
+    else if (c === CLOSE_PAREN) {
+      const pair = open.pop();
+      if (pair === undefined) stray.add(k);
+      else if (trimmedName(text.slice(pair + 1, k)) === "") {
+        stray.add(pair);
+        stray.add(k);
+      }
+    }
+  }
+  for (const k of open) stray.add(k);
+  if (stray.size === 0) return text;
+  let out = "";
+  for (let k = 0; k < text.length; k++) if (!stray.has(k)) out += text.charAt(k);
+  return out;
+}
+
 /** What is left of a line once its numbers are out: a leading enumeration or chat stamp dropped, separators trimmed at
- *  both ends, spaces collapsed, an emptied pair of brackets dropped and a fully bracketed remainder unwrapped. */
-function nameOf(line: string, numbers: readonly Found[]): string {
+ *  both ends, spaces collapsed, an emptied pair of brackets and (`rules.dropsStrayBrackets`) every bracket left stray
+ *  dropped, and a fully bracketed remainder unwrapped. */
+function nameOf(line: string, numbers: ReadonlyArray<{ readonly start: number; readonly end: number }>, rules: PasteRules): string {
   let text = "";
   let at = 0;
   for (const n of numbers) {
@@ -519,13 +754,10 @@ function nameOf(line: string, numbers: readonly Found[]): string {
     at = n.end;
   }
   text += line.slice(at);
-  text = text.slice(prefixLength(text));
-  let start = 0;
-  let end = text.length;
-  while (start < end && EDGE_SEPARATORS.has(text.charCodeAt(start))) start++;
-  while (end > start && EDGE_SEPARATORS.has(text.charCodeAt(end - 1))) end--;
-  let name = text.slice(start, end).split(" ").filter((w) => w !== "").join(" ");
+  text = text.slice(prefixLength(text, rules));
+  let name = trimmedName(text);
   name = name.split("()").join("").split(" ").filter((w) => w !== "").join(" ");
+  if (rules.dropsStrayBrackets) name = trimmedName(withoutStrayBrackets(name));
   if (name.length >= 2 && name.charCodeAt(0) === OPEN_PAREN && name.charCodeAt(name.length - 1) === CLOSE_PAREN) {
     name = name.slice(1, -1).trim();
   }
@@ -561,8 +793,9 @@ function plainTable(text: string): ParsedContactsFile {
  * U25's own reader with the tab as separator (its notes kept), the first row header-matched by `mappingFor` like any
  * file. Without one: a LIST, one contact per line — `[phone, name]` — its lines numbered as pasted, blank lines counted,
  * a line with no number listed as unreadable, and a line with a second number keeping the first (S15-4, said in a note).
+ * `rules` is for the suite's red plants alone (`PASTE_RULES`): the dialog never passes it.
  */
-export function parsePastedText(text: string): ParsedContactsFile {
+export function parsePastedText(text: string, rules: PasteRules = PASTE_RULES): ParsedContactsFile {
   const source = stripBom(String(text ?? "")).text;
   if (!isListPaste(source)) {
     const read = parseCsv(source, { delimiter: "tab" });
@@ -582,16 +815,24 @@ export function parsePastedText(text: string): ParsedContactsFile {
       blankRows++;
       return;
     }
-    const numbers = numbersOf(line);
+    const runs = runsOf(line);
+    const numbers = numbersOf(line, rules, runs);
     if (numbers.length === 0) {
       unreadable.push({ line: lineNo, reason: PASTE_LINE_NO_NUMBER });
       return;
     }
-    // ⭐ S15-4 · the ONE choice (`firstMobileIndex`, phone-cell.ts): the first Tanzanian mobile on the line, else the first.
-    const at = firstMobileIndex(numbers.map((n) => n.text));
-    const first = numbers[at >= 0 ? at : 0];
+    // ⭐ C8c · D4 · each number read in the CELL it was written in (`cellOf`) — and (m1) a bare nine digits standing alone
+    // after a run written as a code as a PART of the stretch from it (`partOf`) — and, S15-4, the ONE choice
+    // (`firstMobileIndex`, phone-cell.ts) over those: the first holding a Tanzanian mobile gives that mobile as it is
+    // written; when none does, the first is staged whole and the server's same rule says why. The name is the line less
+    // what each number is read from — its cell, or the stretch from a code (never a name's, so "+254" never stays in it).
+    const cells = numbers.map((n) => cellOf(line, runs, n, rules));
+    const from = prefixLength(line, rules);
+    const judged = cells.map((c, k) => partOf(line, runs, numbers[k], c, from, rules));
+    const at = firstMobileIndex(judged.map((c) => c.text));
+    const phone = at >= 0 ? (mobilesIn(judged[at].text)[0]?.text ?? judged[at].text) : judged[0].text;
     if (numbers.length > 1) multi.push(lineNo);
-    rows.push({ line: lineNo, cells: [first.text, nameOf(line, numbers)] });
+    rows.push({ line: lineNo, cells: [phone, nameOf(line, cellSpans(judged), rules)] });
   });
   const notes = rows.length > 0 ? [PASTE_LIST_NOTE] : [];
   if (multi.length > 0) notes.push(multiNumberNote(multi));
@@ -603,7 +844,7 @@ export function pasteExtraNumbers(text: string): number {
   const source = stripBom(String(text ?? "")).text;
   if (!isListPaste(source)) return 0;
   let extra = 0;
-  for (const line of pastedLines(source)) if (line.trim() !== "" && numbersOf(line).length > 1) extra++;
+  for (const line of pastedLines(source)) if (line.trim() !== "" && numbersOf(line, PASTE_RULES).length > 1) extra++;
   return extra;
 }
 

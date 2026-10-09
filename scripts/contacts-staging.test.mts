@@ -39,6 +39,7 @@ import {
   IMPORT_STAGING_DEPS, STAGING_SENTENCES,
 } from "../src/lib/server/contacts/import-staging.ts";
 import type { ImportStagingDeps, StageContactRowsResult } from "../src/lib/server/contacts/import-staging.ts";
+import { refusalAuditGate } from "../src/lib/server/contacts/refusal-audit.ts";
 import {
   IMPORT_MAX_ROWS, STAGE_BATCH_BODY_MARGIN, STAGE_BATCH_MAX_BYTES, STAGE_BATCH_MAX_ROWS, STAGE_ROW_TOO_LARGE,
   packStageBatches, stageBatchBytes, stageFigures, stageRowFor, stageRowsOf, utf8Length,
@@ -81,7 +82,10 @@ const ADMIN = "usr_stage_admin";
 const NOW = new Date("2026-10-02T09:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 const iso = (ms: number) => new Date(ms).toISOString();
-const TEST_DEPS: ImportStagingDeps = { ...IMPORT_STAGING_DEPS, audit: captureAudit, now: () => NOW };
+/** ⭐ C8c · #14a · the refusal-audit gate on the suite's FIXED clock — reset by every fresh store, so no check's refusal row
+ *  is kept out by another check's (production's gate is one per process, on the wall clock). */
+const TEST_REFUSAL_AUDIT = refusalAuditGate(() => NOW.getTime());
+const TEST_DEPS: ImportStagingDeps = { ...IMPORT_STAGING_DEPS, audit: captureAudit, refusalAudit: TEST_REFUSAL_AUDIT, now: () => NOW };
 
 type Impl = { deps: ImportStagingDeps };
 const REAL: Impl = { deps: TEST_DEPS };
@@ -144,6 +148,7 @@ async function inFreshStore(fn: () => Promise<void>): Promise<void> {
   for (const k of FLAT) (m[k] as Map<string, unknown>).clear();
   m.contactImportRows.clear();
   captured.length = 0;
+  TEST_REFUSAL_AUDIT.reset();
   try {
     await db.user.create(makeUser(OFFICER, "+255754900001", "GROWTH"));
     await db.user.create(makeUser(OTHER, "+255754900002", "GROWTH"));
@@ -326,8 +331,13 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const id = await open(OFFICER, { totalRows: 10 });
     const theirs = await openContactImport(OTHER, openBody({ totalRows: 10 }), deps);
     const peek = await contactImportView(OTHER, id, deps);
-    const push = await stageContactRows(OTHER, stageBody(id, 1, rowsFrom(2, 2)), deps);
-    const drop = await discardContactImport(OTHER, id, deps);
+    // ⭐ C8c · m6 · the refusal gate's own clock moves past its minute between the push and the discard, so each is held to
+    // its OWN row (the gate's bound — one a minute per key — is test:contacts-import M26/M27's).
+    const gateClock = { ms: NOW.getTime() };
+    const gated: ImportStagingDeps = { ...deps, refusalAudit: refusalAuditGate(() => gateClock.ms) };
+    const push = await stageContactRows(OTHER, stageBody(id, 1, rowsFrom(2, 2)), gated);
+    gateClock.ms += 61_000;
+    const drop = await discardContactImport(OTHER, id, gated);
     const adminView = await contactImportView(ADMIN, id, deps);
     const adminPush = await stageContactRows(ADMIN, stageBody(id, 1, rowsFrom(2, 2)), deps);
     const notYours = captured.filter((x) => x.action === "contacts.import.stage_refused" && (x.payload as { reason?: string })?.reason === "not_yours");

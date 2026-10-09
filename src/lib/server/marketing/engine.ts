@@ -262,9 +262,11 @@ export type EngineDeps = {
   credit: typeof creditVerdict;
   /** E1 · the number's opt-out token: reused, else minted (`ensureOptOutToken`). */
   ensureToken: (key: string) => Promise<string | null>;
-  /** E30 · the number's CURRENT opt-out token, read and never minted (`currentOptOutToken` — the one `ensureOptOutToken`
-   *  reuses): the reaper gives a row that reached the wire the token its message carried (the U43b-2 review). Optional, so
-   *  a dependency set written before it still type-checks; production's sets it, and a set without it recovers nothing. */
+  /** The number's CURRENT opt-out token, read and never minted (`currentOptOutToken` — the one `ensureOptOutToken`
+   *  reuses): the reaper records it on a row that reached the wire (the U43b-2 review) — the token its message carried
+   *  until the owner's ruling of 2026-10-09; no message prints it since, and E30's row no longer reads tokens, so it
+   *  serves the access export. Optional, so a dependency set written before it still type-checks; production's sets it,
+   *  and a set without it recovers nothing. */
   tokenOf?: (key: string) => Promise<string | null>;
   /** THE ONE renderer (`renderForRecipient`). */
   render: typeof renderForRecipient;
@@ -608,8 +610,9 @@ function evidenceOf(m: StoredSmsMessage | undefined): ReapEvidence {
  * the evidence through `reapVerdict` (the pure table: none, an earlier attempt's, or a FAILED no receipt wrote → PENDING +1;
  * QUEUED/UNKNOWN → UNCONFIRMED; ACCEPTED → SENT; DELIVERED → DELIVERED; FAILED by a receipt → FAILED). Each patch names the
  * row's own claim, so a row that moved meanwhile is `lost`, never forced. ⭐ A row whose message reached the wire is given
- * the opt-out token that message carried — the number's one reused token, READ (`tokenOf`, never minted: E1) — so E30 and
- * the access export keep it (the U43b-2 review; its variant and size are not recoverable and stay empty). Runs for a
+ * the number's one reused opt-out token, READ (`tokenOf`, never minted: E1) — the token that message carried until the
+ * owner's ruling of 2026-10-09, printed in none since — so the access export keeps it (the U43b-2 review; E30's row reads
+ * no token since 2026-10-09; its variant and size are not recoverable and stay empty). Runs for a
  * campaign in ANY status (§3.3: a PAUSED, CANCELLED or DONE campaign is only reaped, so a stranded claim never shows "not
  * sent" for a message that went). ONE SYSTEM row, only when it settled anybody.
  */
@@ -631,9 +634,11 @@ export async function reapStrandedClaims(campaignId: string, deps: EngineDeps = 
   for (const row of stranded) {
     const ev = evidenceOf(byTarget.get(row.id));
     let p = deps.rules.reapVerdict(row, ev, at);
-    // A row whose message reached the wire, holding no token: read the one that message carried, and settle it with that.
+    // A row whose message reached the wire, holding no token: read the number's token (the one that message carried,
+    // until 2026-10-09 — no message prints it since), and settle it with that.
     if ((p.to === "SENT" || p.to === "DELIVERED" || p.to === "UNCONFIRMED") && row.optOutToken === null && deps.tokenOf !== undefined) {
-      // ⛔ A failed read settles the row without its token — never the whole reap (it only serves E30's record).
+      // ⛔ A failed read settles the row without its token — never the whole reap (it only serves the access export's
+      // record; E30's row reads no token since 2026-10-09).
       const token = await deps.tokenOf(row.msisdn).catch(() => null);
       if (token !== null) p = deps.rules.reapVerdict({ ...row, optOutToken: token }, ev, at);
     }

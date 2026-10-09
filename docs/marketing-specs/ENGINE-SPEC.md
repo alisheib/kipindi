@@ -406,7 +406,7 @@ back, except U47a's future Retry (an operator's act, re-gated).
 |---|---|---|
 | `officer_paused` | "Paused by an officer." (the live page names who and when from the audit row) | U47b |
 | `officer_stopped` | "Stopped by an officer." | U47b |
-| `live_switch_closed` | "Paused — marketing SMS are not switched on: the owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume." | U43b (✅ as built, its review: true of an off, a lapsed and an unreadable switch — before the claim or just before the wire) |
+| `live_switch_closed` | "Paused — marketing SMS are not switched on: the Owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume." | U43b (✅ as built, its review: true of an off, a lapsed and an unreadable switch — before the claim or just before the wire) |
 | `MARKETING_FLOOR` · `marketing_floor` | "Paused — the SMS credit reached what is kept for login and withdrawal codes. Top up, then Resume." | U49a |
 | `credit_unreadable` | "Paused — the SMS credit couldn't be read, so sending stopped to protect login codes. Resume when Admin → System shows the credit again." | U49a |
 | `gateway_refused` | "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume." | U43b |
@@ -998,7 +998,7 @@ export async function confirmCampaign(input: ConfirmCampaignInput, viewer: { mon
   line — and this campaign has none yet. The owner sets it on Admin → System → Marketing wordings; then save this draft
   again. Nothing was confirmed."
 - `over_limit` (money reader): "This campaign could cost up to TZS 12,060 — more than the TZS 10,000 one campaign may spend.
-  Narrow the audience, or the owner raises the limit on Admin → System → Marketing SMS. Nothing was confirmed."
+  Narrow the audience, or the Owner raises the limit on Admin → System → Marketing SMS. Nothing was confirmed."
 - `over_limit` (other roles): "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the
   owner to raise the limit. Nothing was confirmed."
 - `price_unknown`: "The price per SMS isn't known, so this campaign's cost can't be checked against its limit. The owner
@@ -1590,7 +1590,7 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
 - `not_confirmed`: "Only a confirmed campaign can start."
 - `confirmation_unreadable`: "This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a
   new copy. Nothing was sent."
-- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+- `switch_closed`: "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending),
   then you can start. Nothing was sent."
 - `rail_dead`: "No SMS can leave this server right now — Admin → System says why. Nothing was sent."
 - `needs_source_line`: "This campaign can reach people from the contact book, and its message has no source line. Stop it
@@ -1602,17 +1602,17 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
   starts. Try again in a moment. Nothing was sent."
 - `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before
   it starts. The developer must repair them first. Nothing was sent."
-- `price_unknown`: "The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System →
+- `price_unknown`: "The price per SMS isn't known, so the budget can't be checked. The Owner sets it on Admin → System →
   Marketing SMS. Nothing was sent."
 - `over_budget` (money): "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it
-  and confirm a smaller copy, or the owner raises the limit. Nothing was sent." · (other roles): "At today's price this
-  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent."
+  and confirm a smaller copy, or the Owner raises the limit. Nothing was sent." · (other roles): "At today's price this
+  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the Owner. Nothing was sent."
 - `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a
   minute. Nothing was sent."
 - `credit_low` (money): "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
   24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent." ·
   (other roles): "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes
-  need. Ask the owner to top up. Nothing was sent."
+  need. Ask the Owner to top up. Nothing was sent."
 - `audience_uncounted`: "The audience couldn't be counted just now. Try again in a minute. Nothing was sent."
 - `audience_moved` (a reader, or a one-arm campaign): "The audience grew since it was confirmed — now 1,610, confirmed
   1,604. Nothing was sent. Stop this campaign and confirm a new copy." · (book ∪ players, a viewer who may not read
@@ -1638,7 +1638,7 @@ ends "Nobody more was messaged."; none says start, narrow the audience, or "Noth
   audience can't be read any more, so this campaign can't resume. Some people on it have already been messaged, and a new
   campaign to the same people would message them again: stop it, and send another only if that is what you want. Nobody
   more was messaged."
-- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+- `switch_closed`: "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending),
   then you can resume. Nobody more was messaged."
 - `rail_dead`: "No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more
   was messaged."
@@ -1650,14 +1650,14 @@ ends "Nobody more was messaged."; none says start, narrow the audience, or "Noth
   Try again in a moment. Nobody more was messaged."
 - `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so what is left to send can't be
   checked. The developer must repair them first. Nobody more was messaged."
-- `price_unknown`: "The price per SMS isn't known, so what is left to send can't be priced. The owner sets it on Admin →
+- `price_unknown`: "The price per SMS isn't known, so what is left to send can't be priced. The Owner sets it on Admin →
   System → Marketing SMS. Nobody more was messaged."
 - `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't resume safely. Try again in a
   minute. Nobody more was messaged."
 - `credit_low` (money): "Resuming would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
   24,000, the rest of this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, then resume. Nobody more was
   messaged." · (other roles): "There isn't enough SMS credit to finish this campaign and still keep what login and
-  withdrawal codes need. Ask the owner to top up, then resume. Nobody more was messaged."
+  withdrawal codes need. Ask the Owner to top up, then resume. Nobody more was messaged."
 
 **As built · around it.**
 - `sendBatch`'s `minimumBalanceTzs` judges only an all-MARKETING batch, after the platform floor (`BALANCE_FLOOR` keeps
@@ -1719,22 +1719,22 @@ export function startRefusalSentence(r: StartRefusal, money: boolean): string;
 
 **Sentences** (`startRefusalSentence`; every one ends "Nothing was sent." where nothing was):
 - not_confirmed: "Only a confirmed campaign can start."
-- switch_closed: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+- switch_closed: "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending),
   then you can start. Nothing was sent."
 - rail_dead: "No SMS can leave this server right now — Admin → System says why. Nothing was sent."
 - needs_source_line: "This campaign can reach people from the contact book, and its message has no source line. Stop it
   and confirm a copy once the owner has set the source line. Nothing was sent."
 - audience_unreadable: "The saved audience can't be read any more. Stop this campaign and confirm a new copy. Nothing was
   sent."
-- price_unknown: "The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System →
+- price_unknown: "The price per SMS isn't known, so the budget can't be checked. The Owner sets it on Admin → System →
   Marketing SMS. Nothing was sent."
 - over_budget (money): "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it
-  and confirm a smaller copy, or the owner raises the limit. Nothing was sent." · (other roles): "At today's price this
-  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent."
+  and confirm a smaller copy, or the Owner raises the limit. Nothing was sent." · (other roles): "At today's price this
+  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the Owner. Nothing was sent."
 - credit_low (money): "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
   24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent." ·
   (other roles): "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes need.
-  Ask the owner to top up. Nothing was sent."
+  Ask the Owner to top up. Nothing was sent."
 - credit_unreadable: "The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a
   minute. Nothing was sent."
 - audience_moved: "The audience grew since it was confirmed — now 1,610, confirmed 1,604. Nothing was sent. Stop this
@@ -2716,7 +2716,7 @@ export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepRe
 - Standing callouts: keep open (RUNNING/PREPARING) "Keep this page open while it sends — sending continues only while a page
   like this one is open." · nobody driving (RUNNING, no claim for 90 s, viewer cannot act or the driver has not run yet)
   "Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open. (Last step 14:02
-  EAT.)" · switch off "Marketing SMS are switched off — this campaign waits until the owner switches them on." · out of date
+  EAT.)" · switch off "Marketing SMS are switched off — this campaign waits until the Owner switches them on." · out of date
   (above) · second factor (the platform's sentence).
 - KPIs: "On campaign" · "Handed over" (title: "The network took the message. Delivery is confirmed by a receipt, usually in
   seconds.") · "Failed" · "Not sent (checks)" · "No answer" (title: "Handed to the network with no answer back — never
@@ -3089,16 +3089,17 @@ its opt-out token, and `/s/<token>` still works — stop, and "Start them again"
    login's own number (+255••••90) is not the test number (+255••••19): step 2 saves the draft and sends nothing (decision point 1).
    The drive's real SMS are A's and C's — 2 of 6 — and the spare is four. (Decision 2's step 2, the composer test, is not made, so
    its "send 2" and "send 3" are sends 1 and 2.)
-5. **The pre-flight's `source` row is unchanged for now.** It still asks for a saved `source.phrase` (and, while licence outreach
-   is open, `adult.test`); since the ruling the app neither prints nor requires either, so the row guards nothing the drive does.
-   Its removal is owed and waits for the owner's approval. Both wordings were saved on production with the owner's approvals of
-   2026-10-07/08, so the row reads GO; a NO-GO there is a question for Ali, never cleared by saving a wording.
+5. **The pre-flight's `source` row is removed (the owner's approval of 2026-10-09).** It asked for a saved `source.phrase` (and,
+   while licence outreach was open, `adult.test`) and guarded nothing the drive does: since the ruling no message prints the
+   source line and nothing requires it, and the drive's GROWTH login makes no typed-number test. The pre-flight now has nineteen
+   rows — a full GO is 18 of 18, the `control` row n/a — and still reads the saved wordings, only to recognise an import
+   attestation.
 
 **The tools** (both read-only, both exit non-zero unless what they were asked is true):
 
 | Tool | Key | Reads | Exit |
 |---|---|---|---|
-| `scripts/live/marketing-preflight.mjs` | `ops:marketing-preflight` | `now()` (the DATABASE's clock — every time rule is judged on it); `_prisma_migrations` (by name); `SystemConfig` (the live switch, the Marketing SMS settings, the licence-outreach record, the saved wordings — read to recognise an import attestation and to see that `source.phrase` and `adult.test` are saved); the test number's book row, its lists (name, member count), the newest basis per list, its stops, its newest ledger row, the holding account (role, status, switch, date of birth → an age band, never shown) and earlier campaign rows; ⭐ every campaign that could send now (id and status of those CONFIRMED, PREPARING, RUNNING or PAUSED) and ONE COUNT of the last day's MARKETING `SmsMessage` rows to any number but the test number (counted in SQL — no number is selected); the control's stops; the public home page (`?dpl=`) and `/api/health` (`sms.*`, a flag for the receipt secret — never the secret); the ledger file | 0 every row GO · 1 a NO-GO · 2 not run |
+| `scripts/live/marketing-preflight.mjs` | `ops:marketing-preflight` | `now()` (the DATABASE's clock — every time rule is judged on it); `_prisma_migrations` (by name); `SystemConfig` (the live switch, the Marketing SMS settings, the licence-outreach record, the saved wordings — read only to recognise an import attestation); the test number's book row, its lists (name, member count), the newest basis per list, its stops, its newest ledger row, the holding account (role, status, switch, date of birth → an age band, never shown) and earlier campaign rows; ⭐ every campaign that could send now (id and status of those CONFIRMED, PREPARING, RUNNING or PAUSED) and ONE COUNT of the last day's MARKETING `SmsMessage` rows to any number but the test number (counted in SQL — no number is selected); the control's stops; the public home page (`?dpl=`) and `/api/health` (`sms.*`, a flag for the receipt secret — never the secret); the ledger file | 0 every row GO · 1 a NO-GO · 2 not run |
 | `scripts/live/marketing-campaign-evidence.mjs` | `ops:marketing-campaign-evidence` | `now()`; one campaign: its row, its recipient rows (masked), the `SmsMessage` rows of those rows and of the composer's tests (for each, only whether it went to the TEST number — a yes/no computed in SQL, never the number), its E24 audit rows (through an allow-list), the live switch's last eight audit rows, the named people's stops and ledger timeline; ⭐ with `--test`, the same ONE COUNT of the last day's marketing messages to any number but the test number (of ANY campaign); the stop token only under `--show-stop-link`; the ledger file. No network call | 0 every expectation holds and the ledger took the count · 1 not proven / a violation / the ledger refused / no such campaign · 2 not run |
 
 Both go through ONE Postgres transaction — REPEATABLE READ, so their dozen reads are one snapshot — whose first statement is
@@ -3127,16 +3128,12 @@ when it reads as a plain label, else hidden). The pre-flight's only network call
 bounded and rate-limited on the server) — the only thing either tool can make anything else do. Both run through `tsx` (they import
 the repo's pure modules). **Run them through `npm run -s`: npm's banner echoes the whole command line — the typed number with it.**
 
-**The pre-flight's rows** (`build · health · migrations · switch · settings · source · window · rail · webhook · credit · ledger ·
-in-flight · elsewhere · test-number · test-book · test-lists · test-consent · test-cycle · test-fresh · control` — twenty), each GO /
-NO-GO with its reason. The **control** row is n/a without `--control` (the fallback), so a full GO reads `RESULT: GO — 19 of 19 rows (1
+**The pre-flight's rows** (`build · health · migrations · switch · settings · window · rail · webhook · credit · ledger ·
+in-flight · elsewhere · test-number · test-book · test-lists · test-consent · test-cycle · test-fresh · control` — nineteen), each GO /
+NO-GO with its reason. The **control** row is n/a without `--control` (the fallback), so a full GO reads `RESULT: GO — 18 of 18 rows (1
 not applicable)`. Every time rule reads the database's clock; the report says whose clock it used and how far this machine's is from it.
 A value flag is taken ONCE — a second `--test` (or `--origin`, `--sends`, …) is refused, never silently dropped; only
 `--drive-campaign` repeats.
-- **`source`** — the newest saved `source.phrase` is not blank and, while licence outreach is OPEN, the 18+ sentence of the
-  typed-number test (`adult.test`) is saved too. Only the version and the save date are shown, never the words. (Since 2026-10-09
-  neither is printed or required by the app — no message carries a source line, and the drive's GROWTH login makes no typed test;
-  the row is kept until its removal is approved — "What changed on 2026-10-09", item 5.)
 - **`window`** — now is inside the SAVED send window (the Marketing SMS settings' `windowStartMinute`–`windowEndMinute`, the default
   08:00–20:00 only when nothing is saved; the end is exclusive, as the engine's) **with at least 60 minutes left** (`--min-window=<minutes>`
   changes the 60): a start at 19:55 is held at 20:00, so inside the window is not enough.
@@ -3247,17 +3244,14 @@ never writes a count down by hand, and takes no further step before it does.
 5. **The test number is in the contact book, on a list of ONE** — the pre-flight's `test-lists` row names it — with a consent or basis
    the gate clears, and one that SURVIVES the stop link's two acts (`test-cycle`). The list's name is the drive's own and PLAIN (letters,
    digits, spaces, `.` `_` `:` `#` `-`, up to 40 characters — the tool will not print any other, and then the row is NO-GO); its numbers are its own.
-6. **The source line is saved** (`source`): the newest `source.phrase` is not blank — and, while licence outreach is open, `adult.test`.
-   (Since 2026-10-09 neither is printed or required by the app; the row is kept until its removal is approved — "What changed on
-   2026-10-09", item 5.)
-7. **No composer test is made** (decision point 1, below): the QA Growth login's own number is not the test number.
-8. **The receipt secret is set** (`webhook`) and Ali or Jay can read the Blackball portal's Out SMS `COUNT` (segments) before and
+6. **No composer test is made** (decision point 1, below): the QA Growth login's own number is not the test number.
+7. **The receipt secret is set** (`webhook`) and Ali or Jay can read the Blackball portal's Out SMS `COUNT` (segments) before and
    after, for the comparison.
-9. **The credit** covers the codes reserve plus the drive (`credit`).
-10. **Nothing else can send** (`in-flight`, `elsewhere`): no other campaign is CONFIRMED, PREPARING, RUNNING or PAUSED, and no marketing
-    message of the last 24 hours went to any number but the test number. A NO-GO there is cleared by finding out whose campaign or
-    message it is — never by switching the row off or opening the switch around it: the switch is global, and what it opens is not only the
-    drive's.
+8. **The credit** covers the codes reserve plus the drive (`credit`).
+9. **Nothing else can send** (`in-flight`, `elsewhere`): no other campaign is CONFIRMED, PREPARING, RUNNING or PAUSED, and no marketing
+   message of the last 24 hours went to any number but the test number. A NO-GO there is cleared by finding out whose campaign or
+   message it is — never by switching the row off or opening the switch around it: the switch is global, and what it opens is not only the
+   drive's.
 
 **The sheet.** `<A>`/`<B>`/`<C>` = the campaign ids — the `draft=` value in the composer's address after "Save draft", which is also the
 tail of `/admin/campaigns/<id>`; `<sha>` = the commit production should serve. **Run from the checkout of the commit production runs —
@@ -3287,7 +3281,7 @@ no gate. **Before each Start (steps 3, 5 and 7) and before ANY retry run G1, G2 
 
 | # | When | Who | Page · the control | Read back | Evidence after it | Ledger |
 |---|---|---|---|---|---|---|
-| 0 | before anything is opened | the lead | — | — | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-dpl=<sha> --new-ledger` → **RESULT: GO — 19 of 19 rows (1 not applicable)** (`control` n/a); `test-lists` names the drive list; `in-flight` and `elsewhere` are GO with no campaign named | 0 |
+| 0 | before anything is opened | the lead | — | — | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-dpl=<sha> --new-ledger` → **RESULT: GO — 18 of 18 rows (1 not applicable)** (`control` n/a); `test-lists` names the drive list; `in-flight` and `elsewhere` are GO with no campaign named | 0 |
 | 1 | switch opened for 2 h | the lead through the audited ops door on Ali's G1 word — or Ali on the card. **Never the QA login** (opening is owner-only) | Admin → System, the "Marketing SMS sending" card ("Switch on…" → duration → "Switch on"); or `railway run --service 50pick npm run -s ops:marketing-live-switch -- open --minutes 120 --by "Claude for Ali (G1)" --reason "U52a live drive"` | the card: "On until HH:MM EAT"; the door: `DONE: ON — opened at … it switches itself off at …` | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=open --new-ledger` → the `switch` row GO (20+ min left) | 0 |
 | 2 | the draft — **no send** | QA Growth | `/admin/campaigns/new` → Message card: Campaign name `U52a drive A`, Swahili message, Swahili word for {jina}, English message and English word for {jina} — each EXACTLY the drive's message ("What changed on 2026-10-09", item 2; the counter reads one GSM-7 message) → "Save draft". **No test is sent** (decision point 1): the Test send card reads "Send the test to" and "My own number — +255••••90" as text — no choice, no control — and the test number is +255••••19 | the Test card's two previews, "Swahili, as it will be sent to you" and "English, as it will be sent to you": each EXACTLY the drive's message with "QA" for {jina} — nothing after "kukosa!" / "miss it!" (another word, or anything after them: stop and tell Ali) | — (nothing was sent: no evidence, and no ledger exists yet) | 0 |
 | 3 | **Campaign A** — send 1 | QA Growth | the same draft: Audience card → Who "Contact book" → List "<the drive list the pre-flight named>" → "Save draft" → Confirm card "Confirm audience…" → dialog "Confirm this person?" → "Confirm audience" ("Confirmed — nothing has been sent. Start it from its own page.") → `/admin/campaigns/<A>` → **Gates G1, G2 and G3 (`<X>` = `<A>`), each with `--new-ledger` — no ledger exists yet, and G3's look writes it** → "Start…" → dialog "Start sending to up to 1 person?" → "Start sending". **Keep the page open.** | "Preparing the list — 0 of 1 people written." → "Sending — 0 of 1 done." → "Finished — nobody on this campaign is left to message."; "Handed over 1"; the receipt moves the chip to "Delivered" in seconds; the evidence's SENT AS WRITTEN and DRIVE'S MESSAGE lines read clear | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect-sends=1 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=A --show-stop-link` (no `--new-ledger`: G3 wrote the ledger; a `SENT` row before the receipt: wait a minute, run it again; no receipt after 15 minutes is a finding, not a retry) | 1 |

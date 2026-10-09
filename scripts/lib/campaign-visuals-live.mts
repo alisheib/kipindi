@@ -48,6 +48,7 @@ const NAVGROUPS = await import("../../src/components/admin/admin-nav-groups.ts")
 const RUNADMIN = await import("../../src/lib/client/run-admin-action.ts");
 const NEXT = await import("next/server");
 const ADMISSION = await import("../../src/lib/server/admission.ts");
+const FIELDS = await import("../../src/lib/contacts/contact-fields.ts");
 const RATELIMIT = await import("../../src/lib/server/rate-limit.ts");
 const { db } = await import("../../src/lib/server/store.ts");
 const { getAuditPage, auditFlush } = await import("../../src/lib/server/audit.ts");
@@ -65,7 +66,7 @@ export const LIVE_LABELS = {
   v13: "V13 · ⭐ THE DRIVER'S HOOK, EXECUTED (the review's MINOR 3) — the real useLiveDriver on a minimal hooks host with a fake clock: it steps at once, again after 2 s when work was done, after the wait's until (12 s here) and after 5 s when another step held the flight, and ends on DONE with no timer left; React's development double-run makes ONE step call, not two; a page that leaves while a step is in flight makes no further call and sets no state, and one that leaves while the loop sleeps leaves no timer behind; a viewer who may not act polls every 10 s and makes no step call; a status that keeps the mode (PREPARING → RUNNING) does not restart the loop and skip the gap; a flip to another mode starts exactly one loop and does not run the reaper again; a stopped driver stays stopped until Try again; refresh reads the campaign at once; and the compiled real source passes the same scenarios (the control)",
   v14: "V14 · ⭐ THE PRESSES, EXECUTED (the review's MAJOR and MINORS 1, 2, 6) — the real useLivePresses: two clicks in one tick make ONE call (the guard is a ref, not state), a press in flight disables its own control only (Stop is pressable while Pause waits), a viewer who may not act presses nothing, a landed act sets the campaign it answered with (or asks for it when the answer had none), its toast fades when it is the act's plain sentence and STAYS (warning, durationMs 0) when it carries a warning or advice, a refusal stays until the next press clears it, an act that threw is unfinished with the reload words and a request for the campaign, a copy never takes a DRIVING page away (a link for a new tab) and navigates any other — but never once the page has been left (the answer skips only the navigate; React's development double-run still ends mounted) — the link a copy leaves behind stays through every other press and goes with the next Make a copy, the mode read is the latest when the answer lands, a throw out of a setter leaves no control pending for good, and the compiled real source passes the same scenarios (the control)",
   v15: "V15 · ⭐ WHAT THE PAGE SAYS AND WHEN (the review's MINORS 1, 2, 4, 5, 8) — the pure decisions the components call: liveMay needs both the server and the console's gate; a control's state is its view's AND its own press in flight, never another's; the reasons PRINTED are a role's once for all five, the status's expected control's, and any that is not the plain 'not in this state' — the rest named to assistive technology — and every disabled control's aria-describedby names an element that is in the markup, carrying its reason; 'Nobody is sending' reaches an actor only after its own driver stopped (never above 'Keep this page open' on a first paint) and a watcher whenever it is the data's fact, PREPARING's in its own words; the closed send window and the switch's closing time reach a viewer who is not driving; a stopped driver's wait is gone; the toast of a plain act fades and every other stays; a copy while driving is a link; the page's ONE live region is always mounted, polite, and says the headline when the status CHANGES — never on mount, never for a headline that moved without it; the dialog a settled press closes is that press's own (a Pause answering leaves the Stop dialog, a refused Start leaves no dialog over its refusal — dialogAfterSettled, which the Provider calls); every callout of the controls card — a driver stop of each of its seven kinds (the step-up page at both of its addresses), a press's refusal and a copy's link — is drawn alone and read: its sentence, its one way on (the step-up link with the right text, Try again, Reload), target=_blank with rel=noopener noreferrer on every link that opens another tab, role=alert on every alert; the trail names the campaign (AdminCrumbLabel) and the ghost's buttons keep the kit's --tap-min; the components call these functions and make no such decision inline; and the compiled real source passes the same (the control)",
-  v16: "V16 · ⭐ THE DEV SEED (the review's MINOR 9 and NIT) — ?busy= is re-entrant: two holds, then ?busy=0, put the admission gate's limits back exactly (a second hold never records the first's raised limits as the original); ?run= and ?stages= refuse (409) and make nothing unless the rail is the console stub, and make their campaign when it is; and every sentence the drive asserts against (each W.<path> its source names) is served by ?words=; and the compiled real source passes the same (the control)",
+  v16: "V16 · ⭐ THE DEV SEED (the review's MINOR 9 and NIT) — ?busy= is re-entrant: two holds, then ?busy=0, put the admission gate's limits back exactly (a second hold never records the first's raised limits as the original); ?run= and ?stages= refuse (409) and make nothing unless the rail is the console stub, and make their campaign when it is; ⭐ the tag they give (2026-10-09, the admin guide's &tag=): none named, u47live-<id> as before; named, the writers' one-tag form (lower case, whitespace collapsed) is the run's audience and on every person it made, and ?stages= reads its tag from the same tagFor; a name that rule refuses (a phone number, two tags) answered 400 in the rule's own sentence on ?run= and on ?stages=, with nothing made; and every sentence the drive asserts against (each W.<path> its source names) is served by ?words=; and the compiled real source passes the same (the control)",
   v17: "V17 · THE COPY SPENDS THE OFFICER'S SAVE BUDGET (the first round's leftover) — Make a copy IS a saved draft: the copy action, compiled and run with stand-ins, asks the budget exactly once — for this officer, on the real marketing.campaignSave rule (a bucket the rate limiter does not know fails OPEN) — AFTER its guard and BEFORE the service, answers rate_limited with copyRateLimitedSentence(retryAfterSec) and runs nothing when it is refused, does not ask at all when the guard refuses, and no other press and not the poll spends it; and the compiled real source passes the same (the control)",
 } as const;
 export type LiveLabel = (typeof LIVE_LABELS)[keyof typeof LIVE_LABELS];
@@ -919,7 +920,7 @@ async function decisionChecks(M: Mods, S: PageSources, h: PageHarness, tag: stri
   const watching = callouts(shut, { mayAct: false, mode: "watch", stop: null });
   const stoppedDriver = callouts(shut, { mayAct: true, mode: "drive", stop: { kind: "role", sentence: "x" } });
   const windowWords = "Waiting for the send window — sending resumes at 08:00 EAT.";
-  const closesWords = "Marketing SMS stay switched on until 14:00 EAT on 8 Oct 2026, then sending waits until the owner switches them on again.";
+  const closesWords = "Marketing SMS stay switched on until 14:00 EAT on 8 Oct 2026, then sending waits until the Owner switches them on again.";
   if (!(driving.window === null && driving.switchCloses === null && watching.window === windowWords && watching.switchCloses === closesWords && stoppedDriver.window === windowWords && stoppedDriver.switchCloses === closesWords)) {
     wrong.push(`the closed window and the switch: a driver ${json([driving.window, driving.switchCloses])}, a watcher ${json([watching.window, watching.switchCloses])}, a stopped driver ${json([stoppedDriver.window, stoppedDriver.switchCloses])}`);
   }
@@ -1161,6 +1162,9 @@ async function markupChecks(P: PageImpl, h: PageHarness): Promise<string[]> {
 
 /* ══ V16 · THE DEV SEED ═════════════════════════════════════════════════════════════════════════════════════════════ */
 
+/** How many times V16 has asked for a named tag in this process — the run ids it names (`tg1`, `tp1` …) are fresh per call. */
+let TAG_CALLS = 0;
+
 /** Every V16 check, against one seed module and the drive's source. */
 async function seedChecks(M: Mods, S: PageSources, h: PageHarness): Promise<string[]> {
   const wrong: string[] = [];
@@ -1200,6 +1204,38 @@ async function seedChecks(M: Mods, S: PageSources, h: PageHarness): Promise<stri
     }
     const stub = await call(`run=r16z${h.run}`);
     if (!(stub.status === 200 && stub.body.ok === true && typeof stub.body.campaignId === "string")) wrong.push(`on the console stub ?run= answered ${stub.status} ${json(stub.body).slice(0, 100)}`);
+    // ⭐ THE TAG A RUN OR A STAGE IS GIVEN (`&tag=`, the admin guide's — its pictures print it). Named none, `u47live-<id>` as
+    //    before. Named, the writers' one-tag form ("Weekend  Players" is stored "weekend players") is the run's audience and every
+    //    person it made carries it — read from the campaign row, which no other run's numbers can collide with (the people are
+    //    checked where they were made: a number another run made first is skipped by design). A name that rule refuses is answered
+    //    400 in the rule's own sentence, on ?run= and on ?stages=, and NOTHING is made. ?stages= takes its tag from the same reader
+    //    — read in the source, not executed: one staged set is ~3,500 rows, and red mode would write it for every plant.
+    //    The ids are fresh per call (`TAG_CALLS`): the control runs after the impl, in the same store.
+    const k = ++TAG_CALLS;
+    const mem = () => (globalThis as unknown as { __50PICK_STORE?: { smsCampaigns?: Map<string, { audienceFilter?: string }>; marketingContacts?: Map<string, { tags?: string[] }> } }).__50PICK_STORE;
+    const people = () => mem()?.marketingContacts?.size ?? 0;
+    const named = await call(`run=tg${k}&tag=${encodeURIComponent("Weekend  Players")}`);
+    const namedFilter = mem()?.smsCampaigns?.get(String(named.body.campaignId))?.audienceFilter ?? "";
+    const namedPeople = Array.from({ length: 10 }, (_, i) => mem()?.marketingContacts?.get(`mc_u47live_tg${k}_${String(i + 1).padStart(2, "0")}`)?.tags ?? null)
+      .filter((t): t is string[] => t !== null);
+    const carried = namedPeople.every((t) => json(t) === json(["weekend players"]));
+    if (!(/^u47live-r16z[a-z0-9]*$/.test(String(stub.body.tag)) && named.status === 200 && named.body.tag === "weekend players"
+      && namedFilter.includes(`${DQ}weekend players${DQ}`) && carried)) {
+      wrong.push(`the tag: none named answered ${json(stub.body.tag)}; "Weekend  Players" answered ${named.status} ${json(named.body.tag)}, the campaign's audience ${namedFilter.slice(0, 90)}, its people carry ${json(namedPeople.slice(0, 2))} (want u47live-…, 200, "weekend players" in the audience and on every person)`);
+    }
+    const c0 = made();
+    const p0 = people();
+    const phone = await call(`run=tp${k}&tag=${encodeURIComponent("0712 345 678")}`);
+    const two = await call(`stages=tv${k}&tag=${encodeURIComponent("vip, dar")}`);
+    if (!(phone.status === 400 && String(phone.body.error).includes(FIELDS.TAG_HAS_PHONE_SENTENCE)
+      && two.status === 400 && String(two.body.error).includes(FIELDS.TAG_ONE_AT_A_TIME_SENTENCE) && made() === c0 && people() === p0)) {
+      wrong.push(`a name the tag rule refuses: a phone number answered ${phone.status} ${json(phone.body.error)}, two tags on ?stages= ${two.status} ${json(two.body.error)}; campaigns made ${made() - c0}, people ${people() - p0} (want 400 in the rule's own sentence, twice, and nothing made)`);
+    }
+    const stagesAt = S.seed.indexOf(`const stagesParam = url.searchParams.get(${DQ}stages${DQ});`);
+    const stagesBranch = stagesAt < 0 ? "" : S.seed.slice(stagesAt, stagesAt + 900);
+    if (!(stagesBranch.includes("tagFor(url, `u47live-stage-${run}`)") && stagesBranch.includes("const tag = stageTag.tag;"))) {
+      wrong.push("?stages= does not take its tag from tagFor (the source's stages branch names no `const tag = stageTag.tag;`)");
+    }
     // every sentence the drive asserts against is served
     const words = ((await call("words=1")).body.words ?? {}) as Record<string, unknown>;
     const paths = [...new Set(Array.from(S.drive.matchAll(/[^A-Za-z0-9_.]W[.]([A-Za-z0-9_]+(?:[.][A-Za-z0-9_]+)*)/g), (x) => x[1]))].filter((p) => !p.endsWith(".slice"));
@@ -1335,7 +1371,7 @@ export async function liveClaims(impl: PageImpl, h: PageHarness): Promise<void> 
   await h.claim(L.v16, async () => {
     const wrong = await seedChecks(P.mods, S, h);
     const control = await seedChecks(controlMods(), REAL_SOURCES, h);
-    return verdict(wrong, control, "?busy= re-entrant · the rail guard on ?run= and ?stages= · every sentence path the drive asks is served");
+    return verdict(wrong, control, "?busy= re-entrant · the rail guard on ?run= and ?stages= · the tag named, defaulted and refused · every sentence path the drive asks is served");
   });
 
   /* ── V17 · the copy spends the officer's save budget ── */
@@ -1534,6 +1570,12 @@ export function livePlants(): LivePlant[] {
       impl: edit("seed", ["&& !railIsConsole()) {", "&& false) {"]) },
     { name: "R-V16c · a sentence the drive asserts is not served — the drive reads undefined", expect: [L.v16],
       impl: edit("seed", ["outOfDate: LIVE_OUT_OF_DATE,", ""]) },
+    { name: "R-V16e · a named tag is ignored — the run's people and audience stay u47live-<id>, a unit code in the guide's pictures", expect: [L.v16],
+      impl: edit("seed", ["const tag = runTag.tag;", "const tag = `u47live-${run}`;"]) },
+    { name: "R-V16f · a name the writers' tag rule refuses is taken as it is — a phone number on the audience rail", expect: [L.v16],
+      impl: edit("seed", ["const verdict = parseOneTag(named);", "const verdict = { ok: true as const, tag: named, sentence: " + DQ + DQ + " };"]) },
+    { name: "R-V16g · ?stages= keeps its own tag whatever it is named — the staged campaigns' 'Audience: Tag: u47live-stage-…' in the guide", expect: [L.v16],
+      impl: edit("seed", ["const tag = stageTag.tag;", "const tag = `u47live-stage-${run}`;"]) },
     { name: "R-V16d · the drive asks for a sentence the seed does not serve", expect: [L.v16],
       impl: () => ({ page: { ...REAL_PAGE, sources: { ...REAL_SOURCES, drive: `${REAL_SOURCES.drive}${NL}const stray = W.noSuchSentence.here;` } } }) },
     /* ══ THE CHECKER'S ROUND (S14 2026-10-08) — what it found no light claim for, and the claim that now holds each ══ */

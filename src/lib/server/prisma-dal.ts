@@ -537,6 +537,12 @@ import type {
   ContactImportFailedPage, ContactImportKeptCount, ContactImportFreeze, ContactImportCommitBatch, ContactImportCommitResult,
   ContactImportOthersQuery,
 } from "./store";
+// C8b · the revival (B1), the list figures by viewer (B5) and the "Added" re-dating (B8) — named, as dal-parity needs.
+import type {
+  ContactTombstoneRevival, ContactTombstoneRevived, ListBasisCoverageSplit, ContactAddedRedate, ContactAddedRedateResult,
+  ContactListJoinedQuery,
+} from "./store";
+import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";
 
 /** U29 · the most rows one keyset page, and one access-export read for a number, hand back — the memory twin's bounds. */
 const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
@@ -551,6 +557,20 @@ const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;
 const CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS = 30_000;
 /** §29 · the start's freeze: one conditional update, and — for a new list — one insert and one update more. */
 const CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS = 10_000;
+/** C8b (B1) · a tombstone's replacement by a new client's fresh row: one locking read, one delete of its memberships, one
+ *  count of its campaign recipient rows, one delete (which unlinks them), one create. */
+const CONTACT_REVIVE_TX_TIMEOUT_MS = 10_000;
+/** C8b (B8) · the "Added" re-dating: one conditional update per row, at most `ADDED_REDATE_MAX` rows (the 54 of 2026-10-03
+ *  take milliseconds); the timeout is a ceiling, never a budget. */
+const CONTACT_REDATE_TX_TIMEOUT_MS = 30_000;
+
+/** C8b (B8) · thrown INSIDE the re-dating's transaction when a row is gone or no longer holds its expected `createdAt`, so
+ *  Postgres rolls every row back and the member answers `changed`, naming it. */
+class ContactAddedRedateChanged extends Error {
+  constructor(readonly id: string) {
+    super("marketingContact.redateAdded: a row changed since the plan — every row was rolled back");
+  }
+}
 
 /** §29 · thrown INSIDE the commit's transaction when the unique index refused a create, a guard refused an update, or a
  *  staged row the step settles is gone (R9), so Postgres rolls the whole step back — the cursor included — and the step
@@ -4391,6 +4411,76 @@ export const prismaDb = {
         return { ok: false, reason: still ? "stale" : "not_found" };
       }
     },
+    /** C8b (B1) · ⭐ THE TOMBSTONE REPLACED BY A NEW CLIENT'S OWN FRESH ROW — ONE interactive transaction. ⛔ A `row` under
+     *  the tombstone's own id is refused before any statement (C8b review, MINOR 8 · iii: never the tombstone's id). The
+     *  transaction's FIRST statement is the compare: the tombstone LOCKED (`for update`) only where it is still the
+     *  tombstone — this id AND this number, the erasure's mark, no link — reading its two caches (Postgres re-checks the
+     *  where after a racing commit, so of two sign-ups one replaces it and the loser reads no row, answered null with
+     *  nothing written). Then, on the transaction's own client, in this order: its list memberships DELETED and counted
+     *  (the new row inherits no old list, and no old list's coverage); the campaign recipient rows linked to it COUNTED;
+     *  the tombstone DELETED — which UNLINKS those rows through the foreign key's own `SetNull`
+     *  (`SmsCampaignRecipient.contactId`, migration 20261002120000): `contactId` to null and nothing else, no
+     *  `updatedAt` moved (a Prisma `updateMany` would stamp the revival's instant onto the erased person's records, and
+     *  `test:dal-parity` §26 keeps raw SQL on that table out of this file); the rows are KEPT, the record that we messaged
+     *  the number, and the lock holds any new link off the row until the transaction ends, so the count is exact; and the
+     *  sign-up's row CREATED under its own id — every field of it but the number (the tombstone's) and the two caches (the
+     *  tombstone's, read by the compare: the number's mirrored truth, which the caller mirrors again). A fresh id another
+     *  row holds fails the create, and the whole transaction rolls back. ⛔ `updatedAt` is written EXPLICITLY (decision
+     *  C25), never left to `@updatedAt`. The memory twin mirrors it; `test:dal-parity` §31 holds the pair, and
+     *  `scripts/live/contacts-import-pg-probe.mts` section 8 runs it here. */
+    reviveTombstone: async (revival: ContactTombstoneRevival): Promise<ContactTombstoneRevived | null> => {
+      if (revival.row.id === revival.id) throw new Error("marketingContact.reviveTombstone: the new row must be FRESH, never under the tombstone id — nothing was done.");
+      const r = revival.row;
+      return pc().$transaction(async (tx) => {
+        const held = await tx.$queryRaw<Array<{ consentState: string; suppressedAt: Date | null }>>`
+          select "consentState"::text as "consentState", "suppressedAt" from "MarketingContact"
+           where "id" = ${revival.id} and "msisdn" = ${revival.msisdn} and "sourceRef" = ${ERASURE_EVIDENCE} and "userId" is null
+           for update`;
+        const tomb = held[0];
+        if (held.length !== 1 || tomb === undefined) return null;
+        const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;
+        const recipientsUnlinked = await tx.smsCampaignRecipient.count({ where: { contactId: revival.id } });
+        await tx.marketingContact.delete({ where: { id: revival.id } });
+        const row = await tx.marketingContact.create({
+          data: {
+            id: r.id, msisdn: revival.msisdn,
+            rawInput: r.rawInput, displayName: r.displayName, email: r.email, ndc: r.ndc, operator: r.operator,
+            source: r.source as never, sourceRef: r.sourceRef, userId: r.userId,
+            consentState: tomb.consentState as never, suppressedAt: tomb.suppressedAt,
+            tags: r.tags, notes: r.notes, importId: r.importId, createdAt: new Date(r.createdAt), createdBy: r.createdBy,
+            updatedAt: new Date(r.updatedAt), updatedBy: r.updatedBy,
+          },
+        });
+        return { row: toStoredMarketingContact(row), membershipsDeleted, recipientsUnlinked };
+      }, { timeout: CONTACT_REVIVE_TX_TIMEOUT_MS, maxWait: 5_000 });
+    },
+    /** C8b (B8) · ⭐ "ADDED" PUT RIGHT, ALL OR NOTHING — ONE interactive transaction, the ONE shape rule first
+     *  (`assertAddedRedates`, before any statement). Each row is ONE conditional update: written only where the row still
+     *  holds its expected `createdAt` (compared as the column's own instant), its `createdAt` set to the moment it entered
+     *  the book and its `updatedAt` to the LATER of its own and that moment (`greatest`). ⛔ Raw SQL on purpose: the column
+     *  is `@updatedAt`, and Prisma's update would stamp the clock over the instant this write chooses. A row that counts 0
+     *  throws inside the transaction, so Postgres rolls back every row before it, and the answer names it — `changed`,
+     *  nothing written. The memory twin mirrors it; `test:dal-parity` §31 holds the pair; on Postgres it runs through its
+     *  one caller, the "Added" door, in `scripts/live/registration-contact-pg-probe.mts` section 6 (the rollback in 6.4). */
+    redateAdded: async (rows: ContactAddedRedate[]): Promise<ContactAddedRedateResult> => {
+      assertAddedRedates(rows);
+      if (rows.length === 0) return { ok: true, written: 0 };
+      try {
+        return await pc().$transaction(async (tx) => {
+          for (const r of rows) {
+            const n = await tx.$executeRaw`
+              update "MarketingContact"
+                 set "createdAt" = ${r.createdAt}::timestamptz, "updatedAt" = greatest("updatedAt", ${r.createdAt}::timestamptz)
+               where "id" = ${r.id} and "createdAt" = ${r.expectedCreatedAt}::timestamptz`;
+            if (n !== 1) throw new ContactAddedRedateChanged(r.id);
+          }
+          return { ok: true as const, written: rows.length };
+        }, { timeout: CONTACT_REDATE_TX_TIMEOUT_MS, maxWait: 5_000 });
+      } catch (err) {
+        if (err instanceof ContactAddedRedateChanged) return { ok: false, reason: "changed", id: err.id };
+        throw err;
+      }
+    },
     /** U20 · ONE PAGE and the whole match's count, in one round trip each. ⛔ The number is matched EXACTLY
      *  (`msisdn` equals); a name goes through the shared grammar's `queryToWhere`, and an unexpressible
      *  query is ZERO rows, never everything. The order mirrors the memory twin: nameless last, ties on id.
@@ -4610,6 +4700,12 @@ export const prismaDb = {
   },
 
   contactList: {
+    /** ⭐ A LIST'S NAME IS UNIQUE WHATEVER ITS CASE (the duplicate audit, probe p6, 2026-10-08; ported in C8c · N3). The
+     *  model's `@unique` is exact-case; the migration `20261009180000_contact_list_name_lower_unique` adds a unique index on
+     *  `lower("name")`, so a second spelling of a name another officer created a moment ago is a P2002 here too — answered
+     *  null, which the bulk service turns into `list_exists`. The importer's freeze meets the same index inside its own
+     *  transaction (P2002 rolls the freeze back; the start says so). The memory twin compares the same lower-cased key
+     *  (`test:dal-parity` 19.listci.*). */
     create: async (row: StoredContactList): Promise<StoredContactList | null> => {
       try {
         const created = await pc().contactList.create({
@@ -4629,9 +4725,19 @@ export const prismaDb = {
       const row = await pc().contactList.findUnique({ where: { id } });
       return row ? toStoredContactList(row) : null;
     },
+    /** The list holding this name in ANY case — the unique key's own reading, `lower("name") = lower($1)` (the index's own
+     *  expression, so the index answers it), the oldest were a legacy pair to exist. ⛔ The review's m8 · never Prisma's
+     *  `mode: "insensitive"`, which Postgres may run as ILIKE: a "_", a "%" or a backslash in a name would match as a
+     *  wildcard, and oldest-first would then hand back ANOTHER list ("Race_1" answered by "RaceX1").
+     *  ⚠️ TEST-ONLY (the re-review's NIT): no production code calls it — see the memory twin's note (store.ts). */
     findByName: async (name: string): Promise<StoredContactList | null> => {
-      const row = await pc().contactList.findUnique({ where: { name } });
-      return row ? toStoredContactList(row) : null;
+      const rows = await pc().$queryRaw<ContactListRow[]>`
+        select "id", "name", "description", "createdAt", "createdBy", "updatedAt", "updatedBy"
+          from "ContactList"
+         where lower("name") = lower(${name})
+         order by "createdAt" asc, "id" asc
+         limit 1`;
+      return rows.length > 0 ? toStoredContactList(rows[0]) : null;
     },
     listAll: async (): Promise<StoredContactList[]> => {
       const rows = await pc().contactList.findMany({
@@ -4683,6 +4789,23 @@ export const prismaDb = {
         orderBy: [{ addedAt: "desc" }, { listId: "desc" }],
       });
       return rows.map(toStoredContactListMember);
+    },
+    /** C8b review (MINOR 2) · how many of the list's live members the import put on it (`ContactListJoinedQuery`), in ONE
+     *  statement: the memberships added between the run's two instants whose contact is not the tombstone (NULL-SAFELY)
+     *  and is the run's — created by it, or (unless created-only) a number one of its rows updated or kept, asked of the
+     *  run's own rows by `(importId, msisdn)`. ⚠️ `::int`, not bigint. The memory twin mirrors it; `test:dal-parity` §31. */
+    joinedFromImport: async (q: ContactListJoinedQuery): Promise<number> => {
+      const rows = await pc().$queryRaw<Array<{ joined: number }>>`
+        select count(*)::int as joined
+          from "ContactListMember" m
+          join "MarketingContact" c on c."id" = m."contactId"
+         where m."listId" = ${q.listId} and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text
+           and m."addedAt" >= ${q.sinceIso}::timestamptz and m."addedAt" <= ${q.untilIso}::timestamptz
+           and (c."importId" = ${q.importId}
+                or (${q.createdOnly}::boolean = false and exists (
+                      select 1 from "ContactImportRow" r
+                       where r."importId" = ${q.importId} and r."msisdn" = c."msisdn" and r."outcome"::text in ('update', 'keep'))))`;
+      return Number(rows[0]?.joined ?? 0);
     },
   },
 
@@ -4780,6 +4903,36 @@ export const prismaDb = {
            and c."userId" is null
            and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text`;
       return { live: Number(rows[0]?.live ?? 0), covered: Number(rows[0]?.covered ?? 0) };
+    },
+    /** C8b (B5) · the list's coverage SPLIT by the account link, in ONE statement over its members — `coveredCount`'s
+     *  newest-recording bound (M1), then four filtered counts: the live members linked to no account and those of them
+     *  covered (`coveredCount`'s pair exactly), and the same two over the live members linked to an account. The tombstone
+     *  is left out NULL-SAFELY (`is distinct from`, as `coveredCount` does). ⚠️ `::int`, not bigint. ⛔ What a viewer is
+     *  SHOWN, never a second "who is covered" — the gate decides per number (`standingFor`) and the basis audit counts with
+     *  `coveredCount`. On Postgres: `scripts/live/list-basis-pg-probe.mts` 2l, the same scenario on the memory twin answer
+     *  for answer (5a). */
+    coverageSplit: async (listId: string): Promise<ListBasisCoverageSplit> => {
+      assertListBasisKeys("contactListBasis.coverageSplit", [listId]);
+      // ⚠️ Its own names and line shapes, on purpose: `red:dal-parity` anchors coveredCount's lines, which must stay unique.
+      const newestSplit = await pc().contactListBasis.findFirst({
+        where: { listId },
+        orderBy: [{ recordedAt: "desc" }, { id: "desc" }],
+        select: { revokedAt: true, recordedAt: true },
+      });
+      const splitBound = newestSplit !== null && newestSplit.revokedAt === null ? newestSplit.recordedAt.toISOString() : null;
+      const rows = await pc().$queryRaw<Array<{ live: number; covered: number; linked_live: number; linked_covered: number }>>`
+        select (count(*) filter (where c."userId" is null))::int as live,
+               (count(*) filter (where c."userId" is null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as covered,
+               (count(*) filter (where c."userId" is not null))::int as linked_live,
+               (count(*) filter (where c."userId" is not null and ${splitBound}::timestamptz is not null and m."addedAt" <= ${splitBound}::timestamptz))::int as linked_covered
+          from "ContactListMember" m
+          join "MarketingContact" c on c."id" = m."contactId"
+         where m."listId" = ${listId} and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text`;
+      const r = rows[0];
+      return {
+        unlinked: { live: Number(r?.live ?? 0), covered: Number(r?.covered ?? 0) },
+        linked: { live: Number(r?.linked_live ?? 0), covered: Number(r?.linked_covered ?? 0) },
+      };
     },
   },
 
@@ -4989,8 +5142,10 @@ export const prismaDb = {
      *  when, and an EXISTING target list in the same statement. Postgres re-checks the where after a racing commit, so of
      *  two starts ONE freezes the run; the loser counts 0 and is answered null, nothing written. An existing list deleted
      *  since the start read it is the foreign key refusing the update (P2003). ⭐ R12 · a NEW list is inserted only AFTER
-     *  the run was won, then made the target, in the same transaction: a held name is the unique index refusing the insert
-     *  (P2002), which rolls the freeze back with it — so a start that loses or throws leaves no list behind. */
+     *  the run was won, then made the target, in the same transaction: a name held IN ANY CASE is a unique index refusing the
+     *  insert (P2002 — the model's exact-case one, or since C8c · N3 the `lower("name")` one of migration
+     *  `20261009180000_contact_list_name_lower_unique`), which rolls the freeze back with it — so a start that loses or
+     *  throws leaves no list behind, and the run is left STAGED. */
     freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> => {
       const newList = f.newList ?? null;
       if (newList !== null && f.targetListId !== newList.id) throw new Error("freezeDecision: a new list must be the run's target list");
@@ -5122,6 +5277,19 @@ export const prismaDb = {
               throw new ContactImportBatchConflict((gone.length > 0 ? gone : g.ordinals).sort((x, y) => x - y));
             }
           }
+          // ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags (the blanking above
+          // emptied them), so the result can list it — S15-8's one exception, ONE statement per distinct list of tags.
+          const byTagsLeft = new Map<string, { tags: string[]; ordinals: number[] }>();
+          for (const left of b.tagsLeft ?? []) {
+            if (left.tags.length === 0) continue;
+            const key = JSON.stringify(left.tags);
+            const group = byTagsLeft.get(key) ?? { tags: [...left.tags], ordinals: [] };
+            group.ordinals.push(left.ordinal);
+            byTagsLeft.set(key, group);
+          }
+          for (const g of byTagsLeft.values()) {
+            await tx.contactImportRow.updateMany({ where: { importId: b.importId, ordinal: { in: g.ordinals } }, data: { tags: g.tags } });
+          }
           if (b.listId !== null && members.length > 0) {
             const live = await tx.marketingContact.findMany({
               where: { id: { in: members }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
@@ -5204,6 +5372,20 @@ export const prismaDb = {
         take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)),
       });
       const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: "fail" } });
+      return { rows: rows.map(toStoredContactImportRow), total };
+    },
+    /** §29 · ⭐ C8c · #13 · the run's settled rows whose file tags were NOT all added: kept or updated rows still holding
+     *  tags after the blanking (`tags` not empty — a Postgres text[] filter), after `q.afterLine`, ascending by line — a
+     *  keyset on the line, never `skip` — at most `q.limit` (clamped to `CONTACT_IMPORT_FAILED_PAGE_MAX`), and their total
+     *  COUNTED separately. */
+    tagsLeftPage: async (q: ContactImportFailedQuery): Promise<ContactImportFailedPage> => {
+      const rows = await pc().contactImportRow.findMany({
+        where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false }, line: { gt: q.afterLine } },
+        orderBy: { line: "asc" },
+        // The failures page's clamp, written min-of-max so a red anchor on failedPage's own line still resolves once.
+        take: Math.min(Math.max(0, q.limit), CONTACT_IMPORT_FAILED_PAGE_MAX),
+      });
+      const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false } } });
       return { rows: rows.map(toStoredContactImportRow), total };
     },
     /** §29 · the run's KEPT rows counted by their stored reason — ONE groupBy, never the rows (OD26). */

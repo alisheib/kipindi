@@ -25,6 +25,9 @@
  * ⛔ A SEPARATE FILE, consulting the act gate itself (`useMayAct`), for the reason every card on this page does:
  * `test:admin-act-gate` judges a whole FILE. A viewer who may not act reads every count and changes nothing.
  * ⭐ D19 · there is nothing to mask here: a list row is counts, names and instants, never a phone number.
+ * 🔴 C8b (B5) · …and the counts are the VIEWER's (`listFiguresFor`, decided on the server): a reader reads the members a
+ * list basis can reach and, beside them, how many more have a 50pick account; anyone else reads every live member and no
+ * such figure — so a one-number list never tells a masked officer whether the number is a player's.
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -146,7 +149,15 @@ export function ListsCard({ view }: { view: ListsCardView }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-body font-semibold text-text">{l.name}</p>
-                  <p className="text-caption text-text-subtle">{l.live} member{l.live === 1 ? "" : "s"}</p>
+                  <p className="text-caption text-text-subtle" data-list-members>
+                    {l.live} member{l.live === 1 ? "" : "s"}
+                    {/* ⭐ C8b (B5) · a reader's figure alone — null for every other viewer, so nothing is drawn. */}
+                    {l.withAccount !== null && l.withAccount > 0 && (
+                      <span data-list-with-account title="A list basis never reaches a number that belongs to a 50pick account.">
+                        {" "}· {l.withAccount} more with a 50pick account
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <span className={`shrink-0 text-caption font-semibold ${inForce ? "text-success" : "text-text-tertiary"}`}>
                   {inForce ? "Recorded" : l.basis ? "Revoked" : "Not recorded"}

@@ -9,8 +9,11 @@
  * The contacts that would change are listed a page at a time (`importChangesAction`, asked again from `nextAfterLine`
  * until a page fills or the list ends — the server bounds each page by the work behind it, so a page can be short or
  * even empty while the list goes on, and "Show more" stays while `nextAfterLine` is not null — R8), each with what
- * changes under the choice in force, and each can be SET APART: kept as it is when the choice would change it, or given
- * the file's version when it would not. Changing the choice for every row clears the rows set apart, and says how many.
+ * changes under the choice in force — ⭐ C8c · #13 · and every contact full of tags whose new tags would not be added,
+ * listed with those tags (the check's `listed` is the list's total) — and each row some choice updates can be SET APART:
+ * kept as it is when the choice would change it, or given the file's version when it would not (a row listed only for
+ * its tags has no box: no choice updates it). Changing the choice for every row clears the rows set apart, and says how
+ * many.
  * ⛔ S15-10 (R1) · A VIEWER WHO MAY NOT UPDATE CONTACTS ALREADY IN THE BOOK (`mayUpdateInBook` false — the matrix's
  * identity.contact cell, never a role name) sees NO choice cards and NO changes list: one line, "Numbers already in the
  * book are kept as they are", with the server's own sentence as the why; the promise is KEEP's tally and the start posts
@@ -18,7 +21,9 @@
  * ⭐ R7 · THE DECISION LIVES IN THE DIALOG (`DecisionDraft`), not here: a check that grew stale (`check_stale`) or a book
  * that moved (`check_again`) is checked again WITHOUT losing the officer's choice, the rows set apart, the list picked
  * or the new list's name. After the re-check the changes are read through the furthest row set apart, so each is found
- * again; a row that no longer differs from the book is let go, and the panel says how many.
+ * again; a row that no longer differs from the book is let go — and (the review's m3) so is one listed only for the tags a
+ * full contact cannot take, which no choice updates and the start would refuse set apart (`exceptionsLetGo`) — and the
+ * panel says how many.
  * ⭐ THE PROMISE, ABOVE THE START: "This import: 412 new · 37 updated · 1,203 kept as they are." — computed by
  * import-decide's `adjustTally` from the check's own tally and the previews of the rows set apart, never counted any other
  * way — and it is what the start posts as `expected` (the button's `data-create/update/keep`): the server decides again,
@@ -30,6 +35,10 @@
  * (U23's own name rule; a name that is an existing list in other capitals IS that list, and the panel says so). After a
  * start refused `list_name_taken` or `list_gone` the lists are read again (R12), so the officer can pick that list. S15-1:
  * the import records no consent and asks for no basis — the list's own card carries it, and the panel says when it is owed.
+ * 🔴 C8b · a list's members are the VIEWER's figure (B5 — a reader's, with how many more have a 50pick account beside
+ * them; anyone else's, every live member), and whoever starts a run whose creator or starter may not read numbers — an
+ * ADMIN taking over a masked officer's run included — is told that only the contacts the import ADDS join the list (B4 ·
+ * the review's M1 — the run's own flag, `listCreatedOnly`, the commit's one rule).
  * ⛔ "A blank cell never erases anything; numbers on the stop list and erased people are never changed" is said here, as
  * the rule — no row is ever marked erased (X22): an erased number reads as the ordinary contact it is disguised as.
  * ⛔ The choices are named by the one list (`IMPORT_CHOICES`, `DEFAULT_IMPORT_CHOICE`) and never spelled (§D10).
@@ -56,6 +65,8 @@ import {
 } from "@/lib/contacts/import-decide";
 import {
   CHANGES_PAGE_ROWS,
+  exceptionsLetGo,
+  firstUpdatingChoice,
   type ChangesPageRow,
   type ChangesResult,
   type ImportListChoice,
@@ -109,13 +120,18 @@ const RECONCILE_REQUESTS_MAX = 400;
 type ChangesState = { readonly rows: ChangesPageRow[]; readonly next: number | null; readonly loading: boolean; readonly failed: boolean };
 type ListsState = { readonly state: "loading" | "ready" | "failed"; readonly options: ImportListOption[] };
 
-/** The choice under which a row in the book changes at all — the first of the one list's order, or none. */
-const firstUpdating = (row: ChangesPageRow): ImportChoice | null =>
-  IMPORT_CHOICES.find((c) => row.preview.byChoice[c].kind === "update") ?? null;
+/** The choice under which a row in the book changes at all — the contract's one rule (`firstUpdatingChoice`). */
+const firstUpdating = firstUpdatingChoice;
 
-/** What one choice does to one row, in words: each replaced value (email and notes named, never shown), the tags. */
+/** What one choice does to one row, in words: each replaced value (email and notes named, never shown), the tags.
+ *  ⭐ C8c · #13 · a contact full of tags whose only difference is new tags reads "Nothing to change" — and lists the tags
+ *  that are not added, never silently. */
 function changeLines(p: ChoicePreview): string[] {
-  if (p.kind === "keep") return [KEEP_REASON[p.reason ?? "chosen_keep"]];
+  if (p.kind === "keep") {
+    const out = [KEEP_REASON[p.reason ?? "chosen_keep"]];
+    if (p.tagsNotAdded.length > 0) out.push(DECIDE.tagsNotAdded(p.tagsNotAdded));
+    return out;
+  }
   const out: string[] = [];
   for (const o of p.overwrites) {
     if (o.field === "displayName") out.push(DECIDE.name(o.from, o.to));
@@ -155,8 +171,9 @@ export function ImportDecisionPanel({
   const { pick, newName, nameTouched } = draft;
   const [cleared, setCleared] = useState<number | null>(null);
   const [dropped, setDropped] = useState<number | null>(null);
-  /** How many in-book rows differ from the file under any choice — the changes list's whole length, as the check counted. */
-  const listTotal = Math.max(0, ...IMPORT_CHOICES.map((c) => preflight.changing[c]));
+  /** How many in-book rows the changes list holds — the server's own count of its pages' rows (C8c · #13: the rows some
+   *  choice would update, and those whose new tags a full contact could not take). */
+  const listTotal = Math.max(0, preflight.listed);
   const [changes, setChanges] = useState<ChangesState>({ rows: [], next: null, loading: inBook > 0 && mayUpdate && listTotal > 0, failed: false });
   const [lists, setLists] = useState<ListsState>({ state: "loading", options: [] });
   const [asking, setAsking] = useState<"overwrite" | "discard" | null>(null);
@@ -243,8 +260,9 @@ export function ImportDecisionPanel({
     const through = lines.length > 0 ? Math.max(...lines) : null;
     void loadChanges(0, through).then((got) => {
       if (got === null || through === null || !live.current) return;
-      const still = new Set(got.rows.map((r) => r.line));
-      const gone = lines.filter((l) => l <= got.covered && !still.has(l));
+      // ⛔ m3 · a row still on the pages only for its tags not added (#13) is let go too: no choice updates it, and the
+      // start would refuse it set apart (`exceptionsLetGo`, the contract's one rule).
+      const gone = exceptionsLetGo(lines, got.rows, got.covered);
       if (gone.length === 0) return;
       onDraft((d) => {
         const kept: Record<number, ImportChoice> = { ...d.exceptions };
@@ -489,7 +507,7 @@ export function ImportDecisionPanel({
                 onPick={() => onDraft((d) => ({ ...d, pick: { kind: "existing", id: l.id } }))}
                 title={l.name}
                 value={l.id}
-                body={<Parts parts={LIST.members(l.members)} />}
+                body={<Parts parts={LIST.members(l.members, l.withAccount)} />}
                 chip={l.covered
                   ? <Chip size="sm" variant="success">{LIST.covered}</Chip>
                   : <Chip size="sm" variant="neutral">{LIST.notCovered}</Chip>}
@@ -524,6 +542,10 @@ export function ImportDecisionPanel({
           </Field>
         )}
         {pick.kind !== "none" && <p className="text-body-sm text-text-secondary" data-import-list-owed>{LIST.owed}</p>}
+        {/* ⭐ C8b (B4 · the review's M1) · a run whose creator or starter may not read numbers: only the contacts the import
+            adds join the list — the RUN's own flag (`listCreatedOnly`, the commit's one rule), so an ADMIN starting a masked
+            officer's run is told too — said here, so nobody expects the numbers already in the book there. */}
+        {pick.kind !== "none" && view.listCreatedOnly && <p className="text-body-sm text-text-secondary" data-import-list-created-only>{LIST.createdOnly}</p>}
       </section>
 
       {alert !== null && <ImportAlert alert={alert} disabled={starting} />}

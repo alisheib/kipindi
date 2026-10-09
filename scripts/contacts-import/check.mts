@@ -19,10 +19,11 @@ import type { ImportSection, RedPlant, SectionContext } from "../contacts-import
 import type { ImportCheckDeps, ImportFactsReads } from "../../src/lib/server/contacts/import-check.ts";
 import type { ImportChoice, ShownTally } from "../../src/lib/contacts/import-decide.ts";
 import type { ChangesResult, PreflightResult, PreflightView } from "../../src/lib/contacts/import-flow.ts";
+import { IMPORT_REFUSAL_SENTENCES } from "../../src/lib/contacts/import-flow.ts";
 import {
-  ADMIN, FIVE_THOUSAND_CHANGING_LINES, FIVE_THOUSAND_COUNTS, NOW, N, B, OFFICER, OTHER, READER, UNREADABLE_SENTENCE, UNREADABLE_SENTENCE_2,
-  bookRow, captureAudit, captured, checkModule, db, fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, isMasked, keyOf, mem,
-  seedAccount, seedBook, seedFiveThousandBook, seedFortyWorld, seedStop, seedThirtyBook, seedWord, stageFile, thirtyRows, truthCounts,
+  ADMIN, FIVE_THOUSAND_CHANGING_LINES, FIVE_THOUSAND_COUNTS, NOW, N, B, OFFICER, OTHER, READER, TEST_REFUSAL_AUDIT, UNREADABLE_SENTENCE,
+  UNREADABLE_SENTENCE_2, bookRow, captureAudit, captured, checkModule, db, fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, isMasked,
+  keyOf, mem, seedAccount, seedBook, seedFiveThousandBook, seedFortyWorld, seedStop, seedThirtyBook, seedWord, stageFile, thirtyRows, truthCounts,
 } from "../lib/contacts-import-world.mts";
 import type { StageRow } from "../lib/contacts-import-world.mts";
 import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
@@ -52,11 +53,13 @@ export type CheckImpl = {
   readonly deps: ImportCheckDeps;
   /** The facts loader's reads (C12 asks the loader directly). */
   readonly reads: ImportFactsReads;
+  /** ⭐ C8c · m5 · the check itself, as C15 calls it — so a plant can answer its bets stop in other words. */
+  readonly check: typeof checkContactImport;
 };
 
-const REAL_DEPS: ImportCheckDeps = { ...IMPORT_CHECK_DEPS, audit: captureAudit, now: () => NOW };
+const REAL_DEPS: ImportCheckDeps = { ...IMPORT_CHECK_DEPS, audit: captureAudit, refusalAudit: TEST_REFUSAL_AUDIT, now: () => NOW };
 function real(): CheckImpl {
-  return { deps: REAL_DEPS, reads: IMPORT_FACTS_READS };
+  return { deps: REAL_DEPS, reads: IMPORT_FACTS_READS, check: checkContactImport };
 }
 const withDeps = (patch: Partial<ImportCheckDeps>): CheckImpl => ({ ...real(), deps: { ...REAL_DEPS, ...patch } });
 
@@ -99,6 +102,9 @@ export const L = {
   C12: "C12 · ⭐ the facts are the authority's, per number: the erased tombstone IS in the book (X22), each book row carries its account link (S15-11), an active stop is suppressed and a lifted one is not, the ledger's latest word is read, whether an erasure STANDS is read by the ONE rule (C8a: the marker under an opt-out tap stands, the marker under a GIVEN and a plain WITHDRAWN do not), NO account is read — heldByPlayer false for every number (R16) — an unknown number has no book row; and a set past one chunk (2,507 numbers) is answered whole in two chunks of FOUR reads",
   C13: "C13 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) is KEEP-only and told nothing per person: a one-row file whose number is plain, stopped, erased or (C8a) erased with NO book row — the marker under an opt-out tap — answers the check and the changes request BYTE FOR BYTE the same — mayUpdateInBook false, KEEP's label under all three choices with every keep one count, nothing changing, the changes refused update_needs_reader with ONE audit row holding only the reason — and the 40-row file reads KEEP's label (22 · 0 · 9, every keep one count) under every choice; CONTROL: a reader's answers for the plain and the stopped number differ",
   C14: "C14 · ⛔ C8a · an erasure with NO book row, as the check reads it: the marker alone, the marker under an opt-out tap on an old link (defect #2) and an account that OPTED OUT and was then erased through the real step (N2) are each 'already in the book' and kept under every choice — shown as the contact it is disguised as (X22: chosen_keep under KEEP, no_change otherwise, no change listed) — while the marker under a GIVEN and a plain new number are NEW; the facts loader says so number by number, and nothing is written",
+  C15: "C15 · ⭐ C8c · N4 · the check YIELDS TO BETS between its pages: the 5,000-row file walked 2,000 a page, a bet queued after the first page — the walk reads NO page while it waits, waits by its own clock, and once the bet has gone counts exactly C2's boxes; a bet that never leaves ends the check at its OWN deadline (never a second clock) — m5 · in the platform's words, bets_busy 'The platform is busy with bets, so the check stopped. Nothing was written — check again in a minute.', never the slow file's 'split the file in two' — one page read, nothing written but its refusal row",
+  C17: "C17 · ⭐ C8c · the review's n6 · a CHANGES PAGE yields to bets too: the 30-row file (every row a change) walked four rows a window, a bet queued after the first window — the walk reads NO window while it waits, sleeps by its own clock, and once the bet has gone answers the whole page (30 rows, the list complete); a bet that never leaves ends the page at ITS deadline SHORT where it stood — rows 2–5, nextAfterLine 5, never a refusal — one window read",
+  C16: "C16 · ⭐ C8c · #13 · tags a full contact cannot take are LISTED for a reader: a contact holding 20 tags whose only difference is two new tags (TAKE_FILE: nothing to change, two tags not added) is on the changes pages beside a full contact that changes its name (an update, its tag not added) — each preview naming its tags left out — and the check's listed is 2 (changing stays 1); a GROWTH officer is listed nothing and refused the pages (S15-10)",
 } as const;
 
 /* ══ THE RUN ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -330,6 +336,150 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       p ? `${json(p.counts)} · KEEP ${json(p.byChoice.KEEP)} · TAKE_FILE ${json(p.byChoice.TAKE_FILE)} · changes ${json(seen.changes.lines)} · the opted-out account's erasure wrote ${seen.marked} marker(s) · standing ${json(seen.stands)} · book ${seen.book}` : "refused");
   }
 
+  // ── C15 · C8c · N4 · the check yields to a bet queued between its pages ──
+  await inFreshStore(async () => {
+    await seedFiveThousandBook();
+    const runId = await stageFile(READER, fiveThousandRows());
+    const admission = (globalThis as { __50PICK_ADMISSION?: { queue: unknown[] } }).__50PICK_ADMISSION;
+    /** One walk of the check with a bet queued right after its first page read; `leaveAfter` waits later it is admitted
+     *  (Infinity: never — a safety stop at 2,000 waits lets a defective walk end instead of hanging the run). */
+    const walk = async (leaveAfter: number) => {
+      const clock = { ms: NOW.getTime() };
+      const waiter = { resolve: () => undefined, timer: null, enqueuedAt: NOW.getTime(), settled: false };
+      const queued = (): boolean => (admission?.queue.indexOf(waiter) ?? -1) >= 0;
+      const leave = (): void => {
+        const i = admission?.queue.indexOf(waiter) ?? -1;
+        if (admission && i >= 0) admission.queue.splice(i, 1);
+      };
+      let pages = 0;
+      let readsWhileQueued = 0;
+      let waits = 0;
+      const deps: ImportCheckDeps = {
+        ...impl.deps,
+        now: () => new Date(clock.ms),
+        rowsAfter: async (w) => {
+          if (w.limit > 1) {
+            if (queued()) readsWhileQueued++;
+            pages++;
+            if (pages === 1) admission?.queue.push(waiter);
+          }
+          return impl.deps.rowsAfter(w);
+        },
+        sleep: async (ms) => {
+          waits++;
+          clock.ms += ms;
+          if (waits >= leaveAfter || waits >= 2000) leave();
+        },
+      };
+      captured.length = 0;
+      let r: PreflightResult | null = null;
+      try {
+        r = await impl.check(READER, runId, deps);
+      } finally {
+        leave();
+      }
+      return { r, pages, readsWhileQueued, waits, refused: captured.filter((a) => a.action === "contacts.import.check_refused").length };
+    };
+    const admitted = await walk(6);
+    const never = await walk(Number.POSITIVE_INFINITY);
+    const p = admitted.r !== null ? preflightOf(admitted.r) : null;
+    // The deadline is the check's own: 75 s of waits at the walk's own pace, nothing more.
+    const budget = Math.ceil(REAL_DEPS.deadlineMs / REAL_DEPS.betWaitMs);
+    ok(L.C15, admitted.readsWhileQueued === 0 && admitted.waits >= 6 && countsEqual(p, FIVE_THOUSAND_COUNTS) && p !== null && p.rows === 5000
+      && never.r !== null && !never.r.ok && never.r.reason === "bets_busy" && never.r.message === IMPORT_REFUSAL_SENTENCES.bets_busy
+      && never.r.message === "The platform is busy with bets, so the check stopped. Nothing was written — check again in a minute."
+      && never.r.view !== null && never.pages === 1 && never.readsWhileQueued === 0
+      && never.waits > 0 && never.waits <= budget + 1 && never.refused === 1 && (await db.contactImport.find(runId))?.status === "STAGED",
+      `admitted: waits ${admitted.waits}, pages read while queued ${admitted.readsWhileQueued}, ${p ? json(p.counts) : "refused"} · never: ${never.r === null ? "no answer" : never.r.ok ? "a FULL view" : never.r.reason} after ${never.waits} waits (budget ${budget}), pages ${never.pages}, refusal rows ${never.refused}`);
+  });
+
+  // ── C17 · C8c · the review's n6 · a changes page yields to bets too, and ends short where it stood ──
+  await inFreshStore(async () => {
+    await seedThirtyBook();
+    const runId = await stageFile(READER, thirtyRows());
+    const admission = (globalThis as { __50PICK_ADMISSION?: { queue: unknown[] } }).__50PICK_ADMISSION;
+    /** One changes page of the 30-row file (every row a change), walked four rows a window, with a bet queued right after
+     *  its first window; `leaveAfter` sleeps later the bet is admitted (Infinity: never — a safety stop at 2,000). */
+    const page = async (leaveAfter: number) => {
+      const clock = { ms: NOW.getTime() };
+      const waiter = { resolve: () => undefined, timer: null, enqueuedAt: NOW.getTime(), settled: false };
+      const queued = (): boolean => (admission?.queue.indexOf(waiter) ?? -1) >= 0;
+      const leave = (): void => {
+        const i = admission?.queue.indexOf(waiter) ?? -1;
+        if (admission && i >= 0) admission.queue.splice(i, 1);
+      };
+      let windows = 0;
+      let readsWhileQueued = 0;
+      let waits = 0;
+      const deps: ImportCheckDeps = {
+        ...impl.deps,
+        windowRows: 4,
+        changesWalkRows: 40,
+        now: () => new Date(clock.ms),
+        rowsAfter: async (w) => {
+          if (w.limit > 1) {
+            if (queued()) readsWhileQueued++;
+            windows++;
+            if (windows === 1) admission?.queue.push(waiter);
+          }
+          return impl.deps.rowsAfter(w);
+        },
+        sleep: async (ms) => {
+          waits++;
+          clock.ms += ms;
+          if (waits >= leaveAfter || waits >= 2000) leave();
+        },
+      };
+      let r: ChangesResult | null = null;
+      try {
+        r = await contactImportChanges(READER, { runId, afterLine: 0 }, deps);
+      } finally {
+        leave();
+      }
+      return { r, windows, readsWhileQueued, waits };
+    };
+    const admitted = await page(5);
+    const never = await page(Number.POSITIVE_INFINITY);
+    const budget = Math.ceil(REAL_DEPS.deadlineMs / REAL_DEPS.betWaitMs);
+    const linesOf = (r: ChangesResult | null): number[] => (r !== null && r.ok ? r.page.rows.map((x) => x.line) : []);
+    ok(L.C17, admitted.r !== null && admitted.r.ok && admitted.r.page.nextAfterLine === null && linesOf(admitted.r).length === 30
+      && admitted.readsWhileQueued === 0 && admitted.waits >= 5
+      && never.r !== null && never.r.ok && sameList(linesOf(never.r), [2, 3, 4, 5]) && never.r.page.nextAfterLine === 5
+      && never.windows === 1 && never.readsWhileQueued === 0 && never.waits > 0 && never.waits <= budget + 1,
+      `admitted: ${linesOf(admitted.r).length} rows, next ${admitted.r?.ok ? admitted.r.page.nextAfterLine : "refused"}, waits ${admitted.waits}, windows read while queued ${admitted.readsWhileQueued} · never: ${never.r === null ? "no answer" : never.r.ok ? `${json(linesOf(never.r))} next ${never.r.page.nextAfterLine}` : `REFUSED ${never.r.reason}`} after ${never.waits} waits (budget ${budget}), windows ${never.windows}`);
+  });
+
+  // ── C16 · C8c · #13 · a full contact's tags left out are listed for a reader ──
+  {
+    const FULL = Array.from({ length: 20 }, (_, i) => `t${String(i + 1).padStart(2, "0")}`);
+    const file: StageRow[] = [
+      { line: 2, cells: ["0757600001", "Full One", "", "new one, new two", ""] },
+      { line: 3, cells: ["0757600002", "Full Two Renamed", "", "vip", ""] },
+      { line: 4, cells: [N(1), "Fresh", "", "", ""] },
+    ];
+    const seen = (who: string) => inFreshStore(async () => {
+      await seedBook(bookRow("mc_full_1", "0757600001", { displayName: "Full One", tags: FULL }));
+      await seedBook(bookRow("mc_full_2", "0757600002", { displayName: "Full Two", tags: FULL }));
+      const runId = await stageFile(who, file);
+      const p = preflightOf(await checkContactImport(who, runId, impl.deps));
+      const changes = await allChanges(runId, impl.deps, who);
+      const rows = changes.pages.flatMap((r) => (r.ok ? r.page.rows : []));
+      return { p, changes, rows };
+    });
+    const reader = await seen(READER);
+    const growth = await seen(OFFICER);
+    const at = (line: number) => reader.rows.find((r) => r.line === line);
+    const onlyTags = at(2)?.preview.byChoice.TAKE_FILE;
+    const renamed = at(3)?.preview.byChoice.TAKE_FILE;
+    ok(L.C16, reader.p !== null && reader.p.listed === 2 && reader.p.changing.TAKE_FILE === 1 && reader.changes.ok
+      && sameList(reader.changes.lines, [2, 3])
+      && onlyTags?.kind === "keep" && onlyTags.reason === "no_change" && json(onlyTags.tagsNotAdded) === json(["new one", "new two"])
+      && renamed?.kind === "update" && json(renamed.tagsNotAdded) === json(["vip"])
+      && growth.p !== null && growth.p.listed === 0 && growth.p.mayUpdateInBook === false
+      && growth.changes.pages.length === 1 && !growth.changes.pages[0].ok && growth.changes.pages[0].reason === "update_needs_reader",
+      `reader: listed ${reader.p?.listed ?? "?"} · changing ${json(reader.p?.changing ?? null)} · lines ${json(reader.changes.lines)} · row 2 ${json(onlyTags ?? null)} · growth: listed ${growth.p?.listed ?? "?"}, pages ${growth.changes.pages.map((r) => (r.ok ? "ok" : r.reason))}`);
+  }
+
   // ── C13 · S15-10 · a GROWTH officer is told nothing per person — first the 40-row file's KEEP-only label ──
   const growthForty = await inFreshStore(async () => {
     await seedFortyWorld();
@@ -481,6 +631,43 @@ const plants: readonly RedPlant<CheckImpl>[] = [
       const reads: ImportFactsReads = { ...IMPORT_FACTS_READS, erasureStands: async () => [] };
       return { deps: { ...REAL_DEPS, reads }, reads };
     },
+  },
+  {
+    // 🔴 #13 as it shipped: the pages list only the rows some choice would UPDATE — a full contact's tags vanish unsaid.
+    name: "P16 · C8c · #13 · a changes-page row is one some choice updates, and nothing else — the tags a full contact cannot take are never listed",
+    expect: L.C16,
+    impl: () => withDeps({ listed: (p) => p.kind === "inBook" && CHOICES.some((ch) => p.byChoice[ch].kind === "update") }),
+  },
+  {
+    // 🔴 N4 as it shipped: the walk never asks the bet queue — it reads page after page while a bet waits.
+    name: "P15 · C8c · N4 · the bet queue reads empty to the check — its walk reads the next page while a bet waits",
+    expect: L.C15,
+    impl: () => withDeps({ queueDepth: () => 0 }),
+  },
+  {
+    // 🔴 …or it waits, but by a clock of its own: the deadline is never reached while bets queue, and the check runs on.
+    name: "P15b · C8c · N4 · the wait for bets keeps its own clock — the check's deadline never ends it while a bet waits",
+    expect: L.C15,
+    impl: () => withDeps({ deadlineMs: Number.POSITIVE_INFINITY }),
+  },
+  {
+    // 🔴 the review's n6 · the changes walk as it shipped: it never asks the bet queue — window after window while a bet waits.
+    name: "P17 · C8c · n6 · the bet queue reads empty to the changes walk — it reads the next window while a bet waits",
+    expect: L.C17,
+    impl: () => withDeps({ queueDepth: () => 0 }),
+  },
+  {
+    // 🔴 the review's m5 · N4 as it shipped: a check that bets kept waiting ends too_slow — "split the file in two" sends
+    // the officer to cut a file that was never the problem.
+    name: "P15c · C8c · m5 · the bets stop is answered in the slow file's words (too_slow)",
+    expect: L.C15,
+    impl: () => ({
+      ...real(),
+      check: async (officerId, runId, deps) => {
+        const r = await checkContactImport(officerId, runId, deps);
+        return !r.ok && r.reason === "bets_busy" ? { ...r, reason: "too_slow", message: IMPORT_REFUSAL_SENTENCES.too_slow } : r;
+      },
+    }),
   },
   {
     name: "P13 · S15-10 · the non-reader's label LEAKS the keep split — a one-line file reads 'suppressed' exactly when that number is stopped",
