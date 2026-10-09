@@ -2,11 +2,13 @@
  * U33w · THE MARKETING WORDINGS CARD, DRIVEN — Admin → System → Marketing wordings (`?tab=wordings`, its own tab since
  * the review's m7), at 1280 and at 360, on an in-memory dev boot (`DISABLE_ADMIN_TOTP=true`, `rm -rf .next` first).
  * What a suite cannot see:
- *   1280 — the card is on its own tab and no longer on Platform. Nothing saved: "0 of 10 wordings saved.", ten "Not
- *          saved — this is a suggestion" lines, an "Approve and save this wording" tick on every wording that cannot be
- *          left blank (nine; the source line may be blank), each tick naming its wording to a screen reader and each box
- *          naming its status line, and Save held WITH its reason. Ticking ONE wording and saving saves THAT ONE:
- *          version 1, by this admin — the other eight stay suggestions (W1 on the real page). It survives a reload, and
+ *   1280 — the card is on its own tab and no longer on Platform. It holds NINE wordings: the source line (`source.phrase`)
+ *          left the card on 2026-10-09 (nothing is appended to a marketing SMS — the card's `CARD_KEYS`), so it has no
+ *          box. Nothing saved: "0 of 9 wordings saved.", nine "Not saved — this is a suggestion" lines, an "Approve and
+ *          save this wording" tick on every one of them (none left on the card may be blank — the source line was the one
+ *          that could, and had no tick), each tick naming its wording to a screen reader and each box naming its status
+ *          line, and Save held WITH its reason. Ticking ONE wording and saving saves THAT ONE: version 1, by this admin —
+ *          the other eight stay suggestions (W1 on the real page). It survives a reload, and
  *          its history opens. A wording given a phone number and an angle bracket says every problem under its own box
  *          at once, and Save waits with "Fix the problems shown under the wordings to save." An edited suggestion,
  *          unticked, then the bar's Save: "Nothing to save yet", never a silent no-op (m4). A second admin saves
@@ -84,11 +86,13 @@ async function tile(page, name) {
   await wait(400);
   ok("1280 · ⛔ m7 — the Platform tab no longer carries the card", (await page.locator(FORM).count()) === 0);
   await openCard(page);
-  ok("1280 · nothing saved: the count line says 0 of 10", (await countLine(page)) === "0 of 10 wordings saved.", await countLine(page));
+  ok("1280 · nothing saved: the count line says 0 of 9", (await countLine(page)) === "0 of 9 wordings saved.", await countLine(page));
   const statuses = await page.locator(`${FORM} [data-wording-status]`).evaluateAll((els) => els.map((e) => e.getAttribute("data-wording-status")));
-  ok("1280 · ten wordings, every one a suggestion", statuses.length === 10 && statuses.every((s) => s === "unsaved"), JSON.stringify(statuses));
+  ok("1280 · nine wordings, every one a suggestion", statuses.length === 9 && statuses.every((s) => s === "unsaved"), JSON.stringify(statuses));
+  // ⛔ 2026-10-09 · the source line left the card: no box, no status line, no tick for it.
+  ok("1280 · the source line has no box on the card (it left on 2026-10-09)", (await page.locator(wording("source.phrase")).count()) === 0);
   const ticks = await page.locator(FORM).getByText(APPROVE, { exact: true }).count();
-  ok("1280 · an approval tick on each of the nine wordings that cannot be blank", ticks === 9, String(ticks));
+  ok("1280 · an approval tick on each of the nine wordings (none on the card may be blank)", ticks === 9, String(ticks));
   const save = page.locator(FORM).getByRole("button", { name: "Save wordings" });
   ok("1280 · Save is held while nothing is approved or changed", await save.isDisabled());
   ok("1280 · …and says why beside it", (await page.locator(FORM).getByText(HELD_IDLE).count()) === 1);
@@ -110,9 +114,9 @@ async function tile(page, name) {
   await wait(500);
   const savedLine = await statusOf(page, "basis.OWN_FORM").textContent().catch(() => "");
   ok("1280 · the ticked wording is saved as version 1 by this admin", /^Version 1, saved .+ by QA U33w Owner\./.test((savedLine || "").trim()), savedLine);
-  ok("1280 · the count line says 1 of 10", (await countLine(page)) === "1 of 10 wordings saved.", await countLine(page));
+  ok("1280 · the count line says 1 of 9", (await countLine(page)) === "1 of 9 wordings saved.", await countLine(page));
   const stillUnsaved = await page.locator(`${FORM} [data-wording-status="unsaved"]`).count();
-  ok("1280 · ⛔ W1 on the page — the other nine stay suggestions (one save approved one wording)", stillUnsaved === 9, String(stillUnsaved));
+  ok("1280 · ⛔ W1 on the page — the other eight stay suggestions (one save approved one wording)", stillUnsaved === 8, String(stillUnsaved));
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector(FORM, { timeout: 60_000 });
@@ -241,7 +245,7 @@ async function tile(page, name) {
   const { ctx, page } = await adminPage({ width: 360, height: 780 });
   await openCard(page);
   ok("360 · the card renders", (await page.locator(FORM).count()) === 1);
-  ok("360 · the count line carries the earlier save (1 of 10)", (await countLine(page)) === "1 of 10 wordings saved.", await countLine(page));
+  ok("360 · the count line carries the earlier save (1 of 9)", (await countLine(page)) === "1 of 9 wordings saved.", await countLine(page));
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok("360 · no sideways scroll", overflow <= 1, `${overflow}px`);
   await tile(page, "360-01-card-top");
@@ -268,7 +272,7 @@ async function tile(page, name) {
   await page.waitForSelector(`${wording(key)} [data-wording-status="saved"]`, { timeout: 20_000 }).catch(() => {});
   await wait(400);
   ok(`360 · the edited wording saves${viaBar ? " (from the pending-changes bar)" : " (from the card's Save — no bar found)"}`, (await page.locator(`${wording(key)} [data-wording-status="saved"]`).count()) === 1);
-  ok("360 · the count line says 2 of 10", (await countLine(page)) === "2 of 10 wordings saved.", await countLine(page));
+  ok("360 · the count line says 2 of 9", (await countLine(page)) === "2 of 9 wordings saved.", await countLine(page));
   const overflowAfter = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok("360 · still no sideways scroll after the save", overflowAfter <= 1, `${overflowAfter}px`);
   await page.locator(wording(key)).scrollIntoViewIfNeeded();
