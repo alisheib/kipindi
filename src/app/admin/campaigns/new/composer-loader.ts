@@ -21,9 +21,9 @@
  * and the window control read ONE address — the composer's own, built by ONE href builder (`composeHref`).
  * ⭐ THE SENDER LINE (OD45) is the server's `SMS_SENDER_ID`, read-only, and a dead rail speaks Admin → System's own words
  * (`railProblemNote`) — never a second wording of the fault.
- * ⭐ THE TEST CARD reads the officer's OWN account: the number masked, the first name the renderer would print, and their
- * existing opt-out token for the preview (a GET mints nothing — until the first test the link shows as xxxxxxxx). The
- * preview is the SAVED draft rendered by THE ONE renderer, as an account recipient — exactly what a test sends.
+ * ⭐ THE TEST CARD reads the officer's OWN account: the number masked and the first name the renderer would print. The
+ * preview is the SAVED draft rendered by THE ONE renderer, as an account recipient — exactly what a test sends: nothing
+ * is appended since the owner's ruling of 2026-10-09, so no opt-out token is read for it (a GET mints nothing).
  * ⛔ No money is read and none is passed (OD24).
  * ⭐ WHAT THE FORM SHOWS AGAINST WHAT IS SAVED: the audience on screen is compared with the one the draft stores (`unsaved`).
  * ⛔ U40b · THE CONFIRM CARD IS NOT COUNTED HERE: a render of the composer never walks the stored audience for it — its view
@@ -132,8 +132,6 @@ export type ComposeTestView = {
   ownNumberMasked: string | null;
   /** Why no test can reach their number — the test send's own sentence — or null. */
   ownNumberProblem: string | null;
-  /** Their existing opt-out token is in the preview (else it shows as the measurement placeholder). */
-  tokenReady: boolean;
   /** The SAVED draft as a test sends it, per variant, and the revision it was rendered from. */
   preview: { SW: string; EN: string | null; revision: number } | null;
   /** Said up front when the live switch would refuse a test (a real carrier, the switch closed). */
@@ -513,20 +511,20 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
     if (draft === null) return { kind: "missing" };
   }
 
-  // ── the officer's own account: the number a test reaches, the name it prints, the token it carries ──
+  // ── the officer's own account: the number a test reaches, the name it prints ──
+  // ⭐ No opt-out token is read: since the owner's ruling of 2026-10-09 nothing is appended to a message, so the preview
+  // is the same text whatever token the number holds (the test send still makes one, for the stop page).
   const session = await currentSession();
   const officer = session ? await db.user.findById(session.userId) : null;
   const parsed = officer ? parseTzNumber(officer.phoneE164) : null;
   const key = parsed !== null && parsed.verdict === "ok" && parsed.msisdn ? parsed.msisdn : null;
-  const tokens = key !== null ? await db.marketingOptOutToken.listFor(key) : [];
-  const token = tokens.length > 0 ? tokens[0].token : null;
 
   let preview: ComposeTestView["preview"] = null;
   if (draft !== null && draft.status === "DRAFT") {
     const template = templateOf(draft);
     const name = firstNameFor({ userDisplayName: officer?.displayName ?? null });
     const text = (variant: "SW" | "EN") =>
-      renderForRecipient(template, { variant, name, token: token ?? footerMeasurementToken(), origin: "account" }).text;
+      renderForRecipient(template, { variant, name, token: footerMeasurementToken(), origin: "account" }).text;
     preview = { SW: text("SW"), EN: template.bodyEn.trim() === "" ? null : text("EN"), revision: draft.draftRevision };
   }
 
@@ -546,7 +544,6 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
     test: {
       ownNumberMasked: key !== null ? maskPhone(key) : null,
       ownNumberProblem: key !== null ? null : TEST_OWN_NUMBER_UNUSABLE,
-      tokenReady: token !== null,
       preview,
       liveNote: live.ok ? null : COMPOSE_TEST_LIVE_NOTE,
       windowNote: composeTestWindowNote(await liveSendWindow()),

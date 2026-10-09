@@ -27,8 +27,8 @@
  * gate refusal of a typed number (`typed_refused`); a reader gets the reason, with the protected reasons collapsed
  * (`protected`). The result never carries a basis. Every typed outcome decided at the gate or after it returns no sooner
  * than `TYPED_TEST_MIN_MS` after the request began, so the player branch's longer reads (the identity check, the harm
- * scan) cannot time out as a player signal. The returned text of a typed test carries the measurement token: the stop
- * link made for that number is never shown to the officer.
+ * scan) cannot time out as a player signal. The returned text of a typed test is its dry render: the token made for that
+ * number is never shown to the officer (and since the owner's ruling of 2026-10-09 no message carries one).
  *
  * ⛔ S24 · TWO MORE BUDGETS FOR TYPED TESTS, spent only after the number-independent checks (so a closed record drains
  * neither): per officer (`marketing.testSendTyped`) and per recipient (`marketing.testSendTo`, keyed by a hash of the
@@ -149,9 +149,11 @@ export const TEST_OWN_NUMBER_UNUSABLE =
   "Your account's phone number is not a Tanzanian mobile number an SMS can reach, so no test can be sent. " +
   "An account's number can't be changed — ask the owner, who manages staff access in Staff & roles (/admin/staff).";
 export const TEST_RAIL_DEAD = "No SMS can leave this server right now — the sender line above says why.";
-export const TEST_TOKEN_UNAVAILABLE = "Your stop link couldn't be made, so nothing was sent — try again.";
-/** U37c · the same, for a typed number — the link is that person's, never "yours". */
-export const TEST_TYPED_TOKEN_UNAVAILABLE = "The stop link for this number couldn't be made, so nothing was sent — try again.";
+/** Step 10's opt-out token (kept for the stop page) could not be made. ⛔ It names no stop link: nothing is appended to a
+ *  test since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.21). */
+export const TEST_TOKEN_UNAVAILABLE = "Your test couldn't be prepared, so nothing was sent — try again.";
+/** U37c · the same, for a typed number — about that number, never "yours". */
+export const TEST_TYPED_TOKEN_UNAVAILABLE = "The test for this number couldn't be prepared, so nothing was sent — try again.";
 export const TEST_TEMPLATE_INVALID = "The saved message no longer passes its own check — correct it and save again.";
 export const TEST_UNCONFIRMED = "No answer from the network — don't resend straight away; check your phone first.";
 export const TEST_GATE_UNANSWERED = "The consent check couldn't answer, so nothing was sent — try again shortly.";
@@ -213,7 +215,9 @@ function failedSentence(code: string, target: CampaignTestTarget): string {
 /** The gate's refusal of the officer's OWN number, with the remedy. ⛔ One sentence for every responsible-gambling reason. */
 const GATE_SENTENCE: Readonly<Record<MarketingSkipReason, string>> = {
   bad_msisdn: TEST_OWN_NUMBER_UNUSABLE,
-  suppressed: "Your number is on the stop list, so no marketing SMS can reach it — start them again from your own SMS link or your profile first.",
+  /* ⭐ The profile is the way back the card links to (`COMPOSE_TEST_CONSENT_LINK`); no SMS carries a stop link since the
+     owner's ruling of 2026-10-09, so none is named as one. */
+  suppressed: "Your number is on the stop list, so no marketing SMS can reach it — start them again from your profile first.",
   no_consent: "Your number has no SMS offers consent on record — turn on SMS offers on your own profile, then test again.",
   /* U33a-G · forced by the compiler and UNREACHABLE for the officer's own number, which always belongs to an account —
      so it takes the player branch, which never answers `no_basis`. Written plainly anyway rather than left to a cast:
@@ -604,7 +608,8 @@ export async function sendCampaignTest(
     );
     const out = outcomes[0];
     const at = deps.now().toISOString();
-    // ⛔ A typed test shows the officer the measurement token — the stop link made for that number is never shown.
+    // ⛔ A typed test shows the officer its dry render, never the message rendered with that number's own token. Since the
+    // owner's ruling of 2026-10-09 nothing is appended, so the two texts are the same; the token stays unshown either way.
     const shown = target === "typed" ? dry.text : message.text;
     if (out?.outcome === "handed_over") {
       await floor();

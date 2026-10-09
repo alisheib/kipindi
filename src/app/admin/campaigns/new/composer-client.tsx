@@ -20,7 +20,7 @@
  * officer's own number, masked, and has nothing to type into. ⛔ OD24 · NO MONEY on this page.
  * ⭐ ONE SAVE. Save is disabled WITH its reason (beside it and in its title), never hidden; a refusal keeps the text.
  * ⭐ THE TEST SENDS THE SAVED TEXT: unsaved or edited text disables it ("Save first"), and the preview is the server's
- * rendering of the saved revision — the exact text, its footer's line break and its real link included.
+ * rendering of the saved revision — the exact text sent, with nothing appended (the owner's ruling of 2026-10-09).
  * ⛔ AN ACT CONTROL: `useMayAct()` disables Save and the tests with the reason for a view-only role, and both actions
  * re-check on the server (`softRequireStaff`).
  * ⭐ VALIDATION TAKES YOU THERE (validation audit, 2026-10-03): the "Can't save yet" reason is a button to the field it
@@ -67,7 +67,7 @@ import {
   COMPOSE_EN_RULE, COMPOSE_FIELD, COMPOSE_NO_CHANGES, COMPOSE_READ_ONLY, COMPOSE_RELOAD, COMPOSE_SAVE, COMPOSE_SAVE_AS_NEW,
   COMPOSE_SOURCE_LINE_STALE,
   COMPOSE_SAVE_AS_NEW_AUDIENCE, COMPOSE_SAVE_FAILED, COMPOSE_TEST_BUDGET, COMPOSE_TEST_CONSENT_LINK, COMPOSE_TEST_EXACT,
-  COMPOSE_TEST_NOT_DRAFT, COMPOSE_TEST_PREVIEW, COMPOSE_TEST_SAVE_FIRST, COMPOSE_TEST_SEND, COMPOSE_TEST_TOKEN_NOTE,
+  COMPOSE_TEST_NOT_DRAFT, COMPOSE_TEST_PREVIEW, COMPOSE_TEST_SAVE_FIRST, COMPOSE_TEST_SEND,
   COMPOSE_TEST_UPDATING, COMPOSE_TRY_AGAIN, composeSaveBlocked, composeSaved, composeTestHandedOver,
   COMPOSE_TEST_TO_LEGEND, COMPOSE_TEST_TO_OWN_UNUSABLE, COMPOSE_TEST_TO_TYPED, COMPOSE_TEST_NUMBER_LABEL, COMPOSE_TEST_NUMBER_HINT,
   COMPOSE_TEST_TYPED_PREVIEW, COMPOSE_TEST_TYPED_NOTE, COMPOSE_TEST_NEED_NUMBER, COMPOSE_TEST_FIX_NUMBER, COMPOSE_TEST_NEED_TICK, composeTestToOwn,
@@ -409,9 +409,8 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
       const r = await runAdminAction(() => sendCampaignTestAction(s.id, variant, recipient ?? { kind: "own" }));
       setTest(testStateOf(r));
       setTesting(null);
-      // The own preview now carries the officer's real stop link (minted by their first test). A typed test's link is
-      // that person's, and is never shown.
-      if ("outcome" in r && r.outcome === "handed_over" && r.target === "own") router.refresh();
+      // ⭐ A handed-over test changes nothing the page shows: the preview is the text as sent, and since the owner's ruling
+      // of 2026-10-09 nothing is appended to it — no stop link, so no token to re-read (§16.21).
       // ⛔ §18.32 · the 18+ words (or the record, or the line) changed since this page opened: read again, so the box shows
       // the words a tick confirms and "Another number" is offered only as the server now answers.
       if ("outcome" in r && r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();
@@ -914,7 +913,6 @@ export function ComposerTest() {
         </div>
       ))}
       {fresh && typed && <p className="text-body-sm text-text-tertiary" data-test-typed-note>{COMPOSE_TEST_TYPED_NOTE}</p>}
-      {fresh && !typed && !t.tokenReady && <p className="text-body-sm text-text-tertiary">{COMPOSE_TEST_TOKEN_NOTE}</p>}
       {reason !== null && backToNumber && (
         <button
           type="button"

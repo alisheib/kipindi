@@ -1209,6 +1209,26 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
   ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record, the line) re-reads it",
     Object.values(inStep).every(Boolean), JSON.stringify(inStep));
 
+  /* §16.21 · the owner's ruling of 2026-10-09 — nothing is appended to a test, so the Test card names no stop link. Read on
+     the decommented sources: a comment may say what was removed; a sentence on the card may not. */
+  const loader21 = src.files.get(`${SCREEN_DIR}composer-loader.ts`) ?? "";
+  const STOP_WORDS21 = /stop link|xxxxxxxx/i;
+  const naming21 = [...src.files].filter(([, text]) => STOP_WORDS21.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
+  const typedNote21 = /export const COMPOSE_TEST_TYPED_NOTE = `([^`]+)`;/.exec(copy)?.[1] ?? "";
+  const ownToken21 = /export const TEST_TOKEN_UNAVAILABLE = "([^"]+)";/.exec(src.testService)?.[1] ?? "";
+  const typedToken21 = /export const TEST_TYPED_TOKEN_UNAVAILABLE = "([^"]+)";/.exec(src.testService)?.[1] ?? "";
+  const noLink21 = {
+    composer: naming21.length === 0,
+    testSend: !STOP_WORDS21.test(src.testService),
+    noTokenNote: !copy.includes("COMPOSE_TEST_TOKEN_NOTE") && !client.includes("COMPOSE_TEST_TOKEN_NOTE"),
+    noTokenReady: !loader21.includes("tokenReady") && !client.includes("tokenReady"),
+    typedNote: typedNote21 === "The name is your word for ${JINA}, never the person's own.",
+    prepared: ownToken21 === "Your test couldn't be prepared, so nothing was sent — try again."
+      && typedToken21 === "The test for this number couldn't be prepared, so nothing was sent — try again.",
+  };
+  ok("§16.21 ⛔ THE TEST CARD NAMES NO STOP LINK (the owner's ruling of 2026-10-09) — no composer file and no test-send sentence says 'stop link' or shows the xxxxxxxx placeholder; there is no token note and no tokenReady; the typed note is the name's sentence alone; and a token that could not be made says the test couldn't be prepared",
+    Object.values(noLink21).every(Boolean), `${JSON.stringify(noLink21)} · naming [${naming21.join(", ")}]`);
+
   /* §16.5 · OD24 — no money */
   const money = [...src.files].filter(([, text]) => /TZS|formatTzs/.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
   ok("§16.5 ⛔ OD24 · no money on the composer — no TZS and no formatTzs in any of its files", money.length === 0, `money in [${money.join(", ")}]`);
@@ -3604,7 +3624,18 @@ if (!PROVE_RED) {
     const carryDropped = swapOnce(CLIENT, CARRY_POST, "audience: view.audience.params");
     const alwaysInvite = swapOnce(CLIENT, SAVED_CALL, "composeSaved(c.saved.savedAt, true)");
     const alwaysFocusable = swapOnce(CLIENT, FLAGGED_STOP, "tabIndex={-1}");
-    type ScreenPlant = { name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
+    /** §16.21 · the owner's ruling of 2026-10-09 undone on the card — the token note exported again. */
+    const tokenNoteBack = withFile(COPY, (t) => `${t}${NL15}export const COMPOSE_TEST_TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";`);
+    /** §16.21 · the typed note promising the person's own stop link again. */
+    const TYPED_NOTE21 = "export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own.`;";
+    const typedNoteLink = swapOnce(COPY, TYPED_NOTE21,
+      "export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own, and their stop link is made for them and isn't shown here.`;");
+    /** §16.21 · the test send's token sentence naming the stop link again. */
+    const OWN_TOKEN21 = `export const TEST_TOKEN_UNAVAILABLE = "Your test couldn't be prepared, so nothing was sent — try again.";`;
+    const tokenSentenceLink: ScreenSources = {
+      ...S, testService: S.testService.replace(OWN_TOKEN21, `export const TEST_TOKEN_UNAVAILABLE = "Your stop link couldn't be made, so nothing was sent — try again.";`),
+    };
+    type ScreenPlant ={ name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
     const screenPlants: ScreenPlant[] = [
       {
         name: "P9 · the composer sizes on its own — the client imports sizeSms and calls it on the body",
@@ -3798,6 +3829,24 @@ if (!PROVE_RED) {
         expect: /^§16[.]16 /, sources: alwaysFocusable,
         landed: () => once(CLIENT, FLAGGED_STOP) && (alwaysFocusable.files.get(CLIENT) ?? "").includes("tabIndex={-1}"),
         landedAs: "the card carries tabIndex -1 with nothing wrong",
+      },
+      {
+        name: "§16.21 · the token note back on the Test card — 'Your stop link is made the first time you send a test'",
+        expect: /^§16[.]21 ⛔/, sources: tokenNoteBack,
+        landed: () => !(S.files.get(COPY) ?? "").includes("COMPOSE_TEST_TOKEN_NOTE") && (tokenNoteBack.files.get(COPY) ?? "").includes("COMPOSE_TEST_TOKEN_NOTE"),
+        landedAs: "the copy exports the token note again",
+      },
+      {
+        name: "§16.21 · the typed note promising the person's own stop link again",
+        expect: /^§16[.]21 ⛔/, sources: typedNoteLink,
+        landed: () => once(COPY, TYPED_NOTE21) && (typedNoteLink.files.get(COPY) ?? "").includes("their stop link is made for them"),
+        landedAs: "the typed note ends with the stop-link clause",
+      },
+      {
+        name: "§16.21 · the test send's token sentence naming the stop link again",
+        expect: /^§16[.]21 ⛔/, sources: tokenSentenceLink,
+        landed: () => S.testService.includes(OWN_TOKEN21) && tokenSentenceLink.testService.includes("Your stop link couldn't be made"),
+        landedAs: "TEST_TOKEN_UNAVAILABLE says 'Your stop link couldn't be made' again",
       },
     ];
     for (const p of screenPlants) {
