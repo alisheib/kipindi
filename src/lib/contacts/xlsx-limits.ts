@@ -344,6 +344,60 @@ export function xlsxChosenSheetNote(sheet: string | undefined, position: number,
     : `Read ${where} — the first sheet with a phone column.`;
 }
 
+/** A sheet a note names: its name as the workbook stores it, and its place among the workbook's VISIBLE sheets (from 1). */
+export type NotedSheet = { readonly name: string; readonly position: number };
+
+/** How many of the sheets left unread a note names before it says how many more. */
+const NOTED_SHEETS_MAX = 3;
+
+/** One sheet as a note words it: “Name” through the ONE sheet-name rule, or its place when the name may not be echoed. */
+const sheetWords = (sheet: NotedSheet): string => {
+  const label = sheetLabel(sheet.name);
+  return label !== null ? `“${label}”` : `sheet ${sheet.position}`;
+};
+
+/** The sheets left unread, as the subject of a sentence: "The sheet “Staff”", "The sheets “Staff” and “Mengine”", or
+ *  "Sheet 3" for a lone sheet whose name may not be echoed. */
+function unreadSheets(sheets: readonly NotedSheet[]): string {
+  const words = sheets.slice(0, NOTED_SHEETS_MAX).map(sheetWords);
+  const more = sheets.length - words.length;
+  if (sheets.length === 1) return sheetLabel(sheets[0].name) !== null ? `The sheet ${words[0]}` : `Sheet ${sheets[0].position}`;
+  const list = more > 0 ? `${words.join(", ")} and ${more} more` : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+  return `The sheets ${list}`;
+}
+
+/**
+ * ⭐ C3b-fix · D6 · THE NOTE for the sheet a workbook is read from — `chooseSheet` (sheet-choice.ts) decides, this words it.
+ * It names the sheet read, through the ONE sheet-name rule (`sheetLabel`: a name carrying seven or more digits is never
+ * echoed, and then only its place is said), and its place counted among the VISIBLE sheets only (a hidden tab is never
+ * read, so it is never counted); then every other VISIBLE sheet whose first rows hold mobile numbers, as NOT read, each
+ * with the way to import it that WORKS: a sheet holding AS MANY mobile numbers as the one read (`tied`) lost only on
+ * its place, so moving it to the first place in Excel reads it — or saving it as its own file; a sheet holding FEWER
+ * (`fewer`) is read only from its own file, so that is the one way said (moving it first would read the same sheet as
+ * now). The workbook's hidden sheets are said last, counted. ⛔ Never a cell, never a name with seven digits.
+ */
+export function xlsxSheetChoiceNote(
+  read: NotedSheet,
+  visible: number,
+  hidden: number,
+  tied: readonly NotedSheet[],
+  fewer: readonly NotedSheet[],
+): string {
+  const label = sheetLabel(read.name);
+  const where = `sheet ${read.position} of ${visible}`;
+  const said = [label !== null ? `Read the sheet “${label}” (${where}).` : `Read ${where}.`];
+  if (tied.length > 0) {
+    const one = tied.length === 1;
+    said.push(`${unreadSheets(tied)} ${one ? "holds" : "hold"} as many mobile numbers and ${one ? "was" : "were"} not read: to import ${one ? "it" : "one"}, move it to the first place in Excel, or save it as its own file.`);
+  }
+  if (fewer.length > 0) {
+    const one = fewer.length === 1;
+    said.push(`${unreadSheets(fewer)} also ${one ? "holds" : "hold"} mobile numbers and ${one ? "was" : "were"} not read: to import ${one ? "it" : "one"}, save it as its own file.`);
+  }
+  if (hidden > 0) said.push(hidden === 1 ? "The workbook's hidden sheet was not read." : `The workbook's ${hidden} hidden sheets were not read.`);
+  return said.join(" ");
+}
+
 // ── EXCEL'S SHORTENED NUMBERS (decision M6) ──────────────────────────────────────────────────────────────────
 
 /**
