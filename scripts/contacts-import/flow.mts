@@ -23,7 +23,9 @@
  * within the caps, contiguous.
  * ⭐ PROVED BY MUTATION: each plant below is a replacement bundle built in memory — the defect wrapped around the shipped
  * function — and names the ONE label it must turn red.
- * ⛔ IN-PROCESS: this module reads two sources and makes no file-changing call.
+ * ⭐ C8c · the list paste's plants put back ONE of its rules (`PASTE_RULES`) and run the REAL reader with it.
+ * ⛔ IN-PROCESS: this module reads six sources (the reader, the loop, the dialog and the three panels that show a paused
+ * run) and makes no file-changing call.
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
