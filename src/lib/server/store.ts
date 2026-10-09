@@ -993,8 +993,10 @@ export type ListBasisCoverage = {
  * `linked` the same two counts over the live members linked to an account. The tombstone is in neither. ⭐ WHY SPLIT, AND
  * WHO SEES WHAT: a viewer who may not read a number is shown the SUM — every live member, linked or not, which is the
  * campaign composer's count for the list — so no figure of theirs separates players from strangers (D19); a reader is shown
- * `unlinked` as today plus how many members have an account (`lists-loader.ts`, `import-commit.ts`). ⛔ The gate and the
- * list-basis audit row keep reading `coveredCount`: a list basis never reaches an account's number.
+ * `unlinked` as today plus how many members have an account (`lists-loader.ts`, `import-commit.ts`). ⛔ Neither the send
+ * gate nor the list-basis audit row reads this split: the gate decides PER NUMBER (`contactListBasis.standingFor` /
+ * `standingAmong`, `bookStandings` — the same newest-recording rule `coveredCount` counts by), and only the list-basis
+ * COMPLIANCE audit row counts with `coveredCount` (`list-basis.ts`). A list basis never reaches an account's number.
  */
 export type ListBasisCoverageSplit = {
   unlinked: ListBasisCoverage;
@@ -4217,8 +4219,9 @@ const memoryDb = {
     /** C8b (B5) · the list's coverage SPLIT by the account link, in ONE pass over its members (`ListBasisCoverageSplit`):
      *  `unlinked` is `coveredCount`'s pair exactly, `linked` the same two counts over the live members linked to an
      *  account; the tombstone is in neither. The bound is `coveredCount`'s — the list's NEWEST recording, none when it is
-     *  revoked or there is none (M1). ⛔ Not a second "who is covered": the gate and the basis audit keep `coveredCount`;
-     *  this is what each viewer may be SHOWN (`lists-loader.ts`, `import-commit.ts`). */
+     *  revoked or there is none (M1). ⛔ Not a second "who is covered": the gate decides per number (`standingFor`) and
+     *  the basis audit counts with `coveredCount`; this is what each viewer may be SHOWN (`lists-loader.ts`,
+     *  `import-commit.ts`). */
     coverageSplit: (listId: string): ListBasisCoverageSplit => {
       assertListBasisKeys("contactListBasis.coverageSplit", [listId]);
       // ⚠️ Its own names, on purpose: `red:dal-parity` anchors coveredCount's lines, which must stay unique.

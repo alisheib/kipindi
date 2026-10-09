@@ -481,7 +481,7 @@ export const DONE = {
     `Added to the list ${name}. The new members aren't covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`,
   /** ⭐ C8b (B5) · a READER's line alone: the list's members linked to a 50pick account, beside the ones a basis reaches. */
   listWithAccount: (n: number): Part[] => [
-    fig(n), ` more ${plural(n, "member has", "members have")} a 50pick account — a list basis never reaches ${plural(n, "it", "them")}.`,
+    fig(n), ` more ${plural(n, "member has", "members have")} a 50pick account — a list basis never reaches them.`,
   ],
   imported: "Import finished",
   importedBody: (create: number, update: number): string => `${formatNumber(create)} added · ${formatNumber(update)} updated.`,

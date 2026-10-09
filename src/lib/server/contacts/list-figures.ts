@@ -13,8 +13,10 @@
  *   · ANYONE ELSE is shown the SUM of the two sides — every live member, linked or not, which EQUALS the composer's count
  *     for that list (`campaignAudienceCount` walks the book's live rows, linked included), and the coverage counted over
  *     the same set — and `withAccount` is null: absent, not hidden. No figure of theirs separates players from strangers.
- * ⛔ What a viewer is SHOWN, never a second "who is covered": the send gate and the list-basis audit row keep reading
- * `coveredCount`, and a list basis never reaches an account's number whatever this says.
+ * ⛔ What a viewer is SHOWN, never a second "who is covered": the send gate decides PER NUMBER
+ * (`contactListBasis.standingFor`, by the same newest-recording rule), the list-basis COMPLIANCE audit row counts with
+ * `coveredCount` (`list-basis.ts`), and a list basis never reaches an account's number whatever this says. ⚠️ So a
+ * masked viewer's figure is the campaign composer's count for the list, NOT the gate's reach.
  *
  * Guard: `test:contacts-lists` (B12 — the card), `test:contacts-import` (the picker and the result).
  */

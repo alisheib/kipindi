@@ -247,9 +247,12 @@ export type BookBlock = { existing: StoredMarketingContact | null; blocked: bool
  * the erasure's tombstone, or — with no book row — an erasure STANDS on it (C8a's ONE rule): `erasure-mark.ts`'s
  * `isErasedNumber`, the very function the importer's decide() asks over the same facts (`loadImportFacts` reads the book
  * rows and `messagingConsent.erasureStandsAmong` for a whole step), so the importer and the form can never disagree. A
- * book row decides alone — the tombstone blocks whatever the ledger says, and an ordinary row (a NEW client's, revived
- * from the tombstone at sign-up, among them) never does. The block is lifted only by the holder's own act: a later GIVEN
- * (the ledger), or a new account registering the number (`registration-contact.ts`).
+ * book row decides alone — the tombstone blocks whatever the ledger says, and an ordinary row (a NEW client's, written in
+ * the tombstone's place at sign-up, among them) never does. ⛔ So the two blocks are lifted DIFFERENTLY, each only by an
+ * act of the number's holder: a TOMBSTONE only by a NEW ACCOUNT registering the number (`registration-contact.ts` puts
+ * that client's own fresh row in its place) — a later GIVEN does NOT lift it, for the row decides alone; an erasure
+ * standing on a number with NO row by a later GIVEN (C8a's ledger rule), or by a new account registering the number
+ * (its sign-up writes the account's own row, which then decides).
  * ⛔ BOTH READS FOR EVERY NUMBER, a row or none: the ledger is asked even when a row decides alone, so a number held by an
  * ordinary row and one held by an erasure take the same reads — the answer's timing says no more than its words.
  */

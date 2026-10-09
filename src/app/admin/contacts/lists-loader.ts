@@ -2,9 +2,11 @@
  * U33b-L · WHAT THE "LISTS" CARD IS HANDED — one row per contact list, with its basis standing and its coverage.
  *
  * ⛔ EVERY FIGURE IS THE DAL'S OWN. `coverageSplit` answers "how many of this list's members does its newest recording
- * reach", split by the account link, and this file does not recompute it: the gate decides who may be messaged from the
- * same read (`coveredCount`, the split's unlinked pair exactly), and a second count here is how the screen comes to
- * promise a reach the gate will not honour.
+ * cover", split by the account link, and this file does not recompute it — a second count here is how the screen comes to
+ * promise a reach the gate will not honour. A READER's figures are that reach: the send gate decides each number by the
+ * same newest-recording rule (`contactListBasis.standingFor`), and the split's unlinked pair is exactly what
+ * `coveredCount` counts for the list-basis audit row. ⛔ A MASKED viewer's figure is NOT the reach: it is every live
+ * member — the campaign composer's count for that list — and the coverage counted over the same set (B5, below).
  *
  * 🔴 C8b (B5) · THE FIGURES ARE THE VIEWER'S (`listFiguresFor`, `src/lib/server/contacts/list-figures.ts` — the ONE rule the
  * importer's picker and result ask too). Until C8b every viewer read `coveredCount`'s pair, which leaves out the members

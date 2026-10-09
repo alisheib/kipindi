@@ -4857,8 +4857,9 @@ export const prismaDb = {
      *  newest-recording bound (M1), then four filtered counts: the live members linked to no account and those of them
      *  covered (`coveredCount`'s pair exactly), and the same two over the live members linked to an account. The tombstone
      *  is left out NULL-SAFELY (`is distinct from`, as `coveredCount` does). ⚠️ `::int`, not bigint. ⛔ What a viewer is
-     *  SHOWN, never a second "who is covered" — the gate and the basis audit keep `coveredCount`. On Postgres:
-     *  `scripts/live/list-basis-pg-probe.mts` 2l, the same scenario on the memory twin answer for answer (5a). */
+     *  SHOWN, never a second "who is covered" — the gate decides per number (`standingFor`) and the basis audit counts with
+     *  `coveredCount`. On Postgres: `scripts/live/list-basis-pg-probe.mts` 2l, the same scenario on the memory twin answer
+     *  for answer (5a). */
     coverageSplit: async (listId: string): Promise<ListBasisCoverageSplit> => {
       assertListBasisKeys("contactListBasis.coverageSplit", [listId]);
       // ⚠️ Its own names and line shapes, on purpose: `red:dal-parity` anchors coveredCount's lines, which must stay unique.
