@@ -36,11 +36,24 @@ export const RESUME_WORDING = LIB.resumeWording();
 export const SMS_WORDING = RESUME_WORDING;
 /** A ledger file that EXISTS with nothing counted — a drive after its first evidence run. (A MISSING file is NO-GO unless `--new-ledger`.) */
 export const EMPTY_LEDGER_TEXT: string = LIB.serializeLedger(LIB.emptyLedger());
-/** The saved wordings of a platform ready for the drive: a source line and the typed-number test's 18+ sentence, each saved once. */
+/**
+ * The saved wordings of a platform ready for the drive: a source line and the typed-number test's 18+ sentence, each saved once.
+ * (The pre-flight's `source` row still reads both. Since the owner's ruling of 2026-10-09 no message prints the source line and
+ * nothing is refused without one, and a typed-number test is for ADMIN and COMPLIANCE only — never the drive's GROWTH login.)
+ */
 export const SAVED_WORDINGS: Record<string, unknown> = {
   "source.phrase": [{ v: 1, text: "From the 50pick sign-up form", savedAt: "2026-10-07T08:00:00.000Z", savedBy: "ops: Claude for Ali (G5)" }],
   "adult.test": [{ v: 1, text: "I confirm that the person who uses this number is 18 or older.", savedAt: "2026-10-07T08:00:00.000Z", savedBy: "usr_owner_0001" }],
 };
+
+/**
+ * ⭐ THE DRIVE'S MESSAGE — the owner's words of 2026-10-09 for every real SMS of the drive, read from its ONE copy through the core
+ * (`marketing-u52a-message.mjs`), never typed here. Every message row this world makes is as long as a contact-book number is sent
+ * it — the Swahili body with the draft's word for `{jina}`, nothing after it — so the evidence's SENT AS WRITTEN check reads the
+ * fixtures as a clean drive; a claim that wants a footer back makes its row longer itself.
+ */
+export const DRIVE_MESSAGE = LIB.DRIVE_MESSAGE;
+export const DRIVE_LENGTH = LIB.driveLengthWindows();
 
 type Row = Record<string, unknown>;
 const d = (ms: number): Date => new Date(ms);
@@ -358,7 +371,7 @@ export function recipientRow(o: Row & { key: string; id: string }): Row {
   const { key, ...rest } = o;
   return {
     msisdn: key, status: "DELIVERED", skip_reason: null, skip_detail: null, failure_class: null, error: null, attempts: 0,
-    sms_reference: null, has_token: true, locale: "SW", segments: 1, body_len: 87, cost_tzs: null, claim_token: "clm_token_one",
+    sms_reference: null, has_token: true, locale: "SW", segments: 1, body_len: DRIVE_LENGTH.SW.fallback, cost_tzs: null, claim_token: "clm_token_one",
     claimed_at: d(T0 + 2_000), sent_at: d(T0 + 4_000), delivered_at: d(T0 + 9_000), failed_at: null,
     gate_trail: [{ check: "campaign", verdict: "RUNNING", wording: null, source: CAMPAIGN }, { check: "gate", verdict: "ok", wording: null, source: "CONSENT:ledger:abc" }, { check: "dispatch", verdict: "handed_over", wording: null, source: "sms_ref" }],
     ...rest,
@@ -367,7 +380,7 @@ export function recipientRow(o: Row & { key: string; id: string }): Row {
 
 export function messageRow(o: Row & { reference: string; target_id: string }): Row {
   return {
-    to_test: true, purpose: "MARKETING", status: "DELIVERED", body_len: 87, dlr_status: "DELIVRD", dlr_desc: "Delivered", provider_msg: "Message sent",
+    to_test: true, purpose: "MARKETING", status: "DELIVERED", body_len: DRIVE_LENGTH.SW.fallback, dlr_status: "DELIVRD", dlr_desc: "Delivered", provider_msg: "Message sent",
     attempts: 0, created_at: d(T0 + 3_000), sent_at: d(T0 + 4_000), delivered_at: d(T0 + 9_000), failed_at: null, balance_tzs: "49994.00",
     ...o,
   };

@@ -6,12 +6,13 @@
  *   PASS=console (the default boot — SMS_PROVIDER=console):
  *   · LOADING — the composer's own ghost while its page chunk is held (the list's ghost never stands in), the first
  *     card's top edge unmoved when the page swaps in (within 1px), and the three card-height differences RECORDED;
- *   · BLANK — Save off WITH its reason (beside it and in its title), the live counter at its full room, the source line's
- *     reserved room said, "No English text", the sender line the server's (the console stub, said honestly), nobody yet
- *     chosen as the audience (U38b — its rail and counts are `qa:marketing-audience`'s), the test card naming the
- *     officer's own number masked and "Save first"; ⛔ no tel input, no
- *     number, sender or money control, no TZS; the reason is a button that puts focus in Campaign name, and a click
- *     inside the Audience card with nothing wrong never focuses the card;
+ *   · BLANK — Save off WITH its reason (beside it and in its title), the live counter at the WHOLE message's room (160:
+ *     nothing is appended since the owner's ruling of 2026-10-09) with "Sent exactly as written — nothing is added to it."
+ *     under it and no source-line line, "No English text", the sender line the server's (the console stub, said honestly),
+ *     nobody yet chosen as the audience (U38b — its rail and counts are `qa:marketing-audience`'s), the test card naming the
+ *     officer's own number masked and "Save first", and ⛔ NO "Another number" for this GROWTH officer (a typed test is for
+ *     ADMIN and COMPLIANCE only); ⛔ no tel input, no number, sender or money control, no TZS; the reason is a button that
+ *     puts focus in Campaign name, and a click inside the Audience card with nothing wrong never focuses the card;
  *   · REFUSED — no Swahili message; a message not starting "50pick"; a placeholder that is not {jina} — each said beside
  *     Save (and on its field), with Save off;
  *   · TYPING — the counter falls by exactly the characters typed, key by key, while the live region does not speak;
@@ -19,15 +20,18 @@
  *     and a time ("Derby 2026-10-03 18:00") are not a phone number and leave Save on;
  *   · {jina} — the 12-character reserve (the counter falls by 12 for six typed characters), the fallback field appears,
  *     Save says what it needs, and the word with a phone keyboard's trailing space ("Rafiki ") turns Save on;
- *   · OVER-CAP — "N over · 2 messages · the limit is 1", announced once, Save off with the reason;
- *   · UNICODE — "Forced to Unicode by: ’ (curly apostrophe)", the field's ONE sentence ("Unicode leaves no room … —
- *     replace: ’ (curly apostrophe).") with no negative number, and "Replace with plain characters" puts it right;
+ *   · OVER-CAP — "N over · 2 messages · the limit is 1", announced once, Save off with the over-cap sentence ("This is 2
+ *     messages, and the limit is 1 — you have 160 characters, and this uses M.");
+ *   · UNICODE — "Forced to Unicode by: ’ (curly apostrophe)", the field's ONE sentence ("Unicode cuts this message to 70
+ *     characters — replace: ’ (curly apostrophe).") with no negative number, the counter "N characters left · 1 message ·
+ *     Unicode" (still a refusal), and "Replace with plain characters" puts it right;
  *   · SAVED — "Draft saved HH:MM — nothing was sent. Send yourself a test below.", the address carries the draft (a reload
- *     reopens it), Save quiet with "Nothing to save" in its title, and the test card's exact preview (the stop link as
- *     xxxxxxxx until the first test);
+ *     reopens it), Save quiet with "Nothing to save" in its title, and the test card's previews EXACTLY the texts a test
+ *     sends — the officer's words with their own first name, nothing after them (no stop link, no "18+", no xxxxxxxx, and the
+ *     old "Your stop link is made…" note gone);
  *   · TEST IDLE · TEST REFUSED (the ONE gate: no SMS consent, with the remedy link) · THE REMEDY (the officer's own
- *     consent switch, through that link) · TEST HANDED OVER — to the console stub, the exact text, NEVER "delivered" —
- *     the English test carrying the SAME stop link (one number, one link) · the budget (the 4th test refused);
+ *     consent switch, through that link) · TEST HANDED OVER — to the console stub, the exact text and nothing after it,
+ *     NEVER "delivered" — the English test exactly the English text · the budget (the 4th test refused);
  *   · EDIT AFTER SAVE (the test waits for the save) · STALE (a second tab saved first: refused with the time; Reload ASKS —
  *     "Keep my text" keeps it, with "Save as a new draft" still offered, and "Discard my text and load theirs" adopts
  *     theirs) · SAVE FAILED (the text kept, Try again lands) · TEST ERROR (the action failed in transit);
@@ -37,27 +41,34 @@
  *   · MISSING (?draft= naming nothing) · READ-ONLY (a confirmed campaign) · ERROR (the read fault) · REFUSED (FINANCE).
  *   PASS=live-closed (SMS_PROVIDER=blackball with DUMMY keys and BLACKBALL_API_URL at a dead local port):
  *   · the sender line names the server's sender ID; the test card says up front that marketing SMS are not switched on,
- *     and the saved line does not invite a test; a test is refused live_sends_closed, and the preview still shows
- *     xxxxxxxx after a reload — no token was minted.
+ *     and the saved line does not invite a test; a test is refused live_sends_closed, and the preview is still exactly the
+ *     text after a reload. (No page shows a token since the owner's ruling of 2026-10-09, so that the refusal minted none is
+ *     held in process by `test:campaign-compose` §18.5 — no longer read off the preview.)
  *     ⛔ Nothing in this drive opens the switch or writes `marketing.sms.live`: opening it is the owner's act (G1).
  *   PASS=dead-rail (SMS_PROVIDER=blackball and NO keys):
  *   · the sender line speaks Admin → System's dead-rail words with both Railway names; a draft still saves, its saved line
  *     inviting no test; a test is refused rail_dead, pointing at that line.
  *   PASS=typed (U37c-2 · its OWN fresh console server — it opens the server's licence-outreach record and saves
  *   wordings and policy lines through /api/dev-test/marketing-typed-test-seed, the platform's own writers):
- *   · spec Appendix A §A.9's thirteen Test-card states, as GROWTH (masked) and as ADMIN (a reader), at 1280 and 360 —
- *     own by default, "Another number" disabled while outreach is closed / adult.test unsaved / the draft has no source
- *     line, the empty field, a landline refused in the parser's words, unticked, ready (the contact-book preview),
- *     handed over to the stub, refused (one neutral sentence masked; the reason for a reader), the number's budget,
- *     and own refused with the consent link (while outreach is closed — once it opens, U33a-G's licence basis hands the same
- *     test over) beside a typed refusal with none; plus U37s's stale-line note and re-save; and the 18+ tick BOUND
+ *   · spec Appendix A §A.9's Test-card states, as ADMIN and as COMPLIANCE (both may read a number — a test to a TYPED number
+ *     is for those two roles only, Ali's answer of 2026-10-09), at 1280 and 360 — own by default, "Another number" disabled
+ *     while outreach is closed / adult.test unsaved, the empty field, a landline refused in the parser's words, unticked, ready
+ *     (the contact-book preview: the fallback word, nothing appended), handed over to the stub (exactly that text), refused
+ *     (the reason, said to a reader), the number's budget, and own refused with the consent link (while outreach is closed —
+ *     once it opens, U33a-G's licence basis hands the same test over) beside a typed refusal with none; and the 18+ tick BOUND
  *     (§16.19): an edited number unticks it (8b), every Send spends it, and words reworded while the page is open are
- *     refused and re-read (14, §18.32).
+ *     refused and re-read (14, §18.32). ⭐ ONE GROWTH officer in the world where the other two are offered a typed test: "My
+ *     own number" alone, no "Another number", no number field.
+ *   · ⛔ THE SOURCE LINE HAS NO JOB since the owner's ruling of 2026-10-09: nothing seeds one, a draft saved before any line
+ *     existed is offered "Another number" as soon as adult.test is saved (the old state 3 is gone), and no draft says its
+ *     line is stale (U37s's note is gone). The masked refusal (state 10) needs a role that may type a number but not read one,
+ *     and there is none any more: `test:campaign-compose` holds its sentence.
  *   PASS=window-closed (U13 · the console boot — a draft saves and the test reaches the window, the stub passing the switch):
  *   · the send window's clock pinned at 03:00 EAT through /api/dev-test/marketing-send-window (dev only, 404 in production;
  *     it moves nothing but that clock): the Test card says UP FRONT that it is outside the send window, with its hours and
  *     when a test can be sent; the saved line invites no test; a test is refused held in the window's own sentence; and
- *     the preview still shows xxxxxxxx after a reload — no token was minted. At 1280 and 360.
+ *     the preview is still exactly the text after a reload (that no token was minted is `test:campaign-compose` §18.33's,
+ *     since no page shows one). At 1280 and 360.
  *   ⭐ U13 · EVERY OTHER PASS pins the window's clock at NOON EAT, so a test is handed over whatever hour this drive runs
  *   (the laptop's batteries often run at night); the real clock is put back when the drive ends.
  *   NOT DRIVEN: the test's "unconfirmed" state — it needs a carrier that took the request and lost the reply, which only a
@@ -133,7 +144,10 @@ const NO_CHANGES = "Nothing to save — no changes since the last save.";
 const READ_ONLY = "This campaign is no longer a draft — its message can't change.";
 const MISSING = "This draft wasn't found — it may have been removed, or the link is wrong.";
 const TEST_NOT_DRAFT = "Only a draft can be tested.";
-const TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";
+/** ⛔ GONE since the owner's ruling of 2026-10-09 (no message carries a stop link) — every check below asserts it is NOT on the card. */
+const OLD_TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";
+/** Under the counter since the owner's ruling of 2026-10-09 (`COMPOSE_AS_WRITTEN`). */
+const AS_WRITTEN = "Sent exactly as written — nothing is added to it.";
 const LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.";
 const NO_CONSENT = "Your number has no SMS offers consent on record — turn on SMS offers on your own profile, then test again.";
 const LIVE_CLOSED = "Marketing SMS are not switched on yet. The owner switches them on before the first send.";
@@ -154,7 +168,10 @@ const SEARCH_REFUSED = "A search isn't available to your role on a campaign's au
 const REMOVE_FILTER = "Remove the filter";
 /** The ONE verdict's sentence for a name holding a phone number — named by its last two digits, never in full. */
 const NAME_PHONE = "A campaign name can't hold a phone number — the digits ending 78 read as one, and campaigns are kept for good. Name the group it is for, or write other figures with a comma or a slash.";
-const UNICODE_NO_ROOM = `Unicode leaves no room once the required footer is added — replace: ${RSQ} (curly apostrophe).`;
+/** The Unicode body's ONE sentence: Unicode keeps its whole 70 since nothing is appended (the owner's ruling of 2026-10-09). */
+const UNICODE_ONE = `Unicode cuts this message to 70 characters — replace: ${RSQ} (curly apostrophe).`;
+/** The over-cap sentence, on the field and beside Save: the whole message's 160 against the officer's own text. */
+const overSentence = (uses) => `This is 2 messages, and the limit is 1 — you have 160 characters, and this uses ${uses}.`;
 const DISCARD_CONFIRM = "Discard my text and load theirs";
 const DISCARD_CANCEL = "Keep my text";
 const DISCARD_SAID = "replaces what you typed here";
@@ -167,16 +184,22 @@ const LOAD_ERROR = "Couldn't load this SMS campaign";
 const LDQ = String.fromCharCode(0x201c);
 const RDQ = String.fromCharCode(0x201d);
 const SW_REQUIRED = "The Swahili message is required — it is the one every recipient can be sent.";
-const NO_PREFIX = `The message must begin with ${LDQ}50pick${RDQ} so the sender is identified, as the law requires.`;
+/** The sender named at the start — the officer's own "50pick", checked, never added (footer.ts since 2026-10-09: no "as the law requires"). */
+const NO_PREFIX = `The message must begin with ${LDQ}50pick${RDQ} so the sender is identified.`;
 const NOT_PLACEHOLDER = `${LDQ}{name}${RDQ} is not a placeholder — the only one is {jina}, written exactly so, in lower case.`;
 const SENDER_DEAD = `Blackball keys not set ${MID} no SMS can send, login codes included ${MID} set both keys on Railway`;
 const RAIL_DEAD = "No SMS can leave this server right now — the sender line above says why.";
-const SOURCE_RE = /^[0-9]+ characters are kept for the source line a contact-book number needs — its wording is not set yet\.$/;
 const RATE_RE = /^That is the test limit for now — try again in [0-9]+ min\.$/;
 const CLOCK_RE = /[0-9]{2}:[0-9]{2}/;
 const FITS = new RegExp(`^([0-9,]+) characters? left ${MID} 1 message ${MID} (GSM-7|Unicode)$`);
 const OVER = new RegExp(`^([0-9,]+) over ${MID} ([0-9]+) messages? ${MID} the limit is 1$`);
-const TOKEN_TAIL = /\/s\/([A-Za-z0-9_-]{8})$/;
+/**
+ * ⛔ WHAT THE ENGINE APPENDED UNTIL THE OWNER'S RULING OF 2026-10-09 — the footer's line break, "18+", the helpline, "Acha:" and the
+ * `/s/` link (as a token or as the xxxxxxxx placeholder). A preview or a handed-over text holding any of them is a footer come back;
+ * every such check also wants the text EXACTLY the officer's words, so it proves the absence twice over.
+ */
+const FOOTER_MARKS = [NL, "18+", "0800", "Acha", "/s/", "xxxxxxxx"];
+const noFooter = (text) => typeof text === "string" && text !== "" && !FOOTER_MARKS.some((m) => text.includes(m));
 
 /* ── what the officer types ── */
 const OFFICER = "Asha Mwita";
@@ -184,8 +207,8 @@ const NAME = "Derby week";
 const BODY_TYPED = "50pick: Mechi kubwa leo.";
 const EXTRA = " Karibu";
 const BODY_JINA = "50pick: Habari {jina}, mechi kubwa leo.";
-/** Past one message's room, and well inside two (the footer and the source line's reserve ride on top). */
-const BODY_OVER = "50pick: " + "a".repeat(150);
+/** Past one message's WHOLE room (160 — nothing is appended since 2026-10-09), and well inside two. */
+const BODY_OVER = "50pick: " + "a".repeat(200);
 const BODY_UNICODE = `50pick: Leo ni siku ya Simba${RSQ}s.`;
 const BODY_EN = "50pick: Hello {jina}, big match today.";
 const BODY_EDIT = "50pick: Habari {jina}, mechi kubwa leo usiku.";
@@ -193,6 +216,10 @@ const FALLBACK_SW = "Rafiki";
 const FALLBACK_EN = "Friend";
 /** The worst case the counter prices: {jina} as twelve W's (the renderer's reserve), so a plain body costs its length. */
 const worst = (body) => body.split("{jina}").join("W".repeat(12)).trim().length;
+/** ⭐ A body EXACTLY as sent (the owner's ruling of 2026-10-09): `{jina}` filled with `name`, and nothing after it. */
+const asSent = (body, name) => body.split("{jina}").join(name);
+/** The officer's first name, as the renderer greets them (`OFFICER`'s first word). */
+const FIRST = "Asha";
 
 const VIEWPORTS = [
   { name: "1280x800", width: 1280, height: 800 },
@@ -480,10 +507,12 @@ async function consolePass() {
     const reason = await textOf(page, SEL.reason);
     ok(`${vp.name} · BLANK · Save is off WITH its reason, beside it and in its title — the first problem in field order (the name)`,
       (await isDisabled(page, SEL.save)) === true && reason === BLOCKED + NAME_PROBLEM && (await attr(page, SEL.save, "title")) === BLOCKED + NAME_PROBLEM, reason);
-    ok(`${vp.name} · BLANK · the live counter stands at its full room in one GSM-7 message, and says nothing yet`,
-      blank.left !== null && blank.left > 0 && blank.encoding === "GSM-7" && blank.state === "fits" && blank.live === "Fits in one message.", JSON.stringify(blank));
-    ok(`${vp.name} · BLANK · the source line's reserved room is said (its wording is not set — OQ3, G5)`,
-      SOURCE_RE.test(await textOf(page, '[data-counter="SW"] [data-counter-source]')), await textOf(page, '[data-counter="SW"] [data-counter-source]'));
+    ok(`${vp.name} · BLANK · the live counter stands at the WHOLE message's room — 160 in one GSM-7 message, nothing kept for a footer or a source line — and says nothing yet`,
+      blank.left === 160 && blank.encoding === "GSM-7" && blank.state === "fits" && blank.live === "Fits in one message.", JSON.stringify(blank));
+    ok(`${vp.name} · BLANK · ⛔ the owner's ruling of 2026-10-09 · under the counter "${AS_WRITTEN}" — and no source-line line, no stop-link line`,
+      (await textOf(page, '[data-counter="SW"] [data-counter-as-written]')) === AS_WRITTEN && !(await has(page, "[data-counter-source]"))
+        && !/source line|stop link/i.test(await textOf(page, '[data-counter="SW"]')),
+      `"${await textOf(page, '[data-counter="SW"] [data-counter-as-written]')}" · source line ${await has(page, "[data-counter-source]")}`);
     ok(`${vp.name} · BLANK · no English body: everyone gets the Swahili message`, (await textOf(page, "[data-compose-en-rule]")) === EN_NONE);
     ok(`${vp.name} · BLANK · ⛔ OD45 · the sender is a line of text — the console stub, said as what it is — and no control names a sender`,
       sender === SENDER_STUB && (await attr(page, "[data-sender-line]", "data-sender-line")) === "ok"
@@ -496,12 +525,13 @@ async function consolePass() {
         && (await attr(page, "[data-test-card]", "data-test-card")) === "blocked" && (await isDisabled(page, '[data-test-send="SW"]')) === true
         && !(await has(page, "[data-test-live-note]")),
       `${await textOf(page, '[data-test-choice="own"]')} · ${await textOf(page, "[data-test-blocked]")}`);
-    ok(`${vp.name} · BLANK · ⛔ no number field while "Another number" is off — no tel input, nothing named phone, msisdn, number or to — "Another number" says why it is off (save first), and ⛔ OD24 no TZS on the page`,
+    ok(`${vp.name} · BLANK · ⛔ no number field and NO "Another number" for this GROWTH officer (a test to a typed number is for ADMIN and COMPLIANCE only — Ali, 2026-10-09) — no tel input, nothing named phone, msisdn, number or to — and ⛔ OD24 no TZS on the page`,
       (await page.locator('main#main-content input[type="tel"], main#main-content [inputmode="tel"], main#main-content input[name="phone"], main#main-content input[name="msisdn"], main#main-content input[name="number"], main#main-content input[name="to"]').count()) === 0
-        && (await isDisabled(page, '[data-test-choice="typed"] input')) === true
-        && (await textOf(page, '[data-test-choice-why="typed"]')) === SAVE_FIRST
+        && !(await has(page, '[data-test-choice="typed"]')) && !(await has(page, '[data-test-choice-why="typed"]'))
+        && (await attr(page, "[data-test-card]", "data-test-typed-offered")) === "no"
+        && !(await textOf(page, SEL.test)).includes("Another number")
         && !/TZS/.test(await mainText(page)),
-      await textOf(page, '[data-test-choice-why="typed"]'));
+      `typed choice ${await has(page, '[data-test-choice="typed"]')} · "${(await textOf(page, SEL.test)).slice(0, 120)}"`);
     await fitCheck(page, vp.name, "blank");
     await stateShot(page, vp.name, "blank", BLOCKED + NAME_PROBLEM);
     // ⭐ Validation takes the officer to the field: the reason is a button, and focus lands in the name's own input.
@@ -594,9 +624,10 @@ async function consolePass() {
       blank.left !== null && over.state === "over" && over.over === worst(BODY_OVER) - blank.left && over.segments === 2
         && over.live === "Over the limit — this is 2 messages.",
       JSON.stringify(over));
-    ok(`${vp.name} · OVER-CAP · Save is off with the reason, and the Swahili field carries the problem`,
-      (await isDisabled(page, SEL.save)) === true && overReason.startsWith(BLOCKED)
-        && (await page.locator('label[data-field="bodySw"] p.text-danger-fg').count()) === 1, overReason);
+    ok(`${vp.name} · OVER-CAP · Save is off with the over-cap sentence — the whole message's 160 against the ${worst(BODY_OVER)} typed, nothing kept for a footer — and the Swahili field carries the same one sentence`,
+      (await isDisabled(page, SEL.save)) === true && overReason === BLOCKED + overSentence(worst(BODY_OVER))
+        && (await page.locator('label[data-field="bodySw"] p.text-danger-fg').count()) === 1
+        && (await textOf(page, 'label[data-field="bodySw"] p.text-danger-fg')) === overSentence(worst(BODY_OVER)), overReason);
     await fitCheck(page, vp.name, "over-cap");
     await stateShot(page, vp.name, "over-cap", over.line, SEL.message);
 
@@ -609,8 +640,8 @@ async function consolePass() {
       uni.state === "unicode" && offenders.startsWith(`${FORCED} ${RSQ} (curly apostrophe)`) && uni.live === "Unicode — refused until the marked characters are replaced."
         && (await isDisabled(page, SEL.save)) === true, `${offenders} · ${uni.live}`);
     const uniSaid = await textOf(page, 'label[data-field="bodySw"] p.text-danger-fg');
-    ok(`${vp.name} · UNICODE · the field says in ONE sentence what to replace and that Unicode leaves no room — no negative number anywhere on the card — and the counter line asks for no cut`,
-      uniSaid === UNICODE_NO_ROOM && new RegExp(`^Unicode leaves no room ${MID} [0-9]+ messages ${MID} the limit is 1$`).test(uni.line)
+    ok(`${vp.name} · UNICODE · the field says in ONE sentence what to replace and that Unicode cuts it to 70 — Unicode's whole room, nothing kept for a footer — the counter reads "${70 - worst(BODY_UNICODE)} characters left · 1 message · Unicode" (still a refusal), and no negative number anywhere on the card`,
+      uniSaid === UNICODE_ONE && uni.left === 70 - worst(BODY_UNICODE) && uni.encoding === "Unicode" && uni.segments === 1
         && !NEG_NUMBER.test(await textOf(page, SEL.message)), `"${uniSaid}" · "${uni.line}"`);
     await stateShot(page, vp.name, "unicode", FORCED, SEL.message);
     await page.locator('[data-counter="SW"] [data-counter-fold]').first().click();
@@ -640,9 +671,9 @@ async function consolePass() {
       (await isDisabled(page, SEL.save)) === true && !(await has(page, SEL.reason)) && (await attr(page, SEL.save, "title")) === NO_CHANGES);
     const pSw = await previewOf(page, "SW");
     const pEn = await previewOf(page, "EN");
-    ok(`${vp.name} · SAVED · the test card previews the EXACT texts a test sends — the officer's own first name, the footer, the stop link as xxxxxxxx until the first test`,
-      pSw.startsWith("50pick: Habari Asha, mechi kubwa leo.") && pSw.includes("18+") && pSw.endsWith("/s/xxxxxxxx")
-        && pEn.startsWith("50pick: Hello Asha, big match today.") && pEn.endsWith("/s/xxxxxxxx") && (await textOf(page, SEL.test)).includes(TOKEN_NOTE),
+    ok(`${vp.name} · SAVED · ⛔ the owner's ruling of 2026-10-09 · the test card previews EXACTLY the texts a test sends — the officer's words with their own first name and NOTHING after them (no footer, no "18+", no stop link, no xxxxxxxx) — and the old "Your stop link is made…" note is gone`,
+      pSw === asSent(BODY_JINA, FIRST) && pEn === asSent(BODY_EN, FIRST) && noFooter(pSw) && noFooter(pEn)
+        && !(await textOf(page, SEL.test)).includes(OLD_TOKEN_NOTE) && !(await textOf(page, SEL.test)).includes("xxxxxxxx"),
       `SW "${pSw}" · EN "${pEn}"`);
     await fitCheck(page, vp.name, "saved");
     await stateShot(page, vp.name, "saved", savedLine, SEL.message);
@@ -682,24 +713,22 @@ async function consolePass() {
     // ── TEST HANDED OVER — to the console stub; the exact text; never "delivered" ──────────────────────────────────
     const handed = await sendTest(page, "SW");
     const sentSw = squash(handed?.sent ?? "");
-    const token = TOKEN_TAIL.exec(sentSw)?.[1] ?? "";
-    ok(`${vp.name} · HANDED OVER · "Handed to this server's console stub at HH:MM — it went to the server log", the exact text shown, a real stop link`,
+    ok(`${vp.name} · HANDED OVER · "Handed to this server's console stub at HH:MM — it went to the server log", and the exact text shown is the officer's words with their name — nothing after them, no stop link`,
       handed?.outcome === "handed_over" && handed.sentence.startsWith(HANDED_STUB) && handed.sentence.endsWith(STUB_TAIL) && CLOCK_RE.test(handed.sentence)
-        && sentSw.startsWith("50pick: Habari Asha, mechi kubwa leo.") && token !== "" && token !== "xxxxxxxx",
+        && sentSw === asSent(BODY_JINA, FIRST) && noFooter(handed.sent ?? ""),
       JSON.stringify(handed));
     ok(`${vp.name} · HANDED OVER · ⛔ OD41 · never "delivered" — nowhere on the page`, !/deliver/i.test(await mainText(page)));
-    await page.waitForFunction((t) => (document.querySelector('[data-test-preview="SW"]')?.textContent ?? "").trim().endsWith(`/s/${t}`), token, { timeout: 20000 }).catch(() => {});
-    ok(`${vp.name} · HANDED OVER · the preview now carries that same stop link, and is the text that was sent`,
-      (await previewOf(page, "SW")) === sentSw && !(await textOf(page, SEL.test)).includes(TOKEN_NOTE), `"${await previewOf(page, "SW")}"`);
+    ok(`${vp.name} · HANDED OVER · the preview is still the very text that was sent — a test changes nothing the page shows (no token is ever printed into it)`,
+      (await previewOf(page, "SW")) === sentSw && !(await textOf(page, SEL.test)).includes(OLD_TOKEN_NOTE), `"${await previewOf(page, "SW")}"`);
     await fitCheck(page, vp.name, "handed-over");
     await stateShot(page, vp.name, "test-handed-over", HANDED_STUB, SEL.test);
 
-    // ── THE ENGLISH TEST — one number, one link ────────────────────────────────────────────────────────────────────
+    // ── THE ENGLISH TEST — exactly the English words ─────────────────────────────────────────────────────────────────
     await waitReady(page);
     const english = await sendTest(page, "EN");
     const sentEn = squash(english?.sent ?? "");
-    ok(`${vp.name} · ENGLISH TEST · handed over in English, carrying the SAME stop link (one number, one link)`,
-      english?.outcome === "handed_over" && sentEn.startsWith("50pick: Hello Asha, big match today.") && token !== "" && sentEn.endsWith(`/s/${token}`),
+    ok(`${vp.name} · ENGLISH TEST · handed over in English — exactly the English words with the name, nothing after them`,
+      english?.outcome === "handed_over" && sentEn === asSent(BODY_EN, FIRST) && noFooter(english.sent ?? ""),
       JSON.stringify(english));
 
     // ── THE BUDGET — three tests at once, then one every ten minutes ─────────────────────────────────────────────
@@ -716,8 +745,8 @@ async function consolePass() {
       (await textOf(page, "[data-test-blocked]")) === SAVE_FIRST && (await isDisabled(page, '[data-test-send="SW"]')) === true && (await isDisabled(page, SEL.save)) === false);
     await save(page);
     await page.waitForFunction(() => (document.querySelector('[data-test-preview="SW"]')?.textContent ?? "").includes("usiku"), null, { timeout: 20000 }).catch(() => {});
-    ok(`${vp.name} · EDIT · saved, and the preview follows the saved text`,
-      (await previewOf(page, "SW")).startsWith("50pick: Habari Asha, mechi kubwa leo usiku.") && (await has(page, SEL.saved)));
+    ok(`${vp.name} · EDIT · saved, and the preview follows the saved text — exactly it, nothing after it`,
+      (await previewOf(page, "SW")) === asSent(BODY_EDIT, FIRST) && (await has(page, SEL.saved)));
 
     // ── STALE — a second tab saved first ──────────────────────────────────────────────────────────────────────────
     const pageB = await ctx.newPage();
@@ -935,8 +964,8 @@ async function liveClosedPass() {
     await save(page);
     await waitReady(page);
     const draftId = new URL(page.url()).searchParams.get("draft") ?? "";
-    ok(`${vp.name} · LIVE CLOSED · saved; the preview's stop link is still xxxxxxxx`,
-      /^cmp_/.test(draftId) && (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx"));
+    ok(`${vp.name} · LIVE CLOSED · saved; the preview is exactly the text a test would send — nothing after it`,
+      /^cmp_/.test(draftId) && (await previewOf(page, "SW")) === asSent(BODY_JINA, FIRST));
     ok(`${vp.name} · LIVE CLOSED · the saved line says nothing was sent and does NOT invite the test this card would refuse`,
       SAVED_NO_TEST_RE.test(await textOf(page, SEL.saved)), await textOf(page, SEL.saved));
     await stateShot(page, vp.name, "live-closed-saved", LIVE_NOTE, SEL.test);
@@ -947,8 +976,8 @@ async function liveClosedPass() {
     await stateShot(page, vp.name, "test-refused-live-closed", LIVE_CLOSED, SEL.test);
     await openComposer(page, `?draft=${draftId}`);
     await waitReady(page);
-    ok(`${vp.name} · LIVE CLOSED · after a reload the stop link is STILL xxxxxxxx — the refusal minted no token — and the switch still reads closed`,
-      (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx") && (await textOf(page, SEL.test)).includes(TOKEN_NOTE)
+    ok(`${vp.name} · LIVE CLOSED · after a reload the preview is still exactly the text, with no token and no note about one, and the switch still reads closed (that the refusal minted no token is test:campaign-compose §18.5's: no page shows a token since 2026-10-09)`,
+      (await previewOf(page, "SW")) === asSent(BODY_JINA, FIRST) && !(await textOf(page, SEL.test)).includes(OLD_TOKEN_NOTE)
         && (await textOf(page, "[data-test-live-note]")) === LIVE_NOTE);
     await ctx.close();
   }
@@ -1014,8 +1043,8 @@ async function windowClosedPass() {
     await save(page);
     await waitReady(page);
     const draftId = new URL(page.url()).searchParams.get("draft") ?? "";
-    ok(`${vp.name} · WINDOW CLOSED · saved; the preview's stop link is still xxxxxxxx`,
-      /^cmp_/.test(draftId) && (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx"));
+    ok(`${vp.name} · WINDOW CLOSED · saved; the preview is exactly the text a test would send — nothing after it`,
+      /^cmp_/.test(draftId) && (await previewOf(page, "SW")) === asSent(BODY_JINA, FIRST));
     ok(`${vp.name} · WINDOW CLOSED · the saved line says nothing was sent and does NOT invite the test this card would refuse`,
       SAVED_NO_TEST_RE.test(await textOf(page, SEL.saved)), await textOf(page, SEL.saved));
     await stateShot(page, vp.name, "window-closed-saved", WINDOW_NOTE, SEL.test);
@@ -1027,38 +1056,45 @@ async function windowClosedPass() {
     await stateShot(page, vp.name, "test-refused-window-closed", QUIET_HOURS, SEL.test);
     await openComposer(page, `?draft=${draftId}`);
     await waitReady(page);
-    ok(`${vp.name} · WINDOW CLOSED · after a reload the stop link is STILL xxxxxxxx — the refusal minted no token — and the note still stands`,
-      (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx") && (await textOf(page, SEL.test)).includes(TOKEN_NOTE)
+    ok(`${vp.name} · WINDOW CLOSED · after a reload the preview is still exactly the text, with no token and no note about one, and the window's note still stands (that the refusal minted no token is test:campaign-compose §18.33's)`,
+      (await previewOf(page, "SW")) === asSent(BODY_JINA, FIRST) && !(await textOf(page, SEL.test)).includes(OLD_TOKEN_NOTE)
         && (await textOf(page, "[data-test-window-note]")) === WINDOW_NOTE);
     await ctx.close();
   }
 }
 
-/* ═══ PASS · typed — U37c-2: the Test card's test to ANOTHER number, spec Appendix A §A.9 (+ U37s's stale line) ═══════
+/* ═══ PASS · typed — U37c-2: the Test card's test to ANOTHER number, spec Appendix A §A.9 ═════════════════════════════════
  * A FRESH console server (the console pass's boot line) — this pass moves the server's ONE licence-outreach record and
  * saves wordings and policy lines, which no other pass may meet. The world is stepped forward only through
- * /api/dev-test/marketing-typed-test-seed, which calls the platform's own writers. Four seats — GROWTH (masked) and ADMIN
- * (a reader), each at 1280 and 360 — walk the states in the order the world allows: closed → lines saved and outreach
- * opened → `adult.test` saved → the source line saved. Every capture asserts its sentence first (`stateShot`). */
+ * /api/dev-test/marketing-typed-test-seed, which calls the platform's own writers. Four seats — ADMIN and COMPLIANCE (a test
+ * to a typed number is for those two roles only, Ali's answer of 2026-10-09; both may read a number), each at 1280 and 360 —
+ * walk the states in the order the world allows: closed → lines saved and outreach opened → `adult.test` saved. ⛔ Nothing
+ * seeds a source line: since the owner's ruling of 2026-10-09 a test needs none, so `adult.test` saved is the last step, and
+ * ONE GROWTH officer is asked, in that open world, whether it is offered a typed number at all (it is not). Every capture
+ * asserts its sentence first (`stateShot`). */
 const TYPED = {
   legend: "Send the test to",
   closed: "Tests to another number open once licence outreach is switched on (Admin → System → Licence outreach). Send yourself a test for now.",
   noAdult: "Tests to another number need the 18+ confirmation wording saved first (Admin → System → Marketing wordings).",
-  noSource: "A test to another number needs the campaign's source line, and this draft has none — it is added when the draft is saved after the owner sets it (gate G5). Send yourself a test for now.",
+  /** ⛔ GONE since the owner's ruling of 2026-10-09 (the old state 3) — asserted NOT on the card. */
+  oldNoSource: "A test to another number needs the campaign's source line, and this draft has none — it is added when the draft is saved after the owner sets it (gate G5). Send yourself a test for now.",
   needNumber: "Type the number to test on.",
   needTick: "Tick the box to confirm the person who uses this number is 18 or older.",
   fixNumber: "Correct the number above to send the test.",
   reworded: "The 18+ confirmation was reworded while this page was open — read the new words and tick the box again.",
   adultReworded: "I confirm that the person who uses this number is aged 18 or older.",
-  refusedMasked: "No test was sent: this number can't receive this campaign's messages. Choose another number, or test on your own.",
   refusedReader: "No test was sent: this number is on the stop list, and a stop is kept for good.",
   rateTo: /^That number has had as many tests as it may for now — choose another, or try again in [0-9]+ min\.$/,
   handedStub: /^Handed to this server's console stub at [0-9]{2}:[0-9]{2} — it went to the server log, not to a phone\.$/,
   previewHead: "Swahili, as it will be sent to that number",
-  note: "The name is your word for {jina}, never the person's own, and their stop link is made for them and isn't shown here.",
-  stale: "This draft's source line isn't the one saved now on Admin → System → Marketing wordings — save the draft to bring it up to date.",
+  /** Under the typed preview since the owner's ruling of 2026-10-09 — it names no stop link (`COMPOSE_TEST_TYPED_NOTE`). */
+  note: "The name is your word for {jina}, never the person's own.",
+  /** ⛔ GONE since 2026-10-09: the old note's stop-link clause, and U37s's stale-line note — each asserted NOT on the card. */
+  oldNoteTail: "their stop link is made for them",
+  oldStale: "This draft's source line isn't the one saved now on Admin → System → Marketing wordings — save the draft to bring it up to date.",
   adultLabel: "I confirm that the person who uses this number is 18 or older.",
-  source: "Namba yako ipo orodhani kwetu.",
+  /** G5's source line (the typed seed's `?source=1`): nothing seeds it now, and no text may carry it. */
+  oldSource: "Namba yako ipo orodhani kwetu.",
 };
 const T = {
   choice: "[data-test-to-choice]",
@@ -1117,7 +1153,8 @@ async function sendTypedOne(page) {
 }
 
 async function typedPass() {
-  const roles = [{ role: "GROWTH", tag: "growth", reads: false }, { role: "ADMIN", tag: "admin", reads: true }];
+  // ⛔ A test to a TYPED number is for ADMIN and COMPLIANCE only (Ali, 2026-10-09) — the two roles that already read numbers.
+  const roles = [{ role: "ADMIN", tag: "admin", reads: true }, { role: "COMPLIANCE", tag: "compliance", reads: true }];
   const seats = [];
   for (const [i, vp] of VIEWPORTS.entries()) {
     for (const [j, r] of roles.entries()) {
@@ -1126,9 +1163,12 @@ async function typedPass() {
       seats.push({ vp, r, phone, ctx, page, draft: "", key: `${vp.name}-${r.tag}`, slot: 20 * (i * 2 + j) });
     }
   }
-  // ⭐ STATE 12's helper — another GROWTH officer. The number's budget (`marketing.testSendTo`, 5) is the recipient's,
-  // whoever sends: three tests by this officer and two by the seat spend it, and the seat's sixth is refused.
-  const helper = { ...(await staffCtx("GROWTH", phoneFor(78), { width: 1280, height: 800 }, "no-preference", "Neema Kweka")), draft: "" };
+  // ⭐ STATE 12's helper — another officer who may type a number (COMPLIANCE). The number's budget (`marketing.testSendTo`, 5)
+  // is the recipient's, whoever sends: three tests by this officer and two by the seat spend it, and the seat's sixth is refused.
+  const helper = { ...(await staffCtx("COMPLIANCE", phoneFor(78), { width: 1280, height: 800 }, "no-preference", "Neema Kweka")), draft: "" };
+  // ⭐ THE ONE GROWTH CHECK — a GROWTH officer in the very world where the seats are offered a typed number.
+  const growthPhone = phoneFor(79);
+  const growth = await staffCtx("GROWTH", growthPhone, { width: 1280, height: 800 }, "no-preference", OFFICER);
   try {
     const start = await typedSeed(seats[0].page, "");
     if (start.outreach !== "closed") {
@@ -1136,7 +1176,7 @@ async function typedPass() {
       return;
     }
 
-    // ── PHASE A · the record CLOSED and nothing saved: each officer saves a draft, which therefore carries no source line ──
+    // ── PHASE A · the record CLOSED and nothing saved: each officer saves a draft (no source line exists, and none is needed) ──
     for (const s of seats) {
       const { page, key } = s;
       console.log(`${NL}[u37c] typed · ${key} · licence outreach closed`);
@@ -1152,7 +1192,8 @@ async function typedPass() {
       const ownChecked = await page.locator(T.own).first().isChecked().catch(() => null);
       ok(`${key} · STATE 1 · "Send the test to": my own number, masked, is chosen by default, with "Another number" beside it`,
         /^cmp_/.test(s.draft) && ownChecked === true && (await textOf(page, `${T.choice} legend`)) === TYPED.legend
-          && (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(s.phone)}` && (await has(page, T.typed)),
+          && (await textOf(page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(s.phone)}` && (await has(page, T.typed))
+          && (await attr(page, "[data-test-card]", "data-test-typed-offered")) === "yes",
         `${await textOf(page, T.choice)}`);
       ok(`${key} · STATE 2 · "Another number" is DISABLED with its reason beside it — licence outreach is closed — and no number field is drawn`,
         (await isDisabled(page, T.typed)) === true && (await textOf(page, T.typedWhy)) === TYPED.closed && !(await has(page, T.number)),
@@ -1184,26 +1225,45 @@ async function typedPass() {
       await stateShot(s.page, s.key, "typed-04-no-adult-wording", TYPED.noAdult, SEL.test);
     }
 
-    // ── PHASE C · `adult.test` saved — but this draft was saved before any source line existed ──
+    // ── PHASE C · `adult.test` saved — and NO source line, ever (the owner's ruling of 2026-10-09: a test needs none) ──
     const adult = await typedSeed(seats[0].page, "adult=1");
-    ok("THE WORLD · adult.test saved through the shipped wordings writer", adult.adult?.ok === true, JSON.stringify(adult).slice(0, 200));
+    ok("THE WORLD · adult.test saved through the shipped wordings writer — and nothing seeds a source line", adult.adult?.ok === true && adult.source === undefined, JSON.stringify(adult).slice(0, 200));
     for (const s of seats) {
       await openComposer(s.page, `?draft=${s.draft}`);
       await waitReady(s.page);
-      ok(`${s.key} · STATE 3 · "Another number" still DISABLED — this draft carries no source line (G5)`,
-        (await isDisabled(s.page, T.typed)) === true && (await textOf(s.page, T.typedWhy)) === TYPED.noSource, await textOf(s.page, T.typedWhy));
-      await stateShot(s.page, s.key, "typed-03-no-source-line", TYPED.noSource, SEL.test);
+      // ⛔ THE OLD STATE 3 IS GONE: a draft saved before any source line existed is offered "Another number" as soon as the
+      // record is open and adult.test is saved — no reason beside it, and no sentence about a source line anywhere on the card.
+      ok(`${s.key} · STATE 3 (gone since 2026-10-09) · a draft saved with no source line is offered "Another number" at once — no reason beside it, no source-line sentence on the card`,
+        (await isDisabled(s.page, T.typed)) === false && !(await has(s.page, T.typedWhy))
+          && !(await textOf(s.page, SEL.test)).includes(TYPED.oldNoSource) && !/source line/i.test(await textOf(s.page, SEL.test)),
+        await textOf(s.page, T.choice));
+      await stateShot(s.page, s.key, "typed-03-offered-without-source-line", TYPED.legend, SEL.test);
     }
 
-    // ── PHASE D · the source line saved (G5's words) — and a stopped number for the refusals ──
-    const source = await typedSeed(seats[0].page, "source=1");
-    ok("THE WORLD · the source line saved through the shipped wordings writer", source.source?.ok === true, JSON.stringify(source).slice(0, 200));
+    // ── PHASE D · a stopped number for the refusals (and still no source line) ──
     for (const s of seats) {
       s.stopped = typedDigits(s.slot + 1);
       const stop = await typedSeed(s.page, `stop=0${s.stopped}`);
       if (stop.stop?.ok !== true) ok(`${s.key} · fixture · a real stop on the refusal number`, false, JSON.stringify(stop));
     }
-    // The helper's draft is saved AFTER the line exists, so it carries it: "Another number" is offered at once.
+    // ⭐ THE ONE GROWTH CHECK — the world where ADMIN and COMPLIANCE are offered a typed number: GROWTH is offered "My own number"
+    // alone — no "Another number" at all, no number field — on its own saved draft.
+    await openComposer(growth.page);
+    await growth.page.locator(SEL.name).fill(`${NAME} growth`);
+    await growth.page.locator(SEL.bodySw).fill(BODY_JINA);
+    await wait(250);
+    await growth.page.locator(SEL.fallbackSw).fill(FALLBACK_SW);
+    await wait(250);
+    await save(growth.page);
+    await waitReady(growth.page);
+    ok("1280-growth · ⛔ a test to a typed number is for ADMIN and COMPLIANCE only (Ali, 2026-10-09) — with licence outreach open and adult.test saved, GROWTH is offered \"My own number\" alone: no \"Another number\", no number field",
+      (await textOf(growth.page, '[data-test-choice="own"]')) === `My own number — ${maskedFor(growthPhone)}` && !(await has(growth.page, T.typed))
+        && !(await has(growth.page, '[data-test-choice="typed"]')) && !(await has(growth.page, T.number)) && !(await textOf(growth.page, SEL.test)).includes("Another number")
+        && (await attr(growth.page, "[data-test-card]", "data-test-typed-offered")) === "no" && (await attr(growth.page, "[data-test-card]", "data-test-target")) === "own",
+      await textOf(growth.page, SEL.test));
+    await fitCheck(growth.page, "1280-growth", "typed-growth-own-only");
+    await stateShot(growth.page, "1280-growth", "typed-growth-own-only", `My own number — ${maskedFor(growthPhone)}`, SEL.test);
+    // The helper's draft: "Another number" is offered at once, and no draft says anything about a source line.
     await openComposer(helper.page);
     await helper.page.locator(SEL.name).fill(`${NAME} helper`);
     await helper.page.locator(SEL.bodySw).fill(BODY_JINA);
@@ -1214,22 +1274,19 @@ async function typedPass() {
     await waitReady(helper.page);
     await helper.page.locator(T.typed).first().check();
     await wait(400);
-    ok("helper · a draft saved after the line exists offers \"Another number\" at once, with no stale-line note",
+    ok("helper · a COMPLIANCE officer's draft offers \"Another number\" at once, with no stale-line note",
       !(await has(helper.page, T.stale)) && (await has(helper.page, T.number)));
     for (const s of seats) {
       const { page, key } = s;
-      console.log(`${NL}[u37c] typed · ${key} · licence outreach open, the line saved`);
+      console.log(`${NL}[u37c] typed · ${key} · licence outreach open, adult.test saved`);
       await openComposer(page, `?draft=${s.draft}`);
       await waitReady(page);
-      // U37s · the draft predates the line: said, and Save offered with nothing typed.
-      ok(`${key} · U37s · a draft saved before the line existed SAYS so, and Save is offered with nothing typed`,
-        (await textOf(page, T.stale)) === TYPED.stale && (await isDisabled(page, SEL.save)) === false, await textOf(page, T.stale));
-      await fitCheck(page, key, "u37s-stale-line");
-      await stateShot(page, key, "u37s-stale-line", TYPED.stale, T.stale);
-      await save(page);
-      await waitReady(page);
-      ok(`${key} · U37s · re-saved: the note is gone, Save is quiet again, and "Another number" is now offered`,
-        !(await has(page, T.stale)) && (await isDisabled(page, SEL.save)) === true && (await isDisabled(page, T.typed)) === false);
+      // ⛔ U37s's NOTE IS GONE: a draft saved before any source line existed says nothing about one, and Save stays quiet —
+      // there is nothing to bring up to date.
+      ok(`${key} · U37s (gone since 2026-10-09) · a draft saved before any source line existed says NOTHING about one — no stale-line note — and Save is quiet ("Nothing to save")`,
+        !(await has(page, T.stale)) && !(await textOf(page, SEL.message)).includes(TYPED.oldStale)
+          && (await isDisabled(page, SEL.save)) === true && (await attr(page, SEL.save, "title")) === NO_CHANGES && (await isDisabled(page, T.typed)) === false,
+        `stale note ${await has(page, T.stale)} · save title "${await attr(page, SEL.save, "title")}"`);
 
       // STATE 5 · typed selected, the field empty
       await page.locator(T.typed).first().check();
@@ -1270,15 +1327,15 @@ async function typedPass() {
           && (await textOf(page, T.tick)) === TYPED.adultLabel, `${await textOf(page, T.blocked)} · tick "${await textOf(page, T.tick)}"`);
       await stateShot(page, key, "typed-07-unticked", TYPED.needTick, SEL.test);
 
-      // STATE 8 · ticked and ready: the typed preview — a contact-book recipient, the fallback, the line, the link unshown
+      // STATE 8 · ticked and ready: the typed preview — a contact-book recipient: the fallback word, and NOTHING after the words
       await page.locator(T.tick).first().click();
       await wait(400);
       const card8 = await textOf(page, SEL.test);
       const preview8 = await previewOf(page, "SW");
-      ok(`${key} · STATE 8 · ticked: Send is on, and the preview is the CONTACT-BOOK message — the fallback name, the source line, the stop link as xxxxxxxx — with the note that the person's own link is never shown`,
+      ok(`${key} · STATE 8 · ticked: Send is on, and the preview is EXACTLY the contact-book message — the officer's words with the fallback word for {jina}, no source line, no stop link, no xxxxxxxx — under it the note "${TYPED.note}" (its old stop-link clause gone)`,
         (await page.locator(T.tickInput).first().isChecked()) && (await isDisabled(page, T.send)) === false && !(await has(page, T.blocked))
-          && card8.includes(TYPED.previewHead) && card8.includes(TYPED.note) && preview8.includes(`Habari ${FALLBACK_SW},`)
-          && preview8.includes(TYPED.source) && preview8.endsWith("/s/xxxxxxxx"),
+          && card8.includes(TYPED.previewHead) && card8.includes(TYPED.note) && !card8.includes(TYPED.oldNoteTail)
+          && preview8 === asSent(BODY_JINA, FALLBACK_SW) && noFooter(preview8) && !preview8.includes(TYPED.oldSource),
         preview8.slice(0, 200));
       await fitCheck(page, key, "typed-08-ready");
       await stateShot(page, key, "typed-08-ready", TYPED.note, SEL.test);
@@ -1300,34 +1357,35 @@ async function typedPass() {
       // ⚖️ Three attempts on one budget: states 9, 10/11 and the licence-basis own test. A reset, then state 12 with the helper.
       await resetBudgets(page);
 
-      // STATE 9 · handed over to the console stub — the measurement text, never "delivered", no consent link
+      // STATE 9 · handed over to the console stub — exactly the contact-book text, never "delivered", no consent link
       const handed = await sendTypedOne(page);
-      ok(`${key} · STATE 9 · handed to the console stub — "the server log, not a phone" — the exact text with the stop link as xxxxxxxx, no consent link, the tick SPENT by the send, and the number in no address`,
+      ok(`${key} · STATE 9 · handed to the console stub — "the server log, not a phone" — the exact text EXACTLY the contact-book message (the fallback word, nothing after the words: no stop link, no source line), no consent link, the tick SPENT by the send, and the number in no address`,
         handed?.outcome === "handed_over" && handed.target === "typed" && TYPED.handedStub.test(handed.sentence)
-          && (handed.sent ?? "").endsWith("/s/xxxxxxxx") && (handed.sent ?? "").includes(TYPED.source) && handed.consentLink === null
-          && handed.spent === true && !page.url().includes(typedDigits(s.slot)),
+          && squash(handed.sent ?? "") === asSent(BODY_JINA, FALLBACK_SW) && noFooter(handed.sent ?? "") && !(handed.sent ?? "").includes(TYPED.oldSource)
+          && handed.consentLink === null && handed.spent === true && !page.url().includes(typedDigits(s.slot)),
         JSON.stringify(handed).slice(0, 300));
       await fitCheck(page, key, "typed-09-handed-over");
       await stateShot(page, key, "typed-09-handed-over", "it went to the server log, not to a phone.", outcomeAnchor(key));
 
-      // STATES 10–11 · refused at the gate: a stopped number — ONE neutral sentence for GROWTH, the reason for a reader
+      // STATE 11 · refused at the gate: a stopped number — the reason, said to a reader. (⛔ State 10, the ONE neutral sentence for a
+      // masked officer, needs a role that may type a number but not read one: since Ali's answer of 2026-10-09 there is none —
+      // ADMIN and COMPLIANCE both read numbers — so `test:campaign-compose` holds that sentence, not this drive.)
       await typeNumber(page, s.stopped);
       const refused = await sendTypedOne(page);
-      const want = s.r.reads ? { reason: "suppressed", sentence: TYPED.refusedReader } : { reason: "typed_refused", sentence: TYPED.refusedMasked };
-      ok(`${key} · STATE ${s.r.reads ? "11" : "10"} · a stopped number refused — ${s.r.reads ? "a reader is told the reason" : "a masked officer gets ONE neutral sentence"} — and no consent link`,
-        refused?.outcome === "refused" && refused.reason === want.reason && refused.sentence === want.sentence && refused.target === "typed"
+      ok(`${key} · STATE 11 · a stopped number refused — a reader is told the reason — and no consent link`,
+        refused?.outcome === "refused" && refused.reason === "suppressed" && refused.sentence === TYPED.refusedReader && refused.target === "typed"
           && refused.consentLink === null, JSON.stringify(refused).slice(0, 300));
-      await fitCheck(page, key, `typed-${s.r.reads ? "11" : "10"}-refused`);
-      await stateShot(page, key, `typed-${s.r.reads ? "11" : "10"}-refused-${s.r.tag}`, want.sentence, outcomeAnchor(key));
+      await fitCheck(page, key, "typed-11-refused");
+      await stateShot(page, key, `typed-11-refused-${s.r.tag}`, TYPED.refusedReader, outcomeAnchor(key));
 
       // U33a-G · back to my own number, outreach OPEN: the licence basis reaches an adult account with no consent and no
-      // stop, so the test phase A refused is handed over now — in my own name, with my own stop link, and no consent link
+      // stop, so the test phase A refused is handed over now — in my own name, exactly my words, and no consent link
       await page.locator(T.own).first().check();
       await wait(400);
       const own = await sendOne(page);
-      ok(`${key} · U33a-G · my own number, licence outreach OPEN: the test refused in phase A is handed over on the licence basis — my own name, a real stop link, no consent link — and the typed refusal above carried none`,
-        own?.outcome === "handed_over" && own.target === "own" && TYPED.handedStub.test(own.sentence) && (own.sent ?? "").includes("Habari Asha,")
-          && /\/s\/[A-Z0-9]{8}$/.test(own.sent ?? "") && own.consentLink === null && refused?.consentLink === null
+      ok(`${key} · U33a-G · my own number, licence outreach OPEN: the test refused in phase A is handed over on the licence basis — exactly my words with my own first name, nothing after them (no stop link), no consent link — and the typed refusal above carried none`,
+        own?.outcome === "handed_over" && own.target === "own" && TYPED.handedStub.test(own.sentence) && squash(own.sent ?? "") === asSent(BODY_JINA, FIRST)
+          && noFooter(own.sent ?? "") && own.consentLink === null && refused?.consentLink === null
           && s.ownRefused?.reason === "no_consent", JSON.stringify(own).slice(0, 300));
       await fitCheck(page, key, "typed-13b-own-licence-basis");
       await stateShot(page, key, "typed-13b-own-licence-basis", "it went to the server log, not to a phone.", outcomeAnchor(key));
@@ -1380,6 +1438,7 @@ async function typedPass() {
   } finally {
     for (const s of seats) await s.ctx.close().catch(() => {});
     await helper.ctx.close().catch(() => {});
+    await growth.ctx.close().catch(() => {});
   }
 }
 

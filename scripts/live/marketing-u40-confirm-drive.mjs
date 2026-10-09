@@ -21,10 +21,13 @@
  *     opens on the figures counted for that press.
  *   · ⛔ NEVER OPENS BY ITSELF (the re-review's MINOR 1) — pressed, then the name typed while it counts: the answer lands
  *     on a form that says "Save first", and no dialog; the change undone, the card is back at rest and STILL no dialog.
- *   · BLOCKED BY THE READ — the source line missing (before the owner saves one), nobody matching, and over the campaign
- *     limit (the owner lowers it to TZS 100): the service's own sentence on the card WITHOUT "Nothing was confirmed", with
- *     "Check again"; the owner reads the cost and the limit, GROWTH the same refusal with NO figure — no "TZS" on GROWTH's
- *     page or in the read action's ANSWER to GROWTH, while the owner's answer carries it (G5.3).
+ *   · ⛔ NOT BLOCKED FOR A MISSING SOURCE LINE (the owner's ruling of 2026-10-09: a marketing SMS carries none, and nothing is
+ *     refused for one): a contact-book draft saved while no line exists opens the dialog like any other — the reader's list,
+ *     GROWTH's typed count — and no sentence on the card or in the dialog names a source line.
+ *   · BLOCKED BY THE READ — nobody matching, and over the campaign limit (the owner lowers it to TZS 100): the service's own
+ *     sentence on the card WITHOUT "Nothing was confirmed", with "Check again"; the owner reads the cost and the limit, GROWTH
+ *     the same refusal with NO figure — no "TZS" on GROWTH's page or in the read action's ANSWER to GROWTH, while the owner's
+ *     answer carries it (G5.3).
  *   · A READ THAT FAILED — every count made to throw: "Couldn't count this audience just now." and "Count again"; the fault
  *     cleared, "Count again" opens the dialog.
  *   · TYPED OPEN — "Confirm 13 people?", the box focused with the DIGIT keypad, the count as its placeholder, Confirm
@@ -64,8 +67,8 @@
  * confirmation's answers, and the bound; (6) nor is a READER's split that found no slot in time ("Couldn't work out who
  * will receive it just now…" where the four figures stand) — no switch fails the split alone; §UI 19 and 20 hold it.
  *
- * Run (in-memory, zero prod risk; a FRESH server — the drive saves the source line, which nothing clears, and adds to the
- * "moved" tag every run; remove .next before the boot: a stale .next 404s every /api/dev-test route):
+ * Run (in-memory, zero prod risk; a FRESH server — the drive adds to the "moved" tag every run, and it must meet no source
+ * line saved by another drive; remove .next before the boot: a stale .next 404s every /api/dev-test route):
  *   SMS_PROVIDER=console SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars> DISABLE_ADMIN_TOTP=true npx next dev -p 3103
  *     (a worktree whose node_modules is a junction: `npx next dev --webpack -p 3103`)
  *   BASE=http://localhost:3103 node scripts/live/marketing-u40-confirm-drive.mjs
@@ -134,8 +137,9 @@ const ALREADY_TITLE = "Already confirmed";
 const DRAFT_CHANGED = "This draft was edited since you opened it. Review it again. Nothing was confirmed.";
 const NOT_DRAFT = "This campaign is no longer a draft. It has already been confirmed or closed. Nothing was changed.";
 const UNFINISHED = "Couldn't confirm — the server stopped before it answered, so this campaign may already be confirmed. Nothing has been sent. Try again: a campaign is never confirmed twice.";
+/** ⛔ GONE since the owner's ruling of 2026-10-09 (`needs_source_line` is removed) — asserted NOT on the card or in the dialog. */
+const OLD_NEEDS_SOURCE = "This audience can include people from the contact book, so the message must carry its source line — and this campaign has none yet. The owner sets it on Admin → System → Marketing wordings; then save this draft again.";
 /** The service's sentences as the CARD says them — without a refused confirmation's "Nothing was confirmed." */
-const NEEDS_SOURCE = "This audience can include people from the contact book, so the message must carry its source line — and this campaign has none yet. The owner sets it on Admin → System → Marketing wordings; then save this draft again.";
 const OVER_LIMIT_GROWTH = "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the owner to raise the limit.";
 const OVER_LIMIT_OWNER_HEAD = "This campaign could cost up to TZS ";
 const OVER_LIMIT_OWNER_LIMIT = "more than the TZS 100 one campaign may spend.";
@@ -577,13 +581,13 @@ let readerFloorMasks = [];
   await seed(page, "marketing-audience-seed?fault=0");
   ok("WORLD · the audience seed answers its fixture: thirteen player accounts and a list of three",
     world.expected?.matching === 13 && world.listMembers === 3, JSON.stringify({ expected: world.expected, listMembers: world.listMembers }));
-  // ⭐ BEFORE ANY SOURCE LINE IS SAVED: a book draft stamped with none — the source-line block, for both roles below.
+  // ⭐ NO SOURCE LINE IS SAVED, EVER (the owner's ruling of 2026-10-09): a book draft stamped with none — and it confirms like any other.
   drafts.sourceless = await saveDraft(page, FLOOR_LIST, `U40b no source line ${runId}`);
-  ok("WORLD · a book draft is saved before any source line exists", /^cmp_[A-Za-z0-9_-]+$/.test(drafts.sourceless), drafts.sourceless);
+  ok("WORLD · a book draft is saved while no source line exists", /^cmp_[A-Za-z0-9_-]+$/.test(drafts.sourceless), drafts.sourceless);
   await ctx.close();
 }
 
-/* ══ THE SOURCE-LINE BLOCK — learned on the press, before the owner's line exists ═════════════════════════════════ */
+/* ══ NO SOURCE-LINE BLOCK — the press opens the dialog on a book draft saved with no line (the owner's ruling of 2026-10-09) ══ */
 for (const role of ["GROWTH", "ADMIN"]) {
   for (const vp of VPS) {
     const tag = `${vp.name}-${role.toLowerCase()}`;
@@ -592,24 +596,27 @@ for (const role of ["GROWTH", "ADMIN"]) {
     ok(`${tag} · AT REST · nothing counted yet: the trigger enabled, the honesty line on the card`,
       (await isDisabled(page, S.trigger)) === false && (await textOf(page, S.honestyCard)) === HONESTY, `${await cardState(page)}`);
     await press(page);
-    ok(`${tag} · BLOCKED BY THE READ · no source line: the service's sentence WITHOUT "Nothing was confirmed", in the title and on the card, with "${CHECK_AGAIN}"`,
-      !(await has(page, DLG)) && (await isDisabled(page, S.trigger)) === true && (await attr(page, S.trigger, "title")) === NEEDS_SOURCE
-        && (await textOf(page, S.blocked)) === NEEDS_SOURCE && (await textOf(page, S.again)) === CHECK_AGAIN
-        && (await attr(page, S.again, "data-confirm-again")) === "check",
-      `${await cardState(page)} · ${await textOf(page, S.blocked)}`);
-    await stateShot(page, tag, "blocked-source-line", NEEDS_SOURCE);
-    await fitCheck(page, tag, "blocked-source-line");
+    // ⛔ Until the ruling this press was refused `needs_source_line`; now it counts the three and OPENS the dialog — the reader's
+    // list, GROWTH's typed count (OD67) — and neither the card nor the dialog says a word about a source line.
+    const title = await dialogTitle(page);
+    const said = `${await textOf(page, S.card)} ${await dialogText(page)}`;
+    ok(`${tag} · NOT BLOCKED · a book draft saved with no source line opens the dialog — "${role === "ADMIN" ? "Confirm these 3 people?" : "Confirm 3 people?"}" — and no sentence names a source line`,
+      (await has(page, DLG)) && title === (role === "ADMIN" ? "Confirm these 3 people?" : "Confirm 3 people?")
+        && !(await has(page, S.blocked)) && !said.includes(OLD_NEEDS_SOURCE) && !/source line/i.test(said),
+      `${await cardState(page)} · dialog "${title}" · blocked "${await textOf(page, S.blocked)}"`);
+    await stateShot(page, tag, "no-source-line-opens", title, null);
+    await fitCheck(page, tag, "no-source-line-opens");
+    await closeDialog(page);
     await ctx.close();
   }
 }
 {
   const { ctx, page } = await staffCtx("ADMIN", VPS[0], "no-preference", 8);
-  await seed(page, "marketing-typed-test-seed?source=1");
-  // The whole contact book, saved once the line exists — the limit block's draft (≈50 people × TZS 6 > TZS 100).
+  // The whole contact book — the limit block's draft (≈50 people × TZS 6 > TZS 100). No source line is saved: none is needed.
   drafts.book = await saveDraft(page, WHOLE_BOOK, `U40b whole book ${runId}`);
-  // The floor list (three contacts), saved once the line exists — every viewer's ENUMERATE draft.
+  // The floor list (three contacts) — every viewer's ENUMERATE draft.
   drafts.floor = await saveDraft(page, FLOOR_LIST, `U40b floor ${runId}`);
-  ok("WORLD · the source line is saved, then a whole-book and a floor-list draft", [drafts.book, drafts.floor].every((d) => /^cmp_[A-Za-z0-9_-]+$/.test(d)), JSON.stringify(drafts));
+  ok("WORLD · a whole-book and a floor-list draft (no source line saved — since 2026-10-09 none is needed)", [drafts.book, drafts.floor].every((d) => /^cmp_[A-Za-z0-9_-]+$/.test(d)), JSON.stringify(drafts));
   // ⭐ THE POSITIVE CONTROL: a reader's read of the floor list — the payload check must find the list in it.
   const answer = nextActionAnswer(page);
   await press(page);
